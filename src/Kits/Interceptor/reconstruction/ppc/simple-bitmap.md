@@ -22,6 +22,9 @@ derive plane count from `isPlanar`, and gate row/plane byte counts on
 `isLocked`; an unobscured direct-mapped bitmap reads the row stride from its
 framebuffer. Its conversion-table accessors forward to the attached
 framebuffer.
+When the requested depth differs from the framebuffer depth, `pixelEncoding`
+selects the matching 2-bit gray, 8-bit gray, 12-bit RGB, 15-bit RGB, or 32-bit
+RGB encoding token; `pixelEncodings` returns a copied one-element array.
 Its lazily allocated backing store contains the row stride times pixel height
 plus four extra rows and is zero-filled. `bitmapData` is available only while
 locked; it returns that buffer in buffered modes, or marks the screen dirty and

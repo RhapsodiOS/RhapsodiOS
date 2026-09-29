@@ -14,6 +14,9 @@ row/plane sizes on the lock state, and forward conversion-table lookups to the
 attached framebuffer. Its backing store is lazily allocated with four extra
 rows and cleared to zero. `bitmapData` requires a lock and returns either that
 buffer or the direct framebuffer address for the intercepted screen rectangle.
+On a depth mismatch, `pixelEncoding` selects the recovered gray/RGB token for
+the effective sample depth, and `pixelEncodings` returns a copied one-item
+array.
 `getBitmapDataPlanes:` follows the same state rules: it clears all outputs while
 unlocked, returns the buffer and inherited planes in buffered mode, or returns
 the direct screen address and clears the remaining four planes.

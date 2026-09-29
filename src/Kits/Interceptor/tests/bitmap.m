@@ -60,6 +60,8 @@ int main(void)
         TestCheck([directBitmap conversionTable] == 0 &&
                   [directBitmap inverseConversionTable] == 0,
                   "unattached direct bitmap has no conversion tables");
+        TestCheck([directBitmap pixelEncoding] == nil,
+                  "unattached direct bitmap forwards pixel encoding to nil");
         TestCheck([directBitmap tryLockBitmap] &&
                   [directBitmap bytesPerRow] == 0 &&
                   ![directBitmap tryLockBitmap],

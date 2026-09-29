@@ -2,6 +2,8 @@
 #import "Private/NSInterceptedRect.h"
 #import "NSDirectBitmap.h"
 #import "NSFramebuffer.h"
+#import "InterceptorGlobals.h"
+#import <Foundation/NSMutableArray.h>
 #import <Foundation/NSZone.h>
 #import <strings.h>
 
@@ -186,6 +188,35 @@
 - (int)samplesPerPixel
 {
     return self->samplesPerPixel;
+}
+
+- (NSString *)pixelEncoding
+{
+    int depth;
+
+    if (self->depthMismatch == NO)
+        return [(NSFramebuffer *)self->framebuffer pixelEncoding];
+
+    depth = self->bitsPerSample * self->samplesPerPixel;
+    switch (depth) {
+    case 8:
+        return NSInterceptorEightBitGrey;
+    case 12:
+        return NSInterceptorTwelveBitRGBColor;
+    case 15:
+        return NSInterceptorFifteenBitRGBColor;
+    case 24:
+        return NSInterceptorThirtyTwoBitRGBColor;
+    default:
+        return NSInterceptorTwoBitGrey;
+    }
+}
+
+- (NSArray *)pixelEncodings
+{
+    NSMutableArray *encodings = [NSMutableArray array];
+    [encodings addObject:[self pixelEncoding]];
+    return [encodings copy];
 }
 
 @end

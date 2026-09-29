@@ -262,9 +262,9 @@ IDA function records: 392; symbol records: 540.
 | `0x47A0E0CC` | 204 | `_rendezVous` | unexamined |
 | `0x47A0E198` | 52 | `__rendezvousPort` | unexamined |
 | `0x47A0E1CC` | 296 | `_getPSPort` | unexamined |
-| `0x47A0E2F4` | 164 | `_InterceptorCreateRemoteContext` | static-reviewed; runtime pending; `InterceptorIPC.c` |
-| `0x47A0E398` | 40 | `_InterceptorCreateContext` | static-reviewed; runtime pending; `InterceptorIPC.c` |
-| `0x47A0E3C0` | 136 | `_InterceptorDestroyContext` | static-reviewed; runtime pending; `InterceptorIPC.c` |
+| `0x47A0E2F4` | 164 | `_InterceptorCreateRemoteContext` | static-reviewed; runtime pending; `InterceptorContext.c` |
+| `0x47A0E398` | 40 | `_InterceptorCreateContext` | static-reviewed; runtime pending; `InterceptorContext.c` |
+| `0x47A0E3C0` | 136 | `_InterceptorDestroyContext` | static-reviewed; runtime pending; `InterceptorContext.c` |
 | `0x47A0E448` | 92 | `_Interceptor_mig_error` | unexamined |
 | `0x47A0E4A4` | 84 | `_InterceptorMapFrameBuffer` | unexamined |
 | `0x47A0E4F8` | 84 | `_InterceptorUnmapFrameBuffer` | unexamined |
@@ -290,9 +290,9 @@ IDA function records: 392; symbol records: 540.
 | `0x47A0EDE8` | 472 | `__InterceptorCompositeBits` | unexamined |
 | `0x47A0EFC0` | 704 | `__InterceptorFrameBufferInfo` | unexamined |
 | `0x47A0F280` | 284 | `__OldInterceptorSetNotifyPort` | unexamined |
-| `0x47A0F39C` | 436 | `__InterceptorAddRect` | static-reviewed; source pending; runtime pending |
-| `0x47A0F550` | 284 | `__InterceptorRemoveRect` | static-reviewed; source pending; runtime pending |
-| `0x47A0F66C` | 300 | `__InterceptorSetNotifyPort` | static-reviewed; source pending; runtime pending |
+| `0x47A0F39C` | 436 | `__InterceptorAddRect` | static-reviewed; `InterceptorIPC.c`; runtime pending |
+| `0x47A0F550` | 284 | `__InterceptorRemoveRect` | static-reviewed; `InterceptorIPC.c`; runtime pending |
+| `0x47A0F66C` | 300 | `__InterceptorSetNotifyPort` | static-reviewed; `InterceptorIPC.c`; runtime pending |
 | `0x47A0F798` | 392 | `__InterceptorGetBM35ToBM34Table` | unexamined |
 | `0x47A0F920` | 268 | `__InterceptorScreenCount` | unexamined |
 | `0x47A0FA2C` | 268 | `__InterceptorHideCursor` | unexamined |
@@ -930,9 +930,9 @@ IDA function records: 419; symbol records: 629.
 | `0x47A0BBE4` | 389 | `__InterceptorCompositeBits` | unexamined |
 | `0x47A0BD6C` | 662 | `__InterceptorFrameBufferInfo` | unexamined |
 | `0x47A0C004` | 213 | `__OldInterceptorSetNotifyPort` | unexamined |
-| `0x47A0C0DC` | 267 | `__InterceptorAddRect` | static-reviewed; source pending; runtime pending |
-| `0x47A0C1E8` | 213 | `__InterceptorRemoveRect` | static-reviewed; source pending; runtime pending |
-| `0x47A0C2C0` | 229 | `__InterceptorSetNotifyPort` | static-reviewed; source pending; runtime pending |
+| `0x47A0C0DC` | 267 | `__InterceptorAddRect` | static-reviewed; `InterceptorIPC.c`; runtime pending |
+| `0x47A0C1E8` | 213 | `__InterceptorRemoveRect` | static-reviewed; `InterceptorIPC.c`; runtime pending |
+| `0x47A0C2C0` | 229 | `__InterceptorSetNotifyPort` | static-reviewed; `InterceptorIPC.c`; runtime pending |
 | `0x47A0C3A8` | 298 | `__InterceptorGetBM35ToBM34Table` | unexamined |
 | `0x47A0C4D4` | 197 | `__InterceptorScreenCount` | unexamined |
 | `0x47A0C59C` | 197 | `__InterceptorHideCursor` | unexamined |

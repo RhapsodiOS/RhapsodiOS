@@ -43,6 +43,6 @@ $(SYMROOT)/copy: copy.c test_support.m test_support.h
 	@mkdir -p $(OBJROOT) $(SYMROOT)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -I.. -I../../../objc-1 -o $@ copy.c test_support.m -framework AppKit -framework Foundation
 
-$(SYMROOT)/ipc: ipc.c test_support.m test_support.h ../Interceptor_types.h
+$(SYMROOT)/ipc: ipc.c test_support.m test_support.h ../Interceptor_types.h ../Private/InterceptorIPC.h ../InterceptorIPC.c
 	@mkdir -p $(OBJROOT) $(SYMROOT)
-	$(CC) $(CPPFLAGS) $(CFLAGS) -I.. -I../../../objc-1 -o $@ ipc.c test_support.m -framework AppKit -framework Foundation
+	$(CC) $(CPPFLAGS) $(CFLAGS) -DINTERCEPTOR_IPC_TEST_TRANSPORT -I.. -I../../../objc-1 -o $@ ipc.c ../InterceptorIPC.c test_support.m -framework AppKit -framework Foundation

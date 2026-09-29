@@ -34,10 +34,16 @@ context port, deallocates the notify port only when nonzero, zeroes all 12
 bytes, and frees the context. This sequence is binary-observed and retained
 even where cleanup appears asymmetric.
 
-`InterceptorIPC.c` now implements the context creation and destruction
-sequence. The three RPC stubs remain pending implementation; their message
-descriptors and complete reply validation need to be captured against a
-compatible transport before the wire routines are accepted.
+`InterceptorContext.c` implements the context lifecycle and `InterceptorIPC.c`
+implements all three RPC stubs,
+including the typed descriptors (`0x02200088` for the rectangle,
+`0x02200018` for integers, and `0x06200018` for ports in the PPC word view),
+success/error reply shapes, and the observed `-300`/`-301` validation errors.
+Descriptor fields are assigned individually so the compiler emits the proper
+architecture-specific bitfield order. A test transport now captures all
+three outgoing requests and supplies successful, server-error, wrong-ID, and
+send-failure outcomes. Its execution remains pending until the compatible
+historical toolchain is available.
 
 Runtime capture of outgoing messages, malformed replies, and transport
 failures remains pending because the compatible Mach guest/toolchain is not

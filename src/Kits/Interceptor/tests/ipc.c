@@ -4,11 +4,145 @@
 #include <stdlib.h>
 #include <string.h>
 #include "Interceptor_types.h"
+#include "Private/InterceptorIPC.h"
 #include "test_support.h"
+
+enum { TestAddRect, TestRemoveRect, TestSetNotifyPort };
+enum { TestSuccessReply, TestErrorReply, TestWrongReplyID, TestShortReply, TestSendFailure };
+
+static int expectedOperation;
+static int expectedReply;
+static int expectedSendResult;
+static port_t expectedContextPort;
+static port_t expectedReplyPort;
+static port_t expectedNotifyPort;
+static port_t expectedExceptionPort;
+static unsigned int expectedUniqueID;
+static InterceptedRectangle expectedRectangle;
+static InterceptedRectangle replyRectangle;
+static int expectedOperationResult;
+
+#if defined(__ppc__) || defined(__POWERPC__)
+#define EXPECTED_INTEGER_TYPE 0x02200018
+#define EXPECTED_RECT_TYPE    0x02200088
+#define EXPECTED_PORT_TYPE    0x06200018
+#elif defined(__i386__)
+#define EXPECTED_INTEGER_TYPE 0x10012002
+#define EXPECTED_RECT_TYPE    0x10082002
+#define EXPECTED_PORT_TYPE    0x10012006
+#else
+#error "IPC transport checks require 32-bit PowerPC or i386"
+#endif
+
+int InterceptorTestMsgRPC(msg_header_t *header, int option, int sendSize,
+                          int receiveSize, int timeout)
+{
+    int *words = (int *)((char *)header + sizeof(*header));
+    int replyID;
+    int successSize;
+
+    TestCheck(option == 0 && receiveSize == 0 && timeout == 0,
+              "RPC uses the reference option and timeout arguments");
+    TestCheck(header->msg_type == 0x100 &&
+              header->msg_remote_port == expectedContextPort &&
+              header->msg_local_port == expectedReplyPort,
+              "RPC header carries context and reply ports in reference order");
+
+    if (expectedOperation == TestAddRect) {
+        TestCheck(sendSize == 76 && header->msg_size == 60 &&
+                  header->msg_simple == 1 && header->msg_id == 0x1C23,
+                  "AddRect request ID and send/header sizes");
+        TestCheck(words[0] == EXPECTED_RECT_TYPE &&
+                  memcmp(&words[1], &expectedRectangle, sizeof(expectedRectangle)) == 0,
+                  "AddRect request descriptor and eight integer fields");
+        replyID = 0x1C87;
+        successSize = 76;
+    } else if (expectedOperation == TestRemoveRect) {
+        TestCheck(sendSize == 40 && header->msg_size == 32 &&
+                  header->msg_simple == 1 && header->msg_id == 0x1C24,
+                  "RemoveRect request ID and send/header sizes");
+        TestCheck(words[0] == EXPECTED_INTEGER_TYPE &&
+                  (unsigned int)words[1] == expectedUniqueID,
+                  "RemoveRect integer descriptor and unique ID");
+        replyID = 0x1C88;
+        successSize = 40;
+    } else {
+        TestCheck(sendSize == 40 && header->msg_size == 40 &&
+                  header->msg_simple == 0 && header->msg_id == 0x1C25,
+                  "SetNotifyPort request ID and send/header sizes");
+        TestCheck(words[0] == EXPECTED_PORT_TYPE &&
+                  (port_t)words[1] == expectedNotifyPort &&
+                  words[2] == EXPECTED_PORT_TYPE &&
+                  (port_t)words[3] == expectedExceptionPort,
+                  "SetNotifyPort port descriptors and payload");
+        replyID = 0x1C89;
+        successSize = 40;
+    }
+
+    if (expectedReply == TestSendFailure)
+        return expectedSendResult;
+
+    header->msg_simple = 1;
+    header->msg_type = 0x100;
+    header->msg_id = expectedReply == TestWrongReplyID ? replyID + 1 : replyID;
+    if (expectedReply == TestShortReply) {
+        header->msg_size = 28;
+        words[0] = EXPECTED_INTEGER_TYPE;
+        words[1] = 0;
+        return 0;
+    }
+    if (expectedReply == TestErrorReply) {
+        header->msg_size = 32;
+        words[0] = EXPECTED_INTEGER_TYPE;
+        words[1] = 6;
+        return 0;
+    }
+
+    header->msg_size = successSize;
+    words[0] = EXPECTED_INTEGER_TYPE;
+    words[1] = 0;
+    words[2] = EXPECTED_INTEGER_TYPE;
+    words[3] = expectedOperationResult;
+    if (expectedOperation == TestAddRect) {
+        words[4] = EXPECTED_RECT_TYPE;
+        memcpy(&words[5], &replyRectangle, sizeof(replyRectangle));
+    }
+    return 0;
+}
+
+static void PrepareCall(int operation, int reply)
+{
+    expectedOperation = operation;
+    expectedReply = reply;
+    expectedSendResult = -100;
+    expectedContextPort = 0x111;
+    expectedReplyPort = 0x222;
+    expectedNotifyPort = 0x333;
+    expectedExceptionPort = 0x444;
+    expectedUniqueID = 0x12345678;
+    expectedRectangle.x = 10;
+    expectedRectangle.y = 20;
+    expectedRectangle.w = 30;
+    expectedRectangle.h = 40;
+    expectedRectangle.idNum = 50;
+    expectedRectangle.wnum = 60;
+    expectedRectangle.snum = 70;
+    expectedRectangle.flags = 80;
+    replyRectangle.x = 110;
+    replyRectangle.y = 120;
+    replyRectangle.w = 130;
+    replyRectangle.h = 140;
+    replyRectangle.idNum = 150;
+    replyRectangle.wnum = 160;
+    replyRectangle.snum = 170;
+    replyRectangle.flags = 180;
+    expectedOperationResult = 0;
+}
 
 int main(void)
 {
     void *handle = TestLoadSelectedFramework();
+    InterceptedRectangle rectangle;
     TestCheck(handle != 0, "loads explicitly selected framework");
     TestCheck(sizeof(InterceptorClientContext) == 12,
               "client context has three 32-bit port fields");
@@ -43,5 +177,47 @@ int main(void)
         TestCheck(dlsym(handle, "InterceptorDestroyContext") != 0,
                   "selected framework exports context destruction");
     }
+
+    PrepareCall(TestAddRect, TestSuccessReply);
+    rectangle = expectedRectangle;
+    TestCheck(_InterceptorAddRect(expectedContextPort, expectedReplyPort,
+                                  &rectangle) == expectedOperationResult,
+              "AddRect returns the successful operation result");
+    TestCheck(memcmp(&rectangle, &replyRectangle, sizeof(rectangle)) == 0,
+              "AddRect copies the eight returned integers");
+
+    PrepareCall(TestRemoveRect, TestSuccessReply);
+    TestCheck(_InterceptorRemoveRect(expectedContextPort, expectedReplyPort,
+                                     expectedUniqueID) == expectedOperationResult,
+              "RemoveRect accepts a valid success reply");
+
+    PrepareCall(TestSetNotifyPort, TestSuccessReply);
+    TestCheck(_InterceptorSetNotifyPort(expectedContextPort, expectedReplyPort,
+                                        expectedNotifyPort,
+                                        expectedExceptionPort) == expectedOperationResult,
+              "SetNotifyPort accepts a valid success reply");
+
+    PrepareCall(TestAddRect, TestErrorReply);
+    rectangle = expectedRectangle;
+    TestCheck(_InterceptorAddRect(expectedContextPort, expectedReplyPort,
+                                  &rectangle) == expectedRectangle.w,
+              "AddRect retains its in/out result word for a server error reply");
+
+    PrepareCall(TestRemoveRect, TestWrongReplyID);
+    TestCheck(_InterceptorRemoveRect(expectedContextPort, expectedReplyPort,
+                                     expectedUniqueID) == 0,
+              "RemoveRect rejects a reply with the wrong ID");
+
+    PrepareCall(TestAddRect, TestShortReply);
+    rectangle = expectedRectangle;
+    TestCheck(_InterceptorAddRect(expectedContextPort, expectedReplyPort,
+                                  &rectangle) == expectedRectangle.w,
+              "AddRect rejects an undersized success reply");
+
+    PrepareCall(TestSetNotifyPort, TestSendFailure);
+    TestCheck(_InterceptorSetNotifyPort(expectedContextPort, expectedReplyPort,
+                                        expectedNotifyPort,
+                                        expectedExceptionPort) == expectedExceptionPort,
+              "SetNotifyPort retains its in/out result word on send failure");
     return TestFinish();
 }

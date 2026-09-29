@@ -16,3 +16,9 @@ All three RPCs call `msg_rpc` with the same request and reply maximum sizes as
 the PPC bodies. Context setup calls `_port_allocate` and `_getPSPort` with the
 same `15000` timeout and package ID `7196`; teardown deallocates the same
 context fields. Runtime transport comparison remains pending.
+
+The i386 decompiler confirms the architecture-specific descriptor words:
+integer `0x10012002`, eight-integer rectangle `0x10082002`, and port
+`0x10012006`. These describe the same name/size/count/inline fields as the PPC
+descriptors, with native bitfield byte order accounted for by assigning the
+`msg_type_t` fields in C.

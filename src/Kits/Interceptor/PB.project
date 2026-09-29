@@ -5,7 +5,7 @@
     DYNAMIC_CODE_GEN = YES;
     FILESTABLE = {
         CLASSES = (NSSimpleBitmap.m, NSFramework_Interceptor.m, NSShape.m, NSDirectBitmap.m, NSFramebuffer.m);
-        C_FILES = (InterceptorIPC.c);
+        C_FILES = (InterceptorIPC.c, InterceptorContext.c);
         FRAMEWORKS = (AppKit.framework, Foundation.framework);
         FRAMEWORKSEARCH = ("$(SYMROOT)");
         HEADERSEARCH = (

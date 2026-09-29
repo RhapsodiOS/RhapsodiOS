@@ -21,6 +21,12 @@ typedef struct {
 
 typedef struct {
     msg_header_t header;
+    msg_type_long_t driverNameType;
+    char driverName[80];
+} InterceptorDriverNameMessage;
+
+typedef struct {
+    msg_header_t header;
     int words[22];
 } InterceptorCompositeBitsMessage;
 
@@ -186,6 +192,104 @@ int _InterceptorSetNotifyPort(port_t contextPort, port_t replyPort,
         return words[3];
     }
     return words[3];
+}
+
+int _OldInterceptorSetNotifyPort(port_t contextPort, port_t replyPort,
+                                 port_t notifyPort)
+{
+    InterceptorRPCMessage message;
+    int *words;
+    int result;
+
+    InterceptorSetRPCHeader(&message, contextPort, replyPort, 7202, 32, 0);
+    words = message.words;
+    words[0] = InterceptorTypeDescriptor(6, 32, 1);
+    words[1] = (int)notifyPort;
+
+    result = InterceptorMsgRPC(&message.header, 0, 40, 0, 0);
+    if (result != 0) {
+        Interceptor_mig_error(result);
+        return words[3];
+    }
+    result = InterceptorCheckRPCReply(&message, 7302, 40, 32);
+    if (result != 0)
+        return words[3];
+    if (words[2] != InterceptorTypeDescriptor(2, 32, 1)) {
+        Interceptor_mig_error(-300);
+        return words[3];
+    }
+    return words[3];
+}
+
+static int InterceptorFrameBufferMappingRPC(port_t contextPort,
+                                             port_t replyPort,
+                                             const char *driverName,
+                                             int requestID)
+{
+    InterceptorDriverNameMessage message;
+    int *words = (int *)((char *)&message + sizeof(message.header));
+    int replyID = requestID + 100;
+    int result;
+
+    bzero((char *)&message, sizeof(message));
+    message.header.msg_simple = 1;
+    message.header.msg_size = sizeof(message);
+    message.header.msg_type = 0x100;
+    message.header.msg_local_port = replyPort;
+    message.header.msg_remote_port = contextPort;
+    message.header.msg_id = requestID;
+    message.driverNameType.msg_type_header.msg_type_inline = 1;
+    message.driverNameType.msg_type_header.msg_type_longform = 1;
+    message.driverNameType.msg_type_long_name = 12;
+    message.driverNameType.msg_type_long_size = 640;
+    message.driverNameType.msg_type_long_number = 1;
+    strncpy(message.driverName, driverName, sizeof(message.driverName));
+    message.driverName[sizeof(message.driverName) - 1] = '\0';
+
+    result = InterceptorMsgRPC(&message.header, 0, 40, 0, 0);
+    if (result != 0) {
+        Interceptor_mig_error(result);
+        return words[3];
+    }
+    if (message.header.msg_id != replyID) {
+        Interceptor_mig_error(-301);
+        return words[3];
+    }
+    if (message.header.msg_simple != 1 ||
+        words[0] != InterceptorTypeDescriptor(2, 32, 1)) {
+        Interceptor_mig_error(-300);
+        return words[3];
+    }
+    if ((message.header.msg_size == 32 ||
+         message.header.msg_size == 40) && words[1] != 0) {
+        Interceptor_mig_error(words[1]);
+        return words[3];
+    }
+    if (message.header.msg_size != 40) {
+        Interceptor_mig_error(-300);
+        return words[3];
+    }
+    if (words[2] != InterceptorTypeDescriptor(2, 32, 1)) {
+        Interceptor_mig_error(-300);
+        return words[3];
+    }
+    return words[3];
+}
+
+int _InterceptorEnableFrameBufferMapping(port_t contextPort,
+                                         port_t replyPort,
+                                         const char *driverName)
+{
+    return InterceptorFrameBufferMappingRPC(contextPort, replyPort,
+                                             driverName, 7196);
+}
+
+int _InterceptorDisableFrameBufferMapping(port_t contextPort,
+                                          port_t replyPort,
+                                          const char *driverName)
+{
+    return InterceptorFrameBufferMappingRPC(contextPort, replyPort,
+                                             driverName, 7197);
 }
 
 static int InterceptorSimpleReplyRPC(port_t contextPort, port_t replyPort,

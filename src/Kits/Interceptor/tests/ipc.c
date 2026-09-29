@@ -8,6 +8,8 @@
 #include "test_support.h"
 
 enum { TestAddRect, TestRemoveRect, TestSetNotifyPort,
+       TestOldSetNotifyPort, TestEnableFrameBufferMapping,
+       TestDisableFrameBufferMapping,
        TestScreenCount, TestHideCursor, TestShowCursor,
        TestFlushRect, TestAddDirtyRect, TestFlushDirtyRects,
        TestRepairPalette, TestDamagedPalette,
@@ -88,14 +90,14 @@ static void TestSetOutOfLineLongType(int *words, int count)
     memcpy(words, &descriptor, sizeof(descriptor));
 }
 
-int InterceptorTestMsgRPC(msg_header_t *header, int option, int sendSize,
-                          int receiveSize, int timeout)
+int InterceptorTestMsgRPC(msg_header_t *header, int option, int replyCapacity,
+                          int sendTimeout, int receiveTimeout)
 {
     int *words = (int *)((char *)header + sizeof(*header));
     int replyID;
     int successSize;
 
-    TestCheck(option == 0 && receiveSize == 0 && timeout == 0,
+    TestCheck(option == 0 && sendTimeout == 0 && receiveTimeout == 0,
               "RPC uses the reference option and timeout arguments");
     TestCheck(header->msg_type == 0x100 &&
               header->msg_remote_port == expectedContextPort &&
@@ -103,27 +105,27 @@ int InterceptorTestMsgRPC(msg_header_t *header, int option, int sendSize,
               "RPC header carries context and reply ports in reference order");
 
     if (expectedOperation == TestAddRect) {
-        TestCheck(sendSize == 76 && header->msg_size == 60 &&
+        TestCheck(replyCapacity == 76 && header->msg_size == 60 &&
                   header->msg_simple == 1 && header->msg_id == 0x1C23,
-                  "AddRect request ID and send/header sizes");
+                  "AddRect request ID, reply capacity, and header size");
         TestCheck(words[0] == EXPECTED_RECT_TYPE &&
                   memcmp(&words[1], &expectedRectangle, sizeof(expectedRectangle)) == 0,
                   "AddRect request descriptor and eight integer fields");
         replyID = 0x1C87;
         successSize = 76;
     } else if (expectedOperation == TestRemoveRect) {
-        TestCheck(sendSize == 40 && header->msg_size == 32 &&
+        TestCheck(replyCapacity == 40 && header->msg_size == 32 &&
                   header->msg_simple == 1 && header->msg_id == 0x1C24,
-                  "RemoveRect request ID and send/header sizes");
+                  "RemoveRect request ID, reply capacity, and header size");
         TestCheck(words[0] == EXPECTED_INTEGER_TYPE &&
                   (unsigned int)words[1] == expectedUniqueID,
                   "RemoveRect integer descriptor and unique ID");
         replyID = 0x1C88;
         successSize = 40;
     } else if (expectedOperation == TestSetNotifyPort) {
-        TestCheck(sendSize == 40 && header->msg_size == 40 &&
+        TestCheck(replyCapacity == 40 && header->msg_size == 40 &&
                   header->msg_simple == 0 && header->msg_id == 0x1C25,
-                  "SetNotifyPort request ID and send/header sizes");
+                  "SetNotifyPort request ID, reply capacity, and header size");
         TestCheck(words[0] == EXPECTED_PORT_TYPE &&
                   (port_t)words[1] == expectedNotifyPort &&
                   words[2] == EXPECTED_PORT_TYPE &&
@@ -131,8 +133,36 @@ int InterceptorTestMsgRPC(msg_header_t *header, int option, int sendSize,
                   "SetNotifyPort port descriptors and payload");
         replyID = 0x1C89;
         successSize = 40;
+    } else if (expectedOperation == TestOldSetNotifyPort) {
+        TestCheck(replyCapacity == 40 && header->msg_size == 32 &&
+                  header->msg_simple == 0 && header->msg_id == 7202,
+                  "legacy SetNotifyPort request ID, reply capacity, and header size");
+        TestCheck(words[0] == EXPECTED_PORT_TYPE &&
+                  (port_t)words[1] == expectedNotifyPort,
+                  "legacy SetNotifyPort port descriptor and notification port");
+        replyID = 7302;
+        successSize = 40;
+    } else if (expectedOperation == TestEnableFrameBufferMapping ||
+               expectedOperation == TestDisableFrameBufferMapping) {
+        msg_type_long_t driverNameType;
+        int requestID = expectedOperation == TestEnableFrameBufferMapping ?
+                        7196 : 7197;
+        TestCheck(replyCapacity == 40 && header->msg_size == 116 &&
+                  header->msg_simple == 1 && header->msg_id == requestID,
+                  "framebuffer mapping request ID, reply capacity, and header size");
+        memcpy(&driverNameType, words, sizeof(driverNameType));
+        TestCheck(driverNameType.msg_type_header.msg_type_inline == 1 &&
+                  driverNameType.msg_type_header.msg_type_longform == 1 &&
+                  driverNameType.msg_type_long_name == 12 &&
+                  driverNameType.msg_type_long_size == 640 &&
+                  driverNameType.msg_type_long_number == 1 &&
+                  memcmp((char *)words + sizeof(driverNameType),
+                         expectedDriver, sizeof(expectedDriver)) == 0,
+                  "framebuffer mapping embeds the typed 80-byte driver name");
+        replyID = requestID + 100;
+        successSize = 40;
     } else if (expectedOperation == TestMapFrameBuffer) {
-        TestCheck(sendSize == 48 && header->msg_size == 40 &&
+        TestCheck(replyCapacity == 48 && header->msg_size == 40 &&
                   header->msg_simple == 0 && header->msg_id == 7198,
                   "MapFrameBuffer request ID and header sizes");
         TestCheck(words[0] == EXPECTED_INTEGER_TYPE &&
@@ -143,7 +173,7 @@ int InterceptorTestMsgRPC(msg_header_t *header, int option, int sendSize,
         replyID = 7298;
         successSize = 48;
     } else if (expectedOperation == TestUnmapFrameBuffer) {
-        TestCheck(sendSize == 40 && header->msg_size == 48 &&
+        TestCheck(replyCapacity == 40 && header->msg_size == 48 &&
                   header->msg_simple == 0 && header->msg_id == 7219,
                   "UnmapFrameBuffer request ID and header sizes");
         TestCheck(words[0] == EXPECTED_INTEGER_TYPE &&
@@ -156,18 +186,18 @@ int InterceptorTestMsgRPC(msg_header_t *header, int option, int sendSize,
         replyID = 7319;
         successSize = 40;
     } else if (expectedOperation == TestFrameBufferInfo) {
-        TestCheck(sendSize == 272 && header->msg_size == 32 &&
+        TestCheck(replyCapacity == 272 && header->msg_size == 32 &&
                   header->msg_simple == 1 && header->msg_id == 7201,
-                  "FrameBufferInfo request ID and buffer sizes");
+                  "FrameBufferInfo request ID, reply capacity, and header size");
         TestCheck(words[0] == EXPECTED_INTEGER_TYPE &&
                   words[1] == expectedScreenNumber,
                   "FrameBufferInfo sends the screen number");
         replyID = 7301;
         successSize = 272;
     } else if (expectedOperation == TestAccessTokens) {
-        TestCheck(sendSize == 64 && header->msg_size == 32 &&
+        TestCheck(replyCapacity == 64 && header->msg_size == 32 &&
                   header->msg_simple == 1 && header->msg_id == 7217,
-                  "GetDeviceAccessTokens request ID and message sizes");
+                  "GetDeviceAccessTokens request ID, reply capacity, and header size");
         TestCheck(words[0] == EXPECTED_INTEGER_TYPE &&
                   words[1] == expectedScreenNumber,
                   "GetDeviceAccessTokens sends the screen number");
@@ -177,9 +207,9 @@ int InterceptorTestMsgRPC(msg_header_t *header, int option, int sendSize,
         msg_type_long_t descriptor;
         int expectedByteCount = expectedCompositeFields[5] *
                                 expectedCompositeFields[9];
-        TestCheck(sendSize == 40 && header->msg_size == 112 &&
+        TestCheck(replyCapacity == 40 && header->msg_size == 112 &&
                   header->msg_simple == 0 && header->msg_id == 7200,
-                  "CompositeBits request ID and message sizes");
+                  "CompositeBits request ID, reply capacity, and header size");
         TestCheck(words[0] == EXPECTED_INTEGER_TYPE &&
                   words[1] == expectedCompositeFields[0] &&
                   words[2] == EXPECTED_INTEGER_TYPE &&
@@ -216,7 +246,7 @@ int InterceptorTestMsgRPC(msg_header_t *header, int option, int sendSize,
         int requestID = expectedOperation == TestBM34ToBM35 ? 7199 : 7206;
         replyID = requestID + 100;
         successSize = 56;
-        TestCheck(sendSize == 56 && header->msg_size == sizeof(msg_header_t) &&
+        TestCheck(replyCapacity == 56 && header->msg_size == sizeof(msg_header_t) &&
                   header->msg_simple == 1 && header->msg_id == requestID,
                   "16-bit conversion-table RPC request ID and sizes");
     } else if (expectedOperation == TestBM256ToBM38 ||
@@ -224,7 +254,7 @@ int InterceptorTestMsgRPC(msg_header_t *header, int option, int sendSize,
         int requestID = expectedOperation == TestBM256ToBM38 ? 7210 : 7211;
         replyID = requestID + 100;
         successSize = 48;
-        TestCheck(sendSize == 48 && header->msg_size == sizeof(msg_header_t) &&
+        TestCheck(replyCapacity == 48 && header->msg_size == sizeof(msg_header_t) &&
                   header->msg_simple == 1 && header->msg_id == requestID,
                   "8-bit conversion-table RPC request ID and sizes");
     } else {
@@ -232,7 +262,7 @@ int InterceptorTestMsgRPC(msg_header_t *header, int option, int sendSize,
                         expectedOperation == TestHideCursor ? 7208 : 7209;
         replyID = requestID + 100;
         successSize = 40;
-        TestCheck(sendSize == 40 && header->msg_size == sizeof(msg_header_t) &&
+        TestCheck(replyCapacity == 40 && header->msg_size == sizeof(msg_header_t) &&
                   header->msg_simple == 1 && header->msg_id == requestID,
                   "simple Window Server RPC request ID and header sizes");
     }
@@ -457,6 +487,10 @@ int main(void)
                   "selected framework exports the RemoveRect RPC");
         TestCheck(dlsym(handle, "_InterceptorSetNotifyPort") != 0,
                   "selected framework exports the SetNotifyPort RPC");
+        TestCheck(dlsym(handle, "_OldInterceptorSetNotifyPort") != 0 &&
+                  dlsym(handle, "__InterceptorEnableFrameBufferMapping") != 0 &&
+                  dlsym(handle, "__InterceptorDisableFrameBufferMapping") != 0,
+                  "selected framework exports legacy and framebuffer mapping RPCs");
         TestCheck(dlsym(handle, "_InterceptorScreenCount") != 0 &&
                   dlsym(handle, "_InterceptorHideCursor") != 0 &&
                   dlsym(handle, "_InterceptorShowCursor") != 0,
@@ -508,6 +542,22 @@ int main(void)
                                         expectedNotifyPort,
                                         expectedExceptionPort) == expectedOperationResult,
               "SetNotifyPort accepts a valid success reply");
+
+    PrepareCall(TestOldSetNotifyPort, TestSuccessReply);
+    TestCheck(_OldInterceptorSetNotifyPort(expectedContextPort,
+                                           expectedReplyPort,
+                                           expectedNotifyPort) == 0,
+              "legacy SetNotifyPort accepts a valid success reply");
+    PrepareCall(TestEnableFrameBufferMapping, TestSuccessReply);
+    TestCheck(_InterceptorEnableFrameBufferMapping(expectedContextPort,
+                                                   expectedReplyPort,
+                                                   expectedDriver) == 0,
+              "EnableFrameBufferMapping sends the typed driver name request");
+    PrepareCall(TestDisableFrameBufferMapping, TestSuccessReply);
+    TestCheck(_InterceptorDisableFrameBufferMapping(expectedContextPort,
+                                                    expectedReplyPort,
+                                                    expectedDriver) == 0,
+              "DisableFrameBufferMapping sends the typed driver name request");
 
     PrepareCall(TestScreenCount, TestSuccessReply);
     expectedOperationResult = 3;

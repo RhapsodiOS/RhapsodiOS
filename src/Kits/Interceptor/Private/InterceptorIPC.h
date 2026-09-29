@@ -15,6 +15,14 @@ int _InterceptorRemoveRect(port_t contextPort, port_t replyPort,
                            unsigned int uniqueID);
 int _InterceptorSetNotifyPort(port_t contextPort, port_t replyPort,
                               port_t notifyPort, port_t exceptionPort);
+int _OldInterceptorSetNotifyPort(port_t contextPort, port_t replyPort,
+                                 port_t notifyPort);
+int _InterceptorEnableFrameBufferMapping(port_t contextPort,
+                                         port_t replyPort,
+                                         const char *driverName);
+int _InterceptorDisableFrameBufferMapping(port_t contextPort,
+                                          port_t replyPort,
+                                          const char *driverName);
 
 int _InterceptorScreenCount(port_t contextPort, port_t replyPort);
 int _InterceptorHideCursor(port_t contextPort, port_t replyPort);

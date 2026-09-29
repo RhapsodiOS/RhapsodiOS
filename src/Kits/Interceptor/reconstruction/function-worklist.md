@@ -283,13 +283,13 @@ IDA function records: 392; symbol records: 540.
 | `0x47A0E7F0` | 36 | `_InterceptorRepairPalette` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
 | `0x47A0E814` | 36 | `_InterceptorDamagedPalette` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
 | `0x47A0E838` | 72 | `_InterceptorGetDeviceAccessTokens` | PPC static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
-| `0x47A0E880` | 332 | `__InterceptorEnableFrameBufferMapping` | unexamined |
-| `0x47A0E9CC` | 332 | `__InterceptorDisableFrameBufferMapping` | unexamined |
+| `0x47A0E880` | 332 | `__InterceptorEnableFrameBufferMapping` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c`; `ppc/ipc.md` |
+| `0x47A0E9CC` | 332 | `__InterceptorDisableFrameBufferMapping` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c`; `ppc/ipc.md` |
 | `0x47A0EB18` | 336 | `__InterceptorMapFrameBuffer` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
 | `0x47A0EC68` | 384 | `__InterceptorGetBM34ToBM35Table` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
 | `0x47A0EDE8` | 472 | `__InterceptorCompositeBits` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
 | `0x47A0EFC0` | 704 | `__InterceptorFrameBufferInfo` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
-| `0x47A0F280` | 284 | `__OldInterceptorSetNotifyPort` | unexamined |
+| `0x47A0F280` | 284 | `__OldInterceptorSetNotifyPort` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c`; `ppc/ipc.md` |
 | `0x47A0F39C` | 436 | `__InterceptorAddRect` | static-reviewed; `InterceptorIPC.c`; runtime pending |
 | `0x47A0F550` | 284 | `__InterceptorRemoveRect` | static-reviewed; `InterceptorIPC.c`; runtime pending |
 | `0x47A0F66C` | 300 | `__InterceptorSetNotifyPort` | static-reviewed; `InterceptorIPC.c`; runtime pending |
@@ -307,99 +307,99 @@ IDA function records: 392; symbol records: 540.
 | `0x47A1013C` | 384 | `__InterceptorGetDeviceAccessTokens` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
 | `0x47A102BC` | 96 | `__InterceptorShowCursorAsync` | PPC/i386 static-reviewed; source authored; runtime pending |
 | `0x47A1031C` | 316 | `__InterceptorUnmapFrameBuffer` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
-| `0x47A112EC` | 36 | `_NSEqualSizes` | unexamined |
-| `0x47A11310` | 36 | `_NSEqualRects` | unexamined |
-| `0x47A11334` | 36 | `j__InterceptorScreenCount` | unexamined |
-| `0x47A11358` | 36 | `j__InterceptorShowCursor` | unexamined |
-| `0x47A1137C` | 36 | `j__InterceptorHideCursor` | unexamined |
-| `0x47A113A0` | 36 | `_NSIsEmptyRect` | unexamined |
-| `0x47A113C4` | 36 | `_NSConvertWindowNumberToGlobal` | unexamined |
-| `0x47A113E8` | 36 | `_sel_getName` | unexamined |
-| `0x47A1140C` | 36 | `_objc_msgSendSuper` | unexamined |
-| `0x47A11430` | 36 | `_NSZoneFree` | unexamined |
-| `0x47A11454` | 36 | `_printf` | unexamined |
-| `0x47A11478` | 36 | `j__InterceptorCompositeBits` | unexamined |
-| `0x47A1149C` | 36 | `_NSIntersectionRect` | unexamined |
-| `0x47A114C0` | 36 | `_NSOffsetRect` | unexamined |
-| `0x47A114E4` | 36 | `_objc_msgSend_stret` | unexamined |
-| `0x47A11508` | 36 | `_bzero` | unexamined |
-| `0x47A1152C` | 36 | `_NSZoneMalloc` | unexamined |
-| `0x47A11550` | 36 | `_objc_msgSend` | unexamined |
-| `0x47A11574` | 36 | `_memset` | unexamined |
-| `0x47A11598` | 36 | `_NSLog` | unexamined |
-| `0x47A115BC` | 36 | `_pow` | unexamined |
-| `0x47A115E0` | 36 | `_malloc` | unexamined |
-| `0x47A11604` | 36 | `_free` | unexamined |
-| `0x47A11628` | 36 | `__IOSetCharValues` | unexamined |
-| `0x47A1164C` | 36 | `__IOSetIntValues` | unexamined |
-| `0x47A11670` | 36 | `_NXCloseEventStatus` | unexamined |
-| `0x47A11694` | 36 | `_NXSetAutoDimBrightness` | unexamined |
-| `0x47A116B8` | 36 | `_NXScreenBrightness` | unexamined |
-| `0x47A116DC` | 36 | `_NXAutoDimBrightness` | unexamined |
-| `0x47A11700` | 36 | `_NXOpenEventStatus` | unexamined |
-| `0x47A11724` | 36 | `_PSWait` | unexamined |
-| `0x47A11748` | 36 | `_PSgrestore` | unexamined |
-| `0x47A1176C` | 36 | `_PSsetexposurecolor` | unexamined |
-| `0x47A11790` | 36 | `_PSsetrgbcolor` | unexamined |
-| `0x47A117B4` | 36 | `_PSwindowdeviceround` | unexamined |
-| `0x47A117D8` | 36 | `_PSgsave` | unexamined |
-| `0x47A117FC` | 36 | `_PSsetautofill` | unexamined |
-| `0x47A11820` | 36 | `j__InterceptorDamagedPalette` | unexamined |
-| `0x47A11844` | 36 | `_sprintf` | unexamined |
-| `0x47A11868` | 36 | `_NSStringFromSelector` | unexamined |
-| `0x47A1188C` | 36 | `j__InterceptorDestroyContext` | unexamined |
-| `0x47A118B0` | 36 | `__IOGetIntValues` | unexamined |
-| `0x47A118D4` | 36 | `j__InterceptorGetDeviceAccessTokens` | unexamined |
-| `0x47A118F8` | 36 | `j__InterceptorCreateContext` | unexamined |
-| `0x47A1191C` | 36 | `j__InterceptorGetBM256ToBM38Table` | unexamined |
-| `0x47A11940` | 36 | `j__InterceptorGetBM35ToBM34Table` | unexamined |
-| `0x47A11964` | 36 | `j__InterceptorGetBM38ToBM256Table` | unexamined |
-| `0x47A11988` | 36 | `j__InterceptorGetBM34ToBM35Table` | unexamined |
-| `0x47A119AC` | 36 | `j__InterceptorUnmapFrameBuffer` | unexamined |
-| `0x47A119D0` | 36 | `j__InterceptorMapFrameBuffer` | unexamined |
-| `0x47A119F4` | 36 | `j__InterceptorFrameBufferInfo` | unexamined |
-| `0x47A11A18` | 36 | `_objc_setMultithreaded` | unexamined |
-| `0x47A11A3C` | 36 | `_port_set_add` | unexamined |
-| `0x47A11A60` | 36 | `_msg_send` | unexamined |
-| `0x47A11A84` | 36 | `_mach_error_string` | unexamined |
-| `0x47A11AA8` | 36 | `_msg_receive` | unexamined |
-| `0x47A11ACC` | 36 | `j___rendezvousPort` | unexamined |
-| `0x47A11AF0` | 36 | `_cthread_set_name` | unexamined |
-| `0x47A11B14` | 36 | `_ur_cthread_self` | unexamined |
-| `0x47A11B38` | 36 | `j__NSRemapMegaPixelDisplayForCurrentThread` | unexamined |
-| `0x47A11B5C` | 36 | `j___InterceptorRemoveRect` | unexamined |
-| `0x47A11B80` | 36 | `j___InterceptorAddRect` | unexamined |
-| `0x47A11BA4` | 36 | `j___InterceptorSetNotifyPort` | unexamined |
-| `0x47A11BC8` | 36 | `_task_get_special_port` | unexamined |
-| `0x47A11BEC` | 36 | `_thread_get_special_port` | unexamined |
-| `0x47A11C10` | 36 | `_thread_self` | unexamined |
-| `0x47A11C34` | 36 | `_port_allocate` | unexamined |
-| `0x47A11C58` | 36 | `_port_deallocate` | unexamined |
-| `0x47A11C7C` | 36 | `_port_set_remove` | unexamined |
-| `0x47A11CA0` | 36 | `_mach_error` | unexamined |
-| `0x47A11CC4` | 36 | `_port_set_allocate` | unexamined |
-| `0x47A11CE8` | 36 | `_memcpy` | unexamined |
-| `0x47A11D0C` | 36 | `_NSZoneRealloc` | unexamined |
-| `0x47A11D30` | 36 | `_netname_look_up` | unexamined |
-| `0x47A11D54` | 36 | `_bootstrap_look_up` | unexamined |
-| `0x47A11D78` | 36 | `_msg_rpc` | unexamined |
-| `0x47A11D9C` | 36 | `j___InterceptorGetDeviceAccessTokens` | unexamined |
-| `0x47A11DC0` | 36 | `j___InterceptorDamagedPalette` | unexamined |
-| `0x47A11DE4` | 36 | `j___InterceptorRepairPalette` | unexamined |
-| `0x47A11E08` | 36 | `j___InterceptorFlushDirtyRects` | unexamined |
-| `0x47A11E2C` | 36 | `j___InterceptorAddDirtyRect` | unexamined |
-| `0x47A11E50` | 36 | `j___InterceptorFlushRect` | unexamined |
-| `0x47A11E74` | 36 | `j___InterceptorShowCursorAsync` | unexamined |
-| `0x47A11E98` | 36 | `j___InterceptorHideCursor` | unexamined |
-| `0x47A11EBC` | 36 | `j___InterceptorFrameBufferInfo` | unexamined |
-| `0x47A11EE0` | 36 | `j___InterceptorCompositeBits` | unexamined |
-| `0x47A11F04` | 36 | `j___InterceptorScreenCount` | unexamined |
-| `0x47A11F28` | 36 | `j___InterceptorGetBM38ToBM256Table` | unexamined |
-| `0x47A11F4C` | 36 | `j___InterceptorGetBM256ToBM38Table` | unexamined |
-| `0x47A11F70` | 36 | `j___InterceptorUnmapFrameBuffer` | unexamined |
-| `0x47A11F94` | 36 | `j___InterceptorMapFrameBuffer` | unexamined |
-| `0x47A11FB8` | 36 | `j__Interceptor_mig_error` | unexamined |
-| `0x47A11FDC` | 36 | `_strncpy` | unexamined |
+| `0x47A112EC` | 36 | `_NSEqualSizes` | linker-generated PIC import stub; no framework source body |
+| `0x47A11310` | 36 | `_NSEqualRects` | linker-generated PIC import stub; no framework source body |
+| `0x47A11334` | 36 | `j__InterceptorScreenCount` | linker-generated PIC import stub; no framework source body |
+| `0x47A11358` | 36 | `j__InterceptorShowCursor` | linker-generated PIC import stub; no framework source body |
+| `0x47A1137C` | 36 | `j__InterceptorHideCursor` | linker-generated PIC import stub; no framework source body |
+| `0x47A113A0` | 36 | `_NSIsEmptyRect` | linker-generated PIC import stub; no framework source body |
+| `0x47A113C4` | 36 | `_NSConvertWindowNumberToGlobal` | linker-generated PIC import stub; no framework source body |
+| `0x47A113E8` | 36 | `_sel_getName` | linker-generated PIC import stub; no framework source body |
+| `0x47A1140C` | 36 | `_objc_msgSendSuper` | linker-generated PIC import stub; no framework source body |
+| `0x47A11430` | 36 | `_NSZoneFree` | linker-generated PIC import stub; no framework source body |
+| `0x47A11454` | 36 | `_printf` | linker-generated PIC import stub; no framework source body |
+| `0x47A11478` | 36 | `j__InterceptorCompositeBits` | linker-generated PIC import stub; no framework source body |
+| `0x47A1149C` | 36 | `_NSIntersectionRect` | linker-generated PIC import stub; no framework source body |
+| `0x47A114C0` | 36 | `_NSOffsetRect` | linker-generated PIC import stub; no framework source body |
+| `0x47A114E4` | 36 | `_objc_msgSend_stret` | linker-generated PIC import stub; no framework source body |
+| `0x47A11508` | 36 | `_bzero` | linker-generated PIC import stub; no framework source body |
+| `0x47A1152C` | 36 | `_NSZoneMalloc` | linker-generated PIC import stub; no framework source body |
+| `0x47A11550` | 36 | `_objc_msgSend` | linker-generated PIC import stub; no framework source body |
+| `0x47A11574` | 36 | `_memset` | linker-generated PIC import stub; no framework source body |
+| `0x47A11598` | 36 | `_NSLog` | linker-generated PIC import stub; no framework source body |
+| `0x47A115BC` | 36 | `_pow` | linker-generated PIC import stub; no framework source body |
+| `0x47A115E0` | 36 | `_malloc` | linker-generated PIC import stub; no framework source body |
+| `0x47A11604` | 36 | `_free` | linker-generated PIC import stub; no framework source body |
+| `0x47A11628` | 36 | `__IOSetCharValues` | linker-generated PIC import stub; no framework source body |
+| `0x47A1164C` | 36 | `__IOSetIntValues` | linker-generated PIC import stub; no framework source body |
+| `0x47A11670` | 36 | `_NXCloseEventStatus` | linker-generated PIC import stub; no framework source body |
+| `0x47A11694` | 36 | `_NXSetAutoDimBrightness` | linker-generated PIC import stub; no framework source body |
+| `0x47A116B8` | 36 | `_NXScreenBrightness` | linker-generated PIC import stub; no framework source body |
+| `0x47A116DC` | 36 | `_NXAutoDimBrightness` | linker-generated PIC import stub; no framework source body |
+| `0x47A11700` | 36 | `_NXOpenEventStatus` | linker-generated PIC import stub; no framework source body |
+| `0x47A11724` | 36 | `_PSWait` | linker-generated PIC import stub; no framework source body |
+| `0x47A11748` | 36 | `_PSgrestore` | linker-generated PIC import stub; no framework source body |
+| `0x47A1176C` | 36 | `_PSsetexposurecolor` | linker-generated PIC import stub; no framework source body |
+| `0x47A11790` | 36 | `_PSsetrgbcolor` | linker-generated PIC import stub; no framework source body |
+| `0x47A117B4` | 36 | `_PSwindowdeviceround` | linker-generated PIC import stub; no framework source body |
+| `0x47A117D8` | 36 | `_PSgsave` | linker-generated PIC import stub; no framework source body |
+| `0x47A117FC` | 36 | `_PSsetautofill` | linker-generated PIC import stub; no framework source body |
+| `0x47A11820` | 36 | `j__InterceptorDamagedPalette` | linker-generated PIC import stub; no framework source body |
+| `0x47A11844` | 36 | `_sprintf` | linker-generated PIC import stub; no framework source body |
+| `0x47A11868` | 36 | `_NSStringFromSelector` | linker-generated PIC import stub; no framework source body |
+| `0x47A1188C` | 36 | `j__InterceptorDestroyContext` | linker-generated PIC import stub; no framework source body |
+| `0x47A118B0` | 36 | `__IOGetIntValues` | linker-generated PIC import stub; no framework source body |
+| `0x47A118D4` | 36 | `j__InterceptorGetDeviceAccessTokens` | linker-generated PIC import stub; no framework source body |
+| `0x47A118F8` | 36 | `j__InterceptorCreateContext` | linker-generated PIC import stub; no framework source body |
+| `0x47A1191C` | 36 | `j__InterceptorGetBM256ToBM38Table` | linker-generated PIC import stub; no framework source body |
+| `0x47A11940` | 36 | `j__InterceptorGetBM35ToBM34Table` | linker-generated PIC import stub; no framework source body |
+| `0x47A11964` | 36 | `j__InterceptorGetBM38ToBM256Table` | linker-generated PIC import stub; no framework source body |
+| `0x47A11988` | 36 | `j__InterceptorGetBM34ToBM35Table` | linker-generated PIC import stub; no framework source body |
+| `0x47A119AC` | 36 | `j__InterceptorUnmapFrameBuffer` | linker-generated PIC import stub; no framework source body |
+| `0x47A119D0` | 36 | `j__InterceptorMapFrameBuffer` | linker-generated PIC import stub; no framework source body |
+| `0x47A119F4` | 36 | `j__InterceptorFrameBufferInfo` | linker-generated PIC import stub; no framework source body |
+| `0x47A11A18` | 36 | `_objc_setMultithreaded` | linker-generated PIC import stub; no framework source body |
+| `0x47A11A3C` | 36 | `_port_set_add` | linker-generated PIC import stub; no framework source body |
+| `0x47A11A60` | 36 | `_msg_send` | linker-generated PIC import stub; no framework source body |
+| `0x47A11A84` | 36 | `_mach_error_string` | linker-generated PIC import stub; no framework source body |
+| `0x47A11AA8` | 36 | `_msg_receive` | linker-generated PIC import stub; no framework source body |
+| `0x47A11ACC` | 36 | `j___rendezvousPort` | linker-generated PIC import stub; no framework source body |
+| `0x47A11AF0` | 36 | `_cthread_set_name` | linker-generated PIC import stub; no framework source body |
+| `0x47A11B14` | 36 | `_ur_cthread_self` | linker-generated PIC import stub; no framework source body |
+| `0x47A11B38` | 36 | `j__NSRemapMegaPixelDisplayForCurrentThread` | linker-generated PIC import stub; no framework source body |
+| `0x47A11B5C` | 36 | `j___InterceptorRemoveRect` | linker-generated PIC import stub; no framework source body |
+| `0x47A11B80` | 36 | `j___InterceptorAddRect` | linker-generated PIC import stub; no framework source body |
+| `0x47A11BA4` | 36 | `j___InterceptorSetNotifyPort` | linker-generated PIC import stub; no framework source body |
+| `0x47A11BC8` | 36 | `_task_get_special_port` | linker-generated PIC import stub; no framework source body |
+| `0x47A11BEC` | 36 | `_thread_get_special_port` | linker-generated PIC import stub; no framework source body |
+| `0x47A11C10` | 36 | `_thread_self` | linker-generated PIC import stub; no framework source body |
+| `0x47A11C34` | 36 | `_port_allocate` | linker-generated PIC import stub; no framework source body |
+| `0x47A11C58` | 36 | `_port_deallocate` | linker-generated PIC import stub; no framework source body |
+| `0x47A11C7C` | 36 | `_port_set_remove` | linker-generated PIC import stub; no framework source body |
+| `0x47A11CA0` | 36 | `_mach_error` | linker-generated PIC import stub; no framework source body |
+| `0x47A11CC4` | 36 | `_port_set_allocate` | linker-generated PIC import stub; no framework source body |
+| `0x47A11CE8` | 36 | `_memcpy` | linker-generated PIC import stub; no framework source body |
+| `0x47A11D0C` | 36 | `_NSZoneRealloc` | linker-generated PIC import stub; no framework source body |
+| `0x47A11D30` | 36 | `_netname_look_up` | linker-generated PIC import stub; no framework source body |
+| `0x47A11D54` | 36 | `_bootstrap_look_up` | linker-generated PIC import stub; no framework source body |
+| `0x47A11D78` | 36 | `_msg_rpc` | linker-generated PIC import stub; no framework source body |
+| `0x47A11D9C` | 36 | `j___InterceptorGetDeviceAccessTokens` | linker-generated PIC import stub; no framework source body |
+| `0x47A11DC0` | 36 | `j___InterceptorDamagedPalette` | linker-generated PIC import stub; no framework source body |
+| `0x47A11DE4` | 36 | `j___InterceptorRepairPalette` | linker-generated PIC import stub; no framework source body |
+| `0x47A11E08` | 36 | `j___InterceptorFlushDirtyRects` | linker-generated PIC import stub; no framework source body |
+| `0x47A11E2C` | 36 | `j___InterceptorAddDirtyRect` | linker-generated PIC import stub; no framework source body |
+| `0x47A11E50` | 36 | `j___InterceptorFlushRect` | linker-generated PIC import stub; no framework source body |
+| `0x47A11E74` | 36 | `j___InterceptorShowCursorAsync` | linker-generated PIC import stub; no framework source body |
+| `0x47A11E98` | 36 | `j___InterceptorHideCursor` | linker-generated PIC import stub; no framework source body |
+| `0x47A11EBC` | 36 | `j___InterceptorFrameBufferInfo` | linker-generated PIC import stub; no framework source body |
+| `0x47A11EE0` | 36 | `j___InterceptorCompositeBits` | linker-generated PIC import stub; no framework source body |
+| `0x47A11F04` | 36 | `j___InterceptorScreenCount` | linker-generated PIC import stub; no framework source body |
+| `0x47A11F28` | 36 | `j___InterceptorGetBM38ToBM256Table` | linker-generated PIC import stub; no framework source body |
+| `0x47A11F4C` | 36 | `j___InterceptorGetBM256ToBM38Table` | linker-generated PIC import stub; no framework source body |
+| `0x47A11F70` | 36 | `j___InterceptorUnmapFrameBuffer` | linker-generated PIC import stub; no framework source body |
+| `0x47A11F94` | 36 | `j___InterceptorMapFrameBuffer` | linker-generated PIC import stub; no framework source body |
+| `0x47A11FB8` | 36 | `j__Interceptor_mig_error` | linker-generated PIC import stub; no framework source body |
+| `0x47A11FDC` | 36 | `_strncpy` | linker-generated PIC import stub; no framework source body |
 
 Named Objective-C symbols (candidate module by class name; verify in module metadata):
 
@@ -923,13 +923,13 @@ IDA function records: 419; symbol records: 629.
 | `0x47A0B78F` | 15 | `_spin` | unexamined |
 | `0x47A0B7A0` | 14 | `_ev_unlock` | unexamined |
 | `0x47A0B7B0` | 21 | `_ev_try_lock` | unexamined |
-| `0x47A0B7C8` | 246 | `__InterceptorEnableFrameBufferMapping` | unexamined |
-| `0x47A0B8C0` | 246 | `__InterceptorDisableFrameBufferMapping` | unexamined |
+| `0x47A0B7C8` | 246 | `__InterceptorEnableFrameBufferMapping` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c`; `ppc/ipc.md` |
+| `0x47A0B8C0` | 246 | `__InterceptorDisableFrameBufferMapping` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c`; `ppc/ipc.md` |
 | `0x47A0B9B8` | 255 | `__InterceptorMapFrameBuffer` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
 | `0x47A0BAB8` | 298 | `__InterceptorGetBM34ToBM35Table` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
 | `0x47A0BBE4` | 389 | `__InterceptorCompositeBits` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
 | `0x47A0BD6C` | 662 | `__InterceptorFrameBufferInfo` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
-| `0x47A0C004` | 213 | `__OldInterceptorSetNotifyPort` | unexamined |
+| `0x47A0C004` | 213 | `__OldInterceptorSetNotifyPort` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c`; `ppc/ipc.md` |
 | `0x47A0C0DC` | 267 | `__InterceptorAddRect` | static-reviewed; `InterceptorIPC.c`; runtime pending |
 | `0x47A0C1E8` | 213 | `__InterceptorRemoveRect` | static-reviewed; `InterceptorIPC.c`; runtime pending |
 | `0x47A0C2C0` | 229 | `__InterceptorSetNotifyPort` | static-reviewed; `InterceptorIPC.c`; runtime pending |
@@ -968,103 +968,103 @@ IDA function records: 419; symbol records: 629.
 | `0x47A0E604` | 166 | `__PMRestoreDefaults` | unexamined |
 | `0x47A0E6AC` | 691 | `__IOCallDeviceMethod` | unexamined |
 | `0x47A0E960` | 223 | `__IOCreateMachPort` | unexamined |
-| `0x47A0F338` | 14 | `_NSEqualSizes` | unexamined |
-| `0x47A0F352` | 14 | `_NSEqualRects` | unexamined |
-| `0x47A0F36C` | 14 | `j__InterceptorScreenCount` | unexamined |
-| `0x47A0F386` | 14 | `j__InterceptorShowCursor` | unexamined |
-| `0x47A0F3A0` | 14 | `j__InterceptorHideCursor` | unexamined |
-| `0x47A0F3BA` | 14 | `_NSIsEmptyRect` | unexamined |
-| `0x47A0F3D4` | 14 | `_memset` | unexamined |
-| `0x47A0F3EE` | 14 | `_NSConvertWindowNumberToGlobal` | unexamined |
-| `0x47A0F408` | 14 | `_sel_getName` | unexamined |
-| `0x47A0F422` | 14 | `_objc_msgSendSuper` | unexamined |
-| `0x47A0F43C` | 14 | `_NSZoneFree` | unexamined |
-| `0x47A0F456` | 14 | `_printf` | unexamined |
-| `0x47A0F470` | 14 | `j__InterceptorCompositeBits` | unexamined |
-| `0x47A0F48A` | 14 | `_NSIntersectionRect` | unexamined |
-| `0x47A0F4A4` | 14 | `_NSOffsetRect` | unexamined |
-| `0x47A0F4BE` | 14 | `_bzero` | unexamined |
-| `0x47A0F4D8` | 14 | `_NSZoneMalloc` | unexamined |
-| `0x47A0F4F2` | 14 | `_objc_msgSend` | unexamined |
-| `0x47A0F50C` | 14 | `_NSLog` | unexamined |
-| `0x47A0F526` | 14 | `_pow` | unexamined |
-| `0x47A0F540` | 14 | `_malloc` | unexamined |
-| `0x47A0F55A` | 14 | `_free` | unexamined |
-| `0x47A0F574` | 14 | `j___IOSetCharValues` | unexamined |
-| `0x47A0F58E` | 14 | `j___IOSetIntValues` | unexamined |
-| `0x47A0F5A8` | 14 | `_NXCloseEventStatus` | unexamined |
-| `0x47A0F5C2` | 14 | `_NXSetAutoDimBrightness` | unexamined |
-| `0x47A0F5DC` | 14 | `_NXScreenBrightness` | unexamined |
-| `0x47A0F5F6` | 14 | `_NXAutoDimBrightness` | unexamined |
-| `0x47A0F610` | 14 | `_NXOpenEventStatus` | unexamined |
-| `0x47A0F62A` | 14 | `_PSWait` | unexamined |
-| `0x47A0F644` | 14 | `_PSgrestore` | unexamined |
-| `0x47A0F65E` | 14 | `_PSsetexposurecolor` | unexamined |
-| `0x47A0F678` | 14 | `_PSsetrgbcolor` | unexamined |
-| `0x47A0F692` | 14 | `_PSwindowdeviceround` | unexamined |
-| `0x47A0F6AC` | 14 | `_PSgsave` | unexamined |
-| `0x47A0F6C6` | 14 | `_PSsetautofill` | unexamined |
-| `0x47A0F6E0` | 14 | `j__InterceptorDamagedPalette` | unexamined |
-| `0x47A0F6FA` | 14 | `_sprintf` | unexamined |
-| `0x47A0F714` | 14 | `_NSStringFromSelector` | unexamined |
-| `0x47A0F72E` | 14 | `j__InterceptorDestroyContext` | unexamined |
-| `0x47A0F748` | 14 | `j___IOGetIntValues` | unexamined |
-| `0x47A0F762` | 14 | `j__InterceptorGetDeviceAccessTokens` | unexamined |
-| `0x47A0F77C` | 14 | `j__InterceptorCreateContext` | unexamined |
-| `0x47A0F796` | 14 | `j__InterceptorGetBM256ToBM38Table` | unexamined |
-| `0x47A0F7B0` | 14 | `j__InterceptorGetBM35ToBM34Table` | unexamined |
-| `0x47A0F7CA` | 14 | `j__InterceptorGetBM38ToBM256Table` | unexamined |
-| `0x47A0F7E4` | 14 | `j__InterceptorGetBM34ToBM35Table` | unexamined |
-| `0x47A0F7FE` | 14 | `j__InterceptorUnmapFrameBuffer` | unexamined |
-| `0x47A0F818` | 14 | `j__InterceptorMapFrameBuffer` | unexamined |
-| `0x47A0F832` | 14 | `j__InterceptorFrameBufferInfo` | unexamined |
-| `0x47A0F84C` | 14 | `_objc_setMultithreaded` | unexamined |
-| `0x47A0F866` | 14 | `_port_set_add` | unexamined |
-| `0x47A0F880` | 14 | `_msg_send` | unexamined |
-| `0x47A0F89A` | 14 | `_mach_error_string` | unexamined |
-| `0x47A0F8B4` | 14 | `_msg_receive` | unexamined |
-| `0x47A0F8CE` | 14 | `j___rendezvousPort` | unexamined |
-| `0x47A0F8E8` | 14 | `_cthread_set_name` | unexamined |
-| `0x47A0F902` | 14 | `_ur_cthread_self` | unexamined |
-| `0x47A0F91C` | 14 | `j__NSRemapMegaPixelDisplayForCurrentThread` | unexamined |
-| `0x47A0F936` | 14 | `j___InterceptorRemoveRect` | unexamined |
-| `0x47A0F950` | 14 | `j___InterceptorAddRect` | unexamined |
-| `0x47A0F96A` | 14 | `j___InterceptorSetNotifyPort` | unexamined |
-| `0x47A0F984` | 14 | `_task_get_special_port` | unexamined |
-| `0x47A0F99E` | 14 | `_thread_get_special_port` | unexamined |
-| `0x47A0F9B8` | 14 | `_thread_self` | unexamined |
-| `0x47A0F9D2` | 14 | `_port_allocate` | unexamined |
-| `0x47A0F9EC` | 14 | `_port_deallocate` | unexamined |
-| `0x47A0FA06` | 14 | `_port_set_remove` | unexamined |
-| `0x47A0FA20` | 14 | `_mach_error` | unexamined |
-| `0x47A0FA3A` | 14 | `_port_set_allocate` | unexamined |
-| `0x47A0FA54` | 14 | `_memcpy` | unexamined |
-| `0x47A0FA6E` | 14 | `_NSZoneRealloc` | unexamined |
-| `0x47A0FA88` | 14 | `_netname_look_up` | unexamined |
-| `0x47A0FAA2` | 14 | `_bootstrap_look_up` | unexamined |
-| `0x47A0FABC` | 14 | `_msg_rpc` | unexamined |
-| `0x47A0FAD6` | 14 | `j___InterceptorGetDeviceAccessTokens` | unexamined |
-| `0x47A0FAF0` | 14 | `j___InterceptorDamagedPalette` | unexamined |
-| `0x47A0FB0A` | 14 | `j___InterceptorRepairPalette` | unexamined |
-| `0x47A0FB24` | 14 | `j___InterceptorFlushDirtyRects` | unexamined |
-| `0x47A0FB3E` | 14 | `j___InterceptorAddDirtyRect` | unexamined |
-| `0x47A0FB58` | 14 | `j___InterceptorFlushRect` | unexamined |
-| `0x47A0FB72` | 14 | `j___InterceptorShowCursorAsync` | unexamined |
-| `0x47A0FB8C` | 14 | `j___InterceptorHideCursor` | unexamined |
-| `0x47A0FBA6` | 14 | `j___InterceptorFrameBufferInfo` | unexamined |
-| `0x47A0FBC0` | 14 | `j___InterceptorCompositeBits` | unexamined |
-| `0x47A0FBDA` | 14 | `j___InterceptorScreenCount` | unexamined |
-| `0x47A0FBF4` | 14 | `j___InterceptorGetBM38ToBM256Table` | unexamined |
-| `0x47A0FC0E` | 14 | `j___InterceptorGetBM256ToBM38Table` | unexamined |
-| `0x47A0FC28` | 14 | `j___InterceptorGetBM35ToBM34Table` | unexamined |
-| `0x47A0FC42` | 14 | `j___InterceptorGetBM34ToBM35Table` | unexamined |
-| `0x47A0FC5C` | 14 | `j___InterceptorUnmapFrameBuffer` | unexamined |
-| `0x47A0FC76` | 14 | `j___InterceptorMapFrameBuffer` | unexamined |
-| `0x47A0FC90` | 14 | `j__Interceptor_mig_error` | unexamined |
-| `0x47A0FCAA` | 14 | `_strncpy` | unexamined |
-| `0x47A0FCC4` | 14 | `_bcopy` | unexamined |
-| `0x47A0FCDE` | 14 | `_mig_dealloc_reply_port` | unexamined |
-| `0x47A0FCF8` | 14 | `_mig_get_reply_port` | unexamined |
+| `0x47A0F338` | 14 | `_NSEqualSizes` | linker-generated PIC import stub; no framework source body |
+| `0x47A0F352` | 14 | `_NSEqualRects` | linker-generated PIC import stub; no framework source body |
+| `0x47A0F36C` | 14 | `j__InterceptorScreenCount` | linker-generated PIC import stub; no framework source body |
+| `0x47A0F386` | 14 | `j__InterceptorShowCursor` | linker-generated PIC import stub; no framework source body |
+| `0x47A0F3A0` | 14 | `j__InterceptorHideCursor` | linker-generated PIC import stub; no framework source body |
+| `0x47A0F3BA` | 14 | `_NSIsEmptyRect` | linker-generated PIC import stub; no framework source body |
+| `0x47A0F3D4` | 14 | `_memset` | linker-generated PIC import stub; no framework source body |
+| `0x47A0F3EE` | 14 | `_NSConvertWindowNumberToGlobal` | linker-generated PIC import stub; no framework source body |
+| `0x47A0F408` | 14 | `_sel_getName` | linker-generated PIC import stub; no framework source body |
+| `0x47A0F422` | 14 | `_objc_msgSendSuper` | linker-generated PIC import stub; no framework source body |
+| `0x47A0F43C` | 14 | `_NSZoneFree` | linker-generated PIC import stub; no framework source body |
+| `0x47A0F456` | 14 | `_printf` | linker-generated PIC import stub; no framework source body |
+| `0x47A0F470` | 14 | `j__InterceptorCompositeBits` | linker-generated PIC import stub; no framework source body |
+| `0x47A0F48A` | 14 | `_NSIntersectionRect` | linker-generated PIC import stub; no framework source body |
+| `0x47A0F4A4` | 14 | `_NSOffsetRect` | linker-generated PIC import stub; no framework source body |
+| `0x47A0F4BE` | 14 | `_bzero` | linker-generated PIC import stub; no framework source body |
+| `0x47A0F4D8` | 14 | `_NSZoneMalloc` | linker-generated PIC import stub; no framework source body |
+| `0x47A0F4F2` | 14 | `_objc_msgSend` | linker-generated PIC import stub; no framework source body |
+| `0x47A0F50C` | 14 | `_NSLog` | linker-generated PIC import stub; no framework source body |
+| `0x47A0F526` | 14 | `_pow` | linker-generated PIC import stub; no framework source body |
+| `0x47A0F540` | 14 | `_malloc` | linker-generated PIC import stub; no framework source body |
+| `0x47A0F55A` | 14 | `_free` | linker-generated PIC import stub; no framework source body |
+| `0x47A0F574` | 14 | `j___IOSetCharValues` | linker-generated PIC import stub; no framework source body |
+| `0x47A0F58E` | 14 | `j___IOSetIntValues` | linker-generated PIC import stub; no framework source body |
+| `0x47A0F5A8` | 14 | `_NXCloseEventStatus` | linker-generated PIC import stub; no framework source body |
+| `0x47A0F5C2` | 14 | `_NXSetAutoDimBrightness` | linker-generated PIC import stub; no framework source body |
+| `0x47A0F5DC` | 14 | `_NXScreenBrightness` | linker-generated PIC import stub; no framework source body |
+| `0x47A0F5F6` | 14 | `_NXAutoDimBrightness` | linker-generated PIC import stub; no framework source body |
+| `0x47A0F610` | 14 | `_NXOpenEventStatus` | linker-generated PIC import stub; no framework source body |
+| `0x47A0F62A` | 14 | `_PSWait` | linker-generated PIC import stub; no framework source body |
+| `0x47A0F644` | 14 | `_PSgrestore` | linker-generated PIC import stub; no framework source body |
+| `0x47A0F65E` | 14 | `_PSsetexposurecolor` | linker-generated PIC import stub; no framework source body |
+| `0x47A0F678` | 14 | `_PSsetrgbcolor` | linker-generated PIC import stub; no framework source body |
+| `0x47A0F692` | 14 | `_PSwindowdeviceround` | linker-generated PIC import stub; no framework source body |
+| `0x47A0F6AC` | 14 | `_PSgsave` | linker-generated PIC import stub; no framework source body |
+| `0x47A0F6C6` | 14 | `_PSsetautofill` | linker-generated PIC import stub; no framework source body |
+| `0x47A0F6E0` | 14 | `j__InterceptorDamagedPalette` | linker-generated PIC import stub; no framework source body |
+| `0x47A0F6FA` | 14 | `_sprintf` | linker-generated PIC import stub; no framework source body |
+| `0x47A0F714` | 14 | `_NSStringFromSelector` | linker-generated PIC import stub; no framework source body |
+| `0x47A0F72E` | 14 | `j__InterceptorDestroyContext` | linker-generated PIC import stub; no framework source body |
+| `0x47A0F748` | 14 | `j___IOGetIntValues` | linker-generated PIC import stub; no framework source body |
+| `0x47A0F762` | 14 | `j__InterceptorGetDeviceAccessTokens` | linker-generated PIC import stub; no framework source body |
+| `0x47A0F77C` | 14 | `j__InterceptorCreateContext` | linker-generated PIC import stub; no framework source body |
+| `0x47A0F796` | 14 | `j__InterceptorGetBM256ToBM38Table` | linker-generated PIC import stub; no framework source body |
+| `0x47A0F7B0` | 14 | `j__InterceptorGetBM35ToBM34Table` | linker-generated PIC import stub; no framework source body |
+| `0x47A0F7CA` | 14 | `j__InterceptorGetBM38ToBM256Table` | linker-generated PIC import stub; no framework source body |
+| `0x47A0F7E4` | 14 | `j__InterceptorGetBM34ToBM35Table` | linker-generated PIC import stub; no framework source body |
+| `0x47A0F7FE` | 14 | `j__InterceptorUnmapFrameBuffer` | linker-generated PIC import stub; no framework source body |
+| `0x47A0F818` | 14 | `j__InterceptorMapFrameBuffer` | linker-generated PIC import stub; no framework source body |
+| `0x47A0F832` | 14 | `j__InterceptorFrameBufferInfo` | linker-generated PIC import stub; no framework source body |
+| `0x47A0F84C` | 14 | `_objc_setMultithreaded` | linker-generated PIC import stub; no framework source body |
+| `0x47A0F866` | 14 | `_port_set_add` | linker-generated PIC import stub; no framework source body |
+| `0x47A0F880` | 14 | `_msg_send` | linker-generated PIC import stub; no framework source body |
+| `0x47A0F89A` | 14 | `_mach_error_string` | linker-generated PIC import stub; no framework source body |
+| `0x47A0F8B4` | 14 | `_msg_receive` | linker-generated PIC import stub; no framework source body |
+| `0x47A0F8CE` | 14 | `j___rendezvousPort` | linker-generated PIC import stub; no framework source body |
+| `0x47A0F8E8` | 14 | `_cthread_set_name` | linker-generated PIC import stub; no framework source body |
+| `0x47A0F902` | 14 | `_ur_cthread_self` | linker-generated PIC import stub; no framework source body |
+| `0x47A0F91C` | 14 | `j__NSRemapMegaPixelDisplayForCurrentThread` | linker-generated PIC import stub; no framework source body |
+| `0x47A0F936` | 14 | `j___InterceptorRemoveRect` | linker-generated PIC import stub; no framework source body |
+| `0x47A0F950` | 14 | `j___InterceptorAddRect` | linker-generated PIC import stub; no framework source body |
+| `0x47A0F96A` | 14 | `j___InterceptorSetNotifyPort` | linker-generated PIC import stub; no framework source body |
+| `0x47A0F984` | 14 | `_task_get_special_port` | linker-generated PIC import stub; no framework source body |
+| `0x47A0F99E` | 14 | `_thread_get_special_port` | linker-generated PIC import stub; no framework source body |
+| `0x47A0F9B8` | 14 | `_thread_self` | linker-generated PIC import stub; no framework source body |
+| `0x47A0F9D2` | 14 | `_port_allocate` | linker-generated PIC import stub; no framework source body |
+| `0x47A0F9EC` | 14 | `_port_deallocate` | linker-generated PIC import stub; no framework source body |
+| `0x47A0FA06` | 14 | `_port_set_remove` | linker-generated PIC import stub; no framework source body |
+| `0x47A0FA20` | 14 | `_mach_error` | linker-generated PIC import stub; no framework source body |
+| `0x47A0FA3A` | 14 | `_port_set_allocate` | linker-generated PIC import stub; no framework source body |
+| `0x47A0FA54` | 14 | `_memcpy` | linker-generated PIC import stub; no framework source body |
+| `0x47A0FA6E` | 14 | `_NSZoneRealloc` | linker-generated PIC import stub; no framework source body |
+| `0x47A0FA88` | 14 | `_netname_look_up` | linker-generated PIC import stub; no framework source body |
+| `0x47A0FAA2` | 14 | `_bootstrap_look_up` | linker-generated PIC import stub; no framework source body |
+| `0x47A0FABC` | 14 | `_msg_rpc` | linker-generated PIC import stub; no framework source body |
+| `0x47A0FAD6` | 14 | `j___InterceptorGetDeviceAccessTokens` | linker-generated PIC import stub; no framework source body |
+| `0x47A0FAF0` | 14 | `j___InterceptorDamagedPalette` | linker-generated PIC import stub; no framework source body |
+| `0x47A0FB0A` | 14 | `j___InterceptorRepairPalette` | linker-generated PIC import stub; no framework source body |
+| `0x47A0FB24` | 14 | `j___InterceptorFlushDirtyRects` | linker-generated PIC import stub; no framework source body |
+| `0x47A0FB3E` | 14 | `j___InterceptorAddDirtyRect` | linker-generated PIC import stub; no framework source body |
+| `0x47A0FB58` | 14 | `j___InterceptorFlushRect` | linker-generated PIC import stub; no framework source body |
+| `0x47A0FB72` | 14 | `j___InterceptorShowCursorAsync` | linker-generated PIC import stub; no framework source body |
+| `0x47A0FB8C` | 14 | `j___InterceptorHideCursor` | linker-generated PIC import stub; no framework source body |
+| `0x47A0FBA6` | 14 | `j___InterceptorFrameBufferInfo` | linker-generated PIC import stub; no framework source body |
+| `0x47A0FBC0` | 14 | `j___InterceptorCompositeBits` | linker-generated PIC import stub; no framework source body |
+| `0x47A0FBDA` | 14 | `j___InterceptorScreenCount` | linker-generated PIC import stub; no framework source body |
+| `0x47A0FBF4` | 14 | `j___InterceptorGetBM38ToBM256Table` | linker-generated PIC import stub; no framework source body |
+| `0x47A0FC0E` | 14 | `j___InterceptorGetBM256ToBM38Table` | linker-generated PIC import stub; no framework source body |
+| `0x47A0FC28` | 14 | `j___InterceptorGetBM35ToBM34Table` | linker-generated PIC import stub; no framework source body |
+| `0x47A0FC42` | 14 | `j___InterceptorGetBM34ToBM35Table` | linker-generated PIC import stub; no framework source body |
+| `0x47A0FC5C` | 14 | `j___InterceptorUnmapFrameBuffer` | linker-generated PIC import stub; no framework source body |
+| `0x47A0FC76` | 14 | `j___InterceptorMapFrameBuffer` | linker-generated PIC import stub; no framework source body |
+| `0x47A0FC90` | 14 | `j__Interceptor_mig_error` | linker-generated PIC import stub; no framework source body |
+| `0x47A0FCAA` | 14 | `_strncpy` | linker-generated PIC import stub; no framework source body |
+| `0x47A0FCC4` | 14 | `_bcopy` | linker-generated PIC import stub; no framework source body |
+| `0x47A0FCDE` | 14 | `_mig_dealloc_reply_port` | linker-generated PIC import stub; no framework source body |
+| `0x47A0FCF8` | 14 | `_mig_get_reply_port` | linker-generated PIC import stub; no framework source body |
 
 Named Objective-C symbols (candidate module by class name; verify in module metadata):
 

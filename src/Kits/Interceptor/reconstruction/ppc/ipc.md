@@ -5,7 +5,7 @@ ShowCursor request, and the context/port lifecycle functions. DR2 i386 has the
 same rectangle RPC IDs, sizes, reply IDs, and context acquisition arguments;
 see `../i386/ipc.md`.
 
-| Routine | Request ID | Request size | Reply ID | Reply size |
+| Routine | Request ID | `msg_rpc` reply capacity | Reply ID | Reply size |
 |---|---:|---:|---:|---:|
 | `_InterceptorAddRect` | `0x1C23` | 76 bytes | `0x1C87` | 32 bytes |
 | `_InterceptorRemoveRect` | `0x1C24` | 40 bytes | `0x1C88` | 32 bytes |
@@ -16,13 +16,16 @@ see `../i386/ipc.md`.
 | `_InterceptorMapFrameBuffer` | `7198` | 48 bytes | `7298` | 32-byte error / 48-byte success |
 | `_InterceptorUnmapFrameBuffer` | `7219` | 40 bytes | `7319` | 32-byte error / 40-byte success |
 | `_InterceptorFrameBufferInfo` | `7201` | 272 bytes | `7301` | 32-byte error / 272-byte success |
-| `_InterceptorGetDeviceAccessTokens` | `7217` | 64-byte send buffer (`msg_size` 32) | `7317` | 32-byte error / 64-byte success |
+| `_InterceptorGetDeviceAccessTokens` | `7217` | 64-byte reply capacity (`msg_size` 32) | `7317` | 32-byte error / 64-byte success |
 | `_InterceptorGetBM34ToBM35Table` | `7199` | 56 bytes | `7299` | 32-byte error / 56-byte success |
 | `_InterceptorGetBM35ToBM34Table` | `7206` | 56 bytes | `7306` | 32-byte error / 56-byte success |
 | `_InterceptorGetBM256ToBM38Table` | `7210` | 48 bytes | `7310` | 32-byte error / 48-byte success |
 | `_InterceptorGetBM38ToBM256Table` | `7211` | 48 bytes | `7311` | 32-byte error / 48-byte success |
+| `_InterceptorEnableFrameBufferMapping` | `7196` | 40 bytes | `7296` | 32-byte error / 40-byte success |
+| `_InterceptorDisableFrameBufferMapping` | `7197` | 40 bytes | `7297` | 32-byte error / 40-byte success |
+| `_OldInterceptorSetNotifyPort` | `7202` | 40 bytes | `7302` | 32 bytes |
 
-Each call uses `msg_rpc(request, 0, requestSize, 0, 0)`. The context's
+Each synchronous call uses `msg_rpc(request, 0, replyCapacity, 0, 0)`; the outgoing request length is the `msg_size` field. The context's
 `contextPort` is sent as `msg_remote_port`; `replyPort` is `msg_local_port`.
 The message header is the historical 24-byte `msg_header_t`; messages set
 `msg_size`, `msg_type`, both ports, and the operation ID. The binary validates
@@ -30,9 +33,10 @@ the reply ID and either the fixed 32-byte error reply or the operation-specific
 success reply. A malformed ID/descriptor returns the raw MIG error values
 `-301` or `-300`; transport errors pass through `Interceptor_mig_error`.
 
-The request-size column records the `msg_rpc` send-buffer size. Map sends 48
-bytes with `msg_size` set to 40; unmap sends 40 bytes with `msg_size` set to
-48. FrameBufferInfo sends a 272-byte receive buffer with `msg_size` set to 32
+The table column records the reply capacity passed to `msg_rpc`, while the
+request length is the header `msg_size`. Map uses a 48-byte reply capacity with
+`msg_size` set to 40; unmap uses a 40-byte reply capacity with `msg_size` set
+to 48. FrameBufferInfo uses a 272-byte reply capacity with `msg_size` set to 32
 and contains the screen integer descriptor and screen number. Its successful
 272-byte reply carries an 80-byte driver string, seven integer metadata pairs,
 a 64-byte pixel encoding, and one additional integer. The source validates the
@@ -103,3 +107,11 @@ integers, and only a window number, respectively. The first two messages are
 52 bytes with integer descriptors for one and four values; the last is 32
 bytes with one integer descriptor. The source implements these packets in
 `InterceptorIPC.c` and includes transport assertions in `tests/ipc.c`.
+
+The legacy framebuffer-mapping calls use IDs `7196`/`7296` and `7197`/`7297`.
+Each sends a 116-byte request containing an inline 80-byte driver name in a
+long-form descriptor, while reserving 40 bytes for the reply. The returned
+operation result overlays the first word of that string field in the success
+reply; the source preserves this observed layout. `_OldInterceptorSetNotifyPort`
+uses IDs `7202`/`7302`, a 32-byte request with one port descriptor/value pair,
+and a 40-byte reply capacity.

@@ -3,7 +3,7 @@
 The DR2 i386 thin image independently confirms the primary PowerPC IPC
 contract:
 
-| Routine | Address | Request ID | Request size | Reply ID | Reply size |
+| Routine | Address | Request ID | `msg_rpc` reply capacity | Reply ID | Reply size |
 |---|---:|---:|---:|---:|---:|
 | `_InterceptorCreateRemoteContext` | `0x47A0B3DC` | — | — | — | — |
 | `_InterceptorCreateContext` | `0x47A0B454` | — | — | — | — |
@@ -18,11 +18,14 @@ contract:
 | `_InterceptorMapFrameBuffer` | `0x47A0B9B8` | `7198` | 48 | `7298` | 32-error / 48-success |
 | `_InterceptorUnmapFrameBuffer` | `0x47A0CC44` | `7219` | 40 | `7319` | 32-error / 40-success |
 | `_InterceptorFrameBufferInfo` | `0x47A0BD6C` | `7201` | 272 | `7301` | 32-byte error / 272-byte success |
-| `_InterceptorGetDeviceAccessTokens` | `0x47A0CAE4` | `7217` | 64-byte send buffer (`msg_size` 32) | `7317` | 32-byte error / 64-byte success |
+| `_InterceptorGetDeviceAccessTokens` | `0x47A0CAE4` | `7217` | 64-byte reply capacity (`msg_size` 32) | `7317` | 32-byte error / 64-byte success |
 | `_InterceptorGetBM34ToBM35Table` | `0x47A0BAB8` | `7199` | 56 | `7299` | 32-byte error / 56-byte success |
 | `_InterceptorGetBM35ToBM34Table` | `0x47A0C3A8` | `7206` | 56 | `7306` | 32-byte error / 56-byte success |
 | `_InterceptorGetBM256ToBM38Table` | `0x47A0C72C` | `7210` | 48 | `7310` | 32-byte error / 48-byte success |
 | `_InterceptorGetBM38ToBM256Table` | `0x47A0C808` | `7211` | 48 | `7311` | 32-byte error / 48-byte success |
+| `_InterceptorEnableFrameBufferMapping` | — | `7196` | 40 | `7296` | 32-byte error / 40-byte success |
+| `_InterceptorDisableFrameBufferMapping` | — | `7197` | 40 | `7297` | 32-byte error / 40-byte success |
+| `_OldInterceptorSetNotifyPort` | — | `7202` | 40 | `7302` | 32 |
 
 All synchronous RPCs call `msg_rpc` with the same request and reply maximum
 sizes as the PPC bodies. Context setup allocates a 12-byte record and reply
@@ -54,3 +57,10 @@ The i386 bodies independently confirm the asynchronous `FlushRect`,
 four-integer descriptor in a 52-byte message; flushing pending dirty regions
 sends only a window number in a 32-byte message. The reconstructed source and
 transport test cover these descriptors and payloads for both architectures.
+
+The DR2 i386 image also confirms legacy framebuffer-mapping requests at IDs
+`7196`/`7296` and `7197`/`7297`: each has a 116-byte request, an inline
+80-byte driver-name long descriptor, and 40-byte reply capacity. The legacy
+`_OldInterceptorSetNotifyPort` request uses ID `7202`, reply ID `7302`, a
+32-byte request, and one port descriptor/value pair. These layouts match the
+PowerPC image and are covered by the reconstructed source and packet tests.

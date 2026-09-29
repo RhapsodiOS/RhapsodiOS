@@ -7,7 +7,7 @@ Host tools found during Task 2:
 - angr 9.3.0 in `D:\RhapsodiOS\.venv-binrecon`. A synthetic i386 dylib fixture succeeds.
 - Binrecon now accepts 32-bit MH_DYLIB images in either byte order.
 
-The historical Rhapsody SDK, Project Builder make, MIG, and guest build routes are not yet verified. Record exact compiler and runtime findings in the build task before claiming either slice builds.
+The historical Rhapsody SDK, Project Builder make, and MIG are not yet verified in the isolated worktree. A DR2 i386 QEMU disk exists in the primary checkout at `D:\RhapsodiOS\vm\work\rhap-i386-bootstrapped.img`; it was booted with the repository's snapshot-mode `qemu_boot.py` helper and reached the Rhapsody login screen after 45 seconds. No guest shell was available for builds or tests. The configured SSH route returned `Connection refused`. No PowerPC guest has been identified.
 
 ## Native Task 3 probe
 

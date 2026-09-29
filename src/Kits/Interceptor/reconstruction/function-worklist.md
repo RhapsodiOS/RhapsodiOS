@@ -77,30 +77,30 @@ IDA function records: 392; symbol records: 540.
 | `0x47A0523C` | 24 | `-[NSDirectBitmap areaDidChangeBuffering:toType:]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
 | `0x47A05254` | 52 | `-[NSDirectBitmap(Obsolete) colorSpace]` | unexamined |
 | `0x47A05288` | 52 | `-[NSDirectBitmap(Obsolete) data]` | unexamined |
-| `0x47A052BC` | 76 | `+[NSDirectPalette defaultPalette]` | unexamined |
-| `0x47A05308` | 76 | `+[NSDirectPalette defaultColorPalette]` | unexamined |
-| `0x47A05354` | 404 | `+[NSDirectPalette defaultGrayPalette]` | unexamined |
-| `0x47A054E8` | 324 | `+[NSDirectPalette currentPalette]` | unexamined |
-| `0x47A0562C` | 204 | `-[NSDirectPalette initWithArrayOfColors:]` | unexamined |
-| `0x47A056F8` | 488 | `-[NSDirectPalette init]` | unexamined |
-| `0x47A058E0` | 60 | `-[NSDirectPalette colorAtIndex:]` | unexamined |
-| `0x47A0591C` | 592 | `-[NSDirectPalette indexForColor:]` | unexamined |
-| `0x47A05B6C` | 60 | `-[NSDirectPalette count]` | unexamined |
-| `0x47A05BA8` | 144 | `-[NSDirectPalette dealloc]` | unexamined |
-| `0x47A05C38` | 60 | `-[NSDirectPalette objectEnumerator]` | unexamined |
-| `0x47A05C74` | 584 | `-[NSDirectPalette rawMachinePalette]` | unexamined |
-| `0x47A05EBC` | 204 | `-[NSDirectPalette setColor:atIndex:]` | unexamined |
-| `0x47A05F88` | 148 | `-[NSDirectPalette setRed:green:blue:atIndex:]` | unexamined |
-| `0x47A0601C` | 96 | `-[NSDirectPalette getRed:green:blue:atIndex:]` | unexamined |
-| `0x47A0607C` | 240 | `-[NSDirectPalette setColors:atIndices:]` | unexamined |
-| `0x47A0616C` | 76 | `-[NSDirectPalette copy]` | unexamined |
-| `0x47A061B8` | 76 | `-[NSDirectPalette mutableCopy]` | unexamined |
-| `0x47A06204` | 52 | `-[NSDirectPalette copyWithZone:]` | unexamined |
-| `0x47A06238` | 96 | `-[NSDirectPalette mutableCopyWithZone:]` | unexamined |
-| `0x47A06298` | 64 | `-[NSDirectPalette encodeWithCoder:]` | unexamined |
-| `0x47A062D8` | 160 | `-[NSDirectPalette initWithCoder:]` | unexamined |
-| `0x47A06378` | 248 | `-[NSDirectPalette isEqual:]` | unexamined |
-| `0x47A06470` | 656 | `-[NSDirectPalette blendedPaletteWithFraction:ofColor:]` | unexamined |
+| `0x47A052BC` | 76 | `+[NSDirectPalette defaultPalette]` | static-reviewed; source authored; runtime pending |
+| `0x47A05308` | 76 | `+[NSDirectPalette defaultColorPalette]` | static-reviewed; source authored; runtime pending |
+| `0x47A05354` | 404 | `+[NSDirectPalette defaultGrayPalette]` | static-reviewed; source authored; runtime pending |
+| `0x47A054E8` | 324 | `+[NSDirectPalette currentPalette]` | static-reviewed; source authored; runtime pending |
+| `0x47A0562C` | 204 | `-[NSDirectPalette initWithArrayOfColors:]` | static-reviewed; source authored; runtime pending |
+| `0x47A056F8` | 488 | `-[NSDirectPalette init]` | static-reviewed; source authored; runtime pending |
+| `0x47A058E0` | 60 | `-[NSDirectPalette colorAtIndex:]` | static-reviewed; source authored; runtime pending |
+| `0x47A0591C` | 592 | `-[NSDirectPalette indexForColor:]` | static-reviewed; source authored; runtime pending |
+| `0x47A05B6C` | 60 | `-[NSDirectPalette count]` | static-reviewed; source authored; runtime pending |
+| `0x47A05BA8` | 144 | `-[NSDirectPalette dealloc]` | static-reviewed; source authored; runtime pending |
+| `0x47A05C38` | 60 | `-[NSDirectPalette objectEnumerator]` | static-reviewed; source authored; runtime pending |
+| `0x47A05C74` | 584 | `-[NSDirectPalette rawMachinePalette]` | static-reviewed; source authored; runtime pending |
+| `0x47A05EBC` | 204 | `-[NSDirectPalette setColor:atIndex:]` | static-reviewed; source authored; runtime pending |
+| `0x47A05F88` | 148 | `-[NSDirectPalette setRed:green:blue:atIndex:]` | static-reviewed; source authored; runtime pending |
+| `0x47A0601C` | 96 | `-[NSDirectPalette getRed:green:blue:atIndex:]` | static-reviewed; source authored; runtime pending |
+| `0x47A0607C` | 240 | `-[NSDirectPalette setColors:atIndices:]` | static-reviewed; source authored; runtime pending |
+| `0x47A0616C` | 76 | `-[NSDirectPalette copy]` | static-reviewed; source authored; runtime pending |
+| `0x47A061B8` | 76 | `-[NSDirectPalette mutableCopy]` | static-reviewed; source authored; runtime pending |
+| `0x47A06204` | 52 | `-[NSDirectPalette copyWithZone:]` | static-reviewed; source authored; runtime pending |
+| `0x47A06238` | 96 | `-[NSDirectPalette mutableCopyWithZone:]` | static-reviewed; source authored; runtime pending |
+| `0x47A06298` | 64 | `-[NSDirectPalette encodeWithCoder:]` | static-reviewed; source authored; runtime pending |
+| `0x47A062D8` | 160 | `-[NSDirectPalette initWithCoder:]` | static-reviewed; source authored; runtime pending |
+| `0x47A06378` | 248 | `-[NSDirectPalette isEqual:]` | static-reviewed; source authored; runtime pending |
+| `0x47A06470` | 656 | `-[NSDirectPalette blendedPaletteWithFraction:ofColor:]` | static-reviewed; source authored; runtime pending |
 | `0x47A06700` | 136 | `-[NSDirectScreen _clearModeInfo]` | unexamined |
 | `0x47A06788` | 492 | `-[NSDirectScreen initWithScreen:]` | unexamined |
 | `0x47A06974` | 368 | `-[NSDirectScreen dealloc]` | unexamined |
@@ -469,30 +469,30 @@ Named Objective-C symbols (candidate module by class name; verify in module meta
 | `0x47A0523C` | `-[NSDirectBitmap areaDidChangeBuffering:toType:]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A05254` | `-[NSDirectBitmap(Obsolete) colorSpace]` | `NSDirectBitmap.m` | unexamined |
 | `0x47A05288` | `-[NSDirectBitmap(Obsolete) data]` | `NSDirectBitmap.m` | unexamined |
-| `0x47A052BC` | `+[NSDirectPalette defaultPalette]` | `NSDirectPalette.m` | unexamined |
-| `0x47A05308` | `+[NSDirectPalette defaultColorPalette]` | `NSDirectPalette.m` | unexamined |
-| `0x47A05354` | `+[NSDirectPalette defaultGrayPalette]` | `NSDirectPalette.m` | unexamined |
-| `0x47A054E8` | `+[NSDirectPalette currentPalette]` | `NSDirectPalette.m` | unexamined |
-| `0x47A0562C` | `-[NSDirectPalette initWithArrayOfColors:]` | `NSDirectPalette.m` | unexamined |
-| `0x47A056F8` | `-[NSDirectPalette init]` | `NSDirectPalette.m` | unexamined |
-| `0x47A058E0` | `-[NSDirectPalette colorAtIndex:]` | `NSDirectPalette.m` | unexamined |
-| `0x47A0591C` | `-[NSDirectPalette indexForColor:]` | `NSDirectPalette.m` | unexamined |
-| `0x47A05B6C` | `-[NSDirectPalette count]` | `NSDirectPalette.m` | unexamined |
-| `0x47A05BA8` | `-[NSDirectPalette dealloc]` | `NSDirectPalette.m` | unexamined |
-| `0x47A05C38` | `-[NSDirectPalette objectEnumerator]` | `NSDirectPalette.m` | unexamined |
-| `0x47A05C74` | `-[NSDirectPalette rawMachinePalette]` | `NSDirectPalette.m` | unexamined |
-| `0x47A05EBC` | `-[NSDirectPalette setColor:atIndex:]` | `NSDirectPalette.m` | unexamined |
-| `0x47A05F88` | `-[NSDirectPalette setRed:green:blue:atIndex:]` | `NSDirectPalette.m` | unexamined |
-| `0x47A0601C` | `-[NSDirectPalette getRed:green:blue:atIndex:]` | `NSDirectPalette.m` | unexamined |
-| `0x47A0607C` | `-[NSDirectPalette setColors:atIndices:]` | `NSDirectPalette.m` | unexamined |
-| `0x47A0616C` | `-[NSDirectPalette copy]` | `NSDirectPalette.m` | unexamined |
-| `0x47A061B8` | `-[NSDirectPalette mutableCopy]` | `NSDirectPalette.m` | unexamined |
-| `0x47A06204` | `-[NSDirectPalette copyWithZone:]` | `NSDirectPalette.m` | unexamined |
-| `0x47A06238` | `-[NSDirectPalette mutableCopyWithZone:]` | `NSDirectPalette.m` | unexamined |
-| `0x47A06298` | `-[NSDirectPalette encodeWithCoder:]` | `NSDirectPalette.m` | unexamined |
-| `0x47A062D8` | `-[NSDirectPalette initWithCoder:]` | `NSDirectPalette.m` | unexamined |
-| `0x47A06378` | `-[NSDirectPalette isEqual:]` | `NSDirectPalette.m` | unexamined |
-| `0x47A06470` | `-[NSDirectPalette blendedPaletteWithFraction:ofColor:]` | `NSDirectPalette.m` | unexamined |
+| `0x47A052BC` | `+[NSDirectPalette defaultPalette]` | `NSDirectPalette.m` | static-reviewed; source authored; runtime pending |
+| `0x47A05308` | `+[NSDirectPalette defaultColorPalette]` | `NSDirectPalette.m` | static-reviewed; source authored; runtime pending |
+| `0x47A05354` | `+[NSDirectPalette defaultGrayPalette]` | `NSDirectPalette.m` | static-reviewed; source authored; runtime pending |
+| `0x47A054E8` | `+[NSDirectPalette currentPalette]` | `NSDirectPalette.m` | static-reviewed; source authored; runtime pending |
+| `0x47A0562C` | `-[NSDirectPalette initWithArrayOfColors:]` | `NSDirectPalette.m` | static-reviewed; source authored; runtime pending |
+| `0x47A056F8` | `-[NSDirectPalette init]` | `NSDirectPalette.m` | static-reviewed; source authored; runtime pending |
+| `0x47A058E0` | `-[NSDirectPalette colorAtIndex:]` | `NSDirectPalette.m` | static-reviewed; source authored; runtime pending |
+| `0x47A0591C` | `-[NSDirectPalette indexForColor:]` | `NSDirectPalette.m` | static-reviewed; source authored; runtime pending |
+| `0x47A05B6C` | `-[NSDirectPalette count]` | `NSDirectPalette.m` | static-reviewed; source authored; runtime pending |
+| `0x47A05BA8` | `-[NSDirectPalette dealloc]` | `NSDirectPalette.m` | static-reviewed; source authored; runtime pending |
+| `0x47A05C38` | `-[NSDirectPalette objectEnumerator]` | `NSDirectPalette.m` | static-reviewed; source authored; runtime pending |
+| `0x47A05C74` | `-[NSDirectPalette rawMachinePalette]` | `NSDirectPalette.m` | static-reviewed; source authored; runtime pending |
+| `0x47A05EBC` | `-[NSDirectPalette setColor:atIndex:]` | `NSDirectPalette.m` | static-reviewed; source authored; runtime pending |
+| `0x47A05F88` | `-[NSDirectPalette setRed:green:blue:atIndex:]` | `NSDirectPalette.m` | static-reviewed; source authored; runtime pending |
+| `0x47A0601C` | `-[NSDirectPalette getRed:green:blue:atIndex:]` | `NSDirectPalette.m` | static-reviewed; source authored; runtime pending |
+| `0x47A0607C` | `-[NSDirectPalette setColors:atIndices:]` | `NSDirectPalette.m` | static-reviewed; source authored; runtime pending |
+| `0x47A0616C` | `-[NSDirectPalette copy]` | `NSDirectPalette.m` | static-reviewed; source authored; runtime pending |
+| `0x47A061B8` | `-[NSDirectPalette mutableCopy]` | `NSDirectPalette.m` | static-reviewed; source authored; runtime pending |
+| `0x47A06204` | `-[NSDirectPalette copyWithZone:]` | `NSDirectPalette.m` | static-reviewed; source authored; runtime pending |
+| `0x47A06238` | `-[NSDirectPalette mutableCopyWithZone:]` | `NSDirectPalette.m` | static-reviewed; source authored; runtime pending |
+| `0x47A06298` | `-[NSDirectPalette encodeWithCoder:]` | `NSDirectPalette.m` | static-reviewed; source authored; runtime pending |
+| `0x47A062D8` | `-[NSDirectPalette initWithCoder:]` | `NSDirectPalette.m` | static-reviewed; source authored; runtime pending |
+| `0x47A06378` | `-[NSDirectPalette isEqual:]` | `NSDirectPalette.m` | static-reviewed; source authored; runtime pending |
+| `0x47A06470` | `-[NSDirectPalette blendedPaletteWithFraction:ofColor:]` | `NSDirectPalette.m` | static-reviewed; source authored; runtime pending |
 | `0x47A06700` | `-[NSDirectScreen _clearModeInfo]` | `NSDirectScreen.m` | unexamined |
 | `0x47A06788` | `-[NSDirectScreen initWithScreen:]` | `NSDirectScreen.m` | unexamined |
 | `0x47A06974` | `-[NSDirectScreen dealloc]` | `NSDirectScreen.m` | unexamined |
@@ -715,28 +715,28 @@ IDA function records: 419; symbol records: 629.
 | `0x47A03638` | 16 | `-[NSDirectBitmap areaDidChangeBuffering:toType:]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
 | `0x47A03648` | 29 | `-[NSDirectBitmap(Obsolete) colorSpace]` | unexamined |
 | `0x47A03668` | 29 | `-[NSDirectBitmap(Obsolete) data]` | unexamined |
-| `0x47A03688` | 65 | `+[NSDirectPalette defaultPalette]` | unexamined |
-| `0x47A036CC` | 230 | `+[NSDirectPalette currentPalette]` | unexamined |
-| `0x47A037B4` | 180 | `-[NSDirectPalette initWithArrayOfColors:]` | unexamined |
-| `0x47A03868` | 391 | `-[NSDirectPalette init]` | unexamined |
-| `0x47A039F0` | 38 | `-[NSDirectPalette colorAtIndex:]` | unexamined |
-| `0x47A03A18` | 572 | `-[NSDirectPalette indexForColor:]` | unexamined |
-| `0x47A03C54` | 34 | `-[NSDirectPalette count]` | unexamined |
-| `0x47A03C78` | 120 | `-[NSDirectPalette dealloc]` | unexamined |
-| `0x47A03CF0` | 34 | `-[NSDirectPalette objectEnumerator]` | unexamined |
-| `0x47A03D14` | 557 | `-[NSDirectPalette rawMachinePalette]` | unexamined |
-| `0x47A03F44` | 169 | `-[NSDirectPalette setColor:atIndex:]` | unexamined |
-| `0x47A03FF0` | 82 | `-[NSDirectPalette setRed:green:blue:atIndex:]` | unexamined |
-| `0x47A04044` | 70 | `-[NSDirectPalette getRed:green:blue:atIndex:]` | unexamined |
-| `0x47A0408C` | 220 | `-[NSDirectPalette setColors:atIndices:]` | unexamined |
-| `0x47A04168` | 52 | `-[NSDirectPalette copy]` | unexamined |
-| `0x47A0419C` | 52 | `-[NSDirectPalette mutableCopy]` | unexamined |
-| `0x47A041D0` | 33 | `-[NSDirectPalette copyWithZone:]` | unexamined |
-| `0x47A041F4` | 79 | `-[NSDirectPalette mutableCopyWithZone:]` | unexamined |
-| `0x47A04244` | 38 | `-[NSDirectPalette encodeWithCoder:]` | unexamined |
-| `0x47A0426C` | 136 | `-[NSDirectPalette initWithCoder:]` | unexamined |
-| `0x47A042F4` | 200 | `-[NSDirectPalette isEqual:]` | unexamined |
-| `0x47A043BC` | 645 | `-[NSDirectPalette blendedPaletteWithFraction:ofColor:]` | unexamined |
+| `0x47A03688` | 65 | `+[NSDirectPalette defaultPalette]` | static-reviewed; source authored; runtime pending |
+| `0x47A036CC` | 230 | `+[NSDirectPalette currentPalette]` | static-reviewed; source authored; runtime pending |
+| `0x47A037B4` | 180 | `-[NSDirectPalette initWithArrayOfColors:]` | static-reviewed; source authored; runtime pending |
+| `0x47A03868` | 391 | `-[NSDirectPalette init]` | static-reviewed; source authored; runtime pending |
+| `0x47A039F0` | 38 | `-[NSDirectPalette colorAtIndex:]` | static-reviewed; source authored; runtime pending |
+| `0x47A03A18` | 572 | `-[NSDirectPalette indexForColor:]` | static-reviewed; source authored; runtime pending |
+| `0x47A03C54` | 34 | `-[NSDirectPalette count]` | static-reviewed; source authored; runtime pending |
+| `0x47A03C78` | 120 | `-[NSDirectPalette dealloc]` | static-reviewed; source authored; runtime pending |
+| `0x47A03CF0` | 34 | `-[NSDirectPalette objectEnumerator]` | static-reviewed; source authored; runtime pending |
+| `0x47A03D14` | 557 | `-[NSDirectPalette rawMachinePalette]` | static-reviewed; source authored; runtime pending |
+| `0x47A03F44` | 169 | `-[NSDirectPalette setColor:atIndex:]` | static-reviewed; source authored; runtime pending |
+| `0x47A03FF0` | 82 | `-[NSDirectPalette setRed:green:blue:atIndex:]` | static-reviewed; source authored; runtime pending |
+| `0x47A04044` | 70 | `-[NSDirectPalette getRed:green:blue:atIndex:]` | static-reviewed; source authored; runtime pending |
+| `0x47A0408C` | 220 | `-[NSDirectPalette setColors:atIndices:]` | static-reviewed; source authored; runtime pending |
+| `0x47A04168` | 52 | `-[NSDirectPalette copy]` | static-reviewed; source authored; runtime pending |
+| `0x47A0419C` | 52 | `-[NSDirectPalette mutableCopy]` | static-reviewed; source authored; runtime pending |
+| `0x47A041D0` | 33 | `-[NSDirectPalette copyWithZone:]` | static-reviewed; source authored; runtime pending |
+| `0x47A041F4` | 79 | `-[NSDirectPalette mutableCopyWithZone:]` | static-reviewed; source authored; runtime pending |
+| `0x47A04244` | 38 | `-[NSDirectPalette encodeWithCoder:]` | static-reviewed; source authored; runtime pending |
+| `0x47A0426C` | 136 | `-[NSDirectPalette initWithCoder:]` | static-reviewed; source authored; runtime pending |
+| `0x47A042F4` | 200 | `-[NSDirectPalette isEqual:]` | static-reviewed; source authored; runtime pending |
+| `0x47A043BC` | 645 | `-[NSDirectPalette blendedPaletteWithFraction:ofColor:]` | static-reviewed; source authored; runtime pending |
 | `0x47A04644` | 103 | `-[NSDirectScreen _clearModeInfo]` | unexamined |
 | `0x47A046AC` | 460 | `-[NSDirectScreen initWithScreen:]` | unexamined |
 | `0x47A04878` | 367 | `-[NSDirectScreen dealloc]` | unexamined |
@@ -1134,28 +1134,28 @@ Named Objective-C symbols (candidate module by class name; verify in module meta
 | `0x47A03638` | `-[NSDirectBitmap areaDidChangeBuffering:toType:]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A03648` | `-[NSDirectBitmap(Obsolete) colorSpace]` | `NSDirectBitmap.m` | unexamined |
 | `0x47A03668` | `-[NSDirectBitmap(Obsolete) data]` | `NSDirectBitmap.m` | unexamined |
-| `0x47A03688` | `+[NSDirectPalette defaultPalette]` | `NSDirectPalette.m` | unexamined |
-| `0x47A036CC` | `+[NSDirectPalette currentPalette]` | `NSDirectPalette.m` | unexamined |
-| `0x47A037B4` | `-[NSDirectPalette initWithArrayOfColors:]` | `NSDirectPalette.m` | unexamined |
-| `0x47A03868` | `-[NSDirectPalette init]` | `NSDirectPalette.m` | unexamined |
-| `0x47A039F0` | `-[NSDirectPalette colorAtIndex:]` | `NSDirectPalette.m` | unexamined |
-| `0x47A03A18` | `-[NSDirectPalette indexForColor:]` | `NSDirectPalette.m` | unexamined |
-| `0x47A03C54` | `-[NSDirectPalette count]` | `NSDirectPalette.m` | unexamined |
-| `0x47A03C78` | `-[NSDirectPalette dealloc]` | `NSDirectPalette.m` | unexamined |
-| `0x47A03CF0` | `-[NSDirectPalette objectEnumerator]` | `NSDirectPalette.m` | unexamined |
-| `0x47A03D14` | `-[NSDirectPalette rawMachinePalette]` | `NSDirectPalette.m` | unexamined |
-| `0x47A03F44` | `-[NSDirectPalette setColor:atIndex:]` | `NSDirectPalette.m` | unexamined |
-| `0x47A03FF0` | `-[NSDirectPalette setRed:green:blue:atIndex:]` | `NSDirectPalette.m` | unexamined |
-| `0x47A04044` | `-[NSDirectPalette getRed:green:blue:atIndex:]` | `NSDirectPalette.m` | unexamined |
-| `0x47A0408C` | `-[NSDirectPalette setColors:atIndices:]` | `NSDirectPalette.m` | unexamined |
-| `0x47A04168` | `-[NSDirectPalette copy]` | `NSDirectPalette.m` | unexamined |
-| `0x47A0419C` | `-[NSDirectPalette mutableCopy]` | `NSDirectPalette.m` | unexamined |
-| `0x47A041D0` | `-[NSDirectPalette copyWithZone:]` | `NSDirectPalette.m` | unexamined |
-| `0x47A041F4` | `-[NSDirectPalette mutableCopyWithZone:]` | `NSDirectPalette.m` | unexamined |
-| `0x47A04244` | `-[NSDirectPalette encodeWithCoder:]` | `NSDirectPalette.m` | unexamined |
-| `0x47A0426C` | `-[NSDirectPalette initWithCoder:]` | `NSDirectPalette.m` | unexamined |
-| `0x47A042F4` | `-[NSDirectPalette isEqual:]` | `NSDirectPalette.m` | unexamined |
-| `0x47A043BC` | `-[NSDirectPalette blendedPaletteWithFraction:ofColor:]` | `NSDirectPalette.m` | unexamined |
+| `0x47A03688` | `+[NSDirectPalette defaultPalette]` | `NSDirectPalette.m` | static-reviewed; source authored; runtime pending |
+| `0x47A036CC` | `+[NSDirectPalette currentPalette]` | `NSDirectPalette.m` | static-reviewed; source authored; runtime pending |
+| `0x47A037B4` | `-[NSDirectPalette initWithArrayOfColors:]` | `NSDirectPalette.m` | static-reviewed; source authored; runtime pending |
+| `0x47A03868` | `-[NSDirectPalette init]` | `NSDirectPalette.m` | static-reviewed; source authored; runtime pending |
+| `0x47A039F0` | `-[NSDirectPalette colorAtIndex:]` | `NSDirectPalette.m` | static-reviewed; source authored; runtime pending |
+| `0x47A03A18` | `-[NSDirectPalette indexForColor:]` | `NSDirectPalette.m` | static-reviewed; source authored; runtime pending |
+| `0x47A03C54` | `-[NSDirectPalette count]` | `NSDirectPalette.m` | static-reviewed; source authored; runtime pending |
+| `0x47A03C78` | `-[NSDirectPalette dealloc]` | `NSDirectPalette.m` | static-reviewed; source authored; runtime pending |
+| `0x47A03CF0` | `-[NSDirectPalette objectEnumerator]` | `NSDirectPalette.m` | static-reviewed; source authored; runtime pending |
+| `0x47A03D14` | `-[NSDirectPalette rawMachinePalette]` | `NSDirectPalette.m` | static-reviewed; source authored; runtime pending |
+| `0x47A03F44` | `-[NSDirectPalette setColor:atIndex:]` | `NSDirectPalette.m` | static-reviewed; source authored; runtime pending |
+| `0x47A03FF0` | `-[NSDirectPalette setRed:green:blue:atIndex:]` | `NSDirectPalette.m` | static-reviewed; source authored; runtime pending |
+| `0x47A04044` | `-[NSDirectPalette getRed:green:blue:atIndex:]` | `NSDirectPalette.m` | static-reviewed; source authored; runtime pending |
+| `0x47A0408C` | `-[NSDirectPalette setColors:atIndices:]` | `NSDirectPalette.m` | static-reviewed; source authored; runtime pending |
+| `0x47A04168` | `-[NSDirectPalette copy]` | `NSDirectPalette.m` | static-reviewed; source authored; runtime pending |
+| `0x47A0419C` | `-[NSDirectPalette mutableCopy]` | `NSDirectPalette.m` | static-reviewed; source authored; runtime pending |
+| `0x47A041D0` | `-[NSDirectPalette copyWithZone:]` | `NSDirectPalette.m` | static-reviewed; source authored; runtime pending |
+| `0x47A041F4` | `-[NSDirectPalette mutableCopyWithZone:]` | `NSDirectPalette.m` | static-reviewed; source authored; runtime pending |
+| `0x47A04244` | `-[NSDirectPalette encodeWithCoder:]` | `NSDirectPalette.m` | static-reviewed; source authored; runtime pending |
+| `0x47A0426C` | `-[NSDirectPalette initWithCoder:]` | `NSDirectPalette.m` | static-reviewed; source authored; runtime pending |
+| `0x47A042F4` | `-[NSDirectPalette isEqual:]` | `NSDirectPalette.m` | static-reviewed; source authored; runtime pending |
+| `0x47A043BC` | `-[NSDirectPalette blendedPaletteWithFraction:ofColor:]` | `NSDirectPalette.m` | static-reviewed; source authored; runtime pending |
 | `0x47A04644` | `-[NSDirectScreen _clearModeInfo]` | `NSDirectScreen.m` | unexamined |
 | `0x47A046AC` | `-[NSDirectScreen initWithScreen:]` | `NSDirectScreen.m` | unexamined |
 | `0x47A04878` | `-[NSDirectScreen dealloc]` | `NSDirectScreen.m` | unexamined |

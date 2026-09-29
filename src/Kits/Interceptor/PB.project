@@ -4,7 +4,7 @@
     DOCICONFILES = ();
     DYNAMIC_CODE_GEN = YES;
     FILESTABLE = {
-        CLASSES = (NSSimpleBitmap.m, NSFramework_Interceptor.m, NSShape.m, NSDirectBitmap.m, NSFramebuffer.m, NSInterceptedRect.m, NSInterceptorClient.m);
+        CLASSES = (NSSimpleBitmap.m, NSFramework_Interceptor.m, NSShape.m, NSDirectBitmap.m, NSDirectPalette.m, NSFramebuffer.m, NSInterceptedRect.m, NSInterceptorClient.m);
         C_FILES = (InterceptorIPC.c, InterceptorContext.c);
         FRAMEWORKS = (AppKit.framework, Foundation.framework);
         FRAMEWORKSEARCH = ("$(SYMROOT)");

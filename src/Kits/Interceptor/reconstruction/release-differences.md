@@ -13,4 +13,4 @@ framework and `(0,0)` in DR2 i386, with pixel dimensions in both. The shared
 source preserves this observed CPU distinction. Runtime confirmation remains
 pending.
 
-Implement and test both newer palette methods on both CPU builds. Compare i386 behavior for them with the newer PowerPC reference, not with their absence in DR2.
+`+[NSDirectPalette defaultColorPalette]` and `+[NSDirectPalette defaultGrayPalette]` are compiled for PowerPC only, matching the newer reference's method inventory. DR2 i386 has only `defaultPalette`; its implementation uses the 256-color table. The PowerPC palette source has separate pseudo-color and grayscale defaults. Runtime comparison remains pending.

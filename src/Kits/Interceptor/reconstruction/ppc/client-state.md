@@ -5,8 +5,8 @@ orders. `NSInterceptedRect.m` now implements construction, geometry/state
 accessors, condition-lock behavior, notification dispatch, and reply framing.
 `NSInterceptorClient.m` implements initialization, notification-port setup,
 rectangle registration, lookup, teardown, and a receive loop. Cross-client
-notifier ownership and runtime behavior remain to be compared. The reference's
-flush-bit delivery path remains an explicit TODO.
+notifier ownership and runtime behavior remain to be compared. The flush
+notification's selector-probe behavior is documented below.
 
 `NSInterceptorClient` creates a 12-byte Mach context, a condition lock, a
 regular lock, and its intercepted-rectangle collection. `interceptorPort`

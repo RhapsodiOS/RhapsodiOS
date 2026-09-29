@@ -33,9 +33,13 @@ It must run in a separate process for each selected architecture/framework.
 
 The current Windows GNU make invocation uses `cmd.exe`, so the POSIX test
 recipe fails at `mkdir -p` before compiler discovery. `bash.exe` on `PATH` is
-the WSL launcher and there is no configured Linux distribution. A direct
-`make -C src/Kits/Interceptor/tests rect FRAMEWORK_ROOT=...` attempt therefore
-does not reach compilation or execute the fixture.
+the WSL launcher and there is no configured Linux distribution. Direct
+`rect` and `palette` test attempts therefore do not reach compilation or
+execute their fixtures.
+
+The palette test Makefile parses in dry-run mode. The framework Makefile dry
+run cannot resolve `$(MAKEFILEPATH)/pb_makefiles/platform.make` on this host,
+so it also stops before compiling any Objective-C source.
 
 ## Analyzer agreement limit
 

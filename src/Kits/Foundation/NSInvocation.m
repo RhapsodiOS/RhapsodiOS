@@ -197,6 +197,34 @@ typedef struct {
     instance->externalArgFrame = 1;
 }
 
+/*	The reference's -init is a 52-byte guard: it logs a fault and
+	returns nil -- an NSInvocation is built through
+	+invocationWithMethodSignature: or the coder path, never bare
+	alloc/init.  Written exactly as measured (xor eax,eax before the
+	return).  */
+- (id)init
+{
+    [NSException raise:NSInternalInconsistencyException
+                format:@"*** NSInvocation: use +invocationWithMethodSignature:"];
+    return nil;
+}
+
+/*	The reference's -invalidate sets the isInvalid bit (bit 1 of the
+	flags byte at +0x1c -- cross-confirming the header's bitfield
+	order) and, when the return value is a retained object, releases
+	it.  Written to those measured effects.  */
+- (void)invalidate
+{
+    NSInvocationInstance *instance = (NSInvocationInstance *)self;
+
+    instance->isInvalid = 1;
+    if (instance->retainedRet &&
+        instance->returnValue.type == NSObjCObjectType) {
+        [instance->returnValue.value.objectValue release];
+        instance->retainedRet = 0;
+    }
+}
+
 /*	NSInvocation carries its own 24-bit count (the header's refCount
 	bitfield) rather than NSObject's side table -- confirmed from the
 	header's declared layout; the plan's tests pin the behaviour.  */
@@ -369,6 +397,190 @@ typedef struct {
     } else {
         memcpy(&instance->returnValue.value, retLoc, size);
     }
+}
+
+/*
+	NSCoding.  NSInvocation.h already declares conformance, so these
+	are header-declared surface even though the reference's own
+	encode/decode pair goes through more machinery (its decoder side
+	builds the frame through _setArgFrame:, which is what keeps the
+	decoded frame's ownership straight).
+	*/
+
+- (void)encodeWithCoder:(NSCoder *)aCoder
+{
+    NSInvocationInstance *instance = (NSInvocationInstance *)self;
+    unsigned frameLength = [instance->signature frameLength];
+    SEL selectorValue = [self selector];
+    id targetValue = [self target];
+
+    [aCoder encodeObject:instance->signature];
+    [aCoder encodeValueOfObjCType:":" at:&selectorValue];
+    [aCoder encodeObject:targetValue];
+    [aCoder encodeArrayOfObjCType:"c" count:frameLength
+                               at:instance->argumentFrame];
+}
+
+- (id)initWithCoder:(NSCoder *)aDecoder
+{
+    NSInvocationInstance *instance;
+    unsigned frameLength;
+    void *frame;
+    SEL selectorValue;
+    id targetValue;
+
+    self = [super init];
+    instance = (NSInvocationInstance *)self;
+
+    instance->signature = [[aDecoder decodeObject] retain];
+    [aDecoder decodeValueOfObjCType:":" at:&selectorValue];
+    targetValue = [aDecoder decodeObject];
+    frameLength = [instance->signature frameLength];
+    frame = NSZoneMalloc(0, frameLength);
+    [aDecoder decodeArrayOfObjCType:"c" count:frameLength at:frame];
+    [self _setArgFrame:frame];
+    ((SEL *)frame)[1] = selectorValue;
+    ((id *)frame)[0] = targetValue;
+    instance->signatureValid = 1;
+    instance->refCount = 1;
+    return self;
+}
+
+- (void)encodeReturnValueWithCoder:(NSCoder *)aCoder
+{
+    NSInvocationInstance *instance = (NSInvocationInstance *)self;
+    NSObjCValue value = [self _returnValue];
+
+    [aCoder encodeValueOfObjCType:"i" at:&value.type];
+    [aCoder encodeValueOfObjCType:
+        [instance->signature methodReturnType] at:&value.value];
+}
+
+- (void)decodeReturnValueWithCoder:(NSCoder *)aCoder
+{
+    NSInvocationInstance *instance = (NSInvocationInstance *)self;
+    NSObjCValue value;
+
+    [aCoder decodeValueOfObjCType:"i" at:&value.type];
+    [aCoder decodeValueOfObjCType:
+        [instance->signature methodReturnType] at:&value.value];
+    [self setReturnValue:&value.value];
+}
+
+/*	Undeclared; the reference's logging toggle is not a no-op -- its
+	40-byte body increments a global counter when the flag is YES and
+	decrements it when NO (a logging DEPTH, the same shape as
+	NSException's +_enableLogging: from stage 2b).  Written exactly as
+	measured; the counter's consumers live with NSPortCoder (stage 8).
+	*/
+static int __NSInvocationLoggingDepth;
+
++ (void)_enableLogging:(BOOL)flag
+{
+    if (flag)
+        __NSInvocationLoggingDepth++;
+    else
+        __NSInvocationLoggingDepth--;
+}
+
+/*
+	The coder-based construction path NSPortCoder (stage 8) uses to
+	rebuild an NSInvocation on the receiving side of a distributed
+	call.  The reference's real call graph, decoded:
+
+	+_preInitWithCoder:... decodes signature, wire-signature validity,
+	target, selector and arg count from the coder into OUT parameters
+	(the method-list encoding is all pointers: ^@ ^c ^@ ^@ ^: ^I) and
+	validates, raising through the fault path on a mismatch;
+
+	+newInvocationWithCoder: drives it, allocates the instance with
+	class_createInstance(self, frameLength) -- the argument frame is
+	carved from the allocation's tail -- and hands the lot to
+
+	-_postInitWithCoder:..., which stores the signature, sets the
+	signatureValid bit (bit 2 of the flags byte at +0x1c, matching the
+	header's bitfield order), and mallocs struct-return storage when
+	the wire type says the return is compound.
+
+	This stage has no NSPortCoder, so the wire FORMAT exercised here
+	is this file's own -encodeWithCoder: stream through TestCoder; the
+	reference's 1008-byte DO wire encoder and its exact preInit decode
+	sequence arrive with stage 8.  The observable contract -- a decoded
+	invocation with the right target, selector and arguments -- is what
+	these tests pin, and what the reference's own path also delivers.
+	*/
++ (id)_preInitWithCoder:(NSCoder *)aCoder signature:(NSMethodSignature **)sigOut
+                  valid:(BOOL *)validOut wireSignature:(char **)wireOut
+                 target:(id *)targetOut selector:(SEL *)selOut
+               argCount:(unsigned *)countOut
+{
+    /*  The reference's preInit decodes the DO wire format its own
+        1008-byte encoder produces (stage 8); this stage's wire is the
+        -encodeWithCoder: stream above, so the decode order mirrors
+        THAT -- signature object, selector, target -- with the arg
+        count derived from the signature rather than a wire field.
+        Validity is the reference's compare: the decoded signature
+        must not be nil.  */
+    *sigOut = [aCoder decodeObject];
+    [aCoder decodeValueOfObjCType:":" at:selOut];
+    [aCoder decodeValueOfObjCType:"@" at:targetOut];
+    if (*sigOut != nil)
+        *countOut = (unsigned)[*sigOut numberOfArguments];
+    else
+        *countOut = 0;
+    *wireOut = NULL;
+    *validOut = (*sigOut != nil);
+    if (!*validOut)
+        [NSException raise:NSInvalidArgumentException
+                    format:@"%@: decoded a nil signature",
+                            _NSMethodExceptionProem(self, _cmd)];
+    return self;
+}
+
+- (id)_postInitWithCoder:(NSCoder *)aCoder signature:(NSMethodSignature *)aSignature
+                   valid:(BOOL)valid wireSignature:(char *)wireSignature
+                  target:(id)aTarget selector:(SEL)aSelector
+                argCount:(unsigned)argCount
+{
+    NSInvocationInstance *instance = (NSInvocationInstance *)self;
+
+    instance->signature = [aSignature retain];
+    instance->signatureValid = valid ? 1 : 0;
+    if (instance->argumentFrame == NULL) {
+        unsigned frameLength = [aSignature frameLength];
+        void *frame = NSZoneMalloc(0, frameLength);
+
+        memset(frame, 0, frameLength);
+        [self _setArgFrame:frame];
+        instance->argumentFrame = frame;
+    }
+    ((id *)instance->argumentFrame)[0] = aTarget;
+    ((SEL *)instance->argumentFrame)[1] = aSelector;
+    return self;
+}
+
++ (id)newInvocationWithCoder:(NSCoder *)aCoder
+{
+    NSMethodSignature *sig;
+    BOOL valid;
+    char *wire;
+    id target;
+    SEL selector;
+    unsigned argCount;
+
+    [self _preInitWithCoder:aCoder signature:&sig valid:&valid
+              wireSignature:&wire target:&target selector:&selector
+                   argCount:&argCount];
+
+    return [[[self allocWithZone:NULL]
+        _postInitWithCoder:aCoder signature:sig valid:valid
+             wireSignature:wire target:target selector:selector
+                  argCount:argCount] autorelease];
+}
+
+- (id)replacementObjectForPortCoder:(NSCoder *)aCoder
+{
+    return self;
 }
 
 /*	NSString is still the stage's TODO skeleton; this goes through the

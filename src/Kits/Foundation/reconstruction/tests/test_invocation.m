@@ -7,6 +7,7 @@
 #import <Foundation/NSObject.h>
 #import <Foundation/NSException.h>
 #import <Foundation/NSString.h>
+#import "TestCoder.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -223,6 +224,83 @@ static void test_setReturnValue_with_a_null_location_raises(void)
     CHECK(caught == 1);
 }
 
+static void test_encodeWithCoder_and_initWithCoder_round_trip(void)
+{
+    id sig = [NSMethodSignature signatureWithObjCTypes:"i12@8:12i16"];
+    id original = [NSInvocation invocationWithMethodSignature:sig];
+    id target = [[NSObject alloc] init];
+    int argument = 55;
+    id coder = [[TestCoder alloc] init];
+    id decoded;
+
+    [original setTarget:target];
+    [original setSelector:@selector(description)];
+    [original setArgument:&argument atIndex:2];
+
+    [original encodeWithCoder:coder];
+    decoded = [[NSInvocation alloc] initWithCoder:coder];
+
+    CHECK([decoded target] == target);
+    CHECK([decoded selector] == @selector(description));
+    {
+        int readBack = 0;
+
+        [decoded getArgument:&readBack atIndex:2];
+        CHECK(readBack == 55);
+    }
+
+    [decoded release];
+    [coder release];
+    [target release];
+}
+
+static void test_encodeReturnValueWithCoder_and_decode_round_trip(void)
+{
+    id sig = [NSMethodSignature signatureWithObjCTypes:"i8@8:12"];
+    id invocation = [NSInvocation invocationWithMethodSignature:sig];
+    id coder = [[TestCoder alloc] init];
+    int sent = 321;
+    int received = 0;
+
+    [invocation setReturnValue:&sent];
+    [invocation encodeReturnValueWithCoder:coder];
+    [invocation decodeReturnValueWithCoder:coder];
+    [invocation getReturnValue:&received];
+    CHECK(received == 321);
+
+    [coder release];
+}
+
+static void test_newInvocationWithCoder_produces_a_usable_invocation(void)
+{
+    id sig = [NSMethodSignature signatureWithObjCTypes:"v8@8:12"];
+    id original = [NSInvocation invocationWithMethodSignature:sig];
+    id target = [[NSObject alloc] init];
+    id coder = [[TestCoder alloc] init];
+    id decoded;
+
+    [original setTarget:target];
+    [original encodeWithCoder:coder];
+    decoded = [NSInvocation newInvocationWithCoder:coder];
+
+    CHECK(decoded != nil);
+    CHECK([decoded target] == target);
+
+    [decoded release];
+    [coder release];
+    [target release];
+}
+
+static void test_replacementObjectForPortCoder_returns_self(void)
+{
+    id sig = [NSMethodSignature signatureWithObjCTypes:"v8@8:12"];
+    id invocation = [NSInvocation invocationWithMethodSignature:sig];
+    id coder = [[TestCoder alloc] init];
+
+    CHECK([invocation replacementObjectForPortCoder:coder] == invocation);
+    [coder release];
+}
+
 int main(void)
 {
     /*  The guest's stdio block-buffers pipes; a crash mid-suite would
@@ -243,6 +321,10 @@ int main(void)
     test_setArgument_with_a_null_location_raises();
     test_getReturnValue_with_a_null_location_raises();
     test_setReturnValue_with_a_null_location_raises();
+    test_encodeWithCoder_and_initWithCoder_round_trip();
+    test_encodeReturnValueWithCoder_and_decode_round_trip();
+    test_newInvocationWithCoder_produces_a_usable_invocation();
+    test_replacementObjectForPortCoder_returns_self();
 
     printf("%s: %d failure(s)\n", failures ? "FAILED" : "PASSED", failures);
     return failures != 0;

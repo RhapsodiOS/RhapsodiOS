@@ -5,6 +5,9 @@
 #import <Foundation/NSObject.h>
 #import "Interceptor_types.h"
 
+@class NSShape;
+@class NSInterceptorClient;
+
 @interface NSInterceptedRect : NSObject
 {
 @private
@@ -26,6 +29,27 @@
     unsigned int _ir_padding[7];
     void *_ir_private;
 }
+
+- initForRect:(NSRect)rect inWindow:(int)windowNumber
+    onFramebuffer:(id)framebuffer forClient:(NSInterceptorClient *)client;
+- (void)lockRect;
+- (void)unlockRect;
+- (BOOL)isLocked;
+- (void)setTarget:(id)target;
+- (id)target;
+- (NSRect)currentScreenRect;
+- (NSShape *)currentScreenRectShape;
+- (id)currentClipList:(NSRect)rect count:(int)count;
+- (id)compositeBits:(id)bits withOp:(int)operation;
+- (void)removeFromWindowServer;
+- (unsigned int)uniqueID;
+- (int)windowNumber;
+- (NSRect)rectangle;
+- (BOOL)isTotallyVisible;
+- (BOOL)isTotallyObscured;
+- (unsigned int)_flags;
+- (id)framebuffer;
+- (id)_handleMsg:(InterceptorNotification *)message withReply:(InterceptorReply *)reply;
 @end
 
 #endif

@@ -16,10 +16,11 @@
 | Copy helper test execution | blocked by missing compatible guest/toolchain | blocked by missing compatible guest/toolchain |
 | Mach IPC layouts and RPC contracts | static implementation matches PPC request/reply bodies; transport test authored, execution pending | static cross-check matches IDs/sizes/descriptors/context; transport test execution pending |
 | IPC ABI and transport test execution | blocked by missing compatible guest/toolchain | blocked by missing compatible guest/toolchain |
-| Client/rectangle dispatch review | PPC static review complete; implementation pending | runtime/dispatch comparison pending |
+| Intercepted rectangle core | PPC static review and source authored; test command parses, execution pending | shared source intended for both; build/runtime comparison pending |
+| Client/rectangle notification dispatch | PPC static review and source authored; test command parses, execution pending | shared source intended for both; build/runtime comparison pending |
 | NSShape scanline and operation review | static implementation; description remains incomplete | static cross-check supports shared format; runtime pending |
 | Shape behavior test execution | blocked by missing compatible guest/toolchain | blocked by missing compatible guest/toolchain |
 
 A reference-only analysis is an evidence-generation result when its summary says `complete: true` and contains the IDA record. The command exits 1 because comparison acceptance is not met without a rebuilt artifact; this is not a parity result.
 
-The Objective-C metadata helper yields 151 names for 234 primary method symbols. Resolve that gap before using the helper as a complete owner map. The profile binary has 541 symbols and 151 names from the same helper; neither binary contains STABS. No framework source has yet been reconstructed or compiled.
+The Objective-C metadata helper yields 151 names for 234 primary method symbols. Resolve that gap before using the helper as a complete owner map. The profile binary has 541 symbols and 151 names from the same helper; neither binary contains STABS. Several framework source units are reconstructed, but a rebuilt framework has not been compiled.

@@ -6,7 +6,11 @@
 #import <Foundation/NSObject.h>
 #import <Foundation/NSPort.h>
 #import <Foundation/NSThread.h>
+#import <AppKit/NSGraphics.h>
 #import "Interceptor_types.h"
+
+@class NSInterceptedRect;
+@class NSNotification;
 
 @interface NSInterceptorClient : NSObject
 {
@@ -21,6 +25,17 @@
     unsigned int _padding[8];
     void *_private;
 }
+
+- (id)_addInterceptedRect:(NSInterceptedRect *)rect
+       returnedScreenRect:(NSRect *)screenRect
+            returnedFlags:(int *)flags;
+- (void)_removeInterceptedRect:(NSInterceptedRect *)rect;
+- (InterceptorClientContext *)_context;
+- (int)interceptorPort;
+- (BOOL)handleInterceptorMessage:(InterceptorNotification *)message
+                       withReply:(InterceptorReply *)reply;
+- (void)startHandlingThread;
+- (void)windowServerPortDeath:(NSNotification *)notification;
 @end
 
 #endif

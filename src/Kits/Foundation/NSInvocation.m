@@ -13,6 +13,7 @@
 #import <Foundation/NSString.h>
 #import <Foundation/NSZone.h>
 #import <objc/objc-class.h>
+#import <objc/objc-runtime.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -581,6 +582,155 @@ static int __NSInvocationLoggingDepth;
 - (id)replacementObjectForPortCoder:(NSCoder *)aCoder
 {
     return self;
+}
+
+/*
+	Dispatch.  The reference's -invoke is the 1888-byte dispatcher and
+	-invokeWithTarget: is its 60-byte front door (store the substitute
+	receiver into frame slot 0, dispatch, done -- the stored target is
+	not an ivar here because frame slots 0 and 4 ARE self and _cmd).
+	The register-class switch is the plan's confirmed hypothesis: the
+	reference's jump table over return types ends in indirect calls
+	through objc_msgSendv cast to each return flavour, because this
+	runtime declares no _stret variant.
+	*/
+
+- (void)invoke
+{
+    NSInvocationInstance *instance = (NSInvocationInstance *)self;
+    const char *returnType;
+    unsigned frameLength;
+    id receiver;
+    SEL op;
+
+    if (instance->argumentFrame == NULL) {
+        [NSException raise:NSInvalidArgumentException
+                    format:@"%@: argument frame is NULL",
+                            _NSMethodExceptionProem(self, _cmd)];
+        return;
+    }
+    if (!instance->signatureValid) {
+        [NSException raise:NSInvalidArgumentException
+                    format:@"%@: signature is invalid",
+                            _NSMethodExceptionProem(self, _cmd)];
+        return;
+    }
+
+    receiver = ((id *)instance->argumentFrame)[0];
+    op = ((SEL *)instance->argumentFrame)[1];
+    if (receiver == nil) {
+        [NSException raise:NSInvalidArgumentException
+                    format:@"%@: target is nil",
+                            _NSMethodExceptionProem(self, _cmd)];
+        return;
+    }
+    if (op == NULL) {
+        [NSException raise:NSInvalidArgumentException
+                    format:@"%@: selector is NULL",
+                            _NSMethodExceptionProem(self, _cmd)];
+        return;
+    }
+
+    frameLength = [instance->signature frameLength];
+    returnType = [instance->signature methodReturnType];
+
+    if (*returnType == 'v') {
+        objc_msgSendv(receiver, op, frameLength, instance->argumentFrame);
+        instance->returnValue.type = NSObjCVoidType;
+        return;
+    }
+
+    if (*returnType == 'f' || *returnType == 'd') {
+        /*  The FPU returns through ST(0): the caller's read width is
+            all that differs, so call through a double-returning cast
+            and store the return type's own size.  */
+        double value;
+
+        value = ((double (*)(id, SEL, unsigned, void *))objc_msgSendv)
+            (receiver, op, frameLength, instance->argumentFrame);
+        memcpy(&instance->returnValue.value, &value,
+               (*returnType == 'd') ? sizeof(double) : sizeof(float));
+        instance->returnValue.type =
+            (enum _NSObjCValueType)*returnType;
+        return;
+    }
+
+    if (*returnType == 'q' || *returnType == 'Q') {
+        /*  EDX:EAX -- read the pair through a long-long cast.  */
+        long long value;
+
+        value = ((long long (*)(id, SEL, unsigned, void *))objc_msgSendv)
+            (receiver, op, frameLength, instance->argumentFrame);
+        memcpy(&instance->returnValue.value, &value, sizeof(long long));
+        instance->returnValue.type =
+            (enum _NSObjCValueType)*returnType;
+        return;
+    }
+
+    if ((*returnType == '{' || *returnType == '(') &&
+        ![instance->signature _isReturnStructInRegisters]) {
+        /*  Compound return through the hidden pointer: this ABI puts
+            the destination address at the frame's START, before self
+            and _cmd.  Build frameLength + 4 bytes with the storage
+            prepended and let objc_msgSendv pass the whole frame
+            through; the callee stores through slot 0 and returns it.  */
+        unsigned size = 0;
+        char *shifted;
+        unsigned result;
+        NSObjCValue captured;
+
+        NSGetSizeAndAlignment(returnType, &size, NULL);
+        captured.value.structLocation = NSZoneMalloc(0, size);
+        captured.type = (enum _NSObjCValueType)*returnType;
+        shifted = (char *)NSZoneMalloc(0, frameLength + 4);
+        memcpy(shifted + 4, instance->argumentFrame, frameLength);
+        memcpy(shifted, &captured.value.structLocation, sizeof(void *));
+        result = (unsigned)objc_msgSendv(receiver, op, frameLength + 4,
+                                         shifted);
+        NSZoneFree(0, shifted);
+        instance->returnValue = captured;
+        return;
+    }
+
+    /*  Everything else -- id, Class, SEL, pointer, char, short, int,
+        long, and structs of 1/2/4/8 bytes the ABI returns in
+        registers -- is read through the widest cast and copied by
+        the return type's own size.  */
+    {
+        unsigned long long value;
+        unsigned size = 0;
+
+        value = ((unsigned long long (*)(id, SEL, unsigned, void *))
+                 objc_msgSendv)(receiver, op, frameLength,
+                                instance->argumentFrame);
+        NSGetSizeAndAlignment(returnType, &size, NULL);
+        if (size > sizeof(value))
+            size = sizeof(value);
+        memcpy(&instance->returnValue.value, &value, size);
+        instance->returnValue.type =
+            (enum _NSObjCValueType)*returnType;
+    }
+}
+
+- (void)invokeWithTarget:(id)aTarget
+{
+    NSInvocationInstance *instance = (NSInvocationInstance *)self;
+
+    if (aTarget == nil) {
+        [NSException raise:NSInvalidArgumentException
+                    format:@"%@: target is nil",
+                            _NSMethodExceptionProem(self, _cmd)];
+        return;
+    }
+
+    /*  The reference's 60-byte body is exactly these two sends: store
+        the substitute receiver into frame slot 0 and dispatch.  The
+        substitute REMAINS the invocation's target afterwards -- there
+        is no restore in the reference and none here, matching the
+        documented NeXT behaviour that -invokeWithTarget: changes the
+        receiver's target.  */
+    [self setArgument:&aTarget atIndex:0];
+    [self invoke];
 }
 
 /*	NSString is still the stage's TODO skeleton; this goes through the

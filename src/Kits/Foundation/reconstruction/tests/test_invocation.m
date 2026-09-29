@@ -301,6 +301,145 @@ static void test_replacementObjectForPortCoder_returns_self(void)
     [coder release];
 }
 
+@interface InvocationTestTarget : NSObject
+- (int)addOne:(int)value;
+- (void)recordCall;
+- (double)pi;
+@end
+
+static int invocationTestTargetCallCount = 0;
+
+@implementation InvocationTestTarget
+- (int)addOne:(int)value
+{
+    return value + 1;
+}
+- (void)recordCall
+{
+    invocationTestTargetCallCount++;
+}
+- (double)pi
+{
+    return 3.5;
+}
+@end
+
+static void test_invoke_dispatches_to_the_target_and_captures_an_int_return(void)
+{
+    id sig = [NSMethodSignature signatureWithObjCTypes:"i12@8:12i16"];
+    id invocation = [NSInvocation invocationWithMethodSignature:sig];
+    id target = [[InvocationTestTarget alloc] init];
+    int argument = 41;
+    int result = 0;
+
+    [invocation setTarget:target];
+    [invocation setSelector:@selector(addOne:)];
+    [invocation setArgument:&argument atIndex:2];
+    [invocation invoke];
+    [invocation getReturnValue:&result];
+
+    CHECK(result == 42);
+    [target release];
+}
+
+static void test_invoke_dispatches_a_void_returning_method(void)
+{
+    id sig = [NSMethodSignature signatureWithObjCTypes:"v8@8:12"];
+    id invocation = [NSInvocation invocationWithMethodSignature:sig];
+    id target = [[InvocationTestTarget alloc] init];
+    int before = invocationTestTargetCallCount;
+
+    [invocation setTarget:target];
+    [invocation setSelector:@selector(recordCall)];
+    [invocation invoke];
+
+    CHECK(invocationTestTargetCallCount == before + 1);
+    [target release];
+}
+
+static void test_invoke_dispatches_a_double_returning_method(void)
+{
+    /*  The f/d register class: the FPU returns via ST(0), so -invoke
+        must call objc_msgSendv through a double-returning cast and
+        store the 8 bytes by the return type's own size.  */
+    id sig = [NSMethodSignature signatureWithObjCTypes:"d8@8:12"];
+    id invocation = [NSInvocation invocationWithMethodSignature:sig];
+    id target = [[InvocationTestTarget alloc] init];
+    double result = 0.0;
+
+    [invocation setTarget:target];
+    [invocation setSelector:@selector(pi)];
+    [invocation invoke];
+    [invocation getReturnValue:&result];
+
+    CHECK(result == 3.5);
+    [target release];
+}
+
+static void test_invokeWithTarget_uses_the_given_target_not_the_stored_one(void)
+{
+    id sig = [NSMethodSignature signatureWithObjCTypes:"v8@8:12"];
+    id invocation = [NSInvocation invocationWithMethodSignature:sig];
+    id storedTarget = [[InvocationTestTarget alloc] init];
+    id actualTarget = [[InvocationTestTarget alloc] init];
+    int before = invocationTestTargetCallCount;
+
+    [invocation setTarget:storedTarget];
+    [invocation setSelector:@selector(recordCall)];
+    [invocation invokeWithTarget:actualTarget];
+
+    CHECK(invocationTestTargetCallCount == before + 1);
+    /*  The reference's -invokeWithTarget: is setArgument:&aTarget
+        atIndex:0 followed by -invoke with no restore: the substitute
+        target REMAINS -- frame slot 0 IS the target storage.  */
+    CHECK([invocation target] == actualTarget);
+    [storedTarget release];
+    [actualTarget release];
+}
+
+static void test_invoke_on_a_nil_target_raises(void)
+{
+    id sig = [NSMethodSignature signatureWithObjCTypes:"v8@8:12"];
+    id invocation = [NSInvocation invocationWithMethodSignature:sig];
+    int caught = 0;
+
+    [invocation setSelector:@selector(recordCall)];
+
+    NS_DURING
+        [invocation invoke];
+    NS_HANDLER
+        caught = 1;
+    NS_ENDHANDLER
+
+    CHECK(caught == 1);
+}
+
+/*  Review Focus item 4, second half: a target that does not implement
+    the selector.  -invoke does not special-case this itself -- it
+    dispatches exactly as any ordinary message send would, and the
+    runtime's own dispatch falls through to -[NSObject forward::]
+    (stage 2a), which raises NSInternalInconsistencyException rather
+    than crash.  This test pins that composition.  */
+static void test_invoke_of_an_unimplemented_selector_raises_not_crashes(void)
+{
+    id sig = [NSMethodSignature signatureWithObjCTypes:"v8@8:12"];
+    id invocation = [NSInvocation invocationWithMethodSignature:sig];
+    id target = [[InvocationTestTarget alloc] init];
+    int caught = 0;
+
+    [invocation setTarget:target];
+    [invocation setSelector:@selector(aSelectorNoOneImplementsHere)];
+
+    NS_DURING
+        [invocation invoke];
+    NS_HANDLER
+        caught = 1;
+    NS_ENDHANDLER
+
+    CHECK(caught == 1);
+    [target release];
+}
+
 int main(void)
 {
     /*  The guest's stdio block-buffers pipes; a crash mid-suite would
@@ -325,6 +464,12 @@ int main(void)
     test_encodeReturnValueWithCoder_and_decode_round_trip();
     test_newInvocationWithCoder_produces_a_usable_invocation();
     test_replacementObjectForPortCoder_returns_self();
+    test_invoke_dispatches_to_the_target_and_captures_an_int_return();
+    test_invoke_dispatches_a_void_returning_method();
+    test_invoke_dispatches_a_double_returning_method();
+    test_invokeWithTarget_uses_the_given_target_not_the_stored_one();
+    test_invoke_on_a_nil_target_raises();
+    test_invoke_of_an_unimplemented_selector_raises_not_crashes();
 
     printf("%s: %d failure(s)\n", failures ? "FAILED" : "PASSED", failures);
     return failures != 0;

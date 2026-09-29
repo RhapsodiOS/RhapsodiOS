@@ -32,12 +32,23 @@ QEMU i386 guest:
 
 ## Approach
 
-HFS is big-endian on disk. Both tools swap each on-disk field where they store
-or read it, as Apple's diskdev_cmds-143 `newfs_hfs.tproj` and `hfs.util` do:
-an assignment into an on-disk structure becomes `x = SWAP_BE32(v)`, and a
-later read of a stored value becomes `SWAP_BE32(x)`. On ppc the macros are
-identities, so ppc builds exactly as before. Each site is checked against the
-diskdev_cmds-143 reference.
+HFS is big-endian on disk. Both tools follow the Apple sources that made the
+same change:
+
+- `newfs_hfs` follows diskdev_cmds-143 `newfs_hfs.tproj/makehfs.c`. Structures
+  written once are built big-endian directly, a field at a time
+  (`x = SWAP_BE32(v)`): B-tree node descriptors, header records, map words,
+  record offsets and the root catalog records. The MDB and volume header,
+  which the formatter keeps using for its layout arithmetic, stay in host order
+  and are swapped as a whole around the `WriteToDisk` calls that write them,
+  as `makehfs.c` does with `SWAP_HFSMDB` and `SWAP_HFSPLUSVH`.
+- `hfs.util` follows hfs-226.1.1 `hfs_util/hfsutil_main.c`: every field read
+  off the device is swapped where it is read (`SWAP_BE16(p->x)`), and the HFS
+  Plus root name is swapped into a copy before conversion to UTF-8. (hfs-116's
+  `hfs.util` has no byte-order handling; it predates Intel Macs.)
+
+On ppc the macros are identities and the whole-structure swaps are empty, so
+ppc builds as before.
 
 Rejected: building in host order and swapping whole structures before each
 `write()` (needs a userland copy of the kernel's node swapper, and
@@ -56,11 +67,12 @@ copy, since each is its own pb_makefiles project; each is added to its
 
 ### newfs_hfs
 
-`hfs_newfs/HFSVolumeInit.c` (and `newfs_hfs.c` if it touches a stored field).
-Every store into, and later read of, a field of:
+`hfs_newfs/HFSVolumeInit.c`. The MDB (`InitMasterDirectoryBlock`) and the
+HFS Plus volume header (`InitVolumeHeader`) stay in host order and are swapped
+as a whole around the two `WriteToDisk` calls that write each (primary and
+spare copy), by static routines copied from the kernel's `hfs_swap_MDB` and
+`hfs_swap_VolumeHeader`. Every store into a field of:
 
-- the MDB (`InitMasterDirectoryBlock`) and the HFS Plus volume header
-  (`InitVolumeHeader`), including extent descriptors and fork data;
 - the B-tree header record (`InitBTreeHeader`), node descriptors, and the
   record offsets `SetOffset` writes;
 - catalog keys and records for the root folder and its thread
@@ -107,9 +119,11 @@ New modes in `vm/hfs_guest.py`, one boot each:
 
 - **`probe IMG`**: the guest runs `hfs.util -p rhd1a removable writable`
   (a five-character device argument, so it opens `/dev/rhd1a` rather than an
-  `_hfs_a` node) and records its exit code and
-  `/usr/filesystems/hfs.fs/hfs.label`. Pass: `FSUR_RECOGNIZED` (-1) and a label
-  equal to the volume name the host reads from the image.
+  `_hfs_a` node) and records its exit status and
+  `/usr/filesystems/hfs.fs/hfs.label` (the directory is made first; `golden.img`
+  has none). Pass: `FSUR_MOUNT_HIDDEN` (-9, exit status 247), which is what
+  `DoProbe` returns once it has the name, and a label equal to the volume name
+  the host reads from the image.
 - **`newfs FLAVOUR`**: the host supplies a zeroed disk with the usual 512-byte
   NeXT label. The guest runs `newfs_hfs -H -v NAME /dev/rhd1a` (HFS),
   `newfs_hfs -v NAME /dev/rhd1a` (HFS Plus) or `newfs_hfs -b 8192 -v NAME

@@ -1,5 +1,7 @@
 #import "Private/InterceptorCopy.h"
 #import "Private/NSInterceptedRect.h"
+#import "Private/NSInterceptorClient.h"
+#import "Private/InterceptorIPC.h"
 #import "NSDirectBitmap.h"
 #import "NSFramebuffer.h"
 #import "InterceptorGlobals.h"
@@ -10,10 +12,12 @@
 
 @interface NSDirectBitmap (ReconstructionPrivate)
 - (BOOL)_isUnobscured;
+- (BOOL)_canUseDirectMapping;
 @end
 
 static int NSDirectBitmapGrayBitsPerPixelMinimum;
 static int NSDirectBitmapColorBitsPerPixelMinimum;
+static int NSDirectBitmapMaximumScreens = -1;
 
 @implementation NSDirectBitmap
 
@@ -150,6 +154,20 @@ static int NSDirectBitmapColorBitsPerPixelMinimum;
 - (BOOL)isDirectMapped
 {
     return self->isDirectMapped;
+}
+
+- (BOOL)_canUseDirectMapping
+{
+    if (NSDirectBitmapMaximumScreens == -1)
+        NSDirectBitmapMaximumScreens = InterceptorScreenCount(
+            [self->interceptClient _context]);
+
+    return self->framebuffer != nil &&
+           [(NSFramebuffer *)self->framebuffer isMappable] &&
+           [(NSFramebuffer *)self->framebuffer bitsPerPixel] > 7 &&
+           self->bitsPerPixel ==
+               [(NSFramebuffer *)self->framebuffer bitsPerPixel] &&
+           NSDirectBitmapMaximumScreens == 1;
 }
 
 - (void)lockBitmap

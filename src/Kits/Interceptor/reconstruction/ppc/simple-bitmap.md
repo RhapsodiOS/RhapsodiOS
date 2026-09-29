@@ -42,6 +42,9 @@ temporarily releasing that rectangle, selects buffered drawing unless the
 direct framebuffer is unobscured, and records the locked state. Try-lock
 rejects a nested lock; unlock clears the state and releases a pinned rectangle
 for direct-mapped operation.
+Direct mapping is eligible only on a single-screen system when the framebuffer
+is mappable, exceeds seven bits per pixel, and matches the bitmap's pixel
+depth.
 
 The seven public encoding globals resolve to these exact constant strings in
 the reference's Objective-C constant-string objects:

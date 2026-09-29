@@ -24,7 +24,9 @@ unlocked, returns the buffer and inherited planes in buffered mode, or returns
 the direct screen address and clears the remaining four planes.
 Its lock methods match PPC: they pin a rectangle, service pending updates,
 select buffered drawing when the direct region is not fully visible, and
-release a pinned rectangle on direct-mapped unlock.
+release a pinned rectangle on direct-mapped unlock. Direct mapping requires a
+single screen and a mappable framebuffer with matching depth greater than
+seven bits per pixel.
 
 Its simple accessors use the same field offsets: `bitmapData` at `0x47A0B0BC`,
 `getBitmapDataPlanes:` at `0x47A0B0CC`, `bytesPerPlane` at `0x47A0B184`,

@@ -55,6 +55,14 @@ int main(void)
         TestCheck([directBitmap conversionTable] == 0 &&
                   [directBitmap inverseConversionTable] == 0,
                   "unattached direct bitmap has no conversion tables");
+        TestCheck([directBitmap tryLockBitmap] &&
+                  [directBitmap bytesPerRow] == 0 &&
+                  ![directBitmap tryLockBitmap],
+                  "direct bitmap locks once and rejects a nested try-lock");
+        [directBitmap unlockBitmap];
+        TestCheck([directBitmap tryLockBitmap],
+                  "direct bitmap can be locked again after unlock");
+        [directBitmap unlockBitmap];
         [directBitmap release];
     }
     bitmap = [[NSSimpleBitmap alloc] initWithBitmapDataPlanes:planes

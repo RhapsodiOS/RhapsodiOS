@@ -16,6 +16,7 @@
 | Copy helper test execution | blocked by missing compatible guest/toolchain | blocked by missing compatible guest/toolchain |
 | NSDirectBitmap metadata accessors | PPC and i386 bodies agree; source and default-state tests authored; runtime pending | shared implementation; runtime pending |
 | NSDirectBitmap backing buffer and bitmapData | PPC and i386 behavior agrees; source and unlocked-state test authored; runtime pending | shared implementation; runtime pending |
+| NSDirectBitmap lock transition | PPC and i386 behavior agrees; source and state-transition test authored; runtime pending | shared implementation; runtime pending |
 | Mach IPC layouts and RPC contracts | screen/cursor request/reply bodies statically matched; test transport authored, execution pending | IDs and async cursor request independently confirmed; shared native descriptors/test harness, execution pending |
 | IPC ABI and transport test execution | blocked by missing compatible guest/toolchain | blocked by missing compatible guest/toolchain |
 | Intercepted rectangle core | PPC static review and source authored; test command parses, execution pending | shared source intended for both; build/runtime comparison pending |

@@ -5,6 +5,10 @@
 #import <Foundation/NSZone.h>
 #import <strings.h>
 
+@interface NSDirectBitmap (ReconstructionPrivate)
+- (BOOL)_isUnobscured;
+@end
+
 @implementation NSDirectBitmap
 
 - (int)bitsPerPixel
@@ -98,6 +102,42 @@
 - (BOOL)isDirectMapped
 {
     return self->isDirectMapped;
+}
+
+- (void)lockBitmap
+{
+    if (self->interceptRect != nil)
+        [self->interceptRect lockRect];
+    if (self->updateNeeded == YES) {
+        self->updateNeeded = NO;
+        if (self->interceptRect != nil)
+            [self->interceptRect unlockRect];
+        [self updateState];
+        if (self->interceptRect != nil)
+            [self->interceptRect lockRect];
+    }
+    if (self->isUnobscured == NO && self->isDirectMapped != NO &&
+        self->isBuffered == NO)
+        self->isUnobscured = [self _isUnobscured];
+    self->drawToBuffer = (self->isUnobscured == NO);
+    if (self->isDirectMapped == NO && self->interceptRect != nil)
+        [self->interceptRect unlockRect];
+    self->isLocked = YES;
+}
+
+- (BOOL)tryLockBitmap
+{
+    if (self->isLocked == YES)
+        return NO;
+    [self lockBitmap];
+    return self->isLocked;
+}
+
+- (void)unlockBitmap
+{
+    self->isLocked = NO;
+    if (self->isDirectMapped != NO && self->interceptRect != nil)
+        [self->interceptRect unlockRect];
 }
 
 - (int)numberOfPlanes

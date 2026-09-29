@@ -27,6 +27,11 @@ plus four extra rows and is zero-filled. `bitmapData` is available only while
 locked; it returns that buffer in buffered modes, or marks the screen dirty and
 returns the framebuffer address at the intercepted screen rectangle's origin
 in direct mode.
+Locking pins the intercepted rectangle, services a pending state update while
+temporarily releasing that rectangle, selects buffered drawing unless the
+direct framebuffer is unobscured, and records the locked state. Try-lock
+rejects a nested lock; unlock clears the state and releases a pinned rectangle
+for direct-mapped operation.
 
 The seven public encoding globals resolve to these exact constant strings in
 the reference's Objective-C constant-string objects:

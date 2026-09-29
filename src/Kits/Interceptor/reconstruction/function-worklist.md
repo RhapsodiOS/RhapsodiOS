@@ -75,8 +75,8 @@ IDA function records: 392; symbol records: 540.
 | `0x47A051CC` | 68 | `-[NSDirectBitmap areaChangedScreen:from:to:]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
 | `0x47A05210` | 44 | `-[NSDirectBitmap areaWindowFreed:]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
 | `0x47A0523C` | 24 | `-[NSDirectBitmap areaDidChangeBuffering:toType:]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
-| `0x47A05254` | 52 | `-[NSDirectBitmap(Obsolete) colorSpace]` | unexamined |
-| `0x47A05288` | 52 | `-[NSDirectBitmap(Obsolete) data]` | unexamined |
+| `0x47A05254` | 52 | `-[NSDirectBitmap(Obsolete) colorSpace]` | static-reviewed; source authored; runtime pending |
+| `0x47A05288` | 52 | `-[NSDirectBitmap(Obsolete) data]` | static-reviewed; source authored; runtime pending |
 | `0x47A052BC` | 76 | `+[NSDirectPalette defaultPalette]` | static-reviewed; source authored; runtime pending |
 | `0x47A05308` | 76 | `+[NSDirectPalette defaultColorPalette]` | static-reviewed; source authored; runtime pending |
 | `0x47A05354` | 404 | `+[NSDirectPalette defaultGrayPalette]` | static-reviewed; source authored; runtime pending |
@@ -257,8 +257,8 @@ IDA function records: 392; symbol records: 540.
 | `0x47A0DFE4` | 16 | `-[NSSimpleBitmap pixelsWide]` | static-reviewed; runtime pending |
 | `0x47A0DFF4` | 16 | `-[NSSimpleBitmap pixelsHigh]` | static-reviewed; runtime pending |
 | `0x47A0E004` | 96 | `-[NSSimpleBitmap dealloc]` | static-reviewed; runtime pending |
-| `0x47A0E064` | 52 | `-[NSSimpleBitmap(Obsolete) colorSpace]` | unexamined |
-| `0x47A0E098` | 52 | `-[NSSimpleBitmap(Obsolete) data]` | unexamined |
+| `0x47A0E064` | 52 | `-[NSSimpleBitmap(Obsolete) colorSpace]` | static-reviewed; source authored; runtime pending |
+| `0x47A0E098` | 52 | `-[NSSimpleBitmap(Obsolete) data]` | static-reviewed; source authored; runtime pending |
 | `0x47A0E0CC` | 204 | `_rendezVous` | unexamined |
 | `0x47A0E198` | 52 | `__rendezvousPort` | unexamined |
 | `0x47A0E1CC` | 296 | `_getPSPort` | unexamined |
@@ -467,8 +467,8 @@ Named Objective-C symbols (candidate module by class name; verify in module meta
 | `0x47A051CC` | `-[NSDirectBitmap areaChangedScreen:from:to:]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A05210` | `-[NSDirectBitmap areaWindowFreed:]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A0523C` | `-[NSDirectBitmap areaDidChangeBuffering:toType:]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
-| `0x47A05254` | `-[NSDirectBitmap(Obsolete) colorSpace]` | `NSDirectBitmap.m` | unexamined |
-| `0x47A05288` | `-[NSDirectBitmap(Obsolete) data]` | `NSDirectBitmap.m` | unexamined |
+| `0x47A05254` | `-[NSDirectBitmap(Obsolete) colorSpace]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
+| `0x47A05288` | `-[NSDirectBitmap(Obsolete) data]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A052BC` | `+[NSDirectPalette defaultPalette]` | `NSDirectPalette.m` | static-reviewed; source authored; runtime pending |
 | `0x47A05308` | `+[NSDirectPalette defaultColorPalette]` | `NSDirectPalette.m` | static-reviewed; source authored; runtime pending |
 | `0x47A05354` | `+[NSDirectPalette defaultGrayPalette]` | `NSDirectPalette.m` | static-reviewed; source authored; runtime pending |
@@ -619,7 +619,7 @@ Named Objective-C symbols (candidate module by class name; verify in module meta
 | `0x47A0D924` | `-[NSShape offsetShape:]` | `NSShape.m` | static-reviewed; runtime pending |
 | `0x47A0D978` | `-[NSShape rectEnumerator]` | `NSShape.m` | static-reviewed; runtime pending |
 | `0x47A0D9D8` | `-[NSShape dealloc]` | `NSShape.m` | static-reviewed; runtime pending |
-| `0x47A0DA30` | `-[NSShape description]` | `NSShape.m` | source authored; runtime pending |
+| `0x47A0DA30` | `-[NSShape description]` | `NSShape.m` | static-reviewed; source authored; runtime pending |
 | `0x47A0DB8C` | `-[_NSShapeEnumerator initForShapeImpl:]` | `NSShape.m` | static-reviewed; runtime pending |
 | `0x47A0DBE8` | `-[_NSShapeEnumerator nextRect]` | `NSShape.m` | static-reviewed; runtime pending |
 | `0x47A0DD54` | `-[NSSimpleBitmap initWithBitmapDataPlanes:pixelsWide:pixelsHigh:bitsPerSample:samplesPerPixel:hasAlpha:isPlanar:colorSpaceName:bytesPerRow:bitsPerPixel:]` | `NSSimpleBitmap.m` | static-reviewed; runtime pending |
@@ -637,8 +637,8 @@ Named Objective-C symbols (candidate module by class name; verify in module meta
 | `0x47A0DFE4` | `-[NSSimpleBitmap pixelsWide]` | `NSSimpleBitmap.m` | static-reviewed; runtime pending |
 | `0x47A0DFF4` | `-[NSSimpleBitmap pixelsHigh]` | `NSSimpleBitmap.m` | static-reviewed; runtime pending |
 | `0x47A0E004` | `-[NSSimpleBitmap dealloc]` | `NSSimpleBitmap.m` | static-reviewed; runtime pending |
-| `0x47A0E064` | `-[NSSimpleBitmap(Obsolete) colorSpace]` | `NSSimpleBitmap.m` | unexamined |
-| `0x47A0E098` | `-[NSSimpleBitmap(Obsolete) data]` | `NSSimpleBitmap.m` | unexamined |
+| `0x47A0E064` | `-[NSSimpleBitmap(Obsolete) colorSpace]` | `NSSimpleBitmap.m` | static-reviewed; source authored; runtime pending |
+| `0x47A0E098` | `-[NSSimpleBitmap(Obsolete) data]` | `NSSimpleBitmap.m` | static-reviewed; source authored; runtime pending |
 
 ## i386 DR2
 
@@ -713,8 +713,8 @@ IDA function records: 419; symbol records: 629.
 | `0x47A035E0` | 51 | `-[NSDirectBitmap areaChangedScreen:from:to:]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
 | `0x47A03614` | 34 | `-[NSDirectBitmap areaWindowFreed:]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
 | `0x47A03638` | 16 | `-[NSDirectBitmap areaDidChangeBuffering:toType:]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
-| `0x47A03648` | 29 | `-[NSDirectBitmap(Obsolete) colorSpace]` | unexamined |
-| `0x47A03668` | 29 | `-[NSDirectBitmap(Obsolete) data]` | unexamined |
+| `0x47A03648` | 29 | `-[NSDirectBitmap(Obsolete) colorSpace]` | static-reviewed; source authored; runtime pending |
+| `0x47A03668` | 29 | `-[NSDirectBitmap(Obsolete) data]` | static-reviewed; source authored; runtime pending |
 | `0x47A03688` | 65 | `+[NSDirectPalette defaultPalette]` | static-reviewed; source authored; runtime pending |
 | `0x47A036CC` | 230 | `+[NSDirectPalette currentPalette]` | static-reviewed; source authored; runtime pending |
 | `0x47A037B4` | 180 | `-[NSDirectPalette initWithArrayOfColors:]` | static-reviewed; source authored; runtime pending |
@@ -875,7 +875,7 @@ IDA function records: 419; symbol records: 629.
 | `0x47A0AC9C` | 78 | `-[NSShape offsetShape:]` | static-reviewed; runtime pending |
 | `0x47A0ACEC` | 81 | `-[NSShape rectEnumerator]` | static-reviewed; runtime pending |
 | `0x47A0AD40` | 65 | `-[NSShape dealloc]` | unexamined |
-| `0x47A0AD84` | 304 | `-[NSShape description]` | unexamined |
+| `0x47A0AD84` | 304 | `-[NSShape description]` | static-reviewed; source authored; runtime pending |
 | `0x47A0AEB4` | 66 | `-[_NSShapeEnumerator initForShapeImpl:]` | static-reviewed; runtime pending |
 | `0x47A0AEF8` | 191 | `-[_NSShapeEnumerator nextRect]` | static-reviewed; runtime pending |
 | `0x47A0AFB8` | 259 | `-[NSSimpleBitmap initWithBitmapDataPlanes:pixelsWide:pixelsHigh:bitsPerSample:samplesPerPixel:hasAlpha:isPlanar:colorSpaceName:bytesPerRow:bitsPerPixel:]` | static-reviewed; runtime pending |
@@ -893,8 +893,8 @@ IDA function records: 419; symbol records: 629.
 | `0x47A0B1C0` | 13 | `-[NSSimpleBitmap pixelsWide]` | static-reviewed; runtime pending |
 | `0x47A0B1D0` | 13 | `-[NSSimpleBitmap pixelsHigh]` | static-reviewed; runtime pending |
 | `0x47A0B1E0` | 74 | `-[NSSimpleBitmap dealloc]` | static-reviewed; runtime pending |
-| `0x47A0B22C` | 29 | `-[NSSimpleBitmap(Obsolete) colorSpace]` | unexamined |
-| `0x47A0B24C` | 29 | `-[NSSimpleBitmap(Obsolete) data]` | unexamined |
+| `0x47A0B22C` | 29 | `-[NSSimpleBitmap(Obsolete) colorSpace]` | static-reviewed; source authored; runtime pending |
+| `0x47A0B24C` | 29 | `-[NSSimpleBitmap(Obsolete) data]` | static-reviewed; source authored; runtime pending |
 | `0x47A0B26C` | 112 | `_rendezVous` | unexamined |
 | `0x47A0B2DC` | 19 | `__rendezvousPort` | unexamined |
 | `0x47A0B2F0` | 234 | `_getPSPort` | unexamined |
@@ -1132,8 +1132,8 @@ Named Objective-C symbols (candidate module by class name; verify in module meta
 | `0x47A035E0` | `-[NSDirectBitmap areaChangedScreen:from:to:]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A03614` | `-[NSDirectBitmap areaWindowFreed:]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A03638` | `-[NSDirectBitmap areaDidChangeBuffering:toType:]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
-| `0x47A03648` | `-[NSDirectBitmap(Obsolete) colorSpace]` | `NSDirectBitmap.m` | unexamined |
-| `0x47A03668` | `-[NSDirectBitmap(Obsolete) data]` | `NSDirectBitmap.m` | unexamined |
+| `0x47A03648` | `-[NSDirectBitmap(Obsolete) colorSpace]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
+| `0x47A03668` | `-[NSDirectBitmap(Obsolete) data]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A03688` | `+[NSDirectPalette defaultPalette]` | `NSDirectPalette.m` | static-reviewed; source authored; runtime pending |
 | `0x47A036CC` | `+[NSDirectPalette currentPalette]` | `NSDirectPalette.m` | static-reviewed; source authored; runtime pending |
 | `0x47A037B4` | `-[NSDirectPalette initWithArrayOfColors:]` | `NSDirectPalette.m` | static-reviewed; source authored; runtime pending |
@@ -1282,7 +1282,7 @@ Named Objective-C symbols (candidate module by class name; verify in module meta
 | `0x47A0AC9C` | `-[NSShape offsetShape:]` | `NSShape.m` | static-reviewed; runtime pending |
 | `0x47A0ACEC` | `-[NSShape rectEnumerator]` | `NSShape.m` | static-reviewed; runtime pending |
 | `0x47A0AD40` | `-[NSShape dealloc]` | `NSShape.m` | unexamined |
-| `0x47A0AD84` | `-[NSShape description]` | `not reconstructed` | unexamined |
+| `0x47A0AD84` | `-[NSShape description]` | `NSShape.m` | static-reviewed; source authored; runtime pending |
 | `0x47A0AEB4` | `-[_NSShapeEnumerator initForShapeImpl:]` | `NSShape.m` | static-reviewed; runtime pending |
 | `0x47A0AEF8` | `-[_NSShapeEnumerator nextRect]` | `NSShape.m` | static-reviewed; runtime pending |
 | `0x47A0AFB8` | `-[NSSimpleBitmap initWithBitmapDataPlanes:pixelsWide:pixelsHigh:bitsPerSample:samplesPerPixel:hasAlpha:isPlanar:colorSpaceName:bytesPerRow:bitsPerPixel:]` | `NSSimpleBitmap.m` | static-reviewed; runtime pending |
@@ -1300,5 +1300,5 @@ Named Objective-C symbols (candidate module by class name; verify in module meta
 | `0x47A0B1C0` | `-[NSSimpleBitmap pixelsWide]` | `NSSimpleBitmap.m` | static-reviewed; runtime pending |
 | `0x47A0B1D0` | `-[NSSimpleBitmap pixelsHigh]` | `NSSimpleBitmap.m` | static-reviewed; runtime pending |
 | `0x47A0B1E0` | `-[NSSimpleBitmap dealloc]` | `NSSimpleBitmap.m` | static-reviewed; runtime pending |
-| `0x47A0B22C` | `-[NSSimpleBitmap(Obsolete) colorSpace]` | `NSSimpleBitmap.m` | unexamined |
-| `0x47A0B24C` | `-[NSSimpleBitmap(Obsolete) data]` | `NSSimpleBitmap.m` | unexamined |
+| `0x47A0B22C` | `-[NSSimpleBitmap(Obsolete) colorSpace]` | `NSSimpleBitmap.m` | static-reviewed; source authored; runtime pending |
+| `0x47A0B24C` | `-[NSSimpleBitmap(Obsolete) data]` | `NSSimpleBitmap.m` | static-reviewed; source authored; runtime pending |

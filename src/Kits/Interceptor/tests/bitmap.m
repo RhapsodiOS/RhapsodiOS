@@ -10,6 +10,16 @@
 #import "../InterceptorGlobals.h"
 #import "test_support.h"
 
+@interface NSDirectBitmap (ObsoleteCompatibility)
+- (NSString *)colorSpace;
+- (char *)data;
+@end
+
+@interface NSSimpleBitmap (ObsoleteCompatibility)
+- (NSString *)colorSpace;
+- (char *)data;
+@end
+
 int main(void)
 {
     NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
@@ -61,6 +71,8 @@ int main(void)
                   "unlocked direct bitmap reports zero row storage and one plane");
         TestCheck([directBitmap bitmapData] == 0,
                   "unlocked direct bitmap does not expose pixel storage");
+        TestCheck([directBitmap colorSpace] == nil && [directBitmap data] == 0,
+                  "obsolete direct-bitmap accessors forward to current accessors");
         memset(reported, 0x5A, sizeof(reported));
         [directBitmap getBitmapDataPlanes:reported];
         TestCheck(reported[0] == 0 && reported[1] == 0 &&
@@ -86,7 +98,8 @@ int main(void)
         hasAlpha:NO isPlanar:NO colorSpaceName:NSDeviceRGBColorSpace
         bytesPerRow:16 bitsPerPixel:24];
     TestCheck(bitmap != nil, "creates interleaved bitmap");
-    TestCheck([bitmap bitmapData] == red, "bitmapData returns the first supplied plane");
+    TestCheck([bitmap bitmapData] == red && [bitmap data] == (char *)red,
+              "bitmapData and obsolete data return the first supplied plane");
     TestCheck([bitmap pixelsWide] == 3 && [bitmap pixelsHigh] == 2, "pixel dimensions");
     TestCheck([bitmap bitsPerSample] == 8 && [bitmap samplesPerPixel] == 3 &&
               [bitmap bitsPerPixel] == 24, "sample and pixel depths");
@@ -94,7 +107,9 @@ int main(void)
               "explicit row bytes and computed plane size");
     TestCheck([bitmap numberOfPlanes] == 1 && ![bitmap isPlanar] && ![bitmap hasAlpha],
               "interleaved plane count and flags");
-    TestCheck([[bitmap colorSpaceName] isEqual:NSDeviceRGBColorSpace], "color space name");
+    TestCheck([[bitmap colorSpaceName] isEqual:NSDeviceRGBColorSpace] &&
+              [[bitmap colorSpace] isEqual:NSDeviceRGBColorSpace],
+              "colorSpaceName and obsolete colorSpace return the selected space");
     [bitmap getBitmapDataPlanes:reported];
     TestCheck(reported[0] == red && reported[1] == 0 && reported[2] == 0 &&
               reported[3] == 0 && reported[4] == 0,

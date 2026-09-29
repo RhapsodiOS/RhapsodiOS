@@ -11,3 +11,8 @@ band's x-edge pairs and advances to the next y event after the last pair.
 
 This is static cross-architecture evidence only. No runtime comparison or
 rebuilt i386 execution is available on the current host.
+
+The i386 `-[NSShape description]` uses the same class/address header,
+tab-indented rectangle lines, and closing `);` as the PPC image. `NSShape.m`
+contains the shared implementation; runtime output comparison remains
+pending.

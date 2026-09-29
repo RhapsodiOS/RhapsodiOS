@@ -91,6 +91,11 @@ typedef void (*NSBitmapCopyFunction)(const void *, int, void *, int, int, int);
     return self->colorSpace;
 }
 
+- (NSString *)colorSpace
+{
+    return [self colorSpaceName];
+}
+
 - (void *)conversionTable
 {
     return [(id)self->framebuffer conversionTable];
@@ -125,6 +130,11 @@ typedef void (*NSBitmapCopyFunction)(const void *, int, void *, int, int, int);
     self->_screenIsDirty = YES;
     return (unsigned char *)[(NSFramebuffer *)self->framebuffer
         addressForPoint:screenRect.origin];
+}
+
+- (char *)data
+{
+    return (char *)[self bitmapData];
 }
 
 - (void)getBitmapDataPlanes:(unsigned char **)planes

@@ -28,4 +28,9 @@ coalescing behavior; geometry tests remain unrun without the historical guest.
 | `_is_equal_shape` / `_is_empty_shape` | `0x47A0CBFC` / `0x47A0CC68` | `NSShape.m` |
 | `_offset_shape` | `0x47A0CCAC` | `NSShape.m` |
 | `_union_shape` / `_intersect_shape` / `_difference_shape` | `0x47A0CD0C` / `0x47A0D040` / `0x47A0D33C` | `NSShape.m` |
-| `-[NSShape description]` | `0x47A0DA30` | not yet reconstructed |
+| `-[NSShape description]` | `0x47A0DA30` | `NSShape.m` |
+
+The PPC description header formats the class and object address as
+`<Class: 0xaddress> = (`, then appends one tab-indented line per enumerated
+rectangle and closes with `);`. The source implementation and shape test cover
+the rectangle contents; runtime output comparison remains pending.

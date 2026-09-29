@@ -46,6 +46,11 @@
     return data[0];
 }
 
+- (char *)data
+{
+    return (char *)[self bitmapData];
+}
+
 - (void)getBitmapDataPlanes:(unsigned char **)planes
 {
     int plane;
@@ -100,6 +105,11 @@
 - (NSString *)colorSpaceName
 {
     return colorSpace;
+}
+
+- (NSString *)colorSpace
+{
+    return [self colorSpaceName];
 }
 
 - (int)pixelsWide

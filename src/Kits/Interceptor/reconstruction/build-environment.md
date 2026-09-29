@@ -7,15 +7,17 @@ Host tools found during Task 2:
 - angr 9.3.0 in `D:\RhapsodiOS\.venv-binrecon`. A synthetic i386 dylib fixture succeeds.
 - Binrecon now accepts 32-bit MH_DYLIB images in either byte order.
 
-The historical Rhapsody SDK, Project Builder make, and MIG are not yet verified in the isolated worktree. A DR2 i386 QEMU disk exists in the primary checkout at `D:\RhapsodiOS\vm\work\rhap-i386-bootstrapped.img`; it was booted with the repository's snapshot-mode `qemu_boot.py` helper and reached the Rhapsody login screen after 45 seconds. No guest shell was available for builds or tests. The configured SSH route returned `Connection refused`. No PowerPC guest has been identified.
+The historical Rhapsody SDK, Project Builder make, and MIG are not yet verified in the isolated worktree. The primary checkout contains an i386 Rhapsody image at `D:\RhapsodiOS\vm\work\rhap-i386-bootstrapped.img`; snapshot-mode QEMU boots it to a root single-user shell. A second image, `devzero-i386-build2.qcow2`, also reaches that shell. Both report Rhapsody Kernel Release 5.3 i386. The checked compiler and SDK paths (`/usr/bin/cc`, `/usr/bin/gcc`, `/usr/bin/make`, `/NextDeveloper/Tools`, `/NextDeveloper/Executables`, and `/Developer/Tools`) are absent from both images. The configured SSH route returned `Connection refused`; no PowerPC guest has been identified. The guest can run shell probes, but it cannot currently build the reconstructed framework or execute its compiled tests.
 
 ## Native Task 3 probe
 
-The current Windows host exposes GNU make only. `cc`, `gcc`, `clang`, `otool`,
-and `llvm-objdump` are not on `PATH`; the managed checkout has no `vm/vm.conf`,
-so there is no configured guest route here. The historical compiler, SDK,
-linker, MIG, and framework import libraries therefore remain unavailable for
-both CPUs. Do not treat source-level checks as a successful framework build.
+The current Windows host exposes GNU make and QEMU, but `cc`, `gcc`, `clang`,
+`otool`, and `llvm-objdump` are not on `PATH`; the managed checkout has no
+`vm/vm.conf`. Native i386 single-user execution is available through the
+existing primary-checkout disk images, but neither image has a compiler or
+developer SDK at the checked paths. The historical linker, MIG, and framework
+import libraries also remain unavailable. Do not treat source-level checks or
+the native shell probes as a successful framework build.
 
 The target commands are:
 

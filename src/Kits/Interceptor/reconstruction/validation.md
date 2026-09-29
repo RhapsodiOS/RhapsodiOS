@@ -9,11 +9,11 @@
 | Reference-only analyze | complete; CLI exit 1 because no rebuilt binary exists for normalized-functions acceptance | complete; CLI exit 1 because no rebuilt binary exists for normalized-functions acceptance |
 | Public header hashes | pass | pass (all nine copied headers match the primary bundle) |
 | ABI harness source | authored; not compiled or run without the historical toolchain | authored; not compiled or run without the historical toolchain |
-| ABI, source, and runtime execution | blocked by missing compatible guest/toolchain | blocked by missing compatible guest/toolchain |
+| ABI, source, and runtime execution | blocked: no compatible PowerPC guest or historical toolchain | Rhapsody i386 shell reached; blocked: no compiler/SDK in the guest |
 | NSSimpleBitmap static body review | pass; implementation tracks recovered fields/getters | pass against the DR2 i386 body; offsets were independently checked |
-| Bitmap behavior test execution | blocked by missing compatible guest/toolchain | blocked by missing compatible guest/toolchain |
+| Bitmap behavior test execution | blocked: no compatible PowerPC guest/toolchain | blocked: no compiler/SDK in the i386 guest |
 | Copy helper static implementation | pass; body review confirms element widths, post-row padding, and min-span behavior | pass; i386 loop bodies confirm the shared padding contract |
-| Copy helper test execution | blocked by missing compatible guest/toolchain | blocked by missing compatible guest/toolchain |
+| Copy helper test execution | blocked: no compatible PowerPC guest/toolchain | blocked: no compiler/SDK in the i386 guest |
 | NSDirectBitmap metadata accessors | PPC and i386 bodies agree; source and default-state tests authored; runtime pending | shared implementation; runtime pending |
 | NSDirectBitmap backing buffer and bitmapData | PPC and i386 behavior agrees; source and unlocked-state test authored; runtime pending | shared implementation; runtime pending |
 | NSDirectBitmap lock transition | PPC and i386 behavior agrees; source and state-transition test authored; runtime pending | shared implementation; runtime pending |
@@ -32,14 +32,14 @@
 | NSDirectBitmap deallocation | PPC and i386 release/free sequence agrees; source authored; runtime pending | shared implementation; runtime pending |
 | Mach IPC layouts and RPC contracts | screen/cursor request/reply bodies statically matched; test transport authored, execution pending | IDs and async cursor request independently confirmed; shared native descriptors/test harness, execution pending |
 | `CompositeBits` framebuffer flush RPC | PPC 7200/7300 request, out-of-line byte count, and reply statically matched; source and IPC transport assertion authored | DR2 i386 request descriptors and wrapper multiplication independently match PPC; source shared; runtime pending |
-| IPC ABI and transport test execution | blocked by missing compatible guest/toolchain | blocked by missing compatible guest/toolchain |
+| IPC ABI and transport test execution | blocked: no compatible PowerPC guest/toolchain | blocked: no compiler/SDK in the i386 guest |
 | Intercepted rectangle core | PPC static review and source authored; test command parses, execution pending | shared source intended for both; build/runtime comparison pending |
 | Client/rectangle notification dispatch | PPC static review and source authored; test command parses, execution pending | shared source intended for both; build/runtime comparison pending |
 | NSShape scanline, operation, and description review | PPC static implementation; source authored; runtime pending | shared format/source intended for both; runtime pending |
-| Shape behavior test execution | blocked by missing compatible guest/toolchain | blocked by missing compatible guest/toolchain |
+| Shape behavior test execution | blocked: no compatible PowerPC guest/toolchain | blocked: no compiler/SDK in the i386 guest |
 | Framebuffer setup, map/unmap, remap, metadata, conversion tables, accessors, cache ownership, lock stubs, and bounds | PPC static review and source authored; runtime pending | DR2 i386 confirms shared contracts and the zero-origin bounds difference; runtime pending |
 | Framebuffer and IPC test targets | authored; dry-run parses | authored; dry-run parses |
-| Framebuffer test execution | blocked: host has no Objective-C compiler, Rhapsody SDK, or configured guest | blocked: host has no Objective-C compiler, Rhapsody SDK, or configured guest |
+| Framebuffer test execution | blocked: no compatible PowerPC guest/toolchain | blocked: no compiler/SDK in the i386 guest |
 
 A reference-only analysis is an evidence-generation result when its summary says `complete: true` and contains the IDA record. The command exits 1 because comparison acceptance is not met without a rebuilt artifact; this is not a parity result.
 

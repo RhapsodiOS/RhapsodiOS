@@ -65,8 +65,8 @@ IDA function records: 392; symbol records: 540.
 | `0x47A04B10` | 164 | `-[NSDirectBitmap _setViewClip:]` | unexamined |
 | `0x47A04BB4` | 16 | `-[NSDirectBitmap _viewClipShape:]` | unexamined |
 | `0x47A04BC4` | 136 | `-[NSDirectBitmap _setViewClipShape:]` | unexamined |
-| `0x47A04C4C` | 148 | `-[NSDirectBitmap areaWillMove:by:]` | unexamined |
-| `0x47A04CE0` | 232 | `-[NSDirectBitmap areaDidMove:by:]` | unexamined |
+| `0x47A04C4C` | 148 | `-[NSDirectBitmap areaWillMove:by:]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
+| `0x47A04CE0` | 232 | `-[NSDirectBitmap areaDidMove:by:]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
 | `0x47A04DC8` | 356 | `-[NSDirectBitmap areaWillObscure:inRect:]` | unexamined |
 | `0x47A04F2C` | 476 | `-[NSDirectBitmap areaDidReveal:inRect:]` | unexamined |
 | `0x47A05108` | 76 | `-[NSDirectBitmap areaWasOrderedIn:]` | unexamined |
@@ -457,8 +457,8 @@ Named Objective-C symbols (candidate module by class name; verify in module meta
 | `0x47A04B10` | `-[NSDirectBitmap _setViewClip:]` | `NSDirectBitmap.m` | unexamined |
 | `0x47A04BB4` | `-[NSDirectBitmap _viewClipShape:]` | `NSDirectBitmap.m` | unexamined |
 | `0x47A04BC4` | `-[NSDirectBitmap _setViewClipShape:]` | `NSDirectBitmap.m` | unexamined |
-| `0x47A04C4C` | `-[NSDirectBitmap areaWillMove:by:]` | `NSDirectBitmap.m` | unexamined |
-| `0x47A04CE0` | `-[NSDirectBitmap areaDidMove:by:]` | `NSDirectBitmap.m` | unexamined |
+| `0x47A04C4C` | `-[NSDirectBitmap areaWillMove:by:]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
+| `0x47A04CE0` | `-[NSDirectBitmap areaDidMove:by:]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A04DC8` | `-[NSDirectBitmap areaWillObscure:inRect:]` | `NSDirectBitmap.m` | unexamined |
 | `0x47A04F2C` | `-[NSDirectBitmap areaDidReveal:inRect:]` | `NSDirectBitmap.m` | unexamined |
 | `0x47A05108` | `-[NSDirectBitmap areaWasOrderedIn:]` | `NSDirectBitmap.m` | unexamined |
@@ -703,8 +703,8 @@ IDA function records: 419; symbol records: 629.
 | `0x47A03024` | 123 | `-[NSDirectBitmap _setViewClip:]` | unexamined |
 | `0x47A030A0` | 16 | `-[NSDirectBitmap _viewClipShape:]` | unexamined |
 | `0x47A030B0` | 105 | `-[NSDirectBitmap _setViewClipShape:]` | unexamined |
-| `0x47A0311C` | 123 | `-[NSDirectBitmap areaWillMove:by:]` | unexamined |
-| `0x47A03198` | 217 | `-[NSDirectBitmap areaDidMove:by:]` | unexamined |
+| `0x47A0311C` | 123 | `-[NSDirectBitmap areaWillMove:by:]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
+| `0x47A03198` | 217 | `-[NSDirectBitmap areaDidMove:by:]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
 | `0x47A03274` | 308 | `-[NSDirectBitmap areaWillObscure:inRect:]` | unexamined |
 | `0x47A033A8` | 434 | `-[NSDirectBitmap areaDidReveal:inRect:]` | unexamined |
 | `0x47A0355C` | 46 | `-[NSDirectBitmap areaWasOrderedIn:]` | unexamined |
@@ -1122,8 +1122,8 @@ Named Objective-C symbols (candidate module by class name; verify in module meta
 | `0x47A03024` | `-[NSDirectBitmap _setViewClip:]` | `NSDirectBitmap.m` | unexamined |
 | `0x47A030A0` | `-[NSDirectBitmap _viewClipShape:]` | `NSDirectBitmap.m` | unexamined |
 | `0x47A030B0` | `-[NSDirectBitmap _setViewClipShape:]` | `NSDirectBitmap.m` | unexamined |
-| `0x47A0311C` | `-[NSDirectBitmap areaWillMove:by:]` | `NSDirectBitmap.m` | unexamined |
-| `0x47A03198` | `-[NSDirectBitmap areaDidMove:by:]` | `NSDirectBitmap.m` | unexamined |
+| `0x47A0311C` | `-[NSDirectBitmap areaWillMove:by:]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
+| `0x47A03198` | `-[NSDirectBitmap areaDidMove:by:]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A03274` | `-[NSDirectBitmap areaWillObscure:inRect:]` | `NSDirectBitmap.m` | unexamined |
 | `0x47A033A8` | `-[NSDirectBitmap areaDidReveal:inRect:]` | `NSDirectBitmap.m` | unexamined |
 | `0x47A0355C` | `-[NSDirectBitmap areaWasOrderedIn:]` | `NSDirectBitmap.m` | unexamined |

@@ -75,3 +75,7 @@ Invalidation and window-free callbacks clear the unobscured state and mark the
 bitmap for a deferred update. Screen-change callbacks record the new screen
 only when the old screen is the currently mapped one; buffering changes always
 request a deferred refresh, matching the PPC bodies.
+
+Move callbacks hold the bitmap locked across the server move, then offset both
+the cached screen region and optional view clip, recompute visibility, and send
+the delegate's `rectDidMove:` notification before releasing that lock state.

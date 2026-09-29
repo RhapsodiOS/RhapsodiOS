@@ -578,6 +578,37 @@ typedef void (*NSBitmapCopyFunction)(const void *, int, void *, int, int, int);
     return 0;
 }
 
+- (int)areaWillMove:(id)interceptedRect by:(NSPoint)delta
+{
+    (void)delta;
+    if (interceptedRect == self->interceptRect) {
+        self->isLocked = YES;
+        self->processingDelegate = YES;
+        if (self->_delegate != nil &&
+            [self->_delegate respondsToSelector:@selector(rectWillMove:)])
+            [self->_delegate rectWillMove:self];
+        self->processingDelegate = NO;
+    }
+    return 0;
+}
+
+- (int)areaDidMove:(id)interceptedRect by:(NSPoint)delta
+{
+    if (interceptedRect == self->interceptRect) {
+        [self->_dbm_private offsetShape:delta];
+        if (self->_viewClip != nil)
+            [self->_viewClip offsetShape:delta];
+        self->isUnobscured = [self _isUnobscured];
+        self->processingDelegate = YES;
+        if (self->_delegate != nil &&
+            [self->_delegate respondsToSelector:@selector(rectDidMove:)])
+            [self->_delegate rectDidMove:self];
+        self->processingDelegate = NO;
+        self->isLocked = NO;
+    }
+    return 0;
+}
+
 - (int)areaChangedScreen:(id)interceptedRect
                     from:(int)oldScreen to:(int)newScreen
 {

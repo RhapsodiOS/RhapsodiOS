@@ -127,3 +127,9 @@ invalid or freed windows clear the unobscured state and defer an update, while
 screen changes also record the destination screen when the old screen matches
 the mapped framebuffer. A buffering-change notification always marks state for
 refresh. The i386 bodies agree with these state transitions.
+
+Before a rectangle move, the bitmap marks itself locked and enters its delegate
+processing phase. Afterward it offsets the cached screen shape and optional
+view clip by the move delta, recomputes unobscured state, notifies a delegate
+that implements `rectDidMove:`, then clears both states. The DR2 i386 flow
+matches the PPC body.

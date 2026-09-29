@@ -7,7 +7,7 @@ output. Runtime observations remain pending.
 | Function | Address | Recovered behavior |
 |---|---:|---|
 | `-[NSFramebuffer initWithScreen:]` | `0x47A0A628` | Delegates to `initWithScreen:andMapIfPossible:` with mapping enabled. |
-| `-[NSFramebuffer initWithScreen:andMapIfPossible:]` | `0x47A0A660` | Resolves the screen number from `NSScreen`, checks validity, then calls the designated initializer; invalid screens release the receiver and return `nil`. |
+| `-[NSFramebuffer initWithScreen:andMapIfPossible:]` | `0x47A0A660` | Checks that the argument is an `NSScreen`, reads `NSScreenNumber` from `deviceDescription`, and delegates by screen number; invalid screens release the receiver and return `nil`. |
 | `-[NSFramebuffer initFromScreen:andMapIfPossible:]` | `0x47A0A72C` | Reuses a cached framebuffer for an existing screen; otherwise creates an interceptor client, requests framebuffer metadata, optionally maps it, validates color space and pixel depth, then initializes bitmap fields. Failure releases the receiver and returns `nil`. |
 | `-[NSFramebuffer unmapScreen]` | `0x47A0A9E0` | If plane zero is non-null, asks the client to unmap that screen/address, then clears plane zero. |
 | `-[NSFramebuffer remapScreen]` | `0x47A0AA3C` | Unmaps the old address, refreshes framebuffer metadata, remaps only when previously mapped, and updates bitmap dimensions, sample count, color space, color-space token, and row bytes. |

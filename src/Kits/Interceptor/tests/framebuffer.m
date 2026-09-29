@@ -11,6 +11,10 @@ int main(void)
 
     TestCheck(TestLoadSelectedFramework() != 0,
               "loads selected framework for framebuffer checks");
+    TestCheck([[NSFramebuffer alloc] initWithScreen:nil] == nil,
+              "rejects a missing screen");
+    TestCheck([[NSFramebuffer alloc] initWithScreen:nil andMapIfPossible:NO] == nil,
+              "rejects a missing screen when mapping is disabled");
     framebuffer = [NSFramebuffer alloc];
     TestCheck(framebuffer != nil, "allocates framebuffer instance");
     if (framebuffer) {

@@ -3,6 +3,27 @@
 
 @implementation NSFramebuffer
 
+- initWithScreen:(NSScreen *)screen
+{
+    return [self initWithScreen:screen andMapIfPossible:YES];
+}
+
+- initWithScreen:(NSScreen *)screen andMapIfPossible:(BOOL)map
+{
+    NSDictionary *deviceDescription;
+    NSNumber *screenNumberValue;
+
+    if (screen != nil && [screen isKindOfClass:[NSScreen class]]) {
+        deviceDescription = [screen deviceDescription];
+        screenNumberValue = [deviceDescription objectForKey:@"NSScreenNumber"];
+        return [self initFromScreen:[screenNumberValue intValue]
+                  andMapIfPossible:map];
+    }
+
+    [self release];
+    return nil;
+}
+
 - (BOOL)isMappable
 {
     return self->isMapped;

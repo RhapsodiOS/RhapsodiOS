@@ -163,8 +163,8 @@ IDA function records: 392; symbol records: 540.
 | `0x47A0A4D8` | 52 | `-[NSDirectScreen(Obsolete) data]` | unexamined |
 | `0x47A0A50C` | 176 | `_setInstanceForScreen` | unexamined |
 | `0x47A0A5BC` | 108 | `_instanceForScreen` | unexamined |
-| `0x47A0A628` | 56 | `-[NSFramebuffer initWithScreen:]` | unexamined |
-| `0x47A0A660` | 204 | `-[NSFramebuffer initWithScreen:andMapIfPossible:]` | unexamined |
+| `0x47A0A628` | 56 | `-[NSFramebuffer initWithScreen:]` | static-reviewed; runtime pending; `NSFramebuffer.m` |
+| `0x47A0A660` | 204 | `-[NSFramebuffer initWithScreen:andMapIfPossible:]` | static-reviewed; runtime pending; `NSFramebuffer.m` |
 | `0x47A0A72C` | 692 | `-[NSFramebuffer initFromScreen:andMapIfPossible:]` | unexamined |
 | `0x47A0A9E0` | 92 | `-[NSFramebuffer unmapScreen]` | unexamined |
 | `0x47A0AA3C` | 544 | `-[NSFramebuffer remapScreen]` | unexamined |
@@ -552,8 +552,8 @@ Named Objective-C symbols (candidate module by class name; verify in module meta
 | `0x47A0A248` | `-[NSDirectScreen(NSPrivate) _destroyBackingStore]` | `NSDirectScreen.m` | unexamined |
 | `0x47A0A4A4` | `-[NSDirectScreen(Obsolete) colorSpace]` | `NSDirectScreen.m` | unexamined |
 | `0x47A0A4D8` | `-[NSDirectScreen(Obsolete) data]` | `NSDirectScreen.m` | unexamined |
-| `0x47A0A628` | `-[NSFramebuffer initWithScreen:]` | `NSFramebuffer.m` | unexamined |
-| `0x47A0A660` | `-[NSFramebuffer initWithScreen:andMapIfPossible:]` | `NSFramebuffer.m` | unexamined |
+| `0x47A0A628` | `-[NSFramebuffer initWithScreen:]` | `NSFramebuffer.m` | static-reviewed; runtime pending |
+| `0x47A0A660` | `-[NSFramebuffer initWithScreen:andMapIfPossible:]` | `NSFramebuffer.m` | static-reviewed; runtime pending |
 | `0x47A0A72C` | `-[NSFramebuffer initFromScreen:andMapIfPossible:]` | `NSFramebuffer.m` | unexamined |
 | `0x47A0A9E0` | `-[NSFramebuffer unmapScreen]` | `NSFramebuffer.m` | unexamined |
 | `0x47A0AA3C` | `-[NSFramebuffer remapScreen]` | `NSFramebuffer.m` | unexamined |
@@ -799,8 +799,8 @@ IDA function records: 419; symbol records: 629.
 | `0x47A07FA0` | 29 | `-[NSDirectScreen(Obsolete) data]` | unexamined |
 | `0x47A07FC0` | 125 | `_setInstanceForScreen` | unexamined |
 | `0x47A08040` | 53 | `_instanceForScreen` | unexamined |
-| `0x47A08078` | 35 | `-[NSFramebuffer initWithScreen:]` | unexamined |
-| `0x47A0809C` | 185 | `-[NSFramebuffer initWithScreen:andMapIfPossible:]` | unexamined |
+| `0x47A08078` | 35 | `-[NSFramebuffer initWithScreen:]` | static-reviewed; runtime pending; `NSFramebuffer.m` |
+| `0x47A0809C` | 185 | `-[NSFramebuffer initWithScreen:andMapIfPossible:]` | static-reviewed; runtime pending; `NSFramebuffer.m` |
 | `0x47A08158` | 784 | `-[NSFramebuffer initFromScreen:andMapIfPossible:]` | unexamined |
 | `0x47A08468` | 66 | `-[NSFramebuffer unmapScreen]` | unexamined |
 | `0x47A084AC` | 656 | `-[NSFramebuffer remapScreen]` | unexamined |
@@ -1215,8 +1215,8 @@ Named Objective-C symbols (candidate module by class name; verify in module meta
 | `0x47A07E44` | `-[NSDirectScreen(NSPrivate) _destroyBackingStore]` | `NSDirectScreen.m` | unexamined |
 | `0x47A07F80` | `-[NSDirectScreen(Obsolete) colorSpace]` | `NSDirectScreen.m` | unexamined |
 | `0x47A07FA0` | `-[NSDirectScreen(Obsolete) data]` | `NSDirectScreen.m` | unexamined |
-| `0x47A08078` | `-[NSFramebuffer initWithScreen:]` | `NSFramebuffer.m` | unexamined |
-| `0x47A0809C` | `-[NSFramebuffer initWithScreen:andMapIfPossible:]` | `NSFramebuffer.m` | unexamined |
+| `0x47A08078` | `-[NSFramebuffer initWithScreen:]` | `NSFramebuffer.m` | static-reviewed; runtime pending |
+| `0x47A0809C` | `-[NSFramebuffer initWithScreen:andMapIfPossible:]` | `NSFramebuffer.m` | static-reviewed; runtime pending |
 | `0x47A08158` | `-[NSFramebuffer initFromScreen:andMapIfPossible:]` | `NSFramebuffer.m` | unexamined |
 | `0x47A08468` | `-[NSFramebuffer unmapScreen]` | `NSFramebuffer.m` | unexamined |
 | `0x47A084AC` | `-[NSFramebuffer remapScreen]` | `NSFramebuffer.m` | unexamined |

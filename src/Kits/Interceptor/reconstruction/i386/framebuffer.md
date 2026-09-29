@@ -18,4 +18,6 @@ an interceptor client, optional mapping, and initialization of the inherited
 bitmap fields. Its supported depths are 2, 8, 12, 15, 16, 24, and 32 bits; the
 15-bit path uses five samples in a 16-bit pixel, while 12/16-bit paths use four
 samples and 16-bit pixels. Runtime behavior and screen-bound calculations have
-not yet been compared.
+not yet been compared. The convenience initializer also checks the argument's
+class and extracts `NSScreenNumber` from the device description, matching the
+PPC implementation.

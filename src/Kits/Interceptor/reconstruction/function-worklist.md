@@ -242,21 +242,21 @@ IDA function records: 392; symbol records: 540.
 | `0x47A0DA30` | 348 | `-[NSShape description]` | unexamined |
 | `0x47A0DB8C` | 92 | `-[_NSShapeEnumerator initForShapeImpl:]` | unexamined |
 | `0x47A0DBE8` | 364 | `-[_NSShapeEnumerator nextRect]` | unexamined |
-| `0x47A0DD54` | 316 | `-[NSSimpleBitmap initWithBitmapDataPlanes:pixelsWide:pixelsHigh:bitsPerSample:samplesPerPixel:hasAlpha:isPlanar:colorSpaceName:bytesPerRow:bitsPerPixel:]` | unexamined |
-| `0x47A0DE90` | 16 | `-[NSSimpleBitmap bitmapData]` | unexamined |
-| `0x47A0DEA0` | 132 | `-[NSSimpleBitmap getBitmapDataPlanes:]` | unexamined |
-| `0x47A0DF24` | 20 | `-[NSSimpleBitmap isPlanar]` | unexamined |
-| `0x47A0DF38` | 20 | `-[NSSimpleBitmap hasAlpha]` | unexamined |
-| `0x47A0DF4C` | 16 | `-[NSSimpleBitmap samplesPerPixel]` | unexamined |
-| `0x47A0DF5C` | 16 | `-[NSSimpleBitmap bitsPerPixel]` | unexamined |
-| `0x47A0DF6C` | 16 | `-[NSSimpleBitmap bitsPerSample]` | unexamined |
-| `0x47A0DF7C` | 16 | `-[NSSimpleBitmap bytesPerRow]` | unexamined |
-| `0x47A0DF8C` | 36 | `-[NSSimpleBitmap bytesPerPlane]` | unexamined |
-| `0x47A0DFB0` | 36 | `-[NSSimpleBitmap numberOfPlanes]` | unexamined |
-| `0x47A0DFD4` | 16 | `-[NSSimpleBitmap colorSpaceName]` | unexamined |
-| `0x47A0DFE4` | 16 | `-[NSSimpleBitmap pixelsWide]` | unexamined |
-| `0x47A0DFF4` | 16 | `-[NSSimpleBitmap pixelsHigh]` | unexamined |
-| `0x47A0E004` | 96 | `-[NSSimpleBitmap dealloc]` | unexamined |
+| `0x47A0DD54` | 316 | `-[NSSimpleBitmap initWithBitmapDataPlanes:pixelsWide:pixelsHigh:bitsPerSample:samplesPerPixel:hasAlpha:isPlanar:colorSpaceName:bytesPerRow:bitsPerPixel:]` | static-reviewed; runtime pending |
+| `0x47A0DE90` | 16 | `-[NSSimpleBitmap bitmapData]` | static-reviewed; runtime pending |
+| `0x47A0DEA0` | 132 | `-[NSSimpleBitmap getBitmapDataPlanes:]` | static-reviewed; runtime pending |
+| `0x47A0DF24` | 20 | `-[NSSimpleBitmap isPlanar]` | static-reviewed; runtime pending |
+| `0x47A0DF38` | 20 | `-[NSSimpleBitmap hasAlpha]` | static-reviewed; runtime pending |
+| `0x47A0DF4C` | 16 | `-[NSSimpleBitmap samplesPerPixel]` | static-reviewed; runtime pending |
+| `0x47A0DF5C` | 16 | `-[NSSimpleBitmap bitsPerPixel]` | static-reviewed; runtime pending |
+| `0x47A0DF6C` | 16 | `-[NSSimpleBitmap bitsPerSample]` | static-reviewed; runtime pending |
+| `0x47A0DF7C` | 16 | `-[NSSimpleBitmap bytesPerRow]` | static-reviewed; runtime pending |
+| `0x47A0DF8C` | 36 | `-[NSSimpleBitmap bytesPerPlane]` | static-reviewed; runtime pending |
+| `0x47A0DFB0` | 36 | `-[NSSimpleBitmap numberOfPlanes]` | static-reviewed; runtime pending |
+| `0x47A0DFD4` | 16 | `-[NSSimpleBitmap colorSpaceName]` | static-reviewed; runtime pending |
+| `0x47A0DFE4` | 16 | `-[NSSimpleBitmap pixelsWide]` | static-reviewed; runtime pending |
+| `0x47A0DFF4` | 16 | `-[NSSimpleBitmap pixelsHigh]` | static-reviewed; runtime pending |
+| `0x47A0E004` | 96 | `-[NSSimpleBitmap dealloc]` | static-reviewed; runtime pending |
 | `0x47A0E064` | 52 | `-[NSSimpleBitmap(Obsolete) colorSpace]` | unexamined |
 | `0x47A0E098` | 52 | `-[NSSimpleBitmap(Obsolete) data]` | unexamined |
 | `0x47A0E0CC` | 204 | `_rendezVous` | unexamined |
@@ -622,21 +622,21 @@ Named Objective-C symbols (candidate module by class name; verify in module meta
 | `0x47A0DA30` | `-[NSShape description]` | `NSShape.m` | unexamined |
 | `0x47A0DB8C` | `-[_NSShapeEnumerator initForShapeImpl:]` | `NSShape.m` | unexamined |
 | `0x47A0DBE8` | `-[_NSShapeEnumerator nextRect]` | `NSShape.m` | unexamined |
-| `0x47A0DD54` | `-[NSSimpleBitmap initWithBitmapDataPlanes:pixelsWide:pixelsHigh:bitsPerSample:samplesPerPixel:hasAlpha:isPlanar:colorSpaceName:bytesPerRow:bitsPerPixel:]` | `NSSimpleBitmap.m` | unexamined |
-| `0x47A0DE90` | `-[NSSimpleBitmap bitmapData]` | `NSSimpleBitmap.m` | unexamined |
-| `0x47A0DEA0` | `-[NSSimpleBitmap getBitmapDataPlanes:]` | `NSSimpleBitmap.m` | unexamined |
-| `0x47A0DF24` | `-[NSSimpleBitmap isPlanar]` | `NSSimpleBitmap.m` | unexamined |
-| `0x47A0DF38` | `-[NSSimpleBitmap hasAlpha]` | `NSSimpleBitmap.m` | unexamined |
-| `0x47A0DF4C` | `-[NSSimpleBitmap samplesPerPixel]` | `NSSimpleBitmap.m` | unexamined |
-| `0x47A0DF5C` | `-[NSSimpleBitmap bitsPerPixel]` | `NSSimpleBitmap.m` | unexamined |
-| `0x47A0DF6C` | `-[NSSimpleBitmap bitsPerSample]` | `NSSimpleBitmap.m` | unexamined |
-| `0x47A0DF7C` | `-[NSSimpleBitmap bytesPerRow]` | `NSSimpleBitmap.m` | unexamined |
-| `0x47A0DF8C` | `-[NSSimpleBitmap bytesPerPlane]` | `NSSimpleBitmap.m` | unexamined |
-| `0x47A0DFB0` | `-[NSSimpleBitmap numberOfPlanes]` | `NSSimpleBitmap.m` | unexamined |
-| `0x47A0DFD4` | `-[NSSimpleBitmap colorSpaceName]` | `NSSimpleBitmap.m` | unexamined |
-| `0x47A0DFE4` | `-[NSSimpleBitmap pixelsWide]` | `NSSimpleBitmap.m` | unexamined |
-| `0x47A0DFF4` | `-[NSSimpleBitmap pixelsHigh]` | `NSSimpleBitmap.m` | unexamined |
-| `0x47A0E004` | `-[NSSimpleBitmap dealloc]` | `NSSimpleBitmap.m` | unexamined |
+| `0x47A0DD54` | `-[NSSimpleBitmap initWithBitmapDataPlanes:pixelsWide:pixelsHigh:bitsPerSample:samplesPerPixel:hasAlpha:isPlanar:colorSpaceName:bytesPerRow:bitsPerPixel:]` | `NSSimpleBitmap.m` | static-reviewed; runtime pending |
+| `0x47A0DE90` | `-[NSSimpleBitmap bitmapData]` | `NSSimpleBitmap.m` | static-reviewed; runtime pending |
+| `0x47A0DEA0` | `-[NSSimpleBitmap getBitmapDataPlanes:]` | `NSSimpleBitmap.m` | static-reviewed; runtime pending |
+| `0x47A0DF24` | `-[NSSimpleBitmap isPlanar]` | `NSSimpleBitmap.m` | static-reviewed; runtime pending |
+| `0x47A0DF38` | `-[NSSimpleBitmap hasAlpha]` | `NSSimpleBitmap.m` | static-reviewed; runtime pending |
+| `0x47A0DF4C` | `-[NSSimpleBitmap samplesPerPixel]` | `NSSimpleBitmap.m` | static-reviewed; runtime pending |
+| `0x47A0DF5C` | `-[NSSimpleBitmap bitsPerPixel]` | `NSSimpleBitmap.m` | static-reviewed; runtime pending |
+| `0x47A0DF6C` | `-[NSSimpleBitmap bitsPerSample]` | `NSSimpleBitmap.m` | static-reviewed; runtime pending |
+| `0x47A0DF7C` | `-[NSSimpleBitmap bytesPerRow]` | `NSSimpleBitmap.m` | static-reviewed; runtime pending |
+| `0x47A0DF8C` | `-[NSSimpleBitmap bytesPerPlane]` | `NSSimpleBitmap.m` | static-reviewed; runtime pending |
+| `0x47A0DFB0` | `-[NSSimpleBitmap numberOfPlanes]` | `NSSimpleBitmap.m` | static-reviewed; runtime pending |
+| `0x47A0DFD4` | `-[NSSimpleBitmap colorSpaceName]` | `NSSimpleBitmap.m` | static-reviewed; runtime pending |
+| `0x47A0DFE4` | `-[NSSimpleBitmap pixelsWide]` | `NSSimpleBitmap.m` | static-reviewed; runtime pending |
+| `0x47A0DFF4` | `-[NSSimpleBitmap pixelsHigh]` | `NSSimpleBitmap.m` | static-reviewed; runtime pending |
+| `0x47A0E004` | `-[NSSimpleBitmap dealloc]` | `NSSimpleBitmap.m` | static-reviewed; runtime pending |
 | `0x47A0E064` | `-[NSSimpleBitmap(Obsolete) colorSpace]` | `NSSimpleBitmap.m` | unexamined |
 | `0x47A0E098` | `-[NSSimpleBitmap(Obsolete) data]` | `NSSimpleBitmap.m` | unexamined |
 
@@ -878,21 +878,21 @@ IDA function records: 419; symbol records: 629.
 | `0x47A0AD84` | 304 | `-[NSShape description]` | unexamined |
 | `0x47A0AEB4` | 66 | `-[_NSShapeEnumerator initForShapeImpl:]` | unexamined |
 | `0x47A0AEF8` | 191 | `-[_NSShapeEnumerator nextRect]` | unexamined |
-| `0x47A0AFB8` | 259 | `-[NSSimpleBitmap initWithBitmapDataPlanes:pixelsWide:pixelsHigh:bitsPerSample:samplesPerPixel:hasAlpha:isPlanar:colorSpaceName:bytesPerRow:bitsPerPixel:]` | unexamined |
-| `0x47A0B0BC` | 13 | `-[NSSimpleBitmap bitmapData]` | unexamined |
-| `0x47A0B0CC` | 87 | `-[NSSimpleBitmap getBitmapDataPlanes:]` | unexamined |
-| `0x47A0B124` | 14 | `-[NSSimpleBitmap isPlanar]` | unexamined |
-| `0x47A0B134` | 14 | `-[NSSimpleBitmap hasAlpha]` | unexamined |
-| `0x47A0B144` | 13 | `-[NSSimpleBitmap samplesPerPixel]` | unexamined |
-| `0x47A0B154` | 13 | `-[NSSimpleBitmap bitsPerPixel]` | unexamined |
-| `0x47A0B164` | 13 | `-[NSSimpleBitmap bitsPerSample]` | unexamined |
-| `0x47A0B174` | 13 | `-[NSSimpleBitmap bytesPerRow]` | unexamined |
-| `0x47A0B184` | 19 | `-[NSSimpleBitmap bytesPerPlane]` | unexamined |
-| `0x47A0B198` | 24 | `-[NSSimpleBitmap numberOfPlanes]` | unexamined |
-| `0x47A0B1B0` | 13 | `-[NSSimpleBitmap colorSpaceName]` | unexamined |
-| `0x47A0B1C0` | 13 | `-[NSSimpleBitmap pixelsWide]` | unexamined |
-| `0x47A0B1D0` | 13 | `-[NSSimpleBitmap pixelsHigh]` | unexamined |
-| `0x47A0B1E0` | 74 | `-[NSSimpleBitmap dealloc]` | unexamined |
+| `0x47A0AFB8` | 259 | `-[NSSimpleBitmap initWithBitmapDataPlanes:pixelsWide:pixelsHigh:bitsPerSample:samplesPerPixel:hasAlpha:isPlanar:colorSpaceName:bytesPerRow:bitsPerPixel:]` | static-reviewed; runtime pending |
+| `0x47A0B0BC` | 13 | `-[NSSimpleBitmap bitmapData]` | static-reviewed; runtime pending |
+| `0x47A0B0CC` | 87 | `-[NSSimpleBitmap getBitmapDataPlanes:]` | static-reviewed; runtime pending |
+| `0x47A0B124` | 14 | `-[NSSimpleBitmap isPlanar]` | static-reviewed; runtime pending |
+| `0x47A0B134` | 14 | `-[NSSimpleBitmap hasAlpha]` | static-reviewed; runtime pending |
+| `0x47A0B144` | 13 | `-[NSSimpleBitmap samplesPerPixel]` | static-reviewed; runtime pending |
+| `0x47A0B154` | 13 | `-[NSSimpleBitmap bitsPerPixel]` | static-reviewed; runtime pending |
+| `0x47A0B164` | 13 | `-[NSSimpleBitmap bitsPerSample]` | static-reviewed; runtime pending |
+| `0x47A0B174` | 13 | `-[NSSimpleBitmap bytesPerRow]` | static-reviewed; runtime pending |
+| `0x47A0B184` | 19 | `-[NSSimpleBitmap bytesPerPlane]` | static-reviewed; runtime pending |
+| `0x47A0B198` | 24 | `-[NSSimpleBitmap numberOfPlanes]` | static-reviewed; runtime pending |
+| `0x47A0B1B0` | 13 | `-[NSSimpleBitmap colorSpaceName]` | static-reviewed; runtime pending |
+| `0x47A0B1C0` | 13 | `-[NSSimpleBitmap pixelsWide]` | static-reviewed; runtime pending |
+| `0x47A0B1D0` | 13 | `-[NSSimpleBitmap pixelsHigh]` | static-reviewed; runtime pending |
+| `0x47A0B1E0` | 74 | `-[NSSimpleBitmap dealloc]` | static-reviewed; runtime pending |
 | `0x47A0B22C` | 29 | `-[NSSimpleBitmap(Obsolete) colorSpace]` | unexamined |
 | `0x47A0B24C` | 29 | `-[NSSimpleBitmap(Obsolete) data]` | unexamined |
 | `0x47A0B26C` | 112 | `_rendezVous` | unexamined |
@@ -1285,20 +1285,20 @@ Named Objective-C symbols (candidate module by class name; verify in module meta
 | `0x47A0AD84` | `-[NSShape description]` | `NSShape.m` | unexamined |
 | `0x47A0AEB4` | `-[_NSShapeEnumerator initForShapeImpl:]` | `NSShape.m` | unexamined |
 | `0x47A0AEF8` | `-[_NSShapeEnumerator nextRect]` | `NSShape.m` | unexamined |
-| `0x47A0AFB8` | `-[NSSimpleBitmap initWithBitmapDataPlanes:pixelsWide:pixelsHigh:bitsPerSample:samplesPerPixel:hasAlpha:isPlanar:colorSpaceName:bytesPerRow:bitsPerPixel:]` | `NSSimpleBitmap.m` | unexamined |
-| `0x47A0B0BC` | `-[NSSimpleBitmap bitmapData]` | `NSSimpleBitmap.m` | unexamined |
-| `0x47A0B0CC` | `-[NSSimpleBitmap getBitmapDataPlanes:]` | `NSSimpleBitmap.m` | unexamined |
-| `0x47A0B124` | `-[NSSimpleBitmap isPlanar]` | `NSSimpleBitmap.m` | unexamined |
-| `0x47A0B134` | `-[NSSimpleBitmap hasAlpha]` | `NSSimpleBitmap.m` | unexamined |
-| `0x47A0B144` | `-[NSSimpleBitmap samplesPerPixel]` | `NSSimpleBitmap.m` | unexamined |
-| `0x47A0B154` | `-[NSSimpleBitmap bitsPerPixel]` | `NSSimpleBitmap.m` | unexamined |
-| `0x47A0B164` | `-[NSSimpleBitmap bitsPerSample]` | `NSSimpleBitmap.m` | unexamined |
-| `0x47A0B174` | `-[NSSimpleBitmap bytesPerRow]` | `NSSimpleBitmap.m` | unexamined |
-| `0x47A0B184` | `-[NSSimpleBitmap bytesPerPlane]` | `NSSimpleBitmap.m` | unexamined |
-| `0x47A0B198` | `-[NSSimpleBitmap numberOfPlanes]` | `NSSimpleBitmap.m` | unexamined |
-| `0x47A0B1B0` | `-[NSSimpleBitmap colorSpaceName]` | `NSSimpleBitmap.m` | unexamined |
-| `0x47A0B1C0` | `-[NSSimpleBitmap pixelsWide]` | `NSSimpleBitmap.m` | unexamined |
-| `0x47A0B1D0` | `-[NSSimpleBitmap pixelsHigh]` | `NSSimpleBitmap.m` | unexamined |
-| `0x47A0B1E0` | `-[NSSimpleBitmap dealloc]` | `NSSimpleBitmap.m` | unexamined |
+| `0x47A0AFB8` | `-[NSSimpleBitmap initWithBitmapDataPlanes:pixelsWide:pixelsHigh:bitsPerSample:samplesPerPixel:hasAlpha:isPlanar:colorSpaceName:bytesPerRow:bitsPerPixel:]` | `NSSimpleBitmap.m` | static-reviewed; runtime pending |
+| `0x47A0B0BC` | `-[NSSimpleBitmap bitmapData]` | `NSSimpleBitmap.m` | static-reviewed; runtime pending |
+| `0x47A0B0CC` | `-[NSSimpleBitmap getBitmapDataPlanes:]` | `NSSimpleBitmap.m` | static-reviewed; runtime pending |
+| `0x47A0B124` | `-[NSSimpleBitmap isPlanar]` | `NSSimpleBitmap.m` | static-reviewed; runtime pending |
+| `0x47A0B134` | `-[NSSimpleBitmap hasAlpha]` | `NSSimpleBitmap.m` | static-reviewed; runtime pending |
+| `0x47A0B144` | `-[NSSimpleBitmap samplesPerPixel]` | `NSSimpleBitmap.m` | static-reviewed; runtime pending |
+| `0x47A0B154` | `-[NSSimpleBitmap bitsPerPixel]` | `NSSimpleBitmap.m` | static-reviewed; runtime pending |
+| `0x47A0B164` | `-[NSSimpleBitmap bitsPerSample]` | `NSSimpleBitmap.m` | static-reviewed; runtime pending |
+| `0x47A0B174` | `-[NSSimpleBitmap bytesPerRow]` | `NSSimpleBitmap.m` | static-reviewed; runtime pending |
+| `0x47A0B184` | `-[NSSimpleBitmap bytesPerPlane]` | `NSSimpleBitmap.m` | static-reviewed; runtime pending |
+| `0x47A0B198` | `-[NSSimpleBitmap numberOfPlanes]` | `NSSimpleBitmap.m` | static-reviewed; runtime pending |
+| `0x47A0B1B0` | `-[NSSimpleBitmap colorSpaceName]` | `NSSimpleBitmap.m` | static-reviewed; runtime pending |
+| `0x47A0B1C0` | `-[NSSimpleBitmap pixelsWide]` | `NSSimpleBitmap.m` | static-reviewed; runtime pending |
+| `0x47A0B1D0` | `-[NSSimpleBitmap pixelsHigh]` | `NSSimpleBitmap.m` | static-reviewed; runtime pending |
+| `0x47A0B1E0` | `-[NSSimpleBitmap dealloc]` | `NSSimpleBitmap.m` | static-reviewed; runtime pending |
 | `0x47A0B22C` | `-[NSSimpleBitmap(Obsolete) colorSpace]` | `NSSimpleBitmap.m` | unexamined |
 | `0x47A0B24C` | `-[NSSimpleBitmap(Obsolete) data]` | `NSSimpleBitmap.m` | unexamined |

@@ -1,0 +1,49 @@
+{
+    CURRENTLY_ACTIVE_VERSION = YES;
+    DEPLOY_WITH_VERSION_NAME = A;
+    DOCICONFILES = ();
+    DYNAMIC_CODE_GEN = YES;
+    FILESTABLE = {
+        CLASSES = (NSSimpleBitmap.m, NSFramework_Interceptor.m, NSShape.m, NSDirectBitmap.m, NSDirectPalette.m, NSDirectScreen.m, NSFramebuffer.m, NSInterceptedRect.m, NSInterceptorClient.m);
+        C_FILES = (InterceptorIPC.c, InterceptorContext.c);
+        FRAMEWORKS = (AppKit.framework, Foundation.framework);
+        FRAMEWORKSEARCH = ("$(SYMROOT)");
+        HEADERSEARCH = (
+            "$(SYSTEM_LIBRARY_DIR)/Frameworks/AppKit.framework/Headers",
+            "$(SYSTEM_LIBRARY_DIR)/Frameworks/AppKit.framework/PrivateHeaders"
+        );
+        H_FILES = (
+            Interceptor.h, Interceptor_types.h, InterceptorGlobals.h,
+            NSBitmap.h, NSDirectBitmap.h, NSDirectPalette.h,
+            NSDirectScreen.h, NSFramebuffer.h, NSShape.h,
+            Private/NSInterceptedRect.h, Private/NSInterceptorClient.h,
+            Private/InterceptorPrivate.h, Private/InterceptorCopy.h,
+            Private/InterceptorIPC.h
+        );
+        M_FILES = ();
+        OTHER_LIBS = ("/usr/lib/libDriver.A.dylib");
+        OTHER_RESOURCES = (Resources/Info-nextstep.plist);
+        OTHER_SOURCES = (Makefile, Makefile.preamble, Makefile.postamble);
+        PUBLIC_HEADERS = (
+            Interceptor.h, Interceptor_types.h, InterceptorGlobals.h,
+            NSBitmap.h, NSDirectBitmap.h, NSDirectPalette.h,
+            NSDirectScreen.h, NSFramebuffer.h, NSShape.h
+        );
+        SUBPROJECTS = ();
+    };
+    GENERATEMAIN = YES;
+    LANGUAGE = English;
+    MAKEFILEDIR = "$(MAKEFILEPATH)/pb_makefiles";
+    NEXTSTEP_BUILDTOOL = /bin/gnumake;
+    NEXTSTEP_INSTALLDIR = "$(SYSTEM_LIBRARY_DIR)/Frameworks";
+    NEXTSTEP_OBJCPLUS_COMPILER = /usr/bin/cc;
+    PDO_UNIX_BUILDTOOL = $NEXT_ROOT/Developer/bin/make;
+    PDO_UNIX_INSTALLDIR = "$(SYSTEM_LIBRARY_DIR)/Frameworks";
+    PDO_UNIX_OBJCPLUS_COMPILER = "$(NEXTDEV_BIN)/gcc";
+    PROJECTNAME = Interceptor;
+    PROJECTTYPE = Framework;
+    PROJECTVERSION = 1.0;
+    WINDOWS_BUILDTOOL = $NEXT_ROOT/Developer/Executables/make;
+    WINDOWS_INSTALLDIR = "$(SYSTEM_LIBRARY_DIR)/Frameworks";
+    WINDOWS_OBJCPLUS_COMPILER = "$(DEVDIR)/gcc";
+}

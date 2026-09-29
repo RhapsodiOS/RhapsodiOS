@@ -1,0 +1,15 @@
+# Framework link identity and external build roots are supplied by Project Builder.
+OTHER_LDFLAGS = -install_name $(SYSTEM_LIBRARY_DIR)/Frameworks/Interceptor.framework/Versions/A/Interceptor
+OTHER_LIBS = /usr/lib/libDriver.A.dylib
+OTHER_SOURCEFILES = Resources/Info-nextstep.plist
+PUBLIC_HEADER_DIR =
+PUBLIC_PRECOMPILED_HEADERS =
+PROJECT_PRECOMPILED_HEADERS =
+OTHER_OFILES =
+OTHER_PRODUCT_DEPENDS =
+OTHER_INITIAL_TARGETS =
+OTHER_INSTALL_DEPENDS =
+OTHER_GARBAGE =
+DEFSFILES =
+MIGFILES =
+MSGFILES =

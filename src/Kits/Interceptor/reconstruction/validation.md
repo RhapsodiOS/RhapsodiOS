@@ -16,6 +16,7 @@
 | Copy helper test execution | blocked by missing compatible guest/toolchain | blocked by missing compatible guest/toolchain |
 | Mach IPC layouts and RPC contracts | static implementation matches PPC request/reply bodies; transport test authored, execution pending | static cross-check matches IDs/sizes/descriptors/context; transport test execution pending |
 | IPC ABI and transport test execution | blocked by missing compatible guest/toolchain | blocked by missing compatible guest/toolchain |
+| Client/rectangle dispatch review | PPC static review complete; implementation pending | runtime/dispatch comparison pending |
 | NSShape scanline and operation review | static implementation; description remains incomplete | static cross-check supports shared format; runtime pending |
 | Shape behavior test execution | blocked by missing compatible guest/toolchain | blocked by missing compatible guest/toolchain |
 

@@ -206,20 +206,20 @@ IDA function records: 392; symbol records: 540.
 | `0x47A0B55C` | 20 | `-[NSInterceptedRect isTotallyObscured]` | unexamined |
 | `0x47A0B570` | 16 | `-[NSInterceptedRect _flags]` | unexamined |
 | `0x47A0B580` | 16 | `-[NSInterceptedRect framebuffer]` | unexamined |
-| `0x47A0B590` | 1908 | `-[NSInterceptedRect _handleMsg:withReply:]` | unexamined |
+| `0x47A0B590` | 1908 | `-[NSInterceptedRect _handleMsg:withReply:]` | static-reviewed; source pending; runtime pending; `ppc/client-state.md` |
 | `0x47A0BD04` | 188 | `+[NSInterceptorClient initialize]` | unexamined |
-| `0x47A0BDC0` | 284 | `-[NSInterceptorClient init]` | unexamined |
-| `0x47A0BEDC` | 388 | `-[NSInterceptorClient dealloc]` | unexamined |
-| `0x47A0C060` | 108 | `-[NSInterceptorClient setHandlingThread:]` | unexamined |
-| `0x47A0C0CC` | 60 | `-[NSInterceptorClient handlingThread]` | unexamined |
-| `0x47A0C108` | 308 | `-[NSInterceptorClient interceptorPort]` | unexamined |
-| `0x47A0C23C` | 268 | `-[NSInterceptorClient handleInterceptorMessage:withReply:]` | unexamined |
-| `0x47A0C348` | 560 | `-[NSInterceptorClient _addInterceptedRect:returnedScreenRect:returnedFlags:]` | unexamined |
-| `0x47A0C578` | 160 | `-[NSInterceptorClient _removeInterceptedRect:]` | unexamined |
-| `0x47A0C618` | 16 | `-[NSInterceptorClient _context]` | unexamined |
-| `0x47A0C628` | 88 | `-[NSInterceptorClient windowServerPortDeath:]` | unexamined |
-| `0x47A0C680` | 632 | `-[NSInterceptorClient _notifyHandler]` | unexamined |
-| `0x47A0C8F8` | 364 | `-[NSInterceptorClient startHandlingThread]` | unexamined |
+| `0x47A0BDC0` | 284 | `-[NSInterceptorClient init]` | static-reviewed; source pending; runtime pending; `ppc/client-state.md` |
+| `0x47A0BEDC` | 388 | `-[NSInterceptorClient dealloc]` | static-reviewed; source pending; runtime pending; `ppc/client-state.md` |
+| `0x47A0C060` | 108 | `-[NSInterceptorClient setHandlingThread:]` | static-reviewed; source pending; runtime pending; `ppc/client-state.md` |
+| `0x47A0C0CC` | 60 | `-[NSInterceptorClient handlingThread]` | static-reviewed; source pending; runtime pending; `ppc/client-state.md` |
+| `0x47A0C108` | 308 | `-[NSInterceptorClient interceptorPort]` | static-reviewed; source pending; runtime pending; `ppc/client-state.md` |
+| `0x47A0C23C` | 268 | `-[NSInterceptorClient handleInterceptorMessage:withReply:]` | static-reviewed; source pending; runtime pending; `ppc/client-state.md` |
+| `0x47A0C348` | 560 | `-[NSInterceptorClient _addInterceptedRect:returnedScreenRect:returnedFlags:]` | static-reviewed; source pending; runtime pending; `ppc/client-state.md` |
+| `0x47A0C578` | 160 | `-[NSInterceptorClient _removeInterceptedRect:]` | static-reviewed; source pending; runtime pending; `ppc/client-state.md` |
+| `0x47A0C618` | 16 | `-[NSInterceptorClient _context]` | static-reviewed; source pending; runtime pending; `ppc/client-state.md` |
+| `0x47A0C628` | 88 | `-[NSInterceptorClient windowServerPortDeath:]` | static-reviewed; source pending; runtime pending; `ppc/client-state.md` |
+| `0x47A0C680` | 632 | `-[NSInterceptorClient _notifyHandler]` | static-reviewed; source pending; runtime pending; `ppc/client-state.md` |
+| `0x47A0C8F8` | 364 | `-[NSInterceptorClient startHandlingThread]` | static-reviewed; source pending; runtime pending; `ppc/client-state.md` |
 | `0x47A0CA64` | 60 | `_empty_shape` | static-reviewed; runtime pending |
 | `0x47A0CAA0` | 348 | `_rect_shape` | static-reviewed; runtime pending |
 | `0x47A0CBFC` | 108 | `_is_equal_shape` | static-reviewed; runtime pending |
@@ -594,20 +594,20 @@ Named Objective-C symbols (candidate module by class name; verify in module meta
 | `0x47A0B55C` | `-[NSInterceptedRect isTotallyObscured]` | `NSInterceptedRect.m` | unexamined |
 | `0x47A0B570` | `-[NSInterceptedRect _flags]` | `NSInterceptedRect.m` | unexamined |
 | `0x47A0B580` | `-[NSInterceptedRect framebuffer]` | `NSInterceptedRect.m` | unexamined |
-| `0x47A0B590` | `-[NSInterceptedRect _handleMsg:withReply:]` | `NSInterceptedRect.m` | unexamined |
+| `0x47A0B590` | `-[NSInterceptedRect _handleMsg:withReply:]` | `NSInterceptedRect.m` | static-reviewed; runtime pending |
 | `0x47A0BD04` | `+[NSInterceptorClient initialize]` | `NSInterceptorClient.m` | unexamined |
-| `0x47A0BDC0` | `-[NSInterceptorClient init]` | `NSInterceptorClient.m` | unexamined |
-| `0x47A0BEDC` | `-[NSInterceptorClient dealloc]` | `NSInterceptorClient.m` | unexamined |
-| `0x47A0C060` | `-[NSInterceptorClient setHandlingThread:]` | `NSInterceptorClient.m` | unexamined |
-| `0x47A0C0CC` | `-[NSInterceptorClient handlingThread]` | `NSInterceptorClient.m` | unexamined |
-| `0x47A0C108` | `-[NSInterceptorClient interceptorPort]` | `NSInterceptorClient.m` | unexamined |
-| `0x47A0C23C` | `-[NSInterceptorClient handleInterceptorMessage:withReply:]` | `NSInterceptorClient.m` | unexamined |
-| `0x47A0C348` | `-[NSInterceptorClient _addInterceptedRect:returnedScreenRect:returnedFlags:]` | `NSInterceptorClient.m` | unexamined |
-| `0x47A0C578` | `-[NSInterceptorClient _removeInterceptedRect:]` | `NSInterceptorClient.m` | unexamined |
-| `0x47A0C618` | `-[NSInterceptorClient _context]` | `NSInterceptorClient.m` | unexamined |
-| `0x47A0C628` | `-[NSInterceptorClient windowServerPortDeath:]` | `NSInterceptorClient.m` | unexamined |
-| `0x47A0C680` | `-[NSInterceptorClient _notifyHandler]` | `NSInterceptorClient.m` | unexamined |
-| `0x47A0C8F8` | `-[NSInterceptorClient startHandlingThread]` | `NSInterceptorClient.m` | unexamined |
+| `0x47A0BDC0` | `-[NSInterceptorClient init]` | `NSInterceptorClient.m` | static-reviewed; runtime pending |
+| `0x47A0BEDC` | `-[NSInterceptorClient dealloc]` | `NSInterceptorClient.m` | static-reviewed; runtime pending |
+| `0x47A0C060` | `-[NSInterceptorClient setHandlingThread:]` | `NSInterceptorClient.m` | static-reviewed; runtime pending |
+| `0x47A0C0CC` | `-[NSInterceptorClient handlingThread]` | `NSInterceptorClient.m` | static-reviewed; runtime pending |
+| `0x47A0C108` | `-[NSInterceptorClient interceptorPort]` | `NSInterceptorClient.m` | static-reviewed; runtime pending |
+| `0x47A0C23C` | `-[NSInterceptorClient handleInterceptorMessage:withReply:]` | `NSInterceptorClient.m` | static-reviewed; runtime pending |
+| `0x47A0C348` | `-[NSInterceptorClient _addInterceptedRect:returnedScreenRect:returnedFlags:]` | `NSInterceptorClient.m` | static-reviewed; runtime pending |
+| `0x47A0C578` | `-[NSInterceptorClient _removeInterceptedRect:]` | `NSInterceptorClient.m` | static-reviewed; runtime pending |
+| `0x47A0C618` | `-[NSInterceptorClient _context]` | `NSInterceptorClient.m` | static-reviewed; runtime pending |
+| `0x47A0C628` | `-[NSInterceptorClient windowServerPortDeath:]` | `NSInterceptorClient.m` | static-reviewed; runtime pending |
+| `0x47A0C680` | `-[NSInterceptorClient _notifyHandler]` | `NSInterceptorClient.m` | static-reviewed; runtime pending |
+| `0x47A0C8F8` | `-[NSInterceptorClient startHandlingThread]` | `NSInterceptorClient.m` | static-reviewed; runtime pending |
 | `0x47A0D648` | `-[NSShape init]` | `NSShape.m` | static-reviewed; runtime pending |
 | `0x47A0D6B4` | `-[NSShape initFromRect:]` | `NSShape.m` | static-reviewed; runtime pending |
 | `0x47A0D734` | `-[NSShape intersectWithShape:]` | `NSShape.m` | static-reviewed; runtime pending |

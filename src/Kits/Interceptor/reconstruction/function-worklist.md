@@ -167,12 +167,12 @@ IDA function records: 392; symbol records: 540.
 | `0x47A0A660` | 204 | `-[NSFramebuffer initWithScreen:andMapIfPossible:]` | static-reviewed; runtime pending; `NSFramebuffer.m` |
 | `0x47A0A72C` | 692 | `-[NSFramebuffer initFromScreen:andMapIfPossible:]` | static-reviewed; source authored; runtime pending; `NSFramebuffer.m` |
 | `0x47A0A9E0` | 92 | `-[NSFramebuffer unmapScreen]` | static-reviewed; source authored; runtime pending; `NSFramebuffer.m` |
-| `0x47A0AA3C` | 544 | `-[NSFramebuffer remapScreen]` | unexamined |
+| `0x47A0AA3C` | 544 | `-[NSFramebuffer remapScreen]` | static-reviewed; source authored; runtime pending; `NSFramebuffer.m` |
 | `0x47A0AC5C` | 20 | `-[NSFramebuffer isMappable]` | static-reviewed; runtime pending; `NSFramebuffer.m` |
 | `0x47A0AC70` | 216 | `-[NSFramebuffer screenBounds]` | static-reviewed; runtime pending; architecture difference recorded |
 | `0x47A0AD48` | 16 | `-[NSFramebuffer screenNumber]` | static-reviewed; runtime pending; `NSFramebuffer.m` |
-| `0x47A0AD58` | 184 | `-[NSFramebuffer conversionTable]` | unexamined |
-| `0x47A0AE10` | 184 | `-[NSFramebuffer inverseConversionTable]` | unexamined |
+| `0x47A0AD58` | 184 | `-[NSFramebuffer conversionTable]` | static-reviewed; source authored; runtime pending; `NSFramebuffer.m` |
+| `0x47A0AE10` | 184 | `-[NSFramebuffer inverseConversionTable]` | static-reviewed; source authored; runtime pending; `NSFramebuffer.m` |
 | `0x47A0AEC8` | 144 | `-[NSFramebuffer addressForPoint:]` | static-reviewed; runtime pending; `NSFramebuffer.m` |
 | `0x47A0AF58` | 100 | `-[NSFramebuffer pixelEncoding]` | static-reviewed; runtime pending; `NSFramebuffer.m` |
 | `0x47A0AFBC` | 100 | `-[NSFramebuffer driver]` | static-reviewed; runtime pending; `NSFramebuffer.m` |
@@ -268,10 +268,10 @@ IDA function records: 392; symbol records: 540.
 | `0x47A0E448` | 92 | `_Interceptor_mig_error` | unexamined |
 | `0x47A0E4A4` | 84 | `_InterceptorMapFrameBuffer` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
 | `0x47A0E4F8` | 84 | `_InterceptorUnmapFrameBuffer` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
-| `0x47A0E54C` | 16 | `_InterceptorGetBM34ToBM35Table` | unexamined |
-| `0x47A0E55C` | 16 | `_InterceptorGetBM35ToBM34Table` | unexamined |
-| `0x47A0E56C` | 48 | `_InterceptorGetBM256ToBM38Table` | unexamined |
-| `0x47A0E59C` | 48 | `_InterceptorGetBM38ToBM256Table` | unexamined |
+| `0x47A0E54C` | 16 | `_InterceptorGetBM34ToBM35Table` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
+| `0x47A0E55C` | 16 | `_InterceptorGetBM35ToBM34Table` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
+| `0x47A0E56C` | 48 | `_InterceptorGetBM256ToBM38Table` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
+| `0x47A0E59C` | 48 | `_InterceptorGetBM38ToBM256Table` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
 | `0x47A0E5CC` | 44 | `_InterceptorScreenCount` | PPC static-reviewed; source authored; runtime pending |
 | `0x47A0E5F8` | 140 | `_InterceptorCompositeBits` | unexamined |
 | `0x47A0E684` | 140 | `_InterceptorFrameBufferInfo` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
@@ -286,19 +286,19 @@ IDA function records: 392; symbol records: 540.
 | `0x47A0E880` | 332 | `__InterceptorEnableFrameBufferMapping` | unexamined |
 | `0x47A0E9CC` | 332 | `__InterceptorDisableFrameBufferMapping` | unexamined |
 | `0x47A0EB18` | 336 | `__InterceptorMapFrameBuffer` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
-| `0x47A0EC68` | 384 | `__InterceptorGetBM34ToBM35Table` | unexamined |
+| `0x47A0EC68` | 384 | `__InterceptorGetBM34ToBM35Table` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
 | `0x47A0EDE8` | 472 | `__InterceptorCompositeBits` | unexamined |
 | `0x47A0EFC0` | 704 | `__InterceptorFrameBufferInfo` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
 | `0x47A0F280` | 284 | `__OldInterceptorSetNotifyPort` | unexamined |
 | `0x47A0F39C` | 436 | `__InterceptorAddRect` | static-reviewed; `InterceptorIPC.c`; runtime pending |
 | `0x47A0F550` | 284 | `__InterceptorRemoveRect` | static-reviewed; `InterceptorIPC.c`; runtime pending |
 | `0x47A0F66C` | 300 | `__InterceptorSetNotifyPort` | static-reviewed; `InterceptorIPC.c`; runtime pending |
-| `0x47A0F798` | 392 | `__InterceptorGetBM35ToBM34Table` | unexamined |
+| `0x47A0F798` | 392 | `__InterceptorGetBM35ToBM34Table` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
 | `0x47A0F920` | 268 | `__InterceptorScreenCount` | PPC static-reviewed; source authored; runtime pending |
 | `0x47A0FA2C` | 268 | `__InterceptorHideCursor` | PPC static-reviewed; source authored; runtime pending |
 | `0x47A0FB38` | 268 | `__InterceptorShowCursor` | PPC static-reviewed; source authored; runtime pending |
-| `0x47A0FC44` | 304 | `__InterceptorGetBM256ToBM38Table` | unexamined |
-| `0x47A0FD74` | 304 | `__InterceptorGetBM38ToBM256Table` | unexamined |
+| `0x47A0FC44` | 304 | `__InterceptorGetBM256ToBM38Table` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
+| `0x47A0FD74` | 304 | `__InterceptorGetBM38ToBM256Table` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
 | `0x47A0FEA4` | 172 | `__InterceptorFlushRect` | unexamined |
 | `0x47A0FF50` | 172 | `__InterceptorAddDirtyRect` | unexamined |
 | `0x47A0FFFC` | 128 | `__InterceptorFlushDirtyRects` | unexamined |
@@ -556,12 +556,12 @@ Named Objective-C symbols (candidate module by class name; verify in module meta
 | `0x47A0A660` | `-[NSFramebuffer initWithScreen:andMapIfPossible:]` | `NSFramebuffer.m` | static-reviewed; runtime pending |
 | `0x47A0A72C` | `-[NSFramebuffer initFromScreen:andMapIfPossible:]` | `NSFramebuffer.m` | static-reviewed; source authored; runtime pending |
 | `0x47A0A9E0` | `-[NSFramebuffer unmapScreen]` | `NSFramebuffer.m` | static-reviewed; source authored; runtime pending |
-| `0x47A0AA3C` | `-[NSFramebuffer remapScreen]` | `NSFramebuffer.m` | unexamined |
+| `0x47A0AA3C` | `-[NSFramebuffer remapScreen]` | `NSFramebuffer.m` | static-reviewed; source authored; runtime pending |
 | `0x47A0AC5C` | `-[NSFramebuffer isMappable]` | `NSFramebuffer.m` | static-reviewed; runtime pending |
 | `0x47A0AC70` | `-[NSFramebuffer screenBounds]` | `NSFramebuffer.m` | static-reviewed; runtime pending; architecture difference recorded |
 | `0x47A0AD48` | `-[NSFramebuffer screenNumber]` | `NSFramebuffer.m` | static-reviewed; runtime pending |
-| `0x47A0AD58` | `-[NSFramebuffer conversionTable]` | `NSFramebuffer.m` | unexamined |
-| `0x47A0AE10` | `-[NSFramebuffer inverseConversionTable]` | `NSFramebuffer.m` | unexamined |
+| `0x47A0AD58` | `-[NSFramebuffer conversionTable]` | `NSFramebuffer.m` | static-reviewed; source authored; runtime pending |
+| `0x47A0AE10` | `-[NSFramebuffer inverseConversionTable]` | `NSFramebuffer.m` | static-reviewed; source authored; runtime pending |
 | `0x47A0AEC8` | `-[NSFramebuffer addressForPoint:]` | `NSFramebuffer.m` | static-reviewed; runtime pending |
 | `0x47A0AF58` | `-[NSFramebuffer pixelEncoding]` | `NSFramebuffer.m` | static-reviewed; runtime pending |
 | `0x47A0AFBC` | `-[NSFramebuffer driver]` | `NSFramebuffer.m` | static-reviewed; runtime pending |
@@ -803,12 +803,12 @@ IDA function records: 419; symbol records: 629.
 | `0x47A0809C` | 185 | `-[NSFramebuffer initWithScreen:andMapIfPossible:]` | static-reviewed; runtime pending; `NSFramebuffer.m` |
 | `0x47A08158` | 784 | `-[NSFramebuffer initFromScreen:andMapIfPossible:]` | static-reviewed; source authored; runtime pending; `NSFramebuffer.m` |
 | `0x47A08468` | 66 | `-[NSFramebuffer unmapScreen]` | static-reviewed; source authored; runtime pending; `NSFramebuffer.m` |
-| `0x47A084AC` | 656 | `-[NSFramebuffer remapScreen]` | unexamined |
+| `0x47A084AC` | 656 | `-[NSFramebuffer remapScreen]` | static-reviewed; source authored; runtime pending; `NSFramebuffer.m` |
 | `0x47A0873C` | 17 | `-[NSFramebuffer isMappable]` | static-reviewed; runtime pending; `NSFramebuffer.m` |
 | `0x47A08750` | 119 | `-[NSFramebuffer screenBounds]` | static-reviewed; runtime pending; architecture difference recorded |
 | `0x47A087C8` | 13 | `-[NSFramebuffer screenNumber]` | static-reviewed; runtime pending; `NSFramebuffer.m` |
-| `0x47A087D8` | 164 | `-[NSFramebuffer conversionTable]` | unexamined |
-| `0x47A0887C` | 164 | `-[NSFramebuffer inverseConversionTable]` | unexamined |
+| `0x47A087D8` | 164 | `-[NSFramebuffer conversionTable]` | static-reviewed; source authored; runtime pending; `NSFramebuffer.m` |
+| `0x47A0887C` | 164 | `-[NSFramebuffer inverseConversionTable]` | static-reviewed; source authored; runtime pending; `NSFramebuffer.m` |
 | `0x47A08920` | 116 | `-[NSFramebuffer addressForPoint:]` | static-reviewed; runtime pending; `NSFramebuffer.m` |
 | `0x47A08994` | 87 | `-[NSFramebuffer pixelEncoding]` | static-reviewed; runtime pending; `NSFramebuffer.m` |
 | `0x47A089EC` | 87 | `-[NSFramebuffer driver]` | static-reviewed; runtime pending; `NSFramebuffer.m` |
@@ -904,10 +904,10 @@ IDA function records: 419; symbol records: 629.
 | `0x47A0B4C0` | 60 | `_Interceptor_mig_error` | unexamined |
 | `0x47A0B4FC` | 45 | `_InterceptorMapFrameBuffer` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
 | `0x47A0B52C` | 45 | `_InterceptorUnmapFrameBuffer` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
-| `0x47A0B55C` | 26 | `_InterceptorGetBM34ToBM35Table` | unexamined |
-| `0x47A0B578` | 26 | `_InterceptorGetBM35ToBM34Table` | unexamined |
-| `0x47A0B594` | 26 | `_InterceptorGetBM256ToBM38Table` | unexamined |
-| `0x47A0B5B0` | 26 | `_InterceptorGetBM38ToBM256Table` | unexamined |
+| `0x47A0B55C` | 26 | `_InterceptorGetBM34ToBM35Table` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
+| `0x47A0B578` | 26 | `_InterceptorGetBM35ToBM34Table` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
+| `0x47A0B594` | 26 | `_InterceptorGetBM256ToBM38Table` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
+| `0x47A0B5B0` | 26 | `_InterceptorGetBM38ToBM256Table` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
 | `0x47A0B5CC` | 22 | `_InterceptorScreenCount` | unexamined |
 | `0x47A0B5E4` | 70 | `_InterceptorCompositeBits` | unexamined |
 | `0x47A0B62C` | 66 | `_InterceptorFrameBufferInfo` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
@@ -926,19 +926,19 @@ IDA function records: 419; symbol records: 629.
 | `0x47A0B7C8` | 246 | `__InterceptorEnableFrameBufferMapping` | unexamined |
 | `0x47A0B8C0` | 246 | `__InterceptorDisableFrameBufferMapping` | unexamined |
 | `0x47A0B9B8` | 255 | `__InterceptorMapFrameBuffer` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
-| `0x47A0BAB8` | 298 | `__InterceptorGetBM34ToBM35Table` | unexamined |
+| `0x47A0BAB8` | 298 | `__InterceptorGetBM34ToBM35Table` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
 | `0x47A0BBE4` | 389 | `__InterceptorCompositeBits` | unexamined |
 | `0x47A0BD6C` | 662 | `__InterceptorFrameBufferInfo` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
 | `0x47A0C004` | 213 | `__OldInterceptorSetNotifyPort` | unexamined |
 | `0x47A0C0DC` | 267 | `__InterceptorAddRect` | static-reviewed; `InterceptorIPC.c`; runtime pending |
 | `0x47A0C1E8` | 213 | `__InterceptorRemoveRect` | static-reviewed; `InterceptorIPC.c`; runtime pending |
 | `0x47A0C2C0` | 229 | `__InterceptorSetNotifyPort` | static-reviewed; `InterceptorIPC.c`; runtime pending |
-| `0x47A0C3A8` | 298 | `__InterceptorGetBM35ToBM34Table` | unexamined |
+| `0x47A0C3A8` | 298 | `__InterceptorGetBM35ToBM34Table` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
 | `0x47A0C4D4` | 197 | `__InterceptorScreenCount` | unexamined |
 | `0x47A0C59C` | 197 | `__InterceptorHideCursor` | unexamined |
 | `0x47A0C664` | 197 | `__InterceptorShowCursor` | unexamined |
-| `0x47A0C72C` | 219 | `__InterceptorGetBM256ToBM38Table` | unexamined |
-| `0x47A0C808` | 219 | `__InterceptorGetBM38ToBM256Table` | unexamined |
+| `0x47A0C72C` | 219 | `__InterceptorGetBM256ToBM38Table` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
+| `0x47A0C808` | 219 | `__InterceptorGetBM38ToBM256Table` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
 | `0x47A0C8E4` | 130 | `__InterceptorFlushRect` | unexamined |
 | `0x47A0C968` | 130 | `__InterceptorAddDirtyRect` | unexamined |
 | `0x47A0C9EC` | 95 | `__InterceptorFlushDirtyRects` | unexamined |
@@ -1219,12 +1219,12 @@ Named Objective-C symbols (candidate module by class name; verify in module meta
 | `0x47A0809C` | `-[NSFramebuffer initWithScreen:andMapIfPossible:]` | `NSFramebuffer.m` | static-reviewed; runtime pending |
 | `0x47A08158` | `-[NSFramebuffer initFromScreen:andMapIfPossible:]` | `NSFramebuffer.m` | static-reviewed; source authored; runtime pending |
 | `0x47A08468` | `-[NSFramebuffer unmapScreen]` | `NSFramebuffer.m` | static-reviewed; source authored; runtime pending |
-| `0x47A084AC` | `-[NSFramebuffer remapScreen]` | `NSFramebuffer.m` | unexamined |
+| `0x47A084AC` | `-[NSFramebuffer remapScreen]` | `NSFramebuffer.m` | static-reviewed; source authored; runtime pending |
 | `0x47A0873C` | `-[NSFramebuffer isMappable]` | `NSFramebuffer.m` | static-reviewed; runtime pending |
 | `0x47A08750` | `-[NSFramebuffer screenBounds]` | `NSFramebuffer.m` | static-reviewed; runtime pending; architecture difference recorded |
 | `0x47A087C8` | `-[NSFramebuffer screenNumber]` | `NSFramebuffer.m` | static-reviewed; runtime pending |
-| `0x47A087D8` | `-[NSFramebuffer conversionTable]` | `NSFramebuffer.m` | unexamined |
-| `0x47A0887C` | `-[NSFramebuffer inverseConversionTable]` | `NSFramebuffer.m` | unexamined |
+| `0x47A087D8` | `-[NSFramebuffer conversionTable]` | `NSFramebuffer.m` | static-reviewed; source authored; runtime pending |
+| `0x47A0887C` | `-[NSFramebuffer inverseConversionTable]` | `NSFramebuffer.m` | static-reviewed; source authored; runtime pending |
 | `0x47A08920` | `-[NSFramebuffer addressForPoint:]` | `NSFramebuffer.m` | static-reviewed; runtime pending |
 | `0x47A08994` | `-[NSFramebuffer pixelEncoding]` | `NSFramebuffer.m` | static-reviewed; runtime pending |
 | `0x47A089EC` | `-[NSFramebuffer driver]` | `NSFramebuffer.m` | static-reviewed; runtime pending |

@@ -25,6 +25,9 @@ int main(void)
                   "new framebuffer begins with zero device identifiers");
         TestCheck([framebuffer addressForPoint:NSMakePoint(2, 3)] == 0,
                   "unmapped framebuffer has no pixel address");
+        TestCheck([framebuffer conversionTable] == 0 &&
+                  [framebuffer inverseConversionTable] == 0,
+                  "unsupported sample and color-space pair has no conversion table");
         TestCheck([[framebuffer pixelEncoding] length] == 0 &&
                   [[framebuffer driver] length] == 0,
                   "pixel encoding and driver are lazily exposed as strings");

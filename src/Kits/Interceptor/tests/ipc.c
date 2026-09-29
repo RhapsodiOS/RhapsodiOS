@@ -9,7 +9,8 @@
 
 enum { TestAddRect, TestRemoveRect, TestSetNotifyPort,
        TestScreenCount, TestHideCursor, TestShowCursor,
-       TestMapFrameBuffer, TestUnmapFrameBuffer, TestFrameBufferInfo };
+       TestMapFrameBuffer, TestUnmapFrameBuffer, TestFrameBufferInfo,
+       TestBM34ToBM35, TestBM35ToBM34, TestBM256ToBM38, TestBM38ToBM256 };
 enum { TestSuccessReply, TestErrorReply, TestWrongReplyID, TestShortReply, TestSendFailure };
 
 static int expectedOperation;
@@ -29,6 +30,15 @@ static unsigned int expectedAddress;
 static char expectedDriver[80];
 static char expectedPixelEncoding[64];
 static int expectedFrameBufferFields[8];
+static unsigned short expectedTableWords[4] = { 1, 2, 3, 4 };
+
+#if defined(__ppc__) || defined(__POWERPC__)
+#define EXPECTED_BM256_TO_BM38_TYPE 0x02201000
+#define EXPECTED_BM38_TO_BM256_TYPE 0x08084000
+#elif defined(__i386__)
+#define EXPECTED_BM256_TO_BM38_TYPE 0x01002002
+#define EXPECTED_BM38_TO_BM256_TYPE 0x04000808
+#endif
 
 #if defined(__ppc__) || defined(__POWERPC__)
 #define EXPECTED_INTEGER_TYPE 0x02200018
@@ -51,6 +61,18 @@ static void TestSetLongType(int *words, int size)
     descriptor.msg_type_long_name = 12;
     descriptor.msg_type_long_size = size;
     descriptor.msg_type_long_number = 1;
+    memcpy(words, &descriptor, sizeof(descriptor));
+}
+
+static void TestSetOutOfLineLongType(int *words, int count)
+{
+    msg_type_long_t descriptor;
+    memset(&descriptor, 0, sizeof(descriptor));
+    descriptor.msg_type_header.msg_type_inline = 0;
+    descriptor.msg_type_header.msg_type_longform = 1;
+    descriptor.msg_type_long_name = 1;
+    descriptor.msg_type_long_size = 16;
+    descriptor.msg_type_long_number = count;
     memcpy(words, &descriptor, sizeof(descriptor));
 }
 
@@ -130,6 +152,22 @@ int InterceptorTestMsgRPC(msg_header_t *header, int option, int sendSize,
                   "FrameBufferInfo sends the screen number");
         replyID = 7301;
         successSize = 272;
+    } else if (expectedOperation == TestBM34ToBM35 ||
+               expectedOperation == TestBM35ToBM34) {
+        int requestID = expectedOperation == TestBM34ToBM35 ? 7199 : 7206;
+        replyID = requestID + 100;
+        successSize = 56;
+        TestCheck(sendSize == 56 && header->msg_size == sizeof(msg_header_t) &&
+                  header->msg_simple == 1 && header->msg_id == requestID,
+                  "16-bit conversion-table RPC request ID and sizes");
+    } else if (expectedOperation == TestBM256ToBM38 ||
+               expectedOperation == TestBM38ToBM256) {
+        int requestID = expectedOperation == TestBM256ToBM38 ? 7210 : 7211;
+        replyID = requestID + 100;
+        successSize = 48;
+        TestCheck(sendSize == 48 && header->msg_size == sizeof(msg_header_t) &&
+                  header->msg_simple == 1 && header->msg_id == requestID,
+                  "8-bit conversion-table RPC request ID and sizes");
     } else {
         int requestID = expectedOperation == TestScreenCount ? 7207 :
                         expectedOperation == TestHideCursor ? 7208 : 7209;
@@ -143,7 +181,11 @@ int InterceptorTestMsgRPC(msg_header_t *header, int option, int sendSize,
     if (expectedReply == TestSendFailure)
         return expectedSendResult;
 
-    header->msg_simple = 1;
+    header->msg_simple =
+        expectedOperation == TestBM34ToBM35 ||
+        expectedOperation == TestBM35ToBM34 ||
+        expectedOperation == TestBM256ToBM38 ||
+        expectedOperation == TestBM38ToBM256 ? 0 : 1;
     header->msg_type = 0x100;
     header->msg_id = expectedReply == TestWrongReplyID ? replyID + 1 : replyID;
     if (expectedReply == TestShortReply) {
@@ -187,6 +229,18 @@ int InterceptorTestMsgRPC(msg_header_t *header, int option, int sendSize,
                sizeof(expectedPixelEncoding));
         words[60] = EXPECTED_INTEGER_TYPE;
         words[61] = expectedFrameBufferFields[7];
+    } else if (expectedOperation == TestBM34ToBM35 ||
+               expectedOperation == TestBM35ToBM34) {
+        int count = expectedOperation == TestBM34ToBM35 ? 4096 : 32768;
+        words[2] = EXPECTED_INTEGER_TYPE;
+        TestSetOutOfLineLongType(&words[4], count);
+        words[7] = (int)(unsigned long)expectedTableWords;
+    } else if (expectedOperation == TestBM256ToBM38 ||
+               expectedOperation == TestBM38ToBM256) {
+        words[2] = EXPECTED_INTEGER_TYPE;
+        words[4] = expectedOperation == TestBM256ToBM38 ?
+                   EXPECTED_BM256_TO_BM38_TYPE : EXPECTED_BM38_TO_BM256_TYPE;
+        words[5] = (int)(unsigned long)expectedTableWords;
     }
     return 0;
 }
@@ -291,6 +345,11 @@ int main(void)
                   "selected framework exports framebuffer mapping RPCs");
         TestCheck(dlsym(handle, "_InterceptorFrameBufferInfo") != 0,
                   "selected framework exports framebuffer metadata RPC");
+        TestCheck(dlsym(handle, "_InterceptorGetBM34ToBM35Table") != 0 &&
+                  dlsym(handle, "_InterceptorGetBM35ToBM34Table") != 0 &&
+                  dlsym(handle, "_InterceptorGetBM256ToBM38Table") != 0 &&
+                  dlsym(handle, "_InterceptorGetBM38ToBM256Table") != 0,
+                  "selected framework exports all conversion-table RPCs");
         TestCheck(dlsym(handle, "InterceptorCreateContext") != 0,
                   "selected framework exports context creation");
         TestCheck(dlsym(handle, "InterceptorDestroyContext") != 0,
@@ -456,6 +515,55 @@ int main(void)
                   (unsigned char)pixelEncoding[0] == 0x5A &&
                   (unsigned char)fields[0] == 0x5A,
                   "FrameBufferInfo leaves outputs untouched for a short reply");
+    }
+
+    PrepareCall(TestBM34ToBM35, TestSuccessReply);
+    {
+        void *table = 0;
+        TestCheck(_InterceptorGetBM34ToBM35Table(
+                      expectedContextPort, expectedReplyPort, &table) == 0 &&
+                  table == expectedTableWords,
+                  "BM34-to-BM35 returns the 4096-entry out-of-line table");
+    }
+    PrepareCall(TestBM35ToBM34, TestSuccessReply);
+    {
+        void *table = 0;
+        TestCheck(_InterceptorGetBM35ToBM34Table(
+                      expectedContextPort, expectedReplyPort, &table) == 0 &&
+                  table == expectedTableWords,
+                  "BM35-to-BM34 returns the 32768-entry out-of-line table");
+    }
+    PrepareCall(TestBM256ToBM38, TestSuccessReply);
+    {
+        void *table = 0;
+        TestCheck(_InterceptorGetBM256ToBM38Table(
+                      expectedContextPort, expectedReplyPort, &table) == 0 &&
+                  table == expectedTableWords,
+                  "BM256-to-BM38 accepts the recovered byte-table descriptor");
+    }
+    PrepareCall(TestBM38ToBM256, TestSuccessReply);
+    {
+        void *table = 0;
+        TestCheck(_InterceptorGetBM38ToBM256Table(
+                      expectedContextPort, expectedReplyPort, &table) == 0 &&
+                  table == expectedTableWords,
+                  "BM38-to-BM256 accepts the recovered byte-table descriptor");
+    }
+    PrepareCall(TestBM34ToBM35, TestErrorReply);
+    {
+        void *table = (void *)1;
+        (void)_InterceptorGetBM34ToBM35Table(
+            expectedContextPort, expectedReplyPort, &table);
+        TestCheck(table == (void *)1,
+                  "failed long-form table RPC leaves its output untouched");
+    }
+    PrepareCall(TestBM256ToBM38, TestShortReply);
+    {
+        void *table = (void *)1;
+        (void)_InterceptorGetBM256ToBM38Table(
+            expectedContextPort, expectedReplyPort, &table);
+        TestCheck(table == (void *)1,
+                  "short byte-table reply leaves its output untouched");
     }
 
     PrepareCall(TestAddRect, TestErrorReply);

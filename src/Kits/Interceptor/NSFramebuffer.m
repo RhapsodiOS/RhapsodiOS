@@ -165,6 +165,80 @@ failure:
     self->data[0] = 0;
 }
 
+- (void)remapScreen
+{
+    void *mappedAddress = 0;
+    int wasMapped = self->isMapped;
+    int pixelsWide = 0, pixelsHigh = 0, bitsPerPixel = 0, bytesPerRow = 0;
+    int colorSpaceCode = 0, reserved = 0;
+    int bitsPerSample = 0, samplesPerPixel = 0;
+    NSString *colorSpaceName = NSDeviceBlackColorSpace;
+
+    [self unmapScreen];
+    (void)InterceptorFrameBufferInfo(
+        [self->interceptorClient _context], self->screenNumber, self->driver,
+        &self->deviceSlot, &self->deviceUnit, &pixelsWide, &pixelsHigh,
+        &bitsPerPixel, &bytesPerRow, &colorSpaceCode,
+        self->pixelEncoding, &reserved);
+
+    self->isMapped = NO;
+    if (wasMapped == YES && InterceptorMapFrameBuffer(
+                                [self->interceptorClient _context],
+                                self->screenNumber, &mappedAddress) == 0)
+        self->isMapped = YES;
+
+    if (colorSpaceCode == 0) {
+        colorSpaceName = NSDeviceBlackColorSpace;
+        samplesPerPixel = 1;
+    } else if (colorSpaceCode == 1) {
+        colorSpaceName = NSDeviceWhiteColorSpace;
+        samplesPerPixel = 1;
+    } else if (colorSpaceCode == 2) {
+        colorSpaceName = NSDeviceRGBColorSpace;
+        samplesPerPixel = 3;
+    } else {
+        NSLog(@"NSFramebuffer received unsupported color-space code %d",
+              colorSpaceCode);
+    }
+
+    switch (bitsPerPixel) {
+    case 2:
+        bitsPerSample = 2;
+        break;
+    case 8:
+        bitsPerSample = 8;
+        break;
+    case 12:
+    case 16:
+        bitsPerSample = 4;
+        bitsPerPixel = 16;
+        break;
+    case 15:
+        bitsPerSample = 5;
+        bitsPerPixel = 16;
+        break;
+    case 24:
+    case 32:
+        bitsPerSample = 8;
+        bitsPerPixel = 32;
+        break;
+    default:
+        NSLog(@"NSFramebuffer received unsupported pixel depth %d",
+              bitsPerPixel);
+        break;
+    }
+
+    self->data[0] = mappedAddress;
+    self->pixelsWide = pixelsWide;
+    self->pixelsHigh = pixelsHigh;
+    self->bitsPerSample = bitsPerSample;
+    self->samplesPerPixel = samplesPerPixel;
+    self->colorSpace = colorSpaceName;
+    self->colorSpaceCode = colorSpaceCode;
+    self->bytesPerRow = bytesPerRow;
+    self->bitsPerPixel = bitsPerPixel;
+}
+
 - (int)screenNumber
 {
     return self->screenNumber;
@@ -210,6 +284,34 @@ failure:
 
     return (unsigned char *)self->data[0] + self->bytesPerRow * (int)location.y +
            (int)location.x * self->bitsPerPixel / 8;
+}
+
+- (void *)conversionTable
+{
+    if (self->conversionTable == 0) {
+        if (self->bitsPerSample == 5 && self->colorSpaceCode == 2)
+            (void)InterceptorGetBM34ToBM35Table(
+                [self->interceptorClient _context], &self->conversionTable);
+        else if (self->bitsPerSample == 8 && self->colorSpaceCode == 2)
+            (void)InterceptorGetBM38ToBM256Table(
+                [self->interceptorClient _context], &self->conversionTable);
+    }
+    return self->conversionTable;
+}
+
+- (void *)inverseConversionTable
+{
+    if (self->inverseConversionTable == 0) {
+        if (self->bitsPerSample == 5 && self->colorSpaceCode == 2)
+            (void)InterceptorGetBM35ToBM34Table(
+                [self->interceptorClient _context],
+                &self->inverseConversionTable);
+        else if (self->bitsPerSample == 8 && self->colorSpaceCode == 2)
+            (void)InterceptorGetBM256ToBM38Table(
+                [self->interceptorClient _context],
+                &self->inverseConversionTable);
+    }
+    return self->inverseConversionTable;
 }
 
 - (BOOL)canLockWithMode:(NSFramebufferAccessMode)mode

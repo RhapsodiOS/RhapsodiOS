@@ -18,6 +18,10 @@ contract:
 | `_InterceptorMapFrameBuffer` | `0x47A0B9B8` | `7198` | 48 | `7298` | 32-error / 48-success |
 | `_InterceptorUnmapFrameBuffer` | `0x47A0CC44` | `7219` | 40 | `7319` | 32-error / 40-success |
 | `_InterceptorFrameBufferInfo` | `0x47A0BD6C` | `7201` | 272 | `7301` | 32-byte error / 272-byte success |
+| `_InterceptorGetBM34ToBM35Table` | `0x47A0BAB8` | `7199` | 56 | `7299` | 32-byte error / 56-byte success |
+| `_InterceptorGetBM35ToBM34Table` | `0x47A0C3A8` | `7206` | 56 | `7306` | 32-byte error / 56-byte success |
+| `_InterceptorGetBM256ToBM38Table` | `0x47A0C72C` | `7210` | 48 | `7310` | 32-byte error / 48-byte success |
+| `_InterceptorGetBM38ToBM256Table` | `0x47A0C808` | `7211` | 48 | `7311` | 32-byte error / 48-byte success |
 
 All synchronous RPCs call `msg_rpc` with the same request and reply maximum
 sizes as the PPC bodies. Context setup calls `_port_allocate` and `_getPSPort`
@@ -29,3 +33,8 @@ integer `0x10012002`, eight-integer rectangle `0x10082002`, and port
 `0x10012006`. These describe the same name/size/count/inline fields as the PPC
 descriptors, with native bitfield byte order accounted for by assigning the
 `msg_type_t` fields in C.
+
+The 16-bit conversion tables use out-of-line long-form descriptors with counts
+4096 and 32768. The byte-table RPCs use the observed short descriptors
+`0x01002002` and `0x04000808`; source validates the returned descriptor before
+exposing the server-owned table address.

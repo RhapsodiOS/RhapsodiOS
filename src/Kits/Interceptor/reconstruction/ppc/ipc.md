@@ -16,6 +16,10 @@ see `../i386/ipc.md`.
 | `_InterceptorMapFrameBuffer` | `7198` | 48 bytes | `7298` | 32-byte error / 48-byte success |
 | `_InterceptorUnmapFrameBuffer` | `7219` | 40 bytes | `7319` | 32-byte error / 40-byte success |
 | `_InterceptorFrameBufferInfo` | `7201` | 272 bytes | `7301` | 32-byte error / 272-byte success |
+| `_InterceptorGetBM34ToBM35Table` | `7199` | 56 bytes | `7299` | 32-byte error / 56-byte success |
+| `_InterceptorGetBM35ToBM34Table` | `7206` | 56 bytes | `7306` | 32-byte error / 56-byte success |
+| `_InterceptorGetBM256ToBM38Table` | `7210` | 48 bytes | `7310` | 32-byte error / 48-byte success |
+| `_InterceptorGetBM38ToBM256Table` | `7211` | 48 bytes | `7311` | 32-byte error / 48-byte success |
 
 Each call uses `msg_rpc(request, 0, requestSize, 0, 0)`. The context's
 `contextPort` is sent as `msg_remote_port`; `replyPort` is `msg_local_port`.
@@ -33,6 +37,13 @@ and contains the screen integer descriptor and screen number. Its successful
 a 64-byte pixel encoding, and one additional integer. The source validates the
 long-form string descriptors and each integer descriptor before copying their
 corresponding outputs.
+
+The table RPCs return server-owned out-of-line arrays. The two 16-bit table
+messages carry long-form descriptors (4096 and 32768 entries); the byte-table
+messages use architecture-specific short descriptors and return their address
+in the final word. PPC's public 5-bit conversion-table wrappers return error 6
+without sending an RPC, matching their 16-byte stubs. Its lower-level MIG
+functions remain present and parse the same requests as the i386 implementations.
 
 `_InterceptorAddRect` serializes all eight integer fields of
 `InterceptedRectangle` and copies all eight returned fields back on success.
@@ -61,7 +72,8 @@ to the context port without waiting for a reply, and the high-level
 implements these RPC stubs,
 including the typed descriptors (`0x02200088` for the rectangle,
 `0x02200018` for integers, and `0x06200018` for ports in the PPC word view),
-success/error reply shapes, and the observed `-300`/`-301` validation errors.
+conversion-table RPCs, success/error reply shapes, and the observed `-300`/`-301`
+validation errors.
 Descriptor fields are assigned individually so the compiler emits the proper
 architecture-specific bitfield order. A test transport captures the synchronous
 requests, including framebuffer map/unmap/metadata, and the asynchronous

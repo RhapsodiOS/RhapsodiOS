@@ -48,4 +48,21 @@ int InterceptorFrameBufferInfo(InterceptorClientContext *context,
                                int *colorSpaceCode, char *pixelEncoding,
                                int *reserved);
 
+int _InterceptorGetBM34ToBM35Table(port_t contextPort, port_t replyPort,
+                                   void **table);
+int _InterceptorGetBM35ToBM34Table(port_t contextPort, port_t replyPort,
+                                   void **table);
+int _InterceptorGetBM256ToBM38Table(port_t contextPort, port_t replyPort,
+                                    void **table);
+int _InterceptorGetBM38ToBM256Table(port_t contextPort, port_t replyPort,
+                                    void **table);
+int InterceptorGetBM34ToBM35Table(InterceptorClientContext *context,
+                                  void **table);
+int InterceptorGetBM35ToBM34Table(InterceptorClientContext *context,
+                                  void **table);
+int InterceptorGetBM256ToBM38Table(InterceptorClientContext *context,
+                                   void **table);
+int InterceptorGetBM38ToBM256Table(InterceptorClientContext *context,
+                                   void **table);
+
 #endif

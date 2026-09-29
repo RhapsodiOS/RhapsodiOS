@@ -24,6 +24,11 @@ typedef struct {
     int words[62];
 } InterceptorFrameBufferInfoMessage;
 
+typedef struct {
+    msg_header_t header;
+    int words[8];
+} InterceptorTableMessage;
+
 static int InterceptorTypeDescriptor(int name, int size, int count)
 {
     msg_type_t descriptor;
@@ -441,4 +446,183 @@ int InterceptorFrameBufferInfo(InterceptorClientContext *context,
                                        pixelsWide, pixelsHigh, bitsPerPixel,
                                        bytesPerRow, colorSpaceCode,
                                        pixelEncoding, reserved);
+}
+
+static int InterceptorGetShortTable(port_t contextPort, port_t replyPort,
+                                    int requestID, int replyID,
+                                    int descriptor, void **table)
+{
+    InterceptorTableMessage message;
+    int *words = message.words;
+    int result;
+
+    bzero((char *)&message, sizeof(message));
+    message.header.msg_simple = 1;
+    message.header.msg_size = sizeof(msg_header_t);
+    message.header.msg_type = 0x100;
+    message.header.msg_local_port = replyPort;
+    message.header.msg_remote_port = contextPort;
+    message.header.msg_id = requestID;
+    result = InterceptorMsgRPC(&message.header, 0, 48, 0, 0);
+    if (result != 0) {
+        Interceptor_mig_error(result);
+        return words[3];
+    }
+    if (message.header.msg_id != replyID) {
+        Interceptor_mig_error(-301);
+        return words[3];
+    }
+    if (message.header.msg_size == 32) {
+        if (message.header.msg_simple != 1 ||
+            words[0] != InterceptorTypeDescriptor(2, 32, 1)) {
+            Interceptor_mig_error(-300);
+            return words[3];
+        }
+        if (words[1] != 0) {
+            Interceptor_mig_error(words[1]);
+            return words[3];
+        }
+    }
+    if (message.header.msg_size != 48 || message.header.msg_simple != 0 ||
+        words[0] != InterceptorTypeDescriptor(2, 32, 1) || words[1] != 0 ||
+        words[2] != InterceptorTypeDescriptor(2, 32, 1) ||
+        words[4] != descriptor) {
+        Interceptor_mig_error(-300);
+        return words[3];
+    }
+    *table = (void *)(unsigned long)(unsigned int)words[5];
+    return words[3];
+}
+
+static int InterceptorGetLongTable(port_t contextPort, port_t replyPort,
+                                   int requestID, int replyID,
+                                   unsigned int tableCount, void **table)
+{
+    InterceptorTableMessage message;
+    int *words = message.words;
+    msg_type_long_t descriptor;
+    int result;
+
+    bzero((char *)&message, sizeof(message));
+    message.header.msg_simple = 1;
+    message.header.msg_size = sizeof(msg_header_t);
+    message.header.msg_type = 0x100;
+    message.header.msg_local_port = replyPort;
+    message.header.msg_remote_port = contextPort;
+    message.header.msg_id = requestID;
+    result = InterceptorMsgRPC(&message.header, 0, 56, 0, 0);
+    if (result != 0) {
+        Interceptor_mig_error(result);
+        return words[3];
+    }
+    if (message.header.msg_id != replyID) {
+        Interceptor_mig_error(-301);
+        return words[3];
+    }
+    if (message.header.msg_size == 32) {
+        if (message.header.msg_simple != 1 ||
+            words[0] != InterceptorTypeDescriptor(2, 32, 1)) {
+            Interceptor_mig_error(-300);
+            return words[3];
+        }
+        if (words[1] != 0) {
+            Interceptor_mig_error(words[1]);
+            return words[3];
+        }
+    }
+    if (message.header.msg_size != 56 || message.header.msg_simple != 0 ||
+        words[0] != InterceptorTypeDescriptor(2, 32, 1) || words[1] != 0 ||
+        words[2] != InterceptorTypeDescriptor(2, 32, 1)) {
+        Interceptor_mig_error(-300);
+        return words[3];
+    }
+    memcpy(&descriptor, &words[4], sizeof(descriptor));
+    if (descriptor.msg_type_header.msg_type_inline != 0 ||
+        descriptor.msg_type_header.msg_type_longform != 1 ||
+        descriptor.msg_type_long_name != 1 ||
+        descriptor.msg_type_long_size != 16 ||
+        descriptor.msg_type_long_number != tableCount) {
+        Interceptor_mig_error(-300);
+        return words[3];
+    }
+    *table = (void *)(unsigned long)(unsigned int)words[7];
+    return words[3];
+}
+
+int _InterceptorGetBM34ToBM35Table(port_t contextPort, port_t replyPort,
+                                   void **table)
+{
+    return InterceptorGetLongTable(contextPort, replyPort, 7199, 7299,
+                                   4096, table);
+}
+
+int _InterceptorGetBM35ToBM34Table(port_t contextPort, port_t replyPort,
+                                   void **table)
+{
+    return InterceptorGetLongTable(contextPort, replyPort, 7206, 7306,
+                                   32768, table);
+}
+
+int _InterceptorGetBM256ToBM38Table(port_t contextPort, port_t replyPort,
+                                    void **table)
+{
+#if defined(__ppc__) || defined(__POWERPC__)
+    return InterceptorGetShortTable(contextPort, replyPort, 7210, 7310,
+                                    0x02201000, table);
+#else
+    return InterceptorGetShortTable(contextPort, replyPort, 7210, 7310,
+                                    0x01002002, table);
+#endif
+}
+
+int _InterceptorGetBM38ToBM256Table(port_t contextPort, port_t replyPort,
+                                    void **table)
+{
+#if defined(__ppc__) || defined(__POWERPC__)
+    return InterceptorGetShortTable(contextPort, replyPort, 7211, 7311,
+                                    0x08084000, table);
+#else
+    return InterceptorGetShortTable(contextPort, replyPort, 7211, 7311,
+                                    0x04000808, table);
+#endif
+}
+
+int InterceptorGetBM34ToBM35Table(InterceptorClientContext *context,
+                                  void **table)
+{
+#if defined(__ppc__) || defined(__POWERPC__)
+    (void)context;
+    (void)table;
+    return 6;
+#else
+    return _InterceptorGetBM34ToBM35Table(context->contextPort,
+                                           context->replyPort, table);
+#endif
+}
+
+int InterceptorGetBM35ToBM34Table(InterceptorClientContext *context,
+                                  void **table)
+{
+#if defined(__ppc__) || defined(__POWERPC__)
+    (void)context;
+    (void)table;
+    return 6;
+#else
+    return _InterceptorGetBM35ToBM34Table(context->contextPort,
+                                           context->replyPort, table);
+#endif
+}
+
+int InterceptorGetBM256ToBM38Table(InterceptorClientContext *context,
+                                   void **table)
+{
+    return _InterceptorGetBM256ToBM38Table(context->contextPort,
+                                           context->replyPort, table);
+}
+
+int InterceptorGetBM38ToBM256Table(InterceptorClientContext *context,
+                                   void **table)
+{
+    return _InterceptorGetBM38ToBM256Table(context->contextPort,
+                                           context->replyPort, table);
 }

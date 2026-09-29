@@ -12,13 +12,26 @@ to `_IOSetIntValues` with `IOSetTransferTable`; successful loads post
 `NSDirectScreenDidChangePaletteNotification` when a fade is not in progress.
 The public setters use their own selector names in failure exceptions.
 
+The mode list is cached in private word 4. The framework queries the current
+mode and mode count, reads each `IOGetDisplayModeInfo:<index>` record, skips
+unavailable entries, and builds mode dictionaries from resolution, depth,
+row-byte, refresh-rate, and safe/default fields. If querying the current mode
+fails, it creates a fallback dictionary from the framebuffer. Option matching
+compares requested key/value pairs, and `bestModeForOptions:` selects the
+first match or the first available mode.
+`switchToDisplayMode:` requires shielding, unmaps the framebuffer, selects and
+commits the requested mode through `IOSelectPendingDisplayMode` and
+`IOCommitToPendingDisplayMode`, refreshes framebuffer dimensions, remaps, and
+posts the display-mode notification. Gamma changes use the capability bit at
+private word 27 and transfer tables through `IOSetTransferTable`.
+
 PowerPC `shieldDisplay` and `unshieldDisplay` follow the same overall state
 transitions as DR2 i386. The shield path saves brightness in the double at
 private offset 56, loads the palette, marks byte 120 shielded, switches mode
 when needed, then copies the framebuffer to the backing store. The backing
 store allocator reserves two page-size margins and returns a pointer one page
 into the allocation; destruction frees the original base address. Detailed
-window-server and mode-setting calls remain incomplete in source.
+window-server calls remain incomplete in source.
 
 `_canLockWithMode:` forwards to the framebuffer. `_lockWithMode:` and
 `_unlock` require byte 120 to indicate a shielded display before forwarding;

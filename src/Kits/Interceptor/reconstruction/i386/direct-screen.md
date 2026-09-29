@@ -22,7 +22,20 @@ passes the palette's packed machine values to `_IOSetIntValues` with parameter
 Both public palette setters perform the same load sequence, with the selector
 name used in their exception reason.
 
-Shield/unshield and display-mode transitions remain incomplete in source.
+The mode list is cached in private word 4. The framework reads the current
+mode, obtains the mode count, queries each `IOGetDisplayModeInfo:<index>`
+record, skips unavailable entries, and constructs dictionaries from the
+resolution, depth, row-byte, frequency, and safe/default fields. If the
+current-mode query fails, it builds a one-entry fallback from the framebuffer.
+Option filtering compares every requested key/value pair, and
+`bestModeForOptions:` returns the first match or the first available mode.
+`switchToDisplayMode:` requires shielding, unmaps the framebuffer, selects and
+commits the requested mode through `IOSelectPendingDisplayMode` and
+`IOCommitToPendingDisplayMode`, refreshes framebuffer dimensions, remaps, and
+posts the display-mode notification. Gamma changes use the capability bit at
+private word 27 and transfer tables through `IOSetTransferTable`.
+
+Shield/unshield transitions remain incomplete in source.
 The reference shield path creates and waits for a full-screen window, saves
 and dims system brightness, loads the current palette, changes the mode if
 needed, copies the framebuffer into the backing store, and marks byte 120 as

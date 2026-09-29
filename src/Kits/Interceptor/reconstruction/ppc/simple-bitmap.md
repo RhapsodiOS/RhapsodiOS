@@ -16,6 +16,13 @@ matching device RGB name, `NSOneIsWhiteColorSpace` for a matching device white
 name, and `NSOneIsBlackColorSpace` otherwise. Exact runtime observations are
 still pending because the compatible guest is not configured.
 
+`NSDirectBitmap`'s basic metadata accessors are also implemented in
+`NSDirectBitmap.m`. They forward inherited sample/depth/size/color fields,
+derive plane count from `isPlanar`, and gate row/plane byte counts on
+`isLocked`; an unobscured direct-mapped bitmap reads the row stride from its
+framebuffer. Its conversion-table accessors forward to the attached
+framebuffer.
+
 The seven public encoding globals resolve to these exact constant strings in
 the reference's Objective-C constant-string objects:
 

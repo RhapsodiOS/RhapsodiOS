@@ -1,4 +1,96 @@
 #import "Private/InterceptorCopy.h"
+#import "NSDirectBitmap.h"
+
+@implementation NSDirectBitmap
+
+- (int)bitsPerPixel
+{
+    return self->bitsPerPixel;
+}
+
+- (int)bitsPerSample
+{
+    return self->bitsPerSample;
+}
+
+- (int)bytesPerRow
+{
+    if (self->isLocked == NO)
+        return 0;
+    if (self->isBuffered == YES || self->drawToBuffer == YES)
+        return self->bytesPerRow;
+    return [(id)self->framebuffer bytesPerRow];
+}
+
+- (int)bytesPerPlane
+{
+    int rowBytes;
+
+    if (self->isLocked == NO)
+        return 0;
+    if (self->isBuffered != YES && self->isUnobscured != NO)
+        rowBytes = [(id)self->framebuffer bytesPerRow];
+    else
+        rowBytes = self->bytesPerRow;
+    return rowBytes * self->pixelsHigh;
+}
+
+- (NSString *)colorSpaceName
+{
+    return self->colorSpace;
+}
+
+- (void *)conversionTable
+{
+    return [(id)self->framebuffer conversionTable];
+}
+
+- (void *)inverseConversionTable
+{
+    return [(id)self->framebuffer inverseConversionTable];
+}
+
+- (BOOL)hasAlpha
+{
+    return self->hasAlpha;
+}
+
+- (BOOL)isPlanar
+{
+    return self->isPlanar;
+}
+
+- (BOOL)isBuffered
+{
+    return self->isBuffered;
+}
+
+- (BOOL)isDirectMapped
+{
+    return self->isDirectMapped;
+}
+
+- (int)numberOfPlanes
+{
+    return self->isPlanar ? self->samplesPerPixel : 1;
+}
+
+- (int)pixelsWide
+{
+    return self->pixelsWide;
+}
+
+- (int)pixelsHigh
+{
+    return self->pixelsHigh;
+}
+
+- (int)samplesPerPixel
+{
+    return self->samplesPerPixel;
+}
+
+@end
 
 void CopyLong(const void *source, int sourceStride, void *destination,
               int destinationStride, int longCount, int rowCount)

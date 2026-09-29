@@ -4,6 +4,7 @@
 #import <stdlib.h>
 #import <string.h>
 #import "../NSBitmap.h"
+#import "../NSDirectBitmap.h"
 #import "../Interceptor_types.h"
 #import "../InterceptorGlobals.h"
 #import "test_support.h"
@@ -15,6 +16,7 @@ int main(void)
     unsigned char *planes[3];
     unsigned char *reported[5];
     NSSimpleBitmap *bitmap;
+    NSDirectBitmap *directBitmap;
 
     memset(red, 0x13, sizeof(red));
     memset(green, 0x57, sizeof(green));
@@ -32,6 +34,25 @@ int main(void)
               [NSInterceptorTwelveBitRGBColor isEqual:@"RRRRGGGGBBBB----"] &&
               [NSInterceptorThirtyTwoBitRGBColor isEqual:@"RRRRRRRRGGGGGGGGBBBBBBBB--------"],
               "published RGB encodings");
+    directBitmap = [[NSDirectBitmap alloc] init];
+    TestCheck(directBitmap != nil, "allocates direct bitmap metadata object");
+    if (directBitmap) {
+        TestCheck([directBitmap bitsPerPixel] == 0 &&
+                  [directBitmap bitsPerSample] == 0 &&
+                  [directBitmap samplesPerPixel] == 0 &&
+                  [directBitmap pixelsWide] == 0 &&
+                  [directBitmap pixelsHigh] == 0,
+                  "direct bitmap exposes its inherited zeroed sample metadata");
+        TestCheck([directBitmap bytesPerRow] == 0 &&
+                  [directBitmap bytesPerPlane] == 0 &&
+                  [directBitmap numberOfPlanes] == 1 &&
+                  ![directBitmap hasAlpha] && ![directBitmap isPlanar],
+                  "unlocked direct bitmap reports zero row storage and one plane");
+        TestCheck([directBitmap conversionTable] == 0 &&
+                  [directBitmap inverseConversionTable] == 0,
+                  "unattached direct bitmap has no conversion tables");
+        [directBitmap release];
+    }
     bitmap = [[NSSimpleBitmap alloc] initWithBitmapDataPlanes:planes
         pixelsWide:3 pixelsHigh:2 bitsPerSample:8 samplesPerPixel:3
         hasAlpha:NO isPlanar:NO colorSpaceName:NSDeviceRGBColorSpace

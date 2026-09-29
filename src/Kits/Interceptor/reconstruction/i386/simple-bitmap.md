@@ -8,6 +8,11 @@ the original receiver. `bytesPerPlane` multiplies row bytes by pixel height;
 `numberOfPlanes` returns samples per pixel only for planar data. The i386
 reference has the same class layout as the PPC primary reference.
 
+The `NSDirectBitmap` metadata accessors are shared across the two binaries.
+They expose inherited bitmap fields, derive plane count for planar data, gate
+row/plane sizes on the lock state, and forward conversion-table lookups to the
+attached framebuffer.
+
 Its simple accessors use the same field offsets: `bitmapData` at `0x47A0B0BC`,
 `getBitmapDataPlanes:` at `0x47A0B0CC`, `bytesPerPlane` at `0x47A0B184`,
 `numberOfPlanes` at `0x47A0B198`, and `dealloc` at `0x47A0B1E0`.

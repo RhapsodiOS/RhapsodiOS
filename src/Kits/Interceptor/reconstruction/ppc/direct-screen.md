@@ -1,0 +1,21 @@
+# PowerPC `NSDirectScreen`
+
+Reference: `Frameworks/Interceptor.framework/Versions/A/Interceptor`, opened
+in IDA as the PowerPC image. Relevant functions include `shieldDisplay` at
+`0x47A092C0`, `unshieldDisplay` at `0x47A09838`, `setPalette:` at
+`0x47A0905C`, `setPaletteAtNextBlankingInterval:` at `0x47A09170`, and
+`_loadPalette:` at `0x47A09F94`.
+
+The private state uses the same 0x7c-byte layout and palette-support sentinel
+at byte 66 as the DR2 i386 image. Palette loading passes packed palette values
+to `_IOSetIntValues` with `IOSetTransferTable`; successful loads post
+`NSDirectScreenDidChangePaletteNotification` when a fade is not in progress.
+The public setters use their own selector names in failure exceptions.
+
+PowerPC `shieldDisplay` and `unshieldDisplay` follow the same overall state
+transitions as DR2 i386. The shield path saves brightness in the double at
+private offset 56, loads the palette, marks byte 120 shielded, switches mode
+when needed, then copies the framebuffer to the backing store. The backing
+store allocator reserves two page-size margins and returns a pointer one page
+into the allocation; destruction frees the original base address. Detailed
+window-server and mode-setting calls remain incomplete in source.

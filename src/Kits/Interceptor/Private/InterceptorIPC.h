@@ -22,6 +22,10 @@ int _InterceptorShowCursorAsync(port_t contextPort);
 int InterceptorScreenCount(InterceptorClientContext *context);
 int InterceptorHideCursor(InterceptorClientContext *context);
 int InterceptorShowCursor(InterceptorClientContext *context);
+int _InterceptorRepairPalette(port_t contextPort);
+int _InterceptorDamagedPalette(port_t contextPort);
+int InterceptorRepairPalette(InterceptorClientContext *context);
+int InterceptorDamagedPalette(InterceptorClientContext *context);
 int _InterceptorCompositeBits(port_t contextPort, port_t replyPort,
                               int windowNumber, int x, int y,
                               int operation, const void *bits,

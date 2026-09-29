@@ -9,6 +9,7 @@
 
 enum { TestAddRect, TestRemoveRect, TestSetNotifyPort,
        TestScreenCount, TestHideCursor, TestShowCursor,
+       TestRepairPalette, TestDamagedPalette,
        TestMapFrameBuffer, TestUnmapFrameBuffer, TestFrameBufferInfo,
        TestAccessTokens,
        TestBM34ToBM35, TestBM35ToBM34, TestBM256ToBM38, TestBM38ToBM256,
@@ -313,12 +314,14 @@ int InterceptorTestMsgRPC(msg_header_t *header, int option, int sendSize,
 
 int InterceptorTestMsgSend(msg_header_t *header, int option, int timeout)
 {
+    int expectedID = expectedOperation == TestShowCursor ? 7218 :
+                     expectedOperation == TestRepairPalette ? 7215 : 7216;
     TestCheck(option == 0 && timeout == 0 && header->msg_simple == 1 &&
               header->msg_size == sizeof(msg_header_t) &&
               header->msg_type == 0 &&
               header->msg_remote_port == expectedContextPort &&
-              header->msg_local_port == PORT_NULL && header->msg_id == 7218,
-              "asynchronous ShowCursor request header and destination");
+              header->msg_local_port == PORT_NULL && header->msg_id == expectedID,
+              "asynchronous screen notification header and destination");
     return expectedReply == TestSendFailure ? expectedSendResult : 0;
 }
 
@@ -419,6 +422,9 @@ int main(void)
                   dlsym(handle, "_InterceptorHideCursor") != 0 &&
                   dlsym(handle, "_InterceptorShowCursor") != 0,
                   "selected framework exports screen-count and cursor RPCs");
+        TestCheck(dlsym(handle, "_InterceptorRepairPalette") != 0 &&
+                  dlsym(handle, "_InterceptorDamagedPalette") != 0,
+                  "selected framework exports palette notification RPCs");
         TestCheck(dlsym(handle, "_InterceptorMapFrameBuffer") != 0 &&
                   dlsym(handle, "_InterceptorUnmapFrameBuffer") != 0,
                   "selected framework exports framebuffer mapping RPCs");
@@ -476,6 +482,18 @@ int main(void)
     context.notifyPort = PORT_NULL;
     TestCheck(InterceptorShowCursor(&context) == 0,
               "ShowCursor wrapper queues an asynchronous request");
+
+    PrepareCall(TestRepairPalette, TestSuccessReply);
+    TestCheck(_InterceptorRepairPalette(expectedContextPort) == 0,
+              "RepairPalette queues its asynchronous request");
+    PrepareCall(TestDamagedPalette, TestSuccessReply);
+    context.contextPort = expectedContextPort;
+    TestCheck(InterceptorDamagedPalette(&context) == 0,
+              "DamagedPalette wrapper queues its asynchronous request");
+    PrepareCall(TestRepairPalette, TestSendFailure);
+    TestCheck(_InterceptorRepairPalette(expectedContextPort) ==
+              expectedSendResult,
+              "RepairPalette reports a failed asynchronous send");
 
     PrepareCall(TestMapFrameBuffer, TestSuccessReply);
     context.contextPort = expectedContextPort;

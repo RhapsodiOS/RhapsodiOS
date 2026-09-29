@@ -322,6 +322,52 @@ int InterceptorShowCursor(InterceptorClientContext *context)
     return 0;
 }
 
+int _InterceptorRepairPalette(port_t contextPort)
+{
+    msg_header_t message;
+    int result;
+
+    bzero((char *)&message, sizeof(message));
+    message.msg_simple = 1;
+    message.msg_size = sizeof(message);
+    message.msg_type = 0;
+    message.msg_remote_port = contextPort;
+    message.msg_local_port = PORT_NULL;
+    message.msg_id = 7215;
+    result = InterceptorMsgSend(&message, 0, 0);
+    if (result != 0)
+        Interceptor_mig_error(result);
+    return result;
+}
+
+int _InterceptorDamagedPalette(port_t contextPort)
+{
+    msg_header_t message;
+    int result;
+
+    bzero((char *)&message, sizeof(message));
+    message.msg_simple = 1;
+    message.msg_size = sizeof(message);
+    message.msg_type = 0;
+    message.msg_remote_port = contextPort;
+    message.msg_local_port = PORT_NULL;
+    message.msg_id = 7216;
+    result = InterceptorMsgSend(&message, 0, 0);
+    if (result != 0)
+        Interceptor_mig_error(result);
+    return result;
+}
+
+int InterceptorRepairPalette(InterceptorClientContext *context)
+{
+    return _InterceptorRepairPalette(context->contextPort);
+}
+
+int InterceptorDamagedPalette(InterceptorClientContext *context)
+{
+    return _InterceptorDamagedPalette(context->contextPort);
+}
+
 int _InterceptorCompositeBits(port_t contextPort, port_t replyPort,
                               int windowNumber, int x, int y,
                               int operation, const void *bits,

@@ -569,6 +569,45 @@ typedef void (*NSBitmapCopyFunction)(const void *, int, void *, int, int, int);
         self->isBuffered = YES;
 }
 
+- (int)areaIsInvalid:(id)interceptedRect
+{
+    if (interceptedRect == self->interceptRect) {
+        self->isUnobscured = NO;
+        self->updateNeeded = YES;
+    }
+    return 0;
+}
+
+- (int)areaChangedScreen:(id)interceptedRect
+                    from:(int)oldScreen to:(int)newScreen
+{
+    if (interceptedRect == self->interceptRect) {
+        self->isUnobscured = NO;
+        if (oldScreen == self->currentScreen && newScreen != oldScreen) {
+            self->newScreen = newScreen;
+            self->updateNeeded = YES;
+        }
+    }
+    return 0;
+}
+
+- (int)areaWindowFreed:(id)interceptedRect
+{
+    if (interceptedRect == self->interceptRect) {
+        self->isUnobscured = NO;
+        self->updateNeeded = YES;
+    }
+    return 0;
+}
+
+- (int)areaDidChangeBuffering:(id)interceptedRect toType:(int)type
+{
+    (void)interceptedRect;
+    (void)type;
+    self->updateNeeded = YES;
+    return 0;
+}
+
 - (id)initForRect:(NSRect)rect inWindow:(id)window
 {
     unsigned int globalWindowNumber;

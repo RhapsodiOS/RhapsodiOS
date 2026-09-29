@@ -121,3 +121,9 @@ the cursor before enabling buffering and flushes before returning to direct
 drawing. The request is 112 bytes: four integer fields, an out-of-line payload
 sized as `height * bytesPerRow`, then five integer dimension and format fields.
 The i386 binary confirms the PPC descriptor order and reply IDs.
+
+The invalidation callbacks only act on their current intercepted rectangle:
+invalid or freed windows clear the unobscured state and defer an update, while
+screen changes also record the destination screen when the old screen matches
+the mapped framebuffer. A buffering-change notification always marks state for
+refresh. The i386 bodies agree with these state transitions.

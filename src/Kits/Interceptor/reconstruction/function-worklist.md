@@ -71,10 +71,10 @@ IDA function records: 392; symbol records: 540.
 | `0x47A04F2C` | 476 | `-[NSDirectBitmap areaDidReveal:inRect:]` | unexamined |
 | `0x47A05108` | 76 | `-[NSDirectBitmap areaWasOrderedIn:]` | unexamined |
 | `0x47A05154` | 76 | `-[NSDirectBitmap areaWasOrderedOut:]` | unexamined |
-| `0x47A051A0` | 44 | `-[NSDirectBitmap areaIsInvalid:]` | unexamined |
-| `0x47A051CC` | 68 | `-[NSDirectBitmap areaChangedScreen:from:to:]` | unexamined |
-| `0x47A05210` | 44 | `-[NSDirectBitmap areaWindowFreed:]` | unexamined |
-| `0x47A0523C` | 24 | `-[NSDirectBitmap areaDidChangeBuffering:toType:]` | unexamined |
+| `0x47A051A0` | 44 | `-[NSDirectBitmap areaIsInvalid:]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
+| `0x47A051CC` | 68 | `-[NSDirectBitmap areaChangedScreen:from:to:]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
+| `0x47A05210` | 44 | `-[NSDirectBitmap areaWindowFreed:]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
+| `0x47A0523C` | 24 | `-[NSDirectBitmap areaDidChangeBuffering:toType:]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
 | `0x47A05254` | 52 | `-[NSDirectBitmap(Obsolete) colorSpace]` | unexamined |
 | `0x47A05288` | 52 | `-[NSDirectBitmap(Obsolete) data]` | unexamined |
 | `0x47A052BC` | 76 | `+[NSDirectPalette defaultPalette]` | unexamined |
@@ -463,10 +463,10 @@ Named Objective-C symbols (candidate module by class name; verify in module meta
 | `0x47A04F2C` | `-[NSDirectBitmap areaDidReveal:inRect:]` | `NSDirectBitmap.m` | unexamined |
 | `0x47A05108` | `-[NSDirectBitmap areaWasOrderedIn:]` | `NSDirectBitmap.m` | unexamined |
 | `0x47A05154` | `-[NSDirectBitmap areaWasOrderedOut:]` | `NSDirectBitmap.m` | unexamined |
-| `0x47A051A0` | `-[NSDirectBitmap areaIsInvalid:]` | `NSDirectBitmap.m` | unexamined |
-| `0x47A051CC` | `-[NSDirectBitmap areaChangedScreen:from:to:]` | `NSDirectBitmap.m` | unexamined |
-| `0x47A05210` | `-[NSDirectBitmap areaWindowFreed:]` | `NSDirectBitmap.m` | unexamined |
-| `0x47A0523C` | `-[NSDirectBitmap areaDidChangeBuffering:toType:]` | `NSDirectBitmap.m` | unexamined |
+| `0x47A051A0` | `-[NSDirectBitmap areaIsInvalid:]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
+| `0x47A051CC` | `-[NSDirectBitmap areaChangedScreen:from:to:]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
+| `0x47A05210` | `-[NSDirectBitmap areaWindowFreed:]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
+| `0x47A0523C` | `-[NSDirectBitmap areaDidChangeBuffering:toType:]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A05254` | `-[NSDirectBitmap(Obsolete) colorSpace]` | `NSDirectBitmap.m` | unexamined |
 | `0x47A05288` | `-[NSDirectBitmap(Obsolete) data]` | `NSDirectBitmap.m` | unexamined |
 | `0x47A052BC` | `+[NSDirectPalette defaultPalette]` | `NSDirectPalette.m` | unexamined |
@@ -709,10 +709,10 @@ IDA function records: 419; symbol records: 629.
 | `0x47A033A8` | 434 | `-[NSDirectBitmap areaDidReveal:inRect:]` | unexamined |
 | `0x47A0355C` | 46 | `-[NSDirectBitmap areaWasOrderedIn:]` | unexamined |
 | `0x47A0358C` | 46 | `-[NSDirectBitmap areaWasOrderedOut:]` | unexamined |
-| `0x47A035BC` | 34 | `-[NSDirectBitmap areaIsInvalid:]` | unexamined |
-| `0x47A035E0` | 51 | `-[NSDirectBitmap areaChangedScreen:from:to:]` | unexamined |
-| `0x47A03614` | 34 | `-[NSDirectBitmap areaWindowFreed:]` | unexamined |
-| `0x47A03638` | 16 | `-[NSDirectBitmap areaDidChangeBuffering:toType:]` | unexamined |
+| `0x47A035BC` | 34 | `-[NSDirectBitmap areaIsInvalid:]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
+| `0x47A035E0` | 51 | `-[NSDirectBitmap areaChangedScreen:from:to:]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
+| `0x47A03614` | 34 | `-[NSDirectBitmap areaWindowFreed:]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
+| `0x47A03638` | 16 | `-[NSDirectBitmap areaDidChangeBuffering:toType:]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
 | `0x47A03648` | 29 | `-[NSDirectBitmap(Obsolete) colorSpace]` | unexamined |
 | `0x47A03668` | 29 | `-[NSDirectBitmap(Obsolete) data]` | unexamined |
 | `0x47A03688` | 65 | `+[NSDirectPalette defaultPalette]` | unexamined |
@@ -1128,10 +1128,10 @@ Named Objective-C symbols (candidate module by class name; verify in module meta
 | `0x47A033A8` | `-[NSDirectBitmap areaDidReveal:inRect:]` | `NSDirectBitmap.m` | unexamined |
 | `0x47A0355C` | `-[NSDirectBitmap areaWasOrderedIn:]` | `NSDirectBitmap.m` | unexamined |
 | `0x47A0358C` | `-[NSDirectBitmap areaWasOrderedOut:]` | `NSDirectBitmap.m` | unexamined |
-| `0x47A035BC` | `-[NSDirectBitmap areaIsInvalid:]` | `NSDirectBitmap.m` | unexamined |
-| `0x47A035E0` | `-[NSDirectBitmap areaChangedScreen:from:to:]` | `NSDirectBitmap.m` | unexamined |
-| `0x47A03614` | `-[NSDirectBitmap areaWindowFreed:]` | `NSDirectBitmap.m` | unexamined |
-| `0x47A03638` | `-[NSDirectBitmap areaDidChangeBuffering:toType:]` | `NSDirectBitmap.m` | unexamined |
+| `0x47A035BC` | `-[NSDirectBitmap areaIsInvalid:]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
+| `0x47A035E0` | `-[NSDirectBitmap areaChangedScreen:from:to:]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
+| `0x47A03614` | `-[NSDirectBitmap areaWindowFreed:]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
+| `0x47A03638` | `-[NSDirectBitmap areaDidChangeBuffering:toType:]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A03648` | `-[NSDirectBitmap(Obsolete) colorSpace]` | `NSDirectBitmap.m` | unexamined |
 | `0x47A03668` | `-[NSDirectBitmap(Obsolete) data]` | `NSDirectBitmap.m` | unexamined |
 | `0x47A03688` | `+[NSDirectPalette defaultPalette]` | `NSDirectPalette.m` | unexamined |

@@ -70,3 +70,8 @@ screen shape/view clip, and route buffered rectangles through `CompositeBits`.
 back to direct drawing. The 7200 request is 112 bytes and contains the four
 integer fields, an out-of-line pixel payload (`height * bytesPerRow` bytes),
 and five dimension/format fields in the same descriptor order as PPC.
+
+Invalidation and window-free callbacks clear the unobscured state and mark the
+bitmap for a deferred update. Screen-change callbacks record the new screen
+only when the old screen is the currently mapped one; buffering changes always
+request a deferred refresh, matching the PPC bodies.

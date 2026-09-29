@@ -9,7 +9,9 @@ notifier ownership and runtime behavior remain to be compared. The flush
 notification's selector-probe behavior is documented below.
 
 `NSInterceptorClient` creates a 12-byte Mach context, a condition lock, a
-regular lock, and its intercepted-rectangle collection. `interceptorPort`
+regular lock, and its intercepted-rectangle collection. Class initialization
+also creates the shared client table and allocates the notification port set.
+`interceptorPort`
 holds the port lock while allocating the notification receive port, tries
 thread special port 3, falls back to task special port 3, then sends the
 notification and exception ports through `_InterceptorSetNotifyPort`. On RPC
@@ -23,14 +25,23 @@ On success it converts the returned four integer screen bounds to floats and
 returns the server's flags. `_removeInterceptedRect:` calls the server first
 and removes the object only on success.
 
-The notification worker receives a fixed 108-byte `InterceptorNotification`
-on the context notification port. It rotates autorelease pools for successive
-messages, checks notification ID `1234`, finds the matching rectangle by
-`uniqueID` under the list lock, releases the list lock, then calls
-`_handleMsg:withReply:`. The rectangle handler holds its condition lock while
-updating visibility and move state, and builds an `InterceptorReply` with ID
-`4321`, the input sequence number, and a 40-byte reply layout. The client sends
-the reply when requested.
+`startHandlingThread` stores the client in a shared dictionary keyed by its
+`NSPort` wrapper, adds the Mach port to the shared port set, then starts one
+notifier thread. The worker registers for invalidation of the Window Server
+port, receives fixed 108-byte `InterceptorNotification` messages from the
+port set, and looks up the client using the received local port. It holds the
+shared table lock while dispatching, then sends a 32-byte reply when requested.
+The worker rotates autorelease pools for successive messages, and startup uses
+a lock handshake so only one notifier thread is created.
+
+The selected DR2 i386 image uses the same shared port-set and client-table
+design. Its global names differ, but port registration, message dispatch,
+thread startup, and reply sizing match the PPC behavior.
+
+`InterceptorContext.c` implements the local rendezvous helpers. It first looks
+up `WindowServer` through the task bootstrap port when both names are null,
+then falls back to the historical netname service name. The rendezvous RPC
+sends a 32-byte message with package ID `7196` and returns the context port.
 Unknown message IDs and missing rectangle IDs are logged.
 
 Notification types map in order to these target selectors:

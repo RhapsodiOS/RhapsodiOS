@@ -25,9 +25,11 @@ contract:
 | `_InterceptorGetBM38ToBM256Table` | `0x47A0C808` | `7211` | 48 | `7311` | 32-byte error / 48-byte success |
 
 All synchronous RPCs call `msg_rpc` with the same request and reply maximum
-sizes as the PPC bodies. Context setup calls `_port_allocate` and `_getPSPort`
-with the same `15000` timeout and package ID `7196`; teardown deallocates the
-same context fields. Runtime transport comparison remains pending.
+sizes as the PPC bodies. Context setup allocates a 12-byte record and reply
+port, then calls the local `getPSPort` helper with the same `15000` timeout and
+package ID `7196`; teardown deallocates the same context fields. The source
+implements the bootstrap `WindowServer` lookup, netname fallback, and
+32-byte rendezvous request. Runtime transport comparison remains pending.
 
 The i386 decompiler confirms the architecture-specific descriptor words:
 integer `0x10012002`, eight-integer rectangle `0x10082002`, and port

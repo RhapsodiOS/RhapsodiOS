@@ -4,9 +4,10 @@
 #include "../Interceptor_types.h"
 
 InterceptorClientContext *InterceptorCreateContext(void);
-InterceptorClientContext *InterceptorCreateRemoteContext(port_t bootstrapPort,
-                                                          port_t rendezvousPort);
+InterceptorClientContext *InterceptorCreateRemoteContext(char *hostName,
+                                                          char *portName);
 void InterceptorDestroyContext(InterceptorClientContext *context);
+port_t _rendezvousPort(void);
 
 int _InterceptorAddRect(port_t contextPort, port_t replyPort,
                         InterceptedRectangle *rectangle);

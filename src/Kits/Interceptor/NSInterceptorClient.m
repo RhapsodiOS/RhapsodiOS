@@ -5,8 +5,11 @@
 #import <Foundation/NSNotification.h>
 #import <Foundation/NSAutoreleasePool.h>
 #import <Foundation/NSLock.h>
+#import <Foundation/NSMutableDictionary.h>
+#import <Foundation/NSPort.h>
 #import <mach/mach.h>
 #import <mach/mach_error.h>
+#import <mach/cthreads.h>
 #import <stdio.h>
 #import <string.h>
 
@@ -15,7 +18,10 @@ extern port_t _rendezvousPort(void);
 
 static NSLock *NSInterceptorClientThreadLock;
 static NSThread *NSInterceptorClientHandlingThread;
-static BOOL NSInterceptorClientThreadStarted;
+static NSMutableDictionary *NSInterceptorClientByPort;
+static port_t NSInterceptorClientNotifySet;
+static NSLock *NSInterceptorClientHandlerLock;
+static NSPort *NSInterceptorClientWindowServerPort;
 
 @implementation NSInterceptorClient
 
@@ -24,7 +30,11 @@ static BOOL NSInterceptorClientThreadStarted;
     if (self == [NSInterceptorClient class]) {
         NSInterceptorClientThreadLock = [[NSLock alloc] init];
         NSInterceptorClientHandlingThread = nil;
-        NSInterceptorClientThreadStarted = NO;
+        NSInterceptorClientByPort = [[NSMutableDictionary alloc] init];
+        if (port_set_allocate(task_self(), &NSInterceptorClientNotifySet) !=
+            KERN_SUCCESS)
+            mach_error("NSInterceptorClient port_set_allocate",
+                       KERN_FAILURE);
     }
 }
 
@@ -183,6 +193,7 @@ static BOOL NSInterceptorClientThreadStarted;
 
 - (void)windowServerPortDeath:(NSNotification *)notification
 {
+    (void)notification;
     [[NSNotificationCenter defaultCenter]
         postNotificationName:NTWindowServerDeathNotification object:self];
 }
@@ -190,58 +201,85 @@ static BOOL NSInterceptorClientThreadStarted;
 - (void)startHandlingThread
 {
     port_t notifyPort = (port_t)[self interceptorPort];
-    port_t set = _rendezvousPort();
     kern_return_t result;
 
     if (notifyPort == PORT_NULL) return;
     [_notifyPort setDelegate:self];
-    result = port_set_add(task_self(), set, notifyPort);
+    [NSInterceptorClientThreadLock lock];
+    [NSInterceptorClientByPort setObject:self forKey:_notifyPort];
+    result = port_set_add(task_self(), NSInterceptorClientNotifySet,
+                          notifyPort);
     if (result != KERN_SUCCESS)
         mach_error("NSInterceptorClient port_set_add", result);
 
-    [NSInterceptorClientThreadLock lock];
-    if (!NSInterceptorClientThreadStarted) {
-        NSInterceptorClientThreadStarted = YES;
-        [[NSNotificationCenter defaultCenter] addObserver:self
-            selector:@selector(windowServerPortDeath:)
-            name:NTWindowServerDeathNotification object:nil];
+    if (NSInterceptorClientHandlingThread == nil) {
+        objc_setMultithreaded(YES);
+        NSInterceptorClientHandlerLock = [[NSLock alloc] init];
+        [NSInterceptorClientHandlerLock lock];
         [NSThread detachNewThreadSelector:@selector(_notifyHandler)
                                    toTarget:self withObject:nil];
+        [NSInterceptorClientHandlerLock lock];
+        [NSInterceptorClientHandlerLock unlock];
+        [NSInterceptorClientHandlerLock release];
+        NSInterceptorClientHandlerLock = nil;
     }
     [NSInterceptorClientThreadLock unlock];
 }
 
 - (void)_notifyHandler
 {
-    port_t receivePort = _rendezvousPort();
     InterceptorNotification message;
     InterceptorReply reply;
     mach_error_t error;
+    NSPort *messagePort;
+    NSInterceptorClient *client;
 
     NSRemapMegaPixelDisplayForCurrentThread();
-    [NSInterceptorClientThreadLock lock];
+    cthread_set_name(cthread_self(), "Interceptor Notifier");
     NSInterceptorClientHandlingThread = [NSThread currentThread];
-    [NSInterceptorClientThreadLock unlock];
+    [NSInterceptorClientHandlerLock unlock];
     [self setHandlingThread:[NSThread currentThread]];
+
+    if (NSInterceptorClientWindowServerPort == nil) {
+        NSInterceptorClientWindowServerPort =
+            [[NSPort portWithMachPort:_rendezvousPort()] retain];
+        [[NSNotificationCenter defaultCenter] addObserver:self
+            selector:@selector(windowServerPortDeath:)
+            name:NSPortDidBecomeInvalidNotification
+            object:NSInterceptorClientWindowServerPort];
+    }
+
     while (1) {
         NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
         memset(&message, 0, sizeof(message));
         message.h.msg_size = sizeof(message);
-        message.h.msg_local_port = receivePort;
+        message.h.msg_local_port = NSInterceptorClientNotifySet;
         error = msg_receive(&message.h, 0, 0);
         if (error != KERN_SUCCESS) {
             NSLog(@"NSInterceptorClient notification receive failed: %s",
                   mach_error_string(error));
             [pool release];
-            continue;
+            [NSInterceptorClientThreadLock lock];
+            NSInterceptorClientHandlingThread = nil;
+            [NSInterceptorClientThreadLock unlock];
+            [NSThread exit];
         }
-        if ([self handleInterceptorMessage:&message withReply:&reply] &&
-            message.h.msg_remote_port != PORT_NULL) {
-            reply.h.msg_remote_port = message.h.msg_remote_port;
-            error = msg_send(&reply.h, 0, 0);
-            if (error != KERN_SUCCESS)
-                NSLog(@"NSInterceptorClient notification reply failed: %s",
-                      mach_error_string(error));
+
+        [NSInterceptorClientThreadLock lock];
+        messagePort = [NSPort portWithMachPort:message.h.msg_local_port];
+        client = [NSInterceptorClientByPort objectForKey:messagePort];
+        if (client != nil &&
+            [client handleInterceptorMessage:&message withReply:&reply]) {
+            [NSInterceptorClientThreadLock unlock];
+            if (message.h.msg_remote_port != PORT_NULL) {
+                reply.h.msg_remote_port = message.h.msg_remote_port;
+                error = msg_send(&reply.h, 32, 0);
+                if (error != KERN_SUCCESS)
+                    NSLog(@"NSInterceptorClient notification reply failed: %s",
+                          mach_error_string(error));
+            }
+        } else {
+            [NSInterceptorClientThreadLock unlock];
         }
         [pool release];
     }
@@ -251,9 +289,11 @@ static BOOL NSInterceptorClientThreadStarted;
 {
     [portLock lock];
     if (context && context->notifyPort != PORT_NULL) {
-        port_set_remove(task_self(), _rendezvousPort(), context->notifyPort);
-        [[NSNotificationCenter defaultCenter] removeObserver:self
-            name:NTWindowServerDeathNotification object:nil];
+        [NSInterceptorClientThreadLock lock];
+        port_set_remove(task_self(), NSInterceptorClientNotifySet,
+                        context->notifyPort);
+        [NSInterceptorClientByPort removeObjectForKey:_notifyPort];
+        [NSInterceptorClientThreadLock unlock];
         [_notifyPort release];
         port_deallocate(task_self(), context->notifyPort);
         context->notifyPort = PORT_NULL;

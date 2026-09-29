@@ -77,8 +77,9 @@ contain only the MIG status. `_InterceptorShowCursorAsync` sends request `7218`
 to the context port without waiting for a reply, and the high-level
 `InterceptorShowCursor` wrapper returns zero after queuing it.
 
-`InterceptorContext.c` implements the context lifecycle and `InterceptorIPC.c`
-implements these RPC stubs,
+`InterceptorContext.c` implements the context lifecycle, bootstrap/netname
+Window Server lookup, and rendezvous RPC. `_rendezvousPort` exposes the
+resolved server port to the notifier. `InterceptorIPC.c` implements these RPC stubs,
 including the typed descriptors (`0x02200088` for the rectangle,
 `0x02200018` for integers, and `0x06200018` for ports in the PPC word view),
 conversion-table RPCs, success/error reply shapes, and the observed `-300`/`-301`

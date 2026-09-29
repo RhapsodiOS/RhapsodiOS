@@ -1232,4 +1232,14 @@ failure:
     [(NSFramebuffer *)NSDirectScreenWords(self->_private)[2] unlock];
 }
 
+- (NSString *)colorSpace
+{
+    return [self colorSpaceName];
+}
+
+- (char *)data
+{
+    return (char *)[self bitmapData];
+}
+
 @end

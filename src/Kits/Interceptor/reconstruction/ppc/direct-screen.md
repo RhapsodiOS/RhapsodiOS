@@ -41,6 +41,8 @@ verification against a compatible guest.
 `_unlock` require byte 120 to indicate a shielded display before forwarding;
 an unshielded call raises `NSDirectScreenDisplayIsUnshieldedException` with
 the invoked selector.
+The obsolete `colorSpace` and `data` accessors alias `colorSpaceName` and
+`bitmapData`.
 
 Fade operations update the palette through the same transfer-table path.
 PowerPC timer callbacks apply intermediate palette blends before the final

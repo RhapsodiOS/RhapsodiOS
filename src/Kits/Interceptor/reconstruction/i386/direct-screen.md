@@ -53,3 +53,5 @@ and completion notifications bracket the synchronous run-loop timer sequence.
 `_unlock` both require byte 120 to indicate a shielded display before
 forwarding to the framebuffer; an unshielded call raises
 `NSDirectScreenDisplayIsUnshieldedException` using the invoked selector.
+The obsolete `colorSpace` and `data` accessors alias `colorSpaceName` and
+`bitmapData`.

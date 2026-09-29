@@ -101,66 +101,66 @@ IDA function records: 392; symbol records: 540.
 | `0x47A062D8` | 160 | `-[NSDirectPalette initWithCoder:]` | static-reviewed; source authored; runtime pending |
 | `0x47A06378` | 248 | `-[NSDirectPalette isEqual:]` | static-reviewed; source authored; runtime pending |
 | `0x47A06470` | 656 | `-[NSDirectPalette blendedPaletteWithFraction:ofColor:]` | static-reviewed; source authored; runtime pending |
-| `0x47A06700` | 136 | `-[NSDirectScreen _clearModeInfo]` | unexamined |
-| `0x47A06788` | 492 | `-[NSDirectScreen initWithScreen:]` | unexamined |
-| `0x47A06974` | 368 | `-[NSDirectScreen dealloc]` | unexamined |
-| `0x47A06AE4` | 204 | `-[NSDirectScreen screenSize]` | unexamined |
-| `0x47A06BB0` | 92 | `-[NSDirectScreen pixelsWide]` | unexamined |
-| `0x47A06C0C` | 92 | `-[NSDirectScreen pixelsHigh]` | unexamined |
-| `0x47A06C68` | 444 | `-[NSDirectScreen addressForPoint:]` | unexamined |
-| `0x47A06E24` | 2544 | `-[NSDirectScreen availableDisplayModes]` | unexamined |
-| `0x47A07814` | 376 | `-[NSDirectScreen availableDisplayModesForOptions:]` | unexamined |
-| `0x47A0798C` | 1164 | `-[NSDirectScreen bestModeForFormat:width:height:]` | unexamined |
-| `0x47A07E18` | 124 | `-[NSDirectScreen bestModeForOptions:]` | unexamined |
-| `0x47A07E94` | 296 | `-[NSDirectScreen currentMode]` | unexamined |
-| `0x47A07FBC` | 120 | `-[NSDirectScreen bitsPerPixel]` | unexamined |
-| `0x47A08034` | 120 | `-[NSDirectScreen bitsPerSample]` | unexamined |
-| `0x47A080AC` | 176 | `-[NSDirectScreen bytesPerRow]` | unexamined |
-| `0x47A0815C` | 92 | `-[NSDirectScreen bytesPerPlane]` | unexamined |
-| `0x47A081B8` | 16 | `-[NSDirectScreen numberOfPlanes]` | unexamined |
-| `0x47A081C8` | 64 | `-[NSDirectScreen _canLockWithMode:]` | unexamined |
-| `0x47A08208` | 72 | `-[NSDirectScreen colorSpaceName]` | unexamined |
-| `0x47A08250` | 116 | `-[NSDirectScreen bitmapData]` | unexamined |
-| `0x47A082C4` | 80 | `-[NSDirectScreen getBitmapDataPlanes:]` | unexamined |
-| `0x47A08314` | 16 | `-[NSDirectScreen isPlanar]` | unexamined |
-| `0x47A08324` | 16 | `-[NSDirectScreen hasAlpha]` | unexamined |
-| `0x47A08334` | 60 | `-[NSDirectScreen deviceSlot]` | unexamined |
-| `0x47A08370` | 60 | `-[NSDirectScreen deviceUnit]` | unexamined |
-| `0x47A083AC` | 24 | `-[NSDirectScreen displayIsShielded]` | unexamined |
-| `0x47A083C4` | 60 | `-[NSDirectScreen driver]` | unexamined |
-| `0x47A08400` | 280 | `-[NSDirectScreen fadeDisplay:toColor:]` | unexamined |
-| `0x47A08518` | 360 | `-[NSDirectScreen _fadeIn:]` | unexamined |
-| `0x47A08680` | 776 | `-[NSDirectScreen fadeDisplayInFromColor:]` | unexamined |
-| `0x47A08988` | 380 | `-[NSDirectScreen _fadeOut:]` | unexamined |
-| `0x47A08B04` | 776 | `-[NSDirectScreen fadeDisplayOutToColor:]` | unexamined |
-| `0x47A08E0C` | 20 | `-[NSDirectScreen fadeDuration]` | unexamined |
-| `0x47A08E20` | 24 | `-[NSDirectScreen fadeInProgress]` | unexamined |
-| `0x47A08E38` | 24 | `-[NSDirectScreen fadeApplied]` | unexamined |
-| `0x47A08E50` | 136 | `-[NSDirectScreen _lockWithMode:]` | unexamined |
-| `0x47A08ED8` | 72 | `-[NSDirectScreen pixelEncoding]` | unexamined |
-| `0x47A08F20` | 120 | `-[NSDirectScreen samplesPerPixel]` | unexamined |
-| `0x47A08F98` | 60 | `-[NSDirectScreen screenNumber]` | unexamined |
-| `0x47A08FD4` | 136 | `-[NSDirectScreen canSetPalette]` | unexamined |
-| `0x47A0905C` | 256 | `-[NSDirectScreen setPalette:]` | unexamined |
-| `0x47A0915C` | 20 | `-[NSDirectScreen currentPalette]` | unexamined |
-| `0x47A09170` | 256 | `-[NSDirectScreen setPaletteAtNextBlankingInterval:]` | unexamined |
-| `0x47A09270` | 80 | `-[NSDirectScreen setFadeDuration:]` | unexamined |
-| `0x47A092C0` | 652 | `-[NSDirectScreen shieldDisplay]` | unexamined |
-| `0x47A0954C` | 20 | `-[NSDirectScreen shieldingWindow]` | unexamined |
-| `0x47A09560` | 600 | `-[NSDirectScreen switchToDisplayMode:]` | unexamined |
-| `0x47A097B8` | 128 | `-[NSDirectScreen _unlock]` | unexamined |
-| `0x47A09838` | 344 | `-[NSDirectScreen unshieldDisplay]` | unexamined |
-| `0x47A09990` | 40 | `-[NSDirectScreen hideCursor]` | unexamined |
-| `0x47A099B8` | 40 | `-[NSDirectScreen showCursor]` | unexamined |
-| `0x47A099E0` | 100 | `-[NSDirectScreen setGamma:]` | unexamined |
-| `0x47A09A44` | 376 | `-[NSDirectScreen setGammaRed:green:blue:]` | unexamined |
-| `0x47A09BBC` | 984 | `-[NSDirectScreen setGammaTableOfSize:red:green:blue:]` | unexamined |
-| `0x47A09F94` | 312 | `-[NSDirectScreen _loadPalette:]` | unexamined |
-| `0x47A0A0CC` | 380 | `-[NSDirectScreen _createBackingStore]` | unexamined |
-| `0x47A0A248` | 100 | `-[NSDirectScreen _destroyBackingStore]` | unexamined |
+| `0x47A06700` | 136 | `-[NSDirectScreen _clearModeInfo]` | static-reviewed; source authored; runtime pending |
+| `0x47A06788` | 492 | `-[NSDirectScreen initWithScreen:]` | static-reviewed; source authored; runtime pending |
+| `0x47A06974` | 368 | `-[NSDirectScreen dealloc]` | static-reviewed; source authored; runtime pending |
+| `0x47A06AE4` | 204 | `-[NSDirectScreen screenSize]` | static-reviewed; source authored; runtime pending |
+| `0x47A06BB0` | 92 | `-[NSDirectScreen pixelsWide]` | static-reviewed; source authored; runtime pending |
+| `0x47A06C0C` | 92 | `-[NSDirectScreen pixelsHigh]` | static-reviewed; source authored; runtime pending |
+| `0x47A06C68` | 444 | `-[NSDirectScreen addressForPoint:]` | static-reviewed; source authored; runtime pending |
+| `0x47A06E24` | 2544 | `-[NSDirectScreen availableDisplayModes]` | static-reviewed; source authored; runtime pending |
+| `0x47A07814` | 376 | `-[NSDirectScreen availableDisplayModesForOptions:]` | static-reviewed; source authored; runtime pending |
+| `0x47A0798C` | 1164 | `-[NSDirectScreen bestModeForFormat:width:height:]` | static-reviewed; source authored; runtime pending |
+| `0x47A07E18` | 124 | `-[NSDirectScreen bestModeForOptions:]` | static-reviewed; source authored; runtime pending |
+| `0x47A07E94` | 296 | `-[NSDirectScreen currentMode]` | static-reviewed; source authored; runtime pending |
+| `0x47A07FBC` | 120 | `-[NSDirectScreen bitsPerPixel]` | static-reviewed; source authored; runtime pending |
+| `0x47A08034` | 120 | `-[NSDirectScreen bitsPerSample]` | static-reviewed; source authored; runtime pending |
+| `0x47A080AC` | 176 | `-[NSDirectScreen bytesPerRow]` | static-reviewed; source authored; runtime pending |
+| `0x47A0815C` | 92 | `-[NSDirectScreen bytesPerPlane]` | static-reviewed; source authored; runtime pending |
+| `0x47A081B8` | 16 | `-[NSDirectScreen numberOfPlanes]` | static-reviewed; source authored; runtime pending |
+| `0x47A081C8` | 64 | `-[NSDirectScreen _canLockWithMode:]` | static-reviewed; source authored; runtime pending |
+| `0x47A08208` | 72 | `-[NSDirectScreen colorSpaceName]` | static-reviewed; source authored; runtime pending |
+| `0x47A08250` | 116 | `-[NSDirectScreen bitmapData]` | static-reviewed; source authored; runtime pending |
+| `0x47A082C4` | 80 | `-[NSDirectScreen getBitmapDataPlanes:]` | static-reviewed; source authored; runtime pending |
+| `0x47A08314` | 16 | `-[NSDirectScreen isPlanar]` | static-reviewed; source authored; runtime pending |
+| `0x47A08324` | 16 | `-[NSDirectScreen hasAlpha]` | static-reviewed; source authored; runtime pending |
+| `0x47A08334` | 60 | `-[NSDirectScreen deviceSlot]` | static-reviewed; source authored; runtime pending |
+| `0x47A08370` | 60 | `-[NSDirectScreen deviceUnit]` | static-reviewed; source authored; runtime pending |
+| `0x47A083AC` | 24 | `-[NSDirectScreen displayIsShielded]` | static-reviewed; source authored; runtime pending |
+| `0x47A083C4` | 60 | `-[NSDirectScreen driver]` | static-reviewed; source authored; runtime pending |
+| `0x47A08400` | 280 | `-[NSDirectScreen fadeDisplay:toColor:]` | static-reviewed; source authored; runtime pending |
+| `0x47A08518` | 360 | `-[NSDirectScreen _fadeIn:]` | static-reviewed; source authored; runtime pending |
+| `0x47A08680` | 776 | `-[NSDirectScreen fadeDisplayInFromColor:]` | static-reviewed; source authored; runtime pending |
+| `0x47A08988` | 380 | `-[NSDirectScreen _fadeOut:]` | static-reviewed; source authored; runtime pending |
+| `0x47A08B04` | 776 | `-[NSDirectScreen fadeDisplayOutToColor:]` | static-reviewed; source authored; runtime pending |
+| `0x47A08E0C` | 20 | `-[NSDirectScreen fadeDuration]` | static-reviewed; source authored; runtime pending |
+| `0x47A08E20` | 24 | `-[NSDirectScreen fadeInProgress]` | static-reviewed; source authored; runtime pending |
+| `0x47A08E38` | 24 | `-[NSDirectScreen fadeApplied]` | static-reviewed; source authored; runtime pending |
+| `0x47A08E50` | 136 | `-[NSDirectScreen _lockWithMode:]` | static-reviewed; source authored; runtime pending |
+| `0x47A08ED8` | 72 | `-[NSDirectScreen pixelEncoding]` | static-reviewed; source authored; runtime pending |
+| `0x47A08F20` | 120 | `-[NSDirectScreen samplesPerPixel]` | static-reviewed; source authored; runtime pending |
+| `0x47A08F98` | 60 | `-[NSDirectScreen screenNumber]` | static-reviewed; source authored; runtime pending |
+| `0x47A08FD4` | 136 | `-[NSDirectScreen canSetPalette]` | static-reviewed; source authored; runtime pending |
+| `0x47A0905C` | 256 | `-[NSDirectScreen setPalette:]` | static-reviewed; source authored; runtime pending |
+| `0x47A0915C` | 20 | `-[NSDirectScreen currentPalette]` | static-reviewed; source authored; runtime pending |
+| `0x47A09170` | 256 | `-[NSDirectScreen setPaletteAtNextBlankingInterval:]` | static-reviewed; source authored; runtime pending |
+| `0x47A09270` | 80 | `-[NSDirectScreen setFadeDuration:]` | static-reviewed; source authored; runtime pending |
+| `0x47A092C0` | 652 | `-[NSDirectScreen shieldDisplay]` | static-reviewed; source authored; runtime pending |
+| `0x47A0954C` | 20 | `-[NSDirectScreen shieldingWindow]` | static-reviewed; source authored; runtime pending |
+| `0x47A09560` | 600 | `-[NSDirectScreen switchToDisplayMode:]` | static-reviewed; source authored; runtime pending |
+| `0x47A097B8` | 128 | `-[NSDirectScreen _unlock]` | static-reviewed; source authored; runtime pending |
+| `0x47A09838` | 344 | `-[NSDirectScreen unshieldDisplay]` | static-reviewed; source authored; runtime pending |
+| `0x47A09990` | 40 | `-[NSDirectScreen hideCursor]` | static-reviewed; source authored; runtime pending |
+| `0x47A099B8` | 40 | `-[NSDirectScreen showCursor]` | static-reviewed; source authored; runtime pending |
+| `0x47A099E0` | 100 | `-[NSDirectScreen setGamma:]` | static-reviewed; source authored; runtime pending |
+| `0x47A09A44` | 376 | `-[NSDirectScreen setGammaRed:green:blue:]` | static-reviewed; source authored; runtime pending |
+| `0x47A09BBC` | 984 | `-[NSDirectScreen setGammaTableOfSize:red:green:blue:]` | static-reviewed; source authored; runtime pending |
+| `0x47A09F94` | 312 | `-[NSDirectScreen _loadPalette:]` | static-reviewed; source authored; runtime pending |
+| `0x47A0A0CC` | 380 | `-[NSDirectScreen _createBackingStore]` | static-reviewed; source authored; runtime pending |
+| `0x47A0A248` | 100 | `-[NSDirectScreen _destroyBackingStore]` | static-reviewed; source authored; runtime pending |
 | `0x47A0A2AC` | 504 | `_CopySrcToDst` | static-reviewed; runtime pending; `NSFramebuffer.m` |
-| `0x47A0A4A4` | 52 | `-[NSDirectScreen(Obsolete) colorSpace]` | unexamined |
-| `0x47A0A4D8` | 52 | `-[NSDirectScreen(Obsolete) data]` | unexamined |
+| `0x47A0A4A4` | 52 | `-[NSDirectScreen(Obsolete) colorSpace]` | static-reviewed; source authored; runtime pending |
+| `0x47A0A4D8` | 52 | `-[NSDirectScreen(Obsolete) data]` | static-reviewed; source authored; runtime pending |
 | `0x47A0A50C` | 176 | `_setInstanceForScreen` | static-reviewed; source authored; runtime pending; `NSFramebuffer.m` |
 | `0x47A0A5BC` | 108 | `_instanceForScreen` | static-reviewed; source authored; runtime pending; `NSFramebuffer.m` |
 | `0x47A0A628` | 56 | `-[NSFramebuffer initWithScreen:]` | static-reviewed; runtime pending; `NSFramebuffer.m` |
@@ -493,65 +493,65 @@ Named Objective-C symbols (candidate module by class name; verify in module meta
 | `0x47A062D8` | `-[NSDirectPalette initWithCoder:]` | `NSDirectPalette.m` | static-reviewed; source authored; runtime pending |
 | `0x47A06378` | `-[NSDirectPalette isEqual:]` | `NSDirectPalette.m` | static-reviewed; source authored; runtime pending |
 | `0x47A06470` | `-[NSDirectPalette blendedPaletteWithFraction:ofColor:]` | `NSDirectPalette.m` | static-reviewed; source authored; runtime pending |
-| `0x47A06700` | `-[NSDirectScreen _clearModeInfo]` | `NSDirectScreen.m` | unexamined |
-| `0x47A06788` | `-[NSDirectScreen initWithScreen:]` | `NSDirectScreen.m` | unexamined |
-| `0x47A06974` | `-[NSDirectScreen dealloc]` | `NSDirectScreen.m` | unexamined |
-| `0x47A06AE4` | `-[NSDirectScreen screenSize]` | `NSDirectScreen.m` | unexamined |
-| `0x47A06BB0` | `-[NSDirectScreen pixelsWide]` | `NSDirectScreen.m` | unexamined |
-| `0x47A06C0C` | `-[NSDirectScreen pixelsHigh]` | `NSDirectScreen.m` | unexamined |
-| `0x47A06C68` | `-[NSDirectScreen addressForPoint:]` | `NSDirectScreen.m` | unexamined |
-| `0x47A06E24` | `-[NSDirectScreen availableDisplayModes]` | `NSDirectScreen.m` | unexamined |
-| `0x47A07814` | `-[NSDirectScreen availableDisplayModesForOptions:]` | `NSDirectScreen.m` | unexamined |
-| `0x47A0798C` | `-[NSDirectScreen bestModeForFormat:width:height:]` | `NSDirectScreen.m` | unexamined |
-| `0x47A07E18` | `-[NSDirectScreen bestModeForOptions:]` | `NSDirectScreen.m` | unexamined |
-| `0x47A07E94` | `-[NSDirectScreen currentMode]` | `NSDirectScreen.m` | unexamined |
-| `0x47A07FBC` | `-[NSDirectScreen bitsPerPixel]` | `NSDirectScreen.m` | unexamined |
-| `0x47A08034` | `-[NSDirectScreen bitsPerSample]` | `NSDirectScreen.m` | unexamined |
-| `0x47A080AC` | `-[NSDirectScreen bytesPerRow]` | `NSDirectScreen.m` | unexamined |
-| `0x47A0815C` | `-[NSDirectScreen bytesPerPlane]` | `NSDirectScreen.m` | unexamined |
-| `0x47A081B8` | `-[NSDirectScreen numberOfPlanes]` | `NSDirectScreen.m` | unexamined |
-| `0x47A081C8` | `-[NSDirectScreen _canLockWithMode:]` | `NSDirectScreen.m` | unexamined |
-| `0x47A08208` | `-[NSDirectScreen colorSpaceName]` | `NSDirectScreen.m` | unexamined |
-| `0x47A08250` | `-[NSDirectScreen bitmapData]` | `NSDirectScreen.m` | unexamined |
-| `0x47A082C4` | `-[NSDirectScreen getBitmapDataPlanes:]` | `NSDirectScreen.m` | unexamined |
-| `0x47A08314` | `-[NSDirectScreen isPlanar]` | `NSDirectScreen.m` | unexamined |
-| `0x47A08324` | `-[NSDirectScreen hasAlpha]` | `NSDirectScreen.m` | unexamined |
-| `0x47A08334` | `-[NSDirectScreen deviceSlot]` | `NSDirectScreen.m` | unexamined |
-| `0x47A08370` | `-[NSDirectScreen deviceUnit]` | `NSDirectScreen.m` | unexamined |
-| `0x47A083AC` | `-[NSDirectScreen displayIsShielded]` | `NSDirectScreen.m` | unexamined |
-| `0x47A083C4` | `-[NSDirectScreen driver]` | `NSDirectScreen.m` | unexamined |
-| `0x47A08400` | `-[NSDirectScreen fadeDisplay:toColor:]` | `NSDirectScreen.m` | unexamined |
-| `0x47A08518` | `-[NSDirectScreen _fadeIn:]` | `NSDirectScreen.m` | unexamined |
-| `0x47A08680` | `-[NSDirectScreen fadeDisplayInFromColor:]` | `NSDirectScreen.m` | unexamined |
-| `0x47A08988` | `-[NSDirectScreen _fadeOut:]` | `NSDirectScreen.m` | unexamined |
-| `0x47A08B04` | `-[NSDirectScreen fadeDisplayOutToColor:]` | `NSDirectScreen.m` | unexamined |
-| `0x47A08E0C` | `-[NSDirectScreen fadeDuration]` | `NSDirectScreen.m` | unexamined |
-| `0x47A08E20` | `-[NSDirectScreen fadeInProgress]` | `NSDirectScreen.m` | unexamined |
-| `0x47A08E38` | `-[NSDirectScreen fadeApplied]` | `NSDirectScreen.m` | unexamined |
-| `0x47A08E50` | `-[NSDirectScreen _lockWithMode:]` | `NSDirectScreen.m` | unexamined |
-| `0x47A08ED8` | `-[NSDirectScreen pixelEncoding]` | `NSDirectScreen.m` | unexamined |
-| `0x47A08F20` | `-[NSDirectScreen samplesPerPixel]` | `NSDirectScreen.m` | unexamined |
-| `0x47A08F98` | `-[NSDirectScreen screenNumber]` | `NSDirectScreen.m` | unexamined |
-| `0x47A08FD4` | `-[NSDirectScreen canSetPalette]` | `NSDirectScreen.m` | unexamined |
-| `0x47A0905C` | `-[NSDirectScreen setPalette:]` | `NSDirectScreen.m` | unexamined |
-| `0x47A0915C` | `-[NSDirectScreen currentPalette]` | `NSDirectScreen.m` | unexamined |
-| `0x47A09170` | `-[NSDirectScreen setPaletteAtNextBlankingInterval:]` | `NSDirectScreen.m` | unexamined |
-| `0x47A09270` | `-[NSDirectScreen setFadeDuration:]` | `NSDirectScreen.m` | unexamined |
-| `0x47A092C0` | `-[NSDirectScreen shieldDisplay]` | `NSDirectScreen.m` | unexamined |
-| `0x47A0954C` | `-[NSDirectScreen shieldingWindow]` | `NSDirectScreen.m` | unexamined |
-| `0x47A09560` | `-[NSDirectScreen switchToDisplayMode:]` | `NSDirectScreen.m` | unexamined |
-| `0x47A097B8` | `-[NSDirectScreen _unlock]` | `NSDirectScreen.m` | unexamined |
-| `0x47A09838` | `-[NSDirectScreen unshieldDisplay]` | `NSDirectScreen.m` | unexamined |
-| `0x47A09990` | `-[NSDirectScreen hideCursor]` | `NSDirectScreen.m` | unexamined |
-| `0x47A099B8` | `-[NSDirectScreen showCursor]` | `NSDirectScreen.m` | unexamined |
-| `0x47A099E0` | `-[NSDirectScreen(NSPrivate) setGamma:]` | `NSDirectScreen.m` | unexamined |
-| `0x47A09A44` | `-[NSDirectScreen(NSPrivate) setGammaRed:green:blue:]` | `NSDirectScreen.m` | unexamined |
-| `0x47A09BBC` | `-[NSDirectScreen(NSPrivate) setGammaTableOfSize:red:green:blue:]` | `NSDirectScreen.m` | unexamined |
-| `0x47A09F94` | `-[NSDirectScreen(NSPrivate) _loadPalette:]` | `NSDirectScreen.m` | unexamined |
-| `0x47A0A0CC` | `-[NSDirectScreen(NSPrivate) _createBackingStore]` | `NSDirectScreen.m` | unexamined |
-| `0x47A0A248` | `-[NSDirectScreen(NSPrivate) _destroyBackingStore]` | `NSDirectScreen.m` | unexamined |
-| `0x47A0A4A4` | `-[NSDirectScreen(Obsolete) colorSpace]` | `NSDirectScreen.m` | unexamined |
-| `0x47A0A4D8` | `-[NSDirectScreen(Obsolete) data]` | `NSDirectScreen.m` | unexamined |
+| `0x47A06700` | `-[NSDirectScreen _clearModeInfo]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A06788` | `-[NSDirectScreen initWithScreen:]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A06974` | `-[NSDirectScreen dealloc]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A06AE4` | `-[NSDirectScreen screenSize]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A06BB0` | `-[NSDirectScreen pixelsWide]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A06C0C` | `-[NSDirectScreen pixelsHigh]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A06C68` | `-[NSDirectScreen addressForPoint:]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A06E24` | `-[NSDirectScreen availableDisplayModes]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A07814` | `-[NSDirectScreen availableDisplayModesForOptions:]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A0798C` | `-[NSDirectScreen bestModeForFormat:width:height:]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A07E18` | `-[NSDirectScreen bestModeForOptions:]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A07E94` | `-[NSDirectScreen currentMode]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A07FBC` | `-[NSDirectScreen bitsPerPixel]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A08034` | `-[NSDirectScreen bitsPerSample]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A080AC` | `-[NSDirectScreen bytesPerRow]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A0815C` | `-[NSDirectScreen bytesPerPlane]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A081B8` | `-[NSDirectScreen numberOfPlanes]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A081C8` | `-[NSDirectScreen _canLockWithMode:]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A08208` | `-[NSDirectScreen colorSpaceName]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A08250` | `-[NSDirectScreen bitmapData]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A082C4` | `-[NSDirectScreen getBitmapDataPlanes:]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A08314` | `-[NSDirectScreen isPlanar]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A08324` | `-[NSDirectScreen hasAlpha]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A08334` | `-[NSDirectScreen deviceSlot]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A08370` | `-[NSDirectScreen deviceUnit]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A083AC` | `-[NSDirectScreen displayIsShielded]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A083C4` | `-[NSDirectScreen driver]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A08400` | `-[NSDirectScreen fadeDisplay:toColor:]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A08518` | `-[NSDirectScreen _fadeIn:]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A08680` | `-[NSDirectScreen fadeDisplayInFromColor:]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A08988` | `-[NSDirectScreen _fadeOut:]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A08B04` | `-[NSDirectScreen fadeDisplayOutToColor:]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A08E0C` | `-[NSDirectScreen fadeDuration]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A08E20` | `-[NSDirectScreen fadeInProgress]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A08E38` | `-[NSDirectScreen fadeApplied]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A08E50` | `-[NSDirectScreen _lockWithMode:]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A08ED8` | `-[NSDirectScreen pixelEncoding]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A08F20` | `-[NSDirectScreen samplesPerPixel]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A08F98` | `-[NSDirectScreen screenNumber]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A08FD4` | `-[NSDirectScreen canSetPalette]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A0905C` | `-[NSDirectScreen setPalette:]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A0915C` | `-[NSDirectScreen currentPalette]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A09170` | `-[NSDirectScreen setPaletteAtNextBlankingInterval:]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A09270` | `-[NSDirectScreen setFadeDuration:]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A092C0` | `-[NSDirectScreen shieldDisplay]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A0954C` | `-[NSDirectScreen shieldingWindow]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A09560` | `-[NSDirectScreen switchToDisplayMode:]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A097B8` | `-[NSDirectScreen _unlock]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A09838` | `-[NSDirectScreen unshieldDisplay]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A09990` | `-[NSDirectScreen hideCursor]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A099B8` | `-[NSDirectScreen showCursor]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A099E0` | `-[NSDirectScreen(NSPrivate) setGamma:]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A09A44` | `-[NSDirectScreen(NSPrivate) setGammaRed:green:blue:]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A09BBC` | `-[NSDirectScreen(NSPrivate) setGammaTableOfSize:red:green:blue:]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A09F94` | `-[NSDirectScreen(NSPrivate) _loadPalette:]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A0A0CC` | `-[NSDirectScreen(NSPrivate) _createBackingStore]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A0A248` | `-[NSDirectScreen(NSPrivate) _destroyBackingStore]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A0A4A4` | `-[NSDirectScreen(Obsolete) colorSpace]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A0A4D8` | `-[NSDirectScreen(Obsolete) data]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
 | `0x47A0A628` | `-[NSFramebuffer initWithScreen:]` | `NSFramebuffer.m` | static-reviewed; runtime pending |
 | `0x47A0A660` | `-[NSFramebuffer initWithScreen:andMapIfPossible:]` | `NSFramebuffer.m` | static-reviewed; runtime pending |
 | `0x47A0A72C` | `-[NSFramebuffer initFromScreen:andMapIfPossible:]` | `NSFramebuffer.m` | static-reviewed; source authored; runtime pending |
@@ -737,66 +737,66 @@ IDA function records: 419; symbol records: 629.
 | `0x47A0426C` | 136 | `-[NSDirectPalette initWithCoder:]` | static-reviewed; source authored; runtime pending |
 | `0x47A042F4` | 200 | `-[NSDirectPalette isEqual:]` | static-reviewed; source authored; runtime pending |
 | `0x47A043BC` | 645 | `-[NSDirectPalette blendedPaletteWithFraction:ofColor:]` | static-reviewed; source authored; runtime pending |
-| `0x47A04644` | 103 | `-[NSDirectScreen _clearModeInfo]` | unexamined |
-| `0x47A046AC` | 460 | `-[NSDirectScreen initWithScreen:]` | unexamined |
-| `0x47A04878` | 367 | `-[NSDirectScreen dealloc]` | unexamined |
-| `0x47A049E8` | 189 | `-[NSDirectScreen screenSize]` | unexamined |
-| `0x47A04AA8` | 62 | `-[NSDirectScreen pixelsWide]` | unexamined |
-| `0x47A04AE8` | 62 | `-[NSDirectScreen pixelsHigh]` | unexamined |
-| `0x47A04B28` | 257 | `-[NSDirectScreen addressForPoint:]` | unexamined |
-| `0x47A04C2C` | 2861 | `-[NSDirectScreen availableDisplayModes]` | unexamined |
-| `0x47A0575C` | 447 | `-[NSDirectScreen availableDisplayModesForOptions:]` | unexamined |
-| `0x47A0591C` | 1289 | `-[NSDirectScreen bestModeForFormat:width:height:]` | unexamined |
-| `0x47A05E28` | 113 | `-[NSDirectScreen bestModeForOptions:]` | unexamined |
-| `0x47A05E9C` | 258 | `-[NSDirectScreen currentMode]` | unexamined |
-| `0x47A05FA0` | 101 | `-[NSDirectScreen bitsPerPixel]` | unexamined |
-| `0x47A06008` | 101 | `-[NSDirectScreen bitsPerSample]` | unexamined |
-| `0x47A06070` | 140 | `-[NSDirectScreen bytesPerRow]` | unexamined |
-| `0x47A060FC` | 58 | `-[NSDirectScreen bytesPerPlane]` | unexamined |
-| `0x47A06138` | 12 | `-[NSDirectScreen numberOfPlanes]` | unexamined |
-| `0x47A06144` | 42 | `-[NSDirectScreen _canLockWithMode:]` | unexamined |
-| `0x47A06170` | 56 | `-[NSDirectScreen colorSpaceName]` | unexamined |
-| `0x47A061A8` | 78 | `-[NSDirectScreen bitmapData]` | unexamined |
-| `0x47A061F8` | 66 | `-[NSDirectScreen getBitmapDataPlanes:]` | unexamined |
-| `0x47A0623C` | 9 | `-[NSDirectScreen isPlanar]` | unexamined |
-| `0x47A06248` | 9 | `-[NSDirectScreen hasAlpha]` | unexamined |
-| `0x47A06254` | 35 | `-[NSDirectScreen deviceSlot]` | unexamined |
-| `0x47A06278` | 35 | `-[NSDirectScreen deviceUnit]` | unexamined |
-| `0x47A0629C` | 17 | `-[NSDirectScreen displayIsShielded]` | unexamined |
-| `0x47A062B0` | 35 | `-[NSDirectScreen driver]` | unexamined |
-| `0x47A062D4` | 234 | `-[NSDirectScreen fadeDisplay:toColor:]` | unexamined |
-| `0x47A063C0` | 314 | `-[NSDirectScreen _fadeIn:]` | unexamined |
-| `0x47A064FC` | 707 | `-[NSDirectScreen fadeDisplayInFromColor:]` | unexamined |
-| `0x47A067C0` | 314 | `-[NSDirectScreen _fadeOut:]` | unexamined |
-| `0x47A068FC` | 711 | `-[NSDirectScreen fadeDisplayOutToColor:]` | unexamined |
-| `0x47A06BC4` | 16 | `-[NSDirectScreen fadeDuration]` | unexamined |
-| `0x47A06BD4` | 17 | `-[NSDirectScreen fadeInProgress]` | unexamined |
-| `0x47A06BE8` | 17 | `-[NSDirectScreen fadeApplied]` | unexamined |
-| `0x47A06BFC` | 109 | `-[NSDirectScreen _lockWithMode:]` | unexamined |
-| `0x47A06C6C` | 56 | `-[NSDirectScreen pixelEncoding]` | unexamined |
-| `0x47A06CA4` | 101 | `-[NSDirectScreen samplesPerPixel]` | unexamined |
-| `0x47A06D0C` | 35 | `-[NSDirectScreen screenNumber]` | unexamined |
-| `0x47A06D30` | 89 | `-[NSDirectScreen canSetPalette]` | unexamined |
-| `0x47A06D8C` | 225 | `-[NSDirectScreen setPalette:]` | unexamined |
-| `0x47A06E70` | 16 | `-[NSDirectScreen currentPalette]` | unexamined |
-| `0x47A06E80` | 225 | `-[NSDirectScreen setPaletteAtNextBlankingInterval:]` | unexamined |
-| `0x47A06F64` | 41 | `-[NSDirectScreen setFadeDuration:]` | unexamined |
-| `0x47A06F90` | 576 | `-[NSDirectScreen shieldDisplay]` | unexamined |
-| `0x47A071D0` | 16 | `-[NSDirectScreen shieldingWindow]` | unexamined |
-| `0x47A071E0` | 575 | `-[NSDirectScreen switchToDisplayMode:]` | unexamined |
-| `0x47A07420` | 105 | `-[NSDirectScreen _unlock]` | unexamined |
-| `0x47A0748C` | 236 | `-[NSDirectScreen unshieldDisplay]` | unexamined |
-| `0x47A07578` | 21 | `-[NSDirectScreen hideCursor]` | unexamined |
-| `0x47A07590` | 21 | `-[NSDirectScreen showCursor]` | unexamined |
-| `0x47A075A8` | 48 | `-[NSDirectScreen setGamma:]` | unexamined |
-| `0x47A075D8` | 475 | `-[NSDirectScreen setGammaRed:green:blue:]` | unexamined |
-| `0x47A077B4` | 1145 | `-[NSDirectScreen setGammaTableOfSize:red:green:blue:]` | unexamined |
-| `0x47A07C30` | 264 | `-[NSDirectScreen _loadPalette:]` | unexamined |
-| `0x47A07D38` | 266 | `-[NSDirectScreen _createBackingStore]` | unexamined |
-| `0x47A07E44` | 52 | `-[NSDirectScreen _destroyBackingStore]` | unexamined |
+| `0x47A04644` | 103 | `-[NSDirectScreen _clearModeInfo]` | static-reviewed; source authored; runtime pending |
+| `0x47A046AC` | 460 | `-[NSDirectScreen initWithScreen:]` | static-reviewed; source authored; runtime pending |
+| `0x47A04878` | 367 | `-[NSDirectScreen dealloc]` | static-reviewed; source authored; runtime pending |
+| `0x47A049E8` | 189 | `-[NSDirectScreen screenSize]` | static-reviewed; source authored; runtime pending |
+| `0x47A04AA8` | 62 | `-[NSDirectScreen pixelsWide]` | static-reviewed; source authored; runtime pending |
+| `0x47A04AE8` | 62 | `-[NSDirectScreen pixelsHigh]` | static-reviewed; source authored; runtime pending |
+| `0x47A04B28` | 257 | `-[NSDirectScreen addressForPoint:]` | static-reviewed; source authored; runtime pending |
+| `0x47A04C2C` | 2861 | `-[NSDirectScreen availableDisplayModes]` | static-reviewed; source authored; runtime pending |
+| `0x47A0575C` | 447 | `-[NSDirectScreen availableDisplayModesForOptions:]` | static-reviewed; source authored; runtime pending |
+| `0x47A0591C` | 1289 | `-[NSDirectScreen bestModeForFormat:width:height:]` | static-reviewed; source authored; runtime pending |
+| `0x47A05E28` | 113 | `-[NSDirectScreen bestModeForOptions:]` | static-reviewed; source authored; runtime pending |
+| `0x47A05E9C` | 258 | `-[NSDirectScreen currentMode]` | static-reviewed; source authored; runtime pending |
+| `0x47A05FA0` | 101 | `-[NSDirectScreen bitsPerPixel]` | static-reviewed; source authored; runtime pending |
+| `0x47A06008` | 101 | `-[NSDirectScreen bitsPerSample]` | static-reviewed; source authored; runtime pending |
+| `0x47A06070` | 140 | `-[NSDirectScreen bytesPerRow]` | static-reviewed; source authored; runtime pending |
+| `0x47A060FC` | 58 | `-[NSDirectScreen bytesPerPlane]` | static-reviewed; source authored; runtime pending |
+| `0x47A06138` | 12 | `-[NSDirectScreen numberOfPlanes]` | static-reviewed; source authored; runtime pending |
+| `0x47A06144` | 42 | `-[NSDirectScreen _canLockWithMode:]` | static-reviewed; source authored; runtime pending |
+| `0x47A06170` | 56 | `-[NSDirectScreen colorSpaceName]` | static-reviewed; source authored; runtime pending |
+| `0x47A061A8` | 78 | `-[NSDirectScreen bitmapData]` | static-reviewed; source authored; runtime pending |
+| `0x47A061F8` | 66 | `-[NSDirectScreen getBitmapDataPlanes:]` | static-reviewed; source authored; runtime pending |
+| `0x47A0623C` | 9 | `-[NSDirectScreen isPlanar]` | static-reviewed; source authored; runtime pending |
+| `0x47A06248` | 9 | `-[NSDirectScreen hasAlpha]` | static-reviewed; source authored; runtime pending |
+| `0x47A06254` | 35 | `-[NSDirectScreen deviceSlot]` | static-reviewed; source authored; runtime pending |
+| `0x47A06278` | 35 | `-[NSDirectScreen deviceUnit]` | static-reviewed; source authored; runtime pending |
+| `0x47A0629C` | 17 | `-[NSDirectScreen displayIsShielded]` | static-reviewed; source authored; runtime pending |
+| `0x47A062B0` | 35 | `-[NSDirectScreen driver]` | static-reviewed; source authored; runtime pending |
+| `0x47A062D4` | 234 | `-[NSDirectScreen fadeDisplay:toColor:]` | static-reviewed; source authored; runtime pending |
+| `0x47A063C0` | 314 | `-[NSDirectScreen _fadeIn:]` | static-reviewed; source authored; runtime pending |
+| `0x47A064FC` | 707 | `-[NSDirectScreen fadeDisplayInFromColor:]` | static-reviewed; source authored; runtime pending |
+| `0x47A067C0` | 314 | `-[NSDirectScreen _fadeOut:]` | static-reviewed; source authored; runtime pending |
+| `0x47A068FC` | 711 | `-[NSDirectScreen fadeDisplayOutToColor:]` | static-reviewed; source authored; runtime pending |
+| `0x47A06BC4` | 16 | `-[NSDirectScreen fadeDuration]` | static-reviewed; source authored; runtime pending |
+| `0x47A06BD4` | 17 | `-[NSDirectScreen fadeInProgress]` | static-reviewed; source authored; runtime pending |
+| `0x47A06BE8` | 17 | `-[NSDirectScreen fadeApplied]` | static-reviewed; source authored; runtime pending |
+| `0x47A06BFC` | 109 | `-[NSDirectScreen _lockWithMode:]` | static-reviewed; source authored; runtime pending |
+| `0x47A06C6C` | 56 | `-[NSDirectScreen pixelEncoding]` | static-reviewed; source authored; runtime pending |
+| `0x47A06CA4` | 101 | `-[NSDirectScreen samplesPerPixel]` | static-reviewed; source authored; runtime pending |
+| `0x47A06D0C` | 35 | `-[NSDirectScreen screenNumber]` | static-reviewed; source authored; runtime pending |
+| `0x47A06D30` | 89 | `-[NSDirectScreen canSetPalette]` | static-reviewed; source authored; runtime pending |
+| `0x47A06D8C` | 225 | `-[NSDirectScreen setPalette:]` | static-reviewed; source authored; runtime pending |
+| `0x47A06E70` | 16 | `-[NSDirectScreen currentPalette]` | static-reviewed; source authored; runtime pending |
+| `0x47A06E80` | 225 | `-[NSDirectScreen setPaletteAtNextBlankingInterval:]` | static-reviewed; source authored; runtime pending |
+| `0x47A06F64` | 41 | `-[NSDirectScreen setFadeDuration:]` | static-reviewed; source authored; runtime pending |
+| `0x47A06F90` | 576 | `-[NSDirectScreen shieldDisplay]` | static-reviewed; source authored; runtime pending |
+| `0x47A071D0` | 16 | `-[NSDirectScreen shieldingWindow]` | static-reviewed; source authored; runtime pending |
+| `0x47A071E0` | 575 | `-[NSDirectScreen switchToDisplayMode:]` | static-reviewed; source authored; runtime pending |
+| `0x47A07420` | 105 | `-[NSDirectScreen _unlock]` | static-reviewed; source authored; runtime pending |
+| `0x47A0748C` | 236 | `-[NSDirectScreen unshieldDisplay]` | static-reviewed; source authored; runtime pending |
+| `0x47A07578` | 21 | `-[NSDirectScreen hideCursor]` | static-reviewed; source authored; runtime pending |
+| `0x47A07590` | 21 | `-[NSDirectScreen showCursor]` | static-reviewed; source authored; runtime pending |
+| `0x47A075A8` | 48 | `-[NSDirectScreen setGamma:]` | static-reviewed; source authored; runtime pending |
+| `0x47A075D8` | 475 | `-[NSDirectScreen setGammaRed:green:blue:]` | static-reviewed; source authored; runtime pending |
+| `0x47A077B4` | 1145 | `-[NSDirectScreen setGammaTableOfSize:red:green:blue:]` | static-reviewed; source authored; runtime pending |
+| `0x47A07C30` | 264 | `-[NSDirectScreen _loadPalette:]` | static-reviewed; source authored; runtime pending |
+| `0x47A07D38` | 266 | `-[NSDirectScreen _createBackingStore]` | static-reviewed; source authored; runtime pending |
+| `0x47A07E44` | 52 | `-[NSDirectScreen _destroyBackingStore]` | static-reviewed; source authored; runtime pending |
 | `0x47A07E78` | 261 | `_CopySrcToDst` | static-reviewed; runtime pending; `NSFramebuffer.m` |
-| `0x47A07F80` | 29 | `-[NSDirectScreen(Obsolete) colorSpace]` | unexamined |
-| `0x47A07FA0` | 29 | `-[NSDirectScreen(Obsolete) data]` | unexamined |
+| `0x47A07F80` | 29 | `-[NSDirectScreen(Obsolete) colorSpace]` | static-reviewed; source authored; runtime pending |
+| `0x47A07FA0` | 29 | `-[NSDirectScreen(Obsolete) data]` | static-reviewed; source authored; runtime pending |
 | `0x47A07FC0` | 125 | `_setInstanceForScreen` | static-reviewed; source authored; runtime pending; `NSFramebuffer.m` |
 | `0x47A08040` | 53 | `_instanceForScreen` | static-reviewed; source authored; runtime pending; `NSFramebuffer.m` |
 | `0x47A08078` | 35 | `-[NSFramebuffer initWithScreen:]` | static-reviewed; runtime pending; `NSFramebuffer.m` |
@@ -1156,65 +1156,65 @@ Named Objective-C symbols (candidate module by class name; verify in module meta
 | `0x47A0426C` | `-[NSDirectPalette initWithCoder:]` | `NSDirectPalette.m` | static-reviewed; source authored; runtime pending |
 | `0x47A042F4` | `-[NSDirectPalette isEqual:]` | `NSDirectPalette.m` | static-reviewed; source authored; runtime pending |
 | `0x47A043BC` | `-[NSDirectPalette blendedPaletteWithFraction:ofColor:]` | `NSDirectPalette.m` | static-reviewed; source authored; runtime pending |
-| `0x47A04644` | `-[NSDirectScreen _clearModeInfo]` | `NSDirectScreen.m` | unexamined |
-| `0x47A046AC` | `-[NSDirectScreen initWithScreen:]` | `NSDirectScreen.m` | unexamined |
-| `0x47A04878` | `-[NSDirectScreen dealloc]` | `NSDirectScreen.m` | unexamined |
-| `0x47A049E8` | `-[NSDirectScreen screenSize]` | `NSDirectScreen.m` | unexamined |
-| `0x47A04AA8` | `-[NSDirectScreen pixelsWide]` | `NSDirectScreen.m` | unexamined |
-| `0x47A04AE8` | `-[NSDirectScreen pixelsHigh]` | `NSDirectScreen.m` | unexamined |
-| `0x47A04B28` | `-[NSDirectScreen addressForPoint:]` | `NSDirectScreen.m` | unexamined |
-| `0x47A04C2C` | `-[NSDirectScreen availableDisplayModes]` | `NSDirectScreen.m` | unexamined |
-| `0x47A0575C` | `-[NSDirectScreen availableDisplayModesForOptions:]` | `NSDirectScreen.m` | unexamined |
-| `0x47A0591C` | `-[NSDirectScreen bestModeForFormat:width:height:]` | `NSDirectScreen.m` | unexamined |
-| `0x47A05E28` | `-[NSDirectScreen bestModeForOptions:]` | `NSDirectScreen.m` | unexamined |
-| `0x47A05E9C` | `-[NSDirectScreen currentMode]` | `NSDirectScreen.m` | unexamined |
-| `0x47A05FA0` | `-[NSDirectScreen bitsPerPixel]` | `NSDirectScreen.m` | unexamined |
-| `0x47A06008` | `-[NSDirectScreen bitsPerSample]` | `NSDirectScreen.m` | unexamined |
-| `0x47A06070` | `-[NSDirectScreen bytesPerRow]` | `NSDirectScreen.m` | unexamined |
-| `0x47A060FC` | `-[NSDirectScreen bytesPerPlane]` | `NSDirectScreen.m` | unexamined |
-| `0x47A06138` | `-[NSDirectScreen numberOfPlanes]` | `NSDirectScreen.m` | unexamined |
-| `0x47A06144` | `-[NSDirectScreen _canLockWithMode:]` | `NSDirectScreen.m` | unexamined |
-| `0x47A06170` | `-[NSDirectScreen colorSpaceName]` | `NSDirectScreen.m` | unexamined |
-| `0x47A061A8` | `-[NSDirectScreen bitmapData]` | `NSDirectScreen.m` | unexamined |
-| `0x47A061F8` | `-[NSDirectScreen getBitmapDataPlanes:]` | `NSDirectScreen.m` | unexamined |
-| `0x47A0623C` | `-[NSDirectScreen isPlanar]` | `NSDirectScreen.m` | unexamined |
-| `0x47A06248` | `-[NSDirectScreen hasAlpha]` | `NSDirectScreen.m` | unexamined |
-| `0x47A06254` | `-[NSDirectScreen deviceSlot]` | `NSDirectScreen.m` | unexamined |
-| `0x47A06278` | `-[NSDirectScreen deviceUnit]` | `NSDirectScreen.m` | unexamined |
-| `0x47A0629C` | `-[NSDirectScreen displayIsShielded]` | `NSDirectScreen.m` | unexamined |
-| `0x47A062B0` | `-[NSDirectScreen driver]` | `NSDirectScreen.m` | unexamined |
-| `0x47A062D4` | `-[NSDirectScreen fadeDisplay:toColor:]` | `NSDirectScreen.m` | unexamined |
-| `0x47A063C0` | `-[NSDirectScreen _fadeIn:]` | `NSDirectScreen.m` | unexamined |
-| `0x47A064FC` | `-[NSDirectScreen fadeDisplayInFromColor:]` | `NSDirectScreen.m` | unexamined |
-| `0x47A067C0` | `-[NSDirectScreen _fadeOut:]` | `NSDirectScreen.m` | unexamined |
-| `0x47A068FC` | `-[NSDirectScreen fadeDisplayOutToColor:]` | `NSDirectScreen.m` | unexamined |
-| `0x47A06BC4` | `-[NSDirectScreen fadeDuration]` | `NSDirectScreen.m` | unexamined |
-| `0x47A06BD4` | `-[NSDirectScreen fadeInProgress]` | `NSDirectScreen.m` | unexamined |
-| `0x47A06BE8` | `-[NSDirectScreen fadeApplied]` | `NSDirectScreen.m` | unexamined |
-| `0x47A06BFC` | `-[NSDirectScreen _lockWithMode:]` | `NSDirectScreen.m` | unexamined |
-| `0x47A06C6C` | `-[NSDirectScreen pixelEncoding]` | `NSDirectScreen.m` | unexamined |
-| `0x47A06CA4` | `-[NSDirectScreen samplesPerPixel]` | `NSDirectScreen.m` | unexamined |
-| `0x47A06D0C` | `-[NSDirectScreen screenNumber]` | `NSDirectScreen.m` | unexamined |
-| `0x47A06D30` | `-[NSDirectScreen canSetPalette]` | `NSDirectScreen.m` | unexamined |
-| `0x47A06D8C` | `-[NSDirectScreen setPalette:]` | `NSDirectScreen.m` | unexamined |
-| `0x47A06E70` | `-[NSDirectScreen currentPalette]` | `NSDirectScreen.m` | unexamined |
-| `0x47A06E80` | `-[NSDirectScreen setPaletteAtNextBlankingInterval:]` | `NSDirectScreen.m` | unexamined |
-| `0x47A06F64` | `-[NSDirectScreen setFadeDuration:]` | `NSDirectScreen.m` | unexamined |
-| `0x47A06F90` | `-[NSDirectScreen shieldDisplay]` | `NSDirectScreen.m` | unexamined |
-| `0x47A071D0` | `-[NSDirectScreen shieldingWindow]` | `NSDirectScreen.m` | unexamined |
-| `0x47A071E0` | `-[NSDirectScreen switchToDisplayMode:]` | `NSDirectScreen.m` | unexamined |
-| `0x47A07420` | `-[NSDirectScreen _unlock]` | `NSDirectScreen.m` | unexamined |
-| `0x47A0748C` | `-[NSDirectScreen unshieldDisplay]` | `NSDirectScreen.m` | unexamined |
-| `0x47A07578` | `-[NSDirectScreen hideCursor]` | `NSDirectScreen.m` | unexamined |
-| `0x47A07590` | `-[NSDirectScreen showCursor]` | `NSDirectScreen.m` | unexamined |
-| `0x47A075A8` | `-[NSDirectScreen(NSPrivate) setGamma:]` | `NSDirectScreen.m` | unexamined |
-| `0x47A075D8` | `-[NSDirectScreen(NSPrivate) setGammaRed:green:blue:]` | `NSDirectScreen.m` | unexamined |
-| `0x47A077B4` | `-[NSDirectScreen(NSPrivate) setGammaTableOfSize:red:green:blue:]` | `NSDirectScreen.m` | unexamined |
-| `0x47A07C30` | `-[NSDirectScreen(NSPrivate) _loadPalette:]` | `NSDirectScreen.m` | unexamined |
-| `0x47A07D38` | `-[NSDirectScreen(NSPrivate) _createBackingStore]` | `NSDirectScreen.m` | unexamined |
-| `0x47A07E44` | `-[NSDirectScreen(NSPrivate) _destroyBackingStore]` | `NSDirectScreen.m` | unexamined |
-| `0x47A07F80` | `-[NSDirectScreen(Obsolete) colorSpace]` | `NSDirectScreen.m` | unexamined |
-| `0x47A07FA0` | `-[NSDirectScreen(Obsolete) data]` | `NSDirectScreen.m` | unexamined |
+| `0x47A04644` | `-[NSDirectScreen _clearModeInfo]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A046AC` | `-[NSDirectScreen initWithScreen:]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A04878` | `-[NSDirectScreen dealloc]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A049E8` | `-[NSDirectScreen screenSize]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A04AA8` | `-[NSDirectScreen pixelsWide]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A04AE8` | `-[NSDirectScreen pixelsHigh]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A04B28` | `-[NSDirectScreen addressForPoint:]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A04C2C` | `-[NSDirectScreen availableDisplayModes]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A0575C` | `-[NSDirectScreen availableDisplayModesForOptions:]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A0591C` | `-[NSDirectScreen bestModeForFormat:width:height:]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A05E28` | `-[NSDirectScreen bestModeForOptions:]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A05E9C` | `-[NSDirectScreen currentMode]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A05FA0` | `-[NSDirectScreen bitsPerPixel]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A06008` | `-[NSDirectScreen bitsPerSample]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A06070` | `-[NSDirectScreen bytesPerRow]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A060FC` | `-[NSDirectScreen bytesPerPlane]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A06138` | `-[NSDirectScreen numberOfPlanes]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A06144` | `-[NSDirectScreen _canLockWithMode:]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A06170` | `-[NSDirectScreen colorSpaceName]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A061A8` | `-[NSDirectScreen bitmapData]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A061F8` | `-[NSDirectScreen getBitmapDataPlanes:]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A0623C` | `-[NSDirectScreen isPlanar]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A06248` | `-[NSDirectScreen hasAlpha]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A06254` | `-[NSDirectScreen deviceSlot]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A06278` | `-[NSDirectScreen deviceUnit]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A0629C` | `-[NSDirectScreen displayIsShielded]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A062B0` | `-[NSDirectScreen driver]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A062D4` | `-[NSDirectScreen fadeDisplay:toColor:]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A063C0` | `-[NSDirectScreen _fadeIn:]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A064FC` | `-[NSDirectScreen fadeDisplayInFromColor:]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A067C0` | `-[NSDirectScreen _fadeOut:]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A068FC` | `-[NSDirectScreen fadeDisplayOutToColor:]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A06BC4` | `-[NSDirectScreen fadeDuration]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A06BD4` | `-[NSDirectScreen fadeInProgress]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A06BE8` | `-[NSDirectScreen fadeApplied]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A06BFC` | `-[NSDirectScreen _lockWithMode:]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A06C6C` | `-[NSDirectScreen pixelEncoding]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A06CA4` | `-[NSDirectScreen samplesPerPixel]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A06D0C` | `-[NSDirectScreen screenNumber]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A06D30` | `-[NSDirectScreen canSetPalette]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A06D8C` | `-[NSDirectScreen setPalette:]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A06E70` | `-[NSDirectScreen currentPalette]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A06E80` | `-[NSDirectScreen setPaletteAtNextBlankingInterval:]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A06F64` | `-[NSDirectScreen setFadeDuration:]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A06F90` | `-[NSDirectScreen shieldDisplay]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A071D0` | `-[NSDirectScreen shieldingWindow]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A071E0` | `-[NSDirectScreen switchToDisplayMode:]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A07420` | `-[NSDirectScreen _unlock]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A0748C` | `-[NSDirectScreen unshieldDisplay]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A07578` | `-[NSDirectScreen hideCursor]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A07590` | `-[NSDirectScreen showCursor]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A075A8` | `-[NSDirectScreen(NSPrivate) setGamma:]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A075D8` | `-[NSDirectScreen(NSPrivate) setGammaRed:green:blue:]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A077B4` | `-[NSDirectScreen(NSPrivate) setGammaTableOfSize:red:green:blue:]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A07C30` | `-[NSDirectScreen(NSPrivate) _loadPalette:]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A07D38` | `-[NSDirectScreen(NSPrivate) _createBackingStore]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A07E44` | `-[NSDirectScreen(NSPrivate) _destroyBackingStore]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A07F80` | `-[NSDirectScreen(Obsolete) colorSpace]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
+| `0x47A07FA0` | `-[NSDirectScreen(Obsolete) data]` | `NSDirectScreen.m` | static-reviewed; source authored; runtime pending |
 | `0x47A08078` | `-[NSFramebuffer initWithScreen:]` | `NSFramebuffer.m` | static-reviewed; runtime pending |
 | `0x47A0809C` | `-[NSFramebuffer initWithScreen:andMapIfPossible:]` | `NSFramebuffer.m` | static-reviewed; runtime pending |
 | `0x47A08158` | `-[NSFramebuffer initFromScreen:andMapIfPossible:]` | `NSFramebuffer.m` | static-reviewed; source authored; runtime pending |

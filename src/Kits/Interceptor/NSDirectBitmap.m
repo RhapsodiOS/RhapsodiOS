@@ -24,6 +24,7 @@
               onScreen:(int)screenNumber;
 - (void)_updateForRect:(NSRect)rect inWinNum:(int)windowNumber
               onScreen:(int)screenNumber;
+- (id)_flushInShape:(NSShape *)shape;
 - (id)_updateBuffer;
 - (void)updateState;
 @end
@@ -31,6 +32,7 @@
 static int NSDirectBitmapGrayBitsPerPixelMinimum;
 static int NSDirectBitmapColorBitsPerPixelMinimum;
 static int NSDirectBitmapMaximumScreens = -1;
+typedef void (*NSBitmapCopyFunction)(const void *, int, void *, int, int, int);
 
 @implementation NSDirectBitmap
 
@@ -436,7 +438,6 @@ static int NSDirectBitmapMaximumScreens = -1;
     int rowBytes = (self->pixelsWide * self->bitsPerPixel + 7) / 8;
     int sourcePadding = [(NSFramebuffer *)self->framebuffer bytesPerRow] - rowBytes;
     int destinationPadding = self->bytesPerRow - rowBytes;
-    typedef void (*NSBitmapCopyFunction)(const void *, int, void *, int, int, int);
 
     [(NSFramebuffer *)self->framebuffer lockWithMode:self->fbMode];
     buffer = [self _dataBuffer];
@@ -444,6 +445,37 @@ static int NSDirectBitmapMaximumScreens = -1;
         buffer, destinationPadding, self->pixelsWide, self->pixelsHigh);
     self->_screenIsDirty = NO;
     [(NSFramebuffer *)self->framebuffer unlock];
+    return self;
+}
+
+- (id)_flushInShape:(NSShape *)shape
+{
+    NSRect screenRect = [self->interceptRect currentScreenRect];
+    id<NSShapeEnumerator> enumerator = [shape rectEnumerator];
+    NSRect *piece;
+
+    while ((piece = [enumerator nextRect]) != 0) {
+        unsigned char *screenAddress = (unsigned char *)
+            [(NSFramebuffer *)self->framebuffer addressForPoint:piece->origin];
+        unsigned char *buffer, *source;
+        int rowBytes = (piece->size.width * self->bitsPerPixel + 7) / 8;
+        int sourceY = (int)(piece->origin.y - screenRect.origin.y);
+        int sourceX = (int)(piece->origin.x - screenRect.origin.x);
+        int sourcePadding = self->bytesPerRow - rowBytes;
+        int destinationPadding =
+            [(NSFramebuffer *)self->framebuffer bytesPerRow] - rowBytes;
+
+        if (screenAddress == 0)
+            return nil;
+        buffer = [self _dataBuffer];
+        source = buffer + sourceY * self->bytesPerRow +
+            (sourceX * self->bitsPerPixel + 7) / 8;
+        [(NSFramebuffer *)self->framebuffer lockWithMode:self->fbMode];
+        ((NSBitmapCopyFunction)self->copyFunc)(source, sourcePadding,
+            screenAddress, destinationPadding,
+            (int)piece->size.width, (int)piece->size.height);
+        [(NSFramebuffer *)self->framebuffer unlock];
+    }
     return self;
 }
 

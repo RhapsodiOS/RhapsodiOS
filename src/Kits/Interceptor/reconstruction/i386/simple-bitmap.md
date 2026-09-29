@@ -47,6 +47,8 @@ applies configured minimum gray or RGB depths, aligns row storage, chooses the
 copy routine for supported pixel widths, and delegates to the shared rectangle
 update. `setDirectMapped:` applies the same framebuffer and window-backing
 eligibility checks as PPC.
+The recovered `_flushInShape:` copies each clipped screen-space shape rectangle
+from its corresponding buffer offset back to the framebuffer.
 
 Its simple accessors use the same field offsets: `bitmapData` at `0x47A0B0BC`,
 `getBitmapDataPlanes:` at `0x47A0B0CC`, `bytesPerPlane` at `0x47A0B184`,

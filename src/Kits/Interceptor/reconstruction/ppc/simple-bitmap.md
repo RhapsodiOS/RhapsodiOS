@@ -71,6 +71,8 @@ mapping off removes the intercepted rectangle and forces buffered state.
 when present, with the view clip. `_updateBuffer` locks the framebuffer, copies
 the screen rectangle into the lazy buffer using the unused bytes at each source
 and destination row ends, clears the dirty flag, and unlocks the framebuffer.
+`_flushInShape:` walks the shape's screen-space rectangles and copies matching
+buffer regions back into the framebuffer, respecting both row-padding spans.
 The public `updateForRect:inWindow:` converts the window number to its global
 form, reads `NSScreenNumber` from the window screen's device description, and
 retains the new window while releasing the old one before delegating. When that

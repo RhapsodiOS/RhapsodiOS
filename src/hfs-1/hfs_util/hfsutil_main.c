@@ -61,6 +61,7 @@
 #import "MacOSTypes.h"
 #import "HFSVolumes.h"
 #import "HFSBtreesPriv.h"
+#import "hfs_endian.h"
 
 #import <bsd/stdio.h> // printf
 #import <bsd/unistd.h> //
@@ -431,17 +432,17 @@ static int DoProbe( char *deviceNamePtr )
 
 	/* get the volume name from the MDB (HFS) or Catalog (HFS Plus) */
 
-    if (mdbPtr->drSigWord == kHFSSigWord  &&  mdbPtr->drEmbedSigWord != kHFSPlusSigWord) {
+    if (SWAP_BE16(mdbPtr->drSigWord) == kHFSSigWord  &&  SWAP_BE16(mdbPtr->drEmbedSigWord) != kHFSPlusSigWord) {
 
 		/* HFS volume, so use name in MDB */
 		ConvertMacRomanToUnicode(mdbPtr->drVN, &charCount, volnameUnicode);
 		ConvertUnicodeToUTF8(charCount, volnameUnicode, sizeof(volnameUTF8), volnameUTF8);
  
-   } else if (volHdrPtr->signature == kHFSPlusSigWord  ||
-		(mdbPtr->drSigWord == kHFSSigWord  &&  mdbPtr->drEmbedSigWord == kHFSPlusSigWord)) {
+   } else if (SWAP_BE16(volHdrPtr->signature) == kHFSPlusSigWord  ||
+		(SWAP_BE16(mdbPtr->drSigWord) == kHFSSigWord  &&  SWAP_BE16(mdbPtr->drEmbedSigWord) == kHFSPlusSigWord)) {
 		off_t startOffset;
 
-		if (volHdrPtr->signature == kHFSPlusSigWord) {
+		if (SWAP_BE16(volHdrPtr->signature) == kHFSPlusSigWord) {
 			startOffset = 0;
 		} else {/* embedded volume, first find offset */
           	result = GetEmbeddedHFSPlusVol(mdbPtr, &startOffset);
@@ -723,25 +724,25 @@ static int GetEmbeddedHFSPlusVol (HFSMasterDirectoryBlock * hfsMasterDirectoryBl
     int		result = FSUR_IO_SUCCESS;
     UInt32	allocationBlockSize, firstAllocationBlock, startBlock, blockCount;
 
-    if ( hfsMasterDirectoryBlockPtr->drSigWord != kHFSSigWord )
+    if ( SWAP_BE16(hfsMasterDirectoryBlockPtr->drSigWord) != kHFSSigWord )
       {
         result = FSUR_UNRECOGNIZED;
         goto Return;
       }
 
-    allocationBlockSize = hfsMasterDirectoryBlockPtr->drAlBlkSiz;
-    firstAllocationBlock = hfsMasterDirectoryBlockPtr->drAlBlSt;
+    allocationBlockSize = SWAP_BE32(hfsMasterDirectoryBlockPtr->drAlBlkSiz);
+    firstAllocationBlock = SWAP_BE16(hfsMasterDirectoryBlockPtr->drAlBlSt);
 
     dprintf(("GetEmbeddedHFSPlusVol: allocationBlockSize = $%x, firstAllocationBlock = $%x\n", (int32_t)allocationBlockSize, (int32_t) firstAllocationBlock));
 
-    if ( hfsMasterDirectoryBlockPtr->drEmbedSigWord != kHFSPlusSigWord )
+    if ( SWAP_BE16(hfsMasterDirectoryBlockPtr->drEmbedSigWord) != kHFSPlusSigWord )
       {
         result = FSUR_UNRECOGNIZED;
         goto Return;
       }
 
-    startBlock = hfsMasterDirectoryBlockPtr->drEmbedExtent.startBlock;
-    blockCount = hfsMasterDirectoryBlockPtr->drEmbedExtent.blockCount;
+    startBlock = SWAP_BE16(hfsMasterDirectoryBlockPtr->drEmbedExtent.startBlock);
+    blockCount = SWAP_BE16(hfsMasterDirectoryBlockPtr->drEmbedExtent.blockCount);
 
     dprintf(("GetEmbeddedHFSPlusVol: startBlock = $%x, blockCount = $%x\n", (int32_t)startBlock, (int32_t) blockCount));
 
@@ -793,18 +794,18 @@ static int GetNameFromHFSPlusVolumeStartingAt(int fd, off_t hfsPlusVolumeOffset,
         goto Return; // return FSUR_IO_FAIL
       }
 
-    dprintf(("GetNameFromHFSPlusVolumeStartingAt (2): volHdrPtr->signature = $%04x\n", volHdrPtr->signature));
+    dprintf(("GetNameFromHFSPlusVolumeStartingAt (2): volHdrPtr->signature = $%04x\n", SWAP_BE16(volHdrPtr->signature)));
 
     /* Verify that it is an HFS+ volume. */
 
-    if ( volHdrPtr->signature != kHFSPlusSigWord )
+    if ( SWAP_BE16(volHdrPtr->signature) != kHFSPlusSigWord )
       {
         result = FSUR_IO_FAIL;
         printf("hfs.util: ERROR: volHdrPtr->signature != kHFSPlusSigWord\n");
         goto Return;
       }
 
-    blockSize = volHdrPtr->blockSize;
+    blockSize = SWAP_BE32(volHdrPtr->blockSize);
     catalogExtents = (HFSPlusExtentDescriptor *) malloc(sizeof(HFSPlusExtentRecord));
     if ( ! catalogExtents ) {
         printf("hfs.util: ERROR: malloc failed\n");
@@ -815,13 +816,13 @@ static int GetNameFromHFSPlusVolumeStartingAt(int fd, off_t hfsPlusVolumeOffset,
 	catalogExtCount = kHFSPlusExtentDensity;
 
 	/* if there are overflow catalog extents, then go get them */
-	if (catalogExtents[7].blockCount != 0) {
+	if (SWAP_BE32(catalogExtents[7].blockCount) != 0) {
 		result = GetCatalogOverflowExtents(fd, hfsPlusVolumeOffset, volHdrPtr, &catalogExtents, &catalogExtCount);
 		if (result != FSUR_IO_SUCCESS)
 			goto Return;
 	}
 
-    offset = (off_t)catalogExtents[0].startBlock * (off_t)blockSize;
+    offset = (off_t)SWAP_BE32(catalogExtents[0].startBlock) * (off_t)blockSize;
     dprintf(("GetNameFromHFSPlusVolumeStartingAt: Read the header node of the catalog B-Tree offset = $%016qx\n", offset));
     
 	/* Read the header node of the catalog B-Tree */
@@ -859,16 +860,16 @@ static int GetNameFromHFSPlusVolumeStartingAt(int fd, off_t hfsPlusVolumeOffset,
       }
 
     dprintf(("fLink = $%x, bLink = $%x, type = $%x\n",
-             (u_int32_t)bTreeNodeDescriptorPtr->fLink, (u_int32_t)bTreeNodeDescriptorPtr->bLink, (u_int32_t)bTreeNodeDescriptorPtr->type ));
+             (u_int32_t)SWAP_BE32(bTreeNodeDescriptorPtr->fLink), (u_int32_t)SWAP_BE32(bTreeNodeDescriptorPtr->bLink), (u_int32_t)bTreeNodeDescriptorPtr->type ));
     dprintf(("height = $%x, numRecords = $%x, reserved = $%x\n",
-             (u_int32_t)bTreeNodeDescriptorPtr->height, (u_int32_t)bTreeNodeDescriptorPtr->numRecords, (u_int32_t)bTreeNodeDescriptorPtr->reserved ));
+             (u_int32_t)bTreeNodeDescriptorPtr->height, (u_int32_t)SWAP_BE16(bTreeNodeDescriptorPtr->numRecords), (u_int32_t)bTreeNodeDescriptorPtr->reserved ));
 
     {
         UInt16			*	v;
         char			*	p;
         HFSPlusCatalogKey	*	k;
 
-        if (  bTreeNodeDescriptorPtr->numRecords < 1 )
+        if (  SWAP_BE16(bTreeNodeDescriptorPtr->numRecords) < 1 )
           {
             result = FSUR_IO_FAIL;
 			printf("hfs.util: ERROR: bTreeNodeDescriptorPtr->numRecords < 1\n");
@@ -882,12 +883,12 @@ static int GetNameFromHFSPlusVolumeStartingAt(int fd, off_t hfsPlusVolumeOffset,
 
 	// Get a pointer to the first record.
 
-        p = bufPtr + *v; // pointer arithmetic in bytes
+        p = bufPtr + SWAP_BE16(*v); // pointer arithmetic in bytes
         k = (HFSPlusCatalogKey *)p;
 
 	// There should be only one record whose parent is the root parent.  It should be the first record.
 
-        if ( k->parentID != kHFSRootParentID )
+        if ( SWAP_BE32(k->parentID) != kHFSRootParentID )
           {
             result = FSUR_IO_FAIL;
 			printf("hfs.util: ERROR: k->parentID != kHFSRootParentID\n");
@@ -895,7 +896,20 @@ static int GetNameFromHFSPlusVolumeStartingAt(int fd, off_t hfsPlusVolumeOffset,
           }
 
 	// Extract the name of the root.
-		ConvertUnicodeToUTF8(k->nodeName.length, k->nodeName.unicode, NAME_MAX, name_o);
+		{
+			/* the name is big-endian on disk: swap a copy (as hfs-226's hfs.util does) */
+			UniChar	name[255];
+			int		i, n = SWAP_BE16(k->nodeName.length);
+
+			if (n > 255) {
+				result = FSUR_IO_FAIL;
+				printf("hfs.util: ERROR: k->nodeName.length is a bad size (%d)\n", n);
+				goto Return;
+			}
+			for (i = 0; i < n; i++)
+				name[i] = SWAP_BE16(k->nodeName.unicode[i]);
+			ConvertUnicodeToUTF8(n, name, NAME_MAX, name_o);
+		}
 
     }
 
@@ -949,12 +963,12 @@ GetBTreeNodeInfo(int fd, off_t btreeOffset, UInt32 *nodeSize, UInt32 *firstLeafN
 		goto free;
 	}
 
-	*nodeSize = bTreeHeaderPtr->nodeSize;
+	*nodeSize = SWAP_BE16(bTreeHeaderPtr->nodeSize);
 
-	if (bTreeHeaderPtr->leafRecords == 0)
+	if (SWAP_BE32(bTreeHeaderPtr->leafRecords) == 0)
 		*firstLeafNode = 0;
 	else
-		*firstLeafNode = bTreeHeaderPtr->firstLeafNode;
+		*firstLeafNode = SWAP_BE32(bTreeHeaderPtr->firstLeafNode);
 
 free:;
 	free((char*) bTreeHeaderPtr);
@@ -984,14 +998,14 @@ CalcFirstLeafNodeOffset(off_t fileOffset, UInt32 blockSize, UInt32 extentCount,
 	extblks = 0;
 
 	for (i = 0; i < extentCount; ++i) {
-		if (extentList[i].startBlock == 0 || extentList[i].blockCount == 0)
+		if (SWAP_BE32(extentList[i].startBlock) == 0 || SWAP_BE32(extentList[i].blockCount) == 0)
 			break; /* done when we reach empty extents */
 
-		extblks += extentList [i].blockCount;
+		extblks += SWAP_BE32(extentList [i].blockCount);
 
 		if (extblks > leafblk) {
-			offset = (off_t) extentList[i].startBlock * (off_t) blockSize;
-			offset += fileOffset - (off_t) ((extblks - extentList[i].blockCount) * blockSize);
+			offset = (off_t) SWAP_BE32(extentList[i].startBlock) * (off_t) blockSize;
+			offset += fileOffset - (off_t) ((extblks - SWAP_BE32(extentList[i].blockCount)) * blockSize);
 			break;
 		}
 	}
@@ -1023,7 +1037,7 @@ GetCatalogOverflowExtents(int fd, off_t hfsPlusVolumeOffset, HFSPlusVolumeHeader
 
 	listsize = *catalogExtCount * sizeof(HFSPlusExtentDescriptor);
 	extents = *catalogExtents;
-    offset = (off_t)volHdrPtr->extentsFile.extents[0].startBlock * (off_t)volHdrPtr->blockSize;
+    offset = (off_t)SWAP_BE32(volHdrPtr->extentsFile.extents[0].startBlock) * (off_t)SWAP_BE32(volHdrPtr->blockSize);
 
 	/* Read the header node of the extents B-Tree */
 
@@ -1033,7 +1047,7 @@ GetCatalogOverflowExtents(int fd, off_t hfsPlusVolumeOffset, HFSPlusVolumeHeader
 
 	/* Calculate the starting block of the first leaf node */
 
-	offset = CalcFirstLeafNodeOffset((firstLeafNode * nodeSize), volHdrPtr->blockSize, kHFSPlusExtentDensity,
+	offset = CalcFirstLeafNodeOffset((firstLeafNode * nodeSize), SWAP_BE32(volHdrPtr->blockSize), kHFSPlusExtentDensity,
 						&volHdrPtr->extentsFile.extents[0]);
 
 	if ( offset == 0 ) {
@@ -1064,7 +1078,7 @@ GetCatalogOverflowExtents(int fd, off_t hfsPlusVolumeOffset, HFSPlusVolumeHeader
 		goto Return;
 	}
 
-	for (i = 1; i <= bTreeNodeDescriptorPtr->numRecords; ++i) {
+	for (i = 1; i <= SWAP_BE16(bTreeNodeDescriptorPtr->numRecords); ++i) {
         UInt16			*	v;
         char			*	p;
         HFSPlusExtentKey	*	k;
@@ -1076,16 +1090,16 @@ GetCatalogOverflowExtents(int fd, off_t hfsPlusVolumeOffset, HFSPlusVolumeHeader
 
 		/* Get a pointer to the record */
 
-        p = bufPtr + *v; /* pointer arithmetic in bytes */
+        p = bufPtr + SWAP_BE16(*v); /* pointer arithmetic in bytes */
         k = (HFSPlusExtentKey *)p;
 
-		if ( k->fileID != kHFSCatalogFileID )
+		if ( SWAP_BE32(k->fileID) != kHFSCatalogFileID )
 			break;
 
 		/* grow list and copy additional extents */
 		listsize += sizeof(HFSPlusExtentRecord);
 		extents = (HFSPlusExtentDescriptor *) realloc(extents, listsize);
-		bcopy(p + k->keyLength + sizeof(UInt16), &extents[*catalogExtCount], sizeof(HFSPlusExtentRecord));
+		bcopy(p + SWAP_BE16(k->keyLength) + sizeof(UInt16), &extents[*catalogExtCount], sizeof(HFSPlusExtentRecord));
 
 		*catalogExtCount += kHFSPlusExtentDensity;
 	}

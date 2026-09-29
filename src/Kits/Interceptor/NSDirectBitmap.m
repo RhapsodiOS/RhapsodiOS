@@ -4,6 +4,7 @@
 #import "Private/InterceptorIPC.h"
 #import "NSDirectBitmap.h"
 #import "NSFramebuffer.h"
+#import "NSShape.h"
 #import "InterceptorGlobals.h"
 #import <Foundation/NSException.h>
 #import <Foundation/NSMutableArray.h>
@@ -14,6 +15,9 @@
 - (BOOL)_isUnobscured;
 - (BOOL)_canUseDirectMapping;
 - (id)_mapFramebufferForScreen:(int)screenNumber;
+- (id)_updateBackingStoreForRect:(NSRect)rect;
+- (void)_updateForRect:(NSRect)rect inWinNum:(int)windowNumber
+              onScreen:(int)screenNumber;
 @end
 
 static int NSDirectBitmapGrayBitsPerPixelMinimum;
@@ -187,6 +191,91 @@ static int NSDirectBitmapMaximumScreens = -1;
     else
         self->fbMode = NSFramebufferReadOnly;
     return self;
+}
+
+- (id)_updateBackingStoreForRect:(NSRect)rect
+{
+    unsigned char *planes[NXSIMPLEBITMAP_MAXPLANES] = { 0, 0, 0, 0, 0 };
+    int rowBytes;
+
+    if (self->data[0] != 0)
+        NSZoneFree([self zone], [self _dataBuffer]);
+
+    rowBytes = ((int)(rect.size.width * self->bitsPerPixel + 7) / 8 + 7) & ~7;
+    [super initWithBitmapDataPlanes:planes
+        pixelsWide:(int)rect.size.width
+        pixelsHigh:(int)rect.size.height
+        bitsPerSample:self->bitsPerSample
+        samplesPerPixel:self->samplesPerPixel
+        hasAlpha:NO
+        isPlanar:NO
+        colorSpaceName:self->colorSpace
+        bytesPerRow:rowBytes
+        bitsPerPixel:self->bitsPerPixel];
+    return self;
+}
+
+- (void)_updateForRect:(NSRect)rect inWinNum:(int)windowNumber
+              onScreen:(int)screenNumber
+{
+    BOOL geometryChanged;
+
+    if (NSIsEmptyRect(rect)) {
+        [self release];
+        return;
+    }
+    if (self->isLocked == YES)
+        return;
+
+    geometryChanged = !NSEqualRects(self->rect, rect) ||
+                      self->gWinNum != windowNumber ||
+                      self->currentScreen != screenNumber;
+    if (self->interceptRect != nil && geometryChanged) {
+        [self->interceptRect removeFromWindowServer];
+        [self->interceptRect release];
+        self->interceptRect = nil;
+    }
+
+    self->gWinNum = windowNumber;
+    if (self->currentScreen != screenNumber) {
+        [self _mapFramebufferForScreen:screenNumber];
+        self->depthMismatch = self->data[0] != 0 &&
+            (self->bitsPerSample != [(NSFramebuffer *)self->framebuffer bitsPerSample] ||
+             self->bitsPerPixel != [(NSFramebuffer *)self->framebuffer bitsPerPixel] ||
+             self->samplesPerPixel != [(NSFramebuffer *)self->framebuffer samplesPerPixel] ||
+             ![[(NSFramebuffer *)self->framebuffer colorSpaceName]
+                 isEqual:self->colorSpace]);
+    }
+
+    if ([self _canUseDirectMapping] && self->depthMismatch == NO) {
+        self->isDirectMapped = YES;
+        if (self->interceptRect == nil) {
+            self->interceptRect = [[NSInterceptedRect allocWithZone:[self zone]]
+                initForRect:rect inWindow:self->gWinNum
+                onFramebuffer:self->framebuffer
+                forClient:self->interceptClient];
+            [self->interceptRect setTarget:self];
+            [self->_dbm_private release];
+            self->_dbm_private = [[NSShape allocWithZone:[self zone]] init];
+            self->isUnobscured = [self->interceptRect isTotallyVisible];
+            if (!NSEqualSizes(self->rect.size, rect.size))
+                [self _updateBackingStoreForRect:rect];
+            self->rect = rect;
+            [self->interceptRect unlockRect];
+        }
+    } else {
+        self->isUnobscured = NO;
+        self->isDirectMapped = NO;
+        self->isBuffered = YES;
+        if (self->interceptRect != nil) {
+            [self->interceptRect removeFromWindowServer];
+            [self->interceptRect release];
+            self->interceptRect = nil;
+        }
+        if (!NSEqualSizes(self->rect.size, rect.size))
+            [self _updateBackingStoreForRect:rect];
+        self->rect = rect;
+    }
 }
 
 - (void)lockBitmap

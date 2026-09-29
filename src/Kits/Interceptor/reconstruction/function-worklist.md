@@ -49,8 +49,8 @@ IDA function records: 392; symbol records: 540.
 | `0x47A03FE8` | 252 | `-[NSDirectBitmap setDirectMapped:]` | unexamined |
 | `0x47A040E4` | 84 | `-[NSDirectBitmap tryLockBitmap]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
 | `0x47A04138` | 84 | `-[NSDirectBitmap unlockBitmap]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
-| `0x47A0418C` | 388 | `-[NSDirectBitmap _updateBackingStoreForRect:]` | unexamined |
-| `0x47A04310` | 976 | `-[NSDirectBitmap _updateForRect:inWinNum:onScreen:]` | unexamined |
+| `0x47A0418C` | 388 | `-[NSDirectBitmap _updateBackingStoreForRect:]` | static-reviewed; source authored; runtime pending |
+| `0x47A04310` | 976 | `-[NSDirectBitmap _updateForRect:inWinNum:onScreen:]` | static-reviewed; source authored; runtime pending |
 | `0x47A046E0` | 248 | `-[NSDirectBitmap updateForRect:inWindow:]` | unexamined |
 | `0x47A047D8` | 172 | `-[NSDirectBitmap updateState]` | unexamined |
 | `0x47A04884` | 60 | `-[NSDirectBitmap hideCursor]` | unexamined |
@@ -441,8 +441,8 @@ Named Objective-C symbols (candidate module by class name; verify in module meta
 | `0x47A03FE8` | `-[NSDirectBitmap setDirectMapped:]` | `NSDirectBitmap.m` | unexamined |
 | `0x47A040E4` | `-[NSDirectBitmap tryLockBitmap]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A04138` | `-[NSDirectBitmap unlockBitmap]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
-| `0x47A0418C` | `-[NSDirectBitmap _updateBackingStoreForRect:]` | `NSDirectBitmap.m` | unexamined |
-| `0x47A04310` | `-[NSDirectBitmap _updateForRect:inWinNum:onScreen:]` | `NSDirectBitmap.m` | unexamined |
+| `0x47A0418C` | `-[NSDirectBitmap _updateBackingStoreForRect:]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
+| `0x47A04310` | `-[NSDirectBitmap _updateForRect:inWinNum:onScreen:]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A046E0` | `-[NSDirectBitmap updateForRect:inWindow:]` | `NSDirectBitmap.m` | unexamined |
 | `0x47A047D8` | `-[NSDirectBitmap updateState]` | `NSDirectBitmap.m` | unexamined |
 | `0x47A04884` | `-[NSDirectBitmap hideCursor]` | `NSDirectBitmap.m` | unexamined |
@@ -687,8 +687,8 @@ IDA function records: 419; symbol records: 629.
 | `0x47A02664` | 206 | `-[NSDirectBitmap setDirectMapped:]` | unexamined |
 | `0x47A02734` | 49 | `-[NSDirectBitmap tryLockBitmap]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
 | `0x47A02768` | 48 | `-[NSDirectBitmap unlockBitmap]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
-| `0x47A02798` | 304 | `-[NSDirectBitmap _updateBackingStoreForRect:]` | unexamined |
-| `0x47A028C8` | 948 | `-[NSDirectBitmap _updateForRect:inWinNum:onScreen:]` | unexamined |
+| `0x47A02798` | 304 | `-[NSDirectBitmap _updateBackingStoreForRect:]` | static-reviewed; source authored; runtime pending |
+| `0x47A028C8` | 948 | `-[NSDirectBitmap _updateForRect:inWinNum:onScreen:]` | static-reviewed; source authored; runtime pending |
 | `0x47A02C7C` | 239 | `-[NSDirectBitmap updateForRect:inWindow:]` | unexamined |
 | `0x47A02D6C` | 181 | `-[NSDirectBitmap updateState]` | unexamined |
 | `0x47A02E24` | 41 | `-[NSDirectBitmap hideCursor]` | unexamined |
@@ -1106,8 +1106,8 @@ Named Objective-C symbols (candidate module by class name; verify in module meta
 | `0x47A02664` | `-[NSDirectBitmap setDirectMapped:]` | `NSDirectBitmap.m` | unexamined |
 | `0x47A02734` | `-[NSDirectBitmap tryLockBitmap]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A02768` | `-[NSDirectBitmap unlockBitmap]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
-| `0x47A02798` | `-[NSDirectBitmap _updateBackingStoreForRect:]` | `NSDirectBitmap.m` | unexamined |
-| `0x47A028C8` | `-[NSDirectBitmap _updateForRect:inWinNum:onScreen:]` | `NSDirectBitmap.m` | unexamined |
+| `0x47A02798` | `-[NSDirectBitmap _updateBackingStoreForRect:]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
+| `0x47A028C8` | `-[NSDirectBitmap _updateForRect:inWinNum:onScreen:]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A02C7C` | `-[NSDirectBitmap updateForRect:inWindow:]` | `NSDirectBitmap.m` | unexamined |
 | `0x47A02D6C` | `-[NSDirectBitmap updateState]` | `NSDirectBitmap.m` | unexamined |
 | `0x47A02E24` | `-[NSDirectBitmap hideCursor]` | `NSDirectBitmap.m` | unexamined |

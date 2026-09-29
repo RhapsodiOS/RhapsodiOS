@@ -49,6 +49,15 @@ When a rectangle moves to another screen, `_mapFramebufferForScreen:` releases
 the previous framebuffer, creates and maps the requested screen framebuffer in
 the bitmap's zone, records the screen number, and chooses read/write, write-only,
 or read-only access in that order according to the modes the framebuffer allows.
+`_updateBackingStoreForRect:` frees an existing lazy buffer, rounds the new
+packed row size up to an 8-byte boundary, and reinitializes the simple-bitmap
+metadata with empty planes while preserving depth and color-space settings.
+`_updateForRect:inWinNum:onScreen:` ignores updates while locked, removes stale
+window-server interception state when geometry changes, remaps on screen changes,
+and marks a depth mismatch if the existing bitmap format differs from the new
+framebuffer. A matching, eligible framebuffer creates an intercepted rectangle
+and selects direct mapping; other cases discard interception state and select
+buffered drawing. Both branches resize storage when dimensions change.
 Deallocation detaches the intercepted rectangle's target, releases the client,
 framebuffer, and window, frees the lazily allocated buffer from the object's
 zone, and then calls superclass `dealloc`.

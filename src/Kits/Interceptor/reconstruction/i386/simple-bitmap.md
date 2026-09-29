@@ -31,6 +31,14 @@ release a pinned rectangle on direct-mapped unlock. Direct mapping requires a
 single screen and a mappable framebuffer with matching depth greater than
 seven bits per pixel.
 
+The i386 rectangle update and backing-store resize bodies agree with PPC:
+packed rows are aligned to eight bytes, screen changes remap the framebuffer,
+and stale intercepted rectangles are removed before direct-versus-buffered
+selection. The i386 initializer uses `isTotallyVisible` for the initial
+unobscured state; the PPC binary invokes its equivalent visibility selector.
+The reconstruction shares that selector through `NSInterceptedRect`'s public
+`isTotallyVisible` method.
+
 Its simple accessors use the same field offsets: `bitmapData` at `0x47A0B0BC`,
 `getBitmapDataPlanes:` at `0x47A0B0CC`, `bytesPerPlane` at `0x47A0B184`,
 `numberOfPlanes` at `0x47A0B198`, and `dealloc` at `0x47A0B1E0`.

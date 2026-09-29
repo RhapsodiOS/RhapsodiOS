@@ -20,6 +20,7 @@
 | NSDirectBitmap initialization guard and depth settings | PPC and i386 semantics agree; source and exception test authored; runtime pending | shared implementation; runtime pending |
 | NSDirectBitmap direct-map eligibility | PPC and i386 predicates agree; source authored; initialized-client runtime pending | shared implementation; runtime pending |
 | NSDirectBitmap framebuffer screen mapping | PPC and i386 mode selection agrees; source authored; runtime pending | shared implementation; runtime pending |
+| NSDirectBitmap backing-store resize and rectangle update | PPC and i386 bodies agree on 8-byte row alignment, screen remapping, stale interception cleanup, and direct/buffered selection; source authored; runtime pending | shared implementation; runtime pending |
 | NSDirectBitmap deallocation | PPC and i386 release/free sequence agrees; source authored; runtime pending | shared implementation; runtime pending |
 | Mach IPC layouts and RPC contracts | screen/cursor request/reply bodies statically matched; test transport authored, execution pending | IDs and async cursor request independently confirmed; shared native descriptors/test harness, execution pending |
 | IPC ABI and transport test execution | blocked by missing compatible guest/toolchain | blocked by missing compatible guest/toolchain |

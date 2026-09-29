@@ -279,6 +279,50 @@ static void test_systemVersion_is_the_confirmed_constant(void)
     [coder release];
 }
 
+static void test_encodePropertyList_and_decodePropertyList_round_trip_a_string(void)
+{
+    /*  With no real NSString/NSDictionary/NSArray yet, this test's
+        "property list" is the one shape TestCoder's primitives already
+        carry end to end: an object reference.  A future stage with real
+        collection classes should extend this test to a nested
+        dictionary/array.  */
+    id coder = [[TestCoder alloc] init];
+    id sent = [[NSObject alloc] init];
+    id received;
+
+    [coder encodePropertyList:sent];
+    received = [coder decodePropertyList];
+    CHECK(received == sent);
+    [sent release];
+    [coder release];
+}
+
+static void test_encodeNXObject_and_decodeNXObject_round_trip(void)
+{
+    id coder = [[TestCoder alloc] init];
+    id sent = [[NSObject alloc] init];
+    id received;
+
+    [coder encodeNXObject:sent];
+    received = [coder decodeNXObject];
+    CHECK(received == sent);
+    [sent release];
+    [coder release];
+}
+
+static void test_NXReadNSObjectFromCoder_matches_decodeObject(void)
+{
+    id coder = [[TestCoder alloc] init];
+    id sent = [[NSObject alloc] init];
+    id received;
+
+    [coder encodeObject:sent];
+    received = NXReadNSObjectFromCoder(coder);
+    CHECK(received == sent);
+    [sent release];
+    [coder release];
+}
+
 int main(void)
 {
     /*  The guest's stdio block-buffers pipes; a crash mid-suite would
@@ -296,6 +340,9 @@ int main(void)
     test_encodeValuesOfObjCTypes_and_decode_round_trip();
     test_encodeBytes_and_decodeBytesWithReturnedLength_round_trip();
     test_systemVersion_is_the_confirmed_constant();
+    test_encodePropertyList_and_decodePropertyList_round_trip_a_string();
+    test_encodeNXObject_and_decodeNXObject_round_trip();
+    test_NXReadNSObjectFromCoder_matches_decodeObject();
 
     printf("%s: %d failure(s)\n", failures ? "FAILED" : "PASSED", failures);
     return failures != 0;

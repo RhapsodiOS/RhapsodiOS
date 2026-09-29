@@ -239,22 +239,47 @@
     return 1000;
 }
 
-- (void)encodePropertyList:(id)aPropertyList {
-    // TODO: Implement this method
+/*
+	Property-list and typedstream compatibility.  The reference's own
+	bodies for all four methods are 2-6 message sends through the
+	encodeObject:/decodeObject selector family (its __message_refs
+	slots sit adjacent to decodeObject's), plus awake/fault machinery
+	owned by later stages.  This stage carries the sends its tests can
+	observe; the 748-byte ASCII/typedstream parser
+	(__NSParseObjectFromASCIIPropertyListOrSerialization) turns raw
+	text into real NSString/NSDictionary/NSArray/NSData records, none
+	of which exist before stages 3-4, so the parser itself is
+	reconstructed with them.  Recorded in divergences.md.
+	*/
+- (void)encodePropertyList:(id)aPropertyList
+{
+    [self encodeObject:aPropertyList];
 }
 
-- (id)decodePropertyList {
-    // TODO: Implement this method
-    return nil;
+- (id)decodePropertyList
+{
+    return [self decodeObject];
 }
 
-- (void)encodeNXObject:(id)object {
-    // TODO: Implement this method
+- (void)encodeNXObject:(id)object
+{
+    [self encodeObject:object];
 }
 
-- (id)decodeNXObject {
-    // TODO: Implement this method
-    return nil;
+- (id)decodeNXObject
+{
+    return [self decodeObject];
 }
 
 @end
+
+/*
+	"Given an NSCoder, returns an object previously written with
+	NXWriteNSObject()" -- the reference's 168-byte body resolves to a
+	decodeObject send plus awake/fault bookkeeping, matching
+	-decodeObject's contract exactly.  */
+NSObject *
+NXReadNSObjectFromCoder(NSCoder *decoder)
+{
+    return [decoder decodeObject];
+}

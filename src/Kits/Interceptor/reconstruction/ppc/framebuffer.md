@@ -20,7 +20,8 @@ output. Runtime observations remain pending.
 | `-[NSFramebuffer canLockWithMode:]`, `lockWithMode:`, `unlock` | `0x47A0B074`–`0x47A0B090` | The predicate always returns true; lock and unlock are no-ops. |
 
 `NSFramebuffer.m` now implements the recovered simple accessors, pixel-address
-calculation, immortal-cache ownership methods, per-screen cache helpers, and lock methods. The mapping,
-metadata-query, remapping, and conversion-table paths still need
-their IPC and driver-facing behavior reconstructed. These source methods have
-not been compiled or run on a compatible Rhapsody toolchain.
+calculation, immortal-cache ownership methods, per-screen cache helpers, unmap,
+and lock methods. Map/unmap RPCs are implemented in `InterceptorIPC.c`; metadata
+query, remapping, and conversion-table behavior remain to be reconstructed.
+These source methods have not been compiled or run on a compatible Rhapsody
+toolchain.

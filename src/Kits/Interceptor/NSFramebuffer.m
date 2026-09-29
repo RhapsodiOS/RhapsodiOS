@@ -61,6 +61,14 @@ static NSFramebuffer *NSFramebufferInstanceForScreen(int screenNumber)
     return self->isMapped;
 }
 
+- (void)unmapScreen
+{
+    if (self->data[0] != 0)
+        (void)InterceptorUnmapFrameBuffer([self->interceptorClient _context],
+                                          self->screenNumber, self->data[0]);
+    self->data[0] = 0;
+}
+
 - (int)screenNumber
 {
     return self->screenNumber;

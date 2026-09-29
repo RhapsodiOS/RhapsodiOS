@@ -8,7 +8,8 @@
 #include "test_support.h"
 
 enum { TestAddRect, TestRemoveRect, TestSetNotifyPort,
-       TestScreenCount, TestHideCursor, TestShowCursor };
+       TestScreenCount, TestHideCursor, TestShowCursor,
+       TestMapFrameBuffer, TestUnmapFrameBuffer };
 enum { TestSuccessReply, TestErrorReply, TestWrongReplyID, TestShortReply, TestSendFailure };
 
 static int expectedOperation;
@@ -22,6 +23,9 @@ static unsigned int expectedUniqueID;
 static InterceptedRectangle expectedRectangle;
 static InterceptedRectangle replyRectangle;
 static int expectedOperationResult;
+static int expectedScreenNumber;
+static port_t expectedTaskPort;
+static unsigned int expectedAddress;
 
 #if defined(__ppc__) || defined(__POWERPC__)
 #define EXPECTED_INTEGER_TYPE 0x02200018
@@ -78,6 +82,30 @@ int InterceptorTestMsgRPC(msg_header_t *header, int option, int sendSize,
                   "SetNotifyPort port descriptors and payload");
         replyID = 0x1C89;
         successSize = 40;
+    } else if (expectedOperation == TestMapFrameBuffer) {
+        TestCheck(sendSize == 48 && header->msg_size == 40 &&
+                  header->msg_simple == 0 && header->msg_id == 7198,
+                  "MapFrameBuffer request ID and header sizes");
+        TestCheck(words[0] == EXPECTED_INTEGER_TYPE &&
+                  words[1] == expectedScreenNumber &&
+                  words[2] == EXPECTED_PORT_TYPE &&
+                  (port_t)words[3] == expectedTaskPort,
+                  "MapFrameBuffer sends screen and task port descriptors");
+        replyID = 7298;
+        successSize = 48;
+    } else if (expectedOperation == TestUnmapFrameBuffer) {
+        TestCheck(sendSize == 40 && header->msg_size == 48 &&
+                  header->msg_simple == 0 && header->msg_id == 7219,
+                  "UnmapFrameBuffer request ID and header sizes");
+        TestCheck(words[0] == EXPECTED_INTEGER_TYPE &&
+                  words[1] == expectedScreenNumber &&
+                  words[2] == EXPECTED_PORT_TYPE &&
+                  (port_t)words[3] == expectedTaskPort &&
+                  words[4] == EXPECTED_INTEGER_TYPE &&
+                  (unsigned int)words[5] == expectedAddress,
+                  "UnmapFrameBuffer sends screen, task port, and address");
+        replyID = 7319;
+        successSize = 40;
     } else {
         int requestID = expectedOperation == TestScreenCount ? 7207 :
                         expectedOperation == TestHideCursor ? 7208 : 7209;
@@ -115,6 +143,11 @@ int InterceptorTestMsgRPC(msg_header_t *header, int option, int sendSize,
     if (expectedOperation == TestAddRect) {
         words[4] = EXPECTED_RECT_TYPE;
         memcpy(&words[5], &replyRectangle, sizeof(replyRectangle));
+    } else if (expectedOperation == TestMapFrameBuffer) {
+        words[2] = EXPECTED_INTEGER_TYPE;
+        words[3] = expectedOperationResult;
+        words[4] = EXPECTED_INTEGER_TYPE;
+        words[5] = (int)expectedAddress;
     }
     return 0;
 }
@@ -157,6 +190,9 @@ static void PrepareCall(int operation, int reply)
     replyRectangle.snum = 170;
     replyRectangle.flags = 180;
     expectedOperationResult = 0;
+    expectedScreenNumber = 2;
+    expectedTaskPort = task_self();
+    expectedAddress = 0x12340000;
 }
 
 int main(void)
@@ -197,6 +233,9 @@ int main(void)
                   dlsym(handle, "_InterceptorHideCursor") != 0 &&
                   dlsym(handle, "_InterceptorShowCursor") != 0,
                   "selected framework exports screen-count and cursor RPCs");
+        TestCheck(dlsym(handle, "_InterceptorMapFrameBuffer") != 0 &&
+                  dlsym(handle, "_InterceptorUnmapFrameBuffer") != 0,
+                  "selected framework exports framebuffer mapping RPCs");
         TestCheck(dlsym(handle, "InterceptorCreateContext") != 0,
                   "selected framework exports context creation");
         TestCheck(dlsym(handle, "InterceptorDestroyContext") != 0,
@@ -238,6 +277,56 @@ int main(void)
     context.notifyPort = PORT_NULL;
     TestCheck(InterceptorShowCursor(&context) == 0,
               "ShowCursor wrapper queues an asynchronous request");
+
+    PrepareCall(TestMapFrameBuffer, TestSuccessReply);
+    context.contextPort = expectedContextPort;
+    context.replyPort = expectedReplyPort;
+    {
+        void *address = 0;
+        TestCheck(InterceptorMapFrameBuffer(&context, expectedScreenNumber,
+                                            &address) == expectedOperationResult,
+                  "MapFrameBuffer accepts a valid success reply");
+        TestCheck((unsigned long)address == expectedAddress,
+                  "MapFrameBuffer returns the mapped address");
+    }
+
+    PrepareCall(TestMapFrameBuffer, TestErrorReply);
+    context.contextPort = expectedContextPort;
+    context.replyPort = expectedReplyPort;
+    {
+        void *address = 0;
+        TestCheck(InterceptorMapFrameBuffer(&context, expectedScreenNumber,
+                                            &address) != 0 && address == 0,
+                  "MapFrameBuffer preserves an empty address on server error");
+    }
+
+    PrepareCall(TestMapFrameBuffer, TestWrongReplyID);
+    context.contextPort = expectedContextPort;
+    context.replyPort = expectedReplyPort;
+    {
+        void *address = 0;
+        TestCheck(InterceptorMapFrameBuffer(&context, expectedScreenNumber,
+                                            &address) != 0 && address == 0,
+                  "MapFrameBuffer rejects a reply with the wrong ID");
+    }
+
+    PrepareCall(TestMapFrameBuffer, TestShortReply);
+    context.contextPort = expectedContextPort;
+    context.replyPort = expectedReplyPort;
+    {
+        void *address = 0;
+        TestCheck(InterceptorMapFrameBuffer(&context, expectedScreenNumber,
+                                            &address) != 0 && address == 0,
+                  "MapFrameBuffer rejects an undersized success reply");
+    }
+
+    PrepareCall(TestUnmapFrameBuffer, TestSuccessReply);
+    context.contextPort = expectedContextPort;
+    context.replyPort = expectedReplyPort;
+    TestCheck(InterceptorUnmapFrameBuffer(&context, expectedScreenNumber,
+                                          (void *)(unsigned long)expectedAddress) ==
+              expectedOperationResult,
+              "UnmapFrameBuffer accepts a valid success reply");
 
     PrepareCall(TestAddRect, TestErrorReply);
     rectangle = expectedRectangle;

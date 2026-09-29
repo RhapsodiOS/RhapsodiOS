@@ -235,3 +235,90 @@ int InterceptorShowCursor(InterceptorClientContext *context)
     (void)_InterceptorShowCursorAsync(context->contextPort);
     return 0;
 }
+
+int _InterceptorMapFrameBuffer(port_t contextPort, port_t replyPort,
+                               int screenNumber, port_t taskPort,
+                               unsigned int *address)
+{
+    InterceptorRPCMessage message;
+    int *words;
+    int result;
+
+    InterceptorSetRPCHeader(&message, contextPort, replyPort,
+                            7198, 40, 0);
+    words = message.words;
+    words[0] = InterceptorTypeDescriptor(2, 32, 1);
+    words[1] = screenNumber;
+    words[2] = InterceptorTypeDescriptor(6, 32, 1);
+    words[3] = (int)taskPort;
+
+    result = InterceptorMsgRPC(&message.header, 0, 48, 0, 0);
+    if (result != 0) {
+        Interceptor_mig_error(result);
+        return words[3];
+    }
+    result = InterceptorCheckRPCReply(&message, 7298, 48, 32);
+    if (result != 0)
+        return words[3];
+    if (words[2] != InterceptorTypeDescriptor(2, 32, 1) ||
+        words[4] != InterceptorTypeDescriptor(2, 32, 1)) {
+        Interceptor_mig_error(-300);
+        return words[3];
+    }
+    *address = (unsigned int)words[5];
+    return words[3];
+}
+
+int _InterceptorUnmapFrameBuffer(port_t contextPort, port_t replyPort,
+                                 int screenNumber, port_t taskPort,
+                                 unsigned int address)
+{
+    InterceptorRPCMessage message;
+    int *words;
+    int result;
+
+    InterceptorSetRPCHeader(&message, contextPort, replyPort,
+                            7219, 48, 0);
+    words = message.words;
+    words[0] = InterceptorTypeDescriptor(2, 32, 1);
+    words[1] = screenNumber;
+    words[2] = InterceptorTypeDescriptor(6, 32, 1);
+    words[3] = (int)taskPort;
+    words[4] = InterceptorTypeDescriptor(2, 32, 1);
+    words[5] = (int)address;
+
+    result = InterceptorMsgRPC(&message.header, 0, 40, 0, 0);
+    if (result != 0) {
+        Interceptor_mig_error(result);
+        return words[3];
+    }
+    result = InterceptorCheckRPCReply(&message, 7319, 40, 32);
+    if (result != 0)
+        return words[3];
+    if (words[2] != InterceptorTypeDescriptor(2, 32, 1)) {
+        Interceptor_mig_error(-300);
+        return words[3];
+    }
+    return words[3];
+}
+
+int InterceptorMapFrameBuffer(InterceptorClientContext *context,
+                              int screenNumber, void **address)
+{
+    unsigned int mappedAddress = 0;
+    int result = _InterceptorMapFrameBuffer(context->contextPort,
+                                            context->replyPort, screenNumber,
+                                            task_self(), &mappedAddress);
+    if (result == 0)
+        *address = (void *)(unsigned long)mappedAddress;
+    return result;
+}
+
+int InterceptorUnmapFrameBuffer(InterceptorClientContext *context,
+                                int screenNumber, void *address)
+{
+    return _InterceptorUnmapFrameBuffer(context->contextPort,
+                                        context->replyPort, screenNumber,
+                                        task_self(),
+                                        (unsigned int)(unsigned long)address);
+}

@@ -13,6 +13,10 @@ see `../i386/ipc.md`.
 | `_InterceptorScreenCount` | `7207` | 24 bytes | `7307` | 32 bytes |
 | `_InterceptorHideCursor` | `7208` | 24 bytes | `7308` | 32 bytes |
 | `_InterceptorShowCursor` | `7209` | 24 bytes | `7309` | 32 bytes |
+| `_InterceptorMapFrameBuffer` | `7198` | 48 bytes | `7298` | 32 bytes |
+| `_InterceptorUnmapFrameBuffer` | `7219` | 40 bytes | `7319` | 32 bytes |
+| `_InterceptorMapFrameBuffer` | `7198` | 48 bytes | `7298` | 32 bytes |
+| `_InterceptorUnmapFrameBuffer` | `7219` | 40 bytes | `7319` | 32 bytes |
 
 Each call uses `msg_rpc(request, 0, requestSize, 0, 0)`. The context's
 `contextPort` is sent as `msg_remote_port`; `replyPort` is `msg_local_port`.

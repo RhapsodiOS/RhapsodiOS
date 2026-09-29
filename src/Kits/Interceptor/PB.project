@@ -5,7 +5,7 @@
     DYNAMIC_CODE_GEN = YES;
     FILESTABLE = {
         CLASSES = (NSSimpleBitmap.m, NSFramework_Interceptor.m, NSShape.m, NSDirectBitmap.m, NSFramebuffer.m);
-        C_FILES = ();
+        C_FILES = (InterceptorIPC.c);
         FRAMEWORKS = (AppKit.framework, Foundation.framework);
         FRAMEWORKSEARCH = ("$(SYMROOT)");
         HEADERSEARCH = (
@@ -17,7 +17,8 @@
             NSBitmap.h, NSDirectBitmap.h, NSDirectPalette.h,
             NSDirectScreen.h, NSFramebuffer.h, NSShape.h,
             Private/NSInterceptedRect.h, Private/NSInterceptorClient.h,
-            Private/InterceptorPrivate.h, Private/InterceptorCopy.h
+            Private/InterceptorPrivate.h, Private/InterceptorCopy.h,
+            Private/InterceptorIPC.h
         );
         M_FILES = ();
         OTHER_LIBS = ("/usr/lib/libDriver.A.dylib");

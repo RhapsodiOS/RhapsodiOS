@@ -34,6 +34,11 @@ context port, deallocates the notify port only when nonzero, zeroes all 12
 bytes, and frees the context. This sequence is binary-observed and retained
 even where cleanup appears asymmetric.
 
+`InterceptorIPC.c` now implements the context creation and destruction
+sequence. The three RPC stubs remain pending implementation; their message
+descriptors and complete reply validation need to be captured against a
+compatible transport before the wire routines are accepted.
+
 Runtime capture of outgoing messages, malformed replies, and transport
 failures remains pending because the compatible Mach guest/toolchain is not
 available on this host.

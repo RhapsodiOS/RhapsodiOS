@@ -40,6 +40,8 @@ int main(void)
                   "selected framework exports the SetNotifyPort RPC");
         TestCheck(dlsym(handle, "InterceptorCreateContext") != 0,
                   "selected framework exports context creation");
+        TestCheck(dlsym(handle, "InterceptorDestroyContext") != 0,
+                  "selected framework exports context destruction");
     }
     return TestFinish();
 }

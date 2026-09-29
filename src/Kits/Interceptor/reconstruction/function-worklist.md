@@ -13,7 +13,7 @@ IDA function records: 392; symbol records: 540.
 | `0x47A024B4` | 640 | `_CopyLong` | static-reviewed; runtime pending; `NSDirectBitmap.m` |
 | `0x47A02734` | 176 | `_CopyShort` | static-reviewed; runtime pending; `NSDirectBitmap.m` |
 | `0x47A027E4` | 188 | `_CopyByte` | static-reviewed; runtime pending; `NSDirectBitmap.m` |
-| `0x47A028A0` | 64 | `+[NSDirectBitmap minDepthForGray:andColor:]` | unexamined |
+| `0x47A028A0` | 64 | `+[NSDirectBitmap minDepthForGray:andColor:]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
 | `0x47A028E0` | 16 | `-[NSDirectBitmap bitsPerPixel]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
 | `0x47A028F0` | 16 | `-[NSDirectBitmap bitsPerSample]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
 | `0x47A02900` | 136 | `-[NSDirectBitmap bytesPerPlane]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
@@ -30,7 +30,7 @@ IDA function records: 392; symbol records: 540.
 | `0x47A03234` | 272 | `-[NSDirectBitmap getBitmapDataPlanes:]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
 | `0x47A03344` | 132 | `-[NSDirectBitmap pixelEncodings]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
 | `0x47A033C8` | 20 | `-[NSDirectBitmap hasAlpha]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
-| `0x47A033DC` | 120 | `-[NSDirectBitmap init]` | unexamined |
+| `0x47A033DC` | 120 | `-[NSDirectBitmap init]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
 | `0x47A03454` | 344 | `-[NSDirectBitmap initForRect:inWindow:]` | unexamined |
 | `0x47A035AC` | 20 | `-[NSDirectBitmap isPlanar]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
 | `0x47A035C0` | 232 | `-[NSDirectBitmap _mapFramebufferForScreen:]` | unexamined |
@@ -405,7 +405,7 @@ Named Objective-C symbols (candidate module by class name; verify in module meta
 
 | Address | Symbol | Candidate source module | Review status |
 |---:|---|---|---|
-| `0x47A028A0` | `+[NSDirectBitmap minDepthForGray:andColor:]` | `NSDirectBitmap.m` | unexamined |
+| `0x47A028A0` | `+[NSDirectBitmap minDepthForGray:andColor:]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A028E0` | `-[NSDirectBitmap bitsPerPixel]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A028F0` | `-[NSDirectBitmap bitsPerSample]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A02900` | `-[NSDirectBitmap bytesPerPlane]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
@@ -422,7 +422,7 @@ Named Objective-C symbols (candidate module by class name; verify in module meta
 | `0x47A03234` | `-[NSDirectBitmap getBitmapDataPlanes:]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A03344` | `-[NSDirectBitmap pixelEncodings]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A033C8` | `-[NSDirectBitmap hasAlpha]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
-| `0x47A033DC` | `-[NSDirectBitmap init]` | `NSDirectBitmap.m` | unexamined |
+| `0x47A033DC` | `-[NSDirectBitmap init]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A03454` | `-[NSDirectBitmap initForRect:inWindow:]` | `NSDirectBitmap.m` | unexamined |
 | `0x47A035AC` | `-[NSDirectBitmap isPlanar]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A035C0` | `-[NSDirectBitmap _mapFramebufferForScreen:]` | `NSDirectBitmap.m` | unexamined |
@@ -651,7 +651,7 @@ IDA function records: 419; symbol records: 629.
 | `0x47A00CE0` | 543 | `_CopyLong` | static-reviewed; runtime pending; `NSDirectBitmap.m` |
 | `0x47A00F00` | 602 | `_CopyShort` | static-reviewed; runtime pending; `NSDirectBitmap.m` |
 | `0x47A0115C` | 132 | `_CopyByte` | static-reviewed; runtime pending; `NSDirectBitmap.m` |
-| `0x47A011E0` | 34 | `+[NSDirectBitmap minDepthForGray:andColor:]` | unexamined |
+| `0x47A011E0` | 34 | `+[NSDirectBitmap minDepthForGray:andColor:]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
 | `0x47A01204` | 13 | `-[NSDirectBitmap bitsPerPixel]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
 | `0x47A01214` | 13 | `-[NSDirectBitmap bitsPerSample]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
 | `0x47A01224` | 71 | `-[NSDirectBitmap bytesPerPlane]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
@@ -668,7 +668,7 @@ IDA function records: 419; symbol records: 629.
 | `0x47A01A7C` | 214 | `-[NSDirectBitmap getBitmapDataPlanes:]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
 | `0x47A01B54` | 112 | `-[NSDirectBitmap pixelEncodings]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
 | `0x47A01BC4` | 14 | `-[NSDirectBitmap hasAlpha]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
-| `0x47A01BD4` | 91 | `-[NSDirectBitmap init]` | unexamined |
+| `0x47A01BD4` | 91 | `-[NSDirectBitmap init]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
 | `0x47A01C30` | 326 | `-[NSDirectBitmap initForRect:inWindow:]` | unexamined |
 | `0x47A01D78` | 14 | `-[NSDirectBitmap isPlanar]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
 | `0x47A01D88` | 214 | `-[NSDirectBitmap _mapFramebufferForScreen:]` | unexamined |
@@ -1070,7 +1070,7 @@ Named Objective-C symbols (candidate module by class name; verify in module meta
 
 | Address | Symbol | Candidate source module | Review status |
 |---:|---|---|---|
-| `0x47A011E0` | `+[NSDirectBitmap minDepthForGray:andColor:]` | `NSDirectBitmap.m` | unexamined |
+| `0x47A011E0` | `+[NSDirectBitmap minDepthForGray:andColor:]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A01204` | `-[NSDirectBitmap bitsPerPixel]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A01214` | `-[NSDirectBitmap bitsPerSample]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A01224` | `-[NSDirectBitmap bytesPerPlane]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
@@ -1087,7 +1087,7 @@ Named Objective-C symbols (candidate module by class name; verify in module meta
 | `0x47A01A7C` | `-[NSDirectBitmap getBitmapDataPlanes:]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A01B54` | `-[NSDirectBitmap pixelEncodings]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A01BC4` | `-[NSDirectBitmap hasAlpha]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
-| `0x47A01BD4` | `-[NSDirectBitmap init]` | `NSDirectBitmap.m` | unexamined |
+| `0x47A01BD4` | `-[NSDirectBitmap init]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A01C30` | `-[NSDirectBitmap initForRect:inWindow:]` | `NSDirectBitmap.m` | unexamined |
 | `0x47A01D78` | `-[NSDirectBitmap isPlanar]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A01D88` | `-[NSDirectBitmap _mapFramebufferForScreen:]` | `NSDirectBitmap.m` | unexamined |

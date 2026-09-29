@@ -1,5 +1,6 @@
 #import <Foundation/NSObject.h>
 #import <Foundation/NSAutoreleasePool.h>
+#import <Foundation/NSException.h>
 #import <stdio.h>
 #import <stdlib.h>
 #import <string.h>
@@ -17,6 +18,7 @@ int main(void)
     unsigned char *reported[5];
     NSSimpleBitmap *bitmap;
     NSDirectBitmap *directBitmap;
+    BOOL directInitRejected = NO;
 
     memset(red, 0x13, sizeof(red));
     memset(green, 0x57, sizeof(green));
@@ -34,6 +36,13 @@ int main(void)
               [NSInterceptorTwelveBitRGBColor isEqual:@"RRRRGGGGBBBB----"] &&
               [NSInterceptorThirtyTwoBitRGBColor isEqual:@"RRRRRRRRGGGGGGGGBBBBBBBB--------"],
               "published RGB encodings");
+    NS_DURING
+        [[NSDirectBitmap alloc] init];
+    NS_HANDLER
+        directInitRejected = [[localException name] isEqual:NSGenericException];
+    NS_ENDHANDLER
+    TestCheck(directInitRejected,
+              "plain init rejects direct bitmaps without a rectangle and window");
     directBitmap = [NSDirectBitmap alloc];
     TestCheck(directBitmap != nil, "allocates direct bitmap metadata object");
     if (directBitmap) {

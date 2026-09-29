@@ -3,6 +3,7 @@
 #import "NSDirectBitmap.h"
 #import "NSFramebuffer.h"
 #import "InterceptorGlobals.h"
+#import <Foundation/NSException.h>
 #import <Foundation/NSMutableArray.h>
 #import <Foundation/NSZone.h>
 #import <strings.h>
@@ -11,7 +12,24 @@
 - (BOOL)_isUnobscured;
 @end
 
+static int NSDirectBitmapGrayBitsPerPixelMinimum;
+static int NSDirectBitmapColorBitsPerPixelMinimum;
+
 @implementation NSDirectBitmap
+
++ (id)minDepthForGray:(int)grayDepth andColor:(int)colorDepth
+{
+    NSDirectBitmapGrayBitsPerPixelMinimum = grayDepth;
+    NSDirectBitmapColorBitsPerPixelMinimum = colorDepth;
+    return self;
+}
+
+- init
+{
+    [NSException raise:NSGenericException
+                format:@"Use initForRect:inWindow: to create an NSDirectBitmap"];
+    return nil;
+}
 
 - (int)bitsPerPixel
 {

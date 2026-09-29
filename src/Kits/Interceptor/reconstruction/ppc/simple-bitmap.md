@@ -22,6 +22,9 @@ derive plane count from `isPlanar`, and gate row/plane byte counts on
 `isLocked`; an unobscured direct-mapped bitmap reads the row stride from its
 framebuffer. Its conversion-table accessors forward to the attached
 framebuffer.
+Calling plain `init` raises `NSGenericException`; callers must provide a
+rectangle and window. The class-level `minDepthForGray:andColor:` setter stores
+the minimum gray and RGB depths consumed by rectangle initialization.
 When the requested depth differs from the framebuffer depth, `pixelEncoding`
 selects the matching 2-bit gray, 8-bit gray, 12-bit RGB, 15-bit RGB, or 32-bit
 RGB encoding token; `pixelEncodings` returns a copied one-element array.

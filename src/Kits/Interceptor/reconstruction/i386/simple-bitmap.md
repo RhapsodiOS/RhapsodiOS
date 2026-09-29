@@ -17,6 +17,8 @@ buffer or the direct framebuffer address for the intercepted screen rectangle.
 On a depth mismatch, `pixelEncoding` selects the recovered gray/RGB token for
 the effective sample depth, and `pixelEncodings` returns a copied one-item
 array.
+Plain `init` raises `NSGenericException`; `minDepthForGray:andColor:` stores
+the global depth thresholds used when creating a bitmap for a rectangle.
 `getBitmapDataPlanes:` follows the same state rules: it clears all outputs while
 unlocked, returns the buffer and inherited planes in buffered mode, or returns
 the direct screen address and clears the remaining four planes.

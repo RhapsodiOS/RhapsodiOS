@@ -8,11 +8,39 @@
 
 #import <Foundation/NSInvocation.h>
 #import <Foundation/NSMethodSignature.h>
+#import <Foundation/NSObjCRuntime.h>
+#import <Foundation/NSException.h>
 #import <Foundation/NSString.h>
 #import <Foundation/NSZone.h>
 #import <objc/objc-class.h>
 #include <stdio.h>
 #include <string.h>
+
+/*	NSException.m exports this beside the public raise path; no header
+	declares it, so this file carries the declaration.  */
+extern id _NSMethodExceptionProem(id object, SEL aSelector);
+
+/*	The argument-cache entry NSMethodSignature.m hands back through
+	-_argumentInfoAtIndex: -- the reference's 20-byte i386 layout,
+	{?=ii*^{_arginfo}i}: the frame offset, the size, the type pointer,
+	and two fields the constructor never writes.  */
+typedef struct {
+    unsigned	offset;
+    unsigned	size;
+    const char	*type;
+    unsigned	unused0;
+    unsigned	unused1;
+} NSInvocationArgInfo;
+
+/*	NSMethodSignature.m exposes its per-argument cache through this
+	undeclared accessor; Task 1 measured the reference's own layout
+	(entry +8 holds the type pointer) and this accessor is the
+	reconstruction's cross-module stand-in for what the reference does
+	by reaching into the signature's cache directly (index*20 off its
+	_parmInfoP, rep movsd x5).  */
+@interface NSMethodSignature (NSInvocationSupport)
+- (void *)_argumentInfoAtIndex:(unsigned)index;
+@end
 
 /*
 	Mirror of the header's declared ivar layout -- the ABI-visible part
@@ -189,6 +217,158 @@ typedef struct {
 - (unsigned)retainCount
 {
     return ((NSInvocationInstance *)self)->refCount;
+}
+
+/*	NSString is still the stage's TODO skeleton; this goes through the
+	same +stringWithCString:length: entry the other classes use
+	(carried by link_stubs.m until stage 3), unexercised by this
+	stage's tests.  */
+/*	Undeclared; hands back the whole tagged return-value struct rather
+	than copying just its bytes the way -getReturnValue: does.  Task
+	7's -encodeReturnValueWithCoder: uses this to know which union
+	member to encode.  */
+- (NSObjCValue)_returnValue
+{
+    return ((NSInvocationInstance *)self)->returnValue;
+}
+
+/*	Neither NSInvocation.h nor NSMethodSignature.h documents a
+	nullability contract for the four pointer arguments below; an
+	unchecked memcpy on a NULL pointer is undefined behaviour, not a
+	failure a caller can catch, so all four raise on NULL (Review
+	Focus item 1).  Bounds match the reference's own check: -1
+	through nargs-1 for getArgument:, 0 through nargs-1 for
+	setArgument:, where -1 names the return value.  */
+
+- (void)getArgument:(void *)argumentLocation atIndex:(int)index
+{
+    NSInvocationInstance *instance = (NSInvocationInstance *)self;
+    NSInvocationArgInfo *info;
+    unsigned size;
+
+    if (instance->argumentFrame == NULL) {
+        [NSException raise:NSInvalidArgumentException
+                    format:@"%@: argument frame is NULL",
+                            _NSMethodExceptionProem(self, _cmd)];
+        return;
+    }
+    if (argumentLocation == NULL) {
+        [NSException raise:NSInvalidArgumentException
+                    format:@"%@: argumentLocation is NULL",
+                            _NSMethodExceptionProem(self, _cmd)];
+        return;
+    }
+    /*  The reference's own pair of comparisons: -1 <= index AND
+        index < nargs (its jl/jg around cmp [edx+8], ecx).  Both sides
+        compared as signed -- the usual int/unsigned promotion would
+        wrap the -1 index to UINT_MAX and reject the return value.  */
+    if (index < -1 ||
+        index >= (int)[instance->signature numberOfArguments]) {
+        [NSException raise:NSInvalidArgumentException
+                    format:@"%@: index (%d) out of bounds",
+                            _NSMethodExceptionProem(self, _cmd), index];
+        return;
+    }
+
+    if (index == -1) {
+        /*  The return value.  The reference switches on the return
+            type; the observable effect is a copy of exactly the
+            return type's own bytes -- scalars straight out of the
+            union, compound types through the structLocation pointer
+            -setReturnValue: recorded.  */
+        NSGetSizeAndAlignment(
+            [instance->signature methodReturnType], &size, NULL);
+        if (instance->returnValue.type == NSObjCStructType ||
+            instance->returnValue.type == NSObjCUnionType) {
+            if (instance->returnValue.value.structLocation == NULL)
+                return;
+            memcpy(argumentLocation,
+                   instance->returnValue.value.structLocation, size);
+        } else {
+            memcpy(argumentLocation, &instance->returnValue.value, size);
+        }
+        return;
+    }
+
+    info = (NSInvocationArgInfo *)
+        [instance->signature _argumentInfoAtIndex:(unsigned)index];
+    memcpy(argumentLocation,
+           (char *)instance->argumentFrame + info->offset, info->size);
+}
+
+- (void)setArgument:(void *)argumentLocation atIndex:(int)index
+{
+    NSInvocationInstance *instance = (NSInvocationInstance *)self;
+    NSInvocationArgInfo *info;
+
+    if (instance->argumentFrame == NULL) {
+        [NSException raise:NSInvalidArgumentException
+                    format:@"%@: argument frame is NULL",
+                            _NSMethodExceptionProem(self, _cmd)];
+        return;
+    }
+    if (argumentLocation == NULL) {
+        [NSException raise:NSInvalidArgumentException
+                    format:@"%@: argumentLocation is NULL",
+                            _NSMethodExceptionProem(self, _cmd)];
+        return;
+    }
+    if (index < 0 ||
+        (unsigned)index >= (unsigned)
+            [instance->signature numberOfArguments]) {
+        [NSException raise:NSInvalidArgumentException
+                    format:@"%@: index (%d) out of bounds",
+                            _NSMethodExceptionProem(self, _cmd), index];
+        return;
+    }
+
+    info = (NSInvocationArgInfo *)
+        [instance->signature _argumentInfoAtIndex:(unsigned)index];
+    memcpy((char *)instance->argumentFrame + info->offset,
+           argumentLocation, info->size);
+}
+
+- (void)getReturnValue:(void *)retLoc
+{
+    if (retLoc == NULL) {
+        [NSException raise:NSInvalidArgumentException
+                    format:@"%@: retLoc is NULL",
+                            _NSMethodExceptionProem(self, _cmd)];
+        return;
+    }
+    /*  The reference's 36-byte body is literally this tail-call: the
+        -1 index of getArgument:atIndex: names the return value.  */
+    [self getArgument:retLoc atIndex:-1];
+}
+
+- (void)setReturnValue:(void *)retLoc
+{
+    NSInvocationInstance *instance = (NSInvocationInstance *)self;
+    const char *returnType;
+    unsigned size = 0;
+
+    if (retLoc == NULL) {
+        [NSException raise:NSInvalidArgumentException
+                    format:@"%@: retLoc is NULL",
+                            _NSMethodExceptionProem(self, _cmd)];
+        return;
+    }
+
+    returnType = [instance->signature methodReturnType];
+    NSGetSizeAndAlignment(returnType, &size, NULL);
+    instance->returnValue.type = (enum _NSObjCValueType)returnType[0];
+    if (*returnType == '{' || *returnType == '(') {
+        /*  Compound returns do not fit the 8-byte union: the
+            reference mallocs storage and records the pointer, the
+            way -invoke (Task 8) later fills it through the hidden
+            return slot.  */
+        void *storage = NSZoneMalloc(0, size);
+
+        memcpy(storage, retLoc, size);
+        instance->returnValue.value.structLocation = storage;
+    } else {
+        memcpy(&instance->returnValue.value, retLoc, size);
+    }
 }
 
 /*	NSString is still the stage's TODO skeleton; this goes through the

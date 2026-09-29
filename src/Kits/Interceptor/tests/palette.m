@@ -14,8 +14,11 @@ int main(void)
     NSColor *black = [NSColor colorWithDeviceRed:0.0 green:0.0 blue:0.0 alpha:1.0];
     NSColor *white = [NSColor colorWithDeviceRed:1.0 green:1.0 blue:1.0 alpha:1.0];
     NSColor *gray = [NSColor colorWithDeviceRed:0.5 green:0.5 blue:0.5 alpha:1.0];
+    NSColor *nearGray = [NSColor colorWithDeviceRed:0.6 green:0.6 blue:0.6 alpha:1.0];
+    NSColor *closerChromatic = [NSColor colorWithDeviceRed:0.49 green:0.5 blue:0.5 alpha:1.0];
     NSArray *colors = [NSArray arrayWithObjects:red, green, blue, nil];
     NSArray *tieColors = [NSArray arrayWithObjects:black, white, nil];
+    NSArray *grayPreferenceColors = [NSArray arrayWithObjects:nearGray, closerChromatic, nil];
     NSDirectPalette *palette;
     NSData *raw;
     NSData *changedRaw;
@@ -38,6 +41,10 @@ int main(void)
     copy = [[NSDirectPalette alloc] initWithArrayOfColors:tieColors];
     TestCheck([copy indexForColor:gray] == 0,
               "equidistant nearest-color ties keep the first palette entry");
+    [copy release];
+    copy = [[NSDirectPalette alloc] initWithArrayOfColors:grayPreferenceColors];
+    TestCheck([copy indexForColor:gray] == 0,
+              "nearby grayscale entry takes precedence over a closer chromatic entry");
     [copy release];
     blend = [[palette blendedPaletteWithFraction:0.0 ofColor:white] retain];
     TestCheck(blend != palette && [blend isEqual:palette],

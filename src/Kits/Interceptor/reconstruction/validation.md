@@ -20,6 +20,9 @@
 | Client/rectangle notification dispatch | PPC static review and source authored; test command parses, execution pending | shared source intended for both; build/runtime comparison pending |
 | NSShape scanline, operation, and description review | PPC static implementation; source authored; runtime pending | shared format/source intended for both; runtime pending |
 | Shape behavior test execution | blocked by missing compatible guest/toolchain | blocked by missing compatible guest/toolchain |
+| Framebuffer accessors, address calculation, cache ownership, and lock stubs | PPC static review and source authored; mapped framebuffer paths remain incomplete | shared source intended for both; build/runtime comparison pending |
+| Framebuffer test target | authored; PPC dry-run parses | authored; i386 dry-run parses |
+| Framebuffer test execution | blocked: host has no Objective-C compiler, Rhapsody SDK, or configured guest | blocked: host has no Objective-C compiler, Rhapsody SDK, or configured guest |
 
 A reference-only analysis is an evidence-generation result when its summary says `complete: true` and contains the IDA record. The command exits 1 because comparison acceptance is not met without a rebuilt artifact; this is not a parity result.
 

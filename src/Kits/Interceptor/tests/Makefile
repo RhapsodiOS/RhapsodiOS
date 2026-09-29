@@ -2,7 +2,7 @@ CC ?= cc
 FRAMEWORK_ROOT ?=
 OBJROOT ?= BUILD/obj
 SYMROOT ?= BUILD/sym
-TESTS = abi bitmap shape copy ipc rect
+TESTS = abi bitmap shape copy ipc rect framebuffer
 
 .PHONY: all $(TESTS)
 all: $(TESTS)
@@ -31,6 +31,10 @@ rect: $(SYMROOT)/rect
 	@test -n "$(FRAMEWORK_ROOT)" || { echo "FRAMEWORK_ROOT must select a version-A Interceptor.framework" >&2; exit 2; }
 	FRAMEWORK_ROOT="$(FRAMEWORK_ROOT)" $(SYMROOT)/rect
 
+framebuffer: $(SYMROOT)/framebuffer
+	@test -n "$(FRAMEWORK_ROOT)" || { echo "FRAMEWORK_ROOT must select a version-A Interceptor.framework" >&2; exit 2; }
+	FRAMEWORK_ROOT="$(FRAMEWORK_ROOT)" $(SYMROOT)/framebuffer
+
 $(SYMROOT)/abi: abi.m test_support.m test_support.h
 	@mkdir -p $(OBJROOT) $(SYMROOT)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -I.. -I../../../objc-1 -o $@ abi.m test_support.m -framework AppKit -framework Foundation
@@ -54,3 +58,7 @@ $(SYMROOT)/ipc: ipc.c test_support.m test_support.h ../Interceptor_types.h ../Pr
 $(SYMROOT)/rect: rect.m test_support.m test_support.h ../Private/NSInterceptedRect.h
 	@mkdir -p $(OBJROOT) $(SYMROOT)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -I.. -I../../../objc-1 -o $@ rect.m test_support.m -framework AppKit -framework Foundation
+
+$(SYMROOT)/framebuffer: framebuffer.m test_support.m test_support.h ../NSFramebuffer.h
+	@mkdir -p $(OBJROOT) $(SYMROOT)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -I.. -I../../../objc-1 -o $@ framebuffer.m test_support.m -framework AppKit -framework Foundation

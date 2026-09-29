@@ -168,24 +168,24 @@ IDA function records: 392; symbol records: 540.
 | `0x47A0A72C` | 692 | `-[NSFramebuffer initFromScreen:andMapIfPossible:]` | unexamined |
 | `0x47A0A9E0` | 92 | `-[NSFramebuffer unmapScreen]` | unexamined |
 | `0x47A0AA3C` | 544 | `-[NSFramebuffer remapScreen]` | unexamined |
-| `0x47A0AC5C` | 20 | `-[NSFramebuffer isMappable]` | unexamined |
+| `0x47A0AC5C` | 20 | `-[NSFramebuffer isMappable]` | static-reviewed; runtime pending; `NSFramebuffer.m` |
 | `0x47A0AC70` | 216 | `-[NSFramebuffer screenBounds]` | unexamined |
-| `0x47A0AD48` | 16 | `-[NSFramebuffer screenNumber]` | unexamined |
+| `0x47A0AD48` | 16 | `-[NSFramebuffer screenNumber]` | static-reviewed; runtime pending; `NSFramebuffer.m` |
 | `0x47A0AD58` | 184 | `-[NSFramebuffer conversionTable]` | unexamined |
 | `0x47A0AE10` | 184 | `-[NSFramebuffer inverseConversionTable]` | unexamined |
-| `0x47A0AEC8` | 144 | `-[NSFramebuffer addressForPoint:]` | unexamined |
+| `0x47A0AEC8` | 144 | `-[NSFramebuffer addressForPoint:]` | static-reviewed; runtime pending; `NSFramebuffer.m` |
 | `0x47A0AF58` | 100 | `-[NSFramebuffer pixelEncoding]` | unexamined |
 | `0x47A0AFBC` | 100 | `-[NSFramebuffer driver]` | unexamined |
-| `0x47A0B020` | 16 | `-[NSFramebuffer deviceUnit]` | unexamined |
-| `0x47A0B030` | 16 | `-[NSFramebuffer deviceSlot]` | unexamined |
-| `0x47A0B040` | 12 | `-[NSFramebuffer retain]` | unexamined |
-| `0x47A0B04C` | 12 | `-[NSFramebuffer release]` | unexamined |
-| `0x47A0B058` | 16 | `-[NSFramebuffer retainCount]` | unexamined |
-| `0x47A0B068` | 12 | `-[NSFramebuffer dealloc]` | unexamined |
-| `0x47A0B074` | 16 | `-[NSFramebuffer canLockWithMode:]` | unexamined |
-| `0x47A0B084` | 12 | `-[NSFramebuffer lockWithMode:]` | unexamined |
-| `0x47A0B090` | 12 | `-[NSFramebuffer unlock]` | unexamined |
-| `0x47A0B09C` | 16 | `-[NSFramebuffer _interceptorClient]` | unexamined |
+| `0x47A0B020` | 16 | `-[NSFramebuffer deviceUnit]` | static-reviewed; runtime pending; `NSFramebuffer.m` |
+| `0x47A0B030` | 16 | `-[NSFramebuffer deviceSlot]` | static-reviewed; runtime pending; `NSFramebuffer.m` |
+| `0x47A0B040` | 12 | `-[NSFramebuffer retain]` | static-reviewed; runtime pending; `NSFramebuffer.m` |
+| `0x47A0B04C` | 12 | `-[NSFramebuffer release]` | static-reviewed; runtime pending; `NSFramebuffer.m` |
+| `0x47A0B058` | 16 | `-[NSFramebuffer retainCount]` | static-reviewed; runtime pending; `NSFramebuffer.m` |
+| `0x47A0B068` | 12 | `-[NSFramebuffer dealloc]` | static-reviewed; runtime pending; `NSFramebuffer.m` |
+| `0x47A0B074` | 16 | `-[NSFramebuffer canLockWithMode:]` | static-reviewed; runtime pending; `NSFramebuffer.m` |
+| `0x47A0B084` | 12 | `-[NSFramebuffer lockWithMode:]` | static-reviewed; runtime pending; `NSFramebuffer.m` |
+| `0x47A0B090` | 12 | `-[NSFramebuffer unlock]` | static-reviewed; runtime pending; `NSFramebuffer.m` |
+| `0x47A0B09C` | 16 | `-[NSFramebuffer _interceptorClient]` | static-reviewed; runtime pending; `NSFramebuffer.m` |
 | `0x47A0B0AC` | 12 | `_NSRemapMegaPixelDisplayForCurrentThread` | unexamined |
 | `0x47A0B0B8` | 412 | `-[NSInterceptedRect initForRect:inWindow:onFramebuffer:forClient:]` | source authored; PPC static reviewed; runtime pending |
 | `0x47A0B254` | 16 | `-[NSInterceptedRect setTarget:]` | source authored; runtime pending |
@@ -557,24 +557,24 @@ Named Objective-C symbols (candidate module by class name; verify in module meta
 | `0x47A0A72C` | `-[NSFramebuffer initFromScreen:andMapIfPossible:]` | `NSFramebuffer.m` | unexamined |
 | `0x47A0A9E0` | `-[NSFramebuffer unmapScreen]` | `NSFramebuffer.m` | unexamined |
 | `0x47A0AA3C` | `-[NSFramebuffer remapScreen]` | `NSFramebuffer.m` | unexamined |
-| `0x47A0AC5C` | `-[NSFramebuffer isMappable]` | `NSFramebuffer.m` | unexamined |
+| `0x47A0AC5C` | `-[NSFramebuffer isMappable]` | `NSFramebuffer.m` | static-reviewed; runtime pending |
 | `0x47A0AC70` | `-[NSFramebuffer screenBounds]` | `NSFramebuffer.m` | unexamined |
-| `0x47A0AD48` | `-[NSFramebuffer screenNumber]` | `NSFramebuffer.m` | unexamined |
+| `0x47A0AD48` | `-[NSFramebuffer screenNumber]` | `NSFramebuffer.m` | static-reviewed; runtime pending |
 | `0x47A0AD58` | `-[NSFramebuffer conversionTable]` | `NSFramebuffer.m` | unexamined |
 | `0x47A0AE10` | `-[NSFramebuffer inverseConversionTable]` | `NSFramebuffer.m` | unexamined |
-| `0x47A0AEC8` | `-[NSFramebuffer addressForPoint:]` | `NSFramebuffer.m` | unexamined |
+| `0x47A0AEC8` | `-[NSFramebuffer addressForPoint:]` | `NSFramebuffer.m` | static-reviewed; runtime pending |
 | `0x47A0AF58` | `-[NSFramebuffer pixelEncoding]` | `NSFramebuffer.m` | unexamined |
 | `0x47A0AFBC` | `-[NSFramebuffer driver]` | `NSFramebuffer.m` | unexamined |
-| `0x47A0B020` | `-[NSFramebuffer deviceUnit]` | `NSFramebuffer.m` | unexamined |
-| `0x47A0B030` | `-[NSFramebuffer deviceSlot]` | `NSFramebuffer.m` | unexamined |
-| `0x47A0B040` | `-[NSFramebuffer retain]` | `NSFramebuffer.m` | unexamined |
-| `0x47A0B04C` | `-[NSFramebuffer release]` | `NSFramebuffer.m` | unexamined |
-| `0x47A0B058` | `-[NSFramebuffer retainCount]` | `NSFramebuffer.m` | unexamined |
-| `0x47A0B068` | `-[NSFramebuffer dealloc]` | `NSFramebuffer.m` | unexamined |
-| `0x47A0B074` | `-[NSFramebuffer canLockWithMode:]` | `NSFramebuffer.m` | unexamined |
-| `0x47A0B084` | `-[NSFramebuffer lockWithMode:]` | `NSFramebuffer.m` | unexamined |
-| `0x47A0B090` | `-[NSFramebuffer unlock]` | `NSFramebuffer.m` | unexamined |
-| `0x47A0B09C` | `-[NSFramebuffer(NSPrivate) _interceptorClient]` | `NSFramebuffer.m` | unexamined |
+| `0x47A0B020` | `-[NSFramebuffer deviceUnit]` | `NSFramebuffer.m` | static-reviewed; runtime pending |
+| `0x47A0B030` | `-[NSFramebuffer deviceSlot]` | `NSFramebuffer.m` | static-reviewed; runtime pending |
+| `0x47A0B040` | `-[NSFramebuffer retain]` | `NSFramebuffer.m` | static-reviewed; runtime pending |
+| `0x47A0B04C` | `-[NSFramebuffer release]` | `NSFramebuffer.m` | static-reviewed; runtime pending |
+| `0x47A0B058` | `-[NSFramebuffer retainCount]` | `NSFramebuffer.m` | static-reviewed; runtime pending |
+| `0x47A0B068` | `-[NSFramebuffer dealloc]` | `NSFramebuffer.m` | static-reviewed; runtime pending |
+| `0x47A0B074` | `-[NSFramebuffer canLockWithMode:]` | `NSFramebuffer.m` | static-reviewed; runtime pending |
+| `0x47A0B084` | `-[NSFramebuffer lockWithMode:]` | `NSFramebuffer.m` | static-reviewed; runtime pending |
+| `0x47A0B090` | `-[NSFramebuffer unlock]` | `NSFramebuffer.m` | static-reviewed; runtime pending |
+| `0x47A0B09C` | `-[NSFramebuffer(NSPrivate) _interceptorClient]` | `NSFramebuffer.m` | static-reviewed; runtime pending |
 | `0x47A0B0B8` | `-[NSInterceptedRect initForRect:inWindow:onFramebuffer:forClient:]` | `NSInterceptedRect.m` | unexamined |
 | `0x47A0B254` | `-[NSInterceptedRect setTarget:]` | `NSInterceptedRect.m` | unexamined |
 | `0x47A0B264` | `-[NSInterceptedRect target]` | `NSInterceptedRect.m` | unexamined |

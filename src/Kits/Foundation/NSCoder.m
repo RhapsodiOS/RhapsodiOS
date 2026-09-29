@@ -3,28 +3,60 @@
 */
 
 #import <Foundation/NSCoder.h>
+#import <Foundation/NSException.h>
+#import <Foundation/NSString.h>
+
+/*	NSCoder's instance_size is 4 -- isa only, no storage of its own.  Its
+	five primitives have compiled bodies in the reference despite that,
+	which -- given there is nowhere for a primitive to keep state -- can
+	only mean each raises "subclass responsibility": the reference's
+	reason literal "<method>: subclass should override ..." sits in
+	__OBJC,__cstring_object, reached through _NSMethodExceptionProem plus
+	the shared raise helper every primitive calls.  A real coder
+	(NSArchiver, stage 6; NSPortCoder, stage 8) overrides all five with a
+	concrete backing store.  Tasks 3-4 fill in the remaining methods.  */
 
 @implementation NSCoder
 
-- (void)encodeValueOfObjCType:(const char *)type at:(const void *)addr {
-    // TODO: Implement this method
+- (void)encodeValueOfObjCType:(const char *)type at:(const void *)addr
+{
+    id proem = _NSMethodExceptionProem(self, _cmd);
+
+    [NSException raise:NSInvalidArgumentException
+                format:@"%@: subclass should override encodeValueOfObjCType:at:", proem];
 }
 
-- (void)encodeDataObject:(NSData *)data {
-    // TODO: Implement this method
+- (void)encodeDataObject:(NSData *)data
+{
+    id proem = _NSMethodExceptionProem(self, _cmd);
+
+    [NSException raise:NSInvalidArgumentException
+                format:@"%@: subclass should override encodeDataObject:", proem];
 }
 
-- (void)decodeValueOfObjCType:(const char *)type at:(void *)data {
-    // TODO: Implement this method
+- (void)decodeValueOfObjCType:(const char *)type at:(void *)data
+{
+    id proem = _NSMethodExceptionProem(self, _cmd);
+
+    [NSException raise:NSInvalidArgumentException
+                format:@"%@: subclass should override decodeValueOfObjCType:at:", proem];
 }
 
-- (NSData *)decodeDataObject {
-    // TODO: Implement this method
+- (NSData *)decodeDataObject
+{
+    id proem = _NSMethodExceptionProem(self, _cmd);
+
+    [NSException raise:NSInvalidArgumentException
+                format:@"%@: subclass should override decodeDataObject", proem];
     return nil;
 }
 
-- (unsigned)versionForClassName:(NSString *)className {
-    // TODO: Implement this method
+- (unsigned)versionForClassName:(NSString *)className
+{
+    id proem = _NSMethodExceptionProem(self, _cmd);
+
+    [NSException raise:NSInvalidArgumentException
+                format:@"%@: subclass should override versionForClassName:", proem];
     return 0;
 }
 

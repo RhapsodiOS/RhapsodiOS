@@ -697,6 +697,51 @@ typedef void (*NSBitmapCopyFunction)(const void *, int, void *, int, int, int);
     return 0;
 }
 
+- (void)_setDelegate:(id)delegate
+{
+    [self->_delegate release];
+    self->_delegate = [delegate retain];
+}
+
+- (id)_framebuffer
+{
+    return self->framebuffer;
+}
+
+- (void)_setFlushOnExposure:(BOOL)flushOnExposure
+{
+    self->_flushOnExposure = flushOnExposure;
+}
+
+- (id)_viewClipShape:(id)ignored
+{
+    (void)ignored;
+    return self->_viewClip;
+}
+
+- (id)_setViewClip:(id)viewClip
+{
+    if (self->isLocked == NO || self->processingDelegate != NO)
+        return nil;
+
+    self->_viewClip = viewClip;
+    self->isUnobscured = [self _isUnobscured];
+    if (self->_flushOnExposure != NO && [viewClip isEmpty] == NO)
+        [self flush];
+    return self;
+}
+
+- (void)_setViewClipShape:(id)viewClip
+{
+    if (self->isLocked == NO)
+        return;
+
+    self->_viewClip = viewClip;
+    self->isUnobscured = [self _isUnobscured];
+    if (self->_flushOnExposure != NO && [viewClip isEmpty] == NO)
+        [self flush];
+}
+
 - (id)initForRect:(NSRect)rect inWindow:(id)window
 {
     unsigned int globalWindowNumber;

@@ -85,3 +85,6 @@ the newly hidden shape. On reveal, it restores and clips the shape, flushes
 exposed backing-store pixels when configured, and notifies the delegate through
 `rectClippingDidChange:`. The reveal path also returns its cursor-activation
 decision to the intercepted-rectangle message handler.
+The view-clip helpers apply the recovered lock/processing guards, recalculate
+visibility, and flush newly exposed regions when flush-on-exposure is active.
+Delegate replacement releases the previous delegate and retains the new one.

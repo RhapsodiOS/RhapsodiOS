@@ -140,3 +140,7 @@ visible shape, and notifies `rectClippingDidChange:`. On reveal it unions the
 rectangle back into the shape, clips to the intercepted screen region, flushes
 exposed buffered pixels when enabled, and sends the same delegate notification.
 The reveal callback also returns the recovered active-application cursor flag.
+Delegate replacement releases the prior object and retains its replacement.
+View-clip updates are ignored while unlocked (and while delegate processing is
+active for `_setViewClip:`); accepted updates recompute visibility and flush
+newly exposed pixels when flush-on-exposure is enabled.

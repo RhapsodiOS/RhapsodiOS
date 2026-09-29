@@ -3,8 +3,7 @@
 #import "Private/InterceptorIPC.h"
 #import "Private/InterceptorCopy.h"
 #import <driverkit/driverServer.h>
-#import <AppKit/NSException.h>
-#import <AppKit/NSColor.h>
+#import <Foundation/NSException.h>
 #import <Foundation/NSData.h>
 #import <Foundation/NSNotification.h>
 #import <mach/mach.h>
@@ -56,6 +55,9 @@ extern vm_size_t vm_page_size;
 
 @interface NSDirectScreen (Private)
 - (void)_clearModeInfo;
+- (BOOL)_canLockWithMode:(NSFramebufferAccessMode)mode;
+- (void)_lockWithMode:(NSFramebufferAccessMode)mode;
+- (void)_unlock;
 @end
 
 static unsigned int *NSDirectScreenWords(void *privateData)
@@ -496,6 +498,33 @@ failure:
 - (void)showCursor
 {
     (void)InterceptorShowCursor((InterceptorClientContext *)NSDirectScreenWords(self->_private)[0]);
+}
+
+- (BOOL)_canLockWithMode:(NSFramebufferAccessMode)mode
+{
+    return [(NSFramebuffer *)NSDirectScreenWords(self->_private)[2]
+            canLockWithMode:mode];
+}
+
+- (void)_lockWithMode:(NSFramebufferAccessMode)mode
+{
+    NSString *selectorName = NSStringFromSelector(_cmd);
+
+    if (![self displayIsShielded])
+        [NSException raise:NSDirectScreenDisplayIsUnshieldedException
+                    format:UnshieldedExceptionFormat, selectorName];
+    [(NSFramebuffer *)NSDirectScreenWords(self->_private)[2]
+        lockWithMode:mode];
+}
+
+- (void)_unlock
+{
+    NSString *selectorName = NSStringFromSelector(_cmd);
+
+    if (![self displayIsShielded])
+        [NSException raise:NSDirectScreenDisplayIsUnshieldedException
+                    format:UnshieldedExceptionFormat, selectorName];
+    [(NSFramebuffer *)NSDirectScreenWords(self->_private)[2] unlock];
 }
 
 @end

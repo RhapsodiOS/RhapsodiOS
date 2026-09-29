@@ -19,3 +19,8 @@ when needed, then copies the framebuffer to the backing store. The backing
 store allocator reserves two page-size margins and returns a pointer one page
 into the allocation; destruction frees the original base address. Detailed
 window-server and mode-setting calls remain incomplete in source.
+
+`_canLockWithMode:` forwards to the framebuffer. `_lockWithMode:` and
+`_unlock` require byte 120 to indicate a shielded display before forwarding;
+an unshielded call raises `NSDirectScreenDisplayIsUnshieldedException` with
+the invoked selector.

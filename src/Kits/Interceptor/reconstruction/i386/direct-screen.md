@@ -29,3 +29,8 @@ needed, copies the framebuffer into the backing store, and marks byte 120 as
 shielded. Unshield reverses the mode/palette/window/brightness work. These
 paths depend on recovered window-server and display-mode details not yet
 implemented here.
+
+`_canLockWithMode:` forwards to the framebuffer. `_lockWithMode:` and
+`_unlock` both require byte 120 to indicate a shielded display before
+forwarding to the framebuffer; an unshielded call raises
+`NSDirectScreenDisplayIsUnshieldedException` using the invoked selector.

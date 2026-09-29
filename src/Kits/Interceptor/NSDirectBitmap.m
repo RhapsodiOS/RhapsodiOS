@@ -24,6 +24,7 @@
               onScreen:(int)screenNumber;
 - (void)_updateForRect:(NSRect)rect inWinNum:(int)windowNumber
               onScreen:(int)screenNumber;
+- (id)_updateBuffer;
 - (void)updateState;
 @end
 
@@ -416,6 +417,36 @@ static int NSDirectBitmapMaximumScreens = -1;
     }
 }
 
+- (BOOL)_isUnobscured
+{
+    NSShape *screenShape = [self->interceptRect currentScreenRectShape];
+    BOOL unobscured = [self->_dbm_private isEqual:screenShape];
+
+    if (unobscured && self->_viewClip != nil)
+        unobscured = [self->_dbm_private isEqual:self->_viewClip];
+    return unobscured;
+}
+
+- (id)_updateBuffer
+{
+    NSRect screenRect = [self->interceptRect currentScreenRect];
+    unsigned char *screenAddress = (unsigned char *)
+        [(NSFramebuffer *)self->framebuffer addressForPoint:screenRect.origin];
+    unsigned char *buffer;
+    int rowBytes = (self->pixelsWide * self->bitsPerPixel + 7) / 8;
+    int sourcePadding = [(NSFramebuffer *)self->framebuffer bytesPerRow] - rowBytes;
+    int destinationPadding = self->bytesPerRow - rowBytes;
+    typedef void (*NSBitmapCopyFunction)(const void *, int, void *, int, int, int);
+
+    [(NSFramebuffer *)self->framebuffer lockWithMode:self->fbMode];
+    buffer = [self _dataBuffer];
+    ((NSBitmapCopyFunction)self->copyFunc)(screenAddress, sourcePadding,
+        buffer, destinationPadding, self->pixelsWide, self->pixelsHigh);
+    self->_screenIsDirty = NO;
+    [(NSFramebuffer *)self->framebuffer unlock];
+    return self;
+}
+
 - (id)initForRect:(NSRect)rect inWindow:(id)window
 {
     unsigned int globalWindowNumber;
@@ -551,8 +582,8 @@ static int NSDirectBitmapMaximumScreens = -1;
 
 @end
 
-void CopyLong(const void *source, int sourceStride, void *destination,
-              int destinationStride, int longCount, int rowCount)
+void CopyLong(const void *source, int sourcePadding, void *destination,
+              int destinationPadding, int longCount, int rowCount)
 {
     const unsigned int *sourceWords = (const unsigned int *)source;
     unsigned int *destinationWords = (unsigned int *)destination;
@@ -561,13 +592,15 @@ void CopyLong(const void *source, int sourceStride, void *destination,
     for (row = 0; row < rowCount; row++) {
         for (column = 0; column < longCount; column++)
             destinationWords[column] = sourceWords[column];
-        sourceWords = (const unsigned int *)((const unsigned char *)sourceWords + sourceStride);
-        destinationWords = (unsigned int *)((unsigned char *)destinationWords + destinationStride);
+        sourceWords = (const unsigned int *)((const unsigned char *)sourceWords +
+            longCount * sizeof(*sourceWords) + sourcePadding);
+        destinationWords = (unsigned int *)((unsigned char *)destinationWords +
+            longCount * sizeof(*destinationWords) + destinationPadding);
     }
 }
 
-void CopyShort(const void *source, int sourceStride, void *destination,
-               int destinationStride, int shortCount, int rowCount)
+void CopyShort(const void *source, int sourcePadding, void *destination,
+               int destinationPadding, int shortCount, int rowCount)
 {
     const unsigned short *sourceShorts = (const unsigned short *)source;
     unsigned short *destinationShorts = (unsigned short *)destination;
@@ -576,13 +609,15 @@ void CopyShort(const void *source, int sourceStride, void *destination,
     for (row = 0; row < rowCount; row++) {
         for (column = 0; column < shortCount; column++)
             destinationShorts[column] = sourceShorts[column];
-        sourceShorts = (const unsigned short *)((const unsigned char *)sourceShorts + sourceStride);
-        destinationShorts = (unsigned short *)((unsigned char *)destinationShorts + destinationStride);
+        sourceShorts = (const unsigned short *)((const unsigned char *)sourceShorts +
+            shortCount * sizeof(*sourceShorts) + sourcePadding);
+        destinationShorts = (unsigned short *)((unsigned char *)destinationShorts +
+            shortCount * sizeof(*destinationShorts) + destinationPadding);
     }
 }
 
-void CopyByte(const void *source, int sourceStride, void *destination,
-              int destinationStride, int byteCount, int rowCount)
+void CopyByte(const void *source, int sourcePadding, void *destination,
+              int destinationPadding, int byteCount, int rowCount)
 {
     const unsigned char *sourceBytes = (const unsigned char *)source;
     unsigned char *destinationBytes = (unsigned char *)destination;
@@ -591,7 +626,7 @@ void CopyByte(const void *source, int sourceStride, void *destination,
     for (row = 0; row < rowCount; row++) {
         for (column = 0; column < byteCount; column++)
             destinationBytes[column] = sourceBytes[column];
-        sourceBytes += sourceStride;
-        destinationBytes += destinationStride;
+        sourceBytes += byteCount + sourcePadding;
+        destinationBytes += byteCount + destinationPadding;
     }
 }

@@ -54,7 +54,9 @@ Its simple accessors use the same field offsets: `bitmapData` at `0x47A0B0BC`,
 
 The copy routines independently confirm the PPC calling contract. `_CopyLong`
 at `0x47A00CE0`, `_CopyShort` at `0x47A00F00`, and `_CopyByte` at
-`0x47A0115C` receive source pointer/stride, destination pointer/stride, element
+`0x47A0115C` receive source pointer/padding, destination pointer/padding, element
 count, and row count. `_CopySrcToDst` at `0x47A07E78` copies the smaller row
-span for each row. These bodies are implemented in the shared source units;
+span for each row. The typed copy routines take extra row-padding bytes after
+the copied elements, rather than total row widths; the PPC body confirms the
+same contract. These bodies are implemented in the shared source units;
 their tests are authored but await a compatible i386 runtime.

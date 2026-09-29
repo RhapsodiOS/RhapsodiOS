@@ -42,7 +42,7 @@ IDA function records: 392; symbol records: 540.
 | `0x47A03BBC` | 272 | `-[NSDirectBitmap pixelEncoding]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
 | `0x47A03CCC` | 16 | `-[NSDirectBitmap pixelsWide]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
 | `0x47A03CDC` | 16 | `-[NSDirectBitmap pixelsHigh]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
-| `0x47A03CEC` | 260 | `-[NSDirectBitmap _updateBuffer]` | unexamined |
+| `0x47A03CEC` | 260 | `-[NSDirectBitmap _updateBuffer]` | static-reviewed; source authored; runtime pending |
 | `0x47A03DF0` | 16 | `-[NSDirectBitmap samplesPerPixel]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
 | `0x47A03E00` | 280 | `-[NSDirectBitmap setBuffered:]` | unexamined |
 | `0x47A03F18` | 208 | `-[NSDirectBitmap _canUseDirectMapping]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
@@ -60,7 +60,7 @@ IDA function records: 392; symbol records: 540.
 | `0x47A0498C` | 16 | `-[NSDirectBitmap _framebuffer]` | unexamined |
 | `0x47A0499C` | 20 | `-[NSDirectBitmap _setFlushOnExposure:]` | unexamined |
 | `0x47A049B0` | 120 | `-[NSDirectBitmap _screenBoundsOrigin]` | unexamined |
-| `0x47A04A28` | 132 | `-[NSDirectBitmap _isUnobscured]` | unexamined |
+| `0x47A04A28` | 132 | `-[NSDirectBitmap _isUnobscured]` | static-reviewed; source authored; runtime pending |
 | `0x47A04AAC` | 100 | `-[NSDirectBitmap _isTotallyObscured]` | unexamined |
 | `0x47A04B10` | 164 | `-[NSDirectBitmap _setViewClip:]` | unexamined |
 | `0x47A04BB4` | 16 | `-[NSDirectBitmap _viewClipShape:]` | unexamined |
@@ -434,7 +434,7 @@ Named Objective-C symbols (candidate module by class name; verify in module meta
 | `0x47A03BBC` | `-[NSDirectBitmap pixelEncoding]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A03CCC` | `-[NSDirectBitmap pixelsWide]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A03CDC` | `-[NSDirectBitmap pixelsHigh]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
-| `0x47A03CEC` | `-[NSDirectBitmap _updateBuffer]` | `NSDirectBitmap.m` | unexamined |
+| `0x47A03CEC` | `-[NSDirectBitmap _updateBuffer]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A03DF0` | `-[NSDirectBitmap samplesPerPixel]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A03E00` | `-[NSDirectBitmap setBuffered:]` | `NSDirectBitmap.m` | unexamined |
 | `0x47A03F18` | `-[NSDirectBitmap _canUseDirectMapping]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
@@ -452,7 +452,7 @@ Named Objective-C symbols (candidate module by class name; verify in module meta
 | `0x47A0498C` | `-[NSDirectBitmap _framebuffer]` | `NSDirectBitmap.m` | unexamined |
 | `0x47A0499C` | `-[NSDirectBitmap _setFlushOnExposure:]` | `NSDirectBitmap.m` | unexamined |
 | `0x47A049B0` | `-[NSDirectBitmap _screenBoundsOrigin]` | `NSDirectBitmap.m` | unexamined |
-| `0x47A04A28` | `-[NSDirectBitmap _isUnobscured]` | `NSDirectBitmap.m` | unexamined |
+| `0x47A04A28` | `-[NSDirectBitmap _isUnobscured]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A04AAC` | `-[NSDirectBitmap _isTotallyObscured]` | `NSDirectBitmap.m` | unexamined |
 | `0x47A04B10` | `-[NSDirectBitmap _setViewClip:]` | `NSDirectBitmap.m` | unexamined |
 | `0x47A04BB4` | `-[NSDirectBitmap _viewClipShape:]` | `NSDirectBitmap.m` | unexamined |
@@ -680,7 +680,7 @@ IDA function records: 419; symbol records: 629.
 | `0x47A022CC` | 215 | `-[NSDirectBitmap pixelEncoding]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
 | `0x47A023A4` | 13 | `-[NSDirectBitmap pixelsWide]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
 | `0x47A023B4` | 13 | `-[NSDirectBitmap pixelsHigh]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
-| `0x47A023C4` | 246 | `-[NSDirectBitmap _updateBuffer]` | unexamined |
+| `0x47A023C4` | 246 | `-[NSDirectBitmap _updateBuffer]` | static-reviewed; source authored; runtime pending |
 | `0x47A024BC` | 13 | `-[NSDirectBitmap samplesPerPixel]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
 | `0x47A024CC` | 239 | `-[NSDirectBitmap setBuffered:]` | unexamined |
 | `0x47A025BC` | 167 | `-[NSDirectBitmap _canUseDirectMapping]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
@@ -698,7 +698,7 @@ IDA function records: 419; symbol records: 629.
 | `0x47A02EE4` | 13 | `-[NSDirectBitmap _framebuffer]` | unexamined |
 | `0x47A02EF4` | 20 | `-[NSDirectBitmap _setFlushOnExposure:]` | unexamined |
 | `0x47A02F08` | 81 | `-[NSDirectBitmap _screenBoundsOrigin]` | unexamined |
-| `0x47A02F5C` | 120 | `-[NSDirectBitmap _isUnobscured]` | unexamined |
+| `0x47A02F5C` | 120 | `-[NSDirectBitmap _isUnobscured]` | static-reviewed; source authored; runtime pending |
 | `0x47A02FD4` | 78 | `-[NSDirectBitmap _isTotallyObscured]` | unexamined |
 | `0x47A03024` | 123 | `-[NSDirectBitmap _setViewClip:]` | unexamined |
 | `0x47A030A0` | 16 | `-[NSDirectBitmap _viewClipShape:]` | unexamined |
@@ -1099,7 +1099,7 @@ Named Objective-C symbols (candidate module by class name; verify in module meta
 | `0x47A022CC` | `-[NSDirectBitmap pixelEncoding]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A023A4` | `-[NSDirectBitmap pixelsWide]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A023B4` | `-[NSDirectBitmap pixelsHigh]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
-| `0x47A023C4` | `-[NSDirectBitmap _updateBuffer]` | `NSDirectBitmap.m` | unexamined |
+| `0x47A023C4` | `-[NSDirectBitmap _updateBuffer]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A024BC` | `-[NSDirectBitmap samplesPerPixel]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A024CC` | `-[NSDirectBitmap setBuffered:]` | `NSDirectBitmap.m` | unexamined |
 | `0x47A025BC` | `-[NSDirectBitmap _canUseDirectMapping]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
@@ -1117,7 +1117,7 @@ Named Objective-C symbols (candidate module by class name; verify in module meta
 | `0x47A02EE4` | `-[NSDirectBitmap _framebuffer]` | `NSDirectBitmap.m` | unexamined |
 | `0x47A02EF4` | `-[NSDirectBitmap _setFlushOnExposure:]` | `NSDirectBitmap.m` | unexamined |
 | `0x47A02F08` | `-[NSDirectBitmap _screenBoundsOrigin]` | `NSDirectBitmap.m` | unexamined |
-| `0x47A02F5C` | `-[NSDirectBitmap _isUnobscured]` | `NSDirectBitmap.m` | unexamined |
+| `0x47A02F5C` | `-[NSDirectBitmap _isUnobscured]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A02FD4` | `-[NSDirectBitmap _isTotallyObscured]` | `NSDirectBitmap.m` | unexamined |
 | `0x47A03024` | `-[NSDirectBitmap _setViewClip:]` | `NSDirectBitmap.m` | unexamined |
 | `0x47A030A0` | `-[NSDirectBitmap _viewClipShape:]` | `NSDirectBitmap.m` | unexamined |

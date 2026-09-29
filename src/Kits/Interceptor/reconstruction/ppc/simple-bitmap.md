@@ -67,6 +67,10 @@ initializer retains its window, globalizes its window number, derives the screen
 number from `NSScreenNumber`, and disables direct mapping for buffered windows.
 `setDirectMapped:` checks eligibility and the window backing mode; turning direct
 mapping off removes the intercepted rectangle and forces buffered state.
+`_isUnobscured` compares the cached shape with the intercepted screen shape and,
+when present, with the view clip. `_updateBuffer` locks the framebuffer, copies
+the screen rectangle into the lazy buffer using the unused bytes at each source
+and destination row ends, clears the dirty flag, and unlocks the framebuffer.
 The public `updateForRect:inWindow:` converts the window number to its global
 form, reads `NSScreenNumber` from the window screen's device description, and
 retains the new window while releasing the old one before delegating. When that
@@ -92,13 +96,14 @@ the reference's Objective-C constant-string objects:
 | `NSInterceptorThirtyTwoBitRGBColor` | `RRRRRRRRGGGGGGGGBBBBBBBB--------` |
 
 PPC register use shows `CopyLong`, `CopyShort`, and `CopyByte` take source
-pointer/row stride, destination pointer/row stride, element count per row, and
-row count. Long and short counts are elements, with four- and two-byte strides
-per element respectively; byte count is bytes. These functions are implemented
+pointer, source row padding, destination pointer, destination row padding,
+element count per row, and row count. Each helper copies the requested elements
+then skips the supplied padding. Long and short counts are elements, with four-
+and two-byte elements respectively; byte count is bytes. These functions are implemented
 in `NSDirectBitmap.m`, adjacent to the first `NSDirectBitmap` methods in the
 reference text. `CopySrcToDst` copies the smaller of the source and destination
 row spans for each row; its two callers are in `NSDirectScreen` and
 `NSFramebuffer`, and the function is adjacent to the `NSFramebuffer`
 implementation, so it is implemented in `NSFramebuffer.m`. This is a static
-source-ownership inference. Test coverage exists for strides and row padding,
-but runtime execution remains pending.
+source-ownership inference. Test coverage checks row padding, but runtime
+execution remains pending.

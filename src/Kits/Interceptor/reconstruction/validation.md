@@ -12,7 +12,7 @@
 | ABI, source, and runtime execution | blocked by missing compatible guest/toolchain | blocked by missing compatible guest/toolchain |
 | NSSimpleBitmap static body review | pass; implementation tracks recovered fields/getters | pass against the DR2 i386 body; offsets were independently checked |
 | Bitmap behavior test execution | blocked by missing compatible guest/toolchain | blocked by missing compatible guest/toolchain |
-| Copy helper static implementation | pass; body review confirms element widths, row pitches and min-span behavior | pass; i386 stack args and loop bodies confirm shared contract |
+| Copy helper static implementation | pass; body review confirms element widths, post-row padding, and min-span behavior | pass; i386 loop bodies confirm the shared padding contract |
 | Copy helper test execution | blocked by missing compatible guest/toolchain | blocked by missing compatible guest/toolchain |
 | NSDirectBitmap metadata accessors | PPC and i386 bodies agree; source and default-state tests authored; runtime pending | shared implementation; runtime pending |
 | NSDirectBitmap backing buffer and bitmapData | PPC and i386 behavior agrees; source and unlocked-state test authored; runtime pending | shared implementation; runtime pending |
@@ -23,6 +23,7 @@
 | NSDirectBitmap backing-store resize and rectangle update | PPC and i386 bodies agree on 8-byte row alignment, screen remapping, stale interception cleanup, and direct/buffered selection; source authored; runtime pending | shared implementation; runtime pending |
 | NSDirectBitmap public and deferred updates | PPC and i386 behavior agrees on global window conversion, screen-number lookup, window ownership, and backing-mode handling; source authored; runtime pending | shared implementation; runtime pending |
 | NSDirectBitmap rectangle initialization and direct-mode setter | PPC and i386 agree on client setup, framebuffer selection, depth policy, row alignment, copy routine selection, and backing-mode eligibility; source authored; runtime pending | shared implementation; runtime pending |
+| NSDirectBitmap unobscured check and framebuffer-to-buffer copy | PPC and i386 shape checks agree; framebuffer row-padding arguments and copy loop agree; source authored; runtime pending | shared implementation; runtime pending |
 | NSDirectBitmap deallocation | PPC and i386 release/free sequence agrees; source authored; runtime pending | shared implementation; runtime pending |
 | Mach IPC layouts and RPC contracts | screen/cursor request/reply bodies statically matched; test transport authored, execution pending | IDs and async cursor request independently confirmed; shared native descriptors/test harness, execution pending |
 | IPC ABI and transport test execution | blocked by missing compatible guest/toolchain | blocked by missing compatible guest/toolchain |

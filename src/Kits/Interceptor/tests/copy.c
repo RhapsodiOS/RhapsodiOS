@@ -31,7 +31,7 @@ int main(void)
               "resolves all exported copy helpers");
 
     for (i = 0; i < 10; i++) longDestination[i] = 0xEEEEEEEE;
-    copyLong(longSource, 16, longDestination, 20, 3, 2);
+    copyLong(longSource, 4, longDestination, 8, 3, 2);
     TestCheck(longDestination[0] == longSource[0] &&
               longDestination[1] == longSource[1] &&
               longDestination[2] == longSource[2] &&
@@ -42,7 +42,7 @@ int main(void)
 
     for (i = 0; i < 12; i++) shortSource[i] = (unsigned short)(0x1200 + i * 0x31);
     for (i = 0; i < 14; i++) shortDestination[i] = 0xEEEE;
-    copyShort(shortSource, 14, shortDestination, 16, 5, 2);
+    copyShort(shortSource, 4, shortDestination, 6, 5, 2);
     TestCheck(shortDestination[0] == shortSource[0] &&
               shortDestination[4] == shortSource[4] &&
               shortDestination[5] == 0xEEEE &&
@@ -52,7 +52,7 @@ int main(void)
 
     for (i = 0; i < 32; i++) byteSource[i] = (unsigned char)(0xD3 - i * 7);
     memset(byteDestination, 0xEE, sizeof(byteDestination));
-    copyByte(byteSource + 1, 11, byteDestination + 3, 13, 7, 2);
+    copyByte(byteSource + 1, 4, byteDestination + 3, 6, 7, 2);
     TestCheck(byteDestination[3] == byteSource[1] &&
               byteDestination[9] == byteSource[7] &&
               byteDestination[10] == 0xEE &&

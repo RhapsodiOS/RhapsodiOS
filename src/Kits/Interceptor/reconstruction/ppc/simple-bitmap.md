@@ -58,6 +58,13 @@ and marks a depth mismatch if the existing bitmap format differs from the new
 framebuffer. A matching, eligible framebuffer creates an intercepted rectangle
 and selects direct mapping; other cases discard interception state and select
 buffered drawing. Both branches resize storage when dimensions change.
+The public `updateForRect:inWindow:` converts the window number to its global
+form, reads `NSScreenNumber` from the window screen's device description, and
+retains the new window while releasing the old one before delegating. When that
+screen matches the mapped screen, it uses the pending `newScreen` value.
+`updateState` replays the saved rectangle through this public path when a window
+is retained, and disables direct mapping for buffered windows; without a window
+it replays the saved global window and pending screen identifiers directly.
 Deallocation detaches the intercepted rectangle's target, releases the client,
 framebuffer, and window, frees the lazily allocated buffer from the object's
 zone, and then calls superclass `dealloc`.

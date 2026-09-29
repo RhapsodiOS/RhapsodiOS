@@ -38,6 +38,10 @@ selection. The i386 initializer uses `isTotallyVisible` for the initial
 unobscured state; the PPC binary invokes its equivalent visibility selector.
 The reconstruction shares that selector through `NSInterceptedRect`'s public
 `isTotallyVisible` method.
+The public window-update and deferred-state methods also match PPC: globalize
+the window number, obtain the screen number from the screen device description,
+retain/release the window, and replay either window-backed or saved geometry.
+Buffered window backing disables direct mapping.
 
 Its simple accessors use the same field offsets: `bitmapData` at `0x47A0B0BC`,
 `getBitmapDataPlanes:` at `0x47A0B0CC`, `bytesPerPlane` at `0x47A0B184`,

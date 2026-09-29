@@ -6,8 +6,11 @@
 #import "NSFramebuffer.h"
 #import "NSShape.h"
 #import "InterceptorGlobals.h"
+#import <AppKit/NSWindow.h>
+#import <Foundation/NSDictionary.h>
 #import <Foundation/NSException.h>
 #import <Foundation/NSMutableArray.h>
+#import <Foundation/NSNumber.h>
 #import <Foundation/NSZone.h>
 #import <strings.h>
 
@@ -18,6 +21,7 @@
 - (id)_updateBackingStoreForRect:(NSRect)rect;
 - (void)_updateForRect:(NSRect)rect inWinNum:(int)windowNumber
               onScreen:(int)screenNumber;
+- (void)updateState;
 @end
 
 static int NSDirectBitmapGrayBitsPerPixelMinimum;
@@ -275,6 +279,39 @@ static int NSDirectBitmapMaximumScreens = -1;
         if (!NSEqualSizes(self->rect.size, rect.size))
             [self _updateBackingStoreForRect:rect];
         self->rect = rect;
+    }
+}
+
+- (void)updateForRect:(NSRect)rect inWindow:(id)window
+{
+    unsigned int globalWindowNumber;
+    int newScreen;
+    id oldWindow;
+
+    NSConvertWindowNumberToGlobal([window windowNumber], &globalWindowNumber);
+    newScreen = [[[[window screen] deviceDescription]
+        objectForKey:@"NSScreenNumber"] intValue];
+    if (newScreen == self->currentScreen)
+        newScreen = self->newScreen;
+
+    oldWindow = self->window;
+    self->window = [window retain];
+    [oldWindow release];
+    [self _updateForRect:rect
+        inWinNum:(int)globalWindowNumber
+        onScreen:newScreen];
+}
+
+- (void)updateState
+{
+    if (self->window != nil) {
+        [self updateForRect:self->rect inWindow:self->window];
+        if ([self->window backingType] == NSBackingStoreBuffered)
+            [self setDirectMapped:NO];
+    } else {
+        [self _updateForRect:self->rect
+            inWinNum:self->gWinNum
+            onScreen:self->newScreen];
     }
 }
 

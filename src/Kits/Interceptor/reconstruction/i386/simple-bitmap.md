@@ -14,6 +14,9 @@ row/plane sizes on the lock state, and forward conversion-table lookups to the
 attached framebuffer. Its backing store is lazily allocated with four extra
 rows and cleared to zero. `bitmapData` requires a lock and returns either that
 buffer or the direct framebuffer address for the intercepted screen rectangle.
+`getBitmapDataPlanes:` follows the same state rules: it clears all outputs while
+unlocked, returns the buffer and inherited planes in buffered mode, or returns
+the direct screen address and clears the remaining four planes.
 Its lock methods match PPC: they pin a rectangle, service pending updates,
 select buffered drawing when the direct region is not fully visible, and
 release a pinned rectangle on direct-mapped unlock.

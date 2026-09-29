@@ -27,6 +27,10 @@ plus four extra rows and is zero-filled. `bitmapData` is available only while
 locked; it returns that buffer in buffered modes, or marks the screen dirty and
 returns the framebuffer address at the intercepted screen rectangle's origin
 in direct mode.
+`getBitmapDataPlanes:` clears all five outputs while unlocked. When locked in a
+buffered mode it returns the backing buffer and inherited extra planes; in
+direct mode it returns the screen-origin address, clears planes one through
+four, and marks the screen dirty.
 Locking pins the intercepted rectangle, services a pending state update while
 temporarily releasing that rectangle, selects buffered drawing unless the
 direct framebuffer is unobscured, and records the locked state. Try-lock

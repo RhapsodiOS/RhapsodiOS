@@ -34,7 +34,7 @@ int main(void)
               [NSInterceptorTwelveBitRGBColor isEqual:@"RRRRGGGGBBBB----"] &&
               [NSInterceptorThirtyTwoBitRGBColor isEqual:@"RRRRRRRRGGGGGGGGBBBBBBBB--------"],
               "published RGB encodings");
-    directBitmap = [[NSDirectBitmap alloc] init];
+    directBitmap = [NSDirectBitmap alloc];
     TestCheck(directBitmap != nil, "allocates direct bitmap metadata object");
     if (directBitmap) {
         TestCheck([directBitmap bitsPerPixel] == 0 &&
@@ -52,6 +52,11 @@ int main(void)
                   "unlocked direct bitmap reports zero row storage and one plane");
         TestCheck([directBitmap bitmapData] == 0,
                   "unlocked direct bitmap does not expose pixel storage");
+        memset(reported, 0x5A, sizeof(reported));
+        [directBitmap getBitmapDataPlanes:reported];
+        TestCheck(reported[0] == 0 && reported[1] == 0 &&
+                  reported[2] == 0 && reported[3] == 0 && reported[4] == 0,
+                  "unlocked direct bitmap clears all plane outputs");
         TestCheck([directBitmap conversionTable] == 0 &&
                   [directBitmap inverseConversionTable] == 0,
                   "unattached direct bitmap has no conversion tables");

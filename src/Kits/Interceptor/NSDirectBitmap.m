@@ -84,6 +84,34 @@
         addressForPoint:screenRect.origin];
 }
 
+- (void)getBitmapDataPlanes:(unsigned char **)planes
+{
+    int plane;
+    NSRect screenRect;
+
+    if (self->isLocked == NO) {
+        for (plane = 0; plane <= 4; plane++)
+            planes[plane] = 0;
+        return;
+    }
+
+    if (self->isBuffered == YES || self->drawToBuffer == YES) {
+        planes[0] = [self _dataBuffer];
+        for (plane = 1; plane < [self numberOfPlanes]; plane++)
+            planes[plane] = (unsigned char *)self->data[plane];
+        for (; plane <= 4; plane++)
+            planes[plane] = 0;
+        return;
+    }
+
+    screenRect = [self->interceptRect currentScreenRect];
+    planes[0] = (unsigned char *)[(NSFramebuffer *)self->framebuffer
+        addressForPoint:screenRect.origin];
+    self->_screenIsDirty = YES;
+    for (plane = 1; plane <= 4; plane++)
+        planes[plane] = 0;
+}
+
 - (BOOL)hasAlpha
 {
     return self->hasAlpha;

@@ -13,6 +13,7 @@
 @interface NSDirectBitmap (ReconstructionPrivate)
 - (BOOL)_isUnobscured;
 - (BOOL)_canUseDirectMapping;
+- (id)_mapFramebufferForScreen:(int)screenNumber;
 @end
 
 static int NSDirectBitmapGrayBitsPerPixelMinimum;
@@ -168,6 +169,24 @@ static int NSDirectBitmapMaximumScreens = -1;
            self->bitsPerPixel ==
                [(NSFramebuffer *)self->framebuffer bitsPerPixel] &&
            NSDirectBitmapMaximumScreens == 1;
+}
+
+- (id)_mapFramebufferForScreen:(int)screenNumber
+{
+    [self->framebuffer release];
+    self->framebuffer = [[NSFramebuffer allocWithZone:[self zone]]
+        initFromScreen:screenNumber andMapIfPossible:YES];
+    self->currentScreen = screenNumber;
+
+    if ([(NSFramebuffer *)self->framebuffer
+            canLockWithMode:NSFramebufferReadWrite])
+        self->fbMode = NSFramebufferReadWrite;
+    else if ([(NSFramebuffer *)self->framebuffer
+                 canLockWithMode:NSFramebufferWriteOnly])
+        self->fbMode = NSFramebufferWriteOnly;
+    else
+        self->fbMode = NSFramebufferReadOnly;
+    return self;
 }
 
 - (void)lockBitmap

@@ -45,6 +45,10 @@ for direct-mapped operation.
 Direct mapping is eligible only on a single-screen system when the framebuffer
 is mappable, exceeds seven bits per pixel, and matches the bitmap's pixel
 depth.
+When a rectangle moves to another screen, `_mapFramebufferForScreen:` releases
+the previous framebuffer, creates and maps the requested screen framebuffer in
+the bitmap's zone, records the screen number, and chooses read/write, write-only,
+or read-only access in that order according to the modes the framebuffer allows.
 Deallocation detaches the intercepted rectangle's target, releases the client,
 framebuffer, and window, frees the lazily allocated buffer from the object's
 zone, and then calls superclass `dealloc`.

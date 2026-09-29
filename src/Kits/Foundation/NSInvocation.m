@@ -829,16 +829,42 @@ static int __NSInvocationLoggingDepth;
 {
     id signature = [self methodSignatureForSelector:aSelector];
     id invocation;
-    id result;
+    NSObjCValue value;
 
+    /*  The reference's own sequence, decoded: nil signature ->
+        -doesNotRecognizeSelector: (a DECLARED-but-unimplemented
+        selector has no method-list entry, so a class that forwards
+        such selectors must override -methodSignatureForSelector: --
+        the documented NeXT contract).  The invocation is handed to
+        -forwardInvocation:, whose override decides what happens --
+        invoke it against a real target, or swallow it.  The result
+        comes back through -_returnValue's tagged struct, switched on
+        its type; forward:: returns EAX (its own encoding is @), so
+        scalar returns ride the low 32 bits.  */
     if (signature == nil)
         [self doesNotRecognizeSelector:aSelector];
 
     invocation = [NSInvocation invocationWithMethodSignature:signature];
     [invocation _setArgFrame:argFrame];
-    [invocation invoke];
-    [invocation getReturnValue:&result];
-    return result;
+    [self forwardInvocation:invocation];
+
+    value = [invocation _returnValue];
+    switch (value.type) {
+    case NSObjCObjectType:
+    case NSObjCSelectorType:
+        return value.value.objectValue;
+    case NSObjCStructType:
+    case NSObjCUnionType:
+        return (id)value.value.structLocation;
+    case NSObjCStringType:
+    case NSObjCPointerType:
+        return (id)value.value.pointerValue;
+    case NSObjCVoidType:
+    case NSObjCNoType:
+        return nil;
+    default:
+        return (id)value.value.longValue;
+    }
 }
 
 @end

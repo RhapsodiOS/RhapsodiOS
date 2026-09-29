@@ -440,6 +440,120 @@ static void test_invoke_of_an_unimplemented_selector_raises_not_crashes(void)
     [target release];
 }
 
+@interface ForwardingOverrideTarget : NSObject
+{
+@public
+    int forwardInvocationWasCalled;
+    SEL capturedSelector;
+}
+- (int)aMethodThisClassDoesNotImplement;
+@end
+
+@implementation ForwardingOverrideTarget
+
+/*  A class that intends to forward must be able to describe the
+    messages it will forward -- that is the documented NeXT contract
+    for -methodSignatureForSelector: (the reference's own -forward::
+    raises through -doesNotRecognizeSelector: when it answers nil,
+    since a bare @interface declaration produces no method-list entry
+    to find).  This override answers a real signature for the
+    declared-but-unimplemented selector and lets the base -forward::
+    do the rest.  */
+- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+{
+    id signature = [super methodSignatureForSelector:aSelector];
+
+    if (signature == nil && aSelector == @selector(aMethodThisClassDoesNotImplement))
+        return [NSMethodSignature signatureWithObjCTypes:"i8@8:12"];
+    return signature;
+}
+
+- (void)forwardInvocation:(NSInvocation *)anInvocation
+{
+    forwardInvocationWasCalled = 1;
+    capturedSelector = [anInvocation selector];
+}
+
+@end
+
+static void test_an_unimplemented_selector_reaches_a_forwardInvocation_override(void)
+{
+    /*  ForwardingOverrideTarget declares
+        -aMethodThisClassDoesNotImplement but never implements it, and
+        supplies its signature through the documented
+        -methodSignatureForSelector: override.  Sending it exercises
+        the runtime's actual forwarding trampoline.  Before this
+        stage, NSObject.m's own -forward:: (stage 2a) always raised
+        NSInternalInconsistencyException before any override could
+        run, because nothing built the NSInvocation the trampoline
+        needs.  This is the first test in the whole programme proving
+        that an override is actually reached.  */
+    id target = [[ForwardingOverrideTarget alloc] init];
+    int caught = 0;
+
+    target->forwardInvocationWasCalled = 0;
+    target->capturedSelector = NULL;
+
+    NS_DURING
+        [target performSelector:@selector(aMethodThisClassDoesNotImplement)];
+    NS_HANDLER
+        caught = 1;
+    NS_ENDHANDLER
+
+    CHECK(target->forwardInvocationWasCalled == 1);
+    CHECK(target->capturedSelector == @selector(aMethodThisClassDoesNotImplement));
+    CHECK(caught == 0);
+
+    [target release];
+}
+
+@interface InertForwardingTarget : NSObject
+- (int)anotherUnimplementedMethod;
+@end
+
+@implementation InertForwardingTarget
+
+/*  Review Focus item 5: an override that exists but does nothing --
+    never calls -invokeWithTarget: or -doesNotRecognizeSelector:.  A
+    silently swallowed message is worse than a raised exception; this
+    must not be mistaken for success.  The signature override answers
+    a void method so the trampoline reaches the inert override at all
+    (a nil signature would raise before it could).  */
+- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+{
+    id signature = [super methodSignatureForSelector:aSelector];
+
+    if (signature == nil && aSelector == @selector(anotherUnimplementedMethod))
+        return [NSMethodSignature signatureWithObjCTypes:"v8@8:12"];
+    return signature;
+}
+
+- (void)forwardInvocation:(NSInvocation *)anInvocation
+{
+}
+
+@end
+
+static void test_an_inert_forwardInvocation_override_does_not_crash_and_is_observed(void)
+{
+    id target = [[InertForwardingTarget alloc] init];
+    int caught = 0;
+
+    NS_DURING
+        [target performSelector:@selector(anotherUnimplementedMethod)];
+    NS_HANDLER
+        caught = 1;
+    NS_ENDHANDLER
+
+    /*  An inert override is a silently-dropped message by design (the
+        override chose to do nothing); the call returns normally rather
+        than raising, and this test's job is only to prove that does
+        not crash the process -- reaching this line at all is the pass
+        condition.  */
+    CHECK(caught == 0);
+    [target release];
+}
+
 int main(void)
 {
     /*  The guest's stdio block-buffers pipes; a crash mid-suite would
@@ -470,6 +584,8 @@ int main(void)
     test_invokeWithTarget_uses_the_given_target_not_the_stored_one();
     test_invoke_on_a_nil_target_raises();
     test_invoke_of_an_unimplemented_selector_raises_not_crashes();
+    test_an_unimplemented_selector_reaches_a_forwardInvocation_override();
+    test_an_inert_forwardInvocation_override_does_not_crash_and_is_observed();
 
     printf("%s: %d failure(s)\n", failures ? "FAILED" : "PASSED", failures);
     return failures != 0;

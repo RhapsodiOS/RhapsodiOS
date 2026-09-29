@@ -144,3 +144,6 @@ Delegate replacement releases the prior object and retains its replacement.
 View-clip updates are ignored while unlocked (and while delegate processing is
 active for `_setViewClip:`); accepted updates recompute visibility and flush
 newly exposed pixels when flush-on-exposure is enabled.
+Ordering in recomputes unobscured state. The PPC ordered-out callback stores
+`_isTotallyObscured`; the DR2 i386 callback instead calls `_isUnobscured`, so
+the shared source keeps that small architecture-specific difference.

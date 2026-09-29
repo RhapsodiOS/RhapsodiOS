@@ -88,3 +88,5 @@ decision to the intercepted-rectangle message handler.
 The view-clip helpers apply the recovered lock/processing guards, recalculate
 visibility, and flush newly exposed regions when flush-on-exposure is active.
 Delegate replacement releases the previous delegate and retains the new one.
+The DR2 ordered-out callback recomputes with `_isUnobscured`; PPC calls
+`_isTotallyObscured` for that notification, and the source keeps this difference.

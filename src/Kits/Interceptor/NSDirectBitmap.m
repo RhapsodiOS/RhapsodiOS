@@ -19,6 +19,7 @@
 
 @interface NSDirectBitmap (ReconstructionPrivate)
 - (BOOL)_isUnobscured;
+- (BOOL)_isTotallyObscured;
 - (BOOL)_canUseDirectMapping;
 - (id)_mapFramebufferForScreen:(int)screenNumber;
 - (id)_updateBackingStoreForRect:(NSRect)rect;
@@ -430,6 +431,32 @@ typedef void (*NSBitmapCopyFunction)(const void *, int, void *, int, int, int);
     if (unobscured && self->_viewClip != nil)
         unobscured = [self->_dbm_private isEqual:self->_viewClip];
     return unobscured;
+}
+
+- (BOOL)_isTotallyObscured
+{
+    if ([self->interceptRect isTotallyObscured])
+        return YES;
+    return [self->_dbm_private isEmpty];
+}
+
+- (int)areaWasOrderedIn:(id)interceptedRect
+{
+    if (interceptedRect == self->interceptRect)
+        self->isUnobscured = [self _isUnobscured];
+    return 0;
+}
+
+- (int)areaWasOrderedOut:(id)interceptedRect
+{
+    if (interceptedRect == self->interceptRect) {
+#if defined(__i386__)
+        self->isUnobscured = [self _isUnobscured];
+#else
+        self->isUnobscured = [self _isTotallyObscured];
+#endif
+    }
+    return 0;
 }
 
 - (id)_updateBuffer

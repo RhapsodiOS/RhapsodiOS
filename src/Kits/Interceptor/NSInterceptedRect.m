@@ -2,6 +2,8 @@
 #import "NSBitmap.h"
 #import "NSShape.h"
 #import <Foundation/NSLock.h>
+#import <Foundation/NSException.h>
+#import <objc/objc.h>
 #import <string.h>
 
 @interface NSObject (NSInterceptorRectNotifications)
@@ -77,13 +79,15 @@ static unsigned int NSInterceptedRectNextUniqueID = 1;
 
 - (id)currentClipList:(NSRect)aRect count:(int)count
 {
-    NSLog(@"NSInterceptedRect currentClipList:count: is not implemented");
+    [NSException raise:NSInvalidArgumentException
+                format:@"*** Method not implemented: %s", sel_getName(_cmd)];
     return nil;
 }
 
 - (id)compositeBits:(id)bits withOp:(int)operation
 {
-    NSLog(@"NSInterceptedRect compositeBits:withOp: is not implemented");
+    [NSException raise:NSInvalidArgumentException
+                format:@"*** Method not implemented: %s", sel_getName(_cmd)];
     return nil;
 }
 

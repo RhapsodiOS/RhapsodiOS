@@ -1,4 +1,5 @@
 #import <Foundation/NSAutoreleasePool.h>
+#import <Foundation/NSException.h>
 #import <stdio.h>
 #import <string.h>
 #import "../Private/NSInterceptedRect.h"
@@ -73,6 +74,8 @@ int main(void)
     RectTarget *target;
     InterceptorNotification message;
     InterceptorReply reply;
+    NSException *caughtException;
+    BOOL raisedNotImplemented;
 
     TestCheck(TestLoadSelectedFramework() != 0,
               "loads selected framework for intercepted rectangle checks");
@@ -92,6 +95,32 @@ int main(void)
         TestCheck(![rect isLocked], "unlockRect clears rectangle lock state");
         TestCheck([rect currentScreenRectShape] != nil,
                   "initializes screen rectangle shape");
+
+        raisedNotImplemented = NO;
+        NS_DURING
+            (void)[rect currentClipList:input count:0];
+        NS_HANDLER
+            caughtException = localException;
+            raisedNotImplemented =
+                [[caughtException name] isEqualToString:NSInvalidArgumentException] &&
+                [[caughtException reason] isEqualToString:
+                    @"*** Method not implemented: currentClipList:count:"];
+        NS_ENDHANDLER
+        TestCheck(raisedNotImplemented,
+                  "clip-list stub raises the observed invalid-argument exception");
+
+        raisedNotImplemented = NO;
+        NS_DURING
+            (void)[rect compositeBits:nil withOp:0];
+        NS_HANDLER
+            caughtException = localException;
+            raisedNotImplemented =
+                [[caughtException name] isEqualToString:NSInvalidArgumentException] &&
+                [[caughtException reason] isEqualToString:
+                    @"*** Method not implemented: compositeBits:withOp:"];
+        NS_ENDHANDLER
+        TestCheck(raisedNotImplemented,
+                  "composite-bits stub raises the observed invalid-argument exception");
 
         target = [[RectTarget alloc] init];
         [rect setTarget:target];

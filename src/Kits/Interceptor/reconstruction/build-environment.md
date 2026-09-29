@@ -31,6 +31,12 @@ and SDK are configured. The test runner accepts either a framework bundle root
 (loading `Versions/A/Interceptor`) or an explicitly selected thin dylib path.
 It must run in a separate process for each selected architecture/framework.
 
+The current Windows GNU make invocation uses `cmd.exe`, so the POSIX test
+recipe fails at `mkdir -p` before compiler discovery. `bash.exe` on `PATH` is
+the WSL launcher and there is no configured Linux distribution. A direct
+`make -C src/Kits/Interceptor/tests rect FRAMEWORK_ROOT=...` attempt therefore
+does not reach compilation or execute the fixture.
+
 ## Analyzer agreement limit
 
 All three i386 exporters individually accepted the DR2 image. They produced 419 IDA, 416 Ghidra, and 1085 angr function records. IDA and Ghidra relocation encodings also differ. Running all three through the current consensus publisher fails with `relocation 0 has missing or conflicting width`. The committed i386 profile therefore uses IDA for its stable address inventory. Ghidra and angr outputs remain independent review evidence under `C:\Users\raynorpat\Downloads\test\Interceptor-evidence\adapters-i386` and are not committed.

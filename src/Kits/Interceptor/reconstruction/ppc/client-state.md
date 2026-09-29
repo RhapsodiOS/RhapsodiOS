@@ -62,3 +62,8 @@ not invent the missing bits delivery.
 For `INTERCEPT_WILL_OBSCURE`, both implementations clear the totally-visible
 state only after the target reports support for and receives the obscure
 callback. The source keeps that state update inside the selector guard.
+
+`currentClipList:count:` and `compositeBits:withOp:` both raise
+`NSInvalidArgumentException` with `*** Method not implemented: <selector>` on
+PowerPC and DR2 i386. The source retains these binary-observed failure
+contracts instead of returning a placeholder value.

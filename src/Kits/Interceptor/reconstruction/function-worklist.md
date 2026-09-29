@@ -195,8 +195,8 @@ IDA function records: 392; symbol records: 540.
 | `0x47A0B300` | 48 | `-[NSInterceptedRect isLocked]` | source authored; PPC static reviewed; runtime pending |
 | `0x47A0B330` | 44 | `-[NSInterceptedRect currentScreenRect]` | source authored; PPC static reviewed; runtime pending |
 | `0x47A0B35C` | 16 | `-[NSInterceptedRect currentScreenRectShape]` | source authored; PPC static reviewed; runtime pending |
-| `0x47A0B36C` | 96 | `-[NSInterceptedRect currentClipList:count:]` | unexamined |
-| `0x47A0B3CC` | 96 | `-[NSInterceptedRect compositeBits:withOp:]` | unexamined |
+| `0x47A0B36C` | 96 | `-[NSInterceptedRect currentClipList:count:]` | static-reviewed; source authored; runtime pending |
+| `0x47A0B3CC` | 96 | `-[NSInterceptedRect compositeBits:withOp:]` | static-reviewed; source authored; runtime pending |
 | `0x47A0B42C` | 60 | `-[NSInterceptedRect removeFromWindowServer]` | source authored; PPC static reviewed; runtime pending |
 | `0x47A0B468` | 148 | `-[NSInterceptedRect dealloc]` | source authored; PPC static reviewed; runtime pending |
 | `0x47A0B4FC` | 16 | `-[NSInterceptedRect uniqueID]` | unexamined |
@@ -583,8 +583,8 @@ Named Objective-C symbols (candidate module by class name; verify in module meta
 | `0x47A0B300` | `-[NSInterceptedRect isLocked]` | `NSInterceptedRect.m` | unexamined |
 | `0x47A0B330` | `-[NSInterceptedRect currentScreenRect]` | `NSInterceptedRect.m` | unexamined |
 | `0x47A0B35C` | `-[NSInterceptedRect currentScreenRectShape]` | `NSInterceptedRect.m` | unexamined |
-| `0x47A0B36C` | `-[NSInterceptedRect currentClipList:count:]` | `NSInterceptedRect.m` | unexamined |
-| `0x47A0B3CC` | `-[NSInterceptedRect compositeBits:withOp:]` | `NSInterceptedRect.m` | unexamined |
+| `0x47A0B36C` | `-[NSInterceptedRect currentClipList:count:]` | `NSInterceptedRect.m` | static-reviewed; source authored; runtime pending |
+| `0x47A0B3CC` | `-[NSInterceptedRect compositeBits:withOp:]` | `NSInterceptedRect.m` | static-reviewed; source authored; runtime pending |
 | `0x47A0B42C` | `-[NSInterceptedRect removeFromWindowServer]` | `NSInterceptedRect.m` | unexamined |
 | `0x47A0B468` | `-[NSInterceptedRect dealloc]` | `NSInterceptedRect.m` | unexamined |
 | `0x47A0B4FC` | `-[NSInterceptedRect uniqueID]` | `NSInterceptedRect.m` | unexamined |
@@ -831,8 +831,8 @@ IDA function records: 419; symbol records: 629.
 | `0x47A08C9C` | 29 | `-[NSInterceptedRect isLocked]` | unexamined |
 | `0x47A08CBC` | 39 | `-[NSInterceptedRect currentScreenRect]` | unexamined |
 | `0x47A08CE4` | 13 | `-[NSInterceptedRect currentScreenRectShape]` | unexamined |
-| `0x47A08CF4` | 66 | `-[NSInterceptedRect currentClipList:count:]` | unexamined |
-| `0x47A08D38` | 66 | `-[NSInterceptedRect compositeBits:withOp:]` | unexamined |
+| `0x47A08CF4` | 66 | `-[NSInterceptedRect currentClipList:count:]` | static-reviewed; source authored; runtime pending |
+| `0x47A08D38` | 66 | `-[NSInterceptedRect compositeBits:withOp:]` | static-reviewed; source authored; runtime pending |
 | `0x47A08D7C` | 33 | `-[NSInterceptedRect removeFromWindowServer]` | unexamined |
 | `0x47A08DA0` | 132 | `-[NSInterceptedRect dealloc]` | unexamined |
 | `0x47A08E24` | 13 | `-[NSInterceptedRect uniqueID]` | unexamined |
@@ -1246,8 +1246,8 @@ Named Objective-C symbols (candidate module by class name; verify in module meta
 | `0x47A08C9C` | `-[NSInterceptedRect isLocked]` | `NSInterceptedRect.m` | unexamined |
 | `0x47A08CBC` | `-[NSInterceptedRect currentScreenRect]` | `NSInterceptedRect.m` | unexamined |
 | `0x47A08CE4` | `-[NSInterceptedRect currentScreenRectShape]` | `NSInterceptedRect.m` | unexamined |
-| `0x47A08CF4` | `-[NSInterceptedRect currentClipList:count:]` | `NSInterceptedRect.m` | unexamined |
-| `0x47A08D38` | `-[NSInterceptedRect compositeBits:withOp:]` | `NSInterceptedRect.m` | unexamined |
+| `0x47A08CF4` | `-[NSInterceptedRect currentClipList:count:]` | `NSInterceptedRect.m` | static-reviewed; source authored; runtime pending |
+| `0x47A08D38` | `-[NSInterceptedRect compositeBits:withOp:]` | `NSInterceptedRect.m` | static-reviewed; source authored; runtime pending |
 | `0x47A08D7C` | `-[NSInterceptedRect removeFromWindowServer]` | `NSInterceptedRect.m` | unexamined |
 | `0x47A08DA0` | `-[NSInterceptedRect dealloc]` | `NSInterceptedRect.m` | unexamined |
 | `0x47A08E24` | `-[NSInterceptedRect uniqueID]` | `NSInterceptedRect.m` | unexamined |

@@ -8,8 +8,8 @@ IDA function records: 392; symbol records: 540.
 
 | Address | Size | IDA names | Review status |
 |---:|---:|---|---|
-| `0x47A02464` | 48 | `dyld_stub_binding_helper` | unexamined |
-| `0x47A02494` | 32 | `__dyld_func_lookup` | unexamined |
+| `0x47A02464` | 48 | `dyld_stub_binding_helper` | dynamic-loader runtime glue; no framework-owned source body |
+| `0x47A02494` | 32 | `__dyld_func_lookup` | dynamic-loader runtime glue; no framework-owned source body |
 | `0x47A024B4` | 640 | `_CopyLong` | static-reviewed; runtime pending; `NSDirectBitmap.m` |
 | `0x47A02734` | 176 | `_CopyShort` | static-reviewed; runtime pending; `NSDirectBitmap.m` |
 | `0x47A027E4` | 188 | `_CopyByte` | static-reviewed; runtime pending; `NSDirectBitmap.m` |
@@ -646,8 +646,8 @@ IDA function records: 419; symbol records: 629.
 
 | Address | Size | IDA names | Review status |
 |---:|---:|---|---|
-| `0x47A00CBC` | 20 | `dyld_stub_binding_helper` | unexamined |
-| `0x47A00CD0` | 14 | `__dyld_func_lookup` | unexamined |
+| `0x47A00CBC` | 20 | `dyld_stub_binding_helper` | dynamic-loader runtime glue; no framework-owned source body; `i386/linkage.md` |
+| `0x47A00CD0` | 14 | `__dyld_func_lookup` | dynamic-loader runtime glue; no framework-owned source body; `i386/linkage.md` |
 | `0x47A00CE0` | 543 | `_CopyLong` | static-reviewed; runtime pending; `NSDirectBitmap.m` |
 | `0x47A00F00` | 602 | `_CopyShort` | static-reviewed; runtime pending; `NSDirectBitmap.m` |
 | `0x47A0115C` | 132 | `_CopyByte` | static-reviewed; runtime pending; `NSDirectBitmap.m` |
@@ -919,10 +919,10 @@ IDA function records: 419; symbol records: 629.
 | `0x47A0B734` | 18 | `_InterceptorRepairPalette` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
 | `0x47A0B748` | 18 | `_InterceptorDamagedPalette` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
 | `0x47A0B75C` | 38 | `_InterceptorGetDeviceAccessTokens` | i386 static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
-| `0x47A0B784` | 11 | `_ev_lock` | unexamined |
-| `0x47A0B78F` | 15 | `_spin` | unexamined |
-| `0x47A0B7A0` | 14 | `_ev_unlock` | unexamined |
-| `0x47A0B7B0` | 21 | `_ev_try_lock` | unexamined |
+| `0x47A0B784` | 11 | `_ev_lock` | shared event-lock assembly; outside Interceptor source; `i386/linkage.md` |
+| `0x47A0B78F` | 15 | `_spin` | shared event-lock assembly; outside Interceptor source; `i386/linkage.md` |
+| `0x47A0B7A0` | 14 | `_ev_unlock` | shared event-lock assembly; outside Interceptor source; `i386/linkage.md` |
+| `0x47A0B7B0` | 21 | `_ev_try_lock` | shared event-lock assembly; outside Interceptor source; `i386/linkage.md` |
 | `0x47A0B7C8` | 246 | `__InterceptorEnableFrameBufferMapping` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c`; `ppc/ipc.md` |
 | `0x47A0B8C0` | 246 | `__InterceptorDisableFrameBufferMapping` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c`; `ppc/ipc.md` |
 | `0x47A0B9B8` | 255 | `__InterceptorMapFrameBuffer` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
@@ -947,27 +947,27 @@ IDA function records: 419; symbol records: 629.
 | `0x47A0CAE4` | 275 | `__InterceptorGetDeviceAccessTokens` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
 | `0x47A0CBF8` | 74 | `__InterceptorShowCursorAsync` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
 | `0x47A0CC44` | 249 | `__InterceptorUnmapFrameBuffer` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
-| `0x47A0CD40` | 362 | `__IOLookupByObjectNumber` | unexamined |
-| `0x47A0CEAC` | 298 | `__IOLookupByDeviceName` | unexamined |
-| `0x47A0CFD8` | 546 | `__IOGetIntValues` | unexamined |
-| `0x47A0D1FC` | 543 | `__IOGetCharValues` | unexamined |
-| `0x47A0D41C` | 413 | `__IOSetIntValues` | unexamined |
-| `0x47A0D5BC` | 405 | `__IOSetCharValues` | unexamined |
-| `0x47A0D754` | 851 | `__IOGetEISADeviceConfig` | unexamined |
-| `0x47A0DAA8` | 186 | `__IOMapEISADevicePorts` | unexamined |
-| `0x47A0DB64` | 186 | `__IOUnMapEISADevicePorts` | unexamined |
-| `0x47A0DC20` | 311 | `__IOMapEISADeviceMemory` | unexamined |
-| `0x47A0DD58` | 301 | `__IOProbeDriver` | unexamined |
-| `0x47A0DE88` | 384 | `__IOGetSystemConfig` | unexamined |
-| `0x47A0E008` | 301 | `__IOUnloadDriver` | unexamined |
-| `0x47A0E138` | 384 | `__IOGetDriverConfig` | unexamined |
-| `0x47A0E2B8` | 202 | `__PMSetPowerState` | unexamined |
-| `0x47A0E384` | 207 | `__PMGetPowerEvent` | unexamined |
-| `0x47A0E454` | 227 | `__PMGetPowerStatus` | unexamined |
-| `0x47A0E538` | 202 | `__PMSetPowerManagement` | unexamined |
-| `0x47A0E604` | 166 | `__PMRestoreDefaults` | unexamined |
-| `0x47A0E6AC` | 691 | `__IOCallDeviceMethod` | unexamined |
-| `0x47A0E960` | 223 | `__IOCreateMachPort` | unexamined |
+| `0x47A0CD40` | 362 | `__IOLookupByObjectNumber` | DriverKit MIG client support; outside Interceptor source; `driverServer.defs`; `i386/linkage.md` |
+| `0x47A0CEAC` | 298 | `__IOLookupByDeviceName` | DriverKit MIG client support; outside Interceptor source; `driverServer.defs`; `i386/linkage.md` |
+| `0x47A0CFD8` | 546 | `__IOGetIntValues` | DriverKit MIG client support; outside Interceptor source; `driverServer.defs`; `i386/linkage.md` |
+| `0x47A0D1FC` | 543 | `__IOGetCharValues` | DriverKit MIG client support; outside Interceptor source; `driverServer.defs`; `i386/linkage.md` |
+| `0x47A0D41C` | 413 | `__IOSetIntValues` | DriverKit MIG client support; outside Interceptor source; `driverServer.defs`; `i386/linkage.md` |
+| `0x47A0D5BC` | 405 | `__IOSetCharValues` | DriverKit MIG client support; outside Interceptor source; `driverServer.defs`; `i386/linkage.md` |
+| `0x47A0D754` | 851 | `__IOGetEISADeviceConfig` | DriverKit MIG client support; outside Interceptor source; `driverServer.defs`; `i386/linkage.md` |
+| `0x47A0DAA8` | 186 | `__IOMapEISADevicePorts` | DriverKit MIG client support; outside Interceptor source; `driverServer.defs`; `i386/linkage.md` |
+| `0x47A0DB64` | 186 | `__IOUnMapEISADevicePorts` | DriverKit MIG client support; outside Interceptor source; `driverServer.defs`; `i386/linkage.md` |
+| `0x47A0DC20` | 311 | `__IOMapEISADeviceMemory` | DriverKit MIG client support; outside Interceptor source; `driverServer.defs`; `i386/linkage.md` |
+| `0x47A0DD58` | 301 | `__IOProbeDriver` | DriverKit MIG client support; outside Interceptor source; `driverServer.defs`; `i386/linkage.md` |
+| `0x47A0DE88` | 384 | `__IOGetSystemConfig` | DriverKit MIG client support; outside Interceptor source; `driverServer.defs`; `i386/linkage.md` |
+| `0x47A0E008` | 301 | `__IOUnloadDriver` | DriverKit MIG client support; outside Interceptor source; `driverServer.defs`; `i386/linkage.md` |
+| `0x47A0E138` | 384 | `__IOGetDriverConfig` | DriverKit MIG client support; outside Interceptor source; `driverServer.defs`; `i386/linkage.md` |
+| `0x47A0E2B8` | 202 | `__PMSetPowerState` | DriverKit MIG client support; outside Interceptor source; `driverServer.defs`; `i386/linkage.md` |
+| `0x47A0E384` | 207 | `__PMGetPowerEvent` | DriverKit MIG client support; outside Interceptor source; `driverServer.defs`; `i386/linkage.md` |
+| `0x47A0E454` | 227 | `__PMGetPowerStatus` | DriverKit MIG client support; outside Interceptor source; `driverServer.defs`; `i386/linkage.md` |
+| `0x47A0E538` | 202 | `__PMSetPowerManagement` | DriverKit MIG client support; outside Interceptor source; `driverServer.defs`; `i386/linkage.md` |
+| `0x47A0E604` | 166 | `__PMRestoreDefaults` | DriverKit MIG client support; outside Interceptor source; `driverServer.defs`; `i386/linkage.md` |
+| `0x47A0E6AC` | 691 | `__IOCallDeviceMethod` | DriverKit MIG client support; outside Interceptor source; `driverServer.defs`; `i386/linkage.md` |
+| `0x47A0E960` | 223 | `__IOCreateMachPort` | DriverKit MIG client support; outside Interceptor source; `driverServer.defs`; `i386/linkage.md` |
 | `0x47A0F338` | 14 | `_NSEqualSizes` | linker-generated PIC import stub; no framework source body |
 | `0x47A0F352` | 14 | `_NSEqualRects` | linker-generated PIC import stub; no framework source body |
 | `0x47A0F36C` | 14 | `j__InterceptorScreenCount` | linker-generated PIC import stub; no framework source body |

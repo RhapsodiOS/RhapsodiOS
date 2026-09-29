@@ -25,4 +25,10 @@ The binary's Objective-C module metadata identifies these nine source files:
 
 The primary load commands link `/usr/lib/libDriver.A.dylib`, AppKit Versions/C, Foundation Versions/C, and System Versions/B. The framework install name is `/System/Library/Frameworks/Interceptor.framework/Versions/A/Interceptor`.
 
+The DR2 i386 slice links AppKit, Foundation, and System but has no
+`libDriver.A.dylib` load command. Its embedded `__IO*`/`__PM*` RPC clients
+correspond to DriverKit's MIG client definitions and are treated as linked
+support code; see `i386/linkage.md` for ownership evidence and the event-lock
+assembly classification.
+
 The analyzer worklists are in `function-worklist.md`. The current Objective-C metadata helper returns 151 method names from the primary image, while its symbol table names 234 methods. Resolve this 83-method coverage gap before relying on the helper as a complete source map.

@@ -747,3 +747,111 @@ static int __NSInvocationLoggingDepth;
 }
 
 @end
+
+/*
+	NSInvocationBuilder.  No header declares this class anywhere in
+	the tree; NSProxy.m's own comment on -isKindOfClass:/
+	-isMemberOfClass:/-conformsToProtocol:/-respondsToSelector:
+	already names it and the shape it is used in.  The reference's
+	own -forward:: (type @16@8:12:16^:20, distinct from the two
+	packages' forwarding -forward:: below) is a packaging step: build
+	the one-shot signature/invocation pair for whatever selector was
+	sent, never dispatch it.  Claimed by name in symbols.json.
+	*/
+@interface NSInvocationBuilder : NSObject
+{
+    Class	targetClass;
+    id		target;
+    void	*reserved;
+}
++ (id)builderForClass:(Class)aClass;
++ (id)builderForObject:(id)anObject;
+- (id)forward:(SEL)aSelector :(marg_list)argFrame;
+@end
+
+@implementation NSInvocationBuilder
+
++ (void)initialize
+{
+}
+
++ (id)builderForClass:(Class)aClass
+{
+    NSInvocationBuilder *builder = [[self allocWithZone:NULL] init];
+
+    builder->targetClass = aClass;
+    builder->target = nil;
+    return [builder autorelease];
+}
+
++ (id)builderForObject:(id)anObject
+{
+    NSInvocationBuilder *builder = [[self allocWithZone:NULL] init];
+
+    builder->targetClass = anObject->isa;
+    builder->target = anObject;
+    return [builder autorelease];
+}
+
+/*	Packages the call actually received (aSelector, not a fixed one)
+	against this builder's recorded target and hands the invocation
+	back -- the caller (NSProxy's four type-identity methods) sends it
+	-invoke and -getReturnValue: itself.  */
+- (id)forward:(SEL)aSelector :(marg_list)argFrame
+{
+    id signature = [target methodSignatureForSelector:aSelector];
+    id invocation = [NSInvocation invocationWithMethodSignature:signature];
+
+    [invocation setSelector:aSelector];
+    [invocation setTarget:target];
+    if (argFrame != NULL)
+        [invocation _setArgFrame:argFrame];
+    return invocation;
+}
+
+@end
+
+/*
+	The real forwarding trampoline.  Confirmed from the reference's
+	category body: build the signature (nil ->
+	-doesNotRecognizeSelector:), build the invocation, _setArgFrame:
+	the runtime's raw frame -- whose slots 0 and 1 STILL hold self and
+	_cmd from the original send, which is exactly why no setTarget:
+	send appears -- then -invoke, and return the value.  This category
+	replaces NSObject.m's own raising -forward:: at method-table load,
+	which is how a subclass's -forwardInvocation: override is reached
+	at all; NSObject.m's stage 2a body becomes functionally dead from
+	this file's link onward (the gate test in Task 10 pins that).
+	*/
+@implementation NSObject (NSForwardInvocation)
+
+- (id)forward:(SEL)aSelector :(marg_list)argFrame
+{
+    id signature = [self methodSignatureForSelector:aSelector];
+    id invocation;
+    id result;
+
+    if (signature == nil)
+        [self doesNotRecognizeSelector:aSelector];
+
+    invocation = [NSInvocation invocationWithMethodSignature:signature];
+    [invocation _setArgFrame:argFrame];
+    [invocation invoke];
+    [invocation getReturnValue:&result];
+    return result;
+}
+
+@end
+
+@implementation NSObject (NSIDispatchProxy)
+
+/*	Distributed Objects infrastructure (stage 8) asks this to tell an
+	ordinary object apart from one of its own dispatch-proxy classes.
+	No NSObject instance is ever one, so the answer here is always NO;
+	a stage-8 subclass overrides it.  */
+- (BOOL)isNSIDispatchProxy
+{
+    return NO;
+}
+
+@end

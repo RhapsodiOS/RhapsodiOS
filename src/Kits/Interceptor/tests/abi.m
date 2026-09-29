@@ -165,27 +165,11 @@ static int HasMethodType(struct objc_class *cls, const char *selector,
     return 0;
 }
 
-static int LoadSelectedFramework(void)
-{
-    const char *root = getenv("FRAMEWORK_ROOT");
-    char path[4096];
-    void *handle;
-    if (!root || !*root || strlen(root) + sizeof("/Versions/A/Interceptor") >= sizeof(path))
-        return 0;
-    strcpy(path, root);
-    strcat(path, "/Versions/A/Interceptor");
-    handle = dlopen(path, RTLD_NOW | RTLD_GLOBAL);
-    if (!handle) {
-        fprintf(stderr, "cannot load %s: %s\n", path, dlerror());
-        return 0;
-    }
-    return 1;
-}
-
 int main(void)
 {
     unsigned int i;
-    TestCheck(LoadSelectedFramework(), "loads the explicitly selected version-A framework");
+    TestCheck(TestLoadSelectedFramework() != 0,
+              "loads the explicitly selected framework or thin dylib");
     TestCheck(InterceptorSuccess == 0 && InterceptorUnsupportedOperation == 6,
         "InterceptorReturn enum values");
     TestCheck(sizeof(InterceptedRectangle) == 36 && offsetof(InterceptedRectangle, flags) == 32,

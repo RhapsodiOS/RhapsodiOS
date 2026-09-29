@@ -3,26 +3,10 @@
 #import <stdio.h>
 #import <stdlib.h>
 #import <string.h>
-#import <dlfcn.h>
 #import "../NSBitmap.h"
 #import "../Interceptor_types.h"
 #import "../InterceptorGlobals.h"
 #import "test_support.h"
-
-static int LoadSelectedFramework(void)
-{
-    const char *root = getenv("FRAMEWORK_ROOT");
-    char path[4096];
-    if (!root || !*root || strlen(root) + sizeof("/Versions/A/Interceptor") >= sizeof(path))
-        return 0;
-    strcpy(path, root);
-    strcat(path, "/Versions/A/Interceptor");
-    if (!dlopen(path, RTLD_NOW | RTLD_GLOBAL)) {
-        fprintf(stderr, "cannot load %s: %s\n", path, dlerror());
-        return 0;
-    }
-    return 1;
-}
 
 int main(void)
 {
@@ -39,7 +23,7 @@ int main(void)
     planes[1] = green;
     planes[2] = blue;
 
-    TestCheck(LoadSelectedFramework(), "loads selected framework for bitmap checks");
+    TestCheck(TestLoadSelectedFramework() != 0, "loads selected framework for bitmap checks");
     TestCheck([NSInterceptorEightBitPseudoColor isEqual:@"PPPPPPPP"] &&
               [NSInterceptorEightBitGrey isEqual:@"WWWWWWWW"] &&
               [NSInterceptorTwoBitGrey isEqual:@"KK"], "published 2/8-bit encodings");

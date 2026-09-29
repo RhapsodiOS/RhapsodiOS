@@ -27,9 +27,9 @@ make -C tests abi RC_ARCHS=i386 FRAMEWORK_ROOT=<selected-framework-bundle>
 ```
 
 They are documented but not runnable on this host until the compatible guest
-and SDK are configured. The test runner loads
-`FRAMEWORK_ROOT/Versions/A/Interceptor` directly and must run in a separate
-process for each selected framework.
+and SDK are configured. The test runner accepts either a framework bundle root
+(loading `Versions/A/Interceptor`) or an explicitly selected thin dylib path.
+It must run in a separate process for each selected architecture/framework.
 
 ## Analyzer agreement limit
 

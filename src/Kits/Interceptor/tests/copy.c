@@ -7,24 +7,9 @@
 typedef void (*CopyTypedRows)(const void *, int, void *, int, int, int);
 typedef void (*CopyRows)(const void *, int, void *, int, int);
 
-static void *LoadSelectedFramework(void)
-{
-    const char *root = getenv("FRAMEWORK_ROOT");
-    char path[4096];
-    if (!root || !*root || strlen(root) + sizeof("/Versions/A/Interceptor") >= sizeof(path))
-        return 0;
-    strcpy(path, root);
-    strcat(path, "/Versions/A/Interceptor");
-    {
-        void *handle = dlopen(path, RTLD_NOW | RTLD_GLOBAL);
-        if (!handle) fprintf(stderr, "cannot load %s: %s\n", path, dlerror());
-        return handle;
-    }
-}
-
 int main(void)
 {
-    void *handle = LoadSelectedFramework();
+    void *handle = TestLoadSelectedFramework();
     CopyTypedRows copyLong = handle ? (CopyTypedRows)dlsym(handle, "CopyLong") : 0;
     CopyTypedRows copyShort = handle ? (CopyTypedRows)dlsym(handle, "CopyShort") : 0;
     CopyTypedRows copyByte = handle ? (CopyTypedRows)dlsym(handle, "CopyByte") : 0;

@@ -14,6 +14,8 @@
 | Bitmap behavior test execution | blocked by missing compatible guest/toolchain | blocked by missing compatible guest/toolchain |
 | Copy helper static implementation | pass; body review confirms element widths, row pitches and min-span behavior | pass; i386 stack args and loop bodies confirm shared contract |
 | Copy helper test execution | blocked by missing compatible guest/toolchain | blocked by missing compatible guest/toolchain |
+| Mach IPC layouts and RPC contracts | pass; statically recovered from PPC bodies | pass; IDs/sizes/context arguments independently agree |
+| IPC ABI test execution | blocked by missing compatible guest/toolchain | blocked by missing compatible guest/toolchain |
 | NSShape scanline and operation review | static implementation; description remains incomplete | static cross-check supports shared format; runtime pending |
 | Shape behavior test execution | blocked by missing compatible guest/toolchain | blocked by missing compatible guest/toolchain |
 

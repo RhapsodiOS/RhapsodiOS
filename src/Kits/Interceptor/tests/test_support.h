@@ -3,5 +3,6 @@
 
 int TestCheck(int condition, const char *name);
 int TestFinish(void);
+void *TestLoadSelectedFramework(void);
 
 #endif

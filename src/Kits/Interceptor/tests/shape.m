@@ -6,21 +6,6 @@
 #import "../NSShape.h"
 #import "test_support.h"
 
-static int LoadSelectedFramework(void)
-{
-    const char *root = getenv("FRAMEWORK_ROOT");
-    char path[4096];
-    if (!root || !*root || strlen(root) + sizeof("/Versions/A/Interceptor") >= sizeof(path))
-        return 0;
-    strcpy(path, root);
-    strcat(path, "/Versions/A/Interceptor");
-    if (!dlopen(path, RTLD_NOW | RTLD_GLOBAL)) {
-        fprintf(stderr, "cannot load %s: %s\n", path, dlerror());
-        return 0;
-    }
-    return 1;
-}
-
 static int ExpectRect(id<NSShapeEnumerator> e, float x, float y, float w, float h)
 {
     NSRect *rect = [e nextRect];
@@ -45,7 +30,7 @@ int main(void)
     NSShape *copy;
     id<NSShapeEnumerator> e;
 
-    TestCheck(LoadSelectedFramework(), "loads selected framework for shape checks");
+    TestCheck(TestLoadSelectedFramework() != 0, "loads selected framework for shape checks");
 
     empty = [[NSShape alloc] init];
     TestCheck([empty isEmpty], "new shape is empty");

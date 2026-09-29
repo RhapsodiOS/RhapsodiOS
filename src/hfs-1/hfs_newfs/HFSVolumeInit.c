@@ -159,6 +159,7 @@
 #include "HFSVolumes.h"
 #include "HFSBtreesPriv.h"
 #include "newfs_hfs.h"
+#include "hfs_endian.h"
 
 #endif
 
@@ -227,7 +228,130 @@ static OSErr UTF8ToUnicode (const unsigned char* utf8, ItemCount *unicodeChars, 
 #define 	M_ExitOnError(result)	 if ((result) != noErr) goto Exit;
 
 void SetOffset (void *buffer, UInt16 btNodeSize, SInt16 recOffset, SInt16 vecOffset);
-#define SetOffset(buffer,nodesize,offset,record)		(*(SInt16 *) ((Byte *) (buffer) + (nodesize) + (-2 * (record))) = (offset))
+#define SetOffset(buffer,nodesize,offset,record)		(*(SInt16 *) ((Byte *) (buffer) + (nodesize) + (-2 * (record))) = SWAP_BE16 (offset))
+
+
+/*
+ * HFS is big-endian on disk.  The MDB and the volume header are built and
+ * used in host order and swapped as a whole around the writes that put them
+ * on disk; everything else is built big-endian directly.  After the kernel's
+ * hfs_swap_MDB and hfs_swap_VolumeHeader (bsd/hfs/hfs_endian.c).
+ */
+#if BYTE_ORDER == LITTLE_ENDIAN
+
+static void
+SwapHFSExtents (HFSExtentDescriptor *e, int n)
+{
+	int i;
+
+	for (i = 0; i < n; i++) {
+		e[i].startBlock = SWAP_BE16 (e[i].startBlock);
+		e[i].blockCount = SWAP_BE16 (e[i].blockCount);
+	}
+}
+
+static void
+SwapPlusFork (HFSPlusForkData *f)
+{
+	int i;
+
+	f->logicalSize.hi = SWAP_BE32 (f->logicalSize.hi);
+	f->logicalSize.lo = SWAP_BE32 (f->logicalSize.lo);
+	f->clumpSize = SWAP_BE32 (f->clumpSize);
+	f->totalBlocks = SWAP_BE32 (f->totalBlocks);
+	for (i = 0; i < kHFSPlusExtentDensity; i++) {
+		f->extents[i].startBlock = SWAP_BE32 (f->extents[i].startBlock);
+		f->extents[i].blockCount = SWAP_BE32 (f->extents[i].blockCount);
+	}
+}
+
+/* drVN is a Pascal string and drFndrInfo stays big-endian. */
+static void
+SwapMDB (HFSMasterDirectoryBlock *mdb)
+{
+	mdb->drSigWord = SWAP_BE16 (mdb->drSigWord);
+	mdb->drCrDate = SWAP_BE32 (mdb->drCrDate);
+	mdb->drLsMod = SWAP_BE32 (mdb->drLsMod);
+	mdb->drAtrb = SWAP_BE16 (mdb->drAtrb);
+	mdb->drNmFls = SWAP_BE16 (mdb->drNmFls);
+	mdb->drVBMSt = SWAP_BE16 (mdb->drVBMSt);
+	mdb->drAllocPtr = SWAP_BE16 (mdb->drAllocPtr);
+	mdb->drNmAlBlks = SWAP_BE16 (mdb->drNmAlBlks);
+	mdb->drAlBlkSiz = SWAP_BE32 (mdb->drAlBlkSiz);
+	mdb->drClpSiz = SWAP_BE32 (mdb->drClpSiz);
+	mdb->drAlBlSt = SWAP_BE16 (mdb->drAlBlSt);
+	mdb->drNxtCNID = SWAP_BE32 (mdb->drNxtCNID);
+	mdb->drFreeBks = SWAP_BE16 (mdb->drFreeBks);
+	mdb->drVolBkUp = SWAP_BE32 (mdb->drVolBkUp);
+	mdb->drVSeqNum = SWAP_BE16 (mdb->drVSeqNum);
+	mdb->drWrCnt = SWAP_BE32 (mdb->drWrCnt);
+	mdb->drXTClpSiz = SWAP_BE32 (mdb->drXTClpSiz);
+	mdb->drCTClpSiz = SWAP_BE32 (mdb->drCTClpSiz);
+	mdb->drNmRtDirs = SWAP_BE16 (mdb->drNmRtDirs);
+	mdb->drFilCnt = SWAP_BE32 (mdb->drFilCnt);
+	mdb->drDirCnt = SWAP_BE32 (mdb->drDirCnt);
+	mdb->drEmbedSigWord = SWAP_BE16 (mdb->drEmbedSigWord);
+	SwapHFSExtents (&mdb->drEmbedExtent, 1);
+	mdb->drXTFlSize = SWAP_BE32 (mdb->drXTFlSize);
+	SwapHFSExtents (mdb->drXTExtRec, kHFSExtentDensity);
+	mdb->drCTFlSize = SWAP_BE32 (mdb->drCTFlSize);
+	SwapHFSExtents (mdb->drCTExtRec, kHFSExtentDensity);
+}
+
+/* finderInfo stays big-endian. */
+static void
+SwapVH (HFSPlusVolumeHeader *vh)
+{
+	vh->signature = SWAP_BE16 (vh->signature);
+	vh->version = SWAP_BE16 (vh->version);
+	vh->attributes = SWAP_BE32 (vh->attributes);
+	vh->lastMountedVersion = SWAP_BE32 (vh->lastMountedVersion);
+	vh->reserved = SWAP_BE32 (vh->reserved);
+	vh->createDate = SWAP_BE32 (vh->createDate);
+	vh->modifyDate = SWAP_BE32 (vh->modifyDate);
+	vh->backupDate = SWAP_BE32 (vh->backupDate);
+	vh->checkedDate = SWAP_BE32 (vh->checkedDate);
+	vh->fileCount = SWAP_BE32 (vh->fileCount);
+	vh->folderCount = SWAP_BE32 (vh->folderCount);
+	vh->blockSize = SWAP_BE32 (vh->blockSize);
+	vh->totalBlocks = SWAP_BE32 (vh->totalBlocks);
+	vh->freeBlocks = SWAP_BE32 (vh->freeBlocks);
+	vh->nextAllocation = SWAP_BE32 (vh->nextAllocation);
+	vh->rsrcClumpSize = SWAP_BE32 (vh->rsrcClumpSize);
+	vh->dataClumpSize = SWAP_BE32 (vh->dataClumpSize);
+	vh->nextCatalogID = SWAP_BE32 (vh->nextCatalogID);
+	vh->writeCount = SWAP_BE32 (vh->writeCount);
+	vh->encodingsBitmap.hi = SWAP_BE32 (vh->encodingsBitmap.hi);
+	vh->encodingsBitmap.lo = SWAP_BE32 (vh->encodingsBitmap.lo);
+	SwapPlusFork (&vh->allocationFile);
+	SwapPlusFork (&vh->extentsFile);
+	SwapPlusFork (&vh->catalogFile);
+	SwapPlusFork (&vh->attributesFile);
+	SwapPlusFork (&vh->startupFile);
+}
+
+/* A Unicode name copied from a host-order HFSUniStr255 into a node. */
+static void
+SwapUniStr (HFSUniStr255 *s)
+{
+	int i;
+
+	for (i = 0; i < s->length; i++)
+		s->unicode[i] = SWAP_BE16 (s->unicode[i]);
+	s->length = SWAP_BE16 (s->length);
+}
+
+#define SWAP_MDB(mdb)		SwapMDB (mdb)
+#define SWAP_VH(vh)			SwapVH (vh)
+#define SWAP_UNISTR(s)		SwapUniStr (s)
+
+#else
+
+#define SWAP_MDB(mdb)
+#define SWAP_VH(vh)
+#define SWAP_UNISTR(s)
+
+#endif
 
 
 //_______________________________________________________________________
@@ -292,10 +416,12 @@ OSErr
 
 	//--- WRITE MASTER DIRECTORY BLOCK TO DISK:
 
+	SWAP_MDB(mdb);								// to disk order for its two writes
 	err = WriteToDisk(driveInfo, kMDBStart, kOneSector, mdb);			// write master directory block to disk
 	M_ExitOnError(err);
 	err = WriteToDisk(driveInfo, driveInfo->totalSectors - 2, kOneSector, mdb);		// place a spare copy at the end of the disk
 	M_ExitOnError(err);
+	SWAP_MDB(mdb);								// back to host order
 
 		
 	//--- WRITE ALLOCATION BITMAP TO DISK:
@@ -433,11 +559,13 @@ OSErr
 
 	//--- WRITE VOLUME HEADER TO DISK:
 
+	SWAP_VH(header);								// to disk order for its two writes
 	err = WriteToDisk(driveInfo, 2, kOneSector, header);							// write the main volume header at block zero
 	M_ExitOnError(err);
 
 	err = WriteToDisk(driveInfo, (header->totalBlocks * (header->blockSize/kBytesPerSector)) - 2, kOneSector, header);	// place a spare copy in last sector of HFS Plus partition.
 	M_ExitOnError(err);
+	SWAP_VH(header);								// back to host order
 
 		
 	//--- WRITE ALLOCATION BITMAP BITS TO DISK:
@@ -633,7 +761,7 @@ InitVolumeHeader (HFSPlusDefaults *defaults, UInt32 sectors, HFSPlusVolumeHeader
 		burnedBlocksBeforeVH = 1;
 	}
 
-	bitmapBlocks = defaults->allocationClumpSize / blockSize;
+	bitmapBlocks = (((blockCount + 7) / 8) + blockSize - 1) / blockSize;
 
 	blocksUsed = 2 + burnedBlocksBeforeVH + burnedBlocksAfterAltVH + bitmapBlocks;	// (2) for the Alternate VH, and VH
 
@@ -668,7 +796,7 @@ InitVolumeHeader (HFSPlusDefaults *defaults, UInt32 sectors, HFSPlusVolumeHeader
 		header->encodingsBitmap.hi |= (1 << (index - 32));
 
 	header->allocationFile.clumpSize				= defaults->allocationClumpSize;
-	header->allocationFile.logicalSize.lo			= defaults->allocationClumpSize;
+	header->allocationFile.logicalSize.lo			= (blockCount + 7) / 8;
 	header->allocationFile.totalBlocks				= bitmapBlocks;
   	header->allocationFile.extents[0].startBlock	= 1 + burnedBlocksBeforeVH;		// starts at block after HFSPlusVolumeHeader
 	header->allocationFile.extents[0].blockCount	= bitmapBlocks;
@@ -763,7 +891,7 @@ InitBTreeHeader (UInt32 fileSize, UInt32 clumpSize, UInt16 nodeSize, UInt16 reco
 	bth = (HeaderPtr) buffer;				// point to header & node descriptor
 
 	bth->node.type = kHeaderNode;			// this node contains the B-tree header
-	bth->node.numRecords = 3;				// there are 3 records (header, map, and user)
+	bth->node.numRecords = SWAP_BE16 (3);				// there are 3 records (header, map, and user)
 
 	if (nodeCount > nodeBitsInHeader)		// do we need additional map nodes?
 	{
@@ -772,11 +900,11 @@ InitBTreeHeader (UInt32 fileSize, UInt32 clumpSize, UInt16 nodeSize, UInt16 reco
 		nodeBitsInMapNode = 8 * (nodeSize - sizeof(BTNodeDescriptor) - 2*sizeof(SInt16) - 2);
 
 		if (recordCount > 0)				// catalog B-tree?
-			bth->node.fLink = 2;			// link points to initial map node
+			bth->node.fLink = SWAP_BE32 (2);			// link points to initial map node
 											//XXX Assumes all records will fit in one node.  It would be better
 											//XXX to put the map node(s) first, then the records.
 		else
-			bth->node.fLink = 1;			// link points to initial map node
+			bth->node.fLink = SWAP_BE32 (1);			// link points to initial map node
 
 		*mapNodes = (nodeCount - nodeBitsInHeader + (nodeBitsInMapNode - 1)) / nodeBitsInMapNode;
 		usedNodes += *mapNodes;
@@ -788,19 +916,19 @@ InitBTreeHeader (UInt32 fileSize, UInt32 clumpSize, UInt16 nodeSize, UInt16 reco
 	{
 		++usedNodes;								// one more node will be used
 
-		bth->treeDepth = 1;							// tree depth is one level (leaf)
-		bth->rootNode  = 1;							// root node is also leaf
-		bth->firstLeafNode = 1;						// first leaf node
-		bth->lastLeafNode = 1;						// last leaf node
+		bth->treeDepth = SWAP_BE16 (1);							// tree depth is one level (leaf)
+		bth->rootNode  = SWAP_BE32 (1);							// root node is also leaf
+		bth->firstLeafNode = SWAP_BE32 (1);						// first leaf node
+		bth->lastLeafNode = SWAP_BE32 (1);						// last leaf node
 	}
 
-	bth->attributes	  = attributes;					// flags for 16-bit key lengths, and variable sized index keys
-	bth->leafRecords  = recordCount;				// total number of data records
-	bth->nodeSize	  = nodeSize;					// size of a node
-	bth->maxKeyLength = keySize;					// maximum length of a key
-	bth->totalNodes	  = nodeCount;					// total number of nodes
-	bth->freeNodes	  = nodeCount - usedNodes;		// number of free nodes
-	bth->clumpSize	  = clumpSize;					//
+	bth->attributes	  = SWAP_BE32 (attributes);					// flags for 16-bit key lengths, and variable sized index keys
+	bth->leafRecords  = SWAP_BE32 (recordCount);				// total number of data records
+	bth->nodeSize	  = SWAP_BE16 (nodeSize);					// size of a node
+	bth->maxKeyLength = SWAP_BE16 (keySize);					// maximum length of a key
+	bth->totalNodes	  = SWAP_BE32 (nodeCount);					// total number of nodes
+	bth->freeNodes	  = SWAP_BE32 (nodeCount - usedNodes);		// number of free nodes
+	bth->clumpSize	  = SWAP_BE32 (clumpSize);					//
   //bth->btreeType	  = 0;							// 0 = meta data B-tree
 
 
@@ -809,16 +937,16 @@ InitBTreeHeader (UInt32 fileSize, UInt32 clumpSize, UInt16 nodeSize, UInt16 reco
 
 	// MARK NODES THAT ARE IN USE:
 	// Note - worst case (32MB alloc blk) will have only 18 nodes in use.
-	*bitMapPtr = ~((UInt32) 0xFFFFFFFF >> usedNodes);
+	*bitMapPtr = SWAP_BE32 (~((UInt32) 0xFFFFFFFF >> usedNodes));
 	
 
 	// PLACE RECORD OFFSETS AT THE END OF THE NODE:
 	offsetPtr = (SInt16*) ((Byte*) buffer + nodeSize - 4*sizeof(SInt16));
 
-	*offsetPtr++ = sizeof(HeaderRec) + kBTreeHeaderUserBytes + nodeBitsInHeader/8;	// offset to free space
-	*offsetPtr++ = sizeof(HeaderRec) + kBTreeHeaderUserBytes;						// offset to allocation map
-	*offsetPtr++ = sizeof(HeaderRec);												// offset to user space
-	*offsetPtr   = sizeof(BTNodeDescriptor);										// offset to BTH
+	*offsetPtr++ = SWAP_BE16 (sizeof(HeaderRec) + kBTreeHeaderUserBytes + nodeBitsInHeader/8);	// offset to free space
+	*offsetPtr++ = SWAP_BE16 (sizeof(HeaderRec) + kBTreeHeaderUserBytes);						// offset to allocation map
+	*offsetPtr++ = SWAP_BE16 (sizeof(HeaderRec));												// offset to user space
+	*offsetPtr   = SWAP_BE16 (sizeof(BTNodeDescriptor));										// offset to BTH
 }
 
 
@@ -849,7 +977,7 @@ SetupCatalogRecords (ConstStr31Param volName, UInt16 btNodeSize, void * buffer)
 	// First set up the node descriptor (most of it zeros)...
 
 	nd->type = kLeafNode;			// leaf node type
-	nd->numRecords = 2;				// two records in node
+	nd->numRecords = SWAP_BE16 (2);				// two records in node
 	nd->height = 1;					// set node height to one for 2nd node
 
 	// The first record is the root directory CNode, <1>'Root':
@@ -863,18 +991,18 @@ SetupCatalogRecords (ConstStr31Param volName, UInt16 btNodeSize, void * buffer)
 	cdk = (HFSCatalogKey*) ((Byte*) buffer + offset);
 	cdk->keyLength = 1 + 4 + ((volName[0] + 2) & 0xFE);		// key length padded to word
   //cdk->reserved = 0;										// clear filler byte 
-	cdk->parentID = kHFSRootParentID;						// parent ID of root (1)
+	cdk->parentID = SWAP_BE32 (kHFSRootParentID);						// parent ID of root (1)
 	BlockMoveData(volName, cdk->nodeName, volName[0]+1);
 
 	offset += cdk->keyLength + 1;			// offset to directory record
 
 	cdr = (HFSCatalogFolder*) ((Byte*) buffer + offset);
-	cdr->recordType = kHFSFolderRecord;	// data record type (directory CNode)
+	cdr->recordType = SWAP_BE16 (kHFSFolderRecord);	// data record type (directory CNode)
   //cdr->flags = 0;
   //cdr->valence = 0;						// empty
-	cdr->folderID = kHFSRootFolderID;		// root node's directory ID
-	cdr->createDate = timeStamp;			// creation date time
-	cdr->modifyDate = timeStamp;			// date and time last modified
+	cdr->folderID = SWAP_BE32 (kHFSRootFolderID);		// root node's directory ID
+	cdr->createDate = SWAP_BE32 (timeStamp);			// creation date time
+	cdr->modifyDate = SWAP_BE32 (timeStamp);			// date and time last modified
 	
 	offset += sizeof(HFSCatalogFolder);
 	
@@ -884,15 +1012,15 @@ SetupCatalogRecords (ConstStr31Param volName, UInt16 btNodeSize, void * buffer)
 	cdk = (HFSCatalogKey *) ((Byte*) buffer + offset);
 	cdk->keyLength = kHFSCatalogKeyMinimumLength;	// key length
   //cdk->reserved = 0;						// clear filler byte 
-	cdk->parentID = kHFSRootFolderID;		// DirID in key
+	cdk->parentID = SWAP_BE32 (kHFSRootFolderID);		// DirID in key
   //cdk->name[0] = 0;						// CName string (null)
 	
 	offset += cdk->keyLength + 2;			// offset to thread record (adds pad byte too)
 
 	// stuff the thread record
 	ctr = (HFSCatalogThread*) ((Byte*) buffer + offset);
-	ctr->recordType = kHFSFolderThreadRecord;					// Record type is thread 
-	ctr->parentID = kHFSRootParentID;							// Root's parent ID
+	ctr->recordType = SWAP_BE16 (kHFSFolderThreadRecord);					// Record type is thread 
+	ctr->parentID = SWAP_BE32 (kHFSRootParentID);							// Root's parent ID
 	BlockMoveData(volName, ctr->nodeName, volName[0]+1);		// Copy in the volume name
 
 	offset += sizeof(HFSCatalogThread);
@@ -928,7 +1056,7 @@ InitRootFolder (ConstHFSUniStr255Param volName, UInt16 btNodeSize, void *nodeBuf
 	// First set up the node descriptor (most of it zeros)...
 
 	nd->type = kLeafNode;			// leaf node type
-	nd->numRecords = 2;				// two records in node
+	nd->numRecords = SWAP_BE16 (2);				// two records in node
 	nd->height = 1;					// set node height to one for 2nd node
 
 	// The first record is the root directory CNode, <1>'Root':
@@ -941,23 +1069,24 @@ InitRootFolder (ConstHFSUniStr255Param volName, UInt16 btNodeSize, void *nodeBuf
 	//--- stuff the key
 
 	key = (HFSPlusCatalogKey*) ((Byte*) nodeBuffer + offset);
-	key->keyLength = kHFSPlusCatalogKeyMinimumLength + sizeof(UniChar) * (volName->length);
-	key->parentID = kHFSRootParentID;			// parent ID of root (1)
-	BlockMoveData(volName, &key->nodeName, key->keyLength - kHFSPlusCatalogKeyMinimumLength + sizeof(UInt16));
+	key->keyLength = SWAP_BE16 (kHFSPlusCatalogKeyMinimumLength + sizeof(UniChar) * (volName->length));
+	key->parentID = SWAP_BE32 (kHFSRootParentID);			// parent ID of root (1)
+	BlockMoveData(volName, &key->nodeName, sizeof(UniChar) * (volName->length + 1));
+	SWAP_UNISTR(&key->nodeName);
 
-	offset += key->keyLength + 2;				// offset to folder record
+	offset += SWAP_BE16 (key->keyLength) + 2;				// offset to folder record
 
 	//--- stuff the folder record
 	folder = (HFSPlusCatalogFolder*) ((Byte*) nodeBuffer + offset);
 
-	folder->recordType		= kHFSPlusFolderRecord;	// data record type (directory CNode)
+	folder->recordType		= SWAP_BE16 (kHFSPlusFolderRecord);	// data record type (directory CNode)
   //folder->flags			= 0;					// no flag bits
-	folder->folderID		= kHFSRootFolderID;		// root node's directory ID
+	folder->folderID		= SWAP_BE32 (kHFSRootFolderID);		// root node's directory ID
   //folder->valence			= 0;					// empty
-	folder->createDate		= timeStamp;			// creation date time
-	folder->contentModDate	= timeStamp;			// date and time last modified
+	folder->createDate		= SWAP_BE32 (timeStamp);			// creation date time
+	folder->contentModDate	= SWAP_BE32 (timeStamp);			// date and time last modified
   //folder->backupDate		= 0;					// date and time last backed up
-	folder->textEncoding	= GetDefaultTextEncoding();
+	folder->textEncoding	= SWAP_BE32 (GetDefaultTextEncoding());
 	
 	offset += sizeof(HFSPlusCatalogFolder);
 	SetOffset(nodeBuffer, btNodeSize, offset, 2);	// set offset to thread record (2nd)
@@ -966,19 +1095,20 @@ InitRootFolder (ConstHFSUniStr255Param volName, UInt16 btNodeSize, void *nodeBuf
 	//--- stuff the thread key
 	key = (HFSPlusCatalogKey *) ((Byte*) nodeBuffer + offset);
 
-	key->keyLength = kHFSPlusCatalogKeyMinimumLength;	// key length
-	key->parentID = kHFSRootFolderID;		// DirID in key
+	key->keyLength = SWAP_BE16 (kHFSPlusCatalogKeyMinimumLength);	// key length
+	key->parentID = SWAP_BE32 (kHFSRootFolderID);		// DirID in key
   //key->nameLength = 0;					// CName string (empty)
 	
-	offset += key->keyLength + 2;			// offset to thread record
+	offset += SWAP_BE16 (key->keyLength) + 2;			// offset to thread record
 
 	// stuff the thread record
 	thread = (HFSPlusCatalogThread*) ((Byte*) nodeBuffer + offset);
 
-	thread->recordType = kHFSPlusFolderThreadRecord;
+	thread->recordType = SWAP_BE16 (kHFSPlusFolderThreadRecord);
   //thread->reserved = 0;
-	thread->parentID = kHFSRootParentID;	// Root's parent ID
+	thread->parentID = SWAP_BE32 (kHFSRootParentID);	// Root's parent ID
 	BlockMoveData(volName, &thread->nodeName, sizeof(UniChar) * (volName->length + 1));
+	SWAP_UNISTR(&thread->nodeName);
 
 	offset += (sizeof(HFSPlusCatalogThread) - (sizeof(thread->nodeName.unicode) - (sizeof(UniChar) * volName->length)));
 	SetOffset(nodeBuffer, btNodeSize, offset, 3);			// set the offset to the empty record (3rd)
@@ -1004,7 +1134,7 @@ WriteMapNodes (const DriveInfo *driveInfo, UInt32 diskStart, UInt32 firstMapNode
 	ClearMemory(buffer, btNodeSize);				// start with clean node
 
 	nd->type = kMapNode;							// map node type
-	nd->numRecords = 1;								// one record in node
+	nd->numRecords = SWAP_BE16 (1);								// one record in node
 	
 	mapRecordBytes = btNodeSize - sizeof(BTNodeDescriptor) - 2*sizeof(SInt16) - 2;		// must belong word aligned (hence the extra -2)
 
@@ -1020,7 +1150,7 @@ WriteMapNodes (const DriveInfo *driveInfo, UInt32 diskStart, UInt32 firstMapNode
 	for (i = 0; i < mapNodes; i++)
 	{
 		if ((i + 1) < mapNodes)
-			nd->fLink = ++firstMapNode;			// link points to next map node
+			nd->fLink = SWAP_BE32 (++firstMapNode);			// link points to next map node
 		else
 			nd->fLink = 0;						// this is the last map node
 

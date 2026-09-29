@@ -43,10 +43,75 @@ def test_results_disk_round_trip(tmp_path):
     binary.write_bytes(b"\xce\xfa\xed\xfe" + b"\0" * 4000)
     disk = str(tmp_path / "results.img")
     hg.results_disk(disk, "echo hi\n", str(binary))
-    assert hg.read_results(disk) == {"out.txt": None, "list.txt": None, "sums.txt": None}
+    assert hg.read_results(disk) == {"out.txt": None, "list.txt": None, "sums.txt": None,
+                                     "label.txt": None}
     with rhap_image.Image(disk) as img:
         assert img.read_file(img.inode(img.resolve("/run.sh"))) == b"echo hi\n"
         assert img.read_file(img.inode(img.resolve("/mount_hfs")))[:4] == b"\xce\xfa\xed\xfe"
+
+
+def test_results_disk_carries_the_tools_beside_mount_hfs(tmp_path):
+    for name in ("mount_hfs", "newfs_hfs", "hfs.util"):
+        (tmp_path / name).write_bytes(b"\xce\xfa\xed\xfe" + name.encode())
+    disk = str(tmp_path / "results.img")
+    hg.results_disk(disk, "echo hi\n", str(tmp_path / "mount_hfs"))
+    with rhap_image.Image(disk) as img:
+        for name in ("mount_hfs", "newfs_hfs", "hfs.util"):
+            assert img.read_file(img.inode(img.resolve("/" + name)))[4:] == name.encode()
+
+
+def test_blank_image_is_labelled_and_empty(tmp_path):
+    path = str(tmp_path / "blank.img")
+    hg.blank_image(path, 4 * 1024 * 1024)
+    with open(path, "rb") as f:
+        data = f.read()
+    assert len(data) == hg.label_front() + 4 * 1024 * 1024
+    assert not data[hg.label_front():].strip(b"\0")
+
+
+def _probe_results(rc, label):
+    return {"out.txt": "BEGIN\nprobe rc=%d\nreport done\nEND\n" % rc, "label.txt": label,
+            "list.txt": None, "sums.txt": None}
+
+
+def test_verify_probe(hfsplus):
+    assert hg.verify_probe(hfsplus, _probe_results(247, "HFSPlusTest")) == []
+    assert any("label" in p for p in hg.verify_probe(hfsplus, _probe_results(247, "Other")))
+    assert any("FSUR_MOUNT_HIDDEN" in p for p in hg.verify_probe(hfsplus, _probe_results(254, None)))
+    assert hg.verify_probe(hfsplus, _probe_results(254, None), expect_ok=False) == []
+
+
+def test_verify_probe_compares_names_after_nfc(tmp_path):
+    path = str(tmp_path / "cafe.img")
+    hg.build_image("hfsplus", path, volname="Café Test")
+    assert hg.verify_probe(path, _probe_results(247, "Cafe\u0301 Test")) == []
+
+
+def _fresh_volume(tmp_path, flavour, volname):
+    path = str(tmp_path / ("%s.img" % flavour))
+    hfs = hg.builder.BUILDERS[flavour](hg.scenario.fresh_manifest(), hg.VOLUME_SIZE, volname=volname)
+    with open(path, "wb") as f:
+        f.write(hg.wrap_label(hfs))
+    return path
+
+
+def test_verify_accepts_a_correct_newfs_run(tmp_path):
+    path = _fresh_volume(tmp_path, "hfsplus", hg.scenario.NEWFS_NAME)
+    good = _simulated_guest(path)
+    good["out.txt"] = "BEGIN\nnewfs rc=0\n" + good["out.txt"][len("BEGIN\n"):]
+    assert hg.verify("newfs-hfsplus", str(tmp_path), path, good) == []
+    assert hg.verify("freshread", str(tmp_path), path, _simulated_guest(path)) == []
+
+
+def test_verify_rejects_the_wrong_newfs_volume(tmp_path):
+    path = _fresh_volume(tmp_path, "hfsplus", "SomethingElse")
+    good = _simulated_guest(path)
+    good["out.txt"] = "BEGIN\nnewfs rc=0\n" + good["out.txt"][len("BEGIN\n"):]
+    problems = hg.verify("newfs-hfsplus", str(tmp_path), path, good)
+    assert any("named" in p for p in problems)
+    assert any("HFS Plus" in p for p in hg.verify("newfs-hfs", str(tmp_path), path, good))
+    bad = dict(good, **{"out.txt": good["out.txt"].replace("newfs rc=0", "newfs rc=1")})
+    assert any("newfs_hfs failed" in p for p in hg.verify("newfs-hfsplus", str(tmp_path), path, bad))
 
 
 def _simulated_guest(path):

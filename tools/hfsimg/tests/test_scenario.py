@@ -45,3 +45,30 @@ def test_read_script_options():
 def test_parsers():
     assert scenario.parse_list(".\n./a\n./a/b c\n") == {"a", "a/b c"}
     assert scenario.parse_sums("1 2 ./a b\n3 4 ./c\n") == {"a b": (1, 2), "c": (3, 4)}
+
+
+def test_fresh_volume_model():
+    t = scenario.tree(scenario.fresh_manifest())
+    assert t["w"] is None and t["w/d05"] is None and t["w/d05/x"] == 100
+    assert t["w/f010"] == scenario.new_file_size(10)
+    assert t["w/big"] == scenario.BIG_SIZE
+    assert t["w/ga"] == scenario.APPEND_ROUNDS * scenario.APPEND_CHUNK
+    assert "frag.bin" not in t and "top.txt" not in t
+
+
+def test_newfs_script_formats_then_fills():
+    s = scenario.newfs_script("/dev/hd1a", "/dev/hd1_hfs_a", "-H ")
+    assert "/mnt/newfs_hfs -H -v NewfsTest /dev/hd1_hfs_a" in s
+    assert s.index("newfs rc=") < s.index("/mnt/mount_hfs /dev/hd1a /mnt/h")
+    assert "A w/ga %d; A w/gb %d" % (scenario.APPEND_CHUNK, scenario.APPEND_CHUNK) in s
+    assert "P w/big %d" % scenario.BIG_SIZE in s
+    assert s.rstrip().endswith("sync")
+
+
+def test_probe_script():
+    s = scenario.probe_script("rhd1a")
+    assert "mkdir -p /usr/filesystems/hfs.fs" in s
+    assert "rm -f %s" % scenario.LABEL_FILE in s
+    assert "/mnt/hfs.util -p rhd1a removable writable" in s
+    assert "probe rc=$?" in s and "/mnt/label.txt" in s
+    assert s.rstrip().endswith("sync")

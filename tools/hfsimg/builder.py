@@ -492,9 +492,9 @@ def build_wrapped(manifest, size, volname="WrappedTest", wrapper_block=4096, **k
     return bytes(img)
 
 
-def build_plus8k(manifest, size):
+def build_plus8k(manifest, size, **kw):
     """HFS Plus with 8K allocation blocks, twice i386's 4K logical block."""
-    return build_plus(manifest, size, block_size=8192)
+    return build_plus(manifest, size, block_size=8192, **kw)
 
 
 BUILDERS = {"hfs": build_hfs, "hfsplus": build_plus, "wrapped": build_wrapped,

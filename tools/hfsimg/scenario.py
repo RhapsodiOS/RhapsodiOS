@@ -92,11 +92,11 @@ def write_script(device):
         "P() { %s \"$1\" $2 > \"$1\"; }" % _PERL,
         "mkdir w",
         "i=0",
-        "while [ $i -lt %d ]; do n=`printf %%03d $i`; P w/f$n `expr $i \\* 1499 %% 30000`; i=`expr $i + 1`; done"
-        % NEW_FILES,
+        _files_loop(),
+
         "i=0",
-        "while [ $i -lt %d ]; do n=`printf %%02d $i`; mkdir w/d$n; P w/d$n/x 100; i=`expr $i + 1`; done"
-        % NEW_DIRS,
+        _dirs_loop(),
+
         "mv w/f010 w/r010",
         "mv w/f011 w/d00/f011",
         "i=20",
@@ -114,6 +114,65 @@ def write_script(device):
     ] + _report_lines() + _finish_lines()
     return "\n".join(lines) + "\n"
 
+
+def _files_loop():
+    return ("while [ $i -lt %d ]; do n=`printf %%03d $i`; P w/f$n `expr $i \\* 1499 %% 30000`; "
+            "i=`expr $i + 1`; done" % NEW_FILES)
+
+
+def _dirs_loop():
+    return ("while [ $i -lt %d ]; do n=`printf %%02d $i`; mkdir w/d$n; P w/d$n/x 100; "
+            "i=`expr $i + 1`; done" % NEW_DIRS)
+
+
+def _append_lines():
+    return [
+        "A() { %s \"$1\" $2 >> \"$1\"; }" % _PERL,
+        "i=0",
+        "while [ $i -lt %d ]; do A w/ga %d; A w/gb %d; i=`expr $i + 1`; done"
+        % (APPEND_ROUNDS, APPEND_CHUNK, APPEND_CHUNK),
+    ]
+
+
+NEWFS_NAME = "NewfsTest"
+
+
+def fresh_manifest():
+    man = [("dir", "w")]
+    for i in range(NEW_FILES):
+        man.append(("file", "w/f%03d" % i, new_file_size(i)))
+    for i in range(NEW_DIRS):
+        man.append(("dir", "w/d%02d" % i))
+        man.append(("file", "w/d%02d/x" % i, 100))
+    man.extend([("file", "w/big", BIG_SIZE),
+                ("file", "w/ga", APPEND_ROUNDS * APPEND_CHUNK),
+                ("file", "w/gb", APPEND_ROUNDS * APPEND_CHUNK)])
+    return man
+
+
+def newfs_script(device, raw_device, flags):
+    lines = [
+        "O=/mnt/out.txt", "echo BEGIN > $O", "ln -sf /dev/hd1a /dev/hd1_hfs_a",
+        "/mnt/newfs_hfs %s-v %s %s >> $O 2>&1; echo \"newfs rc=$?\" >> $O" %
+        (flags, NEWFS_NAME, raw_device),
+        "/mnt/mount_hfs %s %s >> $O 2>&1; echo \"mount rc=$?\" >> $O" % (device, MOUNT_POINT),
+        "cd %s || exit 1" % MOUNT_POINT,
+        "P() { %s \"$1\" $2 > \"$1\"; }" % _PERL,
+        "mkdir w", "i=0", _files_loop(), "i=0", _dirs_loop(), "P w/big %d" % BIG_SIZE,
+    ] + _append_lines() + ["echo \"ops done\" >> $O"] + _report_lines() + _finish_lines()
+    return "\n".join(lines) + "\n"
+
+
+LABEL_FILE = "/usr/filesystems/hfs.fs/hfs.label"
+
+
+def probe_script(dev_arg):
+    lines = ["O=/mnt/out.txt", "echo BEGIN > $O", "mkdir -p /usr/filesystems/hfs.fs",
+             "rm -f %s" % LABEL_FILE,
+             "/mnt/hfs.util -p %s removable writable >> $O 2>&1; echo \"probe rc=$?\" >> $O" % dev_arg,
+             "cat %s > /mnt/label.txt 2>> $O" % LABEL_FILE,
+             "echo \"report done\" >> $O", "sync", "echo END >> $O", "sync"]
+    return "\n".join(lines) + "\n"
 
 def read_script(device, read_only=False, sample=None):
     """Mount, list, checksum (every file, or only `sample`), unmount."""

@@ -11,7 +11,7 @@ The supplied headers are the declaration authority. Task 3 will copy them byte-f
 | NSDirectBitmap.h | 1654 | `C76353D8597A382D3ED38B29416667711AE983141907F0329BFD9F0CC45C559E` |
 | NSDirectPalette.h | 1194 | `31AB1D4C47F685B0FB773EF1CC3C0FA37F6950A35986675014D9BA5DADBB8D49` |
 | NSDirectScreen.h | 3145 | `C6B6B668B30EDEA34B10D5D080B881B5671AD528CE53CAB4888A27572F89CFF0` |
-| NSFramebuffer.h | 2136 | `17D3F1000ABE5BA76030FDDA5375D7F805B58729DA588FE5D5F2BB4076003B` |
+| NSFramebuffer.h | 2136 | `17D3F1000ABE5BA76030FDDA5375A9D7F805B58729DA588FE5D5F2BB4076003B` |
 | NSShape.h | 773 | `0B87EAE0EAD79E704A8839488F19E1428F08D73CD10496C661185FA5E16C40D9` |
 
 Public interfaces include the pixel encoding types and `InterceptorReturn`; `NSDirectBitmapProtocol`; NSSimpleBitmap; NSDirectBitmap; NSDirectPalette; NSDirectScreen; NSFramebuffer; and NSShape. `NSInterceptorClient`, `NSInterceptedRect`, and `_NSShapeEnumerator` are present in the binary and need private declarations recovered from metadata and disassembly.
@@ -32,3 +32,26 @@ All three available slices agree on these class instance sizes, ivar type encodi
 | `NSShape` | 12 | `zone` : `^{?}` @ 4; `_impl` : `^v` @ 8 |
 | `NSSimpleBitmap` | 104 | `isPlanar` : `c` @ 4; `hasAlpha` : `c` @ 5; `bitsPerSample` : `i` @ 8; `samplesPerPixel` : `i` @ 12; `bitsPerPixel` : `i` @ 16; `bytesPerRow` : `i` @ 20; `bytesPerPlane` : `i` @ 24; `numPlanes` : `i` @ 28; `pixelsWide` : `i` @ 32; `pixelsHigh` : `i` @ 36; `colorSpace` : `@"NSString"` @ 40; `colorSpaceCode` : `i` @ 44; `data` : `[5^v]` @ 48; `_bm_padding` : `[8I]` @ 68; `_bm_private` : `^v` @ 100 |
 | `NSFramework_Interceptor` | 0 | none |
+
+## Runtime selector type encodings
+
+The ABI test checks these encodings from the primary PowerPC reference and the
+DR2 i386 reference. The architecture-specific offsets differ because the
+32-bit ABIs place `self`, `_cmd`, and arguments differently. The reconstructed
+framework is expected to keep the primary API on both CPUs, including the newer
+`defaultColorPalette` class method.
+
+| Selector | PowerPC | i386 |
+|---|---|---|
+| `-[NSShape intersectWithShape:]` | `v8@4:8@12` | `v12@8:12@16` |
+| `-[NSShape initFromRect:]` | `@20@4:8{?={?=ff}{?=ff}}12` | `@24@8:12{?={?=ff}{?=ff}}16` |
+| `-[NSFramebuffer addressForPoint:]` | `^v12@4:8{?=ff}12` | `^v16@8:12{?=ff}16` |
+| `-[NSDirectPalette setColor:atIndex:]` | `v12@4:8@12i16` | `v16@8:12@16i20` |
+| `-[NSSimpleBitmap initWithBitmapDataPlanes:...]` | `@48@4:8^*12i16i20i24i28c32c43@44i48i52` | `@48@8:12^*16i20i24i28i32c36c40@44i48i52` |
+| `+[NSDirectPalette defaultColorPalette]` | `@4@4:8` | `@4@8:12` |
+
+The ABI test covers all inventoried class sizes and ivar names, types, and
+offsets, plus the selected public layouts, enum endpoints, and selectors above.
+Its test helper is self-checked against deliberately altered class-size and
+selector-encoding fixtures. The build/runtime harness still requires a
+compatible historical toolchain and guest before its result can be claimed.

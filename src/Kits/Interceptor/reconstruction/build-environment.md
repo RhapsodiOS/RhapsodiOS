@@ -9,6 +9,28 @@ Host tools found during Task 2:
 
 The historical Rhapsody SDK, Project Builder make, MIG, and guest build routes are not yet verified. Record exact compiler and runtime findings in the build task before claiming either slice builds.
 
+## Native Task 3 probe
+
+The current Windows host exposes GNU make only. `cc`, `gcc`, `clang`, `otool`,
+and `llvm-objdump` are not on `PATH`; the managed checkout has no `vm/vm.conf`,
+so there is no configured guest route here. The historical compiler, SDK,
+linker, MIG, and framework import libraries therefore remain unavailable for
+both CPUs. Do not treat source-level checks as a successful framework build.
+
+The target commands are:
+
+```sh
+make RC_ARCHS=ppc OBJROOT=<external-ppc-obj> SYMROOT=<external-ppc-sym> DSTROOT=<external-ppc-dstroot>
+make RC_ARCHS=i386 OBJROOT=<external-i386-obj> SYMROOT=<external-i386-sym> DSTROOT=<external-i386-dstroot>
+make -C tests abi RC_ARCHS=ppc FRAMEWORK_ROOT=<selected-framework-bundle>
+make -C tests abi RC_ARCHS=i386 FRAMEWORK_ROOT=<selected-framework-bundle>
+```
+
+They are documented but not runnable on this host until the compatible guest
+and SDK are configured. The test runner loads
+`FRAMEWORK_ROOT/Versions/A/Interceptor` directly and must run in a separate
+process for each selected framework.
+
 ## Analyzer agreement limit
 
 All three i386 exporters individually accepted the DR2 image. They produced 419 IDA, 416 Ghidra, and 1085 angr function records. IDA and Ghidra relocation encodings also differ. Running all three through the current consensus publisher fails with `relocation 0 has missing or conflicting width`. The committed i386 profile therefore uses IDA for its stable address inventory. Ghidra and angr outputs remain independent review evidence under `C:\Users\raynorpat\Downloads\test\Interceptor-evidence\adapters-i386` and are not committed.

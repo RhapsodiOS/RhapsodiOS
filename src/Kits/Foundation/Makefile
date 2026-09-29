@@ -20,7 +20,7 @@ CLASSES = NSArchiver.m NSArray.m NSAttributedString.m\
           NSDateFormatter.m NSDebug.m NSDecimal.m NSDecimalNumber.m\
           NSDictionary.m NSDistantObject.m NSDistributedLock.m\
           NSDistributedNotificationCenter.m NSEnumerator.m NSException.m\
-          NSFileHandle.m NSFileManager.m NSFormatter.m NSGeometry.m\
+          NSFault.m NSFileHandle.m NSFileManager.m NSFormatter.m NSGeometry.m\
           NSHashTable.m NSHost.m NSInvocation.m NSJavaSetup.m NSLock.m NSMapTable.m\
           NSMethodSignature.m NSNotification.m NSNotificationQueue.m\
           NSNumberFormatter.m NSObjCRuntime.m NSObject.m NSPathUtilities.m NSPort.m\

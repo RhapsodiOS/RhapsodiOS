@@ -12,6 +12,8 @@
 | ABI, source, and runtime execution | blocked by missing compatible guest/toolchain | blocked by missing compatible guest/toolchain |
 | NSSimpleBitmap static body review | pass; implementation tracks recovered fields/getters | pass against the DR2 i386 body; offsets were independently checked |
 | Bitmap behavior test execution | blocked by missing compatible guest/toolchain | blocked by missing compatible guest/toolchain |
+| NSShape scanline and operation review | static implementation; description remains incomplete | static cross-check supports shared format; runtime pending |
+| Shape behavior test execution | blocked by missing compatible guest/toolchain | blocked by missing compatible guest/toolchain |
 
 A reference-only analysis is an evidence-generation result when its summary says `complete: true` and contains the IDA record. The command exits 1 because comparison acceptance is not met without a rebuilt artifact; this is not a parity result.
 

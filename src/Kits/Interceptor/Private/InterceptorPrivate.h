@@ -11,6 +11,7 @@
     short *yloc;
     NSRect r;
 }
+- initForShapeImpl:(id)shape;
 @end
 
 #endif

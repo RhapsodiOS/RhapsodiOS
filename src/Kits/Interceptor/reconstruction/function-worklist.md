@@ -220,28 +220,28 @@ IDA function records: 392; symbol records: 540.
 | `0x47A0C628` | 88 | `-[NSInterceptorClient windowServerPortDeath:]` | unexamined |
 | `0x47A0C680` | 632 | `-[NSInterceptorClient _notifyHandler]` | unexamined |
 | `0x47A0C8F8` | 364 | `-[NSInterceptorClient startHandlingThread]` | unexamined |
-| `0x47A0CA64` | 60 | `_empty_shape` | unexamined |
-| `0x47A0CAA0` | 348 | `_rect_shape` | unexamined |
-| `0x47A0CBFC` | 108 | `_is_equal_shape` | unexamined |
-| `0x47A0CC68` | 68 | `_is_empty_shape` | unexamined |
-| `0x47A0CCAC` | 96 | `_offset_shape` | unexamined |
-| `0x47A0CD0C` | 820 | `_union_shape` | unexamined |
-| `0x47A0D040` | 764 | `_intersect_shape` | unexamined |
-| `0x47A0D33C` | 780 | `_difference_shape` | unexamined |
-| `0x47A0D648` | 108 | `-[NSShape init]` | unexamined |
-| `0x47A0D6B4` | 128 | `-[NSShape initFromRect:]` | unexamined |
-| `0x47A0D734` | 72 | `-[NSShape intersectWithShape:]` | unexamined |
-| `0x47A0D77C` | 72 | `-[NSShape unionWithShape:]` | unexamined |
-| `0x47A0D7C4` | 72 | `-[NSShape differenceWithShape:]` | unexamined |
-| `0x47A0D80C` | 40 | `-[NSShape isEmpty]` | unexamined |
-| `0x47A0D834` | 76 | `-[NSShape isEqual:]` | unexamined |
-| `0x47A0D880` | 164 | `-[NSShape copyWithZone:]` | unexamined |
-| `0x47A0D924` | 84 | `-[NSShape offsetShape:]` | unexamined |
-| `0x47A0D978` | 96 | `-[NSShape rectEnumerator]` | unexamined |
-| `0x47A0D9D8` | 88 | `-[NSShape dealloc]` | unexamined |
+| `0x47A0CA64` | 60 | `_empty_shape` | static-reviewed; runtime pending |
+| `0x47A0CAA0` | 348 | `_rect_shape` | static-reviewed; runtime pending |
+| `0x47A0CBFC` | 108 | `_is_equal_shape` | static-reviewed; runtime pending |
+| `0x47A0CC68` | 68 | `_is_empty_shape` | static-reviewed; runtime pending |
+| `0x47A0CCAC` | 96 | `_offset_shape` | static-reviewed; runtime pending |
+| `0x47A0CD0C` | 820 | `_union_shape` | static-reviewed; runtime pending |
+| `0x47A0D040` | 764 | `_intersect_shape` | static-reviewed; runtime pending |
+| `0x47A0D33C` | 780 | `_difference_shape` | static-reviewed; runtime pending |
+| `0x47A0D648` | 108 | `-[NSShape init]` | static-reviewed; runtime pending |
+| `0x47A0D6B4` | 128 | `-[NSShape initFromRect:]` | static-reviewed; runtime pending |
+| `0x47A0D734` | 72 | `-[NSShape intersectWithShape:]` | static-reviewed; runtime pending |
+| `0x47A0D77C` | 72 | `-[NSShape unionWithShape:]` | static-reviewed; runtime pending |
+| `0x47A0D7C4` | 72 | `-[NSShape differenceWithShape:]` | static-reviewed; runtime pending |
+| `0x47A0D80C` | 40 | `-[NSShape isEmpty]` | static-reviewed; runtime pending |
+| `0x47A0D834` | 76 | `-[NSShape isEqual:]` | static-reviewed; runtime pending |
+| `0x47A0D880` | 164 | `-[NSShape copyWithZone:]` | static-reviewed; runtime pending |
+| `0x47A0D924` | 84 | `-[NSShape offsetShape:]` | static-reviewed; runtime pending |
+| `0x47A0D978` | 96 | `-[NSShape rectEnumerator]` | static-reviewed; runtime pending |
+| `0x47A0D9D8` | 88 | `-[NSShape dealloc]` | static-reviewed; runtime pending |
 | `0x47A0DA30` | 348 | `-[NSShape description]` | unexamined |
-| `0x47A0DB8C` | 92 | `-[_NSShapeEnumerator initForShapeImpl:]` | unexamined |
-| `0x47A0DBE8` | 364 | `-[_NSShapeEnumerator nextRect]` | unexamined |
+| `0x47A0DB8C` | 92 | `-[_NSShapeEnumerator initForShapeImpl:]` | static-reviewed; runtime pending |
+| `0x47A0DBE8` | 364 | `-[_NSShapeEnumerator nextRect]` | static-reviewed; runtime pending |
 | `0x47A0DD54` | 316 | `-[NSSimpleBitmap initWithBitmapDataPlanes:pixelsWide:pixelsHigh:bitsPerSample:samplesPerPixel:hasAlpha:isPlanar:colorSpaceName:bytesPerRow:bitsPerPixel:]` | static-reviewed; runtime pending |
 | `0x47A0DE90` | 16 | `-[NSSimpleBitmap bitmapData]` | static-reviewed; runtime pending |
 | `0x47A0DEA0` | 132 | `-[NSSimpleBitmap getBitmapDataPlanes:]` | static-reviewed; runtime pending |
@@ -608,20 +608,20 @@ Named Objective-C symbols (candidate module by class name; verify in module meta
 | `0x47A0C628` | `-[NSInterceptorClient windowServerPortDeath:]` | `NSInterceptorClient.m` | unexamined |
 | `0x47A0C680` | `-[NSInterceptorClient _notifyHandler]` | `NSInterceptorClient.m` | unexamined |
 | `0x47A0C8F8` | `-[NSInterceptorClient startHandlingThread]` | `NSInterceptorClient.m` | unexamined |
-| `0x47A0D648` | `-[NSShape init]` | `NSShape.m` | unexamined |
-| `0x47A0D6B4` | `-[NSShape initFromRect:]` | `NSShape.m` | unexamined |
-| `0x47A0D734` | `-[NSShape intersectWithShape:]` | `NSShape.m` | unexamined |
-| `0x47A0D77C` | `-[NSShape unionWithShape:]` | `NSShape.m` | unexamined |
-| `0x47A0D7C4` | `-[NSShape differenceWithShape:]` | `NSShape.m` | unexamined |
-| `0x47A0D80C` | `-[NSShape isEmpty]` | `NSShape.m` | unexamined |
-| `0x47A0D834` | `-[NSShape isEqual:]` | `NSShape.m` | unexamined |
-| `0x47A0D880` | `-[NSShape copyWithZone:]` | `NSShape.m` | unexamined |
-| `0x47A0D924` | `-[NSShape offsetShape:]` | `NSShape.m` | unexamined |
-| `0x47A0D978` | `-[NSShape rectEnumerator]` | `NSShape.m` | unexamined |
-| `0x47A0D9D8` | `-[NSShape dealloc]` | `NSShape.m` | unexamined |
-| `0x47A0DA30` | `-[NSShape description]` | `NSShape.m` | unexamined |
-| `0x47A0DB8C` | `-[_NSShapeEnumerator initForShapeImpl:]` | `NSShape.m` | unexamined |
-| `0x47A0DBE8` | `-[_NSShapeEnumerator nextRect]` | `NSShape.m` | unexamined |
+| `0x47A0D648` | `-[NSShape init]` | `NSShape.m` | static-reviewed; runtime pending |
+| `0x47A0D6B4` | `-[NSShape initFromRect:]` | `NSShape.m` | static-reviewed; runtime pending |
+| `0x47A0D734` | `-[NSShape intersectWithShape:]` | `NSShape.m` | static-reviewed; runtime pending |
+| `0x47A0D77C` | `-[NSShape unionWithShape:]` | `NSShape.m` | static-reviewed; runtime pending |
+| `0x47A0D7C4` | `-[NSShape differenceWithShape:]` | `NSShape.m` | static-reviewed; runtime pending |
+| `0x47A0D80C` | `-[NSShape isEmpty]` | `NSShape.m` | static-reviewed; runtime pending |
+| `0x47A0D834` | `-[NSShape isEqual:]` | `NSShape.m` | static-reviewed; runtime pending |
+| `0x47A0D880` | `-[NSShape copyWithZone:]` | `NSShape.m` | static-reviewed; runtime pending |
+| `0x47A0D924` | `-[NSShape offsetShape:]` | `NSShape.m` | static-reviewed; runtime pending |
+| `0x47A0D978` | `-[NSShape rectEnumerator]` | `NSShape.m` | static-reviewed; runtime pending |
+| `0x47A0D9D8` | `-[NSShape dealloc]` | `NSShape.m` | static-reviewed; runtime pending |
+| `0x47A0DA30` | `-[NSShape description]` | `not reconstructed` | unexamined |
+| `0x47A0DB8C` | `-[_NSShapeEnumerator initForShapeImpl:]` | `NSShape.m` | static-reviewed; runtime pending |
+| `0x47A0DBE8` | `-[_NSShapeEnumerator nextRect]` | `NSShape.m` | static-reviewed; runtime pending |
 | `0x47A0DD54` | `-[NSSimpleBitmap initWithBitmapDataPlanes:pixelsWide:pixelsHigh:bitsPerSample:samplesPerPixel:hasAlpha:isPlanar:colorSpaceName:bytesPerRow:bitsPerPixel:]` | `NSSimpleBitmap.m` | static-reviewed; runtime pending |
 | `0x47A0DE90` | `-[NSSimpleBitmap bitmapData]` | `NSSimpleBitmap.m` | static-reviewed; runtime pending |
 | `0x47A0DEA0` | `-[NSSimpleBitmap getBitmapDataPlanes:]` | `NSSimpleBitmap.m` | static-reviewed; runtime pending |
@@ -856,28 +856,28 @@ IDA function records: 419; symbol records: 629.
 | `0x47A09CA4` | 65 | `-[NSInterceptorClient windowServerPortDeath:]` | unexamined |
 | `0x47A09CE8` | 642 | `-[NSInterceptorClient _notifyHandler]` | unexamined |
 | `0x47A09F6C` | 366 | `-[NSInterceptorClient startHandlingThread]` | unexamined |
-| `0x47A0A0DC` | 35 | `_empty_shape` | unexamined |
-| `0x47A0A100` | 340 | `_rect_shape` | unexamined |
-| `0x47A0A254` | 58 | `_is_equal_shape` | unexamined |
-| `0x47A0A290` | 55 | `_is_empty_shape` | unexamined |
-| `0x47A0A2C8` | 65 | `_offset_shape` | unexamined |
-| `0x47A0A30C` | 659 | `_union_shape` | unexamined |
-| `0x47A0A5A0` | 620 | `_intersect_shape` | unexamined |
-| `0x47A0A80C` | 625 | `_difference_shape` | unexamined |
-| `0x47A0AA80` | 87 | `-[NSShape init]` | unexamined |
-| `0x47A0AAD8` | 93 | `-[NSShape initFromRect:]` | unexamined |
-| `0x47A0AB38` | 51 | `-[NSShape intersectWithShape:]` | unexamined |
-| `0x47A0AB6C` | 51 | `-[NSShape unionWithShape:]` | unexamined |
-| `0x47A0ABA0` | 51 | `-[NSShape differenceWithShape:]` | unexamined |
-| `0x47A0ABD4` | 22 | `-[NSShape isEmpty]` | unexamined |
-| `0x47A0ABEC` | 48 | `-[NSShape isEqual:]` | unexamined |
-| `0x47A0AC1C` | 128 | `-[NSShape copyWithZone:]` | unexamined |
-| `0x47A0AC9C` | 78 | `-[NSShape offsetShape:]` | unexamined |
-| `0x47A0ACEC` | 81 | `-[NSShape rectEnumerator]` | unexamined |
+| `0x47A0A0DC` | 35 | `_empty_shape` | static-reviewed; runtime pending |
+| `0x47A0A100` | 340 | `_rect_shape` | static-reviewed; runtime pending |
+| `0x47A0A254` | 58 | `_is_equal_shape` | static-reviewed; runtime pending |
+| `0x47A0A290` | 55 | `_is_empty_shape` | static-reviewed; runtime pending |
+| `0x47A0A2C8` | 65 | `_offset_shape` | static-reviewed; runtime pending |
+| `0x47A0A30C` | 659 | `_union_shape` | static-reviewed; runtime pending |
+| `0x47A0A5A0` | 620 | `_intersect_shape` | static-reviewed; runtime pending |
+| `0x47A0A80C` | 625 | `_difference_shape` | static-reviewed; runtime pending |
+| `0x47A0AA80` | 87 | `-[NSShape init]` | static-reviewed; runtime pending |
+| `0x47A0AAD8` | 93 | `-[NSShape initFromRect:]` | static-reviewed; runtime pending |
+| `0x47A0AB38` | 51 | `-[NSShape intersectWithShape:]` | static-reviewed; runtime pending |
+| `0x47A0AB6C` | 51 | `-[NSShape unionWithShape:]` | static-reviewed; runtime pending |
+| `0x47A0ABA0` | 51 | `-[NSShape differenceWithShape:]` | static-reviewed; runtime pending |
+| `0x47A0ABD4` | 22 | `-[NSShape isEmpty]` | static-reviewed; runtime pending |
+| `0x47A0ABEC` | 48 | `-[NSShape isEqual:]` | static-reviewed; runtime pending |
+| `0x47A0AC1C` | 128 | `-[NSShape copyWithZone:]` | static-reviewed; runtime pending |
+| `0x47A0AC9C` | 78 | `-[NSShape offsetShape:]` | static-reviewed; runtime pending |
+| `0x47A0ACEC` | 81 | `-[NSShape rectEnumerator]` | static-reviewed; runtime pending |
 | `0x47A0AD40` | 65 | `-[NSShape dealloc]` | unexamined |
 | `0x47A0AD84` | 304 | `-[NSShape description]` | unexamined |
-| `0x47A0AEB4` | 66 | `-[_NSShapeEnumerator initForShapeImpl:]` | unexamined |
-| `0x47A0AEF8` | 191 | `-[_NSShapeEnumerator nextRect]` | unexamined |
+| `0x47A0AEB4` | 66 | `-[_NSShapeEnumerator initForShapeImpl:]` | static-reviewed; runtime pending |
+| `0x47A0AEF8` | 191 | `-[_NSShapeEnumerator nextRect]` | static-reviewed; runtime pending |
 | `0x47A0AFB8` | 259 | `-[NSSimpleBitmap initWithBitmapDataPlanes:pixelsWide:pixelsHigh:bitsPerSample:samplesPerPixel:hasAlpha:isPlanar:colorSpaceName:bytesPerRow:bitsPerPixel:]` | static-reviewed; runtime pending |
 | `0x47A0B0BC` | 13 | `-[NSSimpleBitmap bitmapData]` | static-reviewed; runtime pending |
 | `0x47A0B0CC` | 87 | `-[NSSimpleBitmap getBitmapDataPlanes:]` | static-reviewed; runtime pending |
@@ -1271,20 +1271,20 @@ Named Objective-C symbols (candidate module by class name; verify in module meta
 | `0x47A09CA4` | `-[NSInterceptorClient windowServerPortDeath:]` | `NSInterceptorClient.m` | unexamined |
 | `0x47A09CE8` | `-[NSInterceptorClient _notifyHandler]` | `NSInterceptorClient.m` | unexamined |
 | `0x47A09F6C` | `-[NSInterceptorClient startHandlingThread]` | `NSInterceptorClient.m` | unexamined |
-| `0x47A0AA80` | `-[NSShape init]` | `NSShape.m` | unexamined |
-| `0x47A0AAD8` | `-[NSShape initFromRect:]` | `NSShape.m` | unexamined |
-| `0x47A0AB38` | `-[NSShape intersectWithShape:]` | `NSShape.m` | unexamined |
-| `0x47A0AB6C` | `-[NSShape unionWithShape:]` | `NSShape.m` | unexamined |
-| `0x47A0ABA0` | `-[NSShape differenceWithShape:]` | `NSShape.m` | unexamined |
-| `0x47A0ABD4` | `-[NSShape isEmpty]` | `NSShape.m` | unexamined |
-| `0x47A0ABEC` | `-[NSShape isEqual:]` | `NSShape.m` | unexamined |
-| `0x47A0AC1C` | `-[NSShape copyWithZone:]` | `NSShape.m` | unexamined |
-| `0x47A0AC9C` | `-[NSShape offsetShape:]` | `NSShape.m` | unexamined |
-| `0x47A0ACEC` | `-[NSShape rectEnumerator]` | `NSShape.m` | unexamined |
+| `0x47A0AA80` | `-[NSShape init]` | `NSShape.m` | static-reviewed; runtime pending |
+| `0x47A0AAD8` | `-[NSShape initFromRect:]` | `NSShape.m` | static-reviewed; runtime pending |
+| `0x47A0AB38` | `-[NSShape intersectWithShape:]` | `NSShape.m` | static-reviewed; runtime pending |
+| `0x47A0AB6C` | `-[NSShape unionWithShape:]` | `NSShape.m` | static-reviewed; runtime pending |
+| `0x47A0ABA0` | `-[NSShape differenceWithShape:]` | `NSShape.m` | static-reviewed; runtime pending |
+| `0x47A0ABD4` | `-[NSShape isEmpty]` | `NSShape.m` | static-reviewed; runtime pending |
+| `0x47A0ABEC` | `-[NSShape isEqual:]` | `NSShape.m` | static-reviewed; runtime pending |
+| `0x47A0AC1C` | `-[NSShape copyWithZone:]` | `NSShape.m` | static-reviewed; runtime pending |
+| `0x47A0AC9C` | `-[NSShape offsetShape:]` | `NSShape.m` | static-reviewed; runtime pending |
+| `0x47A0ACEC` | `-[NSShape rectEnumerator]` | `NSShape.m` | static-reviewed; runtime pending |
 | `0x47A0AD40` | `-[NSShape dealloc]` | `NSShape.m` | unexamined |
-| `0x47A0AD84` | `-[NSShape description]` | `NSShape.m` | unexamined |
-| `0x47A0AEB4` | `-[_NSShapeEnumerator initForShapeImpl:]` | `NSShape.m` | unexamined |
-| `0x47A0AEF8` | `-[_NSShapeEnumerator nextRect]` | `NSShape.m` | unexamined |
+| `0x47A0AD84` | `-[NSShape description]` | `not reconstructed` | unexamined |
+| `0x47A0AEB4` | `-[_NSShapeEnumerator initForShapeImpl:]` | `NSShape.m` | static-reviewed; runtime pending |
+| `0x47A0AEF8` | `-[_NSShapeEnumerator nextRect]` | `NSShape.m` | static-reviewed; runtime pending |
 | `0x47A0AFB8` | `-[NSSimpleBitmap initWithBitmapDataPlanes:pixelsWide:pixelsHigh:bitsPerSample:samplesPerPixel:hasAlpha:isPlanar:colorSpaceName:bytesPerRow:bitsPerPixel:]` | `NSSimpleBitmap.m` | static-reviewed; runtime pending |
 | `0x47A0B0BC` | `-[NSSimpleBitmap bitmapData]` | `NSSimpleBitmap.m` | static-reviewed; runtime pending |
 | `0x47A0B0CC` | `-[NSSimpleBitmap getBitmapDataPlanes:]` | `NSSimpleBitmap.m` | static-reviewed; runtime pending |

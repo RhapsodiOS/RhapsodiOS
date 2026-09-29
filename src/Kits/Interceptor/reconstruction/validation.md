@@ -12,6 +12,8 @@
 | ABI, source, and runtime execution | blocked by missing compatible guest/toolchain | blocked by missing compatible guest/toolchain |
 | NSSimpleBitmap static body review | pass; implementation tracks recovered fields/getters | pass against the DR2 i386 body; offsets were independently checked |
 | Bitmap behavior test execution | blocked by missing compatible guest/toolchain | blocked by missing compatible guest/toolchain |
+| Copy helper static implementation | pass; body review confirms element widths, row pitches and min-span behavior | pass; i386 stack args and loop bodies confirm shared contract |
+| Copy helper test execution | blocked by missing compatible guest/toolchain | blocked by missing compatible guest/toolchain |
 | NSShape scanline and operation review | static implementation; description remains incomplete | static cross-check supports shared format; runtime pending |
 | Shape behavior test execution | blocked by missing compatible guest/toolchain | blocked by missing compatible guest/toolchain |
 

@@ -29,9 +29,14 @@ the reference's Objective-C constant-string objects:
 | `NSInterceptorTwelveBitRGBColor` | `RRRRGGGGBBBB----` |
 | `NSInterceptorThirtyTwoBitRGBColor` | `RRRRRRRRGGGGGGGGBBBBBBBB--------` |
 
-The row-copy helpers are outside this unit until source ownership and caller
-contracts are confirmed. PPC register use shows `CopyLong`, `CopyShort`, and
-`CopyByte` take source pointer/row stride, destination pointer/row stride,
-element count per row, and row count. `CopySrcToDst` copies the smaller of the
-source and destination row spans for each row. Runtime cases and exact helper
-owners remain pending.
+PPC register use shows `CopyLong`, `CopyShort`, and `CopyByte` take source
+pointer/row stride, destination pointer/row stride, element count per row, and
+row count. Long and short counts are elements, with four- and two-byte strides
+per element respectively; byte count is bytes. These functions are implemented
+in `NSDirectBitmap.m`, adjacent to the first `NSDirectBitmap` methods in the
+reference text. `CopySrcToDst` copies the smaller of the source and destination
+row spans for each row; its two callers are in `NSDirectScreen` and
+`NSFramebuffer`, and the function is adjacent to the `NSFramebuffer`
+implementation, so it is implemented in `NSFramebuffer.m`. This is a static
+source-ownership inference. Test coverage exists for strides and row padding,
+but runtime execution remains pending.

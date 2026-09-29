@@ -4,7 +4,7 @@
     DOCICONFILES = ();
     DYNAMIC_CODE_GEN = YES;
     FILESTABLE = {
-        CLASSES = (NSSimpleBitmap.m, NSFramework_Interceptor.m, NSShape.m);
+        CLASSES = (NSSimpleBitmap.m, NSFramework_Interceptor.m, NSShape.m, NSDirectBitmap.m, NSFramebuffer.m);
         C_FILES = ();
         FRAMEWORKS = (AppKit.framework, Foundation.framework);
         FRAMEWORKSEARCH = ("$(SYMROOT)");
@@ -17,7 +17,7 @@
             NSBitmap.h, NSDirectBitmap.h, NSDirectPalette.h,
             NSDirectScreen.h, NSFramebuffer.h, NSShape.h,
             Private/NSInterceptedRect.h, Private/NSInterceptorClient.h,
-            Private/InterceptorPrivate.h
+            Private/InterceptorPrivate.h, Private/InterceptorCopy.h
         );
         M_FILES = ();
         OTHER_LIBS = ("/usr/lib/libDriver.A.dylib");

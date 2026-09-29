@@ -2,8 +2,8 @@
 NAME = Interceptor
 PROJECTVERSION = 1.0
 PROJECT_TYPE = Framework
-CLASSES = NSSimpleBitmap.m NSFramework_Interceptor.m NSShape.m
-HFILES = Interceptor.h Interceptor_types.h InterceptorGlobals.h NSBitmap.h NSDirectBitmap.h NSDirectPalette.h NSDirectScreen.h NSFramebuffer.h NSShape.h Private/NSInterceptedRect.h Private/NSInterceptorClient.h Private/InterceptorPrivate.h
+CLASSES = NSSimpleBitmap.m NSFramework_Interceptor.m NSShape.m NSDirectBitmap.m NSFramebuffer.m
+HFILES = Interceptor.h Interceptor_types.h InterceptorGlobals.h NSBitmap.h NSDirectBitmap.h NSDirectPalette.h NSDirectScreen.h NSFramebuffer.h NSShape.h Private/NSInterceptedRect.h Private/NSInterceptorClient.h Private/InterceptorPrivate.h Private/InterceptorCopy.h
 MFILES =
 CFILES =
 OTHERSRCS = Makefile Makefile.preamble Makefile.postamble PB.project

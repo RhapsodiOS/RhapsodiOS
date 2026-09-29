@@ -4,6 +4,6 @@ SYMROOT ?= $(CURDIR)/BUILD
 DSTROOT ?= $(CURDIR)/DSTROOT
 
 # Implemented test groups are added by their owning reconstruction tasks.
-.PHONY: abi bitmap shape ipc client framebuffer palette screen direct-bitmap integration
-abi bitmap shape ipc client framebuffer palette screen direct-bitmap integration:
+.PHONY: abi bitmap shape copy ipc client framebuffer palette screen direct-bitmap integration
+abi bitmap shape copy ipc client framebuffer palette screen direct-bitmap integration:
 	$(MAKE) -C tests $@ RC_ARCHS="$(RC_ARCHS)" OBJROOT="$(OBJROOT)" SYMROOT="$(SYMROOT)" DSTROOT="$(DSTROOT)" FRAMEWORK_ROOT="$(FRAMEWORK_ROOT)"

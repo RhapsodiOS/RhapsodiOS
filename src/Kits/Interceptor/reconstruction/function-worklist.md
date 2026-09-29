@@ -10,9 +10,9 @@ IDA function records: 392; symbol records: 540.
 |---:|---:|---|---|
 | `0x47A02464` | 48 | `dyld_stub_binding_helper` | unexamined |
 | `0x47A02494` | 32 | `__dyld_func_lookup` | unexamined |
-| `0x47A024B4` | 640 | `_CopyLong` | unexamined |
-| `0x47A02734` | 176 | `_CopyShort` | unexamined |
-| `0x47A027E4` | 188 | `_CopyByte` | unexamined |
+| `0x47A024B4` | 640 | `_CopyLong` | static-reviewed; runtime pending; `NSDirectBitmap.m` |
+| `0x47A02734` | 176 | `_CopyShort` | static-reviewed; runtime pending; `NSDirectBitmap.m` |
+| `0x47A027E4` | 188 | `_CopyByte` | static-reviewed; runtime pending; `NSDirectBitmap.m` |
 | `0x47A028A0` | 64 | `+[NSDirectBitmap minDepthForGray:andColor:]` | unexamined |
 | `0x47A028E0` | 16 | `-[NSDirectBitmap bitsPerPixel]` | unexamined |
 | `0x47A028F0` | 16 | `-[NSDirectBitmap bitsPerSample]` | unexamined |
@@ -158,7 +158,7 @@ IDA function records: 392; symbol records: 540.
 | `0x47A09F94` | 312 | `-[NSDirectScreen _loadPalette:]` | unexamined |
 | `0x47A0A0CC` | 380 | `-[NSDirectScreen _createBackingStore]` | unexamined |
 | `0x47A0A248` | 100 | `-[NSDirectScreen _destroyBackingStore]` | unexamined |
-| `0x47A0A2AC` | 504 | `_CopySrcToDst` | unexamined |
+| `0x47A0A2AC` | 504 | `_CopySrcToDst` | static-reviewed; runtime pending; `NSFramebuffer.m` |
 | `0x47A0A4A4` | 52 | `-[NSDirectScreen(Obsolete) colorSpace]` | unexamined |
 | `0x47A0A4D8` | 52 | `-[NSDirectScreen(Obsolete) data]` | unexamined |
 | `0x47A0A50C` | 176 | `_setInstanceForScreen` | unexamined |
@@ -648,9 +648,9 @@ IDA function records: 419; symbol records: 629.
 |---:|---:|---|---|
 | `0x47A00CBC` | 20 | `dyld_stub_binding_helper` | unexamined |
 | `0x47A00CD0` | 14 | `__dyld_func_lookup` | unexamined |
-| `0x47A00CE0` | 543 | `_CopyLong` | unexamined |
-| `0x47A00F00` | 602 | `_CopyShort` | unexamined |
-| `0x47A0115C` | 132 | `_CopyByte` | unexamined |
+| `0x47A00CE0` | 543 | `_CopyLong` | static-reviewed; runtime pending; `NSDirectBitmap.m` |
+| `0x47A00F00` | 602 | `_CopyShort` | static-reviewed; runtime pending; `NSDirectBitmap.m` |
+| `0x47A0115C` | 132 | `_CopyByte` | static-reviewed; runtime pending; `NSDirectBitmap.m` |
 | `0x47A011E0` | 34 | `+[NSDirectBitmap minDepthForGray:andColor:]` | unexamined |
 | `0x47A01204` | 13 | `-[NSDirectBitmap bitsPerPixel]` | unexamined |
 | `0x47A01214` | 13 | `-[NSDirectBitmap bitsPerSample]` | unexamined |
@@ -794,7 +794,7 @@ IDA function records: 419; symbol records: 629.
 | `0x47A07C30` | 264 | `-[NSDirectScreen _loadPalette:]` | unexamined |
 | `0x47A07D38` | 266 | `-[NSDirectScreen _createBackingStore]` | unexamined |
 | `0x47A07E44` | 52 | `-[NSDirectScreen _destroyBackingStore]` | unexamined |
-| `0x47A07E78` | 261 | `_CopySrcToDst` | unexamined |
+| `0x47A07E78` | 261 | `_CopySrcToDst` | static-reviewed; runtime pending; `NSFramebuffer.m` |
 | `0x47A07F80` | 29 | `-[NSDirectScreen(Obsolete) colorSpace]` | unexamined |
 | `0x47A07FA0` | 29 | `-[NSDirectScreen(Obsolete) data]` | unexamined |
 | `0x47A07FC0` | 125 | `_setInstanceForScreen` | unexamined |

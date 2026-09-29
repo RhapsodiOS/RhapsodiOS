@@ -14,5 +14,5 @@ rebuilt i386 execution is available on the current host.
 
 The i386 `-[NSShape description]` uses the same class/address header,
 tab-indented rectangle lines, and closing `);` as the PPC image. `NSShape.m`
-contains the shared implementation; runtime output comparison remains
-pending.
+contains the shared implementation. `-[NSShape dealloc]` frees the internal
+shape buffer before calling `super`. Runtime output comparison remains pending.

@@ -63,7 +63,7 @@ IDA function records: 392; symbol records: 540.
 | `0x47A04A28` | 132 | `-[NSDirectBitmap _isUnobscured]` | static-reviewed; source authored; runtime pending |
 | `0x47A04AAC` | 100 | `-[NSDirectBitmap _isTotallyObscured]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
 | `0x47A04B10` | 164 | `-[NSDirectBitmap _setViewClip:]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
-| `0x47A04BB4` | 16 | `-[NSDirectBitmap _viewClipShape:]` | unexamined |
+| `0x47A04BB4` | 16 | `-[NSDirectBitmap _viewClipShape:]` | static-reviewed; source authored; runtime pending; `ppc/direct-bitmap.md` |
 | `0x47A04BC4` | 136 | `-[NSDirectBitmap _setViewClipShape:]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
 | `0x47A04C4C` | 148 | `-[NSDirectBitmap areaWillMove:by:]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
 | `0x47A04CE0` | 232 | `-[NSDirectBitmap areaDidMove:by:]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
@@ -662,7 +662,7 @@ IDA function records: 419; symbol records: 629.
 | `0x47A012FC` | 84 | `-[NSDirectBitmap _dataBuffer]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
 | `0x47A01350` | 118 | `-[NSDirectBitmap bitmapData]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
 | `0x47A013C8` | 560 | `-[NSDirectBitmap _flushInShape:]` | static-reviewed; source authored; runtime pending |
-| `0x47A015F8` | 80 | `-[NSDirectBitmap flush]` | unexamined |
+| `0x47A015F8` | 80 | `-[NSDirectBitmap flush]` | static-reviewed; source authored; runtime pending; `i386/direct-bitmap.md` |
 | `0x47A01648` | 873 | `-[NSDirectBitmap flushIn:]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
 | `0x47A019B4` | 197 | `-[NSDirectBitmap dealloc]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
 | `0x47A01A7C` | 214 | `-[NSDirectBitmap getBitmapDataPlanes:]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
@@ -701,7 +701,7 @@ IDA function records: 419; symbol records: 629.
 | `0x47A02F5C` | 120 | `-[NSDirectBitmap _isUnobscured]` | static-reviewed; source authored; runtime pending |
 | `0x47A02FD4` | 78 | `-[NSDirectBitmap _isTotallyObscured]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
 | `0x47A03024` | 123 | `-[NSDirectBitmap _setViewClip:]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
-| `0x47A030A0` | 16 | `-[NSDirectBitmap _viewClipShape:]` | unexamined |
+| `0x47A030A0` | 16 | `-[NSDirectBitmap _viewClipShape:]` | static-reviewed; source authored; runtime pending; `i386/direct-bitmap.md` |
 | `0x47A030B0` | 105 | `-[NSDirectBitmap _setViewClipShape:]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
 | `0x47A0311C` | 123 | `-[NSDirectBitmap areaWillMove:by:]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
 | `0x47A03198` | 217 | `-[NSDirectBitmap areaDidMove:by:]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
@@ -844,15 +844,15 @@ IDA function records: 419; symbol records: 629.
 | `0x47A08E9C` | 13 | `-[NSInterceptedRect framebuffer]` | static-reviewed; source authored; runtime pending; `i386/rect-state.md` |
 | `0x47A08EAC` | 1433 | `-[NSInterceptedRect _handleMsg:withReply:]` | static-reviewed; source authored; runtime pending; `i386/rect-state.md` |
 | `0x47A09448` | 165 | `+[NSInterceptorClient initialize]` | static-reviewed; source authored; runtime pending; `i386/client-state.md` |
-| `0x47A094F0` | 273 | `-[NSInterceptorClient init]` | unexamined |
+| `0x47A094F0` | 273 | `-[NSInterceptorClient init]` | static-reviewed; source authored; runtime pending; `i386/client-state.md` |
 | `0x47A09604` | 418 | `-[NSInterceptorClient dealloc]` | static-reviewed; source authored; runtime pending; `i386/client-state.md` |
-| `0x47A097A8` | 86 | `-[NSInterceptorClient setHandlingThread:]` | unexamined |
-| `0x47A09800` | 38 | `-[NSInterceptorClient handlingThread]` | unexamined |
-| `0x47A09828` | 291 | `-[NSInterceptorClient interceptorPort]` | unexamined |
-| `0x47A0994C` | 251 | `-[NSInterceptorClient handleInterceptorMessage:withReply:]` | unexamined |
-| `0x47A09A48` | 449 | `-[NSInterceptorClient _addInterceptedRect:returnedScreenRect:returnedFlags:]` | unexamined |
-| `0x47A09C0C` | 135 | `-[NSInterceptorClient _removeInterceptedRect:]` | unexamined |
-| `0x47A09C94` | 13 | `-[NSInterceptorClient _context]` | unexamined |
+| `0x47A097A8` | 86 | `-[NSInterceptorClient setHandlingThread:]` | static-reviewed; source authored; runtime pending; `i386/client-state.md` |
+| `0x47A09800` | 38 | `-[NSInterceptorClient handlingThread]` | static-reviewed; source authored; runtime pending; `i386/client-state.md` |
+| `0x47A09828` | 291 | `-[NSInterceptorClient interceptorPort]` | static-reviewed; source authored; runtime pending; `i386/client-state.md` |
+| `0x47A0994C` | 251 | `-[NSInterceptorClient handleInterceptorMessage:withReply:]` | static-reviewed; source authored; runtime pending; `i386/client-state.md` |
+| `0x47A09A48` | 449 | `-[NSInterceptorClient _addInterceptedRect:returnedScreenRect:returnedFlags:]` | static-reviewed; source authored; runtime pending; `i386/client-state.md` |
+| `0x47A09C0C` | 135 | `-[NSInterceptorClient _removeInterceptedRect:]` | static-reviewed; source authored; runtime pending; `i386/client-state.md` |
+| `0x47A09C94` | 13 | `-[NSInterceptorClient _context]` | static-reviewed; source authored; runtime pending; `i386/client-state.md` |
 | `0x47A09CA4` | 65 | `-[NSInterceptorClient windowServerPortDeath:]` | static-reviewed; source authored; runtime pending; `i386/client-state.md` |
 | `0x47A09CE8` | 642 | `-[NSInterceptorClient _notifyHandler]` | static-reviewed; source authored; runtime pending; `i386/client-state.md` |
 | `0x47A09F6C` | 366 | `-[NSInterceptorClient startHandlingThread]` | static-reviewed; source authored; runtime pending; `i386/client-state.md` |
@@ -874,7 +874,7 @@ IDA function records: 419; symbol records: 629.
 | `0x47A0AC1C` | 128 | `-[NSShape copyWithZone:]` | static-reviewed; runtime pending |
 | `0x47A0AC9C` | 78 | `-[NSShape offsetShape:]` | static-reviewed; runtime pending |
 | `0x47A0ACEC` | 81 | `-[NSShape rectEnumerator]` | static-reviewed; runtime pending |
-| `0x47A0AD40` | 65 | `-[NSShape dealloc]` | unexamined |
+| `0x47A0AD40` | 65 | `-[NSShape dealloc]` | static-reviewed; source authored; runtime pending; `i386/shape.md` |
 | `0x47A0AD84` | 304 | `-[NSShape description]` | static-reviewed; source authored; runtime pending |
 | `0x47A0AEB4` | 66 | `-[_NSShapeEnumerator initForShapeImpl:]` | static-reviewed; runtime pending |
 | `0x47A0AEF8` | 191 | `-[_NSShapeEnumerator nextRect]` | static-reviewed; runtime pending |
@@ -1259,15 +1259,15 @@ Named Objective-C symbols (candidate module by class name; verify in module meta
 | `0x47A08E9C` | `-[NSInterceptedRect framebuffer]` | `NSInterceptedRect.m` | static-reviewed; source authored; runtime pending; `i386/rect-state.md` |
 | `0x47A08EAC` | `-[NSInterceptedRect _handleMsg:withReply:]` | `NSInterceptedRect.m` | static-reviewed; source authored; runtime pending |
 | `0x47A09448` | `+[NSInterceptorClient initialize]` | `NSInterceptorClient.m` | static-reviewed; source authored; runtime pending; `i386/client-state.md` |
-| `0x47A094F0` | `-[NSInterceptorClient init]` | `NSInterceptorClient.m` | unexamined |
+| `0x47A094F0` | `-[NSInterceptorClient init]` | `NSInterceptorClient.m` | static-reviewed; source authored; runtime pending; `i386/client-state.md` |
 | `0x47A09604` | `-[NSInterceptorClient dealloc]` | `NSInterceptorClient.m` | static-reviewed; source authored; runtime pending; `i386/client-state.md` |
-| `0x47A097A8` | `-[NSInterceptorClient setHandlingThread:]` | `NSInterceptorClient.m` | unexamined |
-| `0x47A09800` | `-[NSInterceptorClient handlingThread]` | `NSInterceptorClient.m` | unexamined |
-| `0x47A09828` | `-[NSInterceptorClient interceptorPort]` | `NSInterceptorClient.m` | unexamined |
-| `0x47A0994C` | `-[NSInterceptorClient handleInterceptorMessage:withReply:]` | `NSInterceptorClient.m` | unexamined |
-| `0x47A09A48` | `-[NSInterceptorClient _addInterceptedRect:returnedScreenRect:returnedFlags:]` | `NSInterceptorClient.m` | unexamined |
-| `0x47A09C0C` | `-[NSInterceptorClient _removeInterceptedRect:]` | `NSInterceptorClient.m` | unexamined |
-| `0x47A09C94` | `-[NSInterceptorClient _context]` | `NSInterceptorClient.m` | unexamined |
+| `0x47A097A8` | `-[NSInterceptorClient setHandlingThread:]` | `NSInterceptorClient.m` | static-reviewed; source authored; runtime pending; `i386/client-state.md` |
+| `0x47A09800` | `-[NSInterceptorClient handlingThread]` | `NSInterceptorClient.m` | static-reviewed; source authored; runtime pending; `i386/client-state.md` |
+| `0x47A09828` | `-[NSInterceptorClient interceptorPort]` | `NSInterceptorClient.m` | static-reviewed; source authored; runtime pending; `i386/client-state.md` |
+| `0x47A0994C` | `-[NSInterceptorClient handleInterceptorMessage:withReply:]` | `NSInterceptorClient.m` | static-reviewed; source authored; runtime pending; `i386/client-state.md` |
+| `0x47A09A48` | `-[NSInterceptorClient _addInterceptedRect:returnedScreenRect:returnedFlags:]` | `NSInterceptorClient.m` | static-reviewed; source authored; runtime pending; `i386/client-state.md` |
+| `0x47A09C0C` | `-[NSInterceptorClient _removeInterceptedRect:]` | `NSInterceptorClient.m` | static-reviewed; source authored; runtime pending; `i386/client-state.md` |
+| `0x47A09C94` | `-[NSInterceptorClient _context]` | `NSInterceptorClient.m` | static-reviewed; source authored; runtime pending; `i386/client-state.md` |
 | `0x47A09CA4` | `-[NSInterceptorClient windowServerPortDeath:]` | `NSInterceptorClient.m` | static-reviewed; source authored; runtime pending; `i386/client-state.md` |
 | `0x47A09CE8` | `-[NSInterceptorClient _notifyHandler]` | `NSInterceptorClient.m` | static-reviewed; source authored; runtime pending; `i386/client-state.md` |
 | `0x47A09F6C` | `-[NSInterceptorClient startHandlingThread]` | `NSInterceptorClient.m` | static-reviewed; source authored; runtime pending; `i386/client-state.md` |
@@ -1281,7 +1281,7 @@ Named Objective-C symbols (candidate module by class name; verify in module meta
 | `0x47A0AC1C` | `-[NSShape copyWithZone:]` | `NSShape.m` | static-reviewed; runtime pending |
 | `0x47A0AC9C` | `-[NSShape offsetShape:]` | `NSShape.m` | static-reviewed; runtime pending |
 | `0x47A0ACEC` | `-[NSShape rectEnumerator]` | `NSShape.m` | static-reviewed; runtime pending |
-| `0x47A0AD40` | `-[NSShape dealloc]` | `NSShape.m` | unexamined |
+| `0x47A0AD40` | `-[NSShape dealloc]` | `NSShape.m` | static-reviewed; source authored; runtime pending; `i386/shape.md` |
 | `0x47A0AD84` | `-[NSShape description]` | `NSShape.m` | static-reviewed; source authored; runtime pending |
 | `0x47A0AEB4` | `-[_NSShapeEnumerator initForShapeImpl:]` | `NSShape.m` | static-reviewed; runtime pending |
 | `0x47A0AEF8` | `-[_NSShapeEnumerator nextRect]` | `NSShape.m` | static-reviewed; runtime pending |

@@ -16,6 +16,15 @@ worker also observes `NSPortDidBecomeInvalidNotification` for the Window
 Server port and publishes `NTWindowServerDeathNotification` through the
 client callback.
 
+The client initializes its context, condition lock, port lock, and rectangle
+array only after context creation succeeds. `interceptorPort` allocates one
+notification port per client, prefers thread special port 3, falls back to
+task special port 3, and installs the notification and exception ports with
+`_InterceptorSetNotifyPort`. Rectangle registration adds the object to the
+client list before its RPC and removes it again on failure; removal reaches the
+server first. `handlingThread` returns a per-client override when present, or
+the shared notifier thread otherwise.
+
 The context helpers are local code in the reference image. `getPSPort` first
 looks up `WindowServer` through the task bootstrap port when both name
 arguments are null. If that path fails, it resolves the historical

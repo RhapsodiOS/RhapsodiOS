@@ -459,6 +459,20 @@ typedef void (*NSBitmapCopyFunction)(const void *, int, void *, int, int, int);
     return 0;
 }
 
+- (NSPoint)_screenBoundsOrigin
+{
+    if (self->isLocked == YES && self->interceptRect != nil) {
+        NSRect screenRect = [self->interceptRect currentScreenRect];
+        return screenRect.origin;
+    }
+    return NSZeroPoint;
+}
+
+- (NSDirectPalette *)currentPalette
+{
+    return [NSDirectPalette currentPalette];
+}
+
 - (id)_updateBuffer
 {
     NSRect screenRect = [self->interceptRect currentScreenRect];

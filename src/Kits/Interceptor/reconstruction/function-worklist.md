@@ -53,13 +53,13 @@ IDA function records: 392; symbol records: 540.
 | `0x47A04310` | 976 | `-[NSDirectBitmap _updateForRect:inWinNum:onScreen:]` | static-reviewed; source authored; runtime pending |
 | `0x47A046E0` | 248 | `-[NSDirectBitmap updateForRect:inWindow:]` | static-reviewed; source authored; runtime pending |
 | `0x47A047D8` | 172 | `-[NSDirectBitmap updateState]` | static-reviewed; source authored; runtime pending |
-| `0x47A04884` | 60 | `-[NSDirectBitmap hideCursor]` | unexamined |
-| `0x47A048C0` | 60 | `-[NSDirectBitmap showCursor]` | unexamined |
-| `0x47A048FC` | 60 | `-[NSDirectBitmap currentPalette]` | unexamined |
+| `0x47A04884` | 60 | `-[NSDirectBitmap hideCursor]` | static-reviewed; source authored; runtime pending |
+| `0x47A048C0` | 60 | `-[NSDirectBitmap showCursor]` | static-reviewed; source authored; runtime pending |
+| `0x47A048FC` | 60 | `-[NSDirectBitmap currentPalette]` | static-reviewed; source authored; runtime pending |
 | `0x47A04938` | 84 | `-[NSDirectBitmap _setDelegate:]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
 | `0x47A0498C` | 16 | `-[NSDirectBitmap _framebuffer]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
 | `0x47A0499C` | 20 | `-[NSDirectBitmap _setFlushOnExposure:]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
-| `0x47A049B0` | 120 | `-[NSDirectBitmap _screenBoundsOrigin]` | unexamined |
+| `0x47A049B0` | 120 | `-[NSDirectBitmap _screenBoundsOrigin]` | static-reviewed; source authored; runtime pending |
 | `0x47A04A28` | 132 | `-[NSDirectBitmap _isUnobscured]` | static-reviewed; source authored; runtime pending |
 | `0x47A04AAC` | 100 | `-[NSDirectBitmap _isTotallyObscured]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
 | `0x47A04B10` | 164 | `-[NSDirectBitmap _setViewClip:]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
@@ -445,13 +445,13 @@ Named Objective-C symbols (candidate module by class name; verify in module meta
 | `0x47A04310` | `-[NSDirectBitmap _updateForRect:inWinNum:onScreen:]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A046E0` | `-[NSDirectBitmap updateForRect:inWindow:]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A047D8` | `-[NSDirectBitmap updateState]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
-| `0x47A04884` | `-[NSDirectBitmap hideCursor]` | `NSDirectBitmap.m` | unexamined |
-| `0x47A048C0` | `-[NSDirectBitmap showCursor]` | `NSDirectBitmap.m` | unexamined |
-| `0x47A048FC` | `-[NSDirectBitmap currentPalette]` | `NSDirectBitmap.m` | unexamined |
+| `0x47A04884` | `-[NSDirectBitmap hideCursor]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
+| `0x47A048C0` | `-[NSDirectBitmap showCursor]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
+| `0x47A048FC` | `-[NSDirectBitmap currentPalette]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A04938` | `-[NSDirectBitmap _setDelegate:]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A0498C` | `-[NSDirectBitmap _framebuffer]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A0499C` | `-[NSDirectBitmap _setFlushOnExposure:]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
-| `0x47A049B0` | `-[NSDirectBitmap _screenBoundsOrigin]` | `NSDirectBitmap.m` | unexamined |
+| `0x47A049B0` | `-[NSDirectBitmap _screenBoundsOrigin]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A04A28` | `-[NSDirectBitmap _isUnobscured]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A04AAC` | `-[NSDirectBitmap _isTotallyObscured]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A04B10` | `-[NSDirectBitmap _setViewClip:]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
@@ -691,13 +691,13 @@ IDA function records: 419; symbol records: 629.
 | `0x47A028C8` | 948 | `-[NSDirectBitmap _updateForRect:inWinNum:onScreen:]` | static-reviewed; source authored; runtime pending |
 | `0x47A02C7C` | 239 | `-[NSDirectBitmap updateForRect:inWindow:]` | static-reviewed; source authored; runtime pending |
 | `0x47A02D6C` | 181 | `-[NSDirectBitmap updateState]` | static-reviewed; source authored; runtime pending |
-| `0x47A02E24` | 41 | `-[NSDirectBitmap hideCursor]` | unexamined |
-| `0x47A02E50` | 41 | `-[NSDirectBitmap showCursor]` | unexamined |
-| `0x47A02E7C` | 34 | `-[NSDirectBitmap currentPalette]` | unexamined |
+| `0x47A02E24` | 41 | `-[NSDirectBitmap hideCursor]` | static-reviewed; source authored; runtime pending |
+| `0x47A02E50` | 41 | `-[NSDirectBitmap showCursor]` | static-reviewed; source authored; runtime pending |
+| `0x47A02E7C` | 34 | `-[NSDirectBitmap currentPalette]` | static-reviewed; source authored; runtime pending |
 | `0x47A02EA0` | 68 | `-[NSDirectBitmap _setDelegate:]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
 | `0x47A02EE4` | 13 | `-[NSDirectBitmap _framebuffer]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
 | `0x47A02EF4` | 20 | `-[NSDirectBitmap _setFlushOnExposure:]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
-| `0x47A02F08` | 81 | `-[NSDirectBitmap _screenBoundsOrigin]` | unexamined |
+| `0x47A02F08` | 81 | `-[NSDirectBitmap _screenBoundsOrigin]` | static-reviewed; source authored; runtime pending |
 | `0x47A02F5C` | 120 | `-[NSDirectBitmap _isUnobscured]` | static-reviewed; source authored; runtime pending |
 | `0x47A02FD4` | 78 | `-[NSDirectBitmap _isTotallyObscured]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
 | `0x47A03024` | 123 | `-[NSDirectBitmap _setViewClip:]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
@@ -1110,13 +1110,13 @@ Named Objective-C symbols (candidate module by class name; verify in module meta
 | `0x47A028C8` | `-[NSDirectBitmap _updateForRect:inWinNum:onScreen:]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A02C7C` | `-[NSDirectBitmap updateForRect:inWindow:]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A02D6C` | `-[NSDirectBitmap updateState]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
-| `0x47A02E24` | `-[NSDirectBitmap hideCursor]` | `NSDirectBitmap.m` | unexamined |
-| `0x47A02E50` | `-[NSDirectBitmap showCursor]` | `NSDirectBitmap.m` | unexamined |
-| `0x47A02E7C` | `-[NSDirectBitmap currentPalette]` | `NSDirectBitmap.m` | unexamined |
+| `0x47A02E24` | `-[NSDirectBitmap hideCursor]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
+| `0x47A02E50` | `-[NSDirectBitmap showCursor]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
+| `0x47A02E7C` | `-[NSDirectBitmap currentPalette]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A02EA0` | `-[NSDirectBitmap _setDelegate:]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A02EE4` | `-[NSDirectBitmap _framebuffer]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A02EF4` | `-[NSDirectBitmap _setFlushOnExposure:]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
-| `0x47A02F08` | `-[NSDirectBitmap _screenBoundsOrigin]` | `NSDirectBitmap.m` | unexamined |
+| `0x47A02F08` | `-[NSDirectBitmap _screenBoundsOrigin]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A02F5C` | `-[NSDirectBitmap _isUnobscured]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A02FD4` | `-[NSDirectBitmap _isTotallyObscured]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A03024` | `-[NSDirectBitmap _setViewClip:]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |

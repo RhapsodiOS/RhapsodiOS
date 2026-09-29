@@ -125,9 +125,11 @@ New modes in `vm/hfs_guest.py`, one boot each:
   `DoProbe` returns once it has the name, and a label equal to the volume name
   the host reads from the image.
 - **`newfs FLAVOUR`**: the host supplies a zeroed disk with the usual 512-byte
-  NeXT label. The guest runs `newfs_hfs -H -v NAME /dev/rhd1a` (HFS),
-  `newfs_hfs -v NAME /dev/rhd1a` (HFS Plus) or `newfs_hfs -b 8192 -v NAME
-  /dev/rhd1a` (8K HFS Plus). The host checker must find the volume consistent,
+  NeXT label. Since `newfs_hfs` requires an `_hfs_a` path, the guest links
+  `/dev/hd1_hfs_a` to the configured `/dev/hd1a` test block device, then runs
+  `newfs_hfs -H -v NAME /dev/hd1_hfs_a` (HFS),
+  `newfs_hfs -v NAME /dev/hd1_hfs_a` (HFS Plus) or
+  `newfs_hfs -b 8192 -v NAME /dev/hd1_hfs_a` (8K HFS Plus). The host checker must find the volume consistent,
   with the right name, type and block size and an empty root. In the same
   boot the guest mounts it and runs a fresh-volume write scenario: a folder,
   150 small files, a 20 MB file, and two files grown in turn so the kernel
@@ -144,5 +146,53 @@ fresh-volume expected tree.
   every name path `hfs.util` walks.
 - **`newfs_hfs` defaults.** Its HFS Plus default may create a wrapped volume.
   The newfs test records what it made rather than assuming.
-- **Device size.** `newfs_hfs` gets the size from the raw device (`/dev/rhd1a`);
+- **Device size.** `newfs_hfs` gets the size from the configured block device;
   with the 512-byte label the partition size is the label's.
+
+## Outcome
+
+Completed 2026-09-29 on branch `hfs-tools`.
+
+### Build results
+
+- **i386:** `newfs_hfs`, `hfs.util`, and `VDI-interface` all built. The packaged
+  tools are i486 Mach-O binaries and the `VDI-interface` library is i386.
+- **ppc:** cross-build unavailable. `driverTools-1` built, but `drvEIDE`
+  `installhdrs` failed because `lipo` had no inputs; `diskdev_cmds` then could
+  not resolve `drveide-hdrs`, so `hfs-1` could not build. The ppc toolchain
+  reported `javaconfig: Command not found` during the header build.
+- The i386 `VDI-interface` link initially failed on local text relocations in
+  `vdi_translation.o`. Adding `-read_only_relocs suppress` to the glue
+  preamble allowed the legacy library to link. `newfs_hfs.h` also needed
+  guarded `FALSE` and `TRUE` definitions because the i386 SDK already defines
+  them.
+
+### Guest results
+
+- `newfs-hfs`: **PASS**, HFS, 4096-byte allocation blocks, no wrapper.
+- `newfs-hfsplus`: **PASS**, HFS Plus, 4096-byte allocation blocks, no wrapper.
+- `newfs-hfsplus8k`: **PASS**, HFS Plus, 8192-byte allocation blocks, no wrapper.
+- `newfs-hfsplus512`: **PASS**, HFS Plus, 512-byte allocation blocks, no wrapper.
+- Cold `freshread` of each of those four volumes: **PASS**.
+- `newfs-hfs` on the 2 GB blank disk: **PASS**, HFS, 32,256-byte allocation
+  blocks, no wrapper. Its catalog has 2016 512-byte nodes; the header map
+  holds 2160, so this run did not exercise `WriteMapNodes`.
+- `hfs.util -p` on host-built HFS, HFS Plus, wrapped HFS Plus, 8K HFS Plus,
+  “Café Test”, and the Apple toast image: **PASS** for each.
+- `hfs.util -p` on all four `newfs_hfs` volumes: **PASS** for each.
+- `hfs.util -p` on a blank disk: **PASS**; returned unrecognized and wrote no
+  label.
+- Catalog overflow extents in `hfs.util` remain **untested**; no test image
+  exercises that path.
+
+The 512-byte allocation-block run exposed an undersized allocation bitmap in
+`InitVolumeHeader`: one 512-byte bitmap block was allocated for a 10,206-byte
+bitmap. `patch_newfs.py` now sizes the bitmap from the total allocation-block
+count and records its exact logical size. The tool was rebuilt; the corrected
+512-byte format, host check, guest fill, cold reread, and probe all passed.
+The formatter harness also creates the expected `_hfs_a` device name as a
+symlink to the configured test block device, because this minimal guest does
+not register that alias for the NeXT-labelled test disk.
+
+The final host regression passed: **60 tests passed** in
+`tools/tests`, `tools/hfsimg/tests`, and `vm/test_hfs_guest.py`.

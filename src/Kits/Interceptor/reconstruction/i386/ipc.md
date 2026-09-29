@@ -18,6 +18,7 @@ contract:
 | `_InterceptorMapFrameBuffer` | `0x47A0B9B8` | `7198` | 48 | `7298` | 32-error / 48-success |
 | `_InterceptorUnmapFrameBuffer` | `0x47A0CC44` | `7219` | 40 | `7319` | 32-error / 40-success |
 | `_InterceptorFrameBufferInfo` | `0x47A0BD6C` | `7201` | 272 | `7301` | 32-byte error / 272-byte success |
+| `_InterceptorGetDeviceAccessTokens` | `0x47A0CAE4` | `7217` | 64-byte send buffer (`msg_size` 32) | `7317` | 32-byte error / 64-byte success |
 | `_InterceptorGetBM34ToBM35Table` | `0x47A0BAB8` | `7199` | 56 | `7299` | 32-byte error / 56-byte success |
 | `_InterceptorGetBM35ToBM34Table` | `0x47A0C3A8` | `7206` | 56 | `7306` | 32-byte error / 56-byte success |
 | `_InterceptorGetBM256ToBM38Table` | `0x47A0C72C` | `7210` | 48 | `7310` | 32-byte error / 48-byte success |
@@ -38,3 +39,9 @@ The 16-bit conversion tables use out-of-line long-form descriptors with counts
 4096 and 32768. The byte-table RPCs use the observed short descriptors
 `0x01002002` and `0x04000808`; source validates the returned descriptor before
 exposing the server-owned table address.
+
+The access-token reply carries a MIG status pair and an operation result pair,
+followed by port, integer, and port descriptor/value pairs, returning the
+master port, IO object number, and device port. The wrapper is at
+`0x47A0B75C`; both PPC and i386 independently
+confirm request/reply IDs `7217`/`7317` and the same output order.

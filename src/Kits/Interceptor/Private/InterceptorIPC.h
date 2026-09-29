@@ -56,6 +56,12 @@ int InterceptorFrameBufferInfo(InterceptorClientContext *context,
                                int *bitsPerPixel, int *bytesPerRow,
                                int *colorSpaceCode, char *pixelEncoding,
                                int *reserved);
+int _InterceptorGetDeviceAccessTokens(port_t contextPort, port_t replyPort,
+                                      int screenNumber, port_t *masterPort,
+                                      int *ioObjectNumber, port_t *devicePort);
+int InterceptorGetDeviceAccessTokens(InterceptorClientContext *context,
+                                     int screenNumber, port_t *masterPort,
+                                     int *ioObjectNumber, port_t *devicePort);
 
 int _InterceptorGetBM34ToBM35Table(port_t contextPort, port_t replyPort,
                                    void **table);

@@ -16,6 +16,7 @@ see `../i386/ipc.md`.
 | `_InterceptorMapFrameBuffer` | `7198` | 48 bytes | `7298` | 32-byte error / 48-byte success |
 | `_InterceptorUnmapFrameBuffer` | `7219` | 40 bytes | `7319` | 32-byte error / 40-byte success |
 | `_InterceptorFrameBufferInfo` | `7201` | 272 bytes | `7301` | 32-byte error / 272-byte success |
+| `_InterceptorGetDeviceAccessTokens` | `7217` | 64-byte send buffer (`msg_size` 32) | `7317` | 32-byte error / 64-byte success |
 | `_InterceptorGetBM34ToBM35Table` | `7199` | 56 bytes | `7299` | 32-byte error / 56-byte success |
 | `_InterceptorGetBM35ToBM34Table` | `7206` | 56 bytes | `7306` | 32-byte error / 56-byte success |
 | `_InterceptorGetBM256ToBM38Table` | `7210` | 48 bytes | `7310` | 32-byte error / 48-byte success |
@@ -37,6 +38,14 @@ and contains the screen integer descriptor and screen number. Its successful
 a 64-byte pixel encoding, and one additional integer. The source validates the
 long-form string descriptors and each integer descriptor before copying their
 corresponding outputs.
+
+`_InterceptorGetDeviceAccessTokens` sends an integer descriptor and screen
+number. Its 64-byte success reply contains a MIG status pair and an operation
+result pair, then port, integer, and port descriptor/value pairs; these return
+the master port, IO object number, and device port. PPC and DR2 i386 use the same request/reply IDs
+and field order with their native integer (`0x02200018` / `0x10012002`) and
+port (`0x06200018` / `0x10012006`) descriptor words. A nonzero screen may also
+receive the standard 32-byte MIG error reply.
 
 The table RPCs return server-owned out-of-line arrays. The two 16-bit table
 messages carry long-form descriptors (4096 and 32768 entries); the byte-table

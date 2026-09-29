@@ -282,7 +282,7 @@ IDA function records: 392; symbol records: 540.
 | `0x47A0E7CC` | 36 | `_InterceptorFlushDirtyRects` | unexamined |
 | `0x47A0E7F0` | 36 | `_InterceptorRepairPalette` | unexamined |
 | `0x47A0E814` | 36 | `_InterceptorDamagedPalette` | unexamined |
-| `0x47A0E838` | 72 | `_InterceptorGetDeviceAccessTokens` | unexamined |
+| `0x47A0E838` | 72 | `_InterceptorGetDeviceAccessTokens` | PPC static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
 | `0x47A0E880` | 332 | `__InterceptorEnableFrameBufferMapping` | unexamined |
 | `0x47A0E9CC` | 332 | `__InterceptorDisableFrameBufferMapping` | unexamined |
 | `0x47A0EB18` | 336 | `__InterceptorMapFrameBuffer` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
@@ -304,7 +304,7 @@ IDA function records: 392; symbol records: 540.
 | `0x47A0FFFC` | 128 | `__InterceptorFlushDirtyRects` | unexamined |
 | `0x47A1007C` | 96 | `__InterceptorRepairPalette` | unexamined |
 | `0x47A100DC` | 96 | `__InterceptorDamagedPalette` | unexamined |
-| `0x47A1013C` | 384 | `__InterceptorGetDeviceAccessTokens` | unexamined |
+| `0x47A1013C` | 384 | `__InterceptorGetDeviceAccessTokens` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
 | `0x47A102BC` | 96 | `__InterceptorShowCursorAsync` | PPC/i386 static-reviewed; source authored; runtime pending |
 | `0x47A1031C` | 316 | `__InterceptorUnmapFrameBuffer` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
 | `0x47A112EC` | 36 | `_NSEqualSizes` | unexamined |
@@ -918,7 +918,7 @@ IDA function records: 419; symbol records: 629.
 | `0x47A0B71C` | 22 | `_InterceptorFlushDirtyRects` | unexamined |
 | `0x47A0B734` | 18 | `_InterceptorRepairPalette` | unexamined |
 | `0x47A0B748` | 18 | `_InterceptorDamagedPalette` | unexamined |
-| `0x47A0B75C` | 38 | `_InterceptorGetDeviceAccessTokens` | unexamined |
+| `0x47A0B75C` | 38 | `_InterceptorGetDeviceAccessTokens` | i386 static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
 | `0x47A0B784` | 11 | `_ev_lock` | unexamined |
 | `0x47A0B78F` | 15 | `_spin` | unexamined |
 | `0x47A0B7A0` | 14 | `_ev_unlock` | unexamined |
@@ -944,7 +944,7 @@ IDA function records: 419; symbol records: 629.
 | `0x47A0C9EC` | 95 | `__InterceptorFlushDirtyRects` | unexamined |
 | `0x47A0CA4C` | 74 | `__InterceptorRepairPalette` | unexamined |
 | `0x47A0CA98` | 74 | `__InterceptorDamagedPalette` | unexamined |
-| `0x47A0CAE4` | 275 | `__InterceptorGetDeviceAccessTokens` | unexamined |
+| `0x47A0CAE4` | 275 | `__InterceptorGetDeviceAccessTokens` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
 | `0x47A0CBF8` | 74 | `__InterceptorShowCursorAsync` | unexamined |
 | `0x47A0CC44` | 249 | `__InterceptorUnmapFrameBuffer` | static-reviewed; source authored; runtime pending; `InterceptorIPC.c` |
 | `0x47A0CD40` | 362 | `__IOLookupByObjectNumber` | unexamined |

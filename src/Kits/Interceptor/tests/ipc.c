@@ -10,6 +10,7 @@
 enum { TestAddRect, TestRemoveRect, TestSetNotifyPort,
        TestScreenCount, TestHideCursor, TestShowCursor,
        TestMapFrameBuffer, TestUnmapFrameBuffer, TestFrameBufferInfo,
+       TestAccessTokens,
        TestBM34ToBM35, TestBM35ToBM34, TestBM256ToBM38, TestBM38ToBM256,
        TestCompositeBits };
 enum { TestSuccessReply, TestErrorReply, TestWrongReplyID, TestShortReply, TestSendFailure };
@@ -28,6 +29,9 @@ static int expectedOperationResult;
 static int expectedScreenNumber;
 static port_t expectedTaskPort;
 static unsigned int expectedAddress;
+static port_t expectedMasterPort;
+static int expectedIOObjectNumber;
+static port_t expectedDevicePort;
 static char expectedDriver[80];
 static char expectedPixelEncoding[64];
 static int expectedFrameBufferFields[8];
@@ -155,6 +159,15 @@ int InterceptorTestMsgRPC(msg_header_t *header, int option, int sendSize,
                   "FrameBufferInfo sends the screen number");
         replyID = 7301;
         successSize = 272;
+    } else if (expectedOperation == TestAccessTokens) {
+        TestCheck(sendSize == 64 && header->msg_size == 32 &&
+                  header->msg_simple == 1 && header->msg_id == 7217,
+                  "GetDeviceAccessTokens request ID and message sizes");
+        TestCheck(words[0] == EXPECTED_INTEGER_TYPE &&
+                  words[1] == expectedScreenNumber,
+                  "GetDeviceAccessTokens sends the screen number");
+        replyID = 7317;
+        successSize = 64;
     } else if (expectedOperation == TestCompositeBits) {
         msg_type_long_t descriptor;
         int expectedByteCount = expectedCompositeFields[5] *
@@ -226,7 +239,10 @@ int InterceptorTestMsgRPC(msg_header_t *header, int option, int sendSize,
         expectedOperation == TestBM34ToBM35 ||
         expectedOperation == TestBM35ToBM34 ||
         expectedOperation == TestBM256ToBM38 ||
-        expectedOperation == TestBM38ToBM256 ? 0 : 1;
+        expectedOperation == TestBM38ToBM256 ||
+        (expectedOperation == TestAccessTokens &&
+         expectedReply != TestErrorReply &&
+         expectedReply != TestShortReply) ? 0 : 1;
     header->msg_type = 0x100;
     header->msg_id = expectedReply == TestWrongReplyID ? replyID + 1 : replyID;
     if (expectedReply == TestShortReply) {
@@ -270,6 +286,15 @@ int InterceptorTestMsgRPC(msg_header_t *header, int option, int sendSize,
                sizeof(expectedPixelEncoding));
         words[60] = EXPECTED_INTEGER_TYPE;
         words[61] = expectedFrameBufferFields[7];
+    } else if (expectedOperation == TestAccessTokens) {
+        words[2] = EXPECTED_INTEGER_TYPE;
+        words[3] = expectedOperationResult;
+        words[4] = EXPECTED_PORT_TYPE;
+        words[5] = (int)expectedMasterPort;
+        words[6] = EXPECTED_INTEGER_TYPE;
+        words[7] = expectedIOObjectNumber;
+        words[8] = EXPECTED_PORT_TYPE;
+        words[9] = (int)expectedDevicePort;
     } else if (expectedOperation == TestBM34ToBM35 ||
                expectedOperation == TestBM35ToBM34) {
         int count = expectedOperation == TestBM34ToBM35 ? 4096 : 32768;
@@ -327,6 +352,9 @@ static void PrepareCall(int operation, int reply)
     expectedScreenNumber = 2;
     expectedTaskPort = task_self();
     expectedAddress = 0x12340000;
+    expectedMasterPort = 0x515;
+    expectedIOObjectNumber = 0x616;
+    expectedDevicePort = 0x717;
     memset(expectedDriver, 0, sizeof(expectedDriver));
     strcpy(expectedDriver, "TestFramebufferDriver");
     memset(expectedPixelEncoding, 0, sizeof(expectedPixelEncoding));
@@ -396,6 +424,10 @@ int main(void)
                   "selected framework exports framebuffer mapping RPCs");
         TestCheck(dlsym(handle, "_InterceptorFrameBufferInfo") != 0,
                   "selected framework exports framebuffer metadata RPC");
+        TestCheck(dlsym(handle, "_InterceptorGetDeviceAccessTokens") != 0,
+                  "selected framework exports device-access-token RPC");
+        TestCheck(dlsym(handle, "InterceptorGetDeviceAccessTokens") != 0,
+                  "selected framework exports the context token wrapper");
         TestCheck(dlsym(handle, "_InterceptorCompositeBits") != 0,
                   "selected framework exports the CompositeBits RPC");
         TestCheck(dlsym(handle, "_InterceptorGetBM34ToBM35Table") != 0 &&
@@ -515,6 +547,47 @@ int main(void)
         TestCheck(memcmp(fields, expectedFrameBufferFields, sizeof(fields)) == 0,
                   "FrameBufferInfo returns all metadata fields in order");
     }
+
+    PrepareCall(TestAccessTokens, TestSuccessReply);
+    expectedOperationResult = 23;
+    context.contextPort = expectedContextPort;
+    context.replyPort = expectedReplyPort;
+    {
+        port_t masterPort = PORT_NULL;
+        int ioObjectNumber = -1;
+        port_t devicePort = PORT_NULL;
+        TestCheck(InterceptorGetDeviceAccessTokens(
+                      &context, expectedScreenNumber, &masterPort,
+                  &ioObjectNumber, &devicePort) == expectedOperationResult,
+                  "GetDeviceAccessTokens accepts a valid success reply");
+        TestCheck(masterPort == expectedMasterPort &&
+                  ioObjectNumber == expectedIOObjectNumber &&
+                  devicePort == expectedDevicePort,
+                  "GetDeviceAccessTokens returns all three values in order");
+    }
+
+    PrepareCall(TestAccessTokens, TestWrongReplyID);
+    expectedOperationResult = 23;
+    {
+        port_t masterPort = 0xA1;
+        int ioObjectNumber = 0xA2;
+        port_t devicePort = 0xA3;
+        TestCheck(_InterceptorGetDeviceAccessTokens(
+                      expectedContextPort, expectedReplyPort,
+                      expectedScreenNumber, &masterPort, &ioObjectNumber,
+                      &devicePort) == expectedOperationResult,
+                  "GetDeviceAccessTokens reports the reply operation word after a wrong ID");
+        TestCheck(masterPort == 0xA1 && ioObjectNumber == 0xA2 &&
+                  devicePort == 0xA3,
+                  "GetDeviceAccessTokens leaves outputs untouched on invalid reply");
+    }
+
+    PrepareCall(TestAccessTokens, TestErrorReply);
+    TestCheck(_InterceptorGetDeviceAccessTokens(
+                  expectedContextPort, expectedReplyPort, expectedScreenNumber,
+                  &expectedMasterPort, &expectedIOObjectNumber,
+                  &expectedDevicePort) == 0,
+              "GetDeviceAccessTokens retains its zero return word for short server errors");
 
     PrepareCall(TestCompositeBits, TestSuccessReply);
     context.contextPort = expectedContextPort;

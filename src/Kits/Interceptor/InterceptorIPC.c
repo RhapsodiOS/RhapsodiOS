@@ -252,6 +252,65 @@ int InterceptorScreenCount(InterceptorClientContext *context)
     return _InterceptorScreenCount(context->contextPort, context->replyPort);
 }
 
+int _InterceptorGetDeviceAccessTokens(port_t contextPort, port_t replyPort,
+                                      int screenNumber, port_t *masterPort,
+                                      int *ioObjectNumber, port_t *devicePort)
+{
+    InterceptorRPCMessage message;
+    int *words;
+    int result;
+
+    InterceptorSetRPCHeader(&message, contextPort, replyPort, 7217, 32, 1);
+    words = message.words;
+    words[0] = InterceptorTypeDescriptor(2, 32, 1);
+    words[1] = screenNumber;
+
+    result = InterceptorMsgRPC(&message.header, 0, 64, 0, 0);
+    if (result != 0) {
+        Interceptor_mig_error(result);
+        return words[3];
+    }
+    if (message.header.msg_id != 7317) {
+        Interceptor_mig_error(-301);
+        return words[3];
+    }
+
+    if (message.header.msg_size == 32 && message.header.msg_simple == 1 &&
+        screenNumber != 0 &&
+        words[0] == InterceptorTypeDescriptor(2, 32, 1)) {
+        if (words[1] != 0)
+            Interceptor_mig_error(words[1]);
+        return words[3];
+    }
+    if (message.header.msg_size != 64 || message.header.msg_simple != 0 ||
+        words[0] != InterceptorTypeDescriptor(2, 32, 1) ||
+        words[2] != InterceptorTypeDescriptor(2, 32, 1) ||
+        words[4] != InterceptorTypeDescriptor(6, 32, 1) ||
+        words[6] != InterceptorTypeDescriptor(2, 32, 1) ||
+        words[8] != InterceptorTypeDescriptor(6, 32, 1)) {
+        Interceptor_mig_error(-300);
+        return words[3];
+    }
+    if (words[1] != 0) {
+        Interceptor_mig_error(words[1]);
+        return words[3];
+    }
+
+    *masterPort = (port_t)words[5];
+    *ioObjectNumber = words[7];
+    *devicePort = (port_t)words[9];
+    return words[3];
+}
+
+int InterceptorGetDeviceAccessTokens(InterceptorClientContext *context,
+                                     int screenNumber, port_t *masterPort,
+                                     int *ioObjectNumber, port_t *devicePort)
+{
+    return _InterceptorGetDeviceAccessTokens(
+        context->contextPort, context->replyPort, screenNumber, masterPort,
+        ioObjectNumber, devicePort);
+}
+
 int InterceptorHideCursor(InterceptorClientContext *context)
 {
     return _InterceptorHideCursor(context->contextPort, context->replyPort);

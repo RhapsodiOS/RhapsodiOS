@@ -133,3 +133,10 @@ processing phase. Afterward it offsets the cached screen shape and optional
 view clip by the move delta, recomputes unobscured state, notifies a delegate
 that implements `rectDidMove:`, then clears both states. The DR2 i386 flow
 matches the PPC body.
+
+Before an area is obscured, the bitmap snapshots a dirty, unobscured direct
+framebuffer into its backing store, subtracts the rectangle from the cached
+visible shape, and notifies `rectClippingDidChange:`. On reveal it unions the
+rectangle back into the shape, clips to the intercepted screen region, flushes
+exposed buffered pixels when enabled, and sends the same delegate notification.
+The reveal callback also returns the recovered active-application cursor flag.

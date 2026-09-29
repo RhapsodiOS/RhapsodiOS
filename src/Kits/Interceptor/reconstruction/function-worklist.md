@@ -67,8 +67,8 @@ IDA function records: 392; symbol records: 540.
 | `0x47A04BC4` | 136 | `-[NSDirectBitmap _setViewClipShape:]` | unexamined |
 | `0x47A04C4C` | 148 | `-[NSDirectBitmap areaWillMove:by:]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
 | `0x47A04CE0` | 232 | `-[NSDirectBitmap areaDidMove:by:]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
-| `0x47A04DC8` | 356 | `-[NSDirectBitmap areaWillObscure:inRect:]` | unexamined |
-| `0x47A04F2C` | 476 | `-[NSDirectBitmap areaDidReveal:inRect:]` | unexamined |
+| `0x47A04DC8` | 356 | `-[NSDirectBitmap areaWillObscure:inRect:]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
+| `0x47A04F2C` | 476 | `-[NSDirectBitmap areaDidReveal:inRect:]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
 | `0x47A05108` | 76 | `-[NSDirectBitmap areaWasOrderedIn:]` | unexamined |
 | `0x47A05154` | 76 | `-[NSDirectBitmap areaWasOrderedOut:]` | unexamined |
 | `0x47A051A0` | 44 | `-[NSDirectBitmap areaIsInvalid:]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
@@ -459,8 +459,8 @@ Named Objective-C symbols (candidate module by class name; verify in module meta
 | `0x47A04BC4` | `-[NSDirectBitmap _setViewClipShape:]` | `NSDirectBitmap.m` | unexamined |
 | `0x47A04C4C` | `-[NSDirectBitmap areaWillMove:by:]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A04CE0` | `-[NSDirectBitmap areaDidMove:by:]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
-| `0x47A04DC8` | `-[NSDirectBitmap areaWillObscure:inRect:]` | `NSDirectBitmap.m` | unexamined |
-| `0x47A04F2C` | `-[NSDirectBitmap areaDidReveal:inRect:]` | `NSDirectBitmap.m` | unexamined |
+| `0x47A04DC8` | `-[NSDirectBitmap areaWillObscure:inRect:]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
+| `0x47A04F2C` | `-[NSDirectBitmap areaDidReveal:inRect:]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A05108` | `-[NSDirectBitmap areaWasOrderedIn:]` | `NSDirectBitmap.m` | unexamined |
 | `0x47A05154` | `-[NSDirectBitmap areaWasOrderedOut:]` | `NSDirectBitmap.m` | unexamined |
 | `0x47A051A0` | `-[NSDirectBitmap areaIsInvalid:]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
@@ -705,8 +705,8 @@ IDA function records: 419; symbol records: 629.
 | `0x47A030B0` | 105 | `-[NSDirectBitmap _setViewClipShape:]` | unexamined |
 | `0x47A0311C` | 123 | `-[NSDirectBitmap areaWillMove:by:]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
 | `0x47A03198` | 217 | `-[NSDirectBitmap areaDidMove:by:]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
-| `0x47A03274` | 308 | `-[NSDirectBitmap areaWillObscure:inRect:]` | unexamined |
-| `0x47A033A8` | 434 | `-[NSDirectBitmap areaDidReveal:inRect:]` | unexamined |
+| `0x47A03274` | 308 | `-[NSDirectBitmap areaWillObscure:inRect:]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
+| `0x47A033A8` | 434 | `-[NSDirectBitmap areaDidReveal:inRect:]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
 | `0x47A0355C` | 46 | `-[NSDirectBitmap areaWasOrderedIn:]` | unexamined |
 | `0x47A0358C` | 46 | `-[NSDirectBitmap areaWasOrderedOut:]` | unexamined |
 | `0x47A035BC` | 34 | `-[NSDirectBitmap areaIsInvalid:]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
@@ -1124,8 +1124,8 @@ Named Objective-C symbols (candidate module by class name; verify in module meta
 | `0x47A030B0` | `-[NSDirectBitmap _setViewClipShape:]` | `NSDirectBitmap.m` | unexamined |
 | `0x47A0311C` | `-[NSDirectBitmap areaWillMove:by:]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A03198` | `-[NSDirectBitmap areaDidMove:by:]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
-| `0x47A03274` | `-[NSDirectBitmap areaWillObscure:inRect:]` | `NSDirectBitmap.m` | unexamined |
-| `0x47A033A8` | `-[NSDirectBitmap areaDidReveal:inRect:]` | `NSDirectBitmap.m` | unexamined |
+| `0x47A03274` | `-[NSDirectBitmap areaWillObscure:inRect:]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
+| `0x47A033A8` | `-[NSDirectBitmap areaDidReveal:inRect:]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A0355C` | `-[NSDirectBitmap areaWasOrderedIn:]` | `NSDirectBitmap.m` | unexamined |
 | `0x47A0358C` | `-[NSDirectBitmap areaWasOrderedOut:]` | `NSDirectBitmap.m` | unexamined |
 | `0x47A035BC` | `-[NSDirectBitmap areaIsInvalid:]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |

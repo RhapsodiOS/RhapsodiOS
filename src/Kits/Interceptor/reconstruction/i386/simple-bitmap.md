@@ -79,3 +79,9 @@ request a deferred refresh, matching the PPC bodies.
 Move callbacks hold the bitmap locked across the server move, then offset both
 the cached screen region and optional view clip, recompute visibility, and send
 the delegate's `rectDidMove:` notification before releasing that lock state.
+
+On obscuration, the bitmap preserves dirty direct-mapped pixels before removing
+the newly hidden shape. On reveal, it restores and clips the shape, flushes
+exposed backing-store pixels when configured, and notifies the delegate through
+`rectClippingDidChange:`. The reveal path also returns its cursor-activation
+decision to the intercepted-rectangle message handler.

@@ -7,6 +7,7 @@
 #import "NSShape.h"
 #import "InterceptorGlobals.h"
 #import <AppKit/NSScreen.h>
+#import <AppKit/NSApplication.h>
 #import <AppKit/NSWindow.h>
 #import <Foundation/NSDictionary.h>
 #import <Foundation/NSException.h>
@@ -607,6 +608,63 @@ typedef void (*NSBitmapCopyFunction)(const void *, int, void *, int, int, int);
         self->isLocked = NO;
     }
     return 0;
+}
+
+- (int)areaWillObscure:(id)interceptedRect inRect:(NSRect)rect
+{
+    if (interceptedRect == self->interceptRect) {
+        NSShape *shape = [[NSShape allocWithZone:[self zone]]
+            initFromRect:rect];
+
+        self->isLocked = YES;
+        if (self->isBuffered == NO && self->isUnobscured == YES &&
+            self->_screenIsDirty == YES &&
+            [self->_dbm_private isEqual:
+                [self->interceptRect currentScreenRectShape]])
+            [self _updateBuffer];
+        [self->_dbm_private differenceWithShape:shape];
+        [shape release];
+        self->isUnobscured = NO;
+        if (self->_delegate != nil &&
+            [self->_delegate respondsToSelector:
+                @selector(rectClippingDidChange:)])
+            [self->_delegate rectClippingDidChange:self];
+        self->isLocked = NO;
+    }
+    return 0;
+}
+
+- (int)areaDidReveal:(id)interceptedRect inRect:(NSRect)rect
+{
+    BOOL shouldShowCursor = NO;
+    NSShape *shape;
+
+    if (interceptedRect != self->interceptRect)
+        return 0;
+
+    shape = [[NSShape allocWithZone:[self zone]]
+        initFromRect:rect];
+    self->isLocked = YES;
+    if ((self->_naughtyFlags & 1) != 0 && [self _isTotallyObscured] &&
+        NSApp != nil)
+        shouldShowCursor = [NSApp isActive];
+
+    [self->_dbm_private unionWithShape:shape];
+    [self->_dbm_private intersectWithShape:
+        [self->interceptRect currentScreenRectShape]];
+    self->isUnobscured = [self _isUnobscured];
+    if (self->data[0] != 0 && self->_flushOnExposure != NO) {
+        if (self->_viewClip != nil)
+            [shape intersectWithShape:self->_viewClip];
+        [self _flushInShape:shape];
+    }
+    [shape release];
+    if (self->_delegate != nil &&
+        [self->_delegate respondsToSelector:
+            @selector(rectClippingDidChange:)])
+        [self->_delegate rectClippingDidChange:self];
+    self->isLocked = NO;
+    return shouldShowCursor;
 }
 
 - (int)areaChangedScreen:(id)interceptedRect

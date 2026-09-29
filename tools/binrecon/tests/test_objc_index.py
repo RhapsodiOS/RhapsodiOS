@@ -103,6 +103,20 @@ def test_objc_method_index_is_empty_for_a_binary_with_no_objc(tmp_path):
     assert objc_method_index(target) == {}
 
 
+def test_objc_method_index_accepts_dylibs_in_both_byte_orders(tmp_path):
+    from tests.macho_fixture import MH_DYLIB, build_macho_fixture
+
+    for architecture in ("i386", "ppc"):
+        target = tmp_path / f"framework-{architecture}"
+        target.write_bytes(
+            build_macho_fixture(
+                file_type=MH_DYLIB, architecture=architecture, relocations=b""
+            )
+        )
+
+        assert objc_method_index(target) == {}
+
+
 def test_recovers_methods_from_big_endian_metadata():
     index = objc_methods_from_sections(_build(">"), SECTIONS, endianness="big")
 

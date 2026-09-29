@@ -14,6 +14,7 @@ from macho_fixture import (
     MH_OBJECT,
     MH_PRELOAD,
     MH_BUNDLE,
+    MH_DYLIB,
     PPC_RELOC_BR24,
     PPC_RELOC_HA16,
     PPC_RELOC_HI16,
@@ -123,6 +124,29 @@ def test_reads_bundle_file_type(tmp_path):
     assert [section["name"] for section in analysis["sections"]] == [
         "__TEXT,__text",
         "__DATA,__data",
+    ]
+
+
+@pytest.mark.parametrize("architecture", ["i386", "ppc"])
+def test_reads_framework_dylib_in_both_byte_orders(tmp_path, architecture):
+    path = write_fixture(
+        tmp_path,
+        build_macho_fixture(
+            file_type=MH_DYLIB, architecture=architecture, relocations=b""
+        ),
+    )
+
+    analysis = read_macho(path)
+
+    validate_document("analysis-v1", analysis)
+    assert analysis["extensions"]["macho"]["header"]["file_type"] == MH_DYLIB
+    assert analysis["input"]["architecture"] == architecture
+    assert [section["name"] for section in analysis["sections"]] == [
+        "__TEXT,__text",
+        "__DATA,__data",
+    ]
+    assert analysis["symbols"] == [
+        {"name": "_external", "address": 0, "binding": "external", "section": None}
     ]
 
 

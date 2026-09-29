@@ -41,6 +41,7 @@
 | Framebuffer and IPC test targets | authored; dry-run parses | authored; dry-run parses |
 | Framebuffer test execution | blocked: no compatible PowerPC guest/toolchain | blocked: no compiler/SDK in the i386 guest |
 | NSDirectPalette gray preference, nearest-color ties, and blend endpoints | reference confirms grayscale preference within squared-distance 0.12, first-entry tie retention, copy-at-zero, and target-fill-at-one; regression tests authored; execution pending | shared source and tests; execution pending |
+| NSDirectScreen fade callback interpolation | PPC reference and DR2 i386 instruction flow apply intermediate fade-in/out intensities; source now shares both paths and callback regression checks are authored | DR2 i386 evidence confirms interpolation; runtime pending |
 
 A reference-only analysis is an evidence-generation result when its summary says `complete: true` and contains the IDA record. The command exits 1 because comparison acceptance is not met without a rebuilt artifact; this is not a parity result.
 

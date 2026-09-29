@@ -50,9 +50,12 @@ source now publishes both methods and routes bitmap access, shielding, and
 teardown through them, matching the Objective-C dispatch surface in DR2.
 
 Fade operations update the palette through the same transfer-table path. The
-DR2 i386 timer callbacks apply the final palette when the duration expires;
-the reference callbacks do not interpolate intermediate palettes. Fade start
-and completion notifications bracket the synchronous run-loop timer sequence.
+DR2 i386 timer callbacks interpolate intermediate palettes using
+`elapsed / duration` for fade-in and `1 - elapsed / duration` for fade-out,
+then apply the final palette when the duration expires. IDA instruction flow
+at `0x47A063FD`–`0x47A064EC` and `0x47A067FD`–`0x47A068EC` confirms the
+intermediate `fadeDisplay:toColor:` calls. Fade start and completion
+notifications bracket the synchronous run-loop timer sequence.
 
 `_canLockWithMode:` forwards to the framebuffer. `_lockWithMode:` and
 `_unlock` both require byte 120 to indicate a shielded display before

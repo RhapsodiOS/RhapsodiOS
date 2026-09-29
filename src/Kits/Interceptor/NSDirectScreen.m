@@ -1011,10 +1011,8 @@ failure:
 
     (void)timer;
     if (elapsed < duration) {
-#if defined(__ppc__) || defined(__POWERPC__)
         [self fadeDisplay:(float)(elapsed / duration)
                   toColor:(NSColor *)words[11]];
-#endif
         return;
     }
     [self fadeDisplay:1.0f toColor:(NSColor *)words[11]];
@@ -1034,10 +1032,8 @@ failure:
 
     (void)timer;
     if (elapsed < duration) {
-#if defined(__ppc__) || defined(__POWERPC__)
         [self fadeDisplay:(float)(1.0 - elapsed / duration)
                   toColor:(NSColor *)words[11]];
-#endif
         return;
     }
     [self fadeDisplay:0.0f toColor:(NSColor *)words[11]];

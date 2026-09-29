@@ -37,6 +37,11 @@ into the allocation; destruction frees the original base address. The source
 implements the recovered window and brightness sequence, pending runtime
 verification against a compatible guest.
 
+The backing-store operations are Objective-C category methods at
+`0x47A0A0CC` (`_createBackingStore`) and `0x47A0A248`
+(`_destroyBackingStore`). `NSDirectScreen.m` now exposes the corresponding
+selectors and routes bitmap access, shielding, and teardown through them.
+
 `_canLockWithMode:` forwards to the framebuffer. `_lockWithMode:` and
 `_unlock` require byte 120 to indicate a shielded display before forwarding;
 an unshielded call raises `NSDirectScreenDisplayIsUnshieldedException` with

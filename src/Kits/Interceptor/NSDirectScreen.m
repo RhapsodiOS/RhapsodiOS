@@ -74,6 +74,8 @@ extern void NXSetAutoDimBrightness(NXEventHandle handle, double brightness);
 
 @interface NSDirectScreen (Private)
 - (void)_clearModeInfo;
+- (void)_createBackingStore;
+- (void)_destroyBackingStore;
 - (BOOL)_canLockWithMode:(NSFramebufferAccessMode)mode;
 - (void)_lockWithMode:(NSFramebufferAccessMode)mode;
 - (void)_unlock;
@@ -270,7 +272,7 @@ failure:
     words = NSDirectScreenWords(self->_private);
     if (((unsigned char *)self->_private)[120] != 0)
         [self unshieldDisplay];
-    NSDirectScreenDestroyBackingStore(words);
+    [self _destroyBackingStore];
 
     for (index = 2; index <= 11; index++) {
         if (index != 5 && index != 6 && index != 7 &&
@@ -363,8 +365,18 @@ failure:
         return (int)words[25];
     }
     if (words[19] == 0)
-        NSDirectScreenCreateBackingStore(self, words);
+        [self _createBackingStore];
     return (int)words[20];
+}
+
+- (void)_createBackingStore
+{
+    NSDirectScreenCreateBackingStore(self, NSDirectScreenWords(self->_private));
+}
+
+- (void)_destroyBackingStore
+{
+    NSDirectScreenDestroyBackingStore(NSDirectScreenWords(self->_private));
 }
 
 - (int)bytesPerPlane
@@ -389,7 +401,7 @@ failure:
     if (((unsigned char *)self->_private)[120] != 0)
         return [(NSFramebuffer *)words[2] bitmapData];
     if (words[19] == 0)
-        NSDirectScreenCreateBackingStore(self, words);
+        [self _createBackingStore];
     return (unsigned char *)words[19];
 }
 
@@ -813,7 +825,7 @@ failure:
                      [framebuffer bitmapData], [framebuffer bytesPerRow],
                      [self pixelsHigh]);
         (void)InterceptorShowCursor((InterceptorClientContext *)words[0]);
-        NSDirectScreenDestroyBackingStore(words);
+        [self _destroyBackingStore];
     }
 }
 
@@ -826,7 +838,7 @@ failure:
     if (![self displayIsShielded])
         return;
     PSWait();
-    NSDirectScreenCreateBackingStore(self, words);
+    [self _createBackingStore];
     words[7] = (unsigned int)[self currentMode];
     if (words[7] != words[6])
         [self switchToDisplayMode:(NSDictionary *)words[6]];

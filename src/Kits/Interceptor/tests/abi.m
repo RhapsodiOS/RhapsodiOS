@@ -111,12 +111,16 @@ static const ExpectedClass classes[] = {
 };
 static const ExpectedMethod methods[] = {
     { "NSShape", "intersectWithShape:", "v8@4:8@12", "v12@8:12@16", 0 },
+    { "NSDirectScreen", "_createBackingStore", "v4@4:8", "v8@8:12", 0 },
+    { "NSDirectScreen", "_destroyBackingStore", "v4@4:8", "v8@8:12", 0 },
     { "NSShape", "initFromRect:", "@20@4:8{?={?=ff}{?=ff}}12", "@24@8:12{?={?=ff}{?=ff}}16", 0 },
     { "NSFramebuffer", "addressForPoint:", "^v12@4:8{?=ff}12", "^v16@8:12{?=ff}16", 0 },
     { "NSDirectPalette", "setColor:atIndex:", "v12@4:8@12i16", "v16@8:12@16i20", 0 },
     { "NSSimpleBitmap", "initWithBitmapDataPlanes:pixelsWide:pixelsHigh:bitsPerSample:samplesPerPixel:hasAlpha:isPlanar:colorSpaceName:bytesPerRow:bitsPerPixel:",
       "@48@4:8^*12i16i20i24i28c32c43@44i48i52", "@48@8:12^*16i20i24i28i32c36c40@44i48i52", 0 },
-    { "NSDirectPalette", "defaultColorPalette", "@4@4:8", "@4@8:12", 1 }
+#if defined(__ppc__) || defined(__POWERPC__)
+    { "NSDirectPalette", "defaultColorPalette", "@4@4:8", "@4@8:12", 1 },
+#endif
 };
 
 static int CheckClass(const struct objc_class *cls, const ExpectedClass *expected)

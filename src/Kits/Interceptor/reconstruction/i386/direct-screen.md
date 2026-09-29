@@ -44,6 +44,11 @@ load the selected palette, switch modes if necessary, copy framebuffer data,
 and toggle byte 120. Unshield reverses the mode, palette, window, and
 brightness changes. Window-server runtime behavior is not yet verified.
 
+The corresponding backing-store selectors are `_createBackingStore` at
+`0x47A07D38` and `_destroyBackingStore` at `0x47A07E44`. The reconstructed
+source now publishes both methods and routes bitmap access, shielding, and
+teardown through them, matching the Objective-C dispatch surface in DR2.
+
 Fade operations update the palette through the same transfer-table path. The
 DR2 i386 timer callbacks apply the final palette when the duration expires;
 the reference callbacks do not interpolate intermediate palettes. Fade start

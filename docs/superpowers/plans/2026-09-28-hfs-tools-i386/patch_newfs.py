@@ -151,6 +151,11 @@ SUBS = [
      r'\n\1SWAP_VH(header);\t\t\t\t\t\t\t\t// to disk order for its two writes\n\1\2', 1),
     (r'(err = WriteToDisk\(driveInfo, \(header->totalBlocks \* \(header->blockSize/kBytesPerSector\)\) - 2, kOneSector, header\);[^\n]*\n(\t+)M_ExitOnError\(err\);\n)',
      r'\1\2SWAP_VH(header);\t\t\t\t\t\t\t\t// back to host order\n', 1),
+    # the allocation bitmap needs one bit for every allocation block
+    (r'(bitmapBlocks\s*=\s*)defaults->allocationClumpSize / blockSize;',
+     r'\1(((blockCount + 7) / 8) + blockSize - 1) / blockSize;', 1),
+    (r'(header->allocationFile\.logicalSize\.lo\s*=\s*)defaults->allocationClumpSize;',
+     r'\1(blockCount + 7) / 8;', 1),
     # B-tree header node (InitBTreeHeader)
     (r'(bth->node\.numRecords\s*=\s*)3;', r'\1SWAP_BE16 (3);', 1),
     (r'(bth->node\.fLink\s*=\s*)2;', r'\1SWAP_BE32 (2);', 1),

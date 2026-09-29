@@ -11,11 +11,16 @@ int main(void)
     NSColor *red = [NSColor colorWithDeviceRed:1.0 green:0.0 blue:0.0 alpha:1.0];
     NSColor *green = [NSColor colorWithDeviceRed:0.0 green:1.0 blue:0.0 alpha:1.0];
     NSColor *blue = [NSColor colorWithDeviceRed:0.0 green:0.0 blue:1.0 alpha:1.0];
+    NSColor *black = [NSColor colorWithDeviceRed:0.0 green:0.0 blue:0.0 alpha:1.0];
+    NSColor *white = [NSColor colorWithDeviceRed:1.0 green:1.0 blue:1.0 alpha:1.0];
+    NSColor *gray = [NSColor colorWithDeviceRed:0.5 green:0.5 blue:0.5 alpha:1.0];
     NSArray *colors = [NSArray arrayWithObjects:red, green, blue, nil];
+    NSArray *tieColors = [NSArray arrayWithObjects:black, white, nil];
     NSDirectPalette *palette;
     NSData *raw;
     NSData *changedRaw;
     NSDirectPalette *copy;
+    NSDirectPalette *blend;
     const unsigned char *rawBytes;
     float r, g, b;
 
@@ -30,6 +35,25 @@ int main(void)
               "palette component accessor reads the selected color");
     TestCheck([palette indexForColor:green] == 1,
               "exact color match returns its palette index");
+    copy = [[NSDirectPalette alloc] initWithArrayOfColors:tieColors];
+    TestCheck([copy indexForColor:gray] == 0,
+              "equidistant nearest-color ties keep the first palette entry");
+    [copy release];
+    blend = [[palette blendedPaletteWithFraction:0.0 ofColor:white] retain];
+    TestCheck(blend != palette && [blend isEqual:palette],
+              "zero blend fraction returns an equal independent palette");
+    [blend release];
+    blend = [[palette blendedPaletteWithFraction:1.0 ofColor:white] retain];
+    [blend getRed:&r green:&g blue:&b atIndex:0];
+    TestCheck([blend count] == [palette count] && r == 1.0 && g == 1.0 && b == 1.0,
+              "full blend fraction sets the first entry to the target color");
+    [blend getRed:&r green:&g blue:&b atIndex:1];
+    TestCheck(r == 1.0 && g == 1.0 && b == 1.0,
+              "full blend fraction sets the second entry to the target color");
+    [blend getRed:&r green:&g blue:&b atIndex:2];
+    TestCheck(r == 1.0 && g == 1.0 && b == 1.0,
+              "full blend fraction sets the last entry to the target color");
+    [blend release];
     copy = [palette copy];
     TestCheck(copy != palette && [copy isEqual:palette],
               "copy creates an equal independent palette");

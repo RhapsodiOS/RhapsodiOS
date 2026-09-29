@@ -40,6 +40,7 @@
 | Framebuffer setup, map/unmap, remap, metadata, conversion tables, accessors, cache ownership, lock stubs, and bounds | PPC static review and source authored; runtime pending | DR2 i386 confirms shared contracts and the zero-origin bounds difference; runtime pending |
 | Framebuffer and IPC test targets | authored; dry-run parses | authored; dry-run parses |
 | Framebuffer test execution | blocked: no compatible PowerPC guest/toolchain | blocked: no compiler/SDK in the i386 guest |
+| NSDirectPalette nearest-color ties and blend endpoints | reference confirms first-entry tie retention plus copy-at-zero and target-fill-at-one; regression tests authored; execution pending | shared source and tests; execution pending |
 
 A reference-only analysis is an evidence-generation result when its summary says `complete: true` and contains the IDA record. The command exits 1 because comparison acceptance is not met without a rebuilt artifact; this is not a parity result.
 

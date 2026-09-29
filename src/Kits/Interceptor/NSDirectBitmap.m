@@ -255,6 +255,20 @@ static int NSDirectBitmapMaximumScreens = -1;
     return [encodings copy];
 }
 
+- (void)dealloc
+{
+    if (self->interceptRect != nil)
+        [self->interceptRect setTarget:nil];
+    if (self->interceptClient != nil)
+        [self->interceptClient release];
+    if (self->framebuffer != nil)
+        [self->framebuffer release];
+    if (self->data[0] != 0)
+        NSZoneFree([self zone], self->data[0]);
+    [self->window release];
+    [super dealloc];
+}
+
 @end
 
 void CopyLong(const void *source, int sourceStride, void *destination,

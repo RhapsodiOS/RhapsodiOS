@@ -26,7 +26,7 @@ IDA function records: 392; symbol records: 540.
 | `0x47A02BA0` | 460 | `-[NSDirectBitmap _flushInShape:]` | unexamined |
 | `0x47A02D6C` | 168 | `-[NSDirectBitmap flush]` | unexamined |
 | `0x47A02E14` | 856 | `-[NSDirectBitmap flushIn:]` | unexamined |
-| `0x47A0316C` | 200 | `-[NSDirectBitmap dealloc]` | unexamined |
+| `0x47A0316C` | 200 | `-[NSDirectBitmap dealloc]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
 | `0x47A03234` | 272 | `-[NSDirectBitmap getBitmapDataPlanes:]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
 | `0x47A03344` | 132 | `-[NSDirectBitmap pixelEncodings]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
 | `0x47A033C8` | 20 | `-[NSDirectBitmap hasAlpha]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
@@ -418,7 +418,7 @@ Named Objective-C symbols (candidate module by class name; verify in module meta
 | `0x47A02BA0` | `-[NSDirectBitmap _flushInShape:]` | `NSDirectBitmap.m` | unexamined |
 | `0x47A02D6C` | `-[NSDirectBitmap flush]` | `NSDirectBitmap.m` | unexamined |
 | `0x47A02E14` | `-[NSDirectBitmap flushIn:]` | `NSDirectBitmap.m` | unexamined |
-| `0x47A0316C` | `-[NSDirectBitmap dealloc]` | `NSDirectBitmap.m` | unexamined |
+| `0x47A0316C` | `-[NSDirectBitmap dealloc]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A03234` | `-[NSDirectBitmap getBitmapDataPlanes:]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A03344` | `-[NSDirectBitmap pixelEncodings]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A033C8` | `-[NSDirectBitmap hasAlpha]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
@@ -664,7 +664,7 @@ IDA function records: 419; symbol records: 629.
 | `0x47A013C8` | 560 | `-[NSDirectBitmap _flushInShape:]` | unexamined |
 | `0x47A015F8` | 80 | `-[NSDirectBitmap flush]` | unexamined |
 | `0x47A01648` | 873 | `-[NSDirectBitmap flushIn:]` | unexamined |
-| `0x47A019B4` | 197 | `-[NSDirectBitmap dealloc]` | unexamined |
+| `0x47A019B4` | 197 | `-[NSDirectBitmap dealloc]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
 | `0x47A01A7C` | 214 | `-[NSDirectBitmap getBitmapDataPlanes:]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
 | `0x47A01B54` | 112 | `-[NSDirectBitmap pixelEncodings]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
 | `0x47A01BC4` | 14 | `-[NSDirectBitmap hasAlpha]` | static-reviewed; source authored; runtime pending; `NSDirectBitmap.m` |
@@ -1083,7 +1083,7 @@ Named Objective-C symbols (candidate module by class name; verify in module meta
 | `0x47A013C8` | `-[NSDirectBitmap _flushInShape:]` | `NSDirectBitmap.m` | unexamined |
 | `0x47A015F8` | `-[NSDirectBitmap flush]` | `NSDirectBitmap.m` | unexamined |
 | `0x47A01648` | `-[NSDirectBitmap flushIn:]` | `NSDirectBitmap.m` | unexamined |
-| `0x47A019B4` | `-[NSDirectBitmap dealloc]` | `NSDirectBitmap.m` | unexamined |
+| `0x47A019B4` | `-[NSDirectBitmap dealloc]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A01A7C` | `-[NSDirectBitmap getBitmapDataPlanes:]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A01B54` | `-[NSDirectBitmap pixelEncodings]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |
 | `0x47A01BC4` | `-[NSDirectBitmap hasAlpha]` | `NSDirectBitmap.m` | static-reviewed; source authored; runtime pending |

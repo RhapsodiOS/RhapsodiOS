@@ -45,6 +45,9 @@ for direct-mapped operation.
 Direct mapping is eligible only on a single-screen system when the framebuffer
 is mappable, exceeds seven bits per pixel, and matches the bitmap's pixel
 depth.
+Deallocation detaches the intercepted rectangle's target, releases the client,
+framebuffer, and window, frees the lazily allocated buffer from the object's
+zone, and then calls superclass `dealloc`.
 
 The seven public encoding globals resolve to these exact constant strings in
 the reference's Objective-C constant-string objects:

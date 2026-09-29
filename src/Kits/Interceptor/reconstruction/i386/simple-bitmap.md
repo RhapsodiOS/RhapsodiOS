@@ -19,6 +19,9 @@ the effective sample depth, and `pixelEncodings` returns a copied one-item
 array.
 Plain `init` raises `NSGenericException`; `minDepthForGray:andColor:` stores
 the global depth thresholds used when creating a bitmap for a rectangle.
+Deallocation detaches the rectangle target, releases its client, framebuffer,
+and window, frees its buffer in the object's zone, then calls superclass
+`dealloc`, matching PPC.
 `getBitmapDataPlanes:` follows the same state rules: it clears all outputs while
 unlocked, returns the buffer and inherited planes in buffered mode, or returns
 the direct screen address and clears the remaining four planes.

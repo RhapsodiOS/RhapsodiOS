@@ -19,6 +19,9 @@ row-byte, refresh-rate, and safe/default fields. If querying the current mode
 fails, it creates a fallback dictionary from the framebuffer. Option matching
 compares requested key/value pairs, and `bestModeForOptions:` selects the
 first match or the first available mode.
+`bestModeForFormat:width:height:` prefers safe modes, then an exact encoding
+and resolution; its fallback picks the first qualifying larger mode using the
+same width/height comparison present in the binary.
 `switchToDisplayMode:` requires shielding, unmaps the framebuffer, selects and
 commits the requested mode through `IOSelectPendingDisplayMode` and
 `IOCommitToPendingDisplayMode`, refreshes framebuffer dimensions, remaps, and
@@ -30,10 +33,16 @@ transitions as DR2 i386. The shield path saves brightness in the double at
 private offset 56, loads the palette, marks byte 120 shielded, switches mode
 when needed, then copies the framebuffer to the backing store. The backing
 store allocator reserves two page-size margins and returns a pointer one page
-into the allocation; destruction frees the original base address. Detailed
-window-server calls remain incomplete in source.
+into the allocation; destruction frees the original base address. The source
+implements the recovered window and brightness sequence, pending runtime
+verification against a compatible guest.
 
 `_canLockWithMode:` forwards to the framebuffer. `_lockWithMode:` and
 `_unlock` require byte 120 to indicate a shielded display before forwarding;
 an unshielded call raises `NSDirectScreenDisplayIsUnshieldedException` with
 the invoked selector.
+
+Fade operations update the palette through the same transfer-table path.
+PowerPC timer callbacks apply intermediate palette blends before the final
+palette at the end of the fade. Fade start and completion notifications
+bracket the synchronous run-loop timer sequence.

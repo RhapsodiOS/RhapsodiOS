@@ -29,19 +29,25 @@ resolution, depth, row-byte, frequency, and safe/default fields. If the
 current-mode query fails, it builds a one-entry fallback from the framebuffer.
 Option filtering compares every requested key/value pair, and
 `bestModeForOptions:` returns the first match or the first available mode.
+`bestModeForFormat:width:height:` prefers safe modes, then an exact encoding
+and resolution; its fallback picks the first qualifying larger mode using the
+same width/height comparison present in the binary.
 `switchToDisplayMode:` requires shielding, unmaps the framebuffer, selects and
 commits the requested mode through `IOSelectPendingDisplayMode` and
 `IOCommitToPendingDisplayMode`, refreshes framebuffer dimensions, remaps, and
 posts the display-mode notification. Gamma changes use the capability bit at
 private word 27 and transfer tables through `IOSetTransferTable`.
 
-Shield/unshield transitions remain incomplete in source.
-The reference shield path creates and waits for a full-screen window, saves
-and dims system brightness, loads the current palette, changes the mode if
-needed, copies the framebuffer into the backing store, and marks byte 120 as
-shielded. Unshield reverses the mode/palette/window/brightness work. These
-paths depend on recovered window-server and display-mode details not yet
-implemented here.
+The source implements the recovered shield/unshield sequence: create and
+raise a full-screen borderless window, preserve and suppress auto-dimming,
+load the selected palette, switch modes if necessary, copy framebuffer data,
+and toggle byte 120. Unshield reverses the mode, palette, window, and
+brightness changes. Window-server runtime behavior is not yet verified.
+
+Fade operations update the palette through the same transfer-table path. The
+DR2 i386 timer callbacks apply the final palette when the duration expires;
+the reference callbacks do not interpolate intermediate palettes. Fade start
+and completion notifications bracket the synchronous run-loop timer sequence.
 
 `_canLockWithMode:` forwards to the framebuffer. `_lockWithMode:` and
 `_unlock` both require byte 120 to indicate a shielded display before

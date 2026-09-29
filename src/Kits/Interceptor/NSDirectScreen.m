@@ -10,6 +10,12 @@
 #import <Foundation/NSNumber.h>
 #import <Foundation/NSAutoreleasePool.h>
 #import <Foundation/NSUserDefaults.h>
+#import <Foundation/NSDate.h>
+#import <Foundation/NSTimer.h>
+#import <Foundation/NSRunLoop.h>
+#import <AppKit/dpsOpenStep.h>
+#import <AppKit/psops.h>
+#import <AppKit/psopsNeXT.h>
 #import <mach/mach.h>
 #import <math.h>
 #import <stdio.h>
@@ -59,6 +65,13 @@ static NSString *NoPaletteExceptionFormat =
 @end
 extern vm_size_t vm_page_size;
 
+typedef void *NXEventHandle;
+extern NXEventHandle NXOpenEventStatus(void);
+extern void NXCloseEventStatus(NXEventHandle handle);
+extern double NXScreenBrightness(NXEventHandle handle);
+extern double NXAutoDimBrightness(NXEventHandle handle);
+extern void NXSetAutoDimBrightness(NXEventHandle handle, double brightness);
+
 @interface NSDirectScreen (Private)
 - (void)_clearModeInfo;
 - (BOOL)_canLockWithMode:(NSFramebufferAccessMode)mode;
@@ -75,6 +88,8 @@ extern vm_size_t vm_page_size;
                         red:(unsigned short *)red
                       green:(unsigned short *)green
                        blue:(unsigned short *)blue;
+- (void)_fadeIn:(NSTimer *)timer;
+- (void)_fadeOut:(NSTimer *)timer;
 @end
 
 static unsigned int *NSDirectScreenWords(void *privateData)
@@ -153,6 +168,17 @@ static void NSDirectScreenSetPalette(NSDirectScreen *screen,
     [(id)words[8] release];
     words[8] = (unsigned int)[palette retain];
     [screen _loadPalette:palette];
+}
+
+static void NSDirectScreenDiscardFade(unsigned int *words)
+{
+    [(NSTimer *)words[9] invalidate];
+    [(id)words[10] release];
+    words[10] = 0;
+    [(id)words[11] release];
+    words[11] = 0;
+    [(id)words[9] release];
+    words[9] = 0;
 }
 
 @implementation NSDirectScreen
@@ -250,7 +276,7 @@ failure:
         if (index != 5 && index != 6 && index != 7 &&
             (object = (id)words[index]) != nil) {
             if (index == 9)
-                [object setDelegate:nil];
+                [object invalidate];
             [object release];
         }
     }
@@ -738,6 +764,83 @@ failure:
                       object:self];
 }
 
+- (void)shieldDisplay
+{
+    unsigned int *words = NSDirectScreenWords(self->_private);
+    NSFramebuffer *framebuffer = (NSFramebuffer *)words[2];
+    unsigned char *privateBytes = (unsigned char *)self->_private;
+    NXEventHandle eventStatus;
+    double brightness;
+
+    if ([self displayIsShielded])
+        return;
+    if (words[3] == 0) {
+        NSWindow *window = [[NSWindow alloc]
+            initWithContentRect:[framebuffer screenBounds]
+                      styleMask:NSBorderlessWindowMask
+                        backing:NSBackingStoreBuffered
+                          defer:NO];
+        [window setLevel:0x7fff];
+        PSsetautofill(1, [window windowNumber]);
+        PSgsave();
+        PSwindowdeviceround([window windowNumber]);
+        PSsetrgbcolor(0.0f, 0.0f, 0.0f);
+        PSsetexposurecolor();
+        PSgrestore();
+        words[3] = (unsigned int)window;
+    }
+    [(NSWindow *)words[3] makeKeyAndOrderFront:nil];
+    PSWait();
+
+    eventStatus = NXOpenEventStatus();
+    ((double *)self->_private)[7] = NXAutoDimBrightness(eventStatus);
+    brightness = NXScreenBrightness(eventStatus);
+    NXSetAutoDimBrightness(eventStatus, brightness);
+    NXCloseEventStatus(eventStatus);
+
+    if ([self canSetPalette])
+        [self _loadPalette:(NSDirectPalette *)words[8]];
+    privateBytes[120] = 1;
+    words[6] = (unsigned int)[self currentMode];
+    if (words[7] == 0)
+        words[7] = words[6];
+    if (words[6] != words[7])
+        [self switchToDisplayMode:(NSDictionary *)words[7]];
+
+    if (words[19] != 0) {
+        (void)InterceptorHideCursor((InterceptorClientContext *)words[0]);
+        CopySrcToDst((void *)words[19], words[20],
+                     [framebuffer bitmapData], [framebuffer bytesPerRow],
+                     [self pixelsHigh]);
+        (void)InterceptorShowCursor((InterceptorClientContext *)words[0]);
+        NSDirectScreenDestroyBackingStore(words);
+    }
+}
+
+- (void)unshieldDisplay
+{
+    unsigned int *words = NSDirectScreenWords(self->_private);
+    unsigned char *privateBytes = (unsigned char *)self->_private;
+    NXEventHandle eventStatus;
+
+    if (![self displayIsShielded])
+        return;
+    PSWait();
+    NSDirectScreenCreateBackingStore(self, words);
+    words[7] = (unsigned int)[self currentMode];
+    if (words[7] != words[6])
+        [self switchToDisplayMode:(NSDictionary *)words[6]];
+    if ([self canSetPalette])
+        [self _loadPalette:[NSDirectPalette defaultPalette]];
+    [(NSWindow *)words[3] orderOut:nil];
+    privateBytes[120] = 0;
+    PSWait();
+
+    eventStatus = NXOpenEventStatus();
+    NXSetAutoDimBrightness(eventStatus, ((double *)self->_private)[7]);
+    NXCloseEventStatus(eventStatus);
+}
+
 #if defined(__ppc__) || defined(__POWERPC__)
 - (void)setGamma:(double)gamma
 #else
@@ -870,6 +973,152 @@ failure:
     if (seconds < 0.0)
         seconds = 0.0;
     ((double *)self->_private)[6] = seconds;
+}
+
+- (void)fadeDisplay:(float)intensity toColor:(NSColor *)color
+{
+    NSString *selectorName = NSStringFromSelector(_cmd);
+    NSDirectPalette *palette;
+
+    if (![self displayIsShielded])
+        [NSException raise:NSDirectScreenDisplayIsUnshieldedException
+                    format:UnshieldedExceptionFormat, selectorName];
+    if (![self canSetPalette])
+        [NSException raise:NSDirectScreenDisplayCannotSetPaletteException
+                    format:NoPaletteExceptionFormat, selectorName];
+    palette = [[self currentPalette]
+               blendedPaletteWithFraction:1.0f - intensity ofColor:color];
+    [self _loadPalette:palette];
+}
+
+- (void)_fadeIn:(NSTimer *)timer
+{
+    unsigned int *words = NSDirectScreenWords(self->_private);
+    double elapsed = -[(NSDate *)words[10] timeIntervalSinceNow];
+    double duration = [self fadeDuration];
+
+    (void)timer;
+    if (elapsed < duration) {
+#if defined(__ppc__) || defined(__POWERPC__)
+        [self fadeDisplay:(float)(elapsed / duration)
+                  toColor:(NSColor *)words[11]];
+#endif
+        return;
+    }
+    [self fadeDisplay:1.0f toColor:(NSColor *)words[11]];
+    NSDirectScreenDiscardFade(words);
+    ((unsigned char *)self->_private)[65] = 0;
+    ((unsigned char *)self->_private)[64] = 0;
+    [[NSNotificationCenter defaultCenter]
+        postNotificationName:NSDirectScreenDidFinishFadeInNotification
+                      object:self];
+}
+
+- (void)_fadeOut:(NSTimer *)timer
+{
+    unsigned int *words = NSDirectScreenWords(self->_private);
+    double elapsed = -[(NSDate *)words[10] timeIntervalSinceNow];
+    double duration = [self fadeDuration];
+
+    (void)timer;
+    if (elapsed < duration) {
+#if defined(__ppc__) || defined(__POWERPC__)
+        [self fadeDisplay:(float)(1.0 - elapsed / duration)
+                  toColor:(NSColor *)words[11]];
+#endif
+        return;
+    }
+    [self fadeDisplay:0.0f toColor:(NSColor *)words[11]];
+    NSDirectScreenDiscardFade(words);
+    ((unsigned char *)self->_private)[65] = 1;
+    ((unsigned char *)self->_private)[64] = 0;
+    [[NSNotificationCenter defaultCenter]
+        postNotificationName:NSDirectScreenDidFinishFadeOutNotification
+                      object:self];
+}
+
+- (void)fadeDisplayInFromColor:(NSColor *)color
+{
+    unsigned int *words = NSDirectScreenWords(self->_private);
+    NSString *selectorName = NSStringFromSelector(_cmd);
+    NSRunLoop *runLoop;
+    NSTimer *timer;
+    NSDate *endDate;
+    double interval;
+
+    if (![self displayIsShielded])
+        [NSException raise:NSDirectScreenDisplayIsUnshieldedException
+                    format:UnshieldedExceptionFormat, selectorName];
+    if (![self canSetPalette])
+        [NSException raise:NSDirectScreenDisplayCannotSetPaletteException
+                    format:NoPaletteExceptionFormat, selectorName];
+    if ([self fadeInProgress])
+        NSDirectScreenDiscardFade(words);
+
+    words[10] = (unsigned int)[[NSDate date] retain];
+    words[11] = (unsigned int)[color retain];
+    [[NSNotificationCenter defaultCenter]
+        postNotificationName:NSDirectScreenWillStartFadeInNotification
+                      object:self];
+    if (![self fadeApplied])
+        [self fadeDisplay:0.0f toColor:color];
+    ((unsigned char *)self->_private)[64] = 1;
+
+    runLoop = [NSRunLoop currentRunLoop];
+    interval = [self fadeDuration] / 20.0;
+    if (interval < 0.05)
+        interval = 0.05;
+    endDate = [NSDate dateWithTimeIntervalSinceNow:
+               [self fadeDuration] + interval];
+    timer = [NSTimer timerWithTimeInterval:interval target:self
+                                   selector:@selector(_fadeIn:)
+                                   userInfo:nil repeats:YES];
+    words[9] = (unsigned int)[timer retain];
+    [runLoop addTimer:timer forMode:NSDefaultRunLoopMode];
+    while ([self fadeInProgress])
+        [runLoop runUntilDate:endDate];
+}
+
+- (void)fadeDisplayOutToColor:(NSColor *)color
+{
+    unsigned int *words = NSDirectScreenWords(self->_private);
+    NSString *selectorName = NSStringFromSelector(_cmd);
+    NSRunLoop *runLoop;
+    NSTimer *timer;
+    NSDate *endDate;
+    double interval;
+
+    if (![self displayIsShielded])
+        [NSException raise:NSDirectScreenDisplayIsUnshieldedException
+                    format:UnshieldedExceptionFormat, selectorName];
+    if (![self canSetPalette])
+        [NSException raise:NSDirectScreenDisplayCannotSetPaletteException
+                    format:NoPaletteExceptionFormat, selectorName];
+    if ([self fadeInProgress])
+        NSDirectScreenDiscardFade(words);
+
+    words[10] = (unsigned int)[[NSDate date] retain];
+    words[11] = (unsigned int)[color retain];
+    [[NSNotificationCenter defaultCenter]
+        postNotificationName:NSDirectScreenWillStartFadeOutNotification
+                      object:self];
+    if ([self fadeApplied])
+        [self fadeDisplay:1.0f toColor:color];
+    ((unsigned char *)self->_private)[64] = 1;
+
+    runLoop = [NSRunLoop currentRunLoop];
+    interval = [self fadeDuration] / 20.0;
+    if (interval < 0.05)
+        interval = 0.05;
+    endDate = [NSDate dateWithTimeIntervalSinceNow:
+               [self fadeDuration] + interval];
+    timer = [NSTimer timerWithTimeInterval:interval target:self
+                                   selector:@selector(_fadeOut:)
+                                   userInfo:nil repeats:YES];
+    words[9] = (unsigned int)[timer retain];
+    [runLoop addTimer:timer forMode:NSDefaultRunLoopMode];
+    while ([self fadeInProgress])
+        [runLoop runUntilDate:endDate];
 }
 
 - (BOOL)fadeInProgress

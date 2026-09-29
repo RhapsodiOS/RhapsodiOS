@@ -22,6 +22,11 @@ derive plane count from `isPlanar`, and gate row/plane byte counts on
 `isLocked`; an unobscured direct-mapped bitmap reads the row stride from its
 framebuffer. Its conversion-table accessors forward to the attached
 framebuffer.
+Its lazily allocated backing store contains the row stride times pixel height
+plus four extra rows and is zero-filled. `bitmapData` is available only while
+locked; it returns that buffer in buffered modes, or marks the screen dirty and
+returns the framebuffer address at the intercepted screen rectangle's origin
+in direct mode.
 
 The seven public encoding globals resolve to these exact constant strings in
 the reference's Objective-C constant-string objects:

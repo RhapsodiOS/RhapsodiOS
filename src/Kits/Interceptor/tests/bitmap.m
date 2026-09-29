@@ -46,8 +46,12 @@ int main(void)
         TestCheck([directBitmap bytesPerRow] == 0 &&
                   [directBitmap bytesPerPlane] == 0 &&
                   [directBitmap numberOfPlanes] == 1 &&
-                  ![directBitmap hasAlpha] && ![directBitmap isPlanar],
+                  ![directBitmap hasAlpha] && ![directBitmap isPlanar] &&
+                  ![directBitmap isBuffered] &&
+                  ![directBitmap isDirectMapped],
                   "unlocked direct bitmap reports zero row storage and one plane");
+        TestCheck([directBitmap bitmapData] == 0,
+                  "unlocked direct bitmap does not expose pixel storage");
         TestCheck([directBitmap conversionTable] == 0 &&
                   [directBitmap inverseConversionTable] == 0,
                   "unattached direct bitmap has no conversion tables");

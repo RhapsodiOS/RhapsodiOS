@@ -1,5 +1,9 @@
 #import "Private/InterceptorCopy.h"
+#import "Private/NSInterceptedRect.h"
 #import "NSDirectBitmap.h"
+#import "NSFramebuffer.h"
+#import <Foundation/NSZone.h>
+#import <strings.h>
 
 @implementation NSDirectBitmap
 
@@ -48,6 +52,32 @@
 - (void *)inverseConversionTable
 {
     return [(id)self->framebuffer inverseConversionTable];
+}
+
+- (unsigned char *)_dataBuffer
+{
+    if (self->data[0] == 0) {
+        self->data[0] = NSZoneMalloc([self zone],
+                                    self->bytesPerRow * (self->pixelsHigh + 4));
+        bzero(self->data[0],
+              self->bytesPerRow * (self->pixelsHigh + 4));
+    }
+    return (unsigned char *)self->data[0];
+}
+
+- (unsigned char *)bitmapData
+{
+    NSRect screenRect;
+
+    if (self->isLocked == NO)
+        return 0;
+    if (self->isBuffered == YES || self->drawToBuffer == YES)
+        return [self _dataBuffer];
+
+    screenRect = [self->interceptRect currentScreenRect];
+    self->_screenIsDirty = YES;
+    return (unsigned char *)[(NSFramebuffer *)self->framebuffer
+        addressForPoint:screenRect.origin];
 }
 
 - (BOOL)hasAlpha

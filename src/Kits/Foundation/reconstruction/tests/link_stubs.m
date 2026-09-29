@@ -86,24 +86,14 @@ void _NSObjectRaiseNullSelectorException(id object, SEL aSelector)
     definitions collided.  Its TODO body still does nothing until Task 4
     reconstructs the real formatter.  */
 
-/*  NSMethodSignature and NSString are not reconstructed until later
-    (NSMethodSignature.m is task-8-plus territory; NSString.m is stage 3).
-    -methodSignatureForSelector: and -description need their class objects
-    to link; minimal stub classes, not subclasses of NSObject, for the same
-    reason NSException above isn't -- ObjC dispatch is purely selector-based
-    so the real superclass doesn't matter to a stub that only aborts.  */
-@interface NSMethodSignature : Object
-+ (id)signatureWithObjCTypes:(const char *)types;
-@end
-
-@implementation NSMethodSignature
-+ (id)signatureWithObjCTypes:(const char *)types
-{
-    unimplemented("[NSMethodSignature signatureWithObjCTypes:]");
-    return nil;
-}
-@end
-
+/*  NSString is not reconstructed until stage 3.  The stub
+    NSMethodSignature class that used to stand in here was removed when
+    NSMethodSignature.m was reconstructed (stage 2c) -- the two class
+    definitions collided at link time.  -methodSignatureForSelector: and
+    -description need their class objects to link; a minimal stub class,
+    not a subclass of NSObject, for the same reason the old NSException
+    stub wasn't -- ObjC dispatch is purely selector-based so the real
+    superclass doesn't matter to a stub that only aborts.  */
 @interface NSString : Object
 + (id)stringWithFormat:(id)format, ...;
 + (id)stringWithCString:(const char *)bytes length:(unsigned)length;

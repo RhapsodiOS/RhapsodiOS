@@ -75,6 +75,6 @@ $(SYMROOT)/palette: palette.m test_support.m test_support.h ../NSDirectPalette.h
 	@mkdir -p $(OBJROOT) $(SYMROOT)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -I.. -I../../../objc-1 -o $@ palette.m test_support.m -framework AppKit -framework Foundation
 
-$(SYMROOT)/screen: screen.m test_support.m test_support.h ../NSDirectScreen.h
+$(SYMROOT)/screen: screen.m test_support.m test_support.h ../NSDirectScreen.h ../Private/InterceptorDisplayMode.h
 	@mkdir -p $(OBJROOT) $(SYMROOT)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -I.. -I../../../objc-1 -o $@ screen.m test_support.m -framework AppKit -framework Foundation

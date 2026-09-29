@@ -14,11 +14,14 @@ The public setters use their own selector names in failure exceptions.
 
 The mode list is cached in private word 4. The framework queries the current
 mode and mode count, reads each `IOGetDisplayModeInfo:<index>` record, skips
-unavailable entries, and builds mode dictionaries from resolution, depth,
-row-byte, refresh-rate, and safe/default fields. If querying the current mode
-fails, it creates a fallback dictionary from the framebuffer. Option matching
-compares requested key/value pairs, and `bestModeForOptions:` selects the
-first match or the first available mode.
+unavailable entries, and builds mode dictionaries from resolution, display
+depth, pixel encoding, pixel/sample metadata, color space, row-byte,
+refresh-rate, and safe/default fields. It accepts the same 3-by-5
+color-space/depth format table as DR2 i386, including the reference's unusual
+two-bit white token (`WWWWWWWW`) and two-bit RGB token (`PP`). If querying the
+current mode fails, it creates a fallback dictionary from the framebuffer.
+Option matching compares requested key/value pairs, and
+`bestModeForOptions:` selects the first match or the first available mode.
 `bestModeForFormat:width:height:` prefers safe modes, then an exact encoding
 and resolution; its fallback picks the first qualifying larger mode using the
 same width/height comparison present in the binary.

@@ -27,6 +27,10 @@ mode, obtains the mode count, queries each `IOGetDisplayModeInfo:<index>`
 record, skips unavailable entries, and constructs dictionaries from the
 resolution, depth, row-byte, frequency, and safe/default fields. If the
 current-mode query fails, it builds a one-entry fallback from the framebuffer.
+Each accepted color-space/depth pair also supplies its pixel-encoding token,
+logical depth, pixel width, sample depth, sample count, and AppKit color-space
+name. The reconstructed format table preserves the reference's unusual
+two-bit white encoding token (`WWWWWWWW`) and two-bit RGB token (`PP`).
 Option filtering compares every requested key/value pair, and
 `bestModeForOptions:` returns the first match or the first available mode.
 `bestModeForFormat:width:height:` prefers safe modes, then an exact encoding

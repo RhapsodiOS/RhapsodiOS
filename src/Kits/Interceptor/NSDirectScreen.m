@@ -1,5 +1,7 @@
 #import "NSDirectScreen.h"
 #import "NSFramebuffer.h"
+#import "InterceptorGlobals.h"
+#import "Private/InterceptorDisplayMode.h"
 #import "Private/InterceptorIPC.h"
 #import "Private/InterceptorCopy.h"
 #import <driverkit/driverServer.h>
@@ -97,6 +99,27 @@ extern void NXSetAutoDimBrightness(NXEventHandle handle, double brightness);
 static unsigned int *NSDirectScreenWords(void *privateData)
 {
     return (unsigned int *)privateData;
+}
+
+static NSString *NSDirectScreenEncodingForMode(int encoding)
+{
+    switch (encoding) {
+    case NSDirectScreenModeTwoBitGrey:
+        return NSInterceptorTwoBitGrey;
+    case NSDirectScreenModeEightBitGrey:
+        return NSInterceptorEightBitGrey;
+    case NSDirectScreenModeEightBitPseudoColor:
+        return NSInterceptorEightBitPseudoColor;
+    case NSDirectScreenModeTwelveBitRGB:
+        return NSInterceptorTwelveBitRGBColor;
+    case NSDirectScreenModeFifteenBitRGB:
+        return NSInterceptorFifteenBitRGBColor;
+    case NSDirectScreenModeThirtyTwoBitRGB:
+        return NSInterceptorThirtyTwoBitRGBColor;
+    default:
+        return [NSString stringWithCString:
+            NSDirectScreenPixelEncodingForCode(encoding)];
+    }
 }
 
 static void NSDirectScreenCreateBackingStore(NSDirectScreen *screen,
@@ -485,7 +508,8 @@ failure:
             for (index = 0; index < modeCount; ++index) {
                 char parameterName[32];
                 unsigned int info[IO_DISPLAY_MODE_INFO_SIZE];
-                int bitsPerPixel;
+                NSDirectScreenModeFormat format;
+                NSString *colorSpaceName;
                 unsigned int bytesPerRow;
                 unsigned int colorSpace;
                 unsigned int connectFlags;
@@ -500,38 +524,37 @@ failure:
                     info[IO_DISPLAY_MODE_INFO_UNAVAIL_FLAG] != 0)
                     continue;
 
-                switch (info[IO_DISPLAY_MODE_INFO_DEPTH]) {
-                case IO_2BitsPerPixel:
-                    bitsPerPixel = 2;
-                    break;
-                case IO_8BitsPerPixel:
-                    bitsPerPixel = 8;
-                    break;
-                case IO_12BitsPerPixel:
-                    bitsPerPixel = 16;
-                    break;
-                case IO_15BitsPerPixel:
-                    bitsPerPixel = 16;
-                    break;
-                case IO_24BitsPerPixel:
-                    bitsPerPixel = 32;
-                    break;
-                default:
+                colorSpace = info[IO_DISPLAY_MODE_INFO_CSPACE];
+                if (!NSDirectScreenModeFormatForCodes(
+                        (int)colorSpace,
+                        (int)info[IO_DISPLAY_MODE_INFO_DEPTH], &format))
                     continue;
-                }
+                if (colorSpace == IO_RGBColorSpace)
+                    colorSpaceName = NSDeviceRGBColorSpace;
+                else if (colorSpace == IO_OneIsBlackColorSpace)
+                    colorSpaceName = NSDeviceBlackColorSpace;
+                else
+                    colorSpaceName = NSDeviceWhiteColorSpace;
                 bytesPerRow = info[IO_DISPLAY_MODE_INFO_ROW_BYTES];
                 if (bytesPerRow == 0)
                     bytesPerRow = (info[IO_DISPLAY_MODE_INFO_WIDTH] *
-                                   (unsigned int)bitsPerPixel + 7) >> 3;
-                colorSpace = info[IO_DISPLAY_MODE_INFO_CSPACE];
+                                   (unsigned int)format.bitsPerPixel + 7) >> 3;
                 connectFlags = info[IO_DISPLAY_MODE_INFO_CONNECT_FLAGS];
-                mode = [[NSMutableDictionary alloc] initWithCapacity:9];
+                mode = [[NSMutableDictionary alloc] initWithCapacity:13];
                 [mode setObject:[NSNumber numberWithInt:(int)info[IO_DISPLAY_MODE_INFO_WIDTH]]
                          forKey:NSDirectScreenWidth];
                 [mode setObject:[NSNumber numberWithInt:(int)info[IO_DISPLAY_MODE_INFO_HEIGHT]]
                          forKey:NSDirectScreenHeight];
-                [mode setObject:[NSNumber numberWithInt:bitsPerPixel]
+                [mode setObject:[NSNumber numberWithInt:format.depth]
+                         forKey:NSDirectScreenDepth];
+                [mode setObject:NSDirectScreenEncodingForMode(format.encoding)
+                         forKey:NSDirectScreenPixelEncoding];
+                [mode setObject:[NSNumber numberWithInt:format.bitsPerPixel]
                          forKey:NSDirectScreenBitsPerPixel];
+                [mode setObject:[NSNumber numberWithInt:format.bitsPerSample]
+                         forKey:NSDirectScreenBitsPerSample];
+                [mode setObject:[NSNumber numberWithInt:format.samplesPerPixel]
+                         forKey:NSDirectScreenSamplesPerPixel];
                 [mode setObject:[NSNumber numberWithInt:(int)index]
                          forKey:NSDirectScreenModeNumber];
                 [mode setObject:[NSNumber numberWithInt:(int)bytesPerRow]
@@ -545,15 +568,7 @@ failure:
                 if (connectFlags & IO_DISPLAY_MODE_DEFAULT)
                     [mode setObject:[NSNumber numberWithBool:YES]
                              forKey:NSDirectScreenDefaultMode];
-                if (colorSpace == IO_RGBColorSpace)
-                    [mode setObject:NSDeviceRGBColorSpace
-                             forKey:NSDirectScreenColorSpace];
-                else if (colorSpace == IO_OneIsBlackColorSpace)
-                    [mode setObject:NSDeviceBlackColorSpace
-                             forKey:NSDirectScreenColorSpace];
-                else if (colorSpace == IO_OneIsWhiteColorSpace)
-                    [mode setObject:NSDeviceWhiteColorSpace
-                             forKey:NSDirectScreenColorSpace];
+                [mode setObject:colorSpaceName forKey:NSDirectScreenColorSpace];
                 [modes addObject:mode];
                 [mode release];
             }

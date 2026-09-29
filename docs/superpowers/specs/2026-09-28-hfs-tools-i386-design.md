@@ -196,3 +196,5 @@ not register that alias for the NeXT-labelled test disk.
 
 The final host regression passed: **60 tests passed** in
 `tools/tests`, `tools/hfsimg/tests`, and `vm/test_hfs_guest.py`.
+The unported-tools negative-control guest run was not captured before the
+endian changes, so that baseline check remains outstanding.

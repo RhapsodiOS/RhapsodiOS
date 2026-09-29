@@ -8,6 +8,10 @@
 static NSFramebuffer **NSFramebufferInstances;
 static int NSFramebufferScreenCount;
 
+void NSRemapMegaPixelDisplayForCurrentThread(void)
+{
+}
+
 static void NSFramebufferSetInstanceForScreen(NSFramebuffer *framebuffer,
                                                int screenNumber,
                                                NSInterceptorClient *client)

@@ -186,7 +186,7 @@ IDA function records: 392; symbol records: 540.
 | `0x47A0B084` | 12 | `-[NSFramebuffer lockWithMode:]` | static-reviewed; runtime pending; `NSFramebuffer.m` |
 | `0x47A0B090` | 12 | `-[NSFramebuffer unlock]` | static-reviewed; runtime pending; `NSFramebuffer.m` |
 | `0x47A0B09C` | 16 | `-[NSFramebuffer _interceptorClient]` | static-reviewed; runtime pending; `NSFramebuffer.m` |
-| `0x47A0B0AC` | 12 | `_NSRemapMegaPixelDisplayForCurrentThread` | unexamined |
+| `0x47A0B0AC` | 12 | `_NSRemapMegaPixelDisplayForCurrentThread` | static-reviewed; source authored; runtime pending |
 | `0x47A0B0B8` | 412 | `-[NSInterceptedRect initForRect:inWindow:onFramebuffer:forClient:]` | source authored; PPC static reviewed; runtime pending |
 | `0x47A0B254` | 16 | `-[NSInterceptedRect setTarget:]` | source authored; runtime pending |
 | `0x47A0B264` | 16 | `-[NSInterceptedRect target]` | source authored; runtime pending |
@@ -199,7 +199,7 @@ IDA function records: 392; symbol records: 540.
 | `0x47A0B3CC` | 96 | `-[NSInterceptedRect compositeBits:withOp:]` | static-reviewed; source authored; runtime pending |
 | `0x47A0B42C` | 60 | `-[NSInterceptedRect removeFromWindowServer]` | source authored; PPC static reviewed; runtime pending |
 | `0x47A0B468` | 148 | `-[NSInterceptedRect dealloc]` | source authored; PPC static reviewed; runtime pending |
-| `0x47A0B4FC` | 16 | `-[NSInterceptedRect uniqueID]` | unexamined |
+| `0x47A0B4FC` | 16 | `-[NSInterceptedRect uniqueID]` | static-reviewed; source authored; runtime pending |
 | `0x47A0B50C` | 16 | `-[NSInterceptedRect windowNumber]` | source authored; runtime pending |
 | `0x47A0B51C` | 44 | `-[NSInterceptedRect rectangle]` | source authored; PPC static reviewed; runtime pending |
 | `0x47A0B548` | 20 | `-[NSInterceptedRect isTotallyVisible]` | source authored; PPC static reviewed; runtime pending |
@@ -587,7 +587,7 @@ Named Objective-C symbols (candidate module by class name; verify in module meta
 | `0x47A0B3CC` | `-[NSInterceptedRect compositeBits:withOp:]` | `NSInterceptedRect.m` | static-reviewed; source authored; runtime pending |
 | `0x47A0B42C` | `-[NSInterceptedRect removeFromWindowServer]` | `NSInterceptedRect.m` | unexamined |
 | `0x47A0B468` | `-[NSInterceptedRect dealloc]` | `NSInterceptedRect.m` | unexamined |
-| `0x47A0B4FC` | `-[NSInterceptedRect uniqueID]` | `NSInterceptedRect.m` | unexamined |
+| `0x47A0B4FC` | `-[NSInterceptedRect uniqueID]` | `NSInterceptedRect.m` | static-reviewed; source authored; runtime pending |
 | `0x47A0B50C` | `-[NSInterceptedRect windowNumber]` | `NSInterceptedRect.m` | unexamined |
 | `0x47A0B51C` | `-[NSInterceptedRect rectangle]` | `NSInterceptedRect.m` | unexamined |
 | `0x47A0B548` | `-[NSInterceptedRect isTotallyVisible]` | `NSInterceptedRect.m` | unexamined |
@@ -822,7 +822,7 @@ IDA function records: 419; symbol records: 629.
 | `0x47A08A98` | 7 | `-[NSFramebuffer lockWithMode:]` | static-reviewed; runtime pending; `NSFramebuffer.m` |
 | `0x47A08AA0` | 7 | `-[NSFramebuffer unlock]` | static-reviewed; runtime pending; `NSFramebuffer.m` |
 | `0x47A08AA8` | 13 | `-[NSFramebuffer _interceptorClient]` | static-reviewed; runtime pending; `NSFramebuffer.m` |
-| `0x47A08AB8` | 7 | `_NSRemapMegaPixelDisplayForCurrentThread` | unexamined |
+| `0x47A08AB8` | 7 | `_NSRemapMegaPixelDisplayForCurrentThread` | static-reviewed; source authored; runtime pending |
 | `0x47A08AC0` | 357 | `-[NSInterceptedRect initForRect:inWindow:onFramebuffer:forClient:]` | unexamined |
 | `0x47A08C28` | 16 | `-[NSInterceptedRect setTarget:]` | unexamined |
 | `0x47A08C38` | 13 | `-[NSInterceptedRect target]` | unexamined |
@@ -835,7 +835,7 @@ IDA function records: 419; symbol records: 629.
 | `0x47A08D38` | 66 | `-[NSInterceptedRect compositeBits:withOp:]` | static-reviewed; source authored; runtime pending |
 | `0x47A08D7C` | 33 | `-[NSInterceptedRect removeFromWindowServer]` | unexamined |
 | `0x47A08DA0` | 132 | `-[NSInterceptedRect dealloc]` | unexamined |
-| `0x47A08E24` | 13 | `-[NSInterceptedRect uniqueID]` | unexamined |
+| `0x47A08E24` | 13 | `-[NSInterceptedRect uniqueID]` | static-reviewed; source authored; runtime pending |
 | `0x47A08E34` | 13 | `-[NSInterceptedRect windowNumber]` | unexamined |
 | `0x47A08E44` | 39 | `-[NSInterceptedRect rectangle]` | unexamined |
 | `0x47A08E6C` | 14 | `-[NSInterceptedRect isTotallyVisible]` | unexamined |
@@ -1250,7 +1250,7 @@ Named Objective-C symbols (candidate module by class name; verify in module meta
 | `0x47A08D38` | `-[NSInterceptedRect compositeBits:withOp:]` | `NSInterceptedRect.m` | static-reviewed; source authored; runtime pending |
 | `0x47A08D7C` | `-[NSInterceptedRect removeFromWindowServer]` | `NSInterceptedRect.m` | unexamined |
 | `0x47A08DA0` | `-[NSInterceptedRect dealloc]` | `NSInterceptedRect.m` | unexamined |
-| `0x47A08E24` | `-[NSInterceptedRect uniqueID]` | `NSInterceptedRect.m` | unexamined |
+| `0x47A08E24` | `-[NSInterceptedRect uniqueID]` | `NSInterceptedRect.m` | static-reviewed; source authored; runtime pending |
 | `0x47A08E34` | `-[NSInterceptedRect windowNumber]` | `NSInterceptedRect.m` | unexamined |
 | `0x47A08E44` | `-[NSInterceptedRect rectangle]` | `NSInterceptedRect.m` | unexamined |
 | `0x47A08E6C` | `-[NSInterceptedRect isTotallyVisible]` | `NSInterceptedRect.m` | unexamined |

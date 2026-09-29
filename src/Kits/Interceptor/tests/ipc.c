@@ -488,8 +488,8 @@ int main(void)
         TestCheck(dlsym(handle, "_InterceptorSetNotifyPort") != 0,
                   "selected framework exports the SetNotifyPort RPC");
         TestCheck(dlsym(handle, "_OldInterceptorSetNotifyPort") != 0 &&
-                  dlsym(handle, "__InterceptorEnableFrameBufferMapping") != 0 &&
-                  dlsym(handle, "__InterceptorDisableFrameBufferMapping") != 0,
+                  dlsym(handle, "_InterceptorEnableFrameBufferMapping") != 0 &&
+                  dlsym(handle, "_InterceptorDisableFrameBufferMapping") != 0,
                   "selected framework exports legacy and framebuffer mapping RPCs");
         TestCheck(dlsym(handle, "_InterceptorScreenCount") != 0 &&
                   dlsym(handle, "_InterceptorHideCursor") != 0 &&

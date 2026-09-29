@@ -58,6 +58,15 @@ and marks a depth mismatch if the existing bitmap format differs from the new
 framebuffer. A matching, eligible framebuffer creates an intercepted rectangle
 and selects direct mapping; other cases discard interception state and select
 buffered drawing. Both branches resize storage when dimensions change.
+`_initForRect:inWinNum:onScreen:` rejects empty rectangles, records the geometry,
+starts an interceptor client thread when needed, maps the screen, and chooses a
+bitmap format from the framebuffer plus the configured gray/RGB minimum depths.
+It aligns packed rows to eight bytes, selects the byte/short/long copy routine
+for 8/16/32-bit pixels, then performs the final rectangle update. The public
+initializer retains its window, globalizes its window number, derives the screen
+number from `NSScreenNumber`, and disables direct mapping for buffered windows.
+`setDirectMapped:` checks eligibility and the window backing mode; turning direct
+mapping off removes the intercepted rectangle and forces buffered state.
 The public `updateForRect:inWindow:` converts the window number to its global
 form, reads `NSScreenNumber` from the window screen's device description, and
 retains the new window while releasing the old one before delegating. When that

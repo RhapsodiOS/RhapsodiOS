@@ -6,6 +6,7 @@
 #import "NSFramebuffer.h"
 #import "NSShape.h"
 #import "InterceptorGlobals.h"
+#import <AppKit/NSScreen.h>
 #import <AppKit/NSWindow.h>
 #import <Foundation/NSDictionary.h>
 #import <Foundation/NSException.h>
@@ -19,6 +20,8 @@
 - (BOOL)_canUseDirectMapping;
 - (id)_mapFramebufferForScreen:(int)screenNumber;
 - (id)_updateBackingStoreForRect:(NSRect)rect;
+- (id)_initForRect:(NSRect)rect inWinNum:(int)windowNumber
+              onScreen:(int)screenNumber;
 - (void)_updateForRect:(NSRect)rect inWinNum:(int)windowNumber
               onScreen:(int)screenNumber;
 - (void)updateState;
@@ -197,6 +200,86 @@ static int NSDirectBitmapMaximumScreens = -1;
     return self;
 }
 
+- (id)_initForRect:(NSRect)rect inWinNum:(int)windowNumber
+              onScreen:(int)screenNumber
+{
+    unsigned char *planes[NXSIMPLEBITMAP_MAXPLANES] = { 0, 0, 0, 0, 0 };
+    NSString *colorSpace;
+    int bitsPerPixel, bitsPerSample, samplesPerPixel, rowBytes;
+
+    if (NSIsEmptyRect(rect)) {
+        [self release];
+        return nil;
+    }
+
+    self->rect = rect;
+    self->_flushOnExposure = YES;
+    if (self->interceptClient == nil) {
+        self->interceptClient = [[NSInterceptorClient allocWithZone:[self zone]]
+            init];
+        if (self->interceptClient == nil) {
+            [self release];
+            return nil;
+        }
+        [self->interceptClient startHandlingThread];
+    }
+
+    [self _mapFramebufferForScreen:screenNumber];
+    self->isLocked = NO;
+    self->isBuffered = self->fbMode != NSFramebufferReadWrite;
+    self->newScreen = screenNumber;
+    if (self->framebuffer == nil) {
+        [self release];
+        return nil;
+    }
+
+    bitsPerPixel = [(NSFramebuffer *)self->framebuffer bitsPerPixel];
+    bitsPerSample = [(NSFramebuffer *)self->framebuffer bitsPerSample];
+    samplesPerPixel = [(NSFramebuffer *)self->framebuffer samplesPerPixel];
+    colorSpace = [(NSFramebuffer *)self->framebuffer colorSpaceName];
+    if ([colorSpace isEqual:NSDeviceRGBColorSpace]) {
+        if (bitsPerPixel < NSDirectBitmapColorBitsPerPixelMinimum) {
+            bitsPerPixel = NSDirectBitmapColorBitsPerPixelMinimum;
+            bitsPerSample = bitsPerPixel / 4;
+            self->depthMismatch = YES;
+        }
+    } else if (bitsPerPixel < NSDirectBitmapGrayBitsPerPixelMinimum) {
+        bitsPerPixel = NSDirectBitmapGrayBitsPerPixelMinimum;
+        bitsPerSample = bitsPerPixel;
+        self->depthMismatch = YES;
+    }
+
+    rowBytes = ((int)(rect.size.width * bitsPerPixel + 7) / 8 + 7) & ~7;
+    [super initWithBitmapDataPlanes:planes
+        pixelsWide:(int)rect.size.width
+        pixelsHigh:(int)rect.size.height
+        bitsPerSample:bitsPerSample
+        samplesPerPixel:samplesPerPixel
+        hasAlpha:NO
+        isPlanar:NO
+        colorSpaceName:colorSpace
+        bytesPerRow:rowBytes
+        bitsPerPixel:bitsPerPixel];
+
+    switch (self->bitsPerPixel) {
+    case 8:
+        self->copyFunc = CopyByte;
+        break;
+    case 16:
+        self->copyFunc = CopyShort;
+        break;
+    case 32:
+        self->copyFunc = CopyLong;
+        break;
+    default:
+        self->copyFunc = 0;
+        break;
+    }
+
+    [self _updateForRect:rect inWinNum:windowNumber onScreen:screenNumber];
+    return self;
+}
+
 - (id)_updateBackingStoreForRect:(NSRect)rect
 {
     unsigned char *planes[NXSIMPLEBITMAP_MAXPLANES] = { 0, 0, 0, 0, 0 };
@@ -300,6 +383,58 @@ static int NSDirectBitmapMaximumScreens = -1;
     [self _updateForRect:rect
         inWinNum:(int)globalWindowNumber
         onScreen:newScreen];
+}
+
+- (void)setDirectMapped:(BOOL)directMapped
+{
+    BOOL wasDirectMapped = self->isDirectMapped;
+
+    if (wasDirectMapped == directMapped)
+        return;
+
+    if (directMapped == YES) {
+        self->isDirectMapped = [self _canUseDirectMapping];
+        if (self->isDirectMapped == YES && self->window != nil &&
+            [self->window backingType] == NSBackingStoreBuffered)
+            self->isDirectMapped = NO;
+    } else {
+        self->isDirectMapped = NO;
+    }
+
+    if (self->isDirectMapped == wasDirectMapped)
+        return;
+    if (self->isDirectMapped == YES) {
+        [self updateState];
+    } else {
+        if (self->interceptRect != nil) {
+            [self->interceptRect removeFromWindowServer];
+            [self->interceptRect release];
+            self->interceptRect = nil;
+        }
+        self->isBuffered = YES;
+        self->isUnobscured = NO;
+    }
+}
+
+- (id)initForRect:(NSRect)rect inWindow:(id)window
+{
+    unsigned int globalWindowNumber;
+    NSNumber *screenNumberValue;
+    int screenNumber;
+
+    self->_naughtyFlags = 0;
+    self->window = [window retain];
+    NSConvertWindowNumberToGlobal([window windowNumber], &globalWindowNumber);
+    screenNumberValue = [[[window screen] deviceDescription]
+        objectForKey:@"NSScreenNumber"];
+    screenNumber = [screenNumberValue intValue];
+
+    self = [self _initForRect:rect
+        inWinNum:(int)globalWindowNumber
+        onScreen:screenNumber];
+    if (self != nil && [window backingType] == NSBackingStoreBuffered)
+        [self setDirectMapped:NO];
+    return self;
 }
 
 - (void)updateState

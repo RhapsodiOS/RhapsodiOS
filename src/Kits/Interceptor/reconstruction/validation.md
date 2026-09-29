@@ -22,6 +22,7 @@
 | NSDirectBitmap framebuffer screen mapping | PPC and i386 mode selection agrees; source authored; runtime pending | shared implementation; runtime pending |
 | NSDirectBitmap backing-store resize and rectangle update | PPC and i386 bodies agree on 8-byte row alignment, screen remapping, stale interception cleanup, and direct/buffered selection; source authored; runtime pending | shared implementation; runtime pending |
 | NSDirectBitmap public and deferred updates | PPC and i386 behavior agrees on global window conversion, screen-number lookup, window ownership, and backing-mode handling; source authored; runtime pending | shared implementation; runtime pending |
+| NSDirectBitmap rectangle initialization and direct-mode setter | PPC and i386 agree on client setup, framebuffer selection, depth policy, row alignment, copy routine selection, and backing-mode eligibility; source authored; runtime pending | shared implementation; runtime pending |
 | NSDirectBitmap deallocation | PPC and i386 release/free sequence agrees; source authored; runtime pending | shared implementation; runtime pending |
 | Mach IPC layouts and RPC contracts | screen/cursor request/reply bodies statically matched; test transport authored, execution pending | IDs and async cursor request independently confirmed; shared native descriptors/test harness, execution pending |
 | IPC ABI and transport test execution | blocked by missing compatible guest/toolchain | blocked by missing compatible guest/toolchain |

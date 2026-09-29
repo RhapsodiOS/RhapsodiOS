@@ -42,6 +42,11 @@ The public window-update and deferred-state methods also match PPC: globalize
 the window number, obtain the screen number from the screen device description,
 retain/release the window, and replay either window-backed or saved geometry.
 Buffered window backing disables direct mapping.
+Rectangle initialization starts the client thread, maps the selected screen,
+applies configured minimum gray or RGB depths, aligns row storage, chooses the
+copy routine for supported pixel widths, and delegates to the shared rectangle
+update. `setDirectMapped:` applies the same framebuffer and window-backing
+eligibility checks as PPC.
 
 Its simple accessors use the same field offsets: `bitmapData` at `0x47A0B0BC`,
 `getBitmapDataPlanes:` at `0x47A0B0CC`, `bytesPerPlane` at `0x47A0B184`,

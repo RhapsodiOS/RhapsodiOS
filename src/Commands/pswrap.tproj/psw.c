@@ -1831,28 +1831,24 @@ unsigned sz;
 	  ctxName, CTypeToResultType(t->namedFormal->type),
 	  t->namedFormal->name);
       if (t->namedFormal->subscript->constant)
-	printf("%d", t->namedFormal->subscript->val);
+	printf("%d, ", t->namedFormal->subscript->val);
       else
-	printf("%s", t->namedFormal->subscript->name);
+	printf("%s, ", t->namedFormal->subscript->name);
       if (t->namedFormal->scaled) {
 	if (t->namedFormal->scale->constant)
-	  printf(", %d);\n", t->namedFormal->scale->val);
+	  printf("%d);\n", t->namedFormal->scale->val);
 	else
-	  printf(", %s);\n", t->namedFormal->scale->name);
+	  printf("%s);\n", t->namedFormal->scale->name);
 	}
       else
-	printf(", 0);\n");
+	printf("0);\n");
       outlineno++;
       continue;
       }
     printf("  DPSWriteStringChars(%s, (char *)%s, ",
         ctxName, t->namedFormal->name);
     if (!t->namedFormal->subscripted) {
-      if(IsNumStrType(t->namedFormal->type))
-      	printf("_dpsP[%d].length * sizeof(%s));\n",
-			 t->tokenIndex, TypeToText(t->namedFormal->type));
-	  else
-        printf("_dpsP[%d].length);\n", t->tokenIndex);
+      printf("_dpsP[%d].length);\n", t->tokenIndex);
       if(pad) {
 #ifdef NeXT
       	printf("  DPSWriteStringChars(%s, (char *)%s, ~(_dpsP[%d].length + %d) & %d);\n",
@@ -1866,21 +1862,6 @@ unsigned sz;
     } else 
     	if (t->namedFormal->subscript->constant) {
 			int val = t->namedFormal->subscript->val;
-			if(IsNumStrType(t->namedFormal->type)) {
-      			printf("%d * sizeof(%s));\n", val, TypeToText(t->namedFormal->type));
-				if(pad & IsPadNumStrType(t->namedFormal->type)){
-#ifdef NeXT
-					printf("  DPSWriteStringChars(%s, (char *)%s, ~((%d * sizeof(%s)) + %d) & %d);\n",
-						ctxName,ctxName,val,TypeToText(t->namedFormal->type),
-						WORD_ALIGN+NUMSTR_HEADER_SIZE,WORD_ALIGN);
-#else
-					printf("  DPSWriteStringChars(%s, (char *)pad, ~((%d * sizeof(%s)) + %d) & %d);\n",
-						ctxName,val,TypeToText(t->namedFormal->type),
-						WORD_ALIGN+NUMSTR_HEADER_SIZE,WORD_ALIGN);
-#endif
-					outlineno ++;
-				}
-	  		} else {
       			printf("%d);\n", val);
 				if(pad){
 					val = ~(val + WORD_ALIGN) & WORD_ALIGN;
@@ -1893,27 +1874,9 @@ unsigned sz;
 					  		  ctxName,val);
 #endif
 					  outlineno ++;
-					}
 				}
-			}
+				}
         } else {
-			if(IsNumStrType(t->namedFormal->type)) {
-      			printf("%s * sizeof(%s));\n", t->namedFormal->subscript->name, 
-						TypeToText(t->namedFormal->type));
-				if(pad & IsPadNumStrType(t->namedFormal->type)) {
-#ifdef NeXT
-					printf("  DPSWriteStringChars(%s, (char *)%s, ~((%s * sizeof(%s)) + %d) & %d);\n",
-						ctxName,ctxName,t->namedFormal->subscript->name,
-						TypeToText(t->namedFormal->type),
-#else
-					printf("  DPSWriteStringChars(%s, (char *)pad, ~((%s * sizeof(%s)) + %d) & %d);\n",
-						ctxName,t->namedFormal->subscript->name,
-						TypeToText(t->namedFormal->type),
-#endif
-						WORD_ALIGN+NUMSTR_HEADER_SIZE,WORD_ALIGN);
-					outlineno ++;
-				}
-			} else {
       			printf("%s);\n", t->namedFormal->subscript->name);
 				if(pad) {
 #ifdef NeXT
@@ -1927,7 +1890,6 @@ unsigned sz;
 #endif
 					outlineno ++;
 				}
-		   }
 	   }
     outlineno ++;
     }

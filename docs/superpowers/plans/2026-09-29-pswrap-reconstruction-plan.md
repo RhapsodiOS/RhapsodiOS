@@ -83,6 +83,15 @@ A wider corpus and a wider option set, with the reference decompiled under IDA 9
 - [x] `psw.c` `ConstructStatics`: do not treat a subscripted numstring as an input array when deciding to split `_dpsQ`/`_dpsQ1`.
 - [x] Re-verify: 499 differential pairs (`-a`,`-r`,`-p`,`-b`,`-s`,`-n`,`-e`,`-H`,`-I` combinations over 45 inputs), 20 size cases, 7 end-of-input cases; re-check the binary string tables.
 
+### Task 6b: Literal-set closure pass (2026-09-30)
+
+- [x] Classify the three paired `__text` differences as crt/dyld glue (`start`, crt1 `__start`, `__call_mod_init_funcs`, `__dyld_func_lookup`), not pswrap code.
+- [x] Diff the printable `__cstring` literal sets from the IDA analyses: 2 reference-only (`"%d, "`, `"%s, "`) vs 8 rebuild-only (six dead numstring `DPSWriteStringChars`/`sizeof` templates plus `", %d);\n"`-style tails).
+- [x] `psw.c` `WriteObjSeq`: format the `DPSWriteNumString` subscript/scale through `"%d, "`/`"%s, "` fragments with a bare closing literal, and delete the unreachable numstring `sizeof` pad branches (every numstring `continue`s before them).
+- [x] Recover the wedged guest (kernel spin at `EIP 0xab9c`; QMP `system_reset` insufficient, relaunched `boot.py`; `/build` core survived, only the scratch `/build/psw` was recreated).
+- [x] Rebuild (80716 bytes) and re-verify: difftest/difftest2/difftest3/difftest4 (all pairs identical), sizeprobe2 (20/20 SAME), functest (`HEADER_IDENTICAL`/`BODY_IDENTICAL`), eofprobe.
+- [x] Re-run `binrecon analyze`: the printable `__cstring` sets are now exactly equal (0/0, section 9961 bytes in both). Remaining `code` residue is the crt/dyld glue, libc stubs and the offset-pairing desync.
+
 ### Task 7: Documentation
 
 - [x] Write `docs/superpowers/specs/2026-09-29-pswrap-reconstruction-design.md`.

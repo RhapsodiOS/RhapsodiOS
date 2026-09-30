@@ -161,22 +161,28 @@ end-of-input cases, including the byte-identical generated code above.
 
 `binrecon analyze` publishes analyses for both artifacts and both analyzers
 (IDA 9.4 and angr 9.3.0) from the current rebuild
-(`F246D6160B727B21DA8B842D6360DE3B8041CA6FED9A50B170043B92089E52B8`), and
+(`F6A041A48122EA8CA70417608167B94AE26FB5F183C3512071C34DC67629ECDD`), and
 `binrecon compare` records the structural result: `exact-image`,
-`exact-sections` and `normalized-functions` all fail, with 376 `code`, 13
-`layout`, 3459 `metadata`, 1 `padding` and 1 `relocation` findings across 13
-sections. That is expected, not hidden: the rebuilt binary is 88908 bytes
+`exact-sections` and `normalized-functions` all fail, with 377 `code`, 13
+`layout`, 3555 `metadata`, 1 `padding` and 1 `relocation` findings across 13
+sections. That is expected, not hidden: the rebuilt binary is 80716 bytes
 against the reference's prebound 107756, and the two are linked with
 different symbol stubs and a different section layout, so the metadata
 findings dominate. Structural acceptance is a byte/layout criterion; the
 behavioral criterion the tool actually satisfies is the byte-identical
 generated code above.
 
-A string-table comparison of the two binaries is the tightest remaining
-check: it now differs by three entries the reference has (` @  <`, `%d, `,
-`%s, `) against eight the rebuild has. Both sets are internal: the
-reference formats the `DPSWriteNumString` argument list through `sprintf`
-fragments where the rebuild uses separate `fprintf` calls, and the rebuild
-still carries the base's unreachable `DPSWriteStringChars`/`_dpsP[...].length`
-numstring pad templates inside `WriteObjSeq`'s non-numstring path (every
-numstring `continue`s before them). None of them reach generated output.
+A string-table comparison of the two binaries is now exact: the printable
+`__cstring` literal sets are identical, with zero entries on either side and
+the section at the reference's 9961 bytes. Reaching it took one more
+`WriteObjSeq` fix on top of the numstring port: the reference formats the
+`DPSWriteNumString` argument list through `sprintf` fragments
+(`"%d, "`/`"%s, "` with a shared closing literal) rather than separate
+`", %d);\n"`-style calls, and it contains no numstring
+`DPSWriteStringChars` variants at all, so the base's unreachable
+`_dpsP[...].length * sizeof` pad templates in the non-numstring path are
+deleted. The code-level structural residue is the crt/dyld glue
+(`start`, crt1's `__start`, `__call_mod_init_funcs`,
+`__dyld_func_lookup`), the libc `__picsymbol_stub` entries, and the
+offset-pairing desync their differing sizes cause — link-toolchain
+artifacts, not pswrap code.

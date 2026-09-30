@@ -172,7 +172,10 @@ static void test_encodeValuesOfObjCTypes_and_decode_round_trip(void)
 static void test_encodeBytes_and_decodeBytesWithReturnedLength_round_trip(void)
 {
     id coder = [[TestCoder alloc] init];
-    const char *sent = "hello";
+    /*  No const: the reference's -encodeBytes:length: encoding is
+        ^v (abi-check, stage 2c) -- a const-qualified pointer would
+        compile an `r` into the type string.  */
+    char sent[] = "hello";
     unsigned returnedLength = 0;
     void *received;
 

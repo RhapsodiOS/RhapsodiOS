@@ -3313,7 +3313,7 @@ git commit -m "Foundation: reconstruct NSFault's fault-firing sequence"
 - Consumes: everything.
 - Produces: the stage's committed evidence.
 
-- [ ] **Step 1: Retire `link_stubs.m`'s `NSMethodSignature` stub, and clean up two dead leftovers**
+- [x] **Step 1: Retire `link_stubs.m`'s `NSMethodSignature` stub, and clean up two dead leftovers**
 
 Delete the `@interface NSMethodSignature`/`@implementation NSMethodSignature` block from `link_stubs.m` (its real class now exists). While there, also delete the two now-provably-dead global function definitions this plan found during preparation: `void _NSObjectRaiseNullSelectorException(id object, SEL aSelector) { unimplemented(...); }` and `void _NSProxyRaiseNullSelectorException(id object, SEL aSelector) { unimplemented(...); }` — both are unreferenced dead code (`NSObject.m`/`NSProxy.m` each already define their own `static` version of the same name, per stage 2b's Task 11, and nothing calls the global stub versions; confirm this with `grep -rn "_NSObjectRaiseNullSelectorException\|_NSProxyRaiseNullSelectorException" src/Kits/Foundation/reconstruction/tests/*.m` before deleting, to be sure no test file references them directly).
 
@@ -3321,7 +3321,7 @@ Update `link_stubs.m`'s header comment to remove `NSMethodSignature` from its "w
 
 Rebuild every test binary in the plan (all fourteen: the seven from Task 10 plus `test_methodsignature`, `test_coder`, `test_invocation`, `test_fault`, and the pre-existing `test_zone`/`test_refcount` if not already covered) and confirm all still pass before proceeding.
 
-- [ ] **Step 2: Claim every new symbol in `symbols.json`**
+- [x] **Step 2: Claim every new symbol in `symbols.json`**
 
 ```json
  "NSMethodSignature.m": [
@@ -3344,7 +3344,7 @@ Rebuild every test binary in the plan (all fourteen: the seven from Task 10 plus
 
 Adjust the two undeclared-selector-style entries (`__frameOffsetAtIndex:`, and any C symbol Task 8's Step 1 disassembly turned up) to match whatever names Tasks 1–12 actually settled on — this list is drawn from the plan's own design, and Objective-C method entries in `symbols.json` should follow whatever convention the existing file already uses for stage 2a/2b's own undeclared categories (check `NSPrivate.m`'s and `NSObjCRuntime.m`'s entries in the current `symbols.json` for the exact format before writing these).
 
-- [ ] **Step 3: Generate the ABI baselines**
+- [x] **Step 3: Generate the ABI baselines**
 
 ```bash
 BINRECON_REFERENCE=C:/Users/raynorpat/Downloads/test/Foundation-i386 \
@@ -3366,13 +3366,13 @@ PYTHONPATH=tools/binrecon /d/RhapsodiOS/.venv-binrecon/Scripts/python.exe -m bin
 
 **Generate, never hand-edit.** Expected: `wrote .../NSMethodSignature.json`, `wrote .../NSCoder.json`, `wrote .../NSInvocation.json`, `wrote .../NSFault.json`, plus `not emitting` lines for every other module.
 
-- [ ] **Step 4: Build i386 objects and run Gate 1**
+- [x] **Step 4: Build i386 objects and run Gate 1**
 
 Compile all fourteen modules (the ten from stages 2a/2b plus this stage's four) to i386 objects and check the whole committed `abi/` directory at once, following the exact pattern stage 2b's own Task 12 established (a scratch build directory, `cc -c -arch i386` per module, then `binrecon abi-check --abi-dir src/Kits/Foundation/reconstruction/abi --built MODULE.m=PATH` for all fourteen). Expected: `abi-check: ABI matches`, exit 0.
 
 **If it reports an unexpected exported symbol, claim it in `symbols.json` and regenerate — do not make it `static`.** If it reports a missing symbol, check the underscore rule first.
 
-- [ ] **Step 5: Run the analysis and produce Gate 3's evidence**
+- [x] **Step 5: Run the analysis and produce Gate 3's evidence**
 
 Following stage 2b's own Task 12 pattern exactly (add a `"rebuilt"` artifact to an uncommitted working copy of the profile pointing at one relocatable object combining this stage's four modules, run `analyze` in the foreground once against that copy, then `compare`/`source-map` against the committed profile using the two published analysis paths):
 
@@ -3404,11 +3404,11 @@ PYTHONPATH=tools/binrecon /d/RhapsodiOS/.venv-binrecon/Scripts/python.exe -m bin
 
 `ledger` is driven one entry at a time by `binrecon ledger` transitions against `$R/invocation-coding/ledger.json`. Gate 3 is evidence only. **Budget ~1 s per ledger entry** — the programme's own measured rate.
 
-- [ ] **Step 6: Write `divergences.md`'s stage 2c section**
+- [x] **Step 6: Write `divergences.md`'s stage 2c section**
 
 Record, at minimum: the forwarding-mechanism supersession (spec S2.1) — cite the exact test in Task 10 as the evidence it works, not just that the category exists; `NSCoder`'s abstract-primitives pattern (S2.2); the inline-bitfield-refcount divergence from the side table (S2.5); whichever retain-count mechanism Task 1 Step 1 confirmed for `NSMethodSignature`; the plist/typedstream parser's actual reconstructed scope (S2.4), including whether it turned out to be the full grammar or a substitution Task 4 had to make when the disassembly permitted less than hoped; the confirmed register-return mechanism from Task 8 Step 1; the confirmed fault-firing sequence from Task 12 Step 1 (forwards-only vs. isa-swap); and the untested-methods table for anything no test in this stage reaches (the `container` ivar per spec S5.3; `NSInvocation`'s `NSMutableArray *container` itself; any of Task 8's register-return branches this stage's own test target types could not exercise).
 
-- [ ] **Step 7: Final verification**
+- [x] **Step 7: Final verification**
 
 Run, and record each result:
 
@@ -3419,7 +3419,7 @@ Run, and record each result:
 5. `git diff --name-only <stage-2c-base>..HEAD -- 'src/Kits/Foundation/*.h'` → **empty**
 6. `symbol-audit` → the unclaimed count has fallen by the number of functions this stage claimed; record the new figure in the ledger
 
-- [ ] **Step 8: Clean up the guest and commit**
+- [x] **Step 8: Clean up the guest and commit**
 
 ```bash
 git add src/Kits/Foundation/reconstruction/abi/NSMethodSignature.json src/Kits/Foundation/reconstruction/abi/NSCoder.json src/Kits/Foundation/reconstruction/abi/NSInvocation.json src/Kits/Foundation/reconstruction/abi/NSFault.json src/Kits/Foundation/reconstruction/invocation-coding/ledger.json src/Kits/Foundation/reconstruction/invocation-coding/source-map.json src/Kits/Foundation/reconstruction/symbols.json src/Kits/Foundation/reconstruction/ownership.json src/Kits/Foundation/reconstruction/divergences.md src/Kits/Foundation/reconstruction/tests/link_stubs.m tools/binrecon/profiles/foundation-i386-invocation-coding.json

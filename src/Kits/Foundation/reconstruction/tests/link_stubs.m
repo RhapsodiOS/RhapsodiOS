@@ -12,7 +12,6 @@
       NSDeallocateZombies -- NSZone.m's allocation-statistics and zombie
       gates; the tests never set them
     - _NSConstantStringClassReference -- stage 3 (real NSString)
-    - NSMethodSignature -- stage 3 territory
     - NSString stub class -- stage 3; no test reaches it any more
     - _NSInitializePlatform -- backs +load/+initialize, silent no-op
     - NSStringFromStack -- NSDebug.h stack text, stage 3 territory
@@ -73,12 +72,11 @@ void NSRecordAllocationEvent(int eventType, ...)
     introspection helpers (_NSIMPForSelector,
     _NSMethodDescriptionForSelector, _NSClassConformsToProtocol) moved to
     NSObjCRuntime.m, and _NSMethodExceptionProem to NSException.m, in
-    stage 2b; none is stubbed here any more.  */
-
-void _NSObjectRaiseNullSelectorException(id object, SEL aSelector)
-{
-    unimplemented("_NSObjectRaiseNullSelectorException");
-}
+    stage 2b; none is stubbed here any more.  The global
+    _NSObjectRaiseNullSelectorException/_NSProxyRaiseNullSelectorException
+    stubs that used to stand in here were removed in stage 2c: NSObject.m
+    and NSProxy.m each define their own static versions (stage 2b Task 11),
+    and nothing referenced the stub globals.  */
 
 /*  NSLog is defined by NSObjCRuntime.m (stage 2b), which now links into
     every suite that links this file; this file's abort()-ing stub was
@@ -141,13 +139,7 @@ id NSStringFromStack(id format, id separator)
     return nil;
 }
 
-/*  Task 9 (NSProxy) addition.  NSProxy's own null-selector diagnostic
-    helper, the direct counterpart to _NSObjectRaiseNullSelectorException
-    above.  Not part of NSAutoreleasePool.json or NSPrivate.json's method
-    lists, so Task 10 does not reconstruct it either -- still not
-    reconstructed, and not reached by any test in this stage (none call
-    performSelector: with a NULL selector).  */
-void _NSProxyRaiseNullSelectorException(id object, SEL aSelector)
-{
-    unimplemented("_NSProxyRaiseNullSelectorException");
-}
+/*  Task 9 (NSProxy) addition retired in stage 2c: NSProxy.m defines its
+    own static _NSProxyRaiseNullSelectorException (stage 2b Task 11), so
+    this file never needed to supply it once that landed -- the global
+    stub was unreferenced dead code.  */

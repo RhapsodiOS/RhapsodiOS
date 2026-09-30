@@ -32,6 +32,24 @@ typedef struct {
     unsigned	unused1;
 } NSMethodSignatureArgInfo;
 
+/*	The by-value shape -_argumentInfoAtIndex: delivers (the reference's
+	{?=ii*^{_arginfo}i} return encoding).  The exact shape is what makes
+	this toolchain's cc1obj emit that encoding byte-for-byte (probed on
+	the guest, Gate 1 stage 2c): an ANONYMOUS typedef'd struct with
+	int-sized fields and a tag-only pointer field -- `struct _arginfo`
+	is forward-declared here and defined NOWHERE, so the pointer
+	encodes as ^{_arginfo}.  NSInvocation.m and the test suite carry
+	identical file-local copies; no shared header declares the type.  */
+struct _arginfo;
+
+typedef struct {
+    int		offset;
+    int		size;
+    const char	*type;
+    struct _arginfo *unused0;
+    int		unused1;
+} NSMethodSignatureArgumentInfo;
+
 /*
 	Mirror of the header's ivar layout, which is the ABI-visible part:
 	isa plus the seven declared ivars is the reference's own 32-byte
@@ -326,16 +344,21 @@ _NSMethodSignatureNew(Class self, const char *types, unsigned typesLength)
 
 /*
 	Undeclared; NSInvocation.m (Task 6) marshals arguments through
-	this cache.  The reference encodes it {?=ii*^{_arginfo}i} and
-	copies the full 20-byte entry to a buffer arriving in ebx -- a
-	register-return convention this compiler does not expose, so the
-	reconstruction returns the entry's address instead, documented as
-	a substitution in divergences.md.  */
-- (void *)_argumentInfoAtIndex:(unsigned)index
+	this cache.  The reference's method-list encoding is
+	{?=ii*^{_arginfo}i}12@8:12I16 -- a STRUCT RETURN: the i386
+	caller passes the destination buffer in a hidden register, and
+	the body copies the 20-byte entry out to it (the register-return
+	convention this compiler cannot declare with a bare pointer
+	return).  Declared here with the struct as the return type so the
+	compiled encoding matches the reference byte-for-byte (Gate 1,
+	stage 2c); callers receive the entry by value exactly as the
+	reference delivers it.  */
+- (NSMethodSignatureArgumentInfo)_argumentInfoAtIndex:(unsigned)index
 {
     NSMethodSignatureArgInfo *entries =
         (NSMethodSignatureArgInfo *)
         ((NSMethodSignatureInstance *)self)->_parmInfoP;
+    NSMethodSignatureArgumentInfo out;
 
     if ((int)index >= ((NSMethodSignatureInstance *)self)->_nargs) {
         [NSException raise:NSInvalidArgumentException
@@ -344,7 +367,12 @@ _NSMethodSignatureNew(Class self, const char *types, unsigned typesLength)
                             sel_getName(_cmd)];
     }
 
-    return &entries[index];
+    out.offset = (int)entries[index].offset;
+    out.size = (int)entries[index].size;
+    out.type = entries[index].type;
+    out.unused0 = 0;
+    out.unused1 = 0;
+    return out;
 }
 
 /*

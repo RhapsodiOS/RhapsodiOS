@@ -200,7 +200,17 @@
     }
 }
 
-- (void)encodeBytes:(const void *)byteaddr length:(unsigned)length
+/*  The parameter is NOT const: the reference's method-list encoding is
+    v16@8:12^v16I20 (abi-check Gate 1, stage 2c) -- an `r` qualifier in
+    the source would compile into the encoding and diverge (probed:
+    this cc1obj emits `r^v`/`r*` for const pointer params).  The
+    mismatch with NSCoder.h's `const void *` declaration is Apple's
+    own -- their shipped binary carries the same header/implementation
+    pair -- and the header stays untouched under the programme's
+    no-header-modification constraint.  The old cc treats the
+    conflicting-types situation as a warning; message dispatch never
+    reads it.  */
+- (void)encodeBytes:(void *)byteaddr length:(unsigned)length
 {
     [self encodeValueOfObjCType:"I" at:&length];
     [self encodeArrayOfObjCType:"c" count:length at:byteaddr];
@@ -261,15 +271,12 @@
     return [self decodeObject];
 }
 
-- (void)encodeNXObject:(id)object
-{
-    [self encodeObject:object];
-}
-
-- (id)decodeNXObject
-{
-    return [self decodeObject];
-}
+/*  NSTypedstreamCompatibility pair.  Gate 1 (stage 2c) walked the
+    reference's 80 __OBJC,__module_info records: the pair is NOT here
+    -- NSCoder's own class record is 22 flat methods with no category,
+    and the pair lives in NSCoder(NSTypedstreamCompatibility) inside
+    NSCompatibility.m (a later stage's module, outside this stage's
+    abi-check set).  Moved there; the ABI comparison is authoritative.  */
 
 @end
 

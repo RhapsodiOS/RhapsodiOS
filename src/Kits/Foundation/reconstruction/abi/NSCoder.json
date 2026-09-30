@@ -1,0 +1,109 @@
+{
+ "categories": [],
+ "classes": [
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "systemVersion",
+     "types": "I8@8:12"
+    },
+    {
+     "selector": "objectZone",
+     "types": "^{?=}8@8:12"
+    },
+    {
+     "selector": "setObjectZone:",
+     "types": "v12@8:12^{?=}16"
+    },
+    {
+     "selector": "decodeBytesWithReturnedLength:",
+     "types": "^v12@8:12^I16"
+    },
+    {
+     "selector": "decodeArrayOfObjCType:count:at:",
+     "types": "v20@8:12r*16I20^v24"
+    },
+    {
+     "selector": "decodeValuesOfObjCTypes:",
+     "types": "v12@8:12r*16"
+    },
+    {
+     "selector": "decodePropertyList",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "decodeObject",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "encodeBytes:length:",
+     "types": "v16@8:12^v16I20"
+    },
+    {
+     "selector": "encodeArrayOfObjCType:count:at:",
+     "types": "v20@8:12r*16I20r^v24"
+    },
+    {
+     "selector": "encodeValuesOfObjCTypes:",
+     "types": "v12@8:12r*16"
+    },
+    {
+     "selector": "encodeConditionalObject:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "encodeRootObject:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "encodeByrefObject:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "encodeBycopyObject:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "encodePropertyList:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "encodeObject:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "versionForClassName:",
+     "types": "I12@8:12@16"
+    },
+    {
+     "selector": "decodeDataObject",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "decodeValueOfObjCType:at:",
+     "types": "v16@8:12r*16^v20"
+    },
+    {
+     "selector": "encodeDataObject:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "encodeValueOfObjCType:at:",
+     "types": "v16@8:12r*16r^v20"
+    }
+   ],
+   "instance_size": 4,
+   "ivars": [],
+   "name": "NSCoder",
+   "superclass": "NSObject"
+  }
+ ],
+ "data_symbols": [],
+ "module": "NSCoder.m",
+ "schema_version": "abi-v1",
+ "text_symbols": [
+  "_NXReadNSObjectFromCoder"
+ ]
+}

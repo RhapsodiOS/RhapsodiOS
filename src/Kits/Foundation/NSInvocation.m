@@ -13,6 +13,8 @@
 #import <Foundation/NSString.h>
 #import <Foundation/NSZone.h>
 #import <objc/objc-class.h>
+/*  struct objc_method_description is defined here, not in objc-class.h.  */
+#import <objc/Protocol.h>
 #import <objc/objc-runtime.h>
 #include <stdio.h>
 #include <string.h>
@@ -21,26 +23,30 @@
 	declares it, so this file carries the declaration.  */
 extern id _NSMethodExceptionProem(id object, SEL aSelector);
 
-/*	The argument-cache entry NSMethodSignature.m hands back through
-	-_argumentInfoAtIndex: -- the reference's 20-byte i386 layout,
-	{?=ii*^{_arginfo}i}: the frame offset, the size, the type pointer,
-	and two fields the constructor never writes.  */
-typedef struct {
-    unsigned	offset;
-    unsigned	size;
-    const char	*type;
-    unsigned	unused0;
-    unsigned	unused1;
-} NSInvocationArgInfo;
-
 /*	NSMethodSignature.m exposes its per-argument cache through this
 	undeclared accessor; Task 1 measured the reference's own layout
 	(entry +8 holds the type pointer) and this accessor is the
 	reconstruction's cross-module stand-in for what the reference does
 	by reaching into the signature's cache directly (index*20 off its
 	_parmInfoP, rep movsd x5).  */
+/*	The by-value entry shape, identical to NSMethodSignature.m's own
+	anonymous typedef (no shared header declares it; the tag-only
+	`struct _arginfo` pointer field is what makes the compiled encoding
+	read ^{_arginfo} like the reference's).  */
+struct _arginfo;
+
+typedef struct {
+    int		offset;
+    int		size;
+    const char	*type;
+    struct _arginfo *unused0;
+    int		unused1;
+} NSMethodSignatureArgumentInfo;
 @interface NSMethodSignature (NSInvocationSupport)
-- (void *)_argumentInfoAtIndex:(unsigned)index;
+/*  Struct return, matching the reference's
+    {?=ii*^{_arginfo}i}12@8:12I16 method-list encoding (Gate 1,
+    stage 2c): the entry comes back by value.  */
+- (NSMethodSignatureArgumentInfo)_argumentInfoAtIndex:(unsigned)index;
 @end
 
 /*
@@ -272,7 +278,7 @@ typedef struct {
 - (void)getArgument:(void *)argumentLocation atIndex:(int)index
 {
     NSInvocationInstance *instance = (NSInvocationInstance *)self;
-    NSInvocationArgInfo *info;
+    NSMethodSignatureArgumentInfo info;
     unsigned size;
 
     if (instance->argumentFrame == NULL) {
@@ -319,16 +325,15 @@ typedef struct {
         return;
     }
 
-    info = (NSInvocationArgInfo *)
-        [instance->signature _argumentInfoAtIndex:(unsigned)index];
+    info = [instance->signature _argumentInfoAtIndex:(unsigned)index];
     memcpy(argumentLocation,
-           (char *)instance->argumentFrame + info->offset, info->size);
+           (char *)instance->argumentFrame + info.offset, info.size);
 }
 
 - (void)setArgument:(void *)argumentLocation atIndex:(int)index
 {
     NSInvocationInstance *instance = (NSInvocationInstance *)self;
-    NSInvocationArgInfo *info;
+    NSMethodSignatureArgumentInfo info;
 
     if (instance->argumentFrame == NULL) {
         [NSException raise:NSInvalidArgumentException
@@ -351,10 +356,9 @@ typedef struct {
         return;
     }
 
-    info = (NSInvocationArgInfo *)
-        [instance->signature _argumentInfoAtIndex:(unsigned)index];
-    memcpy((char *)instance->argumentFrame + info->offset,
-           argumentLocation, info->size);
+    info = [instance->signature _argumentInfoAtIndex:(unsigned)index];
+    memcpy((char *)instance->argumentFrame + info.offset,
+           argumentLocation, info.size);
 }
 
 - (void)getReturnValue:(void *)retLoc
@@ -510,18 +514,26 @@ static int __NSInvocationLoggingDepth;
 	invocation with the right target, selector and arguments -- is what
 	these tests pin, and what the reference's own path also delivers.
 	*/
-+ (id)_preInitWithCoder:(NSCoder *)aCoder signature:(NSMethodSignature **)sigOut
-                  valid:(BOOL *)validOut wireSignature:(char **)wireOut
-                 target:(id *)targetOut selector:(SEL *)selOut
-               argCount:(unsigned *)countOut
++ (void)_preInitWithCoder:(NSCoder *)aCoder signature:(NSMethodSignature **)sigOut
+                   valid:(BOOL *)validOut wireSignature:(NSString **)wireOut
+                  target:(id *)targetOut selector:(SEL *)selOut
+                argCount:(unsigned *)countOut
 {
-    /*  The reference's preInit decodes the DO wire format its own
-        1008-byte encoder produces (stage 8); this stage's wire is the
-        -encodeWithCoder: stream above, so the decode order mirrors
-        THAT -- signature object, selector, target -- with the arg
-        count derived from the signature rather than a wire field.
-        Validity is the reference's compare: the decoded signature
-        must not be nil.  */
+    /*  The reference's preInit (0x42551260) decodes the DO wire format
+        its own 1008-byte encoder produces (stage 8): '@' (target), 'I'
+        (arg count), ':' (selector) and '*' (the wire TYPE STRING, freed
+        with NSZoneFree after the comparison), then cross-checks [target
+        methodSignatureForSelector:] against [NSMethodSignature
+        signatureWithObjCTypes: wire] -- 'valid' records that compare,
+        and a mismatch NSLogs '%s incompatible method params: got %@
+        want %@' (cstring_object at 0x42606c38).  This stage's wire is
+        the -encodeWithCoder: stream above, so the decode order mirrors
+        THAT -- signature object, selector, target -- with the arg count
+        derived from the signature rather than a wire field.  The
+        wire-signature value rides the method list as an object (the
+        encodings are ^@ out, @ in -- Gate 1, stage 2c), but the stream
+        carries no such value until stage 8 replaces both ends, so
+        *wireOut is nil here.  */
     *sigOut = [aCoder decodeObject];
     [aCoder decodeValueOfObjCType:":" at:selOut];
     [aCoder decodeValueOfObjCType:"@" at:targetOut];
@@ -529,17 +541,16 @@ static int __NSInvocationLoggingDepth;
         *countOut = (unsigned)[*sigOut numberOfArguments];
     else
         *countOut = 0;
-    *wireOut = NULL;
+    *wireOut = nil;
     *validOut = (*sigOut != nil);
     if (!*validOut)
         [NSException raise:NSInvalidArgumentException
                     format:@"%@: decoded a nil signature",
                             _NSMethodExceptionProem(self, _cmd)];
-    return self;
 }
 
 - (id)_postInitWithCoder:(NSCoder *)aCoder signature:(NSMethodSignature *)aSignature
-                   valid:(BOOL)valid wireSignature:(char *)wireSignature
+                   valid:(BOOL)valid wireSignature:(NSString *)wireSignature
                   target:(id)aTarget selector:(SEL)aSelector
                 argCount:(unsigned)argCount
 {
@@ -564,7 +575,7 @@ static int __NSInvocationLoggingDepth;
 {
     NSMethodSignature *sig;
     BOOL valid;
-    char *wire;
+    NSString *wire;
     id target;
     SEL selector;
     unsigned argCount;
@@ -758,15 +769,20 @@ static int __NSInvocationLoggingDepth;
 	the one-shot signature/invocation pair for whatever selector was
 	sent, never dispatch it.  Claimed by name in symbols.json.
 	*/
-@interface NSInvocationBuilder : NSObject
+/*  The builder is a ROOT class in the reference (class record super
+    field = 0, explicit isa ivar at +0, 16 bytes), so it declares its
+    own isa here; subclassing Object instead is fatal on the guest's
+    cc1obj (duplicate-member 'isa' error path segfaults).  */
+@interface NSInvocationBuilder
 {
+    Class	isa;
     Class	targetClass;
     id		target;
     void	*reserved;
 }
 + (id)builderForClass:(Class)aClass;
 + (id)builderForObject:(id)anObject;
-- (id)forward:(SEL)aSelector :(marg_list)argFrame;
+- (id)forward:(SEL)aSelector :(SEL *)argFrame;
 @end
 
 @implementation NSInvocationBuilder
@@ -777,30 +793,64 @@ static int __NSInvocationLoggingDepth;
 
 + (id)builderForClass:(Class)aClass
 {
-    NSInvocationBuilder *builder = [[self allocWithZone:NULL] init];
+    NSInvocationBuilder *builder = [NSInvocation allocWithZone:NULL];
 
-    builder->targetClass = aClass;
+    /*  The reference packs (targetClass, target) into the NSInvocation
+        allocation's own ivar words and returns it as the "builder":
+        0x425729b4/b6 store straight into +0/+4 of the new object.  The
+        builder IS the invocation under construction.  */
+    ((Class *)builder)[1] = aClass;
     builder->target = nil;
     return [builder autorelease];
 }
 
 + (id)builderForObject:(id)anObject
 {
-    NSInvocationBuilder *builder = [[self allocWithZone:NULL] init];
+    NSInvocationBuilder *builder = [NSInvocation allocWithZone:NULL];
 
-    builder->targetClass = anObject->isa;
-    builder->target = anObject;
+    ((Class *)builder)[1] = anObject->isa;
+    ((id *)builder)[2] = anObject;
     return [builder autorelease];
 }
 
-/*	Packages the call actually received (aSelector, not a fixed one)
-	against this builder's recorded target and hands the invocation
-	back -- the caller (NSProxy's four type-identity methods) sends it
-	-invoke and -getReturnValue: itself.  */
-- (id)forward:(SEL)aSelector :(marg_list)argFrame
+/*	The reference's own -forward:: (0x42574358, 360 bytes), translated:
+	ask the recorded targetClass for its
+	+instanceMethodDescriptionForSelector: (a nil answer raises
+	NSInternalInconsistencyException 'target does not implement
+	method'); clear the builder's (targetClass, target) words -- which
+	ARE the future invocation's (signature, argumentFrame) slots --
+	then build the real NSMethodSignature from the description's type
+	string (+4), [NSInvocation alloc] it, -initWithMethodSignature:,
+	_setArgFrame: the runtime's raw frame, -getArgument:atIndex:0 into
+	the frame (its slot 0 still holds the ORIGINAL self; when that is
+	nil the reference raises NSInternalInconsistencyException
+	"*** -forward:: no selector in argument frame for '%s' (%@)" with
+	an [NSData dataWithBytes:length:] of the frame attached),
+	-setArgument:atIndex: the original receiver back into slot 0,
+	autorelease and return the invocation -- which is still THIS
+	object, its header word now the real isa.    The ABI-relevant part (Gate 1, stage 2c): the method-list encoding
+    is @16@8:12:16^:20 -- the argFrame parameter is declared SEL * so
+    cc1obj emits the selector-frame pointer (^:), not a void pointer
+    (^v; marg_list, a void *, produces that instead).
+
+	The reconstruction keeps the observable contract -- a complete,
+	autoreleased NSInvocation with the original target/selector/args
+	slot 0 set -- reached through this tree's documented NSInvocation
+	APIs rather than the reference's raw ivar-word aliasing, which
+	only works because the reference's class has no own method list
+	to keep the two classes' records apart.  */
+- (id)forward:(SEL)aSelector :(SEL *)argFrame
 {
-    id signature = [target methodSignatureForSelector:aSelector];
-    id invocation = [NSInvocation invocationWithMethodSignature:signature];
+    struct objc_method_description *description;
+    id invocation;
+
+    description = [targetClass instanceMethodDescriptionForSelector:aSelector];
+    if (description == NULL)
+        [NSException raise:NSInternalInconsistencyException
+                    format:@"target does not implement method"];
+
+    invocation = [NSInvocation invocationWithMethodSignature:
+        [NSMethodSignature signatureWithObjCTypes:description->types]];
 
     [invocation setSelector:aSelector];
     [invocation setTarget:target];
@@ -825,7 +875,15 @@ static int __NSInvocationLoggingDepth;
 	*/
 @implementation NSObject (NSForwardInvocation)
 
-- (id)forward:(SEL)aSelector :(marg_list)argFrame
+/*  The category's method-list encoding is q16@8:12:16^v20 -- the
+    return type is 'q' (long long), not '@': the trampoline returns
+    the full 64-bit value pulled from -_returnValue, and Objective-C
+    message dispatch never reads the declared return type (the IMP's
+    own return register layout is what matters, and a struct-return
+    selector reaches -forward:: with the hidden pointer in place).
+    The declared long long return is what makes that raw behaviour
+    match the reference's compiled ABI.  */
+- (long long)forward:(SEL)aSelector :(marg_list)argFrame
 {
     id signature = [self methodSignatureForSelector:aSelector];
     id invocation;
@@ -852,7 +910,7 @@ static int __NSInvocationLoggingDepth;
     switch (value.type) {
     case NSObjCObjectType:
     case NSObjCSelectorType:
-        return value.value.objectValue;
+        return (long long)(unsigned long)value.value.objectValue;
     case NSObjCStructType:
     case NSObjCUnionType:
         return (id)value.value.structLocation;

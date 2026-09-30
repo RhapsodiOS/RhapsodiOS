@@ -67,3 +67,25 @@
 }
 
 @end
+
+/*  NSCoder (NSTypedstreamCompatibility).  Gate 1 (stage 2c) walked
+    the reference's 80 __OBJC,__module_info records: the NXObject pair
+    is declared in THIS module as a category on NSCoder -- NSCoder.m's
+    own class record is 22 flat methods with no category, and
+    NSCoder.m's copy of the pair was moved here on the ABI evidence.
+    The bodies are the same encodeObject:/decodeObject delegations.  */
+#import <Foundation/NSCoder.h>
+
+@implementation NSCoder (NSTypedstreamCompatibility)
+
+- (void)encodeNXObject:(id)object
+{
+    [self encodeObject:object];
+}
+
+- (id)decodeNXObject
+{
+    return [self decodeObject];
+}
+
+@end

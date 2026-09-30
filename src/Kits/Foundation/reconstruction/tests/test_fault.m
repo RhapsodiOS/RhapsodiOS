@@ -99,7 +99,7 @@ static const char *TestStringBytes(id string)
 @interface NSFault : NSObject
 + (BOOL)isFault;
 + (BOOL)isFault:(id)anObject;
-+ (id)clearFault:(id)anObject;
++ (void)clearFault:(id)anObject;
 + (id)handlerForFault: (id)anObject;
 + (Class)targetClassForFault:(id)anObject;
 + (void)makeObjectIntoFault:(id)anObject withHandler:(NSFaultHandler *)aHandler;
@@ -315,7 +315,10 @@ static void test_clearFault_restores_the_isa_and_the_count(void)
 
     /*  The hook fires BEFORE any state change (0x4251a01b-29), with the
         faulted object as its argument.  */
-    CHECK([NSFault clearFault:target] == target);
+    /*  +clearFault: returns void (reference encoding v12@8:12@16) and
+        works on the object in place -- the identity checks below ARE
+        the observation of its effect.  */
+    [NSFault clearFault:target];
     CHECK(faultWillFireCount == 1);
     CHECK(faultWillFireObject == target);
 
@@ -501,32 +504,27 @@ static void test_performSelector_family_dispatches_through_the_fault(void)
 {
     TestFaultTarget *target = [[TestFaultTarget alloc] init];
     NSFaultHandler *handler = [[NSFaultHandler alloc] init];
+    id caught = nil;
 
     [NSFault makeObjectIntoFault:target withHandler:handler];
 
-    /*  The performSelector: bodies (0x42572834-class/0x42573a10-shaped
-        instance side) send objc_msgSend(self, sel): the runtime resolves
-        through the FAULT's isa, so only NSFault's own instance methods
-        answer.  -isFault answers locally.  */
-    CHECK([target performSelector:@selector(isFault)] != nil);
+    /*  Gate 1 (stage 2c) decoded the reference's instance battery: 21
+        methods, NO performSelector: family -- a performSelector: send
+        to a fault is an ordinary unknown selector.  It forwards, the
+        base handler's gate answers YES, and the base completion (the
+        abstract NSRequestConcreteImplementation raise) fires before
+        anything dispatches.  (The CLASS-side family, 0x42572834..., is
+        the reference's own and stays.)  */
+    NS_DURING
+        [target performSelector:@selector(isFault)];
+    NS_HANDLER
+        caughtException = localException;
+    NS_ENDHANDLER
 
-    /*  A null selector raises through NSFault.m's own static helper
-        (0x4257551c, '%@: null selector').  */
-    {
-        id caught = nil;
-
-        NS_DURING
-            [target performSelector:(SEL)NULL];
-        NS_HANDLER
-            caughtException = localException;
-        NS_ENDHANDLER
-
-        caught = caughtException;
-        caughtException = nil;
-        CHECK(caught != nil);
-        CHECK([caught name] == NSInvalidArgumentException);
-        CHECK(strstr(TestStringBytes([caught reason]), "null selector") != NULL);
-    }
+    caught = caughtException;
+    caughtException = nil;
+    CHECK(caught != nil);
+    CHECK([caught name] == NSInternalInconsistencyException);
 
     [target release];
     [handler release];

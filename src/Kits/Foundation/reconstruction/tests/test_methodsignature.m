@@ -27,6 +27,24 @@
 #include <stdio.h>
 #include <string.h>
 
+/*  The by-value entry shape -_argumentInfoAtIndex: returns (identical
+    to NSMethodSignature.m's own file-local definition -- no shared
+    header declares it).  Declared at file scope so the casts below
+    convert an id into the real struct type rather than relying on the
+    method's declared return type (the guest cc1obj rejects a cast to
+    a locally scoped struct tag).  */
+struct NSMethodSignatureArgumentInfo {
+    unsigned int offset;
+    unsigned int size;
+    const char *type;
+    unsigned int unused0;
+    unsigned int unused1;
+};
+
+@interface NSMethodSignature (TestArgumentInfo)
+- (struct NSMethodSignatureArgumentInfo)_argumentInfoAtIndex:(unsigned)index;
+@end
+
 static int failures = 0;
 
 #define CHECK(condition) \
@@ -128,36 +146,32 @@ static void
 test_argumentInfoAtIndex_returns_the_cached_entry(void)
 {
     /*  -_argumentInfoAtIndex: (in the reference's method list, encoded
-        {?=ii*^{_arginfo}i}) copies one 20-byte cache entry by value:
-        { offset, size, const char *type, unused, unused } with offset
-        the running round4 sum before this argument.  The constructor's
-        fill loop writes only the first three fields -- the walker's
-        alignment output goes to a stack temporary and is never stored,
-        so fields 4 and 5 read zero in the reference as well.  `type`
-        is a pointer into the signature's own types copy, not a
-        standalone token, so the tests read its first byte.  */
-    struct NSMethodSignatureArgumentInfo {
-        unsigned int offset;
-        unsigned int size;
-        const char *type;
-        unsigned int unused0;
-        unsigned int unused1;
-    } info;
+        {?=ii*^{_arginfo}i}12@8:12I16) RETURNS one 20-byte cache entry
+        by value: { offset, size, const char *type, unused, unused }
+        with offset the running round4 sum before this argument.  The
+        constructor's fill loop writes only the first three fields --
+        the walker's alignment output goes to a stack temporary and is
+        never stored, so fields 4 and 5 read zero in the reference as
+        well.  `type` is a pointer into the signature's own types copy,
+        not a standalone token, so the tests read its first byte.  The
+        by-value return is the Gate 1 (stage 2c) correction: the
+        pointer-returning form compiled a ^v encoding and diverged.  */
+    struct NSMethodSignatureArgumentInfo info;
     id sig = [NSMethodSignature signatureWithObjCTypes:"v12@8:12@16"];
     id charSig = [NSMethodSignature signatureWithObjCTypes:"c12@8:12c16"];
 
-    info = *(struct NSMethodSignatureArgumentInfo *)
+    info = (struct NSMethodSignatureArgumentInfo)
         [sig _argumentInfoAtIndex:0];
     CHECK(info.offset == 0);
     CHECK(info.size == 4);
     CHECK(info.type[0] == '@');
 
-    info = *(struct NSMethodSignatureArgumentInfo *)
+    info = (struct NSMethodSignatureArgumentInfo)
         [sig _argumentInfoAtIndex:1];
     CHECK(info.offset == 4);
     CHECK(info.type[0] == ':');
 
-    info = *(struct NSMethodSignatureArgumentInfo *)
+    info = (struct NSMethodSignatureArgumentInfo)
         [sig _argumentInfoAtIndex:2];
     CHECK(info.offset == 8);
     CHECK(info.size == 4);
@@ -165,7 +179,7 @@ test_argumentInfoAtIndex_returns_the_cached_entry(void)
 
     /*  A char argument: size 1, but still occupying a round4 slot in
         the running offsets.  */
-    info = *(struct NSMethodSignatureArgumentInfo *)
+    info = (struct NSMethodSignatureArgumentInfo)
         [charSig _argumentInfoAtIndex:2];
     CHECK(info.offset == 8);
     CHECK(info.size == 1);

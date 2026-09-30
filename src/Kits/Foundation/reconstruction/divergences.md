@@ -968,6 +968,22 @@ behaviour-preserving for stage 2a's artifacts):
    uncommitted), so the compare step ran against a scratch profile copy that
    carries the local `rebuilt` block while the committed profile stays clean.
 
+### Final verification (Task 13 Step 7)
+
+1. `abi-check` over all fourteen modules: `abi-check: ABI matches`, exit 0.
+2. All eleven suites on the guest (`test_zone`, `test_refcount`, `test_object`,
+   `test_proxy`, `test_pool`, `test_objcruntime`, `test_exception`,
+   `test_methodsignature`, `test_coder`, `test_invocation`, `test_fault`):
+   `PASSED: 0 failure(s)` each.
+3. `binrecon source-map`: 143/143 mapped, 0 unmapped; `by_module` accounts for
+   all four modules (NSCoder 23, NSFault 66, NSInvocation 40,
+   NSMethodSignature 14).
+4. Full binrecon suite: `804 passed, 4 skipped in 73.98s`.
+5. `git diff --name-only HEAD -- 'src/Kits/Foundation/*.h'`: empty (the one
+   header touched during the stage, `NSCoder.h`, was reverted once the const
+   evidence showed the divergence is Apple's own — see Gate 1 correction 6).
+6. `symbol-audit`: 320 unclaimed, down from 2b's 321.
+
 ### Unclaimed-export count
 
 `symbol-audit` after stage 2b: **321** unclaimed exported C functions, down
@@ -984,3 +1000,158 @@ not exist on this machine — the 9.2 directory holds only a licence file;
 (`version: 9.4` recorded in the committed 2b profile). Re-exporting with 9.2
 when available is a re-run, not a re-write: the documents are version-stamped
 and the pipeline revalidates identity on every run.
+## Stage 2c: method signatures, coding, invocation and faults
+
+Companion artifacts for this stage: `invocation-coding/source-map.json`
+(143/143 reference functions mapped, 0 unmapped, 0 duplicate candidates, 0
+boundary disputes) and `invocation-coding/ledger.json` (143 entries, all
+reviewed).
+
+### Gate 1 — `abi-check`: PASS after six ABI corrections
+
+The first `abi-check` over the fourteen modules reported 33 divergences; the
+committed state reports `abi-check: ABI matches`, exit 0. The corrections the
+reference's bytes forced:
+
+1. **`_argumentInfoAtIndex:` returns a struct by value.** The reference's
+   method-list encoding is `{?=ii*^{_arginfo}i}12@8:12I16`, not a pointer
+   return. The exact encoding is reachable only through an *anonymous*
+   typedef'd struct with `int` fields and a tag-only pointer field
+   (`struct _arginfo` forward-declared, defined nowhere — probed on the
+   guest, probe `ice13`); a tagged struct encodes its own name, an inline
+   struct is rejected by this cc1obj outright. `NSMethodSignature.m`,
+   `NSInvocation.m` and `test_methodsignature.m` each carry identical
+   file-local copies; no shared header declares the type.
+2. **`NSInvocationBuilder` is a root class** (super field 0, explicit `isa`
+   ivar at +0, 16 bytes), not an `Object` subclass, and its `-forward::`
+   argFrame parameter is declared `SEL *` so cc1obj emits the selector-frame
+   pointer `^:` (`@16@8:12:16^:20`); `marg_list`, a `void *`, compiles `^v`.
+   `builderForClass:` takes `#` (`@12@8:12#16`). The builder/invocation
+   ivar-word aliasing of the reference (`+builderForClass:` storing into the
+   NSInvocation allocation's own words) is *not* reproduced — the
+   reconstruction keeps the documented API path; the class, its method list
+   and its encodings are the ABI surface and they match.
+3. **`+[NSInvocation _preInitWithCoder:...]` returns `void`**
+   (`v36@8:12@16^@20^c24^@28^@32^:36^I40`), not `id`; and both pre/postInit
+   carry the wire signature as an *object* (`^@` out, `@` in), not
+   `char **`/`char *`. The stage's TestCoder stream is unchanged — the
+   wire-signature value is stage 8's DO-format field and stays nil here.
+4. **`NSFault`'s instance battery is exactly 21 flat methods** — no
+   `Instance` category, and no instance-side `isEqual:`, `hash` or
+   `performSelector:` family (the class side keeps its 29, family included).
+   A `performSelector:` send to a fault is an ordinary unknown selector: it
+   forwards, and `forwardInvocation:` gates it on the handler.
+   `+clearFault:` returns `void` (`v12@8:12@16`) and works on the object in
+   place. `-dealloc` is unchanged in effect (the test's observation of
+   clearFault is now the restored identity itself).
+5. **`NSCoder`'s `-encodeNXObject:`/`-decodeNXObject` live in
+   `NSCoder (NSTypedstreamCompatibility)` inside `NSCompatibility.m`** —
+   walking all 80 reference `__OBJC,__module_info` records puts the category
+   there, not in NSCoder.m, whose own class record is 22 flat methods with
+   no category. NSCoder.m's copy was moved; the coder suite now links
+   `NSCompatibility.m`.
+6. **`-encodeBytes:length:` takes a non-const `void *`.** The reference
+   encoding is `v16@8:12^v16I20`; this cc1obj emits `r^v`/`r*` for const
+   pointer parameters (probed), so the reference's own source cannot have
+   been const. The mismatch with `NSCoder.h`'s `const void *` declaration is
+   Apple's own — their shipped binary carries the same header/implementation
+   pair — and the header stays untouched under the no-header-modification
+   constraint. The old cc treats the conflicting-types situation as a
+   warning; message dispatch never reads it.
+
+The `NSObject (NSForwardInvocation)` category's `-forward::` declares a
+`long long` return (`q16@8:12:16^v20`): dispatch never reads the declared
+return type — the IMP's register layout is what matters — and the declared
+width is what makes the raw behaviour match. `NSFault`'s own raising
+`-forward::` keeps `^v`.
+
+### Guest compiler: the duplicate-`isa` segfault
+
+This stage's lasting tooling fact: **declaring `Class isa;` in a subclass of
+`Object` crashes this cc1obj (fatal signal 10) on the duplicate-member error
+path** — the diagnostic prints, then the compiler dies instead of exiting.
+Every probe showing an "ivar return" ICE reproduced only with the duplicate
+`isa` present; the true-root-class form (which the reference uses for all
+three of NSProxy, NSFault and NSInvocationBuilder) compiles clean and is the
+correct reconstruction anyway. Probes `ice9`–`ice15` in
+`tools/binrecon/out/` record the matrix.
+
+### Behavioural substitutions recorded by earlier tasks, confirmed here
+
+- **Forwarding supersession (spec S2.1).** The `NSObject
+  (NSForwardInvocation)` category replaces NSObject.m's own raising
+  `-forward::` at method-table load. The evidence it *works* — that a
+  subclass override is actually reached — is Task 10's
+  `test_an_inert_forwardInvocation_override_does_not_crash_and_is_observed`
+  (`test_invocation.m`, `InertForwardingTarget`): an unimplemented selector
+  on an object whose `-forwardInvocation:` override is empty returns
+  normally instead of raising.
+- **NSCoder's abstract primitives (spec S2.2).** The five primitive pairs
+  raise `NSRequestConcreteImplementation`-shaped exceptions; the concrete
+  convenience methods route through them; `TestCoder` overrides exactly the
+  primitives.
+- **`NSInvocation`'s refcount is an inline 24-bit bitfield** at +28
+  (spec S2.5), not the `__NSIncrementInternalRefCount` side table NSObject
+  uses; `-retain`/`-release`/`-retainCount` are the class's own, and
+  `-dealloc` runs `invalidate`.
+- **`NSMethodSignature` objects are immortal** (Task 1 Step 1): the class
+  caches every signature it builds, so `-retain` is `return self`,
+  `-release` an empty body and `-retainCount` `(unsigned)-1` — all three
+  written exactly as the reference's disassembly shows.
+- **The plist/typedstream parser (spec S2.4) is delegated, not
+  reconstructed.** `-encodePropertyList:`/`-decodePropertyList` are the
+  encode/decode object sends; the reference's 748-byte ASCII/typedstream
+  parser needs NSString/NSDictionary/NSArray/NSData records (stages 3–4)
+  and is reconstructed with them.
+- **Register-return mechanism (Task 8 Step 1).** This runtime declares no
+  `_stret` variant: `-invoke`'s jump table switches on the signature's
+  return type and calls `objc_msgSendv` cast to each return flavour; the
+  value comes back through `-_returnValue`'s tagged `NSObjCValue` struct.
+  `forward::`'s `q`-return rides EAX, so scalar returns keep their low 32
+  bits through the trampoline.
+- **Fault-firing sequence (Task 12 Step 1): forwards-only.**
+  `-[NSFault forwardInvocation:]` (0x42525ca0) is
+  `if ([_handler shouldPerformInvocation: inv]) { [_handler
+  completeInitializationOfObject: self]; [inv invokeWithTarget: self]; }` —
+  the fault never becomes the target by isa-swap here; the *completion*
+  (a concrete handler's) is what restores the isa, and
+  `faultWillFire:` is sent only from `+clearFault:`. The two Task 12 tests
+  pin order and decline behaviour.
+
+### Untested surface (no test in this stage reaches it)
+
+| Item | Module | Why | Disposition |
+|---|---|---|---|
+| `NSInvocation`'s `NSMutableArray *container` ivar (+24) and every branch that reads it | `NSInvocation.m` | No NSMutableArray until stage 4; the ivar is ABI-visible (offset, type) and matches | Stage 4 revisit |
+| `+initialize`'s imp-patching of `-[NSFault forward::]` observed at runtime | `NSFault.m` | The patch runs on first +initialize; the suite observes only its effects (firing via forwarding works) | Behavioural evidence accepted |
+| `-[NSInvocation invoke]`'s branch coverage beyond the tested return types | `NSInvocation.m` | The stage's test targets exercise int/object/void/double/selector only | Later stages' targets extend coverage |
+| `+[NSInvocation _enableLogging:]`'s counter consumers | `NSInvocation.m` | The depth counter has no reader until NSPortCoder (stage 8) | Stage 8 revisit |
+| `NSInvocationBuilder`'s runtime forwarding path (`builderForObject:` → `-forward::`) | `NSInvocation.m` | ABI-only this stage: no test constructs a builder; the reference's own aliasing is documented above | Evidence-only |
+| `-encodeReturnValueWithCoder:`/`-decodeReturnValueWithCoder:` non-scalar branches | `NSInvocation.m` | The suite round-trips an `int`; struct/pointer branches ride the same `_returnValue` switch | Later stages |
+
+### Gate 3 ledger disposition
+
+The ledger holds 143 reference-side entries, all dispositioned
+`intentional-mismatch` with the same structural reason stages 2a/2b
+recorded: `compare`'s normalized-functions matcher keys on (section,
+occurrence, byte start/end) position, and a four-module relocatable object
+cannot coincide with an 80-module linked image's offsets. Gate 1 (abi-check,
+fourteen modules, ABI matches) and Gate 2 (eleven suites, `PASSED: 0
+failure(s)` each) carry the correctness verdict; `source-map.json` (143/143
+mapped) confirms every reference function has a source counterpart. The
+review pass ran 143 entries in 135 s (~0.95 s/entry, matching the
+programme's measured rate).
+
+### Profile note
+
+The stage profile's `analysis_scope` (146 raw ranges from `module-scope`)
+contained three exact duplicates; the committed profile carries the merged
+143. Working-copy-only additions (`rebuilt` block, local object path) live
+under `tools/binrecon/out/` and are not committed, per the 2b pattern.
+
+### Unclaimed-export count
+
+`symbol-audit` after stage 2c: **320** unclaimed exported C functions, down
+from stage 2b's **321** — the one symbol this stage claimed is
+`_NXReadNSObjectFromCoder` (`NSCoder.m`; the stage's ObjC methods ride
+`__OBJC` metadata, not the C symbol table, so they do not move this count).

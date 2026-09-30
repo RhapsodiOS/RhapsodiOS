@@ -1,0 +1,321 @@
+{
+ "categories": [],
+ "classes": [
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "completeInitializationOfObject:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "faultWillFire:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "shouldPerformInvocation:",
+     "types": "c12@8:12@16"
+    },
+    {
+     "selector": "methodSignatureForSelector:forFault:",
+     "types": "@16@8:12:16@20"
+    },
+    {
+     "selector": "respondsToSelector:forFault:",
+     "types": "c16@8:12:16@20"
+    },
+    {
+     "selector": "conformsToProtocol:forFault:",
+     "types": "c16@8:12@16@20"
+    },
+    {
+     "selector": "isMemberOfClass:forFault:",
+     "types": "c16@8:12#16@20"
+    },
+    {
+     "selector": "isKindOfClass:forFault:",
+     "types": "c16@8:12#16@20"
+    },
+    {
+     "selector": "classForFault:",
+     "types": "#12@8:12@16"
+    },
+    {
+     "selector": "descriptionForObject:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "extraRefCount",
+     "types": "I8@8:12"
+    },
+    {
+     "selector": "decrementExtraRefCountWasZero",
+     "types": "c8@8:12"
+    },
+    {
+     "selector": "incrementExtraRefCount",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "extraData",
+     "types": "^v8@8:12"
+    },
+    {
+     "selector": "targetClass",
+     "types": "#8@8:12"
+    },
+    {
+     "selector": "setTargetClass:extraData:",
+     "types": "v16@8:12#16^v20"
+    }
+   ],
+   "instance_size": 16,
+   "ivars": [
+    {
+     "name": "_targetClass",
+     "offset": 4,
+     "type": "#"
+    },
+    {
+     "name": "_extraData",
+     "offset": 8,
+     "type": "^v"
+    },
+    {
+     "name": "_extraRefCount",
+     "offset": 12,
+     "type": "I"
+    }
+   ],
+   "name": "NSFaultHandler",
+   "superclass": "NSObject"
+  },
+  {
+   "class_methods": [
+    {
+     "selector": "clearFault:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "makeObjectIntoFault:withHandler:",
+     "types": "v16@8:12@16@20"
+    },
+    {
+     "selector": "targetClassForFault:",
+     "types": "#12@8:12@16"
+    },
+    {
+     "selector": "handlerForFault:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "isFault:",
+     "types": "c12@8:12@16"
+    },
+    {
+     "selector": "zone",
+     "types": "^{?=}8@8:12"
+    },
+    {
+     "selector": "superclass",
+     "types": "#8@8:12"
+    },
+    {
+     "selector": "self",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "retainCount",
+     "types": "I8@8:12"
+    },
+    {
+     "selector": "retain",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "release",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "respondsToSelector:",
+     "types": "c12@8:12:16"
+    },
+    {
+     "selector": "performSelector:withObject:withObject:",
+     "types": "@20@8:12:16@20@24"
+    },
+    {
+     "selector": "performSelector:withObject:",
+     "types": "@16@8:12:16@20"
+    },
+    {
+     "selector": "performSelector:",
+     "types": "@12@8:12:16"
+    },
+    {
+     "selector": "isProxy",
+     "types": "c8@8:12"
+    },
+    {
+     "selector": "isFault",
+     "types": "c8@8:12"
+    },
+    {
+     "selector": "isMemberOfClass:",
+     "types": "c12@8:12#16"
+    },
+    {
+     "selector": "isKindOfClass:",
+     "types": "c12@8:12#16"
+    },
+    {
+     "selector": "isEqual:",
+     "types": "c12@8:12@16"
+    },
+    {
+     "selector": "hash",
+     "types": "I8@8:12"
+    },
+    {
+     "selector": "doesNotRecognizeSelector:",
+     "types": "v12@8:12:16"
+    },
+    {
+     "selector": "debugDescription",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "description",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "conformsToProtocol:",
+     "types": "c12@8:12@16"
+    },
+    {
+     "selector": "class",
+     "types": "#8@8:12"
+    },
+    {
+     "selector": "autorelease",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "initialize",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "load",
+     "types": "v8@8:12"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "forwardInvocation:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "dealloc",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "zone",
+     "types": "^{?=}8@8:12"
+    },
+    {
+     "selector": "superclass",
+     "types": "#8@8:12"
+    },
+    {
+     "selector": "self",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "retainCount",
+     "types": "I8@8:12"
+    },
+    {
+     "selector": "retain",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "release",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "respondsToSelector:",
+     "types": "c12@8:12:16"
+    },
+    {
+     "selector": "methodSignatureForSelector:",
+     "types": "@12@8:12:16"
+    },
+    {
+     "selector": "isProxy",
+     "types": "c8@8:12"
+    },
+    {
+     "selector": "isFault",
+     "types": "c8@8:12"
+    },
+    {
+     "selector": "isMemberOfClass:",
+     "types": "c12@8:12#16"
+    },
+    {
+     "selector": "isKindOfClass:",
+     "types": "c12@8:12#16"
+    },
+    {
+     "selector": "forward::",
+     "types": "@16@8:12:16^v20"
+    },
+    {
+     "selector": "doesNotRecognizeSelector:",
+     "types": "v12@8:12:16"
+    },
+    {
+     "selector": "debugDescription",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "description",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "conformsToProtocol:",
+     "types": "c12@8:12@16"
+    },
+    {
+     "selector": "class",
+     "types": "#8@8:12"
+    },
+    {
+     "selector": "autorelease",
+     "types": "@8@8:12"
+    }
+   ],
+   "instance_size": 8,
+   "ivars": [
+    {
+     "name": "isa",
+     "offset": 0,
+     "type": "#"
+    },
+    {
+     "name": "_handler",
+     "offset": 4,
+     "type": "@\"NSFaultHandler\""
+    }
+   ],
+   "name": "NSFault",
+   "superclass": null
+  }
+ ],
+ "data_symbols": [],
+ "module": "NSFault.m",
+ "schema_version": "abi-v1",
+ "text_symbols": []
+}

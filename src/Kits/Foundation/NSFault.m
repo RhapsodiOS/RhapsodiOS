@@ -107,7 +107,8 @@ __NSFaultRaiseNullSelectorException(id object, SEL aSelector)
     instances {isa, _handler} -- no +alloc/-init exists in the reference
     method lists; the ONLY way to make a fault is
     +makeObjectIntoFault:withHandler: swapping the isa of an existing
-    object.  */
+    object.  Declares its own isa; subclassing Object instead is fatal
+    on the guest's cc1obj (duplicate-member 'isa' error path segfaults).  */
 @interface NSFault
 {
     Class isa;
@@ -115,7 +116,7 @@ __NSFaultRaiseNullSelectorException(id object, SEL aSelector)
 }
 + (BOOL)isFault;
 + (BOOL)isFault:(id)anObject;
-+ (id)clearFault:(id)anObject;
++ (void)clearFault:(id)anObject;
 + (id)handlerForFault: (id)anObject;
 + (Class)targetClassForFault:(id)anObject;
 + (void)makeObjectIntoFault:(id)anObject withHandler:(NSFaultHandler *)aHandler;
@@ -394,8 +395,9 @@ __NSFaultRaiseNullSelectorException(id object, SEL aSelector)
     if NO, raise '%@: object not a fault' with the proem of the NSFault
     CLASS OBJECT (proem args at 0x42519fe3-fea are ebp+8/ebp+0xc =
     self/_cmd, NOT anObject) and the format object at 0x42606b30
-    (0x42519fe3-0x4251a013).  */
-+ (id)clearFault:(id)anObject
+    (0x42519fe3-0x4251a013).  Returns void in the reference (method-list
+    encoding v12@8:12@16) -- the caller works on the object in place.  */
++ (void)clearFault:(id)anObject
 {
     NSFaultHandler *handler;
     unsigned extra;
@@ -432,16 +434,17 @@ __NSFaultRaiseNullSelectorException(id object, SEL aSelector)
 
     /*  0x4251a09b (cell 0x426089b8 = 'release').  */
     [handler release];
-    return anObject;
 }
 
-@end
+/*  Instance side: the battery forwards everything to the handler
+    (0x42611a18).  The reference keeps all 21 instance methods FLAT in
+    the class's own method list (no Instance category in
+    __OBJC,__module_info), so the reconstruction does the same: this
+    block continues the single @implementation NSFault above -- no
+    @end separates the class-side and instance-side batteries.  */
 
 /*  Instance side: the battery forwards everything to the handler
     (0x42611a18).  */
-
-@implementation NSFault (Instance)
-
 - (id)self
 {
     /*  The lazy-completion trigger, 0x42573bf0: [handler
@@ -464,15 +467,11 @@ __NSFaultRaiseNullSelectorException(id object, SEL aSelector)
     return [[self->_handler classForFault:self] superclass];
 }
 
-- (BOOL)isEqual:(id)object
-{
-    return self == object;
-}
-
-- (unsigned)hash
-{
-    return (unsigned)self >> 2;
-}
+/*  Gate 1 (stage 2c): the reference's instance battery is exactly 21
+    methods -- isEqual:, hash and the performSelector: family are NOT
+    in it.  Such sends are ordinary unknown selectors on a fault: they
+    forward, and forwardInvocation: gates them on the handler.  The
+    CLASS-side family (0x42572834...) is the reference's own and stays.  */
 
 - (BOOL)isKindOfClass:(Class)aClass
 {
@@ -561,27 +560,6 @@ __NSFaultRaiseNullSelectorException(id object, SEL aSelector)
 - (BOOL)isFault
 {
     return YES;
-}
-
-- (id)performSelector:(SEL)aSelector
-{
-    if (aSelector == NULL)
-        __NSFaultRaiseNullSelectorException(self, _cmd);
-    return objc_msgSend(self, aSelector);
-}
-
-- (id)performSelector: (SEL)aSelector withObject:(id)object
-{
-    if (aSelector == NULL)
-        __NSFaultRaiseNullSelectorException(self, _cmd);
-    return objc_msgSend(self, aSelector, object);
-}
-
-- (id)performSelector: (SEL)aSelector withObject:(id)object1 withObject:(id)object2
-{
-    if (aSelector == NULL)
-        __NSFaultRaiseNullSelectorException(self, _cmd);
-    return objc_msgSend(self, aSelector, object1, object2);
 }
 
 /*  Proem + NSLog + raise, all with the SHARED format object at

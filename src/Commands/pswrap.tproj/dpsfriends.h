@@ -351,4 +351,7 @@ extern char *DPSNameFromIndex(/* int index; */);
      The string returned is owned by the library (treat it as readonly). */
 
 
+#define DPSWriteNumString(ctxt, type, array, count, scale)\
+  (*(ctxt)->procs->WriteNumString)((ctxt), (type), (array), (count), (scale))
+
 #endif	DPSFRIENDS_H

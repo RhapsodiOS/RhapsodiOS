@@ -251,11 +251,12 @@ static void ScanArgs(argc, argv)
  		break;
 #endif os_mach
 		case 'p':
-#ifdef NeXT
+			/* -p disables padding of strings (pswrap.1).  The shipped
+			   Rhapsody pswrap clears pad for -p on every platform; the
+			   reference emits no char pad[3] local and no pad writes.
+			   The pre-existing non-NeXT branch incremented pad instead,
+			   which left padding enabled. */
 			pad = 0;
-#else
-			pad++;
-#endif
 			break;
 	    default:
 		Usage("bad option '-%c'", *(argv[i]+1));

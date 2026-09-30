@@ -55,7 +55,7 @@
 Each item was established by running the reference on the guest and reading its output.
 
 - [x] `pswsemantics.c` `FinalizePSWrapDef`: emit `  if (0) *pad = 0;    /* quiets compiler warnings */` as the last statement of a wrap with a declared `pad`.
-- [x] `lexer.l` `yywrap`: use flex's `YY_START != INITIAL` under `#ifdef FLEX_SCANNER`, keeping the AT&T state-vector test otherwise.
+- [x] `lexer.l` `yywrap`: report nothing at end of input, as the reference does (superseded in Task 7, which removed the `end of input file/missing endps` diagnostic and the state test entirely).
 - [x] `main.c`: `-p` clears padding (`pad = 0`), rather than incrementing it.
 - [x] `psw.c` `EmitANSIPrototypes`: declare string and array *inputs* `const`.
 - [x] `psw.c`: emit user names as inline `DPS_LITERAL|DPS_NAME` / `DPS_EXEC|DPS_NAME` tags with length and offset, packed into the same pool as literal strings, deduplicated, and remove the `DPSMapNames`/`_dps_nameVals`/`_dpsCodes` path.
@@ -69,7 +69,21 @@ Each item was established by running the reference on the guest and reading its 
 - [x] Confirm the sample reports `HEADER_IDENTICAL` and `BODY_IDENTICAL`.
 - [x] Re-fetch the fresh rebuild to `out/pswrap/pswrap.i386` and re-validate the profile.
 
-### Task 6: Documentation
+### Task 6: Widening pass (2026-09-30)
+
+A wider corpus and a wider option set, with the reference decompiled under IDA 9.4 to settle what inputs could not.
+
+- [x] Inventory the reference's option parser from its decompilation: `-H`, `-I`, `-S`, `-a`, `-b`, `-e`, `-h`, `-n`, `-o`, `-p`, `-r`, `-s`, `-w`.
+- [x] `main.c`: add `-H <dir>`, `-I <text>`, `-e <qualifier>` (default `extern`) and `-n`, with `friendsDir`, `includeFile`, `externPrefix` and `inlineNames` globals.
+- [x] `pswfile.c`: `InitOFile` emits `#include <dir/dpsfriends.h>` for `-H`; `InitHFile` emits `#include <text>` for `-I`.
+- [x] `psw.c` `EmitPrototype`: emit `"%s void %s("` with the `-e` qualifier.
+- [x] `psw.c`: restore `ConsNameToken`/`nameTokens`/`nNames`, `EmitNameTagAcquisition`, `EmitMappedNames`, the `-n` `0, 0, 0` name tags, the `nNames`-forces-`writable` rule, and the `-a` `_dpsCodes` declaration in `EmitLocals`.
+- [x] `lexer.l`/`lexer.c` `yywrap`: drop the `end of input file/missing endps` diagnostic and its state test.
+- [x] `psw.c` `CheckSize` and `BuildTypesAndAssignAddresses`: round the constant subscript *value*, not the running total, and never round a numstring.
+- [x] `psw.c` `ConstructStatics`: do not treat a subscripted numstring as an input array when deciding to split `_dpsQ`/`_dpsQ1`.
+- [x] Re-verify: 499 differential pairs (`-a`,`-r`,`-p`,`-b`,`-s`,`-n`,`-e`,`-H`,`-I` combinations over 45 inputs), 20 size cases, 7 end-of-input cases; re-check the binary string tables.
+
+### Task 7: Documentation
 
 - [x] Write `docs/superpowers/specs/2026-09-29-pswrap-reconstruction-design.md`.
 - [x] Record this plan.

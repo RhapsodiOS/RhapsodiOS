@@ -1,6 +1,7 @@
 # pswrap Reconstruction Design
 
-**Status:** implemented and verified on 2026-09-29.
+**Status:** implemented and verified on 2026-09-29; widened against the
+reference on 2026-09-30 (see *Widening pass* below).
 
 ## Goal
 
@@ -68,36 +69,74 @@ required, each established from the reference binary rather than assumed:
 ## Source reconciliation against the reference
 
 The base source is close but not identical to the revision Apple shipped.
-Two behavioral differences were found by comparing generated output and are
-now reconstructed in the in-tree source:
+The differences below were found by comparing generated output and are now
+reconstructed in the in-tree source:
 
 - **`pswsemantics.c`:** the reference emits
   `  if (0) *pad = 0;    /* quiets compiler warnings */` as the last
   statement of any wrap whose `-p` padding local is declared. `FinalizePSWrapDef`
   now emits it under the same `pad` guard.
-- **`lexer.l`:** the base `yywrap` tests AT&T lex's `yybgin != (yysvec+1)`
-  state vector, which flex does not provide. It now uses flex's equivalent
-  `YY_START != INITIAL` under `#ifdef FLEX_SCANNER`, keeping the AT&T form
-  for a true AT&T lex.
+- **`lexer.l`:** the base `yywrap` reports `end of input file/missing endps`
+  when the scanner is not in state 0 at EOF, testing AT&T lex's
+  `yybgin != (yysvec+1)` state vector (flex has no such globals). The
+  reference has no such message at all: it says nothing when the input runs
+  out, whether or not a definition was left open, and lets the parser report
+  the syntax error that follows. `yywrap` now only handles the `feof`
+  continuation.
 - **`main.c` `-p`:** the base's non-`NeXT` `-p` branch did `pad++`, which
   never disabled padding. The reference clears the flag (`pad = 0`), matching
   `pswrap.1`'s "disables padding of strings".
 - **`psw.c` ANSI prototypes:** the base omits `const` on input strings and
   arrays. The reference declares a string or array *input* `const` (never a
   scalar and never an output), so `EmitANSIPrototypes` now does too.
-- **`psw.c` user names:** the base emits a `DPSMapNames` call with a
-  `_dps_names`/`_dps_nameVals` pair and (under `-a`) a `_dpsCodes` cache. The
-  reference instead packs every user-name body inline with the literal string
-  bodies in `_dpsQ` (or `_dpsQ1`) and gives each `DPS_LITERAL|DPS_NAME` /
-  `DPS_EXEC|DPS_NAME` tag a length and offset, exactly as it does for strings.
-  The pool is filled in body order (so it is reverse source order), duplicate
-  text is stored once, and constants name tags need no runtime mapping. The
-  whole `DPSMapNames`/`_dpsCodes` machinery is removed.
+- **`psw.c` user names:** by default the reference packs every user-name
+  body inline with the literal string bodies in `_dpsQ` (or `_dpsQ1`) and
+  gives each `DPS_LITERAL|DPS_NAME` / `DPS_EXEC|DPS_NAME` tag a length and
+  offset, exactly as it does for strings. The pool is filled in body order
+  (so it is reverse source order), duplicate text is stored once, and
+  constants name tags need no runtime mapping. The base's `DPSMapNames`
+  machinery survives in the reference behind the `-n` option; see the
+  widening pass.
 - **`psw.c` numstrings:** the base writes a hand-built `HNumHeader` plus the
   body and its pad via three `DPSWriteStringChars` calls. The reference emits
   one `DPSWriteNumString(ctx, dps_t<T>, arr, count, scale)` call and no
   header. `CTypeToResultType` gained the four `T_*NUMSTR` cases and the
   vendored `dpsfriends.h` gained the `DPSWriteNumString` macro it was missing.
+
+## Widening pass (2026-09-30)
+
+A second differential campaign ran a wider corpus with a wider option set,
+and the reference was decompiled with IDA to settle what the extra inputs
+could not. It found four options the base source does not have, one error
+message the base prints and the reference does not, and two size-accounting
+bugs. All are reconstructed above/in-tree:
+
+- **`-H <dir>`** emits `#include <dir/dpsfriends.h>` instead of the
+  `FRIENDSFILE` literal. `-I <text>` makes the generated header emit
+  `#include <text>` after its `#define`. **`-e <text>`** replaces the
+  `extern` qualifier in generated prototypes (default `extern`).
+  **`-n`** turns inline name packing off, restoring the base's
+  `_dps_names`/`_dps_nameVals`/`_dpsCodes`/`DPSMapNames` machinery with
+  `_dpsp[i].val.nameVal = _dpsCodes[i]` copies under `-a`. The reference's
+  Usage text does not document any of the four, so neither does ours.
+- **User-name emission is gated, not replaced.** `SetNameTag` pools a
+  non-well-known name only while inline packing is on; with `-n` it conses
+  the name onto `nameTokens` and `EmitFieldConstructor` leaves the tag
+  `0, 0, 0`. A pool of names therefore also forces `writable`, and `-n`
+  removes the name bytes from the sizes.
+- **Constant-subscript string sizing.** The base rounds the *running* total
+  up to four bytes after adding a constant subscript, and does it for
+  numstrings too. The reference rounds the *subscript value* up instead, and
+  never rounds a numstring (whose four-byte header the library pads itself).
+  Both `CheckSize` and `BuildTypesAndAssignAddresses` follow the reference,
+  which is what makes a numstring or a const array beside a pooled name come
+  out 1-3 bytes smaller than the base computed.
+- **Static splitting.** `ConstructStatics` re-derives "this wrap has an input
+  array" from the tokens and counted a subscripted numstring as one, so a
+  numstring plus a pooled name was split into `_dpsQ`/`_dpsQ1` while the
+  reference keeps one `_dpsQ`. Numstrings are now excluded there too.
+- **`_dpsCodes` declaration.** Under `-a` the `-n` path needs
+  `static long int _dpsCodes[<n>] = {-1};` from `EmitLocals`; it was missing.
 
 ## Verification
 
@@ -108,21 +147,36 @@ and `-o` names:
 - generated **header: byte-identical**
 - generated **C body: byte-identical**
 
-A differential harness drives sixteen inputs through nine flag combinations
-(`-a`, `-r`, `-p`, `-b`, `-s`, and pairs), diffing `out.h`, `out.c`, stdout,
-stderr and the exit status on every pair. The inputs exercise well-known and
-user names, `-p` padding, `numstring` (all four element types, constant and
-variable subscripts, and constant and variable scales), literal and hex
-string bodies, user-object arrays, split statics, duplicate text, ANSI
-prototypes, and reentrant statics. All 144 pairs are identical, including
-the byte-identical generated code above.
+A differential harness drives the inputs through flag combinations
+(`-a`, `-r`, `-p`, `-b`, `-s`, `-n`, `-e`, `-H`, `-I`, and pairs), diffing
+`out.h`, `out.c`, stdout, stderr and the exit status on every pair. The
+inputs exercise well-known and user names, `-p` padding, `numstring` (all
+four element types, constant and variable subscripts, and constant and
+variable scales), literal and hex string bodies, user-object arrays, split
+statics, duplicate text, ANSI prototypes, reentrant statics, output
+arguments, context arguments, the large header, raised token counts, escaped
+and hex string bodies, every radix form, and truncated input in five scanner
+states. **499 pairs are identical**, plus 20 targeted size cases and 7
+end-of-input cases, including the byte-identical generated code above.
 
 `binrecon analyze` publishes analyses for both artifacts and both analyzers
-(IDA 9.4 and angr 9.3.0), and `binrecon compare` records the structural
-result. `normalized-functions` acceptance does **not** pass, and this is
-expected, not hidden: the rebuilt binary is 80464 bytes against the
-reference's prebound 107756, the section layout differs (13 sections), and
-the two are linked with different symbol stubs (each names many reference
-functions the other lacks). Structural acceptance is a byte/layout
-criterion; the behavioral criterion the tool actually satisfies is the
-byte-identical generated code above.
+(IDA 9.4 and angr 9.3.0) from the current rebuild
+(`F246D6160B727B21DA8B842D6360DE3B8041CA6FED9A50B170043B92089E52B8`), and
+`binrecon compare` records the structural result: `exact-image`,
+`exact-sections` and `normalized-functions` all fail, with 376 `code`, 13
+`layout`, 3459 `metadata`, 1 `padding` and 1 `relocation` findings across 13
+sections. That is expected, not hidden: the rebuilt binary is 88908 bytes
+against the reference's prebound 107756, and the two are linked with
+different symbol stubs and a different section layout, so the metadata
+findings dominate. Structural acceptance is a byte/layout criterion; the
+behavioral criterion the tool actually satisfies is the byte-identical
+generated code above.
+
+A string-table comparison of the two binaries is the tightest remaining
+check: it now differs by three entries the reference has (` @  <`, `%d, `,
+`%s, `) against eight the rebuild has. Both sets are internal: the
+reference formats the `DPSWriteNumString` argument list through `sprintf`
+fragments where the rebuild uses separate `fprintf` calls, and the rebuild
+still carries the base's unreachable `DPSWriteStringChars`/`_dpsP[...].length`
+numstring pad templates inside `WriteObjSeq`'s non-numstring path (every
+numstring `continue`s before them). None of them reach generated output.

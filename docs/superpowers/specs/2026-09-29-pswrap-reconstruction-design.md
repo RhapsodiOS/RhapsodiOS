@@ -79,6 +79,25 @@ now reconstructed in the in-tree source:
   state vector, which flex does not provide. It now uses flex's equivalent
   `YY_START != INITIAL` under `#ifdef FLEX_SCANNER`, keeping the AT&T form
   for a true AT&T lex.
+- **`main.c` `-p`:** the base's non-`NeXT` `-p` branch did `pad++`, which
+  never disabled padding. The reference clears the flag (`pad = 0`), matching
+  `pswrap.1`'s "disables padding of strings".
+- **`psw.c` ANSI prototypes:** the base omits `const` on input strings and
+  arrays. The reference declares a string or array *input* `const` (never a
+  scalar and never an output), so `EmitANSIPrototypes` now does too.
+- **`psw.c` user names:** the base emits a `DPSMapNames` call with a
+  `_dps_names`/`_dps_nameVals` pair and (under `-a`) a `_dpsCodes` cache. The
+  reference instead packs every user-name body inline with the literal string
+  bodies in `_dpsQ` (or `_dpsQ1`) and gives each `DPS_LITERAL|DPS_NAME` /
+  `DPS_EXEC|DPS_NAME` tag a length and offset, exactly as it does for strings.
+  The pool is filled in body order (so it is reverse source order), duplicate
+  text is stored once, and constants name tags need no runtime mapping. The
+  whole `DPSMapNames`/`_dpsCodes` machinery is removed.
+- **`psw.c` numstrings:** the base writes a hand-built `HNumHeader` plus the
+  body and its pad via three `DPSWriteStringChars` calls. The reference emits
+  one `DPSWriteNumString(ctx, dps_t<T>, arr, count, scale)` call and no
+  header. `CTypeToResultType` gained the four `T_*NUMSTR` cases and the
+  vendored `dpsfriends.h` gained the `DPSWriteNumString` macro it was missing.
 
 ## Verification
 
@@ -89,12 +108,21 @@ and `-o` names:
 - generated **header: byte-identical**
 - generated **C body: byte-identical**
 
+A differential harness drives sixteen inputs through nine flag combinations
+(`-a`, `-r`, `-p`, `-b`, `-s`, and pairs), diffing `out.h`, `out.c`, stdout,
+stderr and the exit status on every pair. The inputs exercise well-known and
+user names, `-p` padding, `numstring` (all four element types, constant and
+variable subscripts, and constant and variable scales), literal and hex
+string bodies, user-object arrays, split statics, duplicate text, ANSI
+prototypes, and reentrant statics. All 144 pairs are identical, including
+the byte-identical generated code above.
+
 `binrecon analyze` publishes analyses for both artifacts and both analyzers
 (IDA 9.4 and angr 9.3.0), and `binrecon compare` records the structural
 result. `normalized-functions` acceptance does **not** pass, and this is
-expected, not hidden: the rebuilt binary is 88680 bytes against the
+expected, not hidden: the rebuilt binary is 80464 bytes against the
 reference's prebound 107756, the section layout differs (13 sections), and
-the two are linked with different symbol stubs — 118 reference and 109
-rebuilt functions have no structural counterpart. Structural acceptance is
-a byte/layout criterion; the behavioral criterion the tool actually
-satisfies is the byte-identical generated code above.
+the two are linked with different symbol stubs (each names many reference
+functions the other lacks). Structural acceptance is a byte/layout
+criterion; the behavioral criterion the tool actually satisfies is the
+byte-identical generated code above.

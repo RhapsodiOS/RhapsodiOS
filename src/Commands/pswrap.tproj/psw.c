@@ -55,6 +55,8 @@ extern Token PSWToken(/* type, val */);
 
 extern int doANSI;	/* -a flag */
 extern int pad;		/* -p flag */
+extern int inlineNames;	/* -n clears this: names go through DPSMapNames */
+extern char *externPrefix;	/* -e text qualifying the prototypes */
 
 #define DPS_HEADER_SIZE 4
 #define DPS_LONG_HEADER_SIZE 8
@@ -88,6 +90,10 @@ static TokenList namedInputArrays, namedInputStrings;
 /* Every string and user-name body that is packed inline into _dpsQ (or
    _dpsQ1).  Text that occurs more than once is stored only once. */
 static TokenList literalStrings;
+/* User names that are not well-known and, under -n, are left for
+   DPSMapNames to resolve at the first call of each wrap. */
+static TokenList nameTokens;
+static int nNames;
 static boolean writable;	/* encoding is not constant */
 static boolean twoStatics;	/* true if strings are separate from objects */
 static boolean large;
@@ -147,6 +153,23 @@ static TokenList ConsToken (t, ll) Token t; TokenList ll; {
   tt->token = t;
   tt->next = ll;
   return tt;
+  }
+
+/* Collect a name for DPSMapNames, keeping the list in first-appearance
+   order and dropping repeats of a name already on it. */
+static TokenList ConsNameToken (t, ll) Token t; TokenList ll; {
+  TokenList temp, tt = (TokenList) psw_calloc(sizeof(TokenListRec), 1);
+
+  tt->token = t;
+  tt->next = ll;
+  if(ll == NULL)
+  	return (tt);
+  temp = ll;
+  while((temp->next != NULL) && strcmp((char *)(temp->token->val), (char *)(t->val)))
+  	temp = temp->next;
+  tt->next = temp->next;
+  temp->next = tt;
+  return (ll);
   }
   
 /* String and user-name bodies are packed inline into the object sequence.
@@ -343,9 +366,15 @@ static void SetNameTag(t) Token t; {
   Assert(t->type == T_NAME || t->type == T_LITNAME);
   tag = PSWDictLookup(wellKnownPSNames, (char *)(t->val));
   if (tag == -1) { /* this is not a well-known name */
-    /* Pack the name's text into the string pool; EmitFieldConstructor
-       will give its tag a length and offset. */
-    literalStrings = ConsToken(t, literalStrings);
+    if (inlineNames) {
+      /* Pack the name's text into the string pool; EmitFieldConstructor
+         will give its tag a length and offset. */
+      literalStrings = ConsToken(t, literalStrings);
+      }
+    else { /* -n: leave the tag empty for DPSMapNames to fill in */
+      nameTokens = ConsNameToken(t, nameTokens);
+      nNames++;
+      }
     }
   else { /* a well-known (system) name */
     t->wellKnownName = true;
@@ -550,8 +579,10 @@ static int CheckSize(body)
       /* foreach token in this body */
       nextAdr.cnst += DPS_BINOBJ_SIZE;
 
-      /* user names are packed into the pool alongside the strings */
-      if ((t->type == T_NAME || t->type == T_LITNAME)
+      /* user names are packed into the pool alongside the strings; under
+         -n the names are emitted through DPSMapNames and so take no room */
+      if (inlineNames
+          && (t->type == T_NAME || t->type == T_LITNAME)
           && t->namedFormal == NULL
           && PSWDictLookup(wellKnownPSNames, (char *)t->val) == -1)
         literalStrings = ConsToken(t, literalStrings);
@@ -621,14 +652,13 @@ static int CheckSize(body)
   for (tl = namedInputStrings; tl; tl = tl->next) {
     Token t = tl->token;
     if (t->namedFormal->subscripted && t->namedFormal->subscript->constant) {
-    	if (IsNumStrType(t->namedFormal->type)) 
+    	if (IsNumStrType(t->namedFormal->type))
 			nextAdr.cnst += NUMSTR_HEADER_SIZE;
+		else if(pad)
+			nextAdr.cnst += (t->namedFormal->subscript->val + WORD_ALIGN)
+							& ~WORD_ALIGN;
 		else
 			nextAdr.cnst += t->namedFormal->subscript->val;
-		if(pad) {
-			nextAdr.cnst += WORD_ALIGN;
-			nextAdr.cnst &= ~WORD_ALIGN;
-		}
   	}
   }
   
@@ -746,7 +776,10 @@ static void BuildTypesAndAssignAddresses(body, sz, nObjs, psize)
       } /* for */
     free(c);
     } /* while */
-    
+
+  if (nNames)
+    writable = true;	/* SetNameTag couldn't find the name */
+
 *psize = nextAdr.cnst;
   
 #ifdef os_mpw
@@ -808,12 +841,11 @@ static void BuildTypesAndAssignAddresses(body, sz, nObjs, psize)
     	if (IsNumStrType(t->namedFormal->type)) {
 			nextAdr.cnst += NUMSTR_HEADER_SIZE;
 			writable = true;
-		} else
+		} else if(pad)
+			nextAdr.cnst += (t->namedFormal->subscript->val + WORD_ALIGN)
+							& ~WORD_ALIGN;
+		else
 			nextAdr.cnst += t->namedFormal->subscript->val;
-	  	if(pad) {
-		  nextAdr.cnst += WORD_ALIGN;
-		  nextAdr.cnst &= ~WORD_ALIGN;
-		}
 	}
   }
 
@@ -973,8 +1005,11 @@ static void EmitFieldConstructor(t) register Token t; {
           fprintf(datafil, "DPS_LITERAL%cDPS_NAME, 0, DPSSYSNAME, %d", ATT_SEP, t->body.cnst);
           }
         else if (t->namedFormal == NULL) {
-          fprintf(datafil, "DPS_LITERAL%cDPS_NAME, 0, %d, %d", ATT_SEP,
-	    PSWStringLength((char *)t->val), t->body.cnst);
+          if (inlineNames)
+            fprintf(datafil, "DPS_LITERAL%cDPS_NAME, 0, %d, %d", ATT_SEP,
+	      PSWStringLength((char *)t->val), t->body.cnst);
+          else /* DPSMapNames fills in the name code at first call */
+            fprintf(datafil, "DPS_LITERAL%cDPS_NAME, 0, 0, 0", ATT_SEP);
           }
         else {
           fprintf(datafil, "DPS_LITERAL%cDPS_NAME, 0, 0, %d", ATT_SEP, t->body.cnst);
@@ -988,8 +1023,11 @@ static void EmitFieldConstructor(t) register Token t; {
           fprintf(datafil, "DPS_EXEC%cDPS_NAME, 0, DPSSYSNAME, %d", ATT_SEP, t->body.cnst);
           }
         else if (t->namedFormal == NULL) {
-          fprintf(datafil, "DPS_EXEC%cDPS_NAME, 0, %d, %d", ATT_SEP,
-	    PSWStringLength((char *)t->val), t->body.cnst);
+          if (inlineNames)
+            fprintf(datafil, "DPS_EXEC%cDPS_NAME, 0, %d, %d", ATT_SEP,
+	      PSWStringLength((char *)t->val), t->body.cnst);
+          else /* DPSMapNames fills in the name code at first call */
+            fprintf(datafil, "DPS_EXEC%cDPS_NAME, 0, 0, 0", ATT_SEP);
           }
         else {
           Item item = t->namedFormal;
@@ -1099,9 +1137,12 @@ static void ConstructStatics(body, sz, nObjs)
           break;
 
         case T_NAME:
+          /* a numstring is written by DPSWriteNumString, not by its own
+             binobj array, so it does not force a second static */
           if ((t->namedFormal)
               && (t->namedFormal->subscripted)
               && (!IsCharType(t->namedFormal->type))
+              && (!IsNumStrType(t->namedFormal->type))
              )
 					isNamedInputArrays = true;
            break;
@@ -1259,6 +1300,96 @@ static void EmitResultTagTableAssignments(outArgs) Args outArgs; {
   outlineno++;
   }
 
+#ifndef os_mpw
+/* Procedure for acquiring name tags.  Used instead of packing the names
+   inline when -n is given: the first call of the wrap asks DPSMapNames to
+   turn the names into codes, which are cached for later calls. */
+static void EmitNameTagAcquisition() {
+    register TokenList n;
+    int i;
+    char *last_str;
+    
+    last_str = (char *) psw_malloc((unsigned) (maxstring+1));
+
+    printf("  {\n");
+    if(!doANSI) {
+    	printf("  static int _dpsT = 1;\n\n");
+    	printf("  if (_dpsT) {\n");
+		outlineno += 4;
+    } else {
+    	printf("if (_dpsCodes[0] < 0) {\n");
+		outlineno += 2;
+    }
+    if(doANSI)
+    	printf("    static const char * const _dps_names[] = {\n");
+    else
+    	printf("    static char *_dps_names[] = {\n");
+    outlineno ++;
+    
+    for (n = nameTokens; n!= NULL; n = n->next) {
+      if (strcmp(last_str,(char *)n->token->val)) {
+      		strcpy(last_str,(char *)n->token->val);
+      		printf("\t\"%s\"", (char *)n->token->val);
+      } else {
+      		printf("\t(char *) 0 ");
+      }
+      if (n->next) {printf(",\n"); outlineno++;}
+    }
+    printf("};\n"); outlineno++;
+    printf("    long int *_dps_nameVals[%d];\n",nNames);outlineno++;
+    if (!doANSI) {
+    	if (!writable) {
+      	    printf("    register DPSBinObjRec *_dpsP = (DPSBinObjRec *) &_dpsF.obj0;\n");
+      	    outlineno++;
+    	} else {
+	    if (reentrant) {
+      		printf("    _dpsP = (DPSBinObjRec *) &_dpsStat.obj0;\n");
+      	  	outlineno++;
+    	    }
+	}
+    }
+    i = 0;
+    if (doANSI) {
+      for(i=0; i<nNames; i++) {
+	   printf("    _dps_nameVals[%d] = &_dpsCodes[%d];\n",i,i);
+ 	   outlineno ++;
+	  }
+    } else {
+        for (n = nameTokens; n!= NULL; n = n->next) {
+        	printf("    _dps_nameVals[%d] = (long int *)&_dpsP[%d].val.nameVal;\n",
+               i++, n->token->tokenIndex);
+           outlineno++;
+        }
+    }
+    printf("\n    DPSMapNames(%s, %d, _dps_names, _dps_nameVals);\n",
+           ctxName, nNames);
+    outlineno += 2;
+    if (reentrant && writable && !doANSI) {
+      printf("    _dpsP = (DPSBinObjRec *) &_dpsF.obj0;\n");
+      outlineno++;
+    }
+    if (!doANSI) {
+    	printf("    _dpsT = 0;\n");
+		outlineno ++;
+    }
+    printf("    }\n  }\n\n");
+    outlineno += 3;
+  } /* EmitNameTagAcquisition */
+#endif
+
+/* Under -a the names cannot be patched through a writable copy of the
+   static, so the codes DPSMapNames produced are copied in instead. */
+static void EmitMappedNames()
+{
+register TokenList n;
+int i=0;
+    for (n = nameTokens; n!= NULL; n = n->next) {
+	printf("  _dpsP[%d].val.nameVal = _dpsCodes[%d];\n",
+	   		n->token->tokenIndex, i++);
+        outlineno++;
+    }
+}
+
 /* Miscellaneous procedures */
 
 static void EmitLocals(sz)
@@ -1286,6 +1417,10 @@ unsigned sz;
     printf("  register DPSBinObjRec *_dpsP;\n");
 #else
     printf("  register DPSBinObjRec *_dpsP = (DPSBinObjRec *)&_dpsF.obj0;\n");
+    if(doANSI && nNames) {
+    	printf("  static long int _dpsCodes[%d] = {-1};\n",nNames);
+		outlineno++;
+    }
 #endif
     outlineno++;
     if (namedInputArrays || namedInputStrings) {
@@ -1816,7 +1951,7 @@ void EmitPrototype(hdr) Header hdr; {
   /* emit procedure prototype to the output .h file, if any */
   
   fprintf(header, "\n");
-  fprintf(header, "extern void %s(", hdr->name);
+  fprintf(header, "%s void %s(", externPrefix, hdr->name);
   if (doANSI) EmitANSIPrototypes(header, hdr);
   else if (hdr->inArgs || hdr->outArgs) {
     fprintf(header, " /* ");
@@ -1831,6 +1966,8 @@ void EmitBodyHeader(hdr) Header hdr; {
   register Arg arg;
   register Item item;
   
+  nameTokens = NULL;
+  nNames = 0;
   ctxName = NULL;
 
   if (hdr->isStatic) printf("static ");
@@ -1926,6 +2063,12 @@ void EmitBody(body, hdr) Tokens body; Header hdr; {
   outlineno++;
 #endif
 
+  if (nameTokens) {
+#ifndef os_mpw
+    EmitNameTagAcquisition();
+#endif
+  }
+
 #ifdef os_mpw
   if(reentrant && writable)
     printf("  BlockMove(wrap_gp->wb[%d], _dpsF, sizeof(_dpsF));\n", nWraps);
@@ -1949,7 +2092,13 @@ void EmitBody(body, hdr) Tokens body; Header hdr; {
   if(writable) {
   	ScanParamsAndEmitValues(body,hdr->inArgs);
   }
-  
+
+  if(doANSI && nameTokens) {
+    EmitMappedNames();
+    FreeTokenList(nameTokens);
+    nameTokens = NULL;
+  }
+
   /* Fixup offsets and the total size */
 
   if (writable && (namedInputArrays || namedInputStrings))  {

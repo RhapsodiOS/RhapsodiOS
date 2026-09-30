@@ -25,6 +25,8 @@ extern char headid[];
 extern char *ifile;
 extern char *hfile;
 extern char *ofile;
+extern char *friendsDir;	/* -H */
+extern char *includeFile;	/* -I */
 #ifdef os_mach
 extern char *shlibInclude;
 #endif os_mach
@@ -53,6 +55,7 @@ static int EmitVersion(f, infname, outfname)
 InitHFile(){
     (void) EmitVersion(header, ifile, hfile);
     fprintf(header,"#ifndef %s\n#define %s\n",headid,headid);
+    if (includeFile != NULL) fprintf(header,"#include %s\n",includeFile);
 }
 
 FinishHFile() {
@@ -80,7 +83,12 @@ InitOFile() {
  		outlineno += 3;
     }
 #endif os_mach
-    printf("#include %s\n", FRIENDSFILE);
+    /* -H names the directory of the dpsfriends.h to include; without it the
+       installed header is named outright. */
+    if (friendsDir != NULL)
+	printf("#include <%s/dpsfriends.h>\n", friendsDir);
+    else
+	printf("#include %s\n", FRIENDSFILE);
     printf("#include <string.h>\n\n");
     outlineno += 3;  /* UPDATE this if you add more prolog */
 #endif

@@ -751,17 +751,9 @@ endps { 		/* BOGUS end of a wrap */
 int yywrap () {
     if (!feof(yyin))
     	return (0);
-    /* AT&T lex exposes the begin/state vectors as yybgin and yysvec; flex
-       has no such globals, so ask it for the current start condition.  Both
-       forms test the same thing: whether the scanner is still in state 0. */
-#ifdef FLEX_SCANNER
-    if (YY_START != INITIAL) {
-#else
-    if (yybgin != (yysvec+1)) {
-#endif
-	ErrIntro(yylineno);
-	fprintf(stderr,"end of input file/missing endps\n");
-    }
+    /* The shipped pswrap says nothing when the input runs out, whether or
+       not a definition was still open; the parser reports the syntax
+       error that follows. */
     return (1);
 }
 

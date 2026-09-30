@@ -1,0 +1,16 @@
+###############################################################################
+#  Makefile.postamble
+#  pswrap
+#
+#  pswparser.c, y.tab.h and lexer.c are checked in, generated with the
+#  NeXT-era yacc and lex.  rbuild's build sysroot has no yacc or lex, so the
+#  pb_makefiles .y.c and .l.c suffix rules must not fire.  These empty rules
+#  give the generated files no prerequisites, which suppresses the implicit
+#  rules without removing the checked-in sources.
+#
+#  lexer.c was generated with "lex -l": flex's lex-compatibility mode, which
+#  is what supplies the yylineno the lexer relies on.
+###############################################################################
+
+pswparser.c: ;
+lexer.c: ;

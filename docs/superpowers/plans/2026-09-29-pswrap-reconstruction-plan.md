@@ -104,6 +104,19 @@ unoptimized while pb_makefiles defaults `OPTIMIZE = YES`.
 - [x] Rebuild (113452 bytes) and re-verify: undefined-symbol set identical (30 = 30), seven section sizes exactly equal, `__text` 74194 vs 75259 (−1065, was −28899), 89 of 112 reference functions fingerprint-exact; all differential suites pass (difftest4 130/130, difftest3 225/225, difftest/difftest2 clean, sizeprobe2 20/20, functest identical, eofprobe clean).
 - [x] Classify the remaining residue in `docs/superpowers/specs/2026-09-30-pswrap-structural-residue.md`: two unrecoverable lexer rules (`yylex` −552 B, flex table artifacts only), emit-region folding (~270 B over four functions), crt/dyld/linker glue. `normalized-functions` stays structurally impossible (offset pairing breaks on the glue split and the yylex table size); the per-function-equivalence intent is met by the fingerprint-exact pairs plus the behavioral suites.
 
+### Task 6d: Lexer-rule recovery pass (2026-10-01)
+
+The Task 6c judgment that the two missing PS-state rules were unrecoverable
+was wrong: the flex DFA *is* the pattern, and both binaries ship the full
+tables as `static const` data in `__TEXT,__const`.
+
+- [x] Carve all eight flex tables (`yy_acclist/accept/ec/meta/base/def/nxt/chk`) from both binaries by signature + structural validation; decode accept lists and align the DFAs state-by-state in lockstep BFS.
+- [x] Pin the rule mapping (`raw = ours` below the insertion point, `raw = ours + 2` above) and read the new acceptors off the aligned DFA: `"<<"` (ref state 127) and `">>"` (ref state 128), inserted between the `<HEX>` error rule and the self-delimiter rule, returning PSNAME (Level 2 dictionary constructs).
+- [x] `lexer.l`: add `<PS>"<<"` and `<PS>">>"` PSNAME rules; regenerate the checked-in `lexer.c` with the guest `lex -l` (`YY_NUM_RULES 67`, `yy_acclist[436]`, `yy_accept[309]`, `yy_nxt[805]`, `yy_base[325]` — the reference geometry).
+- [x] Rebuild and prove recovery: regenerated tables byte-identical to the reference's in all eight arrays; carving the rebuilt `__const` with the reference's anchors reproduces them exactly; `__const` 7304 = ref on both sides; `__text` 74746 vs 75259 (remaining −513 is glue/emit-region residue).
+- [x] Re-verify behavior: ten new dictionary-contraction probes identical; difftest4 130/130; difftest3 225/225; difftest/difftest2 clean; functest identical; eofprobe clean.
+- [x] Prove `yylex` code equivalence modulo relocation: byte diff of the two 20021-byte bodies has 786 differing runs, every run ≤ 4 bytes (relocation signature); capstone linear disassembly gives 3511 = 3511 instructions with exactly equal mnemonic streams (IDA's 5050/5040 counts and mid-function `retn` are recursive-descent artifacts).
+
 ### Task 7: Documentation
 
 - [x] Write `docs/superpowers/specs/2026-09-29-pswrap-reconstruction-design.md`.

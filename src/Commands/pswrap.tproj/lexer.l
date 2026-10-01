@@ -619,6 +619,26 @@ endps { 		/* BOGUS end of a wrap */
 	/* straight postscript */
 %}
 
+<PS>"<<" {			/* dictionary construct begin */
+	if (nonComment) {
+	    newLine = false;
+	    DEBUGP((stderr,"PSNAME %s\n",yytext));
+	    yylval.object = psw_malloc(strlen(yytext) + 1);
+	    strcpy(yylval.object, yytext);
+	    return PSNAME;
+	}
+}
+
+<PS>">>" {			/* dictionary construct end */
+	if (nonComment) {
+	    newLine = false;
+	    DEBUGP((stderr,"PSNAME %s\n",yytext));
+	    yylval.object = psw_malloc(strlen(yytext) + 1);
+	    strcpy(yylval.object, yytext);
+	    return PSNAME;
+	}
+}
+
 <PS>[\[\]\{\}] {		/* PS self delimiter */
 	if (nonComment) {
 	    newLine = false;

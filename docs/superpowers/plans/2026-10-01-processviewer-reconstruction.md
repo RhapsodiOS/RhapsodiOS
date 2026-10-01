@@ -227,7 +227,7 @@ Add focused regression fixtures for any newly discovered behavior defects.
 its recovered contract, reviewed implementation, test evidence, and unresolved
 differences. Validation distinguishes binary parity from cross-CPU portability.
 
-- [ ] Set `BINRECON_REBUILT` to the actual staged PowerPC executable recorded in Task 7 and add `rebuilt.path` to the profile. Revalidate identity, analyze both artifacts, and inspect comparison results. Exit 1 means inspect mismatches or incompleteness, not permission to weaken acceptance or hide functions.
+- [x] Set `BINRECON_REBUILT` to the staged PowerPC executable and add `rebuilt.path` to the profile. Revalidated both identities, analyzed both artifacts, and recorded the failing comparison without weakening acceptance.
 
 ```powershell
 & $pvPython -m binrecon validate --profile $pvProfile
@@ -241,7 +241,7 @@ differences. Validation distinguishes binary parity from cross-CPU portability.
 ```
 
 - [ ] Inspect every missing/extra/renamed selector, C symbol, string, and import; helper exit status alone is insufficient. Explain runtime/toolchain differences separately from app defects. Review all owned functions for branch structure, calls, constants, ordering, ownership, and failure behavior. Fix discrepancies from instruction evidence, with a focused failing regression before behavioral fixes.
-- [ ] Resolve `$pvReferenceAnalysis` to the published reference analysis identified by `run-summary.json`, then generate a complete source map without `--scope-to-objc`. Review non-owned runtime entries separately rather than dropping them from the analysis silently.
+- [x] Resolve the published reference analysis and generate a complete source map without `--scope-to-objc`. Runtime/import entries are retained and separately classified.
 
 ```powershell
 & $pvPython -m binrecon source-map --reference-analysis $pvReferenceAnalysis `
@@ -249,17 +249,95 @@ differences. Validation distinguishes binary parity from cross-CPU portability.
   --objc-methods --output "$pvSource/reconstruction/ppc/source-map.json"
 ```
 
-- [ ] Validate the map with `binrecon.schema.load_source_map`, passing the saved reference analysis and repository root. Require complete function partition and valid source lines; document runtime-only unmapped entries with reasons in the worklist. No app-owned unmapped functions or unresolved boundaries may remain.
-- [ ] Seed a ledger once with `tools/binrecon/seed_ledger.py SOURCE_MAP REFERENCE_BINARY OUTPUT`, then use reviewed `binrecon ledger` transitions without overwriting prior reviews. Record signatures, control flow, assembly matches, or justified intentional differences honestly. Single-analyzer evidence is not independent consensus; a reviewed difference must not be relabeled as an assembly match.
+- [x] Validate the map with `binrecon.schema.load_source_map`. The map has 83 app-owned functions, 45 runtime/import entries, no app-owned unmapped functions, and no disputed boundaries.
+- [x] Seed the ledger and preserve review statuses during source-map refreshes. The ledger records control-flow reviews for all 83 app-owned functions; no reviewed difference is labeled as an assembly match.
 - [ ] With an i386 oracle, run its separate analysis/comparison and ledger process and account for release deltas. Initialize its ledger with `binrecon analyze --ledger`, not the PowerPC-specific agreement labels in `seed_ledger.py`. Without an oracle, retain the explicit absence in `i386/` evidence and verify its ABI, shared contracts, build, deterministic tests, and GUI integration. Do not invent instruction-level i386 parity.
 - [ ] Run all six test targets once on both final builds and repeat the integration cases affected by parity fixes. Recheck bundle hashes, all owned-function coverage, no placeholders, and isolated output locations. Record final artifact hashes and a per-CPU matrix for build, ABI, static evidence, deterministic tests, and GUI observations, including any blocked rows.
 - [ ] Run `git diff --check`; review the scoped diff and changed evidence against the approved spec. Commit: `ProcessViewer: verify reconstruction parity and dual-architecture behavior`. Report any remaining verification blockers explicitly; do not claim full reconstruction acceptance until all required checks pass.
 
 ## Review and execution handoff
 
-This plan is the deliverable of the current request; implementation has not
-started. Tasks depend on earlier recovered contracts and should execute in order.
-Native execution is recommended because these eight tasks share ABI, NIB, and
-process-data evidence heavily. Subagent-driven execution remains an option with
-fresh implementation/review contexts per task. Review this plan and choose an
-execution method before beginning product changes.
+### Current dual-architecture status (2026-10-01)
+
+The reconstructed sources compile and link as Mach-O i386 and PPC executables.
+The PPC link uses the matching-era DR2 frameworks and runtime extracted from a
+local installer image; its 13-resource bundle is staged. The final PPC hash,
+binrecon result, selector audit, import/string deltas, i386 test results, and
+runtime limitations are recorded in
+`src/Applications/Administration/ProcessViewer/reconstruction/validation.md`.
+PPC normalized-function acceptance still fails, the helper audits retain
+unresolved symbol/import/string differences, and neither PPC deterministic
+tests nor either GUI integration run is verified. Do not treat this task as
+complete until those checks are resolved or explicitly accepted as blockers.
+
+Execution is underway in the isolated `codex/processviewer` worktree. Task 1's
+reference evidence is recorded and committed. Shared sources, Project Builder
+metadata, byte-preserved resources, and ABI probes now exist. On the private
+Rhapsody DR2 i386 guest, the ABI, process, process-type, table, controller,
+inspector, live argv/sysctl, and two-scan process-enumeration tests pass, and a
+direct full-source link produces a Mach-O i386 executable. The GUI launch probe
+remains inconclusive in the headless guest. PPC now compiles and links using a
+recovered DR2 SDK, but has no usable runtime guest; an i386 oracle also remains
+unavailable. The two-refresh live test exposed and now covers
+two ownership fixes: `readDataToEndOfFile` data is autoreleased and must not be
+released manually, while newly allocated `Process` instances must remain owned
+until `invalidate` removes them from the map and sends the reference's explicit
+release. Continue parity review and preserve the architecture-specific
+blockers in `src/Applications/Administration/ProcessViewer/reconstruction/validation.md`.
+
+The PPC selector audit now matches all 78 selectors exactly; the source map was
+regenerated and validates with all 83 application functions mapped. The C/data
+name audit now has source definitions for all application globals, and the i386
+executable contains those data symbols. Its remaining reports are six startup/
+dyld text symbols and eight runtime data symbols. All 83 application-function
+ledger source locations were refreshed without changing review statuses; five
+additional functions now have control-flow review, leaving 121 entries
+unreviewed. The process-type loader now enumerates every
+bundled `*.processType` resource, verified by a bundle-backed i386 probe that
+loads and localizes an added type. PPC sort data decoded as `@ffff` revealed
+that only `NAME`, `%MEM`, `%CPU`, `RSIZE`, and `VSIZE` accept sort contexts;
+regression tests caught and verified that correction. The inspector NIB
+reference confirms a nonzero minimum tab height; `_loadInspectorNib` now
+preserves the nib height while applying split width. Comparing the PPC resize
+method exposed a missing two-child resize path. An instruction-level audit
+corrected the delta to reconcile the current split frame against existing child
+heights plus divider, then apply each child minimum in order. Regression
+coverage includes growth, shrinkage, undersized existing frames, and minimum
+boundaries. The i386 inspector test, app build, and focused suite pass. A real-NIB probe
+still fails in the headless guest, so GUI integration remains unverified. The
+refreshed source map validates with 83 mapped functions, 45 runtime/import
+entries, and no disputed boundaries; the ledger's source locations were updated
+the ledger source locations were refreshed without changing review states during map generation. Four process getter reviews and an export-ordering review then brought the ledger to 16 control-flow-confirmed and 112 unexamined. The export test verifies filtered plist contents, dictionary construction before the panel returns, cancellation, successful writing, and the beep on failed atomic writing. Refresh-rate tests cover the formatter bounds, persistence, timer reset, and out-of-range no-change behavior; reset-rate coverage verifies persistence and timer replacement. Type and sort action tests verify DefaultTypeTag/SortAscending persistence and that changing type refilters displayed rows. Menu validation now matches PPC behavior: the quit action allows any nonempty selection, while Show More Info requires exactly one selected row. Its i386 multi-selection regression failed before the correction and passed afterward. `showAllColumns:` now restores the saved column order while revealing hidden columns; its regression failed when the reconstruction only appended missing columns, then passed after the PPC-matching correction. `hideColumn:` now removes all selected columns using the original column-index snapshot; the multi-selection regression failed against the single-identifier implementation, then passed after the PPC-matching correction. `resort:` now uses the selected header column, clears SortColumn when selection is empty, and leaves SortAscending under the dedicated sort-order action; regression tests exposed the old clicked-column and direction-toggle behavior. `toggleMoreInfo:` now handles only exact on/off values and ignores the mixed state, matching PPC branches; its i386 regression demonstrated the prior mixed-state mismatch. Selection-change tests now verify hidden-inspector no-op behavior and visible inspector updates for zero, one, and multiple rows against the PPC branch structure. The ProcessControl table data source now matches PPC's invalid-row assertion rather than returning nil; regressions cover valid lookup and negative/past-end rows. Row-count and cell-value methods are control-flow-confirmed; the focused i386 suite and full app link pass, with 57 confirmed and 71 unexamined functions. Inspector visibility now matches PPC defaults accessors: the headless test first caught `setObject:` rejecting the boxed BOOL and then exposed `awakeFromNib` sending `boolValue` to the stored preference. Source now uses `setBool:forKey:` and `boolForKey:`; transition, idempotence, geometry, persistence, and restoration checks pass. Process observer tests also confirm replacement detaches the old observer, ignores unrelated invalidations, and hides the pane on the current process notification. Tab-content tests verify all three valid view mappings, invalid-index no-op, nil guards, and the invalid-selection fallback. Detail-pane tests now verify the populated process fields, primary path, argument rows, and no-process/multiple-process fallback behavior for empty and nil process input. The PPC `_update` routine also matches the sysctl failure path, 16-byte command-name fallback, UID lookup, and process-state mapping; live probes verify process identity fields and now validate the state mapping against the five recovered labels. Live process enumeration now also covers the `fetch:NO` cache-only path by asserting a reaped child remains in the cached snapshot, followed by forced-refresh stale removal and stable PID 1 object identity. The process comparator audit matched PPC�s string/integer/float modes, direction handling, nil ordering, and callback wrapper against existing tests. `getProcesses:` is also confirmed: a controller integration regression proves the stale list is replaced, the displayed count is refreshed, and the refresh timer is scheduled. The process-type matching audit also matched PPC�s nil-constraint fast path and set-membership branch; existing type tests cover unconstrained, matching, and nonmatching cases. The process refresh/sort audit matched PPC selection capture, filtering, supported sort-context gating, identity-based selection restoration, and count-label branches; its regression verifies ascending NAME ordering and selection preservation after resort.
+
+
+Destructor audit: PPC -[Inspector dealloc] releases its four owned view ivars and calls super dealloc; the source's extra notification-center cleanup had no PPC counterpart and was removed. The destructor is now control-flow-confirmed, bringing the ledger to 40 confirmed and 88 unexamined entries.
+
+
+Inspector table audit: PPC performs objectAtIndex:row+1 directly. The source's nil/bounds guard was removed after a regression failed on the old behavior and passed against the PPC sequence, including the row -1 mapping and invalid-index exception. Five additional Inspector methods were reviewed and marked control-flow-confirmed. Ledger totals are 45 confirmed and 83 unexamined.
+
+
+Process ownership audit: four simple Process accessors/destructor and the ProcessType name accessors/destructor were checked against PPC. Its ProcessType -dealloc releases only _name; removed source-only _key and _values releases. Full focused tests and the i386 app link pass; current ledger totals are 52 confirmed / 76 unexamined.
+
+
+Process-type and table-header audit: PPC control flow for ProcessType initialization, highlighted-column access/update, header drawing, and header selection matches source. Ledger totals are 57 confirmed and 71 unexamined.
+
+
+Follow-up PPC audit: corrected `Inspector -setSplitView:` to remove the previous split view, retain the replacement, and derive the main-pane minimum from the replacement geometry; its new regression failed before the change. `Process -arguments` now caches an empty result after a successful table read even when its terminator scan finds no boundary. Reviewed map enumeration, dictionary representation, string updates, suffix-number conversion, and small ProcessControl callbacks. Focused i386 tests and app linking pass; the ledger now has 71 confirmed and 57 unreviewed entries.
+
+
+ProcessControl lifecycle audit: its PPC destructor releases `allColumns`, `fieldNames`, `filteredProcesses`, and `allProcesses`, then calls `super`; it does not invalidate/release `timer` or release `optionsDictionary`. Source now matches. Focused tests and i386 app link pass; the PPC ledger has 72 confirmed / 56 unreviewed entries.
+
+
+Inspector NIB setup now uses the PPC split-view bounds width, wires the table before tab creation, and removes the tab container and all pane views before tab installation. The layout regression covers a bounds width that differs from frame width. Also confirmed `_NameForUID`, `_main`, `killProcesses:`, and `killProcessWithConfirmation:` against PPC pseudocode and focused tests. The launch method now restores its saved type/sort preferences, print settings, window frame, table autosave, and active-window state. Current ledger: 83 confirmed / 45 unreviewed. `ProcessControl init` now registers the PPC defaults and allocates its three arrays in the reference order; the regression, focused i386 suite, and app link pass. `showAboutPanel:` now formats the PPC version number and supplies the matching copyright/version options; its regression, focused i386 tests, and app link pass. `assignActions` now enables table-column autosaving before wiring header controls, matching PPC; its regression and the focused i386 suite pass.
+
+
+ProcessTableView decoding now applies the original runtime class swap to its decoded header view. The regression verifies the installed subclass and restores the temporary test object. Focused i386 tests and app linking pass; the PPC ledger is 81 confirmed / 47 unexamined. The launch restoration and print methods still need review.
+
+
+Launch review also recovered PPC shared print configuration (landscape, 36-point left margin) and added it to the source. Startup also restores the saved process-window frame before autosave. The i386 focused suite and app link pass. Remaining launch-menu selection and sort-button details still need analysis before marking the method confirmed.
+
+
+Print handling now matches PPC: it prints the process table’s grandparent view. The regression failed with the table itself, then passed after the correction; focused i386 tests and app linking pass. PPC ledger: 83 confirmed / 45 unexamined. All app-owned functions are statically control-flow-confirmed; the remaining verification gaps are PPC compilation and GUI startup.
+
+
+The launch method is now control-flow-confirmed from PPC selector back-references and constant strings, including type and sort preference restoration, print configuration, window frame restoration, autosave, process refresh, inspector visibility, and window activation. All 83 app-owned functions are confirmed. The i386 focused suite and app link pass; PPC build and GUI launch remain unavailable.

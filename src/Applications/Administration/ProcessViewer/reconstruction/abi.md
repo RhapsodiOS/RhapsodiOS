@@ -218,15 +218,43 @@ retained externally as analysis evidence. The signatures below transcribe its
 PowerPC decompilation; pointer aliases and source-level prototype spellings
 remain to be verified against caller instructions before writing headers.
 
-| Function | Decompiler signature | Address |
+| Mach-O symbol | Decompiler signature | Address |
 |---|---|---:|
 | `_floatFromNumberWithSuffix` | `double (id)` | `0x4414` |
 | `_sortFunction` | `id (void *, int, int)` | `0x4514` |
-| `__readTypesFromFile` | `void (void *, int, void *)` | `0x6594` |
+| `__readTypesFromFile` | `void (id, int, id)` | `0x6594` |
 | `_main` | `int (int argc, const char **argv, const char **envp)` | `0x71e4` |
 | `_NameForUID` | `void * (uid_t)` | `0x7204` |
 
+For C functions, Mach-O symbol names carry one leading underscore in addition to
+any underscore in the source identifier. The declarations use source identifiers
+`floatFromNumberWithSuffix`, `sortFunction`, `_readTypesFromFile`, `main`, and
+`NameForUID` respectively; `_sortFunction`'s C return type is `int`, as required
+by `NSArray`'s sorting callback. `_readTypesFromFile` receives the `ProcessType`
+class, the optional `ProcessTypes` directory path, and the resource path, as
+shown by its caller. The byte-for-byte symbol mapping is retained in the architecture-
+specific source map when it is generated.
+
 `Process`'s sort context encoding is `^{?=@cc}`. The recovered record contains
 an Objective-C sort key, a one-byte comparison kind, and a one-byte ascending
-flag on PowerPC. Confirm natural C structure declaration and i386 alignment in
-the target compiler before using it across architectures.
+flag on PowerPC. The target compiler confirmed the i386 structure layout; see the measured runtime table below.
+
+## Measured i386 runtime layout
+
+Measured inside the isolated Rhapsody DR2 `RELEASE_I386` guest with `/usr/bin/cc`
+2.7.2.1 and Objective-C runtime class metadata. `tests/abi_i386.m` asserts these
+values directly; the framework class sizes were measured in that runtime.
+
+| Class | Instance size | Measured ivars |
+|---|---:|---|
+| `Process` | 32 | `_pid` 4, `_ppid` 8, `_pgid` 12, `_saved_euid` 16, `_real_uid` 20, `_args` 24, `_values` 28 |
+| `MapTableEnumerator` | 16 | `_mapEnum` 4 |
+| `ProcessType` | 16 | `_name` 4, `_key` 8, `_values` 12 |
+| `ProcessControl` | 68 | outlets and state from offset 8 through `processTypes` at 64 |
+| `ProcessTableView` | 232 | `_highlightedColumnIdentifier` 228 |
+| `ProcessTableHeaderView` | 116 | no application ivars |
+| `Inspector` | 92 | `_process` 4, `_isVisible` 80, `_minTabContainerHeight` 84, `_minMainContainerHeight` 88 |
+
+The i386 `ProcessSortContext` is 8 bytes with `key` at 0,
+`compareAsNumber` at 4, and `ascending` at 5. `abi_i386` passed in the target
+guest. Ivar encodings match the checked-in headers and the PPC metadata.

@@ -1,0 +1,1072 @@
+{
+  "boundary_disputed": [],
+  "duplicate_candidates": [],
+  "mapped": [
+    {
+      "address": 8312,
+      "reference_names": [
+        "-[Inspector awakeFromNib]"
+      ],
+      "size": 116,
+      "source_line": 19,
+      "source_path": "src/Applications/Administration/ProcessViewer/Inspector.m"
+    },
+    {
+      "address": 8428,
+      "reference_names": [
+        "-[Inspector setSplitView:]"
+      ],
+      "size": 216,
+      "source_line": 26,
+      "source_path": "src/Applications/Administration/ProcessViewer/Inspector.m"
+    },
+    {
+      "address": 8644,
+      "reference_names": [
+        "-[Inspector _loadInspectorNib]"
+      ],
+      "size": 712,
+      "source_line": 45,
+      "source_path": "src/Applications/Administration/ProcessViewer/Inspector.m"
+    },
+    {
+      "address": 9356,
+      "reference_names": [
+        "-[Inspector dealloc]"
+      ],
+      "size": 144,
+      "source_line": 98,
+      "source_path": "src/Applications/Administration/ProcessViewer/Inspector.m"
+    },
+    {
+      "address": 9500,
+      "reference_names": [
+        "-[Inspector _setCurrentView:]"
+      ],
+      "size": 128,
+      "source_line": 107,
+      "source_path": "src/Applications/Administration/ProcessViewer/Inspector.m"
+    },
+    {
+      "address": 9628,
+      "reference_names": [
+        "-[Inspector setVisible:]"
+      ],
+      "size": 676,
+      "source_line": 127,
+      "source_path": "src/Applications/Administration/ProcessViewer/Inspector.m"
+    },
+    {
+      "address": 10304,
+      "reference_names": [
+        "-[Inspector splitView:constrainMinCoordinate:maxCoordinate:ofSubviewAt:]"
+      ],
+      "size": 132,
+      "source_line": 271,
+      "source_path": "src/Applications/Administration/ProcessViewer/Inspector.m"
+    },
+    {
+      "address": 10436,
+      "reference_names": [
+        "-[Inspector isVisible]"
+      ],
+      "size": 20,
+      "source_line": 184,
+      "source_path": "src/Applications/Administration/ProcessViewer/Inspector.m"
+    },
+    {
+      "address": 10456,
+      "reference_names": [
+        "-[Inspector tabView:didSelectTabViewItem:]"
+      ],
+      "size": 124,
+      "source_line": 262,
+      "source_path": "src/Applications/Administration/ProcessViewer/Inspector.m"
+    },
+    {
+      "address": 10580,
+      "reference_names": [
+        "-[Inspector _setProcess:]"
+      ],
+      "size": 224,
+      "source_line": 226,
+      "source_path": "src/Applications/Administration/ProcessViewer/Inspector.m"
+    },
+    {
+      "address": 10804,
+      "reference_names": [
+        "-[Inspector _processTanked:]"
+      ],
+      "size": 56,
+      "source_line": 243,
+      "source_path": "src/Applications/Administration/ProcessViewer/Inspector.m"
+    },
+    {
+      "address": 10860,
+      "reference_names": [
+        "-[Inspector showInfoForProcess:]"
+      ],
+      "size": 664,
+      "source_line": 189,
+      "source_path": "src/Applications/Administration/ProcessViewer/Inspector.m"
+    },
+    {
+      "address": 11524,
+      "reference_names": [
+        "-[Inspector showInfoForNoSelection]"
+      ],
+      "size": 132,
+      "source_line": 212,
+      "source_path": "src/Applications/Administration/ProcessViewer/Inspector.m"
+    },
+    {
+      "address": 11656,
+      "reference_names": [
+        "-[Inspector showInfoForMultipleSelection]"
+      ],
+      "size": 132,
+      "source_line": 219,
+      "source_path": "src/Applications/Administration/ProcessViewer/Inspector.m"
+    },
+    {
+      "address": 11788,
+      "reference_names": [
+        "-[Inspector numberOfRowsInTableView:]"
+      ],
+      "size": 84,
+      "source_line": 248,
+      "source_path": "src/Applications/Administration/ProcessViewer/Inspector.m"
+    },
+    {
+      "address": 11872,
+      "reference_names": [
+        "-[Inspector tableView:objectValueForTableColumn:row:]"
+      ],
+      "size": 76,
+      "source_line": 254,
+      "source_path": "src/Applications/Administration/ProcessViewer/Inspector.m"
+    },
+    {
+      "address": 11948,
+      "reference_names": [
+        "-[Inspector splitView:resizeSubviewsWithOldSize:]"
+      ],
+      "size": 564,
+      "source_line": 282,
+      "source_path": "src/Applications/Administration/ProcessViewer/Inspector.m"
+    },
+    {
+      "address": 12512,
+      "reference_names": [
+        "+[MapTableEnumerator _newWithMapTable:]"
+      ],
+      "size": 128,
+      "source_line": 28,
+      "source_path": "src/Applications/Administration/ProcessViewer/Process.m"
+    },
+    {
+      "address": 12640,
+      "reference_names": [
+        "-[MapTableEnumerator nextObject]"
+      ],
+      "size": 68,
+      "source_line": 40,
+      "source_path": "src/Applications/Administration/ProcessViewer/Process.m"
+    },
+    {
+      "address": 12708,
+      "reference_names": [
+        "+[Process initialize]"
+      ],
+      "size": 376,
+      "source_line": 54,
+      "source_path": "src/Applications/Administration/ProcessViewer/Process.m"
+    },
+    {
+      "address": 13084,
+      "reference_names": [
+        "+[Process enumerateProcessesAndFetch:]"
+      ],
+      "size": 1544,
+      "source_line": 92,
+      "source_path": "src/Applications/Administration/ProcessViewer/Process.m"
+    },
+    {
+      "address": 14628,
+      "reference_names": [
+        "+[Process getSortContext:forKey:ascending:]"
+      ],
+      "size": 216,
+      "source_line": 68,
+      "source_path": "src/Applications/Administration/ProcessViewer/Process.m"
+    },
+    {
+      "address": 14844,
+      "reference_names": [
+        "-[Process initWithPid:]"
+      ],
+      "size": 160,
+      "source_line": 205,
+      "source_path": "src/Applications/Administration/ProcessViewer/Process.m"
+    },
+    {
+      "address": 15004,
+      "reference_names": [
+        "-[Process description]"
+      ],
+      "size": 88,
+      "source_line": 372,
+      "source_path": "src/Applications/Administration/ProcessViewer/Process.m"
+    },
+    {
+      "address": 15092,
+      "reference_names": [
+        "-[Process objectForKey:]"
+      ],
+      "size": 56,
+      "source_line": 231,
+      "source_path": "src/Applications/Administration/ProcessViewer/Process.m"
+    },
+    {
+      "address": 15148,
+      "reference_names": [
+        "-[Process dealloc]"
+      ],
+      "size": 112,
+      "source_line": 216,
+      "source_path": "src/Applications/Administration/ProcessViewer/Process.m"
+    },
+    {
+      "address": 15260,
+      "reference_names": [
+        "-[Process invalidate]"
+      ],
+      "size": 120,
+      "source_line": 223,
+      "source_path": "src/Applications/Administration/ProcessViewer/Process.m"
+    },
+    {
+      "address": 15380,
+      "reference_names": [
+        "-[Process tty]"
+      ],
+      "size": 64,
+      "source_line": 256,
+      "source_path": "src/Applications/Administration/ProcessViewer/Process.m"
+    },
+    {
+      "address": 15444,
+      "reference_names": [
+        "-[Process arguments]"
+      ],
+      "size": 496,
+      "source_line": 261,
+      "source_path": "src/Applications/Administration/ProcessViewer/Process.m"
+    },
+    {
+      "address": 15940,
+      "reference_names": [
+        "-[Process processId]"
+      ],
+      "size": 16,
+      "source_line": 236,
+      "source_path": "src/Applications/Administration/ProcessViewer/Process.m"
+    },
+    {
+      "address": 15956,
+      "reference_names": [
+        "-[Process savedUserId]"
+      ],
+      "size": 16,
+      "source_line": 251,
+      "source_path": "src/Applications/Administration/ProcessViewer/Process.m"
+    },
+    {
+      "address": 15972,
+      "reference_names": [
+        "-[Process parentProcessId]"
+      ],
+      "size": 16,
+      "source_line": 241,
+      "source_path": "src/Applications/Administration/ProcessViewer/Process.m"
+    },
+    {
+      "address": 15988,
+      "reference_names": [
+        "-[Process processGroupId]"
+      ],
+      "size": 16,
+      "source_line": 246,
+      "source_path": "src/Applications/Administration/ProcessViewer/Process.m"
+    },
+    {
+      "address": 16004,
+      "reference_names": [
+        "-[Process compare:context:]"
+      ],
+      "size": 456,
+      "source_line": 308,
+      "source_path": "src/Applications/Administration/ProcessViewer/Process.m"
+    },
+    {
+      "address": 16460,
+      "reference_names": [
+        "-[Process dictionaryRepresentation]"
+      ],
+      "size": 300,
+      "source_line": 361,
+      "source_path": "src/Applications/Administration/ProcessViewer/Process.m"
+    },
+    {
+      "address": 16760,
+      "reference_names": [
+        "-[Process(Private) _update]"
+      ],
+      "size": 472,
+      "source_line": 413,
+      "source_path": "src/Applications/Administration/ProcessViewer/Process.m"
+    },
+    {
+      "address": 17232,
+      "reference_names": [
+        "-[Process _setCString:forKey:]"
+      ],
+      "size": 196,
+      "source_line": 400,
+      "source_path": "src/Applications/Administration/ProcessViewer/Process.m"
+    },
+    {
+      "address": 17428,
+      "reference_names": [
+        "_floatFromNumberWithSuffix"
+      ],
+      "size": 256,
+      "source_line": 380,
+      "source_path": "src/Applications/Administration/ProcessViewer/Process.m"
+    },
+    {
+      "address": 17684,
+      "reference_names": [
+        "_sortFunction"
+      ],
+      "size": 68,
+      "source_line": 393,
+      "source_path": "src/Applications/Administration/ProcessViewer/Process.m"
+    },
+    {
+      "address": 17752,
+      "reference_names": [
+        "-[ProcessControl init]"
+      ],
+      "size": 404,
+      "source_line": 51,
+      "source_path": "src/Applications/Administration/ProcessViewer/ProcessControl.m"
+    },
+    {
+      "address": 18156,
+      "reference_names": [
+        "-[ProcessControl dealloc]"
+      ],
+      "size": 144,
+      "source_line": 67,
+      "source_path": "src/Applications/Administration/ProcessViewer/ProcessControl.m"
+    },
+    {
+      "address": 18300,
+      "reference_names": [
+        "-[ProcessControl applicationDidFinishLaunching:]"
+      ],
+      "size": 1048,
+      "source_line": 76,
+      "source_path": "src/Applications/Administration/ProcessViewer/ProcessControl.m"
+    },
+    {
+      "address": 19348,
+      "reference_names": [
+        "-[ProcessControl assignActions]"
+      ],
+      "size": 180,
+      "source_line": 141,
+      "source_path": "src/Applications/Administration/ProcessViewer/ProcessControl.m"
+    },
+    {
+      "address": 19528,
+      "reference_names": [
+        "-[ProcessControl shouldShowProcess:]"
+      ],
+      "size": 264,
+      "source_line": 152,
+      "source_path": "src/Applications/Administration/ProcessViewer/ProcessControl.m"
+    },
+    {
+      "address": 19792,
+      "reference_names": [
+        "-[ProcessControl setShowType:]"
+      ],
+      "size": 164,
+      "source_line": 167,
+      "source_path": "src/Applications/Administration/ProcessViewer/ProcessControl.m"
+    },
+    {
+      "address": 19956,
+      "reference_names": [
+        "-[ProcessControl getProcesses:]"
+      ],
+      "size": 176,
+      "source_line": 175,
+      "source_path": "src/Applications/Administration/ProcessViewer/ProcessControl.m"
+    },
+    {
+      "address": 20132,
+      "reference_names": [
+        "-[ProcessControl updateRate]"
+      ],
+      "size": 276,
+      "source_line": 275,
+      "source_path": "src/Applications/Administration/ProcessViewer/ProcessControl.m"
+    },
+    {
+      "address": 20408,
+      "reference_names": [
+        "-[ProcessControl updateForSortChange:filterChange:]"
+      ],
+      "size": 1132,
+      "source_line": 183,
+      "source_path": "src/Applications/Administration/ProcessViewer/ProcessControl.m"
+    },
+    {
+      "address": 21540,
+      "reference_names": [
+        "-[ProcessControl resort:]"
+      ],
+      "size": 232,
+      "source_line": 236,
+      "source_path": "src/Applications/Administration/ProcessViewer/ProcessControl.m"
+    },
+    {
+      "address": 21772,
+      "reference_names": [
+        "-[ProcessControl refilter:]"
+      ],
+      "size": 60,
+      "source_line": 258,
+      "source_path": "src/Applications/Administration/ProcessViewer/ProcessControl.m"
+    },
+    {
+      "address": 21832,
+      "reference_names": [
+        "-[ProcessControl resetRate:]"
+      ],
+      "size": 144,
+      "source_line": 293,
+      "source_path": "src/Applications/Administration/ProcessViewer/ProcessControl.m"
+    },
+    {
+      "address": 21976,
+      "reference_names": [
+        "-[ProcessControl bumpRate:]"
+      ],
+      "size": 324,
+      "source_line": 301,
+      "source_path": "src/Applications/Administration/ProcessViewer/ProcessControl.m"
+    },
+    {
+      "address": 22300,
+      "reference_names": [
+        "-[ProcessControl showMoreInfoAboutSelection:]"
+      ],
+      "size": 12,
+      "source_line": 344,
+      "source_path": "src/Applications/Administration/ProcessViewer/ProcessControl.m"
+    },
+    {
+      "address": 22312,
+      "reference_names": [
+        "-[ProcessControl tableViewSelectionDidChange:]"
+      ],
+      "size": 252,
+      "source_line": 329,
+      "source_path": "src/Applications/Administration/ProcessViewer/ProcessControl.m"
+    },
+    {
+      "address": 22564,
+      "reference_names": [
+        "-[ProcessControl showAboutPanel:]"
+      ],
+      "size": 200,
+      "source_line": 476,
+      "source_path": "src/Applications/Administration/ProcessViewer/ProcessControl.m"
+    },
+    {
+      "address": 22764,
+      "reference_names": [
+        "-[ProcessControl exportProcessList:]"
+      ],
+      "size": 312,
+      "source_line": 385,
+      "source_path": "src/Applications/Administration/ProcessViewer/ProcessControl.m"
+    },
+    {
+      "address": 23076,
+      "reference_names": [
+        "-[ProcessControl print:]"
+      ],
+      "size": 104,
+      "source_line": 405,
+      "source_path": "src/Applications/Administration/ProcessViewer/ProcessControl.m"
+    },
+    {
+      "address": 23180,
+      "reference_names": [
+        "-[ProcessControl hideColumn:]"
+      ],
+      "size": 180,
+      "source_line": 359,
+      "source_path": "src/Applications/Administration/ProcessViewer/ProcessControl.m"
+    },
+    {
+      "address": 23360,
+      "reference_names": [
+        "-[ProcessControl showAllColumns:]"
+      ],
+      "size": 200,
+      "source_line": 371,
+      "source_path": "src/Applications/Administration/ProcessViewer/ProcessControl.m"
+    },
+    {
+      "address": 23560,
+      "reference_names": [
+        "-[ProcessControl toggleMoreInfo:]"
+      ],
+      "size": 140,
+      "source_line": 348,
+      "source_path": "src/Applications/Administration/ProcessViewer/ProcessControl.m"
+    },
+    {
+      "address": 23700,
+      "reference_names": [
+        "-[ProcessControl killProcesses:]"
+      ],
+      "size": 168,
+      "source_line": 412,
+      "source_path": "src/Applications/Administration/ProcessViewer/ProcessControl.m"
+    },
+    {
+      "address": 23868,
+      "reference_names": [
+        "-[ProcessControl killProcessWithConfirmation:]"
+      ],
+      "size": 1340,
+      "source_line": 423,
+      "source_path": "src/Applications/Administration/ProcessViewer/ProcessControl.m"
+    },
+    {
+      "address": 25208,
+      "reference_names": [
+        "-[ProcessControl tableView:objectValueForTableColumn:row:]"
+      ],
+      "size": 264,
+      "source_line": 321,
+      "source_path": "src/Applications/Administration/ProcessViewer/ProcessControl.m"
+    },
+    {
+      "address": 25472,
+      "reference_names": [
+        "-[ProcessControl numberOfRowsInTableView:]"
+      ],
+      "size": 72,
+      "source_line": 316,
+      "source_path": "src/Applications/Administration/ProcessViewer/ProcessControl.m"
+    },
+    {
+      "address": 25544,
+      "reference_names": [
+        "-[ProcessControl controlTextDidChange:]"
+      ],
+      "size": 56,
+      "source_line": 263,
+      "source_path": "src/Applications/Administration/ProcessViewer/ProcessControl.m"
+    },
+    {
+      "address": 25600,
+      "reference_names": [
+        "-[ProcessControl windowDidResize:]"
+      ],
+      "size": 56,
+      "source_line": 496,
+      "source_path": "src/Applications/Administration/ProcessViewer/ProcessControl.m"
+    },
+    {
+      "address": 25656,
+      "reference_names": [
+        "-[ProcessControl windowShouldClose:]"
+      ],
+      "size": 68,
+      "source_line": 501,
+      "source_path": "src/Applications/Administration/ProcessViewer/ProcessControl.m"
+    },
+    {
+      "address": 25724,
+      "reference_names": [
+        "-[ProcessControl changeSortOrder:]"
+      ],
+      "size": 140,
+      "source_line": 268,
+      "source_path": "src/Applications/Administration/ProcessViewer/ProcessControl.m"
+    },
+    {
+      "address": 25864,
+      "reference_names": [
+        "-[ProcessControl validateMenuItem:]"
+      ],
+      "size": 140,
+      "source_line": 486,
+      "source_path": "src/Applications/Administration/ProcessViewer/ProcessControl.m"
+    },
+    {
+      "address": 26004,
+      "reference_names": [
+        "__readTypesFromFile"
+      ],
+      "size": 916,
+      "source_line": 10,
+      "source_path": "src/Applications/Administration/ProcessViewer/ProcessType.m"
+    },
+    {
+      "address": 26920,
+      "reference_names": [
+        "+[ProcessType allProcessTypes]"
+      ],
+      "size": 464,
+      "source_line": 70,
+      "source_path": "src/Applications/Administration/ProcessViewer/ProcessType.m"
+    },
+    {
+      "address": 27384,
+      "reference_names": [
+        "-[ProcessType dealloc]"
+      ],
+      "size": 96,
+      "source_line": 161,
+      "source_path": "src/Applications/Administration/ProcessViewer/ProcessType.m"
+    },
+    {
+      "address": 27480,
+      "reference_names": [
+        "-[ProcessType initWithDictionary:strings:]"
+      ],
+      "size": 540,
+      "source_line": 110,
+      "source_path": "src/Applications/Administration/ProcessViewer/ProcessType.m"
+    },
+    {
+      "address": 28020,
+      "reference_names": [
+        "-[ProcessType matchesProcess:]"
+      ],
+      "size": 120,
+      "source_line": 143,
+      "source_path": "src/Applications/Administration/ProcessViewer/ProcessType.m"
+    },
+    {
+      "address": 28140,
+      "reference_names": [
+        "-[ProcessType localizedName]"
+      ],
+      "size": 16,
+      "source_line": 151,
+      "source_path": "src/Applications/Administration/ProcessViewer/ProcessType.m"
+    },
+    {
+      "address": 28156,
+      "reference_names": [
+        "-[ProcessType name]"
+      ],
+      "size": 16,
+      "source_line": 156,
+      "source_path": "src/Applications/Administration/ProcessViewer/ProcessType.m"
+    },
+    {
+      "address": 28172,
+      "reference_names": [
+        "-[ProcessTableView initWithCoder:]"
+      ],
+      "size": 136,
+      "source_line": 20,
+      "source_path": "src/Applications/Administration/ProcessViewer/ProcessTableView.m"
+    },
+    {
+      "address": 28308,
+      "reference_names": [
+        "-[ProcessTableView highlightedColumnIdentifier]"
+      ],
+      "size": 16,
+      "source_line": 30,
+      "source_path": "src/Applications/Administration/ProcessViewer/ProcessTableView.m"
+    },
+    {
+      "address": 28324,
+      "reference_names": [
+        "-[ProcessTableView setHighlightedColumn:]"
+      ],
+      "size": 108,
+      "source_line": 35,
+      "source_path": "src/Applications/Administration/ProcessViewer/ProcessTableView.m"
+    },
+    {
+      "address": 28432,
+      "reference_names": [
+        "-[ProcessTableHeaderView drawRect:]"
+      ],
+      "size": 292,
+      "source_line": 49,
+      "source_path": "src/Applications/Administration/ProcessViewer/ProcessTableView.m"
+    },
+    {
+      "address": 28724,
+      "reference_names": [
+        "-[ProcessTableHeaderView _modifySelectionWithEvent:onColumn:]"
+      ],
+      "size": 432,
+      "source_line": 67,
+      "source_path": "src/Applications/Administration/ProcessViewer/ProcessTableView.m"
+    },
+    {
+      "address": 29156,
+      "reference_names": [
+        "_main"
+      ],
+      "size": 32,
+      "source_line": 510,
+      "source_path": "src/Applications/Administration/ProcessViewer/ProcessControl.m"
+    },
+    {
+      "address": 29188,
+      "reference_names": [
+        "_NameForUID"
+      ],
+      "size": 312,
+      "source_line": 9,
+      "source_path": "src/Applications/Administration/ProcessViewer/UserIdCache.m"
+    }
+  ],
+  "reference_sha256": "4A08718BD848E733A7E4EF8EF8F7B9A282A2FE56C8D38B14F23622C9983B7179",
+  "schema_version": "source-map-v1",
+  "unmapped": [
+    {
+      "address": 7764,
+      "reference_names": [
+        "start"
+      ],
+      "size": 48
+    },
+    {
+      "address": 7816,
+      "reference_names": [
+        "__start"
+      ],
+      "size": 320
+    },
+    {
+      "address": 8136,
+      "reference_names": [
+        "__call_mod_init_funcs"
+      ],
+      "size": 76
+    },
+    {
+      "address": 8212,
+      "reference_names": [
+        "__dyld_init_check"
+      ],
+      "size": 60
+    },
+    {
+      "address": 8272,
+      "reference_names": [
+        "dyld_stub_binding_helper"
+      ],
+      "size": 24
+    },
+    {
+      "address": 8296,
+      "reference_names": [
+        "__dyld_func_lookup"
+      ],
+      "size": 16
+    },
+    {
+      "address": 31244,
+      "reference_names": [
+        "_exit"
+      ],
+      "size": 36
+    },
+    {
+      "address": 31280,
+      "reference_names": [
+        "__objcInit"
+      ],
+      "size": 36
+    },
+    {
+      "address": 31316,
+      "reference_names": [
+        "_NSPointInRect"
+      ],
+      "size": 36
+    },
+    {
+      "address": 31352,
+      "reference_names": [
+        "_objc_msgSendSuper"
+      ],
+      "size": 36
+    },
+    {
+      "address": 31388,
+      "reference_names": [
+        "_objc_msgSend_stret"
+      ],
+      "size": 36
+    },
+    {
+      "address": 31424,
+      "reference_names": [
+        "_objc_msgSend"
+      ],
+      "size": 36
+    },
+    {
+      "address": 31460,
+      "reference_names": [
+        "_strcmp"
+      ],
+      "size": 36
+    },
+    {
+      "address": 31496,
+      "reference_names": [
+        "_NSLog"
+      ],
+      "size": 36
+    },
+    {
+      "address": 31532,
+      "reference_names": [
+        "_strerror"
+      ],
+      "size": 36
+    },
+    {
+      "address": 31568,
+      "reference_names": [
+        "_sysctl"
+      ],
+      "size": 36
+    },
+    {
+      "address": 31604,
+      "reference_names": [
+        "_strlen"
+      ],
+      "size": 36
+    },
+    {
+      "address": 31640,
+      "reference_names": [
+        "_index"
+      ],
+      "size": 36
+    },
+    {
+      "address": 31676,
+      "reference_names": [
+        "_table"
+      ],
+      "size": 36
+    },
+    {
+      "address": 31712,
+      "reference_names": [
+        "_NSZoneMalloc"
+      ],
+      "size": 36
+    },
+    {
+      "address": 31748,
+      "reference_names": [
+        "_NSMapInsert"
+      ],
+      "size": 36
+    },
+    {
+      "address": 31784,
+      "reference_names": [
+        "_NSFreeMapTable"
+      ],
+      "size": 36
+    },
+    {
+      "address": 31820,
+      "reference_names": [
+        "_NSAllMapTableValues"
+      ],
+      "size": 36
+    },
+    {
+      "address": 31856,
+      "reference_names": [
+        "_NSCountMapTable"
+      ],
+      "size": 36
+    },
+    {
+      "address": 31892,
+      "reference_names": [
+        "_NSMapRemove"
+      ],
+      "size": 36
+    },
+    {
+      "address": 31928,
+      "reference_names": [
+        "_NSMapGet"
+      ],
+      "size": 36
+    },
+    {
+      "address": 31964,
+      "reference_names": [
+        "_strchr"
+      ],
+      "size": 36
+    },
+    {
+      "address": 32000,
+      "reference_names": [
+        "_NSCreateMapTableWithZone"
+      ],
+      "size": 36
+    },
+    {
+      "address": 32036,
+      "reference_names": [
+        "_NSCopyMapTableWithZone"
+      ],
+      "size": 36
+    },
+    {
+      "address": 32072,
+      "reference_names": [
+        "_NSDefaultMallocZone"
+      ],
+      "size": 36
+    },
+    {
+      "address": 32108,
+      "reference_names": [
+        "_NSNextMapEnumeratorPair"
+      ],
+      "size": 36
+    },
+    {
+      "address": 32144,
+      "reference_names": [
+        "_NSEnumerateMapTable"
+      ],
+      "size": 36
+    },
+    {
+      "address": 32180,
+      "reference_names": [
+        "_kill"
+      ],
+      "size": 36
+    },
+    {
+      "address": 32216,
+      "reference_names": [
+        "_NSRunAlertPanel"
+      ],
+      "size": 36
+    },
+    {
+      "address": 32252,
+      "reference_names": [
+        "_NSUserName"
+      ],
+      "size": 36
+    },
+    {
+      "address": 32288,
+      "reference_names": [
+        "_NSHomeDirectory"
+      ],
+      "size": 36
+    },
+    {
+      "address": 32324,
+      "reference_names": [
+        "_NSShowSystemInfoPanel"
+      ],
+      "size": 36
+    },
+    {
+      "address": 32360,
+      "reference_names": [
+        "_NSBeep"
+      ],
+      "size": 36
+    },
+    {
+      "address": 32396,
+      "reference_names": [
+        "_NSSearchPathForDirectoriesInDomains"
+      ],
+      "size": 36
+    },
+    {
+      "address": 32432,
+      "reference_names": [
+        "__NSExceptionObjectFromHandler2"
+      ],
+      "size": 36
+    },
+    {
+      "address": 32468,
+      "reference_names": [
+        "__NSRemoveHandler2"
+      ],
+      "size": 36
+    },
+    {
+      "address": 32504,
+      "reference_names": [
+        "__setjmp"
+      ],
+      "size": 36
+    },
+    {
+      "address": 32540,
+      "reference_names": [
+        "__NSAddHandler2"
+      ],
+      "size": 36
+    },
+    {
+      "address": 32576,
+      "reference_names": [
+        "_NSApplicationMain"
+      ],
+      "size": 36
+    },
+    {
+      "address": 32612,
+      "reference_names": [
+        "_getpwuid"
+      ],
+      "size": 36
+    }
+  ]
+}

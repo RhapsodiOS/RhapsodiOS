@@ -92,6 +92,18 @@ A wider corpus and a wider option set, with the reference decompiled under IDA 9
 - [x] Rebuild (80716 bytes) and re-verify: difftest/difftest2/difftest3/difftest4 (all pairs identical), sizeprobe2 (20/20 SAME), functest (`HEADER_IDENTICAL`/`BODY_IDENTICAL`), eofprobe.
 - [x] Re-run `binrecon analyze`: the printable `__cstring` sets are now exactly equal (0/0, section 9961 bytes in both). Remaining `code` residue is the crt/dyld glue, libc stubs and the offset-pairing desync.
 
+### Task 6c: Structural residue pass (2026-09-30)
+
+The pairing desync was not name noise: the reference was compiled
+unoptimized while pb_makefiles defaults `OPTIMIZE = YES`.
+
+- [x] Fingerprint every reference `__text` function (size, instruction count, call count, `mov eax,eax` count); guest `cc` reproduces the -O0 prologue shapes only without `-O`.
+- [x] `Makefile.preamble`: set `OPTIMIZE = NO` (sanctioned — `flags.make` checks with `ifndef` after `Makefile.preamble` is included).
+- [x] `main.c`: uppercase the `-h` header-name loop with direct range arithmetic instead of the ctype macros; `rindex` → `strrchr` at three sites and drop the os_mpw alias.
+- [x] `pswfile.c`: parameterize `InitHFile`/`FinishHFile` on the header id (the reference pushes `arg_0` twice for `fprintf`).
+- [x] Rebuild (113452 bytes) and re-verify: undefined-symbol set identical (30 = 30), seven section sizes exactly equal, `__text` 74194 vs 75259 (−1065, was −28899), 89 of 112 reference functions fingerprint-exact; all differential suites pass (difftest4 130/130, difftest3 225/225, difftest/difftest2 clean, sizeprobe2 20/20, functest identical, eofprobe clean).
+- [x] Classify the remaining residue in `docs/superpowers/specs/2026-09-30-pswrap-structural-residue.md`: two unrecoverable lexer rules (`yylex` −552 B, flex table artifacts only), emit-region folding (~270 B over four functions), crt/dyld/linker glue. `normalized-functions` stays structurally impossible (offset pairing breaks on the glue split and the yylex table size); the per-function-equivalence intent is met by the fingerprint-exact pairs plus the behavioral suites.
+
 ### Task 7: Documentation
 
 - [x] Write `docs/superpowers/specs/2026-09-29-pswrap-reconstruction-design.md`.

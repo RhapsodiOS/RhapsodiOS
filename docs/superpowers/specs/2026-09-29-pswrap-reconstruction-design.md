@@ -170,7 +170,9 @@ against the reference's prebound 107756, and the two are linked with
 different symbol stubs and a different section layout, so the metadata
 findings dominate. Structural acceptance is a byte/layout criterion; the
 behavioral criterion the tool actually satisfies is the byte-identical
-generated code above.
+generated code above. (The 2026-09-30 pass then identified the dominant
+cause of that residue — an optimization-level mismatch — and reduced it
+drastically; see `2026-09-30-pswrap-structural-residue.md`.)
 
 A string-table comparison of the two binaries is now exact: the printable
 `__cstring` literal sets are identical, with zero entries on either side and

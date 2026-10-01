@@ -52,14 +52,18 @@ static int EmitVersion(f, infname, outfname)
     return 4;  /* number of output lines */
 }
 
-InitHFile(){
+InitHFile(id)
+char *id;
+{
     (void) EmitVersion(header, ifile, hfile);
-    fprintf(header,"#ifndef %s\n#define %s\n",headid,headid);
+    fprintf(header,"#ifndef %s\n#define %s\n",id,id);
     if (includeFile != NULL) fprintf(header,"#include %s\n",includeFile);
 }
 
-FinishHFile() {
-    fprintf(header,"\n#endif %s\n",headid);
+FinishHFile(id)
+char *id;
+{
+    fprintf(header,"\n#endif %s\n",id);
 #ifdef os_mpw
     SetFileStuff(header);
 #endif

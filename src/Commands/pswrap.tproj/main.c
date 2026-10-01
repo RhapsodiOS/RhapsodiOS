@@ -28,7 +28,6 @@ End Edit History.
 #include <stdio.h>
 #ifdef os_mpw
 #include <string.h>
-#define rindex strrchr
 #define SLASH ':'
 #else
 #include <strings.h>
@@ -122,7 +121,7 @@ int argc; char *argv[];
 
 #ifdef os_mpw
     if (rfile == NULL) {
-	char *period = rindex(ofile, '.');
+	char *period = strrchr(ofile, '.');
 	int periodStart = period ? period - ofile : strlen(ofile);
 	rfile = psw_malloc(periodStart+3);
 	strncpy(rfile, ofile, periodStart);
@@ -145,7 +144,6 @@ int argc; char *argv[];
  	    	FatalError("can't open %s for output",hfile);
     }
     if (header != NULL)	InitHFile(headid);
-
     InitWellKnownPSNames();
 
 #ifdef os_mpw
@@ -194,7 +192,7 @@ static void ScanArgs(argc, argv)
     int 	i = 0;
 
     prog = argv[i++];
-    slash = rindex(prog,SLASH);
+    slash = strrchr(prog,SLASH);
     if (slash)
 	prog = slash + 1;
     while (i < argc) {
@@ -229,11 +227,11 @@ static void ScanArgs(argc, argv)
 #endif
 	    case 'h':
 		hfile = argv[++i];
-		slash = rindex(hfile,SLASH);
+		slash = strrchr(hfile,SLASH);
 		strcpy(headid, slash ? slash+1 : hfile);
 		for (c = headid; *c != '\0'; c++) {
 		    if (*c == '.') *c = '_';
-		    else isascii(*c) && islower(*c) && (*c = toupper(*c));
+		    else if (*c > '`' && *c <= 'z') *c = *c + ('A' - 'a');
 		}
 		break;
 	    case 'o':

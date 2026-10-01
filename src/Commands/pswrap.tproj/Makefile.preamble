@@ -18,7 +18,16 @@
 #  yacc and lex (the same NeXT-era tools), because rbuild's sysroot has no
 #  yacc/lex.  sysnames_gen.c is generated from systemnames.ps by
 #  sysnames2c.awk and checked in.
+#
+#  OPTIMIZE = NO matches the shipped binary.  pb_makefiles defaults
+#  OPTIMIZE = YES (-O), but the reference was compiled unoptimized: its
+#  __text is ~62% larger than an -O build and carries the cc-783.1 -O0
+#  fingerprints (movl %eax,%eax after every call, movl/leal global-address
+#  chains, jmp .+2/nop/nop returns).  flags.make checks OPTIMIZE with
+#  ifndef after this preamble is included, so the override takes effect.
 ###############################################################################
+
+OPTIMIZE = NO
 
 LOCAL_CFLAGS = -UNeXT -Dos_unix -Dos_mach \
                -DFRIENDSFILE='"<dpsclient/dpsfriends.h>"'

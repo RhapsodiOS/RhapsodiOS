@@ -1,0 +1,31 @@
+{
+    IBClasses = (
+        {CLASS = FirstResponder; LANGUAGE = ObjC; SUPERCLASS = NSObject; }, 
+        {
+            CLASS = Inspector; 
+            LANGUAGE = ObjC; 
+            OUTLETS = {
+                argsView = id; 
+                argumentsTable = id; 
+                invalidSelectionText = id; 
+                invalidSelectionView = id; 
+                parentField = id; 
+                pathField = id; 
+                pidField = id; 
+                pidView = id; 
+                processGroupField = id; 
+                realMemoryField = id; 
+                savedUidField = id; 
+                splitView = id; 
+                statsView = id; 
+                tabContainer = id; 
+                tabView = id; 
+                terminalField = id; 
+                timeField = id; 
+                virtualMemoryField = id; 
+            }; 
+            SUPERCLASS = NSObject; 
+        }
+    ); 
+    IBVersion = 1; 
+}

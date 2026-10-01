@@ -1,0 +1,4 @@
+LANGUAGE = English
+LANGUAGES = English
+
+OTHER_INFO_FILES = Resources/Info-nextstep.plist

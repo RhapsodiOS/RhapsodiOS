@@ -1,0 +1,6 @@
+(
+    { Name = "All Processes" },
+    { Name = "User Processes"; Key = USER },
+    { Name = "Administrator Processes"; Key = "USER"; Values = (root) },
+    { Name = "NetBoot Processes"; Key = NAME; Values = ( "bootpd", "inetd", "tftpd", "appletalk", "AppleFileServer", "MacintoshManagementServer" ); }
+)

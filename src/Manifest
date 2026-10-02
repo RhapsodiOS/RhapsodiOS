@@ -40,7 +40,7 @@ dir     Developer/Commands/gnumake-1 all
 dir     gnutar-1              all
 dir     gnuzip-1              all
 dir     grep-1                all
-dir     groff-1               all
+dir     Developer/Commands/groff-1 all
 dir     hfs-1                 all
 dir     kernel-7              all
 dir     kernload-1            all

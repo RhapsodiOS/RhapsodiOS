@@ -418,9 +418,9 @@ unbucketable function satisfies it, an unexamined one does not.
   Mach-O external relocation table, which `binrecon.macho.read_macho` already
   parses. This spec's bucket tables are the natural test fixtures.
 - **Per-driver reconstruction specs**, ranked by §4.5.
-- **A PowerPC build.** The tree carries the pieces — `src/cctools-2`
+- **A PowerPC build.** The tree carries the pieces — `src/Developer/Commands/cctools-2`
   (`as/ppc.c`, `as/ppc-opcode.h`, `ld/ppc_reloc.c`) and GCC's `rs6000`
-  configuration in `src/cc-1`. Standing one up would make `parity_check.py`
+  configuration in `src/Developer/Commands/cc-1`. Standing one up would make `parity_check.py`
   and `import_check.py` usable and let every deferred PowerPC body be
   compile-verified.
 - **Loadable-bundle packaging** for the four kernel-resident drivers (§4.4).

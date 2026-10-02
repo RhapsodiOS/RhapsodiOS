@@ -151,7 +151,7 @@ after a failed resolution. Runner and builder must use the same resolver.
   with its target_arch by compiling and inspecting probes in Task 6; do not
   append conflicting architecture flags from two sources.
 - [ ] Inspect `src/CoreOSMakefiles-1/ReleaseControl/GNUSource.make` and
-  `src/pb_makefiles-1/platform.make` TARGETS use. Retain bootstrap's existing
+  `src/Developer/Commands/pb_makefiles-1/platform.make` TARGETS use. Retain bootstrap's existing
   target assignment and set ordinary TARGETS only where it is an architecture
   list; do not override unrelated project targets globally.
 - [ ] Replace host-dependent assertions with universal assertions:

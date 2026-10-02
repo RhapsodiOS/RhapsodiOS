@@ -495,7 +495,7 @@ protocol is `IOSCSIControllerExported`, the same protocol
 `_objc_getClass` is not among the 34 imports. `_objc_getOrigClass` **is**.
 All five of our `objc_getClass` sites correspond to ordinary Objective-C
 syntax whose gcc output differs by context — verified against this tree's own
-compiler, `src/cc-1/cc/objc-act.c`:
+compiler, `src/Developer/Commands/cc-1/cc/objc-act.c`:
 
 | Our site | Reference | gcc rule |
 | --- | --- | --- |
@@ -827,7 +827,7 @@ OTHERSRCS = Makefile Makefile.preamble Makefile.driver_preamble Makefile.postamb
 The `OTHERSRCS` addition is inert for compilation and closes the third
 disagreement. `.defs` compilation is driven by `DEFSFILES` in
 `Makefile.preamble` (untouched); `OTHERSRCS` feeds only `SRCFILES`
-(`src/pb_makefiles-1/common.make:240`), which is the source listing used by the
+(`src/Developer/Commands/pb_makefiles-1/common.make:240`), which is the source listing used by the
 `sourcefiles` and `installsrc` targets. `DEFSFILES` is *not* in `SRCFILES` -
 only its generated products are, via `GENERATED_SRCFILES` at `:238` - so without
 this line the `.defs` was absent from the project's own source list.

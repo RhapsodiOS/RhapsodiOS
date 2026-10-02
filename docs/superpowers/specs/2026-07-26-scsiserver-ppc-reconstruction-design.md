@@ -296,7 +296,7 @@ avoids duplicate `_IOSCSISession_*` symbols against the hand-written wrappers of
 demux but resolves `_IOSCSISession_*` to the Objective-C wrappers.
 
 Because MiG cannot be run here, the exact flag spelling this project needs is
-confirmed by reading `src/pb_makefiles-1/common.make` rather than by building.
+confirmed by reading `src/Developer/Commands/pb_makefiles-1/common.make` rather than by building.
 The plan states what to read; a PowerPC build pass is what would finally prove
 it.
 

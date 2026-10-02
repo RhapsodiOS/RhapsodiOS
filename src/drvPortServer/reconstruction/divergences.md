@@ -4511,7 +4511,7 @@ next pass inherits.
   implicitly declared here. **That was wrong.** Every `cc` line in the guest build carries
   `-static -DKERNEL -D_KERNEL -DMACH_USER_API -DKERNEL_SERVER_INSTANCE=PortServer_instance`.
   The flags come from the kernel-server makefile installed at `$(MAKEFILEPATH)/pb_makefiles`
-  in the guest, which is not the copy this repo tracks in `src/pb_makefiles-1/` — that is
+  in the guest, which is not the copy this repo tracks in `src/Developer/Commands/pb_makefiles-1/` — that is
   why reading the repo's makefiles alone gave the wrong answer. With `_KERNEL` defined and
   `ucred.h` reached through `param.h`, all three prototypes are visible and none of them
   warns.

@@ -946,7 +946,7 @@ DEFSFILES = IOSCSISessionMig.defs
 OTHER_GENERATED_OFILES += IOSCSISessionMigServer.o
 ```
 
-`MIGFILES` is for `.mig` files and is the wrong key. `src/pb_makefiles-1/common.make:238` expands each `DEFSFILES` entry into `%.h`, `%User.c` and `%Server.c`; `common.make:242` shows generated sources become objects only when declared, so leaving `IOSCSISessionMigUser.c` out of both `CFILES` and `OTHER_GENERATED_OFILES` is what prevents duplicate `_IOSCSISession_*` symbols. Read both lines before editing to confirm the variable names in this checkout.
+`MIGFILES` is for `.mig` files and is the wrong key. `src/Developer/Commands/pb_makefiles-1/common.make:238` expands each `DEFSFILES` entry into `%.h`, `%User.c` and `%Server.c`; `common.make:242` shows generated sources become objects only when declared, so leaving `IOSCSISessionMigUser.c` out of both `CFILES` and `OTHER_GENERATED_OFILES` is what prevents duplicate `_IOSCSISession_*` symbols. Read both lines before editing to confirm the variable names in this checkout.
 
 In `PB.project`, add `IOSCSISessionMig.defs` to `OTHER_SOURCES` so Project Builder shows it.
 

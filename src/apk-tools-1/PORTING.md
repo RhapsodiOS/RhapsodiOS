@@ -76,7 +76,7 @@ Found by building universal (i386 + ppc) with rbuild on the i386 build guest
   `apk-tools/src/apk` with `-lz`, and installs it to `/sbin`.
 - Rhapsody's libc has no `getopt_long` or `<getopt.h>`: `compat/` carries GNU
   getopt (`getopt.c`, `getopt1.c`, `getopt.h`, GPL v2 or later, copied from
-  `src/bison-1/bison`).
+  `src/Developer/Commands/bison-1/bison`).
 - gcc 2.95 rejects C99 designated initializers (`.field = value`): all are
   now the GNU `field: value` form, and the nested `.is.read`/`.os.write`
   ones are `is: { read: ..., close: ... }`.

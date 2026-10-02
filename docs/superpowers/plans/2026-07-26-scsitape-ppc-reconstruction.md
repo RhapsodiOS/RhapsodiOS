@@ -79,7 +79,7 @@ Set `BINRECON_REFERENCE` to the matching binary for the profile in use.
 
 - **Jump islands resolve through the relocation table**, as above. Two questions declared unanswerable in spec 2 were one lookup away.
 - **Message and MiG type descriptors are named symbols in `__TEXT,__const`** (`<arg>Check` / `<arg>Type`), decodable against `src/kernel-7/mach/message.h:707-726`.
-- **When a constant or type is unknown, search this tree before recording it as undeterminable.** Every such item in spec 2 was in `src/kernel-7/mach/`, `src/kernel-7/ipc/` or `src/cc-1`.
+- **When a constant or type is unknown, search this tree before recording it as undeterminable.** Every such item in spec 2 was in `src/kernel-7/mach/`, `src/kernel-7/ipc/` or `src/Developer/Commands/cc-1`.
 
 ## File Structure
 

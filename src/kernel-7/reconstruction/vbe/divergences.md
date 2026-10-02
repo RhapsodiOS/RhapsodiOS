@@ -2369,7 +2369,7 @@ with it, then without it again (`A1`, `B`, `A2`). **[measured]**
   like this one does not cascade at any position — `docs/boot/sarld-driver-link-limit.md`'s
   cascade is specific to a malloc fatal (`rld(): virtual memory exhausted`),
   raised through `fatal()`/`cleanup()`, not through the `error()` path an
-  undefined symbol takes (`src/cctools-2/ld/symbols.c:3523`, `ld.c:2059`,
+  undefined symbol takes (`src/Developer/Commands/cctools-2/ld/symbols.c:3523`, `ld.c:2059`,
   `rld.c:402-405`).
   **[REFUTED — spec 3 G5 (docs/kernel/i386-vbe-console.md, G5): linked
   first on a kernel without the symbol, with the stock booter and `sarld`,

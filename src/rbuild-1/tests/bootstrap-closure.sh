@@ -359,7 +359,7 @@ assert_before()
 
 assert_before Developer/Commands/bison-1 all Developer/Commands/cc-1 all
 assert_before Developer/Commands/pb_makefiles-1 headers kernel-7 headers
-assert_before project_makefiles-1 headers kernel-7 headers
+assert_before Developer/Commands/project_makefiles-1 headers kernel-7 headers
 
 for provider in architecture-1 kernel-7 Libstreams-1 objc4-1 driverkit-3 \
         Developer/Commands/cctools-2; do

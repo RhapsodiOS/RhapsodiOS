@@ -3,7 +3,7 @@
 # Build frameworks and target headers before their first consumers.
 dir     CoreOSMakefiles-1       all
 dir     Developer/Commands/pb_makefiles-1 headers
-dir     project_makefiles-1     headers
+dir     Developer/Commands/project_makefiles-1 headers
 dir     architecture-1          headers
 dir     kernel-7                headers
 dir     Libstreams-1            headers
@@ -30,7 +30,7 @@ dir     Developer/Commands/patch-1 all
 dir     Developer/Commands/gnudiff-1 all
 
 # Complete remaining build frameworks and the bootstrap command set.
-dir     project_makefiles-1     all
+dir     Developer/Commands/project_makefiles-1 all
 dir     architecture-1          all
 dir     Commands/bootstrap_cmds all
 

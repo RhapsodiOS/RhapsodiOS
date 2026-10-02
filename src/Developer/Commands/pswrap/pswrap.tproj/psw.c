@@ -55,7 +55,7 @@ extern Token PSWToken(/* type, val */);
 
 extern int doANSI;	/* -a flag */
 extern int pad;		/* -p flag */
-extern int inlineNames;	/* -n clears this: names go through DPSMapNames */
+extern short inlineNames;	/* -n clears this: names go through DPSMapNames */
 extern char *externPrefix;	/* -e text qualifying the prototypes */
 
 #define DPS_HEADER_SIZE 4
@@ -170,57 +170,6 @@ static TokenList ConsNameToken (t, ll) Token t; TokenList ll; {
   tt->next = temp->next;
   temp->next = tt;
   return (ll);
-  }
-  
-/* String and user-name bodies are packed inline into the object sequence.
-   Equal text is stored once, so equal strings and names share a pool
-   offset.  These helpers walk the pool list in emission order. */
-
-static int PoolTokenLength(t) Token t; {
-  if (t->type == T_HEXSTRING)
-    return PSWHexStringLength((char *)t->val);
-  return PSWStringLength((char *)t->val);
-  }
-
-/* true if t is the first token in the pool with its text */
-static boolean IsFirstPoolToken(head, t) TokenList head; Token t; {
-  register TokenList tl;
-  for (tl = head; tl; tl = tl->next) {
-    if (tl->token == t) return true;
-    if (!strcmp((char *)tl->token->val, (char *)t->val)) return false;
-    }
-  return true;
-  }
-
-/* the earlier pool token with the same text, or NULL */
-static Token FindPoolToken(head, t) TokenList head; Token t; {
-  register TokenList tl;
-  for (tl = head; tl && tl->token != t; tl = tl->next)
-    if (!strcmp((char *)tl->token->val, (char *)t->val))
-      return tl->token;
-  return NULL;
-  }
-
-/* offset of t's body within the pool */
-static int PoolTokenOffset(head, t) TokenList head; Token t; {
-  register TokenList tl;
-  int off = 0;
-  for (tl = head; tl; tl = tl->next) {
-    if (tl->token == t) return off;
-    if (IsFirstPoolToken(head, tl->token))
-      off += PoolTokenLength(tl->token);
-    }
-  return off;
-  }
-
-/* number of bytes of unique text in the pool */
-static int PoolTokenBytes(head) TokenList head; {
-  register TokenList tl;
-  int off = 0;
-  for (tl = head; tl; tl = tl->next)
-    if (IsFirstPoolToken(head, tl->token))
-      off += PoolTokenLength(tl->token);
-  return off;
   }
   
 static boolean IsCharType(t) Type t; {
@@ -367,9 +316,9 @@ static void SetNameTag(t) Token t; {
   tag = PSWDictLookup(wellKnownPSNames, (char *)(t->val));
   if (tag == -1) { /* this is not a well-known name */
     if (inlineNames) {
-      /* Pack the name's text into the string pool; EmitFieldConstructor
-         will give its tag a length and offset. */
-      literalStrings = ConsToken(t, literalStrings);
+      /* The caller packs the name's text into the string pool and gives
+         its tag a length and offset. */
+      t->wellKnownName = false;
       }
     else { /* -n: leave the tag empty for DPSMapNames to fill in */
       nameTokens = ConsNameToken(t, nameTokens);
@@ -556,6 +505,8 @@ static int CheckSize(body)
   register TokenList bodies = NULL;
   register TokenList tl;
   boolean firstBody = true;
+  PSWDict litDict;
+  int litCount = 0;
  
   bodies = ConsToken(body, (TokenList) NULL); /* the work list */
 
@@ -564,6 +515,7 @@ static int CheckSize(body)
   namedInputArrays = NULL;
   namedInputStrings = NULL;
   literalStrings = NULL;
+  litDict = CreatePSWDict(0x100);
 
   while (bodies) {
     register Token t;
@@ -578,14 +530,6 @@ static int CheckSize(body)
     for (t = c->token; t; t = t->next) {
       /* foreach token in this body */
       nextAdr.cnst += DPS_BINOBJ_SIZE;
-
-      /* user names are packed into the pool alongside the strings; under
-         -n the names are emitted through DPSMapNames and so take no room */
-      if (inlineNames
-          && (t->type == T_NAME || t->type == T_LITNAME)
-          && t->namedFormal == NULL
-          && PSWDictLookup(wellKnownPSNames, (char *)t->val) == -1)
-        literalStrings = ConsToken(t, literalStrings);
 
       switch (t->type) {
         case T_STRING: /* token is a string literal */
@@ -609,6 +553,11 @@ static int CheckSize(body)
 	      		if (t->namedFormal->subscripted)
                 	namedInputArrays = ConsToken(t, namedInputArrays);
 		  }
+          else if (inlineNames) {
+            SetNameTag(t);
+            if (!t->wellKnownName)
+              literalStrings = ConsToken(t, literalStrings);
+            }
           break;
 
         case T_LITNAME:
@@ -616,6 +565,11 @@ static int CheckSize(body)
 	    namedInputStrings = ConsToken(t, namedInputStrings);
 	    writable = true;
 	  }
+          else if (inlineNames) {
+            SetNameTag(t);
+            if (!t->wellKnownName)
+              literalStrings = ConsToken(t, literalStrings);
+            }
           break;
 				
 		case T_SUBSCRIPTED:
@@ -644,9 +598,20 @@ static int CheckSize(body)
 	nextAdr.cnst += t->namedFormal->subscript->val * DPS_BINOBJ_SIZE;
     }
 
-  for (tl = literalStrings; tl; tl = tl->next)
-    if (IsFirstPoolToken(literalStrings, tl->token))
-      nextAdr.cnst += PoolTokenLength(tl->token);
+  for (tl = literalStrings; tl; tl = tl->next) {
+    Token t = tl->token;
+    int ln;
+    if (PSWDictLookup(litDict, (char *)t->val) != -1)
+      continue;  /* duplicate text was already counted */
+    if (PSWDictEnter(litDict, (char *)t->val, 0) == 0)
+      litCount++;
+    ln = (t->type == T_HEXSTRING)
+      ? PSWHexStringLength((char *)t->val)
+      : PSWStringLength((char *)t->val);
+    nextAdr.cnst += ln;
+    }
+
+  DestroyPSWDict(litDict);
 
   /* process name and litname tokens that reference formal string arguments */
   for (tl = namedInputStrings; tl; tl = tl->next) {
@@ -677,6 +642,8 @@ static void BuildTypesAndAssignAddresses(body, sz, nObjs, psize)
   register TokenList bodies = NULL;
   register TokenList tl;
   boolean firstBody = true;
+  PSWDict litDict;
+  int stringCount = 0;
   extern int yylineno;
  
   bodies = ConsToken(body, (TokenList) NULL); /* the work list */
@@ -688,6 +655,7 @@ static void BuildTypesAndAssignAddresses(body, sz, nObjs, psize)
   literalStrings = NULL;
   writable = false;
   stringBytes = 0;
+  litDict = CreatePSWDict(0x100);
 
   /* emit boilerplate for the binobjseq record type */
   StartBinObjSeqDef();
@@ -730,7 +698,11 @@ static void BuildTypesAndAssignAddresses(body, sz, nObjs, psize)
           break;
 
         case T_NAME:
-          if (t->namedFormal == NULL) SetNameTag(t);
+          if (t->namedFormal == NULL) {
+            SetNameTag(t);
+            if (inlineNames && !t->wellKnownName)
+              literalStrings = ConsToken(t, literalStrings);
+            }
           else 
 			if (IsCharType(t->namedFormal->type) 
 				|| IsNumStrType(t->namedFormal->type)) {
@@ -749,7 +721,11 @@ static void BuildTypesAndAssignAddresses(body, sz, nObjs, psize)
 
         case T_LITNAME:
           Assert(t->namedFormal == NULL || IsCharType(t->namedFormal->type));
-          if (t->namedFormal == NULL) SetNameTag(t);
+          if (t->namedFormal == NULL) {
+            SetNameTag(t);
+            if (inlineNames && !t->wellKnownName)
+              literalStrings = ConsToken(t, literalStrings);
+            }
           else {
 	    namedInputStrings = ConsToken(t, namedInputStrings);
 	    writable = true;
@@ -777,10 +753,10 @@ static void BuildTypesAndAssignAddresses(body, sz, nObjs, psize)
     free(c);
     } /* while */
 
+*psize = nextAdr.cnst;
+
   if (nNames)
     writable = true;	/* SetNameTag couldn't find the name */
-
-*psize = nextAdr.cnst;
   
 #ifdef os_mpw
   EmitObjectFormat(objN);
@@ -813,14 +789,20 @@ static void BuildTypesAndAssignAddresses(body, sz, nObjs, psize)
     }
   
   for (tl = literalStrings; tl; tl = tl->next) {
-    Token t = tl->token, prev;
-    int ln = PoolTokenLength(t);
-    if ((prev = FindPoolToken(literalStrings, t)) != NULL) {
+    Token t = tl->token;
+    int ln;
+    PSWDictValue tag;
+    t->body = nextAdr;
+    if ((tag = PSWDictLookup(litDict, (char *)t->val)) != -1) {
       /* duplicate text shares the earlier copy's offset */
-      t->body = prev->body;
+      t->body.cnst = tag;
       continue;
       }
-    t->body = nextAdr;
+    ln = (t->type == T_HEXSTRING)
+      ? PSWHexStringLength((char *)t->val)
+      : PSWStringLength((char *)t->val);
+    if (PSWDictEnter(litDict, (char *)t->val, nextAdr.cnst) == 0)
+      stringCount++;
     nextAdr.cnst += ln;
     stringBytes += ln;
 
@@ -848,6 +830,8 @@ static void BuildTypesAndAssignAddresses(body, sz, nObjs, psize)
 			nextAdr.cnst += t->namedFormal->subscript->val;
 	}
   }
+
+  DestroyPSWDict(litDict);
 
 #ifndef os_mpw
   /* emit boilerplate to end the last record type */
@@ -1105,6 +1089,10 @@ static void ConstructStatics(body, sz, nObjs)
   register TokenList bodies = NULL;
   register TokenList tl;
   boolean isNamedInputArrays = false;
+  PSWDict litDict;
+  int litCount = 0;
+
+  litDict = CreatePSWDict(0x100);
 
   bodies = ConsToken(body, (TokenList) NULL); /* the work list */
 
@@ -1178,8 +1166,10 @@ static void ConstructStatics(body, sz, nObjs)
 
   for (tl = literalStrings; tl; tl = tl->next) {
     Token t = tl->token;
-    if (!IsFirstPoolToken(literalStrings, t))
+    if (PSWDictLookup(litDict, (char *)t->val) != -1)
       continue;  /* duplicate text shares the earlier copy */
+    if (PSWDictEnter(litDict, (char *)t->val, 0) == 0)
+      litCount++;
 #ifndef os_mpw
     printf("    {");
 #endif
@@ -1196,6 +1186,8 @@ static void ConstructStatics(body, sz, nObjs)
 #ifndef os_mpw
   EndStatic(! twoStatics); /* end the last static record */
 #endif
+
+  DestroyPSWDict(litDict);
 
   Assert(objN  == nObjs);
 
@@ -1528,6 +1520,10 @@ static void FixupOffsets()
     register TokenList tl; Token t;
     register Item item;
     int stringOffset = 0;
+    int stringCount = 0;
+    PSWDict litDict;
+
+    litDict = CreatePSWDict(0x100);
 
     for (tl = namedInputArrays; tl; tl = tl->next) {
 		t = tl->token; item = t->namedFormal;
@@ -1591,9 +1587,20 @@ static void FixupOffsets()
 
     if (namedInputArrays) {
 	for (tl = literalStrings; tl; tl = tl->next) {
+	    PSWDictValue tag;
 	    int off;
 	    t = tl->token;
-	    off = PoolTokenOffset(literalStrings, t);
+	    tag = PSWDictLookup(litDict, (char *)t->val);
+	    if (tag == -1) {
+		if (PSWDictEnter(litDict, (char *)t->val, stringOffset) == 0)
+		    stringCount++;
+		off = stringOffset;
+		stringOffset += (t->type == T_HEXSTRING)
+		  ? PSWHexStringLength((char *)t->val)
+		  : PSWStringLength((char *)t->val);
+		}
+	    else
+		off = tag;
 	    if (off == 0)
 			printf("  _dpsP[%d].val.stringVal = _dps_offset;\n",
 		    	t->tokenIndex);
@@ -1602,12 +1609,13 @@ static void FixupOffsets()
 		    	t->tokenIndex,off);
 	    outlineno++;
 	} /* literalStrings */
-	stringOffset = PoolTokenBytes(literalStrings);
 	if (stringOffset) {
 	    printf("  _dps_offset += %d;\n",stringOffset);
 	    outlineno++;
 	}
     }
+
+    DestroyPSWDict(litDict);
 } /* FixupOffsets */
 
 

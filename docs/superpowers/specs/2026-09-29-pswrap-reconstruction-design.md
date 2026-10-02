@@ -6,9 +6,10 @@ reference on 2026-09-30 (see *Widening pass* below).
 ## Goal
 
 Reconstruct Rhapsody's `/usr/bin/pswrap` (the Display PostScript wrapper
-generator) in-tree under `src/Commands/pswrap.tproj`, driven by the
-`tools/binrecon` toolchain, using NeXTDPS's `pswrap-117.0.2` source as the
-reconstruction base, and verify the result against the shipped reference.
+generator) in-tree under `src/Developer/Commands/pswrap/pswrap.tproj`,
+driven by the `tools/binrecon` toolchain, using NeXTDPS's `pswrap-117.0.2`
+source as the reconstruction base, and verify the result against the shipped
+reference.
 
 ## Evidence
 
@@ -47,10 +48,11 @@ Both have regression tests in `tools/binrecon/tests/test_ida_adapter.py`.
 
 ## Build integration
 
-`src/Commands/pswrap.tproj` is a Project Builder tool project
-(`Makefile`, `Makefile.preamble`, `Makefile.postamble`, `PB.project`) that
-rbuild builds for i386 with the existing toolchain. Four decisions were
-required, each established from the reference binary rather than assumed:
+`src/Developer/Commands/pswrap` is the rbuild package root. Its wrapper
+`Makefile` builds the Project Builder tool in `pswrap.tproj`
+(`makefile`, `Makefile.preamble`, `Makefile.postamble`, `PB.project`) with
+the existing toolchain and installs `pswrap` plus its manual. Four decisions
+were required, each established from the reference binary rather than assumed:
 
 - **`NeXT` must be undefined.** rbuild's `RC_CFLAGS` always adds `-DNeXT`,
   but the reference contains psw.c's non-`NeXT` `(char *)pad` padding
@@ -188,3 +190,15 @@ deleted. The code-level structural residue is the crt/dyld glue
 `__dyld_func_lookup`), the libc `__picsymbol_stub` entries, and the
 offset-pairing desync their differing sizes cause — link-toolchain
 artifacts, not pswrap code.
+
+## Source package layout (2026-10-01)
+
+The Project Builder project now lives at
+`src/Developer/Commands/pswrap/pswrap.tproj`, under the rbuild package root
+`src/Developer/Commands/pswrap`. The package wrapper builds and installs the
+Project Builder tool, installs `pswrap.1`, and declares source package metadata
+in `apk/pkginfo`. `src/Manifest` includes the package with the normal universal
+architecture policy; binrecon continues to compare the i386 slice against the
+i386 reference. The source headers state Adobe copyright and “All rights
+reserved” but provide no license grant, so the package metadata records the
+license as unknown.

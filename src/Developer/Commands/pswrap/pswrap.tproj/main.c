@@ -61,7 +61,7 @@ char	*shlibInclude = NULL;	/* special file to be #included at top of */
 char	*friendsDir = NULL;	/* -H directory of the dpsfriends.h to include */
 char	*includeFile = NULL;	/* -I file #included by the generated header */
 char	*externPrefix = "extern";	/* -e text qualifying the prototypes */
-int	inlineNames = 1;	/* -n clears this: names go through DPSMapNames */
+short	inlineNames = 1;	/* -n clears this: names go through DPSMapNames */
 #ifdef os_mpw
 char	*rfile = NULL;		/* name of -r file */
 char	*resID = "128";		/* resource id */
@@ -187,6 +187,7 @@ static void ScanArgs(argc, argv)
 {
 	static void Usage();
     extern int	lexdebug;	/* debug flag for lexer */
+    extern short inlineNames;	/* -n clears this: names go through DPSMapNames */
     char	*slash;		/* index of last / in hfile */
     char	*c;		/* pointer into headid for conversion */
     int 	i = 0;

@@ -71,5 +71,6 @@ dir     Commands/shell_cmds     all
 dir     Commands/file_cmds      all
 dir     Commands/text_cmds      all
 dir     Commands/developer_cmds all
+dir     Developer/Commands/pswrap all
 dir     Commands/zsh            all
 dir     Commands/tcsh           all

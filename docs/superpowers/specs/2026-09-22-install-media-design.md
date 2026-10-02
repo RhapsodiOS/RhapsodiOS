@@ -119,7 +119,7 @@ but its *contents* are absolute. The booters, the kernel and `disk` all agree:
 - **apk 2.0_pre12 takes file paths.** `apk add` accepts `.apk` paths
   (`apk_db_pkg_add_file`), and `--initdb` creates
   `var/lib/apk/{world,installed,scripts}` under `--root`
-  (`src/apk-tools-1/apk-tools/src/add.c`, `database.c`).
+  (`src/Commands/apk-tools-1/apk-tools/src/add.c`, `database.c`).
 - **apk-tools, OpenSSL and OpenSSH are in no manifest.** OpenSSL 0.9.5a has
   `openssl passwd -crypt` (`apps/passwd.c`). (Before phase 2; now all three
   are in `src/Manifest` and build universal. `docs/build/apk-root-install.md`

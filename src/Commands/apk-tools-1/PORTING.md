@@ -52,7 +52,7 @@ changes made to build it off-Linux and what remains to validate on Rhapsody
   `usage()`/`find_applet()` iterating the array instead of the
   linker-section range. This is the largest change in the port — it removes
   any dependency on ld64/GNU-ld section-boundary symbol conventions.
-- Project build (`src/apk-tools-1/Makefile`): replaced the `GNUSource.make`
+- Project build (`src/Commands/apk-tools-1/Makefile`): replaced the `GNUSource.make`
   include (which requires a `configure` script apk-tools doesn't have, and
   never passes `DESTDIR`). The project Makefile now compiles
   `apk-tools/src/*.c` itself (see *Changes made on Rhapsody*); the vendored

@@ -23,9 +23,9 @@ dir     Developer/Commands/bison-1 all
 dir     Developer/Commands/cc-1 all
 dir     Developer/Commands/cctools-2 all
 dir     Developer/Commands/gnumake-1 all
-dir     gnutar-1                all
+dir     Commands/gnutar-1 all
 dir     Developer/Commands/awk-1 all
-dir     grep-1                  all
+dir     Commands/grep-1 all
 dir     Developer/Commands/patch-1 all
 dir     Developer/Commands/gnudiff-1 all
 

@@ -16,7 +16,7 @@ apk add --root <scratch> --initdb <every base apk>
 | `src/Manifest` | Lists `apk-tools-1`, `OpenSSH` and `OpenSSL` |
 | `rbuild-1` | Packs `.PKGINFO` and the install scripts first, with no `./` prefix, as apk-tools reads them. Writes a package's `depend` list into `.PKGINFO` |
 | `files-5` | `depend = basic-cmds, csu, libsystem`: its install scripts need `sh`, dyld and libSystem, so apk installs those first |
-| `apk-tools-1` | Builds with make 3.74 and gcc 2.95, reads zlib 1.1.3 gzip streams, pax and GNU tar archives, and installs into Rhapsody's root layout. `src/apk-tools-1/PORTING.md` has the details |
+| `apk-tools-1` | Builds with make 3.74 and gcc 2.95, reads zlib 1.1.3 gzip streams, pax and GNU tar archives, and installs into Rhapsody's root layout. `src/Commands/apk-tools-1/PORTING.md` has the details |
 | `zlib-1` | Installs its headers at `System.framework`'s real path. `/usr/include` is a symlink in the root, and rbuild refuses to merge a directory over one |
 | `perl-1` | Reads `environ` through `_NSGetEnviron`, since Rhapsody's `crt1.o` exports no `__environ` |
 | `OpenSSL` | Built `no-idea`: this tree ships the IDEA sources as empty files |

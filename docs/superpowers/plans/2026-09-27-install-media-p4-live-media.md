@@ -1202,7 +1202,7 @@ import tarfile
 Apk = collections.namedtuple("Apk", "path name version cpu info")
 
 # Members apk reads as metadata.  Everything else, /.hidden included, is
-# data (see src/apk-tools-1/PORTING.md).
+# data (see src/Commands/apk-tools-1/PORTING.md).
 CONTROL = (".PKGINFO", ".pre-install", ".post-install", ".pre-deinstall",
            ".post-deinstall")
 COMPANION_SUFFIXES = ("-hdrs", "-obj")

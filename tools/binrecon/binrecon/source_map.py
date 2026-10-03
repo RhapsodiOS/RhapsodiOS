@@ -2,7 +2,7 @@
 
 Address-to-name comes from the Mach-O symbol table, which these legacy
 driver binaries retain in full. Name-to-source-line comes from scanning
-Objective-C implementations and C function definitions.
+Objective-C implementations, C function definitions, and assembly labels.
 """
 
 from pathlib import Path
@@ -41,6 +41,7 @@ _C_DEFINITION = re.compile(
 _METHOD_DECLARATION_LIMIT = 20
 
 _COMMENT = re.compile(r"/\*.*?\*/")
+_ASSEMBLY_LABEL = re.compile(r"^([A-Za-z_.$][\w.$]*):(?:\s*(?:[#;].*)?)$")
 
 
 def defined_symbols(macho_document):
@@ -132,18 +133,23 @@ def _body_follows(lines, index):
 def source_sites(repo_root, source_path):
     """Map symbol names to the source locations that define them."""
     sites = {}
-    # source_files() returns one suffix-mixed sorted list; a directory whose
-    # source shares space with .c-prefixed names earlier in the alphabet
-    # (e.g. Windows' case-insensitive path sort) would otherwise interleave
-    # .m and .c files instead of scanning all .m files before all .c files.
-    # sites accumulates every definition site regardless of scan order, so
-    # this reorder changes nothing about the output; it costs nothing and
-    # keeps the call site faithful to what it replaced, so restore it anyway.
-    found = source_files(source_path, {".m", ".c"}, recursive=False)
-    paths = [p for p in found if p.suffix == ".m"] + [p for p in found if p.suffix == ".c"]
+    # source_files() returns one suffix-mixed sorted list. Keep language passes
+    # grouped so Windows' case-insensitive path sort cannot interleave them.
+    found = source_files(source_path, {".m", ".c", ".s"}, recursive=False)
+    paths = (
+        [p for p in found if p.suffix == ".m"]
+        + [p for p in found if p.suffix == ".c"]
+        + [p for p in found if p.suffix == ".s"]
+    )
     for path in paths:
         relative = _relative_posix(Path(repo_root), path)
         lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+        if path.suffix == ".s":
+            for number, line in enumerate(lines, 1):
+                label = _ASSEMBLY_LABEL.match(line)
+                if label:
+                    sites.setdefault(label.group(1), []).append((relative, number))
+            continue
         total = len(lines)
         current_class = None
         index = 0

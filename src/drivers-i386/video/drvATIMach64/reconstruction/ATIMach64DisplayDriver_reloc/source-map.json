@@ -444,6 +444,15 @@
       "source_path": "src/drivers-i386/video/drvATIMach64/ATIMach64DisplayDriver.drvproj/ATIMach64DisplayDriver.lksproj/ATI_BIOS.m"
     },
     {
+      "address": 9952,
+      "reference_names": [
+        "__bios16"
+      ],
+      "size": 117,
+      "source_line": 4,
+      "source_path": "src/drivers-i386/video/drvATIMach64/ATIMach64DisplayDriver.drvproj/ATIMach64DisplayDriver.lksproj/ATIbios.s"
+    },
+    {
       "address": 10072,
       "reference_names": [
         "_ATIbios16"
@@ -451,6 +460,15 @@
       "size": 95,
       "source_line": 10,
       "source_path": "src/drivers-i386/video/drvATIMach64/ATIMach64DisplayDriver.drvproj/ATIMach64DisplayDriver.lksproj/ATIbios16.c"
+    },
+    {
+      "address": 10168,
+      "reference_names": [
+        "__ATIbios32"
+      ],
+      "size": 203,
+      "source_line": 37,
+      "source_path": "src/drivers-i386/video/drvATIMach64/ATIMach64DisplayDriver.drvproj/ATIMach64DisplayDriver.lksproj/ATIbios.s"
     }
   ],
   "reference_sha256": "AA9884B8F9F68DB733237241D88FCC1FF252A59E9B0EA1CD029695F37465EA3C",
@@ -469,20 +487,6 @@
         "+[ATIMach64DisplayDriverVersion driverKitVersionForATIMach64DisplayDriver]"
       ],
       "size": 12
-    },
-    {
-      "address": 9952,
-      "reference_names": [
-        "__bios16"
-      ],
-      "size": 117
-    },
-    {
-      "address": 10168,
-      "reference_names": [
-        "__ATIbios32"
-      ],
-      "size": 203
     }
   ]
 }

@@ -129,6 +129,28 @@
 	return [super free];
 }
 
+- (void)resetStats
+{
+	queueLenTotal = 0;
+	maxQueueLen = 0;
+	totalCommands = 0;
+}
+
+- (unsigned int)numQueueSamples
+{
+	return totalCommands;
+}
+
+- (unsigned int)sumQueueLengths
+{
+	return queueLenTotal;
+}
+
+- (unsigned int)maxQueueLength
+{
+	return maxQueueLen;
+}
+
 /*
  * Interrupt handler.
  */

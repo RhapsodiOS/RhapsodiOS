@@ -304,6 +304,27 @@ def test_him_helper_batch_is_mapped_and_exercised():
         assert entries[name]["status"] == "control-flow-confirmed"
 
 
+def test_controller_statistics_methods_match_reference():
+    source = (DRIVER / "Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940.m").read_text(encoding="ascii")
+    for signature, expression in (
+        ("- (void)resetStats", "queueLenTotal = 0;\n\tmaxQueueLen = 0;\n\ttotalCommands = 0;"),
+        ("- (unsigned int)numQueueSamples", "return totalCommands;"),
+        ("- (unsigned int)sumQueueLengths", "return queueLenTotal;"),
+        ("- (unsigned int)maxQueueLength", "return maxQueueLen;"),
+    ):
+        start = source.index(signature)
+        body_end = source.index("\n}", start)
+        assert expression in source[start:body_end], signature
+    source_map = json.loads((RECON / "source-map.json").read_text(encoding="utf-8"))
+    mapped = {name: row for row in source_map["mapped"] for name in row["reference_names"]}
+    ledger = json.loads((RECON / "ledger.json").read_text(encoding="utf-8"))
+    entries = {name: row for row in ledger["entries"] for name in row["names"]}
+    for name in ("-[Adaptec2940 resetStats]", "-[Adaptec2940 numQueueSamples]",
+                 "-[Adaptec2940 sumQueueLengths]", "-[Adaptec2940 maxQueueLength]"):
+        assert mapped[name]["source_path"].endswith("Adaptec2940.m")
+        assert entries[name]["status"] == "control-flow-confirmed"
+
+
 def _main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--audit", choices=("inventory", "layouts", "firmware"))

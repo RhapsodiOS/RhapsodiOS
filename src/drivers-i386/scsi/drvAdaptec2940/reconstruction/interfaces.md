@@ -4,6 +4,11 @@ Reference: `Adaptec2940SCSI_reloc`, i386 little-endian, SHA-256 `08E6C11EEC12584
 
 ## Core HIM helper batch
 
+The controller's statistics methods now match the recovered bodies:
+`resetStats` clears the queue-length total, maximum queue length, and sample
+count, while `numQueueSamples`, `sumQueueLengths`, and `maxQueueLength` return
+those corresponding fields.
+
 The initial production batch in `Adaptec2940HIM.c` implements the IDA
 entry points `_Ph_MemorySet` (0x4224), `_Ph_ChainAppendEnd` (0x4b2c),
 `_Ph_ChainInsertFront` (0x4b7c), `_Ph_ChainRemove` (0x4b84), and

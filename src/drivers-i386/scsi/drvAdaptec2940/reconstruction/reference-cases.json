@@ -33,6 +33,210 @@
       ]
     },
     {
+      "id": "queue-chain-insert-remove",
+      "group": "him",
+      "status": "contract-captured",
+      "input": {
+        "chain": [
+          "A",
+          "C"
+        ],
+        "insert_after": "A",
+        "remove": "C"
+      },
+      "expected": {
+        "append": "Ph_ChainAppendEnd sets new node next to -1, updates host head/tail and controller empty flag; existing chain tail links to node",
+        "remove": "Ph_ChainRemove unlinks the node, sets tail to predecessor when removing tail, and sets empty flag when head becomes -1",
+        "insert_front": "reference function body is empty"
+      },
+      "evidence": [
+        {
+          "name": "_Ph_ChainAppendEnd",
+          "address": 19244
+        },
+        {
+          "name": "_Ph_ChainInsertFront",
+          "address": 19324
+        },
+        {
+          "name": "_Ph_ChainRemove",
+          "address": 19332
+        },
+        {
+          "name": "_Ph_ChainPrevious",
+          "address": 19404
+        }
+      ]
+    },
+    {
+      "id": "scb-layout",
+      "group": "layouts",
+      "status": "contract-captured",
+      "input": {
+        "scb_bytes": 256
+      },
+      "expected": {
+        "hardware_fields": {
+          "control": 0,
+          "target_channel_lun": 1,
+          "target_status": 2,
+          "sg_count": 3,
+          "sg_pointer": 4,
+          "residual_sg_count": 8,
+          "residual_data_count": 12,
+          "data_pointer": 16,
+          "data_count": 20,
+          "command_pointer": 24,
+          "command_length": 28,
+          "tag": 29,
+          "next": 30,
+          "previous": 31
+        },
+        "software_fields": {
+          "command_buffer": 224,
+          "queue_next": 248,
+          "queue_previous": 252
+        },
+        "allocation_alignment": 256
+      },
+      "evidence": [
+        {
+          "name": "-[Adaptec2940 free]",
+          "address": 2052
+        },
+        {
+          "name": "-[Adaptec2940 checkScbAlign:]",
+          "address": 4676
+        },
+        {
+          "name": "-[Adaptec2940 createScbs:size:]",
+          "address": 5120
+        }
+      ]
+    },
+    {
+      "id": "negotiation-message",
+      "group": "him",
+      "status": "contract-captured",
+      "input": {
+        "message_buffer": [
+          1,
+          3,
+          1
+        ],
+        "sync_parameters": {
+          "rate": 25,
+          "offset": 8
+        }
+      },
+      "expected": {
+        "extended_message": [
+          1,
+          3,
+          1,
+          25,
+          8
+        ],
+        "writes": "message bytes are emitted one byte at a time to port base+6; sync configuration uses byte writes to target and transfer-control registers"
+      },
+      "evidence": [
+        {
+          "name": "_Ph_Negotiate",
+          "address": 13156
+        },
+        {
+          "name": "_Ph_SyncNego",
+          "address": 13872
+        },
+        {
+          "name": "_Ph_ExtMsgo",
+          "address": 15248
+        }
+      ]
+    },
+    {
+      "id": "pci-device-match",
+      "group": "controller",
+      "status": "contract-captured",
+      "input": {
+        "config_table_match": "0x00789004&0x00ffffff"
+      },
+      "expected": {
+        "vendor_device_mask": "0x00ffffff",
+        "reference_match": "vendor/device value 0x00789004",
+        "resources": "one enabled PCI function, one I/O BAR with 256-byte reservation and nonzero IRQ"
+      },
+      "evidence": [
+        {
+          "name": "-[Adaptec2940 initFromDeviceDescription:]",
+          "address": 60
+        }
+      ]
+    },
+    {
+      "id": "sequencer-runtime-patch",
+      "group": "firmware",
+      "status": "contract-captured",
+      "input": {
+        "ha_mode": 2,
+        "ha_flag_byte_13_bit_0": 1,
+        "presence_entry_length": 1960,
+        "presence_patch_offset": 17
+      },
+      "expected": {
+        "patched_image_byte": 255,
+        "index": 17,
+        "before_io": true,
+        "readback": "compare against the runtime-patched image"
+      },
+      "evidence": [
+        {
+          "name": "_Ph_LoadSequencer",
+          "address": 31656
+        }
+      ]
+    },
+    {
+      "id": "register-width-order",
+      "group": "him",
+      "status": "contract-captured",
+      "input": {
+        "base_port": 256,
+        "device": "single-byte sequencer register"
+      },
+      "expected": {
+        "writes": [
+          {
+            "offset": 96,
+            "width": 1,
+            "value": 145
+          },
+          {
+            "offset": 98,
+            "width": 1,
+            "value": 0
+          },
+          {
+            "offset": 99,
+            "width": 1,
+            "value": 0
+          },
+          {
+            "offset": 97,
+            "width": 1,
+            "value": "each firmware byte"
+          }
+        ],
+        "barrier": "interlocked increment after every output byte"
+      },
+      "evidence": [
+        {
+          "name": "_Ph_LoadSequencer",
+          "address": 31656
+        }
+      ]
+    },
+    {
       "id": "completion-timeout-order",
       "group": "integration",
       "status": "contract-captured",

@@ -1,6 +1,7 @@
 """Evidence-backed checks for the Adaptec 2940 SCSI reconstruction."""
 
 import argparse
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -27,6 +28,8 @@ REQUIRED_CASES = {
     "scb-page-boundary", "completion-timeout-order", "completion-reset-order",
     "short-transfer", "autosense-completion", "free-scb-exhaustion",
     "abort-active", "sequencer-readback-failure", "eeprom-failure", "init-unwind",
+    "queue-chain-insert-remove", "scb-layout", "negotiation-message",
+    "pci-device-match", "sequencer-runtime-patch", "register-width-order",
 }
 
 
@@ -84,6 +87,13 @@ def audit_inventory(analysis_path=None, repo_root=REPO_ROOT):
     assert ledger["reference_sha256"].upper() == REFERENCE_SHA256
     assert len(ledger["entries"]) == 170
     assert {entry["address"] for entry in ledger["entries"]} == set(addresses)
+    published = REPO_ROOT / "tools/binrecon/out/adaptec2940/baseline"
+    for entry in ledger["entries"]:
+        for artifact in entry["artifacts"]:
+            artifact_path = published / artifact["path"]
+            assert artifact_path.is_file(), f"missing ledger evidence: {artifact_path}"
+            digest = hashlib.sha256(artifact_path.read_bytes()).hexdigest().upper()
+            assert digest == artifact["sha256"], f"ledger artifact digest mismatch: {artifact_path}"
 
     cases = json.loads((RECON / "reference-cases.json").read_text(encoding="utf-8"))
     found_cases = {case["id"] for case in cases["cases"]}

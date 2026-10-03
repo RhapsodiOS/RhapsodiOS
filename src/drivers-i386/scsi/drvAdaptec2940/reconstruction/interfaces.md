@@ -203,7 +203,7 @@ Reference: `Adaptec2940SCSI_reloc`, i386 little-endian, SHA-256 `08E6C11EEC12584
 
 ## Class layouts recovered from IDA
 
-Offsets are byte offsets; pointer and `id` widths are four bytes in this i386 image. Opaque superclass prefixes remain byte arrays until the DriverKit declarations establish their external member-level layout.
+Offsets are byte offsets; pointer and `id` widths are four bytes in this i386 image. The IDA type names identify the superclass prefixes: `Adaptec2940` inherits `IODirectDevice` (296-byte prefix) and `SCSIBus` inherits `IOSCSIController` (580-byte prefix). These are distinct roles in the binary: the direct PCI device owns the adapter and its SCSIBus object, while the bus object presents the IOSCSIController interface.
 
 ### `Adaptec2940` — 396 bytes
 

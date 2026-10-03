@@ -44,3 +44,7 @@
   now reconstructed in `ATIPrivate.m`. Their Python source checks pass; they
   still need the target Objective-C test harness and a rebuilt driver to prove
   runtime behavior and binary parity.
+- The placeholder ATI implementation has been replaced by the recovered
+  initialization, mapping policy, display-state transitions, and accessors.
+  Lifecycle source checks pass, but runtime allocation/configuration traces
+  and the target ABI remain unverified without the guest compiler/runtime.

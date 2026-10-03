@@ -1,368 +1,315 @@
-/*
- * Copyright (c) 1998 Apple Computer, Inc. All rights reserved.
- *
- * ATIMach64DisplayDriver.m - ATI Mach64 Display Driver Implementation
- *
- * HISTORY
- * 28 Mar 98    Created.
- */
-
 #define KERNEL_PRIVATE 1
 #define DRIVER_PRIVATE 1
 
-#import "ATIMach64DisplayDriver.h"
-#import "ATIMach64Regs.h"
-#import <driverkit/KernBus.h>
-#import <driverkit/KernBusMemory.h>
-#import <driverkit/IODisplayPrivate.h>
-#import <driverkit/IOFrameBufferShared.h>
-#import <driverkit/IODirectDevicePrivate.h>
-#import <driverkit/displayDefs.h>
-#import <driverkit/i386/directDevice.h>
-#import <driverkit/i386/driverTypes.h>
-#import <driverkit/i386/IOPCIDeviceDescription.h>
+#import "ATIPrivate.h"
+#import "ATIData.h"
+#import <driverkit/IOConfigTable.h>
+#import <driverkit/IODeviceDescription.h>
+#import <driverkit/generalFuncs.h>
+#import <driverkit/i386/IOPCIDirectDevice.h>
+#import <machdep/i386/pmap.h>
 #import <string.h>
-#import <stdlib.h>
 
-/* Display modes supported */
-static const IODisplayInfo _ATIMach64Modes[] = {
+@implementation ATI
+
+- initFromDeviceDescription:(id)description
+{
+    unsigned int biosAddress = 0;
+    unsigned int tableAddress;
+    unsigned int candidateAddress;
+    unsigned int memoryLimit;
+    unsigned int candidateTableAddress;
+    unsigned int index;
+    unsigned int pciAddress;
+    unsigned int *queryData;
+    id configTable;
+    char *value;
+    char typeName[32];
+    char logBuffer[180];
+    char useBIOS = 0;
+    char useTable = 0;
+    char apertureChanged = 0;
+    int result;
+
+    if ([super initFromDeviceDescription:description] == nil)
+        return [super free];
+    if ([ATI_BIOS ATIPresent:&biosAddress] == 0) {
+        IOLog("%s: ATI BIOS not found\n", [self name]);
+        return [super free];
+    }
+    atiBios = [[ATI_BIOS alloc] init];
+    if (atiBios == nil)
+        return [super free];
+    queryDataSize = 0;
+    if ([self getQueryData] != 0)
+        return [super free];
+
+    queryData = (unsigned int *)self->queryData;
+    supportsGamma = (((unsigned char *)queryData)[20] & 0x40) != 0;
+    supportsGrey256 = (((unsigned char *)queryData)[20] & 0x20) != 0;
+    strcpy(typeName, IOFindNameForValue(((unsigned char *)queryData)[9], ATI_AsicTypeValues));
+    if (((unsigned char *)queryData)[9] == 0xd7) {
+        value = (char *)IOFindNameForValue(((unsigned char *)queryData)[8], ATI_AsicSubTypeValues);
+        strcat(typeName, value);
+    }
+    value = (char *)IOFindNameForValue(((unsigned char *)queryData)[12], ATI_dacTypeValues);
+    sprintf(logBuffer, "%s: ATI Mach64 Found; Type %s; DAC = %s\n",
+            [self name], typeName, value);
+    IOLog(logBuffer);
+    sprintf(logBuffer, "%s: memory=%s; BIOS@%x; Gamma=%s; 256-grey=%s\n",
+            [self name], IOFindNameForValue(((unsigned char *)queryData)[11], ATI_memSizeValues),
+            biosAddress, supportsGamma ? "YES" : "NO",
+            supportsGrey256 ? "YES" : "NO");
+    IOLog(logBuffer);
+
+    [self updateModeList];
+    configTable = [description configTable];
+    colorConfig = 0;
+    value = (char *)[configTable valueForStringKey:"24-bit Configuration"];
+    if (value != nil) {
+        if (strcmp(value, "RGBx") == 0) colorConfig = 1;
+        else if (strcmp(value, "BGRx") == 0) colorConfig = 2;
+        else if (strcmp(value, "xRGB") == 0) colorConfig = 3;
+        else if (strcmp(value, "xBGR") == 0) colorConfig = 4;
+        if (colorConfig != 0)
+            IOLog("%s: colorConfig from table = %s\n", [self name], value);
+        [configTable freeString:value];
+    }
+
+    fbMapStyle = 0;
+    value = (char *)[configTable valueForStringKey:"Frame Buffer Mapping"];
+    if (value != nil) {
+        if (strcmp(value, "BIOS") == 0) fbMapStyle = 1;
+        else if (strcmp(value, "Table") == 0) fbMapStyle = 2;
+        if (fbMapStyle != 0)
+            IOLog("%s: fbMapStyle from table = %s\n", [self name], value);
+        [configTable freeString:value];
+    }
+
+    ramdacStyle = 0;
+    value = (char *)[configTable valueForStringKey:"RAMDAC Style"];
+    if (value != nil) {
+        if (strcmp(value, "Sparse") == 0) ramdacStyle = 1;
+        else if (strcmp(value, "Dense") == 0) ramdacStyle = 2;
+        if (ramdacStyle != 0)
+            IOLog("%s: ramdacStyle from table = %s\n", [self name], value);
+        [configTable freeString:value];
+    }
+
+    isPCI = 0;
+    value = (char *)[configTable valueForStringKey:"Bus Type"];
+    if (value != nil) {
+        if (strcmp(value, "PCI") == 0) isPCI = 1;
+        [configTable freeString:value];
+    }
+    value = (char *)[configTable valueForStringKey:"Display Mode"];
+    if (value == nil) {
+        IOLog("%s: No Display Mode found; aborting\n", [self name]);
+        return [self free];
+    }
+    result = [self parseModeString:value];
+    if (result != 0)
+        return [self free];
+
+    if (AtiModeList[modeNumber].bitsPerPixel == IO_24BitsPerPixel)
+        IOLog("%s: 24 Bit Color Configuration = %s\n", [self name],
+              IOFindNameForValue(colorConfig, colorConfigValues));
+    vramBytes = memSizeToBytes(((unsigned char *)queryData)[11]);
+    biosAddress = (unsigned int)(*((unsigned short *)queryData + 8)) << 20;
+
     {
-        768,                            // height
-        1024,                           // width
-        1024,                           // totalWidth
-        1024,                           // rowBytes
-        60,                             // refreshRate
-        IO_8BitsPerPixel,               // bitsPerPixel
-        IO_RGBColorSpace,               // colorSpace
-        "PPPPPPPPPPPPPPPP",             // pixelEncoding
-        0,                              // flags
-        0                               // reserved
-    }
-};
-
-#define NUM_ATI_MODES (sizeof(_ATIMach64Modes) / sizeof(IODisplayInfo))
-
-@implementation ATIMach64DisplayDriver
-
-+ (BOOL)probe:deviceDescription
-{
-    IOPCIDeviceDescription *pciDesc;
-    unsigned int vendorID, deviceID;
-
-    if ([super probe:deviceDescription] == NO)
-        return NO;
-
-    if (![deviceDescription isKindOf:[IOPCIDeviceDescription class]])
-        return NO;
-
-    pciDesc = (IOPCIDeviceDescription *)deviceDescription;
-    vendorID = [pciDesc vendorID];
-    deviceID = [pciDesc deviceID];
-
-    /* Check for ATI vendor ID */
-    if (vendorID != 0x1002)
-        return NO;
-
-    /* Check for various ATI Mach64 device IDs */
-    switch (deviceID) {
-        case 0x0268:  // ATI Rage XC
-        case 0x0300:  // ATI Rage 128
-        case 0x036e:  // ATI Rage 1
-        case 0x04ee:  // ATI Rage 2
-        case 0x0eec:  // ATI Mach64 GX
-        case 0x12ec:  // ATI Mach64 GT
-        case 0x16ec:  // ATI Mach64 VT
-        case 0x1aec:  // ATI Mach64 VT4
-        case 0x1eec:  // ATI Mach64 GT-B
-        case 0x42ec:  // ATI Mach64 CT
-        case 0x46ec:  // ATI Mach64 ET
-        case 0x4aec:  // ATI Mach64 VT-B
-        case 0x4eec:  // ATI Mach64 GT-C
-        case 0x62ec:  // ATI Mach64 VT-C
-        case 0x66ec:  // ATI Mach64 GT-D
-        case 0x6aec:  // ATI Mach64 VT-D
-        case 0x6eec:  // ATI Mach64 GT-E
-            return YES;
-        default:
-            return NO;
-    }
-}
-
-- initFromDeviceDescription:deviceDescription
-{
-    IOPCIDeviceDescription *pciDesc;
-    IODisplayInfo *mode;
-    IOReturn ret;
-
-    [super initFromDeviceDescription:deviceDescription];
-
-    pciDesc = (IOPCIDeviceDescription *)deviceDescription;
-    _pciDevice = [pciDesc pciDevice];
-
-    /* Map the framebuffer memory */
-    mode = (IODisplayInfo *)&_ATIMach64Modes[0];
-
-    ret = [self selectMode:_ATIMach64Modes count:NUM_ATI_MODES];
-    if (ret < 0) {
-        IOLog("%s: Failed to select display mode\n", [self name]);
-        [self free];
-        return nil;
+        IORange *ranges = [description memoryRangeList];
+        if (ranges == nil) {
+            IOLog("%s: No memory Range specified in config table; aborting\n", [self name]);
+            return [self free];
+        }
+        tableAddress = ranges[0].start;
     }
 
-    /* Initialize hardware */
-    if (![self initializeHardware]) {
-        IOLog("%s: Failed to initialize hardware\n", [self name]);
-        [self free];
-        return nil;
+    candidateAddress = biosAddress;
+    candidateTableAddress = tableAddress;
+    if (fbMapStyle == 1) {
+        useBIOS = 1;
+        candidateTableAddress = biosAddress;
+    } else if (fbMapStyle == 2) {
+        useTable = 1;
+        candidateAddress = tableAddress;
+    }
+    if ((((unsigned char *)queryData)[18] & 0x80) != 0 && fbMapStyle == 0) {
+        memoryLimit = 0x08000000 - vramBytes;
+        if (tableAddress > memoryLimit) {
+            if (biosAddress > memoryLimit) {
+                useTable = useBIOS = 1;
+                tableAddress = biosAddress = 0x07800000;
+            } else {
+                useBIOS = 1;
+            }
+        } else if (biosAddress > memoryLimit) {
+            useTable = 1;
+            biosAddress = tableAddress;
+        }
+        candidateAddress = biosAddress;
+        candidateTableAddress = tableAddress;
     }
 
-    return self;
+    for (;;) {
+        if (candidateTableAddress == candidateAddress && useBIOS == 0)
+            goto table_mapping_done;
+        result = [self changeTableMapping:candidateAddress];
+        if (result == 0) {
+            IOLog("%s: Changing Config Table Address to 0x%x\n",
+                  [self name], candidateAddress);
+            candidateTableAddress = candidateAddress;
+            goto table_mapping_done;
+        }
+        if (useBIOS != 0) {
+            if (candidateAddress == 0x07800000) {
+                IOLog("%s: error setting memory map to 0x%x(%s); aborting\n",
+                      [self name], 0x07800000, [self stringFromReturn:result]);
+                return [self free];
+            }
+            IOLog("%s: memory range @ 0x%x reserved; retrying at 0x%x\n",
+                  [self name], candidateAddress, 0x07800000);
+            useTable = 1;
+            candidateTableAddress = 0x07800000;
+            candidateAddress = 0x07800000;
+            tableAddress = 0x07800000;
+            biosAddress = 0x07800000;
+            goto retry_hardware_mapping;
+        }
+        useTable = 1;
+
+table_mapping_done:
+        if (useTable == 0)
+            goto mapping_done;
+retry_hardware_mapping:
+        if ([self changeHardwareMapping:candidateTableAddress] == 0)
+            break;
+        if (candidateTableAddress == 0x07800000) {
+            IOLog("%s: Can't set memory aperture to 0x%x; aborting\n",
+                  [self name], 0x07800000);
+            return [self free];
+        }
+        IOLog("%s: Can't set memory aperture to 0x%x; retrying at 0x%x\n",
+              [self name], candidateTableAddress, 0x07800000);
+        useBIOS = 1;
+        candidateTableAddress = 0x07800000;
+        candidateAddress = 0x07800000;
+        tableAddress = 0x07800000;
+        biosAddress = 0x07800000;
+        goto retry_hardware_mapping;
+    }
+    apertureChanged = 1;
+    candidateAddress = candidateTableAddress;
+    IOLog("%s: Changing aperture address to 0x%x\n",
+          [self name], candidateTableAddress);
+
+mapping_done:
+    if (apertureChanged != 0 ||
+        [atiBios setApertureEnable:1 VGAAperture:0 apertureAdrs:0] == 0) {
+        vram = [self mapFrameBufferAtPhysicalAddress:candidateAddress
+                                              length:(~page_mask & (page_mask + vramBytes))];
+        if (vram == nil) {
+            IOLog("%s: Unable to map frame buffer\n", [self name]);
+            return [self free];
+        }
+        IOLog("%s: frame buffer physical addrs 0x%x; mapped to 0x%x\n",
+              [self name], candidateAddress, vram);
+        for (index = 0; index < (unsigned int)AtiModeListCount; ++index)
+            AtiModeList[index].frameBuffer = vram;
+        memcpy([super displayInfo], &AtiModeList[modeNumber], sizeof(IODisplayInfo));
+        if ([self verifyMemoryMap] != 0) {
+            currentState = 0;
+            blueTransferTable = nil;
+            greenTransferTable = nil;
+            redTransferTable = nil;
+            transferTableCount = 0;
+            brightnessLevel = 64;
+            return self;
+        }
+        IOLog("%s: VRAM test failure, aborting\n", [self name]);
+    }
+    return [self free];
 }
 
 - free
 {
-    if (_mmioBase) {
-        IOUnmapPhysicalMemory((vm_address_t)_mmioBase, 0x4000);
-        _mmioBase = 0;
-    }
-
-    if (_biosBase) {
-        IOUnmapPhysicalMemory((vm_address_t)_biosBase, 0x10000);
-        _biosBase = 0;
-    }
-
+    if (queryDataSize != 0)
+        IOFree(queryData, queryDataSize);
+    if (atiBios != nil)
+        [atiBios free];
+    if (redTransferTable != nil)
+        IOFree(redTransferTable, 3 * transferTableCount);
     return [super free];
-}
-
-- (BOOL)initializeHardware
-{
-    unsigned int memBase;
-
-    /* Map MMIO registers */
-    memBase = 0xa0000;  // VGA memory region
-    _mmioBase = (vm_address_t)IOMapPhysicalMemory(memBase, 0x4000, IO_CacheOff);
-    if (!_mmioBase) {
-        IOLog("%s: Failed to map MMIO registers\n", [self name]);
-        return NO;
-    }
-
-    /* Detect memory size */
-    [self detectMemorySize];
-
-    /* Setup registers */
-    [self setupRegisters];
-
-    return YES;
-}
-
-- (void)detectMemorySize
-{
-    unsigned int configStat0, memType;
-    const char *memTypeName[] = {
-        "DRAM", "EDO DRAM", "Pseudo-EDO", "SDRAM",
-        "SGRAM", "WRAM", "SDRAM32", "Unknown"
-    };
-
-    if (_mmioBase) {
-        /* Read CONFIG_STAT0 to determine memory type and size */
-        configStat0 = INREG(_mmioBase, CONFIG_STAT0);
-        memType = configStat0 & CFG_MEM_TYPE_T;
-
-        /* Memory size detection for Mach64 */
-        /* The actual size must be probed or read from BIOS */
-        /* Common sizes: 2MB, 4MB, 8MB */
-
-        /* For now, default to 4MB for Mach64 */
-        _memorySize = 4 * 1024 * 1024;
-
-        IOLog("%s: Memory type: %s, Size: %d MB\n",
-              [self name],
-              memTypeName[memType < 7 ? memType : 7],
-              _memorySize / (1024 * 1024));
-    } else {
-        /* Default to 4MB if we can't detect */
-        _memorySize = 4 * 1024 * 1024;
-    }
-
-    /* Set RAMDAC speed - Mach64 typical speeds */
-    _ramdacSpeed = 135000000;  // 135 MHz for most Mach64
-}
-
-- (void)setupRegisters
-{
-    unsigned int temp;
-
-    if (!_mmioBase) return;
-
-    /* Enable linear addressing mode via CRTC_EXT_CNTL */
-    temp = INREG(_mmioBase, CRTC_EXT_CNTL);
-    temp |= VGA_ATI_LINEAR;
-    OUTREG(_mmioBase, CRTC_EXT_CNTL, temp);
-
-    /* Enable CRTC - enable display and extended display */
-    temp = INREG(_mmioBase, CRTC_GEN_CNTL);
-    temp &= ~CRTC_HSYNC_DIS;
-    temp &= ~CRTC_VSYNC_DIS;
-    temp &= ~CRTC_DISPLAY_DIS;
-    temp |= CRTC_EN;
-    temp |= CRTC_EXT_DISP_EN;
-    OUTREG(_mmioBase, CRTC_GEN_CNTL, temp);
-
-    /* Program DAC */
-    [self ATI_ProgramDAC];
 }
 
 - (void)enterLinearMode
 {
     IODisplayInfo *mode;
-    vm_address_t fbAddr;
+    int colorDepth;
+    int gamma;
+    int pitchSize;
+    int result;
 
     mode = [self displayInfo];
-
-    /* Map framebuffer at 0xa0000 for VGA compatibility */
-    fbAddr = [self mapFrameBufferAtPhysicalAddress:0xa0000
-                                            length:mode->totalWidth * mode->height *
-                                                   (mode->bitsPerPixel / 8)];
-
-    if (!fbAddr) {
-        IOLog("%s: Failed to map framebuffer\n", [self name]);
-        return;
+    if (currentState != 1 &&
+        [atiBios setApertureEnable:1 VGAAperture:0 apertureAdrs:0] == 0) {
+        colorDepth = displayInfoToColorDepth(mode);
+        (void)displayInfoToColorSpace(mode);
+        gamma = colorDepth == 2 ? supportsGrey256 : supportsGamma;
+        pitchSize = mode->width == 1024 ? 0 : 2;
+        result = [atiBios loadCRTCSetMode:colorDepth gamma:gamma pitchSize:pitchSize
+                              resolution:129 crtTable:(ATI_CRTCRecord *)mode->parameters];
+        if (result != 0) {
+            IOLog("%s: Error setting CRTC Paramters (%s)\n", [self name],
+                  IOFindNameForValue(result, ABReturnValues));
+        } else {
+            memset(vram, 0, vramBytes);
+            currentState = 1;
+            [self setGammaTable];
+        }
     }
-
-    mode->frameBuffer = fbAddr;
-
-    [self setupRegisters];
 }
 
 - (void)revertToVGAMode
 {
-    /* Reset to VGA text mode */
+    int result = [atiBios setVGAMode:1 gamma:0];
+    if (result != 0) {
+        IOLog("%s: Error setting VGA (%s)\n", [self name],
+              IOFindNameForValue(result, ABReturnValues));
+    } else {
+        if (redTransferTable != nil) {
+            IOFree(redTransferTable, 3 * transferTableCount);
+            redTransferTable = nil;
+        }
+        currentState = 2;
+    }
+}
+
+- (unsigned int)displayModeCount
+{
+    return AtiModeListCount;
+}
+
+- (IODisplayInfo *)displayModes
+{
+    return AtiModeList;
 }
 
 - (unsigned int)displayMemorySize
 {
-    return _memorySize;
+    return memSizeToBytes(((unsigned char *)queryData)[11]);
 }
 
-- (unsigned int)ramdacSpeed
+- (char)setPendingDisplayMode:(int)mode
 {
-    return _ramdacSpeed;
-}
-
-/* ATI-specific BIOS and DAC functions */
-
-- (void)ATI_ProgramDAC
-{
-    unsigned int dacCntl;
-    int i;
-
-    if (!_mmioBase) return;
-
-    /* Program the DAC (Digital-to-Analog Converter) registers */
-    /* Based on Mach64 driver DAC initialization */
-    dacCntl = INREG(_mmioBase, DAC_CNTL);
-
-    /* Clear bits we're going to set */
-    dacCntl &= ~(DAC1_CLK_SEL | DAC_PALETTE_ACCESS_CNTL | DAC_8BIT_EN);
-
-    /* Enable 8-bit DAC mode for 256 colors */
-    dacCntl |= DAC_8BIT_EN;
-
-    /* Write DAC control register */
-    OUTREG(_mmioBase, DAC_CNTL, dacCntl);
-
-    /* Initialize palette to identity mapping for 8-bit mode */
-    /* Use VGA DAC registers for palette access */
-    for (i = 0; i < 256; i++) {
-        OUTREG8(_mmioBase, DAC_W_INDEX, i);  /* Set palette write index */
-        OUTREG8(_mmioBase, DAC_DATA, i);     /* Red */
-        OUTREG8(_mmioBase, DAC_DATA, i);     /* Green */
-        OUTREG8(_mmioBase, DAC_DATA, i);     /* Blue (R=G=B for grayscale) */
+    if (AtiModeListCount <= mode) {
+        IOLog("%s: setPendingDisplayMode: bogus displayMode (%d)\n", [self name], mode);
+    } else if ([self isModeValid:mode] == 0) {
+        modeNumber = mode;
+        return [super setPendingDisplayMode:mode];
     }
-}
-
-- (unsigned int)ATI_BIOS_ABReturnValues
-{
-    /* Return BIOS AB return values structure */
-    return _ATI_ASIC_ID;
-}
-
-- (void)ATI_ASICSetupValues
-{
-    /* Setup ASIC-specific values */
-    _ATI_ASIC_ID = 0;
-    _ATI_ASIC_TYPE = 0;
-}
-
-- (void)ATI_ASICTypeValues
-{
-    /* Read and store ASIC type values from PCI config */
-    if (_pciDevice) {
-        IOPCIConfigSpace configSpace;
-        [_pciDevice getConfigSpace:&configSpace];
-        _ATI_ASIC_ID = configSpace.DeviceID;
-
-        /* Determine ASIC type based on device ID */
-        switch (_ATI_ASIC_ID) {
-            case 0x0268:  // Rage XC
-            case 0x0300:  // Rage 128
-                _ATI_ASIC_TYPE = 1;
-                break;
-            case 0x0eec:  // Mach64 GX
-            case 0x12ec:  // Mach64 GT
-                _ATI_ASIC_TYPE = 2;
-                break;
-            default:
-                _ATI_ASIC_TYPE = 0;
-                break;
-        }
-
-        IOLog("%s: ASIC ID: 0x%04x, Type: %d\n",
-              [self name], _ATI_ASIC_ID, _ATI_ASIC_TYPE);
-    }
-}
-
-- (unsigned int)ATI_BIOS_Offset
-{
-    /* Return BIOS offset */
-    return 0xC0000;  // Standard VGA BIOS location
-}
-
-- (void)ATI_BIOS_StackLength
-{
-    /* Set BIOS stack length */
-}
-
-- (void)ATI_ReadConfigM
-{
-    /* Read configuration memory */
-    if (_mmioBase) {
-        unsigned int configStat0 = INREG(_mmioBase, CONFIG_STAT0);
-        unsigned int configChipID = INREG(_mmioBase, CONFIG_CHIP_ID);
-
-        /* Store chip configuration information */
-        _ATI_ASIC_ID = configChipID & 0xFFFF;
-
-        IOLog("%s: CONFIG_STAT0=0x%08x, CHIP_ID=0x%04x\n",
-              [self name], configStat0, _ATI_ASIC_ID);
-    }
-}
-
-- (unsigned int)ATI_memSizeValues
-{
-    /* Return memory size values */
-    return _memorySize;
-}
-
-- (void)ATI_modeUseRefreshRate
-{
-    /* Configure mode to use refresh rate */
-}
-
-- (unsigned int)ATI_modeListCount
-{
-    /* Return mode list count */
-    return NUM_ATI_MODES;
+    return 0;
 }
 
 @end

@@ -136,6 +136,7 @@ unsigned char a2940_test_inb(unsigned short port)
 #define A2940_TEST 1
 #include "../Adaptec2940Sequencer.c"
 #include "../Adaptec2940HIM.c"
+#include "../Adaptec2940Optima.c"
 
 static int run_him_chain_checks(void)
 {
@@ -461,6 +462,82 @@ static int run_him_pollint_checks(void)
 	       sequencer_trace_value[0] == 4 && sequencer_trace_value[1] == 0;
 }
 
+static int run_optima_size_checks(void)
+{
+	return Ph_CalcOptimaSize(0) == 1542 &&
+	       Ph_CalcOptimaSize(1) == 1552 &&
+	       Ph_CalcOptimaSize(254) == 4082 &&
+	       Ph_CalcOptimaSize(255) == 4082 &&
+	       PH_CalcDataSize(0, 254) == 4082 &&
+	       PH_CalcDataSize(0, -1) == 4082;
+}
+
+static int run_optima_config_checks(void)
+{
+	unsigned char host[A2940_HOST_INFO_SIZE];
+	int host_address = (int)(unsigned long)host;
+
+	memset(host, 0, sizeof(host));
+	if (Ph_GetOptimaConfig(host_address) != 4082 ||
+	    *(unsigned short *)(host + 66) != 254 ||
+	    *(unsigned short *)(host + 60) != 4082 || host[13] != 1)
+		return 0;
+	*(unsigned short *)(host + 66) = 8;
+	host[13] = 0xa0;
+	return Ph_GetOptimaConfig(host_address) == 1622 &&
+	       *(unsigned short *)(host + 66) == 8 &&
+	       *(unsigned short *)(host + 60) == 1622 && host[13] == 0xa1;
+}
+
+static int run_optima_busy_map_checks(void)
+{
+	unsigned char host[A2940_HOST_INFO_SIZE];
+	unsigned char block[768];
+	unsigned char scb[A2940_SCB_SIZE];
+	unsigned int host_address = (unsigned int)(unsigned long)host;
+	unsigned int *scb_array;
+	unsigned char *busy_map;
+	int result;
+	int index;
+
+	memset(host, 0, sizeof(host));
+	memset(block, 0, sizeof(block));
+	memset(scb, 0, sizeof(scb));
+	*(unsigned int *)(host + 52) = (unsigned int)(unsigned long)block;
+	scb_array = (unsigned int *)(block + 272);
+	busy_map = block + 504;
+	scb[12] = 77;
+	scb_array[0] = (unsigned int)(unsigned long)scb;
+	result = Ph_OptimaClearTargetBusy((int)host_address, 0);
+	if (result != (int)(unsigned long)busy_map || busy_map[77] != 0xff)
+		return 0;
+	busy_map[31] = 0;
+	result = Ph_OptimaIndexClearBusy((int)host_address, 31);
+	if (result != (int)(unsigned long)busy_map || busy_map[31] != 0xff)
+		return 0;
+	result = Ph_OptimaClearQinFifo((int)host_address);
+	if (result != (int)(unsigned long)(block + 496))
+		return 0;
+	for (index = 0; index <= 255; ++index) {
+		if (block[496 + index] != 0xff)
+			return 0;
+	}
+	return 1;
+}
+
+static int run_optima_noop_checks(void)
+{
+	Ph_OptimaClearDevQue();
+	Ph_OptimaClearChannelBusy();
+	return 1;
+}
+
+static int run_optima_checks(void)
+{
+	return run_optima_size_checks() && run_optima_config_checks() &&
+	       run_optima_busy_map_checks() && run_optima_noop_checks();
+}
+
 static int is_group(const char *value, const char *expected)
 {
 	return strcmp(value, expected) == 0;
@@ -542,7 +619,7 @@ void mainCRTStartup(void)
 	            run_him_misc_checks() && run_him_bookmark_checks() &&
 	            run_him_scb_prepare_checks() && run_him_sync_map_checks() &&
 	            run_him_negotiation_checks() && run_him_delay_checks() &&
-	            run_him_pollint_checks() ? 0 : 42);
+	            run_him_pollint_checks() && run_optima_checks() ? 0 : 42);
 }
 #else
 int main(int argc, char **argv)
@@ -567,6 +644,26 @@ int main(int argc, char **argv)
 		       "\"build_hash\":\"%s\"}\n", ok ? "true" : "false",
 		       ok ? "pass" : "fail", ok ? "pass" : "fail", ok ? "pass" : "fail",
 		       ok ? "pass" : "fail", ok ? "pass" : "fail",
+		       A2940_BUILD_HASH);
+		return ok ? 0 : 1;
+	}
+	if (is_group(group, "optima")) {
+		int size_ok = run_optima_size_checks();
+		int config_ok = run_optima_config_checks();
+		int busy_ok = run_optima_busy_map_checks();
+		int noop_ok = run_optima_noop_checks();
+		int ok = size_ok && config_ok && busy_ok && noop_ok;
+		printf("{\"schema_version\":\"adaptec2940-checks-v1\","
+		       "\"group\":\"optima\",\"ok\":%s,"
+		       "\"cases\":[{\"id\":\"optima-size-bounds\",\"result\":\"%s\"},"
+		       "{\"id\":\"optima-host-config\",\"result\":\"%s\"},"
+		       "{\"id\":\"optima-busy-map\",\"result\":\"%s\"},"
+		       "{\"id\":\"optima-qin-fifo\",\"result\":\"%s\"},"
+		       "{\"id\":\"optima-clear-noops\",\"result\":\"%s\"}],"
+		       "\"build_hash\":\"%s\"}\n",
+		       ok ? "true" : "false", size_ok ? "pass" : "fail",
+		       config_ok ? "pass" : "fail", busy_ok ? "pass" : "fail",
+		       busy_ok ? "pass" : "fail", noop_ok ? "pass" : "fail",
 		       A2940_BUILD_HASH);
 		return ok ? 0 : 1;
 	}

@@ -3,6 +3,7 @@
     DYNAMIC_CODE_GEN = YES;
     FILESTABLE = {
         CLASSES = (Adaptec2940.m, Adaptec2940Routines.m, Adaptec2940Thread.m, SCSIBus.m);
+        C_FILES = (Adaptec2940Sequencer.c, Adaptec2940HIM.c, Adaptec2940Optima.c);
         H_FILES = (Adaptec2940.h, Adaptec2940Private.h, Adaptec2940Types.h, SCSIBus.h);
         OTHER_SOURCES = (Makefile.preamble, Makefile, Makefile.postamble, Load_Commands.sect);
     };

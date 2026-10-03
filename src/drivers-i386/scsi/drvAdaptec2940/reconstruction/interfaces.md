@@ -10,6 +10,11 @@ single channel, forwards statistics and transfer queries, builds the exact
 36-byte request/reset message expected by `executeCmdBuf:`, and reserves the
 eight LUNs for the adapter's SCSI ID during initialization.
 
+`Adaptec2940Optima.c` reconstructs the Optima allocation-size formulas and
+host busy/Qin maps. Sizes cap at 254 entries; the host configuration stores
+the resulting size at offset 60 and sets option bit 0 at offset 13. The
+per-target busy table starts at block offset 504 and the Qin map at 496.
+
 The controller's statistics methods now match the recovered bodies:
 `resetStats` clears the queue-length total, maximum queue length, and sample
 count, while `numQueueSamples`, `sumQueueLengths`, and `maxQueueLength` return

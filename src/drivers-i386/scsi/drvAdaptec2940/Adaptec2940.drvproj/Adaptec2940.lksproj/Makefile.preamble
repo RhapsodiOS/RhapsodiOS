@@ -10,3 +10,4 @@ FRAMEWORKS =
 
 CLASSES += SCSIBus.m
 HFILES += SCSIBus.h
+CFILES += Adaptec2940Sequencer.c Adaptec2940HIM.c Adaptec2940Optima.c

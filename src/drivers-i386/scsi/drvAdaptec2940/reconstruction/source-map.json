@@ -579,6 +579,78 @@
       "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
     },
     {
+      "address": 23012,
+      "reference_names": [
+        "_PH_CalcDataSize"
+      ],
+      "size": 22,
+      "source_line": 14,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940Optima.c"
+    },
+    {
+      "address": 23080,
+      "reference_names": [
+        "_Ph_GetOptimaConfig"
+      ],
+      "size": 53,
+      "source_line": 27,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940Optima.c"
+    },
+    {
+      "address": 23136,
+      "reference_names": [
+        "_Ph_CalcOptimaSize"
+      ],
+      "size": 42,
+      "source_line": 20,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940Optima.c"
+    },
+    {
+      "address": 24232,
+      "reference_names": [
+        "_Ph_OptimaClearDevQue"
+      ],
+      "size": 7,
+      "source_line": 62,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940Optima.c"
+    },
+    {
+      "address": 24240,
+      "reference_names": [
+        "_Ph_OptimaIndexClearBusy"
+      ],
+      "size": 27,
+      "source_line": 42,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940Optima.c"
+    },
+    {
+      "address": 24268,
+      "reference_names": [
+        "_Ph_OptimaClearTargetBusy"
+      ],
+      "size": 37,
+      "source_line": 51,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940Optima.c"
+    },
+    {
+      "address": 24308,
+      "reference_names": [
+        "_Ph_OptimaClearChannelBusy"
+      ],
+      "size": 7,
+      "source_line": 78,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940Optima.c"
+    },
+    {
+      "address": 25308,
+      "reference_names": [
+        "_Ph_OptimaClearQinFifo"
+      ],
+      "size": 35,
+      "source_line": 67,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940Optima.c"
+    },
+    {
       "address": 31656,
       "reference_names": [
         "_Ph_LoadSequencer"
@@ -998,32 +1070,11 @@
       "size": 559
     },
     {
-      "address": 23012,
-      "reference_names": [
-        "_PH_CalcDataSize"
-      ],
-      "size": 22
-    },
-    {
       "address": 23036,
       "reference_names": [
         "_Ph_CheckBiosPresence"
       ],
       "size": 43
-    },
-    {
-      "address": 23080,
-      "reference_names": [
-        "_Ph_GetOptimaConfig"
-      ],
-      "size": 53
-    },
-    {
-      "address": 23136,
-      "reference_names": [
-        "_Ph_CalcOptimaSize"
-      ],
-      "size": 42
     },
     {
       "address": 23180,
@@ -1059,34 +1110,6 @@
         "_Ph_OptimaRequestSense"
       ],
       "size": 170
-    },
-    {
-      "address": 24232,
-      "reference_names": [
-        "_Ph_OptimaClearDevQue"
-      ],
-      "size": 7
-    },
-    {
-      "address": 24240,
-      "reference_names": [
-        "_Ph_OptimaIndexClearBusy"
-      ],
-      "size": 27
-    },
-    {
-      "address": 24268,
-      "reference_names": [
-        "_Ph_OptimaClearTargetBusy"
-      ],
-      "size": 37
-    },
-    {
-      "address": 24308,
-      "reference_names": [
-        "_Ph_OptimaClearChannelBusy"
-      ],
-      "size": 7
     },
     {
       "address": 24316,
@@ -1129,13 +1152,6 @@
         "_Ph_OptimaReturnFreeScb"
       ],
       "size": 94
-    },
-    {
-      "address": 25308,
-      "reference_names": [
-        "_Ph_OptimaClearQinFifo"
-      ],
-      "size": 35
     },
     {
       "address": 25344,

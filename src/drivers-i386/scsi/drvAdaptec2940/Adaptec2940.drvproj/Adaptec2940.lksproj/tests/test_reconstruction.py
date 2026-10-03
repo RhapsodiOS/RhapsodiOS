@@ -420,6 +420,48 @@ def test_controller_entry_and_notification_methods_match_reference():
         assert entries[name]["status"] == "control-flow-confirmed"
 
 
+def test_optima_helpers_match_reference_and_are_linked():
+    source_path = DRIVER / "Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940Optima.c"
+    assert source_path.is_file()
+    source = source_path.read_text(encoding="ascii")
+    expected = (
+        ("int PH_CalcDataSize", "Ph_CalcOptimaSize((unsigned short)count)"),
+        ("int Ph_CalcOptimaSize", "10 * (count + 1) + 1532"),
+        ("int Ph_GetOptimaConfig", "host[13] |= 1;"),
+        ("int Ph_OptimaIndexClearBusy", "busy_map[index] = 0xff;"),
+        ("int Ph_OptimaClearTargetBusy", "(unsigned long)scb_address + 12"),
+        ("void Ph_OptimaClearDevQue", "empty seven-byte prologue/epilogue"),
+        ("int Ph_OptimaClearQinFifo", "index <= 255"),
+        ("void Ph_OptimaClearChannelBusy", "empty seven-byte prologue/epilogue"),
+    )
+    for signature, expression in expected:
+        assert signature in source, signature
+        start = source.index(signature)
+        body_end = source.index("\n}", start)
+        assert expression in source[start:body_end], signature
+    project = (DRIVER / "Adaptec2940.drvproj/Adaptec2940.lksproj/PB.project").read_text(encoding="ascii")
+    preamble = (DRIVER / "Adaptec2940.drvproj/Adaptec2940.lksproj/Makefile.preamble").read_text(encoding="ascii")
+    for name in ("Adaptec2940Sequencer.c", "Adaptec2940HIM.c", "Adaptec2940Optima.c"):
+        assert name in project and name in preamble
+    harness = (DRIVER / "Adaptec2940.drvproj/Adaptec2940.lksproj/tests/adaptec2940-checks.c").read_text(encoding="ascii")
+    for case in ("optima-size-bounds", "optima-host-config", "optima-busy-map",
+                 "optima-qin-fifo", "optima-clear-noops"):
+        assert case in harness
+    names = (
+        "_PH_CalcDataSize", "_Ph_GetOptimaConfig", "_Ph_CalcOptimaSize",
+        "_Ph_OptimaClearDevQue", "_Ph_OptimaIndexClearBusy",
+        "_Ph_OptimaClearTargetBusy", "_Ph_OptimaClearChannelBusy",
+        "_Ph_OptimaClearQinFifo",
+    )
+    source_map = json.loads((RECON / "source-map.json").read_text(encoding="utf-8"))
+    mapped = {name: row for row in source_map["mapped"] for name in row["reference_names"]}
+    ledger = json.loads((RECON / "ledger.json").read_text(encoding="utf-8"))
+    entries = {name: row for row in ledger["entries"] for name in row["names"]}
+    for name in names:
+        assert mapped[name]["source_path"].endswith("Adaptec2940Optima.c")
+        assert entries[name]["status"] == "control-flow-confirmed"
+
+
 def _main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--audit", choices=("inventory", "layouts", "firmware"))

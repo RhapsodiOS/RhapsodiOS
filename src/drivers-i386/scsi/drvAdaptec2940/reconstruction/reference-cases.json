@@ -1,0 +1,480 @@
+{
+  "schema_version": "adaptec2940-reference-cases-v1",
+  "reference": {
+    "sha256": "08E6C11EEC125847F485C86250C94C4AFCC025E59CF085B0C8039B94B2E79DF7",
+    "size": 87676,
+    "architecture": "i386",
+    "endianness": "little"
+  },
+  "evidence_policy": "Expected outcomes and effects are frozen from the pinned IDA 9.4 reference analysis, caller/callee code and data. External hardware, allocation and callback services are the only harness substitutes.",
+  "cases": [
+    {
+      "id": "scb-page-boundary",
+      "group": "integration",
+      "status": "contract-captured",
+      "input": {
+        "allocation_virtual_address": "page_end-255",
+        "scb_size": 256,
+        "page_size": 4096
+      },
+      "expected": {
+        "alignment": "the 256-byte SCB does not straddle a 4 KiB page",
+        "failure": "allocation failure follows caller cleanup"
+      },
+      "evidence": [
+        {
+          "name": "-[Adaptec2940 initHostAdaptor]",
+          "address": 8312
+        },
+        {
+          "name": "-[Adaptec2940 free]",
+          "address": 2052
+        }
+      ]
+    },
+    {
+      "id": "queue-chain-insert-remove",
+      "group": "firmware",
+      "status": "contract-captured",
+      "input": {
+        "chain": [
+          "A",
+          "C"
+        ],
+        "insert_after": "A",
+        "remove": "C"
+      },
+      "expected": {
+        "append": "Ph_ChainAppendEnd sets new node next to -1, updates host head/tail and controller empty flag; existing chain tail links to node",
+        "remove": "Ph_ChainRemove unlinks the node, sets tail to predecessor when removing tail, and sets empty flag when head becomes -1",
+        "insert_front": "reference function body is empty"
+      },
+      "evidence": [
+        {
+          "name": "_Ph_ChainAppendEnd",
+          "address": 19244
+        },
+        {
+          "name": "_Ph_ChainInsertFront",
+          "address": 19324
+        },
+        {
+          "name": "_Ph_ChainRemove",
+          "address": 19332
+        },
+        {
+          "name": "_Ph_ChainPrevious",
+          "address": 19404
+        }
+      ]
+    },
+    {
+      "id": "scb-layout",
+      "group": "layouts",
+      "status": "contract-captured",
+      "input": {
+        "scb_bytes": 256
+      },
+      "expected": {
+        "scb_prefix_fields": {
+          "chain_next": {"offset": 0, "width": 4},
+          "host_info": {"offset": 4, "width": 4},
+          "scb_status": {"offset": 8, "width": 1},
+          "host_status": {"offset": 9, "width": 1},
+          "flags": {"offset": 10, "width": 1},
+          "manager_status": {"offset": 11, "width": 1},
+          "target_channel_lun": {"offset": 12, "width": 1},
+          "control": {"offset": 13, "width": 1},
+          "command_length": {"offset": 14, "width": 1},
+          "sg_count": {"offset": 15, "width": 1},
+          "sg_pointer": {"offset": 16, "width": 4},
+          "command_pointer": {"offset": 20, "width": 4},
+          "target_status": {"offset": 24, "width": 1},
+          "residual_data_count": {"offset": 28, "width": 4}
+        },
+        "software_fields": {
+          "command_buffer": 224,
+          "queue_next": 248,
+          "queue_previous": 252
+        },
+        "allocation_alignment": 256
+      },
+      "evidence": [
+        {
+          "name": "-[Adaptec2940 free]",
+          "address": 2052
+        },
+        {
+          "name": "-[Adaptec2940 checkScbAlign:]",
+          "address": 4676
+        },
+        {
+          "name": "-[Adaptec2940 createScbs:size:]",
+          "address": 5120
+        }
+      ]
+    },
+    {
+      "id": "negotiation-message",
+      "group": "him",
+      "status": "contract-captured",
+      "input": {
+        "message_buffer": [
+          1,
+          3,
+          1
+        ],
+        "sync_parameters": {
+          "rate": 25,
+          "offset": 8
+        }
+      },
+      "expected": {
+        "extended_message": [
+          1,
+          3,
+          1,
+          25,
+          8
+        ],
+        "writes": "message bytes are emitted one byte at a time to port base+6; sync configuration uses byte writes to target and transfer-control registers"
+      },
+      "evidence": [
+        {
+          "name": "_Ph_Negotiate",
+          "address": 13156
+        },
+        {
+          "name": "_Ph_SyncNego",
+          "address": 13872
+        },
+        {
+          "name": "_Ph_ExtMsgo",
+          "address": 15248
+        }
+      ]
+    },
+    {
+      "id": "pci-device-match",
+      "group": "controller",
+      "status": "contract-captured",
+      "input": {
+        "config_table_match": "0x00789004&0x00ffffff"
+      },
+      "expected": {
+        "vendor_device_mask": "0x00ffffff",
+        "reference_match": "vendor/device value 0x00789004",
+        "resources": "one enabled PCI function, one I/O BAR with 256-byte reservation and nonzero IRQ"
+      },
+      "evidence": [
+        {
+          "name": "-[Adaptec2940 initFromDeviceDescription:]",
+          "address": 60
+        }
+      ]
+    },
+    {
+      "id": "sequencer-runtime-patch",
+      "group": "firmware",
+      "status": "contract-captured",
+      "input": {
+        "ha_mode": 2,
+        "ha_flag_byte_13_bit_0": 1,
+        "presence_entry_length": 1960,
+        "presence_patch_offset": 17,
+        "test_fixture_mutation": "set the mode-2 descriptor's 32-bit patch offset at byte 20 to 17; the pinned value is zero"
+      },
+      "expected": {
+        "patched_image_byte": 255,
+        "index": 17,
+        "before_io": true,
+        "reference_descriptor_patch_offset": 0,
+        "readback": "compare against the runtime-patched image"
+      },
+      "evidence": [
+        {
+          "name": "_Ph_LoadSequencer",
+          "address": 31656
+        }
+      ]
+    },
+    {
+      "id": "register-width-order",
+      "group": "him",
+      "status": "contract-captured",
+      "input": {
+        "base_port": 256,
+        "device": "single-byte sequencer register"
+      },
+      "expected": {
+        "writes": [
+          {
+            "offset": 96,
+            "width": 1,
+            "value": 145
+          },
+          {
+            "offset": 98,
+            "width": 1,
+            "value": 0
+          },
+          {
+            "offset": 99,
+            "width": 1,
+            "value": 0
+          },
+          {
+            "offset": 97,
+            "width": 1,
+            "value": "each firmware byte"
+          }
+        ],
+        "barrier": "interlocked increment after every output byte"
+      },
+      "evidence": [
+        {
+          "name": "_Ph_LoadSequencer",
+          "address": 31656
+        }
+      ]
+    },
+    {
+      "id": "completion-timeout-order",
+      "group": "integration",
+      "status": "contract-captured",
+      "input": {
+        "active_scb": true,
+        "deadline_elapsed": true
+      },
+      "expected": {
+        "timeout": "timeoutOccurred unlinks SCB from activeQ, decrements outstandingCount, sets command result 5, then calls commandCompleted:",
+        "completion": "commandCompleted: cancels a2940Timeout, frees SCB, then signals request lock",
+        "callbacks": "scbComplete: returns without further work when resetState == 2"
+      },
+      "evidence": [
+        {
+          "name": "-[Adaptec2940 timeoutOccurred]",
+          "address": 2916
+        },
+        {
+          "name": "-[Adaptec2940 commandCompleted:]",
+          "address": 7128
+        },
+        {
+          "name": "-[Adaptec2940 scbComplete:]",
+          "address": 7264
+        },
+        {
+          "name": "_PH_ScbCompleted",
+          "address": 8988
+        },
+        {
+          "name": "_a2940Timeout",
+          "address": 9024
+        }
+      ]
+    },
+    {
+      "id": "completion-reset-order",
+      "group": "integration",
+      "status": "contract-captured",
+      "input": {
+        "resetState": 2,
+        "completion_arrives": true
+      },
+      "expected": {
+        "completion": "scbComplete: returns immediately; it does not unlink, update request fields, or issue the normal callback"
+      },
+      "evidence": [
+        {
+          "name": "-[Adaptec2940 scbComplete:]",
+          "address": 7264
+        },
+        {
+          "name": "_PH_ScbCompleted",
+          "address": 8988
+        },
+        {
+          "name": "_Ph_BusReset",
+          "address": 12752
+        }
+      ]
+    },
+    {
+      "id": "short-transfer",
+      "group": "him",
+      "status": "contract-captured",
+      "input": {
+        "interrupt_status": "0xC0",
+        "scb_flags_byte_10": 0,
+        "scb_state_byte_24": 0,
+        "residual_register_bytes": [
+          52,
+          18,
+          0,
+          0
+        ],
+        "transfer_length": 4096
+      },
+      "expected": {
+        "scb_residual_dword_at_28": 4660,
+        "scb_host_status_byte_43": 18,
+        "request_residual": "transfer length minus bounded residual in scbComplete:"
+      },
+      "evidence": [
+        {
+          "name": "_Ph_CheckLength",
+          "address": 11168
+        },
+        {
+          "name": "-[Adaptec2940 scbComplete:]",
+          "address": 7264
+        }
+      ]
+    },
+    {
+      "id": "autosense-completion",
+      "group": "optima",
+      "status": "contract-captured",
+      "input": {
+        "target_status": "CHECK CONDITION",
+        "scb_transfer_length": 96
+      },
+      "expected": {
+        "cdb_opcode": 3,
+        "cdb_length": 6,
+        "transfer_length": 88,
+        "scb_state": 8,
+        "sense_queue": "Ph_OptimaRequestSense zeroes six CDB bytes, preserves target bits, queues SCB, clears device busy and marks state 8"
+      },
+      "evidence": [
+        {
+          "name": "_Ph_OptimaRequestSense",
+          "address": 24060
+        },
+        {
+          "name": "_Ph_OptimaCmdComplete",
+          "address": 23584
+        }
+      ]
+    },
+    {
+      "id": "free-scb-exhaustion",
+      "group": "optima",
+      "status": "contract-captured",
+      "input": {
+        "free_scb_queue_empty": true,
+        "queue_limit_exceeded": true
+      },
+      "expected": {
+        "return": 255,
+        "state": "free-SCB cursors remain unchanged"
+      },
+      "evidence": [
+        {
+          "name": "_Ph_OptimaGetFreeScb",
+          "address": 25040
+        },
+        {
+          "name": "_Ph_OptimaMoreFreeScb",
+          "address": 24952
+        }
+      ]
+    },
+    {
+      "id": "abort-active",
+      "group": "optima",
+      "status": "contract-captured",
+      "input": {
+        "scb_state": "active",
+        "adapter_control": 0
+      },
+      "expected": {
+        "effects": "Ph_OptimaAbortActive pauses the sequencer, waits for pause acknowledgement, polls the data FIFO at most 1,000 times, and follows the reference active-queue scan/removal path"
+      },
+      "evidence": [
+        {
+          "name": "_Ph_OptimaAbortActive",
+          "address": 25612
+        },
+        {
+          "name": "_Ph_Abort",
+          "address": 10628
+        },
+        {
+          "name": "_Ph_ScbAbort",
+          "address": 21748
+        }
+      ]
+    },
+    {
+      "id": "sequencer-readback-failure",
+      "group": "firmware",
+      "status": "contract-captured",
+      "input": {
+        "present_table_length": 1960,
+        "sequencer_ram_differs_at_index": 17
+      },
+      "expected": {
+        "return": 255,
+        "writes": "loader writes 1,960 image bytes to base+0x61 then reads them back in order and returns at first mismatch"
+      },
+      "evidence": [
+        {
+          "name": "_Ph_LoadSequencer",
+          "address": 31656
+        }
+      ]
+    },
+    {
+      "id": "eeprom-failure",
+      "group": "config",
+      "status": "contract-captured",
+      "input": {
+        "io_base_plus_0x1e_status": 0
+      },
+      "expected": {
+        "return": 1,
+        "writes": [
+          {
+            "offset": 30,
+            "width": 1,
+            "value": 8
+          }
+        ],
+        "cleanup": "EEPROM helpers return before erase/write enable when ready bit 3 is clear"
+      },
+      "evidence": [
+        {
+          "name": "_Ph_ReadEeprom",
+          "address": 29324
+        },
+        {
+          "name": "_Ph_UpdateEeprom",
+          "address": 29996
+        }
+      ]
+    },
+    {
+      "id": "init-unwind",
+      "group": "integration",
+      "status": "contract-captured",
+      "input": {
+        "failure_point": "each resource-acquisition boundary"
+      },
+      "expected": {
+        "resources": "reverse-order cleanup matches reference unwind"
+      },
+      "evidence": [
+        {
+          "name": "-[Adaptec2940 initFromDeviceDescription:]",
+          "address": 60
+        },
+        {
+          "name": "-[Adaptec2940 initHostAdaptor]",
+          "address": 8312
+        }
+      ]
+    }
+  ]
+}

@@ -7,3 +7,7 @@ OTHER_LDFLAGS =
 OTHER_LIBS =
 LIBS =
 FRAMEWORKS =
+
+CLASSES += SCSIBus.m
+HFILES += SCSIBus.h
+CFILES += Adaptec2940Sequencer.c Adaptec2940HIM.c Adaptec2940ExtMsgi.c Adaptec2940Scb.c Adaptec2940Special.c Adaptec2940BusReset.c Adaptec2940Timeout.c Adaptec2940Command.c Adaptec2940CheckCondition.c Adaptec2940Bios.c Adaptec2940HandleMsgi.c Adaptec2940Interrupt.c Adaptec2940Config.c Adaptec2940Recovery.c Adaptec2940Optima.c

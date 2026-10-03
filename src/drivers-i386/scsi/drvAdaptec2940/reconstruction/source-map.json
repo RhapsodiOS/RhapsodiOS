@@ -1,0 +1,1536 @@
+{
+  "boundary_disputed": [],
+  "duplicate_candidates": [],
+  "mapped": [
+    {
+      "address": 0,
+      "reference_names": [
+        "+[Adaptec2940 probe:]"
+      ],
+      "size": 57,
+      "source_line": 25,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940.m"
+    },
+    {
+      "address": 60,
+      "reference_names": [
+        "-[Adaptec2940 initFromDeviceDescription:]"
+      ],
+      "size": 1991,
+      "source_line": 35,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940.m"
+    },
+    {
+      "address": 2052,
+      "reference_names": [
+        "-[Adaptec2940 free]"
+      ],
+      "size": 435,
+      "source_line": 538,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940.m"
+    },
+    {
+      "address": 2488,
+      "reference_names": [
+        "-[Adaptec2940 resetStats]"
+      ],
+      "size": 40,
+      "source_line": 549,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940.m"
+    },
+    {
+      "address": 2528,
+      "reference_names": [
+        "-[Adaptec2940 numQueueSamples]"
+      ],
+      "size": 16,
+      "source_line": 556,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940.m"
+    },
+    {
+      "address": 2544,
+      "reference_names": [
+        "-[Adaptec2940 sumQueueLengths]"
+      ],
+      "size": 16,
+      "source_line": 561,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940.m"
+    },
+    {
+      "address": 2560,
+      "reference_names": [
+        "-[Adaptec2940 maxQueueLength]"
+      ],
+      "size": 16,
+      "source_line": 566,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940.m"
+    },
+    {
+      "address": 2576,
+      "reference_names": [
+        "-[Adaptec2940 numberOfTargets:]"
+      ],
+      "size": 31,
+      "source_line": 502,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940.m"
+    },
+    {
+      "address": 2608,
+      "reference_names": [
+        "-[Adaptec2940 interruptOccurred]"
+      ],
+      "size": 148,
+      "source_line": 575,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940.m"
+    },
+    {
+      "address": 2756,
+      "reference_names": [
+        "-[Adaptec2940 interruptOccurredAt:]"
+      ],
+      "size": 41,
+      "source_line": 610,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940.m"
+    },
+    {
+      "address": 2800,
+      "reference_names": [
+        "-[Adaptec2940 otherOccurred:]"
+      ],
+      "size": 41,
+      "source_line": 615,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940.m"
+    },
+    {
+      "address": 2844,
+      "reference_names": [
+        "-[Adaptec2940 receiveMsg]"
+      ],
+      "size": 69,
+      "source_line": 620,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940.m"
+    },
+    {
+      "address": 2916,
+      "reference_names": [
+        "-[Adaptec2940 timeoutOccurred]"
+      ],
+      "size": 370,
+      "source_line": 637,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940.m"
+    },
+    {
+      "address": 3288,
+      "reference_names": [
+        "-[Adaptec2940 commandRequestOccurred]"
+      ],
+      "size": 290,
+      "source_line": 618,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940.m"
+    },
+    {
+      "address": 3580,
+      "reference_names": [
+        "-[Adaptec2940 setIntValues:forParameter:count:]"
+      ],
+      "size": 367,
+      "source_line": 411,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940.m"
+    },
+    {
+      "address": 3948,
+      "reference_names": [
+        "-[Adaptec2940 getIntValues:forParameter:count:]"
+      ],
+      "size": 206,
+      "source_line": 442,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940.m"
+    },
+    {
+      "address": 4156,
+      "reference_names": [
+        "-[Adaptec2940 acquireSCSIBus:owner:]"
+      ],
+      "size": 54,
+      "source_line": 508,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940.m"
+    },
+    {
+      "address": 4212,
+      "reference_names": [
+        "-[Adaptec2940 releaseSCSIBus:owner:]"
+      ],
+      "size": 75,
+      "source_line": 519,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940.m"
+    },
+    {
+      "address": 4288,
+      "reference_names": [
+        "-[Adaptec2940 maxTransfer]"
+      ],
+      "size": 15,
+      "source_line": 205,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940.m"
+    },
+    {
+      "address": 4304,
+      "reference_names": [
+        "-[Adaptec2940 scsiBusId:]"
+      ],
+      "size": 31,
+      "source_line": 528,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940.m"
+    },
+    {
+      "address": 4336,
+      "reference_names": [
+        "-[Adaptec2940 executeCmdBuf:]"
+      ],
+      "size": 303,
+      "source_line": 255,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940Thread.m"
+    },
+    {
+      "address": 4640,
+      "reference_names": [
+        "_PH_ReadConfigOSM"
+      ],
+      "size": 12,
+      "source_line": 54,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940Config.c"
+    },
+    {
+      "address": 4652,
+      "reference_names": [
+        "_PH_WriteConfigOSM"
+      ],
+      "size": 12,
+      "source_line": 68,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940Config.c"
+    },
+    {
+      "address": 4664,
+      "reference_names": [
+        "_PH_GetNumOfBusesOSM"
+      ],
+      "size": 12,
+      "source_line": 5,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940Config.c"
+    },
+    {
+      "address": 4676,
+      "reference_names": [
+        "-[Adaptec2940 checkScbAlign:]"
+      ],
+      "size": 116,
+      "source_line": 210,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940.m"
+    },
+    {
+      "address": 4792,
+      "reference_names": [
+        "-[Adaptec2940 allocScb]"
+      ],
+      "size": 211,
+      "source_line": 466,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940.m"
+    },
+    {
+      "address": 5004,
+      "reference_names": [
+        "-[Adaptec2940 freeScb:]"
+      ],
+      "size": 113,
+      "source_line": 229,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940.m"
+    },
+    {
+      "address": 5120,
+      "reference_names": [
+        "-[Adaptec2940 createScbs:size:]"
+      ],
+      "size": 177,
+      "source_line": 248,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940.m"
+    },
+    {
+      "address": 5300,
+      "reference_names": [
+        "-[Adaptec2940 threadExecuteRequest:]"
+      ],
+      "size": 1400,
+      "source_line": 28,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940Thread.m"
+    },
+    {
+      "address": 6700,
+      "reference_names": [
+        "-[Adaptec2940 threadResetBus:channel:reason:]"
+      ],
+      "size": 425,
+      "source_line": 671,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940.m"
+    },
+    {
+      "address": 7128,
+      "reference_names": [
+        "-[Adaptec2940 commandCompleted:]"
+      ],
+      "size": 135,
+      "source_line": 278,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940.m"
+    },
+    {
+      "address": 7264,
+      "reference_names": [
+        "-[Adaptec2940 scbComplete:]"
+      ],
+      "size": 1048,
+      "source_line": 302,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940.m"
+    },
+    {
+      "address": 8312,
+      "reference_names": [
+        "-[Adaptec2940 initHostAdaptor]"
+      ],
+      "size": 676,
+      "source_line": 710,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940.m"
+    },
+    {
+      "address": 8988,
+      "reference_names": [
+        "_PH_ScbCompleted"
+      ],
+      "size": 33,
+      "source_line": 820,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940.m"
+    },
+    {
+      "address": 9024,
+      "reference_names": [
+        "_a2940Timeout"
+      ],
+      "size": 86,
+      "source_line": 20,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940Timeout.c"
+    },
+    {
+      "address": 9112,
+      "reference_names": [
+        "+[SCSIBus probe:]"
+      ],
+      "size": 139,
+      "source_line": 16,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/SCSIBus.m"
+    },
+    {
+      "address": 9252,
+      "reference_names": [
+        "+[SCSIBus deviceStyle]"
+      ],
+      "size": 12,
+      "source_line": 36,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/SCSIBus.m"
+    },
+    {
+      "address": 9264,
+      "reference_names": [
+        "+[SCSIBus requiredProtocols]"
+      ],
+      "size": 12,
+      "source_line": 41,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/SCSIBus.m"
+    },
+    {
+      "address": 9276,
+      "reference_names": [
+        "-[SCSIBus maxTransfer]"
+      ],
+      "size": 29,
+      "source_line": 46,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/SCSIBus.m"
+    },
+    {
+      "address": 9308,
+      "reference_names": [
+        "-[SCSIBus free]"
+      ],
+      "size": 41,
+      "source_line": 51,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/SCSIBus.m"
+    },
+    {
+      "address": 9352,
+      "reference_names": [
+        "-[SCSIBus resetStats]"
+      ],
+      "size": 38,
+      "source_line": 56,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/SCSIBus.m"
+    },
+    {
+      "address": 9392,
+      "reference_names": [
+        "-[SCSIBus numQueueSamples]"
+      ],
+      "size": 29,
+      "source_line": 62,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/SCSIBus.m"
+    },
+    {
+      "address": 9424,
+      "reference_names": [
+        "-[SCSIBus sumQueueLengths]"
+      ],
+      "size": 29,
+      "source_line": 67,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/SCSIBus.m"
+    },
+    {
+      "address": 9456,
+      "reference_names": [
+        "-[SCSIBus maxQueueLength]"
+      ],
+      "size": 29,
+      "source_line": 72,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/SCSIBus.m"
+    },
+    {
+      "address": 9488,
+      "reference_names": [
+        "-[SCSIBus numberOfTargets]"
+      ],
+      "size": 36,
+      "source_line": 77,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/SCSIBus.m"
+    },
+    {
+      "address": 9524,
+      "reference_names": [
+        "-[SCSIBus executeRequest:buffer:client:]"
+      ],
+      "size": 73,
+      "source_line": 82,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/SCSIBus.m"
+    },
+    {
+      "address": 9600,
+      "reference_names": [
+        "-[SCSIBus resetSCSIBus]"
+      ],
+      "size": 55,
+      "source_line": 97,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/SCSIBus.m"
+    },
+    {
+      "address": 9656,
+      "reference_names": [
+        "-[SCSIBus initSCSIBus:channel:]"
+      ],
+      "size": 296,
+      "source_line": 107,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/SCSIBus.m"
+    },
+    {
+      "address": 9952,
+      "reference_names": [
+        "_PH_EnableInt"
+      ],
+      "size": 46,
+      "source_line": 559,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 10000,
+      "reference_names": [
+        "_PH_DisableInt"
+      ],
+      "size": 44,
+      "source_line": 567,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 10044,
+      "reference_names": [
+        "_Ph_NonInit"
+      ],
+      "size": 64,
+      "source_line": 1077,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 10108,
+      "reference_names": [
+        "_PH_Special"
+      ],
+      "size": 520,
+      "source_line": 17,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940Special.c"
+    },
+    {
+      "address": 10628,
+      "reference_names": [
+        "_Ph_Abort"
+      ],
+      "size": 7,
+      "source_line": 735,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 10636,
+      "reference_names": [
+        "_Ph_IntSrst"
+      ],
+      "size": 199,
+      "source_line": 149,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940Recovery.c"
+    },
+    {
+      "address": 10836,
+      "reference_names": [
+        "_Ph_ResetChannel"
+      ],
+      "size": 221,
+      "source_line": 1321,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 11060,
+      "reference_names": [
+        "_Ph_CheckSyncNego"
+      ],
+      "size": 105,
+      "source_line": 605,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 11168,
+      "reference_names": [
+        "_Ph_CheckLength"
+      ],
+      "size": 190,
+      "source_line": 763,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 11360,
+      "reference_names": [
+        "_Ph_CdbAbort"
+      ],
+      "size": 245,
+      "source_line": 116,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940Recovery.c"
+    },
+    {
+      "address": 11608,
+      "reference_names": [
+        "_Ph_ResetSCSI"
+      ],
+      "size": 394,
+      "source_line": 20,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940Recovery.c"
+    },
+    {
+      "address": 12004,
+      "reference_names": [
+        "_Ph_BadSeq"
+      ],
+      "size": 110,
+      "source_line": 98,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940Recovery.c"
+    },
+    {
+      "address": 12116,
+      "reference_names": [
+        "_Ph_CheckCondition"
+      ],
+      "size": 299,
+      "source_line": 15,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940CheckCondition.c"
+    },
+    {
+      "address": 12416,
+      "reference_names": [
+        "_Ph_TargetAbort"
+      ],
+      "size": 310,
+      "source_line": 1007,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 12728,
+      "reference_names": [
+        "_Ph_SendTrmMsg"
+      ],
+      "size": 9,
+      "source_line": 739,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 12740,
+      "reference_names": [
+        "_Ph_TrmCmplt"
+      ],
+      "size": 9,
+      "source_line": 746,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 12752,
+      "reference_names": [
+        "_Ph_BusReset"
+      ],
+      "size": 7,
+      "source_line": 751,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 12760,
+      "reference_names": [
+        "_Ph_SendMsgo"
+      ],
+      "size": 355,
+      "source_line": 891,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 13116,
+      "reference_names": [
+        "_Ph_SetNeedNego"
+      ],
+      "size": 38,
+      "source_line": 599,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 13156,
+      "reference_names": [
+        "_Ph_Negotiate"
+      ],
+      "size": 597,
+      "source_line": 19,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 13756,
+      "reference_names": [
+        "_Ph_SyncSet"
+      ],
+      "size": 115,
+      "source_line": 635,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 13872,
+      "reference_names": [
+        "_Ph_SyncNego"
+      ],
+      "size": 107,
+      "source_line": 1233,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 13980,
+      "reference_names": [
+        "_Ph_ExtMsgi"
+      ],
+      "size": 1266,
+      "source_line": 19,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940ExtMsgi.c"
+    },
+    {
+      "address": 15248,
+      "reference_names": [
+        "_Ph_ExtMsgo"
+      ],
+      "size": 442,
+      "source_line": 1187,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 15692,
+      "reference_names": [
+        "_Ph_HandleMsgi"
+      ],
+      "size": 661,
+      "source_line": 17,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HandleMsgi.c"
+    },
+    {
+      "address": 16356,
+      "reference_names": [
+        "_Ph_IntSelto"
+      ],
+      "size": 147,
+      "source_line": 990,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 16504,
+      "reference_names": [
+        "_Ph_IntFree"
+      ],
+      "size": 226,
+      "source_line": 1018,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 16732,
+      "reference_names": [
+        "_Ph_ParityError"
+      ],
+      "size": 48,
+      "source_line": 979,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 16780,
+      "reference_names": [
+        "_Ph_Wt4Req"
+      ],
+      "size": 150,
+      "source_line": 946,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 16932,
+      "reference_names": [
+        "_Ph_MemorySet"
+      ],
+      "size": 50,
+      "source_line": 134,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 16984,
+      "reference_names": [
+        "_Ph_Pause"
+      ],
+      "size": 48,
+      "source_line": 543,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 17032,
+      "reference_names": [
+        "_Ph_UnPause"
+      ],
+      "size": 32,
+      "source_line": 553,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 17064,
+      "reference_names": [
+        "_Ph_WriteHcntrl"
+      ],
+      "size": 100,
+      "source_line": 146,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 17164,
+      "reference_names": [
+        "_Ph_ReadIntstat"
+      ],
+      "size": 106,
+      "source_line": 167,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 17272,
+      "reference_names": [
+        "_Ph_Delay"
+      ],
+      "size": 215,
+      "source_line": 203,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 17488,
+      "reference_names": [
+        "_Ph_ScbRenego"
+      ],
+      "size": 124,
+      "source_line": 655,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 17612,
+      "reference_names": [
+        "_Ph_ClearFast20Reg"
+      ],
+      "size": 132,
+      "source_line": 676,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 17744,
+      "reference_names": [
+        "_Ph_LogFast20Map"
+      ],
+      "size": 200,
+      "source_line": 703,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 17944,
+      "reference_names": [
+        "_PH_ScbSend"
+      ],
+      "size": 185,
+      "source_line": 20,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940Scb.c"
+    },
+    {
+      "address": 18132,
+      "reference_names": [
+        "_PH_IntHandler"
+      ],
+      "size": 992,
+      "source_line": 43,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940Interrupt.c"
+    },
+    {
+      "address": 19124,
+      "reference_names": [
+        "_PH_PollInt"
+      ],
+      "size": 91,
+      "source_line": 187,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 19216,
+      "reference_names": [
+        "_PH_RelocatePointers"
+      ],
+      "size": 26,
+      "source_line": 311,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940Optima.c"
+    },
+    {
+      "address": 19244,
+      "reference_names": [
+        "_Ph_ChainAppendEnd"
+      ],
+      "size": 77,
+      "source_line": 64,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 19324,
+      "reference_names": [
+        "_Ph_ChainInsertFront"
+      ],
+      "size": 7,
+      "source_line": 129,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 19332,
+      "reference_names": [
+        "_Ph_ChainRemove"
+      ],
+      "size": 70,
+      "source_line": 110,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 19404,
+      "reference_names": [
+        "_Ph_ChainPrevious"
+      ],
+      "size": 65,
+      "source_line": 90,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 19472,
+      "reference_names": [
+        "_Ph_ScbPrepare"
+      ],
+      "size": 73,
+      "source_line": 882,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 19548,
+      "reference_names": [
+        "_Ph_SendCommand"
+      ],
+      "size": 225,
+      "source_line": 11,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940Command.c"
+    },
+    {
+      "address": 19776,
+      "reference_names": [
+        "_Ph_TerminateCommand"
+      ],
+      "size": 173,
+      "source_line": 825,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 19952,
+      "reference_names": [
+        "_Ph_PostCommand"
+      ],
+      "size": 111,
+      "source_line": 1096,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 20064,
+      "reference_names": [
+        "_Ph_RemoveAndPostScb"
+      ],
+      "size": 36,
+      "source_line": 1050,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 20100,
+      "reference_names": [
+        "_Ph_PostNonActiveScb"
+      ],
+      "size": 42,
+      "source_line": 1058,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 20144,
+      "reference_names": [
+        "_Ph_TermPostNonActiveScb"
+      ],
+      "size": 38,
+      "source_line": 1069,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 20184,
+      "reference_names": [
+        "_Ph_AbortChannel"
+      ],
+      "size": 194,
+      "source_line": 61,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940Recovery.c"
+    },
+    {
+      "address": 20380,
+      "reference_names": [
+        "_Ph_HaHardReset"
+      ],
+      "size": 257,
+      "source_line": 179,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940Recovery.c"
+    },
+    {
+      "address": 20640,
+      "reference_names": [
+        "_Ph_SetHaData"
+      ],
+      "size": 95,
+      "source_line": 620,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 20736,
+      "reference_names": [
+        "_Ph_SetScbMark"
+      ],
+      "size": 34,
+      "source_line": 873,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 20772,
+      "reference_names": [
+        "_Ph_HaSoftReset"
+      ],
+      "size": 7,
+      "source_line": 755,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 20780,
+      "reference_names": [
+        "_Ph_BusDeviceReset"
+      ],
+      "size": 389,
+      "source_line": 19,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940BusReset.c"
+    },
+    {
+      "address": 21172,
+      "reference_names": [
+        "_Ph_SoftReset"
+      ],
+      "size": 7,
+      "source_line": 759,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 21180,
+      "reference_names": [
+        "_Ph_GetScbStatus"
+      ],
+      "size": 56,
+      "source_line": 794,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 21236,
+      "reference_names": [
+        "_Ph_SetMgrStat"
+      ],
+      "size": 52,
+      "source_line": 806,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 21288,
+      "reference_names": [
+        "_Ph_WriteBiosInfo"
+      ],
+      "size": 166,
+      "source_line": 504,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 21456,
+      "reference_names": [
+        "_Ph_ReadBiosInfo"
+      ],
+      "size": 166,
+      "source_line": 488,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 21624,
+      "reference_names": [
+        "_Ph_OutBuffer"
+      ],
+      "size": 73,
+      "source_line": 587,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 21700,
+      "reference_names": [
+        "_Ph_InBuffer"
+      ],
+      "size": 48,
+      "source_line": 575,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 21748,
+      "reference_names": [
+        "_Ph_ScbAbort"
+      ],
+      "size": 143,
+      "source_line": 1122,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 21892,
+      "reference_names": [
+        "_SWAPCurrScratchRam"
+      ],
+      "size": 184,
+      "source_line": 1352,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 22076,
+      "reference_names": [
+        "_Ph_InsertBookmark"
+      ],
+      "size": 33,
+      "source_line": 902,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 22112,
+      "reference_names": [
+        "_Ph_RemoveBookmark"
+      ],
+      "size": 25,
+      "source_line": 910,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 22140,
+      "reference_names": [
+        "_Ph_AsynchEvent"
+      ],
+      "size": 49,
+      "source_line": 917,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 22192,
+      "reference_names": [
+        "_Ph_GetDrvrConfig"
+      ],
+      "size": 75,
+      "source_line": 529,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 22268,
+      "reference_names": [
+        "_Ph_InitDrvrHA"
+      ],
+      "size": 182,
+      "source_line": 1372,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 22452,
+      "reference_names": [
+        "_PH_GetBiosInfo"
+      ],
+      "size": 559,
+      "source_line": 17,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940Bios.c"
+    },
+    {
+      "address": 23012,
+      "reference_names": [
+        "_PH_CalcDataSize"
+      ],
+      "size": 22,
+      "source_line": 30,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940Optima.c"
+    },
+    {
+      "address": 23036,
+      "reference_names": [
+        "_Ph_CheckBiosPresence"
+      ],
+      "size": 43,
+      "source_line": 520,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 23080,
+      "reference_names": [
+        "_Ph_GetOptimaConfig"
+      ],
+      "size": 53,
+      "source_line": 43,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940Optima.c"
+    },
+    {
+      "address": 23136,
+      "reference_names": [
+        "_Ph_CalcOptimaSize"
+      ],
+      "size": 42,
+      "source_line": 36,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940Optima.c"
+    },
+    {
+      "address": 23180,
+      "reference_names": [
+        "_Ph_OptimaEnque"
+      ],
+      "size": 98,
+      "source_line": 402,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940Optima.c"
+    },
+    {
+      "address": 23280,
+      "reference_names": [
+        "_Ph_OptimaEnqueHead"
+      ],
+      "size": 50,
+      "source_line": 453,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940Optima.c"
+    },
+    {
+      "address": 23332,
+      "reference_names": [
+        "_Ph_OptimaQHead"
+      ],
+      "size": 252,
+      "source_line": 423,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940Optima.c"
+    },
+    {
+      "address": 23584,
+      "reference_names": [
+        "_Ph_OptimaCmdComplete"
+      ],
+      "size": 474,
+      "source_line": 114,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940Optima.c"
+    },
+    {
+      "address": 24060,
+      "reference_names": [
+        "_Ph_OptimaRequestSense"
+      ],
+      "size": 170,
+      "source_line": 82,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940Optima.c"
+    },
+    {
+      "address": 24232,
+      "reference_names": [
+        "_Ph_OptimaClearDevQue"
+      ],
+      "size": 7,
+      "source_line": 184,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940Optima.c"
+    },
+    {
+      "address": 24240,
+      "reference_names": [
+        "_Ph_OptimaIndexClearBusy"
+      ],
+      "size": 27,
+      "source_line": 58,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940Optima.c"
+    },
+    {
+      "address": 24268,
+      "reference_names": [
+        "_Ph_OptimaClearTargetBusy"
+      ],
+      "size": 37,
+      "source_line": 69,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940Optima.c"
+    },
+    {
+      "address": 24308,
+      "reference_names": [
+        "_Ph_OptimaClearChannelBusy"
+      ],
+      "size": 7,
+      "source_line": 202,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940Optima.c"
+    },
+    {
+      "address": 24316,
+      "reference_names": [
+        "_Ph_SetOptimaHaData"
+      ],
+      "size": 182,
+      "source_line": 289,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940Optima.c"
+    },
+    {
+      "address": 24500,
+      "reference_names": [
+        "_Ph_SetOptimaScratch"
+      ],
+      "size": 363,
+      "source_line": 349,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940Optima.c"
+    },
+    {
+      "address": 24864,
+      "reference_names": [
+        "_Ph_ScbPageJustifyQIN"
+      ],
+      "size": 86,
+      "source_line": 319,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940Optima.c"
+    },
+    {
+      "address": 24952,
+      "reference_names": [
+        "_Ph_OptimaMoreFreeScb"
+      ],
+      "size": 88,
+      "source_line": 222,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940Optima.c"
+    },
+    {
+      "address": 25040,
+      "reference_names": [
+        "_Ph_OptimaGetFreeScb"
+      ],
+      "size": 170,
+      "source_line": 236,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940Optima.c"
+    },
+    {
+      "address": 25212,
+      "reference_names": [
+        "_Ph_OptimaReturnFreeScb"
+      ],
+      "size": 94,
+      "source_line": 267,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940Optima.c"
+    },
+    {
+      "address": 25308,
+      "reference_names": [
+        "_Ph_OptimaClearQinFifo"
+      ],
+      "size": 35,
+      "source_line": 189,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940Optima.c"
+    },
+    {
+      "address": 25344,
+      "reference_names": [
+        "_Ph_MovPtrToScratch"
+      ],
+      "size": 129,
+      "source_line": 337,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940Optima.c"
+    },
+    {
+      "address": 25476,
+      "reference_names": [
+        "_Ph_OptimaLoadFuncPtrs"
+      ],
+      "size": 133,
+      "source_line": 575,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940Optima.c"
+    },
+    {
+      "address": 25612,
+      "reference_names": [
+        "_Ph_OptimaAbortActive"
+      ],
+      "size": 764,
+      "source_line": 464,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940Optima.c"
+    },
+    {
+      "address": 26376,
+      "reference_names": [
+        "_Ph_OptimaEnableNextScbArray"
+      ],
+      "size": 52,
+      "source_line": 207,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940Optima.c"
+    },
+    {
+      "address": 26428,
+      "reference_names": [
+        "_PH_GetNumOfBuses"
+      ],
+      "size": 265,
+      "source_line": 137,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940Config.c"
+    },
+    {
+      "address": 26696,
+      "reference_names": [
+        "_PH_FindMechanism"
+      ],
+      "size": 53,
+      "source_line": 105,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940Config.c"
+    },
+    {
+      "address": 26752,
+      "reference_names": [
+        "_PH_FindHA"
+      ],
+      "size": 151,
+      "source_line": 116,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940Config.c"
+    },
+    {
+      "address": 26904,
+      "reference_names": [
+        "_PH_GetConfig"
+      ],
+      "size": 515,
+      "source_line": 234,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940Config.c"
+    },
+    {
+      "address": 27420,
+      "reference_names": [
+        "_PH_InitHA"
+      ],
+      "size": 469,
+      "source_line": 309,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940Config.c"
+    },
+    {
+      "address": 27892,
+      "reference_names": [
+        "_Ph_ReadConfig"
+      ],
+      "size": 333,
+      "source_line": 6,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940Config.c"
+    },
+    {
+      "address": 28228,
+      "reference_names": [
+        "_Ph_WriteConfig"
+      ],
+      "size": 369,
+      "source_line": 7,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940Config.c"
+    },
+    {
+      "address": 28600,
+      "reference_names": [
+        "_Ph_AccessConfig"
+      ],
+      "size": 191,
+      "source_line": 84,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940Config.c"
+    },
+    {
+      "address": 28792,
+      "reference_names": [
+        "_Ph_AutoTermCable"
+      ],
+      "size": 246,
+      "source_line": 187,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940Config.c"
+    },
+    {
+      "address": 29040,
+      "reference_names": [
+        "_Ph_NoAssistTerm"
+      ],
+      "size": 237,
+      "source_line": 1158,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 29280,
+      "reference_names": [
+        "_Ph_RebuildEEControl"
+      ],
+      "size": 43,
+      "source_line": 929,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 29324,
+      "reference_names": [
+        "_Ph_ReadEeprom"
+      ],
+      "size": 672,
+      "source_line": 376,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 29996,
+      "reference_names": [
+        "_Ph_UpdateEeprom"
+      ],
+      "size": 436,
+      "source_line": 447,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 30432,
+      "reference_names": [
+        "_Ph_ReadE2Register"
+      ],
+      "size": 238,
+      "source_line": 302,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 30672,
+      "reference_names": [
+        "_Ph_WriteE2Register"
+      ],
+      "size": 399,
+      "source_line": 335,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 31072,
+      "reference_names": [
+        "_Ph_EnableEraseWriteEE"
+      ],
+      "size": 129,
+      "source_line": 277,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 31204,
+      "reference_names": [
+        "_Ph_DisableEraseWriteEE"
+      ],
+      "size": 122,
+      "source_line": 290,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 31328,
+      "reference_names": [
+        "_Ph_SendStartBitEE"
+      ],
+      "size": 93,
+      "source_line": 242,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 31424,
+      "reference_names": [
+        "_Ph_SendAddressEE"
+      ],
+      "size": 183,
+      "source_line": 252,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 31608,
+      "reference_names": [
+        "_Ph_Wait2usec"
+      ],
+      "size": 48,
+      "source_line": 231,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 31656,
+      "reference_names": [
+        "_Ph_LoadSequencer"
+      ],
+      "size": 374,
+      "source_line": 188,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940Sequencer.c"
+    },
+    {
+      "address": 32032,
+      "reference_names": [
+        "_Ph_ReadCableStatus"
+      ],
+      "size": 511,
+      "source_line": 1255,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    }
+  ],
+  "reference_sha256": "08E6C11EEC125847F485C86250C94C4AFCC025E59CF085B0C8039B94B2E79DF7",
+  "schema_version": "source-map-v1",
+  "unmapped": [
+    {
+      "address": 32544,
+      "reference_names": [
+        "+[Adaptec2940SCSIKernelServerInstance kernelServerInstance]"
+      ],
+      "size": 12
+    },
+    {
+      "address": 32556,
+      "reference_names": [
+        "+[Adaptec2940SCSIVersion driverKitVersionForAdaptec2940SCSI]"
+      ],
+      "size": 12
+    }
+  ]
+}

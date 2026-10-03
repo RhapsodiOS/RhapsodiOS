@@ -69,7 +69,11 @@ network
 scsi - (see docs/drivers/scsi-reconstruction.md — two complete, three reconstructed and guest-compiled but untested, two stubs)
  * drvAdaptec6X60 - reconstructed against the reference binary, compiled; not hardware-tested
  * drvAdaptec1542B - reconstructed against the reference binary, no divergences; not yet compiled
- * drvAdaptec2940 - stub, 10/170 reference functions; missing the whole SCSIBus class
+ * drvAdaptec2940 - reconstructed against the i386 reference; all 170 functions
+   accounted for (168 control-flow-confirmed, two build-generated accessors);
+   SCSIBus and controller paths recovered. Reconstruction tests and native i386
+   harnesses pass; full legacy DriverKit build and guest/hardware tests remain
+   unavailable
  * drvAMDPCSCSIDriver - complete
  * drvBusLogic - reconstructed against the reference binary, fixes applied; not yet compiled
  * drvBusLogicFP - stub, 7/123 reference functions

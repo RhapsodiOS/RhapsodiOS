@@ -1,0 +1,3564 @@
+{
+  "entries": [
+    {
+      "address": 0,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA reconstruction evidence",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-controller.md",
+          "sha256": "9A81511731E8394657CEA31D298A3985833A30D068EC2969B646B1A83052BD15"
+        }
+      ],
+      "names": [
+        "+[BLFPController probe:]"
+      ],
+      "reason": "Compared with IDA pseudocode/disassembly and applicable i386 compilation or focused trace test; see evidence-controller.md.",
+      "reviewer": "Codex",
+      "size": 662,
+      "source_line": 147,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/BusLogicFPSCSI.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 664,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA reconstruction evidence",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-controller.md",
+          "sha256": "9A81511731E8394657CEA31D298A3985833A30D068EC2969B646B1A83052BD15"
+        }
+      ],
+      "names": [
+        "-[BLFPController initFromDeviceDescription:]"
+      ],
+      "reason": "Compared with IDA pseudocode/disassembly and applicable i386 compilation or focused trace test; see evidence-controller.md.",
+      "reviewer": "Codex",
+      "size": 700,
+      "source_line": 203,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/BusLogicFPSCSI.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 1364,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA controller evidence and i386 metadata",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-controller.md",
+          "sha256": "9A81511731E8394657CEA31D298A3985833A30D068EC2969B646B1A83052BD15"
+        }
+      ],
+      "names": [
+        "-[BLFPController maxTransfer]"
+      ],
+      "reason": "Compared with IDA pseudocode, instruction order, and i386 ivar metadata; see evidence-controller.md.",
+      "reviewer": "Codex",
+      "size": 15,
+      "source_line": 251,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/BusLogicFPSCSI.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 1380,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA controller evidence and i386 metadata",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-controller.md",
+          "sha256": "9A81511731E8394657CEA31D298A3985833A30D068EC2969B646B1A83052BD15"
+        }
+      ],
+      "names": [
+        "-[BLFPController numberOfTargets]"
+      ],
+      "reason": "Compared with IDA pseudocode, instruction order, and i386 ivar metadata; see evidence-controller.md.",
+      "reviewer": "Codex",
+      "size": 17,
+      "source_line": 256,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/BusLogicFPSCSI.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 1400,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA controller evidence and i386 metadata",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-controller.md",
+          "sha256": "9A81511731E8394657CEA31D298A3985833A30D068EC2969B646B1A83052BD15"
+        }
+      ],
+      "names": [
+        "-[BLFPController free]"
+      ],
+      "reason": "Compared with IDA pseudocode, instruction order, and i386 ivar metadata; see evidence-controller.md.",
+      "reviewer": "Codex",
+      "size": 152,
+      "source_line": 388,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/BusLogicFPSCSI.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 1552,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA controller evidence and i386 metadata",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-controller.md",
+          "sha256": "9A81511731E8394657CEA31D298A3985833A30D068EC2969B646B1A83052BD15"
+        }
+      ],
+      "names": [
+        "-[BLFPController numQueueSamples]"
+      ],
+      "reason": "Compared with IDA pseudocode, instruction order, and i386 ivar metadata; see evidence-controller.md.",
+      "reviewer": "Codex",
+      "size": 16,
+      "source_line": 261,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/BusLogicFPSCSI.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 1568,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA controller evidence and i386 metadata",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-controller.md",
+          "sha256": "9A81511731E8394657CEA31D298A3985833A30D068EC2969B646B1A83052BD15"
+        }
+      ],
+      "names": [
+        "-[BLFPController sumQueueLengths]"
+      ],
+      "reason": "Compared with IDA pseudocode, instruction order, and i386 ivar metadata; see evidence-controller.md.",
+      "reviewer": "Codex",
+      "size": 16,
+      "source_line": 266,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/BusLogicFPSCSI.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 1584,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA controller evidence and i386 metadata",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-controller.md",
+          "sha256": "9A81511731E8394657CEA31D298A3985833A30D068EC2969B646B1A83052BD15"
+        }
+      ],
+      "names": [
+        "-[BLFPController maxQueueLength]"
+      ],
+      "reason": "Compared with IDA pseudocode, instruction order, and i386 ivar metadata; see evidence-controller.md.",
+      "reviewer": "Codex",
+      "size": 16,
+      "source_line": 271,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/BusLogicFPSCSI.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 1600,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA controller evidence and i386 metadata",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-controller.md",
+          "sha256": "9A81511731E8394657CEA31D298A3985833A30D068EC2969B646B1A83052BD15"
+        }
+      ],
+      "names": [
+        "-[BLFPController resetStats]"
+      ],
+      "reason": "Compared with IDA pseudocode, instruction order, and i386 ivar metadata; see evidence-controller.md.",
+      "reviewer": "Codex",
+      "size": 40,
+      "source_line": 276,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/BusLogicFPSCSI.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 1640,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA controller evidence and i386 metadata",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-controller.md",
+          "sha256": "9A81511731E8394657CEA31D298A3985833A30D068EC2969B646B1A83052BD15"
+        }
+      ],
+      "names": [
+        "-[BLFPController executeRequest:buffer:client:]"
+      ],
+      "reason": "Compared with IDA pseudocode, instruction order, and i386 ivar metadata; see evidence-controller.md.",
+      "reviewer": "Codex",
+      "size": 75,
+      "source_line": 283,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/BusLogicFPSCSI.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 1716,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA controller evidence and i386 metadata",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-controller.md",
+          "sha256": "9A81511731E8394657CEA31D298A3985833A30D068EC2969B646B1A83052BD15"
+        }
+      ],
+      "names": [
+        "-[BLFPController resetSCSIBus]"
+      ],
+      "reason": "Compared with IDA pseudocode, instruction order, and i386 ivar metadata; see evidence-controller.md.",
+      "reviewer": "Codex",
+      "size": 55,
+      "source_line": 295,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/BusLogicFPSCSI.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 1772,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA controller evidence and i386 metadata",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-controller.md",
+          "sha256": "9A81511731E8394657CEA31D298A3985833A30D068EC2969B646B1A83052BD15"
+        }
+      ],
+      "names": [
+        "-[BLFPController interruptOccurred]"
+      ],
+      "reason": "Compared with IDA pseudocode, instruction order, and i386 ivar metadata; see evidence-controller.md.",
+      "reviewer": "Codex",
+      "size": 70,
+      "source_line": 304,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/BusLogicFPSCSI.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 1844,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA controller evidence and i386 metadata",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-controller.md",
+          "sha256": "9A81511731E8394657CEA31D298A3985833A30D068EC2969B646B1A83052BD15"
+        }
+      ],
+      "names": [
+        "-[BLFPController interruptOccurredAt:]"
+      ],
+      "reason": "Compared with IDA pseudocode, instruction order, and i386 ivar metadata; see evidence-controller.md.",
+      "reviewer": "Codex",
+      "size": 41,
+      "source_line": 312,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/BusLogicFPSCSI.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 1888,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA controller evidence and i386 metadata",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-controller.md",
+          "sha256": "9A81511731E8394657CEA31D298A3985833A30D068EC2969B646B1A83052BD15"
+        }
+      ],
+      "names": [
+        "-[BLFPController otherOccurred:]"
+      ],
+      "reason": "Compared with IDA pseudocode, instruction order, and i386 ivar metadata; see evidence-controller.md.",
+      "reviewer": "Codex",
+      "size": 41,
+      "source_line": 317,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/BusLogicFPSCSI.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 1932,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA controller evidence and i386 metadata",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-controller.md",
+          "sha256": "9A81511731E8394657CEA31D298A3985833A30D068EC2969B646B1A83052BD15"
+        }
+      ],
+      "names": [
+        "-[BLFPController receiveMsg]"
+      ],
+      "reason": "Compared with IDA pseudocode, instruction order, and i386 ivar metadata; see evidence-controller.md.",
+      "reviewer": "Codex",
+      "size": 69,
+      "source_line": 322,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/BusLogicFPSCSI.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 2004,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA reconstruction evidence",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-controller.md",
+          "sha256": "9A81511731E8394657CEA31D298A3985833A30D068EC2969B646B1A83052BD15"
+        }
+      ],
+      "names": [
+        "-[BLFPController timeoutOccurred]"
+      ],
+      "reason": "Compared with IDA pseudocode/disassembly and applicable i386 compilation or focused trace test; see evidence-controller.md.",
+      "reviewer": "Codex",
+      "size": 275,
+      "source_line": 726,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/BusLogicFPSCSI.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 2280,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA reconstruction evidence",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-controller.md",
+          "sha256": "9A81511731E8394657CEA31D298A3985833A30D068EC2969B646B1A83052BD15"
+        }
+      ],
+      "names": [
+        "-[BLFPController commandRequestOccurred]"
+      ],
+      "reason": "Compared with IDA pseudocode/disassembly and applicable i386 compilation or focused trace test; see evidence-controller.md.",
+      "reviewer": "Codex",
+      "size": 285,
+      "source_line": 792,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/BusLogicFPSCSI.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 2568,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA reconstruction evidence",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-controller.md",
+          "sha256": "9A81511731E8394657CEA31D298A3985833A30D068EC2969B646B1A83052BD15"
+        }
+      ],
+      "names": [
+        "-[BLFPController probeForBoard]"
+      ],
+      "reason": "Compared with IDA pseudocode/disassembly and applicable i386 compilation or focused trace test; see evidence-controller.md.",
+      "reviewer": "Codex",
+      "size": 527,
+      "source_line": 341,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/BusLogicFPSCSI.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 3096,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA reconstruction evidence",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-controller.md",
+          "sha256": "9A81511731E8394657CEA31D298A3985833A30D068EC2969B646B1A83052BD15"
+        }
+      ],
+      "names": [
+        "-[BLFPController executeCmdBuf:]"
+      ],
+      "reason": "Compared with IDA pseudocode/disassembly and applicable i386 compilation or focused trace test; see evidence-controller.md.",
+      "reviewer": "Codex",
+      "size": 303,
+      "source_line": 548,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/BusLogicFPSCSI.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 3400,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA reconstruction evidence",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-controller.md",
+          "sha256": "9A81511731E8394657CEA31D298A3985833A30D068EC2969B646B1A83052BD15"
+        }
+      ],
+      "names": [
+        "_parseConfigSpace"
+      ],
+      "reason": "Compared with IDA pseudocode/disassembly and applicable i386 compilation or focused trace test; see evidence-controller.md.",
+      "reviewer": "Codex",
+      "size": 434,
+      "source_line": 68,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/BusLogicFPSCSI.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 3836,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA reconstruction evidence",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-controller.md",
+          "sha256": "9A81511731E8394657CEA31D298A3985833A30D068EC2969B646B1A83052BD15"
+        }
+      ],
+      "names": [
+        "-[BLFPController threadExecuteRequest:]"
+      ],
+      "reason": "Compared with IDA pseudocode/disassembly and applicable i386 compilation or focused trace test; see evidence-controller.md.",
+      "reviewer": "Codex",
+      "size": 255,
+      "source_line": 585,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/BusLogicFPSCSI.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 4092,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA reconstruction evidence",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-controller.md",
+          "sha256": "9A81511731E8394657CEA31D298A3985833A30D068EC2969B646B1A83052BD15"
+        }
+      ],
+      "names": [
+        "-[BLFPController threadResetBus:]"
+      ],
+      "reason": "Compared with IDA pseudocode/disassembly and applicable i386 compilation or focused trace test; see evidence-controller.md.",
+      "reviewer": "Codex",
+      "size": 196,
+      "source_line": 764,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/BusLogicFPSCSI.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 4288,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA reconstruction evidence",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-controller.md",
+          "sha256": "9A81511731E8394657CEA31D298A3985833A30D068EC2969B646B1A83052BD15"
+        }
+      ],
+      "names": [
+        "-[BLFPController sccbFromCmd:]"
+      ],
+      "reason": "Compared with IDA pseudocode/disassembly and applicable i386 compilation or focused trace test; see evidence-controller.md.",
+      "reviewer": "Codex",
+      "size": 807,
+      "source_line": 617,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/BusLogicFPSCSI.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 5096,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA controller evidence and i386 metadata",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-controller.md",
+          "sha256": "9A81511731E8394657CEA31D298A3985833A30D068EC2969B646B1A83052BD15"
+        }
+      ],
+      "names": [
+        "-[BLFPController sccbComplete:reason:]"
+      ],
+      "reason": "Compared with IDA pseudocode, instruction order, and i386 ivar metadata; see evidence-controller.md.",
+      "reviewer": "Codex",
+      "size": 668,
+      "source_line": 484,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/BusLogicFPSCSI.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 5764,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA controller evidence and i386 metadata",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-controller.md",
+          "sha256": "9A81511731E8394657CEA31D298A3985833A30D068EC2969B646B1A83052BD15"
+        }
+      ],
+      "names": [
+        "-[BLFPController cmdComplete:]"
+      ],
+      "reason": "Compared with IDA pseudocode, instruction order, and i386 ivar metadata; see evidence-controller.md.",
+      "reviewer": "Codex",
+      "size": 126,
+      "source_line": 463,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/BusLogicFPSCSI.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 5892,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA controller evidence and i386 metadata",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-controller.md",
+          "sha256": "9A81511731E8394657CEA31D298A3985833A30D068EC2969B646B1A83052BD15"
+        }
+      ],
+      "names": [
+        "-[BLFPController allocSccb]"
+      ],
+      "reason": "Compared with IDA pseudocode, instruction order, and i386 ivar metadata; see evidence-controller.md.",
+      "reviewer": "Codex",
+      "size": 108,
+      "source_line": 403,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/BusLogicFPSCSI.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 6000,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA controller evidence and i386 metadata",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-controller.md",
+          "sha256": "9A81511731E8394657CEA31D298A3985833A30D068EC2969B646B1A83052BD15"
+        }
+      ],
+      "names": [
+        "-[BLFPController freeSccb:]"
+      ],
+      "reason": "Compared with IDA pseudocode, instruction order, and i386 ivar metadata; see evidence-controller.md.",
+      "reviewer": "Codex",
+      "size": 75,
+      "source_line": 423,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/BusLogicFPSCSI.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 6076,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA controller evidence and i386 metadata",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-controller.md",
+          "sha256": "9A81511731E8394657CEA31D298A3985833A30D068EC2969B646B1A83052BD15"
+        }
+      ],
+      "names": [
+        "-[BLFPController createSCCBs]"
+      ],
+      "reason": "Compared with IDA pseudocode, instruction order, and i386 ivar metadata; see evidence-controller.md.",
+      "reviewer": "Codex",
+      "size": 163,
+      "source_line": 438,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/BusLogicFPSCSI.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 6240,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA controller evidence and i386 metadata",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-controller.md",
+          "sha256": "9A81511731E8394657CEA31D298A3985833A30D068EC2969B646B1A83052BD15"
+        }
+      ],
+      "names": [
+        "-[BLFPController resetHardware]"
+      ],
+      "reason": "Compared with IDA pseudocode, instruction order, and i386 ivar metadata; see evidence-controller.md.",
+      "reviewer": "Codex",
+      "size": 82,
+      "source_line": 328,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/BusLogicFPSCSI.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 6324,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA reconstruction evidence",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-small-helpers.md",
+          "sha256": "D8377057962A923429093E51161D2CDE72CDDCCB25B510AE4ACDD89762895507"
+        }
+      ],
+      "names": [
+        "_blcTimeout"
+      ],
+      "reason": "Compared with IDA pseudocode/disassembly and applicable i386 compilation or focused trace test; see evidence-small-helpers.md.",
+      "reviewer": "Codex",
+      "size": 95,
+      "source_line": 123,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/BusLogicFPSCSI.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 6420,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA disassembly and focused tests",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-task3.md",
+          "sha256": "97C088AC825EA939AE11CE0A46BDB9832286124B2CD0A72D647FCD253E216229"
+        }
+      ],
+      "names": [
+        "_doesCrossPage"
+      ],
+      "reason": "Compared with IDA disassembly and focused tests; see task evidence.",
+      "reviewer": "Codex",
+      "size": 38,
+      "source_line": 647,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 6460,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA reconstruction evidence",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-small-helpers.md",
+          "sha256": "D8377057962A923429093E51161D2CDE72CDDCCB25B510AE4ACDD89762895507"
+        }
+      ],
+      "names": [
+        "_BLCCallback"
+      ],
+      "reason": "Compared with IDA pseudocode/disassembly and applicable i386 compilation or focused trace test; see evidence-small-helpers.md.",
+      "reviewer": "Codex",
+      "size": 32,
+      "source_line": 138,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/BusLogicFPSCSI.m",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 6492,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA reconstruction evidence and focused trace tests",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-phase.md",
+          "sha256": "5FAD2E91DE5B8B474989A1FD6E817AF1DD2E0E9437ECCE769557D785C8698545"
+        }
+      ],
+      "names": [
+        "_autoLoadDefaultMap"
+      ],
+      "reason": "Compared IDA pseudocode and instruction order; freestanding i386 compile and focused I/O trace tests; see evidence-phase.md.",
+      "reviewer": "Codex",
+      "size": 822,
+      "source_line": 2030,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 7316,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-final-functions.md",
+          "sha256": "A066E1BEEDE391AF1D62468E695E076DB5D3AFBB4C361270C388413408402AC3",
+          "kind": "IDA reconstruction evidence and focused trace tests"
+        }
+      ],
+      "names": [
+        "_autoCmdCmplt"
+      ],
+      "reason": "IDA 9.4 pseudocode control flow and register/structure effects are reconstructed in source and documented in evidence-final-functions.md; i386 compile and native trace cases pass.",
+      "reviewer": "Codex",
+      "size": 524,
+      "source_line": 2854,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 7840,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA reconstruction evidence",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-small-helpers.md",
+          "sha256": "D8377057962A923429093E51161D2CDE72CDDCCB25B510AE4ACDD89762895507"
+        }
+      ],
+      "names": [
+        "_dataXferProcessor"
+      ],
+      "reason": "Compared with IDA pseudocode/disassembly and applicable i386 compilation or focused trace test; see evidence-small-helpers.md.",
+      "reviewer": "Codex",
+      "size": 73,
+      "source_line": 915,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 7916,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA reconstruction evidence and focused trace tests",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-transfer.md",
+          "sha256": "9055D85DFCE7F9D878A024437BC4E03D294C019927A4B7852E5548B1626A8AC0"
+        }
+      ],
+      "names": [
+        "_busMstrSGDataXferStart"
+      ],
+      "reason": "Compared IDA pseudocode and instruction order; freestanding i386 compile and focused I/O trace tests; see evidence-transfer.md.",
+      "reviewer": "Codex",
+      "size": 429,
+      "source_line": 1902,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 8348,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA reconstruction evidence and focused trace tests",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-transfer.md",
+          "sha256": "9055D85DFCE7F9D878A024437BC4E03D294C019927A4B7852E5548B1626A8AC0"
+        }
+      ],
+      "names": [
+        "_busMstrDataXferStart"
+      ],
+      "reason": "Compared IDA pseudocode and instruction order; freestanding i386 compile and focused I/O trace tests; see evidence-transfer.md.",
+      "reviewer": "Codex",
+      "size": 223,
+      "source_line": 1874,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 8572,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA reconstruction evidence and focused trace tests",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-transfer.md",
+          "sha256": "9055D85DFCE7F9D878A024437BC4E03D294C019927A4B7852E5548B1626A8AC0"
+        }
+      ],
+      "names": [
+        "_busMstrTimeOut"
+      ],
+      "reason": "Compared IDA pseudocode and instruction order; freestanding i386 compile and focused I/O trace tests; see evidence-transfer.md.",
+      "reviewer": "Codex",
+      "size": 155,
+      "source_line": 1954,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 8728,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA reconstruction evidence and focused trace tests",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-transfer.md",
+          "sha256": "9055D85DFCE7F9D878A024437BC4E03D294C019927A4B7852E5548B1626A8AC0"
+        }
+      ],
+      "names": [
+        "_hostDataXferAbort"
+      ],
+      "reason": "Compared IDA pseudocode and instruction order; freestanding i386 compile and focused I/O trace tests; see evidence-transfer.md.",
+      "reviewer": "Codex",
+      "size": 891,
+      "source_line": 2112,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 9620,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA reconstruction evidence and focused trace tests",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-phase.md",
+          "sha256": "5FAD2E91DE5B8B474989A1FD6E817AF1DD2E0E9437ECCE769557D785C8698545"
+        }
+      ],
+      "names": [
+        "_hostDataXferRestart"
+      ],
+      "reason": "Compared IDA pseudocode and instruction order; freestanding i386 compile and focused I/O trace tests; see evidence-phase.md.",
+      "reviewer": "Codex",
+      "size": 90,
+      "source_line": 1974,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 9712,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA reconstruction evidence and focused trace tests",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-transfer.md",
+          "sha256": "9055D85DFCE7F9D878A024437BC4E03D294C019927A4B7852E5548B1626A8AC0"
+        }
+      ],
+      "names": [
+        "_XbowInit"
+      ],
+      "reason": "Compared IDA pseudocode and instruction order; freestanding i386 compile and focused I/O trace tests; see evidence-transfer.md.",
+      "reviewer": "Codex",
+      "size": 194,
+      "source_line": 1995,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 9908,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA reconstruction evidence and focused trace tests",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-transfer.md",
+          "sha256": "9055D85DFCE7F9D878A024437BC4E03D294C019927A4B7852E5548B1626A8AC0"
+        }
+      ],
+      "names": [
+        "_BusMasterInit"
+      ],
+      "reason": "Compared IDA pseudocode and instruction order; freestanding i386 compile and focused I/O trace tests; see evidence-transfer.md.",
+      "reviewer": "Codex",
+      "size": 113,
+      "source_line": 2016,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 10024,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA disassembly and focused tests",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-task2.md",
+          "sha256": "F04E8D88421DB0067D48222124C73CF3129B1AB3299D19F6ACC1E50F8ABE217F"
+        }
+      ],
+      "names": [
+        "_OS_InPortByte"
+      ],
+      "reason": "Compared with IDA disassembly and focused tests; see evidence-task2.md.",
+      "reviewer": "Codex",
+      "size": 17,
+      "source_line": 96,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 10044,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA disassembly and focused tests",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-task2.md",
+          "sha256": "F04E8D88421DB0067D48222124C73CF3129B1AB3299D19F6ACC1E50F8ABE217F"
+        }
+      ],
+      "names": [
+        "_OS_InPortWord"
+      ],
+      "reason": "Compared with IDA disassembly and focused tests; see evidence-task2.md.",
+      "reviewer": "Codex",
+      "size": 18,
+      "source_line": 97,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 10064,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA disassembly and focused tests",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-task2.md",
+          "sha256": "F04E8D88421DB0067D48222124C73CF3129B1AB3299D19F6ACC1E50F8ABE217F"
+        }
+      ],
+      "names": [
+        "_OS_InPortLong"
+      ],
+      "reason": "Compared with IDA disassembly and focused tests; see evidence-task2.md.",
+      "reviewer": "Codex",
+      "size": 12,
+      "source_line": 98,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 10076,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA disassembly and focused tests",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-task2.md",
+          "sha256": "F04E8D88421DB0067D48222124C73CF3129B1AB3299D19F6ACC1E50F8ABE217F"
+        }
+      ],
+      "names": [
+        "_OS_OutPortByte"
+      ],
+      "reason": "Compared with IDA disassembly and focused tests; see evidence-task2.md.",
+      "reviewer": "Codex",
+      "size": 24,
+      "source_line": 100,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 10100,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA disassembly and focused tests",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-task2.md",
+          "sha256": "F04E8D88421DB0067D48222124C73CF3129B1AB3299D19F6ACC1E50F8ABE217F"
+        }
+      ],
+      "names": [
+        "_OS_OutPortWord"
+      ],
+      "reason": "Compared with IDA disassembly and focused tests; see evidence-task2.md.",
+      "reviewer": "Codex",
+      "size": 26,
+      "source_line": 107,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 10128,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA disassembly and focused tests",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-task2.md",
+          "sha256": "F04E8D88421DB0067D48222124C73CF3129B1AB3299D19F6ACC1E50F8ABE217F"
+        }
+      ],
+      "names": [
+        "_OS_OutPortLong"
+      ],
+      "reason": "Compared with IDA disassembly and focused tests; see evidence-task2.md.",
+      "reviewer": "Codex",
+      "size": 24,
+      "source_line": 114,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 10152,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA disassembly and focused tests",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-task2.md",
+          "sha256": "F04E8D88421DB0067D48222124C73CF3129B1AB3299D19F6ACC1E50F8ABE217F"
+        }
+      ],
+      "names": [
+        "_OS_start_timer"
+      ],
+      "reason": "Compared with IDA disassembly and focused tests; see evidence-task2.md.",
+      "reviewer": "Codex",
+      "size": 7,
+      "source_line": 121,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 10160,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA disassembly and focused tests",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-task2.md",
+          "sha256": "F04E8D88421DB0067D48222124C73CF3129B1AB3299D19F6ACC1E50F8ABE217F"
+        }
+      ],
+      "names": [
+        "_OS_stop_timer"
+      ],
+      "reason": "Compared with IDA disassembly and focused tests; see evidence-task2.md.",
+      "reviewer": "Codex",
+      "size": 7,
+      "source_line": 122,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 10168,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA disassembly and focused tests",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-task2.md",
+          "sha256": "F04E8D88421DB0067D48222124C73CF3129B1AB3299D19F6ACC1E50F8ABE217F"
+        }
+      ],
+      "names": [
+        "_OS_Lock"
+      ],
+      "reason": "Compared with IDA disassembly and focused tests; see evidence-task2.md.",
+      "reviewer": "Codex",
+      "size": 7,
+      "source_line": 123,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 10176,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA disassembly and focused tests",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-task2.md",
+          "sha256": "F04E8D88421DB0067D48222124C73CF3129B1AB3299D19F6ACC1E50F8ABE217F"
+        }
+      ],
+      "names": [
+        "_OS_UnLock"
+      ],
+      "reason": "Compared with IDA disassembly and focused tests; see evidence-task2.md.",
+      "reviewer": "Codex",
+      "size": 7,
+      "source_line": 124,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 10184,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA reconstruction evidence",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-manager-probe.md",
+          "sha256": "EB24767044FA4889BE0A3D52378D5C1A5F9D646C3BE11FB46546E5079FABCD3F"
+        }
+      ],
+      "names": [
+        "_phaseDecode"
+      ],
+      "reason": "Compared with IDA pseudocode/disassembly and applicable i386 compilation or focused trace test; see evidence-manager-probe.md.",
+      "reviewer": "Codex",
+      "size": 72,
+      "source_line": 937,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 10256,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA reconstruction evidence and focused trace tests",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-phase.md",
+          "sha256": "5FAD2E91DE5B8B474989A1FD6E817AF1DD2E0E9437ECCE769557D785C8698545"
+        }
+      ],
+      "names": [
+        "_phaseDataOut"
+      ],
+      "reason": "Compared IDA pseudocode and instruction order; freestanding i386 compile and focused I/O trace tests; see evidence-phase.md.",
+      "reviewer": "Codex",
+      "size": 190,
+      "source_line": 2236,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 10448,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA reconstruction evidence and focused trace tests",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-phase.md",
+          "sha256": "5FAD2E91DE5B8B474989A1FD6E817AF1DD2E0E9437ECCE769557D785C8698545"
+        }
+      ],
+      "names": [
+        "_phaseDataIn"
+      ],
+      "reason": "Compared IDA pseudocode and instruction order; freestanding i386 compile and focused I/O trace tests; see evidence-phase.md.",
+      "reviewer": "Codex",
+      "size": 194,
+      "source_line": 2263,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 10644,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA reconstruction evidence and focused trace tests",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-phase.md",
+          "sha256": "5FAD2E91DE5B8B474989A1FD6E817AF1DD2E0E9437ECCE769557D785C8698545"
+        }
+      ],
+      "names": [
+        "_phaseCommand"
+      ],
+      "reason": "Compared IDA pseudocode and instruction order; freestanding i386 compile and focused I/O trace tests; see evidence-phase.md.",
+      "reviewer": "Codex",
+      "size": 228,
+      "source_line": 2291,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 10872,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA reconstruction evidence",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-small-helpers.md",
+          "sha256": "D8377057962A923429093E51161D2CDE72CDDCCB25B510AE4ACDD89762895507"
+        }
+      ],
+      "names": [
+        "_phaseStatus"
+      ],
+      "reason": "Compared with IDA pseudocode/disassembly and applicable i386 compilation or focused trace test; see evidence-small-helpers.md.",
+      "reviewer": "Codex",
+      "size": 21,
+      "source_line": 1403,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 10896,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-final-functions.md",
+          "sha256": "A066E1BEEDE391AF1D62468E695E076DB5D3AFBB4C361270C388413408402AC3",
+          "kind": "IDA reconstruction evidence and focused trace tests"
+        }
+      ],
+      "names": [
+        "_phaseMsgOut"
+      ],
+      "reason": "IDA 9.4 pseudocode control flow and register/structure effects are reconstructed in source and documented in evidence-final-functions.md; i386 compile and native trace cases pass.",
+      "reviewer": "Codex",
+      "size": 600,
+      "source_line": 2419,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 11496,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA reconstruction evidence and focused trace tests",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-messages.md",
+          "sha256": "EB66492EC53587FDAEF0AA080F8B1BC51E0DAB4909E7543768AE5A048DFED604"
+        }
+      ],
+      "names": [
+        "_phaseMsgIn"
+      ],
+      "reason": "Compared IDA pseudocode and instruction order; freestanding i386 compile and focused I/O trace tests; see evidence-messages.md.",
+      "reviewer": "Codex",
+      "size": 128,
+      "source_line": 2469,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 11624,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA reconstruction evidence and focused trace tests",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-phase.md",
+          "sha256": "5FAD2E91DE5B8B474989A1FD6E817AF1DD2E0E9437ECCE769557D785C8698545"
+        }
+      ],
+      "names": [
+        "_phaseIllegal"
+      ],
+      "reason": "Compared IDA pseudocode and instruction order; freestanding i386 compile and focused I/O trace tests; see evidence-phase.md.",
+      "reviewer": "Codex",
+      "size": 102,
+      "source_line": 2319,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 11728,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA reconstruction evidence and focused trace tests",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-phase.md",
+          "sha256": "5FAD2E91DE5B8B474989A1FD6E817AF1DD2E0E9437ECCE769557D785C8698545"
+        }
+      ],
+      "names": [
+        "_phaseChkFifo"
+      ],
+      "reason": "Compared IDA pseudocode and instruction order; freestanding i386 compile and focused I/O trace tests; see evidence-phase.md.",
+      "reviewer": "Codex",
+      "size": 405,
+      "source_line": 2334,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 12136,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-final-functions.md",
+          "sha256": "A066E1BEEDE391AF1D62468E695E076DB5D3AFBB4C361270C388413408402AC3",
+          "kind": "IDA reconstruction evidence and focused trace tests"
+        }
+      ],
+      "names": [
+        "_phaseBusFree"
+      ],
+      "reason": "IDA 9.4 pseudocode control flow and register/structure effects are reconstructed in source and documented in evidence-final-functions.md; i386 compile and native trace cases pass.",
+      "reviewer": "Codex",
+      "size": 501,
+      "source_line": 2374,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 12640,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-final-functions.md",
+          "sha256": "A066E1BEEDE391AF1D62468E695E076DB5D3AFBB4C361270C388413408402AC3",
+          "kind": "IDA reconstruction evidence and focused trace tests"
+        }
+      ],
+      "names": [
+        "_ScamInit"
+      ],
+      "reason": "IDA 9.4 pseudocode control flow and register/structure effects are reconstructed in source and documented in evidence-final-functions.md; i386 compile and native trace cases pass.",
+      "reviewer": "Codex",
+      "size": 481,
+      "source_line": 1344,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 13124,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-final-functions.md",
+          "sha256": "A066E1BEEDE391AF1D62468E695E076DB5D3AFBB4C361270C388413408402AC3",
+          "kind": "IDA reconstruction evidence and focused trace tests"
+        }
+      ],
+      "names": [
+        "_ScamArbitration"
+      ],
+      "reason": "IDA 9.4 pseudocode control flow and register/structure effects are reconstructed in source and documented in evidence-final-functions.md; i386 compile and native trace cases pass.",
+      "reviewer": "Codex",
+      "size": 321,
+      "source_line": 1128,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 13448,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-final-functions.md",
+          "sha256": "A066E1BEEDE391AF1D62468E695E076DB5D3AFBB4C361270C388413408402AC3",
+          "kind": "IDA reconstruction evidence and focused trace tests"
+        }
+      ],
+      "names": [
+        "_ScamBusFree"
+      ],
+      "reason": "IDA 9.4 pseudocode control flow and register/structure effects are reconstructed in source and documented in evidence-final-functions.md; i386 compile and native trace cases pass.",
+      "reviewer": "Codex",
+      "size": 167,
+      "source_line": 1168,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 13616,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-final-functions.md",
+          "sha256": "A066E1BEEDE391AF1D62468E695E076DB5D3AFBB4C361270C388413408402AC3",
+          "kind": "IDA reconstruction evidence and focused trace tests"
+        }
+      ],
+      "names": [
+        "_ScamAssignID"
+      ],
+      "reason": "IDA 9.4 pseudocode control flow and register/structure effects are reconstructed in source and documented in evidence-final-functions.md; i386 compile and native trace cases pass.",
+      "reviewer": "Codex",
+      "size": 224,
+      "source_line": 1224,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 13840,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-final-functions.md",
+          "sha256": "A066E1BEEDE391AF1D62468E695E076DB5D3AFBB4C361270C388413408402AC3",
+          "kind": "IDA reconstruction evidence and focused trace tests"
+        }
+      ],
+      "names": [
+        "_ScamSelect"
+      ],
+      "reason": "IDA 9.4 pseudocode control flow and register/structure effects are reconstructed in source and documented in evidence-final-functions.md; i386 compile and native trace cases pass.",
+      "reviewer": "Codex",
+      "size": 148,
+      "source_line": 1187,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 13988,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-final-functions.md",
+          "sha256": "A066E1BEEDE391AF1D62468E695E076DB5D3AFBB4C361270C388413408402AC3",
+          "kind": "IDA reconstruction evidence and focused trace tests"
+        }
+      ],
+      "names": [
+        "_ScamXferCycle"
+      ],
+      "reason": "IDA 9.4 pseudocode control flow and register/structure effects are reconstructed in source and documented in evidence-final-functions.md; i386 compile and native trace cases pass.",
+      "reviewer": "Codex",
+      "size": 199,
+      "source_line": 1205,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 14188,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-final-functions.md",
+          "sha256": "A066E1BEEDE391AF1D62468E695E076DB5D3AFBB4C361270C388413408402AC3",
+          "kind": "IDA reconstruction evidence and focused trace tests"
+        }
+      ],
+      "names": [
+        "_ScamSendIsolate"
+      ],
+      "reason": "IDA 9.4 pseudocode control flow and register/structure effects are reconstructed in source and documented in evidence-final-functions.md; i386 compile and native trace cases pass.",
+      "reviewer": "Codex",
+      "size": 159,
+      "source_line": 993,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 14348,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-final-functions.md",
+          "sha256": "A066E1BEEDE391AF1D62468E695E076DB5D3AFBB4C361270C388413408402AC3",
+          "kind": "IDA reconstruction evidence and focused trace tests"
+        }
+      ],
+      "names": [
+        "_ScamIsolate"
+      ],
+      "reason": "IDA 9.4 pseudocode control flow and register/structure effects are reconstructed in source and documented in evidence-final-functions.md; i386 compile and native trace cases pass.",
+      "reviewer": "Codex",
+      "size": 114,
+      "source_line": 1021,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 14464,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA reconstruction evidence",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-small-helpers.md",
+          "sha256": "D8377057962A923429093E51161D2CDE72CDDCCB25B510AE4ACDD89762895507"
+        }
+      ],
+      "names": [
+        "_ScamWireOrData"
+      ],
+      "reason": "Compared with IDA pseudocode/disassembly and applicable i386 compilation or focused trace test; see evidence-small-helpers.md.",
+      "reviewer": "Codex",
+      "size": 60,
+      "source_line": 946,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 14524,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA reconstruction evidence",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-small-helpers.md",
+          "sha256": "D8377057962A923429093E51161D2CDE72CDDCCB25B510AE4ACDD89762895507"
+        }
+      ],
+      "names": [
+        "_ScamWireOrSig"
+      ],
+      "reason": "Compared with IDA pseudocode/disassembly and applicable i386 compilation or focused trace test; see evidence-small-helpers.md.",
+      "reviewer": "Codex",
+      "size": 60,
+      "source_line": 960,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 14584,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA reconstruction evidence",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-small-helpers.md",
+          "sha256": "D8377057962A923429093E51161D2CDE72CDDCCB25B510AE4ACDD89762895507"
+        }
+      ],
+      "names": [
+        "_ScamValidQ"
+      ],
+      "reason": "Compared with IDA pseudocode/disassembly and applicable i386 compilation or focused trace test; see evidence-small-helpers.md.",
+      "reviewer": "Codex",
+      "size": 42,
+      "source_line": 974,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 14628,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-final-functions.md",
+          "sha256": "A066E1BEEDE391AF1D62468E695E076DB5D3AFBB4C361270C388413408402AC3",
+          "kind": "IDA reconstruction evidence and focused trace tests"
+        }
+      ],
+      "names": [
+        "_ScamSelLegacy"
+      ],
+      "reason": "IDA 9.4 pseudocode control flow and register/structure effects are reconstructed in source and documented in evidence-final-functions.md; i386 compile and native trace cases pass.",
+      "reviewer": "Codex",
+      "size": 566,
+      "source_line": 1264,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 15196,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA reconstruction evidence",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-small-helpers.md",
+          "sha256": "D8377057962A923429093E51161D2CDE72CDDCCB25B510AE4ACDD89762895507"
+        }
+      ],
+      "names": [
+        "_ScamWaitSelection"
+      ],
+      "reason": "Compared with IDA pseudocode/disassembly and applicable i386 compilation or focused trace test; see evidence-small-helpers.md.",
+      "reviewer": "Codex",
+      "size": 32,
+      "source_line": 984,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 15228,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-final-functions.md",
+          "sha256": "A066E1BEEDE391AF1D62468E695E076DB5D3AFBB4C361270C388413408402AC3",
+          "kind": "IDA reconstruction evidence and focused trace tests"
+        }
+      ],
+      "names": [
+        "_initScamInfo"
+      ],
+      "reason": "IDA 9.4 pseudocode control flow and register/structure effects are reconstructed in source and documented in evidence-final-functions.md; i386 compile and native trace cases pass.",
+      "reviewer": "Codex",
+      "size": 293,
+      "source_line": 1044,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 15524,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-final-functions.md",
+          "sha256": "A066E1BEEDE391AF1D62468E695E076DB5D3AFBB4C361270C388413408402AC3",
+          "kind": "IDA reconstruction evidence and focused trace tests"
+        }
+      ],
+      "names": [
+        "_scamMatchId"
+      ],
+      "reason": "IDA 9.4 pseudocode control flow and register/structure effects are reconstructed in source and documented in evidence-final-functions.md; i386 compile and native trace cases pass.",
+      "reviewer": "Codex",
+      "size": 606,
+      "source_line": 1070,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 16132,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-final-functions.md",
+          "sha256": "A066E1BEEDE391AF1D62468E695E076DB5D3AFBB4C361270C388413408402AC3",
+          "kind": "IDA reconstruction evidence and focused trace tests"
+        }
+      ],
+      "names": [
+        "_scamSaveDeviceInfo"
+      ],
+      "reason": "IDA 9.4 pseudocode control flow and register/structure effects are reconstructed in source and documented in evidence-final-functions.md; i386 compile and native trace cases pass.",
+      "reviewer": "Codex",
+      "size": 266,
+      "source_line": 1318,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 16400,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA reconstruction evidence",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-manager-probe.md",
+          "sha256": "EB24767044FA4889BE0A3D52378D5C1A5F9D646C3BE11FB46546E5079FABCD3F"
+        }
+      ],
+      "names": [
+        "_SccbMgr_sense_adapter"
+      ],
+      "reason": "Compared with IDA pseudocode/disassembly and applicable i386 compilation or focused trace test; see evidence-manager-probe.md.",
+      "reviewer": "Codex",
+      "size": 796,
+      "source_line": 1624,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 17196,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA reconstruction evidence",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-manager-setup.md",
+          "sha256": "BEC6E6D7A769A05747A7075D1A808AD8130BB0864574F2A5EA3B70308A38D9B9"
+        }
+      ],
+      "names": [
+        "_SccbMgr_config_adapter"
+      ],
+      "reason": "Compared with IDA pseudocode/disassembly and applicable i386 compilation or focused trace test; see evidence-manager-setup.md.",
+      "reviewer": "Codex",
+      "size": 883,
+      "source_line": 1717,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 18080,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-final-functions.md",
+          "sha256": "A066E1BEEDE391AF1D62468E695E076DB5D3AFBB4C361270C388413408402AC3",
+          "kind": "IDA reconstruction evidence and focused trace tests"
+        }
+      ],
+      "names": [
+        "_SccbMgr_start_sccb"
+      ],
+      "reason": "IDA 9.4 pseudocode control flow and register/structure effects are reconstructed in source and documented in evidence-final-functions.md; i386 compile and native trace cases pass.",
+      "reviewer": "Codex",
+      "size": 427,
+      "source_line": 304,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 18508,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-final-functions.md",
+          "sha256": "A066E1BEEDE391AF1D62468E695E076DB5D3AFBB4C361270C388413408402AC3",
+          "kind": "IDA reconstruction evidence and focused trace tests"
+        }
+      ],
+      "names": [
+        "_SccbMgr_abort_sccb"
+      ],
+      "reason": "IDA 9.4 pseudocode control flow and register/structure effects are reconstructed in source and documented in evidence-final-functions.md; i386 compile and native trace cases pass.",
+      "reviewer": "Codex",
+      "size": 234,
+      "source_line": 347,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 18744,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA disassembly and focused tests",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-manager-init.md",
+          "sha256": "0BED7C6561A6390B18EE95DC063CD61B29BA0A53E693882DB23DD305EEA5C434"
+        }
+      ],
+      "names": [
+        "_SccbMgr_my_int"
+      ],
+      "reason": "Compared with IDA disassembly and focused tests; see task evidence.",
+      "reviewer": "Codex",
+      "size": 37,
+      "source_line": 653,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 18784,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-final-functions.md",
+          "sha256": "A066E1BEEDE391AF1D62468E695E076DB5D3AFBB4C361270C388413408402AC3",
+          "kind": "IDA reconstruction evidence and focused trace tests"
+        }
+      ],
+      "names": [
+        "_SccbMgr_isr"
+      ],
+      "reason": "IDA 9.4 pseudocode control flow and register/structure effects are reconstructed in source and documented in evidence-final-functions.md; i386 compile and native trace cases pass.",
+      "reviewer": "Codex",
+      "size": 1318,
+      "source_line": 445,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 20104,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-final-functions.md",
+          "sha256": "A066E1BEEDE391AF1D62468E695E076DB5D3AFBB4C361270C388413408402AC3",
+          "kind": "IDA reconstruction evidence and focused trace tests"
+        }
+      ],
+      "names": [
+        "_SccbMgr_bad_isr"
+      ],
+      "reason": "IDA 9.4 pseudocode control flow and register/structure effects are reconstructed in source and documented in evidence-final-functions.md; i386 compile and native trace cases pass.",
+      "reviewer": "Codex",
+      "size": 625,
+      "source_line": 382,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 20732,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA reconstruction evidence",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-manager-setup.md",
+          "sha256": "BEC6E6D7A769A05747A7075D1A808AD8130BB0864574F2A5EA3B70308A38D9B9"
+        }
+      ],
+      "names": [
+        "_SccbMgr_scsi_reset"
+      ],
+      "reason": "Compared with IDA pseudocode/disassembly and applicable i386 compilation or focused trace test; see evidence-manager-setup.md.",
+      "reviewer": "Codex",
+      "size": 184,
+      "source_line": 1814,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 20916,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA reconstruction evidence",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-small-helpers.md",
+          "sha256": "D8377057962A923429093E51161D2CDE72CDDCCB25B510AE4ACDD89762895507"
+        }
+      ],
+      "names": [
+        "_SccbMgr_timer_expired"
+      ],
+      "reason": "Compared with IDA pseudocode/disassembly and applicable i386 compilation or focused trace test; see evidence-small-helpers.md.",
+      "reviewer": "Codex",
+      "size": 7,
+      "source_line": 1408,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 20924,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA disassembly and focused tests",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-manager-init.md",
+          "sha256": "0BED7C6561A6390B18EE95DC063CD61B29BA0A53E693882DB23DD305EEA5C434"
+        }
+      ],
+      "names": [
+        "_SccbMgrTableInitAll"
+      ],
+      "reason": "Compared with IDA disassembly and focused tests; see task evidence.",
+      "reviewer": "Codex",
+      "size": 90,
+      "source_line": 698,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 21016,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA disassembly and focused tests",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-manager-init.md",
+          "sha256": "0BED7C6561A6390B18EE95DC063CD61B29BA0A53E693882DB23DD305EEA5C434"
+        }
+      ],
+      "names": [
+        "_SccbMgrTableInitCard"
+      ],
+      "reason": "Compared with IDA disassembly and focused tests; see task evidence.",
+      "reviewer": "Codex",
+      "size": 121,
+      "source_line": 681,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 21140,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA disassembly and focused tests",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-manager-init.md",
+          "sha256": "0BED7C6561A6390B18EE95DC063CD61B29BA0A53E693882DB23DD305EEA5C434"
+        }
+      ],
+      "names": [
+        "_SccbMgrTableInitTarget"
+      ],
+      "reason": "Compared with IDA disassembly and focused tests; see task evidence.",
+      "reviewer": "Codex",
+      "size": 132,
+      "source_line": 658,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 21272,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA disassembly and protocol tests",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-protocol.md",
+          "sha256": "9C1C76BD40330550286CA854A018D6C663A08D5EC3E825929062C1736B741D18"
+        }
+      ],
+      "names": [
+        "_scsiFetchMsg"
+      ],
+      "reason": "Compared with IDA disassembly and focused production-function tests; see evidence-protocol.md.",
+      "reviewer": "Codex",
+      "size": 198,
+      "source_line": 885,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 21472,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-final-functions.md",
+          "sha256": "A066E1BEEDE391AF1D62468E695E076DB5D3AFBB4C361270C388413408402AC3",
+          "kind": "IDA reconstruction evidence and focused trace tests"
+        }
+      ],
+      "names": [
+        "_scsiSelect"
+      ],
+      "reason": "IDA 9.4 pseudocode control flow and register/structure effects are reconstructed in source and documented in evidence-final-functions.md; i386 compile and native trace cases pass.",
+      "reviewer": "Codex",
+      "size": 1147,
+      "source_line": 1502,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 22620,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-final-functions.md",
+          "sha256": "A066E1BEEDE391AF1D62468E695E076DB5D3AFBB4C361270C388413408402AC3",
+          "kind": "IDA reconstruction evidence and focused trace tests"
+        }
+      ],
+      "names": [
+        "_scsiReselection"
+      ],
+      "reason": "IDA 9.4 pseudocode control flow and register/structure effects are reconstructed in source and documented in evidence-final-functions.md; i386 compile and native trace cases pass.",
+      "reviewer": "Codex",
+      "size": 720,
+      "source_line": 1412,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 23340,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA reconstruction evidence and focused trace tests",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-messages.md",
+          "sha256": "EB66492EC53587FDAEF0AA080F8B1BC51E0DAB4909E7543768AE5A048DFED604"
+        }
+      ],
+      "names": [
+        "_scsiDecodeMsg"
+      ],
+      "reason": "Compared IDA pseudocode and instruction order; freestanding i386 compile and focused I/O trace tests; see evidence-messages.md.",
+      "reviewer": "Codex",
+      "size": 759,
+      "source_line": 2521,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 24100,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA reconstruction evidence and focused trace tests",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-messages.md",
+          "sha256": "EB66492EC53587FDAEF0AA080F8B1BC51E0DAB4909E7543768AE5A048DFED604"
+        }
+      ],
+      "names": [
+        "_scsiHandleExtMsg"
+      ],
+      "reason": "Compared IDA pseudocode and instruction order; freestanding i386 compile and focused I/O trace tests; see evidence-messages.md.",
+      "reviewer": "Codex",
+      "size": 305,
+      "source_line": 2484,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 24408,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA reconstruction evidence and focused trace tests",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-messages.md",
+          "sha256": "EB66492EC53587FDAEF0AA080F8B1BC51E0DAB4909E7543768AE5A048DFED604"
+        }
+      ],
+      "names": [
+        "_scsiInitSyncNego"
+      ],
+      "reason": "Compared IDA pseudocode and instruction order; freestanding i386 compile and focused I/O trace tests; see evidence-messages.md.",
+      "reviewer": "Codex",
+      "size": 366,
+      "source_line": 2679,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 24776,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA reconstruction evidence and focused trace tests",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-messages.md",
+          "sha256": "EB66492EC53587FDAEF0AA080F8B1BC51E0DAB4909E7543768AE5A048DFED604"
+        }
+      ],
+      "names": [
+        "_scsiTargSyncNego"
+      ],
+      "reason": "Compared IDA pseudocode and instruction order; freestanding i386 compile and focused I/O trace tests; see evidence-messages.md.",
+      "reviewer": "Codex",
+      "size": 446,
+      "source_line": 2707,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 25224,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA reconstruction evidence and focused trace tests",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-messages.md",
+          "sha256": "EB66492EC53587FDAEF0AA080F8B1BC51E0DAB4909E7543768AE5A048DFED604"
+        }
+      ],
+      "names": [
+        "_scsiInitSyncRespond"
+      ],
+      "reason": "Compared IDA pseudocode and instruction order; freestanding i386 compile and focused I/O trace tests; see evidence-messages.md.",
+      "reviewer": "Codex",
+      "size": 270,
+      "source_line": 2757,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 25496,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA reconstruction evidence and focused trace tests",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-messages.md",
+          "sha256": "EB66492EC53587FDAEF0AA080F8B1BC51E0DAB4909E7543768AE5A048DFED604"
+        }
+      ],
+      "names": [
+        "_scsiInitWideNego"
+      ],
+      "reason": "Compared IDA pseudocode and instruction order; freestanding i386 compile and focused I/O trace tests; see evidence-messages.md.",
+      "reviewer": "Codex",
+      "size": 291,
+      "source_line": 2779,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 25788,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA reconstruction evidence and focused trace tests",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-messages.md",
+          "sha256": "EB66492EC53587FDAEF0AA080F8B1BC51E0DAB4909E7543768AE5A048DFED604"
+        }
+      ],
+      "names": [
+        "_scsiTargWideNego"
+      ],
+      "reason": "Compared IDA pseudocode and instruction order; freestanding i386 compile and focused I/O trace tests; see evidence-messages.md.",
+      "reviewer": "Codex",
+      "size": 253,
+      "source_line": 2801,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 26044,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA reconstruction evidence and focused trace tests",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-messages.md",
+          "sha256": "EB66492EC53587FDAEF0AA080F8B1BC51E0DAB4909E7543768AE5A048DFED604"
+        }
+      ],
+      "names": [
+        "_scsiInitWideRespond"
+      ],
+      "reason": "Compared IDA pseudocode and instruction order; freestanding i386 compile and focused I/O trace tests; see evidence-messages.md.",
+      "reviewer": "Codex",
+      "size": 242,
+      "source_line": 2833,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 26288,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA disassembly and protocol tests",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-protocol.md",
+          "sha256": "9C1C76BD40330550286CA854A018D6C663A08D5EC3E825929062C1736B741D18"
+        }
+      ],
+      "names": [
+        "_scsiSetSyncValue"
+      ],
+      "reason": "Compared with IDA disassembly and focused production-function tests; see evidence-protocol.md.",
+      "reviewer": "Codex",
+      "size": 194,
+      "source_line": 873,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 26484,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA reconstruction evidence and focused trace tests",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-reset.md",
+          "sha256": "EAC7990D9F94A4DCFA0052AD5A25F59CD3C483F6393D92850CC98E85C91F7FA2"
+        }
+      ],
+      "names": [
+        "_scsiResetBus"
+      ],
+      "reason": "Compared IDA pseudocode and instruction order; freestanding i386 compile and focused I/O trace tests; see evidence-reset.md.",
+      "reviewer": "Codex",
+      "size": 424,
+      "source_line": 1834,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 26908,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA disassembly and protocol tests",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-protocol.md",
+          "sha256": "9C1C76BD40330550286CA854A018D6C663A08D5EC3E825929062C1736B741D18"
+        }
+      ],
+      "names": [
+        "_scsiSenseSetup"
+      ],
+      "reason": "Compared with IDA disassembly and focused production-function tests; see evidence-protocol.md.",
+      "reviewer": "Codex",
+      "size": 110,
+      "source_line": 845,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 27020,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA reconstruction evidence and focused trace tests",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-phase.md",
+          "sha256": "5FAD2E91DE5B8B474989A1FD6E817AF1DD2E0E9437ECCE769557D785C8698545"
+        }
+      ],
+      "names": [
+        "_scsiXferPad"
+      ],
+      "reason": "Compared IDA pseudocode and instruction order; freestanding i386 compile and focused I/O trace tests; see evidence-phase.md.",
+      "reviewer": "Codex",
+      "size": 543,
+      "source_line": 2051,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 27564,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA reconstruction evidence and focused trace tests",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-messages.md",
+          "sha256": "EB66492EC53587FDAEF0AA080F8B1BC51E0DAB4909E7543768AE5A048DFED604"
+        }
+      ],
+      "names": [
+        "_scsiChkDmaDone"
+      ],
+      "reason": "Compared IDA pseudocode and instruction order; freestanding i386 compile and focused I/O trace tests; see evidence-messages.md.",
+      "reviewer": "Codex",
+      "size": 485,
+      "source_line": 2610,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 28052,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA disassembly and focused tests",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-manager-init.md",
+          "sha256": "0BED7C6561A6390B18EE95DC063CD61B29BA0A53E693882DB23DD305EEA5C434"
+        }
+      ],
+      "names": [
+        "_scsiInitSCCB"
+      ],
+      "reason": "Compared with IDA disassembly and focused tests; see task evidence.",
+      "reviewer": "Codex",
+      "size": 242,
+      "source_line": 714,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 28296,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA disassembly and focused tests",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-task2.md",
+          "sha256": "F04E8D88421DB0067D48222124C73CF3129B1AB3299D19F6ACC1E50F8ABE217F"
+        }
+      ],
+      "names": [
+        "_queueSearchSelect"
+      ],
+      "reason": "Compared with IDA disassembly and focused tests; see evidence-task2.md.",
+      "reviewer": "Codex",
+      "size": 180,
+      "source_line": 131,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 28476,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA disassembly and focused tests",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-task2.md",
+          "sha256": "F04E8D88421DB0067D48222124C73CF3129B1AB3299D19F6ACC1E50F8ABE217F"
+        }
+      ],
+      "names": [
+        "_queueSelectFail"
+      ],
+      "reason": "Compared with IDA disassembly and focused tests; see evidence-task2.md.",
+      "reviewer": "Codex",
+      "size": 137,
+      "source_line": 162,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 28616,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA disassembly and focused tests",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-task2.md",
+          "sha256": "F04E8D88421DB0067D48222124C73CF3129B1AB3299D19F6ACC1E50F8ABE217F"
+        }
+      ],
+      "names": [
+        "_queueCmdComplete"
+      ],
+      "reason": "Compared with IDA disassembly and focused tests; see evidence-task2.md.",
+      "reviewer": "Codex",
+      "size": 248,
+      "source_line": 184,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 28864,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA disassembly and focused tests",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-task2.md",
+          "sha256": "F04E8D88421DB0067D48222124C73CF3129B1AB3299D19F6ACC1E50F8ABE217F"
+        }
+      ],
+      "names": [
+        "_queueDisconnect"
+      ],
+      "reason": "Compared with IDA disassembly and focused tests; see evidence-task2.md.",
+      "reviewer": "Codex",
+      "size": 125,
+      "source_line": 230,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 28992,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA disassembly and focused tests",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-task2.md",
+          "sha256": "F04E8D88421DB0067D48222124C73CF3129B1AB3299D19F6ACC1E50F8ABE217F"
+        }
+      ],
+      "names": [
+        "_queueFlushSccb"
+      ],
+      "reason": "Compared with IDA disassembly and focused tests; see evidence-task2.md.",
+      "reviewer": "Codex",
+      "size": 169,
+      "source_line": 240,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 29164,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA disassembly and focused tests",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-task2.md",
+          "sha256": "F04E8D88421DB0067D48222124C73CF3129B1AB3299D19F6ACC1E50F8ABE217F"
+        }
+      ],
+      "names": [
+        "_queueAddSccb"
+      ],
+      "reason": "Compared with IDA disassembly and focused tests; see evidence-task2.md.",
+      "reviewer": "Codex",
+      "size": 110,
+      "source_line": 263,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 29276,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA disassembly and focused tests",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-task2.md",
+          "sha256": "F04E8D88421DB0067D48222124C73CF3129B1AB3299D19F6ACC1E50F8ABE217F"
+        }
+      ],
+      "names": [
+        "_queueFindSccb"
+      ],
+      "reason": "Compared with IDA disassembly and focused tests; see evidence-task2.md.",
+      "reviewer": "Codex",
+      "size": 158,
+      "source_line": 280,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 29436,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA disassembly and focused tests",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-task2.md",
+          "sha256": "F04E8D88421DB0067D48222124C73CF3129B1AB3299D19F6ACC1E50F8ABE217F"
+        }
+      ],
+      "names": [
+        "_utilUpdateResidual"
+      ],
+      "reason": "Compared with IDA disassembly and focused tests; see evidence-task2.md.",
+      "reviewer": "Codex",
+      "size": 92,
+      "source_line": 582,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 29528,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA disassembly and focused tests",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-task2.md",
+          "sha256": "F04E8D88421DB0067D48222124C73CF3129B1AB3299D19F6ACC1E50F8ABE217F"
+        }
+      ],
+      "names": [
+        "_Wait1Second"
+      ],
+      "reason": "Compared with IDA disassembly and focused tests; see evidence-task2.md.",
+      "reviewer": "Codex",
+      "size": 71,
+      "source_line": 630,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 29600,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA disassembly and focused tests",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-task2.md",
+          "sha256": "F04E8D88421DB0067D48222124C73CF3129B1AB3299D19F6ACC1E50F8ABE217F"
+        }
+      ],
+      "names": [
+        "_Wait"
+      ],
+      "reason": "Compared with IDA disassembly and focused tests; see evidence-task2.md.",
+      "reviewer": "Codex",
+      "size": 224,
+      "source_line": 607,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 29824,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA disassembly and serial trace tests",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-eeprom.md",
+          "sha256": "183EBE27E43281C910FF54BF944A1D8E6DC3798FDA7399DF95F77841644C77EA"
+        }
+      ],
+      "names": [
+        "_utilEEWriteOnOff"
+      ],
+      "reason": "Compared with IDA disassembly and serial trace tests; see evidence-eeprom.md.",
+      "reviewer": "Codex",
+      "size": 97,
+      "source_line": 786,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 29924,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA disassembly and serial trace tests",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-eeprom.md",
+          "sha256": "183EBE27E43281C910FF54BF944A1D8E6DC3798FDA7399DF95F77841644C77EA"
+        }
+      ],
+      "names": [
+        "_utilEEWrite"
+      ],
+      "reason": "Compared with IDA disassembly and serial trace tests; see evidence-eeprom.md.",
+      "reviewer": "Codex",
+      "size": 231,
+      "source_line": 794,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 30156,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA disassembly and serial trace tests",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-eeprom.md",
+          "sha256": "183EBE27E43281C910FF54BF944A1D8E6DC3798FDA7399DF95F77841644C77EA"
+        }
+      ],
+      "names": [
+        "_utilEERead"
+      ],
+      "reason": "Compared with IDA disassembly and serial trace tests; see evidence-eeprom.md.",
+      "reviewer": "Codex",
+      "size": 187,
+      "source_line": 821,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 30344,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [
+        {
+          "kind": "IDA disassembly and serial trace tests",
+          "path": "src/drivers-i386/scsi/drvBusLogicFP/reconstruction/evidence-eeprom.md",
+          "sha256": "183EBE27E43281C910FF54BF944A1D8E6DC3798FDA7399DF95F77841644C77EA"
+        }
+      ],
+      "names": [
+        "_utilEESendCmdAddr"
+      ],
+      "reason": "Compared with IDA disassembly and serial trace tests; see evidence-eeprom.md.",
+      "reviewer": "Codex",
+      "size": 248,
+      "source_line": 754,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c",
+      "status": "control-flow-confirmed"
+    },
+    {
+      "address": 30592,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "generated": true,
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [],
+      "names": [
+        "+[BusLogicFPSCSIKernelServerInstance kernelServerInstance]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 12,
+      "source_line": null,
+      "source_path": null,
+      "status": "unexamined"
+    },
+    {
+      "address": 30604,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "generated": true,
+        "reasons": [
+          "consensus reports conflicting reference boundaries; IDA names are authoritative pending per-function review"
+        ],
+        "status": "partial"
+      },
+      "artifacts": [],
+      "names": [
+        "+[BusLogicFPSCSIVersion driverKitVersionForBusLogicFPSCSI]"
+      ],
+      "reason": null,
+      "reviewer": null,
+      "size": 12,
+      "source_line": null,
+      "source_path": null,
+      "status": "unexamined"
+    }
+  ],
+  "rebuilt_sha256": null,
+  "reference_sha256": "C86447845EE31FE61DBD91037DFCFAAF0AD65B994463539C8370AEAA9E960C0E",
+  "schema_version": "ledger-v1"
+}

@@ -15,6 +15,8 @@ extern unsigned char a2940_test_inb(unsigned short port);
 #define A2940_HIM_INB(port) inb((port))
 #endif
 
+int Ph_UnPause(int io_base);
+
 #define A2940_CHAIN_HEAD_OFFSET 52
 #define A2940_CHAIN_EMPTY_FLAG_OFFSET 13
 #define A2940_CHAIN_EMPTY_FLAG 0x80
@@ -158,6 +160,34 @@ int Ph_ReadIntstat(short io_base)
 		restore |= 0x04;
 	A2940_HIM_OUTB(io_base + 0x87, restore);
 	return status;
+}
+
+unsigned char Ph_Delay(int io_base, int count)
+{
+	unsigned char timer_low;
+	unsigned char timer_high;
+	unsigned char control;
+	unsigned char result;
+	int iteration;
+	if (count != 0) {
+		timer_low = A2940_HIM_INB(io_base + 176);
+		timer_high = A2940_HIM_INB(io_base + 177);
+		for (iteration = 0; iteration != count; ++iteration) {
+			A2940_HIM_OUTB(io_base + 176, 0x54);
+			A2940_HIM_OUTB(io_base + 177, 0x0b);
+			A2940_HIM_OUTB(io_base + 98, 4);
+			A2940_HIM_OUTB(io_base + 99, 0);
+			Ph_UnPause(io_base);
+			do {
+				control = A2940_HIM_INB(io_base + 135);
+			} while ((control & 0x04) == 0);
+			A2940_HIM_OUTB(io_base + 146, 1);
+		}
+		A2940_HIM_OUTB(io_base + 176, timer_low);
+		result = timer_high;
+		A2940_HIM_OUTB(io_base + 177, timer_high);
+	}
+	return result;
 }
 
 unsigned char Ph_Pause(int io_base)

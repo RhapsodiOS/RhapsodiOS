@@ -17,6 +17,8 @@ static unsigned char output_values[8];
 static unsigned int output_count;
 static unsigned int read_count;
 static unsigned int barrier_count;
+static int hcntrl_pause_after_reads = -1;
+static int simulate_delay_pause;
 
 void a2940_test_outb(unsigned short port, unsigned char value)
 {
@@ -28,12 +30,26 @@ void a2940_test_outb(unsigned short port, unsigned char value)
 	++output_count;
 	++barrier_count;
 	registers[offset & 0xff] = value;
+	if (offset == 0x87 && value == 0 && simulate_delay_pause) {
+		hcntrl_pause_after_reads = 1;
+		simulate_delay_pause = 0;
+	}
 }
 
 unsigned char a2940_test_inb(unsigned short port)
 {
+	unsigned int offset = ((unsigned int)port - 0x100) & 0xff;
 	++read_count;
-	return registers[((unsigned int)port - 0x100) & 0xff];
+	if (offset == 0x87 && hcntrl_pause_after_reads >= 0 &&
+	    (registers[offset] & 4) == 0) {
+		if (hcntrl_pause_after_reads == 0) {
+			registers[offset] |= 4;
+			hcntrl_pause_after_reads = -1;
+		} else {
+			--hcntrl_pause_after_reads;
+		}
+	}
+	return registers[offset];
 }
 
 static void clear_bytes(unsigned char *bytes, unsigned int count)
@@ -109,6 +125,8 @@ static void reset_ports(unsigned char control, unsigned char status)
 	registers[0x87] = control;
 	registers[0x91] = status;
 	output_count = read_count = barrier_count = 0;
+	hcntrl_pause_after_reads = -1;
+	simulate_delay_pause = 0;
 }
 
 static int run_hcntrl_checks(void)
@@ -363,10 +381,29 @@ static int run_negotiation_fast20_checks(void)
 	return output_count == 2 && output_values[0] == 0xfd && output_values[1] == 0xdf;
 }
 
+static int run_delay_checks(void)
+{
+	reset_ports(4, 0);
+	registers[176] = 0xaa;
+	registers[177] = 0xbb;
+	simulate_delay_pause = 1;
+	if (Ph_Delay(0x100, 1) != 0xbb || output_count != 8 || barrier_count != 8)
+		return 0;
+	return output_ports[0] == 0x1b0 && output_values[0] == 0x54 &&
+	       output_ports[1] == 0x1b1 && output_values[1] == 0x0b &&
+	       output_ports[2] == 0x162 && output_values[2] == 4 &&
+	       output_ports[3] == 0x163 && output_values[3] == 0 &&
+	       output_ports[4] == 0x187 && output_values[4] == 0 &&
+	       output_ports[5] == 0x192 && output_values[5] == 1 &&
+	       output_ports[6] == 0x1b0 && output_values[6] == 0xaa &&
+	       output_ports[7] == 0x1b1 && output_values[7] == 0xbb;
+}
+
 void mainCRTStartup(void)
 {
 	ExitProcess(run_chain_checks() && run_hcntrl_checks() &&
 	            run_status_checks() && run_misc_checks() &&
 	            run_bookmark_checks() && run_scb_prepare_checks() &&
-	            run_sync_map_checks() && run_negotiation_fast20_checks() ? 0 : 42);
+	            run_sync_map_checks() && run_negotiation_fast20_checks() &&
+	            run_delay_checks() ? 0 : 42);
 }

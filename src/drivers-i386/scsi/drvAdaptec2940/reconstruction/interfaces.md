@@ -63,6 +63,10 @@ the device's sync/wide marker into host negotiation bits and emits the
 bit in the low/high Fast20 map and clears SXFRCTL0 bit `0x20`; `_Ph_LogFast20Map`
 (0x4550) updates both from the negotiated period. Port traces test targets
 below and above 8 and the period threshold at `0x18`.
+`_Ph_Delay` (0x4378) snapshots timer bytes at `io_base + 0xb0/b1`, programs
+the delay counter for each iteration, unpauses until the sequencer pauses
+again, then restores both timer bytes. A simulated pause transition checks
+the full one-iteration register order and barrier count.
 
 ## Function inventory
 

@@ -4,7 +4,56 @@ Reference image: `Intel82596NetworkDriver_reloc`, i386 little-endian, 69,108 byt
 
 ## Class and method ownership
 
-The reference classes are `Intel82596 : IOEthernet`, `CogentEMaster : Intel82596`, `IntelEEFlash32 : Intel82596`, `IntelPRO10PCI : Intel82596`, and `Intel82596Buf : Object`. The runtime metadata reports 38 own i386 pointer-sized slots on `Intel82596`, 10 on `Intel82596Buf`, three on `IntelPRO10PCI`, and none on the two EISA adapters. `Intel82596(Private)` owns 13 private methods. Do not interpret a decompiler's inherited `IOEthernet` offsets as own-field offsets; derive them against the target DriverKit headers and compiler layout.
+The reference classes are `Intel82596 : IOEthernet`, `CogentEMaster : Intel82596`, `IntelEEFlash32 : Intel82596`, `IntelPRO10PCI : Intel82596`, and `Intel82596Buf : Object`. IDA's decoded `__instance_vars` section reports 38 `Intel82596` fields beginning at absolute object offset 372 (end offset 512), 10 buffer-pool fields beginning at offset 4 (end offset 40), three PRO10PCI fields beginning at offset 512, and no own fields on either EISA adapter. `Intel82596(Private)` owns 13 private methods. The base offset 372 also confirms the inherited `IOEthernet` instance layout used by this binary.
+
+| Class | Offset | Field | Encoding |
+|---|---:|---|---|
+| Intel82596 | 372 | ioBase | `S` |
+| | 376 | irq | `i` |
+| | 380 | myAddress | six-byte `ether_addr_octet` struct |
+| | 388 | chipRev | `i` |
+| | 392 | networkInterface | `IONetwork *` |
+| | 396 | bufferPool | `Intel82596Buf *` |
+| | 400 | xmtQueue | `IONetbufQueue *` |
+| | 404–409 | promiscuousEnabled, multicastEnabled, allMulticastEnabled, multicastConfigured, sourceAddressInsertion, resetAndEnabled | six `c` bytes |
+| | 412 | sharedMemPtr | `void *` |
+| | 416 | sharedMemSize | `I` |
+| | 420 | sharedMemAllocPtr | `void *` |
+| | 424 | sharedMemAvail | `I` |
+| | 428 | sharedMem_actualPtr | `void *` |
+| | 432 | sharedMem_actualSize | `I` |
+| | 436 | scp | pointer to struct |
+| | 440 | iscp | pointer to struct |
+| | 444 | scb | pointer to struct |
+| | 448 | selfTestArea | `void *` |
+| | 452 | tcbList | pointer to struct |
+| | 456 | headFreeTcb | pointer to struct |
+| | 460 | activeTcbHead | pointer to struct |
+| | 464 | pendingTcbHead | pointer to struct |
+| | 468 | pendingTcbTail | pointer to struct |
+| | 472 | kdbTcb | pointer to struct |
+| | 476 | kdbPacketBuffer | `void *` |
+| | 480 | kdbPacketPhysical | `I` |
+| | 484 | rfdList | pointer to struct |
+| | 488 | headRfd | pointer to struct |
+| | 492 | tailRfd | pointer to struct |
+| | 496 | rfdZeroSize | `I` |
+| | 500 | rbdZeroSize | `I` |
+| | 504 | tcbZeroSize | `I` |
+| | 508 | fullDuplexMode | `c` |
+| Intel82596Buf | 4 | initFlag | `c` |
+| | 5 | freeInProgress | `c` |
+| | 8 | freeList | `void *` |
+| | 12 | numFree | `I` |
+| | 16 | bufSize | `I` |
+| | 20 | bufSizeUser | `I` |
+| | 24 | bufCount | `I` |
+| | 28 | memPtr | `void *` |
+| | 32 | memSize | `i` |
+| | 36 | freeListLock | `NXSpinLock *` |
+| IntelPRO10PCI | 512 | connector | `i` |
+| | 516 | RJ45Only | `c` |
+| | 517 | autoDetectedPort | `c` |
 
 The checked-in initial implementation has no shared headers or project hierarchy. It incorrectly imports `IOEthernetDriver.h`, declares a fabricated `Intel82596 : IOEthernetDriver` with offset comments that conflict with its order, duplicates adapter interfaces inside `.m` files, and contains fake `disableAllInterrupts`, debugger-lock, netbuf, timeout, run-state, power, and initializer stubs. Source-map hits are name-resolution evidence only; they do not establish body parity.
 
@@ -25,7 +74,7 @@ These declarations are confirmed by selector encodings and call-site use; fixed-
 
 ## Hardware and ownership invariants to verify during implementation
 
-The controller uses SCP/ISCP/SCB, command blocks, TCB/TBD transmit chains and RFD/RBD receive chains. Addresses stored in controller-visible descriptors are physical addresses. TCB/RFD links are target 32-bit pointers or physical fields according to descriptor role, never host-sized pointers. Ethernet addresses are six bytes in wire order. The receive pool stores its owner/callback metadata in a wrapper prefix and returns a netbuf view; the wrapper must not refer back to a destroyed pool after shutdown. Transmit completion owns and releases the queued netbuf; failure paths must clear the TCB's retained packet pointer exactly once.
+The controller uses SCP/ISCP/SCB, command blocks, TCB/TBD transmit chains and RFD/RBD receive chains. Addresses stored in controller-visible descriptors are physical addresses. TCB/RFD links are target 32-bit pointers or physical fields according to descriptor role, never host-sized pointers. Ethernet addresses are six bytes in wire order. The receive pool stores its owner/callback metadata in a wrapper prefix and returns a netbuf view; the wrapper must not refer back to a destroyed pool after shutdown. The target callback is `recycleNetbuf(data, size, context)`: kernel `m_free` calls `ext_free(ext_buf, ext_size, ext_arg)` in `src/kernel-7/bsd/kern/uipc_mbuf.c`. Transmit completion owns and releases the queued netbuf; failure paths must clear the TCB's retained packet pointer exactly once.
 
 Task-derived checkpoints (the exact instruction/call-site references are in the JSON IDA export):
 
@@ -39,6 +88,23 @@ Task-derived checkpoints (the exact instruction/call-site references are in the 
 | Debugger restore | Inspect binary branches and call edges before implementing; the reference public method set has no debugger-lock selector, so don't add one. | `-[Intel82596 free]` at `0x1428`, reset/interrupt paths |
 
 The raw IDA export is the line-level evidence source for refining these summaries and recording exact selector argument types and state offsets. Hardware I/O register traces are reviewed per adapter in their task evidence; tests must intercept the port-access boundary and never execute native port instructions.
+
+### Task 2 function review: pool and allocation paths
+
+The four buffer methods and five pool/allocation helpers were checked against their full IDA pseudocode and disassembly. Their control-flow contracts are:
+
+* `IOIsPhysicallyContiguous` (`0x33c`, global C symbol): examines each page boundary in the inclusive requested range, translates the boundary and prior byte, returns zero on either translation failure, the byte before the first discontinuity, or the inclusive range end if contiguous.
+* `IOMallocPage` (`0x3c8`, global): requests `2 * size`, publishes that backing size, returns zero on allocation failure, otherwise retains the original pointer and returns its next page-aligned address.
+* `IOMallocNonCached` (`0x408`, global): requests `page_size + round_up(size, page_size)`, stores size and backing pointer before testing allocation success, and returns the aligned interior pointer or zero.
+* `getNetBuffer` (`0x2b6c`, global): reads the freelist head then locks; empty unlocks and returns null. A hit pops/decrements under lock, unlocks, checks both guards, creates the three-argument recycle callback wrapper over the payload, stores the wrapper at node offset 8, and restores the node under lock if wrapper allocation fails.
+* `recycleNetbuf` (`0x2c48`, local): checks both guards before examining the shutdown byte at pool offset 5. Normal release pushes the node and increments the count while locked. During shutdown it increments only the outstanding count under lock; if it reaches `bufCount`, it calls pool `free` after unlocking.
+* Pool initialization (`0x2cf8`): repeated init returns self. First init sets its byte flag, creates `NXSpinLock`, chooses `max(requested, 1514)`, rounds capacity to four, reports actual capacity, uses a 24-byte per-slot overhead, panics if a slot exceeds page size, allocates whole pages based on slots per page and requested count, then enumerates each page without allowing a slot to cross its boundary. Every slot stores owner, `0xCAFE2BAD` start/end guards and a null wrapper; list/count changes are individually locked.
+* Pool free (`0x2e90`): first call marks shutdown under lock. If wrappers remain, it returns self without freeing storage or lock. A later call after the last wrapper returns frees the lock, frees the original allocation and logs delayed completion before superclass free. Immediate free uses the same lock/allocation release order but has no delayed-free log.
+* `getNetBuffer` method (`0x2f48`) is a direct C-helper forwarder. `numFree` (`0x2f58`) returns the field directly; it does not lock.
+
+Descriptor list extents are instruction-confirmed: the receive list is 16 records at 64-byte stride (`0x400` bytes); each record contains its embedded 24-byte receive buffer descriptor at byte offset 40. The transmit list is eight 108-byte TCBs (`0x360` bytes), each containing three 24-byte TBDs at offsets 32, 56 and 80 and the retained netbuf at offset 104. `_initRfdList` translates fields at record offsets 0/36 and 40/60, and `_initTcbList` translates TCB offset 0/28 and TBD offsets `+32/+44` and `+52/+48`; preserve the exact source/destination pairs when implementing.
+
+The source spells the four local helpers in C with exactly the binary linkage: `recycleNetbuf`, `card_irq`, `get_connector_type`, and `set_connector_type` are file-local. `IOIsPhysicallyContiguous`, `IOMallocPage`, `IOMallocNonCached`, `getNetBuffer`, and `_resetFunc` are global. `getNetBuffer` is declared from the Objective-C pool method and uses the class's recovered offsets through the 40-byte i386 pool mirror.
 
 ## Function index and IDA prototypes
 

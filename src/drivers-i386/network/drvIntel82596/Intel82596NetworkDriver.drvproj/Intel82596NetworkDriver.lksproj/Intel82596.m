@@ -3,7 +3,7 @@
  * Intel 82596 Ethernet Controller Base Driver
  */
 
-#import <driverkit/IOEthernetDriver.h>
+#import "Intel82596Private.h"
 #import <driverkit/IODeviceDescription.h>
 #import <driverkit/IODirectDevice.h>
 #import <driverkit/generalFuncs.h>
@@ -28,131 +28,7 @@ extern unsigned int nb_size(void *netbuf);
 extern void ns_timeout(unsigned int msec, id target, int arg1, int arg2, int flags);
 #define _ns_timeout ns_timeout
 
-@interface Intel82596 : IOEthernetDriver
-{
-    /* Basic configuration */
-    unsigned int ioBase;
-    unsigned int irqLevel;
-    unsigned int memBase;
-
-    /* 82596 control structures - at specific offsets */
-    void *scp;                  /* Offset 0x1b4: System Configuration Pointer */
-    void *iscp;                 /* Offset 0x1b8: Intermediate SCP */
-    void *scbBase;              /* Offset 0x1bc: System Control Block */
-    void *cmdList;              /* Offset 0x1c0: Command list */
-    void *tcbList;              /* Offset 0x1c4: Transmit Command Block list */
-    void *tcbHead;              /* Offset 0x1c8: Head of TCB list */
-    void *tcbTail;              /* Offset 0x1cc: Tail of TCB list */
-    void *tcbFree;              /* Offset 0x1d0: Free TCB list */
-    void *tcbReserved;          /* Offset 0x1d4: Reserved */
-
-    /* Receive structures */
-    void *rbd;                  /* Offset 0x1d8: Receive Buffer Descriptor */
-    void *rbdReserved[2];       /* Reserved */
-    void *rfdList;              /* Offset 0x1e4: Receive Frame Descriptor list */
-    void *rfdHead;              /* Offset 0x1e8: Head of RFD list */
-    void *rfdTail;              /* Offset 0x1ec: Tail of RFD list */
-
-    /* Chip information */
-    unsigned int chipRevision;  /* Offset 0x184: Chip revision ID */
-    id bufferPool;              /* Offset 0x18c: Network buffer pool */
-
-    /* Shared memory management */
-    void *sharedMemPtr;         /* Offset 0x1a4: Current shared memory pointer */
-    unsigned int sharedMemRemaining; /* Offset 0x1a8: Remaining shared memory */
-
-    /* Mode and state */
-    BOOL promiscuousMode;
-    BOOL multicastMode;
-    unsigned int multicastCount;
-    id netif;
-    id transmitQueue;
-    unsigned char romAddress[6];
-}
-
-/* Initialization and control methods */
-- initFromDeviceDescription:(IODeviceDescription *)deviceDescription;
-- free;
-- (BOOL)resetAndEnable:(BOOL)enable;
-- (BOOL)coldInit;
-- (BOOL)hwInit;
-- (BOOL)swInit;
-- (BOOL)config;
-- (BOOL)iaSetup;
-- (BOOL)mcSetup;
-
-/* Interrupt handling */
-- (void)interruptOccurred;
-- (void)timeoutOccurred;
-- (void)acknowledgeInterrupts:(unsigned int)intStatus;
-- (void)disableAllInterrupts;
-
-/* Transmit/receive operations */
-- (void)transmit:(netbuf_t)packet;
-- (void)sendPacket:(void *)pkt length:(unsigned int)len;
-- (void)receivePacket:(void *)pkt length:(unsigned int *)len timeout:(unsigned int)timeout;
-- (void)serviceTransmitQueue;
-- (BOOL)processRecInterrupt;
-- (void)processXmtInterrupt;
-
-/* Debugger lock */
-- (void)reserveDebuggerLock;
-- (void)releaseDebuggerLock;
-
-/* Network buffer allocation */
-- (void *)allocateNetbuf;
-
-/* Mode control */
-- (void)enablePromiscuousMode;
-- (void)disablePromiscuousMode;
-- (void)enableMulticastMode;
-- (void)disableMulticastMode;
-- (void)addMulticastAddress:(enet_addr_t *)addr;
-- (void)removeMulticastAddress:(enet_addr_t *)addr;
-
-/* Hardware interface - subclasses override these */
-- (void)clearIrqLatch;
-- (void)sendChannelAttention;
-- (void)sendPortCommand:(unsigned int)cmd with:(unsigned int)arg;
-- (void)setIOBase:(unsigned int)base;
-
-/* Throttle control */
-- (BOOL)setThrottleTimers;
-
-/* Timeout management */
-- (void)clearTimeout;
-- (void)setRelativeTimeout:(unsigned int)msec;
-
-/* Interrupt control */
-- (IOReturn)enableAllInterrupts;
-- (void)setRunning:(BOOL)running;
-- (BOOL)isRunning;
-
-/* Power management */
-- (IOReturn)getPowerManagement:(IOPMPowerManagementState *)state;
-- (IOReturn)setPowerManagement:(IOPMPowerManagementState)state;
-- (IOReturn)getPowerState:(IOPMPowerState *)state;
-- (IOReturn)setPowerState:(IOPMPowerState)state;
-
-@end
-
 /* Private methods category */
-@interface Intel82596(Private)
-- (BOOL)_init596;
-- (BOOL)_resetAndSelfTest;
-- (void)_scheduleReset;
-- (BOOL)_waitScb;
-- (BOOL)_waitCu:(unsigned int)timeout;
-- (BOOL)_startCommandUnit;
-- (BOOL)_startReceiveUnit;
-- (BOOL)_abortReceiveUnit;
-- (void *)_memAlloc:(unsigned int)size;
-- (BOOL)_initRfdList;
-- (BOOL)_initTcbList;
-- (BOOL)_transmitPacket:(netbuf_t)packet;
-- (BOOL)_recAllocateNetbuf;
-@end
-
 @implementation Intel82596
 
 /*

@@ -3,7 +3,7 @@
  * Cogent EM Master Ethernet Adapter Driver for Intel 82596
  */
 
-#import <driverkit/IOEthernetDriver.h>
+#import "CogentEMaster.h"
 #import <driverkit/IODeviceDescription.h>
 #import <driverkit/IOEISADeviceDescription.h>
 #import <driverkit/generalFuncs.h>
@@ -14,17 +14,6 @@
 #import <bsd/string.h>
 
 /* Forward declaration of Intel82596 base class */
-@interface Intel82596 : IOEthernetDriver
-- initFromDeviceDescription:(IODeviceDescription *)deviceDescription;
-- (void)clearIrqLatch;
-- (void)sendChannelAttention;
-- (void)sendPortCommand:(unsigned int)cmd with:(unsigned int)arg;
-- (void)setIOBase:(unsigned int)base;
-- (BOOL)resetAndEnable:(BOOL)enable;
-- (BOOL)coldInit;
-- (const char *)name;
-@end
-
 /* Base IRQ lookup tables */
 static unsigned char irq932[4] = {5, 9, 10, 11};    /* EM932 series */
 static unsigned char irq9X5[4] = {5, 12, 10, 11};   /* 9X5 series */
@@ -57,28 +46,6 @@ static const char *boardTable[] = {
 static volatile unsigned int _clearIrqCount = 0;
 static volatile unsigned int _sendCACount = 0;
 static volatile unsigned int _sendPortCmdCount = 0;
-
-@interface CogentEMaster : Intel82596
-{
-    /* Instance variables with specific offsets to match object layout */
-    unsigned short ioBase;              /* Offset 0x174 */
-    unsigned short reserved1;
-    unsigned int irqLevel;              /* Offset 0x178 */
-    unsigned char romAddress[6];        /* Offset 0x17c */
-    unsigned short reserved2;
-    /* More fields follow in the actual object structure */
-}
-
-/* Probe and initialization */
-+ (BOOL)probe:(IODeviceDescription *)deviceDescription;
-- initFromDeviceDescription:(IODeviceDescription *)deviceDescription;
-
-/* Hardware control methods - override Intel82596 base methods */
-- (void)clearIrqLatch;
-- (void)sendChannelAttention;
-- (void)sendPortCommand:(unsigned int)cmd with:(unsigned int)arg;
-
-@end
 
 @implementation CogentEMaster
 

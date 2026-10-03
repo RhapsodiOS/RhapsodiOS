@@ -4,7 +4,7 @@
  * Uses PLX PCI-to-local bus bridge
  */
 
-#import <driverkit/IOEthernetDriver.h>
+#import "IntelPRO10PCI.h"
 #import <driverkit/IODeviceDescription.h>
 #import <driverkit/IOPCIDeviceDescription.h>
 #import <driverkit/generalFuncs.h>
@@ -19,16 +19,6 @@
 extern unsigned int __page_size;
 
 /* Forward declaration of Intel82596 base class */
-@interface Intel82596 : IOEthernetDriver
-- initFromDeviceDescription:(IODeviceDescription *)deviceDescription;
-- (void)clearIrqLatch;
-- (void)sendChannelAttention;
-- (void)sendPortCommand:(unsigned int)cmd with:(unsigned int)arg;
-- (void)interruptOccurred;
-- (BOOL)resetAndEnable:(BOOL)enable;
-- (const char *)name;
-@end
-
 /* PCI configuration space structure offsets */
 #define PCI_CONFIG_BASE_ADDRESS_1   0x14  /* Base Address Register 1 */
 #define PCI_CONFIG_INTERRUPT_LINE   0x3C  /* Interrupt Line */
@@ -40,48 +30,6 @@ extern unsigned int __page_size;
 #define PCI_COMMAND_IO_ENABLE       0x01  /* Enable I/O space */
 #define PCI_COMMAND_MEM_ENABLE      0x02  /* Enable memory space */
 #define PCI_COMMAND_MASTER_ENABLE   0x04  /* Enable bus mastering */
-
-@interface IntelPRO10PCI : Intel82596
-{
-    unsigned int ioBase;
-    unsigned int irqLevel;
-    unsigned int pciMemBase;
-    unsigned int plxBase;
-    unsigned int connectorType;
-    BOOL autoDetectEnabled;
-    BOOL plxInitialized;
-    unsigned char romAddress[6];
-
-    /* PCI configuration info - at specific offsets */
-    unsigned int subsystemVendorId;    /* Offset 0x17c */
-    unsigned short subsystemId;        /* Offset 0x180 */
-    BOOL hasEEPROM;                    /* Offset 0x204 */
-}
-
-/* Probe and initialization */
-+ (BOOL)probe:(IODeviceDescription *)deviceDescription;
-- initFromDeviceDescription:(IODeviceDescription *)deviceDescription;
-
-/* Hardware control methods - override Intel82596 base methods */
-- (void)clearIrqLatch;
-- (void)sendChannelAttention;
-- (void)sendPortCommand:(unsigned int)cmd with:(unsigned int)arg;
-- (void)interruptOccurred;
-- (BOOL)resetAndEnable:(BOOL)enable;
-
-/* PLX chip management */
-- (void)initPLXchip;
-- (void)resetPLXchip;
-
-/* Connector management */
-- (void)doAutoConnectorDetect;
-- (void)_setConnectorType:(unsigned int)type;
-
-/* Interrupt control */
-- (void)_enableAdapterInterrupts;
-- (void)_disableAdapterInterrupts;
-
-@end
 
 @implementation IntelPRO10PCI
 

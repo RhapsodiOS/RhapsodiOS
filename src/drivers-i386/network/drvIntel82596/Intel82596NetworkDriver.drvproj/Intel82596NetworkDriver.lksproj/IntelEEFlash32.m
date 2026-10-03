@@ -3,7 +3,7 @@
  * Intel EtherExpress Flash32 Ethernet Adapter Driver for Intel 82596
  */
 
-#import <driverkit/IOEthernetDriver.h>
+#import "IntelEEFlash32.h"
 #import <driverkit/IODeviceDescription.h>
 #import <driverkit/IOEISADeviceDescription.h>
 #import <driverkit/generalFuncs.h>
@@ -18,41 +18,6 @@
 extern unsigned int __page_size;
 
 /* Forward declaration of Intel82596 base class */
-@interface Intel82596 : IOEthernetDriver
-- initFromDeviceDescription:(IODeviceDescription *)deviceDescription;
-- (void)clearIrqLatch;
-- (void)sendChannelAttention;
-- (void)sendPortCommand:(unsigned int)cmd with:(unsigned int)arg;
-- (void)interruptOccurred;
-- (void)setIOBase:(unsigned int)base;
-@end
-
-@interface IntelEEFlash32 : Intel82596
-{
-    unsigned int ioBase;
-    unsigned int irqLevel;
-    unsigned int flashRomBase;
-    unsigned int connectorType;
-    BOOL autoDetectEnabled;
-    unsigned char romAddress[6];
-}
-
-/* Probe and initialization */
-+ (BOOL)probe:(IODeviceDescription *)deviceDescription;
-- initFromDeviceDescription:(IODeviceDescription *)deviceDescription;
-
-/* Hardware control methods - override Intel82596 base methods */
-- (void)clearIrqLatch;
-- (void)sendChannelAttention;
-- (void)sendPortCommand:(unsigned int)cmd with:(unsigned int)arg;
-- (void)interruptOccurred;
-
-/* Flash32 specific methods */
-- (BOOL)checksum_OK:(unsigned char *)data;
-- (void)doAutoConnectorDetect;
-
-@end
-
 /* Synchronization counters */
 static volatile unsigned int _clearIrqCount = 0;
 static volatile unsigned int _sendCACount = 0;

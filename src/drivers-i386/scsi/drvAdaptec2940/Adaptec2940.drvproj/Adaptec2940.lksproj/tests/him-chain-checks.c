@@ -317,10 +317,56 @@ static int run_sync_map_checks(void)
 	return 1;
 }
 
+static int run_negotiation_fast20_checks(void)
+{
+	unsigned char host[140];
+	unsigned char scb[256];
+	unsigned int i;
+	for (i = 0; i < sizeof(host); ++i) host[i] = 0;
+	for (i = 0; i < sizeof(scb); ++i) scb[i] = 0;
+	*(unsigned int *)(host + 4) = 0x100;
+	reset_ports(0, 0);
+	host[41] = 0x80;
+	if (Ph_ScbRenego((int)host, 0x90) != (char)-113 || output_count != 1 ||
+	    output_ports[0] != 0x129 || output_values[0] != 0x8f)
+		return 0;
+	host[41] = 0;
+	reset_ports(0, 0);
+	registers[0x29] = 0x8f;
+	if (Ph_ScbRenego((int)host, 0x90) != (char)-113 || host[41] != 0x81 ||
+	    output_count != 1 || output_values[0] != 0x8f)
+		return 0;
+	host[41] = 0;
+	reset_ports(0, 0);
+	if (Ph_ScbRenego((int)host, 0x90) != 0 || output_count != 1 || output_values[0] != 0)
+		return 0;
+	scb[66] = 1;
+	scb[12] = 0x90;
+	reset_ports(0, 0);
+	registers[0x31] = 0xff;
+	registers[1] = 0xff;
+	if (Ph_ClearFast20Reg((int)host, (int)scb) != 0xdf || output_count != 2 ||
+	    output_ports[0] != 0x131 || output_values[0] != 0xfd ||
+	    output_ports[1] != 0x101 || output_values[1] != 0xdf)
+		return 0;
+	reset_ports(0, 0);
+	scb[67] = 0x18;
+	Ph_LogFast20Map((int)host, scb);
+	if (output_count != 2 || output_ports[0] != 0x131 || output_values[0] != 2 ||
+	    output_ports[1] != 0x101 || output_values[1] != 0x20)
+		return 0;
+	reset_ports(0, 0);
+	registers[0x31] = 0xff;
+	registers[1] = 0xff;
+	scb[67] = 0x19;
+	Ph_LogFast20Map((int)host, scb);
+	return output_count == 2 && output_values[0] == 0xfd && output_values[1] == 0xdf;
+}
+
 void mainCRTStartup(void)
 {
 	ExitProcess(run_chain_checks() && run_hcntrl_checks() &&
 	            run_status_checks() && run_misc_checks() &&
 	            run_bookmark_checks() && run_scb_prepare_checks() &&
-	            run_sync_map_checks() ? 0 : 42);
+	            run_sync_map_checks() && run_negotiation_fast20_checks() ? 0 : 42);
 }

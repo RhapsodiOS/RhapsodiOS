@@ -352,6 +352,59 @@ static int run_him_sync_map_checks(void)
 	return 1;
 }
 
+static int run_him_negotiation_checks(void)
+{
+	Adaptec2940HostInfo host;
+	unsigned char scb[256];
+	memset(&host, 0, sizeof(host));
+	memset(scb, 0, sizeof(scb));
+	*(unsigned int *)(host.bytes + A2940_HA_IO_BASE_OFFSET) = 0x100;
+	memset(test_registers, 0, sizeof(test_registers));
+	sequencer_trace_count = sequencer_barriers = test_read_count = 0;
+	host.bytes[41] = 0x80;
+	if (Ph_ScbRenego((int)&host, 0x90) != (char)-113 || sequencer_trace_count != 1 ||
+	    sequencer_trace_port[0] != 0x129 || sequencer_trace_value[0] != 0x8f)
+		return 0;
+	host.bytes[41] = 0;
+	memset(test_registers, 0, sizeof(test_registers));
+	sequencer_trace_count = sequencer_barriers = test_read_count = 0;
+	test_registers[0x29] = 0x8f;
+	if (Ph_ScbRenego((int)&host, 0x90) != (char)-113 || host.bytes[41] != 0x81 ||
+	    sequencer_trace_count != 1 || sequencer_trace_value[0] != 0x8f)
+		return 0;
+	host.bytes[41] = 0;
+	memset(test_registers, 0, sizeof(test_registers));
+	sequencer_trace_count = sequencer_barriers = test_read_count = 0;
+	if (Ph_ScbRenego((int)&host, 0x90) != 0 || sequencer_trace_count != 1 ||
+	    sequencer_trace_value[0] != 0)
+		return 0;
+	scb[66] = 1;
+	scb[12] = 0x90;
+	memset(test_registers, 0, sizeof(test_registers));
+	sequencer_trace_count = sequencer_barriers = test_read_count = 0;
+	test_registers[0x31] = 0xff;
+	test_registers[1] = 0xff;
+	if (Ph_ClearFast20Reg((int)&host, (int)scb) != 0xdf || sequencer_trace_count != 2 ||
+	    sequencer_trace_port[0] != 0x131 || sequencer_trace_value[0] != 0xfd ||
+	    sequencer_trace_port[1] != 0x101 || sequencer_trace_value[1] != 0xdf)
+		return 0;
+	memset(test_registers, 0, sizeof(test_registers));
+	sequencer_trace_count = sequencer_barriers = test_read_count = 0;
+	scb[67] = 0x18;
+	Ph_LogFast20Map((int)&host, scb);
+	if (sequencer_trace_count != 2 || sequencer_trace_value[0] != 2 ||
+	    sequencer_trace_value[1] != 0x20)
+		return 0;
+	memset(test_registers, 0, sizeof(test_registers));
+	sequencer_trace_count = sequencer_barriers = test_read_count = 0;
+	test_registers[0x31] = 0xff;
+	test_registers[1] = 0xff;
+	scb[67] = 0x19;
+	Ph_LogFast20Map((int)&host, scb);
+	return sequencer_trace_count == 2 && sequencer_trace_value[0] == 0xfd &&
+	       sequencer_trace_value[1] == 0xdf;
+}
+
 static int is_group(const char *value, const char *expected)
 {
 	return strcmp(value, expected) == 0;
@@ -431,7 +484,8 @@ void mainCRTStartup(void)
 	ExitProcess(run_firmware_checks() && run_him_chain_checks() &&
 	            run_him_hcntrl_checks() && run_him_status_checks() &&
 	            run_him_misc_checks() && run_him_bookmark_checks() &&
-	            run_him_scb_prepare_checks() && run_him_sync_map_checks() ? 0 : 42);
+	            run_him_scb_prepare_checks() && run_him_sync_map_checks() &&
+	            run_him_negotiation_checks() ? 0 : 42);
 }
 #else
 int main(int argc, char **argv)
@@ -467,7 +521,8 @@ int main(int argc, char **argv)
 		int bookmark_ok = run_him_bookmark_checks();
 		int prepare_ok = run_him_scb_prepare_checks();
 		int sync_map_ok = run_him_sync_map_checks();
-		int ok = chain_ok && hcntrl_ok && status_ok && misc_ok && bookmark_ok && prepare_ok && sync_map_ok;
+		int negotiation_ok = run_him_negotiation_checks();
+		int ok = chain_ok && hcntrl_ok && status_ok && misc_ok && bookmark_ok && prepare_ok && sync_map_ok && negotiation_ok;
 		printf("{\"schema_version\":\"adaptec2940-checks-v1\","
 		       "\"group\":\"him\",\"ok\":%s,"
 		       "\"cases\":[{\"id\":\"chain-empty\",\"result\":\"%s\"},"
@@ -485,7 +540,9 @@ int main(int argc, char **argv)
 		       "{\"id\":\"bookmark-insert-remove\",\"result\":\"%s\"},"
 		       "{\"id\":\"scb-mark\",\"result\":\"%s\"},"
 		       "{\"id\":\"scb-prepare-status-count\",\"result\":\"%s\"},"
-		       "{\"id\":\"sync-period-map\",\"result\":\"%s\"}],"
+		       "{\"id\":\"sync-period-map\",\"result\":\"%s\"},"
+		       "{\"id\":\"renegotiation-marker\",\"result\":\"%s\"},"
+		       "{\"id\":\"fast20-map\",\"result\":\"%s\"}],"
 		       "\"build_hash\":\"%s\"}\n", ok ? "true" : "false",
 		       ok ? "pass" : "fail", ok ? "pass" : "fail",
 		       ok ? "pass" : "fail", ok ? "pass" : "fail",
@@ -496,6 +553,7 @@ int main(int argc, char **argv)
 		       bookmark_ok ? "pass" : "fail", bookmark_ok ? "pass" : "fail",
 		       prepare_ok ? "pass" : "fail",
 		       sync_map_ok ? "pass" : "fail",
+		       negotiation_ok ? "pass" : "fail", negotiation_ok ? "pass" : "fail",
 		       A2940_BUILD_HASH);
 		return ok ? 0 : 1;
 	}

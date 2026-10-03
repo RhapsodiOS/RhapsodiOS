@@ -57,6 +57,12 @@ the final busy transition and count.
 `_Ph_SyncSet` (0x35bc) maps the SCB period byte at offset 67 to sequencer
 period values 0, 16, 32, 48, 64, 80, 96, or 112. Boundary tests cover every
 branch endpoint from 0 through 255.
+Negotiation recovery also includes `_Ph_ScbRenego` (0x4450), which mirrors
+the device's sync/wide marker into host negotiation bits and emits the
+`0x8f` marker when needed. `_Ph_ClearFast20Reg` (0x44cc) clears the target's
+bit in the low/high Fast20 map and clears SXFRCTL0 bit `0x20`; `_Ph_LogFast20Map`
+(0x4550) updates both from the negotiated period. Port traces test targets
+below and above 8 and the period threshold at `0x18`.
 
 ## Function inventory
 

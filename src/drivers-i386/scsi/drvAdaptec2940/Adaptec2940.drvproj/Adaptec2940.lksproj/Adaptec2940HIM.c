@@ -242,6 +242,86 @@ int Ph_SyncSet(int scb_address)
 	return 112;
 }
 
+char Ph_ScbRenego(int host_address, unsigned char target_channel_lun)
+{
+	unsigned char *host = a2940_host_from_address(host_address);
+	int io_base = *(int *)(host + A2940_HA_IO_BASE_OFFSET);
+	unsigned char target = target_channel_lun >> 4;
+	unsigned char *need_nego = host + target + 32;
+	unsigned char value;
+	if ((*need_nego & 0x81) != 0)
+		return Ph_SetNeedNego(target, (short)io_base);
+	value = A2940_HIM_INB(io_base + target + 32);
+	if ((value & 0x8f) != 0) {
+		if ((value & 0x0f) != 0)
+			*need_nego |= 1;
+		if ((signed char)value < 0)
+			*need_nego |= 0x80;
+		return Ph_SetNeedNego(target, (short)io_base);
+	}
+	A2940_HIM_OUTB(io_base + target + 32, 0);
+	return 0;
+}
+
+unsigned char Ph_ClearFast20Reg(int host_address, int scb_address)
+{
+	unsigned char *host = a2940_host_from_address(host_address);
+	unsigned char *scb = (unsigned char *)(unsigned long)(unsigned int)scb_address;
+	unsigned char target;
+	unsigned char mask;
+	unsigned short register_port;
+	unsigned char value;
+	unsigned char result;
+	if (scb[66] == 1) {
+		int io_base = *(int *)(host + A2940_HA_IO_BASE_OFFSET);
+		target = scb[12] >> 4;
+		if (target > 7) {
+			mask = (unsigned char)(1 << (target - 8));
+			register_port = (unsigned short)(io_base + 49);
+		} else {
+			mask = (unsigned char)(1 << target);
+			register_port = (unsigned short)(io_base + 48);
+		}
+		value = A2940_HIM_INB(register_port);
+		A2940_HIM_OUTB(register_port, value & (unsigned char)~mask);
+		result = A2940_HIM_INB(io_base + 1) & 0xdf;
+		A2940_HIM_OUTB(io_base + 1, result);
+	}
+	return result;
+}
+
+void Ph_LogFast20Map(int host_address, unsigned char *scb)
+{
+	unsigned char target;
+	unsigned char mask;
+	unsigned short register_port;
+	unsigned char map;
+	unsigned char control;
+	int io_base;
+	if (scb[66] != 1)
+		return;
+	io_base = *(int *)(a2940_host_from_address(host_address) + A2940_HA_IO_BASE_OFFSET);
+	target = scb[12] >> 4;
+	if (target > 7) {
+		mask = (unsigned char)(1 << (target - 8));
+		register_port = (unsigned short)(io_base + 49);
+	} else {
+		mask = (unsigned char)(1 << target);
+		register_port = (unsigned short)(io_base + 48);
+	}
+	map = A2940_HIM_INB(register_port);
+	control = A2940_HIM_INB(io_base + 1);
+	if (scb[67] > 0x18) {
+		map &= (unsigned char)~mask;
+		control &= 0xdf;
+	} else {
+		map |= mask;
+		control |= 0x20;
+	}
+	A2940_HIM_OUTB(register_port, map);
+	A2940_HIM_OUTB(io_base + 1, control);
+}
+
 void Ph_Abort(void)
 {
 }

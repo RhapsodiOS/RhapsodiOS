@@ -32,7 +32,11 @@ Key IDA disassembly for the supplemental transition:
 ## Runtime and static data
 
 Raw Objective-C metadata yields 50 method entries and type encodings, including category ownership. The ATI instance is 624 bytes (552-byte inherited prefix); ATI_BIOS is 16 bytes with a 36-byte private block. The BIOS register block is 48 bytes with register, selector, output segment and entry-offset positions documented in `reference-contract.json`.
-The mode array has 72 records of 136 bytes (9792 bytes total); the CRTC array has 18 records of 30 bytes. Raw record contents, relocations, all 1048 Mach-O relocations, section hashes, imported symbols, and 41 packaged resource hashes are in the contract.
+The mode array has 72 records of 136 bytes (9792 bytes total); the CRTC array has 18 records of 30 bytes. Raw record contents, relocations, all 1048 Mach-O relocations, section hashes, imported symbols, and 41 packaged resource hashes are in the contract. The contract also records the 16-byte `gamma16` and `gamma8` arrays, both four-value refresh arrays, the 6-entry mode-to-refresh mapping, and both `IONamedValue` lookup tables.
+
+The i386 ATI class layout is 624 bytes: inherited prefix 552 bytes; three `char *` transfer-table pointers; the recovered scalar/pointer fields; five byte flags; three alignment bytes; and the final `unsigned long` plus three integers. `ATI_BIOS` is 16 bytes. The BIOS register argument is a 48-byte anonymous struct whose seven register members are 4-byte unions, followed by three selector words and two `unsigned long` slots; the BIOS thunk writes the selector into the low word of the `output_ds` slot. The declaration preserves the nested anonymous-union type encoding observed in the runtime metadata.
+
+The generated `ATIRageModes.h` is derived from the contract: each mode’s fields are decoded from its 136 raw bytes and its `parameters` pointer is restored by matching the relocation to one of the 18 CRTC records. The table remains writable because initialization mutates framebuffer pointers, color encodings, flags, and availability bits. The 41 packaged resources were copied from the reference bundle and match each manifest size and SHA-256.
 
 ## Initial tool result
 

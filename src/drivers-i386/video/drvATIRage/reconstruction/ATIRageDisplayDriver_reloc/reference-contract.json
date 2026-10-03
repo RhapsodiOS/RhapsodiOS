@@ -1705,14 +1705,8 @@
         {
           "name": "output_ds",
           "offset": 40,
-          "size": 2,
-          "evidence": "written from DS"
-        },
-        {
-          "name": "reserved_2a",
-          "offset": 42,
-          "size": 2,
-          "evidence": "not consumed by thunk"
+          "size": 4,
+          "evidence": "unsigned long ABI slot at offset 40; thunk writes the low selector word"
         },
         {
           "name": "entry_offset",
@@ -10914,5 +10908,263 @@
     "sha256": "C6D0154F0D227CCE834F98DF44EBCCB960A5FA395AE72AA2C5077588CE4F8EE7",
     "ida_version": "9.4",
     "method": "IDA Pro disassembly/pseudocode with raw Mach-O metadata"
+  },
+  "auxiliary_data": {
+    "gamma16": {
+      "name": "_gamma16",
+      "address": 15328,
+      "size": 16,
+      "binding": "local",
+      "section": "__TEXT,__const",
+      "bytes_hex": "004A667B8C9BA8B4C0CAD4DDE6EFF7FF"
+    },
+    "gamma8": {
+      "name": "_gamma8",
+      "address": 15344,
+      "size": 16,
+      "binding": "local",
+      "section": "__TEXT,__const",
+      "bytes_hex": "000F161B1F23272A2D2F323437393B3D"
+    },
+    "tables": [
+      {
+        "name": "_bitsPerPixelValues",
+        "address": 16392,
+        "size": 48,
+        "binding": "external",
+        "section": "__DATA,__data",
+        "bytes_hex": "00000000C934000001000000B834000002000000A6340000030000009434000004000000823400000000000000000000",
+        "relocations": [
+          {
+            "address": 16396,
+            "kind": "i386-vanilla-32-absolute",
+            "target": "__TEXT,__cstring",
+            "addend": 1246
+          },
+          {
+            "address": 16404,
+            "kind": "i386-vanilla-32-absolute",
+            "target": "__TEXT,__cstring",
+            "addend": 1229
+          },
+          {
+            "address": 16412,
+            "kind": "i386-vanilla-32-absolute",
+            "target": "__TEXT,__cstring",
+            "addend": 1211
+          },
+          {
+            "address": 16420,
+            "kind": "i386-vanilla-32-absolute",
+            "target": "__TEXT,__cstring",
+            "addend": 1193
+          },
+          {
+            "address": 16428,
+            "kind": "i386-vanilla-32-absolute",
+            "target": "__TEXT,__cstring",
+            "addend": 1175
+          }
+        ],
+        "entries": [
+          {
+            "value": 0,
+            "name": "2 Bits Per Pixel"
+          },
+          {
+            "value": 1,
+            "name": "8 Bits Per Pixel"
+          },
+          {
+            "value": 2,
+            "name": "12 Bits Per Pixel"
+          },
+          {
+            "value": 3,
+            "name": "15 Bits Per Pixel"
+          },
+          {
+            "value": 4,
+            "name": "24 Bits Per Pixel"
+          },
+          {
+            "value": 0,
+            "name": null
+          }
+        ]
+      },
+      {
+        "name": "_colorConfigValues",
+        "address": 16440,
+        "size": 56,
+        "binding": "external",
+        "section": "__DATA,__data",
+        "bytes_hex": "00000000DF34000001000000C432000002000000C932000003000000CE32000004000000D332000005000000DA3400000000000000000000",
+        "relocations": [
+          {
+            "address": 16444,
+            "kind": "i386-vanilla-32-absolute",
+            "target": "__TEXT,__cstring",
+            "addend": 1268
+          },
+          {
+            "address": 16452,
+            "kind": "i386-vanilla-32-absolute",
+            "target": "__TEXT,__cstring",
+            "addend": 729
+          },
+          {
+            "address": 16460,
+            "kind": "i386-vanilla-32-absolute",
+            "target": "__TEXT,__cstring",
+            "addend": 734
+          },
+          {
+            "address": 16468,
+            "kind": "i386-vanilla-32-absolute",
+            "target": "__TEXT,__cstring",
+            "addend": 739
+          },
+          {
+            "address": 16476,
+            "kind": "i386-vanilla-32-absolute",
+            "target": "__TEXT,__cstring",
+            "addend": 744
+          },
+          {
+            "address": 16484,
+            "kind": "i386-vanilla-32-absolute",
+            "target": "__TEXT,__cstring",
+            "addend": 1263
+          }
+        ],
+        "entries": [
+          {
+            "value": 0,
+            "name": "Default"
+          },
+          {
+            "value": 1,
+            "name": "RGBx"
+          },
+          {
+            "value": 2,
+            "name": "BGRx"
+          },
+          {
+            "value": 3,
+            "name": "xRGB"
+          },
+          {
+            "value": 4,
+            "name": "xBGR"
+          },
+          {
+            "value": 5,
+            "name": "None"
+          },
+          {
+            "value": 0,
+            "name": null
+          }
+        ]
+      },
+      {
+        "name": "_Refresh_60_72_75",
+        "address": 16496,
+        "size": 16,
+        "binding": "local",
+        "section": "__DATA,__data",
+        "bytes_hex": "3C000000480000004B000000FFFFFFFF",
+        "relocations": [],
+        "entries": [
+          60,
+          72,
+          75,
+          -1
+        ]
+      },
+      {
+        "name": "_Refresh_60_70_75",
+        "address": 16512,
+        "size": 16,
+        "binding": "local",
+        "section": "__DATA,__data",
+        "bytes_hex": "3C000000460000004B000000FFFFFFFF",
+        "relocations": [],
+        "entries": [
+          60,
+          70,
+          75,
+          -1
+        ]
+      },
+      {
+        "name": "_ATI_modeToRefreshRatesTable",
+        "address": 16528,
+        "size": 48,
+        "binding": "external",
+        "section": "__DATA,__data",
+        "bytes_hex": "12000000704000006A000000704000005500000080400000830000008040000084000000704000000000000000000000",
+        "relocations": [
+          {
+            "address": 16532,
+            "kind": "i386-vanilla-32-absolute",
+            "target": "__DATA,__data",
+            "addend": 112
+          },
+          {
+            "address": 16540,
+            "kind": "i386-vanilla-32-absolute",
+            "target": "__DATA,__data",
+            "addend": 112
+          },
+          {
+            "address": 16548,
+            "kind": "i386-vanilla-32-absolute",
+            "target": "__DATA,__data",
+            "addend": 128
+          },
+          {
+            "address": 16556,
+            "kind": "i386-vanilla-32-absolute",
+            "target": "__DATA,__data",
+            "addend": 128
+          },
+          {
+            "address": 16564,
+            "kind": "i386-vanilla-32-absolute",
+            "target": "__DATA,__data",
+            "addend": 112
+          }
+        ],
+        "entries": [
+          {
+            "mode": 18,
+            "rates": "_Refresh_60_72_75"
+          },
+          {
+            "mode": 106,
+            "rates": "_Refresh_60_72_75"
+          },
+          {
+            "mode": 85,
+            "rates": "_Refresh_60_70_75"
+          },
+          {
+            "mode": 131,
+            "rates": "_Refresh_60_70_75"
+          },
+          {
+            "mode": 132,
+            "rates": "_Refresh_60_72_75"
+          },
+          {
+            "mode": 0,
+            "rates": null
+          }
+        ]
+      }
+    ]
   }
 }

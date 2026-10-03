@@ -1,97 +1,100 @@
-/*
- * Copyright (c) 1998 Apple Computer, Inc. All rights reserved.
- *
- * ATIRageDisplayDriver.h - ATI Rage Display Driver
- *
- * HISTORY
- * 28 Mar 98    Created.
- */
-
 #ifndef __ATIRAGEDISPLAYDRIVER_H__
 #define __ATIRAGEDISPLAYDRIVER_H__
 
 #import <driverkit/IOFrameBufferDisplay.h>
+#import <driverkit/IOFrameBufferShared.h>
 #import <driverkit/i386/IOPCIDevice.h>
+#import <driverkit/displayDefs.h>
+#import <driverkit/driverTypes.h>
+#import "ATI_BIOS.h"
 
-@interface ATIRageDisplayDriver : IOFrameBufferDisplay
+typedef struct _ATI_ModeRefreshMap {
+    unsigned int mode;
+    const int *rates;
+} ATI_ModeRefreshMap;
+
+@interface ATI : IOFrameBufferDisplay
 {
 @private
-    IOPCIDevice *_pciDevice;
-    vm_address_t _mmioBase;
-    vm_address_t _biosBase;
-    unsigned int _memorySize;
-    unsigned int _ramdacSpeed;
-
-    /* ATI Rage registers */
-    unsigned int _ATI_ASIC_ID;
-    unsigned int _ATI_ASIC_TYPE;
-    unsigned int _ATI_Bios_Offset;
-    unsigned int _ATI_Bios_StackLength;
-    unsigned int _ATI_memSizeValues;
-    unsigned int _ATI_memSize60BitsPerPixel;
-    unsigned int _ATI_memSize12BitsPerPixel;
-    unsigned int _ATI_memSize15BitsPerPixel;
-    unsigned int _ATI_memSize24BitsPerPixel;
-    unsigned int _ATI_modeUseRefreshRate;
-    unsigned int _ATI_modeListCount;
-    void *_ATI_modeList;
-
-    /* Reserved for future expansion */
-    int _ATIRageDisplayDriver_reserved[8];
+    char *redTransferTable;
+    char *greenTransferTable;
+    char *blueTransferTable;
+    int transferTableCount;
+    int brightnessLevel;
+    int modeNumber;
+    void *vram;
+    unsigned int vramBytes;
+    int currentState;
+    ATI_BIOS *atiBios;
+    void *queryData;
+    unsigned int queryDataSize;
+    char supportsGamma;
+    char supportsGrey256;
+    char relocatableIO;
+    char engineStarted;
+    char overrideStartBaseAddress;
+    unsigned long baseAddress;
+    int colorConfig;
+    int fbMapStyle;
+    int ramdacStyle;
 }
 
-/* IODevice methods */
-+ (BOOL)probe:deviceDescription;
 - initFromDeviceDescription:deviceDescription;
+- (char)fixDeviceDescriptionForPCI:(id)deviceDescription;
+- (int)getQueryData;
+- (int)parseModeString:(const char *)modeString;
+- (void)updateModeList;
+- (unsigned int)isModeValid:(int)mode;
+- (char)verifyMemoryMap;
 - free;
-
-/* IOFrameBufferDisplay methods */
 - (void)enterLinearMode;
 - (void)revertToVGAMode;
-
-/* Display configuration */
+- showCursor:(Point *)cursorLoc frame:(int)frame token:(int)token;
+- moveCursor:(Point *)cursorLoc frame:(int)frame token:(int)token;
+- hideCursor:(int)token;
+- (void)initEngine;
+- (void)resetEngine;
+- (unsigned int)displayModeCount;
+- (IODisplayInfo *)displayModes;
 - (unsigned int)displayMemorySize;
-- (unsigned int)ramdacSpeed;
+- (char)setPendingDisplayMode:(int)mode;
+- (int)setIntValues:(unsigned int *)parameterArray
+       forParameter:(IOParameterName)parameterName
+              count:(unsigned int)count;
 
-/* Hardware initialization */
-- (BOOL)initializeHardware;
-- (void)setupRegisters;
-- (void)detectMemorySize;
-
-/* ATI Rage specific methods */
-- (void)parseModesString;
-- (void)updateBiosMode;
-- (BOOL)isNodeValid;
-- (void)verifyMemoryMap;
-- (int)interruptOccurred;
-- (void)moveCursor:(void *)token;
-- (void)resetCursor:(void *)token;
-- (void)waitForRefresh:(unsigned long long)param;
-- (void)setTransferTable:(unsigned int *)count refresh:(unsigned long long)param1
-                   crtc:(unsigned long long)param2;
-- (unsigned int)programAC;
-- (unsigned int)setTransferTable_count;
-
-/* ATI-specific BIOS and DAC functions */
-- (void)ATI_ProgramDAC;
-- (unsigned int)ATI_BIOS_ABReturnValues;
-- (void)ATI_ASICSetupValues;
-- (void)ATI_ASICTypeValues;
-- (unsigned int)ATI_BIOS_Offset;
-- (void)ATI_BIOS_StackLength;
-- (void)ATI_ReadConfigM;
-- (unsigned int)ATI_memSizeValues;
-- (void)ATI_modeUseRefreshRate;
-- (unsigned int)ATI_modeListCount_export;
-
+/* ProgramDAC category methods are declared below the implementation. */
 @end
 
-/* ATI BIOS return values structure */
-typedef struct {
-    unsigned int offset;
-    unsigned int stackLength;
-    unsigned int returnValue;
-    unsigned int asicType;
-} ATI_BIOS_ABReturnValues;
+#if defined(__i386__) || defined(i386)
+typedef char _ATI_instance_must_be_624_bytes[(sizeof(ATI) == 624) ? 1 : -1];
+#endif
 
-#endif /* __ATIRAGEDISPLAYDRIVER_H__ */
+@interface ATI (ProgramDAC)
+- setGammaTable;
+- setBrightness:(int)level token:(int)token;
+- setTransferTable:(const unsigned int *)table count:(int)count;
+@end
+
+extern IONamedValue bitsPerPixelValues[6];
+extern IONamedValue colorConfigValues[7];
+extern ATI_ModeRefreshMap ATI_modeToRefreshRatesTable[6];
+extern unsigned int ABReturnValues[10];
+extern unsigned int ATI_AsicTypeValues[18];
+extern unsigned int ATI_AsicSubTypeValues[10];
+extern unsigned int ATI_memSizeValues[34];
+extern unsigned int ATI_dacTypeValues[44];
+extern unsigned int ATI_busTypeValues[13];
+extern unsigned int ATI_Bios_Offset;
+extern unsigned int ATI_Bios_Selector;
+extern unsigned int ATI_Bios_StackOffset;
+extern unsigned int ATI_Bios_StackSelector;
+extern unsigned int kernDataSel;
+
+extern unsigned int displayInfoToColorSpace(const IODisplayInfo *displayInfo);
+extern unsigned int colorDepthToColorSpace(unsigned int depth);
+extern unsigned int displayInfoToColorDepth(const IODisplayInfo *displayInfo);
+extern unsigned int memSizeToBytes(unsigned int memorySize);
+
+#endif
+
+extern IODisplayInfo AtiModeList[72];

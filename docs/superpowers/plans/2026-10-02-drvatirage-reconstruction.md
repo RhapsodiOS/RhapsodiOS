@@ -132,23 +132,23 @@ Task 1, the ABI-compatible named BIOS layouts, and extern declarations for
 consumes all 72 modes, CRTC records, gamma arrays and refresh tables. Definitions
 retain reference symbol names and binding, with the mode data included once.
 
-- [ ] Replace the invented ATI class declaration with the spec's ivar order and
+- [x] Replace the invented ATI class declaration with the spec's ivar order and
   encodings. Declare the recovered methods and C helper prototypes; keep the
   superclass methods' Point pointers, token/frame and IOReturn types consistent
   with DriverKit. Do not invent a new +probe: method.
-- [ ] Define ATI_BIOS and its Private category, BIOS register/private structures,
+- [x] Define ATI_BIOS and its Private category, BIOS register/private structures,
   and assembly-facing globals/prototypes from Task 1. Assert layout offsets in
   the i386 build or inspect emitted ABI metadata; avoid host pointer-size assumptions.
-- [ ] Recover the 18 CRTC records and all 72 modes in reference order. Resolve
+- [x] Recover the 18 CRTC records and all 72 modes in reference order. Resolve
   pointers through relocations. Preserve gamma16/gamma8 bytes, both refresh
   arrays and lookup-table names/bindings. Compare every field, not just counts.
-- [ ] Replace R128 definitions with the evidenced offsets and masks consumed by
+- [x] Replace R128 definitions with the evidenced offsets and masks consumed by
   the reconstruction. Reuse repository port-I/O operations; retain their delay
   semantics and compiler-emitted counter behavior where relevant to parity.
-- [ ] Restore Default/PCI4Mb/PCI6Mb/PCI8Mb tables and mode files, localized
+- [x] Restore Default/PCI4Mb/PCI6Mb/PCI8Mb tables and mode files, localized
   strings and all help resources. Preserve case and path; make packaging declarations
   resolve their actual location. Record generated Driver Version separately.
-- [ ] Verify mode cases for each memory class and pixel encoding against raw
+- [x] Verify mode cases for each memory class and pixel encoding against raw
   reference fields, including code 5's 8,386,560-byte limit. Verify resource
   hashes and declarations. Commit as `drvATIRage: recover the ABI and display data`.
 

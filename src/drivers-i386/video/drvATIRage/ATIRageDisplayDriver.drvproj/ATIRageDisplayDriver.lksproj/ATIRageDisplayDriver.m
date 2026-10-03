@@ -12,6 +12,7 @@
 
 #import "ATIRageDisplayDriver.h"
 #import "ATIRageRegs.h"
+#import "ATIRageModes.h"
 #import <driverkit/KernBus.h>
 #import <driverkit/KernBusMemory.h>
 #import <driverkit/IODisplayPrivate.h>
@@ -24,82 +25,7 @@
 #import <string.h>
 #import <stdlib.h>
 
-/* Display modes supported */
-static const IODisplayInfo _ATIRageModes[] = {
-    {
-        480,                            // height
-        640,                            // width
-        640,                            // totalWidth
-        640,                            // rowBytes
-        60,                             // refreshRate
-        IO_8BitsPerPixel,               // bitsPerPixel
-        IO_RGBColorSpace,               // colorSpace
-        "PPPPPPPP",                     // pixelEncoding
-        0,                              // flags
-        0                               // reserved
-    },
-    {
-        600,                            // height
-        800,                            // width
-        800,                            // totalWidth
-        800,                            // rowBytes
-        60,                             // refreshRate
-        IO_8BitsPerPixel,               // bitsPerPixel
-        IO_RGBColorSpace,               // colorSpace
-        "PPPPPPPP",                     // pixelEncoding
-        0,                              // flags
-        0                               // reserved
-    },
-    {
-        768,                            // height
-        1024,                           // width
-        1024,                           // totalWidth
-        1024,                           // rowBytes
-        60,                             // refreshRate
-        IO_8BitsPerPixel,               // bitsPerPixel
-        IO_RGBColorSpace,               // colorSpace
-        "PPPPPPPP",                     // pixelEncoding
-        0,                              // flags
-        0                               // reserved
-    }
-};
-
-#define NUM_ATI_RAGE_MODES (sizeof(_ATIRageModes) / sizeof(IODisplayInfo))
-
-@implementation ATIRageDisplayDriver
-
-+ (BOOL)probe:deviceDescription
-{
-    IOPCIDeviceDescription *pciDesc;
-    unsigned int vendorID, deviceID;
-
-    if ([super probe:deviceDescription] == NO)
-        return NO;
-
-    if (![deviceDescription isKindOf:[IOPCIDeviceDescription class]])
-        return NO;
-
-    pciDesc = (IOPCIDeviceDescription *)deviceDescription;
-    vendorID = [pciDesc vendorID];
-    deviceID = [pciDesc deviceID];
-
-    /* Check for ATI vendor ID */
-    if (vendorID != 0x1002)
-        return NO;
-
-    /* Check for various ATI Rage device IDs from Auto Detect IDs */
-    switch (deviceID) {
-        case 0x4354:  // ATI Rage
-        case 0x4754:  // ATI Rage II
-        case 0x4755:  // ATI Rage II+
-        case 0x4756:  // ATI Rage IIC
-        case 0x4C47:  // ATI Rage LT
-        case 0x5C55:  // ATI Rage Mobility
-            return YES;
-        default:
-            return NO;
-    }
-}
+@implementation ATI
 
 - initFromDeviceDescription:deviceDescription
 {
@@ -118,9 +44,9 @@ static const IODisplayInfo _ATIRageModes[] = {
     _ATI_modeUseRefreshRate = 0;
 
     /* Map the framebuffer memory */
-    mode = (IODisplayInfo *)&_ATIRageModes[0];
+    mode = (IODisplayInfo *)&AtiModeList[0];
 
-    ret = [self selectMode:_ATIRageModes count:NUM_ATI_RAGE_MODES];
+    ret = [self selectMode:AtiModeList count:ATI_MODE_COUNT];
     if (ret < 0) {
         IOLog("%s: Failed to select display mode\n", [self name]);
         [self free];

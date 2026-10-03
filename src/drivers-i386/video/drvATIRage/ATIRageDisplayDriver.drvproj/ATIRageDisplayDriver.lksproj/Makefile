@@ -15,7 +15,7 @@ LANGUAGE = English
 
 CLASSES = ATIRageDisplayDriver.m
 
-HFILES = ATIRageDisplayDriver.h ATIRageRegs.h
+HFILES = ATIRageDisplayDriver.h ATIRageRegs.h ATI_BIOS.h ATIRageModes.h
 
 OTHERSRCS = Makefile.preamble Makefile Makefile.postamble Load_Commands.sect
 

@@ -20,6 +20,9 @@ The channel methods use the recovered 8-byte record: bus acquisition succeeds
 only for channel zero with an allocated 140-byte record and no current owner;
 release clears only the matching owner. The channel record's bytes 30 and 31
 provide the SCSI bus ID and target count.
+The controller class probe allocates and initializes the device directly, as
+the binary does. `interruptOccurredAt:` and `otherOccurred:` log their event
+and argument; `receiveMsg` logs then delegates to `IODirectDevice`.
 
 The initial production batch in `Adaptec2940HIM.c` implements the IDA
 entry points `_Ph_MemorySet` (0x4224), `_Ph_ChainAppendEnd` (0x4b2c),

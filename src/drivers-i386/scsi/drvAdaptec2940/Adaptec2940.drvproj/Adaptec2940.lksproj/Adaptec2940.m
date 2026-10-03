@@ -24,38 +24,8 @@
  */
 + (BOOL)probe:deviceDescription
 {
-	IOPCIConfigSpace pciConfig;
-	unsigned int deviceID;
-	IOPCIDeviceDescription *pciDevice;
-
-	if (![deviceDescription isKindOf:[IOPCIDeviceDescription class]]) {
-		return NO;
-	}
-
-	pciDevice = (IOPCIDeviceDescription *)deviceDescription;
-	[pciDevice getPCIConfigSpace:&pciConfig];
-
-	deviceID = (pciConfig.DeviceID << 16) | pciConfig.VendorID;
-
-	/* Check for supported AIC-7xxx devices */
-	switch (deviceID) {
-		case AIC_7850_DEVICE_ID:
-		case AIC_7860_DEVICE_ID:
-		case AIC_7870_DEVICE_ID:
-		case AIC_7871_DEVICE_ID:
-		case AIC_7872_DEVICE_ID:
-		case AIC_7873_DEVICE_ID:
-		case AIC_7874_DEVICE_ID:
-		case AIC_7880_DEVICE_ID:
-		case AIC_7881_DEVICE_ID:
-		case AIC_7882_DEVICE_ID:
-		case AIC_7883_DEVICE_ID:
-		case AIC_7884_DEVICE_ID:
-		case AIC_7895_DEVICE_ID:
-			return YES;
-		default:
-			return NO;
-	}
+	id instance = [self alloc];
+	return [instance initFromDeviceDescription:deviceDescription] != nil;
 }
 
 /*
@@ -224,18 +194,18 @@
 
 - (void)interruptOccurredAt:(int)localNum
 {
-	[self interruptOccurred];
+	IOLog("%s: interruptOccurredAt:%d\n", [self name], localNum);
 }
 
 - (void)otherOccurred:(int)id
 {
-	/* Handle other notifications */
+	IOLog("%s: otherOccurred:%d\n", [self name], id);
 }
 
 - (void)receiveMsg
 {
-	/* Handle messages */
-	[self interruptOccurred];
+	IOLog("%s: receiveMsg\n", [self name]);
+	[super receiveMsg];
 }
 
 - (void)timeoutOccurred

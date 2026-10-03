@@ -391,6 +391,35 @@ def test_scsi_bus_class_matches_reference():
         assert entries[name]["status"] == "control-flow-confirmed"
 
 
+def test_controller_entry_and_notification_methods_match_reference():
+    source = (DRIVER / "Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940.m").read_text(encoding="ascii")
+    expected = (
+        ("+ (BOOL)probe:", "[instance initFromDeviceDescription:deviceDescription] != nil"),
+        ("- (void)interruptOccurredAt:", 'interruptOccurredAt:%d\\n'),
+        ("- (void)otherOccurred:", 'otherOccurred:%d\\n'),
+        ("- (void)receiveMsg", 'receiveMsg\\n'),
+    )
+    for signature, expression in expected:
+        assert signature in source, signature
+        start = source.index(signature)
+        body_end = source.index("\n}", start)
+        assert expression in source[start:body_end], signature
+    receive_start = source.index("- (void)receiveMsg")
+    receive_end = source.index("\n}", receive_start)
+    assert "[super receiveMsg];" in source[receive_start:receive_end]
+    names = (
+        "+[Adaptec2940 probe:]", "-[Adaptec2940 interruptOccurredAt:]",
+        "-[Adaptec2940 otherOccurred:]", "-[Adaptec2940 receiveMsg]",
+    )
+    source_map = json.loads((RECON / "source-map.json").read_text(encoding="utf-8"))
+    mapped = {name: row for row in source_map["mapped"] for name in row["reference_names"]}
+    ledger = json.loads((RECON / "ledger.json").read_text(encoding="utf-8"))
+    entries = {name: row for row in ledger["entries"] for name in row["names"]}
+    for name in names:
+        assert mapped[name]["source_path"].endswith("Adaptec2940.m")
+        assert entries[name]["status"] == "control-flow-confirmed"
+
+
 def _main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--audit", choices=("inventory", "layouts", "firmware"))

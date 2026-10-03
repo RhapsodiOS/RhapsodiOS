@@ -246,6 +246,15 @@
       "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
     },
     {
+      "address": 19472,
+      "reference_names": [
+        "_Ph_ScbPrepare"
+      ],
+      "size": 73,
+      "source_line": 324,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
       "address": 20736,
       "reference_names": [
         "_Ph_SetScbMark"
@@ -314,7 +323,7 @@
         "_Ph_InsertBookmark"
       ],
       "size": 33,
-      "source_line": 324,
+      "source_line": 344,
       "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
     },
     {
@@ -323,7 +332,7 @@
         "_Ph_RemoveBookmark"
       ],
       "size": 25,
-      "source_line": 332,
+      "source_line": 352,
       "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
     },
     {
@@ -807,13 +816,6 @@
         "_PH_RelocatePointers"
       ],
       "size": 26
-    },
-    {
-      "address": 19472,
-      "reference_names": [
-        "_Ph_ScbPrepare"
-      ],
-      "size": 73
     },
     {
       "address": 19548,

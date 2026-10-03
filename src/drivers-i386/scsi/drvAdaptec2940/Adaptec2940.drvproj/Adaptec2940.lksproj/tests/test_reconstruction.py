@@ -271,13 +271,13 @@ def test_him_helper_batch_is_mapped_and_exercised():
                    "PH_DisableInt", "Ph_InBuffer", "Ph_OutBuffer", "Ph_SetNeedNego",
                    "Ph_Abort", "Ph_SendTrmMsg", "Ph_TrmCmplt", "Ph_BusReset",
                    "Ph_HaSoftReset", "Ph_SoftReset", "Ph_SetScbMark",
-                   "Ph_InsertBookmark", "Ph_RemoveBookmark"):
+                   "Ph_InsertBookmark", "Ph_RemoveBookmark", "Ph_ScbPrepare"):
         assert re.search(r"\b" + symbol + r"\s*\(", source), f"missing HIM body: {symbol}"
     for case in ("chain-empty", "chain-front-middle-tail", "chain-previous-miss",
                  "memory-set", "hcntrl-write-mask", "intstat-paused-unpaused",
                  "pause-unpause", "short-transfer", "port-buffer-transfer",
                  "interrupt-enable-disable", "negotiation-marker", "reset-trampolines",
-                 "bookmark-insert-remove", "scb-mark"):
+                 "bookmark-insert-remove", "scb-mark", "scb-prepare-status-count"):
         assert case in harness_text, f"HIM guest harness is missing {case}"
     assert '#include "../Adaptec2940HIM.c"' in native_text
     assert "0xffffffffU" in native_text and "Ph_MemorySet(fill" in native_text
@@ -293,7 +293,7 @@ def test_him_helper_batch_is_mapped_and_exercised():
                  "_PH_DisableInt", "_Ph_InBuffer", "_Ph_OutBuffer", "_Ph_SetNeedNego",
                  "_Ph_Abort", "_Ph_SendTrmMsg", "_Ph_TrmCmplt", "_Ph_BusReset",
                  "_Ph_HaSoftReset", "_Ph_SoftReset", "_Ph_SetScbMark",
-                 "_Ph_InsertBookmark", "_Ph_RemoveBookmark"):
+                 "_Ph_InsertBookmark", "_Ph_RemoveBookmark", "_Ph_ScbPrepare"):
         assert mapped[name]["source_path"].endswith("Adaptec2940HIM.c")
         assert entries[name]["status"] == "control-flow-confirmed"
 

@@ -311,6 +311,27 @@ static int run_him_bookmark_checks(void)
 	       (host.bytes[13] & 0x80) != 0;
 }
 
+static int run_him_scb_prepare_checks(void)
+{
+	Adaptec2940HostInfo host;
+	unsigned char chain[512];
+	unsigned char first[256];
+	unsigned char second[256];
+	memset(&host, 0, sizeof(host));
+	memset(chain, 0, sizeof(chain));
+	memset(first, 0, sizeof(first));
+	memset(second, 0, sizeof(second));
+	*(unsigned char **)(host.bytes + 52) = chain;
+	chain[268] = 1;
+	*(unsigned int *)first = (unsigned int)second;
+	*(unsigned int *)second = 0xffffffffU;
+	first[9] = second[9] = 0xaa;
+	if (Ph_ScbPrepare((int)&host, (int *)first) != 32)
+		return 0;
+	return chain[8] == 2 && *(unsigned short *)(chain + 266) == 1 &&
+	       first[9] == 0 && first[11] == 16 && second[9] == 0 && second[11] == 32;
+}
+
 static int is_group(const char *value, const char *expected)
 {
 	return strcmp(value, expected) == 0;
@@ -389,7 +410,8 @@ void mainCRTStartup(void)
 {
 	ExitProcess(run_firmware_checks() && run_him_chain_checks() &&
 	            run_him_hcntrl_checks() && run_him_status_checks() &&
-	            run_him_misc_checks() && run_him_bookmark_checks() ? 0 : 42);
+	            run_him_misc_checks() && run_him_bookmark_checks() &&
+	            run_him_scb_prepare_checks() ? 0 : 42);
 }
 #else
 int main(int argc, char **argv)
@@ -423,7 +445,8 @@ int main(int argc, char **argv)
 		int status_ok = run_him_status_checks();
 		int misc_ok = run_him_misc_checks();
 		int bookmark_ok = run_him_bookmark_checks();
-		int ok = chain_ok && hcntrl_ok && status_ok && misc_ok && bookmark_ok;
+		int prepare_ok = run_him_scb_prepare_checks();
+		int ok = chain_ok && hcntrl_ok && status_ok && misc_ok && bookmark_ok && prepare_ok;
 		printf("{\"schema_version\":\"adaptec2940-checks-v1\","
 		       "\"group\":\"him\",\"ok\":%s,"
 		       "\"cases\":[{\"id\":\"chain-empty\",\"result\":\"%s\"},"
@@ -439,7 +462,8 @@ int main(int argc, char **argv)
 		       "{\"id\":\"negotiation-marker\",\"result\":\"%s\"},"
 		       "{\"id\":\"reset-trampolines\",\"result\":\"%s\"},"
 		       "{\"id\":\"bookmark-insert-remove\",\"result\":\"%s\"},"
-		       "{\"id\":\"scb-mark\",\"result\":\"%s\"}],"
+		       "{\"id\":\"scb-mark\",\"result\":\"%s\"},"
+		       "{\"id\":\"scb-prepare-status-count\",\"result\":\"%s\"}],"
 		       "\"build_hash\":\"%s\"}\n", ok ? "true" : "false",
 		       ok ? "pass" : "fail", ok ? "pass" : "fail",
 		       ok ? "pass" : "fail", ok ? "pass" : "fail",
@@ -448,6 +472,7 @@ int main(int argc, char **argv)
 		       misc_ok ? "pass" : "fail", misc_ok ? "pass" : "fail",
 		       misc_ok ? "pass" : "fail", misc_ok ? "pass" : "fail",
 		       bookmark_ok ? "pass" : "fail", bookmark_ok ? "pass" : "fail",
+		       prepare_ok ? "pass" : "fail",
 		       A2940_BUILD_HASH);
 		return ok ? 0 : 1;
 	}

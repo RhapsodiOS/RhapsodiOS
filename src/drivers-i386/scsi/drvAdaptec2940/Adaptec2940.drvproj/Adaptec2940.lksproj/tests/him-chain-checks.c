@@ -275,9 +275,31 @@ static int run_bookmark_checks(void)
 	       (host[13] & 0x80) != 0;
 }
 
+static int run_scb_prepare_checks(void)
+{
+	unsigned char host[64];
+	unsigned char chain[512];
+	unsigned char first[256];
+	unsigned char second[256];
+	unsigned int i;
+	for (i = 0; i < sizeof(host); ++i) host[i] = 0;
+	for (i = 0; i < sizeof(chain); ++i) chain[i] = 0;
+	for (i = 0; i < sizeof(first); ++i) first[i] = second[i] = 0;
+	*(unsigned char **)(host + 52) = chain;
+	chain[268] = 1;
+	*(unsigned int *)first = (unsigned int)second;
+	*(unsigned int *)second = 0xffffffffU;
+	first[9] = second[9] = 0xaa;
+	first[12] = second[12] = 0;
+	if (Ph_ScbPrepare((int)host, (int *)first) != 32)
+		return 0;
+	return chain[8] == 2 && *(unsigned short *)(chain + 266) == 1 &&
+	       first[9] == 0 && first[11] == 16 && second[9] == 0 && second[11] == 32;
+}
+
 void mainCRTStartup(void)
 {
 	ExitProcess(run_chain_checks() && run_hcntrl_checks() &&
 	            run_status_checks() && run_misc_checks() &&
-	            run_bookmark_checks() ? 0 : 42);
+	            run_bookmark_checks() && run_scb_prepare_checks() ? 0 : 42);
 }

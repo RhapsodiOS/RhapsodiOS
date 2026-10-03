@@ -321,6 +321,26 @@ int Ph_SetScbMark(int host_address)
 	return (int)chain;
 }
 
+int Ph_ScbPrepare(int host_address, int *first_scb)
+{
+	unsigned char *host = a2940_host_from_address(host_address);
+	unsigned char *chain = *(unsigned char **)(host + 52);
+	unsigned char *scb = (unsigned char *)first_scb;
+	int result;
+	do {
+		scb[9] = 0;
+		++chain[(unsigned int)scb[12] + 8];
+		result = Ph_GetScbStatus((int)chain, (int)scb);
+		scb[11] = (unsigned char)result;
+		if ((unsigned char)result == 16)
+			++*(unsigned short *)(chain + 266);
+		if (*(unsigned int *)scb == A2940_CHAIN_END)
+			break;
+		scb = (unsigned char *)(unsigned long)*(unsigned int *)scb;
+	} while (1);
+	return result;
+}
+
 char Ph_InsertBookmark(int host_address)
 {
 	unsigned char *host = a2940_host_from_address(host_address);

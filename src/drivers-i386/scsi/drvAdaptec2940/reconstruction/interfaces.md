@@ -50,6 +50,10 @@ The chain helper also supports the embedded bookmark routines
 `_Ph_SetScbMark` (0x5100), `_Ph_InsertBookmark` (0x563c), and
 `_Ph_RemoveBookmark` (0x5660). Tests check the physical mark values at chain
 offsets 356 and 372, the embedded node at 352, and head/tail restoration.
+`_Ph_ScbPrepare` (0x4c10) walks the SCB chain, clears each host status,
+increments its target count, stores status 16/32, and increments the free-SCB
+word at chain offset 266 for each status-16 entry. A two-node case verifies
+the final busy transition and count.
 
 ## Function inventory
 

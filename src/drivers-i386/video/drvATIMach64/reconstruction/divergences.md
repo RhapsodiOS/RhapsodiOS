@@ -55,3 +55,10 @@
   retain the truncated repetition count, and the reference's count-zero/negative
   hazards are not normalized away. Python checks pass; `make check-dac` cannot
   compile because `cc` is unavailable.
+- The kernel-server preamble now includes all reconstructed Objective-C/C
+  units and links the i386 assembly object through the historical
+  `OTHERLINKEDOFILES` path. The stripped load-command file was restored with
+  its `WIRE` directive, and a focused guest build script stages both the
+  relocatable server and package archive. The actual build has not run: this
+  checkout has no `vm/vm.conf`, and the Windows host has neither the guest
+  connection nor the Rhapsody compiler.

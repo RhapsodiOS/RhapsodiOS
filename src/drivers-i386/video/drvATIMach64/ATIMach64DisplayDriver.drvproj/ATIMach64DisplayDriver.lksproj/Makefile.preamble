@@ -1,0 +1,19 @@
+# The shipped kernel server is i386-only. The aggregate driver project keeps
+# its existing resource variants and consumes the linked server from this
+# subproject.
+INCLUDED_ARCHS = i386
+RC_ARCHS = i386
+
+CLASSES = ATIMach64DisplayDriver.m ATIPrivate.m ProgramDAC.m ATI_BIOS.m
+CFILES = ATIData.c ATIbios16.c
+HFILES = ATIMach64DisplayDriver.h ATIPrivate.h ATIData.h ATI_BIOS.h \
+	ATIBIOSTypes.h ATIMach64Regs.h
+OTHERSRCS += ATIbios.s
+
+# This Project Builder vintage has no SFILES-to-object rule. Build the far
+# transfer assembly as an ordinary i386 object and add it to the link inputs.
+ATIBIOS_ASM_OBJECT = ATIbios.o
+OTHERLINKEDOFILES += $(ATIBIOS_ASM_OBJECT)
+
+$(ATIBIOS_ASM_OBJECT): ATIbios.s
+	$(CC) $(ARCHITECTURE_FLAGS) $(ALL_CFLAGS) -c -o $@ $<

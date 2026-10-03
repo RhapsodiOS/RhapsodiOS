@@ -39,14 +39,15 @@
 #import "BusLogicThread.h"
 
 extern unsigned ffs(unsigned mask);
-extern BOOL blc_reset_board(IOEISAPortAddress portBase, unsigned char boardId);
+extern BOOL blc_reset_board(IOEISAPortAddress portBase);
 extern BOOL blc_probe_cmd(IOEISAPortAddress portBase, unsigned char cmd,
 			 unsigned char *dataOut, int dataOutLen,
 			 unsigned char *dataIn, int dataInLen,
 			 BOOL expectResponse);
 extern BOOL blc_setup_mb_area(IOEISAPortAddress portBase,
 			     struct bl_mb_area *mbArea,
-			     struct ccb *ccbArray);
+			     struct ccb *ccbArray,
+			     struct ccb **freeList);
 
 /*
  * PCI base address register decoding.
@@ -187,32 +188,33 @@ static msg_header_t BLMessageTemplate = {
 	 *  device description.  If they don't match, print a nasty warning
 	 *  message and fail.
 	 */
-	if ([deviceDescription numChannels] < 1 ||
-	    [deviceDescription channel] != config.dma_channel) {
-		IOLog("BLCController: Actual DMA Channel (%d) doesn't match "
-		      "configured value (%d)!\n", config.dma_channel,
-		      ([deviceDescription numChannels] ?
-		      	[deviceDescription channel] : 0));
-		return [self free];
+	if (config.dma_channel != 0xff) {
+		if ([deviceDescription numChannels] < 1 ||
+		    [deviceDescription channel] != config.dma_channel) {
+			IOLog("BLCController: Actual DMA Channel (%d) doesn't match "
+			      "configured value (%d)!\n", config.dma_channel,
+			      ([deviceDescription numChannels] ?
+				[deviceDescription channel] : 0));
+			return [self free];
+		}
+
+		/* Set transfer mode 3 and enable the adapter's DMA channel. */
+		if ([self setTransferMode:IO_Cascade forChannel:0] != IO_R_SUCCESS ||
+		    [self enableChannel:0] != IO_R_SUCCESS) {
+			IOLog("BLCController: couldn't init DMA!\n");
+			return [self free];
+		}
 	}
 
-	if ([deviceDescription numInterrupts] < 1 ||
-	    [deviceDescription interrupt] != config.irq) {
+	/* PCI assigns its IRQ in config space and needs no legacy check. */
+	if (busType != BL_BUS_PCI &&
+	    ([deviceDescription numInterrupts] < 1 ||
+	     [deviceDescription interrupt] != config.irq)) {
 		IOLog("BLCController: Actual IRQ (%d) doesn't match "
 		      "configured value (%d)!\n", config.irq,
 		      ([deviceDescription numInterrupts] ?
-		      	[deviceDescription interrupt] : 0));
+		[deviceDescription interrupt] : 0));
 		return [self free];
-	}
-
-	/*
-	 *  Try to set up DMA.  Set the appropriate mode on the channel, and
-	 *  try to enable it.
-	 */
-	if ([self setTransferMode:IO_Cascade forChannel:0] != IO_R_SUCCESS ||
-	    [self enableChannel:0] != IO_R_SUCCESS) {
-		IOLog("BLCController: couldn't init DMA!\n");
-		return [super free];
 	}
 
 	/*
@@ -228,12 +230,20 @@ static msg_header_t BLMessageTemplate = {
 	 *  Note that if we fail, the call to [super free] will release (and
 	 *  disable) our resources (IRQ, DMA channel, portRanges).
 	 */
-	if (!blc_setup_mb_area(ioBase, blMbArea, blCcb)) {
+	if (!blc_setup_mb_area(ioBase, blMbArea, blCcb,
+			       &blCcbFreeList)) {
 		IOLog("BLCController: couldn't set up mailbox area!\n");
 		return [self free];
 	}
 
 	[self resetStats];
+	{
+		id configTable = [deviceDescription configTable];
+		const char *shareIRQ = [configTable valueForStringKey:"Share IRQ Levels"];
+		levelIRQ = shareIRQ != NULL && strcmp(shareIRQ, "YES") == 0;
+		if (shareIRQ != NULL)
+			[configTable freeString:shareIRQ];
+	}
 
 	/*
 	 * Reserve our target, enable interrupts, and go.
@@ -390,42 +400,29 @@ static msg_header_t BLMessageTemplate = {
 	intr = bl_get_intr(ioBase);
 	bl_clr_intr(ioBase);
 
-	if (!intr.mb_in_full)
-		return;
-
-	/*
-	 * Find all ccb's which the controller has marked completed
-	 * and commandComplete: them.
-	 */
-	mb = blMbArea->mb_in;
-	for (i = 0; i < BL_MB_CNT; i++, mb++) {
-		if (mb->mb_stat != BL_MB_IN_FREE) {
-
-			/*
-			 * FIXME - need IOVirtualFromPhysical(); assume for
-			 * now that we can access all physical addresses.
-			 */
-			ccb = (struct ccb *)bl_get_24(mb->ccb_addr);
+	if (intr.mb_in_full) {
+		mb = blMbArea->next_in;
+		for (i = 0; i < BL_MB_CNT; i++) {
+			if (mb->mb_stat == BL_MB_IN_FREE)
+				break;
+			ccb = (struct ccb *)bl_get_32(mb->ccb_addr);
 			mb->mb_stat = BL_MB_IN_FREE;
+			mb++;
+			if (mb > blMbArea->in_end)
+				mb = blMbArea->in_start;
+
 			queue_remove(&outstandingQ, ccb, struct ccb *, ccbQ);
 			ASSERT(outstandingCount != 0);
 			outstandingCount--;
-
 			[self commandCompleted:ccb reason:CS_Complete];
 		}
+		blMbArea->next_in = mb;
+		[self runPendingCommands];
+		[self commandRequestOccurred];
 	}
 
-	/*
-	 * Handle possible pending commands (now that we've dequeued at least
-	 * one CCB).
-	 */
-	[self runPendingCommands];
-
-	/*
-	 * One more thing - since we probably just freed up at least one
-	 * ccb, process possible entries waiting in commandQ.
-	 */
-	[self commandRequestOccurred];
+	if (levelIRQ)
+		[self enableAllInterrupts];
 	ddm_thr("interruptOccurred: DONE\n", 1,2,3,4,5);
 }
 
@@ -586,65 +583,46 @@ out:
 
 - (BOOL) probeAtPortBase:(IOEISAPortAddress) portBase
 {
-	bl_inquiry_t	inquiry;
+	unsigned char	inquirySetup[14];
 
 	ddm_init("BLCController probeAtPortBase\n", 1,2,3,4,5);
 
 	ioBase = portBase;
-	blc_reset_board(ioBase, blBoardId);
+	blc_reset_board(ioBase);
 
-	/*
-	 *  Do an inquiry to find out the board id and other things that
-	 *  we won't check.
-	 */
-	if (!blc_probe_cmd(ioBase, BL_CMD_INQUIRY, NULL, 0,
-	    (unsigned char *)&inquiry, sizeof(inquiry), TRUE)) {
-	    	ddm_init("  ..inquiry command failed\n", 1,2,3,4,5);
-		return FALSE;
-	}
-
-	blBoardId = inquiry.board_id;
-
-	switch (blBoardId) {
-
-	case BL_BOARD_545S:
-	case BL_BOARD_545C:
-	case BL_BOARD_542D:
-	case BL_BOARD_542B:
-		break;
-	default:
-		ddm_init("..unsupported board ID (0x%x)\n", blBoardId,
-			2,3,4,5);
-		return FALSE;
-	}
-
-	/*
-	 *  Every board ID we accept above is a narrow board. (The reference
-	 *  driver picks 16 instead of 8 from the wide bit of the Inquire
-	 *  Extended Setup reply; we do not issue that command.)
-	 */
-	targetsPerBus = 8;
-
-	/*
-	 *  Attempt to read the configuration data from the board.
-	 *  If this succeeds, then we have successfully probed.
-	 */
 	if (!blc_probe_cmd(ioBase, BL_CMD_GET_CONFIG, NULL, 0,
-	                   (unsigned char *)&config, sizeof(config), TRUE)) {
-	    	ddm_init("  ..get config command failed\n", 1,2,3,4,5);
-
-	    	return FALSE;
+			  (unsigned char *)&config, sizeof(config), TRUE)) {
+		ddm_init("  ..get config command failed\n", 1,2,3,4,5);
+		return FALSE;
 	}
 
-	/*
-	 *  Decode the values in the config struct.
-	 */
-	config.irq = ffs((unsigned int) config.irq) + 8;
-	config.dma_channel = ffs((unsigned int) config.dma_channel) - 1;
+	config.irq = ffs((unsigned int)config.irq) + 8;
+	config.dma_channel = ffs((unsigned int)config.dma_channel) - 1;
 
-	IOLog("BusLogic at port 0x%x irq %d\n",
-		portBase, config.irq);
+	bzero(inquirySetup, sizeof(inquirySetup));
+	inquirySetup[0] = sizeof(inquirySetup);
+	if (!blc_probe_cmd(ioBase, BL_CMD_INQUIRY_SETUP_EXT,
+			  inquirySetup, 1, inquirySetup,
+			  sizeof(inquirySetup), TRUE)) {
+		bzero(inquirySetup, sizeof(inquirySetup));
+		inquirySetup[0] = 4;
+		if (!blc_probe_cmd(ioBase, BL_CMD_INQUIRY_SETUP_EXT,
+				  inquirySetup, 1, inquirySetup,
+				  sizeof(inquirySetup), TRUE))
+			return FALSE;
+	}
+
+	blBoardId = inquirySetup[0];
+	if (blBoardId != 65)
+		config.dma_channel = 0xff;
+	targetsPerBus = (inquirySetup[13] & 1) ? 16 : 8;
+
+	IOLog("BusLogic controller at port 0x%x\n", portBase);
+	IOLog("BusLogic: %d Targets per Bus; Host ID = %d\n",
+		targetsPerBus, config.scsi_id & 0xf);
+
 	return TRUE;
+
 }
 
 /*

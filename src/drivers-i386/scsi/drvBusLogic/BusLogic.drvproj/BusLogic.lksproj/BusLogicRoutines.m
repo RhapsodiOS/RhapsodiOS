@@ -11,6 +11,7 @@
 #import <driverkit/i386/ioPorts.h>
 #import <driverkit/kernelDriver.h>
 #import <driverkit/generalFuncs.h>
+#import <string.h>
 #import "BusLogicTypes.h"
 #import "BusLogicInline.h"
 
@@ -34,32 +35,21 @@ void blc_start_scsi(IOEISAPortAddress portBase)
 /*
  * Reset the BusLogic board.
  */
-BOOL blc_reset_board(IOEISAPortAddress portBase, unsigned char boardId)
+BOOL blc_reset_board(IOEISAPortAddress portBase)
 {
-	bl_ctrl_reg_t ctrl = { 0 };
-	bl_stat_reg_t stat;
-	int i;
+	unsigned char stat;
 
-	/* Issue hard reset */
-	ctrl.hard_rst = 1;
-	bl_put_ctrl(portBase, ctrl);
-	IODelay(100);
+	/* Issue hard reset and allow the adapter to restart. */
+	outb(portBase + BL_CTRL_REG_OFF, 0x80);
+	IOSleep(1000);
 
-	/* Wait for board to initialize */
-	for (i = 0; i < BL_TIMEOUT_MS * 10; i++) {
-		stat = bl_get_stat(portBase);
-		if (!stat.diag_active && !stat.init_required)
-			break;
-		IODelay(100);
-	}
+	do {
+		IOSleep(10);
+		stat = inb(portBase + BL_STAT_REG_OFF);
+	} while ((stat & 0x30) != 0x30);
 
-	if (stat.diag_fail) {
-		IOLog("BusLogic: board diagnostic failed\n");
-		return FALSE;
-	}
-
-	if (!bl_wait_idle(portBase, BL_TIMEOUT_MS))
-		return FALSE;
+	/* Clear the reset interrupt before issuing adapter commands. */
+	outb(portBase + BL_CTRL_REG_OFF, 0x20);
 
 	return TRUE;
 }
@@ -73,10 +63,16 @@ BOOL blc_probe_cmd(IOEISAPortAddress portBase, unsigned char cmd,
 		  BOOL expectResponse)
 {
 	bl_stat_reg_t stat;
+	bl_intr_reg_t intr;
 	int i, j;
 
-	/* Wait for board to be ready */
-	if (!bl_wait_idle(portBase, BL_TIMEOUT_MS))
+	/* Wait for the command parameter register to become ready. */
+	for (i = 0; i < BL_TIMEOUT_MS * 100; i++) {
+		stat = bl_get_stat(portBase);
+		if (!stat.cmd_param_busy)
+			break;
+	}
+	if (stat.cmd_param_busy)
 		return FALSE;
 
 	/* Send command */
@@ -110,18 +106,23 @@ BOOL blc_probe_cmd(IOEISAPortAddress portBase, unsigned char cmd,
 			if (!stat.datain_full)
 				return FALSE;
 
-			dataIn[i] = inb(portBase + BL_STAT_REG_OFF);
+			dataIn[i] = inb(portBase + BL_CMD_REG_OFF);
 		}
 	}
 
-	/* Wait for command complete */
-	if (!bl_wait_idle(portBase, BL_TIMEOUT_MS))
-		return FALSE;
+	if (expectResponse) {
+		for (i = 0; i < BL_TIMEOUT_MS * 100; i++) {
+			intr = bl_get_intr(portBase);
+			if (intr.cmd_complete)
+				break;
+		}
+		if (!intr.cmd_complete)
+			return FALSE;
 
-	/* Check for command error */
-	stat = bl_get_stat(portBase);
-	if (stat.cmd_invalid)
-		return FALSE;
+		stat = bl_get_stat(portBase);
+		if (stat.cmd_invalid)
+			return FALSE;
+	}
 
 	return TRUE;
 }
@@ -155,11 +156,11 @@ void blc_unlock_mb(IOEISAPortAddress portBase)
  */
 BOOL blc_setup_mb_area(IOEISAPortAddress portBase,
 		      struct bl_mb_area *mbArea,
-		      struct ccb *ccbArray)
+		      struct ccb *ccbArray,
+		      struct ccb **freeList)
 {
 	bl_cmd_init_t initCmd;
 	vm_offset_t physAddr;
-	bl_mb_t *mb;
 	struct ccb *ccb;
 	int i;
 
@@ -174,47 +175,59 @@ BOOL blc_setup_mb_area(IOEISAPortAddress portBase,
 	/* Drop any mailbox lock left over from a previous owner */
 	blc_unlock_mb(portBase);
 
-	/* Initialize mailbox structure */
+	/* Initialize the adapter's extended mailboxes. */
 	initCmd.mb_cnt = BL_MB_CNT;
-	bl_put_24(physAddr, initCmd.mb_area_addr);
+	bl_put_32(physAddr, initCmd.mb_area_addr);
 
-	/* Send mailbox init command */
-	if (!blc_probe_cmd(portBase, BL_CMD_INIT_MBOX,
+	if (!blc_probe_cmd(portBase, BL_CMD_INIT_EXT_MBOX,
 			  (unsigned char *)&initCmd, sizeof(initCmd),
-			  NULL, 0, FALSE)) {
-		IOLog("BusLogic: Mailbox init failed\n");
+			  NULL, 0, TRUE)) {
+		IOLog("BusLogic: Extended mailbox init failed\n");
 		return FALSE;
 	}
 
-	/* Clear all mailboxes */
-	mb = mbArea->mb_out;
-	for (i = 0; i < BL_MB_CNT; i++, mb++) {
-		mb->mb_stat = BL_MB_OUT_FREE;
-		bl_put_24(0, mb->ccb_addr);
+	/* Read the firmware version and enable round-robin mailbox scanning. */
+	{
+		bl_inquiry_t inquiry;
+		unsigned char enableRoundRobin = 1;
+
+		if (!blc_probe_cmd(portBase, BL_CMD_INQUIRY, NULL, 0,
+				  (unsigned char *)&inquiry, sizeof(inquiry), TRUE)) {
+			IOLog("BusLogic: Inquiry command failed\n");
+			return FALSE;
+		}
+		if (inquiry.firmware_version[0] > 0x33 ||
+		    (inquiry.firmware_version[0] == 0x33 &&
+		     inquiry.firmware_version[1] > 0x32)) {
+			if (!blc_probe_cmd(portBase, BL_CMD_ROUND_ROBIN,
+					  &enableRoundRobin, 1, NULL, 0, TRUE)) {
+				IOLog("BusLogic: Round-robin command failed\n");
+				return FALSE;
+			}
+		}
 	}
 
-	mb = mbArea->mb_in;
-	for (i = 0; i < BL_MB_CNT; i++, mb++) {
-		mb->mb_stat = BL_MB_IN_FREE;
-		bl_put_24(0, mb->ccb_addr);
-	}
+	bzero(ccbArray, sizeof(struct ccb) * BL_QUEUE_SIZE);
+	bzero(mbArea->mb_out, sizeof(mbArea->mb_out) +
+	      sizeof(mbArea->mb_in));
+	mbArea->next_out = mbArea->out_start = mbArea->mb_out;
+	mbArea->out_end = mbArea->mb_out + BL_MB_CNT - 1;
+	mbArea->next_in = mbArea->in_start = mbArea->mb_in;
+	mbArea->in_end = mbArea->mb_in + BL_MB_CNT - 1;
 
-	/* Initialize CCB array and link to mailboxes */
-	ccb = ccbArray;
-	mb = mbArea->mb_out;
-	for (i = 0; i < BL_QUEUE_SIZE; i++, ccb++, mb++) {
+	/* Cache each CCB's physical address and chain the free CCBs. */
+	*freeList = NULL;
+	for (i = 0, ccb = ccbArray; i < BL_QUEUE_SIZE; i++, ccb++) {
 		ccb->in_use = FALSE;
-		ccb->mb_out = mb;
-
-		/* Get physical address of this CCB */
 		if (IOPhysicalFromVirtual(IOVmTaskSelf(),
 					  (unsigned)ccb,
 					  &physAddr)) {
 			IOLog("BusLogic: Can't get physical address of CCB\n");
 			return FALSE;
 		}
-
-		bl_put_24(physAddr, mb->ccb_addr);
+		ccb->physical_addr = physAddr;
+		ccb->free_next = *freeList;
+		*freeList = ccb;
 	}
 
 	return TRUE;

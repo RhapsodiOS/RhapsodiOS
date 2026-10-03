@@ -222,6 +222,26 @@ char Ph_SetNeedNego(unsigned char target, short io_base)
 	return (char)-113;
 }
 
+int Ph_SyncSet(int scb_address)
+{
+	unsigned char period = *(unsigned char *)((unsigned long)(unsigned int)scb_address + 67);
+	if (period == 0x12 || (period >= 0x14 && period <= 0x19))
+		return 0;
+	if (period <= 0x10 || (period >= 0x1a && period <= 0x1f))
+		return 16;
+	if (period <= 0x25)
+		return 32;
+	if (period <= 0x2b)
+		return 48;
+	if (period <= 0x32)
+		return 64;
+	if (period <= 0x38)
+		return 80;
+	if (period <= 0x3e)
+		return 96;
+	return 112;
+}
+
 void Ph_Abort(void)
 {
 }

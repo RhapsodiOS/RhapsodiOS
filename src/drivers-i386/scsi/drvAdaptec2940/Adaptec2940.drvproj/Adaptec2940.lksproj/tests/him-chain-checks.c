@@ -297,9 +297,30 @@ static int run_scb_prepare_checks(void)
 	       first[9] == 0 && first[11] == 16 && second[9] == 0 && second[11] == 32;
 }
 
+static int run_sync_map_checks(void)
+{
+	static const unsigned char periods[] = {
+		0x00, 0x10, 0x11, 0x12, 0x13, 0x14, 0x19, 0x1a, 0x1f, 0x20,
+		0x25, 0x26, 0x2b, 0x2c, 0x32, 0x33, 0x38, 0x39, 0x3e, 0x3f, 0xff
+	};
+	static const unsigned char expected[] = {
+		16, 16, 32, 0, 32, 0, 0, 16, 16, 32, 32, 48, 48, 64, 64,
+		80, 80, 96, 96, 112, 112
+	};
+	unsigned char scb[256];
+	unsigned int i;
+	for (i = 0; i < sizeof(periods); ++i) {
+		scb[67] = periods[i];
+		if (Ph_SyncSet((int)scb) != expected[i])
+			return 0;
+	}
+	return 1;
+}
+
 void mainCRTStartup(void)
 {
 	ExitProcess(run_chain_checks() && run_hcntrl_checks() &&
 	            run_status_checks() && run_misc_checks() &&
-	            run_bookmark_checks() && run_scb_prepare_checks() ? 0 : 42);
+	            run_bookmark_checks() && run_scb_prepare_checks() &&
+	            run_sync_map_checks() ? 0 : 42);
 }

@@ -332,6 +332,26 @@ static int run_him_scb_prepare_checks(void)
 	       first[9] == 0 && first[11] == 16 && second[9] == 0 && second[11] == 32;
 }
 
+static int run_him_sync_map_checks(void)
+{
+	static const unsigned char periods[] = {
+		0x00, 0x10, 0x11, 0x12, 0x13, 0x14, 0x19, 0x1a, 0x1f, 0x20,
+		0x25, 0x26, 0x2b, 0x2c, 0x32, 0x33, 0x38, 0x39, 0x3e, 0x3f, 0xff
+	};
+	static const unsigned char expected[] = {
+		16, 16, 32, 0, 32, 0, 0, 16, 16, 32, 32, 48, 48, 64, 64,
+		80, 80, 96, 96, 112, 112
+	};
+	unsigned char scb[256];
+	unsigned int i;
+	for (i = 0; i < sizeof(periods); ++i) {
+		scb[67] = periods[i];
+		if (Ph_SyncSet((int)scb) != expected[i])
+			return 0;
+	}
+	return 1;
+}
+
 static int is_group(const char *value, const char *expected)
 {
 	return strcmp(value, expected) == 0;
@@ -411,7 +431,7 @@ void mainCRTStartup(void)
 	ExitProcess(run_firmware_checks() && run_him_chain_checks() &&
 	            run_him_hcntrl_checks() && run_him_status_checks() &&
 	            run_him_misc_checks() && run_him_bookmark_checks() &&
-	            run_him_scb_prepare_checks() ? 0 : 42);
+	            run_him_scb_prepare_checks() && run_him_sync_map_checks() ? 0 : 42);
 }
 #else
 int main(int argc, char **argv)
@@ -446,7 +466,8 @@ int main(int argc, char **argv)
 		int misc_ok = run_him_misc_checks();
 		int bookmark_ok = run_him_bookmark_checks();
 		int prepare_ok = run_him_scb_prepare_checks();
-		int ok = chain_ok && hcntrl_ok && status_ok && misc_ok && bookmark_ok && prepare_ok;
+		int sync_map_ok = run_him_sync_map_checks();
+		int ok = chain_ok && hcntrl_ok && status_ok && misc_ok && bookmark_ok && prepare_ok && sync_map_ok;
 		printf("{\"schema_version\":\"adaptec2940-checks-v1\","
 		       "\"group\":\"him\",\"ok\":%s,"
 		       "\"cases\":[{\"id\":\"chain-empty\",\"result\":\"%s\"},"
@@ -463,7 +484,8 @@ int main(int argc, char **argv)
 		       "{\"id\":\"reset-trampolines\",\"result\":\"%s\"},"
 		       "{\"id\":\"bookmark-insert-remove\",\"result\":\"%s\"},"
 		       "{\"id\":\"scb-mark\",\"result\":\"%s\"},"
-		       "{\"id\":\"scb-prepare-status-count\",\"result\":\"%s\"}],"
+		       "{\"id\":\"scb-prepare-status-count\",\"result\":\"%s\"},"
+		       "{\"id\":\"sync-period-map\",\"result\":\"%s\"}],"
 		       "\"build_hash\":\"%s\"}\n", ok ? "true" : "false",
 		       ok ? "pass" : "fail", ok ? "pass" : "fail",
 		       ok ? "pass" : "fail", ok ? "pass" : "fail",
@@ -473,6 +495,7 @@ int main(int argc, char **argv)
 		       misc_ok ? "pass" : "fail", misc_ok ? "pass" : "fail",
 		       bookmark_ok ? "pass" : "fail", bookmark_ok ? "pass" : "fail",
 		       prepare_ok ? "pass" : "fail",
+		       sync_map_ok ? "pass" : "fail",
 		       A2940_BUILD_HASH);
 		return ok ? 0 : 1;
 	}

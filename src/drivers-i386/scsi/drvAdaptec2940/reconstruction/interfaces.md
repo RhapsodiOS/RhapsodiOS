@@ -54,6 +54,9 @@ offsets 356 and 372, the embedded node at 352, and head/tail restoration.
 increments its target count, stores status 16/32, and increments the free-SCB
 word at chain offset 266 for each status-16 entry. A two-node case verifies
 the final busy transition and count.
+`_Ph_SyncSet` (0x35bc) maps the SCB period byte at offset 67 to sequencer
+period values 0, 16, 32, 48, 64, 80, 96, or 112. Boundary tests cover every
+branch endpoint from 0 through 255.
 
 ## Function inventory
 

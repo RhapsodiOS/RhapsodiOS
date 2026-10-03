@@ -116,7 +116,7 @@
         "_Ph_Abort"
       ],
       "size": 7,
-      "source_line": 225,
+      "source_line": 245,
       "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
     },
     {
@@ -125,7 +125,7 @@
         "_Ph_CheckLength"
       ],
       "size": 190,
-      "source_line": 253,
+      "source_line": 273,
       "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
     },
     {
@@ -134,7 +134,7 @@
         "_Ph_SendTrmMsg"
       ],
       "size": 9,
-      "source_line": 229,
+      "source_line": 249,
       "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
     },
     {
@@ -143,7 +143,7 @@
         "_Ph_TrmCmplt"
       ],
       "size": 9,
-      "source_line": 236,
+      "source_line": 256,
       "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
     },
     {
@@ -152,7 +152,7 @@
         "_Ph_BusReset"
       ],
       "size": 7,
-      "source_line": 241,
+      "source_line": 261,
       "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
     },
     {
@@ -162,6 +162,15 @@
       ],
       "size": 38,
       "source_line": 219,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 13756,
+      "reference_names": [
+        "_Ph_SyncSet"
+      ],
+      "size": 115,
+      "source_line": 225,
       "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
     },
     {
@@ -251,7 +260,7 @@
         "_Ph_ScbPrepare"
       ],
       "size": 73,
-      "source_line": 324,
+      "source_line": 344,
       "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
     },
     {
@@ -260,7 +269,7 @@
         "_Ph_SetScbMark"
       ],
       "size": 34,
-      "source_line": 315,
+      "source_line": 335,
       "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
     },
     {
@@ -269,7 +278,7 @@
         "_Ph_HaSoftReset"
       ],
       "size": 7,
-      "source_line": 245,
+      "source_line": 265,
       "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
     },
     {
@@ -278,7 +287,7 @@
         "_Ph_SoftReset"
       ],
       "size": 7,
-      "source_line": 249,
+      "source_line": 269,
       "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
     },
     {
@@ -287,7 +296,7 @@
         "_Ph_GetScbStatus"
       ],
       "size": 56,
-      "source_line": 284,
+      "source_line": 304,
       "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
     },
     {
@@ -296,7 +305,7 @@
         "_Ph_SetMgrStat"
       ],
       "size": 52,
-      "source_line": 296,
+      "source_line": 316,
       "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
     },
     {
@@ -323,7 +332,7 @@
         "_Ph_InsertBookmark"
       ],
       "size": 33,
-      "source_line": 344,
+      "source_line": 364,
       "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
     },
     {
@@ -332,7 +341,7 @@
         "_Ph_RemoveBookmark"
       ],
       "size": 25,
-      "source_line": 352,
+      "source_line": 372,
       "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
     },
     {
@@ -697,13 +706,6 @@
         "_Ph_Negotiate"
       ],
       "size": 597
-    },
-    {
-      "address": 13756,
-      "reference_names": [
-        "_Ph_SyncSet"
-      ],
-      "size": 115
     },
     {
       "address": 13872,

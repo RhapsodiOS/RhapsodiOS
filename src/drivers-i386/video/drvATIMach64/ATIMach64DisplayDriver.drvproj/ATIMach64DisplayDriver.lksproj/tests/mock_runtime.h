@@ -5,7 +5,7 @@
 #include "../ATIBIOSTypes.h"
 
 #define ATI_MOCK_MAX_EVENTS 256
-#define ATI_MOCK_ROM_SIZE 65536
+#define ATI_MOCK_ROM_SIZE 0x30000
 #define ATI_MOCK_GDT_SIZE 4096
 
 typedef struct { unsigned short port; unsigned int value; unsigned char width, isWrite; } ATI_mockPortEvent;
@@ -26,6 +26,7 @@ void ATI_mockSetDispatchReturn(int value);
 const char *ATI_mockLastSelector(void);
 unsigned int ATI_mockDispatchCount(void);
 unsigned char *ATI_mockROM(void);
+const unsigned char *ATI_mockROMAddress(unsigned int address);
 unsigned char *ATI_mockGDT(void);
 void ATI_mockCaptureBIOS(const ATIBIOSRegisters *registers, int result);
 unsigned int ATI_mockBIOSCallCount(void);

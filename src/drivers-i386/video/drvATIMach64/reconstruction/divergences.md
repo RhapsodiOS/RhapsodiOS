@@ -35,3 +35,7 @@
   transfers. This host lacks a C/Objective-C compiler and assembler, so neither
   those fixtures nor byte-for-byte assembly parity have been run yet. Guest
   build and hardware/ROM execution remain open verification steps.
+- The public BIOS ROM scan, CRTC/VGA/aperture services, query paths, DPMS/APM,
+  I/O-base lookup, refresh-rate query, and fixed invalid refresh-change result
+  are implemented from their IDA bodies. Python source/evidence checks pass;
+  the focused ObjC/C fixture remains uncompiled because `cc` is unavailable.

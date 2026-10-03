@@ -11,6 +11,13 @@
 
 extern unsigned char _bios16[];
 
+#if defined(ATI_BIOS_TEST)
+extern const unsigned char *ATI_mockROMAddress(unsigned int address);
+#define ATI_BIOS_ROM_ADDRESS(address) ATI_mockROMAddress(address)
+#else
+#define ATI_BIOS_ROM_ADDRESS(address) ((const unsigned char *)(address))
+#endif
+
 static unsigned char *gdtEntry(unsigned int selector)
 {
     return (unsigned char *)gdt + selector;
@@ -27,6 +34,40 @@ static void setDescriptorBase(unsigned char *descriptor,
 
 @implementation ATI_BIOS
 
+- init
+{
+    char signature[12];
+    unsigned int base;
+    unsigned int offset;
+
+    strcpy(signature, "761295520");
+    for (base = 0xc0000; base <= 0xeffff; base += 0x1000) {
+        for (offset = 0; offset < 129 - (strlen(signature) + 1); ++offset) {
+            if (strncmp(signature, ATI_BIOS_ROM_ADDRESS(base + offset), 9) == 0)
+                return [self initAtSegmentAddress:base];
+        }
+    }
+    return nil;
+}
+
++ (char)ATIPresent:(unsigned int *)segmentAddress
+{
+    char signature[12];
+    unsigned int offset;
+
+    strcpy(signature, "761295520");
+    *segmentAddress = 0xc0000;
+    do {
+        for (offset = 0; offset < 129 - (strlen(signature) + 1); ++offset) {
+            if (strncmp(signature,
+                        ATI_BIOS_ROM_ADDRESS(*segmentAddress + offset), 9) == 0)
+                return 1;
+        }
+        *segmentAddress += 0x1000;
+    } while (*segmentAddress <= 0xeffff);
+    return 0;
+}
+
 - initAtSegmentAddress:(unsigned int)segmentAddress
 {
     segmentBase = segmentAddress;
@@ -40,6 +81,277 @@ static void setDescriptorBase(unsigned char *descriptor,
     if (initialized != 0)
         IOFree(_priv, ATIBIOSPrivateSize);
     return [super free];
+}
+
+@end
+
+@implementation ATI_BIOS (Services)
+
+- (int)loadCRTC:(unsigned int)mode gamma:(char)gamma
+      pitchSize:(unsigned int)pitchSize resolution:(unsigned int)resolution
+       crtTable:(ATI_CRTCRecord *)crtTable
+{
+    return [self loadCRTC_comm:mode gamma:gamma pitchSize:pitchSize
+                    resolution:resolution crtTable:crtTable function:0
+                          name:"loadCRTC"];
+}
+
+- (int)setVGAMode:(char)mode gamma:(char)gamma
+{
+    ATIBIOSRegisters registers;
+    int result;
+
+    if (initialized == 0)
+        return ATIBIOSStatusNotInitialized;
+    [self initBIOSBuf:&registers function:1];
+    registers.ecx = (gamma != 0 ? 0x80U : 0) | (mode == 0);
+    result = [self doBios:&registers dataSeg:0];
+    if (result != ATIBIOSStatusSuccess) {
+        IOLog("ATI_BIOS setDisplayMode: ATIbios32() returned %d\n", result);
+        return ATIBIOSStatusError;
+    }
+    if (((registers.eax >> 8) & 0xff) == 0)
+        return ATIBIOSStatusSuccess;
+    IOLog("ATI_BIOS setDisplayMode: ah = 0x%x on return from ATIbios32()\n",
+          (registers.eax >> 8) & 0xff);
+    return ATIBIOSStatusError;
+}
+
+- (int)loadCRTCSetMode:(unsigned int)mode gamma:(char)gamma
+             pitchSize:(unsigned int)pitchSize resolution:(unsigned int)resolution
+              crtTable:(ATI_CRTCRecord *)crtTable
+{
+    return [self loadCRTC_comm:mode gamma:gamma pitchSize:pitchSize
+                    resolution:resolution crtTable:crtTable function:2
+                          name:"loadCRTCSetMode"];
+}
+
+- (int)setApertureEnable:(char)enabled VGAAperture:(char)vgaAperture
+            apertureAdrs:(unsigned int)address
+{
+    ATIBIOSRegisters registers;
+    unsigned char flags;
+    int result;
+
+    if (initialized == 0)
+        return ATIBIOSStatusNotInitialized;
+    [self initBIOSBuf:&registers function:5];
+    flags = enabled != 0;
+    if (vgaAperture != 0)
+        flags |= 4;
+    if (address != 0) {
+        if ((address & 0xfffff) != 0) {
+            IOLog("ATI BIOS setApertureEnable: apertureAdrs misalignment (0x%x)\n",
+                  address);
+            return ATIBIOSStatusInvalid;
+        }
+        flags |= 0x80;
+        registers.ebx = address >> 20;
+    }
+    registers.ecx = flags;
+    result = [self doBios:&registers dataSeg:0];
+    if (result != ATIBIOSStatusSuccess) {
+        IOLog("ATI_BIOS setApertureEnable: ATIbios32() returned %d\n", result);
+        return ATIBIOSStatusError;
+    }
+    if (((registers.eax >> 8) & 0xff) == 0)
+        return ATIBIOSStatusSuccess;
+    IOLog("ATI_BIOS setApertureEnable: ah = 0x%x on return from ATIbios32()\n",
+          (registers.eax >> 8) & 0xff);
+    return ATIBIOSStatusError;
+}
+
+- (int)shortQuery:(unsigned int *)query hardCoded:(char *)hardCoded
+    smallAperture:(char *)smallAperture address:(unsigned int *)address
+       colorDepth:(unsigned int *)colorDepth memorySize:(unsigned int *)memorySize
+         asicType:(char *)asicType asicRev:(char *)asicRevision
+{
+    ATIBIOSRegisters registers;
+    int result;
+
+    if (initialized == 0)
+        return ATIBIOSStatusNotInitialized;
+    [self initBIOSBuf:&registers function:6];
+    result = [self doBios:&registers dataSeg:0];
+    if (result != ATIBIOSStatusSuccess) {
+        IOLog("ATI_BIOS shortQuery: ATIbios32() returned %d\n", result);
+        return ATIBIOSStatusError;
+    }
+    if (((registers.eax >> 8) & 0xff) != 0) {
+        IOLog("ATI_BIOS shortQuery: ah = 0x%x on return from ATIbios32()\n",
+              (registers.eax >> 8) & 0xff);
+        return ATIBIOSStatusError;
+    }
+    *query = registers.eax & 0x3f;
+    *hardCoded = (registers.eax & 0x4000) != 0;
+    *smallAperture = (registers.eax & 0x80) != 0;
+    *address = registers.ebx;
+    *colorDepth = (registers.ecx >> 8) & 0xff;
+    *memorySize = registers.ecx & 0xff;
+    *asicType = (registers.edx >> 8) & 0xff;
+    *asicRevision = registers.edx & 0xff;
+    return ATIBIOSStatusSuccess;
+}
+
+- (int)querySize:(char)query size:(unsigned int *)size
+{
+    *size = 4096;
+    return ATIBIOSStatusSuccess;
+}
+
+- (int)deviceQuery:(char)query bufferSize:(unsigned int)bufferSize buffer:(void *)buffer
+{
+    ATIBIOSRegisters registers;
+    int result;
+
+    if (initialized == 0)
+        return ATIBIOSStatusNotInitialized;
+    bzero(buffer, bufferSize);
+    [self initBIOSBuf:&registers function:9];
+    result = [self createDataSegment:(unsigned int)buffer size:bufferSize];
+    if (result != ATIBIOSStatusSuccess)
+        return result;
+    registers.ebx = 0;
+    registers.edx = 0x88;
+    registers.ecx = query == 0;
+    result = [self doBios:&registers dataSeg:1];
+    if (result != ATIBIOSStatusSuccess) {
+        IOLog("ATI_BIOS deviceQuery: ATIbios32() returned %d\n", result);
+        return ATIBIOSStatusError;
+    }
+    if (((registers.eax >> 8) & 0xff) == 0)
+        return ATIBIOSStatusSuccess;
+    IOLog("ATI_BIOS deviceQuery: ah = 0x%x on return from ATIbios32()\n",
+          (registers.eax >> 8) & 0xff);
+    return ATIBIOSStatusError;
+}
+
+- (int)setDPMSMode:(unsigned int)mode
+{
+    ATIBIOSRegisters registers;
+    int result;
+
+    if (initialized == 0)
+        return ATIBIOSStatusNotInitialized;
+    if (mode > 4) {
+        IOLog("ATI_BIOS setDPMS mode: %x not valid mode\n", mode);
+        return ATIBIOSStatusInvalid;
+    }
+    [self initBIOSBuf:&registers function:12];
+    registers.ecx = mode & 3;
+    result = [self doBios:&registers dataSeg:0];
+    if (result != ATIBIOSStatusSuccess) {
+        IOLog("ATI_BIOS Set DPMS Mode: ATIbios32() returned %d\n", result);
+        return ATIBIOSStatusError;
+    }
+    return ATIBIOSStatusSuccess;
+}
+
+- (int)getDPMSMode:(unsigned int *)mode
+{
+    ATIBIOSRegisters registers;
+    int result;
+
+    if (initialized == 0)
+        return ATIBIOSStatusNotInitialized;
+    [self initBIOSBuf:&registers function:13];
+    registers.ecx = 0;
+    result = [self doBios:&registers dataSeg:0];
+    if (result != ATIBIOSStatusSuccess) {
+        IOLog("ATI_BIOS Get DPMS Mode: ATIbios32() returned %d\n", result);
+        return ATIBIOSStatusError;
+    }
+    *mode = registers.ecx & 3;
+    return ATIBIOSStatusSuccess;
+}
+
+- (int)setAPMState:(unsigned int)state
+{
+    ATIBIOSRegisters registers;
+    int result;
+
+    if (initialized == 0)
+        return ATIBIOSStatusNotInitialized;
+    if (state > 3) {
+        IOLog("ATI_BIOS setAPM state: %x not valid mode\n", state);
+        return ATIBIOSStatusInvalid;
+    }
+    [self initBIOSBuf:&registers function:14];
+    registers.ecx = state & 3;
+    result = [self doBios:&registers dataSeg:0];
+    if (result != ATIBIOSStatusSuccess) {
+        IOLog("ATI_BIOS Set APM State: ATIbios32() returned %d\n", result);
+        return ATIBIOSStatusError;
+    }
+    return ATIBIOSStatusSuccess;
+}
+
+- (int)getAPMState:(unsigned int *)state
+{
+    ATIBIOSRegisters registers;
+    int result;
+
+    if (initialized == 0)
+        return ATIBIOSStatusNotInitialized;
+    [self initBIOSBuf:&registers function:15];
+    registers.ecx = 0;
+    result = [self doBios:&registers dataSeg:0];
+    if (result != ATIBIOSStatusSuccess) {
+        IOLog("ATI_BIOS Get APM State: ATIbios32() returned %d\n", result);
+        return ATIBIOSStatusError;
+    }
+    *state = registers.ecx & 3;
+    return ATIBIOSStatusSuccess;
+}
+
+- (int)getIOBaseAddress:(unsigned int *)address relocatable:(char *)relocatable
+{
+    ATIBIOSRegisters registers;
+    int result;
+
+    if (initialized == 0)
+        return ATIBIOSStatusNotInitialized;
+    [self initBIOSBuf:&registers function:18];
+    registers.ecx = 0;
+    result = [self doBios:&registers dataSeg:0];
+    if (result != ATIBIOSStatusSuccess) {
+        IOLog("ATI_BIOS Short Query 2: ATIbios32() returned %d\n", result);
+        return ATIBIOSStatusError;
+    }
+    *relocatable = registers.ecx & 1;
+    *address = registers.edx;
+    return ATIBIOSStatusSuccess;
+}
+
+- (int)getRefreshRate:(char *)refreshRate
+{
+    ATIBIOSRegisters registers;
+    int result;
+
+    if (initialized == 0)
+        return ATIBIOSStatusNotInitialized;
+    [self initBIOSBuf:&registers function:21];
+    registers.ebx = 0;
+    result = [self createDataSegment:(unsigned int)refreshRate size:20];
+    if (result != ATIBIOSStatusSuccess)
+        return result;
+    registers.edx = 0x88;
+    registers.ebx = 0;
+    result = [self doBios:&registers dataSeg:1];
+    if (result != ATIBIOSStatusSuccess) {
+        IOLog("ATI_BIOS getRefreshRate: ATIbios32() returned %d\n", result);
+        return ATIBIOSStatusError;
+    }
+    if (((registers.eax >> 8) & 0xff) == 0)
+        return ATIBIOSStatusSuccess;
+    IOLog("ATI_BIOS getRefreshRate: ah = 0x%x on return from ATIbios32()\n",
+          (registers.eax >> 8) & 0xff);
+    return ATIBIOSStatusError;
+}
+
+- (int)changeRefreshRate:(char *)refreshRate
+{
+    return ATIBIOSStatusInvalid;
 }
 
 @end

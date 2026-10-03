@@ -20,7 +20,7 @@ $(BUILD)/test_data: test_data.c mock_runtime.c $(LKS)/ATIData.c | $(BUILD)
 	$(CC) $(CFLAGS) $(ARCH_FLAGS) -I$(LKS) -o $@ test_data.c mock_runtime.c $(LKS)/ATIData.c
 
 $(BUILD)/test_bios_segments: test_bios_segments.m $(LKS)/ATI_BIOS.m $(LKS)/ATIbios16.c mock_runtime.c | $(BUILD)
-	$(CC) $(CFLAGS) $(ARCH_FLAGS) -I$(LKS) -I$(KERNEL) -I$(ARCHITECTURE) -o $@ test_bios_segments.m $(LKS)/ATI_BIOS.m $(LKS)/ATIbios16.c mock_runtime.c
+	$(CC) $(CFLAGS) $(ARCH_FLAGS) -DATI_BIOS_TEST -I$(LKS) -I$(KERNEL) -I$(ARCHITECTURE) -o $@ test_bios_segments.m $(LKS)/ATI_BIOS.m $(LKS)/ATIbios16.c mock_runtime.c
 
 check-abi: $(BUILD)/test_abi
 	./$(BUILD)/test_abi
@@ -31,7 +31,9 @@ check-data: $(BUILD)/test_data
 check-bios-segments: $(BUILD)/test_bios_segments
 	./$(BUILD)/test_bios_segments
 
-check-bios-services check-mapping check-lifecycle check-dac:
+check-bios-services: check-bios-segments
+
+check-mapping check-lifecycle check-dac:
 	@echo "This check is added by its implementation task."
 	exit 1
 

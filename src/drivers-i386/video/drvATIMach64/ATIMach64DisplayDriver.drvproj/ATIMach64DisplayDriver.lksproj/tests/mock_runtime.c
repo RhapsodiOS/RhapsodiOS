@@ -56,6 +56,10 @@ void ATI_mockSetDispatchReturn(int value) { dispatchReturn = value; }
 const char *ATI_mockLastSelector(void) { return lastSelector; }
 unsigned int ATI_mockDispatchCount(void) { return dispatchCount; }
 unsigned char *ATI_mockROM(void) { return rom; }
+const unsigned char *ATI_mockROMAddress(unsigned int address)
+{
+    return rom + (address - 0xc0000U);
+}
 unsigned char *ATI_mockGDT(void) { return gdt; }
 void ATI_mockCaptureBIOS(const ATIBIOSRegisters *registers, int result)
 {

@@ -67,6 +67,15 @@ typedef struct {
     unsigned int stackPointer;
 } ATIBIOSPrivate;
 
+/* Assembly references these C symbols with the Mach-O leading underscore. */
+extern unsigned int ATI_Bios_Offset;
+extern unsigned int ATI_Bios_Selector;
+extern unsigned int ATI_Bios_StackOffset;
+extern unsigned int ATI_Bios_StackSelector;
+extern unsigned short kernDataSel;
+extern int ATIbios16(ATIBIOSRegisters *registers);
+extern void _ATIbios32(ATIBIOSRegisters *registers);
+
 #define ATI_STATIC_ASSERT(expression, name) typedef char name[(expression) ? 1 : -1]
 ATI_STATIC_ASSERT(sizeof(ATIBIOSRegisters) == ATIBIOSRegisterBufferSize, ATIBIOS_register_buffer_is_48);
 ATI_STATIC_ASSERT(sizeof(ATIBIOSPrivate) == ATIBIOSPrivateSize, ATIBIOS_private_is_36);

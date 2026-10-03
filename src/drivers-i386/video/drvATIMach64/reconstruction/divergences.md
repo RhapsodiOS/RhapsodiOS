@@ -20,3 +20,18 @@
   Windows host has no `cc`, `clang`, `gcc`, or `cl` executable. Native C and
   target i386 compilation remain unverified until the configured Rhapsody
   guest toolchain is available.
+
+## BIOS transition reconstruction
+
+- The BIOS wrapper, GDT descriptor setup/restore methods, and source-level
+  protected-mode assembly are reconstructed from the IDA function bodies and
+  exact reference byte ranges. The assembly verifier compares rebuilt
+  instruction bytes, relocation targets, symbol sizes, and runtime-patched
+  far operands once an i386 Mach-O artifact is available.
+- The kernel loader makes executable mappings writable with
+  `vm_protect(..., VM_PROT_ALL)`, which permits the two reference routines to
+  patch their immediate far-transfer operands at runtime.
+- Native test fixtures substitute `_ATIbios32`; they do not execute privileged
+  transfers. This host lacks a C/Objective-C compiler and assembler, so neither
+  those fixtures nor byte-for-byte assembly parity have been run yet. Guest
+  build and hardware/ROM execution remain open verification steps.

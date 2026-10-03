@@ -75,6 +75,27 @@ six-argument signature. BIOS service methods return `int`; setup and restore
 methods return `void`; initializers and `free` retain Objective-C object
 returns.
 
+## BIOS transition and memory protection
+
+`ATIbios16` rejects entry offsets above `0xffff` before changing the transfer
+buffer, then moves the target selector/offset into globals consumed by
+`__bios16`. The assembly saves the current stack state, switches to the
+16-bit BIOS stack, patches the immediate far-jump operand, and returns through
+the continuation after the transfer. `__ATIbios32` saves the caller state,
+patches its far-call operand from the 48-byte register buffer, performs the
+BIOS call, and copies the returned registers and flags back. Its native test
+fixture replaces only this privileged assembly entry; it never executes the
+far transfer in a host process.
+
+The code-segment descriptor points at `__bios16` using
+`KERNEL_LINEAR_BASE + __bios16`; optional BIOS data and stack descriptors use
+the kernel's `VM_MAX_KERNEL_ADDRESS` translation. These values are defined in
+`machdep/i386/pmap.h` and `mach/i386/vm_param.h`, and the GDT is exported by
+`machdep/i386/gdt.h`. Runtime operand patching is supported by the loader:
+`kernload-1/kern_loader/obj.c` applies `vm_protect(..., VM_PROT_ALL)` to the
+entire executable mapping. The far operands therefore remain runtime-patched
+as in the reference rather than being converted to static relocations.
+
 ## Conversion routines
 
 | C symbol | Recovered signature |

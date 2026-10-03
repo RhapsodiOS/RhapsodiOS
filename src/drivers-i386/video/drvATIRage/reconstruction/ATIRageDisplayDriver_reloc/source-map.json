@@ -1,0 +1,436 @@
+{
+  "schema_version": "source-map-v1",
+  "reference_sha256": "6D08A58A44D5797DA0DD626BBEB705E3621910C99120486F69BD623DE9E61D9A",
+  "mapped": [],
+  "unmapped": [
+    {
+      "address": 0,
+      "size": 1664,
+      "reference_names": [
+        "-[ATI initFromDeviceDescription:]"
+      ]
+    },
+    {
+      "address": 1664,
+      "size": 1632,
+      "reference_names": [
+        "-[ATI fixDeviceDescriptionForPCI:]"
+      ]
+    },
+    {
+      "address": 3296,
+      "size": 304,
+      "reference_names": [
+        "-[ATI getQueryData]"
+      ]
+    },
+    {
+      "address": 3600,
+      "size": 144,
+      "reference_names": [
+        "-[ATI parseModeString:]"
+      ]
+    },
+    {
+      "address": 3744,
+      "size": 540,
+      "reference_names": [
+        "-[ATI updateModeList]"
+      ]
+    },
+    {
+      "address": 4284,
+      "size": 136,
+      "reference_names": [
+        "-[ATI isModeValid:]"
+      ]
+    },
+    {
+      "address": 4420,
+      "size": 98,
+      "reference_names": [
+        "-[ATI verifyMemoryMap]"
+      ]
+    },
+    {
+      "address": 4520,
+      "size": 141,
+      "reference_names": [
+        "-[ATI free]"
+      ]
+    },
+    {
+      "address": 4664,
+      "size": 292,
+      "reference_names": [
+        "-[ATI enterLinearMode]"
+      ]
+    },
+    {
+      "address": 4956,
+      "size": 252,
+      "reference_names": [
+        "-[ATI revertToVGAMode]"
+      ]
+    },
+    {
+      "address": 5208,
+      "size": 52,
+      "reference_names": [
+        "_waitForFIFO"
+      ]
+    },
+    {
+      "address": 5260,
+      "size": 73,
+      "reference_names": [
+        "_waitForIdle"
+      ]
+    },
+    {
+      "address": 5336,
+      "size": 322,
+      "reference_names": [
+        "_doBlit"
+      ]
+    },
+    {
+      "address": 5660,
+      "size": 67,
+      "reference_names": [
+        "-[ATI showCursor:frame:token:]"
+      ]
+    },
+    {
+      "address": 5728,
+      "size": 67,
+      "reference_names": [
+        "-[ATI moveCursor:frame:token:]"
+      ]
+    },
+    {
+      "address": 5796,
+      "size": 57,
+      "reference_names": [
+        "-[ATI hideCursor:]"
+      ]
+    },
+    {
+      "address": 5856,
+      "size": 133,
+      "reference_names": [
+        "_doFill"
+      ]
+    },
+    {
+      "address": 5992,
+      "size": 566,
+      "reference_names": [
+        "-[ATI initEngine]"
+      ]
+    },
+    {
+      "address": 6560,
+      "size": 122,
+      "reference_names": [
+        "-[ATI resetEngine]"
+      ]
+    },
+    {
+      "address": 6684,
+      "size": 12,
+      "reference_names": [
+        "-[ATI displayModeCount]"
+      ]
+    },
+    {
+      "address": 6696,
+      "size": 12,
+      "reference_names": [
+        "-[ATI displayModes]"
+      ]
+    },
+    {
+      "address": 6708,
+      "size": 26,
+      "reference_names": [
+        "-[ATI displayMemorySize]"
+      ]
+    },
+    {
+      "address": 6736,
+      "size": 151,
+      "reference_names": [
+        "-[ATI setPendingDisplayMode:]"
+      ]
+    },
+    {
+      "address": 6888,
+      "size": 208,
+      "reference_names": [
+        "-[ATI setIntValues:forParameter:count:]"
+      ]
+    },
+    {
+      "address": 7096,
+      "size": 33,
+      "reference_names": [
+        "_isATI68880RevC"
+      ]
+    },
+    {
+      "address": 7132,
+      "size": 84,
+      "reference_names": [
+        "_SetGammaValue"
+      ]
+    },
+    {
+      "address": 7216,
+      "size": 372,
+      "reference_names": [
+        "-[ATI setGammaTable]"
+      ]
+    },
+    {
+      "address": 7588,
+      "size": 60,
+      "reference_names": [
+        "-[ATI setBrightness:token:]"
+      ]
+    },
+    {
+      "address": 7648,
+      "size": 489,
+      "reference_names": [
+        "-[ATI setTransferTable:count:]"
+      ]
+    },
+    {
+      "address": 8140,
+      "size": 101,
+      "reference_names": [
+        "_displayInfoToColorSpace"
+      ]
+    },
+    {
+      "address": 8244,
+      "size": 77,
+      "reference_names": [
+        "_colorDepthToColorSpace"
+      ]
+    },
+    {
+      "address": 8324,
+      "size": 79,
+      "reference_names": [
+        "_displayInfoToColorDepth"
+      ]
+    },
+    {
+      "address": 8404,
+      "size": 125,
+      "reference_names": [
+        "_memSizeToBytes"
+      ]
+    },
+    {
+      "address": 8532,
+      "size": 12,
+      "reference_names": [
+        "+[ATIRageDisplayDriverKernelServerInstance kernelServerInstance]"
+      ]
+    },
+    {
+      "address": 8544,
+      "size": 12,
+      "reference_names": [
+        "+[ATIRageDisplayDriverVersion driverKitVersionForATIRageDisplayDriver]"
+      ]
+    },
+    {
+      "address": 8556,
+      "size": 154,
+      "reference_names": [
+        "+[ATI_BIOS ATIPresent:]"
+      ]
+    },
+    {
+      "address": 8712,
+      "size": 162,
+      "reference_names": [
+        "-[ATI_BIOS init]"
+      ]
+    },
+    {
+      "address": 8876,
+      "size": 65,
+      "reference_names": [
+        "-[ATI_BIOS initAtSegmentAddress:]"
+      ]
+    },
+    {
+      "address": 8944,
+      "size": 65,
+      "reference_names": [
+        "-[ATI_BIOS free]"
+      ]
+    },
+    {
+      "address": 9012,
+      "size": 51,
+      "reference_names": [
+        "-[ATI_BIOS loadCRTC:gamma:pitchSize:resolution:crtTable:]"
+      ]
+    },
+    {
+      "address": 9064,
+      "size": 153,
+      "reference_names": [
+        "-[ATI_BIOS setVGAMode:gamma:]"
+      ]
+    },
+    {
+      "address": 9220,
+      "size": 51,
+      "reference_names": [
+        "-[ATI_BIOS loadCRTCSetMode:gamma:pitchSize:resolution:crtTable:]"
+      ]
+    },
+    {
+      "address": 9272,
+      "size": 206,
+      "reference_names": [
+        "-[ATI_BIOS setApertureEnable:VGAAperture:apertureAdrs:]"
+      ]
+    },
+    {
+      "address": 9480,
+      "size": 202,
+      "reference_names": [
+        "-[ATI_BIOS shortQuery:hardCoded:smallAperture:address:colorDepth:memorySize:asicType:asicRev:]"
+      ]
+    },
+    {
+      "address": 9684,
+      "size": 18,
+      "reference_names": [
+        "-[ATI_BIOS querySize:size:]"
+      ]
+    },
+    {
+      "address": 9704,
+      "size": 190,
+      "reference_names": [
+        "-[ATI_BIOS deviceQuery:bufferSize:buffer:]"
+      ]
+    },
+    {
+      "address": 9896,
+      "size": 134,
+      "reference_names": [
+        "-[ATI_BIOS setDPMSMode:]"
+      ]
+    },
+    {
+      "address": 10032,
+      "size": 114,
+      "reference_names": [
+        "-[ATI_BIOS getDPMSMode:]"
+      ]
+    },
+    {
+      "address": 10148,
+      "size": 134,
+      "reference_names": [
+        "-[ATI_BIOS setAPMState:]"
+      ]
+    },
+    {
+      "address": 10284,
+      "size": 114,
+      "reference_names": [
+        "-[ATI_BIOS getAPMState:]"
+      ]
+    },
+    {
+      "address": 10400,
+      "size": 122,
+      "reference_names": [
+        "-[ATI_BIOS getIOBaseAddress:relocatable:]"
+      ]
+    },
+    {
+      "address": 10524,
+      "size": 161,
+      "reference_names": [
+        "-[ATI_BIOS getRefreshRate:]"
+      ]
+    },
+    {
+      "address": 10688,
+      "size": 12,
+      "reference_names": [
+        "-[ATI_BIOS changeRefreshRate:]"
+      ]
+    },
+    {
+      "address": 10700,
+      "size": 80,
+      "reference_names": [
+        "-[ATI_BIOS initBIOSBuf:function:]"
+      ]
+    },
+    {
+      "address": 10780,
+      "size": 388,
+      "reference_names": [
+        "-[ATI_BIOS setupCodeSegments]"
+      ]
+    },
+    {
+      "address": 11168,
+      "size": 102,
+      "reference_names": [
+        "-[ATI_BIOS restoreCodeSegments]"
+      ]
+    },
+    {
+      "address": 11272,
+      "size": 212,
+      "reference_names": [
+        "-[ATI_BIOS createDataSegment:size:]"
+      ]
+    },
+    {
+      "address": 11484,
+      "size": 36,
+      "reference_names": [
+        "-[ATI_BIOS restoreDataSegment]"
+      ]
+    },
+    {
+      "address": 11520,
+      "size": 68,
+      "reference_names": [
+        "-[ATI_BIOS doBios:dataSeg:]"
+      ]
+    },
+    {
+      "address": 11588,
+      "size": 258,
+      "reference_names": [
+        "-[ATI_BIOS loadCRTC_comm:gamma:pitchSize:resolution:crtTable:function:name:]"
+      ]
+    },
+    {
+      "address": 11968,
+      "size": 95,
+      "reference_names": [
+        "_ATIbios16"
+      ]
+    }
+  ],
+  "duplicate_candidates": [],
+  "boundary_disputed": []
+}

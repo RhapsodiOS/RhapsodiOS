@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans for native execution, or superpowers:subagent-driven-development if the user selects that approach. Implement task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Reconstruct the 60 handwritten routines and reproduce the two generated routines of Apple's i386 ATI Rage driver, then build and verify the complete package against the reference.
+**Goal:** Reconstruct the 61 handwritten code entries and reproduce the two generated routines of Apple's i386 ATI Rage driver, then build and verify the complete package against the reference.
 
 **Architecture:** Recover an authoritative ABI/data/routine contract from raw Mach-O metadata and IDA before translating code. Retain the main filenames, implement ATI and its ProgramDAC category there, and add ATI_BIOS plus symbolic assembly after the generated instance object. Verify coverage, ABI, data, resources and normalized function parity independently.
 
@@ -13,8 +13,8 @@
 ## Global Constraints
 
 - Reference SHA-256: `6D08A58A44D5797DA0DD626BBEB705E3621910C99120486F69BD623DE9E61D9A`; size 63,548 bytes.
-- Complete denominator: 62 routines, 60 handwritten and two generated; initial IDA inventory: 61 functions.
-- Supplemental `__ATIbios32`: `0x2f20..0x2feb`, 203 bytes; initial text gaps total 202 bytes.
+- Complete denominator: 63 code entries, 61 handwritten and two generated; initial IDA inventory: 61 functions.
+- Supplemental `__bios16`: `0x2e48..0x2ebd`, 117 bytes, embedded in an initial text gap; supplemental `__ATIbios32`: `0x2f20..0x2feb`, 203 bytes. Initial text gaps total 202 bytes; classify all remaining bytes.
 - ATI instance size 624, inherited prefix 552; ATI_BIOS instance size 16, private block 36 bytes.
 - 72 display modes of 136 bytes; 18 CRTC records of 30 bytes; BIOS register block 48 bytes; BIOS stack 2048 bytes.
 - Implement `ATI : IOFrameBufferDisplay`, `ATI_BIOS : Object`, ATI(ProgramDAC), ATI_BIOS(Private); preserve runtime type encodings.
@@ -62,44 +62,46 @@ own paths at each checkpoint, using the `drvATIRage:` subsystem prefix.
 `RECON/check_reconstruction.py`, `RECON/test_check_reconstruction.py`.
 Use the existing `tools/binrecon/profiles/drvATIRage-i386.json`.
 
-**Interfaces:** Produces the authoritative list of 62 reference routines, each
+**Interfaces:** Produces the authoritative list of 63 reference code entries, each
 with address/extent, symbol/metadata aliases, source/generated owner and evidence;
 class/category/method/ivar encodings; static-data extents/bindings/relocations;
 the BIOS register/private layouts; and a resource hash manifest. Every later
 task consumes this contract rather than inferred Hex-Rays declarations.
 
-- [ ] Recheck the reference identity and run the reference-only profile. Require
+- [x] Recheck the reference identity and run the reference-only profile. Require
   `complete: true` with null diagnostic; record the expected lack of parity
   acceptance because no rebuilt image was supplied.
-- [ ] Reconcile all __text symbols and method IMPs with IDA. Inspect every gap
-  and the far-call thunk's mixed code/data. Establish 62 routine entries and
-  classify each of the 202 gap bytes. Export disassembly for the thunk and
+- [x] Reconcile all __text symbols and method IMPs with IDA. Inspect every gap
+  and both transition/thunk routines' mixed code/data. Establish 63 entries and
+  classify each of the 202 gap bytes, including `__bios16` at `0x2e48`. Export
+  disassembly for both supplemental entries and
   pseudocode/disassembly for every other handwritten entry.
-- [ ] Extract raw method type encodings and category membership. Resolve C
+- [x] Extract raw method type encodings and category membership. Resolve C
   signatures by caller stack slots, instruction widths and DriverKit headers.
   Record the layout of IODisplayInfo, each 30-byte CRTC record, the 48-byte BIOS
   block and the 36-byte private block. Give fields semantic names while retaining
   byte offsets; record unresolved interpretation explicitly until resolved.
-- [ ] Build the contract and findings. Include all data bindings, all reference
+- [x] Build the contract and findings. Include all data bindings, all reference
   class-link symbols, lookup strings, scratch storage and resource hashes.
   Seed the ledger as `unexamined`; identify the supplemental thunk without
   pretending it belongs to the initial analyzer partition.
-- [ ] Implement a narrow reconstruction checker using binrecon's reader and
+- [x] Implement a narrow reconstruction checker using binrecon's reader and
   semantic loader. CLI: `check_reconstruction.py --reference PATH
   --reference-analysis PATH --repo-root PATH [--source-map PATH] [--rebuilt PATH]`.
   Always validate identity, routine/gap coverage and the reference contract.
   With source-map, enforce all handwritten source owners; allow only the two
   generated omissions. With rebuilt, compare ABI, symbolic static-data pointer
   targets and thunk bytes with relocation fields accounted for.
-- [ ] Add meaningful negative checks: dropping __ATIbios32 fails coverage;
+- [x] Add meaningful negative checks: dropping __bios16 or __ATIbios32 fails coverage;
   changing ATI's size/ivar offset fails ABI; dropping a mode fails data coverage;
   changing a non-relocation thunk byte fails assembly parity. Use copies under
   ignored output, preserving the real reference. Name the unittest cases
-  test_missing_bios_thunk_fails_coverage, test_changed_ivar_fails_abi,
+  test_missing_bios_transition_fails_coverage, test_missing_bios_thunk_fails_coverage,
+  test_changed_ivar_fails_abi,
   test_missing_mode_fails_data_coverage and test_changed_thunk_byte_fails_parity.
   Each asserts a nonzero checker result naming the violated gate. Include an
   unchanged-input case asserting exit 0. Run these checker tests once.
-- [ ] Generate and semantically validate the initial source map. Current source
+- [x] Generate and semantically validate the initial source map. Current source
   name collisions are candidates only, not reconstructed functions. Annotate
   the IDA database with verified types/comments and save it. Commit this evidence
   checkpoint as `drvATIRage: record the complete reference contract`.
@@ -152,11 +154,13 @@ retain reference symbol names and binding, with the mode data included once.
 
 ### Task 3: Implement the ATI BIOS layer and assembly transfer
 
-**Files:** Create `LKS/ATI_BIOS.m`, `LKS/ATIbios.s`;
+**Files:** Create `LKS/ATI_BIOS.m`, `LKS/ATI_BIOS16.s`,
+`LKS/ATIbios16.c`, `LKS/ATIbios.s`;
 update `LKS/ATI_BIOS.h`, findings and ledger as evidence warrants.
 
-**Interfaces:** Produces all ATI_BIOS selectors at `0x216c..0x2ec0`, the
-ATIbios16 C wrapper at `0x2ec0`, and the `__ATIbios32` thunk. In C, use the
+**Interfaces:** Produces all ATI_BIOS selectors at `0x216c..0x2e46`,
+`__bios16` at `0x2e48`, the ATIbios16 C wrapper at `0x2ec0`, and the
+`__ATIbios32` thunk. In C, use the
 identifier whose Mach-O symbol is exactly `__ATIbios32`; resolve the calling
 convention from assembly, not the decompiler's guessed annotation.
 
@@ -172,19 +176,21 @@ convention from assembly, not the decompiler's guessed annotation.
   register packing and output writes. Include querySize:size: returning 4096,
   changeRefreshRate: returning 3, DPMS accepting 0..4 then masking with 3,
   and APM accepting 0..3. Verify bytes/words against raw instruction widths.
-- [ ] Implement ATIbios16's offset check and entry/selector rewrite. Transcribe
-  __ATIbios32 as symbolic instructions and the six-byte far-call operand; preserve
+- [ ] Implement `__bios16` as symbolic instructions, including its saved stack,
+  selector changes, far jump, runtime-patched six-byte operand and `retf`.
+  Implement ATIbios16's offset check and entry/selector rewrite. Transcribe
+  `__ATIbios32` as symbolic instructions and its six-byte far-call operand; preserve
   register/segment/flags saves, cli, register-block output and plain retn.
   Define scratch globals with the reference binding/layout. No binary blob.
-- [ ] Compile ATI_BIOS.m and assemble ATIbios.s in the historical i386 environment
-  using an ignored working directory. Verify actual stack cleanup and emitted
-  symbol names. Compare the thunk to its reference extent under relocation-aware
-  byte matching, including the far-call data fields.
+- [ ] Compile ATI_BIOS.m and ATIbios16.c and assemble ATI_BIOS16.s/ATIbios.s in the historical i386 environment
+  using an ignored working directory. Verify actual stack cleanup and emitted symbol names. Compare both assembly
+  routines to their reference extents under relocation-aware byte matching,
+  including both far-jump operands.
 - [ ] Review BIOS-uninitialized, BIOS-return-error, aperture-misalignment and
   data-segment-size >64 KiB branches. Record exactly which branches restore
   descriptors/free the stack; preserve observed behavior rather than adding
   error cleanup. Verify non-relocation mutation tests fail the thunk check.
-  Commit as `drvATIRage: reconstruct the ATI BIOS calls and thunk`.
+  Commit as `drvATIRage: reconstruct the ATI BIOS calls and transitions`.
 
 ### Task 4: Reconstruct ATI initialization, PCI resource setup and mode lifecycle
 
@@ -286,8 +292,9 @@ LKS's postamble appends those objects to LOADABLES after generated instance glue
   Instance Var and Server Version values. Keep generated instance classes in
   the normal Kernel Server rules, with version method returning 500.
 - [ ] Integrate main/header/data sources using preambles/postambles. Compile
-  ATI_BIOS.m and assemble ATIbios.s before the kernel link; append their absolute
-  object paths after the generated instance object. Add dependencies so a clean
+  ATI_BIOS.m, ATI_BIOS16.s, ATIbios16.c and ATIbios.s before the kernel link;
+  append their absolute object paths in observed text order after the generated
+  instance object. Add dependencies so a clean
   build through the harness cannot silently omit the extras.
 - [ ] Write the dedicated POSIX-sh harness from existing guest build conventions.
   Use fresh target object/staging directories; record the exact command, flags,
@@ -312,7 +319,7 @@ finish RECON source-map/ledger/contract/checker, findings and the drvATIRage
 entry in `src/drivers-i386/README` (preserving other existing edits).
 
 **Interfaces:** Consumes the fresh Task 7 artifact. Produces the final comparison
-summary, all 62 reviewed routine records, validated source ownership, ABI/data/
+summary, all 63 reviewed code-entry records, validated source ownership, ABI/data/
 thunk/resource results and an accurate reconstruction/hardware status.
 
 - [ ] Create a comparison profile with both `${BINRECON_REFERENCE}` and
@@ -332,7 +339,7 @@ thunk/resource results and an accurate reconstruction/hardware status.
 - [ ] Run check_reconstruction.py with reference, reference analysis, repository
   root, rebuilt artifact and the final source map. Require all handwritten
   owners, exact class/category/ivar encodings and sizes, all static data and
-  symbolic pointer targets, and the relocation-aware 203-byte thunk comparison.
+  symbolic pointer targets, and relocation-aware comparison of the 117-byte transition routine and 203-byte thunk.
 - [ ] Regenerate the source map with binrecon source-map `--objc-methods` and
   validate using load_source_map with analysis and repo_root. The initial
   partition's expected outcome is 59 handwritten mappings and two explicitly

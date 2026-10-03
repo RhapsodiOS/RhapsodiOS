@@ -1,0 +1,1393 @@
+{
+  "schema_version": "ledger-v1",
+  "reference_sha256": "6D08A58A44D5797DA0DD626BBEB705E3621910C99120486F69BD623DE9E61D9A",
+  "rebuilt_sha256": null,
+  "entries": [
+    {
+      "address": 0,
+      "size": 1664,
+      "names": [
+        "-[ATI initFromDeviceDescription:]"
+      ],
+      "source_path": null,
+      "source_line": null,
+      "status": "unexamined",
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "status": "agreed",
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 1664,
+      "size": 1632,
+      "names": [
+        "-[ATI fixDeviceDescriptionForPCI:]"
+      ],
+      "source_path": null,
+      "source_line": null,
+      "status": "unexamined",
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "status": "agreed",
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 3296,
+      "size": 304,
+      "names": [
+        "-[ATI getQueryData]"
+      ],
+      "source_path": null,
+      "source_line": null,
+      "status": "unexamined",
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "status": "agreed",
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 3600,
+      "size": 144,
+      "names": [
+        "-[ATI parseModeString:]"
+      ],
+      "source_path": null,
+      "source_line": null,
+      "status": "unexamined",
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "status": "agreed",
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 3744,
+      "size": 540,
+      "names": [
+        "-[ATI updateModeList]"
+      ],
+      "source_path": null,
+      "source_line": null,
+      "status": "unexamined",
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "status": "agreed",
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 4284,
+      "size": 136,
+      "names": [
+        "-[ATI isModeValid:]"
+      ],
+      "source_path": null,
+      "source_line": null,
+      "status": "unexamined",
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "status": "agreed",
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 4420,
+      "size": 98,
+      "names": [
+        "-[ATI verifyMemoryMap]"
+      ],
+      "source_path": null,
+      "source_line": null,
+      "status": "unexamined",
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "status": "agreed",
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 4520,
+      "size": 141,
+      "names": [
+        "-[ATI free]"
+      ],
+      "source_path": null,
+      "source_line": null,
+      "status": "unexamined",
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "status": "agreed",
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 4664,
+      "size": 292,
+      "names": [
+        "-[ATI enterLinearMode]"
+      ],
+      "source_path": null,
+      "source_line": null,
+      "status": "unexamined",
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "status": "agreed",
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 4956,
+      "size": 252,
+      "names": [
+        "-[ATI revertToVGAMode]"
+      ],
+      "source_path": null,
+      "source_line": null,
+      "status": "unexamined",
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "status": "agreed",
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 5208,
+      "size": 52,
+      "names": [
+        "_waitForFIFO"
+      ],
+      "source_path": null,
+      "source_line": null,
+      "status": "unexamined",
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "status": "agreed",
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 5260,
+      "size": 73,
+      "names": [
+        "_waitForIdle"
+      ],
+      "source_path": null,
+      "source_line": null,
+      "status": "unexamined",
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "status": "agreed",
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 5336,
+      "size": 322,
+      "names": [
+        "_doBlit"
+      ],
+      "source_path": null,
+      "source_line": null,
+      "status": "unexamined",
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "status": "agreed",
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 5660,
+      "size": 67,
+      "names": [
+        "-[ATI showCursor:frame:token:]"
+      ],
+      "source_path": null,
+      "source_line": null,
+      "status": "unexamined",
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "status": "agreed",
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 5728,
+      "size": 67,
+      "names": [
+        "-[ATI moveCursor:frame:token:]"
+      ],
+      "source_path": null,
+      "source_line": null,
+      "status": "unexamined",
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "status": "agreed",
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 5796,
+      "size": 57,
+      "names": [
+        "-[ATI hideCursor:]"
+      ],
+      "source_path": null,
+      "source_line": null,
+      "status": "unexamined",
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "status": "agreed",
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 5856,
+      "size": 133,
+      "names": [
+        "_doFill"
+      ],
+      "source_path": null,
+      "source_line": null,
+      "status": "unexamined",
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "status": "agreed",
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 5992,
+      "size": 566,
+      "names": [
+        "-[ATI initEngine]"
+      ],
+      "source_path": null,
+      "source_line": null,
+      "status": "unexamined",
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "status": "agreed",
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 6560,
+      "size": 122,
+      "names": [
+        "-[ATI resetEngine]"
+      ],
+      "source_path": null,
+      "source_line": null,
+      "status": "unexamined",
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "status": "agreed",
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 6684,
+      "size": 12,
+      "names": [
+        "-[ATI displayModeCount]"
+      ],
+      "source_path": null,
+      "source_line": null,
+      "status": "unexamined",
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "status": "agreed",
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 6696,
+      "size": 12,
+      "names": [
+        "-[ATI displayModes]"
+      ],
+      "source_path": null,
+      "source_line": null,
+      "status": "unexamined",
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "status": "agreed",
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 6708,
+      "size": 26,
+      "names": [
+        "-[ATI displayMemorySize]"
+      ],
+      "source_path": null,
+      "source_line": null,
+      "status": "unexamined",
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "status": "agreed",
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 6736,
+      "size": 151,
+      "names": [
+        "-[ATI setPendingDisplayMode:]"
+      ],
+      "source_path": null,
+      "source_line": null,
+      "status": "unexamined",
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "status": "agreed",
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 6888,
+      "size": 208,
+      "names": [
+        "-[ATI setIntValues:forParameter:count:]"
+      ],
+      "source_path": null,
+      "source_line": null,
+      "status": "unexamined",
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "status": "agreed",
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 7096,
+      "size": 33,
+      "names": [
+        "_isATI68880RevC"
+      ],
+      "source_path": null,
+      "source_line": null,
+      "status": "unexamined",
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "status": "agreed",
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 7132,
+      "size": 84,
+      "names": [
+        "_SetGammaValue"
+      ],
+      "source_path": null,
+      "source_line": null,
+      "status": "unexamined",
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "status": "agreed",
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 7216,
+      "size": 372,
+      "names": [
+        "-[ATI setGammaTable]"
+      ],
+      "source_path": null,
+      "source_line": null,
+      "status": "unexamined",
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "status": "agreed",
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 7588,
+      "size": 60,
+      "names": [
+        "-[ATI setBrightness:token:]"
+      ],
+      "source_path": null,
+      "source_line": null,
+      "status": "unexamined",
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "status": "agreed",
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 7648,
+      "size": 489,
+      "names": [
+        "-[ATI setTransferTable:count:]"
+      ],
+      "source_path": null,
+      "source_line": null,
+      "status": "unexamined",
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "status": "agreed",
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 8140,
+      "size": 101,
+      "names": [
+        "_displayInfoToColorSpace"
+      ],
+      "source_path": null,
+      "source_line": null,
+      "status": "unexamined",
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "status": "agreed",
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 8244,
+      "size": 77,
+      "names": [
+        "_colorDepthToColorSpace"
+      ],
+      "source_path": null,
+      "source_line": null,
+      "status": "unexamined",
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "status": "agreed",
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 8324,
+      "size": 79,
+      "names": [
+        "_displayInfoToColorDepth"
+      ],
+      "source_path": null,
+      "source_line": null,
+      "status": "unexamined",
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "status": "agreed",
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 8404,
+      "size": 125,
+      "names": [
+        "_memSizeToBytes"
+      ],
+      "source_path": null,
+      "source_line": null,
+      "status": "unexamined",
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "status": "agreed",
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 8532,
+      "size": 12,
+      "names": [
+        "+[ATIRageDisplayDriverKernelServerInstance kernelServerInstance]"
+      ],
+      "source_path": null,
+      "source_line": null,
+      "status": "unexamined",
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "status": "agreed",
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 8544,
+      "size": 12,
+      "names": [
+        "+[ATIRageDisplayDriverVersion driverKitVersionForATIRageDisplayDriver]"
+      ],
+      "source_path": null,
+      "source_line": null,
+      "status": "unexamined",
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "status": "agreed",
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 8556,
+      "size": 154,
+      "names": [
+        "+[ATI_BIOS ATIPresent:]"
+      ],
+      "source_path": null,
+      "source_line": null,
+      "status": "unexamined",
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "status": "agreed",
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 8712,
+      "size": 162,
+      "names": [
+        "-[ATI_BIOS init]"
+      ],
+      "source_path": null,
+      "source_line": null,
+      "status": "unexamined",
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "status": "agreed",
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 8876,
+      "size": 65,
+      "names": [
+        "-[ATI_BIOS initAtSegmentAddress:]"
+      ],
+      "source_path": null,
+      "source_line": null,
+      "status": "unexamined",
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "status": "agreed",
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 8944,
+      "size": 65,
+      "names": [
+        "-[ATI_BIOS free]"
+      ],
+      "source_path": null,
+      "source_line": null,
+      "status": "unexamined",
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "status": "agreed",
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 9012,
+      "size": 51,
+      "names": [
+        "-[ATI_BIOS loadCRTC:gamma:pitchSize:resolution:crtTable:]"
+      ],
+      "source_path": null,
+      "source_line": null,
+      "status": "unexamined",
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "status": "agreed",
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 9064,
+      "size": 153,
+      "names": [
+        "-[ATI_BIOS setVGAMode:gamma:]"
+      ],
+      "source_path": null,
+      "source_line": null,
+      "status": "unexamined",
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "status": "agreed",
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 9220,
+      "size": 51,
+      "names": [
+        "-[ATI_BIOS loadCRTCSetMode:gamma:pitchSize:resolution:crtTable:]"
+      ],
+      "source_path": null,
+      "source_line": null,
+      "status": "unexamined",
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "status": "agreed",
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 9272,
+      "size": 206,
+      "names": [
+        "-[ATI_BIOS setApertureEnable:VGAAperture:apertureAdrs:]"
+      ],
+      "source_path": null,
+      "source_line": null,
+      "status": "unexamined",
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "status": "agreed",
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 9480,
+      "size": 202,
+      "names": [
+        "-[ATI_BIOS shortQuery:hardCoded:smallAperture:address:colorDepth:memorySize:asicType:asicRev:]"
+      ],
+      "source_path": null,
+      "source_line": null,
+      "status": "unexamined",
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "status": "agreed",
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 9684,
+      "size": 18,
+      "names": [
+        "-[ATI_BIOS querySize:size:]"
+      ],
+      "source_path": null,
+      "source_line": null,
+      "status": "unexamined",
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "status": "agreed",
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 9704,
+      "size": 190,
+      "names": [
+        "-[ATI_BIOS deviceQuery:bufferSize:buffer:]"
+      ],
+      "source_path": null,
+      "source_line": null,
+      "status": "unexamined",
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "status": "agreed",
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 9896,
+      "size": 134,
+      "names": [
+        "-[ATI_BIOS setDPMSMode:]"
+      ],
+      "source_path": null,
+      "source_line": null,
+      "status": "unexamined",
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "status": "agreed",
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 10032,
+      "size": 114,
+      "names": [
+        "-[ATI_BIOS getDPMSMode:]"
+      ],
+      "source_path": null,
+      "source_line": null,
+      "status": "unexamined",
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "status": "agreed",
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 10148,
+      "size": 134,
+      "names": [
+        "-[ATI_BIOS setAPMState:]"
+      ],
+      "source_path": null,
+      "source_line": null,
+      "status": "unexamined",
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "status": "agreed",
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 10284,
+      "size": 114,
+      "names": [
+        "-[ATI_BIOS getAPMState:]"
+      ],
+      "source_path": null,
+      "source_line": null,
+      "status": "unexamined",
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "status": "agreed",
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 10400,
+      "size": 122,
+      "names": [
+        "-[ATI_BIOS getIOBaseAddress:relocatable:]"
+      ],
+      "source_path": null,
+      "source_line": null,
+      "status": "unexamined",
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "status": "agreed",
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 10524,
+      "size": 161,
+      "names": [
+        "-[ATI_BIOS getRefreshRate:]"
+      ],
+      "source_path": null,
+      "source_line": null,
+      "status": "unexamined",
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "status": "agreed",
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 10688,
+      "size": 12,
+      "names": [
+        "-[ATI_BIOS changeRefreshRate:]"
+      ],
+      "source_path": null,
+      "source_line": null,
+      "status": "unexamined",
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "status": "agreed",
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 10700,
+      "size": 80,
+      "names": [
+        "-[ATI_BIOS initBIOSBuf:function:]"
+      ],
+      "source_path": null,
+      "source_line": null,
+      "status": "unexamined",
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "status": "agreed",
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 10780,
+      "size": 388,
+      "names": [
+        "-[ATI_BIOS setupCodeSegments]"
+      ],
+      "source_path": null,
+      "source_line": null,
+      "status": "unexamined",
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "status": "agreed",
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 11168,
+      "size": 102,
+      "names": [
+        "-[ATI_BIOS restoreCodeSegments]"
+      ],
+      "source_path": null,
+      "source_line": null,
+      "status": "unexamined",
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "status": "agreed",
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 11272,
+      "size": 212,
+      "names": [
+        "-[ATI_BIOS createDataSegment:size:]"
+      ],
+      "source_path": null,
+      "source_line": null,
+      "status": "unexamined",
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "status": "agreed",
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 11484,
+      "size": 36,
+      "names": [
+        "-[ATI_BIOS restoreDataSegment]"
+      ],
+      "source_path": null,
+      "source_line": null,
+      "status": "unexamined",
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "status": "agreed",
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 11520,
+      "size": 68,
+      "names": [
+        "-[ATI_BIOS doBios:dataSeg:]"
+      ],
+      "source_path": null,
+      "source_line": null,
+      "status": "unexamined",
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "status": "agreed",
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 11588,
+      "size": 258,
+      "names": [
+        "-[ATI_BIOS loadCRTC_comm:gamma:pitchSize:resolution:crtTable:function:name:]"
+      ],
+      "source_path": null,
+      "source_line": null,
+      "status": "unexamined",
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "status": "agreed",
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 11848,
+      "size": 117,
+      "names": [
+        "__bios16"
+      ],
+      "source_path": null,
+      "source_line": null,
+      "status": "unexamined",
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "status": "agreed",
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 11968,
+      "size": 95,
+      "names": [
+        "_ATIbios16"
+      ],
+      "source_path": null,
+      "source_line": null,
+      "status": "unexamined",
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "status": "agreed",
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    },
+    {
+      "address": 12064,
+      "size": 203,
+      "names": [
+        "__ATIbios32"
+      ],
+      "source_path": null,
+      "source_line": null,
+      "status": "unexamined",
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "status": "agreed",
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ]
+      },
+      "artifacts": [],
+      "reason": null,
+      "reviewer": null
+    }
+  ]
+}

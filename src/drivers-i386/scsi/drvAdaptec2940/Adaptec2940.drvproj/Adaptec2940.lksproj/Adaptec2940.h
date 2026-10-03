@@ -84,8 +84,8 @@
 - (void)commandCompleted:(Adaptec2940SCB *)scb;
 - (void)scbComplete:(Adaptec2940SCB *)scb;
 - (unsigned int)initHostAdaptor;
-- (void)startIOThread;
-- (void)enableAllInterrupts;
+- (IOReturn)startIOThread;
+- (IOReturn)enableAllInterrupts;
 - (id)deviceDescription;
 - (port_t)interruptPort;
 @end

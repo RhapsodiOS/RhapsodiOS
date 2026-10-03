@@ -10,11 +10,11 @@
 extern "C" {
 #endif
 
-/* 0x1220: _PH_ReadConfigOSM; decompiled prototype. */
-int PH_ReadConfigOSM(void);
+/* 0x1220: _PH_ReadConfigOSM; recovered argument bundle. */
+int PH_ReadConfigOSM(int, unsigned char, unsigned char, unsigned char);
 
-/* 0x122c: _PH_WriteConfigOSM; decompiled prototype. */
-int PH_WriteConfigOSM(void);
+/* 0x122c: _PH_WriteConfigOSM; recovered argument bundle. */
+int PH_WriteConfigOSM(int, unsigned char, unsigned char, unsigned char, unsigned int);
 
 /* 0x1238: _PH_GetNumOfBusesOSM; decompiled prototype. */
 int PH_GetNumOfBusesOSM(void);
@@ -142,8 +142,8 @@ void Ph_LogFast20Map(int, unsigned char *a2);
 /* 0x4618: _PH_ScbSend; decompiled prototype. */
 char PH_ScbSend(int);
 
-/* 0x46d4: _PH_IntHandler; IDA usercall; rebuilt entry is cdecl. */
-int PH_IntHandler(int, int);
+/* 0x46d4: _PH_IntHandler; rebuilt entry accepts the host block. */
+int PH_IntHandler(int);
 
 /* 0x4ab4: _PH_PollInt; decompiled prototype. */
 int PH_PollInt(int);
@@ -334,17 +334,17 @@ unsigned char PH_GetConfig(int);
 /* 0x6b1c: _PH_InitHA; decompiled prototype. */
 int PH_InitHA(int);
 
-/* 0x6cf4: _Ph_ReadConfig; IDA usercall; rebuilt entry is cdecl. */
-int Ph_ReadConfig(int, unsigned char, int, unsigned char, unsigned char, unsigned char);
+/* 0x6cf4: _Ph_ReadConfig; IDA usercall normalized to source-level arguments. */
+int Ph_ReadConfig(int, unsigned char, unsigned char, unsigned char);
 
-/* 0x6e44: _Ph_WriteConfig; IDA usercall; rebuilt entry is cdecl. */
-int Ph_WriteConfig(int, unsigned char, int, unsigned char, unsigned char, unsigned char, unsigned int);
+/* 0x6e44: _Ph_WriteConfig; IDA usercall normalized to source-level arguments. */
+int Ph_WriteConfig(int, unsigned char, unsigned char, unsigned char, unsigned int);
 
 /* 0x6fb8: _Ph_AccessConfig; decompiled prototype. */
 int Ph_AccessConfig(unsigned char);
 
-/* 0x7078: _Ph_AutoTermCable; IDA usercall; rebuilt entry is cdecl. */
-int Ph_AutoTermCable(char, int);
+/* 0x7078: _Ph_AutoTermCable; recovered source call takes the host block. */
+int Ph_AutoTermCable(int);
 
 /* 0x7170: _Ph_NoAssistTerm; decompiled prototype. */
 unsigned char Ph_NoAssistTerm(int);

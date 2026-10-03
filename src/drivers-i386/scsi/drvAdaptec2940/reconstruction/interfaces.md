@@ -1,6 +1,10 @@
 # Recovered interfaces and reference layouts
 
-Reference: `Adaptec2940SCSI_reloc`, i386 little-endian, SHA-256 `08E6C11EEC125847F485C86250C94C4AFCC025E59CF085B0C8039B94B2E79DF7`. Function boundaries, signatures, sizes, caller links and code addresses below are exported from IDA 9.4. The C signatures are IDA/Hex-Rays signature strings; caller links are additional call-edge evidence, not proof of source typedef spelling. Keep ABI widths and calling convention as recorded when implementing.
+Reference: `Adaptec2940SCSI_reloc`, i386 little-endian, SHA-256 `08E6C11EEC125847F485C86250C94C4AFCC025E59CF085B0C8039B94B2E79DF7`. Function boundaries, signatures, sizes, caller links and code addresses below are exported from IDA 9.4. The C signatures are IDA/Hex-Rays signature strings; caller links are additional call-edge evidence, not proof of source typedef spelling. `Ph_ReadConfig` and `Ph_WriteConfig` are IDA `__usercall` routines whose caller/callee pair is rebuilt together; their recovered source interface is ordinary cdecl: selector, bus, device, register, then write value.
+
+`Adaptec2940Config.c` now implements the PCI configuration mechanism probe and mechanism-1/mechanism-2 read/write paths. The probe scans devices 0–31 on bus zero and the requested bus, uses the top byte of config dword 2 as the presence test, and restores CF8 after every mechanism-1 transaction. `PH_FindHA` recognizes the two supported Adaptec IDs, rejects the excluded revision/feature case, reports the legacy flag when I/O decode is disabled, and enables bus mastering. `PH_GetNumOfBuses` honors the OSM override, then scans PCI bridge class codes and tracks the highest secondary bus. `Ph_AutoTermCable` applies the IDA narrow/wide cable truth table to termination bits and commits changed values through EEPROM register 17. `PH_GetConfig` captures the adapter's I/O registers and PCI fields, initializes narrow/wide defaults, normalizes valid EEPROM settings, and restores HCNTRL when the device was not already paused. `PH_InitHA` sequences the sequencer load, reset callbacks, wide-bus register setup, target termination masks and final HCNTRL resume, returning immediately on sequencer-load errors. The native i386 harness covers these paths with OSM sentinels, explicit mechanism selection and both EEPROM-result branches.
+
+`Adaptec2940Recovery.c` implements the adapter SCSI reset transaction. It snapshots the current transfer and scratch registers, issues the bus reset strobes, waits for HCNTRL pause, applies the 4,000-unit reset delay, restores saved values and returns the saved scratch byte.
 
 ## Core HIM helper batch
 
@@ -10,10 +14,36 @@ single channel, forwards statistics and transfer queries, builds the exact
 36-byte request/reset message expected by `executeCmdBuf:`, and reserves the
 eight LUNs for the adapter's SCSI ID during initialization.
 
-`Adaptec2940Optima.c` reconstructs the Optima allocation-size formulas and
-host busy/Qin maps. Sizes cap at 254 entries; the host configuration stores
-the resulting size at offset 60 and sets option bit 0 at offset 13. The
-per-target busy table starts at block offset 504 and the Qin map at 496.
+`Adaptec2940Optima.c` reconstructs the Optima allocation-size formulas,
+busy/Qin maps, free-SCB rings, queue operations, and function table. Sizes cap
+at 254 entries; the host configuration stores the resulting size at offset 60
+and sets option bit 0 at offset 13. Offsets 272, 276, 492, 496, and 504 in
+the Optima block hold pointers to separate SCB, free-queue, command, Qin, and
+busy-map arrays, respectively. The free-list head/tail counters are at offsets
+488 and 271; queue input/output indices are at 489 and the I/O registers.
+`Ph_SetOptimaHaData` builds the SCB and free-queue pointers before
+`Ph_SetOptimaScratch` initializes the four hardware scratch rings and their
+register pointers. `Ph_ScbPageJustifyQIN` applies the controller's 256-byte Qin
+alignment rule; `Ph_MovPtrToScratch` writes each scratch pointer as four
+ordered byte writes. `Ph_OptimaRequestSense` repurposes the SCB with a six-byte
+REQUEST SENSE CDB, clears its transfer descriptors, places it at the Qin head,
+and clears that target's busy marker. `Ph_OptimaEnableNextScbArray` sets the
+array-enable bit only when the per-target SCB register contains an index below
+`0x7f`. `Ph_OptimaCmdComplete` drains the Qout map, returns internal SCBs to
+the free ring, and terminates completed commands. `Ph_OptimaAbortActive`
+removes an abort target from Qout or Qin when queued, marks an active SCB when
+it cannot be removed, and dispatches the controller callback where IDA does.
+`PH_RelocatePointers` subtracts the loaded image delta from the host's Optima
+and scratch pointers before rebuilding the host data. Completion helpers
+remove the SCB from the chain, copy the final status byte, update target busy
+counts for non-active commands, and route completion through
+`PH_ScbCompleted` to the controller object's `scbComplete:` method. The HIM
+leaf batch also recovers OSM sentinel returns, asynchronous event callback
+gating, the two EEPROM control bits, and the three-pulse `Ph_Wait2usec` port
+sequence. EEPROM start/address framing, 8/10/16-bit shifts, erase/write
+enable commands, register reads and writes, configuration decoding, checksum
+validation, and selective checksum-protected updates now follow the recovered
+IDA paths.
 
 The controller's statistics methods now match the recovered bodies:
 `resetStats` clears the queue-length total, maximum queue length, and sample
@@ -28,6 +58,16 @@ provide the SCSI bus ID and target count.
 The controller class probe allocates and initializes the device directly, as
 the binary does. `interruptOccurredAt:` and `otherOccurred:` log their event
 and argument; `receiveMsg` logs then delegates to `IODirectDevice`.
+
+`initFromDeviceDescription:` follows the recovered initialization order: read
+PCI configuration, require exactly one I/O BAR among all six BARs, reserve its
+256-byte port range and the IRQ before superclass initialization, validate the
+HIM adapter, and start the I/O thread. It applies the instance-table settings,
+initializes queue sentinels and the single-channel record, sets the interrupt
+port and device identity, allocates the 140-byte host record, initializes and
+enables the adapter, waits for the bus-reset interval, then registers the
+device. Failure paths release the partially initialized object, with direct
+superclass cleanup where IDA calls it.
 
 The initial production batch in `Adaptec2940HIM.c` implements the IDA
 entry points `_Ph_MemorySet` (0x4224), `_Ph_ChainAppendEnd` (0x4b2c),
@@ -163,11 +203,11 @@ checks status masking and restoration.
 
 | Address | Size | Name | IDA signature | Owner | Callers |
 |---:|---:|---|---|---|---|
-| `0x1220` | 12 | `_PH_ReadConfigOSM` | `int PH_ReadConfigOSM()` | `Adaptec2940Thread.m` | `0x6cf4` |
-| `0x122c` | 12 | `_PH_WriteConfigOSM` | `int PH_WriteConfigOSM()` | `Adaptec2940Thread.m` | `0x6e44` |
+| `0x1220` | 12 | `_PH_ReadConfigOSM` | `int PH_ReadConfigOSM(int, bus, device, register)` | `Adaptec2940Config.c` | `0x6cf4` |
+| `0x122c` | 12 | `_PH_WriteConfigOSM` | `int PH_WriteConfigOSM(int, bus, device, register, value)` | `Adaptec2940Config.c` | `0x6e44` |
 | `0x1238` | 12 | `_PH_GetNumOfBusesOSM` | `int PH_GetNumOfBusesOSM()` | `Adaptec2940Thread.m` | `0x673c` |
 | `0x231c` | 33 | `_PH_ScbCompleted` | `id __cdecl PH_ScbCompleted(int a1)` | `Adaptec2940Thread.m` | `0x4df0`, `0x4e60`, `0x512c` |
-| `0x2340` | 86 | `_a2940Timeout` | `int __cdecl a2940Timeout(int a1)` | `Adaptec2940Thread.m` | none recorded |
+| `0x2340` | 86 | `_a2940Timeout` | `int __cdecl a2940Timeout(int a1)` | `Adaptec2940Timeout.c` | none recorded |
 | `0x26e0` | 46 | `_PH_EnableInt` | `int __cdecl PH_EnableInt(int a1)` | `Adaptec2940HIM.c` | `0xa30`, `0x2078` |
 | `0x2710` | 44 | `_PH_DisableInt` | `int __cdecl PH_DisableInt(int a1)` | `Adaptec2940HIM.c` | none recorded |
 | `0x273c` | 64 | `_Ph_NonInit` | `int __cdecl Ph_NonInit(int a1)` | `Adaptec2940HIM.c` | `0x4618` |
@@ -180,7 +220,7 @@ checks status masking and restoration.
 | `0x2c60` | 245 | `_Ph_CdbAbort` | `char __cdecl Ph_CdbAbort(int a1, int a2)` | `Adaptec2940HIM.c` | `0x46d4` |
 | `0x2d58` | 394 | `_Ph_ResetSCSI` | `unsigned __int8 __cdecl Ph_ResetSCSI(int a1)` | `Adaptec2940HIM.c` | `0x298c`, `0x2ee4`, `0x4f9c`, `0x6b1c` |
 | `0x2ee4` | 110 | `_Ph_BadSeq` | `char __cdecl Ph_BadSeq(int a1, int a2)` | `Adaptec2940HIM.c` | `0x2c60`, `0x3080`, `0x369c`, `0x3d4c`, `0x46d4` |
-| `0x2f54` | 299 | `_Ph_CheckCondition` | `char __cdecl Ph_CheckCondition(int a1, __int16 a2)` | `Adaptec2940HIM.c` | `0x46d4` |
+| `0x2f54` | 299 | `_Ph_CheckCondition` | `char __cdecl Ph_CheckCondition(int a1, __int16 a2)` | `Adaptec2940CheckCondition.c` | `0x46d4` |
 | `0x3080` | 310 | `_Ph_TargetAbort` | `int __cdecl Ph_TargetAbort(int a1, int a2, int a3)` | `Adaptec2940HIM.c` | `0x3d4c`, `0x46d4` |
 | `0x31b8` | 9 | `_Ph_SendTrmMsg` | `int __cdecl(_DWORD, _DWORD)` | `Adaptec2940HIM.c` | `0x3080`, `0x46d4` |
 | `0x31c4` | 9 | `_Ph_TrmCmplt` | `int Ph_TrmCmplt()` | `Adaptec2940HIM.c` | `0x46d4` |
@@ -190,9 +230,9 @@ checks status masking and restoration.
 | `0x3364` | 597 | `_Ph_Negotiate` | `char __cdecl Ph_Negotiate(int a1, int a2)` | `Adaptec2940HIM.c` | `0x31d8`, `0x46d4` |
 | `0x35bc` | 115 | `_Ph_SyncSet` | `int __cdecl Ph_SyncSet(int a1)` | `Adaptec2940HIM.c` | `0x369c`, `0x3b90` |
 | `0x3630` | 107 | `_Ph_SyncNego` | `unsigned __int8 __cdecl Ph_SyncNego(int a1, int a2)` | `Adaptec2940HIM.c` | `0x31d8`, `0x3364` |
-| `0x369c` | 1266 | `_Ph_ExtMsgi` | `char __cdecl Ph_ExtMsgi(int a1, int a2)` | `Adaptec2940HIM.c` | `0x46d4` |
+| `0x369c` | 1266 | `_Ph_ExtMsgi` | `char __cdecl Ph_ExtMsgi(int a1, int a2)` | `Adaptec2940ExtMsgi.c` | `0x46d4` |
 | `0x3b90` | 442 | `_Ph_ExtMsgo` | `int __cdecl Ph_ExtMsgo(int a1, int a2)` | `Adaptec2940HIM.c` | `0x31d8`, `0x3364`, `0x3630` |
-| `0x3d4c` | 661 | `_Ph_HandleMsgi` | `char __cdecl Ph_HandleMsgi(int a1, int a2)` | `Adaptec2940HIM.c` | `0x46d4` |
+| `0x3d4c` | 661 | `_Ph_HandleMsgi` | `char __cdecl Ph_HandleMsgi(int a1, int a2)` | `Adaptec2940HandleMsgi.c` | `0x46d4` |
 | `0x3fe4` | 147 | `_Ph_IntSelto` | `char __cdecl Ph_IntSelto(int a1, int a2)` | `Adaptec2940HIM.c` | `0x46d4` |
 | `0x4078` | 226 | `_Ph_IntFree` | `char __cdecl Ph_IntFree(int a1, int a2)` | `Adaptec2940HIM.c` | `0x46d4` |
 | `0x415c` | 48 | `_Ph_ParityError` | `unsigned __int8 __cdecl Ph_ParityError(int a1, int a2)` | `Adaptec2940HIM.c` | `0x46d4` |
@@ -207,7 +247,7 @@ checks status masking and restoration.
 | `0x44cc` | 132 | `_Ph_ClearFast20Reg` | `unsigned __int8 __cdecl Ph_ClearFast20Reg(int a1, int a2)` | `Adaptec2940HIM.c` | `0x3364`, `0x369c` |
 | `0x4550` | 200 | `_Ph_LogFast20Map` | `void __cdecl Ph_LogFast20Map(int a1, _BYTE *a2)` | `Adaptec2940HIM.c` | `0x369c`, `0x3b90` |
 | `0x4618` | 185 | `_PH_ScbSend` | `char __cdecl PH_ScbSend(int a1)` | `Adaptec2940HIM.c` | `0x14b4` |
-| `0x46d4` | 992 | `_PH_IntHandler` | `int __usercall PH_IntHandler@<eax>(int a1@<edi>, int a2)` | `Adaptec2940HIM.c` | `0xa30`, `0xb64` |
+| `0x46d4` | 992 | `_PH_IntHandler` | `int __usercall PH_IntHandler@<eax>(int a1@<edi>, int a2)` | `Adaptec2940Interrupt.c` | `0xa30`, `0xb64` |
 | `0x4ab4` | 91 | `_PH_PollInt` | `int __cdecl PH_PollInt(int a1)` | `Adaptec2940HIM.c` | `0xa30`, `0xb64` |
 | `0x4b10` | 26 | `_PH_RelocatePointers` | `int __cdecl PH_RelocatePointers(int a1, unsigned __int16 a2)` | `Adaptec2940HIM.c` | none recorded |
 | `0x4b2c` | 77 | `_Ph_ChainAppendEnd` | `char __cdecl Ph_ChainAppendEnd(int a1, _DWORD *a2)` | `Adaptec2940HIM.c` | `0x273c`, `0x4618`, `0x512c`, `0x563c` |
@@ -215,7 +255,7 @@ checks status masking and restoration.
 | `0x4b84` | 70 | `_Ph_ChainRemove` | `int __cdecl Ph_ChainRemove(int a1, _DWORD *a2)` | `Adaptec2940HIM.c` | `0x4df0`, `0x4e60`, `0x5660` |
 | `0x4bcc` | 65 | `_Ph_ChainPrevious` | `int __cdecl Ph_ChainPrevious(int *a1, int a2)` | `Adaptec2940HIM.c` | `0x4b84`, `0x54f4` |
 | `0x4c10` | 73 | `_Ph_ScbPrepare` | `int __cdecl Ph_ScbPrepare(int a1, int *a2)` | `Adaptec2940HIM.c` | `0x4618`, `0x4ed8`, `0x512c` |
-| `0x4c5c` | 225 | `_Ph_SendCommand` | `int __cdecl Ph_SendCommand(int **a1, int a2)` | `Adaptec2940HIM.c` | `0x277c`, `0x4618`, `0x46d4` |
+| `0x4c5c` | 225 | `_Ph_SendCommand` | `int __cdecl Ph_SendCommand(int **a1, int a2)` | `Adaptec2940Command.c` | `0x277c`, `0x4618`, `0x46d4` |
 | `0x4d40` | 173 | `_Ph_TerminateCommand` | `void __cdecl Ph_TerminateCommand(int a1, char a2)` | `Adaptec2940HIM.c` | `0x2f54`, `0x3080`, `0x3fe4`, `0x4078`, `0x4eb0`, `0x512c`, `0x5c20` |
 | `0x4df0` | 111 | `_Ph_PostCommand` | `id __cdecl Ph_PostCommand(int a1)` | `Adaptec2940HIM.c` | `0x3080`, `0x46d4`, `0x512c` |
 | `0x4e60` | 36 | `_Ph_RemoveAndPostScb` | `id __cdecl Ph_RemoveAndPostScb(int a1, int a2)` | `Adaptec2940HIM.c` | `0x4e84`, `0x4eb0` |
@@ -544,3 +584,19 @@ IDA's private type database contains additional shared packet, queue, command, a
 | 0 | 4 | `var22` | `unsigned int` |
 | 0 | 4 | `var23` | `__int32 : 24` |
 | 0 | 4 | `var24` | `__int32 : 8` |
+
+## Host-adapter initialization and completion
+
+`Ph_InitDrvrHA` resets per-adapter counters, captures current scratch registers, initializes the host data block and Optima scratch maps, sets the sequencer RAM window to address 1, reads the scratch byte at address 3, stores its one-based value at block offset 264, then installs the Optima function table. `SWAPCurrScratchRam` snapshots I/O offsets 32–95 into block offsets 288–351, forces offset 65 to zero and offsets 70–85 to `0x7f`; with saving enabled it first restores offsets 59–95 from the prior snapshot. Both routines clear the sequencer address registers at the end of the swap.
+
+`Ph_PostCommand` drains the completion index queue from its tail, calls the host completion marker with each index, removes the associated SCB from the host chain, copies the SCB completion status, and routes it through `PH_ScbCompleted`. `checkScbAlign:` adds an SCB whose transfer region crosses a page boundary to the controller's bad-SCB list, preserving the list links at SCB offsets 248 and 252.
+
+## Message negotiation and cable sensing
+
+`Ph_ExtMsgo` saves and restores transfer control registers, sends the SCB message bytes through the request port, completes the extended-message response phase, and applies synchronous negotiation period/offset fields when the SCB carries a negotiation request. `Ph_SyncNego` then interprets the returned negotiation code and handles the additional WDTR-style response loop. `Ph_ReadCableStatus` reads the termination/cable pins using controller-family-specific GPIO sequencing for device IDs `0x7550`, `0x7850`, `0x7870`, and `0x7880`.
+
+`Ph_ExtMsgi` in `Adaptec2940ExtMsgi.c` reconstructs extended-message input,
+including the B0 response, message-length reception, synchronous and wide
+negotiation updates, Fast20 target-map changes, downgrade retry behavior, and
+bad-sequence dispatch. Its native i386 port-shim harness checks those message
+paths and their output order.

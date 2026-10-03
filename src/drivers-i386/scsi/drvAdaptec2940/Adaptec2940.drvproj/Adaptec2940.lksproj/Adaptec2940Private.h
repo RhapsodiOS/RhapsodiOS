@@ -25,8 +25,8 @@
                reason:(const char *)reason;
 - (void)commandCompleted:(Adaptec2940SCB *)scb;
 - (void)scbComplete:(Adaptec2940SCB *)scb;
-- (void)startIOThread;
-- (void)enableAllInterrupts;
+- (IOReturn)startIOThread;
+- (IOReturn)enableAllInterrupts;
 - (id)deviceDescription;
 - (port_t)interruptPort;
 @end

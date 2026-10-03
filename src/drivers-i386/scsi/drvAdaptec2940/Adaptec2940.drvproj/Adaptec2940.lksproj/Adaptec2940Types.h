@@ -150,11 +150,11 @@ typedef struct scb {
 typedef struct Adaptec2940RequestMessage {
 	unsigned int channel;
 	unsigned int command;
-	Adaptec2940HostInfo *host_info;
+	IOSCSIRequest *request;
 	void *buffer;
-	unsigned int transfer_length;
+	vm_task_t client_task;
 	int status;
-	void *client;
+	id condition_lock;
 	queue_chain_t queue_link;
 } Adaptec2940RequestMessage;
 
@@ -213,11 +213,11 @@ A2940_LAYOUT_ASSERT(a2940_scb_queue_link_is_248, offsetof(Adaptec2940SCB, queue_
 A2940_LAYOUT_ASSERT(a2940_scb_queue_previous_is_252, offsetof(Adaptec2940SCB, queue_link) + sizeof(queue_chain_t) / 2 == 252);
 A2940_LAYOUT_ASSERT(a2940_request_channel_at_0, offsetof(Adaptec2940RequestMessage, channel) == 0);
 A2940_LAYOUT_ASSERT(a2940_request_command_at_4, offsetof(Adaptec2940RequestMessage, command) == 4);
-A2940_LAYOUT_ASSERT(a2940_request_host_info_at_8, offsetof(Adaptec2940RequestMessage, host_info) == 8);
+A2940_LAYOUT_ASSERT(a2940_request_request_at_8, offsetof(Adaptec2940RequestMessage, request) == 8);
 A2940_LAYOUT_ASSERT(a2940_request_buffer_at_12, offsetof(Adaptec2940RequestMessage, buffer) == 12);
-A2940_LAYOUT_ASSERT(a2940_request_length_at_16, offsetof(Adaptec2940RequestMessage, transfer_length) == 16);
+A2940_LAYOUT_ASSERT(a2940_request_client_task_at_16, offsetof(Adaptec2940RequestMessage, client_task) == 16);
 A2940_LAYOUT_ASSERT(a2940_request_status_at_20, offsetof(Adaptec2940RequestMessage, status) == 20);
-A2940_LAYOUT_ASSERT(a2940_request_client_at_24, offsetof(Adaptec2940RequestMessage, client) == 24);
+A2940_LAYOUT_ASSERT(a2940_request_condition_lock_at_24, offsetof(Adaptec2940RequestMessage, condition_lock) == 24);
 A2940_LAYOUT_ASSERT(a2940_request_link_is_28, offsetof(Adaptec2940RequestMessage, queue_link) == 28);
 A2940_LAYOUT_ASSERT(a2940_request_message_size_is_36_exact, sizeof(Adaptec2940RequestMessage) == 36);
 A2940_LAYOUT_ASSERT(a2940_host_info_is_140, sizeof(Adaptec2940HostInfo) == A2940_HOST_INFO_SIZE);

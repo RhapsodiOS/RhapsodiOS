@@ -66,13 +66,13 @@ network
  * drvSMCUltra - complete
  * drvVMwareVMXNet - complete
 
-scsi - (see docs/drivers/scsi-reconstruction.md — two complete, three reconstructed and guest-compiled but untested, two stubs)
+scsi - (see docs/drivers/scsi-reconstruction.md — two complete, three reconstructed and guest-compiled but untested, one source-reconstructed but not guest-built, one stub, one modern addition)
  * drvAdaptec6X60 - reconstructed against the reference binary, compiled; not hardware-tested
  * drvAdaptec1542B - reconstructed against the reference binary, no divergences; not yet compiled
  * drvAdaptec2940 - stub, 10/170 reference functions; missing the whole SCSIBus class
  * drvAMDPCSCSIDriver - complete
  * drvBusLogic - reconstructed against the reference binary, fixes applied; not yet compiled
- * drvBusLogicFP - stub, 7/123 reference functions
+ * drvBusLogicFP - all 121 nongenerated functions source-reconstructed against BusLogicFPSCSI_reloc; native i386 syntax, ABI layout and host trace checks pass; DriverKit guest build and binary comparison unavailable, not hardware-tested
  * drvDPT2000 - reconstructed against the reference binary, compiled on the ppc rbuild guest; not hardware-tested
  * drvSym53C8xx - reconstructed against the reference binary, compiled; not hardware-tested
 

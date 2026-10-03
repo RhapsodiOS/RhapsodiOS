@@ -39,3 +39,8 @@
   I/O-base lookup, refresh-rate query, and fixed invalid refresh-change result
   are implemented from their IDA bodies. Python source/evidence checks pass;
   the focused ObjC/C fixture remains uncompiled because `cc` is unavailable.
+- `ATI(Private)` mode selection/validation, query-buffer replacement, VRAM
+  probing, BIOS/PCI aperture verification, and three-range mapping rollback are
+  now reconstructed in `ATIPrivate.m`. Their Python source checks pass; they
+  still need the target Objective-C test harness and a rebuilt driver to prove
+  runtime behavior and binary parity.

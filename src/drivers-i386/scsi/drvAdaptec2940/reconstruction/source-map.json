@@ -1,0 +1,1220 @@
+{
+  "boundary_disputed": [],
+  "duplicate_candidates": [],
+  "mapped": [
+    {
+      "address": 0,
+      "reference_names": [
+        "+[Adaptec2940 probe:]"
+      ],
+      "size": 57,
+      "source_line": 25,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940.m"
+    },
+    {
+      "address": 60,
+      "reference_names": [
+        "-[Adaptec2940 initFromDeviceDescription:]"
+      ],
+      "size": 1991,
+      "source_line": 64,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940.m"
+    },
+    {
+      "address": 2052,
+      "reference_names": [
+        "-[Adaptec2940 free]"
+      ],
+      "size": 435,
+      "source_line": 120,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940.m"
+    },
+    {
+      "address": 2608,
+      "reference_names": [
+        "-[Adaptec2940 interruptOccurred]"
+      ],
+      "size": 148,
+      "source_line": 135,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940.m"
+    },
+    {
+      "address": 2756,
+      "reference_names": [
+        "-[Adaptec2940 interruptOccurredAt:]"
+      ],
+      "size": 41,
+      "source_line": 171,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940.m"
+    },
+    {
+      "address": 2800,
+      "reference_names": [
+        "-[Adaptec2940 otherOccurred:]"
+      ],
+      "size": 41,
+      "source_line": 176,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940.m"
+    },
+    {
+      "address": 2844,
+      "reference_names": [
+        "-[Adaptec2940 receiveMsg]"
+      ],
+      "size": 69,
+      "source_line": 181,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940.m"
+    },
+    {
+      "address": 2916,
+      "reference_names": [
+        "-[Adaptec2940 timeoutOccurred]"
+      ],
+      "size": 370,
+      "source_line": 187,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940.m"
+    },
+    {
+      "address": 3288,
+      "reference_names": [
+        "-[Adaptec2940 commandRequestOccurred]"
+      ],
+      "size": 290,
+      "source_line": 193,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940.m"
+    },
+    {
+      "address": 4288,
+      "reference_names": [
+        "-[Adaptec2940 maxTransfer]"
+      ],
+      "size": 15,
+      "source_line": 112,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940.m"
+    }
+  ],
+  "reference_sha256": "08E6C11EEC125847F485C86250C94C4AFCC025E59CF085B0C8039B94B2E79DF7",
+  "schema_version": "source-map-v1",
+  "unmapped": [
+    {
+      "address": 2488,
+      "reference_names": [
+        "-[Adaptec2940 resetStats]"
+      ],
+      "size": 40
+    },
+    {
+      "address": 2528,
+      "reference_names": [
+        "-[Adaptec2940 numQueueSamples]"
+      ],
+      "size": 16
+    },
+    {
+      "address": 2544,
+      "reference_names": [
+        "-[Adaptec2940 sumQueueLengths]"
+      ],
+      "size": 16
+    },
+    {
+      "address": 2560,
+      "reference_names": [
+        "-[Adaptec2940 maxQueueLength]"
+      ],
+      "size": 16
+    },
+    {
+      "address": 2576,
+      "reference_names": [
+        "-[Adaptec2940 numberOfTargets:]"
+      ],
+      "size": 31
+    },
+    {
+      "address": 3580,
+      "reference_names": [
+        "-[Adaptec2940 setIntValues:forParameter:count:]"
+      ],
+      "size": 367
+    },
+    {
+      "address": 3948,
+      "reference_names": [
+        "-[Adaptec2940 getIntValues:forParameter:count:]"
+      ],
+      "size": 206
+    },
+    {
+      "address": 4156,
+      "reference_names": [
+        "-[Adaptec2940 acquireSCSIBus:owner:]"
+      ],
+      "size": 54
+    },
+    {
+      "address": 4212,
+      "reference_names": [
+        "-[Adaptec2940 releaseSCSIBus:owner:]"
+      ],
+      "size": 75
+    },
+    {
+      "address": 4304,
+      "reference_names": [
+        "-[Adaptec2940 scsiBusId:]"
+      ],
+      "size": 31
+    },
+    {
+      "address": 4336,
+      "reference_names": [
+        "-[Adaptec2940 executeCmdBuf:]"
+      ],
+      "size": 303
+    },
+    {
+      "address": 4640,
+      "reference_names": [
+        "_PH_ReadConfigOSM"
+      ],
+      "size": 12
+    },
+    {
+      "address": 4652,
+      "reference_names": [
+        "_PH_WriteConfigOSM"
+      ],
+      "size": 12
+    },
+    {
+      "address": 4664,
+      "reference_names": [
+        "_PH_GetNumOfBusesOSM"
+      ],
+      "size": 12
+    },
+    {
+      "address": 4676,
+      "reference_names": [
+        "-[Adaptec2940 checkScbAlign:]"
+      ],
+      "size": 116
+    },
+    {
+      "address": 4792,
+      "reference_names": [
+        "-[Adaptec2940 allocScb]"
+      ],
+      "size": 211
+    },
+    {
+      "address": 5004,
+      "reference_names": [
+        "-[Adaptec2940 freeScb:]"
+      ],
+      "size": 113
+    },
+    {
+      "address": 5120,
+      "reference_names": [
+        "-[Adaptec2940 createScbs:size:]"
+      ],
+      "size": 177
+    },
+    {
+      "address": 5300,
+      "reference_names": [
+        "-[Adaptec2940 threadExecuteRequest:]"
+      ],
+      "size": 1400
+    },
+    {
+      "address": 6700,
+      "reference_names": [
+        "-[Adaptec2940 threadResetBus:channel:reason:]"
+      ],
+      "size": 425
+    },
+    {
+      "address": 7128,
+      "reference_names": [
+        "-[Adaptec2940 commandCompleted:]"
+      ],
+      "size": 135
+    },
+    {
+      "address": 7264,
+      "reference_names": [
+        "-[Adaptec2940 scbComplete:]"
+      ],
+      "size": 1048
+    },
+    {
+      "address": 8312,
+      "reference_names": [
+        "-[Adaptec2940 initHostAdaptor]"
+      ],
+      "size": 676
+    },
+    {
+      "address": 8988,
+      "reference_names": [
+        "_PH_ScbCompleted"
+      ],
+      "size": 33
+    },
+    {
+      "address": 9024,
+      "reference_names": [
+        "_a2940Timeout"
+      ],
+      "size": 86
+    },
+    {
+      "address": 9112,
+      "reference_names": [
+        "+[SCSIBus probe:]"
+      ],
+      "size": 139
+    },
+    {
+      "address": 9252,
+      "reference_names": [
+        "+[SCSIBus deviceStyle]"
+      ],
+      "size": 12
+    },
+    {
+      "address": 9264,
+      "reference_names": [
+        "+[SCSIBus requiredProtocols]"
+      ],
+      "size": 12
+    },
+    {
+      "address": 9276,
+      "reference_names": [
+        "-[SCSIBus maxTransfer]"
+      ],
+      "size": 29
+    },
+    {
+      "address": 9308,
+      "reference_names": [
+        "-[SCSIBus free]"
+      ],
+      "size": 41
+    },
+    {
+      "address": 9352,
+      "reference_names": [
+        "-[SCSIBus resetStats]"
+      ],
+      "size": 38
+    },
+    {
+      "address": 9392,
+      "reference_names": [
+        "-[SCSIBus numQueueSamples]"
+      ],
+      "size": 29
+    },
+    {
+      "address": 9424,
+      "reference_names": [
+        "-[SCSIBus sumQueueLengths]"
+      ],
+      "size": 29
+    },
+    {
+      "address": 9456,
+      "reference_names": [
+        "-[SCSIBus maxQueueLength]"
+      ],
+      "size": 29
+    },
+    {
+      "address": 9488,
+      "reference_names": [
+        "-[SCSIBus numberOfTargets]"
+      ],
+      "size": 36
+    },
+    {
+      "address": 9524,
+      "reference_names": [
+        "-[SCSIBus executeRequest:buffer:client:]"
+      ],
+      "size": 73
+    },
+    {
+      "address": 9600,
+      "reference_names": [
+        "-[SCSIBus resetSCSIBus]"
+      ],
+      "size": 55
+    },
+    {
+      "address": 9656,
+      "reference_names": [
+        "-[SCSIBus initSCSIBus:channel:]"
+      ],
+      "size": 296
+    },
+    {
+      "address": 9952,
+      "reference_names": [
+        "_PH_EnableInt"
+      ],
+      "size": 46
+    },
+    {
+      "address": 10000,
+      "reference_names": [
+        "_PH_DisableInt"
+      ],
+      "size": 44
+    },
+    {
+      "address": 10044,
+      "reference_names": [
+        "_Ph_NonInit"
+      ],
+      "size": 64
+    },
+    {
+      "address": 10108,
+      "reference_names": [
+        "_PH_Special"
+      ],
+      "size": 520
+    },
+    {
+      "address": 10628,
+      "reference_names": [
+        "_Ph_Abort"
+      ],
+      "size": 7
+    },
+    {
+      "address": 10636,
+      "reference_names": [
+        "_Ph_IntSrst"
+      ],
+      "size": 199
+    },
+    {
+      "address": 10836,
+      "reference_names": [
+        "_Ph_ResetChannel"
+      ],
+      "size": 221
+    },
+    {
+      "address": 11060,
+      "reference_names": [
+        "_Ph_CheckSyncNego"
+      ],
+      "size": 105
+    },
+    {
+      "address": 11168,
+      "reference_names": [
+        "_Ph_CheckLength"
+      ],
+      "size": 190
+    },
+    {
+      "address": 11360,
+      "reference_names": [
+        "_Ph_CdbAbort"
+      ],
+      "size": 245
+    },
+    {
+      "address": 11608,
+      "reference_names": [
+        "_Ph_ResetSCSI"
+      ],
+      "size": 394
+    },
+    {
+      "address": 12004,
+      "reference_names": [
+        "_Ph_BadSeq"
+      ],
+      "size": 110
+    },
+    {
+      "address": 12116,
+      "reference_names": [
+        "_Ph_CheckCondition"
+      ],
+      "size": 299
+    },
+    {
+      "address": 12416,
+      "reference_names": [
+        "_Ph_TargetAbort"
+      ],
+      "size": 310
+    },
+    {
+      "address": 12728,
+      "reference_names": [
+        "_Ph_SendTrmMsg"
+      ],
+      "size": 9
+    },
+    {
+      "address": 12740,
+      "reference_names": [
+        "_Ph_TrmCmplt"
+      ],
+      "size": 9
+    },
+    {
+      "address": 12752,
+      "reference_names": [
+        "_Ph_BusReset"
+      ],
+      "size": 7
+    },
+    {
+      "address": 12760,
+      "reference_names": [
+        "_Ph_SendMsgo"
+      ],
+      "size": 355
+    },
+    {
+      "address": 13116,
+      "reference_names": [
+        "_Ph_SetNeedNego"
+      ],
+      "size": 38
+    },
+    {
+      "address": 13156,
+      "reference_names": [
+        "_Ph_Negotiate"
+      ],
+      "size": 597
+    },
+    {
+      "address": 13756,
+      "reference_names": [
+        "_Ph_SyncSet"
+      ],
+      "size": 115
+    },
+    {
+      "address": 13872,
+      "reference_names": [
+        "_Ph_SyncNego"
+      ],
+      "size": 107
+    },
+    {
+      "address": 13980,
+      "reference_names": [
+        "_Ph_ExtMsgi"
+      ],
+      "size": 1266
+    },
+    {
+      "address": 15248,
+      "reference_names": [
+        "_Ph_ExtMsgo"
+      ],
+      "size": 442
+    },
+    {
+      "address": 15692,
+      "reference_names": [
+        "_Ph_HandleMsgi"
+      ],
+      "size": 661
+    },
+    {
+      "address": 16356,
+      "reference_names": [
+        "_Ph_IntSelto"
+      ],
+      "size": 147
+    },
+    {
+      "address": 16504,
+      "reference_names": [
+        "_Ph_IntFree"
+      ],
+      "size": 226
+    },
+    {
+      "address": 16732,
+      "reference_names": [
+        "_Ph_ParityError"
+      ],
+      "size": 48
+    },
+    {
+      "address": 16780,
+      "reference_names": [
+        "_Ph_Wt4Req"
+      ],
+      "size": 150
+    },
+    {
+      "address": 16932,
+      "reference_names": [
+        "_Ph_MemorySet"
+      ],
+      "size": 50
+    },
+    {
+      "address": 16984,
+      "reference_names": [
+        "_Ph_Pause"
+      ],
+      "size": 48
+    },
+    {
+      "address": 17032,
+      "reference_names": [
+        "_Ph_UnPause"
+      ],
+      "size": 32
+    },
+    {
+      "address": 17064,
+      "reference_names": [
+        "_Ph_WriteHcntrl"
+      ],
+      "size": 100
+    },
+    {
+      "address": 17164,
+      "reference_names": [
+        "_Ph_ReadIntstat"
+      ],
+      "size": 106
+    },
+    {
+      "address": 17272,
+      "reference_names": [
+        "_Ph_Delay"
+      ],
+      "size": 215
+    },
+    {
+      "address": 17488,
+      "reference_names": [
+        "_Ph_ScbRenego"
+      ],
+      "size": 124
+    },
+    {
+      "address": 17612,
+      "reference_names": [
+        "_Ph_ClearFast20Reg"
+      ],
+      "size": 132
+    },
+    {
+      "address": 17744,
+      "reference_names": [
+        "_Ph_LogFast20Map"
+      ],
+      "size": 200
+    },
+    {
+      "address": 17944,
+      "reference_names": [
+        "_PH_ScbSend"
+      ],
+      "size": 185
+    },
+    {
+      "address": 18132,
+      "reference_names": [
+        "_PH_IntHandler"
+      ],
+      "size": 992
+    },
+    {
+      "address": 19124,
+      "reference_names": [
+        "_PH_PollInt"
+      ],
+      "size": 91
+    },
+    {
+      "address": 19216,
+      "reference_names": [
+        "_PH_RelocatePointers"
+      ],
+      "size": 26
+    },
+    {
+      "address": 19244,
+      "reference_names": [
+        "_Ph_ChainAppendEnd"
+      ],
+      "size": 77
+    },
+    {
+      "address": 19324,
+      "reference_names": [
+        "_Ph_ChainInsertFront"
+      ],
+      "size": 7
+    },
+    {
+      "address": 19332,
+      "reference_names": [
+        "_Ph_ChainRemove"
+      ],
+      "size": 70
+    },
+    {
+      "address": 19404,
+      "reference_names": [
+        "_Ph_ChainPrevious"
+      ],
+      "size": 65
+    },
+    {
+      "address": 19472,
+      "reference_names": [
+        "_Ph_ScbPrepare"
+      ],
+      "size": 73
+    },
+    {
+      "address": 19548,
+      "reference_names": [
+        "_Ph_SendCommand"
+      ],
+      "size": 225
+    },
+    {
+      "address": 19776,
+      "reference_names": [
+        "_Ph_TerminateCommand"
+      ],
+      "size": 173
+    },
+    {
+      "address": 19952,
+      "reference_names": [
+        "_Ph_PostCommand"
+      ],
+      "size": 111
+    },
+    {
+      "address": 20064,
+      "reference_names": [
+        "_Ph_RemoveAndPostScb"
+      ],
+      "size": 36
+    },
+    {
+      "address": 20100,
+      "reference_names": [
+        "_Ph_PostNonActiveScb"
+      ],
+      "size": 42
+    },
+    {
+      "address": 20144,
+      "reference_names": [
+        "_Ph_TermPostNonActiveScb"
+      ],
+      "size": 38
+    },
+    {
+      "address": 20184,
+      "reference_names": [
+        "_Ph_AbortChannel"
+      ],
+      "size": 194
+    },
+    {
+      "address": 20380,
+      "reference_names": [
+        "_Ph_HaHardReset"
+      ],
+      "size": 257
+    },
+    {
+      "address": 20640,
+      "reference_names": [
+        "_Ph_SetHaData"
+      ],
+      "size": 95
+    },
+    {
+      "address": 20736,
+      "reference_names": [
+        "_Ph_SetScbMark"
+      ],
+      "size": 34
+    },
+    {
+      "address": 20772,
+      "reference_names": [
+        "_Ph_HaSoftReset"
+      ],
+      "size": 7
+    },
+    {
+      "address": 20780,
+      "reference_names": [
+        "_Ph_BusDeviceReset"
+      ],
+      "size": 389
+    },
+    {
+      "address": 21172,
+      "reference_names": [
+        "_Ph_SoftReset"
+      ],
+      "size": 7
+    },
+    {
+      "address": 21180,
+      "reference_names": [
+        "_Ph_GetScbStatus"
+      ],
+      "size": 56
+    },
+    {
+      "address": 21236,
+      "reference_names": [
+        "_Ph_SetMgrStat"
+      ],
+      "size": 52
+    },
+    {
+      "address": 21288,
+      "reference_names": [
+        "_Ph_WriteBiosInfo"
+      ],
+      "size": 166
+    },
+    {
+      "address": 21456,
+      "reference_names": [
+        "_Ph_ReadBiosInfo"
+      ],
+      "size": 166
+    },
+    {
+      "address": 21624,
+      "reference_names": [
+        "_Ph_OutBuffer"
+      ],
+      "size": 73
+    },
+    {
+      "address": 21700,
+      "reference_names": [
+        "_Ph_InBuffer"
+      ],
+      "size": 48
+    },
+    {
+      "address": 21748,
+      "reference_names": [
+        "_Ph_ScbAbort"
+      ],
+      "size": 143
+    },
+    {
+      "address": 21892,
+      "reference_names": [
+        "_SWAPCurrScratchRam"
+      ],
+      "size": 184
+    },
+    {
+      "address": 22076,
+      "reference_names": [
+        "_Ph_InsertBookmark"
+      ],
+      "size": 33
+    },
+    {
+      "address": 22112,
+      "reference_names": [
+        "_Ph_RemoveBookmark"
+      ],
+      "size": 25
+    },
+    {
+      "address": 22140,
+      "reference_names": [
+        "_Ph_AsynchEvent"
+      ],
+      "size": 49
+    },
+    {
+      "address": 22192,
+      "reference_names": [
+        "_Ph_GetDrvrConfig"
+      ],
+      "size": 75
+    },
+    {
+      "address": 22268,
+      "reference_names": [
+        "_Ph_InitDrvrHA"
+      ],
+      "size": 182
+    },
+    {
+      "address": 22452,
+      "reference_names": [
+        "_PH_GetBiosInfo"
+      ],
+      "size": 559
+    },
+    {
+      "address": 23012,
+      "reference_names": [
+        "_PH_CalcDataSize"
+      ],
+      "size": 22
+    },
+    {
+      "address": 23036,
+      "reference_names": [
+        "_Ph_CheckBiosPresence"
+      ],
+      "size": 43
+    },
+    {
+      "address": 23080,
+      "reference_names": [
+        "_Ph_GetOptimaConfig"
+      ],
+      "size": 53
+    },
+    {
+      "address": 23136,
+      "reference_names": [
+        "_Ph_CalcOptimaSize"
+      ],
+      "size": 42
+    },
+    {
+      "address": 23180,
+      "reference_names": [
+        "_Ph_OptimaEnque"
+      ],
+      "size": 98
+    },
+    {
+      "address": 23280,
+      "reference_names": [
+        "_Ph_OptimaEnqueHead"
+      ],
+      "size": 50
+    },
+    {
+      "address": 23332,
+      "reference_names": [
+        "_Ph_OptimaQHead"
+      ],
+      "size": 252
+    },
+    {
+      "address": 23584,
+      "reference_names": [
+        "_Ph_OptimaCmdComplete"
+      ],
+      "size": 474
+    },
+    {
+      "address": 24060,
+      "reference_names": [
+        "_Ph_OptimaRequestSense"
+      ],
+      "size": 170
+    },
+    {
+      "address": 24232,
+      "reference_names": [
+        "_Ph_OptimaClearDevQue"
+      ],
+      "size": 7
+    },
+    {
+      "address": 24240,
+      "reference_names": [
+        "_Ph_OptimaIndexClearBusy"
+      ],
+      "size": 27
+    },
+    {
+      "address": 24268,
+      "reference_names": [
+        "_Ph_OptimaClearTargetBusy"
+      ],
+      "size": 37
+    },
+    {
+      "address": 24308,
+      "reference_names": [
+        "_Ph_OptimaClearChannelBusy"
+      ],
+      "size": 7
+    },
+    {
+      "address": 24316,
+      "reference_names": [
+        "_Ph_SetOptimaHaData"
+      ],
+      "size": 182
+    },
+    {
+      "address": 24500,
+      "reference_names": [
+        "_Ph_SetOptimaScratch"
+      ],
+      "size": 363
+    },
+    {
+      "address": 24864,
+      "reference_names": [
+        "_Ph_ScbPageJustifyQIN"
+      ],
+      "size": 86
+    },
+    {
+      "address": 24952,
+      "reference_names": [
+        "_Ph_OptimaMoreFreeScb"
+      ],
+      "size": 88
+    },
+    {
+      "address": 25040,
+      "reference_names": [
+        "_Ph_OptimaGetFreeScb"
+      ],
+      "size": 170
+    },
+    {
+      "address": 25212,
+      "reference_names": [
+        "_Ph_OptimaReturnFreeScb"
+      ],
+      "size": 94
+    },
+    {
+      "address": 25308,
+      "reference_names": [
+        "_Ph_OptimaClearQinFifo"
+      ],
+      "size": 35
+    },
+    {
+      "address": 25344,
+      "reference_names": [
+        "_Ph_MovPtrToScratch"
+      ],
+      "size": 129
+    },
+    {
+      "address": 25476,
+      "reference_names": [
+        "_Ph_OptimaLoadFuncPtrs"
+      ],
+      "size": 133
+    },
+    {
+      "address": 25612,
+      "reference_names": [
+        "_Ph_OptimaAbortActive"
+      ],
+      "size": 764
+    },
+    {
+      "address": 26376,
+      "reference_names": [
+        "_Ph_OptimaEnableNextScbArray"
+      ],
+      "size": 52
+    },
+    {
+      "address": 26428,
+      "reference_names": [
+        "_PH_GetNumOfBuses"
+      ],
+      "size": 265
+    },
+    {
+      "address": 26696,
+      "reference_names": [
+        "_PH_FindMechanism"
+      ],
+      "size": 53
+    },
+    {
+      "address": 26752,
+      "reference_names": [
+        "_PH_FindHA"
+      ],
+      "size": 151
+    },
+    {
+      "address": 26904,
+      "reference_names": [
+        "_PH_GetConfig"
+      ],
+      "size": 515
+    },
+    {
+      "address": 27420,
+      "reference_names": [
+        "_PH_InitHA"
+      ],
+      "size": 469
+    },
+    {
+      "address": 27892,
+      "reference_names": [
+        "_Ph_ReadConfig"
+      ],
+      "size": 333
+    },
+    {
+      "address": 28228,
+      "reference_names": [
+        "_Ph_WriteConfig"
+      ],
+      "size": 369
+    },
+    {
+      "address": 28600,
+      "reference_names": [
+        "_Ph_AccessConfig"
+      ],
+      "size": 191
+    },
+    {
+      "address": 28792,
+      "reference_names": [
+        "_Ph_AutoTermCable"
+      ],
+      "size": 246
+    },
+    {
+      "address": 29040,
+      "reference_names": [
+        "_Ph_NoAssistTerm"
+      ],
+      "size": 237
+    },
+    {
+      "address": 29280,
+      "reference_names": [
+        "_Ph_RebuildEEControl"
+      ],
+      "size": 43
+    },
+    {
+      "address": 29324,
+      "reference_names": [
+        "_Ph_ReadEeprom"
+      ],
+      "size": 672
+    },
+    {
+      "address": 29996,
+      "reference_names": [
+        "_Ph_UpdateEeprom"
+      ],
+      "size": 436
+    },
+    {
+      "address": 30432,
+      "reference_names": [
+        "_Ph_ReadE2Register"
+      ],
+      "size": 238
+    },
+    {
+      "address": 30672,
+      "reference_names": [
+        "_Ph_WriteE2Register"
+      ],
+      "size": 399
+    },
+    {
+      "address": 31072,
+      "reference_names": [
+        "_Ph_EnableEraseWriteEE"
+      ],
+      "size": 129
+    },
+    {
+      "address": 31204,
+      "reference_names": [
+        "_Ph_DisableEraseWriteEE"
+      ],
+      "size": 122
+    },
+    {
+      "address": 31328,
+      "reference_names": [
+        "_Ph_SendStartBitEE"
+      ],
+      "size": 93
+    },
+    {
+      "address": 31424,
+      "reference_names": [
+        "_Ph_SendAddressEE"
+      ],
+      "size": 183
+    },
+    {
+      "address": 31608,
+      "reference_names": [
+        "_Ph_Wait2usec"
+      ],
+      "size": 48
+    },
+    {
+      "address": 31656,
+      "reference_names": [
+        "_Ph_LoadSequencer"
+      ],
+      "size": 374
+    },
+    {
+      "address": 32032,
+      "reference_names": [
+        "_Ph_ReadCableStatus"
+      ],
+      "size": 511
+    },
+    {
+      "address": 32544,
+      "reference_names": [
+        "+[Adaptec2940SCSIKernelServerInstance kernelServerInstance]"
+      ],
+      "size": 12
+    },
+    {
+      "address": 32556,
+      "reference_names": [
+        "+[Adaptec2940SCSIVersion driverKitVersionForAdaptec2940SCSI]"
+      ],
+      "size": 12
+    }
+  ]
+}

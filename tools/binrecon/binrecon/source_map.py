@@ -199,8 +199,16 @@ def source_sites(repo_root, source_path):
                 if found_brace and not found_semicolon:
                     selector = read_selector(" ".join(declaration))
                     if selector:
-                        key = f"{method.group(1)}[{current_class} {selector}]"
-                        sites.setdefault(key, []).append((relative, number))
+                        # Objective-C method symbols do not encode the category
+                        # name. Keep the category-qualified spelling for
+                        # diagnostics, and also index the owning class spelling
+                        # used by Mach-O symbols and reference analyses.
+                        owners = [current_class]
+                        if category:
+                            owners.append(name)
+                        for owner in owners:
+                            key = f"{method.group(1)}[{owner} {selector}]"
+                            sites.setdefault(key, []).append((relative, number))
 
                 index = scan + 1
                 continue

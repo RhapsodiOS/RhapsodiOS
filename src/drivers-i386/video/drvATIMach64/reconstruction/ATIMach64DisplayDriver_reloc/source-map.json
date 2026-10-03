@@ -1,178 +1,461 @@
 {
   "boundary_disputed": [],
   "duplicate_candidates": [],
-  "mapped": [],
-  "reference_sha256": "AA9884B8F9F68DB733237241D88FCC1FF252A59E9B0EA1CD029695F37465EA3C",
-  "schema_version": "source-map-v1",
-  "unmapped": [
+  "mapped": [
     {
       "address": 0,
       "reference_names": [
         "-[ATI initFromDeviceDescription:]"
       ],
-      "size": 2719
+      "size": 2719,
+      "source_line": 15,
+      "source_path": "src/drivers-i386/video/drvATIMach64/ATIMach64DisplayDriver.drvproj/ATIMach64DisplayDriver.lksproj/ATIMach64DisplayDriver.m"
     },
     {
       "address": 2720,
       "reference_names": [
         "-[ATI free]"
       ],
-      "size": 141
+      "size": 141,
+      "source_line": 235,
+      "source_path": "src/drivers-i386/video/drvATIMach64/ATIMach64DisplayDriver.drvproj/ATIMach64DisplayDriver.lksproj/ATIMach64DisplayDriver.m"
     },
     {
       "address": 2864,
       "reference_names": [
         "-[ATI enterLinearMode]"
       ],
-      "size": 277
+      "size": 277,
+      "source_line": 246,
+      "source_path": "src/drivers-i386/video/drvATIMach64/ATIMach64DisplayDriver.drvproj/ATIMach64DisplayDriver.lksproj/ATIMach64DisplayDriver.m"
     },
     {
       "address": 3144,
       "reference_names": [
         "-[ATI revertToVGAMode]"
       ],
-      "size": 138
+      "size": 138,
+      "source_line": 274,
+      "source_path": "src/drivers-i386/video/drvATIMach64/ATIMach64DisplayDriver.drvproj/ATIMach64DisplayDriver.lksproj/ATIMach64DisplayDriver.m"
     },
     {
       "address": 3284,
       "reference_names": [
         "-[ATI displayModeCount]"
       ],
-      "size": 12
+      "size": 12,
+      "source_line": 289,
+      "source_path": "src/drivers-i386/video/drvATIMach64/ATIMach64DisplayDriver.drvproj/ATIMach64DisplayDriver.lksproj/ATIMach64DisplayDriver.m"
     },
     {
       "address": 3296,
       "reference_names": [
         "-[ATI displayModes]"
       ],
-      "size": 12
+      "size": 12,
+      "source_line": 294,
+      "source_path": "src/drivers-i386/video/drvATIMach64/ATIMach64DisplayDriver.drvproj/ATIMach64DisplayDriver.lksproj/ATIMach64DisplayDriver.m"
     },
     {
       "address": 3308,
       "reference_names": [
         "-[ATI displayMemorySize]"
       ],
-      "size": 26
+      "size": 26,
+      "source_line": 299,
+      "source_path": "src/drivers-i386/video/drvATIMach64/ATIMach64DisplayDriver.drvproj/ATIMach64DisplayDriver.lksproj/ATIMach64DisplayDriver.m"
     },
     {
       "address": 3336,
       "reference_names": [
         "-[ATI setPendingDisplayMode:]"
       ],
-      "size": 123
+      "size": 123,
+      "source_line": 304,
+      "source_path": "src/drivers-i386/video/drvATIMach64/ATIMach64DisplayDriver.drvproj/ATIMach64DisplayDriver.lksproj/ATIMach64DisplayDriver.m"
     },
     {
       "address": 3460,
       "reference_names": [
         "-[ATI getQueryData]"
       ],
-      "size": 304
+      "size": 304,
+      "source_line": 15,
+      "source_path": "src/drivers-i386/video/drvATIMach64/ATIMach64DisplayDriver.drvproj/ATIMach64DisplayDriver.lksproj/ATIPrivate.m"
     },
     {
       "address": 3764,
       "reference_names": [
         "-[ATI parseModeString:]"
       ],
-      "size": 152
+      "size": 152,
+      "source_line": 47,
+      "source_path": "src/drivers-i386/video/drvATIMach64/ATIMach64DisplayDriver.drvproj/ATIMach64DisplayDriver.lksproj/ATIPrivate.m"
     },
     {
       "address": 3916,
       "reference_names": [
         "-[ATI updateModeList]"
       ],
-      "size": 412
+      "size": 412,
+      "source_line": 66,
+      "source_path": "src/drivers-i386/video/drvATIMach64/ATIMach64DisplayDriver.drvproj/ATIMach64DisplayDriver.lksproj/ATIPrivate.m"
     },
     {
       "address": 4328,
       "reference_names": [
         "-[ATI isModeValid:]"
       ],
-      "size": 136
+      "size": 136,
+      "source_line": 112,
+      "source_path": "src/drivers-i386/video/drvATIMach64/ATIMach64DisplayDriver.drvproj/ATIMach64DisplayDriver.lksproj/ATIPrivate.m"
     },
     {
       "address": 4464,
       "reference_names": [
         "-[ATI verifyMemoryMap]"
       ],
-      "size": 98
+      "size": 98,
+      "source_line": 131,
+      "source_path": "src/drivers-i386/video/drvATIMach64/ATIMach64DisplayDriver.drvproj/ATIMach64DisplayDriver.lksproj/ATIPrivate.m"
     },
     {
       "address": 4564,
       "reference_names": [
         "-[ATI changeHardwareMapping:]"
       ],
-      "size": 350
+      "size": 350,
+      "source_line": 147,
+      "source_path": "src/drivers-i386/video/drvATIMach64/ATIMach64DisplayDriver.drvproj/ATIMach64DisplayDriver.lksproj/ATIPrivate.m"
     },
     {
       "address": 4916,
       "reference_names": [
         "-[ATI changeTableMapping:]"
       ],
-      "size": 346
+      "size": 346,
+      "source_line": 188,
+      "source_path": "src/drivers-i386/video/drvATIMach64/ATIMach64DisplayDriver.drvproj/ATIMach64DisplayDriver.lksproj/ATIPrivate.m"
     },
     {
       "address": 5264,
       "reference_names": [
         "_isATI68880RevC"
       ],
-      "size": 45
+      "size": 45,
+      "source_line": 19,
+      "source_path": "src/drivers-i386/video/drvATIMach64/ATIMach64DisplayDriver.drvproj/ATIMach64DisplayDriver.lksproj/ProgramDAC.m"
     },
     {
       "address": 5312,
       "reference_names": [
         "_SetGammaValue"
       ],
-      "size": 82
+      "size": 82,
+      "source_line": 26,
+      "source_path": "src/drivers-i386/video/drvATIMach64/ATIMach64DisplayDriver.drvproj/ATIMach64DisplayDriver.lksproj/ProgramDAC.m"
     },
     {
       "address": 5396,
       "reference_names": [
         "-[ATI setGammaTable]"
       ],
-      "size": 308
+      "size": 308,
+      "source_line": 39,
+      "source_path": "src/drivers-i386/video/drvATIMach64/ATIMach64DisplayDriver.drvproj/ATIMach64DisplayDriver.lksproj/ProgramDAC.m"
     },
     {
       "address": 5704,
       "reference_names": [
         "-[ATI setBrightness:token:]"
       ],
-      "size": 60
+      "size": 60,
+      "source_line": 77,
+      "source_path": "src/drivers-i386/video/drvATIMach64/ATIMach64DisplayDriver.drvproj/ATIMach64DisplayDriver.lksproj/ProgramDAC.m"
     },
     {
       "address": 5764,
       "reference_names": [
         "-[ATI setTransferTable:count:]"
       ],
-      "size": 489
+      "size": 489,
+      "source_line": 88,
+      "source_path": "src/drivers-i386/video/drvATIMach64/ATIMach64DisplayDriver.drvproj/ATIMach64DisplayDriver.lksproj/ProgramDAC.m"
     },
     {
       "address": 6256,
       "reference_names": [
         "_displayInfoToColorSpace"
       ],
-      "size": 101
+      "size": 101,
+      "source_line": 198,
+      "source_path": "src/drivers-i386/video/drvATIMach64/ATIMach64DisplayDriver.drvproj/ATIMach64DisplayDriver.lksproj/ATIData.c"
     },
     {
       "address": 6360,
       "reference_names": [
         "_colorDepthToColorSpace"
       ],
-      "size": 77
+      "size": 77,
+      "source_line": 211,
+      "source_path": "src/drivers-i386/video/drvATIMach64/ATIMach64DisplayDriver.drvproj/ATIMach64DisplayDriver.lksproj/ATIData.c"
     },
     {
       "address": 6440,
       "reference_names": [
         "_displayInfoToColorDepth"
       ],
-      "size": 79
+      "size": 79,
+      "source_line": 221,
+      "source_path": "src/drivers-i386/video/drvATIMach64/ATIMach64DisplayDriver.drvproj/ATIMach64DisplayDriver.lksproj/ATIData.c"
     },
     {
       "address": 6520,
       "reference_names": [
         "_memSizeToBytes"
       ],
-      "size": 113
+      "size": 113,
+      "source_line": 234,
+      "source_path": "src/drivers-i386/video/drvATIMach64/ATIMach64DisplayDriver.drvproj/ATIMach64DisplayDriver.lksproj/ATIData.c"
     },
+    {
+      "address": 6660,
+      "reference_names": [
+        "+[ATI_BIOS ATIPresent:]"
+      ],
+      "size": 154,
+      "source_line": 53,
+      "source_path": "src/drivers-i386/video/drvATIMach64/ATIMach64DisplayDriver.drvproj/ATIMach64DisplayDriver.lksproj/ATI_BIOS.m"
+    },
+    {
+      "address": 6816,
+      "reference_names": [
+        "-[ATI_BIOS init]"
+      ],
+      "size": 162,
+      "source_line": 37,
+      "source_path": "src/drivers-i386/video/drvATIMach64/ATIMach64DisplayDriver.drvproj/ATIMach64DisplayDriver.lksproj/ATI_BIOS.m"
+    },
+    {
+      "address": 6980,
+      "reference_names": [
+        "-[ATI_BIOS initAtSegmentAddress:]"
+      ],
+      "size": 65,
+      "source_line": 71,
+      "source_path": "src/drivers-i386/video/drvATIMach64/ATIMach64DisplayDriver.drvproj/ATIMach64DisplayDriver.lksproj/ATI_BIOS.m"
+    },
+    {
+      "address": 7048,
+      "reference_names": [
+        "-[ATI_BIOS free]"
+      ],
+      "size": 65,
+      "source_line": 79,
+      "source_path": "src/drivers-i386/video/drvATIMach64/ATIMach64DisplayDriver.drvproj/ATIMach64DisplayDriver.lksproj/ATI_BIOS.m"
+    },
+    {
+      "address": 7116,
+      "reference_names": [
+        "-[ATI_BIOS loadCRTC:gamma:pitchSize:resolution:crtTable:]"
+      ],
+      "size": 51,
+      "source_line": 90,
+      "source_path": "src/drivers-i386/video/drvATIMach64/ATIMach64DisplayDriver.drvproj/ATIMach64DisplayDriver.lksproj/ATI_BIOS.m"
+    },
+    {
+      "address": 7168,
+      "reference_names": [
+        "-[ATI_BIOS setVGAMode:gamma:]"
+      ],
+      "size": 153,
+      "source_line": 99,
+      "source_path": "src/drivers-i386/video/drvATIMach64/ATIMach64DisplayDriver.drvproj/ATIMach64DisplayDriver.lksproj/ATI_BIOS.m"
+    },
+    {
+      "address": 7324,
+      "reference_names": [
+        "-[ATI_BIOS loadCRTCSetMode:gamma:pitchSize:resolution:crtTable:]"
+      ],
+      "size": 51,
+      "source_line": 120,
+      "source_path": "src/drivers-i386/video/drvATIMach64/ATIMach64DisplayDriver.drvproj/ATIMach64DisplayDriver.lksproj/ATI_BIOS.m"
+    },
+    {
+      "address": 7376,
+      "reference_names": [
+        "-[ATI_BIOS setApertureEnable:VGAAperture:apertureAdrs:]"
+      ],
+      "size": 206,
+      "source_line": 129,
+      "source_path": "src/drivers-i386/video/drvATIMach64/ATIMach64DisplayDriver.drvproj/ATIMach64DisplayDriver.lksproj/ATI_BIOS.m"
+    },
+    {
+      "address": 7584,
+      "reference_names": [
+        "-[ATI_BIOS shortQuery:hardCoded:smallAperture:address:colorDepth:memorySize:asicType:asicRev:]"
+      ],
+      "size": 202,
+      "source_line": 164,
+      "source_path": "src/drivers-i386/video/drvATIMach64/ATIMach64DisplayDriver.drvproj/ATIMach64DisplayDriver.lksproj/ATI_BIOS.m"
+    },
+    {
+      "address": 7788,
+      "reference_names": [
+        "-[ATI_BIOS querySize:size:]"
+      ],
+      "size": 18,
+      "source_line": 196,
+      "source_path": "src/drivers-i386/video/drvATIMach64/ATIMach64DisplayDriver.drvproj/ATIMach64DisplayDriver.lksproj/ATI_BIOS.m"
+    },
+    {
+      "address": 7808,
+      "reference_names": [
+        "-[ATI_BIOS deviceQuery:bufferSize:buffer:]"
+      ],
+      "size": 190,
+      "source_line": 202,
+      "source_path": "src/drivers-i386/video/drvATIMach64/ATIMach64DisplayDriver.drvproj/ATIMach64DisplayDriver.lksproj/ATI_BIOS.m"
+    },
+    {
+      "address": 8000,
+      "reference_names": [
+        "-[ATI_BIOS setDPMSMode:]"
+      ],
+      "size": 134,
+      "source_line": 229,
+      "source_path": "src/drivers-i386/video/drvATIMach64/ATIMach64DisplayDriver.drvproj/ATIMach64DisplayDriver.lksproj/ATI_BIOS.m"
+    },
+    {
+      "address": 8136,
+      "reference_names": [
+        "-[ATI_BIOS getDPMSMode:]"
+      ],
+      "size": 114,
+      "source_line": 250,
+      "source_path": "src/drivers-i386/video/drvATIMach64/ATIMach64DisplayDriver.drvproj/ATIMach64DisplayDriver.lksproj/ATI_BIOS.m"
+    },
+    {
+      "address": 8252,
+      "reference_names": [
+        "-[ATI_BIOS setAPMState:]"
+      ],
+      "size": 134,
+      "source_line": 268,
+      "source_path": "src/drivers-i386/video/drvATIMach64/ATIMach64DisplayDriver.drvproj/ATIMach64DisplayDriver.lksproj/ATI_BIOS.m"
+    },
+    {
+      "address": 8388,
+      "reference_names": [
+        "-[ATI_BIOS getAPMState:]"
+      ],
+      "size": 114,
+      "source_line": 289,
+      "source_path": "src/drivers-i386/video/drvATIMach64/ATIMach64DisplayDriver.drvproj/ATIMach64DisplayDriver.lksproj/ATI_BIOS.m"
+    },
+    {
+      "address": 8504,
+      "reference_names": [
+        "-[ATI_BIOS getIOBaseAddress:relocatable:]"
+      ],
+      "size": 122,
+      "source_line": 307,
+      "source_path": "src/drivers-i386/video/drvATIMach64/ATIMach64DisplayDriver.drvproj/ATIMach64DisplayDriver.lksproj/ATI_BIOS.m"
+    },
+    {
+      "address": 8628,
+      "reference_names": [
+        "-[ATI_BIOS getRefreshRate:]"
+      ],
+      "size": 161,
+      "source_line": 326,
+      "source_path": "src/drivers-i386/video/drvATIMach64/ATIMach64DisplayDriver.drvproj/ATIMach64DisplayDriver.lksproj/ATI_BIOS.m"
+    },
+    {
+      "address": 8792,
+      "reference_names": [
+        "-[ATI_BIOS changeRefreshRate:]"
+      ],
+      "size": 12,
+      "source_line": 352,
+      "source_path": "src/drivers-i386/video/drvATIMach64/ATIMach64DisplayDriver.drvproj/ATIMach64DisplayDriver.lksproj/ATI_BIOS.m"
+    },
+    {
+      "address": 8804,
+      "reference_names": [
+        "-[ATI_BIOS initBIOSBuf:function:]"
+      ],
+      "size": 80,
+      "source_line": 361,
+      "source_path": "src/drivers-i386/video/drvATIMach64/ATIMach64DisplayDriver.drvproj/ATIMach64DisplayDriver.lksproj/ATI_BIOS.m"
+    },
+    {
+      "address": 8884,
+      "reference_names": [
+        "-[ATI_BIOS setupCodeSegments]"
+      ],
+      "size": 388,
+      "source_line": 373,
+      "source_path": "src/drivers-i386/video/drvATIMach64/ATIMach64DisplayDriver.drvproj/ATIMach64DisplayDriver.lksproj/ATI_BIOS.m"
+    },
+    {
+      "address": 9272,
+      "reference_names": [
+        "-[ATI_BIOS restoreCodeSegments]"
+      ],
+      "size": 102,
+      "source_line": 414,
+      "source_path": "src/drivers-i386/video/drvATIMach64/ATIMach64DisplayDriver.drvproj/ATIMach64DisplayDriver.lksproj/ATI_BIOS.m"
+    },
+    {
+      "address": 9376,
+      "reference_names": [
+        "-[ATI_BIOS createDataSegment:size:]"
+      ],
+      "size": 212,
+      "source_line": 425,
+      "source_path": "src/drivers-i386/video/drvATIMach64/ATIMach64DisplayDriver.drvproj/ATIMach64DisplayDriver.lksproj/ATI_BIOS.m"
+    },
+    {
+      "address": 9588,
+      "reference_names": [
+        "-[ATI_BIOS restoreDataSegment]"
+      ],
+      "size": 36,
+      "source_line": 461,
+      "source_path": "src/drivers-i386/video/drvATIMach64/ATIMach64DisplayDriver.drvproj/ATIMach64DisplayDriver.lksproj/ATI_BIOS.m"
+    },
+    {
+      "address": 9624,
+      "reference_names": [
+        "-[ATI_BIOS doBios:dataSeg:]"
+      ],
+      "size": 68,
+      "source_line": 466,
+      "source_path": "src/drivers-i386/video/drvATIMach64/ATIMach64DisplayDriver.drvproj/ATIMach64DisplayDriver.lksproj/ATI_BIOS.m"
+    },
+    {
+      "address": 9692,
+      "reference_names": [
+        "-[ATI_BIOS loadCRTC_comm:gamma:pitchSize:resolution:crtTable:function:name:]"
+      ],
+      "size": 258,
+      "source_line": 477,
+      "source_path": "src/drivers-i386/video/drvATIMach64/ATIMach64DisplayDriver.drvproj/ATIMach64DisplayDriver.lksproj/ATI_BIOS.m"
+    },
+    {
+      "address": 10072,
+      "reference_names": [
+        "_ATIbios16"
+      ],
+      "size": 95,
+      "source_line": 10,
+      "source_path": "src/drivers-i386/video/drvATIMach64/ATIMach64DisplayDriver.drvproj/ATIMach64DisplayDriver.lksproj/ATIbios16.c"
+    }
+  ],
+  "reference_sha256": "AA9884B8F9F68DB733237241D88FCC1FF252A59E9B0EA1CD029695F37465EA3C",
+  "schema_version": "source-map-v1",
+  "unmapped": [
     {
       "address": 6636,
       "reference_names": [
@@ -188,193 +471,11 @@
       "size": 12
     },
     {
-      "address": 6660,
-      "reference_names": [
-        "+[ATI_BIOS ATIPresent:]"
-      ],
-      "size": 154
-    },
-    {
-      "address": 6816,
-      "reference_names": [
-        "-[ATI_BIOS init]"
-      ],
-      "size": 162
-    },
-    {
-      "address": 6980,
-      "reference_names": [
-        "-[ATI_BIOS initAtSegmentAddress:]"
-      ],
-      "size": 65
-    },
-    {
-      "address": 7048,
-      "reference_names": [
-        "-[ATI_BIOS free]"
-      ],
-      "size": 65
-    },
-    {
-      "address": 7116,
-      "reference_names": [
-        "-[ATI_BIOS loadCRTC:gamma:pitchSize:resolution:crtTable:]"
-      ],
-      "size": 51
-    },
-    {
-      "address": 7168,
-      "reference_names": [
-        "-[ATI_BIOS setVGAMode:gamma:]"
-      ],
-      "size": 153
-    },
-    {
-      "address": 7324,
-      "reference_names": [
-        "-[ATI_BIOS loadCRTCSetMode:gamma:pitchSize:resolution:crtTable:]"
-      ],
-      "size": 51
-    },
-    {
-      "address": 7376,
-      "reference_names": [
-        "-[ATI_BIOS setApertureEnable:VGAAperture:apertureAdrs:]"
-      ],
-      "size": 206
-    },
-    {
-      "address": 7584,
-      "reference_names": [
-        "-[ATI_BIOS shortQuery:hardCoded:smallAperture:address:colorDepth:memorySize:asicType:asicRev:]"
-      ],
-      "size": 202
-    },
-    {
-      "address": 7788,
-      "reference_names": [
-        "-[ATI_BIOS querySize:size:]"
-      ],
-      "size": 18
-    },
-    {
-      "address": 7808,
-      "reference_names": [
-        "-[ATI_BIOS deviceQuery:bufferSize:buffer:]"
-      ],
-      "size": 190
-    },
-    {
-      "address": 8000,
-      "reference_names": [
-        "-[ATI_BIOS setDPMSMode:]"
-      ],
-      "size": 134
-    },
-    {
-      "address": 8136,
-      "reference_names": [
-        "-[ATI_BIOS getDPMSMode:]"
-      ],
-      "size": 114
-    },
-    {
-      "address": 8252,
-      "reference_names": [
-        "-[ATI_BIOS setAPMState:]"
-      ],
-      "size": 134
-    },
-    {
-      "address": 8388,
-      "reference_names": [
-        "-[ATI_BIOS getAPMState:]"
-      ],
-      "size": 114
-    },
-    {
-      "address": 8504,
-      "reference_names": [
-        "-[ATI_BIOS getIOBaseAddress:relocatable:]"
-      ],
-      "size": 122
-    },
-    {
-      "address": 8628,
-      "reference_names": [
-        "-[ATI_BIOS getRefreshRate:]"
-      ],
-      "size": 161
-    },
-    {
-      "address": 8792,
-      "reference_names": [
-        "-[ATI_BIOS changeRefreshRate:]"
-      ],
-      "size": 12
-    },
-    {
-      "address": 8804,
-      "reference_names": [
-        "-[ATI_BIOS initBIOSBuf:function:]"
-      ],
-      "size": 80
-    },
-    {
-      "address": 8884,
-      "reference_names": [
-        "-[ATI_BIOS setupCodeSegments]"
-      ],
-      "size": 388
-    },
-    {
-      "address": 9272,
-      "reference_names": [
-        "-[ATI_BIOS restoreCodeSegments]"
-      ],
-      "size": 102
-    },
-    {
-      "address": 9376,
-      "reference_names": [
-        "-[ATI_BIOS createDataSegment:size:]"
-      ],
-      "size": 212
-    },
-    {
-      "address": 9588,
-      "reference_names": [
-        "-[ATI_BIOS restoreDataSegment]"
-      ],
-      "size": 36
-    },
-    {
-      "address": 9624,
-      "reference_names": [
-        "-[ATI_BIOS doBios:dataSeg:]"
-      ],
-      "size": 68
-    },
-    {
-      "address": 9692,
-      "reference_names": [
-        "-[ATI_BIOS loadCRTC_comm:gamma:pitchSize:resolution:crtTable:function:name:]"
-      ],
-      "size": 258
-    },
-    {
       "address": 9952,
       "reference_names": [
         "__bios16"
       ],
       "size": 117
-    },
-    {
-      "address": 10072,
-      "reference_names": [
-        "_ATIbios16"
-      ],
-      "size": 95
     },
     {
       "address": 10168,

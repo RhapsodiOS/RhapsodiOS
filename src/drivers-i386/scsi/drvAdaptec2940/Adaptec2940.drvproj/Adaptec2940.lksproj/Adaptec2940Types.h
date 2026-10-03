@@ -82,6 +82,8 @@
 #define A2940_SCB_SIZE 256
 #define A2940_SCB_ALIGNMENT 256
 #define A2940_SG_MAX 18
+/* IDA's maxTransfer body returns 16 * page_size. */
+#define AIC_SG_COUNT 16
 
 typedef struct aic_sg {
 	unsigned int address;

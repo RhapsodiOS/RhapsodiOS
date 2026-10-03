@@ -311,6 +311,7 @@ def test_controller_statistics_methods_match_reference():
         ("- (unsigned int)numQueueSamples", "return totalCommands;"),
         ("- (unsigned int)sumQueueLengths", "return queueLenTotal;"),
         ("- (unsigned int)maxQueueLength", "return maxQueueLen;"),
+        ("- (unsigned)maxTransfer", "return (AIC_SG_COUNT * PAGE_SIZE);"),
     ):
         start = source.index(signature)
         body_end = source.index("\n}", start)
@@ -320,7 +321,8 @@ def test_controller_statistics_methods_match_reference():
     ledger = json.loads((RECON / "ledger.json").read_text(encoding="utf-8"))
     entries = {name: row for row in ledger["entries"] for name in row["names"]}
     for name in ("-[Adaptec2940 resetStats]", "-[Adaptec2940 numQueueSamples]",
-                 "-[Adaptec2940 sumQueueLengths]", "-[Adaptec2940 maxQueueLength]"):
+                 "-[Adaptec2940 sumQueueLengths]", "-[Adaptec2940 maxQueueLength]",
+                 "-[Adaptec2940 maxTransfer]"):
         assert mapped[name]["source_path"].endswith("Adaptec2940.m")
         assert entries[name]["status"] == "control-flow-confirmed"
 

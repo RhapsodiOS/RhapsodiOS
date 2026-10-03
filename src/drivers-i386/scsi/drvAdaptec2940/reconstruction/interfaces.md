@@ -8,6 +8,8 @@ The controller's statistics methods now match the recovered bodies:
 `resetStats` clears the queue-length total, maximum queue length, and sample
 count, while `numQueueSamples`, `sumQueueLengths`, and `maxQueueLength` return
 those corresponding fields.
+`maxTransfer` returns sixteen pages; `AIC_SG_COUNT` is fixed to the IDA
+constant 16 so request segmentation and the reported transfer limit agree.
 
 The initial production batch in `Adaptec2940HIM.c` implements the IDA
 entry points `_Ph_MemorySet` (0x4224), `_Ph_ChainAppendEnd` (0x4b2c),

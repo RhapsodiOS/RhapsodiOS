@@ -4,7 +4,7 @@
 #include <stddef.h>
 #include "../ATIBIOSTypes.h"
 
-#define ATI_MOCK_MAX_EVENTS 256
+#define ATI_MOCK_MAX_EVENTS 2048
 #define ATI_MOCK_ROM_SIZE 0x30000
 #define ATI_MOCK_GDT_SIZE 4096
 
@@ -33,6 +33,9 @@ unsigned int ATI_mockBIOSCallCount(void);
 const ATIBIOSRegisters *ATI_mockLastBIOSRegisters(void);
 int ATI_mockBIOSResult(void);
 void ATI_mockRecordPort(unsigned short port, unsigned int value, unsigned char width, unsigned char isWrite);
+void ATI_mockSetPortInput(unsigned short port, unsigned char value);
+unsigned char ATI_mockInb(unsigned short port);
+void ATI_mockOutb(unsigned short port, unsigned char value);
 void ATI_mockRecordDelay(unsigned int delay);
 unsigned int ATI_mockPortEventCount(void);
 unsigned int ATI_mockDelayEventCount(void);

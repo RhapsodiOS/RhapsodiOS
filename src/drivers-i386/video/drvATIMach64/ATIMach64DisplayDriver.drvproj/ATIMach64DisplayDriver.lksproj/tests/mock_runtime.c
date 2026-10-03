@@ -10,6 +10,7 @@ static const char *lastSelector;
 static ATIBIOSRegisters lastBIOSRegisters;
 static ATI_mockPortEvent portEvents[ATI_MOCK_MAX_EVENTS];
 static ATI_mockDelayEvent delayEvents[ATI_MOCK_MAX_EVENTS];
+static unsigned char portInputs[65536];
 static unsigned char rom[ATI_MOCK_ROM_SIZE];
 static unsigned char gdt[ATI_MOCK_GDT_SIZE];
 
@@ -22,6 +23,7 @@ void ATI_mockReset(void)
     memset(&lastBIOSRegisters, 0, sizeof(lastBIOSRegisters));
     memset(portEvents, 0, sizeof(portEvents));
     memset(delayEvents, 0, sizeof(delayEvents));
+    memset(portInputs, 0, sizeof(portInputs));
     memset(rom, 0, sizeof(rom));
     memset(gdt, 0, sizeof(gdt));
 }
@@ -77,6 +79,19 @@ void ATI_mockRecordPort(unsigned short port, unsigned int value,
     if (portEventCount >= ATI_MOCK_MAX_EVENTS) return;
     event = &portEvents[portEventCount++];
     event->port = port; event->value = value; event->width = width; event->isWrite = isWrite;
+}
+void ATI_mockSetPortInput(unsigned short port, unsigned char value)
+{
+    portInputs[port] = value;
+}
+unsigned char ATI_mockInb(unsigned short port)
+{
+    ATI_mockRecordPort(port, portInputs[port], 1, 0);
+    return portInputs[port];
+}
+void ATI_mockOutb(unsigned short port, unsigned char value)
+{
+    ATI_mockRecordPort(port, value, 1, 1);
 }
 void ATI_mockRecordDelay(unsigned int delay)
 {

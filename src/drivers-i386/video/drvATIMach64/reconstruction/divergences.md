@@ -48,3 +48,10 @@
   initialization, mapping policy, display-state transitions, and accessors.
   Lifecycle source checks pass, but runtime allocation/configuration traces
   and the target ABI remain unverified without the guest compiler/runtime.
+- DAC programming, revision detection, gamma scaling, brightness bounds, and
+  sparse/dense transfer-table handling are reconstructed in `ProgramDAC.m`.
+  The DriverKit `ioPorts.h` primitive confirms each `outb` includes the
+  reference `lock; incl` synchronization. Table counts that do not divide 256
+  retain the truncated repetition count, and the reference's count-zero/negative
+  hazards are not normalized away. Python checks pass; `make check-dac` cannot
+  compile because `cc` is unavailable.

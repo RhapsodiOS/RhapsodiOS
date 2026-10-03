@@ -2,10 +2,10 @@
 
 Findings from comparing our sources against Apple's shipped `*_reloc` binaries
 with `tools/binrecon`. The headline is that the eight drivers are not eight
-partial reconstructions at different stages. Two are essentially complete,
-three are reconstructed against their reference and guest-compiled but not
-hardware-tested, one now has complete source reconstruction but no guest build,
-one is a modern addition with no reference, and one remains a stub.
+partial reconstructions at different stages. Three have source-complete
+reconstructions, three have been reconstructed and guest-compiled but not
+hardware-tested, one is a modern addition with no reference, and one remains a
+stub.
 
 ## Coverage
 
@@ -19,7 +19,7 @@ project type and are correctly absent from source.
 | Driver | Reference | Resolved | Status |
 | --- | --- | --- | --- |
 | drvAdaptec1542B | 36 | 34 | complete; only build glue absent |
-| drvBusLogic | 37 | 35 | complete; only build glue absent |
+| drvBusLogic | 37 | 35 | all 37 reference functions behavior-reviewed; 35 source-mapped, 2 generated; native ABI checks pass; target build pending |
 | drvAdaptec6X60 | 79 | 77 | reconstructed; guest `_reloc`; 54 functions unexamined; not hardware-tested |
 | drvDPT2000 | 56 | 54 | reconstructed against the reference; guest `_reloc` produced on the ppc rbuild guest; not hardware-tested |
 | drvBusLogicFP | 123 | 121 | source reconstructed; i386 syntax/tests pass; DriverKit build unavailable |
@@ -31,16 +31,16 @@ than a reconstruction and is out of scope here.
 
 ## The class-name divergence
 
-Two of the seven still name their principal class differently from the
+One of the seven still names its principal class differently from the
 reference. This is the same pattern already resolved in drvPCMCIABus, and it
-is why those drivers initially resolved **zero** symbols — a total mismatch
-rather than a partial one. drvAdaptec6X60, drvDPT2000, and drvSym53C8xx now
-match.
+is why drvBusLogicFP initially resolved **zero** symbols — a total mismatch
+rather than a partial one. drvBusLogic, drvAdaptec6X60, drvDPT2000, and
+drvSym53C8xx now match.
 
 | Driver | Ours | Reference |
 | --- | --- | --- |
 | drvAdaptec6X60 | `AIC6X60` | `AIC6X60` |
-| drvBusLogic | `BLController` | `BLCController` |
+| drvBusLogic | `BLCController` | `BLCController` |
 | drvBusLogicFP | `BLFPController` | `BLFPController` |
 | drvDPT2000 | `EATAController` (+ `EATASCSIBus`) | `EATAController` (+ `EATASCSIBus`) |
 | drvSym53C8xx | `SYM53c8` | `SYM53c8` |
@@ -65,8 +65,25 @@ ledger-validator tests pass. A DriverKit `_reloc` rebuild and binary comparison
 remain unavailable on this host because this checkout has no Rhapsody SDK or
 configured guest; this is source-level verification, not hardware validation.
 
-Renaming is necessary but sufficient only for drvBusLogic, where it took the
-count from 26 to 30 and left five genuinely missing functions.
+The BusLogic class-name mismatch has been resolved. All 37 reference functions
+are now behavior-reviewed: 35 hand-written functions map to source, and the two
+Kernel Server generated accessors are documented in
+`src/drivers-i386/scsi/drvBusLogic/reconstruction/generated-glue.md`. The two
+generated methods correctly remain unmapped because no hand-written source site
+exists.
+
+## drvBusLogic
+
+The source reconstruction now follows the reference's extended mailbox rings
+and 32-bit CCB/SG addresses, including the 8-byte mailbox and 284-byte CCB
+layouts. It restores the adapter's 16-entry free list, extended inquiry and
+round-robin setup, timeout/reset flow, level-triggered IRQ handling, and host
+adapter parity status. Native Python tests check the modeled i386 ABI sizes
+and offsets against the source declarations, ring state, DMA/IRQ resource
+policy, and selected status paths. IDA confirms the generated accessors return
+the instance global and DriverKit version 500.
+No target i386 rebuild or binary comparison has been performed, so the ledger
+does not claim assembly parity.
 
 ## Closed architecture mismatches
 

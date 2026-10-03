@@ -27,7 +27,6 @@
 	struct bl_config 	config;		/* config info from device */
 	IOEISAPortAddress 	ioBase;		/* base IO port addr */
 	unsigned char 		blBoardId;
-	BOOL			ioThreadRunning;
 
 	/*
 	 * mailbox and CCB areas. Dynamically allocated from low
@@ -35,6 +34,7 @@
 	 */
 	struct bl_mb_area	*blMbArea;
 	struct ccb		*blCcb;
+	struct ccb		*blCcbFreeList;
 	int			numFreeCcbs;	/* number of free CCBs */
 
 	/*
@@ -76,8 +76,10 @@
 
 	port_t		interruptPortKern;	/* kernel version of
 						 * interruptPort */
+	BOOL			ioThreadRunning;
 
 	int		busType;		/* BL_BUS_* */
+	BOOL		levelIRQ;
 	unsigned char	targetsPerBus;		/* targets this board
 						 * supports */
 }

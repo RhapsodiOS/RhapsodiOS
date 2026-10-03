@@ -21,8 +21,11 @@
 static void blcTimeout(void *arg);
 
 extern void blc_start_scsi(IOEISAPortAddress portBase);
-
-#define AUTO_SENSE_ENABLE	1
+extern BOOL blc_reset_board(IOEISAPortAddress portBase);
+extern BOOL blc_setup_mb_area(IOEISAPortAddress portBase,
+			     struct bl_mb_area *mbArea,
+			     struct ccb *ccbArray,
+			     struct ccb **freeList);
 
 /*
  * Template for timeout message.
@@ -123,8 +126,8 @@ static msg_header_t timeoutMsgTemplate = {
 	/*
 	 * Now reset the hardware.
 	 */
-	blc_reset_board(ioBase, blBoardId);
-	blc_setup_mb_area(ioBase, blMbArea, blCcb);
+	blc_reset_board(ioBase);
+	blc_setup_mb_area(ioBase, blMbArea, blCcb, &blCcbFreeList);
 
 	ctrl.scsi_rst = 1;
 	bl_put_ctrl(ioBase, ctrl);
@@ -228,11 +231,7 @@ static msg_header_t timeoutMsgTemplate = {
 	ccb->data_out		= !scsiReq->read;
 	ccb->target		= scsiReq->target;
 	ccb->lun		= scsiReq->lun;
-	#if	AUTO_SENSE_ENABLE
-	ccb->reqsense_len      = sizeof(esense_reply_t);
-	#else	AUTO_SENSE_ENABLE
-	ccb->reqsense_len	= 1;	/* no auto reqsense */
-	#endif	AUTO_SENSE_ENABLE
+	ccb->reqsense_len	= 1;	/* disable automatic request sense */
 
 	/*
 	 * Note BusLogic does not support command queueing. Synchronous
@@ -250,8 +249,8 @@ static msg_header_t timeoutMsgTemplate = {
 	 *  all the physical pages into a single transfer.
 	 */
 	if (pages == 0) {
-		bl_put_24(0, ccb->data_addr);
-		bl_put_24(0, ccb->data_len);
+		bl_put_32(0, ccb->data_addr);
+		bl_put_32(0, ccb->data_len);
 		ccb->oper = BL_CCB_INITIATOR_RESID;
 	}
 	else if (pages == 1) {
@@ -273,8 +272,8 @@ static msg_header_t timeoutMsgTemplate = {
 			return 1;
 		}
 
-		bl_put_24(phys, ccb->data_addr);
-		bl_put_24(len, ccb->data_len);
+		bl_put_32(phys, ccb->data_addr);
+		bl_put_32(len, ccb->data_len);
 
 		ccb->oper = BL_CCB_INITIATOR_RESID;
 		ccb->total_xfer_len = len;
@@ -312,8 +311,8 @@ static msg_header_t timeoutMsgTemplate = {
 				return 1;
 			}
 
-			bl_put_24(phys, sg->addr);
-			bl_put_24(thisLength, sg->len);
+			bl_put_32(phys, sg->addr);
+			bl_put_32(thisLength, sg->len);
 
 			ccb->total_xfer_len += thisLength;
 
@@ -330,8 +329,8 @@ static msg_header_t timeoutMsgTemplate = {
 				[self name]);
 			IOPanic("BLCController");
 		}
-		bl_put_24(phys, ccb->data_addr);
-		bl_put_24(sgEntry * sizeof(struct bl_sg), ccb->data_len);
+		bl_put_32(phys, ccb->data_addr);
+		bl_put_32(sgEntry * sizeof(struct bl_sg), ccb->data_len);
 
 		ccb->oper = BL_CCB_INITIATOR_RESID_SG;
 	}
@@ -347,10 +346,14 @@ static msg_header_t timeoutMsgTemplate = {
 {
 	unsigned int	cmdsToRun;
 	struct ccb	*ccb;
+	bl_mb_t		*mb;
 
 	cmdsToRun = BL_QUEUE_SIZE - outstandingCount;
 
 	while (cmdsToRun > 0 && !queue_empty(&pendingQ)) {
+		mb = blMbArea->next_out;
+		if (mb->mb_stat != BL_MB_OUT_FREE)
+			break;
 
 		/*
 		 *  Dequeue pending command and add to the outstanding queue.
@@ -366,8 +369,13 @@ static msg_header_t timeoutMsgTemplate = {
 		/*
 		 *  Let 'er rip...
 		 */
-		ccb->mb_out->mb_stat = BL_MB_OUT_START;
+		bl_put_32(ccb->physical_addr, mb->ccb_addr);
+		mb->mb_stat = BL_MB_OUT_START;
 		blc_start_scsi(ioBase);
+		mb++;
+		if (mb > blMbArea->out_end)
+			mb = blMbArea->out_start;
+		blMbArea->next_out = mb;
 
 		/*
 		 *  Accumulate some simple statistics: the max queue length
@@ -426,7 +434,7 @@ static msg_header_t timeoutMsgTemplate = {
 		    [self completeDMA:ccb->dmaList
 		    	length:scsiReq->maxTransfer];
 		    scsiReq->bytesTransferred = ccb->total_xfer_len -
-					bl_get_24(ccb->data_len);
+					bl_get_32(ccb->data_len);
 
 		    /*
 		     *  Everything looks good.  Make sure the SCSI status byte
@@ -435,23 +443,7 @@ static msg_header_t timeoutMsgTemplate = {
 		    if (scsiReq->scsiStatus == STAT_GOOD)
 			    scsiReq->driverStatus = SR_IOST_GOOD;
 		    else if (scsiReq->scsiStatus == STAT_CHECK) {
-		        if(AUTO_SENSE_ENABLE) {
-
-			    esense_reply_t *sensePtr;
-
-			    scsiReq->driverStatus = SR_IOST_CHKSV;
-
-			    /*
-			     * Sense data starts immediately after the actual
-			     * cdb area we use, not an entire union cdb.
-			     */
-			    sensePtr = (esense_reply_t *)
-			    	(((char *)&ccb->cdb) + ccb->cdb_len);
-			    scsiReq->senseData = *sensePtr;
-			}
-			else {
-			    scsiReq->driverStatus = SR_IOST_CHKSNV;
-			}
+		scsiReq->driverStatus = SR_IOST_CHKSNV;
 		    }
 		    else
 			    scsiReq->driverStatus = ST_IOST_BADST;
@@ -460,6 +452,12 @@ static msg_header_t timeoutMsgTemplate = {
 		case BL_HOST_SEL_TIMEOUT:
 		    [self abortDMA:ccb->dmaList length:scsiReq->maxTransfer];
 		    scsiReq->driverStatus = SR_IOST_SELTO;
+		    break;
+
+		case BL_HOST_ADAPTER_PARITY_ERROR:
+		    IOLog("%s: Host Adapter Parity Error\n", [self name]);
+		    [self abortDMA:ccb->dmaList length:scsiReq->maxTransfer];
+		    scsiReq->driverStatus = SR_IOST_PARITY;
 		    break;
 
 		default:
@@ -504,17 +502,12 @@ static msg_header_t timeoutMsgTemplate = {
 		return NULL;
 	}
 
-	/*
-	 * Since numFreeCcbs is non-zero, there has to be one available
-	 * in blCcb[].
-	 */
-	ccb = blCcb;
-	while (ccb <= &blCcb[BL_QUEUE_SIZE - 1] && ccb->in_use) {
-		ccb++;
-	}
-	if (ccb > &blCcb[BL_QUEUE_SIZE - 1]) {
+	ccb = blCcbFreeList;
+	if (ccb == NULL) {
 		IOPanic("BLCController: out of ccbs");
 	}
+	blCcbFreeList = ccb->free_next;
+	ccb->free_next = NULL;
 	numFreeCcbs--;
 	ccb->in_use = TRUE;
 
@@ -546,6 +539,8 @@ static msg_header_t timeoutMsgTemplate = {
 {
 	ddm_thr("freeCcb: ccb 0x%x\n", ccb, 2,3,4,5);
 	ccb->in_use = FALSE;
+	ccb->free_next = blCcbFreeList;
+	blCcbFreeList = ccb;
 	numFreeCcbs++;
 	if((--dmaLockCount == 0) && (busType == BL_BUS_ISA)) {
 		ddm_thr("freeCcb: calling releaseDMALock\n",

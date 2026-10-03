@@ -73,6 +73,7 @@ typedef unsigned char	bl_cmd_reg_t;
 
 #define	BL_CMD_TEST_CMDC_INT	0x00
 #define BL_CMD_INIT_MBOX	0x01
+#define BL_CMD_INIT_EXT_MBOX	0x81
 #define BL_CMD_START_SCSI	0x02
 #define BL_CMD_EXECUTE_BIOS	0x03
 #define BL_CMD_INQUIRY		0x04
@@ -85,6 +86,8 @@ typedef unsigned char	bl_cmd_reg_t;
 #define BL_CMD_GET_CONFIG	0x0b
 #define BL_CMD_TARGET_MODE	0x0c
 #define BL_CMD_INQUIRY_SETUP	0x0d
+#define BL_CMD_INQUIRY_SETUP_EXT	0x8d
+#define BL_CMD_ROUND_ROBIN	0x8f
 #define BL_CMD_WRITE_CH2	0x1a
 #define BL_CMD_READ_CH2		0x1b
 #define BL_CMD_WRITE_FIFO	0x1c
@@ -115,8 +118,9 @@ typedef unsigned char	bl_cmd_reg_t;
 #define BL_MB_IN_ERROR		0x04
 
 typedef struct {
+    volatile unsigned char	ccb_addr[4];
+    unsigned char		reserved[3];
     volatile unsigned char	mb_stat;
-    volatile unsigned char	ccb_addr[3];
 } bl_mb_t;
 
 /*
@@ -130,17 +134,23 @@ typedef struct {
 struct bl_mb_area {
     bl_mb_t		mb_out[BL_MB_CNT];
     bl_mb_t		mb_in[BL_MB_CNT];
+	bl_mb_t		*next_out;
+	bl_mb_t		*out_start;
+	bl_mb_t		*out_end;
+	bl_mb_t		*next_in;
+	bl_mb_t		*in_start;
+	bl_mb_t		*in_end;
 };
 
 
 /*
- * Mailbox area initialization
- * structure passed to BL_CMD_INIT_MBOX.
+ * Mailbox area initialization structure passed to
+ * BL_CMD_INIT_EXT_MBOX.
  */
 
 typedef struct {
 	unsigned char	mb_cnt;
-	unsigned char	mb_area_addr[3];
+	unsigned char	mb_area_addr[4];
 } bl_cmd_init_t;
 
 
@@ -158,8 +168,8 @@ typedef	struct {
  */
 
 struct bl_sg {
-	unsigned char	len[3];
-	unsigned char	addr[3];
+	unsigned char	len[4];
+	unsigned char	addr[4];
 };
 
 /*
@@ -189,6 +199,7 @@ struct bl_sg {
 #define BL_HOST_AUTO_SENSE_FAIL		0x1b
 #define BL_HOST_TAGGED_QUEUE_REJ	0x1c
 #define BL_HOST_HARDWARE_ERROR		0x20
+#define BL_HOST_ADAPTER_PARITY_ERROR	0x34
 #define BL_HOST_TARGET_INIT_ABORT	0x21
 #define BL_HOST_HOST_ABORT		0x22
 #define BL_HOST_HOST_ABORT_FAIL		0x23
@@ -203,36 +214,28 @@ struct ccb {
 			target		:3;
     unsigned char	cdb_len;
     unsigned char	reqsense_len;	/* 1 means no auto reqsense */
-    unsigned char	data_len[3];
-    unsigned char	data_addr[3];
-    unsigned char	link_addr[3];
-    unsigned char	link_id;
+	unsigned char	data_len[4];
+	unsigned char	data_addr[4];
+	unsigned char	reserved_link[2];
     unsigned char	host_status;
     unsigned char	target_status;
     unsigned char	mbz[2];
     union cdb		cdb;
 
-    /*
-     * *** Hack alert ***
-     *
-     * The sense data does not necessarily go right here; it goes
-     * cdb_len bytes after the start of cdb. Allocating an entire
-     * esense_reply_t here guarantees we'll always have enough
-     * space. This is how BusLogic designed the interface.
-     */
-    esense_reply_t	senseData;
+	unsigned char	wire_padding[6];
 
     /* Software extension to ccb */
 
     struct bl_sg	sg_list[BL_SG_COUNT];
     IOEISADMABuffer	dmaList[BL_SG_COUNT];
     unsigned int	total_xfer_len;
-    bl_mb_t		*mb_out;
     ns_time_t		startTime;
     port_t		timeoutPort;
     void		*cmdBuf;	// keep BLThread types opaque here...
     boolean_t		in_use;
     queue_chain_t	ccbQ;
+	unsigned int	physical_addr;
+	struct ccb	*free_next;
 };
 
 /*

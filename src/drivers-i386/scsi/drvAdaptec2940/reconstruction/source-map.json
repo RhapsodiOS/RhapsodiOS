@@ -165,6 +165,123 @@
       "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940.m"
     },
     {
+      "address": 9112,
+      "reference_names": [
+        "+[SCSIBus probe:]"
+      ],
+      "size": 139,
+      "source_line": 16,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/SCSIBus.m"
+    },
+    {
+      "address": 9252,
+      "reference_names": [
+        "+[SCSIBus deviceStyle]"
+      ],
+      "size": 12,
+      "source_line": 36,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/SCSIBus.m"
+    },
+    {
+      "address": 9264,
+      "reference_names": [
+        "+[SCSIBus requiredProtocols]"
+      ],
+      "size": 12,
+      "source_line": 41,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/SCSIBus.m"
+    },
+    {
+      "address": 9276,
+      "reference_names": [
+        "-[SCSIBus maxTransfer]"
+      ],
+      "size": 29,
+      "source_line": 46,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/SCSIBus.m"
+    },
+    {
+      "address": 9308,
+      "reference_names": [
+        "-[SCSIBus free]"
+      ],
+      "size": 41,
+      "source_line": 51,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/SCSIBus.m"
+    },
+    {
+      "address": 9352,
+      "reference_names": [
+        "-[SCSIBus resetStats]"
+      ],
+      "size": 38,
+      "source_line": 56,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/SCSIBus.m"
+    },
+    {
+      "address": 9392,
+      "reference_names": [
+        "-[SCSIBus numQueueSamples]"
+      ],
+      "size": 29,
+      "source_line": 62,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/SCSIBus.m"
+    },
+    {
+      "address": 9424,
+      "reference_names": [
+        "-[SCSIBus sumQueueLengths]"
+      ],
+      "size": 29,
+      "source_line": 67,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/SCSIBus.m"
+    },
+    {
+      "address": 9456,
+      "reference_names": [
+        "-[SCSIBus maxQueueLength]"
+      ],
+      "size": 29,
+      "source_line": 72,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/SCSIBus.m"
+    },
+    {
+      "address": 9488,
+      "reference_names": [
+        "-[SCSIBus numberOfTargets]"
+      ],
+      "size": 36,
+      "source_line": 77,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/SCSIBus.m"
+    },
+    {
+      "address": 9524,
+      "reference_names": [
+        "-[SCSIBus executeRequest:buffer:client:]"
+      ],
+      "size": 73,
+      "source_line": 82,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/SCSIBus.m"
+    },
+    {
+      "address": 9600,
+      "reference_names": [
+        "-[SCSIBus resetSCSIBus]"
+      ],
+      "size": 55,
+      "source_line": 97,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/SCSIBus.m"
+    },
+    {
+      "address": 9656,
+      "reference_names": [
+        "-[SCSIBus initSCSIBus:channel:]"
+      ],
+      "size": 296,
+      "source_line": 107,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/SCSIBus.m"
+    },
+    {
       "address": 9952,
       "reference_names": [
         "_PH_EnableInt"
@@ -592,97 +709,6 @@
         "_a2940Timeout"
       ],
       "size": 86
-    },
-    {
-      "address": 9112,
-      "reference_names": [
-        "+[SCSIBus probe:]"
-      ],
-      "size": 139
-    },
-    {
-      "address": 9252,
-      "reference_names": [
-        "+[SCSIBus deviceStyle]"
-      ],
-      "size": 12
-    },
-    {
-      "address": 9264,
-      "reference_names": [
-        "+[SCSIBus requiredProtocols]"
-      ],
-      "size": 12
-    },
-    {
-      "address": 9276,
-      "reference_names": [
-        "-[SCSIBus maxTransfer]"
-      ],
-      "size": 29
-    },
-    {
-      "address": 9308,
-      "reference_names": [
-        "-[SCSIBus free]"
-      ],
-      "size": 41
-    },
-    {
-      "address": 9352,
-      "reference_names": [
-        "-[SCSIBus resetStats]"
-      ],
-      "size": 38
-    },
-    {
-      "address": 9392,
-      "reference_names": [
-        "-[SCSIBus numQueueSamples]"
-      ],
-      "size": 29
-    },
-    {
-      "address": 9424,
-      "reference_names": [
-        "-[SCSIBus sumQueueLengths]"
-      ],
-      "size": 29
-    },
-    {
-      "address": 9456,
-      "reference_names": [
-        "-[SCSIBus maxQueueLength]"
-      ],
-      "size": 29
-    },
-    {
-      "address": 9488,
-      "reference_names": [
-        "-[SCSIBus numberOfTargets]"
-      ],
-      "size": 36
-    },
-    {
-      "address": 9524,
-      "reference_names": [
-        "-[SCSIBus executeRequest:buffer:client:]"
-      ],
-      "size": 73
-    },
-    {
-      "address": 9600,
-      "reference_names": [
-        "-[SCSIBus resetSCSIBus]"
-      ],
-      "size": 55
-    },
-    {
-      "address": 9656,
-      "reference_names": [
-        "-[SCSIBus initSCSIBus:channel:]"
-      ],
-      "size": 296
     },
     {
       "address": 10044,

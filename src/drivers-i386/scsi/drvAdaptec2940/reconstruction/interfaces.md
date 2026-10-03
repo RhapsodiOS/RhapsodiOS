@@ -4,6 +4,12 @@ Reference: `Adaptec2940SCSI_reloc`, i386 little-endian, SHA-256 `08E6C11EEC12584
 
 ## Core HIM helper batch
 
+`SCSIBus.m` now contains the 13 recovered indirect-controller methods. It
+publishes the `IOSCSIControllerExported` protocol, probes the controller's
+single channel, forwards statistics and transfer queries, builds the exact
+36-byte request/reset message expected by `executeCmdBuf:`, and reserves the
+eight LUNs for the adapter's SCSI ID during initialization.
+
 The controller's statistics methods now match the recovered bodies:
 `resetStats` clears the queue-length total, maximum queue length, and sample
 count, while `numQueueSamples`, `sumQueueLengths`, and `maxQueueLength` return

@@ -313,6 +313,7 @@ def test_controller_statistics_methods_match_reference():
         ("- (unsigned int)maxQueueLength", "return maxQueueLen;"),
         ("- (unsigned)maxTransfer", "return (AIC_SG_COUNT * PAGE_SIZE);"),
     ):
+        assert signature in source, signature
         start = source.index(signature)
         body_end = source.index("\n}", start)
         assert expression in source[start:body_end], signature
@@ -346,6 +347,47 @@ def test_controller_channel_methods_match_reference():
     for name in ("-[Adaptec2940 numberOfTargets:]", "-[Adaptec2940 acquireSCSIBus:owner:]",
                  "-[Adaptec2940 releaseSCSIBus:owner:]", "-[Adaptec2940 scsiBusId:]"):
         assert mapped[name]["source_path"].endswith("Adaptec2940.m")
+        assert entries[name]["status"] == "control-flow-confirmed"
+
+
+def test_scsi_bus_class_matches_reference():
+    source_path = DRIVER / "Adaptec2940.drvproj/Adaptec2940.lksproj/SCSIBus.m"
+    assert source_path.is_file(), "the recovered SCSIBus implementation must be part of the driver"
+    source = source_path.read_text(encoding="ascii")
+    project = (DRIVER / "Adaptec2940.drvproj/Adaptec2940.lksproj/PB.project").read_text(encoding="ascii")
+    preamble = (DRIVER / "Adaptec2940.drvproj/Adaptec2940.lksproj/Makefile.preamble").read_text(encoding="ascii")
+    assert "SCSIBus.m" in project and "SCSIBus.h" in project
+    assert "CLASSES += SCSIBus.m" in preamble and "HFILES += SCSIBus.h" in preamble
+    for signature, expression in (
+        ("+ (BOOL)probe:", "channel != 0"),
+        ("+ (int)deviceStyle", "return IO_IndirectDevice;"),
+        ("+ (Protocol **)requiredProtocols", "return protocols;"),
+        ("- (unsigned int)maxTransfer", "[_direct maxTransfer]"),
+        ("- (void)resetStats", "if (_scsiChannel == 0)"),
+        ("- (int)numberOfTargets", "[_direct numberOfTargets:_scsiChannel]"),
+        ("- (sc_status_t)executeRequest:", "request[1] = 0;"),
+        ("- (sc_status_t)resetSCSIBus", "request[1] = 1;"),
+        ("- initSCSIBus:", "for (target = 0; target <= 7; ++target)"),
+    ):
+        assert signature in source, signature
+        start = source.index(signature)
+        body_end = source.index("\n}", start)
+        assert expression in source[start:body_end], signature
+    assert "@protocol(IOSCSIControllerExported)" in source
+    names = (
+        "+[SCSIBus probe:]", "+[SCSIBus deviceStyle]", "+[SCSIBus requiredProtocols]",
+        "-[SCSIBus maxTransfer]", "-[SCSIBus free]", "-[SCSIBus resetStats]",
+        "-[SCSIBus numQueueSamples]", "-[SCSIBus sumQueueLengths]",
+        "-[SCSIBus maxQueueLength]", "-[SCSIBus numberOfTargets]",
+        "-[SCSIBus executeRequest:buffer:client:]", "-[SCSIBus resetSCSIBus]",
+        "-[SCSIBus initSCSIBus:channel:]",
+    )
+    source_map = json.loads((RECON / "source-map.json").read_text(encoding="utf-8"))
+    mapped = {name: row for row in source_map["mapped"] for name in row["reference_names"]}
+    ledger = json.loads((RECON / "ledger.json").read_text(encoding="utf-8"))
+    entries = {name: row for row in ledger["entries"] for name in row["names"]}
+    for name in names:
+        assert mapped[name]["source_path"].endswith("SCSIBus.m")
         assert entries[name]["status"] == "control-flow-confirmed"
 
 

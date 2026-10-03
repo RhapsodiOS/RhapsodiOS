@@ -162,6 +162,22 @@ int Ph_ReadIntstat(short io_base)
 	return status;
 }
 
+int PH_PollInt(int host_address)
+{
+	unsigned char *host = a2940_host_from_address(host_address);
+	int io_base = *(int *)(host + A2940_HA_IO_BASE_OFFSET);
+	unsigned char original = A2940_HIM_INB(io_base + 135);
+	unsigned char control;
+	unsigned char status;
+	A2940_HIM_OUTB(io_base + 135, original | 0x04);
+	do {
+		control = A2940_HIM_INB(io_base + 135);
+	} while ((control & 0x04) == 0);
+	status = Ph_ReadIntstat((short)io_base) & 0x0f;
+	Ph_WriteHcntrl((short)io_base, original);
+	return status;
+}
+
 unsigned char Ph_Delay(int io_base, int count)
 {
 	unsigned char timer_low;

@@ -67,6 +67,10 @@ below and above 8 and the period threshold at `0x18`.
 the delay counter for each iteration, unpauses until the sequencer pauses
 again, then restores both timer bytes. A simulated pause transition checks
 the full one-iteration register order and barrier count.
+`_PH_PollInt` (0x4ab4) forces the sequencer into the paused state, waits for
+HCNTRL bit `0x04`, reads INTSTAT's low nibble through `Ph_ReadIntstat`, then
+restores the original HCNTRL through `Ph_WriteHcntrl`. The native port shim
+checks status masking and restoration.
 
 ## Function inventory
 

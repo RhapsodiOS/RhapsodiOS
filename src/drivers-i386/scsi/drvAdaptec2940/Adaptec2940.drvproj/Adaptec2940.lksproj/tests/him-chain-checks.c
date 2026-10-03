@@ -399,11 +399,26 @@ static int run_delay_checks(void)
 	       output_ports[7] == 0x1b1 && output_values[7] == 0xbb;
 }
 
+static int run_pollint_checks(void)
+{
+	unsigned char host[64];
+	unsigned int i;
+	for (i = 0; i < sizeof(host); ++i) host[i] = 0;
+	*(unsigned int *)(host + 4) = 0x100;
+	reset_ports(0, 0x0b);
+	if (PH_PollInt((int)host) != 0x0b || output_count != 2 ||
+	    output_values[0] != 4 || output_values[1] != 4)
+		return 0;
+	reset_ports(0, 0x80);
+	return PH_PollInt((int)host) == 0 && output_count == 2 &&
+	       output_values[0] == 4 && output_values[1] == 0;
+}
+
 void mainCRTStartup(void)
 {
 	ExitProcess(run_chain_checks() && run_hcntrl_checks() &&
 	            run_status_checks() && run_misc_checks() &&
 	            run_bookmark_checks() && run_scb_prepare_checks() &&
 	            run_sync_map_checks() && run_negotiation_fast20_checks() &&
-	            run_delay_checks() ? 0 : 42);
+	            run_delay_checks() && run_pollint_checks() ? 0 : 42);
 }

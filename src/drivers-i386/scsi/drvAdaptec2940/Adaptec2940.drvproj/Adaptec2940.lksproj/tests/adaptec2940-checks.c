@@ -443,6 +443,24 @@ static int run_him_delay_checks(void)
 	       sequencer_trace_port[7] == 0x1b1 && sequencer_trace_value[7] == 0xbb;
 }
 
+static int run_him_pollint_checks(void)
+{
+	Adaptec2940HostInfo host;
+	memset(&host, 0, sizeof(host));
+	*(unsigned int *)(host.bytes + A2940_HA_IO_BASE_OFFSET) = 0x100;
+	memset(test_registers, 0, sizeof(test_registers));
+	sequencer_trace_count = sequencer_barriers = test_read_count = 0;
+	test_registers[0x91] = 0x0b;
+	if (PH_PollInt((int)&host) != 0x0b || sequencer_trace_count != 2 ||
+	    sequencer_trace_value[0] != 4 || sequencer_trace_value[1] != 4)
+		return 0;
+	memset(test_registers, 0, sizeof(test_registers));
+	sequencer_trace_count = sequencer_barriers = test_read_count = 0;
+	test_registers[0x91] = 0x80;
+	return PH_PollInt((int)&host) == 0 && sequencer_trace_count == 2 &&
+	       sequencer_trace_value[0] == 4 && sequencer_trace_value[1] == 0;
+}
+
 static int is_group(const char *value, const char *expected)
 {
 	return strcmp(value, expected) == 0;
@@ -523,7 +541,8 @@ void mainCRTStartup(void)
 	            run_him_hcntrl_checks() && run_him_status_checks() &&
 	            run_him_misc_checks() && run_him_bookmark_checks() &&
 	            run_him_scb_prepare_checks() && run_him_sync_map_checks() &&
-	            run_him_negotiation_checks() && run_him_delay_checks() ? 0 : 42);
+	            run_him_negotiation_checks() && run_him_delay_checks() &&
+	            run_him_pollint_checks() ? 0 : 42);
 }
 #else
 int main(int argc, char **argv)
@@ -561,7 +580,8 @@ int main(int argc, char **argv)
 		int sync_map_ok = run_him_sync_map_checks();
 		int negotiation_ok = run_him_negotiation_checks();
 		int delay_ok = run_him_delay_checks();
-		int ok = chain_ok && hcntrl_ok && status_ok && misc_ok && bookmark_ok && prepare_ok && sync_map_ok && negotiation_ok && delay_ok;
+		int pollint_ok = run_him_pollint_checks();
+		int ok = chain_ok && hcntrl_ok && status_ok && misc_ok && bookmark_ok && prepare_ok && sync_map_ok && negotiation_ok && delay_ok && pollint_ok;
 		printf("{\"schema_version\":\"adaptec2940-checks-v1\","
 		       "\"group\":\"him\",\"ok\":%s,"
 		       "\"cases\":[{\"id\":\"chain-empty\",\"result\":\"%s\"},"
@@ -582,7 +602,8 @@ int main(int argc, char **argv)
 		       "{\"id\":\"sync-period-map\",\"result\":\"%s\"},"
 		       "{\"id\":\"renegotiation-marker\",\"result\":\"%s\"},"
 		       "{\"id\":\"fast20-map\",\"result\":\"%s\"},"
-		       "{\"id\":\"sequencer-delay\",\"result\":\"%s\"}],"
+		       "{\"id\":\"sequencer-delay\",\"result\":\"%s\"},"
+		       "{\"id\":\"poll-interrupt-mask\",\"result\":\"%s\"}],"
 		       "\"build_hash\":\"%s\"}\n", ok ? "true" : "false",
 		       ok ? "pass" : "fail", ok ? "pass" : "fail",
 		       ok ? "pass" : "fail", ok ? "pass" : "fail",
@@ -595,6 +616,7 @@ int main(int argc, char **argv)
 		       sync_map_ok ? "pass" : "fail",
 		       negotiation_ok ? "pass" : "fail", negotiation_ok ? "pass" : "fail",
 		       delay_ok ? "pass" : "fail",
+		       pollint_ok ? "pass" : "fail",
 		       A2940_BUILD_HASH);
 		return ok ? 0 : 1;
 	}

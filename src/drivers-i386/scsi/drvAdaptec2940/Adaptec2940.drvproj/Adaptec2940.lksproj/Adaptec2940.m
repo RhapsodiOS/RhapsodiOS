@@ -114,6 +114,38 @@
 	return (AIC_SG_COUNT * PAGE_SIZE);
 }
 
+- (int)numberOfTargets:(int)channel
+{
+	return *((unsigned char *)channelInfo[channel].hostInfo +
+	         A2940_CHANNEL_TARGET_COUNT_OFFSET);
+}
+
+- (char)acquireSCSIBus:(unsigned int)channel owner:(id)owner
+{
+	Adaptec2940ChannelInfo *info = &channelInfo[channel];
+
+	if (channel != 0 || info->owner != nil || info->hostInfo == nil) {
+		return 0;
+	}
+	info->owner = owner;
+	return 1;
+}
+
+- (void)releaseSCSIBus:(unsigned int)channel owner:(id)owner
+{
+	if (channelInfo[channel].owner == owner) {
+		channelInfo[channel].owner = nil;
+	} else {
+		IOLog("%s releaseSCSIBus: Incorrect Owner\n", [self name]);
+	}
+}
+
+- (int)scsiBusId:(unsigned int)channel
+{
+	return *((unsigned char *)channelInfo[channel].hostInfo +
+	         A2940_CHANNEL_BUS_ID_OFFSET);
+}
+
 /*
  * Free driver resources.
  */

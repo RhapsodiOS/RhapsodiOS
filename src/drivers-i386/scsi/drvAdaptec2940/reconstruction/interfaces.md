@@ -10,6 +10,10 @@ count, while `numQueueSamples`, `sumQueueLengths`, and `maxQueueLength` return
 those corresponding fields.
 `maxTransfer` returns sixteen pages; `AIC_SG_COUNT` is fixed to the IDA
 constant 16 so request segmentation and the reported transfer limit agree.
+The channel methods use the recovered 8-byte record: bus acquisition succeeds
+only for channel zero with an allocated 140-byte record and no current owner;
+release clears only the matching owner. The channel record's bytes 30 and 31
+provide the SCSI bus ID and target count.
 
 The initial production batch in `Adaptec2940HIM.c` implements the IDA
 entry points `_Ph_MemorySet` (0x4224), `_Ph_ChainAppendEnd` (0x4b2c),

@@ -327,6 +327,28 @@ def test_controller_statistics_methods_match_reference():
         assert entries[name]["status"] == "control-flow-confirmed"
 
 
+def test_controller_channel_methods_match_reference():
+    source = (DRIVER / "Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940.m").read_text(encoding="ascii")
+    expected = (
+        ("- (int)numberOfTargets:(int)channel", "A2940_CHANNEL_TARGET_COUNT_OFFSET"),
+        ("- (char)acquireSCSIBus:(unsigned int)channel owner:(id)owner", "channel != 0 || info->owner != nil || info->hostInfo == nil"),
+        ("- (void)releaseSCSIBus:(unsigned int)channel owner:(id)owner", "channelInfo[channel].owner == owner"),
+        ("- (int)scsiBusId:(unsigned int)channel", "A2940_CHANNEL_BUS_ID_OFFSET"),
+    )
+    for signature, expression in expected:
+        start = source.index(signature)
+        body_end = source.index("\n}", start)
+        assert expression in source[start:body_end], signature
+    source_map = json.loads((RECON / "source-map.json").read_text(encoding="utf-8"))
+    mapped = {name: row for row in source_map["mapped"] for name in row["reference_names"]}
+    ledger = json.loads((RECON / "ledger.json").read_text(encoding="utf-8"))
+    entries = {name: row for row in ledger["entries"] for name in row["names"]}
+    for name in ("-[Adaptec2940 numberOfTargets:]", "-[Adaptec2940 acquireSCSIBus:owner:]",
+                 "-[Adaptec2940 releaseSCSIBus:owner:]", "-[Adaptec2940 scsiBusId:]"):
+        assert mapped[name]["source_path"].endswith("Adaptec2940.m")
+        assert entries[name]["status"] == "control-flow-confirmed"
+
+
 def _main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--audit", choices=("inventory", "layouts", "firmware"))

@@ -1,57 +1,45 @@
-/*
- * Copyright (c) 1999 Apple Computer, Inc.
- *
- * Adaptec2940Private.h - Private declarations for Adaptec 2940 driver.
- *
- * HISTORY
- *
- * Created for Rhapsody OS
- */
+/* Copyright (c) 1999 Apple Computer, Inc. */
 
 #ifndef _ADAPTEC2940PRIVATE_H
 #define _ADAPTEC2940PRIVATE_H
 
-#import <driverkit/return.h>
-#import <driverkit/scsiTypes.h>
-#import <kernserv/queue.h>
-#import "Adaptec2940Types.h"
+#include "Adaptec2940Types.h"
 
-/*
- * Private methods.
- */
+#define AIC_QUEUE_SIZE 16
+#define AIC_NUM_SCBS 16
+#define AIC_RESET_TIMEOUT_MS 5000
+#define AIC_CMD_TIMEOUT_MS 30000
+
+#ifdef __OBJC__
+
+#import "Adaptec2940.h"
+
 @interface Adaptec2940(Private)
-
-- (IOReturn)aicInitController;
-- (IOReturn)aicResetBus;
-- (IOReturn)aicAllocateResources;
-- (void)aicFreeResources;
-- (struct scb *)allocScb;
-- (void)freeScb:(struct scb *)scb;
-- (void)threadExecuteRequest:(void *)commandBuf;
-- (void)runPendingCommands;
-- (void)processCmdComplete:(struct scb *)scb;
-- (IOReturn)executeCmdBuf:(void *)commandBuf;
-
+- (char)checkScbAlign:(Adaptec2940SCB *)scb;
+- (Adaptec2940SCB *)allocScb;
+- (void)freeScb:(Adaptec2940SCB *)scb;
+- (void)createScbs:(unsigned int)base size:(unsigned int)size;
+- (void)threadExecuteRequest:(Adaptec2940RequestMessage *)message;
+- (void)threadResetBus:(Adaptec2940RequestMessage *)message
+              channel:(unsigned int)channel
+               reason:(const char *)reason;
+- (void)commandCompleted:(Adaptec2940SCB *)scb;
+- (void)scbComplete:(Adaptec2940SCB *)scb;
+- (void)startIOThread;
+- (void)enableAllInterrupts;
+- (id)deviceDescription;
+- (port_t)interruptPort;
 @end
 
-/*
- * Internal command buffer structure.
- */
-typedef struct {
-	queue_chain_t		link;
-	IOSCSIRequest		*scsiReq;
-	void			*buffer;
-	vm_task_t		client;
-	struct scb		*scb;
-} Adaptec2940CommandBuf;
+@interface Adaptec2940(IOThread)
+- (void)interruptOccurred;
+- (void)interruptOccurredAt:(int)localNum;
+- (void)otherOccurred:(int)event;
+- (void)receiveMsg;
+- (void)timeoutOccurred;
+- (void)commandRequestOccurred;
+@end
 
-#define AIC_QUEUE_SIZE		16
-#define AIC_NUM_SCBS		16
-
-/*
- * Timeout values.
- */
-#define AIC_RESET_TIMEOUT_MS	5000
-#define AIC_CMD_TIMEOUT_MS	30000
+#endif /* __OBJC__ */
 
 #endif /* _ADAPTEC2940PRIVATE_H */

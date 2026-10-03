@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 
 from binrecon.macho import read_macho
@@ -127,15 +128,190 @@ def test_inventory_partition():
     assert audit_inventory()
 
 
+def test_shared_layouts():
+    layout_path = RECON / "layouts.json"
+    layouts = json.loads(layout_path.read_text(encoding="utf-8"))
+    assert layouts["schema_version"] == "adaptec2940-layouts-v1"
+    assert layouts["reference_sha256"] == REFERENCE_SHA256
+    assert layouts["structures"]["scb"]["size"] == 256
+    scb_fields = layouts["structures"]["scb"]["fields"]
+    for field, offset, width in (
+        ("chain_next", 0, 4), ("host_info", 4, 4), ("scb_status", 8, 1),
+        ("host_status", 9, 1), ("flags", 10, 1), ("manager_status", 11, 1),
+        ("target_channel_lun", 12, 1), ("control", 13, 1),
+        ("command_length", 14, 1), ("sg_count", 15, 1), ("sg_pointer", 16, 4),
+        ("command_pointer", 20, 4), ("target_status", 24, 1),
+        ("residual_data_count", 28, 4), ("sense_physical", 44, 4),
+        ("cdb", 52, 12), ("host_self", 76, 4), ("scatter_gather", 80, 144),
+        ("command_buffer", 224, 4), ("start_time", 228, 8),
+        ("timeout_port", 236, 4), ("total_transfer_length", 240, 4),
+        ("in_use", 244, 1), ("queue_next", 248, 4), ("queue_previous", 252, 4),
+    ):
+        assert scb_fields[field] == {"offset": offset, "width": width}, field
+    assert layouts["structures"]["scb"]["fields"]["queue_next"] == {"offset": 248, "width": 4}
+    assert layouts["structures"]["scb"]["fields"]["queue_previous"] == {"offset": 252, "width": 4}
+    assert layouts["structures"]["host_info"]["size"] == 140
+    assert layouts["structures"]["channel_info"]["size"] == 8
+    assert layouts["structures"]["request_message"]["size"] == 36
+    assert layouts["structures"]["scatter_gather"]["size"] == 8
+    assert layouts["structures"]["queue_head"]["size"] == 8
+    assert layouts["structures"]["sense_data"]["size"] == 26
+    assert layouts["structures"]["scb"]["alignment"] == 256
+    assert layouts["structures"]["scb"]["hardware_size"] == 32
+    for field, contract in layouts["structures"]["host_info"]["verified_fields"].items():
+        assert contract["offset"] >= 0 and contract["offset"] + contract["width"] <= 140, field
+    assert layouts["structures"]["controller"]["size"] == 396
+    assert layouts["structures"]["scsi_bus"]["size"] == 588
+    assert layouts["structures"]["scsi_request"]["size"] == 84
+    assert layouts["data"]["P_Seq_01"]["size"] == 1960
+    assert layouts["structures"]["command_message_template"]["size"] == 24
+    assert layouts["structures"]["timeout_message_template"]["size"] == 24
+    check_source = DRIVER / "Adaptec2940.drvproj/Adaptec2940.lksproj/tests/adaptec2940-checks.c"
+    assert check_source.is_file(), "guest layout check must compile the production types"
+    check_text = check_source.read_text(encoding="utf-8")
+    types_header = (DRIVER / "Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940Types.h").read_text(encoding="utf-8")
+    for assertion in ("a2940_scb_size_is_256", "a2940_scb_chain_next_at_0",
+                      "a2940_scb_host_info_at_4", "a2940_scb_status_at_8",
+                      "a2940_scb_host_status_at_9", "a2940_scb_flags_at_10",
+                      "a2940_scb_manager_status_at_11", "a2940_scb_tcl_at_12",
+                      "a2940_scb_sg_count_at_15",
+                      "a2940_scb_sg_pointer_at_16", "a2940_scb_command_pointer_at_20",
+                      "a2940_scb_target_status_at_24", "a2940_scb_residual_at_28",
+                      "a2940_scb_sense_physical_at_44", "a2940_scb_cdb_at_52",
+                      "a2940_scb_host_self_at_76", "a2940_scb_sg_offset_is_80",
+                      "a2940_scb_command_buffer_is_224", "a2940_scb_queue_link_is_248",
+                      "a2940_scb_queue_previous_is_252", "a2940_request_channel_at_0",
+                      "a2940_request_command_at_4", "a2940_request_host_info_at_8",
+                      "a2940_request_buffer_at_12", "a2940_request_length_at_16",
+                      "a2940_request_status_at_20", "a2940_request_client_at_24",
+                      "a2940_request_link_is_28", "a2940_host_info_is_140",
+                      "a2940_channel_info_owner_at_0", "a2940_channel_info_host_at_4",
+                      "a2940_scsi_request_sense_at_56"):
+        assert assertion in types_header, f"missing compiler layout assertion: {assertion}"
+    for name, offset in layouts["structures"]["host_info"]["verified_fields"].items():
+        macro = {
+            "io_base": "A2940_HA_IO_BASE_OFFSET",
+            "bus_number": "A2940_HA_BUS_NUMBER_OFFSET",
+            "device_number": "A2940_HA_DEVICE_NUMBER_OFFSET",
+            "options_byte": "A2940_HA_OPTIONS_OFFSET",
+            "adapter_mode": "A2940_HA_MODE_OFFSET",
+            "irq": "A2940_HA_IRQ_OFFSET",
+            "structure_length": "A2940_HA_SIZE_OFFSET",
+            "max_targets": "A2940_HA_TARGETS_OFFSET",
+            "physical_self": "A2940_HA_SELF_OFFSET",
+        }[name]
+        assert re.search(rf"#define {macro}\s+{offset['offset']}\b", types_header), macro
+    assert '#import "../Adaptec2940.h"' in check_text
+    assert '#import "../SCSIBus.h"' in check_text
+    for assertion in ("a2940_ivar_ioBase_at_296", "a2940_ivar_ioBase_pad_at_298",
+                      "a2940_ivar_channel_at_300", "a2940_ivar_host_block_at_308",
+                      "a2940_ivar_host_block_size_at_312", "a2940_ivar_interrupt_port_at_316",
+                      "a2940_ivar_command_queue_at_320", "a2940_ivar_command_lock_at_328",
+                      "a2940_ivar_active_queue_at_332", "a2940_ivar_scb_queue_at_340",
+                      "a2940_ivar_scb_queue_length_at_348", "a2940_ivar_bad_scb_queue_at_352",
+                      "a2940_ivar_flags_at_360", "a2940_ivar_reinit_channel_at_364",
+                      "a2940_ivar_reset_state_at_368", "a2940_ivar_max_queue_at_372",
+                      "a2940_ivar_queue_total_at_376", "a2940_ivar_total_commands_at_380",
+                      "a2940_ivar_outstanding_count_at_384", "a2940_ivar_bus_type_at_388",
+                      "a2940_ivar_level_irq_at_392", "a2940_ivar_bus_number_at_393",
+                      "a2940_ivar_device_number_at_394", "a2940_ivar_function_number_at_395",
+                      "a2940_bus_direct_at_580", "a2940_bus_channel_at_584"):
+        assert assertion in check_text, f"missing Objective-C ivar assertion: {assertion}"
+    runner = DRIVER / "Adaptec2940.drvproj/Adaptec2940.lksproj/tests/run-checks.sh"
+    assert runner.is_file(), "guest runner is missing"
+    for group in ("layouts", "firmware", "him", "config", "optima", "integration", "all"):
+        assert group in runner.read_text(encoding="utf-8"), f"runner does not accept group {group}"
+    runner_text = runner.read_text(encoding="utf-8")
+    assert "../../../../../../.." in runner_text
+    assert "A2940_BUILD_HASH" in runner_text
+
+
+def test_sequencer_bytes():
+    layouts = json.loads((RECON / "layouts.json").read_text(encoding="utf-8"))
+    source = (DRIVER / "Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940Sequencer.c").read_text(encoding="ascii")
+    image_match = re.search(r"unsigned char P_Seq_01\[A2940_SEQ_IMAGE_SIZE\] = \{(.*?)\};", source, re.S)
+    table_match = re.search(r"unsigned char P_SeqExist\[A2940_SEQ_PRESENCE_SIZE\] = \{(.*?)\};", source, re.S)
+    assert image_match and table_match, "mutable reference firmware and descriptor table are missing"
+    image = bytes(int(value, 16) for value in re.findall(r"0x([0-9a-fA-F]{2})", image_match.group(1)))
+    table = bytes(int(value, 16) for value in re.findall(r"0x([0-9a-fA-F]{2})", table_match.group(1)))
+    expected = layouts["data"]["P_Seq_01"]
+    expected_table = layouts["data"]["P_SeqExist"]
+    assert len(image) == expected["size"] == 1960
+    assert hashlib.sha256(image).hexdigest().upper() == expected["sha256"]
+    assert len(table) == expected_table["size"] == 24
+    assert hashlib.sha256(table).hexdigest().upper() == expected_table["sha256"]
+    assert table[:12] == bytes(12)
+    assert int.from_bytes(table[12:14], "little") == 1960
+    assert int.from_bytes(table[20:24], "little") == 0
+    assert "P_SeqExist + 12 * mode" in source
+    assert "return -2;" in source and "return 255;" in source and "return 0;" in source
+    assert "AIC_SEQRAM, P_Seq_01[i]" in source
+    assert '#include <driverkit/i386/ioPorts.h>' in source
+    assert "a2940_io_barrier" not in source, "DriverKit outb already emits the lock-increment barrier"
+    harness = (DRIVER / "Adaptec2940.drvproj/Adaptec2940.lksproj/tests/adaptec2940-checks.c").read_text(encoding="ascii")
+    for case in ("sequencer-absent", "sequencer-success", "sequencer-runtime-patch",
+                 "sequencer-readback-failure"):
+        assert case in harness, f"firmware harness is missing {case}"
+    assert "sequencer_trace_port[1967] != 0x160" in harness
+    assert "sequencer_trace_count == 1967" in harness
+    assert "sequencer_barriers != 1968" in harness
+
+
+def test_him_helper_batch_is_mapped_and_exercised():
+    source_path = DRIVER / "Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    source = source_path.read_text(encoding="ascii")
+    native = DRIVER / "Adaptec2940.drvproj/Adaptec2940.lksproj/tests/him-chain-checks.c"
+    native_text = native.read_text(encoding="ascii")
+    harness = DRIVER / "Adaptec2940.drvproj/Adaptec2940.lksproj/tests/adaptec2940-checks.c"
+    harness_text = harness.read_text(encoding="ascii")
+    for symbol in ("Ph_MemorySet", "Ph_ChainAppendEnd", "Ph_ChainInsertFront",
+                   "Ph_ChainRemove", "Ph_ChainPrevious", "Ph_Pause", "Ph_UnPause",
+                   "Ph_WriteHcntrl", "Ph_ReadIntstat", "Ph_CheckLength",
+                   "Ph_GetScbStatus", "Ph_SetMgrStat", "PH_EnableInt",
+                   "PH_DisableInt", "Ph_InBuffer", "Ph_OutBuffer", "Ph_SetNeedNego",
+                   "Ph_Abort", "Ph_SendTrmMsg", "Ph_TrmCmplt", "Ph_BusReset",
+                   "Ph_HaSoftReset", "Ph_SoftReset", "Ph_SetScbMark",
+                   "Ph_InsertBookmark", "Ph_RemoveBookmark"):
+        assert re.search(r"\b" + symbol + r"\s*\(", source), f"missing HIM body: {symbol}"
+    for case in ("chain-empty", "chain-front-middle-tail", "chain-previous-miss",
+                 "memory-set", "hcntrl-write-mask", "intstat-paused-unpaused",
+                 "pause-unpause", "short-transfer", "port-buffer-transfer",
+                 "interrupt-enable-disable", "negotiation-marker", "reset-trampolines",
+                 "bookmark-insert-remove", "scb-mark"):
+        assert case in harness_text, f"HIM guest harness is missing {case}"
+    assert '#include "../Adaptec2940HIM.c"' in native_text
+    assert "0xffffffffU" in native_text and "Ph_MemorySet(fill" in native_text
+
+    source_map = json.loads((RECON / "source-map.json").read_text(encoding="utf-8"))
+    mapped = {name: row for row in source_map["mapped"] for name in row["reference_names"]}
+    ledger = json.loads((RECON / "ledger.json").read_text(encoding="utf-8"))
+    entries = {name: row for row in ledger["entries"] for name in row["names"]}
+    for name in ("_Ph_MemorySet", "_Ph_ChainAppendEnd", "_Ph_ChainInsertFront",
+                 "_Ph_ChainRemove", "_Ph_ChainPrevious", "_Ph_Pause", "_Ph_UnPause",
+                 "_Ph_WriteHcntrl", "_Ph_ReadIntstat", "_Ph_CheckLength",
+                 "_Ph_GetScbStatus", "_Ph_SetMgrStat", "_PH_EnableInt",
+                 "_PH_DisableInt", "_Ph_InBuffer", "_Ph_OutBuffer", "_Ph_SetNeedNego",
+                 "_Ph_Abort", "_Ph_SendTrmMsg", "_Ph_TrmCmplt", "_Ph_BusReset",
+                 "_Ph_HaSoftReset", "_Ph_SoftReset", "_Ph_SetScbMark",
+                 "_Ph_InsertBookmark", "_Ph_RemoveBookmark"):
+        assert mapped[name]["source_path"].endswith("Adaptec2940HIM.c")
+        assert entries[name]["status"] == "control-flow-confirmed"
+
+
 def _main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--audit", choices=("inventory",))
+    parser.add_argument("--audit", choices=("inventory", "layouts", "firmware"))
     parser.add_argument("--analysis")
     parser.add_argument("--repo-root", type=Path, default=REPO_ROOT)
     args, pytest_args = parser.parse_known_args()
     if args.audit:
-        audit_inventory(args.analysis, args.repo_root)
-        print("inventory audit passed")
+        if args.audit == "inventory":
+            audit_inventory(args.analysis, args.repo_root)
+        elif args.audit == "layouts":
+            test_shared_layouts()
+        else:
+            test_sequencer_bytes()
+        print(f"{args.audit} audit passed")
         return 0
     import pytest
     return pytest.main([str(Path(__file__)), *pytest_args])

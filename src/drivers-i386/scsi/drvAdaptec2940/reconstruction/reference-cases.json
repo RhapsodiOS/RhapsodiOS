@@ -34,7 +34,7 @@
     },
     {
       "id": "queue-chain-insert-remove",
-      "group": "him",
+      "group": "firmware",
       "status": "contract-captured",
       "input": {
         "chain": [
@@ -76,21 +76,21 @@
         "scb_bytes": 256
       },
       "expected": {
-        "hardware_fields": {
-          "control": 0,
-          "target_channel_lun": 1,
-          "target_status": 2,
-          "sg_count": 3,
-          "sg_pointer": 4,
-          "residual_sg_count": 8,
-          "residual_data_count": 12,
-          "data_pointer": 16,
-          "data_count": 20,
-          "command_pointer": 24,
-          "command_length": 28,
-          "tag": 29,
-          "next": 30,
-          "previous": 31
+        "scb_prefix_fields": {
+          "chain_next": {"offset": 0, "width": 4},
+          "host_info": {"offset": 4, "width": 4},
+          "scb_status": {"offset": 8, "width": 1},
+          "host_status": {"offset": 9, "width": 1},
+          "flags": {"offset": 10, "width": 1},
+          "manager_status": {"offset": 11, "width": 1},
+          "target_channel_lun": {"offset": 12, "width": 1},
+          "control": {"offset": 13, "width": 1},
+          "command_length": {"offset": 14, "width": 1},
+          "sg_count": {"offset": 15, "width": 1},
+          "sg_pointer": {"offset": 16, "width": 4},
+          "command_pointer": {"offset": 20, "width": 4},
+          "target_status": {"offset": 24, "width": 1},
+          "residual_data_count": {"offset": 28, "width": 4}
         },
         "software_fields": {
           "command_buffer": 224,
@@ -181,12 +181,14 @@
         "ha_mode": 2,
         "ha_flag_byte_13_bit_0": 1,
         "presence_entry_length": 1960,
-        "presence_patch_offset": 17
+        "presence_patch_offset": 17,
+        "test_fixture_mutation": "set the mode-2 descriptor's 32-bit patch offset at byte 20 to 17; the pinned value is zero"
       },
       "expected": {
         "patched_image_byte": 255,
         "index": 17,
         "before_io": true,
+        "reference_descriptor_patch_offset": 0,
         "readback": "compare against the runtime-patched image"
       },
       "evidence": [

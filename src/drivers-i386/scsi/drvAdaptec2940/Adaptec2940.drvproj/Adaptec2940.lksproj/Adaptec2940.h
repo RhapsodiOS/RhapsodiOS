@@ -1,106 +1,93 @@
 /*
  * Copyright (c) 1999 Apple Computer, Inc.
  *
- * Adaptec2940.h - class definition for Adaptec 2940 PCI SCSI driver.
- *
- * HISTORY
- *
- * Created for Rhapsody OS
+ * The PCI device owns the AIC host block and creates an SCSIBus controller.
  */
 
+#ifndef _ADAPTEC2940_H
+#define _ADAPTEC2940_H
 
-#import <driverkit/IODevice.h>
+#import <driverkit/IODirectDevice.h>
 #import <driverkit/IODeviceDescription.h>
 #import <driverkit/return.h>
-#import <driverkit/scsiTypes.h>
-#import <driverkit/IOSCSIController.h>
 #import <driverkit/i386/IOPCIDeviceDescription.h>
 #import <driverkit/i386/IOPCIDirectDevice.h>
-#import "Adaptec2940Private.h"
 #import "Adaptec2940Types.h"
 
-
-@interface Adaptec2940 : IOSCSIController
+@interface Adaptec2940 : IODirectDevice
 {
-	/*
-	 * Hardware info.
-	 */
-	struct adaptec2940_config 	config;		/* config info from device */
-	IOPCIConfigSpace		pciConfigSpace;
-	unsigned char 			scsiId;
-	BOOL				ioThreadRunning;
-	unsigned int			ioBase;		/* base IO port address */
-
-	/*
-	 * Command control blocks and mailbox areas.
-	 * Dynamically allocated.
-	 */
-	struct scb			*scbArray;
-	int				numFreeScbs;	/* number of free SCBs */
-
-	/*
-	 * Three queues:
-	 *
-	 * commandQ:	 contains Adaptec2940CommandBuf's to be executed by the
-	 *		 I/O thread. Enqueued by exported methods (via
-	 *		 -executeCmdBuf); dequeued by the I/O thread in
-	 *		 -commandRequestOccurred.
-	 *
-	 * outstandingQ: contains scb's on which the controller is
-	 * 		 currently operating. The number of scb's in
-	 *		 outstandingQ is outstandingCount. Scb's are
-	 *		 enqueued here by -runPendingCommands.
-	 *
-	 * pendingQ:	 contains scb's which the I/O thread is holding
-	 *		 on to because outstandingCount == AIC_QUEUE_SIZE.
-	 *		 Scb's are enqueued here by -threadExecuteRequest:.
-	 *
-	 */
-	queue_head_t	commandQ;		/* list of waiting
-						 * Adaptec2940CommandBuf's */
-	id		commandLock;		/* NXLock; protects commandQ */
-	queue_head_t	outstandingQ;		/* list of running cmds */
-	unsigned int	outstandingCount;	/* length of outstandingQ */
-	queue_head_t	pendingQ;
-
-	/*
-	 * Local reference count for reserveDMALock.
-	 */
-	unsigned	dmaLockCount;
-
-	/*
-	 * Statistics counters.
-	 */
-	unsigned int	maxQueueLen;
-	unsigned int	queueLenTotal;
-	unsigned int	totalCommands;
-
-	port_t		interruptPortKern;	/* kernel version of
-						 * interruptPort */
+	/* Ivar offsets start at 296, after IODirectDevice's 296-byte prefix. */
+	unsigned short ioBase;                 /* 296 */
+	unsigned short _pad_ioBase;            /* 298 */
+	Adaptec2940ChannelInfo channelInfo[1]; /* 300 */
+	Adaptec2940HostInfo *hspStructSave;    /* 308 */
+	unsigned int hspStructFreeSize;        /* 312 */
+	int interruptPortKern;                 /* 316 */
+	queue_head_t commandQ;                 /* 320 */
+	id commandLock;                        /* 328 */
+	queue_head_t activeQ;                  /* 332 */
+	queue_head_t scbQ;                     /* 340 */
+	unsigned int scbQLength;               /* 348 */
+	queue_head_t scbBadQ;                  /* 352 */
+	unsigned autoSenseEnable:1;            /* 360, bit 0 */
+	unsigned cmdQueueEnable:1;              /* 360, bit 1 */
+	unsigned syncModeEnable:1;              /* 360, bit 2 */
+	unsigned ioThreadRunning:1;             /* 360, bit 3 */
+	unsigned needReinit:1;                  /* 360, bit 4 */
+	unsigned _pad_flags:27;                 /* 360, bits 5..31 */
+	unsigned int reinitChannel;             /* 364 */
+	int resetState;                         /* 368 */
+	unsigned int maxQueueLen;               /* 372 */
+	unsigned int queueLenTotal;             /* 376 */
+	unsigned int totalCommands;             /* 380 */
+	unsigned int outstandingCount;          /* 384 */
+	int busType;                            /* 388 */
+	char levelIRQ;                          /* 392 */
+	unsigned char busNumber;                /* 393 */
+	unsigned char deviceNumber;             /* 394 */
+	unsigned char functionNumber;           /* 395 */
 }
 
-/*
- * Standard IODirectDevice methods overridden here.
- */
-+ (BOOL)probe:deviceDescription;
-- initFromDeviceDescription	: deviceDescription;
-- (unsigned)maxTransfer;
-- free;
++ (BOOL)probe:(IODeviceDescription *)deviceDescription;
+- initFromDeviceDescription:(IODeviceDescription *)deviceDescription;
+- (id)free;
+- (void)resetStats;
+- (unsigned int)numQueueSamples;
+- (unsigned int)sumQueueLengths;
+- (unsigned int)maxQueueLength;
+- (int)numberOfTargets:(int)channel;
 - (void)interruptOccurred;
 - (void)interruptOccurredAt:(int)localNum;
-- (void)otherOccurred:(int)id;
+- (void)otherOccurred:(int)event;
 - (void)receiveMsg;
 - (void)timeoutOccurred;
 - (void)commandRequestOccurred;
-
-/*
- * IOSCSIControllerExported methods implemented here.
- */
-- (sc_status_t) executeRequest 	: (IOSCSIRequest *)scsiReq
-		         buffer : (void *)buffer
-		         client : (vm_task_t)client;
-- (sc_status_t)resetSCSIBus;
-
+- (IOReturn)setIntValues:(unsigned int *)parameters
+            forParameter:(IOParameterName)parameterName
+                   count:(unsigned int *)count;
+- (IOReturn)getIntValues:(unsigned int *)parameters
+            forParameter:(IOParameterName)parameterName
+                   count:(unsigned int *)count;
+- (char)acquireSCSIBus:(unsigned int)channel owner:(id)owner;
+- (void)releaseSCSIBus:(unsigned int)channel owner:(id)owner;
+- (unsigned int)maxTransfer;
+- (int)scsiBusId:(unsigned int)channel;
+- (int)executeCmdBuf:(Adaptec2940RequestMessage *)message;
+- (char)checkScbAlign:(Adaptec2940SCB *)scb;
+- (Adaptec2940SCB *)allocScb;
+- (void)freeScb:(Adaptec2940SCB *)scb;
+- (void)createScbs:(unsigned int)base size:(unsigned int)size;
+- (void)threadExecuteRequest:(Adaptec2940RequestMessage *)message;
+- (void)threadResetBus:(Adaptec2940RequestMessage *)message
+              channel:(unsigned int)channel
+               reason:(const char *)reason;
+- (void)commandCompleted:(Adaptec2940SCB *)scb;
+- (void)scbComplete:(Adaptec2940SCB *)scb;
+- (unsigned int)initHostAdaptor;
+- (void)startIOThread;
+- (void)enableAllInterrupts;
+- (id)deviceDescription;
+- (port_t)interruptPort;
 @end
 
-
+#endif /* _ADAPTEC2940_H */

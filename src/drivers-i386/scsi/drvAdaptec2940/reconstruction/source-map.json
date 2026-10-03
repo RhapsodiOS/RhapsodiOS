@@ -91,6 +91,249 @@
       "size": 15,
       "source_line": 112,
       "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940.m"
+    },
+    {
+      "address": 9952,
+      "reference_names": [
+        "_PH_EnableInt"
+      ],
+      "size": 46,
+      "source_line": 179,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 10000,
+      "reference_names": [
+        "_PH_DisableInt"
+      ],
+      "size": 44,
+      "source_line": 187,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 10628,
+      "reference_names": [
+        "_Ph_Abort"
+      ],
+      "size": 7,
+      "source_line": 225,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 11168,
+      "reference_names": [
+        "_Ph_CheckLength"
+      ],
+      "size": 190,
+      "source_line": 253,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 12728,
+      "reference_names": [
+        "_Ph_SendTrmMsg"
+      ],
+      "size": 9,
+      "source_line": 229,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 12740,
+      "reference_names": [
+        "_Ph_TrmCmplt"
+      ],
+      "size": 9,
+      "source_line": 236,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 12752,
+      "reference_names": [
+        "_Ph_BusReset"
+      ],
+      "size": 7,
+      "source_line": 241,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 13116,
+      "reference_names": [
+        "_Ph_SetNeedNego"
+      ],
+      "size": 38,
+      "source_line": 219,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 16932,
+      "reference_names": [
+        "_Ph_MemorySet"
+      ],
+      "size": 50,
+      "source_line": 110,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 16984,
+      "reference_names": [
+        "_Ph_Pause"
+      ],
+      "size": 48,
+      "source_line": 163,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 17032,
+      "reference_names": [
+        "_Ph_UnPause"
+      ],
+      "size": 32,
+      "source_line": 173,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 17064,
+      "reference_names": [
+        "_Ph_WriteHcntrl"
+      ],
+      "size": 100,
+      "source_line": 122,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 17164,
+      "reference_names": [
+        "_Ph_ReadIntstat"
+      ],
+      "size": 106,
+      "source_line": 143,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 19244,
+      "reference_names": [
+        "_Ph_ChainAppendEnd"
+      ],
+      "size": 77,
+      "source_line": 40,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 19324,
+      "reference_names": [
+        "_Ph_ChainInsertFront"
+      ],
+      "size": 7,
+      "source_line": 105,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 19332,
+      "reference_names": [
+        "_Ph_ChainRemove"
+      ],
+      "size": 70,
+      "source_line": 86,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 19404,
+      "reference_names": [
+        "_Ph_ChainPrevious"
+      ],
+      "size": 65,
+      "source_line": 66,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 20736,
+      "reference_names": [
+        "_Ph_SetScbMark"
+      ],
+      "size": 34,
+      "source_line": 315,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 20772,
+      "reference_names": [
+        "_Ph_HaSoftReset"
+      ],
+      "size": 7,
+      "source_line": 245,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 21172,
+      "reference_names": [
+        "_Ph_SoftReset"
+      ],
+      "size": 7,
+      "source_line": 249,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 21180,
+      "reference_names": [
+        "_Ph_GetScbStatus"
+      ],
+      "size": 56,
+      "source_line": 284,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 21236,
+      "reference_names": [
+        "_Ph_SetMgrStat"
+      ],
+      "size": 52,
+      "source_line": 296,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 21624,
+      "reference_names": [
+        "_Ph_OutBuffer"
+      ],
+      "size": 73,
+      "source_line": 207,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 21700,
+      "reference_names": [
+        "_Ph_InBuffer"
+      ],
+      "size": 48,
+      "source_line": 195,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 22076,
+      "reference_names": [
+        "_Ph_InsertBookmark"
+      ],
+      "size": 33,
+      "source_line": 324,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 22112,
+      "reference_names": [
+        "_Ph_RemoveBookmark"
+      ],
+      "size": 25,
+      "source_line": 332,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940HIM.c"
+    },
+    {
+      "address": 31656,
+      "reference_names": [
+        "_Ph_LoadSequencer"
+      ],
+      "size": 374,
+      "source_line": 188,
+      "source_path": "src/drivers-i386/scsi/drvAdaptec2940/Adaptec2940.drvproj/Adaptec2940.lksproj/Adaptec2940Sequencer.c"
     }
   ],
   "reference_sha256": "08E6C11EEC125847F485C86250C94C4AFCC025E59CF085B0C8039B94B2E79DF7",
@@ -363,20 +606,6 @@
       "size": 296
     },
     {
-      "address": 9952,
-      "reference_names": [
-        "_PH_EnableInt"
-      ],
-      "size": 46
-    },
-    {
-      "address": 10000,
-      "reference_names": [
-        "_PH_DisableInt"
-      ],
-      "size": 44
-    },
-    {
       "address": 10044,
       "reference_names": [
         "_Ph_NonInit"
@@ -389,13 +618,6 @@
         "_PH_Special"
       ],
       "size": 520
-    },
-    {
-      "address": 10628,
-      "reference_names": [
-        "_Ph_Abort"
-      ],
-      "size": 7
     },
     {
       "address": 10636,
@@ -417,13 +639,6 @@
         "_Ph_CheckSyncNego"
       ],
       "size": 105
-    },
-    {
-      "address": 11168,
-      "reference_names": [
-        "_Ph_CheckLength"
-      ],
-      "size": 190
     },
     {
       "address": 11360,
@@ -461,39 +676,11 @@
       "size": 310
     },
     {
-      "address": 12728,
-      "reference_names": [
-        "_Ph_SendTrmMsg"
-      ],
-      "size": 9
-    },
-    {
-      "address": 12740,
-      "reference_names": [
-        "_Ph_TrmCmplt"
-      ],
-      "size": 9
-    },
-    {
-      "address": 12752,
-      "reference_names": [
-        "_Ph_BusReset"
-      ],
-      "size": 7
-    },
-    {
       "address": 12760,
       "reference_names": [
         "_Ph_SendMsgo"
       ],
       "size": 355
-    },
-    {
-      "address": 13116,
-      "reference_names": [
-        "_Ph_SetNeedNego"
-      ],
-      "size": 38
     },
     {
       "address": 13156,
@@ -566,41 +753,6 @@
       "size": 150
     },
     {
-      "address": 16932,
-      "reference_names": [
-        "_Ph_MemorySet"
-      ],
-      "size": 50
-    },
-    {
-      "address": 16984,
-      "reference_names": [
-        "_Ph_Pause"
-      ],
-      "size": 48
-    },
-    {
-      "address": 17032,
-      "reference_names": [
-        "_Ph_UnPause"
-      ],
-      "size": 32
-    },
-    {
-      "address": 17064,
-      "reference_names": [
-        "_Ph_WriteHcntrl"
-      ],
-      "size": 100
-    },
-    {
-      "address": 17164,
-      "reference_names": [
-        "_Ph_ReadIntstat"
-      ],
-      "size": 106
-    },
-    {
       "address": 17272,
       "reference_names": [
         "_Ph_Delay"
@@ -655,34 +807,6 @@
         "_PH_RelocatePointers"
       ],
       "size": 26
-    },
-    {
-      "address": 19244,
-      "reference_names": [
-        "_Ph_ChainAppendEnd"
-      ],
-      "size": 77
-    },
-    {
-      "address": 19324,
-      "reference_names": [
-        "_Ph_ChainInsertFront"
-      ],
-      "size": 7
-    },
-    {
-      "address": 19332,
-      "reference_names": [
-        "_Ph_ChainRemove"
-      ],
-      "size": 70
-    },
-    {
-      "address": 19404,
-      "reference_names": [
-        "_Ph_ChainPrevious"
-      ],
-      "size": 65
     },
     {
       "address": 19472,
@@ -755,46 +879,11 @@
       "size": 95
     },
     {
-      "address": 20736,
-      "reference_names": [
-        "_Ph_SetScbMark"
-      ],
-      "size": 34
-    },
-    {
-      "address": 20772,
-      "reference_names": [
-        "_Ph_HaSoftReset"
-      ],
-      "size": 7
-    },
-    {
       "address": 20780,
       "reference_names": [
         "_Ph_BusDeviceReset"
       ],
       "size": 389
-    },
-    {
-      "address": 21172,
-      "reference_names": [
-        "_Ph_SoftReset"
-      ],
-      "size": 7
-    },
-    {
-      "address": 21180,
-      "reference_names": [
-        "_Ph_GetScbStatus"
-      ],
-      "size": 56
-    },
-    {
-      "address": 21236,
-      "reference_names": [
-        "_Ph_SetMgrStat"
-      ],
-      "size": 52
     },
     {
       "address": 21288,
@@ -811,20 +900,6 @@
       "size": 166
     },
     {
-      "address": 21624,
-      "reference_names": [
-        "_Ph_OutBuffer"
-      ],
-      "size": 73
-    },
-    {
-      "address": 21700,
-      "reference_names": [
-        "_Ph_InBuffer"
-      ],
-      "size": 48
-    },
-    {
       "address": 21748,
       "reference_names": [
         "_Ph_ScbAbort"
@@ -837,20 +912,6 @@
         "_SWAPCurrScratchRam"
       ],
       "size": 184
-    },
-    {
-      "address": 22076,
-      "reference_names": [
-        "_Ph_InsertBookmark"
-      ],
-      "size": 33
-    },
-    {
-      "address": 22112,
-      "reference_names": [
-        "_Ph_RemoveBookmark"
-      ],
-      "size": 25
     },
     {
       "address": 22140,
@@ -1187,13 +1248,6 @@
         "_Ph_Wait2usec"
       ],
       "size": 48
-    },
-    {
-      "address": 31656,
-      "reference_names": [
-        "_Ph_LoadSequencer"
-      ],
-      "size": 374
     },
     {
       "address": 32032,

@@ -2,6 +2,55 @@
 
 Reference: `Adaptec2940SCSI_reloc`, i386 little-endian, SHA-256 `08E6C11EEC125847F485C86250C94C4AFCC025E59CF085B0C8039B94B2E79DF7`. Function boundaries, signatures, sizes, caller links and code addresses below are exported from IDA 9.4. The C signatures are IDA/Hex-Rays signature strings; caller links are additional call-edge evidence, not proof of source typedef spelling. Keep ABI widths and calling convention as recorded when implementing.
 
+## Core HIM helper batch
+
+The initial production batch in `Adaptec2940HIM.c` implements the IDA
+entry points `_Ph_MemorySet` (0x4224), `_Ph_ChainAppendEnd` (0x4b2c),
+`_Ph_ChainInsertFront` (0x4b7c), `_Ph_ChainRemove` (0x4b84), and
+`_Ph_ChainPrevious` (0x4bcc). The chain object is addressed through the
+host block's pointer at byte offset 52. Its first two 32-bit words hold the
+head and tail SCB addresses, and `0xffffffff` is the end marker. An empty
+append clears host flag bit 7 at offset 13, copies host bytes 62 and 64 to
+chain bytes 268 and 269, and installs the SCB as both head and tail. Removing
+the last node sets the empty bit and restores both pointers to the sentinel.
+`Ph_ChainInsertFront` is an intentional empty body: IDA shows only its
+prologue and epilogue.
+
+The native i386 helper harness checks empty, multi-node append, middle and
+tail removal, absent-node lookup, the empty-body helper, and the byte-fill
+loop's return value and writes. These results confirm control flow for this
+batch only; machine-code equivalence remains pending a guest compiler build.
+
+The same batch now includes `_Ph_Pause` (0x4258), `_Ph_UnPause` (0x4288),
+`_Ph_WriteHcntrl` (0x42a8), and `_Ph_ReadIntstat` (0x430c). HCNTRL is at
+`io_base + 0x87` and INTSTAT at `io_base + 0x91`. Writes use DriverKit's
+`outb`, whose inline assembly supplies the reference lock-increment barrier.
+The test port shim checks already-paused and unpaused branches, status mask
+`0x0d`, HCNTRL restoration, output order, and barrier counts.
+
+Status and short-transfer helpers are also recovered: `_Ph_CheckLength`
+(0x2ba0), `_Ph_GetScbStatus` (0x52bc), and `_Ph_SetMgrStat` (0x52f4).
+`Ph_CheckLength` reads four residual bytes from `io_base + 0xb0..0xb3` for
+phase `0xc0`, except when the SCB's bit `0x40` or target status 2 suppresses
+the read. Other phases follow the SCSISIG/SXFRCTL1/SSTAT1 handshake and clear
+the residual. `Ph_GetScbStatus` receives the chain object (the pointer stored
+at host offset 52), using its per-target counts at offsets 8.. and limits at
+268/269. The harness checks these paths and manager status choices.
+
+The verified low-level set also includes interrupt enable/disable
+(`_PH_EnableInt`, 0x26e0; `_PH_DisableInt`, 0x2710), byte port transfers
+(`_Ph_OutBuffer`, 0x5478; `_Ph_InBuffer`, 0x54c4), and the negotiation marker
+`_Ph_SetNeedNego` (0x333c). The reference bodies `_Ph_Abort` (0x2984),
+`_Ph_SendTrmMsg` (0x31b8), `_Ph_TrmCmplt` (0x31c4), `_Ph_BusReset` (0x31d0),
+`_Ph_HaSoftReset` (0x5124), and `_Ph_SoftReset` (0x52b4) are literal no-op or
+zero-return stubs. The native and guest harnesses cover transfer byte order,
+interrupt control writes, the marker port, and stub results.
+
+The chain helper also supports the embedded bookmark routines
+`_Ph_SetScbMark` (0x5100), `_Ph_InsertBookmark` (0x563c), and
+`_Ph_RemoveBookmark` (0x5660). Tests check the physical mark values at chain
+offsets 356 and 372, the embedded node at 352, and head/tail restoration.
+
 ## Function inventory
 
 | Group | Count |
@@ -252,9 +301,9 @@ Offsets are byte offsets; pointer and `id` widths are four bytes in this i386 im
 | Symbol | Address | Length | SHA-256 |
 |---|---:|---:|---|
 | `P_Seq_01` | `0xA038` | 1960 | `6daaeab5ad831ac6a778d5eaa66a980943b5d32c39eb496192c931fba6d392e8` |
-| `P_SeqExist` | `0xA7E0` | 12 | `15ec7bf0b50732b49f8228e07d24365338f9e3ab994b00af08e5a3bffe55fd8b` |
+| `P_SeqExist` | `0xA7E0` | 24 | `95088dbc9ce187acde41ecf4d4bf782c26e0b470093b113f820e0f0953c61140` |
 
-`P_SeqExist` is a 12-byte zero-filled runtime state table in the linked reference. `P_Seq_01` is the 1,960-byte sequencer image; its address and digest pin the exact bytes captured from IDA. Raw bytes and pseudocode stay in ignored analyzer output.
+`P_SeqExist` is two 12-byte mode records. The first record has length zero; the mode-2 record has length 1,960 and patch offset zero in the pinned image. `_Ph_LoadSequencer` reads each record as a 16-bit length plus a 32-bit patch offset at record byte 8. `P_Seq_01` is the mutable 1,960-byte sequencer image; its address and digest pin the exact bytes captured from IDA. Raw bytes and pseudocode stay in ignored analyzer output.
 
 ## Remaining IDA UDTs
 

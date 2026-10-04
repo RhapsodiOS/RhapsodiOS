@@ -361,8 +361,7 @@ extern unsigned int __page_size;
     BOOL success;
     int i;
 
-    // TODO: Get RX ring base from offset 0x304
-    rxRingVirt = NULL;  // TODO: *(void **)(self + 0x304)
+    rxRingVirt = self->rxRing;
 
     // Initialize all 64 RX descriptors
     for (i = 0; i < 0x40; i++) {
@@ -376,22 +375,17 @@ extern unsigned int __page_size;
         statusByte = (unsigned char *)((unsigned int)rxRingVirt + 3 + (i * 0x10));
         *statusByte = *statusByte & 0x7f;
 
-        // Allocate netbuf if not already allocated
-        // TODO: Check RX buffer array at offset 0x204 + (i * 4)
-        netbuf = NULL;  // TODO: *(netbuf_t *)(self + 0x204 + (i * 4))
+        netbuf = self->rxNetbuf[i];
 
         if (netbuf == NULL) {
             netbuf = [self allocateNetbuf];
             if (netbuf == NULL) {
                 IOPanic("allocateNetbuf returned NULL in _initRxRing");
             }
-            // TODO: Store netbuf
-            // *(netbuf_t *)(self + 0x204 + (i * 4)) = netbuf;
+            self->rxNetbuf[i] = netbuf;
         }
 
         // Update descriptor from netbuf (set buffer addresses)
-        // TODO: Get actual netbuf from array
-        // netbuf = *(netbuf_t *)(self + 0x204 + (i * 4));
         success = IOUpdateDescriptorFromNetBuf(netbuf, (vm_address_t)descriptor, YES);
         if (!success) {
             IOPanic("_initRxRing");
@@ -408,8 +402,7 @@ extern unsigned int __page_size;
     *statusByte = *statusByte | 0x02;
 
     // Reset RX ring index to 0
-    // TODO: Set offset 0x31c to 0
-    // *(unsigned int *)(self + 0x31c) = 0;
+    self->rxDoneIndex = 0;
 
     return YES;
 }
@@ -423,8 +416,7 @@ extern unsigned int __page_size;
     id txQueue;
     unsigned int i;
 
-    // TODO: Get TX ring base from offset 0x308
-    txRingVirt = NULL;  // TODO: *(void **)(self + 0x308)
+    txRingVirt = self->txRing;
 
     // Initialize all 32 TX descriptors
     for (i = 0; i < 0x20; i++) {
@@ -438,14 +430,11 @@ extern unsigned int __page_size;
         statusByte = (unsigned char *)((unsigned int)txRingVirt + 3 + (i * 0x10));
         *statusByte = *statusByte & 0x7f;
 
-        // Free any existing netbuf in TX buffer array
-        // TODO: Get netbuf from offset 0x184 + (i * 4)
-        netbuf = NULL;  // TODO: *(netbuf_t *)(self + 0x184 + (i * 4))
+        netbuf = self->txNetbuf[i];
 
         if (netbuf != NULL) {
             nb_free(netbuf);
-            // TODO: Clear netbuf pointer
-            // *(netbuf_t *)(self + 0x184 + (i * 4)) = NULL;
+            self->txNetbuf[i] = NULL;
         }
     }
 
@@ -455,34 +444,26 @@ extern unsigned int __page_size;
     *statusByte = *statusByte | 0x02;
 
     // Reset TX ring indices
-    // TODO: Set offset 0x30c to 0 (TX head index)
-    // *(unsigned int *)(self + 0x30c) = 0;
-
-    // TODO: Set offset 0x310 to 0 (TX tail index)
-    // *(unsigned int *)(self + 0x310) = 0;
-
-    // TODO: Set offset 0x314 to 0x20 (available TX descriptors = 32)
-    // *(unsigned int *)(self + 0x314) = 0x20;
-
-    // TODO: Set offset 0x318 to 0
-    // *(unsigned int *)(self + 0x318) = 0;
+    self->txPutIndex = 0;
+    self->txDoneIndex = 0;
+    self->txNumFree = 0x20;
+    self->txIntCount = 0;
 
     // Free existing TX queue if present
-    // TODO: Get TX queue from offset 0x17c
-    txQueue = nil;  // TODO: *(id *)(self + 0x17c)
+    txQueue = self->transmitQueue;
 
     if (txQueue != nil) {
         [txQueue free];
+        self->transmitQueue = nil;
     }
 
     // Allocate new IONetbufQueue with max count of 128 (0x80)
     txQueue = [[objc_getClass("IONetbufQueue") alloc] initWithMaxCount:0x80];
-    // TODO: Store TX queue at offset 0x17c
-    // *(id *)(self + 0x17c) = txQueue;
 
     if (txQueue == nil) {
         IOPanic("_initTxRing");
     }
+    self->transmitQueue = txQueue;
 
     return YES;
 }

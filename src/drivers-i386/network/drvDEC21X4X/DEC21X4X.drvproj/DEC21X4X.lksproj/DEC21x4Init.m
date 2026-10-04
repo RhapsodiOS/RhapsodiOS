@@ -256,65 +256,61 @@
 
 - (void)_initRegisters
 {
-    unsigned int busMode = 0;
-    unsigned int chipRevision = 0;  // TODO: Get from adapter structure
-    unsigned int chipStep = 0;      // TODO: Get from adapter structure  
     void *adapterInfo = self->Adapter;
-    vm_address_t physAddr;
+    unsigned int chipRevision;
+    unsigned int chipStep;
+    unsigned int busMode;
+    IOPhysicalAddress physAddr;
     IOReturn ret;
-    
+
+    chipRevision = *(unsigned int *)((char *)adapterInfo + 0x54);
+    chipStep = *(unsigned char *)((char *)adapterInfo + 8);
+
     // Stop the adapter
     DC21X4StopAdapter(adapterInfo);
-    
+
     // For DC21140, write CSR6 and stop again
     if (chipRevision == 0x91011) {
-        // TODO: Write CSR6 (opmode & ~0x2002)
-        // TODO: outl(ioBaseAddr + CSR6, opmode & ~0x2002);
+        outl(self->ioBase + CSR6_OPMODE,
+             *(unsigned int *)((char *)adapterInfo + 0x68) & 0xffffdffd);
         DC21X4StopAdapter(adapterInfo);
     }
-    
+
     // Setup bus mode register (CSR0) based on chip revision
     busMode = 0;
-    
-    if (chipRevision == 0x21011 ||          // DC21040
-        chipRevision == 0x141011 ||          // DC21041
-        (chipRevision == 0x91011 && (chipStep & 0xF0) == 0x10)) {  // DC21140 rev 1.x
+    if (chipRevision == CHIP_REV_DC21040 || chipRevision == 0x141011 ||
+        (chipRevision == 0x91011 && (chipStep & 0xf0) == 0x10)) {
         busMode = 0x1000;  // Additional cache alignment
     }
-    
+
     // Write bus mode register
-    // CSR0 = 0x1A04000 | busMode
-    // Bits: Big/Little Endian, Cache Alignment, Burst Length, etc.
-    // TODO: outl(ioBaseAddr + CSR0, 0x1A04000 | busMode);
-    
+    outl(self->ioBase + CSR0_BUS_MODE,
+         (busMode & 0xfe5f3fff) | 0x01a04000);
+
     // Get physical address of RX descriptor ring
-    // TODO: Use actual rxRingPhys field
-    void *rxRingVirt = NULL;  // TODO: Get from adapter structure
-    ret = IOPhysicalFromVirtual(IOVmTaskSelf(), (vm_address_t)rxRingVirt, &physAddr);
+    ret = IOPhysicalFromVirtual(IOVmTaskSelf(), (vm_address_t)self->rxRing, &physAddr);
     if (ret != IO_R_SUCCESS) {
         IOLog("%s: IOPhysicalFromVirtual() error\n", [self name]);
         return;
     }
     
     // Write RX descriptor list base address (CSR3)
-    // TODO: outl(ioBaseAddr + CSR3, physAddr);
-    
+    outl(self->ioBase + CSR3_RX_LIST_BASE, physAddr);
+
     // Get physical address of TX descriptor ring
-    // TODO: Use actual txRingPhys field
-    void *txRingVirt = NULL;  // TODO: Get from adapter structure
-    ret = IOPhysicalFromVirtual(IOVmTaskSelf(), (vm_address_t)txRingVirt, &physAddr);
+    ret = IOPhysicalFromVirtual(IOVmTaskSelf(), (vm_address_t)self->txRing, &physAddr);
     if (ret != IO_R_SUCCESS) {
         IOLog("%s: IOPhysicalFromVirtual() error\n", [self name]);
         return;
     }
     
     // Write TX descriptor list base address (CSR4)
-    // TODO: outl(ioBaseAddr + CSR4, physAddr);
-    
+    outl(self->ioBase + CSR4_TX_LIST_BASE, physAddr);
+
     // For DC21040, initialize SIA register
-    if (chipRevision == 0x21011) {
+    if (chipRevision == CHIP_REV_DC21040) {
         // Write 0 to SIA CSR13
-        // TODO: outl(ioBaseAddr + SIA_CSR13, 0);
+        outl(self->ioBase + CSR13_SIA_CONNECTIVITY, 0);
     }
 }
 
@@ -477,70 +473,37 @@
 
 - (BOOL)verifyMediaSupport:(unsigned int)mediaType
 {
-    BOOL result;
     unsigned int phyIndex;
-    int phyCount;
-    void *adapterInfo;
-    unsigned int supportedMediaMask;
-    BOOL miiPhyPresent;
-    BOOL phyValid;
+    unsigned int miiType;
     unsigned short phyMediaSupport;
-    unsigned short mediaBit;
-    unsigned char miiType;
-
-    // TODO: Get adapterInfo from offset 0x334
-    adapterInfo = self->Adapter;
-
-    // TODO: Get supported media mask from offset 0x338
-    supportedMediaMask = 0;  // TODO: *(unsigned int *)(self + 0x338)
 
     // Quick check: if bit 11 is set OR the mediaType bit is set in the mask,
     // then this media type is supported
     if ((mediaType & 0x800) != 0 ||
-        (supportedMediaMask & (1 << (mediaType & 0x1f))) != 0) {
+        ((1U << mediaType) & self->MediaCapableSaved) != 0) {
         return YES;
     }
 
     // Need to check MII PHY support
-    // TODO: Check if MII PHY is present at offset 0x1e5 in adapterInfo
-    miiPhyPresent = NO;  // TODO: *(BOOL *)(adapterInfo + 0x1e5)
-
-    if (miiPhyPresent) {
-        phyCount = 0;
-        do {
-            // TODO: Check if PHY entry is valid
-            // PHY structure starts at offset 0x230, each entry is 0x30 bytes
-            phyValid = NO;  // TODO: *(BOOL *)((phyCount * 0x30) + 0x230 + adapterInfo)
-
-            if (phyValid) {
-                phyIndex = 0;
-                do {
-                    // TODO: Get PHY media support bitmap at offset 0x23c
-                    phyMediaSupport = 0;  // TODO: *(unsigned short *)((phyCount * 0x30) + 0x23c + adapterInfo)
-
-                    // TODO: Get media bit from MediaBitTable
-                    mediaBit = 0;  // TODO: MediaBitTable[phyIndex]
-
-                    // Check if this media type is supported by the PHY
-                    if ((mediaBit & phyMediaSupport) != 0) {
-                        // TODO: Convert media type to MII type
-                        miiType = 0;  // TODO: ConvertMediaTypeToMiiType[mediaType & 0xff]
-
-                        if (phyIndex == miiType) {
-                            // Found matching media support
-                            return YES;
-                        }
-                    }
-
-                    phyIndex++;
-                } while (phyIndex < MEDIUM_STRING_COUNT);
-            }
-
-            phyCount++;
-        } while (phyCount < 1);  // Only check first PHY
+    if (*((unsigned char *)self->Adapter + 0x1e5) == 0) {
+        return NO;
     }
 
-    // Media type not supported
+    for (phyIndex = 0; phyIndex < 1; phyIndex++) {
+        if (*((unsigned char *)self->Adapter + 0x230 + (phyIndex * 0x30)) == 0) {
+            continue;
+        }
+
+        phyMediaSupport = *(unsigned short *)((char *)self->Adapter +
+                                               0x23c + (phyIndex * 0x30));
+        for (miiType = 0; miiType < MEDIA_BIT_TABLE_COUNT; miiType++) {
+            if ((phyMediaSupport & MediaBitTable[miiType]) != 0 &&
+                miiType == ConvertMediaTypeToMiiType[(unsigned char)mediaType]) {
+                return YES;
+            }
+        }
+    }
+
     return NO;
 }
 

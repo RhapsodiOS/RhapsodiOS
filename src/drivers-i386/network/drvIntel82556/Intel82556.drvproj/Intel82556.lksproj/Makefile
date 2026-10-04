@@ -10,16 +10,21 @@
 NAME = Intel82556NetworkDriver
 
 PROJECTVERSION = 2.6
-PROJECT_TYPE = Aggregate
+PROJECT_TYPE = Kernel Server
 LANGUAGE = English
 
-BUNDLES = Intel82556.drvproj
+CFILES = 
 
-OTHERSRCS = Makefile Makefile.preamble
+CLASSES = Intel82556.m Intel82556Buf.m IntelPRO100EISA.m IntelPRO100PCI.m
+
+HFILES = Intel82556.h
+
+OTHERSRCS = Load_Commands.sect Makefile Makefile.preamble
 
 MAKEFILEDIR = $(MAKEFILEPATH)/pb_makefiles
 CODE_GEN_STYLE = DYNAMIC
-MAKEFILE = aggregate.make
+MAKEFILE = kernelserver.make
+NEXTSTEP_INSTALLDIR = $(NEXT_ROOT)/private/Drivers
 LIBS =
 DEBUG_LIBS = $(LIBS)
 PROF_LIBS = $(LIBS)

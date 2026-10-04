@@ -83,7 +83,7 @@ scsi - (see docs/drivers/scsi-reconstruction.md — three source-complete recons
 sound
  * drvBeepSound - compiles; reconstructed against the reference binary, fixes applied, not yet tested
  * drvES1x88Sound - compiles; reconstructed against the reference binary, fixes applied, not yet tested
- * drvIntelAC97Sound - needs compiled and then tested
+ * drvIntelAC97Sound - new, not a reconstruction, needs compiled and then tested
  * drvSB8Sound - compiles; reconstructed against the reference binary, fixes applied, not yet tested
  * drvSB16Sound - compiles; reconstructed against the reference binary, fixes applied, not yet tested
  * drvSB128Sound - new, not a reconstruction

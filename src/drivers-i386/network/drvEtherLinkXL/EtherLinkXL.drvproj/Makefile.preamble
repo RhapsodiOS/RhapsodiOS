@@ -1,3 +1,8 @@
 ###############################################################################
 #  NeXT Makefile.preamble
 ###############################################################################
+
+CLASSES = EtherLinkXLInspector.m
+HFILES = EtherLinkXLInspector.h
+GLOBAL_RESOURCES = Default.table 3C905.table
+LOCAL_RESOURCES = Localizable.strings 3C905.strings DriverHelp

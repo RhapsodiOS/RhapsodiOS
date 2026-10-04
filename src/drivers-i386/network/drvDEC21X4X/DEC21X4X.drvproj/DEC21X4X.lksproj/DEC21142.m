@@ -470,450 +470,215 @@ extern unsigned int __page_size;
 
 - (BOOL)_loadSetupFilter:(BOOL)perfect
 {
-    unsigned int availableDescriptors;
-    unsigned int txHeadIndex;
-    unsigned int txTailIndex;
-    void *txRingVirt;
-    unsigned int *descriptor;
-    unsigned char *statusByte;
-    unsigned int setupFramePhysAddr;
-    unsigned short basePort;
+    unsigned char *descriptor;
+    unsigned char endOfRing;
     unsigned int csrValue;
     int timeout;
 
-    // TODO: Get available TX descriptors from offset 0x314
-    availableDescriptors = 0;  // TODO: *(unsigned int *)(self + 0x314)
+    if (self->txNumFree == 0) return NO;
 
-    // Check if any TX descriptors are available
-    if (availableDescriptors == 0) {
-        return NO;
-    }
+    descriptor = (unsigned char *)self->txRing + 16 * self->txPutIndex++;
+    if (self->txPutIndex == 32) self->txPutIndex = 0;
+    --self->txNumFree;
 
-    // TODO: Get TX ring base from offset 0x308
-    txRingVirt = NULL;  // TODO: *(void **)(self + 0x308)
+    endOfRing = descriptor[7] & 2;
+    ((unsigned int *)descriptor)[1] = 0;
+    descriptor[7] |= endOfRing;
+    descriptor[7] |= 0x88;
+    ((unsigned short *)descriptor)[2] &= 0xf800;
+    descriptor[4] |= 0xc0;
+    ((unsigned int *)descriptor)[1] &= 0xffc007ff;
+    ((unsigned int *)descriptor)[2] = self->setupBufferPhysical;
+    ((unsigned int *)descriptor)[3] = 0;
+    *(unsigned int *)descriptor = 0;
+    descriptor[3] |= 0x80;
+    outl(self->ioBase + CSR1_TX_POLL_DEMAND, 1);
 
-    // TODO: Get TX head index from offset 0x30c
-    txHeadIndex = 0;  // TODO: *(unsigned int *)(self + 0x30c)
-
-    // Get pointer to next TX descriptor
-    descriptor = (unsigned int *)((txHeadIndex * 0x10) + (unsigned int)txRingVirt);
-
-    // Increment TX head index (wrap at 32)
-    txHeadIndex++;
-    if (txHeadIndex == 0x20) {
-        txHeadIndex = 0;
-    }
-    // TODO: Store updated TX head index
-    // *(unsigned int *)(self + 0x30c) = txHeadIndex;
-
-    // Decrement available descriptor count
-    availableDescriptors--;
-    // TODO: Store updated count
-    // *(unsigned int *)(self + 0x314) = availableDescriptors;
-
-    // Check if end-of-ring bit is set (bit 1 of byte 7)
-    statusByte = (unsigned char *)((unsigned int)descriptor + 7);
-    if ((*statusByte & 0x02) != 0) {
-        // End of ring - clear buffer 2 address
-        descriptor[1] = 0;
-    }
-    else {
-        // Not end of ring - clear buffer 2 address and keep end-of-ring bit clear
-        descriptor[1] = 0;
-        *statusByte = *statusByte | 0x02;  // Set end-of-ring bit
-    }
-
-    // Set interrupt on completion (bit 3 of byte 7)
-    *statusByte = *statusByte | 0x08;
-
-    // Set ownership bit (bit 7 of byte 7)
-    *statusByte = *statusByte | 0x80;
-
-    // Clear buffer 1 size (bits 10-0 of DWORD 1)
-    descriptor[1] = descriptor[1] & 0xfffff800;
-
-    // Set filtering type (bits 7-6 of byte 4): 0xc0 = perfect filtering
-    ((unsigned char *)&descriptor[1])[0] = ((unsigned char *)&descriptor[1])[0] | 0xc0;
-
-    // Clear buffer 2 size (bits 21-11 of DWORD 1)
-    descriptor[1] = descriptor[1] & 0xffc007ff;
-
-    // Set buffer 1 address to setup frame physical address
-    // TODO: Get setup frame physical address from offset 0x330
-    setupFramePhysAddr = 0;  // TODO: *(unsigned int *)(self + 0x330)
-    descriptor[2] = setupFramePhysAddr;
-
-    // Clear buffer 2 address
-    descriptor[3] = 0;
-
-    // Clear status word
-    descriptor[0] = 0;
-
-    // Set ownership bit in byte 3 of status word
-    statusByte = (unsigned char *)((unsigned int)descriptor + 3);
-    *statusByte = *statusByte | 0x80;
-
-    // Trigger transmit by writing to CSR1 (transmit poll demand)
-    // TODO: Get base port from offset 0x174
-    basePort = 0;  // TODO: *(unsigned short *)(self + 0x174)
-    outw(basePort + 8, 1);  // CSR1 is at base + 8
-
-    // If perfect filtering requested, wait for completion
     if (perfect) {
-        timeout = 10000;  // 0x270f + 1 iterations
-
+        timeout = 9999;
         do {
             IODelay(5);
-
-            // Read CSR5 (status register at base + 0x28)
-            csrValue = inw(basePort + 0x28);
-
-            // Check for transmit interrupt (bit 2)
-            if ((csrValue & 0x04) != 0) {
-                // Clear the interrupt by writing back
-                outw(basePort + 0x28, csrValue);
+            csrValue = inl(self->ioBase + CSR5_STATUS);
+            if (csrValue & 4) {
+                outl(self->ioBase + CSR5_STATUS, csrValue);
                 break;
             }
+        } while (--timeout != -1);
 
-            timeout--;
-        } while (timeout >= 0);
-
-        // Update TX tail index
-        // TODO: Get TX tail index from offset 0x310
-        txTailIndex = 0;  // TODO: *(unsigned int *)(self + 0x310)
-        txTailIndex++;
-        if (txTailIndex == 0x20) {
-            txTailIndex = 0;
-        }
-        // TODO: Store updated TX tail index
-        // *(unsigned int *)(self + 0x310) = txTailIndex;
-
-        // Increment available descriptor count
-        // TODO: Get current available count
-        availableDescriptors = 0;  // TODO: *(unsigned int *)(self + 0x314)
-        availableDescriptors++;
-        // TODO: Store updated count
-        // *(unsigned int *)(self + 0x314) = availableDescriptors;
+        if (++self->txDoneIndex == 32) self->txDoneIndex = 0;
+        ++self->txNumFree;
     }
-
     return YES;
 }
 
 - (BOOL)_receiveInterruptOccurred
 {
-    unsigned int rxIndex;
-    void *rxRingVirt;
     unsigned int *descriptor;
-    unsigned char *statusByte;
-    unsigned int statusWord;
+    unsigned char *descriptorBytes;
     unsigned int packetLength;
     netbuf_t receivedNetbuf;
     netbuf_t newNetbuf;
-    void *adapterInfo;
+    unsigned int statusWord;
     unsigned int errorMask;
-    BOOL promiscuousMode;
-    id networkInterface;
-    BOOL validPacket;
-    BOOL success;
-    void *packetData;
+    BOOL deliverPacket;
     int netbufSize;
-    struct objc_super superClass;
 
-    // Reserve debugger lock for safe RX ring access
     [self reserveDebuggerLock];
+    for (;;) {
+        descriptorBytes = (unsigned char *)self->rxRing + 16 * self->rxDoneIndex;
+        if ((signed char)descriptorBytes[3] < 0) break;
 
-    // TODO: Get RX ring index from offset 0x31c
-    rxIndex = 0;  // TODO: *(unsigned int *)(self + 0x31c)
-
-    // TODO: Get RX ring base from offset 0x304
-    rxRingVirt = NULL;  // TODO: *(void **)(self + 0x304)
-
-    while (1) {
-        // Check ownership bit (bit 7 of byte 3)
-        statusByte = (unsigned char *)((unsigned int)rxRingVirt + 3 + (rxIndex * 0x10));
-
-        if (*statusByte & 0x80) {
-            // Hardware still owns this descriptor - no more packets
-            [self releaseDebuggerLock];
-            return YES;
-        }
-
-        validPacket = NO;
-
-        // Get pointer to descriptor
-        descriptor = (unsigned int *)((rxIndex * 0x10) + (unsigned int)rxRingVirt);
-
-        // Get status word
+        deliverPacket = NO;
+        descriptor = (unsigned int *)descriptorBytes;
         statusWord = descriptor[0];
-
-        // Get packet length (bits 13-0 of word at offset 2, minus 4 for CRC)
-        packetLength = ((*(unsigned short *)((unsigned int)descriptor + 2)) & 0x3fff) - 4;
-
-        // TODO: Get adapter info from offset 0x334
-        adapterInfo = self->Adapter;
-
-        // TODO: Get error mask from offset 0x26c in adapter info
-        errorMask = 0;  // TODO: *(unsigned int *)(adapterInfo + 0x26c)
-
-        // Validate packet: no errors, first & last segment, minimum length
-        if (((statusWord & errorMask) == 0) &&
-            ((statusWord & 0x300) == 0x300) &&  // Both first and last segment
-            (packetLength > 0x3b)) {  // > 60 bytes (0x3b = 59)
-
-            // TODO: Get received netbuf from array at offset 0x204 + (rxIndex * 4)
-            receivedNetbuf = NULL;  // TODO: *(netbuf_t *)(self + 0x204 + (rxIndex * 4))
-
-            // TODO: Get promiscuous mode flag from offset 0x180
-            promiscuousMode = NO;  // TODO: *(BOOL *)(self + 0x180)
-
-            // Check multicast filtering if not in promiscuous mode
-            if (!promiscuousMode && ((statusWord & 0x400) != 0)) {
-                // Multicast packet - check if wanted
-                packetData = nb_map(receivedNetbuf);
-
-                superClass.receiver = self;
-                superClass.class = objc_getClass("IOEthernet");
-
-                success = (BOOL)objc_msgSendSuper(&superClass,
-                                                   @selector(isUnwantedMulticastPacket:),
-                                                   packetData);
-
-                if (success) {
-                    // Unwanted multicast - skip processing
-                    goto give_back_to_hardware;
+        packetLength = (*((unsigned short *)descriptor + 1) & 0x3fff) - 4;
+        errorMask = *((unsigned int *)self->Adapter + 155);
+        if ((statusWord & errorMask) == 0 &&
+            (descriptorBytes[1] & 3) == 3 && packetLength > 0x3b) {
+            receivedNetbuf = self->rxNetbuf[self->rxDoneIndex];
+            if (self->isPromiscuous || (descriptorBytes[1] & 4) == 0 ||
+                ![super isUnwantedMulticastPacket:
+                    (ether_header_t *)nb_map(receivedNetbuf)]) {
+                newNetbuf = [self allocateNetbuf];
+                if (newNetbuf != NULL) {
+                    self->rxNetbuf[self->rxDoneIndex] = newNetbuf;
+                    deliverPacket = YES;
+                    if (!IOUpdateDescriptorFromNetBuf(newNetbuf,
+                                                      (vm_address_t)descriptor,
+                                                      YES))
+                        IOPanic("DEC21142: IOUpdateDescriptorFromNetBuf\n");
+                    netbufSize = nb_size(receivedNetbuf);
+                    nb_shrink_bot(receivedNetbuf, netbufSize - packetLength);
                 }
             }
-
-            // Allocate replacement netbuf
-            newNetbuf = [self allocateNetbuf];
-
-            if (newNetbuf != NULL) {
-                // TODO: Store new netbuf in array
-                // *(netbuf_t *)(self + 0x204 + (rxIndex * 4)) = newNetbuf;
-
-                validPacket = YES;
-
-                // Update descriptor with new netbuf
-                // TODO: Get RX index
-                // rxIndex = *(unsigned int *)(self + 0x31c)
-                success = IOUpdateDescriptorFromNetBuf(newNetbuf,
-                                                       (vm_address_t)descriptor,
-                                                       YES);
-                if (!success) {
-                    IOPanic("DEC21142: IOUpdateDescriptorFromNetBuf\n");
-                }
-
-                // Shrink received netbuf to actual packet size
-                netbufSize = nb_size(receivedNetbuf);
-                nb_shrink_bot(receivedNetbuf, netbufSize - packetLength);
-            }
-        }
-        else {
-            // Invalid packet - increment error counter
-            // TODO: Get network interface from offset 0x178
-            networkInterface = nil;  // TODO: *(id *)(self + 0x178)
-
-            [networkInterface incrementInputErrors];
+        } else {
+            [self->networkInterface incrementInputErrors];
         }
 
-give_back_to_hardware:
-        // Clear descriptor status
-        descriptor[0] = 0;
-
-        // Set ownership bit - give descriptor back to hardware
-        statusByte = (unsigned char *)((unsigned int)descriptor + 3);
-        *statusByte = *statusByte | 0x80;
-
-        // Increment RX index (wrap at 64)
-        // TODO: Get current RX index
-        rxIndex = 0;  // TODO: *(unsigned int *)(self + 0x31c)
-        rxIndex++;
-        if (rxIndex == 0x40) {
-            rxIndex = 0;
-        }
-        // TODO: Store updated RX index
-        // *(unsigned int *)(self + 0x31c) = rxIndex;
-
-        // If we received a valid packet, pass it to network stack
-        if (validPacket) {
+        *descriptor = 0;
+        descriptorBytes[3] |= 0x80;
+        if (++self->rxDoneIndex == 64) self->rxDoneIndex = 0;
+        if (deliverPacket) {
             [self releaseDebuggerLock];
-
-            // TODO: Get network interface from offset 0x178
-            networkInterface = nil;  // TODO: *(id *)(self + 0x178)
-
-            // Pass packet to network stack
-            [networkInterface handleInputPacket:receivedNetbuf extra:0];
-
-            // Re-acquire lock for next iteration
+            [self->networkInterface handleInputPacket:receivedNetbuf extra:0];
             [self reserveDebuggerLock];
         }
-
-        // Update local variables for next iteration
-        // TODO: Get updated RX index and ring base
-        rxIndex = 0;     // TODO: *(unsigned int *)(self + 0x31c)
-        rxRingVirt = NULL;  // TODO: *(void **)(self + 0x304)
     }
+
+    [self releaseDebuggerLock];
+    return YES;
 }
 
 - (BOOL)_setAddressFiltering:(BOOL)enabled
 {
-    void *adapterInfo;
-    void *setupFrameVirt;
     unsigned short *macAddress;
     unsigned int entryIndex;
-    BOOL multicastEnabled;
-    id multicastQueue;
     void *queueHead;
     void *currentEntry;
-    void *nextEntry;
     unsigned int *setupEntry;
     unsigned char *macBytes;
     unsigned int macWordValue;
     int byteIndex;
-    BOOL success;
-    struct objc_super superClass;
 
-    // TODO: Get adapter info from offset 0x334
-    adapterInfo = self->Adapter;
-
-    // TODO: Get setup frame base from offset 0x32c
-    setupFrameVirt = NULL;  // TODO: *(void **)(self + 0x32c)
-
-    // TODO: Get MAC address from offset 0x4c in adapter info
-    macAddress = NULL;  // TODO: (unsigned short *)(adapterInfo + 0x4c)
-
-    // Copy our MAC address to first entry (3 words = 6 bytes)
+    macAddress = (unsigned short *)((unsigned char *)self->Adapter + 76);
     for (entryIndex = 0; entryIndex < 3; entryIndex++) {
-        ((unsigned int *)setupFrameVirt)[entryIndex] = (unsigned int)macAddress[entryIndex];
+        ((unsigned int *)self->setupBuffer)[entryIndex] = macAddress[entryIndex];
     }
 
-    // Fill second entry with broadcast address (0xFFFF for all 3 words)
     for (entryIndex = 0; entryIndex < 3; entryIndex++) {
-        ((unsigned int *)setupFrameVirt)[3 + entryIndex] = 0xFFFF;
+        ((unsigned int *)self->setupBuffer)[3 + entryIndex] = 0xffff;
     }
 
-    // Start with entry 2 for multicast addresses
     entryIndex = 2;
-
-    // TODO: Get multicast enabled flag from offset 0x181
-    multicastEnabled = NO;  // TODO: *(BOOL *)(self + 0x181)
-
-    if (multicastEnabled) {
-        // Get multicast queue from superclass
-        superClass.receiver = self;
-        superClass.class = objc_getClass("IOEthernet");
-
-        multicastQueue = objc_msgSendSuper(&superClass, @selector(multicastQueue));
-
-        // Get queue head
-        queueHead = ((void **)multicastQueue)[0];
-
-        // Check if queue is not empty (head->next != head)
-        if (((void **)queueHead)[0] != queueHead) {
-            // Iterate through multicast addresses
-            currentEntry = ((void **)queueHead)[0];
-
-            while (currentEntry != queueHead) {
-                // Get next entry before processing
-                nextEntry = ((void **)currentEntry)[2];
-
-                // Copy MAC address (6 bytes as 3 words)
-                // Each entry in setup frame is at offset (entryIndex * 0xc)
-                setupEntry = (unsigned int *)((unsigned int)setupFrameVirt + (entryIndex * 0xc));
-                macBytes = (unsigned char *)currentEntry;
-
-                for (byteIndex = 0; byteIndex < 3; byteIndex++) {
-                    // Build word from two bytes (little endian)
-                    macWordValue = (unsigned int)macBytes[byteIndex * 2] |
-                                  ((unsigned int)macBytes[byteIndex * 2 + 1] << 8);
-                    setupEntry[byteIndex] = macWordValue;
-                }
-
-                entryIndex++;
-
-                // Check if we exceeded 14 multicast address limit (entries 2-15)
-                if (entryIndex > 0xf) {
-                    IOLog("%s: %d multicast address limit exceeded\n", [self name], 14);
-                    break;
-                }
-
-                currentEntry = nextEntry;
+    if (self->multicastEnabled) {
+        queueHead = [super multicastQueue];
+        currentEntry = *(void **)queueHead;
+        while (currentEntry != queueHead && entryIndex <= 15) {
+            setupEntry = (unsigned int *)((unsigned char *)self->setupBuffer +
+                                          entryIndex * 12);
+            macBytes = (unsigned char *)currentEntry;
+            for (byteIndex = 0; byteIndex < 3; byteIndex++) {
+                macWordValue = (unsigned int)macBytes[byteIndex * 2] |
+                    ((unsigned int)macBytes[byteIndex * 2 + 1] << 8);
+                setupEntry[byteIndex] = macWordValue;
             }
+            if (++entryIndex > 15) {
+                IOLog("%s: %d multicast address limit exceeded\n", [self name], 14);
+                break;
+            }
+            currentEntry = ((void **)currentEntry)[2];
         }
     }
 
-    // Fill remaining entries with copy of first entry
-    for (; entryIndex < 0x10; entryIndex++) {
-        bcopy(setupFrameVirt,
-              (void *)((entryIndex * 0xc) + (unsigned int)setupFrameVirt),
-              0xc);
+    while (entryIndex <= 15) {
+        bcopy(self->setupBuffer,
+              (unsigned char *)self->setupBuffer + entryIndex * 12, 12);
+        ++entryIndex;
     }
 
-    // Load the setup filter
-    success = [self _loadSetupFilter:enabled];
-
-    return success;
+    return [self _loadSetupFilter:enabled];
 }
 
 - (void)_startReceive
 {
-    void *adapterInfo;
-    unsigned int *csr6Register;
-    unsigned short ioPortBase;
+    unsigned char *adapter = (unsigned char *)self->Adapter;
+    unsigned int *word = (unsigned int *)adapter;
 
-    // TODO: Get adapter info from offset 0x334
-    adapterInfo = self->Adapter;
-
-    // TODO: Get CSR6 register value from offset 0x68 in adapter info
-    csr6Register = NULL;  // TODO: (unsigned int *)(adapterInfo + 0x68)
-
-    // Set receive enable bit (bit 1)
-    *csr6Register = *csr6Register | 0x02;
-
-    // TODO: Get I/O port base from offset 0x24 in adapter info
-    ioPortBase = 0;  // TODO: *(unsigned short *)(adapterInfo + 0x24)
-
-    // Write CSR6 value to hardware
-    outl(ioPortBase, *csr6Register);
+    adapter[104] |= 2;
+    outl(*(unsigned short *)(adapter + 36), word[26]);
 }
 
 - (void)_startTransmit
 {
-    void *adapterInfo;
-    unsigned int *csr6Register;
-    unsigned short ioPortBase;
+    unsigned char *adapter = (unsigned char *)self->Adapter;
+    unsigned int *word = (unsigned int *)adapter;
 
-    // TODO: Get adapter info from offset 0x334
-    adapterInfo = self->Adapter;
-
-    // TODO: Get CSR6 register value from offset 0x68 in adapter info
-    csr6Register = NULL;  // TODO: (unsigned int *)(adapterInfo + 0x68)
-
-    // Set transmit enable bit (bit 13)
-    *csr6Register = *csr6Register | 0x2000;
-
-    // TODO: Get I/O port base from offset 0x24 in adapter info
-    ioPortBase = 0;  // TODO: *(unsigned short *)(adapterInfo + 0x24)
-
-    // Write CSR6 value to hardware
-    outl(ioPortBase, *csr6Register);
+    word[26] |= 0x2000;
+    outl(*(unsigned short *)(adapter + 36), word[26]);
 }
 
 - (void)_transmitInterruptOccurred
 {
+    unsigned char *descriptor;
+    unsigned int index;
+
+    while (self->txNumFree <= 31) {
+        descriptor = (unsigned char *)self->txRing + 16 * self->txDoneIndex;
+        if ((signed char)descriptor[3] < 0) break;
+
+        if ((descriptor[7] & 8) == 0) {
+            if ((*((unsigned int *)self->Adapter + 154) &
+                 *(unsigned int *)descriptor) != 0) {
+                [self->networkInterface incrementOutputErrors];
+            } else {
+                [self->networkInterface incrementOutputPackets];
+            }
+
+            if (descriptor[1] & 1) {
+                [self->networkInterface incrementCollisionsBy:16];
+            } else if (*(unsigned int *)descriptor & 0x78) {
+                [self->networkInterface incrementCollisionsBy:
+                    (descriptor[0] >> 3) & 0x0f];
+            }
+            if ((*(unsigned short *)descriptor & 0x202) == 0x200)
+                [self->networkInterface incrementCollisions];
+
+            index = self->txDoneIndex;
+            if (self->txNetbuf[index] != NULL) {
+                nb_free(self->txNetbuf[index]);
+                self->txNetbuf[index] = NULL;
+            }
+        }
+
+        if (++self->txDoneIndex == 32) self->txDoneIndex = 0;
+        ++self->txNumFree;
+    }
 }
 
-- (BOOL)_transmitPacket:(netbuf_t)packet
+- (void)_transmitPacket:(netbuf_t)packet
 {
-    unsigned int availableDescriptors;
-    unsigned int txHeadIndex;
-    void *txRingVirt;
     unsigned char *descriptor;
-    unsigned char *statusByte;
-    netbuf_t *txNetbufArray;
-    BOOL success;
-    unsigned int txInterruptCounter;
-    unsigned short basePort;
+    unsigned char control;
 
     // Perform loopback if needed
     [self performLoopback:packet];
@@ -921,122 +686,46 @@ give_back_to_hardware:
     // Reserve debugger lock for safe TX ring access
     [self reserveDebuggerLock];
 
-    // TODO: Get available TX descriptors from offset 0x314
-    availableDescriptors = 0;  // TODO: *(unsigned int *)(self + 0x314)
-
-    // Check if any TX descriptors are available
-    if (availableDescriptors == 0) {
+    if (self->txNumFree == 0) {
         [self releaseDebuggerLock];
         nb_free(packet);
-        return NO;
+        return;
     }
 
-    // TODO: Get TX ring base from offset 0x308
-    txRingVirt = NULL;  // TODO: *(void **)(self + 0x308)
+    descriptor = (unsigned char *)self->txRing + 16 * self->txPutIndex;
+    self->txNetbuf[self->txPutIndex] = packet;
+    control = descriptor[7] & 2;
+    ((unsigned int *)descriptor)[1] = 0;
+    descriptor[7] |= control;
 
-    // TODO: Get TX head index from offset 0x30c
-    txHeadIndex = 0;  // TODO: *(unsigned int *)(self + 0x30c)
-
-    // Get pointer to next TX descriptor
-    descriptor = (unsigned char *)((txHeadIndex * 0x10) + (unsigned int)txRingVirt);
-
-    // Store netbuf in TX buffer array
-    // TODO: Store at offset 0x184 + (txHeadIndex * 4)
-    // *(netbuf_t *)(self + 0x184 + (txHeadIndex * 4)) = packet;
-
-    // Check if end-of-ring bit is set (bit 1 of byte 7)
-    statusByte = &descriptor[7];
-    if ((*statusByte & 0x02) != 0) {
-        // End of ring - clear control word and restore end-of-ring bit
-        descriptor[4] = 0;
-        descriptor[5] = 0;
-        descriptor[6] = 0;
-        descriptor[7] = 0;
-        descriptor[7] = descriptor[7] | 0x02;
-    }
-    else {
-        // Not end of ring - clear control word
-        descriptor[4] = 0;
-        descriptor[5] = 0;
-        descriptor[6] = 0;
-        descriptor[7] = 0;
-    }
-
-    // Update descriptor with netbuf buffer addresses
-    success = IOUpdateDescriptorFromNetBuf(packet, (vm_address_t)descriptor, NO);
-
-    if (!success) {
+    if (!IOUpdateDescriptorFromNetBuf(packet, (vm_address_t)descriptor, NO)) {
         [self releaseDebuggerLock];
         IOLog("%s: _transmitPacket: IOUpdateDescriptorFromNetBuf failed\n", [self name]);
         nb_free(packet);
-        return NO;
+        return;
     }
 
-    // Set first segment bit (bit 5 of byte 7)
-    descriptor[7] = descriptor[7] | 0x20;
-
-    // Set last segment bit (bit 6 of byte 7)
-    descriptor[7] = descriptor[7] | 0x40;
-
-    // TODO: Get TX interrupt counter from offset 0x318
-    txInterruptCounter = 0;  // TODO: *(unsigned int *)(self + 0x318)
-
-    // Increment interrupt counter
-    txInterruptCounter++;
-
-    // Generate interrupt every 16 packets
-    if (txInterruptCounter == 0x10) {
-        // Set interrupt on completion bit (bit 7 of byte 7)
-        descriptor[7] = descriptor[7] | 0x80;
-        txInterruptCounter = 0;
+    descriptor[7] |= 0x60;
+    if (++self->txIntCount == 16) {
+        descriptor[7] |= 0x80;
+        self->txIntCount = 0;
+    } else {
+        descriptor[7] &= ~0x80;
     }
-    else {
-        // Clear interrupt on completion bit
-        descriptor[7] = descriptor[7] & 0x7f;
-    }
-
-    // TODO: Store updated counter
-    // *(unsigned int *)(self + 0x318) = txInterruptCounter;
-
-    // Clear status word (bytes 0-3)
-    descriptor[0] = 0;
-    descriptor[1] = 0;
-    descriptor[2] = 0;
-    descriptor[3] = 0;
-
-    // Set ownership bit in byte 3 of status word
-    descriptor[3] = descriptor[3] | 0x80;
-
-    // Increment TX head index (wrap at 32)
-    txHeadIndex++;
-    if (txHeadIndex == 0x20) {
-        txHeadIndex = 0;
-    }
-    // TODO: Store updated TX head index
-    // *(unsigned int *)(self + 0x30c) = txHeadIndex;
-
-    // Decrement available descriptor count
-    availableDescriptors--;
-    // TODO: Store updated count
-    // *(unsigned int *)(self + 0x314) = availableDescriptors;
-
-    // Trigger transmit by writing to CSR1 (transmit poll demand)
-    // TODO: Get base port from offset 0x174
-    basePort = 0;  // TODO: *(unsigned short *)(self + 0x174)
-    outw(basePort + 8, 1);  // CSR1 is at base + 8
+    *(unsigned int *)descriptor = 0;
+    descriptor[3] |= 0x80;
+    if (++self->txPutIndex == 32) self->txPutIndex = 0;
+    --self->txNumFree;
+    outl(self->ioBase + CSR1_TX_POLL_DEMAND, 1);
 
     [self releaseDebuggerLock];
-
-    return YES;
 }
 
 - (void)addMulticastAddress:(enet_addr_t *)address
 {
     BOOL success;
 
-    // Enable multicast mode
-    // TODO: Set multicast enabled flag at offset 0x181
-    // *(BOOL *)(self + 0x181) = YES;
+    self->multicastEnabled = YES;
 
     // Reserve debugger lock
     [self reserveDebuggerLock];
@@ -1083,208 +772,83 @@ give_back_to_hardware:
 
 - (void)disableAdapterInterrupts
 {
-    void *adapterInfo;
-
-    // TODO: Get adapter info from offset 0x334
-    adapterInfo = self->Adapter;
-
-    // Call utility function to disable interrupts
-    DC21X4DisableInterrupt(adapterInfo);
+    DC21X4DisableInterrupt(self->Adapter);
 }
 
 - (void)disableMulticastMode
 {
-    BOOL multicastEnabled;
     BOOL success;
 
-    // TODO: Get multicast enabled flag from offset 0x181
-    multicastEnabled = NO;  // TODO: *(BOOL *)(self + 0x181)
-
-    if (multicastEnabled) {
-        // Reserve debugger lock
+    if (self->multicastEnabled) {
         [self reserveDebuggerLock];
-
-        // Update address filtering to remove multicast addresses
         success = [self _setAddressFiltering:NO];
-
         if (!success) {
             IOLog("%s: disable multicast mode failed\n", [self name]);
         }
-
         [self releaseDebuggerLock];
     }
-
-    // Disable multicast mode
-    // TODO: Clear multicast enabled flag at offset 0x181
-    // *(BOOL *)(self + 0x181) = NO;
+    self->multicastEnabled = NO;
 }
 
 - (void)disablePromiscuousMode
 {
-    unsigned short basePort;
-    unsigned short csr6Port;
     unsigned int csr6Value;
 
-    // Clear promiscuous mode flag
-    // TODO: Clear flag at offset 0x180
-    // *(BOOL *)(self + 0x180) = NO;
-
-    // Reserve debugger lock
+    self->isPromiscuous = NO;
     [self reserveDebuggerLock];
-
-    // TODO: Get base I/O port from offset 0x174
-    basePort = 0;  // TODO: *(unsigned short *)(self + 0x174)
-
-    // CSR6 is at base + 0x30
-    csr6Port = basePort + 0x30;
-
-    // Read current CSR6 value
-    csr6Value = inl(csr6Port);
-
-    // Clear promiscuous mode bit (bit 6 = 0x40)
-    csr6Value = csr6Value & 0xffffffbf;
-
-    // Write updated value back
-    outl(csr6Port, csr6Value);
-
+    csr6Value = inl(self->ioBase + CSR6_OPMODE);
+    outl(self->ioBase + CSR6_OPMODE, csr6Value & ~0x40);
     [self releaseDebuggerLock];
 }
 
 - (void)enableAdapterInterrupts
 {
-    void *adapterInfo;
-
-    // TODO: Get adapter info from offset 0x334
-    adapterInfo = self->Adapter;
-
-    // Call utility function to enable interrupts
-    DC21X4EnableInterrupt(adapterInfo);
+    DC21X4EnableInterrupt(self->Adapter);
 }
 
 - (BOOL)enableMulticastMode
 {
-    // Enable multicast mode
-    // TODO: Set multicast enabled flag at offset 0x181
-    // *(BOOL *)(self + 0x181) = YES;
-
+    self->multicastEnabled = YES;
     return YES;
 }
 
 - (BOOL)enablePromiscuousMode
 {
-    unsigned short basePort;
-    unsigned short csr6Port;
     unsigned int csr6Value;
 
-    // Set promiscuous mode flag
-    // TODO: Set flag at offset 0x180
-    // *(BOOL *)(self + 0x180) = YES;
-
-    // Reserve debugger lock
+    self->isPromiscuous = YES;
     [self reserveDebuggerLock];
-
-    // TODO: Get base I/O port from offset 0x174
-    basePort = 0;  // TODO: *(unsigned short *)(self + 0x174)
-
-    // CSR6 is at base + 0x30
-    csr6Port = basePort + 0x30;
-
-    // Read current CSR6 value
-    csr6Value = inl(csr6Port);
-
-    // Set promiscuous mode bit (bit 6 = 0x40)
-    csr6Value = csr6Value | 0x40;
-
-    // Write updated value back
-    outl(csr6Port, csr6Value);
-
+    csr6Value = inl(self->ioBase + CSR6_OPMODE);
+    outl(self->ioBase + CSR6_OPMODE, csr6Value | 0x40);
     [self releaseDebuggerLock];
-
     return YES;
 }
 
-- (void)free
+- (id)free
 {
     void *adapterInfo;
-    int timerHandle;
     id networkInterface;
-    netbuf_t netbuf;
-    void *descriptorMemory;
-    unsigned int descriptorMemorySize;
-    int i;
+    unsigned int i;
     struct objc_super superClass;
 
-    // TODO: Get adapter info from offset 0x334
     adapterInfo = self->Adapter;
-
-    // Stop autosense timer if running
-    timerHandle = 0;
-    if (adapterInfo != NULL) {
-        timerHandle = *(int *)((char *)adapterInfo + 0x220);
-        if (timerHandle != 0) {
-            DC21X4StopAutoSenseTimer(adapterInfo);
-        }
-    }
-
-    // Clear any pending timeouts
+    if (*((unsigned int *)adapterInfo + 136) != 0)
+        DC21X4StopAutoSenseTimer(adapterInfo);
     [self clearTimeout];
-
-    // Stop the adapter
-    if (adapterInfo != NULL) {
-        DC21X4StopAdapter(adapterInfo);
-    }
-
-    // Free network interface
+    DC21X4StopAdapter(adapterInfo);
     networkInterface = self->networkInterface;
-    self->networkInterface = nil;
-
-    if (networkInterface != nil) {
-        [networkInterface free];
-    }
-
-    // Free all RX netbufs (64 descriptors)
-    for (i = 0; i < 0x40; i++) {
-        netbuf = self->rxNetbuf[i];
-        self->rxNetbuf[i] = NULL;
-
-        if (netbuf != NULL) {
-            nb_free(netbuf);
-        }
-    }
-
-    // Free all TX netbufs (32 descriptors)
-    for (i = 0; i < 0x20; i++) {
-        netbuf = self->txNetbuf[i];
-        self->txNetbuf[i] = NULL;
-
-        if (netbuf != NULL) {
-            nb_free(netbuf);
-        }
-    }
-
-    // Free descriptor memory
-    descriptorMemory = self->memoryPtr;
-    self->memoryPtr = NULL;
-
-    if (descriptorMemory != NULL) {
-        descriptorMemorySize = self->memorySize;
-
-        IOFreeLow(descriptorMemory, descriptorMemorySize);
-    }
-
-    // Free adapter info structure
-    if (adapterInfo != NULL) {
-        self->Adapter = NULL;
-        IOFree(adapterInfo, 0x27c);  // Size: 636 bytes
-    }
-
-    // Enable all interrupts before freeing
+    if (networkInterface != NULL) [networkInterface free];
+    for (i = 0; i < 64; i++)
+        if (self->rxNetbuf[i] != NULL) nb_free(self->rxNetbuf[i]);
+    for (i = 0; i < 32; i++)
+        if (self->txNetbuf[i] != NULL) nb_free(self->txNetbuf[i]);
+    if (self->memoryPtr != NULL)
+        IOFreeLow(self->memoryPtr, self->memorySize);
+    if (adapterInfo != NULL) IOFree(adapterInfo, 636);
     [self enableAllInterrupts];
-
-    // Call superclass free
     superClass.receiver = self;
     superClass.class = objc_getClass("IOEthernet");
-    objc_msgSendSuper(&superClass, @selector(free));
+    return (id)objc_msgSendSuper(&superClass, @selector(free));
 }
 
 - (IOReturn)getIntValues:(unsigned int *)values
@@ -1360,7 +924,6 @@ give_back_to_hardware:
     unsigned int mediaType;
     unsigned char macAddress[6];
     BOOL success;
-    id networkController;
     id networkInterface;
     struct objc_super superClass;
 
@@ -1511,298 +1074,150 @@ give_back_to_hardware:
     // Log media type
     IOLog("%s: Media type: 0x%x\n", [self name], mediaType);
 
-    // Reset and enable adapter
-    success = [self resetAndEnable:NO];
+    success = [self _allocateMemory];
     if (!success) {
-        IOLog("%s: resetAndEnable failed\n", [self name]);
+        IOLog("%s: Memory allocation error\n", [self name]);
         [self free];
         return nil;
     }
 
-    // Initialize flags
-    // TODO: Set promiscuous mode flag at offset 0x180
-    // *(BOOL *)(self + 0x180) = NO;
-
-    // TODO: Set multicast mode flag at offset 0x181
-    // *(BOOL *)(self + 0x181) = NO;
-
-    // Get network controller class
-    networkController = objc_msgSend(objc_getClass("IONetworkController"), @selector(alloc));
-
-    // TODO: Store at offset 800 (0x320)
-    // *(id *)(self + 800) = networkController;
-
-    if (networkController == nil) {
-        IOLog("%s: Failed to allocate network controller\n", [self name]);
+    self->isPromiscuous = NO;
+    self->multicastEnabled = NO;
+    self->KDB_txBuf = [self allocateNetbuf];
+    if (self->KDB_txBuf == NULL) {
+        IOLog("%s: Couldn't allocate KDB netbuf\n", [self name]);
         [self free];
         return nil;
     }
 
-    // TODO: Set flag at offset 0x182
-    // *(BOOL *)(self + 0x182) = NO;
-
-    // Initialize registers
-    success = [self _initRegisters];
+    self->resetAndEnabled = NO;
+    success = [self resetAndEnable:YES];
     if (!success) {
-        IOLog("%s: _initRegisters failed\n", [self name]);
         [self free];
         return nil;
     }
 
-    // Copy MAC address from adapter info offset 0x4c
-    bcopy((void *)((unsigned int)adapterInfo + 0x4c), macAddress, 6);
-
-    // Attach to network with MAC address
+    bcopy((char *)self->Adapter + 76, macAddress, sizeof(macAddress));
     superClass.receiver = self;
     superClass.class = objc_getClass("IOEthernet");
-
     networkInterface = objc_msgSendSuper(&superClass,
                                         @selector(attachToNetworkWithAddress:),
                                         macAddress);
-
-    // TODO: Store network interface at offset 0x178
-    // *(id *)(self + 0x178) = networkInterface;
+    self->networkInterface = networkInterface;
 
     return self;
 }
 
 - (void)interruptOccurred
 {
-    void *adapterInfo;
+    unsigned char *adapterInfo;
+    unsigned int *adapterWords;
     unsigned int savedInterruptMask;
-    unsigned short csr5Port;
-    unsigned short csr7Port;
     unsigned int csr5Status;
     unsigned int maskedStatus;
     unsigned int timerHandle;
-    id txQueue;
-    int queueCount;
 
-    adapterInfo = self->Adapter;
-
-    // Save current interrupt mask at offset 0x1fc
-    savedInterruptMask = 0;  // TODO: *(unsigned int *)(adapterInfo + 0x1fc)
+    adapterInfo = (unsigned char *)self->Adapter;
+    adapterWords = (unsigned int *)adapterInfo;
+    savedInterruptMask = adapterWords[127];
 
     while (1) {
-        // Reserve debugger lock
         [self reserveDebuggerLock];
-
-        // TODO: Get CSR5 port (status register at offset 0x20 in adapter info)
-        csr5Port = 0;  // TODO: *(unsigned short *)(adapterInfo + 0x20)
-
-        // Read CSR5 status register
-        csr5Status = inl(csr5Port);
-
-        // Write back to CSR5 to clear interrupts
-        outl(csr5Port, csr5Status);
-
+        csr5Status = inl(*(unsigned short *)(adapterInfo + 32));
+        outl(*(unsigned short *)(adapterInfo + 32), csr5Status);
         [self releaseDebuggerLock];
 
-        // TODO: Get interrupt mask from offset 0x200 in adapter info
-        maskedStatus = csr5Status & 0;  // TODO: csr5Status & *(unsigned int *)(adapterInfo + 0x200)
-
-        // Check if any interrupts are pending
+        maskedStatus = csr5Status & adapterWords[128];
         if (maskedStatus == 0) {
-            // No more interrupts - restore interrupt mask if changed
-            // TODO: Check if mask changed
-            if (0 /* TODO: *(unsigned int *)(adapterInfo + 0x1fc) */ != savedInterruptMask) {
-                [self reserveDebuggerLock];
-
-                // TODO: Get CSR7 port (interrupt enable at offset 0x28)
-                csr7Port = 0;  // TODO: *(unsigned short *)(adapterInfo + 0x28)
-
-                // TODO: Write saved mask to CSR7
-                // outl(csr7Port, *(unsigned int *)(adapterInfo + 0x1fc));
-
-                [self releaseDebuggerLock];
-            }
-
-            // Enable all interrupts before returning
-            [self enableAllInterrupts];
-            return;
+            break;
         }
 
-        // Handle link status interrupts (GEP, link fail/pass/change)
-        if ((maskedStatus & 0x0C001010) != 0) {
+        if ((maskedStatus & 0x0c001010) != 0) {
             [self reserveDebuggerLock];
-
-            // Handle GEP interrupt (bit 26)
-            if ((maskedStatus & 0x04000000) != 0) {
-                HandleGepInterrupt(adapterInfo);
-            }
-
-            // Check timer handle state (if 4 or 5, skip other link interrupts)
-            // TODO: Get timer handle from offset 0x220
-            timerHandle = 0;  // TODO: *(unsigned int *)(adapterInfo + 0x220)
-
-            if (timerHandle - 4 < 2) {  // If timerHandle is 4 or 5
+            if (maskedStatus & 0x04000000) HandleGepInterrupt(adapterInfo);
+            timerHandle = adapterWords[136];
+            if (timerHandle - 4 <= 1) {
                 [self releaseDebuggerLock];
-                continue;  // Skip to next interrupt check
+                break;
             }
-
-            // Handle link fail interrupt (bit 12)
-            if ((maskedStatus & 0x1000) != 0) {
+            if (maskedStatus & 0x1000)
                 HandleLinkFailInterrupt(adapterInfo, &maskedStatus);
-            }
-
-            // Handle link pass interrupt (bit 4)
-            if ((maskedStatus & 0x10) != 0) {
+            if (maskedStatus & 0x10)
                 HandleLinkPassInterrupt(adapterInfo, &maskedStatus);
-            }
-
-            // Handle link change interrupt (bit 27)
-            if ((maskedStatus & 0x08000000) != 0) {
+            if (maskedStatus & 0x08000000)
                 HandleLinkChangeInterrupt(adapterInfo);
-            }
-
             [self releaseDebuggerLock];
         }
 
-        // Handle receive interrupt (bit 6)
-        if ((maskedStatus & 0x40) != 0) {
+        if (maskedStatus & 0x40)
             [self _receiveInterruptOccurred];
-        }
-
-        // Handle transmit interrupt (bit 0)
-        if ((maskedStatus & 0x01) != 0) {
+        if (maskedStatus & 1) {
             [self reserveDebuggerLock];
             [self _transmitInterruptOccurred];
             [self releaseDebuggerLock];
-
-            // Service transmit queue
             [self serviceTransmitQueue];
         }
     }
+
+    if (adapterWords[127] != savedInterruptMask) {
+        [self reserveDebuggerLock];
+        outl(*(unsigned short *)(adapterInfo + 40), adapterWords[127]);
+        [self releaseDebuggerLock];
+    }
+    [self enableAllInterrupts];
 }
+
 
 - (unsigned int)pendingTransmitCount
 {
-    id txQueue;
-    int queueCount;
-    unsigned int availableDescriptors;
-
-    // TODO: Get TX queue from offset 0x17c
-    txQueue = nil;  // TODO: *(id *)(self + 0x17c)
-
-    // Get count of packets in TX queue
-    queueCount = [txQueue count];
-
-    // TODO: Get available TX descriptors from offset 0x314
-    availableDescriptors = 0;  // TODO: *(unsigned int *)(self + 0x314)
-
-    // Return (queue_count + 32) - available_descriptors
-    // This gives total pending = queued packets + descriptors in use
-    return (queueCount + 0x20) - availableDescriptors;
+    return [self->transmitQueue count] - self->txNumFree + 32;
 }
 
-- (netbuf_t)receivePacket:(void *)buffer
+- (void)receivePacket:(void *)buffer
                    length:(unsigned int *)length
-                  timeout:(ns_time_t)timeout
+                  timeout:(unsigned int)timeout
 {
-    void *rxRingVirt;
-    unsigned int rxIndex;
+    unsigned char *descriptorBytes;
     unsigned int *descriptor;
-    unsigned char *statusByte;
-    unsigned int statusWord;
     unsigned int packetLength;
-    void *adapterInfo;
     unsigned int errorMask;
     netbuf_t rxNetbuf;
     void *packetData;
-    BOOL pollingMode;
     int timeoutMicros;
 
-    // Initialize length to 0
     *length = 0;
+    timeoutMicros = timeout * 1000;
+    if (!self->resetAndEnabled) return;
 
-    // Convert timeout from nanoseconds to microseconds
-    timeoutMicros = timeout / 1000;
-
-    // TODO: Get polling mode flag from offset 0x182
-    pollingMode = NO;  // TODO: *(BOOL *)(self + 0x182)
-
-    // Only work in polling mode (used by kernel debugger)
-    if (!pollingMode) {
-        return NULL;
-    }
-
-    while (1) {
-        // TODO: Get RX index from offset 0x31c
-        rxIndex = 0;  // TODO: *(unsigned int *)(self + 0x31c)
-
-        // TODO: Get RX ring base from offset 0x304
-        rxRingVirt = NULL;  // TODO: *(void **)(self + 0x304)
-
-        // Check ownership bit (bit 7 of byte 3)
-        statusByte = (unsigned char *)((unsigned int)rxRingVirt + 3 + (rxIndex * 0x10));
-
-        // Wait for hardware to give us ownership
-        while (*statusByte & 0x80) {
-            // Still owned by hardware - check timeout
-            if (timeoutMicros < 1) {
-                return NULL;  // Timeout
-            }
-
-            // Delay 50 microseconds (0x32)
+    for (;;) {
+        descriptorBytes = (unsigned char *)self->rxRing +
+                          16 * self->rxDoneIndex;
+        while ((signed char)descriptorBytes[3] < 0) {
+            if (timeoutMicros <= 0) return;
             IODelay(50);
             timeoutMicros -= 50;
+            descriptorBytes = (unsigned char *)self->rxRing +
+                              16 * self->rxDoneIndex;
         }
 
-        // We own the descriptor - validate packet
-        descriptor = (unsigned int *)((rxIndex * 0x10) + (unsigned int)rxRingVirt);
-        statusWord = descriptor[0];
-
-        // TODO: Get adapter info from offset 0x334
-        adapterInfo = self->Adapter;
-
-        // TODO: Get error mask from offset 0x26c in adapter info
-        errorMask = 0;  // TODO: *(unsigned int *)(adapterInfo + 0x26c)
-
-        // Check if packet is valid: no errors, first & last segment, min length
-        if (((statusWord & errorMask) == 0) &&
-            ((statusWord & 0x300) == 0x300) &&  // Both first and last segment
-            ((*(unsigned short *)((unsigned int)descriptor + 2) & 0x3fff) > 0x3f)) {  // > 63 bytes
-
-            // Valid packet - extract data
-            packetLength = ((*(unsigned short *)((unsigned int)descriptor + 2)) & 0x3fff) - 4;
+        descriptor = (unsigned int *)descriptorBytes;
+        errorMask = *((unsigned int *)self->Adapter + 155);
+        if ((errorMask & descriptor[0]) == 0 &&
+            (descriptorBytes[1] & 3) == 3 &&
+            (*((unsigned short *)descriptor + 1) & 0x3fff) > 0x3f) {
+            packetLength = (*((unsigned short *)descriptor + 1) & 0x3fff) - 4;
             *length = packetLength;
-
-            // TODO: Get RX netbuf from array at offset 0x204 + (rxIndex * 4)
-            rxNetbuf = NULL;  // TODO: *(netbuf_t *)(self + 0x204 + (rxIndex * 4))
-
-            // Map netbuf to get packet data
+            rxNetbuf = self->rxNetbuf[self->rxDoneIndex];
             packetData = nb_map(rxNetbuf);
-
-            // Copy packet data to buffer
             bcopy(packetData, buffer, packetLength);
-
-            // Clear status and give descriptor back to hardware
-            descriptor[0] = 0;
-            statusByte = (unsigned char *)((unsigned int)descriptor + 3);
-            *statusByte = *statusByte | 0x80;
-
-            // Increment RX index (wrap at 64)
-            rxIndex++;
-            if (rxIndex == 0x40) {
-                rxIndex = 0;
-            }
-            // TODO: Store updated RX index
-            // *(unsigned int *)(self + 0x31c) = rxIndex;
-
-            return NULL;  // Success - data copied to buffer
+            *descriptor = 0;
+            descriptorBytes[3] |= 0x80;
+            if (++self->rxDoneIndex == 64) self->rxDoneIndex = 0;
+            return;
         }
 
-        // Invalid packet - give descriptor back to hardware
-        statusByte = (unsigned char *)((unsigned int)rxRingVirt + 3 + (rxIndex * 0x10));
-        *statusByte = *statusByte | 0x80;
-
-        // Increment RX index (wrap at 64)
-        rxIndex++;
-        if (rxIndex == 0x40) {
-            rxIndex = 0;
-        }
-        // TODO: Store updated RX index
-        // *(unsigned int *)(self + 0x31c) = rxIndex;
+        descriptorBytes[3] |= 0x80;
+        if (++self->rxDoneIndex == 64) self->rxDoneIndex = 0;
     }
 }
 
@@ -1826,186 +1241,82 @@ give_back_to_hardware:
 - (BOOL)sendPacket:(netbuf_t)packet length:(unsigned int)length
 {
     void *adapterInfo;
-    BOOL pollingMode;
     BOOL interruptMode;
-    unsigned int availableDescriptors;
-    unsigned int txHeadIndex;
-    void *txRingVirt;
     unsigned int *descriptor;
     unsigned char *statusByte;
-    id debugNetbuf;
+    unsigned char endOfRing;
     void *netbufData;
     int netbufSize;
-    BOOL success;
-    unsigned short basePort;
     int pollCount;
 
-    // TODO: Get polling mode flag from offset 0x182
-    pollingMode = NO;  // TODO: *(BOOL *)(self + 0x182)
-
-    // TODO: Get adapter info from offset 0x334
     adapterInfo = self->Adapter;
+    interruptMode = *((unsigned char *)adapterInfo + 499);
 
-    // TODO: Get interrupt mode flag from offset 499 in adapter info
-    interruptMode = NO;  // TODO: *(BOOL *)(adapterInfo + 499)
-
-    // Only work in polling or interrupt mode (debugger use)
-    if (!pollingMode && !interruptMode) {
+    if (!self->resetAndEnabled && !interruptMode) {
         return NO;
     }
 
-    // Reclaim completed TX descriptors
     [self _transmitInterruptOccurred];
-
-    // TODO: Get available descriptors from offset 0x314
-    availableDescriptors = 0;  // TODO: *(unsigned int *)(self + 0x314)
-
-    if (availableDescriptors == 0) {
+    if (self->txNumFree == 0) {
         IOLog("%s: _sendPacket: no free tx descriptors\n", [self name]);
         return NO;
     }
 
-    // TODO: Get TX head index from offset 0x30c
-    txHeadIndex = 0;  // TODO: *(unsigned int *)(self + 0x30c)
-
-    // TODO: Get TX ring base from offset 0x308
-    txRingVirt = NULL;  // TODO: *(void **)(self + 0x308)
-
-    // Get pointer to next TX descriptor
-    descriptor = (unsigned int *)((txHeadIndex * 0x10) + (unsigned int)txRingVirt);
-
-    // Clear netbuf pointer for this descriptor
-    // TODO: Clear at offset 0x184 + (txHeadIndex * 4)
-    // *(netbuf_t *)(self + 0x184 + (txHeadIndex * 4)) = NULL;
-
-    // TODO: Get debug netbuf from offset 800
-    debugNetbuf = nil;  // TODO: *(id *)(self + 800)
-
-    // Map netbuf and copy packet data
-    netbufData = nb_map(debugNetbuf);
+    descriptor = (unsigned int *)((unsigned char *)self->txRing +
+                                  16 * self->txPutIndex);
+    self->txNetbuf[self->txPutIndex] = NULL;
+    netbufData = nb_map(self->KDB_txBuf);
     bcopy(packet, netbufData, length);
+    netbufSize = nb_size(self->KDB_txBuf);
+    nb_shrink_bot(self->KDB_txBuf, netbufSize - length);
 
-    // Shrink netbuf to packet size
-    netbufSize = nb_size(debugNetbuf);
-    nb_shrink_bot(debugNetbuf, netbufSize - length);
+    statusByte = (unsigned char *)descriptor + 7;
+    endOfRing = *statusByte & 2;
+    descriptor[1] = 0;
+    *statusByte |= endOfRing;
 
-    // Check if end-of-ring bit is set (bit 1 of byte 7)
-    statusByte = (unsigned char *)((unsigned int)descriptor + 7);
-    if ((*statusByte & 0x02) != 0) {
-        // End of ring - clear control word and restore end-of-ring bit
-        descriptor[1] = 0;
-        *statusByte = *statusByte | 0x02;
-    }
-    else {
-        // Not end of ring - clear control word
-        descriptor[1] = 0;
-    }
-
-    // Update descriptor with netbuf buffer addresses
-    success = IOUpdateDescriptorFromNetBuf(debugNetbuf, (vm_address_t)descriptor, NO);
-
-    if (!success) {
+    if (!IOUpdateDescriptorFromNetBuf(self->KDB_txBuf,
+                                      (vm_address_t)descriptor, NO)) {
         IOLog("%s: _sendPacket: IOUpdateDescriptorFromNetBuf failed\n", [self name]);
         return NO;
     }
 
-    // Set first segment bit (bit 5 of byte 7)
-    *statusByte = *statusByte | 0x20;
-
-    // Set last segment bit (bit 6 of byte 7)
-    *statusByte = *statusByte | 0x40;
-
-    // Clear interrupt on completion bit (polling mode)
-    *statusByte = *statusByte & 0x7f;
-
-    // Clear status word (bytes 0-3)
+    *statusByte |= 0x60;
+    *statusByte &= ~0x80;
     descriptor[0] = 0;
+    ((unsigned char *)descriptor)[3] |= 0x80;
+    if (interruptMode) ((unsigned char *)descriptor)[7] |= 4;
+    if (++self->txPutIndex == 32) self->txPutIndex = 0;
+    --self->txNumFree;
+    outl(self->ioBase + CSR1_TX_POLL_DEMAND, 1);
 
-    // Set ownership bit in byte 3
-    statusByte = (unsigned char *)((unsigned int)descriptor + 3);
-    *statusByte = *statusByte | 0x80;
-
-    // Set additional flag if in interrupt mode
-    if (interruptMode) {
-        statusByte = (unsigned char *)((unsigned int)descriptor + 7);
-        *statusByte = *statusByte | 0x04;
-    }
-
-    // Increment TX head index (wrap at 32)
-    txHeadIndex++;
-    if (txHeadIndex == 0x20) {
-        txHeadIndex = 0;
-    }
-    // TODO: Store updated TX head index
-    // *(unsigned int *)(self + 0x30c) = txHeadIndex;
-
-    // Decrement available descriptor count
-    availableDescriptors--;
-    // TODO: Store updated count
-    // *(unsigned int *)(self + 0x314) = availableDescriptors;
-
-    // Trigger transmit by writing to CSR1
-    // TODO: Get base port from offset 0x174
-    basePort = 0;  // TODO: *(unsigned short *)(self + 0x174)
-    outw(basePort + 8, 1);
-
-    // Poll for completion (up to 10000 iterations, 500μs delays)
-    statusByte = (unsigned char *)((unsigned int)descriptor + 3);
+    statusByte = (unsigned char *)descriptor + 3;
     for (pollCount = 0; pollCount < 10000; pollCount++) {
-        if ((*statusByte & 0x80) == 0) {
-            // Hardware cleared ownership - transmission complete
-            break;
-        }
+        if ((*statusByte & 0x80) == 0) break;
         IODelay(500);
     }
 
-    // Record timing statistics
-    // TODO: Store completion time at offset 0x270 in adapter info
-    // *(int *)(adapterInfo + 0x270) = 10000 - pollCount;
+    *((unsigned int *)adapterInfo + 156) = 10000 - pollCount;
+    *((unsigned int *)adapterInfo + 157) = descriptor[0];
 
-    // TODO: Store final status at offset 0x274
-    // *(unsigned int *)(adapterInfo + 0x274) = descriptor[0];
-
-    // Check for timeout (only in non-interrupt mode)
     if ((*statusByte & 0x80) && !interruptMode) {
         IOLog("%s: _sendPacket: polling timed out\n", [self name]);
     }
 
-    // Restore netbuf size
-    nb_grow_bot(debugNetbuf, netbufSize - length);
-
-    // Clear interrupt mode flag if set
-    if (interruptMode) {
-        // TODO: Clear flag at offset 499 in adapter info
-        // *(BOOL *)(adapterInfo + 499) = NO;
-    }
+    nb_grow_bot(self->KDB_txBuf, netbufSize - length);
+    if (interruptMode) *((unsigned char *)adapterInfo + 499) = NO;
 
     return YES;
 }
 
 - (void)serviceTransmitQueue
 {
-    id txQueue;
-    int checkValue;
     netbuf_t packet;
 
-    // TODO: Get TX queue from offset 0x17c
-    txQueue = nil;  // TODO: *(id *)(self + 0x17c)
-
-    // TODO: Get available TX descriptors from offset 0x314
-    checkValue = 0;  // TODO: *(int *)(self + 0x314)
-
-    // Loop while descriptors available, queue has packets, and dequeue succeeds
-    while ((checkValue != 0) &&
-           ((checkValue = [txQueue count]) != 0) &&
-           ((packet = (netbuf_t)[txQueue dequeue]) != NULL)) {
-
-        // Transmit the packet
+    while (self->txNumFree != 0 && [self->transmitQueue count] != 0) {
+        packet = (netbuf_t)[self->transmitQueue dequeue];
+        if (packet == NULL) break;
         [self _transmitPacket:packet];
-
-        // Re-read available descriptors for next iteration
-        // TODO: checkValue = *(int *)(self + 0x314);
-        checkValue = 0;  // TODO
     }
 }
 
@@ -2060,34 +1371,15 @@ give_back_to_hardware:
 
 - (IOReturn)setPowerState:(PMPowerState)state
 {
-    void *adapterInfo;
-    unsigned int timerHandle;
+    unsigned int *adapterWords;
 
-    // Check if power state is PM_OFF (3)
-    if (state == 3) {
-        // Clear polling mode flag at offset 0x182
-        // TODO: *(BOOL *)(self + 0x182) = NO;
-
-        // TODO: Get adapter info from offset 0x334
-        adapterInfo = self->Adapter;
-
-        // TODO: Get timer handle from offset 0x220 in adapter info
-        timerHandle = 0;  // TODO: *(unsigned int *)(adapterInfo + 0x220)
-
-        // If auto-sense timer is running, stop it
-        if (timerHandle != 0) {
-            DC21X4StopAutoSenseTimer(adapterInfo);
-        }
-
-        // Stop the adapter
-        DC21X4StopAdapter(adapterInfo);
-
-        return IO_R_SUCCESS;
-    }
-    else {
-        // Other power states not supported
-        return IO_R_UNSUPPORTED;
-    }
+    if (state != 3) return IO_R_UNSUPPORTED;
+    self->resetAndEnabled = NO;
+    adapterWords = (unsigned int *)self->Adapter;
+    if (adapterWords[136] != 0)
+        DC21X4StopAutoSenseTimer(self->Adapter);
+    DC21X4StopAdapter(self->Adapter);
+    return IO_R_SUCCESS;
 }
 
 - (void)timeoutOccurred
@@ -2110,73 +1402,30 @@ give_back_to_hardware:
 
 - (void)transmit:(netbuf_t)packet
 {
-    BOOL running;
-    unsigned int availableDescriptors;
-    id txQueue;
-    int queueCount;
-
-    // Check for NULL packet
     if (packet == NULL) {
         IOLog("%s: transmit: received NULL netbuf\n", [self name]);
         return;
     }
 
-    // Check if adapter is running
-    running = [self isRunning];
-
-    if (!running) {
-        // Not running - free the netbuf
+    if (![self isRunning]) {
         nb_free(packet);
         return;
     }
 
-    // Adapter is running - try to transmit
-    // First reclaim any completed TX descriptors
     [self reserveDebuggerLock];
     [self _transmitInterruptOccurred];
     [self releaseDebuggerLock];
-
-    // Service any queued packets
     [self serviceTransmitQueue];
 
-    // TODO: Get available TX descriptors from offset 0x314
-    availableDescriptors = 0;  // TODO: *(unsigned int *)(self + 0x314)
-
-    // TODO: Get TX queue from offset 0x17c
-    txQueue = nil;  // TODO: *(id *)(self + 0x17c)
-
-    // Decide whether to enqueue or directly transmit
-    if (availableDescriptors == 0) {
-        // No descriptors available - enqueue packet
-        [txQueue enqueue:packet];
-    }
-    else {
-        // Check if queue has packets
-        queueCount = [txQueue count];
-
-        if (queueCount != 0) {
-            // Queue is not empty - enqueue to maintain order
-            [txQueue enqueue:packet];
-        }
-        else {
-            // Queue is empty and descriptors available - transmit directly
-            [self _transmitPacket:packet];
-        }
-    }
+    if (self->txNumFree != 0 && [self->transmitQueue count] == 0)
+        [self _transmitPacket:packet];
+    else
+        [self->transmitQueue enqueue:packet];
 }
 
 - (unsigned int)transmitQueueCount
 {
-    id txQueue;
-    int queueCount;
-
-    // TODO: Get TX queue from offset 0x17c
-    txQueue = nil;  // TODO: *(id *)(self + 0x17c)
-
-    // Get count of packets in TX queue
-    queueCount = [txQueue count];
-
-    return queueCount;
+    return [self->transmitQueue count];
 }
 
 - (unsigned int)transmitQueueSize

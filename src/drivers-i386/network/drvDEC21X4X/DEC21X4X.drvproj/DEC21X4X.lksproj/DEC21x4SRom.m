@@ -58,7 +58,6 @@
     const char *driverName;
     const char *mediumName;
 
-    // TODO: Get adapterInfo from offset 0x334
     adapterInfo = self->Adapter;
 
     chipRevision = *(unsigned int *)((char *)adapterInfo + 0x54);

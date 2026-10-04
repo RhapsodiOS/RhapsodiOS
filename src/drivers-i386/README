@@ -49,13 +49,18 @@ input
 
 network
  * drvAMDPCNet32II - complete. First built 2026-09-25 with `rbuild buildpackage --arch i386` into drvamdpcnet32ii-1-i386.apk, after dropping its direct <bsd/net/etherdefs.h> imports, which came before the socket and if headers if_ether.h needs; <driverkit/IOEthernet.h> already pulls it in in the right order, as in drvNE2k. Not yet boot-tested
- * drvDEC21X4X - partial reconstruction against Apple's i386
-   DEC21X4XNetwork_reloc. IDA recovered 116 routines and the 43 handwritten
-   Objective-C selectors now match; the class layout is restored through
+ * drvDEC21X4X - source reconstruction complete against Apple's i386
+   DEC21X4XNetwork_reloc. IDA enumerates 122 routines: 43 handwritten
+   Objective-C methods, 76 local C helpers, the external DriverKit descriptor
+   helper, and two generated accessors. The 43 handwritten selectors match;
+   the class layout is restored through
    MediaCapableSaved at 0x338. Project manifests include the inspector nib
-   and DriverHelp, and five source, layout and byte-for-byte resource checks
-   pass. Core controller and utility paths still contain TODO placeholders,
-   so this is not functionally complete. BinRecon's IDA analysis completed;
+   and DriverHelp. C translation units no longer define the MII auto-detect
+   helpers twice; the CSR9 MII writer and PHY link/negotiation status path
+   follow the recovered reference, and adapter declarations match the
+   i386 pointer ABI. The SROM root and block parsers use the byte cursor and
+   info-leaf offsets recovered from IDA. All 22 source, layout and
+   byte-for-byte resource checks pass. BinRecon's IDA analysis completed;
    angr rejects relocation 968 at the final generated accessor, and no
    rebuilt-binary comparison is available. The i386 APK build and hardware
    behavior are unverified. See

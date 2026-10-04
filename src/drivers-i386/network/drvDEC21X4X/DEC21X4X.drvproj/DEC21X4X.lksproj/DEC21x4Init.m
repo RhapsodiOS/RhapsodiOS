@@ -317,157 +317,139 @@
 - (BOOL)resetAndEnable:(BOOL)enable
 {
     void *adapterInfo = self->Adapter;
-    unsigned int chipRevision = 0;  // TODO: Get from adapter structure
-    unsigned int chipStep = 0;      // TODO: Get from adapter structure
+    unsigned int chipRevision;
+    unsigned int chipStep;
     unsigned int savedInterruptMask;
-    BOOL success;
-    
-    // TODO: Clear hardwareResetInProgress flag (offset 0x182)
-    // *(BOOL *)(self + 0x182) = NO;
-    
+    IOReturn ret;
+    unsigned int i;
+    unsigned int mediaType;
+    unsigned char defaultMedium;
+    unsigned int *descriptorControl;
+    const char *mediumName;
+
+    chipRevision = *(unsigned int *)((char *)adapterInfo + 0x54);
+    chipStep = *(unsigned char *)((char *)adapterInfo + 8);
+    self->resetAndEnabled = NO;
+
     // Clear any pending timeouts
     [self clearTimeout];
-    
+
     // Disable interrupts
     [self disableAdapterInterrupts];
-    
+
     // Stop autosense timer if running
-    // TODO: Check timerHandle at offset 0x220
-    int timerHandle = 0;  // TODO: adapterInfo->timerHandle
-    if (timerHandle != 0) {
+    if (*((unsigned int *)adapterInfo + 136) != 0) {
         DC21X4StopAutoSenseTimer(adapterInfo);
     }
-    
+
     // Initialize setup frame descriptors (16 entries)
-    // TODO: This accesses setupFrameDescriptors array
-    for (int i = 0; i < 16; i++) {
-        // TODO: Set descriptor buffer addresses
-        // adapterInfo->setupFrameDescriptors[i].bufferAddr = 
-        //     adapterInfo->setupFrameBase + (i * 8);
+    for (i = 0; i < 16; i++) {
+        ((unsigned int *)adapterInfo)[i + 3] =
+            *(unsigned int *)adapterInfo + (8 * i);
     }
-    
+
     // Setup frame descriptor control words
-    // TODO: Set descriptor 0 control word at offset 0x1FC
-    // *(unsigned int *)(adapterInfo + 0x1FC) = 0x0801B85B;
-    // TODO: Set descriptor 1 control word at offset 0x200
-    // *(unsigned int *)(adapterInfo + 0x200) = 0x0001BFFF;
-    
+    descriptorControl = (unsigned int *)((char *)adapterInfo + 0x1fc);
+    descriptorControl[0] = 0x0801b85b;
+    descriptorControl[1] = 0x0001bfff;
+
     // Chip-specific descriptor flags
-    if (chipRevision == 0x191011) {  // DC21143
-        // TODO: Set bit 26 in descriptor 0
-        // *(unsigned int *)(adapterInfo + 0x1FC) |= 0x04000000;
+    if (chipRevision == CHIP_REV_DC21142) {
+        descriptorControl[0] |= 0x04000000;
     } else if (chipRevision == 0xFF1011) {
-        // TODO: Set bit 27 in descriptor 1
-        // *(unsigned int *)(adapterInfo + 0x200) |= 0x08000000;
-        // TODO: Set bit 26 in descriptor 0
-        // *(unsigned int *)(adapterInfo + 0x1FC) |= 0x04000000;
+        descriptorControl[1] |= 0x08000000;
+        descriptorControl[0] |= 0x04000000;
     }
-    
+
     // Stop the adapter
     DC21X4StopAdapter(adapterInfo);
-    
+
     // Set various reset flags
-    // TODO: Set flags at offsets 0x1EC, 0x1ED, 0x1F2
-    // *(BOOL *)(adapterInfo + 0x1EC) = YES;  // txInterruptEnabled
-    // *(BOOL *)(adapterInfo + 0x1ED) = YES;  // rxInterruptEnabled  
-    // *(BOOL *)(adapterInfo + 0x1F2) = YES;  // resetInProgress
-    
+    *((unsigned char *)adapterInfo + 0x1ec) = YES;
+    *((unsigned char *)adapterInfo + 0x1ed) = YES;
+    *((unsigned char *)adapterInfo + 0x1f2) = YES;
+
     // Initialize CSR template values
-    // TODO: Set CSR6 template at offset 0x264
-    // *(unsigned int *)(adapterInfo + 0x264) = 0x4F02;
-    // TODO: Set CSR7 template at offset 0x26C
-    // *(unsigned int *)(adapterInfo + 0x26C) = 0x48D3;
-    
+    *((unsigned int *)adapterInfo + 153) = 0x4f02;
+    *((unsigned int *)adapterInfo + 155) = 0x48d3;
+
     // Initialize GEP values
-    // TODO: Set GEP direction at offset 0x6C
-    // *(unsigned int *)(adapterInfo + 0x6C) = 0x4000;
-    // TODO: Set GEP data at offset 0x70
-    // *(unsigned int *)(adapterInfo + 0x70) = 0;
-    
+    *((unsigned int *)adapterInfo + 27) = 0x4000;
+    *((unsigned int *)adapterInfo + 28) = 0;
+
     // DC21040 special handling
-    if (chipRevision == 0x21011) {
+    if (chipRevision == CHIP_REV_DC21040) {
         if (chipStep == 0x00 || chipStep == 0x20 || chipStep == 0x22) {
-            // Clear bit 11 in CSR6 template for early revisions
-            // TODO: *(unsigned int *)(adapterInfo + 0x264) &= ~0x800;
-            // TODO: *(unsigned int *)(adapterInfo + 0x6C) = 0x4000;
+            *((unsigned int *)adapterInfo + 153) &= ~0x800;
+            *((unsigned int *)adapterInfo + 27) = 0x4000;
         }
     }
-    
+
     // Initialize RX ring
     if (![self _initRxRing]) {
         [self setRunning:NO];
         return NO;
     }
-    
+
     // Initialize TX ring
     if (![self _initTxRing]) {
         [self setRunning:NO];
         return NO;
     }
-    
+
     // Parse SROM
     if (![self parseSROM]) {
         IOLog("%s: Error while parsing SROM\n", [self name]);
         [self setRunning:NO];
         return NO;
     }
-    
+
     // If not enabling, just set running and return success
     if (!enable) {
-        [self setRunning:YES];
+        [self setRunning:NO];
+        self->resetAndEnabled = YES;
         return YES;
     }
-    
+
     // Verify media support
-    // TODO: Get mediaType from offset 0x78
-    unsigned int mediaType = 0;  // TODO: *(unsigned int *)(adapterInfo + 0x78)
+    mediaType = *((unsigned int *)adapterInfo + 30);
     if (![self verifyMediaSupport:mediaType]) {
         // Use default medium instead
-        // TODO: Get defaultMedium from offset 0x80
-        unsigned char defaultMedium = 0;  // TODO: *(unsigned char *)(adapterInfo + 0x80)
-        
-        // TODO: Get medium name from MediumString table
-        const char *mediumName = "unknown";  // TODO: MediumString[defaultMedium]
-        
+        defaultMedium = *((unsigned char *)adapterInfo + 0x80);
+        mediumName = MediumString[defaultMedium];
         IOLog("%s: Unsupported medium. Using default: %s\n", [self name], mediumName);
-        
-        // TODO: Set mediaType to defaultMedium
-        // *(unsigned int *)(adapterInfo + 0x78) = defaultMedium;
+        *((unsigned int *)adapterInfo + 30) = *((unsigned int *)adapterInfo + 32);
     }
-    
+
     // Save interrupt mask and clear certain bits
-    // TODO: Get interrupt mask from offset 0x1FC
-    savedInterruptMask = 0;  // TODO: *(unsigned int *)(adapterInfo + 0x1FC)
-    // TODO: Clear bits in interrupt mask
-    // *(unsigned int *)(adapterInfo + 0x1FC) &= 0xF7FFEFEF;
-    
+    savedInterruptMask = descriptorControl[0];
+    descriptorControl[0] &= 0xf7ffefef;
+
     // Enable all interrupts
-    success = [self enableAllInterrupts];
-    if (!success) {
+    ret = [self enableAllInterrupts];
+    if (ret != IO_R_SUCCESS) {
         IOLog("%s: Cannot enable interrupts\n", [self name]);
         [self setRunning:NO];
         return NO;
     }
-    
+
     // Initialize adapter
     if (![self _initAdapter]) {
         IOLog("%s: initAdapter failed\n", [self name]);
         [self setRunning:NO];
         return NO;
     }
-    
+
     // Restore interrupt mask
-    // TODO: *(unsigned int *)(adapterInfo + 0x1FC) = savedInterruptMask;
-    
+    descriptorControl[0] = savedInterruptMask;
+
     // Enable adapter interrupts
     [self enableAdapterInterrupts];
-    
+
     // Set running flag
     [self setRunning:YES];
-    
-    // TODO: Set hardwareResetInProgress flag (offset 0x182)
-    // *(BOOL *)(self + 0x182) = YES;
-    
+    self->resetAndEnabled = YES;
+
     return YES;
 }
 

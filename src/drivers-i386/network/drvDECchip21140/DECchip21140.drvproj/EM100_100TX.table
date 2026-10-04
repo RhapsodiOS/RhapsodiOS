@@ -1,14 +1,12 @@
-"Title" = "DECchip 21140 Network Driver";
+"Title" = "EM100 100BASE-TX Network Driver";
 "Family" = "Network";
 "Location" = "";
 "Instance" = "0";
 "Driver Name" = "DECchip21140";
 "DMA Channels" = "";
 "Memory Maps" = "";
-"PDR Selection" = "10BASE-T";
-"Hardware Vendor ID" = "Custom";
-"Address Offset" = "0";
-"CSR12 10" = "";
+"PDR Selection" = "100BASE-TX";
+"Hardware Vendor ID" = "EM100";
 "Share IRQ Levels" = "YES";
 "Bus Type" = "PCI";
 "Auto Detect IDs" = "0x00091011:0";

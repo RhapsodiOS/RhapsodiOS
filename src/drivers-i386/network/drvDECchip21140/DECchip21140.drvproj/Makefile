@@ -13,9 +13,9 @@ PROJECTVERSION = 5.00
 PROJECT_TYPE = Driver
 LANGUAGE = English
 
-GLOBAL_RESOURCES = Default.table
+GLOBAL_RESOURCES = Default.table DEC21140_100TX.table DE500_10.table DE500_100TX.table EM100_100TX.table EM110_10.table EM110_100TX.table EM110_T4_10.table EM110_T4_100.table EM110_T4_BNC.table SMC9332_10.table SMC9332_100TX.table SMC9332B.table
 
-LOCAL_RESOURCES = Localizable.strings DriverHelp
+LOCAL_RESOURCES = Localizable.strings DEC21140_100TX.strings DE500_10.strings DE500_100TX.strings EM100_100TX.strings EM110_10.strings EM110_100TX.strings EM110_T4_10.strings EM110_T4_100.strings EM110_T4_BNC.strings SMC9332_10.strings SMC9332_100TX.strings SMC9332B.strings DriverHelp
 
 TOOLS = DECchip21140.lksproj
 

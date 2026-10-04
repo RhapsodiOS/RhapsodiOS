@@ -52,7 +52,18 @@ network
  * drvDEC21X4X - needs compiled and then tested
  * drvDEC21142 - needs compiled and then tested
  * drvDECchip21040 - needs compiled and then tested
- * drvDECchip21140 - needs compiled and then tested
+ * drvDECchip21140 - reconstructed against Apple's i386
+   DECchip21140NetworkDriver_reloc. IDA recovered 49 functions: 46 hand-written
+   Objective-C methods, the descriptor-mapping C helper, and two Kernel Server
+   generated accessors. The class fields match the reference layout through
+   subVendorDeviceID at 0x354. All 13 adapter tables, 13 localized string files
+   and DriverHelp resources are restored byte-for-byte; the driver and Kernel
+   Server project manifests include all source units and resources. Five
+   reference-driven source checks pass. BinRecon completed IDA and angr
+   reference analysis, but has no rebuilt binary to compare. The i386 APK build
+   is unverified because the configured build guest's SSH port refused the
+   source sync. Not tested on physical hardware. See
+   network/drvDECchip21140/reconstruction/README.md
  * drvEtherExpress16 - needs compiled and then tested
  * drvEtherLink3 - reconstructed against Apple's i386 EtherLink3_reloc. All 32
    handwritten Objective-C selectors are present; the two remaining reference

@@ -1,14 +1,14 @@
-"Title" = "DECchip 21140 Network Driver";
+"Title" = "EM110-T4 100BASE-T4 Network Driver";
 "Family" = "Network";
 "Location" = "";
 "Instance" = "0";
 "Driver Name" = "DECchip21140";
 "DMA Channels" = "";
 "Memory Maps" = "";
-"PDR Selection" = "10BASE-T";
+"PDR Selection" = "MII-100";
 "Hardware Vendor ID" = "Custom";
 "Address Offset" = "0";
-"CSR12 10" = "";
+"CSR12 100" = "0x000013f 0x0002c";
 "Share IRQ Levels" = "YES";
 "Bus Type" = "PCI";
 "Auto Detect IDs" = "0x00091011:0";

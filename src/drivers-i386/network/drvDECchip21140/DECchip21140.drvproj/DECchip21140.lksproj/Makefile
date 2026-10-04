@@ -13,9 +13,9 @@ PROJECTVERSION = 5.00
 PROJECT_TYPE = Kernel Server
 LANGUAGE = English
 
-CLASSES = DECchip21140.m
+CLASSES = DECchip21140.m DECchip21140Private.m DECchip21140VendorSpecific.m
 
-HFILES = DECchip21140.h
+HFILES = DECchip21140.h DECchip21140Private.h DECchip21140Shared.h
 
 OTHERSRCS = Makefile.preamble Makefile Makefile.postamble Load_Commands.sect
 

@@ -1,4 +1,4 @@
-"Title" = "DECchip 21140 Network Driver";
+"Title" = "EM110-T4 BNC Network Driver";
 "Family" = "Network";
 "Location" = "";
 "Instance" = "0";
@@ -8,7 +8,7 @@
 "PDR Selection" = "10BASE-T";
 "Hardware Vendor ID" = "Custom";
 "Address Offset" = "0";
-"CSR12 10" = "";
+"CSR12 10" = "0x000013f 0x00001";
 "Share IRQ Levels" = "YES";
 "Bus Type" = "PCI";
 "Auto Detect IDs" = "0x00091011:0";

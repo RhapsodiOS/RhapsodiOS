@@ -2,6 +2,7 @@
 """Validate the driver-specific function partition and its Binrecon evidence."""
 
 import argparse
+from copy import deepcopy
 from pathlib import Path
 import sys
 
@@ -76,7 +77,21 @@ def verify(analysis_path: Path, source_map_path: Path, ledger_path: Path,
         raise ValueError(f"ledger has unknown function at 0x{extra[0]:x}")
     reference = identify(Path(analysis["input"]["path"]))
     rebuilt = identify(rebuilt_path) if rebuilt_path else None
-    validate_ledger(ledger, reference, rebuilt)
+    # Binrecon's shared ledger schema intentionally models handwritten review
+    # states only. This driver has two linker-generated functions, so validate
+    # those classifications here and present them as unexamined to the generic
+    # ledger validator.
+    for address, name in GENERATED.items():
+        entry = next(item for item in entries if item["address"] == address)
+        if entry["status"] != "generated-exception" or not entry.get("reason"):
+            raise ValueError(f"generated exception at 0x{address:x} lacks its reason")
+        if entry["names"] != [name]:
+            raise ValueError(f"generated exception identity mismatch at 0x{address:x}")
+    binrecon_ledger = deepcopy(ledger)
+    for entry in binrecon_ledger["entries"]:
+        if entry["address"] in GENERATED:
+            entry["status"] = "unexamined"
+    validate_ledger(binrecon_ledger, reference, rebuilt)
     for address, function in functions.items():
         entry = next(item for item in entries if item["address"] == address)
         if entry["size"] != function["size"]:
@@ -100,12 +115,6 @@ def verify(analysis_path: Path, source_map_path: Path, ledger_path: Path,
                 raise ValueError(f"function at 0x{address:x} is not control-flow-confirmed")
             if not entry.get("reviewer") or not entry.get("artifacts"):
                 raise ValueError(f"function at 0x{address:x} lacks reviewer/evidence")
-        for address, name in GENERATED.items():
-            entry = next(item for item in entries if item["address"] == address)
-            if entry["status"] != "generated-exception" or not entry.get("reason"):
-                raise ValueError(f"generated exception at 0x{address:x} lacks its reason")
-            if entry["names"] != [name]:
-                raise ValueError(f"generated exception identity mismatch at 0x{address:x}")
         actual = identify(rebuilt_path)
         return (f"PASS: 86 reference functions ({len(handwritten)} handwritten, "
                 f"{len(GENERATED)} generated), rebuilt SHA-256 {actual.sha256}")

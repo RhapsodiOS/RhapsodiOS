@@ -1,0 +1,17 @@
+"Title" = "Intel EtherExpress PRO/10 PCI";
+"Family" = "Network";
+"Instance" = "0";
+"Driver Name" = "IntelPRO10PCI";
+"Bus Type" = "PCI";
+"Auto Detect IDs" = "0x12268086";
+"Location" = "";
+"DMA Channels" = "";
+"IRQ Levels" = "";
+"Memory Maps" = "";
+"Valid IRQ Levels" = "";
+"Connector" = "AUTO";
+"Share IRQ Levels" = "YES";
+"Help File" = "IntelPRO10PCI.rtfd";
+"Server Name" = "Intel82596NetworkDriver";
+"Driver Version" = "PROGRAM:Intel82596NetworkDriver  PROJECT:drvIntel82596-25  DEVELOPER:root  BUILT:Sat Mar 28 21:54:23 PST 1998";
+"Version" = "5.00";

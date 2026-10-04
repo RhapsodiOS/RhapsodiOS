@@ -1,9 +1,9 @@
 NAME = Intel82596NetworkDriver
-PROJECTVERSION = 1.0
+PROJECTVERSION = 2.6
 PROJECT_TYPE = Driver
 LANGUAGE = English
-LOCAL_RESOURCES = Localizable.strings DriverHelp
-GLOBAL_RESOURCES = Default.table
+LOCAL_RESOURCES = Localizable.strings EEFlash32.strings EM932.strings EM945.strings IntelPRO10PCI.strings DriverHelp
+GLOBAL_RESOURCES = Default.table EEFlash32.table EM932.table EM945.table IntelPRO10PCI.table
 CLASSES =
 HFILES =
 TOOLS = Intel82596NetworkDriver.lksproj

@@ -42,43 +42,24 @@ static const char *boardTable[] = {
     "unknown"           /* Type 7 */
 };
 
-/* Synchronization counter */
-static volatile unsigned int _clearIrqCount = 0;
-static volatile unsigned int _sendCACount = 0;
-static volatile unsigned int _sendPortCmdCount = 0;
 
 @implementation CogentEMaster
 
 /*
  * Probe for CogentEMaster hardware
  */
-+ (BOOL)probe:(IODeviceDescription *)deviceDescription
++ (char)probe:(IODeviceDescription *)deviceDescription
 {
-    id instance;
-    unsigned int slotNumber;
-    IOReturn result;
-
-    /* Allocate an instance */
-    instance = [self alloc];
-    if (instance == nil) {
-        return NO;
+    id instance=[self alloc];
+    unsigned int slot;
+    if (instance == nil) return 0;
+    if ([deviceDescription getEISASlotNumber:&slot] == IO_R_SUCCESS) {
+        [instance setIOBase:(unsigned short)(slot << 12)];
+        return [instance initFromDeviceDescription:deviceDescription] != nil;
     }
-
-    /* Get EISA slot number */
-    result = [deviceDescription getEISASlotNumber:&slotNumber];
-    if (result != IO_R_SUCCESS) {
-        IOLog("CogentEMaster: couldn't get slot number\n");
-        [instance free];
-        return NO;
-    }
-
-    /* Set IO base address based on slot number */
-    [instance setIOBase:((slotNumber & 0xf) << 12)];
-
-    /* Initialize from device description */
-    instance = [instance initFromDeviceDescription:deviceDescription];
-
-    return (instance != nil);
+    IOLog("CogentEMaster: couldn't get slot number\n");
+    [instance free];
+    return 0;
 }
 
 /*
@@ -86,100 +67,36 @@ static volatile unsigned int _sendPortCmdCount = 0;
  */
 - initFromDeviceDescription:(IODeviceDescription *)deviceDescription
 {
-    IOReturn result;
-    unsigned char slotID[4];
-    unsigned char boardType;
-    unsigned char regValue;
+    unsigned char slotID[4], regValue;
+    unsigned int boardType;
     int i;
-    id netif;
-    id txQueue;
-    BOOL isSpecialBoard = NO;
-
-    /* Get EISA slot ID */
-    result = [deviceDescription getEISASlotID:slotID];
-    if (result != IO_R_SUCCESS) {
-        IOLog("CogentEMaster: couldn't get slot ID\n");
-        [self free];
-        return nil;
+    IONetbufQueue *queue;
+    if ([deviceDescription getEISASlotID:slotID] != IO_R_SUCCESS) {
+        IOLog("CogentEMaster: failed to retrieve eisa id\n");
+        [self free]; return nil;
     }
-
-    /* Determine board type from slot ID (lower 3 bits) */
-    boardType = slotID[0] & 7;
-
-    /* Read IRQ configuration from hardware */
-    regValue = inb(ioBase + 0xc88);
-
-    /* Look up IRQ using board type and register value */
-    irqLevel = irqTable[boardType][(regValue >> 1) & 3];
-
-    /* Set interrupt list in device description */
-    result = [deviceDescription setInterruptList:&irqLevel num:1];
-    if (result != IO_R_SUCCESS) {
-        IOLog("CogentEMaster: Unable to reserve IRQ %d - Aborting\n", irqLevel);
-        [self free];
-        return nil;
+    boardType=slotID[0]&7;
+    regValue=inb(ioBase+0xc88);
+    irq=irqTable[boardType][(regValue>>1)&3];
+    if ([deviceDescription setInterruptList:&irq num:1] != IO_R_SUCCESS) {
+        IOLog("CogentEMaster: failed to add irq\n");
+        [self free]; return nil;
     }
-
-    /* Read MAC address from EEPROM/ROM (ports 0xc90-0xc95) */
-    for (i = 0; i < 6; i++) {
-        romAddress[i] = inb(ioBase + 0xc90 + i);
-    }
-
-    /* Call superclass initialization */
-    self = [super initFromDeviceDescription:deviceDescription];
-    if (self == nil) {
-        return nil;
-    }
-
-    /* Perform cold initialization */
-    if (![self coldInit]) {
-        [self free];
-        return nil;
-    }
-
-    /* Check for special board configuration (Flash32 with EEPROM) */
-    /* Offset 0x1fc in object structure - this is beyond our declared ivars */
-    *((char *)self + 0x1fc) = 0;
-    if (boardType == 5) {
-        regValue = inb(ioBase + 0xc89);
-        if (regValue & 8) {
-            *((char *)self + 0x1fc) = 1;
-            isSpecialBoard = YES;
-        }
-    }
-
-    /* Log board information */
-    IOLog("Cogent %s at slot %d IRQ %d %s\n",
-          boardTable[boardType],
-          (ioBase >> 12),
-          irqLevel,
-          isSpecialBoard ? "with EEPROM" : "");
-
-    /* Reset and enable the adapter */
-    if (![self resetAndEnable:NO]) {
-        [self free];
-        return nil;
-    }
-
-    /* Initialize statistics counters (offsets 0x194-0x197) */
-    *((char *)self + 0x194) = 0;
-    *((char *)self + 0x195) = 0;
-    *((char *)self + 0x196) = 0;
-    *((char *)self + 0x197) = 0;
-
-    /* Create transmit queue with max count of 80 (0x50) */
-    txQueue = [[objc_getClass("Queue") alloc] initWithMaxCount:0x50];
-    if (txQueue == nil) {
-        [self free];
-        return nil;
-    }
-    *((id *)self + 100) = txQueue;  /* Offset 400 bytes / sizeof(id) = 100 */
-
-    /* Attach to network with MAC address */
-    netif = [super attachToNetworkWithAddress:romAddress];
-    *((id *)self + 0x188/sizeof(id)) = netif;
-
+    for(i=0;i<6;++i) myAddress.ether_addr_octet[i]=inb(ioBase+0xc90+i);
+    self=[super initFromDeviceDescription:deviceDescription];
+    if (self==nil || ![self coldInit]) goto fail;
+    fullDuplexMode=0;
+    if (boardType==5 && (inb(ioBase+0xc89)&8)) fullDuplexMode=1;
+    IOLog("Cogent eMASTER+ %s in slot %d irq %d %s\n",boardTable[boardType],ioBase>>12,irq,fullDuplexMode ? "full duplex" : "");
+    if (![self resetAndEnable:0]) goto fail;
+    promiscuousEnabled=0; multicastEnabled=0; allMulticastEnabled=0; multicastConfigured=0;
+    queue=[[IONetbufQueue alloc] initWithMaxCount:0x50];
+    xmtQueue=queue;
+    networkInterface=[super attachToNetworkWithAddress:myAddress];
     return self;
+fail:
+    [self free];
+    return nil;
 }
 
 /*
@@ -188,18 +105,9 @@ static volatile unsigned int _sendPortCmdCount = 0;
  */
 - (void)clearIrqLatch
 {
-    unsigned short port;
-    unsigned char regValue;
-
-    /* Read from control register at offset 0xc88 */
-    port = ioBase + 0xc88;
-    regValue = inb(port);
-
-    /* Clear bit 4 (mask with 0xef) and write back */
-    outb(port, regValue & 0xef);
-
-    /* Increment counter (atomic operation) */
-    _clearIrqCount++;
+    unsigned short port=ioBase+3208;
+    unsigned char value=inb(port);
+    outb(port,value&0xef);
 }
 
 /*
@@ -207,32 +115,16 @@ static volatile unsigned int _sendPortCmdCount = 0;
  */
 - (void)sendChannelAttention
 {
-    /* Write 0 to base I/O port to trigger channel attention */
-    outb(ioBase, 0);
-
-    /* Increment counter (atomic operation) */
-    _sendCACount++;
+    outb(ioBase,0);
 }
 
 /*
  * Send port command to 82596
  */
-- (void)sendPortCommand:(unsigned int)cmd with:(unsigned int)arg
+- (void)sendPortCommand:(int)cmd with:(unsigned int)arg
 {
-    unsigned short port;
-    unsigned char value;
-
-    /* Port command is sent to base + 8 */
-    port = ioBase + 8;
-
-    /* Combine argument (upper bits) with command (lower 4 bits) */
-    value = (arg & 0xfffffff0) | (cmd & 0xf);
-
-    /* Write port command */
-    outb(port, value);
-
-    /* Increment counter (atomic operation) */
-    _sendPortCmdCount++;
+    unsigned int value=(arg&0xf0)|(cmd&0x0f);
+    outl(ioBase+8,value);
 }
 
 @end

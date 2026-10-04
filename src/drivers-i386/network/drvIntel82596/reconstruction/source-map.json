@@ -8,7 +8,7 @@
         "+[CogentEMaster probe:]"
       ],
       "size": 146,
-      "source_line": 55,
+      "source_line": 51,
       "source_path": "src/drivers-i386/network/drvIntel82596/Intel82596NetworkDriver.drvproj/Intel82596NetworkDriver.lksproj/CogentEMaster.m"
     },
     {
@@ -17,7 +17,7 @@
         "-[CogentEMaster initFromDeviceDescription:]"
       ],
       "size": 565,
-      "source_line": 87,
+      "source_line": 68,
       "source_path": "src/drivers-i386/network/drvIntel82596/Intel82596NetworkDriver.drvproj/Intel82596NetworkDriver.lksproj/CogentEMaster.m"
     },
     {
@@ -26,7 +26,7 @@
         "-[CogentEMaster clearIrqLatch]"
       ],
       "size": 33,
-      "source_line": 189,
+      "source_line": 106,
       "source_path": "src/drivers-i386/network/drvIntel82596/Intel82596NetworkDriver.drvproj/Intel82596NetworkDriver.lksproj/CogentEMaster.m"
     },
     {
@@ -35,7 +35,7 @@
         "-[CogentEMaster sendChannelAttention]"
       ],
       "size": 27,
-      "source_line": 208,
+      "source_line": 116,
       "source_path": "src/drivers-i386/network/drvIntel82596/Intel82596NetworkDriver.drvproj/Intel82596NetworkDriver.lksproj/CogentEMaster.m"
     },
     {
@@ -44,7 +44,7 @@
         "-[CogentEMaster sendPortCommand:with:]"
       ],
       "size": 48,
-      "source_line": 220,
+      "source_line": 124,
       "source_path": "src/drivers-i386/network/drvIntel82596/Intel82596NetworkDriver.drvproj/Intel82596NetworkDriver.lksproj/CogentEMaster.m"
     },
     {
@@ -80,7 +80,16 @@
         "-[Intel82596 _recAllocateNetbuf]"
       ],
       "size": 70,
-      "source_line": 2478,
+      "source_line": 1128,
+      "source_path": "src/drivers-i386/network/drvIntel82596/Intel82596NetworkDriver.drvproj/Intel82596NetworkDriver.lksproj/Intel82596.m"
+    },
+    {
+      "address": 1184,
+      "reference_names": [
+        "__resetFunc"
+      ],
+      "size": 60,
+      "source_line": 1145,
       "source_path": "src/drivers-i386/network/drvIntel82596/Intel82596NetworkDriver.drvproj/Intel82596NetworkDriver.lksproj/Intel82596.m"
     },
     {
@@ -89,7 +98,7 @@
         "-[Intel82596 _abortReceiveUnit]"
       ],
       "size": 191,
-      "source_line": 2031,
+      "source_line": 942,
       "source_path": "src/drivers-i386/network/drvIntel82596/Intel82596NetworkDriver.drvproj/Intel82596NetworkDriver.lksproj/Intel82596.m"
     },
     {
@@ -98,7 +107,7 @@
         "-[Intel82596 _init596]"
       ],
       "size": 375,
-      "source_line": 1617,
+      "source_line": 782,
       "source_path": "src/drivers-i386/network/drvIntel82596/Intel82596NetworkDriver.drvproj/Intel82596NetworkDriver.lksproj/Intel82596.m"
     },
     {
@@ -107,7 +116,7 @@
         "-[Intel82596 _initRfdList]"
       ],
       "size": 672,
-      "source_line": 2105,
+      "source_line": 979,
       "source_path": "src/drivers-i386/network/drvIntel82596/Intel82596NetworkDriver.drvproj/Intel82596NetworkDriver.lksproj/Intel82596.m"
     },
     {
@@ -116,7 +125,7 @@
         "-[Intel82596 _initTcbList]"
       ],
       "size": 507,
-      "source_line": 2236,
+      "source_line": 1027,
       "source_path": "src/drivers-i386/network/drvIntel82596/Intel82596NetworkDriver.drvproj/Intel82596NetworkDriver.lksproj/Intel82596.m"
     },
     {
@@ -125,7 +134,7 @@
         "-[Intel82596 _memAlloc:]"
       ],
       "size": 56,
-      "source_line": 2081,
+      "source_line": 964,
       "source_path": "src/drivers-i386/network/drvIntel82596/Intel82596NetworkDriver.drvproj/Intel82596NetworkDriver.lksproj/Intel82596.m"
     },
     {
@@ -134,7 +143,7 @@
         "-[Intel82596 _resetAndSelfTest]"
       ],
       "size": 520,
-      "source_line": 1696,
+      "source_line": 810,
       "source_path": "src/drivers-i386/network/drvIntel82596/Intel82596NetworkDriver.drvproj/Intel82596NetworkDriver.lksproj/Intel82596.m"
     },
     {
@@ -143,7 +152,7 @@
         "-[Intel82596 _scheduleReset]"
       ],
       "size": 100,
-      "source_line": 1800,
+      "source_line": 842,
       "source_path": "src/drivers-i386/network/drvIntel82596/Intel82596NetworkDriver.drvproj/Intel82596NetworkDriver.lksproj/Intel82596.m"
     },
     {
@@ -152,7 +161,7 @@
         "-[Intel82596 _startCommandUnit]"
       ],
       "size": 234,
-      "source_line": 1887,
+      "source_line": 888,
       "source_path": "src/drivers-i386/network/drvIntel82596/Intel82596NetworkDriver.drvproj/Intel82596NetworkDriver.lksproj/Intel82596.m"
     },
     {
@@ -161,7 +170,7 @@
         "-[Intel82596 _startReceiveUnit]"
       ],
       "size": 257,
-      "source_line": 1947,
+      "source_line": 914,
       "source_path": "src/drivers-i386/network/drvIntel82596/Intel82596NetworkDriver.drvproj/Intel82596NetworkDriver.lksproj/Intel82596.m"
     },
     {
@@ -170,7 +179,7 @@
         "-[Intel82596 _transmitPacket:]"
       ],
       "size": 554,
-      "source_line": 2324,
+      "source_line": 1062,
       "source_path": "src/drivers-i386/network/drvIntel82596/Intel82596NetworkDriver.drvproj/Intel82596NetworkDriver.lksproj/Intel82596.m"
     },
     {
@@ -179,7 +188,7 @@
         "-[Intel82596 _waitCu:]"
       ],
       "size": 134,
-      "source_line": 1852,
+      "source_line": 871,
       "source_path": "src/drivers-i386/network/drvIntel82596/Intel82596NetworkDriver.drvproj/Intel82596NetworkDriver.lksproj/Intel82596.m"
     },
     {
@@ -188,7 +197,7 @@
         "-[Intel82596 _waitScb]"
       ],
       "size": 86,
-      "source_line": 1827,
+      "source_line": 855,
       "source_path": "src/drivers-i386/network/drvIntel82596/Intel82596NetworkDriver.drvproj/Intel82596NetworkDriver.lksproj/Intel82596.m"
     },
     {
@@ -197,7 +206,7 @@
         "-[Intel82596 serviceTransmitQueue]"
       ],
       "size": 75,
-      "source_line": 1002,
+      "source_line": 469,
       "source_path": "src/drivers-i386/network/drvIntel82596/Intel82596NetworkDriver.drvproj/Intel82596NetworkDriver.lksproj/Intel82596.m"
     },
     {
@@ -206,7 +215,7 @@
         "-[Intel82596 acknowledgeInterrupts:]"
       ],
       "size": 137,
-      "source_line": 653,
+      "source_line": 323,
       "source_path": "src/drivers-i386/network/drvIntel82596/Intel82596NetworkDriver.drvproj/Intel82596NetworkDriver.lksproj/Intel82596.m"
     },
     {
@@ -215,7 +224,7 @@
         "-[Intel82596 free]"
       ],
       "size": 291,
-      "source_line": 47,
+      "source_line": 43,
       "source_path": "src/drivers-i386/network/drvIntel82596/Intel82596NetworkDriver.drvproj/Intel82596NetworkDriver.lksproj/Intel82596.m"
     },
     {
@@ -224,7 +233,7 @@
         "-[Intel82596 resetAndEnable:]"
       ],
       "size": 173,
-      "source_line": 112,
+      "source_line": 78,
       "source_path": "src/drivers-i386/network/drvIntel82596/Intel82596NetworkDriver.drvproj/Intel82596NetworkDriver.lksproj/Intel82596.m"
     },
     {
@@ -233,7 +242,7 @@
         "-[Intel82596 clearIrqLatch]"
       ],
       "size": 7,
-      "source_line": 1431,
+      "source_line": 665,
       "source_path": "src/drivers-i386/network/drvIntel82596/Intel82596NetworkDriver.drvproj/Intel82596NetworkDriver.lksproj/Intel82596.m"
     },
     {
@@ -242,7 +251,7 @@
         "-[Intel82596 hwInit]"
       ],
       "size": 156,
-      "source_line": 241,
+      "source_line": 134,
       "source_path": "src/drivers-i386/network/drvIntel82596/Intel82596NetworkDriver.drvproj/Intel82596NetworkDriver.lksproj/Intel82596.m"
     },
     {
@@ -251,7 +260,7 @@
         "-[Intel82596 swInit]"
       ],
       "size": 115,
-      "source_line": 283,
+      "source_line": 176,
       "source_path": "src/drivers-i386/network/drvIntel82596/Intel82596NetworkDriver.drvproj/Intel82596NetworkDriver.lksproj/Intel82596.m"
     },
     {
@@ -260,7 +269,7 @@
         "-[Intel82596 coldInit]"
       ],
       "size": 613,
-      "source_line": 158,
+      "source_line": 98,
       "source_path": "src/drivers-i386/network/drvIntel82596/Intel82596NetworkDriver.drvproj/Intel82596NetworkDriver.lksproj/Intel82596.m"
     },
     {
@@ -269,7 +278,7 @@
         "-[Intel82596 processRecInterrupt]"
       ],
       "size": 919,
-      "source_line": 1025,
+      "source_line": 483,
       "source_path": "src/drivers-i386/network/drvIntel82596/Intel82596NetworkDriver.drvproj/Intel82596NetworkDriver.lksproj/Intel82596.m"
     },
     {
@@ -278,7 +287,7 @@
         "-[Intel82596 processXmtInterrupt]"
       ],
       "size": 452,
-      "source_line": 1220,
+      "source_line": 561,
       "source_path": "src/drivers-i386/network/drvIntel82596/Intel82596NetworkDriver.drvproj/Intel82596NetworkDriver.lksproj/Intel82596.m"
     },
     {
@@ -287,7 +296,7 @@
         "-[Intel82596 setThrottleTimers]"
       ],
       "size": 215,
-      "source_line": 1468,
+      "source_line": 701,
       "source_path": "src/drivers-i386/network/drvIntel82596/Intel82596NetworkDriver.drvproj/Intel82596NetworkDriver.lksproj/Intel82596.m"
     },
     {
@@ -296,7 +305,7 @@
         "-[Intel82596 config]"
       ],
       "size": 375,
-      "source_line": 317,
+      "source_line": 210,
       "source_path": "src/drivers-i386/network/drvIntel82596/Intel82596NetworkDriver.drvproj/Intel82596NetworkDriver.lksproj/Intel82596.m"
     },
     {
@@ -305,7 +314,7 @@
         "-[Intel82596 iaSetup]"
       ],
       "size": 291,
-      "source_line": 409,
+      "source_line": 237,
       "source_path": "src/drivers-i386/network/drvIntel82596/Intel82596NetworkDriver.drvproj/Intel82596NetworkDriver.lksproj/Intel82596.m"
     },
     {
@@ -314,7 +323,7 @@
         "-[Intel82596 mcSetup]"
       ],
       "size": 461,
-      "source_line": 481,
+      "source_line": 257,
       "source_path": "src/drivers-i386/network/drvIntel82596/Intel82596NetworkDriver.drvproj/Intel82596NetworkDriver.lksproj/Intel82596.m"
     },
     {
@@ -323,7 +332,7 @@
         "-[Intel82596 interruptOccurred]"
       ],
       "size": 120,
-      "source_line": 608,
+      "source_line": 300,
       "source_path": "src/drivers-i386/network/drvIntel82596/Intel82596NetworkDriver.drvproj/Intel82596NetworkDriver.lksproj/Intel82596.m"
     },
     {
@@ -332,7 +341,7 @@
         "-[Intel82596 transmit:]"
       ],
       "size": 127,
-      "source_line": 725,
+      "source_line": 354,
       "source_path": "src/drivers-i386/network/drvIntel82596/Intel82596NetworkDriver.drvproj/Intel82596NetworkDriver.lksproj/Intel82596.m"
     },
     {
@@ -341,7 +350,7 @@
         "-[Intel82596 timeoutOccurred]"
       ],
       "size": 47,
-      "source_line": 640,
+      "source_line": 314,
       "source_path": "src/drivers-i386/network/drvIntel82596/Intel82596NetworkDriver.drvproj/Intel82596NetworkDriver.lksproj/Intel82596.m"
     },
     {
@@ -350,7 +359,7 @@
         "-[Intel82596 enablePromiscuousMode]"
       ],
       "size": 42,
-      "source_line": 1332,
+      "source_line": 605,
       "source_path": "src/drivers-i386/network/drvIntel82596/Intel82596NetworkDriver.drvproj/Intel82596NetworkDriver.lksproj/Intel82596.m"
     },
     {
@@ -359,7 +368,7 @@
         "-[Intel82596 disablePromiscuousMode]"
       ],
       "size": 39,
-      "source_line": 1347,
+      "source_line": 615,
       "source_path": "src/drivers-i386/network/drvIntel82596/Intel82596NetworkDriver.drvproj/Intel82596NetworkDriver.lksproj/Intel82596.m"
     },
     {
@@ -368,7 +377,7 @@
         "-[Intel82596 enableMulticastMode]"
       ],
       "size": 22,
-      "source_line": 1362,
+      "source_line": 625,
       "source_path": "src/drivers-i386/network/drvIntel82596/Intel82596NetworkDriver.drvproj/Intel82596NetworkDriver.lksproj/Intel82596.m"
     },
     {
@@ -377,7 +386,7 @@
         "-[Intel82596 disableMulticastMode]"
       ],
       "size": 75,
-      "source_line": 1374,
+      "source_line": 635,
       "source_path": "src/drivers-i386/network/drvIntel82596/Intel82596NetworkDriver.drvproj/Intel82596NetworkDriver.lksproj/Intel82596.m"
     },
     {
@@ -386,7 +395,7 @@
         "-[Intel82596 addMulticastAddress:]"
       ],
       "size": 65,
-      "source_line": 1400,
+      "source_line": 646,
       "source_path": "src/drivers-i386/network/drvIntel82596/Intel82596NetworkDriver.drvproj/Intel82596NetworkDriver.lksproj/Intel82596.m"
     },
     {
@@ -395,7 +404,7 @@
         "-[Intel82596 removeMulticastAddress:]"
       ],
       "size": 58,
-      "source_line": 1413,
+      "source_line": 656,
       "source_path": "src/drivers-i386/network/drvIntel82596/Intel82596NetworkDriver.drvproj/Intel82596NetworkDriver.lksproj/Intel82596.m"
     },
     {
@@ -404,7 +413,7 @@
         "-[Intel82596 receivePacket:length:timeout:]"
       ],
       "size": 589,
-      "source_line": 865,
+      "source_line": 411,
       "source_path": "src/drivers-i386/network/drvIntel82596/Intel82596NetworkDriver.drvproj/Intel82596NetworkDriver.lksproj/Intel82596.m"
     },
     {
@@ -413,7 +422,7 @@
         "-[Intel82596 sendPacket:length:]"
       ],
       "size": 521,
-      "source_line": 755,
+      "source_line": 371,
       "source_path": "src/drivers-i386/network/drvIntel82596/Intel82596NetworkDriver.drvproj/Intel82596NetworkDriver.lksproj/Intel82596.m"
     },
     {
@@ -422,7 +431,7 @@
         "-[Intel82596 setIOBase:]"
       ],
       "size": 21,
-      "source_line": 1458,
+      "source_line": 692,
       "source_path": "src/drivers-i386/network/drvIntel82596/Intel82596NetworkDriver.drvproj/Intel82596NetworkDriver.lksproj/Intel82596.m"
     },
     {
@@ -431,7 +440,7 @@
         "-[Intel82596 sendChannelAttention]"
       ],
       "size": 7,
-      "source_line": 1440,
+      "source_line": 674,
       "source_path": "src/drivers-i386/network/drvIntel82596/Intel82596NetworkDriver.drvproj/Intel82596NetworkDriver.lksproj/Intel82596.m"
     },
     {
@@ -440,7 +449,7 @@
         "-[Intel82596 sendPortCommand:with:]"
       ],
       "size": 7,
-      "source_line": 1449,
+      "source_line": 683,
       "source_path": "src/drivers-i386/network/drvIntel82596/Intel82596NetworkDriver.drvproj/Intel82596NetworkDriver.lksproj/Intel82596.m"
     },
     {
@@ -449,7 +458,7 @@
         "-[Intel82596 getPowerState:]"
       ],
       "size": 12,
-      "source_line": 1576,
+      "source_line": 756,
       "source_path": "src/drivers-i386/network/drvIntel82596/Intel82596NetworkDriver.drvproj/Intel82596NetworkDriver.lksproj/Intel82596.m"
     },
     {
@@ -458,7 +467,7 @@
         "-[Intel82596 setPowerState:]"
       ],
       "size": 72,
-      "source_line": 1585,
+      "source_line": 765,
       "source_path": "src/drivers-i386/network/drvIntel82596/Intel82596NetworkDriver.drvproj/Intel82596NetworkDriver.lksproj/Intel82596.m"
     },
     {
@@ -467,7 +476,7 @@
         "-[Intel82596 getPowerManagement:]"
       ],
       "size": 12,
-      "source_line": 1558,
+      "source_line": 738,
       "source_path": "src/drivers-i386/network/drvIntel82596/Intel82596NetworkDriver.drvproj/Intel82596NetworkDriver.lksproj/Intel82596.m"
     },
     {
@@ -476,7 +485,7 @@
         "-[Intel82596 setPowerManagement:]"
       ],
       "size": 12,
-      "source_line": 1567,
+      "source_line": 747,
       "source_path": "src/drivers-i386/network/drvIntel82596/Intel82596NetworkDriver.drvproj/Intel82596NetworkDriver.lksproj/Intel82596.m"
     },
     {
@@ -534,12 +543,39 @@
       "source_path": "src/drivers-i386/network/drvIntel82596/Intel82596NetworkDriver.drvproj/Intel82596NetworkDriver.lksproj/Intel82596Buf.m"
     },
     {
+      "address": 12136,
+      "reference_names": [
+        "_card_irq"
+      ],
+      "size": 80,
+      "source_line": 23,
+      "source_path": "src/drivers-i386/network/drvIntel82596/Intel82596NetworkDriver.drvproj/Intel82596NetworkDriver.lksproj/IntelEEFlash32.m"
+    },
+    {
+      "address": 12216,
+      "reference_names": [
+        "_get_connector_type"
+      ],
+      "size": 20,
+      "source_line": 35,
+      "source_path": "src/drivers-i386/network/drvIntel82596/Intel82596NetworkDriver.drvproj/Intel82596NetworkDriver.lksproj/IntelEEFlash32.m"
+    },
+    {
+      "address": 12236,
+      "reference_names": [
+        "_set_connector_type"
+      ],
+      "size": 55,
+      "source_line": 40,
+      "source_path": "src/drivers-i386/network/drvIntel82596/Intel82596NetworkDriver.drvproj/Intel82596NetworkDriver.lksproj/IntelEEFlash32.m"
+    },
+    {
       "address": 12292,
       "reference_names": [
         "+[IntelEEFlash32 probe:]"
       ],
       "size": 151,
-      "source_line": 44,
+      "source_line": 53,
       "source_path": "src/drivers-i386/network/drvIntel82596/Intel82596NetworkDriver.drvproj/Intel82596NetworkDriver.lksproj/IntelEEFlash32.m"
     },
     {
@@ -548,7 +584,7 @@
         "-[IntelEEFlash32 initFromDeviceDescription:]"
       ],
       "size": 676,
-      "source_line": 77,
+      "source_line": 70,
       "source_path": "src/drivers-i386/network/drvIntel82596/Intel82596NetworkDriver.drvproj/Intel82596NetworkDriver.lksproj/IntelEEFlash32.m"
     },
     {
@@ -557,7 +593,7 @@
         "-[IntelEEFlash32 clearIrqLatch]"
       ],
       "size": 80,
-      "source_line": 205,
+      "source_line": 116,
       "source_path": "src/drivers-i386/network/drvIntel82596/Intel82596NetworkDriver.drvproj/Intel82596NetworkDriver.lksproj/IntelEEFlash32.m"
     },
     {
@@ -566,7 +602,7 @@
         "-[IntelEEFlash32 interruptOccurred]"
       ],
       "size": 188,
-      "source_line": 263,
+      "source_line": 145,
       "source_path": "src/drivers-i386/network/drvIntel82596/Intel82596NetworkDriver.drvproj/Intel82596NetworkDriver.lksproj/IntelEEFlash32.m"
     },
     {
@@ -575,7 +611,7 @@
         "-[IntelEEFlash32 doAutoConnectorDetect]"
       ],
       "size": 563,
-      "source_line": 358,
+      "source_line": 182,
       "source_path": "src/drivers-i386/network/drvIntel82596/Intel82596NetworkDriver.drvproj/Intel82596NetworkDriver.lksproj/IntelEEFlash32.m"
     },
     {
@@ -584,7 +620,7 @@
         "-[IntelEEFlash32 checksum_OK:]"
       ],
       "size": 167,
-      "source_line": 323,
+      "source_line": 163,
       "source_path": "src/drivers-i386/network/drvIntel82596/Intel82596NetworkDriver.drvproj/Intel82596NetworkDriver.lksproj/IntelEEFlash32.m"
     },
     {
@@ -593,7 +629,7 @@
         "-[IntelEEFlash32 sendChannelAttention]"
       ],
       "size": 27,
-      "source_line": 228,
+      "source_line": 127,
       "source_path": "src/drivers-i386/network/drvIntel82596/Intel82596NetworkDriver.drvproj/Intel82596NetworkDriver.lksproj/IntelEEFlash32.m"
     },
     {
@@ -602,7 +638,7 @@
         "-[IntelEEFlash32 sendPortCommand:with:]"
       ],
       "size": 48,
-      "source_line": 241,
+      "source_line": 136,
       "source_path": "src/drivers-i386/network/drvIntel82596/Intel82596NetworkDriver.drvproj/Intel82596NetworkDriver.lksproj/IntelEEFlash32.m"
     },
     {
@@ -611,7 +647,7 @@
         "+[IntelPRO10PCI probe:]"
       ],
       "size": 671,
-      "source_line": 39,
+      "source_line": 16,
       "source_path": "src/drivers-i386/network/drvIntel82596/Intel82596NetworkDriver.drvproj/Intel82596NetworkDriver.lksproj/IntelPRO10PCI.m"
     },
     {
@@ -620,7 +656,7 @@
         "-[IntelPRO10PCI _setConnectorType:]"
       ],
       "size": 80,
-      "source_line": 612,
+      "source_line": 77,
       "source_path": "src/drivers-i386/network/drvIntel82596/Intel82596NetworkDriver.drvproj/Intel82596NetworkDriver.lksproj/IntelPRO10PCI.m"
     },
     {
@@ -629,7 +665,7 @@
         "-[IntelPRO10PCI doAutoConnectorDetect]"
       ],
       "size": 585,
-      "source_line": 483,
+      "source_line": 92,
       "source_path": "src/drivers-i386/network/drvIntel82596/Intel82596NetworkDriver.drvproj/Intel82596NetworkDriver.lksproj/IntelPRO10PCI.m"
     },
     {
@@ -638,7 +674,7 @@
         "-[IntelPRO10PCI initFromDeviceDescription:]"
       ],
       "size": 713,
-      "source_line": 163,
+      "source_line": 148,
       "source_path": "src/drivers-i386/network/drvIntel82596/Intel82596NetworkDriver.drvproj/Intel82596NetworkDriver.lksproj/IntelPRO10PCI.m"
     },
     {
@@ -647,7 +683,7 @@
         "-[IntelPRO10PCI interruptOccurred]"
       ],
       "size": 158,
-      "source_line": 341,
+      "source_line": 208,
       "source_path": "src/drivers-i386/network/drvIntel82596/Intel82596NetworkDriver.drvproj/Intel82596NetworkDriver.lksproj/IntelPRO10PCI.m"
     },
     {
@@ -656,7 +692,7 @@
         "-[IntelPRO10PCI clearIrqLatch]"
       ],
       "size": 28,
-      "source_line": 288,
+      "source_line": 220,
       "source_path": "src/drivers-i386/network/drvIntel82596/Intel82596NetworkDriver.drvproj/Intel82596NetworkDriver.lksproj/IntelPRO10PCI.m"
     },
     {
@@ -665,7 +701,7 @@
         "-[IntelPRO10PCI initPLXchip]"
       ],
       "size": 77,
-      "source_line": 428,
+      "source_line": 226,
       "source_path": "src/drivers-i386/network/drvIntel82596/Intel82596NetworkDriver.drvproj/Intel82596NetworkDriver.lksproj/IntelPRO10PCI.m"
     },
     {
@@ -674,7 +710,7 @@
         "-[IntelPRO10PCI resetPLXchip]"
       ],
       "size": 67,
-      "source_line": 455,
+      "source_line": 235,
       "source_path": "src/drivers-i386/network/drvIntel82596/Intel82596NetworkDriver.drvproj/Intel82596NetworkDriver.lksproj/IntelPRO10PCI.m"
     },
     {
@@ -683,7 +719,7 @@
         "-[IntelPRO10PCI sendPortCommand:with:]"
       ],
       "size": 48,
-      "source_line": 319,
+      "source_line": 244,
       "source_path": "src/drivers-i386/network/drvIntel82596/Intel82596NetworkDriver.drvproj/Intel82596NetworkDriver.lksproj/IntelPRO10PCI.m"
     },
     {
@@ -692,7 +728,7 @@
         "-[IntelPRO10PCI sendChannelAttention]"
       ],
       "size": 31,
-      "source_line": 306,
+      "source_line": 249,
       "source_path": "src/drivers-i386/network/drvIntel82596/Intel82596NetworkDriver.drvproj/Intel82596NetworkDriver.lksproj/IntelPRO10PCI.m"
     },
     {
@@ -701,7 +737,7 @@
         "-[IntelPRO10PCI _enableAdapterInterrupts]"
       ],
       "size": 31,
-      "source_line": 645,
+      "source_line": 254,
       "source_path": "src/drivers-i386/network/drvIntel82596/Intel82596NetworkDriver.drvproj/Intel82596NetworkDriver.lksproj/IntelPRO10PCI.m"
     },
     {
@@ -710,7 +746,7 @@
         "-[IntelPRO10PCI _disableAdapterInterrupts]"
       ],
       "size": 31,
-      "source_line": 666,
+      "source_line": 261,
       "source_path": "src/drivers-i386/network/drvIntel82596/Intel82596NetworkDriver.drvproj/Intel82596NetworkDriver.lksproj/IntelPRO10PCI.m"
     },
     {
@@ -719,41 +755,13 @@
         "-[IntelPRO10PCI resetAndEnable:]"
       ],
       "size": 201,
-      "source_line": 378,
+      "source_line": 268,
       "source_path": "src/drivers-i386/network/drvIntel82596/Intel82596NetworkDriver.drvproj/Intel82596NetworkDriver.lksproj/IntelPRO10PCI.m"
     }
   ],
   "reference_sha256": "BE6AED4264AB64119188AEE6A82AAB415940010DCF5705B6C241266AF45D0A11",
   "schema_version": "source-map-v1",
   "unmapped": [
-    {
-      "address": 1184,
-      "reference_names": [
-        "__resetFunc"
-      ],
-      "size": 60
-    },
-    {
-      "address": 12136,
-      "reference_names": [
-        "_card_irq"
-      ],
-      "size": 80
-    },
-    {
-      "address": 12216,
-      "reference_names": [
-        "_get_connector_type"
-      ],
-      "size": 20
-    },
-    {
-      "address": 12236,
-      "reference_names": [
-        "_set_connector_type"
-      ],
-      "size": 55
-    },
     {
       "address": 16936,
       "reference_names": [

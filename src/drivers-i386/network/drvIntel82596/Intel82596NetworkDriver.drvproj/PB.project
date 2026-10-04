@@ -1,11 +1,19 @@
 {
-    BUNDLE_EXTENSION = config; FILESTABLE = {
-        OTHER_RESOURCES = (Default.table, Localizable.strings);
+    BUNDLE_EXTENSION = config; DYNAMIC_CODE_GEN = YES; FILESTABLE = {
+        OTHER_RESOURCES = (Default.table, EEFlash32.table, EM932.table, EM945.table, IntelPRO10PCI.table,
+                           Localizable.strings, EEFlash32.strings, EM932.strings, EM945.strings,
+                           IntelPRO10PCI.strings, DriverHelp);
         OTHER_SOURCES = (Makefile, Makefile.preamble, DriverInfo);
         SUBPROJECTS = (Intel82596NetworkDriver.lksproj);
     };
-    LANGUAGE = English; LOCALIZABLE_FILES = { Localizable.strings = Localizable.strings; };
+    LANGUAGE = English; LOCALIZABLE_FILES = {
+        Localizable.strings = Localizable.strings;
+        EEFlash32.strings = EEFlash32.strings;
+        EM932.strings = EM932.strings;
+        EM945.strings = EM945.strings;
+        IntelPRO10PCI.strings = IntelPRO10PCI.strings;
+    };
     MAKEFILEDIR = "$(MAKEFILEPATH)/pb_makefiles"; NEXTSTEP_BUILDTOOL = /bin/gnumake;
     NEXTSTEP_INSTALLDIR = "$(NEXT_ROOT)/private/Drivers";
-    PROJECTNAME = Intel82596NetworkDriver; PROJECTTYPE = Driver; PROJECTVERSION = 1.0;
+    PROJECTNAME = Intel82596NetworkDriver; PROJECTTYPE = Driver; PROJECTVERSION = 2.6;
 }

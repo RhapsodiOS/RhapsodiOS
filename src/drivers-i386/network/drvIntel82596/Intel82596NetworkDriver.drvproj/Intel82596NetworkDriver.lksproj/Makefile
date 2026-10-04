@@ -1,5 +1,5 @@
 NAME = Intel82596NetworkDriver
-PROJECTVERSION = 1.0
+PROJECTVERSION = 2.7
 PROJECT_TYPE = Kernel Server
 LANGUAGE = English
 CLASSES = Intel82596.m Intel82596Buf.m CogentEMaster.m IntelEEFlash32.m IntelPRO10PCI.m

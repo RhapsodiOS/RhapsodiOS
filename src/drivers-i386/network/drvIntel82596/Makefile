@@ -1,6 +1,6 @@
 # Aggregate for the Intel 82596 DriverKit driver.
 NAME = Intel82596NetworkDriver
-PROJECTVERSION = 1.0
+PROJECTVERSION = 2.6
 PROJECT_TYPE = Aggregate
 LANGUAGE = English
 BUNDLES = Intel82596NetworkDriver.drvproj

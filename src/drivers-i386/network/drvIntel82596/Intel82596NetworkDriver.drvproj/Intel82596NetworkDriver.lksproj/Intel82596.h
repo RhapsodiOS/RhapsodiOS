@@ -3,6 +3,7 @@
 
 #import <driverkit/IODeviceDescription.h>
 #import <driverkit/IOEthernet.h>
+#import <driverkit/IOEthernetPrivate.h>
 #import <driverkit/IONetbufQueue.h>
 #import <net/etherdefs.h>
 #import <net/netbuf.h>
@@ -14,33 +15,32 @@
 {
     I596_BASE_IVARS;
 }
-- initFromDeviceDescription:(IODeviceDescription *)description;
 - free;
-- (BOOL)hwInit;
-- (BOOL)swInit;
-- (BOOL)coldInit;
-- (BOOL)config;
-- (BOOL)iaSetup;
-- (BOOL)mcSetup;
+- (char)hwInit;
+- (char)swInit;
+- (char)coldInit;
+- (char)config;
+- (char)iaSetup;
+- (char)mcSetup;
 - (void)interruptOccurred;
 - (void)timeoutOccurred;
-- (BOOL)acknowledgeInterrupts:(unsigned short)status;
-- (BOOL)setThrottleTimers;
-- (BOOL)processRecInterrupt;
-- (BOOL)processXmtInterrupt;
+- (char)acknowledgeInterrupts:(unsigned short)status;
+- (char)setThrottleTimers;
+- (char)processRecInterrupt;
+- (char)processXmtInterrupt;
 - (void)transmit:(netbuf_t)packet;
-- (BOOL)enablePromiscuousMode;
+- (char)enablePromiscuousMode;
 - (void)disablePromiscuousMode;
-- (BOOL)enableMulticastMode;
+- (char)enableMulticastMode;
 - (void)disableMulticastMode;
 - (void)addMulticastAddress:(enet_addr_t *)address;
 - (void)removeMulticastAddress:(enet_addr_t *)address;
 - (void)sendPacket:(void *)packet length:(unsigned int)length;
 - (void)receivePacket:(void *)packet length:(unsigned int *)length timeout:(unsigned int)timeout;
-- (IOReturn)getPowerState:(IOPMPowerState *)state;
-- (IOReturn)setPowerState:(IOPMPowerState)state;
-- (IOReturn)getPowerManagement:(IOPMPowerManagementState *)state;
-- (IOReturn)setPowerManagement:(IOPMPowerManagementState)state;
+- (int)getPowerState:(int *)state;
+- (int)setPowerState:(int)state;
+- (int)getPowerManagement:(int *)state;
+- (int)setPowerManagement:(int)state;
 @end
 
 #endif

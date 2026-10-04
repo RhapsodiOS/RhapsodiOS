@@ -5,26 +5,26 @@
 
 @interface Intel82596 (Private)
 - (netbuf_t)_recAllocateNetbuf;
-- (BOOL)_abortReceiveUnit;
-- (BOOL)_init596;
-- (BOOL)_initRfdList;
-- (BOOL)_initTcbList;
+- (char)_abortReceiveUnit;
+- (char)_init596;
+- (char)_initRfdList;
+- (char)_initTcbList;
 - (void *)_memAlloc:(unsigned int)size;
-- (BOOL)_resetAndSelfTest;
+- (char)_resetAndSelfTest;
 - (void)_scheduleReset;
-- (BOOL)_startCommandUnit;
-- (BOOL)_startReceiveUnit;
+- (char)_startCommandUnit;
+- (char)_startReceiveUnit;
 - (void)_transmitPacket:(netbuf_t)packet;
-- (BOOL)_waitCu:(unsigned int)timeout;
-- (BOOL)_waitScb;
-- (BOOL)resetAndEnable:(BOOL)enable;
+- (char)_waitCu:(unsigned int)timeout;
+- (char)_waitScb;
+- (char)resetAndEnable:(char)enable;
 - (void)setIOBase:(unsigned short)base;
 - (void)sendChannelAttention;
-- (void)sendPortCommand:(unsigned int)command with:(unsigned int)value;
+- (void)sendPortCommand:(int)command with:(unsigned int)value;
 - (void)clearIrqLatch;
 @end
 
-void _resetFunc(id driver);
+id _resetFunc(id driver);
 netbuf_t getNetBuffer(void *pool);
 unsigned int IOIsPhysicallyContiguous(unsigned int address, unsigned int size);
 void *IOMallocPage(unsigned int size, void **allocation, unsigned int *allocationSize);

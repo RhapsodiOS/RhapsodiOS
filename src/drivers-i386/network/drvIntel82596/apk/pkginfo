@@ -1,0 +1,7 @@
+pkgname = drvintel82596
+pkgver = 1
+arch = i386
+pkgdesc = Intel 82596 Ethernet DriverKit driver
+maintainer = Pat Raynor
+license = BSD-2-Clause
+makedepends = build-base, drivertools, driverkit, kernload

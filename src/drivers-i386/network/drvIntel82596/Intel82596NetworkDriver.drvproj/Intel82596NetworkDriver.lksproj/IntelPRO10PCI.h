@@ -6,16 +6,15 @@
     int connector;
     unsigned char RJ45Only;
     unsigned char autoDetectedPort;
-    unsigned char _pad_518_519[2];
 }
-+ (BOOL)probe:(IODeviceDescription *)description;
-- (void)_setConnectorType:(unsigned int)type;
++ (char)probe:(IODeviceDescription *)description;
+- (void)_setConnectorType:(int)type;
 - (void)doAutoConnectorDetect;
 - initFromDeviceDescription:(IODeviceDescription *)description;
 - (void)interruptOccurred;
 - (void)initPLXchip;
 - (void)resetPLXchip;
-- (void)sendPortCommand:(unsigned int)command with:(unsigned int)value;
+- (void)sendPortCommand:(int)command with:(unsigned int)value;
 - (void)sendChannelAttention;
 - (void)_enableAdapterInterrupts;
 - (void)_disableAdapterInterrupts;

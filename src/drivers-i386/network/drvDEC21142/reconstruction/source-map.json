@@ -1,0 +1,456 @@
+{
+  "boundary_disputed": [],
+  "duplicate_candidates": [],
+  "mapped": [
+    {
+      "address": 0,
+      "reference_names": [
+        "+[DEC21142 probe:]"
+      ],
+      "size": 775,
+      "source_line": 111,
+      "source_path": "src/drivers-i386/network/drvDEC21142/DEC21142.drvproj/DEC21142.lksproj/DEC21142.m"
+    },
+    {
+      "address": 776,
+      "reference_names": [
+        "-[DEC21142 initFromDeviceDescription:]"
+      ],
+      "size": 984,
+      "source_line": 1490,
+      "source_path": "src/drivers-i386/network/drvDEC21142/DEC21142.drvproj/DEC21142.lksproj/DEC21142.m"
+    },
+    {
+      "address": 1760,
+      "reference_names": [
+        "-[DEC21142 free]"
+      ],
+      "size": 225,
+      "source_line": 1420,
+      "source_path": "src/drivers-i386/network/drvDEC21142/DEC21142.drvproj/DEC21142.lksproj/DEC21142.m"
+    },
+    {
+      "address": 1988,
+      "reference_names": [
+        "-[DEC21142 enableAdapterInterrupts]"
+      ],
+      "size": 35,
+      "source_line": 1375,
+      "source_path": "src/drivers-i386/network/drvDEC21142/DEC21142.drvproj/DEC21142.lksproj/DEC21142.m"
+    },
+    {
+      "address": 2024,
+      "reference_names": [
+        "-[DEC21142 disableAdapterInterrupts]"
+      ],
+      "size": 33,
+      "source_line": 1271,
+      "source_path": "src/drivers-i386/network/drvDEC21142/DEC21142.drvproj/DEC21142.lksproj/DEC21142.m"
+    },
+    {
+      "address": 2060,
+      "reference_names": [
+        "-[DEC21142 resetAndEnable:]"
+      ],
+      "size": 249,
+      "source_line": 1779,
+      "source_path": "src/drivers-i386/network/drvDEC21142/DEC21142.drvproj/DEC21142.lksproj/DEC21142.m"
+    },
+    {
+      "address": 2312,
+      "reference_names": [
+        "-[DEC21142 interruptOccurred]"
+      ],
+      "size": 173,
+      "source_line": 1619,
+      "source_path": "src/drivers-i386/network/drvDEC21142/DEC21142.drvproj/DEC21142.lksproj/DEC21142.m"
+    },
+    {
+      "address": 2488,
+      "reference_names": [
+        "-[DEC21142 serviceTransmitQueue]"
+      ],
+      "size": 101,
+      "source_line": 2024,
+      "source_path": "src/drivers-i386/network/drvDEC21142/DEC21142.drvproj/DEC21142.lksproj/DEC21142.m"
+    },
+    {
+      "address": 2592,
+      "reference_names": [
+        "-[DEC21142 transmit:]"
+      ],
+      "size": 203,
+      "source_line": 2085,
+      "source_path": "src/drivers-i386/network/drvDEC21142/DEC21142.drvproj/DEC21142.lksproj/DEC21142.m"
+    },
+    {
+      "address": 2796,
+      "reference_names": [
+        "-[DEC21142 transmitQueueSize]"
+      ],
+      "size": 12,
+      "source_line": 2131,
+      "source_path": "src/drivers-i386/network/drvDEC21142/DEC21142.drvproj/DEC21142.lksproj/DEC21142.m"
+    },
+    {
+      "address": 2808,
+      "reference_names": [
+        "-[DEC21142 transmitQueueCount]"
+      ],
+      "size": 29,
+      "source_line": 2125,
+      "source_path": "src/drivers-i386/network/drvDEC21142/DEC21142.drvproj/DEC21142.lksproj/DEC21142.m"
+    },
+    {
+      "address": 2840,
+      "reference_names": [
+        "-[DEC21142 pendingTransmitCount]"
+      ],
+      "size": 42,
+      "source_line": 1663,
+      "source_path": "src/drivers-i386/network/drvDEC21142/DEC21142.drvproj/DEC21142.lksproj/DEC21142.m"
+    },
+    {
+      "address": 2884,
+      "reference_names": [
+        "-[DEC21142 timeoutOccurred]"
+      ],
+      "size": 86,
+      "source_line": 2065,
+      "source_path": "src/drivers-i386/network/drvDEC21142/DEC21142.drvproj/DEC21142.lksproj/DEC21142.m"
+    },
+    {
+      "address": 2972,
+      "reference_names": [
+        "-[DEC21142 allocateNetbuf]"
+      ],
+      "size": 85,
+      "source_line": 1114,
+      "source_path": "src/drivers-i386/network/drvDEC21142/DEC21142.drvproj/DEC21142.lksproj/DEC21142.m"
+    },
+    {
+      "address": 3060,
+      "reference_names": [
+        "-[DEC21142 enablePromiscuousMode]"
+      ],
+      "size": 77,
+      "source_line": 1397,
+      "source_path": "src/drivers-i386/network/drvDEC21142/DEC21142.drvproj/DEC21142.lksproj/DEC21142.m"
+    },
+    {
+      "address": 3140,
+      "reference_names": [
+        "-[DEC21142 disablePromiscuousMode]"
+      ],
+      "size": 72,
+      "source_line": 1308,
+      "source_path": "src/drivers-i386/network/drvDEC21142/DEC21142.drvproj/DEC21142.lksproj/DEC21142.m"
+    },
+    {
+      "address": 3212,
+      "reference_names": [
+        "-[DEC21142 enableMulticastMode]"
+      ],
+      "size": 22,
+      "source_line": 1385,
+      "source_path": "src/drivers-i386/network/drvDEC21142/DEC21142.drvproj/DEC21142.lksproj/DEC21142.m"
+    },
+    {
+      "address": 3236,
+      "reference_names": [
+        "-[DEC21142 disableMulticastMode]"
+      ],
+      "size": 105,
+      "source_line": 1281,
+      "source_path": "src/drivers-i386/network/drvDEC21142/DEC21142.drvproj/DEC21142.lksproj/DEC21142.m"
+    },
+    {
+      "address": 3344,
+      "reference_names": [
+        "-[DEC21142 addMulticastAddress:]"
+      ],
+      "size": 96,
+      "source_line": 1090,
+      "source_path": "src/drivers-i386/network/drvDEC21142/DEC21142.drvproj/DEC21142.lksproj/DEC21142.m"
+    },
+    {
+      "address": 3440,
+      "reference_names": [
+        "-[DEC21142 removeMulticastAddress:]"
+      ],
+      "size": 89,
+      "source_line": 1758,
+      "source_path": "src/drivers-i386/network/drvDEC21142/DEC21142.drvproj/DEC21142.lksproj/DEC21142.m"
+    },
+    {
+      "address": 3532,
+      "reference_names": [
+        "-[DEC21142 getPowerState:]"
+      ],
+      "size": 12,
+      "source_line": 1481,
+      "source_path": "src/drivers-i386/network/drvDEC21142/DEC21142.drvproj/DEC21142.lksproj/DEC21142.m"
+    },
+    {
+      "address": 3544,
+      "reference_names": [
+        "-[DEC21142 setPowerState:]"
+      ],
+      "size": 50,
+      "source_line": 2056,
+      "source_path": "src/drivers-i386/network/drvDEC21142/DEC21142.drvproj/DEC21142.lksproj/DEC21142.m"
+    },
+    {
+      "address": 3596,
+      "reference_names": [
+        "-[DEC21142 getPowerManagement:]"
+      ],
+      "size": 12,
+      "source_line": 1471,
+      "source_path": "src/drivers-i386/network/drvDEC21142/DEC21142.drvproj/DEC21142.lksproj/DEC21142.m"
+    },
+    {
+      "address": 3608,
+      "reference_names": [
+        "-[DEC21142 setPowerManagement:]"
+      ],
+      "size": 12,
+      "source_line": 2050,
+      "source_path": "src/drivers-i386/network/drvDEC21142/DEC21142.drvproj/DEC21142.lksproj/DEC21142.m"
+    },
+    {
+      "address": 3620,
+      "reference_names": [
+        "_IOUpdateDescriptorFromNetBuf"
+      ],
+      "size": 232,
+      "source_line": 22,
+      "source_path": "src/drivers-i386/network/drvDEC21142/DEC21142.drvproj/DEC21142.lksproj/DEC21142.m"
+    },
+    {
+      "address": 3852,
+      "reference_names": [
+        "-[DEC21142 _allocateMemory]"
+      ],
+      "size": 395,
+      "source_line": 232,
+      "source_path": "src/drivers-i386/network/drvDEC21142/DEC21142.drvproj/DEC21142.lksproj/DEC21142.m"
+    },
+    {
+      "address": 4248,
+      "reference_names": [
+        "-[DEC21142 _initTxRing]"
+      ],
+      "size": 252,
+      "source_line": 519,
+      "source_path": "src/drivers-i386/network/drvDEC21142/DEC21142.drvproj/DEC21142.lksproj/DEC21142.m"
+    },
+    {
+      "address": 4500,
+      "reference_names": [
+        "-[DEC21142 _initRxRing]"
+      ],
+      "size": 208,
+      "source_line": 483,
+      "source_path": "src/drivers-i386/network/drvDEC21142/DEC21142.drvproj/DEC21142.lksproj/DEC21142.m"
+    },
+    {
+      "address": 4708,
+      "reference_names": [
+        "-[DEC21142 _init]"
+      ],
+      "size": 69,
+      "source_line": 414,
+      "source_path": "src/drivers-i386/network/drvDEC21142/DEC21142.drvproj/DEC21142.lksproj/DEC21142.m"
+    },
+    {
+      "address": 4780,
+      "reference_names": [
+        "-[DEC21142 _resetChip]"
+      ],
+      "size": 75,
+      "source_line": 727,
+      "source_path": "src/drivers-i386/network/drvDEC21142/DEC21142.drvproj/DEC21142.lksproj/DEC21142.m"
+    },
+    {
+      "address": 4856,
+      "reference_names": [
+        "-[DEC21142 _startTransmit]"
+      ],
+      "size": 42,
+      "source_line": 838,
+      "source_path": "src/drivers-i386/network/drvDEC21142/DEC21142.drvproj/DEC21142.lksproj/DEC21142.m"
+    },
+    {
+      "address": 4900,
+      "reference_names": [
+        "-[DEC21142 _startReceive]"
+      ],
+      "size": 42,
+      "source_line": 825,
+      "source_path": "src/drivers-i386/network/drvDEC21142/DEC21142.drvproj/DEC21142.lksproj/DEC21142.m"
+    },
+    {
+      "address": 4944,
+      "reference_names": [
+        "-[DEC21142 select10BaseT]"
+      ],
+      "size": 163,
+      "source_line": 1820,
+      "source_path": "src/drivers-i386/network/drvDEC21142/DEC21142.drvproj/DEC21142.lksproj/DEC21142.m"
+    },
+    {
+      "address": 5108,
+      "reference_names": [
+        "-[DEC21142 selectBNC]"
+      ],
+      "size": 163,
+      "source_line": 1872,
+      "source_path": "src/drivers-i386/network/drvDEC21142/DEC21142.drvproj/DEC21142.lksproj/DEC21142.m"
+    },
+    {
+      "address": 5272,
+      "reference_names": [
+        "-[DEC21142 selectAUI]"
+      ],
+      "size": 163,
+      "source_line": 1846,
+      "source_path": "src/drivers-i386/network/drvDEC21142/DEC21142.drvproj/DEC21142.lksproj/DEC21142.m"
+    },
+    {
+      "address": 5436,
+      "reference_names": [
+        "-[DEC21142 selectMII]"
+      ],
+      "size": 143,
+      "source_line": 1898,
+      "source_path": "src/drivers-i386/network/drvDEC21142/DEC21142.drvproj/DEC21142.lksproj/DEC21142.m"
+    },
+    {
+      "address": 5580,
+      "reference_names": [
+        "-[DEC21142 doAutoPortSelect]"
+      ],
+      "size": 181,
+      "source_line": 1330,
+      "source_path": "src/drivers-i386/network/drvDEC21142/DEC21142.drvproj/DEC21142.lksproj/DEC21142.m"
+    },
+    {
+      "address": 5764,
+      "reference_names": [
+        "-[DEC21142 checkMII]"
+      ],
+      "size": 1173,
+      "source_line": 1148,
+      "source_path": "src/drivers-i386/network/drvDEC21142/DEC21142.drvproj/DEC21142.lksproj/DEC21142.m"
+    },
+    {
+      "address": 6940,
+      "reference_names": [
+        "-[DEC21142 _initRegisters]"
+      ],
+      "size": 280,
+      "source_line": 430,
+      "source_path": "src/drivers-i386/network/drvDEC21142/DEC21142.drvproj/DEC21142.lksproj/DEC21142.m"
+    },
+    {
+      "address": 7220,
+      "reference_names": [
+        "-[DEC21142 _transmitPacket:]"
+      ],
+      "size": 316,
+      "source_line": 924,
+      "source_path": "src/drivers-i386/network/drvDEC21142/DEC21142.drvproj/DEC21142.lksproj/DEC21142.m"
+    },
+    {
+      "address": 7536,
+      "reference_names": [
+        "-[DEC21142 receivePacket:length:timeout:]"
+      ],
+      "size": 275,
+      "source_line": 1678,
+      "source_path": "src/drivers-i386/network/drvDEC21142/DEC21142.drvproj/DEC21142.lksproj/DEC21142.m"
+    },
+    {
+      "address": 7812,
+      "reference_names": [
+        "-[DEC21142 sendPacket:length:]"
+      ],
+      "size": 448,
+      "source_line": 1920,
+      "source_path": "src/drivers-i386/network/drvDEC21142/DEC21142.drvproj/DEC21142.lksproj/DEC21142.m"
+    },
+    {
+      "address": 8260,
+      "reference_names": [
+        "-[DEC21142 _receiveInterruptOccurred]"
+      ],
+      "size": 501,
+      "source_line": 655,
+      "source_path": "src/drivers-i386/network/drvDEC21142/DEC21142.drvproj/DEC21142.lksproj/DEC21142.m"
+    },
+    {
+      "address": 8764,
+      "reference_names": [
+        "-[DEC21142 _transmitInterruptOccurred]"
+      ],
+      "size": 286,
+      "source_line": 851,
+      "source_path": "src/drivers-i386/network/drvDEC21142/DEC21142.drvproj/DEC21142.lksproj/DEC21142.m"
+    },
+    {
+      "address": 9052,
+      "reference_names": [
+        "-[DEC21142 _getStationAddress:]"
+      ],
+      "size": 802,
+      "source_line": 319,
+      "source_path": "src/drivers-i386/network/drvDEC21142/DEC21142.drvproj/DEC21142.lksproj/DEC21142.m"
+    },
+    {
+      "address": 9856,
+      "reference_names": [
+        "-[DEC21142 _loadSetupFilter:]"
+      ],
+      "size": 308,
+      "source_line": 566,
+      "source_path": "src/drivers-i386/network/drvDEC21142/DEC21142.drvproj/DEC21142.lksproj/DEC21142.m"
+    },
+    {
+      "address": 10164,
+      "reference_names": [
+        "-[DEC21142 _setAddressFiltering:]"
+      ],
+      "size": 362,
+      "source_line": 746,
+      "source_path": "src/drivers-i386/network/drvDEC21142/DEC21142.drvproj/DEC21142.lksproj/DEC21142.m"
+    },
+    {
+      "address": 10528,
+      "reference_names": [
+        "-[DEC21142 _verifyCheckSum]"
+      ],
+      "size": 697,
+      "source_line": 1011,
+      "source_path": "src/drivers-i386/network/drvDEC21142/DEC21142.drvproj/DEC21142.lksproj/DEC21142.m"
+    }
+  ],
+  "reference_sha256": "B8FA440177799B9510A0AD5ED5C3C71DA3E9D146F561CE5439F84E2D65B1C7F9",
+  "schema_version": "source-map-v1",
+  "unmapped": [
+    {
+      "address": 11228,
+      "reference_names": [
+        "+[DEC21142NetworkKernelServerInstance kernelServerInstance]"
+      ],
+      "size": 12
+    },
+    {
+      "address": 11240,
+      "reference_names": [
+        "+[DEC21142NetworkVersion driverKitVersionForDEC21142Network]"
+      ],
+      "size": 12
+    }
+  ]
+}

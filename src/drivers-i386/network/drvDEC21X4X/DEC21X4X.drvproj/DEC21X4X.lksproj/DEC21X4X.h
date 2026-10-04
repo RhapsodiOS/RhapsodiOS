@@ -30,12 +30,12 @@
 #ifndef _DEC21X4X_H
 #define _DEC21X4X_H
 
-#import <driverkit/IOEthernetController.h>
-#import <driverkit/IONetbuf.h>
+#import <driverkit/IOEthernet.h>
+#import <driverkit/IONetbufQueue.h>
+#import <net/netbuf.h>
 #import <objc/objc.h>
 
 // Forward declarations
-typedef int BOOL;
 #ifndef YES
 #define YES 1
 #endif
@@ -108,15 +108,39 @@ typedef int BOOL;
 #define CSR15_SIA_GENERAL          0x78
 
 // DEC21142 class interface
-@interface DEC21142 : IOEthernetController
+@interface DEC21142 : IOEthernet
 {
-    // Instance variables will be defined here
+    unsigned short ioBase;
+    unsigned short irq;
+    IONetwork *networkInterface;
+    IONetbufQueue *transmitQueue;
+    char isPromiscuous;
+    char multicastEnabled;
+    char resetAndEnabled;
+    unsigned char sromAddressBits;
+    netbuf_t txNetbuf[32];
+    netbuf_t rxNetbuf[64];
+    void *rxRing;
+    void *txRing;
+    unsigned int txPutIndex;
+    unsigned int txDoneIndex;
+    unsigned int txNumFree;
+    unsigned int txIntCount;
+    unsigned int rxDoneIndex;
+    netbuf_t KDB_txBuf;
+    void *memoryPtr;
+    unsigned int memorySize;
+    void *setupBuffer;
+    unsigned int setupBufferPhysical;
+    void *Adapter;
+    unsigned int MediaCapableSaved;
 }
 
 // Initialization methods
 - (BOOL)_initAdapter;
-- (BOOL)_parseSROM;
-- (BOOL)_resetAndInitAdapter;
+- (BOOL)parseSROM;
+- (BOOL)resetAndEnable:(BOOL)enable;
+- (BOOL)verifyMediaSupport:(unsigned int)mediaType;
 - free;
 
 // Interrupt handling

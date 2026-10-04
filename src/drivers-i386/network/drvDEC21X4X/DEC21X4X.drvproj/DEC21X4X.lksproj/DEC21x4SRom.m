@@ -32,7 +32,7 @@
 
 @implementation DEC21142(DEC21x4SRom)
 
-- (BOOL)_parseSROM
+- (BOOL)parseSROM
 {
     void *adapterInfo;
     unsigned int chipRevision;
@@ -59,10 +59,9 @@
     const char *mediumName;
 
     // TODO: Get adapterInfo from offset 0x334
-    adapterInfo = NULL;  // TODO: *(void **)(self + 0x334)
+    adapterInfo = self->Adapter;
 
-    // TODO: Get chip revision from offset 0x54 in adapterInfo
-    chipRevision = 0;  // TODO: *(unsigned int *)(adapterInfo + 0x54)
+    chipRevision = *(unsigned int *)((char *)adapterInfo + 0x54);
 
     // Special case: DC21040 doesn't have real SROM, fake it
     if (chipRevision == 0x21011) {
@@ -78,11 +77,9 @@
             return NO;
         }
 
-        // TODO: Get base I/O port from offset 0x174
-        basePort = 0;  // TODO: *(unsigned short *)(self + 0x174)
+        basePort = self->ioBase;
 
-        // TODO: Get SROM address bits from offset 0x183
-        sromAddressBits = 0;  // TODO: *(unsigned char *)(self + 0x183)
+        sromAddressBits = self->sromAddressBits;
 
         // Read 64 words (128 bytes) from SROM
         for (wordIndex = 0; wordIndex < 0x40; wordIndex++) {
@@ -185,8 +182,7 @@
     }
 
     // Log all supported media types from SROM
-    // TODO: Get supported media mask from offset 0x7c in adapterInfo
-    supportedMediaMask = 0;  // TODO: *(unsigned int *)(adapterInfo + 0x7c)
+    supportedMediaMask = *(unsigned int *)((char *)adapterInfo + 0x7c);
 
     for (mediaIndex = 0; mediaIndex < MEDIUM_STRING_COUNT; mediaIndex++) {
         if ((supportedMediaMask >> mediaIndex) & 1) {
@@ -196,24 +192,20 @@
     }
 
     // Log PHY media support if MII PHY is present
-    // TODO: Check if MII PHY is present at offset 0x1e5 in adapterInfo
-    miiPhyPresent = NO;  // TODO: *(BOOL *)(adapterInfo + 0x1e5)
+    miiPhyPresent = *((unsigned char *)adapterInfo + 0x1e5);
 
     if (miiPhyPresent) {
         // Check only first PHY (phyIndex < 1)
         for (phyIndex = 0; phyIndex < 1; phyIndex++) {
-            // TODO: Check if PHY entry is valid
             // PHY structure starts at offset 0x230, each entry is 0x30 bytes
-            phyValid = NO;  // TODO: *(BOOL *)((phyIndex * 0x30) + 0x230 + adapterInfo)
+            phyValid = *((unsigned char *)adapterInfo + 0x230 + (phyIndex * 0x30));
 
             if (phyValid) {
                 // Check all 18 MII media types
                 for (miiMediaIndex = 0; miiMediaIndex < MEDIUM_STRING_COUNT; miiMediaIndex++) {
-                    // TODO: Get PHY media support bitmap at offset 0x23c
-                    phyMediaSupport = 0;  // TODO: *(unsigned short *)((phyIndex * 0x30) + 0x23c + adapterInfo)
+                    phyMediaSupport = *(unsigned short *)((char *)adapterInfo + 0x23c + (phyIndex * 0x30));
 
-                    // TODO: Get media bit from MediaBitTable
-                    mediaBit = 0;  // TODO: MediaBitTable[miiMediaIndex]
+                    mediaBit = MediaBitTable[miiMediaIndex];
 
                     if ((mediaBit & phyMediaSupport) != 0) {
                         mediumName = MediumString[miiMediaIndex];
@@ -224,8 +216,7 @@
         }
     }
 
-    // Copy supported media mask to offset 0x338
-    // TODO: *(unsigned int *)(self + 0x338) = supportedMediaMask;
+    self->MediaCapableSaved = supportedMediaMask;
 
     return YES;
 }

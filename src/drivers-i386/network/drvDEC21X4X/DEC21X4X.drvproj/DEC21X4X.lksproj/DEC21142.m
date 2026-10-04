@@ -157,8 +157,7 @@ extern unsigned int __page_size;
 
     // Calculate total memory needed (0x6f0 bytes)
     totalMemorySize = 0x6f0;
-    // TODO: Store at offset 0x328
-    // *(unsigned int *)(self + 0x328) = totalMemorySize;
+    self->memorySize = totalMemorySize;
 
     // Check if we exceed one page limit
     if (__page_size < totalMemorySize) {
@@ -173,8 +172,7 @@ extern unsigned int __page_size;
         return NO;
     }
 
-    // TODO: Store allocated memory base at offset 0x324
-    // *(void **)(self + 0x324) = allocatedMemory;
+    self->memoryPtr = allocatedMemory;
 
     // Calculate RX ring descriptor base (align to 16 bytes)
     rxRingVirt = allocatedMemory;
@@ -182,14 +180,12 @@ extern unsigned int __page_size;
         rxRingVirt = (void *)(((unsigned int)allocatedMemory + 0xf) & 0xfffffff0);
     }
 
-    // TODO: Store RX ring base at offset 0x304
-    // *(void **)(self + 0x304) = rxRingVirt;
+    self->rxRing = rxRingVirt;
 
     // Initialize 64 RX descriptors (0x40 descriptors, 0x10 bytes each)
     for (i = 0; i < 0x40; i++) {
         bzero((void *)((i * 0x10) + (unsigned int)rxRingVirt), 0x10);
-        // TODO: Clear RX buffer pointer at offset 0x204 + (i * 4)
-        // *(void **)(self + 0x204 + (i * 4)) = NULL;
+        self->rxNetbuf[i] = NULL;
     }
 
     // Calculate TX ring descriptor base (align to 16 bytes)
@@ -199,14 +195,12 @@ extern unsigned int __page_size;
         txRingVirt = (void *)(((unsigned int)rxRingVirt + 0x40f) & 0xfffffff0);
     }
 
-    // TODO: Store TX ring base at offset 0x308
-    // *(void **)(self + 0x308) = txRingVirt;
+    self->txRing = txRingVirt;
 
     // Initialize 32 TX descriptors (0x20 descriptors, 0x10 bytes each)
     for (i = 0; i < 0x20; i++) {
         bzero((void *)((i * 0x10) + (unsigned int)txRingVirt), 0x10);
-        // TODO: Clear TX buffer pointer at offset 0x184 + (i * 4)
-        // *(void **)(self + 0x184 + (i * 4)) = NULL;
+        self->txNetbuf[i] = NULL;
     }
 
     // Calculate setup frame buffer base (align to 16 bytes)
@@ -216,18 +210,11 @@ extern unsigned int __page_size;
         setupFrameVirt = (void *)(((unsigned int)txRingVirt + 0x20f) & 0xfffffff0);
     }
 
-    // TODO: Store setup frame base at offset 0x32c
-    // *(void **)(self + 0x32c) = setupFrameVirt;
+    self->setupBuffer = setupFrameVirt;
 
     // Get physical address for the setup frame
-    // TODO: Get IOVmTaskSelf result
-    // IOTask task = IOVmTaskSelf();
-    // TODO: Store physical address at offset 0x330
-    // ret = IOPhysicalFromVirtual(task, (vm_address_t)setupFrameVirt,
-    //                             (IOPhysicalAddress *)(self + 0x330));
-
     ret = IOPhysicalFromVirtual(IOVmTaskSelf(), (vm_address_t)setupFrameVirt,
-                                (IOPhysicalAddress *)(self + 0x330));
+                                (IOPhysicalAddress *)&self->setupBufferPhysical);
 
     if (ret != IO_R_SUCCESS) {
         IOLog("%s: Invalid shared memory address\n", [self name]);
@@ -251,11 +238,9 @@ extern unsigned int __page_size;
     unsigned int readValue;
     unsigned char lowByte, highByte;
 
-    // TODO: Get base I/O port from offset 0x174
-    basePort = 0;  // TODO: *(unsigned short *)(self + 0x174)
+    basePort = self->ioBase;
 
-    // TODO: Get SROM address bits from offset 0x183
-    sromAddressBits = 0;  // TODO: *(unsigned char *)(self + 0x183)
+    sromAddressBits = self->sromAddressBits;
 
     byteCount = 0;
 
@@ -684,7 +669,7 @@ extern unsigned int __page_size;
         packetLength = ((*(unsigned short *)((unsigned int)descriptor + 2)) & 0x3fff) - 4;
 
         // TODO: Get adapter info from offset 0x334
-        adapterInfo = NULL;  // TODO: *(void **)(self + 0x334)
+        adapterInfo = self->Adapter;
 
         // TODO: Get error mask from offset 0x26c in adapter info
         errorMask = 0;  // TODO: *(unsigned int *)(adapterInfo + 0x26c)
@@ -808,7 +793,7 @@ give_back_to_hardware:
     struct objc_super superClass;
 
     // TODO: Get adapter info from offset 0x334
-    adapterInfo = NULL;  // TODO: *(void **)(self + 0x334)
+    adapterInfo = self->Adapter;
 
     // TODO: Get setup frame base from offset 0x32c
     setupFrameVirt = NULL;  // TODO: *(void **)(self + 0x32c)
@@ -896,7 +881,7 @@ give_back_to_hardware:
     unsigned short ioPortBase;
 
     // TODO: Get adapter info from offset 0x334
-    adapterInfo = NULL;  // TODO: *(void **)(self + 0x334)
+    adapterInfo = self->Adapter;
 
     // TODO: Get CSR6 register value from offset 0x68 in adapter info
     csr6Register = NULL;  // TODO: (unsigned int *)(adapterInfo + 0x68)
@@ -918,7 +903,7 @@ give_back_to_hardware:
     unsigned short ioPortBase;
 
     // TODO: Get adapter info from offset 0x334
-    adapterInfo = NULL;  // TODO: *(void **)(self + 0x334)
+    adapterInfo = self->Adapter;
 
     // TODO: Get CSR6 register value from offset 0x68 in adapter info
     csr6Register = NULL;  // TODO: (unsigned int *)(adapterInfo + 0x68)
@@ -1120,7 +1105,7 @@ give_back_to_hardware:
     void *adapterInfo;
 
     // TODO: Get adapter info from offset 0x334
-    adapterInfo = NULL;  // TODO: *(void **)(self + 0x334)
+    adapterInfo = self->Adapter;
 
     // Call utility function to disable interrupts
     DC21X4DisableInterrupt(adapterInfo);
@@ -1189,7 +1174,7 @@ give_back_to_hardware:
     void *adapterInfo;
 
     // TODO: Get adapter info from offset 0x334
-    adapterInfo = NULL;  // TODO: *(void **)(self + 0x334)
+    adapterInfo = self->Adapter;
 
     // Call utility function to enable interrupts
     DC21X4EnableInterrupt(adapterInfo);
@@ -1249,25 +1234,28 @@ give_back_to_hardware:
     struct objc_super superClass;
 
     // TODO: Get adapter info from offset 0x334
-    adapterInfo = NULL;  // TODO: *(void **)(self + 0x334)
+    adapterInfo = self->Adapter;
 
     // Stop autosense timer if running
-    // TODO: Check timer handle at offset 0x220 in adapter info
-    timerHandle = 0;  // TODO: *(int *)(adapterInfo + 0x220)
-
-    if (timerHandle != 0) {
-        DC21X4StopAutoSenseTimer(adapterInfo);
+    timerHandle = 0;
+    if (adapterInfo != NULL) {
+        timerHandle = *(int *)((char *)adapterInfo + 0x220);
+        if (timerHandle != 0) {
+            DC21X4StopAutoSenseTimer(adapterInfo);
+        }
     }
 
     // Clear any pending timeouts
     [self clearTimeout];
 
     // Stop the adapter
-    DC21X4StopAdapter(adapterInfo);
+    if (adapterInfo != NULL) {
+        DC21X4StopAdapter(adapterInfo);
+    }
 
     // Free network interface
-    // TODO: Get network interface from offset 0x178
-    networkInterface = nil;  // TODO: *(id *)(self + 0x178)
+    networkInterface = self->networkInterface;
+    self->networkInterface = nil;
 
     if (networkInterface != nil) {
         [networkInterface free];
@@ -1275,8 +1263,8 @@ give_back_to_hardware:
 
     // Free all RX netbufs (64 descriptors)
     for (i = 0; i < 0x40; i++) {
-        // TODO: Get netbuf from offset 0x204 + (i * 4)
-        netbuf = NULL;  // TODO: *(netbuf_t *)(self + 0x204 + (i * 4))
+        netbuf = self->rxNetbuf[i];
+        self->rxNetbuf[i] = NULL;
 
         if (netbuf != NULL) {
             nb_free(netbuf);
@@ -1285,8 +1273,8 @@ give_back_to_hardware:
 
     // Free all TX netbufs (32 descriptors)
     for (i = 0; i < 0x20; i++) {
-        // TODO: Get netbuf from offset 0x184 + (i * 4)
-        netbuf = NULL;  // TODO: *(netbuf_t *)(self + 0x184 + (i * 4))
+        netbuf = self->txNetbuf[i];
+        self->txNetbuf[i] = NULL;
 
         if (netbuf != NULL) {
             nb_free(netbuf);
@@ -1294,18 +1282,18 @@ give_back_to_hardware:
     }
 
     // Free descriptor memory
-    // TODO: Get descriptor memory base from offset 0x324
-    descriptorMemory = NULL;  // TODO: *(void **)(self + 0x324)
+    descriptorMemory = self->memoryPtr;
+    self->memoryPtr = NULL;
 
     if (descriptorMemory != NULL) {
-        // TODO: Get descriptor memory size from offset 0x328
-        descriptorMemorySize = 0;  // TODO: *(unsigned int *)(self + 0x328)
+        descriptorMemorySize = self->memorySize;
 
         IOFreeLow(descriptorMemory, descriptorMemorySize);
     }
 
     // Free adapter info structure
     if (adapterInfo != NULL) {
+        self->Adapter = NULL;
         IOFree(adapterInfo, 0x27c);  // Size: 636 bytes
     }
 
@@ -1411,10 +1399,9 @@ give_back_to_hardware:
         return nil;
     }
 
-    // Zero adapter info and store pointer
+    // Zero adapter info and retain it in the instance.
     bzero(adapterInfo, 0x27c);
-    // TODO: Store adapter info pointer at offset 0x334
-    // *(void **)(self + 0x334) = adapterInfo;
+    self->Adapter = adapterInfo;
 
     // Store back pointer to self at offset 0x278 in adapter info
     ((id *)adapterInfo)[0x278 / sizeof(id)] = self;
@@ -1450,17 +1437,15 @@ give_back_to_hardware:
 
     // Get I/O port base
     portList = [deviceDescription portRangeList];
-    // TODO: Store base port at offset 0x174
-    // *(unsigned short *)(self + 0x174) = portList[0];
     basePort = portList[0];
+    self->ioBase = basePort;
 
     // Store base port at offset 0 in adapter info
     *(unsigned int *)adapterInfo = (unsigned int)basePort;
 
     // Get IRQ level
     irqLevel = [deviceDescription interrupt];
-    // TODO: Store IRQ at offset 0x176
-    // *(unsigned short *)(self + 0x176) = irqLevel;
+    self->irq = irqLevel;
 
     // Handle DC21140 revision detection
     chipRevision = *(unsigned int *)((unsigned int)adapterInfo + 0x54);
@@ -1506,13 +1491,11 @@ give_back_to_hardware:
 
     if (sromBitsStr == NULL || strcmp(sromBitsStr, "8") != 0) {
         // Default to 6 bits
-        // TODO: Store at offset 0x183
-        // *(unsigned char *)(self + 0x183) = 6;
+        self->sromAddressBits = 6;
     }
     else {
         // Use 8 bits
-        // TODO: Store at offset 0x183
-        // *(unsigned char *)(self + 0x183) = 8;
+        self->sromAddressBits = 8;
     }
 
     // Free SROM bits string if allocated
@@ -1548,9 +1531,9 @@ give_back_to_hardware:
     IOLog("%s: Media type: 0x%x\n", [self name], mediaType);
 
     // Reset and enable adapter
-    success = [self _resetAndEnable:NO];
+    success = [self resetAndEnable:NO];
     if (!success) {
-        IOLog("%s: _resetAndEnable failed\n", [self name]);
+        IOLog("%s: resetAndEnable failed\n", [self name]);
         [self free];
         return nil;
     }
@@ -1614,8 +1597,7 @@ give_back_to_hardware:
     id txQueue;
     int queueCount;
 
-    // TODO: Get adapter info from offset 0x334
-    adapterInfo = NULL;  // TODO: *(void **)(self + 0x334)
+    adapterInfo = self->Adapter;
 
     // Save current interrupt mask at offset 0x1fc
     savedInterruptMask = 0;  // TODO: *(unsigned int *)(adapterInfo + 0x1fc)
@@ -1790,7 +1772,7 @@ give_back_to_hardware:
         statusWord = descriptor[0];
 
         // TODO: Get adapter info from offset 0x334
-        adapterInfo = NULL;  // TODO: *(void **)(self + 0x334)
+        adapterInfo = self->Adapter;
 
         // TODO: Get error mask from offset 0x26c in adapter info
         errorMask = 0;  // TODO: *(unsigned int *)(adapterInfo + 0x26c)
@@ -1881,7 +1863,7 @@ give_back_to_hardware:
     pollingMode = NO;  // TODO: *(BOOL *)(self + 0x182)
 
     // TODO: Get adapter info from offset 0x334
-    adapterInfo = NULL;  // TODO: *(void **)(self + 0x334)
+    adapterInfo = self->Adapter;
 
     // TODO: Get interrupt mode flag from offset 499 in adapter info
     interruptMode = NO;  // TODO: *(BOOL *)(adapterInfo + 499)
@@ -2075,8 +2057,8 @@ give_back_to_hardware:
 
     // If parameter matches and count is not zero
     if (match && (count != 0)) {
-        // Call _verifyMediaSupport: with first value and store in global
-        mediaSupported = [self _verifyMediaSupport:values[0]];
+        // Call verifyMediaSupport: with first value and store in global
+        mediaSupported = [self verifyMediaSupport:values[0]];
         return IO_R_SUCCESS;
     }
     else {
@@ -2106,7 +2088,7 @@ give_back_to_hardware:
         // TODO: *(BOOL *)(self + 0x182) = NO;
 
         // TODO: Get adapter info from offset 0x334
-        adapterInfo = NULL;  // TODO: *(void **)(self + 0x334)
+        adapterInfo = self->Adapter;
 
         // TODO: Get timer handle from offset 0x220 in adapter info
         timerHandle = 0;  // TODO: *(unsigned int *)(adapterInfo + 0x220)

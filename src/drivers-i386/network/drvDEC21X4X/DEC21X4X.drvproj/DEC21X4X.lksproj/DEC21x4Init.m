@@ -39,7 +39,7 @@
     // replaced with actual structure field access
 
     BOOL linkDetected = YES;
-    void *adapterInfo = NULL;  // TODO: Get adapter info structure
+    void *adapterInfo = self->Adapter;
 
     // Write GEP sequence registers if present
     // TODO: Access gepSequenceCount and gepSequence from adapter structure
@@ -259,7 +259,7 @@
     unsigned int busMode = 0;
     unsigned int chipRevision = 0;  // TODO: Get from adapter structure
     unsigned int chipStep = 0;      // TODO: Get from adapter structure  
-    void *adapterInfo = NULL;       // TODO: Get adapter info structure
+    void *adapterInfo = self->Adapter;
     vm_address_t physAddr;
     IOReturn ret;
     
@@ -318,9 +318,9 @@
     }
 }
 
-- (BOOL)_resetAndEnable:(BOOL)enable
+- (BOOL)resetAndEnable:(BOOL)enable
 {
-    void *adapterInfo = NULL;  // TODO: Get adapter info structure
+    void *adapterInfo = self->Adapter;
     unsigned int chipRevision = 0;  // TODO: Get from adapter structure
     unsigned int chipStep = 0;      // TODO: Get from adapter structure
     unsigned int savedInterruptMask;
@@ -410,7 +410,7 @@
     }
     
     // Parse SROM
-    if (![self _parseSROM]) {
+    if (![self parseSROM]) {
         IOLog("%s: Error while parsing SROM\n", [self name]);
         [self setRunning:NO];
         return NO;
@@ -425,7 +425,7 @@
     // Verify media support
     // TODO: Get mediaType from offset 0x78
     unsigned int mediaType = 0;  // TODO: *(unsigned int *)(adapterInfo + 0x78)
-    if (![self _verifyMediaSupport:mediaType]) {
+    if (![self verifyMediaSupport:mediaType]) {
         // Use default medium instead
         // TODO: Get defaultMedium from offset 0x80
         unsigned char defaultMedium = 0;  // TODO: *(unsigned char *)(adapterInfo + 0x80)
@@ -475,7 +475,7 @@
     return YES;
 }
 
-- (BOOL)_verifyMediaSupport:(unsigned int)mediaType
+- (BOOL)verifyMediaSupport:(unsigned int)mediaType
 {
     BOOL result;
     unsigned int phyIndex;
@@ -489,7 +489,7 @@
     unsigned char miiType;
 
     // TODO: Get adapterInfo from offset 0x334
-    adapterInfo = NULL;  // TODO: *(void **)(self + 0x334)
+    adapterInfo = self->Adapter;
 
     // TODO: Get supported media mask from offset 0x338
     supportedMediaMask = 0;  // TODO: *(unsigned int *)(self + 0x338)

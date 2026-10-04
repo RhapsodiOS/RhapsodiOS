@@ -49,7 +49,17 @@ input
 
 network
  * drvAMDPCNet32II - complete. First built 2026-09-25 with `rbuild buildpackage --arch i386` into drvamdpcnet32ii-1-i386.apk, after dropping its direct <bsd/net/etherdefs.h> imports, which came before the socket and if headers if_ether.h needs; <driverkit/IOEthernet.h> already pulls it in in the right order, as in drvNE2k. Not yet boot-tested
- * drvDEC21X4X - needs compiled and then tested
+ * drvDEC21X4X - partial reconstruction against Apple's i386
+   DEC21X4XNetwork_reloc. IDA recovered 116 routines and the 43 handwritten
+   Objective-C selectors now match; the class layout is restored through
+   MediaCapableSaved at 0x338. Project manifests include the inspector nib
+   and DriverHelp, and five source, layout and byte-for-byte resource checks
+   pass. Core controller and utility paths still contain TODO placeholders,
+   so this is not functionally complete. BinRecon's IDA analysis completed;
+   angr rejects relocation 968 at the final generated accessor, and no
+   rebuilt-binary comparison is available. The i386 APK build and hardware
+   behavior are unverified. See
+   network/drvDEC21X4X/reconstruction/README.md
  * drvDEC21142 - needs compiled and then tested
  * drvDECchip21040 - needs compiled and then tested
  * drvDECchip21140 - reconstructed against Apple's i386

@@ -12,9 +12,9 @@
 
 /* Forward declarations for utility functions */
 static void __resetFunc(void *arg);
-static void _intHandler(void *identity, void *state, unsigned int arg);
-static netbuf_t _QDequeue(NetbufQueue *queue);
-static void _QEnqueue(NetbufQueue *queue, netbuf_t netbuf);
+static void intHandler(void *identity, void *state, unsigned int arg);
+static netbuf_t _QDequeue(EtherLink3Queue *queue);
+static void _QEnqueue(EtherLink3Queue *queue, netbuf_t netbuf);
 
 @implementation EtherLink3
 
@@ -119,7 +119,7 @@ static void _QEnqueue(NetbufQueue *queue, netbuf_t netbuf);
 {
     id deviceTable;
     const char *connectorString;
-    const char *connectorTypes[3] = {"AUI", "BNC", "RJ-45"};
+    const char *myConnectors[3] = {"AUI", "BNC", "RJ-45"};
     BOOL connectorFound = NO;
     unsigned short productID;
     unsigned short configReg;
@@ -136,7 +136,7 @@ static void _QEnqueue(NetbufQueue *queue, netbuf_t netbuf);
     }
 
     /* Get device table from device description */
-    deviceTable = [deviceDescription deviceTable];
+    deviceTable = [deviceDescription configTable];
 
     /* Initialize current window to 0xFF (invalid) */
     currentWindow = 0xFF;
@@ -149,18 +149,18 @@ static void _QEnqueue(NetbufQueue *queue, netbuf_t netbuf);
     productID = inw(ioBase + 0x02);
 
     /* Check for connector type in configuration */
-    connectorString = [[deviceTable valueForStringKey:"Connector"] cString];
+    connectorString = [deviceTable valueForStringKey:"Connector"];
     if (connectorString != NULL) {
         /* Try to match connector string */
         for (i = 0; i < 3; i++) {
-            if (strcmp(connectorString, connectorTypes[i]) == 0) {
-                connectorType = i;
+            if (strcmp(connectorString, myConnectors[i]) == 0) {
+                myConnector = i;
                 connectorFound = YES;
                 break;
             }
         }
         /* Free the string */
-        IOFree((void *)connectorString, strlen(connectorString) + 1);
+        [deviceTable freeString:connectorString];
     }
 
     /* If no connector specified, try to detect from hardware */
@@ -186,20 +186,20 @@ static void _QEnqueue(NetbufQueue *queue, netbuf_t netbuf);
             /* Extract connector type from bits 14-15 */
             configReg >>= 14;
             if (configReg == 1) {
-                connectorType = CONNECTOR_AUI;
+                myConnector = CONNECTOR_AUI;
             } else if (configReg < 2 || configReg != 3) {
-                connectorType = CONNECTOR_RJ45;
+                myConnector = CONNECTOR_RJ45;
             } else {
-                connectorType = CONNECTOR_BNC;
+                myConnector = CONNECTOR_BNC;
             }
         } else {
             /* Auto-select enabled */
-            doAutoDetect = YES;
+            autoConnector = YES;
         }
     }
 
     /* Set RX filter byte to 5 (station and broadcast) */
-    rxFilterByte = 0x05;
+    rxModes = 0x05;
 
     /* Read MAC address from EEPROM via window 0, register 10 */
     if (currentWindow != 0x00) {
@@ -226,8 +226,8 @@ static void _QEnqueue(NetbufQueue *queue, netbuf_t netbuf);
         addressData = inw(ioBase + 0x0C);
 
         /* Store MAC address bytes (big endian) */
-        stationAddress.ea_byte[i * 2] = (unsigned char)(addressData >> 8);
-        stationAddress.ea_byte[i * 2 + 1] = (unsigned char)addressData;
+        myAddress.ea_byte[i * 2] = (unsigned char)(addressData >> 8);
+        myAddress.ea_byte[i * 2 + 1] = (unsigned char)addressData;
     }
 
     /* Read product ID again and write to offset 0x0C */
@@ -236,6 +236,8 @@ static void _QEnqueue(NetbufQueue *queue, netbuf_t netbuf);
 
     /* Reset and enable the hardware */
     [self resetAndEnable:NO];
+
+    reported_irq = [deviceDescription interrupt];
 
     /* Determine model name from product ID */
     switch (productID) {
@@ -254,37 +256,37 @@ static void _QEnqueue(NetbufQueue *queue, netbuf_t netbuf);
         /* EISA card - log with slot number */
         slotOrPort = (ioBase >> 12);
         IOLog("3Com EtherLink III %s in slot %d irq %d using %s\n",
-              modelName, slotOrPort, irq, connectorTypes[connectorType]);
+              modelName, slotOrPort, reported_irq, myConnectors[myConnector]);
     } else {
         /* ISA/PCMCIA - log with I/O port */
         slotOrPort = ioBase;
         IOLog("3Com EtherLink III %s at port 0x%x irq %d using %s\n",
-              modelName, slotOrPort, irq, connectorTypes[connectorType]);
+              modelName, slotOrPort, reported_irq, myConnectors[myConnector]);
     }
 
     /* Attach to network with MAC address */
-    networkInterface = [super attachToNetworkWithAddress:stationAddress];
+    networkInterface = [super attachToNetworkWithAddress:myAddress];
 
     /* Initialize all queue structures */
-    rxQueue.head = NULL;
-    rxQueue.tail = NULL;
-    rxQueue.count = 0;
-    rxQueue.max = 0x80;  /* 128 packets */
+    rxQ.head = NULL;
+    rxQ.tail = NULL;
+    rxQ.count = 0;
+    rxQ.max = 0x80;  /* 128 packets */
 
-    txQueue.head = NULL;
-    txQueue.tail = NULL;
-    txQueue.count = 0;
-    txQueue.max = 0x10;  /* 16 packets */
+    txQ.head = NULL;
+    txQ.tail = NULL;
+    txQ.count = 0;
+    txQ.max = 0x10;  /* 16 packets */
 
-    txPendingQueue.head = NULL;
-    txPendingQueue.tail = NULL;
-    txPendingQueue.count = 0;
-    txPendingQueue.max = 0x40;  /* 64 packets */
+    txFreeQ.head = NULL;
+    txFreeQ.tail = NULL;
+    txFreeQ.count = 0;
+    txFreeQ.max = 0x40;  /* 64 packets */
 
-    freeNetbufQueue.head = NULL;
-    freeNetbufQueue.tail = NULL;
-    freeNetbufQueue.count = 0;
-    freeNetbufQueue.max = 0x20;  /* 32 packets */
+    rxPoolQ.head = NULL;
+    rxPoolQ.tail = NULL;
+    rxPoolQ.count = 0;
+    rxPoolQ.max = 0x20;  /* 32 packets */
 
     return self;
 }
@@ -295,57 +297,31 @@ static void _QEnqueue(NetbufQueue *queue, netbuf_t netbuf);
 - (BOOL)resetAndEnable:(BOOL)enable
 {
     netbuf_t netbuf;
-    IOReturn result;
 
-    /* Disable interrupts during reset */
-    interruptDisabled = YES;
-    isRunning = NO;
-
-    /* Fill receive buffer queue */
-    [self QFill:&freeNetbufQueue];
-
-    /* Flush TX queue */
-    while ((netbuf = _QDequeue(&txQueue)) != NULL) {
+    resetInProgress = YES;
+    interruptHappened = NO;
+    [self QFill:&rxPoolQ];
+    while ((netbuf = _QDequeue(&txQ)) != NULL)
         nb_free(netbuf);
-    }
-
-    /* Flush TX pending queue */
-    while ((netbuf = _QDequeue(&txPendingQueue)) != NULL) {
+    while ((netbuf = _QDequeue(&txFreeQ)) != NULL)
         nb_free(netbuf);
-    }
-
-    /* Flush RX queue */
-    while ((netbuf = _QDequeue(&rxQueue)) != NULL) {
+    while ((netbuf = _QDequeue(&rxQ)) != NULL)
         nb_free(netbuf);
-    }
 
-    /* Disable all interrupts */
     [self disableAllInterrupts];
-
-    /* Initialize hardware */
-    if (![self __hwInit]) {
+    if (![self _hwInit]) {
         [self setRunning:NO];
         return NO;
     }
-
-    /* If enable flag is set, enable interrupts and set timeout */
     if (enable) {
-        result = [self enableAllInterrupts];
-        if (result != IO_R_SUCCESS) {
+        if ([self enableAllInterrupts] != IO_R_SUCCESS) {
             [self setRunning:NO];
             return NO;
         }
-
-        /* Set 2 second timeout */
         [self setRelativeTimeout:2000];
     }
-
-    /* Update running state */
     [self setRunning:enable];
-
-    /* Re-enable interrupts */
-    interruptDisabled = NO;
-
+    resetInProgress = NO;
     return YES;
 }
 
@@ -357,22 +333,22 @@ static void _QEnqueue(NetbufQueue *queue, netbuf_t netbuf);
     netbuf_t netbuf;
 
     /* Free all netbufs in free netbuf queue */
-    while ((netbuf = _QDequeue(&freeNetbufQueue)) != NULL) {
+    while ((netbuf = _QDequeue(&rxPoolQ)) != NULL) {
         nb_free(netbuf);
     }
 
     /* Free all netbufs in TX pending queue */
-    while ((netbuf = _QDequeue(&txPendingQueue)) != NULL) {
+    while ((netbuf = _QDequeue(&txFreeQ)) != NULL) {
         nb_free(netbuf);
     }
 
     /* Free all netbufs in TX queue */
-    while ((netbuf = _QDequeue(&txQueue)) != NULL) {
+    while ((netbuf = _QDequeue(&txQ)) != NULL) {
         nb_free(netbuf);
     }
 
     /* Free all netbufs in RX queue */
-    while ((netbuf = _QDequeue(&rxQueue)) != NULL) {
+    while ((netbuf = _QDequeue(&rxQ)) != NULL) {
         nb_free(netbuf);
     }
 
@@ -396,9 +372,9 @@ static void _QEnqueue(NetbufQueue *queue, netbuf_t netbuf);
 /*
  * Set IRQ
  */
-- (void)setIRQ:(unsigned short)interrupt
+- (void)setIRQ:(unsigned int)interrupt
 {
-    irq = interrupt;
+    real_irq = interrupt;
 }
 
 /*
@@ -414,7 +390,7 @@ static void _QEnqueue(NetbufQueue *queue, netbuf_t netbuf);
  */
 - (void)setDoAuto:(BOOL)flag
 {
-    doAutoDetect = flag;
+    autoConnector = flag;
 }
 
 /*
@@ -426,13 +402,12 @@ static void _QEnqueue(NetbufQueue *queue, netbuf_t netbuf);
     unsigned short filterCmd;
 
     /* Set promiscuous bit (bit 3 = 0x08) in RX filter byte */
-    rxFilterByte |= 0x08;
+    rxModes |= 0x08;
 
     /* Send RX filter command (0x8000 | filter byte) */
-    filterCmd = 0x8000 | (unsigned short)rxFilterByte;
+    filterCmd = 0x8000 | (unsigned short)rxModes;
     outw(ioBase + 0x0E, filterCmd);
 
-    isPromiscuous = YES;
     return YES;
 }
 
@@ -445,13 +420,12 @@ static void _QEnqueue(NetbufQueue *queue, netbuf_t netbuf);
     unsigned short filterCmd;
 
     /* Clear promiscuous bit (bit 3 = 0x08) in RX filter byte */
-    rxFilterByte &= 0xF7;  /* 0xF7 = ~0x08 */
+    rxModes &= 0xF7;  /* 0xF7 = ~0x08 */
 
     /* Send RX filter command (0x8000 | filter byte) */
-    filterCmd = 0x8000 | (unsigned short)rxFilterByte;
+    filterCmd = 0x8000 | (unsigned short)rxModes;
     outw(ioBase + 0x0E, filterCmd);
 
-    isPromiscuous = NO;
 }
 
 /*
@@ -463,13 +437,12 @@ static void _QEnqueue(NetbufQueue *queue, netbuf_t netbuf);
     unsigned short filterCmd;
 
     /* Set multicast bit (bit 1 = 0x02) in RX filter byte */
-    rxFilterByte |= 0x02;
+    rxModes |= 0x02;
 
     /* Send RX filter command (0x8000 | filter byte) */
-    filterCmd = 0x8000 | (unsigned short)rxFilterByte;
+    filterCmd = 0x8000 | (unsigned short)rxModes;
     outw(ioBase + 0x0E, filterCmd);
 
-    isMulticast = YES;
     return YES;
 }
 
@@ -482,13 +455,12 @@ static void _QEnqueue(NetbufQueue *queue, netbuf_t netbuf);
     unsigned short filterCmd;
 
     /* Clear multicast bit (bit 1 = 0x02) in RX filter byte */
-    rxFilterByte &= 0xFD;  /* 0xFD = ~0x02 */
+    rxModes &= 0xFD;  /* 0xFD = ~0x02 */
 
     /* Send RX filter command (0x8000 | filter byte) */
-    filterCmd = 0x8000 | (unsigned short)rxFilterByte;
+    filterCmd = 0x8000 | (unsigned short)rxModes;
     outw(ioBase + 0x0E, filterCmd);
 
-    isMulticast = NO;
 }
 
 /*
@@ -501,11 +473,11 @@ static void _QEnqueue(NetbufQueue *queue, netbuf_t netbuf);
     unsigned int savedIPL;
 
     /* Mark that we're in interrupt occurred */
-    isRunning = YES;
+    interruptHappened = YES;
 
     /* Check if interrupts are disabled - if so, schedule a reset */
-    if (interruptDisabled) {
-        [self __scheduleReset];
+    if (resetInProgress) {
+        [self _scheduleReset];
         return;
     }
 
@@ -513,7 +485,7 @@ static void _QEnqueue(NetbufQueue *queue, netbuf_t netbuf);
     while (1) {
         /* Raise IPL and dequeue packet */
         savedIPL = spldevice();
-        netbuf = _QDequeue(&rxQueue);
+        netbuf = _QDequeue(&rxQ);
 
         if (netbuf == NULL) {
             break;
@@ -538,7 +510,7 @@ static void _QEnqueue(NetbufQueue *queue, netbuf_t netbuf);
     /* Process TX pending queue (free completed transmissions) */
     while (1) {
         savedIPL = spldevice();
-        netbuf = _QDequeue(&txPendingQueue);
+        netbuf = _QDequeue(&txFreeQ);
 
         if (netbuf == NULL) {
             break;
@@ -549,30 +521,30 @@ static void _QEnqueue(NetbufQueue *queue, netbuf_t netbuf);
     }
 
     /* Update statistics if any errors occurred */
-    if (rxErrors != 0) {
-        [networkInterface incrementInputErrorsBy:rxErrors];
-        rxErrors = 0;
+    if (inputErrors != 0) {
+        [networkInterface incrementInputErrorsBy:inputErrors];
+        inputErrors = 0;
     }
 
-    if (txErrors != 0) {
-        [networkInterface incrementOutputErrorsBy:txErrors];
-        txErrors = 0;
+    if (outputErrors != 0) {
+        [networkInterface incrementOutputErrorsBy:outputErrors];
+        outputErrors = 0;
     }
 
-    if (txSuccess != 0) {
-        [networkInterface incrementOutputPacketsBy:txSuccess];
-        txSuccess = 0;
+    if (outputPackets != 0) {
+        [networkInterface incrementOutputPacketsBy:outputPackets];
+        outputPackets = 0;
     }
 
-    if (txCollisions != 0) {
-        [networkInterface incrementCollisionsBy:txCollisions];
-        txCollisions = 0;
+    if (collisions != 0) {
+        [networkInterface incrementCollisionsBy:collisions];
+        collisions = 0;
     }
 
     splx(savedIPL);
 
     /* Refill receive buffers */
-    [self QFill:&freeNetbufQueue];
+    [self QFill:&rxPoolQ];
 }
 
 /*
@@ -582,15 +554,15 @@ static void _QEnqueue(NetbufQueue *queue, netbuf_t netbuf);
 - (void)timeoutOccurred
 {
     /* Check if driver is running and interrupts enabled */
-    if ([self isRunning] && !interruptDisabled) {
+    if ([self isRunning] && !resetInProgress) {
         /* Check if we've received interrupts or TX queue is empty */
-        if (isRunning || txQueue.count == 0) {
+        if (interruptHappened || txQ.count == 0) {
             /* Activity detected - clear flag and reschedule */
-            isRunning = NO;
+            interruptHappened = NO;
             [self setRelativeTimeout:2000];
         } else {
             /* No activity - schedule a reset */
-            [self __scheduleReset];
+            [self _scheduleReset];
         }
     }
 }
@@ -598,14 +570,15 @@ static void _QEnqueue(NetbufQueue *queue, netbuf_t netbuf);
 /*
  * Get interrupt handler
  */
-- (void)getHandler:(IOInterruptHandler *)handler
+- (BOOL)getHandler:(IOInterruptHandler *)handler
             level:(unsigned int *)ipl
          argument:(void **)arg
      forInterrupt:(unsigned int)localInterrupt
 {
-    *handler = _intHandler;
+    *handler = intHandler;
     *ipl = 3;
     *arg = (void *)self;
+    return YES;
 }
 
 /*
@@ -614,151 +587,97 @@ static void _QEnqueue(NetbufQueue *queue, netbuf_t netbuf);
 - (void)transmit:(netbuf_t)packet
 {
     netbuf_t queuedPacket;
-    unsigned int *dataPtr;
+    unsigned int *data;
+    unsigned char *bytes;
     unsigned int packetSize;
-    unsigned int wordCount;
-    unsigned int byteRemainder;
-    unsigned int padBytes;
+    unsigned int remainder;
+    unsigned int i;
     unsigned short txFreeSpace;
     unsigned int savedIPL;
-    unsigned int i;
 
-    /* Check if adapter is running and interrupts enabled */
-    if (![self isRunning] || interruptDisabled) {
+    if (![self isRunning] || resetInProgress) {
         nb_free(packet);
         return;
     }
-
-    /* Pad packet to minimum 60 bytes if needed */
     packetSize = nb_size(packet);
-    if (packetSize < 60) {
+    if (packetSize <= 59)
         nb_grow_bot(packet, 60 - packetSize);
-    }
-
-    /* Perform loopback if needed */
     [self performLoopback:packet];
 
-    /* Raise IPL */
     savedIPL = spldevice();
-
-    /* Service TX queue - transmit queued packets if FIFO has space */
-    while (txPendingQueue.count < txPendingQueue.max && txQueue.count > 0) {
-        /* Check FIFO free space at window 3, offset 0x0C */
-        if (currentWindow != 0x03) {
-            outw(ioBase + 0x0E, 0x0803);
-            currentWindow = 0x03;
+    while (txFreeQ.max > txFreeQ.count && txQ.head != NULL) {
+        packetSize = nb_size(txQ.head);
+        if (currentWindow != 3) {
+            outw(ioBase + 14, 0x0803);
+            currentWindow = 3;
         }
-        txFreeSpace = inw(ioBase + 0x0C);
-
-        /* Get size of packet at head of queue */
-        packetSize = nb_size(txQueue.head);
-
-        /* Check if FIFO has enough space (packet size + 50 bytes margin) */
-        if (txFreeSpace - 50 < packetSize) {
+        txFreeSpace = inw(ioBase + 12);
+        if (packetSize > (unsigned int)txFreeSpace - 50)
             break;
-        }
 
-        /* Dequeue packet from TX queue */
-        queuedPacket = _QDequeue(&txQueue);
-        dataPtr = (unsigned int *)nb_map(queuedPacket);
+        queuedPacket = _QDequeue(&txQ);
+        data = (unsigned int *)nb_map(queuedPacket);
         packetSize = nb_size(queuedPacket);
-
-        /* Switch to window 1 for transmit */
-        if (currentWindow != 0x01) {
-            outw(ioBase + 0x0E, 0x0801);
-            currentWindow = 0x01;
+        remainder = packetSize & 3;
+        if (currentWindow != 1) {
+            outw(ioBase + 14, 0x0801);
+            currentWindow = 1;
         }
-
-        /* Write TX preamble (0x8000 | packet size) */
-        outl(ioBase, 0x8000 | (packetSize & 0x7FF));
-
-        /* Write packet data in 32-bit chunks */
-        wordCount = packetSize >> 2;
-        for (i = 0; i < wordCount; i++) {
-            outl(ioBase, dataPtr[i]);
-        }
-
-        /* Write remaining bytes */
-        byteRemainder = packetSize & 3;
-        if (byteRemainder > 0) {
-            unsigned char *bytePtr = (unsigned char *)&dataPtr[wordCount];
-            for (i = 0; i < byteRemainder; i++) {
-                outb(ioBase, bytePtr[i]);
-            }
-
-            /* Pad to 4-byte boundary */
-            padBytes = 4 - byteRemainder;
-            for (i = 0; i < padBytes; i++) {
+        outl(ioBase, (packetSize & 0x7ff) | 0x8000);
+        for (i = 0; i < packetSize >> 2; i++)
+            outl(ioBase, data[i]);
+        if (remainder != 0) {
+            bytes = (unsigned char *)&data[packetSize >> 2];
+            for (i = 0; i < remainder; i++)
+                outb(ioBase, bytes[i]);
+            for (; i < 4; i++)
                 outb(ioBase, 0);
-            }
         }
-
-        /* Enqueue to TX pending queue */
-        _QEnqueue(&txPendingQueue, queuedPacket);
+        _QEnqueue(&txFreeQ, queuedPacket);
     }
 
-    /* Flush TX pending queue - free completed transmissions */
-    while ((queuedPacket = _QDequeue(&txPendingQueue)) != NULL) {
+    while ((queuedPacket = _QDequeue(&txFreeQ)) != NULL) {
         splx(savedIPL);
         nb_free(queuedPacket);
         savedIPL = spldevice();
     }
 
-    /* Try to transmit new packet directly if TX queue is empty */
-    if (txQueue.count == 0) {
-        /* Check FIFO free space */
-        if (currentWindow != 0x03) {
-            outw(ioBase + 0x0E, 0x0803);
-            currentWindow = 0x03;
-        }
-        txFreeSpace = inw(ioBase + 0x0C);
-
+    if (txQ.head == NULL) {
         packetSize = nb_size(packet);
-
-        /* If FIFO has enough space, transmit immediately */
-        if (txFreeSpace - 50 >= packetSize) {
-            dataPtr = (unsigned int *)nb_map(packet);
-
-            /* Switch to window 1 */
-            if (currentWindow != 0x01) {
-                outw(ioBase + 0x0E, 0x0801);
-                currentWindow = 0x01;
+        if (currentWindow != 3) {
+            outw(ioBase + 14, 0x0803);
+            currentWindow = 3;
+        }
+        txFreeSpace = inw(ioBase + 12);
+        if (packetSize <= (unsigned int)txFreeSpace - 50) {
+            data = (unsigned int *)nb_map(packet);
+            if (currentWindow != 1) {
+                outw(ioBase + 14, 0x0801);
+                currentWindow = 1;
             }
-
-            /* Write TX preamble */
-            outl(ioBase, 0x8000 | (packetSize & 0x7FF));
-
-            /* Write data in dwords */
-            wordCount = packetSize >> 2;
-            for (i = 0; i < wordCount; i++) {
-                outl(ioBase, dataPtr[i]);
-            }
-
-            /* Write remaining bytes */
-            byteRemainder = packetSize & 3;
-            if (byteRemainder > 0) {
-                unsigned char *bytePtr = (unsigned char *)&dataPtr[wordCount];
-                for (i = 0; i < byteRemainder; i++) {
-                    outb(ioBase, bytePtr[i]);
-                }
-
-                /* Pad to 4-byte boundary */
-                padBytes = 4 - byteRemainder;
-                for (i = 0; i < padBytes; i++) {
+            outl(ioBase, (packetSize & 0x7ff) | 0x8000);
+            for (i = 0; i < packetSize >> 2; i++)
+                outl(ioBase, data[i]);
+            remainder = packetSize & 3;
+            if (remainder != 0) {
+                bytes = (unsigned char *)&data[packetSize >> 2];
+                for (i = 0; i < remainder; i++)
+                    outb(ioBase, bytes[i]);
+                for (; i < 4; i++)
                     outb(ioBase, 0);
-                }
             }
-
-            /* Packet transmitted - free it and lower IPL */
             splx(savedIPL);
             nb_free(packet);
             return;
         }
     }
 
-    /* FIFO full or TX queue has packets - enqueue this packet */
-    _QEnqueue(&txQueue, packet);
-
+    if (txQ.max <= txQ.count) {
+        splx(savedIPL);
+        nb_free(packet);
+        return;
+    }
+    _QEnqueue(&txQ, packet);
     splx(savedIPL);
 }
 
@@ -767,7 +686,7 @@ static void _QEnqueue(NetbufQueue *queue, netbuf_t netbuf);
  */
 - (unsigned int)transmitQueueSize
 {
-    return txQueue.max;
+    return txQ.max;
 }
 
 /*
@@ -775,7 +694,7 @@ static void _QEnqueue(NetbufQueue *queue, netbuf_t netbuf);
  */
 - (unsigned int)transmitQueueCount
 {
-    return txQueue.count;
+    return txQ.count;
 }
 
 /*
@@ -809,7 +728,7 @@ static void _QEnqueue(NetbufQueue *queue, netbuf_t netbuf);
 /*
  * Fill queue with pre-allocated netbuf buffers up to max capacity
  */
-- (void)QFill:(NetbufQueue *)queue
+- (void)QFill:(EtherLink3Queue *)queue
 {
     netbuf_t netbuf;
     unsigned int savedIPL;
@@ -944,7 +863,7 @@ static void _QEnqueue(NetbufQueue *queue, netbuf_t netbuf);
     }
 
     /* Configure IRQ in high 4 bits (bits 12-15), preserve low 12 bits */
-    reg8Value = (reg8Value & 0x0FFF) | ((unsigned short)irq << 12);
+    reg8Value = (reg8Value & 0x0FFF) | ((unsigned short)real_irq << 12);
     outw(ioBase + 0x08, reg8Value);
 
     /* Switch to window 0 again if needed */
@@ -992,148 +911,95 @@ static void _QEnqueue(NetbufQueue *queue, netbuf_t netbuf);
     [super disableAllInterrupts];
 }
 
-@end
-
-/* Private Category Implementation */
-@implementation EtherLink3(EtherLink3Private)
 
 /*
  * Hardware initialization
  */
-- (BOOL)__hwInit
+- (BOOL)_hwInit
 {
-    const char *driverName;
-    unsigned char idSeq;
-    unsigned char carry;
-    int i;
+    unsigned char idSequence;
+    unsigned char previous;
     unsigned short configReg;
-    unsigned short mediaControlReg;
-    enet_addr_t localMAC;
+    int i;
 
-    driverName = [[self name] cString];
-
-    /* Check if ISA card - if so, need to send ID sequence again */
-    if (!isISA) {
-        /* Non-ISA card - send simple activate command */
-        outw(ioBase + 0x0E, 0x0030);
-    } else {
-        /* ISA card - send full activation sequence */
-        outb(EL3_ID_PORT, 0xC0);
+    if (isISA) {
+        outb(0x110, 0xc0);
         IOSleep(1);
-        outb(EL3_ID_PORT, 0x00);
-        outb(EL3_ID_PORT, 0x00);
-
-        /* Generate 255-byte LFSR ID sequence */
-        idSeq = 0xFF;
+        outb(0x110, 0);
+        outb(0x110, 0);
+        idSequence = 0xff;
         for (i = 0; i < 255; i++) {
-            outb(EL3_ID_PORT, idSeq);
-            carry = (idSeq & 0x80) ? 1 : 0;
-            idSeq <<= 1;
-            if (carry) {
-                idSeq ^= 0xCF;
-            }
+            outb(0x110, idSequence);
+            previous = idSequence;
+            idSequence <<= 1;
+            if (previous & 0x80)
+                idSequence ^= 0xcf;
         }
-        outb(EL3_ID_PORT, 0xFF);
-    }
-
-    /* Reset and disable TX and RX */
-    outw(ioBase + 0x0E, 0x2800);  /* RX reset */
-    outw(ioBase + 0x0E, 0x5800);  /* TX reset */
-    outw(ioBase + 0x0E, 0x1800);  /* RX disable */
-    outw(ioBase + 0x0E, 0x5000);  /* TX disable */
-
-    /* Copy MAC address to local variable */
-    bcopy(&stationAddress, &localMAC, sizeof(enet_addr_t));
-
-    /* Switch to window 2 to program station address */
-    if (currentWindow != 0x02) {
-        outw(ioBase + 0x0E, 0x0802);
-        currentWindow = 0x02;
-    }
-
-    /* Write MAC address to station address registers (window 2, offsets 0-5) */
-    for (i = 0; i < 6; i++) {
-        outb(ioBase + i, localMAC.ea_byte[i]);
-    }
-
-    /* Check if auto-detect is needed */
-    if (!doAutoDetect) {
-        /* No auto-detect - configure connector directly */
-
-        /* Switch to window 0 to access configuration register */
-        if (currentWindow != 0x00) {
-            outw(ioBase + 0x0E, 0x0800);
-            currentWindow = 0x00;
-        }
-
-        /* Read configuration register at window 0, offset 6 */
-        configReg = inw(ioBase + 0x06);
-        configReg &= 0xC0FF;  /* Keep bits 15-14 and 7-0 */
-
-        /* Configure based on connector type */
-        if (connectorType == CONNECTOR_BNC) {
-            /* BNC - set bits 15-14 */
-            configReg |= 0xC000;
-        } else if (connectorType == CONNECTOR_AUI) {
-            /* AUI - set bit 14 only, clear high byte except bit 14 */
-            configReg = (configReg & 0x00FF) | 0x4000;
-        } else if (connectorType == CONNECTOR_RJ45) {
-            /* RJ-45 - clear high byte */
-            configReg &= 0x00FF;
-        }
-
-        /* Write configuration register */
-        if (currentWindow != 0x00) {
-            outw(ioBase + 0x0E, 0x0800);
-            currentWindow = 0x00;
-        }
-        outw(ioBase + 0x06, configReg);
-
-        /* Additional configuration based on connector type */
-        if (connectorType == CONNECTOR_BNC) {
-            /* Enable adapter for BNC */
-            outw(ioBase + 0x0E, 0x1000);
-            IOSleep(1);
-        } else if (connectorType == CONNECTOR_RJ45) {
-            /* Configure link beat detection for RJ-45 */
-            if (currentWindow != 0x04) {
-                outw(ioBase + 0x0E, 0x0804);
-                currentWindow = 0x04;
-            }
-            mediaControlReg = 0x00C0;  /* Enable link beat */
-            outw(ioBase + 0x0A, mediaControlReg);
-        } else {
-            /* AUI - configure SQE */
-            if (currentWindow != 0x04) {
-                outw(ioBase + 0x0E, 0x0804);
-                currentWindow = 0x04;
-            }
-            mediaControlReg = 0x0008;  /* Enable SQE */
-            outw(ioBase + 0x0A, mediaControlReg);
-        }
-
-        /* Enable interrupts and adapter */
-        outw(ioBase + 0x0E, 0x7097);  /* Set interrupt enable */
-        outw(ioBase + 0x0E, 0x7897);  /* Set indication enable */
-        outw(ioBase + 0x0E, 0x68FF);  /* Acknowledge all interrupts */
-        outw(ioBase + 0x0E, rxFilterByte | 0x8000);  /* Set RX filter */
-        outw(ioBase + 0x0E, 0x4800);  /* Enable TX */
-        outw(ioBase + 0x0E, 0x2000);  /* Enable RX */
-
-        return YES;
+        outb(0x110, 0xff);
     } else {
-        /* Auto-detect mode - call auto-detect and recurse */
-        [self __doAutoConnectorDetect];
-        doAutoDetect = NO;  /* Clear flag to prevent infinite recursion */
-        return [self __hwInit];  /* Recursive call */
+        outw(ioBase + 14, 0x0030);
     }
+
+    outw(ioBase + 14, 0x2800);
+    outw(ioBase + 14, 0x5800);
+    outw(ioBase + 14, 0x1800);
+    outw(ioBase + 14, 0x5000);
+
+    if (currentWindow != 2) {
+        outw(ioBase + 14, 0x0802);
+        currentWindow = 2;
+    }
+    for (i = 0; i < 6; i++)
+        outb(ioBase + i, myAddress.ea_byte[i]);
+
+    if (autoConnector) {
+        [self _doAutoConnectorDetect];
+        autoConnector = NO;
+        return [self _hwInit];
+    }
+
+    if (currentWindow != 0) {
+        outw(ioBase + 14, 0x0800);
+        currentWindow = 0;
+    }
+    configReg = inw(ioBase + 6) & 0xc0ff;
+    if (myConnector == 1)
+        configReg |= 0xc000;
+    else if (myConnector == 0)
+        configReg = (configReg & 0x3fff) | 0x4000;
+    else
+        configReg &= 0x3fff;
+    if (currentWindow != 0) {
+        outw(ioBase + 14, 0x0800);
+        currentWindow = 0;
+    }
+    outw(ioBase + 6, configReg);
+
+    if (myConnector == 1) {
+        outw(ioBase + 14, 0x1000);
+        IOSleep(1);
+    } else {
+        if (currentWindow != 4) {
+            outw(ioBase + 14, 0x0804);
+            currentWindow = 4;
+        }
+        outw(ioBase + 10, myConnector == 2 ? 0x00c0 : 0x0008);
+    }
+
+    outw(ioBase + 14, 0x7097);
+    outw(ioBase + 14, 0x7897);
+    outw(ioBase + 14, 0x68ff);
+    outw(ioBase + 14, rxModes | 0x8000);
+    outw(ioBase + 14, 0x4800);
+    outw(ioBase + 14, 0x2000);
+    return YES;
 }
 
 /*
  * Auto-detect connector type (AUI, BNC, or RJ-45)
  * Tests available media ports and selects the best one
  */
-- (void)__doAutoConnectorDetect
+- (void)_doAutoConnectorDetect
 {
     const char *driverName;
     unsigned short mediaAvail;
@@ -1161,7 +1027,7 @@ static void _QEnqueue(NetbufQueue *queue, netbuf_t netbuf);
 
     /* Test RJ-45 (10Base-T) if available */
     if (mediaAvail & MEDIA_AVAIL_RJ45) {
-        connectorType = CONNECTOR_RJ45;
+        myConnector = CONNECTOR_RJ45;
 
         /* Read and modify configuration register at offset 6 */
         configReg = inw(ioBase + 0x06);
@@ -1202,7 +1068,7 @@ static void _QEnqueue(NetbufQueue *queue, netbuf_t netbuf);
 
     /* Test BNC (10Base2) if available */
     if (mediaAvail & MEDIA_AVAIL_BNC) {
-        connectorType = CONNECTOR_BNC;
+        myConnector = CONNECTOR_BNC;
 
         /* Configure for BNC in window 0, register 6 */
         if (currentWindow != 0) {
@@ -1224,7 +1090,7 @@ static void _QEnqueue(NetbufQueue *queue, netbuf_t netbuf);
         outw(ioBase + 0x0E, 0x68FF);  /* Set RX filter */
 
         /* Set RX filter byte */
-        outw(ioBase + 0x0E, rxFilterByte | 0x8000);
+        outw(ioBase + 0x0E, rxModes | 0x8000);
 
         /* Enable TX */
         outw(ioBase + 0x0E, 0x4800);
@@ -1243,12 +1109,12 @@ static void _QEnqueue(NetbufQueue *queue, netbuf_t netbuf);
             bzero(dataPtr, 64);
 
             /* Set destination to our own MAC (loopback test) */
-            dataPtr[0] = *(unsigned int *)&stationAddress.ea_byte[0];
-            *(unsigned short *)((char *)dataPtr + 4) = *(unsigned short *)&stationAddress.ea_byte[4];
+            dataPtr[0] = *(unsigned int *)&myAddress.ea_byte[0];
+            *(unsigned short *)((char *)dataPtr + 4) = *(unsigned short *)&myAddress.ea_byte[4];
 
             /* Set source to our MAC */
-            *(unsigned int *)((char *)dataPtr + 6) = *(unsigned int *)&stationAddress.ea_byte[0];
-            *(unsigned short *)((char *)dataPtr + 10) = *(unsigned short *)&stationAddress.ea_byte[4];
+            *(unsigned int *)((char *)dataPtr + 6) = *(unsigned int *)&myAddress.ea_byte[0];
+            *(unsigned short *)((char *)dataPtr + 10) = *(unsigned short *)&myAddress.ea_byte[4];
 
             /* Set EtherType to 0x4444 */
             *(unsigned short *)((char *)dataPtr + 12) = 0x4444;
@@ -1300,16 +1166,16 @@ static void _QEnqueue(NetbufQueue *queue, netbuf_t netbuf);
     /* Test AUI if available */
     if (mediaAvail & MEDIA_AVAIL_AUI) {
         IOLog("%s: AUI port selected\n", driverName);
-        connectorType = CONNECTOR_AUI;
+        myConnector = CONNECTOR_AUI;
         return;
     }
 
     /* Default based on availability */
     if (mediaAvail & MEDIA_AVAIL_RJ45) {
-        connectorType = CONNECTOR_RJ45;
+        myConnector = CONNECTOR_RJ45;
         IOLog("%s: defaulting to RJ-45\n", driverName);
     } else {
-        connectorType = CONNECTOR_BNC;
+        myConnector = CONNECTOR_BNC;
         IOLog("%s: defaulting to BNC\n", driverName);
     }
 }
@@ -1318,16 +1184,14 @@ static void _QEnqueue(NetbufQueue *queue, netbuf_t netbuf);
  * Schedule reset
  * Schedules a delayed reset after 200ms using timeout mechanism
  */
-- (void)__scheduleReset
+- (void)_scheduleReset
 {
     /* Clear any existing timeout */
     [self clearTimeout];
 
     /* Schedule reset function to be called after 200ms */
-    ns_timeout((func)__resetFunc, self, 0, CALLOUT_PRI_SOFTINT0, 200);
+    ns_timeout((func)__resetFunc, self, 0, 0, 4);
 }
-
-@end
 
 /* Utility Functions */
 
@@ -1356,272 +1220,134 @@ static void __resetFunc(void *arg)
 /*
  * Interrupt handler - main ISR for EtherLink III
  */
-static void _intHandler(void *identity, void *state, unsigned int arg)
+static void intHandler(void *identity, void *state, unsigned int arg)
 {
     EtherLink3 *driver = (EtherLink3 *)arg;
-    unsigned short ioBase;
-    unsigned short statusReg;
+    unsigned short ioBase = driver->ioBase;
+    unsigned short status = inw(ioBase + 14);
     unsigned short rxStatus;
-    unsigned short txStatus;
     unsigned short txFreeSpace;
-    unsigned char txStatusByte;
+    unsigned char txStatus;
     unsigned int packetSize;
     unsigned int wordCount;
-    unsigned int byteRemainder;
-    netbuf_t netbuf;
-    netbuf_t *nextPtr;
-    unsigned int *dataPtr;
-    unsigned char *bytePtr;
-    unsigned int actualSize;
+    unsigned int remainder;
+    unsigned int *data;
+    unsigned char *bytes;
+    netbuf_t packet;
     unsigned int i;
-    BOOL hadInterrupt = NO;
+    BOOL hadReceive = NO;
 
-    if (driver == nil) {
+    if (driver->resetInProgress)
         return;
-    }
 
-    /* Check if interrupts are disabled */
-    if (driver->interruptDisabled) {
-        return;
-    }
-
-    ioBase = driver->ioBase;
-
-    /* Read status register and process interrupts */
-    statusReg = inw(ioBase + 0x0E);
-
-    /* Main interrupt processing loop */
-    while ((statusReg & 0xFF) != 0) {
-        /* Acknowledge interrupt with indication enable */
-        outw(ioBase + 0x0E, (statusReg & 0xFF) | 0x6800);
-
-        /* Check for adapter failure (bit 1) */
-        if (statusReg & 0x02) {
-            driver->interruptDisabled = YES;
+    while (status & 0xff) {
+        outw(ioBase + 14, (status & 0xff) | 0x6800);
+        if (status & 0x02) {
+            driver->resetInProgress = YES;
             break;
         }
 
-        /* Handle RX complete interrupt (bit 4 = 0x10) */
-        if (statusReg & 0x10) {
-            /* Switch to window 1 if not already there */
-            if (driver->currentWindow != 0x01) {
-                outw(ioBase + 0x0E, 0x0801);  /* Select window 1 */
-                driver->currentWindow = 0x01;
+        if (status & 0x10) {
+            if (driver->currentWindow != 1) {
+                outw(ioBase + 14, 0x0801);
+                driver->currentWindow = 1;
             }
-
-            /* Read RX status register at window 1, offset 8 */
-            rxStatus = inw(ioBase + 0x08);
-
-            /* Check for RX errors (bit 14 = incomplete, bit 15 = error) */
-            if ((rxStatus & 0xC000) == 0 && (short)rxStatus >= 0) {
-                /* Extract packet size (bits 0-10) */
-                packetSize = rxStatus & 0x7FF;
-
-                /* Validate packet size (must be at least 60 bytes, less than 1515) */
-                if (packetSize >= 60 && packetSize < 1515) {
-                    /* Check if we can receive (RX queue not full and free netbuf available) */
-                    if (driver->rxQueueCount < driver->rxQueueMax && driver->freeNetbufCount > 0) {
-                        /* Dequeue a free netbuf from free list */
-                        netbuf = driver->freeNetbufHead;
-                        if (netbuf != NULL) {
-                            driver->freeNetbufHead = *(netbuf_t *)netbuf;
-                            driver->freeNetbufCount--;
-                            if (driver->freeNetbufCount == 0) {
-                                driver->freeNetbufTail = NULL;
-                                driver->freeNetbufHead = NULL;
-                            }
-                            *(netbuf_t *)netbuf = NULL;
-
-                            /* Map netbuf to get data pointer */
-                            dataPtr = (unsigned int *)nb_map(netbuf);
-
-                            /* Read packet data in 32-bit chunks from I/O port 0 */
-                            wordCount = packetSize >> 2;
-                            for (i = 0; i < wordCount; i++) {
-                                dataPtr[i] = inl(ioBase);
-                            }
-
-                            /* Read remaining bytes */
-                            byteRemainder = packetSize & 3;
-                            if (byteRemainder > 0) {
-                                bytePtr = (unsigned char *)&dataPtr[wordCount];
-                                for (i = 0; i < byteRemainder; i++) {
-                                    bytePtr[i] = inb(ioBase);
-                                }
-                            }
-
-                            /* Shrink netbuf to actual packet size */
-                            actualSize = nb_size(netbuf);
-                            if (packetSize < actualSize) {
-                                nb_shrink_bot(netbuf, actualSize - packetSize);
-                            }
-
-                            /* Enqueue to RX queue */
-                            if (driver->rxQueueCount < driver->rxQueueMax) {
-                                if (driver->rxQueueCount == 0) {
-                                    driver->rxQueueTail = netbuf;
-                                    driver->rxQueueHead = netbuf;
-                                } else {
-                                    *(netbuf_t *)driver->rxQueueTail = netbuf;
-                                    driver->rxQueueTail = netbuf;
-                                }
-                                *(netbuf_t *)netbuf = NULL;
-                                driver->rxQueueCount++;
-                            } else {
-                                IOLog("EtherLink III: queue exceeded max %d - freeing netbuf\n",
-                                      driver->rxQueueMax);
-                                nb_free(netbuf);
-                            }
-
-                            /* Issue RX discard command */
-                            outw(ioBase + 0x0E, 0x4000);
-
-                            /* Wait for command to complete (bit 12 = 0x1000) */
-                            do {
-                                rxStatus = inw(ioBase + 0x0E);
-                            } while (rxStatus & 0x1000);
-
-                            hadInterrupt = YES;
-                        }
-                    }
-                }
-            }
-
-            /* Discard packet if we couldn't receive it */
-            if (!hadInterrupt) {
-                outw(ioBase + 0x0E, 0x4000);  /* RX discard */
-                do {
-                    rxStatus = inw(ioBase + 0x0E);
-                } while (rxStatus & 0x1000);
-                driver->rxErrors++;
-            }
-        }
-
-        /* Handle TX complete interrupt (bit 2 = 0x04) */
-        if (statusReg & 0x04) {
-            /* Switch to window 1 if not already there */
-            if (driver->currentWindow != 0x01) {
-                outw(ioBase + 0x0E, 0x0801);  /* Select window 1 */
-                driver->currentWindow = 0x01;
-            }
-
-            /* Read TX status byte at window 1, offset 0xB */
-            txStatusByte = inb(ioBase + 0x0B);
-
-            /* Clear TX status */
-            outb(ioBase + 0x0B, 0);
-
-            /* Check for TX errors (bits 2-5 = 0x3C) */
-            if ((txStatusByte & 0x3C) == 0) {
-                /* Successful transmission */
-                driver->txSuccess++;
-            } else {
-                /* TX error occurred */
-                /* Check for underrun or jabber (bits 4-5 = 0x30) */
-                if (txStatusByte & 0x30) {
-                    /* Issue TX reset command */
-                    outw(ioBase + 0x0E, 0x5800);
-                }
-
-                /* Issue TX enable command */
-                outw(ioBase + 0x0E, 0x4800);
-
-                driver->txErrors++;
-
-                /* Check for max collisions (bit 3) */
-                if (txStatusByte & 0x08) {
-                    driver->txCollisions++;
-                }
-            }
-
-            /* Try to transmit more packets from TX queue */
-            while (driver->txPendingCount < driver->txPendingMax && driver->txQueueCount > 0) {
-                /* Switch to window 3 to check TX free space */
-                if (driver->currentWindow != 0x03) {
-                    outw(ioBase + 0x0E, 0x0803);  /* Select window 3 */
-                    driver->currentWindow = 0x03;
-                }
-
-                /* Get packet size */
-                netbuf = driver->txQueueHead;
-                packetSize = nb_size(netbuf);
-
-                /* Read TX free space at window 3, offset 0xC */
-                txFreeSpace = inw(ioBase + 0x0C);
-
-                /* Check if enough space (need size + 50 bytes overhead) */
-                if (txFreeSpace < packetSize + 50) {
-                    break;
-                }
-
-                /* Dequeue packet from TX queue */
-                driver->txQueueHead = *(netbuf_t *)netbuf;
-                driver->txQueueCount--;
-                if (driver->txQueueCount == 0) {
-                    driver->txQueueTail = NULL;
-                    driver->txQueueHead = NULL;
-                }
-                *(netbuf_t *)netbuf = NULL;
-
-                /* Get packet data */
-                dataPtr = (unsigned int *)nb_map(netbuf);
-                byteRemainder = packetSize & 3;
-
-                /* Switch to window 1 for TX */
-                if (driver->currentWindow != 0x01) {
-                    outw(ioBase + 0x0E, 0x0801);  /* Select window 1 */
-                    driver->currentWindow = 0x01;
-                }
-
-                /* Write TX preamble with length */
-                outl(ioBase, (packetSize & 0x7FF) | 0x8000);
-
-                /* Write packet data in 32-bit chunks */
-                wordCount = packetSize >> 2;
-                for (i = 0; i < wordCount; i++) {
-                    outl(ioBase, dataPtr[i]);
-                }
-
-                /* Write remaining bytes */
-                if (byteRemainder > 0) {
-                    bytePtr = (unsigned char *)&dataPtr[wordCount];
-                    for (i = 0; i < byteRemainder; i++) {
-                        outb(ioBase, bytePtr[i]);
-                    }
-
-                    /* Pad to 32-bit boundary */
-                    for (i = byteRemainder; i < 4; i++) {
-                        outb(ioBase, 0);
-                    }
-                }
-
-                /* Enqueue to TX pending queue */
-                if (driver->txPendingCount < driver->txPendingMax) {
-                    if (driver->txPendingCount == 0) {
-                        driver->txPendingTail = netbuf;
-                        driver->txPendingHead = netbuf;
-                    } else {
-                        *(netbuf_t *)driver->txPendingTail = netbuf;
-                        driver->txPendingTail = netbuf;
-                    }
-                    *(netbuf_t *)netbuf = NULL;
-                    driver->txPendingCount++;
+            rxStatus = inw(ioBase + 8);
+            if (rxStatus & 0x4000) {
+                outw(ioBase + 14, 0x4000);
+                while (inw(ioBase + 14) & 0x1000) {}
+                driver->inputErrors++;
+            } else if (!(rxStatus & 0x8000)) {
+                packetSize = rxStatus & 0x7ff;
+                if (packetSize > 1514 ||
+                    driver->rxQ.count >= driver->rxQ.max) {
+                    outw(ioBase + 14, 0x4000);
+                    while (inw(ioBase + 14) & 0x1000) {}
+                    driver->inputErrors++;
                 } else {
-                    IOLog("EtherLink III: queue exceeded max %d - freeing netbuf\n",
-                          driver->txPendingMax);
-                    nb_free(netbuf);
+                    packet = _QDequeue(&driver->rxPoolQ);
+                    if (packet == NULL) {
+                        outw(ioBase + 14, 0x4000);
+                        while (inw(ioBase + 14) & 0x1000) {}
+                        driver->inputErrors++;
+                    } else {
+                        data = (unsigned int *)nb_map(packet);
+                        wordCount = packetSize >> 2;
+                        for (i = 0; i < wordCount; i++)
+                            data[i] = inl(ioBase);
+                        remainder = packetSize & 3;
+                        if (remainder != 0) {
+                            bytes = (unsigned char *)&data[wordCount];
+                            for (i = 0; i < remainder; i++)
+                                bytes[i] = inb(ioBase);
+                        }
+                        if (packetSize < nb_size(packet))
+                            nb_shrink_bot(packet, nb_size(packet) - packetSize);
+                        _QEnqueue(&driver->rxQ, packet);
+                        outw(ioBase + 14, 0x4000);
+                        while (inw(ioBase + 14) & 0x1000) {}
+                    }
                 }
             }
+            hadReceive = YES;
         }
 
-        /* Read status register again */
-        statusReg = inw(ioBase + 0x0E);
+        if (status & 0x04) {
+            if (driver->currentWindow != 1) {
+                outw(ioBase + 14, 0x0801);
+                driver->currentWindow = 1;
+            }
+            txStatus = inb(ioBase + 11);
+            outb(ioBase + 11, 0);
+            if (txStatus & 0x3c) {
+                if (txStatus & 0x30)
+                    outw(ioBase + 14, 0x5800);
+                outw(ioBase + 14, 0x4800);
+                driver->outputErrors++;
+                if (txStatus & 0x08)
+                    driver->collisions++;
+            } else {
+                driver->outputPackets++;
+            }
+
+            while (driver->txFreeQ.count < driver->txFreeQ.max &&
+                   driver->txQ.head != NULL) {
+                packetSize = nb_size(driver->txQ.head);
+                if (driver->currentWindow != 3) {
+                    outw(ioBase + 14, 0x0803);
+                    driver->currentWindow = 3;
+                }
+                txFreeSpace = inw(ioBase + 12);
+                if (packetSize > (unsigned int)txFreeSpace - 50)
+                    break;
+
+                packet = _QDequeue(&driver->txQ);
+                data = (unsigned int *)nb_map(packet);
+                packetSize = nb_size(packet);
+                remainder = packetSize & 3;
+                if (driver->currentWindow != 1) {
+                    outw(ioBase + 14, 0x0801);
+                    driver->currentWindow = 1;
+                }
+                outl(ioBase, (packetSize & 0x7ff) | 0x8000);
+                wordCount = packetSize >> 2;
+                for (i = 0; i < wordCount; i++)
+                    outl(ioBase, data[i]);
+                if (remainder != 0) {
+                    bytes = (unsigned char *)&data[wordCount];
+                    for (i = 0; i < remainder; i++)
+                        outb(ioBase, bytes[i]);
+                    for (; i < 4; i++)
+                        outb(ioBase, 0);
+                }
+                _QEnqueue(&driver->txFreeQ, packet);
+            }
+        }
+        status = inw(ioBase + 14);
     }
 
-    /* If we had interrupts or adapter failed, send interrupt notification */
-    if (hadInterrupt || driver->interruptDisabled) {
+    if (hadReceive || driver->resetInProgress)
         IOSendInterrupt(identity, state, 0x232325);
-    }
 }
 
 /*
@@ -1629,12 +1355,12 @@ static void _intHandler(void *identity, void *state, unsigned int arg)
  * This is a simple linked-list dequeue operation
  * The netbuf structure uses its first word as a next pointer
  *
- * param_1 is a pointer to a NetbufQueue structure containing:
+ * param_1 is a pointer to a EtherLink3Queue structure containing:
  *   - head pointer (offset 0)
  *   - tail pointer (offset 4)
  *   - count (offset 8)
  */
-static netbuf_t _QDequeue(NetbufQueue *queue)
+static netbuf_t _QDequeue(EtherLink3Queue *queue)
 {
     netbuf_t netbuf;
 
@@ -1663,7 +1389,7 @@ static netbuf_t _QDequeue(NetbufQueue *queue)
 /*
  * Enqueue netbuf to queue
  */
-static void _QEnqueue(NetbufQueue *queue, netbuf_t netbuf)
+static void _QEnqueue(EtherLink3Queue *queue, netbuf_t netbuf)
 {
     /* Enqueue to tail */
     if (queue->count == 0) {

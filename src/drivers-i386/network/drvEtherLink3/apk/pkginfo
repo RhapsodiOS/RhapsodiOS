@@ -1,6 +1,7 @@
-pkgname = etherlink3
-pkgver = 16
+pkgname = drvetherlink3
+pkgver = 1
+arch = i386
 pkgdesc = 3Com EtherLink 3 ethernet device driver
-maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
+maintainer = Pat Raynor
 license = APSL
 makedepends = build-base, drivertools, driverkit, kernload

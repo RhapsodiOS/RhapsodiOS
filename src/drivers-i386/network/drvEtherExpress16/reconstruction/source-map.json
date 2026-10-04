@@ -1,0 +1,621 @@
+{
+  "boundary_disputed": [],
+  "duplicate_candidates": [],
+  "mapped": [
+    {
+      "address": 0,
+      "reference_names": [
+        "_put_scp"
+      ],
+      "size": 77,
+      "source_line": 2219,
+      "source_path": "src/drivers-i386/network/drvEtherExpress16/EtherExpress16.drvproj/EtherExpress16.lksproj/EtherExpress16.m"
+    },
+    {
+      "address": 80,
+      "reference_names": [
+        "_put_iscp"
+      ],
+      "size": 81,
+      "source_line": 2091,
+      "source_path": "src/drivers-i386/network/drvEtherExpress16/EtherExpress16.drvproj/EtherExpress16.lksproj/EtherExpress16.m"
+    },
+    {
+      "address": 164,
+      "reference_names": [
+        "_get_iscp_busy"
+      ],
+      "size": 70,
+      "source_line": 1942,
+      "source_path": "src/drivers-i386/network/drvEtherExpress16/EtherExpress16.drvproj/EtherExpress16.lksproj/EtherExpress16.m"
+    },
+    {
+      "address": 236,
+      "reference_names": [
+        "_get_scb"
+      ],
+      "size": 74,
+      "source_line": 2003,
+      "source_path": "src/drivers-i386/network/drvEtherExpress16/EtherExpress16.drvproj/EtherExpress16.lksproj/EtherExpress16.m"
+    },
+    {
+      "address": 312,
+      "reference_names": [
+        "_put_scb"
+      ],
+      "size": 81,
+      "source_line": 2183,
+      "source_path": "src/drivers-i386/network/drvEtherExpress16/EtherExpress16.drvproj/EtherExpress16.lksproj/EtherExpress16.m"
+    },
+    {
+      "address": 396,
+      "reference_names": [
+        "_get_scb_stat"
+      ],
+      "size": 70,
+      "source_line": 2040,
+      "source_path": "src/drivers-i386/network/drvEtherExpress16/EtherExpress16.drvproj/EtherExpress16.lksproj/EtherExpress16.m"
+    },
+    {
+      "address": 468,
+      "reference_names": [
+        "_put_scb_cmd"
+      ],
+      "size": 85,
+      "source_line": 2201,
+      "source_path": "src/drivers-i386/network/drvEtherExpress16/EtherExpress16.drvproj/EtherExpress16.lksproj/EtherExpress16.m"
+    },
+    {
+      "address": 556,
+      "reference_names": [
+        "_get_scb_cmd"
+      ],
+      "size": 78,
+      "source_line": 2021,
+      "source_path": "src/drivers-i386/network/drvEtherExpress16/EtherExpress16.drvproj/EtherExpress16.lksproj/EtherExpress16.m"
+    },
+    {
+      "address": 636,
+      "reference_names": [
+        "_get_rfd"
+      ],
+      "size": 135,
+      "source_line": 1968,
+      "source_path": "src/drivers-i386/network/drvEtherExpress16/EtherExpress16.drvproj/EtherExpress16.lksproj/EtherExpress16.m"
+    },
+    {
+      "address": 772,
+      "reference_names": [
+        "_check_rfd"
+      ],
+      "size": 27,
+      "source_line": 1884,
+      "source_path": "src/drivers-i386/network/drvEtherExpress16/EtherExpress16.drvproj/EtherExpress16.lksproj/EtherExpress16.m"
+    },
+    {
+      "address": 800,
+      "reference_names": [
+        "_get_rfd_hdr"
+      ],
+      "size": 78,
+      "source_line": 1983,
+      "source_path": "src/drivers-i386/network/drvEtherExpress16/EtherExpress16.drvproj/EtherExpress16.lksproj/EtherExpress16.m"
+    },
+    {
+      "address": 880,
+      "reference_names": [
+        "_put_rfd"
+      ],
+      "size": 81,
+      "source_line": 2146,
+      "source_path": "src/drivers-i386/network/drvEtherExpress16/EtherExpress16.drvproj/EtherExpress16.lksproj/EtherExpress16.m"
+    },
+    {
+      "address": 964,
+      "reference_names": [
+        "_put_rfd_magic"
+      ],
+      "size": 85,
+      "source_line": 2175,
+      "source_path": "src/drivers-i386/network/drvEtherExpress16/EtherExpress16.drvproj/EtherExpress16.lksproj/EtherExpress16.m"
+    },
+    {
+      "address": 1052,
+      "reference_names": [
+        "_put_rfd_lnk"
+      ],
+      "size": 162,
+      "source_line": 2164,
+      "source_path": "src/drivers-i386/network/drvEtherExpress16/EtherExpress16.drvproj/EtherExpress16.lksproj/EtherExpress16.m"
+    },
+    {
+      "address": 1216,
+      "reference_names": [
+        "_get_rbd"
+      ],
+      "size": 74,
+      "source_line": 1950,
+      "source_path": "src/drivers-i386/network/drvEtherExpress16/EtherExpress16.drvproj/EtherExpress16.lksproj/EtherExpress16.m"
+    },
+    {
+      "address": 1292,
+      "reference_names": [
+        "_check_rbd"
+      ],
+      "size": 27,
+      "source_line": 1875,
+      "source_path": "src/drivers-i386/network/drvEtherExpress16/EtherExpress16.drvproj/EtherExpress16.lksproj/EtherExpress16.m"
+    },
+    {
+      "address": 1320,
+      "reference_names": [
+        "_put_rbd"
+      ],
+      "size": 81,
+      "source_line": 2109,
+      "source_path": "src/drivers-i386/network/drvEtherExpress16/EtherExpress16.drvproj/EtherExpress16.lksproj/EtherExpress16.m"
+    },
+    {
+      "address": 1404,
+      "reference_names": [
+        "_put_rbd_magic"
+      ],
+      "size": 85,
+      "source_line": 2127,
+      "source_path": "src/drivers-i386/network/drvEtherExpress16/EtherExpress16.drvproj/EtherExpress16.lksproj/EtherExpress16.m"
+    },
+    {
+      "address": 1492,
+      "reference_names": [
+        "_put_rbd_nxt"
+      ],
+      "size": 162,
+      "source_line": 2135,
+      "source_path": "src/drivers-i386/network/drvEtherExpress16/EtherExpress16.drvproj/EtherExpress16.lksproj/EtherExpress16.m"
+    },
+    {
+      "address": 1656,
+      "reference_names": [
+        "_put_tcb"
+      ],
+      "size": 81,
+      "source_line": 2263,
+      "source_path": "src/drivers-i386/network/drvEtherExpress16/EtherExpress16.drvproj/EtherExpress16.lksproj/EtherExpress16.m"
+    },
+    {
+      "address": 1740,
+      "reference_names": [
+        "_get_tcb_stat"
+      ],
+      "size": 70,
+      "source_line": 2048,
+      "source_path": "src/drivers-i386/network/drvEtherExpress16/EtherExpress16.drvproj/EtherExpress16.lksproj/EtherExpress16.m"
+    },
+    {
+      "address": 1812,
+      "reference_names": [
+        "_put_tbd"
+      ],
+      "size": 81,
+      "source_line": 2237,
+      "source_path": "src/drivers-i386/network/drvEtherExpress16/EtherExpress16.drvproj/EtherExpress16.lksproj/EtherExpress16.m"
+    },
+    {
+      "address": 1896,
+      "reference_names": [
+        "_put_tbd_count"
+      ],
+      "size": 77,
+      "source_line": 2255,
+      "source_path": "src/drivers-i386/network/drvEtherExpress16/EtherExpress16.drvproj/EtherExpress16.lksproj/EtherExpress16.m"
+    },
+    {
+      "address": 1976,
+      "reference_names": [
+        "_wait_scb"
+      ],
+      "size": 146,
+      "source_line": 2343,
+      "source_path": "src/drivers-i386/network/drvEtherExpress16/EtherExpress16.drvproj/EtherExpress16.lksproj/EtherExpress16.m"
+    },
+    {
+      "address": 2124,
+      "reference_names": [
+        "-[EtherExpress16 _configEE16:]"
+      ],
+      "size": 313,
+      "source_line": 1480,
+      "source_path": "src/drivers-i386/network/drvEtherExpress16/EtherExpress16.drvproj/EtherExpress16.lksproj/EtherExpress16.m"
+    },
+    {
+      "address": 2440,
+      "reference_names": [
+        "-[EtherExpress16 _resetEE16:]"
+      ],
+      "size": 281,
+      "source_line": 1575,
+      "source_path": "src/drivers-i386/network/drvEtherExpress16/EtherExpress16.drvproj/EtherExpress16.lksproj/EtherExpress16.m"
+    },
+    {
+      "address": 2724,
+      "reference_names": [
+        "-[EtherExpress16 _configureMulticastAddresses]"
+      ],
+      "size": 433,
+      "source_line": 1631,
+      "source_path": "src/drivers-i386/network/drvEtherExpress16/EtherExpress16.drvproj/EtherExpress16.lksproj/EtherExpress16.m"
+    },
+    {
+      "address": 3160,
+      "reference_names": [
+        "+[EtherExpress16 probe:]"
+      ],
+      "size": 344,
+      "source_line": 86,
+      "source_path": "src/drivers-i386/network/drvEtherExpress16/EtherExpress16.drvproj/EtherExpress16.lksproj/EtherExpress16.m"
+    },
+    {
+      "address": 3504,
+      "reference_names": [
+        "-[EtherExpress16 initFromDeviceDescription:]"
+      ],
+      "size": 999,
+      "source_line": 189,
+      "source_path": "src/drivers-i386/network/drvEtherExpress16/EtherExpress16.drvproj/EtherExpress16.lksproj/EtherExpress16.m"
+    },
+    {
+      "address": 4504,
+      "reference_names": [
+        "-[EtherExpress16 free]"
+      ],
+      "size": 64,
+      "source_line": 407,
+      "source_path": "src/drivers-i386/network/drvEtherExpress16/EtherExpress16.drvproj/EtherExpress16.lksproj/EtherExpress16.m"
+    },
+    {
+      "address": 4568,
+      "reference_names": [
+        "-[EtherExpress16 getIntValues:forParameter:count:]"
+      ],
+      "size": 203,
+      "source_line": 498,
+      "source_path": "src/drivers-i386/network/drvEtherExpress16/EtherExpress16.drvproj/EtherExpress16.lksproj/EtherExpress16.m"
+    },
+    {
+      "address": 4772,
+      "reference_names": [
+        "-[EtherExpress16 resetAndEnable:]"
+      ],
+      "size": 260,
+      "source_line": 345,
+      "source_path": "src/drivers-i386/network/drvEtherExpress16/EtherExpress16.drvproj/EtherExpress16.lksproj/EtherExpress16.m"
+    },
+    {
+      "address": 5032,
+      "reference_names": [
+        "-[EtherExpress16 hwInit:]"
+      ],
+      "size": 79,
+      "source_line": 518,
+      "source_path": "src/drivers-i386/network/drvEtherExpress16/EtherExpress16.drvproj/EtherExpress16.lksproj/EtherExpress16.m"
+    },
+    {
+      "address": 5112,
+      "reference_names": [
+        "-[EtherExpress16 enableAllInterrupts]"
+      ],
+      "size": 83,
+      "source_line": 699,
+      "source_path": "src/drivers-i386/network/drvEtherExpress16/EtherExpress16.drvproj/EtherExpress16.lksproj/EtherExpress16.m"
+    },
+    {
+      "address": 5196,
+      "reference_names": [
+        "-[EtherExpress16 disableAllInterrupts]"
+      ],
+      "size": 77,
+      "source_line": 716,
+      "source_path": "src/drivers-i386/network/drvEtherExpress16/EtherExpress16.drvproj/EtherExpress16.lksproj/EtherExpress16.m"
+    },
+    {
+      "address": 5276,
+      "reference_names": [
+        "-[EtherExpress16 swInit]"
+      ],
+      "size": 466,
+      "source_line": 528,
+      "source_path": "src/drivers-i386/network/drvEtherExpress16/EtherExpress16.drvproj/EtherExpress16.lksproj/EtherExpress16.m"
+    },
+    {
+      "address": 5744,
+      "reference_names": [
+        "-[EtherExpress16 enablePromiscuousMode]"
+      ],
+      "size": 46,
+      "source_line": 560,
+      "source_path": "src/drivers-i386/network/drvEtherExpress16/EtherExpress16.drvproj/EtherExpress16.lksproj/EtherExpress16.m"
+    },
+    {
+      "address": 5792,
+      "reference_names": [
+        "-[EtherExpress16 disablePromiscuousMode]"
+      ],
+      "size": 41,
+      "source_line": 572,
+      "source_path": "src/drivers-i386/network/drvEtherExpress16/EtherExpress16.drvproj/EtherExpress16.lksproj/EtherExpress16.m"
+    },
+    {
+      "address": 5836,
+      "reference_names": [
+        "-[EtherExpress16 enableMulticastMode]"
+      ],
+      "size": 22,
+      "source_line": 583,
+      "source_path": "src/drivers-i386/network/drvEtherExpress16/EtherExpress16.drvproj/EtherExpress16.lksproj/EtherExpress16.m"
+    },
+    {
+      "address": 5860,
+      "reference_names": [
+        "-[EtherExpress16 disableMulticastMode]"
+      ],
+      "size": 42,
+      "source_line": 592,
+      "source_path": "src/drivers-i386/network/drvEtherExpress16/EtherExpress16.drvproj/EtherExpress16.lksproj/EtherExpress16.m"
+    },
+    {
+      "address": 5904,
+      "reference_names": [
+        "-[EtherExpress16 addMulticastAddress:]"
+      ],
+      "size": 32,
+      "source_line": 606,
+      "source_path": "src/drivers-i386/network/drvEtherExpress16/EtherExpress16.drvproj/EtherExpress16.lksproj/EtherExpress16.m"
+    },
+    {
+      "address": 5936,
+      "reference_names": [
+        "-[EtherExpress16 removeMulticastAddress:]"
+      ],
+      "size": 25,
+      "source_line": 616,
+      "source_path": "src/drivers-i386/network/drvEtherExpress16/EtherExpress16.drvproj/EtherExpress16.lksproj/EtherExpress16.m"
+    },
+    {
+      "address": 5964,
+      "reference_names": [
+        "-[EtherExpress16 timeoutOccurred]"
+      ],
+      "size": 195,
+      "source_line": 662,
+      "source_path": "src/drivers-i386/network/drvEtherExpress16/EtherExpress16.drvproj/EtherExpress16.lksproj/EtherExpress16.m"
+    },
+    {
+      "address": 6160,
+      "reference_names": [
+        "-[EtherExpress16 interruptOccurred]"
+      ],
+      "size": 351,
+      "source_line": 625,
+      "source_path": "src/drivers-i386/network/drvEtherExpress16/EtherExpress16.drvproj/EtherExpress16.lksproj/EtherExpress16.m"
+    },
+    {
+      "address": 6512,
+      "reference_names": [
+        "-[EtherExpress16 frIntr]"
+      ],
+      "size": 315,
+      "source_line": 1438,
+      "source_path": "src/drivers-i386/network/drvEtherExpress16/EtherExpress16.drvproj/EtherExpress16.lksproj/EtherExpress16.m"
+    },
+    {
+      "address": 6828,
+      "reference_names": [
+        "-[EtherExpress16 recvFrame:hdr:ok:]"
+      ],
+      "size": 855,
+      "source_line": 1320,
+      "source_path": "src/drivers-i386/network/drvEtherExpress16/EtherExpress16.drvproj/EtherExpress16.lksproj/EtherExpress16.m"
+    },
+    {
+      "address": 7684,
+      "reference_names": [
+        "-[EtherExpress16 recvStart]"
+      ],
+      "size": 175,
+      "source_line": 1243,
+      "source_path": "src/drivers-i386/network/drvEtherExpress16/EtherExpress16.drvproj/EtherExpress16.lksproj/EtherExpress16.m"
+    },
+    {
+      "address": 7860,
+      "reference_names": [
+        "-[EtherExpress16 recvRestart]"
+      ],
+      "size": 243,
+      "source_line": 1275,
+      "source_path": "src/drivers-i386/network/drvEtherExpress16/EtherExpress16.drvproj/EtherExpress16.lksproj/EtherExpress16.m"
+    },
+    {
+      "address": 8104,
+      "reference_names": [
+        "-[EtherExpress16 recvInit]"
+      ],
+      "size": 561,
+      "source_line": 1180,
+      "source_path": "src/drivers-i386/network/drvEtherExpress16/EtherExpress16.drvproj/EtherExpress16.lksproj/EtherExpress16.m"
+    },
+    {
+      "address": 8668,
+      "reference_names": [
+        "-[EtherExpress16 cxIntr]"
+      ],
+      "size": 244,
+      "source_line": 1407,
+      "source_path": "src/drivers-i386/network/drvEtherExpress16/EtherExpress16.drvproj/EtherExpress16.lksproj/EtherExpress16.m"
+    },
+    {
+      "address": 8912,
+      "reference_names": [
+        "-[EtherExpress16 transmit:]"
+      ],
+      "size": 597,
+      "source_line": 733,
+      "source_path": "src/drivers-i386/network/drvEtherExpress16/EtherExpress16.drvproj/EtherExpress16.lksproj/EtherExpress16.m"
+    },
+    {
+      "address": 9512,
+      "reference_names": [
+        "-[EtherExpress16 xmtInit]"
+      ],
+      "size": 201,
+      "source_line": 1789,
+      "source_path": "src/drivers-i386/network/drvEtherExpress16/EtherExpress16.drvproj/EtherExpress16.lksproj/EtherExpress16.m"
+    },
+    {
+      "address": 9716,
+      "reference_names": [
+        "-[EtherExpress16 performCBL:]"
+      ],
+      "size": 372,
+      "source_line": 1067,
+      "source_path": "src/drivers-i386/network/drvEtherExpress16/EtherExpress16.drvproj/EtherExpress16.lksproj/EtherExpress16.m"
+    },
+    {
+      "address": 10088,
+      "reference_names": [
+        "-[EtherExpress16 abortCBL]"
+      ],
+      "size": 161,
+      "source_line": 1149,
+      "source_path": "src/drivers-i386/network/drvEtherExpress16/EtherExpress16.drvproj/EtherExpress16.lksproj/EtherExpress16.m"
+    },
+    {
+      "address": 10252,
+      "reference_names": [
+        "-[EtherExpress16 config]"
+      ],
+      "size": 304,
+      "source_line": 422,
+      "source_path": "src/drivers-i386/network/drvEtherExpress16/EtherExpress16.drvproj/EtherExpress16.lksproj/EtherExpress16.m"
+    },
+    {
+      "address": 10556,
+      "reference_names": [
+        "-[EtherExpress16 ia_setup]"
+      ],
+      "size": 252,
+      "source_line": 1735,
+      "source_path": "src/drivers-i386/network/drvEtherExpress16/EtherExpress16.drvproj/EtherExpress16.lksproj/EtherExpress16.m"
+    },
+    {
+      "address": 10808,
+      "reference_names": [
+        "-[EtherExpress16 receivePacket:length:timeout:]"
+      ],
+      "size": 1222,
+      "source_line": 928,
+      "source_path": "src/drivers-i386/network/drvEtherExpress16/EtherExpress16.drvproj/EtherExpress16.lksproj/EtherExpress16.m"
+    },
+    {
+      "address": 12032,
+      "reference_names": [
+        "-[EtherExpress16 sendPacket:length:]"
+      ],
+      "size": 797,
+      "source_line": 855,
+      "source_path": "src/drivers-i386/network/drvEtherExpress16/EtherExpress16.drvproj/EtherExpress16.lksproj/EtherExpress16.m"
+    },
+    {
+      "address": 12832,
+      "reference_names": [
+        "-[EtherExpress16 memAvail]"
+      ],
+      "size": 38,
+      "source_line": 1050,
+      "source_path": "src/drivers-i386/network/drvEtherExpress16/EtherExpress16.drvproj/EtherExpress16.lksproj/EtherExpress16.m"
+    },
+    {
+      "address": 12872,
+      "reference_names": [
+        "-[EtherExpress16 memAlloc:]"
+      ],
+      "size": 45,
+      "source_line": 1041,
+      "source_path": "src/drivers-i386/network/drvEtherExpress16/EtherExpress16.drvproj/EtherExpress16.lksproj/EtherExpress16.m"
+    },
+    {
+      "address": 12920,
+      "reference_names": [
+        "-[EtherExpress16 memRegion:]"
+      ],
+      "size": 68,
+      "source_line": 1058,
+      "source_path": "src/drivers-i386/network/drvEtherExpress16/EtherExpress16.drvproj/EtherExpress16.lksproj/EtherExpress16.m"
+    },
+    {
+      "address": 12988,
+      "reference_names": [
+        "_get_etherAddress"
+      ],
+      "size": 91,
+      "source_line": 1923,
+      "source_path": "src/drivers-i386/network/drvEtherExpress16/EtherExpress16.drvproj/EtherExpress16.lksproj/EtherExpress16.m"
+    },
+    {
+      "address": 13080,
+      "reference_names": [
+        "_setup_mem"
+      ],
+      "size": 207,
+      "source_line": 2301,
+      "source_path": "src/drivers-i386/network/drvEtherExpress16/EtherExpress16.drvproj/EtherExpress16.lksproj/EtherExpress16.m"
+    },
+    {
+      "address": 13288,
+      "reference_names": [
+        "_read_eeprom"
+      ],
+      "size": 87,
+      "source_line": 2281,
+      "source_path": "src/drivers-i386/network/drvEtherExpress16/EtherExpress16.drvproj/EtherExpress16.lksproj/EtherExpress16.m"
+    },
+    {
+      "address": 13376,
+      "reference_names": [
+        "_put_eeprom"
+      ],
+      "size": 145,
+      "source_line": 2056,
+      "source_path": "src/drivers-i386/network/drvEtherExpress16/EtherExpress16.drvproj/EtherExpress16.lksproj/EtherExpress16.m"
+    },
+    {
+      "address": 13524,
+      "reference_names": [
+        "_get_eeprom"
+      ],
+      "size": 114,
+      "source_line": 1893,
+      "source_path": "src/drivers-i386/network/drvEtherExpress16/EtherExpress16.drvproj/EtherExpress16.lksproj/EtherExpress16.m"
+    },
+    {
+      "address": 13640,
+      "reference_names": [
+        "+[EtherExpress16KernelServerInstance kernelServerInstance]"
+      ],
+      "size": 12,
+      "source_line": 1832,
+      "source_path": "src/drivers-i386/network/drvEtherExpress16/EtherExpress16.drvproj/EtherExpress16.lksproj/EtherExpress16.m"
+    },
+    {
+      "address": 13652,
+      "reference_names": [
+        "+[EtherExpress16Version driverKitVersionForEtherExpress16]"
+      ],
+      "size": 12,
+      "source_line": 1842,
+      "source_path": "src/drivers-i386/network/drvEtherExpress16/EtherExpress16.drvproj/EtherExpress16.lksproj/EtherExpress16.m"
+    }
+  ],
+  "reference_sha256": "2BF1F8563BABD7CDC4C7BA625E9963033A6B56BFE237A43308707944228AACE8",
+  "schema_version": "source-map-v1",
+  "unmapped": []
+}

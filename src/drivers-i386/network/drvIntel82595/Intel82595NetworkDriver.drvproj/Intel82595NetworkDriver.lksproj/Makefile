@@ -10,16 +10,19 @@
 NAME = Intel82595NetworkDriver
 
 PROJECTVERSION = 2.6
-PROJECT_TYPE = Aggregate
+PROJECT_TYPE = Kernel Server
 LANGUAGE = English
 
-BUNDLES = Intel82595NetworkDriver.drvproj
+CLASSES = CogentEM525.m CogentEM595.m i82595eeprom.m Intel82595.m Intel82595ISA.m IntelEEPro10+.m IntelEEPro10.m
 
-OTHERSRCS = Makefile Makefile.preamble
+HFILES = Intel82595.h i82595io.h
+
+OTHERSRCS = Load_Commands.sect Makefile Makefile.preamble
 
 MAKEFILEDIR = $(MAKEFILEPATH)/pb_makefiles
 CODE_GEN_STYLE = DYNAMIC
-MAKEFILE = aggregate.make
+MAKEFILE = kernelserver.make
+NEXTSTEP_INSTALLDIR = $(NEXT_ROOT)/private/Drivers
 LIBS =
 DEBUG_LIBS = $(LIBS)
 PROF_LIBS = $(LIBS)

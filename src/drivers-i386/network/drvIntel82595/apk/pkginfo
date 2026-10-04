@@ -1,0 +1,7 @@
+pkgname = drvintel82595
+pkgver = 21
+arch = i386
+pkgdesc = Intel 82595 ISA and PCMCIA Ethernet DriverKit driver
+maintainer = Pat Raynor
+license = BSD-2-Clause
+makedepends = build-base, drivertools, driverkit, kernload

@@ -10,19 +10,32 @@
 NAME = Intel82595NetworkDriver
 
 PROJECTVERSION = 2.6
-PROJECT_TYPE = Aggregate
+PROJECT_TYPE = Driver
 LANGUAGE = English
 
-BUNDLES = Intel82595NetworkDriver.drvproj
+LOCAL_RESOURCES = Localizable.strings EM525.strings IntelEEPro10.strings IntelEEPro10+.strings IntelEEPro10PnP.strings IntelEEPro10+PnP.strings
 
-OTHERSRCS = Makefile Makefile.preamble
+GLOBAL_RESOURCES = Default.table EM525.table IntelEEPro10.table IntelEEPro10+.table IntelEEPro10PnP.table IntelEEPro10+PnP.table
+
+CLASSES =
+
+HFILES =
+
+TOOLS = Intel82595NetworkDriver.lksproj
+
+OTHERSRCS = Makefile Makefile.preamble Makefile.postamble DriverInfo
 
 MAKEFILEDIR = $(MAKEFILEPATH)/pb_makefiles
 CODE_GEN_STYLE = DYNAMIC
-MAKEFILE = aggregate.make
+MAKEFILE = driver.make
+NEXTSTEP_INSTALLDIR = $(NEXT_ROOT)/private/Drivers
 LIBS =
 DEBUG_LIBS = $(LIBS)
 PROF_LIBS = $(LIBS)
+BUNDLE_EXTENSION = config
+
+FRAMEWORK_PATHS = -F$(SYSTEM_LIBRARY_DIR)/PrivateFrameworks
+FRAMEWORKS =
 
 include $(MAKEFILEDIR)/platform.make
 

@@ -309,7 +309,6 @@ seven tasks, with an independent final review under the execution workflow.
 Subagent-driven execution is also available, with a fresh implementer and
 reviewer at each task boundary and a final whole-change review.
 
-The user must review this plan and select the execution method before
-implementation, as required by the invoked brainstorming and writing-plans
-skills. No implementation, worktree creation or guest mutation has occurred
-during planning.
+The user reviewed this plan and selected native execution on 2026-10-02.
+The approved execution uses the executing-plans workflow, with one fresh
+whole-branch review after all seven tasks.

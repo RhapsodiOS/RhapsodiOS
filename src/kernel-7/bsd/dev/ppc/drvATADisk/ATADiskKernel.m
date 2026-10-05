@@ -46,6 +46,7 @@
  * Note that this file builds with KERNEL_PRIVATE and !MACH_USER_API.
  */
 #import <sys/types.h>
+#import <bsd/dev/disk.h>
 #import <sys/ttycom.h>
 #import <sys/ucred.h>
 #import <driverkit/kernelDiskMethods.h> 
@@ -407,7 +408,33 @@ ideioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct proc * pp)
     }
 #endif
 
+    if (cmd == DKIOCGPARTINFO && unit >= NUM_IDE_DEV) return ENXIO;
     idmap = &IdeIdMap[unit];
+    if (cmd == DKIOCGPARTINFO) {
+        struct disk_partition_info result;
+        unsigned int physicalSize,physicalCount;
+        if (part == IDE_LIVE_PART || part < 0 ||
+            part >= sizeof(idmap->partitionId)/sizeof(idmap->partitionId[0]))
+            return ENXIO;
+        diskObj = idmap->partitionId[part];
+        if (diskObj == nil || idmap->liveId == nil || diskObj == idmap->liveId)
+            return ENXIO;
+        result.block_size = [diskObj blockSize];
+        result.block_count = [diskObj diskSize];
+        physicalSize = [idmap->liveId blockSize];
+        physicalCount = [idmap->liveId diskSize];
+        /* Reject the unlabelled partition-zero whole-drive fallback too. */
+        if (result.block_size == 0 || result.block_size > 0x7fffffffU ||
+            result.block_count == 0 || result.block_count > 0x7fffffffU ||
+            physicalSize == 0 || physicalSize > 0x7fffffffU ||
+            physicalCount == 0 || physicalCount > 0x7fffffffU ||
+            (u_int64_t)result.block_size*result.block_count >=
+            (u_int64_t)physicalSize*physicalCount)
+            return EINVAL;
+        *(struct disk_partition_info *)data = result;
+        return 0;
+    }
+
 
 #ifdef GROK_APPLE //bknight - 2/21/98 - Radar 2204950, 2004660
 

@@ -69,6 +69,9 @@
  * Modified for ext2fs by Manuel Bouyer.
  */
 
+/* NetBSD implementation retained while native entry points are adapted.
+ * Mutation code remains disabled until writable mounts are implemented. */
+#if 0
 #include <sys/cdefs.h>
 __KERNEL_RCSID(0, "$NetBSD: ext2fs_vnops.c,v 1.52.2.1 2004/05/23 11:56:04 grant Exp $");
 
@@ -1642,3 +1645,175 @@ const struct vnodeopv_entry_desc ext2fs_fifoop_entries[] = {
 };
 const struct vnodeopv_desc ext2fs_fifoop_opv_desc =
 	{ &ext2fs_fifoop_p, ext2fs_fifoop_entries };
+
+#endif
+
+#include "ext2fs_extern.h"
+#include <miscfs/specfs/specdev.h>
+#include <miscfs/fifofs/fifo.h>
+
+static int ext2fs_ro(void *v) { return EROFS; }
+static int ext2fs_nop(void *v) { return 0; }
+static int
+ext2fs_open(struct vop_open_args *ap)
+{
+    return (ap->a_mode & FWRITE) ? EROFS : 0;
+}
+static int
+ext2fs_access(struct vop_access_args *ap)
+{
+    if (ap->a_mode & VWRITE) return EROFS;
+    /* RO call cannot enter ufs_access's quota path; canonical IDs/mode. */
+    return ufs_access(ap);
+}
+static int
+ext2fs_getattr(struct vop_getattr_args *ap)
+{
+    struct inode *ip=VTOI(ap->a_vp);
+    struct vattr *vap=ap->a_vap;
+    u_int32_t flags=ext2fs_dinode(ip)->e2di_flags;
+    vap->va_type=ap->a_vp->v_type; vap->va_mode=ip->i_mode & ALLPERMS;
+    vap->va_nlink=ip->i_nlink; vap->va_uid=ip->i_uid; vap->va_gid=ip->i_gid;
+    vap->va_fsid=ip->i_dev; vap->va_fileid=ip->i_number;
+    vap->va_size=ip->i_size; vap->va_rdev=ip->i_rdev;
+    vap->va_atime.tv_sec=ip->i_atime; vap->va_atime.tv_nsec=0;
+    vap->va_mtime.tv_sec=ip->i_mtime; vap->va_mtime.tv_nsec=0;
+    vap->va_ctime.tv_sec=ip->i_ctime; vap->va_ctime.tv_nsec=0;
+    vap->va_flags=((flags&EXT2_APPEND)?UF_APPEND:0) |
+        ((flags&EXT2_IMMUTABLE)?UF_IMMUTABLE:0) | ((flags&EXT2_NODUMP)?UF_NODUMP:0);
+    vap->va_gen=ip->i_gen; vap->va_filerev=ip->i_modrev;
+    vap->va_blocksize=ip->i_e2fs->e2fs_bsize; vap->va_bytes=(u_quad_t)ip->i_blocks*512;
+    return 0;
+}
+static int
+ext2fs_readlink(struct vop_readlink_args *ap)
+{
+    struct inode *ip=VTOI(ap->a_vp);
+    if (ip->i_blocks == 0) {
+        if (ip->i_size > EXT2_MAXSYMLINKLEN) return EIO;
+        return uiomove((caddr_t)ext2fs_dinode(ip)->e2di_shortlink,ip->i_size,ap->a_uio);
+    }
+    return VOP_READ(ap->a_vp,ap->a_uio,0,ap->a_cred);
+}
+int
+ext2fs_vinit(struct mount *mp,int (**specops)(),int (**fifoops)(),struct vnode **vpp)
+{
+    int error=ufs_vinit(mp,specops,fifoops,vpp);
+    if (!error) (*vpp)->v_tag=VT_EXT2FS;
+    return error;
+}
+int
+ext2fs_reclaim(void *v)
+{
+    struct vop_reclaim_args *ap=v;
+    struct vnode *vp=ap->a_vp;
+    struct inode *ip=VTOI(vp);
+    if (!ip) return 0;
+    ext2fs_ihashrem(ip);
+    cache_purge(vp);
+    if (ip->i_devvp) vrele(ip->i_devvp);
+    FREE(vp->v_data,M_MISCFSNODE);
+    vp->v_data=NULL;
+    return 0;
+}
+
+int (**ext2fs_vnodeop_p)();
+struct vnodeopv_entry_desc ext2fs_vnodeop_entries[] = {
+    { &vop_default_desc, vn_default_error },
+    { &vop_lookup_desc, ext2fs_lookup },
+    { &vop_create_desc, ext2fs_ro },
+    { &vop_mknod_desc, ext2fs_ro },
+    { &vop_open_desc, ext2fs_open },
+    { &vop_close_desc, ext2fs_nop },
+    { &vop_access_desc, ext2fs_access },
+    { &vop_getattr_desc, ext2fs_getattr },
+    { &vop_setattr_desc, ext2fs_ro },
+    { &vop_read_desc, ext2fs_read },
+    { &vop_write_desc, ext2fs_write },
+    { &vop_lease_desc, ext2fs_nop },
+    { &vop_ioctl_desc, vn_default_error },
+    { &vop_select_desc, ufs_select },
+    { &vop_revoke_desc, ufs_revoke },
+    { &vop_mmap_desc, ufs_mmap },
+    { &vop_fsync_desc, ext2fs_nop },
+    { &vop_seek_desc, ufs_seek },
+    { &vop_remove_desc, ext2fs_ro },
+    { &vop_link_desc, ext2fs_ro },
+    { &vop_rename_desc, ext2fs_ro },
+    { &vop_mkdir_desc, ext2fs_ro },
+    { &vop_rmdir_desc, ext2fs_ro },
+    { &vop_symlink_desc, ext2fs_ro },
+    { &vop_readdir_desc, ext2fs_readdir },
+    { &vop_readlink_desc, ext2fs_readlink },
+    { &vop_abortop_desc, ufs_abortop },
+    { &vop_inactive_desc, ext2fs_inactive },
+    { &vop_reclaim_desc, ext2fs_reclaim },
+    { &vop_lock_desc, ufs_lock },
+    { &vop_unlock_desc, ufs_unlock },
+    { &vop_bmap_desc, ext2fs_bmap },
+    { &vop_strategy_desc, ufs_strategy },
+    { &vop_islocked_desc, ufs_islocked },
+    { &vop_pathconf_desc, ufs_pathconf },
+    { &vop_advlock_desc, ufs_advlock },
+    { &vop_blkatoff_desc, ext2fs_blkatoff },
+    { &vop_valloc_desc, ext2fs_valloc },
+    { &vop_reallocblks_desc, ext2fs_reallocblks },
+    { &vop_vfree_desc, ext2fs_vfree },
+    { &vop_truncate_desc, ext2fs_truncate },
+    { &vop_update_desc, ext2fs_update },
+    { &vop_bwrite_desc, ext2fs_ro },
+    { &vop_pagein_desc, ufs_pagein },
+    { &vop_pageout_desc, ufs_pageout },
+    { NULL, NULL }
+};
+struct vnodeopv_desc ext2fs_vnodeop_opv_desc={ &ext2fs_vnodeop_p,ext2fs_vnodeop_entries };
+int (**ext2fs_specop_p)();
+struct vnodeopv_entry_desc ext2fs_specop_entries[] = {
+    { &vop_default_desc, vn_default_error },
+    { &vop_lookup_desc, spec_lookup },
+    { &vop_open_desc, spec_open },
+    { &vop_close_desc, spec_close },
+    { &vop_access_desc, ext2fs_access },
+    { &vop_getattr_desc, ext2fs_getattr },
+    { &vop_setattr_desc, ext2fs_ro },
+    { &vop_read_desc, spec_read },
+    { &vop_write_desc, ext2fs_ro },
+    { &vop_ioctl_desc, spec_ioctl },
+    { &vop_select_desc, spec_select },
+    { &vop_revoke_desc, ufs_revoke },
+    { &vop_inactive_desc, ext2fs_inactive },
+    { &vop_reclaim_desc, ext2fs_reclaim },
+    { &vop_lock_desc, ufs_lock },
+    { &vop_unlock_desc, ufs_unlock },
+    { &vop_islocked_desc, ufs_islocked },
+    { &vop_fsync_desc, ext2fs_nop },
+    { &vop_update_desc, ext2fs_update },
+    { &vop_strategy_desc, spec_strategy },
+    { &vop_devblocksize_desc, spec_devblocksize },
+    { NULL,NULL }
+};
+struct vnodeopv_desc ext2fs_specop_opv_desc={ &ext2fs_specop_p,ext2fs_specop_entries };
+int (**ext2fs_fifoop_p)();
+struct vnodeopv_entry_desc ext2fs_fifoop_entries[] = {
+    { &vop_default_desc, vn_default_error },
+#if FIFO
+    { &vop_open_desc, fifo_open },
+    { &vop_close_desc, fifo_close },
+    { &vop_read_desc, fifo_read },
+    { &vop_write_desc, ext2fs_ro },
+    { &vop_ioctl_desc, fifo_ioctl },
+    { &vop_select_desc, fifo_select },
+#endif
+    { &vop_access_desc, ext2fs_access },
+    { &vop_getattr_desc, ext2fs_getattr },
+    { &vop_setattr_desc, ext2fs_ro },
+    { &vop_inactive_desc, ext2fs_inactive },
+    { &vop_reclaim_desc, ext2fs_reclaim },
+    { &vop_lock_desc, ufs_lock },
+    { &vop_unlock_desc, ufs_unlock },
+    { &vop_islocked_desc, ufs_islocked },
+    { &vop_fsync_desc, ext2fs_nop },
+    { &vop_update_desc, ext2fs_update },
+    { NULL,NULL }
+};
+struct vnodeopv_desc ext2fs_fifoop_opv_desc={ &ext2fs_fifoop_p,ext2fs_fifoop_entries };

@@ -64,6 +64,9 @@
  * Modified for ext2fs by Manuel Bouyer.
  */
 
+/* NetBSD implementation retained while native entry points are adapted.
+ * Mutation code remains disabled until writable mounts are implemented. */
+#if 0
 #include <sys/cdefs.h>
 __KERNEL_RCSID(0, "$NetBSD: ext2fs_inode.c,v 1.40 2004/03/22 19:23:08 bouyer Exp $");
 
@@ -527,4 +530,27 @@ ext2fs_indirtrunc(ip, lbn, dbn, lastbn, level, countp)
 
 	*countp = blocksreleased;
 	return (allerror);
+}
+
+#endif
+
+#include "ext2fs_extern.h"
+int
+ext2fs_update_inode(struct vnode *vp,struct timeval *atime,struct timeval *mtime,int wait)
+{
+    /* No RO timestamp or metadata changes, including access times. */
+    if (VTOI(vp)->i_flag & (IN_ACCESS|IN_CHANGE|IN_UPDATE|IN_MODIFIED)) return EROFS;
+    return 0;
+}
+int
+ext2fs_update(struct vop_update_args *ap)
+{
+    return ext2fs_update_inode(ap->a_vp,ap->a_access,ap->a_modify,ap->a_waitfor);
+}
+int ext2fs_truncate(void *v) { return EROFS; }
+int
+ext2fs_inactive(void *v)
+{
+    struct vop_inactive_args *ap=v;
+    return VOP_UNLOCK(ap->a_vp,0,ap->a_p);
 }

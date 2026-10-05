@@ -64,6 +64,9 @@
  *  Modified for ext2fs by Manuel Bouyer.
  */
 
+/* NetBSD implementation retained while native entry points are adapted.
+ * Mutation code remains disabled until writable mounts are implemented. */
+#if 0
 #include <sys/cdefs.h>
 __KERNEL_RCSID(0, "$NetBSD: ext2fs_alloc.c,v 1.22 2004/03/22 19:23:08 bouyer Exp $");
 
@@ -681,3 +684,10 @@ ext2fs_fserr(fs, uid, cp)
 
 	log(LOG_ERR, "uid %d on %s: %s\n", uid, fs->e2fs_fsmnt, cp);
 }
+
+#endif
+
+#include "ext2fs_extern.h"
+int ext2fs_valloc(void *v) { return EROFS; }
+int ext2fs_vfree(void *v) { return EROFS; }
+int ext2fs_reallocblks(void *v) { return EROFS; }

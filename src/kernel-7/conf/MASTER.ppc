@@ -69,9 +69,9 @@
 #  Standard NeXT Research Configurations:
 #  -------- ---- -------- ---------------
 #
-#  RELEASE = [event kernobjc libdriver driverkit ppc mach medium vol pst gdb fixpri debug simple_clock mdebug kernserv kernstack ipc_compat ipc_debug nfsclient nfsserver quota fifo fdesc union portal ffs hfs cd9660 compat_43 netat revfs nbc]
+#  RELEASE = [event kernobjc libdriver driverkit ppc mach medium vol pst gdb fixpri debug simple_clock mdebug kernserv kernstack ipc_compat ipc_debug nfsclient nfsserver quota fifo fdesc union portal ffs hfs ext2fs cd9660 compat_43 netat revfs nbc]
 #  PROFILE = [RELEASE profile]
-#  DEBUG = [event kernobjc libdriver driverkit ppc mach medium vol pst gdb fixpri debug simple_clock mdebug kernserv xpr_debug uxpr kernstack ipc_compat ipc_debug nfsclient nfsserver quota fifo fdesc union portal ffs hfs cd9660 compat_43 netat diagnostic revfs nbc]
+#  DEBUG = [event kernobjc libdriver driverkit ppc mach medium vol pst gdb fixpri debug simple_clock mdebug kernserv xpr_debug uxpr kernstack ipc_compat ipc_debug nfsclient nfsserver quota fifo fdesc union portal ffs hfs ext2fs cd9660 compat_43 netat diagnostic revfs nbc]
 #
 ######################################################################
 #

@@ -64,26 +64,8 @@
  * Modified for ext2fs by Manuel Bouyer.
  */
 
-#include <sys/cdefs.h>
-__KERNEL_RCSID(0, "$NetBSD: ext2fs_readwrite.c,v 1.32 2004/03/22 19:23:08 bouyer Exp $");
-
-#include <sys/param.h>
-#include <sys/systm.h>
-#include <sys/resourcevar.h>
-#include <sys/kernel.h>
-#include <sys/file.h>
-#include <sys/stat.h>
-#include <sys/buf.h>
-#include <sys/proc.h>
-#include <sys/mount.h>
-#include <sys/vnode.h>
-#include <sys/malloc.h>
-#include <sys/signalvar.h>
-
-#include <ufs/ufs/inode.h>
-#include <ufs/ufs/ufs_extern.h>
-#include "ext2_fs.h"
 #include "ext2fs_extern.h"
+
 
 
 #define doclusterread 0 /* XXX underway */
@@ -108,8 +90,6 @@ ext2fs_read(v)
 	struct uio *uio;
 	struct m_ext2fs *fs;
 	struct buf *bp;
-	void *win;
-	vsize_t bytelen;
 	daddr_t lbn, nextlbn;
 	off_t bytesinfile;
 	long size, xfersize, blkoffset;
@@ -133,32 +113,13 @@ ext2fs_read(v)
 #endif
 	fs = ip->i_e2fs;
 	if ((u_int64_t)uio->uio_offset >
-		((u_int64_t)0x80000000 * fs->e2fs_bsize - 1))
+		EXT2_FILESIZE_MAX)
 		return (EFBIG);
 	if (uio->uio_resid == 0)
 		return (0);
 	if (uio->uio_offset >= ip->i_e2fs_size)
 		return (0);
 
-	if (vp->v_type == VREG) {
-		error = 0;
-		while (uio->uio_resid > 0) {
-			bytelen = MIN(ip->i_e2fs_size - uio->uio_offset,
-			    uio->uio_resid);
-
-			if (bytelen == 0) {
-				break;
-			}
-			win = ubc_alloc(&vp->v_uobj, uio->uio_offset,
-			    &bytelen, UBC_READ);
-			error = uiomove(win, bytelen, uio);
-			ubc_release(win, 0);
-			if (error) {
-				break;
-			}
-		}
-		goto out;
-	}
 
 	for (error = 0, bp = NULL; uio->uio_resid > 0; bp = NULL) {
 		if ((bytesinfile = ip->i_e2fs_size - uio->uio_offset) <= 0)
@@ -190,13 +151,12 @@ ext2fs_read(v)
 		 * then we want to ensure that we do not uiomove bad
 		 * or uninitialized data.
 		 */
-		size -= bp->b_resid;
+		size -= bp->b_resid + blkoffset;
 		if (size < xfersize) {
-			if (size == 0)
-				break;
+			if (size <= 0) { error = EIO; break; }
 			xfersize = size;
 		}
-		error = uiomove((char *)bp->b_data + blkoffset, xfersize, uio);
+		error = uiomove((char *)bp->b_un.b_addr + blkoffset, xfersize, uio);
 		if (error)
 			break;
 		brelse(bp);
@@ -204,18 +164,15 @@ ext2fs_read(v)
 	if (bp != NULL)
 		brelse(bp);
 
-out:
-	if (!(vp->v_mount->mnt_flag & MNT_NOATIME)) {
-		ip->i_flag |= IN_ACCESS;
-		if ((ap->a_ioflag & IO_SYNC) == IO_SYNC)
-			error = VOP_UPDATE(vp, NULL, NULL, UPDATE_WAIT);
-	}
+
 	return (error);
 }
 
 /*
  * Vnode op for writing.
  */
+/* Unadapted mutation body retained for the write milestone. */
+#if 0
 int
 ext2fs_write(v)
 	void *v;
@@ -360,7 +317,7 @@ ext2fs_write(v)
 		if (ip->i_e2fs_size < uio->uio_offset + xfersize) {
 			ip->i_e2fs_size = uio->uio_offset + xfersize;
 		}
-		error = uiomove((char *)bp->b_data + blkoffset, xfersize, uio);
+		error = uiomove((char *)bp->b_un.b_addr + blkoffset, xfersize, uio);
 
 		/*
 		 * update UVM's notion of the size now that we've
@@ -404,3 +361,6 @@ out:
 	KASSERT(vp->v_size == ip->i_e2fs_size);
 	return (error);
 }
+
+#endif
+int ext2fs_write(void *v) { return EROFS; }

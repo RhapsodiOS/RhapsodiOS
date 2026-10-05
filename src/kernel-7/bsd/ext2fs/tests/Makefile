@@ -21,6 +21,12 @@ check: all
 	./swap_test$(EXE)
 
 clean:
-	rm -f disk_test disk_test.exe swap_test swap_test.exe
+	rm -f disk_test disk_test.exe swap_test swap_test.exe adapter_test
 
 .PHONY: all check clean
+
+# Native adapter test deliberately uses the actual shared kernel structures.
+adapter_test: adapter_test.c ../ext2fs_rhapsody.c ../ext2fs_rhapsody.h $(HEADERS)
+	$(CC) $(CFLAGS) -Wno-precomp -I../.. adapter_test.c ../ext2fs_rhapsody.c ../ext2_disk.c ../ext2fs_bswap.c -o $@
+check-adapter: adapter_test
+	./adapter_test

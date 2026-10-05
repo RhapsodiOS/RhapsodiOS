@@ -582,3 +582,17 @@ bsd/netat/adsp_misc.c			optional netat
 bsd/netat/sys_glue.c			optional netat
 bsd/netat/sys_dep.c			optional netat
 bsd/netat/drv_dep.c			optional netat
+
+OPTIONS/ext2fs				optional ext2fs
+bsd/ext2fs/ext2fs_alloc.c		optional ext2fs
+bsd/ext2fs/ext2fs_balloc.c		optional ext2fs
+bsd/ext2fs/ext2fs_bmap.c		optional ext2fs
+bsd/ext2fs/ext2fs_bswap.c		optional ext2fs
+bsd/ext2fs/ext2fs_inode.c		optional ext2fs
+bsd/ext2fs/ext2fs_lookup.c		optional ext2fs
+bsd/ext2fs/ext2fs_readwrite.c		optional ext2fs
+bsd/ext2fs/ext2fs_subr.c		optional ext2fs
+bsd/ext2fs/ext2fs_vfsops.c		optional ext2fs
+bsd/ext2fs/ext2fs_vnops.c		optional ext2fs
+bsd/ext2fs/ext2fs_rhapsody.c		optional ext2fs
+bsd/ext2fs/ext2_disk.c			optional ext2fs

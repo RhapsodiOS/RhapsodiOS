@@ -64,17 +64,8 @@
  * Modified for ext2fs by Manuel Bouyer.
  */
 
-#include <sys/cdefs.h>
-__KERNEL_RCSID(0, "$NetBSD: ext2fs_subr.c,v 1.13 2004/03/22 19:23:08 bouyer Exp $");
-
-#include <sys/param.h>
-#include <sys/systm.h>
-#include <sys/vnode.h>
-#include <sys/buf.h>
-#include <sys/inttypes.h>
-#include <ufs/ufs/inode.h>
-#include "ext2_fs.h"
 #include "ext2fs_extern.h"
+
 
 /*
  * Return buffer with the contents of block "offset" from the beginning of
@@ -99,6 +90,7 @@ ext2fs_blkatoff(v)
 
 	ip = VTOI(ap->a_vp);
 	fs = ip->i_e2fs;
+	if (ap->a_offset < 0 || ap->a_offset >= ip->i_size) return EINVAL;
 	lbn = lblkno(fs, ap->a_offset);
 
 	*ap->a_bpp = NULL;
@@ -106,8 +98,9 @@ ext2fs_blkatoff(v)
 		brelse(bp);
 		return (error);
 	}
+	if (bp->b_resid) { brelse(bp); return EIO; }
 	if (ap->a_res)
-		*ap->a_res = (char *)bp->b_data + blkoff(fs, ap->a_offset);
+		*ap->a_res = (char *)bp->b_un.b_addr + blkoff(fs, ap->a_offset);
 	*ap->a_bpp = bp;
 	return (0);
 }

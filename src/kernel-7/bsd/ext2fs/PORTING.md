@@ -1,11 +1,10 @@
 # Ext2 port state and exported disk contract
 
-This task imports the pinned NetBSD core and establishes disk codecs. The
-filesystem remains disabled: no kernel configuration, registration, UFS union,
-mount ABI, tools project, or package manifest is changed. The imported VFS and
-vnode implementations still depend on NetBSD interfaces and must not be
-compiled into Rhapsody until those adaptations are completed. ORIGIN records
-all upstream files, immutable URLs, pristine checksums, and preserved notices.
+The pinned NetBSD import now has a Rhapsody read-only integration milestone.
+Registration uses static type 18, the appended VT_EXT2FS tag, and explicit
+normal/spec/FIFO vectors. Writable mounts and vnode metadata mutations return
+EROFS. Original write bodies remain under staging guards until the write
+milestone; these guards are not feature-selection options.
 
 ## Imported units and adaptations
 
@@ -126,3 +125,84 @@ host endian constants: all production disk structures/codecs remain in use.
 A host direct-swap result does not supply a PPC execution result. Per-CPU
 native results are recorded in the task report; missing PPC evidence remains
 an acceptance gate. No filesystem mount/runtime evidence is claimed here.
+
+## Task 2 native dependency audit
+
+Shared UFS source changes are limited to one pointer in each existing union.
+The union size and shared inode/mount layout remain unchanged. ext2fs_node
+places the unchanged inode first, followed by the private ext2 disk snapshot.
+M_MISCFSNODE allocates/frees that node; M_UFSMNT owns mounts, superblocks,
+group descriptors and the ext2-only inode hash. VGET interprets its void pointer
+argument as the historical inode-number value, never dereferences it.
+
+| Reused local helper | Audit / ext2 assumptions |
+| --- | --- |
+| ufs_start | Returns success, no FFS metadata access. |
+| ufs_getlbns | Uses only um_nindir and inode indirect geometry; same 12/3 pointers. |
+| ufs_access | Invoked only after ext2 rejects VWRITE, so QUOTA getinoquota is unreachable; uses canonical mode/UID/GID. |
+| ufs_vinit | Uses canonical mode/rdev, checkalias and locks; returned alias is retagged VT_EXT2FS. No i_fs read. |
+| ufs_lock/unlock/islocked | Uses canonical inode lock and vnode interlock, not disk metadata. |
+| ufs_strategy | Uses i_devvp and calls the ext2 VOP_BMAP; no FFS geometry. |
+| ufs_abortop | Releases native namei buffer; no inode/disk access. |
+| ufs_select/mmap/seek/pathconf | Constant/generic vnode answers, no i_fs dereference. |
+| ufs_advlock | Uses inode lockf and canonical i_size. |
+| ufs_revoke | Local alias for generic vop_revoke. |
+| ufs_pagein/pageout | Native pass-through to VOP_READ/VOP_WRITE, which select ext2 read and EROFS write. |
+
+Do not use ufs_close or ufs_ioctl: both can interpret i_fs as FFS. Do not
+use shared UFS reclaim/hash: ext2 owns a separate hash and allocation class.
+Do not use ufs_inactive because truncation and timestamp policy differ.
+Spec/FIFO I/O uses local spec/fifo functions directly; no ufsspec/ufsfifo
+wrappers or filesystem timestamp changes. No quota or export implementation
+is linked from ext2. NFS handles and quota callbacks return EOPNOTSUPP.
+
+Active NetBSD algorithms retained in their own units: ext2fs_bmap and
+ext2fs_bmaparray retain direct/indirect traversal and ufs_getlbns; ext2fs_read
+uses the upstream buffered loop for all types; ext2fs_lookup retains the
+linear scan, cached directory offset, parent/child locking and native
+VOP_BLKATOFF dispatch; ext2fs_readdir retains entry-by-entry conversion;
+ext2fs_blkatoff retains buffer-cache reads. Bounds are checked before device
+block access; directory errors return EIO instead of panicking or repairing
+metadata on an RO mount. Native cache_lookup has incompatible reference and
+locking semantics, so the initial path uses the uncached scan. Read hardening
+and comprehensive corrupt-image coverage remain the next task.
+
+The vnode vectors, mount lifecycle and inode load/save are ABI-specific
+replacements. ext2fs_update(struct vop_update_args *) delegates to
+ext2fs_update_inode(vnode,timeval,timeval,wait). Four-argument VOP_UPDATE,
+VOP_TRUNCATE, VOP_VALLOC and VOP_VFREE use the local dispatch descriptors;
+unadapted mutation entries refuse EROFS. Imported UVM, UBC, genfs, NetBSD
+pools, write-suspension/fstrans, kqueue and unsupported vnode calls occur
+only inside retained staging guards. No compatibility macro silently ignores
+their behavior. All ten imported C units compile independently.
+
+Guarded staging sections: original VFS/vnode code, inode update/truncate/
+inactive, alloc/balloc, ext2fs_write, and lookup's directory mutation helpers.
+VFS/vnode replacement code is native; future work should adapt and enable
+upstream mutation functions in-place rather than adding another disk engine.
+The private dinode retains ext2-only scalars and raw little-endian block
+bytes. Metadata aliases name local canonical i_din fields; block/ext2 flag
+access uses ext2fs_dinode explicitly. No disk-record casting is used.
+
+Mount admission uses DKIOCGPARTINFO from exported bsd/dev/disk.h. Its fixed
+eight-byte disk_partition_info contains u_int32_t block_size/block_count;
+ioctl number 29 was unused. The selected logical partition supplies these
+values in bsd/dev/ata_hd_registry.m, bsd/dev/SCSIDiskKern.m and
+bsd/dev/ppc/drvATADisk/ATADiskKernel.m. Live, absent, zero, out-of-signed-32-bit
+range, and whole-drive-sized or larger capacities are rejected. The last
+check deliberately excludes DriverKit's unlabelled partition-zero fallback:
+supported NeXT/APM partitions have label/front overhead. It compares checked
+64-bit byte products; partition offsets remain governed by existing I/O.
+No label parser or device-name inference is added to ext2 or its tools.
+
+Legacy DKIOCBLKSIZE/DKIOCNUMBLKS retain their existing UFS/FAT/HFS behavior;
+they often describe the physical drive and cannot bound a NeXT partition.
+Native partition_info tests assert both new and legacy results on block/raw
+512/1024-byte NeXT partitions plus live, unavailable, equal and oversized
+refusals. Exposed HFS paths require per-CPU runtime evidence as recorded in
+the report; cross-compilation is not execution. Existing UFS image tests and
+shared-header layout comparisons cover the unchanged UFS structures.
+Older kernels without the new query fail mount cleanly. The current ext2
+buffer mapping admits 512-byte device sectors only. RO mount/sync/unmount
+issue no superblock, dirty-bit, inode timestamp or free-map writes.
+Registration has no root-mount callback.

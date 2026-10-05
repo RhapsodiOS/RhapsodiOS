@@ -64,6 +64,9 @@
  * Modified for ext2fs by Manuel Bouyer.
  */
 
+/* NetBSD implementation retained while native entry points are adapted.
+ * Mutation code remains disabled until writable mounts are implemented. */
+#if 0
 #include <sys/cdefs.h>
 __KERNEL_RCSID(0, "$NetBSD: ext2fs_vfsops.c,v 1.66.2.1 2004/05/29 09:03:35 tron Exp $");
 
@@ -1167,4 +1170,266 @@ ext2fs_checksb(fs, ronly)
 		}
 	}
 	return (0);
+}
+
+#endif
+
+#include "ext2fs_extern.h"
+#include <miscfs/specfs/specdev.h>
+#include <sys/conf.h>
+#include <bsd/dev/disk.h>
+#include "ext2_mount.h"
+
+static LIST_HEAD(ext2_hashhead, inode) *ext2_hashtbl;
+static u_long ext2_hashmask;
+static struct slock ext2_hashlock;
+static struct lock__bsd__ ext2_vgetlock;
+#define EXT2_HASH(d,n) (&ext2_hashtbl[((d)+(n)) & ext2_hashmask])
+
+int
+ext2fs_init(struct vfsconf *conf)
+{
+    ext2_hashtbl = hashinit(desiredvnodes,M_UFSMNT,&ext2_hashmask);
+    simple_lock_init(&ext2_hashlock);
+    lockinit(&ext2_vgetlock,PINOD,"ext2vget",0,0);
+    return 0;
+}
+
+void
+ext2fs_ihashrem(struct inode *ip)
+{
+    simple_lock(&ext2_hashlock);
+    if (ip->i_hash.le_prev) LIST_REMOVE(ip,i_hash);
+    ip->i_hash.le_prev = NULL;
+    simple_unlock(&ext2_hashlock);
+}
+
+static int
+ext2fs_root(struct mount *mp,struct vnode **vpp)
+{
+    return ext2fs_vget(mp,(void *)(u_long)EXT2_ROOTINO,vpp);
+}
+static int ext2fs_quota(struct mount *mp,int cmd,uid_t uid,caddr_t arg,struct proc *p) { return EOPNOTSUPP; }
+static int ext2fs_fhtovp(struct mount *mp,struct fid *fid,struct mbuf *nam,struct vnode **vpp,int *flags,struct ucred **cred) { return EOPNOTSUPP; }
+static int ext2fs_vptofh(struct vnode *vp,struct fid *fid) { return EOPNOTSUPP; }
+static int ext2fs_sysctl(int *name,u_int count,void *old,size_t *oldlen,void *new,size_t newlen,struct proc *p) { return EOPNOTSUPP; }
+struct vfsops ext2fs_vfsops = {
+    ext2fs_mount,ufs_start,ext2fs_unmount,ext2fs_root,ext2fs_quota,
+    ext2fs_statfs,ext2fs_sync,ext2fs_vget,ext2fs_fhtovp,ext2fs_vptofh,
+    ext2fs_init,ext2fs_sysctl
+};
+
+static int
+ext2fs_has_super(struct ext2fs *es,u_int32_t group)
+{
+    u_int32_t value,base;
+    if (!(es->e2fs_features_rocompat & EXT2F_ROCOMPAT_SPARSESUPER) || group < 2) return 1;
+    for (base=3;base<=7;base+=2) {
+        value=group;
+        while (value%base == 0) value/=base;
+        if (value == 1) return 1;
+    }
+    return 0;
+}
+
+static int
+ext2fs_mountfs(struct vnode *devvp,struct mount *mp,struct proc *p)
+{
+    struct ufsmount *ump = NULL;
+    struct m_ext2fs *fs = NULL;
+    struct buf *bp = NULL;
+    struct ext2fs disk;
+    struct disk_partition_info capacity;
+    int error, i;
+    u_int32_t start, end, table, blocks;
+    struct ext2_gd *gd;
+    if ((error = vfs_mountedon(devvp)) != 0) return error;
+    if (vcount(devvp) > 1) return EBUSY;
+    if ((error = vinvalbuf(devvp,V_SAVE,p->p_ucred,p,0,0)) != 0) return error;
+    if ((error = VOP_OPEN(devvp,FREAD,p->p_ucred,p)) != 0) return error;
+    error = VOP_IOCTL(devvp,DKIOCGPARTINFO,(caddr_t)&capacity,FREAD,p->p_ucred,p);
+    if (error) goto fail;
+    if (capacity.block_size != 512 || capacity.block_count == 0 ||
+        capacity.block_count > 0x7fffffffU) { error = EINVAL; goto fail; }
+    error = bread(devvp,2,1024,NOCRED,&bp);
+    if (error) goto fail;
+    error = ext2_super_decode(bp->b_un.b_addr,1024-bp->b_resid,&disk);
+    brelse(bp); bp = NULL;
+    if (error) goto fail;
+    error = ext2_validate_super(&disk,(u_int64_t)capacity.block_count*capacity.block_size,0);
+    if (error) goto fail;
+    MALLOC(ump,struct ufsmount *,sizeof(*ump),M_UFSMNT,M_WAITOK);
+    MALLOC(fs,struct m_ext2fs *,sizeof(*fs),M_UFSMNT,M_WAITOK);
+    bzero(ump,sizeof(*ump)); bzero(fs,sizeof(*fs));
+    fs->e2fs = disk;
+    fs->e2fs_ronly = 1;
+    fs->e2fs_bshift = 10+disk.e2fs_log_bsize;
+    fs->e2fs_bsize = 1 << fs->e2fs_bshift;
+    fs->e2fs_qbmask = fs->e2fs_bsize-1;
+    fs->e2fs_bmask = ~fs->e2fs_qbmask;
+    fs->e2fs_fsbtodb = fs->e2fs_bshift-9;
+    fs->e2fs_ncg = (disk.e2fs_bcount-disk.e2fs_first_dblock+disk.e2fs_bpg-1)/disk.e2fs_bpg;
+    fs->e2fs_ngdb = (fs->e2fs_ncg+fs->e2fs_bsize/32-1)/(fs->e2fs_bsize/32);
+    fs->e2fs_ipb = fs->e2fs_bsize/128;
+    fs->e2fs_itpg = disk.e2fs_ipg/fs->e2fs_ipb;
+    MALLOC(fs->e2fs_gd,struct ext2_gd *,fs->e2fs_ngdb*fs->e2fs_bsize,M_UFSMNT,M_WAITOK);
+    for (i=0;i<fs->e2fs_ngdb;i++) {
+        error = bread(devvp,(disk.e2fs_first_dblock+1+i)<<fs->e2fs_fsbtodb,fs->e2fs_bsize,NOCRED,&bp);
+        if (error) goto fail;
+        if (bp->b_resid) { error=EIO; goto fail; }
+        e2fs_cgload((struct ext2_gd *)bp->b_un.b_addr,
+            (struct ext2_gd *)((char *)fs->e2fs_gd+i*fs->e2fs_bsize),fs->e2fs_bsize);
+        brelse(bp); bp=NULL;
+    }
+    for (i=0;i<fs->e2fs_ncg;i++) {
+        gd=&fs->e2fs_gd[i];
+        start=disk.e2fs_first_dblock+i*disk.e2fs_bpg;
+        blocks=MIN(disk.e2fs_bpg,disk.e2fs_bcount-start); end=start+blocks;
+        if (ext2fs_has_super(&disk,i)) start+=1+fs->e2fs_ngdb;
+        table=gd->ext2bgd_i_tables;
+        if (gd->ext2bgd_b_bitmap < start || gd->ext2bgd_b_bitmap >= end ||
+            gd->ext2bgd_i_bitmap < start || gd->ext2bgd_i_bitmap >= end ||
+            table < start || table >= end || fs->e2fs_itpg > end-table ||
+            gd->ext2bgd_b_bitmap == gd->ext2bgd_i_bitmap ||
+            (gd->ext2bgd_b_bitmap >= table && gd->ext2bgd_b_bitmap < table+fs->e2fs_itpg) ||
+            (gd->ext2bgd_i_bitmap >= table && gd->ext2bgd_i_bitmap < table+fs->e2fs_itpg) ||
+            gd->ext2bgd_nbfree > blocks || gd->ext2bgd_nifree > disk.e2fs_ipg) {
+            error=EINVAL; goto fail;
+        }
+    }
+    ump->um_mountp=mp; ump->um_dev=devvp->v_rdev; ump->um_devvp=devvp;
+    ump->um_e2fs=fs; ump->um_nindir=fs->e2fs_bsize/4;
+    ump->um_bptrtodb=fs->e2fs_fsbtodb; ump->um_seqinc=1;
+    mp->mnt_data=(qaddr_t)ump; mp->mnt_flag |= MNT_LOCAL;
+    mp->mnt_maxsymlinklen=EXT2_MAXSYMLINKLEN;
+    devvp->v_specflags |= SI_MOUNTEDON;
+    vfs_getnewfsid(mp);
+    return 0;
+fail:
+    if (bp) brelse(bp);
+    if (fs) { if (fs->e2fs_gd) FREE(fs->e2fs_gd,M_UFSMNT); FREE(fs,M_UFSMNT); }
+    if (ump) FREE(ump,M_UFSMNT);
+    (void)VOP_CLOSE(devvp,FREAD,p->p_ucred,p);
+    return error;
+}
+
+int
+ext2fs_mount(struct mount *mp,char *path,caddr_t data,struct nameidata *ndp,struct proc *p)
+{
+    struct ext2fs_args args;
+    struct vnode *devvp;
+    char from[MNAMELEN],on[MNAMELEN];
+    size_t done;
+    int error;
+    if (!(mp->mnt_flag & MNT_RDONLY) || (mp->mnt_flag & MNT_WANTRDWR)) return EROFS;
+    if (mp->mnt_flag & (MNT_RELOAD|MNT_EXPORTED)) return EOPNOTSUPP;
+    if ((error=copyin(data,&args,sizeof(args)))) return error;
+    if ((mp->mnt_flag & MNT_UPDATE) && args.fspec == NULL) return 0;
+    if ((error=copyinstr(args.fspec,from,sizeof(from),&done))) return error;
+    if ((error=copyinstr(path,on,sizeof(on),&done))) return error;
+    NDINIT(ndp,LOOKUP,FOLLOW,UIO_SYSSPACE,from,p);
+    if ((error=namei(ndp))) return error;
+    devvp=ndp->ni_vp;
+    if (devvp->v_type != VBLK) { vrele(devvp); return ENOTBLK; }
+    if (major(devvp->v_rdev) >= nblkdev) { vrele(devvp); return ENXIO; }
+    if (mp->mnt_flag & MNT_UPDATE) {
+        error=(devvp->v_rdev == VFSTOUFS(mp)->um_dev) ? 0 : EINVAL;
+        vrele(devvp); return error;
+    }
+    if (p->p_ucred->cr_uid != 0) {
+        vn_lock(devvp,LK_EXCLUSIVE|LK_RETRY,p);
+        error=VOP_ACCESS(devvp,VREAD,p->p_ucred,p);
+        VOP_UNLOCK(devvp,0,p);
+        if (error) { vrele(devvp); return error; }
+    }
+    if ((error=ext2fs_mountfs(devvp,mp,p))) { vrele(devvp); return error; }
+    bzero(mp->mnt_stat.f_mntonname,MNAMELEN); bzero(mp->mnt_stat.f_mntfromname,MNAMELEN);
+    strcpy(mp->mnt_stat.f_mntonname,on); strcpy(mp->mnt_stat.f_mntfromname,from);
+    return ext2fs_statfs(mp,&mp->mnt_stat,p);
+}
+
+int
+ext2fs_unmount(struct mount *mp,int flags,struct proc *p)
+{
+    struct ufsmount *ump=VFSTOUFS(mp);
+    int error=vflush(mp,NULLVP,(flags&MNT_FORCE)?FORCECLOSE:0);
+    if (error) return error;
+    ump->um_devvp->v_specflags &= ~SI_MOUNTEDON;
+    error=VOP_CLOSE(ump->um_devvp,FREAD,NOCRED,p);
+    vrele(ump->um_devvp);
+    FREE(ump->um_e2fs->e2fs_gd,M_UFSMNT); FREE(ump->um_e2fs,M_UFSMNT); FREE(ump,M_UFSMNT);
+    mp->mnt_data=NULL;
+    return error;
+}
+int ext2fs_sync(struct mount *mp,int wait,struct ucred *cred,struct proc *p) { return 0; }
+int
+ext2fs_statfs(struct mount *mp,struct statfs *sb,struct proc *p)
+{
+    struct m_ext2fs *fs=VFSTOUFS(mp)->um_e2fs;
+    sb->f_type=18; sb->f_bsize=fs->e2fs_bsize; sb->f_iosize=fs->e2fs_bsize;
+    sb->f_blocks=fs->e2fs.e2fs_bcount; sb->f_bfree=fs->e2fs.e2fs_fbcount;
+    sb->f_bavail=sb->f_bfree > fs->e2fs.e2fs_rbcount ? sb->f_bfree-fs->e2fs.e2fs_rbcount : 0;
+    sb->f_files=fs->e2fs.e2fs_icount; sb->f_ffree=fs->e2fs.e2fs_ficount;
+    sb->f_fsid=mp->mnt_stat.f_fsid;
+    strcpy(sb->f_fstypename,"ext2fs");
+    if (sb != &mp->mnt_stat) {
+        bcopy(mp->mnt_stat.f_mntonname,sb->f_mntonname,MNAMELEN);
+        bcopy(mp->mnt_stat.f_mntfromname,sb->f_mntfromname,MNAMELEN);
+    }
+    return 0;
+}
+
+int
+ext2fs_vget(struct mount *mp,void *inoarg,struct vnode **vpp)
+{
+    ino_t ino=(ino_t)(u_long)inoarg;
+    struct proc *p=current_proc();
+    struct ufsmount *ump=VFSTOUFS(mp);
+    struct m_ext2fs *fs=ump->um_e2fs;
+    struct inode *ip;
+    struct ext2fs_node *node;
+    struct vnode *vp;
+    struct buf *bp;
+    u_int32_t group,index,block;
+    int error;
+    *vpp=NULL;
+    if (ino < EXT2_ROOTINO || ino > fs->e2fs.e2fs_icount) return EINVAL;
+retry:
+    lockmgr(&ext2_vgetlock,LK_EXCLUSIVE,NULL,p);
+    simple_lock(&ext2_hashlock);
+    for (ip=EXT2_HASH(ump->um_dev,ino)->lh_first;ip;ip=ip->i_hash.le_next) {
+        if (ip->i_dev==ump->um_dev && ip->i_number==ino) {
+            vp=ITOV(ip); simple_lock(&vp->v_interlock); simple_unlock(&ext2_hashlock);
+            lockmgr(&ext2_vgetlock,LK_RELEASE,NULL,p);
+            if (vget(vp,LK_EXCLUSIVE|LK_INTERLOCK,p)) goto retry;
+            *vpp=vp; return 0;
+        }
+    }
+    simple_unlock(&ext2_hashlock);
+    group=(ino-1)/fs->e2fs.e2fs_ipg; index=(ino-1)%fs->e2fs.e2fs_ipg;
+    block=fs->e2fs_gd[group].ext2bgd_i_tables+index/fs->e2fs_ipb;
+    error=bread(ump->um_devvp,block<<fs->e2fs_fsbtodb,fs->e2fs_bsize,NOCRED,&bp);
+    if (error) { brelse(bp); goto out; }
+    if (bp->b_resid) { brelse(bp); error=EIO; goto out; }
+    error=getnewvnode(VT_EXT2FS,mp,ext2fs_vnodeop_p,&vp);
+    if (error) { brelse(bp); goto out; }
+    MALLOC(node,struct ext2fs_node *,sizeof(*node),M_MISCFSNODE,M_WAITOK);
+    bzero(node,sizeof(*node)); ip=&node->inode; vp->v_data=node; ip->i_vnode=vp;
+    ip->i_number=ino; ip->i_dev=ump->um_dev; ip->i_e2fs=fs;
+    lockinit(&ip->i_lock,PINOD,"ext2inode",0,0);
+    ext2fs_inode_load(ip,(struct ext2fs_dinode *)((char *)bp->b_un.b_addr+(index%fs->e2fs_ipb)*128));
+    brelse(bp);
+    lockmgr(&ip->i_lock,LK_EXCLUSIVE,NULL,p);
+    ip->i_devvp=ump->um_devvp; VREF(ip->i_devvp);
+    if (ip->i_size > EXT2_FILESIZE_MAX || ip->i_mode == 0 || ip->i_nlink == 0 ||
+        (IFTOVT(ip->i_mode)==VREG && ext2fs_dinode(ip)->e2di_dacl)) {
+        vput(vp); error=EIO; goto out;
+    }
+    error=ext2fs_vinit(mp,ext2fs_specop_p,ext2fs_fifoop_p,&vp);
+    if (error) { vput(vp); goto out; }
+    simple_lock(&ext2_hashlock); LIST_INSERT_HEAD(EXT2_HASH(ip->i_dev,ino),ip,i_hash); simple_unlock(&ext2_hashlock);
+    *vpp=vp;
+out:
+    lockmgr(&ext2_vgetlock,LK_RELEASE,NULL,p);
+    return error;
 }

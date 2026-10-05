@@ -138,6 +138,18 @@ Keep the mount argument structure in a small exported header, shared with
 `mount_ext2fs`. Its device name and mount flags are interpreted using
 Rhapsody's mount syscall ABI, not an unverified NetBSD structure layout.
 
+Obtain device bounds through the exported `bsd/dev/disk.h` partition query:
+`struct disk_partition_info { u_int32_t block_size; u_int32_t block_count; };`
+and `DKIOCGPARTINFO = _IOR('d',29,struct disk_partition_info)`. Each ATA/SCSI
+driver path reports the logical partition object selected for I/O, rejects
+live/whole-drive and unavailable or invalid capacities, and retains the
+existing whole-drive semantics of `DKIOCBLKSIZE`/`DKIOCNUMBLKS`. The kernel
+mount, e2fsprogs device sizing, and wrappers consume the same query with
+checked arithmetic; unsupported older kernels fail cleanly. Do not duplicate
+partition-label parsing in ext2 or its tools. Cover the shared driver change
+with raw/block NeXT 512/1024-byte sector cases, exposed HFS partitions,
+live/invalid rejection, and existing UFS/FAT/HFS behavior.
+
 ### Byte order and allocation
 
 Ext2 disk metadata is little-endian. Retain NetBSD's superblock, group, and

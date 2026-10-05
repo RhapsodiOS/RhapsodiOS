@@ -1,4 +1,3 @@
-	.code32
 	.text
 	.globl __bios16
 __bios16:
@@ -10,7 +9,8 @@ __bios16:
 	movl	%eax, bios16_far_jump+1
 	movw	_ATI_Bios_Selector, %ax
 	movw	%ax, bios16_far_jump+5
-	movl	%esp, bios16_saved_esp
+	movl	%esp, %eax
+	movl	%eax, bios16_saved_esp
 	movw	%ss, %ax
 	movw	%ax, bios16_saved_ss
 	movw	_ATI_Bios_StackOffset, %ax
@@ -28,6 +28,9 @@ bios16_far_jump:
 	.long	0
 	.word	0
 bios16_return:
+	movl	bios16_saved_esp, %eax
+	movl	%eax, %esp
+	movw	bios16_saved_ss, %ax
 	movw	%ax, %ss
 	lret
 	.globl bios16_end

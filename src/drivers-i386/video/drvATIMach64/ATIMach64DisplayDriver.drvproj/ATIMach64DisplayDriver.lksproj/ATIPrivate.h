@@ -18,7 +18,7 @@
     int currentState;
     char isPCI;
     ATI_BIOS *atiBios;
-    void *queryData;
+    unsigned char *queryData;
     unsigned int queryDataSize;
     char supportsGamma;
     char supportsGrey256;

@@ -53,7 +53,8 @@ def test_query_replacement_and_hardware_mapping_preserve_ownership_order():
 def test_table_mapping_keeps_three_ranges_and_rolls_back_first_address():
     source = (LKS / "ATIPrivate.m").read_text(encoding="utf-8")
     mapping = source.split("- (int)changeTableMapping:", 1)[1]
-    assert "[description numMemoryRanges] != 3" in mapping
+    assert "rangeCount = [description numMemoryRanges];" in mapping
+    assert "if (rangeCount != 3)" in mapping
     assert "return -701;" in mapping
     assert "replacement[index] = ranges[index];" in mapping
     assert "replacement[0].start = address;" in mapping

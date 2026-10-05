@@ -9,7 +9,8 @@ def test_gamma_and_revision_paths_use_exact_ports_and_synchronizing_io_primitive
     source = (LKS / "ProgramDAC.m").read_text(encoding="utf-8")
     assert "ATI_INB(0x62ec)" in source
     assert "ATI_OUTB(0x62ec, control | 3);" in source
-    assert "ATI_INB(0x5eef) == 0xd0" in source
+    assert "if (ATI_INB(0x5eef) == 0xd0)" in source
+    assert "return 1;\n    return 0;" in source
     assert "ATI_OUTB(0x5eed" in source
     assert "ATI_OUTB(0x62ec, control & 0xfc);" in source
     ports = (ROOT.parents[3] / "driverkit-3/driverkit/i386/ioPorts.h").read_text(encoding="utf-8")
@@ -49,6 +50,25 @@ def test_dac_fixture_checks_ports_brightness_and_unusual_table_count():
     assert "testGammaValueAndRevisionPortOrder" in source
     assert "testDefaultGammaAndBrightnessBounds" in source
     assert "testTransferTableChannelExtractionAndSparseCount" in source
-    assert "ATI_mockPortEventCount() == 767" in source
+    assert "ATI_mockPortEventCount() == 771" in source
     makefile = (LKS / "tests/Makefile").read_text(encoding="utf-8")
     assert "check-dac: $(BUILD)/test_dac" in makefile
+
+
+def test_gamma_value_multiplies_each_channel_by_brightness_in_reference_order():
+    source = (LKS / "ProgramDAC.m").read_text(encoding="utf-8")
+    body = source.split("unsigned int SetGammaValue", 1)[1].split("@implementation", 1)[0]
+    red = "red = ((unsigned int)red * (unsigned int)brightness) >> 6;"
+    green = "green = ((unsigned int)green * (unsigned int)brightness) >> 6;"
+    blue = "blue = ((unsigned int)blue * (unsigned int)brightness) >> 6;"
+    positions = [body.index(expression) for expression in (red, green, blue)]
+    assert positions == sorted(positions)
+
+
+def test_gamma_value_keeps_scaled_channels_in_the_parameter_registers():
+    source = (LKS / "ProgramDAC.m").read_text(encoding="utf-8")
+    body = source.split("unsigned int SetGammaValue", 1)[1].split("@implementation", 1)[0]
+    assert "red = ((unsigned int)red * (unsigned int)brightness) >> 6;" in body
+    assert "green = ((unsigned int)green * (unsigned int)brightness) >> 6;" in body
+    assert "blue = ((unsigned int)blue * (unsigned int)brightness) >> 6;" in body
+    assert "return blue;" in body

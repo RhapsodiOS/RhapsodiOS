@@ -197,38 +197,58 @@ unsigned int modeValidArray = 0xffffffffU;
 
 int displayInfoToColorSpace(const IODisplayInfo *info)
 {
+    int colorSpace = 0;
     switch (info->bitsPerPixel) {
-    case IO_15BitsPerPixel: return 2;
-    case IO_24BitsPerPixel: return 3;
-    case IO_8BitsPerPixel: return info->colorSpace != IO_OneIsWhiteColorSpace;
+    case IO_8BitsPerPixel:
+        colorSpace = 1;
+        if (info->colorSpace == IO_OneIsWhiteColorSpace)
+            colorSpace = 0;
+        break;
+    case IO_15BitsPerPixel:
+        colorSpace = 2;
+        break;
+    case IO_24BitsPerPixel:
+        colorSpace = 3;
+        break;
     default:
         IOLog("ATIMach64: displayInfoToColorSpace problem (%d)\n", info->bitsPerPixel);
         IOPanic("ATIMach64 displayInfoToColorSpace");
-        return 0;
+        break;
     }
+    return colorSpace;
 }
 
 int colorDepthToColorSpace(int colorDepth)
 {
+    int colorSpace = 0;
+
     switch (colorDepth) {
-    case 2: return 1;
-    case 3: case 4: return 2;
-    case 5: case 6: return 3;
-    default: return 0;
+    case 2: colorSpace = 1; break;
+    case 3: case 4: colorSpace = 2; break;
+    case 5: case 6: colorSpace = 3; break;
+    default: break;
     }
+    return colorSpace;
 }
 
 int displayInfoToColorDepth(const IODisplayInfo *info)
 {
+    int colorDepth = 0;
     switch (info->bitsPerPixel) {
-    case IO_15BitsPerPixel: return 3;
-    case IO_24BitsPerPixel: return 6;
-    case IO_8BitsPerPixel: return 2;
+    case IO_8BitsPerPixel:
+        colorDepth = 2;
+        break;
+    case IO_15BitsPerPixel:
+        colorDepth = 3;
+        break;
+    case IO_24BitsPerPixel:
+        colorDepth = 6;
+        break;
     default:
-        IOLog("ATIMach64: displayInfoToColorDepth problem\n");
-        IOPanic("ATIMach64 displayInfoToColorDepth");
-        return 0;
+        IOPanic("ATIMach64: displayInfoToColorDepth problem");
+        break;
     }
+    return colorDepth;
 }
 
 unsigned int memSizeToBytes(unsigned char code)
@@ -236,9 +256,10 @@ unsigned int memSizeToBytes(unsigned char code)
     switch (code) {
     case 0: return 0x80000;
     case 1: return 0x100000;
-    case 2: return 0x200000;
+    case 2: return 2 * 1024 * 1024;
     case 3: return 0x400000;
     case 4: return 0x600000;
+    case 5:
     default: return 0x200000;
     }
 }

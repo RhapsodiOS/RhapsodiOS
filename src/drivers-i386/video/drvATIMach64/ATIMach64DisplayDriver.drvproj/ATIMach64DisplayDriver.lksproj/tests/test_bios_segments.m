@@ -9,6 +9,13 @@
     fprintf(stderr, "BIOS segment check failed at line %d: %s\n", __LINE__, #condition); \
     return 1; } } while (0)
 
+typedef char ATI_bios_selector_must_match_reference_width[
+    sizeof(ATI_Bios_Selector) == sizeof(unsigned short) ? 1 : -1];
+typedef char ATI_bios_stack_offset_must_match_reference_width[
+    sizeof(ATI_Bios_StackOffset) == sizeof(unsigned short) ? 1 : -1];
+typedef char ATI_bios_stack_selector_must_match_reference_width[
+    sizeof(ATI_Bios_StackSelector) == sizeof(unsigned short) ? 1 : -1];
+
 gdt_t testGDT[32];
 gdt_t *gdt = testGDT;
 static unsigned char biosAH;
@@ -22,6 +29,7 @@ void _ATIbios32(ATIBIOSRegisters *registers)
     ++biosCalls;
     ATI_mockCaptureBIOS(registers, 0);
     if (overrideBIOSOutput != 0) {
+        registers->eax = biosOutput.eax;
         registers->ebx = biosOutput.ebx;
         registers->ecx = biosOutput.ecx;
         registers->edx = biosOutput.edx;
@@ -29,8 +37,10 @@ void _ATIbios32(ATIBIOSRegisters *registers)
     registers->eax = (registers->eax & 0xffff00ffU) | ((unsigned int)biosAH << 8);
 }
 
-static void setBIOSOutput(unsigned int ebx, unsigned int ecx, unsigned int edx)
+static void setBIOSOutput(unsigned int eax, unsigned int ebx,
+                          unsigned int ecx, unsigned int edx)
 {
+    biosOutput.eax = eax;
     biosOutput.ebx = ebx;
     biosOutput.ecx = ecx;
     biosOutput.edx = edx;
@@ -127,11 +137,17 @@ static int testBIOSWrapperAndCommonCRTCStatus(void)
                          crtTable:&crtc function:0x4f name:"segment fixture"];
     CHECK(status == 0 && biosCalls == 1);
     CHECK(ATI_mockLastBIOSRegisters()->eax == 0x004fU);
-    CHECK(ATI_Bios_Selector == 0x8153U);
+    CHECK(ATI_Bios_Selector == 0x80U);
     CHECK(ATI_Bios_Offset == 100 && kernDataSel == 0x10);
-    CHECK(ATI_mockLastBIOSRegisters()->es == 0x88);
+    CHECK(ATI_mockLastBIOSRegisters()->edx == 0x88);
+    CHECK(ATI_mockLastBIOSRegisters()->ebx == 0);
     CHECK(ATI_mockLastBIOSRegisters()->codeSelector == 0x90);
     CHECK(ATI_mockLastBIOSRegisters()->entryOffset == 0);
+
+    status = [bios loadCRTC_comm:0x120003 gamma:1 pitchSize:1 resolution:0x81
+                         crtTable:&crtc function:0x4f name:"mode width fixture"];
+    CHECK(status == 0 && biosCalls == 2);
+    CHECK(ATI_mockLastBIOSRegisters()->ecx == 0x8153U);
 
     biosAH = 0x86;
     status = [bios loadCRTC_comm:3 gamma:0 pitchSize:0 resolution:0x81
@@ -140,7 +156,7 @@ static int testBIOSWrapperAndCommonCRTCStatus(void)
     status = [bios loadCRTC_comm:3 gamma:0 pitchSize:0 resolution:0x80
                          crtTable:&crtc function:0x4f name:"invalid resolution"];
     CHECK(status == 3);
-    CHECK(biosCalls == 2);
+    CHECK(biosCalls == 3);
     [bios free];
     return 0;
 }
@@ -221,6 +237,10 @@ static int testBIOSServicePackingAndBounds(void)
     CHECK([bios setVGAMode:0 gamma:1] == 0);
     CHECK(ATI_mockLastBIOSRegisters()->eax == 1);
     CHECK(ATI_mockLastBIOSRegisters()->ecx == 0x81);
+    CHECK([bios setVGAMode:0 gamma:0] == 0);
+    CHECK(ATI_mockLastBIOSRegisters()->ecx == 1);
+    CHECK([bios setVGAMode:1 gamma:1] == 0);
+    CHECK(ATI_mockLastBIOSRegisters()->ecx == 0x80);
     biosAH = 0x86;
     CHECK([bios setVGAMode:1 gamma:0] == 2);
     CHECK(ATI_mockLastBIOSRegisters()->ecx == 0);
@@ -239,11 +259,15 @@ static int testBIOSServicePackingAndBounds(void)
     CHECK(ATI_mockLastBIOSRegisters()->ecx == 0);
     beforeCalls = biosCalls;
     CHECK([bios setDPMSMode:5] == 3 && biosCalls == beforeCalls);
+    CHECK(strcmp(ATI_mockLastLogFormat(),
+          "ATI_BIOS set DPMS mode: %x not valid mode\n") == 0);
     CHECK([bios setAPMState:3] == 0);
     CHECK(ATI_mockLastBIOSRegisters()->eax == 14);
     CHECK(ATI_mockLastBIOSRegisters()->ecx == 3);
     beforeCalls = biosCalls;
     CHECK([bios setAPMState:4] == 3 && biosCalls == beforeCalls);
+    CHECK(strcmp(ATI_mockLastLogFormat(),
+          "ATI_BIOS set APM state: %x not valid mode\n") == 0);
 
     status = [bios querySize:0 size:&beforeCalls];
     CHECK(status == 0 && beforeCalls == 4096);
@@ -266,15 +290,15 @@ static int testBIOSQueryOutputPacking(void)
     ATI_mockReset();
     biosCalls = 0;
     biosAH = 0;
-    setBIOSOutput(0x12345000, 0x56789abc, 0x89abcdef);
+    setBIOSOutput(0x000000fc, 0xabcd5000, 0x56789abc, 0x89abcdef);
     bios = [[ATI_BIOS alloc] initAtSegmentAddress:0x400c0000U];
     CHECK(bios != nil);
     CHECK([bios shortQuery:&query hardCoded:&hardCoded smallAperture:&smallAperture
                    address:&address colorDepth:&depth memorySize:&memory
                    asicType:&asicType asicRev:&asicRevision] == 0);
     CHECK(query == 0x3c && hardCoded == 1 && smallAperture == 1);
-    CHECK(address == 0x12345000 && depth == 0x78 && memory == 0xbc);
-    CHECK((unsigned char)asicType == 0xab && (unsigned char)asicRevision == 0xef);
+    CHECK(address == 0x5000 && depth == 0x9a && memory == 0xbc);
+    CHECK((unsigned char)asicType == 0xcd && (unsigned char)asicRevision == 0xef);
 
     CHECK([bios getDPMSMode:&dpms] == 0 && dpms == 0);
     CHECK([bios getAPMState:&apm] == 0 && apm == 0);

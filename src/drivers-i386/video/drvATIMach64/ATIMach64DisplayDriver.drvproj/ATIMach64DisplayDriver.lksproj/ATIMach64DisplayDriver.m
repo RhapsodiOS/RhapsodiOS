@@ -9,6 +9,9 @@
 #import <driverkit/i386/IOPCIDirectDevice.h>
 #import <machdep/i386/pmap.h>
 #import <string.h>
+#include <stdio.h>
+
+extern vm_offset_t page_mask;
 
 @implementation ATI
 
@@ -175,14 +178,13 @@
             candidateAddress = 0x07800000;
             tableAddress = 0x07800000;
             biosAddress = 0x07800000;
-            goto retry_hardware_mapping;
+            continue;
         }
         useTable = 1;
 
 table_mapping_done:
         if (useTable == 0)
             goto mapping_done;
-retry_hardware_mapping:
         if ([self changeHardwareMapping:candidateTableAddress] == 0)
             break;
         if (candidateTableAddress == 0x07800000) {
@@ -197,7 +199,7 @@ retry_hardware_mapping:
         candidateAddress = 0x07800000;
         tableAddress = 0x07800000;
         biosAddress = 0x07800000;
-        goto retry_hardware_mapping;
+        continue;
     }
     apertureChanged = 1;
     candidateAddress = candidateTableAddress;
@@ -247,19 +249,23 @@ mapping_done:
 {
     IODisplayInfo *mode;
     int colorDepth;
-    int gamma;
+    char gamma;
     int pitchSize;
     int result;
+    void *crtTable;
 
     mode = [self displayInfo];
+    crtTable = mode->parameters;
     if (currentState != 1 &&
         [atiBios setApertureEnable:1 VGAAperture:0 apertureAdrs:0] == 0) {
         colorDepth = displayInfoToColorDepth(mode);
         (void)displayInfoToColorSpace(mode);
         gamma = colorDepth == 2 ? supportsGrey256 : supportsGamma;
-        pitchSize = mode->width == 1024 ? 0 : 2;
+        pitchSize = 2;
+        if (mode->width == 1024)
+            pitchSize = 0;
         result = [atiBios loadCRTCSetMode:colorDepth gamma:gamma pitchSize:pitchSize
-                              resolution:129 crtTable:(ATI_CRTCRecord *)mode->parameters];
+                              resolution:129 crtTable:(ATI_CRTCRecord *)crtTable];
         if (result != 0) {
             IOLog("%s: Error setting CRTC Paramters (%s)\n", [self name],
                   IOFindNameForValue(result, ABReturnValues));

@@ -70,6 +70,76 @@ def validate_source_location(path, line, repo_root):
         raise EvidenceError(f"source line is out of bounds: {path}:{line}")
 
 
+def validate_final_evidence(records, source_map, ledger, rebuilt_sha256,
+                            rebuilt_analysis_sha256, repo_root):
+    """Require a complete, current review and a source location for every handwritten routine."""
+    validate_inventory(records)
+    rebuilt_sha256 = rebuilt_sha256.upper()
+    if rebuilt_analysis_sha256.upper() != rebuilt_sha256:
+        raise EvidenceError("rebuilt analysis identity is stale")
+    if ledger.get("rebuilt_sha256", "").upper() != rebuilt_sha256:
+        raise EvidenceError("ledger rebuilt identity is stale")
+    if ledger.get("reference_sha256", "").upper() != REFERENCE_SHA256:
+        raise EvidenceError("ledger reference identity is stale")
+    if source_map.get("reference_sha256", "").upper() != REFERENCE_SHA256:
+        raise EvidenceError("source map reference identity is stale")
+
+    expected_generated = GENERATED
+    expected_keys = {(item["address"], item["name"]) for item in records}
+    ledger_keys = [(entry["address"], name) for entry in ledger["entries"]
+                   for name in entry["names"]]
+    if len(ledger_keys) != len(set(ledger_keys)) or set(ledger_keys) != expected_keys:
+        raise EvidenceError("final ledger does not cover the exact 54-routine inventory")
+    if len(ledger["entries"]) != 54:
+        raise EvidenceError("final ledger does not cover all 54 routines")
+    for entry in ledger["entries"]:
+        keyset = {(entry["address"], name) for name in entry["names"]}
+        if entry["status"] == "unexamined" and not keyset.issubset(expected_generated):
+            raise EvidenceError("final ledger contains an unexamined handwritten entry")
+
+    mapped = source_map["mapped"]
+    unmapped = source_map["unmapped"]
+    mapped_keys = [(entry["address"], name) for entry in mapped
+                   for name in entry["reference_names"]]
+    unmapped_keys = {(entry["address"], name) for entry in unmapped
+                     for name in entry["reference_names"]}
+    expected_handwritten = expected_keys - expected_generated
+    if len(mapped) != 52 or len(mapped_keys) != len(set(mapped_keys)) or \
+            set(mapped_keys) != expected_handwritten:
+        raise EvidenceError("source map does not map exactly 52 handwritten routines")
+    if unmapped_keys != expected_generated or len(unmapped) != 2:
+        raise EvidenceError("source map generated exceptions do not match the two exact runtime methods")
+    if source_map["duplicate_candidates"] or source_map["boundary_disputed"]:
+        raise EvidenceError("final source map has duplicate or disputed routine mappings")
+
+    ledger_by_key = {(entry["address"], name): entry for entry in ledger["entries"]
+                     for name in entry["names"]}
+    source_by_key = {(entry["address"], name): entry for entry in mapped
+                     for name in entry["reference_names"]}
+    for key, source in source_by_key.items():
+        validate_source_location(source["source_path"], source["source_line"], repo_root)
+    for address, name in ASSEMBLY:
+        source = source_by_key[(address, name)]
+        if not source["source_path"].endswith("/ATIbios.s"):
+            raise EvidenceError(f"assembly source label is missing for {name}")
+        lines = (Path(repo_root) / source["source_path"]).read_text(
+            encoding="utf-8", errors="replace").splitlines()
+        if source["source_line"] > len(lines) or \
+                lines[source["source_line"] - 1].strip() != f"{name}:":
+            raise EvidenceError(f"assembly source label is missing for {name}")
+
+    for key, source in source_by_key.items():
+        ledger_entry = ledger_by_key[key]
+        if (ledger_entry["source_path"], ledger_entry["source_line"]) != \
+                (source["source_path"], source["source_line"]):
+            raise EvidenceError("ledger source location does not match the final source map")
+
+    for address, name in expected_generated:
+        entry = ledger_by_key[(address, name)]
+        if entry["source_path"] is not None or entry["source_line"] is not None:
+            raise EvidenceError("generated exceptions must remain source-less")
+
+
 def _analysis_inventory(analysis):
     output = []
     for function in analysis.get("functions", []):
@@ -108,18 +178,10 @@ def verify(args):
         validate_analysis_semantics(rebuilt_analysis)
         if rebuilt_analysis["input"]["sha256"].upper() != rebuilt.sha256:
             raise EvidenceError("rebuilt analysis identity is stale")
-        if ledger["rebuilt_sha256"] != rebuilt.sha256:
-            raise EvidenceError("ledger rebuilt identity is stale")
-        by_key = {(entry["address"], name): entry for entry in ledger["entries"]
-                  for name in entry["names"]}
-        if len(by_key) < 54:
-            raise EvidenceError("final ledger does not cover all 54 routines")
-        for entry in ledger["entries"]:
-            if entry["status"] == "unexamined" and entry["address"] not in {
-                    item["address"] for item in GENERATED}:
-                raise EvidenceError("final ledger contains an unexamined handwritten entry")
-            if entry["source_path"] is not None:
-                validate_source_location(entry["source_path"], entry["source_line"], repo_root)
+        validate_final_evidence(
+            records, source_map, ledger, rebuilt.sha256,
+            rebuilt_analysis["input"]["sha256"], repo_root
+        )
     return 0
 
 

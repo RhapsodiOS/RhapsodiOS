@@ -80,7 +80,7 @@ static int testDefaultGammaAndBrightnessBounds(void)
     setIvar(driver, 568, &brightness, sizeof(brightness));
     setIvar(driver, 552, &nullPointer, sizeof(nullPointer));
     CHECK([driver setGammaTable] == driver);
-    CHECK(ATI_mockPortEventCount() == 770);
+    CHECK(ATI_mockPortEventCount() == 771);
     events = ATI_mockPortEvents();
     CHECK(events[0].port == 0x62ec && !events[0].isWrite);
     CHECK(events[1].port == 0x62ec && events[1].value == 0 && events[1].isWrite);
@@ -122,10 +122,11 @@ static int testTransferTableChannelExtractionAndSparseCount(void)
     setIvar(driver, 568, &brightness, sizeof(brightness));
     CHECK([driver setTransferTable:table count:3] == driver);
     CHECK(getU32Ivar(driver, 564) == 3);
-    CHECK(ATI_mockPortEventCount() == 767);
+    CHECK(ATI_mockPortEventCount() == 768);
     events = ATI_mockPortEvents();
     CHECK(events[3].value == 0x11 && events[4].value == 0x22 && events[5].value == 0x33);
-    CHECK(events[6].value == 0x55 && events[7].value == 0x66 && events[8].value == 0x77);
+    CHECK(events[258].value == 0x55 && events[259].value == 0x66 && events[260].value == 0x77);
+    CHECK(events[513].value == 0x99 && events[514].value == 0xaa && events[515].value == 0xbb);
     [driver free];
     CHECK(ATI_mockFreeCount() == 1);
     return 0;

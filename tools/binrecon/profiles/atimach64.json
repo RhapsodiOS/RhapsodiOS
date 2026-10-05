@@ -6,6 +6,9 @@
   "reference": {
     "path": "${BINRECON_REFERENCE}"
   },
+  "rebuilt": {
+    "path": "${BINRECON_REBUILT}"
+  },
   "analyzers": {
     "ghidra": {
       "enabled": false,
@@ -31,5 +34,5 @@
     "entry_points": [],
     "acceptance": "normalized-functions"
   },
-  "output_dir": "../out/atimach64"
+  "output_dir": "../out/atimach64-final"
 }

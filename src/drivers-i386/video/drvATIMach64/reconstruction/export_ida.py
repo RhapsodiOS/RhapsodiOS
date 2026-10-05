@@ -19,16 +19,21 @@ from binrecon.profile import load_profile
 from binrecon.schema import validate_analysis_semantics, validate_document
 
 from verify_evidence import corrected_assembly_ranges
+from verify_assembly import REFERENCE_DATA_TARGETS
+
+
+REFERENCE_IDA_DATA_ALIASES = {0x8208: "ATI_BIOS_class_ext"}
 
 
 def _ida_script(output, input_path, size, sha256, mapping_path, mapping_sha256):
     args = [str(output), str(input_path), str(size), sha256,
-            str(mapping_path), mapping_sha256]
+            str(mapping_path), mapping_sha256,
+            REFERENCE_DATA_TARGETS, REFERENCE_IDA_DATA_ALIASES]
     return f'''import hashlib, json, os, sys
 import ida_auto, ida_bytes, ida_funcs, ida_name, ida_pro, ida_ua, idc
 from pathlib import Path
 args = {args!r}
-output, input_path, size, sha256, mapping_path, mapping_sha256 = args
+output, input_path, size, sha256, mapping_path, mapping_sha256, data_aliases, ida_data_aliases = args
 sys.path.insert(0, {str(REPO_ROOT / "tools/binrecon/adapters/ida")!r})
 import export_analysis
 if not ida_auto.auto_wait():
@@ -52,8 +57,32 @@ for start, end, name in {corrected_assembly_ranges()!r}:
         if function is None or function.end_ea != end:
             raise RuntimeError("IDA function boundary differs for %s" % name)
     ida_name.set_name(start, name, ida_name.SN_FORCE)
+for address, name in data_aliases.items():
+    if not ida_name.set_name(address, name, ida_name.SN_FORCE):
+        raise RuntimeError("could not apply verified data alias %s at 0x%x" %
+                           (name, address))
+def read_c_string(ea):
+    value = ida_bytes.get_bytes(ea, 64)
+    if value is None or b"\\x00" not in value:
+        return None
+    try:
+        return value.split(b"\\x00", 1)[0].decode("ascii")
+    except UnicodeDecodeError:
+        return None
+for address, name in ida_data_aliases.items():
+    superclass_name = ida_bytes.get_dword(address)
+    class_name = ida_bytes.get_dword(address + 4)
+    if (name != "ATI_BIOS_class_ext" or
+            read_c_string(superclass_name) != "Object" or
+            read_c_string(class_name) != "ATI_BIOS"):
+        raise RuntimeError("verified class data alias failed identity check: " + name)
 document = export_analysis.collect_analysis(Path(input_path), int(size), sha256,
                                             mapping=mapping)
+for address, name in ida_data_aliases.items():
+    if any(symbol["name"] == name for symbol in document["symbols"]):
+        raise RuntimeError("verified class data alias already exists: " + name)
+    document["symbols"].append({{"name": name, "address": address,
+                                "binding": "local", "section": "__class"}})
 if len(document["functions"]) != 54:
     raise RuntimeError("corrected IDA export does not contain 54 entries")
 export_analysis._atomic_write(Path(output), document)
@@ -104,6 +133,11 @@ def export(profile_path, output_dir, *, runner=subprocess.run):
         "database_sha256": hashlib.sha256(database_path.read_bytes()).hexdigest().upper(),
         "analysis_sha256": hashlib.sha256(analysis_path.read_bytes()).hexdigest().upper(),
         "function_count": len(document["functions"]),
+        "verified_data_aliases": [
+            {"address": address, "name": name}
+            for address, name in {**REFERENCE_DATA_TARGETS,
+                                  **REFERENCE_IDA_DATA_ALIASES}.items()
+        ],
         "corrected_entries": [
             {"start": start, "end_exclusive": end, "symbol": name}
             for start, end, name in corrected_assembly_ranges()

@@ -35,7 +35,10 @@ int main(void)
     ATI_mockReset();
     info.bitsPerPixel = IO_2BitsPerPixel;
     CHECK(displayInfoToColorSpace(&info) == 0);
+    CHECK(ATI_mockLogCount() == 1 && ATI_mockPanicCount() == 1);
+    ATI_mockReset();
     CHECK(displayInfoToColorDepth(&info) == 0);
-    CHECK(ATI_mockLogCount() == 2 && ATI_mockPanicCount() == 2);
+    CHECK(ATI_mockLogCount() == 0 && ATI_mockPanicCount() == 1);
+    CHECK(strcmp(ATI_mockLastPanic(), "ATIMach64: displayInfoToColorDepth problem") == 0);
     return 0;
 }

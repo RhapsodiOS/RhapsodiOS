@@ -120,6 +120,30 @@ Compare a reference/rebuilt analysis pair. `--require` overrides the profile's
   --text-output comparison.txt --require normalized-functions
 ```
 
+For functions paired by offset or name, CFG blocks, edges, and instruction
+positions in the function's owning section are compared relative to that
+function's start. Moving a routine within a section therefore does not count
+as a control-flow or instruction-layout change; the instruction sequence,
+function bytes, references, calls, and section layout are still checked.
+References and relocation targets are also canonicalized through symbol names
+only when the same name resolves to one section location in each artifact. For
+IDA `ida-off32-*` relocations to such a paired symbol, the recorded addend is
+treated as the resolved absolute address and normalized away; the symbol name
+retains target identity. Ambiguous, missing, or unpaired symbols keep their
+section/address-based comparison. One narrow exception pairs local `__bss`
+`_xxx.N` counters only when each artifact has a unique, identical full use-site
+signature: owning function names, per-function occurrence, instruction mnemonic,
+relocation field offset, and relocation kind. Ambiguous or incompletely owned
+counter relocations remain unpaired.
+Function-local branch labels and IDA-generated address labels are normalized
+to their containing function or section location. IDA's `0xFF`-tagged internal
+data-reference IDs are compared through the instruction operands, whose
+normalized text remains part of semantic comparison. When IDA supplies an
+operand byte offset and an explicit section-backed data reference whose target
+address exactly matches the encoded field, BinRecon recognizes that field as
+an inferred relocation and still compares its portable target. It does not
+mask fields based on operand offsets or byte patterns alone.
+
 Inspect a ledger or make one reviewed transition. Addresses accept Python-style
 integers such as `0x1000`. `--source-path` and `--source-line` must be supplied
 together; an intentional mismatch also requires a reviewed state, a reason,

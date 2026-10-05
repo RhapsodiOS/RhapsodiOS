@@ -6,6 +6,8 @@ static unsigned int panicCount, logCount, allocationCount, freeCount;
 static unsigned int failAllocation, dispatchCount, biosCallCount;
 static unsigned int portEventCount, delayEventCount;
 static int dispatchReturn, biosResult;
+static const char *lastPanic;
+static const char *lastLogFormat;
 static const char *lastSelector;
 static ATIBIOSRegisters lastBIOSRegisters;
 static ATI_mockPortEvent portEvents[ATI_MOCK_MAX_EVENTS];
@@ -19,6 +21,8 @@ void ATI_mockReset(void)
     panicCount = logCount = allocationCount = freeCount = failAllocation = 0;
     dispatchCount = biosCallCount = portEventCount = delayEventCount = 0;
     dispatchReturn = biosResult = 0;
+    lastPanic = 0;
+    lastLogFormat = 0;
     lastSelector = 0;
     memset(&lastBIOSRegisters, 0, sizeof(lastBIOSRegisters));
     memset(portEvents, 0, sizeof(portEvents));
@@ -28,7 +32,9 @@ void ATI_mockReset(void)
     memset(gdt, 0, sizeof(gdt));
 }
 unsigned int ATI_mockPanicCount(void) { return panicCount; }
+const char *ATI_mockLastPanic(void) { return lastPanic; }
 unsigned int ATI_mockLogCount(void) { return logCount; }
+const char *ATI_mockLastLogFormat(void) { return lastLogFormat; }
 void ATI_mockFailNextAllocation(void) { failAllocation = 1; }
 void *ATI_mockAlloc(size_t size)
 {
@@ -105,12 +111,12 @@ const ATI_mockDelayEvent *ATI_mockDelayEvents(void) { return delayEvents; }
 
 void IOLog(const char *format, ...)
 {
-    (void)format;
+    lastLogFormat = format;
     ++logCount;
 }
 
 void IOPanic(const char *reason)
 {
-    (void)reason;
+    lastPanic = reason;
     ++panicCount;
 }

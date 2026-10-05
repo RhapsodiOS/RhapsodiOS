@@ -4,15 +4,18 @@
 
 set -eu
 
-export PATH=/build/bin:/usr/local/bin:/build/tools/usr/local/bin:/bin:/usr/bin
+export PATH=/build/tools/bin:/build/bin:/usr/local/bin:/build/tools/usr/local/bin:/bin:/usr/bin
 SRC=/build/source/src/drivers-i386/video/drvATIMach64
 PROJECT=$SRC/ATIMach64DisplayDriver.drvproj
 LKS=$PROJECT/ATIMach64DisplayDriver.lksproj
 REPO=/build/repo
 STATE=/build/state
 OUT=/build/out/drvATIMach64-rbuild
+RUN_OUT=$OUT/runs/v39-2026-10-05
+BUILDIT_DIR=$RUN_OUT/buildroots
+LOG=$RUN_OUT/build.log
 STAGE=/build/out/i386/drvATIMach64/ATIMach64DisplayDriver.config
-PACKAGE_STAGE=/build/out/i386/drvATIMach64/packages
+PACKAGE_STAGE=/build/out/i386/drvATIMach64/packages/v39-2026-10-05
 NAME=ATIMach64DisplayDriver
 
 for path in "$SRC/Makefile" "$LKS/Makefile" "$REPO" "$STATE"; do
@@ -22,20 +25,34 @@ for path in "$SRC/Makefile" "$LKS/Makefile" "$REPO" "$STATE"; do
 	fi
 done
 
-mkdir -p "$OUT" "$STAGE"
+mkdir -p "$OUT" "$RUN_OUT" "$BUILDIT_DIR" "$STAGE"
+exec 3>&1
+exec >"$LOG" 2>&1
+# Keep rbuild mutable roots in this task-owned output tree instead of the
+# guest-wide /private/tmp/roots default.
+export BUILDIT_DIR
+# rbuild quarantines an older bad APK before writing a replacement. Clear
+# that generated quarantine from this target's private output area first.
+find "$RUN_OUT" -name '*.apk.invalid' -type f -exec rm -f {} \;
+echo "======== focused native and i386 compile checks ========"
+gnumake -C "$LKS/tests" check-abi check-data check-bios-segments \
+	check-dac check-mapping check-lifecycle check-init-mapping
 echo "======== rbuild buildpackage $NAME (i386) ========"
-rbuild buildpackage --state "$STATE" --arch i386 --dir --target all \
-	"$SRC" "$REPO" "$OUT"
+rbuild buildpackage --state "$STATE" --arch i386 \
+	--toolchain /build/source/src/rbuild-1/toolchains/gcc-darwin-i386.conf \
+	--dir --target all \
+	"$SRC" "$REPO" "$RUN_OUT"
 
-RELOC=`find "$OUT" -name "${NAME}_reloc" -type f 2>/dev/null | head -1`
-if [ -z "$RELOC" ] || [ ! -f "$RELOC" ]; then
-	echo "build-i386-atimach64: no ${NAME}_reloc produced" >&2
-	find "$OUT" -type f 2>/dev/null | head -40 >&2 || true
-	exit 1
-fi
-PACKAGES=`find "$OUT" -name '*.apk' -type f 2>/dev/null`
+PACKAGES=`find "$RUN_OUT" -name '*.apk' -type f 2>/dev/null`
 if [ -z "$PACKAGES" ]; then
 	echo "build-i386-atimach64: no package archive produced" >&2
+	exit 1
+fi
+PACKAGE=`find "$RUN_OUT" -name '*.apk' -type f 2>/dev/null | head -1`
+RELOC="$RUN_OUT/${NAME}_reloc"
+gzip -dc "$PACKAGE" | tar xOf - "./private/Drivers/i386/${NAME}.config/${NAME}_reloc" > "$RELOC"
+if [ ! -s "$RELOC" ]; then
+	echo "build-i386-atimach64: no ${NAME}_reloc in package archive" >&2
 	exit 1
 fi
 
@@ -46,8 +63,9 @@ case "$IDENTITY" in
 	*) echo "build-i386-atimach64: artifact is not identified as i386" >&2; exit 1 ;;
 esac
 cp -p "$RELOC" "$STAGE/"
-BUNDLE=`find "$OUT" -name "$NAME" -type f 2>/dev/null | head -1`
-if [ -n "$BUNDLE" ] && [ -f "$BUNDLE" ]; then
+BUNDLE="$RUN_OUT/$NAME"
+gzip -dc "$PACKAGE" | tar xOf - "./private/Drivers/i386/${NAME}.config/$NAME" > "$BUNDLE"
+if [ -s "$BUNDLE" ]; then
 	cp -p "$BUNDLE" "$STAGE/"
 fi
 for resource in "$PROJECT"/*.table "$PROJECT"/*.modes; do
@@ -65,3 +83,6 @@ done
 echo "staged $STAGE/${NAME}_reloc"
 echo "staged package archives under $PACKAGE_STAGE"
 ls -la "$STAGE"
+echo "build log: $LOG"
+exec 1>&3
+cat "$LOG"

@@ -31,7 +31,7 @@
         result = [atiBios deviceQuery:0 bufferSize:querySize buffer:queryBuffer];
         if (result == 0) {
             queryDataSize = *queryBuffer;
-            queryData = IOMalloc(queryDataSize);
+            queryData = (unsigned char *)IOMalloc(queryDataSize);
             bcopy(queryBuffer, queryData, queryDataSize);
             IOFree(queryBuffer, querySize);
             return 0;
@@ -170,7 +170,7 @@
             return 1;
         }
         if (pciAddress != address) {
-            IOLog("%s: Set Aperture Addrs to 0x%x; PCI Config Register reported 0x%x\n",
+            IOLog("%s: Set Aperture Addrs to 0x%x;  PCI Config Register reported 0x%x\n",
                   [self name], address, pciAddress);
             return 1;
         }
@@ -179,7 +179,7 @@
         biosAddress = (unsigned int)(*((unsigned short *)queryData + 8)) << 20;
         if (biosAddress == address)
             return 0;
-        IOLog("%s: Set Aperture Addrs to 0x%x; BIOS reported 0x%x\n",
+        IOLog("%s: Set Aperture Addrs to 0x%x;  BIOS reported 0x%x\n",
               [self name], address, biosAddress);
     }
     return 1;
@@ -192,6 +192,7 @@
     IORange replacement[3];
     unsigned int oldAddress;
     unsigned int index;
+    unsigned int rangeCount;
     IOReturn result;
     IOReturn restoreResult;
 
@@ -201,9 +202,10 @@
         IOLog("%s: No memory Range specified in config table\n", [self name]);
         return -701;
     }
-    if ([description numMemoryRanges] != 3) {
+    rangeCount = [description numMemoryRanges];
+    if (rangeCount != 3) {
         IOLog("%s: Incorrect number of Memory Ranges (%d, should be 3)\n",
-              [self name], [description numMemoryRanges]);
+              [self name], rangeCount);
         return -701;
     }
     oldAddress = ranges[0].start;
@@ -217,7 +219,7 @@
         [description setMemoryRangeList:replacement num:0];
         restoreResult = [description setMemoryRangeList:replacement num:3];
         if (restoreResult != 0)
-            IOLog("%s: WARNING: Error (%s) restoring Memory Range to 0x%x\n",
+            IOLog("%s: WARNING: Error (%s) restoringMemory Range to 0x%x\n",
                   [self name], [self stringFromReturn:restoreResult], oldAddress);
     }
     return result;

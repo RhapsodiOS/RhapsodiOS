@@ -13,7 +13,9 @@ typedef struct { unsigned int delay; } ATI_mockDelayEvent;
 
 void ATI_mockReset(void);
 unsigned int ATI_mockPanicCount(void);
+const char *ATI_mockLastPanic(void);
 unsigned int ATI_mockLogCount(void);
+const char *ATI_mockLastLogFormat(void);
 void ATI_mockFailNextAllocation(void);
 void *ATI_mockAlloc(size_t size);
 void ATI_mockFree(void *address, size_t size);

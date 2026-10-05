@@ -2,9 +2,9 @@
 #include <driverkit/generalFuncs.h>
 
 unsigned int ATI_Bios_Offset;
-unsigned int ATI_Bios_Selector;
-unsigned int ATI_Bios_StackOffset;
-unsigned int ATI_Bios_StackSelector;
+unsigned short ATI_Bios_Selector;
+unsigned short ATI_Bios_StackOffset;
+unsigned short ATI_Bios_StackSelector;
 unsigned short kernDataSel;
 
 int ATIbios16(ATIBIOSRegisters *registers)

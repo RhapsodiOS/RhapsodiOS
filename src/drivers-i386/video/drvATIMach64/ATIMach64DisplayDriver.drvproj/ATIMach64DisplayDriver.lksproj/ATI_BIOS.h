@@ -4,8 +4,6 @@
 #import <objc/Object.h>
 #import "ATIBIOSTypes.h"
 
-typedef struct { unsigned char bytes[30]; } ATI_CRTCRecord;
-
 @interface ATI_BIOS : Object
 {
 @private
@@ -39,9 +37,5 @@ typedef struct { unsigned char bytes[30]; } ATI_CRTCRecord;
 - (int)doBios:(void *)registers dataSeg:(char)dataSegment;
 - (int)loadCRTC_comm:(unsigned int)mode gamma:(char)gamma pitchSize:(unsigned int)pitchSize resolution:(unsigned int)resolution crtTable:(ATI_CRTCRecord *)crtTable function:(unsigned char)function name:(const char *)name;
 @end
-
-ATI_STATIC_ASSERT(__builtin_offsetof(ATI_BIOS, initialized) == 4, ATI_BIOS_initialized_offset);
-ATI_STATIC_ASSERT(__builtin_offsetof(ATI_BIOS, segmentBase) == 8, ATI_BIOS_segmentBase_offset);
-ATI_STATIC_ASSERT(__builtin_offsetof(ATI_BIOS, _priv) == 12, ATI_BIOS_private_offset);
 
 #endif

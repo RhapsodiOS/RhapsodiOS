@@ -16,6 +16,22 @@ REFERENCE_FUNCTIONS = {
     "__ATIbios32": (0x27B8, 203, "bios32_end", 0x9A),
 }
 TEXT_SECTION = "__TEXT,__text"
+REFERENCE_DATA_TARGETS = {
+    0x6128: "bios16_saved_eax",
+    0x612C: "bios16_saved_esp",
+    0x6130: "bios16_saved_ss",
+    0x6134: "_ATI_Bios_Offset",
+    0x6138: "_ATI_Bios_Selector",
+    0x613C: "_ATI_Bios_StackOffset",
+    0x6140: "_ATI_Bios_StackSelector",
+    0x6144: "bios32_result_es",
+    0x6148: "bios32_result_eax",
+    0x614C: "bios32_saved_buffer",
+    0x6150: "bios32_result_flags",
+    0x6154: "bios32_saved_eax",
+    0x6158: "bios32_saved_edx",
+    0x615C: "_kernDataSel",
+}
 
 
 class VerificationError(ValueError):
@@ -71,11 +87,32 @@ def _canonical_code(path: Path, document: dict, section: dict,
             continue
         target = relocation["target"]
         addend = relocation["addend"]
+        kind = relocation["kind"]
         if target == section["name"]:
             target = "internal-text"
             addend -= start
+        elif target.startswith("__DATA,"):
+            target_section = next(
+                (item for item in document["sections"] if item["name"] == target), None
+            )
+            if target_section is None:
+                raise VerificationError(f"missing relocation target section {target}")
+            target_address = target_section["address"] + addend
+            if path.name == "ATIMach64DisplayDriver_reloc" and target_address in REFERENCE_DATA_TARGETS:
+                target = REFERENCE_DATA_TARGETS[target_address]
+            else:
+                names = [item["name"] for item in document["symbols"]
+                         if item["address"] == target_address]
+                if not names:
+                    raise VerificationError(
+                        f"no symbol identifies {target} relocation target 0x{target_address:x}"
+                    )
+                target = sorted(names)[0]
+            addend = 0
+        kind = "pc-relative" if "pc-relative" in kind else "absolute"
+        kind = f"{kind}-{width * 8}"
         raw[relative : relative + width] = b"\0" * width
-        relocations.append((relative, width, relocation["kind"], target, addend))
+        relocations.append((relative, width, kind, target, addend))
     return bytes(raw), sorted(relocations)
 
 

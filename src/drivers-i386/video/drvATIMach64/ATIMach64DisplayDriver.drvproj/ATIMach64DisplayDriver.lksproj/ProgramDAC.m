@@ -20,18 +20,20 @@ int isATI68880RevC(void)
 {
     unsigned char control = ATI_INB(0x62ec);
     ATI_OUTB(0x62ec, control | 3);
-    return ATI_INB(0x5eef) == 0xd0;
+    if (ATI_INB(0x5eef) == 0xd0)
+        return 1;
+    return 0;
 }
 
 unsigned int SetGammaValue(int red, int green, int blue, int brightness)
 {
-    unsigned int result;
-
-    ATI_OUTB(0x5eed, (unsigned char)((unsigned int)(brightness * red) >> 6));
-    ATI_OUTB(0x5eed, (unsigned char)((unsigned int)(brightness * green) >> 6));
-    result = (unsigned int)(brightness * blue) >> 6;
-    ATI_OUTB(0x5eed, (unsigned char)result);
-    return result;
+    red = ((unsigned int)red * (unsigned int)brightness) >> 6;
+    ATI_OUTB(0x5eed, red);
+    green = ((unsigned int)green * (unsigned int)brightness) >> 6;
+    ATI_OUTB(0x5eed, green);
+    blue = ((unsigned int)blue * (unsigned int)brightness) >> 6;
+    ATI_OUTB(0x5eed, blue);
+    return blue;
 }
 
 @implementation ATI (ProgramDAC)

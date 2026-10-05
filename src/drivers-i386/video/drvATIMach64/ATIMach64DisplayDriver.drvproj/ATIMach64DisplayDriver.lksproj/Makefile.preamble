@@ -4,9 +4,9 @@
 INCLUDED_ARCHS = i386
 RC_ARCHS = i386
 
-CLASSES = ATIMach64DisplayDriver.m ATIPrivate.m ProgramDAC.m ATI_BIOS.m
-CFILES = ATIData.c ATIbios16.c
-HFILES = ATIMach64DisplayDriver.h ATIPrivate.h ATIData.h ATI_BIOS.h \
+override CLASSES += ATIPrivate.m ProgramDAC.m ATI_BIOS.m
+override CFILES += ATIData.c ATIbios16.c
+override HFILES += ATIPrivate.h ATIData.h ATI_BIOS.h \
 	ATIBIOSTypes.h ATIMach64Regs.h
 OTHERSRCS += ATIbios.s
 

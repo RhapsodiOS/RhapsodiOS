@@ -75,3 +75,43 @@ def test_memory_size_conversion_keeps_the_observed_default_and_supported_codes()
     for literal in ("0x80000", "0x100000", "0x200000", "0x400000", "0x600000"):
         assert literal in body.group("body")
     assert "default:" in body.group("body")
+
+
+def test_color_depth_conversion_uses_zero_initialized_result():
+    source = (LKS / "ATIData.c").read_text(encoding="utf-8")
+    body = re.search(r"colorDepthToColorSpace\([^)]*\)\s*\{(?P<body>.*?)\n\}", source, re.S)
+    assert body
+    assert "int colorSpace = 0;" in body.group("body")
+    assert "colorSpace = 1;" in body.group("body")
+    assert "colorSpace = 2;" in body.group("body")
+    assert "colorSpace = 3;" in body.group("body")
+    assert "return colorSpace;" in body.group("body")
+
+
+def test_display_info_color_space_uses_shared_zero_initialized_result():
+    source = (LKS / "ATIData.c").read_text(encoding="utf-8")
+    body = re.search(r"displayInfoToColorSpace\([^)]*\)\s*\{(?P<body>.*?)\n\}", source, re.S)
+    assert body
+    assert "int colorSpace = 0;" in body.group("body")
+    assert "colorSpace = 2;" in body.group("body")
+    assert "colorSpace = 3;" in body.group("body")
+    assert "return colorSpace;" in body.group("body")
+    assert "switch (info->bitsPerPixel)" in body.group("body")
+    assert body.group("body").index("case IO_8BitsPerPixel:") < body.group("body").index("case IO_15BitsPerPixel:")
+    assert body.group("body").index("case IO_15BitsPerPixel:") < body.group("body").index("case IO_24BitsPerPixel:")
+    assert "colorSpace = 1;" in body.group("body")
+    assert "if (info->colorSpace == IO_OneIsWhiteColorSpace)" in body.group("body")
+
+
+def test_display_info_color_depth_preserves_shared_zero_initialized_result():
+    source = (LKS / "ATIData.c").read_text(encoding="utf-8")
+    body = re.search(r"displayInfoToColorDepth\([^)]*\)\s*\{(?P<body>.*?)\n\}", source, re.S)
+    assert body
+    assert "int colorDepth = 0;" in body.group("body")
+    assert "colorDepth = 2;" in body.group("body")
+    assert "colorDepth = 3;" in body.group("body")
+    assert "colorDepth = 6;" in body.group("body")
+    assert "return colorDepth;" in body.group("body")
+    assert "switch (info->bitsPerPixel)" in body.group("body")
+    assert body.group("body").index("case IO_8BitsPerPixel:") < body.group("body").index("case IO_15BitsPerPixel:")
+    assert body.group("body").index("case IO_15BitsPerPixel:") < body.group("body").index("case IO_24BitsPerPixel:")

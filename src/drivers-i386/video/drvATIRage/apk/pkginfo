@@ -1,0 +1,6 @@
+pkgname = drvatirage
+pkgver = 1.0
+pkgdesc = ATI Rage display driver
+maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
+license = APSL
+makedepends = build-base, drivertools, driverkit, kernload

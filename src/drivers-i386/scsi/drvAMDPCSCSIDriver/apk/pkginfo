@@ -1,0 +1,6 @@
+pkgname = drvamdpcscsidriver
+pkgver = 4.00
+pkgdesc = AMD PCI SCSI device driver
+maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
+license = APSL
+makedepends = build-base, drivertools, driverkit, machkit, kernload, libstreams

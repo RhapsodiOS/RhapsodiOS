@@ -1,0 +1,6 @@
+pkgname = drvvmwarevideo
+pkgver = 1.0
+pkgdesc = VMware video driver
+maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
+license = APSL
+makedepends = build-base, drivertools, driverkit, kernload

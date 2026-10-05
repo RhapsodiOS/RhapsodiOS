@@ -114,7 +114,7 @@
     IODisplayInfo *mode;
     unsigned int required;
 
-    if (AtiModeListCount <= modeIndex)
+    if (modeIndex < 0 || AtiModeListCount <= modeIndex)
         return 16;
     mode = &AtiModeList[modeIndex];
     if (mode->bitsPerPixel == IO_15BitsPerPixel &&

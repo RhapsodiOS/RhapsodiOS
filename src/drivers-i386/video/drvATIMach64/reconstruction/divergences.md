@@ -1,4 +1,13 @@
 # drvATIMach64 divergences and decisions
+## Negative display-mode index guard after v39 (2026-10-05)
+
+Code review found that `setPendingDisplayMode:` and `isModeValid:` rejected
+indices at or above the mode count but allowed negative indices to reach
+`AtiModeList[modeIndex]`. Both methods now reject negative values before any
+table access. Reconstruction tests cover both checks. This is a post-v39 source
+hardening change; the recorded v39 package and comparison remain unchanged, and
+the modified source still needs a fresh package build before binary parity can
+be reassessed.
 
 ## `initBIOSBuf:function:` register lifetime follow-up (2026-10-05)
 

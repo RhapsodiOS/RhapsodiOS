@@ -309,7 +309,7 @@ mapping_done:
 
 - (char)setPendingDisplayMode:(int)mode
 {
-    if (AtiModeListCount <= mode) {
+    if (mode < 0 || AtiModeListCount <= mode) {
         IOLog("%s: setPendingDisplayMode: bogus displayMode (%d)\n", [self name], mode);
     } else if ([self isModeValid:mode] == 0) {
         modeNumber = mode;

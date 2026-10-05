@@ -50,8 +50,7 @@ def test_lifecycle_mode_calls_and_cleanup_match_recovered_state_paths():
 def test_pending_mode_keeps_upper_bound_and_reference_delegation():
     source = (LKS / "ATIMach64DisplayDriver.m").read_text(encoding="utf-8")
     pending = source.split("- (char)setPendingDisplayMode:", 1)[1].split("@end", 1)[0]
-    assert "AtiModeListCount <= mode" in pending
+    assert "mode < 0 || AtiModeListCount <= mode" in pending
     assert "[self isModeValid:mode] == 0" in pending
     assert "modeNumber = mode;" in pending
     assert "return [super setPendingDisplayMode:mode];" in pending
-    assert "mode < 0" not in pending

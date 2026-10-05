@@ -16,11 +16,10 @@ def test_mode_selection_and_validation_keep_reference_decisions():
     assert "selectMode:AtiModeList count:AtiModeListCount" in parse
     assert "valid:(const BOOL *)modeValidArray" in parse
     assert "modeNumber = selected;" in parse
-    assert "if (AtiModeListCount <= modeIndex)" in valid
+    assert "if (modeIndex < 0 || AtiModeListCount <= modeIndex)" in valid
     assert "IO_15BitsPerPixel" in valid and "(queryData[19] & 2) == 0" in valid
     assert "IO_24BitsPerPixel && colorConfig == 5" in valid
     assert "required > memSizeToBytes(queryData[11])" in valid
-    assert "modeIndex < 0" not in valid
 
 
 def test_mode_list_refreshes_pixel_layout_and_derived_fields():

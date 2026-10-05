@@ -15,6 +15,7 @@ unsigned char _bios16[1];
 void _ATIbios32(ATIBIOSRegisters *registers) { (void)registers; }
 
 static IODisplayInfo fixtureMode;
+static unsigned char queryFixture[32];
 static unsigned char fixtureVRAM[32];
 static unsigned int trace[16], traceCount;
 static int apertureResult, crtcResult, vgaResult;
@@ -176,8 +177,30 @@ static int testLinearAndVGATransitionsAndCleanup(void)
     return 0;
 }
 
+static int testNegativeModeIndicesAreRejected(void)
+{
+    LifecycleATI *driver;
+    unsigned int queryAddress;
+    int previousMode = 7;
+
+    driver = [[LifecycleATI alloc] init];
+    CHECK(driver != nil);
+    memset(queryFixture, 0, sizeof(queryFixture));
+    queryFixture[11] = 2;
+    queryAddress = (unsigned int)queryFixture;
+    putIvar(driver, 596, &queryAddress, sizeof(queryAddress));
+    putIvar(driver, 572, &previousMode, sizeof(previousMode));
+
+    CHECK([driver isModeValid:-1] == 16);
+    CHECK([driver setPendingDisplayMode:-1] == 0);
+    CHECK(getIvar(driver, 572) == 7);
+    [driver free];
+    return 0;
+}
+
 int main(void)
 {
     if (testLinearAndVGATransitionsAndCleanup()) return 1;
+    if (testNegativeModeIndicesAreRejected()) return 1;
     return 0;
 }

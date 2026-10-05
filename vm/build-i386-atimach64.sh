@@ -11,11 +11,11 @@ LKS=$PROJECT/ATIMach64DisplayDriver.lksproj
 REPO=/build/repo
 STATE=/build/state
 OUT=/build/out/drvATIMach64-rbuild
-RUN_OUT=$OUT/runs/v39-2026-10-05
+RUN_OUT=$OUT/runs/v40-negative-mode-guard-2026-10-05
 BUILDIT_DIR=$RUN_OUT/buildroots
 LOG=$RUN_OUT/build.log
 STAGE=/build/out/i386/drvATIMach64/ATIMach64DisplayDriver.config
-PACKAGE_STAGE=/build/out/i386/drvATIMach64/packages/v39-2026-10-05
+PACKAGE_STAGE=/build/out/i386/drvATIMach64/packages/v40-negative-mode-guard-2026-10-05
 NAME=ATIMach64DisplayDriver
 
 for path in "$SRC/Makefile" "$LKS/Makefile" "$REPO" "$STATE"; do

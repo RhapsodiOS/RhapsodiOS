@@ -169,3 +169,11 @@ def test_suite_partitions_are_disjoint_bounded_and_preserve_payloads(label):
 def test_suite_refuses_live_slot_and_unaligned_payloads(label):
     for payloads in ([bytes(512)]*8,[],[bytes(513)]):
         with pytest.raises(ValueError): eg.wrap_volumes(payloads)
+
+@pytest.mark.parametrize('partition',[0,1])
+def test_suite_preserves_label_magic_inside_payload(label,partition):
+    payloads=[bytearray(b'a'*2048),bytearray(b'b'*2048)]
+    payloads[partition][512:516]=b'dlV3'
+    raw=eg.wrap_volumes(payloads)
+    assert raw[16384:18432] == payloads[0]
+    assert raw[18432:20480] == payloads[1]

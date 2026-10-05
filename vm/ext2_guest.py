@@ -81,7 +81,12 @@ def wrap_volumes(volumes):
     if any(not volume or len(volume) % 512 for volume in volumes):
         raise ValueError('suite volumes must be sector aligned')
     raw = bytearray(wrap_volume(b''.join(volumes)))
-    for off in range(0,min(len(raw),65536),512):
+    # wrap_volume validated the first template label and normalized its sector
+    # size to 512. Its front boundary separates labels from supplied payloads.
+    label = next(off for off in range(0,min(len(raw),65536),512)
+                 if raw[off:off+4] == b'dlV3')
+    front = struct.unpack_from('>h',raw,label+112)[0]*512
+    for off in range(0,min(front,65536),512):
         if raw[off:off+4] != b'dlV3': continue
         prototype = raw[off+190:off+236]
         raw[off+190:off+558] = bytes(8*46)

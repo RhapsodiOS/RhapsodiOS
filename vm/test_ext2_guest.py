@@ -153,3 +153,19 @@ def test_tiny_fixture_declares_one_through_four_sectors(label):
         assert [struct.unpack_from('>i',raw,off+194+46*i)[0] for i in range(4)] == [1,2,3,4]
         assert struct.unpack_from('>H',raw,off+558)[0] == eg.ufs_build.label_checksum(raw[off:off+560])
     assert raw[16384:16384+2048] == bytes(2048)
+
+def test_suite_partitions_are_disjoint_bounded_and_preserve_payloads(label):
+    payloads=[b'a'*1024,b'b'*1536]
+    raw=eg.wrap_volumes(payloads)
+    for off in (0,4096,8192,12288):
+        front=struct.unpack_from('>h',raw,off+112)[0]*512
+        assert front == 16384
+        assert struct.unpack_from('>ii',raw,off+190) == (0,2)
+        assert struct.unpack_from('>ii',raw,off+236) == (2,3)
+        assert struct.unpack_from('>H',raw,off+558)[0] == eg.ufs_build.label_checksum(raw[off:off+560])
+    assert raw[16384:17408] == payloads[0]
+    assert raw[17408:18944] == payloads[1]
+
+def test_suite_refuses_live_slot_and_unaligned_payloads(label):
+    for payloads in ([bytes(512)]*8,[],[bytes(513)]):
+        with pytest.raises(ValueError): eg.wrap_volumes(payloads)

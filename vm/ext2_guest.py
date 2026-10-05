@@ -74,6 +74,27 @@ def capacity_fixture(sector):
     return bytes(raw)
 
 
+def wrap_volumes(volumes):
+    """Pack up to seven independent disposable volumes; slot h is live."""
+    if not 1 <= len(volumes) <= 7:
+        raise ValueError('suite requires one to seven logical partitions')
+    if any(not volume or len(volume) % 512 for volume in volumes):
+        raise ValueError('suite volumes must be sector aligned')
+    raw = bytearray(wrap_volume(b''.join(volumes)))
+    for off in range(0,min(len(raw),65536),512):
+        if raw[off:off+4] != b'dlV3': continue
+        prototype = raw[off+190:off+236]
+        raw[off+190:off+558] = bytes(8*46)
+        base = 0
+        for part,volume in enumerate(volumes):
+            start = off+190+part*46
+            raw[start:start+46] = prototype
+            struct.pack_into('>ii',raw,start,base,len(volume)//512)
+            base += len(volume)//512
+        struct.pack_into('>H',raw,off+558,ufs_build.label_checksum(raw[off:off+560]))
+    return bytes(raw)
+
+
 def tiny_fixture():
     """Four zero-filled partitions bounding the initial superblock read."""
     raw = bytearray(wrap_volume(bytes(2048)))
@@ -154,13 +175,20 @@ def _read_result(path):
 
 
 def run(case,outdir,image,tools_dir):
-    if case not in ('readonly','tiny','capacity512','capacity1024'): raise ValueError('unsupported case')
+    if case not in ('readonly','mapping','directory','malformed','read-suite','malformed-suite','truncated-suite','tiny','capacity512','capacity1024'): raise ValueError('unsupported case')
     port = int(os.environ.get('RHAP_EXT2_QMP_PORT','5303'))
     check_qmp_port(port)
     tools_dir = Path(tools_dir)
-    names = ('mount_ext2fs','ext2_io') if case in ('readonly','tiny') else ('partition_info',)
+    names = ('partition_info',) if case.startswith('capacity') else ('mount_ext2fs','ext2_io')
     binaries = {name:(tools_dir/name).read_bytes() for name in names}
     result_script = RESULT_SCRIPT
+    if case in ('mapping','directory','malformed'):
+        kind = os.environ.get('RHAP_EXT2_MALFORMED','directory')
+        if kind not in ('directory','indirect'): raise ValueError('unsupported malformed kind')
+        extra = ' '+kind if case == 'malformed' else ''
+        result_script = ('sh run-native.sh %s /dev/hd1a /mnt/e%s >out.txt 2>&1\necho $? >status.txt\nsync\n' % (case,extra)).encode('ascii')
+    if case.endswith('-suite'):
+        result_script = ('sh run-native.sh %s /mnt/e >out.txt 2>&1\necho $? >status.txt\nsync\n' % case).encode('ascii')
     if case == 'tiny':
         result_script = b'sh run-native.sh tiny /mnt/e >out.txt 2>&1\necho $? >status.txt\nsync\n'
     if case.startswith('capacity'):

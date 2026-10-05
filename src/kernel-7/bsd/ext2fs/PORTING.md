@@ -214,3 +214,30 @@ adapter rejects residual data and releases the buffer on success or failure.
 Disk tests count this actual callback boundary, including zero calls for
 capacities 0..3 and one contained call at four sectors. The later userland
 codec mirror must include this helper and retain the same parity checks.
+
+## Task 3 read validation
+
+The local ufs_getlbns geometry is compatible: NDADDR=12, NIADDR=3 and
+um_nindir=block_size/4 (256/512/1024). Its largest third-level block count
+is 1024^3=1073741824, within the local signed int; admitted file offsets
+are bounded by 2147483647. The native bmap test compiles the actual shared
+ufs_bmap.c alongside the ext2 mapper and checks the first single/double
+paths at all block sizes and the 1 KiB triple path at logical block 65804.
+No shared FFS source or constants change.
+
+Inode and indirect pointers remain disk-order bytes until fs2h32 at use.
+Contiguous run hints stop before an out-of-volume pointer; successful short
+indirect-buffer reads return EIO before interpreting pointers. Native tests
+count the mapper's buffer/device boundary and require no device read for
+an invalid inode pointer, one contained metadata read for an invalid data
+pointer, and buffer release on errors. Those test boundaries substitute
+only process accounting and device buffers, not geometry or traversal.
+
+Directory conversion/validation, inode load/save, root-inode selection,
+spec/FIFO vectors and vnode locking were established in Task 2 and retained.
+Task 3 adds EINVAL when a nonempty getdirentries buffer cannot hold its first
+entry, preserving the directory offset instead of falsely reporting EOF.
+Syscall suites check both directory layouts, the full 255-byte name, repeated
+lookups, short/long readlink, sparse content and indirect boundary bytes.
+PPC cross-builds are recorded separately from unavailable PPC executions;
+native admission of truncated partitions is not a short inode-read test.

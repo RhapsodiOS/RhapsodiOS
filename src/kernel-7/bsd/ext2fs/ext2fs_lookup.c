@@ -135,6 +135,7 @@ ext2fs_readdir(v)
 	u_long *cookies = NULL;
 	int nc = 0, ncookies = 0;
 	int e2d_reclen;
+	int resid = uio->uio_resid;
 
 	if (vp->v_type != VDIR)
 		return (ENOTDIR);
@@ -177,6 +178,10 @@ ext2fs_readdir(v)
 			if (ext2_get_le32(dp) == 0) { off += e2d_reclen; dp = (struct ext2fs_direct *)((char *)dp+e2d_reclen); continue; }
 			ext2fs_dirconv2ffs(dp, &dstd);
 			if(dstd.d_reclen > uio->uio_resid) {
+				/* A zero-byte success would be mistaken for EOF. */
+				if (uio->uio_resid == resid &&
+				    uio->uio_resid != 0)
+					error = EINVAL;
 				break;
 			}
 			if ((error = uiomove((caddr_t)&dstd, dstd.d_reclen, uio)) != 0) {

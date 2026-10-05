@@ -21,7 +21,7 @@ check: all
 	./swap_test$(EXE)
 
 clean:
-	rm -f disk_test disk_test.exe swap_test swap_test.exe adapter_test
+	rm -f disk_test disk_test.exe swap_test swap_test.exe adapter_test bmap_test
 
 .PHONY: all check clean
 
@@ -30,3 +30,12 @@ adapter_test: adapter_test.c ../ext2fs_rhapsody.c ../ext2fs_rhapsody.h $(HEADERS
 	$(CC) $(CFLAGS) -Wno-precomp -I../.. adapter_test.c ../ext2fs_rhapsody.c ../ext2_disk.c ../ext2fs_bswap.c -o $@
 check-adapter: adapter_test
 	./adapter_test
+
+# The native buffer test compiles actual ext2 and UFS traversal with local ABI
+# headers. Only process accounting and device I/O are test boundaries.
+KERNEL_TEST_BUILD = ../../../BUILD/RELEASE_I386
+KERNEL_TEST_CPPFLAGS = -D_KERNEL -DKERNEL -I$(KERNEL_TEST_BUILD) -I../../.. -I../.. -I../../../machdep -I$(NEXT_ROOT)/System/Library/Frameworks/System.framework/PrivateHeaders
+bmap_test: bmap_test.c bmap_ext2.c bmap_ufs.c bmap_test_env.h ../ext2fs_bmap.c ../../ufs/ufs/ufs_bmap.c ../ext2fs_rhapsody.c ../ext2fs_extern.h ../ext2fs_rhapsody.h $(HEADERS)
+	$(CC) $(CFLAGS) -Wno-precomp $(KERNEL_TEST_CPPFLAGS) bmap_test.c bmap_ext2.c bmap_ufs.c ../ext2fs_rhapsody.c ../ext2_disk.c ../ext2fs_bswap.c -o $@
+check-bmap: bmap_test
+	./bmap_test

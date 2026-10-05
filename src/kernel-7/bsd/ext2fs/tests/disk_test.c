@@ -180,6 +180,35 @@ static void test_bad_geometry(void)
     puts("test_bad_geometry: PASS");
 }
 
+/* Exact signed sector limits and the last sparse/non-sparse metadata group. */
+static void test_geometry_edges(void)
+{
+    unsigned char raw[1024]; struct ext2fs es;
+    unsigned shift;
+    for (shift=0;shift<3;shift++) {
+        super_fixture(raw,shift);
+        CHECK(ext2_super_decode(raw,1024,&es) == 0);
+        es.e2fs_bpg=es.e2fs_fpg=(8192U<<shift)-8;
+        es.e2fs_ipg=8U<<shift;
+        es.e2fs_bcount=0x40000000U>>shift;
+        es.e2fs_icount=((es.e2fs_bcount-es.e2fs_first_dblock-1)/es.e2fs_bpg+1)*es.e2fs_ipg;
+        CHECK(ext2_validate_super(&es,1099511627776ULL,0) == 0);
+        es.e2fs_bcount++;
+        es.e2fs_icount=((es.e2fs_bcount-es.e2fs_first_dblock-1)/es.e2fs_bpg+1)*es.e2fs_ipg;
+        CHECK(ext2_validate_super(&es,1099511627776ULL,0) == EINVAL);
+    }
+    super_fixture(raw,0); CHECK(ext2_super_decode(raw,1024,&es) == 0);
+    es.e2fs_icount=384; es.e2fs_bcount=2067;
+    CHECK(ext2_validate_super(&es,2116608,0) == 0);
+    es.e2fs_bcount=2066;
+    CHECK(ext2_validate_super(&es,2116608,0) == EINVAL);
+    es.e2fs_bcount=2067; es.e2fs_features_rocompat=0;
+    CHECK(ext2_validate_super(&es,2118656,0) == EINVAL);
+    es.e2fs_bcount=2069;
+    CHECK(ext2_validate_super(&es,2118656,0) == 0);
+    puts("test_geometry_edges: PASS");
+}
+
 /* Catches scalar swap loss, double pointer swaps, and incorrect directory bytes. */
 static void test_metadata_byte_order(void)
 {
@@ -279,6 +308,7 @@ int main(void)
 {
     test_super_read_bounds();
     test_super_profile(); test_short_super(); test_bad_geometry();
+    test_geometry_edges();
     test_metadata_byte_order(); test_bitmap_boundaries();
     puts("disk contract: PASS"); return 0;
 }

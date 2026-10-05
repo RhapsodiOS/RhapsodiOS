@@ -135,6 +135,7 @@ ext2fs_bmaparray(vp, bn, bnp, ap, nump, runp)
 	struct indir a[NIADDR+1], *xap;
 	daddr_t daddr;
 	daddr_t metalbn;
+	u_int32_t next, prev;
 	int error, maxrun = 0, num;
 
 	ip = VTOI(vp);
@@ -157,17 +158,23 @@ ext2fs_bmaparray(vp, bn, bnp, ap, nump, runp)
 	}
 
 	if (bn >= 0 && bn < NDADDR) {
-		/* XXX ondisk32 */
-		if (fs2h32(ext2fs_dinode(ip)->e2di_blocks[bn]) >= ip->i_e2fs->e2fs.e2fs_bcount) return EIO;
-		*bnp = blkptrtodb(ump, (daddr_t)fs2h32(ext2fs_dinode(ip)->e2di_blocks[bn]));
+		daddr = fs2h32(ext2fs_dinode(ip)->e2di_blocks[bn]);
+		if ((u_int32_t)daddr >= ip->i_e2fs->e2fs.e2fs_bcount)
+			return (EIO);
+		*bnp = blkptrtodb(ump, daddr);
 		if (*bnp == 0)
 			*bnp = -1;
-		else if (runp)
-			/* XXX ondisk32 */
-			for (++bn; bn < NDADDR && *runp < maxrun &&
-				is_sequential(ump, (daddr_t)fs2h32(ext2fs_dinode(ip)->e2di_blocks[bn - 1]),
-							  (daddr_t)fs2h32(ext2fs_dinode(ip)->e2di_blocks[bn]));
-				++bn, ++*runp);
+		else if (runp) {
+			prev = daddr;
+			for (++bn; bn < NDADDR && *runp < maxrun; ++bn) {
+				next = fs2h32(ext2fs_dinode(ip)->e2di_blocks[bn]);
+				if (next >= ip->i_e2fs->e2fs.e2fs_bcount ||
+				    !is_sequential(ump, prev, next))
+					break;
+				prev = next;
+				++*runp;
+			}
+		}
 		return (0);
 	}
 
@@ -236,15 +243,25 @@ ext2fs_bmaparray(vp, bn, bnp, ap, nump, runp)
 			}
 		}
 
+		/* Even a successful strategy may leave an incomplete pointer block. */
+		if (bp->b_resid != 0) {
+			brelse(bp);
+			return (EIO);
+		}
 		/* XXX ondisk32 */
 		daddr = fs2h32(((int32_t *)bp->b_un.b_addr)[xap->in_off]);
-		if (num == 1 && daddr && runp)
-			/* XXX ondisk32 */
+		if (num == 1 && daddr && runp) {
+			prev = daddr;
 			for (bn = xap->in_off + 1;
-				bn < MNINDIR(ump) && *runp < maxrun &&
-				is_sequential(ump, fs2h32(((int32_t *)bp->b_un.b_addr)[bn - 1]),
-				fs2h32(((int32_t *)bp->b_un.b_addr)[bn]));
-				++bn, ++*runp);
+			    bn < MNINDIR(ump) && *runp < maxrun; ++bn) {
+				next = fs2h32(((int32_t *)bp->b_un.b_addr)[bn]);
+				if (next >= ip->i_e2fs->e2fs.e2fs_bcount ||
+				    !is_sequential(ump, prev, next))
+					break;
+				prev = next;
+				++*runp;
+			}
+		}
 	}
 	if (bp)
 		brelse(bp);

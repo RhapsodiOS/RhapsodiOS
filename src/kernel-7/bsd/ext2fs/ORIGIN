@@ -14,13 +14,18 @@ ext2fs_inode.c, ext2fs_lookup.c, ext2fs_readwrite.c, ext2fs_subr.c,
 ext2fs_vfsops.c, ext2fs_vnops.c.
 
 Imported: all 14 source/header files. Upstream Makefile is deliberately omitted;
-Rhapsody configuration machinery will select the nine compiled units.
-ext2fs_readwrite.c is locally included only by ext2fs_vnops.c, never a
-separate compiled unit. The pinned vnops has no such include; this is an
-explicit Rhapsody build adaptation to the agreed nine-unit inventory.
+Rhapsody configuration machinery will select all ten independent compiled
+units, including ext2fs_readwrite.c. This follows the pinned sys/ufs/files.ufs
+manifest; vnops does not include another implementation unit.
 Upstream ext2fs.h is named ext2_fs.h locally to avoid the option header.
 
-Pristine hashes and immutable download URLs:
+Upstream build-manifest reference (not copied into the core directory):
+sys/ufs/files.ufs
+SHA256 f31d295e23563278160f9f51ba8a7d1d753911f71b8997cd91721877569c6b83
+https://raw.githubusercontent.com/NetBSD/src/c90afb5a84a9c36a5c076093afade8e63ed2b6a9/sys/ufs/files.ufs
+The ten file directives include ext2fs_readwrite.c as a separate compiled unit.
+
+Pristine core hashes and immutable download URLs:
 
 ext2fs.h -> ext2_fs.h
 70c8a8a3ed7f8929a133bd66ec683fc526a732ab333c903802ba94bc6496928e

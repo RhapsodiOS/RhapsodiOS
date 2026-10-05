@@ -1642,6 +1642,3 @@ const struct vnodeopv_entry_desc ext2fs_fifoop_entries[] = {
 };
 const struct vnodeopv_desc ext2fs_fifoop_opv_desc =
 	{ &ext2fs_fifoop_p, ext2fs_fifoop_entries };
-
-/* Rhapsody builds read/write through vnops, not as a separate unit. */
-#include "ext2fs_readwrite.c"

@@ -9,17 +9,16 @@ all upstream files, immutable URLs, pristine checksums, and preserved notices.
 
 ## Imported units and adaptations
 
-The nine intended compiled units are `ext2fs_alloc.c`, `ext2fs_balloc.c`,
+The ten independently compiled units are `ext2fs_alloc.c`, `ext2fs_balloc.c`,
 `ext2fs_bmap.c`, `ext2fs_bswap.c`, `ext2fs_inode.c`, `ext2fs_lookup.c`,
-`ext2fs_subr.c`, `ext2fs_vfsops.c`, and `ext2fs_vnops.c`.
-`ext2fs_readwrite.c` is an included implementation fragment in vnops, not a
-separate compiled unit. All original function boundaries remain intact.
+`ext2fs_readwrite.c`, `ext2fs_subr.c`, `ext2fs_vfsops.c`, and `ext2fs_vnops.c`.
+This matches the pinned `sys/ufs/files.ufs` manifest recorded in ORIGIN.
+No implementation unit includes another. All original function boundaries
+remain intact.
 
 - Rename only upstream `ext2fs.h` to `ext2_fs.h`, and mechanically change the
-  local disk/declaration includes to quoted filenames. Add the local
-  `ext2fs_readwrite.c` include to the end of vnops: the pinned upstream vnops
-  does not include it, while the agreed Rhapsody inventory requires nine
-  compiled units and this included-only implementation fragment.
+  local disk/declaration includes to quoted filenames. Preserve readwrite as
+  an independent compiled unit; the pinned vnops has no readwrite inclusion.
 - Replace unavailable `machine/bswap.h` with local fixed-width inline swaps,
   retaining the upstream `h2fs*` / `fs2h*` accessor semantics. Native includes
   use target `sys/types.h`, `sys/cdefs.h`, and `machine/endian.h`; userland
@@ -94,7 +93,7 @@ The maximum supported file length is `EXT2_FILESIZE_MAX` (2147483647 bytes).
 | inode | NetBSD dinode pointers, UFS inode update/truncation assumptions, `ufs_balloc_range`, `uvm_vnp_zerorange/setsize` |
 | lookup | Name cache and vnode signatures; `ufs_dirbad`; filetype directory records and endian-safe accesses |
 | vfsops | VFS vector layout, `MOUNT_EXT2FS`, root-mount and NFS/export callbacks, pools, locks, quota header, genfs/UVM, mount/reload geometry and descriptor reads |
-| vnops + readwrite fragment | Normal/spec/FIFO vectors, `ufs_*` reuse, vnode lock/reclaim, pools, UBC/genfs paging, mutation ordering and byte-order access |
+| vnops and independent readwrite unit | Normal/spec/FIFO vectors, `ufs_*` reuse, vnode lock/reclaim, pools, UBC/genfs paging, mutation ordering and byte-order access |
 | extern header | NetBSD pools, signatures and callbacks; private kernel header only |
 
 The normal vector inherits UFS close/lease/ioctl/fcntl/poll/revoke/mmap/seek,

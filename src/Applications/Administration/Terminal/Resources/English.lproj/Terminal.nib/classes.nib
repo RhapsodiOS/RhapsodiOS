@@ -1,0 +1,132 @@
+{
+    IBClasses = (
+        {
+            ACTIONS = {enterSelection = id; findNext = id; findPanel = id; findPrevious = id; }; 
+            CLASS = FindPanel; 
+            LANGUAGE = ObjC; 
+            OUTLETS = {findPanel = id; }; 
+            SUPERCLASS = Object; 
+        }, 
+        {
+            ACTIONS = {
+                barfage = id; 
+                clearScrollback = id; 
+                debugToggle = id; 
+                jumpToSelection = id; 
+                performZoom = id; 
+            }; 
+            CLASS = FirstResponder; 
+            LANGUAGE = ObjC; 
+            SUPERCLASS = NSObject; 
+        }, 
+        {
+            ACTIONS = {changeFont = id; }; 
+            CLASS = FontTrap; 
+            LANGUAGE = ObjC; 
+            OUTLETS = {fontTarget = id; }; 
+            SUPERCLASS = NSView; 
+        }, 
+        {
+            ACTIONS = {preferences = id; }; 
+            CLASS = Preferences; 
+            LANGUAGE = ObjC; 
+            OUTLETS = {
+                altRadio = id; 
+                columnForm = id; 
+                emulationSwitches = id; 
+                fontName = id; 
+                fontSize = id; 
+                noteBox = id; 
+                rowForm = id; 
+                shellName = id; 
+                sourceDotLogin = id; 
+                winSwitches = id; 
+            }; 
+            SUPERCLASS = Object; 
+        }, 
+        {
+            ACTIONS = {
+                applicationDidFinishLaunching = id; 
+                applicationShouldTerminate = id; 
+                info = id; 
+                monStart = id; 
+                monStop = id; 
+                new = id; 
+                newCommand = id; 
+                newCommandOK = id; 
+                open = id; 
+                openLibraryTerm = id; 
+                preferences = id; 
+                print = id; 
+                quickTitle = id; 
+                quickTitleCancel = id; 
+                quickTitleOK = id; 
+                save = id; 
+                saveAllAs = id; 
+                saveAs = id; 
+                showServiceManager = id; 
+            }; 
+            CLASS = StuartApp; 
+            LANGUAGE = ObjC; 
+            OUTLETS = {
+                autoOpenBox = id; 
+                dirtMonitor = id; 
+                document = id; 
+                libraryMenu = id; 
+                newCommandForm = id; 
+                newCommandWindow = id; 
+                prefManager = id; 
+                quickTitleForm = id; 
+                quickTitlePanel = id; 
+                saveAccessory = id; 
+                serviceCache = id; 
+                serviceManager = id; 
+            }; 
+            SUPERCLASS = NSApplication; 
+        }, 
+        {
+            ACTIONS = {
+                applicationDidFinishLaunching = id; 
+                applicationShouldTerminate = id; 
+                hideOtherApplications = id; 
+                info = id; 
+                monStart = id; 
+                monStop = id; 
+                new = id; 
+                newCommand = id; 
+                newCommandOK = id; 
+                open = id; 
+                openLibraryTerm = id; 
+                preferences = id; 
+                print = id; 
+                quickTitle = id; 
+                quickTitleCancel = id; 
+                quickTitleOK = id; 
+                save = id; 
+                saveAllAs = id; 
+                saveAs = id; 
+                showPasteboard = id; 
+                showServiceManager = id; 
+                unhideOtherApplications = id; 
+            }; 
+            CLASS = TerminalApp; 
+            LANGUAGE = ObjC; 
+            OUTLETS = {
+                autoOpenBox = id; 
+                dirtMonitor = id; 
+                document = id; 
+                libraryMenu = id; 
+                prefManager = id; 
+                quickTitleForm = id; 
+                quickTitlePanel = id; 
+                saveAccessory = id; 
+                saveHowMany = id; 
+                serviceCache = id; 
+                serviceManager = id; 
+                serviceProvider = id; 
+            }; 
+            SUPERCLASS = NSApplication; 
+        }
+    ); 
+    IBVersion = 1; 
+}

@@ -1,0 +1,26 @@
+{
+    IBClasses = (
+        {
+            ACTIONS = {enterSelection = id; findNext = id; findPanel = id; findPrevious = id; }; 
+            CLASS = FindPanel; 
+            LANGUAGE = ObjC; 
+            OUTLETS = {findPanel = id; }; 
+            SUPERCLASS = Object; 
+        }, 
+        {
+            ACTIONS = {
+                all = id; 
+                backwardFind = id; 
+                find = id; 
+                ignoreCase = id; 
+                regExpr = id; 
+                replace = id; 
+                replaceFind = id; 
+            }; 
+            CLASS = FirstResponder; 
+            LANGUAGE = ObjC; 
+            SUPERCLASS = NSObject; 
+        }
+    ); 
+    IBVersion = 1; 
+}

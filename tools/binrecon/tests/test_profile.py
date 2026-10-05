@@ -385,7 +385,7 @@ def test_ppc_profile_inventory():
         "scsitape-bundle-ppc.json", "scsitape-postload-ppc.json",
         "scsitape-ppc.json", "scsitape-preload-ppc.json",
         "stblocksize-ppc.json", "sym8xx-bundle-ppc.json",
-        "sym8xx-ppc.json",
+        "sym8xx-ppc.json", "terminal-ppc.json",
     ]
 
 

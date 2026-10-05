@@ -40,6 +40,10 @@ _C_DEFINITION = re.compile(
 
 _METHOD_DECLARATION_LIMIT = 20
 
+_OBJC_METHOD_NAME = re.compile(
+    r"^([+-])\[([A-Za-z_]\w*)(?:\(([^()]*)\))? ([^\]]+)\]$"
+)
+
 _COMMENT = re.compile(r"/\*.*?\*/")
 _ASSEMBLY_LABEL = re.compile(r"^([A-Za-z_.$][\w.$]*):(?:\s*(?:[#;].*)?)$")
 
@@ -108,6 +112,14 @@ def read_selector(declaration):
 
 def _relative_posix(repo_root, path):
     return path.resolve().relative_to(repo_root.resolve()).as_posix()
+
+
+def _without_category(name):
+    """Return a class-method spelling for a category-qualified method name."""
+    match = _OBJC_METHOD_NAME.fullmatch(name)
+    if match and match.group(3) is not None:
+        return f"{match.group(1)}[{match.group(2)} {match.group(4)}]"
+    return None
 
 
 def _body_follows(lines, index):
@@ -347,6 +359,14 @@ def build_source_map(
 
         lookup = set(names) | set(symbols.get(address, []))
         candidates = sorted({site for name in lookup for site in sites.get(name, [])})
+        if not candidates:
+            categoryless = {
+                alias for name in lookup
+                if (alias := _without_category(name)) is not None
+            }
+            candidates = sorted({
+                site for name in categoryless for site in sites.get(name, [])
+            })
 
         reasons = []
         if address in disputed:

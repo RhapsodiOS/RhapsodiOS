@@ -1,0 +1,11 @@
+/* These are the names of the example services. */
+
+"Sort";
+"Time";
+"Evaluate Arithmetic";
+"Enscript File";
+"New Shell Here";
+"Count Words";
+"Grep In";
+"Wrap to 60 Columns";
+"Wrap and Reply";

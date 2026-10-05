@@ -837,6 +837,61 @@ def test_build_source_map_keeps_analysis_names_verbatim_but_resolves_via_symbol_
     assert document["mapped"][0]["source_line"] == 4
 
 
+def test_build_source_map_matches_category_method_to_class_implementation_alias():
+    analysis = _analysis(
+        [_function(0x2100, 0x10, ["-[PCIKernBus(Private) scrollTo:]"])]
+    )
+    sites = {"-[PCIKernBus scrollTo:]": [("src/driver/Bus.m", 42)]}
+
+    document = build_source_map(analysis, {"symbols": []}, sites)
+
+    assert document["mapped"] == [
+        {
+            "address": 0x2100,
+            "size": 0x10,
+            "reference_names": ["-[PCIKernBus(Private) scrollTo:]"],
+            "source_path": "src/driver/Bus.m",
+            "source_line": 42,
+        }
+    ]
+    assert document["unmapped"] == []
+
+
+def test_build_source_map_prefers_exact_category_definition_over_class_alias():
+    analysis = _analysis(
+        [_function(0x2200, 0x10, ["-[PCIKernBus(Private) scrollTo:]"])]
+    )
+    sites = {
+        "-[PCIKernBus scrollTo:]": [("src/driver/Bus.m", 12)],
+        "-[PCIKernBus(Private) scrollTo:]": [("src/driver/Bus.m", 42)],
+    }
+
+    document = build_source_map(analysis, {"symbols": []}, sites)
+
+    assert document["mapped"][0]["source_line"] == 42
+    assert document["duplicate_candidates"] == []
+
+
+def test_build_source_map_keeps_ambiguous_categoryless_aliases_ambiguous():
+    analysis = _analysis(
+        [_function(0x2300, 0x10, ["-[PCIKernBus(Private) scrollTo:]"])]
+    )
+    sites = {
+        "-[PCIKernBus scrollTo:]": [
+            ("src/driver/BusA.m", 12),
+            ("src/driver/BusB.m", 42),
+        ]
+    }
+
+    document = build_source_map(analysis, {"symbols": []}, sites)
+
+    assert document["mapped"] == []
+    assert document["duplicate_candidates"][0]["candidates"] == [
+        {"source_path": "src/driver/BusA.m", "source_line": 12},
+        {"source_path": "src/driver/BusB.m", "source_line": 42},
+    ]
+
+
 def test_build_source_map_rejects_nameless_analysis_function():
     analysis = _analysis([_function(0x3000, 0x10, [])])
     macho = {"symbols": []}

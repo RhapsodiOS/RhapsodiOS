@@ -1,0 +1,26 @@
+{
+    CURRENTLY_ACTIVE_VERSION = YES;
+    DYNAMIC_CODE_GEN = YES;
+    FILESTABLE = {
+        FRAMEWORKS = (AppKit.framework, Foundation.framework);
+        H_FILES = (CommandPanel.h, DirtMonitor.h, MiscController.h, ProcessMonitorController.h, StartupController.h, TextAttributeController.h, TitleBarController.h, FieldView.h, FieldPrint.h, FontTrap.h, FindPanel.h, WindowController.h, Preferences.h, Terminal.h, TerminalApp.h, TerminalDefaults.h, TerminalDO.h, TerminalAgent.h, ServiceManager.h, ServiceManagerState.h, ServiceProvider.h, TerminalServices.h, EmulationController.h, Shell.h, ShellController.h, ShellExec.h, ShellPolicy.h, FlagMap.h, ProcessInfo.h, ProcessNames.h, ProcessIdentity.h, SavePanelMode.h, TString.h, Emulation.h, MutableEvent.h, FilerObjC.h, Filer.h, Chunk.h, TerminalScreen.h, PathCompress.h, WindowTitle.h, WindowTitleRuntime.h, WordBoundary.h, WordSelection.h, IntegerString.h, PasteText.h, DebugDPS.h, FindCharacters.h, PrintLine.h, VT100Args.h, VT100String.h, VT100Parser.h, VT100State.h, TerminalDOProtocol.h, TerminalLaunch.h);
+        MFILES = (CommandPanel.m, DirtMonitor.m, MiscController.m, ProcessMonitorController.m, StartupController.m, TextAttributeController.m, TitleBarController.m, FieldView.m, FieldPrint.m, FontTrap.m, FindPanel.m, WindowController.m, Preferences.m, Terminal.m, TerminalApp.m, TerminalDO.m, TerminalMain.m, TerminalAgent.m, TerminalDefaults.m, ServiceCache.m, ServiceManager.m, ServiceProvider.m, EmulationController.m, ShellController.m, Shell.m, ShellExec.c, ShellPolicy.c, FlagMap.c, ProcessInfo.c, ProcessNames.c, ProcessIdentity.c, TerminalLaunch.c, SavePanelMode.c, TString.m, Emulation.m, vt52.m, vt100.m, MutableEvent.m, Filer.m, Filer.c, Chunk.c, TerminalScreen.c, PathCompress.c, WindowTitle.c, WindowTitleRuntime.m, WordBoundary.c, WordSelection.c, IntegerString.c, PasteText.c, DebugDPS.m, FindCharacters.c, PrintLine.c, VT100Args.c, VT100String.c, VT100Parser.c, VT100State.c);
+        GLOBAL_RESOURCES = (Resources/icon.tiff, Resources/Info-nextstep.plist, Resources/Credits.rtf);
+        English_RESOURCES = (Resources/English.lproj/CommandPanel.nib/classes.nib, Resources/English.lproj/CommandPanel.nib/objects.nib, Resources/English.lproj/Find.nib/classes.nib, Resources/English.lproj/Find.nib/objects.nib, Resources/English.lproj/Localizable.strings, Resources/English.lproj/Preferences.nib/classes.nib, Resources/English.lproj/Preferences.nib/objects.nib, Resources/English.lproj/PrintAccessory.nib/classes.nib, Resources/English.lproj/PrintAccessory.nib/objects.nib, Resources/English.lproj/ServicePrompt.nib/classes.nib, Resources/English.lproj/ServicePrompt.nib/objects.nib, Resources/English.lproj/Services.nib/classes.nib, Resources/English.lproj/Services.nib/objects.nib, Resources/English.lproj/Services.strings, Resources/English.lproj/Terminal.nib/classes.nib, Resources/English.lproj/Terminal.nib/objects.nib, Resources/Credits.rtf, Resources/DefaultServices.svcs, Resources/PrintAll.tiff, Resources/PrintAttributes.tiff, Resources/PrintNoAttributes.tiff, Resources/PrintSelection.tiff, Resources/PrintVisible.tiff, Resources/ScrollingMach.tiff, Resources/ScrollingOutput.tiff, Resources/Services.tiff, Resources/TermDoc.tiff, Resources/TerminalTitle.tiff, Resources/TIbeam.tiff, Resources/WindowTop.tiff);
+        OTHER_SOURCES = (Makefile, Makefile.preamble, Makefile.postamble, PB.project);
+    };
+    LANGUAGE = English;
+    LOCALIZABLE_FILES = {};
+    MAKEFILEDIR = "$(MAKEFILEPATH)/pb_makefiles";
+    NEXTSTEP_BUILDTOOL = /bin/gnumake;
+    NEXTSTEP_INSTALLDIR = /System/Administration;
+    NEXTSTEP_OBJCPLUS_COMPILER = /usr/bin/cc;
+    PDO_UNIX_BUILDTOOL = $NEXT_ROOT/Developer/bin/make;
+    PDO_UNIX_INSTALLDIR = /System/Administration;
+    PDO_UNIX_OBJCPLUS_COMPILER = "$(NEXTDEV_BIN)/gcc";
+    PROJECTNAME = Terminal;
+    PROJECTTYPE = Application;
+    PROJECTVERSION = 1.0;
+    WINDOWS_BUILDTOOL = $NEXT_ROOT/Developer/Executables/make;
+    WINDOWS_OBJCPLUS_COMPILER = "$(DEVDIR)/gcc";
+}

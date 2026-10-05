@@ -206,3 +206,11 @@ Older kernels without the new query fail mount cleanly. The current ext2
 buffer mapping admits 512-byte device sectors only. RO mount/sync/unmount
 issue no superblock, dirty-bit, inode timestamp or free-map writes.
 Registration has no root-mount callback.
+
+The first superblock read uses ext2_read_super in ext2_disk.c. Its production
+gate requires at least four 512-byte sectors before invoking the reader for
+bytes 1024..2047. The callback must return all bytes or an errno; the VFS
+adapter rejects residual data and releases the buffer on success or failure.
+Disk tests count this actual callback boundary, including zero calls for
+capacities 0..3 and one contained call at four sectors. The later userland
+codec mirror must include this helper and retain the same parity checks.

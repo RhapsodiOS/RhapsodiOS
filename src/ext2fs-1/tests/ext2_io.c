@@ -3,6 +3,8 @@
 #include <sys/stat.h>
 #include <sys/mount.h>
 #include <sys/time.h>
+#include <sys/ioctl.h>
+#include <dev/disk.h>
 #include <ext2fs/ext2_mount.h>
 #include <dirent.h>
 #include <errno.h>
@@ -14,6 +16,32 @@
 
 #define CHECK(x) do { if (!(x)) { fprintf(stderr,"%s:%d: %s (errno %d)\n",__FILE__,__LINE__,#x,errno); return 1; } } while (0)
 
+static int tiny_mounts(const char *point)
+{
+    struct disk_partition_info capacity;
+    struct ext2fs_args args;
+    struct statfs before,after;
+    char device[] = "/dev/hd1a";
+    int i,fd;
+    CHECK(statfs(point,&before) == 0);
+    for (i=1;i<=4;i++) {
+        device[8] = 'a'+i-1;
+        CHECK((fd=open(device,O_RDONLY)) >= 0);
+        CHECK(ioctl(fd,DKIOCGPARTINFO,&capacity) == 0);
+        CHECK(capacity.block_size == 512 && capacity.block_count == i);
+        CHECK(close(fd) == 0);
+        args.fspec=device;
+        errno=0;
+        CHECK(mount("ext2fs",point,MNT_RDONLY,&args) == -1 && errno == EINVAL);
+        CHECK(statfs(point,&after) == 0);
+        CHECK(memcmp(&before.f_fsid,&after.f_fsid,sizeof(before.f_fsid)) == 0);
+        CHECK(!strcmp(before.f_fstypename,after.f_fstypename));
+        printf("tiny partition %s: %d sectors rejected\n",device,i);
+    }
+    puts("EXT2_OK tiny");
+    return 0;
+}
+
 int main(int argc,char **argv)
 {
     struct stat st;
@@ -24,6 +52,7 @@ int main(int argc,char **argv)
     int fd, saw_dot = 0, saw_parent = 0;
     char data[32];
     ssize_t count;
+    if (argc == 3 && !strcmp(argv[1],"tiny")) return tiny_mounts(argv[2]);
     CHECK(argc == 3 && strcmp(argv[1],"readonly") == 0);
     CHECK(chdir(argv[2]) == 0);
     CHECK(stat(".",&st) == 0 && S_ISDIR(st.st_mode) && st.st_ino == 2 &&

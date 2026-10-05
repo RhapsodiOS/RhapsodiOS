@@ -14,6 +14,20 @@ typedef char ext2_inode_size_check[(sizeof(struct ext2fs_dinode) == 128) ? 1 : -
 typedef char ext2_group_size_check[(sizeof(struct ext2_gd) == 32) ? 1 : -1];
 
 int
+ext2_read_super(u_int32_t block_size, u_int32_t block_count,
+    ext2_disk_reader read, void *cookie, struct ext2fs *out)
+{
+    int error;
+    /* The first metadata read covers bytes 1024 through 2047 inclusive. */
+    if (block_size != 512 || block_count < 4 || block_count > 0x7fffffffU ||
+        read == NULL || out == NULL)
+        return EINVAL;
+    error = read(cookie,1024,out,SBSIZE);
+    if (error) return error;
+    return ext2_super_decode(out,SBSIZE,out);
+}
+
+int
 ext2_super_decode(const void *raw, size_t len, struct ext2fs *out)
 {
     struct ext2fs disk;

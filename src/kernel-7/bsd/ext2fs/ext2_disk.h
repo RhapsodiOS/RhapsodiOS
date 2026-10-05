@@ -10,6 +10,10 @@
 #include "ext2fs_dir.h"
 
 #define EXT2_FILESIZE_MAX 2147483647U
+/* Read all len bytes at a byte offset or return an errno; no short success.
+ * ext2_read_super admits 512-byte sectors only; out is valid on success. */
+typedef int (*ext2_disk_reader)(void *, u_int32_t, void *, size_t);
+int ext2_read_super(u_int32_t, u_int32_t, ext2_disk_reader, void *, struct ext2fs *);
 int ext2_super_decode(const void *, size_t, struct ext2fs *);
 void ext2_super_encode(const struct ext2fs *, void *);
 int ext2_validate_super(const struct ext2fs *, u_int64_t, int);

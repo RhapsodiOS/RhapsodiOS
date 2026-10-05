@@ -1233,6 +1233,20 @@ ext2fs_has_super(struct ext2fs *es,u_int32_t group)
 }
 
 static int
+ext2fs_read_super_bytes(void *cookie,u_int32_t offset,void *out,size_t len)
+{
+    struct buf *bp = NULL;
+    int error;
+    error = bread((struct vnode *)cookie,offset/512,len,NOCRED,&bp);
+    if (!error) {
+        if (bp->b_resid) error = EINVAL;
+        else bcopy(bp->b_un.b_addr,out,len);
+    }
+    if (bp) brelse(bp);
+    return error;
+}
+
+static int
 ext2fs_mountfs(struct vnode *devvp,struct mount *mp,struct proc *p)
 {
     struct ufsmount *ump = NULL;
@@ -1249,12 +1263,8 @@ ext2fs_mountfs(struct vnode *devvp,struct mount *mp,struct proc *p)
     if ((error = VOP_OPEN(devvp,FREAD,p->p_ucred,p)) != 0) return error;
     error = VOP_IOCTL(devvp,DKIOCGPARTINFO,(caddr_t)&capacity,FREAD,p->p_ucred,p);
     if (error) goto fail;
-    if (capacity.block_size != 512 || capacity.block_count == 0 ||
-        capacity.block_count > 0x7fffffffU) { error = EINVAL; goto fail; }
-    error = bread(devvp,2,1024,NOCRED,&bp);
-    if (error) goto fail;
-    error = ext2_super_decode(bp->b_un.b_addr,1024-bp->b_resid,&disk);
-    brelse(bp); bp = NULL;
+    error = ext2_read_super(capacity.block_size,capacity.block_count,
+        ext2fs_read_super_bytes,devvp,&disk);
     if (error) goto fail;
     error = ext2_validate_super(&disk,(u_int64_t)capacity.block_count*capacity.block_size,0);
     if (error) goto fail;

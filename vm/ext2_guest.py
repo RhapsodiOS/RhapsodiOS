@@ -2,7 +2,8 @@
 
 Usage: ext2_guest.py wrap VOLUME OUT
        ext2_guest.py capacity 512|1024 OUT
-       ext2_guest.py run readonly|capacity512|capacity1024 OUTDIR IMAGE TOOLS_DIR
+       ext2_guest.py tiny OUT
+       ext2_guest.py run readonly|tiny|capacity512|capacity1024 OUTDIR IMAGE TOOLS_DIR
 RHAP_TEST_IMAGE selects the root source; each run copies it before booting.
 """
 import importlib.util
@@ -69,6 +70,18 @@ def capacity_fixture(sector):
         raw[off+190:off+190+8*46] = bytes(8*46)
         for part,count in enumerate((16*1024*1024//sector,len(raw)//sector,len(raw)//sector+1)):
             struct.pack_into('>ii',raw,off+190+part*46,0,count)
+        struct.pack_into('>H',raw,off+558,ufs_build.label_checksum(raw[off:off+560]))
+    return bytes(raw)
+
+
+def tiny_fixture():
+    """Four zero-filled partitions bounding the initial superblock read."""
+    raw = bytearray(wrap_volume(bytes(2048)))
+    for off in range(0,min(len(raw),65536),512):
+        if raw[off:off+4] != b'dlV3': continue
+        raw[off+190:off+558] = bytes(8*46)
+        for part in range(4):
+            struct.pack_into('>ii',raw,off+190+part*46,0,part+1)
         struct.pack_into('>H',raw,off+558,ufs_build.label_checksum(raw[off:off+560]))
     return bytes(raw)
 
@@ -141,13 +154,15 @@ def _read_result(path):
 
 
 def run(case,outdir,image,tools_dir):
-    if case not in ('readonly','capacity512','capacity1024'): raise ValueError('unsupported case')
+    if case not in ('readonly','tiny','capacity512','capacity1024'): raise ValueError('unsupported case')
     port = int(os.environ.get('RHAP_EXT2_QMP_PORT','5303'))
     check_qmp_port(port)
     tools_dir = Path(tools_dir)
-    names = ('mount_ext2fs','ext2_io') if case == 'readonly' else ('partition_info',)
+    names = ('mount_ext2fs','ext2_io') if case in ('readonly','tiny') else ('partition_info',)
     binaries = {name:(tools_dir/name).read_bytes() for name in names}
     result_script = RESULT_SCRIPT
+    if case == 'tiny':
+        result_script = b'sh run-native.sh tiny /mnt/e >out.txt 2>&1\necho $? >status.txt\nsync\n'
     if case.startswith('capacity'):
         sector = int(case[8:])
         result_script = ('sh run-native.sh %s %d %d >out.txt 2>&1\necho $? >status.txt\nsync\n' %
@@ -202,13 +217,18 @@ def run(case,outdir,image,tools_dir):
 
 def main(argv):
     if len(argv)==4 and argv[1]=='wrap': wrap_file(argv[2],argv[3]); return 0
+    if len(argv)==3 and argv[1]=='tiny':
+        target = _new_target(argv[2])
+        raw = tiny_fixture()
+        with target.open('xb') as stream: stream.write(raw)
+        return 0
     if len(argv)==4 and argv[1]=='capacity':
         target = _new_target(argv[3])
         raw = capacity_fixture(int(argv[2]))
         with target.open('xb') as stream: stream.write(raw)
         return 0
     if len(argv)==6 and argv[1]=='run': return run(*argv[2:])
-    raise ValueError('usage: wrap VOLUME OUT | capacity 512|1024 OUT | run CASE OUTDIR IMAGE TOOLS_DIR')
+    raise ValueError('usage: wrap VOLUME OUT | capacity 512|1024 OUT | tiny OUT | run CASE OUTDIR IMAGE TOOLS_DIR')
 
 if __name__=='__main__':
     try: sys.exit(main(sys.argv))

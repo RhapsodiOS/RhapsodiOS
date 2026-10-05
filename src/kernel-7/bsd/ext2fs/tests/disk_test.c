@@ -42,6 +42,54 @@ static void super_fixture(unsigned char *p, unsigned shift)
     for (i = 204; i < 1024; i++) p[i] = (unsigned char)(i ^ 0xa5);
 }
 
+struct counted_reader {
+    unsigned char bytes[1024];
+    unsigned reads;
+    int error;
+};
+
+static int counted_read(void *cookie, u_int32_t offset, void *out, size_t len)
+{
+    struct counted_reader *reader = cookie;
+    reader->reads++;
+    CHECK(offset == 1024 && len == 1024);
+    if (reader->error) return reader->error;
+    memcpy(out,reader->bytes,len);
+    return 0;
+}
+
+/* Exercise the production gate, including whether it invokes metadata I/O. */
+static void test_super_read_bounds(void)
+{
+    struct counted_reader reader;
+    struct ext2fs es, before;
+    unsigned blocks;
+    int error;
+    super_fixture(reader.bytes,0);
+    reader.error=0;
+    memset(&before,0xa5,sizeof(before));
+    for (blocks=0;blocks<4;blocks++) {
+        reader.reads=0; es=before;
+        error=ext2_read_super(512,blocks,counted_read,&reader,&es);
+        CHECK(reader.reads == 0);
+        CHECK(error == EINVAL && memcmp(&es,&before,sizeof(es)) == 0);
+    }
+    reader.reads=0;
+    CHECK(ext2_read_super(512,4,counted_read,&reader,&es) == 0);
+    CHECK(reader.reads == 1 && es.e2fs_magic == 0xef53);
+    reader.reads=0;
+    CHECK(ext2_read_super(1024,4,counted_read,&reader,&es) == EINVAL);
+    CHECK(ext2_read_super(0,4,counted_read,&reader,&es) == EINVAL);
+    CHECK(ext2_read_super(512,0x80000000U,counted_read,&reader,&es) == EINVAL);
+    CHECK(ext2_read_super(512,4,NULL,&reader,&es) == EINVAL);
+    CHECK(ext2_read_super(512,4,counted_read,&reader,NULL) == EINVAL);
+    CHECK(reader.reads == 0);
+    reader.error=EIO;
+    CHECK(ext2_read_super(512,4,counted_read,&reader,&es) == EIO);
+    CHECK(reader.reads == 1);
+    puts("test_super_read_bounds: PASS");
+}
+
 /* Catches profile widening, wrong endianness, or destruction of opaque bytes. */
 static void test_super_profile(void)
 {
@@ -229,6 +277,7 @@ static void test_bitmap_boundaries(void)
 
 int main(void)
 {
+    test_super_read_bounds();
     test_super_profile(); test_short_super(); test_bad_geometry();
     test_metadata_byte_order(); test_bitmap_boundaries();
     puts("disk contract: PASS"); return 0;

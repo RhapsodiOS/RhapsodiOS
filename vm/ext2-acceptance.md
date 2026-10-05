@@ -25,6 +25,8 @@ python vm/ext2_guest.py capacity 512 capacity512.img
 python vm/ext2_guest.py run capacity512 run-capacity512 capacity512.img native-tools
 python vm/ext2_guest.py capacity 1024 capacity1024.img
 python vm/ext2_guest.py run capacity1024 run-capacity1024 capacity1024.img native-tools
+python vm/ext2_guest.py tiny tiny.img
+python vm/ext2_guest.py run tiny run-tiny tiny.img native-tools
 ```
 
 `native-tools` contains mount_ext2fs, ext2_io and partition_info, built from
@@ -32,6 +34,9 @@ src/ext2fs-1. The readonly fixture contains /hello.txt (mode0644, exactly
 `hello from ext2\n`), root mode0755 and lost+found. A passing run needs status0,
 the exact case marker, an unchanged data image, and no serial panic.
 Read-only testing repeats mount/read/mutation-refusal/unmount twice.
+The tiny fixture exposes partitions of one through four sectors. Native
+mounts must reject them cleanly; production disk tests separately prove that
+the reader is never called below four sectors and is contained at four.
 
 ## Evidence at the read-only milestone
 
@@ -43,6 +48,7 @@ Read-only testing repeats mount/read/mutation-refusal/unmount twice.
 | i386 and PPC ext2-disabled link | Pass; common objects reused from enabled builds |
 | Shared UFS inode/mount layouts on both compilers | Unchanged |
 | Native i386 repeated read-only mount/unmount | Pass |
+| Native i386 tiny partition mount refusal | Pass; capacities 1–4 sectors, unchanged data and mountpoint |
 | Native i386 ext2-disabled mount refusal | Pass; unsupported filesystem, unchanged data |
 | Native i386 block/raw 512-byte partition capacity | Pass; legacy whole-drive values preserved |
 | Native i386 block/raw 1024-byte partition capacity | Pass; legacy whole-drive values preserved |

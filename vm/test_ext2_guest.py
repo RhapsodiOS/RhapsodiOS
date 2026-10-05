@@ -145,3 +145,11 @@ def test_capacity_fixture_has_exact_and_invalid_logical_sizes(label,sector):
         assert struct.unpack_from('>i',raw,off+194+92)[0]*sector > len(raw)
         assert struct.unpack_from('>i',raw,off+194+6*46)[0] == 0
         assert struct.unpack_from('>H',raw,off+558)[0] == eg.ufs_build.label_checksum(raw[off:off+560])
+
+def test_tiny_fixture_declares_one_through_four_sectors(label):
+    raw = eg.tiny_fixture()
+    for off in (0,4096,8192,12288):
+        assert struct.unpack_from('>i',raw,off+92)[0] == 512
+        assert [struct.unpack_from('>i',raw,off+194+46*i)[0] for i in range(4)] == [1,2,3,4]
+        assert struct.unpack_from('>H',raw,off+558)[0] == eg.ufs_build.label_checksum(raw[off:off+560])
+    assert raw[16384:16384+2048] == bytes(2048)

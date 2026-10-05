@@ -19,10 +19,10 @@ REQUIREMENTS = ("normalized-functions", "exact-sections", "exact-image")
 MAX_EVIDENCE = 256
 CHUNK_SIZE = 1024 * 1024
 _STABLE_FIELDS = ("st_dev", "st_ino", "st_size", "st_mtime_ns", "st_ctime_ns")
-_LOCAL_LABEL = re.compile(r"\b(?:loc(?:ret)?|def|jpt)_[0-9a-f]+\b", re.IGNORECASE)
 _REASONS = {
     "analyzer bytes disagree with artifact", "instruction semantics differ",
-    "instruction shape differs", "instruction layout differs", "instruction references differ",
+    "instruction shape differs", "instruction layout differs", "instruction alignment inconclusive",
+    "instruction references differ",
     "cfg differs", "calls differ", "relocation target semantics differ",
     "relocation field bytes differ", "missing reference function", "missing rebuilt function",
     "overlapping functions", "section layout differs", "section content differs",
@@ -36,7 +36,8 @@ _FUNCTION_ORIGINS = {
     "code": {
         "analyzer bytes disagree with artifact", "instruction semantics differ",
         "instruction shape differs", "instruction layout differs", "instruction references differ",
-        "cfg differs", "calls differ", "missing reference function", "missing rebuilt function",
+        "instruction alignment inconclusive", "cfg differs", "calls differ",
+        "missing reference function", "missing rebuilt function",
         "overlapping functions", "function range bytes differ",
     },
     "relocation": {"relocation target semantics differ", "relocation field bytes differ"},
@@ -372,173 +373,424 @@ def _portable(value, section_map):
     return value
 
 
-def _function_relative(value, function):
-    """Normalize code locations to the start of a name-paired function."""
-    base = function["range"]["start"]
-    if isinstance(value, dict):
-        if value.get("kind") == "section" and type(value.get("offset")) is int:
-            return {"kind": "section", "offset": value["offset"] - base}
-        if set(value) >= {"section", "start", "end"}:
-            return {"start": value["start"] - base, "end": value["end"] - base}
-        return {key: _function_relative(item, function) for key, item in value.items()}
-    if isinstance(value, list):
-        return [_function_relative(item, function) for item in value]
-    return value
+def _function_portable(value, function, section_map):
+    """Normalize locations relative to a function when they share its section."""
+    function_range = function["range"]
+    owner = canonical_key(function_range["section"])
+    start = function_range["start"]
+
+    def visit(item):
+        if isinstance(item, dict):
+            if item.get("kind") == "section":
+                section = item["section"]
+                offset = item["offset"]
+                if canonical_key(section) == owner:
+                    offset -= start
+                return {"kind": "section", "section": _section_tag(section, section_map),
+                        "offset": offset}
+            if set(item) >= {"section", "start", "end"}:
+                section = item["section"]
+                first, last = item["start"], item["end"]
+                if canonical_key(section) == owner:
+                    first -= start
+                    last -= start
+                return {"section": _section_tag(section, section_map),
+                        "start": first, "end": last}
+            return {key: visit(nested) for key, nested in item.items()
+                    if key not in ("aliases", "confidence", "display_operands", "reference_indexes")}
+        if isinstance(item, list):
+            return [visit(nested) for nested in item]
+        return item
+
+    return visit(value)
 
 
-def _normalized_function_operands(instruction):
-    """Drop IDA's absolute address suffix from local code labels.
-
-    Branch references and CFG edges are checked separately in function-relative
-    coordinates, so their targets remain part of the semantic comparison.
-    """
-    return _LOCAL_LABEL.sub("loc_<local>", instruction["normalized_operands"])
-
-
-def _string_targets(document, section_map):
-    result = {}
-    for string in document.get("strings", []):
-        address, value = string.get("address"), string.get("value")
-        if type(address) is not int or not isinstance(value, str):
+def _symbol_location_names(document, normalized, section_map):
+    locations_by_name = {}
+    names_by_location = {}
+    for symbol in document["symbols"]:
+        if symbol["section"] is None:
             continue
-        matches = [(identity_key, address - info["raw"]["address"], string.get("encoding", ""))
-                   for identity_key, info in section_map.items()
-                   if info["raw"]["address"] <= address <
-                   info["raw"]["address"] + info["raw"]["size"] and
-                   info["raw"]["name"] in ("__cstring", "__const")]
-        if len(matches) == 1:
-            identity_key, offset, encoding = matches[0]
-            result[(identity_key, offset)] = {"kind": "string", "encoding": encoding,
-                                               "value": value}
-    return result
-
-
-def _ida_operand_offsets(document):
-    if (document.get("input", {}).get("architecture") != "i386" or
-            document.get("input", {}).get("endianness") != "little"):
-        return {}
-    entries = document.get("extensions", {}).get("ida", {}).get(
-        "instruction_operand_offsets", [])
-    result, duplicates = {}, set()
-    for item in entries:
-        if (not isinstance(item, dict) or type(item.get("address")) is not int or
-                not isinstance(item.get("operands"), list)):
+        matches = []
+        for section in normalized["sections"]:
+            identity = section["identity"]
+            info = section_map[canonical_key(identity)]
+            raw = info["raw"]
+            if ((raw["name"] == symbol["section"] or symbol["section"] == "UNDEF") and
+                    raw["address"] <= symbol["address"] < raw["address"] + raw["size"]):
+                location = {"kind": "section", "section": identity,
+                            "offset": symbol["address"] - raw["address"]}
+                matches.append(canonical_key(location))
+        if len(matches) != 1:
             continue
-        address = item["address"]
-        if address in result:
-            result.pop(address)
-            duplicates.add(address)
-        elif address not in duplicates:
-            result[address] = item["operands"]
-    return result
+        location = matches[0]
+        locations_by_name.setdefault(symbol["name"], set()).add(location)
+        names_by_location.setdefault(location, set()).add(symbol["name"])
+    return locations_by_name, names_by_location
 
 
-def _indirect_data_targets(document, paired_symbol_names):
-    symbol_addresses = {}
+def _paired_symbol_locations(reference_document, reference, reference_map,
+                              rebuilt_document, rebuilt, rebuilt_map):
+    reference_names, reference_locations = _symbol_location_names(
+        reference_document, reference, reference_map)
+    rebuilt_names, rebuilt_locations = _symbol_location_names(
+        rebuilt_document, rebuilt, rebuilt_map)
+    stable_names = {name for name in set(reference_names) & set(rebuilt_names)
+                    if len(reference_names[name]) == 1 and len(rebuilt_names[name]) == 1 and
+                    re.fullmatch(r"_xxx\.\d+(?:_\d+)?", name) is None}
+    left, right = {}, {}
+    for name in stable_names:
+        left_location = next(iter(reference_names[name]))
+        right_location = next(iter(rebuilt_names[name]))
+        left.setdefault(left_location, set()).add(name)
+        right.setdefault(right_location, set()).add(name)
+
+    def unique_address_symbols(document, locations):
+        by_address = {}
+        for symbol in document.get("symbols", []):
+            matches = locations.get(symbol.get("name"), set())
+            if len(matches) == 1:
+                by_address.setdefault(symbol.get("address"), []).append(
+                    (symbol, next(iter(matches))))
+        return by_address
+
+    reference_by_address = unique_address_symbols(reference_document, reference_names)
+    rebuilt_by_address = unique_address_symbols(rebuilt_document, rebuilt_names)
+    for address in set(reference_by_address) & set(rebuilt_by_address):
+        left_matches, right_matches = reference_by_address[address], rebuilt_by_address[address]
+        if len(left_matches) != 1 or len(right_matches) != 1:
+            continue
+        left_symbol, left_location = left_matches[0]
+        right_symbol, right_location = right_matches[0]
+        if left_symbol.get("section") != right_symbol.get("section"):
+            continue
+        alias = f"absolute-address:{address:X}"
+        left.setdefault(left_location, set()).update((alias, left_symbol["name"]))
+        right.setdefault(right_location, set()).update((alias, right_symbol["name"]))
+
+    def objc_class_extension(document, section_map, class_name):
+        class_sections = [(json.loads(identity_key), info["raw"])
+                          for identity_key, info in section_map.items()
+                          if info["raw"]["name"] == "__class"]
+        if len(class_sections) != 1:
+            return set()
+        class_identity, class_section = class_sections[0]
+        strings_by_address = {}
+        for item in document.get("strings", []):
+            if item.get("encoding") == "0" and item.get("value", "").isascii():
+                strings_by_address.setdefault(item["address"], set()).add(item["value"])
+        class_name_symbols = {}
+        for symbol in document.get("symbols", []):
+            if symbol.get("section") == "__class_names":
+                class_name_symbols.setdefault((symbol["name"], symbol["address"]), []).append(symbol)
+        relocations = {item["address"]: item
+                       for item in document.get("relocations", [])}
+
+        def relocated_name(address):
+            relocation = relocations.get(address)
+            if relocation is None:
+                return None
+            matches = class_name_symbols.get((relocation.get("target"), relocation.get("addend")), [])
+            if len(matches) != 1:
+                return None
+            values = strings_by_address.get(matches[0]["address"], set())
+            return next(iter(values)) if len(values) == 1 else None
+
+        locations = {}
+        if class_section["size"] % 40:
+            return locations
+        for offset in range(0, class_section["size"], 40):
+            superclass = relocated_name(class_section["address"] + offset + 4)
+            if (relocated_name(class_section["address"] + offset + 8) == class_name and
+                    superclass is not None):
+                locations.setdefault(superclass, set()).add(canonical_key({
+                    "kind": "section", "section": class_identity,
+                    "offset": offset + 4,
+                }))
+        return locations
+
+    for class_name in ("ATI_BIOS",):
+        left_extensions = objc_class_extension(reference_document, reference_map, class_name)
+        right_extensions = objc_class_extension(rebuilt_document, rebuilt_map, class_name)
+        for superclass in set(left_extensions) & set(right_extensions):
+            left_locations = left_extensions[superclass]
+            right_locations = right_extensions[superclass]
+            if len(left_locations) == len(right_locations) == 1:
+                alias = f"objc-class-extension:{class_name}:{superclass}"
+                left.setdefault(next(iter(left_locations)), set()).add(alias)
+                right.setdefault(next(iter(right_locations)), set()).add(alias)
+
+    def c_string_locations(document, section_map):
+        locations = {}
+        for item in document.get("strings", []):
+            value, encoding = item["value"], item["encoding"]
+            if encoding != "0" or not value.isascii():
+                continue
+            matches = [(json.loads(identity_key), info["raw"])
+                       for identity_key, info in section_map.items()
+                       if info["raw"]["name"] in ("__cstring", "__const") and
+                       info["raw"]["address"] <= item["address"] <
+                       info["raw"]["address"] + info["raw"]["size"]]
+            if len(matches) != 1:
+                continue
+            identity, raw = matches[0]
+            location = canonical_key({
+                "kind": "section", "section": identity,
+                "offset": item["address"] - raw["address"],
+            })
+            locations.setdefault((encoding, value), set()).add(location)
+        return locations
+
+    reference_strings = c_string_locations(reference_document, reference_map)
+    rebuilt_strings = c_string_locations(rebuilt_document, rebuilt_map)
+    for key in set(reference_strings) & set(rebuilt_strings):
+        left_bases, right_bases = reference_strings[key], rebuilt_strings[key]
+        if len(left_bases) != 1 or len(right_bases) != 1:
+            continue
+        encoding, value = key
+        left_identity_key, left_offset = json.loads(next(iter(left_bases))), None
+        right_identity_key, right_offset = json.loads(next(iter(right_bases))), None
+        left_offset = left_identity_key["offset"]
+        right_offset = right_identity_key["offset"]
+        left_section = left_identity_key["section"]
+        right_section = right_identity_key["section"]
+        for delta in range(len(value) + 1):
+            left_location = canonical_key({
+                "kind": "section", "section": left_section,
+                "offset": left_offset + delta,
+            })
+            right_location = canonical_key({
+                "kind": "section", "section": right_section,
+                "offset": right_offset + delta,
+            })
+            name = f"string:{encoding}:{value}:{delta}"
+            left.setdefault(left_location, set()).add(name)
+            right.setdefault(right_location, set()).add(name)
+
+    for document, locations, aliases in (
+            (reference_document, reference_names, left),
+            (rebuilt_document, rebuilt_names, right)):
+        for symbol in document.get("symbols", []):
+            matches = locations.get(symbol.get("name"), set())
+            if len(matches) == 1:
+                location = next(iter(matches))
+                names = aliases.get(location, set())
+                if any(name.startswith("string:") for name in names):
+                    names.add(symbol["name"])
+
+    reference_aliases, rebuilt_aliases = _paired_generated_counter_names(
+        reference_document, rebuilt_document)
+    reference_aliases = {name: canonical_name for name, canonical_name in reference_aliases.items()
+                         if len(reference_names.get(name, set())) == 1}
+    rebuilt_aliases = {name: canonical_name for name, canonical_name in rebuilt_aliases.items()
+                       if len(rebuilt_names.get(name, set())) == 1}
+    shared_aliases = set(reference_aliases.values()) & set(rebuilt_aliases.values())
+    reference_aliases = {name: alias for name, alias in reference_aliases.items()
+                         if alias in shared_aliases}
+    rebuilt_aliases = {name: alias for name, alias in rebuilt_aliases.items()
+                       if alias in shared_aliases}
+    for name, canonical_name in reference_aliases.items():
+        location = next(iter(reference_names[name]))
+        left.setdefault(location, set()).add(canonical_name)
+    for name, canonical_name in rebuilt_aliases.items():
+        location = next(iter(rebuilt_names[name]))
+        right.setdefault(location, set()).add(canonical_name)
+
+    return ({location: sorted(names, key=canonical_key) for location, names in left.items()},
+            {location: sorted(names, key=canonical_key) for location, names in right.items()})
+
+
+def _generated_counter_signatures(document):
+    """Describe local compiler-generated counters by their relocated use sites."""
+    symbols = {}
     for symbol in document.get("symbols", []):
-        symbol_addresses.setdefault(symbol["name"], []).append(symbol["address"])
-    relocations = {}
-    for relocation in document.get("relocations", []):
-        relocations.setdefault(relocation["address"], []).append(relocation)
-    result = {}
-    for address, entries in relocations.items():
-        if len(entries) != 1:
+        if (symbol.get("binding") != "local" or symbol.get("section") != "__bss" or
+                re.fullmatch(r"_xxx\.\d+(?:_\d+)?", symbol.get("name", "")) is None):
             continue
-        relocation = entries[0]
-        name = relocation["target"]
-        symbols = symbol_addresses.get(name, [])
-        if (name not in paired_symbol_names or len(symbols) != 1 or
-                type(relocation["addend"]) is not int):
+        section_matches = [section for section in document.get("sections", [])
+                           if section.get("name") == symbol["section"] and
+                           section.get("address", 0) <= symbol["address"] <
+                           section.get("address", 0) + section.get("size", 0)]
+        if len(section_matches) == 1:
+            symbols[(symbol["name"], symbol["address"])] = symbol
+    uses = {key: [] for key in symbols}
+    seen = {key: set() for key in symbols}
+    relocations = document.get("relocations", [])
+    for function in document.get("functions", []):
+        names = tuple(sorted(set(function.get("names", [])), key=canonical_key))
+        ordinal_by_symbol = {}
+        for instruction in function.get("instructions", []):
+            for index in instruction.get("relocations", []):
+                if type(index) is not int or not 0 <= index < len(relocations):
+                    continue
+                relocation = relocations[index]
+                key = (relocation.get("target"), relocation.get("addend"))
+                symbol = symbols.get(key)
+                if symbol is None:
+                    continue
+                ordinal = ordinal_by_symbol.get(key, 0)
+                ordinal_by_symbol[key] = ordinal + 1
+                uses[key].append((
+                    names,
+                    ordinal,
+                    instruction.get("mnemonic"),
+                    relocation.get("address", 0) - instruction.get("address", 0),
+                    relocation.get("kind"),
+                ))
+                seen[key].add(index)
+
+    signatures = {}
+    for key, symbol in symbols.items():
+        expected = {
+            index for index, relocation in enumerate(relocations)
+            if relocation.get("target") == symbol["name"] and
+            relocation.get("addend") == symbol["address"]
+        }
+        if not expected or seen[key] != expected or not uses[key]:
             continue
-        result[address] = {"kind": "indirect-symbol", "name": name,
-                           "offset": relocation["addend"] - symbols[0]}
+        signature = (symbol["section"], tuple(sorted(uses[key], key=canonical_key)))
+        signatures.setdefault(signature, []).append(symbol["name"])
+    return signatures
+
+
+def _paired_generated_counter_names(reference_document, rebuilt_document):
+    """Pair only uniquely used local `outb` counters; leave other locals alone."""
+    reference_signatures = _generated_counter_signatures(reference_document)
+    rebuilt_signatures = _generated_counter_signatures(rebuilt_document)
+    reference_symbols = {symbol["name"]: symbol for symbol in reference_document.get("symbols", [])}
+    rebuilt_symbols = {symbol["name"]: symbol for symbol in rebuilt_document.get("symbols", [])}
+    reference_aliases, rebuilt_aliases = {}, {}
+    for signature in set(reference_signatures) & set(rebuilt_signatures):
+        reference_names = reference_signatures[signature]
+        rebuilt_names = rebuilt_signatures[signature]
+        if (len(reference_names) != 1 or len(rebuilt_names) != 1 or
+                reference_names[0] == rebuilt_names[0]):
+            continue
+        reference_symbol = reference_symbols[reference_names[0]]
+        rebuilt_symbol = rebuilt_symbols[rebuilt_names[0]]
+        if (sum(symbol.get("name") == reference_names[0]
+                for symbol in reference_document.get("symbols", [])) != 1 or
+                sum(symbol.get("name") == rebuilt_names[0]
+                    for symbol in rebuilt_document.get("symbols", [])) != 1 or
+                reference_symbol.get("binding") != "local" or
+                rebuilt_symbol.get("binding") != "local" or
+                reference_symbol.get("section") != rebuilt_symbol.get("section")):
+            continue
+        canonical_name = "binrecon-local-counter:" + hashlib.sha256(
+            canonical_key(signature).encode("utf-8")).hexdigest().upper()
+        reference_aliases[reference_names[0]] = canonical_name
+        rebuilt_aliases[rebuilt_names[0]] = canonical_name
+    return reference_aliases, rebuilt_aliases
+
+
+def _portable_symbol_target(value, section_map, symbol_locations, function=None):
+    if isinstance(value, dict) and value.get("kind") == "section":
+        names = symbol_locations.get(canonical_key(value))
+        if names:
+            canonical_names = [name for name in names if name.startswith((
+                "absolute-address:", "string:", "data-window:",
+                "indirect-symbol:", "binrecon-local-counter:"))]
+            if canonical_names:
+                names = canonical_names
+            return {"kind": "symbol", "names": names}
+        if function is not None:
+            return _function_portable(value, function, section_map)
+    return _portable(value, section_map)
+
+
+def _portable_relocation(value, section_map, symbol_locations, function=None):
+    raw_target = value["target"]
+    target_location = raw_target
+    if isinstance(raw_target, str):
+        named_locations = [identity for identity, names in symbol_locations.items()
+                           if raw_target in names]
+        if len(named_locations) == 1:
+            # IDA exports resolved off32 targets as a symbol name plus its
+            # absolute address. Pair the name only when it identifies one
+            # shared symbol location; its address then follows that symbol
+            # across rebuilt section layouts.
+            target_location = json.loads(named_locations[0])
+    if (function is not None and isinstance(raw_target, dict) and
+            raw_target.get("kind") == "external" and
+            re.match(r"^(?:address:|loc(?:ret)?_)[0-9a-f]+$", raw_target.get("name", ""), re.I) and
+            type(value.get("addend")) is int):
+        candidates = []
+        for identity_key, info in section_map.items():
+            raw = info["raw"]
+            if raw["address"] <= value["addend"] < raw["address"] + raw["size"]:
+                candidates.append((json.loads(identity_key), raw))
+        if len(candidates) == 1:
+            identity, raw = candidates[0]
+            target_location = {"kind": "section", "section": identity,
+                               "offset": value["addend"] - raw["address"]}
+    target = _portable_symbol_target(target_location, section_map, symbol_locations, function)
+    result = {key: (target if key == "target" else _portable(item, section_map))
+              for key, item in value.items()}
+    function_local = False
+    if function is not None and isinstance(target_location, dict) and target_location.get("kind") == "section":
+        function_range = function["range"]
+        function_local = (
+            canonical_key(target_location["section"]) == canonical_key(function_range["section"])
+            and function_range["start"] <= target_location["offset"] < function_range["end"]
+        )
+    if (target.get("kind") == "symbol" or function_local) and value["kind"].startswith("ida-off32-"):
+        # IDA's off32 addend is the resolved absolute address. The paired symbol
+        # or function-relative target already carries that identity.
+        result["addend"] = 0
+    if function_local and value["kind"] in ("ida-off32-32", "ida-reference-off32"):
+        # IDA reports the same function-local absolute address either as an
+        # off32 relocation or as an operand reference, depending on how the
+        # local patch site was discovered in that database.
+        result["kind"] = "ida-local-off32"
+        result["addend"] = 0
+        result.pop("signed", None)
     return result
 
 
-def _string_target(target, string_targets):
-    if target.get("kind") != "section":
-        return None
-    section, offset = canonical_key(target["section"]), target["offset"]
-    exact = string_targets.get((section, offset))
-    if exact is not None:
-        return exact
-    matches = []
-    # IDA's STRTYPE_C (0) strings are single-byte; preserve an interior
-    # offset so reordered copies of the same literal remain distinguishable.
-    for (candidate_section, start), value in string_targets.items():
-        if candidate_section != section or start >= offset or value.get("encoding") != "0":
-            continue
-        delta = offset - start
-        if delta < len(value["value"]):
-            matches.append((value, delta))
-    if len(matches) != 1:
-        return None
-    value, delta = matches[0]
-    return {**value, "offset": delta}
-
-
-def _data_window_entry(target, data_windows):
-    if target.get("kind") != "section":
-        return None
-    section, offset = canonical_key(target["section"]), target["offset"]
-    matches = [entry for entry in data_windows
-               if entry["section"] == section and entry["offset"] == offset]
-    return matches[0] if len(matches) == 1 else None
-
-
-def _data_window_address_entry(address, data_windows, section_map):
-    if type(address) is not int:
-        return None
-    matches = []
-    for entry in data_windows:
-        info = section_map[entry["section"]]
-        if info["raw"]["address"] + entry["offset"] == address:
-            matches.append(entry)
-    return matches[0] if len(matches) == 1 else None
-
-
-def _same_string_operands(instruction, references, string_targets, symbol_targets=None,
-                          data_windows=None, section_map=None,
-                          indirect_data_targets=None):
-    operands = _normalized_function_operands(instruction)
+def _inferred_reference_relocations(instruction, actual, section_map, references,
+                                   ida_extension):
+    # Infer an absolute reference only for a memory-read operand. A store such
+    # as `mov ds:location, eax` must keep its encoded destination address.
+    if (instruction.get("mnemonic", "").lower() != "mov" or
+            re.search(r",\s*(?:(?:byte|word|dword|qword)\s+ptr\s+)?(?:ds:|\[)",
+                      instruction.get("normalized_operands", ""),
+                      flags=re.IGNORECASE) is None):
+        return []
+    location = instruction["location"]
+    if location.get("kind") != "section":
+        return []
+    section = _section_info(section_map, location["section"])
+    address = section["raw"]["address"] + location["offset"]
+    entries = [item for item in ida_extension.get("instruction_operand_offsets", [])
+               if item.get("address") == address]
+    if len(entries) != 1:
+        return []
+    instruction_offsets = sorted({item["offset"] for item in entries[0]["operands"]
+                                   if type(item.get("offset")) is int and
+                                   0 < item["offset"] < len(actual)})
+    fields = []
     for index in instruction["reference_indexes"]:
-        target = references[index]["target"]
-        if _string_target(target, string_targets) is not None:
-            operands = re.sub(r"\boffset\s+[A-Za-z_$][\w.$?@]*", "offset <string>",
-                              operands, flags=re.IGNORECASE)
-            operands = re.sub(r"\bds:[A-Za-z_$][\w.$?@]*", "ds:<string>",
-                              operands, flags=re.IGNORECASE)
-        entry = (_paired_symbol_entry(target, symbol_targets)
-                 if symbol_targets is not None else None)
-        if entry is not None:
-            aliases = {entry["alias"], re.sub(r"[^A-Za-z0-9_$]", "_", entry["alias"])}
-            for alias in aliases:
-                operands = re.sub(rf"(\bds:|\boffset\s+){re.escape(alias)}(?![\w.$?@])",
-                                  r"\1<symbol>", operands, flags=re.IGNORECASE)
-        data_entry = (_data_window_entry(target, data_windows)
-                      if data_windows is not None else None)
-        if data_entry is not None:
-            alias = data_entry["alias"]
-            if alias:
-                aliases = {alias, re.sub(r"[^A-Za-z0-9_$]", "_", alias)}
-                for alias in aliases:
-                    operands = re.sub(rf"(\bds:|\boffset\s+){re.escape(alias)}(?![\w.$?@])",
-                                      r"\1<data-window>", operands, flags=re.IGNORECASE)
-            else:
-                operands = re.sub(r"\b(offset\s+|ds:)[A-Za-z_$][\w.$?@]*",
-                                  r"\1<data-window>", operands, flags=re.IGNORECASE)
-        if (target.get("kind") == "section" and section_map is not None and
-                indirect_data_targets is not None):
-            info = _section_info(section_map, target["section"])
-            target_address = info["raw"]["address"] + target["offset"]
-            if target_address in indirect_data_targets:
-                operands = re.sub(r"\b(offset\s+|ds:)[A-Za-z_$][\w.$?@]*",
-                                  r"\1<indirect-symbol>", operands,
-                                  flags=re.IGNORECASE)
-    return operands
+        reference = references[index]
+        target = reference["target"]
+        if reference["kind"] != "data" or target.get("kind") != "section":
+            continue
+        target_section = _section_info(section_map, target["section"])
+        target_address = target_section["raw"]["address"] + target["offset"]
+        for offset in instruction_offsets:
+            next_offset = next((item for item in instruction_offsets if item > offset), len(actual))
+            width = next_offset - offset
+            if (width in (1, 2, 4) and
+                    int.from_bytes(actual[offset:next_offset], "little") == target_address):
+                fields.append({"field_offset": offset, "width": width,
+                               "kind": "ida-reference-off32", "target": target,
+                               "addend": 0})
+    existing = {(item["field_offset"], item["width"]) for item in instruction["relocations"]}
+    inferred = {(item["field_offset"], item["width"]): item for item in fields
+                if (item["field_offset"], item["width"]) not in existing}
+    return [inferred[key] for key in sorted(inferred)]
 
 
-def _actual_instructions(function, section_map, artifact):
+def _actual_instructions(function, section_map, artifact, references, ida_extension):
     result, inconsistencies = [], []
     key = _printable_function(_function_key(function, section_map))
     for instruction in function["instructions"]:
@@ -562,188 +814,17 @@ def _actual_instructions(function, section_map, artifact):
                 "analyzer-inconsistency", "code", "analyzer bytes disagree with artifact",
                 key, _section_tag(identity, section_map), file_offset, file_offset + length,
                 analyzer.hex().upper(), actual.hex().upper()))
+        inferred = _inferred_reference_relocations(
+            instruction, actual, section_map, references, ida_extension)
+        if inferred:
+            instruction = {**instruction, "relocations": sorted(
+                [*instruction["relocations"], *inferred],
+                key=lambda item: (item["field_offset"], item["width"]))}
         result.append((instruction, actual, info))
     return result, inconsistencies
 
 
-def _paired_function_target(target, function_targets):
-    if target.get("kind") != "section":
-        return None
-    section = canonical_key(target["section"])
-    matches = [entry for entry in function_targets
-               if entry["section"] == section and entry["start"] <= target["offset"] < entry["end"]]
-    if len(matches) != 1:
-        return None
-    entry = matches[0]
-    return {"kind": "function", "name": entry["name"],
-            "offset": target["offset"] - entry["start"]}
-
-
-def _paired_symbol_target(target, symbol_targets):
-    if target.get("kind") != "section":
-        return None
-    section, offset = canonical_key(target["section"]), target["offset"]
-    matches = [entry for entry in symbol_targets
-               if entry["section"] == section and entry["offset"] == offset]
-    if len(matches) != 1:
-        return None
-    return {"kind": "symbol", "name": matches[0]["name"]}
-
-
-def _paired_symbol_entry(target, symbol_targets):
-    if target.get("kind") != "section":
-        return None
-    section, offset = canonical_key(target["section"]), target["offset"]
-    matches = [entry for entry in symbol_targets
-               if entry["section"] == section and entry["offset"] == offset]
-    return matches[0] if len(matches) == 1 else None
-
-
-def _symbol_targets(document, section_map):
-    counts = {}
-    for symbol in document.get("symbols", []):
-        counts[symbol["name"]] = counts.get(symbol["name"], 0) + 1
-    result = {}
-    for symbol in document.get("symbols", []):
-        if counts[symbol["name"]] != 1:
-            continue
-        matches = [(key, info) for key, info in section_map.items()
-                   if info["raw"]["name"] == symbol["section"] and
-                   info["raw"]["address"] <= symbol["address"] <
-                   info["raw"]["address"] + info["raw"]["size"]]
-        if len(matches) == 1:
-            section, info = matches[0]
-            result[symbol["name"]] = {"section": section,
-                                      "section_name": info["raw"]["name"],
-                                      "section_occurrence": info["descriptor"]["name_occurrence"],
-                                      "offset": symbol["address"] - info["raw"]["address"],
-                                      "address": symbol["address"],
-                                      "name": symbol["name"], "alias": symbol["name"],
-                                      "generated": re.fullmatch(r"_xxx\.\d+", symbol["name"]) is not None}
-    return result
-
-
-def _paired_symbols(left_symbols, right_symbols):
-    left_targets, right_targets = [], []
-    left_used, right_used = set(), set()
-    for name in set(left_symbols) & set(right_symbols):
-        left_symbol, right_symbol = left_symbols[name], right_symbols[name]
-        if left_symbol["generated"] or right_symbol["generated"]:
-            continue
-        if (left_symbol["section_name"], left_symbol["section_occurrence"]) != (
-                right_symbol["section_name"], right_symbol["section_occurrence"]):
-            continue
-        left_targets.append(left_symbol); right_targets.append(right_symbol)
-        left_used.add((left_symbol["section"], left_symbol["offset"]))
-        right_used.add((right_symbol["section"], right_symbol["offset"]))
-
-    left_addresses, right_addresses = {}, {}
-    for symbol in left_symbols.values():
-        left_addresses.setdefault(symbol["address"], []).append(symbol)
-    for symbol in right_symbols.values():
-        right_addresses.setdefault(symbol["address"], []).append(symbol)
-    for address in set(left_addresses) & set(right_addresses):
-        left_matches, right_matches = left_addresses[address], right_addresses[address]
-        if len(left_matches) != 1 or len(right_matches) != 1:
-            continue
-        left_symbol, right_symbol = left_matches[0], right_matches[0]
-        if ((left_symbol["section_name"], left_symbol["section_occurrence"]) !=
-                (right_symbol["section_name"], right_symbol["section_occurrence"]) or
-                (left_symbol["section"], left_symbol["offset"]) in left_used or
-                (right_symbol["section"], right_symbol["offset"]) in right_used):
-            continue
-        canonical_name = f"@{left_symbol['section_name']}:{address:X}"
-        left_targets.append({**left_symbol, "name": canonical_name})
-        right_targets.append({**right_symbol, "name": canonical_name})
-        left_used.add((left_symbol["section"], left_symbol["offset"]))
-        right_used.add((right_symbol["section"], right_symbol["offset"]))
-    return left_targets, right_targets
-
-
-def _paired_data_windows(left_symbols, right_symbols, left_markers, right_markers,
-                         left_document, right_document, left_map, right_map,
-                         left_artifact, right_artifact):
-    """Pair const objects only when identical bytes end at the same named marker."""
-    left_marker_names = {entry["name"] for entry in left_markers
-                         if not entry["name"].startswith("@")}
-    right_marker_names = {entry["name"] for entry in right_markers
-                          if not entry["name"].startswith("@")}
-    shared_names = left_marker_names & right_marker_names
-    left_data, right_data = [], []
-    for symbols, document, markers, section_map, artifact, output in (
-            (left_symbols, left_document, left_markers, left_map, left_artifact, left_data),
-            (right_symbols, right_document, right_markers, right_map, right_artifact, right_data)):
-        targets = {(symbol["section"], symbol["offset"]): symbol
-                   for symbol in symbols.values()}
-        for reference in document.get("references", []):
-            address = reference.get("target")
-            if type(address) is not int:
-                continue
-            matches = [(key, info) for key, info in section_map.items()
-                       if info["raw"]["name"] == "__const" and
-                       info["raw"]["address"] <= address <
-                       info["raw"]["address"] + info["raw"]["size"]]
-            if len(matches) != 1:
-                continue
-            section, info = matches[0]
-            offset = address - info["raw"]["address"]
-            targets.setdefault((section, offset), {
-                "section": section, "section_name": "__const",
-                "section_occurrence": info["descriptor"]["name_occurrence"],
-                "offset": offset, "alias": None})
-        for symbol in targets.values():
-            if symbol["section_name"] != "__const":
-                continue
-            section = symbol["section"]
-            boundaries = [marker for marker in markers
-                          if marker["name"] in shared_names and
-                          marker["section"] == section and
-                          marker["offset"] > symbol["offset"]]
-            if not boundaries:
-                continue
-            boundary = min(boundaries, key=lambda entry: entry["offset"])
-            info = section_map[section]
-            length = boundary["offset"] - symbol["offset"]
-            start = info["raw"]["offset"] + symbol["offset"]
-            content = artifact.read_at(start, length)
-            if len(content) != length:
-                raise ComparisonError("data window is outside its section")
-            output.append({"section": section, "section_name": symbol["section_name"],
-                           "section_occurrence": symbol["section_occurrence"],
-                           "offset": symbol["offset"],
-                           "alias": symbol["alias"], "marker": boundary["name"],
-                           "length": length, "content": content})
-    right_by_key = {}
-    for entry in right_data:
-        key = (entry["section_name"], entry["section_occurrence"], entry["marker"],
-               entry["length"], entry["content"])
-        right_by_key.setdefault(key, []).append(entry)
-    left_result, right_result = [], []
-    for entry in left_data:
-        key = (entry["section_name"], entry["section_occurrence"], entry["marker"],
-               entry["length"], entry["content"])
-        matches = right_by_key.get(key, [])
-        if len(matches) != 1:
-            continue
-        counterpart = matches[0]
-        if sum((item["section_name"], item["section_occurrence"], item["marker"],
-                item["length"], item["content"]) == key
-               for item in left_data) != 1:
-            continue
-        descriptor = {"kind": "data-window",
-                      "section": {"name": entry["section_name"],
-                                  "name_occurrence": entry["section_occurrence"]},
-                      "marker": entry["marker"], "length": entry["length"],
-                      "sha256": hashlib.sha256(entry["content"]).hexdigest().upper()}
-        left_result.append({**entry, "identity": descriptor})
-        right_result.append({**counterpart, "identity": descriptor})
-    return left_result, right_result
-
-
-def _masked(instruction, actual, section_map, function=None, string_targets=None,
-            function_targets=None, symbol_targets=None, data_windows=None,
-            references=None, ida_operand_offsets=None,
-            indirect_data_targets=None):
+def _masked(instruction, actual, section_map, symbol_locations, function=None):
     raw = bytearray(actual); occupied = set(); semantics = []
     for relocation in instruction["relocations"]:
         start, width = relocation["field_offset"], relocation["width"]
@@ -753,148 +834,114 @@ def _masked(instruction, actual, section_map, function=None, string_targets=None
         if start < 0 or start + width > len(raw): raise ComparisonError("relocation field is outside instruction")
         if indexes & occupied: raise ComparisonError("relocation fields overlap")
         occupied |= indexes; raw[start:start + width] = b"\0" * width
-        semantic = _portable(relocation, section_map)
-        paired_target = (_paired_function_target(relocation["target"], function_targets)
-                         if function_targets is not None else None)
-        if paired_target is not None:
-            semantic["target"] = paired_target
-        string_target = (_string_target(relocation["target"], string_targets)
-                         if string_targets is not None else None)
-        if string_target is not None and paired_target is None:
-            semantic["target"] = string_target
-            section_info = _section_info(section_map, relocation["target"]["section"])
-            absolute_target = (section_info["raw"]["address"] +
-                               relocation["target"]["offset"])
-            if semantic.get("addend") == absolute_target:
-                semantic["addend"] = 0
-        symbol_target = (_paired_symbol_target(relocation["target"], symbol_targets)
-                         if symbol_targets is not None and paired_target is None and
-                         string_target is None else None)
-        if symbol_target is not None:
-            semantic["target"] = symbol_target
-            section_info = _section_info(section_map, relocation["target"]["section"])
-            absolute_target = section_info["raw"]["address"] + relocation["target"]["offset"]
-            if semantic.get("addend") == absolute_target:
-                semantic["addend"] = 0
-        data_target = (_data_window_entry(relocation["target"], data_windows)
-                       if data_windows is not None and paired_target is None and
-                       string_target is None and symbol_target is None else None)
-        if (data_target is None and data_windows is not None and
-                paired_target is None and string_target is None and symbol_target is None):
-            data_target = _data_window_address_entry(semantic.get("addend"),
-                                                     data_windows, section_map)
-        if data_target is not None:
-            semantic["target"] = data_target["identity"]
-            section_info = section_map[data_target["section"]]
-            absolute_target = section_info["raw"]["address"] + data_target["offset"]
-            if semantic.get("addend") == absolute_target:
-                semantic["addend"] = 0
-        target = relocation["target"]
-        if (instruction["mnemonic"] == "call" and relocation["kind"] == "ida-off32-32" and
-                relocation["field_offset"] == 1 and relocation["width"] == 4 and
-                target.get("kind") == "section" and
-                _section_info(section_map, target["section"])["raw"]["name"] == "UNDEF"):
-            semantic["addend"] = 0
-        if (paired_target is not None and instruction["mnemonic"] == "call" and
-                relocation["kind"] == "ida-off32-32" and
-                relocation["field_offset"] == 1 and relocation["width"] == 4):
-            semantic["addend"] = 0
-        if function is not None:
-            function_range = function["range"]
-            if (target.get("kind") == "section" and
-                    canonical_key(target["section"]) == canonical_key(function_range["section"]) and
-                    function_range["start"] <= target["offset"] < function_range["end"]):
-                semantic["target"] = _function_relative(target, function)
-                section_info = _section_info(section_map, target["section"])
-                section_address = section_info["raw"]["address"]
-                if semantic.get("addend") == section_address + target["offset"]:
-                    semantic["addend"] -= section_address + function_range["start"]
-        semantics.append(semantic)
-    if references is not None and ida_operand_offsets is not None:
-        info = _section_info(section_map, instruction["location"]["section"])
-        address = info["raw"]["address"] + instruction["location"]["offset"]
-        operands = ida_operand_offsets.get(address, [])
-        for index in instruction["reference_indexes"]:
-            if type(index) is not int or not 0 <= index < len(references):
-                raise ComparisonError("instruction reference index is invalid")
-            reference = references[index]
-            target = reference["target"]
-            if reference["kind"] != "data" or target.get("kind") != "section":
-                continue
-            # Mask only an IDA-identified i386 absolute operand that encodes
-            # a uniquely paired string or indirect-symbol target. The paired
-            # reference identity is compared separately by _referenced.
-            recognized = (string_targets is not None and
-                          _string_target(target, string_targets) is not None)
-            info = _section_info(section_map, target["section"])
-            absolute_target = info["raw"]["address"] + target["offset"]
-            recognized = recognized or (indirect_data_targets is not None and
-                                         absolute_target in indirect_data_targets)
-            if not recognized:
-                continue
-            if (instruction["mnemonic"] != "mov" or
-                    re.search(r",\s*(?:(?:byte|word|dword|qword)\s+ptr\s+)?ds:",
-                              instruction["normalized_operands"],
-                              flags=re.IGNORECASE) is None):
-                continue
-            if not 0 <= absolute_target <= 0xFFFFFFFF:
-                continue
-            matching_fields = set()
-            for operand in operands:
-                field = operand.get("offset") if isinstance(operand, dict) else None
-                if type(field) is not int or field < 0 or field + 4 > len(raw):
-                    continue
-                indexes = set(range(field, field + 4))
-                if indexes & occupied:
-                    continue
-                if int.from_bytes(raw[field:field + 4], "little") == absolute_target:
-                    matching_fields.add(field)
-            if len(matching_fields) == 1:
-                field = next(iter(matching_fields))
-                occupied.update(range(field, field + 4))
-                raw[field:field + 4] = b"\0" * 4
+        semantics.append(_portable_relocation(relocation, section_map, symbol_locations, function))
     return bytes(raw), semantics
 
 
-def _referenced(instruction, references, section_map, function=None, string_targets=None,
-                function_targets=None, symbol_targets=None, data_windows=None,
-                indirect_data_targets=None):
+def _referenced(instruction, references, section_map, symbol_locations, function):
     values = []
     for index in instruction["reference_indexes"]:
         if type(index) is not int or index < 0 or index >= len(references):
             raise ComparisonError("instruction reference index is invalid")
         reference = references[index]
-        if function is None:
-            values.append(_portable(reference, section_map))
-            continue
-        target = reference["target"]
-        string_target = (_string_target(target, string_targets)
-                         if string_targets is not None else None)
-        paired_target = (_paired_function_target(target, function_targets)
-                         if function_targets is not None else None)
-        function_range = function["range"]
-        if (target.get("kind") == "section" and
-                canonical_key(target["section"]) == canonical_key(function_range["section"]) and
-                function_range["start"] <= target["offset"] < function_range["end"]):
-            target = _function_relative(target, function)
-        elif paired_target is not None:
-            target = paired_target
-        elif string_target is not None:
-            target = string_target
-        elif symbol_targets is not None and _paired_symbol_target(target, symbol_targets) is not None:
-            target = _paired_symbol_target(target, symbol_targets)
-        elif data_windows is not None and _data_window_entry(target, data_windows) is not None:
-            target = _data_window_entry(target, data_windows)["identity"]
-        elif target.get("kind") == "section" and indirect_data_targets is not None:
-            info = _section_info(section_map, target["section"])
-            target = indirect_data_targets.get(
-                info["raw"]["address"] + target["offset"],
-                _portable(target, section_map))
+        raw_target = reference["target"]
+        if (reference["kind"] == "data" and raw_target.get("kind") == "unmapped" and
+                raw_target["address"] >> 56 == 0xFF):
+            # IDA exports frame/local references as synthetic 0xFF-tagged EAs.
+            # Their numeric IDs are analyzer-internal; operand text carries the
+            # comparable local-variable identity.
+            target = {"kind": "ida-internal"}
         else:
-            target = _portable(target, section_map)
-        values.append({"source": _function_relative(reference["source"], function),
-                       "target": target, "kind": reference["kind"]})
+            target = _portable_symbol_target(raw_target, section_map, symbol_locations)
+        if (reference["target"].get("kind") == "section" and
+                canonical_key(reference["target"]["section"]) ==
+                canonical_key(function["range"]["section"]) and
+                function["range"]["start"] <= reference["target"]["offset"] <
+                function["range"]["end"] and target.get("kind") != "symbol"):
+            target = _function_portable(reference["target"], function, section_map)
+        values.append({
+            "source": _function_portable(reference["source"], function, section_map),
+            "target": target,
+            "kind": reference["kind"],
+        })
     return sorted(values, key=canonical_key)
+
+
+def _portable_instruction_operands(instruction, references, function, section_map):
+    text = instruction["normalized_operands"]
+    if "[ebp" in text.lower():
+        # IDA's stack-frame aliases (for example arg_0 vs self or
+        # var_8.receiver) are database type/name recovery, not operand data.
+        # The encoded displacement remains covered by the instruction bytes.
+        text = re.sub(
+            r"(?<=\[ebp[+-])(?:arg_[0-9A-F]+|var_[0-9A-F]+|self)(?:\.[A-Za-z_][A-Za-z0-9_]*)?",
+            "stack_slot",
+            text,
+            flags=re.IGNORECASE,
+        )
+    if instruction["relocations"]:
+        # Relocated operands are validated independently from their encoded
+        # fields and canonical relocation targets. IDA may render the same
+        # location as a generated address label in one database and a named
+        # source symbol in another. Preserve registers and literals; the
+        # encoded opcode bytes establish access width, so omit IDA's redundant
+        # pointer-size qualifier from the operand spelling.
+        text = re.sub(r"\b(?:byte|word|dword|qword)\s+ptr\s+", "", text,
+                      flags=re.IGNORECASE)
+        registers = {
+            "al", "ah", "ax", "eax", "bl", "bh", "bx", "ebx",
+            "cl", "ch", "cx", "ecx", "dl", "dh", "dx", "edx",
+            "si", "esi", "di", "edi", "sp", "esp", "bp", "ebp",
+            "cs", "ds", "es", "fs", "gs", "ss", "eip", "ip",
+            "byte", "word", "dword", "qword", "ptr", "near", "far",
+            "short", "offset",
+        }
+        text = re.sub(
+            r"\b[A-Za-z_][A-Za-z0-9_]*\b",
+            lambda match: match.group(0) if match.group(0).lower() in registers
+            else "relocated_target",
+            text,
+        )
+    owner = canonical_key(function["range"]["section"])
+    start, end = function["range"]["start"], function["range"]["end"]
+    section_address = _section_info(section_map, function["range"]["section"])["raw"]["address"]
+    labels = {}
+    for index in instruction["reference_indexes"]:
+        if type(index) is not int or index < 0 or index >= len(references):
+            raise ComparisonError("instruction reference index is invalid")
+        reference = references[index]
+        target = reference["target"]
+        if (reference["kind"] not in ("code", "data") or target.get("kind") != "section" or
+                canonical_key(target["section"]) != owner or
+                not start <= target["offset"] < end):
+            continue
+        address = section_address + target["offset"]
+        labels[address] = f"local_target_{target['offset'] - start:X}"
+
+    def replace(match):
+        try:
+            address = int(match.group(1), 16)
+        except ValueError:
+            return match.group(0)
+        if address in labels:
+            return labels[address]
+        if section_address + start <= address < section_address + end:
+            return f"local_target_{address - (section_address + start):X}"
+        matches = []
+        for identity_key, info in section_map.items():
+            raw = info["raw"]
+            if raw["address"] <= address < raw["address"] + raw["size"]:
+                identity = json.loads(identity_key)
+                tag = _section_tag(identity, section_map)
+                matches.append((tag, address - raw["address"]))
+        if len(matches) == 1:
+            tag, offset = matches[0]
+            return f"data_label_{tag['name']}_{tag['name_occurrence']}_{offset:X}"
+        return match.group(0)
+
+    return re.sub(
+        r"\b(?:locret|loc|lab|def|stru|jpt|byte|word|dword|qword|off|unk|asc)_([0-9a-f]+)\b",
+        replace, text, flags=re.IGNORECASE)
 
 
 def _instruction_evidence(kind, category, reason, function, section, start, end, reference, rebuilt):
@@ -1056,7 +1103,7 @@ def _overlaps(functions, section_map):
     return result
 
 
-def _function_masks(function, instructions, section_map):
+def _function_masks(function, instructions, section_map, symbol_locations):
     start, end = function["range"]["start"], function["range"]["end"]
     intervals, masks = [], []
     for instruction, actual, _ in instructions:
@@ -1070,7 +1117,8 @@ def _function_masks(function, instructions, section_map):
             width = relocation["width"]
             if field < 0 or field + width > end - start:
                 raise ComparisonError("relocation field is outside function range")
-            semantics = {key: _portable(value, section_map) for key, value in relocation.items()
+            semantics = {key: value for key, value in _portable_relocation(
+                relocation, section_map, symbol_locations, function).items()
                          if key not in ("field_offset", "width")}
             masks.append((field, width, canonical_key(semantics)))
     if intervals != sorted(intervals) or any(a[1] > b[0] for a, b in zip(intervals, intervals[1:])):
@@ -1121,32 +1169,20 @@ def _unequal_range_result(pair, left_offset, left_size, right_offset, right_size
                 sample(pair.right, right_offset, right_size))}
 
 
-def _compare_name_paired_instructions(left_instructions, right_instructions,
-                                      left_map, right_map, left_function, right_function,
-                                      printable, section, left_references,
-                                      right_references, left_string_targets,
-                                      right_string_targets, left_operand_offsets,
-                                      right_operand_offsets,
-                                      left_indirect_data_targets,
-                                      right_indirect_data_targets):
-    def stream(instructions, section_map, function, references, string_targets,
-               operand_offsets, indirect_targets):
+def _compare_name_paired_instructions(left_function, right_function,
+                                      left_instructions, right_instructions,
+                                      left_map, right_map, left_symbols, right_symbols,
+                                      printable, section):
+    def stream(function, instructions, section_map, symbol_locations):
         raw = bytearray(); masked = bytearray()
         for instruction, actual, _ in instructions:
             raw.extend(actual)
-            masked.extend(_masked(
-                instruction, actual, section_map, function,
-                string_targets=string_targets, references=references,
-                ida_operand_offsets=operand_offsets,
-                indirect_data_targets=indirect_targets)[0])
+            masked.extend(_masked(instruction, actual, section_map, symbol_locations,
+                                  function)[0])
         return bytes(raw), bytes(masked)
 
-    left_raw, left_masked = stream(left_instructions, left_map, left_function,
-                                   left_references, left_string_targets,
-                                   left_operand_offsets, left_indirect_data_targets)
-    right_raw, right_masked = stream(right_instructions, right_map, right_function,
-                                     right_references, right_string_targets,
-                                     right_operand_offsets, right_indirect_data_targets)
+    left_raw, left_masked = stream(left_function, left_instructions, left_map, left_symbols)
+    right_raw, right_masked = stream(right_function, right_instructions, right_map, right_symbols)
     evidence = None
     if left_masked != right_masked:
         width = max(len(left_masked), len(right_masked))
@@ -1170,27 +1206,22 @@ def _compare_name_paired_instructions(left_instructions, right_instructions,
 
 
 def _compare_function_range(left_function, right_function, left_instructions, right_instructions,
-                            left_map, right_map, pair, printable, pairing,
-                            left_references, right_references, left_string_targets,
-                            right_string_targets, left_operand_offsets,
-                            right_operand_offsets, left_indirect_data_targets,
-                            right_indirect_data_targets):
+                            left_map, right_map, left_symbols, right_symbols,
+                            pair, printable, pairing):
     if pairing == "name":
         return _compare_name_paired_instructions(
-            left_instructions, right_instructions, left_map, right_map,
-            left_function, right_function, printable,
-            _section_tag(left_function["range"]["section"], left_map),
-            left_references, right_references, left_string_targets,
-            right_string_targets, left_operand_offsets, right_operand_offsets,
-            left_indirect_data_targets, right_indirect_data_targets)
+            left_function, right_function, left_instructions, right_instructions,
+            left_map, right_map,
+            left_symbols, right_symbols, printable,
+            _section_tag(left_function["range"]["section"], left_map))
     left_info = _section_info(left_map, left_function["range"]["section"])
     right_info = _section_info(right_map, right_function["range"]["section"])
     if left_info["zero"] or right_info["zero"]:
         raise ComparisonError("function range cannot be zero-fill")
     size = left_function["range"]["end"] - left_function["range"]["start"]
     right_size = right_function["range"]["end"] - right_function["range"]["start"]
-    left_masks = _function_masks(left_function, left_instructions, left_map)
-    right_masks = _function_masks(right_function, right_instructions, right_map)
+    left_masks = _function_masks(left_function, left_instructions, left_map, left_symbols)
+    right_masks = _function_masks(right_function, right_instructions, right_map, right_symbols)
     left_by_field = {(field, width): semantics for field, width, semantics in left_masks}
     right_by_field = {(field, width): semantics for field, width, semantics in right_masks}
     compatible = sorted((field, width, semantics) for (field, width), semantics in left_by_field.items()
@@ -1242,36 +1273,19 @@ def _name_pairs(lm, rm):
     left_names = index(set(lm), lm); right_names = index(set(rm), rm)
     candidates = sorted({(left_names[name][0], right_names[name][0])
                          for name in set(left_names) & set(right_names)
-                         if len(left_names[name]) == 1 and len(right_names[name]) == 1})
+                         if len(left_names[name]) == 1 and len(right_names[name]) == 1 and
+                         left_names[name][0] != right_names[name][0]})
     left_partners, right_partners = {}, {}
     for left_key, right_key in candidates:
         left_partners.setdefault(left_key, set()).add(right_key)
         right_partners.setdefault(right_key, set()).add(left_key)
     return {left_key: right_key for left_key, right_key in candidates
             if len(left_partners[left_key]) == 1 and len(right_partners[right_key]) == 1}
-
-
-def _compare_functions(left, right, left_map, right_map, left_string_targets,
-                      right_string_targets, left_symbol_targets, right_symbol_targets,
-                      left_data_windows, right_data_windows, left_operand_offsets,
-                      right_operand_offsets, left_indirect_data_targets,
-                      right_indirect_data_targets, pair, categories):
+def _compare_functions(left, right, left_map, right_map, left_symbols, right_symbols,
+                       pair, categories):
     lm = {_function_key(item, left_map): item for item in left["functions"]}
     rm = {_function_key(item, right_map): item for item in right["functions"]}
     name_pairs = _name_pairs(lm, rm); consumed = set(name_pairs.values())
-    left_function_targets, right_function_targets = [], []
-    for left_key, right_key in name_pairs.items():
-        left_function, right_function = lm[left_key], rm[right_key]
-        shared_names = sorted(set(left_function["aliases"]) & set(right_function["aliases"]))
-        if not shared_names:
-            continue
-        for function, section_map, output in (
-                (left_function, left_map, left_function_targets),
-                (right_function, right_map, right_function_targets)):
-            function_range = function["range"]
-            output.append({"section": canonical_key(function_range["section"]),
-                           "start": function_range["start"], "end": function_range["end"],
-                           "name": shared_names[0]})
     overlaps = _overlaps(left["functions"], left_map) | _overlaps(right["functions"], right_map); records = []
     for key in sorted(set(lm) | set(rm)):
         if key in consumed and key not in name_pairs: continue
@@ -1290,48 +1304,36 @@ def _compare_functions(left, right, left_map, right_map, left_string_targets,
                 "reference_masked_sha256": None, "rebuilt_masked_sha256": None}
             semantics_equal = cfg_equal = calls_equal = False; reasons = [reason]
         else:
-            ai, ae = _actual_instructions(a, left_map, pair.left)
-            bi, be = _actual_instructions(b, right_map, pair.right)
+            left_ida = left.get("extensions", {}).get("ida", {})
+            right_ida = right.get("extensions", {}).get("ida", {})
+            cfg_equal = (_function_portable(a["blocks"], a, left_map) ==
+                         _function_portable(b["blocks"], b, right_map) and
+                         _function_portable(a["edges"], a, left_map) ==
+                         _function_portable(b["edges"], b, right_map))
+            if not cfg_equal:
+                reasons.extend(("cfg differs", "instruction alignment inconclusive"))
+            ai, ae = _actual_instructions(a, left_map, pair.left,
+                                          left["references"], left_ida)
+            bi, be = _actual_instructions(b, right_map, pair.right,
+                                          right["references"], right_ida)
             relocation_candidates = []
             for item in ae + be: _add(categories, item)
             if ae or be: reasons.append("analyzer bytes disagree with artifact")
             if len(ai) != len(bi): reasons.append("instruction shape differs")
-            else:
+            elif cfg_equal:
                 for (ia, ab, info_a), (ib, bb, info_b) in zip(ai, bi):
-                    if pairing == "name":
-                        left_location = _function_relative(ia["location"], a)
-                        right_location = _function_relative(ib["location"], b)
-                    else:
-                        left_location = _portable(ia["location"], left_map)
-                        right_location = _portable(ib["location"], right_map)
-                    if left_location != right_location:
+                    if (_function_portable(ia["location"], a, left_map) !=
+                            _function_portable(ib["location"], b, right_map)):
                         reasons.append("instruction layout differs"); continue
-                    am, ar = _masked(ia, ab, left_map, a if pairing == "name" else None,
-                                     left_string_targets if pairing == "name" else None,
-                                     left_function_targets if pairing == "name" else None,
-                                     left_symbol_targets if pairing == "name" else None,
-                                     left_data_windows if pairing == "name" else None,
-                                     left["references"] if pairing == "name" else None,
-                                     left_operand_offsets if pairing == "name" else None,
-                                     left_indirect_data_targets if pairing == "name" else None)
-                    bm, br = _masked(ib, bb, right_map, b if pairing == "name" else None,
-                                     right_string_targets if pairing == "name" else None,
-                                     right_function_targets if pairing == "name" else None,
-                                     right_symbol_targets if pairing == "name" else None,
-                                     right_data_windows if pairing == "name" else None,
-                                     right["references"] if pairing == "name" else None,
-                                     right_operand_offsets if pairing == "name" else None,
-                                     right_indirect_data_targets if pairing == "name" else None)
+                    am, ar = _masked(ia, ab, left_map, left_symbols, a)
+                    bm, br = _masked(ib, bb, right_map, right_symbols, b)
                     start = info_a["raw"]["offset"] + ia["location"]["offset"]
-                    operands_a = (_same_string_operands(
-                        ia, left["references"], left_string_targets, left_symbol_targets,
-                        left_data_windows, left_map, left_indirect_data_targets)
-                        if pairing == "name" else ia["normalized_operands"])
-                    operands_b = (_same_string_operands(
-                        ib, right["references"], right_string_targets, right_symbol_targets,
-                        right_data_windows, right_map, right_indirect_data_targets)
-                        if pairing == "name" else ib["normalized_operands"])
-                    if ia["mnemonic"] != ib["mnemonic"] or operands_a != operands_b:
+                    left_operands = _portable_instruction_operands(
+                        ia, left["references"], a, left_map)
+                    right_operands = _portable_instruction_operands(
+                        ib, right["references"], b, right_map)
+                    if (ia["mnemonic"] != ib["mnemonic"] or
+                            left_operands != right_operands):
                         reasons.append("instruction semantics differ")
                         _add(categories, _instruction_evidence("instruction-bytes", "code",
                              "instruction semantics differ", printable, _section_tag(ia["location"]["section"], left_map),
@@ -1341,44 +1343,15 @@ def _compare_functions(left, right, left_map, right_map, left_string_targets,
                              "relocation field bytes differ", printable, _section_tag(ia["location"]["section"], left_map),
                              start, start + len(ab), ab.hex().upper(), bb.hex().upper()))
                     if ar != br: reasons.append("relocation target semantics differ")
-                    left_references = _referenced(
-                        ia, left["references"], left_map, a if pairing == "name" else None,
-                        left_string_targets if pairing == "name" else None,
-                        left_function_targets if pairing == "name" else None,
-                        left_symbol_targets if pairing == "name" else None,
-                        left_data_windows if pairing == "name" else None,
-                        left_indirect_data_targets if pairing == "name" else None)
-                    right_references = _referenced(
-                        ib, right["references"], right_map, b if pairing == "name" else None,
-                        right_string_targets if pairing == "name" else None,
-                        right_function_targets if pairing == "name" else None,
-                        right_symbol_targets if pairing == "name" else None,
-                        right_data_windows if pairing == "name" else None,
-                        right_indirect_data_targets if pairing == "name" else None)
-                    if left_references != right_references:
+                    if (_referenced(ia, left["references"], left_map, left_symbols, a) !=
+                            _referenced(ib, right["references"], right_map, right_symbols, b)):
                         reasons.append("instruction references differ")
-            if pairing == "name":
-                cfg_equal = (_function_relative(a["blocks"], a) == _function_relative(b["blocks"], b) and
-                             _function_relative(a["edges"], a) == _function_relative(b["edges"], b))
-            else:
-                cfg_equal = (_portable(a["blocks"], left_map) == _portable(b["blocks"], right_map) and
-                             _portable(a["edges"], left_map) == _portable(b["edges"], right_map))
-            if not cfg_equal:
-                reasons.append("cfg differs")
-            calls_equal = (_canonical_calls(a["calls"], left_map, a if pairing == "name" else None,
-                                            left_function_targets if pairing == "name" else None,
-                                            left_symbol_targets if pairing == "name" else None) ==
-                           _canonical_calls(b["calls"], right_map, b if pairing == "name" else None,
-                                            right_function_targets if pairing == "name" else None,
-                                            right_symbol_targets if pairing == "name" else None))
+            calls_equal = (_canonical_calls(a["calls"], left_map, left_symbols, a) ==
+                           _canonical_calls(b["calls"], right_map, right_symbols, b))
             if not calls_equal: reasons.append("calls differ")
-            range_result = _compare_function_range(a, b, ai, bi, left_map, right_map, pair, printable,
-                                                   pairing, left["references"],
-                                                   right["references"], left_string_targets,
-                                                   right_string_targets, left_operand_offsets,
-                                                   right_operand_offsets,
-                                                   left_indirect_data_targets,
-                                                   right_indirect_data_targets)
+            range_result = _compare_function_range(
+                a, b, ai, bi, left_map, right_map, left_symbols, right_symbols,
+                pair, printable, pairing)
             if range_result["masked_equal"]:
                 for candidate in relocation_candidates:
                     _add(categories, candidate)
@@ -1389,7 +1362,8 @@ def _compare_functions(left, right, left_map, right_map, left_string_targets,
             semantics_equal = not any(reason in reasons for reason in
                 ("analyzer bytes disagree with artifact", "instruction shape differs",
                  "instruction layout differs", "instruction semantics differ",
-                 "relocation target semantics differ", "instruction references differ"))
+                 "instruction alignment inconclusive", "relocation target semantics differ",
+                 "instruction references differ"))
             for reason in sorted(set(reasons)):
                 category = "relocation" if reason == "relocation target semantics differ" else "code"
                 _add(categories, _function_evidence(category, reason, printable, "different", "different"))
@@ -1412,29 +1386,23 @@ def _compare_functions(left, right, left_map, right_map, left_string_targets,
     return records
 
 
-def _canonical_calls(calls, section_map, function=None, function_targets=None, symbol_targets=None):
+def _canonical_calls(calls, section_map, symbol_locations, function):
     result = []
-    for call in calls:
-        target = _portable(call["target"], section_map)
-        paired_target = (_paired_function_target(call["target"], function_targets)
-                         if function_targets is not None else None)
-        if paired_target is not None:
-            target = paired_target
-        elif symbol_targets is not None:
-            paired_symbol = _paired_symbol_target(call["target"], symbol_targets)
-            if paired_symbol is not None:
-                target = paired_symbol
-        if function is not None:
-            target_value = call["target"]
-            function_range = function["range"]
-            if (target_value.get("kind") == "section" and
-                    canonical_key(target_value["section"]) == canonical_key(function_range["section"]) and
-                    function_range["start"] <= target_value["offset"] < function_range["end"]):
-                target = _function_relative(target_value, function)
-        concrete = target.get("kind") in ("section", "unmapped")
-        source = (_function_relative(call["source"], function) if function is not None
-                  else _portable(call["source"], section_map))
-        result.append({"source": source, "target": target,
+
+    def source_order(call):
+        source = _function_portable(call["source"], function, section_map)
+        if source.get("kind") == "section":
+            return canonical_key(source["section"]), source["offset"]
+        return canonical_key(source), 0
+
+    ordered_calls = sorted(
+        calls,
+        key=source_order,
+    )
+    for call in ordered_calls:
+        target = _portable_symbol_target(call["target"], section_map, symbol_locations)
+        concrete = target.get("kind") in ("section", "unmapped", "symbol")
+        result.append({"target": target,
                        "external_name": None if concrete else (target.get("name") or call["name"])})
     return sorted(result, key=canonical_key)
 
@@ -1488,13 +1456,16 @@ def _apply_ignores(left, right, paths):
         for target, leaf in parents: del target[leaf]
 
 
-def _metadata_differences(left_doc, right_doc, ignores, categories):
+def _metadata_differences(left_doc, right_doc, ignores, categories,
+                         stable_symbol_names=(), left_symbol_aliases=None,
+                         right_symbol_aliases=None):
     collections = (("symbols", "metadata"), ("strings", "metadata"),
                    ("imports", "metadata"), ("relocations", "relocation"))
     for name, category in collections:
         a, b = left_doc.get(name, []), right_doc.get(name, [])
         if name == "relocations":
-            a, b = _canonical_relocations(left_doc), _canonical_relocations(right_doc)
+            a = _canonical_relocations(left_doc, stable_symbol_names, left_symbol_aliases)
+            b = _canonical_relocations(right_doc, stable_symbol_names, right_symbol_aliases)
         if a == b: continue
         path = f"/{name}"
         if sorted(map(canonical_key, a)) == sorted(map(canonical_key, b)):
@@ -1510,7 +1481,7 @@ def _metadata_differences(left_doc, right_doc, ignores, categories):
         _add(categories, _collection_evidence("metadata", "metadata differs", "/metadata", left, right))
 
 
-def _canonical_relocations(document):
+def _canonical_relocations(document, stable_symbol_names=(), symbol_aliases=None):
     groups = {}
     for index, section in enumerate(document["sections"]):
         groups.setdefault(section["name"], []).append((section["offset"], section["address"], index))
@@ -1524,10 +1495,17 @@ def _canonical_relocations(document):
                    if section["address"] <= relocation["address"] < section["address"] + section["size"]]
         if len(matches) != 1: raise ComparisonError("standalone relocation is not in one section")
         section, occurrence = matches[0]
+        addend = relocation["addend"]
+        target = (symbol_aliases or {}).get(relocation["target"], relocation["target"])
+        if (relocation["kind"].startswith("ida-off32-") and
+                target in stable_symbol_names):
+            # IDA records the resolved absolute address for this relocation
+            # kind. The paired symbol name is the portable target identity.
+            addend = 0
         result.append({"section": {"name": section["name"], "name_occurrence": occurrence},
                        "offset": relocation["address"] - section["address"],
-                       "kind": relocation["kind"], "target": relocation["target"],
-                       "addend": relocation["addend"]})
+                       "kind": relocation["kind"], "target": target,
+                       "addend": addend})
     return result
 
 
@@ -1543,6 +1521,143 @@ def _validate_section_descriptor(value):
             re.fullmatch(r"[0-9A-F]{64}", value["sha256"]) is None):
         raise ComparisonError("invalid section descriptor")
 
+
+
+def _paired_const_data_windows(reference_document, reference_map, reference_artifact,
+                               rebuilt_document, rebuilt_map, rebuilt_artifact):
+    """Pair anonymous const records by exact bytes ending at a shared named marker."""
+    reference_markers = {symbol["name"] for symbol in reference_document.get("symbols", [])
+                         if symbol.get("section") == "__const"}
+    rebuilt_markers = {symbol["name"] for symbol in rebuilt_document.get("symbols", [])
+                       if symbol.get("section") == "__const"}
+    shared_markers = reference_markers & rebuilt_markers
+
+    def windows(document, section_map, artifact):
+        markers = []
+        candidates = []
+        for symbol in document.get("symbols", []):
+            address = symbol.get("address")
+            if type(address) is not int or symbol.get("section") != "__const":
+                continue
+            matches = [(key, info) for key, info in section_map.items()
+                       if info["raw"]["name"] == "__const" and
+                       info["raw"]["address"] <= address <
+                       info["raw"]["address"] + info["raw"]["size"]]
+            if len(matches) != 1:
+                continue
+            key, info = matches[0]
+            entry = {"section": key,
+                     "section_occurrence": info["descriptor"]["name_occurrence"],
+                     "offset": address - info["raw"]["address"],
+                     "name": symbol["name"], "info": info}
+            if symbol["name"] in shared_markers:
+                markers.append(entry)
+            else:
+                candidates.append(entry)
+        for reference in document.get("references", []):
+            address = reference.get("target")
+            if type(address) is not int:
+                continue
+            matches = [(key, info) for key, info in section_map.items()
+                       if info["raw"]["name"] == "__const" and
+                       info["raw"]["address"] <= address <
+                       info["raw"]["address"] + info["raw"]["size"]]
+            if len(matches) == 1:
+                key, info = matches[0]
+                candidates.append({"section": key,
+                                   "section_occurrence": info["descriptor"]["name_occurrence"],
+                                   "offset": address - info["raw"]["address"],
+                                   "name": None, "info": info})
+        result = []
+        seen = set()
+        for candidate in candidates:
+            pair_key = (candidate["section"], candidate["offset"])
+            if pair_key in seen:
+                continue
+            seen.add(pair_key)
+            following = [item for item in markers
+                         if item["section"] == candidate["section"] and
+                         item["offset"] > candidate["offset"]]
+            if not following:
+                continue
+            marker = min(following, key=lambda item: item["offset"])
+            length = marker["offset"] - candidate["offset"]
+            info = candidate["info"]
+            content = artifact.read_at(info["raw"]["offset"] + candidate["offset"], length)
+            if len(content) != length:
+                continue
+            result.append({**candidate, "marker": marker["name"], "length": length,
+                           "content": content})
+        return result
+
+    left = windows(reference_document, reference_map, reference_artifact)
+    right = windows(rebuilt_document, rebuilt_map, rebuilt_artifact)
+    left_aliases, right_aliases = {}, {}
+    right_keys = {}
+    for item in right:
+        key = (item["section_occurrence"], item["marker"], item["length"], item["content"].hex())
+        right_keys.setdefault(key, []).append(item)
+    for item in left:
+        key = (item["section_occurrence"], item["marker"], item["length"], item["content"].hex())
+        matches = right_keys.get(key, [])
+        left_count = sum((entry["section_occurrence"], entry["marker"],
+                          entry["length"], entry["content"].hex()) == key for entry in left)
+        if len(matches) != 1 or left_count != 1:
+            continue
+        alias = "data-window:" + hashlib.sha256(
+            canonical_key(key).encode("utf-8")).hexdigest().upper()
+        right_item = matches[0]
+        left_aliases.setdefault(canonical_key({"kind": "section", "section":
+                                               json.loads(item["section"]),
+                                               "offset": item["offset"]}), set()).add(alias)
+        right_aliases.setdefault(canonical_key({"kind": "section", "section":
+                                                json.loads(right_item["section"]),
+                                                "offset": right_item["offset"]}), set()).add(alias)
+    return left_aliases, right_aliases
+
+
+def _paired_indirect_field_aliases(reference_document, reference_map, reference_locations,
+                                   rebuilt_document, rebuilt_map, rebuilt_locations):
+    """Pair relocated data fields by the stable symbol their contents reference."""
+    def fields(document, section_map, symbol_locations):
+        result = {}
+        for relocation in document.get("relocations", []):
+            target_name = relocation.get("target")
+            if not isinstance(target_name, str):
+                continue
+            target_locations = [key for key, names in symbol_locations.items()
+                                if target_name in names]
+            if len(target_locations) != 1:
+                continue
+            stable_names = [name for name in symbol_locations[target_locations[0]]
+                            if name.startswith(("string:", "data-window:",
+                                                "absolute-address:", "binrecon-local-counter:"))]
+            stable_target = sorted(stable_names, key=canonical_key)[0] if stable_names else target_name
+            address = relocation.get("address")
+            if type(address) is not int:
+                continue
+            matches = [(key, info) for key, info in section_map.items()
+                       if info["raw"]["address"] <= address <
+                       info["raw"]["address"] + info["raw"]["size"]]
+            if len(matches) != 1:
+                continue
+            section, info = matches[0]
+            location = canonical_key({"kind": "section", "section": json.loads(section),
+                                      "offset": address - info["raw"]["address"]})
+            result.setdefault((info["raw"]["name"], info["descriptor"]["name_occurrence"],
+                               stable_target), set()).add(location)
+        return result
+
+    left_fields = fields(reference_document, reference_map, reference_locations)
+    right_fields = fields(rebuilt_document, rebuilt_map, rebuilt_locations)
+    left_aliases, right_aliases = {}, {}
+    for key in set(left_fields) & set(right_fields):
+        if len(left_fields[key]) != 1 or len(right_fields[key]) != 1:
+            continue
+        name = "indirect-symbol:" + key[2]
+        left_aliases.setdefault(next(iter(left_fields[key])), set()).add(name)
+        right_aliases.setdefault(next(iter(right_fields[key])), set()).add(name)
+    return left_aliases, right_aliases
 
 def compare_artifacts(reference_path, rebuilt_path, reference_analysis, rebuilt_analysis,
                       requirement, ignore_metadata=()):
@@ -1560,30 +1675,35 @@ def compare_artifacts(reference_path, rebuilt_path, reference_analysis, rebuilt_
         left_infos, left_ranges = _section_infos(reference_analysis, pair.left)
         right_infos, right_ranges = _section_infos(rebuilt_analysis, pair.right)
         left_map = _normalized_section_map(left, left_infos); right_map = _normalized_section_map(right, right_infos)
-        left_operand_offsets = _ida_operand_offsets(reference_analysis)
-        right_operand_offsets = _ida_operand_offsets(rebuilt_analysis)
-        left_string_targets = _string_targets(reference_analysis, left_map)
-        right_string_targets = _string_targets(rebuilt_analysis, right_map)
-        left_symbols = _symbol_targets(reference_analysis, left_map)
-        right_symbols = _symbol_targets(rebuilt_analysis, right_map)
-        left_symbol_targets, right_symbol_targets = _paired_symbols(left_symbols, right_symbols)
-        paired_symbol_names = {item["name"] for item in left_symbol_targets}
-        left_indirect_data_targets = _indirect_data_targets(
-            reference_analysis, paired_symbol_names)
-        right_indirect_data_targets = _indirect_data_targets(
-            rebuilt_analysis, paired_symbol_names)
-        left_data_windows, right_data_windows = _paired_data_windows(
-            left_symbols, right_symbols, left_symbol_targets, right_symbol_targets,
-            reference_analysis, rebuilt_analysis, left_map, right_map, pair.left, pair.right)
+        left_symbols, right_symbols = _paired_symbol_locations(
+            reference_analysis, left, left_map, rebuilt_analysis, right, right_map)
+        left_symbol_names, _ = _symbol_location_names(reference_analysis, left, left_map)
+        right_symbol_names, _ = _symbol_location_names(rebuilt_analysis, right, right_map)
+        left_windows, right_windows = _paired_const_data_windows(
+            reference_analysis, left_map, pair.left, rebuilt_analysis, right_map, pair.right)
+        left_indirect, right_indirect = _paired_indirect_field_aliases(
+            reference_analysis, left_map, left_symbols,
+            rebuilt_analysis, right_map, right_symbols)
+        for target, additions in ((left_symbols, left_windows), (right_symbols, right_windows),
+                                  (left_symbols, left_indirect), (right_symbols, right_indirect)):
+            for location, aliases in additions.items():
+                target.setdefault(location, []).extend(sorted(aliases, key=canonical_key))
+        for document, name_locations, locations in (
+                (reference_analysis, left_symbol_names, left_symbols),
+                (rebuilt_analysis, right_symbol_names, right_symbols)):
+            for symbol in document.get("symbols", []):
+                matches = name_locations.get(symbol.get("name"), set())
+                if len(matches) == 1:
+                    location = next(iter(matches))
+                    if location in locations and any(name.startswith((
+                            "string:", "data-window:", "absolute-address:",
+                            "indirect-symbol:")) for name in locations[location]):
+                        locations[location].append(symbol["name"])
+        left_symbol_aliases, right_symbol_aliases = _paired_generated_counter_names(
+            reference_analysis, rebuilt_analysis)
         categories = _CategoryStore()
         functions = _compare_functions(left, right, left_map, right_map,
-                                       left_string_targets, right_string_targets,
-                                       left_symbol_targets, right_symbol_targets,
-                                       left_data_windows, right_data_windows,
-                                       left_operand_offsets, right_operand_offsets,
-                                       left_indirect_data_targets,
-                                       right_indirect_data_targets,
-                                       pair, categories)
+                                       left_symbols, right_symbols, pair, categories)
         sections = []
         for index in range(max(len(left_infos), len(right_infos))):
             finding_before = _reason_snapshot(categories)
@@ -1619,7 +1739,9 @@ def compare_artifacts(reference_path, rebuilt_path, reference_analysis, rebuilt_
                              "content_equal": content_equal, "analyzer_valid": analyzer_valid,
                              "finding_counts": _reason_delta(finding_before, categories)})
         _emit_byte_differences(differences, left_ranges, right_ranges, pair, categories)
-        _metadata_differences(reference_analysis, rebuilt_analysis, ignore_metadata, categories)
+        stable_symbol_names = {name for names in left_symbols.values() for name in names}
+        _metadata_differences(reference_analysis, rebuilt_analysis, ignore_metadata, categories,
+                              stable_symbol_names, left_symbol_aliases, right_symbol_aliases)
         for values in categories.values(): values.sort(key=canonical_key)
         function_incompatible = sum("relocation target semantics differ" in item["reasons"] for item in functions)
         standalone_different = categories.reason_totals["relocation"].get("relocations differ", 0)
@@ -1927,7 +2049,8 @@ def _validate_comparison_report(report):
             if item["masked_equal"] != (hashes[2] == hashes[3]): raise ComparisonError("incoherent masked function hash")
             semantic_reasons = {"analyzer bytes disagree with artifact", "instruction shape differs",
                 "instruction layout differs", "instruction semantics differ",
-                "relocation target semantics differ", "instruction references differ"}
+                "instruction alignment inconclusive", "relocation target semantics differ",
+                "instruction references differ"}
             if item["semantics_equal"] != (not bool(semantic_reasons.intersection(item["reasons"]))):
                 raise ComparisonError("function semantics contradict reasons")
             if item["cfg_equal"] != ("cfg differs" not in item["reasons"]):
@@ -2046,3 +2169,45 @@ def _validate_comparison_report(report):
 def format_text_report(report):
     counts = " ".join(f"{name}={report['category_counts'][name]}" for name in CATEGORIES)
     return f"{report['selected']['requirement']}: {'PASS' if report['selected']['passed'] else 'FAIL'} {counts}\n"
+
+
+def _ida_operand_offsets(document):
+    if (document.get("input", {}).get("architecture") != "i386" or
+            document.get("input", {}).get("endianness") != "little"):
+        return {}
+    entries = document.get("extensions", {}).get("ida", {}).get(
+        "instruction_operand_offsets", [])
+    result, duplicates = {}, set()
+    for item in entries:
+        if (not isinstance(item, dict) or type(item.get("address")) is not int or
+                not isinstance(item.get("operands"), list)):
+            continue
+        address = item["address"]
+        if address in result:
+            result.pop(address)
+            duplicates.add(address)
+        elif address not in duplicates:
+            result[address] = item["operands"]
+    return result
+
+
+def _string_target(target, string_targets):
+    if target.get("kind") != "section":
+        return None
+    section, offset = canonical_key(target["section"]), target["offset"]
+    exact = string_targets.get((section, offset))
+    if exact is not None:
+        return exact
+    matches = []
+    # IDA's STRTYPE_C (0) strings are single-byte; preserve an interior
+    # offset so reordered copies of the same literal remain distinguishable.
+    for (candidate_section, start), value in string_targets.items():
+        if candidate_section != section or start >= offset or value.get("encoding") != "0":
+            continue
+        delta = offset - start
+        if delta < len(value["value"]):
+            matches.append((value, delta))
+    if len(matches) != 1:
+        return None
+    value, delta = matches[0]
+    return {**value, "offset": delta}

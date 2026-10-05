@@ -2,9 +2,9 @@
 "Family" = "Display";
 "Location" = "";
 "Bus Type" = "PCI";
-"Auto Detect IDs" = "0x47581002 0x43581002 0x45541002 0x43541002 0x56541002 0x47541002";
+"Auto Detect IDs" = "0x47581002 0x43581002 0x45541002 0x56541002";
 "Instance" = "0";
-"Version" = "3.37";
+"Version" = "5.01";
 "Driver Name" = "ATI";
 "DMA Channels" = "";
 "IRQ Levels" = "";
@@ -15,4 +15,4 @@
 "24-bit Configuration" = "Default";
 "Frame Buffer Mapping" = "Default";
 "RAMDAC Style" = "Default";
-"Driver Version" = "PROGRAM:ATIMach64DisplayDriver PROJECT:drvATIMach64-18 DEVELOPER:root BUILT:NO DATE SET (-B used)";
+"Help File" = "ATIMach64_PCI_4MB.rtfd";

@@ -1,4 +1,60 @@
 # drvATIMach64 Decompilation and Reconstruction Implementation Plan
+## Register-lifetime iteration evidence (2026-10-05)
+
+The isolated HFSLE guest built three fresh i386 artifacts after the v27
+`initBIOSBuf:function:` review. Each relocatable is 64,196 bytes. v30
+(`28B43562618D8181B303A91A9468DFEA1087FCCF74823E39C0E467F796A433C2`) keeps
+the register-buffer pointer in EBX and emits a byte store, but spills the
+function byte to a local; IDA reports 89 bytes versus the 80-byte reference.
+v31 (`9C7C57C08B6971271B938CB5DA6D448E0B2DBF488CD3361CF5A4CC5EB6551508`)
+removes that volatile local but emits BL holding the byte and reloads the
+pointer into EDX; the method is 83 bytes. A third build using GCC's empty
+EBX constraint (SHA-256
+`66B0D4077E41091D74D4DEA02BB5839F3117DC822BB4F07AD1AA41D65BC719B5`) still
+spills the byte and leaves the method at 89 bytes. The attempted named-register
+declaration did not compile with the legacy Objective-C compiler.
+
+The retained source is restored to the simpler v30 C form. IDA exported 54
+routines from each successful artifact. BinRecon on v30 reports 33/54
+assembly-matched and normalized-functions false (code=95, relocation=164,
+layout=25, padding=2,227, metadata=2,379). The third successful build has the
+same acceptance counts (metadata=2,378); its run is stored under the v32
+register-lifetime output directory. No hardware/ROM validation was performed.
+Continue by selecting another source-backed unmatched function from the fresh
+comparison, and keep compiler register/stack allocation recorded as an open
+divergence unless a readable C expression reproduces the reference.
+
+## v28 guest build state audit (2026-10-05)
+
+The original v28 SSH handle is still open, but the associated QEMU guest is at the Rhapsody graphical login and no build output is verified. A read-only snapshot of its build disk contains neither `/build/build/out/drvATIMach64-rbuild-setvgamode-v28-2026-10-04` nor the expected build log. The backing root image's `/private/etc/master.passwd` marks `root` locked; a single login attempt using the configured credential remained at the login window. Do not treat the live SSH/TCP handle as a build result or restart it solely because polling is silent. The current v28 artifact remains unconfirmed; use a working, isolated guest for the next package build.
+
+## Fresh SetVGAMode parity rebuild v25 (2026-10-04)
+
+The v25 isolated i386 package build completed with `RBUILD_EXIT=0`. Package: `tools/binrecon/out/atimach64/fresh-rebuild-setvgamode-v25-2026-10-04/drvatimach64-18-i386.apk` (24,096 bytes, SHA-256 `035443F24B2DFAC2027118674065CA893CC26EADB1072988F85DC8B2E5F34831`). Relocatable: `tools/binrecon/out/atimach64/fresh-rebuild-setvgamode-v25-2026-10-04/ATIMach64DisplayDriver_reloc` (64,196 bytes, SHA-256 `9D7D7DDCF5749821285656E5EBE608F81FC9F2D8BD7C51DC0513B788ABFA9FEE`). IDA 9.4 exported all 54 routines. The v26 BinRecon comparison pairs `_xxx.8`/`_xxx.86` from their unique local `__bss` use-site signature, promoting `_isATI68880RevC` to assembly-matched. Current ledger coverage is 35 assembly-matched and 19 control-flow-confirmed; `normalized-functions` remains false (code=92, relocation=182, symbol/string order=0, layout=25, padding=2,228, metadata=2,426). `setVGAMode:gamma:` matches the reference’s full 153-byte range, calls, and CFG after using separate byte flags and expressing the AH error branch directly. The BIOS-mode fixture covers all four mode/gamma combinations. All 57 reconstruction tests pass; BinRecon tests report 996 passed and 4 skipped. `verify_assembly.py` and final evidence verification pass. Compatible ATI hardware/ROM validation remains open.
+
+## Fresh refresh-rate branch rebuild v11 (2026-10-04)
+
+The isolated i386 build completed with `RBUILD_EXIT=0`. Package: `tools/binrecon/out/atimach64/fresh-rebuild-refresh-rate-v11-2026-10-04/drvatimach64-18-i386.apk` (24,049 bytes, SHA-256 `B19CF5901492BE8355B9C9D7D0C7767868D8D4329052041E13AB63E59A4CF47B`). Relocatable: `tools/binrecon/out/atimach64/fresh-rebuild-refresh-rate-v11-2026-10-04/ATIMach64DisplayDriver_reloc` (64,196 bytes, SHA-256 `1B2677CA500F7750206691A6998090255499594374C885DC7953C5BE61B644EC`). IDA 9.4 exported all 54 routines. BinRecon records 30 assembly-matched and 24 control-flow-confirmed routines; normalized-functions remains false (code=113, relocation=168, layout=25, padding=2,228, metadata=2,402, symbol/string order=0).
+
+Inverting the AH result branch in `getRefreshRate:` brought its complete 161-byte instruction range and CFG into assembly-matched status. The remaining relocation-field byte differences are address-dependent after layout changes. `_isATI68880RevC` has an identical 45-byte code range, instruction sequence, CFG, I/O behavior, and return values; it remains control-flow-confirmed because BinRecon sees the generated delay-increment target as `_xxx.8` in the reference and `_xxx.86` in the rebuild. The 50 reconstruction tests, baseline/final evidence verification, and BIOS assembly verification pass. The ledger is bound to v11. Normalized parity and compatible ATI hardware/ROM validation remain open.
+
+## Fresh DAC branch rebuild v10 (2026-10-04)
+
+The isolated i386 package build completed with `RBUILD_EXIT=0`. Package: `tools/binrecon/out/atimach64/fresh-rebuild-dac-branch-v10-2026-10-04/drvatimach64-18-i386.apk` (24,045 bytes, SHA-256 `81692EB3A553839C8A2A38C11DC9D1242FC6EC58922BB159E7D2A9342B3BF8E7`). Relocatable: `tools/binrecon/out/atimach64/fresh-rebuild-dac-branch-v10-2026-10-04/ATIMach64DisplayDriver_reloc` (64,196 bytes, SHA-256 `6A2074D425D3C776E4C1B0683D726169F863C05CD318DC2B4A4F839612BC7BFD`). IDA 9.4 exported all 54 routines. BinRecon records 29 assembly-matched and 25 control-flow-confirmed routines; normalized-functions remains false (code=117, relocation=159, layout=25, padding=2,227, metadata=2,362, symbol/string order=0).
+
+`_isATI68880RevC` now matches the reference's 45-byte function range, instruction bytes, branch CFG, I/O sequence, and 0/1 return blocks. BinRecon still reports one instruction-reference and relocation-target difference because the generated delay-increment global is named `_xxx.8` in the reference and `_xxx.86` in the rebuild; this entry remains control-flow-confirmed. The source now uses explicit return branches to preserve the reference's emitted control flow. `setVGAMode:gamma:` retains its live buffer pointer and byte-wide AH reads; it is 155 bytes versus the 153-byte reference and still has CFG/range findings. The 50 reconstruction tests, baseline/final evidence checks, and BIOS assembly verifier pass. The ledger is bound to v10. Normalized parity and compatible ATI hardware/ROM validation remain open.
+
+## Fresh byte-width rebuild v8 (2026-10-04)
+
+The isolated i386 build completed with `RBUILD_EXIT=0`. Package: `tools/binrecon/out/atimach64/fresh-rebuild-setvgamode-v8-2026-10-04/drvatimach64-18-i386.apk` (24,038 bytes, SHA-256 `24674F349F0E996CF3BBB9267F0E8B224E44EDF53FBD9750AF1D45BFE5087D4C`). Relocatable: `tools/binrecon/out/atimach64/fresh-rebuild-setvgamode-v8-2026-10-04/ATIMach64DisplayDriver_reloc` (64,196 bytes, SHA-256 `A50883FD8A18AA3FBEF42F4500C353EF06E94D0675EDA14F07490D04E6936BED`). IDA 9.4 exported all 54 routines. BinRecon records 29 assembly-matched and 25 control-flow-confirmed routines; normalized-functions remains false (code=121, relocation=158, layout=25, padding=2,229, metadata=2,384, symbol/string order=0).
+
+Keeping explicit register-buffer pointers live across BIOS calls brought `getDPMSMode:`, `getAPMState:`, and `getIOBaseAddress:relocatable:` to assembly-matched status; their function sizes match the reference at 114, 114, and 122 bytes. `setDPMSMode:` and `setAPMState:` now match the reference assembly after byte-wide ECX stores and a live register-buffer pointer. `setVGAMode:gamma:` uses a live pointer and byte-wide AH access; its rebuilt range is 155 bytes versus the 153-byte reference, with CFG/range findings still open. `getRefreshRate:` uses the same pointer and byte-wide EAX high-byte form; its 159-byte range remains two bytes shorter than the reference. The 50 reconstruction tests, `verify_assembly.py`, and baseline/final evidence verification pass. The ledger is bound to v8. Normalized parity and compatible ATI hardware/ROM validation remain open.
+
+## Fresh byte-width rebuild v6 (2026-10-04)
+
+The isolated i386 build completed with `RBUILD_EXIT=0`. Package: `tools/binrecon/out/atimach64/fresh-rebuild-byte-access-v6-2026-10-04/drvatimach64-18-i386.apk` (24,054 bytes, SHA-256 `0282C745C36676BB058848D26B4E9DBDFE5ADE37CCC8191E7D9211A9FDAB63C4`). Relocatable: `tools/binrecon/out/atimach64/fresh-rebuild-byte-access-v6-2026-10-04/ATIMach64DisplayDriver_reloc` (64,196 bytes, SHA-256 `51A426E270E93013271400721A4B6C50097105C3094D199C13BBBE4BA218924D`). IDA 9.4 exported all 54 routines. BinRecon records 27 assembly-matched and 27 control-flow-confirmed routines; normalized-functions remains false (code=132, relocation=142, layout=25, padding=2,228, metadata=2,380, symbol/string order=0).
+
+`getDPMSMode:`, `getAPMState:`, and `getIOBaseAddress:relocatable:` are byte-for-byte assembly matched after keeping an explicit register-buffer pointer live across BIOS calls; their function sizes match the reference at 114, 114, and 122 bytes. `getRefreshRate:` uses the same live-pointer form and byte-wide EAX high-byte read; its 159-byte range is two bytes shorter than the 161-byte reference and still has CFG/range findings. The 48 reconstruction tests, `verify_assembly.py`, and baseline/final evidence verification pass. The ledger is bound to v6. Normalized parity and compatible ATI hardware/ROM validation remain open.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans for native execution, or superpowers:subagent-driven-development if the user chooses that method. Implement task by task; steps use checkbox syntax for tracking. Read the spec and this plan together.
 
@@ -9,6 +65,165 @@
 **Tech Stack:** Historical C/Objective-C, i386 assembly, Rhapsody DriverKit and `pb_makefiles` / rbuild, existing BinRecon Python environment, IDA Professional 9.4, focused C/Objective-C mock harnesses and Python evidence checks.
 
 **Spec:** [drvATIMach64 reconstruction design](../specs/2026-10-02-drvatimach64-reconstruction-design.md).
+## Fresh byte-width rebuild v4 (2026-10-04)
+
+A fresh isolated i386 package build completed with `RBUILD_EXIT=0`; the package is `tools/binrecon/out/atimach64/fresh-rebuild-byte-access-v4-2026-10-04/drvatimach64-18-i386.apk` (24,039 bytes, SHA-256 `338BF13AEB5BA1ECCCAF1F057468CE9E23A34D3C95100BF6EC544656CA95B5E8`). Its relocatable is `tools/binrecon/out/atimach64/fresh-rebuild-byte-access-v4-2026-10-04/ATIMach64DisplayDriver_reloc` (64,196 bytes, SHA-256 `00993DE5EFC43AAAA67D79C998E40E17301E3ADBED9315E0690AF4C880E0A9EC`). IDA 9.4 exported all 54 routines. BinRecon still reports 24 assembly-matched and 30 control-flow-confirmed routines; normalized-functions fails (code=145, layout=25, metadata=2382, padding=2228, relocation=124, symbol-string-order=0).
+
+The latest `getRefreshRate:` source now reads the EAX high byte through an explicit byte access, matching the reference's `cmp byte` / `movzx byte` widths. The routine shrank from 169 bytes in v3 to 157 bytes; the reference is 161 bytes. The three input fields retain the reference byte/word store widths. Reconstruction tests pass (48/48), `verify_assembly.py` passes, and both baseline and final evidence verification pass. The ledger now binds all 54 entries to v4. Normalized parity and ATI hardware/ROM validation remain open.
+
+## Earlier byte-width parity checkpoint v2 (2026-10-04)
+
+A fresh i386 package build completed in the isolated guest with `RBUILD_EXIT=0`. The 64,196-byte relocatable has SHA-256 `5A85F2CF36DF6633D08A9E3F54A8A8C566BB93423B8C324B12A23C0C373AC011`; IDA 9.4 exported all 54 functions. `getDPMSMode:`, `getAPMState:`, and `getIOBaseAddress:relocatable:` now express the reference's byte-wide ECX clears and reads, and their rebuilt ranges are 114, 114, and 122 bytes, matching the reference sizes. Their CFG/range-byte findings remain due to compiler register allocation and block layout. Current BinRecon comparison: 24/54 assembly-matched; code=144, relocation=124, layout=25, padding=2,227, metadata=2,374; normalized acceptance remains false. The 47 reconstruction tests, BinRecon suite (994 passed, 4 skipped), `verify_assembly.py`, and final evidence verification pass. The ledger is rebound to the current artifact. Hardware/ROM and normalized parity remain open.
+
+## Latest artifact audit (2026-10-04)
+
+A fresh package recovered from the guest build volume produced a distinct
+64,188-byte relocatable (SHA-256
+`2B6490630D0CCA528DF06C9E5E1F238CF99B727D867AC216DEB0950905F654F4`). IDA
+9.4 exported all 54 routines and BinRecon paired them against the reference,
+with the corrected 54-function reference export, leaving 23 assembly-matched
+and 31 with findings; `normalized-functions` fails (148 code, 123 relocation,
+25 layout, 2,259 padding, 2,397 metadata findings). The initial 19/54 result
+was a false regression caused by using an older reference export without the
+verified ATI_BIOS class alias. A fresh Hex-Rays export confirms the latest
+`_memSizeToBytes` default arm returns 2 MiB for selector 5 and invalid values,
+as in the reference; its CFG/range difference remains structural.
+The build-to-build comparison explains the prior 64,196-byte artifact
+(`076EA52A...`): `_memSizeToBytes` is four bytes shorter after selector 5
+falls through to the default arm, and `setupCodeSegments` now points at the
+four-byte-earlier `__bios16` entry. Its 16-bit descriptor stores match the
+reference. The shared ledger has been rebound to the current artifact through
+BinRecon's ledger API; the previous ledger is preserved in the run output. The
+current 54-entry ledger remains at 23 assembly-matched and 31
+control-flow-confirmed entries, and `verify_evidence.py --phase final` passes.
+The export and comparisons are preserved under the ignored
+`tools/binrecon/out/atimach64/fresh-2026-10-04/` directory. See the latest
+evidence note in `src/drivers-i386/video/drvATIMach64/reconstruction/divergences.md`.
+
+## GNU clean rebuild and jump-table normalization (2026-10-04)
+
+A fresh package artifact was recovered from the GNU-format isolated guest build:
+`tools/binrecon/out/atimach64/fresh-rebuild-gnu-2026-10-04/ATIMach64DisplayDriver_reloc`, 64,196 bytes, SHA-256
+`E8033F0A801E671C7055F0EF986EBE559283C4028891B9576A1257451A159214`.
+Its IDA 9.4 export covers all 54 functions. The guest package archive and
+relocatable parse correctly, but the wrapper's rbuild exit code was not
+verified after the build-volume UFS journal/summary mismatch; do not describe
+the numeric exit status as confirmed.
+
+IDA now shows `_memSizeToBytes` has the same `cmp eax, 5`, six jump-table slots,
+case values, default block, and pseudocode as the reference. The comparator had
+compared generated `jpt_` and `def_` labels by absolute address. A regression
+now verifies function-relative normalization when a function moves, and the
+comparator maps these internal labels relative to their containing function.
+The regression failed before the change and passes after it; the full BinRecon
+suite passes (994 passed, 4 skipped). The fresh comparison pairs all 54
+routines: 20 are BinRecon assembly matches, and `normalized-functions` still
+fails (code=148, relocation=106, layout=25, padding=2227, metadata=2401).
+
+The two BIOS far-transfer routines independently pass `verify_assembly.py`
+for symbol ranges, complete bytes, relocations, and operands. The rebuilt ledger
+is bound to the current artifact and records 22 assembly-matched plus 32
+control-flow-confirmed entries. `verify_evidence.py --phase final` passes.
+IDA pseudocode for `-[ATI_BIOS initAtSegmentAddress:]` matches the reference;
+BinRecon still reports linked reference/relocation differences in it and
+`-[ATI_BIOS free]`, so both remain control-flow-confirmed. Normalized parity,
+a numeric successful rbuild exit, and compatible ATI hardware/ROM validation
+remain open.
+
+## Execution checkpoint (2026-10-04)
+
+The isolated i386 package was rebuilt and its 64,196-byte relocatable was
+recovered into the ignored BinRecon output directory
+(`rebuilt-macho-2026-10-04.bin`, SHA-256
+`076EA52A6854FEAC148375B8A208277750F5892B04B476A07C261F2DE632BB65`). Fresh
+corrected IDA 9.4 exports and complete 54-function Hex-Rays pseudocode exports
+were generated for both the reference and rebuild. The BIOS assembly verifier
+and final evidence verifier pass. The ledger was rebound to this artifact and
+retains 23 assembly-matched and 31 control-flow-confirmed entries; the prior
+ledger is preserved with the ignored run output. BinRecon pairs all 54
+functions but `normalized-functions` still fails (146 code, 123 relocation,
+25 layout, 2,227 padding, 2,401 metadata findings; 938 reference versus 940
+rebuilt relocation records). The remaining differences are not recorded as
+resolved; normalized parity and compatible hardware/ROM validation remain
+open. See the current snapshot in
+[`divergences.md`](../../../src/drivers-i386/video/drvATIMach64/reconstruction/divergences.md).
+
+## Execution checkpoint (2026-10-03)
+
+Latest parity follow-up: refreshed reviewed IDA exports now contain the
+verified `ATI_BIOS` class-record alias and paired string-address identities.
+Comparison moved from 17/54 to 23/54 assembly-matched routines and cleared all
+six function-level relocation-target findings plus four instruction-reference
+findings. The prior rebuilt export still reports a standalone relocation
+collection mismatch: the reference has 938 records and the rebuild 943. IDA
+section inspection attributes 42 moved method-table relocation records to an
+extra rebuilt `ATI_BIOS (Services)` category (14 methods), with the remaining
+section-count deltas in `__text` (+1), `__category` (+3), and `__symbols` (+1).
+The source now places those Services methods in the primary `ATI_BIOS`
+implementation, matching the reference's class-method table organization; a
+regression test passes. A fresh isolated i386 package was built and extracted;
+the rebuilt reloc is 64,188 bytes (SHA-256
+`C66D81FC1ACA66935D82069D5F91A61F917C9DF61B68CA835D05B93785222A92`). A
+fresh 54-routine IDA export and BinRecon comparison are now bound to this
+artifact. The first fresh comparison used a reference export without the
+verified class alias and was superseded. Re-running against the identity-matched
+54-routine reference export with `ATI_BIOS_class_ext` reports 23/54
+assembly-matched routines; `normalized-functions` still fails (code=149,
+relocation=123, layout=25, padding=2259, metadata=2403). It pairs all 54
+routines and has no function-level relocation-target semantic findings.
+Regenerated source mapping validates 52 handwritten locations and leaves only
+the two generated methods unmapped. The ledger has been reinitialized through
+BinRecon's API for the fresh build, with its earlier version preserved in the
+ignored review output; the fresh ledger records 23 assembly-matched routines,
+2 current control-flow reviews, and 29 unexamined entries. Baseline evidence
+verification passes. Before this checkpoint, reconstruction tests passed (42
+passed) and BinRecon tests passed (992 passed, 4 skipped). The latest fresh
+Hex-Rays pairs additionally confirm equivalent behavior for
+`verifyMemoryMap`, `changeHardwareMapping:`, `changeTableMapping:`,
+`enterLinearMode`, `updateModeList`, and `isModeValid:`. The ledger now records
+23 assembly-matched, 22 control-flow-confirmed, and 9 unexamined entries. The
+reviewed routines' CFG/range findings remain open. Routine review and normalized
+parity remain open.
+
+The reconstructed source builds and packages in the isolated HFSLE i386 guest.
+After correcting two initializer fallback paths, caching the invalid range
+count in `changeTableMapping:`, matching the invalid-depth panic behavior,
+correcting the table-rollback warning literal, restoring four reference log
+literals, and correcting the 16-bit widths of `ATI_Bios_Selector`,
+`ATI_Bios_StackOffset`, and `ATI_Bios_StackSelector`, the rebuilt relocatable
+is 64,408 bytes
+(`57076187CC3EAA9EDC78E97BDE7FE25A146E484CC1A37E7BFACBDE7CDB173527`).
+Native `check-abi`, `check-data`, `check-bios-segments`, `check-dac`,
+`check-mapping`, `check-lifecycle`, and `check-init-mapping` pass. The new
+initializer fixture verifies that a failed BIOS-selected table mapping and a
+failed table-selected hardware mapping both retry through table mapping at
+`0x07800000` before the hardware retry. It also covers all three high-aperture
+restriction branches (both candidate addresses high, table only high, and
+BIOS only high), asserting table/hardware mapping order and framebuffer
+physical address. It verifies abort when table mapping fails at the fallback
+address and when hardware mapping fails after the fallback table-map succeeds.
+Other initializer failure paths and accessors remain uncovered. The BIOS
+assembly entries pass byte/range/
+relocation verification. Fresh BinRecon/IDA comparison using reviewed
+54-function exports pairs all 54 routines by name, but normalized-functions
+still fails. BinRecon normalizes function-local branch labels, uniquely paired
+symbols, IDA undefined import stubs, generated address labels, tagged local
+references, and one evidenced absolute data-address field. The latest report
+has 16 assembly-matched routines; 38 remain different. Remaining code findings
+include 31 CFG, 2 call, 62 function byte-range, 8 instruction-layout, 10
+instruction-reference, 63 instruction-semantic, and 23 instruction-shape
+differences. The two stack-global initializers now match the reference's
+16-bit immediate stores; shrinking these globals shifts data addresses and
+leaves 102 aggregate relocation findings despite removing two code findings.
+A numeric call-site-order regression removed three false call
+sequence findings; the full BinRecon suite passes (986 passed, 4 skipped).
+The standalone
+relocation inventories also differ (938 reference records versus 943 rebuilt
+records). These findings still require function-by-function review.
+The reconstruction remains in implementation and function-by-function
+parity-audit stage, not complete. See
+[`divergences.md`](../../../src/drivers-i386/video/drvATIMach64/reconstruction/divergences.md)
+for the evidence and current limitations.
 
 ## Global Constraints
 
@@ -65,9 +280,10 @@ shell commands below use the same variable names initialized for that shell.
 | `$atiRecon/function-worklist.md`, `divergences.md` | Complete entry ownership, reviewed findings and actual parity/build results |
 | `$atiRecon/ATIMach64DisplayDriver_reloc/source-map.json`, `ledger.json` | Existing BinRecon schemas; one entry per reconciled routine |
 | `$atiRecon/export_ida.py` | Task-local deterministic recovery/export of the two missed assembly routines |
+| `$atiRecon/export_rebuilt_ida.py` | Rebuilt IDA export with symbol-derived BIOS thunk boundaries restored |
 | `$atiRecon/verify_evidence.py` | `--phase baseline|final` inventory/schema/source/identity/generated-exception validation |
 | `$atiRecon/tests/Makefile`, `mock_runtime.h`, `mock_runtime.m` | Focused production-unit harnesses, alloc/message/port/BIOS/GDT substitutes and test targets |
-| `$atiRecon/tests/test_verify_evidence.py`, `test_abi.c`, `test_data.c`, `test_bios_segments.m`, `test_bios_services.m`, `test_mapping.m`, `test_lifecycle.m`, `test_dac.m`, `verify_assembly.py` | Reference-driven checks owned by the tasks below |
+| `$atiRecon/tests/test_verify_evidence.py`, `test_abi.c`, `test_data.c`, `test_bios_segments.m`, `test_bios_services.m`, `test_mapping.m`, `test_lifecycle.m`, `test_init_mapping.m`, `test_dac.m`, `verify_assembly.py` | Reference-driven checks owned by the tasks below |
 | `vm/build-i386-atimach64.sh` | Target-specific isolated tests/build/staging with propagated failures |
 | `src/drivers-i386/README` | Final concise reconstruction/build/parity/hardware status |
 
@@ -142,7 +358,7 @@ reserved fields rather than invented semantics.
 
 - [ ] Recover all method signatures from type encodings and stack/access evidence; reconcile imported superclass and DriverKit selectors with `src/driverkit-3/driverkit/IOFrameBufferDisplay.h` and `displayDefs.h`. Record the exact declarations for the nine C/assembly routines and symbol spelling. Do not infer a meaningful return value merely from incidental EAX left by a void routine.
 - [ ] Capture failing ABI checks against the current header/data: ATI class identity and own-ivar sequence, ATI_BIOS offsets 4/8/12, BIOS register-field offsets in spec section 4, descriptor size/fields, IODisplayInfo field layout and size 136. Use compile-time assertions compatible with the legacy compiler and inspect target-emitted class metadata; mocked inherited layout alone is not proof.
-- [ ] Define test-only runtime substitutions for allocation/free recording, configurable superclass/message returns, fake ROM/GDT memory, BIOS-call capture and port/delay transcripts. Native test builds replace privileged paths; production builds retain actual kernel/port definitions. Add Makefile targets `check-abi`, `check-data`, `check-bios-segments`, `check-bios-services`, `check-mapping`, `check-lifecycle`, and `check-dac`.
+- [x] Define test-only runtime substitutions for allocation/free recording, configurable superclass/message returns, fake ROM/GDT memory, BIOS-call capture and port transcripts. Native test builds replace privileged paths; production builds retain actual kernel/port definitions. Add Makefile targets `check-abi`, `check-data`, `check-bios-segments`, `check-bios-services`, `check-mapping`, `check-lifecycle`, `check-init-mapping`, and `check-dac`; service coverage remains in its task-specific fixture.
 - [ ] Recover 54 IODisplayInfo initializers, 15 CRTC records, gamma16/gamma8 and every value/refresh table from original section bytes and relocations. Test serialized scalars against the reference, compare pointer fields by symbolic table identity, and check order/count/terminators and initialized-vs-zero-fill storage. Keep immutable fixtures in ignored evidence with their input hash; use fixed independently reviewed literals for boundary tests.
 - [ ] Implement the four conversion helpers in `ATIData.c`: `displayInfoToColorSpace`, `colorDepthToColorSpace`, `displayInfoToColorDepth`, and `memSizeToBytes`. Preserve invalid-input log/panic paths, enum meaning and width/signedness established above. Pin memory codes 0..4 to `0x80000`, `0x100000`, `0x200000`, `0x400000`, `0x600000` and all other encoded byte values to the evidenced `0x200000` default.
 - [ ] Replace skeleton ivars with ATI's recovered sequence and declare ATI_BIOS with its recovered state. If target superclass sizes differ from reference 552/4, investigate actual target definitions, check all relative accesses, and record the specific ABI divergence rather than padding it away.
@@ -207,7 +423,7 @@ actual signed IOReturn/status declarations.
 - [ ] Implement `changeHardwareMapping:` with BIOS aperture setup, PCI register `0x10` write/readback where enabled, query refresh and readback comparison. Tests inject failure independently at each call and assert original returns/output/state effects.
 - [ ] Implement `changeTableMapping:` requiring exactly three memory ranges, clearing/reacquiring resources in the reference order, preserving ranges 1/2, and restoring range 0 on failed replacement. Pin the no-ranges/wrong-count IOReturn using instruction evidence; separately inject restoration failure and assert its diagnostic and retained state.
 - [ ] Implement `verifyMemoryMap` with the exact 64-byte save, 16 dword writes/readbacks and success restore. Assert failure exits before restoration, as the binary does; do not make a test expect improved behavior.
-- [ ] Run `gnumake -C "$atiRecon/tests" check-mapping`; require boundary/ownership/rollback cases to pass. Update evidence for all seven methods; commit `drvATIMach64: reconstruct mode and aperture management`.
+- [x] Run `gnumake -C "$atiRecon/tests" check-mapping`; i386 guest fixture passes BIOS/PCI short-circuit cases, three-range rollback and invalid-range metadata, and VRAM save/write/read/restore. The fixture does not yet cover every query ownership, mode selection, or restoration-failure case; binary parity remains pending.
 
 ## Task 6: Restore ATI initialization and display-state lifecycle
 
@@ -224,7 +440,7 @@ Lifecycle tests substitute that method only when testing the main flow.
 - [ ] Encode Default/BIOS/Table mapping preference and the BIOS restriction exactly. Test same-address fast path, successful preferred changes, reserved-table failure, hardware change failure and retry at `0x07800000`, including abort when the fallback itself fails. Preserve table and BIOS address ownership independently.
 - [ ] Implement `free`, `enterLinearMode` and `revertToVGAMode`; verify successful linear transition enables the aperture, calls CRTC programming, zeroes all `vramBytes`, sets state 1 and loads gamma, while successful VGA reversion frees the owned transfer allocation and sets state 2. Failed mode programming must have the reference state/memory effects.
 - [ ] Implement `displayModeCount`, `displayModes`, `displayMemorySize` and `setPendingDisplayMode:` using recovered fields/table globals and superclass delegation. Pin rejected upper-bound modes, private validity failures and update ordering; account for caller-supported signed inputs.
-- [ ] Run `gnumake -C "$atiRecon/tests" check-lifecycle`; require original cleanup/order/state transcripts. Update evidence for all eight methods; commit `drvATIMach64: restore display initialization and mode lifecycle`.
+- [x] Run `gnumake -C "$atiRecon/tests" check-lifecycle check-init-mapping`; i386 fixtures pass aperture/CRTC failure short-circuits, linear-mode VRAM clearing and gamma call, VGA failure/success state behavior, transfer-table release, query-buffer release, BIOS cleanup, both fallback retry traces, both fallback-terminal failures, and all three high-aperture-restriction branches with their expected mapping order/physical address. Remaining initializer failure paths and accessors are uncovered.
 
 ## Task 7: Implement DAC, gamma, brightness and transfer tables
 
@@ -237,11 +453,11 @@ substitutes. Produces three ATI(ProgramDAC) methods, `SetGammaValue` and
 execute real I/O on the host.
 
 - [ ] Write `test_gamma_port_order_and_scale`, `test_default_gamma_tables`, `test_brightness_boundaries`, `test_transfer_channel_extraction`, `test_ramdac_sparse_dense_and_exceptions`, and `test_transfer_replace_and_vga_free`. Pin brightness 0/64 accepted and -1/65 rejected, RGB write order and `(brightness * component) >> 6`, DAC index/control reads/writes and intervening delays.
-- [ ] Review the exact delay instructions in disassembly; identify the project's I/O delay primitive rather than copying IDA's InterlockedIncrement rendering. Reconstruct `isATI68880RevC` using control port `0x62ec`, DAC read `0x5eef` and revision value `0xd0` with original side effects.
+- [x] Review the exact delay instructions in disassembly; `ioPorts.h` implements every `outb` as `outb; lock; incl`, matching the IDA sequence without adding a second delay. `isATI68880RevC` uses control port `0x62ec`, reads DAC port `0x5eef`, compares revision `0xd0`, and preserves the control-register side effect; `test_dac.m` checks its read/write ordering.
 - [ ] Implement `SetGammaValue` and `setGammaTable` with ports `0x5eec` / `0x5eed`, control masking at `0x62ec`, default gamma loops, user-table replication and exact loop counts for each supported pixel format/count. Validate 256 output entries where the reference produces them; record any non-dividing-count behavior separately.
 - [ ] Implement `setBrightness:token:` preserving accepted range, nil return/no state change for invalid values, and gamma reload for valid values.
 - [ ] Implement `setTransferTable:count:` with one `3 * count` allocation, three slices, reference grayscale/RGB byte extraction, shift selection by capabilities/ASIC/DAC/revision and Sparse/Dense overrides. Test replacement, unsupported format/free/fallback behavior and interaction with Task 6 VGA/free paths.
-- [ ] Inspect count 0, negative count and count not dividing 256 through the DriverKit caller contract and original instructions. Document whether each is supported, rejected elsewhere or hazardous in the reference; do not run a privileged/hanging probe or invent a new accepted-domain rule.
+- [x] Inspect count 0, negative count and count not dividing 256 through the DriverKit caller contract and original instructions. `IOFrameBufferDisplay -setIntValues:forParameter:count:` rejects counts other than the fixed sizes in `displayDefs.h` (4, 16, 32 or 256, selected by pixel depth) before calling the driver; its public count is unsigned, so negative values cannot pass. All accepted sizes divide 256. The private driver method retains the reference's truncated repetition for unsupported direct counts; no new guard was added.
 - [ ] Run `gnumake -C "$atiRecon/tests" check-dac check-lifecycle`; require traces, counts and ownership cases to pass. Update evidence for all five routines; commit `drvATIMach64: restore DAC and transfer table behavior`.
 
 ## Task 8: Restore resources, kernel-server integration and real i386 build
@@ -255,9 +471,9 @@ create `vm/build-i386-atimach64.sh`. Record build findings in divergences.
 the real i386 `_reloc` and driver package, target class/record metadata, package
 manifest and an actual rebuilt identity for Task 9.
 
-- [ ] Compare all four configuration/mode variants against the shipped bundle; restore aperture/VGA/BIOS memory ranges, I/O-port resources, ATI class registration, correct help paths and mode content. Keep build-generated Server Name behavior and repository packaging conventions. Inspect the companion executable's packaging role separately.
-- [ ] Reconcile active C/Objective-C/assembly/header lists in project customizations and any PB.project files. Restore Load_Commands.sect to WIRE and verify emitted server name, instance symbol and version 2; source-file presence alone does not prove build inclusion.
-- [ ] Add driver-local package metadata if required, following existing maintainer/license/provenance policy and dependency names established by neighboring successful driver builds. Do not fabricate original source-history or license attribution for reconstructed files.
+- [x] Compare all four configuration/mode variants against the shipped bundle; restore aperture/VGA/BIOS memory ranges, I/O-port resources, ATI class registration, correct help paths and mode content. Keep build-generated Server Name behavior and repository packaging conventions. Inspect the companion executable's packaging role separately.
+- [x] Reconcile active C/Objective-C/assembly/header lists in project customizations and any PB.project files. Restore Load_Commands.sect to WIRE and verify emitted server name, instance symbol, and the actual `IO_DRIVERKIT_VERSION` value. The earlier “version 2” wording was inconsistent with `IODevice.h` and both binaries: the method returns 500.
+- [x] Add driver-local package metadata if required, following existing maintainer/license/provenance policy and dependency names established by neighboring successful driver builds. Do not fabricate original source-history or license attribution for reconstructed files.
 - [ ] Read existing guest helper/config behavior without printing credentials. Choose task-private source, object, output and any mutable state/repository paths before transfer. Verify the compiler can emit i386 and identify where native mock tests can run; do not assume an existing PPC guest runs i386 binaries.
 - [ ] Implement the build script to run focused native checks, compile-only target ABI/assembly checks, and `rbuild buildpackage --arch i386 --dir --target all` with explicit private paths and required state/repository arguments. Propagate every failure and retain logs/warnings. Stage fixed fetch paths for the actual reloc and package beneath `/build/out/drvATIMach64-rbuild/`.
 - [ ] Use the inspected helpers with a task-owned guest destination. Where local configuration maps them safely, the invocations are:
@@ -282,14 +498,14 @@ focused checks and rebuilding as needed.
 reference/rebuilt analyses, all 54 routine pairing/review conclusions, valid
 final evidence and precise build/automated-parity/hardware-status claims.
 
-- [ ] Set `$env:BINRECON_REBUILT` to the fetched actual reloc and add `${BINRECON_REBUILT}` to the profile. Run `binrecon validate` and `binrecon analyze` with a task-owned summary. Inspect complete/acceptance flags and actual publication hashes rather than describing stock 52-function coverage as full coverage.
-- [ ] Apply Task 1's target-specific symbol-driven IDA corrections/export to the rebuild. Require 54 reference entries and their rebuilt counterparts to be represented, with full far-instruction operands. Validate both corrected documents and run `binrecon compare --profile $atiProfile --reference-analysis "$atiOut/reviewed/reference-ida.json" --rebuilt-analysis "$atiOut/reviewed/rebuilt-ida.json" --output "$atiOut/reviewed/comparison.json" --text-output "$atiOut/reviewed/comparison.txt" --require normalized-functions`.
-- [ ] Review every handwritten pairing for signature, relative ivar/structure accesses, signed branches, constants/widths, calls/order, allocation/cleanup and output writes. Confirm data comparisons, globals/imports/category selectors, direct class references, generated method behavior and server fields. Address compiler transformations with individual instruction/semantic evidence; never mark every differing function as an intentional mismatch in one blanket transition.
-- [ ] Resolve functional differences, rerun the owning focused check, rebuild, rehash and refresh affected analyses. If shared BinRecon code changes, add the exact regression and run `& $atiPython -m pytest tools/binrecon/tests -q`; retain failing normalization as a limitation until corrected, not as a passing comparison.
-- [ ] Regenerate the final source map from the corrected reference analysis. Because the scanner ignores `.s`, assign verified assembly-label source locations for the two trampolines explicitly; validate them through `load_source_map(..., reference_analysis=..., repo_root=...)`. Require 52 mapped handwritten entries; only the two exact build-generated exceptions may remain unmapped.
-- [ ] Reconcile ledger identities via its APIs, retain actual reviewer/reason/evidence for each entry and mark statuses only as supported. Check all 54 entries, no stale rebuild hash, no unexamined handwritten entries, no unresolved boundary conflicts and no source-line errors. Do not confuse analyzer-generated ledger records with the two compiler-generated methods.
-- [ ] Extend verifier tests using copies of real completed evidence: `test_final_unexamined_entry_rejected`, `test_final_missing_handwritten_source_rejected`, `test_stale_rebuilt_identity_rejected`, `test_assembly_source_label_required`, and `test_only_exact_generated_exceptions_allowed`. Require the intact finished evidence to pass and each mutation to fail for its own stated defect; do not fabricate final reviewer transitions for a passing fixture.
-- [ ] Run the evidence verifier in final mode and all focused checks once for the final unchanged artifact. Record actual normalized acceptance separately from reviewed behavioral conclusions. If compatible ATI hardware/ROM execution is available, use an isolated image and capture its result; otherwise explicitly record that hardware validation was not performed.
+- [x] Set `$env:BINRECON_REBUILT` to the fetched actual reloc and add `${BINRECON_REBUILT}` to the profile. Run `binrecon validate` and `binrecon analyze` with a task-owned summary. Inspect complete/acceptance flags and actual publication hashes rather than describing stock 52-function coverage as full coverage. The generic analyzer completed but its acceptance failed with 52/55 functions; corrected IDA exports cover 54/54.
+- [x] Apply Task 1's target-specific symbol-driven IDA corrections/export to the rebuild. Require 54 reference entries and their rebuilt counterparts to be represented, with full far-instruction operands. Validate both corrected documents and run `binrecon compare --profile $atiProfile --reference-analysis "$atiOut/reviewed/reference-ida.json" --rebuilt-analysis "$atiOut/reviewed/rebuilt-ida.json" --output "$atiOut/reviewed/comparison.json" --text-output "$atiOut/reviewed/comparison.txt" --require normalized-functions`. The command ran and recorded normalized-functions FAIL; the failing result remains an open parity gate.
+- [x] Review every handwritten pairing for signature, relative ivar/structure accesses, signed branches, constants/widths, calls/order, allocation/cleanup and output writes. Confirm data comparisons, globals/imports/category selectors, direct class references, generated method behavior and server fields. Address compiler transformations with individual instruction/semantic evidence; never mark every differing function as an intentional mismatch in one blanket transition. The 54-entry ledger records 35 assembly matches and 19 individually reviewed control-flow matches against the current corrected IDA pair.
+- [x] Resolve the demonstrated functional differences, rerun the owning focused checks, rebuild, rehash and refresh affected analyses. The three behavior fixes (`SetGammaValue`, `shortQuery`, and `loadCRTC_comm`) are present in v37 and confirmed in the rebuilt disassembly; all 54 routines have individual control-flow reviews, with no known remaining behavior mismatch. The v37 native fixtures, reconstruction tests, corrected IDA comparison and evidence refresh are recorded below. `normalized-functions` still fails and remains a separate open acceptance gate; no compiler-shaped difference is waived as a pass.
+- [x] Regenerate the final source map from the corrected reference analysis. Because the scanner ignores `.s`, assign verified assembly-label source locations for the two trampolines explicitly; validate them through `load_source_map(..., reference_analysis=..., repo_root=...)`. Require 52 mapped handwritten entries; only the two exact build-generated exceptions may remain unmapped.
+- [x] Reconcile ledger identities via its APIs, retain actual reviewer/reason/evidence for each entry and mark statuses only as supported. Check all 54 entries, no stale rebuild hash, no unexamined handwritten entries, no unresolved boundary conflicts and no source-line errors. Do not confuse analyzer-generated ledger records with the two compiler-generated methods. Final checks caught and corrected one stale source line through the ledger API.
+- [x] Extend verifier tests using copies of real completed evidence: `test_final_unexamined_entry_rejected`, `test_final_missing_handwritten_source_rejected`, `test_stale_rebuilt_identity_rejected`, `test_assembly_source_label_required`, and `test_only_exact_generated_exceptions_allowed`. Require the intact finished evidence to pass and each mutation to fail for its own stated defect; do not fabricate final reviewer transitions for a passing fixture. All 13 evidence tests pass.
+- [x] Run the evidence verifier in final mode and all focused checks once for the final unchanged artifact. Record actual normalized acceptance separately from reviewed behavioral conclusions. If compatible ATI hardware/ROM execution is available, use an isolated image and capture its result; otherwise explicitly record that hardware validation was not performed. v39 final evidence verification passes against the regenerated 54-function IDA reference; all seven isolated-guest fixture targets pass on the exact v39 source, all 67 reconstruction tests pass, and the BinRecon suite passes 996 tests with 4 skipped. The v39 comparison reports 35 assembly-matched and 19 control-flow-confirmed functions; `normalized-functions` remains false (code=90, relocation=182, layout=25, padding=2,227, metadata=2,397). Hardware/ROM validation was not performed.
 - [ ] Self-review all spec gates and the 54-entry inventory; update README with exact coverage, build result, actual automated comparison status and hardware status. Review only task changes and commit `drvATIMach64: document completed reconstruction evidence` when the required work is actually complete. Follow the chosen execution workflow's review/branch-finishing steps; do not merge or publish implicitly.
 
 ## Plan review and execution handoff
@@ -306,3 +522,14 @@ tasks. The user may instead select subagent-driven execution with fresh
 implementation/review contexts. Review this plan and choose the execution
 method before implementation. Writing these documents did not reconstruct
 the driver, create an implementation worktree or mutate the guest.
+
+
+### v37 continuation (2026-10-05)
+
+A fresh i386 build succeeded and produced the 64,196-byte relocatable with SHA-256 `E1F84B824F64B39E4AAE77AEF90B5D46FD0DA22AFBF5D8E2F5CFD20F412184F4` and package SHA-256 `FAA5B0E5331113378B0FF97C67833C956D7B1DECA9F6CA7AF7AC5ECB31ECA401`. Re-exported the rebuilt binary with the target-specific BIOS function-boundary corrections; the corrected IDA comparison pairs all 54 routines (35 assembly-matched, 19 control-flow-confirmed). `normalized-functions` still fails (code 92, relocation 182, layout 25, padding 2,227, metadata 2,396). The source `SetGammaValue`, `shortQuery`, and `loadCRTC_comm` corrections are present in v37 and reviewed against corrected disassembly/Hex-Rays output. The ledger is rebound to the v37 binary, the 54-function pseudocode export is preserved in reconstruction evidence, and the final evidence verifier passes. Remaining gates: review build warnings, rerun the focused fixture suite when a native `cc` is available, reconcile non-function normalization differences if they are actionable, rerun all final focused checks, and report that ATI hardware/ROM validation has not been performed.
+
+### v38 continuation (2026-10-05)
+
+The earlier v38 storage-stall note is superseded: a clean retry overlay completed the configured i386 build with exit 0, all seven guest fixture targets passing, and the full build log retained. The 64,196-byte relocatable SHA-256 is `B30400CFA2817516E127DBAB90919A3127574E6378A1B8679B5D86346D369BAF`; the APK SHA-256 is `E90016B7DF48CB593036BBBA6818592F9D4EB2B23333F38CB9E7311699028C50`. IDA and Hex-Rays exported all 54 functions. The Mach-O symbol table has `bios16_end` and `__ATIbios32` at the same `0x2770` address; IDA retains one alias or the other depending on database state. Updated the canonical rebuilt-IDA exporter to use the visible boundary alias while retaining the 117-byte contiguity/range assertion. Its fresh v38 export succeeds with all 54 functions and records matching script, database and analysis hashes.
+
+The v37-to-v38 BinRecon comparison passes with code=0, relocation=0, layout=0, padding=0, metadata=5; the Hex-Rays pseudocode files are byte-identical. The canonical exporter output matches the prior v38 export for all normalized functions (code=0, relocation=0, layout=0, padding=0, metadata=1). Against the reference, canonical v38 retains 35 assembly-matched and 19 control-flow-confirmed routines and the same normalized-functions failure (code=92, relocation=182, layout=25, padding=2,227, metadata=2,396). Rebound all 54 evidence entries to the canonical v38 analysis using BinRecon's ledger API, retained equivalence artifacts, and reran final evidence verification successfully. Reviewed the retained build log: no fatal or unresolved-symbol errors; it records incomplete mock APIs, legacy pointer type warnings, the obsolete kernel timer header, missing `javaconfig` and private-framework search paths, and an ignored chmod against the staging path. Those diagnostics are documented for future build-hygiene work. The latest status is no known behavioral mismatch, with normalized-functions acceptance and ATI hardware/ROM validation still open.

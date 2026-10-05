@@ -75,7 +75,7 @@ def test_source_sites_finds_objc_methods_and_c_functions(tmp_path):
     assert "_helper" not in sites
 
 
-def test_source_sites_keys_category_methods_separately_from_the_class(tmp_path):
+def test_source_sites_indexes_category_methods_by_class_and_category(tmp_path):
     source_dir = tmp_path / "src" / "driver"
     source_dir.mkdir(parents=True)
     (source_dir / "PCIKernBusPrivate.m").write_text(
@@ -100,11 +100,31 @@ def test_source_sites_keys_category_methods_separately_from_the_class(tmp_path):
     sites = source_sites(tmp_path, source_dir)
 
     assert sites["-[PCIKernBus someMethod]"] == [
-        ("src/driver/PCIKernBusPrivate.m", 3)
+        ("src/driver/PCIKernBusPrivate.m", 3),
+        ("src/driver/PCIKernBusPrivate.m", 11),
     ]
     assert sites["-[PCIKernBus(Private) someMethod]"] == [
         ("src/driver/PCIKernBusPrivate.m", 11)
     ]
+
+
+def test_source_sites_finds_assembly_labels(tmp_path):
+    source_dir = tmp_path / "src" / "driver"
+    source_dir.mkdir(parents=True)
+    (source_dir / "bios.s").write_text(
+        "\t.text\n"
+        "\t.globl __bios16\n"
+        "__bios16:\n"
+        "\tret\n"
+        "local_data:\n"
+        "\t.long 0\n",
+        encoding="utf-8",
+    )
+
+    sites = source_sites(tmp_path, source_dir)
+
+    assert sites["__bios16"] == [("src/driver/bios.s", 3)]
+    assert sites["local_data"] == [("src/driver/bios.s", 5)]
 
 
 def test_source_sites_joins_wrapped_multiline_selector(tmp_path):

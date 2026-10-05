@@ -1,4 +1,4 @@
-# FreeBSD ext2 filesystem and tools
+# NetBSD ext2 filesystem and tools
 
 ## Goal and agreed package boundary
 
@@ -38,21 +38,28 @@ BSD error rather than inheriting an unsafe UFS implementation.
 
 ## Source baselines and provenance
 
-Use FreeBSD **4.11-RELEASE**, matching the FAT port's recorded upstream source,
-rather than an unspecified point on the 4.x branch:
+Use the NetBSD **2.0 branch** for the core and mount helper, pinned to an
+immutable revision. This includes branch maintenance changes; it is not a
+claim that the snapshot is the initial 2.0 release:
 
-- Tag: `release/4.11.0`.
-- Resolved commit: `a84f9c8c4d27b7ce34314e6eed0a53ace0abe1dd`.
-- Core sources: `sys/gnu/ext2fs/`.
+- Branch: `netbsd-2-0`.
+- Resolved commit: `c90afb5a84a9c36a5c076093afade8e63ed2b6a9`.
+- Core sources: `sys/ufs/ext2fs/`.
 - Mount helper: `sbin/mount_ext2fs/`.
-- The upstream `sys/modules/ext2fs/Makefile` supplies the initial core source
-  inventory, not the Rhapsody build mechanism.
+- Record the upstream directory inventory and included implementation fragments;
+  build through Rhapsody's kernel configuration machinery.
 
-The core inventory includes `ext2_alloc.c`, `ext2_balloc.c`, `ext2_inode.c`,
-`ext2_inode_cnv.c`, `ext2_linux_balloc.c`, `ext2_linux_ialloc.c`,
-`ext2_lookup.c`, `ext2_subr.c`, `ext2_vfsops.c`, and `ext2_vnops.c`, together
-with their required local headers. Import auxiliary files only where actually
-included or compiled; avoid compiling included implementation fragments twice.
+The compiled inventory is `ext2fs_alloc.c`, `ext2fs_balloc.c`,
+`ext2fs_bmap.c`, `ext2fs_bswap.c`, `ext2fs_inode.c`, `ext2fs_lookup.c`,
+`ext2fs_subr.c`, `ext2fs_vfsops.c`, and `ext2fs_vnops.c`. Import the included
+`ext2fs_readwrite.c` and format, inode, directory, and declaration headers.
+Avoid compiling included fragments twice. Rename upstream `ext2fs.h` locally
+to `ext2_fs.h`, recording the mechanical change, so it cannot shadow the
+generated kernel-option header `ext2fs.h`.
+
+NetBSD also supplies a BSD checker, but this design retains e2fsprogs for the
+complete agreed format/check/inspection suite. The NetBSD checker is not an
+additional package product.
 
 Use e2fsprogs **1.35** for the formatter, checker, and inspection tools:
 
@@ -64,18 +71,16 @@ Use e2fsprogs **1.35** for the formatter, checker, and inspection tools:
   layout against the existing vendor extractor before committing the input.
 
 Each import records origins, immutable revisions, checksums, and local
-adaptations. Retain `COPYRIGHT.INFO`, original file notices, and e2fsprogs
-`COPYING`. FreeBSD's ext2 tree contains both Berkeley-licensed and GPL code;
-its provenance must not be described as uniformly BSD. Record applicable
-terms for the imported files and the kernel distribution as part of the
-source inventory. The tools package retains e2fsprogs' GPL notices and its
-libraries' individual notices.
+adaptations. Retain NetBSD's original BSD notices, including acknowledgement
+requirements in individual files, and record them in the import inventory.
+The tools package retains e2fsprogs `COPYING`, its GPL notices, and its
+libraries' individual notices. Keep the two source inventories explicit.
 
 Primary references:
 
-- [FreeBSD release core](https://github.com/freebsd/freebsd-src/tree/release/4.11.0/sys/gnu/ext2fs)
-- [FreeBSD ext2 source list](https://github.com/freebsd/freebsd-src/blob/release/4.11.0/sys/modules/ext2fs/Makefile)
-- [FreeBSD copyright inventory](https://github.com/freebsd/freebsd-src/blob/release/4.11.0/sys/gnu/ext2fs/COPYRIGHT.INFO)
+- [Pinned NetBSD core](https://github.com/NetBSD/src/tree/c90afb5a84a9c36a5c076093afade8e63ed2b6a9/sys/ufs/ext2fs)
+- [NetBSD byte-order routines](https://github.com/NetBSD/src/blob/c90afb5a84a9c36a5c076093afade8e63ed2b6a9/sys/ufs/ext2fs/ext2fs_bswap.c)
+- [NetBSD mount helper](https://github.com/NetBSD/src/tree/c90afb5a84a9c36a5c076093afade8e63ed2b6a9/sbin/mount_ext2fs)
 - [e2fsprogs 1.35](https://github.com/tytso/e2fsprogs/tree/E2FSPROGS-1_35)
 
 ## Kernel integration
@@ -95,20 +100,26 @@ continue to obtain their numbers from `maxvfsconf`. Append `VT_EXT2FS` to the
 vnode-tag enumeration without renumbering existing tags. Registration has
 `MNT_LOCAL` and no root-mount callback.
 
-Replace FreeBSD `VFS_SET`, `VNODEOP_SET`, module events, and allocator
-declarations with Rhapsody's static registration and existing allocation
-interfaces. There is no kernel-server product, load command, unload path, or
+Replace NetBSD's VFS registration, pool allocation, and initialization
+interfaces with Rhapsody's static vectors and malloc interfaces.
+There is no kernel-server product, load command, unload path, or
 change to `vfsconf_add()` or `vfsconf_del()`.
 
 ### VFS, UFS, and memory interfaces
 
-FreeBSD's ext2 implementation depends on UFS in-memory inode and mount
+NetBSD's ext2 implementation depends on UFS in-memory inode and mount
 structures, shared vnode operations, and block-mapping helpers. Preserve that
 approach where the local code is compatible rather than replacing the whole
-filesystem or importing FreeBSD's UFS subsystem.
+filesystem or importing NetBSD's UFS subsystem.
 
-Add an ext2 superblock pointer to the existing inode and mount unions, with
-forward declarations and ext2 accessors. Audit each reused `ufs_*` operation
+Add `struct m_ext2fs *` to the existing inode and mount unions, with
+forward declarations and ext2 accessors. Rhapsody has a fixed `i_din`, unlike
+NetBSD's dinode pointer. Allocate an ext2-private node containing the existing
+`struct inode` first and a separate `struct ext2fs_dinode`. Keep local `i_din`
+metadata authoritative for fields used by audited shared helpers; retain
+ext2-only fields and block-pointer bytes in the private dinode and explicitly
+convert at load/save boundaries. Do not cast the two disk inode layouts or
+enlarge the shared inode. Audit each reused `ufs_*` operation
 for assumptions about FFS disk structures, byte order, vnode tags, and
 filesystem-specific callbacks. Keep ext2-specific adaptations in the new
 directory; change shared UFS helpers only when their existing interface cannot
@@ -116,26 +127,27 @@ serve the port, with UFS regression coverage for each such change.
 
 Adapt the VFS vector to the actual `bsd/sys/mount.h` layout and signatures.
 Use Rhapsody's vnode descriptors, name cache, locks, credentials, buffer
-cache, and Mach pager integration. FreeBSD's `cachedlookup`, `getpages`,
-`putpages`, VM-zone, and module interfaces cannot be copied unchanged.
+cache, and Mach pager integration. NetBSD's UVM/genfs/UBC paging, pools,
+write suspension, and vnode signatures cannot be copied unchanged.
 Validate cached reads, writes, and mappings against the existing FFS/HFS
 patterns. Shared code must never interpret ext2 metadata as an FFS superblock.
 
 Keep the mount argument structure in a small exported header, shared with
 `mount_ext2fs`. Its device name and mount flags are interpreted using
-Rhapsody's mount syscall ABI, not an unverified FreeBSD structure layout.
+Rhapsody's mount syscall ABI, not an unverified NetBSD structure layout.
 
 ### Byte order and allocation
 
-Ext2 disk metadata is little-endian. Define explicit disk-to-host and
-host-to-disk accessors and use them for superblocks, group descriptors,
-inodes, directory entries, and indirect block pointers. Maintain host-order
-in-memory metadata and convert at I/O boundaries. Preserve fast-symlink bytes
-as bytes rather than treating their contents as block pointers.
+Ext2 disk metadata is little-endian. Retain NetBSD's superblock, group, and
+inode load/save routines and `fs2h*`/`h2fs*` accessors, adapting their includes
+to this target. Keep scalar metadata and derived geometry in host order.
+NetBSD intentionally retains inode block-pointer bytes in disk order; keep
+that convention and convert pointer values when used, including indirect
+buffers. Preserve fast-symlink bytes as bytes. Tests must guard against both
+missing conversion and double conversion on PPC.
 
-Use portable bitmap operations with ext2's byte and bit numbering. Replace
-i386-only assembly dependencies for PPC; a simple C implementation is the
-default until measurements justify architecture-specific code. Exercise both
+Use NetBSD's portable bitmap operations with ext2's byte and bit numbering,
+adapting only unavailable target primitives. Exercise both
 allocation and release across word and block-group boundaries.
 
 ## Disk-format contract

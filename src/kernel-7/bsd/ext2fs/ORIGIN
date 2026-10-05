@@ -1,0 +1,96 @@
+NetBSD ext2 core import (disabled until the later kernel-integration task)
+Branch: netbsd-2-0 (maintenance snapshot, not the initial 2.0 release)
+Commit: c90afb5a84a9c36a5c076093afade8e63ed2b6a9
+Upstream directory: sys/ufs/ext2fs/
+Inventory URL: https://api.github.com/repos/NetBSD/src/contents/sys/ufs/ext2fs?ref=c90afb5a84a9c36a5c076093afade8e63ed2b6a9
+Retrieved: 2026-10-05
+Hash algorithm: SHA256; hashes below cover pristine downloaded bytes, before
+local adaptations. See PORTING.md for the complete adaptation record.
+
+Upstream directory inventory (15 files):
+Makefile, ext2fs.h, ext2fs_alloc.c, ext2fs_balloc.c, ext2fs_bmap.c,
+ext2fs_bswap.c, ext2fs_dinode.h, ext2fs_dir.h, ext2fs_extern.h,
+ext2fs_inode.c, ext2fs_lookup.c, ext2fs_readwrite.c, ext2fs_subr.c,
+ext2fs_vfsops.c, ext2fs_vnops.c.
+
+Imported: all 14 source/header files. Upstream Makefile is deliberately omitted;
+Rhapsody configuration machinery will select the nine compiled units.
+ext2fs_readwrite.c is locally included only by ext2fs_vnops.c, never a
+separate compiled unit. The pinned vnops has no such include; this is an
+explicit Rhapsody build adaptation to the agreed nine-unit inventory.
+Upstream ext2fs.h is named ext2_fs.h locally to avoid the option header.
+
+Pristine hashes and immutable download URLs:
+
+ext2fs.h -> ext2_fs.h
+70c8a8a3ed7f8929a133bd66ec683fc526a732ab333c903802ba94bc6496928e
+https://raw.githubusercontent.com/NetBSD/src/c90afb5a84a9c36a5c076093afade8e63ed2b6a9/sys/ufs/ext2fs/ext2fs.h
+
+ext2fs_alloc.c
+4c9916ec2dc408f84dfad0f27b63cddd0964d7131df0b2252dff08d5e1db0b41
+https://raw.githubusercontent.com/NetBSD/src/c90afb5a84a9c36a5c076093afade8e63ed2b6a9/sys/ufs/ext2fs/ext2fs_alloc.c
+
+ext2fs_balloc.c
+0ecb12308b8b8d5bb9bed1f0c28c4a42cb9b31097feff3d8a7e87795920fa470
+https://raw.githubusercontent.com/NetBSD/src/c90afb5a84a9c36a5c076093afade8e63ed2b6a9/sys/ufs/ext2fs/ext2fs_balloc.c
+
+ext2fs_bmap.c
+35f3767f8a79af1130aa37b9b26c70d977d272ff4f528e55827760b62e558a6a
+https://raw.githubusercontent.com/NetBSD/src/c90afb5a84a9c36a5c076093afade8e63ed2b6a9/sys/ufs/ext2fs/ext2fs_bmap.c
+
+ext2fs_bswap.c
+99fcb431922498cf942d6afa78823f7201dd7bd215ae49710d3e41f51a455ef1
+https://raw.githubusercontent.com/NetBSD/src/c90afb5a84a9c36a5c076093afade8e63ed2b6a9/sys/ufs/ext2fs/ext2fs_bswap.c
+
+ext2fs_dinode.h
+20f123b8f5ec3ffb3a4fd91177d184a70e4d377987423eac626093962327a9b8
+https://raw.githubusercontent.com/NetBSD/src/c90afb5a84a9c36a5c076093afade8e63ed2b6a9/sys/ufs/ext2fs/ext2fs_dinode.h
+
+ext2fs_dir.h
+d8534d8de356e5e54e66f9f5db4c42ae67e7df289a82af76ea8bebee4d6baa09
+https://raw.githubusercontent.com/NetBSD/src/c90afb5a84a9c36a5c076093afade8e63ed2b6a9/sys/ufs/ext2fs/ext2fs_dir.h
+
+ext2fs_extern.h
+0192fc8152bcbe8d0c683c946586414d004be6737dca9010ce6fed5cc9bac846
+https://raw.githubusercontent.com/NetBSD/src/c90afb5a84a9c36a5c076093afade8e63ed2b6a9/sys/ufs/ext2fs/ext2fs_extern.h
+
+ext2fs_inode.c
+ae8b47a31301179165da7641b52afb88f1808c8230748f6769587d963446db08
+https://raw.githubusercontent.com/NetBSD/src/c90afb5a84a9c36a5c076093afade8e63ed2b6a9/sys/ufs/ext2fs/ext2fs_inode.c
+
+ext2fs_lookup.c
+27408cc9adec17230d6c17e282e29a0bb3820cc5b426b854833eb8121d59d056
+https://raw.githubusercontent.com/NetBSD/src/c90afb5a84a9c36a5c076093afade8e63ed2b6a9/sys/ufs/ext2fs/ext2fs_lookup.c
+
+ext2fs_readwrite.c
+a68d8ef22be6fa1867d9e6563ef3877483f463330a5b6d95932442dad321a23d
+https://raw.githubusercontent.com/NetBSD/src/c90afb5a84a9c36a5c076093afade8e63ed2b6a9/sys/ufs/ext2fs/ext2fs_readwrite.c
+
+ext2fs_subr.c
+7db161f62e74ce0a693c7b00213a8ad16339f7714af656d93c56c8912ce5aef7
+https://raw.githubusercontent.com/NetBSD/src/c90afb5a84a9c36a5c076093afade8e63ed2b6a9/sys/ufs/ext2fs/ext2fs_subr.c
+
+ext2fs_vfsops.c
+1b86b4bf6b76172eaff1c358b4ef00e306be5d803e68224b486a510984d6a052
+https://raw.githubusercontent.com/NetBSD/src/c90afb5a84a9c36a5c076093afade8e63ed2b6a9/sys/ufs/ext2fs/ext2fs_vfsops.c
+
+ext2fs_vnops.c
+45abbc15a5ddd937a170afb65f766067e62bd564643ebf936f563b9568861f80
+https://raw.githubusercontent.com/NetBSD/src/c90afb5a84a9c36a5c076093afade8e63ed2b6a9/sys/ufs/ext2fs/ext2fs_vnops.c
+
+Notice inventory (all original notices retained in each imported file):
+- University of California BSD redistribution/disclaimer and no-endorsement
+  notices: every imported file except ext2fs_bswap.c.
+- UNIX System Laboratories / AT&T derivation notices: ext2fs_bmap.c,
+  ext2fs_dinode.h, ext2fs_dir.h, ext2fs_lookup.c.
+- Manuel Bouyer BSD redistribution/disclaimer, acknowledgement, and
+  no-endorsement notices: all imported files except ext2fs_lookup.c.
+  Required advertising acknowledgement: "This product includes software
+  developed by Manuel Bouyer."
+- ext2fs_lookup.c retains the Manuel Bouyer / Laboratoire d'informatique de
+  Paris VI and Godmar Back / University of Utah modification credits.
+No imported notice was replaced by a new project licence.
+
+No NetBSD checker or mount utility is imported in this task. The e2fsprogs
+E2FSPROGS-1_35 pin e55043f87678587a03895d9629efb1c5a659d392 belongs to the
+later userland import; this core inventory does not claim to vendor it.

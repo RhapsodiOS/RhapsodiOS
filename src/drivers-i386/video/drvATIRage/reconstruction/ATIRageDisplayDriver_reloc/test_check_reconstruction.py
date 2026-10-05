@@ -3,6 +3,8 @@ import unittest
 from check_reconstruction import (
     ContractError,
     compare_thunk,
+    compare_relocated_data,
+    validate_static_symbols,
     validate_abi,
     validate_modes,
     validate_text_partition,
@@ -54,6 +56,28 @@ class ReconstructionContractTests(unittest.TestCase):
     def test_changed_thunk_byte_fails_parity(self):
         with self.assertRaisesRegex(ContractError, "thunk differs"):
             compare_thunk(b"\x90\x90", b"\x90\x91")
+
+    def test_relocated_data_accepts_same_symbolic_pointer(self):
+        relocations = [{"offset": 0, "kind": "absolute", "target": "_strings", "addend": 4}]
+        compare_relocated_data(
+            b"\x00\x10\x00\x00\x02",
+            b"\x00\x20\x00\x00\x02",
+            relocations,
+            relocations,
+        )
+
+    def test_relocated_data_rejects_changed_pointer_target(self):
+        with self.assertRaisesRegex(ContractError, "relocation targets differ"):
+            compare_relocated_data(
+                b"\x00\x10\x00\x00\x02",
+                b"\x00\x20\x00\x00\x02",
+                [{"offset": 0, "kind": "absolute", "target": "_strings", "addend": 4}],
+                [{"offset": 0, "kind": "absolute", "target": "_other", "addend": 4}],
+            )
+
+    def test_missing_static_symbol_fails_inventory(self):
+        with self.assertRaisesRegex(ContractError, "_ValidModeList"):
+            validate_static_symbols(["_AtiModeList", "_ValidModeList"], ["_AtiModeList"])
 
 
 if __name__ == "__main__":

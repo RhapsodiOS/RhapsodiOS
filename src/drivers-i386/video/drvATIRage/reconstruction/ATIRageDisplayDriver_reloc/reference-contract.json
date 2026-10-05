@@ -1703,10 +1703,10 @@
           "evidence": "not consumed by thunk"
         },
         {
-          "name": "output_ds",
+          "name": "output_flags",
           "offset": 40,
           "size": 4,
-          "evidence": "unsigned long ABI slot at offset 40; thunk writes the low selector word"
+          "evidence": "unsigned long ABI slot at offset 40; __ATIbios32 writes the returned low EFLAGS word"
         },
         {
           "name": "entry_offset",
@@ -10921,10 +10921,10 @@
     "gamma8": {
       "name": "_gamma8",
       "address": 15344,
-      "size": 16,
+      "size": 256,
       "binding": "local",
       "section": "__TEXT,__const",
-      "bytes_hex": "000F161B1F23272A2D2F323437393B3D"
+      "bytes_hex": "000F161B1F23272A2D2F323437393B3D3F41434547494A4C4E4F5152545557585A5B5D5E5F61626364666768696B6C6D6E6F7072737475767778797A7B7C7D7E7F808182838485868788898A8B8C8D8D8E8F9091929394949596979899999A9B9C9D9E9E9FA0A1A2A2A3A4A5A5A6A7A8A8A9AAABABACADAEAEAFB0B1B1B2B3B3B4B5B6B6B7B8B8B9BABABBBCBCBDBEBEBFC0C0C1C2C2C3C4C4C5C6C6C7C8C8C9C9CACBCBCCCDCDCECECFD0D0D1D2D2D3D3D4D5D5D6D6D7D8D8D9D9DADADBDCDCDDDDDEDEDFE0E0E1E1E2E2E3E4E4E5E5E6E6E7E7E8E9E9EAEAEBEBECECEDEDEEEEEFF0F0F1F1F2F2F3F3F4F4F5F5F6F6F7F7F8F8F9F9FAFAFBFBFCFCFDFDFEFF"
     },
     "tables": [
       {

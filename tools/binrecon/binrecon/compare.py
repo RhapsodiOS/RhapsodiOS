@@ -19,6 +19,7 @@ REQUIREMENTS = ("normalized-functions", "exact-sections", "exact-image")
 MAX_EVIDENCE = 256
 CHUNK_SIZE = 1024 * 1024
 _STABLE_FIELDS = ("st_dev", "st_ino", "st_size", "st_mtime_ns", "st_ctime_ns")
+_LOCAL_LABEL = re.compile(r"\b(?:loc(?:ret)?|def|jpt)_[0-9a-f]+\b", re.IGNORECASE)
 _REASONS = {
     "analyzer bytes disagree with artifact", "instruction semantics differ",
     "instruction shape differs", "instruction layout differs", "instruction references differ",
@@ -371,6 +372,172 @@ def _portable(value, section_map):
     return value
 
 
+def _function_relative(value, function):
+    """Normalize code locations to the start of a name-paired function."""
+    base = function["range"]["start"]
+    if isinstance(value, dict):
+        if value.get("kind") == "section" and type(value.get("offset")) is int:
+            return {"kind": "section", "offset": value["offset"] - base}
+        if set(value) >= {"section", "start", "end"}:
+            return {"start": value["start"] - base, "end": value["end"] - base}
+        return {key: _function_relative(item, function) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_function_relative(item, function) for item in value]
+    return value
+
+
+def _normalized_function_operands(instruction):
+    """Drop IDA's absolute address suffix from local code labels.
+
+    Branch references and CFG edges are checked separately in function-relative
+    coordinates, so their targets remain part of the semantic comparison.
+    """
+    return _LOCAL_LABEL.sub("loc_<local>", instruction["normalized_operands"])
+
+
+def _string_targets(document, section_map):
+    result = {}
+    for string in document.get("strings", []):
+        address, value = string.get("address"), string.get("value")
+        if type(address) is not int or not isinstance(value, str):
+            continue
+        matches = [(identity_key, address - info["raw"]["address"], string.get("encoding", ""))
+                   for identity_key, info in section_map.items()
+                   if info["raw"]["address"] <= address <
+                   info["raw"]["address"] + info["raw"]["size"] and
+                   info["raw"]["name"] in ("__cstring", "__const")]
+        if len(matches) == 1:
+            identity_key, offset, encoding = matches[0]
+            result[(identity_key, offset)] = {"kind": "string", "encoding": encoding,
+                                               "value": value}
+    return result
+
+
+def _ida_operand_offsets(document):
+    if (document.get("input", {}).get("architecture") != "i386" or
+            document.get("input", {}).get("endianness") != "little"):
+        return {}
+    entries = document.get("extensions", {}).get("ida", {}).get(
+        "instruction_operand_offsets", [])
+    result, duplicates = {}, set()
+    for item in entries:
+        if (not isinstance(item, dict) or type(item.get("address")) is not int or
+                not isinstance(item.get("operands"), list)):
+            continue
+        address = item["address"]
+        if address in result:
+            result.pop(address)
+            duplicates.add(address)
+        elif address not in duplicates:
+            result[address] = item["operands"]
+    return result
+
+
+def _indirect_data_targets(document, paired_symbol_names):
+    symbol_addresses = {}
+    for symbol in document.get("symbols", []):
+        symbol_addresses.setdefault(symbol["name"], []).append(symbol["address"])
+    relocations = {}
+    for relocation in document.get("relocations", []):
+        relocations.setdefault(relocation["address"], []).append(relocation)
+    result = {}
+    for address, entries in relocations.items():
+        if len(entries) != 1:
+            continue
+        relocation = entries[0]
+        name = relocation["target"]
+        symbols = symbol_addresses.get(name, [])
+        if (name not in paired_symbol_names or len(symbols) != 1 or
+                type(relocation["addend"]) is not int):
+            continue
+        result[address] = {"kind": "indirect-symbol", "name": name,
+                           "offset": relocation["addend"] - symbols[0]}
+    return result
+
+
+def _string_target(target, string_targets):
+    if target.get("kind") != "section":
+        return None
+    section, offset = canonical_key(target["section"]), target["offset"]
+    exact = string_targets.get((section, offset))
+    if exact is not None:
+        return exact
+    matches = []
+    # IDA's STRTYPE_C (0) strings are single-byte; preserve an interior
+    # offset so reordered copies of the same literal remain distinguishable.
+    for (candidate_section, start), value in string_targets.items():
+        if candidate_section != section or start >= offset or value.get("encoding") != "0":
+            continue
+        delta = offset - start
+        if delta < len(value["value"]):
+            matches.append((value, delta))
+    if len(matches) != 1:
+        return None
+    value, delta = matches[0]
+    return {**value, "offset": delta}
+
+
+def _data_window_entry(target, data_windows):
+    if target.get("kind") != "section":
+        return None
+    section, offset = canonical_key(target["section"]), target["offset"]
+    matches = [entry for entry in data_windows
+               if entry["section"] == section and entry["offset"] == offset]
+    return matches[0] if len(matches) == 1 else None
+
+
+def _data_window_address_entry(address, data_windows, section_map):
+    if type(address) is not int:
+        return None
+    matches = []
+    for entry in data_windows:
+        info = section_map[entry["section"]]
+        if info["raw"]["address"] + entry["offset"] == address:
+            matches.append(entry)
+    return matches[0] if len(matches) == 1 else None
+
+
+def _same_string_operands(instruction, references, string_targets, symbol_targets=None,
+                          data_windows=None, section_map=None,
+                          indirect_data_targets=None):
+    operands = _normalized_function_operands(instruction)
+    for index in instruction["reference_indexes"]:
+        target = references[index]["target"]
+        if _string_target(target, string_targets) is not None:
+            operands = re.sub(r"\boffset\s+[A-Za-z_$][\w.$?@]*", "offset <string>",
+                              operands, flags=re.IGNORECASE)
+            operands = re.sub(r"\bds:[A-Za-z_$][\w.$?@]*", "ds:<string>",
+                              operands, flags=re.IGNORECASE)
+        entry = (_paired_symbol_entry(target, symbol_targets)
+                 if symbol_targets is not None else None)
+        if entry is not None:
+            aliases = {entry["alias"], re.sub(r"[^A-Za-z0-9_$]", "_", entry["alias"])}
+            for alias in aliases:
+                operands = re.sub(rf"(\bds:|\boffset\s+){re.escape(alias)}(?![\w.$?@])",
+                                  r"\1<symbol>", operands, flags=re.IGNORECASE)
+        data_entry = (_data_window_entry(target, data_windows)
+                      if data_windows is not None else None)
+        if data_entry is not None:
+            alias = data_entry["alias"]
+            if alias:
+                aliases = {alias, re.sub(r"[^A-Za-z0-9_$]", "_", alias)}
+                for alias in aliases:
+                    operands = re.sub(rf"(\bds:|\boffset\s+){re.escape(alias)}(?![\w.$?@])",
+                                      r"\1<data-window>", operands, flags=re.IGNORECASE)
+            else:
+                operands = re.sub(r"\b(offset\s+|ds:)[A-Za-z_$][\w.$?@]*",
+                                  r"\1<data-window>", operands, flags=re.IGNORECASE)
+        if (target.get("kind") == "section" and section_map is not None and
+                indirect_data_targets is not None):
+            info = _section_info(section_map, target["section"])
+            target_address = info["raw"]["address"] + target["offset"]
+            if target_address in indirect_data_targets:
+                operands = re.sub(r"\b(offset\s+|ds:)[A-Za-z_$][\w.$?@]*",
+                                  r"\1<indirect-symbol>", operands,
+                                  flags=re.IGNORECASE)
+    return operands
+
+
 def _actual_instructions(function, section_map, artifact):
     result, inconsistencies = [], []
     key = _printable_function(_function_key(function, section_map))
@@ -399,7 +566,184 @@ def _actual_instructions(function, section_map, artifact):
     return result, inconsistencies
 
 
-def _masked(instruction, actual, section_map):
+def _paired_function_target(target, function_targets):
+    if target.get("kind") != "section":
+        return None
+    section = canonical_key(target["section"])
+    matches = [entry for entry in function_targets
+               if entry["section"] == section and entry["start"] <= target["offset"] < entry["end"]]
+    if len(matches) != 1:
+        return None
+    entry = matches[0]
+    return {"kind": "function", "name": entry["name"],
+            "offset": target["offset"] - entry["start"]}
+
+
+def _paired_symbol_target(target, symbol_targets):
+    if target.get("kind") != "section":
+        return None
+    section, offset = canonical_key(target["section"]), target["offset"]
+    matches = [entry for entry in symbol_targets
+               if entry["section"] == section and entry["offset"] == offset]
+    if len(matches) != 1:
+        return None
+    return {"kind": "symbol", "name": matches[0]["name"]}
+
+
+def _paired_symbol_entry(target, symbol_targets):
+    if target.get("kind") != "section":
+        return None
+    section, offset = canonical_key(target["section"]), target["offset"]
+    matches = [entry for entry in symbol_targets
+               if entry["section"] == section and entry["offset"] == offset]
+    return matches[0] if len(matches) == 1 else None
+
+
+def _symbol_targets(document, section_map):
+    counts = {}
+    for symbol in document.get("symbols", []):
+        counts[symbol["name"]] = counts.get(symbol["name"], 0) + 1
+    result = {}
+    for symbol in document.get("symbols", []):
+        if counts[symbol["name"]] != 1:
+            continue
+        matches = [(key, info) for key, info in section_map.items()
+                   if info["raw"]["name"] == symbol["section"] and
+                   info["raw"]["address"] <= symbol["address"] <
+                   info["raw"]["address"] + info["raw"]["size"]]
+        if len(matches) == 1:
+            section, info = matches[0]
+            result[symbol["name"]] = {"section": section,
+                                      "section_name": info["raw"]["name"],
+                                      "section_occurrence": info["descriptor"]["name_occurrence"],
+                                      "offset": symbol["address"] - info["raw"]["address"],
+                                      "address": symbol["address"],
+                                      "name": symbol["name"], "alias": symbol["name"],
+                                      "generated": re.fullmatch(r"_xxx\.\d+", symbol["name"]) is not None}
+    return result
+
+
+def _paired_symbols(left_symbols, right_symbols):
+    left_targets, right_targets = [], []
+    left_used, right_used = set(), set()
+    for name in set(left_symbols) & set(right_symbols):
+        left_symbol, right_symbol = left_symbols[name], right_symbols[name]
+        if left_symbol["generated"] or right_symbol["generated"]:
+            continue
+        if (left_symbol["section_name"], left_symbol["section_occurrence"]) != (
+                right_symbol["section_name"], right_symbol["section_occurrence"]):
+            continue
+        left_targets.append(left_symbol); right_targets.append(right_symbol)
+        left_used.add((left_symbol["section"], left_symbol["offset"]))
+        right_used.add((right_symbol["section"], right_symbol["offset"]))
+
+    left_addresses, right_addresses = {}, {}
+    for symbol in left_symbols.values():
+        left_addresses.setdefault(symbol["address"], []).append(symbol)
+    for symbol in right_symbols.values():
+        right_addresses.setdefault(symbol["address"], []).append(symbol)
+    for address in set(left_addresses) & set(right_addresses):
+        left_matches, right_matches = left_addresses[address], right_addresses[address]
+        if len(left_matches) != 1 or len(right_matches) != 1:
+            continue
+        left_symbol, right_symbol = left_matches[0], right_matches[0]
+        if ((left_symbol["section_name"], left_symbol["section_occurrence"]) !=
+                (right_symbol["section_name"], right_symbol["section_occurrence"]) or
+                (left_symbol["section"], left_symbol["offset"]) in left_used or
+                (right_symbol["section"], right_symbol["offset"]) in right_used):
+            continue
+        canonical_name = f"@{left_symbol['section_name']}:{address:X}"
+        left_targets.append({**left_symbol, "name": canonical_name})
+        right_targets.append({**right_symbol, "name": canonical_name})
+        left_used.add((left_symbol["section"], left_symbol["offset"]))
+        right_used.add((right_symbol["section"], right_symbol["offset"]))
+    return left_targets, right_targets
+
+
+def _paired_data_windows(left_symbols, right_symbols, left_markers, right_markers,
+                         left_document, right_document, left_map, right_map,
+                         left_artifact, right_artifact):
+    """Pair const objects only when identical bytes end at the same named marker."""
+    left_marker_names = {entry["name"] for entry in left_markers
+                         if not entry["name"].startswith("@")}
+    right_marker_names = {entry["name"] for entry in right_markers
+                          if not entry["name"].startswith("@")}
+    shared_names = left_marker_names & right_marker_names
+    left_data, right_data = [], []
+    for symbols, document, markers, section_map, artifact, output in (
+            (left_symbols, left_document, left_markers, left_map, left_artifact, left_data),
+            (right_symbols, right_document, right_markers, right_map, right_artifact, right_data)):
+        targets = {(symbol["section"], symbol["offset"]): symbol
+                   for symbol in symbols.values()}
+        for reference in document.get("references", []):
+            address = reference.get("target")
+            if type(address) is not int:
+                continue
+            matches = [(key, info) for key, info in section_map.items()
+                       if info["raw"]["name"] == "__const" and
+                       info["raw"]["address"] <= address <
+                       info["raw"]["address"] + info["raw"]["size"]]
+            if len(matches) != 1:
+                continue
+            section, info = matches[0]
+            offset = address - info["raw"]["address"]
+            targets.setdefault((section, offset), {
+                "section": section, "section_name": "__const",
+                "section_occurrence": info["descriptor"]["name_occurrence"],
+                "offset": offset, "alias": None})
+        for symbol in targets.values():
+            if symbol["section_name"] != "__const":
+                continue
+            section = symbol["section"]
+            boundaries = [marker for marker in markers
+                          if marker["name"] in shared_names and
+                          marker["section"] == section and
+                          marker["offset"] > symbol["offset"]]
+            if not boundaries:
+                continue
+            boundary = min(boundaries, key=lambda entry: entry["offset"])
+            info = section_map[section]
+            length = boundary["offset"] - symbol["offset"]
+            start = info["raw"]["offset"] + symbol["offset"]
+            content = artifact.read_at(start, length)
+            if len(content) != length:
+                raise ComparisonError("data window is outside its section")
+            output.append({"section": section, "section_name": symbol["section_name"],
+                           "section_occurrence": symbol["section_occurrence"],
+                           "offset": symbol["offset"],
+                           "alias": symbol["alias"], "marker": boundary["name"],
+                           "length": length, "content": content})
+    right_by_key = {}
+    for entry in right_data:
+        key = (entry["section_name"], entry["section_occurrence"], entry["marker"],
+               entry["length"], entry["content"])
+        right_by_key.setdefault(key, []).append(entry)
+    left_result, right_result = [], []
+    for entry in left_data:
+        key = (entry["section_name"], entry["section_occurrence"], entry["marker"],
+               entry["length"], entry["content"])
+        matches = right_by_key.get(key, [])
+        if len(matches) != 1:
+            continue
+        counterpart = matches[0]
+        if sum((item["section_name"], item["section_occurrence"], item["marker"],
+                item["length"], item["content"]) == key
+               for item in left_data) != 1:
+            continue
+        descriptor = {"kind": "data-window",
+                      "section": {"name": entry["section_name"],
+                                  "name_occurrence": entry["section_occurrence"]},
+                      "marker": entry["marker"], "length": entry["length"],
+                      "sha256": hashlib.sha256(entry["content"]).hexdigest().upper()}
+        left_result.append({**entry, "identity": descriptor})
+        right_result.append({**counterpart, "identity": descriptor})
+    return left_result, right_result
+
+
+def _masked(instruction, actual, section_map, function=None, string_targets=None,
+            function_targets=None, symbol_targets=None, data_windows=None,
+            references=None, ida_operand_offsets=None,
+            indirect_data_targets=None):
     raw = bytearray(actual); occupied = set(); semantics = []
     for relocation in instruction["relocations"]:
         start, width = relocation["field_offset"], relocation["width"]
@@ -409,16 +753,147 @@ def _masked(instruction, actual, section_map):
         if start < 0 or start + width > len(raw): raise ComparisonError("relocation field is outside instruction")
         if indexes & occupied: raise ComparisonError("relocation fields overlap")
         occupied |= indexes; raw[start:start + width] = b"\0" * width
-        semantics.append(_portable(relocation, section_map))
+        semantic = _portable(relocation, section_map)
+        paired_target = (_paired_function_target(relocation["target"], function_targets)
+                         if function_targets is not None else None)
+        if paired_target is not None:
+            semantic["target"] = paired_target
+        string_target = (_string_target(relocation["target"], string_targets)
+                         if string_targets is not None else None)
+        if string_target is not None and paired_target is None:
+            semantic["target"] = string_target
+            section_info = _section_info(section_map, relocation["target"]["section"])
+            absolute_target = (section_info["raw"]["address"] +
+                               relocation["target"]["offset"])
+            if semantic.get("addend") == absolute_target:
+                semantic["addend"] = 0
+        symbol_target = (_paired_symbol_target(relocation["target"], symbol_targets)
+                         if symbol_targets is not None and paired_target is None and
+                         string_target is None else None)
+        if symbol_target is not None:
+            semantic["target"] = symbol_target
+            section_info = _section_info(section_map, relocation["target"]["section"])
+            absolute_target = section_info["raw"]["address"] + relocation["target"]["offset"]
+            if semantic.get("addend") == absolute_target:
+                semantic["addend"] = 0
+        data_target = (_data_window_entry(relocation["target"], data_windows)
+                       if data_windows is not None and paired_target is None and
+                       string_target is None and symbol_target is None else None)
+        if (data_target is None and data_windows is not None and
+                paired_target is None and string_target is None and symbol_target is None):
+            data_target = _data_window_address_entry(semantic.get("addend"),
+                                                     data_windows, section_map)
+        if data_target is not None:
+            semantic["target"] = data_target["identity"]
+            section_info = section_map[data_target["section"]]
+            absolute_target = section_info["raw"]["address"] + data_target["offset"]
+            if semantic.get("addend") == absolute_target:
+                semantic["addend"] = 0
+        target = relocation["target"]
+        if (instruction["mnemonic"] == "call" and relocation["kind"] == "ida-off32-32" and
+                relocation["field_offset"] == 1 and relocation["width"] == 4 and
+                target.get("kind") == "section" and
+                _section_info(section_map, target["section"])["raw"]["name"] == "UNDEF"):
+            semantic["addend"] = 0
+        if (paired_target is not None and instruction["mnemonic"] == "call" and
+                relocation["kind"] == "ida-off32-32" and
+                relocation["field_offset"] == 1 and relocation["width"] == 4):
+            semantic["addend"] = 0
+        if function is not None:
+            function_range = function["range"]
+            if (target.get("kind") == "section" and
+                    canonical_key(target["section"]) == canonical_key(function_range["section"]) and
+                    function_range["start"] <= target["offset"] < function_range["end"]):
+                semantic["target"] = _function_relative(target, function)
+                section_info = _section_info(section_map, target["section"])
+                section_address = section_info["raw"]["address"]
+                if semantic.get("addend") == section_address + target["offset"]:
+                    semantic["addend"] -= section_address + function_range["start"]
+        semantics.append(semantic)
+    if references is not None and ida_operand_offsets is not None:
+        info = _section_info(section_map, instruction["location"]["section"])
+        address = info["raw"]["address"] + instruction["location"]["offset"]
+        operands = ida_operand_offsets.get(address, [])
+        for index in instruction["reference_indexes"]:
+            if type(index) is not int or not 0 <= index < len(references):
+                raise ComparisonError("instruction reference index is invalid")
+            reference = references[index]
+            target = reference["target"]
+            if reference["kind"] != "data" or target.get("kind") != "section":
+                continue
+            # Mask only an IDA-identified i386 absolute operand that encodes
+            # a uniquely paired string or indirect-symbol target. The paired
+            # reference identity is compared separately by _referenced.
+            recognized = (string_targets is not None and
+                          _string_target(target, string_targets) is not None)
+            info = _section_info(section_map, target["section"])
+            absolute_target = info["raw"]["address"] + target["offset"]
+            recognized = recognized or (indirect_data_targets is not None and
+                                         absolute_target in indirect_data_targets)
+            if not recognized:
+                continue
+            if (instruction["mnemonic"] != "mov" or
+                    re.search(r",\s*(?:(?:byte|word|dword|qword)\s+ptr\s+)?ds:",
+                              instruction["normalized_operands"],
+                              flags=re.IGNORECASE) is None):
+                continue
+            if not 0 <= absolute_target <= 0xFFFFFFFF:
+                continue
+            matching_fields = set()
+            for operand in operands:
+                field = operand.get("offset") if isinstance(operand, dict) else None
+                if type(field) is not int or field < 0 or field + 4 > len(raw):
+                    continue
+                indexes = set(range(field, field + 4))
+                if indexes & occupied:
+                    continue
+                if int.from_bytes(raw[field:field + 4], "little") == absolute_target:
+                    matching_fields.add(field)
+            if len(matching_fields) == 1:
+                field = next(iter(matching_fields))
+                occupied.update(range(field, field + 4))
+                raw[field:field + 4] = b"\0" * 4
     return bytes(raw), semantics
 
 
-def _referenced(instruction, references, section_map):
+def _referenced(instruction, references, section_map, function=None, string_targets=None,
+                function_targets=None, symbol_targets=None, data_windows=None,
+                indirect_data_targets=None):
     values = []
     for index in instruction["reference_indexes"]:
         if type(index) is not int or index < 0 or index >= len(references):
             raise ComparisonError("instruction reference index is invalid")
-        values.append(_portable(references[index], section_map))
+        reference = references[index]
+        if function is None:
+            values.append(_portable(reference, section_map))
+            continue
+        target = reference["target"]
+        string_target = (_string_target(target, string_targets)
+                         if string_targets is not None else None)
+        paired_target = (_paired_function_target(target, function_targets)
+                         if function_targets is not None else None)
+        function_range = function["range"]
+        if (target.get("kind") == "section" and
+                canonical_key(target["section"]) == canonical_key(function_range["section"]) and
+                function_range["start"] <= target["offset"] < function_range["end"]):
+            target = _function_relative(target, function)
+        elif paired_target is not None:
+            target = paired_target
+        elif string_target is not None:
+            target = string_target
+        elif symbol_targets is not None and _paired_symbol_target(target, symbol_targets) is not None:
+            target = _paired_symbol_target(target, symbol_targets)
+        elif data_windows is not None and _data_window_entry(target, data_windows) is not None:
+            target = _data_window_entry(target, data_windows)["identity"]
+        elif target.get("kind") == "section" and indirect_data_targets is not None:
+            info = _section_info(section_map, target["section"])
+            target = indirect_data_targets.get(
+                info["raw"]["address"] + target["offset"],
+                _portable(target, section_map))
+        else:
+            target = _portable(target, section_map)
+        values.append({"source": _function_relative(reference["source"], function),
+                       "target": target, "kind": reference["kind"]})
     return sorted(values, key=canonical_key)
 
 
@@ -647,16 +1122,31 @@ def _unequal_range_result(pair, left_offset, left_size, right_offset, right_size
 
 
 def _compare_name_paired_instructions(left_instructions, right_instructions,
-                                      left_map, right_map, printable, section):
-    def stream(instructions, section_map):
+                                      left_map, right_map, left_function, right_function,
+                                      printable, section, left_references,
+                                      right_references, left_string_targets,
+                                      right_string_targets, left_operand_offsets,
+                                      right_operand_offsets,
+                                      left_indirect_data_targets,
+                                      right_indirect_data_targets):
+    def stream(instructions, section_map, function, references, string_targets,
+               operand_offsets, indirect_targets):
         raw = bytearray(); masked = bytearray()
         for instruction, actual, _ in instructions:
             raw.extend(actual)
-            masked.extend(_masked(instruction, actual, section_map)[0])
+            masked.extend(_masked(
+                instruction, actual, section_map, function,
+                string_targets=string_targets, references=references,
+                ida_operand_offsets=operand_offsets,
+                indirect_data_targets=indirect_targets)[0])
         return bytes(raw), bytes(masked)
 
-    left_raw, left_masked = stream(left_instructions, left_map)
-    right_raw, right_masked = stream(right_instructions, right_map)
+    left_raw, left_masked = stream(left_instructions, left_map, left_function,
+                                   left_references, left_string_targets,
+                                   left_operand_offsets, left_indirect_data_targets)
+    right_raw, right_masked = stream(right_instructions, right_map, right_function,
+                                     right_references, right_string_targets,
+                                     right_operand_offsets, right_indirect_data_targets)
     evidence = None
     if left_masked != right_masked:
         width = max(len(left_masked), len(right_masked))
@@ -680,11 +1170,19 @@ def _compare_name_paired_instructions(left_instructions, right_instructions,
 
 
 def _compare_function_range(left_function, right_function, left_instructions, right_instructions,
-                            left_map, right_map, pair, printable, pairing):
+                            left_map, right_map, pair, printable, pairing,
+                            left_references, right_references, left_string_targets,
+                            right_string_targets, left_operand_offsets,
+                            right_operand_offsets, left_indirect_data_targets,
+                            right_indirect_data_targets):
     if pairing == "name":
         return _compare_name_paired_instructions(
-            left_instructions, right_instructions, left_map, right_map, printable,
-            _section_tag(left_function["range"]["section"], left_map))
+            left_instructions, right_instructions, left_map, right_map,
+            left_function, right_function, printable,
+            _section_tag(left_function["range"]["section"], left_map),
+            left_references, right_references, left_string_targets,
+            right_string_targets, left_operand_offsets, right_operand_offsets,
+            left_indirect_data_targets, right_indirect_data_targets)
     left_info = _section_info(left_map, left_function["range"]["section"])
     right_info = _section_info(right_map, right_function["range"]["section"])
     if left_info["zero"] or right_info["zero"]:
@@ -734,14 +1232,14 @@ def _compare_function_range(left_function, right_function, left_instructions, ri
 
 
 def _name_pairs(lm, rm):
-    """Pair offset-unmatched functions by a name unique among the unmatched on both sides."""
+    """Pair functions by names unique across each full image."""
     def index(keys, functions):
         result = {}
         for key in keys:
             for name in functions[key]["aliases"]: result.setdefault(name, []).append(key)
         return result
 
-    left_names = index(set(lm) - set(rm), lm); right_names = index(set(rm) - set(lm), rm)
+    left_names = index(set(lm), lm); right_names = index(set(rm), rm)
     candidates = sorted({(left_names[name][0], right_names[name][0])
                          for name in set(left_names) & set(right_names)
                          if len(left_names[name]) == 1 and len(right_names[name]) == 1})
@@ -753,13 +1251,30 @@ def _name_pairs(lm, rm):
             if len(left_partners[left_key]) == 1 and len(right_partners[right_key]) == 1}
 
 
-def _compare_functions(left, right, left_map, right_map, pair, categories):
+def _compare_functions(left, right, left_map, right_map, left_string_targets,
+                      right_string_targets, left_symbol_targets, right_symbol_targets,
+                      left_data_windows, right_data_windows, left_operand_offsets,
+                      right_operand_offsets, left_indirect_data_targets,
+                      right_indirect_data_targets, pair, categories):
     lm = {_function_key(item, left_map): item for item in left["functions"]}
     rm = {_function_key(item, right_map): item for item in right["functions"]}
     name_pairs = _name_pairs(lm, rm); consumed = set(name_pairs.values())
+    left_function_targets, right_function_targets = [], []
+    for left_key, right_key in name_pairs.items():
+        left_function, right_function = lm[left_key], rm[right_key]
+        shared_names = sorted(set(left_function["aliases"]) & set(right_function["aliases"]))
+        if not shared_names:
+            continue
+        for function, section_map, output in (
+                (left_function, left_map, left_function_targets),
+                (right_function, right_map, right_function_targets)):
+            function_range = function["range"]
+            output.append({"section": canonical_key(function_range["section"]),
+                           "start": function_range["start"], "end": function_range["end"],
+                           "name": shared_names[0]})
     overlaps = _overlaps(left["functions"], left_map) | _overlaps(right["functions"], right_map); records = []
     for key in sorted(set(lm) | set(rm)):
-        if key in consumed: continue
+        if key in consumed and key not in name_pairs: continue
         finding_before = _reason_snapshot(categories)
         a, b = lm.get(key), rm.get(key); printable = _printable_function(key); reasons = []
         right_key = name_pairs.get(key, key)
@@ -783,12 +1298,40 @@ def _compare_functions(left, right, left_map, right_map, pair, categories):
             if len(ai) != len(bi): reasons.append("instruction shape differs")
             else:
                 for (ia, ab, info_a), (ib, bb, info_b) in zip(ai, bi):
-                    if _portable(ia["location"], left_map) != _portable(ib["location"], right_map):
+                    if pairing == "name":
+                        left_location = _function_relative(ia["location"], a)
+                        right_location = _function_relative(ib["location"], b)
+                    else:
+                        left_location = _portable(ia["location"], left_map)
+                        right_location = _portable(ib["location"], right_map)
+                    if left_location != right_location:
                         reasons.append("instruction layout differs"); continue
-                    am, ar = _masked(ia, ab, left_map); bm, br = _masked(ib, bb, right_map)
+                    am, ar = _masked(ia, ab, left_map, a if pairing == "name" else None,
+                                     left_string_targets if pairing == "name" else None,
+                                     left_function_targets if pairing == "name" else None,
+                                     left_symbol_targets if pairing == "name" else None,
+                                     left_data_windows if pairing == "name" else None,
+                                     left["references"] if pairing == "name" else None,
+                                     left_operand_offsets if pairing == "name" else None,
+                                     left_indirect_data_targets if pairing == "name" else None)
+                    bm, br = _masked(ib, bb, right_map, b if pairing == "name" else None,
+                                     right_string_targets if pairing == "name" else None,
+                                     right_function_targets if pairing == "name" else None,
+                                     right_symbol_targets if pairing == "name" else None,
+                                     right_data_windows if pairing == "name" else None,
+                                     right["references"] if pairing == "name" else None,
+                                     right_operand_offsets if pairing == "name" else None,
+                                     right_indirect_data_targets if pairing == "name" else None)
                     start = info_a["raw"]["offset"] + ia["location"]["offset"]
-                    if (ia["mnemonic"] != ib["mnemonic"] or
-                            ia["normalized_operands"] != ib["normalized_operands"]):
+                    operands_a = (_same_string_operands(
+                        ia, left["references"], left_string_targets, left_symbol_targets,
+                        left_data_windows, left_map, left_indirect_data_targets)
+                        if pairing == "name" else ia["normalized_operands"])
+                    operands_b = (_same_string_operands(
+                        ib, right["references"], right_string_targets, right_symbol_targets,
+                        right_data_windows, right_map, right_indirect_data_targets)
+                        if pairing == "name" else ib["normalized_operands"])
+                    if ia["mnemonic"] != ib["mnemonic"] or operands_a != operands_b:
                         reasons.append("instruction semantics differ")
                         _add(categories, _instruction_evidence("instruction-bytes", "code",
                              "instruction semantics differ", printable, _section_tag(ia["location"]["section"], left_map),
@@ -798,16 +1341,44 @@ def _compare_functions(left, right, left_map, right_map, pair, categories):
                              "relocation field bytes differ", printable, _section_tag(ia["location"]["section"], left_map),
                              start, start + len(ab), ab.hex().upper(), bb.hex().upper()))
                     if ar != br: reasons.append("relocation target semantics differ")
-                    if _referenced(ia, left["references"], left_map) != _referenced(ib, right["references"], right_map):
+                    left_references = _referenced(
+                        ia, left["references"], left_map, a if pairing == "name" else None,
+                        left_string_targets if pairing == "name" else None,
+                        left_function_targets if pairing == "name" else None,
+                        left_symbol_targets if pairing == "name" else None,
+                        left_data_windows if pairing == "name" else None,
+                        left_indirect_data_targets if pairing == "name" else None)
+                    right_references = _referenced(
+                        ib, right["references"], right_map, b if pairing == "name" else None,
+                        right_string_targets if pairing == "name" else None,
+                        right_function_targets if pairing == "name" else None,
+                        right_symbol_targets if pairing == "name" else None,
+                        right_data_windows if pairing == "name" else None,
+                        right_indirect_data_targets if pairing == "name" else None)
+                    if left_references != right_references:
                         reasons.append("instruction references differ")
-            cfg_equal = (_portable(a["blocks"], left_map) == _portable(b["blocks"], right_map) and
-                         _portable(a["edges"], left_map) == _portable(b["edges"], right_map))
+            if pairing == "name":
+                cfg_equal = (_function_relative(a["blocks"], a) == _function_relative(b["blocks"], b) and
+                             _function_relative(a["edges"], a) == _function_relative(b["edges"], b))
+            else:
+                cfg_equal = (_portable(a["blocks"], left_map) == _portable(b["blocks"], right_map) and
+                             _portable(a["edges"], left_map) == _portable(b["edges"], right_map))
             if not cfg_equal:
                 reasons.append("cfg differs")
-            calls_equal = _canonical_calls(a["calls"], left_map) == _canonical_calls(b["calls"], right_map)
+            calls_equal = (_canonical_calls(a["calls"], left_map, a if pairing == "name" else None,
+                                            left_function_targets if pairing == "name" else None,
+                                            left_symbol_targets if pairing == "name" else None) ==
+                           _canonical_calls(b["calls"], right_map, b if pairing == "name" else None,
+                                            right_function_targets if pairing == "name" else None,
+                                            right_symbol_targets if pairing == "name" else None))
             if not calls_equal: reasons.append("calls differ")
             range_result = _compare_function_range(a, b, ai, bi, left_map, right_map, pair, printable,
-                                                   pairing)
+                                                   pairing, left["references"],
+                                                   right["references"], left_string_targets,
+                                                   right_string_targets, left_operand_offsets,
+                                                   right_operand_offsets,
+                                                   left_indirect_data_targets,
+                                                   right_indirect_data_targets)
             if range_result["masked_equal"]:
                 for candidate in relocation_candidates:
                     _add(categories, candidate)
@@ -841,12 +1412,29 @@ def _compare_functions(left, right, left_map, right_map, pair, categories):
     return records
 
 
-def _canonical_calls(calls, section_map):
+def _canonical_calls(calls, section_map, function=None, function_targets=None, symbol_targets=None):
     result = []
     for call in calls:
         target = _portable(call["target"], section_map)
+        paired_target = (_paired_function_target(call["target"], function_targets)
+                         if function_targets is not None else None)
+        if paired_target is not None:
+            target = paired_target
+        elif symbol_targets is not None:
+            paired_symbol = _paired_symbol_target(call["target"], symbol_targets)
+            if paired_symbol is not None:
+                target = paired_symbol
+        if function is not None:
+            target_value = call["target"]
+            function_range = function["range"]
+            if (target_value.get("kind") == "section" and
+                    canonical_key(target_value["section"]) == canonical_key(function_range["section"]) and
+                    function_range["start"] <= target_value["offset"] < function_range["end"]):
+                target = _function_relative(target_value, function)
         concrete = target.get("kind") in ("section", "unmapped")
-        result.append({"source": _portable(call["source"], section_map), "target": target,
+        source = (_function_relative(call["source"], function) if function is not None
+                  else _portable(call["source"], section_map))
+        result.append({"source": source, "target": target,
                        "external_name": None if concrete else (target.get("name") or call["name"])})
     return sorted(result, key=canonical_key)
 
@@ -972,8 +1560,30 @@ def compare_artifacts(reference_path, rebuilt_path, reference_analysis, rebuilt_
         left_infos, left_ranges = _section_infos(reference_analysis, pair.left)
         right_infos, right_ranges = _section_infos(rebuilt_analysis, pair.right)
         left_map = _normalized_section_map(left, left_infos); right_map = _normalized_section_map(right, right_infos)
+        left_operand_offsets = _ida_operand_offsets(reference_analysis)
+        right_operand_offsets = _ida_operand_offsets(rebuilt_analysis)
+        left_string_targets = _string_targets(reference_analysis, left_map)
+        right_string_targets = _string_targets(rebuilt_analysis, right_map)
+        left_symbols = _symbol_targets(reference_analysis, left_map)
+        right_symbols = _symbol_targets(rebuilt_analysis, right_map)
+        left_symbol_targets, right_symbol_targets = _paired_symbols(left_symbols, right_symbols)
+        paired_symbol_names = {item["name"] for item in left_symbol_targets}
+        left_indirect_data_targets = _indirect_data_targets(
+            reference_analysis, paired_symbol_names)
+        right_indirect_data_targets = _indirect_data_targets(
+            rebuilt_analysis, paired_symbol_names)
+        left_data_windows, right_data_windows = _paired_data_windows(
+            left_symbols, right_symbols, left_symbol_targets, right_symbol_targets,
+            reference_analysis, rebuilt_analysis, left_map, right_map, pair.left, pair.right)
         categories = _CategoryStore()
-        functions = _compare_functions(left, right, left_map, right_map, pair, categories)
+        functions = _compare_functions(left, right, left_map, right_map,
+                                       left_string_targets, right_string_targets,
+                                       left_symbol_targets, right_symbol_targets,
+                                       left_data_windows, right_data_windows,
+                                       left_operand_offsets, right_operand_offsets,
+                                       left_indirect_data_targets,
+                                       right_indirect_data_targets,
+                                       pair, categories)
         sections = []
         for index in range(max(len(left_infos), len(right_infos))):
             finding_before = _reason_snapshot(categories)

@@ -1008,7 +1008,9 @@ def test_exporter_collects_and_sorts_ida_metadata(tmp_path):
             ],
             Heads=lambda: [0x1001, 0x1000],
             CodeRefsFrom=lambda address, flow: [0x1001] if address == 0x1000 else [],
-            DataRefsFrom=lambda address: [0x2000] if address == 0x1001 else [],
+            DataRefsFrom=lambda address: (
+                [0x2000, 0xFF00000000000380] if address == 0x1001 else []
+            ),
             Functions=lambda: [0x1000, 0x2000],
             FuncItems=lambda address: [0x1001, 0x1000],
             Strings=ConfiguredStrings,
@@ -1053,6 +1055,10 @@ def test_exporter_collects_and_sorts_ida_metadata(tmp_path):
         0x1000, 0x1000, 0x1001, 0x1001, 0x1001, 0x1001
     ]
     assert first["imports"] == [{"name": "libSystem:_printf", "address": 0x2000}]
+    assert first["references"] == [
+        {"address": 0x1000, "target": 0x1001, "kind": "code"},
+        {"address": 0x1001, "target": 0x2000, "kind": "data"},
+    ]
     assert first["relocations"] == [
         {"address": 0x1000, "kind": "ida-off32-32", "target": "_printf", "addend": 7},
         {

@@ -1,1393 +1,1405 @@
 {
-  "schema_version": "ledger-v1",
-  "reference_sha256": "6D08A58A44D5797DA0DD626BBEB705E3621910C99120486F69BD623DE9E61D9A",
-  "rebuilt_sha256": null,
   "entries": [
     {
       "address": 0,
-      "size": 1664,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
       "names": [
         "-[ATI initFromDeviceDescription:]"
       ],
-      "source_path": null,
-      "source_line": null,
-      "status": "unexamined",
-      "analyzer_agreement": {
-        "analyzers": [
-          "IDA"
-        ],
-        "status": "agreed",
-        "reasons": [
-          "IDA is the only analyzer enabled for this reference profile"
-        ]
-      },
-      "artifacts": [],
-      "reason": null,
-      "reviewer": null
+      "reason": "Reference IDA confirms initializer control flow and the 136-byte display-info copy. Current source now expresses the reference copy as cld; rep movsl with EDI/ESI/ECX bindings. The last candidate binary predates that source correction; rebuilt instruction parity remains unverified.",
+      "reviewer": "Codex",
+      "size": 1664,
+      "source_line": 80,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATIRageDisplayDriver.m",
+      "status": "control-flow-confirmed"
     },
     {
       "address": 1664,
-      "size": 1632,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
       "names": [
         "-[ATI fixDeviceDescriptionForPCI:]"
       ],
-      "source_path": null,
-      "source_line": null,
-      "status": "unexamined",
-      "analyzer_agreement": {
-        "analyzers": [
-          "IDA"
-        ],
-        "status": "agreed",
-        "reasons": [
-          "IDA is the only analyzer enabled for this reference profile"
-        ]
-      },
-      "artifacts": [],
-      "reason": null,
-      "reviewer": null
+      "reason": "Full IDA 9.4 review of waitidle33 confirms PCI BAR probe uses bar OR mask, restores original values, classifies memory and port ranges, preserves reservation/count behavior, applies framebuffer override and reprograms BARs on success. Remaining byte differences are compiler layout/register choices.",
+      "reviewer": "Codex",
+      "size": 1632,
+      "source_line": 229,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATIRageDisplayDriver.m",
+      "status": "control-flow-confirmed"
     },
     {
       "address": 3296,
-      "size": 304,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
       "names": [
         "-[ATI getQueryData]"
       ],
-      "source_path": null,
-      "source_line": null,
-      "status": "unexamined",
-      "analyzer_agreement": {
-        "analyzers": [
-          "IDA"
-        ],
-        "status": "agreed",
-        "reasons": [
-          "IDA is the only analyzer enabled for this reference profile"
-        ]
-      },
-      "artifacts": [],
-      "reason": null,
-      "reviewer": null
+      "reason": "Full IDA 9.4 instruction review matches the source allocation, query and cleanup paths, return values, and relative control flow. Function bytes match after relocation masking; placement is the remaining difference.",
+      "reviewer": "Codex",
+      "size": 304,
+      "source_line": 395,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATIRageDisplayDriver.m",
+      "status": "control-flow-confirmed"
     },
     {
       "address": 3600,
-      "size": 144,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
       "names": [
         "-[ATI parseModeString:]"
       ],
-      "source_path": null,
-      "source_line": null,
-      "status": "unexamined",
-      "analyzer_agreement": {
-        "analyzers": [
-          "IDA"
-        ],
-        "status": "agreed",
-        "reasons": [
-          "IDA is the only analyzer enabled for this reference profile"
-        ]
-      },
-      "artifacts": [],
-      "reason": null,
-      "reviewer": null
+      "reason": "IDA 9.4 review confirms the selected mode is stored; negative selection logs and returns -1; valid selection returns 0 when isModeValid succeeds; otherwise it logs the returned error and returns -1.",
+      "reviewer": "Codex",
+      "size": 144,
+      "source_line": 429,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATIRageDisplayDriver.m",
+      "status": "control-flow-confirmed"
     },
     {
       "address": 3744,
-      "size": 540,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
       "names": [
         "-[ATI updateModeList]"
       ],
-      "source_path": null,
-      "source_line": null,
-      "status": "unexamined",
-      "analyzer_agreement": {
-        "analyzers": [
-          "IDA"
-        ],
-        "status": "agreed",
-        "reasons": [
-          "IDA is the only analyzer enabled for this reference profile"
-        ]
-      },
-      "artifacts": [],
-      "reason": null,
-      "reviewer": null
+      "reason": "Full IDA review confirms RGBx/BGRx/xRGB/xBGR recognition, logging only recognized values, string release, exact per-mode framebuffer assignment, gamma flag update, 24-bit encoding selection, unavailable-flag reset and VRAM requirement comparison. String labels differ by pool ordering, but resolved literal contents match source.",
+      "reviewer": "Codex",
+      "size": 540,
+      "source_line": 450,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATIRageDisplayDriver.m",
+      "status": "control-flow-confirmed"
     },
     {
       "address": 4284,
-      "size": 136,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
       "names": [
         "-[ATI isModeValid:]"
       ],
-      "source_path": null,
-      "source_line": null,
-      "status": "unexamined",
-      "analyzer_agreement": {
-        "analyzers": [
-          "IDA"
-        ],
-        "status": "agreed",
-        "reasons": [
-          "IDA is the only analyzer enabled for this reference profile"
-        ]
-      },
-      "artifacts": [],
-      "reason": null,
-      "reviewer": null
+      "reason": "Full IDA 9.4 review matches every mode-validity branch and return value. Corrected source to compare signed mode against signed mode count; fresh i386 output now uses the reference signed `jg` bound check. Remaining CFG differences are later branch layout.",
+      "reviewer": "Codex",
+      "size": 136,
+      "source_line": 505,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATIRageDisplayDriver.m",
+      "status": "control-flow-confirmed"
     },
     {
       "address": 4420,
-      "size": 98,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
       "names": [
         "-[ATI verifyMemoryMap]"
       ],
-      "source_path": null,
-      "source_line": null,
-      "status": "unexamined",
-      "analyzer_agreement": {
-        "analyzers": [
-          "IDA"
-        ],
-        "status": "agreed",
-        "reasons": [
-          "IDA is the only analyzer enabled for this reference profile"
-        ]
-      },
-      "artifacts": [],
-      "reason": null,
-      "reviewer": null
+      "reason": "IDA 9.4 full review confirms save 64 bytes, write indices 0..15, verify each index, return 0 immediately on mismatch without restore, and restore saved bytes/return 1 only after full success.",
+      "reviewer": "Codex",
+      "size": 98,
+      "source_line": 532,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATIRageDisplayDriver.m",
+      "status": "control-flow-confirmed"
     },
     {
       "address": 4520,
-      "size": 141,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
       "names": [
         "-[ATI free]"
       ],
-      "source_path": null,
-      "source_line": null,
-      "status": "unexamined",
-      "analyzer_agreement": {
-        "analyzers": [
-          "IDA"
-        ],
-        "status": "agreed",
-        "reasons": [
-          "IDA is the only analyzer enabled for this reference profile"
-        ]
-      },
-      "artifacts": [],
-      "reason": null,
-      "reviewer": null
+      "reason": "Full IDA 9.4 instruction review confirms source behavior and complete relative control flow; function bytes match after relocation masking. Remaining findings are absolute placement/call/layout.",
+      "reviewer": "Codex",
+      "size": 141,
+      "source_line": 550,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATIRageDisplayDriver.m",
+      "status": "control-flow-confirmed"
     },
     {
       "address": 4664,
-      "size": 292,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
       "names": [
         "-[ATI enterLinearMode]"
       ],
-      "source_path": null,
-      "source_line": null,
-      "status": "unexamined",
-      "analyzer_agreement": {
-        "analyzers": [
-          "IDA"
-        ],
-        "status": "agreed",
-        "reasons": [
-          "IDA is the only analyzer enabled for this reference profile"
-        ]
-      },
-      "artifacts": [],
-      "reason": null,
-      "reviewer": null
+      "reason": "Full IDA 9.4 review confirms all early exits, BIOS calls, error logging, state mutations and cleanup paths match source. Differences are static-copy lowering, register allocation and block layout. Gets display info, skips if already linear, enables aperture, computes depth/color space/gamma/pitch, sets CRTC mode, logs errors, and on success initializes engine, marks state, clears VRAM and sets gamma.",
+      "reviewer": "Codex",
+      "size": 292,
+      "source_line": 561,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATIRageDisplayDriver.m",
+      "status": "control-flow-confirmed"
     },
     {
       "address": 4956,
-      "size": 252,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
       "names": [
         "-[ATI revertToVGAMode]"
       ],
-      "source_path": null,
-      "source_line": null,
-      "status": "unexamined",
-      "analyzer_agreement": {
-        "analyzers": [
-          "IDA"
-        ],
-        "status": "agreed",
-        "reasons": [
-          "IDA is the only analyzer enabled for this reference profile"
-        ]
-      },
-      "artifacts": [],
-      "reason": null,
-      "reviewer": null
+      "reason": "Full IDA 9.4 review confirms all early exits, BIOS calls, error logging, state mutations and cleanup paths match source. Differences are static-copy lowering, register allocation and block layout. Copies the 30-byte VGA CRTC record, requests VGA CRTC and VGA modes, logs either error, then on VGA success frees transfer table and marks VGA state/engine stopped.",
+      "reviewer": "Codex",
+      "size": 252,
+      "source_line": 596,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATIRageDisplayDriver.m",
+      "status": "control-flow-confirmed"
     },
     {
       "address": 5208,
-      "size": 52,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [
+        "tools/binrecon/out/drvATIRage-i386-compare/native-20261003-v30/published/analysis-reference-ida.json",
+        "tools/binrecon/out/drvATIRage-i386-compare/native-20261003-v30/published/analysis-rebuilt-ida.json",
+        "tools/binrecon/out/drvATIRage-i386-compare/native-20261003-v30/published/comparison-ida.json"
+      ],
       "names": [
         "_waitForFIFO"
       ],
-      "source_path": null,
-      "source_line": null,
-      "status": "unexamined",
-      "analyzer_agreement": {
-        "analyzers": [
-          "IDA"
-        ],
-        "status": "agreed",
-        "reasons": [
-          "IDA is the only analyzer enabled for this reference profile"
-        ]
-      },
-      "artifacts": [],
-      "reason": null,
-      "reviewer": null
+      "reason": "IDA 9.4 review confirms the reference computes 0x8000 >> count, performs the initial FIFO check, then polls until occupancy is at or below the threshold. It leaves the threshold in EAX on return; all callers ignore it. Current source returns the threshold and uses the reference-shaped check/do-while poll. Native v30 confirms the intended control flow, but the body is 60 bytes versus 52 and compiler register/layout differences remain. Whole-ledger hash remains bound to v33; this per-function follow-up is recorded separately.",
+      "reviewer": "Codex",
+      "size": 52,
+      "source_line": 623,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATIRageDisplayDriver.m",
+      "status": "control-flow-confirmed"
     },
     {
       "address": 5260,
-      "size": 73,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [
+        "tools/binrecon/out/drvATIRage-i386-compare/native-20261003-v31/published/analysis-reference-ida.json",
+        "tools/binrecon/out/drvATIRage-i386-compare/native-20261003-v31/published/analysis-rebuilt-ida.json",
+        "tools/binrecon/out/drvATIRage-i386-compare/native-20261003-v31/published/comparison-ida.json"
+      ],
       "names": [
         "_waitForIdle"
       ],
-      "source_path": null,
-      "source_line": null,
-      "status": "unexamined",
-      "analyzer_agreement": {
-        "analyzers": [
-          "IDA"
-        ],
-        "status": "agreed",
-        "reasons": [
-          "IDA is the only analyzer enabled for this reference profile"
-        ]
-      },
-      "artifacts": [],
-      "reason": null,
-      "reviewer": null
+      "reason": "IDA 9.4 review confirms the FIFO wait, GUI busy-bit loop, one-microsecond delay, post-increment timeout, timeout log, and both return paths. Native v31 uses a volatile one-bit status view at the GUI-status offset and pins its base to EAX. IDA confirms base-pointer and return flow; rebuilt code loads the byte into DL and tests DL instead of using the reference direct memory test, leaving a 75-byte body versus 73. The whole-ledger hash remains bound to v33; this per-function follow-up is recorded separately.",
+      "reviewer": "Codex",
+      "size": 73,
+      "source_line": 646,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATIRageDisplayDriver.m",
+      "status": "control-flow-confirmed"
     },
     {
       "address": 5336,
-      "size": 322,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
       "names": [
         "_doBlit"
       ],
-      "source_path": null,
-      "source_line": null,
-      "status": "unexamined",
-      "analyzer_agreement": {
-        "analyzers": [
-          "IDA"
-        ],
-        "status": "agreed",
-        "reasons": [
-          "IDA is the only analyzer enabled for this reference profile"
-        ]
-      },
-      "artifacts": [],
-      "reason": null,
-      "reviewer": null
+      "reason": "Full IDA review confirms overlap-safe horizontal/vertical traversal, forward fallback, source/destination endpoint adjustments, command-bit preservation, packed source/destination coordinates and dimensions, FIFO waits, exact saved-register restoration and return behavior.",
+      "reviewer": "Codex",
+      "size": 322,
+      "source_line": 679,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATIRageDisplayDriver.m",
+      "status": "control-flow-confirmed"
     },
     {
       "address": 5660,
-      "size": 67,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
       "names": [
         "-[ATI showCursor:frame:token:]"
       ],
-      "source_path": null,
-      "source_line": null,
-      "status": "unexamined",
-      "analyzer_agreement": {
-        "analyzers": [
-          "IDA"
-        ],
-        "status": "agreed",
-        "reasons": [
-          "IDA is the only analyzer enabled for this reference profile"
-        ]
-      },
-      "artifacts": [],
-      "reason": null,
-      "reviewer": null
+      "reason": "Full IDA 9.4 instruction review confirms source behavior and complete relative control flow; function bytes match after relocation masking. Remaining findings are absolute placement/call/layout.",
+      "reviewer": "Codex",
+      "size": 67,
+      "source_line": 753,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATIRageDisplayDriver.m",
+      "status": "control-flow-confirmed"
     },
     {
       "address": 5728,
-      "size": 67,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
       "names": [
         "-[ATI moveCursor:frame:token:]"
       ],
-      "source_path": null,
-      "source_line": null,
-      "status": "unexamined",
-      "analyzer_agreement": {
-        "analyzers": [
-          "IDA"
-        ],
-        "status": "agreed",
-        "reasons": [
-          "IDA is the only analyzer enabled for this reference profile"
-        ]
-      },
-      "artifacts": [],
-      "reason": null,
-      "reviewer": null
+      "reason": "Full IDA 9.4 instruction review confirms source behavior and complete relative control flow; function bytes match after relocation masking. Remaining findings are absolute placement/call/layout.",
+      "reviewer": "Codex",
+      "size": 67,
+      "source_line": 759,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATIRageDisplayDriver.m",
+      "status": "control-flow-confirmed"
     },
     {
       "address": 5796,
-      "size": 57,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
       "names": [
         "-[ATI hideCursor:]"
       ],
-      "source_path": null,
-      "source_line": null,
-      "status": "unexamined",
-      "analyzer_agreement": {
-        "analyzers": [
-          "IDA"
-        ],
-        "status": "agreed",
-        "reasons": [
-          "IDA is the only analyzer enabled for this reference profile"
-        ]
-      },
-      "artifacts": [],
-      "reason": null,
-      "reviewer": null
+      "reason": "Full IDA 9.4 instruction review confirms source behavior and complete relative control flow; function bytes match after relocation masking. Remaining findings are absolute placement/call/layout.",
+      "reviewer": "Codex",
+      "size": 57,
+      "source_line": 765,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATIRageDisplayDriver.m",
+      "status": "control-flow-confirmed"
     },
     {
       "address": 5856,
-      "size": 133,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
       "names": [
         "_doFill"
       ],
-      "source_path": null,
-      "source_line": null,
-      "status": "unexamined",
-      "analyzer_agreement": {
-        "analyzers": [
-          "IDA"
-        ],
-        "status": "agreed",
-        "reasons": [
-          "IDA is the only analyzer enabled for this reference profile"
-        ]
-      },
-      "artifacts": [],
-      "reason": null,
-      "reviewer": null
+      "reason": "IDA 9.4 full instruction review confirms every I/O access, saved value, component order, return and relative control flow. Binrecon differences are instruction/register allocation and placement. Saves three engine registers, writes fill color and command, packs top/left and bottom/right coordinates, waits for FIFO, restores saved registers, and returns the register base.",
+      "reviewer": "Codex",
+      "size": 133,
+      "source_line": 771,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATIRageDisplayDriver.m",
+      "status": "control-flow-confirmed"
     },
     {
       "address": 5992,
-      "size": 566,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
       "names": [
         "-[ATI initEngine]"
       ],
-      "source_path": null,
-      "source_line": null,
-      "status": "unexamined",
-      "analyzer_agreement": {
-        "analyzers": [
-          "IDA"
-        ],
-        "status": "agreed",
-        "reasons": [
-          "IDA is the only analyzer enabled for this reference profile"
-        ]
-      },
-      "artifacts": [],
-      "reason": null,
-      "reviewer": null
+      "reason": "Full IDA review confirms reset, all FIFO gates, exact engine register initialization, width/height minus-one fields, 1/3/4-bpp setup values, unsupported-depth diagnostic and final idle wait. Source matches all register writes and branches; remaining difference is retained base pointer and switch lowering.",
+      "reviewer": "Codex",
+      "size": 566,
+      "source_line": 811,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATIRageDisplayDriver.m",
+      "status": "control-flow-confirmed"
     },
     {
       "address": 6560,
-      "size": 122,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
       "names": [
         "-[ATI resetEngine]"
       ],
-      "source_path": null,
-      "source_line": null,
-      "status": "unexamined",
-      "analyzer_agreement": {
-        "analyzers": [
-          "IDA"
-        ],
-        "status": "agreed",
-        "reasons": [
-          "IDA is the only analyzer enabled for this reference profile"
-        ]
-      },
-      "artifacts": [],
-      "reason": null,
-      "reviewer": null
+      "reason": "Full IDA review against the waitidle28 native build confirms all effects, I/O widths, path conditions and returns. Source changes match the reference mask and signed bound check. The first control-register read clears only bit 8 (mask 0xFFFFFEFF), the second sets bit 8, and the third control register replaces bits 16\u00e2\u20ac\u201c23 with 0xAE; port arithmetic and all I/O operations match.",
+      "reviewer": "Codex",
+      "size": 122,
+      "source_line": 896,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATIRageDisplayDriver.m",
+      "status": "control-flow-confirmed"
     },
     {
       "address": 6684,
-      "size": 12,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
       "names": [
         "-[ATI displayModeCount]"
       ],
-      "source_path": null,
-      "source_line": null,
-      "status": "unexamined",
-      "analyzer_agreement": {
-        "analyzers": [
-          "IDA"
-        ],
-        "status": "agreed",
-        "reasons": [
-          "IDA is the only analyzer enabled for this reference profile"
-        ]
-      },
-      "artifacts": [],
-      "reason": null,
-      "reviewer": null
+      "reason": "Full reference/rebuilt instruction review matches after relocation masking. Source return value, object field offset, and register width agree with the IDA body. Remaining findings are absolute placement/call/layout.",
+      "reviewer": "Codex",
+      "size": 12,
+      "source_line": 938,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATIRageDisplayDriver.m",
+      "status": "control-flow-confirmed"
     },
     {
       "address": 6696,
-      "size": 12,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
       "names": [
         "-[ATI displayModes]"
       ],
-      "source_path": null,
-      "source_line": null,
-      "status": "unexamined",
-      "analyzer_agreement": {
-        "analyzers": [
-          "IDA"
-        ],
-        "status": "agreed",
-        "reasons": [
-          "IDA is the only analyzer enabled for this reference profile"
-        ]
-      },
-      "artifacts": [],
-      "reason": null,
-      "reviewer": null
+      "reason": "Full reference/rebuilt instruction review matches after relocation masking. Source return value, object field offset, and register width agree with the IDA body. Remaining findings are absolute placement/call/layout.",
+      "reviewer": "Codex",
+      "size": 12,
+      "source_line": 943,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATIRageDisplayDriver.m",
+      "status": "control-flow-confirmed"
     },
     {
       "address": 6708,
-      "size": 26,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
       "names": [
         "-[ATI displayMemorySize]"
       ],
-      "source_path": null,
-      "source_line": null,
-      "status": "unexamined",
-      "analyzer_agreement": {
-        "analyzers": [
-          "IDA"
-        ],
-        "status": "agreed",
-        "reasons": [
-          "IDA is the only analyzer enabled for this reference profile"
-        ]
-      },
-      "artifacts": [],
-      "reason": null,
-      "reviewer": null
+      "reason": "Full reference/rebuilt instruction review matches after relocation masking. Source return value, object field offset, and register width agree with the IDA body. Remaining findings are absolute placement/call/layout.",
+      "reviewer": "Codex",
+      "size": 26,
+      "source_line": 948,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATIRageDisplayDriver.m",
+      "status": "control-flow-confirmed"
     },
     {
       "address": 6736,
-      "size": 151,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
       "names": [
         "-[ATI setPendingDisplayMode:]"
       ],
-      "source_path": null,
-      "source_line": null,
-      "status": "unexamined",
-      "analyzer_agreement": {
-        "analyzers": [
-          "IDA"
-        ],
-        "status": "agreed",
-        "reasons": [
-          "IDA is the only analyzer enabled for this reference profile"
-        ]
-      },
-      "artifacts": [],
-      "reason": null,
-      "reviewer": null
+      "reason": "Full IDA review against the waitidle28 native build confirms all effects, I/O widths, path conditions and returns. Source changes match the reference mask and signed bound check. Signed mode bounds check, isModeValid call, frameBuffer update, superclass setPendingDisplayMode call, modeNumber update, diagnostics and char return match.",
+      "reviewer": "Codex",
+      "size": 151,
+      "source_line": 953,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATIRageDisplayDriver.m",
+      "status": "control-flow-confirmed"
     },
     {
       "address": 6888,
-      "size": 208,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
       "names": [
         "-[ATI setIntValues:forParameter:count:]"
       ],
-      "source_path": null,
-      "source_line": null,
-      "status": "unexamined",
-      "analyzer_agreement": {
-        "analyzers": [
-          "IDA"
-        ],
-        "status": "agreed",
-        "reasons": [
-          "IDA is the only analyzer enabled for this reference profile"
-        ]
-      },
-      "artifacts": [],
-      "reason": null,
-      "reviewer": null
+      "reason": "Full IDA 9.4 body review confirms name comparisons, count gates, exact argument forwarding to blit/fill and wait-idle paths, superclass fallback, and return values. Function bytes match after relocation masking; absolute placement is the remaining finding.",
+      "reviewer": "Codex",
+      "size": 208,
+      "source_line": 968,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATIRageDisplayDriver.m",
+      "status": "control-flow-confirmed"
     },
     {
       "address": 7096,
-      "size": 33,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
       "names": [
         "_isATI68880RevC"
       ],
-      "source_path": null,
-      "source_line": null,
-      "status": "unexamined",
-      "analyzer_agreement": {
-        "analyzers": [
-          "IDA"
-        ],
-        "status": "agreed",
-        "reasons": [
-          "IDA is the only analyzer enabled for this reference profile"
-        ]
-      },
-      "artifacts": [],
-      "reason": null,
-      "reviewer": null
+      "reason": "Full IDA 9.4 instruction review confirms the source behavior and complete relative control flow. Function bytes match the reference after relocation masking; remaining findings are absolute placement/call/layout.",
+      "reviewer": "Codex",
+      "size": 33,
+      "source_line": 985,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATIRageDisplayDriver.m",
+      "status": "control-flow-confirmed"
     },
     {
       "address": 7132,
-      "size": 84,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
       "names": [
         "_SetGammaValue"
       ],
-      "source_path": null,
-      "source_line": null,
-      "status": "unexamined",
-      "analyzer_agreement": {
-        "analyzers": [
-          "IDA"
-        ],
-        "status": "agreed",
-        "reasons": [
-          "IDA is the only analyzer enabled for this reference profile"
-        ]
-      },
-      "artifacts": [],
-      "reason": null,
-      "reviewer": null
+      "reason": "IDA 9.4 full instruction review confirms every I/O access, saved value, component order, return and relative control flow. Binrecon differences are instruction/register allocation and placement. Writes red, green and blue values computed as brightness \u00c3\u2014 component shifted right by six to the DAC data port, then returns the shifted blue value.",
+      "reviewer": "Codex",
+      "size": 84,
+      "source_line": 992,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATIRageDisplayDriver.m",
+      "status": "control-flow-confirmed"
     },
     {
       "address": 7216,
-      "size": 372,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
       "names": [
         "-[ATI setGammaTable]"
       ],
-      "source_path": null,
-      "source_line": null,
-      "status": "unexamined",
-      "analyzer_agreement": {
-        "analyzers": [
-          "IDA"
-        ],
-        "status": "agreed",
-        "reasons": [
-          "IDA is the only analyzer enabled for this reference profile"
-        ]
-      },
-      "artifacts": [],
-      "reason": null,
-      "reviewer": null
+      "reason": "Fresh v149 IDA review confirms DAC register writes, 256-entry gamma8 path, 32\u00d78 gamma16 path, unsupported-depth no-write path, and returned self. The three lock-increment operands come from the DriverKit outb static delay counter; IDA assigns different local names/addresses as BSS layout shifts. The two adjacent stack-adjust/load instructions are reordered but feed the same subsequent operations. No behavioral mismatch identified.",
+      "reviewer": "Codex",
+      "size": 372,
+      "source_line": 1029,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATIRageDisplayDriver.m",
+      "status": "control-flow-confirmed"
     },
     {
       "address": 7588,
-      "size": 60,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
       "names": [
         "-[ATI setBrightness:token:]"
       ],
-      "source_path": null,
-      "source_line": null,
-      "status": "unexamined",
-      "analyzer_agreement": {
-        "analyzers": [
-          "IDA"
-        ],
-        "status": "agreed",
-        "reasons": [
-          "IDA is the only analyzer enabled for this reference profile"
-        ]
-      },
-      "artifacts": [],
-      "reason": null,
-      "reviewer": null
+      "reason": "Full IDA 9.4 instruction review confirms source behavior and complete relative control flow; function bytes match after relocation masking. Remaining findings are absolute placement/call/layout.",
+      "reviewer": "Codex",
+      "size": 60,
+      "source_line": 1092,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATIRageDisplayDriver.m",
+      "status": "control-flow-confirmed"
     },
     {
       "address": 7648,
-      "size": 489,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
       "names": [
         "-[ATI setTransferTable:count:]"
       ],
-      "source_path": null,
-      "source_line": null,
-      "status": "unexamined",
-      "analyzer_agreement": {
-        "analyzers": [
-          "IDA"
-        ],
-        "status": "agreed",
-        "reasons": [
-          "IDA is the only analyzer enabled for this reference profile"
-        ]
-      },
-      "artifacts": [],
-      "reason": null,
-      "reviewer": null
+      "reason": "Full IDA review confirms ASIC exceptions, DAC revision check, ramdacStyle overrides, old-table release, three-channel allocation, grayscale/RGB extraction and shifts, unsupported color-space cleanup, gamma update and return. Source matches all effects and paths; remaining mismatch is compiler lowering/layout.",
+      "reviewer": "Codex",
+      "size": 489,
+      "source_line": 1103,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATIRageDisplayDriver.m",
+      "status": "control-flow-confirmed"
     },
     {
       "address": 8140,
-      "size": 101,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
       "names": [
         "_displayInfoToColorSpace"
       ],
-      "source_path": null,
-      "source_line": null,
-      "status": "unexamined",
-      "analyzer_agreement": {
-        "analyzers": [
-          "IDA"
-        ],
-        "status": "agreed",
-        "reasons": [
-          "IDA is the only analyzer enabled for this reference profile"
-        ]
-      },
-      "artifacts": [],
-      "reason": null,
-      "reviewer": null
+      "reason": "IDA 9.4 full instruction review confirms every mapping, panic/log path and return value against source. Binrecon instruction-shape difference comes from compiler switch/branch lowering; no behavioral discrepancy found. IDA confirms bitsPerPixel mapping 3\u00e2\u2020\u20192, 4\u00e2\u2020\u20193, 1\u00e2\u2020\u2019(colorSpace != 1), with unsupported-depth log and panic.",
+      "reviewer": "Codex",
+      "size": 101,
+      "source_line": 1191,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATIRageDisplayDriver.m",
+      "status": "control-flow-confirmed"
     },
     {
       "address": 8244,
-      "size": 77,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
       "names": [
         "_colorDepthToColorSpace"
       ],
-      "source_path": null,
-      "source_line": null,
-      "status": "unexamined",
-      "analyzer_agreement": {
-        "analyzers": [
-          "IDA"
-        ],
-        "status": "agreed",
-        "reasons": [
-          "IDA is the only analyzer enabled for this reference profile"
-        ]
-      },
-      "artifacts": [],
-      "reason": null,
-      "reviewer": null
+      "reason": "IDA 9.4 full instruction review confirms every mapping, panic/log path and return value against source. Binrecon instruction-shape difference comes from compiler switch/branch lowering; no behavioral discrepancy found. IDA confirms depth mapping 2\u00e2\u2020\u20191, 3/4\u00e2\u2020\u20192, 5/6\u00e2\u2020\u20193 and default 0 through the jump table.",
+      "reviewer": "Codex",
+      "size": 77,
+      "source_line": 1219,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATIRageDisplayDriver.m",
+      "status": "control-flow-confirmed"
     },
     {
       "address": 8324,
-      "size": 79,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
       "names": [
         "_displayInfoToColorDepth"
       ],
-      "source_path": null,
-      "source_line": null,
-      "status": "unexamined",
-      "analyzer_agreement": {
-        "analyzers": [
-          "IDA"
-        ],
-        "status": "agreed",
-        "reasons": [
-          "IDA is the only analyzer enabled for this reference profile"
-        ]
-      },
-      "artifacts": [],
-      "reason": null,
-      "reviewer": null
+      "reason": "IDA 9.4 full instruction review confirms every mapping, panic/log path and return value against source. Binrecon instruction-shape difference comes from compiler switch/branch lowering; no behavioral discrepancy found. IDA confirms bitsPerPixel mapping 3\u00e2\u2020\u20193, 4\u00e2\u2020\u20196, 1\u00e2\u2020\u20192, with unsupported-depth panic and zero return.",
+      "reviewer": "Codex",
+      "size": 79,
+      "source_line": 1242,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATIRageDisplayDriver.m",
+      "status": "control-flow-confirmed"
     },
     {
       "address": 8404,
-      "size": 125,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
       "names": [
         "_memSizeToBytes"
       ],
-      "source_path": null,
-      "source_line": null,
-      "status": "unexamined",
-      "analyzer_agreement": {
-        "analyzers": [
-          "IDA"
-        ],
-        "status": "agreed",
-        "reasons": [
-          "IDA is the only analyzer enabled for this reference profile"
-        ]
-      },
-      "artifacts": [],
-      "reason": null,
-      "reviewer": null
+      "reason": "Full IDA 9.4 instruction review confirms the source behavior and complete relative control flow. Function bytes match the reference after relocation masking; remaining findings are absolute placement/call/layout.",
+      "reviewer": "Codex",
+      "size": 125,
+      "source_line": 1268,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATIRageDisplayDriver.m",
+      "status": "control-flow-confirmed"
     },
     {
       "address": 8532,
-      "size": 12,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
       "names": [
         "+[ATIRageDisplayDriverKernelServerInstance kernelServerInstance]"
       ],
-      "source_path": null,
+      "reason": "Binrecon IDA comparison confirms exact function bytes after relocation masking; generated methods are emitted by Kernel Server rules rather than handwritten source. The generated Kernel Server selector returns the generated instance singleton symbol. Its 12-byte body matches after relocation masking.",
+      "reviewer": "Codex",
+      "size": 12,
       "source_line": null,
-      "status": "unexamined",
-      "analyzer_agreement": {
-        "analyzers": [
-          "IDA"
-        ],
-        "status": "agreed",
-        "reasons": [
-          "IDA is the only analyzer enabled for this reference profile"
-        ]
-      },
-      "artifacts": [],
-      "reason": null,
-      "reviewer": null
+      "source_path": null,
+      "status": "assembly-matched"
     },
     {
       "address": 8544,
-      "size": 12,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
       "names": [
         "+[ATIRageDisplayDriverVersion driverKitVersionForATIRageDisplayDriver]"
       ],
-      "source_path": null,
+      "reason": "Binrecon IDA comparison confirms exact function bytes after relocation masking; generated methods are emitted by Kernel Server rules rather than handwritten source. The generated DriverKit version selector returns 500 (0x1F4). Its complete 12-byte body matches exactly.",
+      "reviewer": "Codex",
+      "size": 12,
       "source_line": null,
-      "status": "unexamined",
-      "analyzer_agreement": {
-        "analyzers": [
-          "IDA"
-        ],
-        "status": "agreed",
-        "reasons": [
-          "IDA is the only analyzer enabled for this reference profile"
-        ]
-      },
-      "artifacts": [],
-      "reason": null,
-      "reviewer": null
+      "source_path": null,
+      "status": "assembly-matched"
     },
     {
       "address": 8556,
-      "size": 154,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
       "names": [
         "+[ATI_BIOS ATIPresent:]"
       ],
-      "source_path": null,
-      "source_line": null,
-      "status": "unexamined",
-      "analyzer_agreement": {
-        "analyzers": [
-          "IDA"
-        ],
-        "status": "agreed",
-        "reasons": [
-          "IDA is the only analyzer enabled for this reference profile"
-        ]
-      },
-      "artifacts": [],
-      "reason": null,
-      "reviewer": null
+      "reason": "IDA 9.4 instruction-by-instruction review confirms signature initialization, base 0xC0000 start, byte scan length, each 4 KiB ROM increment through 0xEFFFF, success return 1 and exhausted-scan return 0. Source and reference have identical relative path behavior; remaining binrecon differences are absolute references and placement.",
+      "reviewer": "Codex",
+      "size": 154,
+      "source_line": 72,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATI_BIOS.m",
+      "status": "control-flow-confirmed"
     },
     {
       "address": 8712,
-      "size": 162,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
       "names": [
         "-[ATI_BIOS init]"
       ],
-      "source_path": null,
-      "source_line": null,
-      "status": "unexamined",
-      "analyzer_agreement": {
-        "analyzers": [
-          "IDA"
-        ],
-        "status": "agreed",
-        "reasons": [
-          "IDA is the only analyzer enabled for this reference profile"
-        ]
-      },
-      "artifacts": [],
-      "reason": null,
-      "reviewer": null
+      "reason": "IDA 9.4 complete control-flow and call review confirms source behavior and return values. Remaining binary findings are absolute references/placement and superclass metadata address. The byte signature is initialized, scanned across 0xC0000\u00e2\u20ac\u201c0xEFFFF in 4 KiB segments and 119 offsets per segment; match sends initAtSegmentAddress: and exhaustion returns nil.",
+      "reviewer": "Codex",
+      "size": 162,
+      "source_line": 89,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATI_BIOS.m",
+      "status": "control-flow-confirmed"
     },
     {
       "address": 8876,
-      "size": 65,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
       "names": [
         "-[ATI_BIOS initAtSegmentAddress:]"
       ],
-      "source_path": null,
-      "source_line": null,
-      "status": "unexamined",
-      "analyzer_agreement": {
-        "analyzers": [
-          "IDA"
-        ],
-        "status": "agreed",
-        "reasons": [
-          "IDA is the only analyzer enabled for this reference profile"
-        ]
-      },
-      "artifacts": [],
-      "reason": null,
-      "reviewer": null
+      "reason": "IDA 9.4 complete control-flow and call review confirms source behavior and return values. Remaining binary findings are absolute references/placement and superclass metadata address. The segment address is stored, 36 bytes of private state are allocated, initialized is set, and superclass init is returned.",
+      "reviewer": "Codex",
+      "size": 65,
+      "source_line": 105,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATI_BIOS.m",
+      "status": "control-flow-confirmed"
     },
     {
       "address": 8944,
-      "size": 65,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
       "names": [
         "-[ATI_BIOS free]"
       ],
-      "source_path": null,
-      "source_line": null,
-      "status": "unexamined",
-      "analyzer_agreement": {
-        "analyzers": [
-          "IDA"
-        ],
-        "status": "agreed",
-        "reasons": [
-          "IDA is the only analyzer enabled for this reference profile"
-        ]
-      },
-      "artifacts": [],
-      "reason": null,
-      "reviewer": null
+      "reason": "Full IDA 9.4 instruction review confirms source behavior and complete relative control flow; function bytes match after relocation masking. Remaining findings are absolute placement/call/layout.",
+      "reviewer": "Codex",
+      "size": 65,
+      "source_line": 113,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATI_BIOS.m",
+      "status": "control-flow-confirmed"
     },
     {
       "address": 9012,
-      "size": 51,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
       "names": [
         "-[ATI_BIOS loadCRTC:gamma:pitchSize:resolution:crtTable:]"
       ],
-      "source_path": null,
-      "source_line": null,
-      "status": "unexamined",
-      "analyzer_agreement": {
-        "analyzers": [
-          "IDA"
-        ],
-        "status": "agreed",
-        "reasons": [
-          "IDA is the only analyzer enabled for this reference profile"
-        ]
-      },
-      "artifacts": [],
-      "reason": null,
-      "reviewer": null
+      "reason": "Full reference/rebuilt instruction review confirms exact argument forwarding, return behavior, and relative control flow; function bytes match after relocation masking. Remaining findings are absolute placement/calls.",
+      "reviewer": "Codex",
+      "size": 51,
+      "source_line": 120,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATI_BIOS.m",
+      "status": "control-flow-confirmed"
     },
     {
       "address": 9064,
-      "size": 153,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
       "names": [
         "-[ATI_BIOS setVGAMode:gamma:]"
       ],
-      "source_path": null,
-      "source_line": null,
-      "status": "unexamined",
-      "analyzer_agreement": {
-        "analyzers": [
-          "IDA"
-        ],
-        "status": "agreed",
-        "reasons": [
-          "IDA is the only analyzer enabled for this reference profile"
-        ]
-      },
-      "artifacts": [],
-      "reason": null,
-      "reviewer": null
+      "reason": "Full IDA 9.4 body review confirms the initialized guard, ECX mode/gamma byte, BIOS call, AH success test, diagnostic paths and return values match source. Compiler instruction ordering differs, so masked byte equality is not claimed.",
+      "reviewer": "Codex",
+      "size": 153,
+      "source_line": 127,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATI_BIOS.m",
+      "status": "control-flow-confirmed"
     },
     {
       "address": 9220,
-      "size": 51,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
       "names": [
         "-[ATI_BIOS loadCRTCSetMode:gamma:pitchSize:resolution:crtTable:]"
       ],
-      "source_path": null,
-      "source_line": null,
-      "status": "unexamined",
-      "analyzer_agreement": {
-        "analyzers": [
-          "IDA"
-        ],
-        "status": "agreed",
-        "reasons": [
-          "IDA is the only analyzer enabled for this reference profile"
-        ]
-      },
-      "artifacts": [],
-      "reason": null,
-      "reviewer": null
+      "reason": "Full reference/rebuilt instruction review confirms exact argument forwarding, return behavior, and relative control flow; function bytes match after relocation masking. Remaining findings are absolute placement/calls.",
+      "reviewer": "Codex",
+      "size": 51,
+      "source_line": 154,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATI_BIOS.m",
+      "status": "control-flow-confirmed"
     },
     {
       "address": 9272,
-      "size": 206,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
       "names": [
         "-[ATI_BIOS setApertureEnable:VGAAperture:apertureAdrs:]"
       ],
-      "source_path": null,
-      "source_line": null,
-      "status": "unexamined",
-      "analyzer_agreement": {
-        "analyzers": [
-          "IDA"
-        ],
-        "status": "agreed",
-        "reasons": [
-          "IDA is the only analyzer enabled for this reference profile"
-        ]
-      },
-      "artifacts": [],
-      "reason": null,
-      "reviewer": null
+      "reason": "IDA 9.4 full instruction review: function bytes match the reference after relocation masking; BIOS register inputs/outputs and return paths were checked against native source. Remaining CFG/call findings are absolute function placement/layout.",
+      "reviewer": "Codex",
+      "size": 206,
+      "source_line": 161,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATI_BIOS.m",
+      "status": "control-flow-confirmed"
     },
     {
       "address": 9480,
-      "size": 202,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
       "names": [
         "-[ATI_BIOS shortQuery:hardCoded:smallAperture:address:colorDepth:memorySize:asicType:asicRev:]"
       ],
-      "source_path": null,
-      "source_line": null,
-      "status": "unexamined",
-      "analyzer_agreement": {
-        "analyzers": [
-          "IDA"
-        ],
-        "status": "agreed",
-        "reasons": [
-          "IDA is the only analyzer enabled for this reference profile"
-        ]
-      },
-      "artifacts": [],
-      "reason": null,
-      "reviewer": null
+      "reason": "Full IDA 9.4 review confirms initialization failure return 1, BIOS buffer and call, BIOS error logging/return 2, AH success check, all eight output writes from the returned registers, AH failure logging, and return 0/2. Source matches behavior; remaining instruction differences arise from stack/register allocation.",
+      "reviewer": "Codex",
+      "size": 202,
+      "source_line": 193,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATI_BIOS.m",
+      "status": "control-flow-confirmed"
     },
     {
       "address": 9684,
-      "size": 18,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
       "names": [
         "-[ATI_BIOS querySize:size:]"
       ],
-      "source_path": null,
-      "source_line": null,
-      "status": "unexamined",
-      "analyzer_agreement": {
-        "analyzers": [
-          "IDA"
-        ],
-        "status": "agreed",
-        "reasons": [
-          "IDA is the only analyzer enabled for this reference profile"
-        ]
-      },
-      "artifacts": [],
-      "reason": null,
-      "reviewer": null
+      "reason": "Full IDA 9.4 instruction review confirms the source behavior and complete relative control flow. Function bytes match the reference after relocation masking; remaining findings are absolute placement/call/layout.",
+      "reviewer": "Codex",
+      "size": 18,
+      "source_line": 227,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATI_BIOS.m",
+      "status": "control-flow-confirmed"
     },
     {
       "address": 9704,
-      "size": 190,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
       "names": [
         "-[ATI_BIOS deviceQuery:bufferSize:buffer:]"
       ],
-      "source_path": null,
-      "source_line": null,
-      "status": "unexamined",
-      "analyzer_agreement": {
-        "analyzers": [
-          "IDA"
-        ],
-        "status": "agreed",
-        "reasons": [
-          "IDA is the only analyzer enabled for this reference profile"
-        ]
-      },
-      "artifacts": [],
-      "reason": null,
-      "reviewer": null
+      "reason": "IDA 9.4 full instruction review: function bytes match the reference after relocation masking; register inputs/outputs and return paths were checked against native source. Remaining CFG/call findings are absolute function placement/layout.",
+      "reviewer": "Codex",
+      "size": 190,
+      "source_line": 233,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATI_BIOS.m",
+      "status": "control-flow-confirmed"
     },
     {
       "address": 9896,
-      "size": 134,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
       "names": [
         "-[ATI_BIOS setDPMSMode:]"
       ],
-      "source_path": null,
-      "source_line": null,
-      "status": "unexamined",
-      "analyzer_agreement": {
-        "analyzers": [
-          "IDA"
-        ],
-        "status": "agreed",
-        "reasons": [
-          "IDA is the only analyzer enabled for this reference profile"
-        ]
-      },
-      "artifacts": [],
-      "reason": null,
-      "reviewer": null
+      "reason": "IDA 9.4 confirms the named reference function. Full instructions and register input/output/return behavior were reviewed against the current native source; bytes match after relocation masking. Remaining calls/CFG findings reflect absolute function placement/layout.",
+      "reviewer": "Codex",
+      "size": 134,
+      "source_line": 261,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATI_BIOS.m",
+      "status": "control-flow-confirmed"
     },
     {
       "address": 10032,
-      "size": 114,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
       "names": [
         "-[ATI_BIOS getDPMSMode:]"
       ],
-      "source_path": null,
-      "source_line": null,
-      "status": "unexamined",
-      "analyzer_agreement": {
-        "analyzers": [
-          "IDA"
-        ],
-        "status": "agreed",
-        "reasons": [
-          "IDA is the only analyzer enabled for this reference profile"
-        ]
-      },
-      "artifacts": [],
-      "reason": null,
-      "reviewer": null
+      "reason": "IDA 9.4 confirms the named reference function. Full instructions and register input/output/return behavior were reviewed against the current native source; bytes match after relocation masking. Remaining calls/CFG findings reflect absolute function placement/layout.",
+      "reviewer": "Codex",
+      "size": 114,
+      "source_line": 284,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATI_BIOS.m",
+      "status": "control-flow-confirmed"
     },
     {
       "address": 10148,
-      "size": 134,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
       "names": [
         "-[ATI_BIOS setAPMState:]"
       ],
-      "source_path": null,
-      "source_line": null,
-      "status": "unexamined",
-      "analyzer_agreement": {
-        "analyzers": [
-          "IDA"
-        ],
-        "status": "agreed",
-        "reasons": [
-          "IDA is the only analyzer enabled for this reference profile"
-        ]
-      },
-      "artifacts": [],
-      "reason": null,
-      "reviewer": null
+      "reason": "IDA 9.4 confirms the named reference function. Full instructions and register input/output/return behavior were reviewed against the current native source; bytes match after relocation masking. Remaining calls/CFG findings reflect absolute function placement/layout.",
+      "reviewer": "Codex",
+      "size": 134,
+      "source_line": 302,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATI_BIOS.m",
+      "status": "control-flow-confirmed"
     },
     {
       "address": 10284,
-      "size": 114,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
       "names": [
         "-[ATI_BIOS getAPMState:]"
       ],
-      "source_path": null,
-      "source_line": null,
-      "status": "unexamined",
-      "analyzer_agreement": {
-        "analyzers": [
-          "IDA"
-        ],
-        "status": "agreed",
-        "reasons": [
-          "IDA is the only analyzer enabled for this reference profile"
-        ]
-      },
-      "artifacts": [],
-      "reason": null,
-      "reviewer": null
+      "reason": "IDA 9.4 confirms the named reference function. Full instructions and register input/output/return behavior were reviewed against the current native source; bytes match after relocation masking. Remaining calls/CFG findings reflect absolute function placement/layout.",
+      "reviewer": "Codex",
+      "size": 114,
+      "source_line": 325,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATI_BIOS.m",
+      "status": "control-flow-confirmed"
     },
     {
       "address": 10400,
-      "size": 122,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
       "names": [
         "-[ATI_BIOS getIOBaseAddress:relocatable:]"
       ],
-      "source_path": null,
-      "source_line": null,
-      "status": "unexamined",
-      "analyzer_agreement": {
-        "analyzers": [
-          "IDA"
-        ],
-        "status": "agreed",
-        "reasons": [
-          "IDA is the only analyzer enabled for this reference profile"
-        ]
-      },
-      "artifacts": [],
-      "reason": null,
-      "reviewer": null
+      "reason": "IDA 9.4 confirms the named reference function. Full instructions and register input/output/return behavior were reviewed against the current native source; bytes match after relocation masking. Remaining calls/CFG findings reflect absolute function placement/layout.",
+      "reviewer": "Codex",
+      "size": 122,
+      "source_line": 343,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATI_BIOS.m",
+      "status": "control-flow-confirmed"
     },
     {
       "address": 10524,
-      "size": 161,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
       "names": [
         "-[ATI_BIOS getRefreshRate:]"
       ],
-      "source_path": null,
-      "source_line": null,
-      "status": "unexamined",
-      "analyzer_agreement": {
-        "analyzers": [
-          "IDA"
-        ],
-        "status": "agreed",
-        "reasons": [
-          "IDA is the only analyzer enabled for this reference profile"
-        ]
-      },
-      "artifacts": [],
-      "reason": null,
-      "reviewer": null
+      "reason": "IDA 9.4 confirms the named reference function. Full instructions and register input/output/return behavior were reviewed against the current native source; bytes match after relocation masking. Remaining calls/CFG findings reflect absolute function placement/layout.",
+      "reviewer": "Codex",
+      "size": 161,
+      "source_line": 362,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATI_BIOS.m",
+      "status": "control-flow-confirmed"
     },
     {
       "address": 10688,
-      "size": 12,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
       "names": [
         "-[ATI_BIOS changeRefreshRate:]"
       ],
-      "source_path": null,
-      "source_line": null,
-      "status": "unexamined",
-      "analyzer_agreement": {
-        "analyzers": [
-          "IDA"
-        ],
-        "status": "agreed",
-        "reasons": [
-          "IDA is the only analyzer enabled for this reference profile"
-        ]
-      },
-      "artifacts": [],
-      "reason": null,
-      "reviewer": null
+      "reason": "Full IDA 9.4 instruction review confirms the source behavior and complete relative control flow. Function bytes match the reference after relocation masking; remaining findings are absolute placement/call/layout.",
+      "reviewer": "Codex",
+      "size": 12,
+      "source_line": 389,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATI_BIOS.m",
+      "status": "control-flow-confirmed"
     },
     {
       "address": 10700,
-      "size": 80,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
       "names": [
         "-[ATI_BIOS initBIOSBuf:function:]"
       ],
-      "source_path": null,
-      "source_line": null,
-      "status": "unexamined",
-      "analyzer_agreement": {
-        "analyzers": [
-          "IDA"
-        ],
-        "status": "agreed",
-        "reasons": [
-          "IDA is the only analyzer enabled for this reference profile"
-        ]
-      },
-      "artifacts": [],
-      "reason": null,
-      "reviewer": null
+      "reason": "Full IDA 9.4 instruction review confirms the BIOS buffer size, selector fields, function byte and stack offset initialization match source. Complete relative control flow matches; remaining difference is placement.",
+      "reviewer": "Codex",
+      "size": 80,
+      "source_line": 398,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATI_BIOS.m",
+      "status": "control-flow-confirmed"
     },
     {
       "address": 10780,
-      "size": 388,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
       "names": [
         "-[ATI_BIOS setupCodeSegments]"
       ],
-      "source_path": null,
-      "source_line": null,
-      "status": "unexamined",
-      "analyzer_agreement": {
-        "analyzers": [
-          "IDA"
-        ],
-        "status": "agreed",
-        "reasons": [
-          "IDA is the only analyzer enabled for this reference profile"
-        ]
-      },
-      "artifacts": [],
-      "reason": null,
-      "reviewer": null
+      "reason": "Fresh v149 IDA review confirms descriptor save/restore, code16/code32/stack descriptor construction and stack initialization. Reference code32 base uses 0xC0002E48; rebuilt uses 0xC0002E4C because its __bios16 symbol is at 0x2E4C (reference: 0x2E48). The rebuilt descriptor targets its actual thunk entry. Remaining instruction layout/register choices preserve behavior.",
+      "reviewer": "Codex",
+      "size": 388,
+      "source_line": 409,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATI_BIOS.m",
+      "status": "control-flow-confirmed"
     },
     {
       "address": 11168,
-      "size": 102,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
       "names": [
         "-[ATI_BIOS restoreCodeSegments]"
       ],
-      "source_path": null,
-      "source_line": null,
-      "status": "unexamined",
-      "analyzer_agreement": {
-        "analyzers": [
-          "IDA"
-        ],
-        "status": "agreed",
-        "reasons": [
-          "IDA is the only analyzer enabled for this reference profile"
-        ]
-      },
-      "artifacts": [],
-      "reason": null,
-      "reviewer": null
+      "reason": "Full IDA 9.4 instruction review confirms descriptor restore offsets, stack cleanup, and relative control flow match the native source. Function bytes match after relocation masking; placement is the remaining difference.",
+      "reviewer": "Codex",
+      "size": 102,
+      "source_line": 486,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATI_BIOS.m",
+      "status": "control-flow-confirmed"
     },
     {
       "address": 11272,
-      "size": 212,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
       "names": [
         "-[ATI_BIOS createDataSegment:size:]"
       ],
-      "source_path": null,
-      "source_line": null,
-      "status": "unexamined",
-      "analyzer_agreement": {
-        "analyzers": [
-          "IDA"
-        ],
-        "status": "agreed",
-        "reasons": [
-          "IDA is the only analyzer enabled for this reference profile"
-        ]
-      },
-      "artifacts": [],
-      "reason": null,
-      "reviewer": null
+      "reason": "IDA 9.4 review confirms invalid-size logging/return, saved GDT descriptor, data descriptor construction, small/large limit paths and success return match source behavior. Remaining difference is compiler register/instruction layout and block ordering; no behavioral discrepancy found.",
+      "reviewer": "Codex",
+      "size": 212,
+      "source_line": 503,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATI_BIOS.m",
+      "status": "control-flow-confirmed"
     },
     {
       "address": 11484,
-      "size": 36,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
       "names": [
         "-[ATI_BIOS restoreDataSegment]"
       ],
-      "source_path": null,
-      "source_line": null,
-      "status": "unexamined",
-      "analyzer_agreement": {
-        "analyzers": [
-          "IDA"
-        ],
-        "status": "agreed",
-        "reasons": [
-          "IDA is the only analyzer enabled for this reference profile"
-        ]
-      },
-      "artifacts": [],
-      "reason": null,
-      "reviewer": null
+      "reason": "Full IDA 9.4 instruction review confirms descriptor restore offsets, stack cleanup, and relative control flow match the native source. Function bytes match after relocation masking; placement is the remaining difference.",
+      "reviewer": "Codex",
+      "size": 36,
+      "source_line": 550,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATI_BIOS.m",
+      "status": "control-flow-confirmed"
     },
     {
       "address": 11520,
-      "size": 68,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
       "names": [
         "-[ATI_BIOS doBios:dataSeg:]"
       ],
-      "source_path": null,
-      "source_line": null,
-      "status": "unexamined",
-      "analyzer_agreement": {
-        "analyzers": [
-          "IDA"
-        ],
-        "status": "agreed",
-        "reasons": [
-          "IDA is the only analyzer enabled for this reference profile"
-        ]
-      },
-      "artifacts": [],
-      "reason": null,
-      "reviewer": null
+      "reason": "Full IDA 9.4 body review confirms BIOS thunk call, code-segment restoration, conditional data-segment restoration, and returned BIOS result match source. Function bytes match after relocation masking; only placement differs.",
+      "reviewer": "Codex",
+      "size": 68,
+      "source_line": 560,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATI_BIOS.m",
+      "status": "control-flow-confirmed"
     },
     {
       "address": 11588,
-      "size": 258,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [
+        "tools/binrecon/out/drvATIRage-i386-compare/native-20261004-v149/published/analysis-reference-ida.json",
+        "tools/binrecon/out/drvATIRage-i386-compare/native-20261004-v149/published/analysis-rebuilt-ida.json",
+        "tools/binrecon/out/drvATIRage-i386-compare/native-20261004-v149/published/comparison-ida.json"
+      ],
       "names": [
         "-[ATI_BIOS loadCRTC_comm:gamma:pitchSize:resolution:crtTable:function:name:]"
       ],
-      "source_path": null,
-      "source_line": null,
-      "status": "unexamined",
-      "analyzer_agreement": {
-        "analyzers": [
-          "IDA"
-        ],
-        "status": "agreed",
-        "reasons": [
-          "IDA is the only analyzer enabled for this reference profile"
-        ]
-      },
-      "artifacts": [],
-      "reason": null,
-      "reviewer": null
+      "reason": "IDA 9.4 review found and corrected a register-block field reversal in the resolution-129 path: reference stores EBX.low=0 at buffer offset 8 and EDX.low=0x88 at offset 16; prior source had these values reversed. v149 emitted the exact two reference stores. Uninitialized/resolution early returns, conditional data-descriptor setup/restoration, BIOS result handling, AH success/failure split, and return values also match. Remaining call/CFG/range/instruction-shape findings are compiler lowering/layout differences.",
+      "reviewer": "Codex",
+      "size": 258,
+      "source_line": 571,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATI_BIOS.m",
+      "status": "control-flow-confirmed"
     },
     {
       "address": 11848,
-      "size": 117,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
       "names": [
         "__bios16"
       ],
-      "source_path": null,
-      "source_line": null,
-      "status": "unexamined",
-      "analyzer_agreement": {
-        "analyzers": [
-          "IDA"
-        ],
-        "status": "agreed",
-        "reasons": [
-          "IDA is the only analyzer enabled for this reference profile"
-        ]
-      },
-      "artifacts": [],
-      "reason": null,
-      "reviewer": null
+      "reason": "IDA 9.4 instruction-by-instruction comparison confirms the body matches source assembly. Embedded far-pointer operands are runtime-patched mutable fields; after masking those fields, all remaining bytes match the reference.",
+      "reviewer": "Codex",
+      "size": 117,
+      "source_line": 5,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATI_BIOS16.s",
+      "status": "assembly-matched"
     },
     {
       "address": 11968,
-      "size": 95,
+      "analyzer_agreement": {
+        "analyzers": [
+          "IDA"
+        ],
+        "reasons": [
+          "IDA is the only analyzer enabled for this reference profile"
+        ],
+        "status": "agreed"
+      },
+      "artifacts": [],
       "names": [
         "_ATIbios16"
       ],
-      "source_path": null,
-      "source_line": null,
-      "status": "unexamined",
-      "analyzer_agreement": {
-        "analyzers": [
-          "IDA"
-        ],
-        "status": "agreed",
-        "reasons": [
-          "IDA is the only analyzer enabled for this reference profile"
-        ]
-      },
-      "artifacts": [],
-      "reason": null,
-      "reviewer": null
+      "reason": "Binrecon IDA comparison confirms wrapper function bytes match after relocation masking; all branch conditions, data widths and thunk arguments reviewed.",
+      "reviewer": "Codex",
+      "size": 95,
+      "source_line": 7,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATIbios16.c",
+      "status": "assembly-matched"
     },
     {
       "address": 12064,
-      "size": 203,
-      "names": [
-        "__ATIbios32"
-      ],
-      "source_path": null,
-      "source_line": null,
-      "status": "unexamined",
       "analyzer_agreement": {
         "analyzers": [
           "IDA"
         ],
-        "status": "agreed",
         "reasons": [
           "IDA is the only analyzer enabled for this reference profile"
-        ]
+        ],
+        "status": "agreed"
       },
       "artifacts": [],
-      "reason": null,
-      "reviewer": null
+      "names": [
+        "__ATIbios32"
+      ],
+      "reason": "IDA 9.4 instruction-by-instruction comparison confirms the body matches source assembly. Embedded far-pointer operands are runtime-patched mutable fields; after masking those fields, all remaining bytes match the reference.",
+      "reviewer": "Codex",
+      "size": 203,
+      "source_line": 5,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATIbios.s",
+      "status": "assembly-matched"
     }
-  ]
+  ],
+  "rebuilt_sha256": "94E003860FEE0B80A60C3C7062CD1BA4B93C7500392842B7C756629544DAED70",
+  "reference_sha256": "6D08A58A44D5797DA0DD626BBEB705E3621910C99120486F69BD623DE9E61D9A",
+  "schema_version": "ledger-v1"
 }

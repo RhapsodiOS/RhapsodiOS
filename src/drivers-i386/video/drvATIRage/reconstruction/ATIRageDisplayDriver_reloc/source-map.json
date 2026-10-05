@@ -1,436 +1,555 @@
 {
-  "schema_version": "source-map-v1",
-  "reference_sha256": "6D08A58A44D5797DA0DD626BBEB705E3621910C99120486F69BD623DE9E61D9A",
-  "mapped": [],
-  "unmapped": [
+  "boundary_disputed": [],
+  "duplicate_candidates": [],
+  "mapped": [
     {
       "address": 0,
-      "size": 1664,
       "reference_names": [
         "-[ATI initFromDeviceDescription:]"
-      ]
+      ],
+      "size": 1664,
+      "source_line": 80,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATIRageDisplayDriver.m"
     },
     {
       "address": 1664,
-      "size": 1632,
       "reference_names": [
         "-[ATI fixDeviceDescriptionForPCI:]"
-      ]
+      ],
+      "size": 1632,
+      "source_line": 229,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATIRageDisplayDriver.m"
     },
     {
       "address": 3296,
-      "size": 304,
       "reference_names": [
         "-[ATI getQueryData]"
-      ]
+      ],
+      "size": 304,
+      "source_line": 395,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATIRageDisplayDriver.m"
     },
     {
       "address": 3600,
-      "size": 144,
       "reference_names": [
         "-[ATI parseModeString:]"
-      ]
+      ],
+      "size": 144,
+      "source_line": 429,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATIRageDisplayDriver.m"
     },
     {
       "address": 3744,
-      "size": 540,
       "reference_names": [
         "-[ATI updateModeList]"
-      ]
+      ],
+      "size": 540,
+      "source_line": 450,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATIRageDisplayDriver.m"
     },
     {
       "address": 4284,
-      "size": 136,
       "reference_names": [
         "-[ATI isModeValid:]"
-      ]
+      ],
+      "size": 136,
+      "source_line": 505,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATIRageDisplayDriver.m"
     },
     {
       "address": 4420,
-      "size": 98,
       "reference_names": [
         "-[ATI verifyMemoryMap]"
-      ]
+      ],
+      "size": 98,
+      "source_line": 532,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATIRageDisplayDriver.m"
     },
     {
       "address": 4520,
-      "size": 141,
       "reference_names": [
         "-[ATI free]"
-      ]
+      ],
+      "size": 141,
+      "source_line": 550,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATIRageDisplayDriver.m"
     },
     {
       "address": 4664,
-      "size": 292,
       "reference_names": [
         "-[ATI enterLinearMode]"
-      ]
+      ],
+      "size": 292,
+      "source_line": 561,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATIRageDisplayDriver.m"
     },
     {
       "address": 4956,
-      "size": 252,
       "reference_names": [
         "-[ATI revertToVGAMode]"
-      ]
+      ],
+      "size": 252,
+      "source_line": 596,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATIRageDisplayDriver.m"
     },
     {
       "address": 5208,
-      "size": 52,
       "reference_names": [
         "_waitForFIFO"
-      ]
+      ],
+      "size": 52,
+      "source_line": 623,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATIRageDisplayDriver.m"
     },
     {
       "address": 5260,
       "size": 73,
       "reference_names": [
         "_waitForIdle"
-      ]
+      ],
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATIRageDisplayDriver.m",
+      "source_line": 646
     },
     {
       "address": 5336,
-      "size": 322,
       "reference_names": [
         "_doBlit"
-      ]
+      ],
+      "size": 322,
+      "source_line": 679,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATIRageDisplayDriver.m"
     },
     {
       "address": 5660,
-      "size": 67,
       "reference_names": [
         "-[ATI showCursor:frame:token:]"
-      ]
+      ],
+      "size": 67,
+      "source_line": 753,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATIRageDisplayDriver.m"
     },
     {
       "address": 5728,
-      "size": 67,
       "reference_names": [
         "-[ATI moveCursor:frame:token:]"
-      ]
+      ],
+      "size": 67,
+      "source_line": 759,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATIRageDisplayDriver.m"
     },
     {
       "address": 5796,
-      "size": 57,
       "reference_names": [
         "-[ATI hideCursor:]"
-      ]
+      ],
+      "size": 57,
+      "source_line": 765,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATIRageDisplayDriver.m"
     },
     {
       "address": 5856,
-      "size": 133,
       "reference_names": [
         "_doFill"
-      ]
+      ],
+      "size": 133,
+      "source_line": 771,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATIRageDisplayDriver.m"
     },
     {
       "address": 5992,
-      "size": 566,
       "reference_names": [
         "-[ATI initEngine]"
-      ]
+      ],
+      "size": 566,
+      "source_line": 811,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATIRageDisplayDriver.m"
     },
     {
       "address": 6560,
-      "size": 122,
       "reference_names": [
         "-[ATI resetEngine]"
-      ]
+      ],
+      "size": 122,
+      "source_line": 896,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATIRageDisplayDriver.m"
     },
     {
       "address": 6684,
-      "size": 12,
       "reference_names": [
         "-[ATI displayModeCount]"
-      ]
+      ],
+      "size": 12,
+      "source_line": 938,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATIRageDisplayDriver.m"
     },
     {
       "address": 6696,
-      "size": 12,
       "reference_names": [
         "-[ATI displayModes]"
-      ]
+      ],
+      "size": 12,
+      "source_line": 943,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATIRageDisplayDriver.m"
     },
     {
       "address": 6708,
-      "size": 26,
       "reference_names": [
         "-[ATI displayMemorySize]"
-      ]
+      ],
+      "size": 26,
+      "source_line": 948,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATIRageDisplayDriver.m"
     },
     {
       "address": 6736,
-      "size": 151,
       "reference_names": [
         "-[ATI setPendingDisplayMode:]"
-      ]
+      ],
+      "size": 151,
+      "source_line": 953,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATIRageDisplayDriver.m"
     },
     {
       "address": 6888,
-      "size": 208,
       "reference_names": [
         "-[ATI setIntValues:forParameter:count:]"
-      ]
+      ],
+      "size": 208,
+      "source_line": 968,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATIRageDisplayDriver.m"
     },
     {
       "address": 7096,
-      "size": 33,
       "reference_names": [
         "_isATI68880RevC"
-      ]
+      ],
+      "size": 33,
+      "source_line": 985,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATIRageDisplayDriver.m"
     },
     {
       "address": 7132,
-      "size": 84,
       "reference_names": [
         "_SetGammaValue"
-      ]
+      ],
+      "size": 84,
+      "source_line": 992,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATIRageDisplayDriver.m"
     },
     {
       "address": 7216,
-      "size": 372,
       "reference_names": [
         "-[ATI setGammaTable]"
-      ]
+      ],
+      "size": 372,
+      "source_line": 1029,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATIRageDisplayDriver.m"
     },
     {
       "address": 7588,
-      "size": 60,
       "reference_names": [
         "-[ATI setBrightness:token:]"
-      ]
+      ],
+      "size": 60,
+      "source_line": 1092,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATIRageDisplayDriver.m"
     },
     {
       "address": 7648,
-      "size": 489,
       "reference_names": [
         "-[ATI setTransferTable:count:]"
-      ]
+      ],
+      "size": 489,
+      "source_line": 1103,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATIRageDisplayDriver.m"
     },
     {
       "address": 8140,
-      "size": 101,
       "reference_names": [
         "_displayInfoToColorSpace"
-      ]
+      ],
+      "size": 101,
+      "source_line": 1191,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATIRageDisplayDriver.m"
     },
     {
       "address": 8244,
-      "size": 77,
       "reference_names": [
         "_colorDepthToColorSpace"
-      ]
+      ],
+      "size": 77,
+      "source_line": 1219,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATIRageDisplayDriver.m"
     },
     {
       "address": 8324,
-      "size": 79,
       "reference_names": [
         "_displayInfoToColorDepth"
-      ]
+      ],
+      "size": 79,
+      "source_line": 1242,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATIRageDisplayDriver.m"
     },
     {
       "address": 8404,
-      "size": 125,
       "reference_names": [
         "_memSizeToBytes"
-      ]
-    },
-    {
-      "address": 8532,
-      "size": 12,
-      "reference_names": [
-        "+[ATIRageDisplayDriverKernelServerInstance kernelServerInstance]"
-      ]
-    },
-    {
-      "address": 8544,
-      "size": 12,
-      "reference_names": [
-        "+[ATIRageDisplayDriverVersion driverKitVersionForATIRageDisplayDriver]"
-      ]
+      ],
+      "size": 125,
+      "source_line": 1268,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATIRageDisplayDriver.m"
     },
     {
       "address": 8556,
-      "size": 154,
       "reference_names": [
         "+[ATI_BIOS ATIPresent:]"
-      ]
+      ],
+      "size": 154,
+      "source_line": 72,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATI_BIOS.m"
     },
     {
       "address": 8712,
-      "size": 162,
       "reference_names": [
         "-[ATI_BIOS init]"
-      ]
+      ],
+      "size": 162,
+      "source_line": 89,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATI_BIOS.m"
     },
     {
       "address": 8876,
-      "size": 65,
       "reference_names": [
         "-[ATI_BIOS initAtSegmentAddress:]"
-      ]
+      ],
+      "size": 65,
+      "source_line": 105,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATI_BIOS.m"
     },
     {
       "address": 8944,
-      "size": 65,
       "reference_names": [
         "-[ATI_BIOS free]"
-      ]
+      ],
+      "size": 65,
+      "source_line": 113,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATI_BIOS.m"
     },
     {
       "address": 9012,
-      "size": 51,
       "reference_names": [
         "-[ATI_BIOS loadCRTC:gamma:pitchSize:resolution:crtTable:]"
-      ]
+      ],
+      "size": 51,
+      "source_line": 120,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATI_BIOS.m"
     },
     {
       "address": 9064,
-      "size": 153,
       "reference_names": [
         "-[ATI_BIOS setVGAMode:gamma:]"
-      ]
+      ],
+      "size": 153,
+      "source_line": 127,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATI_BIOS.m"
     },
     {
       "address": 9220,
-      "size": 51,
       "reference_names": [
         "-[ATI_BIOS loadCRTCSetMode:gamma:pitchSize:resolution:crtTable:]"
-      ]
+      ],
+      "size": 51,
+      "source_line": 154,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATI_BIOS.m"
     },
     {
       "address": 9272,
-      "size": 206,
       "reference_names": [
         "-[ATI_BIOS setApertureEnable:VGAAperture:apertureAdrs:]"
-      ]
+      ],
+      "size": 206,
+      "source_line": 161,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATI_BIOS.m"
     },
     {
       "address": 9480,
-      "size": 202,
       "reference_names": [
         "-[ATI_BIOS shortQuery:hardCoded:smallAperture:address:colorDepth:memorySize:asicType:asicRev:]"
-      ]
+      ],
+      "size": 202,
+      "source_line": 193,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATI_BIOS.m"
     },
     {
       "address": 9684,
-      "size": 18,
       "reference_names": [
         "-[ATI_BIOS querySize:size:]"
-      ]
+      ],
+      "size": 18,
+      "source_line": 227,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATI_BIOS.m"
     },
     {
       "address": 9704,
-      "size": 190,
       "reference_names": [
         "-[ATI_BIOS deviceQuery:bufferSize:buffer:]"
-      ]
+      ],
+      "size": 190,
+      "source_line": 233,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATI_BIOS.m"
     },
     {
       "address": 9896,
-      "size": 134,
       "reference_names": [
         "-[ATI_BIOS setDPMSMode:]"
-      ]
+      ],
+      "size": 134,
+      "source_line": 261,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATI_BIOS.m"
     },
     {
       "address": 10032,
-      "size": 114,
       "reference_names": [
         "-[ATI_BIOS getDPMSMode:]"
-      ]
+      ],
+      "size": 114,
+      "source_line": 284,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATI_BIOS.m"
     },
     {
       "address": 10148,
-      "size": 134,
       "reference_names": [
         "-[ATI_BIOS setAPMState:]"
-      ]
+      ],
+      "size": 134,
+      "source_line": 302,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATI_BIOS.m"
     },
     {
       "address": 10284,
-      "size": 114,
       "reference_names": [
         "-[ATI_BIOS getAPMState:]"
-      ]
+      ],
+      "size": 114,
+      "source_line": 325,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATI_BIOS.m"
     },
     {
       "address": 10400,
-      "size": 122,
       "reference_names": [
         "-[ATI_BIOS getIOBaseAddress:relocatable:]"
-      ]
+      ],
+      "size": 122,
+      "source_line": 343,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATI_BIOS.m"
     },
     {
       "address": 10524,
-      "size": 161,
       "reference_names": [
         "-[ATI_BIOS getRefreshRate:]"
-      ]
+      ],
+      "size": 161,
+      "source_line": 362,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATI_BIOS.m"
     },
     {
       "address": 10688,
-      "size": 12,
       "reference_names": [
         "-[ATI_BIOS changeRefreshRate:]"
-      ]
+      ],
+      "size": 12,
+      "source_line": 389,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATI_BIOS.m"
     },
     {
       "address": 10700,
-      "size": 80,
       "reference_names": [
         "-[ATI_BIOS initBIOSBuf:function:]"
-      ]
+      ],
+      "size": 80,
+      "source_line": 398,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATI_BIOS.m"
     },
     {
       "address": 10780,
-      "size": 388,
       "reference_names": [
         "-[ATI_BIOS setupCodeSegments]"
-      ]
+      ],
+      "size": 388,
+      "source_line": 409,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATI_BIOS.m"
     },
     {
       "address": 11168,
-      "size": 102,
       "reference_names": [
         "-[ATI_BIOS restoreCodeSegments]"
-      ]
+      ],
+      "size": 102,
+      "source_line": 486,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATI_BIOS.m"
     },
     {
       "address": 11272,
-      "size": 212,
       "reference_names": [
         "-[ATI_BIOS createDataSegment:size:]"
-      ]
+      ],
+      "size": 212,
+      "source_line": 503,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATI_BIOS.m"
     },
     {
       "address": 11484,
-      "size": 36,
       "reference_names": [
         "-[ATI_BIOS restoreDataSegment]"
-      ]
+      ],
+      "size": 36,
+      "source_line": 550,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATI_BIOS.m"
     },
     {
       "address": 11520,
-      "size": 68,
       "reference_names": [
         "-[ATI_BIOS doBios:dataSeg:]"
-      ]
+      ],
+      "size": 68,
+      "source_line": 560,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATI_BIOS.m"
     },
     {
       "address": 11588,
-      "size": 258,
       "reference_names": [
         "-[ATI_BIOS loadCRTC_comm:gamma:pitchSize:resolution:crtTable:function:name:]"
-      ]
+      ],
+      "size": 258,
+      "source_line": 571,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATI_BIOS.m"
     },
     {
       "address": 11968,
-      "size": 95,
       "reference_names": [
         "_ATIbios16"
-      ]
+      ],
+      "size": 95,
+      "source_line": 7,
+      "source_path": "src/drivers-i386/video/drvATIRage/ATIRageDisplayDriver.drvproj/ATIRageDisplayDriver.lksproj/ATIbios16.c"
     }
   ],
-  "duplicate_candidates": [],
-  "boundary_disputed": []
+  "reference_sha256": "6D08A58A44D5797DA0DD626BBEB705E3621910C99120486F69BD623DE9E61D9A",
+  "schema_version": "source-map-v1",
+  "unmapped": [
+    {
+      "address": 8532,
+      "reference_names": [
+        "+[ATIRageDisplayDriverKernelServerInstance kernelServerInstance]"
+      ],
+      "size": 12
+    },
+    {
+      "address": 8544,
+      "reference_names": [
+        "+[ATIRageDisplayDriverVersion driverKitVersionForATIRageDisplayDriver]"
+      ],
+      "size": 12
+    }
+  ]
 }

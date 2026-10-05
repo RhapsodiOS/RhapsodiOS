@@ -28,10 +28,15 @@ def emit(check: bool = False, resource_root: Path | None = None) -> None:
            "#ifndef __ATIRAGE_MODES_H__", "#define __ATIRAGE_MODES_H__", "",
            '#import "ATI_BIOS.h"', '#import <driverkit/driverTypes.h>', "",
            ]
+    vga_crtc = bytes.fromhex(crtcs[0]["bytes_hex"])
+    assert len(vga_crtc) == 30
+    out.append("static const unsigned char AtiVgaCRTC[30] = {")
+    out.append("    " + ", ".join(f"0x{b:02x}" for b in vga_crtc))
+    out += ["};", ""]
     for key, symbol in (("gamma16", "gamma16"), ("gamma8", "gamma8")):
         raw = bytes.fromhex(auxiliary[key]["bytes_hex"])
-        assert len(raw) == auxiliary[key]["size"] == 16
-        out.append(f"static const unsigned char {symbol}[16] = {{")
+        assert len(raw) == auxiliary[key]["size"]
+        out.append(f"static const unsigned char {symbol}[{len(raw)}] = {{")
         out.append("    " + ", ".join(f"0x{b:02x}" for b in raw))
         out += ["};"]
     out.append("")
@@ -81,7 +86,7 @@ def emit(check: bool = False, resource_root: Path | None = None) -> None:
             *[str(v) for v in values], "0", str(bpp), str(colorspace), f'"{enc}"', str(flags),
             f"(void *)&_AtiCRTCList[{crtci}]", str(memory), str(scan), str(reserved1), str(clock),
             str(sw), str(sh), str(unavailable), "{ " + str(reserved) + " }"]) + " },")
-    out += ["};", "", "#define ATI_MODE_COUNT 72", "", "#endif /* __ATIRAGE_MODES_H__ */", ""]
+    out += ["};", "", "static unsigned int AtiModeListCount = 72;", "#define ATI_MODE_COUNT 72", "", "#endif /* __ATIRAGE_MODES_H__ */", ""]
     generated = "\n".join(out)
     if check:
         if not OUTPUT.exists() or OUTPUT.read_text(encoding="ascii") != generated:

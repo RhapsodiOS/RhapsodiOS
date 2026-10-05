@@ -13,9 +13,12 @@ PROJECTVERSION = 2.7
 PROJECT_TYPE = Driver
 LANGUAGE = English
 
-GLOBAL_RESOURCES = Default.table
+GLOBAL_RESOURCES = Default.table Display.modes \
+	PCI4Mb.table PCI6Mb.table PCI8Mb.table \
+	PCI4Mb.modes PCI6Mb.modes PCI8Mb.modes
 
-LOCAL_RESOURCES = Localizable.strings
+LOCAL_RESOURCES = Localizable.strings PCI4Mb.strings PCI6Mb.strings \
+	PCI8Mb.strings Help
 
 TOOLS = ATIRageDisplayDriver.lksproj
 

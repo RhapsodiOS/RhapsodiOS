@@ -5,6 +5,8 @@
 #import <driverkit/displayDefs.h>
 #import <objc/Object.h>
 
+typedef signed char ATIByte;
+
 typedef struct {
     unsigned char byte_00;
     unsigned char byte_01;
@@ -52,20 +54,30 @@ typedef struct {
     unsigned short code_selector;
     unsigned short data_selector;
     unsigned short output_es;
-    unsigned long output_ds;
+    unsigned long output_flags;
     unsigned long entry_offset;
 } ATI_BIOSRegisters;
 #undef ATI_BIOS_REGISTER
 
 typedef struct {
-    unsigned char saved_code_descriptor0[8];
-    unsigned char saved_code_descriptor1[8];
-    unsigned char saved_data_descriptor[8];
-    unsigned char saved_stack_descriptor[8];
+    unsigned short limit_low;
+    unsigned short base_low;
+    unsigned char base_mid;
+    unsigned char access;
+    unsigned char limit_flags;
+    unsigned char base_high;
+} ATI_SegmentDescriptor;
+
+typedef struct {
+    ATI_SegmentDescriptor saved_code_descriptor0;
+    ATI_SegmentDescriptor saved_code_descriptor1;
+    ATI_SegmentDescriptor saved_data_descriptor;
+    ATI_SegmentDescriptor saved_stack_descriptor;
     unsigned int stack_address;
 } ATI_BIOSPrivate;
 
 typedef char _ATI_CRTCRecord_must_be_30_bytes[(sizeof(ATI_CRTCRecord) == 30) ? 1 : -1];
+typedef char _ATI_SegmentDescriptor_must_be_8_bytes[(sizeof(ATI_SegmentDescriptor) == 8) ? 1 : -1];
 typedef char _ATI_BIOSPrivate_must_be_36_bytes[(sizeof(ATI_BIOSPrivate) == 36) ? 1 : -1];
 
 @interface ATI_BIOS : Object
@@ -86,8 +98,8 @@ typedef char _ATI_BIOSPrivate_must_be_36_bytes[(sizeof(ATI_BIOSPrivate) == 36) ?
 - (int)loadCRTCSetMode:(unsigned int)mode gamma:(char)gamma pitchSize:(unsigned int)pitch
     resolution:(unsigned int)resolution crtTable:(ATI_CRTCRecord *)crtTable;
 - (int)setApertureEnable:(char)enable VGAAperture:(char)vgaAperture apertureAdrs:(unsigned int)address;
-- (int)shortQuery:(unsigned int *)hardCoded hardCoded:(char *)smallAperture
-    smallAperture:(char *)address address:(unsigned int *)colorDepth
+- (int)shortQuery:(unsigned int *)hardCoded hardCoded:(ATIByte *)smallAperture
+    smallAperture:(ATIByte *)address address:(unsigned int *)colorDepth
     colorDepth:(unsigned int *)memorySize memorySize:(unsigned int *)asicType
     asicType:(char *)asicRev asicRev:(char *)name;
 - (int)querySize:(char)query size:(unsigned int *)size;
@@ -96,7 +108,7 @@ typedef char _ATI_BIOSPrivate_must_be_36_bytes[(sizeof(ATI_BIOSPrivate) == 36) ?
 - (int)getDPMSMode:(unsigned int *)mode;
 - (int)setAPMState:(unsigned int)state;
 - (int)getAPMState:(unsigned int *)state;
-- (int)getIOBaseAddress:(unsigned long *)address relocatable:(char *)relocatable;
+- (int)getIOBaseAddress:(unsigned long *)address relocatable:(ATIByte *)relocatable;
 - (int)getRefreshRate:(char *)refreshRate;
 - (int)changeRefreshRate:(char *)refreshRate;
 @end
@@ -119,12 +131,12 @@ typedef char _ATI_BIOS_instance_must_be_16_bytes[(sizeof(ATI_BIOS) == 16) ? 1 : 
 #endif
 
 /* Assembly transfer symbols use the 32-bit cdecl ABI in the i386 image. */
-extern int ATIbios16(ATI_BIOSRegisters *registers, unsigned int function);
-extern void _ATIbios32(void);
+extern int ATIbios16(ATI_BIOSRegisters *registers);
+extern void _ATIbios32(ATI_BIOSRegisters *registers);
 extern unsigned int ATI_Bios_Offset;
-extern unsigned int ATI_Bios_Selector;
-extern unsigned int ATI_Bios_StackOffset;
-extern unsigned int ATI_Bios_StackSelector;
-extern unsigned int kernDataSel;
+extern unsigned short ATI_Bios_Selector;
+extern unsigned short ATI_Bios_StackOffset;
+extern unsigned short ATI_Bios_StackSelector;
+extern unsigned short kernDataSel;
 
 #endif

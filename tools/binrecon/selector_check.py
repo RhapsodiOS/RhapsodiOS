@@ -1,8 +1,8 @@
 """Compare a driver's Objective-C selectors against a reference binary's.
 
-The reference binary's __TEXT,__text symbol table names every method Apple
-compiled, in "-[Class(Category) selector]" form. This script parses the same
-names out of our sources and reports four disagreements:
+The reference binary's Objective-C metadata contains method implementation
+addresses and names in "-[Class(Category) selector]" form. This script parses
+the same names out of our sources and reports four disagreements:
 
   renames     our selector matches a reference name only after dropping one
               leading underscore, and the class has no correctly-named sibling
@@ -22,11 +22,14 @@ import re
 import sys
 from pathlib import Path
 
-from binrecon.macho import read_macho
+from binrecon.macho import objc_method_index
 from binrecon.source_map import read_selector
 from source_paths import source_files
 
-TEXT_SECTION = "__TEXT,__text"
+GENERATED_SELECTORS = {
+    "+[ATIRageDisplayDriverKernelServerInstance kernelServerInstance]",
+    "+[ATIRageDisplayDriverVersion driverKitVersionForATIRageDisplayDriver]",
+}
 
 _IMPLEMENTATION = re.compile(r"^@implementation\s+(\w+)\s*(?:\(\s*(\w+)\s*\))?")
 _END = "@end"
@@ -53,13 +56,7 @@ def _body_follows(lines, index):
 
 
 def reference_selectors(path):
-    document = read_macho(path)
-    return {
-        symbol["name"]
-        for symbol in document["symbols"]
-        if symbol["section"] == TEXT_SECTION
-        and symbol["name"].startswith(("-[", "+["))
-    }
+    return {name for names in objc_method_index(path).values() for name in names}
 
 
 def source_methods(source_path):
@@ -157,10 +154,14 @@ def main(argv):
 
     reference = reference_selectors(Path(argv[1]))
     methods = list(source_methods(argv[2]))
-    renames, duplicates, missing, extra = classify(reference, methods)
+    generated = sorted(reference & GENERATED_SELECTORS)
+    renames, duplicates, missing, extra = classify(reference - GENERATED_SELECTORS, methods)
 
     print("reference selectors: %d" % len(reference))
     print("our definitions:     %d" % len(methods))
+    print("generated selectors: %d" % len(generated))
+    for name in generated:
+        print("    %s" % name)
     for label, records in (("renames", renames), ("duplicates", duplicates)):
         print("\n%s (%d):" % (label, len(records)))
         for full, filename, line in sorted(records, key=lambda r: (r[1], r[2])):

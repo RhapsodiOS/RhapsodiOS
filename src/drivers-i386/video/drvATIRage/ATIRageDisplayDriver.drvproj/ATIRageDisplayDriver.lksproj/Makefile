@@ -13,11 +13,12 @@ PROJECTVERSION = 2.7
 PROJECT_TYPE = Kernel Server
 LANGUAGE = English
 
-CLASSES = ATIRageDisplayDriver.m
+CLASSES = ATIRageDisplayDriver.m ATI_BIOS.m
 
 HFILES = ATIRageDisplayDriver.h ATIRageRegs.h ATI_BIOS.h ATIRageModes.h
 
 OTHERSRCS = Makefile.preamble Makefile Makefile.postamble Load_Commands.sect
+OTHERSRCS += ATIbios16.c ATI_BIOS16.s ATIbios.s
 
 
 MAKEFILEDIR = $(MAKEFILEPATH)/pb_makefiles

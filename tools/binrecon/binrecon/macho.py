@@ -467,7 +467,9 @@ def objc_methods_from_sections(payload, sections, endianness="little"):
                 return
             selector_address, _types, imp = layout["method"].unpack_from(payload, base)
             selector = text(selector_address)
-            if not selector or not imp:
+            # A loadable Mach-O can place its first __TEXT function at address
+            # zero; the IMP is still valid and must be indexed.
+            if not selector:
                 continue
             index.setdefault(imp, set()).add(f"{sign}[{owner} {selector}]")
 

@@ -1,0 +1,4 @@
+SGS_PROJECT_VERSION = drvATIRage-16
+
+# This tree stores the packaged hierarchy at Help/ instead of DriverHelp/.
+MOVEHELP =

@@ -9,11 +9,13 @@ both this design spec and its implementation plan. That authorizes preparing
 both documents in this pass. These documents describe future implementation;
 the driver source has not yet been reconstructed.
 
-The complete denominator is **62 routines: 60 handwritten and two generated**.
-IDA initially recovered 61 functions. The additional routine is the 203-byte
-`__ATIbios32` assembly thunk at `0x2f20`, which IDA disassembled but did not
-recognize as a function because its far-call operand is embedded data. The
-60 handwritten routines comprise 48 Objective-C methods and 12 C/assembly
+The complete denominator is **63 code entries: 61 handwritten and two
+generated**. IDA initially recovered 61 functions. Two additional routines
+were identified by following the BIOS call path: the 117-byte `__bios16`
+transition routine at `0x2e48`, embedded in IDA's final code gap, and the
+203-byte `__ATIbios32` assembly thunk at `0x2f20`, which IDA disassembled but
+did not recognize as a function because its far-call operand is embedded data.
+The 61 handwritten entries comprise 48 Objective-C methods and 13 C/assembly
 routines. Exporting the initial 61 pseudocode bodies is useful evidence, but
 does not establish full code coverage or reconstruction completion.
 
@@ -39,8 +41,9 @@ Reference directory:
 | Architecture | i386, little-endian Mach-O |
 | `__TEXT,__text` | Address 0, 12,267 bytes (`0x2feb`) |
 | Initial IDA functions | 61, totaling 11,862 bytes |
-| Supplemental assembly | `0x2f20..0x2feb`, 203 bytes |
-| Remaining text gaps | 202 bytes; each must be classified as padding or code |
+| Supplemental BIOS transition | `__bios16`, `0x2e48..0x2ebd`, 117 bytes |
+| Supplemental assembly thunk | `__ATIbios32`, `0x2f20..0x2feb`, 203 bytes |
+| Initial text gaps | 202 bytes; includes `__bios16`; the other 85 bytes must be classified as padding or code |
 | Mode table | 72 records, 136 bytes per record |
 | CRTC timing data | 18 records, 30 bytes per record |
 | Companion bundle executable | `ATIRageDisplayDriver`, 16,708 bytes, 34 bytes of dyld glue |
@@ -136,7 +139,9 @@ All production changes remain in this driver tree.
 | `LKS/ATIRageRegs.h` | Only evidenced Mach64/Rage registers and access constants, replacing the R128 guesses |
 | `LKS/ATIRageModes.h` | Private mode, CRTC, refresh and gamma definitions, included once by the main implementation |
 | `LKS/ATI_BIOS.h` | ATI_BIOS interface, Private category declarations, typed BIOS register/descriptor/private layouts |
-| `LKS/ATI_BIOS.m` | BIOS methods, lookup tables, descriptor management and the ATIbios16 C wrapper |
+| `LKS/ATI_BIOS.m` | BIOS methods, lookup tables and descriptor management |
+| `LKS/ATI_BIOS16.s` | The embedded `__bios16` protected-to-real-mode transition routine |
+| `LKS/ATIbios16.c` | The `ATIbios16` wrapper, split out to preserve reference text order |
 | `LKS/ATIbios.s` | The `__ATIbios32` far-call thunk and its assembly scratch storage |
 | `LKS/Makefile.preamble`, `Makefile.postamble` | Source/header integration and required link ordering |
 | `LKS/Load_Commands.sect` | Shipped WIRE semantics |
@@ -146,11 +151,12 @@ All production changes remain in this driver tree.
 | `drvATIRage/reconstruction/ATIRageDisplayDriver_reloc/` | Reference contract, source map, ledger and reconstruction checker |
 
 The proposed source units preserve the observed text order: main ATI code,
-generated instance methods, ATI_BIOS code, ATIbios16 wrapper, assembly thunk.
+generated instance methods, ATI_BIOS methods, `__bios16`, ATIbios16 wrapper,
+`__ATIbios32` assembly thunk.
 This order is supported by binary addresses, rather than a claim to know every
 original source filename. The main implementation includes static helper
 forward declarations so definitions can remain in reference address order.
-Keep ATI_BIOS and the thunk after the generated instance object. The existing
+Keep all BIOS units after the generated instance object. The existing
 ThinkPad `LOADABLES +=` postamble pattern can do this after separately compiling
 the extra objects; adding them to `CLASSES` would put them before the instance
 object. Confirm the actual linker object list before accepting the build.
@@ -218,7 +224,9 @@ returns 4096, and `changeRefreshRate:` returns status 3; these small functions
 still belong in the coverage inventory.
 
 The BIOS register block is 48 bytes. Derive each register/segment/flags/entry
-field from accesses and metadata. Descriptor slots use selectors `0x80`,
+field from accesses and metadata, including its EAX/EBX/ECX/EDX/EDI/ESI/EBP
+register slots, segment selectors, returned ES/DS and entry offset. Descriptor
+slots use selectors `0x80`,
 `0x88`, `0x90`, `0x98`; stack allocation is 2048 bytes. Preserve descriptor
 save/restore, address translation, granularity bits, data-size limits and
 error paths. Use a named layout for the 36-byte private block without changing
@@ -255,14 +263,15 @@ handwritten display driver. Require its presence in the final staged package.
 ## 6. Verification and evidence rules
 
 Reconcile raw text symbols, Objective-C method IMPs, IDA boundaries and every
-text gap. The reference contract records all 62 routines, generated ownership,
-section identities, ABI, static-data descriptions and supplemental thunk range.
+text gap. The reference contract records all 63 code entries, generated ownership,
+section identities, ABI, static-data descriptions and both supplemental code ranges.
 The closed binrecon source-map schema is unchanged. If the thunk remains outside
 IDA's partition, record its source address/extent/location in the separate
 contract and check that range explicitly. The ordinary source map should map
 all 59 handwritten IDA functions; its only permitted generated omissions are
-the two instance methods. If a later analyzer recognizes the thunk, reconcile
-the source map and denominator without double counting it.
+the two instance methods. Keep `__bios16` and `__ATIbios32` in the contract
+and compare both supplemental templates explicitly, even if a later analyzer recognizes
+either entry. Do not double count them.
 
 Use binrecon's semantic `load_source_map` validation with the actual saved
 analysis and repository root. Maintain an entry for every routine in the
@@ -285,13 +294,15 @@ its reported missing/extra selector lists are empty; assert those lists too.
 
 ### Completion gates
 
-1. All 62 routines have a source/generated owner, evidence, and reviewed behavior;
-   all 202 initially uncovered text bytes have an explained classification.
+1. All 63 code entries have a source/generated owner, evidence, and reviewed
+   behavior; all 202 initially uncovered text bytes have an explained
+   classification, including the 117-byte `__bios16` routine.
 2. Every handwritten routine has readable source and no unresolved placeholder.
 3. Rebuilt classes, categories, selectors, method encodings and instance layouts
    match the reference ABI. Imported class references retain direct linkage.
-4. All static tables and relocation targets match, and the 203-byte thunk matches
-   under relocation-aware byte comparison.
+4. All static tables and relocation targets match; the 117-byte `__bios16`
+   routine and 203-byte `__ATIbios32` thunk match their reference templates,
+   with runtime-patched far-jump operands accounted for.
 5. A fresh build links and stages the complete driver package with no unexplained
    missing symbol, reference string or unresolved kernel import.
 6. Binrecon reports a complete reference/rebuilt run and passing normalized-function
@@ -319,7 +330,7 @@ its unfinished work to complete this driver.
 
 Addresses below are reference virtual addresses. IDA display names omit
 category membership; resolve membership from runtime metadata. Generated
-methods are marked G; the supplemental assembly entry is marked A.
+generated methods are marked G; the supplemental assembly entries are marked A.
 
 | Address | Bytes | Reference symbol / method | Source owner |
 | --- | ---: | --- | --- |
@@ -383,5 +394,6 @@ methods are marked G; the supplemental assembly entry is marked A.
 | `0x2cdc` | 36 | `-[ATI_BIOS(Private) restoreDataSegment]` | `ATI_BIOS.m` |
 | `0x2d00` | 68 | `-[ATI_BIOS(Private) doBios:dataSeg:]` | `ATI_BIOS.m` |
 | `0x2d44` | 258 | `-[ATI_BIOS(Private) loadCRTC_comm:gamma:pitchSize:resolution:crtTable:function:name:]` | `ATI_BIOS.m` |
-| `0x2ec0` | 95 | `_ATIbios16` | `ATI_BIOS.m` |
+| `0x2e48` | 117 | `__bios16` | `ATI_BIOS16.s` (A) |
+| `0x2ec0` | 95 | `_ATIbios16` | `ATIbios16.c` |
 | `0x2f20` | 203 | `__ATIbios32` | `ATIbios.s` (A) |

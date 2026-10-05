@@ -148,7 +148,7 @@ sound
 video
  * drv3DfxVoodooVSA - needs compiled and then tested
  * drvATIMach64
- * drvATIRage
+ * drvATIRage - fresh native i386 bundle builds with all 41 resource hashes matching the reference; ABI/static-data/thunk contract and kernel import checks pass. The latest IDA comparison has 51 assembly-matched function pairs, 10 different named pairs, and a rebuilt-only `bios16_return` boundary; normalized-function acceptance remains open. Source selector reconciliation passes after accounting for two generated selectors. ATI hardware/runtime testing remains open. See video/drvATIRage/reconstruction/findings.md.
  * drvCirrusLogicGD5434 - builds and links against the reference binary, 19/21 functions byte-identical, apple-generic version bundle present, SGS VERS_STRING/VERS_NUM unmet, setMode: and setPCIConfiguration unmatched; not hardware-tested
  * drvIBMThinkPad760EDDisplay - reconstructed against the reference binary, built, ledger advanced; not hardware-tested
  * drvMatroxMGA - new, not a reconstruction

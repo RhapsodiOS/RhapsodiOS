@@ -516,8 +516,14 @@ def collect_analysis(input_path, expected_size, expected_sha256, modules=None, m
         if not _in_scope(source, scope):
             continue
         for target in idautils.CodeRefsFrom(source, False):
+            # IDA may expose sign-extended stack-segment pseudo targets even
+            # in a 32-bit database. They are not valid effective addresses.
+            if not 0 <= target <= 0xFFFFFFFF:
+                continue
             references.append({"address": source, "target": target, "kind": "code"})
         for target in idautils.DataRefsFrom(source):
+            if not 0 <= target <= 0xFFFFFFFF:
+                continue
             references.append({"address": source, "target": target, "kind": "data"})
 
     relocations = _collect_relocations(modules)

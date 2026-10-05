@@ -51,9 +51,10 @@ claim that the snapshot is the initial 2.0 release:
 
 The compiled inventory is `ext2fs_alloc.c`, `ext2fs_balloc.c`,
 `ext2fs_bmap.c`, `ext2fs_bswap.c`, `ext2fs_inode.c`, `ext2fs_lookup.c`,
-`ext2fs_subr.c`, `ext2fs_vfsops.c`, and `ext2fs_vnops.c`. Import the included
-`ext2fs_readwrite.c` and format, inode, directory, and declaration headers.
-Avoid compiling included fragments twice. Rename upstream `ext2fs.h` locally
+`ext2fs_readwrite.c`, `ext2fs_subr.c`, `ext2fs_vfsops.c`, and `ext2fs_vnops.c`,
+as listed in upstream `sys/ufs/files.ufs`. These are ten independently compiled
+units. Import the format, inode, directory, and declaration headers.
+Rename upstream `ext2fs.h` locally
 to `ext2_fs.h`, recording the mechanical change, so it cannot shadow the
 generated kernel-option header `ext2fs.h`.
 
@@ -81,6 +82,7 @@ Primary references:
 - [Pinned NetBSD core](https://github.com/NetBSD/src/tree/c90afb5a84a9c36a5c076093afade8e63ed2b6a9/sys/ufs/ext2fs)
 - [NetBSD byte-order routines](https://github.com/NetBSD/src/blob/c90afb5a84a9c36a5c076093afade8e63ed2b6a9/sys/ufs/ext2fs/ext2fs_bswap.c)
 - [NetBSD mount helper](https://github.com/NetBSD/src/tree/c90afb5a84a9c36a5c076093afade8e63ed2b6a9/sbin/mount_ext2fs)
+- [NetBSD compiled source inventory](https://github.com/NetBSD/src/blob/c90afb5a84a9c36a5c076093afade8e63ed2b6a9/sys/ufs/files.ufs)
 - [e2fsprogs 1.35](https://github.com/tytso/e2fsprogs/tree/E2FSPROGS-1_35)
 
 ## Kernel integration

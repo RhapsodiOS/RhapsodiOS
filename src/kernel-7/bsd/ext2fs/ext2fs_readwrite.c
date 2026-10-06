@@ -106,6 +106,13 @@ ext2fs_read(v)
 	ip = VTOI(vp);
 	uio = ap->a_uio;
 
+#if MACH_NBC
+	/* Native pager pass-through uses UIO_SYSSPACE and must stay buffered. */
+	if (vp->v_type == VREG && vp->v_vm_info && vp->v_vm_info->pager &&
+	    uio->uio_segflg == UIO_USERSPACE)
+		return ext2fs_vm_io(vp,uio,ap->a_ioflag,ap->a_cred);
+#endif
+
 #ifdef DIAGNOSTIC
 	if (uio->uio_rw != UIO_READ)
 		panic("%s: mode", "ext2fs_read");
@@ -204,6 +211,12 @@ ext2fs_write(v)
 	ip = VTOI(vp);
 	error = 0;
 	if (vp->v_mount->mnt_flag & MNT_RDONLY) return EROFS;
+
+#if MACH_NBC
+	if (vp->v_type == VREG && vp->v_vm_info && vp->v_vm_info->pager &&
+	    uio->uio_segflg == UIO_USERSPACE)
+		return ext2fs_vm_io(vp,uio,ioflag,ap->a_cred);
+#endif
 
 #ifdef DIAGNOSTIC
 	if (uio->uio_rw != UIO_WRITE)

@@ -91,6 +91,14 @@ ext2fs_inactive(v)
 	struct inode *ip = VTOI(vp);
 	struct proc *p = ap->a_p;
 	int error = 0;
+
+	/* A rejected disk inode never acquired authority to change allocations.
+	 * Recycle its private vnode state without interpreting its link count. */
+	if (!((struct ext2fs_node *)ip)->admitted) {
+		VOP_UNLOCK(vp, 0, current_proc());
+		vrecycle(vp, NULL, p);
+		return 0;
+	}
 	
 	if (prtactive && vp->v_usecount != 0)
 		vprint("ext2fs_inactive: pushing active", vp);

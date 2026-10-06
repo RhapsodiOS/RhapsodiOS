@@ -487,6 +487,149 @@ static int verify_writes(const char *point,int mapped)
     puts(mapped ? "EXT2_OK verify-writes" : "EXT2_OK verify-core"); return 0;
 }
 
+
+static int rejected_inode(const char *device,const char *point,int root)
+{
+    struct ext2fs_args args;
+    struct statfs before,after;
+    struct stat st;
+    int fd,result,saved;
+    args.fspec=(char *)device;
+    if(root) {
+        errno=0;result=mount("ext2fs",point,0,&args);saved=errno;
+        printf("rejected root mount=%d errno=%d\n",result,saved);
+        CHECK(result == 0 || (result == -1 && saved == EIO));
+        if(result == 0) {
+            errno=0;result=stat(point,&st);saved=errno;
+            printf("rejected root stat=%d errno=%d\n",result,saved);
+            CHECK(result == -1 && saved == EIO);
+            errno=0;result=unmount(point,0);saved=errno;
+            printf("rejected root unmount=%d errno=%d\n",result,saved);
+            CHECK(result == -1 && saved == EIO);
+        }
+    } else {
+        CHECK(mount("ext2fs",point,0,&args) == 0);
+        CHECK(chdir(point) == 0 && statfs(".",&before) == 0);
+        errno=0;fd=open("rejected",O_RDONLY);saved=errno;
+        printf("rejected target open=%d errno=%d\n",fd,saved);
+        CHECK(fd == -1 && saved == EIO);
+        CHECK(statfs(".",&after) == 0);
+        printf("rejected counts blocks=%ld/%ld inodes=%ld/%ld\n",(long)before.f_bfree,(long)after.f_bfree,(long)before.f_ffree,(long)after.f_ffree);
+        CHECK(chdir("/") == 0 && unmount(point,0) == 0);
+        CHECK(before.f_bfree == after.f_bfree && before.f_ffree == after.f_ffree);
+    }
+    puts(root ? "EXT2_OK rejected-root" : "EXT2_OK rejected-inode");return 0;
+}
+
+
+
+static int mapped_readonly(const char *point)
+{
+    struct statfs before,after;
+    char *shared,*private;
+    int fd;
+    CHECK(chdir(point) == 0 && statfs(".",&before) == 0 && (before.f_flags&MNT_RDONLY));
+    CHECK((fd=open("hello.txt",O_RDONLY)) >= 0);
+    shared=mmap(0,4096,PROT_READ,MAP_SHARED,fd,0);
+    CHECK(shared != (char *)-1 && !memcmp(shared,"hello from ext2\n",16));
+    CHECK(read_at(fd,0,"hello from ext2\n",16) == 0);
+    private=mmap(0,4096,PROT_READ|PROT_WRITE,MAP_PRIVATE,fd,0);
+    CHECK(private != (char *)-1);private[0]='P';
+    CHECK(shared[0]=='h' && read_at(fd,0,"hello from ext2\n",16) == 0);
+    CHECK(fsync(fd) == 0 && munmap(private,4096) == 0 && munmap(shared,4096) == 0 && close(fd) == 0);
+    CHECK(statfs(".",&after) == 0 && before.f_bfree == after.f_bfree && before.f_ffree == after.f_ffree);
+    puts("EXT2_OK mmap-readonly");return 0;
+}
+
+static int fresh_control(const char *point)
+{
+    struct statfs before,after;
+    struct stat st;
+    char zero[4096],*pages;
+    int fd,mode,result,saved,failures=0;
+    ssize_t count;
+    memset(zero,0,sizeof(zero));CHECK(chdir(point) == 0 && statfs(".",&before) == 0);
+    CHECK((fd=open("fresh-unlinked",O_CREAT|O_EXCL|O_RDWR,0600)) >= 0);
+    CHECK(write(fd,zero,sizeof(zero)) == sizeof(zero));
+    pages=mmap(0,4096,PROT_READ|PROT_WRITE,MAP_SHARED,fd,0);
+    CHECK(pages != (char *)-1 && pages[0] == 0 && unlink("fresh-unlinked") == 0);
+    pages[16]='U';CHECK(read_at(fd,16,"U",1) == 0);
+    CHECK(lseek(fd,32,SEEK_SET) == 32 && write(fd,"V",1) == 1 && pages[32]=='V');
+    CHECK(fsync(fd) == 0 && close(fd) == 0 && pages[16]=='U' && pages[32]=='V');
+    CHECK(munmap(pages,4096) == 0);sync();CHECK(statfs(".",&after) == 0);
+    CHECK(before.f_bfree == after.f_bfree && before.f_ffree == after.f_ffree);
+    puts("EXT2_OK fresh-unlinked");
+    for(mode=0;mode<2;mode++) {
+        CHECK((fd=open("fresh-limit",O_CREAT|O_EXCL|O_RDWR,0600)) >= 0);
+        CHECK(write(fd,zero,sizeof(zero)) == sizeof(zero));
+        if(mode) CHECK(ftruncate(fd,2147483646) == 0);
+        pages=mmap(0,4096,PROT_READ|PROT_WRITE,MAP_SHARED,fd,0);
+        CHECK(pages != (char *)-1 && pages[0] == 0);pages[16]='A';
+        if(mode) CHECK(fcntl(fd,F_SETFL,O_APPEND) == 0 && lseek(fd,0,SEEK_SET) == 0);
+        else CHECK(lseek(fd,2147483646,SEEK_SET) == (off_t)2147483646);
+        errno=0;count=write(fd,"XY",2);saved=errno;
+        CHECK(fstat(fd,&st) == 0);
+        printf("fresh limit append=%d count=%ld errno=%d size=%lu\n",mode,(long)count,saved,(unsigned long)st.st_size);
+        CHECK(count == -1 && saved == EFBIG && st.st_size == (mode ? (off_t)2147483646 : (off_t)4096));
+        errno=0;result=fsync(fd);saved=errno;
+        printf("fresh limit immediate fsync=%d errno=%d\n",result,saved);
+        if(result) failures++;
+        CHECK(fcntl(fd,F_SETFL,0) == 0 && lseek(fd,32,SEEK_SET) == 32 && write(fd,"B",1) == 1);
+        CHECK(read_at(fd,16,"A",1) == 0 && read_at(fd,32,"B",1) == 0 && pages[32]=='B');
+        errno=0;result=fsync(fd);saved=errno;
+        printf("fresh limit valid-I/O fsync=%d errno=%d\n",result,saved);
+        CHECK(result == 0);
+        CHECK(munmap(pages,4096) == 0 && close(fd) == 0 && unlink("fresh-limit") == 0);
+        sync();CHECK(statfs(".",&after) == 0);
+        CHECK(before.f_bfree == after.f_bfree && before.f_ffree == after.f_ffree);
+    }
+    CHECK(!failures);puts("EXT2_OK mmap-fresh-control");return 0;
+}
+
+static int fresh_mapping(const char *point,int verify)
+{
+    char name[32],zero[4096],got[2];
+    char *shared,*private;
+    volatile char fault;
+    int fd,order,failures=0;
+    memset(zero,0,sizeof(zero));CHECK(chdir(point) == 0);
+    for(order=0;order<2;order++) {
+        sprintf(name,"fresh-map-%d",order);
+        if(verify) {
+            CHECK((fd=open(name,O_RDONLY)) >= 0);
+            CHECK(read_at(fd,16,"A",1) == 0 && read_at(fd,32,"B",1) == 0);
+            CHECK(read_at(fd,48,zero,1) == 0 && close(fd) == 0);
+            continue;
+        }
+        CHECK((fd=open(name,O_CREAT|O_EXCL|O_RDWR,0600)) >= 0);
+        CHECK(write(fd,zero,sizeof(zero)) == sizeof(zero));
+        shared=mmap(0,4096,PROT_READ|PROT_WRITE,MAP_SHARED,fd,0);
+        CHECK(shared != (char *)-1);fault=shared[0];CHECK(fault == 0);
+        private=mmap(0,4096,PROT_READ|PROT_WRITE,MAP_PRIVATE,fd,0);
+        CHECK(private != (char *)-1);private[48]='P';
+        if(order == 0) {
+            shared[16]='A';
+            CHECK(lseek(fd,16,SEEK_SET) == 16 && read(fd,got,1) == 1);
+            printf("fresh mapped-first immediate read A=%d\n",got[0]);
+            if(got[0]!='A') failures++;
+        }
+        CHECK(lseek(fd,32,SEEK_SET) == 32 && write(fd,"B",1) == 1);
+        if(order == 1) shared[16]='A';
+        CHECK(lseek(fd,16,SEEK_SET) == 16 && read(fd,got,1) == 1);
+        printf("fresh order=%d immediate mapped-A=%d ordinary-A=%d mapped-B=%d private=%d shared-private=%d\n",order,shared[16],got[0],shared[32],private[48],shared[48]);
+        if(got[0]!='A' || shared[32]!='B' || private[48]!='P' || shared[48]!=0) failures++;
+        CHECK(fsync(fd) == 0 && munmap(private,4096) == 0 && munmap(shared,4096) == 0);
+        CHECK(lseek(fd,16,SEEK_SET) == 16 && read(fd,got,1) == 1);
+        if(got[0]!='A') failures++;
+        CHECK(lseek(fd,32,SEEK_SET) == 32 && read(fd,got+1,1) == 1);
+        printf("fresh order=%d persisted A=%d B=%d\n",order,got[0],got[1]);
+        if(got[1]!='B') failures++;
+        CHECK(close(fd) == 0);
+    }
+    CHECK(!failures);
+    puts(verify ? "EXT2_OK verify-fresh" : "EXT2_OK mmap-fresh");return 0;
+}
+
 int main(int argc,char **argv)
 {
     struct stat st;
@@ -497,6 +640,12 @@ int main(int argc,char **argv)
     int fd, saw_dot = 0, saw_parent = 0;
     char data[32];
     ssize_t count;
+    if (argc == 4 && !strcmp(argv[1],"rejected-inode")) return rejected_inode(argv[2],argv[3],0);
+    if (argc == 4 && !strcmp(argv[1],"rejected-root")) return rejected_inode(argv[2],argv[3],1);
+    if (argc == 3 && !strcmp(argv[1],"mmap-readonly")) return mapped_readonly(argv[2]);
+    if (argc == 3 && !strcmp(argv[1],"mmap-fresh-control")) return fresh_control(argv[2]);
+    if (argc == 3 && !strcmp(argv[1],"mmap-fresh")) return fresh_mapping(argv[2],0);
+    if (argc == 3 && !strcmp(argv[1],"verify-fresh")) return fresh_mapping(argv[2],1);
     if (argc == 3 && !strcmp(argv[1],"remount-null")) return remount_refusal(argv[2],NULL);
     if (argc == 4 && !strcmp(argv[1],"remount-device")) return remount_refusal(argv[2],argv[3]);
     if (argc == 3 && !strcmp(argv[1],"mutation")) return mutation(argv[2]);

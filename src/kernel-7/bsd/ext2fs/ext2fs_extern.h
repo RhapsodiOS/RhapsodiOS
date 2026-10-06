@@ -111,6 +111,7 @@ int ext2fs_update_inode(struct vnode *,struct timeval *,struct timeval *,int);
 int ext2fs_update(struct vop_update_args *);
 int ext2fs_read(void *);
 int ext2fs_write(void *);
+int ext2fs_vm_io(struct vnode *,struct uio *,int,struct ucred *);
 int ext2fs_bmap(void *);
 int ext2fs_lookup(void *);
 int ext2fs_readdir(void *);

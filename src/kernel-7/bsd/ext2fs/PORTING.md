@@ -320,3 +320,37 @@ must be below the filesystem block count before full-block getblk overwrites
 can bypass bmap. The native balloc test compiles production allocation and
 shared UFS geometry, controlling only buffer I/O and unused allocation hooks;
 it checks exact buffer ownership and no write/allocation after refusal.
+
+## Task 4 review fixes: admission and first user I/O
+
+The private ext2fs_node.admitted flag is set only after successful vnode
+initialization, including the allocator's reserved-inode path. A vnode rejected
+before admission unlocks and recycles without truncate, update or bitmap free;
+reclaim releases its private inode and device reference. Genuine unlink and
+allocator rollback keep their existing distinct ownership. Native malformed RW
+fixtures cover a referenced allocated zero-link file and inode2, with exact
+post-exit inode, data, bitmap and free-count comparisons. A malformed root may
+mount before lookup; its lookup and generic namei-based unmount return EIO.
+That intentionally invalid root run is not a clean-unmount/checker success.
+
+A fresh user mapping creates a pager before MapFS enrollment. ext2 read/write
+now send UIO_USERSPACE regular-file I/O with an existing pager through
+ext2fs_vm_io before accepting bytes. Native rwuio assigns UIO_USERSPACE;
+vnode_pager pagein/pageout assigns UIO_SYSSPACE, so pager pass-through remains
+buffered and cannot recursively re-enter MapFS I/O. Native vn_rdwr already
+enrolls regular files with pagers for kernel callers; that path is unchanged.
+The syscall vnode lock protects the handoff. The helper preserves prior errors
+before map_vnode can clear them, adds a temporary map reference only for
+initial enrollment, holds the recursive cache lock/use count, rejects busy or
+missing-object states, dispatches mapfs_io, then pairs vmp_put/unmap_vnode.
+Already cached count-zero state gains no new map reference. The operation
+errno returns separately from recorded VM errors: only the latter survive
+cleanup in the same live cache, so EFBIG cannot poison a later fsync. No shared VM change is
+needed for this fix. Generic-first-fsync error clearing and broader failure
+latching remain the explicit Task5 fault gate.
+
+Fresh-mapping tests fault a page before either I/O ordering, check mapped store
+visibility through read before fsync, ordinary-write visibility through the
+shared page, private isolation, and both bytes after fsync/unmap/RO remount.
+The covering native cases retain mapped/unlinked lifetime and ceiling checks,
+ordinary allocation/unlink, and unchanged-data RO/malformed regressions.

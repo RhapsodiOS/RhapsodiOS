@@ -2,6 +2,39 @@
 # Run from the directory containing mount_ext2fs and ext2_io.
 set -e
 case "$1" in
+rejected-inode-suite)
+    test "$#" = 2
+    set +e
+    ./ext2_io rejected-inode /dev/hd1a "$2"
+    ordinary=$?
+    test -b /dev/hd1b || mknod /dev/hd1b b 3 9
+    ./ext2_io rejected-root /dev/hd1b "$2"
+    root=$?
+    set -e
+    test "$ordinary" = 0 && test "$root" = 0
+    echo "EXT2_OK rejected-inode-suite"
+    ;;
+fresh-control-suite)
+    test "$#" = 2
+    ./mount_ext2fs /dev/hd1a "$2"
+    set +e
+    ./ext2_io mmap-fresh-control "$2"
+    result=$?
+    set -e
+    umount "$2"
+    test "$result" = 0
+    echo "EXT2_OK fresh-control-suite"
+    ;;
+fresh-mmap-suite)
+    test "$#" = 2
+    ./mount_ext2fs /dev/hd1a "$2"
+    ./ext2_io mmap-fresh "$2"
+    umount "$2"
+    ./mount_ext2fs -o ro /dev/hd1a "$2"
+    ./ext2_io verify-fresh "$2"
+    umount "$2"
+    echo "EXT2_OK fresh-mmap-suite"
+    ;;
 mutation|limits|mmap|mmap-size|mmap-fsync|mmap-limits|permissions|special)
     test "$#" = 3
     ./mount_ext2fs "$2" "$3"
@@ -63,7 +96,7 @@ write-suite|write-fsync-suite|write-core-suite)
     suite="$1"
     scenarios="mutation limits mmap-size mmap permissions special"
     verify=verify-writes
-    if test "$suite" = write-fsync-suite; then scenarios="mutation limits mmap-size mmap-fsync mmap-limits permissions special"; fi
+    if test "$suite" = write-fsync-suite; then scenarios="mutation limits mmap-fresh mmap-size mmap-fsync mmap-limits permissions special"; fi
     if test "$suite" = write-core-suite; then scenarios="mutation limits permissions special"; verify=verify-core; fi
     n=0
     for part in a b c d e f; do
@@ -80,6 +113,7 @@ write-suite|write-fsync-suite|write-core-suite)
         umount "$point"
         ./mount_ext2fs -o ro "$device" "$point"
         ./ext2_io "$verify" "$point"
+        if test "$suite" = write-fsync-suite; then ./ext2_io verify-fresh "$point"; fi
         umount "$point"
         n=`expr "$n" + 1`
     done
@@ -100,6 +134,7 @@ read-suite|malformed-suite|truncated-suite)
         read-suite)
             sh "$0" readonly "$device" "$point"
             sh "$0" mapping "$device" "$point"
+            sh "$0" mmap-readonly "$device" "$point"
             sh "$0" directory "$device" "$point"
             ;;
         malformed-suite)
@@ -120,7 +155,7 @@ tiny)
     test -b /dev/hd1d || mknod /dev/hd1d b 3 11
     ./ext2_io tiny "$2"
     ;;
-readonly|mapping|directory|malformed)
+readonly|mapping|directory|mmap-readonly|malformed)
     scenario="$1"
     if test "$scenario" = malformed; then test "$#" = 4; else test "$#" = 3; fi
     i=0

@@ -1535,6 +1535,7 @@ retry:
     }
     error=allocating ? 0 : ext2fs_vinit(mp,ext2fs_specop_p,ext2fs_fifoop_p,&vp);
     if (error) { vput(vp); goto out; }
+    ((struct ext2fs_node *)VTOI(vp))->admitted=1;
     simple_lock(&ext2_hashlock); LIST_INSERT_HEAD(EXT2_HASH(ip->i_dev,ino),ip,i_hash); simple_unlock(&ext2_hashlock);
     *vpp=vp;
 out:

@@ -1175,6 +1175,38 @@ bad:
 	return (error);
 }
 
+/* The first ordinary syscall after user mmap must share its backing object.
+ * The caller holds the vnode lock; pager I/O stays on the buffered path. */
+int
+ext2fs_vm_io(struct vnode *vp,struct uio *uio,int flags,struct ucred *cred)
+{
+#if MACH_NBC
+    struct vm_info *vmp=vp->v_vm_info;
+    struct proc *p=uio->uio_procp;
+    int held=0,error,vm_error;
+    if (vmp->error) return vmp->error;
+    if (!vmp->mapped) {
+        if (vmp->map_count) return EIO;
+        map_vnode(vp,p);
+        held=1;
+    }
+    vmp_get(vmp);
+    if (vmp->error) error=vmp->error;
+    else if (vmp->busy) error=EBUSY;
+    else if (!vmp->mapped || !vmp->object) error=EIO;
+    else error=mapfs_io(vp,uio,uio->uio_rw,flags,cred);
+    vm_error=vmp->error;
+    if (!error) error=vm_error;
+    vmp_put(vmp);
+    if (held) unmap_vnode(vp,p);
+    /* A rejected syscall (for example EFBIG) is not a pager failure. */
+    if (vm_error && vp->v_vm_info == vmp && vmp->mapped) vmp->error=vm_error;
+    return error;
+#else
+    return EOPNOTSUPP;
+#endif
+}
+
 /* User mmap creates a pager without enrolling it in the native MapFS cache.
  * Hold only a temporary native mapping reference; linked cache state survives
  * unmap_vnode and subsequent opens retain their normal count ownership. */

@@ -106,6 +106,38 @@ class TestForFilesystem(unittest.TestCase):
                                boot0=(32, 96), tag=0)))
 
 
+def _decode(copy):
+    secsize = struct.unpack_from(">i", copy, 92)[0]
+    front = struct.unpack_from(">h", copy, 112)[0]
+    p_base, p_size = struct.unpack_from(">ii", copy, 190)
+    return secsize, front, p_base, p_size
+
+
+class TestCdLabel(unittest.TestCase):
+    G = ufs_geometry.geometry(fssize=110080, secsize=2048, nsect=64,
+                              ntrak=32, rpm=300, fsize=2048)
+
+    def test_cd_label_fields(self):
+        lbl = label.cd_label(self.G, front=320, p_size=110080,
+                             name="RhapsodiOS")
+        self.assertEqual(lbl[:4], b"dlV3")
+        self.assertEqual(_decode(lbl), (2048, 320, 0, 110080))
+        self.assertEqual(
+            struct.unpack_from(">H", lbl, ufs_build.LABEL_CHECKSUM)[0],
+            ufs_build.label_checksum(lbl))
+        self.assertEqual(struct.unpack_from(">ii", lbl, 124),
+                         (-1, -1))
+
+    def test_cd_label_copies_carry_their_block(self):
+        f = io.BytesIO()
+        label.place(f, label.cd_label(self.G, 320, 110080, "RhapsodiOS"),
+                    label.CD_COPIES)
+        raw = f.getvalue()
+        for blk in label.CD_COPIES:
+            self.assertEqual(struct.unpack_from(">i", raw, blk * 512 + 4)[0],
+                             blk)
+
+
 class TestRefusals(unittest.TestCase):
     def test_name_too_long(self):
         with self.assertRaises(label.LabelError):

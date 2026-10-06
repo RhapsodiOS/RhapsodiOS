@@ -15,6 +15,7 @@ DISK_COPIES = (15, 30, 45)
 # A CD needs the copy at 0 too: the kernel reads it in 2048-byte blocks, and
 # the others are not on a 2048-byte boundary.
 CD_COPIES = (0, 15, 30, 45)
+CD_TYPE = "removable_rw_scsi"
 
 _PART_OFF = 190
 _PART_SIZE = 46
@@ -75,6 +76,20 @@ def for_filesystem(g, front, p_base, ncylinders, name, d_type,
                  fsize=g.fsize, cpg=g.cpg, density=4 * g.fsize,
                  minfree=g.minfree, name=name, d_name=name, d_type=d_type,
                  boot0=boot0)
+
+
+def cd_label(g, front, p_size, name):
+    """The label of a CD whose filesystem g describes: secsize 2048, so front
+    and p_size count 2048-byte blocks, partition a from block 0 (a CD has no
+    fdisk table), and no boot blocks; the booter lives on the El Torito
+    image."""
+    total = front + p_size
+    lbl = label(secsize=g.secsize, ntracks=g.ntrak, nsectors=g.nsect,
+                ncylinders=-(-total // g.spc), rpm=g.rpm, front=front,
+                p_base=0, p_size=p_size, bsize=g.bsize, fsize=g.fsize,
+                cpg=g.cpg, density=4 * g.fsize, minfree=g.minfree,
+                name=name, d_name=name, d_type=CD_TYPE)
+    return lbl
 
 
 def place(f, lbl, copies, relsect=0):

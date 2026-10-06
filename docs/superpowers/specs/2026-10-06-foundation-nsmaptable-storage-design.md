@@ -54,8 +54,9 @@ The wrapper computes hashes through `keyCallBacks.hash` when present and uses
 the original key otherwise. It passes the wrapper as the comparison context,
 so the dictionary's stored `keysEqual` callback invokes
 `keyCallBacks.isEqual(table, storedKey, candidateKey)` exactly as the target
-does. The reserved `notAKeyMarker` checks remain in the public lookup and
-insertion paths.
+does. The reserved `notAKeyMarker` checks remain in `NSMapInsert`,
+`NSMapInsertKnownAbsent`, `NSMapInsertIfAbsent`, and `NSMapRemove`.
+`NSMapMember` and `NSMapGet` do not add marker checks.
 
 Preserve target ownership order around helper calls:
 

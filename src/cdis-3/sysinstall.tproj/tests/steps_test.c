@@ -318,6 +318,65 @@ static void test_refuses_a_live_rc_cdrom(void)
 	remove(TREE "/T/private/etc/rc.cdrom");
 }
 
+static void test_popen_mode_is_one_character(void)
+{
+	/* Rhapsody's popen rejects a mode longer than one character */
+	CHECK(strlen(POPEN_MODE_NATIVE) == 1);
+#ifndef _WIN32
+	CHECK(strcmp(POPEN_MODE, POPEN_MODE_NATIVE) == 0);
+#endif
+}
+
+static void test_two_apks_for_one_package_is_step_5(void)
+{
+	char *pkgs[] = { "files", "cc" };
+	struct plan p;
+	char failed[256];
+
+	setup();
+	put(TREE "/I/Packages/cc-1-universal.apk", "x", 1);
+	fill(&p, pkgs, 2, NULL, 0, ESP_BYTES);
+	CHECK(steps_run(&p, fake_run, NULL, failed, sizeof failed) == 5);
+	CHECK(ncmds == 3);	/* the --initdb apk ran; the second did not */
+	CHECK(strstr(failed, "two apks for package cc") != NULL);
+	remove(TREE "/I/Packages/cc-1-universal.apk");
+
+	setup();
+	put(TREE "/I/Packages/files-2-i386.apk", "x", 1);
+	fill(&p, pkgs, 1, NULL, 0, ESP_BYTES);
+	CHECK(steps_run(&p, fake_run, NULL, failed, sizeof failed) == 5);
+	CHECK(ncmds == 2);
+	CHECK(strstr(failed, "two apks") != NULL);
+	remove(TREE "/I/Packages/files-2-i386.apk");
+}
+
+static void test_log_moves_to_the_target_at_mount(void)
+{
+	char *pkgs[] = { "files", "basic-cmds" };
+	char *drv[] = { "NE2K" };
+	struct plan p;
+	char failed[256], *log, *a, *b, *c;
+	size_t n;
+
+	setup();
+	remove(TREE "/T/private/var/log/sysinstall.log");
+	fill(&p, pkgs, 2, drv, 1, ESP_BYTES);
+	CHECK(steps_run(&p, fake_run, NULL, failed, sizeof failed) == 0);
+	log = slurp(TREE "/T/private/var/log/sysinstall.log", &n);
+	CHECK(log != NULL);
+	if (log != NULL) {
+		a = strstr(log, "$ disk -i -b /dev/rhd0h -> 0\n");	/* pre-mount */
+		b = strstr(log, "$ mount /dev/hd0a " TREE "/T -> 0\n");
+		c = strstr(log, "$ umount " TREE "/T -> 0\n");	/* post-mount */
+		CHECK(strstr(log, "step 1: ") == log);
+		CHECK(a != NULL && b != NULL && c != NULL && a < b && b < c);
+		CHECK(strstr(log, "$ /usr/sbin/driverDetect -w " TREE "/T NE2K -> 0\n")
+		    != NULL);
+		CHECK(strstr(log, "step 9: ") != NULL);
+		free(log);
+	}
+}
+
 int main(int argc, char **argv)
 {
 	if (argc == 3 && strcmp(argv[1], "--emit") == 0) {
@@ -336,6 +395,9 @@ int main(int argc, char **argv)
 	test_prefix_names_do_not_match();
 	test_esp_of_the_wrong_size_is_refused();
 	test_refuses_a_live_rc_cdrom();
+	test_popen_mode_is_one_character();
+	test_two_apks_for_one_package_is_step_5();
+	test_log_moves_to_the_target_at_mount();
 	printf("%s: %d failure%s\n", "steps_test", failures,
 	    failures == 1 ? "" : "s");
 	return failures != 0;

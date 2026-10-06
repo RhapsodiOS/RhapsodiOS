@@ -9,11 +9,16 @@
 
 #ifdef _WIN32
 #include <windows.h>
+#include <direct.h>
 #define popen _popen
 #define pclose _pclose
+#define MKDIR(p) _mkdir(p)
 #else
 #include <dirent.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <unistd.h>
+#define MKDIR(p) mkdir(p, 0777)
 #endif
 
 #define SECTOR 512ul
@@ -141,7 +146,7 @@ static void dir_close(struct dir *d) { closedir(d->d); }
 #endif
 
 /* The path of pkgdir's apk for package pkg: "pkg-<digit>*.apk".
- * 0 and *out (malloc'd), or -1. */
+ * 0 and *out (malloc'd); -1 if there is none; -2 if there are two. */
 static int find_apk(const char *pkgdir, const char *pkg, char **out)
 {
 	struct dir d;
@@ -150,14 +155,21 @@ static int find_apk(const char *pkgdir, const char *pkg, char **out)
 	char path[PATHMAX];
 	int rc = -1;
 
+	*out = NULL;
 	if (dir_open(&d, pkgdir) < 0)
 		return -1;
-	while (rc < 0 && (name = dir_next(&d)) != NULL) {
+	while ((name = dir_next(&d)) != NULL) {
 		nl = strlen(name);
 		if (nl > pl + 5 && strncmp(name, pkg, pl) == 0 &&
 		    name[pl] == '-' && name[pl + 1] >= '0' &&
 		    name[pl + 1] <= '9' && strcmp(name + nl - 4, ".apk") == 0 &&
 		    cat3(path, pkgdir, "/", name) == 0) {
+			if (rc == 0) {
+				free(*out);
+				*out = NULL;
+				rc = -2;
+				break;
+			}
 			*out = (char *)malloc(strlen(path) + 1);
 			if (*out != NULL) {
 				strcpy(*out, path);
@@ -169,13 +181,89 @@ static int find_apk(const char *pkgdir, const char *pkg, char **out)
 	return rc;
 }
 
+/* ---- the install log: in memory until the target is mounted, then also
+ * appended to T/private/var/log/sysinstall.log ---- */
+
+static struct {
+	char *buf;
+	size_t n, cap;
+	char path[PATHMAX];
+	int to_file;
+} lg;
+
+static void log_reset(void)
+{
+	free(lg.buf);
+	memset(&lg, 0, sizeof lg);
+}
+
+static void log_raw(const char *s)
+{
+	size_t l = strlen(s);
+	char *nb;
+	FILE *f;
+
+	if (lg.n + l + 1 > lg.cap) {
+		nb = (char *)realloc(lg.buf, (lg.n + l + 1) * 2);
+		if (nb != NULL) {
+			lg.buf = nb;
+			lg.cap = (lg.n + l + 1) * 2;
+		}
+	}
+	if (lg.n + l + 1 <= lg.cap) {
+		memcpy(lg.buf + lg.n, s, l + 1);
+		lg.n += l;
+	}
+	if (lg.to_file && (f = fopen(lg.path, "ab")) != NULL) {
+		fputs(s, f);
+		fclose(f);
+	}
+}
+
+/* Create T/private/var/log and write the log so far there.  0 or -1. */
+static int log_start_file(const struct plan *p)
+{
+	static const char *dirs[] = { "/private", "/private/var",
+	    "/private/var/log" };
+	char d[PATHMAX];
+	FILE *f;
+	int i;
+
+	for (i = 0; i < 3; i++) {
+		if (cat3(d, p->root, dirs[i], "") < 0)
+			return -1;
+		MKDIR(d);	/* fails harmlessly if it exists */
+	}
+	if (cat3(lg.path, p->root, "/private/var/log/sysinstall.log", "") < 0)
+		return -1;
+	f = fopen(lg.path, "wb");
+	if (f == NULL)
+		return -1;
+	if (lg.n > 0 && fwrite(lg.buf, 1, lg.n, f) != lg.n) {
+		fclose(f);
+		return -1;
+	}
+	lg.to_file = 1;
+	return fclose(f) == 0 ? 0 : -1;
+}
+
 /* ---- running commands ---- */
 
 /* Runs argv; on a non-zero status, failed holds the command line. */
 static int do_cmd(runner run, char *const argv[], char *failed, int len)
 {
-	int i, rc = run(argv[0], argv, NULL);
+	int i, rc;
 	size_t used;
+	char num[16];
+
+	log_raw("$");
+	for (i = 0; argv[i] != NULL; i++) {
+		log_raw(" ");
+		log_raw(argv[i]);
+	}
+	rc = run(argv[0], argv, NULL);
+	sprintf(num, " -> %d\n", rc);
+	log_raw(num);
 
 	if (rc != 0 && failed != NULL && len > 0) {
 		failed[0] = '\0';
@@ -245,7 +333,7 @@ static int write_esp(const struct plan *p, char *failed, int len)
 		say(failed, len, "open ", p->rawdisk);
 		return -1;
 	}
-	in = popen(c, "rb");
+	in = popen(c, POPEN_MODE);
 	if (in == NULL) {
 		fclose(out);
 		say(failed, len, "run ", c);
@@ -288,8 +376,10 @@ static int apk_steps(const struct plan *p, runner run, char *failed, int len)
 		say(failed, len, "Packages path too long", NULL);
 		return -1;
 	}
-	if (find_apk(pkgdir, "files", &files) < 0) {
-		say(failed, len, "no files apk in ", pkgdir);
+	rc = find_apk(pkgdir, "files", &files);
+	if (rc < 0) {
+		say(failed, len, rc == -2 ? "two apks for package files in " :
+		    "no files apk in ", pkgdir);
 		return -1;
 	}
 	init[0] = "apk"; init[1] = "add"; init[2] = "--root";
@@ -313,8 +403,10 @@ static int apk_steps(const struct plan *p, runner run, char *failed, int len)
 	for (i = 0; i < p->npkgs; i++) {
 		if (strcmp(p->pkgs[i], "files") == 0)
 			continue;
-		if (find_apk(pkgdir, p->pkgs[i], &av[k]) < 0) {
-			say(failed, len, "no apk for package ", p->pkgs[i]);
+		rc = find_apk(pkgdir, p->pkgs[i], &av[k]);
+		if (rc < 0) {
+			say(failed, len, rc == -2 ? "two apks for package " :
+			    "no apk for package ", p->pkgs[i]);
 			rc = -1;
 			break;
 		}
@@ -396,12 +488,22 @@ static int configure_files(const struct plan *p, char *failed, int len)
 
 /* ---- the write phase ---- */
 
-#define STEP(n, what) do { step = (n); if (progress) progress(step, what); } \
-	while (0)
+static void log_step(int step, const char *what)
+{
+	char num[16];
 
-int steps_run(const struct plan *p, runner run,
-	      void (*progress)(int step, const char *what),
-	      char *failed_cmd, int len)
+	sprintf(num, "step %d: ", step);
+	log_raw(num);
+	log_raw(what);
+	log_raw("\n");
+}
+
+#define STEP(n, what) do { step = (n); log_step(step, what); \
+	if (progress) progress(step, what); } while (0)
+
+static int steps_inner(const struct plan *p, runner run,
+		       void (*progress)(int step, const char *what),
+		       char *failed_cmd, int len)
 {
 	char rawh[16], hda[16], path[PATHMAX], **av;
 	char *disk_cmd[5], *mount_cmd[4], *chroot_cmd[6], *umount_cmd[3];
@@ -437,6 +539,10 @@ int steps_run(const struct plan *p, runner run,
 	mount_cmd[2] = (char *)p->root; mount_cmd[3] = NULL;
 	if (do_cmd(run, mount_cmd, failed_cmd, len) != 0)
 		return step;
+	if (log_start_file(p) < 0) {
+		say(failed_cmd, len, "write the log under ", p->root);
+		return step;
+	}
 
 	STEP(5, "Installing packages");
 	if (apk_steps(p, run, failed_cmd, len) != 0)
@@ -488,4 +594,16 @@ int steps_run(const struct plan *p, runner run,
 	if (do_cmd(run, sync_cmd, failed_cmd, len) != 0)
 		return step;
 	return 0;
+}
+
+int steps_run(const struct plan *p, runner run,
+	      void (*progress)(int step, const char *what),
+	      char *failed_cmd, int len)
+{
+	int rc;
+
+	log_reset();
+	rc = steps_inner(p, run, progress, failed_cmd, len);
+	log_reset();
+	return rc;
 }

@@ -25,6 +25,15 @@ struct plan {
 				 * stdout; NULL means "gzip -dc I/esp.img.gz" */
 };
 
+/* popen mode for the ESP pipe.  Rhapsody's popen takes a one-character
+ * mode, so "r" there; the Windows host needs "rb" for the binary image. */
+#define POPEN_MODE_NATIVE "r"
+#ifdef _WIN32
+#define POPEN_MODE "rb"
+#else
+#define POPEN_MODE POPEN_MODE_NATIVE
+#endif
+
 /* Runs argv[0] with argv (NULL-terminated); returns its exit status.
  * steps_run passes NULL as ctx. */
 typedef int (*runner)(const char *argv0, char *const argv[], void *ctx);

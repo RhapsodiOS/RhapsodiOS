@@ -2,7 +2,8 @@
 """Boot a disk image under QEMU and capture its consoles and screen.
 
     python vm/qemu_boot.py {bios,uefi} IMAGE OUTDIR [--esp ESP_IMAGE]
-                           [--hd1 IMAGE [--boot-hd1]] [--nic MODEL]
+                           [--hd1 IMAGE [--boot-hd1]] [--keep-hd0]
+                           [--nic MODEL]
                            [--ssh-port PORT] [--type SECONDS:TEXT ...]
                            [--at SECONDS[,SECONDS...]] [--firmware-dir DIR]
 
@@ -25,6 +26,11 @@ the last --at or --type time.
 Every drive is opened with -snapshot, so no boot ever writes an image, and
 any path named golden.img or rhapsody.vmdk is refused outright, wherever it
 lives (so the main checkout's masters are refused from a worktree too).
+The one exception is --keep-hd0, for an installer's target: IMAGE keeps the
+guest's writes while every other drive stays snapshotted.  It is refused
+unless IMAGE is a throwaway file under the temp directory or a vm/work/p5-*
+directory, and never for the masters, test.img, the media, the
+preinstalled image or the bootstrapped base image.
 QEMU gets native paths straight from Python: Git Bash does not rewrite
 `-serial file:/d/...` for native programs, which is why this is not a shell
 script.  Standard library only.
@@ -35,11 +41,15 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _MASTERS = ("golden.img", "rhapsody.vmdk")
 DEFAULT_AT = "60,120,180"
+# Never opened writable by --keep-hd0, wherever they live.
+_NEVER_KEPT = _MASTERS + ("test.img", "media.img", "preinstalled.img",
+                          "rhap-i386-bootstrapped.img")
 
 
 def _load_qemu_shot():
@@ -71,6 +81,27 @@ def refuse_masters(path):
                          % path)
 
 
+def check_keepable(path):
+    """Exit unless path may be opened writable by --keep-hd0: not a
+    protected image, and inside the temp directory or a work/p5-* one."""
+    real = os.path.realpath(path)
+    if os.path.basename(real).lower() in _NEVER_KEPT:
+        raise SystemExit("refusing to keep writes to %s: it is a protected "
+                         "image" % path)
+    temp = os.path.realpath(tempfile.gettempdir())
+    try:
+        under_temp = os.path.commonpath([real, temp]) == temp
+    except ValueError:  # another drive
+        under_temp = False
+    parent = os.path.dirname(real)
+    in_p5 = (os.path.basename(parent).startswith("p5-") and
+             os.path.basename(os.path.dirname(parent)) == "work")
+    if not (under_temp or in_p5):
+        raise SystemExit("refusing to keep writes to %s: --keep-hd0 takes "
+                         "a throwaway file under %s or work/p5-*"
+                         % (path, temp))
+
+
 def default_firmware_dir(qemu):
     found = shutil.which(qemu)
     if found is None:
@@ -91,23 +122,30 @@ def parse_typed(spec):
 
 def build_args(mode, image, outdir, qmp_port, firmware_dir, esp=None,
                hd1=None, qemu="qemu-system-i386", boot_hd1=False, nic=None,
-               ssh_port=None):
+               ssh_port=None, keep_hd0=False):
     if boot_hd1 and hd1 is None:
         raise ValueError("boot_hd1 needs an hd1 image")
     if ssh_port is not None and nic is None:
         raise ValueError("ssh_port needs a nic")
+    # --keep-hd0 drops the global -snapshot and snapshots the others
+    # drive by drive, so only hd0 is written.
+    hd0_opt = ",snapshot=off" if keep_hd0 else ""
+    snap = ",snapshot=on" if keep_hd0 else ""
     if boot_hd1:
         # bootindex puts hd1 first in both firmwares' boot order; SeaBIOS
         # then gives it drive 0x80, the drive boot0 reads.
-        disks = ["-drive", "id=hd0,file=%s,format=raw,if=none" % image,
+        disks = ["-drive", "id=hd0,file=%s,format=raw,if=none%s"
+                 % (image, hd0_opt),
                  "-device", "ide-hd,drive=hd0,bus=ide.0,unit=0,bootindex=1",
-                 "-drive", "id=hd1,file=%s,format=raw,if=none" % hd1,
+                 "-drive", "id=hd1,file=%s,format=raw,if=none%s"
+                 % (hd1, snap),
                  "-device", "ide-hd,drive=hd1,bus=ide.0,unit=1,bootindex=0"]
     else:
         disks = ["-drive",
-                 "file=%s,format=raw,if=ide,index=0,media=disk" % image]
+                 "file=%s,format=raw,if=ide,index=0,media=disk%s"
+                 % (image, hd0_opt)]
     args = [qemu, "-M", "pc", "-m", "256", "-nodefaults", "-vga", "cirrus",
-            "-display", "none", "-snapshot"] + disks + [
+            "-display", "none"] + ([] if keep_hd0 else ["-snapshot"]) +         disks + [
             "-serial", "file:%s" % os.path.join(outdir, "console.log"),
             "-serial", "file:%s" % os.path.join(outdir, "kernel.log"),
             "-rtc", "base=%s" % qemu_shot.RTC_BASE,
@@ -128,11 +166,13 @@ def build_args(mode, image, outdir, qmp_port, firmware_dir, esp=None,
     else:
         raise ValueError("mode must be bios or uefi, not %r" % mode)
     if esp is not None:
-        args += ["-drive", "id=esp,file=%s,format=raw,if=none" % esp,
+        args += ["-drive", "id=esp,file=%s,format=raw,if=none%s"
+                 % (esp, snap),
                  "-device", "virtio-blk-pci,drive=esp"]
     if hd1 is not None and not boot_hd1:
         args += ["-drive",
-                 "file=%s,format=raw,if=ide,index=1,media=disk" % hd1]
+                 "file=%s,format=raw,if=ide,index=1,media=disk%s"
+                 % (hd1, snap)]
     if nic is not None:
         netdev = "user,id=n0"
         if ssh_port is not None:
@@ -143,12 +183,18 @@ def build_args(mode, image, outdir, qmp_port, firmware_dir, esp=None,
 
 
 def run(mode, image, outdir, at_points, firmware_dir, esp=None, hd1=None,
-        typed=(), boot_hd1=False, nic=None, ssh_port=None):
+        typed=(), boot_hd1=False, nic=None, ssh_port=None, keep_hd0=False):
     for path in (image, esp, hd1):
         if path is not None:
             if not os.path.exists(path):
                 raise SystemExit("no such image: %s" % path)
             refuse_masters(path)
+    if keep_hd0:
+        check_keepable(image)
+        for other in (esp, hd1):
+            if other is not None and os.path.samefile(other, image):
+                raise SystemExit("refusing to keep writes to %s: it is "
+                                 "also another drive" % image)
     os.makedirs(outdir, exist_ok=True)
     if mode == "uefi":
         shutil.copyfile(os.path.join(firmware_dir, "edk2-i386-vars.fd"),
@@ -163,7 +209,7 @@ def run(mode, image, outdir, at_points, firmware_dir, esp=None, hd1=None,
             proc = subprocess.Popen(
                 build_args(mode, image, outdir, port, firmware_dir, esp=esp,
                            hd1=hd1, boot_hd1=boot_hd1, nic=nic,
-                           ssh_port=ssh_port),
+                           ssh_port=ssh_port, keep_hd0=keep_hd0),
                 stdout=subprocess.DEVNULL, stderr=stderr_f)
         finally:
             stderr_f.close()
@@ -236,6 +282,8 @@ def main(argv):
     p.add_argument("--esp", default=None)
     p.add_argument("--hd1", default=None)
     p.add_argument("--boot-hd1", action="store_true")
+    p.add_argument("--keep-hd0", action="store_true",
+                   help="let IMAGE, a throwaway install target, keep writes")
     p.add_argument("--nic", default=None, metavar="MODEL")
     p.add_argument("--ssh-port", type=int, default=None)
     p.add_argument("--type", dest="typed", action="append", default=[],
@@ -248,7 +296,7 @@ def main(argv):
     firmware_dir = a.firmware_dir or default_firmware_dir("qemu-system-i386")
     run(a.mode, a.image, a.outdir, at_points, firmware_dir, esp=a.esp,
         hd1=a.hd1, typed=a.typed, boot_hd1=a.boot_hd1, nic=a.nic,
-        ssh_port=a.ssh_port)
+        ssh_port=a.ssh_port, keep_hd0=a.keep_hd0)
     return 0
 
 

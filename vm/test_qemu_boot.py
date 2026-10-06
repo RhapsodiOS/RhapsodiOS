@@ -190,7 +190,7 @@ class TestSecondDiskAndTyping(unittest.TestCase):
         run.assert_called_once_with(
             "bios", "a.img", "out", [90.0], "fw", esp=None, hd1="b.img",
             typed=[(6.0, "-s"), (70.0, "fsck -n /dev/rhd1a")],
-            boot_hd1=False, nic=None, ssh_port=None)
+            boot_hd1=False, nic=None, ssh_port=None, keep_hd0=False)
 
 
 class TestInstallMediaHarness(unittest.TestCase):
@@ -243,7 +243,82 @@ class TestInstallMediaHarness(unittest.TestCase):
                             "--firmware-dir", "fw"])
         run.assert_called_once_with(
             "uefi", "t.img", "out", [600.0], "fw", esp=None, hd1="m.img",
-            typed=[], boot_hd1=True, nic="ne2k_pci", ssh_port=2549)
+            typed=[], boot_hd1=True, nic="ne2k_pci", ssh_port=2549,
+            keep_hd0=False)
+
+
+class TestKeepHd0(unittest.TestCase):
+    """--keep-hd0: the install target keeps its writes; nothing else does."""
+
+    def test_keep_hd0_writes_hd0_and_snapshots_the_others(self):
+        args = qemu_boot.build_args("bios", "t.img", "o", 1, "fw",
+                                    hd1="media.img", boot_hd1=True,
+                                    esp="esp.img", keep_hd0=True)
+        self.assertNotIn("-snapshot", args)
+        self.assertIn("id=hd0,file=t.img,format=raw,if=none,snapshot=off",
+                      args)
+        self.assertIn("id=hd1,file=media.img,format=raw,if=none,"
+                      "snapshot=on", args)
+        self.assertIn("id=esp,file=esp.img,format=raw,if=none,snapshot=on",
+                      args)
+
+    def test_keep_hd0_without_boot_hd1(self):
+        args = qemu_boot.build_args("bios", "t.img", "o", 1, "fw",
+                                    hd1="m.img", keep_hd0=True)
+        self.assertNotIn("-snapshot", args)
+        self.assertIn("file=t.img,format=raw,if=ide,index=0,media=disk,"
+                      "snapshot=off", args)
+        self.assertIn("file=m.img,format=raw,if=ide,index=1,media=disk,"
+                      "snapshot=on", args)
+
+    def _scratch(self, d, *parts):
+        path = os.path.join(d, *parts)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        open(path, "w").close()
+        return path
+
+    def test_a_throwaway_target_under_temp_is_kept(self):
+        with tempfile.TemporaryDirectory() as d:
+            qemu_boot.check_keepable(self._scratch(d, "target-g1.img"))
+
+    def test_a_target_under_work_p5_is_kept(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = self._scratch(d, "work", "p5-gate", "target-g1.img")
+            with mock.patch("qemu_boot.tempfile.gettempdir",
+                            return_value=os.path.join(d, "elsewhere")):
+                qemu_boot.check_keepable(path)
+
+    def test_protected_names_are_refused_even_under_temp(self):
+        with tempfile.TemporaryDirectory() as d:
+            for name in ("golden.img", "rhapsody.vmdk", "test.img",
+                         "media.img", "preinstalled.img",
+                         "rhap-i386-bootstrapped.img", "Media.IMG"):
+                with self.assertRaises(SystemExit):
+                    qemu_boot.check_keepable(self._scratch(d, name))
+
+    def test_a_target_outside_the_scratch_places_is_refused(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = self._scratch(d, "work", "target.img")
+            with mock.patch("qemu_boot.tempfile.gettempdir",
+                            return_value=os.path.join(d, "elsewhere")):
+                with self.assertRaises(SystemExit):
+                    qemu_boot.check_keepable(path)
+
+    def test_run_checks_the_kept_target(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = self._scratch(d, "media.img")
+            with mock.patch("qemu_boot.subprocess.Popen") as popen:
+                with self.assertRaises(SystemExit):
+                    qemu_boot.run("bios", path, os.path.join(d, "o"), [],
+                                  "fw", keep_hd0=True)
+            popen.assert_not_called()
+
+    def test_main_passes_keep_hd0(self):
+        with mock.patch("qemu_boot.run") as run:
+            qemu_boot.main(["qemu_boot.py", "bios", "t.img", "out",
+                            "--keep-hd0", "--at", "9",
+                            "--firmware-dir", "fw"])
+        self.assertTrue(run.call_args.kwargs["keep_hd0"])
 
 
 if __name__ == "__main__":

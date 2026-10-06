@@ -213,12 +213,13 @@ static void run_and_stop(const char *path)
 	exit(1);
 }
 
-/* The error screen: what failed, then start over, a shell or halt.
- * Returns only to start over. */
-static void error_screen(const char *what, const char *detail)
+/* The error screen: what failed, then start over, a shell or halt; or,
+ * if again is 0, reboot, a shell or halt.  Returns only to start over. */
+static void error_screen(const char *what, const char *detail, int again)
 {
 	static const char *items[] = { "Start over", "Quit to a shell",
 				       "Halt" };
+	static const char *stuck[] = { "Reboot", "Quit to a shell", "Halt" };
 	struct text t;
 
 	t.len = 0;
@@ -229,9 +230,11 @@ static void error_screen(const char *what, const char *detail)
 		add(&t, "\n\n");
 		add(&t, detail);
 	}
-	switch (menu(t.s, items, 3)) {
+	switch (menu(t.s, again ? items : stuck, 3)) {
 	case 0:
-		return;
+		if (again)
+			return;
+		run_and_stop("/sbin/reboot");
 	case 1:
 		leave_to_shell();
 	default:
@@ -1001,6 +1004,16 @@ static void done(const struct plan *p)
 
 /* ---- the sequence ---- */
 
+/* 1 if T is a mount point (or can't be told apart from one). */
+static int still_mounted(void)
+{
+	struct stat a, b;
+
+	if (stat(T, &a) < 0 || stat(T "/..", &b) < 0)
+		return 1;
+	return a.st_dev != b.st_dev;
+}
+
 static void setup_env(void)
 {
 	char buf[1024], *term = getenv("TERM");
@@ -1018,7 +1031,7 @@ int main(void)
 	static char *umount_cmd[] = { "umount", T, NULL };
 	struct plan p;
 	char rawdisk[32], failed[512], what[300], detail[1200];
-	int rc;
+	int rc, stuck;
 
 	setup_env();
 	if (ui_start() < 0) {
@@ -1031,18 +1044,20 @@ int main(void)
 		free_pkgs(&p);
 		memset(&p, 0, sizeof p);
 		if (choose_disk(&p) < 0) {
-			error_screen("No disk was found to install on.", NULL);
+			error_screen("No disk was found to install on.", NULL,
+				     1);
 			continue;
 		}
 		choose_layout(&p);
 		choose_drivers(&p);
 		if (choose_sets(&p) < 0) {
-			error_screen("No sets were found in " SETS_DIR ".", NULL);
+			error_screen("No sets were found in " SETS_DIR ".", NULL,
+				     1);
 			continue;
 		}
 		if (choose_password(&p) < 0) {
 			error_screen("crypt() could not hash the password.",
-				     NULL);
+				     NULL, 1);
 			continue;
 		}
 		if (summary(&p) != 0)
@@ -1061,8 +1076,15 @@ int main(void)
 			cur_what);
 		sprintf(detail, "%.300s\n\nIts last output:\n%.700s", failed,
 			last_lines(step_out, 6));
-		if (rc >= 4)		/* the target may be mounted */
+		stuck = 0;
+		if (rc >= 4) {		/* the target may be mounted */
 			run_into(umount_cmd, step_out, sizeof step_out, 0);
-		error_screen(what, detail);
+			/* Steps 1-3 must not run under a mounted T: once apk
+			 * has run, the kernel can keep it busy until reboot */
+			if ((stuck = still_mounted()) != 0)
+				strcat(detail, "\n\nThe target is still "
+				       "mounted; reboot to start over.");
+		}
+		error_screen(what, detail, !stuck);
 	}
 }

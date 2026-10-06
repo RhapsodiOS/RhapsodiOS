@@ -815,7 +815,11 @@ static void choose_drivers(struct plan *p)
 	for (i = 0; i < ndrivers; i++) {
 		disk = strcmp(drivers[i].family, "Disk") == 0 ||
 		       strcmp(drivers[i].family, "SCSI") == 0;
-		drivers[i].on = disk ? ctl != NULL &&
+		for (fi = 0; fi < 5; fi++)
+			if (strcmp(drivers[i].family, families[fi]) == 0)
+				break;
+		/* only drivers shown on a checklist may be ticked */
+		drivers[i].on = fi == 5 ? 0 : disk ? ctl != NULL &&
 				strcmp(drivers[i].name, ctl) == 0 :
 				drivers[i].detected;
 	}
@@ -894,7 +898,9 @@ static void read_sets(void)
 /* 0 with p->pkgs set, or -1 if there are no sets. */
 static int choose_sets(struct plan *p)
 {
-	static char lines[MAX_SETS][200];
+	/* title[64] ": " desc[128] " (required)": at most 204 bytes */
+	static char lines[MAX_SETS][sizeof sets[0].title + 2 +
+				    sizeof sets[0].desc + 11];
 	const char *items[MAX_SETS];
 	int on[MAX_SETS], locked[MAX_SETS], chosen[MAX_SETS], i, n;
 

@@ -361,7 +361,7 @@ writeRoot(const char *root, char **chosen, int nchosen)
 	if (nchosen > MAX_TABLES || strlen(root) + 128 > sizeof path)
 		return fail("too many drivers or too long a root%s", "");
 	for (i = 0; i < nchosen; i++) {
-		if (strlen(chosen[i]) > 64)
+		if (strlen(chosen[i]) >= sizeof matches[0].driver)
 			return fail("bad driver name %s", chosen[i]);
 		sprintf(path, "%s%s/%s.config/Default.table", root,
 		    ROOT_DEVICE_DIR, chosen[i]);

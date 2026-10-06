@@ -21,8 +21,9 @@ from instmedia import (apkrepo, hdimage, live, readback, rootfs, space,
 
 BOOTERS = "/usr/standalone/i386"
 DRIVERS = "/private/Drivers/i386"
-# driverLoader, which loads the Active Drivers at startup, reads the system
-# table through /usr/Devices, which files links to ../private/Devices.
+# driverLoader, which loads the Active Drivers at startup, and sysinstall and
+# driverDetect on the media, read the drivers through /usr/Devices, which
+# files links to ../private/Devices.
 DEVICES_TABLE = "/usr/Devices/System.config/Instance0.table"
 # The Active Driver dhcpcd's /dev/bpf* come from; without it the network
 # never comes up, and nothing says why.
@@ -63,8 +64,8 @@ def boot_drivers(table):
 def check_tree(nodes, preinstalled):
     """What the booters, the kernel and the image's startup need that the
     root lacks: every Boot Driver (the network card is one); CDIS's pieces
-    on the media; sshd, driverLoader and the /usr/Devices path on the
-    pre-installed disk."""
+    on the media; sshd and driverLoader on the pre-installed disk; the
+    /usr/Devices path on both."""
     by_path = {n.path: n for n in nodes}
     table = by_path[live.SYSTEM_TABLE].data
     need = ["/mach_kernel", BOOTERS + "/boot0", BOOTERS + "/boot1",
@@ -77,17 +78,16 @@ def check_tree(nodes, preinstalled):
     else:
         need += CDIS_NEEDS
     problems = ["missing %s" % p for p in need if p not in by_path]
-    if preinstalled:
-        tree = rootfs.Tree()
-        for n in nodes[1:]:
-            tree.put(n)
-        try:
-            real = tree.resolve(DEVICES_TABLE)
-        except rootfs.TreeError as e:
-            real = str(e)
-        if real != live.SYSTEM_TABLE:
-            problems.append("%s does not lead to %s (%s)"
-                            % (DEVICES_TABLE, live.SYSTEM_TABLE, real))
+    tree = rootfs.Tree()
+    for n in nodes[1:]:
+        tree.put(n)
+    try:
+        real = tree.resolve(DEVICES_TABLE)
+    except rootfs.TreeError as e:
+        real = str(e)
+    if real != live.SYSTEM_TABLE:
+        problems.append("%s does not lead to %s (%s)"
+                        % (DEVICES_TABLE, live.SYSTEM_TABLE, real))
     return problems
 
 

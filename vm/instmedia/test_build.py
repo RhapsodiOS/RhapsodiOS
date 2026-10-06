@@ -149,14 +149,16 @@ class TestBuild(unittest.TestCase):
         make_bootable_repo(self.repo, driver_loader=False)
         build.build(self.repo, self.efi, self.out)
 
-    def test_preinstalled_needs_usr_devices_to_reach_the_table(self):
+    def test_both_need_usr_devices_to_reach_the_table(self):
         make_bootable_repo(self.repo)
-        nodes, _ = live.compose(apkrepo.index(self.repo), b"E",
-                                preinstalled=True, password_hash="x")
-        nodes = [n._replace(data="../private/Nowhere")
-                 if n.path == "/usr/Devices" else n for n in nodes]
-        self.assertIn("/usr/Devices/System.config/Instance0.table does not "
-                      "lead", "\n".join(build.check_tree(nodes, True)))
+        for pre in (True, False):
+            nodes, _ = live.compose(apkrepo.index(self.repo), b"E",
+                                    preinstalled=pre, password_hash="x")
+            self.assertEqual(build.check_tree(nodes, pre), [])
+            nodes = [n._replace(data="../private/Nowhere")
+                     if n.path == "/usr/Devices" else n for n in nodes]
+            self.assertIn("/usr/Devices/System.config/Instance0.table does "
+                          "not lead", "\n".join(build.check_tree(nodes, pre)))
 
     def test_conflicts_are_refused(self):
         make_bootable_repo(self.repo)

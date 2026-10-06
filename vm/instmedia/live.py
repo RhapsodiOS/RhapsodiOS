@@ -9,6 +9,9 @@ mounts the target.  The live overlay adds only:
 
     /private/etc/rc.cdrom        rc.cdrom.hidden, made live; rc and rc.boot
                                  run it when /System/Installation is there
+    /private/Devices             a link to Drivers/i386, so sysinstall and
+                                 driverDetect find the drivers through
+                                 /usr/Devices
     .../System.config/Instance0.table
                                  CDIS's i386 template for hd1, the disk
                                  the media is in the QEMU harness, with
@@ -18,7 +21,7 @@ mounts the target.  The live overlay adds only:
 
 With preinstalled set there is no overlay.  Instead the installed-system
 templates are rendered for hd0, /private/Devices is linked to Drivers/i386
-as CDIS's installer links it on its target, and root gets the test
+as sysinstall links it on its target, and root gets the test
 password, so the image boots as an installed disk.  /System/Installation is there too, from
 the cdis apk, but without /private/etc/rc.cdrom rc starts the system.
 """
@@ -37,8 +40,9 @@ SETS = INSTALLATION + "/Sets"
 ARCH = "i386"
 INSTANCE0_TEMPLATE = "Instance0-%s.table" % ARCH
 SYSTEM_TABLE = "/private/Drivers/%s/System.config/Instance0.table" % ARCH
-# files links /usr/Devices to ../private/Devices; the installer links
-# /private/Devices on to the architecture's drivers (rc.cdrom).
+# files links /usr/Devices to ../private/Devices; the builder, and
+# sysinstall on its target, link /private/Devices on to the architecture's
+# drivers.
 DEVICES = "/private/Devices"
 FSTAB = "/private/etc/fstab"
 HOSTCONFIG = "/private/etc/hostconfig"
@@ -132,6 +136,7 @@ def compose(apks, esp, preinstalled=False, password_hash=None):
     def put_file(path, data, mode=0o644):
         tree.put(Node(path, "reg", mode, 0, 0, now, data))
 
+    tree.put(Node(DEVICES, "lnk", 0o755, 0, 0, now, "Drivers/" + ARCH))
     if preinstalled:
         if password_hash is None:
             raise ComposeError("a pre-installed image needs a password hash")
@@ -139,7 +144,6 @@ def compose(apks, esp, preinstalled=False, password_hash=None):
         put_file(SYSTEM_TABLE,
                  render(template(INSTANCE0_TEMPLATE), INSTALLED_DISK))
         put_file(HOSTCONFIG, template("hostconfig"))
-        tree.put(Node(DEVICES, "lnk", 0o755, 0, 0, now, "Drivers/" + ARCH))
         put_file(MASTER_PASSWD,
                  set_root_password(tree.data(MASTER_PASSWD), password_hash),
                  0o600)

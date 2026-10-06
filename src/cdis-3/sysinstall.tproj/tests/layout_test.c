@@ -151,6 +151,62 @@ static void test_check_refuses_an_esp_away_from_lba_2048(void)
 	CHECK(layout_check(total, &t) == NULL);
 }
 
+/* mbr_decode passes any 32-bit start and count through from the disk. */
+static void test_check_refuses_an_entry_that_wraps(void)
+{
+	unsigned long total = 4194304ul;
+	struct table good, t;
+
+	layout_auto(total, &good);
+	good.p[1].count = 2286080ul;
+	/* 200000 + (2^32 - 199990) wraps to an end of 10 */
+	t = good; set(&t, 2, 0x07, 0, 200000ul, 4294767306ul);
+	CHECK(layout_check(total, &t) != NULL);
+	t = good; set(&t, 2, 0x07, 0, 0, 0xFFFFFFFFul);
+	CHECK(layout_check(total, &t) != NULL);
+	t = good; set(&t, 2, 0x07, 0, 0xFFFFFFF0ul, 0x20);
+	CHECK(layout_check(total, &t) != NULL);
+	/* exactly to the end is still fine */
+	t = good; set(&t, 2, 0x07, 0, total - 1000, 1000);
+	CHECK(layout_check(total, &t) == NULL);
+}
+
+static void test_free_regions(void)
+{
+	unsigned long total = 4194304ul, s[5], c[5];
+	struct table t;
+	int n;
+
+	memset(&t, 0, sizeof t);
+	n = layout_free(total, &t, s, c);
+	CHECK(n == 1 && s[0] == 2048 && c[0] == total - 2048);
+
+	layout_auto(total, &t);
+	CHECK(layout_free(total, &t, s, c) == 0);
+
+	/* the ESP, a gap, a foreign entry; starts aligned to 2048 */
+	memset(&t, 0, sizeof t);
+	set(&t, 0, 0xEF, 0, ESP_LBA, ESP_SECTORS);
+	set(&t, 1, 0x07, 0, 3000000ul, 100001ul);
+	n = layout_free(total, &t, s, c);
+	CHECK(n == 2);
+	CHECK(s[0] == 133120ul && c[0] == 3000000ul - 133120ul);
+	CHECK(s[1] == 3100672ul && c[1] == total - 3100672ul);
+
+	/* an entry that wraps hides the rest of the disk, as far as it
+	 * reaches; one past the end hides nothing and offers nothing past
+	 * the end */
+	memset(&t, 0, sizeof t);
+	set(&t, 0, 0xEF, 0, ESP_LBA, ESP_SECTORS);
+	set(&t, 1, 0x07, 0, 200000ul, 4294767306ul);
+	n = layout_free(total, &t, s, c);
+	CHECK(n == 1 && s[0] == 133120ul && c[0] == 200000ul - 133120ul);
+	memset(&t, 0, sizeof t);
+	set(&t, 0, 0x07, 0, total + 4096, 100);
+	n = layout_free(total, &t, s, c);
+	CHECK(n == 1 && s[0] == 2048 && c[0] == total - 2048);
+}
+
 static void test_mbr_roundtrip(void)
 {
 	unsigned char boot0[446], mbr[512], c[3];
@@ -189,6 +245,8 @@ int main(void)
 	test_auto_ignores_an_existing_table();
 	test_check_rules();
 	test_check_refuses_an_esp_away_from_lba_2048();
+	test_check_refuses_an_entry_that_wraps();
+	test_free_regions();
 	test_mbr_roundtrip();
 	printf("layout: %d failures\n", failures);
 	return failures != 0;

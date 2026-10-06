@@ -74,7 +74,8 @@ const char *layout_check(unsigned long total, const struct table *t)
 			continue;
 		if (t->p[i].count == 0)
 			return "A partition is empty.";
-		if (t->p[i].start + t->p[i].count > total)
+		if (t->p[i].count > total ||
+		    t->p[i].start > total - t->p[i].count)
 			return "A partition extends past the end of the disk.";
 		if (t->p[i].type == 0xA7) {
 			n_a7++;
@@ -103,6 +104,44 @@ const char *layout_check(unsigned long total, const struct table *t)
 	if (t->p[esp].start != ESP_LBA)
 		return "The EFI system partition must start at LBA 2048.";
 	return NULL;
+}
+
+int layout_free(unsigned long total, const struct table *t,
+		unsigned long start[5], unsigned long count[5])
+{
+	unsigned long pos = 2048, s, e, best, ps[4], pe[4];
+	int n = 0, i, done[4], next;
+
+	for (i = 0; i < 4; i++) {
+		done[i] = t->p[i].type == 0 && t->p[i].count == 0;
+		/* clamped to the disk: no wraparound past 2^32 */
+		ps[i] = t->p[i].start < total ? t->p[i].start : total;
+		pe[i] = t->p[i].count > total - ps[i] ? total :
+		    ps[i] + t->p[i].count;
+	}
+	for (;;) {
+		next = -1;
+		best = 0;
+		for (i = 0; i < 4; i++)
+			if (!done[i] && (next < 0 || ps[i] < best)) {
+				next = i;
+				best = ps[i];
+			}
+		e = next < 0 ? total : best;
+		s = pos + (2048 - pos % 2048) % 2048;
+		if (s < pos)		/* aligning wrapped */
+			s = total;
+		if (e > s && n < 5) {
+			start[n] = s;
+			count[n] = e - s;
+			n++;
+		}
+		if (next < 0)
+			return n;
+		done[next] = 1;
+		if (pe[next] > pos)
+			pos = pe[next];
+	}
 }
 
 static void put32(unsigned char *p, unsigned long v)

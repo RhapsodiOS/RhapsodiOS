@@ -439,41 +439,6 @@ static int pick_entry(const struct table *t, const char *title)
 	return k == 4 ? -1 : k;
 }
 
-#define ALIGN(x)	(((x) + 2047ul) / 2048ul * 2048ul)
-
-/* The free regions of t from LBA 2048 on, starts aligned to 2048. */
-static int free_regions(const struct table *t, unsigned long total,
-			unsigned long start[5], unsigned long count[5])
-{
-	unsigned long pos = 2048, s, e, best;
-	int n = 0, i, done[4], next;
-
-	for (i = 0; i < 4; i++)
-		done[i] = t->p[i].type == 0 && t->p[i].count == 0;
-	for (;;) {
-		next = -1;
-		best = 0;
-		for (i = 0; i < 4; i++)
-			if (!done[i] && (next < 0 || t->p[i].start < best)) {
-				next = i;
-				best = t->p[i].start;
-			}
-		e = next < 0 ? total : best;
-		s = ALIGN(pos);
-		if (e > s && n < 5) {
-			start[n] = s;
-			count[n] = e - s;
-			n++;
-		}
-		if (next < 0)
-			return n;
-		done[next] = 1;
-		e = t->p[next].start + t->p[next].count;
-		if (e > pos)
-			pos = e;
-	}
-}
-
 static void create_entry(struct table *t, unsigned long total)
 {
 	static const char *types[] = { "EFI system partition (0xEF, 64 MB)",
@@ -493,7 +458,7 @@ static void create_entry(struct table *t, unsigned long total)
 			   "Delete one first.");
 		return;
 	}
-	nr = free_regions(t, total, start, count);
+	nr = layout_free(total, t, start, count);
 	if (nr == 0) {
 		ui_message("Create an entry", "The disk has no free space.");
 		return;

@@ -297,3 +297,19 @@ def test_no_update_command_kills_update_and_checks():
     cmd = fb.no_update_command()
     assert "kill" in cmd and "update" in cmd
     assert "UPDATE-GONE" in cmd
+
+
+def test_push_retries_a_dropped_connection(tmp_path, monkeypatch):
+    src = tmp_path / "f"
+    src.write_bytes(b"abc")
+    calls = []
+
+    def run(self, command, stdin=None, on_line=None):
+        calls.append(command)
+        if len(calls) == 1:
+            return 255, "kex_exchange_identification: read: Connection aborted"
+        return 0, "3"
+    monkeypatch.setattr(fb.Ssh, "run", run)
+    monkeypatch.setattr(fb.time, "sleep", lambda s: None)
+    fb.Ssh({"User": "u", "Host": "h"}).push(str(src), "/tmp/f")
+    assert len(calls) == 2

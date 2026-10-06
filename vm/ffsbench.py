@@ -333,9 +333,13 @@ class Ssh(object):
     def push(self, local, remote):
         with open(local, "rb") as f:
             data = f.read()
-        rc, out = self.run("cat > %s && wc -c < %s" % (remote, remote), stdin=data)
-        if rc != 0 or out.split()[-1:] != [str(len(data))]:
-            raise RuntimeError("push %s -> %s failed: %s" % (local, remote, out))
+        for attempt in range(3):     # a loaded host drops the odd connection
+            rc, out = self.run("cat > %s && wc -c < %s" % (remote, remote),
+                               stdin=data)
+            if rc == 0 and out.split()[-1:] == [str(len(data))]:
+                return
+            time.sleep(10)
+        raise RuntimeError("push %s -> %s failed: %s" % (local, remote, out))
 
 
 def _feed(p, data):

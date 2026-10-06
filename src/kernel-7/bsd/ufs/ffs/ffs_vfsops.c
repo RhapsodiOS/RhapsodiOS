@@ -60,6 +60,7 @@
 
 #include <rev_endian_fs.h>
 #include <mach_nbc.h>
+#include <ffsdebug.h>
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/namei.h>
@@ -99,6 +100,9 @@
 
 int ffs_sbupdate __P((struct ufsmount *, int));
 static void ffs_clampmaxfilesize __P((struct ufsmount *, struct fs *));
+#if FFSDEBUG
+extern void ffsdebug_sbdev __P((struct vnode *, daddr_t, int));
+#endif
 
 struct vfsops ufs_vfsops = {
 	ffs_mount,
@@ -737,6 +741,9 @@ ffs_mountfs(devvp, mp, p)
 	for (i = 0; i < MAXQUOTAS; i++)
 		ump->um_quotas[i] = NULLVP;
 	devvp->v_specflags |= SI_MOUNTEDON;
+#if FFSDEBUG
+	ffsdebug_sbdev(devvp, (daddr_t)(SBOFF/size), 1);
+#endif
 	ffs_oldfscompat(fs);
 	ffs_clampmaxfilesize(ump, fs);
 	if (ronly == 0) {
@@ -818,6 +825,9 @@ ffs_unmount(mp, mntflags, p)
 		}
 	}
 	ump->um_devvp->v_specflags &= ~SI_MOUNTEDON;
+#if FFSDEBUG
+	ffsdebug_sbdev(ump->um_devvp, (daddr_t)0, 0);
+#endif
 	error = VOP_CLOSE(ump->um_devvp, fs->fs_ronly ? FREAD : FREAD|FWRITE,
 		NOCRED, p);
 	vrele(ump->um_devvp);

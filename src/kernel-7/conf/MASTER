@@ -153,6 +153,7 @@ options		MULTICAST	# Internet Protocol Class-D	$
 #
 options 	COMPAT_43	# 4.3 BSD compatibility		# <compat_43>
 options 	DIAGNOSTIC	# diagnostics				# <diagnostic>
+options		FFSDEBUG	# FFS buffer and NBC assertions	# <ffsdebug>
 options		KTRACE		# ktrace support			# <ktrace>
 
 #

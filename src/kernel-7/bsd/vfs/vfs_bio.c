@@ -85,6 +85,7 @@
  */
 
 #include <mach_nbc.h>
+#include <ffsdebug.h>
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/proc.h>
@@ -168,6 +169,71 @@ int needbuffer;
 
 int lru_is_stale = LRU_IS_STALE;
 int age_is_stale = AGE_IS_STALE;
+
+#if FFSDEBUG
+/*
+ * FFS debugging: catch two buffers for one block, and a superblock
+ * write that does not carry FS_MAGIC.  ffs_mountfs and ffs_unmount
+ * register each mounted UFS device and its superblock block number;
+ * HFS and the rest also write at byte 8192 and must not be checked.
+ */
+#define	FFSDEBUG_NSB		8
+#define	FFSDEBUG_MAGIC_OFF	1372		/* offsetof(struct fs, fs_magic) */
+#define	FFSDEBUG_FS_MAGIC	0x011954	/* FS_MAGIC, ufs/ffs/fs.h */
+#define	FFSDEBUG_FS_CIGAM	0x54190100	/* FS_MAGIC byte-swapped */
+
+static struct {
+	struct vnode	*vp;
+	daddr_t		blkno;
+} ffsdebug_sb[FFSDEBUG_NSB];
+
+void
+ffsdebug_sbdev(devvp, blkno, on)
+	struct vnode *devvp;
+	daddr_t blkno;
+	int on;
+{
+	int i;
+
+	for (i = 0; i < FFSDEBUG_NSB; i++)
+		if (on ? ffsdebug_sb[i].vp == NULL : ffsdebug_sb[i].vp == devvp) {
+			ffsdebug_sb[i].vp = on ? devvp : NULL;
+			ffsdebug_sb[i].blkno = blkno;
+			return;
+		}
+}
+
+static void
+ffsdebug_check_sbwrite(bp)
+	struct buf *bp;
+{
+	int i;
+	int32_t magic;
+
+	for (i = 0; i < FFSDEBUG_NSB; i++)
+		if (ffsdebug_sb[i].vp == bp->b_vp &&
+		    ffsdebug_sb[i].blkno == bp->b_blkno) {
+			magic = *(int32_t *)(bp->b_data + FFSDEBUG_MAGIC_OFF);
+			if (magic != FFSDEBUG_FS_MAGIC && magic != FFSDEBUG_FS_CIGAM)
+				panic("ffsdebug: superblock write without FS_MAGIC");
+		}
+}
+
+/* Called at splbio. */
+void
+ffsdebug_check_dup(vp, blkno, self)
+	struct vnode *vp;
+	daddr_t blkno;
+	struct buf *self;
+{
+	struct buf *bp;
+
+	for (bp = BUFHASH(vp, blkno)->lh_first; bp; bp = bp->b_hash.le_next)
+		if (bp != self && bp->b_vp == vp && bp->b_lblkno == blkno &&
+		    !ISSET(bp->b_flags, B_INVAL))
+			panic("ffsdebug: duplicate buffer");
+}
+#endif /* FFSDEBUG */
 
 
 
@@ -390,6 +456,9 @@ bwrite(bp)
 
 	trace(TR_BWRITE, pack(bp->b_vp, bp->b_bcount), bp->b_lblkno);
 
+#if FFSDEBUG
+	ffsdebug_check_sbwrite(bp);
+#endif
 	/* Initiate disk write.  Make sure the appropriate party is charged. */
 	SET(bp->b_flags, B_WRITEINPROG);
 	bp->b_vp->v_numoutput++;
@@ -620,6 +689,9 @@ start:
 		}
 		SET(bp->b_flags, (B_BUSY | B_CACHE));
 		bremfree(bp);
+#if FFSDEBUG
+		ffsdebug_check_dup(vp, blkno, bp);
+#endif
 		splx(s);
 		allocbuf(bp, size);
 	} else {
@@ -631,6 +703,9 @@ start:
 		bp->b_blkno = bp->b_lblkno = blkno;
 		s = splbio();
 		bgetvp(vp, bp);
+#if FFSDEBUG
+		ffsdebug_check_dup(vp, blkno, bp);
+#endif
 		splx(s);
 	}
 	return (bp);
@@ -887,6 +962,12 @@ biodone(bp)
 {
 	if (ISSET(bp->b_flags, B_DONE))
 		panic("biodone already");
+#if FFSDEBUG
+	if (bp->b_vp == NULL && !ISSET(bp->b_flags, B_RAW | B_CALL))
+		panic("ffsdebug: biodone without a vnode");
+	if (ISSET(bp->b_flags, B_INVAL) && ISSET(bp->b_flags, B_DELWRI))
+		panic("ffsdebug: biodone on an invalid delayed write");
+#endif
 	SET(bp->b_flags, B_DONE);		/* note that it's done */
 
 	if (!ISSET(bp->b_flags, B_READ) && !ISSET(bp->b_flags, B_RAW))	/* wake up reader */

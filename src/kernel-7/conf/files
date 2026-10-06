@@ -83,6 +83,7 @@ OPTIONS/new_vm_code			optional new_vm_code
 OPTIONS/old_vm_code			optional old_vm_code
 OPTIONS/compat_43			optional compat_43
 OPTIONS/diagnostic			optional diagnostic
+OPTIONS/ffsdebug			optional ffsdebug
 OPTIONS/ktrace				optional ktrace
 OPTIONS/event				optional event
 

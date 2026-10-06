@@ -37,7 +37,7 @@ DESTROYED = re.compile(
 
 
 def qemu_args(root_img, hd1, hd2, serial, ssh_port=2532, qmp_port=4532,
-              gdb_port=1232, mem_mb=128, iops=None):
+              gdb_port=1232, mem_mb=128, iops=None, root_iops=None):
     """The bench guest's command line.  Snapshot is per drive, not -snapshot,
     because -snapshot would also cover hd1 and hd2.  iops caps the disk
     under test's operations per second: QEMU's disk sits on the host page
@@ -48,7 +48,8 @@ def qemu_args(root_img, hd1, hd2, serial, ssh_port=2532, qmp_port=4532,
         QEMU, "-name", "RhapsodiOS ffsbench",
         "-M", "pc", "-cpu", "pentium", "-accel", "tcg", "-m", str(mem_mb),
         "-nodefaults", "-vga", "cirrus", "-display", "none",
-        "-drive", drive % (root_img, 0, "on"),
+        "-drive", drive % (root_img, 0, "on") +
+                  (",throttling.iops-total=%d" % root_iops if root_iops else ""),
         "-drive", drive % (hd1, 1, "off") +
                   (",throttling.iops-total=%d" % iops if iops else ""),
         "-drive", drive % (hd2, 2, "off"),
@@ -435,14 +436,15 @@ def ports_free():
 class Guest(object):
     """One QEMU process running the bench guest."""
 
-    def __init__(self, outdir, hd1, hd2):
+    def __init__(self, outdir, hd1, hd2, root_iops=None):
         ports_free()
         os.makedirs(outdir, exist_ok=True)
         self.serial = os.path.join(outdir, "serial.log")
         flags = 0x00000008 | 0x00000200 if os.name == "nt" else 0
         self.proc = subprocess.Popen(
             qemu_args(ROOT_IMG, hd1, hd2, self.serial, SSH_PORT, QMP_PORT,
-                      GDB_PORT, iops=IOPS), creationflags=flags,
+                      GDB_PORT, iops=IOPS, root_iops=root_iops),
+            creationflags=flags,
             stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
             stderr=open(os.path.join(outdir, "qemu.err"), "wb"))
         self.qmp = Qmp()
@@ -526,7 +528,20 @@ def _workload():
     return path
 
 
-def _drive(g, ssh, outdir, script, on_marker=None):
+ROOT_TARGET = "/private/tmp/ffsbench-root"
+
+
+def run_command(script, single=False):
+    """The guest command for one run.  By default the replay writes to the
+    fresh hd1; single=True writes into the root filesystem instead, as
+    rbuild really does, so sshd's reads share a disk queue with it."""
+    if single:
+        return "%s && mkdir -p %s && sh %s/%s /mnt2 %s" % (
+            MOUNT, ROOT_TARGET, GUEST_DIR, script, ROOT_TARGET)
+    return "%s && sh %s/%s /mnt2 /mnt1" % (MOUNT, GUEST_DIR, script)
+
+
+def _drive(g, ssh, outdir, script, on_marker=None, single=False):
     """Run a guest script while watching wakeprobe and sshd.  Returns the
     guest log, 'ok' / 'exit <n>' / 'hardlock', and the banner times."""
     wd = Watchdog(WATCHDOG_S)
@@ -548,8 +563,7 @@ def _drive(g, ssh, outdir, script, on_marker=None):
             _log(outdir, "banner.log", "%.1f %s" % (time.time(), b))
 
     def run():
-        rc, _ = ssh.run("%s && sh %s/%s /mnt2 /mnt1" % (MOUNT, GUEST_DIR, script),
-                        on_line=on_line)
+        rc, _ = ssh.run(run_command(script, single), on_line=on_line)
         state["result"] = "ok" if rc == 0 else "exit %d" % rc
 
     threading.Thread(target=probe_banners, daemon=True).start()
@@ -602,7 +616,7 @@ def _new_outdir(label, name):
     return outdir
 
 
-def bench(kernel, label, runs, bootargs="", start=0):
+def bench(kernel, label, runs, bootargs="", start=0, single=False):
     conf = _conf()
     csv_dir = os.path.join(WORK, "runs", label)
     i, done, fails = start, 0, 0
@@ -610,12 +624,14 @@ def bench(kernel, label, runs, bootargs="", start=0):
         outdir = _new_outdir(label, "bench-%d" % i)
         i += 1
         hd1 = _fresh_hd1(outdir)
-        g = Guest(outdir, hd1, _workload())
+        g = Guest(outdir, hd1, _workload(),
+                  root_iops=(IOPS or 100) if single else None)
         try:
             ssh = Ssh(conf)
             booted = boot_or_skip(g, ssh, kernel, bootargs, outdir)
             if booted:
-                log, result, banners = _drive(g, ssh, outdir, "run.sh")
+                log, result, banners = _drive(g, ssh, outdir, "run.sh",
+                                              single=single)
         finally:
             g.quit()
             os.remove(hd1)
@@ -820,13 +836,16 @@ def main(argv):
         s.add_argument("--bootargs", default="")
         s.add_argument("--start", type=int, default=0,
                        help="first run index, to continue a campaign")
+        if name == "bench":
+            s.add_argument("--single-disk", action="store_true",
+                           help="replay onto the root disk, throttled")
         if name == "crash":
             s.add_argument("--seed", type=int, default=0)
     a = p.parse_args(argv[1:])
     if a.cmd == "prep":
         prep()
     elif a.cmd == "bench":
-        bench(a.kernel, a.label, a.runs, a.bootargs, a.start)
+        bench(a.kernel, a.label, a.runs, a.bootargs, a.start, a.single_disk)
     else:
         crash(a.kernel, a.label, a.runs, a.seed, a.bootargs, a.start)
     return 0

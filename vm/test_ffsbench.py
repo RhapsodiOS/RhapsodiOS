@@ -246,3 +246,20 @@ def test_wrong_kernel_stays_fatal(tmp_path, monkeypatch):
     monkeypatch.setattr(fb, "boot_test_kernel", wrong)
     with pytest.raises(SystemExit):
         fb.boot_or_skip(None, None, "k", "", str(tmp_path))
+
+
+def test_qemu_args_can_throttle_the_root_disk():
+    args = fb.qemu_args("r", "h1", "h2", "s", root_iops=100)
+    assert "throttling.iops-total=100" in _drive(args, 0)
+    assert "throttling" not in _drive(args, 1)
+
+
+def test_run_command_targets_hd1_by_default():
+    cmd = fb.run_command("run.sh")
+    assert cmd.endswith("sh /tmp/ffsbench/run.sh /mnt2 /mnt1")
+
+
+def test_run_command_single_disk_targets_the_root():
+    cmd = fb.run_command("run.sh", single=True)
+    assert "mkdir -p /private/tmp/ffsbench-root" in cmd
+    assert cmd.endswith("sh /tmp/ffsbench/run.sh /mnt2 /private/tmp/ffsbench-root")

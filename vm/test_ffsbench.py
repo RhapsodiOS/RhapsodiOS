@@ -285,3 +285,9 @@ def test_stall_summary():
 
 def test_rbuild_start_command_records_exit_status():
     assert "RBUILD-EXIT $?" in fb.rbuild_start_command()
+
+
+def test_run_script_writes_a_manifest_after_the_replay():
+    text = open(os.path.join(SCRIPTS, "run.sh")).read()
+    i, j = text.index("echo REPLAY-END"), text.index("rm -rf $T/root")
+    assert "manifest.txt" in text[i:j] and "cksum" in text[i:j]

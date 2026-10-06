@@ -33,6 +33,11 @@ while read root apk; do
 done < $REPO/replay.list
 t1=`$B/wakeprobe -t`
 echo REPLAY-END `expr $t1 - $t0`
+# content manifest: identical input, so any difference between kernels is
+# corruption (taken after the timing, so it does not count in REPLAY-END)
+(cd $T/root && find . -type f -print | sort | xargs cksum) > $B/manifest.txt
+echo MANIFEST `cksum < $B/manifest.txt`
+t1=`$B/wakeprobe -t`
 rm -rf $T/root
 t2=`$B/wakeprobe -t`
 echo RM-END `expr $t2 - $t1`

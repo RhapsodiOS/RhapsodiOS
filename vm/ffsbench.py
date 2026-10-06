@@ -635,6 +635,9 @@ def bench(kernel, label, runs, bootargs="", start=0, single=False):
             if booted:
                 log, result, banners = _drive(g, ssh, outdir, "run.sh",
                                               single=single)
+                if result == "ok":
+                    _, man = ssh.run("cat %s/manifest.txt" % GUEST_DIR)
+                    _log(outdir, "manifest.txt", man)
         finally:
             g.quit()
             os.remove(hd1)

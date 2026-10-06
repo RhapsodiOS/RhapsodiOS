@@ -84,3 +84,52 @@ def test_csv_row_matches_header():
            "late_max_ms": 3000, "late_p99_ms": 900, "banner_max_s": 1.5,
            "banner_missed": 1}
     assert fb.csv_row("x", run).count(",") == fb.CSV_HEADER.count(",")
+
+
+# --- Task 2: disks and guest scripts --------------------------------------
+
+import os
+import struct
+
+import pytest
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+SCRIPTS = os.path.join(HERE, "..", "tests", "ffsbench")
+
+
+def _labels(path):
+    with open(path, "rb") as f:
+        head = f.read(32768)
+    return [off for off in fb.LABEL_OFFSETS if head[off:off + 4] == b"dlV3"]
+
+
+def test_build_scratch_label(tmp_path):
+    if not os.path.exists(fb.label_template()):
+        pytest.skip("installation floppy template is not present")
+    path = str(tmp_path / "scratch.img")
+    fb.build_scratch(path, mb=4)
+    copies = _labels(path)
+    assert copies
+    with open(path, "rb") as f:
+        head = f.read(32768)
+    for off in copies:
+        assert struct.unpack_from(">i", head, off + 194)[0] == 4 * 2048   # p_size
+    assert os.path.getsize(path) == fb.label_front() + 4 * 1024 * 1024
+
+
+def test_run_script_prints_every_marker():
+    text = open(os.path.join(SCRIPTS, "run.sh")).read()
+    for marker in fb.RUN_MARKERS:
+        assert "echo " + marker in text or "echo \"" + marker in text, marker
+
+
+def test_crash_script_stops_at_replay():
+    text = open(os.path.join(SCRIPTS, "crash.sh")).read()
+    assert "REPLAY-START" in text
+    assert "RM-END" not in text and "SLOW1" not in text
+
+
+def test_wakeprobe_prints_probe_format():
+    text = open(os.path.join(SCRIPTS, "wakeprobe.c")).read()
+    assert r'"wp %d %d %d %d\n"' in text
+    assert "vm_statistics" in text

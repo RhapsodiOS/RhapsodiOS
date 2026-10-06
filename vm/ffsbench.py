@@ -8,13 +8,22 @@ under snapshot; hd1 (the disk under test) and hd2 (the workload) persist.
 """
 
 import collections
+import importlib
 import math
+import os
 import re
 
 QEMU = r"C:\Program Files\qemu\qemu-system-i386.exe"
 GUEST_IP = "10.10.0.240"
 
 ProbeSample = collections.namedtuple("ProbeSample", "t late_ms free pageouts")
+
+# rhap_image.LABEL_OFFSETS: the four copies of the NeXT disk label.
+LABEL_OFFSETS = (7680, 15360, 23040, 30720)
+
+# Every marker tests/ffsbench/run.sh prints, in order.
+RUN_MARKERS = ("PROBE-BUILT", "REPLAY-START", "REPLAY-END", "RM-END",
+               "SLOW1", "SLOW2", "RUN-END")
 
 CSV_HEADER = ("label,replay_s,rm_s,slow1_mbs,slow2_mbs,"
               "late_max_ms,late_p99_ms,banner_max_s,banner_missed")
@@ -111,3 +120,34 @@ class Watchdog(object):
 def csv_row(label, run):
     return ",".join([label] + ["" if run.get(k) is None else str(run[k])
                                for k in CSV_FIELDS])
+
+
+def _hfs_guest():
+    # hfs_guest pulls in tools/hfsimg; load it only when a disk is built
+    return importlib.import_module("hfs_guest")
+
+
+def label_template():
+    """The installation floppy whose NeXT label every ffsbench disk reuses."""
+    assets = os.environ.get("RHAP_VM_ASSETS") or os.path.dirname(
+        os.path.abspath(__file__))
+    return os.path.join(assets, "install",
+                        "rhapsody_dr2_x86_InstallationFloppy.img")
+
+
+def label_front():
+    return _hfs_guest().label_front()
+
+
+def build_scratch(path, mb=1024):
+    """A NeXT-labelled disk whose partition a is mb megabytes of zeros.  The
+    guest newfs's it once; that result is the pristine copy every run
+    starts from (ufs_build cannot make a volume larger than the floppy
+    template's single 2.3 MB cylinder group)."""
+    hg = _hfs_guest()
+    front = hg.label_front()
+    head = bytearray(hg.wrap_label(b""))
+    hg.ufs_build.patch_labels(head, front, mb * 2048)
+    with open(path, "wb") as f:
+        f.write(head)
+        f.truncate(front + mb * 1024 * 1024)

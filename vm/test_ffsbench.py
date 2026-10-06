@@ -207,3 +207,18 @@ def test_boot_line():
     # "Configuring device drivers".  The line is typed only for boot args.
     assert fb.boot_line("") is None
     assert fb.boot_line("bufpages=1638") == "mach_kernel bufpages=1638"
+
+
+def test_lane_defaults():
+    assert fb.lane(None) == (2532, 4532, 1232, "workload.img")
+
+
+def test_second_lane_has_its_own_ports_and_workload_copy():
+    assert fb.lane("2533,4533,1233") == (2533, 4533, 1233, "workload-2533.img")
+
+
+def test_qemu_args_uses_the_lane_ports():
+    args = fb.qemu_args("r", "h1", "h2", "s", ssh_port=2533, qmp_port=4533,
+                        gdb_port=1233)
+    assert "hostfwd=tcp:127.0.0.1:2533-10.10.0.240:22" in " ".join(args)
+    assert args[args.index("-gdb") + 1] == "tcp:127.0.0.1:1233"

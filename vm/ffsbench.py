@@ -176,7 +176,18 @@ WORK = os.environ.get("FFSBENCH_WORK") or os.path.join(ASSETS, "work", "ffsbench
 ROOT_IMG = os.path.join(ASSETS, "work", "rhap-i386-bootstrapped.img")
 SCRIPTS = os.path.join(HERE, "..", "tests", "ffsbench")
 
-SSH_PORT, QMP_PORT, GDB_PORT = 2532, 4532, 1232
+def lane(spec):
+    """(ssh, qmp, gdb port, workload file) for a bench lane.  The default
+    lane is 2532/4532/1232; FFSBENCH_PORTS="ssh,qmp,gdb" runs a second
+    guest beside it, on its own copy of the workload disk because QEMU's
+    image lock lets only one process hold a snapshot=off drive."""
+    if not spec:
+        return 2532, 4532, 1232, "workload.img"
+    ssh, qmp, gdb = (int(x) for x in spec.split(","))
+    return ssh, qmp, gdb, "workload-%d.img" % ssh
+
+
+SSH_PORT, QMP_PORT, GDB_PORT, WORKLOAD_NAME = lane(os.environ.get("FFSBENCH_PORTS"))
 KERNEL_NAME = "mach_kernel_ffs"     # upload name; installed as /mach_kernel
 GUEST_DIR = "/tmp/ffsbench"
 BANNER_TRIES, BANNER_GAP = 12, 30   # first sshd banner: up to 6 minutes
@@ -424,7 +435,8 @@ class Guest(object):
         self.serial = os.path.join(outdir, "serial.log")
         flags = 0x00000008 | 0x00000200 if os.name == "nt" else 0
         self.proc = subprocess.Popen(
-            qemu_args(ROOT_IMG, hd1, hd2, self.serial), creationflags=flags,
+            qemu_args(ROOT_IMG, hd1, hd2, self.serial, SSH_PORT, QMP_PORT,
+                      GDB_PORT), creationflags=flags,
             stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
             stderr=open(os.path.join(outdir, "qemu.err"), "wb"))
         self.qmp = Qmp()
@@ -502,7 +514,10 @@ def _fresh_hd1(outdir):
 
 
 def _workload():
-    return os.path.join(WORK, "workload.img")
+    path = os.path.join(WORK, WORKLOAD_NAME)
+    if not os.path.exists(path):
+        shutil.copyfile(os.path.join(WORK, "workload.img"), path)
+    return path
 
 
 def _drive(g, ssh, outdir, script, on_marker=None):

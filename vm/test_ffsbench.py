@@ -291,3 +291,9 @@ def test_run_script_writes_a_manifest_after_the_replay():
     text = open(os.path.join(SCRIPTS, "run.sh")).read()
     i, j = text.index("echo REPLAY-END"), text.index("rm -rf $T/root")
     assert "manifest.txt" in text[i:j] and "cksum" in text[i:j]
+
+
+def test_no_update_command_kills_update_and_checks():
+    cmd = fb.no_update_command()
+    assert "kill" in cmd and "update" in cmd
+    assert "UPDATE-GONE" in cmd

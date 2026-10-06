@@ -883,7 +883,15 @@ def timed_login(conf, command, limit=LOGIN_LIMIT_S):
         os.remove(ask)
 
 
-def stall(kernel, label, bootargs=""):
+def no_update_command():
+    """Stop the update daemon (its 30 s sync is what drives the mapfs
+    deadlock), and prove it is gone, so a kernel that deadlocks can still
+    be measured as a control."""
+    return ("kill `ps -axc | awk '$NF == \"update\" {print $1}'`; sleep 2; "
+            "ps -axc | awk '$NF == \"update\"' | grep -q . || echo UPDATE-GONE")
+
+
+def stall(kernel, label, bootargs="", no_update=False):
     """Boot kernel, start a real rbuild kernel, and log in every
     LOGIN_EVERY_S seconds until it finishes, timing each login."""
     conf = _conf()
@@ -895,6 +903,11 @@ def stall(kernel, label, bootargs=""):
         ssh = Ssh(conf)
         if not boot_or_skip(g, ssh, kernel, bootargs, outdir):
             return
+        if no_update:
+            _, out = ssh.run(no_update_command())
+            _log(outdir, "result.txt", "no_update: %s" % out.strip()[-40:])
+            if "UPDATE-GONE" not in out:
+                raise SystemExit("could not stop update: %s" % out)
         ssh.run(rbuild_start_command())
         start = time.time()
         while time.time() - start < STALL_RUN_LIMIT_S:
@@ -932,6 +945,8 @@ def main(argv):
     st.add_argument("--kernel", required=True)
     st.add_argument("--label", required=True)
     st.add_argument("--bootargs", default="")
+    st.add_argument("--no-update", action="store_true",
+                    help="stop the update daemon first (a control run)")
     for name, runs in (("bench", 3), ("crash", 20)):
         s = sub.add_parser(name)
         s.add_argument("--kernel", required=True)
@@ -949,7 +964,7 @@ def main(argv):
     if a.cmd == "prep":
         prep()
     elif a.cmd == "stall":
-        stall(a.kernel, a.label, a.bootargs)
+        stall(a.kernel, a.label, a.bootargs, a.no_update)
     elif a.cmd == "bench":
         bench(a.kernel, a.label, a.runs, a.bootargs, a.start, a.single_disk)
     else:

@@ -1,10 +1,10 @@
 # Ext2 port state and exported disk contract
 
-The pinned NetBSD import now has a Rhapsody read-only integration milestone.
+The pinned NetBSD import supports Rhapsody read and write operations.
 Registration uses static type 18, the appended VT_EXT2FS tag, and explicit
-normal/spec/FIFO vectors. Writable mounts and vnode metadata mutations return
-EROFS. Original write bodies remain under staging guards until the write
-milestone; these guards are not feature-selection options.
+normal/spec/FIFO vectors. Writable admission requires a supported clean
+filesystem and a synchronously persisted dirty marker. Fault handling and
+remount recovery are the following milestone.
 
 ## Imported units and adaptations
 
@@ -147,13 +147,13 @@ argument as the historical inode-number value, never dereferences it.
 | ufs_select/mmap/seek/pathconf | Constant/generic vnode answers, no i_fs dereference. |
 | ufs_advlock | Uses inode lockf and canonical i_size. |
 | ufs_revoke | Local alias for generic vop_revoke. |
-| ufs_pagein/pageout | Native pass-through to VOP_READ/VOP_WRITE, which select ext2 read and EROFS write. |
+| ufs_pagein/pageout | Native pass-through to VOP_READ/VOP_WRITE, which select ext2 buffered read/write. |
 
 Do not use ufs_close or ufs_ioctl: both can interpret i_fs as FFS. Do not
 use shared UFS reclaim/hash: ext2 owns a separate hash and allocation class.
 Do not use ufs_inactive because truncation and timestamp policy differ.
-Spec/FIFO I/O uses local spec/fifo functions directly; no ufsspec/ufsfifo
-wrappers or filesystem timestamp changes. No quota or export implementation
+Spec/FIFO I/O uses local spec/fifo functions directly, with ext2 metadata
+operations and inactive/free handling; no ufsspec/ufsfifo wrappers. No quota or export implementation
 is linked from ext2. NFS handles and quota callbacks return EOPNOTSUPP.
 
 Active NetBSD algorithms retained in their own units: ext2fs_bmap and
@@ -171,15 +171,15 @@ The vnode vectors, mount lifecycle and inode load/save are ABI-specific
 replacements. ext2fs_update(struct vop_update_args *) delegates to
 ext2fs_update_inode(vnode,timeval,timeval,wait). Four-argument VOP_UPDATE,
 VOP_TRUNCATE, VOP_VALLOC and VOP_VFREE use the local dispatch descriptors;
-unadapted mutation entries refuse EROFS. Imported UVM, UBC, genfs, NetBSD
-pools, write-suspension/fstrans, kqueue and unsupported vnode calls occur
-only inside retained staging guards. No compatibility macro silently ignores
-their behavior. All ten imported C units compile independently.
+mutation entries use the native descriptors. Imported UVM/UBC paths are
+replaced by native buffered I/O and pager size updates; the original UVM
+range-allocation helper remains guarded. Unsupported NetBSD
+VFS scaffolding remains guarded; no compatibility macro silently ignores
+its behavior. All ten imported C units compile independently.
 
-Guarded staging sections: original VFS/vnode code, inode update/truncate/
-inactive, alloc/balloc, ext2fs_write, and lookup's directory mutation helpers.
-VFS/vnode replacement code is native; future work should adapt and enable
-upstream mutation functions in-place rather than adding another disk engine.
+Original allocation, block allocation, directory mutation, truncate/free,
+inactive, and buffered write algorithms are active in their original units.
+VFS/vnode dispatch and lifecycle code use the native ABI.
 The private dinode retains ext2-only scalars and raw little-endian block
 bytes. Metadata aliases name local canonical i_din fields; block/ext2 flag
 access uses ext2fs_dinode explicitly. No disk-record casting is used.
@@ -241,3 +241,82 @@ Syscall suites check both directory layouts, the full 255-byte name, repeated
 lookups, short/long readlink, sparse content and indirect boundary bytes.
 PPC cross-builds are recorded separately from unavailable PPC executions;
 native admission of truncated partitions is not a short inode-read test.
+
+## Task 4 write integration
+
+Canonical mode, links, ownership, size, timestamps and block count remain in
+local inode.i_din. ext2fs_dinode accesses ext2-only fields and little-endian
+block pointers; allocation locality hints belong to the private ext2fs_node.
+The internal ext2fs_alloc and ext2fs_balloc signatures are unchanged.
+Vnode allocation, free and truncate take their typed native vop arguments.
+Metadata writes pass through ext2fs_inode_save, preserving the disk adapter.
+
+ext2fs_vget_alloc is a private allocation admission path called only after
+the allocator reserves a free inode bitmap bit. It admits an uninitialized
+on-disk inode and defers vnode type initialization until ext2fs_makeinode or
+mkdir installs the mode. The allocator clears both private and canonical
+records; failed admission returns the reservation through VOP_VFREE. Normal
+ext2fs_vget still rejects zero mode/link count, oversize files and unsupported
+regular-file high size. Lookup and malformed-image admission use that normal
+path. Local successful symlink/mknod callers consume no returned reference:
+those ext2 methods release their newly created vnode before returning.
+
+The original buffered write loop serves regular files and long symlinks.
+The local ufs_pagein/pageout wrappers dispatch through ext2 VOP_READ/WRITE;
+ext2fs_vm_flush enrolls an existing user pager in MapFS before flushing or
+truncating it. Initial enrollment uses paired map_vnode/unmap_vnode; an
+already mapped cache with map_count zero gains no new reference. vmp_get/put
+hold the recursive native cache lock and use count while the active
+vmp_push_range walks the entire file object, including hardware-dirty user
+pages outside the kernel I/O window. Busy or missing-object state and prior
+or immediate push errors fail the operation; cleanup preserves the first
+error while the same live cache remains. mapfs_trunc coordinates mapped
+truncate before changing inode blocks. getattr uses the local UFS live-size
+rule for enrolled cache; inode.i_din remains serialization authority. Native
+vnode_pager_setsize follows the local UFS mapped-vnode guard. Sparse
+truncate growth changes size without allocating holes; shrink zeros an
+allocated partial tail before releasing blocks. Growth past 2147483647 is
+EFBIG. A crossing write is rejected entirely. ENOSPC after successful bytes
+returns that prefix through the native syscall layer; IO_UNIT rolls back.
+
+Writes do not use cluster_write, so close needs no FFS cluster-flush adapter.
+ext2fs_fsync first pushes user pages, then drains native vnode dirty buffers
+and serializes inode metadata.
+Mount sync traverses native vnode locks, flushes the device, and updates group
+counts and the superblock. Paged regular vnodes participate even without
+inode flags or dirty buffers, so mapped-only stores reach final flush. Successful unmount flushes/reclaims all vnodes,
+flushes allocation metadata, then persists the clean marker and flushes the
+device again. RO lifecycle stays write-free. Mode-changing remounts are refused
+before either NULL-fspec or same-device update success (RO-to-RW EROFS,
+RW-to-RO EOPNOTSUPP), pending Task 5's transition and error-latch work.
+The one-pointer mount ABI has no export payload. NULL-device update requests
+use the native export route and return EOPNOTSUPP after mode-change guards;
+generic mount strips the user MNT_EXPORTED flag before calling the filesystem.
+Named-device same-mode updates remain supported. Quota is EOPNOTSUPP.
+
+Shared UFS implementations, structures and FFS block geometry are unchanged.
+The dependency audit now includes kern/mapfs.c: enrolled ordinary I/O bypasses
+ext2 VOP_WRITE, and the generic overflow check precedes its append adjustment.
+A real native append returned two bytes and size2147483648 while the disk inode
+remained2147483646. The ext2-only guard computes the effective write offset
+before mapfs_get can remap, and checks offset/residual with subtraction against
+EXT2_FILESIZE_MAX. It returns EFBIG without consuming bytes. It is conditional
+on EXT2FS and VT_EXT2FS write requests; other filesystem paths retain their
+existing checks and behavior. The generated ext2fs.h controls inclusion of
+the authoritative ext2_disk.h limit. Required regressions are enabled and
+disabled kernel compile/link on both CPUs, actual ext2 mapped append/ordinary
+crossing/truncate/count tests, and native UFS mapped bounded append/read. The ext2 access method implements
+native owner/group/other permissions without linking the UFS quota path.
+Native FIFO and special-device operations use their existing local vectors.
+
+The native test case is mmap-fsync: generic fsync first calls mapfs_fsync,
+then the ext2 VOP_FSYNC. The supplied system library lacks msync and the
+kernel syscall is unimplemented; the original msync case remains a separately
+recorded unsupported platform capability, not a successful ext2 test.
+
+Existing-block allocation reads reject successful-short buffers before
+returning data or decoding indirect pointers. Decoded indirect data pointers
+must be below the filesystem block count before full-block getblk overwrites
+can bypass bmap. The native balloc test compiles production allocation and
+shared UFS geometry, controlling only buffer I/O and unused allocation hooks;
+it checks exact buffer ownership and no write/allocation after refusal.

@@ -5,6 +5,7 @@
 struct ext2fs_node {
     struct inode inode;
     struct ext2fs_dinode dinode;
+    daddr_t last_lblk, last_blk;
 };
 #define i_e2fs_mode i_mode
 #define i_e2fs_nlink i_nlink

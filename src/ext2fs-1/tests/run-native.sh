@@ -2,6 +2,89 @@
 # Run from the directory containing mount_ext2fs and ext2_io.
 set -e
 case "$1" in
+mutation|limits|mmap|mmap-size|mmap-fsync|mmap-limits|permissions|special)
+    test "$#" = 3
+    ./mount_ext2fs "$2" "$3"
+    ./ext2_io "$1" "$3"
+    umount "$3"
+    ;;
+append-control-suite)
+    test "$#" = 2
+    mkdir /mnt/ufs-control
+    ./ext2_io ufs-append-control /mnt/ufs-control
+    rmdir /mnt/ufs-control
+    ./mount_ext2fs /dev/hd1a "$2"
+    ./ext2_io mmap-limits "$2"
+    umount "$2"
+    echo "EXT2_OK append-control-suite"
+    ;;
+mmap-diagnostic-suite)
+    test "$#" = 2
+    mkdir /mnt/ufs-control
+    set +e
+    ./ext2_io mmap-size /mnt/ufs-control
+    echo "FFS_CONTROL_STATUS $?"
+    set -e
+    rmdir /mnt/ufs-control
+    ./mount_ext2fs /dev/hd1a "$2"
+    set +e
+    ./ext2_io mmap-size "$2"
+    echo "EXT2_DIAGNOSTIC_STATUS $?"
+    set -e
+    umount "$2"
+    echo "EXT2_OK mmap-diagnostic-suite"
+    ;;
+remount-red-suite)
+    test "$#" = 2
+    for route in remount-null remount-device; do
+        ./mount_ext2fs /dev/hd1a "$2"
+        if test "$route" = remount-device; then
+            if ./ext2_io "$route" "$2" /dev/hd1a; then exit 1; fi
+        else
+            if ./ext2_io "$route" "$2"; then exit 1; fi
+        fi
+        echo "EXPECTED_RED $route"
+        umount "$2"
+    done
+    echo "EXT2_OK remount-red-suite"
+    ;;
+write-red-suite)
+    test "$#" = 2
+    ./mount_ext2fs -o ro /dev/hd1a "$2"
+    for scenario in mutation limits mmap permissions special; do
+        if ./ext2_io "$scenario" "$2"; then exit 1; else echo "EXPECTED_RED $scenario"; fi
+    done
+    umount "$2"
+    echo "EXT2_OK write-red-suite"
+    ;;
+write-suite|write-fsync-suite|write-core-suite)
+    test "$#" = 2
+    point="$2"
+    suite="$1"
+    scenarios="mutation limits mmap-size mmap permissions special"
+    verify=verify-writes
+    if test "$suite" = write-fsync-suite; then scenarios="mutation limits mmap-size mmap-fsync mmap-limits permissions special"; fi
+    if test "$suite" = write-core-suite; then scenarios="mutation limits permissions special"; verify=verify-core; fi
+    n=0
+    for part in a b c d e f; do
+        minor=`expr 8 + "$n"`
+        device="/dev/hd1$part"
+        test -b "$device" || mknod "$device" b 3 "$minor"
+        echo "write partition $part"
+        ./mount_ext2fs "$device" "$point"
+        for scenario in $scenarios; do
+            ./ext2_io "$scenario" "$point"
+        done
+        ./ext2_io remount-null "$point"
+        ./ext2_io remount-device "$point" "$device"
+        umount "$point"
+        ./mount_ext2fs -o ro "$device" "$point"
+        ./ext2_io "$verify" "$point"
+        umount "$point"
+        n=`expr "$n" + 1`
+    done
+    echo "EXT2_OK $suite"
+    ;;
 read-suite|malformed-suite|truncated-suite)
     test "$#" = 2
     suite="$1"
@@ -65,5 +148,5 @@ capacity512|capacity1024)
     ./partition_info /dev/hd1a /dev/rhd1a /dev/rhd1h /dev/rhd1g /dev/rhd1b /dev/rhd1c "$sector" "$2" 512 "$3"
     echo "EXT2_OK $1"
     ;;
-*) echo "usage: run-native.sh readonly|mapping|directory DEVICE MOUNT_POINT | malformed DEVICE MOUNT_POINT directory|indirect | read-suite|malformed-suite|truncated-suite MOUNT_POINT | tiny MOUNT_POINT | capacity512|capacity1024 PARTITION_BLOCKS DRIVE_SECTORS" >&2; exit 2 ;;
+*) echo "usage: run-native.sh mutation|limits|mmap-fsync|mmap-size|permissions|special DEVICE MOUNT_POINT | write-fsync-suite MOUNT_POINT | readonly|mapping|directory DEVICE MOUNT_POINT | malformed DEVICE MOUNT_POINT directory|indirect | read-suite|malformed-suite|truncated-suite MOUNT_POINT | tiny MOUNT_POINT | capacity512|capacity1024 PARTITION_BLOCKS DRIVE_SECTORS" >&2; exit 2 ;;
 esac

@@ -21,7 +21,7 @@ check: all
 	./swap_test$(EXE)
 
 clean:
-	rm -f disk_test disk_test.exe swap_test swap_test.exe adapter_test bmap_test
+	rm -f disk_test disk_test.exe swap_test swap_test.exe adapter_test bmap_test balloc_test
 
 .PHONY: all check clean
 
@@ -39,3 +39,9 @@ bmap_test: bmap_test.c bmap_ext2.c bmap_ufs.c bmap_test_env.h ../ext2fs_bmap.c .
 	$(CC) $(CFLAGS) -Wno-precomp $(KERNEL_TEST_CPPFLAGS) bmap_test.c bmap_ext2.c bmap_ufs.c ../ext2fs_rhapsody.c ../ext2_disk.c ../ext2fs_bswap.c -o $@
 check-bmap: bmap_test
 	./bmap_test
+
+# Existing-block overwrite must reject corrupt pointers and short buffers.
+balloc_test: balloc_test.c balloc_ext2.c bmap_ufs.c bmap_test_env.h ../ext2fs_balloc.c ../../ufs/ufs/ufs_bmap.c ../ext2fs_rhapsody.c ../ext2fs_extern.h ../ext2fs_rhapsody.h $(HEADERS)
+	$(CC) $(CFLAGS) -Wno-precomp $(KERNEL_TEST_CPPFLAGS) balloc_test.c balloc_ext2.c bmap_ufs.c ../ext2fs_rhapsody.c ../ext2_disk.c ../ext2fs_bswap.c -o $@
+check-balloc: balloc_test
+	./balloc_test

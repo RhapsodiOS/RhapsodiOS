@@ -65,6 +65,13 @@
  */
 
 #include "ext2fs_extern.h"
+#include <sys/resource.h>
+#include <sys/signalvar.h>
+#include <vm/vnode_pager.h>
+#include <mach_nbc.h>
+#if MACH_NBC
+#include <kern/mapfs.h>
+#endif
 
 
 
@@ -171,8 +178,6 @@ ext2fs_read(v)
 /*
  * Vnode op for writing.
  */
-/* Unadapted mutation body retained for the write milestone. */
-#if 0
 int
 ext2fs_write(v)
 	void *v;
@@ -192,17 +197,13 @@ ext2fs_write(v)
 	daddr_t lbn;
 	off_t osize;
 	int blkoffset, error, flags, ioflag, resid, xfersize;
-	vsize_t bytelen;
-	void *win;
-	off_t oldoff;
-	boolean_t async;
-	int extended=0;
 
 	ioflag = ap->a_ioflag;
 	uio = ap->a_uio;
 	vp = ap->a_vp;
 	ip = VTOI(vp);
 	error = 0;
+	if (vp->v_mount->mnt_flag & MNT_RDONLY) return EROFS;
 
 #ifdef DIAGNOSTIC
 	if (uio->uio_rw != UIO_WRITE)
@@ -213,7 +214,7 @@ ext2fs_write(v)
 	case VREG:
 		if (ioflag & IO_APPEND)
 			uio->uio_offset = ip->i_e2fs_size;
-		if ((ip->i_e2fs_flags & EXT2_APPEND) &&
+		if ((ext2fs_dinode(ip)->e2di_flags & EXT2_APPEND) &&
 			uio->uio_offset != ip->i_e2fs_size)
 			return (EPERM);
 		/* FALLTHROUGH */
@@ -230,7 +231,7 @@ ext2fs_write(v)
 	fs = ip->i_e2fs;
 	if (uio->uio_offset < 0 ||
 		(u_int64_t)uio->uio_offset + uio->uio_resid >
-		((u_int64_t)0x80000000 * fs->e2fs_bsize - 1))
+		EXT2_FILESIZE_MAX)
 		return (EFBIG);
 	/*
 	 * Maybe this should be above the vnode op call, but so long as
@@ -246,60 +247,8 @@ ext2fs_write(v)
 	if (uio->uio_resid == 0)
 		return (0);
 
-	async = vp->v_mount->mnt_flag & MNT_ASYNC;
 	resid = uio->uio_resid;
 	osize = ip->i_e2fs_size;
-
-	if (vp->v_type == VREG) {
-		while (uio->uio_resid > 0) {
-			oldoff = uio->uio_offset;
-			blkoffset = blkoff(fs, uio->uio_offset);
-			bytelen = MIN(fs->e2fs_bsize - blkoffset,
-			    uio->uio_resid);
-
-			error = ufs_balloc_range(vp, uio->uio_offset,
-			    bytelen, ap->a_cred, 0);
-			if (error) {
-				break;
-			}
-			win = ubc_alloc(&vp->v_uobj, uio->uio_offset,
-			    &bytelen, UBC_WRITE);
-			error = uiomove(win, bytelen, uio);
-			ubc_release(win, 0);
-			if (error) {
-				break;
-			}
-
-			/*
-			 * update UVM's notion of the size now that we've
-			 * copied the data into the vnode's pages.
-			 */
-
-			if (vp->v_size < uio->uio_offset) {
-				uvm_vnp_setsize(vp, uio->uio_offset);
-				extended = 1;
-			}
-
-			/*
-			 * flush what we just wrote if necessary.
-			 * XXXUBC simplistic async flushing.
-			 */
-
-			if (!async && oldoff >> 16 != uio->uio_offset >> 16) {
-				simple_lock(&vp->v_interlock);
-				error = VOP_PUTPAGES(vp, (oldoff >> 16) << 16,
-				    (uio->uio_offset >> 16) << 16, PGO_CLEANIT);
-			}
-		}
-		if (error == 0 && ioflag & IO_SYNC) {
-			simple_lock(&vp->v_interlock);
-			error = VOP_PUTPAGES(vp, trunc_page(oldoff),
-			    round_page(blkroundup(fs, uio->uio_offset)),
-			    PGO_CLEANIT | PGO_SYNCIO);
-		}
-
-		goto out;
-	}
 
 	flags = ioflag & IO_SYNC ? B_SYNC : 0;
 	for (error = 0; uio->uio_resid > 0;) {
@@ -319,18 +268,16 @@ ext2fs_write(v)
 		}
 		error = uiomove((char *)bp->b_un.b_addr + blkoffset, xfersize, uio);
 
-		/*
-		 * update UVM's notion of the size now that we've
-		 * copied the data into the vnode's pages.
-		 */
-
-		if (vp->v_size < uio->uio_offset) {
-			uvm_vnp_setsize(vp, uio->uio_offset);
-			extended = 1;
-		}
+#if MACH_NBC
+        if (vp->v_type == VREG && vp->v_vm_info && !vp->v_vm_info->mapped)
+#endif
+            vnode_pager_setsize(vp, (u_long)ip->i_size);
+#if !MACH_NBC
+        (void)vnode_uncache(vp);
+#endif
 
 		if (ioflag & IO_SYNC)
-			(void)bwrite(bp);
+			{ int e = bwrite(bp); if (!error) error = e; }
 		else if (xfersize + blkoffset == fs->e2fs_bsize)
 			bawrite(bp);
 		else
@@ -345,22 +292,16 @@ ext2fs_write(v)
 	 * tampering.
 	 */
 
-out:
 	ip->i_flag |= IN_CHANGE | IN_UPDATE;
 	if (resid > uio->uio_resid && ap->a_cred && ap->a_cred->cr_uid != 0)
 		ip->i_e2fs_mode &= ~(ISUID | ISGID);
-	if (resid > uio->uio_resid)
-		VN_KNOTE(vp, NOTE_WRITE | (extended ? NOTE_EXTEND : 0));
-	if (error) {
+	if (error && (ioflag & IO_UNIT)) {
 		(void) VOP_TRUNCATE(vp, osize, ioflag & IO_SYNC, ap->a_cred,
 		    uio->uio_procp);
 		uio->uio_offset -= resid - uio->uio_resid;
 		uio->uio_resid = resid;
 	} else if (resid > uio->uio_resid && (ioflag & IO_SYNC) == IO_SYNC)
-		error = VOP_UPDATE(vp, NULL, NULL, UPDATE_WAIT);
-	KASSERT(vp->v_size == ip->i_e2fs_size);
+		error = VOP_UPDATE(vp, NULL, NULL, MNT_WAIT);
+	if (error == ENOSPC && resid > uio->uio_resid && !(ioflag & IO_UNIT)) error=0;
 	return (error);
 }
-
-#endif
-int ext2fs_write(void *v) { return EROFS; }

@@ -64,26 +64,9 @@
  *  Modified for ext2fs by Manuel Bouyer.
  */
 
-/* NetBSD implementation retained while native entry points are adapted.
- * Mutation code remains disabled until writable mounts are implemented. */
-#if 0
-#include <sys/cdefs.h>
-__KERNEL_RCSID(0, "$NetBSD: ext2fs_alloc.c,v 1.22 2004/03/22 19:23:08 bouyer Exp $");
-
-#include <sys/param.h>
-#include <sys/systm.h>
-#include <sys/buf.h>
-#include <sys/proc.h>
-#include <sys/vnode.h>
-#include <sys/mount.h>
-#include <sys/kernel.h>
-#include <sys/syslog.h>
-
-#include <ufs/ufs/inode.h>
-#include <ufs/ufs/ufs_extern.h>
-
-#include "ext2_fs.h"
 #include "ext2fs_extern.h"
+#include "ext2_bitmap.h"
+#include <sys/syslog.h>
 
 u_long ext2gennumber;
 
@@ -143,14 +126,14 @@ ext2fs_alloc(ip, lbn, bpref, cred, bnp)
 	bno = (daddr_t)ext2fs_hashalloc(ip, cg, bpref, fs->e2fs_bsize,
 						 ext2fs_alloccg);
 	if (bno > 0) {
-		ip->i_e2fs_nblock += btodb(fs->e2fs_bsize);
+		ip->i_e2fs_nblock += (fs->e2fs_bsize / 512);
 		ip->i_flag |= IN_CHANGE | IN_UPDATE;
 		*bnp = bno;
 		return (0);
 	}
 nospace:
 	ext2fs_fserr(fs, cred->cr_uid, "file system full");
-	uprintf("\n%s: write failed, file system is full\n", fs->e2fs_fsmnt);
+	printf("\n%s: write failed, file system is full\n", fs->e2fs_fsmnt);
 	return (ENOSPC);
 }
 
@@ -170,15 +153,8 @@ nospace:
  *	  available inode is located.
  */
 int
-ext2fs_valloc(v)
-	void *v;
+ext2fs_valloc(struct vop_valloc_args *ap)
 {
-	struct vop_valloc_args /* {
-		struct vnode *a_pvp;
-		int a_mode;
-		struct ucred *a_cred;
-		struct vnode **a_vpp;
-	} */ *ap = v;
 	struct vnode *pvp = ap->a_pvp;
 	struct inode *pip;
 	struct m_ext2fs *fs;
@@ -201,7 +177,7 @@ ext2fs_valloc(v)
 	ino = (ino_t)ext2fs_hashalloc(pip, cg, (long)ipref, mode, ext2fs_nodealloccg);
 	if (ino == 0)
 		goto noinodes;
-	error = VFS_VGET(pvp->v_mount, ino, ap->a_vpp);
+	error = ext2fs_vget_alloc(pvp->v_mount, ino, ap->a_vpp);
 	if (error) {
 		VOP_VFREE(pvp, ino, mode);
 		return (error);
@@ -213,7 +189,8 @@ ext2fs_valloc(v)
 		panic("ext2fs_valloc: dup alloc");
 	}
 
-	memset(ip->i_din.e2fs_din, 0, sizeof(struct ext2fs_dinode));
+	memset(ext2fs_dinode(ip), 0, sizeof(struct ext2fs_dinode));
+	memset(&ip->i_din, 0, sizeof(ip->i_din));
 
 	/*
 	 * Set up a new generation number for this inode.
@@ -224,7 +201,7 @@ ext2fs_valloc(v)
 	return (0);
 noinodes:
 	ext2fs_fserr(fs, ap->a_cred->cr_uid, "out of inodes");
-	uprintf("\n%s: create/symlink failed, no inodes free\n", fs->e2fs_fsmnt);
+	printf("\n%s: create/symlink failed, no inodes free\n", fs->e2fs_fsmnt);
 	return (ENOSPC);
 }
 
@@ -281,8 +258,8 @@ ext2fs_blkpref(ip, lbn, indx, bap)
 	 * contigously on disk
 	 */
 
-	if ( ip->i_e2fs_last_blk && lbn == ip->i_e2fs_last_lblk + 1) {
-		return ip->i_e2fs_last_blk + 1;
+	if ( ((struct ext2fs_node *)ip)->last_blk && lbn == ((struct ext2fs_node *)ip)->last_lblk + 1) {
+		return ((struct ext2fs_node *)ip)->last_blk + 1;
 	}
 
 	/*
@@ -398,7 +375,7 @@ ext2fs_alloccg(ip, cg, bpref, size)
 		/*
 		 * if the requested block is available, use it
 		 */
-		if (isclr(bbp, bpref)) {
+		if (!ext2_test_bit(bpref, (u_char *)bbp)) {
 			bno = bpref;
 			goto gotit;
 		}
@@ -413,7 +390,7 @@ ext2fs_alloccg(ip, cg, bpref, size)
 		start = dtogd(fs, bpref) / NBBY;
 	else
 		start = 0;
-	end = howmany(fs->e2fs.e2fs_fpg, NBBY) - start;
+	end = howmany(fs->e2fs.e2fs_fpg, NBBY);
 	for (loc = start; loc < end; loc++) {
 		if (bbp[loc] == 0) {
 			bno = loc * NBBY;
@@ -428,17 +405,20 @@ ext2fs_alloccg(ip, cg, bpref, size)
 	}
 
 	bno = ext2fs_mapsearch(fs, bbp, bpref);
-	if (bno < 0)
-		return (0);
+	if (bno < 0) { brelse(bp); return (0); }
 gotit:
+	if ((u_int32_t)bno >= fs->e2fs.e2fs_bcount -
+	    (cg * fs->e2fs.e2fs_bpg + fs->e2fs.e2fs_first_dblock)) {
+		brelse(bp); return 0;
+	}
 #ifdef DIAGNOSTIC
-	if (isset(bbp, (daddr_t)bno)) {
+	if (ext2_test_bit((daddr_t)bno, (u_char *)bbp)) {
 		printf("ext2fs_alloccgblk: cg=%d bno=%d fs=%s\n",
 			cg, bno, fs->e2fs_fsmnt);
 		panic("ext2fs_alloccg: dup alloc");
 	}
 #endif
-	setbit(bbp, (daddr_t)bno);
+	ext2_set_bit((daddr_t)bno, (u_char *)bbp);
 	fs->e2fs.e2fs_fbcount--;
 	fs->e2fs_gd[cg].ext2bgd_nbfree--;
 	fs->e2fs_fmod = 1;
@@ -467,7 +447,7 @@ ext2fs_nodealloccg(ip, cg, ipref, mode)
 	struct buf *bp;
 	int error, start, len, loc, map, i;
 
-	ipref--; /* to avoid a lot of (ipref -1) */
+	if (ipref) ipref--; /* bitmap indexes start at zero */
 	fs = ip->i_e2fs;
 	if (fs->e2fs_gd[cg].ext2bgd_nifree == 0)
 		return (0);
@@ -481,7 +461,7 @@ ext2fs_nodealloccg(ip, cg, ipref, mode)
 	ibp = (char *)bp->b_data;
 	if (ipref) {
 		ipref %= fs->e2fs.e2fs_ipg;
-		if (isclr(ibp, ipref))
+		if (!ext2_test_bit(ipref, (u_char *)ibp))
 			goto gotit;
 	}
 	start = ipref / NBBY;
@@ -510,7 +490,7 @@ ext2fs_nodealloccg(ip, cg, ipref, mode)
 	panic("ext2fs_nodealloccg: block not in map");
 	/* NOTREACHED */
 gotit:
-	setbit(ibp, ipref);
+	ext2_set_bit(ipref, (u_char *)ibp);
 	fs->e2fs.e2fs_ficount--;
 	fs->e2fs_gd[cg].ext2bgd_nifree--;
 	fs->e2fs_fmod = 1;
@@ -539,7 +519,7 @@ ext2fs_blkfree(ip, bno)
 
 	fs = ip->i_e2fs;
 	cg = dtog(fs, bno);
-	if ((u_int)bno >= fs->e2fs.e2fs_bcount) {
+	if (bno < fs->e2fs.e2fs_first_dblock || (u_int)bno >= fs->e2fs.e2fs_bcount) {
 		printf("bad block %lld, ino %d\n", (long long)bno,
 		    ip->i_number);
 		ext2fs_fserr(fs, ip->i_e2fs_uid, "bad block");
@@ -554,12 +534,12 @@ ext2fs_blkfree(ip, bno)
 	}
 	bbp = (char *)bp->b_data;
 	bno = dtogd(fs, bno);
-	if (isclr(bbp, bno)) {
+	if (!ext2_test_bit(bno, (u_char *)bbp)) {
 		printf("dev = 0x%x, block = %lld, fs = %s\n",
 			ip->i_dev, (long long)bno, fs->e2fs_fsmnt);
 		panic("blkfree: freeing free block");
 	}
-	clrbit(bbp, bno);
+	ext2_clear_bit(bno, (u_char *)bbp);
 	fs->e2fs.e2fs_fbcount++;
 	fs->e2fs_gd[cg].ext2bgd_nbfree++;
 
@@ -573,14 +553,8 @@ ext2fs_blkfree(ip, bno)
  * The specified inode is placed back in the free map.
  */
 int
-ext2fs_vfree(v)
-	void *v;
+ext2fs_vfree(struct vop_vfree_args *ap)
 {
-	struct vop_vfree_args /* {
-		struct vnode *a_pvp;
-		ino_t a_ino;
-		int a_mode;
-	} */ *ap = v;
 	struct m_ext2fs *fs;
 	char *ibp;
 	struct inode *pip;
@@ -590,7 +564,7 @@ ext2fs_vfree(v)
 
 	pip = VTOI(ap->a_pvp);
 	fs = pip->i_e2fs;
-	if ((u_int)ino >= fs->e2fs.e2fs_icount || (u_int)ino < EXT2_FIRSTINO)
+	if ((u_int)ino > fs->e2fs.e2fs_icount || (u_int)ino < EXT2_FIRSTINO)
 		panic("ifree: range: dev = 0x%x, ino = %d, fs = %s",
 			pip->i_dev, ino, fs->e2fs_fsmnt);
 	cg = ino_to_cg(fs, ino);
@@ -603,13 +577,13 @@ ext2fs_vfree(v)
 	}
 	ibp = (char *)bp->b_data;
 	ino = (ino - 1) % fs->e2fs.e2fs_ipg;
-	if (isclr(ibp, ino)) {
+	if (!ext2_test_bit(ino, (u_char *)ibp)) {
 		printf("dev = 0x%x, ino = %d, fs = %s\n",
 			pip->i_dev, ino, fs->e2fs_fsmnt);
 		if (fs->e2fs_ronly == 0)
 			panic("ifree: freeing free inode");
 	}
-	clrbit(ibp, ino);
+	ext2_clear_bit(ino, (u_char *)ibp);
 	fs->e2fs.e2fs_ficount++;
 	fs->e2fs_gd[cg].ext2bgd_nifree++;
 	if ((ap->a_mode & IFMT) == IFDIR) {
@@ -666,6 +640,7 @@ ext2fs_mapsearch(fs, bbp, bpref)
 	}
 	printf("fs = %s\n", fs->e2fs_fsmnt);
 	panic("ext2fs_mapsearch: block not in map");
+	return -1;
 	/* NOTREACHED */
 }
 
@@ -685,9 +660,4 @@ ext2fs_fserr(fs, uid, cp)
 	log(LOG_ERR, "uid %d on %s: %s\n", uid, fs->e2fs_fsmnt, cp);
 }
 
-#endif
-
-#include "ext2fs_extern.h"
-int ext2fs_valloc(void *v) { return EROFS; }
-int ext2fs_vfree(void *v) { return EROFS; }
-int ext2fs_reallocblks(void *v) { return EROFS; }
+int ext2fs_reallocblks(void *v) { return EOPNOTSUPP; }

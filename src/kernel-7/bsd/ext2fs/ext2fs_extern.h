@@ -86,6 +86,8 @@
 #include "ext2_disk.h"
 #include "ext2fs_rhapsody.h"
 
+void vnode_pager_setsize(struct vnode *,u_long);
+
 /* Native vfs_cache.c exports these without declarations in sys/namei.h. */
 void cache_enter(struct vnode *,struct vnode *,struct componentname *);
 void cache_purge(struct vnode *);
@@ -115,9 +117,24 @@ int ext2fs_readdir(void *);
 int ext2fs_blkatoff(void *);
 int ext2fs_inactive(void *);
 int ext2fs_reclaim(void *);
-int ext2fs_truncate(void *);
-int ext2fs_valloc(void *);
-int ext2fs_vfree(void *);
+int ext2fs_truncate(struct vop_truncate_args *);
+int ext2fs_valloc(struct vop_valloc_args *);
+int ext2fs_vfree(struct vop_vfree_args *);
 int ext2fs_reallocblks(void *);
 int ext2fs_vinit(struct mount *,int (**)(),int (**)(),struct vnode **);
+int ext2fs_alloc(struct inode *,daddr_t,daddr_t,struct ucred *,daddr_t *);
+int ext2fs_balloc(struct inode *,daddr_t,int,struct ucred *,struct buf **,int);
+daddr_t ext2fs_blkpref(struct inode *,daddr_t,int,int32_t *);
+void ext2fs_blkfree(struct inode *,daddr_t);
+int ext2fs_vget_alloc(struct mount *,ino_t,struct vnode **);
+int ext2fs_direnter(struct inode *,struct vnode *,struct componentname *);
+int ext2fs_dirremove(struct vnode *,struct componentname *);
+int ext2fs_dirrewrite(struct inode *,struct inode *,struct componentname *);
+int ext2fs_dirempty(struct inode *,ino_t,struct ucred *);
+int ext2fs_checkpath(struct inode *,struct inode *,struct ucred *);
+int ext2fs_makeinode(int,struct vnode *,struct vnode **,struct componentname *);
+int ext2fs_fsync(struct vop_fsync_args *);
+int ext2fs_sbupdate(struct ufsmount *,int);
+int ext2fs_cgupdate(struct ufsmount *,int);
+int ext2fs_vm_flush(struct vnode *,struct proc *,int,vm_offset_t);
 #endif

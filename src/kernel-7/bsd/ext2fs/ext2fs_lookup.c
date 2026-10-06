@@ -713,8 +713,6 @@ ext2fs_dirbadentry(dp, de, entryoffsetinblock)
  * (dp->i_offset, dp->i_count) indicate how the space for the new
  * entry is to be obtained.
  */
-/* Unadapted directory mutation bodies retained for the write milestone. */
-#if 0
 int
 ext2fs_direnter(ip, dvp, cnp)
 	struct inode *ip;
@@ -816,7 +814,7 @@ ext2fs_direnter(ip, dvp, cnp)
 		dsize = EXT2FS_DIRSIZ(nep->e2d_namlen);
 		spacefree += fs2h16(nep->e2d_reclen) - dsize;
 		loc += fs2h16(nep->e2d_reclen);
-		memcpy((caddr_t)ep, (caddr_t)nep, dsize);
+		memmove((caddr_t)ep, (caddr_t)nep, dsize);
 	}
 	/*
 	 * Update the pointer fields in the previous entry (if any),
@@ -947,7 +945,7 @@ ext2fs_dirempty(ip, parentino, cred)
 	struct ext2fs_dirtemplate dbuf;
 	struct ext2fs_direct *dp = (struct ext2fs_direct *)&dbuf;
 	int error, namlen;
-	size_t count;
+	int count;
 		 
 #define	MINDIRSIZ (sizeof (struct ext2fs_dirtemplate) / 2)
 
@@ -1018,7 +1016,7 @@ ext2fs_checkpath(source, target, cred)
 		}
 		error = vn_rdwr(UIO_READ, vp, (caddr_t)&dirbuf,
 			sizeof (struct ext2fs_dirtemplate), (off_t)0,
-			UIO_SYSSPACE, IO_NODELOCKED, cred, (size_t *)0,
+			UIO_SYSSPACE, IO_NODELOCKED, cred, (int *)0,
 			(struct proc *)0);
 		if (error != 0)
 			break;
@@ -1037,7 +1035,7 @@ ext2fs_checkpath(source, target, cred)
 		if (ino == rootino)
 			break;
 		vput(vp);
-		error = VFS_VGET(vp->v_mount, ino, &vp);
+		error = VFS_VGET(vp->v_mount, (void *)(u_long)ino, &vp);
 		if (error != 0) {
 			vp = NULL;
 			break;
@@ -1053,5 +1051,3 @@ out:
 		vput(vp);
 	return (error);
 }
-
-#endif

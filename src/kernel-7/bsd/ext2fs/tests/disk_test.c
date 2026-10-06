@@ -285,10 +285,10 @@ static void test_metadata_byte_order(void)
 /* Catches word-endian bitmap operations and neighboring-byte corruption. */
 static void test_bitmap_boundaries(void)
 {
-    unsigned bits[] = {0, 7, 8, 31, 32, 8191};
-    unsigned char map[1026], before[1026]; unsigned i, bit;
+    unsigned bits[] = {0, 7, 8, 31, 32, 8191, 8192, 16383, 16384, 32767};
+    unsigned char map[4098], before[4098]; unsigned i, bit;
     for (i = 0; i < sizeof(bits) / sizeof(bits[0]); i++) {
-        memset(map, 0x5a, sizeof(map)); memset(map + 1, 0, 1024);
+        memset(map, 0x5a, sizeof(map)); memset(map + 1, 0, 4096);
         memcpy(before, map, sizeof(map)); bit = bits[i];
         CHECK(ext2_test_bit(bit, map + 1) == 0);
         CHECK(ext2_set_bit(bit, map + 1) == 0);

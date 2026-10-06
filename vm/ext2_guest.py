@@ -1,9 +1,9 @@
-"""Prepare disposable labelled ext2 disks and drive the i386 readonly case.
+"""Prepare disposable labelled ext2 disks and drive i386 native cases.
 
 Usage: ext2_guest.py wrap VOLUME OUT
        ext2_guest.py capacity 512|1024 OUT
        ext2_guest.py tiny OUT
-       ext2_guest.py run readonly|tiny|capacity512|capacity1024 OUTDIR IMAGE TOOLS_DIR
+       ext2_guest.py run CASE OUTDIR IMAGE TOOLS_DIR
 RHAP_TEST_IMAGE selects the root source; each run copies it before booting.
 """
 import importlib.util
@@ -180,14 +180,14 @@ def _read_result(path):
 
 
 def run(case,outdir,image,tools_dir):
-    if case not in ('readonly','mapping','directory','malformed','read-suite','malformed-suite','truncated-suite','tiny','capacity512','capacity1024'): raise ValueError('unsupported case')
+    if case not in ('mutation','limits','mmap','mmap-size','mmap-fsync','mmap-limits','permissions','special','write-red-suite','remount-red-suite','mmap-diagnostic-suite','append-control-suite','write-suite','write-fsync-suite','write-core-suite','readonly','mapping','directory','malformed','read-suite','malformed-suite','truncated-suite','tiny','capacity512','capacity1024'): raise ValueError('unsupported case')
     port = int(os.environ.get('RHAP_EXT2_QMP_PORT','5303'))
     check_qmp_port(port)
     tools_dir = Path(tools_dir)
     names = ('partition_info',) if case.startswith('capacity') else ('mount_ext2fs','ext2_io')
     binaries = {name:(tools_dir/name).read_bytes() for name in names}
     result_script = RESULT_SCRIPT
-    if case in ('mapping','directory','malformed'):
+    if case in ('mutation','limits','mmap','mmap-size','mmap-fsync','mmap-limits','permissions','special','mapping','directory','malformed'):
         kind = os.environ.get('RHAP_EXT2_MALFORMED','directory')
         if kind not in ('directory','indirect'): raise ValueError('unsupported malformed kind')
         extra = ' '+kind if case == 'malformed' else ''
@@ -241,7 +241,7 @@ def run(case,outdir,image,tools_dir):
     (outdir/'out.txt').write_text(stdout or '')
     (outdir/'status.txt').write_text(status or 'missing')
     problems = verify_result(case,int(status.strip()) if status and status.strip().isdigit() else -1,stdout or '')
-    if Path(image).read_bytes() != Path(private_data).read_bytes(): problems.append('readonly data image changed')
+    if case not in ('mutation','limits','mmap','mmap-size','mmap-fsync','mmap-limits','permissions','special','write-suite','write-fsync-suite','write-core-suite','remount-red-suite','mmap-diagnostic-suite','append-control-suite') and Path(image).read_bytes() != Path(private_data).read_bytes(): problems.append('readonly data image changed')
     serial = (outdir/'serial.log').read_text(errors='replace')
     if 'panic:' in serial: problems.append('kernel panic in serial log')
     for problem in problems: print(problem)

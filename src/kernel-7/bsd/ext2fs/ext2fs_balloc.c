@@ -64,30 +64,6 @@
  * Modified for ext2fs by Manuel Bouyer.
  */
 
-/* NetBSD implementation retained while native entry points are adapted.
- * Mutation code remains disabled until writable mounts are implemented. */
-#if 0
-#include <sys/cdefs.h>
-__KERNEL_RCSID(0, "$NetBSD: ext2fs_balloc.c,v 1.22 2004/03/22 19:23:08 bouyer Exp $");
-
-#if defined(_KERNEL_OPT)
-#include "opt_uvmhist.h"
-#endif
-
-#include <sys/param.h>
-#include <sys/systm.h>
-#include <sys/buf.h>
-#include <sys/proc.h>
-#include <sys/file.h>
-#include <sys/vnode.h>
-#include <sys/mount.h>
-
-#include <uvm/uvm.h>
-
-#include <ufs/ufs/inode.h>
-#include <ufs/ufs/ufs_extern.h>
-
-#include "ext2_fs.h"
 #include "ext2fs_extern.h"
 
 /*
@@ -116,14 +92,14 @@ ext2fs_balloc(ip, bn, size, cred, bpp, flags)
 	daddr_t *blkp, *allocblk, allociblk[NIADDR + 1];
 	int32_t *allocib;	/* XXX ondisk32 */
 	int unwindidx = -1;
-	UVMHIST_FUNC("ext2fs_balloc"); UVMHIST_CALLED(ubchist);
 
-	UVMHIST_LOG(ubchist, "bn 0x%x", bn,0,0,0);
+
 
 	if (bpp != NULL) {
 		*bpp = NULL;
 	}
-	if (bn < 0)
+	if (ITOV(ip)->v_mount->mnt_flag & MNT_RDONLY) return EROFS;
+	if (bn < 0 || (u_int64_t)bn * ip->i_e2fs->e2fs_bsize > EXT2_FILESIZE_MAX)
 		return (EFBIG);
 	fs = ip->i_e2fs;
 	lbn = bn;
@@ -133,7 +109,7 @@ ext2fs_balloc(ip, bn, size, cred, bpp, flags)
 	 */
 	if (bn < NDADDR) {
 		/* XXX ondisk32 */
-		nb = fs2h32(ip->i_e2fs_blocks[bn]);
+		nb = fs2h32(ext2fs_dinode(ip)->e2di_blocks[bn]);
 		if (nb != 0) {
 
 			/*
@@ -143,7 +119,8 @@ ext2fs_balloc(ip, bn, size, cred, bpp, flags)
 			if (bpp != NULL) {
 				error = bread(vp, bn, fs->e2fs_bsize, NOCRED,
 					      &bp);
-				if (error) {
+				if (error || bp->b_resid) {
+					if (!error) error = EIO;
 					brelse(bp);
 					return (error);
 				}
@@ -157,14 +134,14 @@ ext2fs_balloc(ip, bn, size, cred, bpp, flags)
 		 */
 
 		error = ext2fs_alloc(ip, bn,
-		    ext2fs_blkpref(ip, bn, bn, &ip->i_e2fs_blocks[0]),
+		    ext2fs_blkpref(ip, bn, bn, &ext2fs_dinode(ip)->e2di_blocks[0]),
 		    cred, &newb);
 		if (error)
 			return (error);
-		ip->i_e2fs_last_lblk = lbn;
-		ip->i_e2fs_last_blk = newb;
+		((struct ext2fs_node *)ip)->last_lblk = lbn;
+		((struct ext2fs_node *)ip)->last_blk = newb;
 		/* XXX ondisk32 */
-		ip->i_e2fs_blocks[bn] = h2fs32((int32_t)newb);
+		ext2fs_dinode(ip)->e2di_blocks[bn] = h2fs32((int32_t)newb);
 		ip->i_flag |= IN_CHANGE | IN_UPDATE;
 		if (bpp != NULL) {
 			bp = getblk(vp, bn, fs->e2fs_bsize, 0, 0);
@@ -190,7 +167,7 @@ ext2fs_balloc(ip, bn, size, cred, bpp, flags)
 	 */
 	--num;
 	/* XXX ondisk32 */
-	nb = fs2h32(ip->i_e2fs_blocks[NDADDR + indirs[0].in_off]);
+	nb = fs2h32(ext2fs_dinode(ip)->e2di_blocks[NDADDR + indirs[0].in_off]);
 	allocib = NULL;
 	allocblk = allociblk;
 	if (nb == 0) {
@@ -200,7 +177,7 @@ ext2fs_balloc(ip, bn, size, cred, bpp, flags)
 			return (error);
 		nb = newb;
 		*allocblk++ = nb;
-		ip->i_e2fs_last_blk = newb;
+		((struct ext2fs_node *)ip)->last_blk = newb;
 		bp = getblk(vp, indirs[1].in_lbn, fs->e2fs_bsize, 0, 0);
 		bp->b_blkno = fsbtodb(fs, newb);
 		clrbuf(bp);
@@ -211,7 +188,7 @@ ext2fs_balloc(ip, bn, size, cred, bpp, flags)
 		if ((error = bwrite(bp)) != 0)
 			goto fail;
 		unwindidx = 0;
-		allocib = &ip->i_e2fs_blocks[NDADDR + indirs[0].in_off];
+		allocib = &ext2fs_dinode(ip)->e2di_blocks[NDADDR + indirs[0].in_off];
 		/* XXX ondisk32 */
 		*allocib = h2fs32((int32_t)newb);
 		ip->i_flag |= IN_CHANGE | IN_UPDATE;
@@ -222,12 +199,18 @@ ext2fs_balloc(ip, bn, size, cred, bpp, flags)
 	for (i = 1;;) {
 		error = bread(vp,
 		    indirs[i].in_lbn, (int)fs->e2fs_bsize, NOCRED, &bp);
-		if (error) {
+		if (error || bp->b_resid) {
+			if (!error) error = EIO;
 			brelse(bp);
 			goto fail;
 		}
 		bap = (int32_t *)bp->b_data;	/* XXX ondisk32 */
 		nb = fs2h32(bap[indirs[i].in_off]);
+		if ((u_int32_t)nb >= fs->e2fs.e2fs_bcount) {
+			error = EIO;
+			brelse(bp);
+			goto fail;
+		}
 		if (i == num)
 			break;
 		i++;
@@ -243,7 +226,7 @@ ext2fs_balloc(ip, bn, size, cred, bpp, flags)
 		}
 		nb = newb;
 		*allocblk++ = nb;
-		ip->i_e2fs_last_blk = newb;
+		((struct ext2fs_node *)ip)->last_blk = newb;
 		nbp = getblk(vp, indirs[i].in_lbn, fs->e2fs_bsize, 0, 0);
 		nbp->b_blkno = fsbtodb(fs, nb);
 		clrbuf(nbp);
@@ -281,8 +264,8 @@ ext2fs_balloc(ip, bn, size, cred, bpp, flags)
 		}
 		nb = newb;
 		*allocblk++ = nb;
-		ip->i_e2fs_last_lblk = lbn;
-		ip->i_e2fs_last_blk = newb;
+		((struct ext2fs_node *)ip)->last_lblk = lbn;
+		((struct ext2fs_node *)ip)->last_blk = newb;
 		/* XXX ondisk32 */
 		bap[indirs[num].in_off] = h2fs32((int32_t)nb);
 		/*
@@ -308,7 +291,8 @@ ext2fs_balloc(ip, bn, size, cred, bpp, flags)
 		if (flags & B_CLRBUF) {
 			error = bread(vp, lbn, (int)fs->e2fs_bsize, NOCRED,
 				      &nbp);
-			if (error) {
+			if (error || nbp->b_resid) {
+				if (!error) error = EIO;
 				brelse(nbp);
 				goto fail;
 			}
@@ -356,12 +340,14 @@ fail:
 		}
 	}
 	if (deallocated) {
-		ip->i_e2fs_nblock -= btodb(deallocated);
-		ip->i_e2fs_flags |= IN_CHANGE | IN_UPDATE;
+		ip->i_e2fs_nblock -= (deallocated / 512);
+		ip->i_flag |= IN_CHANGE | IN_UPDATE;
 	}
 	return error;
 }
 
+/* NetBSD UVM range helper retained; native pager uses VOP_WRITE. */
+#if 0
 int
 ext2fs_gop_alloc(struct vnode *vp, off_t off, off_t len, int flags,
     struct ucred *cred)
@@ -408,11 +394,3 @@ ext2fs_gop_alloc(struct vnode *vp, off_t off, off_t len, int flags,
 }
 
 #endif
-
-#include "ext2fs_extern.h"
-int
-ext2fs_balloc(struct inode *ip,daddr_t block,int size,struct ucred *cred,struct buf **bpp,int flags)
-{
-    *bpp=NULL;
-    return EROFS;
-}

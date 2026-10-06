@@ -274,10 +274,14 @@ def test_rbuild_start_command_runs_in_background_with_probe():
     cmd = fb.rbuild_start_command()
     assert "rbuild kernel" in cmd and "--arch i386" in cmd
     assert "/tmp/ffsbench/rbuild.log" in cmd
-    assert "nohup" in cmd and cmd.rstrip().endswith("&")
+    assert "nohup" in cmd and cmd.rstrip().endswith("&)")
 
 
 def test_stall_summary():
     s = fb.stall_summary([1.2, 3.4, None, 2.0], limit=120)
     assert s == {"logins": 4, "login_max_s": 3.4, "login_median_s": 2.0,
                  "login_timeouts": 1}
+
+
+def test_rbuild_start_command_records_exit_status():
+    assert "RBUILD-EXIT $?" in fb.rbuild_start_command()

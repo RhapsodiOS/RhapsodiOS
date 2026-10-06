@@ -843,8 +843,9 @@ def rbuild_start_command():
             "mkdir -p %(d)s %(d)s-state %(g)s && "
             "cc -O -o %(g)s/wakeprobe %(g)s/wakeprobe.c && "
             "(nohup %(g)s/wakeprobe > %(g)s/wp.log 2>&1 &) && "
-            "nohup rbuild kernel --state %(d)s-state --arch i386 "
-            "/build/src /build/repo %(d)s > %(g)s/rbuild.log 2>&1 &"
+            "(nohup sh -c 'rbuild kernel --state %(d)s-state --arch i386 "
+            "/build/src /build/repo %(d)s; echo RBUILD-EXIT $?' "
+            "> %(g)s/rbuild.log 2>&1 &)"
             % {"d": STALL_DIR, "g": GUEST_DIR})
 
 
@@ -899,8 +900,10 @@ def stall(kernel, label, bootargs=""):
             logins.append(t)
             _log(outdir, "logins.log", "%.1f %s %s" % (
                 time.time() - start, t, out.strip().replace("\n", " | ")[-160:]))
-            if "rbuild: kernel complete" in out or "rbuild: kernel failed" in out:
-                state = "complete" if "complete" in out else "failed"
+            m = re.search(r"RBUILD-EXIT (\d+)", out)
+            if m:
+                state = ("complete" if "rbuild: kernel complete" in out
+                         else "exit %s" % m.group(1))
                 break
         elapsed = time.time() - start
         _, wp = ssh.run("cat %s/wp.log" % GUEST_DIR)

@@ -205,7 +205,7 @@ cylinder 1023 written as 1023/254/63. It matches `build_uefi_image.py`'s
 | 2 | ESP | `gzip -dc I/esp.img.gz` through a pipe, written at the ESP's LBA. Refused unless it is exactly 131072 sectors |
 | 3 | Label, boot blocks, filesystem | `disk -i -b /dev/rhdNh` |
 | 4 | Mount | `mount /dev/hdNa T`. The log moves from memory to `T/private/var/log/sysinstall.log` |
-| 5 | Packages | `apk add --root T --initdb I/Packages/files-*.apk`, then one `apk add --root T` with every other apk named in the chosen sets, each package once |
+| 5 | Packages | One `apk add --root T --initdb I/Packages/files-*.apk` followed by every other apk named in the chosen sets, each package once. `files` depends on `basic-cmds`, `csu` and `libsystem`, and apk resolves a dependency only among the apks it is given |
 | 6 | Configure | Render `fstab`, `Instance0-i386.table` and `hostconfig` for `hdN`. Link `T/private/Devices` to `Drivers/i386`. Set root's `master.passwd` field to `crypt()` of the password with a random salt, then `chroot T /usr/sbin/pwd_mkdb -p /etc/master.passwd` |
 | 7 | Drivers | `driverDetect -w T <chosen drivers>` |
 | 8 | Check | Fail if `T/private/etc/rc.cdrom` exists, so the installer can't run at every boot |

@@ -369,52 +369,45 @@ static int write_esp(const struct plan *p, char *failed, int len)
 
 static int apk_steps(const struct plan *p, runner run, char *failed, int len)
 {
-	char pkgdir[PATHMAX], *files = NULL, **av = NULL, *init[7];
+	char pkgdir[PATHMAX], **av = NULL;
 	int i, k, rc;
 
 	if (cat3(pkgdir, p->inst, "/Packages", "") < 0) {
 		say(failed, len, "Packages path too long", NULL);
 		return -1;
 	}
-	rc = find_apk(pkgdir, "files", &files);
-	if (rc < 0) {
-		say(failed, len, rc == -2 ? "two apks for package files in " :
-		    "no files apk in ", pkgdir);
-		return -1;
-	}
-	init[0] = "apk"; init[1] = "add"; init[2] = "--root";
-	init[3] = (char *)p->root; init[4] = "--initdb"; init[5] = files;
-	init[6] = NULL;
-	rc = do_cmd(run, init, failed, len);
-	if (rc != 0) {
-		free(files);
-		return rc;
-	}
-	free(files);
-	av = (char **)calloc((size_t)p->npkgs + 5, sizeof *av);
+	/* One apk run, files first: files depends on basic-cmds, csu and
+	 * libsystem, and apk resolves a dependency only among the apks it is
+	 * given. */
+	av = (char **)calloc((size_t)p->npkgs + 7, sizeof *av);
 	if (av == NULL) {
 		say(failed, len, "out of memory", NULL);
 		return -1;
 	}
 	av[0] = "apk"; av[1] = "add"; av[2] = "--root";
-	av[3] = (char *)p->root;
-	k = 4;
-	rc = 0;
-	for (i = 0; i < p->npkgs; i++) {
+	av[3] = (char *)p->root; av[4] = "--initdb";
+	k = 5;
+	rc = find_apk(pkgdir, "files", &av[k]);
+	if (rc < 0)
+		say(failed, len, rc == -2 ? "two apks for package files in " :
+		    "no files apk in ", pkgdir);
+	else
+		k++;
+	for (i = 0; rc == 0 && i < p->npkgs; i++) {
 		if (strcmp(p->pkgs[i], "files") == 0)
 			continue;
 		rc = find_apk(pkgdir, p->pkgs[i], &av[k]);
-		if (rc < 0) {
+		if (rc < 0)
 			say(failed, len, rc == -2 ? "two apks for package " :
 			    "no apk for package ", p->pkgs[i]);
-			rc = -1;
-			break;
-		}
-		k++;
+		else
+			k++;
 	}
-	if (rc == 0 && k > 4)
+	if (rc < 0)
+		rc = -1;
+	else
 		rc = do_cmd(run, av, failed, len);
-	for (i = 4; i < k; i++)
+	for (i = 5; i < k; i++)
 		free(av[i]);
 	free(av);
 	return rc;

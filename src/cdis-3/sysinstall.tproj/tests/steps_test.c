@@ -163,17 +163,18 @@ static void test_command_order_and_stop_on_failure(void)
 	fill(&p, pkgs, 2, drv, 2, ESP_BYTES);
 	rc = steps_run(&p, fake_run, on_progress, failed, sizeof failed);
 	CHECK(rc == 0);
-	CHECK(ncmds == 8);
+	CHECK(ncmds == 7);
 	CHECK(has(0, "disk -i -b /dev/rhd0h"));
 	CHECK(has(1, "mount /dev/hd0a " TREE "/T"));
+	/* one apk run: files depends on basic-cmds, csu and libsystem, and
+	 * apk resolves a dependency only among the apks it is given */
 	CHECK(has(2, "apk add --root " TREE "/T --initdb "
-	    TREE "/I/Packages/files-1-universal.apk"));
-	CHECK(has(3, "apk add --root " TREE "/T "
+	    TREE "/I/Packages/files-1-universal.apk "
 	    TREE "/I/Packages/basic-cmds-2.0-i386.apk"));
-	CHECK(has(4, "chroot " TREE "/T /usr/sbin/pwd_mkdb -p /etc/master.passwd"));
-	CHECK(has(5, "/usr/sbin/driverDetect -w " TREE "/T NE2K EIDE"));
-	CHECK(has(6, "umount " TREE "/T"));
-	CHECK(has(7, "sync"));
+	CHECK(has(3, "chroot " TREE "/T /usr/sbin/pwd_mkdb -p /etc/master.passwd"));
+	CHECK(has(4, "/usr/sbin/driverDetect -w " TREE "/T NE2K EIDE"));
+	CHECK(has(5, "umount " TREE "/T"));
+	CHECK(has(6, "sync"));
 	CHECK(progress_n == 9);
 	for (i = 0; i < 9 && i < (size_t)progress_n; i++)
 		CHECK(progress_steps[i] == (int)i + 1);
@@ -259,7 +260,7 @@ static void test_package_without_apk_is_step_5(void)
 	setup();
 	fill(&p, pkgs, 2, NULL, 0, ESP_BYTES);
 	CHECK(steps_run(&p, fake_run, NULL, failed, sizeof failed) == 5);
-	CHECK(ncmds == 3);	/* disk, mount, apk --initdb; no second apk */
+	CHECK(ncmds == 2);	/* disk, mount; no apk run at all */
 	CHECK(strstr(failed, "nosuchpkg") != NULL);
 }
 
@@ -273,7 +274,9 @@ static void test_prefix_names_do_not_match(void)
 	setup();
 	fill(&p, pkgs, 2, NULL, 0, ESP_BYTES);
 	CHECK(steps_run(&p, fake_run, NULL, failed, sizeof failed) == 0);
-	CHECK(has(3, "apk add --root " TREE "/T " TREE "/I/Packages/cc-1-i386.apk"));
+	CHECK(has(2, "apk add --root " TREE "/T --initdb "
+	    TREE "/I/Packages/files-1-universal.apk "
+	    TREE "/I/Packages/cc-1-i386.apk"));
 }
 
 static void test_esp_of_the_wrong_size_is_refused(void)
@@ -337,7 +340,7 @@ static void test_two_apks_for_one_package_is_step_5(void)
 	put(TREE "/I/Packages/cc-1-universal.apk", "x", 1);
 	fill(&p, pkgs, 2, NULL, 0, ESP_BYTES);
 	CHECK(steps_run(&p, fake_run, NULL, failed, sizeof failed) == 5);
-	CHECK(ncmds == 3);	/* the --initdb apk ran; the second did not */
+	CHECK(ncmds == 2);	/* no apk run */
 	CHECK(strstr(failed, "two apks for package cc") != NULL);
 	remove(TREE "/I/Packages/cc-1-universal.apk");
 

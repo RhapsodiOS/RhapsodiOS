@@ -46,8 +46,8 @@ int disks_list(char names[][8], unsigned long sizes[], int max)
 	char root[8], name[8], path[32];
 	int k, n, fd, blocks, found = 0;
 
-	if (live_root_disk(root) < 0)
-		root[0] = '\0';
+	if (live_root_disk(root) < 0)	/* fail closed: it could be any */
+		return -1;
 	for (k = 0; k < 2; k++) {
 		for (n = 0; n < count[k] && found < max; n++) {
 			sprintf(name, "%s%d", kind[k], n);

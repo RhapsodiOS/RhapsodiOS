@@ -352,7 +352,8 @@ static void welcome(void)
 
 /* ---- 2. Disk ---- */
 
-/* 0 with p->disk and p->total set, or -1 if there is no disk. */
+/* 0 with p->disk and p->total set, -1 if there is no disk, or -2 if the
+ * live root's disk is unknown. */
 static int choose_disk(struct plan *p)
 {
 	char names[MAX_DISKS][8], lines[MAX_DISKS][80], msg[200];
@@ -362,6 +363,8 @@ static int choose_disk(struct plan *p)
 
 	ui_progress(0, 0, "Looking for disks...", NULL);
 	n = disks_list(names, sizes, MAX_DISKS);
+	if (n < 0)
+		return -2;
 	if (n == 0)
 		return -1;
 	for (i = 0; i < n; i++) {
@@ -1043,7 +1046,11 @@ int main(void)
 	for (;;) {
 		free_pkgs(&p);
 		memset(&p, 0, sizeof p);
-		if (choose_disk(&p) < 0) {
+		if ((rc = choose_disk(&p)) == -2)
+			error_screen("sysinstall cannot tell which disk holds "
+				     "the installer, so it offers none.",
+				     NULL, 0);	/* doesn't return */
+		if (rc < 0) {
 			error_screen("No disk was found to install on.", NULL,
 				     1);
 			continue;

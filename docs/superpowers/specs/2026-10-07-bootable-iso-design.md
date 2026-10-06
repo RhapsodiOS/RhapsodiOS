@@ -208,6 +208,7 @@ the disk-form and ISO gates.
 | `src/boot-2/i386/boot1/` | `nullboot1.s`, `nullboot1.asm` and the `nullboot1` binary (the "isn't a startup disk" floppy sector) |
 | `src/boot-2/i386/boot1/` | The DOS-hosted pieces: `gonext.c` and `gonext.com` (a DOS program that boots Rhapsody, installed to `/usr/Dos`), `replace.c`, `makefile.dos`, `mkboot.bat`, and the Makefile's `/usr/Dos` install |
 | `src/boot-2/i386/boot0/`, `boot1/` | `boot0.asm` and `boot1.asm`, the Turbo Assembler (DOS) copies of the NASM sources the build actually uses |
+| `src/boot-2/i386/boot0/boot0.s` | The partition menu: the 3-second wait for a key, the `r` / `d` / `1`-`4` choices, the DOS partition search, and the CMOS "reboot into NeXT/DOS" flags. `boot0` then boots the active partition directly, and hands to INT 18h when there is none |
 | `src/boot-2/i386/boot2/boot.c` | Booting from a floppy: the `DEV_FLOPPY` boot-device branches, the "Insert file system media" prompt, and the floppy failure message |
 | `src/boot-2/i386/libsaio/drivers.c` | Loading drivers from a driver floppy in Install Mode |
 | `src/cdis-3/` | `mkbootfloppy.sh`, `mkdriverfloppy.sh`, and the legacy `mkinstallcd.sh` with `README.mkinstallcd.md`, which the ISO builder replaces |
@@ -220,10 +221,10 @@ References to these in docs, Makefiles and install lists go with them.
 - `turnOffFloppy()` in `libsaio/misc.c`, which stops a drive motor left
   running by the BIOS
 - fdisk's DOS partition support, which reads and writes partition tables
-- `boot0`'s menu for booting another partition (`d` for DOS or Windows,
-  `1`–`4`), which is how dual-boot disks start their other system
 
 **Checks:**
+- `boot0` boots the active partition with no delay; dual-booting from `boot0`
+  is gone (UEFI or another boot manager can still choose a system).
 - `boot-2` builds, and `boot2` stays under `boot1`'s 45056-byte limit (it
   shrinks).
 - The disk-form media and the ISO still reach the Welcome screen under both

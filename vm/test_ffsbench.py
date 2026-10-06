@@ -230,3 +230,19 @@ def test_qemu_args_throttles_only_hd1():
     assert "throttling" not in _drive(args, 0)
     assert "throttling" not in _drive(args, 2)
     assert "throttling" not in " ".join(fb.qemu_args("r", "h1", "h2", "s"))
+
+
+def test_boot_failure_is_skipped_not_fatal(tmp_path, monkeypatch):
+    def fail(*a):
+        raise SystemExit("sshd never answered on mach_kernel_ffs")
+    monkeypatch.setattr(fb, "boot_test_kernel", fail)
+    assert fb.boot_or_skip(None, None, "k", "", str(tmp_path)) is False
+    assert "bootfail" in (tmp_path / "result.txt").read_text()
+
+
+def test_wrong_kernel_stays_fatal(tmp_path, monkeypatch):
+    def wrong(*a):
+        raise SystemExit("WRONG KERNEL: booted 'a', wanted 'b'")
+    monkeypatch.setattr(fb, "boot_test_kernel", wrong)
+    with pytest.raises(SystemExit):
+        fb.boot_or_skip(None, None, "k", "", str(tmp_path))

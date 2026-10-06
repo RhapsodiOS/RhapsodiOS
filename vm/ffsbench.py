@@ -195,7 +195,8 @@ SSH_PORT, QMP_PORT, GDB_PORT, WORKLOAD_NAME = lane(os.environ.get("FFSBENCH_PORT
 IOPS = int(os.environ.get("FFSBENCH_IOPS") or 0) or None
 KERNEL_NAME = "mach_kernel_ffs"     # upload name; installed as /mach_kernel
 GUEST_DIR = "/tmp/ffsbench"
-BANNER_TRIES, BANNER_GAP = 12, 30   # first sshd banner: up to 6 minutes
+BANNER_TRIES, BANNER_GAP = 20, 30   # first sshd banner: up to 10 minutes
+MAX_BOOTFAILS = 3                   # in a row, before a campaign gives up
 WATCHDOG_S = 60
 RUN_LIMIT_S = 6 * 3600
 
@@ -566,6 +567,25 @@ def _drive(g, ssh, outdir, script, on_marker=None):
     return "\n".join(lines), state["result"], banners
 
 
+def boot_or_skip(g, ssh, kernel, bootargs, outdir):
+    """Boot the test kernel.  A guest whose sshd never answers is logged as
+    a bootfail and the run is skipped, not counted; a wrong kernel stays
+    fatal, since measuring it would credit results to the wrong code."""
+    try:
+        boot_test_kernel(g, ssh, kernel, bootargs)
+        return True
+    except SystemExit as e:
+        if str(e).startswith("WRONG KERNEL"):
+            raise
+        _log(outdir, "result.txt", "bootfail: %s" % e)
+        return False
+
+
+def _bootfail(fails):
+    if fails >= MAX_BOOTFAILS:
+        raise SystemExit("%d boots in a row failed; giving up" % fails)
+
+
 def _marker_values(log):
     vals = {}
     for line in log.splitlines():
@@ -582,20 +602,29 @@ def _new_outdir(label, name):
     return outdir
 
 
-def bench(kernel, label, runs, bootargs=""):
+def bench(kernel, label, runs, bootargs="", start=0):
     conf = _conf()
     csv_dir = os.path.join(WORK, "runs", label)
-    for i in range(runs):
+    i, done, fails = start, 0, 0
+    while done < runs:
         outdir = _new_outdir(label, "bench-%d" % i)
+        i += 1
         hd1 = _fresh_hd1(outdir)
         g = Guest(outdir, hd1, _workload())
         try:
             ssh = Ssh(conf)
-            boot_test_kernel(g, ssh, kernel, bootargs)
-            log, result, banners = _drive(g, ssh, outdir, "run.sh")
+            booted = boot_or_skip(g, ssh, kernel, bootargs, outdir)
+            if booted:
+                log, result, banners = _drive(g, ssh, outdir, "run.sh")
         finally:
             g.quit()
             os.remove(hd1)
+        if not booted:
+            fails += 1
+            _bootfail(fails)
+            continue
+        fails = 0
+        done += 1
         v = _marker_values(log)
         samples = [s for s in map(parse_probe, log.splitlines()) if s]
         run = dict(summarize(samples, banners), replay_s=v.get("REPLAY-END"),
@@ -621,11 +650,11 @@ def _replay_budget(label):
     return sorted(vals)[len(vals) // 2] if vals else 600.0
 
 
-def crash(kernel, label, runs, seed=0, bootargs=""):
+def crash(kernel, label, runs, seed=0, bootargs="", start=0):
     conf = _conf()
     budget = _replay_budget(label)
     tally = collections.Counter()
-    i = done = 0
+    i, done, fails = start, 0, 0
     while done < runs:
         outdir = _new_outdir(label, "crash-%d" % i)
         delay = random.Random(seed + i).uniform(5, budget)
@@ -642,10 +671,18 @@ def crash(kernel, label, runs, seed=0, bootargs=""):
                 threading.Timer(delay, kill).start()
         try:
             ssh = Ssh(conf)
-            boot_test_kernel(g, ssh, kernel, bootargs)
-            log, result, _ = _drive(g, ssh, outdir, "crash.sh", on_marker)
+            booted = boot_or_skip(g, ssh, kernel, bootargs, outdir)
+            if booted:
+                log, result, _ = _drive(g, ssh, outdir, "crash.sh", on_marker)
         finally:
             g.quit()
+        if not booted:
+            os.remove(hd1)
+            i += 1
+            fails += 1
+            _bootfail(fails)
+            continue
+        fails = 0
         if result == "hardlock":
             grade = "hardlock"
         elif not crash_valid(log) or not killed.is_set():
@@ -675,7 +712,7 @@ def _grade(conf, outdir, hd1):
     g = Guest(fdir, hd1, _workload())
     try:
         if not g.wait_sshd():
-            return "manual"
+            return "ungraded"   # hd1-after-crash.img is kept for a regrade
         _, out = Ssh(conf).run("fsck -n /dev/rhd1a; echo PREEN; "
                                "fsck -p /dev/rhd1a; echo STATUS $?")
     finally:
@@ -781,15 +818,17 @@ def main(argv):
         s.add_argument("--label", required=True)
         s.add_argument("--runs", type=int, default=runs)
         s.add_argument("--bootargs", default="")
+        s.add_argument("--start", type=int, default=0,
+                       help="first run index, to continue a campaign")
         if name == "crash":
             s.add_argument("--seed", type=int, default=0)
     a = p.parse_args(argv[1:])
     if a.cmd == "prep":
         prep()
     elif a.cmd == "bench":
-        bench(a.kernel, a.label, a.runs, a.bootargs)
+        bench(a.kernel, a.label, a.runs, a.bootargs, a.start)
     else:
-        crash(a.kernel, a.label, a.runs, a.seed, a.bootargs)
+        crash(a.kernel, a.label, a.runs, a.seed, a.bootargs, a.start)
     return 0
 
 

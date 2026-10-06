@@ -146,8 +146,632 @@ def build_scratch(path, mb=1024):
     template's single 2.3 MB cylinder group)."""
     hg = _hfs_guest()
     front = hg.label_front()
-    head = bytearray(hg.wrap_label(b""))
-    hg.ufs_build.patch_labels(head, front, mb * 2048)
+    # The floppy's own label: 1024-byte label sectors, like the installed
+    # root disk (hfs_guest.wrap_label rewrites them to 512 for HFS).
+    with open(hg.TEMPLATE, "rb") as f:
+        head = bytearray(f.read(front))
+    hg.ufs_build.patch_labels(head, front, mb * 1024)
     with open(path, "wb") as f:
         f.write(head)
         f.truncate(front + mb * 1024 * 1024)
+
+
+# --- Task 4: driving the guest --------------------------------------------
+
+import argparse
+import json
+import random
+import shutil
+import socket
+import subprocess
+import sys
+import tarfile
+import tempfile
+import threading
+import time
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+ASSETS = os.environ.get("RHAP_VM_ASSETS") or HERE
+WORK = os.environ.get("FFSBENCH_WORK") or os.path.join(ASSETS, "work", "ffsbench")
+ROOT_IMG = os.path.join(ASSETS, "work", "rhap-i386-bootstrapped.img")
+SCRIPTS = os.path.join(HERE, "..", "tests", "ffsbench")
+
+SSH_PORT, QMP_PORT, GDB_PORT = 2532, 4532, 1232
+KERNEL_NAME = "mach_kernel_ffs"     # upload name; installed as /mach_kernel
+GUEST_DIR = "/tmp/ffsbench"
+BANNER_TRIES, BANNER_GAP = 12, 30   # first sshd banner: up to 6 minutes
+WATCHDOG_S = 60
+RUN_LIMIT_S = 6 * 3600
+
+LEGACY_SSH_OPTIONS = [
+    "-o", "KexAlgorithms=diffie-hellman-group1-sha1",
+    "-o", "HostKeyAlgorithms=ssh-dss",
+    "-o", "Ciphers=3des-cbc",
+    "-o", "MACs=hmac-sha1",
+    "-o", "PubkeyAuthentication=no",
+    "-o", "StrictHostKeyChecking=no",
+    "-o", "UserKnownHostsFile=/dev/null",
+    "-o", "ServerAliveInterval=30",
+    "-o", "ServerAliveCountMax=120",
+]
+
+# The bootstrapped image has nodes for hd0 and hd1 only: block major 3, raw
+# major 15, eight minors per unit.
+MKNODS = ("(test -b /dev/hd2a || mknod /dev/hd2a b 3 16) && "
+          "(test -c /dev/rhd2a || mknod /dev/rhd2a c 15 16)")
+
+# The installed root's geometry (63 sectors, 16 tracks, 16 cylinders per
+# group); the floppy label's own 9x2 geometry gives newfs 7282 groups of
+# 0.14 MB and a floating exception.
+NEWFS = "newfs -u 63 -t 16 -c 16"
+
+MOUNT = ("mkdir -p /mnt1 /mnt2 && %s && mount /dev/hd1a /mnt1 && "
+         "mount -r /dev/hd2a /mnt2" % MKNODS)
+
+# The build line under "Kernel Release 5.3:", in the kernel file and in the
+# serial log of every boot, e.g.
+# "Mon Oct  5 22:00:53 PDT 2026; root(rcbuilder):kernel-154.5.1-7.obj/RELEASE_I386"
+STAMP = re.compile(rb"[A-Z][a-z]{2} [A-Z][a-z]{2} [ \d]\d \d\d:\d\d:\d\d [A-Z]+ \d{4}; "
+                   rb"[\w()]+:[\w.\-]+/\w+")
+
+
+def kernel_stamp(data):
+    """The last kernel build stamp in a kernel file or a serial log."""
+    if isinstance(data, str):
+        data = data.encode("latin-1", "replace")
+    m = STAMP.findall(data)
+    return m[-1].decode("latin-1") if m else None
+
+
+def check_stamp(serial_text, kernel_bytes):
+    """Refuse to measure a guest that booted some other kernel."""
+    booted, wanted = kernel_stamp(serial_text), kernel_stamp(kernel_bytes)
+    if booted != wanted:
+        raise SystemExit("WRONG KERNEL: booted %r, wanted %r" % (booted, wanted))
+
+
+def banner_time(port, timeout=10):
+    """Seconds until sshd's 'SSH-' banner arrives, or None."""
+    t0 = time.monotonic()
+    got = b""
+    try:
+        with socket.create_connection(("127.0.0.1", port), timeout=timeout) as s:
+            while len(got) < 4:
+                s.settimeout(max(0.1, timeout - (time.monotonic() - t0)))
+                chunk = s.recv(4 - len(got))
+                if not chunk:
+                    return None
+                got += chunk
+    except OSError:
+        return None
+    return time.monotonic() - t0 if got == b"SSH-" else None
+
+
+def boot_line(extra=""):
+    """The line to type at boot:, or None to let the booter autoboot.  The
+    test kernel is /mach_kernel itself: kernload links drivers against
+    /mach_kernel's symbols, so a kernel booted under another name hangs at
+    "Configuring device drivers"."""
+    return "mach_kernel %s" % extra if extra else None
+
+
+def read_conf(path):
+    conf = {}
+    with open(path, "r", encoding="utf-8-sig") as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                k, v = line.split("=", 1)
+                conf[k.strip()] = v.strip()
+    return conf
+
+
+def ssh_argv(conf, port, command):
+    """ssh keeps the first value it sees for an option, so the port goes
+    first, and vm.conf's Port= (the shared box) is never passed at all.
+    root's login shell is csh, so the command runs under /bin/sh."""
+    quoted = "'" + command.replace("'", "'\\''") + "'"
+    return ([conf.get("Ssh", "ssh.exe"), "-T", "-p", str(port)] +
+            LEGACY_SSH_OPTIONS + ["%s@%s" % (conf["User"], conf["Host"]),
+                                  "/bin/sh -c " + quoted])
+
+
+class Ssh(object):
+    """ssh to the bench guest, with the password supplied through
+    SSH_ASKPASS the way vm/rhap-remote.ps1 does it."""
+
+    def __init__(self, conf, port=SSH_PORT):
+        self.conf, self.port = conf, port
+
+    def run(self, command, stdin=None, on_line=None):
+        """Run command, feeding each stdout line to on_line(text, host_time).
+        Returns (exit status, stdout text)."""
+        fd, ask = tempfile.mkstemp(suffix=".cmd")
+        os.write(fd, b"@echo off\r\necho %RHAP_SSH_PASS%\r\n")
+        os.close(fd)
+        env = dict(os.environ, SSH_ASKPASS=ask, SSH_ASKPASS_REQUIRE="force",
+                   RHAP_SSH_PASS=self.conf.get("Password", ""))
+        env.setdefault("DISPLAY", "unused")
+        try:
+            p = subprocess.Popen(
+                ssh_argv(self.conf, self.port, command), env=env,
+                stdin=subprocess.DEVNULL if stdin is None else subprocess.PIPE,
+                stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            if stdin is not None:
+                threading.Thread(target=_feed, args=(p, stdin), daemon=True).start()
+            out = []
+            for raw in iter(p.stdout.readline, b""):
+                text = raw.decode("latin-1").rstrip("\r\n")
+                out.append(text)
+                if on_line:
+                    on_line(text, time.time())
+            p.wait()
+            return p.returncode, "\n".join(out)
+        finally:
+            os.remove(ask)
+
+    def push(self, local, remote):
+        with open(local, "rb") as f:
+            data = f.read()
+        rc, out = self.run("cat > %s && wc -c < %s" % (remote, remote), stdin=data)
+        if rc != 0 or out.split()[-1:] != [str(len(data))]:
+            raise RuntimeError("push %s -> %s failed: %s" % (local, remote, out))
+
+
+def _feed(p, data):
+    try:
+        p.stdin.write(data)
+    finally:
+        p.stdin.close()
+
+
+class Qmp(object):
+    """A QMP client that keeps the events it reads, so a caller can wait
+    for the RESET a guest reboot raises."""
+
+    KEYS = {".": ["dot"], "-": ["minus"], "_": ["shift", "minus"],
+            "=": ["equal"], " ": ["spc"], "\n": ["ret"], "/": ["slash"]}
+
+    def __init__(self, port=QMP_PORT, timeout=60):
+        deadline = time.monotonic() + timeout
+        while True:
+            try:
+                self.sock = socket.create_connection(("127.0.0.1", port), timeout=5)
+                break
+            except OSError:
+                if time.monotonic() > deadline:
+                    raise
+                time.sleep(0.5)
+        self.f = self.sock.makefile("rwb")
+        self.events = []
+        self.lock = threading.Lock()
+        self._read()
+        self.execute("qmp_capabilities")
+
+    def _read(self):
+        line = self.f.readline()
+        if not line:
+            raise RuntimeError("QMP connection closed")
+        return json.loads(line)
+
+    def execute(self, cmd, **args):
+        with self.lock:
+            msg = {"execute": cmd}
+            if args:
+                msg["arguments"] = args
+            self.f.write(json.dumps(msg).encode() + b"\n")
+            self.f.flush()
+            while True:
+                r = self._read()
+                if "event" in r:
+                    self.events.append(r["event"])
+                elif "error" in r:
+                    raise RuntimeError("QMP %s: %s" % (cmd, r["error"]))
+                else:
+                    return r.get("return")
+
+    def wait_event(self, name, timeout):
+        deadline = time.monotonic() + timeout
+        with self.lock:
+            try:
+                while name not in self.events:
+                    left = deadline - time.monotonic()
+                    if left <= 0:
+                        return False
+                    self.sock.settimeout(left)
+                    r = self._read()
+                    if "event" in r:
+                        self.events.append(r["event"])
+            except (socket.timeout, OSError):
+                return False
+            finally:
+                self.sock.settimeout(5)
+        return True
+
+    def type(self, text):
+        for ch in text:
+            if ch.isalnum():
+                codes = ["shift", ch.lower()] if ch.isupper() else [ch]
+            else:
+                codes = self.KEYS[ch]
+            self.execute("send-key",
+                         keys=[{"type": "qcode", "data": c} for c in codes])
+            time.sleep(0.05)
+
+    def quit(self):
+        try:
+            self.execute("quit")
+        except (RuntimeError, OSError, ValueError):
+            pass
+
+
+def ports_free():
+    for port in (SSH_PORT, QMP_PORT, GDB_PORT):
+        s = socket.socket()
+        s.settimeout(1)
+        busy = s.connect_ex(("127.0.0.1", port)) == 0
+        s.close()
+        if busy:
+            raise SystemExit("port %d is in use" % port)
+
+
+class Guest(object):
+    """One QEMU process running the bench guest."""
+
+    def __init__(self, outdir, hd1, hd2):
+        ports_free()
+        os.makedirs(outdir, exist_ok=True)
+        self.serial = os.path.join(outdir, "serial.log")
+        flags = 0x00000008 | 0x00000200 if os.name == "nt" else 0
+        self.proc = subprocess.Popen(
+            qemu_args(ROOT_IMG, hd1, hd2, self.serial), creationflags=flags,
+            stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+            stderr=open(os.path.join(outdir, "qemu.err"), "wb"))
+        self.qmp = Qmp()
+        if self.qmp.execute("query-name").get("name") != "RhapsodiOS ffsbench":
+            raise SystemExit("QMP on %d is not our guest" % QMP_PORT)
+
+    def serial_text(self):
+        try:
+            with open(self.serial, "rb") as f:
+                return f.read().decode("latin-1")
+        except OSError:
+            return ""
+
+    def wait_sshd(self):
+        """One banner attempt every BANNER_GAP seconds, no tighter."""
+        for _ in range(BANNER_TRIES):
+            time.sleep(BANNER_GAP)
+            if banner_time(SSH_PORT) is not None:
+                return True
+        return False
+
+    def quit(self):
+        self.qmp.quit()
+        try:
+            self.proc.wait(timeout=60)
+        except subprocess.TimeoutExpired:
+            self.proc.kill()
+
+
+def _conf():
+    return read_conf(os.path.join(ASSETS, "vm.conf"))
+
+
+def _log(outdir, name, text):
+    with open(os.path.join(outdir, name), "a", encoding="utf-8") as f:
+        f.write(text + "\n")
+
+
+def boot_test_kernel(g, ssh, kernel, bootargs=""):
+    """Install kernel as /mach_kernel on the snapshot root, reboot into it
+    and check its stamp.  The swap lives only in QEMU's snapshot overlay,
+    which outlives a guest reboot inside one QEMU process.  Both moves are
+    renames, so the base image's corrupt root never frees the blocks its
+    /mach_kernel shares with another file."""
+    if not g.wait_sshd():
+        raise SystemExit("sshd never answered on the stock kernel")
+    ssh.push(kernel, "/" + KERNEL_NAME)
+    rc, out = ssh.run("mv /mach_kernel /mach_kernel_orig && mv /%s /mach_kernel"
+                      % KERNEL_NAME)
+    if rc != 0:
+        raise SystemExit("could not install the kernel: %s" % out)
+    g.qmp.events = []
+    ssh.run("sync; /sbin/reboot")
+    if not g.qmp.wait_event("RESET", 300):
+        raise SystemExit("the guest never reset after /sbin/reboot")
+    line = boot_line(bootargs)
+    if line:
+        time.sleep(6)
+        g.qmp.type(line + "\n")
+    if not g.wait_sshd():
+        raise SystemExit("sshd never answered on %s" % KERNEL_NAME)
+    with open(kernel, "rb") as f:
+        check_stamp(g.serial_text(), f.read())
+    # rc empties /tmp at boot, so the scripts go over after the reboot
+    ssh.run("mkdir -p %s" % GUEST_DIR)
+    for name in ("wakeprobe.c", "run.sh", "crash.sh"):
+        ssh.push(os.path.join(SCRIPTS, name), "%s/%s" % (GUEST_DIR, name))
+
+
+def _fresh_hd1(outdir):
+    os.makedirs(outdir, exist_ok=True)
+    hd1 = os.path.join(outdir, "hd1.img")
+    shutil.copyfile(os.path.join(WORK, "scratch-pristine.img"), hd1)
+    return hd1
+
+
+def _workload():
+    return os.path.join(WORK, "workload.img")
+
+
+def _drive(g, ssh, outdir, script, on_marker=None):
+    """Run a guest script while watching wakeprobe and sshd.  Returns the
+    guest log, 'ok' / 'exit <n>' / 'hardlock', and the banner times."""
+    wd = Watchdog(WATCHDOG_S)
+    banners, stop = [], threading.Event()
+    lines, state = [], {"result": None}
+
+    def on_line(text, t):
+        lines.append(text)
+        _log(outdir, "guest.log", "%.1f %s" % (t, text))
+        if text == "PROBE-BUILT" or parse_probe(text):
+            wd.feed(t)
+        if on_marker:
+            on_marker(text, t)
+
+    def probe_banners():
+        while not stop.wait(5):
+            b = banner_time(SSH_PORT, timeout=5)
+            banners.append(b)
+            _log(outdir, "banner.log", "%.1f %s" % (time.time(), b))
+
+    def run():
+        rc, _ = ssh.run("%s && sh %s/%s /mnt2 /mnt1" % (MOUNT, GUEST_DIR, script),
+                        on_line=on_line)
+        state["result"] = "ok" if rc == 0 else "exit %d" % rc
+
+    threading.Thread(target=probe_banners, daemon=True).start()
+    worker = threading.Thread(target=run, daemon=True)
+    worker.start()
+    start = time.time()
+    while worker.is_alive():
+        worker.join(5)
+        now = time.time()
+        if worker.is_alive() and (wd.expired(now) or now - start > RUN_LIMIT_S):
+            capture(g, outdir)
+            state["result"] = "hardlock"
+            break
+    stop.set()
+    return "\n".join(lines), state["result"], banners
+
+
+def _marker_values(log):
+    vals = {}
+    for line in log.splitlines():
+        f = line.split()
+        if len(f) == 2 and f[0] in ("REPLAY-END", "RM-END", "SLOW1", "SLOW2"):
+            vals[f[0]] = f[1]
+    return vals
+
+
+def _new_outdir(label, name):
+    outdir = os.path.join(WORK, "runs", label, name)
+    if os.path.exists(outdir):
+        raise SystemExit("%s exists; evidence is never overwritten" % outdir)
+    return outdir
+
+
+def bench(kernel, label, runs, bootargs=""):
+    conf = _conf()
+    csv_dir = os.path.join(WORK, "runs", label)
+    for i in range(runs):
+        outdir = _new_outdir(label, "bench-%d" % i)
+        hd1 = _fresh_hd1(outdir)
+        g = Guest(outdir, hd1, _workload())
+        try:
+            ssh = Ssh(conf)
+            boot_test_kernel(g, ssh, kernel, bootargs)
+            log, result, banners = _drive(g, ssh, outdir, "run.sh")
+        finally:
+            g.quit()
+            os.remove(hd1)
+        v = _marker_values(log)
+        samples = [s for s in map(parse_probe, log.splitlines()) if s]
+        run = dict(summarize(samples, banners), replay_s=v.get("REPLAY-END"),
+                   rm_s=v.get("RM-END"), slow1_mbs=v.get("SLOW1"),
+                   slow2_mbs=v.get("SLOW2"))
+        row = csv_row(label, run)
+        _log(outdir, "result.txt", "%s\n%s" % (result, row))
+        if not os.path.exists(os.path.join(csv_dir, "bench.csv")):
+            _log(csv_dir, "bench.csv", CSV_HEADER)
+        _log(csv_dir, "bench.csv", row if result == "ok" else row + "  # " + result)
+        print(result, row)
+
+
+def _replay_budget(label):
+    """Median replay_s of this label's good bench rows, else 600 s."""
+    path = os.path.join(WORK, "runs", label, "bench.csv")
+    vals = []
+    if os.path.exists(path):
+        for line in open(path).read().splitlines()[1:]:
+            f = line.split(",")
+            if "#" not in line and len(f) > 1 and f[1]:
+                vals.append(float(f[1]))
+    return sorted(vals)[len(vals) // 2] if vals else 600.0
+
+
+def crash(kernel, label, runs, seed=0, bootargs=""):
+    conf = _conf()
+    budget = _replay_budget(label)
+    tally = collections.Counter()
+    i = done = 0
+    while done < runs:
+        outdir = _new_outdir(label, "crash-%d" % i)
+        delay = random.Random(seed + i).uniform(5, budget)
+        hd1 = _fresh_hd1(outdir)
+        g = Guest(outdir, hd1, _workload())
+        killed = threading.Event()
+
+        def kill(g=g):
+            killed.set()
+            g.qmp.quit()
+
+        def on_marker(text, t, delay=delay):
+            if text == "REPLAY-START":
+                threading.Timer(delay, kill).start()
+        try:
+            ssh = Ssh(conf)
+            boot_test_kernel(g, ssh, kernel, bootargs)
+            log, result, _ = _drive(g, ssh, outdir, "crash.sh", on_marker)
+        finally:
+            g.quit()
+        if result == "hardlock":
+            grade = "hardlock"
+        elif not crash_valid(log) or not killed.is_set():
+            _log(outdir, "result.txt", "invalid: the kill did not land in the replay")
+            os.remove(hd1)
+            i += 1
+            continue
+        else:
+            keep = os.path.join(outdir, "hd1-after-crash.img")
+            shutil.copyfile(hd1, keep)
+            grade = _grade(conf, outdir, hd1)
+            if grade == "clean":
+                os.remove(keep)
+        os.remove(hd1)
+        tally[grade] += 1
+        _log(outdir, "result.txt", "delay %.1f s: %s" % (delay, grade))
+        print("crash %d: %s" % (i, grade))
+        i += 1
+        done += 1
+    _log(os.path.join(WORK, "runs", label), "crash.txt", json.dumps(tally))
+    print(dict(tally))
+
+
+def _grade(conf, outdir, hd1):
+    """Boot the stock kernel with the crashed hd1 attached and fsck it."""
+    fdir = os.path.join(outdir, "fsck")
+    g = Guest(fdir, hd1, _workload())
+    try:
+        if not g.wait_sshd():
+            return "manual"
+        _, out = Ssh(conf).run("fsck -n /dev/rhd1a; echo PREEN; "
+                               "fsck -p /dev/rhd1a; echo STATUS $?")
+    finally:
+        g.quit()
+    _log(fdir, "fsck.txt", out)
+    fsck_n, _, rest = out.partition("PREEN")
+    m = re.search(r"STATUS (\d+)", rest)
+    return classify(fsck_n, int(m.group(1)) if m else 8)
+
+
+def capture(g, outdir):
+    """savevm, then the registers and the kernel stack through the gdbstub."""
+    try:
+        g.qmp.execute("human-monitor-command", **{"command-line": "savevm hang"})
+    except (RuntimeError, OSError) as e:
+        _log(outdir, "gdb.txt", "savevm failed: %s" % e)
+    try:
+        regs, stack = gdb_snapshot(GDB_PORT)
+        _log(outdir, "gdb.txt", "registers %s\nstack %s" % (regs, stack))
+    except (OSError, ValueError) as e:
+        _log(outdir, "gdb.txt", "gdbstub failed: %s" % e)
+
+
+def _gdb_reply(s):
+    data = b""
+    while True:
+        chunk = s.recv(65536)
+        if not chunk:
+            raise OSError("gdbstub closed")
+        data += chunk
+        start = data.find(b"$")
+        end = data.find(b"#", start + 1)
+        if start >= 0 and end >= 0 and len(data) >= end + 3:
+            s.sendall(b"+")
+            return data[start + 1:end].decode()
+
+
+def _gdb_packet(s, body):
+    s.sendall(("$%s#%02x" % (body, sum(body.encode()) % 256)).encode())
+    return _gdb_reply(s)
+
+
+def gdb_snapshot(port):
+    """Stop the guest, read the registers and 4 KB from ESP up (linear
+    address: kernel segments are based at 0xc0000000), then detach with D
+    so the VM is not left paused."""
+    with socket.create_connection(("127.0.0.1", port), timeout=10) as s:
+        s.sendall(b"\x03")
+        _gdb_reply(s)
+        regs = _gdb_packet(s, "g")
+        esp = int.from_bytes(bytes.fromhex(regs[32:40]), "little")
+        stack = _gdb_packet(s, "m%x,1000" % ((esp + 0xc0000000) & 0xffffffff))
+        _gdb_packet(s, "D")
+    return regs, stack
+
+
+def prep(scratch_mb=1024, workload_mb=256):
+    """Make scratch-pristine.img and workload.img once: the guest newfs's
+    both, then unpacks apks/, replay.list and slow.c onto the workload."""
+    conf = _conf()
+    scratch = os.path.join(WORK, "scratch-pristine.img")
+    workload = _workload()
+    for p in (scratch, workload):
+        if os.path.exists(p):
+            raise SystemExit("%s exists" % p)
+    build_scratch(scratch, scratch_mb)
+    build_scratch(workload, workload_mb)
+    tar = os.path.join(WORK, "workload.tar")
+    with tarfile.open(tar, "w", format=tarfile.USTAR_FORMAT) as t:
+        for name in ("replay.list", "slow.c", "apks"):
+            t.add(os.path.join(WORK, name), arcname=name)
+    with open(tar, "rb") as f:
+        data = f.read()
+    outdir = os.path.join(WORK, "prep")
+    g = Guest(outdir, scratch, workload)
+    try:
+        if not g.wait_sshd():
+            raise SystemExit("sshd never answered")
+        ssh = Ssh(conf)
+        _, out = ssh.run(
+            "%s && %s /dev/rhd1a > /dev/null && %s /dev/rhd2a > /dev/null"
+            " && mkdir -p /mnt2 && mount /dev/hd2a /mnt2 && (cd /mnt2 && pax -r)"
+            " && umount /mnt2 && fsck -n /dev/rhd1a && fsck -n /dev/rhd2a"
+            " && echo PREP-OK" % (MKNODS, NEWFS, NEWFS), stdin=data)
+        _log(outdir, "prep.txt", out)
+        if "PREP-OK" not in out:
+            raise SystemExit("prep failed; see %s" % os.path.join(outdir, "prep.txt"))
+        g.qmp.events = []
+        ssh.run("sync; /sbin/reboot")
+        g.qmp.wait_event("RESET", 300)
+    finally:
+        g.quit()
+    print("prep ok")
+
+
+def main(argv):
+    p = argparse.ArgumentParser(description="FFS replay, crash and stall harness")
+    sub = p.add_subparsers(dest="cmd", required=True)
+    sub.add_parser("prep")
+    for name, runs in (("bench", 3), ("crash", 20)):
+        s = sub.add_parser(name)
+        s.add_argument("--kernel", required=True)
+        s.add_argument("--label", required=True)
+        s.add_argument("--runs", type=int, default=runs)
+        s.add_argument("--bootargs", default="")
+        if name == "crash":
+            s.add_argument("--seed", type=int, default=0)
+    a = p.parse_args(argv[1:])
+    if a.cmd == "prep":
+        prep()
+    elif a.cmd == "bench":
+        bench(a.kernel, a.label, a.runs, a.bootargs)
+    else:
+        crash(a.kernel, a.label, a.runs, a.seed, a.bootargs)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv))

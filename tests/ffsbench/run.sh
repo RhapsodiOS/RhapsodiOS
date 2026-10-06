@@ -2,9 +2,11 @@
 # ffsbench throughput run.  usage: sh run.sh REPO TARGET
 #   REPO   read-only workload volume: apks/, replay.list, slow.c
 #   TARGET the filesystem under test, freshly newfs'd
-# Replays rbuild's build-root population (src/rbuild-1/apk.c: extract each
-# apk into a stage, copy the stage into the root, remove the stage), then
-# removes the root, then runs slow.c.  wakeprobe runs throughout.
+# Replays the four build roots `rbuild kernel` populates.  replay.list holds
+# "<root> <apk>" lines.  As in src/rbuild-1 (builder.c find_arch_package,
+# apk.c use_artifact), each apk is extracted into a stage once to validate it,
+# then again to install it: the stage is copied into the root and removed.
+# Then the roots are removed and slow.c runs.  wakeprobe runs throughout.
 REPO=$1
 T=$2
 B=/tmp/ffsbench
@@ -17,14 +19,18 @@ mkdir $T/root $T/tmp
 echo REPLAY-START
 t0=`$B/wakeprobe -t`
 n=0
-for apk in `cat $REPO/replay.list`; do
+while read root apk; do
 	n=`expr $n + 1`
-	s=$T/tmp/stage.$n
+	s=$T/tmp/validate.$n
 	mkdir $s
 	gzip -dc $REPO/apks/$apk | (cd $s && pax -r -pe)
-	(cd $s && pax -rw -pe . $T/root)
 	rm -rf $s
-done
+	s=$T/tmp/extract.$n
+	mkdir -p $s $T/root/$root
+	gzip -dc $REPO/apks/$apk | (cd $s && pax -r -pe)
+	(cd $s && pax -rw -pe . $T/root/$root)
+	rm -rf $s
+done < $REPO/replay.list
 t1=`$B/wakeprobe -t`
 echo REPLAY-END `expr $t1 - $t0`
 rm -rf $T/root

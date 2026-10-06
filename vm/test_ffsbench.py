@@ -113,7 +113,9 @@ def test_build_scratch_label(tmp_path):
     with open(path, "rb") as f:
         head = f.read(32768)
     for off in copies:
-        assert struct.unpack_from(">i", head, off + 194)[0] == 4 * 2048   # p_size
+        # 1024-byte label sectors, as on the installed root disk
+        assert struct.unpack_from(">i", head, off + 92)[0] == 1024        # dl_secsize
+        assert struct.unpack_from(">i", head, off + 194)[0] == 4 * 1024   # p_size
     assert os.path.getsize(path) == fb.label_front() + 4 * 1024 * 1024
 
 
@@ -133,3 +135,75 @@ def test_wakeprobe_prints_probe_format():
     text = open(os.path.join(SCRIPTS, "wakeprobe.c")).read()
     assert r'"wp %d %d %d %d\n"' in text
     assert "vm_statistics" in text
+
+
+# --- Task 4: bench and crash drivers --------------------------------------
+
+import socket
+import threading
+
+
+STAMP_A = "Mon Oct  5 22:00:53 PDT 2026; root(rcbuilder):kernel-154.5.1-7.obj/RELEASE_I386"
+STAMP_B = "Fri Sep 18 12:06:49 PDT 2026; root(rcbuilder):kernel-154.5.1-7.obj/RELEASE_I386"
+
+
+def test_kernel_stamp():
+    kernel = b"\0Kernel Release 5.3:\0" + STAMP_A.encode() + b"\0more"
+    assert fb.kernel_stamp(kernel) == STAMP_A
+    assert fb.kernel_stamp(b"no stamp here") is None
+
+
+def test_kernel_stamp_takes_the_last_boot_in_a_serial_log():
+    serial = "Kernel Release 5.3:\r\n%s\r\n...\r\nKernel Release 5.3:\r\n%s\r\n" % (
+        STAMP_B, STAMP_A)
+    assert fb.kernel_stamp(serial) == STAMP_A
+
+
+def test_kernel_stamp_mismatch_refuses():
+    with pytest.raises(SystemExit):
+        fb.check_stamp("boot\r\n%s\r\n" % STAMP_B, STAMP_A.encode())
+    fb.check_stamp("boot\r\n%s\r\n" % STAMP_A, b"xx" + STAMP_A.encode() + b"\0")
+
+
+def _serve_once(payload):
+    srv = socket.socket()
+    srv.bind(("127.0.0.1", 0))
+    srv.listen(1)
+
+    def run():
+        conn, _ = srv.accept()
+        if payload:
+            conn.sendall(payload)
+        threading.Event().wait(2)
+        conn.close()
+        srv.close()
+    threading.Thread(target=run, daemon=True).start()
+    return srv.getsockname()[1]
+
+
+def test_banner_time_against_local_server():
+    t = fb.banner_time(_serve_once(b"SSH-2.0-x\r\n"))
+    assert t is not None and t < 1
+    assert fb.banner_time(_serve_once(b""), timeout=1) is None
+
+
+def test_ssh_argv_puts_port_first():
+    conf = {"Host": "127.0.0.1", "User": "root", "Ssh": "ssh.exe", "Port": "2222"}
+    argv = fb.ssh_argv(conf, 2532, "echo hi")
+    assert argv[:4] == ["ssh.exe", "-T", "-p", "2532"]
+    assert "Port=2222" not in " ".join(argv)
+    assert argv[-2:] == ["root@127.0.0.1", "/bin/sh -c 'echo hi'"]
+
+
+def test_ssh_argv_runs_under_sh_not_the_login_csh():
+    conf = {"Host": "h", "User": "u"}
+    assert fb.ssh_argv(conf, 1, "echo $? 2>&1")[-1] == "/bin/sh -c 'echo $? 2>&1'"
+    assert fb.ssh_argv(conf, 1, "echo 'a'")[-1] == r"""/bin/sh -c 'echo '\''a'\'''"""
+
+
+def test_boot_line():
+    # the test kernel is installed as /mach_kernel itself: kernload links
+    # drivers against /mach_kernel's symbols, so any other name hangs at
+    # "Configuring device drivers".  The line is typed only for boot args.
+    assert fb.boot_line("") is None
+    assert fb.boot_line("bufpages=1638") == "mach_kernel bufpages=1638"

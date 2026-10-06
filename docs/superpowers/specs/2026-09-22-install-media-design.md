@@ -184,7 +184,7 @@ but its *contents* are absolute. The booters, the kernel and `disk` all agree:
 | 2 | **Packages missing from the world build.** Add `apk-tools-1`, OpenSSL and OpenSSH to `src/Manifest`, build them universal, and check off apk-tools' `PORTING.md` target list. | On a Rhapsody guest, `apk add --root <scratch> --initdb <all apks>` succeeds and `var/lib/apk/installed` lists every package; `sshd` starts and accepts a password login | none |
 | 3 | **General host UFS writer** (`vm/instmedia/ufs.py`). | Round-trips through `rhap_image` with label `secsize` 512 (fdisk disk) and 2048 (CD); `fsck -n` passes on its output in a guest | none |
 | 4 | **Pure-apk live root and hard-disk install media**, plus a pre-installed image. | The media reaches the installer menu under BIOS and UEFI. The pre-installed image boots multi-user to `login:` and accepts SSH | 1, 3 |
-| 5 | **Installer**: `src/installer-1/` with `mbrinst` and `rhapinstall`. | Milestone B, as defined under *Goal* | 2, 4 |
+| 5 | **Installer**: `src/installer-1/` with `mbrinst` and `rhapinstall`. (Before phase 5; now `sysinstall` in `src/cdis-3/sysinstall.tproj` plus `driverDetect` in `src/driverkit-3`, per `docs/superpowers/specs/2026-10-05-sysinstall-design.md`. Phase 5a is done: `docs/build/sysinstall.md`. 5b is the developer and windowing sets, 5c upgrades.) | Milestone B, as defined under *Goal* | 2, 4 |
 | 6 | **El Torito CD**: ISO/El Torito writer, 2.88 MB BIOS floppy image, EFI catalog entry, 2048-byte reads in `bootefi`, `rootdev=cdrom`. | *Done*, as defined under *Goal* | 5 |
 
 Phases 1–3 are independent. Phase 4 answers whether a system built only from our
@@ -353,6 +353,15 @@ overlay holds:
 No mount point is added: the `cdis` apk ships `/private/var/tmp/mnta`,
 where CDIS mounts its target.)
 
+(Before phase 5; now the overlay's `rc.cdrom` is a hook that runs
+`/System/Installation/CDIS/sysinstall`, and the overlay also links
+`/private/Devices` to `Drivers/i386`, so `driverDetect` finds the drivers
+through `/usr/Devices`. `Instance0.table` names generic Boot Drivers
+`EISABus PCIBus PS2Keyboard EIDE AHCI ISASerialPort` and Active Driver
+`VGA`, not `NE2K`, which `driverDetect -l` loads by PCI ID instead.
+`/System/Installation/Packages` holds only the apks a set names. See
+`docs/build/sysinstall.md`.)
+
 **Startup**
 - `rc.boot` sees `/System/Installation` plus `rc.cdrom`, skips fsck, and leaves
   root read-only.
@@ -403,6 +412,18 @@ instead of a new project. The same rule holds:
   `/System/Library/CoreServices/software_version`.
 
 `mbrinst` and the steps below are what phase 5 fits into CDIS.)
+
+(Before phase 5; now `mbrinst`, `rhapinstall` and `src/installer-1/` don't
+exist. The installer is `sysinstall`, a curses program in
+`src/cdis-3/sysinstall.tproj`, with `driverDetect` beside `driverLoader`, as
+`docs/superpowers/specs/2026-10-05-sysinstall-design.md` designs it. The
+perl installer, `rc.cdrom.x86`, `rc.cdrom.PPC` and the non-English strings
+are gone from `cdis-3`; `sysinstall` writes the MBR and the ESP itself, then
+runs `disk -i -b`. Its write phase is `docs/build/sysinstall.md`'s table. The
+two-run `apk add` of `rhapinstall` step 7 became one run with `files` first,
+because `apk` resolves `files`' dependencies only among the apks it is given,
+and step 9's `umount` became best-effort, because a kernel bug can keep the
+target busy until shutdown.)
 
 ### `mbrinst`
 
@@ -465,6 +486,14 @@ disk-form harness puts the media on `hd1`.
 Written by `rhapinstall` step 8 from templates in the installer apk; only the
 device name gets substituted. The builder's `--preinstalled` image renders the
 same templates for `hd0`, so the configuration has a single source.
+
+(Before phase 5; now `sysinstall` step 6 renders them, and step 7's
+`driverDetect -w` rewrites the system `Instance0.table`: `Boot Drivers` is
+`EISABus PCIBus PS2Keyboard` plus the ticked disk controller, and `Active
+Drivers` lists the chosen network, display, audio and input drivers plus
+`BPF`. NE2K is therefore an Active Driver whose own `Instance0.table` has
+`Location` filled in, and it loads by that, not by the booter. The
+`--preinstalled` image keeps the template's table.)
 
 | File | Content | Why |
 |---|---|---|
@@ -564,7 +593,10 @@ Most serious first.
    safe because its partition's end CHS is 1023/254/63, which forces LBA.
    Mitigations: always end the `0xA7` partition on a cylinder boundary, pass
    `bios-chs-trans=lba` in the QEMU harness, and add a 1-4 GB target to the
-   phase 5 gate.
+   phase 5 gate. (Verified by phase 5a: the 4 GB install, Gate 3, wrote
+   LBA-assisted CHS that matches `build_uefi_image.py` byte for byte, with
+   the `0xA7` entry ending 521/254/63, and booted under SeaBIOS. Risks 5
+   and 6 stand as warnings for real BIOSes; the QEMU case is retired.)
 7. **Unknowns in the environment:** whether QEMU's slirp answers Rhapsody's
    plain-BOOTP `bootpc`, and whether NetInfo, if `netinfod` brings up a local
    domain, takes precedence over `master.passwd` for logins. (Answered by

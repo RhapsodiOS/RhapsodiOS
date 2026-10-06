@@ -1,7 +1,7 @@
 # sysinstall: the RhapsodiOS installer
 
 **Date:** 2026-10-05
-**Status:** Design approved in conversation, pending spec review
+**Status:** Implemented 2026-10-06. See `docs/build/sysinstall.md` for the build, the gates and what the guest showed.
 **Scope:** phase 5a of the install-media design
 (`docs/superpowers/specs/2026-09-22-install-media-design.md`). It replaces
 that design's *Installer* section (`mbrinst` and `rhapinstall`) and builds
@@ -322,6 +322,39 @@ settles the first three before anything else is built.
 5. **The `sarld` limit.** The media's Boot Drivers drop `NE2K`, so the
    media's list is shorter than phase 4's. The installed disk's list grows
    only by its disk controller.
+
+## Outcome
+
+Implementation settled these points, which differ from or add to the text
+above. The *Write phase* and `driverDetect` sections already carry (a) and
+(b) in their current form.
+
+- **(a) One apk run.** Step 5 is one `apk add --root T --initdb` of every
+  package, `files` first. `files` alone fails: apk 2.0_pre12 resolves a
+  dependency only among the apks it is given.
+- **(b) Step 9's `umount` is best-effort.** A binary run twice from a
+  mounted filesystem leaves it busy until shutdown (a kernel bug), and the
+  install runs several. The Done screen's reboot or halt unmounts it, and
+  the disk comes out clean. The kernel follow-up is a separate task.
+- **(c) The `/dev` sweep.** Before apk, step 5 looks up every node in the
+  live `/dev`, so the live root's own device vnode is not handed to the
+  target by apk's `chown` of `private/dev/hd1a`.
+- **(d) The media links `/private/Devices`.** Phase 4's media had none, so
+  `/usr/Devices` dangled and `driverDetect` found nothing. `live.compose`
+  links it on both images, and `check_tree` checks it.
+- **(e) `-l` loads without Pre-Load and Post-Load programs,** which
+  `driverLoader` runs. NE2K names none. It also leaves the network
+  interface down for the installer to configure.
+- **(f) The PCI query has three spellings.** `driverDetect` uses the first
+  of `PCI_Maximums(`, `PCI_Maximums((` and `PCIMaximums(` (with their
+  `ConfigReg` names) that answers: our `drvPCIBus` and DR2's differ.
+- **(g) `table_set`.** `match.c` gained a general key setter, which `-w`
+  uses for `Boot Drivers`, `Active Drivers` and `Instance`;
+  `write_location` wraps it.
+
+Also settled: `base.set` has 66 packages (`drvisaserialinput` joined for
+the media's ISASerialPort Boot Driver), and the media's ISASerialPort fails
+to link under UEFI (open, in `docs/build/sysinstall.md`).
 
 ## Out of scope
 

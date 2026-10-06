@@ -78,15 +78,16 @@ def for_filesystem(g, front, p_base, ncylinders, name, d_type,
                  boot0=boot0)
 
 
-def cd_label(g, front, p_size, name):
-    """The label of a CD whose filesystem g describes: secsize 2048, so front
-    and p_size count 2048-byte blocks, partition a from block 0 (a CD has no
-    fdisk table), and no boot blocks; the booter lives on the El Torito
-    image."""
-    total = front + p_size
+def cd_label(g, front, p_size, name, p_base=0):
+    """The label of a CD whose filesystem g describes: secsize 2048, so front,
+    p_base and p_size count 2048-byte blocks, partition a from p_base after
+    the front porch (a CD has no fdisk table), and no boot blocks; the booter
+    lives on the El Torito image.  d_front is a short, so a UFS past block
+    32767 needs p_base."""
+    total = front + p_base + p_size
     lbl = label(secsize=g.secsize, ntracks=g.ntrak, nsectors=g.nsect,
                 ncylinders=-(-total // g.spc), rpm=g.rpm, front=front,
-                p_base=0, p_size=p_size, bsize=g.bsize, fsize=g.fsize,
+                p_base=p_base, p_size=p_size, bsize=g.bsize, fsize=g.fsize,
                 cpg=g.cpg, density=4 * g.fsize, minfree=g.minfree,
                 name=name, d_name=name, d_type=CD_TYPE)
     return lbl

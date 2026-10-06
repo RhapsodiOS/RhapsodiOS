@@ -128,6 +128,14 @@ class TestCdLabel(unittest.TestCase):
         self.assertEqual(struct.unpack_from(">ii", lbl, 124),
                          (-1, -1))
 
+    def test_cd_label_takes_a_p_base(self):
+        # d_front is a short; an ISO's UFS starts past its reach.
+        lbl = label.cd_label(self.G, front=16, p_size=110080,
+                             name="RhapsodiOS", p_base=41008)
+        self.assertEqual(_decode(lbl), (2048, 16, 41008, 110080))
+        self.assertEqual(struct.unpack_from(">i", lbl, 104)[0],
+                         -(-(16 + 41008 + 110080) // self.G.spc))
+
     def test_cd_label_copies_carry_their_block(self):
         f = io.BytesIO()
         label.place(f, label.cd_label(self.G, 320, 110080, "RhapsodiOS"),

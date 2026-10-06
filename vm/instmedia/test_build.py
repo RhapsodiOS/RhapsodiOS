@@ -1,16 +1,20 @@
 import contextlib
 import io
 import os
+import struct
 import tempfile
 import unittest
+from unittest import mock
 
 import rhap_image
 from ufs_extract import Node
-from instmedia import apkrepo, build, live, testapks as ta, test_live
+from instmedia import (apkrepo, build, hdimage, iso, live,
+                       testapks as ta, test_live)
 
 BOOT_DRIVERS = ("EISABus", "PCIBus", "PS2Keyboard", "EIDE", "AHCI",
                 "ISASerialPort", "NE2K")
 CDIS = "System/Installation/CDIS/"
+SOFTWARE_VERSION = b"RhapsodiOS 0.6\nRhap6A1\n"
 
 
 def make_bootable_repo(directory, drivers=BOOT_DRIVERS + ("BPF",),
@@ -56,8 +60,25 @@ def make_bootable_repo(directory, drivers=BOOT_DRIVERS + ("BPF",),
             [ta.d("System"), ta.d("System/Installation"),
              ta.d("System/Installation/Sets"),
              ta.f("System/Installation/Sets/rest.set",
-                  "\n".join(named).encode() + b"\n", 0o444)],
+                  "\n".join(named).encode() + b"\n", 0o444),
+             ta.d("System/Library"), ta.d("System/Library/CoreServices"),
+             ta.f("System/Library/CoreServices/software_version",
+                  SOFTWARE_VERSION, 0o444)],
             dot_slash=False)
+
+
+def walk(img, ino=2, path="/"):
+    """Every path in a rhap_image.Image's filesystem."""
+    paths = [path]
+    for name, child, dtype, _ in img.iter_dir(ino):
+        if name in (".", ".."):
+            continue
+        full = path.rstrip("/") + "/" + name
+        if dtype == 4:
+            paths += walk(img, child, full)
+        else:
+            paths.append(full)
+    return paths
 
 
 class TestBuild(unittest.TestCase):
@@ -196,6 +217,122 @@ class TestBuild(unittest.TestCase):
                                          "--efi", self.efi, "--out",
                                          self.out]), 1)
         self.assertIn("no directory /usr/nowhere", err.getvalue())
+
+
+class TestCD(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.repo = os.path.join(self.tmp.name, "repo")
+        os.mkdir(self.repo)
+        make_bootable_repo(self.repo)
+        self.efi = os.path.join(self.tmp.name, "BOOTIA32.EFI")
+        with open(self.efi, "wb") as f:
+            f.write(b"MZ" + b"e" * 5000)
+        self.out = os.path.join(self.tmp.name, "installer.iso")
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def files(self):
+        with open(self.out, "rb") as f:
+            info = iso.read_iso(f)
+            data = {}
+            for name, (lba, size) in info["files"].items():
+                f.seek(lba * iso.SECTOR)
+                data[name] = f.read(size)
+        return info, data
+
+    def test_cd_builds_and_reads_back(self):
+        napks, nnodes, g, total = build.build(self.repo, self.efi, self.out,
+                                              form="cd")
+        self.assertEqual(os.path.getsize(self.out), total * 512)
+        info, data = self.files()
+        self.assertEqual(sorted(info["files"]), ["BIOSBOOT.IMG", "BOOT.CAT",
+                                                 "EFIBOOT.IMG", "README.TXT"])
+        lbas = {name: lba for name, (lba, _) in info["files"].items()}
+        self.assertEqual(info["catalog_lba"], lbas["BOOT.CAT"])
+        self.assertEqual(info["catalog"][1]["lba"], lbas["BIOSBOOT.IMG"])
+        self.assertEqual(info["catalog"][3]["lba"], lbas["EFIBOOT.IMG"])
+        self.assertEqual(len(data["BIOSBOOT.IMG"]),
+                         hdimage.BOOT_IMAGE_SECTORS * 512)
+        mbr = data["BIOSBOOT.IMG"][:512]
+        self.assertEqual((mbr[446], mbr[450], mbr[510:]),
+                         (0x80, 0xA7, b"\x55\xaa"))
+        self.assertEqual(len(data["EFIBOOT.IMG"]),
+                         hdimage.ESP_SECTORS * 512)
+        self.assertIn(b"RhapsodiOS installer", data["README.TXT"])
+        self.assertIn(b"RhapsodiOS 0.6 (Rhap6A1)", data["README.TXT"])
+        with open(self.out, "rb") as f:
+            f.seek(7680)
+            lbl = f.read(1024)
+        self.assertEqual(lbl[:4], b"dlV3")
+        self.assertEqual(struct.unpack_from(">i", lbl, 92)[0], 2048)
+        # d_front is a short, too small to reach past EFIBOOT.IMG: the front
+        # porch is the system area, and p_base carries the rest.
+        front = struct.unpack_from(">h", lbl, 112)[0]
+        p_base = struct.unpack_from(">i", lbl, 190)[0]
+        self.assertEqual(front, build.CD_FRONT)
+        efi_end = lbas["EFIBOOT.IMG"] + hdimage.ESP_SECTORS // 4
+        self.assertEqual(front + p_base, -(-efi_end // 32) * 32)
+        with rhap_image.Image(self.out) as img:
+            self.assertEqual(img.part_start, (front + p_base) * 2048)
+            self.assertIsNotNone(img.resolve("/private/etc/rc.cdrom"))
+            table = img.read_file(img.resolve(live.SYSTEM_TABLE))
+        self.assertIn(b'"Kernel Flags" = "rootdev=cdrom"', table)
+
+    def test_cd_boot_image_holds_only_boot_files(self):
+        build.build(self.repo, self.efi, self.out, form="cd")
+        _, data = self.files()
+        boot = os.path.join(self.tmp.name, "boot.img")
+        with open(boot, "wb") as f:
+            f.write(data["BIOSBOOT.IMG"])
+        d = "/private/Drivers/i386"
+        want = ["/", "/mach_kernel", "/private", "/private/Drivers", d,
+                "/usr", "/usr/standalone", "/usr/standalone/i386",
+                "/usr/standalone/i386/sarld", d + "/System.config",
+                d + "/System.config/Instance0.table",
+                d + "/EIDE.config/Dual_EIDE.table",
+                d + "/EIDE.config/Instance0.table"]
+        for name in live.MEDIA_BOOT_DRIVERS.split():
+            want += ["%s/%s.config" % (d, name),
+                     "%s/%s.config/%s_reloc" % (d, name, name)]
+        with rhap_image.Image(boot) as img:
+            self.assertEqual(sorted(walk(img)), sorted(want))
+            table = img.read_file(img.resolve(live.SYSTEM_TABLE))
+            eide = img.read_file(img.resolve(live.EIDE_INSTANCE0))
+        self.assertIn(b'"Kernel Flags" = "rootdev=cdrom"', table)
+        self.assertEqual(eide, test_live.DUAL_EIDE)
+
+    def test_cd_over_650_mib_is_refused(self):
+        with mock.patch.object(build, "CD_LIMIT", 100 * 1024 * 1024):
+            with self.assertRaisesRegex(build.BuildError, "live.list"):
+                build.build(self.repo, self.efi, self.out, form="cd")
+        self.assertFalse(os.path.exists(self.out))
+        self.assertEqual(build.CD_LIMIT, 681574400)
+
+    def test_cd_refuses_preinstalled(self):
+        with self.assertRaisesRegex(build.BuildError, "--preinstalled"):
+            build.build(self.repo, self.efi, self.out, preinstalled=True,
+                        form="cd")
+        self.assertFalse(os.path.exists(self.out))
+
+    def test_main_accepts_form_cd(self):
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            self.assertEqual(build.main(["build", "--repo", self.repo,
+                                         "--efi", self.efi, "--out",
+                                         self.out, "--form", "cd"]), 0)
+        self.assertIn(self.out, out.getvalue())
+        self.assertIn("MB disc", out.getvalue())
+        with open(self.out, "rb") as f:
+            self.assertEqual(iso.read_iso(f)["volume_id"], "RHAPSODIOS")
+
+    def test_readme_text(self):
+        self.assertEqual(build.README_TEXT("RhapsodiOS 0.6 (Rhap6A1)"),
+                         b"RhapsodiOS installer\n"
+                         b"Release: RhapsodiOS 0.6 (Rhap6A1)\n"
+                         b"Boots on i386 PCs with a BIOS or IA32 UEFI "
+                         b"firmware.\n")
 
 
 class TestChecks(unittest.TestCase):

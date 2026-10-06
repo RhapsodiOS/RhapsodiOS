@@ -8,7 +8,8 @@ import rhap_image
 from ufs_extract import Node
 from instmedia import apkrepo, build, live, testapks as ta, test_live
 
-BOOT_DRIVERS = ("EISABus", "PCIBus", "PS2Keyboard", "EIDE", "AHCI", "NE2K")
+BOOT_DRIVERS = ("EISABus", "PCIBus", "PS2Keyboard", "EIDE", "AHCI",
+                "ISASerialPort", "NE2K")
 CDIS = "System/Installation/CDIS/"
 
 
@@ -35,11 +36,12 @@ def make_bootable_repo(directory, drivers=BOOT_DRIVERS + ("BPF",),
                 [ta.f("private/Drivers/i386/%s.config/%s_reloc"
                       % (name, name), name.encode() * 100)], dot_slash=False)
     base = [ta.f("usr/sbin/sshd", b"sshd"), ta.f("sbin/mount", b"mount"),
-            ta.f("usr/libexec/getty", b"getty"), ta.f("usr/bin/perl", b"pl"),
-            ta.f("private/etc/rc.cdrom.PPC", b"1;\n"),
-            ta.f(CDIS + "English.lproj/Localizable.strings", b"\"A\" = \"a\";"),
-            ta.f(CDIS + "findroot", b"f"), ta.f(CDIS + "gc", b"g"),
-            ta.f(CDIS + "popconsole", b"p"),
+            ta.f("usr/libexec/getty", b"getty"),
+            ta.f("sbin/umount", b"umount"), ta.f("sbin/disk", b"disk"),
+            ta.f("sbin/apk", b"apk"), ta.f("usr/sbin/chroot", b"chroot"),
+            ta.f("usr/sbin/pwd_mkdb", b"pwd_mkdb"),
+            ta.f("usr/sbin/driverDetect", b"dd"),
+            ta.f("usr/bin/gzip", b"gzip"), ta.f("bin/sync", b"sync"),
             ta.dev("private/dev/hd0a", "blk", 3, 0),
             ta.dev("private/dev/rhd0a", "chr", 15, 0),
             ta.dev("private/dev/null", "chr", 3, 2)]
@@ -47,6 +49,15 @@ def make_bootable_repo(directory, drivers=BOOT_DRIVERS + ("BPF",),
         base.append(ta.f("usr/sbin/driverLoader", b"dl"))
     ta.make(directory, "base-cmds-1-universal.apk", ta.pkginfo("base-cmds"),
             base + list(extra), dot_slash=False)
+    # test_live's base.set names files, cdis and aaa; this one the rest.
+    named = ["boot", "kernel", "base-cmds", "rest-sets"]
+    named += ["drv" + name.lower() for name in drivers]
+    ta.make(directory, "rest-sets-1-universal.apk", ta.pkginfo("rest-sets"),
+            [ta.d("System"), ta.d("System/Installation"),
+             ta.d("System/Installation/Sets"),
+             ta.f("System/Installation/Sets/rest.set",
+                  "\n".join(named).encode() + b"\n", 0o444)],
+            dot_slash=False)
 
 
 class TestBuild(unittest.TestCase):
@@ -65,12 +76,42 @@ class TestBuild(unittest.TestCase):
     def test_live_media_builds_and_reads_back(self):
         make_bootable_repo(self.repo)
         napks, nnodes, g, total = build.build(self.repo, self.efi, self.out)
-        self.assertEqual(napks, 3 + 2 + len(BOOT_DRIVERS) + 1 + 1)
+        self.assertEqual(napks, 3 + 2 + len(BOOT_DRIVERS) + 1 + 1 + 1)
         with rhap_image.Image(self.out) as img:
             self.assertIsNotNone(img.resolve("/private/etc/rc.cdrom"))
             self.assertIsNotNone(
                 img.resolve("/System/Installation/Packages/"
                             "kernel-154.5.1-i386.apk"))
+
+    def test_only_set_packages_are_carried(self):
+        make_bootable_repo(self.repo)
+        ta.make(self.repo, "orphan-1-universal.apk", ta.pkginfo("orphan"),
+                [ta.f("etc/orphan.conf", b"o")], dot_slash=False)
+        with self.assertRaisesRegex(build.BuildError,
+                                    "package orphan is in no set"):
+            build.build(self.repo, self.efi, self.out)
+        self.assertFalse(os.path.exists(self.out))
+
+    def test_a_set_naming_a_missing_package_is_refused(self):
+        make_bootable_repo(self.repo)
+        ta.make(self.repo, "ghosts-1-universal.apk", ta.pkginfo("ghosts"),
+                [ta.d("System"), ta.d("System/Installation"),
+                 ta.d("System/Installation/Sets"),
+                 ta.f("System/Installation/Sets/ghosts.set",
+                      b"ghosts\nghost\n", 0o444)], dot_slash=False)
+        with self.assertRaisesRegex(
+                build.BuildError,
+                "set ghosts names package ghost not in the repository"):
+            build.build(self.repo, self.efi, self.out)
+
+    def test_the_media_needs_sysinstall_and_its_tools(self):
+        make_bootable_repo(self.repo)
+        nodes, _ = live.compose(apkrepo.index(self.repo), b"E")
+        nodes = [n for n in nodes if n.path != "/sbin/disk"
+                 and n.path != live.CDIS + "/sysinstall"]
+        got = "\n".join(build.check_tree(nodes, False))
+        self.assertIn("missing /sbin/disk", got)
+        self.assertIn("missing " + live.CDIS + "/sysinstall", got)
 
     def test_preinstalled_builds_and_reads_back(self):
         make_bootable_repo(self.repo)
@@ -156,6 +197,17 @@ class TestBuild(unittest.TestCase):
 
 
 class TestChecks(unittest.TestCase):
+    def test_check_sets(self):
+        apks = {"files": 1, "a": 2, "b": 3}
+        self.assertEqual(build.check_sets(apks, {"s": ["files", "a"]}),
+                         ["package b is in no set"])
+        self.assertEqual(
+            build.check_sets({"files": 1}, {"s": ["files", "x"],
+                                            "t": ["y"]}),
+            ["set s names package x not in the repository",
+             "set t names package y not in the repository"])
+        self.assertEqual(build.check_sets(apks, {"s": list(apks)}), [])
+
     def test_dev_majors(self):
         nodes = [Node("/private/dev/hd1a", "blk", 0o640, 0, 5, 0, (3, 8)),
                  Node("/private/dev/rsd0a", "chr", 0o640, 0, 5, 0, (14, 0)),

@@ -27,12 +27,12 @@ DEVICES_TABLE = "/usr/Devices/System.config/Instance0.table"
 # The Active Driver dhcpcd's /dev/bpf* come from; without it the network
 # never comes up, and nothing says why.
 BPF_DRIVER = "/private/Drivers/i386/BPF.config/BPF_reloc"
-# What CDIS's rc.cdrom runs before its first menus.
-CDIS_NEEDS = ["/usr/bin/perl", live.RC_CDROM, "/private/etc/rc.cdrom.x86",
-              "/private/etc/rc.cdrom.PPC",
-              live.CDIS + "/English.lproj/Localizable.strings",
-              live.CDIS + "/findroot", live.CDIS + "/gc",
-              live.CDIS + "/popconsole", live.CDIS + "/pickdisk"]
+# What rc.cdrom starts, and the tools sysinstall runs in the live root.
+CDIS_NEEDS = [live.RC_CDROM, live.CDIS + "/sysinstall",
+              live.SETS + "/base.set", "/sbin/disk", "/sbin/mount",
+              "/sbin/umount", "/sbin/apk", "/usr/sbin/chroot",
+              "/usr/sbin/driverDetect", "/usr/sbin/pwd_mkdb",
+              "/usr/bin/gzip", "/bin/sync"]
 # The majors /dev must use for each disk family: sd from the kernel's own
 # tables (src/kernel-7/bsd/dev/i386/conf.c: bdevsw 6, cdevsw 14), hd and fd
 # from the "Block Major"/"Character Major" the EIDE and Floppy drivers
@@ -91,6 +91,17 @@ def check_tree(nodes, preinstalled):
     return problems
 
 
+def check_sets(apks, sets):
+    """Packages the sets name that the repository lacks, and repository
+    packages no set names (they would not be on the media)."""
+    problems = ["set %s names package %s not in the repository" % (s, p)
+                for s in sorted(sets) for p in sets[s] if p not in apks]
+    named = {p for pkgs in sets.values() for p in pkgs}
+    problems += ["package %s is in no set" % p
+                 for p in sorted(apks) if p not in named]
+    return problems
+
+
 def check_dev(nodes):
     """/dev nodes whose kind or major the kernel would not agree with."""
     problems = []
@@ -127,6 +138,11 @@ def build(repo, efi_path, out, preinstalled=False, fs_mb=None):
         password_hash=testconfig.TEST_PASSWORD_HASH if preinstalled else None)
     problems = ["%s: claimed by %s and %s" % c for c in conflicts]
     problems += check_tree(nodes, preinstalled) + check_dev(nodes)
+    if not preinstalled:
+        tree = rootfs.Tree()
+        for n in nodes[1:]:
+            tree.put(n)
+        problems += check_sets(apks, live.read_sets(tree))
     if problems:
         raise BuildError("\n".join(problems))
     by_path = {n.path: n for n in nodes}

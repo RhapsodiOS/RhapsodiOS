@@ -462,7 +462,7 @@ POSIX `sh`, with no here-documents.
 
 | # | Step | Command |
 |---|---|---|
-| 1 | Pick a disk | Candidates are `mbrinst -list` minus the disk holding the live root (from `mount`'s `/` line). Refused if none are left, or if the chosen disk is under 1 GB. |
+| 1 | Pick a disk | Candidates are `mbrinst -list` minus the disk holding the live root (from the device number of `/`, `stat`). Refused if none are left, or if the chosen disk is under 1 GB. |
 | 2 | Confirm | The user types `yes` to erase `hdN` or `sdN`. |
 | 3 | Root password | Asked twice with `stty -echo`. It can't be empty; only the first 8 characters count, and the prompt says so. Hashed with `openssl passwd -crypt`. |
 | 4 | MBR and ESP | `gzip -dc /System/Installation/esp.img.gz \| mbrinst /dev/rhdNh` |

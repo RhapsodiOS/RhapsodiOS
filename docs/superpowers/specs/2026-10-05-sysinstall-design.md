@@ -122,7 +122,7 @@ that program's structure, not its code.
 |---|---|---|
 | `main.c` | The screen sequence and the error menu | yes |
 | `ui.c` | Menu, checklist, input box, message box and progress box on libcurses | yes |
-| `disks.c` | Candidate disks: `/dev/rhd0-3h` and `/dev/rsd0-7h` that open, sized with `DKIOCNUMBLKS`, minus the disk holding the live root (from `mount`'s `/` line) | no |
+| `disks.c` | Candidate disks: `/dev/rhd0-3h` and `/dev/rsd0-7h` that open, sized with `DKIOCNUMBLKS`, minus the disk holding the live root (from the device number of `/`, `stat`) | no |
 | `layout.c` | The Auto layout, the Advanced rules, LBA-assisted CHS, MBR encode and decode | no |
 | `sets.c` | Parse `*.set` files | no |
 | `config.c` | Render templates; edit `master.passwd` | no |

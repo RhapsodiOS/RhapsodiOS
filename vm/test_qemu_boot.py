@@ -370,11 +370,19 @@ class TestCdrom(unittest.TestCase):
     def test_cdrom_ahci_args(self):
         args = qemu_boot.build_args("uefi", "t.img", "o", 1, "fw",
                                     cdrom="inst.iso", cdrom_ahci=True)
-        self.assertIn("ahci,id=ahci", args)
+        self.assertIn("ahci,id=ahci,addr=05.0", args)
         self.assertIn(self.IDE_CD, args)
         self.assertIn("ide-cd,drive=cd,bus=ahci.0,bootindex=0", args)
         self.assertNotIn("ide-cd,drive=cd,bus=ide.1,unit=0,bootindex=0",
                          args)
+
+    def test_cdrom_ahci_with_nic_and_esp_avoids_pci_slot_3(self):
+        args = qemu_boot.build_args("bios", "t.img", "o", 1, "fw",
+                                    cdrom="inst.iso", cdrom_ahci=True,
+                                    nic="ne2k_pci", esp="esp.img")
+        self.assertIn("ahci,id=ahci,addr=05.0", args)
+        self.assertIn("ne2k_pci,netdev=n0,addr=03.0", args)
+        self.assertEqual(sum("addr=03.0" in x for x in args), 1)
 
     def test_cdrom_ahci_needs_cdrom(self):
         with self.assertRaises(ValueError):

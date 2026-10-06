@@ -197,7 +197,7 @@ def build_args(mode, image, outdir, qmp_port, firmware_dir, esp=None,
         args += ["-drive", "id=cd,file=%s,format=raw,if=none,media=cdrom,"
                  "readonly=on" % cdrom]
         if cdrom_ahci:
-            args += ["-device", "ahci,id=ahci",
+            args += ["-device", "ahci,id=ahci,addr=05.0",
                      "-device", "ide-cd,drive=cd,bus=ahci.0,bootindex=0"]
         else:
             args += ["-device",

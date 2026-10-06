@@ -6,9 +6,14 @@ ifeq ($(origin CC),default)
 CC := clang
 endif
 
+# cmd.exe, which steps_test's popen() uses, only runs a program named .exe
+ifeq ($(OS),Windows_NT)
+EXE := .exe
+endif
+
 TEST_CFLAGS := -std=gnu89 -g -O0 -Wall -Werror -D_CRT_SECURE_NO_WARNINGS -I..
 
-test: test-layout test-sets test-config
+test: test-layout test-sets test-config test-steps
 
 $(BUILD):
 	mkdir -p $(BUILD)
@@ -31,7 +36,13 @@ $(BUILD)/config_test: config_test.c ../config.c ../config.h | $(BUILD)
 test-config: $(BUILD)/config_test
 	$(BUILD)/config_test
 
+$(BUILD)/steps_test$(EXE): steps_test.c ../steps.c ../steps.h ../layout.c ../config.c | $(BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ steps_test.c ../steps.c ../layout.c ../config.c
+
+test-steps: $(BUILD)/steps_test$(EXE)
+	$(BUILD)/steps_test$(EXE)
+
 clean:
 	rm -rf $(BUILD)
 
-.PHONY: test test-layout test-sets test-config clean
+.PHONY: test test-layout test-sets test-config test-steps clean

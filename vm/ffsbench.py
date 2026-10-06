@@ -906,6 +906,8 @@ def stall(kernel, label, bootargs=""):
                          else "exit %s" % m.group(1))
                 break
         elapsed = time.time() - start
+        _, rlog = ssh.run("cat %s/rbuild.log" % GUEST_DIR)
+        _log(outdir, "rbuild.log", rlog)
         _, wp = ssh.run("cat %s/wp.log" % GUEST_DIR)
         _log(outdir, "wp.log", wp)
         samples = [s for s in map(parse_probe, wp.splitlines()) if s]

@@ -65,7 +65,7 @@ const char *layout_check(unsigned long total, const struct table *t)
 {
 	unsigned heads, spt;
 	unsigned long cyl;
-	int i, j, n_a7 = 0, a7 = -1, esp = -1;
+	int i, j, n_a7 = 0, a7 = -1, n_esp = 0, esp = -1;
 
 	lba_geometry(total, &heads, &spt);
 	cyl = (unsigned long)heads * spt;
@@ -80,8 +80,10 @@ const char *layout_check(unsigned long total, const struct table *t)
 			n_a7++;
 			a7 = i;
 		}
-		if (t->p[i].type == 0xEF && esp < 0)
+		if (t->p[i].type == 0xEF) {
+			n_esp++;
 			esp = i;
+		}
 		for (j = 0; j < i; j++) {
 			if (t->p[j].type == 0)
 				continue;
@@ -96,7 +98,7 @@ const char *layout_check(unsigned long total, const struct table *t)
 		return "The RhapsodiOS partition must be active.";
 	if ((t->p[a7].start + t->p[a7].count) % cyl != 0)
 		return "The RhapsodiOS partition must end on a cylinder boundary.";
-	if (esp < 0 || t->p[esp].count != ESP_SECTORS)
+	if (n_esp != 1 || t->p[esp].count != ESP_SECTORS)
 		return "The EFI system partition must be exactly 64 MB.";
 	return NULL;
 }

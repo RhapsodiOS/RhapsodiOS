@@ -111,6 +111,9 @@ static void test_check_rules(void)
 	t = good; t.p[1].count -= 1;
 	CHECK(layout_check(total, &t) != NULL);
 	t = good; t.p[1].count = 2286080ul;
+	set(&t, 2, 0xEF, 0, 2500000ul, 1000);
+	CHECK(layout_check(total, &t) != NULL);
+	t = good; t.p[1].count = 2286080ul;
 	set(&t, 2, 0x07, 0, total - 10, 100);
 	CHECK(layout_check(total, &t) != NULL);
 }

@@ -209,7 +209,7 @@ cylinder 1023 written as 1023/254/63. It matches `build_uefi_image.py`'s
 | 6 | Configure | Render `fstab`, `Instance0-i386.table` and `hostconfig` for `hdN`. Link `T/private/Devices` to `Drivers/i386`. Set root's `master.passwd` field to `crypt()` of the password with a random salt, then `chroot T /usr/sbin/pwd_mkdb -p /etc/master.passwd` |
 | 7 | Drivers | `driverDetect -w T <chosen drivers>` |
 | 8 | Check | Fail if `T/private/etc/rc.cdrom` exists, so the installer can't run at every boot |
-| 9 | Finish | `umount T`, `sync` |
+| 9 | Finish | `sync` twice, then one best-effort `umount T`. The final unmount is left to the kernel's shutdown, which the Done screen's reboot or halt starts, because the target can stay busy after apk runs the files package's scripts |
 
 **Device names:** a disk installed as `hdN` gets `rootdev=hdNa`. The
 harness keeps the media on `hd1`, so the target is `hd0`.

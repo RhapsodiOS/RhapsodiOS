@@ -605,13 +605,18 @@ static int steps_inner(const struct plan *p, runner run,
 	}
 
 	STEP(9, "Finishing");
+	sync_cmd[0] = "sync"; sync_cmd[1] = NULL;
+	if (do_cmd(run, sync_cmd, failed_cmd, len) != 0 ||
+	    do_cmd(run, sync_cmd, failed_cmd, len) != 0)
+		return step;
+	/* Best effort: once apk has run the files package's scripts, the
+	 * kernel can keep T busy until shutdown, whose forced unmount the
+	 * Done screen's reboot and halt start.  T is synced either way. */
 	umount_cmd[0] = "umount"; umount_cmd[1] = (char *)p->root;
 	umount_cmd[2] = NULL;
-	if (do_cmd(run, umount_cmd, failed_cmd, len) != 0)
-		return step;
-	sync_cmd[0] = "sync"; sync_cmd[1] = NULL;
-	if (do_cmd(run, sync_cmd, failed_cmd, len) != 0)
-		return step;
+	if (do_cmd(run, umount_cmd, NULL, 0) != 0)
+		log_raw("warning: the target is still mounted; rebooting or "
+			"halting unmounts it\n");
 	return 0;
 }
 

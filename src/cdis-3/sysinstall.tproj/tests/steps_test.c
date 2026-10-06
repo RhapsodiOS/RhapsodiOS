@@ -163,7 +163,7 @@ static void test_command_order_and_stop_on_failure(void)
 	fill(&p, pkgs, 2, drv, 2, ESP_BYTES);
 	rc = steps_run(&p, fake_run, on_progress, failed, sizeof failed);
 	CHECK(rc == 0);
-	CHECK(ncmds == 7);
+	CHECK(ncmds == 8);
 	CHECK(has(0, "disk -i -b /dev/rhd0h"));
 	CHECK(has(1, "mount /dev/hd0a " TREE "/T"));
 	/* one apk run: files depends on basic-cmds, csu and libsystem, and
@@ -173,8 +173,10 @@ static void test_command_order_and_stop_on_failure(void)
 	    TREE "/I/Packages/basic-cmds-2.0-i386.apk"));
 	CHECK(has(3, "chroot " TREE "/T /usr/sbin/pwd_mkdb -p /etc/master.passwd"));
 	CHECK(has(4, "/usr/sbin/driverDetect -w " TREE "/T NE2K EIDE"));
-	CHECK(has(5, "umount " TREE "/T"));
+	/* step 9: sync twice, then one best-effort umount */
+	CHECK(has(5, "sync"));
 	CHECK(has(6, "sync"));
+	CHECK(has(7, "umount " TREE "/T"));
 	CHECK(progress_n == 9);
 	for (i = 0; i < 9 && i < (size_t)progress_n; i++)
 		CHECK(progress_steps[i] == (int)i + 1);
@@ -353,6 +355,35 @@ static void test_two_apks_for_one_package_is_step_5(void)
 	remove(TREE "/I/Packages/files-2-i386.apk");
 }
 
+static void test_a_busy_target_does_not_fail_the_install(void)
+{
+	/* The kernel can keep the target busy after apk's scripts run; the
+	 * shutdown that the Done screen starts unmounts it instead. */
+	char *pkgs[] = { "files", "basic-cmds" };
+	struct plan p;
+	char failed[256], *log;
+	size_t n;
+
+	setup();
+	remove(TREE "/T/private/var/log/sysinstall.log");
+	fill(&p, pkgs, 2, NULL, 0, ESP_BYTES);
+	fail_on = "umount";
+	CHECK(steps_run(&p, fake_run, NULL, failed, sizeof failed) == 0);
+	CHECK(ncmds == 8);
+	CHECK(has(ncmds - 1, "umount " TREE "/T"));
+	log = slurp(TREE "/T/private/var/log/sysinstall.log", &n);
+	CHECK(log != NULL && strstr(log, "$ umount " TREE "/T -> 1\n") != NULL);
+	CHECK(log != NULL && strstr(log, "warning: ") != NULL);
+	free(log);
+
+	/* a failed sync still fails step 9 */
+	setup();
+	fill(&p, pkgs, 2, NULL, 0, ESP_BYTES);
+	fail_on = "sync";
+	CHECK(steps_run(&p, fake_run, NULL, failed, sizeof failed) == 9);
+	CHECK(strcmp(failed, "sync") == 0);
+}
+
 static void test_log_moves_to_the_target_at_mount(void)
 {
 	char *pkgs[] = { "files", "basic-cmds" };
@@ -400,6 +431,7 @@ int main(int argc, char **argv)
 	test_refuses_a_live_rc_cdrom();
 	test_popen_mode_is_one_character();
 	test_two_apks_for_one_package_is_step_5();
+	test_a_busy_target_does_not_fail_the_install();
 	test_log_moves_to_the_target_at_mount();
 	printf("%s: %d failure%s\n", "steps_test", failures,
 	    failures == 1 ? "" : "s");

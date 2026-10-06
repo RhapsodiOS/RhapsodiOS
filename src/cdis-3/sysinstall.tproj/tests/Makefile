@@ -13,7 +13,7 @@ endif
 
 TEST_CFLAGS := -std=gnu89 -g -O0 -Wall -Werror -D_CRT_SECURE_NO_WARNINGS -I..
 
-test: test-layout test-sets test-config test-steps
+test: test-layout test-sets test-config test-steps test-disks
 
 $(BUILD):
 	mkdir -p $(BUILD)
@@ -42,7 +42,13 @@ $(BUILD)/steps_test$(EXE): steps_test.c ../steps.c ../steps.h ../layout.c ../con
 test-steps: $(BUILD)/steps_test$(EXE)
 	$(BUILD)/steps_test$(EXE)
 
+$(BUILD)/disks_test: disks_test.c ../disks.c ../disks.h | $(BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ disks_test.c ../disks.c
+
+test-disks: $(BUILD)/disks_test
+	$(BUILD)/disks_test
+
 clean:
 	rm -rf $(BUILD)
 
-.PHONY: test test-layout test-sets test-config test-steps clean
+.PHONY: test test-layout test-sets test-config test-steps test-disks clean

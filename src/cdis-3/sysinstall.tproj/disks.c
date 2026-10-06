@@ -5,38 +5,36 @@
 #include <string.h>
 #include "disks.h"
 
+int dev_disk_name(unsigned major, unsigned minor, char out[8])
+{
+	if (major != 3 && major != 6)
+		return -1;
+	sprintf(out, "%s%u", major == 3 ? "hd" : "sd", minor >> 3);
+	return 0;
+}
+
 #ifdef __MACH__
 
 #include <sys/types.h>
 #include <sys/ioctl.h>
 #include <sys/file.h>
+#include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <bsd/dev/disk.h>
 
-/* The disk of the root filesystem, from mount's "/dev/hd1a on / (local)"
- * line: "hd1".  0, or -1 if there is no such line. */
+/* The disk holding the root filesystem: "hd1" when / is on hd1a.  0, -1
+ * if / can't be stat()ed, or 0 with an empty name if / is on no disk.
+ * mount can't say: it lists the root the kernel mounted as root_device. */
 static int live_root_disk(char out[8])
 {
-	char line[256], *p;
-	FILE *f = popen("/sbin/mount", "r");
-	int i, rc = -1;
+	struct stat st;
 
-	if (f == NULL)
+	if (stat("/", &st) < 0)
 		return -1;
-	while (rc < 0 && fgets(line, sizeof line, f) != NULL) {
-		if (strncmp(line, "/dev/", 5) != 0 ||
-		    strstr(line, " on / ") == NULL)
-			continue;
-		p = line + 5;
-		for (i = 0; i < 7 && p[i] != '\0' && p[i] != ' ' &&
-		    !(p[i] >= 'a' && p[i] <= 'z' && i >= 2); i++)
-			out[i] = p[i];
-		out[i] = '\0';	/* "hd1" from "hd1a": up to the partition letter */
-		rc = 0;
-	}
-	pclose(f);
-	return rc;
+	if (dev_disk_name(major(st.st_dev), minor(st.st_dev), out) < 0)
+		out[0] = '\0';
+	return 0;
 }
 
 int disks_list(char names[][8], unsigned long sizes[], int max)

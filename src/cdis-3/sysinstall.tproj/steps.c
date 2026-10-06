@@ -367,6 +367,30 @@ static int write_esp(const struct plan *p, char *failed, int len)
 
 /* ---- step 5: packages ---- */
 
+/* Look up every node in the live system's /dev.  checkalias() hands an
+ * in-use device vnode that no file system has claimed -- the live root's
+ * own device, which bdevvp() made at boot -- to the first file system that
+ * looks up a node for that device.  The media never looks up its root's
+ * node, so apk's chown of files' private/dev/hd1a on the target would take
+ * it, and umount T would then fail with EBUSY.  Looked up here, it goes to
+ * the live root, as it does at an installed system's boot. */
+static void claim_live_devices(void)
+{
+#ifndef _WIN32
+	struct dir d;
+	struct stat st;
+	const char *name;
+	char path[PATHMAX];
+
+	if (dir_open(&d, "/dev/") < 0)
+		return;
+	while ((name = dir_next(&d)) != NULL)
+		if (cat3(path, "/dev/", name, "") == 0)
+			(void)stat(path, &st);
+	dir_close(&d);
+#endif
+}
+
 static int apk_steps(const struct plan *p, runner run, char *failed, int len)
 {
 	char pkgdir[PATHMAX], **av = NULL;
@@ -405,8 +429,10 @@ static int apk_steps(const struct plan *p, runner run, char *failed, int len)
 	}
 	if (rc < 0)
 		rc = -1;
-	else
+	else {
+		claim_live_devices();
 		rc = do_cmd(run, av, failed, len);
+	}
 	for (i = 5; i < k; i++)
 		free(av[i]);
 	free(av);

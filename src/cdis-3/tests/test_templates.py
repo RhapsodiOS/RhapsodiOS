@@ -21,6 +21,10 @@ PPC_TABLE = [(b"Version", b"5.20"),
              (b"Kernel Flags", b""), (b"Boot Drivers", b""),
              (b"Language", b"English")]
 
+# rc.cdrom's whole text: start the installer, and offer a shell if it fails.
+HOOK = [b"#!/bin/sh",
+        b"/System/Installation/CDIS/sysinstall || exec /bin/sh", b""]
+
 
 def read(*parts):
     with open(os.path.join(*parts), "rb") as f:
@@ -80,6 +84,23 @@ class TestTemplates(unittest.TestCase):
         postamble = read(PROJECT, "Makefile.postamble")
         for name in NAMES:
             self.assertIn(b"templates/" + name.encode(), postamble)
+
+    def test_english_only_and_the_hook(self):
+        names = os.listdir(PROJECT)
+        self.assertEqual([n for n in names if n.endswith(".lproj")],
+                         ["English.lproj"])
+        self.assertNotIn("rc.cdrom.x86", names)
+        self.assertNotIn("rc.cdrom.PPC", names)
+        self.assertEqual(read(PROJECT, "rc.cdrom").split(b"\n"), HOOK)
+        postamble = read(PROJECT, "Makefile.postamble")
+        self.assertRegex(
+            postamble,
+            rb"sets/\*\.set \$\(DSTROOT\)/System/Installation/Sets\n")
+        self.assertNotIn(b"SCRIPT2", postamble)
+        self.assertNotIn(b"SCRIPT3", postamble)
+        tools = re.search(rb"^TOOLS = ((?:.*\\\n)*.*)$",
+                          read(PROJECT, "Makefile"), re.M).group(1)
+        self.assertIn(b"sysinstall.tproj", tools.split())
 
     def test_no_carriage_returns(self):
         for name in NAMES:

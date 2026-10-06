@@ -206,12 +206,8 @@ copy_installer() {
         error "rc.cdrom not found at ${CDIS_SOURCE}/rc.cdrom"
     fi
 
-    # Copy platform-specific scripts
-    [ -f "${CDIS_SOURCE}/rc.cdrom.PPC" ] && cp "${CDIS_SOURCE}/rc.cdrom.PPC" "${STAGING_DIR}/private/etc/"
-    [ -f "${CDIS_SOURCE}/rc.cdrom.x86" ] && cp "${CDIS_SOURCE}/rc.cdrom.x86" "${STAGING_DIR}/private/etc/"
-
     # Copy language resources
-    for lang in English French German Italian Spanish Swedish; do
+    for lang in English; do
         if [ -d "${CDIS_SOURCE}/${lang}.lproj" ]; then
             mkdir -p "${CDIS_DEST}/${lang}.lproj"
             cp -R "${CDIS_SOURCE}/${lang}.lproj/"* "${CDIS_DEST}/${lang}.lproj/"

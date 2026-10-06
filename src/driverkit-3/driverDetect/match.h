@@ -36,6 +36,13 @@ int match_all(const char **tables, const char **names, int ntables,
     const struct pcidev *devs, int ndevs, struct match *out, int max);
 
 /*
+ * Set key's value to value, replacing the old value or appending the key.
+ * *out is a malloc'd copy; returns 0, or -1 on failure.
+ */
+int table_set(const char *table, const char *key, const char *value,
+    char **out);
+
+/*
  * Set the "Location" key to "Dev:%d Func:%d Bus:%d", replacing the old value
  * or appending the key.  *out is a malloc'd copy; returns 0, or -1 on failure.
  */

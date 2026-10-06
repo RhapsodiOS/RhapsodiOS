@@ -200,6 +200,25 @@ static void test_write_location(void)
 	free(r);
 }
 
+static void test_table_set(void)
+{
+	static const char t[] =
+	    "/* \"Boot Drivers\" = \"x\"; */\n"
+	    "\"Boot Drivers\" = \"EISABus PCIBus EIDE NE2K\";\n"
+	    "\"Active Drivers\" = \"VGA BPF\";\n";
+	char *r = NULL;
+
+	/* Only the key changes, not the comment that names it. */
+	CHECK(table_set(t, "Boot Drivers", "EISABus PCIBus EIDE", &r) == 0 &&
+	    strcmp(r, "/* \"Boot Drivers\" = \"x\"; */\n"
+	    "\"Boot Drivers\" = \"EISABus PCIBus EIDE\";\n"
+	    "\"Active Drivers\" = \"VGA BPF\";\n") == 0);
+	free(r);
+	CHECK(table_set(t, "Kernel", "mach_kernel", &r) == 0 &&
+	    strcmp(r + strlen(t), "\"Kernel\" = \"mach_kernel\";\n") == 0);
+	free(r);
+}
+
 int main(void)
 {
 	test_ids_forms();
@@ -208,6 +227,7 @@ int main(void)
 	test_two_cards_one_driver();
 	test_driver_without_ids_never_matches();
 	test_write_location();
+	test_table_set();
 	printf("match: %d failures\n", failures);
 	return failures != 0;
 }

@@ -160,32 +160,41 @@ int match_all(const char **tables, const char **names, int ntables,
 	return n;
 }
 
-int write_location(const char *table, const struct pcidev *d, char **out)
+int table_set(const char *table, const char *key, const char *value,
+    char **out)
 {
-	char line[64], *r;
+	char *r;
 	const char *vs, *ve;
-	size_t tlen = strlen(table), llen;
+	size_t tlen = strlen(table), klen = strlen(key), vlen = strlen(value);
 
-	sprintf(line, "Dev:%u Func:%u Bus:%u", d->dev, d->func, d->bus);
-	llen = strlen(line);
-	if (find_value(table, "Location", &vs, &ve)) {
-		r = malloc(tlen - (size_t)(ve - vs) + llen + 1);
+	if (find_value(table, key, &vs, &ve)) {
+		r = malloc(tlen - (size_t)(ve - vs) + vlen + 1);
 		if (r == NULL)
 			return -1;
 		memcpy(r, table, (size_t)(vs - table));
-		memcpy(r + (vs - table), line, llen);
-		strcpy(r + (vs - table) + llen, ve);
+		memcpy(r + (vs - table), value, vlen);
+		strcpy(r + (vs - table) + vlen, ve);
 	} else {
-		r = malloc(tlen + llen + 32);
+		r = malloc(tlen + klen + vlen + 16);
 		if (r == NULL)
 			return -1;
 		strcpy(r, table);
 		if (tlen > 0 && r[tlen - 1] != '\n')
 			strcat(r, "\n");
-		strcat(r, "\"Location\" = \"");
-		strcat(r, line);
+		strcat(r, "\"");
+		strcat(r, key);
+		strcat(r, "\" = \"");
+		strcat(r, value);
 		strcat(r, "\";\n");
 	}
 	*out = r;
 	return 0;
+}
+
+int write_location(const char *table, const struct pcidev *d, char **out)
+{
+	char line[64];
+
+	sprintf(line, "Dev:%u Func:%u Bus:%u", d->dev, d->func, d->bus);
+	return table_set(table, "Location", line, out);
 }

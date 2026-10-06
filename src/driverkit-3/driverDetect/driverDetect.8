@@ -1,0 +1,68 @@
+.TH DRIVERDETECT 8 "October 5, 2026" "RhapsodiOS"
+.SH NAME
+driverDetect \- list, load and record the drivers for the machine's PCI devices
+.SH SYNOPSIS
+\fB/usr/sbin/driverDetect\fR
+.br
+\fB/usr/sbin/driverDetect \-l\fR \fIfamily\fR ...
+.br
+\fB/usr/sbin/driverDetect \-w\fR \fIroot\fR [ \fIdriver\fR ... ]
+.SH DESCRIPTION
+\fIdriverDetect\fR reads every PCI function's vendor and device ID
+(configuration register 0x00) and subsystem ID (register 0x2c) through the
+PCIBus driver's \fBPCI0\fR device, and matches them against the
+\fB"Auto Detect IDs"\fR of each PCI driver's \fBDefault.table\fR in
+\fB/usr/Devices\fR, with the booter's rules.
+.PP
+With no arguments it prints one line per match, its fields separated by
+tabs: the driver's \fB"Family"\fR, the driver, the device's location and its
+ID:
+.LP
+.DS
+Network	NE2K	Dev:3 Func:0 Bus:0	0x802910ec
+.DE
+.SH OPTIONS
+.TP
+\fB\-l\fR \fIfamily\fR ...
+Load and probe, in the running kernel, the matched drivers whose
+\fB"Family"\fR is one of the \fIfamily\fR arguments (Network, SCSI, Disk,
+Display, Audio, ...; case does not matter).  Each driver's relocatable is
+loaded through kern_loader, then probed with its \fBDefault.table\fR,
+\fB"Location"\fR set to the device, held in memory, so nothing is written
+to disk.  A driver already loaded when \fIdriverDetect\fR starts is left
+alone.  Prints a line, as above, for each device probed.  A network
+interface comes up down; \fIifconfig\fR(8) brings it up.
+.TP
+\fB\-w\fR \fIroot\fR [ \fIdriver\fR ... ]
+Record the chosen drivers in the system at \fIroot\fR, normally a disk
+being installed.  Each chosen driver must be installed there, in
+\fIroot\fB/private/Drivers/i386/\fIdriver\fB.config\fR.  For each device a
+chosen driver matches, writes that driver's \fBInstance\fIN\fB.table\fR,
+its \fBDefault.table\fR with \fB"Location"\fR and \fB"Instance"\fR filled
+in.  Then writes \fIroot\fB/private/Drivers/i386/System.config/Instance0.table\fR
+from \fIroot\fB/System/Installation/CDIS/templates/Instance0-i386.table\fR,
+or from \fB/System/Installation/CDIS/templates/Instance0-i386.table\fR if
+the root has none, with every \fB@DISK@\fR replaced by the disk of the
+\fB/\fR line of \fIroot\fB/private/etc/fstab\fR (\fB/dev/hd0a\fR gives
+\fBhd0\fR), and:
+.RS
+.TP
+\fB"Boot Drivers"\fR
+EISABus PCIBus PS2Keyboard, then each chosen driver whose family is Disk
+or SCSI.
+.TP
+\fB"Active Drivers"\fR
+The other chosen drivers, then the template's Active Drivers, less the
+chosen ones and less any Network, Display or Audio driver whose family a
+chosen driver has.
+.RE
+.SH DIAGNOSTICS
+Exits 0 on success.  Otherwise prints a message on the standard error and
+exits 1.
+.SH FILES
+.TP
+\fB/usr/Devices/\fIdriver\fB.config/Default.table\fR
+.TP
+\fB/usr/Devices/\fIdriver\fB.config/\fIdriver\fB_reloc\fR
+.SH SEE ALSO
+driverLoader(8)

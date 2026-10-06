@@ -34,7 +34,12 @@ done < $REPO/replay.list
 t1=`$B/wakeprobe -t`
 echo REPLAY-END `expr $t1 - $t0`
 # content manifest: identical input, so any difference between kernels is
-# corruption (taken after the timing, so it does not count in REPLAY-END)
+# corruption (taken after the timing, so it does not count in REPLAY-END).
+# On hd1, unmount and remount first: that pushes everything to disk and
+# drops the cached pages, so the manifest reads what is really on disk.
+if [ "$T" = /mnt1 ]; then
+	cd / && umount /mnt1 && mount /dev/hd1a /mnt1 && echo REMOUNTED
+fi
 (cd $T/root && find . -type f -print | sort | xargs cksum) > $B/manifest.txt
 echo MANIFEST `cksum < $B/manifest.txt`
 t1=`$B/wakeprobe -t`

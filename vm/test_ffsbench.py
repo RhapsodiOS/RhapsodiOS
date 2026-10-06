@@ -313,3 +313,9 @@ def test_push_retries_a_dropped_connection(tmp_path, monkeypatch):
     monkeypatch.setattr(fb.time, "sleep", lambda s: None)
     fb.Ssh({"User": "u", "Host": "h"}).push(str(src), "/tmp/f")
     assert len(calls) == 2
+
+
+def test_run_script_remounts_hd1_before_the_manifest():
+    text = open(os.path.join(SCRIPTS, "run.sh")).read()
+    i, j = text.index("echo REPLAY-END"), text.index("manifest.txt")
+    assert "umount /mnt1" in text[i:j] and "mount /dev/hd1a /mnt1" in text[i:j]

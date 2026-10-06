@@ -263,3 +263,8 @@ def test_run_command_single_disk_targets_the_root():
     cmd = fb.run_command("run.sh", single=True)
     assert "mkdir -p /private/tmp/ffsbench-root" in cmd
     assert cmd.endswith("sh /tmp/ffsbench/run.sh /mnt2 /private/tmp/ffsbench-root")
+
+
+def test_qemu_extra_args_are_appended():
+    args = fb.qemu_args("r", "h1", "h2", "s", extra="-d cpu_reset -D x.log")
+    assert args[-4:] == ["-d", "cpu_reset", "-D", "x.log"]

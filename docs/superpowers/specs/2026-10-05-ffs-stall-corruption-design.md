@@ -29,7 +29,8 @@ filesystem `fsck` can repair, and throughput is no worse than today.
   layers (FreeBSD's VMIO buffer cache, NetBSD's UBC) that our Mach 2.5 `OLD_VM_CODE` kernel
   does not have. And the lead suspect is below FFS, so a new FFS on the same `vfs_bio.c`
   would inherit it.
-- Soft updates and dirhash. Phase 3 decides whether either gets its own spec.
+- Soft updates, dirhash and a unified buffer cache (UBC). Phase 3 decides whether any of them
+  gets its own spec.
 - Testing on ppc. That is deferred: this spec verifies on i386 only, although the fixes are
   in shared code.
 
@@ -69,6 +70,28 @@ These come from reading `src/kernel-7` on 2026-10-05.
 
    So each extracted file costs at least two or three synchronous writes. That is 4.4BSD's
    price for crash consistency without soft updates.
+6. **File data bypasses the buffer cache.** The i386 and ppc RELEASE configs include `nbc`
+   (`MACH_NBC`, `conf/MASTER.i386:72`).
+   - File contents are read and written through NeXT's mapped-file layer, `kern/mapfs.c`
+     (`mapfs_io`, `vmp_push`, `mapfs_sync`, `mapfs_cache_trim`). Dirty file pages live in Mach
+     VM and reach the disk through the vnode pager.
+   - Only metadata goes through `vfs_bio.c`.
+   - The two layers are kept consistent by hand, through `blkflush` and the `MACH_NBC` hooks
+     in `ffs_balloc.c`, `ffs_inode.c` and `ufs_readwrite.c`.
+
+   This adds two suspects:
+   - a stale mapped page written over a block that has since been reallocated as metadata;
+   - on a 128 MB machine, RAM filling with dirty mapped pages, so that pageout and
+     `mapfs_sync` (every 30 s from `update`) stall everything.
+
+   FreeBSD 4.x and NetBSD 2.0 have no counterpart to `mapfs.c`. xnu-124.13 had already
+   replaced it with UBC (`bsd/kern/ubc_subr.c`), but it is Apple's descendant of our
+   `vfs_bio.c` and `vfs_cluster.c`, and shows the design that replaced `mapfs`.
+7. **rbuild does not extract straight into the build root.** For each apk, `src/rbuild-1/apk.c`:
+   1. extracts it into `/tmp/rbuild-apk-extract-*` with `gzip -dc | pax -r`;
+   2. copies every file into the root, file by file (`merge_stage` / `copy_regular`,
+      `apk.c:767`);
+   3. removes the stage with `rm -rf`.
 
 ## Approach
 
@@ -106,13 +129,20 @@ apks to the host, and record their SHA-256 hashes.
 
 **Throughput run.** Everything runs in one ssh session per run:
 1. Mount hd1 on `/mnt`.
-2. For each apk in `replay.list`, run `gzip -dc <apk> | pax -r -pe` into `/mnt/root`, the same
-   pipeline as `src/rbuild-1/apk.c`. Time the whole replay.
+2. For each apk in `replay.list`, do what `src/rbuild-1/apk.c` does:
+   1. run `gzip -dc <apk> | pax -r -pe` into a fresh stage directory under `/mnt/tmp`;
+   2. copy the stage into `/mnt/root` with `pax -rw -pe`;
+   3. `rm -rf` the stage.
+
+   Time the whole replay.
 3. Time `rm -rf /mnt/root`.
 4. Run `slow.c /mnt/s 64`, which writes 1 file and then 2 files in parallel.
-5. Keep `wakeprobe` running throughout.
-6. Meanwhile the host times a fresh ssh connect every 5 s. This loop targets only this
-   private guest, and only during a run.
+5. Keep `wakeprobe` running throughout. Once per second it also prints the free page count and
+   the pageout count from `host_statistics(HOST_VM_INFO)`, so stalls can be lined up with
+   memory pressure.
+6. Meanwhile, every 5 s, the host opens a TCP connection to the guest's sshd and times how
+   long the `SSH-` banner takes to arrive. That measures `accept`, the fork and sshd's first
+   write without logging in. This loop targets only this private guest, and only during a run.
 
 Each run produces one CSV row with these columns:
 - replay seconds and rm seconds;
@@ -147,10 +177,13 @@ harness reproduces.
 ### Phase 1 — Corruption and hard lock
 
 1. **Reference comparison.** Shallow-clone FreeBSD `RELENG_4` and NetBSD `netbsd-2` into
-   `F:\ref\`, outside the repo and read-only. Compare function by function:
-   - `vfs_bio.c` and `vfs_cluster.c`;
-   - the ufs/ffs write paths (`ufs_vnops.c`, `ufs_lookup.c`, `ffs_alloc.c`, `ffs_balloc.c`,
-     `ffs_inode.c`, `ffs_vfsops.c`).
+   `F:\ref\`, outside the repo and read-only. xnu-124.13 is already at `F:\xnu-124.13`.
+   - Compare `vfs_bio.c` and `vfs_cluster.c` against all three.
+   - Compare the ufs/ffs write paths (`ufs_vnops.c`, `ufs_lookup.c`, `ffs_alloc.c`,
+     `ffs_balloc.c`, `ffs_inode.c`, `ffs_vfsops.c`) against FreeBSD 4.x and NetBSD 2.0.
+   - Audit `kern/mapfs.c` and every `MACH_NBC` hook on its own terms, since none of the
+     three has a counterpart. Note where xnu-124.13's UBC (`bsd/kern/ubc_subr.c`) closes
+     the same gap differently.
 
    Write the result to `docs/kernel/ffs-bsd-comparison.md`, classifying each divergence as
    *bug fix*, *performance* or *irrelevant*.
@@ -164,6 +197,9 @@ harness reproduces.
      still set.
    - **Clusters:** panic unless each component buffer's `b_blkno` is contiguous with the
      cluster's.
+   - **NBC overlap:** when `ffs_alloc` hands out a block for metadata (directory, indirect
+     block or inode block), panic if a mapped file still has a resident page for that disk
+     block.
 3. **Confirm.** Run the harness on the debug kernel. A duplicate-identity panic confirms
    finding 1 and gives the stack. A hard lock gives a gdbstub dump.
 4. **Fix.** Each fix is one commit and is re-verified with the harness:
@@ -201,8 +237,14 @@ The goal is to slow down the process doing the writing, not everyone else.
      crash repairable.
    - The utimes update in `ufs_setattr` adopts FreeBSD 4.x's behaviour, but only if the
      comparison shows it is asynchronous there.
-5. **Syncer.** If the harness shows periodic stalls of about 30 s, measure `update`'s
-   flush-everything sync, and spread it out FreeBSD-style only if the data shows it matters.
+5. **Syncer and mapped pages.** If the harness shows stalls that line up with low free pages
+   or with `update`'s 30 s sync, measure where the time goes:
+   - `mapfs_sync` and `vmp_push_all`;
+   - the pageout daemon cleaning dirty mapped pages;
+   - the buffer-cache flush.
+
+   Candidates are a limit on dirty mapped pages per file (the writer pushes its own pages past
+   it), and spreading the sync FreeBSD-style. Only adopt the ones the data supports.
 6. **Upper bound.** Measure once with `mount -o async`, only to bound the remaining cost of
    synchronous metadata. It is not a fix.
 
@@ -219,6 +261,13 @@ Write a recommendation in `docs/kernel/ffs-bsd-comparison.md`:
   Phase 2 kernel, synchronous metadata dominates. Soft updates (FreeBSD 4.x
   `ffs_softdep.c` plus the `bioops` hooks in `vfs_bio.c`) then gets its own spec.
 - **Dirhash.** It gets its own spec only if directory lookups show up as a cost.
+- **UBC.** If Phase 1 shows `mapfs`/`MACH_NBC` is a source of the corruption or the stall,
+  and it cannot be fixed in place, a unified buffer cache gets its own spec, designed against
+  xnu-124.13. Its cost has to be scoped there:
+  - xnu's UBC (`ubc_subr.c`, the UPL-based `vfs_cluster.c`, `vnode_pager.c`, about 4k lines)
+    depends throughout on OSF Mach page-list interfaces (`upl_*`,
+    `memory_object_page_op`, `vm_object_upl_request`). Our Mach 2.5 VM has none of them.
+  - It means converting UFS, HFS, NFS and cd9660 off `MACH_NBC`.
 
 ## Cross-cutting rules
 

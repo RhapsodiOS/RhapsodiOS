@@ -37,16 +37,20 @@ DESTROYED = re.compile(
 
 
 def qemu_args(root_img, hd1, hd2, serial, ssh_port=2532, qmp_port=4532,
-              gdb_port=1232, mem_mb=128):
+              gdb_port=1232, mem_mb=128, iops=None):
     """The bench guest's command line.  Snapshot is per drive, not -snapshot,
-    because -snapshot would also cover hd1 and hd2."""
+    because -snapshot would also cover hd1 and hd2.  iops caps the disk
+    under test's operations per second: QEMU's disk sits on the host page
+    cache, so without it a synchronous write costs microseconds, not a
+    seek."""
     drive = "file=%s,format=raw,if=ide,index=%d,media=disk,snapshot=%s"
     return [
         QEMU, "-name", "RhapsodiOS ffsbench",
         "-M", "pc", "-cpu", "pentium", "-accel", "tcg", "-m", str(mem_mb),
         "-nodefaults", "-vga", "cirrus", "-display", "none",
         "-drive", drive % (root_img, 0, "on"),
-        "-drive", drive % (hd1, 1, "off"),
+        "-drive", drive % (hd1, 1, "off") +
+                  (",throttling.iops-total=%d" % iops if iops else ""),
         "-drive", drive % (hd2, 2, "off"),
         "-netdev", "user,id=n0,net=10.10.0.0/16,host=10.10.0.1,dns=10.10.0.3,"
                    "hostfwd=tcp:127.0.0.1:%d-%s:22" % (ssh_port, GUEST_IP),
@@ -188,6 +192,7 @@ def lane(spec):
 
 
 SSH_PORT, QMP_PORT, GDB_PORT, WORKLOAD_NAME = lane(os.environ.get("FFSBENCH_PORTS"))
+IOPS = int(os.environ.get("FFSBENCH_IOPS") or 0) or None
 KERNEL_NAME = "mach_kernel_ffs"     # upload name; installed as /mach_kernel
 GUEST_DIR = "/tmp/ffsbench"
 BANNER_TRIES, BANNER_GAP = 12, 30   # first sshd banner: up to 6 minutes
@@ -436,7 +441,7 @@ class Guest(object):
         flags = 0x00000008 | 0x00000200 if os.name == "nt" else 0
         self.proc = subprocess.Popen(
             qemu_args(ROOT_IMG, hd1, hd2, self.serial, SSH_PORT, QMP_PORT,
-                      GDB_PORT), creationflags=flags,
+                      GDB_PORT, iops=IOPS), creationflags=flags,
             stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
             stderr=open(os.path.join(outdir, "qemu.err"), "wb"))
         self.qmp = Qmp()

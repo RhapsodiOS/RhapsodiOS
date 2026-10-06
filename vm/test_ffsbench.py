@@ -222,3 +222,11 @@ def test_qemu_args_uses_the_lane_ports():
                         gdb_port=1233)
     assert "hostfwd=tcp:127.0.0.1:2533-10.10.0.240:22" in " ".join(args)
     assert args[args.index("-gdb") + 1] == "tcp:127.0.0.1:1233"
+
+
+def test_qemu_args_throttles_only_hd1():
+    args = fb.qemu_args("r", "h1", "h2", "s", iops=100)
+    assert "throttling.iops-total=100" in _drive(args, 1)
+    assert "throttling" not in _drive(args, 0)
+    assert "throttling" not in _drive(args, 2)
+    assert "throttling" not in " ".join(fb.qemu_args("r", "h1", "h2", "s"))

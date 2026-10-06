@@ -181,6 +181,33 @@ class TestSecondDiskAndTyping(unittest.TestCase):
                                     [{"type": "qcode", "data": "s"}],
                                     [{"type": "qcode", "data": "ret"}]])
 
+    def test_parse_keys_presses_no_return(self):
+        self.assertEqual(qemu_boot.parse_keys("160:21"), (160.0, "21", False))
+        with self.assertRaises(ValueError):
+            qemu_boot.parse_keys("5:a|b")
+
+    def test_run_types_keys_without_enter(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            image = os.path.join(tmp, "disk.img")
+            open(image, "w").close()
+            fake_qmp = mock.Mock()
+            with mock.patch("qemu_boot.subprocess.Popen"),                  mock.patch("qemu_boot.qemu_shot.QMP",
+                            return_value=fake_qmp),                  mock.patch("qemu_boot.time.sleep", return_value=None):
+                qemu_boot.run("bios", image, os.path.join(tmp, "out"), [],
+                              "fw", typed=[(5.0, "21", False)])
+            keys = [c.kwargs["keys"] for c in fake_qmp.execute.call_args_list
+                    if c.args == ("send-key",)]
+            self.assertEqual(keys, [[{"type": "qcode", "data": "2"}],
+                                    [{"type": "qcode", "data": "1"}]])
+
+    def test_main_passes_keys_with_the_typed_text(self):
+        with mock.patch("qemu_boot.run") as run:
+            qemu_boot.main(["qemu_boot.py", "bios", "a.img", "out",
+                            "--type", "6:", "--keys", "7:21",
+                            "--at", "9", "--firmware-dir", "fw"])
+        self.assertEqual(run.call_args.kwargs["typed"],
+                         [(6.0, ""), (7.0, "21", False)])
+
     def test_main_passes_hd1_and_typed_to_run(self):
         with mock.patch("qemu_boot.run") as run:
             qemu_boot.main(["qemu_boot.py", "bios", "a.img", "out",

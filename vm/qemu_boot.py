@@ -5,6 +5,7 @@
                            [--hd1 IMAGE [--boot-hd1]] [--keep-hd0]
                            [--nic MODEL]
                            [--ssh-port PORT] [--type SECONDS:TEXT ...]
+                           [--keys SECONDS:TEXT ...]
                            [--at SECONDS[,SECONDS...]] [--firmware-dir DIR]
 
 bios boots QEMU's own SeaBIOS.  uefi boots the IA32 edk2 firmware QEMU ships
@@ -17,7 +18,7 @@ media is in the design's harness, with IMAGE, the blank target, still hd0.
 --nic adds a network card of that QEMU model on QEMU's user network, and
 --ssh-port forwards that 127.0.0.1 port to the guest's ssh.  Each --type
 types TEXT and presses Enter at SECONDS, for a boot prompt or a single-user
-shell.
+shell; each --keys types TEXT without Enter, for menus that act on a key.
 
 OUTDIR gets console.log (COM1: firmware and loader), kernel.log (COM2: the
 kernel's serial console) and shot-<N>s.png screenshots.  QEMU quits after
@@ -120,6 +121,12 @@ def parse_typed(spec):
     return float(seconds), text
 
 
+def parse_keys(spec):
+    """"SECONDS:TEXT" -> (seconds, text, False): typed without Enter."""
+    seconds, text = parse_typed(spec)
+    return seconds, text, False
+
+
 def build_args(mode, image, outdir, qmp_port, firmware_dir, esp=None,
                hd1=None, qemu="qemu-system-i386", boot_hd1=False, nic=None,
                ssh_port=None, keep_hd0=False):
@@ -220,14 +227,17 @@ def run(mode, image, outdir, at_points, firmware_dir, esp=None, hd1=None,
             raise SystemExit(_qemu_failure_message(proc, stderr_path, e))
         events = sorted([(t, None) for t in at_points] + list(typed),
                         key=lambda e: e[0])
-        for t, text in events:
+        for event in events:
+            t, text = event[0], event[1]
             remaining = t - (time.monotonic() - start)
             if remaining > 0:
                 time.sleep(remaining)
             try:
                 if text is not None:
-                    _type(qmp, text)
-                    print("typed %r at %ss" % (text, qemu_shot.fmt_seconds(t)))
+                    enter = len(event) < 3 or event[2]
+                    _type(qmp, text, enter)
+                    print("typed %r%s at %ss" % (text, "" if enter else
+                          " (no Enter)", qemu_shot.fmt_seconds(t)))
                     continue
                 ppm = os.path.join(outdir, "_shot.ppm")
                 qmp.execute("screendump", filename=ppm)
@@ -257,8 +267,8 @@ def run(mode, image, outdir, at_points, firmware_dir, esp=None, hd1=None,
     print("kernel:  %s" % os.path.join(outdir, "kernel.log"))
 
 
-def _type(qmp, text):
-    for ch in text + "\n":
+def _type(qmp, text, enter=True):
+    for ch in text + ("\n" if enter else ""):
         qmp.execute("send-key", keys=[{"type": "qcode", "data": code}
                                       for code in KEYS[ch]])
         time.sleep(0.05)
@@ -288,6 +298,8 @@ def main(argv):
     p.add_argument("--ssh-port", type=int, default=None)
     p.add_argument("--type", dest="typed", action="append", default=[],
                    type=parse_typed, metavar="SECONDS:TEXT")
+    p.add_argument("--keys", dest="keys", action="append", default=[],
+                   type=parse_keys, metavar="SECONDS:TEXT")
     p.add_argument("--at", default=DEFAULT_AT,
                    help="comma-separated screenshot times in seconds")
     p.add_argument("--firmware-dir", default=None)
@@ -295,7 +307,7 @@ def main(argv):
     at_points = [float(x) for x in a.at.split(",") if x]
     firmware_dir = a.firmware_dir or default_firmware_dir("qemu-system-i386")
     run(a.mode, a.image, a.outdir, at_points, firmware_dir, esp=a.esp,
-        hd1=a.hd1, typed=a.typed, boot_hd1=a.boot_hd1, nic=a.nic,
+        hd1=a.hd1, typed=a.typed + a.keys, boot_hd1=a.boot_hd1, nic=a.nic,
         ssh_port=a.ssh_port, keep_hd0=a.keep_hd0)
     return 0
 

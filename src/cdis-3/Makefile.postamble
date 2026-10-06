@@ -105,8 +105,6 @@
 # a single colon.
 
 SCRIPT1 = rc.cdrom
-SCRIPT2 = rc.cdrom.PPC
-SCRIPT3 = rc.cdrom.x86
 SCRIPT_DIR = /private/etc
 INSTALL = /usr/bin/install
 
@@ -118,14 +116,9 @@ after_install::
 	$(MV) $(DSTROOT)$(INSTALLDIR)/$(NAME).$(BUNDLE_EXTENSION) $(DSTROOT)$(INSTALLDIR)/$(NAME)
 	$(MV) $(DSTROOT)$(INSTALLDIR)/$(NAME)/Resources/* $(DSTROOT)$(INSTALLDIR)/$(NAME)
 	$(RM) -rf $(DSTROOT)$(INSTALLDIR)/$(NAME)/Resources
-	$(RM) -rf $(DSTROOT)$(INSTALLDIR)/$(NAME)/Spanish.lproj
-	$(RM) -rf $(DSTROOT)$(INSTALLDIR)/$(NAME)/Swedish.lproj
-	$(RM) -rf $(DSTROOT)$(INSTALLDIR)/$(NAME)/Italian.lproj
 	$(RM) -rf $(DSTROOT)$(INSTALLDIR)/$(NAME)/*.lproj/CVS
 	$(MKDIRS) $(DSTROOT)$(SCRIPT_DIR)
 	$(INSTALL) -c -o root -g wheel -m 555 $(SCRIPT1) $(DSTROOT)$(SCRIPT_DIR)/$(SCRIPT1).hidden
-	$(INSTALL) -c -o root -g wheel -m 444 $(SCRIPT2) $(DSTROOT)$(SCRIPT_DIR)
-	$(INSTALL) -c -o root -g wheel -m 444 $(SCRIPT3) $(DSTROOT)$(SCRIPT_DIR)
 	$(MKDIRS) $(DSTROOT)/usr/bin
 #	$(INSTALL) -c -o root -g wheel -m 555 install_tools/installer.sh $(DSTROOT)/usr/bin/
 #	$(INSTALL) -c -o root -g wheel -m 555 install_tools/package $(DSTROOT)/usr/bin/
@@ -134,3 +127,5 @@ after_install::
 	$(MKDIRS) $(DSTROOT)/private/var/tmp/mntb
 	$(MKDIRS) $(DSTROOT)$(INSTALLDIR)/$(NAME)/templates
 	$(INSTALL) -c -o root -g wheel -m 444 templates/fstab templates/hostconfig templates/Instance0-i386.table templates/Instance0-ppc.table $(DSTROOT)$(INSTALLDIR)/$(NAME)/templates
+	$(MKDIRS) $(DSTROOT)/System/Installation/Sets
+	$(INSTALL) -c -o root -g wheel -m 444 sets/*.set $(DSTROOT)/System/Installation/Sets

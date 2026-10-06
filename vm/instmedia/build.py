@@ -21,18 +21,19 @@ from instmedia import (apkrepo, hdimage, live, readback, rootfs, space,
 
 BOOTERS = "/usr/standalone/i386"
 DRIVERS = "/private/Drivers/i386"
-# driverLoader, which loads the Active Drivers at startup, reads the system
-# table through /usr/Devices, which files links to ../private/Devices.
+# driverLoader, which loads the Active Drivers at startup, and sysinstall and
+# driverDetect on the media, read the drivers through /usr/Devices, which
+# files links to ../private/Devices.
 DEVICES_TABLE = "/usr/Devices/System.config/Instance0.table"
 # The Active Driver dhcpcd's /dev/bpf* come from; without it the network
 # never comes up, and nothing says why.
 BPF_DRIVER = "/private/Drivers/i386/BPF.config/BPF_reloc"
-# What CDIS's rc.cdrom runs before its first menus.
-CDIS_NEEDS = ["/usr/bin/perl", live.RC_CDROM, "/private/etc/rc.cdrom.x86",
-              "/private/etc/rc.cdrom.PPC",
-              live.CDIS + "/English.lproj/Localizable.strings",
-              live.CDIS + "/findroot", live.CDIS + "/gc",
-              live.CDIS + "/popconsole", live.CDIS + "/pickdisk"]
+# What rc.cdrom starts, and the tools sysinstall runs in the live root.
+CDIS_NEEDS = [live.RC_CDROM, live.CDIS + "/sysinstall",
+              live.SETS + "/base.set", "/sbin/disk", "/sbin/mount",
+              "/sbin/umount", "/sbin/apk", "/usr/sbin/chroot",
+              "/usr/sbin/driverDetect", "/usr/sbin/pwd_mkdb",
+              "/usr/bin/gzip", "/bin/sync"]
 # The majors /dev must use for each disk family: sd from the kernel's own
 # tables (src/kernel-7/bsd/dev/i386/conf.c: bdevsw 6, cdevsw 14), hd and fd
 # from the "Block Major"/"Character Major" the EIDE and Floppy drivers
@@ -63,8 +64,8 @@ def boot_drivers(table):
 def check_tree(nodes, preinstalled):
     """What the booters, the kernel and the image's startup need that the
     root lacks: every Boot Driver (the network card is one); CDIS's pieces
-    on the media; sshd, driverLoader and the /usr/Devices path on the
-    pre-installed disk."""
+    on the media; sshd and driverLoader on the pre-installed disk; the
+    /usr/Devices path on both."""
     by_path = {n.path: n for n in nodes}
     table = by_path[live.SYSTEM_TABLE].data
     need = ["/mach_kernel", BOOTERS + "/boot0", BOOTERS + "/boot1",
@@ -77,17 +78,27 @@ def check_tree(nodes, preinstalled):
     else:
         need += CDIS_NEEDS
     problems = ["missing %s" % p for p in need if p not in by_path]
-    if preinstalled:
-        tree = rootfs.Tree()
-        for n in nodes[1:]:
-            tree.put(n)
-        try:
-            real = tree.resolve(DEVICES_TABLE)
-        except rootfs.TreeError as e:
-            real = str(e)
-        if real != live.SYSTEM_TABLE:
-            problems.append("%s does not lead to %s (%s)"
-                            % (DEVICES_TABLE, live.SYSTEM_TABLE, real))
+    tree = rootfs.Tree()
+    for n in nodes[1:]:
+        tree.put(n)
+    try:
+        real = tree.resolve(DEVICES_TABLE)
+    except rootfs.TreeError as e:
+        real = str(e)
+    if real != live.SYSTEM_TABLE:
+        problems.append("%s does not lead to %s (%s)"
+                        % (DEVICES_TABLE, live.SYSTEM_TABLE, real))
+    return problems
+
+
+def check_sets(apks, sets):
+    """Packages the sets name that the repository lacks, and repository
+    packages no set names (they would not be on the media)."""
+    problems = ["set %s names package %s not in the repository" % (s, p)
+                for s in sorted(sets) for p in sets[s] if p not in apks]
+    named = {p for pkgs in sets.values() for p in pkgs}
+    problems += ["package %s is in no set" % p
+                 for p in sorted(apks) if p not in named]
     return problems
 
 
@@ -127,6 +138,11 @@ def build(repo, efi_path, out, preinstalled=False, fs_mb=None):
         password_hash=testconfig.TEST_PASSWORD_HASH if preinstalled else None)
     problems = ["%s: claimed by %s and %s" % c for c in conflicts]
     problems += check_tree(nodes, preinstalled) + check_dev(nodes)
+    if not preinstalled:
+        tree = rootfs.Tree()
+        for n in nodes[1:]:
+            tree.put(n)
+        problems += check_sets(apks, live.read_sets(tree))
     if problems:
         raise BuildError("\n".join(problems))
     by_path = {n.path: n for n in nodes}

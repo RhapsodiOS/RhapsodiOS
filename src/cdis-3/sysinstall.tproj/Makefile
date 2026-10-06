@@ -7,43 +7,25 @@
 # and Makefile.postamble (both optional), and Makefile will include them.
 #
 
-NAME = CDIS
+NAME = sysinstall
 
 PROJECTVERSION = 2.8
-PROJECT_TYPE = Loadable Bundle
-English_RESOURCES = Localizable.strings
+PROJECT_TYPE = Tool
 
-LANGUAGES = English
+HFILES = ui.h disks.h layout.h sets.h config.h steps.h
 
-GLOBAL_RESOURCES = fixdisk install_tools dicedrives.pl diceprtname.pl
+CFILES = main.c ui.c disks.c layout.c sets.c config.c steps.c
 
-MFILES = placeholder.m
-
-TOOLS = getpath.tproj findroot.tproj checkflop.tproj\
-        pickdisk.tproj\
-        gc.tproj slamloaderbits.tproj sgmove.tproj popconsole.tproj\
-        sysinstall.tproj
-
-OTHERSRCS = Makefile.preamble Makefile Makefile.postamble rc.cdrom
+OTHERSRCS = Makefile.preamble Makefile Makefile.postamble
 
 
 MAKEFILEDIR = $(MAKEFILEPATH)/pb_makefiles
 CODE_GEN_STYLE = DYNAMIC
-MAKEFILE = bundle.make
-NEXTSTEP_INSTALLDIR = /System/Installation
-WINDOWS_INSTALLDIR = /System/Installation
-PDO_UNIX_INSTALLDIR = /System/Installation
-LIBS = 
+MAKEFILE = tool.make
+LIBS = -lcurses
 DEBUG_LIBS = $(LIBS)
 PROF_LIBS = $(LIBS)
-BUNDLE_EXTENSION = bundle
 
-
-FRAMEWORK_PATHS = -F$(NEXT_ROOT)/System/Library/PrivateFrameworks\
-                  -F$(NEXT_ROOT)/System/Library/Frameworks
-
-
-NEXTSTEP_BUILD_OUTPUT_DIR = /objects/$(USER)/$(NAME)
 
 NEXTSTEP_OBJCPLUS_COMPILER = /usr/bin/cc
 WINDOWS_OBJCPLUS_COMPILER = $(DEVDIR)/gcc

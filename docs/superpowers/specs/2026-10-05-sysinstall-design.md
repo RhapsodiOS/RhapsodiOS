@@ -182,6 +182,7 @@ Before it writes, it refuses a table that breaks any of these rules:
 - exactly one `0xA7` entry, and it is the active one
 - exactly one `0xEF` entry of exactly 131072 sectors, because the media
   carries one fixed-size ESP image and there is no FAT writer in C
+- the ESP starts at LBA 2048
 - no overlapping entries
 - the new `0xA7` entry ends on a cylinder of the LBA-assisted geometry
 

@@ -306,6 +306,37 @@ static void test_esp_of_the_wrong_size_is_refused(void)
 	}
 }
 
+/* A table layout_auto doesn't make: the ESP, at 2048, in the last entry.
+ * The image lands at the start the table gives it. */
+static void test_esp_lands_at_its_entry_start(void)
+{
+	char *pkgs[] = { "files" };
+	struct plan p;
+	struct table back;
+	char failed[256], *disk;
+	size_t n;
+
+	setup();
+	fill(&p, pkgs, 1, NULL, 0, ESP_BYTES);
+	p.t.p[0] = p.t.p[1];
+	memset(&p.t.p[1], 0, sizeof p.t.p[1]);
+	p.t.p[3].type = 0xEF;
+	p.t.p[3].start = ESP_LBA;
+	p.t.p[3].count = ESP_SECTORS;
+	CHECK(layout_check(p.total, &p.t) == NULL);
+	CHECK(steps_run(&p, fake_run, NULL, failed, sizeof failed) == 0);
+	disk = slurp(TREE "/disk.img", &n);
+	CHECK(disk != NULL && mbr_decode((unsigned char *)disk, &back) == 0);
+	if (disk != NULL && back.p[3].type == 0xEF &&
+	    n == back.p[3].start * 512ul + ESP_BYTES) {
+		const unsigned char *e = (unsigned char *)disk +
+		    back.p[3].start * 512ul;
+		CHECK(e[0] == 0 && e[1] == 1 && e[250] == 250 && e[251] == 0);
+	} else
+		CHECK(!"the ESP entry and the image's end agree");
+	free(disk);
+}
+
 static void test_refuses_a_live_rc_cdrom(void)
 {
 	char *pkgs[] = { "files" };
@@ -428,6 +459,7 @@ int main(int argc, char **argv)
 	test_package_without_apk_is_step_5();
 	test_prefix_names_do_not_match();
 	test_esp_of_the_wrong_size_is_refused();
+	test_esp_lands_at_its_entry_start();
 	test_refuses_a_live_rc_cdrom();
 	test_popen_mode_is_one_character();
 	test_two_apks_for_one_package_is_step_5();

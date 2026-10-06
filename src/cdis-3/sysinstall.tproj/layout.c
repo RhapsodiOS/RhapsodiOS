@@ -100,6 +100,8 @@ const char *layout_check(unsigned long total, const struct table *t)
 		return "The RhapsodiOS partition must end on a cylinder boundary.";
 	if (n_esp != 1 || t->p[esp].count != ESP_SECTORS)
 		return "The EFI system partition must be exactly 64 MB.";
+	if (t->p[esp].start != ESP_LBA)
+		return "The EFI system partition must start at LBA 2048.";
 	return NULL;
 }
 

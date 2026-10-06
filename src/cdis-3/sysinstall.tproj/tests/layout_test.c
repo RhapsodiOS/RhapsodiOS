@@ -118,6 +118,39 @@ static void test_check_rules(void)
 	CHECK(layout_check(total, &t) != NULL);
 }
 
+static void test_check_refuses_an_esp_away_from_lba_2048(void)
+{
+	unsigned long total = 4194304ul;	/* 128 heads: 8064-sector cylinders */
+	struct table t;
+	const char *why;
+
+	/* A7 first, ESP after it: not a table layout_auto makes */
+	memset(&t, 0, sizeof t);
+	set(&t, 0, 0xA7, 1, A7_LBA, 3999744ul - A7_LBA);
+	set(&t, 1, 0xEF, 0, 4000000ul, ESP_SECTORS);
+	why = layout_check(total, &t);
+	CHECK(why != NULL && strstr(why, "2048") != NULL);
+
+	/* a kept foreign partition at 2048, the ESP elsewhere */
+	memset(&t, 0, sizeof t);
+	set(&t, 0, 0x07, 0, ESP_LBA, ESP_SECTORS);
+	set(&t, 1, 0xA7, 1, A7_LBA, 3999744ul - A7_LBA);
+	set(&t, 2, 0xEF, 0, 4000000ul, ESP_SECTORS);
+	why = layout_check(total, &t);
+	CHECK(why != NULL && strstr(why, "2048") != NULL);
+
+	/* the ESP at 2048 in another entry is fine */
+	memset(&t, 0, sizeof t);
+	set(&t, 0, 0xA7, 1, A7_LBA, 3999744ul - A7_LBA);
+	set(&t, 1, 0x07, 0, 4000000ul, 100000ul);
+	set(&t, 3, 0xEF, 0, ESP_LBA, ESP_SECTORS);
+	CHECK(layout_check(total, &t) == NULL);
+
+	/* and the real Auto table still is */
+	layout_auto(total, &t);
+	CHECK(layout_check(total, &t) == NULL);
+}
+
 static void test_mbr_roundtrip(void)
 {
 	unsigned char boot0[446], mbr[512], c[3];
@@ -155,6 +188,7 @@ int main(void)
 	test_auto_refuses_under_1gb();
 	test_auto_ignores_an_existing_table();
 	test_check_rules();
+	test_check_refuses_an_esp_away_from_lba_2048();
 	test_mbr_roundtrip();
 	printf("layout: %d failures\n", failures);
 	return failures != 0;

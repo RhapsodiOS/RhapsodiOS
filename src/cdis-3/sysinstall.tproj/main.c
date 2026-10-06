@@ -509,15 +509,16 @@ static void create_entry(struct table *t, unsigned long total)
 	if (k == nr)
 		return;
 	switch (menu("Create an entry\n\nChoose its type.", types, 4)) {
-	case 0:
-		if (count[k] < ESP_SECTORS) {
-			ui_message("Create an entry", "That space is smaller "
-				   "than 64 MB.");
+	case 0:			/* step 2 writes it at ESP_LBA only */
+		if (start[k] != ESP_LBA || count[k] < ESP_SECTORS) {
+			ui_message("Create an entry", "The EFI system "
+				   "partition starts at LBA 2048, and that "
+				   "space doesn't hold 64 MB from there.");
 			return;
 		}
 		t->p[slot].type = 0xEF;
 		t->p[slot].active = 0;
-		t->p[slot].start = start[k];
+		t->p[slot].start = ESP_LBA;
 		t->p[slot].count = ESP_SECTORS;
 		return;
 	case 1:

@@ -75,6 +75,7 @@ shows the reason:
 - exactly one `0xA7` entry, and it is active
 - the `0xA7` entry ends on a cylinder boundary
 - exactly one `0xEF` entry, of exactly 131072 sectors
+- the ESP starts at LBA 2048
 
 Other entries are kept, so a dual-boot table can pass. Start and end CHS
 use the LBA-assisted rule of `build_uefi_image.py`'s `lba_assist_geometry`

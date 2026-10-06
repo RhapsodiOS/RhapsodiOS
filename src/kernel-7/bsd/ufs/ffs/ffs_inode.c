@@ -60,6 +60,7 @@
 
 #include <rev_endian_fs.h>
 #include <mach_nbc.h>
+#include <ffsdebug.h>
 #include <vm/vm_pager.h>
 #include <vm/vnode_pager.h>
 
@@ -93,11 +94,41 @@
 #if MACH_NBC 
 #include <kern/mapfs.h>
 #endif /* MACH_NBC */
+#if FFSDEBUG && MACH_NBC
+#include <vm/vm_page.h>
+#endif
 
 
 
 static int ffs_indirtrunc __P((struct inode *, ufs_daddr_t, ufs_daddr_t,
 	    ufs_daddr_t, int, long *));
+
+#if FFSDEBUG && MACH_NBC
+/*
+ * After mapfs_trunc, no page of a mapped file may stay resident past the
+ * new end of file: its blocks are about to be freed, and a stale page
+ * pushed later would land on whatever reuses them.  The object's offsets
+ * are file offsets (remap_vnode maps the pager at trunc_page(start)).
+ */
+static void
+ffsdebug_check_trunc(vp, length, osize)
+	struct vnode *vp;
+	vm_offset_t length, osize;
+{
+	struct vm_info *vmp = vp->v_vm_info;
+	vm_object_t object;
+	vm_offset_t off;
+
+	if (vp->v_type != VREG || vmp == VM_INFO_NULL || !vmp->mapped ||
+	    (object = vmp->object) == VM_OBJECT_NULL)
+		return;
+	vm_object_lock(object);
+	for (off = round_page(length); off < round_page(osize); off += PAGE_SIZE)
+		if (vm_page_lookup(object, off) != VM_PAGE_NULL)
+			panic("ffsdebug: page past truncation");
+	vm_object_unlock(object);
+}
+#endif /* FFSDEBUG && MACH_NBC */
 
 /*
  * Update the access, modified, and inode change times as specified by the
@@ -243,6 +274,9 @@ ffs_truncate(ap)
 	error = mapfs_trunc(ovp, (vm_offset_t)length);
 	if (error)
 		return (error);
+#if FFSDEBUG
+	ffsdebug_check_trunc(ovp, (vm_offset_t)length, (vm_offset_t)oip->i_size);
+#endif
 #endif /* MACH_NBC */
 
 	if (oip->i_size == length) {

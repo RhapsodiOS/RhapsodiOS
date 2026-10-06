@@ -827,10 +827,103 @@ def prep(scratch_mb=1024, workload_mb=256):
     print("prep ok")
 
 
+
+# --- stall mode: a real rbuild kernel with repeated ssh logins -------------
+
+STALL_DIR = "/build/ffsstall"
+LOGIN_EVERY_S = 15
+LOGIN_LIMIT_S = 120
+STALL_RUN_LIMIT_S = 2 * 3600
+
+
+def rbuild_start_command():
+    """Start wakeprobe and `rbuild kernel` in the background, detached from
+    the ssh session, on the root filesystem as a real build would be."""
+    return ("PATH=/build/tools/bin:/usr/bin:/bin:/usr/sbin:/sbin; export PATH; "
+            "mkdir -p %(d)s %(d)s-state %(g)s && "
+            "cc -O -o %(g)s/wakeprobe %(g)s/wakeprobe.c && "
+            "(nohup %(g)s/wakeprobe > %(g)s/wp.log 2>&1 &) && "
+            "nohup rbuild kernel --state %(d)s-state --arch i386 "
+            "/build/src /build/repo %(d)s > %(g)s/rbuild.log 2>&1 &"
+            % {"d": STALL_DIR, "g": GUEST_DIR})
+
+
+def stall_summary(logins, limit=LOGIN_LIMIT_S):
+    done = sorted(t for t in logins if t is not None)
+    return {"logins": len(logins),
+            "login_max_s": done[-1] if done else None,
+            "login_median_s": done[len(done) // 2] if done else None,
+            "login_timeouts": len(logins) - len(done)}
+
+
+def timed_login(conf, command, limit=LOGIN_LIMIT_S):
+    """Seconds for a full ssh login that runs command, or None after limit."""
+    fd, ask = tempfile.mkstemp(suffix=".cmd")
+    os.write(fd, b"@echo off\r\necho %RHAP_SSH_PASS%\r\n")
+    os.close(fd)
+    env = dict(os.environ, SSH_ASKPASS=ask, SSH_ASKPASS_REQUIRE="force",
+               RHAP_SSH_PASS=conf.get("Password", ""))
+    env.setdefault("DISPLAY", "unused")
+    t0 = time.monotonic()
+    p = subprocess.Popen(ssh_argv(conf, SSH_PORT, command), env=env,
+                         stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+                         stderr=subprocess.STDOUT)
+    try:
+        out, _ = p.communicate(timeout=limit)
+        return time.monotonic() - t0, out.decode("latin-1")
+    except subprocess.TimeoutExpired:
+        p.kill()
+        p.communicate()
+        return None, ""
+    finally:
+        os.remove(ask)
+
+
+def stall(kernel, label, bootargs=""):
+    """Boot kernel, start a real rbuild kernel, and log in every
+    LOGIN_EVERY_S seconds until it finishes, timing each login."""
+    conf = _conf()
+    outdir = _new_outdir(label, "stall-0")
+    hd1 = _fresh_hd1(outdir)
+    g = Guest(outdir, hd1, _workload(), root_iops=IOPS)
+    logins, state = [], "running"
+    try:
+        ssh = Ssh(conf)
+        if not boot_or_skip(g, ssh, kernel, bootargs, outdir):
+            return
+        ssh.run(rbuild_start_command())
+        start = time.time()
+        while time.time() - start < STALL_RUN_LIMIT_S:
+            time.sleep(LOGIN_EVERY_S)
+            t, out = timed_login(conf, "tail -2 %s/rbuild.log" % GUEST_DIR)
+            logins.append(t)
+            _log(outdir, "logins.log", "%.1f %s %s" % (
+                time.time() - start, t, out.strip().replace("\n", " | ")[-160:]))
+            if "rbuild: kernel complete" in out or "rbuild: kernel failed" in out:
+                state = "complete" if "complete" in out else "failed"
+                break
+        elapsed = time.time() - start
+        _, wp = ssh.run("cat %s/wp.log" % GUEST_DIR)
+        _log(outdir, "wp.log", wp)
+        samples = [s for s in map(parse_probe, wp.splitlines()) if s]
+        late = summarize(samples, [])
+        res = dict(stall_summary(logins), rbuild=state, elapsed_s=int(elapsed),
+                   late_max_ms=late["late_max_ms"], late_p99_ms=late["late_p99_ms"])
+    finally:
+        g.quit()
+        os.remove(hd1)
+    _log(outdir, "result.txt", json.dumps(res))
+    print(json.dumps(res))
+
+
 def main(argv):
     p = argparse.ArgumentParser(description="FFS replay, crash and stall harness")
     sub = p.add_subparsers(dest="cmd", required=True)
     sub.add_parser("prep")
+    st = sub.add_parser("stall")
+    st.add_argument("--kernel", required=True)
+    st.add_argument("--label", required=True)
+    st.add_argument("--bootargs", default="")
     for name, runs in (("bench", 3), ("crash", 20)):
         s = sub.add_parser(name)
         s.add_argument("--kernel", required=True)
@@ -847,6 +940,8 @@ def main(argv):
     a = p.parse_args(argv[1:])
     if a.cmd == "prep":
         prep()
+    elif a.cmd == "stall":
+        stall(a.kernel, a.label, a.bootargs)
     elif a.cmd == "bench":
         bench(a.kernel, a.label, a.runs, a.bootargs, a.start, a.single_disk)
     else:

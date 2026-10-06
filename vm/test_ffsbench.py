@@ -268,3 +268,16 @@ def test_run_command_single_disk_targets_the_root():
 def test_qemu_extra_args_are_appended():
     args = fb.qemu_args("r", "h1", "h2", "s", extra="-d cpu_reset -D x.log")
     assert args[-4:] == ["-d", "cpu_reset", "-D", "x.log"]
+
+
+def test_rbuild_start_command_runs_in_background_with_probe():
+    cmd = fb.rbuild_start_command()
+    assert "rbuild kernel" in cmd and "--arch i386" in cmd
+    assert "/tmp/ffsbench/rbuild.log" in cmd
+    assert "nohup" in cmd and cmd.rstrip().endswith("&")
+
+
+def test_stall_summary():
+    s = fb.stall_summary([1.2, 3.4, None, 2.0], limit=120)
+    assert s == {"logins": 4, "login_max_s": 3.4, "login_median_s": 2.0,
+                 "login_timeouts": 1}

@@ -155,7 +155,7 @@ zeroBSS(void)
 
 
 static int
-execKernel(int fd, int installMode)
+execKernel(int fd)
 {
 	register KERNBOOTSTRUCT *kbp = kernBootStruct;
 	register char *src = gFilename;
@@ -164,7 +164,6 @@ execKernel(int fd, int installMode)
 	static struct mach_header head;
 	entry_t kernelEntry;
 	int ret, size;
-	int loadDrivers;
 	int vbeMode;
 	
 	while (*src && (*src != ' ' && *src != '\t'))
@@ -221,33 +220,11 @@ execKernel(int fd, int installMode)
 	if (ret == -1) {
 	    error("Couldn't load standalone linker; "
 		    "unable to load boot drivers.\n");
-	    loadDrivers = 0;
 	}
 #if	0
 		printf("finsihed loading sarld\n");
 		sleep(0);
 #endif	1
-	
-	if (getBoolForKey(PROMPT_KEY)) {
-	    int checkfd;
-	    
-insert_again:
-	    setMode(TEXT_MODE);
-	    clearActivityIndicator();
-	    clearScreen();
-	    /* The text for the following message is in Localizable.strings. */
-	    localPrintf("Insert Driver Disk");
-	    flushdev();
-	    while(getc() != '\r');
-	    printf("\n");
-	    
-	    /* Check to see that they really inserted the driver disk. */
-	    if ((checkfd = open("fd()/mach_kernel", 0)) >= 0 ||
-		(checkfd = open("fd()/mach_kernel" RCZ_EXTENSION, 0)) >= 0) {
-		close(checkfd);
-		goto insert_again;
-	    }
-	}
 	
 #if	0
 		printf("loading other configs\n");
@@ -259,57 +236,6 @@ insert_again:
 		sleep(1);
 #endif	1
 
-	if (getBoolForKey(ASK_KEY)) {
-#ifdef NOTYET
-	    char *selected = popupBrowser(
-		YesNo, 2,
-		"Do you want to load boot drivers?",
-		BROWSER_NO_MESSAGE,
-		"Continue",
-		BROWSER_CURRENT_IS_SELECTED);
-	    loadDrivers = selected[0];
-	    free(selected);
-#else NOTYET
-	    setMode(TEXT_MODE);
-	    loadDrivers = 1;
-#endif NOTYET
-	} else {
-	    loadDrivers = 0;
-	}
-	
-	if (loadDrivers || driverMissing) {
-	    int prompts = 0;
-
-	    setMode(TEXT_MODE);		/* For now */
-	    /*
-	     * If we prompted for the driver disk,
-	     * go straight to scanning for drivers.
-	     * (Don't ask whether you want to load boot drivers.)
-	     */
-	    getIntForKey(NUM_PROMPTS_KEY, &prompts);
-	    loadBootDrivers(!getBoolForKey(PROMPT_KEY), prompts, installMode);
-	}
-	if (Dev(kbp->kernDev) == DEV_FLOPPY)
-	{
-		if ((!getValueForBootKey(kbp->bootString, 
-			"rootdev", &val, &size)) || 
-			!strncmp("fd",val,2))
-		{
-			clearActivityIndicator();
-			printf("\n");
-#if NOTYET
-			popupPanel(
-			    "Insert file system media"
-			    " and press Return");
-#else NOTYET
-			localPrintf("Insert file system media"
-				" and press Return");
-			while(getc() != '\r');
-			printf("\n");
-#endif NOTYET
-		}
-	}
-
 	/*
 	 * OPENSTEP 4.2 User Patch 4 (boot+949..1059): enumerate the VBE modes
 	 * on every boot, then take VBE Mode from the first loaded driver whose
@@ -317,8 +243,7 @@ insert_again:
 	 * overrides the driver's.
 	 * configTable is valid here: loadOtherConfigs, rebuilt from 4.2
 	 * (boot+18813..18858), points it at the driver's tables in
-	 * kernBootStruct->config, and pickDrivers, in a forced divergence from
-	 * 4.2, points it at addConfig's copy there. One exception, a 4.2
+	 * kernBootStruct->config. One exception, a 4.2
 	 * reference defect kept: when the config area is full, loadOtherConfigs'
 	 * second loadConfigDir leaves configTable at the freed block.
 	 */
@@ -497,14 +422,10 @@ boot(int bootdev)
 
 	    setMode(TEXT_MODE);
 
-	    if (bootdev==0) {
-		    if (kbp->numIDEs > 0) {
-			    kbp->kernDev = DEV_HD;
-		    } else {
-			    kbp->kernDev = DEV_SD;
-			}
+	    if (kbp->numIDEs > 0) {
+		    kbp->kernDev = DEV_HD;
 	    } else {
-		    kbp->kernDev = DEV_FLOPPY;
+		    kbp->kernDev = DEV_SD;
 	    }
 	    flushdev();
 	    
@@ -586,14 +507,9 @@ boot(int bootdev)
 		printf("calling exec kernel\n");
 		sleep(1);
 #endif 1
-		execKernel(fd, installMode);
+		execKernel(fd);
 	    } else {
 		error("Can't find %s\n", name);
-		if (bootdev != 0) {
-		    // floppy in drive, but failed to load kernel
-message("Couldn't start up the computer using this floppy disk.",0);
-		    bootdev = 0; errors = 0;
-		}
 	    }
 	}
 }

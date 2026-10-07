@@ -3,7 +3,7 @@ DIR = nasm
 include ../MakePaths.dir
 
 # Don't install in the usual place.  Currently it's only 
-# needed for building boot0, boot1, boot1f, and nullboot1.
+# needed for building boot0 and boot1.
 #MANINSTALLDIR = $(DSTROOT)/usr/share/man/man1
 #INSTALLDIR = $(DSTROOT)/usr/local/bin
 MANINSTALLDIR = $(SYMROOT)

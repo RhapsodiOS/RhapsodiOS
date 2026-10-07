@@ -231,6 +231,7 @@ execKernel(int fd)
 		sleep(1);
 #endif	1
 	loadOtherConfigs(useDefaultConfig);
+	reportMissingDrivers();
 #if	0
 		printf("completed\n");
 		sleep(1);

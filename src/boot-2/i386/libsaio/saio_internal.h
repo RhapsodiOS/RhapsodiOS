@@ -120,6 +120,7 @@ extern void  driverIsMissing(
     int   reason
 );
 extern int  driversAreMissing(void);
+extern void  reportMissingDrivers(void);
 
 #import "load.h"
 

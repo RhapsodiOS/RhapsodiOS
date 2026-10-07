@@ -40,6 +40,7 @@
 extern char *LoadableFamilies;
 struct driver_info *loaded_drivers;	/* read by execKernel, as in 4.2 */
 int num_loaded;
+extern BOOL errors;
 
 static inline int isspace(char c)
 {
@@ -79,6 +80,27 @@ driverIsMissing(
     dp->longName = longName ? longName : newString(bundleName);
     dp->tableName = tableName ? tableName : newString("Default");
     dp->reason = reason;
+}
+
+/*
+ * Name the boot drivers that are missing from the startup disk or have
+ * the wrong version there.  No prompt: the screen this replaces offered
+ * only to load them from a floppy.  As that screen did, it clears
+ * errors, so missing drivers alone don't add the error pause.
+ */
+void
+reportMissingDrivers(void)
+{
+    int i;
+
+    if (driverMissing == 0)
+	return;
+    errors = 0;
+    setMode(TEXT_MODE);
+    localPrintf("These boot drivers are missing or the wrong version:\n");
+    for (i = 0; i < driverMissing; i++)
+	printf("  %s\n", missingDrivers[i].longName);
+    sleep(2);
 }
 
 /*

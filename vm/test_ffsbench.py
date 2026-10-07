@@ -319,3 +319,8 @@ def test_run_script_remounts_hd1_before_the_manifest():
     text = open(os.path.join(SCRIPTS, "run.sh")).read()
     i, j = text.index("echo REPLAY-END"), text.index("manifest.txt")
     assert "umount /mnt1" in text[i:j] and "mount /dev/hd1a /mnt1" in text[i:j]
+
+
+def test_guest_memory_comes_from_the_environment(monkeypatch):
+    assert fb.guest_mem(None) == 128
+    assert fb.guest_mem("512") == 512

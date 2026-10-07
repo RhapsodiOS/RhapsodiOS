@@ -196,6 +196,14 @@ def lane(spec):
 SSH_PORT, QMP_PORT, GDB_PORT, WORKLOAD_NAME = lane(os.environ.get("FFSBENCH_PORTS"))
 IOPS = int(os.environ.get("FFSBENCH_IOPS") or 0) or None
 QEMU_EXTRA = os.environ.get("FFSBENCH_QEMU_EXTRA", "")   # e.g. "-d cpu_reset -D f"
+
+
+def guest_mem(spec):
+    """Guest RAM in MB: FFSBENCH_MEM, else the 128 MB build guests run with."""
+    return int(spec) if spec else 128
+
+
+MEM_MB = guest_mem(os.environ.get("FFSBENCH_MEM"))
 KERNEL_NAME = "mach_kernel_ffs"     # upload name; installed as /mach_kernel
 GUEST_DIR = "/tmp/ffsbench"
 BANNER_TRIES, BANNER_GAP = 20, 30   # first sshd banner: up to 10 minutes
@@ -449,7 +457,7 @@ class Guest(object):
         flags = 0x00000008 | 0x00000200 if os.name == "nt" else 0
         self.proc = subprocess.Popen(
             qemu_args(ROOT_IMG, hd1, hd2, self.serial, SSH_PORT, QMP_PORT,
-                      GDB_PORT, iops=IOPS, root_iops=root_iops,
+                      GDB_PORT, mem_mb=MEM_MB, iops=IOPS, root_iops=root_iops,
                       extra=QEMU_EXTRA),
             creationflags=flags,
             stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,

@@ -15,4 +15,10 @@ int disks_list(char names[][8], unsigned long sizes[], int max);
  * 0, or -1 for any other major. */
 int dev_disk_name(unsigned major, unsigned minor, char out[8]);
 
+/* The Disk/SCSI drivers to pre-tick for the target disk, into out; returns
+ * how many.  sdN: scsi_name, the SCSI driver loaded, if any.  hdN: EIDE,
+ * plus AHCI when ahci_detected, as both name their disks hdN. */
+int disk_controllers(const char *disk, int ahci_detected,
+		     const char *scsi_name, const char *out[2]);
+
 #endif

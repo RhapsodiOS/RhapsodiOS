@@ -111,6 +111,7 @@ ext2fs_inactive(v)
 
 		if (ip->i_e2fs_size != 0) {
 			error = VOP_TRUNCATE(vp, (off_t)0, 0, NOCRED, NULL);
+			if (error) goto out;
 		}
 		ext2fs_dinode(ip)->e2di_dtime = time.tv_sec;
 		ip->i_flag |= IN_CHANGE | IN_UPDATE;
@@ -152,19 +153,19 @@ ext2fs_update_inode(struct vnode *vp, struct timeval *access,
     struct m_ext2fs *fs = ip->i_e2fs;
     struct buf *bp;
     int error;
-    if (vp->v_mount->mnt_flag & MNT_RDONLY) return 0;
+    if (fs->e2fs_suspended) return fs->e2fs_ioerror;
+    if (fs->e2fs_ronly) return 0;
     if (!(ip->i_flag & (IN_ACCESS|IN_UPDATE|IN_CHANGE|IN_MODIFIED))) return 0;
     ITIMES(ip, access ? access : &time, modify ? modify : &time);
     error = bread(ip->i_devvp, fsbtodb(fs, ino_to_fsba(fs,ip->i_number)),
         fs->e2fs_bsize, NOCRED, &bp);
     if (error || bp->b_resid) {
         if (!error) error=EIO;
-        brelse(bp); return error;
+        brelse(bp); return ext2fs_io_error(fs,error);
     }
     ext2fs_inode_save(ip, (struct ext2fs_dinode *)((char *)bp->b_data +
         ino_to_fsbo(fs,ip->i_number) * EXT2_DINODE_SIZE));
-    if (wait) error=bwrite(bp);
-    else { bdwrite(bp); error=0; }
+    error=ext2fs_io_error(fs,ext2_buf_write(bp,wait ? MNT_WAIT : MNT_NOWAIT));
     if (!error) ip->i_flag &= ~IN_MODIFIED;
     return error;
 }
@@ -201,6 +202,7 @@ ext2fs_truncate(struct vop_truncate_args *ap)
 	int error, allerror = 0;
 	off_t osize;
 
+	if (VTOI(ovp)->i_e2fs->e2fs_suspended) return VTOI(ovp)->i_e2fs->e2fs_ioerror;
 	if (ovp->v_mount->mnt_flag & MNT_RDONLY) return EROFS;
 	if (length > EXT2_FILESIZE_MAX) return EFBIG;
 	if (length < 0)
@@ -259,9 +261,9 @@ ext2fs_truncate(struct vop_truncate_args *ap)
         if (error) return error;
         if (physical != -1) {
             error=bread(ovp,lblkno(fs,length),size,NOCRED,&bp);
-            if (error || bp->b_resid) { if (!error) error=EIO; brelse(bp); return error; }
+            if (error || bp->b_resid) { if (!error) error=EIO; bp->b_flags |= B_INVAL; brelse(bp); return ext2fs_io_error(fs,error); }
             memset((char *)bp->b_data+offset,0,size-offset);
-            if ((error=bwrite(bp))) return error;
+            if ((error=ext2_buf_write(bp,MNT_WAIT))) return error;
         }
 	}
 	oip->i_e2fs_size = length;
@@ -297,8 +299,17 @@ ext2fs_truncate(struct vop_truncate_args *ap)
 		ext2fs_dinode(oip)->e2di_blocks[i] = 0;
 	oip->i_flag |= IN_CHANGE | IN_UPDATE;
 	error = VOP_UPDATE(ovp, NULL, NULL, MNT_WAIT);
-	if (error && !allerror)
-		allerror = error;
+	if (error) {
+		/* The old disk inode may still reference every old block. */
+		memcpy(&ext2fs_dinode(oip)->e2di_blocks[0],oldblks,sizeof oldblks);
+		oip->i_e2fs_size=osize;
+		oip->i_flag |= IN_CHANGE | IN_UPDATE;
+#if MACH_NBC
+		if (ovp->v_type == VREG && ovp->v_vm_info && !ovp->v_vm_info->mapped)
+#endif
+			vnode_pager_setsize(ovp,(u_long)osize);
+		return error;
+	}
 
 	/*
 	 * Having written the new inode to disk, save its new configuration
@@ -373,7 +384,7 @@ done:
 	oip->i_e2fs_size = length;
 	oip->i_e2fs_nblock -= blocksreleased;
 	oip->i_flag |= IN_CHANGE;
-	return (allerror);
+	return fs->e2fs_ioerror ? fs->e2fs_ioerror : allerror;
 }
 
 /*
@@ -441,9 +452,10 @@ ext2fs_indirtrunc(ip, lbn, dbn, lastbn, level, countp)
 	}
 	if (error || bp->b_resid) {
 		if (!error) error=EIO;
+		bp->b_flags |= B_INVAL;
 		brelse(bp);
 		*countp = 0;
-		return (error);
+		return ext2fs_io_error(fs,error);
 	}
 
 	bap = (int32_t *)bp->b_data;	/* XXX ondisk32 */
@@ -453,9 +465,12 @@ ext2fs_indirtrunc(ip, lbn, dbn, lastbn, level, countp)
 		memcpy((caddr_t)copy, (caddr_t)bap, (u_int)fs->e2fs_bsize);
 		memset((caddr_t)&bap[last + 1], 0,
 			(u_int)(NINDIR(fs) - (last + 1)) * sizeof (u_int32_t));
-		error = bwrite(bp);
-		if (error)
-			allerror = error;
+		error = ext2_buf_write(bp,MNT_WAIT);
+		if (error) {
+			FREE(copy,M_TEMP);
+			*countp=0;
+			return error;
+		}
 		bap = copy;
 	}
 

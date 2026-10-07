@@ -297,6 +297,8 @@ ext2fs_lookup(v)
 	if ((error = VOP_ACCESS(vdp, VEXEC, cred, cnp->cn_proc)) != 0)
 		return (error);
 
+	if ((flags & ISLASTCN) && cnp->cn_nameiop != LOOKUP && dp->i_e2fs->e2fs_suspended)
+		return dp->i_e2fs->e2fs_ioerror;
 	if ((flags & ISLASTCN) && (vdp->v_mount->mnt_flag & MNT_RDONLY) &&
 	    (cnp->cn_nameiop != LOOKUP))
 		return (EROFS);

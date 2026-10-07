@@ -158,6 +158,8 @@ ext2fs_open(v)
 		struct proc *a_p;
 	} */ *ap = v;
 
+	if ((ap->a_mode & FWRITE) && VTOI(ap->a_vp)->i_e2fs->e2fs_suspended)
+		return VTOI(ap->a_vp)->i_e2fs->e2fs_ioerror;
 	/*
 	 * Files marked append-only must be opened for appending.
 	 */
@@ -187,6 +189,7 @@ ext2fs_access(v)
 	 * character device resident on the file system.
 	 */
 	if (mode & VWRITE) {
+		if (ip->i_e2fs->e2fs_suspended) return ip->i_e2fs->e2fs_ioerror;
 		switch (vp->v_type) {
 		case VDIR:
 		case VLNK:
@@ -229,6 +232,7 @@ ext2fs_setattr(v)
 	int error;
 	struct timeval atime,mtime;
 
+	if (ip->i_e2fs->e2fs_suspended) return ip->i_e2fs->e2fs_ioerror;
 	/*
 	 * Check for unsettable attributes.
 	 */
@@ -1248,20 +1252,54 @@ ext2fs_vm_flush(struct vnode *vp,struct proc *p,int truncate,vm_offset_t length)
 #endif
 }
 
+/* Call only for actual device/buffer errors, never syscall refusals. */
+int
+ext2fs_io_error(struct m_ext2fs *fs,int error)
+{
+    int s=splbio();
+    if (error && !fs->e2fs_ioerror) fs->e2fs_ioerror=error;
+    splx(s);
+    return error;
+}
+
+/* The first profile waits even for MNT_NOWAIT. Capturing ownership here
+ * trades write throughput and NOWAIT latency for attributable completion. */
+int
+ext2_buf_write(struct buf *bp,int waitfor)
+{
+    struct m_ext2fs *fs=NULL;
+    int error;
+    if (bp->b_vp && bp->b_vp->v_tag == VT_EXT2FS && bp->b_vp->v_type != VBLK)
+        fs=VTOI(bp->b_vp)->i_e2fs;
+    (void)waitfor;
+    if (fs && fs->e2fs_suspended) {
+        error=fs->e2fs_ioerror;
+        bp->b_flags |= B_INVAL;
+        brelse(bp);
+        return error;
+    }
+    error=bwrite(bp);
+    if (fs) ext2fs_io_error(fs,error);
+    /* Device-vnode metadata and pre-admission buffers have explicit callers. */
+    return error;
+}
+
 int
 ext2fs_fsync(struct vop_fsync_args *ap)
 {
     struct vnode *vp=ap->a_vp;
+    struct m_ext2fs *fs=VTOI(vp)->i_e2fs;
     struct buf *bp;
     int s,error,allerror=0;
-    if (vp->v_mount->mnt_flag & MNT_RDONLY) return 0;
-    if ((error=ext2fs_vm_flush(vp,ap->a_p,0,0))) return error;
+    if (fs->e2fs_ronly || fs->e2fs_suspended) return fs->e2fs_ioerror;
+    error=ext2fs_vm_flush(vp,ap->a_p,0,0);
+    if (error) return fs->e2fs_ioerror ? fs->e2fs_ioerror : error;
     for (;;) {
         s=splbio();
         for (bp=vp->v_dirtyblkhd.lh_first;bp;bp=bp->b_vnbufs.le_next)
             if (!(bp->b_flags & B_BUSY)) break;
         if (!bp) {
-            if (ap->a_waitfor == MNT_WAIT && vp->v_numoutput) {
+            if (vp->v_numoutput) {
                 vp->v_flag |= VBWAIT;
                 tsleep((caddr_t)&vp->v_numoutput,PRIBIO+1,"ext2fs_fsync",0);
                 splx(s); continue;
@@ -1269,11 +1307,11 @@ ext2fs_fsync(struct vop_fsync_args *ap)
             splx(s); break;
         }
         bremfree(bp); bp->b_flags |= B_BUSY; splx(s);
-        if (ap->a_waitfor == MNT_WAIT) {
-            error=bwrite(bp); if (error) allerror=error;
-        } else bawrite(bp);
+        error=ext2_buf_write(bp,ap->a_waitfor);
+        if (error && !allerror) allerror=error;
     }
-    error=VOP_UPDATE(vp,&time,&time,ap->a_waitfor == MNT_WAIT);
+    error=VOP_UPDATE(vp,&time,&time,1);
+    if (fs->e2fs_ioerror) return fs->e2fs_ioerror;
     return allerror ? allerror : error;
 }
 

@@ -210,7 +210,9 @@ ext2fs_write(v)
 	vp = ap->a_vp;
 	ip = VTOI(vp);
 	error = 0;
-	if (vp->v_mount->mnt_flag & MNT_RDONLY) return EROFS;
+	if (ip->i_e2fs->e2fs_suspended) return ip->i_e2fs->e2fs_ioerror;
+	if ((vp->v_mount->mnt_flag & MNT_RDONLY) &&
+        !(uio->uio_segflg == UIO_SYSSPACE && !ip->i_e2fs->e2fs_ronly)) return EROFS;
 
 #if MACH_NBC
 	if (vp->v_type == VREG && vp->v_vm_info && vp->v_vm_info->pager &&
@@ -289,12 +291,8 @@ ext2fs_write(v)
         (void)vnode_uncache(vp);
 #endif
 
-		if (ioflag & IO_SYNC)
-			{ int e = bwrite(bp); if (!error) error = e; }
-		else if (xfersize + blkoffset == fs->e2fs_bsize)
-			bawrite(bp);
-		else
-			bdwrite(bp);
+		{ int e=ext2_buf_write(bp,(ioflag & IO_SYNC) ? MNT_WAIT : MNT_NOWAIT);
+          if (!error) error=e; }
 		if (error || xfersize == 0)
 			break;
 	}
@@ -313,7 +311,7 @@ ext2fs_write(v)
 		    uio->uio_procp);
 		uio->uio_offset -= resid - uio->uio_resid;
 		uio->uio_resid = resid;
-	} else if (resid > uio->uio_resid && (ioflag & IO_SYNC) == IO_SYNC)
+	} else if (!error && resid > uio->uio_resid && (ioflag & IO_SYNC) == IO_SYNC)
 		error = VOP_UPDATE(vp, NULL, NULL, MNT_WAIT);
 	if (error == ENOSPC && resid > uio->uio_resid && !(ioflag & IO_UNIT)) error=0;
 	return (error);

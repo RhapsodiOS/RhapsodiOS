@@ -98,7 +98,8 @@ ext2fs_balloc(ip, bn, size, cred, bpp, flags)
 	if (bpp != NULL) {
 		*bpp = NULL;
 	}
-	if (ITOV(ip)->v_mount->mnt_flag & MNT_RDONLY) return EROFS;
+	if (ip->i_e2fs->e2fs_suspended) return ip->i_e2fs->e2fs_ioerror;
+	if (ip->i_e2fs->e2fs_ronly) return EROFS;
 	if (bn < 0 || (u_int64_t)bn * ip->i_e2fs->e2fs_bsize > EXT2_FILESIZE_MAX)
 		return (EFBIG);
 	fs = ip->i_e2fs;
@@ -121,6 +122,7 @@ ext2fs_balloc(ip, bn, size, cred, bpp, flags)
 					      &bp);
 				if (error || bp->b_resid) {
 					if (!error) error = EIO;
+					ext2fs_io_error(fs,error);
 					brelse(bp);
 					return (error);
 				}
@@ -185,7 +187,7 @@ ext2fs_balloc(ip, bn, size, cred, bpp, flags)
 		 * Write synchronously so that indirect blocks
 		 * never point at garbage.
 		 */
-		if ((error = bwrite(bp)) != 0)
+		if ((error = ext2_buf_write(bp,MNT_WAIT)) != 0)
 			goto fail;
 		unwindidx = 0;
 		allocib = &ext2fs_dinode(ip)->e2di_blocks[NDADDR + indirs[0].in_off];
@@ -201,6 +203,7 @@ ext2fs_balloc(ip, bn, size, cred, bpp, flags)
 		    indirs[i].in_lbn, (int)fs->e2fs_bsize, NOCRED, &bp);
 		if (error || bp->b_resid) {
 			if (!error) error = EIO;
+			ext2fs_io_error(fs,error);
 			brelse(bp);
 			goto fail;
 		}
@@ -234,7 +237,7 @@ ext2fs_balloc(ip, bn, size, cred, bpp, flags)
 		 * Write synchronously so that indirect blocks
 		 * never point at garbage.
 		 */
-		if ((error = bwrite(nbp)) != 0) {
+		if ((error = ext2_buf_write(nbp,MNT_WAIT)) != 0) {
 			brelse(bp);
 			goto fail;
 		}
@@ -243,14 +246,10 @@ ext2fs_balloc(ip, bn, size, cred, bpp, flags)
 		/* XXX ondisk32 */
 		bap[indirs[i - 1].in_off] = h2fs32((int32_t)nb);
 		/*
-		 * If required, write synchronously, otherwise use
-		 * delayed write.
+		 * Publish the reference synchronously before returning the allocation.
 		 */
-		if (flags & B_SYNC) {
-			bwrite(bp);
-		} else {
-			bdwrite(bp);
-		}
+		if ((error=ext2_buf_write(bp,MNT_WAIT)) != 0)
+			goto fail;
 	}
 	/*
 	 * Get the data block, allocating if necessary.
@@ -267,16 +266,13 @@ ext2fs_balloc(ip, bn, size, cred, bpp, flags)
 		((struct ext2fs_node *)ip)->last_lblk = lbn;
 		((struct ext2fs_node *)ip)->last_blk = newb;
 		/* XXX ondisk32 */
+		if (unwindidx < 0) unwindidx=num;
 		bap[indirs[num].in_off] = h2fs32((int32_t)nb);
 		/*
-		 * If required, write synchronously, otherwise use
-		 * delayed write.
+		 * Publish the reference synchronously before returning the allocation.
 		 */
-		if (flags & B_SYNC) {
-			bwrite(bp);
-		} else {
-			bdwrite(bp);
-		}
+		if ((error=ext2_buf_write(bp,MNT_WAIT)) != 0)
+			goto fail;
 		if (bpp != NULL) {
 			nbp = getblk(vp, lbn, fs->e2fs_bsize, 0, 0);
 			nbp->b_blkno = fsbtodb(fs, nb);
@@ -293,6 +289,7 @@ ext2fs_balloc(ip, bn, size, cred, bpp, flags)
 				      &nbp);
 			if (error || nbp->b_resid) {
 				if (!error) error = EIO;
+				ext2fs_io_error(fs,error);
 				brelse(nbp);
 				goto fail;
 			}
@@ -304,40 +301,35 @@ ext2fs_balloc(ip, bn, size, cred, bpp, flags)
 	}
 	return (0);
 fail:
-	/*
-	 * If we have failed part way through block allocation, we
-	 * have to deallocate any indirect blocks that we have allocated.
-	 */
-	for (deallocated = 0, blkp = allociblk; blkp < allocblk; blkp++) {
-		ext2fs_blkfree(ip, *blkp);
-		deallocated += fs->e2fs_bsize;
-	}
+	/* Persist removal of the first published reference before freeing its
+	 * allocations. On cleanup I/O failure, retain blocks for offline repair. */
 	if (unwindidx >= 0) {
 		if (unwindidx == 0) {
+			/* This new inode root has not yet been published on disk. */
 			*allocib = 0;
 		} else {
 			int r;
-	
-			r = bread(vp, indirs[unwindidx].in_lbn, 
-			    (int)fs->e2fs_bsize, NOCRED, &bp);
-			if (r) {
-				panic("Could not unwind indirect block, error %d", r);
+			r = bread(vp,indirs[unwindidx].in_lbn,fs->e2fs_bsize,NOCRED,&bp);
+			if (r || bp->b_resid) {
+				if (!r) r=EIO;
+				bp->b_flags |= B_INVAL;
 				brelse(bp);
-			} else {
-				bap = (int32_t *)bp->b_data; /* XXX ondisk32 */
-				bap[indirs[unwindidx].in_off] = 0;
-				if (flags & B_SYNC)
-					bwrite(bp);
-				else
-					bdwrite(bp);
+				ext2fs_io_error(fs,r);
+				return error;
 			}
+			bap=(int32_t *)bp->b_data;
+			bap[indirs[unwindidx].in_off]=0;
+			if (ext2_buf_write(bp,MNT_WAIT)) return error;
 		}
-		for (i = unwindidx + 1; i <= num; i++) {
-			bp = getblk(vp, indirs[i].in_lbn, (int)fs->e2fs_bsize,
-			    0, 0);
+		for (i=unwindidx+1;i<=num;i++) {
+			bp=getblk(vp,indirs[i].in_lbn,fs->e2fs_bsize,0,0);
 			bp->b_flags |= B_INVAL;
 			brelse(bp);
 		}
+	}
+	for (deallocated=0,blkp=allociblk;blkp<allocblk;blkp++) {
+		ext2fs_blkfree(ip,*blkp);
+		deallocated+=fs->e2fs_bsize;
 	}
 	if (deallocated) {
 		ip->i_e2fs_nblock -= (deallocated / 512);

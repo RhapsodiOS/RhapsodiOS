@@ -10,6 +10,7 @@ static struct buf indirect,data;
 static u_int32_t pointers[1024];
 static char bytes[4096];
 static int reads,gets,releases,writes,allocs,frees,short_indirect,short_data,failures;
+static int allocate,fail_write,fail_cleanup,fail_read,unsafe_free;
 struct buf *incore(struct vnode *vp,daddr_t bn) { return NULL; }
 int biowait(struct buf *bp) { return 0; }
 struct buf *getblk(struct vnode *vp,daddr_t bn,int size,int slp,int timeo)
@@ -25,16 +26,20 @@ int bread(struct vnode *vp,daddr_t bn,int size,struct ucred *cred,struct buf **b
     bp->b_un.b_addr=bn<0 ? (caddr_t)pointers : bytes;
     bp->b_bcount=bp->b_bufsize=size;
     bp->b_resid=(bn<0 ? short_indirect : short_data) ? 1 : 0;
-    *bpp=bp; return 0;
+    *bpp=bp; return reads == fail_read ? EIO : 0;
 }
 void brelse(struct buf *bp) { releases++; }
-int bwrite(struct buf *bp) { writes++; return 0; }
+int bwrite(struct buf *bp) { writes++; return writes == fail_write || (fail_cleanup && writes > fail_write) ? EIO : 0; }
+int ext2_buf_write(struct buf *bp,int waitfor) { return bwrite(bp); }
+/* Error recording is outside this allocator-boundary test. Native fault
+ * kernels exercise the real per-mount latch and completion helper. */
+int ext2fs_io_error(struct m_ext2fs *fs,int error) { return error; }
 void bdwrite(struct buf *bp) { writes++; }
 void bawrite(struct buf *bp) { writes++; }
 int ext2fs_alloc(struct inode *ip,daddr_t lbn,daddr_t pref,struct ucred *cred,daddr_t *bn)
-{ allocs++; return ENOSPC; }
+{ allocs++; if (!allocate) return ENOSPC; *bn=27; ip->i_e2fs_nblock+=ip->i_e2fs->e2fs_bsize/512; return 0; }
 daddr_t ext2fs_blkpref(struct inode *ip,daddr_t lbn,int index,int32_t *bap) { return 0; }
-void ext2fs_blkfree(struct inode *ip,daddr_t bn) { frees++; }
+void ext2fs_blkfree(struct inode *ip,daddr_t bn) { frees++; if (pointers[0]) unsafe_free++; }
 static void check_case(const char *name,int blocksize,int error,struct buf *bp,int expected_reads,int expected_releases)
 {
     int ok=error==EIO && bp==NULL && reads==expected_reads && releases==expected_releases && !gets && !writes && !allocs && !frees;
@@ -81,6 +86,18 @@ int main(void)
         printf("valid existing indirect data block=%d error=%d sector=%ld\n",fs.e2fs_bsize,error,(long)(bp ? bp->b_blkno : -1));
         reads=gets=releases=writes=allocs=frees=0;
     }
+    /* A failed parent-link write may have reached disk. Cleanup must
+     * remove that reference before freeing, and retain blocks if it fails. */
+    for(bad=0;bad<3;bad++) {
+        reads=gets=releases=writes=allocs=frees=unsafe_free=0;
+        memset(pointers,0,sizeof(pointers)); node.inode.i_e2fs_nblock=0;
+        allocate=1; fail_write=1; fail_cleanup=(bad==1); fail_read=(bad==2 ? 2 : 0);
+        error=ext2fs_balloc(&node.inode,12,fs.e2fs_bsize,&cred,&bp,B_SYNC);
+        printf("failed parent link cleanup=%d error=%d writes=%d reads=%d frees=%d unsafe=%d blocks=%ld\n",
+            bad,error,writes,reads,frees,unsafe_free,(long)node.inode.i_e2fs_nblock);
+        if(error!=EIO || bp || frees!=(bad==0 ? 1 : 0) || unsafe_free ||
+            node.inode.i_e2fs_nblock!=(bad==0 ? 0 : fs.e2fs_bsize/512)) failures++;
+    }
     if(failures) return 1;
-    printf("EXT2_OK balloc bounds and short I/O\n"); return 0;
+    printf("EXT2_OK balloc bounds, short I/O and failed-reference cleanup\n"); return 0;
 }

@@ -87,6 +87,7 @@
 #include "ext2fs_rhapsody.h"
 
 void vnode_pager_setsize(struct vnode *,u_long);
+void vnode_pager_umount(struct mount *);
 
 /* Native vfs_cache.c exports these without declarations in sys/namei.h. */
 void cache_enter(struct vnode *,struct vnode *,struct componentname *);
@@ -134,6 +135,8 @@ int ext2fs_dirrewrite(struct inode *,struct inode *,struct componentname *);
 int ext2fs_dirempty(struct inode *,ino_t,struct ucred *);
 int ext2fs_checkpath(struct inode *,struct inode *,struct ucred *);
 int ext2fs_makeinode(int,struct vnode *,struct vnode **,struct componentname *);
+int ext2_buf_write(struct buf *,int);
+int ext2fs_io_error(struct m_ext2fs *,int);
 int ext2fs_fsync(struct vop_fsync_args *);
 int ext2fs_sbupdate(struct ufsmount *,int);
 int ext2fs_cgupdate(struct ufsmount *,int);

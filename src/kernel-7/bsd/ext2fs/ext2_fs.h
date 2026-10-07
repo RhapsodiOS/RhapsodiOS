@@ -199,6 +199,8 @@ struct m_ext2fs {
 	u_char	e2fs_fsmnt[MAXMNTLEN];	/* name mounted on */
 	int8_t	e2fs_ronly;	/* mounted read-only flag */
 	int8_t	e2fs_fmod;	/* super block modified flag */
+	int	e2fs_ioerror;	/* first genuine I/O failure, until unmount */
+	int	e2fs_suspended;	/* dirty-state reconciliation failed */
 	int32_t	e2fs_bsize;	/* block size */
 	int32_t e2fs_bshift;	/* ``lblkno'' calc of logical blkno */
 	int32_t e2fs_bmask;	/* ``blkoff'' calc of blk offsets */

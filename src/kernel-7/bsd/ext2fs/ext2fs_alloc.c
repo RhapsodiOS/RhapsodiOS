@@ -132,6 +132,7 @@ ext2fs_alloc(ip, lbn, bpref, cred, bnp)
 		return (0);
 	}
 nospace:
+	if (fs->e2fs_ioerror) return fs->e2fs_ioerror;
 	ext2fs_fserr(fs, cred->cr_uid, "file system full");
 	printf("\n%s: write failed, file system is full\n", fs->e2fs_fsmnt);
 	return (ENOSPC);
@@ -166,6 +167,8 @@ ext2fs_valloc(struct vop_valloc_args *ap)
 	*ap->a_vpp = NULL;
 	pip = VTOI(pvp);
 	fs = pip->i_e2fs;
+	if (fs->e2fs_suspended) return fs->e2fs_ioerror;
+	if (fs->e2fs_ronly) return EROFS;
 	if (fs->e2fs.e2fs_ficount == 0)
 		goto noinodes;
 
@@ -200,6 +203,7 @@ ext2fs_valloc(struct vop_valloc_args *ap)
 	ip->i_e2fs_gen = ext2gennumber;
 	return (0);
 noinodes:
+	if (fs->e2fs_ioerror) return fs->e2fs_ioerror;
 	ext2fs_fserr(fs, ap->a_cred->cr_uid, "out of inodes");
 	printf("\n%s: create/symlink failed, no inodes free\n", fs->e2fs_fsmnt);
 	return (ENOSPC);
@@ -302,12 +306,14 @@ ext2fs_hashalloc(ip, cg, pref, size, allocator)
 	int i, icg = cg;
 
 	fs = ip->i_e2fs;
+	if (fs->e2fs_ioerror) return 0;
 	/*
 	 * 1: preferred cylinder group
 	 */
 	result = (*allocator)(ip, cg, pref, size);
 	if (result)
 		return (result);
+	if (fs->e2fs_ioerror) return 0;
 	/*
 	 * 2: quadratic rehash
 	 */
@@ -318,6 +324,7 @@ ext2fs_hashalloc(ip, cg, pref, size, allocator)
 		result = (*allocator)(ip, cg, 0, size);
 		if (result)
 			return (result);
+		if (fs->e2fs_ioerror) return 0;
 	}
 	/*
 	 * 3: brute force search
@@ -329,6 +336,7 @@ ext2fs_hashalloc(ip, cg, pref, size, allocator)
 		result = (*allocator)(ip, cg, 0, size);
 		if (result)
 			return (result);
+		if (fs->e2fs_ioerror) return 0;
 		cg++;
 		if (cg == fs->e2fs_ncg)
 			cg = 0;
@@ -362,8 +370,11 @@ ext2fs_alloccg(ip, cg, bpref, size)
 	error = bread(ip->i_devvp, fsbtodb(fs,
 		fs->e2fs_gd[cg].ext2bgd_b_bitmap),
 		(int)fs->e2fs_bsize, NOCRED, &bp);
-	if (error) {
+	if (error || bp->b_resid) {
+		if (!error) error=EIO;
+		bp->b_flags |= B_INVAL;
 		brelse(bp);
+		ext2fs_io_error(fs,error);
 		return (0);
 	}
 	bbp = (char *)bp->b_data;
@@ -419,10 +430,10 @@ gotit:
 	}
 #endif
 	ext2_set_bit((daddr_t)bno, (u_char *)bbp);
+	if (ext2fs_io_error(fs,ext2_buf_write(bp,MNT_WAIT))) return 0;
 	fs->e2fs.e2fs_fbcount--;
 	fs->e2fs_gd[cg].ext2bgd_nbfree--;
 	fs->e2fs_fmod = 1;
-	bdwrite(bp);
 	return (cg * fs->e2fs.e2fs_fpg + fs->e2fs.e2fs_first_dblock + bno);
 }
 
@@ -454,8 +465,11 @@ ext2fs_nodealloccg(ip, cg, ipref, mode)
 	error = bread(ip->i_devvp, fsbtodb(fs,
 		fs->e2fs_gd[cg].ext2bgd_i_bitmap),
 		(int)fs->e2fs_bsize, NOCRED, &bp);
-	if (error) {
+	if (error || bp->b_resid) {
+		if (!error) error=EIO;
+		bp->b_flags |= B_INVAL;
 		brelse(bp);
+		ext2fs_io_error(fs,error);
 		return (0);
 	}
 	ibp = (char *)bp->b_data;
@@ -491,13 +505,13 @@ ext2fs_nodealloccg(ip, cg, ipref, mode)
 	/* NOTREACHED */
 gotit:
 	ext2_set_bit(ipref, (u_char *)ibp);
+	if (ext2fs_io_error(fs,ext2_buf_write(bp,MNT_WAIT))) return 0;
 	fs->e2fs.e2fs_ficount--;
 	fs->e2fs_gd[cg].ext2bgd_nifree--;
 	fs->e2fs_fmod = 1;
 	if ((mode & IFMT) == IFDIR) {
 		fs->e2fs_gd[cg].ext2bgd_ndirs++;
 	}
-	bdwrite(bp);
 	return (cg * fs->e2fs.e2fs_ipg + ipref +1);
 }
 
@@ -518,6 +532,7 @@ ext2fs_blkfree(ip, bno)
 	int error, cg;
 
 	fs = ip->i_e2fs;
+	if (fs->e2fs_suspended) return;
 	cg = dtog(fs, bno);
 	if (bno < fs->e2fs.e2fs_first_dblock || (u_int)bno >= fs->e2fs.e2fs_bcount) {
 		printf("bad block %lld, ino %d\n", (long long)bno,
@@ -528,8 +543,11 @@ ext2fs_blkfree(ip, bno)
 	error = bread(ip->i_devvp,
 		fsbtodb(fs, fs->e2fs_gd[cg].ext2bgd_b_bitmap),
 		(int)fs->e2fs_bsize, NOCRED, &bp);
-	if (error) {
+	if (error || bp->b_resid) {
+		if (!error) error=EIO;
+		bp->b_flags |= B_INVAL;
 		brelse(bp);
+		ext2fs_io_error(fs,error);
 		return;
 	}
 	bbp = (char *)bp->b_data;
@@ -540,11 +558,11 @@ ext2fs_blkfree(ip, bno)
 		panic("blkfree: freeing free block");
 	}
 	ext2_clear_bit(bno, (u_char *)bbp);
+	if (ext2fs_io_error(fs,ext2_buf_write(bp,MNT_WAIT))) return;
 	fs->e2fs.e2fs_fbcount++;
 	fs->e2fs_gd[cg].ext2bgd_nbfree++;
 
 	fs->e2fs_fmod = 1;
-	bdwrite(bp);
 }
 
 /*
@@ -564,6 +582,7 @@ ext2fs_vfree(struct vop_vfree_args *ap)
 
 	pip = VTOI(ap->a_pvp);
 	fs = pip->i_e2fs;
+	if (fs->e2fs_suspended) return fs->e2fs_ioerror;
 	if ((u_int)ino > fs->e2fs.e2fs_icount || (u_int)ino < EXT2_FIRSTINO)
 		panic("ifree: range: dev = 0x%x, ino = %d, fs = %s",
 			pip->i_dev, ino, fs->e2fs_fsmnt);
@@ -571,9 +590,11 @@ ext2fs_vfree(struct vop_vfree_args *ap)
 	error = bread(pip->i_devvp,
 		fsbtodb(fs, fs->e2fs_gd[cg].ext2bgd_i_bitmap),
 		(int)fs->e2fs_bsize, NOCRED, &bp);
-	if (error) {
+	if (error || bp->b_resid) {
+		if (!error) error=EIO;
+		bp->b_flags |= B_INVAL;
 		brelse(bp);
-		return (0);
+		return ext2fs_io_error(fs,error);
 	}
 	ibp = (char *)bp->b_data;
 	ino = (ino - 1) % fs->e2fs.e2fs_ipg;
@@ -584,13 +605,14 @@ ext2fs_vfree(struct vop_vfree_args *ap)
 			panic("ifree: freeing free inode");
 	}
 	ext2_clear_bit(ino, (u_char *)ibp);
+	error=ext2fs_io_error(fs,ext2_buf_write(bp,MNT_WAIT));
+	if (error) return error;
 	fs->e2fs.e2fs_ficount++;
 	fs->e2fs_gd[cg].ext2bgd_nifree++;
 	if ((ap->a_mode & IFMT) == IFDIR) {
 		fs->e2fs_gd[cg].ext2bgd_ndirs--;
 	}
 	fs->e2fs_fmod = 1;
-	bdwrite(bp);
 	return (0);
 }
 

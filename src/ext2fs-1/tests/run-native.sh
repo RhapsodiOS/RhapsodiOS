@@ -2,6 +2,99 @@
 # Run from the directory containing mount_ext2fs and ext2_io.
 set -e
 case "$1" in
+persistence-write-suite)
+    test "$#" = 2
+    ./mount_ext2fs /dev/hd1a "$2"
+    ./ext2_io persistence-write "$2"
+    ./ext2_io busy "$2"
+    umount "$2"
+    echo "EXT2_OK persistence-write-suite"
+    ;;
+task5-covering-suite)
+    sh "$0" write-fsync-suite "$2"
+    sh "$0" fresh-control-suite "$2"
+    echo "EXT2_OK task5-covering-suite"
+    ;;
+recovery-write)
+    test "$#" = 2
+    ./mount_ext2fs /dev/hd1a "$2"
+    ./ext2_io persistence-write "$2"
+    echo "EXT2_OK recovery-write"
+    ;;
+dirty-refusal)
+    test "$#" = 2
+    ./ext2_io dirty-refusal "$2" /dev/hd1a
+    ;;
+
+ioerror-suite|ioerror-transition-suite|ioerror-allocation-suite|ioerror-read-suite)
+    test "$#" = 2
+    test -b /dev/hd1f || mknod /dev/hd1f b 3 13
+    mkdir /mnt/control
+    ./mount_ext2fs -o ro /dev/hd1f /mnt/control
+    result=0
+    items="admission:a short-inode:a first-push:a metadata:b truncate:c allocation:d clean:e"
+    if test "$1" = ioerror-transition-suite; then items="close:a rewrite:b remount-clean:c remount-rewrite:d"; fi
+    if test "$1" = ioerror-allocation-suite; then items="truncate-bitmap:a allocation-bitmap:b first-errno:c"; fi
+    if test "$1" = ioerror-read-suite; then items="read-indirect-error:a read-indirect-short:b read-tail-error:c read-tail-short:d"; fi
+    for item in $items; do
+        scenario="${item%:*}"
+        part="${item#*:}"
+        case "$part" in a) minor=8;; b) minor=9;; c) minor=10;; d) minor=11;; e) minor=12;; esac
+        device="/dev/hd1$part"
+        point="/mnt/e-$part"
+        test -b "$device" || mknod "$device" b 3 "$minor"
+        test -d "$point" || mkdir "$point"
+        set +e
+        ./ext2_io ioerror "$scenario" "$device" "$point" /mnt/control/faultctl
+        one=$?
+        set -e
+        echo "FAULT_STATUS $scenario $one"
+        if test "$one" != 0; then result=1; fi
+    done
+    umount /mnt/control
+    test "$result" = 0
+    echo "EXT2_OK $1"
+    ;;
+ioerror-*)
+    case "$1" in
+    ioerror-first-push) scenario=first-push;;
+    ioerror-short-inode) scenario=short-inode;;
+    ioerror-admission) scenario=admission;;
+    ioerror-metadata) scenario=metadata;;
+    ioerror-truncate) scenario=truncate;;
+    ioerror-allocation) scenario=allocation;;
+    ioerror-clean) scenario=clean;;
+    ioerror-close) scenario=close;;
+    ioerror-rewrite) scenario=rewrite;;
+    ioerror-remount-clean) scenario=remount-clean;;
+    ioerror-remount-rewrite) scenario=remount-rewrite;;
+    esac
+    test "$#" = 2
+    test -b /dev/hd1f || mknod /dev/hd1f b 3 13
+    mkdir /mnt/control
+    ./mount_ext2fs -o ro /dev/hd1f /mnt/control
+    ./ext2_io ioerror "$scenario" /dev/hd1a "$2" /mnt/control/faultctl
+    umount /mnt/control
+    rmdir /mnt/control
+    echo "EXT2_OK $1"
+    ;;
+
+remount|busy|persistence-write|persistence-read)
+    test "$#" = 2
+    ./mount_ext2fs /dev/hd1a "$2"
+    result=0
+    if test "$1" = remount; then
+        ./ext2_io remount-busy "$2" || result=1
+        ./ext2_io remount-cycle-null "$2" || result=1
+        ./ext2_io remount-cycle-device "$2" /dev/hd1a || result=1
+    else
+        ./ext2_io "$1" "$2" || result=1
+    fi
+    umount "$2"
+    test "$result" = 0
+    echo "EXT2_OK $1"
+    ;;
+
 rejected-inode-suite)
     test "$#" = 2
     set +e
@@ -66,20 +159,6 @@ mmap-diagnostic-suite)
     set -e
     umount "$2"
     echo "EXT2_OK mmap-diagnostic-suite"
-    ;;
-remount-red-suite)
-    test "$#" = 2
-    for route in remount-null remount-device; do
-        ./mount_ext2fs /dev/hd1a "$2"
-        if test "$route" = remount-device; then
-            if ./ext2_io "$route" "$2" /dev/hd1a; then exit 1; fi
-        else
-            if ./ext2_io "$route" "$2"; then exit 1; fi
-        fi
-        echo "EXPECTED_RED $route"
-        umount "$2"
-    done
-    echo "EXT2_OK remount-red-suite"
     ;;
 write-red-suite)
     test "$#" = 2

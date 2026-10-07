@@ -3,7 +3,7 @@
     FILESTABLE = {
         H_FILES = ();
         OTHER_SOURCES = (Makefile.preamble, Makefile, Makefile.postamble);
-        SUBPROJECTS = (ext2_mount);
+        SUBPROJECTS = (ext2_mount, ext2_tools);
     };
     LANGUAGE = English;
     MAKEFILEDIR = "$(MAKEFILEPATH)/pb_makefiles";

@@ -12,7 +12,7 @@ NAME = ext2fs
 PROJECTVERSION = 2.8
 PROJECT_TYPE = Aggregate
 
-TOOLS = ext2_mount
+TOOLS = ext2_mount ext2_tools
 
 LIBRARIES =
 

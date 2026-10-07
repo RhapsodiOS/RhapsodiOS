@@ -1,0 +1,4 @@
+tarball = e2fsprogs-1.35.tar.gz
+directory = e2fsprogs
+patches = patches
+patchlevel = 1

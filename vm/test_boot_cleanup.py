@@ -57,6 +57,13 @@ class TestBootCleanup(unittest.TestCase):
                 for word in ("loadBootDrivers", "chooseDriverFromList"):
                     self.assertFalse(word in text, (name, word))
 
+    def test_disk_writes_no_floppy_booter(self):
+        path = os.path.join(SRC, "Commands", "diskdev_cmds", "disk.tproj",
+                            "disk.c")
+        with open(path, encoding="latin-1") as f:
+            text = f.read()
+        self.assertFalse("boot1f" in text.lower())
+
     def test_floppy_motor_shutoff_is_kept(self):
         self.assertTrue("void turnOffFloppy(void)" in read("libsaio", "misc.c"))
 

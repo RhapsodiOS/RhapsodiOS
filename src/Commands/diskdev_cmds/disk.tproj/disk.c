@@ -190,7 +190,6 @@ struct arch_boot_info arch_boot_table[] = {
 
 #define BOOT0		"/usr/standalone/i386/boot0"
 #define BOOT1		"/usr/standalone/i386/boot1"
-#define BOOT1F		"/usr/standalone/i386/boot1f"
 #define	DISKNAME	"Disk"
 
 /*
@@ -738,10 +737,9 @@ cont:;
 #endif i386
 
 	if(strncmp(fn, "/dev/rfd", 8) == 0) {
-		// If we're writing to a floppy, and we didn't specify an
-		// alternate boot file, use the floppy booter
+		// A floppy gets no boot1 unless one was named with -B1
 		if (!named_boot1) {
-		    bootfile1 = BOOT1F;
+		    bootfile1 = NULL;
 		}
 		fn[strlen(fn)-1] = 'b';
 	}
@@ -1387,7 +1385,7 @@ int boot()
 	} 
 
 		
-	if (do_boot1) {
+	if (do_boot1 && bootfile1) {
 		if ((bfd = open(bootfile1, 0)) >= 0) {
 			if ((size = read(bfd, blk0buf, DISK_BLK0SZ)) < 0) 
 				dpanic(S_NEVER, bootfile1);

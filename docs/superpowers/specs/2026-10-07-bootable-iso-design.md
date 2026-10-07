@@ -1,7 +1,7 @@
 # Bootable installer ISO
 
 **Date:** 2026-10-07
-**Status:** Design approved in conversation, pending spec review
+**Status:** Implemented 2026-10-07; see `docs/build/instmedia-cd.md`
 **Scope:** phase 6 of the install-media design
 (`docs/superpowers/specs/2026-09-22-install-media-design.md`); GitHub issue
 RhapsodiOS/RhapsodiOS#38. It builds on phase 5a's installer
@@ -246,6 +246,31 @@ Most serious first. The plan's first task is the gate 1 spike.
 5. **Issue #37:** ISASerialPort's boot-driver link failure. Master has since
    merged a completed drvISASerialPort reconstruction (1273da85a); the gates
    show whether the failure remains.
+
+## Outcome
+
+What implementation settled differently from the design above:
+- **AHCI is out of the gates.** The spike found `_KernBusMemoryCreateMapping`
+  dropping the page offset (fixed in `d231848fb`). The AHCI CD then hangs in
+  an IRQ 11 interrupt storm, a driver bug filed as RhapsodiOS/RhapsodiOS#39.
+  Gate 1 ran with an IDE CD only; `--cdrom-ahci` is tested by argument tests.
+- **EIDE needs the `Dual_EIDE.table`.** The default table probes only the
+  primary channel. The live root and the boot image carry the bundle's
+  `Dual_EIDE.table` as `EIDE.config/Instance0.table`.
+- **The label splits the start.** `d_front` is a signed short and can't hold
+  the UFS start (sector 40992), so the label has `d_front` 16 and `p_base`
+  40976, as every reader adds them.
+- **Four label copies,** at bytes 0, 7680, 15360 and 23040, as DR2 had,
+  not two.
+- **The EFI catalog entry's count is capped** at 0xFFFF 512-byte units
+  (32 MB) for a 64 MB image. edk2 boots it anyway.
+- **`--cdrom` uses `bootindex`.** One approach for both firmwares: an
+  `ide-cd` on the secondary channel with `bootindex=0`, no `-boot order`.
+- **A short notice replaced the removed prompt.** Removing driver-floppy
+  loading took boot2's "Missing Drivers" prompt, so boot2 prints the missing
+  Boot Drivers and carries on. `bootefi` has no notice.
+- **`disk.c` gives floppies no booter,** in place of `boot1f`.
+- **`README.mkfloppies.md` is removed** with the floppy scripts it described.
 
 ## Out of scope
 

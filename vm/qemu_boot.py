@@ -36,9 +36,9 @@ any path named golden.img or rhapsody.vmdk is refused outright, wherever it
 lives (so the main checkout's masters are refused from a worktree too).
 The one exception is --keep-hd0, for an installer's target: IMAGE keeps the
 guest's writes while every other drive stays snapshotted.  It is refused
-unless IMAGE is a throwaway file under the temp directory or a vm/work/p5-*
-directory, and never for the masters, test.img, the media, the
-preinstalled image or the bootstrapped base image.
+unless IMAGE is a throwaway file under the temp directory or a vm/work/pN-*
+directory (a phase's, such as p5-gate), and never for the masters,
+test.img, the media, the preinstalled image or the bootstrapped base image.
 QEMU gets native paths straight from Python: Git Bash does not rewrite
 `-serial file:/d/...` for native programs, which is why this is not a shell
 script.  Standard library only.
@@ -46,6 +46,7 @@ script.  Standard library only.
 import argparse
 import importlib.util
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -91,7 +92,8 @@ def refuse_masters(path):
 
 def check_keepable(path):
     """Exit unless path may be opened writable by --keep-hd0: not a
-    protected image, and inside the temp directory or a work/p5-* one."""
+    protected image, and inside the temp directory or a work/pN-* one
+    (a phase's gate directory, such as work/p5-gate)."""
     real = os.path.realpath(path)
     if os.path.basename(real).lower() in _NEVER_KEPT:
         raise SystemExit("refusing to keep writes to %s: it is a protected "
@@ -102,11 +104,11 @@ def check_keepable(path):
     except ValueError:  # another drive
         under_temp = False
     parent = os.path.dirname(real)
-    in_p5 = (os.path.basename(parent).startswith("p5-") and
-             os.path.basename(os.path.dirname(parent)) == "work")
-    if not (under_temp or in_p5):
+    in_phase = (re.match(r"p\d+-", os.path.basename(parent)) is not None and
+                os.path.basename(os.path.dirname(parent)) == "work")
+    if not (under_temp or in_phase):
         raise SystemExit("refusing to keep writes to %s: --keep-hd0 takes "
-                         "a throwaway file under %s or work/p5-*"
+                         "a throwaway file under %s or work/pN-*"
                          % (path, temp))
 
 

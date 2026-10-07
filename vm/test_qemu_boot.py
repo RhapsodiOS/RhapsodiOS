@@ -315,6 +315,21 @@ class TestKeepHd0(unittest.TestCase):
                             return_value=os.path.join(d, "elsewhere")):
                 qemu_boot.check_keepable(path)
 
+    def test_a_target_under_work_p6_is_kept(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = self._scratch(d, "work", "p6-gate", "target-g2.img")
+            with mock.patch("qemu_boot.tempfile.gettempdir",
+                            return_value=os.path.join(d, "elsewhere")):
+                qemu_boot.check_keepable(path)
+
+    def test_a_target_under_a_non_phase_work_dir_is_refused(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = self._scratch(d, "work", "px-gate", "target.img")
+            with mock.patch("qemu_boot.tempfile.gettempdir",
+                            return_value=os.path.join(d, "elsewhere")):
+                with self.assertRaises(SystemExit):
+                    qemu_boot.check_keepable(path)
+
     def test_protected_names_are_refused_even_under_temp(self):
         with tempfile.TemporaryDirectory() as d:
             for name in ("golden.img", "rhapsody.vmdk", "test.img",

@@ -220,7 +220,15 @@
  #endif /* WIN32 */
 --- a/lib/ext2fs/ismounted.c
 +++ b/lib/ext2fs/ismounted.c
-@@ -193,38 +193,50 @@
+@@ -11,6 +11,7 @@
+  */
+ 
+ #include <stdio.h>
++#include <stdlib.h>
+ #if HAVE_UNISTD_H
+ #include <unistd.h>
+ #endif
+@@ -193,38 +194,54 @@
  #else
  #if defined(HAVE_GETMNTINFO)
  
@@ -246,7 +254,8 @@
 - 
 +	struct stat target, mounted;
 +	int n, match;
-+	char raw[MAXPATHLEN];
++	char raw[MAXPATHLEN], resolved[MAXPATHLEN];
++	const char *name;
 +
  	*mount_flags = 0;
 -        while (--n >= 0) {
@@ -269,13 +278,16 @@
 +			else if (S_ISREG(target.st_mode) && S_ISREG(mounted.st_mode))
 +				match = target.st_dev == mounted.st_dev &&
 +				        target.st_ino == mounted.st_ino;
-+		}
-+		if (!match && S_ISCHR(target.st_mode) &&
-+		    !strncmp(mp->f_mntfromname, "/dev/", 5) &&
-+		    strlen(mp->f_mntfromname) + 1 < sizeof(raw)) {
-+			sprintf(raw, "/dev/r%s", mp->f_mntfromname + 5);
-+			if (stat(raw, &mounted) == 0 && S_ISCHR(mounted.st_mode))
-+				match = target.st_rdev == mounted.st_rdev;
++			if (!match && S_ISCHR(target.st_mode) &&
++			    realpath(mp->f_mntfromname, resolved)) {
++				name = !strncmp(resolved, "/dev/", 5) ? resolved + 5 :
++				       !strncmp(resolved, "/private/dev/", 13) ? resolved + 13 : 0;
++				if (name && strlen(resolved) + 1 < sizeof(raw)) {
++					sprintf(raw, "%.*sr%s", (int)(name - resolved), resolved, name);
++					if (stat(raw, &mounted) == 0 && S_ISCHR(mounted.st_mode))
++						match = target.st_rdev == mounted.st_rdev;
++				}
++			}
 +		}
 +		if (match) {
  			*mount_flags = EXT2_MF_MOUNTED;

@@ -306,7 +306,7 @@ int ncmds = sizeof (cmds) / sizeof (cmds[0]);
 u_char	test_rbuf[TBSIZE+ALIGN], test_wbuf[TBSIZE+ALIGN],
 	cmp_rbuf[TBSIZE+ALIGN];
 int	abort_flag = 1, version = DL_VERSION;
-int	f_init, f_stat, f_eject, f_test, f_boot, do_boot, do_boot0, do_boot1, f_query, f_bulk, f_newhost, f_kernel, named_boot1;
+int	f_init, f_stat, f_eject, f_test, f_boot, do_boot, do_boot0, f_query, f_bulk, f_newhost, f_kernel, named_boot1;
 int	f_label, f_format;
 int	interactive, no_prompt, bad_modified, resp;
 int	force_blocksize = 1;	/* Coerce devs to at least DEV_BSIZE? */ 
@@ -510,7 +510,6 @@ int main (int argc, char *argv[])
 					f_init = 1;
 					do_boot = 1;
 #if defined(i386)
-					do_boot1 = 1;
 					do_boot0 = 1;
 #endif
 					no_prompt=1;
@@ -560,7 +559,6 @@ int main (int argc, char *argv[])
 					do_boot = 1;
 // Only need these (by default) on Intel
 #if defined(i386)
-					do_boot1 = 1;
 					do_boot0 = 1;
 #endif
 					f_boot = 1;
@@ -599,7 +597,6 @@ int main (int argc, char *argv[])
 						bootfile0 = *(++argv);
 						break;
 					case '1':
-						do_boot1 = 1;
 						named_boot1 = 1;
 						bootfile1 = *(++argv);
 						break;
@@ -1243,9 +1240,6 @@ int boot()
 				blk0 = line;
 			}
 			do_boot = 1;
-#if defined(i386)
-			do_boot1 = 1;
-#endif
 		} while (!ok);
 	}
 	if (do_boot) {
@@ -1385,9 +1379,9 @@ int boot()
 	} 
 
 		
-	if (do_boot1 && bootfile1) {
+	if (bootfile1) {
 		if ((bfd = open(bootfile1, 0)) >= 0) {
-			if ((size = read(bfd, blk0buf, DISK_BLK0SZ)) < 0) 
+			if ((size = read(bfd, blk0buf, DISK_BLK0SZ)) < 0)
 				dpanic(S_NEVER, bootfile1);
 			if ((*dsp->ds_req) (CMD_WRITE, dosbase, blk0buf, DISK_BLK0SZ) < 0)
 				bomb(S_NEVER, "Write of boot1 failed\n");

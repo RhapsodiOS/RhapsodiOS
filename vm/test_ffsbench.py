@@ -324,3 +324,9 @@ def test_run_script_remounts_hd1_before_the_manifest():
 def test_guest_memory_comes_from_the_environment(monkeypatch):
     assert fb.guest_mem(None) == 128
     assert fb.guest_mem("512") == 512
+
+
+def test_a_refused_login_counts_as_failed():
+    assert fb.login_ok(0, "Building build root:") is True
+    assert fb.login_ok(255, "kex_exchange_identification: read: Connection aborted") is False
+    assert fb.login_ok(255, "") is False

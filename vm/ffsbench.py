@@ -872,6 +872,12 @@ def stall_summary(logins, limit=LOGIN_LIMIT_S):
             "login_timeouts": len(logins) - len(done)}
 
 
+def login_ok(rc, out):
+    """A login that ssh could not complete (sshd gone, connection refused)
+    is a failed login, however fast it failed."""
+    return rc == 0
+
+
 def timed_login(conf, command, limit=LOGIN_LIMIT_S):
     """Seconds for a full ssh login that runs command, or None after limit."""
     fd, ask = tempfile.mkstemp(suffix=".cmd")
@@ -886,7 +892,10 @@ def timed_login(conf, command, limit=LOGIN_LIMIT_S):
                          stderr=subprocess.STDOUT)
     try:
         out, _ = p.communicate(timeout=limit)
-        return time.monotonic() - t0, out.decode("latin-1")
+        text = out.decode("latin-1")
+        if not login_ok(p.returncode, text):
+            return None, text
+        return time.monotonic() - t0, text
     except subprocess.TimeoutExpired:
         p.kill()
         p.communicate()

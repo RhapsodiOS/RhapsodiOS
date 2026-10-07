@@ -217,7 +217,7 @@ class TestSecondDiskAndTyping(unittest.TestCase):
         run.assert_called_once_with(
             "bios", "a.img", "out", [90.0], "fw", esp=None, hd1="b.img",
             typed=[(6.0, "-s"), (70.0, "fsck -n /dev/rhd1a")],
-            boot_hd1=False, nic=None, ssh_port=None, keep_hd0=False)
+            boot_hd1=False, nic=None, ssh_port=None, keep_hd0=False, cdrom=None, cdrom_ahci=False)
 
 
 class TestInstallMediaHarness(unittest.TestCase):
@@ -271,7 +271,7 @@ class TestInstallMediaHarness(unittest.TestCase):
         run.assert_called_once_with(
             "uefi", "t.img", "out", [600.0], "fw", esp=None, hd1="m.img",
             typed=[], boot_hd1=True, nic="ne2k_pci", ssh_port=2549,
-            keep_hd0=False)
+            keep_hd0=False, cdrom=None, cdrom_ahci=False)
 
 
 class TestKeepHd0(unittest.TestCase):
@@ -315,6 +315,21 @@ class TestKeepHd0(unittest.TestCase):
                             return_value=os.path.join(d, "elsewhere")):
                 qemu_boot.check_keepable(path)
 
+    def test_a_target_under_work_p6_is_kept(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = self._scratch(d, "work", "p6-gate", "target-g2.img")
+            with mock.patch("qemu_boot.tempfile.gettempdir",
+                            return_value=os.path.join(d, "elsewhere")):
+                qemu_boot.check_keepable(path)
+
+    def test_a_target_under_a_non_phase_work_dir_is_refused(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = self._scratch(d, "work", "px-gate", "target.img")
+            with mock.patch("qemu_boot.tempfile.gettempdir",
+                            return_value=os.path.join(d, "elsewhere")):
+                with self.assertRaises(SystemExit):
+                    qemu_boot.check_keepable(path)
+
     def test_protected_names_are_refused_even_under_temp(self):
         with tempfile.TemporaryDirectory() as d:
             for name in ("golden.img", "rhapsody.vmdk", "test.img",
@@ -346,6 +361,87 @@ class TestKeepHd0(unittest.TestCase):
                             "--keep-hd0", "--at", "9",
                             "--firmware-dir", "fw"])
         self.assertTrue(run.call_args.kwargs["keep_hd0"])
+
+
+class TestCdrom(unittest.TestCase):
+    """--cdrom: the installer ISO as a read-only, first-in-order CD-ROM."""
+
+    IDE_CD = ("id=cd,file=inst.iso,format=raw,if=none,media=cdrom,"
+              "readonly=on")
+
+    def test_cdrom_ide_args(self):
+        for mode in ("bios", "uefi"):
+            args = qemu_boot.build_args(mode, "t.img", "o", 1, "fw",
+                                        cdrom="inst.iso")
+            self.assertIn(self.IDE_CD, args)
+            self.assertIn("ide-cd,drive=cd,bus=ide.1,unit=0,bootindex=0",
+                          args)
+            self.assertIn("-snapshot", args)
+            self.assertNotIn("order=c", args)
+            self.assertNotIn("ahci", " ".join(args))
+            self.assertIn("file=t.img,format=raw,if=ide,index=0,media=disk",
+                          args)
+
+    def test_cdrom_ahci_args(self):
+        args = qemu_boot.build_args("uefi", "t.img", "o", 1, "fw",
+                                    cdrom="inst.iso", cdrom_ahci=True)
+        self.assertIn("ahci,id=ahci,addr=05.0", args)
+        self.assertIn(self.IDE_CD, args)
+        self.assertIn("ide-cd,drive=cd,bus=ahci.0,bootindex=0", args)
+        self.assertNotIn("ide-cd,drive=cd,bus=ide.1,unit=0,bootindex=0",
+                         args)
+
+    def test_cdrom_ahci_with_nic_and_esp_avoids_pci_slot_3(self):
+        args = qemu_boot.build_args("bios", "t.img", "o", 1, "fw",
+                                    cdrom="inst.iso", cdrom_ahci=True,
+                                    nic="ne2k_pci", esp="esp.img")
+        self.assertIn("ahci,id=ahci,addr=05.0", args)
+        self.assertIn("ne2k_pci,netdev=n0,addr=03.0", args)
+        self.assertEqual(sum("addr=03.0" in x for x in args), 1)
+
+    def test_cdrom_ahci_needs_cdrom(self):
+        with self.assertRaises(ValueError):
+            qemu_boot.build_args("bios", "t.img", "o", 1, "fw",
+                                 cdrom_ahci=True)
+
+    def test_cdrom_with_keep_hd0(self):
+        args = qemu_boot.build_args("bios", "t.img", "o", 1, "fw",
+                                    cdrom="inst.iso", keep_hd0=True)
+        self.assertNotIn("-snapshot", args)
+        self.assertIn("file=t.img,format=raw,if=ide,index=0,media=disk,"
+                      "snapshot=off", args)
+        self.assertIn(self.IDE_CD, args)
+        self.assertNotIn("snapshot=off", self.IDE_CD)
+
+    def test_cdrom_refuses_boot_hd1(self):
+        with self.assertRaises(ValueError):
+            qemu_boot.build_args("bios", "t.img", "o", 1, "fw",
+                                 hd1="m.img", boot_hd1=True, cdrom="i.iso")
+
+    def test_run_refuses_a_protected_iso(self):
+        with tempfile.TemporaryDirectory() as d:
+            iso = os.path.join(d, "golden.img")
+            open(iso, "w").close()
+            disk = os.path.join(d, "t.img")
+            open(disk, "w").close()
+            with mock.patch("qemu_boot.subprocess.Popen") as popen:
+                with self.assertRaises(SystemExit):
+                    qemu_boot.run("bios", disk, os.path.join(d, "o"), [],
+                                  "fw", cdrom=iso)
+            popen.assert_not_called()
+
+    def test_main_passes_cdrom(self):
+        with mock.patch("qemu_boot.run") as run:
+            qemu_boot.main(["qemu_boot.py", "bios", "t.img", "out",
+                            "--cdrom", "i.iso", "--cdrom-ahci", "--at", "9",
+                            "--firmware-dir", "fw"])
+        self.assertEqual(run.call_args.kwargs["cdrom"], "i.iso")
+        self.assertTrue(run.call_args.kwargs["cdrom_ahci"])
+
+    def test_main_cdrom_ahci_needs_cdrom(self):
+        with self.assertRaises(SystemExit):
+            qemu_boot.main(["qemu_boot.py", "bios", "t.img", "out",
+                            "--cdrom-ahci", "--firmware-dir", "fw"])
 
 
 if __name__ == "__main__":

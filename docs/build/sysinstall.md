@@ -12,6 +12,8 @@ milestone B: the media installs onto a blank `hd0`, and that disk boots on
 its own under SeaBIOS and under IA32 UEFI to a `login:` that accepts SSH
 with the password chosen during the install.
 
+`docs/build/instmedia-cd.md` covers the same media as a bootable ISO.
+
 `sysinstall` lives in `src/cdis-3/sysinstall.tproj` and installs as
 `/System/Installation/CDIS/sysinstall`. `rc.cdrom` is now only a hook that
 runs it. `driverDetect` lives in `src/driverkit-3/driverDetect` and installs
@@ -43,7 +45,9 @@ Only `main.c` and `ui.c` use curses. The other `sysinstall` files and
    the disk and the partitions that will be erased.
 4. **Drivers.** One checklist per family that has drivers on the media: Disk
    (EIDE and AHCI; the controller the target sits on is ticked) and Network
-   (detected cards ticked).
+   (detected cards ticked). (Since phase 6: for an `hdN` target, EIDE is
+   always ticked and AHCI too when it was detected, since both name their
+   disks `hdN`.)
 5. **Sets.** A checklist. `base` is required and always ticked.
 6. **Root password.** Entered twice, with echo off. It can't be empty, and
    the screen says only the first 8 characters count.
@@ -151,7 +155,7 @@ parenthesis, DR2's driver with the names without the underscore, so
 | `PCIMaximums(` | `PCIConfigReg(Dev:%d Func:%d Bus:%d Reg:%d)` |
 
 The system table `-w` writes has `Boot Drivers` `EISABus PCIBus PS2Keyboard`
-plus the chosen disk controller, `Active Drivers` of the chosen network,
+plus the chosen disk controllers, `Active Drivers` of the chosen network,
 display, audio and input drivers plus `BPF`, and `Kernel Flags`
 `rootdev=hdNa`.
 
@@ -236,7 +240,9 @@ python qemu_boot.py bios work/p5-gate/target.img logs/p5-gate/boot-bios --nic ne
 ```
 
 For the SSH login, copy `vm`'s remote scripts to a scratch directory, with
-a `vm.conf` that says `Port=2549` and the install password. Run a script
+a `vm.conf` that says `Port=2549`, the install password and
+`Ssh=C:/Windows/System32/OpenSSH/ssh.exe` (Git's OpenSSH rejects `ssh-dss`).
+Run a script
 through `guest-remote.ps1 -Run` once the console shows `login:`. Remove the
 `[127.0.0.1]:2549` line from `%TEMP%\rhap-known_hosts` between runs, and
 retry a session that came back truncated: one opened before `Startup

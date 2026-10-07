@@ -54,6 +54,12 @@ MEDIA_DISK = "hd1"
 MEDIA_BOOT_DRIVERS = "EISABus PCIBus PS2Keyboard EIDE AHCI ISASerialPort"
 MEDIA_ACTIVE_DRIVERS = "VGA"
 INSTALLED_DISK = "hd0"
+# The CD form roots on the CD wherever the BIOS puts it.
+CD_KERNEL_FLAGS = "rootdev=cdrom"
+# The default EIDE table probes the primary channel only; a CD sits on the
+# secondary one, so the CD form installs the driver's dual-channel table.
+EIDE_DUAL = "/private/Drivers/i386/EIDE.config/Dual_EIDE.table"
+EIDE_INSTANCE0 = "/private/Drivers/i386/EIDE.config/Instance0.table"
 
 
 class ComposeError(Exception):
@@ -118,10 +124,12 @@ def install_order(apks):
     return [apks["files"]] + [apks[n] for n in sorted(apks) if n != "files"]
 
 
-def compose(apks, esp, preinstalled=False, password_hash=None):
+def compose(apks, esp, preinstalled=False, password_hash=None,
+            form="disk"):
     """(nodes, conflicts) for apks, apkrepo.index()'s result.
 
     esp is the ESP image hdimage writes, stored gzip'd for the installer.
+    form "cd" roots the live system on the CD, and enables both IDE channels.
     """
     order = install_order(apks)
     tree = rootfs.Tree()
@@ -152,6 +160,12 @@ def compose(apks, esp, preinstalled=False, password_hash=None):
         table = render(template(INSTANCE0_TEMPLATE), MEDIA_DISK)
         table = set_key(table, "Boot Drivers", MEDIA_BOOT_DRIVERS)
         table = set_key(table, "Active Drivers", MEDIA_ACTIVE_DRIVERS)
+        if form == "cd":
+            table = set_key(table, "Kernel Flags", CD_KERNEL_FLAGS)
+            if tree.get(EIDE_DUAL) is None:
+                raise ComposeError("no %s: the CD cannot be found on the "
+                                   "secondary IDE channel" % EIDE_DUAL)
+            put_file(EIDE_INSTANCE0, tree.data(EIDE_DUAL))
         put_file(SYSTEM_TABLE, table)
         in_sets = {p for pkgs in read_sets(tree).values() for p in pkgs}
         tree.put(Node(INSTALLATION + "/Packages", "dir", 0o755, 0, 0, now,

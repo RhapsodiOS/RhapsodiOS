@@ -3,6 +3,7 @@
 
     python vm/qemu_boot.py {bios,uefi} IMAGE OUTDIR [--esp ESP_IMAGE]
                            [--hd1 IMAGE [--boot-hd1]] [--keep-hd0]
+                           [--cdrom ISO [--cdrom-ahci]]
                            [--nic MODEL]
                            [--ssh-port PORT] [--type SECONDS:TEXT ...]
                            [--keys SECONDS:TEXT ...]
@@ -15,6 +16,12 @@ adds a virtio disk for the two-disk layout, whose loader sits on an
 ESP-only disk.  --hd1 adds a second IDE disk, the primary slave, which the
 guest sees as hd1; --boot-hd1 makes it the boot disk, as the install
 media is in the design's harness, with IMAGE, the blank target, still hd0.
+--cdrom adds ISO as a read-only CD-ROM and boots from it, as the
+bootable installer ISO does, with IMAGE, the blank target, still hd0; it is
+the secondary-master ATAPI drive (ide-cd on ide.1) and the first bootindex,
+which both SeaBIOS and edk2 honour, so no -boot order is given.
+--cdrom-ahci puts the same CD-ROM on an AHCI controller instead.  --cdrom
+cannot be combined with --boot-hd1.
 --nic adds a network card of that QEMU model on QEMU's user network, and
 --ssh-port forwards that 127.0.0.1 port to the guest's ssh.  Each --type
 types TEXT and presses Enter at SECONDS, for a boot prompt or a single-user
@@ -29,9 +36,9 @@ any path named golden.img or rhapsody.vmdk is refused outright, wherever it
 lives (so the main checkout's masters are refused from a worktree too).
 The one exception is --keep-hd0, for an installer's target: IMAGE keeps the
 guest's writes while every other drive stays snapshotted.  It is refused
-unless IMAGE is a throwaway file under the temp directory or a vm/work/p5-*
-directory, and never for the masters, test.img, the media, the
-preinstalled image or the bootstrapped base image.
+unless IMAGE is a throwaway file under the temp directory or a vm/work/pN-*
+directory (a phase's, such as p5-gate), and never for the masters,
+test.img, the media, the preinstalled image or the bootstrapped base image.
 QEMU gets native paths straight from Python: Git Bash does not rewrite
 `-serial file:/d/...` for native programs, which is why this is not a shell
 script.  Standard library only.
@@ -39,6 +46,7 @@ script.  Standard library only.
 import argparse
 import importlib.util
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -84,7 +92,8 @@ def refuse_masters(path):
 
 def check_keepable(path):
     """Exit unless path may be opened writable by --keep-hd0: not a
-    protected image, and inside the temp directory or a work/p5-* one."""
+    protected image, and inside the temp directory or a work/pN-* one
+    (a phase's gate directory, such as work/p5-gate)."""
     real = os.path.realpath(path)
     if os.path.basename(real).lower() in _NEVER_KEPT:
         raise SystemExit("refusing to keep writes to %s: it is a protected "
@@ -95,11 +104,11 @@ def check_keepable(path):
     except ValueError:  # another drive
         under_temp = False
     parent = os.path.dirname(real)
-    in_p5 = (os.path.basename(parent).startswith("p5-") and
-             os.path.basename(os.path.dirname(parent)) == "work")
-    if not (under_temp or in_p5):
+    in_phase = (re.match(r"p\d+-", os.path.basename(parent)) is not None and
+                os.path.basename(os.path.dirname(parent)) == "work")
+    if not (under_temp or in_phase):
         raise SystemExit("refusing to keep writes to %s: --keep-hd0 takes "
-                         "a throwaway file under %s or work/p5-*"
+                         "a throwaway file under %s or work/pN-*"
                          % (path, temp))
 
 
@@ -129,9 +138,13 @@ def parse_keys(spec):
 
 def build_args(mode, image, outdir, qmp_port, firmware_dir, esp=None,
                hd1=None, qemu="qemu-system-i386", boot_hd1=False, nic=None,
-               ssh_port=None, keep_hd0=False):
+               ssh_port=None, keep_hd0=False, cdrom=None, cdrom_ahci=False):
     if boot_hd1 and hd1 is None:
         raise ValueError("boot_hd1 needs an hd1 image")
+    if cdrom is not None and boot_hd1:
+        raise ValueError("cdrom and boot_hd1 both want to be first")
+    if cdrom_ahci and cdrom is None:
+        raise ValueError("cdrom_ahci needs a cdrom image")
     if ssh_port is not None and nic is None:
         raise ValueError("ssh_port needs a nic")
     # --keep-hd0 drops the global -snapshot and snapshots the others
@@ -168,7 +181,7 @@ def build_args(mode, image, outdir, qmp_port, firmware_dir, esp=None,
                  % os.path.join(outdir, "edk2-i386-vars.fd")]
     elif mode == "bios":
         args += ["-cpu", "pentium"]
-        if not boot_hd1:
+        if not boot_hd1 and cdrom is None:
             args += ["-boot", "order=c"]
     else:
         raise ValueError("mode must be bios or uefi, not %r" % mode)
@@ -180,6 +193,17 @@ def build_args(mode, image, outdir, qmp_port, firmware_dir, esp=None,
         args += ["-drive",
                  "file=%s,format=raw,if=ide,index=1,media=disk%s"
                  % (hd1, snap)]
+    if cdrom is not None:
+        # readonly=on: the ISO is never written.  if=none + ide-cd, not
+        # if=ide, because only a -device takes bootindex (both firmwares).
+        args += ["-drive", "id=cd,file=%s,format=raw,if=none,media=cdrom,"
+                 "readonly=on" % cdrom]
+        if cdrom_ahci:
+            args += ["-device", "ahci,id=ahci,addr=05.0",
+                     "-device", "ide-cd,drive=cd,bus=ahci.0,bootindex=0"]
+        else:
+            args += ["-device",
+                     "ide-cd,drive=cd,bus=ide.1,unit=0,bootindex=0"]
     if nic is not None:
         netdev = "user,id=n0"
         if ssh_port is not None:
@@ -190,8 +214,8 @@ def build_args(mode, image, outdir, qmp_port, firmware_dir, esp=None,
 
 
 def run(mode, image, outdir, at_points, firmware_dir, esp=None, hd1=None,
-        typed=(), boot_hd1=False, nic=None, ssh_port=None, keep_hd0=False):
-    for path in (image, esp, hd1):
+        typed=(), boot_hd1=False, nic=None, ssh_port=None, keep_hd0=False, cdrom=None, cdrom_ahci=False):
+    for path in (image, esp, hd1, cdrom):
         if path is not None:
             if not os.path.exists(path):
                 raise SystemExit("no such image: %s" % path)
@@ -216,7 +240,8 @@ def run(mode, image, outdir, at_points, firmware_dir, esp=None, hd1=None,
             proc = subprocess.Popen(
                 build_args(mode, image, outdir, port, firmware_dir, esp=esp,
                            hd1=hd1, boot_hd1=boot_hd1, nic=nic,
-                           ssh_port=ssh_port, keep_hd0=keep_hd0),
+                           ssh_port=ssh_port, keep_hd0=keep_hd0,
+                           cdrom=cdrom, cdrom_ahci=cdrom_ahci),
                 stdout=subprocess.DEVNULL, stderr=stderr_f)
         finally:
             stderr_f.close()
@@ -294,6 +319,10 @@ def main(argv):
     p.add_argument("--boot-hd1", action="store_true")
     p.add_argument("--keep-hd0", action="store_true",
                    help="let IMAGE, a throwaway install target, keep writes")
+    p.add_argument("--cdrom", default=None, metavar="ISO",
+                   help="boot the installer ISO from a read-only CD-ROM")
+    p.add_argument("--cdrom-ahci", action="store_true",
+                   help="put the --cdrom drive on an AHCI controller")
     p.add_argument("--nic", default=None, metavar="MODEL")
     p.add_argument("--ssh-port", type=int, default=None)
     p.add_argument("--type", dest="typed", action="append", default=[],
@@ -304,11 +333,14 @@ def main(argv):
                    help="comma-separated screenshot times in seconds")
     p.add_argument("--firmware-dir", default=None)
     a = p.parse_args(argv[1:])
+    if a.cdrom_ahci and a.cdrom is None:
+        p.error("--cdrom-ahci needs --cdrom")
     at_points = [float(x) for x in a.at.split(",") if x]
     firmware_dir = a.firmware_dir or default_firmware_dir("qemu-system-i386")
     run(a.mode, a.image, a.outdir, at_points, firmware_dir, esp=a.esp,
         hd1=a.hd1, typed=a.typed + a.keys, boot_hd1=a.boot_hd1, nic=a.nic,
-        ssh_port=a.ssh_port, keep_hd0=a.keep_hd0)
+        ssh_port=a.ssh_port, keep_hd0=a.keep_hd0, cdrom=a.cdrom,
+        cdrom_ahci=a.cdrom_ahci)
     return 0
 
 

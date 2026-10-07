@@ -185,7 +185,7 @@ but its *contents* are absolute. The booters, the kernel and `disk` all agree:
 | 3 | **General host UFS writer** (`vm/instmedia/ufs.py`). | Round-trips through `rhap_image` with label `secsize` 512 (fdisk disk) and 2048 (CD); `fsck -n` passes on its output in a guest | none |
 | 4 | **Pure-apk live root and hard-disk install media**, plus a pre-installed image. | The media reaches the installer menu under BIOS and UEFI. The pre-installed image boots multi-user to `login:` and accepts SSH | 1, 3 |
 | 5 | **Installer**: `src/installer-1/` with `mbrinst` and `rhapinstall`. (Before phase 5; now `sysinstall` in `src/cdis-3/sysinstall.tproj` plus `driverDetect` in `src/driverkit-3`, per `docs/superpowers/specs/2026-10-05-sysinstall-design.md`. Phase 5a is done: `docs/build/sysinstall.md`. 5b is the developer and windowing sets, 5c upgrades.) | Milestone B, as defined under *Goal* | 2, 4 |
-| 6 | **El Torito CD**: ISO/El Torito writer, 2.88 MB BIOS floppy image, EFI catalog entry, 2048-byte reads in `bootefi`, `rootdev=cdrom`. | *Done*, as defined under *Goal* | 5 |
+| 6 | **El Torito CD**: ISO/El Torito writer, 2.88 MB BIOS floppy image, EFI catalog entry, 2048-byte reads in `bootefi`, `rootdev=cdrom`. | *Done*, as defined under *Goal* (Before phase 6; now met over an IDE CD: `docs/build/instmedia-cd.md`. Its BIOS image is a 16 MB hard-disk-emulation image, not a 2.88 MB floppy.) | 5 |
 
 Phases 1–3 are independent. Phase 4 answers whether a system built only from our
 apks boots at all, which has never been shown. Every later phase depends on that
@@ -225,6 +225,15 @@ and ESP that `hdimage.py` does.
 The ISO 9660 directory lists only the boot images. The UFS isn't visible to ISO
 readers.
 
+(Before phase 6; now the BIOS image is hard-disk emulation: a 16 MB image
+with `boot0`, one `0xA7` entry, `boot1`, `boot2` and a small UFS, so the
+booter takes its normal hard-disk path and `boot1f` is gone. The disc is
+the system area; descriptors, path tables and root directory at sectors
+16-21; `BOOT.CAT`, `README.TXT`, `BIOSBOOT.IMG` (sector 24), `EFIBOOT.IMG`
+(sector 8216, 64 MB); then the UFS at sector 40992. `d_front` is a signed
+short and can't hold that, so the label has `d_front` 16 and `p_base`
+40976. Label copies are at bytes 0, 7680, 15360 and 23040.)
+
 - **BIOS boot:** floppy emulation, so the booter reads the kernel from the
   emulated `fd0`. The kernel attaches the ATAPI drive through EIDE or AHCI as
   `sd*`, and `rootdev=cdrom` mounts the UFS read-only.
@@ -258,7 +267,10 @@ fdisk disks*.
 **Phase 6**
 - **2048-byte media in `bootefi`:** `ebiosread` accepts BLOCK_IO media with
   2048-byte blocks by reading the containing block into a bounce buffer and
-  returning its 512-byte sectors.
+  returning its 512-byte sectors. (Before phase 6; now it also finds the
+  label at byte 7680 of a 2048-byte disk without reading LBA 0, and treats
+  the El Torito image's handle as a child of the CD. Nothing changed in
+  boot2; the phase's cleanup then dropped its floppy code.)
 
 ## Host builder (`vm/instmedia/`)
 
@@ -570,7 +582,11 @@ Most serious first.
    `docs/build/instmedia-live.md` records the rest.)
 2. **The ATAPI CD root is untested:** `rootdev=cdrom` over EIDE or AHCI, and
    `docs/drivers/drvEIDE-issues.md` records past ATAPI command failures. Only
-   phase 6 depends on it.
+   phase 6 depends on it. (Before phase 6; now it works over EIDE, once
+   EIDE uses `Dual_EIDE.table` so the secondary channel is probed. AHCI
+   needed a kernel fix for mapping device memory, then hangs in an IRQ 11
+   interrupt storm, RhapsodiOS/RhapsodiOS#39, so an AHCI-only CD can't boot
+   yet.)
 3. **apk 2.0_pre12 has never run on Rhapsody.** File-overlap refusals are
    possible. `files` must be installed first so that `var -> private/var`
    exists before apk creates `var/lib/apk`. (Retired by phase 2: `--initdb`
@@ -609,7 +625,8 @@ Most serious first.
    - Slirp names no host, so `0800_Network` waits for `bpwhoami` to time
      out on every boot.)
 8. **CD capacity:** installed tree plus apks might exceed 650 MB. The fallback
-   is a `live.list` subset.
+   is a `live.list` subset. (Before phase 6; now the disc is about 295 MB,
+   so the fallback isn't needed.)
 
 ## Out of scope
 

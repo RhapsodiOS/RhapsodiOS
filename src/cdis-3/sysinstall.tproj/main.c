@@ -733,36 +733,36 @@ static void find_drivers(void)
 	closedir(dir);
 }
 
-/* The disk controller the target sits on: for sdN the SCSI driver that
- * driverDetect -l loaded, for hdN AHCI if driverDetect matched it, else
- * EIDE. */
-static const char *target_controller(const struct plan *p)
+/* The Disk/SCSI drivers to pre-tick for the target (disk_controllers):
+ * for sdN the SCSI driver that driverDetect -l loaded, for hdN EIDE and,
+ * if driverDetect matched it, AHCI. */
+static int target_controllers(const struct plan *p, const char *out[2])
 {
 	static char scsi[64];
 	char copy[sizeof loaded], *q, *e, *f[4];
+	const char *name = NULL;
 	struct driver *d;
 	int i;
 
 	if (strncmp(p->disk, "sd", 2) == 0) {
 		strcpy(copy, loaded);
-		for (q = copy; *q != '\0'; q = e) {
+		for (q = copy; *q != '\0' && name == NULL; q = e) {
 			e = q + strcspn(q, "\n");
 			if (*e != '\0')
 				*e++ = '\0';
 			if (fields(q, f) >= 2 && strcmp(f[0], "SCSI") == 0 &&
 			    strlen(f[1]) < sizeof scsi) {
 				strcpy(scsi, f[1]);
-				return scsi;
+				name = scsi;
 			}
 		}
-		for (i = 0; i < ndrivers; i++)
+		for (i = 0; i < ndrivers && name == NULL; i++)
 			if (drivers[i].detected &&
 			    strcmp(drivers[i].family, "SCSI") == 0)
-				return drivers[i].name;
-		return NULL;
+				name = drivers[i].name;
 	}
 	d = find_driver("AHCI");
-	return d != NULL && d->detected ? "AHCI" : "EIDE";
+	return disk_controllers(p->disk, d != NULL && d->detected, name, out);
 }
 
 static void choose_drivers(struct plan *p)
@@ -771,10 +771,10 @@ static void choose_drivers(struct plan *p)
 					  "Audio" };
 	static char *chosen[MAX_DRIVERS];
 	static char lines[MAX_DRIVERS][160];
-	const char *items[MAX_DRIVERS], *ctl;
+	const char *items[MAX_DRIVERS], *ctl[2];
 	struct driver *idx[MAX_DRIVERS];
 	char title[300];
-	int on[MAX_DRIVERS], fi, i, n, disk;
+	int on[MAX_DRIVERS], fi, i, k, n, nctl, disk;
 
 	if (ndrivers < 0)
 		find_drivers();
@@ -783,7 +783,7 @@ static void choose_drivers(struct plan *p)
 			"\n\n%.200s", last_lines(detect_out, 4));
 		ui_message("Drivers", title);
 	}
-	ctl = target_controller(p);
+	nctl = target_controllers(p, ctl);
 	for (i = 0; i < ndrivers; i++) {
 		disk = strcmp(drivers[i].family, "Disk") == 0 ||
 		       strcmp(drivers[i].family, "SCSI") == 0;
@@ -791,9 +791,10 @@ static void choose_drivers(struct plan *p)
 			if (strcmp(drivers[i].family, families[fi]) == 0)
 				break;
 		/* only drivers shown on a checklist may be ticked */
-		drivers[i].on = fi == 5 ? 0 : disk ? ctl != NULL &&
-				strcmp(drivers[i].name, ctl) == 0 :
-				drivers[i].detected;
+		drivers[i].on = fi == 5 || disk ? 0 : drivers[i].detected;
+		for (k = 0; fi < 5 && disk && k < nctl; k++)
+			if (strcmp(drivers[i].name, ctl[k]) == 0)
+				drivers[i].on = 1;
 	}
 	for (fi = 0; fi < 5; fi++) {
 		n = 0;

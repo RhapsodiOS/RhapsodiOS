@@ -20,8 +20,14 @@ BASE_SET = (b"title       Base system\ndescription Test\nrequired    yes\n"
             b"# the first package makes the links\nfiles\ncdis\naaa\n")
 
 
-def make_repo(directory):
-    """files, cdis and one package that installs through etc/."""
+DUAL_EIDE = b'"Class" = "DualEide";\n'
+
+
+def make_repo(directory, eide=True):
+    """files, cdis and one package that installs through etc/; with eide,
+    the EIDE driver's config bundle's dual-channel table too."""
+    eide_files = [ta.f("private/Drivers/i386/EIDE.config/Dual_EIDE.table",
+                       DUAL_EIDE, 0o444)] if eide else []
     ta.make(directory, "files-1-universal.apk", ta.pkginfo("files"), [
         ta.d("private"), ta.d("private/etc"), ta.ln("etc", "private/etc"),
         ta.d("usr"), ta.ln("usr/Devices", "../private/Devices"),
@@ -45,7 +51,7 @@ def make_repo(directory):
         ta.d("private/var"), ta.d("private/var/tmp"),
         ta.d("private/var/tmp/mnta")], dot_slash=False)
     ta.make(directory, "aaa-1-universal.apk", ta.pkginfo("aaa"),
-            [ta.f("etc/aaa.conf", b"a")], dot_slash=False)
+            [ta.f("etc/aaa.conf", b"a")] + eide_files, dot_slash=False)
 
 
 class TestRender(unittest.TestCase):
@@ -97,6 +103,8 @@ class TestCompose(unittest.TestCase):
         nodes, _ = live.compose(cls.apks, cls.esp, preinstalled=True,
                                 password_hash="rhME8brSxdukA")
         cls.pre = {n.path: n for n in nodes}
+        nodes, _ = live.compose(cls.apks, cls.esp, form="cd")
+        cls.cd = {n.path: n for n in nodes}
 
     @classmethod
     def tearDownClass(cls):
@@ -126,6 +134,23 @@ class TestCompose(unittest.TestCase):
                       % live.MEDIA_ACTIVE_DRIVERS.encode(), table)
         self.assertNotIn(b"NE2K", table)
         self.assertIn(b'"Kernel Flags" = "rootdev=hd1a";\n', table)
+
+    def test_cd_form_sets_rootdev_cdrom(self):
+        self.assertEqual(live.CD_KERNEL_FLAGS, "rootdev=cdrom")
+        self.assertIn(b'"Kernel Flags" = "rootdev=cdrom";\n',
+                      self.cd[live.SYSTEM_TABLE].data)
+        self.assertIn(b'"Kernel Flags" = "rootdev=hd1a";\n',
+                      self.live[live.SYSTEM_TABLE].data)
+
+    def test_cd_form_enables_both_eide_channels(self):
+        self.assertEqual(self.cd[live.EIDE_INSTANCE0].data, DUAL_EIDE)
+        self.assertNotIn(live.EIDE_INSTANCE0, self.live)
+
+    def test_cd_form_needs_the_dual_eide_table(self):
+        with tempfile.TemporaryDirectory() as d:
+            make_repo(d, eide=False)
+            with self.assertRaises(live.ComposeError):
+                live.compose(apkrepo.index(d), self.esp, form="cd")
 
     def test_packages_dir_holds_the_set_packages(self):
         with tempfile.TemporaryDirectory() as extra:

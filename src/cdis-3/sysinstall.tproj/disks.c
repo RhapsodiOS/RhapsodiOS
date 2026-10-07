@@ -13,6 +13,22 @@ int dev_disk_name(unsigned major, unsigned minor, char out[8])
 	return 0;
 }
 
+int disk_controllers(const char *disk, int ahci_detected,
+		     const char *scsi_name, const char *out[2])
+{
+	int n = 0;
+
+	if (strncmp(disk, "sd", 2) == 0) {
+		if (scsi_name != NULL)
+			out[n++] = scsi_name;
+		return n;
+	}
+	out[n++] = "EIDE";
+	if (ahci_detected)
+		out[n++] = "AHCI";
+	return n;
+}
+
 #ifdef __MACH__
 
 #include <sys/types.h>

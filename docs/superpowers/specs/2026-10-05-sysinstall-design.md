@@ -235,10 +235,12 @@ A standalone tool in `src/driverkit-3/driverDetect/`, installed as
 
 **The system table `-w` writes:**
 - `Boot Drivers`: `EISABus PCIBus PS2Keyboard`, plus the disk controller
-  driver the user ticked on the Drivers screen. That screen pre-ticks the
+  drivers the user ticked on the Drivers screen. That screen pre-ticks the
   controller the target sits on: for `sdN`, the SCSI driver `-l` loaded;
-  for `hdN`, `AHCI` when `driverDetect` matched an AHCI controller, else
-  `EIDE`.
+  for `hdN`, `EIDE`, and `AHCI` as well when `driverDetect` matched an AHCI
+  controller. (Since phase 6: both drivers name their disks `hdN`, so the
+  name can't tell them apart. The earlier rule, AHCI alone when matched,
+  left an IDE target booted from an AHCI CD without `EIDE`.)
 - `Active Drivers`: the chosen network, display and audio drivers, the
   input drivers, and `BPF`
 - the other keys from CDIS's `Instance0-i386.table` template, with

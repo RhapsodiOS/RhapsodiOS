@@ -327,10 +327,15 @@ ffs_realloccg(ip, lbprev, bpref, osize, nsize, cred, bpp)
 	    (u_int32_t (*)())ffs_alloccg);
 	if (bno > 0) {
 		bp->b_blkno = fsbtodb(fs, bno);
-#if MACH
-		if (ITOV(ip)->v_vm_info != 0)
-			(void) vnode_uncache(ITOV(ip));
-#endif
+		/*
+		 * No vnode_uncache here (FreeBSD 4 and xnu-124 have none).
+		 * When update's sync pages a closed file out, this path runs
+		 * under that very pageout: uncaching tears down the object
+		 * being paged out and vm_object_terminate waits on its own
+		 * paging forever, holding the inode lock.  File pages are
+		 * keyed by offset and mapped to blocks at write time, so the
+		 * moved fragment needs no uncache.
+		 */
 		ffs_blkfree(ip, bprev, (long)osize);
 		if (nsize < request)
 			ffs_blkfree(ip, bno + numfrags(fs, nsize),

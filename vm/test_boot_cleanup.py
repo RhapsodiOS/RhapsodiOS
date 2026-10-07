@@ -46,6 +46,17 @@ class TestBootCleanup(unittest.TestCase):
         for word in ("fd()", "Load Other Drivers?", "Missing Drivers:"):
             self.assertFalse(word in drivers, word)
 
+    def test_bootefi_uses_none_of_the_removed_driver_loading(self):
+        efi = os.path.join(SRC, "bootefi-1")
+        for root, dirs, files in os.walk(efi):
+            for name in files:
+                if not name.endswith((".c", ".h", "Makefile")):
+                    continue
+                with open(os.path.join(root, name), encoding="latin-1") as f:
+                    text = f.read()
+                for word in ("loadBootDrivers", "chooseDriverFromList"):
+                    self.assertFalse(word in text, (name, word))
+
     def test_floppy_motor_shutoff_is_kept(self):
         self.assertTrue("void turnOffFloppy(void)" in read("libsaio", "misc.c"))
 

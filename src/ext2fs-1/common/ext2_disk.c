@@ -19,7 +19,9 @@ ext2_read_super(u_int32_t block_size, u_int32_t block_count,
 {
     int error;
     /* The first metadata read covers bytes 1024 through 2047 inclusive. */
-    if (block_size != 512 || block_count < 4 || block_count > 0x7fffffffU ||
+    if ((block_size != 512 && block_size != 1024) ||
+        block_count < 2048 / block_size ||
+        block_count > 0x7fffffffU / (block_size / 512) ||
         read == NULL || out == NULL)
         return EINVAL;
     error = read(cookie,1024,out,SBSIZE);

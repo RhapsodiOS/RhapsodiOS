@@ -121,7 +121,7 @@ read_at(void *cookie,u_int32_t offset,void *buffer,size_t length)
 }
 
 static int
-capacity(int fd,u_int64_t *bytes,int *regular,int probe512)
+capacity(int fd,u_int64_t *bytes,int *regular)
 {
     struct stat st;
     struct disk_partition_info part;
@@ -133,7 +133,7 @@ capacity(int fd,u_int64_t *bytes,int *regular,int probe512)
     } else {
         if((!S_ISCHR(st.st_mode) && !S_ISBLK(st.st_mode)) ||
             ioctl(fd,DKIOCGPARTINFO,&part)<0 ||
-            (part.block_size!=512 && (probe512 || part.block_size!=1024)) ||
+            (part.block_size!=512 && part.block_size!=1024) ||
             part.block_count<4 || part.block_count>0x7fffffffU) return -1;
         *bytes=(u_int64_t)part.block_count*part.block_size;
     }
@@ -151,7 +151,7 @@ ext2_format_size(const char *path,unsigned int blocksize,unsigned long requested
     if(path==NULL || strlen(path)>=MAXPATHLEN || blocksize<512 || blocksize%512) return 8;
     fd=open(path,O_RDONLY);
     if(fd<0) return 8;
-    error=capacity(fd,&bytes,&regular,0);
+    error=capacity(fd,&bytes,&regular);
     if(close(fd)<0 || error) return 8;
     blocks=requested?requested:bytes/blocksize;
     if(!blocks || blocks>0x80000000U/(blocksize/512)) return 8;
@@ -172,9 +172,8 @@ load_volume(const char *path,struct ext2fs *super)
     fd=open(path,O_RDONLY);
     if(fd<0) return FSUR_IO_FAIL;
     error=FSUR_IO_FAIL;
-    /* Current kernel admission accepts512-byte logical partitions only;
-     * formatter sizing also supports the selected1024-byte capacity ABI. */
-    if(capacity(fd,&bytes,&regular,1)<0 || bytes/512<4 || bytes/512>0x7fffffffU) goto done;
+    /* Convert selected capacity to bounded 512-byte address units. */
+    if(capacity(fd,&bytes,&regular)<0 || bytes/512<4 || bytes/512>0x7fffffffU) goto done;
     count=(u_int32_t)(bytes/512);
     if(ext2_read_super(512,count,read_at,&fd,super)!=0) goto done;
     error=ext2_validate_super(super,bytes,0)==0?FSUR_RECOGNIZED:FSUR_UNRECOGNIZED;

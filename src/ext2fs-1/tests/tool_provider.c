@@ -51,7 +51,9 @@ ssize_t tool_read(int fd,void *p,size_t n) {
 }
 
 int tool_open(const char *path,int flags) {
- if(!strcmp(path,"/outside/raw-node") || !strncmp(path,"/dev/",5)||!strncmp(path,"/private/dev/",13))path="/dev/null";
+ if(!strcmp(path,"/outside/raw-node") || !strncmp(path,"/dev/",5)||!strncmp(path,"/private/dev/",13)) {
+  const char *image=getenv("TOOL_DEVICE_IMAGE");path=image?image:"/dev/null";
+ }
  return open(path,flags);
 }
 int tool_ioctl(int fd,unsigned long request,void *arg) {
@@ -69,6 +71,7 @@ int tool_ioctl(int fd,unsigned long request,void *arg) {
 }
 int tool_fstat(int fd,struct stat *st) {
  int status=fstat(fd,st);
+ if(status==0 && getenv("TOOL_DEVICE_IMAGE") && S_ISREG(st->st_mode))st->st_mode=(st->st_mode & ~S_IFMT)|S_IFCHR;
  if(status==0 && getenv("TOOL_BIG_REG") && S_ISREG(st->st_mode))st->st_size=(off_t)3*1024*1024*1024;
  return status;
 }

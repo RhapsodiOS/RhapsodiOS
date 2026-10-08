@@ -43,7 +43,7 @@ int main(void)
     struct vop_bmap_args args;
     struct indir path[4];
     int (*ops[1])();
-    int levels,run,shift;
+    int levels,run,shift,devshift;
     daddr_t sector;
     memset(&node,0,sizeof(node)); memset(&vnode,0,sizeof(vnode));
     memset(&fs,0,sizeof(fs)); memset(&mount,0,sizeof(mount));
@@ -56,9 +56,11 @@ int main(void)
     ops[0]=strategy; vnode.v_op=ops; vop_strategy_desc.vdesc_offset=0;
     args.a_vp=&vnode; args.a_bnp=&sector; args.a_runp=&run;
     fs.e2fs.e2fs_bcount=1000;
-    for(shift=0;shift<3;shift++) {
+    for(devshift=9;devshift<=10;devshift++) {
+      for(shift=0;shift<3;shift++) {
         fs.e2fs_bsize=1024<<shift; mount.mnt_stat.f_iosize=fs.e2fs_bsize;
-        ump.um_nindir=fs.e2fs_bsize/4; ump.um_bptrtodb=shift+1; ump.um_seqinc=1;
+        ump.um_nindir=fs.e2fs_bsize/4; ump.um_bptrtodb=shift+10-devshift; ump.um_seqinc=1;
+        fs.e2fs_fsbtodb=ump.um_bptrtodb;
         CHECK(ufs_getlbns(&vnode,12,path,&levels) == 0);
         CHECK(levels == 2 && path[0].in_off == 0 && path[1].in_off == 0 && path[1].in_lbn == -12);
         CHECK(ufs_getlbns(&vnode,12+ump.um_nindir,path,&levels) == 0);
@@ -70,24 +72,26 @@ int main(void)
         args.a_bn=0; CHECK(ext2fs_bmap(&args) == 0 && sector == -1 && reads == 0);
         node.dinode.e2di_blocks[0]=h2fs32(999);
         node.dinode.e2di_blocks[1]=h2fs32(1000);
-        CHECK(ext2fs_bmap(&args) == 0 && sector == (999<<(shift+1)) && run == 0);
+        CHECK(ext2fs_bmap(&args) == 0 && sector == (999<<(shift+10-devshift)) && run == 0);
         node.dinode.e2di_blocks[1]=0;
         node.dinode.e2di_blocks[0]=h2fs32(1000);
         CHECK(ext2fs_bmap(&args) == EIO && reads == 0);
         node.dinode.e2di_blocks[0]=0;
         args.a_bn=12; node.dinode.e2di_blocks[12]=h2fs32(1000);
         CHECK(ext2fs_bmap(&args) == EIO && reads == 0);
-        node.dinode.e2di_blocks[12]=h2fs32(20); expected_sector=20<<(shift+1);
+        node.dinode.e2di_blocks[12]=h2fs32(20); expected_sector=20<<(shift+10-devshift);
         memset(pointers,0,sizeof(pointers)); ext2_put_le32(pointers,1000);
         CHECK(ext2fs_bmap(&args) == EIO && reads == 1 && releases == 1);
         reads=releases=0; ext2_put_le32(pointers,21);
-        CHECK(ext2fs_bmap(&args) == 0 && sector == (21<<(shift+1)) && reads == 1 && releases == 1);
+        CHECK(ext2fs_bmap(&args) == 0 && sector == (21<<(shift+10-devshift)) && reads == 1 && releases == 1);
         reads=releases=0; ext2_put_le32(pointers,999); ext2_put_le32(pointers+1,1000);
-        CHECK(ext2fs_bmap(&args) == 0 && sector == (999<<(shift+1)) && run == 0 && reads == 1 && releases == 1);
+        CHECK(ext2fs_bmap(&args) == 0 && sector == (999<<(shift+10-devshift)) && run == 0 && reads == 1 && releases == 1);
         ext2_put_le32(pointers,21); ext2_put_le32(pointers+1,0);
         reads=releases=0; residual=fs.e2fs_bsize;
         CHECK(ext2fs_bmap(&args) == EIO && reads == 1 && releases == 1);
         reads=releases=residual=0;
+        printf("EXT2_OK bmap logical=%d filesystem=%d\n",1<<devshift,fs.e2fs_bsize);
+      }
     }
     printf("EXT2_OK bmap bounds, geometry and short I/O\n");
     return 0;

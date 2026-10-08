@@ -5,8 +5,10 @@ ext2_io: ext2_io.c
 	$(CC) $(CFLAGS) -I../../kernel-7/bsd ext2_io.c -o $@
 partition_info: partition_info.c ../../kernel-7/bsd/dev/disk.h
 	$(CC) $(CFLAGS) -I../../kernel-7/bsd partition_info.c -o $@
+legacy_io: legacy_io.c
+	$(CC) $(CFLAGS) legacy_io.c -o $@
 clean:
-	rm -f ext2_io partition_info
+	rm -f ext2_io partition_info legacy_io
 
 # Private compile-time paths exercise production common and command code.
 TEST_DIR = $(shell pwd)/.tool-tests

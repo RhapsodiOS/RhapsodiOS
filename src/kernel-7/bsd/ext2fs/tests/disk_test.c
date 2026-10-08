@@ -77,8 +77,22 @@ static void test_super_read_bounds(void)
     reader.reads=0;
     CHECK(ext2_read_super(512,4,counted_read,&reader,&es) == 0);
     CHECK(reader.reads == 1 && es.e2fs_magic == 0xef53);
+    for (blocks=0;blocks<2;blocks++) {
+        reader.reads=0; es=before;
+        error=ext2_read_super(1024,blocks,counted_read,&reader,&es);
+        CHECK(reader.reads == 0);
+        CHECK(error == EINVAL && memcmp(&es,&before,sizeof(es)) == 0);
+    }
     reader.reads=0;
-    CHECK(ext2_read_super(1024,4,counted_read,&reader,&es) == EINVAL);
+    CHECK(ext2_read_super(1024,2,counted_read,&reader,&es) == 0);
+    CHECK(ext2_read_super(1024,4,counted_read,&reader,&es) == 0);
+    CHECK(ext2_read_super(1024,16384,counted_read,&reader,&es) == 0);
+    CHECK(ext2_read_super(1024,0x3fffffffU,counted_read,&reader,&es) == 0);
+    CHECK(reader.reads == 4 && es.e2fs_magic == 0xef53);
+    reader.reads=0; es=before;
+    CHECK(ext2_read_super(1024,0x40000000U,counted_read,&reader,&es) == EINVAL);
+    CHECK(ext2_read_super(2048,4,counted_read,&reader,&es) == EINVAL);
+    CHECK(memcmp(&es,&before,sizeof(es)) == 0);
     CHECK(ext2_read_super(0,4,counted_read,&reader,&es) == EINVAL);
     CHECK(ext2_read_super(512,0x80000000U,counted_read,&reader,&es) == EINVAL);
     CHECK(ext2_read_super(512,4,NULL,&reader,&es) == EINVAL);

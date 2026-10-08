@@ -1235,11 +1235,22 @@ ext2fs_has_super(struct ext2fs *es,u_int32_t group)
 }
 
 static int
+ext2fs_device_bshift(struct vnode *devvp,u_int32_t block_size)
+{
+    if (devvp->v_specsize != block_size) return -1;
+    if (block_size == 512) return 9;
+    if (block_size == 1024) return 10;
+    return -1;
+}
+
+static int
 ext2fs_read_super_bytes(void *cookie,u_int32_t offset,void *out,size_t len)
 {
     struct buf *bp = NULL;
-    int error;
-    error = bread((struct vnode *)cookie,offset/512,len,NOCRED,&bp);
+    struct vnode *devvp = cookie;
+    int error, shift = ext2fs_device_bshift(devvp,devvp->v_specsize);
+    if (shift < 0) return EINVAL;
+    error = bread(devvp,offset >> shift,len,NOCRED,&bp);
     if (!error) {
         if (bp->b_resid) error = EINVAL;
         else bcopy(bp->b_un.b_addr,out,len);
@@ -1256,7 +1267,7 @@ ext2fs_mountfs(struct vnode *devvp,struct mount *mp,struct proc *p)
     struct buf *bp = NULL;
     struct ext2fs disk;
     struct disk_partition_info capacity;
-    int error, i;
+    int error, i, dev_bshift;
     int ronly=(mp->mnt_flag & MNT_RDONLY) != 0;
     int mode=FREAD | (ronly ? 0 : FWRITE);
     u_int32_t start, end, table, blocks;
@@ -1267,6 +1278,8 @@ ext2fs_mountfs(struct vnode *devvp,struct mount *mp,struct proc *p)
     if ((error = VOP_OPEN(devvp,mode,p->p_ucred,p)) != 0) return error;
     error = VOP_IOCTL(devvp,DKIOCGPARTINFO,(caddr_t)&capacity,FREAD,p->p_ucred,p);
     if (error) goto fail;
+    dev_bshift = ext2fs_device_bshift(devvp,capacity.block_size);
+    if (dev_bshift < 0) { error=EINVAL; goto fail; }
     error = ext2_read_super(capacity.block_size,capacity.block_count,
         ext2fs_read_super_bytes,devvp,&disk);
     if (error) goto fail;
@@ -1281,7 +1294,7 @@ ext2fs_mountfs(struct vnode *devvp,struct mount *mp,struct proc *p)
     fs->e2fs_bsize = 1 << fs->e2fs_bshift;
     fs->e2fs_qbmask = fs->e2fs_bsize-1;
     fs->e2fs_bmask = ~fs->e2fs_qbmask;
-    fs->e2fs_fsbtodb = fs->e2fs_bshift-9;
+    fs->e2fs_fsbtodb = fs->e2fs_bshift-dev_bshift;
     fs->e2fs_ncg = (disk.e2fs_bcount-disk.e2fs_first_dblock+disk.e2fs_bpg-1)/disk.e2fs_bpg;
     fs->e2fs_ngdb = (fs->e2fs_ncg+fs->e2fs_bsize/32-1)/(fs->e2fs_bsize/32);
     fs->e2fs_ipb = fs->e2fs_bsize/128;
@@ -1636,7 +1649,7 @@ ext2fs_sbupdate(struct ufsmount *ump,int waitfor)
 {
     struct buf *bp;
     if (ump->um_e2fs->e2fs_suspended) return ump->um_e2fs->e2fs_ioerror;
-    bp=getblk(ump->um_devvp,2,1024,0,0);
+    bp=getblk(ump->um_devvp,SBOFF >> (ump->um_e2fs->e2fs_bshift-ump->um_e2fs->e2fs_fsbtodb),1024,0,0);
     ext2_super_encode(&ump->um_e2fs->e2fs,bp->b_data);
     return ext2fs_io_error(ump->um_e2fs,ext2_buf_write(bp,waitfor));
 }

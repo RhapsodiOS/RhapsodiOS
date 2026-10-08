@@ -45,8 +45,9 @@ the selected-partition ABI self-contained when rbuild stages the source.
 
 Run `sh tests/smoke_tools.sh DSTROOT UNIQUE_TEST_DIRECTORY "i386 ppc"`
 on the native guest to check versions, slices, exact payload and a disposable
-labelled image. A missing CPU execution is an acceptance gate; a slice check
-alone does not establish native execution on that CPU.
+labelled image. A slice check alone does not establish native execution on
+that CPU. Record unavailable or explicitly skipped CPU runs separately in
+the acceptance record.
 
 The native entry points are `newfs_ext2fs`, `fsck_ext2fs`, and
 `/usr/filesystems/ext2fs.fs/ext2fs.util`. Commands are root-owned mode 0755,
@@ -84,11 +85,30 @@ but its writable mount is refused until an explicit successful check/repair.
 
 Use `/sbin/fsck_ext2fs -n -f /dev/rhd1a` directly for inspection, or explicitly
 request repair with `/sbin/fsck_ext2fs -p /dev/rhd1a` on an unmounted volume.
-The general `/sbin/fsck` dispatcher and bootstrap manifests are unchanged;
+The current UFS `/sbin/fsck` checker and bootstrap manifests are unchanged;
 ext2 is not automatically checked through fstab. `COPYING` retains the GNU GPL
 and GNU Library GPL texts; `LIBRARY-NOTICES` retains the individual private
 library notices, and `NETBSD-NOTICES` retains the mount/helper BSD notices.
 See `PROVENANCE.md` for pinned upstream sources, checksums and ordered patches.
+
+For a disposable, unmounted partition on a kernel with the selected-capacity
+query, format and inspect it before mounting:
+
+```
+newfs_ext2fs -b 1024 -L Data /dev/rhd1a
+fsck_ext2fs -n -f /dev/rhd1a
+mkdir /mnt/ext2
+mount_ext2fs /dev/hd1a /mnt/ext2
+umount /mnt/ext2
+```
+
+Use `mount_ext2fs -o ro` for read-only access. The formatter's `-b` selects
+filesystem block size, independently of device logical-sector size. Current
+i386 acceptance covers 512- and 1024-byte logical partitions, including
+independent clean checks and cold readback. Native PPC execution and CPU
+exchange were explicitly user-skipped and remain unverified. See
+[the acceptance record](../../vm/ext2-acceptance.md) for exact artifact
+qualifications, commands, results, and unmet native requirements.
 
 `make -C tests check-tools` compiles production common and command code with
 private compile-time child paths and test-only inspection providers. The

@@ -58,8 +58,11 @@ int main(void) {
  CHECK(run("newfs_ext2fs",format)==0);CHECK(logged("-r") && logged("1") && logged("-I") && logged("128") && logged("1024") && logged("5") && logged("filetype,sparse_super"));CHECK(logged(format[2]));
  CHECK(sizeof(off_t)==8);setenv("TOOL_BIG_REG","1",1);CHECK(run("newfs_ext2fs",format)==0 && logged("-F"));unsetenv("TOOL_BIG_REG");
  CHECK(run("newfs_ext2fs",rawformat)==0 && logged("-F"));
- setenv("TOOL_CAP","sector1024",1);
- i=tool_read_calls;CHECK(ext2_probe("/private/dev/rhd1a",label)==FSUR_IO_FAIL && tool_read_calls==i);
+ setenv("TOOL_CAP","sector1024",1);setenv("TOOL_DEVICE_IMAGE",image,1);
+ i=tool_read_calls;CHECK(ext2_probe("/private/dev/rhd1a",label)==FSUR_RECOGNIZED && tool_read_calls>i);
+ i=tool_read_calls;CHECK(ext2_probe("/private/dev/hd1a",label)==FSUR_RECOGNIZED && tool_read_calls>i);
+ fixture("bad1024",6,1);CHECK(ext2_probe("/private/dev/rhd1a",label)==FSUR_UNRECOGNIZED);
+ fixture("clean",2,1);unsetenv("TOOL_DEVICE_IMAGE");
  CHECK(ext2_format_size("/private/dev/rhd1a",1024,16384)==0);
  deviceformat[2]="16384";CHECK(run("newfs_ext2fs",deviceformat)==0 && logged("-F"));deviceformat[2]="8192";
  CHECK(run("newfs_ext2fs",deviceblock)==0 && !logged("-F"));

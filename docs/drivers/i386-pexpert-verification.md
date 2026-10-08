@@ -24,7 +24,7 @@ and restoring the normal boot graphics settings.
 | APM comparison | Both settings failed with the old canonical kernel; corrected canonical kernel reaches a shell with APM restored to Yes |
 | drivertools packaging | Existing staged products successfully packaged through rbuild's packaging API |
 | Full drvPExpert/kernel APK pipeline | Not verified; direct native Project Builder and kernel targets were used |
-| APIC interrupt delivery | Shell, PCI network, PS/2 keyboard and graphics work; IDE reports an interrupt loss and switches to polling |
+| APIC interrupt delivery | IDE edge loss reproduced and corrected; final combined boot passes shell and 32 MiB disk readback without polling recovery |
 | LAPIC clock | Boot and thirty-second timing comparison pass after width and calibration fixes |
 | Actual AP startup | Two-CPU boot parks one AP; combined four-CPU boot parks three APs |
 | ACPI power button and S5 | Actual guest power-off verified with APM disabled and in the combined APIC boot |
@@ -179,15 +179,14 @@ Native products before the boot-flag follow-up:
 
 ## Remaining verification
 
-1. Diagnose the IDE interrupt loss in APIC boots. Boot and userspace success
-   depend on the existing EIDE polling recovery; this is not a clean result for
-   disk interrupt delivery. The default 8259 boots do not show this warning.
+1. Investigate the intermittent standalone APIC startup inconsistencies
+   described below: one missing SSH listener and one blank login desktop.
 2. Exercise MSI/MSI-X, MP-derived PCI INTx routes, bridge routing, ECAM and an actual FADT reset register.
    This QEMU PC firmware has no reset register; S5 power-off is verified.
 3. Exercise the complete package pipeline and physical hardware. The runtime
    checks below use QEMU TCG and do not establish correctness on real boards.
 
-## Boot-flag follow-up
+## Boot-flag follow-up before the APIC IDE fix
 
 All cases use a second disposable raw image, `flags-test.raw`, with QEMU
 `-snapshot`, SSH 5375 and QMP 5377. The working default control and native
@@ -253,3 +252,110 @@ continued in `bootflag-matrix-tail.log` without repeating the completed boots.
 The tail reaches `MATRIX COMPLETE`. A final audit finds
 successful userspace checks and no panic/trap in all ten matrix cases; the five
 APIC-enabled cases consistently contain the IDE polling-recovery warning.
+
+## APIC IDE interrupt follow-up
+
+The preceding fixes and boot-flag verification were committed as
+`a6619bc76` (`pexpert: fix i386 boot paths and add verification tests`). The
+APIC changes described here are a subsequent, uncommitted working-tree change.
+
+The original `apic=1` trace contains 3318 IRQ14 rising edges after the input
+was first enabled, including nine while the I/O APIC entry was masked. The
+first is at trace line 526389, during IDE command 0xc4, with entry 0x1004e.
+Nearby writes show the other inputs being masked too, consistent with an IPL
+change. The console reports `lost IDE interrupt (cmd 0xc4); using polled mode`.
+This explains the failure: masking an I/O APIC edge input discards requests.
+
+The controller callback now receives both the combined priority mask and the
+hard mask for disabled/unregistered inputs. Enabled I/O APIC edge inputs remain
+unmasked during IPL changes; their handlers defer in software. Level inputs
+retain priority masking, and the 8259 retains its existing combined mask.
+Both the kernel and platform expert must be rebuilt together for this callback
+interface change.
+
+Kernel deferred storage is now an IRQ bitmap per IPL instead of a single
+handler pointer, so distinct edges at one priority cannot overwrite each
+other. Unregister removes pending bits; interrupt return drains nested deferred
+requests. Interrupt entry only raises the hardware-masking IPL, preserving
+pending or active higher-priority level inputs when a lower edge arrives.
+
+Native regression evidence:
+
+- The APIC fixture reproduces three failures with the original controller;
+  the updated controller passes all six checks.
+- The kernel fixture reproduces enable/bitmap failures and a nested-return
+  failure before their respective fixes. All nine final checks pass.
+- Review identified premature unmasking of a pending/active level input by a
+  lower edge. Two new native checks fail before the entry-mask correction and
+  pass afterwards. Read-only re-review found no remaining findings.
+- Parser, physical mapper, clock width, calibration and shutdown regressions
+  still pass. Native Project Builder headers/install and configured kernel
+  rebuilds exit 0. Existing legacy compiler warnings remain.
+
+Final native products:
+
+| Product | Bytes | SHA-256 |
+| --- | ---: | --- |
+| pexperti386-ide-fixed.o | 1722968 | bd926c144012cdbef8ad9768bbbf2af310eb265f21824779a758083e7df06fcf |
+| mach_kernel-ide-reviewed | 1610800 | 8dfe7a3abbac18673c3aadb16b13449d1381615eecdcdd28d100d09e3638a7a4 |
+
+The revised kernel version is 23:35:33 EDT on 2026-10-07. Both canonical image
+aliases point at its inode, and image readback matches its checksum. Runtime
+tests use `ide-debug.raw`, QEMU snapshots, 128 MiB RAM, SSH 5385 and QMP 5387.
+
+The first corrected revision passed `apic=1`, the four-CPU combined flags and
+the default PIC control, including a native 32 MiB write/fsync/reopen/readback
+test. Its two APIC traces contain 12237 and 12128 IRQ14 rises with zero masked
+rises; neither boot reports IDE polling recovery. The final revision adds the
+review correction above and is tested separately below.
+
+The final four-CPU `apic=1 lapictimer=1 smp=1 acpi=1` boot passes userspace,
+network, graphical login and the 32 MiB disk workload. Its trace records 12207
+IRQ14 rises with zero masked rises. All three APs are halted as expected.
+LAPIC vector 126 is periodic with reload 625307; thirty guest seconds take
+31.976 host seconds including SSH. The virtual power button produces QMP
+`SHUTDOWN` with `guest=true`, `reason=guest-shutdown`.
+
+The final default PIC control also passes shell, network, graphical login and
+the same disk workload. Final screenshots for the combined and PIC cases
+were visually inspected and show normal login rendering.
+
+One final-revision standalone APIC boot reaches graphical login with no IDE
+warning and 3009 unmasked IRQ14 rises, but fails the 420-second SSH readiness
+window. Packet capture shows the guest answering TCP SYNs with RST/ACK;
+there is no SSH listener. The older control responds and the fresh combined
+and PIC boots pass. The cause of this startup failure is unconfirmed; this
+case is preserved as `flags-ide-reviewed-apic`, including `network.pcap`.
+
+A fresh standalone `apic=1` repeat passes SSH/shell, network and the 32 MiB
+disk workload. Its trace contains 12145 IRQ14 rises and zero
+masked rises; no IDE polling recovery, panic or kernel trap is reported.
+Its screenshots show a blank desktop despite live loginwindow/WindowServer
+processes, so this repeat does not establish graphical login success.
+The missing-listener boot did not recur in this repeat, but its cause has not
+been established.
+
+All three final cases (`flags-ide-reviewed-apic-repeat`,
+`flags-ide-reviewed-combined`, `flags-ide-reviewed-pic`) pass their disk and
+userspace assertions. The matrix guests were stopped or shut down after
+verification. An additional standalone APIC guest remains available below.
+The original default control, earlier corrected default and
+native builder remain separate. `ide-debug.raw` retains the final kernel and
+`apic=1` for reproduction.
+
+The additional `flags-ide-reviewed-apic-visual` boot passes SSH and shell,
+shows the normal login window, and displays a QMP-injected `a` in the name
+field. Its startup process/system/network logs are saved. This demonstrates
+that normal graphics and keyboard delivery also work with the final standalone
+APIC configuration; the earlier startup inconsistencies remain unexplained.
+This same boot passes the 32 MiB disk workload with 12093 IRQ14 rises and zero
+masked rises, without IDE polling recovery. It remains running as host process
+50492 on SSH 5385 / QMP 5387 with the final kernel.
+
+Evidence is in the same local directory: `flags-ide-red`,
+`flags-ide-green`, `flags-ide-combined`, `flags-ide-pic-control`,
+`flags-ide-reviewed-*`, their trace analyses, userspace and disk logs,
+`apic-mask-red/green.log`, `interrupt-*-red/green.log`,
+`rebuild-ide-host.log`, `rebuild-ide-reviewed-host.log`, and the reproduction
+helpers `analyze-ide-trace.py`, `verify-ide-io.sh`, `ide-io-test.c`,
+`install-ide-kernel.py`, `start-ide-boot.ps1`, and `verify-reviewed-ide.py`.

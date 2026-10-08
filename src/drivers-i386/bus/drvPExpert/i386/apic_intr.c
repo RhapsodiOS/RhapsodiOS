@@ -37,6 +37,7 @@ static ioapic_t		ioapics[PEXPERT_MAX_IOAPICS];
 static int		ioapic_count;
 static irq_pin_t	pins[PEXPERT_NIRQ];
 static pexpert_irq_mask_t	current_masked;
+static pexpert_irq_mask_t	priority_masked, disabled_masked;
 static unsigned char	boot_apic_id;
 static int		apic_mode;
 
@@ -161,17 +162,26 @@ apic_irq_valid(int irq)
 }
 
 static void
-apic_set_mask(pexpert_irq_mask_t masked)
+apic_set_mask(pexpert_irq_mask_t masked, pexpert_irq_mask_t disabled)
 {
-    pexpert_irq_mask_t	changed = masked ^ current_masked;
+    pexpert_irq_mask_t	hardware_mask = masked, changed;
     int			irq;
 
+    priority_masked = masked;
+    disabled_masked = disabled;
+    /* Unlike the 8259, a masked I/O APIC edge input discards requests. */
+    for (irq = 0; irq < PEXPERT_NIRQ; irq++) {
+	pexpert_irq_mask_t	bit = (pexpert_irq_mask_t)1 << irq;
+	if (pins[irq].ioapic >= 0 && (pins[irq].low & IOAPIC_LEVEL) == 0)
+	    hardware_mask = (hardware_mask & ~bit) | (disabled & bit);
+    }
+    changed = hardware_mask ^ current_masked;
     for (irq = 0; changed != 0 && irq < PEXPERT_NIRQ; irq++, changed >>= 1) {
 	int	on;
 
 	if ((changed & 1) == 0)
 	    continue;
-	on = (masked >> irq) & 1;
+	on = (hardware_mask >> irq) & 1;
 	if (pins[irq].ioapic >= 0)
 	    ioapic_set_masked(&ioapics[pins[irq].ioapic], pins[irq].pin, on);
 	else if (irq == PEXPERT_TIMER_IRQ)
@@ -179,7 +189,7 @@ apic_set_mask(pexpert_irq_mask_t masked)
 	else if (irq >= PEXPERT_MSI_IRQ_BASE)
 	    msi_set_masked(irq, on);
     }
-    current_masked = masked;
+    current_masked = hardware_mask;
 }
 
 static void
@@ -199,6 +209,7 @@ static int
 apic_set_trigger(int irq, int level)
 {
     irq_pin_t	*p;
+    pexpert_irq_mask_t	bit, mask;
 
     if (irq < 0 || irq >= PEXPERT_NIRQ || pins[irq].ioapic < 0)
 	return (0);
@@ -207,6 +218,9 @@ apic_set_trigger(int irq, int level)
 	p->low |= IOAPIC_LEVEL;
     else
 	p->low &= ~IOAPIC_LEVEL;
+    bit = (pexpert_irq_mask_t)1 << irq;
+    mask = level ? priority_masked : disabled_masked;
+    current_masked = (current_masked & ~bit) | (mask & bit);
     ioapic_set_entry(&ioapics[p->ioapic], p->pin,
 		     p->low | (((current_masked >> irq) & 1) ? IOAPIC_MASKED : 0),
 		     boot_apic_id);

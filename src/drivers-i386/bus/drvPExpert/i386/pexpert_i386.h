@@ -59,7 +59,8 @@ typedef unsigned long long pexpert_irq_mask_t;
  * only touches hardware.  Every entry is called with interrupts disabled.
  *
  *   irq_valid	 whether irq can be registered on this controller
- *   set_mask	 make exactly the irqs whose bit is set masked
+ *   set_mask	 apply the priority mask and the explicitly disabled mask;
+ *		 edge inputs must retain requests while priority-masked
  *   eoi	 acknowledge irq, sent before its handler runs
  *   is_spurious the controller reported irq but nothing is behind it;
  *		 a TRUE return drops the interrupt (the controller has
@@ -69,7 +70,7 @@ typedef unsigned long long pexpert_irq_mask_t;
 typedef struct intr_controller {
     const char	*name;
     int		(*irq_valid)(int irq);
-    void	(*set_mask)(pexpert_irq_mask_t masked);
+    void	(*set_mask)(pexpert_irq_mask_t masked, pexpert_irq_mask_t disabled);
     void	(*eoi)(int irq);
     int		(*is_spurious)(int irq);
     int		(*set_trigger)(int irq, int level);

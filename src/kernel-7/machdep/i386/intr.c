@@ -59,10 +59,11 @@
 
 static intr_dispatch_t	dispatch_table[INTR_NIRQ];
 static intr_irq_mask_t	ipl_mask[INTR_NIPL];
-static intr_dispatch_t	*defer_table[INTR_NIPL];
+static pexpert_irq_mask_t	defer_table[INTR_NIPL];
 
 static int		current_ipl, masked_ipl;
 static intr_irq_mask_t	current_irq_mask, disabled_irq_mask;
+static intr_irq_mask_t	current_hard_mask;
 static intr_irq_mask_t	current_elcr;
 
 static const intr_controller_t	*controller;
@@ -157,7 +158,8 @@ set_elcr(
 static
 void
 i8259_set_mask(
-    pexpert_irq_mask_t		mask
+    pexpert_irq_mask_t		mask,
+    pexpert_irq_mask_t		disabled
 )
 {
     union {
@@ -193,13 +195,17 @@ set_irq_mask(
     intr_irq_mask_t		mask
 )
 {
-    intr_irq_mask_t		new_mask;
+    intr_irq_mask_t		new_mask, hard_mask;
     
     new_mask.mask = mask.mask | disabled_irq_mask.mask;
+    /* IPL0 masks include unregistered IRQs, which must stay disabled. */
+    hard_mask.mask = ipl_mask[INTR_IPL0].mask | disabled_irq_mask.mask;
 
-    if (new_mask.mask != current_irq_mask.mask) {
+    if (new_mask.mask != current_irq_mask.mask ||
+		hard_mask.mask != current_hard_mask.mask) {
 	current_irq_mask = new_mask;
-	(*controller->set_mask)(new_mask.mask);
+	current_hard_mask = hard_mask;
+	(*controller->set_mask)(new_mask.mask, hard_mask.mask);
     }
 }
 
@@ -294,11 +300,15 @@ lower_ipl(
     int			old_ipl
 )
 {
-    intr_dispatch_t	**d, *i;
+    intr_dispatch_t	*i;
+    int			level, irq;
     
-    for (d = &defer_table[old_ipl]; d > &defer_table[ipl]; d--)
-	if (i = *d) {
-	    *d = 0;
+    for (level = old_ipl; level > ipl; level--)
+	while (defer_table[level]) {
+	    for (irq = 0; !(defer_table[level] & INTR_MASK_IRQ(irq)); irq++)
+		;
+	    defer_table[level] &= ~INTR_MASK_IRQ(irq);
+	    i = &dispatch_table[irq];
 
 	    (void) set_ipl(i->ipl);
 	    
@@ -567,6 +577,7 @@ intr_unregister_irq(
     mask = INTR_MASK_IRQ(irq);
     for (i = 0, m = ipl_mask; i < INTR_NIPL; i++, m++) {
 	m->mask |= mask;
+	defer_table[i] &= ~mask;
     }
 
     set_irq_mask(ipl_mask[masked_ipl]);
@@ -789,9 +800,9 @@ intr_set_controller(
 
     e = intr_disbl();
 
-    (*controller->set_mask)(INTR_MASK_ALL);
+    (*controller->set_mask)(INTR_MASK_ALL, INTR_MASK_ALL);
     controller = new_controller;
-    (*controller->set_mask)(current_irq_mask.mask);
+    (*controller->set_mask)(current_irq_mask.mask, current_hard_mask.mask);
 
     (void) intr_enbl(e);
 }
@@ -832,9 +843,12 @@ intr_handler(
     /*
      * Mask this interrupt before
      * acknowledging so that level
-     * triggered inputs work.
+     * triggered inputs work. Lower-priority edge inputs may arrive while
+     * a higher-priority level input is pending; keep that input masked.
      */
-    old_masked_ipl = set_masked_ipl(i->ipl);
+    old_masked_ipl = masked_ipl;
+    if (i->ipl > masked_ipl)
+	(void) set_masked_ipl(i->ipl);
 
     /*
      * Acknowledge it.
@@ -861,7 +875,7 @@ intr_handler(
 		
 	sti(); (*i->routine)(i->which, state, old_ipl); cli();
 	
-	(void) set_ipl(old_ipl);
+	lower_ipl(old_ipl, i->ipl);
 	(void) set_masked_ipl(old_masked_ipl);
     }
     /*
@@ -871,6 +885,6 @@ intr_handler(
     else {
 	intr_cnt.defer++;
 		
-    	defer_table[i->ipl] = i;
+	defer_table[i->ipl] |= INTR_MASK_IRQ(irq);
     }
 }

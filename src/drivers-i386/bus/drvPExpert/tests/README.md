@@ -71,3 +71,27 @@ hardware clock and an inaccurate spin delay, including sample overshoot and a
 stopped reference clock. The shutdown test checks that a power-button SCI
 acknowledges the event and requests both halt and powerdown with public SDK
 headers. Hardware boot, timing and actual power-off are separate runtime checks.
+
+## APIC masks and deferred interrupts
+
+Compile `apic_mask_test.c` with native `cc`. It includes the production APIC
+controller with simulated I/O APIC entries and inputs. Six checks cover edge
+retention during priority masking, explicit disable/re-enable, level masking,
+and trigger-mode changes. No privileged port instructions are executed.
+
+Generate and run the kernel deferral fixture:
+
+```sh
+python interrupt_deferral_test.py interrupt-deferral-test.c
+cc interrupt-deferral-test.c -o interrupt-deferral-test
+./interrupt-deferral-test
+```
+
+It extracts the production masking and dispatch functions, substituting CPU
+interrupt controls and a capture controller. Nine checks cover enable changes
+under a raised IPL, multiple deferred IRQs at the same priority, upper IRQ
+bits, exactly-once draining and a nested edge deferred until interrupt return.
+Mixed edge/level cases check that a lower-priority edge arrival preserves the
+hardware mask of a higher-priority level input while pending or in service.
+Actual edge delivery and disk integrity are verified separately by traced
+QEMU boots and a 32 MiB write/fsync/readback workload.

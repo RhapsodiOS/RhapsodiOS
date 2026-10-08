@@ -164,6 +164,11 @@ inherit the i386 guest's answers.
 - Clients in `/usr/bin`, `sshd` in `/usr/sbin`, `sftp-server` and
   `ssh-keysign` in `/usr/libexec`.
 - Man pages stay disabled, as today.
+- Root keeps password logins: the vm tooling logs in as `root` with a
+  password, and root is a fresh install's main account. If the chosen
+  release's default `PermitRootLogin` is anything but `yes` (7.0 and later
+  default to `prohibit-password`), a labelled patch sets `PermitRootLogin
+  yes` in the shipped `sshd_config`.
 
 ## files: privsep user, /var/empty, startup
 

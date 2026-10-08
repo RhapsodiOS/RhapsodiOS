@@ -84,6 +84,14 @@ Patch order:
    Private native tests include the actual patched I/O module and cover
    aligned requests, content, short/error callbacks and buffer boundaries.
 
+4. `004-rhapsody-mounted-safety.patch`: mounted-source inspection refuses
+   unresolved or relative source identities, matches raw/block device nodes
+   symmetrically, and exempts only the documented pseudo-mount pairs. Direct
+   e2fsck repair aborts on inspection errors; read-only checking is retained.
+   Direct mke2fs aborts unless its existing explicit force override is given.
+   The tests extract the actual helper and both caller decisions; no device
+   writes occur in those controls.
+
 COPYING carries the GPL v2 and GNU Library GPL v2 text. LIBRARY-NOTICES
 retains verbatim copyright/permission headers from the six private support
 libraries (ext2fs, e2p, com_err, ss, uuid, blkid), plus the com_err documentation

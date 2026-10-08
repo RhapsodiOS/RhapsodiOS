@@ -58,8 +58,15 @@ Options are specified with a
 flag followed by a comma-separated string of options.
 Supported options are ro, rw, sync, async, noexec, exec, nosuid, suid,
 nodev, dev, update, and force. Unknown options, including getargs and
-nodevmtime, are rejected. This milestone requires ro; writable mounts
-are rejected with EROFS.
+nodevmtime, are rejected. Mounts default to rw. Writable admission requires
+an eligible, clean ext2 volume; force does not bypass the supported-profile
+or clean-state checks. Dirty volumes require an offline check before rw use.
+.Pp
+An update may change a clean read-only mount to read-write, or flush a
+read-write mount before making it read-only. Active writable mappings or
+busy buffers may prevent the latter transition with EBUSY. Write failures
+retain a dirty state and can suspend further writes; repair requires an
+offline check.
 .El
 .Sh SEE ALSO
 .Xr mount 2 ,

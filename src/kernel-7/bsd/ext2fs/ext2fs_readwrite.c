@@ -100,17 +100,20 @@ ext2fs_read(v)
 	daddr_t lbn, nextlbn;
 	off_t bytesinfile;
 	long size, xfersize, blkoffset;
-	int error;
+	int error, resid;
 
 	vp = ap->a_vp;
 	ip = VTOI(vp);
 	uio = ap->a_uio;
+	resid = uio->uio_resid;
 
 #if MACH_NBC
 	/* Native pager pass-through uses UIO_SYSSPACE and must stay buffered. */
 	if (vp->v_type == VREG && vp->v_vm_info && vp->v_vm_info->pager &&
-	    uio->uio_segflg == UIO_USERSPACE)
-		return ext2fs_vm_io(vp,uio,ap->a_ioflag,ap->a_cred);
+	    uio->uio_segflg == UIO_USERSPACE) {
+		error = ext2fs_vm_io(vp,uio,ap->a_ioflag,ap->a_cred);
+		goto accessed;
+	}
 #endif
 
 #ifdef DIAGNOSTIC
@@ -179,6 +182,11 @@ ext2fs_read(v)
 		brelse(bp);
 
 
+#if MACH_NBC
+accessed:
+#endif
+	if (uio->uio_resid < resid && !(vp->v_mount->mnt_flag & MNT_RDONLY))
+		ip->i_flag |= IN_ACCESS;
 	return (error);
 }
 

@@ -84,9 +84,10 @@ int main(int argc, char **argv)
     check("zero mountpoint length", block_alias, argv[4], "/mnt", 0, mounted, 0, 0);
     check("safe unmounted regular", argv[3], regular, "/mnt", 0, 0, 0, 8);
     check("regular identity", regular, regular, "/mnt", 0, mounted, 0, 8);
-    check("broken source", broken, argv[4], "/mnt", 0, 0, 0, 8);
-    check("loop source", loop, argv[4], "/mnt", 0, 0, 0, 8);
+    check("broken source", broken, argv[4], "/mnt", 0, 0, EIO, 8);
+    check("loop source", loop, argv[4], "/mnt", 0, 0, EIO, 8);
     check("missing target", argv[3], broken, "/mnt", 0, 0, ENOENT, 8);
+    check("relative source from another cwd", "disk0a", argv[4], "/mnt", 0, 0, EIO, 8);
     table_error = EIO;
     check("mount table failure", argv[3], argv[4], "/mnt", 0, 0, EIO, 8);
     printf("ismounted cases=%d failures=%d\n", cases, failures);

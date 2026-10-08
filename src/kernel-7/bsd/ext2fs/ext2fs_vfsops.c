@@ -1618,6 +1618,7 @@ retry:
     lockmgr(&ip->i_lock,LK_EXCLUSIVE,NULL,p);
     ip->i_devvp=ump->um_devvp; VREF(ip->i_devvp);
     if (!allocating && (ip->i_size > EXT2_FILESIZE_MAX || ip->i_mode == 0 || ip->i_nlink == 0 ||
+        ext2fs_dinode(ip)->e2di_linux_reserved3[0] != 0 ||
         (IFTOVT(ip->i_mode)==VREG && ext2fs_dinode(ip)->e2di_dacl))) {
         vput(vp); error=EIO; goto out;
     }

@@ -1,11 +1,13 @@
 # ext2 filesystem acceptance
 
-**Requested i386 runtime acceptance passed.** Current selected1024-device
+**The pre-review Task9 i386 matrix passed at `95be5206`.** Its selected1024-device
 format/check/probe/mount/write/unmount, all six revision/block profiles,
 one current512 regression, independent clean checks and seven fresh cold
 readbacks passed. The user explicitly skipped native PowerPC execution and
 CPU exchange on 2026-10-08; these are USER-SKIPPED, never passed. Final
-independent task and whole-branch reviews follow this validation record.
+independent task and whole-branch reviews identified the follow-up corrections
+recorded at the end of this document. Earlier matrix entries retain their
+original artifact generations.
 
 The Task 9 baseline is `5503fca18f5171c53ecb800261b388da1969651e` on
 `codex/ext2fs-port`. The detailed commands, identities, source manifests,
@@ -263,8 +265,82 @@ Unavailable SCSI/exposed-HFS, current FAT/HFS/volfs and installed-daemon
 execution remain explicit limitations. Infrastructure failures and unavailable
 prerequisites must not be relabeled as filesystem passes.
 
-Deferred whole-branch review items remain visible: inherited vendor
-BLKFLSBUF/FDFLUSH and LIST_HEAD warnings, stock Java configuration noise,
-mounted-source naming risk, the exposed unused byte-writer warning, missing
-positive aligned-prefix-short129/768 control, and retained notice EOF
-whitespace. These are not a license for unrelated vendor or driver changes.
+Retained warning debt includes vendor BLKFLSBUF/FDFLUSH and LIST_HEAD warnings,
+stock Java configuration noise, the exposed unused byte-writer warning and
+notice EOF whitespace. The mounted-source naming defect and positive
+aligned-prefix-short129/768 test gap were addressed in the final review wave.
+
+## Final review wave
+
+The current ordinary i386 kernel is
+`d517fb588377364cf16a68ddbef92b209f27ee6c428fb3dcd73047a8c97784d1`.
+The universal APK is
+`8dd5e8e30018eda11b20b0749dc80dea612a8610b0eca760f3fa5dd6334670fa`,
+source identity `db7a5d0d`, from 68 frozen LF-qualified inputs. It contains
+nine CPU7/18 commands, nine manuals, three notices and package metadata.
+The later uninstalled `review_io.c` helper has separate native source/binary
+proof; installed package inputs are unchanged. These artifacts supersede the
+earlier generation for this focused validation, without relabelling its tests.
+
+Vendor patch004 makes mounted-target inspection conservative and fixes both
+destructive callers, while preserving readonly inspection and explicit force
+semantics. Indirect truncation validates unshifted roots and recursive pointer
+arrays before explicit I/O or freeing, and retains conservative error state.
+Allocation compares free and reserved counts directly. Buffered/inline reads
+and the ext2-tagged MapFS ordinary-read boundary record delivered RW accesses.
+The installed mount manual now describes the writable profile.
+
+Actual-production native controls passed: 39 allocator/read/chown checks,
+112 final truncate checks, 48 MapFS copy-boundary checks, 41 vendor mounted
+decision checks, and 54 vendor I/O checks including positive129/768. Actual
+disabled MapFS compilation and 48 disabled controls also passed. Native
+execution is i386; PPC links are compile evidence only. The retained31
+ownership controls passed before the user explicitly skipped comprehensive
+ownership follow-up. That follow-up and native PPC/CPU exchange are
+USER-SKIPPED, never passed.
+
+The targeted current i386 workflow passed on logical512/1024, revision1 and
+1 KiB filesystem blocks. It covers valid truncation, root crossing the reserve
+with nonroot ENOSPC, persisted buffered/mapped/inline access times, readonly
+nonmutation, all six outside/removed/relative mounted-source refusals with
+unchanged bounded full-partition checksums, and malformed indirect-root EIO
+with an unchanged sentinel outside the advertised filesystem. The1024 result
+is aggregated: passed mutation/timestamp work was retained through an exact
+private copy, explicit offline repair1/clean-check0 and full payload/timestamp
+verification before the remaining refusal cases. It is not a pristine repeat
+of the earlier seven-profile matrix.
+
+Original failures remain explicit: an oversized reserve fixture was rejected
+by the pinned checker, an unbounded raw checksum read reached end-of-partition
+EIO, and ordinary build attempts exposed CRLF input errors. The successful
+continuation uses the existing bounded checksum helper and explicitly returns
+producer failure. It finished status0 with no panic and one retained QEMU
+Slirp failed-send diagnostic. Two clean snapshots precede the deliberate
+malformed-pointer fixtures.
+
+The native UFS mapped-write/fsync/immediate readback passed, but its closed
+disk lacked the five mapped bytes. UFS cold persistence is not established.
+The shared change is gated to ext2 reads; no UFS/write behavior was changed.
+This observation remains available to scoped review, with no broad UFS repair
+or baseline-VM follow-up under the final scope ruling.
+
+Independent e2fsck1.47.4-f-n checks passed on both clean16MiB snapshots,
+with full Q payloads, empty-file checks and on-disk access times newer than100.
+A fresh i386 cold run passed both RO readbacks/unmounts; both full packed data
+image hashes remained unchanged. Native lstat and independent debugfs report
+different inline-link atime values (all newer than100); exact readings remain
+in the report for review rather than being claimed identical.
+Full commands, CPU/config/source applicability, statuses, streams, cards and
+hashes are in `final-fix-wave-report.md` and its named local proof files.
+
+The new owning fixtures are generated with:
+
+```text
+python vm/ext2_review_test.py private-generated
+python vm/ext2_vendor_mount_test.py private-patched-vendor private-vendor-tests
+```
+
+Compile those extracted bodies with the actual native ABI headers/configuration;
+host substitutes do not establish kernel ABI or execution. The uninstalled
+`src/ext2fs-1/tests/review_io.c` is for the exact guarded private fixtures,
+including their selected-device geometry and offline mutation checkpoints.

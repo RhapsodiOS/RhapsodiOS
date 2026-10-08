@@ -1346,7 +1346,18 @@ mapfs_io(vp, uio, rw, ioflag, cred)
 		if (rw == UIO_WRITE)
 			vmp->nfsdirty = TRUE;
 
+		{
+#if EXT2FS
+		int resid = uio->uio_resid;
+#endif
 		error = uiomove((caddr_t)va, (int)n, uio);
+#if EXT2FS
+		/* Ordinary mapped reads bypass the filesystem's VOP_READ. */
+		if (rw == UIO_READ && uio->uio_resid < resid &&
+		    vp->v_tag == VT_EXT2FS && !(vp->v_mount->mnt_flag & MNT_RDONLY))
+			VTOI(vp)->i_flag |= IN_ACCESS;
+#endif
+		}
 
 		vmp->busy = FALSE;
 

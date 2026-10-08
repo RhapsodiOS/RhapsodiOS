@@ -115,7 +115,7 @@ ext2fs_alloc(ip, lbn, bpref, cred, bnp)
 #endif /* DIAGNOSTIC */
 	if (fs->e2fs.e2fs_fbcount == 0)
 		goto nospace;
-	if (cred->cr_uid != 0 && freespace(fs) <= 0)
+	if (cred->cr_uid != 0 && fs->e2fs.e2fs_fbcount <= fs->e2fs.e2fs_rbcount)
 		goto nospace;
 	if (bpref >= fs->e2fs.e2fs_bcount)
 		bpref = 0;

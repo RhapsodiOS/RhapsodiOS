@@ -354,3 +354,29 @@ visibility through read before fsync, ordinary-write visibility through the
 shared page, private isolation, and both bytes after fsync/unmap/RO remount.
 The covering native cases retain mapped/unlinked lifetime and ceiling checks,
 ordinary allocation/unlink, and unchanged-data RO/malformed regressions.
+
+
+### Final review corrections (Task 9 follow-up)
+
+Indirect truncation now checks unshifted inode and indirect-array pointers
+against the filesystem block count before conversion, strategy, rewriting or
+freeing. A recursive failure stops that subtree's frees and retains the
+committed inode pointers plus the first error; detached blocks remain allocated
+for offline checking. The native tests cover corrupt roots, recursive arrays,
+shift overflow and valid partial/full trees on 512/1024-byte devices.
+
+The first profile supports 16-bit ownership. Create, mkdir and chown reject
+unrepresentable IDs with EINVAL before allocation or ownership mutation;
+VNOVAL leaves that owner unchanged. Imported nonzero Linux high UID/GID words
+are rejected with EIO before vnode admission. Allocation compares free and
+reserved unsigned counts directly, preserving root's reserve exception.
+
+Buffered reads and inline readlink record IN_ACCESS after bytes are delivered
+on a writable mount. The exact shared source `kern/mapfs.c` also has an
+EXT2FS-compiled, VT_EXT2FS-tagged update at its successful read-copy boundary:
+already-mapped ordinary reads enter it directly from VFS. Non-ext2 and read-only
+copies retain their prior behavior. Pager routing and pure mmap page-fault
+policy are unchanged. The associated native UFS mapped write/fsync and
+immediate ordinary readback passed. The closed-disk check did not contain the
+five mapped bytes, so UFS cold persistence is not established. That limitation
+is retained for review; this change does not alter UFS or mapped-write behavior.

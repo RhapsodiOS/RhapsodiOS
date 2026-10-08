@@ -373,6 +373,8 @@ ext2fs_chown(vp, uid, gid, cred, p)
 		uid = ip->i_e2fs_uid;
 	if (gid == (gid_t)VNOVAL)
 		gid = ip->i_e2fs_gid;
+	if (uid > 65535 || gid > 65535)
+		return EINVAL;
 	/*
 	 * If we don't own the file, are trying to change the owner
 	 * of the file, or are not a member of the target group,
@@ -907,6 +909,10 @@ ext2fs_mkdir(v)
 		panic("ext2fs_mkdir: no name");
 #endif
 	dp = VTOI(dvp);
+	if (cnp->cn_cred->cr_uid > 65535 || dp->i_e2fs_gid > 65535) {
+		error = EINVAL;
+		goto out;
+	}
 	if ((nlink_t)dp->i_e2fs_nlink >= LINK_MAX) {
 		error = EMLINK;
 		goto out;
@@ -1134,7 +1140,11 @@ ext2fs_makeinode(mode, dvp, vpp, cnp)
 	if ((mode & IFMT) == 0)
 		mode |= IFREG;
 
-	if ((error = VOP_VALLOC(dvp, mode, cnp->cn_cred, &tvp)) != 0) {
+	if (cnp->cn_cred->cr_uid > 65535 || pdir->i_e2fs_gid > 65535)
+		error = EINVAL;
+	else
+		error = VOP_VALLOC(dvp, mode, cnp->cn_cred, &tvp);
+	if (error) {
 		_FREE_ZONE(cnp->cn_pnbuf, cnp->cn_pnlen, M_NAMEI);
 		vput(dvp);
 		return (error);
@@ -1348,8 +1358,12 @@ ext2fs_readlink(struct vop_readlink_args *ap)
 {
     struct inode *ip=VTOI(ap->a_vp);
     if (ip->i_blocks == 0) {
+        int resid=ap->a_uio->uio_resid,error;
         if (ip->i_size > EXT2_MAXSYMLINKLEN) return EIO;
-        return uiomove((caddr_t)ext2fs_dinode(ip)->e2di_shortlink,ip->i_size,ap->a_uio);
+        error=uiomove((caddr_t)ext2fs_dinode(ip)->e2di_shortlink,ip->i_size,ap->a_uio);
+        if (ap->a_uio->uio_resid < resid && !(ap->a_vp->v_mount->mnt_flag & MNT_RDONLY))
+            ip->i_flag |= IN_ACCESS;
+        return error;
     }
     return VOP_READ(ap->a_vp,ap->a_uio,0,ap->a_cred);
 }

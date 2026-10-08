@@ -70,6 +70,9 @@ int main(int argc,char **argv) {
  CHECK(result==0);CHECK(calls==2 && offsets[0]==7168 && offsets[1]==7680 && sizes[0]==512 && sizes[1]==512);verify(b,768,768);
  reset();short_call=1;short_size=129;prepare(b);result=io_channel_read_blk(c,7,-256,b+64);
  CHECK(result==EXT2_ET_SHORT_READ);CHECK(callback_calls==1 && callback_actual==129 && callback_error==result);verify(b,256,129);
+ reset();short_call=1;short_size=129;prepare(b);result=io_channel_read_blk(c,7,-768,b+64);
+ CHECK(result==EXT2_ET_SHORT_READ);CHECK(callback_calls==1 && callback_actual==129 && callback_error==result);
+ CHECK(calls==1 && offsets[0]==7168 && sizes[0]==512);verify(b,768,129);
  reset();short_call=2;short_size=129;prepare(b);result=io_channel_read_blk(c,7,-768,b+64);
  CHECK(result==EXT2_ET_SHORT_READ);CHECK(callback_calls==1 && callback_actual==641 && callback_error==result);verify(b,768,641);
  reset();short_call=1;short_size=300;prepare(b);result=io_channel_read_blk(c,7,-256,b+64);

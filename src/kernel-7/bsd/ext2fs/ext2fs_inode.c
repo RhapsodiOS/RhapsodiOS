@@ -253,6 +253,11 @@ ext2fs_truncate(struct vop_truncate_args *ap)
 	 * zero'ed in case it ever become accessible again because
 	 * of subsequent file growth.
 	 */
+	/* Check unshifted inode pointers before any truncate I/O or freeing. */
+	for (i = 0; i < NDADDR + NIADDR; i++)
+		if (fs2h32(ext2fs_dinode(oip)->e2di_blocks[i]) >= fs->e2fs.e2fs_bcount)
+			return ext2fs_io_error(fs,EIO);
+
 	offset = blkoff(fs, length);
 	if (offset != 0) {
 		size = fs->e2fs_bsize;
@@ -337,10 +342,12 @@ ext2fs_truncate(struct vop_truncate_args *ap)
 		bn = fs2h32(ext2fs_dinode(oip)->e2di_blocks[NDADDR + level]);
 		if (bn != 0) {
 			error = ext2fs_indirtrunc(oip, indir_lbn[level],
-			    fsbtodb(fs, bn), lastiblock[level], level, &count);
-			if (error)
-				allerror = error;
+			    bn, lastiblock[level], level, &count);
 			blocksreleased += count;
+			if (error) {
+				allerror = error;
+				goto done;
+			}
 			if (lastiblock[level] < 0) {
 				ext2fs_dinode(oip)->e2di_blocks[NDADDR + level] = 0;
 				ext2fs_blkfree(oip, bn);
@@ -365,6 +372,10 @@ ext2fs_truncate(struct vop_truncate_args *ap)
 	}
 
 done:
+	/* The committed inode no longer owns detached, possibly corrupt trees.
+	 * Keep them allocated for fsck; never resurrect their old pointers. */
+	if (allerror)
+		memcpy(&ext2fs_dinode(oip)->e2di_blocks[0],newblks,sizeof newblks);
 #ifdef DIAGNOSTIC
 	for (level = SINGLE; level <= TRIPLE; level++)
 		if (newblks[NDADDR + level] !=
@@ -397,10 +408,10 @@ done:
  * NB: triple indirect blocks are untested.
  */
 static int
-ext2fs_indirtrunc(ip, lbn, dbn, lastbn, level, countp)
+ext2fs_indirtrunc(ip, lbn, bn, lastbn, level, countp)
 	struct inode *ip;
 	daddr_t lbn, lastbn;
-	daddr_t dbn;
+	daddr_t bn;
 	int level;
 	long *countp;
 {
@@ -414,6 +425,10 @@ ext2fs_indirtrunc(ip, lbn, dbn, lastbn, level, countp)
 	long blkcount, factor;
 	int nblocks, blocksreleased = 0;
 	int error = 0, allerror = 0;
+
+	*countp = 0;
+	if (bn == 0 || (u_int32_t)bn >= fs->e2fs.e2fs_bcount)
+		return ext2fs_io_error(fs,EIO);
 
 	/*
 	 * Calculate index in current block of last
@@ -446,7 +461,7 @@ ext2fs_indirtrunc(ip, lbn, dbn, lastbn, level, countp)
 		bp->b_flags |= B_READ;
 		if (bp->b_bcount > bp->b_bufsize)
 			panic("ext2fs_indirtrunc: bad buffer size");
-		bp->b_blkno = dbn;
+		bp->b_blkno = fsbtodb(fs, bn);
 		VOP_STRATEGY(bp);
 		error = biowait(bp);
 	}
@@ -459,6 +474,14 @@ ext2fs_indirtrunc(ip, lbn, dbn, lastbn, level, countp)
 	}
 
 	bap = (int32_t *)bp->b_data;	/* XXX ondisk32 */
+	/* Validate the whole pointer block before changing it or its children. */
+	for (i = 0; i < NINDIR(fs); i++) {
+		if (fs2h32(bap[i]) >= fs->e2fs.e2fs_bcount) {
+			bp->b_flags |= B_INVAL;
+			brelse(bp);
+			return ext2fs_io_error(fs,EIO);
+		}
+	}
 	if (lastbn >= 0) {
 		/* XXX ondisk32 */
 		MALLOC(copy, int32_t *, fs->e2fs_bsize, M_TEMP, M_WAITOK);
@@ -485,12 +508,14 @@ ext2fs_indirtrunc(ip, lbn, dbn, lastbn, level, countp)
 		if (nb == 0)
 			continue;
 		if (level > SINGLE) {
-			error = ext2fs_indirtrunc(ip, nlbn, fsbtodb(fs, nb),
+			error = ext2fs_indirtrunc(ip, nlbn, nb,
 						   (daddr_t)-1, level - 1,
 						   &blkcount);
-			if (error)
-				allerror = error;
 			blocksreleased += blkcount;
+			if (error) {
+				allerror = error;
+				goto release;
+			}
 		}
 		ext2fs_blkfree(ip, nb);
 		blocksreleased += nblocks;
@@ -504,14 +529,17 @@ ext2fs_indirtrunc(ip, lbn, dbn, lastbn, level, countp)
 		/* XXX ondisk32 */
 		nb = fs2h32(bap[i]);
 		if (nb != 0) {
-			error = ext2fs_indirtrunc(ip, nlbn, fsbtodb(fs, nb),
+			error = ext2fs_indirtrunc(ip, nlbn, nb,
 						   last, level - 1, &blkcount);
-			if (error)
-				allerror = error;
 			blocksreleased += blkcount;
+			if (error) {
+				allerror = error;
+				goto release;
+			}
 		}
 	}
 
+release:
 	if (copy != NULL) {
 		FREE(copy, M_TEMP);
 	} else {

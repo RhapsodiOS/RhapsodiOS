@@ -37,3 +37,53 @@ Run `sh tests/smoke_tools.sh DSTROOT UNIQUE_TEST_DIRECTORY "i386 ppc"`
 on the native guest to check versions, slices, exact payload and a disposable
 labelled image. A missing CPU execution is an acceptance gate; a slice check
 alone does not establish native execution on that CPU.
+
+The native entry points are `newfs_ext2fs`, `fsck_ext2fs`, and
+`/usr/filesystems/ext2fs.fs/ext2fs.util`. Commands are root-owned mode 0755,
+with no setuid bit. The formatter defaults to 1024-byte blocks and 5 percent
+reserved space, and explicitly selects revision 1, 128-byte inodes and masks
+(0,2,1). It accepts only `-b`, a label of at most 16 bytes with `-L`, an integer
+reserved percentage 0..50 with `-m`, and an optional block count. The checker
+accepts mutually exclusive `-n`, `-y`, or `-p` plus `-f`/`-v`, preserving every
+e2fsck exit bit. Both wrappers refuse mounted targets and failed inspection,
+including unresolved or relative mount-table sources. Relative regular-file
+image paths remain supported. Neither wrapper invokes a shell.
+
+The helper follows `kernserv/loadable_fs.h`: `-p` returns recognized for a
+supported volume, while `-P` returns initialization-recognized for the same
+bounded read-only probe. Unsupported images and I/O failures retain their
+respective protocol results; blank-media initialization capability is not
+inferred. Device tokens follow existing partition-a conventions (`hd1` maps
+to `/private/dev/hd1a` and `/private/dev/rhd1a`). `-m` honors readonly/writable,
+refuses dirty writable mounts, and invokes mount directly; `-u` invokes
+umount. `-r` explicitly requests preen repair and reports reboot advice;
+`-i` invokes the formatter defaults. Repair errors remain unclean, while
+operational/usage/cancellation/library failures map to I/O failure. There is
+no automatic repair or forced-mount helper action. Successful probes write
+`ext2fs.name` and the bounded label to `ext2fs.label` in the helper directory.
+
+`make -C tests check-tools` compiles production common and command code with
+private compile-time child paths and test-only inspection providers. The
+common codec sources are exact mirrors of the kernel codecs; host test
+`test_shared_codec_matches` requires byte-for-byte equality. Refresh both
+copies together. Tool projects compile against exported namespaced kernel
+headers and do not depend on a sibling kernel source checkout.
+
+This product includes software developed by Manuel Bouyer. The copied BSD
+license is installed as `/usr/share/licenses/ext2fs/NETBSD-NOTICES`.
+
+Before any formatter child starts, a read-only preflight establishes the
+selected logical partition's 512/1024-byte sector capacity via DKIOCGPARTINFO.
+Missing, invalid, whole-drive and old-kernel queries are refusals; no legacy
+whole-drive query is used. Explicit counts cannot exceed device capacity.
+Raw character targets receive internal -F to avoid upstream's block-only
+prompt; the preflight still bounds them before execution. Existing regular
+images may grow to an explicit size within checked native offset/block-address bounds.
+
+The vendor I/O manager pads partial-sector reads and uses full-superblock
+writes on Rhapsody. To exercise its actual production body after configuring
+and generating a vendor build's headers, run `make -C tests check-vendor-io
+VENDOR_SOURCE=/absolute/vendor VENDOR_OBJECTS=/absolute/objects
+TEST_DIR=/absolute/fresh-tests`. The private providers verify issued offsets
+and sizes, contents, partial reads, errors, callbacks and canaries. Set
+`VENDOR_IO_ACTION=build` when linking a CPU that cannot execute on that guest.

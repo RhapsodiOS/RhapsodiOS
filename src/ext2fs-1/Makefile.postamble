@@ -1,1 +1,4 @@
 # Local Tool projects and the private vendored tools build form this aggregate.
+after_install:
+	mkdir -p $(DSTROOT)/usr/share/licenses/ext2fs
+	install -m 444 common/NETBSD-NOTICES $(DSTROOT)/usr/share/licenses/ext2fs

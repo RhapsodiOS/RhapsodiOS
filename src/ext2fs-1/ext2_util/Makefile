@@ -7,27 +7,30 @@
 # and Makefile.postamble (both optional), and Makefile will include them.
 #
 
-NAME = ext2fs
+NAME = ext2fs.util
 
 PROJECTVERSION = 2.8
-PROJECT_TYPE = Aggregate
+PROJECT_TYPE = Tool
 
-TOOLS = ext2_mount ext2_newfs ext2_fsck ext2_util ext2_tools
+HFILES =
 
-LIBRARIES =
+CFILES = ext2fs.util_main.c ext2_tool.c ext2_disk.c ext2fs_bswap.c
 
-OTHERSRCS = Makefile.preamble Makefile Makefile.postamble
+OTHERSRCS = Makefile.preamble Makefile Makefile.postamble\
+            ext2fs.util.8
+
 
 MAKEFILEDIR = $(MAKEFILEPATH)/pb_makefiles
 CODE_GEN_STYLE = DYNAMIC
-MAKEFILE = aggregate.make
+MAKEFILE = tool.make
+NEXTSTEP_INSTALLDIR = /usr/filesystems/ext2fs.fs
 LIBS =
 DEBUG_LIBS = $(LIBS)
 PROF_LIBS = $(LIBS)
 
 
-NEXTSTEP_PB_CFLAGS = -Wno-four-char-constants
 
+NEXTSTEP_BUILD_OUTPUT_DIR = /$(USER)/BUILD
 
 NEXTSTEP_OBJCPLUS_COMPILER = /usr/bin/cc
 WINDOWS_OBJCPLUS_COMPILER = $(DEVDIR)/gcc

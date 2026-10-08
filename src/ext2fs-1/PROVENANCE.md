@@ -77,6 +77,13 @@ Patch order:
    demonstrated truncated 64-bit diagnostics and shifted block-range arguments
    before this patch. No libc or shared-source repair is involved.
 
+3. `003-rhapsody-sector-io.patch`: the existing Rhapsody target macro selects
+   the vendor sector-bounce read path and full-superblock write fallback.
+   Short reads preserve the aligned prefix, copy only available logical
+   fragment bytes, zero the remainder and report the delivered byte count.
+   Private native tests include the actual patched I/O module and cover
+   aligned requests, content, short/error callbacks and buffer boundaries.
+
 COPYING carries the GPL v2 and GNU Library GPL v2 text. LIBRARY-NOTICES
 retains verbatim copyright/permission headers from the six private support
 libraries (ext2fs, e2p, com_err, ss, uuid, blkid), plus the com_err documentation

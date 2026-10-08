@@ -35,9 +35,9 @@ test -s "$root/usr/share/licenses/ext2fs/LIBRARY-NOTICES"
 (cd "$root" && find . ! -type d) > "$work/payload"
 while read file; do
     case "$file" in
-        ./sbin/mke2fs|./sbin/e2fsck|./sbin/dumpe2fs|./sbin/debugfs|./sbin/tune2fs|./sbin/mount_ext2fs) ;;
-        ./usr/share/man/man8/mke2fs.8|./usr/share/man/man8/e2fsck.8|./usr/share/man/man8/dumpe2fs.8|./usr/share/man/man8/debugfs.8|./usr/share/man/man8/tune2fs.8|./usr/share/man/man8/mount_ext2fs.8) ;;
-        ./usr/share/licenses/ext2fs/COPYING|./usr/share/licenses/ext2fs/LIBRARY-NOTICES) ;;
+        ./sbin/mke2fs|./sbin/e2fsck|./sbin/dumpe2fs|./sbin/debugfs|./sbin/tune2fs|./sbin/mount_ext2fs|./sbin/newfs_ext2fs|./sbin/fsck_ext2fs|./usr/filesystems/ext2fs.fs/ext2fs.util) ;;
+        ./usr/share/man/man8/mke2fs.8|./usr/share/man/man8/e2fsck.8|./usr/share/man/man8/dumpe2fs.8|./usr/share/man/man8/debugfs.8|./usr/share/man/man8/tune2fs.8|./usr/share/man/man8/mount_ext2fs.8|./usr/share/man/man8/newfs_ext2fs.8|./usr/share/man/man8/fsck_ext2fs.8|./usr/share/man/man8/ext2fs.util.8) ;;
+        ./usr/share/licenses/ext2fs/COPYING|./usr/share/licenses/ext2fs/LIBRARY-NOTICES|./usr/share/licenses/ext2fs/NETBSD-NOTICES) ;;
         ./.PKGINFO) ;; # rbuild's package-control record, not an installed file
         *) echo "FAIL unexpected payload: $file"; exit 1 ;;
     esac

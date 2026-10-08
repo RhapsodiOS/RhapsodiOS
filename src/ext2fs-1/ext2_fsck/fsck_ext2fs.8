@@ -1,0 +1,17 @@
+.TH FSCK_EXT2FS 8
+.SH NAME
+fsck_ext2fs \- check a supported ext2 filesystem
+.SH SYNOPSIS
+.B fsck_ext2fs
+[\-n|\-y|\-p] [\-f] [\-v] special
+.SH DESCRIPTION
+Invokes /sbin/e2fsck directly. With no repair option, e2fsck prompts as usual.
+Repair modes are mutually exclusive. Mounted targets and failed mount-table
+or device inspection are refused, including read-only checks.
+.SH EXIT STATUS
+Preserves e2fsck's bitmask: 0 clean, 1 corrected, 2 reboot advised,
+4 errors remain, 8 operational failure, 16 usage, 32 cancelled,
+128 library error. Bits may be combined. Child signals and fork, exec,
+or wait failures return 8.
+.SH SEE ALSO
+newfs_ext2fs(8), e2fsck(8)

@@ -1,1 +1,4 @@
-OTHER_CFLAGS = -Wno-precomp -I../../kernel-7/bsd
+OTHER_CFLAGS = -Wno-precomp
+INSTALL_AS_USER = root
+INSTALL_AS_GROUP = wheel
+INSTALL_PERMISSIONS = 0755

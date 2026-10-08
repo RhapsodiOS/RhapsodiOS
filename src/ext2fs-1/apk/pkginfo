@@ -1,0 +1,6 @@
+pkgname = ext2fs
+pkgver = 1.0
+pkgdesc = Rhapsody ext2 filesystem tools
+license = GPL-2.0, LGPL-2.0, BSD
+url = https://e2fsprogs.sourceforge.net/
+makedepends = build-base

@@ -1,0 +1,156 @@
+--- a/lib/ext2fs/ismounted.c
++++ b/lib/ext2fs/ismounted.c
+@@ -194,55 +194,85 @@
+ #else
+ #if defined(HAVE_GETMNTINFO)
+ 
+-/* Match ordinary aliases by identity, including the mounted device's raw node.
+- * Do not mutate getmntinfo's static table or inspect disk labels. */
++/* Mounted-target identity follows the native wrappers' conservative policy. */
++static int
++mounted_identity(const char *path,struct stat *st,char resolved[MAXPATHLEN],char **key)
++{
++    char *name;
++    *key=NULL;
++    if(path==NULL || strlen(path)>=MAXPATHLEN ||
++        stat(path,st)<0 || realpath(path,resolved)==NULL)
++        return -1;
++    if(!strncmp(resolved,"/private/dev/",13)) name=resolved+13;
++    else if(!strncmp(resolved,"/dev/",5)) name=resolved+5;
++    else return 0;
++    if(!S_ISCHR(st->st_mode) && !S_ISBLK(st->st_mode)) return 0;
++    if(S_ISCHR(st->st_mode) && name[0]=='r') name++;
++    if(!*name || strchr(name,'/')) return -1;
++    *key=name;
++    return 0;
++}
++
++/* Compare the other node in the actual raw/block namespace by same-type
++ * mounted_identity; no relationship between character and block major numbers is
++ * assumed. Unknown cross-type aliases are inspection failures. */
++static int
++mounted_counterpart(const struct stat *one,const char *key,const struct stat *other)
++{
++    struct stat paired;
++    char path[MAXPATHLEN];
++    const char *raw=S_ISBLK(one->st_mode)?"r":"";
++    if(key==NULL || strlen(key)+strlen(raw)+14>=sizeof(path)) return -1;
++    sprintf(path,"/private/dev/%s%s",raw,key);
++    if(stat(path,&paired)<0 ||
++        (S_ISBLK(other->st_mode)?!S_ISBLK(paired.st_mode):!S_ISCHR(paired.st_mode))) return -1;
++    return paired.st_rdev==other->st_rdev;
++}
++
+ static errcode_t check_getmntinfo(const char *file, int *mount_flags,
+                                   char *mtpt, int mtlen)
+ {
+-	struct statfs *mp;
+-	struct stat target, mounted;
+-	int n, match;
+-	char raw[MAXPATHLEN], resolved[MAXPATHLEN];
+-	const char *name;
+-
+-	*mount_flags = 0;
+-	if (mtpt && mtlen > 0) mtpt[0] = 0;
+-	if (stat(file, &target) < 0) return errno;
+-	n = getmntinfo(&mp, MNT_NOWAIT);
+-	if (n <= 0) return errno ? errno : EIO;
+-	while (n-- > 0) {
+-		match = !strcmp(file, mp->f_mntfromname);
+-		if (!match && stat(mp->f_mntfromname, &mounted) == 0) {
+-			if ((S_ISBLK(target.st_mode) || S_ISCHR(target.st_mode)) &&
+-			    (target.st_mode & S_IFMT) == (mounted.st_mode & S_IFMT))
+-				match = target.st_rdev == mounted.st_rdev;
+-			else if (S_ISREG(target.st_mode) && S_ISREG(mounted.st_mode))
+-				match = target.st_dev == mounted.st_dev &&
+-				        target.st_ino == mounted.st_ino;
+-			if (!match && S_ISCHR(target.st_mode) &&
+-			    realpath(mp->f_mntfromname, resolved)) {
+-				name = !strncmp(resolved, "/dev/", 5) ? resolved + 5 :
+-				       !strncmp(resolved, "/private/dev/", 13) ? resolved + 13 : 0;
+-				if (name && strlen(resolved) + 1 < sizeof(raw)) {
+-					sprintf(raw, "%.*sr%s", (int)(name - resolved), resolved, name);
+-					if (stat(raw, &mounted) == 0 && S_ISCHR(mounted.st_mode))
+-						match = target.st_rdev == mounted.st_rdev;
+-				}
+-			}
+-		}
+-		if (match) {
+-			*mount_flags = EXT2_MF_MOUNTED;
+-			if (mp->f_flags & MNT_RDONLY) *mount_flags |= EXT2_MF_READONLY;
+-			if (!strcmp(mp->f_mntonname, "/")) *mount_flags |= EXT2_MF_ISROOT;
+-			if (mtpt && mtlen > 0) {
+-				strncpy(mtpt, mp->f_mntonname, mtlen - 1);
+-				mtpt[mtlen - 1] = 0;
+-			}
+-			return 0;
+-		}
+-		mp++;
+-	}
+-	return 0;
++    struct stat target,source;
++    struct statfs *mp;
++    char a[MAXPATHLEN],b[MAXPATHLEN],*ak,*bk;
++    int count,i,match;
++    *mount_flags=0;
++    if(mtpt && mtlen>0) mtpt[0]=0;
++    if(mounted_identity(file,&target,a,&ak)<0) return errno ? errno : EIO;
++    count=getmntinfo(&mp,MNT_NOWAIT);
++    if(count<=0 || mp==NULL) return EIO;
++    for(i=0;i<count;i++,mp++) {
++        if(memchr(mp->f_mntfromname,0,sizeof(mp->f_mntfromname))==NULL ||
++            memchr(mp->f_mntonname,0,sizeof(mp->f_mntonname))==NULL ||
++            memchr(mp->f_fstypename,0,sizeof(mp->f_fstypename))==NULL) return EIO;
++        if((!strcmp(mp->f_fstypename,"volfs") && !strcmp(mp->f_mntfromname,"<volfs>")) ||
++            (!strcmp(mp->f_fstypename,"fdesc") && !strcmp(mp->f_mntfromname,"fdesc")) ||
++            (!strcmp(mp->f_fstypename,"kernfs") && !strcmp(mp->f_mntfromname,"kernfs"))) continue;
++        if(mp->f_mntfromname[0]!='/' ||
++            mounted_identity(mp->f_mntfromname,&source,b,&bk)<0) return EIO;
++        match=ak && bk && !strcmp(ak,bk);
++        if(!match && ((S_ISBLK(target.st_mode) && S_ISBLK(source.st_mode)) ||
++            (S_ISCHR(target.st_mode) && S_ISCHR(source.st_mode))))
++            match=target.st_rdev==source.st_rdev;
++        else if(!match && ((S_ISBLK(target.st_mode) && S_ISCHR(source.st_mode)) ||
++            (S_ISCHR(target.st_mode) && S_ISBLK(source.st_mode)))) {
++            match=mounted_counterpart(&target,ak,&source);
++            if(match<0) match=mounted_counterpart(&source,bk,&target);
++            if(match<0) return EIO;
++        } else if(!match && S_ISREG(target.st_mode) && S_ISREG(source.st_mode))
++            match=target.st_dev==source.st_dev && target.st_ino==source.st_ino;
++        if(match) {
++            *mount_flags=EXT2_MF_MOUNTED;
++            if(mp->f_flags & MNT_RDONLY) *mount_flags|=EXT2_MF_READONLY;
++            if(!strcmp(mp->f_mntonname,"/")) *mount_flags|=EXT2_MF_ISROOT;
++            if(mtpt && mtlen>0) {
++                strncpy(mtpt,mp->f_mntonname,mtlen-1);
++                mtpt[mtlen-1]=0;
++            }
++            return 0;
++        }
++    }
++    return 0;
+ }
+ #endif /* HAVE_GETMNTINFO */
+ #endif /* HAVE_MNTENT_H */
+--- a/e2fsck/unix.c
++++ b/e2fsck/unix.c
+@@ -169,6 +169,8 @@
+ 		com_err("ext2fs_check_if_mount", retval,
+ 			_("while determining whether %s is mounted."),
+ 			ctx->filesystem_name);
++		if (!(ctx->options & E2F_OPT_READONLY))
++			fatal_error(ctx, _("Cannot safely inspect mounted devices; aborting.\n"));
+ 		return;
+ 	}
+ 
+--- a/misc/util.c
++++ b/misc/util.c
+@@ -150,6 +150,8 @@
+ 		com_err("ext2fs_check_if_mount", retval,
+ 			_("while determining whether %s is mounted."),
+ 			device);
++		if (!force) exit(1);
++		fputs(_("mke2fs forced despite incomplete mount inspection.\n"), stderr);
+ 		return;
+ 	}
+ 	if (!(mount_flags & EXT2_MF_MOUNTED))

@@ -159,6 +159,7 @@ options		KTRACE		# ktrace support			# <ktrace>
 #	4.4 filesystems 
 #
 options		FFS			# Fast Filesystem Support	# <ffs>
+options		EXT2FS		# ext2 data volumes			# <ext2fs>
 options		HFS		# HFS/HFS+ support			# <hfs>
 options		FIFO		# fifo support				# <fifo>
 options		PORTAL		# portal_fs support			# <portal>

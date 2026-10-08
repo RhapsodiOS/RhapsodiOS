@@ -161,7 +161,7 @@ EXPORT= mach mach/machine kernserv kernserv/machine 	 		\
 LCLEXPORT= mach mach_debug kern ipc kernserv vm bsd/sys bsd/dev bsd/net	\
 	bsd/netiso bsd/netccitt bsd/netns bsd/dev/machine mach/machine	\
 	machdep/machine driverkit					\
-	bsd/ufs/mfs bsd/ufs/lfs bsd/isofs/cd9660 bsd/msdosfs	\
+	bsd/ext2fs bsd/ufs/mfs bsd/ufs/lfs bsd/isofs/cd9660 bsd/msdosfs	\
 	bsd/netat/h bsd/netat/at					\
 	bsd/hfs/hfscommon/headers bsd/hfs/hfscommon/headers/system
 
@@ -856,7 +856,14 @@ install_md: DSTROOT ${MACHINE_INSTALL}
 
 installhdrs: DSTROOT install_mi_hdrs install_md_hdrs
 
-install_mi_hdrs: DSTROOT install_mi_std_hdrs
+install_mi_hdrs: DSTROOT install_mi_std_hdrs install_ext2_hdrs
+
+# Export the disk/mount ABI, not the private vnode adapter declarations.
+install_ext2_hdrs: DSTROOT
+	$(MKDIRS) $(DSTROOT)$(INCDIR)/bsd/ext2fs
+	@for h in ext2_mount.h ext2_disk.h ext2_fs.h ext2fs_dinode.h ext2fs_dir.h ext2_bitmap.h; do \
+	    install $(INSTALL_FLAGS) $(SOURCE_DIR)/bsd/ext2fs/$$h $(DSTROOT)$(INCDIR)/bsd/ext2fs/ || exit 1; \
+	done
 
 #
 # unifdef returns 1 when it makes a change.  In that case decomment processes

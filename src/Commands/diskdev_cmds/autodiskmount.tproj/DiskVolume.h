@@ -72,3 +72,4 @@
 #define FS_TYPE_UFS	"ufs"
 #define FS_TYPE_CD9660	"cd9660"
 #define FS_TYPE_MSDOS	"msdos"
+#define FS_TYPE_EXT2FS	"ext2fs"

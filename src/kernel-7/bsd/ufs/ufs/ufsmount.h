@@ -91,6 +91,7 @@ struct vnode;
 struct netexport;
 
 /* This structure describes the UFS specific mount structure data. */
+struct m_ext2fs;
 struct ufsmount {
 	struct	mount *um_mountp;		/* filesystem vfs structure */
 	dev_t	um_dev;				/* device mounted */
@@ -99,8 +100,10 @@ struct ufsmount {
 	union {					/* pointer to superblock */
 		struct	lfs *lfs;		/* LFS */
 		struct	fs *fs;			/* FFS */
+		struct m_ext2fs *e2fs;	/* ext2 */
 	} ufsmount_u;
 #define	um_fs	ufsmount_u.fs
+#define	um_e2fs	ufsmount_u.e2fs
 #define	um_lfs	ufsmount_u.lfs
 
 	struct	vnode *um_quotas[MAXQUOTAS];	/* pointer to quota files */

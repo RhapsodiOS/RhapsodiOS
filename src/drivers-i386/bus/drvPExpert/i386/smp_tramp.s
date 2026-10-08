@@ -16,6 +16,7 @@
 	.align	4
 	.globl	_smp_tramp_start
 	.globl	_smp_tramp_ljmp
+	.globl	_smp_tramp_base
 	.globl	_smp_tramp_end
 
 _smp_tramp_start:
@@ -41,10 +42,10 @@ tramp32:
 	movw	%ax,%fs
 	movw	%ax,%gs
 
-	/* Find the page this runs from. */
-	call	1f
-1:	popl	%ebx
-	andl	$0xFFFFF000,%ebx
+	/* No stack is available yet; the boot processor patches this base. */
+	.byte	0xBB			/* movl $page,%ebx */
+_smp_tramp_base:
+	.long	0
 
 	/* The kernel's page directory, then paging on. */
 	movl	0x0F00(%ebx),%eax
@@ -56,7 +57,7 @@ tramp32:
 	/* The kernel's descriptor tables; kernel code is also 0x08. */
 	lgdt	0x0F10(%ebx)
 	lidt	0x0F18(%ebx)
-	ljmp	*0x0F30(%ebx)
+	ljmp	0x0F30(%ebx)
 2:	movw	$0x10,%ax
 	movw	%ax,%ds
 	movw	%ax,%es

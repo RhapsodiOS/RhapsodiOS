@@ -23,7 +23,8 @@
 #include <sys/reboot.h>
 
 #ifndef RB_POWERDOWN
-#define RB_POWERDOWN	0
+/* The public SDK hides the kernel-private i386 powerdown flag. */
+#define RB_POWERDOWN	0x00010000
 #endif
 
 extern int printf(const char *format, ...);

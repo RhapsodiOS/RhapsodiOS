@@ -18,6 +18,7 @@ extern int printf(const char *format, ...);
 
 #define RSDP_SIGNATURE		"RSD PTR "
 #define RSDP_V1_LENGTH		20
+#define RSDP_V2_LENGTH		36
 
 /* MADT entry types (5.2.12) */
 #define MADT_LAPIC		0
@@ -89,8 +90,12 @@ rsdp_valid(const unsigned char *p)
     if (checksum(p, RSDP_V1_LENGTH) != 0)
 	return (0);
     /* Revision 2 adds the XSDT pointer and a second checksum. */
-    if (p[15] >= 2 && checksum(p, *(const unsigned int *)(p + 20)) != 0)
-	return (0);
+    if (p[15] >= 2) {
+	/* Only the fixed revision 2 structure has been mapped here. */
+	if (*(const unsigned int *)(p + 20) != RSDP_V2_LENGTH ||
+	    checksum(p, RSDP_V2_LENGTH) != 0)
+	    return (0);
+    }
     return (1);
 }
 
@@ -121,6 +126,9 @@ parse_madt(acpi_header_t *madt, i386_firmware_info_t *info)
     const unsigned char	*p, *end;
     unsigned char	type, length;
 
+    if (madt->length < 44)
+	return;
+
     info->lapic_address = *(const unsigned int *)((const unsigned char *)madt + 36);
     info->madt_flags = *(const unsigned int *)((const unsigned char *)madt + 40);
 
@@ -135,6 +143,8 @@ parse_madt(acpi_header_t *madt, i386_firmware_info_t *info)
 
 	switch (type) {
 	case MADT_LAPIC:
+	    if (length < 8)
+		break;
 	    if (p[4] & 1) {		/* enabled */
 		if (info->cpu_count < PEXPERT_MAX_CPUS)
 		    info->lapic_ids[info->cpu_count] = p[3];
@@ -143,17 +153,23 @@ parse_madt(acpi_header_t *madt, i386_firmware_info_t *info)
 	    break;
 
 	case MADT_LOCAL_X2APIC:
+	    if (length < 16)
+		break;
 	    /* Only ids that fit an xAPIC destination are reachable here. */
 	    if (*(const unsigned int *)(p + 8) & 1) {
 		unsigned int	id = *(const unsigned int *)(p + 4);
 
-		if (info->cpu_count < PEXPERT_MAX_CPUS && id < 256)
+		if (id >= 256)
+		    break;
+		if (info->cpu_count < PEXPERT_MAX_CPUS)
 		    info->lapic_ids[info->cpu_count] = id;
 		info->cpu_count++;
 	    }
 	    break;
 
 	case MADT_IOAPIC:
+	    if (length < 12)
+		break;
 	    if (info->ioapic_count < PEXPERT_MAX_IOAPICS) {
 		pexpert_ioapic_t	*io = &info->ioapics[info->ioapic_count++];
 
@@ -165,6 +181,8 @@ parse_madt(acpi_header_t *madt, i386_firmware_info_t *info)
 	    break;
 
 	case MADT_ISO:
+	    if (length < 10)
+		break;
 	    if (info->iso_count < PEXPERT_MAX_ISA_OVERRIDES) {
 		pexpert_iso_t	*iso = &info->isos[info->iso_count++];
 
@@ -175,6 +193,8 @@ parse_madt(acpi_header_t *madt, i386_firmware_info_t *info)
 	    break;
 
 	case MADT_LAPIC_ADDRESS:
+	    if (length < 12)
+		break;
 	    /* 64-bit override; only the low half is reachable here. */
 	    if (*(const unsigned int *)(p + 8) == 0)
 		info->lapic_address = *(const unsigned int *)(p + 4);

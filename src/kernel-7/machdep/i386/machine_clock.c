@@ -59,9 +59,9 @@ static tvalspec_t	time_of_boot;	/* rel to 1/1/70 (UNIX T[0]) */
 
 static struct _system_clock {
     tvalspec_t		counter;
-    timer_cnt_val_t	last_timer_count;
+    unsigned int	last_timer_count;
     mapped_tvalspec_t	*mapped_counter;
-    timer_cnt_val_t	timer_const;
+    unsigned int	timer_const;
 } system_clock;
 
 static tvalspec_t	system_time_stamp(void);
@@ -439,7 +439,7 @@ timer_set_deadline(
 static tvalspec_t
 system_time_stamp(void)
 {
-    timer_cnt_val_t	current_timer_count, last_timer_count;
+    unsigned int	current_timer_count, last_timer_count;
     clock_res_t		fraction;
     tvalspec_t		result;
     int			s = splclock();

@@ -35,6 +35,7 @@ extern struct pmap_head	*kernel_pmap;
 /* smp_tramp.s */
 extern char		smp_tramp_start[], smp_tramp_end[];
 extern unsigned int	smp_tramp_ljmp;
+extern unsigned int	smp_tramp_base;
 extern unsigned int	smp_tramp_entry32;
 extern unsigned int	smp_tramp_reload;
 
@@ -95,6 +96,7 @@ build_trampoline(unsigned char *page, int index)
     /* The real-mode far jump into the 32-bit part. */
     *(unsigned int *)(page + ((char *)&smp_tramp_ljmp - smp_tramp_start)) =
 	base + smp_tramp_entry32;
+    *(unsigned int *)(page + ((char *)&smp_tramp_base - smp_tramp_start)) = base;
 
     /* Temporary GDT: flat 4 GB code at 0x08 and data at 0x10. */
     p32 = (unsigned int *)(page + SMP_TRAMP_TMPGDT);

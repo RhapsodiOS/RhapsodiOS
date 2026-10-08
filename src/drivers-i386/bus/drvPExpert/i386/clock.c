@@ -18,7 +18,7 @@
 #include <machdep/i386/intr_exported.h>
 
 extern int printf(const char *format, ...);
-extern void IODelay(unsigned int microseconds);
+extern void IOGetTimestamp(unsigned long long *timestamp);
 extern void system_timer_dispatch(unsigned int irq, void *state, int ipl);
 
 #define CALIBRATE_US		10000
@@ -29,14 +29,23 @@ static unsigned int
 lapic_ticks_in(unsigned int us)
 {
     unsigned int	before, after;
+    unsigned int	i;
+    unsigned long long	start, now, duration = (unsigned long long)us * 1000;
 
     lapic_timer_start(0xFFFFFFFF, PEXPERT_VECTOR(PEXPERT_TIMER_IRQ), 0);
     lapic_timer_set_masked(1);
+    IOGetTimestamp(&start);
     before = lapic_timer_read();
-    IODelay(us);
+    for (i = 0; i < 1000000; i++) {
+	IOGetTimestamp(&now);
+	if (now - start >= duration)
+	    break;
+    }
     after = lapic_timer_read();
     lapic_timer_stop();
-    return (before - after);
+    if (i == 1000000)
+	return (0);
+    return ((unsigned long long)(before - after) * duration / (now - start));
 }
 
 int
@@ -47,7 +56,7 @@ lapic_clock_enable(void)
     if (!pexpert_apic_mode())
 	return (0);
 
-    /* IODelay is calibrated against the 8254, so this is its clock. */
+    /* Read the running 8254 clock; spin-delay calibration can drift. */
     per_10ms = lapic_ticks_in(CALIBRATE_US);
     if (per_10ms < 1000) {
 	printf("pexpert: local APIC timer barely counts (%u in 10 ms); keeping the 8254\n",

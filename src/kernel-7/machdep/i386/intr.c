@@ -66,6 +66,7 @@ static intr_irq_mask_t	current_irq_mask, disabled_irq_mask;
 static intr_irq_mask_t	current_elcr;
 
 static const intr_controller_t	*controller;
+static const intr_controller_t	i8259_controller;
 
 #define I8259_NIRQ		16	// what the 8259 pair serves
 

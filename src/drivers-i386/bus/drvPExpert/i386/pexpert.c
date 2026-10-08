@@ -72,13 +72,13 @@ struct vm_map;
 struct pmap;
 extern struct vm_map	*kernel_map;
 extern struct pmap	*kernel_pmap;
+extern unsigned int	page_size;
 extern int vm_map_find(struct vm_map *map, void *object, unsigned int offset,
 		       unsigned int *address, unsigned int size, int anywhere);
 extern void pmap_enter_cache_spec(struct pmap *pmap, unsigned int va,
 				  unsigned int pa, int prot, int wired,
 				  int caching);
 
-#define PAGE_SIZE_I386		4096
 #define VM_PROT_READ_WRITE	3
 #define CACHE_DISABLE		2	/* cache_spec_t cache_disable */
 
@@ -87,15 +87,16 @@ pexpert_map_physical(unsigned int pa, unsigned int len)
 {
     unsigned int	first, last, va, off, size;
 
-    first = pa & ~(PAGE_SIZE_I386 - 1);
-    last = (pa + len - 1) & ~(PAGE_SIZE_I386 - 1);
-    size = last - first + PAGE_SIZE_I386;
+    /* pmap_enter_cache_spec maps one VM page, two hardware pages on i386. */
+    first = pa & ~(page_size - 1);
+    last = (pa + len - 1) & ~(page_size - 1);
+    size = last - first + page_size;
 
     va = 0;
     if (vm_map_find(kernel_map, 0, 0, &va, size, 1) != 0)
 	return (0);
 
-    for (off = 0; off < size; off += PAGE_SIZE_I386)
+    for (off = 0; off < size; off += page_size)
 	pmap_enter_cache_spec(kernel_pmap, va + off, first + off,
 			      VM_PROT_READ_WRITE, 1, CACHE_DISABLE);
 

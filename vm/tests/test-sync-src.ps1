@@ -166,8 +166,8 @@ Assert-Match $quotedFixExec 'exit \$status\s*$' 'chmod pass reports failure stat
 Assert-Throws { New-RhapFixExecBitsCommand -RemoteSrc '/build/src' -RemoteTree '/build/src/p' -ExecutablePaths @("p/line`nbreak") } 'chmod pass rejects control characters in paths'
 $emptyFixExec = New-RhapFixExecBitsCommand -RemoteSrc '/build/src' -RemoteTree '/build/src/zlib-1' -ExecutablePaths @()
 Assert-NotMatch $emptyFixExec 'chmod a\+x' 'chmod pass with no git executables only clears bits'
-$manyPaths = @(1..400 | ForEach-Object { 'perl-1/perl/lib/' + ('d' * 60) + "/script$_.pl" })
-$batchedFixExec = New-RhapFixExecBitsCommand -RemoteSrc '/build/src' -RemoteTree '/build/src/perl-1' -ExecutablePaths $manyPaths
+$manyPaths = @(1..400 | ForEach-Object { 'Developer/Commands/perl-1/perl/lib/' + ('d' * 60) + "/script$_.pl" })
+$batchedFixExec = New-RhapFixExecBitsCommand -RemoteSrc '/build/src' -RemoteTree '/build/src/Developer/Commands/perl-1' -ExecutablePaths $manyPaths
 $chmodLines = @($batchedFixExec -split "`n" | Where-Object { $_.StartsWith('chmod a+x ') })
 Assert-Equal ($chmodLines.Count -gt 1) $true 'chmod pass splits long lists'
 Assert-Equal (@($chmodLines | Where-Object { [Text.Encoding]::UTF8.GetByteCount($_) -gt 8192 }).Count) 0 'every chmod invocation stays far below target ARG_MAX'

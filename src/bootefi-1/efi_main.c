@@ -50,8 +50,8 @@ extern void removeLinkEditSegment(struct mach_header *mhp);
  * returns. */
 extern void efi_exit_and_start(unsigned int entry);
 
-/* loadStandaloneLinker(), newStringForKey(), loadOtherConfigs() and
- * loadBootDrivers() are already declared by saio_static.h / saio_internal.h,
+/* loadStandaloneLinker(), newStringForKey() and loadOtherConfigs() are
+ * already declared by saio_static.h / saio_internal.h,
  * both pulled in transitively via load.h -> libsaio.h above. */
 
 /* boot2/boot.c global that drivers.c/stringTable.c references as extern.
@@ -198,7 +198,6 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *systab)
                    "unable to load boot drivers.\n");
         } else {
             loadOtherConfigs(0);
-            loadBootDrivers(0, 0, 0);
             printf("boot drivers linked: %d\n",
                    kernBootStruct->numBootDrivers);
         }
@@ -206,8 +205,8 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *systab)
 
     /* Re-derive first_addr0 from the live configEnd here, unconditionally.
      * efi_init_bootstruct() set a provisional value before any config was
-     * loaded; loadOtherConfigs()/loadBootDrivers() above (mirroring
-     * boot-2's stringTable.c:749 and drivers.c:759) refresh it to match
+     * loaded; loadOtherConfigs() above (mirroring boot-2's
+     * stringTable.c) refreshes it to match
      * the config data actually read -- but only on the loadStandaloneLinker()
      * success path above. If that call failed, first_addr0 is still the
      * provisional value while loadSystemConfig(0,0) has since grown

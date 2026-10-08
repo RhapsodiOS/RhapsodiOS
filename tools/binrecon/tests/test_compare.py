@@ -4,7 +4,20 @@ import json
 
 import pytest
 
-from binrecon.compare import ComparisonError, compare_artifacts, validate_comparison_report
+from binrecon.compare import (
+    ComparisonError,
+    _ida_operand_offsets,
+    _masked,
+    _paired_generated_counter_names,
+    _paired_symbol_locations,
+    _portable_instruction_operands,
+    _portable_relocation,
+    _portable_symbol_target,
+    _string_target,
+    compare_artifacts,
+    validate_comparison_report,
+)
+from binrecon.normalize import canonical_key
 from test_normalize import analysis
 
 
@@ -31,7 +44,7 @@ def test_identical_artifacts_pass_every_acceptance_level(tmp_path):
         "normalized-functions": True, "exact-sections": True, "exact-image": True}
     assert report["selected"] == {"requirement": "exact-image", "passed": True}
     assert all(not evidence for evidence in report["categories"].values())
-    assert report["functions"][0]["status"] == "assembly-matched"
+    assert report["functions"][0]["status"] == "assembly-matched", report["functions"][0]
 
 
 def test_relocation_field_difference_is_not_code_difference(tmp_path):
@@ -1282,12 +1295,656 @@ def test_uniquely_named_functions_at_different_offsets_pair_by_name(tmp_path):
     assert len(report["functions"]) == 1
     record = report["functions"][0]
     assert record["pairing"] == "name"
-    assert record["status"] == "different"
+    assert record["status"] == "assembly-matched"
     assert record["key"]["start"] == 0
     assert record["reference_aliases"] == record["rebuilt_aliases"] == ["alpha"]
     assert record["raw_equal"] is True and record["masked_equal"] is True
+    assert record["reasons"] == []
     assert "missing rebuilt function" not in record["reasons"]
     assert not any(item["reason"].startswith("missing") for item in report["categories"]["code"])
+
+
+def test_name_paired_function_normalizes_reference_source_offset(tmp_path):
+    rp, bp, left, right = _name_pairing_case(tmp_path, [(0, ["alpha"])], [(16, ["alpha"])])
+    left["references"] = [{"address": 0x1000, "target": 0x1020, "kind": "data"}]
+    right["references"] = [{"address": 0x1010, "target": 0x1020, "kind": "data"}]
+
+    report = compare_artifacts(rp, bp, left, right, "normalized-functions")
+
+    validate_comparison_report(report)
+    record = report["functions"][0]
+    assert record["pairing"] == "name"
+    assert record["status"] == "assembly-matched"
+    assert record["reasons"] == []
+
+
+def test_name_paired_function_normalizes_call_to_shifted_named_callee(tmp_path):
+    reference = bytearray(b"\x90" * 64)
+    rebuilt = bytearray(reference)
+    reference[0:5] = b"\xe8\x03\x00\x00\x00"
+    rebuilt[16:21] = b"\xe8\x03\x00\x00\x00"
+    rp, bp, left, right = _case(tmp_path, bytes(reference), bytes(rebuilt))
+    rp.write_bytes(reference)
+    bp.write_bytes(rebuilt)
+
+    for document, caller, callee in ((left, 0, 8), (right, 16, 24)):
+        document["input"].update(
+            size=64, sha256=hashlib.sha256((rp if document is left else bp).read_bytes()).hexdigest())
+        document["sections"][0].update(
+            size=64, sha256=hashlib.sha256((rp if document is left else bp).read_bytes()).hexdigest())
+        caller_address, callee_address = 0x1000 + caller, 0x1000 + callee
+        document["functions"] = [
+            {"address": caller_address, "size": 5, "names": ["alpha"],
+             "blocks": [{"address": caller_address, "size": 5, "successors": []}],
+             "instructions": [{"address": caller_address, "bytes": "E803000000",
+                               "mnemonic": "call", "operands": "beta",
+                               "normalized_operands": "beta", "relocations": [0]}],
+             "calls": [{"address": caller_address, "target": callee_address, "name": "beta"}],
+             "confidence": 1.0},
+            {"address": callee_address, "size": 1, "names": ["beta"],
+             "blocks": [{"address": callee_address, "size": 1, "successors": []}],
+             "instructions": [{"address": callee_address, "bytes": "90", "mnemonic": "nop",
+                               "operands": "", "normalized_operands": "", "relocations": []}],
+             "calls": [], "confidence": 1.0}]
+        document["references"] = [{"address": caller_address, "target": callee_address, "kind": "call"}]
+        document["relocations"] = [{"address": caller_address + 1,
+                                    "kind": "ida-off32-32",
+                                    "target": "beta", "addend": callee_address - 4}]
+        document["symbols"] = [{"name": "beta", "address": callee_address,
+                                "binding": "global", "section": ".text"}]
+        document["extensions"] = {"macho": {"relocations": [{
+            "address": caller_address + 1, "target": "beta", "width": 4}]}}
+
+    report = compare_artifacts(rp, bp, left, right, "normalized-functions")
+
+    validate_comparison_report(report)
+    caller = next(item for item in report["functions"] if item["reference_aliases"] == ["alpha"])
+    assert caller["pairing"] == "name"
+    assert caller["status"] == "assembly-matched", caller
+    assert caller["reasons"] == []
+
+
+def test_name_paired_call_to_shifted_unique_code_symbol(tmp_path):
+    rp, bp, left, right = _name_pairing_case(
+        tmp_path, [(0, ["caller"], 5)], [(16, ["caller"], 5)])
+    reference, rebuilt = bytearray(rp.read_bytes()), bytearray(bp.read_bytes())
+    reference[0:5] = b"\xe8\x1b\x00\x00\x00"
+    rebuilt[16:21] = b"\xe8\x1b\x00\x00\x00"
+    rp.write_bytes(reference); bp.write_bytes(rebuilt)
+
+    for document, artifact, caller, callee in (
+            (left, rp, 0, 32), (right, bp, 16, 48)):
+        document["input"].update(size=64, sha256=hashlib.sha256(artifact.read_bytes()).hexdigest())
+        document["sections"][0]["sha256"] = hashlib.sha256(artifact.read_bytes()).hexdigest()
+        function = document["functions"][0]
+        function["instructions"] = [{"address": 0x1000 + caller, "bytes": "E81B000000",
+            "mnemonic": "call", "operands": "__ATIbios32", "normalized_operands": "__ATIbios32",
+            "relocations": []}]
+        function["calls"] = [{"address": 0x1000 + caller, "target": 0x1000 + callee,
+                              "name": "__ATIbios32"}]
+        document["symbols"] = [{"name": "__ATIbios32", "address": 0x1000 + callee,
+                                "binding": "global", "section": ".text"}]
+    report = compare_artifacts(rp, bp, left, right, "normalized-functions")
+    record = report["functions"][0]
+    assert record["status"] == "assembly-matched", record
+    assert record["reasons"] == []
+
+
+def test_name_paired_call_does_not_pair_ambiguous_code_symbol(tmp_path):
+    rp, bp, left, right = _name_pairing_case(
+        tmp_path, [(0, ["caller"], 5)], [(16, ["caller"], 5)])
+    reference, rebuilt = bytearray(rp.read_bytes()), bytearray(bp.read_bytes())
+    reference[0:5] = b"\xe8\x1b\x00\x00\x00"
+    rebuilt[16:21] = b"\xe8\x1b\x00\x00\x00"
+    rp.write_bytes(reference); bp.write_bytes(rebuilt)
+
+    for document, artifact, caller, callee in (
+            (left, rp, 0, 32), (right, bp, 16, 48)):
+        document["input"].update(size=64, sha256=hashlib.sha256(artifact.read_bytes()).hexdigest())
+        document["sections"][0]["sha256"] = hashlib.sha256(artifact.read_bytes()).hexdigest()
+        function = document["functions"][0]
+        function["instructions"] = [{"address": 0x1000 + caller, "bytes": "E81B000000",
+            "mnemonic": "call", "operands": "__ATIbios32", "normalized_operands": "__ATIbios32",
+            "relocations": []}]
+        function["calls"] = [{"address": 0x1000 + caller, "target": 0x1000 + callee,
+                              "name": "__ATIbios32"}]
+        document["symbols"] = [{"name": "__ATIbios32", "address": 0x1000 + callee,
+                                "binding": "global", "section": ".text"}]
+    right["symbols"].append({"name": "__ATIbios32", "address": 0x1038,
+                             "binding": "global", "section": ".text"})
+    report = compare_artifacts(rp, bp, left, right, "normalized-functions")
+    assert report["functions"][0]["status"] == "different"
+    assert "calls differ" in report["functions"][0]["reasons"]
+
+
+def test_name_paired_call_to_same_import_ignores_stub_address_addend(tmp_path):
+    reference = bytearray(b"\x90" * 80)
+    rebuilt = bytearray(reference)
+    reference[0:5] = b"\xe8\x00\x00\x00\x00"
+    rebuilt[16:21] = b"\xe8\x00\x00\x00\x00"
+    rp, bp, left, right = _case(tmp_path, bytes(reference), bytes(rebuilt))
+
+    for document, artifact, caller, addend in (
+            (left, rp, 0, 0x8C65), (right, bp, 16, 0x8BDD)):
+        image = bytearray(artifact.read_bytes())
+        document["input"].update(size=len(image), sha256=hashlib.sha256(image).hexdigest())
+        document["sections"] = [
+            {"name": "__text", "address": 0x1000, "offset": 0, "size": 32,
+             "permissions": "rx", "sha256": hashlib.sha256(image[:32]).hexdigest()},
+            {"name": "UNDEF", "address": 0x3000, "offset": 64, "size": 16,
+             "permissions": "", "sha256": hashlib.sha256(image[64:]).hexdigest()}]
+        document["functions"] = [{
+            "address": 0x1000 + caller, "size": 5, "names": ["alpha"],
+            "blocks": [{"address": 0x1000 + caller, "size": 5, "successors": []}],
+            "instructions": [{"address": 0x1000 + caller, "bytes": "E800000000",
+                              "mnemonic": "call", "operands": "_IOFoo",
+                              "normalized_operands": "_IOFoo", "relocations": [0]}],
+            "calls": [{"address": 0x1000 + caller, "target": 0x300C, "name": "_IOFoo"}],
+            "confidence": 1.0}]
+        document["symbols"] = [{"name": "_IOFoo", "address": 0x300C,
+                                "binding": "local", "section": "UNDEF"}]
+        document["relocations"] = [{"address": 0x1001 + caller,
+                                    "kind": "ida-off32-32", "target": "_IOFoo",
+                                    "addend": addend}]
+        document["references"] = [{"address": 0x1000 + caller,
+                                   "target": 0x300C, "kind": "call"}]
+        document["extensions"] = {"macho": {"relocations": [{
+            "address": 0x1001 + caller, "target": "_IOFoo", "width": 4}]}}
+
+    report = compare_artifacts(rp, bp, left, right, "normalized-functions")
+
+    validate_comparison_report(report)
+    assert report["functions"][0]["status"] == "assembly-matched", report["functions"][0]
+    assert report["functions"][0]["reasons"] == []
+
+def test_name_paired_function_matches_relocated_reference_to_same_named_data_symbol(tmp_path):
+    reference = bytearray(b"\x90" * 128)
+    rebuilt = bytearray(reference)
+    reference[0:5] = b"\x68\x00\x20\x00\x00"
+    rebuilt[16:21] = b"\x68\x08\x20\x00\x00"
+    rp, bp, left, right = _case(tmp_path, bytes(reference), bytes(rebuilt))
+
+    for document, artifact, code, data_offset in (
+            (left, rp, 0, 0), (right, bp, 16, 8)):
+        image = bytearray(artifact.read_bytes())
+        document["input"].update(size=len(image), sha256=hashlib.sha256(image).hexdigest())
+        document["sections"] = [
+            {"name": "__text", "address": 0x1000, "offset": 0, "size": 32,
+             "permissions": "rx", "sha256": hashlib.sha256(image[:32]).hexdigest()},
+            {"name": "__data", "address": 0x2000, "offset": 64, "size": 64,
+             "permissions": "rw", "sha256": hashlib.sha256(image[64:]).hexdigest()}]
+        target = 0x2000 + data_offset
+        document["functions"] = [{
+            "address": 0x1000 + code, "size": 5, "names": ["alpha"],
+            "blocks": [{"address": 0x1000 + code, "size": 5, "successors": []}],
+            "instructions": [{"address": 0x1000 + code, "bytes": "68" + target.to_bytes(4, "little").hex(),
+                              "mnemonic": "push", "operands": "offset paName",
+                              "normalized_operands": "offset paName", "relocations": [0]}],
+            "calls": [], "confidence": 1.0}]
+        document["symbols"] = [{"name": "paName", "address": target,
+                                "binding": "local", "section": "__data"}]
+        document["relocations"] = [{"address": 0x1001 + code, "kind": "ida-off32-32",
+                                    "target": "paName", "addend": target}]
+        document["references"] = [{"address": 0x1000 + code, "target": target, "kind": "data"}]
+        document["extensions"] = {"macho": {"relocations": [{
+            "address": 0x1001 + code, "target": "paName", "width": 4}]}}
+
+    report = compare_artifacts(rp, bp, left, right, "normalized-functions")
+
+    validate_comparison_report(report)
+    assert report["functions"][0]["status"] == "assembly-matched", report["functions"][0]
+    assert report["functions"][0]["reasons"] == []
+
+
+def test_name_paired_function_matches_symbol_aliases_at_same_absolute_address(tmp_path):
+    reference = bytearray(b"\x90" * 128)
+    rebuilt = bytearray(reference)
+    reference[0:5] = b"\x68\x00\x20\x00\x00"
+    rebuilt[16:21] = reference[0:5]
+    rp, bp, left, right = _case(tmp_path, bytes(reference), bytes(rebuilt))
+
+    for document, artifact, code, data_address, name in (
+            (left, rp, 0, 0x2000, "_xxx.92"),
+            (right, bp, 16, 0x1FF8, "_resetEngineWriteCounter")):
+        image = bytearray(artifact.read_bytes())
+        document["input"].update(size=len(image), sha256=hashlib.sha256(image).hexdigest())
+        document["sections"] = [
+            {"name": "__text", "address": 0x1000, "offset": 0, "size": 32,
+             "permissions": "rx", "sha256": hashlib.sha256(image[:32]).hexdigest()},
+            {"name": "__data", "address": data_address, "offset": 64, "size": 64,
+             "permissions": "rw", "sha256": hashlib.sha256(image[64:]).hexdigest()}]
+        target = 0x2000
+        operand_name = name.replace(".", "_")
+        document["functions"] = [{
+            "address": 0x1000 + code, "size": 5, "names": ["alpha"],
+            "blocks": [{"address": 0x1000 + code, "size": 5, "successors": []}],
+            "instructions": [{"address": 0x1000 + code, "bytes": "68" + target.to_bytes(4, "little").hex(),
+                              "mnemonic": "push", "operands": "ds:" + operand_name,
+                              "normalized_operands": "ds:" + operand_name, "relocations": [0]}],
+            "calls": [], "confidence": 1.0}]
+        document["symbols"] = [{"name": name, "address": target,
+                                "binding": "local", "section": "__data"}]
+        document["relocations"] = [{"address": 0x1001 + code, "kind": "ida-off32-32",
+                                    "target": name, "addend": target}]
+        document["references"] = [{"address": 0x1000 + code, "target": target, "kind": "data"}]
+        document["extensions"] = {"macho": {"relocations": [{
+            "address": 0x1001 + code, "target": name, "width": 4}]}}
+
+    report = compare_artifacts(rp, bp, left, right, "normalized-functions")
+
+    validate_comparison_report(report)
+    assert report["functions"][0]["status"] == "assembly-matched", report["functions"][0]
+    assert report["functions"][0]["reasons"] == []
+
+
+def test_name_paired_function_does_not_trust_ida_generated_symbol_alias(tmp_path):
+    reference = bytearray(b"\x90" * 128)
+    rebuilt = bytearray(reference)
+    reference[0:5] = b"\x68\x00\x20\x00\x00"
+    rebuilt[16:21] = b"\x68\x08\x20\x00\x00"
+    rp, bp, left, right = _case(tmp_path, bytes(reference), bytes(rebuilt))
+
+    for document, artifact, code, data_offset in (
+            (left, rp, 0, 0), (right, bp, 16, 8)):
+        image = bytearray(artifact.read_bytes())
+        document["input"].update(size=len(image), sha256=hashlib.sha256(image).hexdigest())
+        document["sections"] = [
+            {"name": "__text", "address": 0x1000, "offset": 0, "size": 32,
+             "permissions": "rx", "sha256": hashlib.sha256(image[:32]).hexdigest()},
+            {"name": "__data", "address": 0x2000, "offset": 64, "size": 64,
+             "permissions": "rw", "sha256": hashlib.sha256(image[64:]).hexdigest()}]
+        target = 0x2000 + data_offset
+        document["functions"] = [{
+            "address": 0x1000 + code, "size": 5, "names": ["alpha"],
+            "blocks": [{"address": 0x1000 + code, "size": 5, "successors": []}],
+            "instructions": [{"address": 0x1000 + code, "bytes": "68" + target.to_bytes(4, "little").hex(),
+                              "mnemonic": "push", "operands": "offset _xxx.92",
+                              "normalized_operands": "offset _xxx.92", "relocations": [0]}],
+            "calls": [], "confidence": 1.0}]
+        document["symbols"] = [{"name": "_xxx.92", "address": target,
+                                "binding": "local", "section": "__data"}]
+        document["relocations"] = [{"address": 0x1001 + code, "kind": "ida-off32-32",
+                                    "target": "_xxx.92", "addend": target}]
+        document["references"] = [{"address": 0x1000 + code, "target": target, "kind": "data"}]
+        document["extensions"] = {"macho": {"relocations": [{
+            "address": 0x1001 + code, "target": "_xxx.92", "width": 4}]}}
+
+    report = compare_artifacts(rp, bp, left, right, "normalized-functions")
+
+    validate_comparison_report(report)
+    assert report["functions"][0]["status"] == "different"
+    assert {"instruction references differ", "relocation target semantics differ"}.issubset(
+        report["functions"][0]["reasons"])
+
+
+def test_name_paired_function_matches_const_data_by_bytes_to_shared_symbol_boundary(tmp_path):
+    crtc = bytes.fromhex("000080000008634F522C0C02DF01EA0122FFD60900000000000000000000")
+    reference = bytearray(b"\x90" * 160)
+    rebuilt = bytearray(reference)
+    reference[0:5] = b"\x68\x00\x20\x00\x00"
+    rebuilt[16:21] = b"\x68\x1F\x30\x00\x00"
+    reference[64:94] = crtc
+    rebuilt[95:125] = crtc
+    rp, bp, left, right = _case(tmp_path, bytes(reference), bytes(rebuilt))
+
+    for document, artifact, code, const_address, target_address, table_name in (
+            (left, rp, 0, 0x2000, 0x2000, "stru_81A8"),
+            (right, bp, 16, 0x3000, 0x301F, "_AtiVgaCRTC")):
+        image = bytearray(artifact.read_bytes())
+        document["input"].update(size=len(image), sha256=hashlib.sha256(image).hexdigest())
+        document["sections"] = [
+            {"name": "__text", "address": 0x1000, "offset": 0, "size": 32,
+             "permissions": "rx", "sha256": hashlib.sha256(image[:32]).hexdigest()},
+            {"name": "__const", "address": const_address, "offset": 64, "size": 64,
+             "permissions": "r", "sha256": hashlib.sha256(image[64:128]).hexdigest()}]
+        marker_address = const_address + (30 if code == 0 else 61)
+        document["functions"] = [{
+            "address": 0x1000 + code, "size": 5, "names": ["alpha"],
+            "blocks": [{"address": 0x1000 + code, "size": 5, "successors": []}],
+            "instructions": [{"address": 0x1000 + code,
+                              "bytes": "68" + target_address.to_bytes(4, "little").hex(),
+                              "mnemonic": "push", "operands": "offset " + table_name,
+                              "normalized_operands": "offset " + table_name,
+                              "relocations": [0]}],
+            "calls": [], "confidence": 1.0}]
+        document["symbols"] = [
+            {"name": table_name, "address": target_address,
+             "binding": "local", "section": "__const"},
+            {"name": "_gamma16", "address": marker_address,
+             "binding": "local", "section": "__const"}]
+        document["relocations"] = [{"address": 0x1001 + code, "kind": "ida-off32-32",
+                                    "target": table_name, "addend": target_address}]
+        document["references"] = [{"address": 0x1000 + code,
+                                   "target": target_address, "kind": "data"}]
+        document["extensions"] = {"macho": {"relocations": [{
+            "address": 0x1001 + code, "target": table_name, "width": 4}]}}
+
+    report = compare_artifacts(rp, bp, left, right, "normalized-functions")
+
+    validate_comparison_report(report)
+    assert report["functions"][0]["status"] == "assembly-matched", report["functions"][0]
+    assert report["functions"][0]["reasons"] == []
+
+    rebuilt[100] ^= 1
+    bp.write_bytes(rebuilt)
+    right["input"].update(sha256=hashlib.sha256(rebuilt).hexdigest())
+    right["sections"][1]["sha256"] = hashlib.sha256(rebuilt[64:128]).hexdigest()
+    report = compare_artifacts(rp, bp, left, right, "normalized-functions")
+    assert report["functions"][0]["status"] == "different"
+
+    rebuilt[100] ^= 1
+    bp.write_bytes(rebuilt)
+    right["input"].update(sha256=hashlib.sha256(rebuilt).hexdigest())
+    right["sections"][1]["sha256"] = hashlib.sha256(rebuilt[64:128]).hexdigest()
+    right["symbols"][1]["name"] = "_gamma17"
+    report = compare_artifacts(rp, bp, left, right, "normalized-functions")
+    assert report["functions"][0]["status"] == "different"
+
+
+def test_name_paired_function_normalizes_ida_local_labels_but_checks_branch_target(tmp_path):
+    reference = bytearray(b"\x90" * 64)
+    rebuilt = bytearray(reference)
+    reference[0:3] = b"\xEB\x00\x90"
+    rebuilt[16:19] = b"\xEB\x00\x90"
+    rp, bp, left, right = _case(tmp_path, bytes(reference), bytes(rebuilt))
+
+    def place(document, base, local_label, target):
+        document["functions"] = [{
+            "address": base, "size": 3, "names": ["alpha"],
+            "blocks": [
+                {"address": base, "size": 2, "successors": [{"target": target, "kind": "branch"}]},
+                {"address": target, "size": 1, "successors": []}],
+            "instructions": [
+                {"address": base, "bytes": "EB00", "mnemonic": "jmp",
+                 "operands": local_label, "normalized_operands": local_label, "relocations": []},
+                {"address": target, "bytes": "90", "mnemonic": "nop",
+                 "operands": "", "normalized_operands": "", "relocations": []}],
+            "calls": [], "confidence": 1.0}]
+        document["references"] = [{"address": base, "target": target, "kind": "branch"}]
+        document["symbols"] = []; document["relocations"] = []; document["extensions"] = {}
+
+    place(left, 0x1000, "loc_1002", 0x1002)
+    place(right, 0x1010, "loc_1012", 0x1012)
+
+    report = compare_artifacts(rp, bp, left, right, "normalized-functions")
+
+    validate_comparison_report(report)
+    assert report["functions"][0]["status"] == "assembly-matched"
+    assert report["functions"][0]["reasons"] == []
+
+    right["functions"][0]["blocks"][0]["successors"][0]["target"] = 0x1011
+    right["references"][0]["target"] = 0x1011
+    report = compare_artifacts(rp, bp, left, right, "normalized-functions")
+    assert report["functions"][0]["status"] == "different"
+    assert {"instruction references differ", "cfg differs"}.intersection(report["functions"][0]["reasons"])
+
+
+def test_name_paired_function_normalizes_local_jump_table_relocation(tmp_path):
+    reference = bytearray(b"\x90" * 64)
+    rebuilt = bytearray(reference)
+    reference[0:7] = b"\xff\x24\x95\x0c\x10\x00\x00"
+    rebuilt[16:23] = b"\xff\x24\x95\x1c\x10\x00\x00"
+    rp, bp, left, right = _case(tmp_path, bytes(reference), bytes(rebuilt))
+
+    def place(document, path, base, label, table_address):
+        image = bytearray(path.read_bytes())
+        image[base - 0x1000:base - 0x1000 + 7] = (
+            b"\xff\x24\x95" + table_address.to_bytes(4, "little"))
+        path.write_bytes(image)
+        document["input"].update(size=len(image), sha256=hashlib.sha256(image).hexdigest())
+        document["sections"][0].update(size=len(image), sha256=hashlib.sha256(image).hexdigest())
+        document["functions"] = [{
+            "address": base, "size": 16, "names": ["alpha"],
+            "blocks": [{"address": base, "size": 7, "successors": []}],
+            "instructions": [{"address": base, "bytes": image[base - 0x1000:base - 0x1000 + 7].hex(),
+                              "mnemonic": "jmp", "operands": f"{label}[edx*4]",
+                              "normalized_operands": f"{label}[edx*4]", "relocations": [0]}],
+            "calls": [], "confidence": 1.0}]
+        document["symbols"] = [{"name": "jumptable", "address": table_address,
+                                "binding": "local", "section": ".text"}]
+        document["relocations"] = [{"address": base + 3, "kind": "ida-off32-32",
+                                    "target": "jumptable", "addend": table_address}]
+        document["references"] = [{"address": base, "target": table_address, "kind": "data"}]
+        document["extensions"] = {"macho": {"relocations": [
+            {"address": base + 3, "target": "jumptable", "width": 4}]}}
+
+    place(left, rp, 0x1000, "jpt_1000", 0x100c)
+    place(right, bp, 0x1010, "jpt_1010", 0x101c)
+
+    report = compare_artifacts(rp, bp, left, right, "normalized-functions")
+
+    validate_comparison_report(report)
+    record = report["functions"][0]
+    assert record["pairing"] == "name"
+    assert record["status"] == "assembly-matched"
+    assert record["reasons"] == []
+
+
+def test_name_paired_function_matches_same_string_after_data_section_reordering(tmp_path):
+    reference = bytearray(b"\x90" * 64)
+    rebuilt = bytearray(reference)
+    rp, bp, left, right = _case(tmp_path, bytes(reference), bytes(rebuilt))
+
+    def place(document, path, base, string_offset, symbol_name, section_name="__cstring"):
+        image = bytearray(path.read_bytes())
+        image[base - 0x1000:base - 0x1000 + 6] = (
+            b"\x68" + (0x2000 + string_offset).to_bytes(4, "little") + b"\xc3")
+        image[32 + string_offset:32 + string_offset + 6] = b"same\n\x00"
+        path.write_bytes(image)
+        document["input"].update(size=len(image), sha256=hashlib.sha256(image).hexdigest())
+        document["sections"] = [
+            {"name": "__text", "address": 0x1000, "offset": 0, "size": 32,
+             "permissions": "rx", "sha256": hashlib.sha256(image[:32]).hexdigest()},
+            {"name": section_name, "address": 0x2000, "offset": 32, "size": 32,
+             "permissions": "r", "sha256": hashlib.sha256(image[32:]).hexdigest()}]
+        document["functions"] = [{
+            "address": base, "size": 6, "names": ["alpha"],
+            "blocks": [{"address": base, "size": 6, "successors": []}],
+            "instructions": [
+                {"address": base, "bytes": image[base - 0x1000:base - 0x1000 + 5].hex(),
+                 "mnemonic": "push", "operands": f"offset {symbol_name}",
+                 "normalized_operands": f"offset {symbol_name}", "relocations": [0]},
+                {"address": base + 5, "bytes": "C3", "mnemonic": "ret",
+                 "operands": "", "normalized_operands": "", "relocations": []}],
+            "calls": [], "confidence": 1.0}]
+        document["symbols"] = [{"name": symbol_name, "address": 0x2000 + string_offset,
+                                "binding": "local", "section": section_name}]
+        document["strings"] = [{"address": 0x2000 + string_offset,
+                                "encoding": "0", "value": "same\n"}]
+        document["relocations"] = [{"address": base + 1, "kind": "ida-off32-32",
+                                    "target": symbol_name, "addend": 0x2000 + string_offset}]
+        document["references"] = [{"address": base, "target": 0x2000 + string_offset,
+                                   "kind": "data"}]
+        document["extensions"] = {"macho": {"relocations": [
+            {"address": base + 1, "target": symbol_name, "width": 4}]}}
+
+    place(left, rp, 0x1000, 0, "aOriginalMessage")
+    place(right, bp, 0x1010, 8, "_waitForIdleTimeoutMessage", "__const")
+
+    report = compare_artifacts(rp, bp, left, right, "normalized-functions")
+
+    validate_comparison_report(report)
+    record = report["functions"][0]
+    assert record["pairing"] == "name"
+    assert record["status"] == "assembly-matched", (record["reasons"], record.get("relocation_semantics"))
+    assert record["reasons"] == []
+
+
+def test_name_paired_function_masks_ida_verified_absolute_string_operand(tmp_path):
+    data = bytearray(b"\x90" * 64)
+    rp, bp, left, right = _case(tmp_path, bytes(data), bytes(data))
+
+    def place(document, path, base, string_offset, symbol_name):
+        image = bytearray(path.read_bytes())
+        operand_target = 0x2000 + string_offset
+        code_offset = base - 0x1000
+        image[code_offset:code_offset + 6] = (
+            b"\xA1" + operand_target.to_bytes(4, "little") + b"\xC3")
+        image[32 + string_offset:32 + string_offset + 6] = b"same\n\x00"
+        path.write_bytes(image)
+        document["input"].update(size=len(image), sha256=hashlib.sha256(image).hexdigest())
+        document["sections"] = [
+            {"name": "__text", "address": 0x1000, "offset": 0, "size": 32,
+             "permissions": "rx", "sha256": hashlib.sha256(image[:32]).hexdigest()},
+            {"name": "__cstring", "address": 0x2000, "offset": 32, "size": 32,
+             "permissions": "r", "sha256": hashlib.sha256(image[32:]).hexdigest()},
+        ]
+        document["functions"] = [{
+            "address": base, "size": 6, "names": ["alpha"],
+            "blocks": [{"address": base, "size": 6, "successors": []}],
+            "instructions": [
+                {"address": base, "bytes": image[code_offset:code_offset + 5].hex(),
+                 "mnemonic": "mov", "operands": f"eax, ds:{symbol_name}",
+                 "normalized_operands": f"eax, ds:{symbol_name}", "relocations": []},
+                {"address": base + 5, "bytes": "C3", "mnemonic": "ret",
+                 "operands": "", "normalized_operands": "", "relocations": []},
+            ],
+            "calls": [], "confidence": 1.0,
+        }]
+        document["symbols"] = [{"name": symbol_name, "address": operand_target,
+                                "binding": "local", "section": "__cstring"}]
+        document["strings"] = [{"address": operand_target, "encoding": "0",
+                                "value": "same\n"}]
+        document["references"] = [{"address": base, "target": operand_target,
+                                   "kind": "data"}]
+        document["relocations"] = []
+        document["extensions"] = {"ida": {"instruction_operand_offsets": [{
+            "address": base,
+            "operands": [{"index": 0, "offset": 0}, {"index": 1, "offset": 1}],
+        }]}}
+
+    place(left, rp, 0x1000, 0, "aOriginalMessage")
+    place(right, bp, 0x1010, 8, "_waitForIdleTimeoutMessage")
+
+    report = compare_artifacts(rp, bp, left, right, "normalized-functions")
+
+    validate_comparison_report(report)
+    assert report["functions"][0]["status"] == "assembly-matched"
+    assert report["functions"][0]["reasons"] == []
+
+
+def test_name_paired_function_normalizes_unique_relocated_readonly_pointer(tmp_path):
+    data = bytearray(b"\x90" * 64)
+    rp, bp, left, right = _case(tmp_path, bytes(data), bytes(data))
+
+    def place(document, path, base, field_offset, operand_name):
+        image = bytearray(path.read_bytes())
+        field_address = 0x2000 + field_offset
+        image[base - 0x1000:base - 0x1000 + 6] = (
+            b"\xA1" + field_address.to_bytes(4, "little") + b"\xC3")
+        image[32 + field_offset:32 + field_offset + 4] = (0x3000).to_bytes(4, "little")
+        image[48:55] = b"Object\x00"
+        path.write_bytes(image)
+        document["input"].update(size=len(image), sha256=hashlib.sha256(image).hexdigest())
+        document["sections"] = [
+            {"name": "__text", "address": 0x1000, "offset": 0, "size": 32,
+             "permissions": "rx", "sha256": hashlib.sha256(image[:32]).hexdigest()},
+            {"name": "__class", "address": 0x2000, "offset": 32, "size": 16,
+             "permissions": "rw", "sha256": hashlib.sha256(image[32:48]).hexdigest()},
+            {"name": "__cstring", "address": 0x3000, "offset": 48, "size": 16,
+             "permissions": "r", "sha256": hashlib.sha256(image[48:]).hexdigest()},
+        ]
+        document["functions"] = [{
+            "address": base, "size": 6, "names": ["alpha"],
+            "blocks": [{"address": base, "size": 6, "successors": []}],
+            "instructions": [
+                {"address": base, "bytes": image[base - 0x1000:base - 0x1000 + 5].hex(),
+                 "mnemonic": "mov", "operands": f"eax, ds:{operand_name}",
+                 "normalized_operands": f"eax, ds:{operand_name}", "relocations": []},
+                {"address": base + 5, "bytes": "C3", "mnemonic": "ret",
+                 "operands": "", "normalized_operands": "", "relocations": []},
+            ],
+            "calls": [], "confidence": 1.0,
+        }]
+        document["symbols"] = [{"name": "aObject", "address": 0x3000,
+                                "binding": "local", "section": "__cstring"}]
+        document["strings"] = [{"address": 0x3000, "encoding": "0", "value": "Object"}]
+        document["references"] = [{"address": base, "target": field_address,
+                                   "kind": "data"}]
+        document["relocations"] = [{"address": field_address, "kind": "ida-off32-32",
+                                    "target": "aObject", "addend": 0x3000}]
+        document["extensions"] = {"ida": {"instruction_operand_offsets": [{
+            "address": base,
+            "operands": [{"index": 0, "offset": 0}, {"index": 1, "offset": 1}],
+        }]}}
+
+    place(left, rp, 0x1000, 0, "stru_8100.ext")
+    place(right, bp, 0x1010, 8, "stru_8110.ext")
+
+    report = compare_artifacts(rp, bp, left, right, "normalized-functions")
+
+    validate_comparison_report(report)
+    assert report["functions"][0]["status"] == "assembly-matched"
+    assert report["functions"][0]["reasons"] == []
+
+
+def test_ida_absolute_data_mask_does_not_hide_a_store_to_relocated_field():
+    code_section = {"name": "__text", "name_occurrence": 0}
+    data_section = {"name": "__class", "name_occurrence": 0}
+    section_map = {
+        canonical_key(code_section): {"raw": {"address": 0x1000}},
+        canonical_key(data_section): {"raw": {"address": 0x2000}},
+    }
+    instruction = {
+        "location": {"kind": "section", "section": code_section, "offset": 0},
+        "bytes": "A300200000", "mnemonic": "mov",
+        "normalized_operands": "ds:stru_8100.ext, eax", "relocations": [],
+        "reference_indexes": [0],
+    }
+    references = [{"kind": "data", "target": {
+        "kind": "section", "section": data_section, "offset": 0,
+    }}]
+    actual = bytes.fromhex(instruction["bytes"])
+
+    masked, _ = _masked(instruction, actual, section_map, {})
+
+    assert masked == actual
+
+
+def test_ida_operand_offsets_are_ignored_for_other_abis_or_ambiguous_addresses():
+    entry = {"address": 0x1000, "operands": [{"index": 1, "offset": 1}]}
+    duplicate = {"address": 0x1000, "operands": [{"index": 0, "offset": 0}]}
+    document = {"input": {"architecture": "i386", "endianness": "little"},
+                "extensions": {"ida": {"instruction_operand_offsets": [entry, duplicate]}}}
+    other_abi = {"input": {"architecture": "ppc", "endianness": "big"},
+                 "extensions": {"ida": {"instruction_operand_offsets": [entry]}}}
+
+    assert _ida_operand_offsets(document) == {}
+    assert _ida_operand_offsets(other_abi) == {}
+
+
+def test_string_targets_pair_interior_offsets_only_within_unique_string_bytes():
+    section = {"name": "__cstring", "name_occurrence": 0}
+    key = canonical_key(section)
+    left = {(key, 0): {"kind": "string", "encoding": "0", "value": "same\n"}}
+    right = {(key, 8): {"kind": "string", "encoding": "0", "value": "same\n"}}
+
+    left_target = _string_target(
+        {"kind": "section", "section": section, "offset": 4}, left)
+    right_target = _string_target(
+        {"kind": "section", "section": section, "offset": 12}, right)
+    outside_target = _string_target(
+        {"kind": "section", "section": section, "offset": 5}, left)
+
+    assert left_target == right_target == {
+        "kind": "string", "encoding": "0", "value": "same\n", "offset": 4,
+    }
+    assert outside_target is None
+
+
+def test_unique_names_take_precedence_over_conflicting_offset_pairings(tmp_path):
+    rp, bp, left, right = _name_pairing_case(
+        tmp_path, [(12, ["displayModeCount"]), (24, ["displayModes"])],
+        [(0, ["displayModeCount"]), (12, ["displayModes"])])
+
+    report = compare_artifacts(rp, bp, left, right, "normalized-functions")
+
+    validate_comparison_report(report)
+    assert [(item["pairing"], item["reference_aliases"], item["rebuilt_aliases"])
+            for item in report["functions"]] == [
+        ("name", ["displayModeCount"], ["displayModeCount"]),
+        ("name", ["displayModes"], ["displayModes"])]
+    assert all(item["status"] == "assembly-matched" for item in report["functions"])
 
 
 @pytest.mark.parametrize("side", ["reference", "rebuilt"])
@@ -1323,7 +1980,7 @@ def test_offset_and_name_pairing_coexist_in_one_comparison(tmp_path):
     validate_comparison_report(report)
     assert [(item["key"]["start"], item["pairing"], item["status"])
             for item in report["functions"]] == [
-        (0, "offset", "assembly-matched"), (8, "name", "different")]
+        (0, "offset", "assembly-matched"), (8, "name", "assembly-matched")]
 
 
 def test_name_paired_functions_of_unequal_size_are_compared_not_rejected(tmp_path):
@@ -1443,3 +2100,574 @@ def test_report_validator_rejects_forged_pairing_basis(tmp_path):
     report["functions"][0]["pairing"] = "name"
     with pytest.raises(ComparisonError, match="pairing"):
         validate_comparison_report(report)
+
+
+def _counter_analysis(symbol_name, address, *, function_name="outb_user", duplicate=False):
+    symbols = [{"name": symbol_name, "address": address,
+                "binding": "local", "section": "__bss"}]
+    relocations = []
+    functions = []
+    for function_offset, use_count in ((0, 1), (0x20, 2)):
+        name = f"{function_name}_{function_offset:x}"
+        instruction_list = []
+        for ordinal in range(use_count):
+            relocation_index = len(relocations)
+            instruction_address = 0x1000 + function_offset + ordinal * 8
+            relocations.append({
+                "address": instruction_address + 3,
+                "kind": "ida-off32-32",
+                "target": symbol_name,
+                "addend": address,
+            })
+            instruction_list.append({
+                "address": instruction_address,
+                "mnemonic": "inc",
+                "relocations": [relocation_index],
+            })
+        functions.append({"names": [name], "instructions": instruction_list})
+    if duplicate:
+        duplicate_name = symbol_name + "_0"
+        symbols.append({"name": duplicate_name, "address": address + 4,
+                        "binding": "local", "section": "__bss"})
+        for function in functions:
+            for instruction in function["instructions"]:
+                relocation_index = len(relocations)
+                relocations.append({
+                    "address": instruction["address"] + 3,
+                    "kind": "ida-off32-32",
+                    "target": duplicate_name,
+                    "addend": address + 4,
+                })
+                instruction["relocations"].append(relocation_index)
+    return {"sections": [{"name": "__bss", "address": address,
+                           "size": 8 if duplicate else 4}],
+            "symbols": symbols, "relocations": relocations, "functions": functions}
+
+
+def test_pairs_generated_local_counter_by_unique_use_site_signature():
+    reference = _counter_analysis("_xxx.8", 0x6000)
+    rebuilt = _counter_analysis("_xxx.86", 0x8000)
+
+    left, right = _paired_generated_counter_names(reference, rebuilt)
+
+    assert left.keys() == {"_xxx.8"}
+    assert right.keys() == {"_xxx.86"}
+    assert left["_xxx.8"] == right["_xxx.86"]
+
+
+def test_does_not_pair_generated_counters_when_use_signature_is_ambiguous():
+    reference = _counter_analysis("_xxx.8", 0x6000)
+    rebuilt = _counter_analysis("_xxx.86", 0x8000, duplicate=True)
+
+    left, right = _paired_generated_counter_names(reference, rebuilt)
+
+    assert left == {}
+    assert right == {}
+
+
+def test_identical_artifacts_pass_every_acceptance_level_feature_variant(tmp_path):
+    rp, bp, left, right = _case(tmp_path)
+    report = compare_artifacts(rp, bp, left, right, "exact-image")
+    validate_comparison_report(report)
+    assert report["acceptance"] == {
+        "normalized-functions": True, "exact-sections": True, "exact-image": True}
+    assert report["selected"] == {"requirement": "exact-image", "passed": True}
+    assert all(not evidence for evidence in report["categories"].values())
+    assert report["functions"][0]["status"] == "assembly-matched"
+
+
+def test_named_symbol_relocation_reference_and_call_targets_survive_symbol_move(tmp_path):
+    original = b"\xe8\x78\x56\x34\x12\x3d\x78\x56\x34\x12\xe4\x80" + b"\0" * 52
+    moved = bytearray(original)
+    moved[1] = 0x88
+    rp, bp, left, right = _case(tmp_path, original, bytes(moved))
+    right["functions"][0]["instructions"][0]["bytes"] = "E888563412"
+    right["symbols"][0]["address"] += 0x10
+    right["functions"][0]["calls"][0]["target"] += 0x10
+    right["references"][0]["target"] += 0x10
+
+    report = compare_artifacts(rp, bp, left, right, "normalized-functions")
+
+    assert report["functions"][0]["status"] == "assembly-matched", report["functions"][0]["reasons"]
+    assert report["acceptance"]["normalized-functions"] is True
+
+
+def test_undefined_symbol_stub_reference_and_call_targets_survive_stub_move(tmp_path):
+    original = b"\xe8\x78\x56\x34\x12\x3d\x78\x56\x34\x12\xe4\x80" + b"\0" * 52
+    moved = bytearray(original)
+    moved[1] = 0x88
+    rp, bp, left, right = _case(tmp_path, original, bytes(moved))
+    right["functions"][0]["instructions"][0]["bytes"] = "E888563412"
+    for document, stub in ((left, 0x1010), (right, 0x1020)):
+        document["symbols"][0].update(address=stub, section="UNDEF")
+        document["functions"][0]["calls"][0]["target"] = stub
+        document["references"][0]["target"] = stub
+
+    report = compare_artifacts(rp, bp, left, right, "normalized-functions")
+
+    assert report["functions"][0]["status"] == "assembly-matched", report["functions"][0]["reasons"]
+    assert report["acceptance"]["normalized-functions"] is True
+
+
+def test_call_target_sequence_ignores_callsite_layout_offsets(tmp_path):
+    rp, bp, left, right = _case(tmp_path)
+    second_address = 0x1030
+    left["symbols"].append({"name": "callee2", "address": second_address,
+                            "binding": "global", "section": ".text"})
+    first = left["functions"][0]["calls"][0]
+    second = {"address": 0x100A, "target": second_address, "name": "callee2"}
+    first["address"] = 0x1002
+    left["functions"][0]["calls"] = [first, second]
+    right["symbols"].append({"name": "callee2", "address": second_address,
+                             "binding": "global", "section": ".text"})
+    right["functions"][0]["calls"] = [
+        {"address": 0x1003, "target": 0x1020, "name": "callee"},
+        {"address": 0x1009, "target": second_address, "name": "callee2"},
+    ]
+
+    report = compare_artifacts(rp, bp, left, right, "normalized-functions")
+
+    assert report["functions"][0]["calls_equal"] is True
+
+
+def test_call_inventory_ignores_address_order(tmp_path):
+    rp, bp, left, right = _case(tmp_path)
+    second_address = 0x1030
+    left["symbols"].append({"name": "callee2", "address": second_address,
+                            "binding": "global", "section": ".text"})
+    right["symbols"].append({"name": "callee2", "address": second_address,
+                             "binding": "global", "section": ".text"})
+    left["functions"][0]["calls"] = [
+        {"address": 0x1002, "target": 0x1020, "name": "callee"},
+        {"address": 0x100A, "target": second_address, "name": "callee2"},
+    ]
+    right["functions"][0]["calls"] = [
+        {"address": 0x1002, "target": second_address, "name": "callee2"},
+        {"address": 0x100A, "target": 0x1020, "name": "callee"},
+    ]
+
+    report = compare_artifacts(rp, bp, left, right, "normalized-functions")
+
+    assert report["functions"][0]["calls_equal"] is True
+
+
+def test_ida_absolute_addend_uses_the_paired_symbol_not_its_moved_address(tmp_path):
+    original = bytearray(b"\0" * 64)
+    original[:5] = bytes.fromhex("A104200000")
+    rebuilt = bytearray(b"\0" * 64)
+    rebuilt[:5] = bytes.fromhex("A104300000")
+    rp, bp, left, right = _case(tmp_path, bytes(original), bytes(rebuilt))
+
+    for document, image, data_address in (
+        (left, original, 0x2000), (right, rebuilt, 0x3000),
+    ):
+        document["sections"] = [
+            {"name": "__text", "address": 0x1000, "offset": 0, "size": 16,
+             "permissions": "rx", "sha256": hashlib.sha256(image[:16]).hexdigest()},
+            {"name": "__data", "address": data_address, "offset": 16, "size": 16,
+             "permissions": "rw", "sha256": hashlib.sha256(image[16:32]).hexdigest()},
+        ]
+        document["functions"] = [{
+            "address": 0x1000, "size": 5, "names": ["readCount"],
+            "blocks": [{"address": 0x1000, "size": 5, "successors": []}],
+            "instructions": [{"address": 0x1000, "bytes": image[:5].hex().upper(),
+                "mnemonic": "mov", "operands": f"eax, ds:stru_{data_address:X}.count",
+                "normalized_operands": f"eax, ds:stru_{data_address:X}.count",
+                "relocations": [0]}],
+            "calls": [], "confidence": 1.0,
+        }]
+        document["symbols"] = [{"name": "count", "address": data_address + 4,
+                                "binding": "global", "section": "__data"}]
+        document["relocations"] = [{"address": 0x1001, "kind": "ida-off32-32",
+                                    "target": "count", "addend": data_address + 4}]
+        document["references"] = [{"address": 0x1000, "target": data_address + 4,
+                                   "kind": "data"}]
+        document["extensions"] = {}
+
+    report = compare_artifacts(rp, bp, left, right, "normalized-functions")
+
+    assert report["functions"][0]["status"] == "assembly-matched", report["functions"][0]["reasons"]
+    assert report["acceptance"]["normalized-functions"] is True
+
+
+def test_relocated_memory_operand_ignores_redundant_ida_width_qualifier(tmp_path):
+    reference = bytearray(b"\0" * 64)
+    rebuilt = bytearray(reference)
+    reference[:7] = bytes.fromhex("66A138610000C3")
+    rebuilt[:7] = bytes.fromhex("66A178810000C3")
+    rp, bp, left, right = _case(tmp_path, bytes(reference), bytes(rebuilt))
+
+    for document, image, data_address, operand in (
+        (left, reference, 0x6138, "ax, ds:_ATI_Bios_Selector"),
+        (right, rebuilt, 0x8178, "ax, word ptr ds:_ATI_Bios_Selector"),
+    ):
+        data = bytes(image[16:18])
+        document["sections"] = [
+            {"name": "__text", "address": 0x1000, "offset": 0, "size": 16,
+             "permissions": "rx", "sha256": hashlib.sha256(image[:16]).hexdigest()},
+            {"name": "__data", "address": data_address, "offset": 16, "size": 2,
+             "permissions": "rw", "sha256": hashlib.sha256(data).hexdigest()},
+        ]
+        document["functions"] = [{
+            "address": 0x1000, "size": 7, "names": ["loadSelector"],
+            "blocks": [{"address": 0x1000, "size": 7, "successors": []}],
+            "instructions": [
+                {"address": 0x1000, "bytes": image[:6].hex().upper(),
+                 "mnemonic": "mov", "operands": operand,
+                 "normalized_operands": operand, "relocations": [0]},
+                {"address": 0x1006, "bytes": "C3", "mnemonic": "retn",
+                 "operands": "", "normalized_operands": "", "relocations": []},
+            ],
+            "calls": [], "confidence": 1.0,
+        }]
+        document["symbols"] = [{"name": "_ATI_Bios_Selector", "address": data_address,
+                                "binding": "global", "section": "__data"}]
+        document["relocations"] = [{"address": 0x1002, "kind": "ida-off32-32",
+                                    "target": "_ATI_Bios_Selector", "addend": data_address}]
+        document["references"] = [{"address": 0x1000, "target": data_address,
+                                   "kind": "data"}]
+        document["extensions"] = {}
+
+    report = compare_artifacts(rp, bp, left, right, "normalized-functions")
+
+    assert report["functions"][0]["status"] == "assembly-matched", report["functions"][0]["reasons"]
+    assert report["acceptance"]["normalized-functions"] is True
+
+
+def test_cfg_mismatch_marks_instruction_alignment_inconclusive(tmp_path):
+    rp, bp, left, right = _case(tmp_path)
+    rebuilt = bytearray(bp.read_bytes())
+    rebuilt[6] = 0x79
+    bp.write_bytes(rebuilt)
+    digest = hashlib.sha256(rebuilt).hexdigest()
+    right["input"].update(size=len(rebuilt), sha256=digest)
+    right["sections"][0]["sha256"] = digest
+    right["functions"][0]["instructions"][1].update(
+        bytes="3D79563412", operands="eax, 0x12345679",
+        normalized_operands="eax, 0x12345679")
+    right["functions"][0]["blocks"][0]["successors"] = []
+
+    report = compare_artifacts(rp, bp, left, right, "normalized-functions")
+
+    assert report["functions"][0]["status"] == "different"
+    assert "cfg differs" in report["functions"][0]["reasons"]
+    assert "instruction alignment inconclusive" in report["functions"][0]["reasons"]
+    assert "instruction semantics differ" not in report["functions"][0]["reasons"]
+    assert any(item["reason"] == "function range bytes differ"
+               for item in report["categories"]["code"])
+    assert report["acceptance"]["normalized-functions"] is False
+
+
+def test_named_function_can_move_within_a_section_without_cfg_or_layout_failure(tmp_path):
+    original = b"\x90\xc3" + b"\0" * 62
+    moved = b"\0" * 16 + b"\x90\xc3" + b"\0" * 46
+    rp, bp, left, right = _case(tmp_path, original, moved)
+    for document, address in ((left, 0x1000), (right, 0x1010)):
+        document["functions"] = [{
+            "address": address,
+            "size": 2,
+            "names": ["moved"],
+            "blocks": [{"address": address, "size": 2, "successors": []}],
+            "instructions": [
+                {"address": address, "bytes": "90", "mnemonic": "nop",
+                 "operands": "", "normalized_operands": "", "relocations": []},
+                {"address": address + 1, "bytes": "C3", "mnemonic": "retn",
+                 "operands": "", "normalized_operands": "", "relocations": []},
+            ],
+            "calls": [],
+            "confidence": 1.0,
+        }]
+        document["symbols"] = []
+        document["relocations"] = []
+        document["references"] = []
+        document["extensions"] = {}
+
+    right["functions"][0]["address"] = 0x1010
+    right["functions"][0]["blocks"][0]["address"] = 0x1010
+    for index, instruction in enumerate(right["functions"][0]["instructions"]):
+        instruction["address"] = 0x1010 + index
+
+    report = compare_artifacts(rp, bp, left, right, "normalized-functions")
+
+    assert report["functions"][0]["pairing"] == "name"
+    assert report["functions"][0]["status"] == "assembly-matched", report["functions"][0]["reasons"]
+    assert report["acceptance"]["normalized-functions"] is True
+
+
+def test_local_branch_label_is_function_relative_when_function_moves(tmp_path):
+    original = bytearray(b"\0" * 64)
+    original[:3] = bytes.fromhex("EB00C3")
+    rebuilt = bytearray(b"\0" * 64)
+    rebuilt[16:19] = bytes.fromhex("EB00C3")
+    rp, bp, left, right = _case(tmp_path, bytes(original), bytes(rebuilt))
+
+    for document, address, label in ((left, 0x1000, "loc_1002"),
+                                     (right, 0x1010, "loc_1012")):
+        document["functions"] = [{
+            "address": address,
+            "size": 3,
+            "names": ["movedBranch"],
+            "blocks": [
+                {"address": address, "size": 2,
+                 "successors": [{"target": address + 2, "kind": "branch"}]},
+                {"address": address + 2, "size": 1, "successors": []},
+            ],
+            "instructions": [
+                {"address": address, "bytes": "EB00", "mnemonic": "jmp",
+                 "operands": label, "normalized_operands": label,
+                 "relocations": []},
+                {"address": address + 2, "bytes": "C3", "mnemonic": "retn",
+                 "operands": "", "normalized_operands": "", "relocations": []},
+            ],
+            "calls": [],
+            "confidence": 1.0,
+        }]
+        document["references"] = [{"address": address, "target": address + 2,
+                                    "kind": "code"}]
+        document["symbols"] = []
+        document["relocations"] = []
+        document["extensions"] = {}
+
+    report = compare_artifacts(rp, bp, left, right, "normalized-functions")
+
+    assert report["functions"][0]["pairing"] == "name"
+    assert report["functions"][0]["status"] == "assembly-matched", report["functions"][0]["reasons"]
+    assert report["acceptance"]["normalized-functions"] is True
+
+
+def test_jump_table_operand_label_is_function_relative_when_function_moves():
+    section = {"name": "__text", "name_occurrence": 0}
+
+    def operand(function_offset, label_prefix):
+        section_map = {canonical_key(section): {
+            "descriptor": {"name": "__text", "name_occurrence": 0},
+            "raw": {"name": "__text", "address": 0x1000, "size": 64},
+        }}
+        function = {"range": {
+            "section": section, "start": function_offset, "end": function_offset + 32,
+        }}
+        instruction = {
+            "normalized_operands": f"{label_prefix}_{0x1000 + function_offset + 4:X}[eax*4]",
+            "relocations": [], "reference_indexes": [0],
+        }
+        references = [{
+            "source": {"kind": "section", "section": section,
+                        "offset": function_offset + 4},
+            "target": {"kind": "section", "section": section,
+                        "offset": function_offset + 16},
+            "kind": "data",
+        }]
+        return _portable_instruction_operands(instruction, references, function, section_map)
+
+    assert operand(0, "jpt") == operand(16, "jpt")
+    assert operand(0, "def") == operand(16, "def")
+
+
+def test_ida_internal_local_reference_ids_do_not_depend_on_function_layout(tmp_path):
+    original = bytearray(b"\0" * 64)
+    original[:4] = bytes.fromhex("8B45F8C3")
+    rebuilt = bytearray(b"\0" * 64)
+    rebuilt[16:20] = bytes.fromhex("8B45F8C3")
+    rp, bp, left, right = _case(tmp_path, bytes(original), bytes(rebuilt))
+
+    for document, address, local_reference in (
+        (left, 0x1000, 0xFF00000000000330),
+        (right, 0x1010, 0xFF0000000000033B),
+    ):
+        document["functions"] = [{
+            "address": address,
+            "size": 4,
+            "names": ["movedLocal"],
+            "blocks": [{"address": address, "size": 4, "successors": []}],
+            "instructions": [
+                {"address": address, "bytes": "8B45F8", "mnemonic": "mov",
+                 "operands": "eax, [ebp+var_8]", "normalized_operands": "eax, [ebp+var_8]",
+                 "relocations": []},
+                {"address": address + 3, "bytes": "C3", "mnemonic": "retn",
+                 "operands": "", "normalized_operands": "", "relocations": []},
+            ],
+            "calls": [],
+            "confidence": 1.0,
+        }]
+        document["references"] = [{"address": address, "target": local_reference,
+                                    "kind": "data"}]
+        document["symbols"] = []
+        document["relocations"] = []
+        document["extensions"] = {}
+
+    report = compare_artifacts(rp, bp, left, right, "normalized-functions")
+
+    assert report["functions"][0]["status"] == "assembly-matched", report["functions"][0]["reasons"]
+    assert report["acceptance"]["normalized-functions"] is True
+
+
+def test_moved_function_relocation_to_local_label_is_function_relative(tmp_path):
+    original = bytearray(b"\x90" * 64)
+    rebuilt = bytearray(b"\x90" * 64)
+    original[:5] = bytes.fromhex("A110100000")
+    rebuilt[16:21] = bytes.fromhex("A120100000")
+    rp, bp, left, right = _case(tmp_path, bytes(original), bytes(rebuilt))
+
+    for document, address, target_address, target_name, image, file_offset in (
+        (left, 0x1000, 0x1010, "loc_1010", original, 0),
+        (right, 0x1010, 0x1020, "bios16_return", rebuilt, 16),
+    ):
+        instructions = [{
+            "address": address, "bytes": image[file_offset:file_offset + 5].hex().upper(),
+            "mnemonic": "mov", "operands": f"eax, ds:{target_name}",
+            "normalized_operands": f"eax, ds:{target_name}", "relocations": [0],
+        }]
+        instructions.extend({
+            "address": address + offset, "bytes": "90", "mnemonic": "nop",
+            "operands": "", "normalized_operands": "", "relocations": [],
+        } for offset in range(5, 32))
+        document["functions"] = [{
+            "address": address, "size": 32, "names": ["localRelocation"],
+            "blocks": [{"address": address, "size": 32, "successors": []}],
+            "instructions": instructions, "calls": [], "confidence": 1.0,
+        }]
+        document["symbols"] = ([] if target_name == "loc_1010" else [{
+            "name": target_name, "address": target_address,
+            "binding": "local", "section": ".text",
+        }])
+        document["relocations"] = [{
+            "address": address + 1, "kind": "ida-off32-32",
+            "target": target_name, "addend": target_address,
+        }]
+        document["references"] = []
+        document["extensions"] = {}
+    for document, data in ((left, original), (right, rebuilt)):
+        document["sections"][0].update(size=len(data), sha256=hashlib.sha256(data).hexdigest())
+
+    report = compare_artifacts(rp, bp, left, right, "normalized-functions")
+
+    assert report["functions"][0]["status"] == "assembly-matched", report["functions"][0]["reasons"]
+    assert "relocation target semantics differ" not in report["functions"][0]["reasons"]
+
+
+def test_ida_local_relocation_kinds_share_function_relative_semantics():
+    section = {"name": "__text", "name_occurrence": 0}
+    section_map = {canonical_key(section): {
+        "descriptor": {"name": "__text", "name_occurrence": 0},
+        "raw": {"name": "__text", "address": 0x1000, "size": 64},
+    }}
+    function = {"range": {"section": section, "start": 0, "end": 32}}
+    targets = [{"kind": "section", "section": section, "offset": 24}]
+
+    values = [
+        {"field_offset": 1, "width": 4, "kind": kind, "target": targets[0],
+         "addend": addend, **extra}
+        for kind, addend, extra in (("ida-off32-32", 0x1018, {"signed": False}),
+                                    ("ida-reference-off32", 0, {}))
+    ]
+    left = _portable_relocation(values[0], section_map, {}, function)
+    right = _portable_relocation(values[1], section_map, {}, function)
+
+    assert left == right
+    assert left["target"] == {
+        "kind": "section", "section": {"name": "__text", "name_occurrence": 0},
+        "offset": 24,
+    }
+
+
+def test_paired_string_locations_normalize_interior_addresses_only_when_unique():
+    identity = {"name": "__cstring", "name_occurrence": 0}
+    section_info = {"descriptor": {"name": "__cstring", "name_occurrence": 0}}
+    left_map = {canonical_key(identity): {**section_info, "raw": {
+        "name": "__cstring", "address": 0x2000, "size": 64,
+    }}}
+    right_map = {canonical_key(identity): {**section_info, "raw": {
+        "name": "__cstring", "address": 0x3000, "size": 64,
+    }}}
+    left = {
+        "sections": [{"identity": identity}], "symbols": [],
+        "strings": [{"address": 0x2004, "encoding": "0", "value": "761295520"}],
+    }
+    right = {
+        "sections": [{"identity": identity}], "symbols": [],
+        "strings": [{"address": 0x3007, "encoding": "0", "value": "761295520"}],
+    }
+
+    left_targets, right_targets = _paired_symbol_locations(
+        left, left, left_map, right, right, right_map)
+    left_target = {"kind": "section", "section": identity, "offset": 8}
+    right_target = {"kind": "section", "section": identity, "offset": 11}
+
+    assert _portable_symbol_target(left_target, left_map, left_targets) == \
+        _portable_symbol_target(right_target, right_map, right_targets)
+
+    left["strings"].append({"address": 0x2020, "encoding": "0", "value": "761295520"})
+    left_targets, right_targets = _paired_symbol_locations(
+        left, left, left_map, right, right, right_map)
+    assert _portable_symbol_target(left_target, left_map, left_targets) != \
+        _portable_symbol_target(right_target, right_map, right_targets)
+
+
+def test_ida_operand_reference_proves_unreported_absolute_data_field(tmp_path):
+    original = bytearray(b"\0" * 64)
+    rebuilt = bytearray(b"\0" * 64)
+    original[:6] = bytes.fromhex("8B1504200000")
+    rebuilt[:6] = bytes.fromhex("8B1504300000")
+    rp, bp, left, right = _case(tmp_path, bytes(original), bytes(rebuilt))
+
+    for document, image, data_address, label in (
+        (left, original, 0x2000, "dword_2004"),
+        (right, rebuilt, 0x3000, "dword_3004"),
+    ):
+        document["sections"] = [
+            {"name": "__text", "address": 0x1000, "offset": 0, "size": 16,
+             "permissions": "rx", "sha256": hashlib.sha256(image[:16]).hexdigest()},
+            {"name": "__data", "address": data_address, "offset": 16, "size": 16,
+             "permissions": "rw", "sha256": hashlib.sha256(image[16:32]).hexdigest()},
+        ]
+        document["functions"] = [{
+            "address": 0x1000, "size": 6, "names": ["readUnrelocatedData"],
+            "blocks": [{"address": 0x1000, "size": 6, "successors": []}],
+            "instructions": [{"address": 0x1000, "bytes": image[:6].hex().upper(),
+                "mnemonic": "mov", "operands": f"edx, ds:{label}",
+                "normalized_operands": f"edx, ds:{label}", "relocations": []}],
+            "calls": [], "confidence": 1.0,
+        }]
+        document["references"] = [{"address": 0x1000, "target": data_address + 4,
+                                   "kind": "data"}]
+        document["symbols"] = []
+        document["relocations"] = []
+        document["extensions"] = {"ida": {"instruction_operand_offsets": [{
+            "address": 0x1000,
+            "operands": [{"index": 0, "offset": 0}, {"index": 1, "offset": 2}],
+        }]}}
+
+    report = compare_artifacts(rp, bp, left, right, "normalized-functions")
+
+    assert report["functions"][0]["status"] == "assembly-matched", report["functions"][0]["reasons"]
+    assert report["acceptance"]["normalized-functions"] is True
+    assert any(item["reason"] == "relocation field bytes differ"
+               for item in report["categories"]["relocation"])
+
+
+def test_stack_frame_aliases_do_not_override_encoded_operand(tmp_path):
+    rp, bp, left, right = _case(tmp_path)
+    left["functions"][0]["instructions"][1]["normalized_operands"] = "eax, [ebp+arg_0]"
+    right["functions"][0]["instructions"][1]["normalized_operands"] = "eax, [ebp+self]"
+
+    report = compare_artifacts(rp, bp, left, right, "normalized-functions")
+
+    assert report["functions"][0]["status"] == "assembly-matched"
+    assert report["acceptance"]["normalized-functions"] is True
+
+
+def test_uniquely_named_functions_at_different_offsets_pair_by_name_feature_variant(tmp_path):
+    rp, bp, left, right = _name_pairing_case(tmp_path, [(0, ["alpha"])], [(16, ["alpha"])])
+
+    report = compare_artifacts(rp, bp, left, right, "normalized-functions")
+
+    validate_comparison_report(report)
+    assert len(report["functions"]) == 1
+    record = report["functions"][0]
+    assert record["pairing"] == "name"
+    assert record["status"] == "assembly-matched"
+    assert record["key"]["start"] == 0
+    assert record["reference_aliases"] == record["rebuilt_aliases"] == ["alpha"]
+    assert record["raw_equal"] is True and record["masked_equal"] is True
+    assert "missing rebuilt function" not in record["reasons"]
+    assert not any(item["reason"].startswith("missing") for item in report["categories"]["code"])

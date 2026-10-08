@@ -4,7 +4,7 @@
  */
 
 #import "DECchip21140.h"
-#import "DECchip21140Inline.h"
+#import "DECchip21140Private.h"
 #import <driverkit/generalFuncs.h>
 
 @implementation DECchip21140
@@ -15,9 +15,8 @@
 + (BOOL)probe:(IOPCIDeviceDescription *)deviceDescription
 {
     IOReturn result;
-    unsigned char pciDevice, pciFunction, pciBus;
     unsigned char configSpace[256];
-    unsigned int *configData = (unsigned int *)configSpace;
+    unsigned char pciDevice, pciFunction, pciBus;
     IORange portRange[1];
     unsigned int irqLevel[2];
     unsigned int commandReg;
@@ -42,7 +41,7 @@
     }
 
     /* Set up I/O port range (CSR base address is at config offset 0x10 / dword 4) */
-    portRange[0].start = configData[4] & 0xFFFFFF80;  /* Mask off lower bits */
+    portRange[0].start = ((unsigned int *)configSpace)[4] & 0xFFFFFF80;
     portRange[0].size = 0x80;                          /* 128 bytes */
     portRange[0].flags = 0;
 
@@ -109,6 +108,8 @@
 - initFromDeviceDescription:(IOPCIDeviceDescription *)deviceDescription
 {
     IOReturn result;
+    unsigned char configSpace[256];
+    unsigned short *configWords = (unsigned short *)configSpace;
     IORange *portRange;
     id configTable;
     const char *configString;
@@ -127,37 +128,35 @@
         return nil;
     }
 
-    /* Get PCI device/vendor IDs */
-    result = [deviceDescription getPCIdevice:&_pciDevice function:&_pciFunction bus:&_pciBus];
+    result = [self getPCIConfigSpace:configSpace withDeviceDescription:deviceDescription];
     if (result != IO_R_SUCCESS) {
-        IOLog("%s: Failed to get PCI device info\n", [self name]);
+        IOLog("%s: Invalid PCI configuration or failed configuration space access - aborting\n",
+              [self name]);
         return nil;
     }
-
-    /* Store vendor and device IDs */
-    _vendorID = ([deviceDescription vendorID] & 0xFFFF) | (([deviceDescription deviceID] & 0xFFFF) << 16);
-    _deviceID = ([deviceDescription vendorID] & 0xFFFF) | (([deviceDescription subdeviceID] & 0xFFFF) << 16);
+    vendorDeviceID = configWords[0] | ((unsigned int)configWords[1] << 16);
+    subVendorDeviceID = configWords[22] | ((unsigned int)configWords[23] << 16);
 
     /* Get I/O port base address */
     portRange = [deviceDescription portRangeList];
-    _portBase = [portRange start];
+    ioBase = [portRange start];
 
     /* Get IRQ */
-    _irqNumber = [deviceDescription interrupt];
+    irq = [deviceDescription interrupt];
 
     /* Get SROM address bits from config (default 6) */
     configTable = [deviceDescription configTable];
-    configString = [[configTable valueForStringKey:"SROM Address Bits"] cString];
+    configString = [configTable valueForStringKey:"SROM Address Bits"];
     if (configString != NULL && strcmp(configString, "8") == 0) {
-        _sromAddressBits = 8;
+        sromAddressBits = 8;
     } else {
-        _sromAddressBits = 6;
+        sromAddressBits = 6;
     }
 
     /* Get SROM address from config (default 0) - parse decimal */
-    configString = [[configTable valueForStringKey:"SROM Address"] cString];
+    configString = [configTable valueForStringKey:"SROM Address"];
     if (configString == NULL) {
-        _sromAddress = 0;
+        enetAddressOffset = 0;
     } else {
         /* Parse decimal value */
         str = (char *)configString;
@@ -176,85 +175,76 @@
                 str++;
             }
         }
-        _sromAddress = parsedValue;
+        enetAddressOffset = parsedValue;
     }
 
     /* Get vendor type from config (default 5 = Custom) */
-    _vendorType = 5;
-    configString = [[configTable valueForStringKey:"Vendor Type"] cString];
+    hardwareVendorID = 5;
+    configString = [configTable valueForStringKey:"Vendor Type"];
     if (configString != NULL) {
         for (i = 0; i < 5; i++) {
             if (strcmp(vendorNames[i], configString) == 0) {
-                _vendorType = i;
+                hardwareVendorID = i;
                 break;
             }
         }
     }
 
     /* Get media type from config (default 0 = 10BaseT) */
-    _mediaType = 0;
-    configString = [[configTable valueForStringKey:"Media Type"] cString];
+    dataRateMode = 0;
+    configString = [configTable valueForStringKey:"Media Type"];
     if (configString != NULL) {
         for (i = 0; i < 6; i++) {
             if (strcmp(mediaNames[i], configString) == 0) {
-                _mediaType = i;
+                dataRateMode = i;
                 break;
             }
         }
     }
 
     /* Get station (MAC) address from SROM */
-    [self getStationAddress:&_stationAddress];
+    [self _getStationAddress:&myAddress];
 
     /* Verify SROM checksum */
-    if (![self verifyCheckSum]) {
+    if (![self _verifyCheckSum]) {
         IOLog("%s: SROM checksum verification failed\n", [self name]);
         [self free];
         return nil;
     }
 
     /* Allocate memory for descriptor rings */
-    if (![self allocateMemory]) {
+    if (![self _allocateMemory]) {
         [self free];
         return nil;
     }
 
     /* Initialize state flags */
-    _isEnabled = NO;
-    _isAttached = NO;
+    isPromiscuous = NO;
+    multicastEnabled = NO;
 
     /* Log adapter information based on vendor type */
-    if (_vendorID == 0x10b8) {
-        IOLog("DECchip 21140 Cogent ANA-6911A/TX\n");
+    if ((subVendorDeviceID & 0xffff) == 0x10b8) {
+        IOLog("SMC EtherPower 10/100 B at port 0x%0x irq %d\n", ioBase, irq);
         IOLog("%s: auto-detecting the interface port\n", [self name]);
     } else {
-        IOLog("DECchip 21140 based adapter\n");
-        if (_mediaType == 0) {
-            IOLog("Interface: 10 BaseT\n");
+        IOLog("DECchip21140 based adapter at port 0x%0x irq %d\n", ioBase, irq);
+        if (dataRateMode != 0) {
+            IOLog("DECchip21140 using %s (MII/SYM) interface\n", mediaNames[dataRateMode]);
         } else {
-            IOLog("Interface: %s\n", mediaNames[_mediaType]);
+            IOLog("DECchip21140 using 10BASE-T/BNC (SRL) interface\n");
         }
     }
 
     /* Allocate debug netbuf for polling mode */
-    _debugNetBuf = [self allocateNetbuf];
-    if (_debugNetBuf == NULL) {
+    KDB_txBuf = [self allocateNetbuf];
+    if (KDB_txBuf == NULL) {
         IOLog("%s: Failed to allocate debug netbuf\n", [self name]);
         [self free];
         return nil;
     }
 
-    /* Initialize polling mode flag */
-    _isPollingMode = NO;
-
-    /* Initialize chip hardware */
-    if (![self initChip]) {
-        [self free];
-        return nil;
-    }
-
-    /* Initialize TX ring */
-    if (![self initTxRing]) {
+    resetAndEnabled = NO;
+    if (![self resetAndEnable:YES] || ![self resetAndEnable:NO]) {
         [self free];
         return nil;
     }
@@ -262,7 +252,7 @@
     /* Attach to network with MAC address */
     superInfo.receiver = self;
     superInfo.class = objc_getClass("IOEthernet");
-    _networkInterface = objc_msgSendSuper(&superInfo, @selector(attachToNetworkWithAddress:), &_stationAddress);
+    networkInterface = objc_msgSendSuper(&superInfo, @selector(attachToNetworkWithAddress:), &myAddress);
 
     return self;
 }
@@ -279,30 +269,30 @@
     [self clearTimeout];
 
     /* Reset chip to stop all DMA */
-    [self resetChip];
+    [self _resetChip];
 
     /* Free network interface if allocated */
-    if (_networkInterface != nil) {
-        [_networkInterface free];
+    if (networkInterface != nil) {
+        [networkInterface free];
     }
 
     /* Free all RX netbufs (64 buffers) */
     for (i = 0; i < DECCHIP21140_RX_RING_SIZE; i++) {
-        if (_rxNetBufs[i] != NULL) {
-            nb_free(_rxNetBufs[i]);
+        if (rxNetbuf[i] != NULL) {
+            nb_free(rxNetbuf[i]);
         }
     }
 
     /* Free all TX netbufs (32 buffers) */
     for (i = 0; i < DECCHIP21140_TX_RING_SIZE; i++) {
-        if (_txNetBufs[i] != NULL) {
-            nb_free(_txNetBufs[i]);
+        if (txNetbuf[i] != NULL) {
+            nb_free(txNetbuf[i]);
         }
     }
 
     /* Free descriptor memory if allocated */
-    if (_descriptorMemory != NULL) {
-        IOFreeLow(_descriptorMemory, _descriptorMemorySize);
+    if (memoryPtr != NULL) {
+        IOFreeLow(memoryPtr, memorySize);
     }
 
     /* Re-enable system interrupts */
@@ -317,9 +307,33 @@
 /*
  * Reset and enable the adapter
  */
-- (IOReturn)resetAndEnable:(BOOL)enable
+- (BOOL)resetAndEnable:(BOOL)enable
 {
-    return IO_R_SUCCESS;
+    resetAndEnabled = NO;
+    [self clearTimeout];
+    [self disableAdapterInterrupts];
+    [self _resetChip];
+
+    if (enable) {
+        if (![self _initRxRing] || ![self _initTxRing]) {
+            return NO;
+        }
+        if (![self _initChip]) {
+            [self setRunning:NO];
+            return NO;
+        }
+        [self _startTransmit];
+        [self _startReceive];
+        if ([self enableAllInterrupts] != IO_R_SUCCESS) {
+            [self setRunning:NO];
+            return NO;
+        }
+        [self enableAdapterInterrupts];
+    }
+
+    [self setRunning:enable];
+    resetAndEnabled = YES;
+    return YES;
 }
 
 /*
@@ -328,7 +342,7 @@
 - (void)enableAdapterInterrupts
 {
     /* Write interrupt mask to CSR7 (interrupt enable register) */
-    outl(_portBase + 0x38, _linkStatus);
+    outl(ioBase + 0x38, interruptMask);
 }
 
 /*
@@ -337,7 +351,7 @@
 - (void)disableAdapterInterrupts
 {
     /* Write 0 to CSR7 (interrupt enable register) to disable all interrupts */
-    outl(_portBase + 0x38, 0);
+    outl(ioBase + 0x38, 0);
 }
 
 /*
@@ -345,6 +359,26 @@
  */
 - (void)interruptOccurred
 {
+    unsigned int csr5;
+
+    do {
+        [self reserveDebuggerLock];
+        csr5 = inl(ioBase + 40);
+        outl(ioBase + 40, csr5);
+        [self releaseDebuggerLock];
+
+        if (csr5 & 0x40) {
+            [self _receiveInterruptOccurred];
+        }
+        if (csr5 & 1) {
+            [self reserveDebuggerLock];
+            [self _transmitInterruptOccurred];
+            [self releaseDebuggerLock];
+            [self serviceTransmitQueue];
+        }
+    } while (csr5 & 0x49);
+
+    [self enableAllInterrupts];
 }
 
 /*
@@ -352,14 +386,34 @@
  */
 - (void)timeoutOccurred
 {
+    if ([self isRunning]) {
+        [self reserveDebuggerLock];
+        [self _transmitInterruptOccurred];
+        [self releaseDebuggerLock];
+        [self serviceTransmitQueue];
+    }
 }
 
 /*
  * Transmit a packet
  */
-- (IOReturn)transmit:(netbuf_t)packet
+- (void)transmit:(netbuf_t)packet
 {
-    return IO_R_SUCCESS;
+    if (packet == NULL) {
+        IOLog("%s: transmit: received NULL netbuf\n", [self name]);
+    } else if ([self isRunning]) {
+        [self reserveDebuggerLock];
+        [self _transmitInterruptOccurred];
+        [self releaseDebuggerLock];
+        [self serviceTransmitQueue];
+        if (txNumFree != 0 && [transmitQueue count] == 0) {
+            [self _transmitPacket:packet];
+        } else {
+            [transmitQueue enqueue:packet];
+        }
+    } else {
+        nb_free(packet);
+    }
 }
 
 /*
@@ -367,6 +421,13 @@
  */
 - (void)serviceTransmitQueue
 {
+    while (txNumFree != 0 && [transmitQueue count] != 0) {
+        netbuf_t packet = [transmitQueue dequeue];
+        if (packet == NULL) {
+            break;
+        }
+        [self _transmitPacket:packet];
+    }
 }
 
 /*
@@ -374,7 +435,7 @@
  */
 - (unsigned int)transmitQueueCount
 {
-    return 0;
+    return [transmitQueue count];
 }
 
 /*
@@ -382,7 +443,7 @@
  */
 - (unsigned int)transmitQueueSize
 {
-    return 0;
+    return 128;
 }
 
 /*
@@ -390,7 +451,7 @@
  */
 - (unsigned int)pendingTransmitCount
 {
-    return 0;
+    return [transmitQueue count] - txNumFree + DECCHIP21140_TX_RING_SIZE;
 }
 
 /*
@@ -427,24 +488,25 @@
 /*
  * Enable promiscuous mode
  */
-- (void)enablePromiscuousMode
+- (BOOL)enablePromiscuousMode
 {
     unsigned int csrValue;
 
     /* Set promiscuous mode flag */
-    _isEnabled = YES;
+    isPromiscuous = YES;
 
     /* Reserve debugger lock for thread safety */
     [self reserveDebuggerLock];
 
     /* Read CSR6 command register */
-    csrValue = inl(_portBase + 0x30);
+    csrValue = inl(ioBase + 0x30);
 
     /* Set promiscuous mode bit (bit 6 = 0x40) */
-    outl(_portBase + 0x30, csrValue | 0x40);
+    outl(ioBase + 0x30, csrValue | 0x40);
 
     /* Release debugger lock */
     [self releaseDebuggerLock];
+    return YES;
 }
 
 /*
@@ -455,16 +517,16 @@
     unsigned int csrValue;
 
     /* Clear promiscuous mode flag */
-    _isEnabled = NO;
+    isPromiscuous = NO;
 
     /* Reserve debugger lock for thread safety */
     [self reserveDebuggerLock];
 
     /* Read CSR6 command register */
-    csrValue = inl(_portBase + 0x30);
+    csrValue = inl(ioBase + 0x30);
 
     /* Clear promiscuous mode bit (bit 6 = 0x40) */
-    outl(_portBase + 0x30, csrValue & 0xFFFFFFBF);
+    outl(ioBase + 0x30, csrValue & 0xFFFFFFBF);
 
     /* Release debugger lock */
     [self releaseDebuggerLock];
@@ -473,10 +535,10 @@
 /*
  * Enable multicast mode
  */
-- (void)enableMulticastMode
+- (BOOL)enableMulticastMode
 {
-    /* Mark as attached (multicast enabled) */
-    _isAttached = YES;
+    multicastEnabled = YES;
+    return YES;
 }
 
 /*
@@ -487,12 +549,12 @@
     BOOL result;
 
     /* If attached (have multicast addresses), rebuild filter without them */
-    if (_isAttached) {
+    if (multicastEnabled) {
         /* Reserve debugger lock for thread safety */
         [self reserveDebuggerLock];
 
         /* Rebuild address filtering */
-        result = [self setAddressFiltering:NO];
+        result = [self _setAddressFiltering:NO];
 
         if (!result) {
             IOLog("%s: disable multicast mode failed\n", [self name]);
@@ -503,24 +565,24 @@
     }
 
     /* Mark as not attached (no multicast addresses) */
-    _isAttached = NO;
+    multicastEnabled = NO;
 }
 
 /*
  * Add multicast address
  */
-- (IOReturn)addMulticastAddress:(enet_addr_t *)addr
+- (void)addMulticastAddress:(enet_addr_t *)addr
 {
     BOOL result;
 
     /* Mark that we're attached (have multicast addresses) */
-    _isAttached = YES;
+    multicastEnabled = YES;
 
     /* Reserve debugger lock for thread safety */
     [self reserveDebuggerLock];
 
     /* Rebuild address filtering with new multicast address */
-    result = [self setAddressFiltering:NO];
+    result = [self _setAddressFiltering:NO];
 
     if (!result) {
         IOLog("%s: add multicast address failed\n", [self name]);
@@ -529,15 +591,21 @@
     /* Release debugger lock */
     [self releaseDebuggerLock];
 
-    return IO_R_SUCCESS;
 }
 
 /*
  * Remove multicast address
  */
-- (IOReturn)removeMulticastAddress:(enet_addr_t *)addr
+- (void)removeMulticastAddress:(enet_addr_t *)addr
 {
-    return IO_R_SUCCESS;
+    BOOL result;
+
+    [self reserveDebuggerLock];
+    result = [self _setAddressFiltering:NO];
+    if (!result) {
+        IOLog("%s: remove multicast address failed\n", [self name]);
+    }
+    [self releaseDebuggerLock];
 }
 
 /*
@@ -572,47 +640,6 @@
 - (IOReturn)setPowerState:(PMPowerState)state
 {
     return IO_R_SUCCESS;
-}
-
-/*
- * Get PCI configuration space
- */
-+ (IOReturn)getPCIConfigSpace:(void *)configSpace
-         withDeviceDescription:(IOPCIDeviceDescription *)deviceDesc
-{
-    IOReturn result;
-    unsigned int reg;
-    unsigned int *configData = (unsigned int *)configSpace;
-
-    /* Read all 64 DWORDs (256 bytes) of PCI config space */
-    for (reg = 0; reg < 64; reg++) {
-        result = [deviceDesc getPCIConfigData:&configData[reg] atRegister:(reg * 4)];
-        if (result != IO_R_SUCCESS) {
-            return result;
-        }
-    }
-
-    return IO_R_SUCCESS;
-}
-
-/*
- * Get PCI configuration data at specific register
- */
-+ (IOReturn)getPCIConfigData:(unsigned int *)data
-                  atRegister:(unsigned int)reg
-       withDeviceDescription:(IOPCIDeviceDescription *)deviceDesc
-{
-    return [deviceDesc getPCIConfigData:data atRegister:reg];
-}
-
-/*
- * Set PCI configuration data at specific register
- */
-+ (IOReturn)setPCIConfigData:(unsigned int)data
-                  atRegister:(unsigned int)reg
-       withDeviceDescription:(IOPCIDeviceDescription *)deviceDesc
-{
-    return [deviceDesc setPCIConfigData:data atRegister:reg];
 }
 
 @end

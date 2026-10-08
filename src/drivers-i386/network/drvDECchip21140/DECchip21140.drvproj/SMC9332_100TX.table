@@ -1,0 +1,16 @@
+"Title" = "SMC9332 100BASE-TX Network Driver";
+"Family" = "Network";
+"Location" = "";
+"Instance" = "0";
+"Driver Name" = "DECchip21140";
+"DMA Channels" = "";
+"Memory Maps" = "";
+"PDR Selection" = "100BASE-TX";
+"Hardware Vendor ID" = "SMC9332";
+"Share IRQ Levels" = "YES";
+"Bus Type" = "PCI";
+"Auto Detect IDs" = "0x00091011:0";
+"Help File" = "DECchip21140NetworkDriver.rtfd";
+"Server Name" = "DECchip21140NetworkDriver";
+"Driver Version" = "PROGRAM:DECchip21140NetworkDriver  PROJECT:drvDECchip21140-20  DEVELOPER:root  BUILT:Sat Mar 28 22:24:58 PST 1998";
+"Version" = "5.00";

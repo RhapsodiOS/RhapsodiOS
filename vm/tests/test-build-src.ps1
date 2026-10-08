@@ -71,7 +71,7 @@ $i386Profile = Get-Content -Raw (Join-Path $repoRoot 'src\rbuild-1\toolchains\gc
 $universalProfile = Get-Content -Raw (Join-Path $repoRoot 'src\rbuild-1\toolchains\gcc-darwin-universal.conf')
 $texi2htmlIndex = (& git -C $repoRoot ls-files -s -- src/CoreOSMakefiles-1/ReleaseControl/texi2html) -join "`n"
 Assert-Match $texi2htmlIndex '^100755 ' 'CoreOS texi2html is tracked executable'
-$ccBuildGccText = Get-Content -Raw (Join-Path $repoRoot 'src\cc-1\build_gcc')
+$ccBuildGccText = Get-Content -Raw (Join-Path $repoRoot 'src\Developer\Commands\cc-1\build_gcc')
 Assert-Match $ccBuildGccText '-print-prog-name=cc1' 'cc bootstrap discovers the configured GCC backend instead of assuming a host layout'
 Assert-Match $ccBuildGccText '-arch \$host -c' 'cc bootstrap compile-probes when -print-prog-name returns a basename'
 Assert-Match $ccBuildGccText 'LDFLAGS="\$\{OTHER_LDFLAGS\} -undefined suppress"' 'cc fat xgcc links before System is universal'
@@ -81,13 +81,13 @@ Assert-Match $ccBuildGccText 'install_newer "\$specs_src"' 'cc fat install copie
 Assert-Match $ccBuildGccText '\$sym/\$arch/lib/\$target/specs' 'cc fat install prefers specs from the build-host SYMROOT'
 Assert-Match $ccBuildGccText '/usr/libexec/\$target/\$gcc_version/specs' 'cc fat install falls back to Rhapsody host libexec specs'
 Assert-Match $ccBuildGccText 'rm -f specs && ln -s \$gcc_version/specs specs' 'cc fat install replaces libexec specs symlink only after the real file exists'
-$ccMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\cc-1\cc\Makefile.in')
+$ccMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\Developer\Commands\cc-1\cc\Makefile.in')
 Assert-Equal ([regex]::Matches($ccMakefileText, '\$\(MAKE\).*BISON="\$\(BISON\)"').Count) 6 'cc self-bootstrap propagates configured bison through every compiler-stage submake'
-$ccTopMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\cc-1\Makefile')
+$ccTopMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\Developer\Commands\cc-1\Makefile')
 Assert-Match $ccTopMakefileText 'CFLAGS="-O \$\(RC_CFLAGS\) \$\(OTHER_CFLAGS\) \$\(LOCAL_CFLAGS\)"' 'cc bundled bison compiles with bootstrap LOCAL_CFLAGS'
 Assert-Match $ccTopMakefileText 'LDFLAGS="\$\(RC_CFLAGS\) \$\(OTHER_LDFLAGS\) -undefined suppress' 'cc bundled bison fat-links before System is universal'
 Assert-Match $ccTopMakefileText '\$\(RC_CFLAGS\) \$\(OTHER_CFLAGS\) \$\(LOCAL_CFLAGS\)"' 'cc fat bootstrap compiles with bootstrap LOCAL_CFLAGS'
-$gnumakeMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\gnumake-1\Makefile')
+$gnumakeMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\Developer\Commands\gnumake-1\Makefile')
 Assert-Match $gnumakeMakefileText 'source_root="\$\(SRCROOT\)"' 'gnumake preserves its configured source root across the object-directory chdir'
 Assert-Match $gnumakeMakefileText '\$\$source_root/\$\(MAKE_SRC_DIR\)/configure' 'gnumake configures from the preserved source tree'
 Assert-NotMatch $gnumakeMakefileText 'PWD=`pwd`' 'gnumake does not repurpose the shell-maintained PWD variable for its source root'
@@ -105,12 +105,12 @@ Assert-Match $csuMakefileText '(?s)ifneq.*findstring i386.*LIPO.*else.*usr/lib/d
 $csuStubText = Get-Content -Raw (Join-Path $repoRoot 'src\Csu-1\dyld_stub.s')
 Assert-NotMatch $csuStubText "`r" 'Csu dylinker stub uses Unix line endings'
 $bootstrapManifestText = Get-Content -Raw (Join-Path $repoRoot 'src\BootstrapManifest')
-Assert-Match $bootstrapManifestText '(?s)dir\s+pb_makefiles-1\s+headers.*dir\s+kernel-7\s+headers' 'pb_makefiles fragments are published before kernel header generation'
-Assert-Match $bootstrapManifestText '(?s)dir\s+architecture-1\s+headers.*dir\s+Libc-1\s+headers.*dir\s+pb_makefiles-1\s+all' 'pb_makefiles tools compile after architecture and libc headers'
-Assert-Match $bootstrapManifestText '(?s)dir\s+pb_makefiles-1\s+all.*dir\s+objc4-1\s+headers' 'pb_makefiles tools are built before objc4 headers need dotdotify'
-Assert-Equal ([regex]::Matches($bootstrapManifestText, '(?m)^dir\s+pb_makefiles-1\s+headers\s*$').Count) 1 'pb_makefiles headers stay an early makefile-fragment pass'
-Assert-Equal ([regex]::Matches($bootstrapManifestText, '(?m)^dir\s+pb_makefiles-1\s+all\s*$').Count) 1 'pb_makefiles all is scheduled once'
-Assert-Match $bootstrapManifestText '(?s)dir\s+Libc-1\s+headers.*dir\s+cc-1\s+headers.*dir\s+bison-1\s+all.*dir\s+cc-1\s+all' 'libc and cc headers are replayed before bison and the full cc bootstrap'
+Assert-Match $bootstrapManifestText '(?s)dir\s+Developer/Commands/pb_makefiles-1\s+headers.*dir\s+kernel-7\s+headers' 'pb_makefiles fragments are published before kernel header generation'
+Assert-Match $bootstrapManifestText '(?s)dir\s+architecture-1\s+headers.*dir\s+Libc-1\s+headers.*dir\s+Developer/Commands/pb_makefiles-1\s+all' 'pb_makefiles tools compile after architecture and libc headers'
+Assert-Match $bootstrapManifestText '(?s)dir\s+Developer/Commands/pb_makefiles-1\s+all.*dir\s+objc4-1\s+headers' 'pb_makefiles tools are built before objc4 headers need dotdotify'
+Assert-Equal ([regex]::Matches($bootstrapManifestText, '(?m)^dir\s+Developer/Commands/pb_makefiles-1\s+headers\s*$').Count) 1 'pb_makefiles headers stay an early makefile-fragment pass'
+Assert-Equal ([regex]::Matches($bootstrapManifestText, '(?m)^dir\s+Developer/Commands/pb_makefiles-1\s+all\s*$').Count) 1 'pb_makefiles all is scheduled once'
+Assert-Match $bootstrapManifestText '(?s)dir\s+Libc-1\s+headers.*dir\s+Developer/Commands/cc-1\s+headers.*dir\s+Developer/Commands/bison-1\s+all.*dir\s+Developer/Commands/cc-1\s+all' 'libc and cc headers are replayed before bison and the full cc bootstrap'
 Assert-Match $bootstrapManifestText '(?s)dir\s+machkit-1\s+headers.*dir\s+machkit-1\s+all.*dir\s+driverkit-3\s+all' 'machkit library is packaged after its headers and before driverkit'
 Assert-Match $bootstrapManifestText '(?s)dir\s+architecture-1\s+headers.*dir\s+architecture-1\s+all' 'architecture headers are published before the architecture package'
 Assert-Match $bootstrapManifestText '(?s)dir\s+Libstreams-1\s+all.*dir\s+objc-1\s+all' 'in-kernel objc is packaged after libstreams'
@@ -120,21 +120,21 @@ Assert-Match $bootstrapManifestText '(?s)dir\s+driverkit-3\s+all.*dir\s+kernload
 Assert-Match $bootstrapManifestText '(?s)dir\s+Libsystem-2\s+all.*dir\s+kernload-1\s+all' 'kernload is packaged after Libsystem so fat System exists for i386 links'
 $bootstrapRuntimeManifestText = Get-Content -Raw (Join-Path $repoRoot 'src\BootstrapRuntimeManifest')
 Assert-NotMatch $bootstrapRuntimeManifestText '(?m)^dir\s+kernload-1\s' 'runtime walk does not link kernload before fat System'
-Assert-Match $bootstrapRuntimeManifestText '(?s)dir\s+cctools-2\s+all.*dir\s+cc-1\s+all.*dir\s+Libsystem-2\s+all' 'runtime walk rebuilds fat cctools and cc before Libsystem harvests them'
-Assert-Match $bootstrapManifestText '(?s)dir\s+driverkit-3\s+all.*dir\s+cctools-2\s+all.*dir\s+cc-1\s+all.*dir\s+Libsystem-2\s+all' 'full manifest rebuilds fat cctools and cc immediately before Libsystem'
-Assert-Match $bootstrapManifestText '(?m)^dir\s+gnudiff-1\s+all\s*$' 'gnudiff is packaged for later kernel chroot builds'
+Assert-Match $bootstrapRuntimeManifestText '(?s)dir\s+Developer/Commands/cctools-2\s+all.*dir\s+Developer/Commands/cc-1\s+all.*dir\s+Libsystem-2\s+all' 'runtime walk rebuilds fat cctools and cc before Libsystem harvests them'
+Assert-Match $bootstrapManifestText '(?s)dir\s+driverkit-3\s+all.*dir\s+Developer/Commands/cctools-2\s+all.*dir\s+Developer/Commands/cc-1\s+all.*dir\s+Libsystem-2\s+all' 'full manifest rebuilds fat cctools and cc immediately before Libsystem'
+Assert-Match $bootstrapManifestText '(?m)^dir\s+Developer/Commands/gnudiff-1\s+all\s*$' 'gnudiff is packaged for later kernel chroot builds'
 Assert-Match $bootstrapManifestText '(?s)dir\s+Librpcsvc-1\s+headers.*dir\s+Libinfo-1\s+headers.*dir\s+Libinfo-1\s+all' 'librpcsvc and libinfo headers are published before libinfo compiles dns against netinfo/ni.h'
 $driverkitLibMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\driverkit-3\libDriver\Makefile')
 Assert-Match $driverkitLibMakefileText '(?m)^HEADER_ROOT=\$\(HDRROOT\)$' 'driverkit libDriver prefers HDRROOT for System.framework includes'
 Assert-Match $driverkitLibMakefileText '-I\$\(HEADER_ROOT\)\$\(SYSTEM_LIBRARY_DIR\)/Frameworks/System.framework/Versions/B/Headers' 'driverkit libDriver compiles against versioned sysroot System.framework headers'
 Assert-Match $driverkitLibMakefileText '-undefined suppress' 'driverkit user dylib allows unresolved System symbols until fat Libsystem exists'
 Assert-Match $driverkitLibMakefileText 'OTHER_LDFLAGS' 'driverkit user dylib link uses bootstrap OTHER_LDFLAGS'
-$projectCommonMakeText = Get-Content -Raw (Join-Path $repoRoot 'src\project_makefiles-1\common.make')
+$projectCommonMakeText = Get-Content -Raw (Join-Path $repoRoot 'src\Developer\Commands\project_makefiles-1\common.make')
 Assert-Match $projectCommonMakeText 'ALL_CFLAGS = .*\$\(LOCAL_CFLAGS\)' 'project_makefiles compile with bootstrap LOCAL_CFLAGS after the local -I.'
 $coreosCommonMakeText = Get-Content -Raw (Join-Path $repoRoot 'src\CoreOSMakefiles-1\ReleaseControl\Common.make')
 Assert-Match $coreosCommonMakeText 'Extra_CC_Flags \+= \$\(RC_CFLAGS\) \$\(LOCAL_CFLAGS\)' 'GNUSource projects compile with bootstrap LOCAL_CFLAGS'
 Assert-Match $coreosCommonMakeText 'Extra_LD_Flags \+= \$\(OTHER_LDFLAGS\)' 'GNUSource projects link with bootstrap OTHER_LDFLAGS'
-$projectMakefilesMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\project_makefiles-1\Makefile')
+$projectMakefilesMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\Developer\Commands\project_makefiles-1\Makefile')
 Assert-Match $projectMakefilesMakefileText '(?m)^CFLAGS = .*\$\(LOCAL_CFLAGS\)' 'project_makefiles tools compile with bootstrap LOCAL_CFLAGS'
 $libcDriversPostambleText = Get-Content -Raw (Join-Path $repoRoot 'src\Libc-1\drivers.subproj\Makefile.postamble')
 Assert-Match $libcDriversPostambleText '(?m)^MIG_DIR=\$\(HDRROOT\)/System/Library/Frameworks/System.framework/Versions/B/PrivateHeaders/driverkit$' 'libc Event MIG reads driverkit defs from the bootstrap sysroot'
@@ -145,9 +145,9 @@ Assert-NotMatch $libcDriversPostambleText '-o \$\(OFILE_DIR\)/\$@' 'libc EventUs
 $zprintPostambleText = Get-Content -Raw (Join-Path $repoRoot 'src\Commands\system_cmds\zprint.tproj\Makefile.postamble')
 Assert-Match $zprintPostambleText '(?m)^MACH_DEBUG_DEFS = \$\(HDRROOT\)/System/Library/Frameworks/System.framework/Versions/B/PrivateHeaders/mach_debug/mach_debug\.defs$' 'zprint MIG reads mach_debug.defs from the bootstrap sysroot'
 Assert-NotMatch $zprintPostambleText 'MACH_DEBUG_DEFS = \$\(SYSTEM_LIBRARY_DIR\)' 'zprint MIG does not hardcode live host PrivateHeaders'
-$cctoolsAsMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\cctools-2\as\Makefile')
-$cctoolsLdMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\cctools-2\ld\Makefile')
-$cctoolsGprofMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\cctools-2\gprof\Makefile')
+$cctoolsAsMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\Developer\Commands\cctools-2\as\Makefile')
+$cctoolsLdMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\Developer\Commands\cctools-2\ld\Makefile')
+$cctoolsGprofMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\Developer\Commands\cctools-2\gprof\Makefile')
 Assert-Match $cctoolsAsMakefileText '-I\$\(HDRROOT\)/System/Library/Frameworks/System.framework/Versions/B/PrivateHeaders' 'cctools as reads streams.h from the bootstrap sysroot'
 Assert-Match $cctoolsLdMakefileText '-I\$\(HDRROOT\)/System/Library/Frameworks/System.framework/Versions/B/PrivateHeaders' 'cctools ld reads PrivateHeaders from the bootstrap sysroot'
 Assert-Match $cctoolsGprofMakefileText '-I\$\(HDRROOT\)/System/Library/Frameworks/System.framework/Versions/B/PrivateHeaders' 'cctools gprof reads PrivateHeaders from the bootstrap sysroot'
@@ -157,14 +157,14 @@ Assert-Equal ([regex]::Matches($cctoolsAsMakefileText, 'CFLAGS="-g -O[^"]*\$\(LO
 Assert-Match $cctoolsLdMakefileText '\$\(LOCAL_CFLAGS\)' 'cctools ld compiles with bootstrap LOCAL_CFLAGS'
 Assert-Match $cctoolsGprofMakefileText '\$\(LOCAL_CFLAGS\)' 'cctools gprof compiles with bootstrap LOCAL_CFLAGS'
 foreach ($cctoolsDir in @('ar', 'file', 'otool', 'misc', 'mkshlib', 'profileServer', 'dyld', 'libstuff', 'libmacho', 'libdyld')) {
-    $cctoolsMakefileText = Get-Content -Raw (Join-Path $repoRoot ("src\cctools-2\{0}\Makefile" -f $cctoolsDir))
+    $cctoolsMakefileText = Get-Content -Raw (Join-Path $repoRoot ("src\Developer\Commands\cctools-2\{0}\Makefile" -f $cctoolsDir))
     Assert-Match $cctoolsMakefileText '\$\(LOCAL_CFLAGS\)' ("cctools {0} compiles with bootstrap LOCAL_CFLAGS" -f $cctoolsDir)
 }
-$cctoolsArMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\cctools-2\ar\Makefile')
-$cctoolsFileMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\cctools-2\file\Makefile')
-$cctoolsMiscMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\cctools-2\misc\Makefile')
-$cctoolsMkshlibMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\cctools-2\mkshlib\Makefile')
-$cctoolsProfileServerMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\cctools-2\profileServer\Makefile')
+$cctoolsArMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\Developer\Commands\cctools-2\ar\Makefile')
+$cctoolsFileMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\Developer\Commands\cctools-2\file\Makefile')
+$cctoolsMiscMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\Developer\Commands\cctools-2\misc\Makefile')
+$cctoolsMkshlibMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\Developer\Commands\cctools-2\mkshlib\Makefile')
+$cctoolsProfileServerMakefileText = Get-Content -Raw (Join-Path $repoRoot 'src\Developer\Commands\cctools-2\profileServer\Makefile')
 $cctoolsFatToolLink = '\$\(RC_CFLAGS\) \$\(OTHER_LDFLAGS\) -undefined suppress -o'
 Assert-Match $cctoolsArMakefileText $cctoolsFatToolLink 'cctools ar fat-links before System is universal'
 Assert-Match $cctoolsFileMakefileText $cctoolsFatToolLink 'cctools file fat-links before System is universal'

@@ -1,0 +1,23 @@
+{
+  "schema_version": "profile-v1",
+  "name": "drvIntel82556 reconstruction",
+  "architecture": "i386",
+  "endianness": "little",
+  "reference": {
+    "path": "${BINRECON_REFERENCE}"
+  },
+  "analyzers": {
+    "ida": {
+      "enabled": true,
+      "executable": "C:/Program Files/IDA Professional 9.4/idat.exe",
+      "timeout_seconds": 900,
+      "version": "9.4"
+    }
+  },
+  "comparison": {
+    "acceptance": "normalized-functions",
+    "ignore_metadata": [],
+    "entry_points": []
+  },
+  "output_dir": "../out/intel82556"
+}

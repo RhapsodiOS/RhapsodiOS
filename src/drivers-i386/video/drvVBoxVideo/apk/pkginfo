@@ -1,0 +1,7 @@
+pkgname = drvvboxvideo
+pkgver = 1.0
+pkgdesc = VirtualBox video driver
+maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
+# author = Vittorio Carosa
+license = GPL-3.0-or-later
+makedepends = build-base, drivertools, driverkit, kernload

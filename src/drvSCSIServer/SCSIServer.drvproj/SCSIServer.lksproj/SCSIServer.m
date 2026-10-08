@@ -174,7 +174,7 @@ static id server = NULL;                   /* Global SCSIServer instance */
      * statically (the lis/lwz pair at 328/332 carries a scattered relocation
      * to __OBJC,__class+4), then bl _objc_msgSendSuper.  That is exactly what
      * gcc emits for a plain [super ...] inside a class @implementation
-     * (src/cc-1/cc/objc-act.c:8388, ucls_super_ref), so the hand-built struct
+     * (src/Developer/Commands/cc-1/cc/objc-act.c:8388, ucls_super_ref), so the hand-built struct
      * and the objc_getClass("IODevice") call it used are both removed.
      */
     initResult = [super initFromDeviceDescription:deviceDescription];
@@ -292,7 +292,7 @@ static id server = NULL;                   /* Global SCSIServer instance */
      * and r4 from __OBJC,__message_refs+4 ("alloc"), then bl _objc_msgSend.
      * A build-time class reference, not a runtime objc_getClass() lookup --
      * which is what gcc emits for a plain [IOSCSISession alloc] under the
-     * NeXT runtime (src/cc-1/cc/objc-act.c:2640, get_class_reference).
+     * NeXT runtime (src/Developer/Commands/cc-1/cc/objc-act.c:2640, get_class_reference).
      */
     sessionAlloc = [IOSCSISession alloc];
 

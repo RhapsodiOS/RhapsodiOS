@@ -1,0 +1,14 @@
+{
+    DYNAMIC_CODE_GEN = YES;
+    FILESTABLE = {
+        OTHER_SOURCES = (Makefile, Makefile.preamble);
+        SUBPROJECTS = (Intel82595NetworkDriver.drvproj);
+    };
+    LANGUAGE = English;
+    LOCALIZABLE_FILES = {};
+    MAKEFILEDIR = "$(MAKEFILEPATH)/pb_makefiles";
+    NEXTSTEP_BUILDTOOL = /bin/gnumake;
+    PROJECTNAME = Intel82595NetworkDriver;
+    PROJECTTYPE = Aggregate;
+    PROJECTVERSION = 2.6;
+}

@@ -1,0 +1,19 @@
+{
+    BUNDLE_EXTENSION = config;
+    DYNAMIC_CODE_GEN = YES;
+    FILESTABLE = {
+        OTHER_RESOURCES = (Default.table, EM525.table, IntelEEPro10.table, "IntelEEPro10+.table", IntelEEPro10PnP.table, "IntelEEPro10+PnP.table", Localizable.strings, EM525.strings, IntelEEPro10.strings, "IntelEEPro10+.strings", IntelEEPro10PnP.strings, "IntelEEPro10+PnP.strings");
+        OTHER_SOURCES = (Makefile, Makefile.preamble, Makefile.postamble, DriverInfo);
+        SUBPROJECTS = (Intel82595NetworkDriver.lksproj);
+    };
+    LANGUAGE = English;
+    LOCALIZABLE_FILES = {
+        Localizable.strings = Localizable.strings;
+    };
+    MAKEFILEDIR = "$(MAKEFILEPATH)/pb_makefiles";
+    NEXTSTEP_BUILDTOOL = /bin/gnumake;
+    NEXTSTEP_INSTALLDIR = "$(NEXT_ROOT)/private/Drivers";
+    PROJECTNAME = Intel82595NetworkDriver;
+    PROJECTTYPE = Driver;
+    PROJECTVERSION = 2.6;
+}

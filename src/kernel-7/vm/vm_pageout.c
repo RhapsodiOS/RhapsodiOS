@@ -45,6 +45,7 @@
 #import <mach/vm_param.h>
 #import <kern/thread.h>
 #import <machine/spl.h>
+#import <kern/zalloc.h>
 
 simple_lock_data_t	vm_pages_needed_lock;
 
@@ -101,6 +102,11 @@ vm_pageout_scan()
 		 	 */
 
 			pmap_update();
+
+			/*
+			 *	Give whole free zone pages back too.
+			 */
+			consider_zone_gc();
 		}
 		else {
 			simple_unlock(&vm_page_queue_free_lock);

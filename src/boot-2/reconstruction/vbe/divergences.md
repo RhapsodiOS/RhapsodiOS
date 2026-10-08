@@ -532,8 +532,8 @@ references, so an unreachable result is a strong claim.
 | 3 | 284 | `getVBEDACFormat`, `setVBEDACFormat`, `getVBEPalette`, `getVBECurrentMode` | unreachable here **and in 4.2** [measured]. They belong to the reference's `vbe.c`, so removing them is a departure. **Not counted** |
 | 4 | 116 | `loadModule` (`boot2/module.c:35`) | unreachable; its only caller is under `#if TEST` [measured] |
 | 5 | 76 | `swapBigIntsToHost`, `swapBigShortToHosts` (`libsaio/ufs_byteorder.c`) | unreachable; the callers are commented out [measured] |
-| 6 | 64 | `slvprintf` (`libsa/sprintf.c:66`) | unreachable [measured]. **[CORRECTED — Task 3b, review M7: its one caller, `tests/satest.c:44`, is a test program the booter does not build.]** **[CORRECTED — Task 5: it has a caller in the package. `sarld` links `libsa.a`, and `libsarld.a` has `U _slvprintf`, from `vprint` (`src/cctools-2/ld/rld.c:1787`, under `SA_RLD`) [measured]. Not removable from source.]** |
-| 7 | 48 | `realloc` (`libsa/zalloc.c:251`) | unreachable. The callers are in unbuilt `libsaio/old` and in `nasm` [measured]. **[CORRECTED — Task 3b, review M7: the host-side callers are `nasm` and `util/mkfont.c:321`; neither is part of the booter.]** **[CORRECTED — Task 5: `sarld`, built by the same package from the same `libsa.a`, calls it. `libsarld.a` has `U _realloc`, from `reallocate` (`src/cctools-2/ld/rld.c:1823`, under `SA_RLD`) [measured]. Not removable from source.]** |
+| 6 | 64 | `slvprintf` (`libsa/sprintf.c:66`) | unreachable [measured]. **[CORRECTED — Task 3b, review M7: its one caller, `tests/satest.c:44`, is a test program the booter does not build.]** **[CORRECTED — Task 5: it has a caller in the package. `sarld` links `libsa.a`, and `libsarld.a` has `U _slvprintf`, from `vprint` (`src/Developer/Commands/cctools-2/ld/rld.c:1787`, under `SA_RLD`) [measured]. Not removable from source.]** |
+| 7 | 48 | `realloc` (`libsa/zalloc.c:251`) | unreachable. The callers are in unbuilt `libsaio/old` and in `nasm` [measured]. **[CORRECTED — Task 3b, review M7: the host-side callers are `nasm` and `util/mkfont.c:321`; neither is part of the booter.]** **[CORRECTED — Task 5: `sarld`, built by the same package from the same `libsa.a`, calls it. `libsarld.a` has `U _realloc`, from `reallocate` (`src/Developer/Commands/cctools-2/ld/rld.c:1823`, under `SA_RLD`) [measured]. Not removable from source.]** |
 | 8 | 6 | `__sp` (`libsaio/asm.s:282`) | unreachable [measured] |
 
 **Ranks 1, 2 and 4 to 8 total 1,318 bytes.** Each size includes the function's
@@ -1031,7 +1031,7 @@ plus a 256-byte margin. Spare before Task 5: 480 [measured, Task 3].
   - The build root's `/usr/local/lib/libsarld.a` (2,549,964 bytes) has
     `U _realloc`, `U _slvprintf`, `U _strtol` and `U _strtoul` [measured,
     `nm -o`].
-  - Its sources are `src/cctools-2/ld`, built with `-DRLD -DSA_RLD`. Under
+  - Its sources are `src/Developer/Commands/cctools-2/ld`, built with `-DRLD -DSA_RLD`. Under
     `SA_RLD`, `rld.c:1787` (`vprint`) calls `slvprintf` and `rld.c:1823`
     (`reallocate`) calls `realloc` [measured source]. `pass1.c` calls
     `strtol`; which of its calls survive `-DRLD` was not determined.

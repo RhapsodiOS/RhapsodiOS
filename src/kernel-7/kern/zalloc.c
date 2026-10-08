@@ -770,21 +770,23 @@ vm_offset_t zone_free_space_add(freespace, size, new_space, space_to_add)
 			((vm_offset_t)cur + cur->length) != new_space)
 		last = &cur->next;
 			
-	if (cur == 0 || ((vm_offset_t)cur + cur->length) < new_space) {
+	if (cur == 0 || (vm_offset_t)cur > new_space) {
 		/*
 		 * No entry was found to combine with.
 		 * Take the new element from the front
 		 * of the new region, and insert the
-		 * remainder as a new entry.
+		 * remainder as a new entry, ahead of
+		 * cur so the list stays sorted.
+		 *
+		 * RhapsodiOS: NeXT tested cur + cur->length
+		 * < new_space here, which the search loop
+		 * above can never leave true, so a region
+		 * landing below an existing entry lost its
+		 * remainder: zdata is carved from the top
+		 * down at boot, and zone_gc() leaves holes
+		 * in zone_map.
 		 */
 		if ((space_to_add - size) >= ZONE_MIN_ALLOC) {
-			/*
-			 * If we are not at the end of
-			 * the free list, then insert the
-			 * new entry after the current entry.
-			 */
-			if (cur != 0)
-				last = &cur->next;
 			(vm_offset_t)cur = new_space + size;
 			cur->length = space_to_add - size;
 			if (cur->next = *last)
@@ -1175,6 +1177,7 @@ vm_offset_t zget_space(freespace, size, canblock)
 	vm_size_t	space_to_add;
 	struct zone_free_space_entry
 			*cur, **last;
+	spl_t		s;
 
 	if (freespace == 0)
 		freespace = zone_default_space;
@@ -1188,6 +1191,7 @@ vm_offset_t zget_space(freespace, size, canblock)
 	else
 		size = ZONE_MIN_ALLOC;
 
+	s = splhigh();
 	simple_lock(simple_lock_addr(zget_space_lock));
 	for (;;) {
 		if ((cur = zone_free_space_lookup(freespace, size)) != 0) {
@@ -1267,6 +1271,7 @@ vm_offset_t zget_space(freespace, size, canblock)
 			 */
 
 			simple_unlock(simple_lock_addr(zget_space_lock));
+			splx(s);
 			{
 				kern_return_t	kr;
 
@@ -1281,6 +1286,7 @@ vm_offset_t zget_space(freespace, size, canblock)
 				}
 			}
 
+			s = splhigh();
 			simple_lock(simple_lock_addr(zget_space_lock));
 			continue;
 		}
@@ -1299,6 +1305,7 @@ vm_offset_t zget_space(freespace, size, canblock)
 		}
 	}
 	simple_unlock(simple_lock_addr(zget_space_lock));
+	splx(s);
 
 	if (new_space != 0)
 		kmem_free(zone_map, new_space, space_to_add);
@@ -1642,6 +1649,76 @@ void zchange(zone, pageable, sleepable, exhaustible, collectable)
 	lock_zone_init(zone);
 }
 
+/*
+ *	zone_gc:
+ *
+ *	Return the free elements of every collectable, non-pageable zone
+ *	to the zone's free space pool, then, if reclaim_pages, give the
+ *	pools' whole free pages back to zone_map.  Each zone is collected
+ *	in its own splhigh window, so interrupts wait for at most one
+ *	zone's free list rather than the whole pass.
+ */
+void zone_gc(boolean_t reclaim_pages)
+{
+	struct zone_free_space_entry	*cur, *pages = 0;
+	zone_t		z;
+	int		max_zones, i;
+	spl_t		s;
+
+	simple_lock(simple_lock_addr(all_zones_lock));
+	max_zones = num_zones;
+	z = first_zone;
+	simple_unlock(simple_lock_addr(all_zones_lock));
+
+	for (i = 0; i < max_zones; i++) {
+		assert(z != ZONE_NULL);
+		if (!z->pageable && zone_collectable(z)) {
+			s = splhigh();
+			simple_lock(simple_lock_addr(zget_space_lock));
+			lock_zone(z);
+			zone_collect(z);
+			unlock_zone(z);
+			simple_unlock(simple_lock_addr(zget_space_lock));
+			splx(s);
+		}
+		simple_lock(simple_lock_addr(all_zones_lock));
+		z = z->next_zone;
+		simple_unlock(simple_lock_addr(all_zones_lock));
+	}
+
+	if (reclaim_pages) {
+		s = splhigh();
+		simple_lock(simple_lock_addr(zget_space_lock));
+		pages = zone_free_space_reclaim();
+		simple_unlock(simple_lock_addr(zget_space_lock));
+		splx(s);
+	}
+
+	/*
+	 * Return any reclaimed pages to the system.
+	 */
+	while ((cur = pages) != 0) {
+		pages = cur->next;
+		kmem_free(zone_map, (vm_offset_t)cur, cur->length);
+	}
+}
+
+unsigned	zone_gc_last_tick = 0;
+unsigned	zone_gc_max_rate = 2;	/* in sched_ticks, one a second */
+
+/*
+ *	consider_zone_gc:
+ *
+ *	Called by the pageout daemon when free pages run short.
+ */
+void consider_zone_gc(void)
+{
+	if (sched_tick > zone_gc_last_tick + zone_gc_max_rate) {
+		zone_gc_last_tick = sched_tick;
+		zone_gc(TRUE);
+	}
+}
+
 #if	MACH_DEBUG
 kern_return_t host_zone_info(host, namesp, namesCntp, infop, infoCntp)
 	host_t		host;
@@ -1809,6 +1886,7 @@ kern_return_t host_zone_free_space_info(
 	mach_msg_type_number_t		*chunksCnt;
 {
 	kern_return_t	kr;
+	spl_t		s;
 	vm_size_t	size1, size2;
 	vm_offset_t	addr1, addr2;
 	vm_offset_t	memory1, memory2;
@@ -1834,6 +1912,7 @@ kern_return_t host_zone_free_space_info(
 
 		size1_needed = size2_needed = 0;
 
+		s = splhigh();
 		simple_lock(simple_lock_addr(zget_space_lock));
 
 		actual1 = actual2 = 0;
@@ -1854,6 +1933,7 @@ kern_return_t host_zone_free_space_info(
 			break;
 
 		simple_unlock(simple_lock_addr(zget_space_lock));
+		splx(s);
 
 		if (size1 < size1_needed) {
 			if (size1 != 0)
@@ -1935,6 +2015,7 @@ kern_return_t host_zone_free_space_info(
 	}
 
 	simple_unlock(simple_lock_addr(zget_space_lock));
+	splx(s);
 
 	if (actual1 != 0 && size1 != 0) {
 		vm_size_t	size_used;
@@ -2038,52 +2119,11 @@ kern_return_t host_zone_collect(
 	boolean_t	collect_zones,
 	boolean_t	reclaim_pages)
 {
-    	struct zone_free_space_entry
-			*cur, *pages = 0;
-	zone_t		z;
-	int		max_zones, i;
-
 	if (host == HOST_NULL)
 		return KERN_INVALID_HOST;
 
-	if (!collect_zones)
-	    return KERN_SUCCESS;
-	
-	simple_lock(simple_lock_addr(zget_space_lock));
-
-	simple_lock(simple_lock_addr(all_zones_lock));
-	max_zones = num_zones;
-	z = first_zone;
-	simple_unlock(simple_lock_addr(all_zones_lock));
-
-	for (i = 0; i < max_zones; i++) {
-		assert(z != ZONE_NULL);
-	/* run this at splhigh so that interupt routines that use zones
-	   can not interupt while their zone is locked */
-		lock_zone(z);
-
-		if (!z->pageable && zone_collectable(z))
-		    zone_collect(z);
-
-		unlock_zone(z);		
-		simple_lock(simple_lock_addr(all_zones_lock));
-		z = z->next_zone;
-		simple_unlock(simple_lock_addr(all_zones_lock));
-	}
-
-	if (reclaim_pages)
-		pages = zone_free_space_reclaim();
-	
-	simple_unlock(simple_lock_addr(zget_space_lock));
-
-	/*
-	 * Return any reclaimed pages to
-	 * the system.
-	 */
-	while ((cur = pages) != 0) {
-		pages = cur->next;
-		kmem_free(zone_map, (vm_offset_t)cur, cur->length);
-	}
+	if (collect_zones)
+		zone_gc(reclaim_pages);
 
 	return KERN_SUCCESS;
 }

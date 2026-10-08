@@ -12,20 +12,22 @@
 #import "BusLogicTypes.h"
 
 /*
- * Convert 24-bit address to/from BusLogic format.
+ * Convert 32-bit address to/from extended BusLogic format.
  */
 static __inline__ void
-bl_put_24(unsigned int addr, unsigned char *ptr)
+bl_put_32(unsigned int addr, unsigned char *ptr)
 {
 	ptr[0] = addr;
 	ptr[1] = addr >> 8;
 	ptr[2] = addr >> 16;
+	ptr[3] = addr >> 24;
 }
 
 static __inline__ unsigned int
-bl_get_24(unsigned char *ptr)
+bl_get_32(unsigned char *ptr)
 {
-	return (ptr[0] | (ptr[1] << 8) | (ptr[2] << 16));
+	return (ptr[0] | (ptr[1] << 8) | (ptr[2] << 16) |
+		(ptr[3] << 24));
 }
 
 /*

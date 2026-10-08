@@ -235,7 +235,7 @@ static void serverThreadFunc(id session);
      * That runtime call is not a divergence: this is a *category*
      * implementation, and gcc emits get_orig_class_reference() rather than a
      * static super_class load for [super ...] in a category
-     * (src/cc-1/cc/objc-act.c:8421).  Plain [super init] reproduces it; the
+     * (src/Developer/Commands/cc-1/cc/objc-act.c:8421).  Plain [super init] reproduces it; the
      * hand-built struct with objc_getClass("Object") named a different
      * runtime function and is removed.
      */

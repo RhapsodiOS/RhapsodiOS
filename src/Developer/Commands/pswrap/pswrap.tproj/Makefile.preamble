@@ -1,0 +1,34 @@
+###############################################################################
+#  Makefile.preamble
+#  pswrap
+#
+#  pswrap is built for the unix/Mach-O host: os_mach enables the -S shlib
+#  include option and pswfile.c's os_mach branches, and os_unix selects the
+#  unix text of PSW_OS.
+#
+#  -UNeXT is essential.  rbuild's RC_CFLAGS always adds -DNeXT, but the
+#  shipped reference pswrap was built without it: it contains the non-NeXT
+#  (char *)pad padding templates from psw.c and the char pad[3] local, and
+#  no (char *)_dpsCurCtxt template.  -UNeXT comes after RC_CFLAGS in
+#  ALL_CFLAGS, so it wins.
+#
+#  FRIENDSFILE is the #include line pswfile.c emits into generated code.
+#
+#  pswparser.c, y.tab.h and lexer.c are pre-generated with the guest's
+#  yacc and lex (the same NeXT-era tools), because rbuild's sysroot has no
+#  yacc/lex.  sysnames_gen.c is generated from systemnames.ps by
+#  sysnames2c.awk and checked in.
+#
+#  OPTIMIZE = NO matches the shipped binary.  pb_makefiles defaults
+#  OPTIMIZE = YES (-O), but the reference was compiled unoptimized: its
+#  __text is ~62% larger than an -O build and carries the cc-783.1 -O0
+#  fingerprints (movl %eax,%eax after every call, movl/leal global-address
+#  chains, jmp .+2/nop/nop returns).  flags.make checks OPTIMIZE with
+#  ifndef after this preamble is included, so the override takes effect.
+###############################################################################
+
+OPTIMIZE = NO
+
+LOCAL_CFLAGS = -UNeXT -Dos_unix -Dos_mach \
+               -DFRIENDSFILE='"<dpsclient/dpsfriends.h>"'
+LOCAL_CFLAGS += -I$(SRCROOT)

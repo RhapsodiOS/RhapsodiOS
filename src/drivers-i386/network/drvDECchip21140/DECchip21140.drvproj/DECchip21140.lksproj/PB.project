@@ -1,8 +1,8 @@
 {
     DYNAMIC_CODE_GEN = YES;
     FILESTABLE = {
-        CLASSES = (DECchip21140.m);
-        H_FILES = (DECchip21140.h);
+        CLASSES = (DECchip21140.m, DECchip21140Private.m, DECchip21140VendorSpecific.m);
+        H_FILES = (DECchip21140.h, DECchip21140Private.h, DECchip21140Shared.h);
         OTHER_SOURCES = (Makefile.preamble, Makefile, Makefile.postamble, Load_Commands.sect);
     };
     LANGUAGE = English;

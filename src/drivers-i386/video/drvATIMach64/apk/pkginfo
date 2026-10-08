@@ -1,0 +1,6 @@
+pkgname = drvatimach64
+pkgver = 18
+pkgdesc = ATI Mach64 display driver
+maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
+license = APSL
+makedepends = build-base, drivertools, driverkit, machkit, kernload, libstreams

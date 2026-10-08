@@ -1,0 +1,8 @@
+drvIntel82596 is a source reconstruction of Apple's i386 Intel82596NetworkDriver
+binary. Its C and Objective-C implementations were written from IDA and Binrecon
+analysis of the reference binary; original source code was not available. The
+reference binary and its embedded resources are not included in this package.
+
+The adapter tables, localized strings, and DriverHelp resources are reproduced
+from the supplied Intel82596NetworkDriver configuration bundle. Their original
+notices and attributions, if any, are preserved in the resource files.

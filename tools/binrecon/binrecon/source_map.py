@@ -2,7 +2,7 @@
 
 Address-to-name comes from the Mach-O symbol table, which these legacy
 driver binaries retain in full. Name-to-source-line comes from scanning
-Objective-C implementations and C function definitions.
+Objective-C implementations, C function definitions, and assembly labels.
 """
 
 from pathlib import Path
@@ -40,7 +40,12 @@ _C_DEFINITION = re.compile(
 
 _METHOD_DECLARATION_LIMIT = 20
 
+_OBJC_METHOD_NAME = re.compile(
+    r"^([+-])\[([A-Za-z_]\w*)(?:\(([^()]*)\))? ([^\]]+)\]$"
+)
+
 _COMMENT = re.compile(r"/\*.*?\*/")
+_ASSEMBLY_LABEL = re.compile(r"^([A-Za-z_.$][\w.$]*):(?:\s*(?:[#;].*)?)$")
 
 
 def defined_symbols(macho_document):
@@ -109,6 +114,14 @@ def _relative_posix(repo_root, path):
     return path.resolve().relative_to(repo_root.resolve()).as_posix()
 
 
+def _without_category(name):
+    """Return a class-method spelling for a category-qualified method name."""
+    match = _OBJC_METHOD_NAME.fullmatch(name)
+    if match and match.group(3) is not None:
+        return f"{match.group(1)}[{match.group(2)} {match.group(4)}]"
+    return None
+
+
 def _body_follows(lines, index):
     """True when the next non-blank line after `index` opens a body.
 
@@ -132,18 +145,23 @@ def _body_follows(lines, index):
 def source_sites(repo_root, source_path):
     """Map symbol names to the source locations that define them."""
     sites = {}
-    # source_files() returns one suffix-mixed sorted list; a directory whose
-    # source shares space with .c-prefixed names earlier in the alphabet
-    # (e.g. Windows' case-insensitive path sort) would otherwise interleave
-    # .m and .c files instead of scanning all .m files before all .c files.
-    # sites accumulates every definition site regardless of scan order, so
-    # this reorder changes nothing about the output; it costs nothing and
-    # keeps the call site faithful to what it replaced, so restore it anyway.
-    found = source_files(source_path, {".m", ".c"}, recursive=False)
-    paths = [p for p in found if p.suffix == ".m"] + [p for p in found if p.suffix == ".c"]
+    # source_files() returns one suffix-mixed sorted list. Keep language passes
+    # grouped so Windows' case-insensitive path sort cannot interleave them.
+    found = source_files(source_path, {".m", ".c", ".s"}, recursive=False)
+    paths = (
+        [p for p in found if p.suffix == ".m"]
+        + [p for p in found if p.suffix == ".c"]
+        + [p for p in found if p.suffix == ".s"]
+    )
     for path in paths:
         relative = _relative_posix(Path(repo_root), path)
         lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+        if path.suffix == ".s":
+            for number, line in enumerate(lines, 1):
+                label = _ASSEMBLY_LABEL.match(line)
+                if label:
+                    sites.setdefault(label.group(1), []).append((relative, number))
+            continue
         total = len(lines)
         current_class = None
         index = 0
@@ -199,8 +217,16 @@ def source_sites(repo_root, source_path):
                 if found_brace and not found_semicolon:
                     selector = read_selector(" ".join(declaration))
                     if selector:
-                        key = f"{method.group(1)}[{current_class} {selector}]"
-                        sites.setdefault(key, []).append((relative, number))
+                        # Objective-C method symbols do not encode the category
+                        # name. Keep the category-qualified spelling for
+                        # diagnostics, and also index the owning class spelling
+                        # used by Mach-O symbols and reference analyses.
+                        owners = [current_class]
+                        if category:
+                            owners.append(name)
+                        for owner in owners:
+                            key = f"{method.group(1)}[{owner} {selector}]"
+                            sites.setdefault(key, []).append((relative, number))
 
                 index = scan + 1
                 continue
@@ -333,6 +359,14 @@ def build_source_map(
 
         lookup = set(names) | set(symbols.get(address, []))
         candidates = sorted({site for name in lookup for site in sites.get(name, [])})
+        if not candidates:
+            categoryless = {
+                alias for name in lookup
+                if (alias := _without_category(name)) is not None
+            }
+            candidates = sorted({
+                site for name in categoryless for site in sites.get(name, [])
+            })
 
         reasons = []
         if address in disputed:

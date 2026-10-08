@@ -1,0 +1,7 @@
+pkgname = drvs3generic
+pkgver = 1.0
+pkgdesc = S3 generic display driver
+maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
+# authors = Peter Graffagnino; Derek B. Clegg; James C. Lee
+license = NeXT proprietary (unpublished; all rights reserved)
+makedepends = build-base, drivertools, driverkit, kernload

@@ -56,7 +56,7 @@ everything after it, and `EISABus` never loads -- so `EISAKernBus` never runs
 
 ## Root cause
 
-Not bytes -- allocation count. `sa_rld_internal` in `src/cctools-2/ld/rld.c`
+Not bytes -- allocation count. `sa_rld_internal` in `src/Developer/Commands/cctools-2/ld/rld.c`
 initialized the standalone allocator with a fixed 1000 nodes, and
 `zallocate()` in `src/boot-2/i386/libsa/zalloc.c` appended to `zalloced[]`
 without checking that limit. `malloc_init()` lays the two node tables out
@@ -75,7 +75,7 @@ overrun was 16,000 bytes into whatever followed.
 
 ## Fix
 
-- `src/cctools-2/ld/rld.c` -- 1000 nodes to 8000.
+- `src/Developer/Commands/cctools-2/ld/rld.c` -- 1000 nodes to 8000.
 - `src/boot-2/i386/libsa/zalloc.c` -- `malloc()` returns 0 once the node table
   is full instead of corrupting the free list, and `malloc_init()` subtracts the
   node tables from the length it publishes as available.
@@ -88,14 +88,14 @@ Rebuild it with:
 
 ```
 rbuild buildpackage --state /build/state --dir --target all \
-    /build/src/cctools-2 /build/repo /build/out/cctools-rbuild
+    /build/src/Developer/Commands/cctools-2 /build/repo /build/out/cctools-rbuild
 # copy the cctools apk into /build/repo, then
 rbuild buildpackage --state /build/state --arch i386 --dir --target all \
     /build/src/boot-2 /build/repo /build/out/booter-rbuild
 ```
 
 `vm/build-i386-booter.sh` runs the second step. `boot-2` also needs `gawk` in
-the repository (`src/gawk-1`); it was not there and had to be built first.
+the repository (`src/Developer/Commands/gawk-1`); it was not there and had to be built first.
 
 ## Verified
 

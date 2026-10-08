@@ -1,0 +1,2 @@
+# The historical source directory name differs from the kernel server name.
+THIN_BINARIES = Intel82556NetworkDriver_reloc

@@ -1008,7 +1008,9 @@ def test_exporter_collects_and_sorts_ida_metadata(tmp_path):
             ],
             Heads=lambda: [0x1001, 0x1000],
             CodeRefsFrom=lambda address, flow: [0x1001] if address == 0x1000 else [],
-            DataRefsFrom=lambda address: [0x2000] if address == 0x1001 else [],
+            DataRefsFrom=lambda address: (
+                [0x2000, 0xFF00000000000380] if address == 0x1001 else []
+            ),
             Functions=lambda: [0x1000, 0x2000],
             FuncItems=lambda address: [0x1001, 0x1000],
             Strings=ConfiguredStrings,
@@ -1053,6 +1055,10 @@ def test_exporter_collects_and_sorts_ida_metadata(tmp_path):
         0x1000, 0x1000, 0x1001, 0x1001, 0x1001, 0x1001
     ]
     assert first["imports"] == [{"name": "libSystem:_printf", "address": 0x2000}]
+    assert first["references"] == [
+        {"address": 0x1000, "target": 0x1001, "kind": "code"},
+        {"address": 0x1001, "target": 0x2000, "kind": "data"},
+    ]
     assert first["relocations"] == [
         {"address": 0x1000, "kind": "ida-off32-32", "target": "_printf", "addend": 7},
         {
@@ -1816,3 +1822,90 @@ def test_exporter_mapping_index_scales_and_cross_run_segment_fails():
     with pytest.raises(module.ExportError, match="one artifact mapping run"):
         module._hash_backed_segment(0, module._HASH_CHUNK_SIZE + 1,
                                     memoryview(b"Z" * (module._HASH_CHUNK_SIZE + 1)), split)
+
+
+def test_ida_absolute_symbol_segment_is_synthetic_zero_fill(tmp_path):
+    """IDA fabricates a SEG_ABSSYM segment for a standalone executable.
+
+    It holds no artifact content, so like BSS and XTRN it must hash as zero
+    rather than demand file backing that does not exist.
+    """
+    import importlib.util
+    script = Path(__file__).parents[1] / "adapters" / "ida" / "export_analysis.py"
+    spec = importlib.util.spec_from_file_location("binrecon_test_ida_absseg", script)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    input_path = tmp_path / "fixture.i64"
+    input_path.write_bytes(b"\x90\xC3")
+    identity = identify(input_path)
+    modules = _fake_modules(identity)
+
+    base = 0x1000
+    base_segment = SimpleNamespace(start_ea=base, end_ea=base + identity.size,
+                                   perm=5, type=2)
+    abs_segment = SimpleNamespace(start_ea=0x9000, end_ea=0x9004, perm=4, type=10)
+    modules["idautils"].Segments = lambda: [base, 0x9000]
+    modules["ida_segment"].getseg = lambda address: (
+        base_segment if address == base else
+        abs_segment if address == abs_segment.start_ea else None
+    )
+    modules["ida_segment"].get_segm_name = lambda segment: (
+        "ABS" if segment is abs_segment else "__text"
+    )
+    modules["ida_segment"].get_segm_class = lambda segment: (
+        "ABS" if segment is abs_segment else "CODE"
+    )
+    mapping = {
+        "schema_version": "ida-mapping-v1",
+        "input": {"size": identity.size, "sha256": identity.sha256,
+                  "architecture": "i386", "endianness": "little",
+                  "ida_processor": "metapc"},
+        "runs": [{"address": base, "offset": 0, "size": identity.size}],
+    }
+
+    analysis = module.collect_analysis(input_path, identity.size, identity.sha256,
+                                       modules, mapping)
+
+    backing = {item["name"]: item for item in analysis["extensions"]["ida"]["sections"]}
+    assert backing["ABS"]["zero_fill"] is True
+    assert backing["ABS"]["initialized"] is False
+    assert backing["__text"]["zero_fill"] is False
+    assert [item["name"] for item in analysis["sections"]] == ["__text", "ABS"]
+    validate_document("analysis-v1", analysis)
+    validate_analysis_semantics(analysis)
+
+
+def test_ida_function_falls_back_to_default_name(tmp_path):
+    """A stripped binary has functions IDA only names by default (sub_XXXX).
+
+    idautils.Names() does not report those, so the exporter must ask
+    ida_name.get_name directly or source-map-v1 has no name to work with.
+    """
+    import importlib.util
+    script = Path(__file__).parents[1] / "adapters" / "ida" / "export_analysis.py"
+    spec = importlib.util.spec_from_file_location("binrecon_test_ida_defaultname", script)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    input_path = tmp_path / "fixture.i64"
+    input_path.write_bytes(b"\x90\xC3")
+    identity = identify(input_path)
+    modules = _fake_modules(identity)
+    base = 0x1000
+    modules["idautils"].Names = lambda: []
+    modules["ida_name"].get_name = lambda address: "sub_1000" if address == base else ""
+    mapping = {
+        "schema_version": "ida-mapping-v1",
+        "input": {"size": identity.size, "sha256": identity.sha256,
+                  "architecture": "i386", "endianness": "little",
+                  "ida_processor": "metapc"},
+        "runs": [{"address": base, "offset": 0, "size": identity.size}],
+    }
+
+    analysis = module.collect_analysis(input_path, identity.size, identity.sha256,
+                                       modules, mapping)
+
+    assert analysis["functions"][0]["names"] == ["sub_1000"]
+    validate_document("analysis-v1", analysis)
+    validate_analysis_semantics(analysis)

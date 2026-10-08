@@ -1,0 +1,6 @@
+pkgname = drvcirruslogicgd5434
+pkgver = 1.0
+pkgdesc = Cirrus Logic GD5434 display driver
+maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
+license = APSL
+makedepends = build-base, drivertools, driverkit, kernload

@@ -120,16 +120,10 @@ extern void  driverIsMissing(
     int   reason
 );
 extern int  driversAreMissing(void);
+extern void  reportMissingDrivers(void);
 
 #import "load.h"
 
-extern int  pickDrivers(
-    struct driver_info *dinfo,
-    int ndrivers,
-    int autoLoad,
-    int instruction
-);
-extern int  loadBootDrivers(BOOL, int, int);
 extern BOOL isInteresting(
     char *name, char *configTable, char *interestingFamilies);
 extern void  driverWasLoaded(char *name, char *configTable, char *tableName);
@@ -144,16 +138,6 @@ extern void  sleep(int n);
 extern void  setA20(void);
 extern void  turnOffFloppy(void);
 extern int  chooseSimple( char **strings, int nstrings, int min, int max );
-extern int  chooseDriverFromList(
-    char *title,
-    char *message,
-    struct driver_info *drivers,
-    int nstrings,
-    char *footMessage,
-    char *moreMessage,
-    char *quit1Message,
-    char *quit2Message
-);
 extern void  clearScreen(void);
 extern void  copyImage(const struct bitmap *bitmap, int x, int y);
 extern void  clearRect(int x, int y, int w, int h, int c);

@@ -6,32 +6,30 @@
 #import "EtherLinkXL.h"
 #import <driverkit/generalFuncs.h>
 #import <kernserv/prototypes.h>
+#import <strings.h>
 
 /* External reference to page size */
 extern unsigned int page_size;
+extern unsigned int page_mask;
 
 @implementation EtherLinkXL(EtherLinkXLPrivate)
 
 /*
  * Internal initialization
  */
-- (BOOL)__init
+- (BOOL)_init
 {
     vm_task_t task;
     unsigned int physicalAddr;
     unsigned short statusReg;
     int timeout;
     int i;
-    unsigned char byte;
-    unsigned short word;
     const char *driverName;
 
     /* Get physical address of RX descriptor ring */
     task = IOVmTaskSelf();
-    physicalAddr = IOPhysicalFromVirtual(task, (vm_address_t)rxDescriptors);
-
-    if (physicalAddr == 0) {
-        driverName = [[self name] cString];
+    if (IOPhysicalFromVirtual(task, (vm_address_t)rxRing, &physicalAddr) != IO_R_SUCCESS) {
+        driverName = [self name];
         IOLog("%s: Virtual to physical mapping error\n", driverName);
         return NO;
     }
@@ -63,100 +61,87 @@ extern unsigned int page_size;
     outb(ioBase + 0x2F, 6);
 
     /* Switch to window 5 and write command 0x8FFC */
-    if (currentWindow != 5) {
+    if (window != 5) {
         outw(ioBase + REG_COMMAND, 0x0805);
-        currentWindow = 5;
+        window = 5;
     }
     outw(ioBase + REG_COMMAND, 0x8FFC);
 
     /* Set bit 0x20 in register at port + 0x20 */
-    word = inl(ioBase + 0x20);
-    outl(ioBase + 0x20, word | 0x20);
+    physicalAddr = inl(ioBase + 0x20);
+    outl(ioBase + 0x20, physicalAddr | 0x20);
 
     /* Switch to window 2 and write station address */
-    if (currentWindow != 2) {
+    if (window != 2) {
         outw(ioBase + REG_COMMAND, 0x0802);
-        currentWindow = 2;
+        window = 2;
     }
 
     /* Write MAC address to window 2, offsets 0-5 */
     for (i = 0; i < 6; i++) {
-        outb(ioBase + i, stationAddress[i]);
+        outb(ioBase + i, etherAddress.ea_byte[i]);
     }
 
     /* Write command with byte from offset 0x18A */
-    outw(ioBase + REG_COMMAND, 0x8000 | interruptMask);
+    outw(ioBase + REG_COMMAND, 0x8000 | rxFilterMode);
 
     /* Write command 0xB000 */
     outw(ioBase + REG_COMMAND, 0xB000);
 
     /* Switch to window 6 and read adapter capabilities */
-    if (currentWindow != 6) {
+    if (window != 6) {
         outw(ioBase + REG_COMMAND, 0x0806);
-        currentWindow = 6;
+        window = 6;
     }
 
-    /* Read 6 bytes of capabilities */
     for (i = 0; i < 6; i++) {
-        adapterCapabilities[i] = inb(ioBase + i);
+        statStruct.rawCounters[i] = inb(ioBase + i);
     }
+    statStruct.framesXmittedOk = inb(ioBase + 6);
+    statStruct.framesRcvdOk = inb(ioBase + 7);
+    physicalAddr = inb(ioBase + 9);
+    statStruct.framesXmittedOk |= (physicalAddr & 0x30) << 4;
+    statStruct.framesRcvdOk |= (physicalAddr & 0x03) << 8;
+    statStruct.framesDeferred = inb(ioBase + 8);
 
-    /* Read and build values from window 6 */
-    byte = inb(ioBase + 6);
-    rxFreeThresh = byte;
-
-    byte = inb(ioBase + 7);
-    txStartThresh = byte;
-
-    byte = inb(ioBase + 9);
-    rxFreeThresh |= (byte & 0x30) << 4;
-    txStartThresh |= (byte & 0x03) << 8;
-
-    softwareInfo = inb(ioBase + 8);
-
-    /* Read from window 6 offset 10 */
-    if (currentWindow != 6) {
+    if (window != 6) {
         outw(ioBase + REG_COMMAND, 0x0806);
-        currentWindow = 6;
+        window = 6;
     }
-    word = inw(ioBase + 10);
-    txAvailable = word;
+    statStruct.bytesRcvdOk = inw(ioBase + 10);
 
     /* Read from window 4 offset 0x0D */
-    if (currentWindow != 4) {
+    if (window != 4) {
         outw(ioBase + REG_COMMAND, 0x0804);
-        currentWindow = 4;
+        window = 4;
     }
-    byte = inb(ioBase + 0x0D);
-    txAvailable |= (unsigned int)byte << 16;
+    statStruct.bytesRcvdOk |= (unsigned int)inb(ioBase + 0x0D) << 16;
 
     /* Read from window 6 offset 0x0C */
-    if (currentWindow != 6) {
+    if (window != 6) {
         outw(ioBase + REG_COMMAND, 0x0806);
-        currentWindow = 6;
+        window = 6;
     }
-    word = inw(ioBase + 0x0C);
-    txSpaceThresh = word;
+    statStruct.bytesXmittedOk = inw(ioBase + 0x0C);
 
     /* Read from window 4 offset 0x0D again */
-    if (currentWindow != 4) {
+    if (window != 4) {
         outw(ioBase + REG_COMMAND, 0x0804);
-        currentWindow = 4;
+        window = 4;
     }
-    byte = inb(ioBase + 0x0D);
-    txSpaceThresh |= (unsigned int)byte << 16;
+    statStruct.bytesXmittedOk |= (unsigned int)inb(ioBase + 0x0D) << 16;
 
     /* Read media options from window 4 offset 0x0C */
-    if (currentWindow != 4) {
+    if (window != 4) {
         outw(ioBase + REG_COMMAND, 0x0804);
-        currentWindow = 4;
+        window = 4;
     }
-    mediaOptions = inb(ioBase + 0x0C);
+    statStruct.badSSD = inb(ioBase + 0x0C);
 
     /* Write 0x40 to window 4 offset 6 */
-    if (currentWindow != 4) {
+    if (window != 4) {
         outw(ioBase + REG_COMMAND, 0x0804);
-        currentWindow = 4;
+        window = 4;
     }
     outw(ioBase + 6, 0x40);
 
@@ -169,64 +154,60 @@ extern unsigned int page_size;
 /*
  * Allocate DMA and descriptor memory
  */
-- (BOOL)__allocateMemory
+- (BOOL)_allocateMemory
 {
     const char *driverName;
     int i;
-    void *alignedAddr;
 
     /* Set descriptor memory size: 0x1020 = 4128 bytes
      * RX descriptors: 64 * 32 = 2048 bytes
      * TX descriptors: 32 * 32 * 2 (two queues) = 2048 bytes
      * Plus alignment padding
      */
-    descriptorMemSize = 0x1020;
+    memorySize = 0x1020;
 
     /* Check if memory fits in one page */
-    if (page_size < descriptorMemSize) {
-        driverName = [[self name] cString];
+    if (page_size < memorySize) {
+        driverName = [self name];
         IOLog("%s: 1 page limit exceeded for descriptor memory\n", driverName);
         return NO;
     }
 
     /* Allocate low memory (DMA-able, < 16MB) for descriptors */
-    descriptorMemBase = (void *)IOMallocLow(descriptorMemSize);
-    if (descriptorMemBase == NULL) {
-        driverName = [[self name] cString];
-        IOLog("%s: Can't allocate %d bytes of memory\n", driverName, descriptorMemSize);
+    memoryPtr = (void *)IOMallocLow(memorySize);
+    if (memoryPtr == NULL) {
+        driverName = [self name];
+        IOLog("%s: Can't allocate %d bytes of memory\n", driverName, memorySize);
         return NO;
     }
 
     /* Set up RX descriptors (aligned to 16-byte boundary) */
-    rxDescriptors = (EtherLinkXLDescriptor *)descriptorMemBase;
-    if (((unsigned int)rxDescriptors & 0x0F) != 0) {
+    rxRing = (EtherLinkXLDescriptor *)memoryPtr;
+    if (((unsigned int)rxRing & 0x0F) != 0) {
         /* Align to next 16-byte boundary */
-        rxDescriptors = (EtherLinkXLDescriptor *)(((unsigned int)descriptorMemBase + 0x0F) & 0xFFFFFFF0);
+        rxRing = (EtherLinkXLDescriptor *)(((unsigned int)memoryPtr + 0x0F) & 0xFFFFFFF0);
     }
 
     /* Initialize RX descriptors and netbuf array */
     for (i = 0; i < RX_RING_SIZE; i++) {
-        bzero(&rxDescriptors[i], sizeof(EtherLinkXLDescriptor));
-        rxNetbufArray[i] = NULL;
+        bzero(&rxRing[i], sizeof(EtherLinkXLDescriptor));
+        rxNetbuf[i] = NULL;
     }
 
-    /* Set up TX descriptor base (offset 0x800 = 2048 from RX descriptors) */
-    txDescriptorBase = (void *)((unsigned int)rxDescriptors + 0x800);
-    if (((unsigned int)txDescriptorBase & 0x0F) != 0) {
-        /* Align to next 16-byte boundary */
-        txDescriptorBase = (void *)(((unsigned int)rxDescriptors + 0x80F) & 0xFFFFFFF0);
+    /* TX queues follow the receive ring in the same descriptor allocation. */
+    txCurrentQueue = (EtherLinkXLDescriptor *)((unsigned int)rxRing + 0x800);
+    if (((unsigned int)txCurrentQueue & 0x0F) != 0) {
+        txCurrentQueue = (EtherLinkXLDescriptor *)(((unsigned int)txCurrentQueue + 0x0F) & 0xFFFFFFF0);
     }
-
-    /* Set up first TX descriptor queue (offset 0x400 = 1024 from TX base) */
-    txDescriptors = (EtherLinkXLDescriptor *)((unsigned int)txDescriptorBase + 0x400);
+    txPendingQueue = (EtherLinkXLDescriptor *)((unsigned int)txCurrentQueue + 0x400);
 
     /* Allocate TX netbuf arrays */
-    txNetbufArraySize = 0x80;  /* 128 bytes = 32 * 4 */
-    txNetbufArray = (netbuf_t *)IOMalloc(txNetbufArraySize);
-    txNetbufArrayAlt = (netbuf_t *)IOMalloc(txNetbufArraySize);
+    xmitNetbufMemorySize = 0x80;  /* 128 bytes = 32 * 4 */
+    txCurrentNetbuf = (netbuf_t *)IOMalloc(xmitNetbufMemorySize);
+    txPendingNetbuf = (netbuf_t *)IOMalloc(xmitNetbufMemorySize);
 
-    if (txNetbufArray == NULL || txNetbufArrayAlt == NULL) {
-        driverName = [[self name] cString];
+    if (txCurrentNetbuf == NULL || txPendingNetbuf == NULL) {
+        driverName = [self name];
         IOLog("%s: Can't allocate memory for netbuf array\n", driverName);
         return NO;
     }
@@ -234,13 +215,13 @@ extern unsigned int page_size;
     /* Initialize TX descriptors and netbuf arrays */
     for (i = 0; i < TX_RING_SIZE; i++) {
         /* Zero out both TX descriptor queues */
-        bzero((void *)((unsigned int)txDescriptorBase + i * sizeof(EtherLinkXLDescriptor)),
+        bzero((void *)((unsigned int)txPendingQueue + i * sizeof(EtherLinkXLDescriptor)),
               sizeof(EtherLinkXLDescriptor));
-        bzero(&txDescriptors[i], sizeof(EtherLinkXLDescriptor));
+        bzero(&txCurrentQueue[i], sizeof(EtherLinkXLDescriptor));
 
         /* Initialize netbuf arrays */
-        txNetbufArray[i] = NULL;
-        txNetbufArrayAlt[i] = NULL;
+        txCurrentNetbuf[i] = NULL;
+        txPendingNetbuf[i] = NULL;
     }
 
     return YES;
@@ -249,7 +230,7 @@ extern unsigned int page_size;
 /*
  * Initialize receive ring
  */
-- (BOOL)__initRxRing
+- (BOOL)_initRxRing
 {
     vm_task_t task;
     unsigned int physicalAddr;
@@ -257,52 +238,44 @@ extern unsigned int page_size;
     EtherLinkXLDescriptor *descriptor;
     const char *driverName;
 
+    task = IOVmTaskSelf();
     /* Initialize all RX descriptors */
     for (i = 0; i < RX_RING_SIZE; i++) {
-        descriptor = &rxDescriptors[i];
+        descriptor = &rxRing[i];
 
         /* Zero out descriptor */
         bzero(descriptor, sizeof(EtherLinkXLDescriptor));
 
         /* Get physical address of next descriptor (for linking) */
-        if (i < RX_RING_SIZE - 1) {
-            task = IOVmTaskSelf();
-            physicalAddr = IOPhysicalFromVirtual(task, (vm_address_t)&rxDescriptors[i + 1]);
-            if (physicalAddr == 0) {
-                return NO;
-            }
-            /* Store next descriptor physical address */
-            descriptor->nextDescriptor = physicalAddr;
+        if (IOPhysicalFromVirtual(task, (vm_address_t)&rxRing[i + 1],
+                                  &physicalAddr) != IO_R_SUCCESS) {
+            return NO;
         }
+        descriptor->nextDescriptor = physicalAddr;
 
         /* Allocate netbuf if not already allocated */
-        if (rxNetbufArray[i] == NULL) {
-            rxNetbufArray[i] = [self allocateNetbuf];
-            if (rxNetbufArray[i] == NULL) {
-                driverName = [[self name] cString];
+        if (rxNetbuf[i] == NULL) {
+            rxNetbuf[i] = [self allocateNetbuf];
+            if (rxNetbuf[i] == NULL) {
+                driverName = [self name];
                 IOLog("%s: initRxRing: allocateNetbuf returned NULL\n", driverName);
                 return NO;
             }
         }
 
         /* Update descriptor from netbuf */
-        if (![self __updateDescriptor:descriptor fromNetBuf:rxNetbufArray[i] receive:YES]) {
-            driverName = [[self name] cString];
+        if (![self _updateDescriptor:descriptor fromNetBuf:rxNetbuf[i] receive:YES]) {
+            driverName = [self name];
             IOLog("%s: initRxRing: updateDescriptor failed\n", driverName);
             return NO;
         }
     }
 
-    /* Link last descriptor back to first (create ring) */
-    task = IOVmTaskSelf();
-    physicalAddr = IOPhysicalFromVirtual(task, (vm_address_t)rxDescriptors);
-    if (physicalAddr == 0) {
+    if (IOPhysicalFromVirtual(task, (vm_address_t)rxRing, &physicalAddr) != IO_R_SUCCESS) {
         return NO;
     }
-    rxDescriptors[RX_RING_SIZE - 1].nextDescriptor = physicalAddr;
-
-    /* Initialize RX index */
-    rxIndex = 0;
+    rxRing[RX_RING_SIZE - 1].nextDescriptor = physicalAddr;
+    rxCur = 0;
 
     return YES;
 }
@@ -310,91 +283,70 @@ extern unsigned int page_size;
 /*
  * Initialize transmit queue
  */
-- (BOOL)__initTxQueue
+- (BOOL)_initTxQueue
 {
     vm_task_t task;
     unsigned int physicalAddr;
     unsigned int i;
-    EtherLinkXLDescriptor *descriptor1, *descriptor2;
+    EtherLinkXLDescriptor *descriptor;
     const char *driverName;
 
-    /* Initialize both TX descriptor queues */
+    task = IOVmTaskSelf();
     for (i = 0; i < TX_RING_SIZE; i++) {
-        /* First TX queue (at txDescriptorBase) */
-        descriptor1 = (EtherLinkXLDescriptor *)((unsigned int)txDescriptorBase + i * sizeof(EtherLinkXLDescriptor));
-        bzero(descriptor1, sizeof(EtherLinkXLDescriptor));
-
-        /* Get physical address of next descriptor (if not last) */
+        descriptor = &txCurrentQueue[i];
+        bzero(descriptor, sizeof(*descriptor));
         if (i < TX_RING_SIZE - 1) {
-            task = IOVmTaskSelf();
-            physicalAddr = IOPhysicalFromVirtual(task,
-                (vm_address_t)((unsigned int)txDescriptorBase + (i + 1) * sizeof(EtherLinkXLDescriptor)));
-            if (physicalAddr == 0) {
+            if (IOPhysicalFromVirtual(task, (vm_address_t)&txCurrentQueue[i + 1],
+                                      &physicalAddr) != IO_R_SUCCESS) {
                 return NO;
             }
-            /* Store at offset 0x18 (reserved[2]) */
-            descriptor1->reserved[2] = physicalAddr;
+            descriptor->ringLink = physicalAddr;
         }
-
-        /* Get physical address of current descriptor */
-        task = IOVmTaskSelf();
-        physicalAddr = IOPhysicalFromVirtual(task, (vm_address_t)descriptor1);
-        if (physicalAddr == 0) {
+        if (IOPhysicalFromVirtual(task, (vm_address_t)descriptor, &physicalAddr) != IO_R_SUCCESS) {
             return NO;
         }
-        /* Store at offset 0x1C (reserved[3]) */
-        descriptor1->reserved[3] = physicalAddr;
+        descriptor->physicalAddr = physicalAddr;
 
         /* Free any existing netbuf in first queue */
-        if (txNetbufArray[i] != NULL) {
-            nb_free(txNetbufArray[i]);
-            txNetbufArray[i] = NULL;
+        if (txCurrentNetbuf[i] != NULL) {
+            nb_free(txCurrentNetbuf[i]);
+            txCurrentNetbuf[i] = NULL;
         }
 
-        /* Second TX queue (at txDescriptors) */
-        descriptor2 = &txDescriptors[i];
-        bzero(descriptor2, sizeof(EtherLinkXLDescriptor));
-
-        /* Get physical address of next descriptor (if not last) */
+        descriptor = &txPendingQueue[i];
+        bzero(descriptor, sizeof(*descriptor));
         if (i < TX_RING_SIZE - 1) {
-            task = IOVmTaskSelf();
-            physicalAddr = IOPhysicalFromVirtual(task, (vm_address_t)&txDescriptors[i + 1]);
-            if (physicalAddr == 0) {
+            if (IOPhysicalFromVirtual(task, (vm_address_t)&txPendingQueue[i + 1],
+                                      &physicalAddr) != IO_R_SUCCESS) {
                 return NO;
             }
-            /* Store at offset 0x18 (reserved[2]) */
-            descriptor2->reserved[2] = physicalAddr;
+            descriptor->ringLink = physicalAddr;
         }
-
-        /* Get physical address of current descriptor */
-        task = IOVmTaskSelf();
-        physicalAddr = IOPhysicalFromVirtual(task, (vm_address_t)descriptor2);
-        if (physicalAddr == 0) {
+        if (IOPhysicalFromVirtual(task, (vm_address_t)descriptor, &physicalAddr) != IO_R_SUCCESS) {
             return NO;
         }
-        /* Store at offset 0x1C (reserved[3]) */
-        descriptor2->reserved[3] = physicalAddr;
+        descriptor->physicalAddr = physicalAddr;
 
         /* Free any existing netbuf in second queue */
-        if (txNetbufArrayAlt[i] != NULL) {
-            nb_free(txNetbufArrayAlt[i]);
-            txNetbufArrayAlt[i] = NULL;
+        if (txPendingNetbuf[i] != NULL) {
+            nb_free(txPendingNetbuf[i]);
+            txPendingNetbuf[i] = NULL;
         }
     }
 
     /* Initialize TX management variables */
-    txHead = 0;
-    txPending = NO;
+    txIndex = 0;
+    interruptExpected = NO;
 
     /* Free existing TX queue if present */
-    if (txQueue != nil) {
-        [txQueue free];
+    if (transmitQueue != nil) {
+        [transmitQueue free];
     }
 
     /* Create new IONetbufQueue with max count of 128 */
-    txQueue = [[[objc_getClass("IONetbufQueue") alloc] initWithMaxCount:0x80] retain];
-    if (txQueue == nil) {
-        driverName = [[self name] cString];
+    transmitQueue = [[IONetbufQueue alloc] initWithMaxCount:0x80];
+    if (transmitQueue == nil) {
+        driverName = [self name];
         IOLog("%s: initTxRing: IONetbufQueue is nil\n", driverName);
         return NO;
     }
@@ -405,7 +357,7 @@ extern unsigned int page_size;
 /*
  * Reset the chip
  */
-- (void)__resetChip
+- (void)_resetChip
 {
     unsigned short statusReg;
     int timeout;
@@ -442,7 +394,7 @@ extern unsigned int page_size;
 /*
  * Enable adapter interrupts
  */
-- (void)__enableAdapterInterrupts
+- (void)_enableAdapterInterrupts
 {
     /* Set interrupt mask:
      * 0x0685 = RX complete, TX complete, TX available, link events, statistics
@@ -462,7 +414,7 @@ extern unsigned int page_size;
 /*
  * Disable adapter interrupts
  */
-- (void)__disableAdapterInterrupts
+- (void)_disableAdapterInterrupts
 {
     /* Disable all interrupts with command 0x7800 (SetInterruptEnable with 0) */
     outw(ioBase + REG_COMMAND, 0x7800);
@@ -471,7 +423,7 @@ extern unsigned int page_size;
 /*
  * Start receive engine
  */
-- (void)__startReceive
+- (void)_startReceive
 {
     /* Issue RX enable command (0x2000) */
     outw(ioBase + REG_COMMAND, 0x2000);
@@ -480,7 +432,7 @@ extern unsigned int page_size;
 /*
  * Start transmit engine
  */
-- (void)__startTransmit
+- (void)_startTransmit
 {
     /* Issue TX enable command (0x4800) */
     outw(ioBase + REG_COMMAND, 0x4800);
@@ -489,7 +441,7 @@ extern unsigned int page_size;
 /*
  * Handle receive interrupt
  */
-- (void)__receiveInterruptOccurred
+- (void)_receiveInterruptOccurred
 {
     unsigned int localIndex;
     EtherLinkXLDescriptor *descriptor;
@@ -500,7 +452,6 @@ extern unsigned int page_size;
     int netbufSize;
     void *packetData;
     unsigned int packetCount;
-    struct objc_super superStruct;
 
     packetCount = 0;
 
@@ -508,8 +459,8 @@ extern unsigned int page_size;
     [self reserveDebuggerLock];
 
     /* Get current RX index */
-    localIndex = rxIndex & 0x3F;
-    descriptor = &rxDescriptors[localIndex];
+    localIndex = rxCur & 0x3F;
+    descriptor = &rxRing[localIndex];
     descStatus = descriptor->status;
 
     /* Process all received packets */
@@ -521,7 +472,7 @@ extern unsigned int page_size;
             return;
         }
 
-        oldNetbuf = rxNetbufArray[localIndex];
+        oldNetbuf = rxNetbuf[localIndex];
         packetCount++;
 
         /* Acknowledge interrupt every 8 packets (and if less than 128) */
@@ -535,16 +486,14 @@ extern unsigned int page_size;
             /* Good packet */
 
             /* Check if we should filter multicast packets */
-            if (isPromiscuous || !isMulticast) {
+            if (isPromiscuous || !multicastEnabled) {
                 /* Process packet normally */
                 goto processPacket;
             }
 
             /* Check if this is an unwanted multicast packet */
             packetData = (void *)nb_map(oldNetbuf);
-            superStruct.receiver = self;
-            superStruct.class = objc_getClass("IOEthernet");
-            if (![super isUnwantedMulticastPacket:packetData]) {
+            if (![super isUnwantedMulticastPacket:(ether_header_t *)packetData]) {
                 /* Wanted packet - process it */
 processPacket:
                 /* Allocate new netbuf for this descriptor */
@@ -555,12 +504,12 @@ processPacket:
 
                     /* Clear ownership bit and advance */
                     ((unsigned char *)descriptor)[5] &= 0x7F;
-                    rxIndex++;
+                    rxCur++;
                 } else {
                     /* Update descriptor with new netbuf */
-                    rxNetbufArray[localIndex] = newNetbuf;
+                    rxNetbuf[localIndex] = newNetbuf;
 
-                    if (![self __updateDescriptor:descriptor fromNetBuf:newNetbuf receive:YES]) {
+                    if (![self _updateDescriptor:descriptor fromNetBuf:newNetbuf receive:YES]) {
                         IOPanic("EtherLinkXL: updateDescriptor failed\n");
                     }
 
@@ -570,7 +519,7 @@ processPacket:
 
                     /* Clear ownership bit and advance */
                     ((unsigned char *)descriptor)[5] &= 0x7F;
-                    rxIndex++;
+                    rxCur++;
 
                     /* Release lock before passing to network stack */
                     [self releaseDebuggerLock];
@@ -584,8 +533,8 @@ processPacket:
             } else {
                 /* Unwanted multicast - drop it */
                 ((unsigned char *)descriptor)[5] &= 0x7F;
-                rxIndex++;
-                localIndex = rxIndex;
+                rxCur++;
+                localIndex = rxCur;
             }
         } else {
             /* Bad packet - increment error counter */
@@ -593,12 +542,12 @@ processPacket:
 
             /* Clear ownership bit and advance */
             ((unsigned char *)descriptor)[5] &= 0x7F;
-            rxIndex++;
+            rxCur++;
         }
 
         /* Get next descriptor */
-        localIndex = rxIndex & 0x3F;
-        descriptor = &rxDescriptors[localIndex];
+        localIndex = rxCur & 0x3F;
+        descriptor = &rxRing[localIndex];
         descStatus = descriptor->status;
     }
 }
@@ -606,7 +555,7 @@ processPacket:
 /*
  * Handle transmit interrupt
  */
-- (void)__transmitInterruptOccurred
+- (void)_transmitInterruptOccurred
 {
     int i;
 
@@ -614,18 +563,18 @@ processPacket:
     [self reserveDebuggerLock];
 
     /* Check if transmission was pending */
-    if (txPending) {
+    if (interruptExpected) {
         /* Free all transmitted netbufs */
         for (i = 0; i < TX_RING_SIZE; i++) {
-            if (txNetbufArray[i] == NULL) {
+            if (txCurrentNetbuf[i] == NULL) {
                 break;
             }
-            nb_free(txNetbufArray[i]);
-            txNetbufArray[i] = NULL;
+            nb_free(txCurrentNetbuf[i]);
+            txCurrentNetbuf[i] = NULL;
         }
 
         /* Clear pending flag */
-        txPending = NO;
+        interruptExpected = NO;
     }
 
     /* Release debugger lock */
@@ -635,7 +584,7 @@ processPacket:
 /*
  * Handle transmit error interrupt
  */
-- (void)__transmitErrorInterruptOccurred
+- (void)_transmitErrorInterruptOccurred
 {
     unsigned char txStatusByte;
     unsigned int savedTxStatus;
@@ -647,9 +596,9 @@ processPacket:
     [self reserveDebuggerLock];
 
     /* Switch to window 1 to read TX status */
-    if (currentWindow != 1) {
+    if (window != 1) {
         outw(ioBase + REG_COMMAND, 0x0801);
-        currentWindow = 1;
+        window = 1;
     }
 
     /* Read TX status byte at offset 0x0B */
@@ -662,9 +611,9 @@ processPacket:
     savedTxStatus = inw(ioBase + REG_TX_STATUS);
 
     /* Write back TX status byte to clear it */
-    if (currentWindow != 1) {
+    if (window != 1) {
         outw(ioBase + REG_COMMAND, 0x0801);
-        currentWindow = 1;
+        window = 1;
     }
     outb(ioBase + 0x0B, txStatusByte);
 
@@ -682,9 +631,9 @@ processPacket:
 
         /* Poll window 4 offset 10 for bit 12 clear */
         do {
-            if (currentWindow != 4) {
+            if (window != 4) {
                 outw(ioBase + REG_COMMAND, 0x0804);
-                currentWindow = 4;
+                window = 4;
             }
             statusReg = inw(ioBase + 10);
         } while ((statusReg & 0x1000) != 0);
@@ -745,12 +694,11 @@ processPacket:
 /*
  * Handle statistics update interrupt
  */
-- (void)__updateStatsInterruptOccurred
+- (void)_updateStatsInterruptOccurred
 {
     unsigned char stats[6];
-    unsigned char byte1, byte2, byte3;
+    unsigned char byte1, byte3;
     unsigned int txPackets;
-    unsigned int collisions;
     unsigned short word;
     unsigned char highByte;
     int i;
@@ -759,9 +707,9 @@ processPacket:
     [self reserveDebuggerLock];
 
     /* Switch to window 6 to read statistics */
-    if (currentWindow != 6) {
+    if (window != 6) {
         outw(ioBase + REG_COMMAND, 0x0806);
-        currentWindow = 6;
+        window = 6;
     }
 
     /* Read 6 bytes of statistics */
@@ -771,145 +719,135 @@ processPacket:
 
     /* Read additional bytes */
     byte1 = inb(ioBase + 6);
-    byte2 = inb(ioBase + 7);
+    inb(ioBase + 7);
     byte3 = inb(ioBase + 9);
 
     /* Build TX packets counter (12-bit value) */
     txPackets = byte1 | ((byte3 & 0x30) << 4);
 
-    /* Build collisions counter (10-bit value) */
-    collisions = byte2 | ((byte3 & 0x03) << 8);
-
     /* Read byte at offset 8 (not used but read anyway) */
     inb(ioBase + 8);
 
     /* Read from window 6 offset 10 */
-    if (currentWindow != 6) {
+    if (window != 6) {
         outw(ioBase + REG_COMMAND, 0x0806);
-        currentWindow = 6;
+        window = 6;
     }
     word = inw(ioBase + 10);
 
     /* Read from window 4 offset 0x0D and combine */
-    if (currentWindow != 4) {
+    if (window != 4) {
         outw(ioBase + REG_COMMAND, 0x0804);
-        currentWindow = 4;
+        window = 4;
     }
     highByte = inb(ioBase + 0x0D);
     /* Not used - just read for clearing */
 
     /* Read from window 6 offset 0x0C */
-    if (currentWindow != 6) {
+    if (window != 6) {
         outw(ioBase + REG_COMMAND, 0x0806);
-        currentWindow = 6;
+        window = 6;
     }
     word = inw(ioBase + 0x0C);
 
     /* Read from window 4 offset 0x0D and combine */
-    if (currentWindow != 4) {
+    if (window != 4) {
         outw(ioBase + REG_COMMAND, 0x0804);
-        currentWindow = 4;
+        window = 4;
     }
     highByte = inb(ioBase + 0x0D);
     /* Not used - just read for clearing */
 
     /* Read from window 4 offset 0x0C */
-    if (currentWindow != 4) {
+    if (window != 4) {
         outw(ioBase + REG_COMMAND, 0x0804);
-        currentWindow = 4;
+        window = 4;
     }
     inb(ioBase + 0x0C);
+
+    (void)word;
+    (void)highByte;
 
     /* Release debugger lock */
     [self releaseDebuggerLock];
 
     /* Update network interface statistics */
     [networkInterface incrementOutputPacketsBy:txPackets];
-    [networkInterface incrementCollisionsBy:(stats[2] + stats[3] + stats[0])];
+    [networkInterface incrementCollisionsBy:(stats[3] + stats[2] + stats[4])];
 }
 
 /*
  * Transmit a packet
  */
-- (BOOL)__transmitPacket:(netbuf_t)packet flush:(BOOL)flush
+- (void)_transmitPacket:(netbuf_t)packet flush:(BOOL)flush
 {
     EtherLinkXLDescriptor *descriptor;
     EtherLinkXLDescriptor *prevDescriptor;
-    IOTask task;
-    unsigned int physicalAddr;
+    const char *driverName;
 
     /* Perform loopback check */
     [self performLoopback:packet];
 
     /* Check if TX queue has space */
-    if (txHead >= TX_RING_SIZE) {
-        return NO;  /* Queue full */
+    if (txIndex >= TX_RING_SIZE) {
+        nb_free(packet);
+        return;  /* Queue full */
     }
 
     /* Get current TX descriptor */
-    descriptor = &txDescriptors[txHead];
+    descriptor = &txPendingQueue[txIndex];
 
     /* Free any existing netbuf in this slot */
-    if (txNetbufArray[txHead] != NULL) {
-        nb_free(txNetbufArray[txHead]);
-        txNetbufArray[txHead] = NULL;
+    if (txPendingNetbuf[txIndex] != NULL) {
+        nb_free(txPendingNetbuf[txIndex]);
+        txPendingNetbuf[txIndex] = NULL;
     }
 
-    /* Store the new netbuf */
-    txNetbufArray[txHead] = packet;
-
     /* Update descriptor from netbuf */
-    [self __updateDescriptor:descriptor fromNetBuf:packet receive:NO];
-
-    /* Get IOTask for physical address operations */
-    task = IOVmTaskSelf();
-
-    /* Calculate and cache physical address of this descriptor */
-    physicalAddr = IOPhysicalFromVirtual(task, (vm_address_t)descriptor);
-    descriptor->reserved[2] = physicalAddr;
+    if (![self _updateDescriptor:descriptor fromNetBuf:packet receive:NO]) {
+        driverName = [self name];
+        IOLog("%s: transmitPacket: updateDescriptor failed\n", driverName);
+        nb_free(packet);
+        return;
+    }
+    txPendingNetbuf[txIndex] = packet;
+    descriptor->nextDescriptor = 0;
 
     /* Set ownership bit (bit 7 of byte 7 - indicating software ownership during setup) */
     ((unsigned char *)descriptor)[7] |= 0x80;
 
     /* Link previous descriptor if not first */
-    if (txHead != 0) {
-        prevDescriptor = &txDescriptors[txHead - 1];
-        /* Link previous descriptor to this one using cached physical address */
-        prevDescriptor->nextDescriptor = descriptor->reserved[2];
+    if (txIndex != 0) {
+        prevDescriptor = &txPendingQueue[txIndex - 1];
+        prevDescriptor->nextDescriptor = prevDescriptor->ringLink;
         /* Clear ownership bit on previous descriptor (transfer to hardware) */
         ((unsigned char *)prevDescriptor)[7] &= 0x7F;
     }
 
     /* Increment TX head */
-    txHead++;
+    txIndex++;
 
     /* If flush requested or queue full, initiate transmission */
-    if (flush || (txHead >= TX_RING_SIZE)) {
-        /* Clear ownership bit on last descriptor (transfer to hardware) */
-        ((unsigned char *)descriptor)[7] &= 0x7F;
-
-        /* Switch queues and transmit with 1500ms timeout */
-        return [self __switchQueuesAndTransmitWithTimeout:0x5DC];
+    if (!interruptExpected && (flush || txIndex > 0x1F)) {
+        [self _switchQueuesAndTransmitWithTimeout:YES];
     }
 
-    return YES;
 }
 
 /*
  * Update descriptor from netbuf
  * This method handles both TX and RX descriptors and deals with page boundary crossing
  */
-- (void)__updateDescriptor:(void *)descriptor fromNetBuf:(netbuf_t)netbuf receive:(BOOL)receive
+- (BOOL)_updateDescriptor:(void *)descriptor fromNetBuf:(netbuf_t)netbuf receive:(BOOL)receive
 {
     EtherLinkXLDescriptor *desc;
     unsigned int netbufSize;
-    void *bufferAddr;
+    vm_address_t bufferAddr;
+    vm_address_t secondBuffer;
     unsigned int physicalAddr;
-    unsigned int pageOffset;
     unsigned int firstChunkSize;
     unsigned int secondChunkSize;
-    kern_return_t result;
-    IOTask task;
+    vm_task_t task;
 
     desc = (EtherLinkXLDescriptor *)descriptor;
 
@@ -923,61 +861,51 @@ processPacket:
     }
 
     /* Map netbuf to get virtual address */
-    bufferAddr = (void *)nb_map(netbuf);
+    bufferAddr = (vm_address_t)nb_map(netbuf);
 
     /* Get current IOTask */
     task = IOVmTaskSelf();
 
-    /* Convert virtual address to physical address */
-    physicalAddr = IOPhysicalFromVirtual(task, (vm_address_t)bufferAddr);
-
-    /* Check for page boundary crossing */
-    pageOffset = physicalAddr & 0xFFF;  /* Offset within 4KB page */
-
-    if ((pageOffset + netbufSize) <= 0x1000) {
-        /* No page crossing - simple case */
-        desc->bufferAddr = physicalAddr;
-        desc->status = netbufSize & 0x1FFF;  /* Store size in bits 0-12 */
-
-        /* For RX, set descriptor to be owned by hardware (bit 15) */
-        if (receive) {
-            desc->status |= 0x8000;
-        }
-    } else {
-        /* Page boundary crossing - split into two fragments */
-        firstChunkSize = 0x1000 - pageOffset;  /* Bytes until end of first page */
-        secondChunkSize = netbufSize - firstChunkSize;
-
-        /* First descriptor contains first chunk */
-        desc->bufferAddr = physicalAddr;
-        desc->status = firstChunkSize & 0x1FFF;
-
-        /* For RX, set owned by hardware */
-        if (receive) {
-            desc->status |= 0x8000;
-        }
-
-        /* Get physical address of second chunk (on next page) */
-        physicalAddr = IOPhysicalFromVirtual(task, (vm_address_t)bufferAddr + firstChunkSize);
-
-        /* Set up continuation in reserved field (acts as second descriptor) */
-        desc->reserved[0] = physicalAddr;  /* Address of second chunk */
-        desc->reserved[1] = secondChunkSize & 0x1FFF;  /* Size of second chunk */
-
-        if (receive) {
-            desc->reserved[1] |= 0x8000;  /* Owned by hardware */
-        }
+    if (!receive) {
+        ((unsigned short *)desc)[2] = (((unsigned short *)desc)[2] & 0xE000) |
+                                      (netbufSize & 0x1FFF);
     }
+    ((unsigned short *)desc)[6] = (((unsigned short *)desc)[6] & 0xE000) |
+                                  (netbufSize & 0x1FFF);
+    ((unsigned char *)desc)[15] |= 0x80;
+    if (IOPhysicalFromVirtual(task, bufferAddr, &physicalAddr) != IO_R_SUCCESS) {
+        return NO;
+    }
+    desc->bufferAddr = physicalAddr;
+
+    if ((bufferAddr & ~page_mask) == ((bufferAddr + netbufSize) & ~page_mask)) {
+        return YES;
+    }
+
+    firstChunkSize = (~page_mask & (page_mask + bufferAddr)) - bufferAddr;
+    secondChunkSize = netbufSize - firstChunkSize;
+    ((unsigned char *)desc)[15] &= ~0x80;
+    ((unsigned char *)desc)[23] |= 0x80;
+    ((unsigned short *)desc)[6] = (((unsigned short *)desc)[6] & 0xE000) |
+                                  (firstChunkSize & 0x1FFF);
+    ((unsigned short *)desc)[10] = (((unsigned short *)desc)[10] & 0xE000) |
+                                   (secondChunkSize & 0x1FFF);
+    secondBuffer = bufferAddr + firstChunkSize;
+    if (IOPhysicalFromVirtual(task, secondBuffer, &physicalAddr) != IO_R_SUCCESS) {
+        return NO;
+    }
+    desc->bufferAddr2 = physicalAddr;
+    return YES;
 }
 
 /*
  * Switch queues and transmit with timeout
  */
-- (BOOL)__switchQueuesAndTransmitWithTimeout:(unsigned int)timeout
+- (void)_switchQueuesAndTransmitWithTimeout:(BOOL)startTimer
 {
-    int txStatus;
-    void *tempPtr;
-    EtherLinkXLDescriptor *currentDescriptors;
+    unsigned int txStatus;
+    EtherLinkXLDescriptor *tempQueue;
+    netbuf_t *tempNetbuf;
 
     /* Wait for TX status register to clear (previous transmission complete) */
     do {
@@ -985,42 +913,35 @@ processPacket:
     } while (txStatus != 0);
 
     /* Get current TX descriptor queue */
-    currentDescriptors = txDescriptors;
-
-    /* Write physical address of first descriptor to TX status register
-     * This starts the DMA transmission
-     * Physical address is stored at offset 0x1C (reserved[3])
-     */
-    outl(ioBase + REG_TX_STATUS, currentDescriptors[0].reserved[3]);
+    outl(ioBase + REG_TX_STATUS, txPendingQueue[0].physicalAddr);
 
     /* Swap the two TX descriptor queue pointers */
-    tempPtr = txDescriptors;
-    txDescriptors = (EtherLinkXLDescriptor *)txDescriptorBase;
-    txDescriptorBase = tempPtr;
+    tempQueue = txPendingQueue;
+    txPendingQueue = txCurrentQueue;
+    txCurrentQueue = tempQueue;
 
     /* Reset TX head counter */
-    txHead = 0;
+    txIndex = 0;
 
     /* Swap the two TX netbuf array pointers */
-    tempPtr = txNetbufArrayAlt;
-    txNetbufArrayAlt = txNetbufArray;
-    txNetbufArray = (netbuf_t *)tempPtr;
+    tempNetbuf = txPendingNetbuf;
+    txPendingNetbuf = txCurrentNetbuf;
+    txCurrentNetbuf = tempNetbuf;
 
-    /* Set timeout if requested */
-    if (timeout != 0) {
-        [self setRelativeTimeout:timeout];
+    /* Set a 1500 ms timeout when requested. */
+    if (startTimer) {
+        [self setRelativeTimeout:1500];
     }
 
     /* Mark transmission as pending */
-    txPending = YES;
+    interruptExpected = YES;
 
-    return YES;
 }
 
 /*
  * Auto-select best medium
  */
-- (void)__autoSelectMedium
+- (void)_autoSelectMedium
 {
     extern const MediaEntry mediaTable[];
     const char *driverName;
@@ -1028,22 +949,22 @@ processPacket:
     unsigned int nextMedium;
 
     /* Validate requested medium index */
-    if (requestedMedium > 6) {
+    if (selectedMedium > 6) {
         /* Invalid medium - use default */
-        currentMedium = defaultMedium;
-        driverName = [[self name] cString];
+        selectedMedium = defaultMedium;
+        driverName = [self name];
         mediaName = mediaTable[currentMedium].name;
         IOLog("%s: Invalid network port. Using default (%s).\n", driverName, mediaName);
     }
 
     /* Check if auto-select requested (medium index 2) */
-    if (requestedMedium == 2) {
+    if (selectedMedium == 2) {
         /* Auto-select mode - try each available medium */
         currentMedium = 4;  /* Start with medium 4 */
 
         while (1) {
             /* Check if current medium is available in hardware */
-            while ((availableMedia & mediaTable[currentMedium].type) == 0) {
+            while ((mediaCapableFlag & mediaTable[currentMedium].type) == 0) {
                 /* Not available - try next medium */
                 nextMedium = mediaTable[currentMedium].param;
                 currentMedium = nextMedium;
@@ -1053,22 +974,22 @@ processPacket:
             if (currentMedium == 7) {
                 /* No working medium found - use default */
                 currentMedium = defaultMedium;
-                driverName = [[self name] cString];
+                driverName = [self name];
                 mediaName = mediaTable[currentMedium].name;
                 IOLog("%s: Auto-selected %s port\n", driverName, mediaName);
                 break;
             }
 
             /* Try this medium */
-            [self __setCurrentMedium];
+            [self _setCurrentMedium];
 
             /* Wait for medium to stabilize */
             IOSleep(mediaTable[currentMedium].delay);
 
             /* Check if link is up */
-            if ([self __linkUp]) {
+            if ([self _linkUp]) {
                 /* Link established - use this medium */
-                driverName = [[self name] cString];
+                driverName = [self name];
                 mediaName = mediaTable[currentMedium].name;
                 IOLog("%s: Auto-selected %s port\n", driverName, mediaName);
                 break;
@@ -1079,61 +1000,61 @@ processPacket:
         }
 
         /* Configure the selected medium */
-        [self __setCurrentMedium];
+        [self _setCurrentMedium];
     } else {
         /* Specific medium requested */
-        currentMedium = requestedMedium;
+        currentMedium = selectedMedium;
 
         /* Check if requested medium is available */
-        if ((availableMedia & mediaTable[currentMedium].type) == 0) {
+        if ((mediaCapableFlag & mediaTable[currentMedium].type) == 0) {
             /* Not available - fall back to default */
-            driverName = [[self name] cString];
+            driverName = [self name];
             IOLog("%s: %s port rejected by adapter. Switching to %s port.\n",
                   driverName,
-                  mediaTable[requestedMedium].name,
+                  mediaTable[selectedMedium].name,
                   mediaTable[defaultMedium].name);
             currentMedium = defaultMedium;
         }
 
         /* Configure the selected medium */
-        [self __setCurrentMedium];
+        [self _setCurrentMedium];
     }
 }
 
 /*
  * Set current medium
  */
-- (void)__setCurrentMedium
+- (void)_setCurrentMedium
 {
     extern const MediaEntry mediaTable[];
     unsigned short mediaFlags;
     unsigned int internalConfig;
     unsigned short statusReg;
 
-    /* Check if full duplex capable (upper 16 bits of availableMedia) */
+    /* The adjacent media flags enable the full-duplex adapter option. */
     mediaFlags = 0;
-    if ((availableMedia & 0xFFFF00) != 0) {
+    if ((*((unsigned int *)&autoSelect) & 0xFFFF00) != 0) {
         mediaFlags = 0x20;  /* Enable full duplex */
     }
 
     /* Switch to window 3 and write media flags */
-    if (currentWindow != 3) {
+    if (window != 3) {
         outw(ioBase + REG_COMMAND, 0x0803);
-        currentWindow = 3;
+        window = 3;
     }
     outw(ioBase + 6, mediaFlags);
 
     /* Read internal config register */
-    if (currentWindow != 3) {
+    if (window != 3) {
         outw(ioBase + REG_COMMAND, 0x0803);
-        currentWindow = 3;
+        window = 3;
     }
     internalConfig = inl(ioBase + 0);
 
     /* Modify xcvr type field (bits 20-22) */
-    if (currentWindow != 3) {
+    if (window != 3) {
         outw(ioBase + REG_COMMAND, 0x0803);
-        currentWindow = 3;
+        window = 3;
     }
     outl(ioBase + 0, (internalConfig & 0xFF8FFFFF) | ((currentMedium & 0x07) << 20));
 
@@ -1148,9 +1069,9 @@ processPacket:
     }
 
     /* Switch to window 4 and configure media options */
-    if (currentWindow != 4) {
+    if (window != 4) {
         outw(ioBase + REG_COMMAND, 0x0804);
-        currentWindow = 4;
+        window = 4;
     }
 
     /* Read current media status */
@@ -1160,9 +1081,9 @@ processPacket:
     mediaFlags = mediaTable[currentMedium].flags;
 
     /* Write back with media flags (preserve bits not in 0xFF37 mask) */
-    if (currentWindow != 4) {
+    if (window != 4) {
         outw(ioBase + REG_COMMAND, 0x0804);
-        currentWindow = 4;
+        window = 4;
     }
     outw(ioBase + 10, (statusReg & 0xFF37) | mediaFlags);
 }
@@ -1170,7 +1091,7 @@ processPacket:
 /*
  * Configure PHY
  */
-- (BOOL)__configurePHY:(unsigned int)phy
+- (void)_configurePHY:(unsigned short)phy
 {
     unsigned short controlReg;
     unsigned short phyID1, phyID2;
@@ -1182,27 +1103,27 @@ processPacket:
 
     /* Only configure valid PHY addresses (0-31) */
     if (phy >= 0x20) {
-        return NO;
+        return;
     }
 
     /* Reset the PHY */
-    if (![self _resetMIIDevice:phy]) {
-        driverName = [[self name] cString];
+    if (![self resetMIIDevice:phy]) {
+        driverName = [self name];
         IOLog("%s: PHY reset failed\n", driverName);
-        return NO;
+        return;
     }
 
     /* Read PHY ID registers to identify the PHY */
-    if (![self _miiReadWord:&phyID1 reg:2 phy:phy]) {
-        driverName = [[self name] cString];
+    if (![self miiReadWord:&phyID1 reg:2 phy:phy]) {
+        driverName = [self name];
         IOLog("%s: MII/PHY read error\n", driverName);
-        return NO;
+        return;
     }
 
-    if (![self _miiReadWord:&phyID2 reg:3 phy:phy]) {
-        driverName = [[self name] cString];
+    if (![self miiReadWord:&phyID2 reg:3 phy:phy]) {
+        driverName = [self name];
         IOLog("%s: MII/PHY read error\n", driverName);
-        return NO;
+        return;
     }
 
     /* Combine ID registers into 32-bit PHY ID */
@@ -1210,22 +1131,22 @@ processPacket:
 
     /* Identify PHY type */
     if (phyID == 0x20005C00) {
-        driverName = [[self name] cString];
+        driverName = [self name];
         IOLog("%s: Found DP83840 PHY\n", driverName);
     } else if (phyID == 0x20005C01) {
-        driverName = [[self name] cString];
+        driverName = [self name];
         IOLog("%s: Found DP83840A PHY\n", driverName);
     } else {
-        driverName = [[self name] cString];
+        driverName = [self name];
         IOLog("%s: Unknown PHY ID: 0x%08x\n", driverName, phyID);
-        return NO;
+        return;
     }
 
     /* Read control register */
-    if (![self _miiReadWord:&controlReg reg:0 phy:phy]) {
-        driverName = [[self name] cString];
+    if (![self miiReadWord:&controlReg reg:0 phy:phy]) {
+        driverName = [self name];
         IOLog("%s: MII/PHY read error\n", driverName);
-        return NO;
+        return;
     }
 
     /* Enable auto-negotiation and 100Mbps:
@@ -1234,29 +1155,29 @@ processPacket:
      * 0x1200 = both bits
      */
     controlReg |= 0x1200;
-    [self _miiWriteWord:controlReg reg:0 phy:phy];
+    [self miiWriteWord:controlReg reg:0 phy:phy];
 
     /* Wait for auto-negotiation to complete */
-    if (![self _waitMIIAutoNegotiation:phy]) {
-        driverName = [[self name] cString];
+    if (![self waitMIIAutoNegotiation:phy]) {
+        driverName = [self name];
         IOLog("%s: MII/PHY Auto-negotiation failed\n", driverName);
-        return NO;
+        return;
     }
 
     /* Read PHY-specific status register (register 0x19 = 25) */
-    if (![self _miiReadWord:&statusReg reg:0x19 phy:phy]) {
-        driverName = [[self name] cString];
+    if (![self miiReadWord:&statusReg reg:0x19 phy:phy]) {
+        driverName = [self name];
         IOLog("%s: MII/PHY read error\n", driverName);
-        return NO;
+        return;
     }
 
     /* Determine duplex mode from bit 7 (0x80) */
     if ((statusReg & 0x80) != 0) {
         duplexStr = "Full";
-        isFullDuplex = YES;
+        phyFullDuplex = YES;
     } else {
         duplexStr = "Half";
-        isFullDuplex = NO;
+        phyFullDuplex = NO;
     }
 
     /* Determine speed from bit 6 (0x40) */
@@ -1267,17 +1188,16 @@ processPacket:
     }
 
     /* Log configuration */
-    driverName = [[self name] cString];
+    driverName = [self name];
     IOLog("%s: MII port configured for %s Mbps %s Duplex\n",
           driverName, speedStr, duplexStr);
 
-    return YES;
 }
 
 /*
  * Check if link is up
  */
-- (BOOL)__linkUp
+- (BOOL)_linkUp
 {
     unsigned short statusReg;
 
@@ -1285,9 +1205,9 @@ processPacket:
     [self reserveDebuggerLock];
 
     /* Switch to window 4 to read media status */
-    if (currentWindow != 4) {
+    if (window != 4) {
         outw(ioBase + REG_COMMAND, 0x0804);
-        currentWindow = 4;
+        window = 4;
     }
 
     /* Read media status register at offset 10 */

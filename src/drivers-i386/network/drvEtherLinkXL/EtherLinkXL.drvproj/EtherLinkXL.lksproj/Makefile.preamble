@@ -1,3 +1,6 @@
 ###############################################################################
 #  NeXT Makefile.preamble
 ###############################################################################
+
+CLASSES = EtherLinkXL.m EtherLinkXLKDB.m EtherLinkXLMII.m EtherLinkXLPrivate.m
+HFILES = EtherLinkXL.h

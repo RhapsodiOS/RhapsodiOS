@@ -354,3 +354,79 @@ code and moved lines cannot show up as differences.
   anchored by `devtools.toast`. The HFS-standard reader shares most of its
   code (B-tree walking, bitmap check) and is checked against the published
   format; this residual gap is accepted and named rather than hidden.
+
+## Outcome
+
+Recorded 2026-09-28 on branch `hfs-endian` (worktree `.worktrees/hfs-endian`),
+branched from `51863eb07`. The i386 kernel mounts, reads and writes HFS, HFS
+Plus and wrapped HFS Plus volumes, and `mount_hfs` builds for i386.
+
+### Tests
+
+All boots used a private QEMU i386 guest built from
+`vm/work/rhap-i386-bootstrapped.img` (i386 build; ppc cross build with
+`gcc-darwin-ppc.conf`) and `golden.img` grafted with the new kernel.
+
+| Test | Result |
+|---|---|
+| T1 read-only mount of the Apple volume in `devtools.toast` (113 sampled files) | PASS; host `check` 0 problems after |
+| T2-T4 read of built HFS, HFS Plus and wrapped volumes | PASS |
+| T5-T7 write (create, rename, move, delete, truncate, a 20 MB file) | PASS; wrapper and alternate MDB unchanged on the wrapped volume |
+| T8 cold reread of the written volumes | PASS |
+| Added: 8K-allocation-block HFS Plus volume, read, write and reread | PASS |
+| Added: two files grown in turn during the write test | PASS; the kernel inserted 13+13 (HFS), 4+4 (HFS Plus, wrapped) and 2+2 (8K) extents-overflow records, all consistent and read back cold |
+
+Host suites: `tools/tests` and `tools/hfsimg/tests` 44 passed, `vm/test_hfs_guest.py` 7 passed.
+
+### Not verified
+
+- **ppc `__TEXT` identity (Task 13) was skipped** by decision, and the native
+  ppc box (10.10.0.241) was unreachable, so ppc was only cross-built on the
+  i386 guest (rc=0 at every task). The ppc invariant rests on construction:
+  every swap macro expands to `(x)` or nothing on ppc, the two i386-only
+  changes are under `#if defined(__i386__)`, and the final review read every
+  hunk's ppc expansion. A ppc boot test of the merged kernel is still owed.
+- `mount_hfs` was built `--arch i386` only (thin). A universal build is untried.
+
+### Deviations from the plan
+
+- **Two i386 kernel bugs that are not byte order.** i386's Mach page is 8K
+  (`machdep/i386/i386_init.c:143`), and HFS sized its logical blocks as
+  `PAGE_SIZE`. On a 4K-block volume that mixed 8K and 4K logical blocks
+  wherever an extent had an odd block count, and the BSD cluster read code
+  assumes one size per file. It served a block that was never read (zeros or
+  stale data) and read past the end of the file (EIO). `dea81796b` makes
+  `MAXLOGBLOCKSIZE` 4096 on i386. The final review found the same mix on
+  8K-and-larger allocation blocks through `BestBlockSizeFit`; `b1bdc09fc`
+  applies the same limit there.
+- **Boot environment.** The HFS-enabled kernel's symbol table exhausts Apple's
+  `sarld` (1000 malloc nodes; `docs/boot/sarld-driver-link-limit.md`), which
+  panics every boot with `Missing EISA kernel bus class`. `vm/golden.img`'s
+  `/usr/standalone/i386/sarld` was patched in place to 8000 nodes (two bytes;
+  record in `vm/work/golden-sarld-patch.txt`). **Stock DR2 boot media cannot
+  boot an HFS-enabled i386 kernel without the fixed `sarld`.**
+- **Device nodes.** `golden.img` has nodes for `hd0` and `hd1` only; the
+  harness makes `/dev/hd2a` (block 3, minor 16) in the guest.
+- **hfs-1 fallback** was not needed: with `INCLUDED_ARCHS` moved into the three
+  ppc-only subprojects, `hfs-1` builds. On the i386 guest its dependencies
+  (`drivertools`, `drveide`, `diskdev-cmds`) had to be built first, with
+  `--toolchain gcc-darwin-i386.conf --arch i386`.
+- **Review follow-ups:** the short-header branch of `hfs_btnode_to_host` fires
+  only when the node size is valid solely in disk order (`405425948`); the
+  attributes refusal runs before any vnode is set up (`e3f5b3b74`). The
+  refusal tests `attributesFile.logicalSize != 0`, so a volume whose attributes
+  file is allocated but empty is also refused, which is stricter than "non-empty"
+  above.
+- **Harness fixes:** apostrophes in file names (`36c7664bd`), wrapper
+  comparison only for wrapped volumes (`119504281`).
+
+### Next
+
+1. Partitions whose label says 1024-byte sectors (every i386 install): HFS
+   still assumes 512-byte device blocks. This is the scope limit this spec
+   named and the recommended next piece of work.
+2. A ppc boot test of the merged kernel, and Task 13's `__TEXT` comparison
+   when the ppc box is back.
+3. Untested paths: B-tree map-node creation, symlink FinderInfo, mmap/exec
+   reads, the alternate volume header of plain volumes, and DEBUG kernels
+   (a corrupt node reaches `Panic()` in `BTOpenPath` under `DIAGNOSTIC`).

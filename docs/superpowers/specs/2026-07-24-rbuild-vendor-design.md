@@ -65,7 +65,7 @@ it produced before the conversion.
   `tar = /build/src/rbuild-1/pax-gnutar.sh`, which accepts `-C ROOT -xf -`.
 - `tar_pipeline()` is not dry-run aware. Its callers print a line such as
   `validate APK ...` and return early.
-- GNU patch 2.5 (`src/patch-1`) sets `backup_if_mismatch = !posixly_correct`
+- GNU patch 2.5 (`src/Developer/Commands/patch-1`) sets `backup_if_mismatch = !posixly_correct`
   (`patch.c:132`), so **by default it writes `.orig` files next to any hunk
   applied with offset or fuzz**. Those would land in SRCROOT and could be
   installed by Makefiles that copy directories. `--no-backup-if-mismatch`

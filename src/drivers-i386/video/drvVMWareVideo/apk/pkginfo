@@ -1,0 +1,7 @@
+pkgname = drvvmwarevideo
+pkgver = 1.0
+pkgdesc = VMware video driver
+maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
+# authors = David Crosby; Bill Bereza (Atomic Object LLC); VMware, Inc. (SVGA interface portions)
+license = XFree86
+makedepends = build-base, drivertools, driverkit, kernload

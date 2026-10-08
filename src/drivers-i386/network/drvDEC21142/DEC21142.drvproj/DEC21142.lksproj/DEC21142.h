@@ -5,7 +5,8 @@
 
 #import <driverkit/IONetworkDeviceDescription.h>
 #import <driverkit/IOPCIDeviceDescription.h>
-#import <driverkit/IOEthernetDriver.h>
+#import <driverkit/IOEthernet.h>
+#import <driverkit/IONetbufQueue.h>
 #import <driverkit/i386/IOPCIDirectDevice.h>
 
 @class DEC21142KernelServerInstance;
@@ -158,64 +159,45 @@
 #define SROM_READ_CMD           0x06
 #define SROM_DELAY_USEC         2
 
-/* Media Types */
-#define MEDIA_10BASET           0
-#define MEDIA_AUI               1
-#define MEDIA_BNC               2
-#define MEDIA_MII               3
+/* Port connector values from the device configuration table. */
+#define CONNECTOR_AUTO          0
+#define CONNECTOR_BNC           1
+#define CONNECTOR_AUI           2
+#define CONNECTOR_10BASET       3
 
 /* Setup Frame Parameters */
 #define SETUP_FRAME_SIZE        192
 #define SETUP_FRAME_PERFECT_ADDRS   16
 
-@interface DEC21142 : IOEthernetDriver
+@interface DEC21142 : IOEthernet
 {
-    /* Hardware configuration */
-    unsigned short ioBase;            /* I/O port base address */
-    unsigned short irq;               /* IRQ number */
-    enet_addr_t stationAddress;       /* MAC address */
-
-    /* SROM configuration */
-    unsigned char sromAddressBits;    /* SROM address width (6 or 8) */
-    unsigned int sromDataOffset;      /* SROM data offset */
-
-    /* Descriptor rings */
-    void *rxDescriptors;              /* RX descriptor ring base */
-    void *txDescriptors;              /* TX descriptor ring base */
-    void *setupFrame;                 /* Setup frame buffer */
-    void *descriptorMemBase;          /* Base of allocated descriptor memory */
-    unsigned int descriptorMemSize;   /* Size of descriptor memory allocation */
-    unsigned int setupFramePhysAddr;  /* Physical address of setup frame */
-    unsigned int rxIndex;             /* Current RX descriptor index */
-
-    /* Instance state flags */
-    BOOL isRunning;                   /* Adapter running state */
-    BOOL isPromiscuous;               /* Promiscuous mode enabled */
-    BOOL isMulticast;                 /* Multicast mode enabled */
-    BOOL isDebugger;                  /* Debugger/polling mode active */
-
-    /* Network interface */
-    id networkInterface;              /* Network interface instance */
-
-    /* Synchronization */
-    void *lock;                       /* Transmit lock */
-
-    /* Transmit management */
-    netbuf_t txNetbufArray[TX_RING_SIZE];   /* TX netbuf pointers */
-    unsigned int txHead;              /* TX ring head index */
-    unsigned int txTail;              /* TX ring tail index */
-    unsigned int txCount;             /* Available TX descriptors */
-    unsigned int txInterruptCounter;  /* Packet counter for interrupt coalescing */
-    void *txQueue;                    /* Transmit queue */
-    netbuf_t txTempNetbuf;            /* Temporary netbuf for polling mode */
-
-    /* Receive management */
-    netbuf_t rxNetbufArray[RX_RING_SIZE];   /* RX netbuf pointers */
-
-    /* Hardware state */
-    unsigned int interruptMask;       /* CSR7 interrupt mask */
-    unsigned int csr6Value;           /* Cached CSR6 value */
-    unsigned int mediaSelection;      /* Selected media type */
+    unsigned short ioBase;
+    unsigned short irq;
+    enet_addr_t myAddress;
+    IONetwork *networkInterface;
+    IONetbufQueue *transmitQueue;
+    char isPromiscuous;
+    char multicastEnabled;
+    char resetAndEnabled;
+    unsigned char sromAddressBits;
+    unsigned int enetAddressOffset;
+    netbuf_t txNetbuf[TX_RING_SIZE];
+    netbuf_t rxNetbuf[RX_RING_SIZE];
+    void *rxRing;
+    void *txRing;
+    unsigned int txPutIndex;
+    unsigned int txDoneIndex;
+    unsigned int txNumFree;
+    unsigned int txIntCount;
+    unsigned int rxDoneIndex;
+    netbuf_t KDB_txBuf;
+    void *memoryPtr;
+    unsigned int memorySize;
+    void *setupBuffer;
+    unsigned long setupBufferPhysical;
+    unsigned int interruptMask;
+    unsigned int operationMode;
+    int connector;
 }
 
 /* Class Methods */
@@ -224,20 +206,20 @@
 /* Instance Methods - Initialization */
 - initFromDeviceDescription:(IODeviceDescription *)deviceDescription;
 - (BOOL)resetAndEnable:(BOOL)enable;
-- (void)free;
+- (id)free;
 
 /* Hardware Access Methods */
 - (unsigned int)readCSR:(unsigned int)reg;
 - (void)writeCSR:(unsigned int)reg value:(unsigned int)value;
 
 /* Address Management */
-- (BOOL)addMulticastAddress:(enet_addr_t *)address;
-- (BOOL)removeMulticastAddress:(enet_addr_t *)address;
+- (void)addMulticastAddress:(enet_addr_t *)address;
+- (void)removeMulticastAddress:(enet_addr_t *)address;
 
 /* Promiscuous and Multicast Mode Control */
-- (void)enablePromiscuousMode;
+- (BOOL)enablePromiscuousMode;
 - (void)disablePromiscuousMode;
-- (void)enableMulticastMode;
+- (BOOL)enableMulticastMode;
 - (void)disableMulticastMode;
 
 /* Interrupt Management */
@@ -248,17 +230,17 @@
 
 /* Transmit Methods */
 - (void)transmit:(netbuf_t)packet;
-- (unsigned int)transmitQueueSize;
-- (unsigned int)transmitQueueCount;
+- (int)transmitQueueSize;
+- (int)transmitQueueCount;
 - (void)serviceTransmitQueue;
-- (unsigned int)pendingTransmitCount;
+- (int)pendingTransmitCount;
 
 /* Receive Methods */
 - (netbuf_t)allocateNetbuf;
 
 /* Debugger Support (Polling Mode) */
 - (void)sendPacket:(void *)data length:(unsigned int)length;
-- (BOOL)receivePacket:(void *)data length:(unsigned int *)length timeout:(unsigned int)timeout;
+- (void)receivePacket:(void *)data length:(unsigned int *)length timeout:(unsigned int)timeout;
 
 /* Port Selection Methods */
 - (void)select10BaseT;
@@ -268,29 +250,29 @@
 - (void)doAutoPortSelect;
 
 /* MII Management */
-- (BOOL)checkMII;
+- (void)checkMII;
 
 /* Power Management */
-- (IOReturn)getPowerState;
-- (IOReturn)getPowerManagement;
+- (IOReturn)getPowerState:(void *)powerState;
+- (IOReturn)getPowerManagement:(void *)powerManagement;
 - (IOReturn)setPowerState:(unsigned int)powerState;
 - (IOReturn)setPowerManagement:(unsigned int)powerLevel;
 
 /* Private Methods - Internal Implementation */
 - (BOOL)_init;
 - (BOOL)_allocateMemory;
-- (void)_getStationAddress:(unsigned char *)address;
+- (void)_getStationAddress:(enet_addr_t *)address;
 - (void)_initRegisters;
-- (void)_initRxRing;
-- (void)_initTxRing;
+- (BOOL)_initRxRing;
+- (BOOL)_initTxRing;
 - (void)_resetChip;
-- (void)_loadSetupFilter;
-- (void)_setAddressFiltering;
+- (BOOL)_loadSetupFilter:(BOOL)waitForCompletion;
+- (BOOL)_setAddressFiltering:(BOOL)waitForCompletion;
 - (void)_startReceive;
 - (void)_startTransmit;
-- (void)_receiveInterruptOccurred;
-- (void)_transmitInterruptOccurred;
-- (BOOL)_transmitPacket:(netbuf_t)packet;
-- (BOOL)_verifyCheckSum:(unsigned char *)data length:(unsigned int)length;
+- (BOOL)_receiveInterruptOccurred;
+- (BOOL)_transmitInterruptOccurred;
+- (void)_transmitPacket:(netbuf_t)packet;
+- (BOOL)_verifyCheckSum;
 
 @end

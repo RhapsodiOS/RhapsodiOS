@@ -1,0 +1,3 @@
+# Used by geninfo: DRIVER_NAME is the name shown in the installer.
+DRIVER_NAME="Intel82596NetworkDriver"
+DEFAULT_DRIVER_VERSION="5.00";

@@ -1,0 +1,7 @@
+# The recovered bundle contains no DriverHelp resource.
+movehelp:
+	@true
+
+# The recovered tables already name this server; do not append duplicate keys.
+post_copy_tables:
+	@true

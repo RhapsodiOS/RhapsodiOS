@@ -7,7 +7,6 @@
 #import <driverkit/kernelDriver.h>
 #import "DECchip21140.h"
 #import "DECchip21140Private.h"
-#import "DECchip21140Inline.h"
 
 /*
  * Vendor-specific category implementation
@@ -17,33 +16,33 @@
 /*
  * Initialize GP Port Register for Cogent 100Mb
  */
-- (void)initGPPortRegisterForCogent100Mb
+- (void)_initGPPortRegisterForCogent100Mb
 {
     /* Write initial value to CSR12 */
-    outl(_portBase + 0x60, 0x13f);
+    outl(ioBase + 0x60, 0x13f);
     IODelay(100);
 
     /* Write configuration for 100Mb operation */
-    outl(_portBase + 0x60, 0x9);
+    outl(ioBase + 0x60, 0x9);
 }
 
 /*
  * Initialize GP Port Register for Cogent 10Mb
  */
-- (void)initGPPortRegisterForCogent10Mb
+- (void)_initGPPortRegisterForCogent10Mb
 {
     /* Write initial value to CSR12 */
-    outl(_portBase + 0x60, 0x13f);
+    outl(ioBase + 0x60, 0x13f);
     IODelay(100);
 
     /* Write configuration for 10Mb operation */
-    outl(_portBase + 0x60, 0x3e);
+    outl(ioBase + 0x60, 0x3e);
 }
 
 /*
  * Initialize GP Port Register for Custom configuration
  */
-- (void)initGPPortRegisterForCustom
+- (void)_initGPPortRegisterForCustom
 {
     char *buffer;
     const char *configString;
@@ -59,7 +58,7 @@
     }
 
     /* Determine which config key to look up based on media type */
-    if (_mediaType < 2) {
+    if (dataRateMode < 2) {
         keyName = "CSR12 10";
     } else {
         keyName = "CSR12 100";
@@ -68,17 +67,17 @@
     /* Get config string from device description */
     deviceDescription = [self deviceDescription];
     configTable = [deviceDescription configTable];
-    configString = [[configTable valueForStringKey:keyName] cString];
+    configString = [configTable valueForStringKey:keyName];
 
     /* Try alternate key names if first lookup failed */
     if (configString == NULL) {
-        if (_mediaType < 2) {
+        if (dataRateMode < 2) {
             keyName = "CSR12 10BASE-T";
         } else {
             keyName = "CSR12 100BASE-TX";
         }
 
-        configString = [[configTable valueForStringKey:keyName] cString];
+        configString = [configTable valueForStringKey:keyName];
         if (configString == NULL) {
             IOFree(buffer, 0x200);
             return;
@@ -96,8 +95,8 @@
     strcpy(buffer, configString);
 
     /* Parse and write each value to CSR12 */
-    while ([self getNextValue:&value fromString:&buffer]) {
-        outl(_portBase + 0x60, value);
+    while ([self getNextValue:&value fromString:buffer]) {
+        outl(ioBase + 0x60, value);
         IOSleep(10);
     }
 
@@ -108,14 +107,14 @@
 /*
  * Initialize GP Port Register for DE500 100Mb
  */
-- (void)initGPPortRegisterForDE500100Mb
+- (void)_initGPPortRegisterForDE500100Mb
 {
     /* Write sequence of values to CSR12 for DE500 100Mb initialization */
-    outl(_portBase + 0x60, 0x10f);
+    outl(ioBase + 0x60, 0x10f);
     IODelay(100);
-    outl(_portBase + 0x60, 0x8);
+    outl(ioBase + 0x60, 0x8);
     IODelay(100);
-    outl(_portBase + 0x60, 0x9);
+    outl(ioBase + 0x60, 0x9);
 }
 
 /*
@@ -123,9 +122,9 @@
  * Parse hexadecimal values from a string
  * Returns YES if a value was parsed, NO if end of string
  */
-- (BOOL)getNextValue:(unsigned int *)value fromString:(char **)str
+- (BOOL)getNextValue:(unsigned int *)value fromString:(char *)str
 {
-    char *current = *str;
+    char *current = str;
     char ch;
     unsigned int parsedValue;
 
@@ -171,9 +170,6 @@
 
     /* Store parsed value */
     *value = parsedValue;
-
-    /* Update string pointer */
-    *str = current;
 
     return YES;
 }

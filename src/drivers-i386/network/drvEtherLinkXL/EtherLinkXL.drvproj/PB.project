@@ -2,14 +2,21 @@
     BUNDLE_EXTENSION = config;
     DYNAMIC_CODE_GEN = YES;
     FILESTABLE = {
+        CLASSES = (EtherLinkXLInspector.m);
         FRAMEWORKS = (appkit.framework);
         FRAMEWORKSEARCH = ("$(SYSTEM_LIBRARY_DIR)/PrivateFrameworks", /System/Library/PrivateFrameworks);
-        OTHER_RESOURCES = (Default.table, Localizable.strings);
+        H_FILES = (EtherLinkXLInspector.h);
+        OTHER_RESOURCES = (Default.table, 3C905.table, Localizable.strings, 3C905.strings, DriverHelp);
         OTHER_SOURCES = (Makefile.preamble, Makefile, Makefile.postamble, m.template, h.template);
         SUBPROJECTS = (EtherLinkXL.lksproj);
     };
     LANGUAGE = English;
-    LOCALIZABLE_FILES = {};
+    LOCALIZABLE_FILES = {
+        DriverHelp = DriverHelp;
+        EtherLinkXLInspector.nib = EtherLinkXLInspector.nib;
+        Localizable.strings = Localizable.strings;
+        3C905.strings = 3C905.strings;
+    };
     MAKEFILEDIR = "$(MAKEFILEPATH)/pb_makefiles";
     NEXTSTEP_BUILDTOOL = /bin/gnumake;
     NEXTSTEP_INSTALLDIR = "$(NEXT_ROOT)/private/Drivers";

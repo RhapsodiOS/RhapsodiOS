@@ -1181,7 +1181,7 @@ src/*/patches/*.patch -text
 Verify the rule matches and does not reach existing patches elsewhere in the tree:
 
 ```bash
-git check-attr text -- src/zlib-1/patches/0001-x.patch src/perl-1/perl/win32/des_fcrypt.patch
+git check-attr text -- src/zlib-1/patches/0001-x.patch src/Developer/Commands/perl-1/perl/win32/des_fcrypt.patch
 ```
 
 Expected: `src/zlib-1/patches/0001-x.patch: text: unset` and `.../des_fcrypt.patch: text: auto`.

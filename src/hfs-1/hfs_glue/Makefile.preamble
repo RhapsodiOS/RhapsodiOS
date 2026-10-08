@@ -109,6 +109,8 @@ PRIVATE_HEADER_DIR = /System/Library/Frameworks/System.framework/Versions/B/Priv
 
 OTHER_PRIVATE_HEADERS = vol.h
 
+NEXTSTEP_PB_LDFLAGS += -read_only_relocs suppress
+
 # Additional files for the project's product: <<path relative to proj?>>
 #    OTHER_RESOURCES: (non-localized) resources for this project
 #    OTHER_OFILES: relocatables to be linked into this project

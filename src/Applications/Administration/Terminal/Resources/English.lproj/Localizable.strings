@@ -1,0 +1,325 @@
+/* Attention panel title */
+"Inappropriate Font";
+
+/* Takes font and size as args */
+"%s %.1f-point is not a constant-width font.  The current font won't be changed.";
+
+"OK";
+
+/* Font name arg */
+"The font '%s' is not a constant-width font.";
+
+/* Attn panel title */
+"Nonexistent Font";
+
+"The font '%s' does not exist.";
+
+/* Appears in find panel. */
+"Not Found";
+
+/* Attn panel title */
+"Font Too Large";
+
+"That font is too large to use in a Terminal window.  Choose a font smaller than %d point.";
+
+/* Attn panel title */
+"Font Too Small";
+
+"That font is too small to use in a Terminal window.  Choose a font larger than %d point.";
+
+/* Attn panel title */
+"No Metrics";
+
+"Can't find font metrics for requested font.";
+
+"The font '%s' can't be used because it is not a constant-width font.";
+
+/* Attn panel title */
+"Save Settings";
+
+"That is certainly an odd number of lines to save.";
+
+"You must save at least %d lines.";
+
+/* Attn panel title */
+"Strange Command";
+
+"Commands may not contain the characters '%s'.";
+
+/* Attn panel title */
+"Too Many Commands";
+
+"There's only room for %d commands in the clean commands list.";
+
+/* Attn panel title */
+"Duplicate Command";
+
+"That command is already in the list.";
+
+/* Attn panel title */
+"Can't Create";
+
+/* Args is a filename */
+"Can't create %s.  No services can be exported.";
+
+/* Attn panel title */
+"Can't Write";
+
+/* Args is a filename */
+"Can't write %s.  No services can be exported.";
+
+/* Attn panel title */
+"Suspicious Permissions";
+
+"Permissions on %s look suspicious.  Terminal won't be able to export any services.";
+
+/* This is the default name of a new service. */
+"New Service #%d";
+
+/* Appears in Terminal Services panel under service output routing */
+"Return Output";
+
+/* Appears in Terminal Services panel under service output routing */
+"Discard Output";
+
+/* Appears in Terminal Services panel under window type */
+"New Window";
+
+/* Appears in Terminal Services panel under window type */
+"Idle Window";
+
+/* Attn panel title */
+"Close";
+
+"Your changes to this service have not been saved.  Do you want to keep them?";
+
+/* Button title */
+"Save Changes";
+
+/* Button title */
+"Discard Changes";
+
+/* Button title */
+"Cancel";
+
+"Your changes to this service have not been saved, and can't be used as they are.  Would you like to discard the changes?";
+
+/* Service providing error message */
+"There doesn't seem to be a Terminal service cache object.";
+
+/* Service providing error message */
+"There doesn't seem to be a list of services for Terminal.";
+
+/* Service providing error message */
+"That service is no longer available.";
+
+/* Service providing error message */
+"Inappropriate selection type for this service.";
+
+/* Service providing error message */
+"Couldn't read selection from pasteboard.";
+
+/* When service use results in a prompt this string is used to label the window */
+"Command: %s";
+
+/* When service use results in a prompt this string is used to identify the service being provided */
+"Service: %s";
+
+/* Service providing error message */
+"Cannot open memory buffer";
+
+/* Service providing error message */
+"Could not execute the requested command.";
+
+/* Attn panel title */
+"Nonexistent shell";
+
+"The file '%s' doesn't exist.";
+
+/* Attn panel title */
+"Inappropriate shell";
+
+"You don't have permission to execute '%s'.";
+
+/* Attn panel title */
+"Cannot Stat";
+
+"Could not stat '%s'.";
+
+"The file '%s' isn't an executable program.";
+
+/* Attn panel title */
+"Save Settings";
+
+"You've asked that a file be opened when Terminal starts up, but haven't specified which file.  Type the file's path into the Path form, or press the Set button to bring up the Open panel.";
+
+"The file you've specified doesn't seem to exist.";
+
+/* Button title */
+"Use Anyway";
+
+"The file you've specified exists, but you can't read it.";
+
+/* Attn panel title */
+"New Shell";
+
+"Couldn't start up the shell you requested.  Check to be sure that it exists and that you can execute it.";
+
+/* Appears in window when the shell is murdered */
+"\n\r[Process was terminated by signal %d%s]";
+
+/* Added to PROC_KILLED when the killing signal cause a dump */
+" (core dumped)";
+
+/* Appears in window when the shell exits abnormally */
+"\n\r[Process exited - exit code %u]";
+
+/* Appears in window when the shell exits cleanly */
+"\n\r[Process completed]";
+
+/* Title of a window whose shell has exited */
+"Dead Terminal";
+
+"Closing this window will terminate the processes inside it.";
+
+/* Button title */
+"Close Anyway";
+
+/* Args is a command name */
+"Closing this window will terminate the %s process(es) inside it.";
+
+/* Has command names catenated to it */
+"Closing this window will terminate the following processes inside it: ";
+
+/* Tacked on to window title to show that a window is a key stealer */
+" \xD0 (Key Stealer)";
+
+/* Dynamic menu title */
+"Steal Keys";
+
+/* Dynamic menu title */
+"Yield Keys";
+
+/* Attn panel title */
+"Quit";
+
+/* Quit message */
+"There are active windows.";
+
+/* Button title */
+"Quit Anyway";
+
+/* Button title */
+"Review Windows";
+
+/* Dynamic menu title */
+"Save Set";
+
+/* Dynamic menu title */
+"Save";
+
+/* Attn panel title */
+"Save";
+
+/* Attn panel title */
+"Save As";
+
+"Cannot write %s.";
+
+/* Attn panel title */
+"Open";
+
+"Cannot open %s.";
+
+"An error occurred while reading from %s.";
+
+/* Attn panel title */
+"No Wrapper";
+
+"Terminal must be run from the Workspace Manager.";
+
+/* Used as an example of a custom window title */
+"Custom Title";
+
+/* Used as an example of a save file name */
+"~/TermSetup.term";
+
+"You've asked that a custom title be included in the title bar, but you haven't entered a title.";
+
+/* takes a name and a point size */
+"%s %.1f pt.";
+
+/* Attn panel title */
+"Window Too Small";
+
+"Windows must have at least %d columns and %d rows.";
+
+/* Attn panel title */
+"Window Too Large";
+
+"The values you have entered would  cause the window not to fit on the screen.  Reduce the font size or dimensions.";
+
+/* Attn panel title */
+"Too Many Columns";
+
+"There can be at most %d columns.";
+
+/* Attn panel title */
+"Too Many Rows";
+
+"There can be at most %d rows.";
+
+"Services must either require a selection or return a result.  Since this service does not accept a selection, it must run in the background and return its output to the service requestor.";
+
+"This service uses the selection as part of its command line.  You may be surprised at the results when the selection consists of Rich Text.";
+
+/* Attn panel title */
+"Terminal Services";
+
+"No services are defined.  Would you like to load a set of example services?";
+
+/* Button title */
+"Load Examples";
+
+/* Button title */
+"Don't Load";
+
+/* Save panel title */
+"Save Services";
+
+/* Button title */
+"Open Services";
+
+/* Appears in an attention panel after loading a set of services from a file. */
+"The following services were added to your configuration: ";
+
+/* Button title */
+"Add services defined in %s to your configuration?";
+
+/* Save panel title */
+"Add";
+
+/* Can appear while opening a service file. */
+"A service named '%s' already exists.  Replace it?";
+
+/* Button title. */
+"Replace";
+
+"No services were added.";
+
+/* Button title. */
+"Skip";
+
+/* Default font name must be constant width */
+"Ohlfs";
+
+/* Default font size in ASCII coded floating point */
+"10.0";
+
+/* Quit message */
+"Do you really want to quit Terminal?";
+
+/* Attn panel title */
+"Conflicting Font Warning";
+
+"This window contains Japanese characters, but the font you've selected isn't a Japanese font.  The window's contents may become garbled.";

@@ -3,4 +3,4 @@ pkgver = 156.1
 pkgdesc = Installation tools
 maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
 license = APSL
-makedepends = build-base, drveide-hdrs
+makedepends = build-base, drveide-hdrs, libcurses

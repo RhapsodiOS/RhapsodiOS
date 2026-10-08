@@ -1,0 +1,37 @@
+{
+  "schema_version": "profile-v1",
+  "name": "Terminal ppc reconstruction",
+  "architecture": "ppc",
+  "endianness": "big",
+  "reference": {
+    "path": "${BINRECON_REFERENCE}",
+    "expected_size": 333472,
+    "expected_sha256": "B83EDEF820DF31A406FBFBBFB86DD5B80DB6818BD6D8BD14211680F2BD8E57D7"
+  },
+  "analyzers": {
+    "ida": {
+      "enabled": true,
+      "executable": "C:/Program Files/IDA Professional 9.4/idat.exe",
+      "timeout_seconds": 900,
+      "version": "9.4"
+    },
+    "ghidra": {
+      "enabled": false,
+      "executable": "D:/ghidra/support/analyzeHeadless.bat",
+      "timeout_seconds": 900,
+      "version": "12.1"
+    },
+    "angr": {
+      "enabled": false,
+      "executable": ".venv-binrecon/Scripts/python.exe",
+      "timeout_seconds": 900,
+      "version": "9.3.0"
+    }
+  },
+  "comparison": {
+    "acceptance": "normalized-functions",
+    "ignore_metadata": [],
+    "entry_points": []
+  },
+  "output_dir": "../out/terminal-ppc"
+}

@@ -1,0 +1,37 @@
+{
+  "schema_version": "profile-v1",
+  "name": "Interceptor i386 reconstruction",
+  "architecture": "i386",
+  "endianness": "little",
+  "reference": {
+    "path": "${BINRECON_REFERENCE}",
+    "expected_size": 140216,
+    "expected_sha256": "56eb8f81b06cfbdbe898d39c4766720f71b1c1effd54869f78cd3340dc9a9dd1"
+  },
+  "analyzers": {
+    "ida": {
+      "enabled": true,
+      "executable": "C:/Program Files/IDA Professional 9.4/idat.exe",
+      "timeout_seconds": 900,
+      "version": "9.4"
+    },
+    "ghidra": {
+      "enabled": false,
+      "executable": "D:/ghidra/support/analyzeHeadless.bat",
+      "timeout_seconds": 900,
+      "version": "12.1"
+    },
+    "angr": {
+      "enabled": false,
+      "executable": "D:/RhapsodiOS/.venv-binrecon/Scripts/python.exe",
+      "timeout_seconds": 900,
+      "version": "9.3.0"
+    }
+  },
+  "comparison": {
+    "acceptance": "normalized-functions",
+    "ignore_metadata": [],
+    "entry_points": []
+  },
+  "output_dir": "../out/interceptor-i386"
+}

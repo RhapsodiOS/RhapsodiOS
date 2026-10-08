@@ -30,12 +30,12 @@
 #ifndef _DEC21X4X_H
 #define _DEC21X4X_H
 
-#import <driverkit/IOEthernetController.h>
-#import <driverkit/IONetbuf.h>
+#import <driverkit/IOEthernet.h>
+#import <driverkit/IONetbufQueue.h>
+#import <net/netbuf.h>
 #import <objc/objc.h>
 
 // Forward declarations
-typedef int BOOL;
 #ifndef YES
 #define YES 1
 #endif
@@ -108,15 +108,39 @@ typedef int BOOL;
 #define CSR15_SIA_GENERAL          0x78
 
 // DEC21142 class interface
-@interface DEC21142 : IOEthernetController
+@interface DEC21142 : IOEthernet
 {
-    // Instance variables will be defined here
+    unsigned short ioBase;
+    unsigned short irq;
+    IONetwork *networkInterface;
+    IONetbufQueue *transmitQueue;
+    char isPromiscuous;
+    char multicastEnabled;
+    char resetAndEnabled;
+    unsigned char sromAddressBits;
+    netbuf_t txNetbuf[32];
+    netbuf_t rxNetbuf[64];
+    void *rxRing;
+    void *txRing;
+    unsigned int txPutIndex;
+    unsigned int txDoneIndex;
+    unsigned int txNumFree;
+    unsigned int txIntCount;
+    unsigned int rxDoneIndex;
+    netbuf_t KDB_txBuf;
+    void *memoryPtr;
+    unsigned int memorySize;
+    void *setupBuffer;
+    unsigned int setupBufferPhysical;
+    void *Adapter;
+    unsigned int MediaCapableSaved;
 }
 
 // Initialization methods
 - (BOOL)_initAdapter;
-- (BOOL)_parseSROM;
-- (BOOL)_resetAndInitAdapter;
+- (BOOL)parseSROM;
+- (BOOL)resetAndEnable:(BOOL)enable;
+- (BOOL)verifyMediaSupport:(unsigned int)mediaType;
 - free;
 
 // Interrupt handling
@@ -129,23 +153,23 @@ extern void DC21X4DisableInterrupt(void *adapter);
 extern void DC21X4EnableInterrupt(void *adapter);
 extern void DC21X4StopAutoSenseTimer(void *adapter);
 extern void DC21X4StopAdapter(void *adapter);
-extern void DC21X4WriteGepRegister(void *adapter, unsigned short value);
-extern BOOL DC21X4PhyInit(void *adapter);
+extern unsigned long long DC21X4WriteGepRegister(void *adapter, unsigned int value);
+extern int DC21X4PhyInit(void *adapter);
 extern void DC21X4EnableNway(void *adapter);
 extern void DC21X4DisableNway(void *adapter);
-extern BOOL DC21X4SetPhyConnection(void *adapter);
+extern int DC21X4SetPhyConnection(void *adapter);
 extern void DC21X4StopReceiverAndTransmitter(void *adapter);
-extern void DC21X4InitializeMediaRegisters(void *adapter, int reset);
-extern void DC21X4StartAdapter(void *adapter);
-extern BOOL DC21X4MediaDetect(void *adapter);
-extern BOOL DC21X4MiiAutoDetect(void *adapter);
+extern void DC21X4InitializeMediaRegisters(void *adapter, char reset);
+extern unsigned long long DC21X4StartAdapter(void *adapter);
+extern int DC21X4MediaDetect(void *adapter);
+extern int DC21X4MiiAutoDetect(void *adapter);
 extern void DC21X4StartAutoSenseTimer(void *adapter, int timeout);
-extern void DC21X4DynamicAutoSense(void *timerArg, int adapter);
-extern int DC21X4AutoSense(unsigned int adapter);
-extern BOOL DC2114Sense100BaseTxLink(int adapter);
-extern void DC2104InitializeSiaRegisters(int adapter, unsigned int resetValue);
-extern BOOL DC21040Parser(int adapter);
-extern BOOL DC21X4ParseSRom(void *adapter, void *sromData);
+extern void DC21X4DynamicAutoSense(void *timerArg, void *adapter);
+extern int DC21X4AutoSense(void *adapter);
+extern BOOL DC2114Sense100BaseTxLink(void *adapter);
+extern void DC2104InitializeSiaRegisters(void *adapter, unsigned int resetValue);
+extern BOOL DC21040Parser(void *adapter);
+extern BOOL DC21X4ParseSRom(void *adapter, unsigned char *sromData);
 extern unsigned int CRC32(unsigned char *data, int length);
 extern const char *getDriverName(void *adapter);
 
@@ -156,18 +180,65 @@ extern void HandleLinkPassInterrupt(void *adapter, unsigned int *status);
 extern void HandleLinkChangeInterrupt(void *adapter);
 
 // MII/PHY functions (defined in DEC21X4XMII.c)
-extern BOOL MiiPhyInit(void *adapter);
-extern BOOL MiiPhyReset(void *adapter, int phyIndex);
-extern BOOL MiiReadRegister(void *adapter, unsigned char phyAddress,
-                            unsigned char regAddress, unsigned short *data);
-extern BOOL MiiWriteRegister(void *adapter, unsigned char phyAddress,
-                             unsigned char regAddress, unsigned short data);
-extern BOOL MiiWaitForAutoNegotiation(void *adapter, int phyIndex);
-extern void MiiSetCapabilities(void *adapter, int phyIndex, unsigned short capabilities);
-extern void ConvertNwayToConnectionType(unsigned short nwayResult, unsigned short *connectionType);
+extern int MiiPhyInit(void *adapter, int phyStructure);
+extern int MiiPhyReadRegister(void *adapter, int phyStructure, int regAddress,
+                              unsigned short *data);
+extern void MiiPhyWriteRegister(void *adapter, int phyStructure, int regAddress,
+                                int data);
+extern int MiiPhyGetConnectionStatus(void *adapter, int phyStructure,
+                                     unsigned short *status);
+extern int MiiPhyGetConnectionType(void *adapter, int phyStructure,
+                                   unsigned short *connectionType);
+extern void MiiPhyGetCapabilities(int phyStructure, unsigned short *capabilities);
+extern void MiiPhyAdminStatus(void *adapter, int phyStructure, unsigned int *status);
+extern void MiiPhyAdminControl(void *adapter, int phyStructure, unsigned int control);
+extern BOOL MiiGenInit(void *adapter);
+extern int MiiGenGetConnectionStatus(void *adapter, void *status);
+extern int MiiGenGetConnection(void *adapter, unsigned short *connectionType);
+extern int MiiGenSetConnection(void *adapter, unsigned short connectionType,
+                               unsigned short capabilities);
+extern BOOL ConvertNwayToConnectionType(unsigned short nwayResult, unsigned short *connectionType);
 extern void ConvertMediaTypeToNwayLocalAbility(unsigned char mediaType, unsigned short *nwayAbility);
 extern void ConvertConnectionToControl(int phyStructure, unsigned short *connectionType);
 extern unsigned short CheckConnectionSupport(int phyStructure, unsigned short connectionType);
+
+
+// C helper declarations shared by the two translation units
+extern void scheduleFunc(void *adapter, void *func, int timeout);
+extern void SelectNonMiiPort(void *adapter);
+extern int sendPacket(void *adapter, void *packet, int length);
+extern void SetMacConnection(void *adapter);
+extern void SRomLocalAdvertisement(void *adapter, unsigned char mediaType);
+extern void SwitchMediumToTpNway(void *adapter);
+extern void unscheduleFunc(void *adapter, void *function);
+extern int VerifyChecksum(unsigned char *srom, int length);
+extern void mediaTimeoutOccurred(void *adapter);
+extern unsigned int DC21X4SwitchMedia(void *adapter, unsigned int connectionType);
+extern void DC21X4StartTimer(void *adapter, int timeout);
+extern void DC21X4SetPhyControl(void *adapter, unsigned short control);
+extern void DC21X4ParseFixedBlock(void *adapter, unsigned char **blockPtr,
+                                  unsigned short connectionType, unsigned char *sromData);
+extern void DC21X4ParseExtendedBlock(void *adapter, unsigned char **blockPtr,
+                                     unsigned short connectionType, unsigned char *sromData);
+extern int DC21X4MiiAutoSense(void *adapter);
+extern void DC21X4InitializeGepRegisters(void *adapter, char usePhyInit);
+extern void DC21X4IndicateMediaStatus(void *adapter, int linkStatus);
+extern int FindAndInitMiiPhys(void *adapter);
+extern BOOL FindMiiPhyDevice(void *adapter, int phyAddr);
+extern int GetBroadcomPhyConnectionType(void *adapter, int phyAddr, unsigned short *connectionType);
+extern void HandleBroadcomMediaChangeFrom10To100(void *adapter, int phyAddr);
+extern void InitPhyInfoEntries(int phyAddr);
+extern unsigned short MiiGenGetCapabilities(void *adapter);
+extern int MiiGenCheckConnection(void *adapter, unsigned short connectionType);
+extern void MiiGenAdminStatus(void *adapter, unsigned int status);
+extern unsigned int MiiGenAdminControl(void *adapter, unsigned short control);
+extern void MiiFreeResources(void *adapter);
+extern void MiiOutThreeState(void *adapter);
+extern void MiiPhyNwayGetLocalAbility(void *adapter, int phyAddr, unsigned short *ability);
+extern void MiiPhyNwayGetPartnerAbility(void *adapter, int phyAddr, unsigned short *ability);
+extern void MiiPhyNwaySetLocalAbility(void *adapter, int phyAddr, unsigned short ability);
+extern int MiiPhySetConnectionType(void *adapter, int phyAddr, int connection, unsigned short param4);
+extern void WriteMii(void *adapter, int data, int count);
 
 // Lookup tables (defined in DEC21X4XUtil.c)
 extern const char *MediumString[];

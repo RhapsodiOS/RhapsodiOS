@@ -2,35 +2,35 @@
 #------ ----------------------- -------
 # Build frameworks and target headers before their first consumers.
 dir     CoreOSMakefiles-1       all
-dir     pb_makefiles-1          headers
-dir     project_makefiles-1     headers
+dir     Developer/Commands/pb_makefiles-1 headers
+dir     Developer/Commands/project_makefiles-1 headers
 dir     architecture-1          headers
 dir     kernel-7                headers
 dir     Libstreams-1            headers
 dir     Libc-1                  headers
-dir     pb_makefiles-1          all
+dir     Developer/Commands/pb_makefiles-1 all
 dir     objc4-1                 headers
 dir     driverkit-3             headers
-dir     cctools-2               headers
+dir     Developer/Commands/cctools-2 headers
 
 # cc consumes public Mach interfaces exported by Libc as well as headers
 # produced by its own installhdrs target.  Publish both first; the full cc
 # build still requires bison.
-dir     cc-1                    headers
+dir     Developer/Commands/cc-1 headers
 
 # Target build tools.
-dir     bison-1                 all
-dir     cc-1                    all
-dir     cctools-2               all
-dir     gnumake-1               all
-dir     gnutar-1                all
-dir     awk-1                   all
-dir     grep-1                  all
-dir     patch-1                 all
-dir     gnudiff-1               all
+dir     Developer/Commands/bison-1 all
+dir     Developer/Commands/cc-1 all
+dir     Developer/Commands/cctools-2 all
+dir     Developer/Commands/gnumake-1 all
+dir     Commands/gnutar-1 all
+dir     Developer/Commands/awk-1 all
+dir     Commands/grep-1 all
+dir     Developer/Commands/patch-1 all
+dir     Developer/Commands/gnudiff-1 all
 
 # Complete remaining build frameworks and the bootstrap command set.
-dir     project_makefiles-1     all
+dir     Developer/Commands/project_makefiles-1 all
 dir     architecture-1          all
 dir     Commands/bootstrap_cmds all
 
@@ -55,8 +55,8 @@ dir     objc-1                  all
 dir     machkit-1               headers
 dir     machkit-1               all
 dir     driverkit-3             all
-dir     cctools-2               all
-dir     cc-1                    all
+dir     Developer/Commands/cctools-2 all
+dir     Developer/Commands/cc-1 all
 dir     Libsystem-2             all
 
 # kern_loader is a user executable; fat System must exist before its i386 link.
@@ -71,5 +71,6 @@ dir     Commands/shell_cmds     all
 dir     Commands/file_cmds      all
 dir     Commands/text_cmds      all
 dir     Commands/developer_cmds all
+dir     Developer/Commands/pswrap all
 dir     Commands/zsh            all
 dir     Commands/tcsh           all

@@ -1,0 +1,386 @@
+import contextlib
+import io
+import os
+import struct
+import tempfile
+import unittest
+from unittest import mock
+
+import rhap_image
+from ufs_extract import Node
+from instmedia import (apkrepo, build, hdimage, iso, live,
+                       testapks as ta, test_live)
+
+BOOT_DRIVERS = ("EISABus", "PCIBus", "PS2Keyboard", "EIDE", "AHCI",
+                "ISASerialPort", "NE2K")
+CDIS = "System/Installation/CDIS/"
+SOFTWARE_VERSION = b"RhapsodiOS 0.6\nRhap6A1\n"
+
+
+def make_bootable_repo(directory, drivers=BOOT_DRIVERS + ("BPF",),
+                       driver_loader=True, extra=()):
+    """test_live's repo plus what a bootable root must have: the boot
+    drivers, and BPF, the Active Driver dhcpcd needs."""
+    test_live.make_repo(directory)
+    ta.make(directory, "boot-64-i386.apk",
+            ta.pkginfo("boot", "64", "i386-apple-rhapsody"), [
+                ta.f("usr/standalone/i386/boot0", b"\x33" * 446),
+                ta.f("usr/standalone/i386/boot1", b"\x44" * 510 + b"\x55\xaa"),
+                ta.f("usr/standalone/i386/boot", b"B" * 30000),
+                ta.f("usr/standalone/i386/sarld", b"S" * 1000)],
+            dot_slash=False)
+    ta.make(directory, "kernel-154.5.1-i386.apk",
+            ta.pkginfo("kernel", "154.5.1", "i386-apple-rhapsody"), [
+                ta.f("mach_kernel", b"K" * 70000, 0o444), ta.d("private"),
+                ta.d("private/tftpboot"),
+                ta.hard("private/tftpboot/mach_kernel", "mach_kernel")])
+    for name in drivers:
+        ta.make(directory, "drv%s-1-i386.apk" % name.lower(),
+                ta.pkginfo("drv" + name.lower(), "1", "i386-apple-rhapsody"),
+                [ta.f("private/Drivers/i386/%s.config/%s_reloc"
+                      % (name, name), name.encode() * 100)], dot_slash=False)
+    base = [ta.f("usr/sbin/sshd", b"sshd"), ta.f("sbin/mount", b"mount"),
+            ta.f("usr/libexec/getty", b"getty"),
+            ta.f("sbin/umount", b"umount"), ta.f("sbin/disk", b"disk"),
+            ta.f("sbin/apk", b"apk"), ta.f("usr/sbin/chroot", b"chroot"),
+            ta.f("usr/sbin/pwd_mkdb", b"pwd_mkdb"),
+            ta.f("usr/sbin/driverDetect", b"dd"),
+            ta.f("usr/bin/gzip", b"gzip"), ta.f("bin/sync", b"sync"),
+            ta.dev("private/dev/hd0a", "blk", 3, 0),
+            ta.dev("private/dev/rhd0a", "chr", 15, 0),
+            ta.dev("private/dev/null", "chr", 3, 2)]
+    if driver_loader:
+        base.append(ta.f("usr/sbin/driverLoader", b"dl"))
+    ta.make(directory, "base-cmds-1-universal.apk", ta.pkginfo("base-cmds"),
+            base + list(extra), dot_slash=False)
+    # test_live's base.set names files, cdis and aaa; this one the rest.
+    named = ["boot", "kernel", "base-cmds", "rest-sets"]
+    named += ["drv" + name.lower() for name in drivers]
+    ta.make(directory, "rest-sets-1-universal.apk", ta.pkginfo("rest-sets"),
+            [ta.d("System"), ta.d("System/Installation"),
+             ta.d("System/Installation/Sets"),
+             ta.f("System/Installation/Sets/rest.set",
+                  "\n".join(named).encode() + b"\n", 0o444),
+             ta.d("System/Library"), ta.d("System/Library/CoreServices"),
+             ta.f("System/Library/CoreServices/software_version",
+                  SOFTWARE_VERSION, 0o444)],
+            dot_slash=False)
+
+
+def walk(img, ino=2, path="/"):
+    """Every path in a rhap_image.Image's filesystem."""
+    paths = [path]
+    for name, child, dtype, _ in img.iter_dir(ino):
+        if name in (".", ".."):
+            continue
+        full = path.rstrip("/") + "/" + name
+        if dtype == 4:
+            paths += walk(img, child, full)
+        else:
+            paths.append(full)
+    return paths
+
+
+class TestBuild(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.repo = os.path.join(self.tmp.name, "repo")
+        os.mkdir(self.repo)
+        self.efi = os.path.join(self.tmp.name, "BOOTIA32.EFI")
+        with open(self.efi, "wb") as f:
+            f.write(b"MZ" + b"e" * 5000)
+        self.out = os.path.join(self.tmp.name, "media.img")
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_live_media_builds_and_reads_back(self):
+        make_bootable_repo(self.repo)
+        napks, nnodes, g, total = build.build(self.repo, self.efi, self.out)
+        self.assertEqual(napks, 3 + 2 + len(BOOT_DRIVERS) + 1 + 1 + 1)
+        with rhap_image.Image(self.out) as img:
+            self.assertIsNotNone(img.resolve("/private/etc/rc.cdrom"))
+            self.assertIsNotNone(
+                img.resolve("/System/Installation/Packages/"
+                            "kernel-154.5.1-i386.apk"))
+
+    def test_only_set_packages_are_carried(self):
+        make_bootable_repo(self.repo)
+        ta.make(self.repo, "orphan-1-universal.apk", ta.pkginfo("orphan"),
+                [ta.f("etc/orphan.conf", b"o")], dot_slash=False)
+        with self.assertRaisesRegex(build.BuildError,
+                                    "package orphan is in no set"):
+            build.build(self.repo, self.efi, self.out)
+        self.assertFalse(os.path.exists(self.out))
+
+    def test_a_set_naming_a_missing_package_is_refused(self):
+        make_bootable_repo(self.repo)
+        ta.make(self.repo, "ghosts-1-universal.apk", ta.pkginfo("ghosts"),
+                [ta.d("System"), ta.d("System/Installation"),
+                 ta.d("System/Installation/Sets"),
+                 ta.f("System/Installation/Sets/ghosts.set",
+                      b"ghosts\nghost\n", 0o444)], dot_slash=False)
+        with self.assertRaisesRegex(
+                build.BuildError,
+                "set ghosts names package ghost not in the repository"):
+            build.build(self.repo, self.efi, self.out)
+
+    def test_the_media_needs_sysinstall_and_its_tools(self):
+        make_bootable_repo(self.repo)
+        nodes, _ = live.compose(apkrepo.index(self.repo), b"E")
+        nodes = [n for n in nodes if n.path != "/sbin/disk"
+                 and n.path != live.CDIS + "/sysinstall"]
+        got = "\n".join(build.check_tree(nodes, False))
+        self.assertIn("missing /sbin/disk", got)
+        self.assertIn("missing " + live.CDIS + "/sysinstall", got)
+
+    def test_preinstalled_builds_and_reads_back(self):
+        make_bootable_repo(self.repo)
+        build.build(self.repo, self.efi, self.out, preinstalled=True)
+        with rhap_image.Image(self.out) as img:
+            self.assertIsNone(img.resolve("/private/etc/rc.cdrom"))
+            fstab = img.read_file(img.resolve("/private/etc/fstab"))
+        self.assertEqual(fstab, b"/dev/hd0a\t/\tufs\trw\t1 1\n")
+
+    def test_a_missing_boot_driver_is_named(self):
+        make_bootable_repo(self.repo, drivers=("EISABus", "PCIBus",
+                                               "PS2Keyboard", "EIDE",
+                                               "NE2K"))
+        with self.assertRaisesRegex(build.BuildError, "AHCI_reloc"):
+            build.build(self.repo, self.efi, self.out)
+        self.assertFalse(os.path.exists(self.out))
+
+    def test_preinstalled_needs_driverloader(self):
+        make_bootable_repo(self.repo, driver_loader=False)
+        with self.assertRaisesRegex(build.BuildError,
+                                    "missing /usr/sbin/driverLoader"):
+            build.build(self.repo, self.efi, self.out, preinstalled=True)
+
+    def test_the_network_card_is_checked_as_a_boot_driver(self):
+        make_bootable_repo(self.repo, drivers=BOOT_DRIVERS[:-1])
+        with self.assertRaisesRegex(build.BuildError, "NE2K_reloc"):
+            build.build(self.repo, self.efi, self.out, preinstalled=True)
+
+    def test_preinstalled_needs_the_bpf_driver(self):
+        make_bootable_repo(self.repo, drivers=BOOT_DRIVERS)
+        with self.assertRaisesRegex(build.BuildError, "BPF.config/BPF_reloc"):
+            build.build(self.repo, self.efi, self.out, preinstalled=True)
+
+    def test_the_media_does_not_need_driverloader(self):
+        make_bootable_repo(self.repo, driver_loader=False)
+        build.build(self.repo, self.efi, self.out)
+
+    def test_both_need_usr_devices_to_reach_the_table(self):
+        make_bootable_repo(self.repo)
+        for pre in (True, False):
+            nodes, _ = live.compose(apkrepo.index(self.repo), b"E",
+                                    preinstalled=pre, password_hash="x")
+            self.assertEqual(build.check_tree(nodes, pre), [])
+            nodes = [n._replace(data="../private/Nowhere")
+                     if n.path == "/usr/Devices" else n for n in nodes]
+            self.assertIn("/usr/Devices/System.config/Instance0.table does "
+                          "not lead", "\n".join(build.check_tree(nodes, pre)))
+
+    def test_conflicts_are_refused(self):
+        make_bootable_repo(self.repo)
+        ta.make(self.repo, "rival-1-universal.apk", ta.pkginfo("rival"),
+                [ta.f("usr/sbin/sshd", b"other")], dot_slash=False)
+        with self.assertRaisesRegex(build.BuildError,
+                                    "/usr/sbin/sshd: claimed by base-cmds "
+                                    "and rival"):
+            build.build(self.repo, self.efi, self.out)
+
+    def test_a_too_small_filesystem_is_refused(self):
+        make_bootable_repo(self.repo, extra=[ta.f("big", b"b" * 3000000)])
+        with self.assertRaisesRegex(build.BuildError, "--fs-mb"):
+            build.build(self.repo, self.efi, self.out, fs_mb=1)
+        self.assertFalse(os.path.exists(self.out))
+
+    def test_main_reports_errors_without_a_traceback(self):
+        make_bootable_repo(self.repo, drivers=())
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err):
+            self.assertEqual(build.main(["build", "--repo", self.repo,
+                                         "--efi", self.efi, "--out",
+                                         self.out]), 1)
+        self.assertIn("missing /private/Drivers/i386/EIDE.config/EIDE_reloc",
+                      err.getvalue())
+
+    def test_main_reports_a_package_it_cannot_lay_down(self):
+        make_bootable_repo(self.repo)
+        ta.make(self.repo, "zz-1-universal.apk", ta.pkginfo("zz"),
+                [ta.ln("usr/lost", "nowhere/at/all"),
+                 ta.f("usr/lost/file", b"x")], dot_slash=False)
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err):
+            self.assertEqual(build.main(["build", "--repo", self.repo,
+                                         "--efi", self.efi, "--out",
+                                         self.out]), 1)
+        self.assertIn("no directory /usr/nowhere", err.getvalue())
+
+
+class TestCD(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.repo = os.path.join(self.tmp.name, "repo")
+        os.mkdir(self.repo)
+        make_bootable_repo(self.repo)
+        self.efi = os.path.join(self.tmp.name, "BOOTIA32.EFI")
+        with open(self.efi, "wb") as f:
+            f.write(b"MZ" + b"e" * 5000)
+        self.out = os.path.join(self.tmp.name, "installer.iso")
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def files(self):
+        with open(self.out, "rb") as f:
+            info = iso.read_iso(f)
+            data = {}
+            for name, (lba, size) in info["files"].items():
+                f.seek(lba * iso.SECTOR)
+                data[name] = f.read(size)
+        return info, data
+
+    def test_cd_builds_and_reads_back(self):
+        napks, nnodes, g, total = build.build(self.repo, self.efi, self.out,
+                                              form="cd")
+        self.assertEqual(os.path.getsize(self.out), total * 512)
+        info, data = self.files()
+        self.assertEqual(sorted(info["files"]), ["BIOSBOOT.IMG", "BOOT.CAT",
+                                                 "EFIBOOT.IMG", "README.TXT"])
+        lbas = {name: lba for name, (lba, _) in info["files"].items()}
+        self.assertEqual(info["catalog_lba"], lbas["BOOT.CAT"])
+        self.assertEqual(info["catalog"][1]["lba"], lbas["BIOSBOOT.IMG"])
+        self.assertEqual(info["catalog"][3]["lba"], lbas["EFIBOOT.IMG"])
+        self.assertEqual(len(data["BIOSBOOT.IMG"]),
+                         hdimage.BOOT_IMAGE_SECTORS * 512)
+        mbr = data["BIOSBOOT.IMG"][:512]
+        self.assertEqual((mbr[446], mbr[450], mbr[510:]),
+                         (0x80, 0xA7, b"\x55\xaa"))
+        self.assertEqual(len(data["EFIBOOT.IMG"]),
+                         hdimage.ESP_SECTORS * 512)
+        self.assertIn(b"RhapsodiOS installer", data["README.TXT"])
+        self.assertIn(b"RhapsodiOS 0.6 (Rhap6A1)", data["README.TXT"])
+        with open(self.out, "rb") as f:
+            f.seek(7680)
+            lbl = f.read(1024)
+        self.assertEqual(lbl[:4], b"dlV3")
+        self.assertEqual(struct.unpack_from(">i", lbl, 92)[0], 2048)
+        # d_front is a short, too small to reach past EFIBOOT.IMG: the front
+        # porch is the system area, and p_base carries the rest.
+        front = struct.unpack_from(">h", lbl, 112)[0]
+        p_base = struct.unpack_from(">i", lbl, 190)[0]
+        self.assertEqual(front, build.CD_FRONT)
+        efi_end = lbas["EFIBOOT.IMG"] + hdimage.ESP_SECTORS // 4
+        self.assertEqual(front + p_base, -(-efi_end // 32) * 32)
+        with rhap_image.Image(self.out) as img:
+            self.assertEqual(img.part_start, (front + p_base) * 2048)
+            self.assertIsNotNone(img.resolve("/private/etc/rc.cdrom"))
+            table = img.read_file(img.resolve(live.SYSTEM_TABLE))
+        self.assertIn(b'"Kernel Flags" = "rootdev=cdrom"', table)
+
+    def test_cd_boot_image_holds_only_boot_files(self):
+        build.build(self.repo, self.efi, self.out, form="cd")
+        _, data = self.files()
+        boot = os.path.join(self.tmp.name, "boot.img")
+        with open(boot, "wb") as f:
+            f.write(data["BIOSBOOT.IMG"])
+        d = "/private/Drivers/i386"
+        want = ["/", "/mach_kernel", "/private", "/private/Drivers", d,
+                "/usr", "/usr/standalone", "/usr/standalone/i386",
+                "/usr/standalone/i386/sarld", d + "/System.config",
+                d + "/System.config/Instance0.table",
+                d + "/EIDE.config/Dual_EIDE.table",
+                d + "/EIDE.config/Instance0.table"]
+        for name in live.MEDIA_BOOT_DRIVERS.split():
+            want += ["%s/%s.config" % (d, name),
+                     "%s/%s.config/%s_reloc" % (d, name, name)]
+        with rhap_image.Image(boot) as img:
+            self.assertEqual(sorted(walk(img)), sorted(want))
+            table = img.read_file(img.resolve(live.SYSTEM_TABLE))
+            eide = img.read_file(img.resolve(live.EIDE_INSTANCE0))
+        self.assertIn(b'"Kernel Flags" = "rootdev=cdrom"', table)
+        self.assertEqual(eide, test_live.DUAL_EIDE)
+
+    def test_cd_over_650_mib_is_refused(self):
+        with mock.patch.object(build, "CD_LIMIT", 100 * 1024 * 1024):
+            with self.assertRaisesRegex(build.BuildError, "live.list"):
+                build.build(self.repo, self.efi, self.out, form="cd")
+        self.assertFalse(os.path.exists(self.out))
+        self.assertEqual(build.CD_LIMIT, 681574400)
+
+    def test_cd_refuses_preinstalled(self):
+        with self.assertRaisesRegex(build.BuildError, "--preinstalled"):
+            build.build(self.repo, self.efi, self.out, preinstalled=True,
+                        form="cd")
+        self.assertFalse(os.path.exists(self.out))
+
+    def test_main_accepts_form_cd(self):
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            self.assertEqual(build.main(["build", "--repo", self.repo,
+                                         "--efi", self.efi, "--out",
+                                         self.out, "--form", "cd"]), 0)
+        self.assertIn(self.out, out.getvalue())
+        self.assertIn("MB disc", out.getvalue())
+        with open(self.out, "rb") as f:
+            self.assertEqual(iso.read_iso(f)["volume_id"], "RHAPSODIOS")
+
+    def test_readme_text(self):
+        self.assertEqual(build.README_TEXT("RhapsodiOS 0.6 (Rhap6A1)"),
+                         b"RhapsodiOS installer\n"
+                         b"Release: RhapsodiOS 0.6 (Rhap6A1)\n"
+                         b"Boots on i386 PCs with a BIOS or IA32 UEFI "
+                         b"firmware.\n")
+
+
+class TestChecks(unittest.TestCase):
+    def test_check_sets(self):
+        apks = {"files": 1, "a": 2, "b": 3}
+        self.assertEqual(build.check_sets(apks, {"s": ["files", "a"]}),
+                         ["package b is in no set"])
+        self.assertEqual(
+            build.check_sets({"files": 1}, {"s": ["files", "x"],
+                                            "t": ["y"]}),
+            ["set s names package x not in the repository",
+             "set t names package y not in the repository"])
+        self.assertEqual(build.check_sets(apks, {"s": list(apks)}), [])
+
+    def test_dev_majors(self):
+        nodes = [Node("/private/dev/hd1a", "blk", 0o640, 0, 5, 0, (3, 8)),
+                 Node("/private/dev/rsd0a", "chr", 0o640, 0, 5, 0, (14, 0)),
+                 Node("/private/dev/sd0a", "blk", 0o640, 0, 5, 0, (7, 0)),
+                 Node("/private/dev/rhd0a", "blk", 0o640, 0, 5, 0, (15, 0)),
+                 Node("/private/dev/fd", "dir", 0o555, 0, 0, 0, None),
+                 Node("/private/dev/urandom", "chr", 0o644, 0, 0, 0, (17, 1)),
+                 Node("/private/dev/tty", "chr", 0o666, 0, 0, 0, (2, 0))]
+        self.assertEqual(build.check_dev(nodes), [
+            "/private/dev/sd0a is blk 7, the kernel wants blk 6",
+            "/private/dev/rhd0a is blk 15, the kernel wants blk 3"])
+
+    def test_controller_character_nodes_take_the_character_major(self):
+        # files' MAKEDEV makes fdc0 and sdc0 as character devices of the
+        # floppy and SCSI drivers.
+        nodes = [Node("/private/dev/fdc0", "chr", 0o644, 0, 0, 0, (41, 64)),
+                 Node("/private/dev/sdc0", "chr", 0o644, 0, 0, 0, (14, 0)),
+                 Node("/private/dev/hd0_hfs_a", "blk", 0o640, 0, 5, 0,
+                      (3, 128))]
+        self.assertEqual(build.check_dev(nodes), [])
+
+    def test_boot_drivers(self):
+        self.assertEqual(build.boot_drivers(
+            b'"Kernel" = "mach_kernel";\n"Boot Drivers" = "EIDE  AHCI";\n'),
+            ["EIDE", "AHCI"])
+        with self.assertRaises(build.BuildError):
+            build.boot_drivers(b'"Kernel" = "mach_kernel";\n')
+
+    def test_fs_sectors_is_whole_megabytes_with_headroom(self):
+        nodes = [Node("/a", "reg", 0o644, 0, 0, 0, b"x" * 3000000)]
+        got = build.fs_sectors(nodes, 1024 * 1024)
+        self.assertEqual(got % 2048, 0)
+        self.assertGreaterEqual(got * 512, 3000000 * 5 // 4 + 1024 * 1024)
+
+
+if __name__ == "__main__":
+    unittest.main()

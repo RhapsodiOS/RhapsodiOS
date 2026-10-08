@@ -15,18 +15,16 @@ English_RESOURCES = Localizable.strings
 
 LANGUAGES = English
 
-GLOBAL_RESOURCES = French.lproj German.lproj Italian.lproj\
-                   Spanish.lproj Swedish.lproj fixdisk install_tools\
-                   dicedrives.pl diceprtname.pl
+GLOBAL_RESOURCES = fixdisk install_tools dicedrives.pl diceprtname.pl
 
 MFILES = placeholder.m
 
 TOOLS = getpath.tproj findroot.tproj checkflop.tproj\
         pickdisk.tproj\
-        gc.tproj slamloaderbits.tproj sgmove.tproj popconsole.tproj
+        gc.tproj slamloaderbits.tproj sgmove.tproj popconsole.tproj\
+        sysinstall.tproj
 
-OTHERSRCS = Makefile.preamble Makefile Makefile.postamble rc.cdrom\
-            rc.cdrom.PPC rc.cdrom.x86
+OTHERSRCS = Makefile.preamble Makefile Makefile.postamble rc.cdrom
 
 
 MAKEFILEDIR = $(MAKEFILEPATH)/pb_makefiles

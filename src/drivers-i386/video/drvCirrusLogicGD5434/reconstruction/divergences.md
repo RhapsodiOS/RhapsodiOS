@@ -2097,7 +2097,7 @@ has apple-generic `_CirrusLogicGD5434DisplayDriverVersionString` and
 `_reloc` — is still unmet. `driverTools` was not edited.
 `apple-generic.make` produced `vers.o`.
 
-A later Cirrus-local `next-sgs` attempt copied `src/pb_makefiles-1/next-sgs.make`
+A later Cirrus-local `next-sgs` attempt copied `src/Developer/Commands/pb_makefiles-1/next-sgs.make`
 into `$DRV/VersioningSystems` and set `VERSIONING_SYSTEM = next-sgs` plus
 `LOCAL_VERSIONING_SYSTEM_MAKEFILEDIR` to that guest path in both preambles.
 `vers_string` exists on the guest (`/usr/bin/vers_string`), but `next-sgs.make`

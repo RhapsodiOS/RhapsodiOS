@@ -1,0 +1,22 @@
+/*
+ * The system configuration table of an installed RhapsodiOS ppc disk:
+ * Mac OS X Server 1.2.1's /private/Drivers/ppc/System.config/Default.table,
+ * unchanged.  On ppc the booter picks the boot drivers, 0700_Devices names
+ * the drivers it loads, and the kernel takes its root from Open Firmware,
+ * so none of the i386 template's overrides apply.
+ */
+
+/* Version of this File */
+"Version" = "5.20";
+
+/* Drivers to probe at boot time are determined by the booter */
+
+/* Bundles to load/probe later */
+"Active Drivers" = "PPCAwacs Floppy BPF SwitchEthernet PPCSerialPort PortServer";
+
+/* Other kernel flags */
+"Kernel Flags" = "";
+
+"Boot Drivers" = "";
+
+"Language" = "English";

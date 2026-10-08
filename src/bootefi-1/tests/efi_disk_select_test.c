@@ -101,7 +101,12 @@ static void test_dp_is_parent(void)
     at = disk_prefix(cdrom, 1);
     at = node(cdrom, at, 0x04, 0x02, 24);       /* Media: CDROM */
     end_node(cdrom, at);
-    check("an El Torito entry is not an fdisk partition",
+    check("an El Torito entry of this disk", efi_dp_is_parent(disk, cdrom), 1);
+
+    at = disk_prefix(cdrom, 2);
+    at = node(cdrom, at, 0x04, 0x02, 24);
+    end_node(cdrom, at);
+    check("an El Torito entry of another disk",
           efi_dp_is_parent(disk, cdrom), 0);
 
     check("a disk is not its own parent", efi_dp_is_parent(disk, disk), 0);

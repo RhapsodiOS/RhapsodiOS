@@ -1,5 +1,5 @@
 {
-    FILESTABLE = {OTHER_SOURCES = (Makefile); SUBPROJECTS = (driverkit, libDriver); }; 
+    FILESTABLE = {OTHER_SOURCES = (Makefile); SUBPROJECTS = (driverkit, libDriver, driverLoader); }; 
     GENERATEMAIN = YES; 
     LANGUAGE = English; 
     LOCALIZABLE_FILES = {}; 

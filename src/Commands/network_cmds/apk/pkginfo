@@ -3,4 +3,4 @@ pkgver = 57
 pkgdesc = Network commands
 maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
 license = APSL
-makedepends = build-base, yacc, flex, libcat, librpcsvc-hdrs, libinfo, libcurses-hdrs, libtelnet
+makedepends = build-base, yacc, flex, librpcsvc-hdrs, libinfo, libcurses-hdrs, libtelnet

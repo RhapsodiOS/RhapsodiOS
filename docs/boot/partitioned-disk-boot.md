@@ -18,7 +18,7 @@ boot1, boot2 and the kernel all scale `p_base`/`d_boot0_blkno` by
   location" (`driverkit-3/libDriver/label_subr.c`).
 - The label's **contents** are absolute. `p_base` and `d_boot0_blkno[]`
   include the partition base (`diskdev_cmds/disk.tproj/hd.c`). boot1 loads
-  boot2 from the absolute `d_boot0_blkno` (`boot-2/i386/boot1/boot1.asm`).
+  boot2 from the absolute `d_boot0_blkno` (`boot-2/i386/boot1/boot1.s`).
   boot2's `read_label()` sets `boff = dl_front + p_base`
   (`boot-2/i386/libsaio/disk.c`). The kernel computes the partition base as
   `(p_base + d_front) × d_secsize / physBlockSize`

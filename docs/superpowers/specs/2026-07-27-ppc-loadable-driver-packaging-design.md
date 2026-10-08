@@ -278,9 +278,9 @@ The mechanical parts are low-risk and checkable. The two real hazards:
   `IOSMADBSetLogicalRegister:size:` (68), and `probe:`. Its own spec, written
   from disassembly with per-method review. The SCSITape spec did this kind of
   work and its reviews caught four material errors.
-- **A PowerPC toolchain.** The tree carries the pieces — `src/cctools-2`
+- **A PowerPC toolchain.** The tree carries the pieces — `src/Developer/Commands/cctools-2`
   (`as/ppc.c`, `ld/ppc_reloc.c`) and GCC's `rs6000` configuration in
-  `src/cc-1`. Standing one up would turn every "not claimed" in §4 into
+  `src/Developer/Commands/cc-1`. Standing one up would turn every "not claimed" in §4 into
   something checkable, and is now the single highest-value item in the whole
   series.
 - **Reconstructing `IOADBDevice` and `DEC21x4Ethernet`** from their binaries,

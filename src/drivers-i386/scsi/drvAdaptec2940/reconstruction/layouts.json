@@ -1,0 +1,480 @@
+{
+  "schema_version": "adaptec2940-layouts-v1",
+  "reference_sha256": "08E6C11EEC125847F485C86250C94C4AFCC025E59CF085B0C8039B94B2E79DF7",
+  "architecture": "i386",
+  "endianness": "little",
+  "page_size": 4096,
+  "structures": {
+    "controller": {
+      "size": 396,
+      "superclass": "IODirectDevice",
+      "prefix_size": 296,
+      "fields": {
+        "ioBase": {
+          "offset": 296,
+          "width": 2
+        },
+        "channelInfo": {
+          "offset": 300,
+          "width": 8
+        },
+        "hspStructSave": {
+          "offset": 308,
+          "width": 4
+        },
+        "hspStructFreeSize": {
+          "offset": 312,
+          "width": 4
+        },
+        "interruptPortKern": {
+          "offset": 316,
+          "width": 4
+        },
+        "commandQ": {
+          "offset": 320,
+          "width": 8
+        },
+        "commandLock": {
+          "offset": 328,
+          "width": 4
+        },
+        "activeQ": {
+          "offset": 332,
+          "width": 8
+        },
+        "scbQ": {
+          "offset": 340,
+          "width": 8
+        },
+        "scbQLength": {
+          "offset": 348,
+          "width": 4
+        },
+        "scbBadQ": {
+          "offset": 352,
+          "width": 8
+        },
+        "flags": {
+          "offset": 360,
+          "width": 4
+        },
+        "reinitChannel": {
+          "offset": 364,
+          "width": 4
+        },
+        "resetState": {
+          "offset": 368,
+          "width": 4
+        },
+        "maxQueueLen": {
+          "offset": 372,
+          "width": 4
+        },
+        "queueLenTotal": {
+          "offset": 376,
+          "width": 4
+        },
+        "totalCommands": {
+          "offset": 380,
+          "width": 4
+        },
+        "outstandingCount": {
+          "offset": 384,
+          "width": 4
+        },
+        "busType": {
+          "offset": 388,
+          "width": 4
+        },
+        "levelIRQ": {
+          "offset": 392,
+          "width": 1
+        },
+        "busNumber": {
+          "offset": 393,
+          "width": 1
+        },
+        "deviceNumber": {
+          "offset": 394,
+          "width": 1
+        },
+        "functionNumber": {
+          "offset": 395,
+          "width": 1
+        }
+      },
+      "flag_bits": {
+        "autoSenseEnable": 0,
+        "cmdQueueEnable": 1,
+        "syncModeEnable": 2,
+        "ioThreadRunning": 3,
+        "needReinit": 4
+      }
+    },
+    "scsi_bus": {
+      "size": 588,
+      "superclass": "IOSCSIController",
+      "prefix_size": 580,
+      "fields": {
+        "_direct": {
+          "offset": 580,
+          "width": 4
+        },
+        "_scsiChannel": {
+          "offset": 584,
+          "width": 4
+        }
+      }
+    },
+    "scb": {
+      "size": 256,
+      "alignment": 256,
+      "hardware_size": 32,
+      "fields": {
+        "chain_next": {
+          "offset": 0,
+          "width": 4
+        },
+        "host_info": {
+          "offset": 4,
+          "width": 4
+        },
+        "scb_status": {
+          "offset": 8,
+          "width": 1
+        },
+        "host_status": {
+          "offset": 9,
+          "width": 1
+        },
+        "flags": {
+          "offset": 10,
+          "width": 1
+        },
+        "manager_status": {
+          "offset": 11,
+          "width": 1
+        },
+        "target_channel_lun": {
+          "offset": 12,
+          "width": 1
+        },
+        "control": {
+          "offset": 13,
+          "width": 1
+        },
+        "command_length": {
+          "offset": 14,
+          "width": 1
+        },
+        "sg_count": {
+          "offset": 15,
+          "width": 1
+        },
+        "sg_pointer": {
+          "offset": 16,
+          "width": 4
+        },
+        "command_pointer": {
+          "offset": 20,
+          "width": 4
+        },
+        "target_status": {
+          "offset": 24,
+          "width": 1
+        },
+        "residual_data_count": {
+          "offset": 28,
+          "width": 4
+        },
+        "sense_physical": {
+          "offset": 44,
+          "width": 4
+        },
+        "cdb": {
+          "offset": 52,
+          "width": 12
+        },
+        "host_self": {
+          "offset": 76,
+          "width": 4
+        },
+        "scatter_gather": {
+          "offset": 80,
+          "width": 144
+        },
+        "command_buffer": {
+          "offset": 224,
+          "width": 4
+        },
+        "start_time": {
+          "offset": 228,
+          "width": 8
+        },
+        "timeout_port": {
+          "offset": 236,
+          "width": 4
+        },
+        "total_transfer_length": {
+          "offset": 240,
+          "width": 4
+        },
+        "in_use": {
+          "offset": 244,
+          "width": 1
+        },
+        "queue_next": {
+          "offset": 248,
+          "width": 4
+        },
+        "queue_previous": {
+          "offset": 252,
+          "width": 4
+        }
+      }
+    },
+    "scatter_gather": {
+      "size": 8,
+      "fields": {
+        "address": {
+          "offset": 0,
+          "width": 4
+        },
+        "length": {
+          "offset": 4,
+          "width": 4
+        }
+      },
+      "maximum_entries": 18
+    },
+    "host_info": {
+      "size": 140,
+      "verified_fields": {
+        "io_base": {
+          "offset": 4,
+          "width": 4
+        },
+        "bus_number": {
+          "offset": 8,
+          "width": 1
+        },
+        "device_number": {
+          "offset": 9,
+          "width": 1
+        },
+        "options_byte": {
+          "offset": 13,
+          "width": 1
+        },
+        "adapter_mode": {
+          "offset": 16,
+          "width": 2
+        },
+        "irq": {
+          "offset": 19,
+          "width": 1
+        },
+        "structure_length": {
+          "offset": 60,
+          "width": 2
+        },
+        "max_targets": {
+          "offset": 66,
+          "width": 2
+        },
+        "physical_self": {
+          "offset": 100,
+          "width": 4
+        }
+      }
+    },
+    "channel_info": {
+      "size": 8,
+      "fields": {
+        "owner": {
+          "offset": 0,
+          "width": 4
+        },
+        "host_info": {
+          "offset": 4,
+          "width": 4
+        }
+      }
+    },
+    "request_message": {
+      "size": 36,
+      "fields": {
+        "channel": {
+          "offset": 0,
+          "width": 4
+        },
+        "command": {
+          "offset": 4,
+          "width": 4
+        },
+        "request": {
+          "offset": 8,
+          "width": 4
+        },
+        "buffer": {
+          "offset": 12,
+          "width": 4
+        },
+        "client_task": {
+          "offset": 16,
+          "width": 4
+        },
+        "status": {
+          "offset": 20,
+          "width": 4
+        },
+        "condition_lock": {
+          "offset": 24,
+          "width": 4
+        },
+        "queue_link": {
+          "offset": 28,
+          "width": 8
+        }
+      }
+    },
+    "queue_head": {
+      "size": 8,
+      "fields": {
+        "next": {
+          "offset": 0,
+          "width": 4
+        },
+        "previous": {
+          "offset": 4,
+          "width": 4
+        }
+      }
+    },
+    "scsi_request": {
+      "size": 84,
+      "fields": {
+        "target": {
+          "offset": 0,
+          "width": 1
+        },
+        "lun": {
+          "offset": 1,
+          "width": 1
+        },
+        "cdb": {
+          "offset": 2,
+          "width": 12
+        },
+        "read": {
+          "offset": 14,
+          "width": 1
+        },
+        "maxTransfer": {
+          "offset": 16,
+          "width": 4
+        },
+        "timeoutLength": {
+          "offset": 20,
+          "width": 4
+        },
+        "flags": {
+          "offset": 24,
+          "width": 4
+        },
+        "cdbLength": {
+          "offset": 27,
+          "width": 1
+        },
+        "driverStatus": {
+          "offset": 28,
+          "width": 4
+        },
+        "scsiStatus": {
+          "offset": 32,
+          "width": 1
+        },
+        "bytesTransferred": {
+          "offset": 36,
+          "width": 4
+        },
+        "totalTime": {
+          "offset": 40,
+          "width": 8
+        },
+        "latentTime": {
+          "offset": 48,
+          "width": 8
+        },
+        "senseData": {
+          "offset": 56,
+          "width": 26
+        }
+      }
+    },
+    "sense_data": {
+      "size": 26
+    },
+    "command_message_template": {
+      "size": 24
+    },
+    "timeout_message_template": {
+      "size": 24
+    },
+    "protocol_pointer_table": {
+      "size": 8
+    }
+  },
+  "data": {
+    "SP_HaStat_Values": {
+      "address": 35396,
+      "size": 120
+    },
+    "P_Seq_01": {
+      "address": 41016,
+      "size": 1960,
+      "sha256": "6DAAEAB5AD831AC6A778D5EAA66A980943B5D32C39EB496192C931FBA6D392E8"
+    },
+    "P_SeqExist": {
+      "address": 42976,
+      "size": 24,
+      "sha256": "95088DBC9CE187ACDE41ECF4D4BF782C26E0B470093B113F820E0F0953C61140",
+      "records": [
+        {
+          "mode": 0,
+          "offset": 0,
+          "size": 12,
+          "length": 0,
+          "patch_offset": 0
+        },
+        {
+          "mode": 2,
+          "offset": 12,
+          "size": 12,
+          "length": 1960,
+          "patch_offset": 0
+        }
+      ]
+    },
+    "CmdMessageTemplate": {
+      "address": 40960,
+      "size": 24
+    },
+    "timeoutMsgTemplate": {
+      "address": 40984,
+      "size": 24
+    },
+    "protocols": {
+      "address": 41008,
+      "size": 8
+    },
+    "Adaptec2940SCSI_VERS_STRING": {
+      "address": 35516,
+      "size": 160
+    },
+    "Adaptec2940SCSI_VERS_NUM": {
+      "address": 35676,
+      "size": 4
+    }
+  }
+}

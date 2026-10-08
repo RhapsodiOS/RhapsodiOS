@@ -1,0 +1,537 @@
+{
+  "boundary_disputed": [],
+  "duplicate_candidates": [],
+  "mapped": [
+    {
+      "address": 0,
+      "reference_names": [
+        "+[CogentEM525 probe:]"
+      ],
+      "size": 229,
+      "source_line": 5,
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/CogentEM525.m"
+    },
+    {
+      "address": 232,
+      "reference_names": [
+        "-[CogentEM525 coldInit]"
+      ],
+      "size": 1214,
+      "source_line": 33,
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/CogentEM525.m"
+    },
+    {
+      "address": 1448,
+      "reference_names": [
+        "-[CogentEM525 description]"
+      ],
+      "size": 12,
+      "source_line": 49,
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/CogentEM525.m"
+    },
+    {
+      "address": 1460,
+      "reference_names": [
+        "+[CogentEM595 probe:]"
+      ],
+      "size": 229,
+      "source_line": 7,
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/CogentEM595.m"
+    },
+    {
+      "address": 1692,
+      "reference_names": [
+        "-[CogentEM595 coldInit]"
+      ],
+      "size": 267,
+      "source_line": 35,
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/CogentEM595.m"
+    },
+    {
+      "address": 1960,
+      "reference_names": [
+        "-[CogentEM595 description]"
+      ],
+      "size": 12,
+      "source_line": 60,
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/CogentEM595.m"
+    },
+    {
+      "address": 1972,
+      "reference_names": [
+        "-[i82595eeprom initWithBase:CurrentBank:]"
+      ],
+      "size": 605,
+      "source_line": 15,
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/i82595eeprom.m"
+    },
+    {
+      "address": 2580,
+      "reference_names": [
+        "-[i82595eeprom readWord:]"
+      ],
+      "size": 521,
+      "source_line": 49,
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/i82595eeprom.m"
+    },
+    {
+      "address": 3104,
+      "reference_names": [
+        "-[i82595eeprom getContents]"
+      ],
+      "size": 13,
+      "source_line": 73,
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/i82595eeprom.m"
+    },
+    {
+      "address": 3120,
+      "reference_names": [
+        "-[Intel82595 _onboardMemoryAvailable]"
+      ],
+      "size": 50,
+      "source_line": 13,
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/Intel82595.m"
+    },
+    {
+      "address": 3172,
+      "reference_names": [
+        "-[Intel82595 _allocateOnboardMemory:]"
+      ],
+      "size": 46,
+      "source_line": 19,
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/Intel82595.m"
+    },
+    {
+      "address": 3220,
+      "reference_names": [
+        "-[Intel82595 _mcSetup]"
+      ],
+      "size": 1802,
+      "source_line": 26,
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/Intel82595.m"
+    },
+    {
+      "address": 5024,
+      "reference_names": [
+        "-[Intel82595 _memoryRegion:]"
+      ],
+      "size": 57,
+      "source_line": 75,
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/Intel82595.m"
+    },
+    {
+      "address": 5084,
+      "reference_names": [
+        "-[Intel82595 _receiveInterruptOccurred]"
+      ],
+      "size": 1007,
+      "source_line": 82,
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/Intel82595.m"
+    },
+    {
+      "address": 6092,
+      "reference_names": [
+        "-[Intel82595 _transmitInterruptOccurred]"
+      ],
+      "size": 461,
+      "source_line": 122,
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/Intel82595.m"
+    },
+    {
+      "address": 6556,
+      "reference_names": [
+        "+[Intel82595 probeIDRegisterAt:]"
+      ],
+      "size": 185,
+      "source_line": 145,
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/Intel82595.m"
+    },
+    {
+      "address": 6744,
+      "reference_names": [
+        "-[Intel82595 initFromDeviceDescription:]"
+      ],
+      "size": 465,
+      "source_line": 162,
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/Intel82595.m"
+    },
+    {
+      "address": 7212,
+      "reference_names": [
+        "-[Intel82595 free]"
+      ],
+      "size": 131,
+      "source_line": 185,
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/Intel82595.m"
+    },
+    {
+      "address": 7344,
+      "reference_names": [
+        "-[Intel82595 resetAndEnable:]"
+      ],
+      "size": 412,
+      "source_line": 195,
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/Intel82595.m"
+    },
+    {
+      "address": 7756,
+      "reference_names": [
+        "-[Intel82595 coldInit]"
+      ],
+      "size": 12,
+      "source_line": 216,
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/Intel82595.m"
+    },
+    {
+      "address": 7768,
+      "reference_names": [
+        "-[Intel82595 description]"
+      ],
+      "size": 12,
+      "source_line": 217,
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/Intel82595.m"
+    },
+    {
+      "address": 7780,
+      "reference_names": [
+        "-[Intel82595 resetChip]"
+      ],
+      "size": 207,
+      "source_line": 219,
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/Intel82595.m"
+    },
+    {
+      "address": 7988,
+      "reference_names": [
+        "-[Intel82595 initializeChip]"
+      ],
+      "size": 1289,
+      "source_line": 228,
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/Intel82595.m"
+    },
+    {
+      "address": 9280,
+      "reference_names": [
+        "-[Intel82595 busConfig]"
+      ],
+      "size": 12,
+      "source_line": 252,
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/Intel82595.m"
+    },
+    {
+      "address": 9292,
+      "reference_names": [
+        "-[Intel82595 connectorConfig]"
+      ],
+      "size": 87,
+      "source_line": 253,
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/Intel82595.m"
+    },
+    {
+      "address": 9380,
+      "reference_names": [
+        "-[Intel82595 rxInit]"
+      ],
+      "size": 791,
+      "source_line": 255,
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/Intel82595.m"
+    },
+    {
+      "address": 10172,
+      "reference_names": [
+        "-[Intel82595 txInit]"
+      ],
+      "size": 471,
+      "source_line": 279,
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/Intel82595.m"
+    },
+    {
+      "address": 10644,
+      "reference_names": [
+        "-[Intel82595 onboardMemoryPresent]"
+      ],
+      "size": 12,
+      "source_line": 299,
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/Intel82595.m"
+    },
+    {
+      "address": 10656,
+      "reference_names": [
+        "-[Intel82595 enableAllInterrupts]"
+      ],
+      "size": 152,
+      "source_line": 301,
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/Intel82595.m"
+    },
+    {
+      "address": 10808,
+      "reference_names": [
+        "-[Intel82595 disableAllInterrupts]"
+      ],
+      "size": 144,
+      "source_line": 308,
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/Intel82595.m"
+    },
+    {
+      "address": 10952,
+      "reference_names": [
+        "-[Intel82595 interruptOccurred]"
+      ],
+      "size": 477,
+      "source_line": 316,
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/Intel82595.m"
+    },
+    {
+      "address": 11432,
+      "reference_names": [
+        "-[Intel82595 timeoutOccurred]"
+      ],
+      "size": 195,
+      "source_line": 331,
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/Intel82595.m"
+    },
+    {
+      "address": 11628,
+      "reference_names": [
+        "-[Intel82595 transmit:]"
+      ],
+      "size": 916,
+      "source_line": 344,
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/Intel82595.m"
+    },
+    {
+      "address": 12544,
+      "reference_names": [
+        "-[Intel82595 enablePromiscuousMode]"
+      ],
+      "size": 71,
+      "source_line": 363,
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/Intel82595.m"
+    },
+    {
+      "address": 12616,
+      "reference_names": [
+        "-[Intel82595 disablePromiscuousMode]"
+      ],
+      "size": 60,
+      "source_line": 370,
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/Intel82595.m"
+    },
+    {
+      "address": 12676,
+      "reference_names": [
+        "-[Intel82595 addMulticastAddress:]"
+      ],
+      "size": 65,
+      "source_line": 378,
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/Intel82595.m"
+    },
+    {
+      "address": 12744,
+      "reference_names": [
+        "-[Intel82595 removeMulticastAddress:]"
+      ],
+      "size": 58,
+      "source_line": 384,
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/Intel82595.m"
+    },
+    {
+      "address": 12804,
+      "reference_names": [
+        "-[Intel82595 receivePacket:length:timeout:]"
+      ],
+      "size": 955,
+      "source_line": 389,
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/Intel82595.m"
+    },
+    {
+      "address": 13760,
+      "reference_names": [
+        "-[Intel82595 sendPacket:length:]"
+      ],
+      "size": 1121,
+      "source_line": 412,
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/Intel82595.m"
+    },
+    {
+      "address": 14884,
+      "reference_names": [
+        "-[Intel82595ISA description]"
+      ],
+      "size": 12,
+      "source_line": 7,
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/Intel82595ISA.m"
+    },
+    {
+      "address": 14896,
+      "reference_names": [
+        "-[Intel82595ISA resetChip]"
+      ],
+      "size": 362,
+      "source_line": 9,
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/Intel82595ISA.m"
+    },
+    {
+      "address": 15260,
+      "reference_names": [
+        "-[Intel82595ISA busConfig]"
+      ],
+      "size": 908,
+      "source_line": 27,
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/Intel82595ISA.m"
+    },
+    {
+      "address": 16168,
+      "reference_names": [
+        "-[Intel82595ISA irqConfig]"
+      ],
+      "size": 224,
+      "source_line": 55,
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/Intel82595ISA.m"
+    },
+    {
+      "address": 16392,
+      "reference_names": [
+        "+[IntelEEPro10Plus probe:]"
+      ],
+      "size": 229,
+      "source_line": 5,
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/IntelEEPro10+.m"
+    },
+    {
+      "address": 16624,
+      "reference_names": [
+        "-[IntelEEPro10Plus busConfig]"
+      ],
+      "size": 28,
+      "source_line": 33,
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/IntelEEPro10+.m"
+    },
+    {
+      "address": 16652,
+      "reference_names": [
+        "-[IntelEEPro10Plus coldInit]"
+      ],
+      "size": 155,
+      "source_line": 35,
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/IntelEEPro10+.m"
+    },
+    {
+      "address": 16808,
+      "reference_names": [
+        "-[IntelEEPro10Plus resetChip]"
+      ],
+      "size": 220,
+      "source_line": 47,
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/IntelEEPro10+.m"
+    },
+    {
+      "address": 17028,
+      "reference_names": [
+        "-[IntelEEPro10Plus irqConfig]"
+      ],
+      "size": 224,
+      "source_line": 57,
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/IntelEEPro10+.m"
+    },
+    {
+      "address": 17252,
+      "reference_names": [
+        "-[IntelEEPro10Plus onboardMemoryPresent]"
+      ],
+      "size": 12,
+      "source_line": 70,
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/IntelEEPro10+.m"
+    },
+    {
+      "address": 17264,
+      "reference_names": [
+        "-[IntelEEPro10Plus description]"
+      ],
+      "size": 12,
+      "source_line": 71,
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/IntelEEPro10+.m"
+    },
+    {
+      "address": 17276,
+      "reference_names": [
+        "+[IntelEEPro10 probe:]"
+      ],
+      "size": 229,
+      "source_line": 5,
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/IntelEEPro10.m"
+    },
+    {
+      "address": 17508,
+      "reference_names": [
+        "-[IntelEEPro10 intelEEPro10PnPInit]"
+      ],
+      "size": 66,
+      "source_line": 33,
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/IntelEEPro10.m"
+    },
+    {
+      "address": 17576,
+      "reference_names": [
+        "-[IntelEEPro10 coldInit]"
+      ],
+      "size": 1139,
+      "source_line": 47,
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/IntelEEPro10.m"
+    },
+    {
+      "address": 18716,
+      "reference_names": [
+        "-[IntelEEPro10 resetChip]"
+      ],
+      "size": 228,
+      "source_line": 61,
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/IntelEEPro10.m"
+    },
+    {
+      "address": 18944,
+      "reference_names": [
+        "-[IntelEEPro10 irqConfig]"
+      ],
+      "size": 224,
+      "source_line": 71,
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/IntelEEPro10.m"
+    },
+    {
+      "address": 19168,
+      "reference_names": [
+        "-[IntelEEPro10 onboardMemoryPresent]"
+      ],
+      "size": 12,
+      "source_line": 85,
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/IntelEEPro10.m"
+    },
+    {
+      "address": 19180,
+      "reference_names": [
+        "-[IntelEEPro10 description]"
+      ],
+      "size": 12,
+      "source_line": 86,
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/IntelEEPro10.m"
+    }
+  ],
+  "reference_sha256": "B40292EBBF8CF29922C079487A31F530633B0FC3DC04BB25BF1B9E8887E44684",
+  "schema_version": "source-map-v1",
+  "unmapped": [
+    {
+      "address": 19192,
+      "reference_names": [
+        "+[Intel82595NetworkDriverKernelServerInstance kernelServerInstance]"
+      ],
+      "size": 12
+    },
+    {
+      "address": 19204,
+      "reference_names": [
+        "+[Intel82595NetworkDriverVersion driverKitVersionForIntel82595NetworkDriver]"
+      ],
+      "size": 12
+    }
+  ]
+}

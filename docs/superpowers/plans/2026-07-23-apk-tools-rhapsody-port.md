@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Make Alpine `apk-tools` 2.0_pre12 (vendored at `src/apk-tools-1/apk-tools/`) build and run, proven via a host-proxy build, and wire it into the RhapsodiOS project build — so Rhapsody gains a native `apk` package manager.
+**Goal:** Make Alpine `apk-tools` 2.0_pre12 (vendored at `src/Commands/apk-tools-1/apk-tools/`) build and run, proven via a host-proxy build, and wire it into the RhapsodiOS project build — so Rhapsody gains a native `apk` package manager.
 
 **Architecture:** A portability pass on the vendored source: fix the build system's modern-gcc/Linux assumptions, add small compat shims for Linux-only headers, get `apk` to compile/link and pass format-level smoke tests on the dev host, then provide/verify the RhapsodiOS project Makefile that drives the build under the standard flow. The dev host (clang) is a *proxy* for Rhapsody's Apple gcc 2.95; anything the proxy can't prove is logged for maintainer validation on Rhapsody.
 
@@ -15,7 +15,7 @@
 - The dev host is a **proxy**. Anything that only reproduces/validates on Rhapsody's toolchain goes into the **target-validation checklist** in `PORTING.md`, not guessed at.
 - `rbuild` and the `dpkg/control` source-metadata format are **out of scope** — do not touch them.
 - Deferred (do NOT do here): the apk bootstrap chain, `.deb`→`.apk` repo conversion, `README.md`/doc updates, migrating source control files, retiring `dpkg-3`/`dpkg_scriptlib`.
-- `apk-tools` is vendored under `src/apk-tools-1/apk-tools/`; the RhapsodiOS project root is `src/apk-tools-1/`.
+- `apk-tools` is vendored under `src/Commands/apk-tools-1/apk-tools/`; the RhapsodiOS project root is `src/Commands/apk-tools-1/`.
 - Verification for this project is **build success + smoke tests**, not unit tests (it's a port of external code). Commit after each task.
 - Repo hygiene: the working tree has unrelated changes in other projects — stage ONLY the files each task names; never `git add -A`/`git add .`.
 
@@ -23,7 +23,7 @@
 
 ## File Structure
 
-Touch list (all under `src/apk-tools-1/`):
+Touch list (all under `src/Commands/apk-tools-1/`):
 
 - `apk-tools/Make.rules` — kbuild-style rules; holds `CFLAGS_ALL` (has `-std=gnu99`, `-Werror`, `-D_GNU_SOURCE`).
 - `apk-tools/src/Makefile` — per-target settings: `LIBS := /usr/lib/libz.a`, `LDFLAGS_apk += -nopie`, `LDFLAGS_apk.static := -static`.
@@ -43,20 +43,20 @@ Reference: `src/CoreOSMakefiles-1/ReleaseControl/GNUSource.make` (the wrapper th
 Make the vendored build compile on the host by removing modern-gcc/Linux assumptions, so later tasks see real source errors rather than flag/link failures.
 
 **Files:**
-- Modify: `src/apk-tools-1/apk-tools/Make.rules`
-- Modify: `src/apk-tools-1/apk-tools/src/Makefile`
+- Modify: `src/Commands/apk-tools-1/apk-tools/Make.rules`
+- Modify: `src/Commands/apk-tools-1/apk-tools/src/Makefile`
 
 **Interfaces:**
-- Produces: a host-invocable build — `cd src/apk-tools-1/apk-tools && make` uses portable CFLAGS and links against `-lz`. Later tasks rely on this build command to surface/verify source fixes.
+- Produces: a host-invocable build — `cd src/Commands/apk-tools-1/apk-tools && make` uses portable CFLAGS and links against `-lz`. Later tasks rely on this build command to surface/verify source fixes.
 
 - [ ] **Step 1: Establish the baseline failure**
 
-Run: `cd src/apk-tools-1/apk-tools && make 2>&1 | head -40`
+Run: `cd src/Commands/apk-tools-1/apk-tools && make 2>&1 | head -40`
 Expected (baseline, BEFORE changes): failure — the compiler rejects `-std=gnu99` (on old gcc) and/or the link fails on `/usr/lib/libz.a` (absent on host), and/or `<malloc.h>` not found. Record the first error in the task report; this is the empirical starting point.
 
 - [ ] **Step 2: Make `CFLAGS_ALL` portable in Make.rules**
 
-In `src/apk-tools-1/apk-tools/Make.rules`, change the flags line:
+In `src/Commands/apk-tools-1/apk-tools/Make.rules`, change the flags line:
 
 Old:
 ```make
@@ -73,7 +73,7 @@ CFLAGS_ALL	:= -Wall -Wstrict-prototypes
 
 - [ ] **Step 3: Make zlib and link flags portable in src/Makefile**
 
-In `src/apk-tools-1/apk-tools/src/Makefile`:
+In `src/Commands/apk-tools-1/apk-tools/src/Makefile`:
 
 Old:
 ```make
@@ -92,13 +92,13 @@ LIBS			?= -lz
 
 - [ ] **Step 4: Re-run the build to confirm it now reaches source compilation**
 
-Run: `cd src/apk-tools-1/apk-tools && make 2>&1 | head -40`
+Run: `cd src/Commands/apk-tools-1/apk-tools && make 2>&1 | head -40`
 Expected: the build now invokes `cc` on the `.c` files and fails (if at all) on **source** issues — the first being `fatal error: 'malloc.h' file not found` (or the compiler's equivalent). Flag/link errors from Step 1 are gone. Record the new first error (it seeds Task 2).
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/apk-tools-1/apk-tools/Make.rules src/apk-tools-1/apk-tools/src/Makefile
+git add src/Commands/apk-tools-1/apk-tools/Make.rules src/Commands/apk-tools-1/apk-tools/src/Makefile
 git commit -m "apk-tools: portable build flags and zlib linkage for the Rhapsody port"
 ```
 
@@ -109,19 +109,19 @@ git commit -m "apk-tools: portable build flags and zlib linkage for the Rhapsody
 Resolve the Linux-only source dependencies until `apk` compiles and links on the host.
 
 **Files:**
-- Modify: `src/apk-tools-1/apk-tools/src/apk_defines.h`
-- Modify: `src/apk-tools-1/apk-tools/src/apk_hash.h`
-- Modify: `src/apk-tools-1/apk-tools/src/io.c`
-- Modify: `src/apk-tools-1/apk-tools/src/state.c`
-- Modify: `src/apk-tools-1/apk-tools/src/database.c`
-- Modify: `src/apk-tools-1/apk-tools/src/gunzip.c`
-- Modify: `src/apk-tools-1/apk-tools/src/package.c`
-- Modify: `src/apk-tools-1/apk-tools/src/archive.c`
-- Modify: `src/apk-tools-1/apk-tools/src/blob.c`
-- Modify: `src/apk-tools-1/apk-tools/src/md5.c`
+- Modify: `src/Commands/apk-tools-1/apk-tools/src/apk_defines.h`
+- Modify: `src/Commands/apk-tools-1/apk-tools/src/apk_hash.h`
+- Modify: `src/Commands/apk-tools-1/apk-tools/src/io.c`
+- Modify: `src/Commands/apk-tools-1/apk-tools/src/state.c`
+- Modify: `src/Commands/apk-tools-1/apk-tools/src/database.c`
+- Modify: `src/Commands/apk-tools-1/apk-tools/src/gunzip.c`
+- Modify: `src/Commands/apk-tools-1/apk-tools/src/package.c`
+- Modify: `src/Commands/apk-tools-1/apk-tools/src/archive.c`
+- Modify: `src/Commands/apk-tools-1/apk-tools/src/blob.c`
+- Modify: `src/Commands/apk-tools-1/apk-tools/src/md5.c`
 
 **Interfaces:**
-- Consumes: the portable build from Task 1 (`cd src/apk-tools-1/apk-tools && make`).
+- Consumes: the portable build from Task 1 (`cd src/Commands/apk-tools-1/apk-tools && make`).
 - Produces: a linked `src/apk` binary on the host. Task 3 runs it.
 
 - [ ] **Step 1: Replace `<malloc.h>` with `<stdlib.h>` in all 9 files**
@@ -137,7 +137,7 @@ with:
 If a file already includes `<stdlib.h>`, simply delete the `<malloc.h>` line instead of duplicating.
 
 Verify none is left:
-Run: `grep -rn "malloc.h" src/apk-tools-1/apk-tools/src/`
+Run: `grep -rn "malloc.h" src/Commands/apk-tools-1/apk-tools/src/`
 Expected: no output.
 
 - [ ] **Step 2: Portable endian handling in md5.c**
@@ -175,22 +175,22 @@ The existing `#if __BYTE_ORDER == __LITTLE_ENDIAN` (near line 64) then works on 
 
 - [ ] **Step 4: Build to a linked binary; resolve any residual host errors**
 
-Run: `cd src/apk-tools-1/apk-tools && make 2>&1 | tee /tmp/apk_build.log; ls -l src/apk`
+Run: `cd src/Commands/apk-tools-1/apk-tools && make 2>&1 | tee /tmp/apk_build.log; ls -l src/apk`
 Expected: `src/apk` exists (build succeeds). If the compiler surfaces further portability errors not anticipated above, fix each with the **smallest** portable change that keeps upstream style, and record each one in the task report with the file, the error, and the fix. If any error genuinely cannot be resolved on the host (needs Rhapsody's toolchain/headers), STOP short of hacking around it: leave the code building on the host by the least-invasive means and add the item to the report's "target-validation" notes for Task 5's `PORTING.md`.
 
 - [ ] **Step 5: Confirm the binary runs**
 
-Run: `cd src/apk-tools-1/apk-tools && ./src/apk --version 2>&1 || ./src/apk version 2>&1 | head`
+Run: `cd src/Commands/apk-tools-1/apk-tools && ./src/apk --version 2>&1 || ./src/apk version 2>&1 | head`
 Expected: prints a version/usage line and exits without crashing (exact text depends on pre12's CLI; capture whatever it prints).
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add src/apk-tools-1/apk-tools/src/apk_defines.h src/apk-tools-1/apk-tools/src/apk_hash.h \
-  src/apk-tools-1/apk-tools/src/io.c src/apk-tools-1/apk-tools/src/state.c \
-  src/apk-tools-1/apk-tools/src/database.c src/apk-tools-1/apk-tools/src/gunzip.c \
-  src/apk-tools-1/apk-tools/src/package.c src/apk-tools-1/apk-tools/src/archive.c \
-  src/apk-tools-1/apk-tools/src/blob.c src/apk-tools-1/apk-tools/src/md5.c
+git add src/Commands/apk-tools-1/apk-tools/src/apk_defines.h src/Commands/apk-tools-1/apk-tools/src/apk_hash.h \
+  src/Commands/apk-tools-1/apk-tools/src/io.c src/Commands/apk-tools-1/apk-tools/src/state.c \
+  src/Commands/apk-tools-1/apk-tools/src/database.c src/Commands/apk-tools-1/apk-tools/src/gunzip.c \
+  src/Commands/apk-tools-1/apk-tools/src/package.c src/Commands/apk-tools-1/apk-tools/src/archive.c \
+  src/Commands/apk-tools-1/apk-tools/src/blob.c src/Commands/apk-tools-1/apk-tools/src/md5.c
 git commit -m "apk-tools: compat shims (malloc.h, endian.h, mknod/makedev) for the port"
 ```
 
@@ -201,15 +201,15 @@ git commit -m "apk-tools: compat shims (malloc.h, endian.h, mknod/makedev) for t
 Prove the ported `apk` agrees with the `.apk` files `rbuild` produces, at the format level, without needing root or a live install DB.
 
 **Files:**
-- Create: `src/apk-tools-1/apk-tools/tests/smoke.sh`
+- Create: `src/Commands/apk-tools-1/apk-tools/tests/smoke.sh`
 
 **Interfaces:**
-- Consumes: the host `apk` binary at `src/apk-tools-1/apk-tools/src/apk` (Task 2).
+- Consumes: the host `apk` binary at `src/Commands/apk-tools-1/apk-tools/src/apk` (Task 2).
 - Produces: `tests/smoke.sh`, runnable as `sh tests/smoke.sh`, exit 0 on success.
 
 - [ ] **Step 1: Write the smoke-test script**
 
-Create `src/apk-tools-1/apk-tools/tests/smoke.sh`:
+Create `src/Commands/apk-tools-1/apk-tools/tests/smoke.sh`:
 
 ```sh
 #!/bin/sh
@@ -262,13 +262,13 @@ echo "SMOKE TESTS PASSED"
 
 - [ ] **Step 2: Make it executable and run it**
 
-Run: `chmod +x src/apk-tools-1/apk-tools/tests/smoke.sh && sh src/apk-tools-1/apk-tools/tests/smoke.sh`
+Run: `chmod +x src/Commands/apk-tools-1/apk-tools/tests/smoke.sh && sh src/Commands/apk-tools-1/apk-tools/tests/smoke.sh`
 Expected: ends with `SMOKE TESTS PASSED`. The `apk index` step may print the `WARN:` line if pre12's CLI differs — that is acceptable and must be captured in the task report (and later in `PORTING.md`) as a target-validation item; the extract round-trip and execute checks must pass.
 
 - [ ] **Step 3: Commit**
 
 ```bash
-git add src/apk-tools-1/apk-tools/tests/smoke.sh
+git add src/Commands/apk-tools-1/apk-tools/tests/smoke.sh
 git commit -m "apk-tools: host smoke tests for apk/rbuild format compatibility"
 ```
 
@@ -276,10 +276,10 @@ git commit -m "apk-tools: host smoke tests for apk/rbuild format compatibility"
 
 ## Task 4: RhapsodiOS project-build integration
 
-Ensure `src/apk-tools-1/Makefile` drives the `apk-tools/` subdir build under the standard flow (`rbuild` → `chroot make install DSTROOT=…`). This is validated on the target; on the host, verify structure by reading `GNUSource.make`.
+Ensure `src/Commands/apk-tools-1/Makefile` drives the `apk-tools/` subdir build under the standard flow (`rbuild` → `chroot make install DSTROOT=…`). This is validated on the target; on the host, verify structure by reading `GNUSource.make`.
 
 **Files:**
-- Modify (or confirm): `src/apk-tools-1/Makefile`
+- Modify (or confirm): `src/Commands/apk-tools-1/Makefile`
 
 **Interfaces:**
 - Consumes: the buildable `apk-tools/` source (Tasks 1–2).
@@ -287,14 +287,14 @@ Ensure `src/apk-tools-1/Makefile` drives the `apk-tools/` subdir build under the
 
 - [ ] **Step 1: Determine whether the existing wrapper reaches the subdir**
 
-The existing `src/apk-tools-1/Makefile` includes `$(MAKEFILEPATH)/CoreOS/ReleaseControl/GNUSource.make` but the actual source (with its Makefile) is one level down in `apk-tools/`. Read `src/CoreOSMakefiles-1/ReleaseControl/GNUSource.make` and determine how it locates the source to build (look for how it picks the directory to run `make`/`configure` in — e.g. a `Sources`/project-dir variable, or whether it builds `$(SRCROOT)` directly).
+The existing `src/Commands/apk-tools-1/Makefile` includes `$(MAKEFILEPATH)/CoreOS/ReleaseControl/GNUSource.make` but the actual source (with its Makefile) is one level down in `apk-tools/`. Read `src/CoreOSMakefiles-1/ReleaseControl/GNUSource.make` and determine how it locates the source to build (look for how it picks the directory to run `make`/`configure` in — e.g. a `Sources`/project-dir variable, or whether it builds `$(SRCROOT)` directly).
 
 Run: `grep -nE "Sources|SRCROOT|OBJROOT|configure|\\$\\(MAKE\\)|cd " src/CoreOSMakefiles-1/ReleaseControl/GNUSource.make | head -40`
 Record in the task report: does GNUSource.make build the project root (which lacks a Makefile with the apk targets) or can it be pointed at `apk-tools/`?
 
 - [ ] **Step 2: Provide a project Makefile that reliably builds the subdir**
 
-If Step 1 shows GNUSource.make does NOT drive `apk-tools/` out of the box, replace `src/apk-tools-1/Makefile` with a thin recursive project Makefile that does not depend on GNUSource.make's source-location magic. Write `src/apk-tools-1/Makefile`:
+If Step 1 shows GNUSource.make does NOT drive `apk-tools/` out of the box, replace `src/Commands/apk-tools-1/Makefile` with a thin recursive project Makefile that does not depend on GNUSource.make's source-location magic. Write `src/Commands/apk-tools-1/Makefile`:
 
 ```make
 # RhapsodiOS project wrapper for apk-tools. The upstream source lives in
@@ -325,13 +325,13 @@ If Step 1 shows the existing GNUSource.make wrapper DOES correctly build `apk-to
 
 `GNUSource.make`/the full `pb_makefiles` env is not installed on the host, so the project `install` cannot run here. Instead verify the recursive wrapper's shape does the right thing by dry-running the subdir mapping:
 
-Run: `cd src/apk-tools-1 && make -n install DSTROOT=/tmp/apk_dst 2>&1 | head`
+Run: `cd src/Commands/apk-tools-1 && make -n install DSTROOT=/tmp/apk_dst 2>&1 | head`
 Expected (for the recursive wrapper): shows `cd apk-tools && ... make install DESTDIR=/tmp/apk_dst`. (If you kept the GNUSource.make wrapper, note that `make -n` needs `MAKEFILEPATH` and is target-only; say so.)
 
 - [ ] **Step 4: Commit**
 
 ```bash
-git add src/apk-tools-1/Makefile
+git add src/Commands/apk-tools-1/Makefile
 git commit -m "apk-tools: RhapsodiOS project Makefile drives the subdir build"
 ```
 
@@ -342,7 +342,7 @@ git commit -m "apk-tools: RhapsodiOS project Makefile drives the subdir build"
 Capture what changed and exactly what the maintainer must verify on Rhapsody, and confirm the whole host build+smoke flow is green from clean.
 
 **Files:**
-- Create: `src/apk-tools-1/PORTING.md`
+- Create: `src/Commands/apk-tools-1/PORTING.md`
 
 **Interfaces:**
 - Consumes: all prior tasks.
@@ -350,7 +350,7 @@ Capture what changed and exactly what the maintainer must verify on Rhapsody, an
 
 - [ ] **Step 1: Write PORTING.md**
 
-Create `src/apk-tools-1/PORTING.md`. Fill the "resolved on host" list from the actual edits made in Tasks 1–2 (including any residual fixes discovered in Task 2 Step 4), and the "target-validation" list from the items flagged during Tasks 2–4:
+Create `src/Commands/apk-tools-1/PORTING.md`. Fill the "resolved on host" list from the actual edits made in Tasks 1–2 (including any residual fixes discovered in Task 2 Step 4), and the "target-validation" list from the items flagged during Tasks 2–4:
 
 ```markdown
 # Porting apk-tools 2.0_pre12 to Rhapsody
@@ -399,14 +399,14 @@ changes made to build it off-Linux and what remains to validate on Rhapsody
 
 Run:
 ```bash
-cd src/apk-tools-1/apk-tools && make clean && make && ./src/apk --version 2>&1 | head -1 && sh tests/smoke.sh | tail -1
+cd src/Commands/apk-tools-1/apk-tools && make clean && make && ./src/apk --version 2>&1 | head -1 && sh tests/smoke.sh | tail -1
 ```
 Expected: builds from clean, `apk` runs, and smoke ends with `SMOKE TESTS PASSED`.
 
 - [ ] **Step 3: Commit**
 
 ```bash
-git add src/apk-tools-1/PORTING.md
+git add src/Commands/apk-tools-1/PORTING.md
 git commit -m "apk-tools: PORTING.md with target-validation checklist"
 ```
 
@@ -428,7 +428,7 @@ git commit -m "apk-tools: PORTING.md with target-validation checklist"
 
 **Placeholder scan:** Task 2 Step 4 and Task 4 Step 2 intentionally allow for emergent, environment-dependent items (residual compiler errors; which integration path GNUSource.make requires) — these are inherent to porting external code on a proxy host, and each is bounded by a concrete rubric (smallest portable fix, matching style, log target-only items) rather than left vague. The `PORTING.md` "list each here" placeholders are fill-in-from-actual-work, not unspecified requirements. No `TBD`/`TODO`/"handle edge cases" left in code steps.
 
-**Consistency:** the build command (`cd src/apk-tools-1/apk-tools && make`), the binary path (`src/apk-tools-1/apk-tools/src/apk`), and the 9 `malloc.h` files are referenced identically across tasks.
+**Consistency:** the build command (`cd src/Commands/apk-tools-1/apk-tools && make`), the binary path (`src/Commands/apk-tools-1/apk-tools/src/apk`), and the 9 `malloc.h` files are referenced identically across tasks.
 
 ## Open items for the implementer
 

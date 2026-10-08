@@ -1,0 +1,13 @@
+{
+    IBClasses = (
+        {
+            ACTIONS = {commandEntered = id; }; 
+            CLASS = CommandPanel; 
+            LANGUAGE = ObjC; 
+            OUTLETS = {commandForm = id; }; 
+            SUPERCLASS = NSObject; 
+        }, 
+        {CLASS = FirstResponder; LANGUAGE = ObjC; SUPERCLASS = NSObject; }
+    ); 
+    IBVersion = 1; 
+}

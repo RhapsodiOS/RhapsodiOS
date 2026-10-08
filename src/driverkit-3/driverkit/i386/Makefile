@@ -36,10 +36,13 @@ SOURCEFILES=	$(PUBLIC_HFILES) $(PRIVATE_HFILES)
 
 INSTFLAGS=-c -m 444
 
+# PCMCIA.h is left to the kernel, which installs the same file there: apk
+# refuses a path two packages both ship.
 install installhdrs install_only: DSTROOT $(DSTROOT)$(PUBLIC_DSTDIR)  \
 		$(DSTROOT)$(LOCAL_DSTDIR)
 	install ${INSTFLAGS} $(PUBLIC_HFILES) $(DSTROOT)$(PUBLIC_DSTDIR)
 	install ${INSTFLAGS} *.h $(DSTROOT)$(LOCAL_DSTDIR)
+	rm -f $(DSTROOT)$(LOCAL_DSTDIR)/PCMCIA.h
 	
 installsrc:	SRCROOT $(SRCROOT)
 	gnutar cf - $(SOURCEFILES) *.m *.c Makefile | (cd $(SRCROOT); gnutar xpf -)

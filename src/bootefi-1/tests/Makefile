@@ -118,7 +118,18 @@ $(BUILD)/efi_error_test: efi_error_test.c ../efi.h | $(BUILD)
 test-efi-error: $(BUILD)/efi_error_test
 	$(BUILD)/efi_error_test
 
+# The 512-byte-sector to media-block arithmetic; sprintf() needs the same
+# UCRT deprecation opt-out as the boot-string test.
+$(BUILD)/efi_sector_test: efi_sector_test.c ../efi_sector.c \
+		../efi_sector.h ../efi.h | $(BUILD)
+	$(CC) $(ACPI_TEST_CFLAGS) -D_CRT_SECURE_NO_WARNINGS -o $@ \
+		efi_sector_test.c ../efi_sector.c
+
+test-sector: $(BUILD)/efi_sector_test
+	$(BUILD)/efi_sector_test
+
 clean:
 	rm -rf $(BUILD)
 
-.PHONY: all clean test-acpi test-splash test-disk-select test-bootargs test-efi-error
+.PHONY: all clean test-acpi test-splash test-disk-select test-bootargs test-efi-error \
+	test-sector

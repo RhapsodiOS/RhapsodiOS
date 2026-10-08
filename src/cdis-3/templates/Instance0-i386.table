@@ -1,0 +1,35 @@
+/*
+ * The system configuration table of an installed RhapsodiOS i386 disk.  The
+ * installer, and the install-media builder, replace every @DISK@ with the
+ * disk's name (hd0, sd0, ...).
+ *
+ * Default.table's keys (src/system_config-1), except:
+ *   Boot Drivers    the IDE and AHCI controllers and the NE2K network card
+ *                   instead of Floppy and ISASerialPort.  NE2K is a boot
+ *                   driver because the booter finds the card by its PCI
+ *                   IDs; as an Active Driver, driverLoader needs its slot
+ *                   in an Instance table.
+ *   Active Drivers  adds BPF, whose /dev/bpf* dhcpcd needs to bring the
+ *                   network up; driverLoader loads it at startup
+ *                   (/etc/startup/0700_Devices), before 0800_Network.
+ *   Kernel Flags    the root is partition a of @DISK@.
+ *   Boot Graphics   off, for a text console.
+ */
+
+/* Version of this File */
+"Version" = "5.00";
+
+/* Drivers to probe at boot time */
+"Boot Drivers" = "EISABus PCIBus PS2Keyboard EIDE AHCI NE2K";
+
+/* Bundles to load/probe later */
+"Active Drivers" = "PS2Mouse BusMouse SerialPointingDevice ParallelPort VGA BPF";
+
+/* Which kernel to load */
+"Kernel" = "mach_kernel";
+
+/* Other kernel flags */
+"Kernel Flags" = "rootdev=@DISK@a";
+"Boot Graphics" = "No";
+"Install Mode" = "No";
+"APM" = "Yes";

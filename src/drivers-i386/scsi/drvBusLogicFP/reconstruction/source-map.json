@@ -1,0 +1,1113 @@
+{
+  "boundary_disputed": [],
+  "duplicate_candidates": [],
+  "mapped": [
+    {
+      "address": 0,
+      "reference_names": [
+        "+[BLFPController probe:]"
+      ],
+      "size": 662,
+      "source_line": 147,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/BusLogicFPSCSI.m"
+    },
+    {
+      "address": 664,
+      "reference_names": [
+        "-[BLFPController initFromDeviceDescription:]"
+      ],
+      "size": 700,
+      "source_line": 203,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/BusLogicFPSCSI.m"
+    },
+    {
+      "address": 1364,
+      "reference_names": [
+        "-[BLFPController maxTransfer]"
+      ],
+      "size": 15,
+      "source_line": 251,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/BusLogicFPSCSI.m"
+    },
+    {
+      "address": 1380,
+      "reference_names": [
+        "-[BLFPController numberOfTargets]"
+      ],
+      "size": 17,
+      "source_line": 256,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/BusLogicFPSCSI.m"
+    },
+    {
+      "address": 1400,
+      "reference_names": [
+        "-[BLFPController free]"
+      ],
+      "size": 152,
+      "source_line": 388,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/BusLogicFPSCSI.m"
+    },
+    {
+      "address": 1552,
+      "reference_names": [
+        "-[BLFPController numQueueSamples]"
+      ],
+      "size": 16,
+      "source_line": 261,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/BusLogicFPSCSI.m"
+    },
+    {
+      "address": 1568,
+      "reference_names": [
+        "-[BLFPController sumQueueLengths]"
+      ],
+      "size": 16,
+      "source_line": 266,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/BusLogicFPSCSI.m"
+    },
+    {
+      "address": 1584,
+      "reference_names": [
+        "-[BLFPController maxQueueLength]"
+      ],
+      "size": 16,
+      "source_line": 271,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/BusLogicFPSCSI.m"
+    },
+    {
+      "address": 1600,
+      "reference_names": [
+        "-[BLFPController resetStats]"
+      ],
+      "size": 40,
+      "source_line": 276,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/BusLogicFPSCSI.m"
+    },
+    {
+      "address": 1640,
+      "reference_names": [
+        "-[BLFPController executeRequest:buffer:client:]"
+      ],
+      "size": 75,
+      "source_line": 283,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/BusLogicFPSCSI.m"
+    },
+    {
+      "address": 1716,
+      "reference_names": [
+        "-[BLFPController resetSCSIBus]"
+      ],
+      "size": 55,
+      "source_line": 295,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/BusLogicFPSCSI.m"
+    },
+    {
+      "address": 1772,
+      "reference_names": [
+        "-[BLFPController interruptOccurred]"
+      ],
+      "size": 70,
+      "source_line": 304,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/BusLogicFPSCSI.m"
+    },
+    {
+      "address": 1844,
+      "reference_names": [
+        "-[BLFPController interruptOccurredAt:]"
+      ],
+      "size": 41,
+      "source_line": 312,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/BusLogicFPSCSI.m"
+    },
+    {
+      "address": 1888,
+      "reference_names": [
+        "-[BLFPController otherOccurred:]"
+      ],
+      "size": 41,
+      "source_line": 317,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/BusLogicFPSCSI.m"
+    },
+    {
+      "address": 1932,
+      "reference_names": [
+        "-[BLFPController receiveMsg]"
+      ],
+      "size": 69,
+      "source_line": 322,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/BusLogicFPSCSI.m"
+    },
+    {
+      "address": 2004,
+      "reference_names": [
+        "-[BLFPController timeoutOccurred]"
+      ],
+      "size": 275,
+      "source_line": 726,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/BusLogicFPSCSI.m"
+    },
+    {
+      "address": 2280,
+      "reference_names": [
+        "-[BLFPController commandRequestOccurred]"
+      ],
+      "size": 285,
+      "source_line": 792,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/BusLogicFPSCSI.m"
+    },
+    {
+      "address": 2568,
+      "reference_names": [
+        "-[BLFPController probeForBoard]"
+      ],
+      "size": 527,
+      "source_line": 341,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/BusLogicFPSCSI.m"
+    },
+    {
+      "address": 3096,
+      "reference_names": [
+        "-[BLFPController executeCmdBuf:]"
+      ],
+      "size": 303,
+      "source_line": 548,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/BusLogicFPSCSI.m"
+    },
+    {
+      "address": 3400,
+      "reference_names": [
+        "_parseConfigSpace"
+      ],
+      "size": 434,
+      "source_line": 68,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/BusLogicFPSCSI.m"
+    },
+    {
+      "address": 3836,
+      "reference_names": [
+        "-[BLFPController threadExecuteRequest:]"
+      ],
+      "size": 255,
+      "source_line": 585,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/BusLogicFPSCSI.m"
+    },
+    {
+      "address": 4092,
+      "reference_names": [
+        "-[BLFPController threadResetBus:]"
+      ],
+      "size": 196,
+      "source_line": 764,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/BusLogicFPSCSI.m"
+    },
+    {
+      "address": 4288,
+      "reference_names": [
+        "-[BLFPController sccbFromCmd:]"
+      ],
+      "size": 807,
+      "source_line": 617,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/BusLogicFPSCSI.m"
+    },
+    {
+      "address": 5096,
+      "reference_names": [
+        "-[BLFPController sccbComplete:reason:]"
+      ],
+      "size": 668,
+      "source_line": 484,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/BusLogicFPSCSI.m"
+    },
+    {
+      "address": 5764,
+      "reference_names": [
+        "-[BLFPController cmdComplete:]"
+      ],
+      "size": 126,
+      "source_line": 463,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/BusLogicFPSCSI.m"
+    },
+    {
+      "address": 5892,
+      "reference_names": [
+        "-[BLFPController allocSccb]"
+      ],
+      "size": 108,
+      "source_line": 403,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/BusLogicFPSCSI.m"
+    },
+    {
+      "address": 6000,
+      "reference_names": [
+        "-[BLFPController freeSccb:]"
+      ],
+      "size": 75,
+      "source_line": 423,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/BusLogicFPSCSI.m"
+    },
+    {
+      "address": 6076,
+      "reference_names": [
+        "-[BLFPController createSCCBs]"
+      ],
+      "size": 163,
+      "source_line": 438,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/BusLogicFPSCSI.m"
+    },
+    {
+      "address": 6240,
+      "reference_names": [
+        "-[BLFPController resetHardware]"
+      ],
+      "size": 82,
+      "source_line": 328,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/BusLogicFPSCSI.m"
+    },
+    {
+      "address": 6324,
+      "reference_names": [
+        "_blcTimeout"
+      ],
+      "size": 95,
+      "source_line": 123,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/BusLogicFPSCSI.m"
+    },
+    {
+      "address": 6420,
+      "reference_names": [
+        "_doesCrossPage"
+      ],
+      "size": 38,
+      "source_line": 647,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 6460,
+      "reference_names": [
+        "_BLCCallback"
+      ],
+      "size": 32,
+      "source_line": 138,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/BusLogicFPSCSI.m"
+    },
+    {
+      "address": 6492,
+      "reference_names": [
+        "_autoLoadDefaultMap"
+      ],
+      "size": 822,
+      "source_line": 2030,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 7316,
+      "reference_names": [
+        "_autoCmdCmplt"
+      ],
+      "size": 524,
+      "source_line": 2854,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 7840,
+      "reference_names": [
+        "_dataXferProcessor"
+      ],
+      "size": 73,
+      "source_line": 915,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 7916,
+      "reference_names": [
+        "_busMstrSGDataXferStart"
+      ],
+      "size": 429,
+      "source_line": 1902,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 8348,
+      "reference_names": [
+        "_busMstrDataXferStart"
+      ],
+      "size": 223,
+      "source_line": 1874,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 8572,
+      "reference_names": [
+        "_busMstrTimeOut"
+      ],
+      "size": 155,
+      "source_line": 1954,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 8728,
+      "reference_names": [
+        "_hostDataXferAbort"
+      ],
+      "size": 891,
+      "source_line": 2112,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 9620,
+      "reference_names": [
+        "_hostDataXferRestart"
+      ],
+      "size": 90,
+      "source_line": 1974,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 9712,
+      "reference_names": [
+        "_XbowInit"
+      ],
+      "size": 194,
+      "source_line": 1995,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 9908,
+      "reference_names": [
+        "_BusMasterInit"
+      ],
+      "size": 113,
+      "source_line": 2016,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 10024,
+      "reference_names": [
+        "_OS_InPortByte"
+      ],
+      "size": 17,
+      "source_line": 96,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 10044,
+      "reference_names": [
+        "_OS_InPortWord"
+      ],
+      "size": 18,
+      "source_line": 97,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 10064,
+      "reference_names": [
+        "_OS_InPortLong"
+      ],
+      "size": 12,
+      "source_line": 98,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 10076,
+      "reference_names": [
+        "_OS_OutPortByte"
+      ],
+      "size": 24,
+      "source_line": 100,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 10100,
+      "reference_names": [
+        "_OS_OutPortWord"
+      ],
+      "size": 26,
+      "source_line": 107,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 10128,
+      "reference_names": [
+        "_OS_OutPortLong"
+      ],
+      "size": 24,
+      "source_line": 114,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 10152,
+      "reference_names": [
+        "_OS_start_timer"
+      ],
+      "size": 7,
+      "source_line": 121,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 10160,
+      "reference_names": [
+        "_OS_stop_timer"
+      ],
+      "size": 7,
+      "source_line": 122,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 10168,
+      "reference_names": [
+        "_OS_Lock"
+      ],
+      "size": 7,
+      "source_line": 123,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 10176,
+      "reference_names": [
+        "_OS_UnLock"
+      ],
+      "size": 7,
+      "source_line": 124,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 10184,
+      "reference_names": [
+        "_phaseDecode"
+      ],
+      "size": 72,
+      "source_line": 937,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 10256,
+      "reference_names": [
+        "_phaseDataOut"
+      ],
+      "size": 190,
+      "source_line": 2236,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 10448,
+      "reference_names": [
+        "_phaseDataIn"
+      ],
+      "size": 194,
+      "source_line": 2263,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 10644,
+      "reference_names": [
+        "_phaseCommand"
+      ],
+      "size": 228,
+      "source_line": 2291,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 10872,
+      "reference_names": [
+        "_phaseStatus"
+      ],
+      "size": 21,
+      "source_line": 1403,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 10896,
+      "reference_names": [
+        "_phaseMsgOut"
+      ],
+      "size": 600,
+      "source_line": 2419,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 11496,
+      "reference_names": [
+        "_phaseMsgIn"
+      ],
+      "size": 128,
+      "source_line": 2469,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 11624,
+      "reference_names": [
+        "_phaseIllegal"
+      ],
+      "size": 102,
+      "source_line": 2319,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 11728,
+      "reference_names": [
+        "_phaseChkFifo"
+      ],
+      "size": 405,
+      "source_line": 2334,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 12136,
+      "reference_names": [
+        "_phaseBusFree"
+      ],
+      "size": 501,
+      "source_line": 2374,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 12640,
+      "reference_names": [
+        "_ScamInit"
+      ],
+      "size": 481,
+      "source_line": 1344,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 13124,
+      "reference_names": [
+        "_ScamArbitration"
+      ],
+      "size": 321,
+      "source_line": 1128,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 13448,
+      "reference_names": [
+        "_ScamBusFree"
+      ],
+      "size": 167,
+      "source_line": 1168,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 13616,
+      "reference_names": [
+        "_ScamAssignID"
+      ],
+      "size": 224,
+      "source_line": 1224,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 13840,
+      "reference_names": [
+        "_ScamSelect"
+      ],
+      "size": 148,
+      "source_line": 1187,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 13988,
+      "reference_names": [
+        "_ScamXferCycle"
+      ],
+      "size": 199,
+      "source_line": 1205,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 14188,
+      "reference_names": [
+        "_ScamSendIsolate"
+      ],
+      "size": 159,
+      "source_line": 993,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 14348,
+      "reference_names": [
+        "_ScamIsolate"
+      ],
+      "size": 114,
+      "source_line": 1021,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 14464,
+      "reference_names": [
+        "_ScamWireOrData"
+      ],
+      "size": 60,
+      "source_line": 946,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 14524,
+      "reference_names": [
+        "_ScamWireOrSig"
+      ],
+      "size": 60,
+      "source_line": 960,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 14584,
+      "reference_names": [
+        "_ScamValidQ"
+      ],
+      "size": 42,
+      "source_line": 974,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 14628,
+      "reference_names": [
+        "_ScamSelLegacy"
+      ],
+      "size": 566,
+      "source_line": 1264,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 15196,
+      "reference_names": [
+        "_ScamWaitSelection"
+      ],
+      "size": 32,
+      "source_line": 984,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 15228,
+      "reference_names": [
+        "_initScamInfo"
+      ],
+      "size": 293,
+      "source_line": 1044,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 15524,
+      "reference_names": [
+        "_scamMatchId"
+      ],
+      "size": 606,
+      "source_line": 1070,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 16132,
+      "reference_names": [
+        "_scamSaveDeviceInfo"
+      ],
+      "size": 266,
+      "source_line": 1318,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 16400,
+      "reference_names": [
+        "_SccbMgr_sense_adapter"
+      ],
+      "size": 796,
+      "source_line": 1624,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 17196,
+      "reference_names": [
+        "_SccbMgr_config_adapter"
+      ],
+      "size": 883,
+      "source_line": 1717,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 18080,
+      "reference_names": [
+        "_SccbMgr_start_sccb"
+      ],
+      "size": 427,
+      "source_line": 304,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 18508,
+      "reference_names": [
+        "_SccbMgr_abort_sccb"
+      ],
+      "size": 234,
+      "source_line": 347,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 18744,
+      "reference_names": [
+        "_SccbMgr_my_int"
+      ],
+      "size": 37,
+      "source_line": 653,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 18784,
+      "reference_names": [
+        "_SccbMgr_isr"
+      ],
+      "size": 1318,
+      "source_line": 445,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 20104,
+      "reference_names": [
+        "_SccbMgr_bad_isr"
+      ],
+      "size": 625,
+      "source_line": 382,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 20732,
+      "reference_names": [
+        "_SccbMgr_scsi_reset"
+      ],
+      "size": 184,
+      "source_line": 1814,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 20916,
+      "reference_names": [
+        "_SccbMgr_timer_expired"
+      ],
+      "size": 7,
+      "source_line": 1408,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 20924,
+      "reference_names": [
+        "_SccbMgrTableInitAll"
+      ],
+      "size": 90,
+      "source_line": 698,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 21016,
+      "reference_names": [
+        "_SccbMgrTableInitCard"
+      ],
+      "size": 121,
+      "source_line": 681,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 21140,
+      "reference_names": [
+        "_SccbMgrTableInitTarget"
+      ],
+      "size": 132,
+      "source_line": 658,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 21272,
+      "reference_names": [
+        "_scsiFetchMsg"
+      ],
+      "size": 198,
+      "source_line": 885,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 21472,
+      "reference_names": [
+        "_scsiSelect"
+      ],
+      "size": 1147,
+      "source_line": 1502,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 22620,
+      "reference_names": [
+        "_scsiReselection"
+      ],
+      "size": 720,
+      "source_line": 1412,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 23340,
+      "reference_names": [
+        "_scsiDecodeMsg"
+      ],
+      "size": 759,
+      "source_line": 2521,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 24100,
+      "reference_names": [
+        "_scsiHandleExtMsg"
+      ],
+      "size": 305,
+      "source_line": 2484,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 24408,
+      "reference_names": [
+        "_scsiInitSyncNego"
+      ],
+      "size": 366,
+      "source_line": 2679,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 24776,
+      "reference_names": [
+        "_scsiTargSyncNego"
+      ],
+      "size": 446,
+      "source_line": 2707,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 25224,
+      "reference_names": [
+        "_scsiInitSyncRespond"
+      ],
+      "size": 270,
+      "source_line": 2757,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 25496,
+      "reference_names": [
+        "_scsiInitWideNego"
+      ],
+      "size": 291,
+      "source_line": 2779,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 25788,
+      "reference_names": [
+        "_scsiTargWideNego"
+      ],
+      "size": 253,
+      "source_line": 2801,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 26044,
+      "reference_names": [
+        "_scsiInitWideRespond"
+      ],
+      "size": 242,
+      "source_line": 2833,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 26288,
+      "reference_names": [
+        "_scsiSetSyncValue"
+      ],
+      "size": 194,
+      "source_line": 873,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 26484,
+      "reference_names": [
+        "_scsiResetBus"
+      ],
+      "size": 424,
+      "source_line": 1834,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 26908,
+      "reference_names": [
+        "_scsiSenseSetup"
+      ],
+      "size": 110,
+      "source_line": 845,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 27020,
+      "reference_names": [
+        "_scsiXferPad"
+      ],
+      "size": 543,
+      "source_line": 2051,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 27564,
+      "reference_names": [
+        "_scsiChkDmaDone"
+      ],
+      "size": 485,
+      "source_line": 2610,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 28052,
+      "reference_names": [
+        "_scsiInitSCCB"
+      ],
+      "size": 242,
+      "source_line": 714,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 28296,
+      "reference_names": [
+        "_queueSearchSelect"
+      ],
+      "size": 180,
+      "source_line": 131,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 28476,
+      "reference_names": [
+        "_queueSelectFail"
+      ],
+      "size": 137,
+      "source_line": 162,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 28616,
+      "reference_names": [
+        "_queueCmdComplete"
+      ],
+      "size": 248,
+      "source_line": 184,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 28864,
+      "reference_names": [
+        "_queueDisconnect"
+      ],
+      "size": 125,
+      "source_line": 230,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 28992,
+      "reference_names": [
+        "_queueFlushSccb"
+      ],
+      "size": 169,
+      "source_line": 240,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 29164,
+      "reference_names": [
+        "_queueAddSccb"
+      ],
+      "size": 110,
+      "source_line": 263,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 29276,
+      "reference_names": [
+        "_queueFindSccb"
+      ],
+      "size": 158,
+      "source_line": 280,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 29436,
+      "reference_names": [
+        "_utilUpdateResidual"
+      ],
+      "size": 92,
+      "source_line": 582,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 29528,
+      "reference_names": [
+        "_Wait1Second"
+      ],
+      "size": 71,
+      "source_line": 630,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 29600,
+      "reference_names": [
+        "_Wait"
+      ],
+      "size": 224,
+      "source_line": 607,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 29824,
+      "reference_names": [
+        "_utilEEWriteOnOff"
+      ],
+      "size": 97,
+      "source_line": 786,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 29924,
+      "reference_names": [
+        "_utilEEWrite"
+      ],
+      "size": 231,
+      "source_line": 794,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 30156,
+      "reference_names": [
+        "_utilEERead"
+      ],
+      "size": 187,
+      "source_line": 821,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    },
+    {
+      "address": 30344,
+      "reference_names": [
+        "_utilEESendCmdAddr"
+      ],
+      "size": 248,
+      "source_line": 754,
+      "source_path": "src/drivers-i386/scsi/drvBusLogicFP/BusLogicFP.drvproj/BusLogicFP.lksproj/FlashPoint.c"
+    }
+  ],
+  "reference_sha256": "C86447845EE31FE61DBD91037DFCFAAF0AD65B994463539C8370AEAA9E960C0E",
+  "schema_version": "source-map-v1",
+  "unmapped": [
+    {
+      "address": 30592,
+      "reference_names": [
+        "+[BusLogicFPSCSIKernelServerInstance kernelServerInstance]"
+      ],
+      "size": 12
+    },
+    {
+      "address": 30604,
+      "reference_names": [
+        "+[BusLogicFPSCSIVersion driverKitVersionForBusLogicFPSCSI]"
+      ],
+      "size": 12
+    }
+  ]
+}

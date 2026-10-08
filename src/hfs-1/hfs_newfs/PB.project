@@ -10,7 +10,7 @@
             "$(NEXT_ROOT)/System/Library/Frameworks/System.framework/PrivateHeaders/bsd/hfs/hfscommon/headers", 
             "$(NEXT_ROOT)/System/Library/Frameworks/System.framework/PrivateHeaders/bsd/hfs/hfscommon/headers/system"
         ); 
-        H_FILES = (newfs_hfs.h); 
+        H_FILES = (newfs_hfs.h, hfs_endian.h); 
         M_FILES = (); 
         OTHER_LINKED = (HFSVolumeInit.c, newfs_hfs.c); 
         OTHER_SOURCES = (Makefile.preamble, Makefile, Makefile.postamble); 

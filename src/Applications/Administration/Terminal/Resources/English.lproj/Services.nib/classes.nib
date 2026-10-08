@@ -1,0 +1,55 @@
+{
+    IBClasses = (
+        {CLASS = FirstResponder; LANGUAGE = ObjC; SUPERCLASS = NSObject; }, 
+        {
+            ACTIONS = {
+                addNewTermService = id; 
+                loadServiceSet = id; 
+                removeServiceAt = id; 
+                saveService = id; 
+                serviceSet = id; 
+                serviceSetChanged = id; 
+            }; 
+            CLASS = ServiceCache; 
+            LANGUAGE = ObjC; 
+            SUPERCLASS = Object; 
+        }, 
+        {
+            ACTIONS = {
+                add = id; 
+                change = id; 
+                execTypeChanged = id; 
+                makeDirty = id; 
+                polymorphicOptsChanged = id; 
+                remove = id; 
+                save = id; 
+                serviceSelected = id; 
+                windowShouldClose = id; 
+            }; 
+            CLASS = ServiceManager; 
+            LANGUAGE = ObjC; 
+            OUTLETS = {
+                addButton = id; 
+                changeButton = id; 
+                commandForm = id; 
+                execTypePopUp = id; 
+                keyForm = id; 
+                polymorphicOpts = id; 
+                removeButton = id; 
+                saveAccessory = id; 
+                saveButton = id; 
+                saveMatrix = id; 
+                saveScrollView = id; 
+                selOpts = id; 
+                selTypes = id; 
+                shellOpts = id; 
+                svcMatrix = id; 
+                svcScrollView = id; 
+                window = id; 
+            }; 
+            SUPERCLASS = Object; 
+        }, 
+        {CLASS = TabularCell; LANGUAGE = ObjC; SUPERCLASS = NSButtonCell; }
+    ); 
+    IBVersion = 1; 
+}

@@ -120,6 +120,7 @@
 
 #include	"hfs.h"
 #include	"hfs_dbg.h"
+#include	"hfs_endian.h"
 #include	"hfscommon/headers/FileMgrInternal.h"
 #include	"hfscommon/headers/CatalogPrivate.h"
 
@@ -1174,6 +1175,27 @@ struct vop_strategy_args /* {
 		DBG_ASSERT(bp->b_dirtyoff == 0);
 	};
 	
+#if BYTE_ORDER == LITTLE_ENDIAN
+    /*
+     * Put B-tree nodes back in disk order on their way out.  Every write of
+     * a B-tree buffer comes through here, whether bwrite, bawrite, a delayed
+     * write or blkflush started it; the buffer stays busy until the I/O is
+     * done, and the next GetBTreeBlock swaps it back to host order.
+     */
+    if (!(bp->b_flags & B_READ) &&
+        (H_FILEID(hp) == kHFSExtentsFileID || H_FILEID(hp) == kHFSCatalogFileID)) {
+        retval = hfs_btnode_to_disk(bp, VTOFCB(vp),
+                                    VTOVCB(vp)->vcbSigWord == kHFSPlusSigWord, H_FILEID(hp));
+        if (retval) {
+            printf("hfs: not writing B-tree %lu block %ld: it is not a valid node\n",
+                   (u_long)H_FILEID(hp), (long)bp->b_lblkno);
+            bp->b_error = retval;
+            bp->b_flags |= B_ERROR;
+            biodone(bp);
+            return (retval);
+        }
+    }
+#endif
     vp = hp->h_devvp;
     bp->b_dev = vp->v_rdev;
     DBG_VOP(("\t\t>>>%s: continuing w/ vp: 0x%x with logBlk Ox%X and phyBlk Ox%X\n", funcname, (u_int)vp, bp->b_lblkno, bp->b_blkno));

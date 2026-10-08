@@ -2,7 +2,7 @@
 "Family" = "Display";
 "Location" = "";
 "Instance" = "0";
-"Version" = "3.37";
+"Version" = "5.01";
 "Driver Name" = "ATI";
 "DMA Channels" = "";
 "IRQ Levels" = "";
@@ -15,5 +15,4 @@
 "Frame Buffer Mapping" = "Default";
 "RAMDAC Style" = "Default";
 "Bus Type" = "EISA";
-
-"Driver Version" = "PROGRAM:ATIMach64DisplayDriver PROJECT:drvATIMach64-18 DEVELOPER:root BUILT:NO DATE SET (-B used)";
+"Help File" = "ATIMach64_VL_4MB.rtfd";

@@ -581,7 +581,7 @@ table — they are plain C functions named `_moveString`,
 
 **The compiler-defined-macro check.** Three of these five bit-field
 functions turn on `#if __BIG_ENDIAN__` / `#if __NATURAL_ALIGNMENT__` pairs in
-`scsireg.h`. `src/cc-1/cc/config/rs6000/apple.h:135-141` defines three
+`scsireg.h`. `src/Developer/Commands/cc-1/cc/config/rs6000/apple.h:135-141` defines three
 branches of `CPP_PREDEFINES`: the `MAC_OS_X_SERVER_1_0` branch predefines
 `-DNATURAL_ALIGNMENT` (no underscores), while the `MAC_OS_X` and default
 branches predefine `-D__NATURAL_ALIGNMENT__` (double underscores). The
@@ -636,7 +636,7 @@ same reconstruction shape as the `__LITTLE_ENDIAN__` branch of our own source
 ways depending on `__NATURAL_ALIGNMENT__`: a 3-element `u_char c6s_len[3]`
 array (offsets 2/3/4) when it's defined, or a packed 24-bit `u_int
 c6s_len:24` bitfield sharing a word with `c6s_ctrl:8` when it isn't.
-`src/cc-1/cc/config/rs6000/apple.h:137` and `src/cc-791/.../apple.h:137`
+`src/Developer/Commands/cc-1/cc/config/rs6000/apple.h:137` and `src/Developer/Commands/cc-791/.../apple.h:137`
 confirm `__NATURAL_ALIGNMENT__` is unconditionally predefined for ppc, so the
 array form is what a real build uses — and `assign_cdb_c6s_len`'s own
 `__NATURAL_ALIGNMENT__`-guarded three-`stb` body (`SCSITape.m:1131-1133`)

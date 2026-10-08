@@ -76,6 +76,11 @@
 */
 
 #include "../headers/BTreesPrivate.h"
+#include "../../hfs_endian.h"
+
+/* Node-map words stay big-endian in memory; each is swapped where it is used. */
+#define		M_SWAP_BE16_ClearBitNum(integer,bitNumber)	((integer) &= SWAP_BE16(~(1<<(bitNumber))))
+#define		M_SWAP_BE16_SetBitNum(integer,bitNumber)	((integer) |= SWAP_BE16(1<<(bitNumber)))
 
 ///////////////////// Routines Internal To BTreeAllocate.c //////////////////////
 
@@ -155,7 +160,7 @@ OSStatus	AllocateNode (BTreeControlBlockPtr		btreePtr, UInt32	*nodeNum)
 	
 	///////////////////////// Find Free Bit in Word /////////////////////////////
 
-	freeWord	= *pos;
+	freeWord	= SWAP_BE16 (*pos);
 	bitOffset	=  15;
 	mask		=  0x8000;
 	
@@ -180,7 +185,7 @@ OSStatus	AllocateNode (BTreeControlBlockPtr		btreePtr, UInt32	*nodeNum)
 
 	/////////////////////////// Allocate the Node ///////////////////////////////
 
-	*pos |= mask;						// set the map bit for the node
+	*pos |= SWAP_BE16 (mask);						// set the map bit for the node
 
 	err = UpdateNode (btreePtr, &node);
 	M_ExitOnError (err);
@@ -248,7 +253,7 @@ OSStatus	FreeNode (BTreeControlBlockPtr		btreePtr, UInt32	nodeNum)
 	nodeNum -= (nodeIndex - (mapSize << 3));			// relative to this map record
 	bitOffset = 15 - (nodeNum & 0x0000000F);			// last 4 bits are bit offset
 	mapPos += nodeNum >> 4;								// point to word containing map bit
-	M_ClearBitNum (*mapPos, bitOffset);					// clear it
+	M_SWAP_BE16_ClearBitNum (*mapPos, bitOffset);					// clear it
 	
 	err = UpdateNode (btreePtr, &node);
 	M_ExitOnError (err);
@@ -453,7 +458,7 @@ OSStatus	ExtendBTree	(BTreeControlBlockPtr	btreePtr,
 
 		mapPos		= mapStart + ((nodeNum - recStartBit) >> 4);
 		bitInWord	= 15 - ((nodeNum - recStartBit) & 0x0000000F);
-		M_SetBitNum (*mapPos, bitInWord);
+		M_SWAP_BE16_SetBitNum (*mapPos, bitInWord);
 		
 		++nodeNum;
 		

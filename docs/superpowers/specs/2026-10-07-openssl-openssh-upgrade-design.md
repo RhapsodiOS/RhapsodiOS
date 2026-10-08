@@ -231,9 +231,11 @@ OpenSSL:
 - `make test` passes on the i386 build.
 - `lipo -info` shows i386 and ppc in `libcrypto.0.9.8.dylib`,
   `libssl.0.9.8.dylib` and `openssl`.
-- On the guest, `openssl s_client -CAfile /System/Library/OpenSSL/cert.pem`
-  verifies a connection to an `openssl s_server -tls1` on the Windows host
-  whose chain is SHA-256-signed by a test CA.
+- On the guest, `openssl s_client` with a CAfile made of
+  `/System/Library/OpenSSL/cert.pem` plus a test CA verifies a connection to
+  an `openssl s_server -tls1` on the Windows host whose chain is
+  SHA-256-signed by that test CA. This shows 0.9.8zh both parses the
+  shipped bundle and verifies SHA-256 signatures.
 - The ppc slice is built and inspected but not run: there is no ppc runtime
   box. The results say so.
 

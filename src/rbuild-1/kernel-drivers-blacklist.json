@@ -5,7 +5,6 @@
     "drvSCSIServer",
     "drvSCSITape",
     "drivers-i386/bus/Intel82365PCMCIA",
-    "drivers-i386/bus/drvPCMCIABus",
     "drivers-i386/ide/drvPCFloppy",
     "drivers-i386/input/drvBusMouse",
     "drivers-i386/input/drvISASerialPort",

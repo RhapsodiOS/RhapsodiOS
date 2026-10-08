@@ -34,8 +34,8 @@ Layout
       PnPDump.tproj/          the PnP dump tool EISABus.config shipped
 
 The bus sources are copies of the three original drivers with only the
-changes the merge needed (below).  The originals stay in the tree until the
-kernel-linked buses have been boot-tested; then they can go.  Do not install
+changes the merge needed (below). The standalone projects were removed after
+native builds and QEMU verification of the kernel-linked buses. Do not install
 their bundles alongside a kernel that carries this object: a loaded
 EISABus_reloc would register a second EISAKernBus class.
 

@@ -79,6 +79,9 @@ class TestTemplates(unittest.TestCase):
         self.assertEqual(table_value(network, b"Boot Drivers"), b"PS2Keyboard")
         detector = read(SRC, "driverkit-3", "driverDetect", "driverDetect.c")
         self.assertRegex(detector, rb'#define BASE_BOOT\s+"PS2Keyboard"')
+        packages = read(PROJECT, "sets", "base.set").splitlines()
+        self.assertNotIn(b"drveisabus", packages)
+        self.assertNotIn(b"drvpcibus", packages)
 
     def test_ppc_instance0_is_mac_os_x_servers_table(self):
         ours = read(TEMPLATES, "Instance0-ppc.table")

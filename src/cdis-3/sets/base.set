@@ -24,9 +24,7 @@ drivertools
 drvPS2Keyboard
 drvahci
 drveide
-drveisabus
 drvisaserialinput
-drvpcibus
 file-cmds
 flex
 gawk

@@ -51,7 +51,7 @@ RC_CDROM = "/private/etc/rc.cdrom"
 RC_CDROM_INERT = RC_CDROM + ".hidden"
 MEDIA_DISK = "hd1"
 # The media boots on drivers any PC has; sysinstall probes the rest.
-MEDIA_BOOT_DRIVERS = "EISABus PCIBus PS2Keyboard EIDE AHCI ISASerialPort"
+MEDIA_BOOT_DRIVERS = "PS2Keyboard EIDE AHCI ISASerialPort"
 MEDIA_ACTIVE_DRIVERS = "VGA"
 INSTALLED_DISK = "hd0"
 # The CD form roots on the CD wherever the BIOS puts it.

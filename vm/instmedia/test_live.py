@@ -7,7 +7,7 @@ from instmedia import apkrepo, live, rootfs, testapks as ta
 
 PASSWD = (b"##\n# comment\n##\nnobody:*:-2:-2::0:0:Unprivileged:/:/dev/null\n"
           b"root:*:0:0::0:0:System Administrator:/:/bin/tcsh\n")
-TABLE = (b'"Boot Drivers" = "EISABus PCIBus PS2Keyboard EIDE AHCI NE2K";\n'
+TABLE = (b'"Boot Drivers" = "PS2Keyboard EIDE AHCI NE2K";\n'
          b'"Active Drivers" = "VGA";\n'
          b'"Kernel Flags" = "rootdev=@DISK@a";\n')
 FSTAB = b"/dev/@DISK@a\t/\tufs\trw\t1 1\n"
@@ -121,7 +121,7 @@ class TestCompose(unittest.TestCase):
         self.assertEqual(self.live[live.RC_CDROM_INERT].data, RC_CDROM)
         self.assertEqual(
             self.live[live.SYSTEM_TABLE].data,
-            b'"Boot Drivers" = "EISABus PCIBus PS2Keyboard EIDE AHCI '
+            b'"Boot Drivers" = "PS2Keyboard EIDE AHCI '
             b'ISASerialPort";\n"Active Drivers" = "VGA";\n'
             b'"Kernel Flags" = "rootdev=hd1a";\n')
         self.assertEqual(self.live["/private/var/tmp/mnta"].kind, "dir")

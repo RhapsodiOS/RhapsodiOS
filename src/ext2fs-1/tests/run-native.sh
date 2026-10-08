@@ -2,6 +2,33 @@
 # Run from the directory containing mount_ext2fs and ext2_io.
 set -e
 case "$1" in
+discovery)
+    test "$#" = 2
+    label="$2"
+    ./discovery-native ext2fs 1 "$label"
+    ./discovery-media save /dev/rhd1a saved-super
+    ./discovery-media dirty /dev/rhd1a saved-super
+    /bin/sh ./checksum-partition.sh /dev/rhd1a 16384 before-crc
+    ./discovery-native ext2fs 0 "$label"
+    /bin/sh ./checksum-partition.sh /dev/rhd1a 16384 after-crc
+    cmp before-crc after-crc
+    ./discovery-media unsupported /dev/rhd1a saved-super
+    /bin/sh ./checksum-partition.sh /dev/rhd1a 16384 before-crc
+    ./discovery-native none skip "$label"
+    /bin/sh ./checksum-partition.sh /dev/rhd1a 16384 after-crc
+    cmp before-crc after-crc
+    ./discovery-media malformed /dev/rhd1a saved-super
+    /bin/sh ./checksum-partition.sh /dev/rhd1a 16384 before-crc
+    ./discovery-native none skip "$label"
+    /bin/sh ./checksum-partition.sh /dev/rhd1a 16384 after-crc
+    cmp before-crc after-crc
+    ./discovery-media restore /dev/rhd1a saved-super
+    mv /usr/filesystems/ext2fs.fs/ext2fs.util /usr/filesystems/ext2fs.fs/ext2fs.util.saved
+    ./discovery-native none skip "$label"
+    mv /usr/filesystems/ext2fs.fs/ext2fs.util.saved /usr/filesystems/ext2fs.fs/ext2fs.util
+    ./discovery-native ext2fs 1 "$label"
+    echo "EXT2_OK discovery"
+    ;;
 persistence-write-suite)
     test "$#" = 2
     ./mount_ext2fs /dev/hd1a "$2"

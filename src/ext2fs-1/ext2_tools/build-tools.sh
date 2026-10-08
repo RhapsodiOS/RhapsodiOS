@@ -7,6 +7,8 @@ destination=$3
 archs=$4
 test -n "$source" && test -n "$objects" && test -n "$destination"
 source=`cd "$source" && pwd`
+# Ordered patches also update configure.in; retain the matching generated script.
+touch -r "$source/configure.in" "$source/configure"
 mkdir -p "$objects" "$destination"
 objects=`cd "$objects" && pwd`
 destination=`cd "$destination" && pwd`

@@ -2,8 +2,12 @@
 
 The aggregate preserves the local mount Tool and builds e2fsprogs 1.35 with
 private static support libraries. `apk/vendor` extracts the pristine release
-and applies ordered patches before the Project Builder build. World-manifest
-integration is deferred to the filesystem-discovery milestone.
+and applies ordered patches before the Project Builder build. `src/Manifest`
+includes `ext2fs-1 all`; the Rhapsody package version is 1.0 and its upstream
+e2fsprogs version remains 1.35. The universal package uses `build-base`, which
+already includes the required exported kernel headers. It has no kernel runtime
+dependency, so formatting and checking regular images works without ext2fs
+being enabled in the running kernel.
 
 `ext2_tools/build-tools.sh SOURCE OBJECTS DSTROOT "RC_ARCHS"` uses a native
 Rhapsody build machine, isolated per-CPU configure caches and staging roots,
@@ -12,6 +16,12 @@ generator uses the actual build CPU. Target configure executables are never
 run; verified 32-bit ABI sizes and endianness are supplied separately per CPU.
 Each invocation replaces its private objects before building, and merges the
 five installed programs only after every requested thin build succeeds.
+The wrapper matches the patched generated `configure` timestamp to
+`configure.in` before configuration, so patching across a filesystem timestamp
+boundary does not request an unneeded autoconf regeneration. Their contents
+remain the pinned release plus ordered patches. `make -C tests
+check-configure-order VENDOR_SOURCE=/absolute/patched/vendor` exercises the
+actual wrapper and the vendor make dependency without compiling the vendor.
 
 Installed tools are `/sbin/{mke2fs,e2fsck,dumpe2fs,debugfs,tune2fs}`, their five
 section-8 manuals, and the upstream/license notices under
@@ -61,6 +71,24 @@ umount. `-r` explicitly requests preen repair and reports reboot advice;
 operational/usage/cancellation/library failures map to I/O failure. There is
 no automatic repair or forced-mount helper action. Successful probes write
 `ext2fs.name` and the bounded label to `ext2fs.label` in the helper directory.
+
+Autodiskmount probes ext2fs on its existing exposed partition-a candidate after
+UFS, HFS banks, CD9660 and FAT. A candidate already classified by those paths
+keeps that classification; a separate HFS bank does not claim partition-a.
+NeXT partitions marked `p_newfs` are classified as UFS by the existing label
+path without inspecting filesystem contents. Use an appropriate partition
+label when preparing ext2 media; discovery does not rewrite labels or create
+device nodes. Missing helpers, unsupported profiles and malformed media do
+not trigger formatting or repair. A dirty supported volume can be recognized,
+but its writable mount is refused until an explicit successful check/repair.
+
+Use `/sbin/fsck_ext2fs -n -f /dev/rhd1a` directly for inspection, or explicitly
+request repair with `/sbin/fsck_ext2fs -p /dev/rhd1a` on an unmounted volume.
+The general `/sbin/fsck` dispatcher and bootstrap manifests are unchanged;
+ext2 is not automatically checked through fstab. `COPYING` retains the GNU GPL
+and GNU Library GPL texts; `LIBRARY-NOTICES` retains the individual private
+library notices, and `NETBSD-NOTICES` retains the mount/helper BSD notices.
+See `PROVENANCE.md` for pinned upstream sources, checksums and ordered patches.
 
 `make -C tests check-tools` compiles production common and command code with
 private compile-time child paths and test-only inspection providers. The

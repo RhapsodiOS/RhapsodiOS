@@ -33,3 +33,21 @@ build-tools-test: ../common/ext2_tool.c ../common/ext2_disk.c ../common/ext2fs_b
 # VENDOR_SOURCE and VENDOR_OBJECTS identify an actual configured vendor build.
 check-vendor-io:
 	/bin/sh ./run-vendor-io.sh "$(VENDOR_SOURCE)" "$(VENDOR_OBJECTS)" "$(TEST_DIR)/vendor-io" $(VENDOR_IO_ACTION)
+check-configure-order:
+	/bin/sh ./run-configure-order.sh ../ext2_tools/build-tools.sh "$(VENDOR_SOURCE)" "$(TEST_DIR)/configure-order"
+check-checksum-partition:
+	/bin/sh ./run-checksum-partition.sh ./checksum-partition.sh "$(TEST_DIR)/checksum-partition"
+
+# Native Objective-C: exact discovery implementation, private exposed devices.
+DISCOVERY_SOURCE = $(shell pwd)/../../Commands/diskdev_cmds/autodiskmount.tproj/DiskVolume.m
+DISCOVERY_HEADER = $(shell pwd)/../../Commands/diskdev_cmds/autodiskmount.tproj/DiskVolume.h
+DISCOVERY_DIR = $(TEST_DIR)/discovery
+check-discovery: build-discovery-test
+	$(TEST_DIR)/discovery_test
+build-discovery-test:
+	mkdir -p $(TEST_DIR)
+	$(CC) $(CFLAGS) -DDISCOVERY_SOURCE='"$(DISCOVERY_SOURCE)"' -DDISCOVERY_DIRECTORY='"$(DISCOVERY_DIR)"' discovery_test.m -o $(TEST_DIR)/discovery_test
+build-discovery-native:
+	mkdir -p $(TEST_DIR)
+	$(CC) $(CFLAGS) -DDISCOVERY_HEADER='"$(DISCOVERY_HEADER)"' discovery_native.m $(DISCOVERY_SOURCE) -lDriver -o $(TEST_DIR)/discovery-native
+	$(CC) $(CFLAGS) discovery_media.c -o $(TEST_DIR)/discovery-media

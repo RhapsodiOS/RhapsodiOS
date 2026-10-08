@@ -257,7 +257,7 @@ APIC-enabled cases consistently contain the IDE polling-recovery warning.
 
 The preceding fixes and boot-flag verification were committed as
 `a6619bc76` (`pexpert: fix i386 boot paths and add verification tests`). The
-APIC changes described here are a subsequent, uncommitted working-tree change.
+APIC changes described here were subsequently committed as `bf83c1bc1`.
 
 The original `apic=1` trace contains 3318 IRQ14 rising edges after the input
 was first enabled, including nine while the I/O APIC entry was masked. The
@@ -359,3 +359,38 @@ Evidence is in the same local directory: `flags-ide-red`,
 `rebuild-ide-host.log`, `rebuild-ide-reviewed-host.log`, and the reproduction
 helpers `analyze-ide-trace.py`, `verify-ide-io.sh`, `ide-io-test.c`,
 `install-ide-kernel.py`, `start-ide-boot.ps1`, and `verify-reviewed-ide.py`.
+
+## Bus consolidation and master integration, 2026-10-08
+
+The superseded standalone EISA, PCI and PCMCIA projects were removed in
+`ef8892b5d`. Their classes remain in PExpert; Intel chipset drivers remain
+separate. The historical EISA source-map JSON moved unchanged into the
+binrecon test fixtures. The obsolete blacklist entry and VM reconstruction
+helper were removed, and the chipset build helper selects only retained
+projects. Installed, network, generated and installer-media boot lists now
+omit the old bundles, and the base installation set no longer requests their
+packages. These dependent changes are committed through `d6e4fc20a`.
+
+Current `master` (`2820d48b3`) was merged into the verification branch in
+`9e5bc8e08`. The EFI source list includes both `efi_sector.c` and `efi_acpi.c`.
+PExpert retains its recursive PCI bridge scanner; master's fix to the old
+flat scan's eight-bit bus counter is unnecessary in that implementation.
+Read-only review confirmed the resolutions and dependency cleanup.
+
+All 8 installer template/package-list tests, 44 live-media/image-builder
+tests and 29 source-map tests pass. Native `/bin/sh -n` accepts the updated
+chipset helper. Tests reproduce the old installer boot-list/package failures
+before their corrections.
+
+The integrated RELEASE_I386 kernel builds natively with exit 0 and reports
+Rhapsody 5.6. `mach_kernel-master-integrated` is 1763764 bytes, SHA-256
+`5c221ecef29f828f670a686c3750564a836f6656b4851cc9df887a549d26c5ae`.
+Image readback matches the product. Build evidence is in
+`kernel-master-integration-host.log`; runtime evidence uses
+`flags-master-integrated` in the same private test-image directory.
+
+With explicit `apic=1 lapictimer=1 smp=1 acpi=1` and four CPUs, this integrated
+kernel passes userspace/network checks and the 32 MiB disk workload. The
+trace has 12173 IRQ14 rises with zero masked rises and no IDE polling recovery.
+The three APs are halted as expected; thirty guest seconds take 31.289 host
+seconds including SSH. The virtual power button completes guest ACPI shutdown.

@@ -64,7 +64,7 @@ class TestTemplates(unittest.TestCase):
         default = read(SRC, "system_config-1", "i386", "Default.table")
         self.assertEqual(table_keys(ours), table_keys(default))
         self.assertEqual(table_value(ours, b"Boot Drivers"),
-                         b"EISABus PCIBus PS2Keyboard EIDE AHCI NE2K")
+                         b"PS2Keyboard EIDE AHCI NE2K")
         self.assertEqual(table_value(ours, b"Active Drivers"),
                          table_value(default, b"Active Drivers") + b" BPF")
         self.assertEqual(table_value(ours, b"Kernel Flags"),
@@ -73,6 +73,12 @@ class TestTemplates(unittest.TestCase):
         for key in (b"Version", b"Kernel", b"Install Mode", b"APM"):
             self.assertEqual(table_value(ours, key),
                              table_value(default, key))
+
+    def test_i386_boot_sources_use_the_kernel_linked_buses(self):
+        network = read(SRC, "system_config-1", "i386", "Instance0.network")
+        self.assertEqual(table_value(network, b"Boot Drivers"), b"PS2Keyboard")
+        detector = read(SRC, "driverkit-3", "driverDetect", "driverDetect.c")
+        self.assertRegex(detector, rb'#define BASE_BOOT\s+"PS2Keyboard"')
 
     def test_ppc_instance0_is_mac_os_x_servers_table(self):
         ours = read(TEMPLATES, "Instance0-ppc.table")

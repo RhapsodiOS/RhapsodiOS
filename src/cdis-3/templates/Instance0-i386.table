@@ -20,7 +20,7 @@
 "Version" = "5.00";
 
 /* Drivers to probe at boot time */
-"Boot Drivers" = "EISABus PCIBus PS2Keyboard EIDE AHCI NE2K";
+"Boot Drivers" = "PS2Keyboard EIDE AHCI NE2K";
 
 /* Bundles to load/probe later */
 "Active Drivers" = "PS2Mouse BusMouse SerialPointingDevice ParallelPort VGA BPF";

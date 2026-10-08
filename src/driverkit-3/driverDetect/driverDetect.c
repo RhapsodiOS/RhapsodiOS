@@ -17,7 +17,7 @@
 #define DEVICE_DIR	"/usr/Devices"
 #define ROOT_DEVICE_DIR	"/private/Drivers/i386"
 #define TEMPLATE	"/System/Installation/CDIS/templates/Instance0-i386.table"
-#define BASE_BOOT	"EISABus PCIBus PS2Keyboard"
+#define BASE_BOOT	"PS2Keyboard"
 #define MAX_DEVS	256
 #define MAX_TABLES	512
 #define MAX_MATCHES	64
@@ -74,7 +74,7 @@ spew(const char *path, const char *text)
 }
 
 /*
- * PCI through the PCIBus resource driver.  Our drvPCIBus answers the doubled
+ * PCI through PExpert's PCI resource driver, which answers the doubled
  * parenthesis and DR2's the names without the underscore, so use the first
  * spelling that answers.
  */

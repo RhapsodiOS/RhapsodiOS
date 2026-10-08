@@ -27,12 +27,22 @@ ioapic_write(ioapic_t *ioapic, unsigned int reg, unsigned int value)
     ioapic->base[IOWIN] = value;
 }
 
+unsigned int
+ioapic_pin_count(ioapic_t *ioapic)
+{
+    unsigned int version = ioapic_read(ioapic, IOAPIC_REG_VERSION);
+
+    if (version == 0 || version == 0xFFFFFFFF)
+	return (0);
+    return (((version >> 16) & 0xFF) + 1);
+}
+
 void
 ioapic_init(ioapic_t *ioapic)
 {
     unsigned int	pin;
 
-    ioapic->pins = ((ioapic_read(ioapic, IOAPIC_REG_VERSION) >> 16) & 0xFF) + 1;
+    ioapic->pins = ioapic_pin_count(ioapic);
 
     for (pin = 0; pin < ioapic->pins; pin++)
 	ioapic_write(ioapic, IOAPIC_REG_REDIR(pin), IOAPIC_MASKED);

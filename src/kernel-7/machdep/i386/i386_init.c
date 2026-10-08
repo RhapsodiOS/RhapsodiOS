@@ -60,16 +60,15 @@ static unsigned int maxmem;
 static int subtype = 0;
 
 /*
- * The platform expert's switches: apic=1 APIC interrupt delivery,
- * lapictimer=1 the local APIC timer as the clock, smp=1 start the other
- * processors, acpi=1 ACPI mode; rsdp=0x... is where the booter found the
- * ACPI tables (a UEFI booter has to say).
+ * Try supported platform features by default. A zero-valued boot switch
+ * disables that feature for recovery; a nonzero value still requires usable
+ * hardware/firmware. rsdp=0x... is where the booter found the ACPI tables.
  */
-int	pexpert_apic;
+int	pexpert_apic = 1;
 int	pexpert_rsdp;
-int	pexpert_lapictimer;
-int	pexpert_smp;
-int	pexpert_acpi;
+int	pexpert_lapictimer = 1;
+int	pexpert_smp = 1;
+int	pexpert_acpi = 1;
 
 struct kernargs {
 	char *name;

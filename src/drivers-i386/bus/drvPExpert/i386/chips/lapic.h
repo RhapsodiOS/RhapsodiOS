@@ -16,6 +16,7 @@ int lapic_present(void);
 /*
  * The physical base the APIC_BASE MSR reports (the MSR's global enable
  * is set if it was clear), or `fallback` on a processor without the MSR.
+ * Returns zero for x2APIC mode or a base outside 32-bit physical mappings.
  */
 unsigned int lapic_physical_base(unsigned int fallback);
 

@@ -36,6 +36,7 @@
 
 #define APIC_BASE_MSR		0x1B
 #define APIC_BASE_ENABLE	(1 << 11)
+#define APIC_BASE_X2APIC	(1 << 10)
 
 static volatile unsigned int	*lapic;
 
@@ -93,6 +94,9 @@ lapic_physical_base(unsigned int fallback)
 	return (fallback);
 
     asm volatile("rdmsr" : "=a" (lo), "=d" (hi) : "c" (APIC_BASE_MSR));
+    /* This driver uses xAPIC MMIO and 32-bit physical mappings only. */
+    if ((lo & APIC_BASE_X2APIC) != 0 || hi != 0)
+	return (0);
     if ((lo & APIC_BASE_ENABLE) == 0) {
 	lo |= APIC_BASE_ENABLE;
 	asm volatile("wrmsr" : : "a" (lo), "d" (hi), "c" (APIC_BASE_MSR));

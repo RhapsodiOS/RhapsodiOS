@@ -20,6 +20,9 @@ typedef struct ioapic {
 #define IOAPIC_LEVEL		(1 << 15)
 #define IOAPIC_MASKED		(1 << 16)
 
+/* Probe without changing interrupt routing; zero means an unresponsive chip. */
+unsigned int ioapic_pin_count(ioapic_t *ioapic);
+
 /* Reads the chip's pin count into ioapic->pins and masks every pin. */
 void ioapic_init(ioapic_t *ioapic);
 

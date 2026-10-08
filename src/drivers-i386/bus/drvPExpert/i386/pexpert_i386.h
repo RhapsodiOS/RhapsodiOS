@@ -135,19 +135,17 @@ extern i386_firmware_info_t	i386_firmware_info;
 
 /*
  * Called by the kernel once, after the kernel map is usable and before
- * any driver is probed.  Runs discovery and then, as the boot line asks:
- *   apic=1	   moves interrupt delivery to the APICs
- *   lapictimer=1  makes the local APIC timer the system tick (needs apic)
- *   smp=1	   starts the other processors and parks them (needs apic)
- *   acpi=1	   puts the chipset in ACPI mode: power button, power off,
- *		   reset through the FADT
+ * any driver is probed. Runs discovery and enables supported features by
+ * default. Boot overrides: apic=0 retains the 8259s; lapictimer=0 retains
+ * the PIT; smp=0 skips AP startup/parking; acpi=0 leaves ACPI PM off.
+ * The LAPIC clock and AP startup require successful APIC interrupt setup.
  */
 void pexpert_init(void);
 int pexpert_apic_mode(void);
 
 /*
  * Processors: how many the MADT lists, and how many the platform expert
- * has running (the boot processor plus every one smp=1 started).  The
+ * has running (the boot processor plus every AP successfully started). The
  * kernel is built for one processor and schedules on it alone; the
  * others sit halted with interrupts off until it can use them.
  */
@@ -155,7 +153,7 @@ int pexpert_cpu_count(void);
 int pexpert_cpus_online(void);
 
 /*
- * ACPI power management, live once acpi=1 has enabled it.  Both return
+ * ACPI power management, live after successful automatic initialization. Both return
  * only when the machine did not do what was asked.
  */
 void pexpert_acpi_poweroff(void);

@@ -29,12 +29,10 @@
  * pexpert_init() runs once the kernel map is usable and before any driver
  * is probed.  It reads the ACPI static tables and the MP table, publishes
  * what it found in i386_firmware_info, hands the PCI configuration
- * accessors an MCFG space when there is one, and then does what the boot
- * line asks: apic=1 moves interrupt delivery from the 8259s to the APICs,
- * lapictimer=1 makes the local APIC timer the clock, smp=1 starts the
- * other processors, acpi=1 puts the chipset in ACPI mode.  Each is
- * opt-in until it has been boot-tested; the 8259 path with the 8254
- * clock is the one every existing driver has run on.
+ * accessors an MCFG space when there is one, then tries supported APIC
+ * interrupt delivery, the local APIC clock, other processors and ACPI mode.
+ * A zero-valued boot switch disables its feature. Failed initialization
+ * retains the legacy interrupt/clock path or leaves ACPI power management off.
  */
 
 #include "pexpert_i386.h"
@@ -48,11 +46,11 @@
 extern int printf(const char *format, ...);
 
 /* Boot line (machdep/i386/i386_init.c parses them). */
-extern int	pexpert_apic;		/* apic=1: APIC interrupt delivery */
+extern int	pexpert_apic;		/* apic=0: retain 8259 delivery */
 extern int	pexpert_rsdp;		/* rsdp=0x...: where the RSDP is */
-extern int	pexpert_lapictimer;	/* lapictimer=1: local APIC timer clock */
-extern int	pexpert_smp;		/* smp=1: start the other processors */
-extern int	pexpert_acpi;		/* acpi=1: ACPI mode, power button */
+extern int	pexpert_lapictimer;	/* lapictimer=0: retain PIT clock */
+extern int	pexpert_smp;		/* smp=0: leave other processors alone */
+extern int	pexpert_acpi;		/* acpi=0: leave ACPI PM off */
 
 /* apic_intr.c, clock.c */
 int apic_intr_enable(const i386_firmware_info_t *info);
@@ -201,7 +199,7 @@ pexpert_init(void)
 	    (void) smp_start(info, apic_boot_id(),
 			     PEXPERT_VECTOR(PEXPERT_SPURIOUS_IRQ));
     } else if (pexpert_lapictimer || pexpert_smp)
-	printf("pexpert: the local APIC timer and the other processors need apic=1\n");
+	printf("pexpert: APIC interrupt delivery inactive; keeping the 8254 clock and boot processor only\n");
 
     if (pexpert_acpi)
 	(void) acpi_pm_enable(info);

@@ -91,7 +91,7 @@ found in i386_firmware_info (pexpert_i386.h):
    configuration accessors (chips/pcicfg.c), which PCIKernBus's mechanism
    #1 cycles and the MSI code share.
 
-With apic=1 on the boot line the expert then moves interrupt delivery from
+By default the expert tries to move interrupt delivery from
 the 8259s to the APICs (apic_intr.c, chips/lapic.c, chips/ioapic.c).  The
 kernel's intr.c keeps its dispatch table, ipl masks and deferral and drives
 the hardware through an intr_controller_t; the 8259 pair is the controller
@@ -109,26 +109,30 @@ asks the PCI bus: [pciBus enableMSIForDevice:dev function:fn bus:bus]
 returns the irq to put in its interrupt list (MSI-X when the function has
 it, else MSI, one vector, to the boot processor).
 
-APIC mode is opt-in until it has been boot-tested, since the 8259 path is
-the one every driver has run on.  It is refused, with a console line saying
-why, when there is no MADT with an I/O APIC or the processor has no local
-APIC.  Without an MP table PCI INTx routing is unknown and such drivers get
-no interrupts; on such a machine use MSI or stay on the 8259s.
+No feature-enable boot flags are required. APIC mode is refused, with a
+diagnostic, when the CPU, MADT/I/O APIC, MP PCI interrupt routes, MMIO mapping
+or PIT route is unusable. Every described I/O APIC must map and respond, and
+admission checks finish before firmware interrupt routing is changed.
+Firmware already using x2APIC, or an APIC base above
+4 GiB, is unsupported by this xAPIC implementation. These cases retain the
+8259/PIT path. apic=0 forces that path and skips the LAPIC clock and AP startup.
+acpi=0 disables ACPI power management, while static table discovery still runs.
 
 Local APIC timer, other processors, power management, bridges
 --------------------------------------------------------------
 
-Three more switches on the boot line, each opt-in for the same reason as
-apic=1, and one change that is always on:
+After successful APIC setup the LAPIC clock and AP startup are tried by
+default. ACPI power management is tried independently when its FADT supports
+it. Individual zero-valued overrides retain recovery paths:
 
- * lapictimer=1 (needs apic=1; clock.c) makes the local APIC timer the
+ * lapictimer=0 retains the PIT; otherwise clock.c makes the local APIC timer the
    system tick.  The kernel's machine_clock.c drives the tick from one
    interrupt line and reads one countdown for the fraction of a tick, so
    clock_set_tick_source() hands it the timer's countdown and the same
    tick handler is registered on irq 62 in place of IRQ 0.  The timer is
-   calibrated against IODelay, which the 8254 calibrated; the 8254 keeps
-   counting with its interrupt masked.
- * smp=1 (needs apic=1; smp.c, smp_tramp.s) starts every processor the
+   calibrated against the running PIT-backed timestamp; failed calibration
+   retains the PIT. The 8254 keeps counting with its interrupt masked.
+ * smp=0 skips AP startup; otherwise smp.c/smp_tramp.s start processors the
    MADT lists: INIT and start-up IPIs to a page of conventional memory
    holding a real-mode trampoline that brings the processor to protected
    mode on the kernel's page directory, GDT and IDT and calls
@@ -137,8 +141,8 @@ apic=1, and one change that is always on:
    built for one processor and takes no locks around its scheduler or
    interrupt paths, so running them on a second processor is the kernel's
    project, not this one.  pexpert_cpu_count() and pexpert_cpus_online()
-   say what is there.
- * acpi=1 (acpi_pm.c) puts the chipset in ACPI mode through the FADT's
+   say what is there. Startup is bounded by PEXPERT_MAX_CPUS, including the BSP.
+ * acpi=0 skips ACPI PM; otherwise acpi_pm.c puts the chipset in ACPI mode through the FADT's
    SMI command port, takes the SCI on the irq the FADT names, and arms the
    power button, which asks the kernel for an orderly halt with power
    down (reboot_mach, the way the NMI monitor's 'h' does).  halt_cpu()
@@ -185,7 +189,8 @@ the ppc chips/ and families/ subprojects do.
 Status
 ------
 
-Not yet built or boot-tested, neither the buses nor the APIC path.  The
+Native builds and QEMU boot verification are recorded in
+docs/drivers/i386-pexpert-verification.md. The
 kernel now builds against <pexpert/pexpert_i386.h>, so drvpexpert-hdrs must
 be installed before kernel-7 (kernel-7/apk/pkginfo says so).  The
 System.config "Boot Drivers" line no

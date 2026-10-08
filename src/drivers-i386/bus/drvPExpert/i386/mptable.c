@@ -160,6 +160,40 @@ mptable_discover(i386_firmware_info_t *info)
 }
 
 int
+mptable_pci_routes_usable(const ioapic_t *ioapics, unsigned int count)
+{
+    const unsigned char *p, *end;
+    unsigned int i, io, length, routes = 0;
+
+    if (config == 0 || config->length < sizeof (*config))
+	return (0);
+    p = (const unsigned char *)config + sizeof (*config);
+    end = (const unsigned char *)config + config->length;
+    for (i = 0; i < config->entry_count; i++) {
+	if (p + 8 > end || p[0] > MP_ENTRY_LOCALINT)
+	    return (0);
+	length = entry_length(p[0]);
+	if (p + length > end)
+	    return (0);
+	if (p[0] == MP_ENTRY_BUS && p[1] >= MP_MAX_BUSES &&
+	    memcmp(p + 2, "PCI", 3) == 0)
+	    return (0);
+	if (p[0] == MP_ENTRY_IOINT && p[1] == MP_INT_TYPE_INT &&
+	    p[4] < MP_MAX_BUSES && pci_bus[p[4]]) {
+	    for (io = 0; io < count; io++)
+		if (ioapics[io].id == p[6])
+		    break;
+	    if (io == count || p[7] >= ioapics[io].pins ||
+		ioapics[io].gsi_base + p[7] >= PEXPERT_GSI_IRQS)
+		return (0);
+	    routes++;
+	}
+	p += length;
+    }
+    return (routes != 0);
+}
+
+int
 mptable_pci_route(int bus, int dev, int pin, unsigned char *ioapic_id,
 		  unsigned int *intin, unsigned short *flags)
 {

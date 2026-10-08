@@ -394,3 +394,84 @@ kernel passes userspace/network checks and the 32 MiB disk workload. The
 trace has 12173 IRQ14 rises with zero masked rises and no IDE polling recovery.
 The three APs are halted as expected; thirty guest seconds take 31.289 host
 seconds including SSH. The virtual power button completes guest ACPI shutdown.
+
+## Automatic feature selection, 2026-10-08
+
+The kernel now tries APIC interrupt delivery, the LAPIC clock, AP startup and
+ACPI power management without enable flags. Existing numeric overrides remain:
+`apic=0` retains PIC/PIT and skips AP startup; `lapictimer=0` retains PIT;
+`smp=0` skips AP startup; `acpi=0` leaves ACPI PM off. Explicit nonzero values
+still require supported hardware. Static firmware discovery remains independent
+of ACPI power management.
+
+APIC admission requires a supported local APIC mode/address, a MADT, every
+described I/O APIC mapped and responsive, usable MP PCI interrupt assignments,
+and a PIT route. PCI assignments must target supported controllers, inputs
+and IRQs, and PCI bus IDs must fit the existing MP implementation. No AML
+`_PRT` interpreter or MP-only controller initialization was added. Missing
+prerequisites retain the legacy controller/clock. Probing reads pin counts
+without masking redirection entries; admission finishes before changing
+firmware routing. The AP-startup loop is bounded even when a truncated firmware
+CPU list omits the BSP.
+
+Native regressions pass: 13 automatic-selection scenarios, 7 MSR/AP-bound
+checks, 14 controller mask/admission checks, 3 real I/O APIC probe checks and
+9 real MP routing checks. The new tests reproduce the original failures
+before their fixes, including destructive rejected probes, partially usable
+controllers, missing assignments and unsupported PCI bus IDs. Parser, mapping,
+clock-width, calibration, shutdown and nine deferred-interrupt checks pass.
+Read-only review found no remaining critical or important findings.
+
+Project Builder headers/install and the configured RELEASE_I386 kernel build
+exit 0. Runtime tests below use the final native products and a temporary
+snapshot image; canonical kernel readback matches the built product.
+
+| Final automatic product | Bytes | SHA-256 |
+| --- | ---: | --- |
+| pexperti386-automatic.o | 1732576 | 16d0d594862781a5cc7663b294995bd7605bcbee6c9fff2cbef0609f5f4b3588 |
+| mach_kernel-automatic | 1763832 | 066db2373d038b99a45e04a6097e6c73796921d4cf72b290b10e5b56782b093b |
+
+The final kernel reports Rhapsody 5.6, built at 07:39:04 EDT on 2026-10-08.
+
+| Automatic runtime case | Interrupts / clock | APs parked | ACPI PM | IRQ14 rises / masked |
+| --- | --- | ---: | --- | --- |
+| No flags, four CPUs | APIC / LAPIC | 3 | Yes | 12124 / 0 |
+| No flags, one CPU | APIC / LAPIC | 0 | Yes | 12106 / 0 |
+| All four overrides zero | PIC / PIT | 0 | No | PIC control |
+| lapictimer=0 smp=0 acpi=0 | APIC / PIT | 0 | No | 12098 / 0 |
+| apic=0 only | PIC / PIT | 0 | Yes | PIC control |
+| No flags, Pentium without APIC | PIC / PIT | 0 | Yes | PIC control |
+| No flags, ACPI firmware disabled | PIC / PIT | 0 | No | PIC control |
+
+All seven cases pass SSH/shell and network checks, native 32 MiB
+write/fsync/reopen/byte-for-byte readback, and thirty-second clock comparisons.
+Each clock log advances thirty guest seconds; host times span 30.907–31.427
+seconds including SSH. No boot reports a lost IDE interrupt, polling recovery,
+panic or kernel trap. Initial screenshots show normal graphical login in all
+seven cases. The four-CPU automatic boot also displays an injected keyboard
+character, and registers confirm all three APs are halted with interrupts off.
+Every ACPI-enabled case completes actual guest power-button shutdown.
+
+The ACPI-disabled case's final screenshot initially showed a blank desktop.
+A fresh boot passes the same disk workload, keeps graphical login visible,
+and accepts keyboard input. Leaving its empty login window idle for about
+109 seconds reproduces the blank desktop; one injected key immediately
+restores login and appears in its name field. This verifies a recoverable
+idle display state. Screenshots and process/system logs are preserved in
+`flags-auto-no-acpi-visual*`, with `verify-display-wake.py`.
+
+The CPU without APIC reports the missing local APIC and retains PIC/PIT;
+without ACPI firmware, the missing MADT retains PIC/PIT and ACPI PM stays off.
+No SSH-listener failure recurred in this matrix. The earlier standalone
+blank-desktop observation may have the same idle cause, but that earlier
+guest was not tested for keyboard wake, so its cause remains unconfirmed.
+SMP here means AP startup/parking, not parallel
+scheduling. MSI/MSI-X and the FADT reset register remain unverified at runtime.
+
+Evidence is in `D:/RhapsodiOS/vm/work/pexpert-verification-20261007`:
+`automatic-build-final.log`, `automatic-native-final.log`, MP/admission red/green
+logs, `automatic-matrix-results.json`, `flags-auto-*`, and
+`verify-automatic-matrix.py`. Matrix guests are stopped after verification.
+The temporary image retains this final kernel with an empty flags field;
+the earlier process 50492 is no longer running. Separate builder and control
+guests remain available. The shared base image was not modified.

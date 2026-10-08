@@ -280,10 +280,17 @@ apic_intr_enable(const i386_firmware_info_t *info)
 	printf("pexpert: processor has no local APIC; staying on the 8259s\n");
 	return (0);
     }
+    /* PCI INTx routes come from the MP table; AML _PRT is not implemented. */
+    if (info->mp_config == 0) {
+	printf("pexpert: no MP PCI interrupt routes; staying on the 8259s\n");
+	return (0);
+    }
 
     lapic_pa = lapic_physical_base(info->lapic_address);
-    if (lapic_pa == 0)
-	lapic_pa = info->lapic_address;
+    if (lapic_pa == 0) {
+	printf("pexpert: unsupported local APIC mode/address; staying on the 8259s\n");
+	return (0);
+    }
     lapic = (volatile unsigned int *)pexpert_map_physical(lapic_pa, 4096);
     if (lapic == 0) {
 	printf("pexpert: cannot map the local APIC at %x\n", lapic_pa);
@@ -299,21 +306,38 @@ apic_intr_enable(const i386_firmware_info_t *info)
 	if (io->base == 0) {
 	    printf("pexpert: cannot map I/O APIC %d at %x\n",
 		   info->ioapics[i].id, info->ioapics[i].address);
-	    continue;
+	    return (0);
 	}
 	io->id = info->ioapics[i].id;
 	io->gsi_base = info->ioapics[i].gsi_base;
-	ioapic_init(io);
+	io->pins = ioapic_pin_count(io);
+	if (io->pins == 0) {
+	    printf("pexpert: I/O APIC %d is unresponsive\n", io->id);
+	    return (0);
+	}
 	ioapic_count++;
     }
     if (ioapic_count == 0)
 	return (0);
 
+    if (!mptable_pci_routes_usable(ioapics, ioapic_count)) {
+	printf("pexpert: unusable MP PCI interrupt routes; staying on the 8259s\n");
+	return (0);
+    }
+
+    build_pin_map(info);
+    /* Calibration and the PIT fallback both need IRQ0 before LINT0 is masked. */
+    if (pins[0].ioapic < 0) {
+	printf("pexpert: no usable PIT interrupt route; staying on the 8259s\n");
+	return (0);
+    }
+
+    /* Admission is complete; only now change firmware interrupt routing. */
+    for (i = 0; i < ioapic_count; i++)
+	ioapic_init(&ioapics[i]);
     lapic_init(lapic, PEXPERT_VECTOR(PEXPERT_SPURIOUS_IRQ));
     boot_apic_id = lapic_id();
     msi_init(boot_apic_id);
-
-    build_pin_map(info);
     for (irq = 0; irq < PEXPERT_NIRQ; irq++) {
 	if (pins[irq].ioapic >= 0)
 	    ioapic_set_entry(&ioapics[pins[irq].ioapic], pins[irq].pin,

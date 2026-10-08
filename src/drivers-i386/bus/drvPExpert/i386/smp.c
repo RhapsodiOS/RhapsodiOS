@@ -169,7 +169,7 @@ smp_start(const i386_firmware_info_t *info, unsigned char boot_apic_id,
     ap_spurious_vector = spurious_vector;
 
     index = 1;
-    for (i = 0; i < count; i++) {
+    for (i = 0; i < count && index < PEXPERT_MAX_CPUS; i++) {
 	if (info->lapic_ids[i] == boot_apic_id)
 	    continue;
 	if (start_one(page, info->lapic_ids[i], index)) {

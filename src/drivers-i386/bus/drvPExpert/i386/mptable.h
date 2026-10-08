@@ -7,9 +7,13 @@
 #define _PEXPERT_MPTABLE_H_
 
 #include "pexpert_i386.h"
+#include "chips/ioapic.h"
 
 /* Find and map the tables; fills mp_fps, mp_config and imcr_present. */
 int mptable_discover(i386_firmware_info_t *info);
+
+/* Require PCI assignments whose destinations the controller can deliver. */
+int mptable_pci_routes_usable(const ioapic_t *ioapics, unsigned int count);
 
 /*
  * The I/O APIC (by MADT id) and input pin a PCI function's INTA-INTD

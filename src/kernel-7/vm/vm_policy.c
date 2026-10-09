@@ -130,13 +130,21 @@ _vm_policy_apply(vm_object_t object, vm_page_t m, int when, boolean_t hint)
 		 *  try to free the page.
 		 */
 		case VM_DEACTIVATE_NOW:
+			/*
+			 *  A wired page must stay mapped, and a busy one is
+			 *  under I/O; freeing either hands out a page that is
+			 *  still in use.  Unmap before freeing, so the page is
+			 *  never on the free list while mapped.
+			 */
+			if (m->wire_count != 0 || m->busy)
+				break;
+			pmap_remove_all(VM_PAGE_TO_PHYS(m));
 			if (m->clean && !pmap_is_modified(VM_PAGE_TO_PHYS(m)))
 				vm_page_free_head(m);
 			else {
 				if (m->active)
 					vm_page_deactivate(m);
 			}
-			pmap_remove_all(VM_PAGE_TO_PHYS(m));
 			break;
 		
 		/*
@@ -177,7 +185,7 @@ static void
 deactivate_object(vm_object_t object, vm_offset_t start, vm_offset_t end, int temperature)
 {
 	vm_object_t	shadow;
-	vm_page_t	page;
+	vm_page_t	page, next;
 	vm_size_t	size;
 	int		flags;
 
@@ -186,10 +194,15 @@ deactivate_object(vm_object_t object, vm_offset_t start, vm_offset_t end, int te
 
 	vm_object_lock(object);
 
+	/*
+	 * Take the next page first: VM_DEACTIVATE_NOW can free this one,
+	 * which unlinks it from memq.
+	 */
 	for (page = (vm_page_t) queue_first(&object->memq);
 	     !queue_end(&object->memq, (queue_entry_t) page);
-	     page = (vm_page_t) queue_next(&page->listq))
+	     page = next)
 	{
+		next = (vm_page_t) queue_next(&page->listq);
 		/*
 		 * If this page isn't actually referenced from this
 		 * entry, then forget it.

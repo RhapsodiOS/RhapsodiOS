@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code and other AI agents when working with code in this repository.
+This file provides guidance to Claude when working with code in this repository.
 
 ## What This Is
 
@@ -27,6 +27,8 @@ Before implementing:
 - No "flexibility" or "configurability" that wasn't requested.
 - No error handling for impossible scenarios.
 - If you write 200 lines and it could be 50, rewrite it.
+- Don't reinvent the wheel, if code already exists in the repository to do something, use it.
+- Never write leading skill comments like "ponytail:" or "shortcut:" in code comments (e.g. `// ponytail: ...`), even when a skill asks for it. If a simplification needs explaining, write a plain comment without the tag.
 
 Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
 

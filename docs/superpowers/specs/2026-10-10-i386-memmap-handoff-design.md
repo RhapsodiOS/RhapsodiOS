@@ -179,7 +179,7 @@ Host unit tests, following the existing `tests/` directories:
   of adjacent same-type ranges, a non-default descriptor size, overflow
   that keeps usable ranges first, and overflow of usable ranges (returns
   0).
-- `src/boot-2/i386/tests/sizeof.c`: assert the new offsets.
+- The new offsets are pinned by the `__kbs_` typedef assertions in both kernBootStruct.h copies.
 
 Guest tests (QEMU, never on shared images; see CLAUDE.md):
 

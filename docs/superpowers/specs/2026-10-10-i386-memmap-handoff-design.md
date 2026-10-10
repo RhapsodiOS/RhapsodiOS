@@ -1,6 +1,21 @@
 # i386 memory map hand-off: booters to kernel
 
-Date: 2026-10-10. Status: approved in conversation, awaiting spec review.
+Date: 2026-10-10. Status: implemented and verified on QEMU.
+
+Results (master + this branch + the drvPExpert makedepends fix, 128 MB):
+
+- boot2 is 38416 of 45056 bytes (6640 to spare).
+- BIOS, new boot2: `memory map: 6 ranges, top 0x7fe0000`, physical
+  memory 127.87 MB. 6 of 6 stall-mode builds that booted completed with no
+  `pmap_remove_all` panic (2 more never answered on ssh, the image's known
+  early-sshd failure); without this change the same kernel panicked in 4
+  of 7.
+- BIOS, the image's old boot2: `no memory map, using extmem`, 128.00 MB,
+  build completed.
+- UEFI (golden.img copy, ESP-only disk with the new loader, 256 MB):
+  `memory map: 13 ranges, top 0xed0b000`, 237.04 MB; the top is the start
+  of the first RuntimeServicesData descriptor and equals the loader's own
+  contiguous extmem.
 
 ## Problem
 

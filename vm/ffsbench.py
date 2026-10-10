@@ -179,7 +179,8 @@ import time
 HERE = os.path.dirname(os.path.abspath(__file__))
 ASSETS = os.environ.get("RHAP_VM_ASSETS") or HERE
 WORK = os.environ.get("FFSBENCH_WORK") or os.path.join(ASSETS, "work", "ffsbench")
-ROOT_IMG = os.path.join(ASSETS, "work", "rhap-i386-bootstrapped.img")
+ROOT_IMG = (os.environ.get("FFSBENCH_ROOT")      # e.g. a copy with another booter
+            or os.path.join(ASSETS, "work", "rhap-i386-bootstrapped.img"))
 SCRIPTS = os.path.join(HERE, "..", "tests", "ffsbench")
 
 def lane(spec):

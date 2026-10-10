@@ -30,7 +30,7 @@
 #ifndef _MACHDEP_I386_MEMMAP_H_
 #define _MACHDEP_I386_MEMMAP_H_
 
-#include <machdep/i386/kernBootStruct.h>
+#import <machdep/i386/kernBootStruct.h>
 
 unsigned int memmap_contiguous_top(const boot_mem_range_t *map, int n);
 int memmap_count(int raw);

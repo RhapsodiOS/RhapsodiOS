@@ -2,7 +2,7 @@ ifeq ($(origin CC),default)
 CC = clang
 endif
 EXE ?=
-CFLAGS ?= -std=gnu89 -Wall -Werror -Wno-gnu-folding-constant -m32 -I.. -I../../..
+CFLAGS ?= -std=gnu89 -Wall -Werror -Wno-gnu-folding-constant -fno-ms-compatibility -Wno-import -m32 -I.. -I../../..
 
 check: memmap_test$(EXE)
 	./memmap_test$(EXE)

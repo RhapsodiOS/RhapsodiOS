@@ -55,10 +55,14 @@ sizememory(
 
     	if (top > EXTENDED_ADDR)
     	    extmem_kb = (top - EXTENDED_ADDR) / 1024;
-    	/* Method 2: Try E801h (supports up to 4GB) */
-    	else if ((extmem_kb = getExtendedMemoryE801()) == 0)
-    	    /* Method 3: Fall back to INT 88h (legacy, up to 64MB) */
-    	    extmem_kb = memsize(1);
+    	else {
+    	    /* A partial E820 map is no map: the fallbacks leave none */
+    	    kernBootStruct->memMapCount = 0;
+    	    /* Method 2: Try E801h (supports up to 4GB) */
+    	    if ((extmem_kb = getExtendedMemoryE801()) == 0)
+    		/* Method 3: Fall back to INT 88h (legacy, up to 64MB) */
+    		extmem_kb = memsize(1);
+    	}
     }
 
     printf("%dK", (int)(extmem_kb + 1024));

@@ -49,6 +49,8 @@
 #import <sys/tty.h>
 
 extern struct tty	cons;
+extern int		mem_map_ranges;
+extern vm_offset_t	mem_map_top;
 
 #import <kern/assert.h>
 
@@ -227,6 +229,11 @@ startup(
     panic_init();
 
     printf(version);
+
+    if (mem_map_ranges > 0)
+	printf("memory map: %d ranges, top 0x%x\n", mem_map_ranges, mem_map_top);
+    else
+	printf("no memory map, using extmem\n");
 
 #define MEG	(1024*1024)
     printf("physical memory = %d.%d%d megabytes.\n",

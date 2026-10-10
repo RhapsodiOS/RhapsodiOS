@@ -105,6 +105,8 @@ struct mem_region	mem_region[2];
 int			num_regions;
 
 vm_size_t		mem_size;
+int			mem_map_ranges = 0;	/* ranges, if the map set end of memory */
+vm_offset_t		mem_map_top = 0;	/* the map's contiguous RAM top */
 
 /* parameters passed from bootstrap loader */
 unsigned int cnvmem = 0;	/* must be in .data section */
@@ -466,10 +468,10 @@ size_memory(void)
     top = n ? memmap_contiguous_top(kernBootStruct->memMap, n) : 0x100000;
     end_of_memory = memmap_end_of_memory(top, maxmem ? KB(maxmem) : 0,
 					 KB(extmem));
-    if (n)
-	printf("memory map: %d ranges, top 0x%x\n", n, top);
-    else
-	printf("no memory map, using extmem\n");
+    if (n && top > 0x100000) {
+	mem_map_ranges = n;
+	mem_map_top = top;
+    }
 
     /*
      * This is the Mach notion of

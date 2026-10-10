@@ -95,7 +95,7 @@ BOOT2_SRCS := $(BOOT2)/libsaio/disk.c \
 # is instead implemented directly in efi_memory.c.
 
 EFI_SRCS := efi_main.c efi_console.c efi_disk.c efi_disk_select.c \
-            efi_bootargs.c efi_memory.c efi_vga.c efi_gfx.c efi_splash.c \
+            efi_bootargs.c efi_memmap.c efi_memory.c efi_vga.c efi_gfx.c efi_splash.c \
             efi_splash_rule.c efi_pci.c efi_sector.c efi_acpi.c handoff.c $(BOOT2_SRCS)
 
 EFI_OBJS := $(patsubst %.c,$(BUILD)/%.obj,$(notdir $(EFI_SRCS))) \

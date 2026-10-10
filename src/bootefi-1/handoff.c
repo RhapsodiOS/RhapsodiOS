@@ -1,6 +1,7 @@
 #include "efi.h"
 #include "load.h"	/* printf(), via libsaio.h */
 #include "kernBootStruct.h"	/* TEXT_MODE */
+#include "efi_memmap.h"
 
 /* boot2's GDT (src/boot-2/i386/libsaio/table.c), used verbatim: selector
  * 0x20 is flat data, 0x28 flat code.  table.c defines struct seg_desc
@@ -81,6 +82,8 @@ void efi_exit_and_start(unsigned int entry)
                 break;
             continue;
         }
+        KERNSTRUCT_ADDR->memMapCount = efi_to_e820(map, size, dsize,
+                                KERNSTRUCT_ADDR->memMap, BOOT_MEMMAP_MAX);
         st = gBS->ExitBootServices(gImageHandle, key);
         if (!EFI_ERROR(st)) {
             /* Boot services -- and the firmware's own interrupt handlers

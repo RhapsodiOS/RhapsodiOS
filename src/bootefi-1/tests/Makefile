@@ -128,8 +128,19 @@ $(BUILD)/efi_sector_test: efi_sector_test.c ../efi_sector.c \
 test-sector: $(BUILD)/efi_sector_test
 	$(BUILD)/efi_sector_test
 
+# The EFI-map to E820 conversion; it includes kernBootStruct.h from the same
+# boot-2 copy the loader compiles against; its offset asserts need the
+# 32-bit layout (-m32) and a folding-constant opt-out.
+$(BUILD)/efi_memmap_test: efi_memmap_test.c ../efi_memmap.c \
+		../efi_memmap.h ../efi.h | $(BUILD)
+	$(CC) $(ACPI_TEST_CFLAGS) -m32 -Wno-gnu-folding-constant -I$(BOOT2)/libsa -o $@ \
+		efi_memmap_test.c ../efi_memmap.c
+
+test-memmap: $(BUILD)/efi_memmap_test
+	$(BUILD)/efi_memmap_test
+
 clean:
 	rm -rf $(BUILD)
 
 .PHONY: all clean test-acpi test-splash test-disk-select test-bootargs test-efi-error \
-	test-sector
+	test-sector test-memmap

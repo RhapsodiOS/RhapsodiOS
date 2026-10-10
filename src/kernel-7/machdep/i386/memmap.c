@@ -28,8 +28,9 @@
 
 /*
  * Top of the contiguous run of usable RAM starting at 1MB.  Entries are not
- * guaranteed sorted, so repeat until stable.  Returns EXT_BASE when no RAM
- * adjoins 1MB.
+ * guaranteed sorted, so repeat until stable.  A non-RAM range starting inside
+ * the run cuts it there, even where the BIOS also reported that space as RAM;
+ * one straddling 1MB leaves no run.  Returns EXT_BASE when no RAM adjoins 1MB.
  */
 unsigned int
 memmap_contiguous_top(const boot_mem_range_t *map, int n)
@@ -48,6 +49,15 @@ memmap_contiguous_top(const boot_mem_range_t *map, int n)
 		changed = 1;
 	    }
 	}
+    }
+
+    for (i = 0; i < n; i++) {
+	if (map[i].type == BOOT_MEM_RAM)
+	    continue;
+	if (map[i].base < EXT_BASE && map[i].end > EXT_BASE)
+	    return (EXT_BASE);
+	if (map[i].base >= EXT_BASE && map[i].base < top)
+	    top = map[i].base;
     }
 
     return (top);

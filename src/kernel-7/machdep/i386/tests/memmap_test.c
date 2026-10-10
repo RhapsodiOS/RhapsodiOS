@@ -15,11 +15,23 @@ main(void)
 	/* nothing adjoins 1 MB */
 	boot_mem_range_t n[] = {{0x200000,0x800000,1}};
 
+	/* a reserved or ACPI range overlapping the RAM run cuts it */
+	boot_mem_range_t o1[] = {{0x100000,0x8000000,1},{0x7fe0000,0x8000000,2}};
+	boot_mem_range_t o2[] = {{0x100000,0x8000000,1},{0x4000000,0x4010000,3}};
+	boot_mem_range_t o3[] = {{0x100000,0x8000000,1},{0x9000000,0xa000000,2}};
+	boot_mem_range_t o4[] = {{0x100000,0x8000000,1},{0xf0000,0x100000,2}};
+	boot_mem_range_t o5[] = {{0x100000,0x8000000,1},{0xf0000,0x200000,2}};
+
 	assert(memmap_contiguous_top(q, 6) == 0x7fe0000);
 	assert(memmap_contiguous_top(u, 2) == 0x800000);
 	assert(memmap_contiguous_top(h, 3) == 0xf00000);
 	assert(memmap_contiguous_top(n, 1) == 0x100000);
 	assert(memmap_contiguous_top(q, 0) == 0x100000);
+	assert(memmap_contiguous_top(o1, 2) == 0x7fe0000);
+	assert(memmap_contiguous_top(o2, 2) == 0x4000000);
+	assert(memmap_contiguous_top(o3, 2) == 0x8000000);
+	assert(memmap_contiguous_top(o4, 2) == 0x8000000);
+	assert(memmap_contiguous_top(o5, 2) == 0x100000);
 	assert(memmap_count(-5) == 0 && memmap_count(7) == 7 && memmap_count(1000) == BOOT_MEMMAP_MAX);
 	assert(memmap_end_of_memory(0x7fe0000, 0, 0x8000000) == 0x7fe0000);
 	assert(memmap_end_of_memory(0x7fe0000, 0x10000000, 0) == 0x7fe0000);	/* maxmem cannot raise */

@@ -27,6 +27,7 @@ machdep/i386/fault_copy.c	standard
 machdep/i386/fp_support.c	standard
 machdep/i386/gdt.c		standard
 machdep/i386/i386_init.c	standard
+machdep/i386/memmap.c	standard
 machdep/i386/idt.c		standard
 machdep/i386/in_cksum.c		standard
 machdep/i386/intr.c		standard

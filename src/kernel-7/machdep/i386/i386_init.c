@@ -46,6 +46,7 @@
 #import <machdep/i386/idt.h>
 #import <machdep/i386/configure.h>
 #import <machdep/i386/kernBootStruct.h>
+#import <machdep/i386/memmap.h>
 #import <machdep/i386/serial_dbg.h>
 #include <sys/reboot.h>
 #include <sys/errno.h>
@@ -452,7 +453,8 @@ size_memory(void)
 {
     KERNBOOTSTRUCT	*kernBootStruct = (KERNBOOTSTRUCT *)KERNSTRUCT_ADDR;
     vm_offset_t		end_of_image, end_of_memory;
-    int			i;
+    int			i, n;
+    unsigned int	top;
 #define KB(x)		((x)*1024)
 
     end_of_image = getlastaddr();
@@ -460,10 +462,14 @@ size_memory(void)
     for (i=0; i < kernBootStruct->numBootDrivers; i++)
         end_of_image += kernBootStruct->driverConfig[i].size;
 
-    if (maxmem)
-        end_of_memory = KB(maxmem);
+    n = memmap_count(kernBootStruct->memMapCount);
+    top = n ? memmap_contiguous_top(kernBootStruct->memMap, n) : 0x100000;
+    end_of_memory = memmap_end_of_memory(top, maxmem ? KB(maxmem) : 0,
+					 KB(extmem));
+    if (n)
+	printf("memory map: %d ranges, top 0x%x\n", n, top);
     else
-        end_of_memory = KB(extmem);
+	printf("no memory map, using extmem\n");
 
     /*
      * This is the Mach notion of

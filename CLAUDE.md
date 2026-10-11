@@ -78,3 +78,12 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 ## 6. Debugging
 
 - Make sure to use temporary disk images if testing a boot to isolate testing if another agent is working a different debugging session
+
+### Testing the OS in QEMU
+
+- Test kernels and changes on a copy or a snapshot of `vm/rhap-i386-bootstrapped-v2.img`, never on the file itself. Boot it with `snapshot=on` on the drive or `-snapshot`, or work on a throwaway copy of the image.
+- Give every guest its own ssh, QMP and monitor ports so parallel sessions don't collide, and start it with a distinct `-name`.
+- Stop a guest only through QMP or the monitor, after `query-name` confirms it is yours. Never kill QEMU by process name.
+- Shut a writable guest down with `sync; /sbin/reboot` and QMP `quit` at the next kernel start. `halt` leaves the filesystem dirty.
+- The port forward accepts connections before sshd is up. Wait for the `SSH-` banner, and restart the guest if none arrives within a couple of minutes.
+- A snapshot guest loses everything on restart (synced sources, built packages). Resync after any restart.

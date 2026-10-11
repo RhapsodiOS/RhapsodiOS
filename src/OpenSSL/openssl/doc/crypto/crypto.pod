@@ -40,12 +40,14 @@ L<x509(3)|x509(3)>, L<x509v3(3)|x509v3(3)>
 
 =item AUTHENTICATION CODES, HASH FUNCTIONS
 
-L<hmac(3)|hmac(3)>, L<md2(3)|md2(3)>, L<md5(3)|md5(3)>, L<mdc2(3)|mdc2(3)>,
-L<ripemd(3)|ripemd(3)>, L<sha(3)|sha(3)> 
+L<hmac(3)|hmac(3)>, L<md2(3)|md2(3)>, L<md4(3)|md4(3)>,
+L<md5(3)|md5(3)>, L<mdc2(3)|mdc2(3)>, L<ripemd(3)|ripemd(3)>,
+L<sha(3)|sha(3)>
 
 =item AUXILIARY FUNCTIONS
 
-L<err(3)|err(3)>, L<threads(3)|threads(3)>, L<rand(3)|rand(3)>
+L<err(3)|err(3)>, L<threads(3)|threads(3)>, L<rand(3)|rand(3)>,
+L<OPENSSL_VERSION_NUMBER(3)|OPENSSL_VERSION_NUMBER(3)>
 
 =item INPUT/OUTPUT, DATA ENCODING
 
@@ -59,6 +61,22 @@ L<objects(3)|objects(3)>, L<stack(3)|stack(3)>,
 L<txt_db(3)|txt_db(3)> 
 
 =back
+
+=head1 NOTES
+
+Some of the newer functions follow a naming convention using the numbers
+B<0> and B<1>. For example the functions:
+
+ int X509_CRL_add0_revoked(X509_CRL *crl, X509_REVOKED *rev);
+ int X509_add1_trust_object(X509 *x, ASN1_OBJECT *obj);
+
+The B<0> version uses the supplied structure pointer directly
+in the parent and it will be freed up when the parent is freed.
+In the above example B<crl> would be freed but B<rev> would not.
+
+The B<1> function uses a copy of the supplied structure pointer
+(or in some cases increases its link count) in the parent and
+so both (B<x> and B<obj> above) should be freed up.
 
 =head1 SEE ALSO
 

@@ -1,15 +1,34 @@
 /* crypto/opensslconf.h.in */
 
+#ifdef OPENSSL_DOING_MAKEDEPEND
+
+/* Include any symbols here that have to be explicitly set to enable a feature
+ * that should be visible to makedepend.
+ *
+ * [Our "make depend" doesn't actually look at this, we use actual build settings
+ * instead; we want to make it easy to remove subdirectories with disabled algorithms.]
+ */
+
+#ifndef OPENSSL_FIPS
+#define OPENSSL_FIPS
+#endif
+
+#endif
+
 /* Generate 80386 code? */
 #undef I386_ONLY
 
 #if !(defined(VMS) || defined(__VMS)) /* VMS uses logical names instead */
 #if defined(HEADER_CRYPTLIB_H) && !defined(OPENSSLDIR)
+#define ENGINESDIR "/usr/local/lib/engines"
 #define OPENSSLDIR "/usr/local/ssl"
 #endif
 #endif
 
+#undef OPENSSL_UNISTD
 #define OPENSSL_UNISTD <unistd.h>
+
+#undef OPENSSL_EXPORT_VAR_AS_FUNCTION
 
 #if defined(HEADER_IDEA_H) && !defined(IDEA_INT)
 #define IDEA_INT unsigned int
@@ -44,7 +63,7 @@
 #endif
 #endif
 
-#if defined(HEADER_DES_H) && !defined(DES_LONG)
+#if (defined(HEADER_NEW_DES_H) || defined(HEADER_DES_H)) && !defined(DES_LONG)
 /* If this is set to 'unsigned int' on a DEC Alpha, this gives about a
  * %20 speed up (longs are 8 bytes, int's are 4). */
 #ifndef DES_LONG
@@ -144,7 +163,7 @@ YOU SHOULD NOT HAVE BOTH DES_RISC1 AND DES_RISC2 DEFINED!!!!!
 #  define DES_PTR
 #  define DES_RISC2
 #  define DES_UNROLL
-#elif defined( i386 ) || defined ( __i386__ )	/* x86 boxes, should be gcc */
+#elif defined(i386) || defined(__i386__)	/* x86 boxes, should be gcc */
 #  define DES_PTR
 #  define DES_RISC1
 #  define DES_UNROLL

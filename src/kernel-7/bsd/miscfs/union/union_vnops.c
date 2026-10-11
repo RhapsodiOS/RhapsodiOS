@@ -745,7 +745,8 @@ union_read(ap)
 		vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, p);
 	else
 		FIXUP(VTOUNION(ap->a_vp), p);
-	error = VOP_READ(vp, ap->a_uio, ap->a_ioflag, ap->a_cred);
+	error = vn_mapfs_io(vp, ap->a_uio, UIO_READ, ap->a_ioflag, ap->a_cred,
+	    p, 1);
 	if (dolock)
 		VOP_UNLOCK(vp, 0, p);
 
@@ -790,7 +791,8 @@ union_write(ap)
 		panic("union: missing upper layer in write");
 
 	FIXUP(un, p);
-	error = VOP_WRITE(vp, ap->a_uio, ap->a_ioflag, ap->a_cred);
+	error = vn_mapfs_io(vp, ap->a_uio, UIO_WRITE, ap->a_ioflag, ap->a_cred,
+	    p, 1);
 
 	/*
 	 * the size of the underlying object may be changed by the

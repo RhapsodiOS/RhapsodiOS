@@ -624,7 +624,7 @@ union_copyfile(fvp, tvp, cred, p)
 		iov.iov_len = MAXPHYSIO;
 		uio.uio_resid = iov.iov_len;
 		uio.uio_rw = UIO_READ;
-		error = VOP_READ(fvp, &uio, 0, cred);
+		error = vn_mapfs_io(fvp, &uio, UIO_READ, 0, cred, p, 1);
 
 		if (error == 0) {
 			uio.uio_iov = &iov;
@@ -639,7 +639,8 @@ union_copyfile(fvp, tvp, cred, p)
 				break;
 
 			do {
-				error = VOP_WRITE(tvp, &uio, 0, cred);
+				error = vn_mapfs_io(tvp, &uio, UIO_WRITE, 0, cred,
+				    p, 1);
 			} while ((uio.uio_resid > 0) && (error == 0));
 		}
 

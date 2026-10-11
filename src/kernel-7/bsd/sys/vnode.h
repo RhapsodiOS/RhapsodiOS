@@ -467,6 +467,8 @@ int 	vn_closefile __P((struct file *fp, struct proc *p));
 int	vn_ioctl __P((struct file *fp, u_long com, caddr_t data,
 	    struct proc *p));
 int	vn_lock __P((struct vnode *vp, int flags, struct proc *p));
+int	vn_mapfs_io __P((struct vnode *vp, struct uio *uio, enum uio_rw rw,
+	    int ioflag, struct ucred *cred, struct proc *p, int bracket));
 int 	vn_open __P((struct nameidata *ndp, int fmode, int cmode));
 int 	vn_rdwr __P((enum uio_rw rw, struct vnode *vp, caddr_t base,
 	    int len, off_t offset, enum uio_seg segflg, int ioflg,

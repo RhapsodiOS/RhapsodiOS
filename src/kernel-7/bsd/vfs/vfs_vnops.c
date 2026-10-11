@@ -251,6 +251,48 @@ vn_close(vp, flags, cred, p)
 }
 
 /*
+ * Read or write a vnode through MapFS whenever the file has a pager, else
+ * through the filesystem.  Once anyone has mapped a file its current data
+ * may live in VM pages, and a VOP_READ or VOP_WRITE would bypass them: an
+ * append through the buffer cache then never reaches a page an mmap has
+ * already brought in, and reads back as zeros once MapFS takes over.
+ *
+ * Without bracket, the map_count taken here belongs to the caller's open
+ * file and vn_close() drops it, as vn_rdwr() always did.  With bracket,
+ * for callers that have no matching close, it is dropped before returning.
+ * The vnode must be locked.
+ */
+int
+vn_mapfs_io(vp, uio, rw, ioflag, cred, p, bracket)
+	struct vnode *vp;
+	struct uio *uio;
+	enum uio_rw rw;
+	int ioflag;
+	struct ucred *cred;
+	struct proc *p;
+	int bracket;
+{
+	int error;
+
+#if MACH_NBC
+	if ((vp->v_type == VREG) && vp->v_vm_info &&
+	    (vp->v_vm_info->pager != NULL)) {
+		if (p == NULL)		/* map_vnode needs a process */
+			p = current_proc();
+		if (bracket || vp->v_vm_info->map_count == 0)
+			map_vnode(vp, p);
+		error = mapfs_io(vp, uio, rw, ioflag, cred);
+		if (bracket)
+			unmap_vnode(vp, p);
+		return (error);
+	}
+#endif /* MACH_NBC */
+	if (rw == UIO_READ)
+		return (VOP_READ(vp, uio, ioflag, cred));
+	return (VOP_WRITE(vp, uio, ioflag, cred));
+}
+
+/*
  * Package up an I/O request on a vnode into a uio and do it.
  */
 vn_rdwr(rw, vp, base, len, offset, segflg, ioflg, cred, aresid, p)
@@ -287,26 +329,7 @@ vn_rdwr(rw, vp, base, len, offset, segflg, ioflg, cred, aresid, p)
 	auio.uio_segflg = segflg;
 	auio.uio_rw = rw;
 	auio.uio_procp = p;
-#if MACH_NBC
-	/* if the file was never mapped, leave it alone */
-	if ((vp->v_type == VREG) && (vp->v_vm_info->pager != NULL)) {
-		if (vp->v_vm_info->map_count == 0) {
-			/*
-			 * file has a pager but MapFS is not involved yet
-			 * get MapFS involved
-			 */
-			map_vnode(vp,p); /* vn_close() will loose this map_count */
-		}
-		error = mapfs_io(vp, &auio, rw, ioflg, cred);
-	} else {
-#endif /* MACH_NBC */
-	if (rw == UIO_READ)
-		error = VOP_READ(vp, &auio, ioflg, cred);
-	 else 
-		error = VOP_WRITE(vp, &auio, ioflg, cred);
-#if MACH_NBC
-	}
-#endif /* MACH_NBC */
+	error = vn_mapfs_io(vp, &auio, rw, ioflg, cred, p, 0);
 	if (aresid)
 		*aresid = auio.uio_resid;
 	else
@@ -334,15 +357,8 @@ vn_read(fp, uio, cred)
 	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, p);
 	uio->uio_offset = fp->f_offset;
 	count = uio->uio_resid;
-#if MACH_NBC
-	if ((vp->v_type == VREG) && (vp->v_vm_info) && (vp->v_vm_info->mapped)) {
-		error = mapfs_io(vp, uio, UIO_READ, (fp->f_flag & FNONBLOCK) ? IO_NDELAY : 0, cred);
-	} else {
-#endif /* MACH_NBC */
-		error = VOP_READ(vp, uio, (fp->f_flag & FNONBLOCK) ? IO_NDELAY : 0, cred);
-#if MACH_NBC
-	}
-#endif /* MACH_NBC */
+	error = vn_mapfs_io(vp, uio, UIO_READ,
+	    (fp->f_flag & FNONBLOCK) ? IO_NDELAY : 0, cred, p, 0);
 
 	fp->f_offset += count - uio->uio_resid;
 	VOP_UNLOCK(vp, 0, p);
@@ -373,16 +389,7 @@ vn_write(fp, uio, cred)
 	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, p);
 	uio->uio_offset = fp->f_offset;
 	count = uio->uio_resid;
-#if MACH_NBC
-	if ((vp->v_type == VREG) && (vp->v_vm_info) && (vp->v_vm_info->mapped)) {
-		error = mapfs_io(vp, uio, UIO_WRITE, ioflag, cred);
-	} else {
-#endif /* MACH_NBC */
-
-		error = VOP_WRITE(vp, uio, ioflag, cred);
-#if MACH_NBC
-	}
-#endif /* MACH_NBC */
+	error = vn_mapfs_io(vp, uio, UIO_WRITE, ioflag, cred, p, 0);
 
 	if (ioflag & IO_APPEND)
 		fp->f_offset = uio->uio_offset;

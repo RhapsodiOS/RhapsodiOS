@@ -457,7 +457,8 @@ ktrwrite(vp, kth)
 		auio.uio_resid += kth->ktr_len;
 	}
 	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, p);
-	error = VOP_WRITE(vp, &auio, IO_UNIT|IO_APPEND, p->p_ucred);
+	error = vn_mapfs_io(vp, &auio, UIO_WRITE, IO_UNIT|IO_APPEND, p->p_ucred,
+	    p, 1);
 	VOP_UNLOCK(vp, 0, p);
 	if (!error)
 		return;

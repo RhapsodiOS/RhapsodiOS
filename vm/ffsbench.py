@@ -847,7 +847,7 @@ def prep(scratch_mb=1024, workload_mb=256):
 # --- stall mode: a real rbuild kernel with repeated ssh logins -------------
 
 STALL_DIR = "/build/ffsstall"
-LOGIN_EVERY_S = 15
+LOGIN_EVERY_S = int(os.environ.get("FFSBENCH_LOGIN_EVERY") or 15)   # stall-mode login interval
 LOGIN_LIMIT_S = 120
 STALL_RUN_LIMIT_S = 2 * 3600
 

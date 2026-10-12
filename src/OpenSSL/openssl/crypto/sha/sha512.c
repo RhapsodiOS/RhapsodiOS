@@ -334,7 +334,8 @@ static const SHA_LONG64 K512[80] = {
                                 : "=r"(ret)                     \
                                 : "0"(ret)); ret;               })
 #     endif
-#    elif (defined(__i386) || defined(__i386__)) && !defined(B_ENDIAN)
+/* Rhapsody's gcc 2.x miscompiles these PULL64s at -O3; it takes the C path. */
+#    elif (defined(__i386) || defined(__i386__)) && !defined(B_ENDIAN) && !defined(__NeXT__)
 #     if defined(I386_ONLY)
 #      define PULL64(x) ({ const unsigned int *p=(const unsigned int *)(&(x));\
                          unsigned int hi=p[0],lo=p[1];          \

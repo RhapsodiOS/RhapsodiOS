@@ -56,13 +56,7 @@ enum
  * Definitions for IP type of service (ip_tos)
  */
 #include <netinet/in_systm.h>
-/*
- * Rhapsody's <netinet/ip.h> has no include guard, so a second inclusion
- * redefines struct ip; the files that need it include it themselves.
- */
-#ifndef __NeXT__
 #include <netinet/ip.h>
-#endif
 #ifndef IPTOS_LOWDELAY
 # define IPTOS_LOWDELAY          0x10
 # define IPTOS_THROUGHPUT        0x08

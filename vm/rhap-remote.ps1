@@ -17,10 +17,10 @@ if (-not (Test-Path -LiteralPath $script:RhapKnownHostsFile)) {
 }
 $rhapKnownHostsOpt = ($script:RhapKnownHostsFile -replace '\\', '/')
 $script:RhapLegacySshOptions = @(
-    '-o', 'KexAlgorithms=diffie-hellman-group1-sha1',
-    '-o', 'HostKeyAlgorithms=ssh-dss',
-    '-o', 'Ciphers=3des-cbc',
-    '-o', 'MACs=hmac-sha1',
+    '-o', 'KexAlgorithms=+diffie-hellman-group1-sha1',
+    '-o', 'HostKeyAlgorithms=+ssh-dss',
+    '-o', 'Ciphers=+3des-cbc',
+    '-o', 'MACs=+hmac-sha1',
     '-o', 'PubkeyAuthentication=no',
     '-o', 'StrictHostKeyChecking=no',
     '-o', "UserKnownHostsFile=$rhapKnownHostsOpt",

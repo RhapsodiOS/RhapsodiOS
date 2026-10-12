@@ -4,10 +4,14 @@ Rhapsody DR2 / Mac OS X Server 1.x `sshd` only negotiates weak SSH-2 algorithms.
 A modern client that offers only current defaults will see the server close the
 socket (`Remote side unexpectedly closed network connection`).
 
+The options below append those legacy algorithms to the client's defaults
+(`=+`), so the same command also reaches a guest running the packaged, newer
+OpenSSH, which negotiates a modern algorithm instead.
+
 ## Interactive login (OpenSSH)
 
 ```bat
-ssh -o KexAlgorithms=diffie-hellman-group1-sha1 -o HostKeyAlgorithms=ssh-dss -o Ciphers=3des-cbc -o MACs=hmac-sha1 root@10.10.0.241
+ssh -o KexAlgorithms=+diffie-hellman-group1-sha1 -o HostKeyAlgorithms=+ssh-dss -o Ciphers=+3des-cbc -o MACs=+hmac-sha1 root@10.10.0.241
 ```
 
 Password / host / user come from `vm/vm.conf` (`Password=`, `Host=`, `User=`).

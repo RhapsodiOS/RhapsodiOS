@@ -892,7 +892,7 @@ pmap_remove(
     vm_offset_t		end
 )
 {
-    vm_offset_t		sect_end;
+    vm_offset_t		va = start, sect_end;
     int			s;
 
     if (pmap == PMAP_NULL)
@@ -900,19 +900,20 @@ pmap_remove(
 
     PMAP_READ_LOCK(pmap, s);
 
-    /*
-     * Invalidate the translation buffer first
-     */
-    PMAP_UPDATE_TLBS(pmap, start, end);
-    
-    while (start < end) {
-	sect_end = round_section(start + PAGE_SIZE);
+    while (va < end) {
+	sect_end = round_section(va + PAGE_SIZE);
 	if (sect_end > end)
 	    sect_end = end;
 
-	pmap_remove_range(pmap, start, sect_end, TRUE);
-	start = sect_end;
+	pmap_remove_range(pmap, va, sect_end, TRUE);
+	va = sect_end;
     }
+
+    /*
+     * Invalidate the translation buffer only now that the entries are
+     * gone, so it cannot reload one of them in between.
+     */
+    PMAP_UPDATE_TLBS(pmap, start, end);
 
     PMAP_READ_UNLOCK(pmap, s);
 }
@@ -966,11 +967,6 @@ pmap_remove_all(
 	    
 	if (pte->wired)
 	    panic("pmap_remove_all 3");
-	
-	/*
-	 * Tell CPU using pmap to invalidate its TLB
-	 */
-	PMAP_UPDATE_TLBS(pmap, va, va + PAGE_SIZE);
 
 	if ((cur = pv_h->next) != PV_ENTRY_NULL) {
 	    *pv_h = *cur;
@@ -996,6 +992,12 @@ pmap_remove_all(
 		
 	    *pte = (pt_entry_t) { 0 };
 	}
+
+	/*
+	 * Tell CPU using pmap to invalidate its TLB, now that the
+	 * entries are clear.
+	 */
+	PMAP_UPDATE_TLBS(pmap, va, va + PAGE_SIZE);
 	
 	pmap_deallocate_mappings(pmap, va, 1, 0, TRUE);
 	
@@ -1051,14 +1053,15 @@ pmap_copy_on_write(
 	if (pte == PT_ENTRY_NULL || !pte->valid)
 	    panic("pmap_copy_on_write");
 
-	/*
-	 * Ask cpus using pmap to invalidate their TLBs
-	 */
-	PMAP_UPDATE_TLBS(pmap, va, va + PAGE_SIZE);
-	
 	if (pte->prot == PT_PROT_URW || pte->prot == PT_PROT_KRW)
 	    for (i = ptes_per_vm_page; i-- > 0; pte++)
 		pte_prot(pmap, VM_PROT_READ, pte->valid, pte);
+
+	/*
+	 * Ask cpus using pmap to invalidate their TLBs, now that the
+	 * entries are read-only.
+	 */
+	PMAP_UPDATE_TLBS(pmap, va, va + PAGE_SIZE);
 	    
 	simple_unlock(&pmap->lock);
 	
@@ -1084,7 +1087,7 @@ pmap_protect(
 )
 {
     pt_entry_t		*pte, *epte;
-    vm_offset_t		sect_end;
+    vm_offset_t		va = start, sect_end;
     int			i, s;
     
     if (pmap == PMAP_NULL)
@@ -1098,17 +1101,12 @@ pmap_protect(
     SPLVM(s);
     simple_lock(&pmap->lock);
 
-    /*
-     * Invalidate the translation buffer first
-     */
-    PMAP_UPDATE_TLBS(pmap, start, end);    
-    
-    while (start < end) {
-	sect_end = round_section(start + PAGE_SIZE);
+    while (va < end) {
+	sect_end = round_section(va + PAGE_SIZE);
 	if (sect_end > end)
 	    sect_end = end;
 	    
-	pte = pmap_pt_entry(pmap, start);
+	pte = pmap_pt_entry(pmap, va);
 	if (pte != PT_ENTRY_NULL) {
 	    epte = pmap_pt_entry(pmap, sect_end);
 	    if (trunc_page(pte) != trunc_page(epte))
@@ -1125,8 +1123,14 @@ pmap_protect(
 	    }
 	}
 
-	start = sect_end;
+	va = sect_end;
     }
+
+    /*
+     * Invalidate the translation buffer only now that the entries are
+     * changed, so it cannot reload one of them in between.
+     */
+    PMAP_UPDATE_TLBS(pmap, start, end);
     
     simple_unlock(&pmap->lock);
     SPLX(s);
@@ -1225,14 +1229,14 @@ Retry:
 	if (caching == cache_writethrough)
 	    template.cachewrt = 1;
 
-	PMAP_UPDATE_TLBS(pmap, va, va + PAGE_SIZE);
-	
 	for (i = ptes_per_vm_page; i-- > 0; pte++) {
 	    if (pte->dirty)
 		template.dirty = 1;
 	    *pte = template;
 	    template.pfn++;
 	}
+
+	PMAP_UPDATE_TLBS(pmap, va, va + PAGE_SIZE);
     }
     else {
 
@@ -1241,12 +1245,13 @@ Retry:
 	 */
 	if (pte->valid) {
 	    /*
-	     * Invalidate the translation buffer,
-	     * then remove the mapping.
+	     * Remove the mapping, then invalidate the translation
+	     * buffer before anything (the zalloc below may sleep)
+	     * can run with the old one cached.
 	     */
-	    PMAP_UPDATE_TLBS(pmap, va, va + PAGE_SIZE);
-	    
 	    pmap_remove_range(pmap, va, va + PAGE_SIZE, FALSE);
+
+	    PMAP_UPDATE_TLBS(pmap, va, va + PAGE_SIZE);
 	}
 	
 	if (managed_page(pa)) {
@@ -2042,8 +2047,6 @@ pmap_clear_page_attrib(
 
 	simple_lock(&pmap->lock);
 
-	PMAP_UPDATE_TLBS(pmap, va, va + PAGE_SIZE);
-
 	pte = pmap_pt_entry(pmap, va);
 	if (pte != PT_ENTRY_NULL) {
 	    for (i = ptes_per_vm_page; i-- > 0; pte++) {
@@ -2053,6 +2056,12 @@ pmap_clear_page_attrib(
 		    pte->refer = 0;
 	    }
 	}
+
+	/*
+	 * Flush after clearing, or a cached entry keeps the old dirty
+	 * and referenced bits and the CPU never sets them again.
+	 */
+	PMAP_UPDATE_TLBS(pmap, va, va + PAGE_SIZE);
 
 	simple_unlock(&pmap->lock);
 

@@ -7,15 +7,15 @@ Project         = openssl
 ProjectName     = OpenSSL
 UserType        = Developer
 ToolType        = Libraries
-Configure       = $(Sources)/config
 Extra_CC_Flags  = -Wno-precomp
 
-# config is kinda like configure
-include $(MAKEFILEPATH)/CoreOS/ReleaseControl/GNUSource.make
-
+# GNUSource.make tests these while it is read, so they come first: each
+# arch is configured, built and installed by the rules below instead.
 GnuNoConfigure = YES
 GnuNoBuild     = YES
 GnuNoInstall   = YES
+
+include $(MAKEFILEPATH)/CoreOS/ReleaseControl/GNUSource.make
 
 Configure_Flags = --prefix=/usr --openssldir=/System/Library/OpenSSL
 Environment     = AR="$(SRCROOT)/ar.sh r" \

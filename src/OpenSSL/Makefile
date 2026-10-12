@@ -21,7 +21,8 @@ Configure_Flags = --prefix=/usr --openssldir=/System/Library/OpenSSL
 Environment     = AR="$(SRCROOT)/ar.sh r" \
 		  PERL='/usr/bin/perl' \
 		  INCLUDEDIR="$(USRDIR)/local/include/openssl" \
-		  MANDIR="$(MANDIR)"
+		  MANDIR="$(MANDIR)" \
+		  MANSUFFIX=ssl
 
 Install_Target  = install
 
@@ -65,7 +66,7 @@ install:: build
 	done; \
 	set -- $(RC_ARCHS); first=$$1; \
 	$(MKDIR) -p "$(DSTROOT)"; \
-	$(CP) -R "$(OBJROOT)/dst-$$first/." "$(DSTROOT)"; \
+	(cd "$(OBJROOT)/dst-$$first" && pax -rw . "$(DSTROOT)"); \
 	$(MKDIR) -p "$(DSTROOT)$(USRLIBDIR)" "$(DSTROOT)$(USRBINDIR)"; \
 	for lib in libcrypto.a libssl.a; do \
 		set --; \

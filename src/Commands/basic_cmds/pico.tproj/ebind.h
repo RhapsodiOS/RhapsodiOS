@@ -1,5 +1,5 @@
 /*
- * $Id: ebind.h,v 1.1.1.1 1999/04/15 17:45:12 wsanchez Exp $
+ * $Id: ebind.h,v 4.13 1998/02/28 00:10:21 hubert Exp $
  *
  * Program:	Default key bindings
  *
@@ -14,28 +14,16 @@
  *
  * Please address all bugs and comments to "pine-bugs@cac.washington.edu"
  *
- * Copyright 1991-1993  University of Washington
  *
- *  Permission to use, copy, modify, and distribute this software and its
- * documentation for any purpose and without fee to the University of
- * Washington is hereby granted, provided that the above copyright notice
- * appears in all copies and that both the above copyright notice and this
- * permission notice appear in supporting documentation, and that the name
- * of the University of Washington not be used in advertising or publicity
- * pertaining to distribution of the software without specific, written
- * prior permission.  This software is made available "as is", and
- * THE UNIVERSITY OF WASHINGTON DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED,
- * WITH REGARD TO THIS SOFTWARE, INCLUDING WITHOUT LIMITATION ALL IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE, AND IN
- * NO EVENT SHALL THE UNIVERSITY OF WASHINGTON BE LIABLE FOR ANY SPECIAL,
- * INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
- * LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, TORT
- * (INCLUDING NEGLIGENCE) OR STRICT LIABILITY, ARISING OUT OF OR IN CONNECTION
- * WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
- *
- * Pine and Pico are trademarks of the University of Washington.
- * No commercial use of these trademarks may be made without prior
- * written permission of the University of Washington.
+ * Pine and Pico are registered trademarks of the University of Washington.
+ * No commercial use of these trademarks may be made without prior written
+ * permission of the University of Washington.
+ * 
+ * Pine, Pico, and Pilot software and its included text are Copyright
+ * 1989-1998 by the University of Washington.
+ * 
+ * The full text of our legal notices is contained in the file called
+ * CPYRIGHT, included with this distribution.
  *
  *
  * NOTES:
@@ -73,15 +61,18 @@
  * control-X commands.
  */
 KEYTAB  keytab[NBINDS] = {
-	{K_PAD_UP,		backline},
-	{K_PAD_DOWN,		forwline},
-	{K_PAD_RIGHT,		forwchar},
-	{K_PAD_LEFT,		backchar},
-	{K_PAD_PREVPAGE,	backpage},
-	{K_PAD_NEXTPAGE,	forwpage},
-	{K_PAD_HOME,		gotobol},
-	{K_PAD_END,		gotoeol},
-	{K_PAD_DELETE,		forwdel},
+	{KEY_UP,		backline},
+	{KEY_DOWN,		forwline},
+	{KEY_RIGHT,		forwchar},
+	{KEY_LEFT,		backchar},
+	{KEY_PGUP,		backpage},
+	{KEY_PGDN,		forwpage},
+	{KEY_HOME,		gotobol},
+	{KEY_END,		gotoeol},
+	{KEY_DEL,		forwdel},
+#ifdef	MOUSE
+	{KEY_MOUSE,		mousepress},
+#endif
 	{CTRL|'A',		gotobol},
 	{CTRL|'B',		backchar},
 	{CTRL|'C',		abort_composer},
@@ -112,9 +103,7 @@ KEYTAB  keytab[NBINDS] = {
 #endif
 	{CTRL|'@',		forwword},
 	{CTRL|'^',		setmark},
-#ifdef	JOB_CONTROL
 	{CTRL|'_',		alt_editor},
-#endif
 	{0x7F,			backdel},
 	{0,			NULL}
 };
@@ -127,15 +116,18 @@ KEYTAB  keytab[NBINDS] = {
  * control-X commands.
  */
 KEYTAB  pkeytab[NBINDS] = {
-	{K_PAD_UP,		backline},
-	{K_PAD_DOWN,		forwline},
-	{K_PAD_RIGHT,		forwchar},
-	{K_PAD_LEFT,		backchar},
-	{K_PAD_PREVPAGE,	backpage},
-	{K_PAD_NEXTPAGE,	forwpage},
-	{K_PAD_HOME,		gotobol},
-	{K_PAD_END,		gotoeol},
-	{K_PAD_DELETE,		forwdel},
+	{KEY_UP,		backline},
+	{KEY_DOWN,		forwline},
+	{KEY_RIGHT,		forwchar},
+	{KEY_LEFT,		backchar},
+	{KEY_PGUP,		backpage},
+	{KEY_PGDN,		forwpage},
+	{KEY_HOME,		gotobol},
+	{KEY_END,		gotoeol},
+	{KEY_DEL,		forwdel},
+#ifdef	MOUSE
+	{KEY_MOUSE,		mousepress},
+#endif
 	{CTRL|'A',		gotobol},
 	{CTRL|'B',		backchar},
 	{CTRL|'C',		showcpos},
@@ -146,11 +138,7 @@ KEYTAB  pkeytab[NBINDS] = {
 	{CTRL|'H',		backdel},
 	{CTRL|'I',		tab},
 	{CTRL|'J',		fillpara},
-#ifdef	ONLYWHILETESTING
-	{CTRL|'K',		killtext},
-#else
 	{CTRL|'K',		killregion},
-#endif
 	{CTRL|'L',		refresh},
 	{CTRL|'M',		newline},
 	{CTRL|'N',		forwline},

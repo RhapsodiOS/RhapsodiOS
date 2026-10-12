@@ -77,7 +77,6 @@ dir     OpenSSL               all
 dir     Developer/Commands/patch-1 all
 dir     Developer/Commands/pb_makefiles-1 all
 dir     Developer/Commands/perl-1 all
-dir     Commands/pico-1       all
 dir     Developer/Commands/project_makefiles-1 all
 dir     Developer/Commands/rcs-1 all
 dir     relcontrol-10         all

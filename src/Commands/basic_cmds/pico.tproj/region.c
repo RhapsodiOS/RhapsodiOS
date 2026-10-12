@@ -1,5 +1,5 @@
 #if	!defined(lint) && !defined(DOS)
-static char rcsid[] = "$Id: region.c,v 1.1.1.1 1999/04/15 17:45:14 wsanchez Exp $";
+static char rcsid[] = "$Id: region.c,v 4.24 2001/06/21 17:49:51 hubert Exp $";
 #endif
 /*
  * Program:	Region management routines
@@ -15,28 +15,16 @@ static char rcsid[] = "$Id: region.c,v 1.1.1.1 1999/04/15 17:45:14 wsanchez Exp 
  *
  * Please address all bugs and comments to "pine-bugs@cac.washington.edu"
  *
- * Copyright 1991-1993  University of Washington
  *
- *  Permission to use, copy, modify, and distribute this software and its
- * documentation for any purpose and without fee to the University of
- * Washington is hereby granted, provided that the above copyright notice
- * appears in all copies and that both the above copyright notice and this
- * permission notice appear in supporting documentation, and that the name
- * of the University of Washington not be used in advertising or publicity
- * pertaining to distribution of the software without specific, written
- * prior permission.  This software is made available "as is", and
- * THE UNIVERSITY OF WASHINGTON DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED,
- * WITH REGARD TO THIS SOFTWARE, INCLUDING WITHOUT LIMITATION ALL IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE, AND IN
- * NO EVENT SHALL THE UNIVERSITY OF WASHINGTON BE LIABLE FOR ANY SPECIAL,
- * INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
- * LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, TORT
- * (INCLUDING NEGLIGENCE) OR STRICT LIABILITY, ARISING OUT OF OR IN CONNECTION
- * WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
- *
- * Pine and Pico are trademarks of the University of Washington.
- * No commercial use of these trademarks may be made without prior
- * written permission of the University of Washington.
+ * Pine and Pico are registered trademarks of the University of Washington.
+ * No commercial use of these trademarks may be made without prior written
+ * permission of the University of Washington.
+ * 
+ * Pine, Pico, and Pilot software and its included text are Copyright
+ * 1989-2001 by the University of Washington.
+ * 
+ * The full text of our legal notices is contained in the file called
+ * CPYRIGHT, included with this distribution.
  *
  */
 /*
@@ -46,10 +34,7 @@ static char rcsid[] = "$Id: region.c,v 1.1.1.1 1999/04/15 17:45:14 wsanchez Exp 
  * commands. Some functions are just for
  * internal use.
  */
-#include        <stdio.h>
-#include	"estruct.h"
-#include	"pico.h"
-#include        "edef.h"
+#include	"headers.h"
 
 /*
  * Kill the region. Ask "getregion"
@@ -58,23 +43,14 @@ static char rcsid[] = "$Id: region.c,v 1.1.1.1 1999/04/15 17:45:14 wsanchez Exp 
  * Bound to "C-W".
  */
 killregion(f, n)
+    int f, n;
 {
     REGION          region;
-    static long     times = 1L;
-    static long     backoff = 4L;
 
     if (curbp->b_mode&MDVIEW)		/* don't allow this command if	*/
       return(rdonly());			/* we are in read only mode	*/
 
-    if (getregion(&region) != TRUE){
-	if((lastflag&CFKILL) == 0){
-	    emlwrite("Line Deleted.%s", !(times % backoff) ? 
-		     " (Could also use ctrl-^ to mark text for cutting)" : "");
-
-	    if(!(times++ % backoff)) 	/* if message shown, reset backoff */
-	      backoff = backoff << 1;
-	}
-	
+    if (getregion(&region, curwp->w_markp, curwp->w_marko) != TRUE){
 	return (killtext(f, n));
     }else {
 	mlerase();
@@ -87,7 +63,56 @@ killregion(f, n)
     curwp->w_dotp = region.r_linep;
     curwp->w_doto = region.r_offset;
     curwp->w_markp = NULL;
-    return (ldelete((int)region.r_size, TRUE));
+#ifdef	_WINDOWS
+    mswin_allowcopycut(NULL);
+#endif
+
+    if(ldelete(region.r_size, kinsert)){
+	if(curwp->w_dotp == curwp->w_linep && curwp->w_dotp == curbp->b_linep){
+	    curwp->w_force = 0;		/* Center dot. */
+	    curwp->w_flag |= WFFORCE;
+	}
+
+	return(TRUE);
+    }
+
+    return (FALSE);
+}
+
+
+/*
+ * Blast the region without saving . Ask "getregion"
+ * to figure out the bounds of the region.
+ * Move "." to the start, and kill the characters.
+ * Bound to "C-W".
+ */
+deleteregion(f, n)
+    int f, n;
+{
+    REGION          region;
+
+    if (curbp->b_mode&MDVIEW)		/* don't allow this command if	*/
+      return(rdonly());			/* we are in read only mode	*/
+
+    if (getregion(&region, curwp->w_markp, curwp->w_marko) == TRUE){
+	curwp->w_dotp = region.r_linep;
+	curwp->w_doto = region.r_offset;
+	curwp->w_markp = NULL;
+#ifdef	_WINDOWS
+	mswin_allowcopycut(NULL);
+#endif
+	if(ldelete(region.r_size, NULL)){
+	    if(curwp->w_dotp == curwp->w_linep
+	       && curwp->w_dotp == curbp->b_linep){
+		curwp->w_force = 0;		/* Center dot. */
+		curwp->w_flag |= WFFORCE;
+	    }
+
+	    return(TRUE);
+	}
+    }
+
+    return (FALSE);
 }
 
 
@@ -104,7 +129,7 @@ copyregion(f, n)
     register int    s;
     REGION          region;
 
-    if ((s=getregion(&region)) != TRUE)
+    if ((s=getregion(&region, curwp->w_markp, curwp->w_marko)) != TRUE)
       return (s);
 
     if ((lastflag&CFKILL) == 0)		/* Kill type command.   */
@@ -151,7 +176,7 @@ lowerregion(f, n)
     if (curbp->b_mode&MDVIEW)	/* don't allow this command if	*/
       return(rdonly());	/* we are in read only mode	*/
 
-    if ((s=getregion(&region)) != TRUE)
+    if ((s=getregion(&region, curwp->w_markp, curwp->w_marko)) != TRUE)
       return (s);
 
     lchange(WFHARD);
@@ -195,7 +220,7 @@ upperregion(f, n)
     if (curbp->b_mode&MDVIEW)	/* don't allow this command if	*/
       return(rdonly());	/* we are in read only mode	*/
 
-    if ((s=getregion(&region)) != TRUE)
+    if ((s=getregion(&region, curwp->w_markp, curwp->w_marko)) != TRUE)
       return (s);
 
     lchange(WFHARD);
@@ -229,26 +254,28 @@ upperregion(f, n)
  * an "ABORT" status; we might make this have the
  * conform thing later.
  */
-getregion(rp)
+getregion(rp, markp, marko)
 register REGION *rp;
+register LINE	*markp;
+register int	 marko;
 {
     register LINE   *flp;
     register LINE   *blp;
-    int    fsize;
-    register int    bsize;
+    long	    fsize;
+    register long   bsize;
 
-    if (curwp->w_markp == NULL) {
+    if (markp == NULL) {
 	return (FALSE);
     }
 
-    if (curwp->w_dotp == curwp->w_markp) {
+    if (curwp->w_dotp == markp) {
 	rp->r_linep = curwp->w_dotp;
-	if (curwp->w_doto < curwp->w_marko) {
+	if (curwp->w_doto < marko) {
 	    rp->r_offset = curwp->w_doto;
-	    rp->r_size = curwp->w_marko-curwp->w_doto;
+	    rp->r_size = marko - curwp->w_doto;
 	} else {
-	    rp->r_offset = curwp->w_marko;
-	    rp->r_size = curwp->w_doto-curwp->w_marko;
+	    rp->r_offset = marko;
+	    rp->r_size = curwp->w_doto - marko;
 	}
 	return (TRUE);
     }
@@ -260,23 +287,23 @@ register REGION *rp;
     while (flp!=curbp->b_linep || lback(blp)!=curbp->b_linep) {
 	if (flp != curbp->b_linep) {
 	    flp = lforw(flp);
-	    if (flp == curwp->w_markp) {
+	    if (flp == markp) {
 		rp->r_linep = curwp->w_dotp;
 		rp->r_offset = curwp->w_doto;
-		rp->r_size = fsize+curwp->w_marko;
+		rp->r_size = fsize + marko;
 		return (TRUE);
 	    }
 
-	    fsize += llength(flp)+1;
+	    fsize += llength(flp) + 1;
 	}
 
 	if (lback(blp) != curbp->b_linep) {
 	    blp = lback(blp);
 	    bsize += llength(blp)+1;
-	    if (blp == curwp->w_markp) {
+	    if (blp == markp) {
 		rp->r_linep = blp;
-		rp->r_offset = curwp->w_marko;
-		rp->r_size = bsize - curwp->w_marko;
+		rp->r_offset = marko;
+		rp->r_size = bsize - marko;
 		return (TRUE);
 	    }
 	}
@@ -299,7 +326,7 @@ markregion(attr)
     REGION          region;
     CELL            ac;
 
-    if ((s=getregion(&region)) != TRUE)
+    if ((s=getregion(&region, curwp->w_markp, curwp->w_marko)) != TRUE)
       return (s);
 
     lchange(WFHARD);
@@ -325,6 +352,7 @@ markregion(attr)
  * clear all the attributes of all the characters in the buffer?
  * this is real dumb.  Movement with mark set needs to be smarter!
  */
+void
 unmarkbuffer()
 {
     register LINE   *linep;
@@ -342,5 +370,4 @@ unmarkbuffer()
 
 	linep = lforw(linep);
     }
-    
 }

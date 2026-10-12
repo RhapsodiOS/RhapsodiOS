@@ -30,10 +30,11 @@ files). Use it to find the right upstream when backporting a fix.
 | NetBSD-current ~Oct 1998 | developer_cmds, doc_cmds, file_cmds, mail_cmds, misc_cmds, shell_cmds, text_cmds |
 | OpenBSD 2.0-2.2 imports | sh, more, pax, the YP suite, makedbm, stdethers/stdhosts, revnetgroup, tcpdump/pcap, zic/zdump |
 | CMU Mach / NeXT / Apple originals | at_cmds, bootstrap_cmds, md, ps, mach_init, hostinfo, vm_stat, disk, pdisk, ... |
-| Third-party packages | bash, tcsh, zsh, GNU tar/gzip/grep/wget, less, rsync, nvi, pico, apk-tools |
+| Third-party packages | bash, tcsh, zsh, GNU tar/gzip/grep/wget, less, rsync, nvi, pico (in basic_cmds), apk-tools |
 
 Everything here was in the original Darwin 0.3 import (`19ffee9a5`) except **apk-tools-1**
-(added `2a7f7682a`, 2026-07) and **pico-1** (added `6b3c3fb13`, 2026-09). Later commits only moved
+(added `2a7f7682a`, 2026-07) and pico 4.3L (added as `pico-1` in `6b3c3fb13`, 2026-09, and later
+moved into `basic_cmds/pico.tproj` in place of Darwin's pico 2.3). Other later commits only moved
 directories.
 
 `/bin/sh` is **not** NetBSD's sh directly: it is the Almquist shell from OpenBSD 2.0-2.1, which
@@ -54,7 +55,6 @@ OpenBSD took from NetBSD 1.1/1.2. RhapsodiOS has backported NetBSD's `-e` handli
 | rsync-1 | rsync | 2.1.1 (version.h) | |
 | vi-1 | nvi | 1.79, 1996-10-23 (ex/version.h) | |
 | wget-1 | GNU wget | 1.5.3 (src/version.c) | |
-| pico-1 | pico from UW pine 4.50 | 4.3L (pico.h) | RhapsodiOS addition; see LOCAL-CHANGES |
 | apk-tools-1 | Alpine apk-tools | 2.0_pre12 (Makefile) | RhapsodiOS addition; see PORTING.md |
 
 ## adv_cmds (4.4BSD, Apple/NeXT tree)
@@ -89,7 +89,7 @@ atlookup, atprint, atstatus, aurpd, chooser, dbgcom, router, setdbg, tuple_pr.
 | ls.tproj | 4.4BSD | stat_flags.c 8.2 7/28/94 | helper sources, not built as a tool |
 | mesg | 4.4BSD + NeXT | mesg.c 8.2 1/21/94 | Lite/Lite2 |
 | more | OpenBSD (4.3BSD-Reno more) | more.c `$OpenBSD$` 1.7 1997/01/17 | OpenBSD ~2.1 (approx.) |
-| pico.tproj | UW pine | pico.h "2.3" | pico 2.3; separate from pico-1 |
+| pico.tproj | UW pico from pine 4.50 | pico.h "4.3L" | pico 4.3 with RhapsodiOS changes (see LOCAL-CHANGES); replaced Darwin's pico 2.3 |
 | printf.tproj | 4.4BSD + NeXT | printf.c 8.2 3/22/95 | helper for csh, not built as a tool |
 | sh.tproj | ash, NetBSD via OpenBSD | main.c `$OpenBSD$` 1.5 1996/10/20 over `$NetBSD$` 1.23 1995/11/19 | OpenBSD ~2.0-2.1 (approx.); NetBSD 5 errexit backport |
 | uudecode, uuencode | 4.4BSD + NeXT | 8.2 4/2/94 | Lite/Lite2 |

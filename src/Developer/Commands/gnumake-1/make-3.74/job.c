@@ -1440,12 +1440,12 @@ construct_command_argv_internal (line, restp, shell, ifs)
 #else
   {
     /* SHELL may be a multi-word command.  Construct a command line
-       "SHELL -ce LINE", with all special chars in LINE escaped.
+       "SHELL -c LINE", with all special chars in LINE escaped.
        Then recurse, expanding this command line to get the final
        argument list.  */
     
     unsigned int shell_len = strlen (shell);
-    static char minus_c[] = " -ce ";
+    static char minus_c[] = " -c ";
     unsigned int line_len = strlen (line);
     
     char *new_line = (char *) alloca (shell_len + (sizeof (minus_c) - 1)
@@ -1458,7 +1458,6 @@ construct_command_argv_internal (line, restp, shell, ifs)
     if (stricmp (shell, "cmd.exe") == 0)
       {
       minus_c[1] = '/';  /* cmd.exe uses /, not - for options */
-      minus_c[3] = ' ';  /* cmd.exe does not recognize -e option */
       }
 #endif /* WIN32 */
     bcopy (minus_c, ap, sizeof (minus_c) - 1);

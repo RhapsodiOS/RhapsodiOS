@@ -78,12 +78,6 @@
     !defined(HAVE_DECL_GLOB_NOMATCH) || HAVE_DECL_GLOB_NOMATCH == 0 || \
     defined(BROKEN_GLOB)
 
-#ifdef __NeXT__
-/* Rhapsody's <ctype.h> has these only as macros; charclass.h takes their addresses. */
-int	isalnum(int), isalpha(int), isblank(int), iscntrl(int), isdigit(int),
-	isgraph(int), islower(int), isprint(int), ispunct(int), isspace(int),
-	isupper(int), isxdigit(int);
-#endif
 #include "charclass.h"
 
 #define	DOLLAR		'$'

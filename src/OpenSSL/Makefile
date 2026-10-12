@@ -41,10 +41,12 @@ configure::
 		rm -rf "$(OBJROOT)/$$arch"; \
 		mkdir -p "$(OBJROOT)/$$arch"; \
 		$(CP) -R -P "$(Sources)/." "$(OBJROOT)/$$arch"; \
-		(cd "$(OBJROOT)/$$arch" && find . -type l -print | while read link; do \
-			target=`ls -ld "$$link" | sed 's/.* -> //'`; \
+		(cd "$(OBJROOT)/$$arch" && find . \( -type l -o -type f -size -2 \) -print | while read link; do \
+			if [ -h "$$link" ]; then target=`ls -ld "$$link" | sed 's/.* -> //'`; \
+			else target=`cat "$$link"`; fi; \
 			case "$$target" in openssl-0.9.8zh/*) \
-				ln -sf "$${target#openssl-0.9.8zh/}" "$$link" ;; \
+				rm -f "$$link"; \
+				ln -s "`echo "$$target" | sed 's|^openssl-0.9.8zh/||'`" "$$link" ;; \
 			esac; \
 		done); \
 		(cd "$(OBJROOT)/$$arch" && ./Configure $(Configure_Flags) $$arch_flags rhapsody-$$arch-cc); \

@@ -374,7 +374,7 @@ libcrypto$(SHLIB_EXT): libcrypto.a $(SHARED_FIPS)
 libssl$(SHLIB_EXT): libcrypto$(SHLIB_EXT) libssl.a
 	@if [ "$(SHLIB_TARGET)" != "" ]; then \
 		shlibdeps=-lcrypto; \
-		[ "$(FIPSCANLIB)" = "libfips" ] && shlibdeps="$$shlibdeps -lfips"; \
+		if [ "$(FIPSCANLIB)" = "libfips" ]; then shlibdeps="$$shlibdeps -lfips"; fi; \
 		$(MAKE) SHLIBDIRS=ssl SHLIBDEPS="$$shlibdeps" build-shared; \
 	else \
 		echo "There's no support for shared libraries on this platform" >&2 ; \

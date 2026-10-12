@@ -30,9 +30,12 @@ FileVersion  := $(shell echo $(Version) | $(SED) 's/[a-z].*//')
 VersionFlags := -compatibility_version $(FileVersion) -current_version $(shell echo $(Version) | sed 's/[a-z]//g')
 CC_Shlib      = $(CC) $(CC_Archs) -dynamiclib $(VersionFlags) -all_load
 
+# Rhapsody's i386 assembler predates MMX and SSE2 ("no such 386 instruction:
+# `pxor'"), so i386 builds its assembly without the SSE2 paths.
 configure::
 	$(_v) set -e; \
 	for arch in $(RC_ARCHS); do \
+		case $$arch in i386) arch_flags=no-sse2 ;; *) arch_flags= ;; esac; \
 		rm -rf "$(OBJROOT)/$$arch"; \
 		mkdir -p "$(OBJROOT)/$$arch"; \
 		$(CP) -R -P "$(Sources)/." "$(OBJROOT)/$$arch"; \
@@ -42,7 +45,7 @@ configure::
 				ln -sf "$${target#openssl-0.9.8zh/}" "$$link" ;; \
 			esac; \
 		done); \
-		(cd "$(OBJROOT)/$$arch" && ./Configure $(Configure_Flags) rhapsody-$$arch-cc); \
+		(cd "$(OBJROOT)/$$arch" && ./Configure $(Configure_Flags) $$arch_flags rhapsody-$$arch-cc); \
 	done
 
 build:: configure

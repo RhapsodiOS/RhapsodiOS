@@ -18,11 +18,16 @@ else
 	 -I$(SRCROOT)/../include -I$(SRCROOT) -I$(OBJROOT) $(LOCAL_CFLAGS)
 endif
 LIBSTUFF = -L$(SYMROOT)/../libstuff -lstuff
-# Prefer libc_dynamic when present; otherwise plain -lc (seeded by host-fixes).
+# A dylinker links static: prefer Libc's libc_static.a, then libc_dynamic,
+# otherwise plain -lc (seeded by host-fixes).
+ifneq "" "$(wildcard /usr/local/lib/libc_static.a)"
+  LIBC = -L/usr/local/lib -lc_static -lcc
+else
 ifeq "" "$(wildcard /usr/lib/libc_dynamic.a)$(wildcard /usr/lib/libc_dynamic.dylib)"
   LIBC = -lc -lcc_dynamic
 else
   LIBC = -lc_dynamic -lcc_dynamic
+endif
 endif
 
 ifneq "" "$(wildcard /bin/mkdirs)"

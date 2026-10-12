@@ -1,5 +1,5 @@
 #if	!defined(lint) && !defined(DOS)
-static char rcsid[] = "$Id: word.c,v 1.1.1.1 1999/04/15 17:45:14 wsanchez Exp $";
+static char rcsid[] = "$Id: word.c,v 4.41 2002/11/18 21:33:04 jpf Exp $";
 #endif
 /*
  * Program:	Word at a time routines
@@ -15,28 +15,16 @@ static char rcsid[] = "$Id: word.c,v 1.1.1.1 1999/04/15 17:45:14 wsanchez Exp $"
  *
  * Please address all bugs and comments to "pine-bugs@cac.washington.edu"
  *
- * Copyright 1991-1993  University of Washington
  *
- *  Permission to use, copy, modify, and distribute this software and its
- * documentation for any purpose and without fee to the University of
- * Washington is hereby granted, provided that the above copyright notice
- * appears in all copies and that both the above copyright notice and this
- * permission notice appear in supporting documentation, and that the name
- * of the University of Washington not be used in advertising or publicity
- * pertaining to distribution of the software without specific, written
- * prior permission.  This software is made available "as is", and
- * THE UNIVERSITY OF WASHINGTON DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED,
- * WITH REGARD TO THIS SOFTWARE, INCLUDING WITHOUT LIMITATION ALL IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE, AND IN
- * NO EVENT SHALL THE UNIVERSITY OF WASHINGTON BE LIABLE FOR ANY SPECIAL,
- * INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
- * LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, TORT
- * (INCLUDING NEGLIGENCE) OR STRICT LIABILITY, ARISING OUT OF OR IN CONNECTION
- * WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
- *
- * Pine and Pico are trademarks of the University of Washington.
- * No commercial use of these trademarks may be made without prior
- * written permission of the University of Washington.
+ * Pine and Pico are registered trademarks of the University of Washington.
+ * No commercial use of these trademarks may be made without prior written
+ * permission of the University of Washington.
+ * 
+ * Pine, Pico, and Pilot software and its included text are Copyright
+ * 1989-2002 by the University of Washington.
+ * 
+ * The full text of our legal notices is contained in the file called
+ * CPYRIGHT, included with this distribution.
  *
  */
 /*
@@ -45,12 +33,7 @@ static char rcsid[] = "$Id: word.c,v 1.1.1.1 1999/04/15 17:45:14 wsanchez Exp $"
  * paragraph mode commands, they are likely to be put in this file.
  */
 
-#include        <stdio.h>
-#include        "estruct.h"
-#include        "pico.h"
-#include        <ctype.h>
-#include	"edef.h"
-#include	"osdep.h"
+#include	"headers.h"
 
 
 /* Word wrap on n-spaces. Back-over whatever precedes the point on the current
@@ -62,50 +45,35 @@ static char rcsid[] = "$Id: word.c,v 1.1.1.1 1999/04/15 17:45:14 wsanchez Exp $"
  */
 wrapword()
 {
-    register int   cnt = 0;	/* size of word wrapped to next line */
-    register int   bp;
+    register int cnt;			/* size of word wrapped to next line */
+    register int bp;			/* index to wrap on */
+    register int first = -1;
+    register int i;
 
     if(curwp->w_doto <= 0)		/* no line to wrap? */
       return(FALSE);
 
-    /* 
-     * back up until we aren't in a word,
-     * and make sure there is a break in the line
-     */
-    bp = llength(curwp->w_dotp);	/* start at end of line */
-    do{
-	if(--bp <= 0)			/* no place to break the line! */
-	  return(FALSE);
-	
-	switch(cnt){
-	  case 0:			/* break BEFORE fillcol */
-	    if(bp > fillcol)
-	      break;
-	    else
-	      cnt++;
-
-	  case 1:			/* find first breakable word */
-	    if(isspace(lgetc(curwp->w_dotp, bp).c))
-	      break;
-	    else
-	      cnt++;
-
-	  case 2:			/* and break in front of it */
-	    if(!isspace(lgetc(curwp->w_dotp, bp).c))
-	      break;
-	    else
-	      cnt = 10;
-
-	  default:
-	    break;
+    for(bp = cnt = i = 0; cnt < llength(curwp->w_dotp) && !bp; cnt++, i++){
+	if(isspace((unsigned char) lgetc(curwp->w_dotp, cnt).c)){
+	    first = 0;
+	    if(lgetc(curwp->w_dotp, cnt).c == TAB)
+	      while(i+1 & 0x07)
+		i++;
 	}
-    }
-    while(cnt != 10);
+	else if(!first)
+	  first = cnt;
 
-    /* bp now points to the last character to remain on this line! */
-    cnt = curwp->w_doto - ++bp;
+	if(first > 0 && i >= fillcol)
+	  bp = first;
+    }
+
+    if(!bp)
+      return(FALSE);
+
+    /* bp now points to the first character of the next line */
+    cnt = curwp->w_doto - bp;
     curwp->w_doto = bp;
-    
+
     if(!lnewline())			/* break the line */
       return(FALSE);
 
@@ -113,9 +81,10 @@ wrapword()
      * if there's a line below, it doesn't start with whitespace 
      * and there's room for this line...
      */
-    if(lforw(curwp->w_dotp) != curbp->b_linep 
+    if(!(curbp->b_flag & BFWRAPOPEN)
+       && lforw(curwp->w_dotp) != curbp->b_linep 
        && llength(lforw(curwp->w_dotp)) 
-       && !isspace(lgetc(lforw(curwp->w_dotp), 0).c)
+       && !isspace((unsigned char) lgetc(lforw(curwp->w_dotp), 0).c)
        && (llength(curwp->w_dotp) + llength(lforw(curwp->w_dotp)) < fillcol)){
 	gotoeol(0, 1);			/* then pull text up from below */
 	if(lgetc(curwp->w_dotp, curwp->w_doto - 1).c != ' ')
@@ -125,7 +94,9 @@ wrapword()
 	gotobol(0, 1);
     }
 
-    if(!forwchar(0, cnt < 0 ? cnt-1 : cnt)) /* restore dot (account for NL) */
+    curbp->b_flag &= ~BFWRAPOPEN;	/* don't open new line next wrap */
+					/* restore dot (account for NL)  */
+    if(cnt && !forwchar(0, cnt < 0 ? cnt-1 : cnt))
       return(FALSE);
 
     return(TRUE);
@@ -138,6 +109,7 @@ wrapword()
  * move beyond the buffers.
  */
 backword(f, n)
+    int f, n;
 {
         if (n < 0)
                 return (forwword(f, -n));
@@ -161,6 +133,7 @@ backword(f, n)
  * is done by "forwchar". Error if you try and move beyond the buffer's end.
  */
 forwword(f, n)
+    int f, n;
 {
         if (n < 0)
                 return (backword(f, -n));
@@ -306,7 +279,7 @@ capword(f, n)
  */
 delfword(f, n)
 {
-        register int    size;
+        register long   size;
         register LINE   *dotp;
         register int    doto;
 
@@ -316,7 +289,7 @@ delfword(f, n)
                 return (FALSE);
         dotp = curwp->w_dotp;
         doto = curwp->w_doto;
-        size = 0;
+        size = 0L;
         while (n--) {
 #if	NFWORD
 		while (inword() != FALSE) {
@@ -340,7 +313,7 @@ delfword(f, n)
         }
         curwp->w_dotp = dotp;
         curwp->w_doto = doto;
-        return (ldelete(size, TRUE));
+        return (ldelete(size, kinsert));
 }
 
 /*
@@ -350,7 +323,7 @@ delfword(f, n)
  */
 delbword(f, n)
 {
-        register int    size;
+        register long   size;
 
 	if (curbp->b_mode&MDVIEW)	/* don't allow this command if	*/
 		return(rdonly());	/* we are in read only mode	*/
@@ -358,7 +331,7 @@ delbword(f, n)
                 return (FALSE);
         if (backchar(FALSE, 1) == FALSE)
                 return (FALSE);
-        size = 0;
+        size = 0L;
         while (n--) {
                 while (inword() == FALSE) {
                         if (backchar(FALSE, 1) == FALSE)
@@ -373,7 +346,7 @@ delbword(f, n)
         }
         if (forwchar(FALSE, 1) == FALSE)
                 return (FALSE);
-        return (ldelete(size, TRUE));
+        return (ldelete(size, kinsert));
 }
 #endif	/* MAYBELATER */
 
@@ -383,20 +356,134 @@ delbword(f, n)
  */
 inword()
 {
-        register int    c;
-
-        if (curwp->w_doto == llength(curwp->w_dotp))
-                return (FALSE);
-        c = lgetc(curwp->w_dotp, curwp->w_doto).c;
-
-        if (c>='a' && c<='z')
-                return (TRUE);
-        if (c>='A' && c<='Z')
-                return (TRUE);
-        if (c>='0' && c<='9')
-                return (TRUE);
-        return (FALSE);
+    return(curwp->w_doto < llength(curwp->w_dotp)
+	   && isalnum((unsigned char)lgetc(curwp->w_dotp, curwp->w_doto).c));
 }
+
+/*
+ * Try to determine what the quote string for given line l is,
+ * and put it into buf.
+ *
+ * Returns: 1 or the total number of indentations
+ */
+quote_match_work(q, l, buf, buflen)
+    char *q;
+    LINE *l;
+    char *buf;
+    int   buflen;
+{
+    register int i, n = 1, j, qb;
+    int qstart, qend, k;
+
+    /* 
+     * The method for determining the quote string is:
+     * 1) strip leading and trailing whitespace from q
+     * 2) add all leading whitespace to buf
+     * 3) check for q
+     * 4) if q, append q to buf and any trailing whitespace
+     * 5) repeat steps 3 and 4 as necessary
+     * 
+     * q in the future could be made to be an array of (char *)'s
+     *    (">" and whatever the user's quote_string is)
+     */
+
+    /* count leading whitespace as part of the quote */
+    *buf = '\0';
+    for(j = 0; 
+	(j <= llength(l))
+	  && ((unsigned char) lgetc(l, j).c == ' ')
+	  && j+1 < buflen; j++){
+	buf[j] = lgetc(l, j).c;
+	n = 1;
+    }
+    buf[j] = '\0';
+    if(*q == '\0')
+      return(1);
+
+    /* pare down q so it contains no leading or trailing whitespace */
+    qstart = 0;
+    for(i = 0; (unsigned char)q[i] == ' '; i++)
+      qstart = i + 1;
+    qend = strlen(q);
+    for(i = strlen(q); i > 0 && ((unsigned char)q[i-1] == ' '); i--)
+      qend = i - 1;
+    if(qend <= qstart)
+      return(1);
+
+    while(j <= llength(l)){
+	for(i = qstart; (j <= llength(l)) && i < qend; i++, j++)
+	  if(q[i] != lgetc(l, j).c)
+	    return(n);
+
+	n++;
+	if(i >= qend){
+	    if(strlen(buf) + qend - qstart < (buflen - 1))
+	      strncat(buf, q + qstart, qend - qstart);
+	}
+
+	/* 
+	 * if we're this far along, we've matched a quote string,
+	 * and should now remove the following white space.
+	 */
+	for(k = strlen(buf);
+	    (j <= llength(l))
+	      && ((unsigned char)lgetc(l,j).c == ' ')
+	      && (k + 1 < buflen);
+	    j++, k++){
+	    buf[k] = lgetc(l,j).c;
+	}
+	buf[k] = '\0';
+
+	if(j > llength(l))
+	  return(n);
+    }
+    return(n);  /* never reached */
+}
+
+
+/*
+ * Return number of quotes if whatever starts the line matches the quote string
+ *
+ * The quote string returned in buf is now more lenient in what it returns, and now
+ * handles leading white space and any numbers of q indentations.
+ */
+quote_match(q, l, buf, buflen)
+    char *q;
+    LINE *l;
+    char *buf;
+    int   buflen;
+{
+    int rv = 0;
+    char nbuf[NLINE], pbuf[NLINE];
+
+    rv = quote_match_work(q, l, buf, buflen);
+    /*
+     * Check to see if the next line is part of the same paragraph,
+     * but don't count white space as a quote if that white space
+     * is just a paragraph indentation.
+     */
+    if(lforw(l) != curbp->b_linep
+       && quote_match_work(q, lforw(l), nbuf, NLINE) == rv
+       && strlen(nbuf) < strlen(buf)
+       && strncmp(buf, nbuf, strlen(nbuf)) == 0
+       && llength(lforw(l)) > strlen(nbuf)){
+	/*
+	 * If we get here, we know that the next line has the same indent string
+	 * that the current line, but it is padded with less spaces. This is
+	 * the typical situation that we find at the beginning of a paragraph.
+	 * We need to check, however, that this is so, by checking the previous
+	 * line.
+	 */
+	if((l == curbp->b_linep)
+	   || (rv != quote_match_work(q, lback(l), pbuf, NLINE))
+	   || (strlen(pbuf) != strlen(buf))
+	   || (strncmp(buf, pbuf, strlen(pbuf))))
+	  strcpy(buf,nbuf);
+    }
+
+    return(rv);
+}
+
 
 fillpara(f, n)	/* Fill the current paragraph according to the current
 		   fill column						*/
@@ -404,118 +491,156 @@ fillpara(f, n)	/* Fill the current paragraph according to the current
 int f, n;	/* deFault flag and Numeric argument */
 
 {
-	register int c;			/* current char durring scan	*/
-	register int wordlen;		/* length of current word	*/
-	register int clength;		/* position on line during fill	*/
-	register int i;			/* index during word copy	*/
-	register int newlength;		/* tentative new line length	*/
-	register int eopflag;		/* Are we at the End-Of-Paragraph? */
-	register int firstflag;		/* first word? (needs no space)	*/
-	register LINE *eopline;		/* pointer to line just past EOP */
-	register int dotflag;		/* was the last char a period?	*/
-	char wbuf[NSTRING];		/* buffer for current word	*/
+    int	    i, j, c, qlen, word[NSTRING], same_word,
+	    spaces, word_len, line_len, line_last, qn;
+    char   *qstr, qstr2[NSTRING];
+    LINE   *eopline;
+    REGION  region;
 
+    if(curbp->b_mode&MDVIEW){		/* don't allow this command if	*/
+	return(rdonly());		/* we are in read only mode	*/
+    }
+    else if (fillcol == 0) {		/* no fill column set */
+	mlwrite("No fill column set", NULL);
+	return(FALSE);
+    }
+    else if(curwp->w_dotp == curbp->b_linep) /* don't wrap! */
+      return(FALSE);
 
-	if (curbp->b_mode&MDVIEW)	/* don't allow this command if	*/
-		return(rdonly());	/* we are in read only mode	*/
-	if (fillcol == 0) {	/* no fill column set */
-		mlwrite("No fill column set");
-		return(FALSE);
-	}
+    /* record the pointer to the line just past the EOP */
+    if(gotoeop(FALSE, 1) == FALSE)
+      return(FALSE);
 
-	/* record the pointer to the line just past the EOP */
-	gotoeop(FALSE, 1);
-	eopline = lforw(curwp->w_dotp);
+    eopline = curwp->w_dotp;		/* first line of para */
 
-	/* and back to the beginning of the paragraph */
-	gotobop(FALSE, 1);
+    /* and back to the beginning of the paragraph */
+    gotobop(FALSE, 1);
 
-	/* let yank() know that it may be restoring a paragraph */
-	thisflag |= CFFILL;
+    /* determine if we're justifying quoted text or not */
+    qstr = (Pmaster && Pmaster->quote_str
+	    && quote_match(Pmaster->quote_str, curwp->w_dotp, qstr2, NSTRING)
+	    && *qstr2) ? qstr2 : NULL;
+    qlen = qstr ? strlen(qstr) : 0;
 
-	if(Pmaster == NULL)
-	  sgarbk = TRUE;
+    /* let yank() know that it may be restoring a paragraph */
+    thisflag |= CFFILL;
 
-        curwp->w_flag |= WFMODE;
-	kdelete();
+    if(!Pmaster)
+      sgarbk = TRUE;
+    
+    curwp->w_flag |= WFMODE;
 
-	/* initialize various info */
-	clength = curwp->w_doto;
-	if (clength && curwp->w_dotp->l_text[0].c == TAB)
-		clength = 8;
-	wordlen = 0;
-	dotflag = FALSE;
+    /* cut the paragraph into our fill buffer */
+    fdelete();
+    curwp->w_doto = 0;
+    getregion(&region, eopline, llength(eopline));
+    if(!ldelete(region.r_size, finsert))
+      return(FALSE);
 
-	/* scan through lines, filling words */
-	firstflag = TRUE;
-	eopflag = FALSE;
+    /* Now insert it back wrapped */
+    spaces = word_len = line_len = same_word = 0;
 
-	while (!eopflag) {
-		/* get the next character in the paragraph */
-		if (curwp->w_doto == llength(curwp->w_dotp)) {
+    /* Beginning with leading quoting... */
+    if(qstr){
+	while(qstr[line_len])
+	  linsert(1, qstr[line_len++]);
 
-			c = ' ';
-			if (lforw(curwp->w_dotp) == eopline)
-				eopflag = TRUE;
-			kinsert('\n');
-		} else {
-			c = lgetc(curwp->w_dotp, curwp->w_doto).c;
-			kinsert(c);
+	line_last = ' ';			/* no word-flush space! */
+    }
+
+    /* ...and leading white space */
+    for(i = qlen; (c = fremove(i)) == ' ' || c == TAB; i++){
+	linsert(1, line_last = c);
+	line_len += ((c == TAB) ? (~line_len & 0x07) + 1 : 1);
+    }
+
+    /* then digest the rest... */
+    while((c = fremove(i++)) > 0){
+	switch(c){
+	  case '\n' :
+	    i += qlen;				/* skip next quote string */
+
+	  case TAB :
+	  case ' ' :
+	    spaces++;
+	    same_word = 0;
+	    break;
+
+	  default :
+	    if(spaces){				/* flush word? */
+		if((line_len - qlen > 0)
+		   && line_len + word_len + 1 > fillcol
+		   && (line_len = fpnewline(qstr)))
+		  line_last = ' ';	/* no word-flush space! */
+
+		if(word_len){			/* word to write? */
+		    if(line_len && !isspace((unsigned char) line_last)){
+			linsert(1, ' ');	/* need padding? */
+			line_len++;
+		    }
+
+		    line_len += word_len;
+		    for(j = 0; j < word_len; j++)
+		      linsert(1, line_last = word[j]);
+
+		    if(spaces > 1 && strchr(".?!:;\")", line_last)){
+			linsert(2, line_last = ' ');
+			line_len += 2;
+		    }
+
+		    word_len = 0;
 		}
 
-		/* and then delete it */
-		ldelete(1, FALSE);
+		spaces = 0;
+	    }
 
-		/* if not a separator, just add it in */
-		if (c != ' ' && c != '	') {
-			/* 
-			 * don't want to limit ourselves to only '.'
-			 */
-			dotflag = (int)strchr(".?!:;\"", c);	/* dot ? */
-			if (wordlen < NSTRING - 1)
-				wbuf[wordlen++] = c;
-		} else if (wordlen) {
-			/* at a word break with a word waiting */
-			/* calculate tantitive new length with word added */
-			newlength = clength + 1 + wordlen;
-			if (newlength <= fillcol) {
-				/* add word to current line */
-				if (!firstflag) {
-					linsert(1, ' '); /* the space */
-					++clength;
-				}
-				firstflag = FALSE;
-			} else {
-				/* start a new line */
-				lnewline();
-				clength = 0;
-			}
+	    if(word_len + 1 >= NSTRING){
+		/* Magic!  Fake that we output a wrapped word */
+		if((line_len - qlen > 0) && !same_word++)
+		  line_len = fpnewline(qstr);
 
-			/* and add the word in in either case */
-			for (i=0; i<wordlen; i++) {
-				linsert(1, wbuf[i]);
-				++clength;
-			}
+		line_len += word_len;
+		for(j = 0; j < word_len; j++)
+		  linsert(1, word[j]);
 
-			/*  Strategy:  Handle 3 cases:
-			 *     1. if . at end of line put extra space after it
-			 *     2. if . and only 1 space, leave only one space 
-			 *     3. if . and more than 1 space, leave 2 spaces
-			 *
-			 *  So, we know the current c is a space. if then 
-			 *  is no next c or the next c is a ' ' then we 
-			 *  need to insert a space else don't do it.
-			 */
-			if (dotflag &&
-		           ((curwp->w_doto == llength(curwp->w_dotp)) || 
-			   (' ' == lgetc(curwp->w_dotp, curwp->w_doto).c))){
-				linsert(1, ' ');
-				++clength;
-			}
-			wordlen = 0;
-		}
+		word_len  = 0;
+		line_last = ' ';
+	    }
+
+	    word[word_len++] = c;
+	    break;
 	}
+    }
 
-	/* and add a last newline for the end of our new paragraph */
-	lnewline();
+    if(word_len){
+	if((line_len - qlen > 0) && (line_len + word_len + 1 > fillcol))
+	  (void) fpnewline(qstr);
+	else if(line_len && !isspace((unsigned char) line_last))
+	  linsert(1, ' ');
+
+	for(j = 0; j < word_len; j++)
+	  linsert(1, word[j]);
+    }
+
+    /* Leave cursor on first char of first line after paragraph */
+    curwp->w_dotp = lforw(curwp->w_dotp);
+    curwp->w_doto = 0;
+
+    return(TRUE);
+}
+
+
+/*
+ * fpnewline - output a fill paragraph newline mindful of quote string
+ */
+fpnewline(quote)
+char *quote;
+{
+    int len;
+
+    lnewline();
+    for(len = 0; quote && *quote; quote++, len++)
+      linsert(1, *quote);
+
+    return(len);
 }

@@ -1,5 +1,5 @@
 #if	!defined(lint) && !defined(DOS)
-static char rcsid[] = "$Id: file.c,v 1.1.1.1 1999/04/15 17:45:12 wsanchez Exp $";
+static char rcsid[] = "$Id: file.c,v 4.76 2002/02/12 22:52:52 hubert Exp $";
 #endif
 /*
  * Program:	High level file input and output routines
@@ -15,28 +15,16 @@ static char rcsid[] = "$Id: file.c,v 1.1.1.1 1999/04/15 17:45:12 wsanchez Exp $"
  *
  * Please address all bugs and comments to "pine-bugs@cac.washington.edu"
  *
- * Copyright 1991-1993  University of Washington
  *
- *  Permission to use, copy, modify, and distribute this software and its
- * documentation for any purpose and without fee to the University of
- * Washington is hereby granted, provided that the above copyright notice
- * appears in all copies and that both the above copyright notice and this
- * permission notice appear in supporting documentation, and that the name
- * of the University of Washington not be used in advertising or publicity
- * pertaining to distribution of the software without specific, written
- * prior permission.  This software is made available "as is", and
- * THE UNIVERSITY OF WASHINGTON DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED,
- * WITH REGARD TO THIS SOFTWARE, INCLUDING WITHOUT LIMITATION ALL IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE, AND IN
- * NO EVENT SHALL THE UNIVERSITY OF WASHINGTON BE LIABLE FOR ANY SPECIAL,
- * INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
- * LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, TORT
- * (INCLUDING NEGLIGENCE) OR STRICT LIABILITY, ARISING OUT OF OR IN CONNECTION
- * WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
- *
- * Pine and Pico are trademarks of the University of Washington.
- * No commercial use of these trademarks may be made without prior
- * written permission of the University of Washington.
+ * Pine and Pico are registered trademarks of the University of Washington.
+ * No commercial use of these trademarks may be made without prior written
+ * permission of the University of Washington.
+ * 
+ * Pine, Pico, and Pilot software and its included text are Copyright
+ * 1989-2002 by the University of Washington.
+ * 
+ * The full text of our legal notices is contained in the file called
+ * CPYRIGHT, included with this distribution.
  *
  */
 /*
@@ -46,18 +34,15 @@ static char rcsid[] = "$Id: file.c,v 1.1.1.1 1999/04/15 17:45:12 wsanchez Exp $"
  * reading and writing of the disk are
  * in "fileio.c".
  */
-#include        <stdio.h>
-#include	"osdep.h"
-#include        "pico.h"
-#include	"estruct.h"
-#include        "edef.h"
-#include        "efunc.h"
+#include	"headers.h"
 
 
 #ifdef	ANSI
     int ifile(char *);
+    int insmsgchar(int);
 #else
     int ifile();
+    int insmsgchar();
 #endif
 
 
@@ -74,7 +59,7 @@ int f, n;
         register int    s;
         char fname[NFILEN];
 
-        if ((s=mlreply("Read file: ", fname, NFILEN, QFFILE)) != TRUE)
+        if ((s=mlreply("Read file: ", fname, NFILEN, QNORML, NULL)) != TRUE)
                 return(s);
 
 	if(gmode&MDSCUR){
@@ -82,7 +67,17 @@ int f, n;
 	    return(0);
 	}
 
-        return(readin(fname, TRUE));
+	if (strlen(fname) == 0) {
+	  emlwrite("No file name entered",NULL);
+	  return(0);
+	}
+
+	if((gmode & MDTREE) && !in_oper_tree(fname)){
+	  emlwrite("Can't read file from outside of %s", opertree);
+	  return(0);
+	}
+
+        return(readin(fname, TRUE, TRUE));
 }
 
 
@@ -94,7 +89,7 @@ static char *inshelptext[] = {
   "\tType in a file name to have it inserted into your editing",
   "\tbuffer between the line that the cursor is currently on",
   "\tand the line directly below it.  You may abort this by ",
-  "~\ttyping the ~F~3 (~^~C) key after exiting help.",
+  "~\ttyping the ~F~2 (~^~C) key after exiting help.",
   " ",
   "End of Insert File Help",
   " ",
@@ -106,7 +101,7 @@ static char *writehelp[] = {
   " ",
   "\tType in a file name to have it written out, thus saving",
   "\tyour buffer, to a file.  You can abort this by typing ",
-  "~\tthe ~F~3 (~^~C) key after exiting help.",
+  "~\tthe ~F~2 (~^~C) key after exiting help.",
   " ",
   "End of Write File Help",
   " ",
@@ -125,42 +120,175 @@ static char *writehelp[] = {
 insfile(f, n)
 int f, n;
 {
-        register int    s;
-        char fname[NFILEN], dir[NFILEN];
-        int	retval, bye = 0;
-        char	*prompt = "Insert file: ";
-        register int	availen;
+    register int s;
+    char	 fname[NLINE], dir[NLINE];
+    int		 retval, bye = 0, msg = 0;
+    char	 prompt[64], *infile;
+    EXTRAKEYS    menu_ins[5];
+    
+    if (curbp->b_mode&MDVIEW) /* don't allow this command if */
+      return(rdonly()); /* we are in read only mode */
 
-        availen = term.t_ncol - strlen(prompt);
+    fname[0] = '\0';
+    while(!bye){
+	/* set up keymenu stuff */
+	if(!msg){
+	    int last_menu = 0;
 
-	if (curbp->b_mode&MDVIEW)	/* don't allow this command if	*/
-		return(rdonly());	/* we are in read only mode	*/
+	    menu_ins[last_menu].name  = "^T";
+	    menu_ins[last_menu].key   = (CTRL|'T');
+	    menu_ins[last_menu].label = "To Files";
+	    KS_OSDATASET(&menu_ins[last_menu], KS_NONE);
 
-        fname[0] = '\0';
-        while(!bye){
-            wkeyhelp("GC00000T0000","Get Help,Cancel,To Files");
+	    if(Pmaster && Pmaster->msgntext){
+		menu_ins[++last_menu].name  = "^W";
+		menu_ins[last_menu].key     = (CTRL|'W');
+		menu_ins[last_menu].label   = msg ? "InsertFile" : "InsertMsg";
+		KS_OSDATASET(&menu_ins[last_menu], KS_NONE);
+	    }
 
-	    if(Pmaster == NULL)
-	      sgarbk = TRUE;
+#if	!defined(DOS) && !defined(MAC)
+	    if(Pmaster && Pmaster->upload){
+		menu_ins[++last_menu].name = "^Y";
+		menu_ins[last_menu].key    = (CTRL|'Y');
+		menu_ins[last_menu].label  = "RcvUpload";
+		KS_OSDATASET(&menu_ins[last_menu], KS_NONE);
+	    }
+#endif	/* !(DOS || MAC) */
 
-            if ((s=mlreplyd(prompt,fname,NFILEN,QDEFLT|QFFILE)) != TRUE){
-		switch(s){
-		  case (CTRL|'T'):
-		    if(*fname && isdir(fname, NULL))
+	    if(gmode & MDCMPLT){
+		menu_ins[++last_menu].name = msg ? "" : "TAB";
+		menu_ins[last_menu].key    = (CTRL|'I');
+		menu_ins[last_menu].label  = msg ? "" : "Complete";
+		KS_OSDATASET(&menu_ins[last_menu], KS_NONE);
+	    }
+
+	    menu_ins[++last_menu].name = NULL;
+	}
+
+	sprintf(prompt, "%s to insert from %s %s: ",
+		msg ? "Number of message" : "File",
+		(msg || (gmode&MDCURDIR))
+		  ? "current"
+		  : ((gmode & MDTREE) || opertree[0]) ? opertree : "home",
+		msg ? "folder" : "directory");
+	s = mlreplyd(prompt, fname, NLINE, QDEFLT, msg ? NULL : menu_ins);
+	/* something to read and it was edited or the default accepted */
+        if(fname[0] && (s == TRUE || s == FALSE)){
+	    bye++;
+	    if(msg){
+		if((*Pmaster->msgntext)(atol(fname), insmsgchar))
+		  emlwrite("Message %s included", fname);
+	    }
+	    else{
+		bye++;
+		if(gmode&MDSCUR){
+		    emlwrite("Can't insert file in restricted mode",NULL);
+		}
+		else{
+		    if((gmode & MDTREE)
+		       && !compresspath(opertree, fname, NLINE)){
+			emlwrite(
+			"Can't insert file from outside of %s: too many ..'s",
+			opertree);
+		    }
+		    else{
+			fixpath(fname, NLINE);
+
+			if((gmode & MDTREE) && !in_oper_tree(fname))
+			  emlwrite("Can't insert file from outside of %s",
+				    opertree);
+			else
+			  retval = ifile(fname);
+		    }
+		}
+	    }
+	}
+	else{
+	    switch(s){
+	      case (CTRL|'I') :
+		{
+		    char *fn, *p;
+		    int   dirlen, l = NLINE;
+
+		    dir[0] = '\0';
+		    if(*fname && (p = strrchr(fname, C_FILESEP))){
+			fn = p + 1;
+			l -= fn - fname;
+			dirlen = p - fname;
+			if(p == fname)
+			  strcpy(dir, S_FILESEP);
+#ifdef	DOS
+			else if(fname[0] == C_FILESEP
+				 || (isalpha((unsigned char)fname[0])
+				     && fname[1] == ':')){
+			  if(fname[1] == ':' && p == fname+2)
+			  dirlen = fn - fname;
+#else
+			else if (fname[0] == C_FILESEP || fname[0] == '~') {
+#endif
+			    strncpy(dir, fname, dirlen);
+			    dir[dirlen] = '\0';
+			}
+			else
+			  sprintf(dir, "%s%c%.*s", 
+				  (gmode & MDCURDIR) ? "."
+					  : ((gmode & MDTREE) || opertree[0])
+					       ? opertree : gethomedir(NULL),
+				  C_FILESEP, p - fname, fname);
+		    }
+		    else{
+			fn = fname;
+			strcpy(dir, (gmode & MDCURDIR)
+				       ? "."
+				       : ((gmode & MDTREE) || opertree[0])
+					    ? opertree : gethomedir(NULL));
+		    }
+
+		    if(!pico_fncomplete(dir, fn, l - 1))
+		      (*term.t_beep)();
+		}
+
+		break;
+	      case (CTRL|'W'):
+		msg = !msg;			/* toggle what to insert */
+		break;
+	      case (CTRL|'T'):
+		if(msg){
+		    emlwrite("Can't select messages yet!", NULL);
+		}
+		else{
+		    if(*fname && isdir(fname, NULL, NULL))
 		      strcpy(dir, fname);
 		    else
-		      strcpy(dir, gethomedir(NULL));
+		      strcpy(dir, (gmode&MDCURDIR)
+				     ? "."
+				     : ((gmode & MDTREE) || opertree[0])
+					  ? opertree : gethomedir(NULL));
 
-		    if((s = FileBrowse(dir, fname, NULL)) == 1){
+		    fname[0] = '\0';
+		    if((s = FileBrowse(dir, NLINE, fname, NLINE, 
+				       NULL, FB_READ)) == 1){
 			if(gmode&MDSCUR){
-			    emlwrite("Can't insert file in restricted mode",
+			    emlwrite("Can't insert in restricted mode",
 				     NULL);
 			    sleep(2);
 			}
 			else{
-			    strcat(dir, S_FILESEP);
-			    strcat(dir, fname);
-			    retval = ifile(dir);
+			    if (infile = (char *)malloc((strlen(dir)+
+			                       strlen(S_FILESEP)+
+					       strlen(fname)+1)*sizeof(char))){
+			      strcpy(infile, dir);
+			      strcat(infile, S_FILESEP);
+			      strcat(infile, fname);
+			      retval = ifile(infile);
+			      free((char *) infile);
+			    }
+			    else {
+			      emlwrite("Trouble allocating space for insert!"
+				       ,NULL);
+			      sleep(3);
+			    }
 			}
 			bye++;
 		    }
@@ -172,38 +300,92 @@ int f, n;
 			update(); 		/* redraw on return */
 			continue;
 		    }
-		    break;
-		  case HELPCH:
-		    if(Pmaster){
-			(*Pmaster->helper)(Pmaster->ins_help,
-					   "Help for Insert File", 1);
+		}
+
+		break;
+
+#if	!defined(DOS) && !defined(MAC)
+	      case (CTRL|'Y') :
+		if(Pmaster && Pmaster->upload){
+		    char tfname[NLINE];
+
+		    if(gmode&MDSCUR){
+			emlwrite(
+			      "\007Restricted mode disallows uploaded command",
+			      NULL);
+			return(0);
 		    }
-		    else
-		      pico_help(inshelptext, "Help for Insert File", 1);
-		  case (CTRL|'L'):
+
+		    tfname[0] = '\0';
+		    retval = (*Pmaster->upload)(tfname, NULL);
+
 		    refresh(FALSE, 1);
 		    update();
-		    continue;
-		  default:
-                    retval = s;
-		    bye++;
-		}
-            }
-            else{
-		bye++;
-		if(gmode&MDSCUR){
-		    emlwrite("Can't insert file in restricted mode",NULL);
-		}
-		else{
-		    fixpath(fname, NFILEN);
-		    retval = ifile(fname);
-		}
-            }
-        }
-        curwp->w_flag |= WFMODE|WFHARD;
 
-        return(retval);
+		    if(retval){
+			retval = ifile(tfname);
+			bye++;
+		    }
+		    else
+		      sleep(3);			/* problem, show error! */
+
+		    if(tfname[0])		/* clean up temp file */
+		      unlink(tfname);
+		}
+		else
+		  (*term.t_beep)();		/* what? */
+
+		break;
+#endif	/* !(DOS || MAC) */
+	      case HELPCH:
+		if(Pmaster){
+		    VARS_TO_SAVE *saved_state;
+
+		    saved_state = save_pico_state();
+		    (*Pmaster->helper)(msg ? Pmaster->ins_m_help
+					   : Pmaster->ins_help,
+				       "Help for Insert File", 1);
+		    if(saved_state){
+			restore_pico_state(saved_state);
+			free_pico_state(saved_state);
+		    }
+		}
+		else
+		  pico_help(inshelptext, "Help for Insert File", 1);
+	      case (CTRL|'L'):
+		refresh(FALSE, 1);
+		update();
+		continue;
+	      default:
+		ctrlg(FALSE, 0);
+                retval = s;
+		bye++;
+	    }
+        }
+    }
+    curwp->w_flag |= WFMODE|WFHARD;
+    
+    return(retval);
 }
+
+
+insmsgchar(c)
+    int c;
+{
+    if(c == '\n'){
+	char *p;
+
+	lnewline();
+	for(p = Pmaster->quote_str; p && *p; p++)
+	  if(!linsert(1, *p))
+	    return(0);
+    }
+    else if(c != '\r')			/* ignore CR (likely CR of CRLF) */
+      return(linsert(1, c));
+
+    return(1);
+}
+
 
 
 /*
@@ -212,89 +394,71 @@ int f, n;
  * by both the read and find commands. Return the final
  * status of the read. Also called by the mainline,
  * to read in a file specified on the command line as
- * an argument. If the filename ends in a ".c", CMODE is
- * set for the current buffer.
+ * an argument.
  */
-readin(fname, lockfl)
+readin(fname, lockfl, rename)
 char    fname[];	/* name of file to read */
 int	lockfl;		/* check for file locks? */
+int     rename;         /* don't rename if reading from, say, alt speller */
 {
-        register LINE   *lp1;
-        register LINE   *lp2;
-        register int    i;
-        register WINDOW *wp;
-        register BUFFER *bp;
-        register int    s;
-        register int    nbytes;
-        register int    nline;
-	register char	*sptr;		/* pointer into filename string */
-	int		lflag;		/* any lines longer than allowed? */
-        char            line[NLINE];
-	CELL            ac;
+        char line[NLINE], *linep;
+	long nline;
+	int  s, done, newline;
 
-        bp = curbp;                             /* Cheap.               */
-	ac.a = 0;
-        if ((s=bclear(bp)) != TRUE)             /* Might be old.        */
-                return (s);
-        bp->b_flag &= ~(BFTEMP|BFCHG);
-	/* removed 'C' mode detection */
-        strcpy(bp->b_fname, fname);
-        if ((s=ffropen(fname)) == FIOERR)       /* Hard file open.      */
-                goto out;
-        if (s == FIOFNF) {                      /* File not found.      */
-                emlwrite("New file", NULL);
-                goto out;
-        }
-        emlwrite("Reading file", NULL);
-        nline = 0;
-	lflag = FALSE;
-        while ((s=ffgetline(line, NLINE)) == FIOSUC || s == FIOLNG) {
-		if (s == FIOLNG)
-			lflag = TRUE;
-                nbytes = strlen(line);
-                if ((lp1=lalloc(nbytes)) == NULL) {
-                        s = FIOERR;             /* Keep message on the  */
-                        break;                  /* display.             */
-                }
-                lp2 = lback(curbp->b_linep);
-                lp2->l_fp = lp1;
-                lp1->l_fp = curbp->b_linep;
-                lp1->l_bp = lp2;
-                curbp->b_linep->l_bp = lp1;
-                for (i=0; i<nbytes; ++i){
-		    ac.c = line[i];
-		    lputc(lp1, i, ac);
-		}
-                ++nline;
-        }
-        ffclose();                              /* Ignore errors.       */
-        if (s == FIOEOF) {                      /* Don't zap message!   */
-                sprintf(line,"Read %d line%s", nline, (nline > 1) ? "s" : "");
-                emlwrite(line, NULL);
-        }
-	if (lflag){
-		sprintf(line,"Read %d line%s, Long lines wrapped",
-			nline, (nline > 1) ? "s" : "");
-                emlwrite(line, NULL);
-        }
-out:
-        for (wp=wheadp; wp!=NULL; wp=wp->w_wndp) {
-                if (wp->w_bufp == curbp) {
-                        wp->w_linep = lforw(curbp->b_linep);
-                        wp->w_dotp  = lforw(curbp->b_linep);
-                        wp->w_doto  = 0;
-                        wp->w_imarkp = NULL;
-                        wp->w_imarko = 0;
+	curbp->b_linecnt = -1;			/* Must be recalculated */
+	if ((s = bclear(curbp)) != TRUE)	/* Might be old.        */
+	  return (s);
 
-			if(Pmaster)
-			  wp->w_flag |= WFHARD;
-			else
-			  wp->w_flag |= WFMODE|WFHARD;
-                }
-        }
-        if (s == FIOERR || s == FIOFNF)		/* False if error.      */
-                return(FALSE);
-        return (TRUE);
+	if(rename)
+	  strcpy(curbp->b_fname, fname);
+	if ((s=ffropen(fname)) != FIOSUC){	/* Hard file open.      */
+	    if(s == FIOFNF)                     /* File not found.      */
+	      emlwrite("New file", NULL);
+	    else
+	      fioperr(s, fname);
+	}
+	else{
+	    int charsread = 0;
+
+	    emlwrite("Reading file", NULL);
+	    nline = 0L;
+	    done  = newline = 0;
+	    while(!done)
+	      if((s = ffgetline(line, NLINE, &charsread, 1)) == FIOEOF){
+		  curbp->b_flag &= ~(BFTEMP|BFCHG);
+		  gotobob(FALSE, 1);
+		  sprintf(line,"Read %d line%s",
+			  nline, (nline > 1) ? "s" : "");
+		  emlwrite(line, NULL);
+		  break;
+	      }
+	      else{
+		  if(newline){
+		      lnewline();
+		      newline = 0;
+		  }
+
+		  switch(s){
+		    case FIOSUC :
+		      nline++;
+		      newline = 1;
+
+		    case FIOLNG :
+		      for(linep = line; charsread-- > 0; linep++)
+			linsert(1, (unsigned char) *linep);
+
+		      break;
+
+		    default :
+		      done++;
+		      break;
+		  }
+	      }
+
+	    ffclose();                              /* Ignore errors.       */
+	}
+
+	return(s != FIOERR && s != FIOFNF);		/* true if success */
 }
 
 
@@ -313,42 +477,139 @@ int f, n;
         register WINDOW *wp;
         register int    s;
         char            fname[NFILEN];
-	char	shows[128], *bufp;
-	long	l;		/* length returned from fexist() */
+	char		shows[NLINE], origshows[NLINE], *bufp;
+	EXTRAKEYS	menu_write[3];
 
 	if(curbp->b_fname[0] != 0)
 	  strcpy(fname, curbp->b_fname);
 	else
 	  fname[0] = '\0';
 
-	for(;;){
-
-	    wkeyhelp("GC00000T0000","Get Help,Cancel,To Files");
-	    sgarbk = TRUE;
-
-	    s=mlreplyd("File Name to write : ", fname, NFILEN, QDEFLT|QFFILE);
-
-	    fixpath(fname, NFILEN);		/*  fixup ~ in file name  */
+	menu_write[0].name  = "^T";
+	menu_write[0].label = "To Files";
+	menu_write[0].key   = (CTRL|'T');
+	menu_write[1].name  = "TAB";
+	menu_write[1].label = "Complete";
+	menu_write[1].key   = (CTRL|'I');
+	menu_write[2].name  = NULL;
+	for(;!(gmode & MDTOOL);){
+	    s = mlreplyd("File Name to write : ", fname, NFILEN,
+			 QDEFLT|QFFILE, menu_write);
 
 	    switch(s){
 	      case FALSE:
-		if(strlen(fname) == 0)		/* no file name to write to */
-		  return(s);
-	      case TRUE:
-		break;
-	      case (CTRL|'T'):
-		if(*fname && isdir(fname, NULL)){
-		    strcpy(shows, fname);
-		    fname[0] = '\0';
+		if(!fname[0]){			/* no file name to write to */
+		    ctrlg(FALSE, 0);
+		    return(s);
 		}
-		else
-		  strcpy(shows, gethomedir(NULL));
+	      case TRUE:
+		if((gmode & MDTREE) && !compresspath(opertree, fname, NFILEN)){
+		    emlwrite("Can't write outside of %s: too many ..'s",
+			     opertree);
+		    sleep(2);
+		    continue;
+		}
+		else{
+		    fixpath(fname, NFILEN);	/*  fixup ~ in file name  */
+		    if((gmode & MDTREE) && !in_oper_tree(fname)){
+			emlwrite("Can't write outside of %s", opertree);
+			sleep(2);
+			continue;
+		    }
+		}
 
-		s = FileBrowse(shows, fname, NULL);
-		strcat(shows, S_FILESEP);
-		strcat(shows, fname);
-		strcpy(fname, shows);
+		break;
 
+	      case (CTRL|'I'):
+		{
+		    char *fn, *p, dir[NFILEN];
+		    int   l = NFILEN;
+
+		    dir[0] = '\0';
+		    if(*fname && (p = strrchr(fname, C_FILESEP))){
+			fn = p + 1;
+			l -= fn - fname;
+			if(p == fname)
+			  strcpy(dir, S_FILESEP);
+#ifdef	DOS
+			else if(fname[0] == C_FILESEP
+				 || (isalpha((unsigned char)fname[0])
+				     && fname[1] == ':')){
+#else
+			else if (fname[0] == C_FILESEP || fname[0] == '~') {
+#endif
+			    strncpy(dir, fname, p - fname);
+			    dir[p-fname] = '\0';
+			}
+			else
+			  sprintf(dir, "%s%c%.*s", 
+				  (gmode & MDCURDIR)
+				     ? "."
+				     : ((gmode & MDTREE) || opertree[0])
+					  ? opertree : gethomedir(NULL),
+				  C_FILESEP, p - fname, fname);
+		    }
+		    else{
+			fn = fname;
+			strcpy(dir, (gmode & MDCURDIR)
+				       ? "."
+				       : ((gmode & MDTREE) || opertree[0])
+					    ? opertree : gethomedir(NULL));
+		    }
+
+		    if(!pico_fncomplete(dir, fn, l - 1))
+		      (*term.t_beep)();
+		}
+
+		continue;
+	      case (CTRL|'T'):
+		/* If we have a file name, break up into path and file name.*/
+		*shows = 0;
+		if(*fname) {
+		    if (isdir (fname, NULL, NULL)) {
+			/* fname is a directory. */
+			strcpy (shows, fname);
+			*fname = '\0';
+		    }
+		    else {
+			/* Find right most seperator. */
+			bufp = strrchr (fname, C_FILESEP);
+			if (bufp != NULL) {
+			    /* Copy directory part to 'shows', and file
+			     * name part to front of 'fname'. */
+			    *bufp = '\0';
+			    strcpy (shows, fname);
+			    memcpy (fname, bufp+1, strlen (bufp+1) + 1);
+			}
+		    }
+		}
+
+		/* If we did not end up with a valid directory, use home. */
+		if (!*shows || !isdir (shows, NULL, NULL))
+		  strcpy(shows, ((gmode & MDTREE) || opertree[0])
+				   ? opertree : gethomedir(NULL));
+
+		strcpy(origshows, shows);
+		if ((s = FileBrowse(shows, NLINE, fname, NFILEN, NULL, FB_SAVE)) == 1) {
+		  if (strlen(shows)+strlen(S_FILESEP)+strlen(fname) < NLINE){
+		    strcat(shows, S_FILESEP);
+		    strcat(shows, fname);
+		    strcpy(fname, shows);
+		  }
+		  else {
+		    emlwrite("Cannot write. File name too long!!",NULL);
+		    sleep(3);
+		  }
+		}
+		else if (s == 0 && strcmp(shows, origshows)){
+		    strcat(shows, S_FILESEP);
+		    strcat(shows, fname);
+		    strcpy(fname, shows);
+		}
+		else if (s == -1){
+		  emlwrite("Cannot write. File name too long!!",NULL);
+		  sleep(3);
+		}
 		refresh(FALSE, 1);
 		update();
 		if(s == 1)
@@ -369,16 +630,11 @@ int f, n;
 	    if(strcmp(fname, curbp->b_fname) == 0)
 		break;
 
-	    if((s=fexist(fname, "w", &l)) == FIOSUC){ /* exists.  overwrite? */
+	    if((s=fexist(fname, "w", (off_t *)NULL)) == FIOSUC){
+						    /*exists overwrite? */
 
 		sprintf(shows, "File \"%s\" exists, OVERWRITE", fname);
-		if((s=mlyesno(shows, FALSE)) != TRUE){
-		    if((bufp = strrchr(fname,'/')) == NULL)
-		      fname[0] = '\0';
-		    else
-		      *++bufp = '\0';
-		}
-		else
+		if((s=mlyesno(shows, FALSE)) == TRUE)
 		  break;
 	    }
 	    else if(s == FIOFNF){
@@ -391,7 +647,7 @@ int f, n;
 	}
 	emlwrite("Writing...", NULL);
 
-        if ((s=writeout(fname)) != -1) {
+        if ((s=writeout(fname, 0)) != -1) {
 	        if(!(gmode&MDTOOL)){
 		    strcpy(curbp->b_fname, fname);
 		    curbp->b_flag &= ~BFCHG;
@@ -440,7 +696,7 @@ int f, n;
         }
 
 	emlwrite("Writing...", NULL);
-        if ((s=writeout(curbp->b_fname)) != -1) {
+        if ((s=writeout(curbp->b_fname, 0)) != -1) {
                 curbp->b_flag &= ~BFCHG;
                 wp = wheadp;                    /* Update mode lines.   */
                 while (wp != NULL) {
@@ -466,18 +722,23 @@ int f, n;
  * a macro for this. Most of the grief is error
  * checking of some sort.
  *
+ * If the argument readonly is set, the file is created with user read
+ * and write permission only if it doesn't already exist. Note that the
+ * word readonly is misleading. It is user r/w permission only.
+ *
  * CHANGES: 1 Aug 91: returns number of lines written or -1 on error, MSS
  */
-writeout(fn)
+writeout(fn, readonly)
 char    *fn;
+int     readonly;
 {
         register int    s;
+        register int    t;
         register LINE   *lp;
         register int    nline;
-	char     line[80];
 
-        if ((s=ffwopen(fn)) != FIOSUC)          /* Open writes message. */
-                return (-1);
+        if (!((s = ffwopen(fn, readonly)) == FIOSUC && ffelbowroom()))
+	  return (-1);				/* Open writes message. */
 
         lp = lforw(curbp->b_linep);             /* First line.          */
         nline = 0;                              /* Number of lines.     */
@@ -487,13 +748,13 @@ char    *fn;
                 ++nline;
                 lp = lforw(lp);
         }
-        if (s == FIOSUC) {                      /* No write error.      */
-                s = ffclose();
-        } else                                  /* Ignore close error   */
-                ffclose();                      /* if a write error.    */
-        if (s != FIOSUC)                        /* Some sort of error.  */
-                return (-1);
-        return (nline);
+
+	t = ffclose();			/* ffclose complains if error */
+
+	if(s == FIOSUC)
+	  s = t;				/* report worst case */
+
+	return ((s == FIOSUC) ? nline : -1);
 }
 
 
@@ -501,75 +762,52 @@ char    *fn;
  * writetmp - write a temporary file for message text, mindful of 
  *	      access restrictions and included text.  If n is true, include
  *	      lines that indicated included message text, otw forget them
+ *            If dir is non-null, put the temp file in that directory.
  */
-char *writetmp(f, n)
-int f, n;
+char *writetmp(n, dir)
+int   n;
+char *dir;
 {
         static   char	fn[NFILEN];
         register int    s;
+        register int    t;
         register LINE   *lp;
         register int    nline;
 
-	tmpname(fn);
-	
-        if ((s=ffwopen(fn)) != FIOSUC)          /* Open writes message. */
-                return(NULL);
+        tmpname(dir, fn);
 
-	chmod(fn, 0600);			/* fix access rights */
+	/* Open writes message */
+        if (!fn[0] || (s=ffwopen(fn, TRUE)) != FIOSUC){
+	    if(fn[0])
+	      (void)unlink(fn);
+
+	    return(NULL);
+	}
 
         lp = lforw(curbp->b_linep);             /* First line.          */
         nline = 0;                              /* Number of lines.     */
         while (lp != curbp->b_linep) {
 	    if(n || (!n && lp->l_text[0].c != '>'))
-                if ((s=ffputline(&lp->l_text[0], llength(lp))) != FIOSUC)
-                        break;
-                ++nline;
-                lp = lforw(lp);
+	      if ((s=ffputline(&lp->l_text[0], llength(lp))) != FIOSUC)
+		break;
+
+	    ++nline;
+	    lp = lforw(lp);
         }
-        if (s == FIOSUC) {                      /* No write error.      */
-                s = ffclose();
-        } else                                  /* Ignore close error   */
-                ffclose();                      /* if a write error.    */
-        if (s != FIOSUC){                       /* Some sort of error.  */
-	        unlink(fn);
-                return(NULL);
+
+	t = ffclose();			/* ffclose complains if error */
+
+	if(s == FIOSUC)
+	  s = t;				/* remember worst case */
+
+	if (s != FIOSUC){                       /* Some sort of error.  */
+	    (void)unlink(fn);
+	    return(NULL);
 	}
-        return(fn);
+
+	return(fn);
 }
 
-
-/*
- * The command allows the user
- * to modify the file name associated with
- * the current buffer. It is like the "f" command
- * in UNIX "ed". The operation is simple; just zap
- * the name in the BUFFER structure, and mark the windows
- * as needing an update. You can type a blank line at the
- * prompt if you wish.
- */
-filename(f, n)
-int f, n;
-{
-        register WINDOW *wp;
-        register int    s;
-        char            fname[NFILEN];
-
-        if ((s=mlreply("Name: ", fname, NFILEN, QFFILE)) == ABORT)
-                return (s);
-        if (s == FALSE)
-                strcpy(curbp->b_fname, "");
-        else
-                strcpy(curbp->b_fname, fname);
-        wp = wheadp;                            /* Update mode lines.   */
-        while (wp != NULL) {
-                if (wp->w_bufp == curbp)
-		  if(Pmaster == NULL)
-                        wp->w_flag |= WFMODE;
-                wp = wp->w_wndp;
-        }
-	curbp->b_mode &= ~MDVIEW;	/* no longer read only mode */
-        return (TRUE);
-}
 
 /*
  * Insert file "fname" into the current
@@ -579,87 +817,144 @@ int f, n;
 ifile(fname)
 char    fname[];
 {
-        register LINE   *lp0;
-        register LINE   *lp1;
-        register LINE   *lp2;
-        register int    i;
-        register BUFFER *bp;
-        register int    s;
-        register int    nbytes;
-        register int    nline;
-	int		lflag;		/* any lines longer than allowed? */
-        char            line[NLINE];
-        char     dbuf[128];
-        register char    *dbufp;
-	CELL            ac;
+        char line[NLINE], *linep;
+	long nline;
+	int  s, done, newline, charsread = 0;
 
-        bp = curbp;                             /* Cheap.               */
-        bp->b_flag |= BFCHG;			/* we have changed	*/
-	bp->b_flag &= ~BFTEMP;			/* and are not temporary*/
-	ac.a = 0;
-        if ((s=ffropen(fname)) == FIOERR)       /* Hard file open.      */
-                goto out;
-        if (s == FIOFNF) {                      /* File not found.      */
-		emlwrite("No such file: %s",fname);
-		return(FALSE);
-        }
+        if ((s=ffropen(fname)) != FIOSUC){      /* Hard file open.      */
+	    fioperr(s, fname);
+	    return(FALSE);
+	}
+
+	gotobol(FALSE, 1);
+
+        curbp->b_flag |= BFCHG;			/* we have changed	*/
+	curbp->b_flag &= ~BFTEMP;		/* and are not temporary*/
+	curbp->b_linecnt = -1;			/* must be recalculated */
+
         emlwrite("Inserting %s.", fname);
+	done = newline = 0;
+	nline = 0L;
+	while(!done)
+	  if((s = ffgetline(line, NLINE, &charsread, 1)) == FIOEOF){
+	      if(llength(curwp->w_dotp) > curwp->w_doto)
+		lnewline();
+	      else
+		forwchar(FALSE, 1);
 
-	/* back up a line and save the mark here */
-	curwp->w_dotp = lback(curwp->w_dotp);
-	curwp->w_doto = 0;
-	curwp->w_imarkp = curwp->w_dotp;
-	curwp->w_imarko = 0;
+	      sprintf(line,"Inserted %d line%s", nline, (nline>1) ? "s" : "");
+	      emlwrite(line, NULL);
+	      break;
+	  }
+	  else{
+	      if(newline){
+		  lnewline();
+		  newline = 0;
+	      }
 
-        nline = 0;
-	lflag = FALSE;
-        while ((s=ffgetline(line, NLINE)) == FIOSUC || s == FIOLNG) {
-		if (s == FIOLNG)
-			lflag = TRUE;
-                nbytes = strlen(line);
-                if ((lp1=lalloc(nbytes)) == NULL) {
-                        s = FIOERR;             /* Keep message on the  */
-                        break;                  /* display.             */
-                }
-		lp0 = curwp->w_dotp;	/* line previous to insert */
-		lp2 = lp0->l_fp;	/* line after insert */
+	      switch(s){
+		case FIOSUC :			/* copy line into buf */
+		  nline++;
+		  newline = 1;
 
-		/* re-link new line between lp0 and lp2 */
-		lp2->l_bp = lp1;
-		lp0->l_fp = lp1;
-		lp1->l_bp = lp0;
-		lp1->l_fp = lp2;
+		case FIOLNG :
+		  for(linep = line; charsread-- > 0; linep++)
+		    linsert(1, (unsigned char) *linep);
 
-		/* and advance and write out the current line */
-		curwp->w_dotp = lp1;
-                for (i=0; i<nbytes; ++i){
-		    ac.c = line[i];
-		    lputc(lp1, i, ac);
-		}
-                ++nline;
-        }
+		  break;
+
+		default :
+		  done++;
+	      }
+	  }
+
         ffclose();                              /* Ignore errors.       */
-	curwp->w_imarkp = lforw(curwp->w_imarkp);
-        if (s == FIOEOF) {                      /* Don't zap message!   */
-	        sprintf(dbuf,"Inserted %d line%s",nline,(nline>1) ? "s" : "");
-		emlwrite(dbuf, NULL);
-        }
-	if (lflag) {
-		sprintf(dbuf,"Inserted %d line%s, Long lines wrapped.",
-			nline, (nline>1) ? "s" : "");
-		emlwrite(dbuf, NULL);
-        }
-out:
-	/* advance to the next line and mark the window for changes */
-	curwp->w_flag |= WFHARD;
 
-	/* copy window parameters back to the buffer structure */
-	curbp->b_dotp = curwp->w_dotp;
-	curbp->b_doto = curwp->w_doto;
-	curbp->b_markp = curwp->w_imarkp;
-	curbp->b_marko = curwp->w_imarko;
+	return(s != FIOERR);
+}
 
-        if (s == FIOERR)                        /* False if error.      */
-                return (FALSE);
-        return (TRUE);
+
+
+/*
+ * pico_fncomplete - pico's function to complete the given file name
+ */
+int pico_fncomplete(dir, fn, len)
+char *dir, *fn;
+int   len;
+{
+    char *p, *dlist, tmp[NLINE], dtmp[NLINE];
+    int   n, i, match = -1;
+#ifdef	DOS
+#define	FILECMP(x, y)	(toupper((unsigned char)(x))\
+				== toupper((unsigned char)(y)))
+#else
+#define	FILECMP(x, y)	((x) == (y))
+#endif
+
+    strcpy(dtmp, dir);
+    pfnexpand(dir = dtmp, NLINE);
+    if(*fn && (dlist = p = getfnames(dir, fn, &n, NULL))){
+	memset(tmp, 0, sizeof(tmp));
+	while(n--){			/* any names in it */
+	    for(i = 0; fn[i] && FILECMP(p[i], fn[i]); i++)
+	      ;
+
+	    if(!fn[i]){			/* match or more? */
+		if(tmp[0]){
+		    for(; p[i] && FILECMP(p[i], tmp[i]); i++)
+		      ;
+
+		    match = !p[i] && !tmp[i];
+		    tmp[i] = '\0';	/* longest common string */
+		}
+		else{
+		    match = 1;		/* may be it!?! */
+		    strcpy(tmp,  p);
+		}
+	    }
+
+	    p += strlen(p) + 1;
+	}
+
+	free(dlist);
+    }
+
+    if(match >= 0){
+	strncpy(fn, tmp, len);
+	fn[len] = '\0';
+	if(match == 1){
+	  if ((strlen(dir)+strlen(S_FILESEP)+strlen(fn)) < len){
+	    strcat(dir, S_FILESEP);
+	    strcat(dir, fn);
+	    if(isdir(dir, NULL, NULL))
+	      strcat(fn, S_FILESEP);
+	  }
+	  else{
+	    emlwrite("File name too BIG!!",0);
+	    sleep(3);
+	    *fn = '\0';
+	  }
+
+	}
+    }
+
+    return(match == 1);
+
+}
+
+
+/*
+ * in_oper_tree - returns true if file "f" does reside in opertree
+ */
+in_oper_tree(f)
+char *f;
+{
+    int end = strlen(opertree);
+
+    return(!strncmp(opertree, f, end)
+	    && (opertree[end-1] == '/'
+		|| opertree[end-1] == '\\'
+		|| f[end] == '\0'
+		|| f[end] == '/'
+		|| f[end] == '\\'));
 }

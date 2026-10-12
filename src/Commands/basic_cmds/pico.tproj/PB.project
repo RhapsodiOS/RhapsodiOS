@@ -2,10 +2,9 @@
     FILESTABLE = {
         CLASSES = (); 
         C_FILES = (); 
-        H_FILES = (pico.h, osdep.h, ebind.h, edef.h, efunc.h, estruct.h); 
+        H_FILES = (headers.h, pico.h, ebind.h, edef.h, efunc.h, estruct.h); 
         OTHER_LIBS = (); 
         OTHER_LINKED = (
-            ansi.c, 
             attach.c, 
             basic.c, 
             bind.c, 
@@ -17,13 +16,11 @@
             fileio.c, 
             line.c, 
             main.c, 
-            osdep.c, 
             pico.c, 
+            pico_os.c, 
             random.c, 
             region.c, 
             search.c, 
-            spell.c, 
-            tcap.c, 
             window.c, 
             word.c
         ); 
@@ -38,7 +35,7 @@
     LOCALIZABLE_FILES = {}; 
     NEXTSTEP_BUILDDIR = ""; 
     NEXTSTEP_BUILDTOOL = /bin/make; 
-    NEXTSTEP_COMPILEROPTIONS = "-Dnxt -DJOB_CONTROL -DANSI"; 
+    NEXTSTEP_COMPILEROPTIONS = "-Drhp -DJOB_CONTROL -DMOUSE"; 
     NEXTSTEP_DOCUMENTEXTENSIONS = (); 
     NEXTSTEP_INSTALLDIR = /usr/bin; 
     NEXTSTEP_JAVA_COMPILER = /usr/bin/javac; 
@@ -46,7 +43,7 @@
     NEXTSTEP_OBJCPLUS_COMPILER = /usr/bin/cc; 
     PDO_UNIX_BUILDDIR = ""; 
     PDO_UNIX_BUILDTOOL = /bin/make; 
-    PDO_UNIX_COMPILEROPTIONS = "-Dnxt -DJOB_CONTROL -DANSI"; 
+    PDO_UNIX_COMPILEROPTIONS = "-Drhp -DJOB_CONTROL -DMOUSE"; 
     PDO_UNIX_INSTALLDIR = /usr/bin; 
     PDO_UNIX_JAVA_COMPILER = "$(NEXTDEV_BIN)/javac"; 
     PDO_UNIX_LINKEROPTIONS = ""; 
@@ -56,7 +53,7 @@
     PROJECTVERSION = 2.7; 
     WINDOWS_BUILDDIR = ""; 
     WINDOWS_BUILDTOOL = /bin/make; 
-    WINDOWS_COMPILEROPTIONS = "-Dnxt -DJOB_CONTROL -DANSI"; 
+    WINDOWS_COMPILEROPTIONS = "-Drhp -DJOB_CONTROL -DMOUSE"; 
     WINDOWS_INSTALLDIR = /usr/bin; 
     WINDOWS_JAVA_COMPILER = "$(JDKBINDIR)/javac.exe"; 
     WINDOWS_LINKEROPTIONS = ""; 

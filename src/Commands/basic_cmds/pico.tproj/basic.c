@@ -1,5 +1,5 @@
 #if	!defined(lint) && !defined(DOS)
-static char rcsid[] = "$Id: basic.c,v 1.1.1.1 1999/04/15 17:45:12 wsanchez Exp $";
+static char rcsid[] = "$Id: basic.c,v 4.33 2001/10/18 20:13:04 jpf Exp $";
 #endif
 /*
  * Program:	Cursor manipulation functions
@@ -15,28 +15,16 @@ static char rcsid[] = "$Id: basic.c,v 1.1.1.1 1999/04/15 17:45:12 wsanchez Exp $
  *
  * Please address all bugs and comments to "pine-bugs@cac.washington.edu"
  *
- * Copyright 1991-1993  University of Washington
  *
- *  Permission to use, copy, modify, and distribute this software and its
- * documentation for any purpose and without fee to the University of
- * Washington is hereby granted, provided that the above copyright notice
- * appears in all copies and that both the above copyright notice and this
- * permission notice appear in supporting documentation, and that the name
- * of the University of Washington not be used in advertising or publicity
- * pertaining to distribution of the software without specific, written
- * prior permission.  This software is made available "as is", and
- * THE UNIVERSITY OF WASHINGTON DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED,
- * WITH REGARD TO THIS SOFTWARE, INCLUDING WITHOUT LIMITATION ALL IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE, AND IN
- * NO EVENT SHALL THE UNIVERSITY OF WASHINGTON BE LIABLE FOR ANY SPECIAL,
- * INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
- * LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, TORT
- * (INCLUDING NEGLIGENCE) OR STRICT LIABILITY, ARISING OUT OF OR IN CONNECTION
- * WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
- *
- * Pine and Pico are trademarks of the University of Washington.
- * No commercial use of these trademarks may be made without prior
- * written permission of the University of Washington.
+ * Pine and Pico are registered trademarks of the University of Washington.
+ * No commercial use of these trademarks may be made without prior written
+ * permission of the University of Washington.
+ * 
+ * Pine, Pico, and Pilot software and its included text are Copyright
+ * 1989-2001 by the University of Washington.
+ * 
+ * The full text of our legal notices is contained in the file called
+ * CPYRIGHT, included with this distribution.
  *
  */
 /*
@@ -46,11 +34,7 @@ static char rcsid[] = "$Id: basic.c,v 1.1.1.1 1999/04/15 17:45:12 wsanchez Exp $
  * functions that adjust the top line in the window and invalidate the
  * framing, are hard.
  */
-#include        <stdio.h>
-#include	"estruct.h"
-#include        "edef.h"
-#include        "pico.h"
-
+#include        "headers.h"
 
 #ifdef	ANSI
     int getgoal(struct LINE *);
@@ -82,31 +66,26 @@ int             f;
 register int    n;
 {
     register LINE   *lp;
-    register int    status;
 
     if (n < 0)
       return (forwchar(f, -n));
 
     while (n--) {
 	if (curwp->w_doto == 0) {
-	    if ((lp=lback(curwp->w_dotp)) == curbp->b_linep)
-	      if(Pmaster){
-		  /*
-		   * go up into editing the mail header if on 
-		   * the top line and the user hits the left arrow!!!
-		   *
-		   * if the editor returns anything except -1, the 
-		   * user requested something special, so let 
-		   * pico know...
-		   */
-		  if((status = HeaderEditor(2, 1)) != -1){
-		      return(META|status);
-		  }
-		  else
-		    return (FALSE);
-	      }
-	      else
-		return (FALSE);
+	    if ((lp=lback(curwp->w_dotp)) == curbp->b_linep){
+		if(Pmaster && Pmaster->headents)
+		    /*
+		     * go up into editing the mail header if on 
+		     * the top line and the user hits the left arrow!!!
+		     *
+		     * if the editor returns anything except -1, the 
+		     * user requested something special, so let 
+		     * pico know...
+		     */
+		  return(HeaderEditor(2, 1));
+		else
+		  return (FALSE);
+	    }
 
 	    curwp->w_dotp  = lp;
 	    curwp->w_doto  = llength(lp);
@@ -247,25 +226,21 @@ backline(f, n)
 int f, n;
 {
     register LINE   *dlp;
-    register int    status;
 
     if (n < 0)
       return (forwline(f, -n));
 
-    if(Pmaster){
+    if(Pmaster && Pmaster->headents){
 	/*
 	 * go up into editing the mail header if on the top line
 	 * and the user hits the up arrow!!!
 	 */
-	if (lback(curwp->w_dotp) == curbp->b_linep){
-	    /*
-	     * if the editor returns anything except -1 then the user
-	     * has requested something special, so let pico know...
-	     */
-	    if((status = HeaderEditor(1, 1)) != -1){
-		return(META|status);
-	    }
-	}
+	if (lback(curwp->w_dotp) == curbp->b_linep)
+	  /*
+	   * if the editor returns anything except -1 then the user
+	   * has requested something special, so let pico know...
+	   */
+	  return(HeaderEditor(1, 1));
     }
 
     if ((lastflag&CFCPCN) == 0)             /* Reset goal if the    */
@@ -291,39 +266,64 @@ int f, n;
 gotobop(f, n)
 int f, n;	/* default Flag & Numeric argument */
 {
+    int quoted, qlen;
+    char qstr[NLINE], qstr2[NLINE];
+
     if (n < 0)	/* the other way...*/
       return(gotoeop(f, -n));
 
     while (n-- > 0) {	/* for each one asked for */
 
-	/* first scan back until we are in a word */
-	while(!inword())
-	  if(lback(curwp->w_dotp) == curbp->b_linep 
-	     && curwp->w_doto == 0)
-	    /* top line and nowhere else to go */
-	    return(FALSE);
-	  else if(backchar(FALSE, 1) == FALSE)
-	    break;
-
-	curwp->w_doto = 0;	/* and go to the B-O-Line */
-
-	/* and scan back until we hit a <NL><NL> or <NL><TAB>
-	   or a <NL><SPACE>					*/
-	while (lback(curwp->w_dotp) != curbp->b_linep)
-	  if (llength(curwp->w_dotp) != 0 &&
-	      lgetc(curwp->w_dotp, curwp->w_doto).c != TAB &&
-	      lgetc(curwp->w_dotp, curwp->w_doto).c != ' ')
+	while(lisblank(curwp->w_dotp)
+	      && lback(curwp->w_dotp) != curbp->b_linep){
 	    curwp->w_dotp = lback(curwp->w_dotp);
-	  else
-	    break;
+	    curwp->w_doto = 0;
+	}
+	
+	/* scan line by line until we come to a line ending with
+	 * a <NL><NL> or <NL><TAB> or <NL><SPACE>
+	 *
+	 * PLUS: if there's a quote string, a quoted-to-non-quoted
+	 *	 line transition.
+	 */
+	quoted = (Pmaster && Pmaster->quote_str)
+	  ? quote_match(Pmaster->quote_str, curwp->w_dotp, qstr, NLINE) : 0;
+	qlen   = quoted ? strlen(qstr) : 0;
+	while(lback(curwp->w_dotp) != curbp->b_linep
+	      && llength(lback(curwp->w_dotp)) > qlen
+	      && ((Pmaster && Pmaster->quote_str)
+		    ? (quoted == quote_match(Pmaster->quote_str,
+					    lback(curwp->w_dotp), qstr2, NLINE)
+		       && !strcmp(qstr, qstr2))
+		    : 1)
+	      && lgetc(curwp->w_dotp, qlen).c != TAB
+	      && lgetc(curwp->w_dotp, qlen).c != ' ')
+	  curwp->w_dotp = lback(curwp->w_dotp);
 
-	/* and then forward until we are in a word */
-	while(!inword())
-	  if(forwchar(FALSE,1) == FALSE)
-	    break;
+	if(n){
+	    /* keep looking */
+	    if(lback(curwp->w_dotp) == curbp->b_linep)
+	      break;
+	    else
+	      curwp->w_dotp = lback(curwp->w_dotp);
+
+	    curwp->w_doto = 0;
+	}
+	else{
+	  /* leave cursor on first word in para */
+	    curwp->w_doto = 0;
+	    while(isspace((unsigned char)lgetc(curwp->w_dotp, curwp->w_doto).c))
+	      if(++curwp->w_doto >= llength(curwp->w_dotp)){
+		  curwp->w_doto = 0;
+		  curwp->w_dotp = lforw(curwp->w_dotp);
+		  if(curwp->w_dotp == curbp->b_linep)
+		    break;
+	      }
+	}
     }
 
     curwp->w_flag |= WFMOVE;	/* force screen update */
+    return(TRUE);
 }
 
 
@@ -336,43 +336,56 @@ gotoeop(f, n)
 int f, n;	/* default Flag & Numeric argument */
 
 {
-    register int suc;	/* success of last backchar */
+    int quoted, qlen;
+    char qstr[NLINE], qstr2[NLINE];
 
     if (n < 0)	/* the other way...*/
       return(gotobop(f, -n));
 
     while (n-- > 0) {	/* for each one asked for */
-	
-	/* first scan forward until we are in a word */
-	if(curwp->w_dotp != curbp->b_linep){
-	    curwp->w_doto = 0;		/* go to the B-O-Line */
-	    curwp->w_dotp = lforw(curwp->w_dotp);
+
+	while(lisblank(curwp->w_dotp)){
+	    curwp->w_doto = 0;
+	    if((curwp->w_dotp = lforw(curwp->w_dotp)) == curbp->b_linep)
+	      break;
 	}
 
-	/* and scan forword until we hit a <NL><NL> or <NL><TAB>
-	   or a <NL><SPACE>					*/
-	while (curwp->w_dotp != curbp->b_linep) {
-	    if (llength(curwp->w_dotp) != 0 &&
-		lgetc(curwp->w_dotp, curwp->w_doto).c != TAB &&
-		lgetc(curwp->w_dotp, curwp->w_doto).c != ' ')
-	      curwp->w_dotp = lforw(curwp->w_dotp);
-	    else
-	      break;
-	}
+	/* scan line by line until we come to a line ending with
+	 * a <NL><NL> or <NL><TAB> or <NL><SPACE>
+	 *
+	 * PLUS: if there's a quote string, a quoted-to-non-quoted
+	 *	 line transition.
+	 */
+	quoted = (Pmaster && Pmaster->quote_str)
+		  ? quote_match(Pmaster->quote_str, curwp->w_dotp, qstr, NLINE) : 0;
+	qlen   = quoted ? strlen(qstr) : 0;
 	
-	/* and then backward until we are in a word */
-	suc = TRUE;
-	while (suc && !inword()) {
-	    if(lback(curwp->w_dotp) == curbp->b_linep 
-	       && curwp->w_doto == 0)
+	while(curwp->w_dotp != curbp->b_linep
+	      && llength(lforw(curwp->w_dotp)) > qlen
+	      && ((Pmaster && Pmaster->quote_str)
+		   ? (quoted == quote_match(Pmaster->quote_str,
+					   lforw(curwp->w_dotp), qstr2, NLINE)
+		      && !strcmp(qstr, qstr2))
+		   : 1)
+	      && lgetc(lforw(curwp->w_dotp), qlen).c != TAB
+	      && lgetc(lforw(curwp->w_dotp), qlen).c != ' ')
+	  curwp->w_dotp = lforw(curwp->w_dotp);
+
+	curwp->w_doto = llength(curwp->w_dotp);
+
+	/* still looking? */
+	if(n){
+	    if(curwp->w_dotp == curbp->b_linep)
 	      break;
-	    suc = backchar(FALSE, 1);
+	    else
+	      curwp->w_dotp = lforw(curwp->w_dotp);
+
+	    curwp->w_doto = 0;
 	}
-	curwp->w_doto = llength(curwp->w_dotp);	/* and to the EOL */
     }
 
     curwp->w_flag |= WFMOVE;	/* force screen update */
-    return(TRUE);
+    return(curwp->w_dotp != curbp->b_linep);
 }
 
 /*
@@ -409,36 +422,30 @@ register LINE   *dlp;
     return (dbo);
 }
 
+
+
 /*
- * Scroll forward by a specified number of lines, or by a full page if no
- * argument. Bound to "C-V". The "2" in the arithmetic on the window size is
- * the overlap; this value is the default overlap value in ITS EMACS. Because
- * this zaps the top line in the display window, we have to do a hard update.
+ * Scroll the display forward (up) n lines.
  */
-forwpage(f, n)
-int             f;
-register int    n;
+scrollforw (n, movedot)
+register int	n;
+int		movedot;
 {
     register LINE   *lp;
+    LINE	    *lp2;
     register int    nl;
+    int		    i;
 
-    if (f == FALSE) {
-	n = curwp->w_ntrows - 2;        /* Default scroll.      */
-	if (n <= 0)                     /* Forget the overlap   */
-	  n = 1;                  /* if tiny window.      */
-    } else if (n < 0)
-      return (backpage(f, -n));
-#if     CVMVAS
-    else                                    /* Convert from pages   */
-      n *= curwp->w_ntrows;           /* to lines.            */
-#endif
     nl = n;
     lp = curwp->w_linep;
     while (n-- && lp!=curbp->b_linep)
       lp = lforw(lp);
 
-    curwp->w_dotp  = lp;
-    curwp->w_doto  = 0;
+    if (movedot) {			/* Move dot to top of page. */
+	curwp->w_dotp  = lp;
+	curwp->w_doto  = 0;
+    }
+
     curwp->w_flag |= WFHARD;
     if(lp == curbp->b_linep)
       return(TRUE);
@@ -448,7 +455,7 @@ register int    n;
     /*
      * if the header is open, close it ...
      */
-    if(Pmaster && ComposerTopLine != COMPOSER_TOP_LINE){
+    if(Pmaster && Pmaster->headents && ComposerTopLine != COMPOSER_TOP_LINE){
 	n -= ComposerTopLine - COMPOSER_TOP_LINE;
 	ToggleHeader(0);
     }
@@ -460,8 +467,160 @@ register int    n;
     if(optimize)
       scrollup(curwp, -1, nl-n-1);
 
+    if(!movedot){
+	/* Requested to not move the dot.  Look for the dot in the current
+	 * window.  loop through all lines, stop when at end of window
+	 * or endof buffer.  If the dot is found, it can stay where it
+	 * is, otherwise we do need to move it.
+	 */
+	movedot = TRUE;
+	for (	lp2 = lp, i = 0; 
+		lp2 != curbp->b_linep && i < curwp->w_ntrows;  
+		lp2 = lforw(lp2), ++i) {
+	    if (curwp->w_dotp == lp2) {
+		 movedot = FALSE;
+		 break;
+	    }
+        }
+	if (movedot) {
+	    /* Dot not found in window.  Move to first line of window. */
+	    curwp->w_dotp  = lp;
+	    curwp->w_doto  = 0;
+        }
+    }
+
     return (TRUE);
 }
+
+
+/*
+ * Scroll forward by a specified number of lines, or by a full page if no
+ * argument. Bound to "C-V". The "2" in the arithmetic on the window size is
+ * the overlap; this value is the default overlap value in ITS EMACS. Because
+ * this zaps the top line in the display window, we have to do a hard update.
+ */
+forwpage(f, n)
+int             f;
+register int    n;
+{
+
+    if (f == FALSE) {
+	n = curwp->w_ntrows - 2;        /* Default scroll.      */
+	if (n <= 0)                     /* Forget the overlap   */
+	  n = 1;                  /* if tiny window.      */
+    } else if (n < 0)
+      return (backpage(f, -n));
+#if     CVMVAS
+    else                                    /* Convert from pages   */
+      n *= curwp->w_ntrows;           /* to lines.            */
+#endif
+    return (scrollforw (n, TRUE));
+}
+
+
+/*
+ * Scroll back (down) number of lines.  
+ */
+scrollback (n, movedot)
+register int	n;
+int		movedot;
+{
+    register LINE   *lp, *tp;
+    register int    nl;
+    int		    i;
+
+    if(Pmaster && Pmaster->headents){
+	/*
+	 * go up into editing the mail header if on the top line
+	 * and the user hits the up arrow!!!
+	 */
+	if (lback(curwp->w_dotp) == curbp->b_linep){
+	    /*
+	     * if the editor returns anything except -1 then the user
+	     * has requested something special, so let pico know...
+	     */
+	    return(HeaderEditor(1, 1));
+	}
+    }
+
+    /*
+     * Count back the number of lines requested.
+     */
+    nl = n;
+    lp = curwp->w_linep;
+    while (n-- && lback(lp)!=curbp->b_linep)
+      lp = lback(lp);
+
+    curwp->w_linep = lp;
+    curwp->w_flag |= WFHARD;
+
+    /*
+     * scroll down from the top the same number of lines we've moved 
+     * forward
+     *
+     * This isn't too cool, but it has to be this way so we can 
+     * gracefully scroll in the message header
+     */
+    if(Pmaster && Pmaster->headents){
+	if((lback(lp)==curbp->b_linep) && (ComposerTopLine==COMPOSER_TOP_LINE))
+	  n -= entry_line(1000, TRUE); /* never more than 1000 headers */
+	if(nl-n-1 < curwp->w_ntrows)
+	  if(optimize)
+	    scrolldown(curwp, -1, nl-n-1);
+    }
+    else
+      if(optimize)
+	scrolldown(curwp, -1, nl-n-1);
+
+    if(Pmaster && Pmaster->headents){
+	/*
+	 * if we're at the top of the page, and the header is closed, 
+	 * open it ...
+	 */
+	if((lback(lp) == curbp->b_linep) 
+	   && (ComposerTopLine == COMPOSER_TOP_LINE)){
+	    ToggleHeader(1);
+	    movecursor(ComposerTopLine, 0);
+	}
+    }
+    
+    /*
+     * Decide if we move the dot or not.  Calculation done AFTER deciding
+     * if we display the header because that will change the number of
+     * lines on the screen.
+     */
+    if (movedot) {
+	/* Dot gets put at top of window. */
+	curwp->w_dotp  = curwp->w_linep;
+	curwp->w_doto  = 0;
+    }
+    else {
+	/* Requested not to move dot, but we do need to keep in on
+	 * the screen.  Verify that it is still in the range of lines
+	 * visable in the window.  Loop from the first line to the
+	 * last line, until we reach the end of the buffer or the end
+	 * of the window.  If we find the dot, then we don't need
+	 * to move it. */
+	movedot = TRUE;
+	for (	tp = curwp->w_linep, i = 0; 
+		tp != curbp->b_linep && i < curwp->w_ntrows;  
+		tp = lforw(tp), ++i) {
+	    if (curwp->w_dotp == tp) {
+		 movedot = FALSE;
+		 break;
+	    }
+        }
+	if (movedot) {
+	    /* Dot not found in window.  Move to last line of window. */
+	    curwp->w_dotp  = lback (tp);
+	    curwp->w_doto  = 0;
+        }
+    }
+
+    return (TRUE);
+}
+
+
 
 
 /*
@@ -474,8 +633,6 @@ backpage(f, n)
 int             f;
 register int    n;
 {
-    register LINE   *lp;
-    register int    nl;
 
     if (f == FALSE) {
 	n = curwp->w_ntrows - 2;        /* Default scroll.      */
@@ -487,48 +644,81 @@ register int    n;
     else                                    /* Convert from pages   */
       n *= curwp->w_ntrows;           /* to lines.            */
 #endif
-    nl = n;
-    lp = curwp->w_linep;
-    while (n-- && lback(lp)!=curbp->b_linep)
-      lp = lback(lp);
+    return (scrollback (n, TRUE));
+}
 
+
+
+scrollupline (f, n)
+int f, n;
+{
+    return (scrollback (1, FALSE));
+}
+
+
+scrolldownline (f, n)
+int f, n;
+{
+    return (scrollforw (1, FALSE));
+}
+
+
+
+/*
+ * Scroll to a position.
+ */
+scrollto (f, n)
+int f, n;
+{
+#ifdef _WINDOWS
+    long	scrollLine;
+    LINE	*lp;
+    int		i;
+    
+    scrollLine = mswin_getscrollto ();
+    
+    /*
+     * Starting at the first data line in the buffer, step forward
+     * 'scrollLine' lines to find the new top line.  It is a circular
+     * list of buffers, so watch for the first line to reappear.  if
+     * it does, we have some sort of internal error, abort scroll
+     * operation.  Also watch for NULL, just in case.
+     */
+    lp = lforw (curbp->b_linep);
+    for (i = 0; i < scrollLine && lp != curbp->b_linep && lp != NULL; ++i)
+	lp = lforw(lp);
+
+    if (lp == curbp->b_linep || lp == NULL)
+	return (FALSE);					/* Whoops! */
+    
+
+    /* Set the new top line for the window and flag a redraw. */
     curwp->w_linep = lp;
     curwp->w_dotp  = lp;
     curwp->w_doto  = 0;
     curwp->w_flag |= WFHARD;
-
+    
+    if(Pmaster && Pmaster->headents){
 	/*
-	 * scroll down from the top the same number of lines we've moved 
-	 * forward
-	 *
-	 * This isn't too cool, but it has to be this way so we can 
-	 * gracefully scroll in the message header
-	 */
-    if(Pmaster){
-	if((lback(lp)==curbp->b_linep) && (ComposerTopLine==COMPOSER_TOP_LINE))
-	  n -= entry_line(LASTHDR, TRUE);
-	if(nl-n-1 < curwp->w_ntrows)
-	  if(optimize)
-	    scrolldown(curwp, -1, nl-n-1);
-    }
-    else
-      if(optimize)
-	scrolldown(curwp, -1, nl-n-1);
-
-    if(Pmaster){
-	/*
-	 * if we're at the top of the page, and the header is closed, 
-	 * open it ...
+	 * If we are at the top of the page and header not open, open it.
+	 * If we are not at the top of the page and the header is open,
+	 * close it.
 	 */
 	if((lback(lp) == curbp->b_linep) 
 	   && (ComposerTopLine == COMPOSER_TOP_LINE)){
 	    ToggleHeader(1);
 	    movecursor(ComposerTopLine, 0);
 	}
+	else if((lback(lp) != curbp->b_linep) 
+	   && (ComposerTopLine != COMPOSER_TOP_LINE)){
+	   ToggleHeader (0);
+        }
     }
+#endif
 
     return (TRUE);
 }
+
 
 
 /*
@@ -551,6 +741,9 @@ int f, n;
 	emlwrite("Mark UNset", NULL);
     }
 
+#ifdef	_WINDOWS
+    mswin_allowcopycut(curwp->w_markp ? kremove : NULL);
+#endif
     return (TRUE);
 }
 
@@ -569,7 +762,7 @@ int f, n;
 
     if (curwp->w_markp == NULL) {
 	if(Pmaster == NULL)
-	  mlwrite("No mark in this window");
+	  emlwrite("No mark in this window", NULL);
 	return (FALSE);
     }
 
@@ -612,7 +805,7 @@ int f, n;
 
     if (curwp->w_imarkp == NULL) {
 	if(Pmaster == NULL)
-	  emlwrite("Programmer botch! No mark in this window");
+	  emlwrite("Programmer botch! No mark in this window", NULL);
 	return (FALSE);
     }
 
@@ -625,3 +818,55 @@ int f, n;
     curwp->w_flag |= WFMOVE;
     return (TRUE);
 }
+
+
+
+#ifdef MOUSE
+
+/*
+ * Handle a mouse down.
+ */
+mousepress (f, n)
+int f, n;
+{
+    MOUSEPRESS	mp;
+    LINE	*lp;
+    int    i;
+
+
+    mouse_get_last (NULL, &mp);
+
+
+    lp = curwp->w_linep;
+    i = mp.row - ((Pmaster && Pmaster->headents) ? ComposerTopLine : 2);
+    if (i < 0) {
+	if (Pmaster) {
+	    /* Clear existing region. */
+	    if (curwp->w_markp)
+		setmark(0,1);	
+
+	    /* Move to top of document before editing header. */
+	    curwp->w_dotp = curwp->w_linep;
+	    curwp->w_doto = 0;
+	    curwp->w_flag |= WFMOVE;
+	    update ();				/* And update. */
+
+	    return (HeaderEditor (1, 1));
+        }
+    }
+    else {
+	while(i-- && lp != curbp->b_linep)
+	  lp = lforw(lp);
+
+	curgoal = mp.col;
+	curwp->w_dotp = lp;
+	curwp->w_doto = getgoal(lp);
+	curwp->w_flag |= WFMOVE;
+
+	if(mp.doubleclick)
+	    setmark(0, 1);
+    }
+
+    return(FALSE);
+}
+#endif

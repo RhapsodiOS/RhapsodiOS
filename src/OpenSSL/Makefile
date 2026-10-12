@@ -31,11 +31,13 @@ VersionFlags := -compatibility_version $(FileVersion) -current_version $(shell e
 CC_Shlib      = $(CC) $(CC_Archs) -dynamiclib $(VersionFlags) -all_load
 
 # Rhapsody's i386 assembler predates MMX and SSE2 ("no such 386 instruction:
-# `pxor'"), so i386 builds its assembly without the SSE2 paths.
+# `pxor'"), so i386 builds its assembly without the SSE2 paths. Its cc has no
+# '+' asm constraints ("output operand constraint contains `+'" in
+# eng_padlock.c), so i386 also leaves out the VIA PadLock engine.
 configure::
 	$(_v) set -e; \
 	for arch in $(RC_ARCHS); do \
-		case $$arch in i386) arch_flags=no-sse2 ;; *) arch_flags= ;; esac; \
+		case $$arch in i386) arch_flags="no-sse2 -DOPENSSL_NO_HW_PADLOCK" ;; *) arch_flags= ;; esac; \
 		rm -rf "$(OBJROOT)/$$arch"; \
 		mkdir -p "$(OBJROOT)/$$arch"; \
 		$(CP) -R -P "$(Sources)/." "$(OBJROOT)/$$arch"; \

@@ -46,7 +46,8 @@
 #define O_NOCTTY 0
 #endif
 
-#ifdef __APPLE__
+/* Rhapsody's cc defines __APPLE__ too, but has no AvailabilityMacros.h. */
+#if defined(__APPLE__) && !defined(__NeXT__)
 # include <AvailabilityMacros.h>
 # if (MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_5)
 #  define __APPLE_PRIVPTY__

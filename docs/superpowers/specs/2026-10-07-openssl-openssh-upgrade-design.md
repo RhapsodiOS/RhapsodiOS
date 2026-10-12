@@ -261,4 +261,46 @@ changes.
 
 ## Appendix: OpenSSH probe results
 
-Filled in by the probe before the OpenSSH tree is imported.
+Probed 2026-10-12 on a private snapshot guest of
+`vm/work/rhap-i386-bootstrapped-v2.img`, inside a universal build root with
+OpenSSL 0.9.8zh's per-arch install trees `lipo`'d together. Every tarball's
+signature checked out against `RELEASE_KEY.asc`.
+
+**Chosen release: 7.4p1.**
+
+The probe went top-down from the OpenSSL ceiling instead of climbing from
+3.2.3p1. The highest release that builds ships either way, and 7.4p1 built.
+
+| Release | Result |
+|---|---|
+| 7.5p1 and later | Fails criterion 1: `configure` requires OpenSSL >= 1.0.1 |
+| 7.4p1 | Passes: configures and builds universal (`ppc i486`); `ssh -V` prints `OpenSSH_7.4p1, OpenSSL 0.9.8zh 3 Dec 2015` |
+| 6.7p1 to 7.3p1 | Not built; `configure` requires OpenSSL >= 0.9.8f |
+
+7.4p1 offers curve25519-sha256, ECDH, diffie-hellman-group14/16/18,
+ed25519 and ECDSA host keys, chacha20-poly1305 and aes-ctr, which covers
+what stock OpenSSH 10 clients negotiate by default.
+
+What 7.4p1 needed:
+
+- `--without-zlib-version-check`: `configure` rejects the system zlib 1.1.3
+  as having known security problems.
+- `libinfo` in `makedepends`: `openbsd-compat/getrrsetbyname.h` needs
+  `arpa/nameser.h` and `resolv.h`, which only the full libinfo apk installs.
+- A current `files` apk in the build repository: `configure` asks
+  OpenSSL's `RAND_status`, which needs `/dev/urandom` in the build root.
+- Two Rhapsody header defects:
+  - `netinet/ip.h` and `netinet/in_systm.h` have no include guards, and
+    OpenSSH includes them several times;
+  - `ctype.h` defines `isalnum()` and friends only as macros, with no
+    prototypes, and `openbsd-compat/charclass.h` takes their addresses.
+- `sshpty.c`: Rhapsody's cc defines `__APPLE__` (and `__NeXT__`), so its
+  macOS-only `<AvailabilityMacros.h>` block needs `!defined(__NeXT__)`.
+- `misc.c`: Rhapsody has no `getsid()`. `daemonized()` asks whether the
+  process leads its session, and `getpgrp() == getpid()` answers that here.
+- `-arch` flags in `LDFLAGS` as well as `CFLAGS`. OpenSSH links with
+  `$(LDFLAGS)`, and the CoreOS makefiles' `LD_Flags` already carry
+  `$(CC_Archs)`.
+- Two cosmetic results: `__nonnull__` attribute warnings, which gcc 2.x
+  ignores, and NeXT `ar` refusing to update an already-fat `libssh.a` on a
+  rebuild in the same tree.

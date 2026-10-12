@@ -82,17 +82,10 @@ install:: build
 		rmdir "$(DSTROOT)$(USRDIR)/include" 2>/dev/null || true; \
 	fi; \
 	if [ -f "$(OBJROOT)/dst-ppc/usr/include/openssl/opensslconf.h" ] && \
-	   [ -f "$(OBJROOT)/dst-i386/usr/include/openssl/opensslconf.h" ] && \
-	   ! cmp -s "$(OBJROOT)/dst-ppc/usr/include/openssl/opensslconf.h" "$(OBJROOT)/dst-i386/usr/include/openssl/opensslconf.h"; then \
-		awk 'NR == FNR { ppc[FNR] = $$0; ppc_lines = FNR; next } \
-		     { if (FNR > ppc_lines) exit 1; \
-		       if (ppc[FNR] == $$0) print; \
-		       else { print "#if defined(__ppc__)"; print ppc[FNR]; print "#elif defined(__i386__)"; print; print "#endif"; } } \
-		     END { if (FNR != ppc_lines) exit 1 }' \
+	   [ -f "$(OBJROOT)/dst-i386/usr/include/openssl/opensslconf.h" ]; then \
+		diff -D __ppc__ "$(OBJROOT)/dst-i386/usr/include/openssl/opensslconf.h" \
 			"$(OBJROOT)/dst-ppc/usr/include/openssl/opensslconf.h" \
-			"$(OBJROOT)/dst-i386/usr/include/openssl/opensslconf.h" \
-			> "$(DSTROOT)$(USRDIR)/local/include/openssl/opensslconf.h.new"; \
-		mv "$(DSTROOT)$(USRDIR)/local/include/openssl/opensslconf.h.new" "$(DSTROOT)$(USRDIR)/local/include/openssl/opensslconf.h"; \
+			> "$(DSTROOT)$(USRDIR)/local/include/openssl/opensslconf.h" || test $$? = 1; \
 	fi; \
 	$(MAKE) shlibs strip
 

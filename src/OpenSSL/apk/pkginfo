@@ -4,4 +4,4 @@ pkgdesc = SSL library
 maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
 license = OpenSSL
 url = http://www.openssl.org/
-makedepends = build-base, perl
+makedepends = build-base, gnudiff, perl

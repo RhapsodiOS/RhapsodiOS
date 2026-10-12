@@ -117,6 +117,8 @@ $targetCshHeaderText = Get-Content -Raw (Join-Path $repoRoot 'src\Commands\basic
 $targetCshManualText = Get-Content -Raw (Join-Path $repoRoot 'src\Commands\basic_cmds\csh.tproj\csh.1')
 $targetCshLexText = Get-Content -Raw (Join-Path $repoRoot 'src\Commands\basic_cmds\csh.tproj\lex.c')
 
+$syncLibText = Get-Content -Raw (Join-Path $VmDir 'sync-src-lib.ps1')
+Assert-Match $syncLibText '\$cpioCommand -idu \|\|' 'guest cpio stamps files with the guest clock, so host mtimes ahead of it cannot loop make'
 Assert-Match $syncScriptText '--format cpio' 'sync archive uses portable cpio format'
 Assert-Match $syncScriptText ([regex]::Escape('--format cpio -cf $ArchivePath -C $ArchiveParent -- $ArchiveLeaf')) 'producer terminates options before archive leaf'
 Assert-NotMatch $syncScriptText '--format ustar' 'sync archive no longer uses ustar'

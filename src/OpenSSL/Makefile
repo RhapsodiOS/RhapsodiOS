@@ -26,7 +26,7 @@ Environment     = AR="$(SRCROOT)/ar.sh r" \
 
 Install_Target  = install
 
-Version      := $(shell $(GREP) 'VERSION=' $(Sources)/Makefile | $(SED) 's/VERSION=//')
+Version      := $(shell $(GREP) '^VERSION=' $(Sources)/Makefile | $(SED) 's/VERSION=//')
 FileVersion  := $(shell echo $(Version) | $(SED) 's/[a-z].*//')
 VersionFlags := -compatibility_version $(FileVersion) -current_version $(shell echo $(Version) | sed 's/[a-z]//g')
 CC_Shlib      = $(CC) $(CC_Archs) -dynamiclib $(VersionFlags) -all_load

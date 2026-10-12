@@ -1,5 +1,7 @@
+/* $OpenBSD: session.h,v 1.33 2016/08/13 17:47:41 markus Exp $ */
+
 /*
- * Copyright (c) 2000 Markus Friedl.  All rights reserved.
+ * Copyright (c) 2000, 2001 Markus Friedl.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -24,14 +26,60 @@
 #ifndef SESSION_H
 #define SESSION_H
 
-/* SSH1 */
-void	do_authenticated(struct passwd * pw);
+#define TTYSZ 64
+typedef struct Session Session;
+struct Session {
+	int	used;
+	int	self;
+	int	next_unused;
+	struct passwd *pw;
+	Authctxt *authctxt;
+	pid_t	pid;
 
-/* SSH2 */
-void	do_authenticated2(void);
-int	session_open(int id);
-void	session_input_channel_req(int id, void *arg);
-void	session_close_by_pid(pid_t pid, int status);
-void	session_close_by_channel(int id, void *arg);
+	/* tty */
+	char	*term;
+	int	ptyfd, ttyfd, ptymaster;
+	u_int	row, col, xpixel, ypixel;
+	char	tty[TTYSZ];
+
+	/* X11 */
+	u_int	display_number;
+	char	*display;
+	u_int	screen;
+	char	*auth_display;
+	char	*auth_proto;
+	char	*auth_data;
+	int	single_connection;
+
+	int	chanid;
+	int	*x11_chanids;
+	int	is_subsystem;
+	char	*subsys;
+	u_int	num_env;
+	struct {
+		char	*name;
+		char	*val;
+	} *env;
+};
+
+void	 do_authenticated(Authctxt *);
+void	 do_cleanup(Authctxt *);
+
+int	 session_open(Authctxt *, int);
+void	 session_unused(int);
+int	 session_input_channel_req(Channel *, const char *);
+void	 session_close_by_pid(pid_t, int);
+void	 session_close_by_channel(int, void *);
+void	 session_destroy_all(void (*)(Session *));
+void	 session_pty_cleanup2(Session *);
+
+Session	*session_new(void);
+Session	*session_by_tty(char *);
+void	 session_close(Session *);
+void	 do_setusercontext(struct passwd *);
+void	 child_set_env(char ***envp, u_int *envsizep, const char *name,
+		       const char *value);
+
+const char	*session_get_remote_name_or_ip(struct ssh *, u_int, int);
 
 #endif

@@ -27,3 +27,4 @@ dialer:*:68:
 network:*:69:
 www:*:70:
 macos:*:80:
+sshd:*:75:

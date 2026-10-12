@@ -11,3 +11,4 @@ root:*:0:0::0:0:System Administrator:/Local/Users/Administrator:/bin/tcsh
 Administrator:*:0:0::0:0:System Administrator:/Local/Users/Administrator:/bin/tcsh
 administrator:*:0:0::0:0:System Administrator:/Local/Users/Administrator:/bin/tcsh
 daemon:*:1:1::0:0:System Services:/Local/Users/Administrator:/noshell
+sshd:*:75:75::0:0:sshd Privilege separation:/var/empty:/noshell

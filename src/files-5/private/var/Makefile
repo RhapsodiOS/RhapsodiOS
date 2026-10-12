@@ -21,7 +21,7 @@ DSTMODE = 755
 SUBDIRS = at log run spool vm
 
 #	Empty subdirectories
-EMPTYDIRS = backups db msgs rwho
+EMPTYDIRS = backups db empty msgs rwho
 
 all:
 	for i in ${SUBDIRS} ; \

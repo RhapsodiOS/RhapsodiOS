@@ -35,7 +35,13 @@ configure::
 	for arch in $(RC_ARCHS); do \
 		rm -rf "$(OBJROOT)/$$arch"; \
 		mkdir -p "$(OBJROOT)/$$arch"; \
-		$(CP) -R "$(Sources)/." "$(OBJROOT)/$$arch"; \
+		$(CP) -R -P "$(Sources)/." "$(OBJROOT)/$$arch"; \
+		(cd "$(OBJROOT)/$$arch" && find . -type l -print | while read link; do \
+			target=`ls -ld "$$link" | sed 's/.* -> //'`; \
+			case "$$target" in openssl-0.9.8zh/*) \
+				ln -sf "$${target#openssl-0.9.8zh/}" "$$link" ;; \
+			esac; \
+		done); \
 		(cd "$(OBJROOT)/$$arch" && ./Configure $(Configure_Flags) rhapsody-$$arch-cc); \
 	done
 

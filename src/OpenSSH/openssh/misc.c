@@ -1264,12 +1264,7 @@ daemonized(void)
 	}
 	if (getppid() != 1)
 		return 0;	/* parent is not init */
-#ifdef __NeXT__
-	/* Rhapsody has no getsid(); a session leader also leads its group. */
-	if (getpgrp() != getpid())
-#else
 	if (getsid(0) != getpid())
-#endif
 		return 0;	/* not session leader */
 	debug3("already daemonized");
 	return 1;

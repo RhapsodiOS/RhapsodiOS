@@ -234,6 +234,24 @@ setsid(p, uap, retval)
 	}
 }
 
+struct getsid_args {
+	pid_t	pid;
+};
+getsid(p, uap, retval)
+	struct proc *p;
+	struct getsid_args *uap;
+	register_t *retval;
+{
+	struct proc *pt;
+
+	if (uap->pid == 0)
+		pt = p;
+	else if ((pt = pfind(uap->pid)) == NULL)
+		return (ESRCH);
+	*retval = pt->p_session->s_sid;
+	return (0);
+}
+
 /*
  * set process group (setpgid/old setpgrp)
  *

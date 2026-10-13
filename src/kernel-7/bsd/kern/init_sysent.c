@@ -159,6 +159,7 @@ int	rmdir();
 int	utimes();
 int	adjtime();
 int	setsid();
+int	getsid();
 int	quotactl();
 int	nfssvc();
 int	statfs();
@@ -592,6 +593,83 @@ struct sysent sysent[] = {
 	syss(nosys,0),		/* 230 */
 	syss(watchevent,2),		/* 231 */
 	syss(waitevent,2),		/* 232 */
-	syss(modwatch,2)		/* 233 */
+	syss(modwatch,2),		/* 233 */
+	syss(nosys,0),		/* 234 */
+	syss(nosys,0),		/* 235 */
+	syss(nosys,0),		/* 236 */
+	syss(nosys,0),		/* 237 */
+	syss(nosys,0),		/* 238 */
+	syss(nosys,0),		/* 239 */
+	syss(nosys,0),		/* 240 */
+	syss(nosys,0),		/* 241 */
+	syss(nosys,0),		/* 242 */
+	syss(nosys,0),		/* 243 */
+	syss(nosys,0),		/* 244 */
+	syss(nosys,0),		/* 245 */
+	syss(nosys,0),		/* 246 */
+	syss(nosys,0),		/* 247 */
+	syss(nosys,0),		/* 248 */
+	syss(nosys,0),		/* 249 */
+	syss(nosys,0),		/* 250 */
+	syss(nosys,0),		/* 251 */
+	syss(nosys,0),		/* 252 */
+	syss(nosys,0),		/* 253 */
+	syss(nosys,0),		/* 254 */
+	syss(nosys,0),		/* 255 */
+	syss(nosys,0),		/* 256 */
+	syss(nosys,0),		/* 257 */
+	syss(nosys,0),		/* 258 */
+	syss(nosys,0),		/* 259 */
+	syss(nosys,0),		/* 260 */
+	syss(nosys,0),		/* 261 */
+	syss(nosys,0),		/* 262 */
+	syss(nosys,0),		/* 263 */
+	syss(nosys,0),		/* 264 */
+	syss(nosys,0),		/* 265 */
+	syss(nosys,0),		/* 266 */
+	syss(nosys,0),		/* 267 */
+	syss(nosys,0),		/* 268 */
+	syss(nosys,0),		/* 269 */
+	syss(nosys,0),		/* 270 */
+	syss(nosys,0),		/* 271 */
+	syss(nosys,0),		/* 272 */
+	syss(nosys,0),		/* 273 */
+	syss(nosys,0),		/* 274 */
+	syss(nosys,0),		/* 275 */
+	syss(nosys,0),		/* 276 */
+	syss(nosys,0),		/* 277 */
+	syss(nosys,0),		/* 278 */
+	syss(nosys,0),		/* 279 */
+	syss(nosys,0),		/* 280 */
+	syss(nosys,0),		/* 281 */
+	syss(nosys,0),		/* 282 */
+	syss(nosys,0),		/* 283 */
+	syss(nosys,0),		/* 284 */
+	syss(nosys,0),		/* 285 */
+	syss(nosys,0),		/* 286 */
+	syss(nosys,0),		/* 287 */
+	syss(nosys,0),		/* 288 */
+	syss(nosys,0),		/* 289 */
+	syss(nosys,0),		/* 290 */
+	syss(nosys,0),		/* 291 */
+	syss(nosys,0),		/* 292 */
+	syss(nosys,0),		/* 293 */
+	syss(nosys,0),		/* 294 */
+	syss(nosys,0),		/* 295 */
+	syss(nosys,0),		/* 296 */
+	syss(nosys,0),		/* 297 */
+	syss(nosys,0),		/* 298 */
+	syss(nosys,0),		/* 299 */
+	syss(nosys,0),		/* 300 */
+	syss(nosys,0),		/* 301 */
+	syss(nosys,0),		/* 302 */
+	syss(nosys,0),		/* 303 */
+	syss(nosys,0),		/* 304 */
+	syss(nosys,0),		/* 305 */
+	syss(nosys,0),		/* 306 */
+	syss(nosys,0),		/* 307 */
+	syss(nosys,0),		/* 308 */
+	syss(nosys,0),		/* 309 */
+	syss(getsid,1)		/* 310 = getsid */
 };
 int	nsysent = sizeof(sysent) / sizeof(sysent[0]);

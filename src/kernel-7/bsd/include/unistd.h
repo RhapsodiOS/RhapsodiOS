@@ -111,6 +111,7 @@ ssize_t	 read __P((int, void *, size_t));
 int	 rmdir __P((const char *));
 int	 setgid __P((gid_t));
 int	 setpgid __P((pid_t, pid_t));
+pid_t	 getsid __P((pid_t));
 pid_t	 setsid __P((void));
 int	 setuid __P((uid_t));
 unsigned int	 sleep __P((unsigned int));

@@ -252,3 +252,4 @@
 #define SYS_searchfs	 225
 
        				/* 226 - 230 are reserved for HFS expansion */
+#define	SYS_getsid	310

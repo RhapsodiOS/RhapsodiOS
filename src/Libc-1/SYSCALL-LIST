@@ -45,6 +45,7 @@ setpriority
 getrlimit
 setrlimit
 getrusage
+getsid
 getsockname
 getsockopt
 setsockopt

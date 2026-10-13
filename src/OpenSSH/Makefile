@@ -9,7 +9,9 @@ Project               = openssh
 ProjectName           = OpenSSH
 UserType              = Administrator
 ToolType              = Services
-Extra_CC_Flags        = -Wno-precomp
+# Rhapsody, like Darwin, refuses setreuid/setregid and a setuid after seteuid
+# ("setreuid 75: Operation not permitted" in sshd's privsep child).
+Extra_CC_Flags        = -Wno-precomp -DSETEUID_BREAKS_SETUID -DBROKEN_SETREUID -DBROKEN_SETREGID
 Extra_LD_Flags        = -L. -Lopenbsd-compat
 # The system zlib is 1.1.3, which configure refuses unless told otherwise.
 Extra_Configure_Flags = --sysconfdir="/etc" --with-privsep-user=sshd --with-privsep-path=/var/empty --without-zlib-version-check

@@ -29,6 +29,7 @@ dir     Commands/doc_cmds     all
 dir     driverkit-3           all
 dir     driverTools-1         all
 dir     Developer/Commands/enscript-1 all
+dir     ext2fs-1              all
 dir     Commands/file_cmds    all
 dir     files-5               all
 dir     Developer/Commands/flex-1 all
@@ -76,7 +77,6 @@ dir     OpenSSL               all
 dir     Developer/Commands/patch-1 all
 dir     Developer/Commands/pb_makefiles-1 all
 dir     Developer/Commands/perl-1 all
-dir     Commands/pico-1       all
 dir     Developer/Commands/project_makefiles-1 all
 dir     Developer/Commands/rcs-1 all
 dir     relcontrol-10         all

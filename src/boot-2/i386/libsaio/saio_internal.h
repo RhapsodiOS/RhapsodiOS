@@ -42,16 +42,26 @@ extern int  memsize(int i);
 
 /* Memory map entry structure for the modern INT 0x15, E820h BIOS call.
  * The compiler that builds the booter does not accept __attribute__((packed)),
- * and does not need to: 8 + 8 + 4 + 4 lays out with no padding on i386, so the
- * struct already matches the 24 bytes the BIOS returns.
+ * and does not need to: six 32-bit words lay out with no padding on i386, so
+ * the struct already matches the 24 bytes the BIOS returns.  The 64-bit base
+ * and length are split into halves because the booter keeps only ranges below
+ * 4GB, and long long arithmetic costs boot2 bytes it does not have.
  */
 typedef struct {
-    unsigned long long base;
-    unsigned long long length;
+    unsigned long base_lo, base_hi;
+    unsigned long length_lo, length_hi;
     unsigned long type;
     unsigned long acpi_extended;
 } e820_entry_t;
-extern unsigned long getMemoryMap(e820_entry_t *map, int maxEntries, int *numEntries);
+/*
+ * Fills "map" with up to maxEntries E820 ranges clamped to 32 bits and
+ * returns the top of the contiguous RAM run starting at 1MB, or 1MB itself
+ * if the BIOS has no E820 map.  See biosfn.c.  struct boot_mem_range lives in
+ * kernBootStruct.h, which has no include guard, so it is only named here.
+ */
+struct boot_mem_range;
+extern unsigned long getMemoryMap(struct boot_mem_range *map, int maxEntries,
+				  int *numEntries);
 extern unsigned long getExtendedMemoryE801(void);
 
 extern void  video_mode(int mode);
@@ -120,16 +130,10 @@ extern void  driverIsMissing(
     int   reason
 );
 extern int  driversAreMissing(void);
+extern void  reportMissingDrivers(void);
 
 #import "load.h"
 
-extern int  pickDrivers(
-    struct driver_info *dinfo,
-    int ndrivers,
-    int autoLoad,
-    int instruction
-);
-extern int  loadBootDrivers(BOOL, int, int);
 extern BOOL isInteresting(
     char *name, char *configTable, char *interestingFamilies);
 extern void  driverWasLoaded(char *name, char *configTable, char *tableName);
@@ -144,16 +148,6 @@ extern void  sleep(int n);
 extern void  setA20(void);
 extern void  turnOffFloppy(void);
 extern int  chooseSimple( char **strings, int nstrings, int min, int max );
-extern int  chooseDriverFromList(
-    char *title,
-    char *message,
-    struct driver_info *drivers,
-    int nstrings,
-    char *footMessage,
-    char *moreMessage,
-    char *quit1Message,
-    char *quit2Message
-);
 extern void  clearScreen(void);
 extern void  copyImage(const struct bitmap *bitmap, int x, int y);
 extern void  clearRect(int x, int y, int w, int h, int c);

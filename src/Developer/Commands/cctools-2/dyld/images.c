@@ -1038,22 +1038,22 @@ char *path)
 	    p = strchr(path, ':');
 	    if(p != NULL)
 		*p = '\0';
-	    if(*path == '\0')
-		goto next_path;
-	    strcpy(dylib_name, path);
-	    strcat(dylib_name, "/");
-	    strcat(dylib_name, name);
-	    if(stat(dylib_name, &stat_buf) == 0){
-		if(p != NULL)
-		    *p = ':';
-		return(dylib_name);
+	    /* an empty element is skipped, it must not become "/name" */
+	    if(*path != '\0'){
+		strcpy(dylib_name, path);
+		strcat(dylib_name, "/");
+		strcat(dylib_name, name);
+		if(stat(dylib_name, &stat_buf) == 0){
+		    if(p != NULL)
+			*p = ':';
+		    return(dylib_name);
+		}
 	    }
 	    if(p == NULL){
 		free(dylib_name);
 		return(NULL);
 	    }
 	    else{
-next_path:
 		*p = ':';
 		path = p + 1;
 	    }

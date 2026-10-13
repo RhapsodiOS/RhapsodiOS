@@ -1,1 +1,20 @@
 STRIPFLAGS=
+
+OSDEP_SRCS = osdep/os-rhp.ic osdep/header osdep/unix osdep/spell.unx \
+	osdep/read.sel osdep/raw.ios osdep/term.cap
+
+$(SFILE_DIR)/os.h: osdep/os-rhp.h
+	@$(MKDIRS) $(SFILE_DIR)
+	$(CP) osdep/os-rhp.h $@
+
+$(SFILE_DIR)/pico_os.c: $(OSDEP_SRCS) $(SFILE_DIR)/includer
+	cd osdep && $(SFILE_DIR)/includer < os-rhp.ic > $@
+
+$(SFILE_DIR)/includer: osdep/includer.c
+	@$(MKDIRS) $(SFILE_DIR)
+	$(CC) -o $@ osdep/includer.c
+
+after_install::
+	install -m 755 -o root -g wheel -d $(DSTROOT)/usr/share/man/man1 $(DSTROOT)/usr/share/doc/pico
+	install -m 644 -o root -g wheel -c pico.1 $(DSTROOT)/usr/share/man/man1
+	install -m 644 -o root -g wheel -c CPYRIGHT LOCAL-CHANGES $(DSTROOT)/usr/share/doc/pico

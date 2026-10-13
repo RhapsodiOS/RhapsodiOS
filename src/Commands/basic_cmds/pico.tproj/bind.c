@@ -1,5 +1,5 @@
 #if	!defined(lint) && !defined(DOS)
-static char rcsid[] = "$Id: bind.c,v 1.1.1.1 1999/04/15 17:45:12 wsanchez Exp $";
+static char rcsid[] = "$Id: bind.c,v 4.23 2000/11/09 21:53:43 hubert Exp $";
 #endif
 /*
  * Program:	Key binding routines
@@ -15,28 +15,16 @@ static char rcsid[] = "$Id: bind.c,v 1.1.1.1 1999/04/15 17:45:12 wsanchez Exp $"
  *
  * Please address all bugs and comments to "pine-bugs@cac.washington.edu"
  *
- * Copyright 1991-1993  University of Washington
  *
- *  Permission to use, copy, modify, and distribute this software and its
- * documentation for any purpose and without fee to the University of
- * Washington is hereby granted, provided that the above copyright notice
- * appears in all copies and that both the above copyright notice and this
- * permission notice appear in supporting documentation, and that the name
- * of the University of Washington not be used in advertising or publicity
- * pertaining to distribution of the software without specific, written
- * prior permission.  This software is made available "as is", and
- * THE UNIVERSITY OF WASHINGTON DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED,
- * WITH REGARD TO THIS SOFTWARE, INCLUDING WITHOUT LIMITATION ALL IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE, AND IN
- * NO EVENT SHALL THE UNIVERSITY OF WASHINGTON BE LIABLE FOR ANY SPECIAL,
- * INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
- * LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, TORT
- * (INCLUDING NEGLIGENCE) OR STRICT LIABILITY, ARISING OUT OF OR IN CONNECTION
- * WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
- *
- * Pine and Pico are trademarks of the University of Washington.
- * No commercial use of these trademarks may be made without prior
- * written permission of the University of Washington.
+ * Pine and Pico are registered trademarks of the University of Washington.
+ * No commercial use of these trademarks may be made without prior written
+ * permission of the University of Washington.
+ * 
+ * Pine, Pico, and Pilot software and its included text are Copyright
+ * 1989-2000 by the University of Washington.
+ * 
+ * The full text of our legal notices is contained in the file called
+ * CPYRIGHT, included with this distribution.
  *
  */
 /*	This file is for functions having to do with key bindings,
@@ -45,10 +33,7 @@ static char rcsid[] = "$Id: bind.c,v 1.1.1.1 1999/04/15 17:45:12 wsanchez Exp $"
 	written 11-feb-86 by Daniel Lawrence
 								*/
 
-#include	<stdio.h>
-#include	"estruct.h"
-#include	"edef.h"
-#include	"pico.h"
+#include	"headers.h"
 
 #ifdef	ANSI
     int arraylen(char **);
@@ -147,17 +132,68 @@ char **array;
  * whelp - display help text for the composer and pico
  */
 whelp(f, n)
+     int f, n;
 {
-    if(Pmaster){
-	(*Pmaster->helper)(Pmaster->composer_help, "Help on the Pine Composer", 1);
-	curwp->w_flag |= WFMODE;
-    }
-    else
-      pico_help(helptext);
+    if(term.t_mrow == 0){  /* blank keymenu in effect */
+	if(km_popped == 0){
+	    /* cause keymenu display */
+	    km_popped = 2;
+	    if(!Pmaster)
+	      sgarbf = TRUE;
 
-        sgarbf = TRUE;
+	    return(TRUE);
+	}
+    }
+
+    if(Pmaster){
+	VARS_TO_SAVE *saved_state;
+
+	saved_state = save_pico_state();
+	(*Pmaster->helper)(Pmaster->composer_help,
+			   Pmaster->headents
+			     ? "Help on the Pine Composer"
+			     : "Help on Signature Editor",
+			   1);
+	if(saved_state){
+	    restore_pico_state(saved_state);
+	    free_pico_state(saved_state);
+	}
+
+	ttresize();
+	picosigs();			/* restore any altered handlers */
+	curwp->w_flag |= WFMODE;
+	if(km_popped)  /* this will unpop us */
+	  curwp->w_flag |= WFHARD;
+    }
+    else{
+	int mrow_was_zero = 0;
+
+	/* always want keyhelp showing during help */
+	if(term.t_mrow == 0){
+	    mrow_was_zero++;
+	    term.t_mrow = 2;
+	}
+
+	pico_help(helptext, "Help for Pico", 1);
+	/* put it back the way it was */
+	if(mrow_was_zero)
+	  term.t_mrow = 0;
+    }
+
+    sgarbf = TRUE;
+    return(FALSE);
 }
 
+static KEYMENU menu_scroll[] = {
+    {NULL, NULL, KS_NONE},		{NULL, NULL, KS_NONE},
+    {NULL, NULL, KS_NONE},		{NULL, NULL, KS_NONE},
+    {NULL, NULL, KS_NONE},		{NULL, NULL, KS_NONE},
+    {"^X", "Exit Help", KS_NONE},	{NULL, NULL, KS_NONE},
+    {NULL, NULL, KS_NONE},		{NULL, NULL, KS_NONE},
+    {NULL, NULL, KS_NONE},		{NULL, NULL, KS_NONE}
+};
+#define	PREV_KEY	3
+#define	NEXT_KEY	9
 
 
 #define	OVERLAP	2		/* displayed page overlap */
@@ -211,17 +247,20 @@ int	textlen;
             movecursor(begrow + dlines, 0);
             cont = (loffset+dlines < textlen);
             if(cont){                               /* continue ? */
-		if(loffset == 0)
-		    wkeyhelp("000000X00V00","Exit Help,Next Pg");
-		else
-		    wkeyhelp("000Y00X00V00","Prev Pg,Exit Help,Next Pg");
-            }
-            else{
-		if(loffset == 0)
-		  wkeyhelp("000000X00000","Exit Help");
-		else
-		  wkeyhelp("000Y00X00000","Prev Pg,Exit Help");
-            }
+		menu_scroll[NEXT_KEY].name  = "^V";
+		menu_scroll[NEXT_KEY].label = "Next Pg";
+	    }
+	    else
+	      menu_scroll[NEXT_KEY].name = NULL;
+
+	    if(loffset){
+		menu_scroll[PREV_KEY].name  = "^Y";
+		menu_scroll[PREV_KEY].label = "Prev Pg";
+	    }
+	    else
+	      menu_scroll[PREV_KEY].name = NULL;
+
+	    wkeyhelp(menu_scroll);
 	}
 
 	(*term.t_flush)();
@@ -281,7 +320,7 @@ int	textlen;
 	    case  NODATA :
 	        break;
 	    default :
-		emlwrite("Unknown Command.");
+		emlwrite("Unknown Command.", NULL);
 		(*term.t_beep)();
 		break;
 	}
@@ -291,15 +330,16 @@ int	textlen;
 
 
 /*
- * normal - given a char and list of function key to command key mappings, 
- *          return, depending on gmode, the right command.  The list is
- *          an array of (Fkey, command-key) pairs.  sc is the index in the
- *          array that means to ignore fkey vs. command key mapping
+ * normalize_cmd - given a char and list of function key to command key
+ *		   mappings, return, depending on gmode, the right command.
+ *		   The list is an array of (Fkey, command-key) pairs.
+ *		   sc is the index in the array that means to ignore fkey
+ *		   vs. command key mapping
  *
  *          rules:  1. if c not in table (either fkey or command), let it thru
  *                  2. if c matches, but in other mode, punt it
  */
-normal(c, list, sc)
+normalize_cmd(c, list, sc)
 int c, sc;
 int list[][2];
 {
@@ -320,6 +360,17 @@ int list[][2];
 	}
     }
 
+#ifdef _WINDOWS
+    /*
+     * Menu's get alpha key commands assigned to them.  Well, if we are in PF
+     * key mode then the alpha key commands don't work.  So, we flag them with
+     * a bit (MENU defined in estruct.h) so we can recognize them as different
+     * from a keyboard press.  Here we clear that flag so the command can be
+     * processed.
+     */
+    c &= ~MENU;
+#endif
+
     return(c);
 }
 
@@ -327,8 +378,9 @@ int list[][2];
 /*
  * rebind - replace the first function with the second
  */
+void
 rebindfunc(a, b)
-int (*a)(), (*b)();
+    int (*a) PROTO((int, int)), (*b) PROTO((int, int));
 {
     KEYTAB *kp;
 
@@ -339,4 +391,30 @@ int (*a)(), (*b)();
 	  kp->k_fp = b;			/* replace all occurances */
 	kp++;
     }
+}
+
+
+/*
+ * bindtokey - bind function f to command c
+ */
+bindtokey(c, f)
+int c, (*f) PROTO((int, int));
+{
+    KEYTAB *kp, *ktab = (Pmaster) ? &keytab[0] : &pkeytab[0];
+
+    for(kp = ktab; kp->k_fp; kp++)
+      if(kp->k_code == c){
+	  kp->k_fp = f;			/* set to new function */
+	  break;
+      }
+
+    /* not found? create new binding */
+    if(!kp->k_fp && kp < &ktab[NBINDS]){
+	kp->k_code     = c;		/* assign new code and function */
+	kp->k_fp       = f;
+	(++kp)->k_code = 0;		/* and null out next slot */
+	kp->k_fp       = NULL;
+    }
+
+    return(TRUE);
 }

@@ -74,4 +74,12 @@ struct timeb {
 	short	dstflag;		/* DST == non-zero */
 };
 
+#ifndef KERNEL
+#include <sys/cdefs.h>
+
+__BEGIN_DECLS
+int	ftime __P((struct timeb *));
+__END_DECLS
+#endif /* !KERNEL */
+
 #endif /* !_SYS_TIMEB_H_ */

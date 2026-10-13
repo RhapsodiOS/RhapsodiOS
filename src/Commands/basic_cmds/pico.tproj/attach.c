@@ -1,5 +1,5 @@
 #if	!defined(lint) && !defined(DOS)
-static char rcsid[] = "$Id: attach.c,v 1.1.1.1 1999/04/15 17:45:11 wsanchez Exp $";
+static char rcsid[] = "$Id: attach.c,v 4.65 2000/11/09 21:53:43 hubert Exp $";
 #endif
 /*
  * Program:	Routines to support attachments in the Pine composer 
@@ -15,63 +15,42 @@ static char rcsid[] = "$Id: attach.c,v 1.1.1.1 1999/04/15 17:45:11 wsanchez Exp 
  *
  * Please address all bugs and comments to "pine-bugs@cac.washington.edu"
  *
- * Copyright 1991-1993  University of Washington
  *
- *  Permission to use, copy, modify, and distribute this software and its
- * documentation for any purpose and without fee to the University of
- * Washington is hereby granted, provided that the above copyright notice
- * appears in all copies and that both the above copyright notice and this
- * permission notice appear in supporting documentation, and that the name
- * of the University of Washington not be used in advertising or publicity
- * pertaining to distribution of the software without specific, written
- * prior permission.  This software is made available "as is", and
- * THE UNIVERSITY OF WASHINGTON DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED,
- * WITH REGARD TO THIS SOFTWARE, INCLUDING WITHOUT LIMITATION ALL IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE, AND IN
- * NO EVENT SHALL THE UNIVERSITY OF WASHINGTON BE LIABLE FOR ANY SPECIAL,
- * INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
- * LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, TORT
- * (INCLUDING NEGLIGENCE) OR STRICT LIABILITY, ARISING OUT OF OR IN CONNECTION
- * WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
- *
- * Pine and Pico are trademarks of the University of Washington.
- * No commercial use of these trademarks may be made without prior
- * written permission of the University of Washington.
- *
- *
- * NOTES:
- *
+ * Pine and Pico are registered trademarks of the University of Washington.
+ * No commercial use of these trademarks may be made without prior written
+ * permission of the University of Washington.
+ * 
+ * Pine, Pico, and Pilot software and its included text are Copyright
+ * 1989-2000 by the University of Washington.
+ * 
+ * The full text of our legal notices is contained in the file called
+ * CPYRIGHT, included with this distribution.
  *
  */
-#include <stdio.h>
-#include <ctype.h>
+#include "headers.h"
 #include <math.h>
-#include "osdep.h"
-#include "pico.h"
-#include "estruct.h"
-#include "edef.h"
-#include "efunc.h"
 
 #ifdef	ATTACHMENTS
 
 
 #ifdef	ANSI
-    int    ParseAttach(struct hdr_line **,int *,char *,char *,char *,int *);
+    int    ParseAttach(struct hdr_line **,int *,char *,
+		       int,char *,char *,int,int *);
     PATMT *NewAttach(char *, long, char *);
     void   ZotAttach(struct pico_atmt *);
-    int    sinserts(char *, int, char *, int);
+    void   sinserts(char *, int, char *, int);
+    int	   AttachUpload(char *, char *);
+    int	   AttachCancel(char *);
 #else
     int    ParseAttach();
     PATMT *NewAttach();
     void   ZotAttach();
-    int    sinserts();
+    void   sinserts();
+    int	   AttachUpload();
+    int	   AttachCancel();
 #endif
 
-
-/* 
- * max number of attachments
- */
-#define	MAXATCH	64
+#define	HIBIT_WARN	"Only ASCII characters allowed in attachment comments"
 
 
 /*
@@ -81,9 +60,9 @@ static char rcsid[] = "$Id: attach.c,v 1.1.1.1 1999/04/15 17:45:11 wsanchez Exp 
 AskAttach(fn, sz, cmnt)
 char *fn, *sz, *cmnt;
 {
-    int	   i, status;
-    long   l = 0;
-    char   bfn[NFILEN];
+    int	    i, status, fbrv, upload = 0;
+    off_t   attsz = 0;
+    char    bfn[NLINE];
 
     i = 2;
     fn[0] = '\0';
@@ -91,26 +70,116 @@ char *fn, *sz, *cmnt;
     cmnt[0] = '\0';
 
     while(i){
-
 	if(i == 2){
-	    wkeyhelp("GC00000T0000","Get Help,Cancel,To Files");
-	    status = mlreply("File to attach: ", fn, NLINE, QFFILE);
+	    EXTRAKEYS menu_attach[4];
+	    int	      n;
+
+	    menu_attach[n = 0].name  = "^T";
+	    menu_attach[n].label     = "To Files";
+	    menu_attach[n].key	     = (CTRL|'T');
+
+	    if(gmode & MDCMPLT){
+		menu_attach[++n].name = "TAB";
+		menu_attach[n].label  = "Complete";
+		menu_attach[n].key    = (CTRL|'I');
+	    }
+
+#if	!defined(DOS) && !defined(MAC)
+	    if(Pmaster && Pmaster->upload){
+		/*
+		 * The Plan: ^R prompts for uploaded file's name which
+		 * is passed to the defined upload command when the user
+		 * hits Return to confirm the name.
+		 * NOTE: this is different than upload into message
+		 * text in which case the uploaded name isn't useful so
+		 * a temp file is ok (be sure to fix the file mode).
+		 */
+		menu_attach[++n].name = "^Y";
+		menu_attach[n].key    = (CTRL|'Y');
+		menu_attach[n].label  = upload ? "Read File" : "RcvUpload";
+	    }
+#endif
+
+	    menu_attach[++n].name  = NULL;
+	    KS_OSDATASET(&menu_attach[0], KS_NONE);
+	    status = mlreply(upload ? "Name to give uploaded attachment: "
+				    : "File to attach: ",
+			     fn, NLINE, QNORML, menu_attach);
 	}
-	else{
-	    wkeyhelp("GC0000000000","Get Help,Cancel");
-	    status = mlreply("Attachment comment: ", cmnt, NLINE, QNORML);
-	}
+	else
+	  status = mlreply("Attachment comment: ", cmnt, NLINE, QNODQT, NULL);
 
 	switch(status){
 	  case HELPCH:
-	    if(i == 2)
-	      emlwrite("No Attachment file help yet!", NULL);
-	    else
-	      emlwrite("No Attachment comment help yet!", NULL);
+	    if(Pmaster){
+		VARS_TO_SAVE *saved_state;
 
-/* remove break and sleep when help text done to force redraw */     
-	    sleep(3);
+		saved_state = save_pico_state();
+		(*Pmaster->helper)(Pmaster->attach_help, "Attach Help", 1);
+		if(saved_state){
+		    restore_pico_state(saved_state);
+		    free_pico_state(saved_state);
+		}
+
+		refresh(FALSE, 1);
+		update();
+		continue;
+	    }
+	    else{
+		emlwrite("No Attachment %s help yet!",
+			 (i == 2) ? "file" : "comment");
+		sleep(3);
+	    }
+
 	    break;
+
+	  case (CTRL|'I') :
+	    if(i == 2){
+		char *fname, *p;
+		int   dirlen, l = NLINE;  /* length of buffer space for bfn */
+	       
+		bfn[0] = '\0';
+		if(*fn && (p = strrchr(fn, C_FILESEP))){
+		    fname = p + 1;
+		    l -= fname - fn;
+		    dirlen = p - fn;
+		    if(p == fn)
+		      strcpy(bfn, S_FILESEP);
+#ifdef	DOS
+		    else if(fn[0] == C_FILESEP
+			    || (isalpha((unsigned char)fn[0])
+				&& fn[1] == ':')){
+		        if(fn[1] == ':' && p == fn+2)
+			  dirlen = fname - fn;
+#else
+		    else if (fn[0] == C_FILESEP || fn[0] == '~') {
+#endif
+			strncpy(bfn, fn, dirlen);
+			bfn[dirlen] = '\0';
+		    }
+		    else
+		      sprintf(bfn, "%s%c%.*s", 
+			      (gmode & MDCURDIR)
+				? "."
+				: ((gmode & MDTREE) || opertree[0])
+				    ? opertree : gethomedir(NULL),
+			      C_FILESEP, p - fn, fn);
+		    }
+		    else{
+			fname = fn;
+			strcpy(bfn, (gmode & MDCURDIR)
+				       ? "."
+				       : ((gmode & MDTREE) || opertree[0])
+					    ? opertree : gethomedir(NULL));
+		    }
+
+		    if(!pico_fncomplete(bfn, fname, l - 1))
+		      (*term.t_beep)();
+		}
+		else
+		  (*term.t_beep)();
+
+		break;
 
 	  case (CTRL|'T'):
 	    if(i != 2){
@@ -119,43 +188,116 @@ char *fn, *sz, *cmnt;
 	    }
 
 	    *bfn = '\0';
-	    if(*fn == '\0' || !isdir(fn, NULL))
-	      strcpy(fn, gethomedir(NULL));
-
-	    if(FileBrowse(fn, bfn, sz) == 1){
+	    if(*fn == '\0' || !isdir(fn, NULL, NULL))
+	      strcpy(fn, (gmode & MDCURDIR)
+			    ? "."
+			    : ((gmode & MDTREE) || opertree[0])
+				 ? opertree : gethomedir(NULL));
+	    if((fbrv = FileBrowse(fn, NLINE, bfn, NLINE, sz, FB_READ | FB_ATTACH)) == 1){
+	      if ((strlen(fn)+strlen(S_FILESEP)+strlen(bfn)) < NLINE){
 		strcat(fn, S_FILESEP);
 		strcat(fn, bfn);
-		i--;
+		if(upload && !AttachUpload(fn, sz)){              
+		  i = 2;                  /* keep prompting for file */
+		  sleep(3);                       /* problem, show error! */
+		}
+		else{
+		  (void) QuoteAttach(fn);
+		  i--;                    /* go prompt for comment */
+		}
+	      }
+	      else{                           /* trouble */
+		*fn = '\0';
+		AttachCancel(fn);
+		refresh(FALSE,1);
+		update();
+		emlwrite("\007File name too BIG, cannot select!", NULL);
+	        sleep(3);
+	      }
 	    }
-	    else
+	    else if (!fbrv)
 	      *fn = '\0';
+	    else{
+	      *fn = '\0';
+	      AttachCancel(fn);
+	      refresh(FALSE, 1);
+	      update();
+	      emlwrite("\007File name too big, cannot select!", NULL);         
+	      sleep(3);
+	    }
 
-	    refresh(FALSE, 1);
-	    update();
-	    break;
+	    /* fall thru to clean up the screen */
 
 	  case (CTRL|'L'):
 	    refresh(FALSE, 1);
 	    update();
 	    continue;
 
+#if	!defined(DOS) && !defined(MAC)
+	  case (CTRL|'Y'):			/* upload? */
+	    if(i == 2)
+	      upload ^= 1;			/* flip mode */
+	    else
+	      (*term.t_beep)();
+
+	    break;
+#endif
+
 	  case ABORT:
-	    emlwrite("\007Cancelled", NULL);
-	    return(0);
+	    return(AttachCancel((upload && i == 1) ? fn : NULL));
+
 	  case TRUE:				/* some comment */
 	  case FALSE:				/* No comment */
 	    if(i-- == 2){
-		fixpath(fn, NLINE);		/* names relative to ~ */
-		if((gmode&MDSCUR) && homeless(fn)){
-		    emlwrite("\007Restricted mode allows attachments from home directory only", NULL);
-		    return(0);
+		if(upload){
+		    fixpath(fn, NLINE);		/* names relative to ~ */
+		    status = AttachUpload(fn, sz);
+		    refresh(FALSE, 1);
+		    update();
+		    if(!status){
+			i = 2;			/* keep prompting for file */
+			sleep(3);		/* problem, show error! */
+		    }
 		}
+		else {
+		    if(*fn == '\"' && fn[strlen(fn)-1] == '\"'){
+			int j;
 
-		if((status=fexist(fn, "r", &l)) != FIOSUC){ /* does file exist? */
-		    fioperr(status, fn);
-		    return(0);
+			for(j = 0; fn[j] = fn[j+1]; j++)
+			  ;
+
+			fn[j-1] = '\0';
+		    }
+
+		    if(fn[0]){
+			if((gmode & MDTREE)
+			   && !compresspath(opertree, fn, NLINE)){
+			    emlwrite(
+	    "Restricted mode allows attachments from %s only: too many ..'s",
+				 (gmode&MDSCUR) ? "home directory" : opertree);
+			    return(0);
+			}
+			else{
+			    fixpath(fn, NLINE);	/* names relative to ~ */
+			    if((gmode&MDTREE) && !in_oper_tree(fn)){
+				emlwrite(
+			"\007Restricted mode allows attachments from %s only",
+			(gmode&MDSCUR) ? "home directory" : opertree);
+				return(0);
+			    }
+			}
+
+			if((status = fexist(fn, "r", &attsz)) != FIOSUC){
+			    fioperr(status, fn); /* file DOESN'T exist! */
+			    return(0);
+			}
+
+			QuoteAttach(fn);
+			strcpy(sz, prettysz(attsz));
+		    }
+		    else
+		      return(AttachCancel((upload && i == 1) ? fn : NULL));
 		}
-		strcpy(sz, prettysz(l));
 	    }
 	    else{
 		mlerase();
@@ -167,9 +309,50 @@ char *fn, *sz, *cmnt;
 	    break;
 	}
     }
+
+    return(0);
 }
 
 
+/*
+ * AttachUpload - Use call back to run the external upload command.
+ */
+int
+AttachUpload(fn, sz)
+    char *fn, *sz;
+{
+    long l;
+
+    if(gmode&MDSCUR){
+	emlwrite("\007Restricted mode disallows uploaded command", NULL);
+	return(0);
+    }
+
+    if(Pmaster && Pmaster->upload && (*Pmaster->upload)(fn, &l)){
+	strcpy(sz, prettysz((off_t)l));
+	return(1);
+    }
+
+    return(0);
+}
+
+
+/*
+ * AttachCancel - 
+ */
+int
+AttachCancel(fn)
+    char *fn;
+{
+    emlwrite("Attach cancelled", NULL);
+    if(fn && fn[0])
+      unlink(fn);				/* blast uploaded file */
+
+    return(0);
+}
+
+
+extern struct headerentry *headents;
 
 /*
  * SyncAttach - given a pointer to a linked list of attachment structures,
@@ -183,58 +366,101 @@ SyncAttach()
         rv = 0,
         ki = 0,					/* number of known attmnts   */
         bi = 0,					/* build array index         */
+        nbld = 0,		                /* size of build array       */
         na,					/* old number of attachmnt   */
-        status, i, j, n;
+        status, i, j, n = 0;
     char file[NLINE],				/* buffers to hold it all    */
          size[32],
          comment[1024];
     struct hdr_line *lp;			/* current line in header    */
-    PATMT *tp, *knwn[MAXATCH], *bld[MAXATCH];
-    extern struct headerentry headents[];
+    struct headerentry *entry;
+    PATMT *tp, **knwn = NULL, **bld;
+
+    for(entry = headents; entry->name != NULL; entry++) {
+      if(entry->is_attach)
+	break;
+    }
 
     if(Pmaster == NULL)
       return(-1);
 
-    for(i=0;i<MAXATCH;i++)			/* bug - ever pop this? */
-	knwn[i] = bld[i] = NULL;		/* zero out table */
-    
-    tp = Pmaster->attachments;
-    while(tp != NULL){				/* fill table of     */
-	knwn[ki++] = tp;			/* known attachments */
-	tp = tp->next;
+    for(tp = Pmaster->attachments; tp; tp = tp->next)
+      ki++;			                /* Count known attachments */
+
+    if(ki){
+	if((knwn = (PATMT **)malloc((ki+1) * (sizeof(PATMT *)))) == NULL){
+	    emlwrite("\007Can't allocate space for %d known attachment array entries", 
+		     (void *) (ki + 1));
+	    rv = -1;
+	    goto exit_early;
+	}
+	for(i=0, tp = Pmaster->attachments; i < ki; i++, tp = tp->next){
+	    knwn[i] = tp;			/* fill table of     */
+	                                        /* known attachments */
+	}
     }
 
-    n = 0;
-    lp = headents[ATTCHDR].hd_text;
+    
+    /*
+     * As a quick hack to avoid too many reallocs, check to see if
+     * there are more header lines than known attachments.
+     */
+    for(lp = entry->hd_text; lp ; lp = lp->next)
+      nbld++;			                /* count header lines */
+    nbld = nbld > ki ? nbld : ki + 1;           
+
+    if((bld = (PATMT **)malloc(nbld * (sizeof(PATMT *)))) == NULL){
+	emlwrite("\007Can't allocate space for %d build array entries",
+		 (void *) nbld);
+	rv = -1;
+	goto exit_early;
+    }
+
+    lp = entry->hd_text;
     while(lp != NULL){
+	char fn[NLINE];
 	na = ++n;
 
-	if(status = ParseAttach(&lp, &offset, file, size, comment, &na))
-	    rv = (rv < 0) ? rv : status ;	/* remember worst case */
+	if(bi == nbld){		                /* need to grow build array? */
+	    if((bld = (PATMT **)realloc(bld, ++nbld * sizeof(PATMT *))) == NULL){
+		emlwrite("\007Can't resize build array to %d entries ",
+			 (void *) nbld);
+		rv = -1;
+		goto exit_early;
+	    }
+	}
+	
+	if(status = ParseAttach(&lp, &offset, file, NLINE, size, 
+				comment, 1024, &na))
+	    rv = (rv < 0) ? rv : status ;       /* remember worst case */
 
 	if(*file == '\0'){
-	    if(n != na && na > 0 && na <= ki && (knwn[na-1]->flags&A_FLIT)){
+	    if(n != na && na > 0 && na <= ki && (knwn[na-1]->flags & A_FLIT)){
 		bld[bi++] = knwn[na-1];
 		knwn[na-1] = NULL;
 	    }
 	    continue;
 	}
 
-	if((gmode&MDSCUR) && homeless(file))
-	  /* no attachments outsize ~ in secure mode! */
+	if((gmode&MDTREE)
+	   && file[0] != '['
+	   && (!in_oper_tree(file)
+	       || !compresspath(file, fn, NLINE)))
+	  /* no attachments outside ~ in secure mode! */
 	  continue;
 
 	tp = NULL;
-	for(i=0;i < ki; i++){			/* already know about it? */
+	for(i = 0; i < ki; i++){		/* already know about it? */
 	    /*
 	     * this is kind of gruesome. what we want to do is keep track
 	     * of literal attachment entries because they may not be 
-	     * actual files we can access or that the user readily 
-	     * access
+	     * actual files we can access or that the user can readily 
+	     * access.
 	     */
-	    if(knwn[i] && 
-	       ((!(knwn[i]->flags&A_FLIT) && !strcmp(file, knwn[i]->filename))
-	       || ((knwn[i]->flags&A_FLIT) && i+1 == na))){
+	    if(knwn[i]
+	       && ((!(knwn[i]->flags&A_FLIT)
+		    && !strcmp(file, knwn[i]->filename))
+		   || ((knwn[i]->flags&A_FLIT) && i+1 == na))){
 		tp = knwn[i];
 		knwn[i] = NULL;			/* forget we know about it */
 
@@ -247,7 +473,8 @@ SyncAttach()
 			if((tp->filename = (char *)realloc(tp->filename,
 					        sizeof(char)*(j+1))) == NULL){
 			    emlwrite("\007Can't realloc filename space",NULL);
-			    return(-1);
+			    rv = -1;
+			    goto exit_early;
 			}
 		    }
 
@@ -259,7 +486,8 @@ SyncAttach()
 			if((tp->size=(char *)realloc(tp->size,
 					        sizeof(char)*(j+1))) == NULL){
 			    emlwrite("\007Can't realloc space for size", NULL);
-			    return(-1);
+			    rv = -1;
+			    goto exit_early;
 			}
 		    }
 
@@ -272,7 +500,8 @@ SyncAttach()
 			if((tp->description=(char *)realloc(tp->description,
 						sizeof(char)*(j+1))) == NULL){
 			    emlwrite("\007Can't realloc description", NULL);
-			    return(-1);
+			    rv = -1;
+			    goto exit_early;
 			}
 		    }
 		      
@@ -287,10 +516,13 @@ SyncAttach()
 	}
 	else{
 	    if(file[0] != '['){
-		if((tp = NewAttach(file, atol(size), comment)) == NULL)
-		  return(-1);
+		if((tp = NewAttach(file, atol(size), comment)) == NULL){
+		  rv = -1;
+		  goto exit_early;
+		}
 		bld[bi++] = tp;
 	    }
+	    else break;
 	}
 
 	if(status < 0)
@@ -299,19 +531,30 @@ SyncAttach()
 	  tp->flags &= ~(A_ERR);	/* turn OFF error bit */
     }
 
-    for(i=0; i < bi; i++)		/* link together newly built list */
-	bld[i]->next = bld[i+1];
+    if(bi){
+	for(i=0; i < bi-1; i++)		/* link together newly built list */
+	  bld[i]->next = bld[i+1];
 
-    Pmaster->attachments = bld[0];
+	bld[i]->next = NULL;	        /* tie it off */
+	Pmaster->attachments = bld[0];
+    }
+    else
+      Pmaster->attachments = NULL;
 
-    for(i=0; i < ki; i++){		/* kill old/unused references */
-
-	if(knwn[i]){
-	    ZotAttach(knwn[i]);
-	    free((char *) knwn[i]);
+exit_early:
+    if(knwn){
+	for(i = 0; i < ki; i++){	/* kill old/unused references */
+	    if(knwn[i]){
+		ZotAttach(knwn[i]);
+		free((char *) knwn[i]);
+	    }
 	}
+	free((void *)knwn);
     }
 
+    if(bld)
+      free((void *)bld);
+	
     return(rv);
 }
 
@@ -320,8 +563,8 @@ SyncAttach()
 
 /*
  * ParseAttach - given a header line and an offset into it, return with 
- *		 the three given fields filled in.  Assumes the size of 
- *		 the buffers passed is large enough to hold what's there.
+ *		 the three given fields filled in.  Size of fn and cmnt 
+ *		 buffers should be passed in fnlen and cmntlen.
  *		 Always updates header fields that have changed or are 
  *		 fixed.  An error advances offset to next attachment.
  *
@@ -329,18 +572,26 @@ SyncAttach()
  *                       0 nothing changed
  *                      -1 on error
  */
-ParseAttach(lp, off, fn, sz, cmnt, no)
+ParseAttach(lp, off, fn, fnlen, sz, cmnt, cmntlen, no)
 struct hdr_line **lp;				/* current header line      */
 int  *off;					/* offset into that line    */
-char *fn, *sz, *cmnt;				/* places to return fields  */
-int  *no;					/* attachment number        */
+char *fn;                                       /* return file name field   */
+int  fnlen;                                     /* fn buffer size           */
+char *sz, *cmnt;				/* places to return fields  */
+int  cmntlen, *no;				/* attachment number        */
 {
-    int  j, status,				/* various return codes     */
+    int  j, status, bod, eod = -1,
          rv = 0,				/* return value             */
-         lbln  = 0;				/* label'd attachment	    */
-    long l;					/* attachment length        */
-    char c,
-        *p = s,
+	 orig_offset,
+         lbln  = 0,				/* label'd attachment	    */
+	 hibit = 0,
+	 quoted = 0,
+	 escaped = 0;
+    off_t attsz;				/* attachment length        */
+    char tmp[1024],
+	 c,
+	 c_lookahead,
+        *p,
         *lblsz = NULL,				/* label'd attchmnt's size  */
          number[8];
     register struct hdr_line  *lprev;
@@ -350,28 +601,55 @@ int  *no;					/* attachment number        */
 	WSN,					/* white space after number */
 	TAG,					/* attachments tag (fname)  */
 	WST,					/* white space after tag    */
-	SIZE,					/* attachments size         */
+	ASIZE,					/* attachments size         */
 	SWS,					/* white space after size   */
-	COMMENT,				/* attachment comment       */
+	CMMNT,					/* attachment comment       */
 	TG} level;				/* trailing garbage         */
 
     *fn = *sz = *cmnt = '\0';			/* initialize return strings */
+    p   = tmp;
+    orig_offset = bod = *off;
 
     level = LWS;				/* start at beginning */
     while(*lp != NULL){
 
 	if((c=(*lp)->text[*off]) == '\0'){	/* end of display line */
+	    if(level == LWS && bod != *off){
+	      (*lp)->text[bod] = '\0';
+	      rv = 1;
+	    }
 	    lprev = *lp;
 	    if((*lp = (*lp)->next) != NULL)
-	      c = (*lp)->text[*off = 0];	/* reset offset */
+	      c = (*lp)->text[*off = bod = 0];	/* reset offset */
 	}
+
+	if(c != '\0')
+	  c_lookahead = (*lp)->text[*off + 1];
 
 	switch(level){
 	  case LWS:				/* skip leading white space */
-	    if(isspace(c) || c == '\0'){
+	    if(isspace((unsigned char)c) || c == ','){
+		c = ' ';
 		break;
 	    }
-	    else if(c < '0' || c > '9'){	/* add a number */
+	    
+	    if(c == '\0'){
+		if(bod > 0 && *off >= bod && lprev){
+		    lprev->text[bod - 1] = '\0';
+		    rv = 1;
+		}
+	    }
+	    else if(*off > bod && *lp){         /* wipe out whitespace */
+		(void)bcopy(&(*lp)->text[*off], &(*lp)->text[bod],
+		            strlen(&(*lp)->text[*off]) + 1); 
+		*off = bod;	                /* reset pointer */
+		rv = 1;
+	    }
+	    
+	    if(c == '\0')
+	      break;
+
+	    if(!isdigit((unsigned char)c)){     /* add a number */
 		sprintf(number, "%d. ", *no);
 		*no = 0;			/* no previous number! */
 		sinserts((*lp == NULL) ? &lprev->text[*off]
@@ -379,45 +657,66 @@ int  *no;					/* attachment number        */
 			     0, number, j=strlen(number));
 		*off += j - 1;
 		rv = 1;
-		if(c == ',')			/* special case */
-		  (*off)++;
-		else
-		  level = TAG;			/* interpret the name */
+		level = TAG;			/* interpret the name */
 		break;
 	    }
 	    level = NUMB;
 	  case NUMB:				/* attachment number */
-	    if(c == '.'){			/* finished grabbing size */
+	    if(c == '\0' || c == ','){		/* got to end, no number yet */
+		*p = '\0';
+		sprintf(number, "%d. ", *no);
+		*no = 0;			/* no previous number! */
+		if(c == '\0')
+		  *lp = lprev;			/* go back and look at prev */
+
+		c = (*lp)->text[*off = orig_offset];	/* reset offset */
+		sinserts((*lp == NULL) ? &lprev->text[*off]
+			               : &(*lp)->text[*off],
+			     0, number, j=strlen(number));
+		*off += j - 1;
+		rv = 1;
+		p = tmp;
+		level = WSN;			/* what's next... */
+		break;
+	    }
+	    else if(c == '.' && isspace((unsigned char)c_lookahead)){
+					    /* finished grabbing number   */
+					    /* if not space is not number */
 		/*
 		 * replace number if it's not right
 		 */
 		*p = '\0';
 		sprintf(number, "%d", *no);	/* record the current...  */
-		*no = atoi(s);			/* and the old place in list */
-		if(strcmp(number, s)){
-		    if(p-s > *off){		/* where to begin replacemnt */
-			j = (p-s) - *off;
+		*no = atoi(tmp);		/* and the old place in list */
+		if(strcmp(number, tmp)){
+		    if(p-tmp > *off){		/* where to begin replacemnt */
+			j = (p-tmp) - *off;
 			sinserts((*lp)->text, *off, "", 0);
 			sinserts(&lprev->text[strlen(lprev->text)-j], j, 
 				 number, strlen(number));
 			*off = 0;
 		    }
 		    else{
-			j = (*off) - (p-s);
+			j = (*off) - (p-tmp);
 			sinserts((*lp == NULL) ? &lprev->text[j] 
 				               : &(*lp)->text[j], 
-				 p-s , number, strlen(number));
-			*off += strlen(number) - (p-s);
+				 p-tmp , number, strlen(number));
+			*off += strlen(number) - (p-tmp);
 		    }
 		    rv = 1;
 		}
-		p = s;
+
+		p = tmp;
 		level = WSN;			/* what's next... */
 	    }
-	    else if(c < '0' || c > '9'){
-		*p = '\0';
-		emlwrite("\007Attchmnt: Number field missing '.': \"%s\"", s);
-		rv = -1;
+	    else if(c < '0' || c > '9'){	/* Must be part of tag */
+		sprintf(number, "%d. ", *no);
+		sinserts((*lp == NULL) ? &lprev->text[(*off) - (p - tmp)]
+			               : &(*lp)->text[(*off) - (p - tmp)],
+			     0, number, j=strlen(number));
+		*off += j;
+		level = TAG;			/* interpret the name */
+		goto process_tag;	/* in case already past end of tag */
 	    }
 	    else
 	      *p++ = c;
@@ -425,13 +724,13 @@ int  *no;					/* attachment number        */
 	    break;
 
 	  case WSN:				/* blast whitespace */
-	    if(isspace(c) || c == '\0'){
+	    if(isspace((unsigned char)c) || c == '\0'){
 		break;
 	    }
 	    else if(c == '['){			/* labeled attachment */
 		lbln++;
 	    }
-	    else if(!fallowc(c)){
+	    else if(c == ',' || c == ' '){
 		emlwrite("\007Attchmnt: '%c' not allowed in file name", 
 			  (void *)(int)c);
 		rv = -1;
@@ -441,37 +740,58 @@ int  *no;					/* attachment number        */
 	    level = TAG;
 	  case TAG:				/* get and check filename */
 						/* or labeled attachment  */
-						/* enclosed in []         */
-	    if(c == '\0' || (!lbln && (isspace(c) || strchr(",(\"", c)))
-	       || (lbln && c == ']')){
-		if(p != s){
+process_tag:					/* enclosed in []         */
+	    if(c == '\0'
+	       || (lbln && c == ']')
+	       || (quoted && p != tmp && c == '\"')
+	       || (!(lbln || quoted)
+		   && (isspace((unsigned char) c) || strchr(",(\"", c)))){
+		if(p == tmp){
+		    if(c == '\"')
+		      quoted++;
+		}
+		else{
 		    *p = '\0';			/* got something */
 
-		    strcpy(fn, s);		/* store file name */
+		    if (strlen(tmp) > fnlen)
+		      emlwrite("File name too big!",NULL);
+		    strncpy(fn, tmp, fnlen);	/* store file name */
 		    if(!lbln){			/* normal file attachment */
-			fixpath(fn, NLINE);
-			if((status=fexist(fn, "r", &l)) != FIOSUC){
-			    fioperr(status, fn);
-			    rv = -1;
-			    level = TG;		/* munch rest of garbage */
-			    break;
-			}
-
-
-			if((gmode&MDSCUR) && homeless(fn)){
-			    emlwrite("\007Restricted mode allows attachments from home directory only", NULL);
+			if((gmode & MDTREE)
+			   && !compresspath(opertree, fn, fnlen)){
+			    emlwrite(
+			    "Attachments allowed only from %s: too many ..'s",
+				(gmode&MDSCUR) ? "home directory" : opertree);
 			    rv = -1;
 			    level = TG;
 			    break;
 			}
+			else{
+			    fixpath(fn, fnlen);
+			    if((status=fexist(fn, "r", &attsz)) != FIOSUC){
+				fioperr(status, fn);
+				rv = -1;
+				level = TG;	/* munch rest of garbage */
+				break;
+			    }
+			      
+			    if((gmode & MDTREE) && !in_oper_tree(fn)){
+				emlwrite("\007Attachments allowed only from %s",
+				    (gmode&MDSCUR) ? "home directory"
+						   : opertree);
+				rv = -1;
+				level = TG;
+				break;
+			    }
+			}
 
-			if(strcmp(fn, s)){	/* fn changed: display it */
-			    if(*off >=  p - s){	/* room for it? */
+			if(strcmp(fn, tmp)){ 	/* fn changed: display it */
+			    if(*off >=  p - tmp){	/* room for it? */
 				sinserts((*lp == NULL)? 
-					 &lprev->text[(*off)-(p-s)] :
-					 &(*lp)->text[(*off)-(p-s)],
-					 p-s, fn, j=strlen(fn));
-				*off += j - (p - s);	/* advance offset */
+					 &lprev->text[(*off)-(p-tmp)] :
+					 &(*lp)->text[(*off)-(p-tmp)],
+					 p-tmp, fn, j=strlen(fn));
+				*off += j - (p - tmp);	/* advance offset */
 				rv = 1;
 			    }
 			    else{
@@ -524,24 +844,27 @@ int  *no;					/* attachment number        */
 			    lblsz =  "XXX";
 			}
 		    }
-		    p = s;			/* reset p in s */
+
+		    p = tmp;			/* reset p in tmp */
 		    level = WST;
 		}
 
 		if(!lbln && c == '(')		/* no space 'tween file, size*/
-		  level = SIZE;
-		else if(c == '\0' || (!lbln && (c == ',' || c == '\"'))){
-		    strcpy(sz, (lblsz) ? lblsz : prettysz(l));
-		    sprintf(s, " (%s) %s", sz, (c == '\"') ? "" : "\"\"");
+		  level = ASIZE;
+		else if(c == '\0'
+			|| (!(lbln || quoted) && (c == ',' || c == '\"'))){
+		    strcpy(sz, (lblsz) ? lblsz : prettysz(attsz));
+		    sprintf(tmp, " (%s) %s", sz, (c == '\"') ? "" : "\"\"");
 		    sinserts((*lp == NULL) ? &lprev->text[*off] 
 			                   : &(*lp)->text[*off],
-			     0, s, j = strlen(s));
+			     0, tmp, j = strlen(tmp));
 		    *off += j;
 		    rv = 1;
-		    level = (c == '\"') ? COMMENT : TG;/* cmnt or eat trash */
+		    level = (c == '\"') ? CMMNT : TG;/* cmnt or eat trash */
 		}
 	    }
-	    else if(!lbln && (!fallowc(c) || c == '[' || c == ']')){
+	    else if(!(lbln || quoted)
+		    && (c == ',' || c == ' ' || c == '[' || c == ']')){
 		emlwrite("\007Attchmnt: '%c' not allowed in file name",
 			  (void *)(int)c);
 		rv = -1;			/* bad char in file name */
@@ -553,24 +876,24 @@ int  *no;					/* attachment number        */
 	    break;
 
 	  case WST:				/* skip white space */
-	    if(!isspace(c)){
+	    if(!isspace((unsigned char)c)){
 		/*
 		 * whole attachment, comment or done! 
 		 */
 		if(c == ',' || c == '\0' || c == '\"'){
-		    strcpy(sz, (lblsz) ? lblsz : prettysz(l));
-		    sprintf(s, " (%s) %s", sz, 
+		    strcpy(sz, (lblsz) ? lblsz : prettysz(attsz));
+		    sprintf(tmp, " (%s) %s", sz, 
 				           (c == '\"') ? "" : "\"\"");
 		    sinserts((*lp == NULL) ? &lprev->text[*off]
 				           : &(*lp)->text[*off],
-			     0, s, j = strlen(s));
+			     0, tmp, j = strlen(tmp));
 		    *off += j;
 		    rv = 1;
-		    level = (c == '\"') ? COMMENT : TG;
+		    level = (c == '\"') ? CMMNT : TG;
 		    lbln = 0;			/* reset flag */
 		}
 		else if(c == '('){		/* get the size */
-		    level = SIZE;
+		    level = ASIZE;
 		}
 		else{
 		    emlwrite("\007Attchmnt: Expected '(' or '\"' after %s",fn);
@@ -580,37 +903,38 @@ int  *no;					/* attachment number        */
 	    }
 	    break;
 
-	  case SIZE:				/* check size */
+	  case ASIZE:				/* check size */
 	    if(c == ')'){			/* finished grabbing size */
 		*p = '\0';
 		/*
 		 * replace sizes if they don't match!
 		 */
-		strcpy(sz, s);
-		if(strcmp(sz, (lblsz) ? lblsz : prettysz(l))){
-		    strcpy(sz, (lblsz) ? lblsz : prettysz(l));
-		    if(p-s > *off){		/* where to begin replacemnt */
-			j = (p-s) - *off;
+		strcpy(sz, tmp);
+		if(strcmp(sz, (lblsz) ? lblsz : prettysz(attsz))){
+		    strcpy(sz, (lblsz) ? lblsz : prettysz(attsz));
+		    if(p-tmp > *off){		/* where to begin replacemnt */
+			j = (p-tmp) - *off;
 			sinserts((*lp)->text, *off, "", 0);
 			sinserts(&lprev->text[strlen(lprev->text)-j], j, 
 				 sz, strlen(sz));
 			*off = 0;
 		    }
 		    else{
-			j = (*off) - (p-s);
-			sinserts((*lp == NULL) ? &lprev->text[j] 
-				               : &(*lp)->text[j], 
-				 p-s , sz, strlen(sz));
-			*off += strlen(sz) - (p-s);
+			j = (*off) - (p-tmp);
+			sinserts((*lp == NULL) ? &lprev->text[j]
+				               : &(*lp)->text[j],
+				 p-tmp , sz, strlen(sz));
+			*off += strlen(sz) - (p-tmp);
 		    }
 		    rv = 1;
 		}
-		p = s;
+
+		p = tmp;
 		level = SWS;			/* what's next... */
 	    }
 	    else if(c == '\0' || c == ','){
 		*p = '\0';
-		emlwrite("\007Attchmnt: Size field missing ')': \"%s\"", s);
+		emlwrite("\007Attchmnt: Size field missing ')': \"%s\"", tmp);
 		rv = -1;
 		level = TG;
 	    }
@@ -620,7 +944,7 @@ int  *no;					/* attachment number        */
 	    break;
 
 	  case SWS:				/* skip white space */
-	    if(!isspace(c)){
+	    if(!isspace((unsigned char)c)){
 		if(c == ','){			/* no description */
 		    level = TG;			/* munch rest of garbage */
 		    lbln = 0;			/* reset flag */
@@ -631,15 +955,19 @@ int  *no;					/* attachment number        */
 		    level = TG;
 		}
 		else
-		  level = COMMENT;
+		  level = CMMNT;
 	    }
 	    break;
 
-	  case COMMENT:				/* slurp up comment */
-	    if(c == '\"' || c == '\0'){		/* got comment */
+	  case CMMNT:				/* slurp up comment */
+	    if((c == '\"' && !escaped) || c == '\0'){
 		*p = '\0';			/* cap it off */
-		p = s;				/* reset p */
-		strcpy(cmnt,s);			/* copy the comment  */
+		p = tmp;			/* reset p */
+		if (strlen(tmp) > cmntlen){
+		  emlwrite("Comment too long!",NULL);
+		}
+
+		strncpy(cmnt,tmp,cmntlen-1);	/* copy the comment  */
 		if(c == '\0'){
 		    emlwrite("\007Attchmnt: Closing quote required at end of comment", NULL);
 		    rv = -1;
@@ -647,14 +975,41 @@ int  *no;					/* attachment number        */
 		level = TG;			/* prepare for next one */
 		lbln = 0;			/* reset flag */
 	    }
-	    else
-	      *p++ = c;
+	    else if(c == '\\' && !escaped){	/* something escaped? */
+		escaped = 1;
+	    }
+	    else{
+		if(escaped){
+		    if(c != '\"')		/* we only quote escapes */
+		      *p++ = '\\';
+
+		    escaped = 0;
+		}
+
+		if(((*p++ = c) & 0x80) && (gmode & MDHBTIGN) && !hibit++)
+		  emlwrite(HIBIT_WARN, NULL);
+	    }
 
 	    break;
 
 	  case TG:				/* get comma or final EOL */
-	    if(!isspace(c)){
-		if(c != ',' && c != '\0'){
+	    if(eod < 0) 
+	      eod = *off;
+	    if(!isspace((unsigned char)c)){
+		switch(c){
+		  case '\0':
+		    if(eod != *off)
+		      lprev->text[*off = eod] = '\0';
+		    break;
+		  case ',':
+		    if(eod != *off){
+			(void)bcopy(&(*lp)->text[*off], &(*lp)->text[eod],
+		                    strlen(&(*lp)->text[*off]) + 1);
+			*off = eod;
+			rv = 1;
+		    }
+		    break;
+		  default:
 		    if(rv != -1)
 		      emlwrite("\007Attchmnt: Comma must separate attachments", NULL);
 		    rv = -1;
@@ -675,7 +1030,7 @@ int  *no;					/* attachment number        */
 	/*
 	 * not in comment or label name? done. 
 	 */
-	if(c == ',' && (level != COMMENT && !lbln))
+	if(c == ',' && (level != TAG && level != CMMNT && !lbln))
 	  break;				/* put offset past ',' */
     }
 
@@ -698,11 +1053,8 @@ char *c;
 	emlwrite("No memory to add attachment", NULL);
 	return(NULL);
     }
-    else{
-	tp->filename = tp->description = NULL;
-	tp->size = tp->id = NULL;
-	tp->next = NULL;
-    }
+    else
+      memset(tp, 0, sizeof(PATMT));
 
     /* file and size malloc */
     if((tp->filename = (char *)malloc(strlen(f)+1)) == NULL){
@@ -713,15 +1065,15 @@ char *c;
     strcpy(tp->filename, f);
 
     if(l > -1){
-	strcpy(s, prettysz(l));
-	if((tp->size = (char *)malloc(sizeof(char)*(strlen(s)+1))) == NULL){
+	tp->size = (char *)malloc(sizeof(char)*(strlen(prettysz((off_t)l))+1));
+	if(tp->size == NULL){
 	    emlwrite("Can't malloc size for attachment", NULL);
 	    free((char *) tp->filename);
 	    free((char *) tp);
 	    return(NULL);
 	}
 	else
-	  strcpy(tp->size, s);
+	  strcpy(tp->size, prettysz((off_t)l));
     }
 
     /* description malloc */
@@ -733,6 +1085,20 @@ char *c;
 	return(NULL);
     }
     strcpy(tp->description, c);
+
+    /* callback to show user the mime type that will be used for attachment */
+    if(Pmaster->mimetype  && (*Pmaster->mimetype)(f) > 0){
+	int rv ;
+	
+	clearcursor();
+	mlerase();
+	rv = (*Pmaster->showmsg)('x');
+	ttresize();
+	picosigs();
+	if(rv)			/* Did showmsg corrupt the screen? */
+	  PaintBody(0);		/* Yes, repaint it */
+	mpresf = 1;
+    }
 
     return(tp);
 }
@@ -763,6 +1129,26 @@ AttachError()
 }
 
 
+char *
+QuoteAttach(fn)
+char *fn;
+{
+    char *p;
+
+    if(*fn && strpbrk(fn, " \t,(\"")){		/* Quote it? */
+	p = &fn[strlen(fn)];
+	*(p+2) = '\0';
+	*(p+1) = '\"';
+	do
+	  *p = *(p-1);
+	while(--p != fn);
+	*p = '\"';
+    }
+
+    return(fn);
+}
+
+
 
 void ZotAttach(p)
 PATMT *p;
@@ -771,8 +1157,12 @@ PATMT *p;
       return;
     if(p->description)
       free((char *)p->description);
-    if(p->filename)
-      free((char *)p->filename);
+    if(p->filename){
+	if(p->flags & A_TMP)
+	  unlink(p->filename);
+
+	free((char *)p->filename);
+    }
     if(p->size)
       free((char *)p->size);
     if(p->id)
@@ -813,20 +1203,20 @@ int   i;
  * prettysz - return pointer to string containing nice
  */
 char *prettysz(l)
-long l;
+off_t l;
 {
     static char b[32];
 
     if(l < 1000)
-      sprintf(b, "%d  B", l);			/* xxx B */
+      sprintf(b, "%ld  B", (long)l);		/* xxx B */
     else if(l < 10000)
       sprintf(b, "%1.1f KB", (float)l/1000);    /* x.x KB */
     else if(l < 1000000)
-      sprintf(b, "%d KB", l/1000);		/* xxx KB */
+      sprintf(b, "%ld KB", (long)l/1000L);	/* xxx KB */
     else if(l < 10000000)
       sprintf(b, "%1.1f MB", (float)l/1000000); /* x.x MB */
     else
-      sprintf(b, "%d MB", l/1000000);		/* xxx MB */
+      sprintf(b, "%ld MB", (long)l/1000000L);	/* xxx MB */
     return(b);
 }
 
@@ -834,9 +1224,10 @@ long l;
 /*
  * sinserts - s insert into another string
  */
+void
 sinserts(ds, dl, ss, sl)
-char *ds, *ss;					/* dest. and source strings */
-int  dl, sl;					/* their lengths */
+    char *ds, *ss;				/* dest. and source strings */
+    int   dl, sl;				/* their lengths */
 {
     char *dp, *edp;				/* pointers into dest. */
     int  j;					/* jump difference */

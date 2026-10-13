@@ -46,6 +46,7 @@
 #import <machdep/i386/idt.h>
 #import <machdep/i386/configure.h>
 #import <machdep/i386/kernBootStruct.h>
+#import <machdep/i386/memmap.h>
 #import <machdep/i386/serial_dbg.h>
 #include <sys/reboot.h>
 #include <sys/errno.h>
@@ -59,6 +60,17 @@ extern int ncl;
 static unsigned int maxmem;
 static int subtype = 0;
 
+/*
+ * Try supported platform features by default. A zero-valued boot switch
+ * disables that feature for recovery; a nonzero value still requires usable
+ * hardware/firmware. rsdp=0x... is where the booter found the ACPI tables.
+ */
+int	pexpert_apic = 1;
+int	pexpert_rsdp;
+int	pexpert_lapictimer = 1;
+int	pexpert_smp = 1;
+int	pexpert_acpi = 1;
+
 struct kernargs {
 	char *name;
 	int *i_ptr;
@@ -70,6 +82,11 @@ struct kernargs {
 	"srv", &srv,
 	"ncl", &ncl,
 	"serial", &serial_dbg_port,
+	"apic", &pexpert_apic,
+	"rsdp", &pexpert_rsdp,
+	"lapictimer", &pexpert_lapictimer,
+	"smp", &pexpert_smp,
+	"acpi", &pexpert_acpi,
 	0,0,
 };
 
@@ -88,6 +105,8 @@ struct mem_region	mem_region[2];
 int			num_regions;
 
 vm_size_t		mem_size;
+int			mem_map_ranges = 0;	/* ranges, if the map set end of memory */
+vm_offset_t		mem_map_top = 0;	/* the map's contiguous RAM top */
 
 /* parameters passed from bootstrap loader */
 unsigned int cnvmem = 0;	/* must be in .data section */
@@ -436,7 +455,8 @@ size_memory(void)
 {
     KERNBOOTSTRUCT	*kernBootStruct = (KERNBOOTSTRUCT *)KERNSTRUCT_ADDR;
     vm_offset_t		end_of_image, end_of_memory;
-    int			i;
+    int			i, n;
+    unsigned int	top;
 #define KB(x)		((x)*1024)
 
     end_of_image = getlastaddr();
@@ -444,10 +464,14 @@ size_memory(void)
     for (i=0; i < kernBootStruct->numBootDrivers; i++)
         end_of_image += kernBootStruct->driverConfig[i].size;
 
-    if (maxmem)
-        end_of_memory = KB(maxmem);
-    else
-        end_of_memory = KB(extmem);
+    n = memmap_count(kernBootStruct->memMapCount);
+    top = n ? memmap_contiguous_top(kernBootStruct->memMap, n) : 0x100000;
+    end_of_memory = memmap_end_of_memory(top, maxmem ? KB(maxmem) : 0,
+					 KB(extmem));
+    if (n && top > 0x100000) {
+	mem_map_ranges = n;
+	mem_map_top = top;
+    }
 
     /*
      * This is the Mach notion of

@@ -66,6 +66,7 @@
 #import <bsd/dev/i386/BasicConsole.h>	// XXX get rid of this
 
 #import <machdep/i386/io_inline.h>
+#import <pexpert/pexpert_i386.h>
 #import <machdep/i386/intr_exported.h>
 #include <mach_debug/mach_debug_types.h>
 
@@ -217,8 +218,10 @@ void halt_cpu(int howto)
 	(void)intr_disbl();
 	machine_slot[cpu_number()].running = FALSE;
 
-	if (howto & RB_POWERDOWN)
+	if (howto & RB_POWERDOWN) {
+	    pexpert_acpi_poweroff();	/* returns only if it could not */
 	    PMSetPowerState(PM_SYSTEM_DEVICE, PM_OFF);
+	}
 
 	for (;;)
 	    asm volatile("hlt");
@@ -290,6 +293,7 @@ char	*command;
 	else if (howto&RB_BOOTDOS) valToCMOS(0x20);
 
 	(void) intr_disbl();
+	pexpert_acpi_reset();		/* returns only if it could not */
 	keyboard_reboot();
 
 	for (;;)

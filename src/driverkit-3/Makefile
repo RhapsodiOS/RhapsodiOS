@@ -2,12 +2,12 @@
 # 	top-level Makefile for driverkit project
 #
 
-SUBDIR=	libDriver driverkit driverLoader
+SUBDIR=	libDriver driverkit driverLoader driverDetect
 
 #
 # Directories for the install_only target (just install, don't build).
 #
-INSTALL_SUBDIR= libDriver driverkit driverLoader
+INSTALL_SUBDIR= libDriver driverkit driverLoader driverDetect
 RELNOTESDEST= /usr/local/RelNotes
 RELNOTESSOURCE= DriverKit.rtf
 SOURCEFILES= Makefile DriverKitPrivate.rtf $(RELNOTESSOURCE) \

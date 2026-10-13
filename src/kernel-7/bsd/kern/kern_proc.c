@@ -236,6 +236,7 @@ enterpgrp(p, pgid, mksess)
 			MALLOC_ZONE(sess, struct session *,
 				sizeof(struct session), M_SESSION, M_WAITOK);
 			sess->s_leader = p;
+			sess->s_sid = p->p_pid;
 			sess->s_count = 1;
 			sess->s_ttyvp = NULL;
 			sess->s_ttyp = NULL;

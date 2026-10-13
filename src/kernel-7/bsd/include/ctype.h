@@ -85,6 +85,23 @@
 #define	_T	0x00100000L		/* Special */
 #define	_Q	0x00200000L		/* Phonogram */
 
+__BEGIN_DECLS
+int	isalnum __P((int));
+int	isalpha __P((int));
+int	iscntrl __P((int));
+int	isdigit __P((int));
+int	isgraph __P((int));
+int	islower __P((int));
+int	isprint __P((int));
+int	ispunct __P((int));
+int	isspace __P((int));
+int	isupper __P((int));
+int	isxdigit __P((int));
+#if !defined(_ANSI_SOURCE) && !defined(_POSIX_SOURCE)
+int	isblank __P((int));
+#endif
+__END_DECLS
+
 #define isalnum(c)      __istype((c), (_A|_D))
 #define isalpha(c)      __istype((c),     _A)
 #define iscntrl(c)      __istype((c),     _C)

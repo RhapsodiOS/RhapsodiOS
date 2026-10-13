@@ -1,5 +1,5 @@
 /*
- * $Id: efunc.h,v 1.1.1.1 1999/04/15 17:45:12 wsanchez Exp $
+ * $Id: efunc.h,v 4.90 2002/04/03 20:13:24 hubert Exp $
  *
  * Program:	Pine's composer and pico's function declarations
  *
@@ -14,28 +14,16 @@
  *
  * Please address all bugs and comments to "pine-bugs@cac.washington.edu"
  *
- * Copyright 1991-1993  University of Washington
  *
- *  Permission to use, copy, modify, and distribute this software and its
- * documentation for any purpose and without fee to the University of
- * Washington is hereby granted, provided that the above copyright notice
- * appears in all copies and that both the above copyright notice and this
- * permission notice appear in supporting documentation, and that the name
- * of the University of Washington not be used in advertising or publicity
- * pertaining to distribution of the software without specific, written
- * prior permission.  This software is made available "as is", and
- * THE UNIVERSITY OF WASHINGTON DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED,
- * WITH REGARD TO THIS SOFTWARE, INCLUDING WITHOUT LIMITATION ALL IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE, AND IN
- * NO EVENT SHALL THE UNIVERSITY OF WASHINGTON BE LIABLE FOR ANY SPECIAL,
- * INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
- * LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, TORT
- * (INCLUDING NEGLIGENCE) OR STRICT LIABILITY, ARISING OUT OF OR IN CONNECTION
- * WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
- *
- * Pine and Pico are trademarks of the University of Washington.
- * No commercial use of these trademarks may be made without prior
- * written permission of the University of Washington.
+ * Pine and Pico are registered trademarks of the University of Washington.
+ * No commercial use of these trademarks may be made without prior written
+ * permission of the University of Washington.
+ * 
+ * Pine, Pico, and Pilot software and its included text are Copyright
+ * 1989-2002 by the University of Washington.
+ * 
+ * The full text of our legal notices is contained in the file called
+ * CPYRIGHT, included with this distribution.
  *
  */
 /*	EFUNC.H:	MicroEMACS function declarations and names
@@ -55,415 +43,299 @@
 
 
 /*	External function declarations		*/
-#ifdef	ANSI
 /* attach.c */
-extern	int AskAttach(char *, char *, char *);
-extern	int SyncAttach(void);
-extern	int intag(char *, int);
-extern	char *prettysz(long);
-extern  int AttachError(void);
+extern	int AskAttach PROTO((char *, char *, char *));
+extern	int SyncAttach PROTO((void));
+extern	int intag PROTO((char *, int));
+extern	char *prettysz PROTO((off_t));
+extern  int AttachError PROTO((void));
+extern	char *QuoteAttach PROTO((char *));
 
 /* basic.c */
-extern	int gotobol(int, int);
-extern	int backchar(int, int);
-extern	int gotoeol(int, int);
-extern	int forwchar(int, int);
-extern	int gotoline(int, int);
-extern	int gotobob(int, int);
-extern	int gotoeob(int, int);
-extern	int forwline(int, int);
-extern	int backline(int, int);
-extern	int gotobop(int, int);
-extern	int gotoeop(int, int);
-extern	int forwpage(int, int);
-extern	int backpage(int, int);
-extern	int setmark(int, int);
-extern	int swapmark(int, int);
-extern	int setimark(int, int);
-extern	int swapimark(int, int);
+extern	int gotobol PROTO((int, int));
+extern	int backchar PROTO((int, int));
+extern	int gotoeol PROTO((int, int));
+extern	int forwchar PROTO((int, int));
+extern	int gotoline PROTO((int, int));
+extern	int gotobob PROTO((int, int));
+extern	int gotoeob PROTO((int, int));
+extern	int forwline PROTO((int, int));
+extern	int backline PROTO((int, int));
+extern	int gotobop PROTO((int, int));
+extern	int gotoeop PROTO((int, int));
+extern	int forwpage PROTO((int, int));
+extern	int backpage PROTO((int, int));
+extern  int scrollupline PROTO((int, int));
+extern  int scrolldownline PROTO((int, int));
+extern  int scrollto PROTO((int, int));
+extern	int setmark PROTO((int, int));
+extern	int swapmark PROTO((int, int));
+extern	int setimark PROTO((int, int));
+extern	int swapimark PROTO((int, int));
+extern	int mousepress PROTO((int, int));
 
 /* bind.c */
-extern	int whelp(int, int);
-extern	int wscrollw(int, int, char **,int);
-extern	int normal(int, int (*)[2],int);
-extern	int rebindfunc(int (*a)(int, int),int (*)(int, int));
+extern	int whelp PROTO((int, int));
+extern	int wscrollw PROTO((int, int, char **, int));
+extern	int normal PROTO((int, int (*)[2], int));
+extern	void rebindfunc PROTO((int (*)(int, int),int (*)(int, int)));
+extern	int bindtokey PROTO((int c, int (*) PROTO((int, int))));
 
 /* browse.c */
-extern	int FileBrowse(char *, char *, char *);
-extern	int ResizeBrowser(void);
+extern	int FileBrowse PROTO((char *, int, char *, int, char *, int));
+extern	int ResizeBrowser PROTO((void));
+extern	void set_browser_title PROTO((char *));
 
 /* buffer.c */
-extern	int anycb(void);
-extern	struct BUFFER *bfind(char *, int, int);
-extern	int bclear(struct BUFFER *);
-extern	int packbuf(char **, int *, int);
-extern	int readbuf(char **);
+extern	int anycb PROTO((void));
+extern	struct BUFFER *bfind PROTO((char *, int, int));
+extern	int bclear PROTO((struct BUFFER *));
+extern	int packbuf PROTO((char **, int *, int));
+extern	void readbuf PROTO((char **));
 
 /* composer.c */
-extern	int InitMailHeader(struct pico_struct *);
-extern	int ResizeHeader(void);
-extern	int HeaderEditor(int, int);
-extern	void PaintHeader(int, int);
-extern	int ArrangeHeader(void);
-extern	int ToggleHeader(int);
-extern	int HeaderLen(void);
-static	struct hdr_line *next_line(int *, struct hdr_line *);
-static	struct hdr_line *prev_line(int *, struct hdr_line *);
-extern	int UpdateHeader(void);
-extern	int entry_line(int, int);
-extern	int resolve_niks(int);
-extern	int ShowPrompt(void);
-extern	int packheader(void);
-extern	int zotheader(void);
+extern	int InitMailHeader PROTO((struct pico_struct *));
+extern	int ResizeHeader PROTO((void));
+extern	int HeaderEditor PROTO((int, int));
+extern	void PaintHeader PROTO((int, int));
+extern	void ArrangeHeader PROTO((void));
+extern	int ToggleHeader PROTO((int));
+extern	int HeaderLen PROTO((void));
+extern	int UpdateHeader PROTO((int));
+extern	int entry_line PROTO((int, int));
+extern	int call_builder PROTO((struct headerentry *, int *, char **));
+extern	void call_expander PROTO((void));
+extern	void ShowPrompt PROTO((void));
+extern	int packheader PROTO((void));
+extern	void zotheader PROTO((void));
+extern	void display_for_send PROTO((void));
+extern	VARS_TO_SAVE *save_pico_state PROTO((void));
+extern	void restore_pico_state PROTO((VARS_TO_SAVE *));
+extern	void free_pico_state PROTO((VARS_TO_SAVE *));
+extern	void HeaderPaintCursor PROTO((void));
+extern	void PaintBody PROTO((int));
 
 /* display.c */
-extern	int vtinit(void);
-extern	int vttidy(void);
-extern	int update(void);
-extern	int modeline(struct WINDOW *);
-extern	int movecursor(int, int);
-extern	int mlerase(void);
-extern	int mlyesno(char *, int);
-extern	int mlreply(char *, char *, int, int);
-extern	int mlreplyd(char *, char *, int, int);
-extern	void emlwrite(char *, void *);
-extern	int mlwrite(char *, void *);
-extern	int scrolldown(struct WINDOW *, int, int);
-extern	int scrollup(struct WINDOW *, int, int);
-extern	int pprints(int, int);
-extern	int doton(int *, unsigned int *);
-extern	int resize_pico(int, int);
-extern	int zotdisplay(void);
-extern	int pputc(int, int);
-extern	int pputs(char *, int);
-extern	int peeol(void);
-extern	CELL *pscr(int, int);
-extern	int pclear(int, int);
-extern	int pinsert(CELL);
-extern	int pdel(void);
-extern	void wstripe(int, int, char *, int);
-extern	int wkeyhelp(char *, char *);
+extern	int vtinit PROTO((void));
+extern	int vtterminalinfo PROTO((int));
+extern	void vttidy PROTO((void));
+extern	void update PROTO((void));
+extern	void modeline PROTO((struct WINDOW *));
+extern	void movecursor PROTO((int, int));
+extern	void clearcursor PROTO((void));
+extern	void mlerase PROTO((void));
+extern	int mlyesno PROTO((char *, int));
+extern	int mlreply PROTO((char *, char *, int, int, EXTRAKEYS *));
+extern	int mlreplyd PROTO((char *, char *, int, int, EXTRAKEYS *));
+extern	void emlwrite PROTO((char *, void *));
+extern	int mlwrite PROTO((char *, void *));
+extern	void scrolldown PROTO((struct WINDOW *, int, int));
+extern	void scrollup PROTO((struct WINDOW *, int, int));
+extern	int doton PROTO((int *, unsigned int *));
+extern	int resize_pico PROTO((int, int));
+extern	void zotdisplay PROTO((void));
+extern	void pputc PROTO((int, int));
+extern	void pputs PROTO((char *, int));
+extern	void peeol PROTO((void));
+extern	CELL *pscr PROTO((int, int));
+extern	void pclear PROTO((int, int));
+extern	int pinsert PROTO((CELL));
+extern	int pdel PROTO((void));
+extern	void wstripe PROTO((int, int, char *, int));
+extern	void wkeyhelp PROTO((KEYMENU *));
+extern	void get_cursor PROTO((int *, int *));
 
 /* file.c */
-extern	int fileread(int, int);
-extern	int insfile(int, int);
-extern	int readin(char *, int);
-extern	int filewrite(int, int);
-extern	int filesave(int, int);
-extern	int writeout(char *);
-extern	char *writetmp(int, int);
-extern	int filename(int, int);
+extern	int fileread PROTO((int, int));
+extern	int insfile PROTO((int, int));
+extern	int readin PROTO((char *, int, int));
+extern	int filewrite PROTO((int, int));
+extern	int filesave PROTO((int, int));
+extern	int writeout PROTO((char *, int));
+extern	char *writetmp PROTO((int, char *));
+extern	int filename PROTO((int, int));
+extern	int in_oper_tree PROTO((char *));
 
 /* fileio.c */
-extern	int ffropen(char *);
-extern	int ffputline(CELL *, int);
-extern	int ffgetline(char *, int);
+extern	int ffropen PROTO((char *));
+extern	int ffputline PROTO((CELL *, int));
+extern	int ffgetline PROTO((char *, int, int *, int));
 
 /* line.c */
-extern	struct LINE *lalloc(int);
-extern	int lfree(struct LINE *);
-extern	int lchange(int);
-extern	int linsert(int, int);
-extern	int geninsert(LINE **, short *, LINE *, int, int, int);
-extern	int lnewline(void);
-extern	int ldelete(int, int);
-extern	int kdelete(void);
-extern	int kinsert(int);
-extern	int kremove(int);
+extern	struct LINE *lalloc PROTO((int));
+extern	void lfree PROTO((struct LINE *));
+extern	void lchange PROTO((int));
+extern	int linsert PROTO((int, int));
+extern	int geninsert PROTO((LINE **, int *, LINE *, int, int, int, long *));
+extern	int lnewline PROTO((void));
+extern	int ldelete PROTO((long, int (*) PROTO((int))));
+extern	int lisblank PROTO((struct LINE *));
+extern	void kdelete PROTO((void));
+extern	int kinsert PROTO((int));
+extern	int kremove PROTO((int));
+extern	int ksize PROTO((void));
+extern	void fdelete PROTO((void));
+extern	int finsert PROTO((int));
+extern	int fremove PROTO((int));
 
-/* osdep.c */
-extern	int ttopen(void);
-extern	int ttclose(void);
-extern	int ttisslow(void);
-extern	int ttputc(int);
-extern	int ttflush(void);
-extern	int ttgetc(void);
-extern	int ttgetwinsz(void);
-extern	int GetKey(void);
+/* os.c */
+extern	int Raw PROTO((int));
+extern	void StartInverse PROTO((void));
+extern	void EndInverse PROTO((void));
+extern	int InverseState PROTO((void));
+extern	int StartBold PROTO((void));
+extern	void EndBold PROTO((void));
+extern	void StartUnderline PROTO((void));
+extern	void EndUnderline PROTO((void));
+extern	void xonxoff_proc PROTO((int));
+extern	void crlf_proc PROTO((int));
+extern	void intr_proc PROTO((int));
+extern	void flush_input PROTO((void));
+extern	void bit_strip_off PROTO((void));
+extern	void quit_char_off PROTO((void));
+extern	int ttisslow PROTO((void));
+extern	int input_ready PROTO((int));
+extern	int read_one_char PROTO((void));
+extern	SigType (*posix_signal PROTO((int, SigType (*)())))();
+extern	int posix_sigunblock PROTO((int));
+extern	int ttopen PROTO((void));
+extern	void ttresize PROTO((void));
+extern	int ttclose PROTO((void));
+extern	int ttputc PROTO((int));
+extern	int ttflush PROTO((void));
+extern	int ttgetc PROTO((int, int (*)(), void (*)()));
+extern	int simple_ttgetc PROTO((int (*)(), void (*)()));
+extern	void ttgetwinsz PROTO((int *, int *));
+extern	int GetKey PROTO((void));
+extern	int alt_editor PROTO((int, int));
+extern	void picosigs PROTO((void));
 #ifdef	JOB_CONTROL
-extern	int alt_editor(int, int);
-extern	int bktoshell(void);
+extern	int bktoshell PROTO((void));
 #endif
-extern	int fallowc(int);
-extern	int fexist(char *, char *, long *);
-extern	int isdir(char *, long *);
-extern	char *gethomedir(int *);
-extern	int homeless(char *);
-extern	char *errstr(int);
-extern	char *getfnames(char *, int *);
-extern	void fioperr(int, char *);
-extern	int fixpath(char *, int);
-extern	int compresspath(char *, char *, int);
-extern	void tmpname(char *);
-extern	void makename(char *, char *);
-extern	int copy(char *, char *);
-extern	int ffwopen(char *);
-extern	int ffclose(void);
-extern	FILE *P_open(char *);
-extern	int P_close(FILE *);
-extern	int worthit(int *);
-extern	int o_insert(char);
-extern	int o_delete(void);
-extern	int pico_new_mail(void);
-extern	int time_to_check(void);
-extern	int sstrcasecmp(const void *, const void *);
-#ifdef	DOS
-extern	int register_mfunc(unsigned long (*)(int,int,int),int,int,int,int);
-extern	void clear_mfunc(void);
-extern	unsigned long pico_mouse(int, int, int);
+extern	int fallowc PROTO((int));
+extern	int fexist PROTO((char *, char *, off_t *));
+extern	int isdir PROTO((char *, long *, time_t *));
+extern	int can_access PROTO((char *, int));
+extern	char *gethomedir PROTO((int *));
+extern	int homeless PROTO((char *));
+extern	char *errstr PROTO((int));
+extern	char *getfnames PROTO((char *, char *, int *, char *));
+extern	void fioperr PROTO((int, char *));
+extern	void fixpath PROTO((char *, size_t));
+extern	char *pfnexpand PROTO((char *, size_t));
+extern	int compresspath PROTO((char *, char *, int));
+extern	void tmpname PROTO((char *, char *));
+extern  char *temp_nam PROTO((char *, char *));
+#if defined(DOS) || defined(OS2)
+extern  char *temp_nam_ext PROTO((char *, char *, char *));
+#endif
+extern	void makename PROTO((char *, char *));
+extern	int copy PROTO((char *, char *));
+extern	int ffwopen PROTO((char *, int));
+extern	int ffclose PROTO((void));
+extern	int ffelbowroom PROTO((void));
+extern	FILE *P_open PROTO((char *));
+extern	void P_close PROTO((FILE *));
+extern	int worthit PROTO((int *));
+extern	int o_insert PROTO((int));
+extern	int o_delete PROTO((void));
+extern	int pico_new_mail PROTO((void));
+extern	int time_to_check PROTO((void));
+extern	int sstrcasecmp PROTO((const QSType *, const QSType *));
+extern	int strucmp PROTO((char *, char *));
+extern	int struncmp PROTO((char *, char *, int));
+extern	void chkptinit PROTO((char *, int));
+extern	void set_collation PROTO((void));
+extern	int (*pcollator)();
+extern  COLOR_PAIR *new_color_pair PROTO((char *, char *));
+extern	COLOR_PAIR *pico_get_cur_color PROTO((void));
+extern	COLOR_PAIR *pico_get_rev_color PROTO((void));
+extern	COLOR_PAIR *pico_get_normal_color PROTO((void));
+extern	void free_color_pair PROTO((COLOR_PAIR **));
+extern	void pico_nfcolor PROTO((char *));
+extern	void pico_nbcolor PROTO((char *));
+extern	void pico_rfcolor PROTO((char *));
+extern	void pico_rbcolor PROTO((char *));
+extern	int pico_set_fg_color PROTO((char *));
+extern	int pico_set_bg_color PROTO((char *));
+extern	COLOR_PAIR *pico_set_colorp PROTO((COLOR_PAIR *, int));
+extern	COLOR_PAIR *pico_set_colors PROTO((char *, char *, int));
+extern	int pico_is_good_color PROTO((char *));
+extern	int pico_is_good_colorpair PROTO((COLOR_PAIR *));
+extern	void pico_set_nfg_color PROTO((void));
+extern	void pico_set_nbg_color PROTO((void));
+extern	void pico_set_normal_color PROTO((void));
+extern	int pico_usingcolor PROTO((void));
+extern	char *color_to_asciirgb PROTO((char *));
+extern	char *colorx PROTO((int));
+extern	char *color_to_canonical_name PROTO((char *));
+extern	int pico_count_in_color_table PROTO((void));
+/* these color functions aren't needed for Windows */
+extern	int pico_hascolor PROTO((void));
+extern	void pico_toggle_color PROTO((int));
+extern	unsigned pico_get_color_options PROTO((void));
+extern	void pico_set_color_options PROTO((unsigned));
+extern	void pico_endcolor PROTO((void));
+extern	char *pico_get_last_fg_color PROTO((void));
+extern	char *pico_get_last_bg_color PROTO((void));
+#ifdef	MOUSE
+extern	unsigned long pico_mouse PROTO((unsigned, int, int));
 #endif
 
 /* pico.c */
-extern	int pico(struct pico_struct *);
-extern	int edinit(char *);
-extern	int execute(int, int, int);
-extern	int quickexit(int, int);
-extern	int abort_composer(int, int);
-extern	int suspend_composer(int, int);
-extern	int wquit(int, int);
-extern	int ctrlg(int, int);
-extern	int rdonly(void);
-extern	int pico_help(char **, char *, int);
-extern	int zotedit(void);
+extern	int pico PROTO((struct pico_struct *));
+extern	void edinit PROTO((char *));
+extern	int execute PROTO((int, int, int));
+extern	int quickexit PROTO((int, int));
+extern	int abort_composer PROTO((int, int));
+extern	int suspend_composer PROTO((int, int));
+extern	int wquit PROTO((int, int));
+extern	int ctrlg PROTO((int, int));
+extern	int rdonly PROTO((void));
+extern	int pico_help PROTO((char **, char *, int));
+extern	void zotedit PROTO((void));
+#ifdef	_WINDOWS
+int	composer_file_drop PROTO((int, int, char *));
+int	pico_cursor PROTO((int, long));
+#endif
 
 /* random.c */
-extern	int setfillcol(int, int);
-extern	int showcpos(int, int);
-extern	int tab(int, int);
-extern	int newline(int, int);
-extern	int forwdel(int, int);
-extern	int backdel(int, int);
-extern	int killtext(int, int);
-extern	int yank(int, int);
+extern	int showcpos PROTO((int, int));
+extern	int tab PROTO((int, int));
+extern	int newline PROTO((int, int));
+extern	int forwdel PROTO((int, int));
+extern	int backdel PROTO((int, int));
+extern	int killtext PROTO((int, int));
+extern	int yank PROTO((int, int));
+extern	COLOR_PAIR *pico_apply_rev_color PROTO((COLOR_PAIR *, int));
 
 /* region.c */
-extern	int killregion(int, int);
-extern	int markregion(int);
+extern	int killregion PROTO((int, int));
+extern	int deleteregion PROTO((int, int));
+extern	int markregion PROTO((int));
+extern	void unmarkbuffer PROTO((void));
 
 /* search.c */
-extern	int forwsearch(int, int);
-extern	int readpattern(char *);
-extern	int forscan(int *, char *, int);
+extern	int forwsearch PROTO((int, int));
+extern	int readpattern PROTO((char *, int));
+extern	int forscan PROTO((int *, char *, LINE *, int, int));
+extern	void chword PROTO((char *, char *));
 
 /* spell.c */
 #ifdef	SPELLER
-extern	int spell(int, int);
+extern	int spell PROTO((int, int));
 #endif
 
 /* window.c */
-extern	int refresh(int, int);
+extern	int  refresh PROTO((int, int));
+extern	void redraw_pico_for_callback();
 
 /* word.c */
-extern	int wrapword(void);
-extern	int backword(int, int);
-extern	int forwword(int, int);
-extern	int fillpara(int, int);
-extern	int inword(void);
+extern	int wrapword PROTO((void));
+extern	int backword PROTO((int, int));
+extern	int forwword PROTO((int, int));
+extern	int fillpara PROTO((int, int));
+extern	int inword PROTO((void));
+extern	int quote_match PROTO((char *, LINE *, char *, int));
 
-#else
-/* attach.c */
-extern	int AskAttach();
-extern	int SyncAttach();
-extern	int intag();
-extern	char *prettysz();
-extern  int AttachError();
-
-/* basic.c */
-extern	int gotobol();
-extern	int backchar();
-extern	int gotoeol();
-extern	int forwchar();
-extern	int gotoline();
-extern	int gotobob();
-extern	int gotoeob();
-extern	int forwline();
-extern	int backline();
-extern	int gotobop();
-extern	int gotoeop();
-extern	int forwpage();
-extern	int backpage();
-extern	int setmark();
-extern	int swapmark();
-extern	int setimark();
-extern	int swapimark();
-
-/* bind.c */
-extern	int whelp();
-extern	int wscrollw();
-extern	int normal();
-extern	int rebindfunc();
-
-/* browse.c */
-extern	int FileBrowse();
-extern	int ResizeBrowser();
-
-/* buffer.c */
-extern	int anycb();
-extern	struct BUFFER *bfind();
-extern	int bclear();
-extern	int packbuf();
-extern	int readbuf();
-
-/* composer.c */
-extern	int InitMailHeader();
-extern	int ResizeHeader();
-extern	int HeaderEditor();
-extern	void PaintHeader();
-extern	int ArrangeHeader();
-extern	int ToggleHeader();
-extern	int HeaderLen();
-static	struct hdr_line *next_line();
-static	struct hdr_line *prev_line();
-extern	int UpdateHeader();
-extern	int entry_line();
-extern	int resolve_niks();
-extern	int ShowPrompt();
-extern	int packheader();
-extern	int zotheader();
-
-/* display.c */
-extern	int vtinit();
-extern	int vttidy();
-extern	int update();
-extern	int modeline();
-extern	int movecursor();
-extern	int mlerase();
-extern	int mlyesno();
-extern	int mlreply();
-extern	int mlreplyd();
-extern	void emlwrite();
-extern	int mlwrite();
-extern	int scrolldown();
-extern	int scrollup();
-extern	int pprints();
-extern	int doton();
-extern	int resize_pico();
-extern	int zotdisplay();
-extern	int pputc();
-extern	int pputs();
-extern	int peeol();
-extern	CELL *pscr();
-extern	int pclear();
-extern	int pinsert();
-extern	int pdel();
-extern	void wstripe();
-extern	int wkeyhelp();
-
-/* file.c */
-extern	int fileread();
-extern	int insfile();
-extern	int readin();
-extern	int filewrite();
-extern	int filesave();
-extern	int writeout();
-extern	char *writetmp();
-extern	int filename();
-
-/* fileio.c */
-extern	int ffropen();
-extern	int ffputline();
-extern	int ffgetline();
-
-/* line.c */
-extern	struct LINE *lalloc();
-extern	int lfree();
-extern	int lchange();
-extern	int linsert();
-extern	int geninsert();
-extern	int lnewline();
-extern	int ldelete();
-extern	int kdelete();
-extern	int kinsert();
-extern	int kremove();
-
-/* osdep.c */
-extern	int ttopen();
-extern	int ttclose();
-extern	int ttisslow();
-extern	int ttputc();
-extern	int ttflush();
-extern	int ttgetc();
-extern	int ttgetwinsz();
-extern	int GetKey();
-#ifdef	JOB_CONTROL
-extern	int alt_editor();
-extern	int bktoshell();
-#endif
-extern	int fallowc();
-extern	int fexist();
-extern	int isdir();
-extern	char *gethomedir();
-extern	int homeless();
-extern	char *errstr();
-extern	char *getfnames();
-extern	void fioperr();
-extern	int fixpath();
-extern	int compresspath();
-extern	void tmpname();
-extern	void makename();
-extern	int copy();
-extern	int ffwopen();
-extern	int ffclose();
-extern	FILE *P_open();
-extern	int P_close();
-extern	int worthit();
-extern	int o_insert();
-extern	int o_delete();
-extern	int pico_new_mail();
-extern	int time_to_check();
-extern	int sstrcasecmp();
-#ifdef	DOS
-extern	int register_mfunc();
-extern	void clear_mfunc();
-extern	unsigned long pico_mouse();
-#endif
-
-/* pico.c */
-extern	int pico();
-extern	int edinit();
-extern	int execute();
-extern	int quickexit();
-extern	int abort_composer();
-extern	int suspend_composer();
-extern	int wquit();
-extern	int ctrlg();
-extern	int rdonly();
-extern	int pico_help();
-extern	int zotedit();
-
-/* random.c */
-extern	int setfillcol();
-extern	int showcpos();
-extern	int tab();
-extern	int newline();
-extern	int forwdel();
-extern	int backdel();
-extern	int killtext();
-extern	int yank();
-
-/* region.c */
-extern	int killregion();
-extern	int markregion();
-
-/* search.c */
-extern	int forwsearch();
-extern	int readpattern();
-extern	int forscan();
-
-/* spell.c */
-#ifdef	SPELLER
-extern	int spell();
-#endif
-
-/* window.c */
-extern	int refresh();
-
-/* word.c */
-extern	int wrapword();
-extern	int backword();
-extern	int forwword();
-extern	int fillpara();
-extern	int inword();
-
-#endif	/* ANSI */
 #endif	/* EFUNC_H */

@@ -93,6 +93,10 @@
 #import <sys/user.h>
 #import <sys/vnode.h>
 #import <sys/uio.h>
+#include <ext2fs.h>
+#if EXT2FS
+#include <ext2fs/ext2_disk.h>
+#endif
 /* Needed for VOP_DEBLOCKSIZE, ip usage */
 #include <ufs/ufs/quota.h>
 #include <ufs/ufs/inode.h>
@@ -1106,6 +1110,19 @@ mapfs_io(vp, uio, rw, ioflag, cred)
 		return (0);
 	}
 
+#if EXT2FS
+	/* Enrolled ext2 writes bypass VOP_WRITE. Check the effective append
+	 * offset before mapfs_get can remap or any data/size state changes. */
+	if (rw == UIO_WRITE && vp->v_tag == VT_EXT2FS) {
+		off_t offset = (ioflag & IO_APPEND) ?
+		    vp->v_vm_info->vnode_size : uio->uio_offset;
+		if (offset < 0 || (u_int64_t)offset > EXT2_FILESIZE_MAX ||
+		    (u_int64_t)uio->uio_resid >
+		    EXT2_FILESIZE_MAX - (u_int64_t)offset)
+			return EFBIG;
+	}
+#endif
+
 	if ((int) uio->uio_offset < 0 ||
 	    (int) ((int)uio->uio_offset + uio->uio_resid) < 0) {
 		return (EINVAL);
@@ -1329,7 +1346,18 @@ mapfs_io(vp, uio, rw, ioflag, cred)
 		if (rw == UIO_WRITE)
 			vmp->nfsdirty = TRUE;
 
+		{
+#if EXT2FS
+		int resid = uio->uio_resid;
+#endif
 		error = uiomove((caddr_t)va, (int)n, uio);
+#if EXT2FS
+		/* Ordinary mapped reads bypass the filesystem's VOP_READ. */
+		if (rw == UIO_READ && uio->uio_resid < resid &&
+		    vp->v_tag == VT_EXT2FS && !(vp->v_mount->mnt_flag & MNT_RDONLY))
+			VTOI(vp)->i_flag |= IN_ACCESS;
+#endif
+		}
 
 		vmp->busy = FALSE;
 

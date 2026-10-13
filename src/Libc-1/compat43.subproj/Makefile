@@ -12,7 +12,7 @@ NAME = compat43
 PROJECTVERSION = 2.8
 PROJECT_TYPE = Component
 
-CFILES = creat.c gethostid.c getwd.c killpg.c send.c sethostid.c\
+CFILES = creat.c ftime.c gethostid.c getwd.c killpg.c send.c sethostid.c\
          setpgrp.c setregid.c setreuid.c setrgid.c setruid.c\
          sigcompat.c
 

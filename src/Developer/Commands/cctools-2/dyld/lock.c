@@ -21,7 +21,9 @@
  * 
  * @APPLE_LICENSE_HEADER_END@
  */
+#import <stdlib.h>
 #import <mach/mach.h>
+#import <signal.h>
 #import "stuff/openstep_mach.h"
 
 #import "lock.h"
@@ -34,7 +36,39 @@
 volatile enum bool dyld_lock = FALSE;
 volatile mach_port_t thread_that_has_dyld_lock = MACH_PORT_NULL;
 
+/* the signals set_lock() blocked for the thread that has the dyld_lock */
+static sigset_t signals_blocked_for_dyld_lock;
+
 static void yeild(unsigned long factor);
+static sigset_t block_signals(void);
+
+/*
+ * Signals are blocked while a thread holds the dyld_lock (or the global_lock).
+ * A handler run in the middle of a lazy bind that calls a function not yet
+ * bound would come back into the dynamic linker on the same thread and die
+ * with the dead lock error.  Blocked, the signal is taken when the lock is
+ * released.  Faults are left deliverable: a blocked fault is retried forever.
+ * The mask is the process's, so only the signals blocked here are unblocked
+ * later, leaving changes other threads make in the meantime alone.
+ */
+static
+sigset_t
+block_signals(
+void)
+{
+    sigset_t set, old;
+
+	sigfillset(&set);
+	sigdelset(&set, SIGILL);
+	sigdelset(&set, SIGTRAP);
+	sigdelset(&set, SIGEMT);
+	sigdelset(&set, SIGFPE);
+	sigdelset(&set, SIGBUS);
+	sigdelset(&set, SIGSEGV);
+	sigdelset(&set, SIGSYS);
+	sigprocmask(SIG_BLOCK, &set, &old);
+	return(set & ~old);
+}
 
 /*
  * set_lock() is called when a thread enters the dynamic link editor.  Only
@@ -49,6 +83,7 @@ void
 set_lock(void)
 {
     mach_port_t my_thread;
+    sigset_t blocked;
 
 	my_thread = mach_thread_self();
 
@@ -59,6 +94,8 @@ set_lock(void)
 	 */
 	if(my_thread == debug_thread)
 	    return;
+
+	blocked = block_signals();
 
 	/*
 	 * First we check for the dead lock case by getting the global lock so
@@ -93,6 +130,7 @@ set_lock(void)
 		}
 		thread_that_has_dyld_lock = my_thread;
 		dyld_lock = TRUE;
+		signals_blocked_for_dyld_lock = blocked;
 		clear_lock(global_lock);
 		return;
 	    }
@@ -116,6 +154,7 @@ set_lock_or_in_multiply_defined_handler(
 void)
 {
     mach_port_t my_thread;
+    sigset_t blocked;
 
 	my_thread = mach_thread_self();
 
@@ -130,6 +169,7 @@ void)
 	/*
 	 * Get the global lock so thread_that_has_dyld_lock can be inspected.
 	 */
+	blocked = block_signals();
 	while(try_to_get_lock(global_lock) == FALSE){
 	    yeild(2);
 	}
@@ -143,9 +183,11 @@ void)
 	if(thread_that_has_dyld_lock == my_thread &&
 	   lock_in_multiply_defined_handler == TRUE){
 	    clear_lock(global_lock);
+	    sigprocmask(SIG_UNBLOCK, &blocked, NULL);
 	    return(FALSE);
 	}
 	clear_lock(global_lock);
+	sigprocmask(SIG_UNBLOCK, &blocked, NULL);
 
 	/*
 	 * We are not in the multiply defined handler so set the lock and return
@@ -165,6 +207,7 @@ void
 release_lock(void)
 {
     mach_port_t my_thread;
+    sigset_t blocked;
 
 	my_thread = mach_thread_self();
 
@@ -180,6 +223,7 @@ release_lock(void)
 	while(try_to_get_lock(global_lock) == FALSE){
 	    yeild(1);
 	}
+	blocked = signals_blocked_for_dyld_lock;
 	thread_that_has_dyld_lock = MACH_PORT_NULL;
 	dyld_lock = FALSE;
 	clear_lock(global_lock);
@@ -188,6 +232,7 @@ release_lock(void)
 	    protect_allocated_memory();
 	    protect_data_segment();
 	}
+	sigprocmask(SIG_UNBLOCK, &blocked, NULL);
 
 	/*
 	 * If the debug thread is waiting for the lock and this is not the debug

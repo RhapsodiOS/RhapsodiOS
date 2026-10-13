@@ -1,0 +1,1865 @@
+e2fsprogs 1.35 private library notices, copied verbatim from release source.
+See COPYING for the GPL and GNU Library GPL texts.
+
+lib/ext2fs/alloc.c
+/*
+ * alloc.c --- allocate new inodes, blocks for ext2fs
+ *
+ * Copyright (C) 1993, 1994, 1995, 1996 Theodore Ts'o.
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU Public
+ * License.
+ * %End-Header%
+ * 
+ */
+
+lib/ext2fs/alloc_sb.c
+/*
+ * alloc_sb.c --- Allocate the superblock and block group descriptors for a 
+ * newly initialized filesystem.  Used by mke2fs when initializing a filesystem
+ *
+ * Copyright (C) 1994, 1995, 1996, 2003 Theodore Ts'o.
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU Public
+ * License.
+ * %End-Header%
+ */
+
+lib/ext2fs/alloc_stats.c
+/*
+ * alloc_stats.c --- Update allocation statistics for ext2fs
+ *
+ * Copyright (C) 2001 Theodore Ts'o.
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU Public
+ * License.
+ * %End-Header%
+ * 
+ */
+
+lib/ext2fs/alloc_tables.c
+/*
+ * alloc_tables.c --- Allocate tables for a newly initialized
+ * filesystem.  Used by mke2fs when initializing a filesystem
+ *
+ * Copyright (C) 1996 Theodore Ts'o.
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU Public
+ * License.
+ * %End-Header%
+ */
+
+lib/ext2fs/badblocks.c
+/*
+ * badblocks.c --- routines to manipulate the bad block structure
+ * 
+ * Copyright (C) 1994, 1995, 1996 Theodore Ts'o.
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU Public
+ * License.
+ * %End-Header%
+ */
+
+lib/ext2fs/bb_compat.c
+/*
+ * bb_compat.c --- compatibility badblocks routines
+ * 
+ * Copyright (C) 1997 Theodore Ts'o.
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU Public
+ * License.
+ * %End-Header%
+ */
+
+lib/ext2fs/bb_inode.c
+/*
+ * bb_inode.c --- routines to update the bad block inode.
+ * 
+ * WARNING: This routine modifies a lot of state in the filesystem; if
+ * this routine returns an error, the bad block inode may be in an
+ * inconsistent state.
+ * 
+ * Copyright (C) 1994, 1995 Theodore Ts'o.
+ * 
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU Public
+ * License.
+ * %End-Header%
+ */
+
+lib/ext2fs/bitmaps.c
+/*
+ * bitmaps.c --- routines to read, write, and manipulate the inode and
+ * block bitmaps.
+ *
+ * Copyright (C) 1993, 1994, 1995, 1996 Theodore Ts'o.
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU Public
+ * License.
+ * %End-Header%
+ */
+
+lib/ext2fs/bitops.c
+/*
+ * bitops.c --- Bitmap frobbing code.  See bitops.h for the inlined
+ * 	routines.
+ * 
+ * Copyright (C) 1993, 1994, 1995, 1996 Theodore Ts'o.
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU Public
+ * License.
+ * %End-Header%
+ */
+
+lib/ext2fs/bitops.h
+/*
+ * bitops.h --- Bitmap frobbing code.  The byte swapping routines are
+ * 	also included here.
+ * 
+ * Copyright (C) 1993, 1994, 1995, 1996 Theodore Ts'o.
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU Public
+ * License.
+ * %End-Header%
+ * 
+ * i386 bitops operations taken from <asm/bitops.h>, Copyright 1992,
+ * Linus Torvalds.
+ */
+
+lib/ext2fs/block.c
+/*
+ * block.c --- iterate over all blocks in an inode
+ * 
+ * Copyright (C) 1993, 1994, 1995, 1996 Theodore Ts'o.
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU Public
+ * License.
+ * %End-Header%
+ */
+
+lib/ext2fs/bmap.c
+/*
+ * bmap.c --- logical to physical block mapping
+ *
+ * Copyright (C) 1997 Theodore Ts'o.
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU Public
+ * License.
+ * %End-Header%
+ */
+
+lib/ext2fs/bmove.c
+/*
+ * bmove.c --- Move blocks around to make way for a particular
+ * 	filesystem structure.
+ *
+ * Copyright (C) 1997 Theodore Ts'o.  This file may be redistributed
+ * under the terms of the GNU Public License.
+ */
+
+lib/ext2fs/brel.h
+/*
+ * brel.h
+ * 
+ * Copyright (C) 1996, 1997 Theodore Ts'o.
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU Public
+ * License.
+ * %End-Header%
+ */
+
+lib/ext2fs/brel_ma.c
+/*
+ * brel_ma.c
+ * 
+ * Copyright (C) 1996, 1997 Theodore Ts'o.
+ *
+ * TODO: rewrite to not use a direct array!!!  (Fortunately this
+ * module isn't really used yet.)
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU Public
+ * License.
+ * %End-Header%
+ */
+
+lib/ext2fs/check_desc.c
+/*
+ * check_desc.c --- Check the group descriptors of an ext2 filesystem
+ * 
+ * Copyright (C) 1993, 1994, 1995, 1996 Theodore Ts'o.
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU Public
+ * License.
+ * %End-Header%
+ */
+
+lib/ext2fs/closefs.c
+/*
+ * closefs.c --- close an ext2 filesystem
+ * 
+ * Copyright (C) 1993, 1994, 1995, 1996 Theodore Ts'o.
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU Public
+ * License.
+ * %End-Header%
+ */
+
+lib/ext2fs/cmp_bitmaps.c
+/*
+ * cmp_bitmaps.c --- routines to compare inode and block bitmaps.
+ *
+ * Copyright (C) 1995 Theodore Ts'o.
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU Public
+ * License.
+ * %End-Header%
+ */
+
+lib/ext2fs/dblist.c
+/*
+ * dblist.c -- directory block list functions
+ * 
+ * Copyright 1997 by Theodore Ts'o
+ * 
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU Public
+ * License.
+ * %End-Header%
+ * 
+ */
+
+lib/ext2fs/dblist_dir.c
+/*
+ * dblist_dir.c --- iterate by directory entry
+ *
+ * Copyright 1997 by Theodore Ts'o
+ * 
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU Public
+ * License.
+ * %End-Header%
+ * 
+ */
+
+lib/ext2fs/dir_iterate.c
+/*
+ * dir_iterate.c --- ext2fs directory iteration operations
+ * 
+ * Copyright (C) 1993, 1994, 1994, 1995, 1996, 1997 Theodore Ts'o.
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU Public
+ * License.
+ * %End-Header%
+ */
+
+lib/ext2fs/dirblock.c
+/*
+ * dirblock.c --- directory block routines.
+ * 
+ * Copyright (C) 1995, 1996 Theodore Ts'o.
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU Public
+ * License.
+ * %End-Header%
+ */
+
+lib/ext2fs/dirhash.c
+/*
+ * dirhash.c -- Calculate the hash of a directory entry
+ *
+ * Copyright (c) 2001  Daniel Phillips
+ * 
+ * Copyright (c) 2002 Theodore Ts'o.
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU Public
+ * License.
+ * %End-Header%
+ */
+
+lib/ext2fs/dosio.c
+/*
+ * dosio.c -- Disk I/O module for the ext2fs/DOS library.
+ *
+ * Copyright (c) 1997 by Theodore Ts'o.
+ * 
+ * Copyright (c) 1997 Mark Habersack
+ * This file may be distributed under the terms of the GNU Public License.
+ *
+ */
+
+lib/ext2fs/dosio.h
+/*
+ * v1.0
+ *
+ * Disk I/O include file for the ext2fs/DOS library.
+ *
+ * Copyright (c) 1997 Mark Habersack
+ * This file may be distributed under the terms of the GNU Public License.
+ *
+ */
+
+lib/ext2fs/dupfs.c
+/*
+ * dupfs.c --- duplicate a ext2 filesystem handle
+ * 
+ * Copyright (C) 1997 Theodore Ts'o.
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU Public
+ * License.
+ * %End-Header%
+ */
+
+lib/ext2fs/e2image.h
+/*
+ * e2image.h --- header file describing the ext2 image format
+ * 
+ * Copyright (C) 2000 Theodore Ts'o.
+ *
+ * Note: this uses the POSIX IO interfaces, unlike most of the other
+ * functions in this library.  So sue me.  
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU Public
+ * License.
+ * %End-Header%
+ */
+
+lib/ext2fs/expanddir.c
+/*
+ * expand.c --- expand an ext2fs directory
+ * 
+ * Copyright (C) 1993, 1994, 1995, 1996, 1997, 1998, 1999  Theodore Ts'o.
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU Public
+ * License.
+ * %End-Header%
+ */
+
+lib/ext2fs/ext2_fs.h
+/*
+ *  linux/include/linux/ext2_fs.h
+ *
+ * Copyright (C) 1992, 1993, 1994, 1995
+ * Remy Card (card@masi.ibp.fr)
+ * Laboratoire MASI - Institut Blaise Pascal
+ * Universite Pierre et Marie Curie (Paris VI)
+ *
+ *  from
+ *
+ *  linux/include/linux/minix_fs.h
+ *
+ *  Copyright (C) 1991, 1992  Linus Torvalds
+ */
+
+lib/ext2fs/ext2_io.h
+/*
+ * io.h --- the I/O manager abstraction
+ * 
+ * Copyright (C) 1993, 1994, 1995, 1996 Theodore Ts'o.
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU Public
+ * License.
+ * %End-Header%
+ */
+
+lib/ext2fs/ext2fs.h
+/*
+ * ext2fs.h --- ext2fs
+ * 
+ * Copyright (C) 1993, 1994, 1995, 1996 Theodore Ts'o.
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU Public
+ * License.
+ * %End-Header%
+ */
+
+lib/ext2fs/ext2fsP.h
+/*
+ * ext2fsP.h --- private header file for ext2 library
+ * 
+ * Copyright (C) 1997 Theodore Ts'o.
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU Public
+ * License.
+ * %End-Header%
+ */
+
+lib/ext2fs/ext_attr.c
+/*
+ * ext_attr.c --- extended attribute blocks
+ * 
+ * Copyright (C) 2001 Andreas Gruenbacher, <a.gruenbacher@computer.org>
+ *
+ * Copyright (C) 2002 Theodore Ts'o.
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU Public
+ * License.
+ * %End-Header%
+ */
+
+lib/ext2fs/fileio.c
+/*
+ * fileio.c --- Simple file I/O routines
+ * 
+ * Copyright (C) 1997 Theodore Ts'o.
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU Public
+ * License.
+ * %End-Header%
+ */
+
+lib/ext2fs/finddev.c
+/*
+ * finddev.c -- this routine attempts to find a particular device in
+ * 	/dev
+ * 
+ * Copyright (C) 2000 Theodore Ts'o.
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU Public
+ * License.
+ * %End-Header%
+ */
+
+lib/ext2fs/flushb.c
+/*
+ * flushb.c --- Hides system-dependent information for both syncing a
+ * 	device to disk and to flush any buffers from disk cache.
+ * 
+ * Copyright (C) 2000 Theodore Ts'o.
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU Public
+ * License.
+ * %End-Header%
+ */
+
+lib/ext2fs/freefs.c
+/*
+ * freefs.c --- free an ext2 filesystem
+ * 
+ * Copyright (C) 1993, 1994, 1995, 1996 Theodore Ts'o.
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU Public
+ * License.
+ * %End-Header%
+ */
+
+lib/ext2fs/gen_bitmap.c
+/*
+ * gen_bitmap.c --- Generic bitmap routines that used to be inlined.
+ * 
+ * Copyright (C) 2001 Theodore Ts'o.
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU Public
+ * License.
+ * %End-Header%
+ */
+
+lib/ext2fs/get_pathname.c
+/*
+ * get_pathname.c --- do directry/inode -> name translation
+ * 
+ * Copyright (C) 1993, 1994, 1995 Theodore Ts'o.
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU Public
+ * License.
+ * %End-Header%
+ *
+ * 	ext2fs_get_pathname(fs, dir, ino, name)
+ *
+ * 	This function translates takes two inode numbers into a
+ * 	string, placing the result in <name>.  <dir> is the containing
+ * 	directory inode, and <ino> is the inode number itself.  If
+ * 	<ino> is zero, then ext2fs_get_pathname will return pathname
+ * 	of the the directory <dir>.
+ * 
+ */
+
+lib/ext2fs/getsectsize.c
+/*
+ * getsectsize.c --- get the sector size of a device.
+ * 
+ * Copyright (C) 1995, 1995 Theodore Ts'o.
+ * Copyright (C) 2003 VMware, Inc.
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU Public
+ * License.
+ * %End-Header%
+ */
+
+lib/ext2fs/getsize.c
+/*
+ * getsize.c --- get the size of a partition.
+ * 
+ * Copyright (C) 1995, 1995 Theodore Ts'o.
+ * Copyright (C) 2003 VMware, Inc.
+ *
+ * Windows version of ext2fs_get_device_size by Chris Li, VMware.
+ * 
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU Public
+ * License.
+ * %End-Header%
+ */
+
+lib/ext2fs/icount.c
+/*
+ * icount.c --- an efficient inode count abstraction
+ *
+ * Copyright (C) 1997 Theodore Ts'o.
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU Public
+ * License.
+ * %End-Header%
+ */
+
+lib/ext2fs/imager.c
+/*
+ * image.c --- writes out the critical parts of the filesystem as a
+ * 	flat file.
+ *
+ * Copyright (C) 2000 Theodore Ts'o.
+ *
+ * Note: this uses the POSIX IO interfaces, unlike most of the other
+ * functions in this library.  So sue me.  
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU Public
+ * License.
+ * %End-Header%
+ */
+
+lib/ext2fs/initialize.c
+/*
+ * initialize.c --- initialize a filesystem handle given superblock
+ * 	parameters.  Used by mke2fs when initializing a filesystem.
+ * 
+ * Copyright (C) 1994, 1995, 1996 Theodore Ts'o.
+ * 
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU Public
+ * License.
+ * %End-Header%
+ */
+
+lib/ext2fs/inline.c
+/*
+ * inline.c --- Includes the inlined functions defined in the header
+ * 	files as standalone functions, in case the application program
+ * 	is compiled with inlining turned off.
+ * 
+ * Copyright (C) 1993, 1994 Theodore Ts'o.
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU Public
+ * License.
+ * %End-Header%
+ */
+
+lib/ext2fs/inode.c
+/*
+ * inode.c --- utility routines to read and write inodes
+ * 
+ * Copyright (C) 1993, 1994, 1995, 1996, 1997 Theodore Ts'o.
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU Public
+ * License.
+ * %End-Header%
+ */
+
+lib/ext2fs/inode_io.c
+/*
+ * inode_io.c --- This is allows an inode in an ext2 filesystem image
+ * 	to be accessed via the I/O manager interface.
+ *
+ * Copyright (C) 2002 Theodore Ts'o.
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU Public
+ * License.
+ * %End-Header%
+ */
+
+lib/ext2fs/irel.h
+/*
+ * irel.h
+ * 
+ * Copyright (C) 1996, 1997 Theodore Ts'o.
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU Public
+ * License.
+ * %End-Header%
+ */
+
+lib/ext2fs/irel_ma.c
+/*
+ * irel_ma.c
+ * 
+ * Copyright (C) 1996, 1997 Theodore Ts'o.
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU Public
+ * License.
+ * %End-Header%
+ */
+
+lib/ext2fs/ismounted.c
+/*
+ * ismounted.c --- Check to see if the filesystem was mounted
+ * 
+ * Copyright (C) 1995,1996,1997,1998,1999,2000 Theodore Ts'o.
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU Public
+ * License.
+ * %End-Header%
+ */
+
+lib/ext2fs/kernel-jbd.h
+/*
+ * linux/include/linux/jbd.h
+ * 
+ * Written by Stephen C. Tweedie <sct@redhat.com>
+ *
+ * Copyright 1998-2000 Red Hat, Inc --- All Rights Reserved
+ *
+ * This file is part of the Linux kernel and is made available under
+ * the terms of the GNU General Public License, version 2, or at your
+ * option, any later version, incorporated herein by reference.
+ *
+ * Definitions for transaction data structures for the buffer cache
+ * filesystem journaling support.
+ */
+
+lib/ext2fs/link.c
+/*
+ * link.c --- create links in a ext2fs directory
+ * 
+ * Copyright (C) 1993, 1994 Theodore Ts'o.
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU Public
+ * License.
+ * %End-Header%
+ */
+
+lib/ext2fs/llseek.c
+/*
+ * llseek.c -- stub calling the llseek system call
+ *
+ * Copyright (C) 1994, 1995, 1996, 1997 Theodore Ts'o.
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU Public
+ * License.
+ * %End-Header%
+ */
+
+lib/ext2fs/lookup.c
+/*
+ * lookup.c --- ext2fs directory lookup operations
+ * 
+ * Copyright (C) 1993, 1994, 1994, 1995 Theodore Ts'o.
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU Public
+ * License.
+ * %End-Header%
+ */
+
+lib/ext2fs/mkdir.c
+/*
+ * mkdir.c --- make a directory in the filesystem
+ * 
+ * Copyright (C) 1994, 1995 Theodore Ts'o.
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU Public
+ * License.
+ * %End-Header%
+ */
+
+lib/ext2fs/mkjournal.c
+/*
+ * mkjournal.c --- make a journal for a filesystem
+ *
+ * Copyright (C) 2000 Theodore Ts'o.
+ * 
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU Public
+ * License.
+ * %End-Header%
+ */
+
+lib/ext2fs/namei.c
+/*
+ * namei.c --- ext2fs directory lookup operations
+ * 
+ * Copyright (C) 1993, 1994, 1994, 1995 Theodore Ts'o.
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU Public
+ * License.
+ * %End-Header%
+ */
+
+lib/ext2fs/native.c
+/*
+ * native.c --- returns the ext2_flag for a native byte order
+ * 
+ * Copyright (C) 1996 Theodore Ts'o.
+ * 
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU Public
+ * License.
+ * %End-Header%
+ */
+
+lib/ext2fs/newdir.c
+/*
+ * newdir.c --- create a new directory block
+ * 
+ * Copyright (C) 1994, 1995 Theodore Ts'o.
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU Public
+ * License.
+ * %End-Header%
+ */
+
+lib/ext2fs/nt_io.c
+/*
+ * nt_io.c --- This is the Nt I/O interface to the I/O manager.
+ *
+ * Implements a one-block write-through cache.
+ *
+ * Copyright (C) 1993, 1994, 1995 Theodore Ts'o.
+ * Copyright (C) 1998 Andrey Shedel (andreys@ns.cr.cyco.com)
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU Public
+ * License.
+ * %End-Header%
+ */
+
+lib/ext2fs/openfs.c
+/*
+ * openfs.c --- open an ext2 filesystem
+ * 
+ * Copyright (C) 1993, 1994, 1995, 1996 Theodore Ts'o.
+ * 
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU Public
+ * License.
+ * %End-Header%
+ */
+
+lib/ext2fs/read_bb.c
+/*
+ * read_bb --- read the bad blocks inode
+ *
+ * Copyright (C) 1994 Theodore Ts'o.
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU Public
+ * License.
+ * %End-Header%
+ */
+
+lib/ext2fs/read_bb_file.c
+/*
+ * read_bb_file.c --- read a list of bad blocks from a FILE *
+ *
+ * Copyright (C) 1994, 1995, 2000 Theodore Ts'o.
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU Public
+ * License.
+ * %End-Header%
+ */
+
+lib/ext2fs/rs_bitmap.c
+/*
+ * rs_bitmap.c --- routine for changing the size of a bitmap
+ *
+ * Copyright (C) 1996, 1997 Theodore Ts'o.
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU Public
+ * License.
+ * %End-Header%
+ */
+
+lib/ext2fs/rw_bitmaps.c
+/*
+ * rw_bitmaps.c --- routines to read and write the  inode and block bitmaps.
+ *
+ * Copyright (C) 1993, 1994, 1994, 1996 Theodore Ts'o.
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU Public
+ * License.
+ * %End-Header%
+ */
+
+lib/ext2fs/swapfs.c
+/*
+ * swapfs.c --- swap ext2 filesystem data structures
+ * 
+ * Copyright (C) 1995, 1996, 2002 Theodore Ts'o.
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU Public
+ * License.
+ * %End-Header%
+ */
+
+lib/ext2fs/test_io.c
+/*
+ * test_io.c --- This is the Test I/O interface.
+ *
+ * Copyright (C) 1996 Theodore Ts'o.
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU Public
+ * License.
+ * %End-Header%
+ */
+
+lib/ext2fs/tst_badblocks.c
+/*
+ * This testing program makes sure the badblocks implementation works.
+ *
+ * Copyright (C) 1996 by Theodore Ts'o.
+ * 
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU Public
+ * License.
+ * %End-Header%
+ */
+
+lib/ext2fs/tst_bitops.c
+/*
+ * This testing program makes sure the bitops functions work
+ *
+ * Copyright (C) 2001 by Theodore Ts'o.
+ * 
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU Public
+ * License.
+ * %End-Header%
+ */
+
+lib/ext2fs/tst_byteswap.c
+/*
+ * This testing program makes sure the byteswap functions work
+ *
+ * Copyright (C) 2000 by Theodore Ts'o.
+ * 
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU Public
+ * License.
+ * %End-Header%
+ */
+
+lib/ext2fs/tst_getsectsize.c
+/*
+ * tst_getsize.c --- this function tests the getsize function
+ * 
+ * Copyright (C) 1997 by Theodore Ts'o.
+ * 
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU Public
+ * License.
+ * %End-Header%
+ */
+
+lib/ext2fs/tst_iscan.c
+/*
+ * tst_inode.c --- this function tests the inode scan function
+ * 
+ * Copyright (C) 1996 by Theodore Ts'o.
+ * 
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU Public
+ * License.
+ * %End-Header%
+ */
+
+lib/ext2fs/unix_io.c
+/*
+ * unix_io.c --- This is the Unix (well, really POSIX) implementation
+ * 	of the I/O manager.
+ *
+ * Implements a one-block write-through cache.
+ *
+ * Includes support for Windows NT support under Cygwin. 
+ *
+ * Copyright (C) 1993, 1994, 1995, 1996, 1997, 1998, 1999, 2000, 2001,
+ * 	2002 by Theodore Ts'o.
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU Public
+ * License.
+ * %End-Header%
+ */
+
+lib/ext2fs/unlink.c
+/*
+ * unlink.c --- delete links in a ext2fs directory
+ * 
+ * Copyright (C) 1993, 1994, 1997 Theodore Ts'o.
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU Public
+ * License.
+ * %End-Header%
+ */
+
+lib/ext2fs/valid_blk.c
+/*
+ * valid_blk.c --- does the inode have valid blocks?
+ *
+ * Copyright 1997 by Theodore Ts'o
+ * 
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU Public
+ * License.
+ * %End-Header%
+ * 
+ */
+
+lib/ext2fs/version.c
+/*
+ * version.c --- Return the version of the ext2 library
+ *
+ * Copyright (C) 1997 Theodore Ts'o.
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU Public
+ * License.
+ * %End-Header%
+ */
+
+lib/ext2fs/write_bb_file.c
+/*
+ * write_bb_file.c --- write a list of bad blocks to a FILE *
+ *
+ * Copyright (C) 1994, 1995 Theodore Ts'o.
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU Public
+ * License.
+ * %End-Header%
+ */
+
+lib/e2p/feature.c
+/*
+ * feature.c --- convert between features and strings
+ * 
+ * Copyright (C) 1999  Theodore Ts'o <tytso@mit.edu>
+ * 
+ * This file can be redistributed under the terms of the GNU Library General
+ * Public License
+ * 
+ */
+
+lib/e2p/fgetflags.c
+/*
+ * fgetflags.c		- Get a file flags on an ext2 file system
+ *
+ * Copyright (C) 1993, 1994  Remy Card <card@masi.ibp.fr>
+ *                           Laboratoire MASI, Institut Blaise Pascal
+ *                           Universite Pierre et Marie Curie (Paris VI)
+ *
+ * This file can be redistributed under the terms of the GNU Library General
+ * Public License
+ */
+
+lib/e2p/fgetversion.c
+/*
+ * fgetversion.c	- Get a file version on an ext2 file system
+ *
+ * Copyright (C) 1993, 1994  Remy Card <card@masi.ibp.fr>
+ *                           Laboratoire MASI, Institut Blaise Pascal
+ *                           Universite Pierre et Marie Curie (Paris VI)
+ *
+ * This file can be redistributed under the terms of the GNU Library General
+ * Public License
+ */
+
+lib/e2p/fsetflags.c
+/*
+ * fsetflags.c		- Set a file flags on an ext2 file system
+ *
+ * Copyright (C) 1993, 1994  Remy Card <card@masi.ibp.fr>
+ *                           Laboratoire MASI, Institut Blaise Pascal
+ *                           Universite Pierre et Marie Curie (Paris VI)
+ *
+ * This file can be redistributed under the terms of the GNU Library General
+ * Public License
+ */
+
+lib/e2p/fsetversion.c
+/*
+ * fsetversion.c	- Set a file version on an ext2 file system
+ *
+ * Copyright (C) 1993, 1994  Remy Card <card@masi.ibp.fr>
+ *                           Laboratoire MASI, Institut Blaise Pascal
+ *                           Universite Pierre et Marie Curie (Paris VI)
+ *
+ * This file can be redistributed under the terms of the GNU Library General
+ * Public License
+ */
+
+lib/e2p/getflags.c
+/*
+ * getflags.c		- Get a file flags on an ext2 file system
+ *
+ * Copyright (C) 1993, 1994  Remy Card <card@masi.ibp.fr>
+ *                           Laboratoire MASI, Institut Blaise Pascal
+ *                           Universite Pierre et Marie Curie (Paris VI)
+ *
+ * This file can be redistributed under the terms of the GNU Library General
+ * Public License
+ */
+
+lib/e2p/getversion.c
+/*
+ * getversion.c		- Get a file version on an ext2 file system
+ *
+ * Copyright (C) 1993, 1994  Remy Card <card@masi.ibp.fr>
+ *                           Laboratoire MASI, Institut Blaise Pascal
+ *                           Universite Pierre et Marie Curie (Paris VI)
+ *
+ * This file can be redistributed under the terms of the GNU Library General
+ * Public License
+ */
+
+lib/e2p/iod.c
+/*
+ * iod.c		- Iterate a function on each entry of a directory
+ *
+ * Copyright (C) 1993, 1994  Remy Card <card@masi.ibp.fr>
+ *                           Laboratoire MASI, Institut Blaise Pascal
+ *                           Universite Pierre et Marie Curie (Paris VI)
+ *
+ * This file can be redistributed under the terms of the GNU Library General
+ * Public License
+ */
+
+lib/e2p/ls.c
+/*
+ * ls.c			- List the contents of an ext2fs superblock
+ *
+ * Copyright (C) 1992, 1993, 1994  Remy Card <card@masi.ibp.fr>
+ *                                 Laboratoire MASI, Institut Blaise Pascal
+ *                                 Universite Pierre et Marie Curie (Paris VI)
+ *
+ * Copyright (C) 1995, 1996, 1997  Theodore Ts'o <tytso@mit.edu>
+ * 
+ * This file can be redistributed under the terms of the GNU Library General
+ * Public License
+ */
+
+lib/e2p/mntopts.c
+/*
+ * mountopts.c --- convert between default mount options and strings
+ * 
+ * Copyright (C) 2002  Theodore Ts'o <tytso@mit.edu>
+ * 
+ * This file can be redistributed under the terms of the GNU Library General
+ * Public License
+ * 
+ */
+
+lib/e2p/pe.c
+/*
+ * pe.c			- Print a second extended filesystem errors behavior
+ *
+ * Copyright (C) 1992, 1993, 1994  Remy Card <card@masi.ibp.fr>
+ *                                 Laboratoire MASI, Institut Blaise Pascal
+ *                                 Universite Pierre et Marie Curie (Paris VI)
+ *
+ * This file can be redistributed under the terms of the GNU Library General
+ * Public License
+ */
+
+lib/e2p/pf.c
+/*
+ * pf.c			- Print file attributes on an ext2 file system
+ *
+ * Copyright (C) 1993, 1994  Remy Card <card@masi.ibp.fr>
+ *                           Laboratoire MASI, Institut Blaise Pascal
+ *                           Universite Pierre et Marie Curie (Paris VI)
+ *
+ * This file can be redistributed under the terms of the GNU Library General
+ * Public License
+ */
+
+lib/e2p/ps.c
+/*
+ * ps.c			- Print filesystem state
+ *
+ * Copyright (C) 1993, 1994  Remy Card <card@masi.ibp.fr>
+ *                           Laboratoire MASI, Institut Blaise Pascal
+ *                           Universite Pierre et Marie Curie (Paris VI)
+ *
+ * This file can be redistributed under the terms of the GNU Library General
+ * Public License
+ */
+
+lib/e2p/setflags.c
+/*
+ * setflags.c		- Set a file flags on an ext2 file system
+ *
+ * Copyright (C) 1993, 1994  Remy Card <card@masi.ibp.fr>
+ *                           Laboratoire MASI, Institut Blaise Pascal
+ *                           Universite Pierre et Marie Curie (Paris VI)
+ *
+ * This file can be redistributed under the terms of the GNU Library General
+ * Public License
+ */
+
+lib/e2p/setversion.c
+/*
+ * setversion.c		- Set a file version on an ext2 file system
+ *
+ * Copyright (C) 1993, 1994  Remy Card <card@masi.ibp.fr>
+ *                           Laboratoire MASI, Institut Blaise Pascal
+ *                           Universite Pierre et Marie Curie (Paris VI)
+ *
+ * This file can be redistributed under the terms of the GNU Library General
+ * Public License
+ */
+
+lib/et/com_err.c
+/*
+ * Copyright 1987, 1988 by MIT Student Information Processing Board.
+ * 
+ * Permission to use, copy, modify, and distribute this software and
+ * its documentation for any purpose is hereby granted, provided that
+ * the names of M.I.T. and the M.I.T. S.I.P.B. not be used in
+ * advertising or publicity pertaining to distribution of the software
+ * without specific, written prior permission.  M.I.T. and the
+ * M.I.T. S.I.P.B. make no representations about the suitability of
+ * this software for any purpose.  It is provided "as is" without
+ * express or implied warranty.
+ */
+
+lib/et/com_err.h
+/*
+ * Header file for common error description library.
+ *
+ * Copyright 1988, Student Information Processing Board of the
+ * Massachusetts Institute of Technology.
+ *
+ * For copyright and distribution info, see the documentation supplied
+ * with this package.
+ */
+
+lib/et/com_right.c
+/*
+ * com_right.c -- provide Heimdall / Kerberos4kth com_err interfaces
+ * 	for backwards compatbility 
+ * 
+ * Copyright (c) 2003 by Theodore Ts'o
+ *
+ * Taken from lib/com_err/error.c from Kerberos4kth distribution.
+ * 
+ * Copyright (c) 1997, 1998, 2001 Kungliga Tekniska Högskolan
+ * (Royal Institute of Technology, Stockholm, Sweden). 
+ * All rights reserved. 
+ *
+ * Redistribution and use in source and binary forms, with or without 
+ * modification, are permitted provided that the following conditions 
+ * are met: 
+ *
+ * 1. Redistributions of source code must retain the above copyright 
+ *    notice, this list of conditions and the following disclaimer. 
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright 
+ *    notice, this list of conditions and the following disclaimer in the 
+ *    documentation and/or other materials provided with the distribution. 
+ *
+ * 3. Neither the name of the Institute nor the names of its contributors 
+ *    may be used to endorse or promote products derived from this software 
+ *    without specific prior written permission. 
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE INSTITUTE AND CONTRIBUTORS ``AS IS'' AND 
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE 
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE 
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE INSTITUTE OR CONTRIBUTORS BE LIABLE 
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL 
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS 
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) 
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT 
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY 
+ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF 
+ * SUCH DAMAGE. 
+ */
+
+lib/et/error_message.c
+/*
+ * $Header: lib/et/SCCS/s.error_message.c 1.18 03/03/30 22:26:12-05:00 tytso@think.thunk.org $
+ * $Source: /usr/projects/e2fsprogs/e2fsprogs.quux/lib/et/SCCS/s.error_message.c $
+ * $Locker: <Not implemented> $
+ *
+ * Copyright 1987 by the Student Information Processing Board
+ * of the Massachusetts Institute of Technology
+ *
+ * Permission to use, copy, modify, and distribute this software and
+ * its documentation for any purpose is hereby granted, provided that
+ * the names of M.I.T. and the M.I.T. S.I.P.B. not be used in
+ * advertising or publicity pertaining to distribution of the software
+ * without specific, written prior permission.  M.I.T. and the
+ * M.I.T. S.I.P.B. make no representations about the suitability of
+ * this software for any purpose.  It is provided "as is" without
+ * express or implied warranty.
+ */
+
+lib/et/error_table.h
+/*
+ * Copyright 1988 by the Student Information Processing Board of the
+ * Massachusetts Institute of Technology.
+ *
+ * Permission to use, copy, modify, and distribute this software and
+ * its documentation for any purpose is hereby granted, provided that
+ * the names of M.I.T. and the M.I.T. S.I.P.B. not be used in
+ * advertising or publicity pertaining to distribution of the software
+ * without specific, written prior permission.  M.I.T. and the
+ * M.I.T. S.I.P.B. make no representations about the suitability of
+ * this software for any purpose.  It is provided "as is" without
+ * express or implied warranty.
+ */
+
+lib/et/et_name.c
+/*
+ * Copyright 1987 by MIT Student Information Processing Board
+ *
+ * Permission to use, copy, modify, and distribute this software and
+ * its documentation for any purpose is hereby granted, provided that
+ * the names of M.I.T. and the M.I.T. S.I.P.B. not be used in
+ * advertising or publicity pertaining to distribution of the software
+ * without specific, written prior permission.  M.I.T. and the
+ * M.I.T. S.I.P.B. make no representations about the suitability of
+ * this software for any purpose.  It is provided "as is" without
+ * express or implied warranty.
+ */
+
+lib/et/init_et.c
+/*
+ * $Header: lib/et/SCCS/s.init_et.c 1.17 03/05/06 00:31:55-04:00 tytso@think.thunk.org $
+ * $Source: /usr/projects/e2fsprogs/e2fsprogs.quux/lib/et/SCCS/s.init_et.c $
+ * $Locker: <Not implemented> $
+ *
+ * Copyright 1986, 1987, 1988 by MIT Information Systems and
+ *	the MIT Student Information Processing Board.
+ *
+ * Permission to use, copy, modify, and distribute this software and
+ * its documentation for any purpose is hereby granted, provided that
+ * the names of M.I.T. and the M.I.T. S.I.P.B. not be used in
+ * advertising or publicity pertaining to distribution of the software
+ * without specific, written prior permission.  M.I.T. and the
+ * M.I.T. S.I.P.B. make no representations about the suitability of
+ * this software for any purpose.  It is provided "as is" without
+ * express or implied warranty.
+ */
+
+lib/et/vfprintf.c
+/*
+ * Copyright (c) 1988 Regents of the University of California.
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms are permitted
+ * provided that the above copyright notice and this paragraph are
+ * duplicated in all such forms and that any documentation,
+ * advertising materials, and other materials related to such
+ * distribution and use acknowledge that the software was developed
+ * by the University of California, Berkeley.  The name of the
+ * University may not be used to endorse or promote products derived
+ * from this software without specific prior written permission.
+ * THIS SOFTWARE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR
+ * IMPLIED WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED
+ * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+ */
+
+lib/ss/data.c
+/*
+ * Copyright 1987, 1988, 1989 Massachusetts Institute of Technology
+ * (Student Information Processing Board)
+ *
+ * Permission to use, copy, modify, and distribute this software and
+ * its documentation for any purpose is hereby granted, provided that
+ * the names of M.I.T. and the M.I.T. S.I.P.B. not be used in
+ * advertising or publicity pertaining to distribution of the software
+ * without specific, written prior permission.  M.I.T. and the
+ * M.I.T. S.I.P.B. make no representations about the suitability of
+ * this software for any purpose.  It is provided "as is" without
+ * express or implied warranty.
+ */
+
+lib/ss/error.c
+/*
+ * Copyright 1987, 1988, 1989 by MIT Student Information Processing
+ * Board
+ *
+ * Permission to use, copy, modify, and distribute this software and
+ * its documentation for any purpose is hereby granted, provided that
+ * the names of M.I.T. and the M.I.T. S.I.P.B. not be used in
+ * advertising or publicity pertaining to distribution of the software
+ * without specific, written prior permission.  M.I.T. and the
+ * M.I.T. S.I.P.B. make no representations about the suitability of
+ * this software for any purpose.  It is provided "as is" without
+ * express or implied warranty.
+ */
+
+lib/ss/execute_cmd.c
+/*
+ * Copyright 1987, 1988, 1989 by Massachusetts Institute of Technology
+ *
+ * Permission to use, copy, modify, and distribute this software and
+ * its documentation for any purpose is hereby granted, provided that
+ * the names of M.I.T. and the M.I.T. S.I.P.B. not be used in
+ * advertising or publicity pertaining to distribution of the software
+ * without specific, written prior permission.  M.I.T. and the
+ * M.I.T. S.I.P.B. make no representations about the suitability of
+ * this software for any purpose.  It is provided "as is" without
+ * express or implied warranty.
+ */
+
+lib/ss/get_readline.c
+/*
+ * Copyright 2003 by MIT Student Information Processing Board
+ *
+ * Permission to use, copy, modify, and distribute this software and
+ * its documentation for any purpose is hereby granted, provided that
+ * the names of M.I.T. and the M.I.T. S.I.P.B. not be used in
+ * advertising or publicity pertaining to distribution of the software
+ * without specific, written prior permission.  M.I.T. and the
+ * M.I.T. S.I.P.B. make no representations about the suitability of
+ * this software for any purpose.  It is provided "as is" without
+ * express or implied warranty.
+ */
+
+lib/ss/help.c
+/*
+ * Copyright 1987, 1988 by MIT Student Information Processing Board
+ *
+ * Permission to use, copy, modify, and distribute this software and
+ * its documentation for any purpose is hereby granted, provided that
+ * the names of M.I.T. and the M.I.T. S.I.P.B. not be used in
+ * advertising or publicity pertaining to distribution of the software
+ * without specific, written prior permission.  M.I.T. and the
+ * M.I.T. S.I.P.B. make no representations about the suitability of
+ * this software for any purpose.  It is provided "as is" without
+ * express or implied warranty.
+ */
+
+lib/ss/listen.c
+/*
+ * Listener loop for subsystem library libss.a.
+ *
+ *	$Header: lib/ss/SCCS/s.listen.c 1.19 03/12/07 01:28:48-05:00 tytso@think.thunk.org $
+ *	$Locker: <Not implemented> $
+ * 
+ * Copyright 1987, 1988 by MIT Student Information Processing Board
+ *
+ * Permission to use, copy, modify, and distribute this software and
+ * its documentation for any purpose is hereby granted, provided that
+ * the names of M.I.T. and the M.I.T. S.I.P.B. not be used in
+ * advertising or publicity pertaining to distribution of the software
+ * without specific, written prior permission.  M.I.T. and the
+ * M.I.T. S.I.P.B. make no representations about the suitability of
+ * this software for any purpose.  It is provided "as is" without
+ * express or implied warranty.
+ */
+
+lib/ss/mit-sipb-copyright.h
+/*
+
+Copyright 1987 by the Student Information Processing Board
+	of the Massachusetts Institute of Technology
+
+Permission to use, copy, modify, and distribute this software
+and its documentation for any purpose and without fee is
+hereby granted, provided that the above copyright notice
+appear in all copies and that both that copyright notice and
+this permission notice appear in supporting documentation,
+and that the names of M.I.T. and the M.I.T. S.I.P.B. not be
+used in advertising or publicity pertaining to distribution
+of the software without specific, written prior permission.
+M.I.T. and the M.I.T. S.I.P.B. make no representations about
+the suitability of this software for any purpose.  It is
+provided "as is" without express or implied warranty.
+
+*/
+
+lib/ss/pager.c
+/*
+ * Pager: Routines to create a "more" running out of a particular file
+ * descriptor.
+ *
+ * Copyright 1987, 1988 by MIT Student Information Processing Board
+ *
+ * Permission to use, copy, modify, and distribute this software and
+ * its documentation for any purpose is hereby granted, provided that
+ * the names of M.I.T. and the M.I.T. S.I.P.B. not be used in
+ * advertising or publicity pertaining to distribution of the software
+ * without specific, written prior permission.  M.I.T. and the
+ * M.I.T. S.I.P.B. make no representations about the suitability of
+ * this software for any purpose.  It is provided "as is" without
+ * express or implied warranty.
+ */
+
+lib/ss/prompt.c
+/*
+ * prompt.c: Routines for retrieving and setting a prompt.
+ *
+ * $Header: lib/ss/SCCS/s.prompt.c 1.16 03/03/30 22:26:12-05:00 tytso@think.thunk.org $
+ * $Locker: <Not implemented> $
+ *
+ * Copyright 1987, 1988 by MIT Student Information Processing Board
+ *
+ * Permission to use, copy, modify, and distribute this software and
+ * its documentation for any purpose is hereby granted, provided that
+ * the names of M.I.T. and the M.I.T. S.I.P.B. not be used in
+ * advertising or publicity pertaining to distribution of the software
+ * without specific, written prior permission.  M.I.T. and the
+ * M.I.T. S.I.P.B. make no representations about the suitability of
+ * this software for any purpose.  It is provided "as is" without
+ * express or implied warranty.
+ */
+
+lib/ss/requests.c
+/*
+ * Various minor routines...
+ *
+ * Copyright 1987, 1988, 1989 by MIT
+ *
+ * Permission to use, copy, modify, and distribute this software and
+ * its documentation for any purpose is hereby granted, provided that
+ * the names of M.I.T. and the M.I.T. S.I.P.B. not be used in
+ * advertising or publicity pertaining to distribution of the software
+ * without specific, written prior permission.  M.I.T. and the
+ * M.I.T. S.I.P.B. make no representations about the suitability of
+ * this software for any purpose.  It is provided "as is" without
+ * express or implied warranty.
+ */
+
+lib/ss/ss.h
+/*
+ * Copyright 1987, 1988 by MIT Student Information Processing Board
+ *
+ * Permission to use, copy, modify, and distribute this software and
+ * its documentation for any purpose is hereby granted, provided that
+ * the names of M.I.T. and the M.I.T. S.I.P.B. not be used in
+ * advertising or publicity pertaining to distribution of the software
+ * without specific, written prior permission.  M.I.T. and the
+ * M.I.T. S.I.P.B. make no representations about the suitability of
+ * this software for any purpose.  It is provided "as is" without
+ * express or implied warranty.
+ *
+ * This quote is just too good to not pass on:
+ *
+ * 	"BTW, I would have rejected the name Story Server because its
+ * 	initials are SS, the name of the secret police in Nazi
+ * 	Germany, probably the most despised pair of letters in western
+ * 	culture."  --- http://scriptingnewsarchive.userland.com/1999/12/13
+ *
+ * Let no one say political correctness isn't dead....
+ */
+
+lib/uuid/clear.c
+/*
+ * clear.c -- Clear a UUID
+ * 
+ * Copyright (C) 1996, 1997 Theodore Ts'o.
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU 
+ * Library General Public License.
+ * %End-Header%
+ */
+
+lib/uuid/compare.c
+/*
+ * compare.c --- compare whether or not two UUID's are the same
+ *
+ * Returns 0 if the two UUID's are different, and 1 if they are the same.
+ * 
+ * Copyright (C) 1996, 1997 Theodore Ts'o.
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU 
+ * Library General Public License.
+ * %End-Header%
+ */
+
+lib/uuid/copy.c
+/*
+ * copy.c --- copy UUIDs
+ * 
+ * Copyright (C) 1996, 1997 Theodore Ts'o.
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU 
+ * Library General Public License.
+ * %End-Header%
+ */
+
+lib/uuid/gen_uuid.c
+/*
+ * gen_uuid.c --- generate a DCE-compatible uuid
+ *
+ * Copyright (C) 1996, 1997, 1998, 1999 Theodore Ts'o.
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU 
+ * Library General Public License.
+ * %End-Header%
+ */
+
+lib/uuid/isnull.c
+/*
+ * isnull.c --- Check whether or not the UUID is null
+ * 
+ * Copyright (C) 1996, 1997 Theodore Ts'o.
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU 
+ * Library General Public License.
+ * %End-Header%
+ */
+
+lib/uuid/pack.c
+/*
+ * Internal routine for packing UUID's
+ * 
+ * Copyright (C) 1996, 1997 Theodore Ts'o.
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU 
+ * Library General Public License.
+ * %End-Header%
+ */
+
+lib/uuid/parse.c
+/*
+ * parse.c --- UUID parsing
+ * 
+ * Copyright (C) 1996, 1997 Theodore Ts'o.
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU 
+ * Library General Public License.
+ * %End-Header%
+ */
+
+lib/uuid/tst_uuid.c
+/*
+ * tst_uuid.c --- test program from the UUID library
+ *
+ * Copyright (C) 1996, 1997, 1998 Theodore Ts'o.
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU Public
+ * License.
+ * %End-Header%
+ */
+
+lib/uuid/unpack.c
+/*
+ * Internal routine for unpacking UUID
+ * 
+ * Copyright (C) 1996, 1997 Theodore Ts'o.
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU 
+ * Library General Public License.
+ * %End-Header%
+ */
+
+lib/uuid/unparse.c
+/*
+ * unparse.c -- convert a UUID to string
+ * 
+ * Copyright (C) 1996, 1997 Theodore Ts'o.
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU 
+ * Library General Public License.
+ * %End-Header%
+ */
+
+lib/uuid/uuid.h
+/*
+ * Public include file for the UUID library
+ * 
+ * Copyright (C) 1996, 1997, 1998 Theodore Ts'o.
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU 
+ * Library General Public License.
+ * %End-Header%
+ */
+
+lib/uuid/uuid_time.c
+/*
+ * uuid_time.c --- Interpret the time field from a uuid.  This program
+ * 	violates the UUID abstraction barrier by reaching into the guts
+ *	of a UUID and interpreting it.
+ * 
+ * Copyright (C) 1998, 1999 Theodore Ts'o.
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU 
+ * Library General Public License.
+ * %End-Header%
+ */
+
+lib/uuid/uuidP.h
+/*
+ * uuid.h -- private header file for uuids
+ * 
+ * Copyright (C) 1996, 1997 Theodore Ts'o.
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU 
+ * Library General Public License.
+ * %End-Header%
+ */
+
+lib/blkid/blkid.h
+/*
+ * blkid.h - Interface for libblkid, a library to identify block devices
+ *
+ * Copyright (C) 2001 Andreas Dilger
+ * Copyright (C) 2003 Theodore Ts'o
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the
+ * GNU Lesser General Public License.
+ * %End-Header%
+ */
+
+lib/blkid/blkidP.h
+/*
+ * blkidP.h - Internal interfaces for libblkid
+ *
+ * Copyright (C) 2001 Andreas Dilger
+ * Copyright (C) 2003 Theodore Ts'o
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the
+ * GNU Lesser General Public License.
+ * %End-Header%
+ */
+
+lib/blkid/cache.c
+/*
+ * cache.c - allocation/initialization/free routines for cache
+ *
+ * Copyright (C) 2001 Andreas Dilger
+ * Copyright (C) 2003 Theodore Ts'o
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the
+ * GNU Lesser General Public License.
+ * %End-Header%
+ */
+
+lib/blkid/dev.c
+/*
+ * dev.c - allocation/initialization/free routines for dev
+ *
+ * Copyright (C) 2001 Andreas Dilger
+ * Copyright (C) 2003 Theodore Ts'o
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the
+ * GNU Lesser General Public License.
+ * %End-Header%
+ */
+
+lib/blkid/devname.c
+/*
+ * devname.c - get a dev by its device inode name
+ *
+ * Copyright (C) Andries Brouwer
+ * Copyright (C) 1999, 2000, 2001, 2002, 2003 Theodore Ts'o
+ * Copyright (C) 2001 Andreas Dilger
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the
+ * GNU Lesser General Public License.
+ * %End-Header%
+ */
+
+lib/blkid/devno.c
+/*
+ * devno.c - find a particular device by its device number (major/minor)
+ *
+ * Copyright (C) 2000, 2001, 2003 Theodore Ts'o
+ * Copyright (C) 2001 Andreas Dilger
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the
+ * GNU Lesser General Public License.
+ * %End-Header%
+ */
+
+lib/blkid/getsize.c
+/*
+ * getsize.c --- get the size of a partition.
+ *
+ * Copyright (C) 1995, 1995 Theodore Ts'o.
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the
+ * GNU Lesser General Public License.
+ * %End-Header%
+ */
+
+lib/blkid/llseek.c
+/*
+ * llseek.c -- stub calling the llseek system call
+ *
+ * Copyright (C) 1994, 1995, 1996, 1997 Theodore Ts'o.
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the
+ * GNU Lesser General Public License.
+ * %End-Header%
+ */
+
+lib/blkid/probe.c
+/*
+ * probe.c - identify a block device by its contents, and return a dev
+ *           struct with the details
+ *
+ * Copyright (C) 1999 by Andries Brouwer
+ * Copyright (C) 1999, 2000, 2003 by Theodore Ts'o
+ * Copyright (C) 2001 by Andreas Dilger
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the
+ * GNU Lesser General Public License.
+ * %End-Header%
+ */
+
+lib/blkid/probe.h
+/*
+ * probe.h - constants and on-disk structures for extracting device data
+ *
+ * Copyright (C) 1999 by Andries Brouwer
+ * Copyright (C) 1999, 2000, 2003 by Theodore Ts'o
+ * Copyright (C) 2001 by Andreas Dilger
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the
+ * GNU Lesser General Public License.
+ * %End-Header%
+ */
+
+lib/blkid/read.c
+/*
+ * read.c - read the blkid cache from disk, to avoid scanning all devices
+ *
+ * Copyright (C) 2001, 2003 Theodore Y. Ts'o
+ * Copyright (C) 2001 Andreas Dilger
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the
+ * GNU Lesser General Public License.
+ * %End-Header%
+ */
+
+lib/blkid/resolve.c
+/*
+ * resolve.c - resolve names and tags into specific devices
+ *
+ * Copyright (C) 2001, 2003 Theodore Ts'o.
+ * Copyright (C) 2001 Andreas Dilger
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the
+ * GNU Lesser General Public License.
+ * %End-Header%
+ */
+
+lib/blkid/save.c
+/*
+ * save.c - write the cache struct to disk
+ *
+ * Copyright (C) 2001 by Andreas Dilger
+ * Copyright (C) 2003 Theodore Ts'o
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the
+ * GNU Lesser General Public License.
+ * %End-Header%
+ */
+
+lib/blkid/tag.c
+/*
+ * tag.c - allocation/initialization/free routines for tag structs
+ *
+ * Copyright (C) 2001 Andreas Dilger
+ * Copyright (C) 2003 Theodore Ts'o
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the
+ * GNU Lesser General Public License.
+ * %End-Header%
+ */
+
+lib/et/com_err.texinfo
+Copyright (C) 1987, 1988 Student Information Processing Board of the
+Massachusetts Institute of Technology.
+
+Permission to use, copy, modify, and distribute this software and its
+documentation for any purpose and without fee is hereby granted, provided
+that the above copyright notice appear in all copies and that both that
+copyright notice and this permission notice appear in supporting
+documentation, and that the names of M.I.T. and the M.I.T. S.I.P.B. not be
+used in advertising or publicity pertaining to distribution of the software
+without specific, written prior permission.  M.I.T. and the M.I.T. S.I.P.B.
+make no representations about the suitability of this software for any
+purpose.  It is provided "as is" without express or implied warranty.
+
+

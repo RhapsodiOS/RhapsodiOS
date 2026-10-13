@@ -328,9 +328,11 @@ vm_offset_t get_scsi_int_offset()
 
 
 	if ((DTFindEntry("name", "mesh", &entryP) == kSuccess) ||
-	    (DTFindEntry("compatible", "chrp,mesh0", &entryP) == kSuccess))
+	    (DTFindEntry("compatible", "chrp,mesh0", &entryP) == kSuccess)) {
 	  if (DTGetProperty(entryP, "reg", (void **)&address, &size) == kSuccess)
 		    return(*address);
+	} else
+	    return(0);
 
 	panic("Uhmmm.. I can't get this machine's scsi internal offset\n");
 	return(kError);
@@ -346,9 +348,11 @@ vm_offset_t get_scsi_int_dma_offset()
 
 
 	if ((DTFindEntry("name", "mesh", &entryP) == kSuccess) ||
-	    (DTFindEntry("compatible", "chrp,mesh0", &entryP) == kSuccess))
+	    (DTFindEntry("compatible", "chrp,mesh0", &entryP) == kSuccess)) {
 	  if (DTGetProperty(entryP, "reg", (void **)&address, &size) == kSuccess)
 		    return(*(address+2));
+	} else
+	    return(0);
 
 	panic("Uhmmm.. I can't get this machine's scsi internal dma offset\n");
 	return(kError);
@@ -380,9 +384,11 @@ vm_offset_t get_audio_offset()
 
 
 	if ((DTFindEntry("device_type", "davbus",  &entryP) == kSuccess) ||
-	    (DTFindEntry("device_type", "sound", &entryP) == kSuccess))
+	    (DTFindEntry("device_type", "sound", &entryP) == kSuccess)) {
 	  if (DTGetProperty(entryP, "reg", (void **)&address, &size) == kSuccess)
 		    return(*address);
+	} else
+	    return(0);
 
 	panic("Uhmmm.. I can't get this machine's audio offset\n");
 	return(kError);

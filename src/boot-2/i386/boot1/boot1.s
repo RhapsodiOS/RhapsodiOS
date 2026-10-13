@@ -24,8 +24,6 @@
 ; generates 32 bit code and this must run in real mode.
 ; To compile as hard disk boot1:
 ;	nasm -DBOOTDEV=HDISK boot1.s -o boot1
-; To compile as floppy boot1f:
-;	nasm -DBOOTDEV=FLOPPY boot1.s -o boot1f
 
 ;***********************************************************************
 ;	This is the code for the NeXT boot1 bootsector.
@@ -53,7 +51,6 @@ NEXTNAME	EQU	0A7h	; value of boot_ind, means bootable partition
 
 LOADSZ		EQU	88	; maxiumum possible size of unix boot- 44k
 
-FLOPPY		EQU	0
 HDISK		EQU	80h
 
 ; NeXT disk label
@@ -100,9 +97,6 @@ a1:
 	; as an internal buffer "intbuf".
 
 	xor	edx,edx		; bootdev = 0 for hard disk
-%IF	BOOTDEV = FLOPPY
-	inc	edx		; bootdev = 1 for floppy disk
-%ENDIF
 
 	;boot2 immediately follows disk buffer;  4K + BUFSZ
 	jmp	BOOTSEG:(BOOTOFF + BUFSZ)	
@@ -240,13 +234,6 @@ readSectors:	; eax has starting block #, bx has offset from BOOTSEG
 	;	dh = head	dl = drive (0x80=hard disk, 0=floppy disk)
 	;	es:bx = segment:offset of buffer
 
-%IF	BOOTDEV = FLOPPY
-		push	eax
-		mov	al,'.'
-		call	putchr
-		pop	eax
-%ENDIF
-
 	push	bx			; save offset
 	mov [WORD nsec], cx
 
@@ -281,7 +268,7 @@ last:
 
 	pop	ax			; get cyl
 	mov	ch, al			; ch -> cyl
-	mov	dl, BOOTDEV		; floppy disk
+	mov	dl, BOOTDEV		; boot drive
 
 	xor	al,al
 	shr	ax,2

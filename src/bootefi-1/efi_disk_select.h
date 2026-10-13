@@ -12,7 +12,8 @@ unsigned long efi_label_lba(const unsigned char *mbr);
 /* Non-zero if `disk`, a whole-disk device path, is the parent of `part`:
  * every node of `disk` before its end node is a byte-for-byte prefix of
  * `part`, and the next node of `part` is Media/HardDrive (type 4,
- * subtype 1), i.e. an fdisk partition.  Both paths end-terminated. */
+ * subtype 1), i.e. an fdisk partition, or Media/CDROM (subtype 2), i.e.
+ * a CD's El Torito boot entry.  Both paths end-terminated. */
 int efi_dp_is_parent(const unsigned char *disk, const unsigned char *part);
 
 #endif /* _BOOTEFI_EFI_DISK_SELECT_H_ */

@@ -76,6 +76,7 @@
  * from the permanent dinode from long term storage when the file becomes
  * active, and is put back when the file is no longer being used.
  */
+struct m_ext2fs;
 struct inode {
 	LIST_ENTRY(inode) i_hash;/* Hash chain. */
 	struct	vnode  *i_vnode;/* Vnode associated with this inode. */
@@ -86,11 +87,13 @@ struct inode {
 
 	union {			/* Associated filesystem. */
 		struct	fs *fs;		/* FFS */
+		struct m_ext2fs *e2fs;	/* ext2 */
 #if LFS
 		struct	lfs *lfs;	/* LFS */
 #endif
 	} inode_u;
 #define	i_fs	inode_u.fs
+#define	i_e2fs	inode_u.e2fs
 #if LFS
 #define	i_lfs	inode_u.lfs
 #endif

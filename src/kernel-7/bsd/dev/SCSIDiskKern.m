@@ -648,6 +648,31 @@ int sdioctl(dev_t dev,
 	}
 #endif
 	idmap = &SCSIDiskIdMap[unit];
+    if (cmd == DKIOCGPARTINFO) {
+        struct disk_partition_info result;
+        unsigned int physicalSize,physicalCount;
+        if (part == SD_LIVE_PART || part < 0 ||
+            part >= sizeof(idmap->partitionId)/sizeof(idmap->partitionId[0]))
+            return ENXIO;
+        diskObj = idmap->partitionId[part];
+        if (diskObj == nil || idmap->liveId == nil || diskObj == idmap->liveId)
+            return ENXIO;
+        result.block_size = [diskObj blockSize];
+        result.block_count = [diskObj diskSize];
+        physicalSize = [idmap->liveId blockSize];
+        physicalCount = [idmap->liveId diskSize];
+        /* Reject the unlabelled partition-zero whole-drive fallback too. */
+        if (result.block_size == 0 || result.block_size > 0x7fffffffU ||
+            result.block_count == 0 || result.block_count > 0x7fffffffU ||
+            physicalSize == 0 || physicalSize > 0x7fffffffU ||
+            physicalCount == 0 || physicalCount > 0x7fffffffU ||
+            (u_int64_t)result.block_size*result.block_count >=
+            (u_int64_t)physicalSize*physicalCount)
+            return EINVAL;
+        *(struct disk_partition_info *)data = result;
+        return 0;
+    }
+
 
 #ifdef GROK_APPLE //bknight - 12/3/97 - Radar #2004660
 

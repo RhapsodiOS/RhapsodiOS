@@ -6,10 +6,12 @@
  */
 #include "efi.h"
 #include "efi_disk_select.h"
+#include "efi_sector.h"
 
 #define BPS             512
 #define MAX_DISKS       8
 #define FIRST_BIOSDEV   0x80
+#define CD_BLOCK        2048
 
 static EFI_GUID gBlockIoGuid = EFI_BLOCK_IO_PROTOCOL_GUID;
 static EFI_BLOCK_IO_PROTOCOL *disks[MAX_DISKS];
@@ -17,6 +19,29 @@ static int ndisks;
 
 /* disk.c indexes this by (biosdev - 0x80) to choose the LBA path. */
 unsigned char uses_ebios[MAX_DISKS] = {1, 1, 1, 1, 1, 1, 1, 1};
+
+/* 2048-byte media is read through this: the blocks covering a request,
+ * from which the 512-byte sectors asked for are copied out.  disk.c never
+ * asks for more than biosbuf's area (BIOS_LEN), so that rounded up to a
+ * block, plus one block for a request starting mid-block, is enough. */
+static unsigned char bounce[((BIOS_LEN + CD_BLOCK - 1) / CD_BLOCK + 1) *
+                            CD_BLOCK] __attribute__((aligned(64)));
+
+static int read_cd_sectors(EFI_BLOCK_IO_PROTOCOL *bio, UINT64 secno,
+                           UINT32 nsecs, void *dst)
+{
+    UINT64 first;
+    UINT32 nblocks, skip;
+
+    efi_sector_span(CD_BLOCK, secno, nsecs, &first, &nblocks, &skip);
+    if ((UINTN)nblocks * CD_BLOCK > sizeof(bounce))
+        return -1;
+    if (EFI_ERROR(bio->ReadBlocks(bio, bio->Media->MediaId, first,
+                                  (UINTN)nblocks * CD_BLOCK, bounce)))
+        return -1;
+    memcpy(dst, bounce + skip, (UINTN)nsecs * BPS);
+    return 0;
+}
 
 /* disk.c's open("hd(0,a)/...") always means biosdev 0x80, i.e. disks[0],
  * and EFI does not enumerate block devices in qemu's -drive order, so the
@@ -26,20 +51,22 @@ unsigned char uses_ebios[MAX_DISKS] = {1, 1, 1, 1, 1, 1, 1, 1};
  * the raw bytes 64 6c 56 33 ("dlV3"), big-endian whatever the payload's
  * byte order, which golden.img confirms.  efi_label_lba() finds that copy:
  * 15 sectors into the first 0xA7 fdisk partition, or LBA 15 on a
- * whole-disk label.
+ * whole-disk label.  A CD (2048-byte blocks) has no fdisk table: its label
+ * is at byte 7680, the sector efi_cd_label_sector() names.
  */
 static int looks_like_rhapsody(EFI_BLOCK_IO_PROTOCOL *bio)
 {
     unsigned char sector[BPS];
 
-    if (bio->Media->BlockSize != BPS)
-        return 0;
-    if (EFI_ERROR(bio->ReadBlocks(bio, bio->Media->MediaId, 0,
-                                  sizeof(sector), sector)))
-        return 0;
-    if (EFI_ERROR(bio->ReadBlocks(bio, bio->Media->MediaId,
-                                  efi_label_lba(sector), sizeof(sector),
-                                  sector)))
+    if (bio->Media->BlockSize == CD_BLOCK) {
+        if (read_cd_sectors(bio, efi_cd_label_sector(CD_BLOCK), 1, sector))
+            return 0;
+    } else if (bio->Media->BlockSize != BPS ||
+               EFI_ERROR(bio->ReadBlocks(bio, bio->Media->MediaId, 0,
+                                         sizeof(sector), sector)) ||
+               EFI_ERROR(bio->ReadBlocks(bio, bio->Media->MediaId,
+                                         efi_label_lba(sector),
+                                         sizeof(sector), sector)))
         return 0;
     return sector[0] == 0x64 && sector[1] == 0x6c &&
            sector[2] == 0x56 && sector[3] == 0x33;
@@ -153,6 +180,8 @@ int ebiosread(int biosdev, int secno, int nsecs)
     if (idx < 0 || idx >= ndisks)
         return -1;
     bio = disks[idx];
+    if (bio->Media->BlockSize == CD_BLOCK)
+        return read_cd_sectors(bio, (UINT64)secno, (UINT32)nsecs, biosbuf);
     if (bio->Media->BlockSize != BPS)
         return -1;                      /* 4Kn media is out of scope */
     lba = (UINT64)secno;

@@ -2,7 +2,6 @@ OPTIONS/show_space		optional show_space
 OPTIONS/eventmeter		optional eventmeter
 OPTIONS/gdb			optional gdb
 OPTIONS/iplmeas			optional iplmeas
-OPTIONS/fp_emul			optional fp_emul
 OPTIONS/pc_support		optional pc_support
 OPTIONS/mk_hasdrivers		optional mk_hasdrivers
 OPTIONS/dk_hasdrivers		optional dk_hasdrivers

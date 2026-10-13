@@ -1,5 +1,5 @@
 #if	!defined(lint) && !defined(DOS)
-static char rcsid[] = "$Id: random.c,v 1.1.1.1 1999/04/15 17:45:14 wsanchez Exp $";
+static char rcsid[] = "$Id: random.c,v 4.23 2001/10/30 18:40:31 hubert Exp $";
 #endif
 /*
  * Program:	Random routines
@@ -15,28 +15,16 @@ static char rcsid[] = "$Id: random.c,v 1.1.1.1 1999/04/15 17:45:14 wsanchez Exp 
  *
  * Please address all bugs and comments to "pine-bugs@cac.washington.edu"
  *
- * Copyright 1991-1993  University of Washington
  *
- *  Permission to use, copy, modify, and distribute this software and its
- * documentation for any purpose and without fee to the University of
- * Washington is hereby granted, provided that the above copyright notice
- * appears in all copies and that both the above copyright notice and this
- * permission notice appear in supporting documentation, and that the name
- * of the University of Washington not be used in advertising or publicity
- * pertaining to distribution of the software without specific, written
- * prior permission.  This software is made available "as is", and
- * THE UNIVERSITY OF WASHINGTON DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED,
- * WITH REGARD TO THIS SOFTWARE, INCLUDING WITHOUT LIMITATION ALL IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE, AND IN
- * NO EVENT SHALL THE UNIVERSITY OF WASHINGTON BE LIABLE FOR ANY SPECIAL,
- * INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
- * LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, TORT
- * (INCLUDING NEGLIGENCE) OR STRICT LIABILITY, ARISING OUT OF OR IN CONNECTION
- * WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
- *
- * Pine and Pico are trademarks of the University of Washington.
- * No commercial use of these trademarks may be made without prior
- * written permission of the University of Washington.
+ * Pine and Pico are registered trademarks of the University of Washington.
+ * No commercial use of these trademarks may be made without prior written
+ * permission of the University of Washington.
+ * 
+ * Pine, Pico, and Pilot software and its included text are Copyright
+ * 1989-1999 by the University of Washington.
+ * 
+ * The full text of our legal notices is contained in the file called
+ * CPYRIGHT, included with this distribution.
  *
  */
 /*
@@ -44,10 +32,7 @@ static char rcsid[] = "$Id: random.c,v 1.1.1.1 1999/04/15 17:45:14 wsanchez Exp 
  * commands. There is no functional grouping here, for sure.
  */
 
-#include        <stdio.h>
-#include	"estruct.h"
-#include	"pico.h"
-#include        "edef.h"
+#include	"headers.h"
 
 #ifdef	ANSI
     int getccol(int);
@@ -56,21 +41,6 @@ static char rcsid[] = "$Id: random.c,v 1.1.1.1 1999/04/15 17:45:14 wsanchez Exp 
 #endif
 
 int     tabsize;                        /* Tab size (0: use real tabs)  */
-
-/*
- * Set fill column to n.
- */
-setfillcol(f, n)
-int f, n;
-{
-    char	numbuf[16];
-    register int s;
-
-    sprintf(numbuf,"%d",fillcol);
-    s = mlreplyd("Set fill column to : ", numbuf, 4, QDEFLT);
-    fillcol = atoi(numbuf);
-    return(s);
-}
 
 
 /*
@@ -155,6 +125,7 @@ int bflg;
  * into "C-I" (in 10 bit code) already. Bound to "C-I".
  */
 tab(f, n)
+    int f, n;
 {
     if (n < 0)
       return (FALSE);
@@ -172,10 +143,10 @@ tab(f, n)
 
 
 /*
- * Insert a newline. Bound to "C-M". If we are in CMODE, do automatic
- * indentation as specified.
+ * Insert a newline. Bound to "C-M".
  */
 newline(f, n)
+    int f, n;
 {
     register int    s;
 
@@ -215,6 +186,7 @@ newline(f, n)
  * of text if typed with a big argument. Normally bound to "C-D".
  */
 forwdel(f, n)
+    int f, n;
 {
     if (curbp->b_mode&MDVIEW)	/* don't allow this command if	*/
       return(rdonly());	/* we are in read only mode	*/
@@ -235,7 +207,7 @@ forwdel(f, n)
 	thisflag |= CFKILL;
     }
 
-    return (ldelete(n, f));
+    return (ldelete((long) n, f ? kinsert : NULL));
 }
 
 
@@ -247,6 +219,7 @@ forwdel(f, n)
  * both "RUBOUT" and "C-H".
  */
 backdel(f, n)
+    int f, n;
 {
     register int    s;
 
@@ -278,7 +251,7 @@ backdel(f, n)
     }
 
     if ((s=backchar(f, n)) == TRUE)
-      s = ldelete(n, f);
+      s = ldelete((long) n, f ? kinsert : NULL);
 
     return (s);
 }
@@ -292,25 +265,39 @@ backdel(f, n)
 killtext(f, n)
 int f, n;
 {
-    register int	chunk;
+    register int chunk;
+    int		 opt_scroll = 0;
 
-    if (curbp->b_mode&MDVIEW)       /* don't allow this command if  */
-      return(rdonly());       /* we are in read only mode     */
+    if (curbp->b_mode&MDVIEW)		/* don't allow this command if  */
+      return(rdonly());			/* we are in read only mode     */
 
-    if(optimize && (curwp->w_dotp != curwp->w_bufp->b_linep)){
+    if ((lastflag&CFKILL) == 0)		/* Clear kill buffer if */
+      kdelete();			/* last wasn't a kill.  */
+
+    if(gmode & MDDTKILL){		/*  */
+	if((chunk = llength(curwp->w_dotp) - curwp->w_doto) == 0){
+	    chunk = 1;
+	    if(optimize)
+	      opt_scroll = 1;
+	}
+    }
+    else{
+	gotobol(FALSE, 1);		/* wack from bol past newline */
+	chunk = llength(curwp->w_dotp) + 1;
+	if(optimize)
+	  opt_scroll = 1;
+    }
+
+    /* optimize what motion we can */
+    if(opt_scroll && (curwp->w_dotp != curwp->w_bufp->b_linep)){
 	int l;
-	
+
 	if(worthit(&l))
 	  scrollup(curwp, l, 1);
     }
 
-    if ((lastflag&CFKILL) == 0)             /* Clear kill buffer if */
-      kdelete();                      /* last wasn't a kill.  */
-
     thisflag |= CFKILL;
-    curwp->w_doto = 0;		/* wack from the beginning of line */
-    chunk = llength(curwp->w_dotp) + 1;	/* for the whole length. */
-    return(ldelete(chunk, TRUE));
+    return(ldelete((long) chunk, kinsert));
 }
 
 
@@ -324,7 +311,6 @@ int f, n;
 {
     register int    c;
     register int    i;
-    extern   int    kused;
 
     if (curbp->b_mode&MDVIEW)	/* don't allow this command if	*/
       return(rdonly());	/* we are in read only mode	*/
@@ -340,7 +326,7 @@ int f, n;
 	    register int  i = 0;
 	    register int  ch;
 
-	    while((ch=kremove(i++)) >= 0)
+	    while((ch=fremove(i++)) >= 0)
 	      if(ch == '\n')
 		t++;
 	    if(t+l < curwp->w_toprow+curwp->w_ntrows)
@@ -348,14 +334,25 @@ int f, n;
 	}
     }
 
-    if(lastflag&CFFILL)		/* if last command was fillpara() */
-      gotobop(FALSE, 1);		/* then go to the top of the para */
-					/* then splat out the saved buffer */
+    if(lastflag & CFFILL){		/* if last command was fillpara() */
+	REGION region;
+	LINE *dotp;
+
+	backchar(FALSE, 1);
+	dotp = curwp->w_dotp;
+	gotobop(FALSE, 1);		/* then go to the top of the para */
+
+	curwp->w_doto = 0;
+	getregion(&region, dotp, llength(dotp));
+	if(!ldelete(region.r_size, NULL))
+	  return(FALSE);
+    }					/* then splat out the saved buffer */
+
     while (n--) {
 	i = 0;
-	while ((c=kremove(i)) >= 0) {
+	while ((c = ((lastflag&CFFILL) ? fremove(i) : kremove(i))) >= 0) {
 	    if (c == '\n') {
-		if (lnewline(FALSE, 1) == FALSE)
+		if (lnewline() == FALSE)
 		  return (FALSE);
 	    } else {
 		if (linsert(1, c) == FALSE)
@@ -367,30 +364,79 @@ int f, n;
     }
 
     if(lastflag&CFFILL){            /* if last command was fillpara() */
-	register LINE *botline;     /* blast the filled paragraph */
-	register LINE *topline;
-	register int  done = 0;
-	
-	kdelete();
-	topline = curwp->w_dotp;
-	gotoeop(FALSE, 1);
-	botline = lforw(curwp->w_dotp);
-	curwp->w_dotp = topline;
-	if(topline != botline){
-	    while(!done){
-		if(lforw(curwp->w_dotp) == botline)
-		  done++;
-		curwp->w_doto = 0;
-		ldelete((llength(curwp->w_dotp) + 1), FALSE);
-	    }
-	}
+	curwp->w_dotp = lforw(curwp->w_dotp);
+	curwp->w_doto = 0;
+
 	curwp->w_flag |= WFMODE;
 	
-	if(Pmaster == NULL){
+	if(!Pmaster){
 	    sgarbk = TRUE;
-	    emlwrite("");
+	    emlwrite("", NULL);
 	}
     }
 
     return (TRUE);
+}
+
+
+/*
+ * Original idea from Stephen Casner <casner@acm.org>.
+ *
+ * Apply the appropriate reverse color transformation to the given
+ * color pair and return a new color pair. The caller should free the
+ * color pair.
+ *
+ */
+COLOR_PAIR *
+pico_apply_rev_color(cp, style)
+    COLOR_PAIR *cp;
+    int         style;
+{
+    COLOR_PAIR *rc = pico_get_rev_color();
+
+    if(rc){
+	if(style == IND_COL_REV){
+	    /* just use Reverse color regardless */
+	    return(new_color_pair(rc->fg, rc->bg));
+	}
+	else if(style == IND_COL_FG){
+	    /*
+	     * If changing to Rev fg is readable and different
+	     * from what it already is, do it.
+	     */
+	    if(strcmp(rc->fg, cp->bg) && strcmp(rc->fg, cp->fg))
+	      return(new_color_pair(rc->fg, cp->bg));
+	}
+	else if(style == IND_COL_BG){
+	    /*
+	     * If changing to Rev bg is readable and different
+	     * from what it already is, do it.
+	     */
+	    if(strcmp(rc->bg, cp->fg) && strcmp(rc->bg, cp->bg))
+	      return(new_color_pair(cp->fg, rc->bg));
+	}
+	else if(style == IND_COL_FG_NOAMBIG){
+	    /*
+	     * If changing to Rev fg is readable, different
+	     * from what it already is, and not the same as
+	     * the Rev color, do it.
+	     */
+	    if(strcmp(rc->fg, cp->bg) && strcmp(rc->fg, cp->fg) &&
+	       strcmp(rc->bg, cp->bg))
+	      return(new_color_pair(rc->fg, cp->bg));
+	}
+	else if(style == IND_COL_BG_NOAMBIG){
+	    /*
+	     * If changing to Rev bg is readable, different
+	     * from what it already is, and not the same as
+	     * the Rev color, do it.
+	     */
+	    if(strcmp(rc->bg, cp->fg) && strcmp(rc->bg, cp->bg) &&
+	       strcmp(rc->fg, cp->fg))
+	      return(new_color_pair(cp->fg, rc->bg));
+	}
+    }
+
+    /* come here for IND_COL_FLIP and for the cases which fail the tests  */
+    return(new_color_pair(cp->bg, cp->fg));	/* flip the colors */
 }

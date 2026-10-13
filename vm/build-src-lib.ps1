@@ -186,7 +186,7 @@ function Get-RhapKernelCorePackages {
 }
 
 # Every core source must exist locally except a platform expert, which rbuild
-# skips when missing (drivers-i386/bus/drvPExpert has no source yet). Returns
+# skips when missing. Returns
 # the platform experts that will be skipped.
 function Assert-RhapKernelCoreSources {
     param(

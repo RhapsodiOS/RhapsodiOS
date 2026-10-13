@@ -21,6 +21,10 @@ PPC_TABLE = [(b"Version", b"5.20"),
              (b"Kernel Flags", b""), (b"Boot Drivers", b""),
              (b"Language", b"English")]
 
+# rc.cdrom's whole text: start the installer, and offer a shell if it fails.
+HOOK = [b"#!/bin/sh",
+        b"/System/Installation/CDIS/sysinstall || exec /bin/sh", b""]
+
 
 def read(*parts):
     with open(os.path.join(*parts), "rb") as f:
@@ -60,7 +64,7 @@ class TestTemplates(unittest.TestCase):
         default = read(SRC, "system_config-1", "i386", "Default.table")
         self.assertEqual(table_keys(ours), table_keys(default))
         self.assertEqual(table_value(ours, b"Boot Drivers"),
-                         b"EISABus PCIBus PS2Keyboard EIDE AHCI NE2K")
+                         b"PS2Keyboard EIDE AHCI NE2K")
         self.assertEqual(table_value(ours, b"Active Drivers"),
                          table_value(default, b"Active Drivers") + b" BPF")
         self.assertEqual(table_value(ours, b"Kernel Flags"),
@@ -69,6 +73,15 @@ class TestTemplates(unittest.TestCase):
         for key in (b"Version", b"Kernel", b"Install Mode", b"APM"):
             self.assertEqual(table_value(ours, key),
                              table_value(default, key))
+
+    def test_i386_boot_sources_use_the_kernel_linked_buses(self):
+        network = read(SRC, "system_config-1", "i386", "Instance0.network")
+        self.assertEqual(table_value(network, b"Boot Drivers"), b"PS2Keyboard")
+        detector = read(SRC, "driverkit-3", "driverDetect", "driverDetect.c")
+        self.assertRegex(detector, rb'#define BASE_BOOT\s+"PS2Keyboard"')
+        packages = read(PROJECT, "sets", "base.set").splitlines()
+        self.assertNotIn(b"drveisabus", packages)
+        self.assertNotIn(b"drvpcibus", packages)
 
     def test_ppc_instance0_is_mac_os_x_servers_table(self):
         ours = read(TEMPLATES, "Instance0-ppc.table")
@@ -80,6 +93,23 @@ class TestTemplates(unittest.TestCase):
         postamble = read(PROJECT, "Makefile.postamble")
         for name in NAMES:
             self.assertIn(b"templates/" + name.encode(), postamble)
+
+    def test_english_only_and_the_hook(self):
+        names = os.listdir(PROJECT)
+        self.assertEqual([n for n in names if n.endswith(".lproj")],
+                         ["English.lproj"])
+        self.assertNotIn("rc.cdrom.x86", names)
+        self.assertNotIn("rc.cdrom.PPC", names)
+        self.assertEqual(read(PROJECT, "rc.cdrom").split(b"\n"), HOOK)
+        postamble = read(PROJECT, "Makefile.postamble")
+        self.assertRegex(
+            postamble,
+            rb"sets/\*\.set \$\(DSTROOT\)/System/Installation/Sets\n")
+        self.assertNotIn(b"SCRIPT2", postamble)
+        self.assertNotIn(b"SCRIPT3", postamble)
+        tools = re.search(rb"^TOOLS = ((?:.*\\\n)*.*)$",
+                          read(PROJECT, "Makefile"), re.M).group(1)
+        self.assertIn(b"sysinstall.tproj", tools.split())
 
     def test_no_carriage_returns(self):
         for name in NAMES:

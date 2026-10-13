@@ -1,5 +1,5 @@
 #if	!defined(lint) && !defined(DOS)
-static char rcsid[] = "$Id: fileio.c,v 1.1.1.1 1999/04/15 17:45:12 wsanchez Exp $";
+static char rcsid[] = "$Id: fileio.c,v 4.17 2002/02/12 22:53:53 hubert Exp $";
 #endif
 /*
  * Program:	ASCII file reading routines
@@ -15,28 +15,16 @@ static char rcsid[] = "$Id: fileio.c,v 1.1.1.1 1999/04/15 17:45:12 wsanchez Exp 
  *
  * Please address all bugs and comments to "pine-bugs@cac.washington.edu"
  *
- * Copyright 1991-1993  University of Washington
  *
- *  Permission to use, copy, modify, and distribute this software and its
- * documentation for any purpose and without fee to the University of
- * Washington is hereby granted, provided that the above copyright notice
- * appears in all copies and that both the above copyright notice and this
- * permission notice appear in supporting documentation, and that the name
- * of the University of Washington not be used in advertising or publicity
- * pertaining to distribution of the software without specific, written
- * prior permission.  This software is made available "as is", and
- * THE UNIVERSITY OF WASHINGTON DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED,
- * WITH REGARD TO THIS SOFTWARE, INCLUDING WITHOUT LIMITATION ALL IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE, AND IN
- * NO EVENT SHALL THE UNIVERSITY OF WASHINGTON BE LIABLE FOR ANY SPECIAL,
- * INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
- * LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, TORT
- * (INCLUDING NEGLIGENCE) OR STRICT LIABILITY, ARISING OUT OF OR IN CONNECTION
- * WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
- *
- * Pine and Pico are trademarks of the University of Washington.
- * No commercial use of these trademarks may be made without prior
- * written permission of the University of Washington.
+ * Pine and Pico are registered trademarks of the University of Washington.
+ * No commercial use of these trademarks may be made without prior written
+ * permission of the University of Washington.
+ * 
+ * Pine, Pico, and Pilot software and its included text are Copyright
+ * 1989-2002 by the University of Washington.
+ * 
+ * The full text of our legal notices is contained in the file called
+ * CPYRIGHT, included with this distribution.
  *
  */
 /*
@@ -44,12 +32,15 @@ static char rcsid[] = "$Id: fileio.c,v 1.1.1.1 1999/04/15 17:45:12 wsanchez Exp 
  * the knowledge about files are here. A better message writing scheme should
  * be used.
  */
-#include        <stdio.h>
-#include	"estruct.h"
-#include        "edef.h"
+#include	"headers.h"
 
 
-FILE    *ffp;                           /* File pointer, all functions. */
+#if	defined(bsd) || defined(lnx)
+extern int errno;
+#endif
+
+
+FIOINFO	g_pico_fio;
 
 /*
  * Open a file for reading.
@@ -57,10 +48,15 @@ FILE    *ffp;                           /* File pointer, all functions. */
 ffropen(fn)
   char    *fn;
 {
-    if ((ffp=fopen(fn, "r")) == NULL)
-      return (FIOFNF);
+    int status;
 
-    return (FIOSUC);
+    if ((status = fexist(g_pico_fio.name = fn, "r", (off_t *)NULL)) == FIOSUC){
+	g_pico_fio.flags = FIOINFO_READ;
+	if((g_pico_fio.fp = fopen(g_pico_fio.name, "r")) == NULL)
+	  status = FIOFNF;
+    }
+
+    return (status);
 }
 
 
@@ -71,16 +67,20 @@ ffropen(fn)
  */
 ffputline(buf, nbuf)
     CELL  buf[];
+    int	  nbuf;
 {
     register int    i;
 
     for (i = 0; i < nbuf; ++i)
-       fputc(buf[i].c&0xFF, ffp);
+       if(fputc(buf[i].c&0xFF, g_pico_fio.fp) == EOF)
+	 break;
 
-    fputc('\n', ffp);
+   if(i == nbuf)
+      fputc('\n', g_pico_fio.fp);
 
-    if (ferror(ffp)) {
-        emlwrite("Write I/O error");
+    if (ferror(g_pico_fio.fp)) {
+        emlwrite("\007Write error: %s", errstr(errno));
+	sleep(5);
         return (FIOERR);
     }
 
@@ -95,22 +95,28 @@ ffputline(buf, nbuf)
  * at the end of the file that don't have a newline present. Check for I/O
  * errors too. Return status.
  */
-ffgetline(buf, nbuf)
+ffgetline(buf, nbuf, charsreturned, msg)
   register char   buf[];
+  int nbuf;
+  int *charsreturned;
+  int msg;
 {
     register int    c;
     register int    i;
 
+    if(charsreturned)
+      *charsreturned = 0;
+
     i = 0;
 
-    while ((c = fgetc(ffp)) != EOF && c != '\n') {
+    while ((c = fgetc(g_pico_fio.fp)) != EOF && c != '\n') {
 	/*
 	 * Don't blat the CR should the newline be CRLF and we're
 	 * running on a unix system.  NOTE: this takes care of itself
 	 * under DOS since the non-binary open turns newlines into '\n'.
 	 */
 	if(c == '\r'){
-	    if((c = fgetc(ffp)) == EOF || c == '\n')
+	    if((c = fgetc(g_pico_fio.fp)) == EOF || c == '\n')
 	      break;
 
 	    if (i < nbuf-2)		/* Bare CR. Insert it and go on... */
@@ -120,24 +126,34 @@ ffgetline(buf, nbuf)
         if (i >= nbuf-2) {
 	    buf[nbuf - 2] = c;	/* store last char read */
 	    buf[nbuf - 1] = 0;	/* and terminate it */
-            emlwrite("File has long line");
+	    if(charsreturned)
+	      *charsreturned = nbuf - 1;
+	    if (msg)
+	      emlwrite("File has long line", NULL);
             return (FIOLNG);
         }
         buf[i++] = c;
     }
 
     if (c == EOF) {
-        if (ferror(ffp)) {
-            emlwrite("File read error");
+        if (ferror(g_pico_fio.fp)) {
+            emlwrite("File read error", NULL);
+	    if(charsreturned)
+	      *charsreturned = i;
             return (FIOERR);
         }
 
         if (i != 0)
 	  emlwrite("File doesn't end with newline.  Adding one.", NULL);
-	else
-	  return (FIOEOF);
+	else{
+	    if(charsreturned)
+	      *charsreturned = i;
+	    return (FIOEOF);
+	}
     }
 
     buf[i] = 0;
+    if(charsreturned)
+      *charsreturned = i;
     return (FIOSUC);
 }

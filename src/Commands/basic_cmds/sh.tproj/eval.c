@@ -93,8 +93,8 @@ int exitstatus;			/* exit status of last command */
 int oexitstatus;		/* saved exit status */
 
 
-STATIC void evalloop __P((union node *));
-STATIC void evalfor __P((union node *));
+STATIC void evalloop __P((union node *, int));
+STATIC void evalfor __P((union node *, int));
 STATIC void evalcase __P((union node *, int));
 STATIC void evalsubshell __P((union node *, int));
 STATIC void expredir __P((union node *));
@@ -190,6 +190,15 @@ evaltree(n, flags)
 	union node *n;
 	int flags;
 {
+	/*
+	 * Only simple commands, pipelines and subshells exit under -e;
+	 * a compound command must not exit on a status left by a command
+	 * that was itself exempt, as in "set -e; if x; then false && y; fi".
+	 * Backported from NetBSD eval.c 1.93.
+	 */
+	int do_etest;
+
+	do_etest = 0;
 	if (n == NULL) {
 		TRACE(("evaltree(NULL) called\n"));
 		exitstatus = 0;
@@ -201,18 +210,15 @@ evaltree(n, flags)
 	TRACE(("evaltree(0x%lx: %d) called\n", (long)n, n->type));
 	switch (n->type) {
 	case NSEMI:
-		evaltree(n->nbinary.ch1, 0);
+		evaltree(n->nbinary.ch1, flags & EV_TESTED);
 		if (evalskip)
 			goto out;
 		evaltree(n->nbinary.ch2, flags);
 		break;
 	case NAND:
 		evaltree(n->nbinary.ch1, EV_TESTED);
-		if (evalskip || exitstatus != 0) {
-			/* don't bomb out on "set -e; false && true" */
-			flags |= EV_TESTED;
+		if (evalskip || exitstatus != 0)
 			goto out;
-		}
 		evaltree(n->nbinary.ch2, flags);
 		break;
 	case NOR:
@@ -229,6 +235,7 @@ evaltree(n, flags)
 		break;
 	case NSUBSHELL:
 		evalsubshell(n, flags);
+		do_etest = !(flags & EV_TESTED);
 		break;
 	case NBACKGND:
 		evalsubshell(n, flags);
@@ -247,10 +254,10 @@ evaltree(n, flags)
 	}
 	case NWHILE:
 	case NUNTIL:
-		evalloop(n);
+		evalloop(n, flags);
 		break;
 	case NFOR:
-		evalfor(n);
+		evalfor(n, flags);
 		break;
 	case NCASE:
 		evalcase(n, flags);
@@ -266,9 +273,11 @@ evaltree(n, flags)
 
 	case NPIPE:
 		evalpipe(n);
+		do_etest = !(flags & EV_TESTED);
 		break;
 	case NCMD:
 		evalcommand(n, flags, (struct backcmd *)NULL);
+		do_etest = !(flags & EV_TESTED);
 		break;
 	default:
 		out1fmt("Node type = %d\n", n->type);
@@ -278,14 +287,15 @@ evaltree(n, flags)
 out:
 	if (pendingsigs)
 		dotrap();
-	if ((flags & EV_EXIT) || (eflag && exitstatus && !(flags & EV_TESTED)))
+	if ((flags & EV_EXIT) || (eflag && exitstatus && do_etest))
 		exitshell(exitstatus);
 }
 
 
 STATIC void
-evalloop(n)
+evalloop(n, flags)
 	union node *n;
+	int flags;
 {
 	int status;
 
@@ -309,7 +319,7 @@ skipping:	  if (evalskip == SKIPCONT && --skipcount <= 0) {
 			if (exitstatus == 0)
 				break;
 		}
-		evaltree(n->nbinary.ch2, 0);
+		evaltree(n->nbinary.ch2, flags & EV_TESTED);
 		status = exitstatus;
 		if (evalskip)
 			goto skipping;
@@ -321,8 +331,9 @@ skipping:	  if (evalskip == SKIPCONT && --skipcount <= 0) {
 
 
 STATIC void
-evalfor(n)
+evalfor(n, flags)
     union node *n;
+    int flags;
 {
 	struct arglist arglist;
 	union node *argp;
@@ -343,7 +354,7 @@ evalfor(n)
 	loopnest++;
 	for (sp = arglist.list ; sp ; sp = sp->next) {
 		setvar(n->nfor.var, sp->text, 0);
-		evaltree(n->nfor.body, 0);
+		evaltree(n->nfor.body, flags & EV_TESTED);
 		if (evalskip) {
 			if (evalskip == SKIPCONT && --skipcount <= 0) {
 				evalskip = 0;

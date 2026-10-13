@@ -1,5 +1,5 @@
 #if	!defined(lint) && !defined(DOS)
-static char rcsid[] = "$Id: window.c,v 1.1.1.1 1999/04/15 17:45:14 wsanchez Exp $";
+static char rcsid[] = "$Id: window.c,v 4.9 1998/02/28 00:10:21 hubert Exp $";
 #endif
 /*
  * Program:	Window management routines
@@ -15,28 +15,16 @@ static char rcsid[] = "$Id: window.c,v 1.1.1.1 1999/04/15 17:45:14 wsanchez Exp 
  *
  * Please address all bugs and comments to "pine-bugs@cac.washington.edu"
  *
- * Copyright 1991-1993  University of Washington
  *
- *  Permission to use, copy, modify, and distribute this software and its
- * documentation for any purpose and without fee to the University of
- * Washington is hereby granted, provided that the above copyright notice
- * appears in all copies and that both the above copyright notice and this
- * permission notice appear in supporting documentation, and that the name
- * of the University of Washington not be used in advertising or publicity
- * pertaining to distribution of the software without specific, written
- * prior permission.  This software is made available "as is", and
- * THE UNIVERSITY OF WASHINGTON DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED,
- * WITH REGARD TO THIS SOFTWARE, INCLUDING WITHOUT LIMITATION ALL IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE, AND IN
- * NO EVENT SHALL THE UNIVERSITY OF WASHINGTON BE LIABLE FOR ANY SPECIAL,
- * INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
- * LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, TORT
- * (INCLUDING NEGLIGENCE) OR STRICT LIABILITY, ARISING OUT OF OR IN CONNECTION
- * WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
- *
- * Pine and Pico are trademarks of the University of Washington.
- * No commercial use of these trademarks may be made without prior
- * written permission of the University of Washington.
+ * Pine and Pico are registered trademarks of the University of Washington.
+ * No commercial use of these trademarks may be made without prior written
+ * permission of the University of Washington.
+ * 
+ * Pine, Pico, and Pilot software and its included text are Copyright
+ * 1989-1998 by the University of Washington.
+ * 
+ * The full text of our legal notices is contained in the file called
+ * CPYRIGHT, included with this distribution.
  *
  */
 /*
@@ -44,11 +32,7 @@ static char rcsid[] = "$Id: window.c,v 1.1.1.1 1999/04/15 17:45:14 wsanchez Exp 
  * attached to keys that the user actually types.
  */
 
-#include        <stdio.h>
-#include        "estruct.h"
-#include        "pico.h"
-#include	"edef.h"
-#include	"osdep.h"
+#include	"headers.h"
 
 
 /*
@@ -62,12 +46,12 @@ refresh(f, n)
      * since pine mode isn't using the traditional mode line, sgarbf isn't
      * enough.
      */
-    if(Pmaster)
+    if(Pmaster && curwp)
         curwp->w_flag |= WFMODE;
 
     if (f == FALSE)
         sgarbf = TRUE;
-    else{
+    else if(curwp){
         curwp->w_force = 0;             /* Center dot. */
         curwp->w_flag |= WFFORCE;
     }

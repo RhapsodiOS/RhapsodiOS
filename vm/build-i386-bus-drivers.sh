@@ -1,6 +1,6 @@
 #!/bin/sh
-# Build i386 drvPCIBus, drvEISABus, drvPCMCIABus, Intel824X0PCI,
-# Intel82365PCMCIA; stage reloc bundles.
+# Build i386 Intel824X0PCI and Intel82365PCMCIA; stage chipset reloc bundles.
+# EISA, PCI and PCMCIA bus classes are built into drvPExpert by the kernel build.
 # Userspace helpers (PostLoad/PnPDump) often fail on a PPC host — accept
 # success when the loadable *_reloc exists.
 # Do not use set -e: NeXT /bin/sh treats `return 1` from a function as fatal
@@ -17,9 +17,9 @@ if [ ! -L "$FW/PrivateHeaders" ]; then
 fi
 
 build_one() {
-	name="$1"	# PCIBus / EISABus / PCMCIABus
-	dir="$2"	# drvPCIBus / ...
-	proj="$3"	# PCIBus.drvproj / ...
+	name="$1"	# Intel824X0 / PCIC
+	dir="$2"	# Intel824X0PCI / Intel82365PCMCIA
+	proj="$3"	# Intel824X0.drvproj / PCIC.drvproj
 	src="$BUS/$dir"
 	if [ ! -f "$src/Makefile" ]; then
 		echo "MISSING $src/Makefile" >&2
@@ -114,18 +114,6 @@ want() {
 fail=0
 built=
 # Use `|| fail=1` so one driver's failure does not stop the others from building.
-if want drvPCIBus "$@"; then
-	build_one PCIBus drvPCIBus PCIBus.drvproj || fail=1
-	built="$built drvPCIBus"
-fi
-if want drvEISABus "$@"; then
-	build_one EISABus drvEISABus EISABus.drvproj || fail=1
-	built="$built drvEISABus"
-fi
-if want drvPCMCIABus "$@"; then
-	build_one PCMCIABus drvPCMCIABus PCMCIABus.drvproj || fail=1
-	built="$built drvPCMCIABus"
-fi
 if want Intel824X0PCI "$@"; then
 	build_one Intel824X0 Intel824X0PCI Intel824X0.drvproj || fail=1
 	built="$built Intel824X0PCI"

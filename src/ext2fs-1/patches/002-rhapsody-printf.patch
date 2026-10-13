@@ -1,0 +1,119 @@
+--- a/e2fsck/message.c
++++ b/e2fsck/message.c
+@@ -255,7 +255,7 @@
+ 			else
+ 				printf("%u", inode->i_size);
+ #else
+-			printf("%llu", (inode->i_size | 
++			printf("%" EXT2FS_LLFMT "u", (inode->i_size | 
+ 					((__u64) inode->i_size_high << 32)));
+ #endif
+ 		}
+@@ -358,7 +358,7 @@
+ #ifdef EXT2_NO_64_TYPE
+ 		printf("%d", ctx->blkcount);
+ #else
+-		printf("%lld", ctx->blkcount);
++		printf("%" EXT2FS_LLFMT "d", ctx->blkcount);
+ #endif
+ 		break;
+ 	case 'c':
+@@ -383,7 +383,7 @@
+ #ifdef EXT2_NO_64_TYPE
+ 		printf("%u", ctx->num);
+ #else
+-		printf("%llu", ctx->num);
++		printf("%" EXT2FS_LLFMT "u", ctx->num);
+ #endif
+ 		break;
+ 	case 'p':
+@@ -409,7 +409,7 @@
+ #ifdef EXT2_NO_64_TYPE
+ 		printf("0x%x", ctx->num);
+ #else
+-		printf("0x%llx", ctx->num);
++		printf("0x%" EXT2FS_LLFMT "x", ctx->num);
+ #endif
+ 		break;
+ 	default:
+--- a/debugfs/debugfs.c
++++ b/debugfs/debugfs.c
+@@ -317,9 +317,9 @@
+ 	else
+ 		fprintf(lb->f, ", ");
+ 	if (lb->first_block == lb->last_block)
+-		fprintf(lb->f, "(%lld):%d", lb->first_bcnt, lb->first_block);
++		fprintf(lb->f, "(%" EXT2FS_LLFMT "d):%d", lb->first_bcnt, lb->first_block);
+ 	else
+-		fprintf(lb->f, "(%lld-%lld):%d-%d", lb->first_bcnt,
++		fprintf(lb->f, "(%" EXT2FS_LLFMT "d-%" EXT2FS_LLFMT "d):%d-%d", lb->first_bcnt,
+ 			lb->last_bcnt, lb->first_block, lb->last_block);
+ 	lb->first_block = 0;
+ }
+@@ -383,7 +383,7 @@
+ 			     list_blocks_proc, (void *)&lb);
+ 	finish_range(&lb);
+ 	if (lb.total)
+-		fprintf(f, "\n%sTOTAL: %lld\n", prefix, lb.total);
++		fprintf(f, "\n%sTOTAL: %" EXT2FS_LLFMT "d\n", prefix, lb.total);
+ 	fprintf(f,"\n");
+ }
+ 
+@@ -414,7 +414,7 @@
+ 		__u64 i_size = (inode->i_size |
+ 				((unsigned long long)inode->i_size_high << 32));
+ 
+-		fprintf(out, "%lld\n", i_size);
++		fprintf(out, "%" EXT2FS_LLFMT "d\n", i_size);
+ 	} else
+ 		fprintf(out, "%d\n", inode->i_size);
+ 	if (current_fs->super->s_creator_os == EXT2_OS_HURD)
+--- a/debugfs/htree.c
++++ b/debugfs/htree.c
+@@ -371,7 +371,7 @@
+ 		    p->len == (dirent->name_len & 0xFF) && 
+ 		    strncmp(p->search_name, dirent->name,
+ 			    p->len) == 0) {
+-			printf("Entry found at logical block %lld, "
++			printf("Entry found at logical block %" EXT2FS_LLFMT "d, "
+ 			       "phys %d, offset %d\n", blockcnt,
+ 			       *blocknr, offset);
+ 			printf("offset %d\n", offset);
+--- a/debugfs/ls.c
++++ b/debugfs/ls.c
+@@ -92,7 +92,7 @@
+ 		if (LINUX_S_ISDIR(inode.i_mode))
+ 			fprintf(ls->f, "%5d", inode.i_size);
+ 		else
+-			fprintf(ls->f, "%5lld", inode.i_size |
++			fprintf(ls->f, "%5" EXT2FS_LLFMT "d", inode.i_size |
+ 				((__u64)inode.i_size_high << 32));
+ 		fprintf (ls->f, " %s %s\n", datestr, name);
+ 	} else {
+--- a/debugfs/lsdel.c
++++ b/debugfs/lsdel.c
+@@ -188,7 +188,7 @@
+ 	      deleted_info_compare);
+ 	
+ 	for (i = 0; i < num_delarray; i++) {
+-		fprintf(out, "%6u %6d %6o %6llu %4d/%4d %s", delarray[i].ino,
++		fprintf(out, "%6u %6d %6o %6" EXT2FS_LLFMT "u %4d/%4d %s", delarray[i].ino,
+ 		       delarray[i].uid, delarray[i].mode, delarray[i].size,
+ 		       delarray[i].free_blocks, delarray[i].num_blocks, 
+ 		       time_to_string(delarray[i].dtime));
+--- a/lib/ext2fs/ext2fs.h
++++ b/lib/ext2fs/ext2fs.h
+@@ -11,6 +11,13 @@
+ 
+ #ifndef _EXT2FS_EXT2FS_H
+ #define _EXT2FS_EXT2FS_H
++
++/* Rhapsody stdio uses the BSD quad modifier, not C99 ll. */
++#ifdef __Rhapsody__
++#define EXT2FS_LLFMT "q"
++#else
++#define EXT2FS_LLFMT "ll"
++#endif
+ 
+ #ifdef __GNUC__
+ #define EXT2FS_ATTR(x) __attribute__(x)

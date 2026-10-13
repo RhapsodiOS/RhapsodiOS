@@ -90,7 +90,7 @@ enum vtype	{ VNON, VREG, VDIR, VBLK, VCHR, VLNK, VSOCK, VFIFO, VBAD, VSTR,
 enum vtagtype	{
 	VT_NON, VT_UFS, VT_NFS, VT_MFS, VT_MSDOSFS, VT_LFS, VT_LOFS, VT_FDESC,
 	VT_PORTAL, VT_NULL, VT_UMAP, VT_KERNFS, VT_PROCFS, VT_AFS, VT_ISOFS,
-	VT_UNION, VT_HFS, VT_VOLFS, VT_OTHER};
+	VT_UNION, VT_HFS, VT_VOLFS, VT_OTHER, VT_EXT2FS};
 
 /*
  * Each underlying filesystem allocates its own private area and hangs

@@ -118,5 +118,66 @@ class TestRefusals(unittest.TestCase):
             self.write(esp=b"x" * 512)
 
 
+class TestBootImage(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.tmp = tempfile.TemporaryDirectory()
+        cls.path = os.path.join(cls.tmp.name, "boot.img")
+        cls.g, cls.total = hdimage.boot_image(cls.path, 16384, BOOT0, BOOT1,
+                                              BOOT2, NODES, NOW)
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.tmp.cleanup()
+
+    def read(self, lba, n=1):
+        with open(self.path, "rb") as f:
+            f.seek(lba * 512)
+            return f.read(n * 512)
+
+    def test_boot_image_layout(self):
+        mbr = self.read(0)
+        self.assertEqual(mbr[:446], BOOT0)
+        self.assertEqual(mbr[462:510], bytes(48))
+        self.assertEqual(mbr[510:], b"\x55\xaa")
+        active, systid, start, size = (mbr[446], mbr[450],
+                                       *struct.unpack_from("<II", mbr, 454))
+        self.assertEqual((active, systid, start), (0x80, 0xA7, 63))
+        self.assertEqual(self.read(63), BOOT1)
+        for rel in (64, 192):
+            self.assertEqual(self.read(63 + rel, 80), BOOT2)
+        copy = self.read(63 + 15, 2)
+        self.assertEqual(copy[:4], b"dlV3")
+        with rhap_image.Image(self.path) as img:
+            self.assertEqual(img.label["p_base"], 63)
+            self.assertEqual(img.part_start, (63 + 320) * 512)
+        self.assertEqual(readback.diff(self.path, NODES), [])
+        self.assertEqual(ufs_check.check(self.path), [])
+
+    def test_boot_image_is_16_mb(self):
+        self.assertEqual(self.total, hdimage.BOOT_IMAGE_SECTORS)
+        self.assertEqual(os.path.getsize(self.path), 16 * 1024 * 1024)
+
+    def test_boot_image_ends_on_a_cylinder(self):
+        heads, spt = bui.lba_assist_geometry(32768)
+        mbr = self.read(0)
+        start, size = struct.unpack_from("<II", mbr, 454)
+        self.assertEqual((start + size) % (heads * spt), 0)
+        self.assertGreater(start + size, 32768 - heads * spt)
+        self.assertEqual(mbr[446:462], bui._part_entry(
+            0xA7, start, size, (heads, spt), active=True))
+
+    def test_boot_image_refuses_too_much(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaises(hdimage.ImageError):
+                hdimage.boot_image(os.path.join(tmp, "b.img"), 40000, BOOT0,
+                                   BOOT1, BOOT2, NODES, NOW)
+            big = NODES + [Node("/big", "reg", 0o644, 0, 0, NOW,
+                                bytes(20 * 1024 * 1024))]
+            with self.assertRaises(hdimage.ImageError):
+                hdimage.boot_image(os.path.join(tmp, "b.img"), 16384, BOOT0,
+                                   BOOT1, BOOT2, big, NOW)
+
+
 if __name__ == "__main__":
     unittest.main()

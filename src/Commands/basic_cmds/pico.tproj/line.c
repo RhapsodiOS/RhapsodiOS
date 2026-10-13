@@ -1,5 +1,5 @@
 #if	!defined(lint) && !defined(DOS)
-static char rcsid[] = "$Id: line.c,v 1.1.1.1 1999/04/15 17:45:12 wsanchez Exp $";
+static char rcsid[] = "$Id: line.c,v 4.25 2001/10/18 20:13:04 jpf Exp $";
 #endif
 /*
  * Program:	Line management routines
@@ -15,28 +15,16 @@ static char rcsid[] = "$Id: line.c,v 1.1.1.1 1999/04/15 17:45:12 wsanchez Exp $"
  *
  * Please address all bugs and comments to "pine-bugs@cac.washington.edu"
  *
- * Copyright 1991-1993  University of Washington
  *
- *  Permission to use, copy, modify, and distribute this software and its
- * documentation for any purpose and without fee to the University of
- * Washington is hereby granted, provided that the above copyright notice
- * appears in all copies and that both the above copyright notice and this
- * permission notice appear in supporting documentation, and that the name
- * of the University of Washington not be used in advertising or publicity
- * pertaining to distribution of the software without specific, written
- * prior permission.  This software is made available "as is", and
- * THE UNIVERSITY OF WASHINGTON DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED,
- * WITH REGARD TO THIS SOFTWARE, INCLUDING WITHOUT LIMITATION ALL IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE, AND IN
- * NO EVENT SHALL THE UNIVERSITY OF WASHINGTON BE LIABLE FOR ANY SPECIAL,
- * INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
- * LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, TORT
- * (INCLUDING NEGLIGENCE) OR STRICT LIABILITY, ARISING OUT OF OR IN CONNECTION
- * WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
- *
- * Pine and Pico are trademarks of the University of Washington.
- * No commercial use of these trademarks may be made without prior
- * written permission of the University of Washington.
+ * Pine and Pico are registered trademarks of the University of Washington.
+ * No commercial use of these trademarks may be made without prior written
+ * permission of the University of Washington.
+ * 
+ * Pine, Pico, and Pilot software and its included text are Copyright
+ * 1989-2001 by the University of Washington.
+ * 
+ * The full text of our legal notices is contained in the file called
+ * CPYRIGHT, included with this distribution.
  *
  */
 /*
@@ -52,28 +40,44 @@ static char rcsid[] = "$Id: line.c,v 1.1.1.1 1999/04/15 17:45:12 wsanchez Exp $"
  * which means that the dot and mark values in the buffer headers are nonsense.
  */
 
-#include        <stdio.h>
-#include	"estruct.h"
-#include	"pico.h"
-#include        "edef.h"
-#include        "efunc.h"
-
-
-#ifdef	ANSI
-    int insspace(int, int);
-    int ldelnewline(void);
-#else
-    int insspace();
-    int ldelnewline();
-#endif
-
+#include	"headers.h"
 
 #define NBLOCK	16                      /* Line block chunk size        */
 #define KBLOCK  1024                    /* Kill buffer block size       */
 
-char    *kbufp  = NULL;                 /* Kill buffer data             */
-unsigned kused   = 0;                   /* # of bytes used in KB        */
-unsigned ksize   = 0;                   /* # of bytes allocated in KB   */
+
+/*
+ * Struct to manage the kill and justify buffers
+ */
+struct pkchunk {
+    short	    used;		/* # of bytes used in this buffer*/
+    char	    bufp[KBLOCK];	/* buffer containing text        */
+    struct pkchunk *next;		/* pointer to next chunk	 */
+};
+
+static struct pkbuf {
+    long	    total;		/* # of bytes used in buffer     */
+    struct pkchunk *first;		/* first one of these in the chain */
+    struct pkchunk *last;		/* last one of these in the chain */
+} *kbufp, *fbufp;
+
+
+#ifdef	ANSI
+    void insspace(int, int);
+    int ldelnewline(void);
+    void pkbufdel(struct pkbuf **);
+    void pkchunkdel(struct pkchunk **);
+    int pkbufinsert(int, struct pkbuf **);
+    int pkbufremove(int, struct pkbuf *);
+#else
+    void insspace();
+    int ldelnewline();
+    void pkbufdel();
+    void pkchunkdel();
+    int pkbufinsert();
+    int pkbufremove();
+#endif
+
 
 /*
  * This routine allocates a block of memory large enough to hold a LINE
@@ -87,10 +91,11 @@ register int    used;
 {
     register LINE   *lp;
     register int    size;
-    char *malloc();
 
-    size = (used+NBLOCK-1) & ~(NBLOCK-1);
-    if (size == 0)                          /* Assume that an empty */
+    if((size = (used+NBLOCK-1) & ~(NBLOCK-1)) > NLINE)
+      size *= 2;
+
+    if (size == 0)                    /* Assume that an empty */
       size = NBLOCK;                  /* line is for type-in. */
 
     if ((lp = (LINE *) malloc(sizeof(LINE)+(size*sizeof(CELL)))) == NULL) {
@@ -109,6 +114,7 @@ register int    used;
  * might be in. Release the memory. The buffers are updated too; the magic
  * conditions described in the above comments don't hold here.
  */
+void
 lfree(lp)
 register LINE   *lp;
 {
@@ -163,6 +169,7 @@ register LINE   *lp;
  * displayed in more than 1 window we change EDIT t HARD. Set MODE if the
  * mode line needs to be updated (the "*" has to be set).
  */
+void
 lchange(flag)
 register int    flag;
 {
@@ -190,6 +197,7 @@ register int    flag;
  * insert spaces forward into text
  * default flag and numeric argument 
  */
+void
 insspace(f, n)	
 int f, n;
 {
@@ -221,15 +229,15 @@ int n, c;
     lchange(WFEDIT);
 
     if(!geninsert(&(curwp->w_dotp), &(curwp->w_doto), curbp->b_linep,
-                  c, (curwp->w_markp) ? 1 : 0, n))
+                  c, (curwp->w_markp) ? 1 : 0, n, &curbp->b_linecnt))
       return(FALSE);
 
-    wp = wheadp;                            /* Update windows       */
+    wp = wheadp;				/* Update windows       */
     while (wp != NULL) {
 	if (wp->w_linep == dotp)
 	  wp->w_linep = wp->w_dotp;
 
-	if (wp->w_imarkp == dotp) {	/* added for internal mark */
+	if (wp->w_imarkp == dotp) {		/* added for internal mark */
 	    wp->w_imarkp = wp->w_dotp;
 	    if (wp->w_imarko > doto)
 	      wp->w_imarko += n;
@@ -252,10 +260,11 @@ int n, c;
  *             the list of lines.
  */
 int
-geninsert(dotp, doto, linep, c, attb, n)
+geninsert(dotp, doto, linep, c, attb, n, lines)
 LINE **dotp, *linep;
-short *doto;
+int   *doto;
 int    c, attb, n;
+long  *lines;
 {
     register LINE  *lp1;
     register LINE  *lp2;
@@ -285,6 +294,9 @@ int    c, attb, n;
         while(n--)
 	  *cp1++ = ac;
 
+	if(lines)
+	  (*lines)++;
+
 	return (TRUE);
     }
 
@@ -305,6 +317,16 @@ int    c, attb, n;
 	lp1->l_fp = (*dotp)->l_fp;
 	(*dotp)->l_fp->l_bp = lp1;
 	lp1->l_bp = (*dotp)->l_bp;
+
+	/* global may be keeping track of mark/imark */
+	if(wheadp){
+	    if (wheadp->w_imarkp == *dotp)
+	      wheadp->w_imarkp = lp1;
+
+	    if (wheadp->w_markp == *dotp)
+	      wheadp->w_markp = lp1;
+	}
+
 	free((char *) (*dotp));
 	*dotp = lp1;
     } else {                                /* Easy: in place       */
@@ -328,7 +350,7 @@ int    c, attb, n;
  * current window. The funny ass-backwards way it does things is not a botch;
  * it just makes the last line in the file not a special case. Return TRUE if
  * everything works out and FALSE on error (memory allocation failure). The
- * update of dot and mark is a bit easier then in the above case, because the
+ * update of dot and mark is a bit easier than in the above case, because the
  * split forces more updating.
  */
 lnewline()
@@ -391,6 +413,10 @@ lnewline()
 	wp = wp->w_wndp;
     }
 
+    /*
+     * Keep track of the number of lines in the buffer.
+     */
+    ++curbp->b_linecnt;
     return (TRUE);
 }
 
@@ -399,10 +425,11 @@ lnewline()
  * This function deletes "n" bytes, starting at dot. It understands how do deal
  * with end of lines, etc. It returns TRUE if all of the characters were
  * deleted, and FALSE if they were not (because dot ran into the end of the
- * buffer. The "kflag" is TRUE if the text should be put in the kill buffer.
+ * buffer. The "preserve" function is used to save what was deleted.
  */
-ldelete(n, kflag)
-int n, kflag;
+ldelete(n, preserve)
+long n;
+int (*preserve) PROTO((int));
 {
     register CELL   *cp1;
     register CELL   *cp2;
@@ -425,7 +452,7 @@ int n, kflag;
 	if (chunk == 0) {               /* End of line, merge.  */
 	    lchange(WFHARD);
 	    if (ldelnewline() == FALSE
-		|| (kflag!=FALSE && kinsert('\n')==FALSE))
+		|| (preserve ? (*preserve)('\n') == FALSE : 0))
 	      return (FALSE);
 	    --n;
 	    continue;
@@ -434,9 +461,9 @@ int n, kflag;
 	lchange(WFEDIT);
 	cp1 = &dotp->l_text[doto];      /* Scrunch text.        */
 	cp2 = cp1 + chunk;
-	if (kflag != FALSE) {           /* Kill?                */
+	if (preserve) {           /* Kill?                */
 	    while (cp1 != cp2) {
-		if (kinsert(cp1->c) == FALSE)
+		if ((*preserve)(cp1->c) == FALSE)
 		  return (FALSE);
 		++cp1;
 	    }
@@ -472,6 +499,11 @@ int n, kflag;
 	n -= chunk;
     }
 
+#ifdef _WINDOWS
+    if (preserve == kinsert && ksize() > 0)
+      mswin_killbuftoclip (kremove);
+#endif
+
     return (TRUE);
 }
 
@@ -499,8 +531,11 @@ ldelnewline()
     lp1 = curwp->w_dotp;
     lp2 = lp1->l_fp;
     if (lp2 == curbp->b_linep) {            /* At the buffer end.   */
-	if (lp1->l_used == 0)           /* Blank line.          */
-	  lfree(lp1);
+	if (lp1->l_used == 0) {             /* Blank line.          */
+	    lfree(lp1);
+	    --curbp->b_linecnt;
+	}
+
 	return (TRUE);
     }
 
@@ -528,6 +563,7 @@ ldelnewline()
 	lp1->l_fp = lp2->l_fp;
 	lp2->l_fp->l_bp = lp1;
 	free((char *) lp2);
+	--curbp->b_linecnt;
 	return (TRUE);
     }
 
@@ -568,23 +604,73 @@ ldelnewline()
 
     free((char *) lp1);
     free((char *) lp2);
+    --curbp->b_linecnt;
     return (TRUE);
 }
+
+
+/*
+ * Tell the caller if the given line is blank or not.
+ */
+lisblank(line)
+    LINE *line;
+{
+    int n = 0;
+    char qstr[NLINE];
+
+    n = (Pmaster && Pmaster->quote_str && quote_match(Pmaster->quote_str,line,qstr,NLINE))
+	  ? strlen(qstr) : 0;
+
+    for(; n < llength(line); n++)
+      if(!isspace((unsigned char) lgetc(line, n).c))
+	return(FALSE);
+
+    return(TRUE);
+}
+
 
 /*
  * Delete all of the text saved in the kill buffer. Called by commands when a
  * new kill context is being created. The kill buffer array is released, just
  * in case the buffer has grown to immense size. No errors.
  */
+void
 kdelete()
 {
-    if (kbufp != NULL) {
-	free((char *) kbufp);
-	kbufp = NULL;
-	kused = 0;
-	ksize = 0;
+    pkbufdel(&kbufp);
+}
+
+void
+fdelete()
+{
+    pkbufdel(&fbufp);
+}
+
+void
+pkbufdel(buf)
+    struct pkbuf **buf;
+{
+    if (*buf) {
+	pkchunkdel(&(*buf)->first);
+	free((char *) *buf);
+	*buf = NULL;
     }
 }
+
+
+void
+pkchunkdel(chunk)
+    struct pkchunk **chunk;
+{
+    if(chunk){
+	if((*chunk)->next)
+	  pkchunkdel(&(*chunk)->next);
+
+	free((char *) *chunk);
+	*chunk = NULL;
+    }
+}
+
 
 /*
  * Insert a character to the kill buffer, enlarging the buffer if there isn't
@@ -592,39 +678,89 @@ kdelete()
  * put something in the kill buffer you are going to put more stuff there too
  * later. Return TRUE if all is well, and FALSE on errors.
  */
-
 kinsert(c)
     int c;
 {
-    register char   *nbufp;
-    char *realloc();
-    char *malloc();
+    return(pkbufinsert(c, &kbufp));
+}
 
-    if (kused == ksize) {
-	if (ksize == 0)	/* first time through? */
-	  nbufp = malloc(KBLOCK);	/* alloc the first block */
-	else	/* or re allocate a bigger block */
-	  nbufp = realloc(kbufp, ksize+KBLOCK);
-	if (nbufp == NULL)		/* abort if it fails */
+finsert(c)
+    int c;
+{
+    return(pkbufinsert(c, &fbufp));
+}
+
+pkbufinsert(c, buf)
+    int c;
+    struct pkbuf **buf;
+{
+    if(!*buf){
+	if(*buf = (struct pkbuf *) malloc(sizeof(struct pkbuf)))
+	  memset(*buf, 0, sizeof(struct pkbuf));
+	else
 	  return(FALSE);
-	kbufp  = nbufp;		/* point our global at it */
-	ksize += KBLOCK;	/* and adjust the size */
     }
 
-    kbufp[kused++] = c;
+    if((*buf)->total % KBLOCK == 0){
+	struct pkchunk *p = (*buf)->last;
+	if((*buf)->last = (struct pkchunk *) malloc(sizeof(struct pkchunk))){
+	    memset((*buf)->last, 0, sizeof(struct pkchunk));
+	    if(p)
+	      p->next = (*buf)->last;
+	    else
+	      (*buf)->first = (*buf)->last;
+	}
+	else
+	  return(FALSE);
+    }
+
+    (*buf)->last->bufp[(*buf)->last->used++] = c;
+    (*buf)->total++;
     return (TRUE);
 }
 
+
 /*
- * This function gets characters from the kill buffer. If the character index
- * "n" is off the end, it returns "-1". This lets the caller just scan along
- * until it gets a "-1" back.
+ * These functions get characters from the requested buffer. If the
+ * character index "n" is off the end, it returns "-1". This lets the
+ * caller just scan along until it gets a "-1" back.
  */
 kremove(n)
-int n;
+    int n;
 {
-    if (n >= kused)
-      return (-1);
+    return(pkbufremove(n, kbufp));
+}
+
+fremove(n)
+    int n;
+{
+    return(pkbufremove(n, fbufp));
+}
+
+
+pkbufremove(n, buf)
+    int n;
+    struct pkbuf *buf;
+{
+    if(n >= 0 && buf && n < buf->total){
+	register struct pkchunk *p = buf->first;
+	int			 block = n / KBLOCK;
+
+	while(block--)
+	  if(!(p = p->next))
+	    return(-1);
+
+	return(p->bufp[n % KBLOCK] & 0xff);
+    }
     else
-      return (kbufp[n] & 0xFF);
+      return(-1);
+}
+
+
+/*
+ * This function just returns the current size of the kill buffer
+ */
+ksize()
+{
+    return(kbufp ? (int) kbufp->total : 0);
 }

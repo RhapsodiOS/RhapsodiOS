@@ -1,0 +1,4 @@
+VPATH += ../common
+after_install:
+	mkdir -p $(DSTROOT)/usr/share/man/man8
+	install -m 444 fsck_ext2fs.8 $(DSTROOT)/usr/share/man/man8

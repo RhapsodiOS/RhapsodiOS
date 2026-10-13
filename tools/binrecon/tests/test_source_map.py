@@ -315,9 +315,9 @@ def test_source_map_semantics_rejects_noncanonical_source_paths(source_path):
         schema.validate_source_map_semantics(document)
 
 
-def test_loader_validates_the_committed_eisabus_source_map_schema_and_semantics():
+def test_loader_validates_the_historical_eisabus_source_map_schema_and_semantics():
     repo_root = Path(__file__).parents[3]
-    source_map = repo_root / "src/drivers-i386/bus/drvEISABus/reconstruction/source-map.json"
+    source_map = repo_root / "tools/binrecon/tests/fixtures/eisabus-source-map.json"
 
     document = schema.load_source_map(source_map)
 

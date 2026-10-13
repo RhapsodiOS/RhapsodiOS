@@ -9,6 +9,12 @@ the design's first risk: a system built only from our apks boots. The
 media reaches the installer's menus, and the pre-installed disk reaches a
 multi-user `login:` and accepts SSH, under SeaBIOS and under IA32 UEFI.
 
+(Before phase 5; now the media's installer is `sysinstall`, not CDIS's perl
+`rc.cdrom`. The media's Boot Drivers are generic, `build.py` checks for
+`sysinstall` and its tools instead of perl, and `/System/Installation/Packages`
+holds only the packages a set names. `docs/build/sysinstall.md` records the
+changes; the rest of this page is phase 4's.)
+
 | Module | Job |
 |---|---|
 | `collect.py` | Gathers the apks into one flat directory: the universal apks in the bootstrapped image's `/build/repo`, read in place, then each `--add` directory. A later build of a package replaces an earlier one |
@@ -165,6 +171,9 @@ image.
   - The pre-installed disk gets the link from the builder.
   - The media needs none, because the booters look in
     `/private/Drivers/i386` before `/usr/Devices`.
+    (Before phase 5; now the media carries the link too, because
+    `sysinstall`'s `driverDetect` reads the drivers through `/usr/Devices`.
+    See `docs/build/sysinstall.md`.)
 - **Logins need no `lookupd`.** `nibindd`, `lookupd` and `niutil` aren't
   built, so no NetInfo domain comes up. The console and SSH logins still
   work, because `getpwnam` reads `master.passwd`.

@@ -1,0 +1,26 @@
+{
+    DYNAMIC_CODE_GEN = YES;
+    FILESTABLE = {
+        CLASSES = ();
+        HEADERSEARCH = (..);
+        H_FILES = (lapic.h, ioapic.h, pcicfg.h);
+        OTHER_LINKED = (lapic.c, ioapic.c, pcicfg.c);
+        OTHER_SOURCES = (Makefile, Makefile.preamble);
+    };
+    LANGUAGE = English;
+    LOCALIZABLE_FILES = {};
+    MAKEFILEDIR = "$(MAKEFILEPATH)/pb_makefiles";
+    NEXTSTEP_BUILDTOOL = /bin/gnumake;
+    NEXTSTEP_COMPILEROPTIONS = "-Wno-format -DDRIVER_PRIVATE -static -DKERNEL -D_KERNEL";
+    NEXTSTEP_JAVA_COMPILER = /usr/bin/javac;
+    NEXTSTEP_OBJCPLUS_COMPILER = /usr/bin/cc;
+    PDO_UNIX_BUILDTOOL = $NEXT_ROOT/Developer/bin/make;
+    PDO_UNIX_JAVA_COMPILER = "$(NEXTDEV_BIN)/javac";
+    PDO_UNIX_OBJCPLUS_COMPILER = "$(NEXTDEV_BIN)/gcc";
+    PROJECTNAME = chips;
+    PROJECTTYPE = Component;
+    PROJECTVERSION = 2.7;
+    WINDOWS_BUILDTOOL = $NEXT_ROOT/Developer/Executables/make;
+    WINDOWS_JAVA_COMPILER = "$(JDKBINDIR)/javac.exe";
+    WINDOWS_OBJCPLUS_COMPILER = "$(DEVDIR)/gcc";
+}

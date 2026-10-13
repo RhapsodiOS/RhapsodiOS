@@ -16,12 +16,15 @@ RC_CFLAGS =
 
 APPLE_SUBDIRS = ar file
 # dyld (MH_DYLINKER) needs a static libc.a; stage-0 only has System.framework
-# as a dylib. Skip rebuilding host /usr/lib/dyld; libdyld/libmacho still build.
+# as a dylib, so dyld builds only once Libc's libc_static.a is installed.
 # otool links -static -lc_static, which does not exist until Libc is built
 # (after cctools in BootstrapManifest). Host already has /usr/bin/otool.
-# To build dyld/otool later: add them once libc_static.a exists.
+# To build otool later: add it once libc_static.a exists.
 COMMON_SUBDIRS = libstuff as gprof include misc ld libdyld \
 		 libmacho mkshlib profileServer RelNotes man
+ifneq "" "$(wildcard /usr/local/lib/libc_static.a)"
+  COMMON_SUBDIRS += dyld
+endif
 
 ifeq "nextstep" "$(RC_OS)"
   SUBDIRS = $(COMMON_SUBDIRS)

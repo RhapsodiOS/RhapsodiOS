@@ -1,4 +1,4 @@
-# $Id: makefile.aix,v 1.1.1.1 1999/04/15 17:45:13 wsanchez Exp $
+# $Id: makefile.aix,v 4.12 2001/10/23 22:18:36 hubert Exp $
 #
 #   Michael Seibel
 #   Networks and Distributed Computing
@@ -10,83 +10,79 @@
 #
 #   Please address all bugs and comments to "pine-bugs@cac.washington.edu"
 #
-#   Copyright 1991-1993  University of Washington
 #
-#    Permission to use, copy, modify, and distribute this software and its
-#   documentation for any purpose and without fee to the University of
-#   Washington is hereby granted, provided that the above copyright notice
-#   appears in all copies and that both the above copyright notice and this
-#   permission notice appear in supporting documentation, and that the name
-#   of the University of Washington not be used in advertising or publicity
-#   pertaining to distribution of the software without specific, written
-#   prior permission.  This software is made available "as is", and
-#   THE UNIVERSITY OF WASHINGTON DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED,
-#   WITH REGARD TO THIS SOFTWARE, INCLUDING WITHOUT LIMITATION ALL IMPLIED
-#   WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE, AND IN
-#   NO EVENT SHALL THE UNIVERSITY OF WASHINGTON BE LIABLE FOR ANY SPECIAL,
-#   INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
-#   LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, TORT
-#   (INCLUDING NEGLIGENCE) OR STRICT LIABILITY, ARISING OUT OF OR IN CONNECTION
-#   WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-#  
-#   Pine and Pico are trademarks of the University of Washington.
-#   No commercial use of these trademarks may be made without prior
-#   written permission of the University of Washington.
+#   Pine and Pico are registered trademarks of the University of Washington.
+#   No commercial use of these trademarks may be made without prior written
+#   permission of the University of Washington.
+#
+#   Pine, Pico, and Pilot software and its included text are Copyright
+#   1989-1998 by the University of Washington.
+#
+#   The full text of our legal notices is contained in the file called
+#   CPYRIGHT, included with this distribution.
 #
 
 #
-# Makefile for AIX on 3090 version of the PINE composer library and 
+# Makefile for AIX 370 version of the PINE composer library and 
 # stand-alone editor pico.
 #
 
-DASHO=		
+RM=          rm -f
+LN=          ln -s
+MAKE=        make
+OPTIMIZE=    # -O
+PROFILE=     # -pg
+DEBUG=       -g -DDEBUG
 
-#includes symbol info for debugging 
-CFLAGS=		-g -I/usr/include -Daix
-
-#for the normal library
-#CFLAGS=	-O -I/usr/include -Daix
+STDCFLAGS=	-I/usr/include -Daix -DMOUSE
+CFLAGS=         $(OPTIMIZE) $(PROFILE) $(DEBUG) $(EXTRACFLAGS) $(STDCFLAGS)
 
 # switches for library building
-LIBCMD=ar
-LIBARGS=ru
+LIBCMD=		ar
+LIBARGS=	ru
+RANLIB=		ranlib
 
-LIBS=		-ltermcap -lc
+LIBS=		$(EXTRALDFLAGS) -ltermcap -lc
 
-OFILES=		ansi.o attach.o basic.o bind.o browse.o buffer.o \
-		composer.o display.o file.o fileio.o line.o osdep.o \
-		pico.o random.o  region.o search.o spell.o tcap.o window.o word.o
+OFILES=		attach.o basic.o bind.o browse.o buffer.o \
+		composer.o display.o file.o fileio.o line.o pico_os.o \
+		pico.o random.o region.o search.o \
+		window.o word.o
 
-CFILES=		ansi.c attach.o basic.c bind.c browse.o buffer.c \
-		composer.c display.c file.c fileio.c line.c osdep.c \
-		pico.c random.c region.c search.c spell.c tcap.c window.c word.c
-
-HFILES=		estruct.h edef.h efunc.h ebind.h pico.h
-
+HFILES=		headers.h estruct.h edef.h efunc.h pico.h os.h
 
 #
 # dependencies for the Unix versions of pico and libpico.a
 #
-all:		pico
+all:		pico pilot
+pico pilot:	libpico.a
 
-osdep.c:	os_unix.c
-		rm -f osdep.c
-		cp os_unix.c osdep.c
+pico:		main.o
+		$(CC) $(CFLAGS) main.o libpico.a $(LIBS) -o pico
 
-osdep.h:	os_unix.h
-		rm -f osdep.h
-		cp os_unix.h osdep.h
+pilot:		pilot.o
+		$(CC) $(CFLAGS) pilot.o libpico.a $(LIBS) -o pilot
 
-libpico.a:	osdep.c osdep.h $(OFILES)
+libpico.a:	$(OFILES)
 		$(LIBCMD) $(LIBARGS) libpico.a $(OFILES)
-		ranlib libpico.a
-
-pico:		main.c libpico.a
-		$(CC) $(CFLAGS) main.c libpico.a $(LIBS) -o pico
-
-.c.o:		; $(CC) -c $(CFLAGS) $(DASHO) $*.c
-
-$(OFILES):	$(HFILES)
+		$(RANLIB) libpico.a
 
 clean:
-		rm -f *.a *.o *~ osdep.c osdep.h
+		rm -f *.a *.o *~ pico_os.c os.h pico pilot
+		cd osdep; $(MAKE) clean; cd ..
+
+os.h:		osdep/os-aix.h
+		$(RM) os.h
+		$(LN) osdep/os-aix.h os.h
+
+pico_os.c:	osdep/os-aix.c
+		$(RM) pico_os.c
+		$(LN) osdep/os-aix.c pico_os.c
+
+$(OFILES) main.o pilot.o:	$(HFILES)
+pico.o:				ebind.h
+
+osdep/os-aix.c:	osdep/header osdep/unix osdep/read.sel osdep/raw.brk \
+		osdep/spell.unx osdep/term.cap \
+		osdep/os-aix.ic
+		cd osdep; $(MAKE) includer os-aix.c; cd ..

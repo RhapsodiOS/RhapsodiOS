@@ -31,8 +31,5 @@
 /*
  * Keys used in system Default.table / Instance0.table
  */
-#define PROMPT_KEY	"Prompt For Driver Disk"
-#define NUM_PROMPTS_KEY	"Driver Disk Prompts"
-#define ASK_KEY		"Ask For Drivers"
 #define INSTALL_KEY	"Install Mode"
 #define VBE_MODE_KEY	"VBE Mode"

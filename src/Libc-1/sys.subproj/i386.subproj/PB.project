@@ -53,6 +53,7 @@
             getpriority.s, 
             getrlimit.s, 
             getrusage.s, 
+            getsid.s, 
             getsockname.s, 
             getsockopt.s, 
             getuid.s, 

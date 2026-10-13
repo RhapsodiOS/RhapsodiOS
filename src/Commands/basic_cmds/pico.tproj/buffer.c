@@ -1,5 +1,5 @@
 #if	!defined(lint) && !defined(DOS)
-static char rcsid[] = "$Id: buffer.c,v 1.1.1.1 1999/04/15 17:45:12 wsanchez Exp $";
+static char rcsid[] = "$Id: buffer.c,v 4.14 2001/06/21 17:49:51 hubert Exp $";
 #endif
 /*
  * Program:	Buffer management routines
@@ -15,28 +15,16 @@ static char rcsid[] = "$Id: buffer.c,v 1.1.1.1 1999/04/15 17:45:12 wsanchez Exp 
  *
  * Please address all bugs and comments to "pine-bugs@cac.washington.edu"
  *
- * Copyright 1991-1993  University of Washington
  *
- *  Permission to use, copy, modify, and distribute this software and its
- * documentation for any purpose and without fee to the University of
- * Washington is hereby granted, provided that the above copyright notice
- * appears in all copies and that both the above copyright notice and this
- * permission notice appear in supporting documentation, and that the name
- * of the University of Washington not be used in advertising or publicity
- * pertaining to distribution of the software without specific, written
- * prior permission.  This software is made available "as is", and
- * THE UNIVERSITY OF WASHINGTON DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED,
- * WITH REGARD TO THIS SOFTWARE, INCLUDING WITHOUT LIMITATION ALL IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE, AND IN
- * NO EVENT SHALL THE UNIVERSITY OF WASHINGTON BE LIABLE FOR ANY SPECIAL,
- * INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
- * LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, TORT
- * (INCLUDING NEGLIGENCE) OR STRICT LIABILITY, ARISING OUT OF OR IN CONNECTION
- * WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
- *
- * Pine and Pico are trademarks of the University of Washington.
- * No commercial use of these trademarks may be made without prior
- * written permission of the University of Washington.
+ * Pine and Pico are registered trademarks of the University of Washington.
+ * No commercial use of these trademarks may be made without prior written
+ * permission of the University of Washington.
+ * 
+ * Pine, Pico, and Pilot software and its included text are Copyright
+ * 1989-2001 by the University of Washington.
+ * 
+ * The full text of our legal notices is contained in the file called
+ * CPYRIGHT, included with this distribution.
  *
  */
 /*
@@ -46,50 +34,13 @@ static char rcsid[] = "$Id: buffer.c,v 1.1.1.1 1999/04/15 17:45:12 wsanchez Exp 
  * keys. Like everyone else, they set hints
  * for the display system.
  */
-#include        <stdio.h>
-#include	"osdep.h"
-#include	"estruct.h"
-#include        "pico.h"
-#include        "edef.h"
+#include	"headers.h"
 
 #ifdef	ANSI
-int zotbuf(struct BUFFER *);
 int sgetline(char **, int *, char *, int);
 #else
-int zotbuf();
 int sgetline();
 #endif
-
-
-zotbuf(bp)	/* kill the buffer pointed to by bp */
-  register BUFFER *bp;
-{
-    register BUFFER *bp1;
-    register BUFFER *bp2;
-    register int    s;
-
-        if (bp->b_nwnd != 0) {                  /* Error if on screen.  */
-                mlwrite("Buffer is being displayed");
-                return (FALSE);
-        }
-        if ((s=bclear(bp)) != TRUE)             /* Blow text away.      */
-                return (s);
-        free((char *) bp->b_linep);             /* Release header line. */
-        bp1 = NULL;                             /* Find the header.     */
-        bp2 = bheadp;
-        while (bp2 != bp) {
-                bp1 = bp2;
-                bp2 = bp2->b_bufp;
-        }
-        bp2 = bp2->b_bufp;                      /* Next one in chain.   */
-        if (bp1 == NULL)                        /* Unlink it.           */
-                bheadp = bp2;
-        else
-                bp1->b_bufp = bp2;
-        free((char *) bp);                      /* Release buffer block */
-        return (TRUE);
-}
-
 
 
 /*
@@ -125,7 +76,8 @@ anycb()
  */
 BUFFER  *
 bfind(bname, cflag, bflag)
-register char   *bname;
+     register char *bname;
+     int  cflag, bflag;
 {
         register BUFFER *bp;
 	register BUFFER *sb;	/* buffer to insert after */
@@ -135,7 +87,7 @@ register char   *bname;
         while (bp != NULL) {
                 if (strcmp(bname, bp->b_bname) == 0) {
                         if ((bp->b_flag&BFTEMP) != 0) {
-                                mlwrite("Cannot select builtin buffer");
+                                mlwrite("Cannot select builtin buffer", NULL);
                                 return (NULL);
                         }
                         return (bp);
@@ -204,7 +156,7 @@ register BUFFER *bp;
 	if(Pmaster){
 	    if ((bp->b_flag&BFTEMP) == 0 	/* Not scratch buffer.  */
 		&& (bp->b_flag&BFCHG) != 0){	/* Something changed    */
-		emlwrite("buffer lines not freed.");
+		emlwrite("buffer lines not freed.", NULL);
 		return (s);
 	    }
 	}
@@ -239,7 +191,6 @@ char	**buf;
 int	*blen;
 int	lcrlf;				/* EOLs are local or CRLF */
 {
-    register int    s;
     register int    i = 0;
     register LINE   *lp;
     register int    retval = 0;
@@ -317,6 +268,7 @@ int	lcrlf;				/* EOLs are local or CRLF */
 /*
  * readbuf - reads in a buffer.
  */
+void
 readbuf(buf)
 char	**buf;
 {

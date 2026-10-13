@@ -10,7 +10,7 @@ ProjectName           = OpenSSH
 UserType              = Administrator
 ToolType              = Services
 Extra_CC_Flags        = -Wno-precomp
-Extra_LD_Flags        = -L.
+Extra_LD_Flags        = -L. -Lopenbsd-compat
 # The system zlib is 1.1.3, which configure refuses unless told otherwise.
 Extra_Configure_Flags = --sysconfdir="/etc" --with-privsep-user=sshd --with-privsep-path=/var/empty --without-zlib-version-check
 Extra_Install_Flags   = sysconfdir="$(DSTROOT)$(ETCDIR)"

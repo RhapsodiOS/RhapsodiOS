@@ -291,6 +291,7 @@ int copyin(char *src, char *dst, vm_size_t count)
 
     if (len < MIN_TO_ALIGN) {
 	_fwd_char_copy_in(dst, src, len);
+	clear_recover();
 	return 0;
     }
 
@@ -340,6 +341,7 @@ int copywithin(char *src, char *dst, vm_size_t count)
 
     if (len < MIN_TO_ALIGN) {
 	_fwd_char_copy(dst, src, len);
+	clear_recover();
 	return 0;
     }
 
@@ -386,6 +388,7 @@ int copyout(char *src, char *dst, vm_size_t count)
 
     if (len < MIN_TO_ALIGN) {
 	_fwd_char_copy_out(dst, src, len);
+	clear_recover();
 	return 0;
     }
 

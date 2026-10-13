@@ -11,11 +11,9 @@ if (-not (Get-Variable -Name RhapVmDir -Scope Script -ErrorAction SilentlyContin
 }
 $script:RhapConfPath = Join-Path $script:RhapVmDir 'vm.conf'
 
-$script:RhapKnownHostsFile = Join-Path $env:TEMP 'rhap-known_hosts'
-if (-not (Test-Path -LiteralPath $script:RhapKnownHostsFile)) {
-    New-Item -ItemType File -Path $script:RhapKnownHostsFile -Force | Out-Null
-}
-$rhapKnownHostsOpt = ($script:RhapKnownHostsFile -replace '\\', '/')
+# Host keys are not kept: every guest is reached as 127.0.0.1:<port>, guests
+# from different images reuse ports, and a remembered key that has since changed
+# makes ssh refuse password logins even under StrictHostKeyChecking=no.
 $script:RhapLegacySshOptions = @(
     '-o', 'KexAlgorithms=+diffie-hellman-group1-sha1',
     '-o', 'HostKeyAlgorithms=+ssh-dss',
@@ -23,7 +21,7 @@ $script:RhapLegacySshOptions = @(
     '-o', 'MACs=+hmac-sha1',
     '-o', 'PubkeyAuthentication=no',
     '-o', 'StrictHostKeyChecking=no',
-    '-o', "UserKnownHostsFile=$rhapKnownHostsOpt",
+    '-o', 'UserKnownHostsFile=NUL',
     '-o', 'ServerAliveInterval=30',
     '-o', 'ServerAliveCountMax=120'
 )

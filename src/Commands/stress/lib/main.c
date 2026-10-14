@@ -46,6 +46,10 @@ static void
 on_stop(int sig)
 {
 	if (leader_pid > 0) {
+		/* TERM first so a test can undo what it changed (settime),
+		 * then KILL whatever is left. */
+		killpg(leader_pid, SIGTERM);
+		usleep(200000);
 		killpg(leader_pid, SIGKILL);
 		waitpid(leader_pid, NULL, 0);
 	}

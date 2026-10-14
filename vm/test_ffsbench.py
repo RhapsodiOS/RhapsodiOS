@@ -337,3 +337,10 @@ def test_stress_state():
     assert fb.stress_state(1.0, "") == "running"
     assert fb.stress_state(1.0, "\n") == "running"
     assert fb.stress_state(1.0, "3\n") == "3"
+
+
+def test_stress_state_ignores_ssh_noise():
+    warn = "Warning: Permanently added '10.10.0.240' to the list of known hosts."
+    assert fb.stress_state(1.0, warn) == "running"
+    assert fb.stress_state(1.0, warn + "\n0\n") == "0"
+    assert fb.stress_state(1.0, "137") == "137"

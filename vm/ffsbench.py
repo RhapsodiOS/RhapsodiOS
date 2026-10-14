@@ -973,7 +973,8 @@ def stress_state(t, out):
     "running" (no marker yet), else the run's exit status."""
     if t is None:
         return "lost"
-    return out.strip() or "running"
+    lines = [l.strip() for l in out.splitlines() if l.strip()]
+    return lines[-1] if lines and lines[-1].isdigit() else "running"
 
 
 def stress(kernel, label, cycles=1, bootargs="", cats=""):
@@ -986,11 +987,13 @@ def stress(kernel, label, cycles=1, bootargs="", cats=""):
     outdir = _new_outdir(label, "stress-0")
     hd1 = _fresh_hd1(outdir)
     g = Guest(outdir, hd1, _workload(), root_iops=IOPS)
-    res, texts, err = {}, [], None
+    res, texts, err, skipped = {}, [], None, False
     try:
         ssh = Ssh(conf)
         if kernel:
-            boot_test_kernel(g, ssh, kernel, bootargs)
+            if not boot_or_skip(g, ssh, kernel, bootargs, outdir):
+                skipped = True      # result.txt already holds the bootfail line
+                return
         elif not g.wait_sshd():
             raise SystemExit("sshd never answered")
         stress_dev.login(ssh)
@@ -1038,16 +1041,17 @@ def stress(kernel, label, cycles=1, bootargs="", cats=""):
                 _log(outdir, name, text)
                 if name.endswith(".out"):
                     texts.append(text)
-    except SystemExit as e:
-        res["error"] = str(e)
+    except BaseException as e:
+        res["error"] = str(e) if isinstance(e, SystemExit) else "%s: %s" % (type(e).__name__, e)
         err = e
     finally:
         g.quit()
         os.remove(hd1)
-        res.update(stress_report.summarize(stress_report.parse("\n".join(texts))))
-        with open(os.path.join(outdir, "result.txt"), "w", encoding="utf-8") as f:
-            f.write(json.dumps(res) + "\n")
-        print(json.dumps(res))
+        if not skipped:
+            res.update(stress_report.summarize(stress_report.parse("\n".join(texts))))
+            with open(os.path.join(outdir, "result.txt"), "w", encoding="utf-8") as f:
+                f.write(json.dumps(res) + "\n")
+            print(json.dumps(res))
     if err:
         raise err
 

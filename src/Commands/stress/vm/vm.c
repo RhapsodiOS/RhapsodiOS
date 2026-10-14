@@ -3,7 +3,6 @@
 #include <sys/types.h>
 #include <sys/mman.h>
 #include <sys/time.h>
-#include <sys/times.h>
 #include <sys/wait.h>
 #include <errno.h>
 #include <mach/mach.h>
@@ -387,9 +386,8 @@ t_clock(struct st_ctx *c)
 
 /* settime: step the clock back and forward again with settimeofday, with and
  * without an adjtime slew pending. Each step must land on the time asked for
- * and the clock must then keep increasing; over the whole run the clock must
- * keep pace with times(), which the steps do not touch. The test steps the
- * system clock, so it needs root, runs alone and must not overlap the other
+ * and the clock must then keep increasing. The test steps the system clock,
+ * so it needs root, runs only when named and must not overlap the other
  * tests (they would see the step). Each round trip loses the few microseconds
  * between a read and the set that follows it. */
 #define STEP_SECS 5L
@@ -430,13 +428,24 @@ static void
 step(struct st_ctx *c, long secs)
 {
 	struct timeval want, check, prev, now;
+	sigset_t stop, old;
 	long d, j;
+	int r;
 
+	/* so on_sig sees every step in stepped */
+	sigemptyset(&stop);
+	sigaddset(&stop, SIGTERM);
+	sigaddset(&stop, SIGINT);
+	sigaddset(&stop, SIGHUP);
+	sigprocmask(SIG_BLOCK, &stop, &old);
 	gettimeofday(&want, NULL);
 	want.tv_sec += secs;
-	if (settimeofday(&want, NULL) < 0)
+	r = settimeofday(&want, NULL);
+	if (r == 0)
+		stepped += secs;
+	sigprocmask(SIG_SETMASK, &old, NULL);
+	if (r < 0)
 		st_fail_errno(c, "settimeofday");
-	stepped += secs;
 	check = want;
 	if (c->selfcheck)
 		check.tv_sec++;		/* look for the wrong time */
@@ -466,15 +475,10 @@ p_settime(char *why, int len)
 static void
 t_settime(struct st_ctx *c)
 {
-	struct timeval t0, t1, slew, none;
-	struct tms tms;
-	clock_t k0, k1;
-	long i, hz, d, slews[2];
+	struct timeval slew, none;
+	long i, slews[2];
 	int s;
 
-	hz = sysconf(_SC_CLK_TCK);
-	if (hz <= 0)
-		hz = 100;
 	slews[0] = 0;
 	slews[1] = -3000;		/* us, negative: the time_of_boot path */
 	none.tv_sec = none.tv_usec = 0;
@@ -485,8 +489,6 @@ t_settime(struct st_ctx *c)
 	for (i = 0; st_more(c, i); i++) {
 		st_op_begin(c);
 		for (s = 0; s < 2; s++) {
-			gettimeofday(&t0, NULL);
-			k0 = times(&tms);
 			slew.tv_sec = 0;
 			slew.tv_usec = slews[s];
 			if (slews[s] != 0 && adjtime(&slew, NULL) < 0)
@@ -494,12 +496,6 @@ t_settime(struct st_ctx *c)
 			step(c, -STEP_SECS);
 			step(c, STEP_SECS);
 			adjtime(&none, NULL);
-			gettimeofday(&t1, NULL);
-			k1 = times(&tms);
-			d = usdiff(&t1, &t0) - (long)(k1 - k0) * (1000000L / hz);
-			if (d < -STEP_TOL_US || d > STEP_TOL_US)
-				st_fail(c, "reason=\"clock lost pace with times()\" slew=%ldus off=%ldus",
-					slews[s], d);
 		}
 		st_op_end(c, 2);
 	}

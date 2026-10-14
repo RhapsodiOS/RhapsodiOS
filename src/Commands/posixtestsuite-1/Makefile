@@ -29,6 +29,7 @@ check-ptimeout: ptimeout
 	@echo ptimeout: ok
 
 # The fixtures in t/ cover every result; each must appear exactly once.
+# shcore's .sh test runs its build-only binary by path, as upstream's do.
 check-run: ptimeout
 	rc=0; sh ./run -r t -b /dev/null -t 3 -d /tmp/posixcheck conformance >Report.out || rc=$$?; test $$rc = 0
 	grep '^POSIX conformance/interfaces/pass/1-1 PASS$$' Report/results
@@ -47,7 +48,9 @@ check-run: ptimeout
 	grep '^POSIX conformance/interfaces/killgrp/1-1 SIGNAL=9$$' Report/results
 	grep '^POSIX conformance/interfaces/stdin/1-1 PASS$$' Report/results
 	grep '^POSIX conformance/interfaces/shpass/1-1 PASS$$' Report/results
-	test `grep -c '^POSIX ' Report/results` = 16
+	grep '^POSIX conformance/interfaces/shcore/1-1 PASS$$' Report/results
+	grep '^POSIX conformance/interfaces/shcore/1-core-buildonly BUILD-ONLY$$' Report/results
+	test `grep -c '^POSIX ' Report/results` = 18
 	test `ps -ax | grep -c ':[0-9][0-9] sleep 77'` = 0
 	test -f Report/log/conformance/interfaces/nobuild/1-1.log
 	test ! -d /tmp/posixcheck

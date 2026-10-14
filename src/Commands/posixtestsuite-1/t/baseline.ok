@@ -9,6 +9,8 @@ conformance/interfaces/nomain/1-1 BUILD-ONLY
 conformance/interfaces/orphan/1-1 PASS
 conformance/interfaces/pass/1-1 PASS
 conformance/interfaces/segv/1-1 SIGNAL=11
+conformance/interfaces/shcore/1-1 PASS
+conformance/interfaces/shcore/1-core-buildonly BUILD-ONLY
 conformance/interfaces/shpass/1-1 PASS
 conformance/interfaces/stdin/1-1 PASS
 conformance/interfaces/unres/1-1 UNRESOLVED

@@ -576,7 +576,8 @@ abortit:
 		if ((fcnp->cn_flags & SAVESTART) == 0)
 			panic("ext2fs_rename: lost from startdir");
 		fcnp->cn_nameiop = DELETE;
-		(void) relookup(fdvp, &fvp, fcnp);
+		if (relookup_startdir(fdvp, &fvp, fcnp) != 0 || fvp == NULL)
+			return (0);	/* source name already gone */
 		return (VOP_REMOVE(fdvp, fvp, fcnp));
 	}
 	if ((error = vn_lock(fvp, LK_EXCLUSIVE, current_proc())) != 0)

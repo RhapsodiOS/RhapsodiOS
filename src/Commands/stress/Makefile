@@ -11,8 +11,9 @@ MMAPBIN = mmap/stress-mmap
 FSBIN   = fs/stress-fs
 PROCBIN = proc/stress-proc
 CHILDBIN = proc/stress-exec-child
+NETBIN = net/stress-net
 
-all: lib/libstress.a $(VMBIN) $(MMAPBIN) $(FSBIN) $(PROCBIN) $(CHILDBIN)
+all: lib/libstress.a $(VMBIN) $(MMAPBIN) $(FSBIN) $(PROCBIN) $(CHILDBIN) $(NETBIN)
 
 lib/libstress.a: $(LIBOBJS)
 	rm -f $@
@@ -48,6 +49,12 @@ $(PROCBIN): proc/proc.o lib/libstress.a
 
 $(CHILDBIN): proc/child.o lib/libstress.a
 	$(CC) $(CFLAGS) -o $@ proc/child.o lib/libstress.a
+
+net/%.o: net/%.c lib/stress.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(NETBIN): net/net.o lib/libstress.a
+	$(CC) $(CFLAGS) -o $@ net/net.o lib/libstress.a
 
 lib/t_lib: lib/t_lib.o lib/libstress.a
 	$(CC) $(CFLAGS) -o $@ lib/t_lib.o lib/libstress.a
@@ -142,14 +149,22 @@ check-proc: $(PROCBIN) $(CHILDBIN)
 	else echo "check-proc: no /usr/lib/dyld.cctools-266, dyld regression skipped"; fi
 	@echo proc: ok
 
-install: all
+# fdpass is PASS or UNSUP; the -x run needs tcp, udp and unix to FAIL with an offset.
+check-net: $(NETBIN)
+	rc=0; $(NETBIN) -n 4 -i 50 -d /tmp >net/t.out || rc=$$?; test $$rc = 0
+	test `grep -c '^STRESS net \(tcp\|udp\|unix\|select\|accept\) PASS ' net/t.out` = 5
+	grep '^STRESS net fdpass \(PASS\|UNSUP\) ' net/t.out
+	rc=0; $(NETBIN) -x -i 5 -d /tmp tcp udp unix >net/t.out || rc=$$?; test $$rc = 1
+	test `grep -c '^STRESS net [a-z]* FAIL .*off=0x' net/t.out` = 3
+	@echo net: ok
 
+install: all
 installhdrs:
 
 installsrc:
 	gnutar --exclude=CVS --exclude=.git -cf - . | gnutar -C $(SRCROOT) -xf -
 
 clean:
-	rm -f lib/*.o lib/libstress.a lib/t_lib $(TMAIN) lib/t.out lib/t.err vm/*.o $(VMBIN) vm/t.out mmap/*.o $(MMAPBIN) mmap/t.out fs/*.o $(FSBIN) fs/t.out proc/*.o $(PROCBIN) $(CHILDBIN) proc/t.out proc/stress-proc.old
+	rm -f lib/*.o lib/libstress.a lib/t_lib $(TMAIN) lib/t.out lib/t.err vm/*.o $(VMBIN) vm/t.out mmap/*.o $(MMAPBIN) mmap/t.out fs/*.o $(FSBIN) fs/t.out proc/*.o $(PROCBIN) $(CHILDBIN) proc/t.out proc/stress-proc.old net/*.o $(NETBIN) net/t.out
 
-.PHONY: all check check-vm check-mmap check-fs check-proc install installhdrs installsrc clean
+.PHONY: all check check-vm check-mmap check-fs check-proc check-net install installhdrs installsrc clean

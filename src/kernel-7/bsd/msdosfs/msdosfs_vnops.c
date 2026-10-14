@@ -1002,6 +1002,7 @@ msdosfs_rename(ap)
 	struct componentname *tcnp = ap->a_tcnp;
 	struct componentname *fcnp = ap->a_fcnp;
 	struct proc *p = fcnp->cn_proc;
+	struct vnode *svp;
 	struct denode *ip, *xp, *dp, *zp;
 	u_char toname[11], oldname[11];
 	u_long from_diroffset, to_diroffset;
@@ -1120,11 +1121,48 @@ abortit:
 			goto out;
 		if ((tcnp->cn_flags & SAVESTART) == 0)
 			panic("msdosfs_rename: lost to startdir");
-		error = relookup(tdvp, &tvp, tcnp);
+		error = relookup_startdir(tdvp, &tvp, tcnp);
 		if (error)
 			goto out;
 		dp = VTODE(tdvp);
 		xp = tvp ? VTODE(tvp) : NULL;
+	}
+
+	/*
+	 * The source name was looked up before we held the source
+	 * directory locked, so it may have been renamed or removed since.
+	 * DE_RENAME now keeps a directory from changing, so check it once
+	 * here, before anything is modified.  When the parent is shared,
+	 * tdvp is the same vnode as fdvp and is locked by the relookup.
+	 */
+	if (doingdirectory) {
+		fcnp->cn_flags &= ~MODMASK;
+		fcnp->cn_flags |= LOCKPARENT | LOCKLEAF;
+		if ((fcnp->cn_flags & SAVESTART) == 0)
+			panic("msdosfs_rename: lost from startdir");
+		if (!newparent)
+			VOP_UNLOCK(tdvp, 0, p);
+		if (relookup(fdvp, &svp, fcnp)) {
+			/* relookup released fdvp */
+			if (xp != NULL)
+				vput(tvp);
+			if (newparent)
+				vput(tdvp);
+			else
+				vrele(tdvp);
+			ip->de_flag &= ~DE_RENAME;
+			vrele(fvp);
+			return (ENOENT);
+		}
+		vrele(fdvp);
+		if (newparent)
+			VOP_UNLOCK(fdvp, 0, p);
+		if (svp != NULL)
+			vput(svp);
+		if (svp != fvp) {
+			error = ENOENT;
+			goto bad;
+		}
 	}
 
 	if (xp != NULL) {

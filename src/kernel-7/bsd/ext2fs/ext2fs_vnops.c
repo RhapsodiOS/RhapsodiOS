@@ -517,6 +517,7 @@ ext2fs_rename(v)
 	struct vnode *fdvp = ap->a_fdvp;
 	struct componentname *tcnp = ap->a_tcnp;
 	struct componentname *fcnp = ap->a_fcnp;
+	struct vnode *svp;
 	struct inode *ip, *xp, *dp;
 	struct ext2fs_dirtemplate dirbuf;
 	int doingdirectory = 0, oldparent = 0, newparent = 0;
@@ -657,17 +658,44 @@ abortit:
 	VOP_UNLOCK(fvp, 0, current_proc());
 	if (oldparent != dp->i_number)
 		newparent = dp->i_number;
-	if (doingdirectory && newparent) {
-		if (error)	/* write access check above */
+	if (doingdirectory) {
+		if (newparent && error)	/* write access check above */
 			goto bad;
 		if (xp != NULL)
 			vput(tvp);
-		error = ext2fs_checkpath(ip, dp, tcnp->cn_cred);
-		if (error != 0)
+		if (newparent) {
+			error = ext2fs_checkpath(ip, dp, tcnp->cn_cred);
+			if (error != 0)
+				goto out;
+		} else
+			vput(tdvp);
+		/*
+		 * The source name was looked up before we held the
+		 * source directory locked, so it may have been renamed
+		 * or removed since.  IN_RENAME and the extra link count
+		 * now keep it from changing, so check it once here,
+		 * before anything is modified.  The parents are not
+		 * locked while this is done to keep lock order sane.
+		 */
+		fcnp->cn_flags &= ~MODMASK;
+		fcnp->cn_flags |= LOCKPARENT | LOCKLEAF;
+		if ((fcnp->cn_flags & SAVESTART) == 0)
+			panic("ext2fs_rename: lost from startdir");
+		if ((error = relookup_startdir(fdvp, &svp, fcnp)) != 0) {
+			error = ENOENT;
 			goto out;
+		}
+		vput(fdvp);
+		if (svp != fvp) {
+			if (svp != NULL)
+				vput(svp);
+			error = ENOENT;
+			goto out;
+		}
+		vput(svp);
 		if ((tcnp->cn_flags & SAVESTART) == 0)
 			panic("ext2fs_rename: lost to startdir");
-		if ((error = relookup(tdvp, &tvp, tcnp)) != 0)
+		if ((error = relookup_startdir(tdvp, &tvp, tcnp)) != 0)
 			goto out;
 		dp = VTOI(tdvp);
 		xp = NULL;
@@ -796,7 +824,7 @@ abortit:
 	fcnp->cn_flags |= LOCKPARENT | LOCKLEAF;
 	if ((fcnp->cn_flags & SAVESTART) == 0)
 		panic("ext2fs_rename: lost from startdir");
-	(void) relookup(fdvp, &fvp, fcnp);
+	(void) relookup_startdir(fdvp, &fvp, fcnp);
 	if (fvp != NULL) {
 		xp = VTOI(fvp);
 		dp = VTOI(fdvp);

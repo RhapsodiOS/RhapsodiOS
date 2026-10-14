@@ -201,6 +201,8 @@ int	namei __P((struct nameidata *ndp));
 int	lookup __P((struct nameidata *ndp));
 int	relookup __P((struct vnode *dvp, struct vnode **vpp,
 	    struct componentname *cnp));
+int	relookup_startdir __P((struct vnode *dvp, struct vnode **vpp,
+	    struct componentname *cnp));
 #endif /* _KERNEL */
 
 /*

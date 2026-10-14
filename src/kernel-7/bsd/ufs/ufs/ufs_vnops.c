@@ -905,25 +905,6 @@ ufs_whiteout(ap)
 
 
 /*
- * relookup() vputs dvp when the lookup fails, but a rename's caller still
- * owns that reference as the SAVESTART startdir and releases it again.
- * Take an extra one so a failed relookup leaves the count unchanged.
- */
-static int
-ufs_relookup(dvp, vpp, cnp)
-	struct vnode *dvp, **vpp;
-	struct componentname *cnp;
-{
-	int error;
-
-	VREF(dvp);
-	error = relookup(dvp, vpp, cnp);
-	if (!error)
-		vrele(dvp);
-	return (error);
-}
-
-/*
  * Rename system call.
  * 	rename("foo", "bar");
  * is essentially
@@ -1113,7 +1094,7 @@ abortit:
 		fcnp->cn_flags |= LOCKPARENT | LOCKLEAF;
 		if ((fcnp->cn_flags & SAVESTART) == 0)
 			panic("ufs_rename: lost from startdir");
-		if (error = ufs_relookup(fdvp, &svp, fcnp)) {
+		if (error = relookup_startdir(fdvp, &svp, fcnp)) {
 			error = ENOENT;
 			goto out;
 		}
@@ -1127,7 +1108,7 @@ abortit:
 		vput(svp);
 		if ((tcnp->cn_flags & SAVESTART) == 0)
 			panic("ufs_rename: lost to startdir");
-		if (error = ufs_relookup(tdvp, &tvp, tcnp))
+		if (error = relookup_startdir(tdvp, &tvp, tcnp))
 			goto out;
 		dp = VTOI(tdvp);
 		xp = NULL;
@@ -1250,7 +1231,7 @@ abortit:
 	fcnp->cn_flags |= LOCKPARENT | LOCKLEAF;
 	if ((fcnp->cn_flags & SAVESTART) == 0)
 		panic("ufs_rename: lost from startdir");
-	(void) ufs_relookup(fdvp, &fvp, fcnp);
+	(void) relookup_startdir(fdvp, &fvp, fcnp);
 	if (fvp != NULL) {
 		xp = VTOI(fvp);
 		dp = VTOI(fdvp);

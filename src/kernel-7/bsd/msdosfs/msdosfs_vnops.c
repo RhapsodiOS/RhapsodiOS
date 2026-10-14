@@ -1107,8 +1107,8 @@ abortit:
 	VOP_UNLOCK(fvp, 0, p);
 	if (VTODE(fdvp)->de_StartCluster != VTODE(tdvp)->de_StartCluster)
 		newparent = 1;
-	if (doingdirectory && newparent) {
-		if (error)	/* write access check above */
+	if (doingdirectory) {
+		if (newparent && error)	/* write access check above */
 			goto bad;
 		if (xp != NULL)
 			vput(tvp);
@@ -1116,9 +1116,39 @@ abortit:
 		 * doscheckpath() vput()'s dp,
 		 * so we have to do a relookup afterwards
 		 */
-		error = doscheckpath(ip, dp);
-		if (error)
+		if (newparent) {
+			error = doscheckpath(ip, dp);
+			if (error)
+				goto out;
+		} else
+			vput(tdvp);
+		/*
+		 * The source name was looked up before we held the source
+		 * directory locked, so it may have been renamed or removed
+		 * since.  DE_RENAME now keeps a directory from changing, so
+		 * check it once here, before anything is modified.  The
+		 * target and its parent are not locked while this is done,
+		 * to keep the lock order sane.
+		 */
+		fcnp->cn_flags &= ~MODMASK;
+		fcnp->cn_flags |= LOCKPARENT | LOCKLEAF;
+		if ((fcnp->cn_flags & SAVESTART) == 0)
+			panic("msdosfs_rename: lost from startdir");
+		if (relookup(fdvp, &svp, fcnp)) {
+			/* relookup released fdvp */
+			error = ENOENT;
+			ip->de_flag &= ~DE_RENAME;
+			vrele(fvp);
+			return (error);
+		}
+		vrele(fdvp);
+		VOP_UNLOCK(fdvp, 0, p);
+		if (svp != NULL)
+			vput(svp);
+		if (svp != fvp) {
+			error = ENOENT;
 			goto out;
+		}
 		if ((tcnp->cn_flags & SAVESTART) == 0)
 			panic("msdosfs_rename: lost to startdir");
 		error = relookup_startdir(tdvp, &tvp, tcnp);
@@ -1126,43 +1156,8 @@ abortit:
 			goto out;
 		dp = VTODE(tdvp);
 		xp = tvp ? VTODE(tvp) : NULL;
-	}
-
-	/*
-	 * The source name was looked up before we held the source
-	 * directory locked, so it may have been renamed or removed since.
-	 * DE_RENAME now keeps a directory from changing, so check it once
-	 * here, before anything is modified.  When the parent is shared,
-	 * tdvp is the same vnode as fdvp and is locked by the relookup.
-	 */
-	if (doingdirectory) {
-		fcnp->cn_flags &= ~MODMASK;
-		fcnp->cn_flags |= LOCKPARENT | LOCKLEAF;
-		if ((fcnp->cn_flags & SAVESTART) == 0)
-			panic("msdosfs_rename: lost from startdir");
-		if (!newparent)
-			VOP_UNLOCK(tdvp, 0, p);
-		if (relookup(fdvp, &svp, fcnp)) {
-			/* relookup released fdvp */
-			if (xp != NULL)
-				vput(tvp);
-			if (newparent)
-				vput(tdvp);
-			else
-				vrele(tdvp);
-			ip->de_flag &= ~DE_RENAME;
-			vrele(fvp);
-			return (ENOENT);
-		}
-		vrele(fdvp);
-		if (newparent)
-			VOP_UNLOCK(fdvp, 0, p);
-		if (svp != NULL)
-			vput(svp);
-		if (svp != fvp) {
-			error = ENOENT;
-			goto bad;
-		}
+		to_diroffset = dp->de_fndoffset;
+		to_count = dp->de_fndcnt;
 	}
 
 	if (xp != NULL) {

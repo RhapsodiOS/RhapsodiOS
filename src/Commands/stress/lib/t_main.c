@@ -5,6 +5,7 @@
 #include <sys/resource.h>
 #include <sys/wait.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <signal.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -28,6 +29,26 @@ t_pass(struct st_ctx *c)
 static void
 t_fail(struct st_ctx *c)
 {
+	st_fail(c, "reason=planned");
+}
+
+/* The cleanup hook leaves a marker keyed to the leader's pid (our parent). */
+static void
+hook_fn(struct st_ctx *c)
+{
+	char p[64];
+	int fd;
+
+	sprintf(p, "/tmp/stress.tmain.hook.%d", (int)getppid());
+	fd = open(p, O_CREAT | O_WRONLY, 0600);
+	if (fd >= 0)
+		close(fd);
+}
+
+static void
+t_hook(struct st_ctx *c)
+{
+	st_set_cleanup(c, hook_fn);
 	st_fail(c, "reason=planned");
 }
 
@@ -143,6 +164,7 @@ t_forkbomb(struct st_ctx *c)
 static const struct st_test tests[] = {
 	{ "pass", 10, 0, NULL, t_pass },
 	{ "fail", 1, 0, NULL, t_fail },
+	{ "hook", 1, 0, NULL, t_hook },
 	{ "crash", 1, 0, NULL, t_crash },
 	{ "crashwait", 1, 0, NULL, t_crashwait },
 	{ "hang", 1, 0, NULL, t_hang },

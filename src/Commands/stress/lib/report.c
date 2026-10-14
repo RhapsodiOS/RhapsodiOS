@@ -44,6 +44,12 @@ st_line(const char *cat, const char *test, const char *what, int seed)
 	fflush(stdout);
 }
 
+void
+st_set_cleanup(struct st_ctx *c, void (*fn)(struct st_ctx *))
+{
+	c->cleanup = fn;
+}
+
 /* One write of at most PIPE_BUF (512) bytes, so lines from several
  * workers never interleave. */
 void
@@ -52,6 +58,12 @@ st_fail(struct st_ctx *c, const char *fmt, ...)
 	char buf[2048], at[64];
 	va_list ap;
 	int n, m;
+	void (*fn)(struct st_ctx *) = c->cleanup;
+
+	if (fn) {
+		c->cleanup = NULL;
+		fn(c);
+	}
 
 	strcpy(buf, "FAIL ");
 	va_start(ap, fmt);

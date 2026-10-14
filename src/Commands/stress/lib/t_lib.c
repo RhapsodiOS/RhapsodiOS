@@ -1,18 +1,22 @@
+#include <sys/types.h>
+#include <sys/wait.h>
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 #include "stress.h"
 
 #define CHECK(c) do { if (!(c)) { printf("t_lib: FAIL line %d: %s\n", __LINE__, #c); return 1; } } while (0)
 
-static unsigned char big[4096], win[100];
+static unsigned char big[4096], win[100], pbuf[100000], rbuf[100000];
 
 int
 main(void)
 {
 	struct st_rng a, b, c;
 	unsigned long v;
-	int i;
+	int i, fds[2];
+	pid_t pid;
 
 	CHECK(st_mix(0) == 0);			/* the mix fixes 0; seeds avoid it */
 	CHECK(st_mix(1) != 1);
@@ -45,6 +49,24 @@ main(void)
 	CHECK(win[0] | win[1] | win[2] | win[3]);
 	CHECK(strcmp(st_errname(ENOSYS), "ENOSYS") == 0);
 	CHECK(strcmp(st_errname(9999), "E9999") == 0);
+	/* 1-byte writes from a child must come back whole through one read call */
+	for (i = 0; i < 100000; i++)
+		pbuf[i] = i * 7;
+	CHECK(pipe(fds) == 0);
+	pid = fork();
+	CHECK(pid >= 0);
+	if (pid == 0) {
+		for (i = 0; i < 100000; i++)
+			if (st_writefull(fds[1], pbuf + i, 1) != 1)
+				_exit(1);
+		_exit(0);
+	}
+	close(fds[1]);
+	CHECK(st_readfull(fds[0], rbuf, 100000) == 100000);
+	CHECK(memcmp(pbuf, rbuf, 100000) == 0);
+	CHECK(st_readfull(fds[0], rbuf, 10) == 0);
+	close(fds[0]);
+	CHECK(waitpid(pid, &i, 0) == pid && i == 0);
 	printf("t_lib: ok\n");
 	return 0;
 }

@@ -48,6 +48,7 @@ struct st_ctx {
 	unsigned long units, maxlat_us, clockback;
 	long t0_sec, t0_usec;
 	int fd;				/* result pipe to the leader */
+	void (*cleanup)(struct st_ctx *); /* st_set_cleanup */
 };
 
 struct st_test {
@@ -66,6 +67,15 @@ void st_fail(struct st_ctx *c, const char *fmt, ...);
 void st_fail_errno(struct st_ctx *c, const char *call);	/* reason="call: ERRNAME" */
 void st_fail_data(struct st_ctx *c, const char *what, const unsigned char *got,
 		  unsigned long len, unsigned long key, unsigned long off, long bad);
+
+/* st_fail (and so st_fail_errno/st_fail_data) calls fn(c) once, before the FAIL
+ * line is written. fn must not call st_fail; it is cleared before it runs. */
+void st_set_cleanup(struct st_ctx *c, void (*fn)(struct st_ctx *));
+
+/* Loop on EINTR and short transfers. st_readfull returns len, fewer bytes
+ * only at EOF, or -1; st_writefull returns len or -1. */
+long st_readfull(int fd, void *buf, unsigned long len);
+long st_writefull(int fd, const void *buf, unsigned long len);
 
 void st_op_begin(struct st_ctx *c);
 void st_op_end(struct st_ctx *c, unsigned long units);

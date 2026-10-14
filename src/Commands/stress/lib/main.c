@@ -40,17 +40,26 @@ on_chld(int sig)
 static volatile pid_t leader_pid;	/* the running leader, 0 if none */
 static sigset_t oldmask;		/* the mask before run() blocked stops */
 
+/* TERM first so a test can undo what it changed (settime), up to 200 ms for
+ * the group to go (killpg skips zombies), then KILL whatever is left. */
+static void
+stop_group(pid_t pg)
+{
+	int i;
+
+	killpg(pg, SIGTERM);
+	for (i = 0; i < 20 && killpg(pg, 0) == 0; i++)
+		usleep(10000);
+	killpg(pg, SIGKILL);
+}
+
 /* SIGINT/SIGTERM/SIGHUP in the top level: the leader is in its own group
  * and would outlive us, so take its group down first. */
 static void
 on_stop(int sig)
 {
 	if (leader_pid > 0) {
-		/* TERM first so a test can undo what it changed (settime),
-		 * then KILL whatever is left. */
-		killpg(leader_pid, SIGTERM);
-		usleep(200000);
-		killpg(leader_pid, SIGKILL);
+		stop_group(leader_pid);
 		waitpid(leader_pid, NULL, 0);
 	}
 	_exit(128 + sig);
@@ -333,7 +342,7 @@ run(const struct st_test *t, const char *cat)
 		if (r < 0 && errno != EINTR)
 			break;
 		if (alarmed) {
-			killpg(pid, SIGKILL);
+			stop_group(pid);
 			while (waitpid(pid, &status, 0) < 0 && errno == EINTR)
 				;
 			leader_pid = 0;

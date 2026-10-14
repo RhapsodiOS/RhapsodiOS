@@ -2,6 +2,8 @@
  * across fork, the Mach VM calls, the heap and page wiring. */
 #include <sys/types.h>
 #include <sys/mman.h>
+#include <sys/time.h>
+#include <sys/times.h>
 #include <sys/wait.h>
 #include <errno.h>
 #include <mach/mach.h>
@@ -350,12 +352,167 @@ t_wire(struct st_ctx *c)
 	free(raw);
 }
 
+/* clock: every worker reads gettimeofday in a loop and checks each reading
+ * against the one before; a reading that is earlier is a backward step. No
+ * clamp here, unlike the latency timing in st_op_end. */
+static void
+t_clock(struct st_ctx *c)
+{
+	struct timeval prev, now;
+	unsigned long back = 0, maxback = 0, d;
+	long i, j;
+
+	gettimeofday(&prev, NULL);
+	if (c->selfcheck)
+		prev.tv_sec++;		/* as if the clock had stepped back 1 s */
+	for (i = 0; st_more(c, i); i += 1000) {
+		st_op_begin(c);
+		for (j = 0; j < 1000; j++) {
+			gettimeofday(&now, NULL);
+			if (now.tv_sec < prev.tv_sec ||
+			    (now.tv_sec == prev.tv_sec && now.tv_usec < prev.tv_usec)) {
+				d = (prev.tv_sec - now.tv_sec) * 1000000UL +
+				    (prev.tv_usec - now.tv_usec);
+				back++;
+				if (d > maxback)
+					maxback = d;
+			}
+			prev = now;
+		}
+		st_op_end(c, 1000);
+	}
+	if (back)
+		st_fail(c, "reason=\"clock went back\" back=%lu maxback=%luus", back, maxback);
+}
+
+/* settime: step the clock back and forward again with settimeofday, with and
+ * without an adjtime slew pending. Each step must land on the time asked for
+ * and the clock must then keep increasing; over the whole run the clock must
+ * keep pace with times(), which the steps do not touch. The test steps the
+ * system clock, so it needs root, runs alone and must not overlap the other
+ * tests (they would see the step). Each round trip loses the few microseconds
+ * between a read and the set that follows it. */
+#define STEP_SECS 5L
+#define STEP_TOL_US 100000L
+
+static long stepped;	/* seconds the clock is off by now, undone by unstep */
+
+static long
+usdiff(const struct timeval *a, const struct timeval *b)
+{
+	return (a->tv_sec - b->tv_sec) * 1000000L + (a->tv_usec - b->tv_usec);
+}
+
+static void
+unstep(struct st_ctx *c)
+{
+	struct timeval t;
+
+	if (stepped != 0) {
+		gettimeofday(&t, NULL);
+		t.tv_sec -= stepped;
+		stepped = 0;
+		settimeofday(&t, NULL);
+	}
+	t.tv_sec = t.tv_usec = 0;
+	adjtime(&t, NULL);
+}
+
+/* A signal mid-run must not leave the system clock stepped. */
+static void
+on_sig(int sig)
+{
+	unstep(NULL);
+	_exit(128 + sig);
+}
+
+static void
+step(struct st_ctx *c, long secs)
+{
+	struct timeval want, check, prev, now;
+	long d, j;
+
+	gettimeofday(&want, NULL);
+	want.tv_sec += secs;
+	if (settimeofday(&want, NULL) < 0)
+		st_fail_errno(c, "settimeofday");
+	stepped += secs;
+	check = want;
+	if (c->selfcheck)
+		check.tv_sec++;		/* look for the wrong time */
+	gettimeofday(&prev, NULL);
+	d = usdiff(&prev, &check);
+	if (d < -STEP_TOL_US || d > STEP_TOL_US)
+		st_fail(c, "reason=\"step %ld s landed off\" off=%ldus", secs, d);
+	for (j = 0; j < 1000; j++) {
+		gettimeofday(&now, NULL);
+		if (usdiff(&now, &prev) < 0)
+			st_fail(c, "reason=\"clock went back after a step\" step=%lds back=%ldus",
+				secs, -usdiff(&now, &prev));
+		prev = now;
+	}
+}
+
+static int
+p_settime(char *why, int len)
+{
+	if (geteuid() != 0) {
+		sprintf(why, "settimeofday: %s", st_errname(EPERM));
+		return 1;
+	}
+	return 0;
+}
+
+static void
+t_settime(struct st_ctx *c)
+{
+	struct timeval t0, t1, slew, none;
+	struct tms tms;
+	clock_t k0, k1;
+	long i, hz, d, slews[2];
+	int s;
+
+	hz = sysconf(_SC_CLK_TCK);
+	if (hz <= 0)
+		hz = 100;
+	slews[0] = 0;
+	slews[1] = -3000;		/* us, negative: the time_of_boot path */
+	none.tv_sec = none.tv_usec = 0;
+	st_set_cleanup(c, unstep);
+	signal(SIGTERM, on_sig);
+	signal(SIGINT, on_sig);
+	signal(SIGHUP, on_sig);
+	for (i = 0; st_more(c, i); i++) {
+		st_op_begin(c);
+		for (s = 0; s < 2; s++) {
+			gettimeofday(&t0, NULL);
+			k0 = times(&tms);
+			slew.tv_sec = 0;
+			slew.tv_usec = slews[s];
+			if (slews[s] != 0 && adjtime(&slew, NULL) < 0)
+				st_fail_errno(c, "adjtime");
+			step(c, -STEP_SECS);
+			step(c, STEP_SECS);
+			adjtime(&none, NULL);
+			gettimeofday(&t1, NULL);
+			k1 = times(&tms);
+			d = usdiff(&t1, &t0) - (long)(k1 - k0) * (1000000L / hz);
+			if (d < -STEP_TOL_US || d > STEP_TOL_US)
+				st_fail(c, "reason=\"clock lost pace with times()\" slew=%ldus off=%ldus",
+					slews[s], d);
+		}
+		st_op_end(c, 2);
+	}
+}
+
 static const struct st_test tests[] = {
 	{ "pressure", 1, 0, NULL, t_pressure },
 	{ "cow", 20, 1, NULL, t_cow },
 	{ "machvm", 200, 0, NULL, t_machvm },
 	{ "brk", 20000, 0, NULL, t_brk },
 	{ "wire", 50, 0, p_wire, t_wire },
+	{ "clock", 1000000, 0, NULL, t_clock },
+	{ "settime", 3, 1, p_settime, t_settime },
 	{ NULL }
 };
 

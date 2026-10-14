@@ -1,0 +1,73 @@
+Open POSIX Test Suite for RhapsodiOS
+====================================
+
+posixtestsuite/ is the Open POSIX Test Suite 1.5.2, unmodified
+(posixtestsuite-1.5.2.tar.gz from sourceforge.net/projects/posixtest, sha256
+15a2185672127cba851d35ec9d538ff6148defdbb75f99c7e9c50aeba0f94757). It is
+licensed under the GPL; see posixtestsuite/COPYING.
+
+The upstream Makefile and timeout helper do not work here (GNU make 3.74,
+no pthreads), so the suite is run by ./run with ./ptimeout instead. Tests
+are compiled where they run, so the system C compiler must be installed.
+
+Running
+-------
+
+    run [-t secs] [-d workdir] [-r root] [-b baseline] [-u] [path ...]
+
+  -t secs      per-test timeout, default 240
+  -d workdir   scratch directory, default /tmp/posix.<pid>, removed at the end
+  -r root      suite root, default posixtestsuite/ next to run
+  -b baseline  expected results, default baseline next to run
+  -u           write this run's results over the baseline instead of comparing
+  path         directories under the root to run, default conformance
+
+Each test is compiled with
+cc -O -Wall -D_POSIX_C_SOURCE=200112L -I<root>/include, linked, and run
+under ptimeout with stdin from /dev/null. One line per test goes to stdout
+and Report/results:
+
+    POSIX conformance/interfaces/sigaction/1-1 PASS
+
+Compiler, linker and test output is in Report/log/<path>.log.
+
+Results
+-------
+
+  BUILD-FAIL   did not compile (often: the interface does not exist here)
+  LINK-FAIL    compiled but did not link
+  BUILD-ONLY   a compile-only test that compiled
+  PASS         exit 0
+  FAIL         exit 1
+  UNRESOLVED   exit 2, the test could not decide
+  UNSUPPORTED  exit 4, an optional feature is missing
+  UNTESTED     exit 5
+  HUNG         killed at the timeout
+  SIGNAL=n     died by signal n
+  EXIT=n       any other exit status
+
+Report/summary counts the results, counts build and link failures per API
+family, and lists every regression (baseline PASS, now anything else),
+improvement (now PASS), other change, and test missing from the baseline.
+run exits 1 if there is a regression, 2 if it could not start, else 0.
+
+Updating the baseline
+---------------------
+
+When an API lands or a bug is fixed, the summary shows improvements. Run
+`python vm/posix_dev.py baseline` on the host, review the diff of baseline,
+and commit it with the kernel it came from in the message. A test seen to
+change result between runs on the same kernel is marked FLAKY in baseline
+by hand; its changes are never reported.
+
+Not run
+-------
+
+posixtestsuite/functional and posixtestsuite/stress are imported but not
+run: each has its own Makefile and run.sh, and all except stress/signals
+need threads, message queues, semaphores or timers.
+
+Self-test
+---------
+
+`make check` runs ptimeout and run against the fixture tests in t/.

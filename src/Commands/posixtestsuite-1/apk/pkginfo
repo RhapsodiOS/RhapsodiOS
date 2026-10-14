@@ -1,0 +1,7 @@
+pkgname = posixtestsuite
+pkgver = 1.5.2
+pkgdesc = Open POSIX conformance tests
+maintainer = RhapsodiOS
+license = GPL
+url = https://sourceforge.net/projects/posixtest/
+makedepends = build-base

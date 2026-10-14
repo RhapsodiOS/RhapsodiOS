@@ -9,8 +9,10 @@ TMAIN   = lib/stress-tmain
 VMBIN   = vm/stress-vm
 MMAPBIN = mmap/stress-mmap
 FSBIN   = fs/stress-fs
+PROCBIN = proc/stress-proc
+CHILDBIN = proc/stress-exec-child
 
-all: lib/libstress.a $(VMBIN) $(MMAPBIN) $(FSBIN)
+all: lib/libstress.a $(VMBIN) $(MMAPBIN) $(FSBIN) $(PROCBIN) $(CHILDBIN)
 
 lib/libstress.a: $(LIBOBJS)
 	rm -f $@
@@ -37,6 +39,15 @@ fs/%.o: fs/%.c lib/stress.h
 
 $(FSBIN): fs/fs.o lib/libstress.a
 	$(CC) $(CFLAGS) -o $@ fs/fs.o lib/libstress.a
+
+proc/%.o: proc/%.c lib/stress.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(PROCBIN): proc/proc.o lib/libstress.a
+	$(CC) $(CFLAGS) -o $@ proc/proc.o lib/libstress.a
+
+$(CHILDBIN): proc/child.o lib/libstress.a
+	$(CC) $(CFLAGS) -o $@ proc/child.o lib/libstress.a
 
 lib/t_lib: lib/t_lib.o lib/libstress.a
 	$(CC) $(CFLAGS) -o $@ lib/t_lib.o lib/libstress.a
@@ -114,6 +125,23 @@ check-fs: $(FSBIN)
 	test `grep -c '^STRESS fs [a-z]* FAIL .*off=0x' fs/t.out` = 2
 	@echo fs: ok
 
+# signal is the dyld regression: a copy of stress-proc pointed (same-length
+# path) at the 1998 dyld must die with exit 68; skipped if that dyld is absent.
+check-proc: $(PROCBIN) $(CHILDBIN)
+	rc=0; $(PROCBIN) -n 2 -i 50 >proc/t.out || rc=$$?; test $$rc = 0
+	test `grep -c '^STRESS proc \(fork\|exec\|signal\|stack\|pipe\) PASS ' proc/t.out` = 5
+	rc=0; $(PROCBIN) -x -i 5 fork exec stack pipe >proc/t.out || rc=$$?; test $$rc = 1
+	test `grep -c '^STRESS proc [a-z]* FAIL ' proc/t.out` = 4
+	test `grep -c '^STRESS proc \(stack\|pipe\) FAIL .*off=0x' proc/t.out` = 2
+	if test -f /usr/lib/dyld.cctools-266; then \
+		cp /usr/lib/dyld.cctools-266 /tmp/dyldOLD1; chmod 555 /tmp/dyldOLD1; \
+		perl -pe 's|/usr/lib/dyld|/tmp/dyldOLD1|' $(PROCBIN) >proc/stress-proc.old; chmod 755 proc/stress-proc.old; \
+		rc=0; proc/stress-proc.old -n 1 -i 50 signal >proc/t.out || rc=$$?; \
+		rm -f /tmp/dyldOLD1 proc/stress-proc.old; \
+		test $$rc = 1; grep '^STRESS proc signal FAIL exit=68 ' proc/t.out; \
+	else echo "check-proc: no /usr/lib/dyld.cctools-266, dyld regression skipped"; fi
+	@echo proc: ok
+
 install: all
 
 installhdrs:
@@ -122,6 +150,6 @@ installsrc:
 	gnutar --exclude=CVS --exclude=.git -cf - . | gnutar -C $(SRCROOT) -xf -
 
 clean:
-	rm -f lib/*.o lib/libstress.a lib/t_lib $(TMAIN) lib/t.out lib/t.err vm/*.o $(VMBIN) vm/t.out mmap/*.o $(MMAPBIN) mmap/t.out fs/*.o $(FSBIN) fs/t.out
+	rm -f lib/*.o lib/libstress.a lib/t_lib $(TMAIN) lib/t.out lib/t.err vm/*.o $(VMBIN) vm/t.out mmap/*.o $(MMAPBIN) mmap/t.out fs/*.o $(FSBIN) fs/t.out proc/*.o $(PROCBIN) $(CHILDBIN) proc/t.out proc/stress-proc.old
 
-.PHONY: all check check-vm check-mmap check-fs install installhdrs installsrc clean
+.PHONY: all check check-vm check-mmap check-fs check-proc install installhdrs installsrc clean

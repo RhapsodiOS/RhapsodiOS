@@ -42,6 +42,7 @@ struct st_ctx {
 	long iters;			/* -i, else the test's default */
 	struct st_rng rng;
 	int selfcheck;			/* -x */
+	long t_start;			/* seconds, taken by the leader before it forks the workers */
 	/* private */
 	unsigned long units, maxlat_us;
 	long t0_sec, t0_usec;

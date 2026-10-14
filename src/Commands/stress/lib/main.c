@@ -20,6 +20,7 @@ struct st_opts st_opt = { 4, 0, 600, 0, "/tmp" };
 static volatile int alarmed;
 
 /* Leader state: what the workers reported. */
+static long start_sec;		/* leader's start time, copied to st_ctx.t_start */
 static char fail[512];		/* fields of the first FAIL line */
 static char killed[64];		/* first worker death by signal */
 static char exited[64];		/* first worker nonzero exit */
@@ -119,6 +120,7 @@ worker(const struct st_test *t, const char *cat, int idx, int n, int fd)
 	c.iters = st_opt.iters > 0 ? st_opt.iters : t->def_iters;
 	st_rng_init(&c.rng, st_opt.seed, t->name, idx);
 	c.selfcheck = st_opt.selfcheck;
+	c.t_start = start_sec;
 	c.fd = fd;
 	t->body(&c);
 	sprintf(line, "STAT %lu %lu\n", c.units, c.maxlat_us);
@@ -201,6 +203,7 @@ leader(const struct st_test *t, const char *cat)
 		exit(1);
 	}
 	gettimeofday(&t0, NULL);
+	start_sec = t0.tv_sec;
 	for (i = 0; i < n; i++) {
 		pid = fork();
 		if (pid < 0) {

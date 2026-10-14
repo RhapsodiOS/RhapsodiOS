@@ -1,6 +1,7 @@
 #!/bin/sh
 # usage: runtests [-s seed] [-t secs] [-n procs] [-d dir] cycles
-# Each cycle runs every vm test alone, then all but settime at once.
+# Each cycle runs every vm test alone, then all of them at once. settime
+# steps the system clock, so it runs only as ./stress-vm settime.
 usage="usage: runtests [-s seed] [-t secs] [-n procs] [-d dir] cycles"
 opts=
 while test $# -gt 1; do
@@ -17,8 +18,7 @@ cycle=0
 rc=0
 : >$out
 while test $cycle -lt $1; do
-	# settime steps the system clock, so it never overlaps the others
-	for t in $tests settime; do
+	for t in $tests; do
 		echo "stress: vm $t" 2>/dev/null >/dev/console || true
 		./stress-vm $opts $t >>$out 2>/dev/null || rc=1
 	done

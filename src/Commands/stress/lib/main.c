@@ -466,7 +466,7 @@ stress_main(int argc, char **argv, const char *cat, const struct st_test *tests)
 	catch(SIGTERM, on_stop);
 	catch(SIGHUP, on_stop);
 	for (t = tests; t->name != NULL; t++)
-		if (argc == 0 || named(t->name, argc, argv))
+		if (argc == 0 ? !t->named_only : named(t->name, argc, argv))
 			failed |= run(t, cat);
 	return failed;
 }

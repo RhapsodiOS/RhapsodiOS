@@ -512,7 +512,7 @@ static const struct st_test tests[] = {
 	{ "brk", 20000, 0, NULL, t_brk },
 	{ "wire", 50, 0, p_wire, t_wire },
 	{ "clock", 1000000, 0, NULL, t_clock },
-	{ "settime", 3, 1, p_settime, t_settime },
+	{ "settime", 3, 1, p_settime, t_settime, 1 },
 	{ NULL }
 };
 

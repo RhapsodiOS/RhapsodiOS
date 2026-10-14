@@ -58,6 +58,7 @@ struct st_test {
 	int solo;			/* 1: one worker; the test forks its own */
 	int (*probe)(char *why, int len); /* NULL; >0 + why: UNSUP; <0 + why: FAIL with why as the fields */
 	void (*body)(struct st_ctx *);	/* returns = success; failures go via st_fail */
+	int named_only;			/* 1: runs only when named on the command line */
 };
 
 /* tests ends with a zero entry; returns the exit status. */

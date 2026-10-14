@@ -21,8 +21,11 @@ Usage
     cycles    how many times to repeat
 
     The fs fill test fills a whole file system and runs only if STRESS_FILL_DIR
-    names a scratch one.  Each category also has its own <cat>/runtests (same
-    options, except -a and categories) and a binary stress-<cat> that takes
+    names a scratch one.  The vm settime test steps the system clock as root,
+    so it is opt-in: it runs only as stress-vm settime, and make check-vm runs
+    it only if STRESS_SETTIME is set.  Each category also has its own
+    <cat>/runtests (same options, except -a and categories) and a binary
+    stress-<cat> that takes
     -n procs, -i iters, -t secs, -s seed, -d dir, -m size, -v, -x and test names.
 
 Result lines

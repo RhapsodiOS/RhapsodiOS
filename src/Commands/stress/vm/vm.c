@@ -402,18 +402,32 @@ usdiff(const struct timeval *a, const struct timeval *b)
 }
 
 static void
+stopsigs(sigset_t *s)
+{
+	sigemptyset(s);
+	sigaddset(s, SIGTERM);
+	sigaddset(s, SIGINT);
+	sigaddset(s, SIGHUP);
+}
+
+static void
 unstep(struct st_ctx *c)
 {
 	struct timeval t;
+	sigset_t stop, old;
 
+	/* a signal between the set and the bookkeeping would skip the restore */
+	stopsigs(&stop);
+	sigprocmask(SIG_BLOCK, &stop, &old);
 	if (stepped != 0) {
 		gettimeofday(&t, NULL);
 		t.tv_sec -= stepped;
-		stepped = 0;
-		settimeofday(&t, NULL);
+		if (settimeofday(&t, NULL) == 0)
+			stepped = 0;
 	}
 	t.tv_sec = t.tv_usec = 0;
 	adjtime(&t, NULL);
+	sigprocmask(SIG_SETMASK, &old, NULL);
 }
 
 /* A signal mid-run must not leave the system clock stepped. */
@@ -433,10 +447,7 @@ step(struct st_ctx *c, long secs)
 	int r;
 
 	/* so on_sig sees every step in stepped */
-	sigemptyset(&stop);
-	sigaddset(&stop, SIGTERM);
-	sigaddset(&stop, SIGINT);
-	sigaddset(&stop, SIGHUP);
+	stopsigs(&stop);
 	sigprocmask(SIG_BLOCK, &stop, &old);
 	gettimeofday(&want, NULL);
 	want.tv_sec += secs;

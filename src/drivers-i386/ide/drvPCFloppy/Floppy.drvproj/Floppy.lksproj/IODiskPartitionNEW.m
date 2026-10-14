@@ -30,7 +30,7 @@ static Protocol *protocols[] = {
  */
 + (int)deviceStyle
 {
-	return IO_DirectDevice;  // 1
+	return IO_IndirectDevice;
 }
 
 /*

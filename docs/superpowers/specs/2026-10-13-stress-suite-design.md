@@ -35,7 +35,7 @@ Each later phase gets its own spec.
 
 ## Layout and packaging
 
-`src/Commands/stress/`, a PB Aggregate project (like `misc_cmds`) with
+`src/Commands/stress/`, a plain-Makefile project (like `apk-tools-1`) with
 `apk/pkginfo` (`pkgname = stress`, `makedepends = build-base`). Installs to
 `/usr/local/stress`:
 

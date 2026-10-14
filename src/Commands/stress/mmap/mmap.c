@@ -182,6 +182,7 @@ t_shared(struct st_ctx *c)
 	unsigned long ps = pagesz(), fp, rp, rsz, size, base, key, pass;
 	volatile unsigned long *ctr;
 	unsigned char *map, *buf;
+	unsigned long ready;
 	struct stat sb;
 	int fd, j;
 
@@ -192,13 +193,37 @@ t_shared(struct st_ctx *c)
 	rsz = rp * ps;
 	size = fp * ps;
 	mkscratch(c, "shared", (int)getppid());
-	fd = openfile(c, O_RDWR | O_CREAT);
-	if (fstat(fd, &sb) < 0)
-		failerr(c, "fstat");
-	if ((unsigned long)sb.st_size != size && ftruncate(fd, (off_t)size) < 0)
-		failerr(c, "ftruncate");
-	map = mapfile(c, fd, size, MAP_SHARED);
-	ctr = (volatile unsigned long *)map;
+	ready = key3(9, 0, 0) | 1;
+	if (c->idx == 0) {
+		/* a file left by a killed run with this pid is replaced, and the
+		 * marker goes in last so nobody uses it half made */
+		unlink(scratch);
+		fd = openfile(c, O_RDWR | O_CREAT | O_EXCL);
+		if (ftruncate(fd, (off_t)size) < 0)
+			failerr(c, "ftruncate");
+		map = mapfile(c, fd, size, MAP_SHARED);
+		ctr = (volatile unsigned long *)map;
+		ctr[ps / sizeof *ctr - 2] = ready;
+	} else {
+		for (;;) {
+			fd = open(scratch, O_RDWR);
+			if (fd < 0 && errno != ENOENT)
+				failerr(c, "open");
+			if (fd >= 0) {
+				if (fstat(fd, &sb) < 0)
+					failerr(c, "fstat");
+				if ((unsigned long)sb.st_size == size) {
+					map = mapfile(c, fd, size, MAP_SHARED);
+					ctr = (volatile unsigned long *)map;
+					if (ctr[ps / sizeof *ctr - 2] == ready)
+						break;
+					munmap(map, size);
+				}
+				close(fd);
+			}
+			usleep(10000);
+		}
+	}
 	abortp = ctr + ps / sizeof *ctr - 1;
 	buf = malloc(rsz);
 	if (buf == NULL)
@@ -287,14 +312,30 @@ mixed_b(struct st_ctx *c, int rd, int wr, unsigned long fsize)
 }
 
 static void
+reap(struct st_ctx *c, int *status)
+{
+	pid_t r;
+
+	while ((r = waitpid(kid, status, 0)) < 0 && errno == EINTR)
+		;
+	if (r < 0)
+		failerr(c, "waitpid");
+	kid = 0;
+}
+
+static void
+badstatus(struct st_ctx *c, int status)
+{
+	failf(c, "reason=\"child: status=0x%x\"", status);
+}
+
+static void
 kidfail(struct st_ctx *c)
 {
-	int status = 0;
+	int status;
 
-	while (waitpid(kid, &status, 0) < 0 && errno == EINTR)
-		;
-	kid = 0;
-	failf(c, "reason=\"child: status=0x%x\"", status);
+	reap(c, &status);
+	badstatus(c, status);
 }
 
 static void
@@ -355,11 +396,9 @@ t_mixed(struct st_ctx *c)
 	}
 	close(a2b[1]);
 	close(b2a[0]);
-	while (waitpid(kid, &status, 0) < 0 && errno == EINTR)
-		;
+	reap(c, &status);
 	if (!WIFEXITED(status) || WEXITSTATUS(status) != 0)
-		kidfail(c);
-	kid = 0;
+		badstatus(c, status);
 	close(fd);
 	unlink(scratch);
 	scratch[0] = '\0';
@@ -404,11 +443,9 @@ t_private(struct st_ctx *c)
 			chkmem(c, "child-map", map2, size, k1, 0);
 			_exit(0);
 		}
-		while (waitpid(kid, &status, 0) < 0 && errno == EINTR)
-			;
+		reap(c, &status);
 		if (!WIFEXITED(status) || WEXITSTATUS(status) != 0)
-			kidfail(c);
-		kid = 0;
+			badstatus(c, status);
 		for (p = 0; p < 16; p++)
 			chkmem(c, "map", map + p * ps, ps, p % 2 ? k1 : k2, p * ps);
 		munmap(map, size);
@@ -444,10 +481,19 @@ trap(void)
 	sigaction(SIGSEGV, &sa, NULL);
 }
 
+/* Any fault outside touch() must kill the worker, not jump into a dead frame. */
+static void
+untrap(void)
+{
+	signal(SIGBUS, SIG_DFL);
+	signal(SIGSEGV, SIG_DFL);
+}
+
 /* Reads or writes one byte; returns the signal it took, else 0. */
 static int
 touch(volatile unsigned char *p, int wr)
 {
+	trap();
 	gotsig = 0;
 	if (setjmp(jb) == 0) {
 		if (wr)
@@ -455,6 +501,7 @@ touch(volatile unsigned char *p, int wr)
 		else
 			sink = *p;
 	}
+	untrap();
 	return gotsig;
 }
 
@@ -466,7 +513,6 @@ t_trunc(struct st_ctx *c)
 	long i;
 	int fd, sig, nbus = 0, nsegv = 0;
 
-	trap();
 	st_path(c, scratch, sizeof scratch, "map");
 	for (i = 0; st_more(c, i); i++) {
 		st_op_begin(c);
@@ -513,7 +559,7 @@ protect(unsigned char *p, int prot)
 	return vm_protect(task_self(), (vm_address_t)p, ANONSIZE, FALSE, prot) == KERN_SUCCESS ? 0 : -1;
 }
 
-/* This kernel's mmap refuses MAP_ANON with EINVAL ("not supported, for now"). */
+/* This kernel's MAP_ANON fails with EINVAL ("not supported"), so EINVAL means UNSUP. */
 static int
 p_anon(char *why, int len)
 {
@@ -538,7 +584,6 @@ t_anon(struct st_ctx *c)
 	long i;
 	int sig;
 
-	trap();
 	for (i = 0; st_more(c, i); i++) {
 		st_op_begin(c);
 		key = key3(6, i, c->idx);
@@ -551,7 +596,7 @@ t_anon(struct st_ctx *c)
 		if (protect(p, VM_PROT_READ) < 0)
 			failf(c, "reason=\"vm_protect: failed\"");
 		sig = touch(p, 1);
-		/* trap() catches only SIGSEGV and SIGBUS; Mach reports a write to
+		/* touch() catches only SIGSEGV and SIGBUS; Mach reports a write to
 		 * a read-only page as SIGBUS, so either is the expected fault. */
 		if (sig == 0)
 			failf(c, "reason=no-sigsegv");

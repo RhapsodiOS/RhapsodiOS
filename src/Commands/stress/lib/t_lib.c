@@ -36,8 +36,9 @@ main(void)
 	CHECK(st_check(big, 4096, 77, 0) == 1234);
 	CHECK(st_check(big, 4096, 78, 0) == 0);	/* wrong key fails at once */
 	/* known vector pins the byte order for ppc too */
-	st_fill(win, 4, 0, 0);
-	CHECK(win[0] == (st_mix(0) & 0xff));
+	CHECK(st_mix(1) == 0x688990c0UL);
+	st_fill(win, 4, 1, 0);
+	CHECK(win[0] == 0xc0 && win[1] == 0x90 && win[2] == 0x89 && win[3] == 0x68);
 	CHECK(strcmp(st_errname(ENOSYS), "ENOSYS") == 0);
 	CHECK(strcmp(st_errname(9999), "E9999") == 0);
 	printf("t_lib: ok\n");

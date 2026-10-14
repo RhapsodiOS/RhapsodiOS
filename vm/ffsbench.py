@@ -38,7 +38,7 @@ DESTROYED = re.compile(
 
 def qemu_args(root_img, hd1, hd2, serial, ssh_port=2532, qmp_port=4532,
               gdb_port=1232, mem_mb=128, iops=None, root_iops=None,
-              extra=""):
+              extra="", name="RhapsodiOS ffsbench"):
     """The bench guest's command line.  Snapshot is per drive, not -snapshot,
     because -snapshot would also cover hd1 and hd2.  iops caps the disk
     under test's operations per second: QEMU's disk sits on the host page
@@ -46,7 +46,7 @@ def qemu_args(root_img, hd1, hd2, serial, ssh_port=2532, qmp_port=4532,
     seek."""
     drive = "file=%s,format=raw,if=ide,index=%d,media=disk,snapshot=%s"
     return [
-        QEMU, "-name", "RhapsodiOS ffsbench",
+        QEMU, "-name", name,
         "-M", "pc", "-cpu", "pentium", "-accel", "tcg", "-m", str(mem_mb),
         "-nodefaults", "-vga", "cirrus", "-display", "none",
         "-drive", drive % (root_img, 0, "on") +
@@ -451,7 +451,8 @@ def ports_free():
 class Guest(object):
     """One QEMU process running the bench guest."""
 
-    def __init__(self, outdir, hd1, hd2, root_iops=None):
+    def __init__(self, outdir, hd1, hd2, root_iops=None,
+                 name="RhapsodiOS ffsbench"):
         ports_free()
         os.makedirs(outdir, exist_ok=True)
         self.serial = os.path.join(outdir, "serial.log")
@@ -459,12 +460,12 @@ class Guest(object):
         self.proc = subprocess.Popen(
             qemu_args(ROOT_IMG, hd1, hd2, self.serial, SSH_PORT, QMP_PORT,
                       GDB_PORT, mem_mb=MEM_MB, iops=IOPS, root_iops=root_iops,
-                      extra=QEMU_EXTRA),
+                      extra=QEMU_EXTRA, name=name),
             creationflags=flags,
             stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
             stderr=open(os.path.join(outdir, "qemu.err"), "wb"))
         self.qmp = Qmp()
-        if self.qmp.execute("query-name").get("name") != "RhapsodiOS ffsbench":
+        if self.qmp.execute("query-name").get("name") != name:
             raise SystemExit("QMP on %d is not our guest" % QMP_PORT)
 
     def serial_text(self):

@@ -21,6 +21,7 @@ SRC = os.path.join(REPO, "src", "Commands", "stress")
 DEFAULT_PORTS = "2548,4548,1248"
 LOGIN_TRIES, LOGIN_GAP = 15, 20       # up to ~5 minutes after the banner
 GUEST_SRC = "/tmp/stress-src"
+GUEST_NAME = "RhapsodiOS stress-dev"
 
 
 def load(ports):
@@ -52,7 +53,7 @@ def up():
     ports = os.environ.get("STRESS_DEV_PORTS", DEFAULT_PORTS)
     fb = load(ports)
     outdir = os.path.join(fb.ASSETS, "work", "stress-dev")
-    g = fb.Guest(outdir, fb._fresh_hd1(outdir), fb._workload())
+    g = fb.Guest(outdir, fb._fresh_hd1(outdir), fb._workload(), name=GUEST_NAME)
     with open(state_path(), "w") as f:
         json.dump({"ports": ports}, f)
     if not g.wait_sshd():
@@ -111,7 +112,7 @@ def down():
     ports = saved_ports()
     fb = load(ports)
     qmp = fb.Qmp(int(ports.split(",")[1]))
-    if qmp.execute("query-name").get("name") != "RhapsodiOS ffsbench":
+    if qmp.execute("query-name").get("name") != GUEST_NAME:
         raise SystemExit("QMP on %s is not our guest" % ports.split(",")[1])
     qmp.quit()
     try:

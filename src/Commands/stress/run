@@ -15,6 +15,9 @@ while test $# -gt 0; do
 	esac
 done
 test $# -ge 1 || { echo "$usage" >&2; exit 2; }
+# absolute, since each runtests runs from its own directory
+d=`cd "$dir" 2>/dev/null && pwd` || { echo "run: $dir: no such directory" >&2; exit 2; }
+dir=$d
 cycles=$1; shift
 cats=${*:-vm mmap fs proc net}
 here=`cd \`dirname $0\` && pwd` || exit 2

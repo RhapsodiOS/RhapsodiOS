@@ -629,8 +629,9 @@ t_fds(struct st_ctx *c)
 }
 
 /* pgrp: child C does setsid and forks G, which stops itself. When C exits G
- * is in an orphaned group with a stopped member and must get SIGHUP then
- * SIGCONT; its handlers report H and C through a pipe. */
+ * is in an orphaned group with a stopped member and must get SIGHUP and
+ * SIGCONT; its handlers report H and C through a pipe. Both are pending when
+ * G resumes, so the handler order is unspecified: HC or CH. */
 static int g_pw;
 
 static void
@@ -734,8 +735,8 @@ t_pgrp(struct st_ctx *c)
 			killpg(g_pg, SIGKILL);
 		g_pg = 0;
 		close(p[0]);
-		if (nl == NULL || strcmp(nl + 1, "HC") != 0)
-			st_fail(c, "what=pgrp reason=signals got=%s want=HC",
+		if (nl == NULL || (strcmp(nl + 1, "HC") != 0 && strcmp(nl + 1, "CH") != 0))
+			st_fail(c, "what=pgrp reason=signals got=%s want=HC|CH",
 				nl != NULL && nl[1] ? nl + 1 : "none");
 		st_op_end(c, 1);
 	}

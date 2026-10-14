@@ -1,0 +1,30 @@
+#!/bin/sh
+# usage: runtests [-s seed] [-t secs] [-n procs] [-m bytes] [-D rawdev] cycles
+# Each cycle runs every disk test alone. They are never run at once: all of
+# them write the same first -m bytes of the device. Without -D they are UNSUP.
+usage="usage: runtests [-s seed] [-t secs] [-n procs] [-m bytes] [-D rawdev] cycles"
+opts=
+while test $# -gt 1; do
+	case $1 in
+	-s|-t|-n|-m|-D) test $# -gt 2 || { echo "$usage" >&2; exit 2; }; opts="$opts $1 $2"; shift 2 ;;
+	*) echo "$usage" >&2; exit 2 ;;
+	esac
+done
+test $# = 1 || { echo "$usage" >&2; exit 2; }
+cd `dirname $0`; test -x ./stress-disk || { echo runtests: no ./stress-disk >&2; exit 2; }
+out=runtests.out.$$
+tests="seq rand verify"
+cycle=0
+rc=0
+: >$out
+while test $cycle -lt $1; do
+	for t in $tests; do
+		echo "stress: disk $t" 2>/dev/null >/dev/console || true
+		./stress-disk $opts $t >>$out 2>/dev/null || rc=1
+	done
+	cycle=`expr $cycle + 1`
+done
+grep '^STRESS ' $out
+grep ' FAIL ' $out >/dev/null && rc=1
+rm -f $out
+exit $rc

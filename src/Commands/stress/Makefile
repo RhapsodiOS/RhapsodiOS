@@ -16,8 +16,9 @@ IPCBIN = ipc/stress-ipc
 IPCNAMES = ipc/stress-ipc-names
 THREADBIN = thread/stress-thread
 MISCBIN = misc/stress-misc
+DISKBIN = disk/stress-disk
 
-all: lib/libstress.a $(VMBIN) $(MMAPBIN) $(FSBIN) $(PROCBIN) $(CHILDBIN) $(NETBIN) $(IPCBIN) $(THREADBIN) $(MISCBIN)
+all: lib/libstress.a $(VMBIN) $(MMAPBIN) $(FSBIN) $(PROCBIN) $(CHILDBIN) $(NETBIN) $(IPCBIN) $(THREADBIN) $(MISCBIN) $(DISKBIN)
 
 lib/libstress.a: $(LIBOBJS)
 	rm -f $@
@@ -80,6 +81,12 @@ misc/%.o: misc/%.c lib/stress.h
 
 $(MISCBIN): misc/misc.o lib/libstress.a
 	$(CC) $(CFLAGS) -o $@ misc/misc.o lib/libstress.a
+
+disk/%.o: disk/%.c lib/stress.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(DISKBIN): disk/disk.o lib/libstress.a
+	$(CC) $(CFLAGS) -o $@ disk/disk.o lib/libstress.a
 
 lib/t_lib: lib/t_lib.o lib/libstress.a
 	$(CC) $(CFLAGS) -o $@ lib/t_lib.o lib/libstress.a
@@ -223,6 +230,28 @@ check-misc: $(MISCBIN)
 	test `grep -c '^STRESS misc [a-z]* FAIL ' misc/t.out` = 2
 	@echo misc: ok
 
+# Writes /dev/rhd1a, the dev guest's scratch disk: it must not be mounted for
+# the PASS runs. newfs gives the mounted-refusal case a file system to mount
+# (an earlier run overwrote the superblock). /dev/rhd0a is the root disk and
+# must be refused in the probe, before anything opens it for writing.
+DISKDEV = /dev/rhd1a
+
+check-disk: $(DISKBIN)
+	if mount | grep '^/dev/hd1' >/dev/null; then umount /mnt1; fi
+	test `mount | grep -c '^/dev/hd1'` = 0
+	rc=0; $(DISKBIN) seq >disk/t.out || rc=$$?; test $$rc = 0
+	grep '^STRESS disk seq UNSUP reason="no device"' disk/t.out
+	rc=0; $(DISKBIN) -D /dev/rhd0a seq >disk/t.out || rc=$$?; test $$rc = 1
+	grep '^STRESS disk seq FAIL reason=unsafe-device detail=root-' disk/t.out
+	newfs -u 63 -t 16 -c 16 $(DISKDEV) >/dev/null 2>&1
+	mkdir -p /mnt1; mount /dev/hd1a /mnt1; rc=0; $(DISKBIN) -D $(DISKDEV) seq >disk/t.out || rc=$$?; umount /mnt1; test $$rc = 1
+	grep '^STRESS disk seq FAIL reason=unsafe-device detail=mounted' disk/t.out
+	rc=0; $(DISKBIN) -D $(DISKDEV) -m 8m >disk/t.out || rc=$$?; test $$rc = 0
+	test `grep -c '^STRESS disk [a-z]* PASS ' disk/t.out` = 3
+	rc=0; $(DISKBIN) -x -D $(DISKDEV) -m 8m seq rand >disk/t.out || rc=$$?; test $$rc = 1
+	test `grep -c '^STRESS disk [a-z]* FAIL .*off=0x' disk/t.out` = 2
+	@echo disk: ok
+
 # run exercises the whole chain on the vm category only.
 check-run: $(VMBIN)
 	touch /tmp/stress.junk.1
@@ -249,6 +278,6 @@ installsrc:
 	gnutar --exclude=CVS --exclude=.git -cf - . | gnutar -C $(SRCROOT) -xf -
 
 clean:
-	rm -f lib/*.o lib/libstress.a lib/t_lib $(TMAIN) lib/t.out lib/t.err vm/*.o $(VMBIN) vm/t.out mmap/*.o $(MMAPBIN) mmap/t.out fs/*.o $(FSBIN) fs/t.out proc/*.o $(PROCBIN) $(CHILDBIN) proc/t.out proc/stress-proc.old net/*.o $(NETBIN) net/t.out ipc/*.o $(IPCBIN) $(IPCNAMES) ipc/t.out thread/*.o $(THREADBIN) thread/t.out misc/*.o $(MISCBIN) misc/t.out
+	rm -f lib/*.o lib/libstress.a lib/t_lib $(TMAIN) lib/t.out lib/t.err vm/*.o $(VMBIN) vm/t.out mmap/*.o $(MMAPBIN) mmap/t.out fs/*.o $(FSBIN) fs/t.out proc/*.o $(PROCBIN) $(CHILDBIN) proc/t.out proc/stress-proc.old net/*.o $(NETBIN) net/t.out ipc/*.o $(IPCBIN) $(IPCNAMES) ipc/t.out thread/*.o $(THREADBIN) thread/t.out misc/*.o $(MISCBIN) misc/t.out disk/*.o $(DISKBIN) disk/t.out
 
-.PHONY: all check check-vm check-mmap check-fs check-proc check-net check-ipc check-thread check-misc check-run install installhdrs installsrc clean
+.PHONY: all check check-vm check-mmap check-fs check-proc check-net check-ipc check-thread check-misc check-disk check-run install installhdrs installsrc clean

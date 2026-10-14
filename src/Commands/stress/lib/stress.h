@@ -32,6 +32,7 @@ struct st_opts {
 	unsigned long mem;		/* -m, 0: the test decides */
 	int verbose;			/* -v */
 	int selfcheck;			/* -x */
+	const char *dev;		/* -D raw device, default NULL */
 };
 extern struct st_opts st_opt;
 
@@ -55,7 +56,7 @@ struct st_test {
 	const char *name;
 	long def_iters;
 	int solo;			/* 1: one worker; the test forks its own */
-	int (*probe)(char *why, int len); /* NULL, or nonzero + why when unsupported */
+	int (*probe)(char *why, int len); /* NULL; >0 + why: UNSUP; <0 + why: FAIL with why as the fields */
 	void (*body)(struct st_ctx *);	/* returns = success; failures go via st_fail */
 };
 

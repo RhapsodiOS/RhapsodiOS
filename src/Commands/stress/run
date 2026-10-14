@@ -1,15 +1,18 @@
 #!/bin/sh
-# usage: run [-a] [-s seed] [-t secs] [-d dir] cycles [cat ...]
+# usage: run [-a] [-s seed] [-t secs] [-d dir] [-D dev] cycles [cat ...]
 # Runs each category's runtests; -a runs the categories at the same time.
-usage="usage: run [-a] [-s seed] [-t secs] [-d dir] cycles [cat ...]"
+# disk is not a default category: it overwrites the raw device dev.
+usage="usage: run [-a] [-s seed] [-t secs] [-d dir] [-D dev] cycles [cat ...]"
 all=0
 opts=
+rawdev=
 dir=/tmp
 while test $# -gt 0; do
 	case $1 in
 	-a) all=1; shift ;;
 	-s|-t) test $# -gt 2 || { echo "$usage" >&2; exit 2; }; opts="$opts $1 $2"; shift 2 ;;
 	-d) test $# -gt 2 && test -n "$2" || { echo "$usage" >&2; exit 2; }; dir=$2; shift 2 ;;
+	-D) test $# -gt 2 && test -n "$2" || { echo "$usage" >&2; exit 2; }; rawdev=$2; shift 2 ;;
 	-*) echo "$usage" >&2; exit 2 ;;
 	*) break ;;
 	esac
@@ -19,7 +22,10 @@ test $# -ge 1 || { echo "$usage" >&2; exit 2; }
 d=`cd "$dir" 2>/dev/null && pwd` || { echo "run: $dir: no such directory" >&2; exit 2; }
 dir=$d
 cycles=$1; shift
-cats=${*:-vm mmap fs proc net}
+cats=${*:-vm mmap fs proc net ipc thread misc}
+for c in $cats; do
+	test $c = disk && test -z "$rawdev" && { echo "run: disk needs -D dev" >&2; exit 2; }
+done
 here=`cd \`dirname $0\` && pwd` || exit 2
 rep=$here/Report
 
@@ -29,11 +35,13 @@ rm -f "$rep"/*.out "$rep"/summary
 
 pids=
 for c in $cats; do
+	# disk/runtests takes -D instead of -d
+	if test $c = disk; then co="$opts -D $rawdev"; else co="$opts -d $dir"; fi
 	if test $all = 1; then
-		(cd "$here/$c" && sh ./runtests $opts -d "$dir" $cycles) >"$rep/$c.out" 2>&1 &
+		(cd "$here/$c" && sh ./runtests $co $cycles) >"$rep/$c.out" 2>&1 &
 		pids="$pids $!"
 	else
-		(cd "$here/$c" && sh ./runtests $opts -d "$dir" $cycles) >"$rep/$c.out" 2>&1 || echo "$c" >>"$rep/bad.$$"
+		(cd "$here/$c" && sh ./runtests $co $cycles) >"$rep/$c.out" 2>&1 || echo "$c" >>"$rep/bad.$$"
 	fi
 done
 for p in $pids; do wait $p || echo bg >>"$rep/bad.$$"; done

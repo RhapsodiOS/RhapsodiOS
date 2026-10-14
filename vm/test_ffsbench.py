@@ -363,6 +363,18 @@ def test_stress_records_replay_fields_when_the_guest_cannot_start(tmp_path, monk
     assert not (out / "hd1.img").exists()
 
 
+def test_stress_run_command():
+    cmd = fb.stress_run_command(["ipc"], 1, 7, False)
+    assert "-s 7" in cmd and "ipc" in cmd and "-D" not in cmd
+    cmd = fb.stress_run_command(["ipc", "disk"], 1, 7, True)
+    assert "-D /dev/rhd1a" in cmd and "ipc disk" in cmd
+
+
+def test_stress_disk_conflicts_with_fs():
+    with pytest.raises(SystemExit):
+        fb.main(["ffsbench", "stress", "--label", "x", "--disk", "--cats", "vm fs"])
+
+
 def test_stress_state_ignores_ssh_noise():
     warn = "Warning: Permanently added '10.10.0.240' to the list of known hosts."
     assert fb.stress_state(1.0, warn) == "running"

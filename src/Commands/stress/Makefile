@@ -267,22 +267,29 @@ check-disk: $(DISKBIN)
 	@echo disk: ok
 
 # run exercises the whole chain on the vm category only.
-check-run: $(VMBIN)
+check-run: $(VMBIN) $(IPCBIN)
 	touch /tmp/stress.junk.1
 	rc=0; sh ./run -d /tmp 1 vm >/dev/null || rc=$$?; test $$rc = 0
 	test ! -f /tmp/stress.junk.1
 	grep '^vm PASS=[0-9]* FAIL=0 ' Report/summary
+	rc=0; sh ./run -d /tmp 1 ipc >/dev/null || rc=$$?; test $$rc = 0
+	grep '^ipc PASS=[0-9]* FAIL=0 ' Report/summary
+	rc=0; sh ./run -d /tmp 1 disk >/dev/null 2>&1 || rc=$$?; test $$rc = 2
 	@echo run: ok
 
 STRESSDIR = $(DSTROOT)/usr/local/stress
 
 install: all
-	for d in vm mmap fs proc net Report; do install -d -m 755 $(STRESSDIR)/$$d; done
+	for d in vm mmap fs proc net ipc thread misc disk Report; do install -d -m 755 $(STRESSDIR)/$$d; done
 	install -m 755 $(VMBIN) vm/runtests $(STRESSDIR)/vm
 	install -m 755 $(MMAPBIN) mmap/runtests $(STRESSDIR)/mmap
 	install -m 755 $(FSBIN) fs/runtests $(STRESSDIR)/fs
 	install -m 755 $(PROCBIN) $(CHILDBIN) proc/runtests $(STRESSDIR)/proc
 	install -m 755 $(NETBIN) net/runtests $(STRESSDIR)/net
+	install -m 755 $(IPCBIN) ipc/runtests $(STRESSDIR)/ipc
+	install -m 755 $(THREADBIN) thread/runtests $(STRESSDIR)/thread
+	install -m 755 $(MISCBIN) misc/runtests $(STRESSDIR)/misc
+	install -m 755 $(DISKBIN) disk/runtests $(STRESSDIR)/disk
 	install -m 755 run $(STRESSDIR)
 	install -m 644 README $(STRESSDIR)
 

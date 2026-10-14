@@ -1,10 +1,11 @@
 stress - system stress suite for RhapsodiOS
 
 Usage
-    run [-a] [-s seed] [-t secs] [-d dir] cycles [cat ...]
+    run [-a] [-s seed] [-t secs] [-d dir] [-D dev] cycles [cat ...]
 
-    cat is any of vm mmap fs proc net (default: all five).  Each cycle runs
-    every test of a category alone, then all of them at once.  Output goes to
+    cat is any of vm mmap fs proc net ipc thread misc (the default) or disk.
+    Each cycle runs every test of a category alone, then all of them at once
+    (disk tests run one at a time).  Output goes to
     Report/<cat>.out, the totals and every FAIL line to Report/summary, core
     files to Report/cores.  Exit status is 1 if anything failed.
 
@@ -13,6 +14,10 @@ Usage
     -t secs   per-test time limit (default 600)
     -d dir    scratch directory (default /tmp); files named dir/stress.* are
               removed when run starts
+    -D dev    raw scratch device for the disk category, e.g. /dev/rhd1a.  The
+              tests OVERWRITE its first bytes.  disk is never a default: it
+              runs only when named, and naming it without -D exits 2.
+              stress-disk refuses a mounted, root or symlinked device.
     cycles    how many times to repeat
 
     The fs fill test fills a whole file system and runs only if STRESS_FILL_DIR

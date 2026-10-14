@@ -977,7 +977,19 @@ def stress_state(t, out):
     return lines[-1] if lines and lines[-1].isdigit() else "running"
 
 
-def stress(kernel, label, cycles=1, bootargs="", cats="", seed=None):
+STRESS_DISK_CATS = "vm mmap proc net ipc thread misc"     # run's default minus fs
+
+
+def stress_run_command(cats, cycles, seed, disk):
+    """The remote command that starts the run.  With disk, hd1 is left unmounted
+    for the raw disk tests (the scratch files go to /tmp) and fs is not run."""
+    return ("rm -f /tmp/stress.exit; (nohup sh -c '/usr/local/stress/run -a -s %d -d %s%s %d %s; "
+            "echo $? > /tmp/stress.exit' > /tmp/stress.log 2>&1 &)"
+            % (seed, "/tmp" if disk else "/mnt1", " -D /dev/rhd1a" if disk else "",
+               cycles, " ".join(cats)))
+
+
+def stress(kernel, label, cycles=1, bootargs="", cats="", seed=None, disk=False):
     """Build and run the stress suite on a guest.  result.txt is written on
     every exit path, with the seed, label and kernel to replay it: with
     "guest": "lost" if the guest stopped answering mid-run, with "bootfail"
@@ -1012,11 +1024,14 @@ def stress(kernel, label, cycles=1, bootargs="", cats="", seed=None):
         _log(outdir, "build.log", out)
         if rc != 0:
             raise SystemExit("stress build failed: %s" % out[-300:])
-        rc, out = ssh.run(MOUNT)
-        if rc != 0:
-            raise SystemExit("mount failed: %s" % out)
-        ssh.run("rm -f /tmp/stress.exit; (nohup sh -c '/usr/local/stress/run -a -s %d -d /mnt1 %d %s; "
-                "echo $? > /tmp/stress.exit' > /tmp/stress.log 2>&1 &)" % (seed, cycles, cats))
+        if not disk:
+            rc, out = ssh.run(MOUNT)
+            if rc != 0:
+                raise SystemExit("mount failed: %s" % out)
+        run_cats = cats.split()
+        if disk:
+            run_cats = (run_cats or STRESS_DISK_CATS.split()) + ["disk"]
+        ssh.run(stress_run_command(run_cats, cycles, seed, disk))
         start, dead = time.time(), 0
         while time.time() - start < STRESS_RUN_LIMIT_S:
             time.sleep(STRESS_POLL_S)
@@ -1080,6 +1095,8 @@ def main(argv):
     sr.add_argument("--bootargs", default="")
     sr.add_argument("--cats", default="", help="categories to run, e.g. 'vm mmap'")
     sr.add_argument("--seed", type=int, default=None, help="default: random")
+    sr.add_argument("--disk", action="store_true",
+                    help="also run the raw disk tests on hd1 (unmounted, overwritten); excludes fs")
     st = sub.add_parser("stall")
     st.add_argument("--kernel", required=True)
     st.add_argument("--label", required=True)
@@ -1100,10 +1117,12 @@ def main(argv):
         if name == "crash":
             s.add_argument("--seed", type=int, default=0)
     a = p.parse_args(argv[1:])
+    if a.cmd == "stress" and a.disk and "fs" in a.cats.split():
+        p.error("--disk leaves hd1 unmounted, so it cannot be combined with fs")
     if a.cmd == "prep":
         prep()
     elif a.cmd == "stress":
-        stress(a.kernel, a.label, a.cycles, a.bootargs, a.cats, a.seed)
+        stress(a.kernel, a.label, a.cycles, a.bootargs, a.cats, a.seed, a.disk)
     elif a.cmd == "stall":
         stall(a.kernel, a.label, a.bootargs, a.no_update)
     elif a.cmd == "bench":

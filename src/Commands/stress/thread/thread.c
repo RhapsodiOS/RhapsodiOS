@@ -33,6 +33,18 @@ static int g_bad;
 static char g_msg[160];
 static pid_t g_kid;
 
+/* usleep arms ITIMER_REAL and sigsuspends here; with other threads running
+ * its SIGALRM can land elsewhere and the sleeper never wakes. select is safe. */
+static void
+nap(long us)
+{
+	struct timeval tv;
+
+	tv.tv_sec = 0;
+	tv.tv_usec = us;
+	select(0, NULL, NULL, NULL, &tv);
+}
+
 /* Threads: record the first error. */
 static void
 thr_err(const char *fmt, unsigned long b, unsigned long d)
@@ -100,7 +112,7 @@ waitdone(struct st_ctx *c, int n)
 			return;
 		if (time(NULL) - t0 > WAITSECS)
 			st_fail(c, "reason=timeout what=threads done=%d want=%d", d, n);
-		usleep(2000);
+		nap(2000);
 	}
 }
 
@@ -310,6 +322,8 @@ t_cond(struct st_ctx *c)
 }
 
 /* stack: every thread keeps a patterned local array across yields. */
+static volatile int g_filled;
+
 static any_t
 stack_fn(any_t arg)
 {
@@ -319,10 +333,16 @@ stack_fn(any_t arg)
 	int y;
 
 	st_fill(buf, STKLEN, key, 0);
-	if (g_skip && (key & 1) == 0 && g_skip == 1) {
+	mutex_lock(g_mu);
+	if (g_skip == 1) {
 		g_skip = 2;	/* one flip, by whichever thread gets here first */
 		buf[1000] ^= 0xff;
 	}
+	g_filled++;
+	mutex_unlock(g_mu);
+	/* all arrays are live at once; main's waitdone bounds a stuck wait */
+	while (g_filled < NSTACK)
+		cthread_yield();
 	for (y = 0; y < 10; y++)
 		cthread_yield();
 	bad = st_check(buf, STKLEN, key, 0);
@@ -342,6 +362,7 @@ t_stack(struct st_ctx *c)
 	for (i = 0; st_more(c, i); i++) {
 		st_op_begin(c);
 		g_done = 0;
+		g_filled = 0;
 		g_skip = c->selfcheck;
 		for (k = 0; k < NSTACK; k++)
 			t[k] = fork1(c, stack_fn, (any_t)st_mix(((unsigned long)k << 8) ^ (unsigned long)i ^ ((unsigned long)c->idx << 20)));
@@ -403,7 +424,7 @@ t_fork(struct st_ctx *c)
 		memset(g_local, 0, sizeof g_local);
 		for (k = 0; k < 4; k++)
 			t[k] = fork1(c, spin_fn, (any_t)k);
-		for (t0 = time(NULL); ; usleep(1000)) {
+		for (t0 = time(NULL); ; nap(1000)) {
 			mutex_lock(g_mu);
 			cnt = g_count;
 			mutex_unlock(g_mu);
@@ -419,7 +440,7 @@ t_fork(struct st_ctx *c)
 		if (pid == 0)
 			child_body(key);
 		g_kid = pid;
-		for (t0 = time(NULL); ; usleep(5000)) {
+		for (t0 = time(NULL); ; nap(5000)) {
 			r = waitpid(pid, &st, WNOHANG);
 			if (r == pid)
 				break;

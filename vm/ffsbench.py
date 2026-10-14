@@ -977,18 +977,22 @@ def stress_state(t, out):
     return lines[-1] if lines and lines[-1].isdigit() else "running"
 
 
-def stress(kernel, label, cycles=1, bootargs="", cats=""):
+def stress(kernel, label, cycles=1, bootargs="", cats="", seed=None):
     """Build and run the stress suite on a guest.  result.txt is written on
-    every exit path: with "guest": "lost" if the guest stopped answering
-    mid-run, with "error" if setup failed (the error is then re-raised)."""
+    every exit path, with the seed, label and kernel to replay it: with
+    "guest": "lost" if the guest stopped answering mid-run, with "bootfail"
+    if the kernel did not boot, with "error" if setup failed (the error is
+    then re-raised)."""
     import stress_dev
     import stress_report
     conf = _conf()
     outdir = _new_outdir(label, "stress-0")
-    hd1 = _fresh_hd1(outdir)
-    g = Guest(outdir, hd1, _workload(), root_iops=IOPS)
-    res, texts, err, skipped = {}, [], None, False
+    if seed is None:
+        seed = random.randrange(1 << 31)
+    res = {"seed": seed, "label": label, "kernel": kernel or "image"}
+    texts, err, skipped, g = [], None, False, None
     try:
+        g = Guest(outdir, _fresh_hd1(outdir), _workload(), root_iops=IOPS)
         ssh = Ssh(conf)
         if kernel:
             if not boot_or_skip(g, ssh, kernel, bootargs, outdir):
@@ -1011,8 +1015,8 @@ def stress(kernel, label, cycles=1, bootargs="", cats=""):
         rc, out = ssh.run(MOUNT)
         if rc != 0:
             raise SystemExit("mount failed: %s" % out)
-        ssh.run("rm -f /tmp/stress.exit; (nohup sh -c '/usr/local/stress/run -a -d /mnt1 %d %s; "
-                "echo $? > /tmp/stress.exit' > /tmp/stress.log 2>&1 &)" % (cycles, cats))
+        ssh.run("rm -f /tmp/stress.exit; (nohup sh -c '/usr/local/stress/run -a -s %d -d /mnt1 %d %s; "
+                "echo $? > /tmp/stress.exit' > /tmp/stress.log 2>&1 &)" % (seed, cycles, cats))
         start, dead = time.time(), 0
         while time.time() - start < STRESS_RUN_LIMIT_S:
             time.sleep(STRESS_POLL_S)
@@ -1045,13 +1049,21 @@ def stress(kernel, label, cycles=1, bootargs="", cats=""):
         res["error"] = str(e) if isinstance(e, SystemExit) else "%s: %s" % (type(e).__name__, e)
         err = e
     finally:
-        g.quit()
-        os.remove(hd1)
-        if not skipped:
+        if g is not None:
+            g.quit()
+        hd1 = os.path.join(outdir, "hd1.img")
+        if os.path.exists(hd1):
+            os.remove(hd1)
+        result = os.path.join(outdir, "result.txt")
+        if skipped:
+            with open(result, encoding="utf-8") as f:
+                res["bootfail"] = f.read().strip()
+        else:
             res.update(stress_report.summarize(stress_report.parse("\n".join(texts))))
-            with open(os.path.join(outdir, "result.txt"), "w", encoding="utf-8") as f:
-                f.write(json.dumps(res) + "\n")
-            print(json.dumps(res))
+        os.makedirs(outdir, exist_ok=True)
+        with open(result, "w", encoding="utf-8") as f:
+            f.write(json.dumps(res) + "\n")
+        print(json.dumps(res))
     if err:
         raise err
 
@@ -1067,6 +1079,7 @@ def main(argv):
     sr.add_argument("--cycles", type=int, default=1)
     sr.add_argument("--bootargs", default="")
     sr.add_argument("--cats", default="", help="categories to run, e.g. 'vm mmap'")
+    sr.add_argument("--seed", type=int, default=None, help="default: random")
     st = sub.add_parser("stall")
     st.add_argument("--kernel", required=True)
     st.add_argument("--label", required=True)
@@ -1090,7 +1103,7 @@ def main(argv):
     if a.cmd == "prep":
         prep()
     elif a.cmd == "stress":
-        stress(a.kernel, a.label, a.cycles, a.bootargs, a.cats)
+        stress(a.kernel, a.label, a.cycles, a.bootargs, a.cats, a.seed)
     elif a.cmd == "stall":
         stall(a.kernel, a.label, a.bootargs, a.no_update)
     elif a.cmd == "bench":

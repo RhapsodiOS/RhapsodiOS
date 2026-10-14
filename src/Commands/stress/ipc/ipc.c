@@ -18,6 +18,7 @@
 #include "stress.h"
 
 #define WAITMS	5000
+#define OOLWAITMS 30000	/* a 64-page sender took 11 s per message under full-suite load */
 #define MAXBODY	1024
 #define MAXPAGES 64
 #define MAXRIGHTS 8
@@ -51,6 +52,7 @@ struct rmsg {
 static pid_t g_owner, g_kid;
 static port_t g_port[2];
 static int g_np;
+static int g_waitms = WAITMS;	/* msend/mrecv bound; t_ool raises it */
 
 static void
 hook(struct st_ctx *c)
@@ -152,7 +154,7 @@ send5(msg_header_t *h, port_t to, int simple, unsigned long size)
 	h->msg_local_port = PORT_NULL;
 	h->msg_remote_port = to;
 	h->msg_id = 0x5157;
-	return msg_send(h, SEND_TIMEOUT, WAITMS);
+	return msg_send(h, SEND_TIMEOUT, g_waitms);
 }
 
 static void
@@ -173,7 +175,7 @@ mrecv(struct st_ctx *c, msg_header_t *h, port_t on, unsigned long size)
 
 	h->msg_size = size;
 	h->msg_local_port = on;
-	r = msg_receive(h, RCV_TIMEOUT, WAITMS);
+	r = msg_receive(h, RCV_TIMEOUT, g_waitms);
 	if (r == RCV_TIMED_OUT)
 		st_fail(c, "reason=timeout what=%s", c->test);
 	if (r != RCV_SUCCESS)
@@ -368,6 +370,7 @@ t_ool(struct st_ctx *c)
 	long i, badi, bad;
 
 	badi = c->selfcheck ? st_range(&c->rng, 0, c->iters - 1) : -1;
+	g_waitms = OOLWAITMS;
 	own(c);
 	pname(c, name, "");
 	p = newport(c);

@@ -8,7 +8,6 @@
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <sys/file.h>
-#include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <signal.h>
@@ -26,7 +25,6 @@
 #define WAIT	5
 
 static char g_path[PATHLEN];
-static char g_dir[PATHLEN];
 static pid_t g_kid, g_pg;
 
 static void
@@ -37,26 +35,6 @@ nap(long us)
 	tv.tv_sec = us / 1000000;
 	tv.tv_usec = us % 1000000;
 	select(0, NULL, NULL, NULL, &tv);
-}
-
-/* Unlinks everything in dir, then dir itself. */
-static void
-rmscratch(const char *dir)
-{
-	char f[PATHLEN + 280];
-	struct dirent *e;
-	DIR *d = opendir(dir);
-
-	if (d != NULL) {
-		while ((e = readdir(d)) != NULL) {
-			if (strcmp(e->d_name, ".") == 0 || strcmp(e->d_name, "..") == 0)
-				continue;
-			sprintf(f, "%s/%s", dir, e->d_name);
-			unlink(f);
-		}
-		closedir(d);
-	}
-	rmdir(dir);
 }
 
 static void
@@ -73,8 +51,6 @@ hook(struct st_ctx *c)
 	}
 	if (g_pg > 0)
 		killpg(g_pg, SIGKILL);
-	if (g_dir[0])
-		rmscratch(g_dir);
 	if (g_path[0])
 		unlink(g_path);
 }
@@ -82,7 +58,7 @@ hook(struct st_ctx *c)
 static void
 setup(struct st_ctx *c)
 {
-	g_path[0] = g_dir[0] = '\0';
+	g_path[0] = '\0';
 	g_kid = g_pg = 0;
 	st_set_cleanup(c, hook);
 }
@@ -418,40 +394,22 @@ child_fsize(char *msg)
 	return 0;
 }
 
-/* 1 MB past the limit is the slack. */
-static int
-child_data(char *msg)
-{
-	struct rlimit rl;
-	unsigned long total = 0;
+/* RLIMIT_DATA is not tested: this kernel accepts it but never enforces it
+ * (Mach malloc uses vm_allocate); t_rlimit says so under -v. */
 
-	rl.rlim_cur = rl.rlim_max = 4UL << 20;
-	if (setrlimit(RLIMIT_DATA, &rl) < 0)
-		return rlfail(msg, "data", "setrlimit");
-	while (total <= 5UL << 20 && malloc(65536) != NULL)
-		total += 65536;
-	if (total > 5UL << 20) {
-		sprintf(msg, "what=data reason=no-limit allocated=%lu", total);
-		return 1;
-	}
-	return 0;
-}
-
-/* A grandchild crashes in g_dir with the core limit 0; nothing may appear. */
+/* A grandchild crashes with the core limit 0; this kernel writes cores to
+ * /cores/core.<pid>, and none may appear. */
 static int
 child_core(char *msg)
 {
 	struct rlimit rl;
-	struct dirent *e;
-	DIR *d;
+	char core[64];
 	pid_t g;
-	int st, bad = 0;
+	int st;
 
 	rl.rlim_cur = rl.rlim_max = 0;
 	if (setrlimit(RLIMIT_CORE, &rl) < 0)
 		return rlfail(msg, "core", "setrlimit");
-	if (chdir(g_dir) < 0)
-		return rlfail(msg, "core", "chdir");
 	g = fork();
 	if (g < 0)
 		return rlfail(msg, "core", "fork");
@@ -466,17 +424,13 @@ child_core(char *msg)
 		sprintf(msg, "what=core reason=no-crash status=0x%x", st);
 		return 1;
 	}
-	d = opendir(".");
-	if (d == NULL)
-		return rlfail(msg, "core", "opendir");
-	while ((e = readdir(d)) != NULL)
-		if (strcmp(e->d_name, ".") != 0 && strcmp(e->d_name, "..") != 0) {
-			sprintf(msg, "what=core reason=core-written file=%s", e->d_name);
-			bad = 1;
-			break;
-		}
-	closedir(d);
-	return bad;
+	sprintf(core, "/cores/core.%d", (int)g);
+	if (WCOREDUMP(st) || access(core, F_OK) == 0) {
+		unlink(core);
+		sprintf(msg, "what=core reason=core-written status=0x%x", st);
+		return 1;
+	}
+	return 0;
 }
 
 /* Runs fn in a child and fails the test with its message. */
@@ -540,14 +494,10 @@ t_rlimit(struct st_ctx *c)
 		runchild(c, "fsize", child_fsize);
 		unlink(g_path);
 		g_path[0] = '\0';
-		runchild(c, "data", child_data);
-		st_path(c, g_dir, sizeof g_dir, "core");
-		if (mkdir(g_dir, 0700) < 0)
-			st_fail_errno(c, "mkdir");
+		if (st_opt.verbose && i == 0)
+			fprintf(stderr, "RLIMIT_DATA not enforced (Mach malloc uses vm_allocate)\n");
 		runchild(c, "core", child_core);
-		rmscratch(g_dir);
-		g_dir[0] = '\0';
-		st_op_end(c, 4);
+		st_op_end(c, 3);
 	}
 }
 

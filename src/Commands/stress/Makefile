@@ -24,7 +24,9 @@ $(TMAIN): lib/t_main.o lib/libstress.a
 	$(CC) $(CFLAGS) -o $@ lib/t_main.o lib/libstress.a
 
 # Each line is one shell; a failed test or grep stops make before "ok".
-# make runs sh -e, so exit statuses are caught with ||.
+# make runs sh -e, so exit statuses are caught with ||. The SIGTERM line's
+# own shell has "stress-tmain" in its arguments, so its ps grep matches only
+# commands that start with lib/stress-tmain.
 check: lib/t_lib $(TMAIN)
 	lib/t_lib
 	rc=0; $(TMAIN) -n 2 pass >lib/t.out || rc=$$?; test $$rc = 0
@@ -36,6 +38,7 @@ check: lib/t_lib $(TMAIN)
 	rc=0; $(TMAIN) -t 5 hang >lib/t.out || rc=$$?; test $$rc = 1
 	grep 'FAIL reason=timeout secs=5' lib/t.out
 	sleep 2; test `ps -ax | grep -c '[s]tress-tmain'` = 0
+	$(TMAIN) -t 600 hang >/dev/null 2>&1 & sleep 3; kill -TERM $$!; sleep 2; test `ps -ax | grep -c '[0-9] lib/[s]tress-tmain'` = 0
 	rc=0; $(TMAIN) unsup >lib/t.out || rc=$$?; test $$rc = 0
 	grep 'STRESS tmain unsup UNSUP reason="msync: ENOSYS"' lib/t.out
 	rc=0; $(TMAIN) data >lib/t.out || rc=$$?; test $$rc = 1

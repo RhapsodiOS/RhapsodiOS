@@ -21,7 +21,8 @@ static volatile int alarmed;
 
 /* Leader state: what the workers reported. */
 static char fail[512];		/* fields of the first FAIL line */
-static char death[64];		/* first signal or nonzero exit */
+static char killed[64];		/* first worker death by signal */
+static char exited[64];		/* first worker nonzero exit */
 static unsigned long units, maxlat_us;
 static char inbuf[1024];
 static int inlen, eof;
@@ -35,6 +36,21 @@ on_alarm(int sig)
 static void
 on_chld(int sig)
 {
+}
+
+static volatile pid_t leader_pid;	/* the running leader, 0 if none */
+static sigset_t oldmask;		/* the mask before run() blocked stops */
+
+/* SIGINT/SIGTERM/SIGHUP in the top level: the leader is in its own group
+ * and would outlive us, so take its group down first. */
+static void
+on_stop(int sig)
+{
+	if (leader_pid > 0) {
+		killpg(leader_pid, SIGKILL);
+		waitpid(leader_pid, NULL, 0);
+	}
+	_exit(128 + sig);
 }
 
 /* No SA_RESTART: the handler interrupts select and waitpid. */
@@ -170,6 +186,10 @@ leader(const struct st_test *t, const char *cat)
 
 	setpgid(0, 0);
 	catch(SIGALRM, SIG_DFL);
+	catch(SIGINT, SIG_DFL);
+	catch(SIGTERM, SIG_DFL);
+	catch(SIGHUP, SIG_DFL);
+	sigprocmask(SIG_SETMASK, &oldmask, NULL);
 	catch(SIGCHLD, on_chld);
 	n = t->solo ? 1 : st_opt.procs;
 	pids = malloc(n * sizeof *pids);
@@ -209,12 +229,10 @@ leader(const struct st_test *t, const char *cat)
 			if (i == n)
 				continue;
 			live--;
-			if (death[0] != '\0')
-				continue;
-			if (WIFSIGNALED(status))
-				sprintf(death, "signal=%d worker=%d", WTERMSIG(status), i);
-			else if (WEXITSTATUS(status) != 0)
-				sprintf(death, "exit=%d worker=%d", WEXITSTATUS(status), i);
+			if (WIFSIGNALED(status) && killed[0] == '\0')
+				sprintf(killed, "signal=%d worker=%d", WTERMSIG(status), i);
+			else if (WIFEXITED(status) && WEXITSTATUS(status) != 0 && exited[0] == '\0')
+				sprintf(exited, "exit=%d worker=%d", WEXITSTATUS(status), i);
 		}
 		if (live > 0)
 			input(fds[0], 1);
@@ -222,8 +240,10 @@ leader(const struct st_test *t, const char *cat)
 	secs = since(&t0);
 	while (input(fds[0], 0))
 		;
-	if (fail[0] != '\0' || death[0] != '\0') {
-		sprintf(what, "FAIL %s", fail[0] != '\0' ? fail : death);
+	/* first FAIL line, else a signal death, else a nonzero exit */
+	if (fail[0] != '\0' || killed[0] != '\0' || exited[0] != '\0') {
+		sprintf(what, "FAIL %s", fail[0] != '\0' ? fail :
+			killed[0] != '\0' ? killed : exited);
 		st_line(cat, t->name, what, 1);
 		exit(1);
 	}
@@ -241,6 +261,7 @@ static int
 run(const struct st_test *t, const char *cat)
 {
 	char why[256], what[320];
+	sigset_t stop;
 	pid_t pid, r;
 	int status;
 
@@ -253,8 +274,15 @@ run(const struct st_test *t, const char *cat)
 		}
 	}
 	fflush(stdout);
+	/* blocked until leader_pid is set, so on_stop never misses the leader */
+	sigemptyset(&stop);
+	sigaddset(&stop, SIGINT);
+	sigaddset(&stop, SIGTERM);
+	sigaddset(&stop, SIGHUP);
+	sigprocmask(SIG_BLOCK, &stop, &oldmask);
 	pid = fork();
 	if (pid < 0) {
+		sigprocmask(SIG_SETMASK, &oldmask, NULL);
 		sprintf(what, "FAIL reason=\"fork: %s\"", st_errname(errno));
 		st_line(cat, t->name, what, 1);
 		return 1;
@@ -264,6 +292,8 @@ run(const struct st_test *t, const char *cat)
 		leader(t, cat);
 	}
 	setpgid(pid, pid);		/* both sides, so killpg never misses */
+	leader_pid = pid;
+	sigprocmask(SIG_SETMASK, &oldmask, NULL);
 	alarmed = 0;
 	alarm(st_opt.secs);
 	while ((r = waitpid(pid, &status, 0)) != pid) {
@@ -273,6 +303,7 @@ run(const struct st_test *t, const char *cat)
 			killpg(pid, SIGKILL);
 			while (waitpid(pid, &status, 0) < 0 && errno == EINTR)
 				;
+			leader_pid = 0;
 			sprintf(what, "FAIL reason=timeout secs=%d", st_opt.secs);
 			st_line(cat, t->name, what, 1);
 			return 1;
@@ -280,6 +311,7 @@ run(const struct st_test *t, const char *cat)
 	}
 	alarm(0);
 	killpg(pid, SIGKILL);		/* anything the test left behind */
+	leader_pid = 0;
 	if (r != pid) {
 		sprintf(what, "FAIL reason=\"waitpid: %s\"", st_errname(errno));
 		st_line(cat, t->name, what, 1);
@@ -394,6 +426,9 @@ stress_main(int argc, char **argv, const char *cat, const struct st_test *tests)
 	}
 	fprintf(stderr, "stress-%s: seed=%lu\n", cat, st_opt.seed);
 	catch(SIGALRM, on_alarm);
+	catch(SIGINT, on_stop);
+	catch(SIGTERM, on_stop);
+	catch(SIGHUP, on_stop);
 	for (t = tests; t->name != NULL; t++)
 		if (argc == 0 || named(t->name, argc, argv))
 			failed |= run(t, cat);

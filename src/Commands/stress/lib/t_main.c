@@ -87,9 +87,10 @@ t_data(struct st_ctx *c)
 }
 
 /* Forks pausing children until fork fails, then kills and reaps them all
- * before reporting, so the process table frees at once. Root drops to
- * nobody with a 64-process limit: the system-wide limit is above what
- * Mach can hold, and reaching it panics in ipc_task_init. */
+ * before reporting, so the process table frees at once. It runs under a
+ * 64-process limit (root drops to nobody, which root would bypass): the
+ * system-wide limit is above what Mach can hold, and reaching it panics in
+ * ipc_task_init. */
 static void
 t_forkbomb(struct st_ctx *c)
 {
@@ -97,13 +98,11 @@ t_forkbomb(struct st_ctx *c)
 	int n = 0, i, err;
 	pid_t pid;
 
-	if (getuid() == 0) {
-		rl.rlim_cur = rl.rlim_max = 64;
-		if (setrlimit(RLIMIT_NPROC, &rl) < 0)
-			st_fail_errno(c, "setrlimit");
-		if (setuid(-2) < 0)
-			st_fail_errno(c, "setuid");
-	}
+	rl.rlim_cur = rl.rlim_max = 64;
+	if (setrlimit(RLIMIT_NPROC, &rl) < 0)
+		st_fail_errno(c, "setrlimit");
+	if (getuid() == 0 && setuid(-2) < 0)
+		st_fail_errno(c, "setuid");
 	for (;;) {
 		if (n == MAXKIDS) {
 			err = 0;

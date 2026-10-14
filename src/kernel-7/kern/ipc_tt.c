@@ -135,6 +135,7 @@ ipc_task_init(task, parent)
 
 		itk_unlock(parent);
 	}
+	return KERN_SUCCESS;
 }
 
 /*

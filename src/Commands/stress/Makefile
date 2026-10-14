@@ -42,10 +42,10 @@ check: lib/t_lib $(TMAIN)
 	grep 'FAIL what=buf off=0x11 want=' lib/t.out
 	$(TMAIN) -s 42 pass >/dev/null 2>lib/t.err; head -1 lib/t.err | grep '^stress-tmain: seed=42$$'
 	$(TMAIN) -s 42 pass >/dev/null 2>lib/t.err; head -1 lib/t.err | grep '^stress-tmain: seed=42$$'
-	rc=0; $(TMAIN) bogus 2>/dev/null || rc=$$?; test $$rc = 2
 	rc=0; $(TMAIN) -t 60 forkbomb >lib/t.out || rc=$$?; test $$rc = 1
 	grep 'FAIL reason="fork: EAGAIN"' lib/t.out
 	sleep 2; test `ps -ax | grep -c '[s]tress-tmain'` = 0
+	rc=0; $(TMAIN) bogus 2>/dev/null || rc=$$?; test $$rc = 2
 	@echo t_main: ok
 
 install: all

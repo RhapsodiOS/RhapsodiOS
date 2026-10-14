@@ -37,8 +37,12 @@ main(void)
 	CHECK(st_check(big, 4096, 78, 0) == 0);	/* wrong key fails at once */
 	/* known vector pins the byte order for ppc too */
 	CHECK(st_mix(1) == 0x688990c0UL);
+	CHECK(st_mix(0x9e3779baUL) == 0x9f505634UL);	/* key 1, offset 0: (1 ^ 0) + 0x9e3779b9 */
 	st_fill(win, 4, 1, 0);
-	CHECK(win[0] == 0xc0 && win[1] == 0x90 && win[2] == 0x89 && win[3] == 0x68);
+	CHECK(win[0] == 0x34 && win[1] == 0x56 && win[2] == 0x50 && win[3] == 0x9f);
+	/* where (o >> 2) == key the word must not be zero, or NUL holes hide */
+	st_fill(win, 4, 5, 5 * 4);
+	CHECK(win[0] | win[1] | win[2] | win[3]);
 	CHECK(strcmp(st_errname(ENOSYS), "ENOSYS") == 0);
 	CHECK(strcmp(st_errname(9999), "E9999") == 0);
 	printf("t_lib: ok\n");

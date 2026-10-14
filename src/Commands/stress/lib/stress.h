@@ -16,7 +16,7 @@ unsigned long st_rand(struct st_rng *r);
 unsigned long st_range(struct st_rng *r, unsigned long lo, unsigned long hi);
 
 /* The byte at absolute offset o is byte (o & 3), least significant first,
- * of st_mix(key ^ (o >> 2)). */
+ * of st_mix(((key ^ (o >> 2)) + 0x9e3779b9) & ST_MASK). */
 void st_fill(void *buf, unsigned long len, unsigned long key, unsigned long off);
 long st_check(const void *buf, unsigned long len, unsigned long key, unsigned long off);
 

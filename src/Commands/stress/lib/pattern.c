@@ -3,7 +3,10 @@
 static unsigned char
 pat_byte(unsigned long key, unsigned long o)
 {
-	return (unsigned char)((st_mix(key ^ (o >> 2)) >> (8 * (o & 3))) & 0xff);
+	/* the constant keeps the word nonzero where (o >> 2) == key: st_mix(0) == 0 */
+	unsigned long w = st_mix(((key ^ (o >> 2)) + 0x9e3779b9UL) & ST_MASK);
+
+	return (unsigned char)((w >> (8 * (o & 3))) & 0xff);
 }
 
 void

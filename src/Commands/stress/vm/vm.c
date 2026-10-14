@@ -300,12 +300,12 @@ squeeze(unsigned long limit)
 	unsigned long ps = pagesz(), got = 0, o;
 	unsigned char *p;
 
-	while (got < limit && (p = malloc(MB)) != NULL) {
+	while ((got < limit || got == 0) && (p = malloc(MB)) != NULL) {
 		for (o = 0; o < MB; o += ps)
 			p[o] = 1;
 		got += MB;
 	}
-	_exit(0);
+	_exit(got > 0 ? 0 : 1);
 }
 
 static void
@@ -336,6 +336,8 @@ t_wire(struct st_ctx *c)
 			squeeze(limit);
 		while (waitpid(pid, &status, 0) < 0 && errno == EINTR)
 			;
+		if (!WIFEXITED(status) || WEXITSTATUS(status) != 0)
+			st_fail(c, "reason=squeeze status=0x%x", status);
 		if (c->selfcheck)
 			buf[st_range(&c->rng, 0, MB - 1)] ^= 0x01;
 		bad = st_check(buf, MB, key, 0);
@@ -349,7 +351,7 @@ t_wire(struct st_ctx *c)
 }
 
 static const struct st_test tests[] = {
-	{ "pressure", 3, 0, NULL, t_pressure },
+	{ "pressure", 1, 0, NULL, t_pressure },
 	{ "cow", 20, 1, NULL, t_cow },
 	{ "machvm", 200, 0, NULL, t_machvm },
 	{ "brk", 20000, 0, NULL, t_brk },

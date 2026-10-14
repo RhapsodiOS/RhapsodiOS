@@ -88,10 +88,12 @@ void
 st_op_end(struct st_ctx *c, unsigned long n)
 {
 	struct timeval t;
-	unsigned long us;
+	long us;
 
 	gettimeofday(&t, NULL);
-	us = (t.tv_sec - c->t0_sec) * 1000000UL + t.tv_usec - c->t0_usec;
+	us = (t.tv_sec - c->t0_sec) * 1000000L + (t.tv_usec - c->t0_usec);
+	if (us < 0)
+		us = 0;		/* the clock stepped back */
 	if (us > c->maxlat_us)
 		c->maxlat_us = us;
 	c->units += n;

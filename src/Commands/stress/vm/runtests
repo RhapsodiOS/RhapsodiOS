@@ -14,19 +14,23 @@ cd `dirname $0`; test -x ./stress-vm || { echo runtests: no ./stress-vm >&2; exi
 out=runtests.out.$$
 tests="pressure cow machvm brk wire"
 cycle=0
+rc=0
 : >$out
 while test $cycle -lt $1; do
 	for t in $tests; do
-		./stress-vm $opts $t >>$out 2>/dev/null
+		./stress-vm $opts $t >>$out 2>/dev/null || rc=1
 	done
+	pids=
 	for t in $tests; do
 		./stress-vm $opts $t >>$out 2>/dev/null &
+		pids="$pids $!"
 	done
-	wait
+	for p in $pids; do
+		wait $p || rc=1
+	done
 	cycle=`expr $cycle + 1`
 done
 grep '^STRESS ' $out
-rc=0
 grep ' FAIL ' $out >/dev/null && rc=1
 rm -f $out
 exit $rc

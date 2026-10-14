@@ -370,6 +370,17 @@ def test_stress_run_command():
     assert "-D /dev/rhd1a" in cmd and "ipc disk" in cmd
 
 
+def test_stress_cats_adds_disk_once():
+    assert fb.stress_cats("disk", True) == ["disk"]
+    assert fb.stress_cats("vm", True) == ["vm", "disk"]
+    assert fb.stress_cats("", True)[-1] == "disk"
+
+
+def test_stress_cats_disk_needs_the_flag():
+    with pytest.raises(SystemExit):
+        fb.main(["ffsbench", "stress", "--label", "x", "--cats", "disk"])
+
+
 def test_stress_disk_conflicts_with_fs():
     with pytest.raises(SystemExit):
         fb.main(["ffsbench", "stress", "--label", "x", "--disk", "--cats", "vm fs"])

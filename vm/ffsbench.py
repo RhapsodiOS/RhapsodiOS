@@ -989,6 +989,14 @@ def stress_run_command(cats, cycles, seed, disk):
                cycles, " ".join(cats)))
 
 
+def stress_cats(cats, disk):
+    """The category list for run: with disk, ensure disk is in it exactly once."""
+    c = cats.split()
+    if disk:
+        c = (c or STRESS_DISK_CATS.split()) + ([] if "disk" in c else ["disk"])
+    return c
+
+
 def stress(kernel, label, cycles=1, bootargs="", cats="", seed=None, disk=False):
     """Build and run the stress suite on a guest.  result.txt is written on
     every exit path, with the seed, label and kernel to replay it: with
@@ -1028,10 +1036,7 @@ def stress(kernel, label, cycles=1, bootargs="", cats="", seed=None, disk=False)
             rc, out = ssh.run(MOUNT)
             if rc != 0:
                 raise SystemExit("mount failed: %s" % out)
-        run_cats = cats.split()
-        if disk:
-            run_cats = (run_cats or STRESS_DISK_CATS.split()) + ["disk"]
-        ssh.run(stress_run_command(run_cats, cycles, seed, disk))
+        ssh.run(stress_run_command(stress_cats(cats, disk), cycles, seed, disk))
         start, dead = time.time(), 0
         while time.time() - start < STRESS_RUN_LIMIT_S:
             time.sleep(STRESS_POLL_S)
@@ -1119,6 +1124,8 @@ def main(argv):
     a = p.parse_args(argv[1:])
     if a.cmd == "stress" and a.disk and "fs" in a.cats.split():
         p.error("--disk leaves hd1 unmounted, so it cannot be combined with fs")
+    if a.cmd == "stress" and not a.disk and "disk" in a.cats.split():
+        p.error("the disk category needs --disk")
     if a.cmd == "prep":
         prep()
     elif a.cmd == "stress":

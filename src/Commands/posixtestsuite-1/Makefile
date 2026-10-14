@@ -53,7 +53,37 @@ check-run: ptimeout
 	test ! -d /tmp/posixcheck
 	@echo run: ok
 
-check: check-ptimeout check-run
+# Variants of t/baseline.ok exercise each kind of comparison.
+B    = /tmp/posixcheck.base
+RUNT = sh ./run -r t -t 3 -d /tmp/posixcheck
+check-baseline: ptimeout
+	rc=0; $(RUNT) -b t/baseline.ok >Report.out || rc=$$?; test $$rc = 0
+	test `grep -c ' -> ' Report/summary` = 0
+	test `sed -n '/^== new/,$$p' Report/summary | grep -c '^  '` = 0
+	grep '^  1 HUNG$$' Report/summary
+	grep '^  1 nobuild$$' Report/summary
+	grep '^  1 nolink$$' Report/summary
+	sed 's|/fail/1-1 FAIL$$|/fail/1-1 PASS|' t/baseline.ok >$(B)
+	rc=0; $(RUNT) -b $(B) >Report.out || rc=$$?; test $$rc = 1
+	sed -n '/^== regressions/,/^== improvements/p' Report/summary | grep '^  conformance/interfaces/fail/1-1 PASS -> FAIL$$'
+	sed 's|/pass/1-1 PASS$$|/pass/1-1 FAIL|' t/baseline.ok >$(B)
+	rc=0; $(RUNT) -b $(B) >Report.out || rc=$$?; test $$rc = 0
+	sed -n '/^== improvements/,/^== changes/p' Report/summary | grep '^  conformance/interfaces/pass/1-1 FAIL -> PASS$$'
+	(sed 's|/fail/1-1 FAIL$$|/fail/1-1 FLAKY|' t/baseline.ok; echo) >$(B)
+	rc=0; $(RUNT) -b $(B) >Report.out || rc=$$?; test $$rc = 0
+	test `grep -c '/fail/1-1' Report/summary` = 0
+	test `sed -n '/^== new/,$$p' Report/summary | grep -c '^  '` = 0
+	grep -v '/pass/1-1 ' t/baseline.ok >$(B)
+	rc=0; $(RUNT) -b $(B) >Report.out || rc=$$?; test $$rc = 0
+	sed -n '/^== new/,$$p' Report/summary | grep '^  conformance/interfaces/pass/1-1 PASS$$'
+	rm -rf $(B) Report; rc=0; $(RUNT) -b $(B) >Report.out 2>/dev/null || rc=$$?; test $$rc = 2
+	test ! -d Report
+	rc=0; $(RUNT) -u -b $(B) >Report.out || rc=$$?; test $$rc = 0
+	cmp $(B) t/baseline.ok
+	rm -f $(B)
+	@echo baseline: ok
+
+check: check-ptimeout check-run check-baseline
 
 installhdrs:
 
@@ -63,4 +93,4 @@ installsrc:
 clean:
 	rm -rf Report Report.out ptimeout
 
-.PHONY: all check check-ptimeout check-run install installhdrs installsrc clean
+.PHONY: all check check-ptimeout check-run check-baseline install installhdrs installsrc clean

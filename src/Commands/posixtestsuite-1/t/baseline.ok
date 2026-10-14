@@ -1,0 +1,16 @@
+conformance/interfaces/alarmhang/1-1 HUNG
+conformance/interfaces/buildonly/1-buildonly BUILD-ONLY
+conformance/interfaces/exit7/1-1 EXIT=7
+conformance/interfaces/fail/1-1 FAIL
+conformance/interfaces/killgrp/1-1 SIGNAL=9
+conformance/interfaces/nobuild/1-1 BUILD-FAIL
+conformance/interfaces/nolink/1-1 LINK-FAIL
+conformance/interfaces/nomain/1-1 BUILD-ONLY
+conformance/interfaces/orphan/1-1 PASS
+conformance/interfaces/pass/1-1 PASS
+conformance/interfaces/segv/1-1 SIGNAL=11
+conformance/interfaces/shpass/1-1 PASS
+conformance/interfaces/stdin/1-1 PASS
+conformance/interfaces/unres/1-1 UNRESOLVED
+conformance/interfaces/unsup/1-1 UNSUPPORTED
+conformance/interfaces/untested/1-1 UNTESTED

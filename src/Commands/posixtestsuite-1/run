@@ -23,6 +23,7 @@ while test $# -gt 0; do
 	esac
 done
 test $# -gt 0 || set conformance
+test $update = 1 || test -r "$base" || { echo "run: no baseline $base" >&2; exit 2; }
 cc -v >/dev/null 2>&1 || { echo "run: no cc" >&2; exit 2; }
 root=`cd $root && pwd` || { echo "run: no suite root" >&2; exit 2; }
 if test -z "$work"; then
@@ -83,6 +84,31 @@ while read f; do
 	echo "POSIX $p $r"
 	echo "POSIX $p $r" >>$report/results
 done <$work/list
-rm -rf $work
 sed 's/^POSIX //' $report/results | sort >$report/baseline.new
-exit 0
+
+# Summary. Fields are compared with join and awk, never grep, so a path
+# is only ever matched whole.
+sum=$report/summary
+echo "== counts" >$sum
+awk '{ print $3 }' $report/results | sort | uniq -c | awk '{ print "  " $1 " " $2 }' >>$sum
+echo "== build failures by family" >>$sum
+awk '$3 == "BUILD-FAIL" || $3 == "LINK-FAIL" { split($2, a, "/"); f = a[3]; sub(/_.*/, "", f); print f }' 	$report/results | sort | uniq -c | awk '{ print "  " $1 " " $2 }' >>$sum
+if test $update = 1; then
+	cp $report/baseline.new "$base"
+	rm -rf $work
+	exit 0
+fi
+grep -v '^[ 	]*$' "$base" | sort >$work/base
+join $report/baseline.new $work/base >$work/both
+for kind in regressions improvements changes; do
+	echo "== $kind" >>$sum
+	awk -v kind=$kind '$3 != "FLAKY" && $2 != $3 {
+		k = $3 == "PASS" ? "regressions" : $2 == "PASS" ? "improvements" : "changes"
+		if (k == kind) print "  " $1 " " $3 " -> " $2 }' $work/both >>$sum
+done
+echo "== new" >>$sum
+join -v1 $report/baseline.new $work/base | awk '{ print "  " $1 " " $2 }' >>$sum
+rc=0
+test `sed -n '/^== regressions/,/^== improvements/p' $sum | grep -c '^  '` = 0 || rc=1
+rm -rf $work
+exit $rc

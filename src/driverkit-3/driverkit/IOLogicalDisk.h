@@ -139,4 +139,14 @@
 				: (void *)pending
 				: (u_int *)actualLength;
 
+#ifdef	KERNEL
+/* Async raw transfer at a byte offset from the start of the partition. */
+- (IOReturn) asyncTransfer	: (BOOL)read
+				  byteOffset : (unsigned long long)offset
+				  length : (unsigned)length
+				  buffer : (unsigned char *)buffer
+				  pending : (void *)pending
+				  client : (vm_task_t)client;
+#endif	KERNEL
+
 @end

@@ -741,11 +741,13 @@ ata_hd_read(dev_t dev, struct uio *uiop, int ioflag)
 {
     id disk;
     struct buf *physbuf;
-    unsigned int blockSize;
     unsigned int unit;
     unsigned int partition;
     int pinResult;
     int result;
+
+    if (uiop->uio_offset % DEV_BSIZE != 0)
+        return EINVAL;
 
     [ata_hd_lock lock];
     disk = ata_hd_disk_for_dev_locked(dev);
@@ -763,10 +765,10 @@ ata_hd_read(dev_t dev, struct uio *uiop, int ioflag)
     }
     physbuf = ata_hd_units[unit].physbuf;
     [ata_hd_lock unlock];
-    blockSize = [disk blockSize];
 
+    /* Raw offsets are in DEV_BSIZE units whatever the label's block size. */
     result = physio((int (*)())ata_hd_strategy, physbuf, dev, B_READ,
-                    ata_hd_minphys, uiop, blockSize);
+                    ata_hd_minphys, uiop, DEV_BSIZE);
     [ata_hd_lock lock];
     pinResult = ATAHDRegistryClose(&ata_hd_core, unit, partition);
     [ata_hd_lock unlock];
@@ -780,11 +782,13 @@ ata_hd_write(dev_t dev, struct uio *uiop, int ioflag)
 {
     id disk;
     struct buf *physbuf;
-    unsigned int blockSize;
     unsigned int unit;
     unsigned int partition;
     int pinResult;
     int result;
+
+    if (uiop->uio_offset % DEV_BSIZE != 0)
+        return EINVAL;
 
     [ata_hd_lock lock];
     disk = ata_hd_disk_for_dev_locked(dev);
@@ -802,10 +806,10 @@ ata_hd_write(dev_t dev, struct uio *uiop, int ioflag)
     }
     physbuf = ata_hd_units[unit].physbuf;
     [ata_hd_lock unlock];
-    blockSize = [disk blockSize];
 
+    /* Raw offsets are in DEV_BSIZE units whatever the label's block size. */
     result = physio((int (*)())ata_hd_strategy, physbuf, dev, B_WRITE,
-                    ata_hd_minphys, uiop, blockSize);
+                    ata_hd_minphys, uiop, DEV_BSIZE);
     [ata_hd_lock lock];
     pinResult = ATAHDRegistryClose(&ata_hd_core, unit, partition);
     [ata_hd_lock unlock];
@@ -854,7 +858,33 @@ ata_hd_strategy(struct buf *bp)
         goto bad;
     }
 
-    if (bp->b_flags & B_READ) {
+    /* Only physio sets B_PHYS|B_RAW; cluster bufs (B_RAW alone) count device blocks. */
+    if ((bp->b_flags & (B_PHYS | B_RAW)) == (B_PHYS | B_RAW)) {
+        unsigned long long byteOffset = (unsigned long long)(unsigned)bp->b_blkno * DEV_BSIZE;
+
+        if ([disk respondsTo:@selector(asyncTransfer:byteOffset:length:buffer:pending:client:)]) {
+            result = [disk asyncTransfer:(bp->b_flags & B_READ) != 0
+                              byteOffset:byteOffset
+                                  length:bp->b_bcount
+                                  buffer:bp->b_un.b_addr
+                                 pending:bp
+                                  client:client];
+        } else if (byteOffset % [disk blockSize] != 0) {
+            result = IO_R_INVALID_ARG;
+        } else if (bp->b_flags & B_READ) {
+            result = [disk readAsyncAt:byteOffset / [disk blockSize]
+                                length:bp->b_bcount
+                                buffer:bp->b_un.b_addr
+                               pending:bp
+                                client:client];
+        } else {
+            result = [disk writeAsyncAt:byteOffset / [disk blockSize]
+                                 length:bp->b_bcount
+                                 buffer:bp->b_un.b_addr
+                                pending:bp
+                                 client:client];
+        }
+    } else if (bp->b_flags & B_READ) {
         result = [disk readAsyncAt:bp->b_blkno
                             length:bp->b_bcount
                             buffer:bp->b_un.b_addr

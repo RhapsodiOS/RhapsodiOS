@@ -10,6 +10,7 @@
 #include <sys/ioctl.h>
 #include <sys/wait.h>
 #include <dev/disk.h>
+#include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <signal.h>
@@ -20,10 +21,6 @@
 #include "stress.h"
 
 #define SECT	512
-/* Offsets are 1 KB aligned: this kernel's raw disk path drops the low 512 of
- * an offset (a read at 1536 returns the sector at 1024), though DEV_BSIZE and
- * DKIOCBLKSIZE are 512. Lengths are any multiple of SECT. */
-#define OALIGN	1024
 #define BLK	65536
 #define RMAX	131072		/* largest rand/verify transfer */
 #define DEFMEM	(64UL * 1024 * 1024)
@@ -32,7 +29,8 @@
 
 /* The drive a disk node names: driverkit minors are unit * 8 + partition,
  * plus 128 for the _hfs_ nodes (IO_DISK_UNIT, MAKEDEV). */
-#define DRIVE(d)	((major(d) << 8) | ((minor(d) & 0x7f) >> 3))
+#define UNIT(d)		((minor(d) & 0x7f) >> 3)
+#define DRIVE(d)	((major(d) << 8) | UNIT(d))
 
 static int
 refuse(char *why, const char *detail)
@@ -41,7 +39,39 @@ refuse(char *why, const char *detail)
 	return -1;
 }
 
-/* 0 when st_opt.dev may be written, else -1 with the FAIL fields in why. */
+/* 1 when /dev holds a raw node of major rmaj whose twin (the name without
+ * its leading r) is a block node of major bmaj with the same minor: the
+ * system's own raw/block pairing, so a node made elsewhere cannot pair a raw
+ * device with another drive's block device. */
+static int
+paired(int rmaj, int bmaj)
+{
+	struct dirent *e;
+	struct stat c, b;
+	char p[MAXPATHLEN];
+	DIR *d;
+	int ok = 0;
+
+	if ((d = opendir("/dev")) == NULL)
+		return 0;
+	while (!ok && (e = readdir(d)) != NULL) {
+		if (e->d_name[0] != 'r' || strlen(e->d_name) + 6 > sizeof p)
+			continue;
+		sprintf(p, "/dev/%s", e->d_name);
+		if (lstat(p, &c) < 0 || !S_ISCHR(c.st_mode) || major(c.st_rdev) != rmaj)
+			continue;
+		sprintf(p, "/dev/%s", e->d_name + 1);
+		ok = lstat(p, &b) == 0 && S_ISBLK(b.st_mode) && major(b.st_rdev) == bmaj &&
+		     minor(b.st_rdev) == minor(c.st_rdev);
+	}
+	closedir(d);
+	return ok;
+}
+
+/* 0 when st_opt.dev may be written, else -1 with the FAIL fields in why.
+ * g_raw is the device it approved, for the check after open. */
+static dev_t g_raw = 0;
+
 static int
 safe(char *why)
 {
@@ -51,20 +81,26 @@ safe(char *why)
 	char twin[MAXPATHLEN];
 	int i, n;
 
-	if (stat(dev, &raw) < 0 || !S_ISCHR(raw.st_mode))
-		return refuse(why, "not-raw");
 	base = strrchr(dev, '/');
 	base = base != NULL ? base + 1 : dev;
-	if (*base != 'r' || strlen(dev) >= sizeof twin)
+	if (strlen(dev) >= sizeof twin)
 		return refuse(why, "no-block-twin");
-	sprintf(twin, "%.*s%s", (int)(base - dev), dev, base + 1);
-	if (stat(twin, &blk) < 0 || !S_ISBLK(blk.st_mode) || minor(blk.st_rdev) != minor(raw.st_rdev))
+	sprintf(twin, "%.*s%s", (int)(base - dev), dev, *base == 'r' ? base + 1 : base);
+	if ((lstat(dev, &sb) == 0 && S_ISLNK(sb.st_mode)) ||
+	    (lstat(twin, &sb) == 0 && S_ISLNK(sb.st_mode)))
+		return refuse(why, "symlink");
+	if (lstat(dev, &raw) < 0 || !S_ISCHR(raw.st_mode))
+		return refuse(why, "not-raw");
+	if (*base != 'r' || lstat(twin, &blk) < 0 || !S_ISBLK(blk.st_mode) ||
+	    minor(blk.st_rdev) != minor(raw.st_rdev) ||
+	    !paired(major(raw.st_rdev), major(blk.st_rdev)))
 		return refuse(why, "no-block-twin");
 	if (stat("/", &root) < 0)
 		return refuse(why, "stat-root");
 	if (blk.st_rdev == root.st_dev)
 		return refuse(why, "root-device");
-	if (DRIVE(blk.st_rdev) == DRIVE(root.st_dev))
+	if (DRIVE(blk.st_rdev) == DRIVE(root.st_dev) ||
+	    (UNIT(raw.st_rdev) == UNIT(root.st_dev) && paired(major(raw.st_rdev), major(root.st_dev))))
 		return refuse(why, "root-disk");
 	n = getmntinfo(&mnt, MNT_NOWAIT);
 	if (n <= 0)
@@ -77,6 +113,7 @@ safe(char *why)
 		    DRIVE(sb.st_rdev) == DRIVE(blk.st_rdev))
 			return refuse(why, "mounted-disk");
 	}
+	g_raw = raw.st_rdev;
 	return 0;
 }
 
@@ -122,6 +159,7 @@ probe(char *why, int len)
 static int
 opendev(struct st_ctx *c)
 {
+	struct stat sb;
 	char why[128];
 	int fd;
 
@@ -130,6 +168,11 @@ opendev(struct st_ctx *c)
 	fd = open(st_opt.dev, O_RDWR);
 	if (fd < 0)
 		st_fail_errno(c, "open");
+	/* the node may have been swapped since safe() looked */
+	if (fstat(fd, &sb) < 0 || !S_ISCHR(sb.st_mode) || sb.st_rdev != g_raw) {
+		close(fd);
+		st_fail(c, "reason=unsafe-device detail=changed");
+	}
 	return fd;
 }
 
@@ -166,7 +209,7 @@ getbuf(struct st_ctx *c, unsigned long len)
 static void
 slice(struct st_ctx *c, unsigned long *lo, unsigned long *len)
 {
-	*len = (memsize() / c->nprocs) & ~(unsigned long)(OALIGN - 1);
+	*len = (memsize() / c->nprocs) & ~(unsigned long)(SECT - 1);
 	if (*len < BLK)
 		st_fail(c, "reason=mem-too-small mem=%lu", memsize());
 	*lo = *len * c->idx;
@@ -206,16 +249,19 @@ static void
 rnd(struct st_ctx *c)
 {
 	unsigned long lo, len, off, n, key;
-	unsigned char *buf = getbuf(c, RMAX);
+	unsigned char *buf = getbuf(c, RMAX), *nb = getbuf(c, 2 * SECT);
 	int fd = opendev(c);
 	long i, bad;
 
 	slice(c, &lo, &len);
 	for (i = 0; st_more(c, i); i++) {
 		n = st_range(&c->rng, 1, (len < RMAX ? len : RMAX) / SECT) * SECT;
-		off = lo + st_range(&c->rng, 0, (len - n) / OALIGN) * OALIGN;
+		off = lo + st_range(&c->rng, 0, (len - n) / SECT) * SECT;
 		key = st_mix(st_rand(&c->rng));
 		st_op_begin(c);
+		/* the sector below must survive: a write that lands early fails here */
+		if (off > lo)
+			dio(c, fd, 0, nb, SECT, off - SECT);
 		st_fill(buf, n, key, off);
 		if (c->selfcheck && i == 0)
 			st_fill(buf, SECT, key ^ 1, off);
@@ -223,6 +269,11 @@ rnd(struct st_ctx *c)
 		dio(c, fd, 0, buf, n, off);
 		if ((bad = st_check(buf, n, key, off)) >= 0)
 			st_fail_data(c, "disk", buf, n, key, off, bad);
+		if (off > lo) {
+			dio(c, fd, 0, nb + SECT, SECT, off - SECT);
+			if (memcmp(nb, nb + SECT, SECT) != 0)
+				st_fail(c, "what=neighbour off=0x%lx len=%lu", off - SECT, n);
+		}
 		st_op_end(c, n / SECT);
 	}
 	close(fd);
@@ -310,7 +361,7 @@ reader(struct st_ctx *c, int dfd, int pfd, unsigned long rs, unsigned long *keys
 		if (busy[reg])
 			continue;
 		n = st_range(&c->rng, 1, (rs < RMAX ? rs : RMAX) / SECT) * SECT;
-		off = reg * rs + st_range(&c->rng, 0, (rs - n) / OALIGN) * OALIGN;
+		off = reg * rs + st_range(&c->rng, 0, (rs - n) / SECT) * SECT;
 		key = keys[reg];
 		dio(c, dfd, 0, buf, n, off);
 		if (drain(c, pfd, keys, busy, &quit) & (1 << reg))
@@ -351,7 +402,7 @@ fillreg(struct st_ctx *c, int fd, unsigned char *buf, unsigned long lo, unsigned
 static void
 verify(struct st_ctx *c)
 {
-	unsigned long rs = (memsize() / NREG) & ~(unsigned long)(OALIGN - 1);
+	unsigned long rs = (memsize() / NREG) & ~(unsigned long)(SECT - 1);
 	unsigned long keys[NREG], base, key;
 	unsigned char *buf = getbuf(c, BLK);
 	int fd = opendev(c), p[NREAD][2], wfd[NREAD], i, j, st, failed = 0;

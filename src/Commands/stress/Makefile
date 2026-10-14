@@ -230,24 +230,35 @@ check-misc: $(MISCBIN)
 	test `grep -c '^STRESS misc [a-z]* FAIL ' misc/t.out` = 2
 	@echo misc: ok
 
-# Writes /dev/rhd1a, the dev guest's scratch disk: it must not be mounted for
-# the PASS runs. newfs gives the mounted-refusal case a file system to mount
-# (an earlier run overwrote the superblock). /dev/rhd0a is the root disk and
-# must be refused in the probe, before anything opens it for writing.
-DISKDEV = /dev/rhd1a
+# Overwrites $STRESS_DISK_DEV, a raw scratch device the caller names (the dev
+# guest: STRESS_DISK_DEV=/dev/rhd1a); without it, or with it mounted, the
+# check stops. The refusal runs are made as uid 1 with -m 1m, so a broken
+# check ends in EACCES, not a write (perl here can set only the euid). The mounted case newfs's the device.
+# This kernel misplaces raw I/O at odd-sector offsets (it drops the low 512),
+# so rand and verify FAIL with off=; they PASS once that is fixed.
+DISKDEV = $(STRESS_DISK_DEV)
+DISKBLK = $(dir $(DISKDEV))$(patsubst r%,%,$(notdir $(DISKDEV)))
+DISKMNT = /tmp/stress-disk-mnt
+ASUSER = perl -e '$$) = "1 1"; $$( = 1; $$> = 1; $$> == 1 or die; exec @ARGV or die'
+ROOTRAW = root=`mount | awk '$$3 == "/" { print $$1 }'`; rootraw=`dirname $$root`/r`basename $$root`
 
 check-disk: $(DISKBIN)
-	if mount | grep '^/dev/hd1' >/dev/null; then umount /mnt1; fi
-	test `mount | grep -c '^/dev/hd1'` = 0
+	@if test -z "$(DISKDEV)"; then echo "check-disk: set STRESS_DISK_DEV to a raw scratch device (it is overwritten)"; exit 1; fi
+	@if mount | grep "^$(DISKBLK) " >/dev/null; then echo "check-disk: $(DISKBLK) is mounted"; exit 1; fi
 	rc=0; $(DISKBIN) seq >disk/t.out || rc=$$?; test $$rc = 0
 	grep '^STRESS disk seq UNSUP reason="no device"' disk/t.out
-	rc=0; $(DISKBIN) -D /dev/rhd0a seq >disk/t.out || rc=$$?; test $$rc = 1
+	$(ROOTRAW); rc=0; $(ASUSER) $(DISKBIN) -m 1m -D $$rootraw seq >disk/t.out || rc=$$?; test $$rc = 1
 	grep '^STRESS disk seq FAIL reason=unsafe-device detail=root-' disk/t.out
+	$(ROOTRAW); rm -f /tmp/rstress-disk.l /tmp/stress-disk.l; ln -s $$rootraw /tmp/rstress-disk.l; ln -s $(DISKBLK) /tmp/stress-disk.l; \
+	rc=0; $(ASUSER) $(DISKBIN) -m 1m -D /tmp/rstress-disk.l seq >disk/t.out || rc=$$?; rm -f /tmp/rstress-disk.l /tmp/stress-disk.l; test $$rc = 1
+	grep '^STRESS disk seq FAIL reason=unsafe-device detail=symlink' disk/t.out
 	newfs -u 63 -t 16 -c 16 $(DISKDEV) >/dev/null 2>&1
-	mkdir -p /mnt1; mount /dev/hd1a /mnt1; rc=0; $(DISKBIN) -D $(DISKDEV) seq >disk/t.out || rc=$$?; umount /mnt1; test $$rc = 1
+	mkdir -p $(DISKMNT); mount $(DISKBLK) $(DISKMNT); rc=0; $(ASUSER) $(DISKBIN) -m 1m -D $(DISKDEV) seq >disk/t.out || rc=$$?; umount $(DISKMNT); test $$rc = 1
 	grep '^STRESS disk seq FAIL reason=unsafe-device detail=mounted' disk/t.out
-	rc=0; $(DISKBIN) -D $(DISKDEV) -m 8m >disk/t.out || rc=$$?; test $$rc = 0
-	test `grep -c '^STRESS disk [a-z]* PASS ' disk/t.out` = 3
+	rc=0; $(DISKBIN) -D $(DISKDEV) -m 8m >disk/t.out || rc=$$?; test $$rc = 1
+	grep '^STRESS disk seq PASS ' disk/t.out
+	grep '^STRESS disk rand FAIL .*off=0x' disk/t.out
+	grep '^STRESS disk verify FAIL .*off=0x' disk/t.out
 	rc=0; $(DISKBIN) -x -D $(DISKDEV) -m 8m seq rand >disk/t.out || rc=$$?; test $$rc = 1
 	test `grep -c '^STRESS disk [a-z]* FAIL .*off=0x' disk/t.out` = 2
 	@echo disk: ok

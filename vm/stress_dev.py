@@ -1,6 +1,7 @@
-﻿"""Dev guest for the system stress suite: one long-lived v2 snapshot guest.
+"""Dev guest for the system stress suite: one long-lived v2 snapshot guest.
 
-    python vm/stress_dev.py up           boot it, wait for a real login
+    python vm/stress_dev.py up [--kernel PATH]   boot it, wait for a real login;
+                                         with PATH, install it as /mach_kernel and reboot
     python vm/stress_dev.py sync         tar src/Commands/stress to /tmp/stress-src
     python vm/stress_dev.py sh "<cmd>"   run a /bin/sh command, exit with its status
     python vm/stress_dev.py down         QMP quit, after query-name answers
@@ -49,7 +50,16 @@ def saved_ports():
         return os.environ.get("STRESS_DEV_PORTS", DEFAULT_PORTS)
 
 
-def up():
+def login(ssh):
+    for _ in range(LOGIN_TRIES):
+        rc, out = ssh.run("true")
+        if rc == 0:
+            return
+        time.sleep(LOGIN_GAP)
+    raise SystemExit("no login after the banner")
+
+
+def up(kernel=None):
     ports = os.environ.get("STRESS_DEV_PORTS", DEFAULT_PORTS)
     fb = load(ports)
     outdir = os.path.join(fb.ASSETS, "work", "stress-dev")
@@ -59,13 +69,12 @@ def up():
     if not g.wait_sshd():
         raise SystemExit("sshd never answered")
     ssh = fb.Ssh(fb._conf())
-    for _ in range(LOGIN_TRIES):
-        rc, out = ssh.run("true")
-        if rc == 0:
-            print("stress-dev up on ports %s" % ports)
-            return 0
-        time.sleep(LOGIN_GAP)
-    raise SystemExit("no login after the banner")
+    login(ssh)
+    if kernel:
+        fb.boot_test_kernel(g, ssh, kernel, "")
+        login(ssh)
+    print("stress-dev up on ports %s" % ports)
+    return 0
 
 
 def tar_source():
@@ -124,8 +133,10 @@ def down():
 
 
 def main(argv):
-    if argv[1:2] == ["up"]:
+    if argv[1:2] == ["up"] and len(argv) == 2:
         return up()
+    if argv[1:2] == ["up"] and len(argv) == 4 and argv[2] == "--kernel":
+        return up(argv[3])
     if argv[1:2] == ["sync"]:
         return sync()
     if argv[1:2] == ["sh"] and len(argv) == 3:

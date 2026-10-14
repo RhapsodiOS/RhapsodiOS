@@ -41,6 +41,17 @@ t_crash(struct st_ctx *c)
 	kill(getpid(), SIGSEGV);
 }
 
+/* Worker 0 crashes while the rest wait forever: the crash must be
+ * reported at once, not as a timeout. */
+static void
+t_crashwait(struct st_ctx *c)
+{
+	if (c->idx == 0)
+		t_crash(c);
+	for (;;)
+		pause();
+}
+
 static void
 t_hang(struct st_ctx *c)
 {
@@ -133,6 +144,7 @@ static const struct st_test tests[] = {
 	{ "pass", 10, 0, NULL, t_pass },
 	{ "fail", 1, 0, NULL, t_fail },
 	{ "crash", 1, 0, NULL, t_crash },
+	{ "crashwait", 1, 0, NULL, t_crashwait },
 	{ "hang", 1, 0, NULL, t_hang },
 	{ "unsup", 1, 0, p_unsup, t_unsup },
 	{ "data", 1, 0, NULL, t_data },

@@ -21,9 +21,7 @@ static volatile int alarmed;
 
 /* Leader state: what the workers reported. */
 static long start_sec;		/* leader's start time, copied to st_ctx.t_start */
-static char fail[512];		/* fields of the first FAIL line */
-static char killed[64];		/* first worker death by signal */
-static char exited[64];		/* first worker nonzero exit */
+static char fail[512];		/* the first failure: a FAIL line's fields, a signal or an exit */
 static unsigned long units, maxlat_us, clockback;
 static char inbuf[1024];
 static int inlen, eof;
@@ -184,7 +182,7 @@ input(int fd, int secs)
 static void
 leader(const struct st_test *t, const char *cat)
 {
-	int fds[2], n, i, live, status, e;
+	int fds[2], n, i, live, status, e, stopped;
 	pid_t *pids, pid;
 	struct timeval t0;
 	double secs;
@@ -228,19 +226,35 @@ leader(const struct st_test *t, const char *cat)
 	}
 	close(fds[1]);
 	/* Read while reaping: children a test forked may hold the pipe open,
-	 * so the workers' exits, not EOF, end the test. */
+	 * so the workers' exits, not EOF, end the test. The first failure
+	 * kills the other workers, which may be waiting on the failed one. */
 	live = n;
 	while (live > 0) {
+	stopped = 0;
 		while (live > 0 && (pid = waitpid(-1, &status, WNOHANG)) > 0) {
 			for (i = 0; i < n && pids[i] != pid; i++)
 				;
 			if (i == n)
 				continue;
 			live--;
-			if (WIFSIGNALED(status) && killed[0] == '\0')
-				sprintf(killed, "signal=%d worker=%d", WTERMSIG(status), i);
-			else if (WIFEXITED(status) && WEXITSTATUS(status) != 0 && exited[0] == '\0')
-				sprintf(exited, "exit=%d worker=%d", WEXITSTATUS(status), i);
+			pids[i] = 0;
+			if (fail[0] != '\0' || (WIFEXITED(status) && WEXITSTATUS(status) == 0))
+				continue;
+			/* a FAIL line the worker wrote before it died came first */
+			while (input(fds[0], 0))
+				;
+			if (fail[0] != '\0')
+				continue;
+			if (WIFSIGNALED(status))
+				sprintf(fail, "signal=%d worker=%d", WTERMSIG(status), i);
+			else
+				sprintf(fail, "exit=%d worker=%d", WEXITSTATUS(status), i);
+		}
+		if (fail[0] != '\0' && !stopped) {
+			for (i = 0; i < n; i++)
+				if (pids[i] > 0)
+					kill(pids[i], SIGKILL);
+			stopped = 1;
 		}
 		if (live > 0)
 			input(fds[0], 1);
@@ -248,10 +262,8 @@ leader(const struct st_test *t, const char *cat)
 	secs = since(&t0);
 	while (input(fds[0], 0))
 		;
-	/* first FAIL line, else a signal death, else a nonzero exit */
-	if (fail[0] != '\0' || killed[0] != '\0' || exited[0] != '\0') {
-		sprintf(what, "FAIL %s", fail[0] != '\0' ? fail :
-			killed[0] != '\0' ? killed : exited);
+	if (fail[0] != '\0') {
+		sprintf(what, "FAIL %s", fail);
 		st_line(cat, t->name, what, 1);
 		exit(1);
 	}

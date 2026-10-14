@@ -74,6 +74,8 @@ check: lib/t_lib $(TMAIN)
 	grep 'STRESS tmain fail FAIL reason=planned seed=' lib/t.out
 	rc=0; $(TMAIN) crash >lib/t.out || rc=$$?; test $$rc = 1
 	grep 'FAIL signal=11 worker=' lib/t.out
+	rc=0; $(TMAIN) -n 3 -t 20 crashwait >lib/t.out || rc=$$?; test $$rc = 1
+	grep 'STRESS tmain crashwait FAIL signal=11 worker=0 seed=' lib/t.out
 	rc=0; $(TMAIN) -t 5 hang >lib/t.out || rc=$$?; test $$rc = 1
 	grep 'FAIL reason=timeout secs=5' lib/t.out
 	sleep 2; test `ps -ax | grep -c '[s]tress-tmain'` = 0

@@ -282,25 +282,26 @@ clock_get_counter(
     clock_type_t 	which_clock
 )
 {
-    tvalspec_t		result = system_time_stamp();
+    tvalspec_t		result;
+    int			s = splclock();
+
+    // one spl section, so a tick cannot slip an adjtime step in between
+    result = system_time_stamp();
 
     switch (which_clock) {
 
     case System:
 	break;
 
-    case Calendar: {
-	int		s = splclock();
-
+    case Calendar:
     	ADD_TVALSPEC(&result, &time_of_boot);
-	splx(s);
 	break;
-    }
 
     default:
 	result = TVALSPEC_ZERO;
 	break;
     }
+    splx(s);
     
     return (result);
 }

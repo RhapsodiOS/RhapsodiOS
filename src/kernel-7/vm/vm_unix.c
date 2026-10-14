@@ -204,8 +204,10 @@ thread_t procdup(child, parent)
 		inherit_memory = FALSE;
 
 	result = task_create(parent->task, inherit_memory, &task);
-	if(result != KERN_SUCCESS)
+	if(result != KERN_SUCCESS) {
 	    printf("fork/procdup: task_create failed. result: %d\n", result);
+	    return(THREAD_NULL);
+	}
 	child->task = task;	/* retained reference */
 	task->proc = child;
 

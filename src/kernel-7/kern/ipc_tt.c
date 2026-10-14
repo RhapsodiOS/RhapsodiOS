@@ -86,7 +86,7 @@
  *		Nothing locked.
  */
 
-void
+kern_return_t
 ipc_task_init(task, parent)
 	task_t task;
 	task_t parent;
@@ -98,11 +98,13 @@ ipc_task_init(task, parent)
 
 	kr = ipc_space_create(&ipc_table_entries[0], &space);
 	if (kr != KERN_SUCCESS)
-		panic("ipc_task_init");
+		return kr;
 
 	kport = ipc_port_alloc_kernel();
-	if (kport == IP_NULL)
-		panic("ipc_task_init");
+	if (kport == IP_NULL) {
+		is_release(space);
+		return KERN_RESOURCE_SHORTAGE;
+	}
 
 	itk_lock_init(task);
 	task->itk_self = kport;

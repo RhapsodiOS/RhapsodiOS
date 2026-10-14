@@ -24,7 +24,7 @@ static long start_sec;		/* leader's start time, copied to st_ctx.t_start */
 static char fail[512];		/* fields of the first FAIL line */
 static char killed[64];		/* first worker death by signal */
 static char exited[64];		/* first worker nonzero exit */
-static unsigned long units, maxlat_us;
+static unsigned long units, maxlat_us, clockback;
 static char inbuf[1024];
 static int inlen, eof;
 
@@ -93,8 +93,10 @@ st_op_end(struct st_ctx *c, unsigned long n)
 
 	gettimeofday(&t, NULL);
 	us = (t.tv_sec - c->t0_sec) * 1000000L + (t.tv_usec - c->t0_usec);
-	if (us < 0)
+	if (us < 0) {
 		us = 0;		/* the clock stepped back */
+		c->clockback++;
+	}
 	if (us > c->maxlat_us)
 		c->maxlat_us = us;
 	c->units += n;
@@ -123,7 +125,7 @@ worker(const struct st_test *t, const char *cat, int idx, int n, int fd)
 	c.t_start = start_sec;
 	c.fd = fd;
 	t->body(&c);
-	sprintf(line, "STAT %lu %lu\n", c.units, c.maxlat_us);
+	sprintf(line, "STAT %lu %lu %lu\n", c.units, c.maxlat_us, c.clockback);
 	write(fd, line, strlen(line));
 	_exit(0);
 }
@@ -131,10 +133,11 @@ worker(const struct st_test *t, const char *cat, int idx, int n, int fd)
 static void
 take(char *s)
 {
-	unsigned long u, l;
+	unsigned long u, l, b;
 
-	if (strncmp(s, "STAT ", 5) == 0 && sscanf(s + 5, "%lu %lu", &u, &l) == 2) {
+	if (strncmp(s, "STAT ", 5) == 0 && sscanf(s + 5, "%lu %lu %lu", &u, &l, &b) == 3) {
 		units += u;
+		clockback += b;
 		if (l > maxlat_us)
 			maxlat_us = l;
 	} else if (strncmp(s, "FAIL ", 5) == 0 && fail[0] == '\0') {
@@ -186,7 +189,7 @@ leader(const struct st_test *t, const char *cat)
 	struct timeval t0;
 	double secs;
 	long iters;
-	char what[640];
+	char what[640], *p;
 
 	setpgid(0, 0);
 	catch(SIGALRM, SIG_DFL);
@@ -255,8 +258,10 @@ leader(const struct st_test *t, const char *cat)
 	if (secs < 1e-6)
 		secs = 1e-6;
 	iters = st_opt.iters > 0 ? st_opt.iters : t->def_iters;
-	sprintf(what, "PASS iters=%ld procs=%d secs=%.1f ops=%lu/s maxlat=%lums",
+	p = what + sprintf(what, "PASS iters=%ld procs=%d secs=%.1f ops=%lu/s maxlat=%lums",
 		iters, n, secs, (unsigned long)(units / secs), maxlat_us / 1000);
+	if (clockback)
+		sprintf(p, " clockback=%lu", clockback);
 	st_line(cat, t->name, what, 1);
 	exit(0);
 }

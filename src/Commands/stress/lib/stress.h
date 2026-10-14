@@ -44,7 +44,7 @@ struct st_ctx {
 	int selfcheck;			/* -x */
 	long t_start;			/* seconds, taken by the leader before it forks the workers */
 	/* private */
-	unsigned long units, maxlat_us;
+	unsigned long units, maxlat_us, clockback;
 	long t0_sec, t0_usec;
 	int fd;				/* result pipe to the leader */
 };

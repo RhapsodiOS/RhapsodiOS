@@ -232,10 +232,10 @@ check-misc: $(MISCBIN)
 
 # Overwrites $STRESS_DISK_DEV, a raw scratch device the caller names (the dev
 # guest: STRESS_DISK_DEV=/dev/rhd1a); without it, or with it mounted, the
-# check stops. The refusal runs are made as uid 1 with -m 1m, so a broken
-# check ends in EACCES, not a write (perl here can set only the euid). The mounted case newfs's the device.
-# This kernel misplaces raw I/O at odd-sector offsets (it drops the low 512),
-# so rand and verify FAIL with off=; they PASS once that is fixed.
+# check stops, as it does when stress-disk itself refuses the device; that
+# gate runs before anything as root writes, newfs's or mounts it. The refusal
+# runs are made as uid 1 with -m 1m, so a broken check ends in EACCES, not a
+# write (perl here can set only the euid).
 DISKDEV = $(STRESS_DISK_DEV)
 DISKBLK = $(dir $(DISKDEV))$(patsubst r%,%,$(notdir $(DISKDEV)))
 DISKMNT = /tmp/stress-disk-mnt
@@ -245,6 +245,10 @@ ROOTRAW = root=`mount | awk '$$3 == "/" { print $$1 }'`; rootraw=`dirname $$root
 check-disk: $(DISKBIN)
 	@if test -z "$(DISKDEV)"; then echo "check-disk: set STRESS_DISK_DEV to a raw scratch device (it is overwritten)"; exit 1; fi
 	@if mount | grep "^$(DISKBLK) " >/dev/null; then echo "check-disk: $(DISKBLK) is mounted"; exit 1; fi
+	$(ASUSER) $(DISKBIN) -m 1m -D $(DISKDEV) seq >disk/t.out 2>&1 || true; cat disk/t.out; \
+	if grep unsafe-device disk/t.out >/dev/null; then echo "check-disk: stress-disk refuses $(DISKDEV); nothing written"; exit 1; fi
+	rc=0; $(DISKBIN) -n 1 -m 1m -D $(DISKDEV) seq >disk/t.out || rc=$$?; cat disk/t.out; test $$rc = 0
+	grep '^STRESS disk seq PASS ' disk/t.out
 	rc=0; $(DISKBIN) seq >disk/t.out || rc=$$?; test $$rc = 0
 	grep '^STRESS disk seq UNSUP reason="no device"' disk/t.out
 	$(ROOTRAW); rc=0; $(ASUSER) $(DISKBIN) -m 1m -D $$rootraw seq >disk/t.out || rc=$$?; test $$rc = 1
@@ -255,12 +259,11 @@ check-disk: $(DISKBIN)
 	newfs -u 63 -t 16 -c 16 $(DISKDEV) >/dev/null 2>&1
 	mkdir -p $(DISKMNT); mount $(DISKBLK) $(DISKMNT); rc=0; $(ASUSER) $(DISKBIN) -m 1m -D $(DISKDEV) seq >disk/t.out || rc=$$?; umount $(DISKMNT); test $$rc = 1
 	grep '^STRESS disk seq FAIL reason=unsafe-device detail=mounted' disk/t.out
-	rc=0; $(DISKBIN) -D $(DISKDEV) -m 8m >disk/t.out || rc=$$?; test $$rc = 1
-	grep '^STRESS disk seq PASS ' disk/t.out
-	grep '^STRESS disk rand FAIL .*off=0x' disk/t.out
-	grep '^STRESS disk verify FAIL .*off=0x' disk/t.out
 	rc=0; $(DISKBIN) -x -D $(DISKDEV) -m 8m seq rand >disk/t.out || rc=$$?; test $$rc = 1
 	test `grep -c '^STRESS disk [a-z]* FAIL .*off=0x' disk/t.out` = 2
+	# known red: issue #47, raw I/O at odd-sector offsets lands one sector low (rand, verify FAIL off=)
+	rc=0; $(DISKBIN) -D $(DISKDEV) -m 8m >disk/t.out || rc=$$?; cat disk/t.out; test $$rc = 0
+	test `grep -c '^STRESS disk [a-z]* PASS ' disk/t.out` = 3
 	@echo disk: ok
 
 # run exercises the whole chain on the vm category only.

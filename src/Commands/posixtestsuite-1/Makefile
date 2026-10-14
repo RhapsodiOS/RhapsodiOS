@@ -15,8 +15,8 @@ install: all
 	mkdir -p $(DEST)
 	rm -rf $(DEST)/posixtestsuite
 	cp -R posixtestsuite $(DEST)/
-	install -m 755 run ptimeout $(DEST)/
-	install -m 644 baseline README $(DEST)/
+	install -c -m 755 run ptimeout $(DEST)/
+	install -c -m 644 baseline README $(DEST)/
 
 # Each line is one shell; make runs sh -e, so statuses are caught with ||.
 check-ptimeout: ptimeout
@@ -28,12 +28,39 @@ check-ptimeout: ptimeout
 	rc=0; ./ptimeout 0 true 2>/dev/null || rc=$$?; test $$rc = 127
 	@echo ptimeout: ok
 
+# The fixtures in t/ cover every result; each must appear exactly once.
+check-run: ptimeout
+	rc=0; sh ./run -r t -b /dev/null -t 3 -d /tmp/posixcheck conformance >Report.out || rc=$$?; test $$rc = 0
+	grep '^POSIX conformance/interfaces/pass/1-1 PASS$$' Report/results
+	grep '^POSIX conformance/interfaces/fail/1-1 FAIL$$' Report/results
+	grep '^POSIX conformance/interfaces/unres/1-1 UNRESOLVED$$' Report/results
+	grep '^POSIX conformance/interfaces/unsup/1-1 UNSUPPORTED$$' Report/results
+	grep '^POSIX conformance/interfaces/untested/1-1 UNTESTED$$' Report/results
+	grep '^POSIX conformance/interfaces/exit7/1-1 EXIT=7$$' Report/results
+	grep '^POSIX conformance/interfaces/nobuild/1-1 BUILD-FAIL$$' Report/results
+	grep '^POSIX conformance/interfaces/nolink/1-1 LINK-FAIL$$' Report/results
+	grep '^POSIX conformance/interfaces/buildonly/1-buildonly BUILD-ONLY$$' Report/results
+	grep '^POSIX conformance/interfaces/nomain/1-1 BUILD-ONLY$$' Report/results
+	grep '^POSIX conformance/interfaces/segv/1-1 SIGNAL=11$$' Report/results
+	grep '^POSIX conformance/interfaces/alarmhang/1-1 HUNG$$' Report/results
+	grep '^POSIX conformance/interfaces/orphan/1-1 PASS$$' Report/results
+	grep '^POSIX conformance/interfaces/killgrp/1-1 SIGNAL=9$$' Report/results
+	grep '^POSIX conformance/interfaces/stdin/1-1 PASS$$' Report/results
+	grep '^POSIX conformance/interfaces/shpass/1-1 PASS$$' Report/results
+	test `grep -c '^POSIX ' Report/results` = 16
+	test `ps -ax | grep -c ':[0-9][0-9] sleep 77'` = 0
+	test -f Report/log/conformance/interfaces/nobuild/1-1.log
+	test ! -d /tmp/posixcheck
+	@echo run: ok
+
+check: check-ptimeout check-run
+
 installhdrs:
 
 installsrc:
 	gnutar --exclude=CVS --exclude=.git -cf - . | gnutar -C $(SRCROOT) -xf -
 
 clean:
-	rm -rf Report ptimeout
+	rm -rf Report Report.out ptimeout
 
-.PHONY: all check-ptimeout install installhdrs installsrc clean
+.PHONY: all check check-ptimeout check-run install installhdrs installsrc clean

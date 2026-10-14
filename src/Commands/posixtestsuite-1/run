@@ -1,0 +1,88 @@
+#!/bin/sh
+# usage: run [-t secs] [-d workdir] [-r root] [-b baseline] [-u] [path ...]
+# Builds, links and runs each Open POSIX test under ptimeout and writes one
+# line per test to stdout and Report/results. See README.
+usage="usage: run [-t secs] [-d workdir] [-r root] [-b baseline] [-u] [path ...]"
+here=`dirname $0`
+here=`cd $here && pwd`
+secs=240
+work=
+root=$here/posixtestsuite
+base=$here/baseline
+update=0
+while test $# -gt 0; do
+	case $1 in
+	-t|-d|-r|-b) test $# -gt 1 || { echo "$usage" >&2; exit 2; }
+		case $1 in
+		-t) secs=$2 ;; -d) work=$2 ;; -r) root=$2 ;; -b) base=$2 ;;
+		esac
+		shift 2 ;;
+	-u) update=1; shift ;;
+	-*) echo "$usage" >&2; exit 2 ;;
+	*) break ;;
+	esac
+done
+test $# -gt 0 || set conformance
+cc -v >/dev/null 2>&1 || { echo "run: no cc" >&2; exit 2; }
+root=`cd $root && pwd` || { echo "run: no suite root" >&2; exit 2; }
+if test -z "$work"; then
+	rm -rf /tmp/posix.*	# left by killed runs
+	work=/tmp/posix.$$
+fi
+mkdir -p $work || { echo "run: cannot create $work" >&2; exit 2; }
+report=`pwd`/Report
+rm -rf $report
+mkdir -p $report/log
+: >$report/results
+flags="-O -Wall -D_POSIX_C_SOURCE=200112L -I$root/include"
+
+# result status: the result word for a ptimeout exit status
+result() {
+	case $1 in
+	0) echo PASS ;; 1) echo FAIL ;; 2) echo UNRESOLVED ;;
+	4) echo UNSUPPORTED ;; 5) echo UNTESTED ;; 124) echo HUNG ;;
+	129|1[3-5][0-9]) echo SIGNAL=`expr $1 - 128` ;;
+	*) echo EXIT=$1 ;;
+	esac
+}
+
+(cd $root && find "$@" \( -name '[0-9]*-*.c' -o -name '[0-9]*-[0-9]*.sh' \) -print) |
+	sort >$work/list
+# Every command in the loop reads /dev/null, never the list.
+while read f; do
+	p=`expr "$f" : '\(.*\)\.[a-z]*$'`
+	w=$work/t
+	log=$report/log/$p.log
+	mkdir -p $w `dirname $log`
+	case $f in
+	*.c)
+		# This sh negates only the first command of a "! a | b" pipeline.
+		hasmain=0
+		if cc $flags -c $root/$f -o $w/t.o </dev/null >$log 2>&1; then
+			nm -g $w/t.o </dev/null 2>>$log | grep ' T _main$' >/dev/null && hasmain=1
+			expr "$p" : '.*-buildonly' >/dev/null && hasmain=0
+			ok=1
+		else
+			ok=0
+		fi
+		if test $ok = 0; then
+			r=BUILD-FAIL
+		elif test $hasmain = 0; then
+			r=BUILD-ONLY
+		elif ! cc -o $w/t $w/t.o </dev/null >>$log 2>&1; then
+			r=LINK-FAIL
+		else
+			(cd $w && $here/ptimeout $secs ./t </dev/null >>$log 2>&1)
+			r=`result $?`
+		fi ;;
+	*.sh)
+		(cd $w && $here/ptimeout $secs /bin/sh $root/$f </dev/null >$log 2>&1)
+		r=`result $?` ;;
+	esac
+	rm -rf $w
+	echo "POSIX $p $r"
+	echo "POSIX $p $r" >>$report/results
+done <$work/list
+rm -rf $work
+sed 's/^POSIX //' $report/results | sort >$report/baseline.new
+exit 0

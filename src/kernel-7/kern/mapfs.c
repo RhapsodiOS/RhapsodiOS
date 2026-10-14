@@ -637,6 +637,10 @@ mapfs_trunc(vp, length)
 	if ((vp->v_type != VREG) || (vmp == (struct vm_info *)0))
 		return (0);
 	if (!vmp->mapped) {	/* file not mapped, just update size */
+		/* a user mapping can still hold pages past the new end */
+		if (vmp->vnode_size > round_page(length))
+			vno_flush(vp, round_page(length),
+				  vmp->vnode_size - round_page(length));
 		vmp->vnode_size = length;
 		return (0);
 	}
@@ -1640,10 +1644,22 @@ void vno_flush(vp, start, size)
 	register vm_offset_t	end;
 	register vm_object_t	object;
 	register vm_page_t	m;
+	boolean_t		looked_up = FALSE;
 
 	object = vp->v_vm_info->object;
-	if (object == VM_OBJECT_NULL)
-		return;
+	if (object == VM_OBJECT_NULL) {
+		/*
+		 *	The file is not mapped by the kernel, but a user
+		 *	mapping may still have pages resident in the object
+		 *	behind its pager.
+		 */
+		if (vp->v_vm_info->pager == vm_pager_null)
+			return;
+		object = vm_object_lookup(vp->v_vm_info->pager);
+		if (object == VM_OBJECT_NULL)
+			return;
+		looked_up = TRUE;
+	}
 
 #if SCRUBVM3
 	/* Isn't this the wrong order to aquire the lock */
@@ -1678,12 +1694,19 @@ void vno_flush(vp, start, size)
 				}
 #endif
 			}
+			/*
+			 *	Drop any user mappings of the page first,
+			 *	or they keep pointing at the freed page.
+			 */
+			pmap_remove_all(VM_PAGE_TO_PHYS(m));
 			vm_page_free(m);
 		}
 		start += PAGE_SIZE;
 	}
 	vm_object_unlock(object);
 	vm_page_unlock_queues();
+	if (looked_up)
+		vm_object_deallocate(object);
 }
 
 

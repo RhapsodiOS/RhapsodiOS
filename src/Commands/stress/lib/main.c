@@ -103,6 +103,7 @@ st_op_end(struct st_ctx *c, unsigned long n)
 int
 st_more(struct st_ctx *c, long i)
 {
+	c->iter = i;
 	return i < c->iters;
 }
 
@@ -229,15 +230,15 @@ leader(const struct st_test *t, const char *cat)
 	 * so the workers' exits, not EOF, end the test. The first failure
 	 * kills the other workers, which may be waiting on the failed one. */
 	live = n;
-	while (live > 0) {
 	stopped = 0;
+	while (live > 0) {
 		while (live > 0 && (pid = waitpid(-1, &status, WNOHANG)) > 0) {
 			for (i = 0; i < n && pids[i] != pid; i++)
 				;
 			if (i == n)
 				continue;
-			live--;
 			pids[i] = 0;
+			live--;
 			if (fail[0] != '\0' || (WIFEXITED(status) && WEXITSTATUS(status) == 0))
 				continue;
 			/* a FAIL line the worker wrote before it died came first */

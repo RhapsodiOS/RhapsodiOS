@@ -43,6 +43,7 @@ struct st_ctx {
 	struct st_rng rng;
 	int selfcheck;			/* -x */
 	long t_start;			/* seconds, taken by the leader before it forks the workers */
+	long iter;			/* the last i given to st_more, for FAIL lines */
 	/* private */
 	unsigned long units, maxlat_us, clockback;
 	long t0_sec, t0_usec;

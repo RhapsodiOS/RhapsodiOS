@@ -49,19 +49,20 @@ st_line(const char *cat, const char *test, const char *what, int seed)
 void
 st_fail(struct st_ctx *c, const char *fmt, ...)
 {
-	char buf[2048];
+	char buf[2048], at[64];
 	va_list ap;
-	int n;
+	int n, m;
 
 	strcpy(buf, "FAIL ");
 	va_start(ap, fmt);
 	vsprintf(buf + 5, fmt, ap);
 	va_end(ap);
+	m = sprintf(at, " worker=%d iter=%ld\n", c->idx, c->iter);
 	n = strlen(buf);
-	if (n > 510)
-		n = 510;
-	buf[n++] = '\n';
-	write(c->fd, buf, n);
+	if (n > 511 - m)
+		n = 511 - m;
+	strcpy(buf + n, at);
+	write(c->fd, buf, n + m);
 	_exit(1);
 }
 

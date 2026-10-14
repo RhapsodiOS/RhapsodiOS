@@ -147,6 +147,10 @@ fork1(p1, flags, retval)
 	}
 
 	newth = cloneproc(p1);
+	if (newth == THREAD_NULL) {
+		(void)chgproccnt(uid, -1);
+		return (EAGAIN);
+	}
 	thread_dup(self, newth);
 	p2 = newth->task->proc;
 	s = splhigh();
@@ -328,6 +332,25 @@ again:
 #endif
 
 	th = procdup(p2, p1);	/* child, parent */
+	if (th == THREAD_NULL) {
+		/* undo everything above, as wait4() does when reaping */
+#if KTRACE
+		if (p2->p_tracep)
+			vrele(p2->p_tracep);
+#endif
+		if (--p2->p_limit->p_refcnt == 0)
+			FREE_ZONE(p2->p_limit, sizeof *p2->p_limit, M_SUBPROC);
+		fdfree(p2);
+		if (p2->p_textvp)
+			vrele(p2->p_textvp);
+		crfree(p2->p_ucred);
+		nprocs--;
+		FREE_ZONE(p2->p_cred, sizeof *p2->p_cred, M_SUBPROC);
+		FREE_ZONE(p2->p_stats, sizeof *p2->p_stats, M_SUBPROC);
+		FREE_ZONE(p2->p_sigacts, sizeof *p2->p_sigacts, M_SUBPROC);
+		FREE_ZONE(p2, sizeof *p2, M_PROC);
+		return(THREAD_NULL);
+	}
 	LIST_INSERT_AFTER(p1, p2, p_pglist);
 	p2->p_pptr = p1;
 	LIST_INSERT_HEAD(&p1->p_children, p2, p_sibling);

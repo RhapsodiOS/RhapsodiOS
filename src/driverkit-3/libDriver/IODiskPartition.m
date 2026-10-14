@@ -1223,6 +1223,33 @@ done:
 		      client : client]);
 }
 
+- (IOReturn) asyncTransfer	: (BOOL)read
+				  byteOffset : (unsigned long long)offset
+				  length : (unsigned)length
+				  buffer : (unsigned char *)buffer
+				  pending : (void *)pending
+				  client : (vm_task_t)client
+{
+	xpr_disk("IODiskPartition asyncTransfer
+", 1,2,3,4,5);
+#ifdef GROK_APPLE //bknight - 12/3/97 - Radar #2004660
+	if( ! ( _labelValid || _hfsValid ) ) {
+#else GROK_APPLE //bknight - 12/3/97 - Radar #2004660
+	if( ! _labelValid ) {
+#endif GROK_APPLE //bknight - 12/3/97 - Radar #2004660
+		IOLog("%s: %s attempt with no valid label
+", 
+			[self name], read ? "Read" : "Write");
+		return(IO_R_INVALID_ARG);
+	}
+	return([super asyncTransfer : read
+		      byteOffset : offset
+		      length : length
+		      buffer : buffer
+		      pending : pending
+		      client : client]);
+}
+
 #else	KERNEL
 
 - (IOReturn) readAt		: (unsigned)offset 

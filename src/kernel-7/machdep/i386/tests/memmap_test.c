@@ -38,6 +38,17 @@ main(void)
 	assert(memmap_end_of_memory(0x7fe0000, 0x4000000, 0) == 0x4000000);	/* maxmem can lower */
 	assert(memmap_end_of_memory(0x100000, 0, 0x7f00000) == 0x7f00000);	/* no usable map: extmem */
 	assert(memmap_end_of_memory(0x100000, 0x4000000, 0x7f00000) == 0x4000000);
+
+	/* memory and the kernel reserve above it must fit a 1GB window (8KB pages) */
+	assert(memmap_clamp(0x2ffe0000, 0x40000000, 8192) == 0x2ffe0000);	/* QEMU 768 MB fits */
+	assert(memmap_clamp(0x7fe0000, 0x40000000, 8192) == 0x7fe0000);
+	assert(memmap_clamp(0x80000000, 0x40000000, 8192) == 0x33000000);	/* 2 GB -> 816 MB */
+	assert(memmap_clamp(0x7ffe0000, 0x40000000, 8192) == 0x33000000);
+	assert(memmap_clamp(0xbffe0000, 0x40000000, 8192) == 0x33000000);	/* 3 GB top -> 816 MB */
+	assert(memmap_clamp(0xfffff000, 0x40000000, 8192) == 0x33000000);	/* saturated -> same */
+	assert(memmap_clamp(0x80000000, 0x40000000 - 0x1000000, 8192) == 0x32000000);	/* 16 MB frame buffer */
+	assert(memmap_clamp(0x80000000, 0x2000000, 8192) == 0);	/* nothing fits */
+	assert(memmap_clamp(0, 0x40000000, 8192) == 0);
 	printf("memmap_test: ok\n");
 	return 0;
 }

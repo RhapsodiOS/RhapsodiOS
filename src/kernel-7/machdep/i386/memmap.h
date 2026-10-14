@@ -37,5 +37,7 @@ int memmap_count(int raw);
 unsigned int memmap_end_of_memory(unsigned int map_top,
 				  unsigned int maxmem_bytes,
 				  unsigned int extmem_bytes);
+unsigned int memmap_clamp(unsigned int end, unsigned int budget,
+			  unsigned int page_size);
 
 #endif	/* _MACHDEP_I386_MEMMAP_H_ */

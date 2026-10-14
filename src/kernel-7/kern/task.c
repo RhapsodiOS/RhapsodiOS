@@ -178,7 +178,12 @@ kern_return_t task_create(
 
 	new_task->kernel_vm_space = FALSE;
 
-	ipc_task_init(new_task, parent_task);
+	if (ipc_task_init(new_task, parent_task) != KERN_SUCCESS) {
+		vm_map_deallocate(new_task->map);
+		pcb_common_terminate(new_task);
+		zfree(task_zone, (vm_offset_t) new_task);
+		return KERN_RESOURCE_SHORTAGE;
+	}
 
 	new_task->total_user_time.seconds = 0;
 	new_task->total_user_time.microseconds = 0;

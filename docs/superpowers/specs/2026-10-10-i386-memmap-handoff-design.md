@@ -213,6 +213,10 @@ Guest tests (QEMU, never on shared images; see CLAUDE.md):
   `pmap_init`): the later refactor (option 3) that would let memory above
   a hole be used.
 - Clamping physical memory to the kernel address space (`2e8daf4d2`).
+  Landed separately on 2026-10-13 as `memmap_clamp()`. In QEMU, master's
+  kernel boot-loops at 2048MB and hangs at 4096MB, and the clamped kernel
+  boots both at 816MB to the single-user shell. At 768MB the two kernels
+  match. This is the stopgap until the flat-kernel and 2G/2G split work.
 - pexpert's mapping of managed pages, which this makes unreachable for
   ACPI tables in reserved memory.
 - `CONFIG_SIZE` differs between the two `kernBootStruct.h` copies

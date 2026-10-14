@@ -262,6 +262,10 @@ pmap_map(
     }
 
     while (start < end) {
+	if (virt >= VM_MAX_KERNEL_ADDRESS)
+	    panic("pmap_map: kernel address space exhausted at virt 0x%x "
+		  "(phys 0x%x, end 0x%x)", virt, start, end);
+
 	pte = pmap_pt_entry(kernel_pmap, virt);
 	if (pte == PT_ENTRY_NULL) {
 	    pmap_kernel_pt_alloc(virt);

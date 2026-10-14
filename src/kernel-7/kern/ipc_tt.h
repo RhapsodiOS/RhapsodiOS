@@ -54,7 +54,7 @@
 #include <mach/boolean.h>
 #include <mach/port.h>
 
-extern void ipc_task_init();
+extern kern_return_t ipc_task_init();
 extern void ipc_task_enable();
 extern void ipc_task_disable();
 extern void ipc_task_terminate();

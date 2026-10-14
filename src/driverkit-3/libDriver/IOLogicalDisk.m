@@ -56,6 +56,12 @@
 				 byteOffset : (unsigned long long *)byteOffset	
 				 bytesToMove : (u_int *)bytesToMove;
 
+- (IOReturn)computePartitionAt	:(unsigned long long)offset
+				 inBytes : (BOOL)inBytes
+				 length : (u_int)bytesReq
+				 byteOffset : (unsigned long long *)byteOffset	
+				 bytesToMove : (u_int *)bytesToMove;
+
 /* This must be a class method since it's called by
  * a class method in DiskPartition.
  */
@@ -273,6 +279,61 @@
 		pending:pending
 		client:client]);
     }
+}
+
+/*
+ * Raw transfer at a byte offset from the start of the partition, so callers
+ * are not limited to multiples of the partition's logical block size.
+ * Requests not aligned to the physical block size are reblocked.
+ */
+- (IOReturn) asyncTransfer	: (BOOL)read
+				  byteOffset : (unsigned long long)offset
+				  length : (unsigned)length
+				  buffer : (unsigned char *)buffer
+				  pending : (void *)pending
+				  client : (vm_task_t)client
+{
+    IOReturn rtn;
+    unsigned bytesToMove;
+    unsigned long long byteposition;
+
+    if (!read && [self isWriteProtected]) {
+	return IO_R_NOT_WRITABLE;
+    }
+
+    rtn = [self computePartitionAt:offset
+			   inBytes:YES
+			    length:length
+			byteOffset:&byteposition
+		       bytesToMove:&bytesToMove];
+    if (rtn) {
+	return(rtn);
+    }
+
+    if (byteposition % _physicalBlockSize || bytesToMove % _physicalBlockSize) {
+	return([[self class] commonReadWrite
+			    : _physicalDisk
+			    : read
+			    : byteposition
+			    : bytesToMove
+			    : buffer
+			    : client
+			    : pending
+			    : (u_int *)NULL]);
+    }
+
+    if (read) {
+	return([_physicalDisk readAsyncAt:(byteposition / _physicalBlockSize)
+		length:bytesToMove
+		buffer:buffer
+		pending:pending
+		client:client]);
+    }
+    return([_physicalDisk writeAsyncAt:(byteposition / _physicalBlockSize)
+	    length:bytesToMove
+	    buffer:buffer
+	    pending:pending
+	    client:client]);
 }
 
 #else	KERNEL
@@ -679,6 +740,21 @@
 				 byteOffset : (unsigned long long *)byteOffset	
 				 bytesToMove : (unsigned *)bytesToMove
 {
+    return [self computePartitionAt:logicalOffset
+			    inBytes:NO
+			     length:length
+			 byteOffset:byteOffset
+			bytesToMove:bytesToMove];
+}
+
+/* offset is in logical blocks, or in bytes from the partition start if inBytes. */
+
+- (IOReturn)computePartitionAt	:(unsigned long long)offset
+				 inBytes : (BOOL)inBytes
+				 length : (unsigned)length
+				 byteOffset : (unsigned long long *)byteOffset	
+				 bytesToMove : (unsigned *)bytesToMove
+{
     unsigned physicalBlocksize;
     unsigned logicalBlocksize;
     IOReturn rtn;
@@ -744,7 +820,7 @@
      * partitioning scheme. NeXT labeled disks are usually 1024 bytes,
      * HFS is always 512.)
      */
-    reqbase = ((unsigned long long)logicalOffset *
+    reqbase = (inBytes ? offset : offset *
 		    (unsigned long long)logicalBlocksize) + partbase;
     
     if (reqbase < partbase || reqbase > partend) {
@@ -762,7 +838,7 @@
 
 /* Copy data to (write) or from (read) a misaligned part of a physical block: */
 
-#define MAX_REBLOCK_SIZE 2048
+#define MAX_REBLOCK_SIZE 4096
 
 + (IOReturn) reblock		: (id)physicalDisk
 				: (BOOL)read

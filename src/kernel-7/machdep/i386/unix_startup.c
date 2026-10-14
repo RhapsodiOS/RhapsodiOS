@@ -51,6 +51,8 @@
 extern struct tty	cons;
 extern int		mem_map_ranges;
 extern vm_offset_t	mem_map_top;
+extern vm_size_t	mem_size_detected;
+extern vm_size_t	mem_size_budget;
 
 #import <kern/assert.h>
 
@@ -240,6 +242,11 @@ startup(
 	mem_size/MEG,
 	((mem_size%MEG)*10)/MEG,
 	((mem_size%(MEG/10))*100)/MEG);
+
+    if (mem_size != mem_size_detected)
+	printf("physical memory clamped from %d MB to %d MB "
+	       "(%d MB of kernel address space is available for it).\n",
+	       mem_size_detected/MEG, mem_size/MEG, mem_size_budget/MEG);
 
     /*
      * Allocate space for system data structures.

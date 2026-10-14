@@ -18,10 +18,12 @@ rc=0
 : >$out
 while test $cycle -lt $1; do
 	for t in $tests; do
+		echo "stress: mmap $t" 2>/dev/null >/dev/console || true
 		./stress-mmap $opts $t >>$out 2>/dev/null || rc=1
 	done
 	pids=
 	for t in $tests; do
+		echo "stress: mmap $t" 2>/dev/null >/dev/console || true
 		./stress-mmap $opts $t >>$out 2>/dev/null &
 		pids="$pids $!"
 	done

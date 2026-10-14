@@ -15,8 +15,9 @@ NETBIN = net/stress-net
 IPCBIN = ipc/stress-ipc
 IPCNAMES = ipc/stress-ipc-names
 THREADBIN = thread/stress-thread
+MISCBIN = misc/stress-misc
 
-all: lib/libstress.a $(VMBIN) $(MMAPBIN) $(FSBIN) $(PROCBIN) $(CHILDBIN) $(NETBIN) $(IPCBIN) $(THREADBIN)
+all: lib/libstress.a $(VMBIN) $(MMAPBIN) $(FSBIN) $(PROCBIN) $(CHILDBIN) $(NETBIN) $(IPCBIN) $(THREADBIN) $(MISCBIN)
 
 lib/libstress.a: $(LIBOBJS)
 	rm -f $@
@@ -73,6 +74,12 @@ thread/%.o: thread/%.c lib/stress.h
 
 $(THREADBIN): thread/thread.o lib/libstress.a
 	$(CC) $(CFLAGS) -o $@ thread/thread.o lib/libstress.a
+
+misc/%.o: misc/%.c lib/stress.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(MISCBIN): misc/misc.o lib/libstress.a
+	$(CC) $(CFLAGS) -o $@ misc/misc.o lib/libstress.a
 
 lib/t_lib: lib/t_lib.o lib/libstress.a
 	$(CC) $(CFLAGS) -o $@ lib/t_lib.o lib/libstress.a
@@ -208,6 +215,14 @@ check-thread: $(THREADBIN)
 	test `grep -c '^STRESS thread [a-z]* FAIL ' thread/t.out` = 3
 	@echo thread: ok
 
+# All 7 are PASS or UNSUP; the -x run needs flock and fifo to FAIL.
+check-misc: $(MISCBIN)
+	rc=0; $(MISCBIN) -n 3 -i 20 -d /tmp >misc/t.out || rc=$$?; test $$rc = 0
+	test `grep -c '^STRESS misc [a-z]* \(PASS\|UNSUP\) ' misc/t.out` = 7
+	rc=0; $(MISCBIN) -x -i 5 -d /tmp flock fifo >misc/t.out || rc=$$?; test $$rc = 1
+	test `grep -c '^STRESS misc [a-z]* FAIL ' misc/t.out` = 2
+	@echo misc: ok
+
 # run exercises the whole chain on the vm category only.
 check-run: $(VMBIN)
 	touch /tmp/stress.junk.1
@@ -234,6 +249,6 @@ installsrc:
 	gnutar --exclude=CVS --exclude=.git -cf - . | gnutar -C $(SRCROOT) -xf -
 
 clean:
-	rm -f lib/*.o lib/libstress.a lib/t_lib $(TMAIN) lib/t.out lib/t.err vm/*.o $(VMBIN) vm/t.out mmap/*.o $(MMAPBIN) mmap/t.out fs/*.o $(FSBIN) fs/t.out proc/*.o $(PROCBIN) $(CHILDBIN) proc/t.out proc/stress-proc.old net/*.o $(NETBIN) net/t.out ipc/*.o $(IPCBIN) $(IPCNAMES) ipc/t.out thread/*.o $(THREADBIN) thread/t.out
+	rm -f lib/*.o lib/libstress.a lib/t_lib $(TMAIN) lib/t.out lib/t.err vm/*.o $(VMBIN) vm/t.out mmap/*.o $(MMAPBIN) mmap/t.out fs/*.o $(FSBIN) fs/t.out proc/*.o $(PROCBIN) $(CHILDBIN) proc/t.out proc/stress-proc.old net/*.o $(NETBIN) net/t.out ipc/*.o $(IPCBIN) $(IPCNAMES) ipc/t.out thread/*.o $(THREADBIN) thread/t.out misc/*.o $(MISCBIN) misc/t.out
 
-.PHONY: all check check-vm check-mmap check-fs check-proc check-net check-ipc check-thread check-run install installhdrs installsrc clean
+.PHONY: all check check-vm check-mmap check-fs check-proc check-net check-ipc check-thread check-misc check-run install installhdrs installsrc clean

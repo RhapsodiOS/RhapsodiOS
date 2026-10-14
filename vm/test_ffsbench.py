@@ -330,3 +330,10 @@ def test_a_refused_login_counts_as_failed():
     assert fb.login_ok(0, "Building build root:") is True
     assert fb.login_ok(255, "kex_exchange_identification: read: Connection aborted") is False
     assert fb.login_ok(255, "") is False
+
+
+def test_stress_state():
+    assert fb.stress_state(None, "") == "lost"
+    assert fb.stress_state(1.0, "") == "running"
+    assert fb.stress_state(1.0, "\n") == "running"
+    assert fb.stress_state(1.0, "3\n") == "3"

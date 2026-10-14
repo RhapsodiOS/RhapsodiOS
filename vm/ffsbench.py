@@ -968,21 +968,29 @@ STRESS_LOST_POLLS = 5               # unanswered polls in a row = guest lost
 STRESS_REPORT = "/usr/local/stress/Report"
 
 
+def stress_state(t, out):
+    """Classify one poll of /tmp/stress.exit: "lost" (login failed),
+    "running" (no marker yet), else the run's exit status."""
+    if t is None:
+        return "lost"
+    return out.strip() or "running"
+
+
 def stress(kernel, label, cycles=1, bootargs="", cats=""):
-    """Build and run the stress suite on a guest; always leave a result.txt,
-    with "guest": "lost" if the guest stopped answering mid-run."""
+    """Build and run the stress suite on a guest.  result.txt is written on
+    every exit path: with "guest": "lost" if the guest stopped answering
+    mid-run, with "error" if setup failed (the error is then re-raised)."""
     import stress_dev
     import stress_report
     conf = _conf()
     outdir = _new_outdir(label, "stress-0")
     hd1 = _fresh_hd1(outdir)
     g = Guest(outdir, hd1, _workload(), root_iops=IOPS)
-    res, texts, lost = {}, [], False
+    res, texts, err = {}, [], None
     try:
         ssh = Ssh(conf)
         if kernel:
-            if not boot_or_skip(g, ssh, kernel, bootargs, outdir):
-                return
+            boot_test_kernel(g, ssh, kernel, bootargs)
         elif not g.wait_sshd():
             raise SystemExit("sshd never answered")
         stress_dev.login(ssh)
@@ -1000,41 +1008,48 @@ def stress(kernel, label, cycles=1, bootargs="", cats=""):
         rc, out = ssh.run(MOUNT)
         if rc != 0:
             raise SystemExit("mount failed: %s" % out)
-        ssh.run("(nohup sh -c '/usr/local/stress/run -a -d /mnt1 %d %s; echo $? > /tmp/stress.exit' "
-                "> /tmp/stress.log 2>&1 &)" % (cycles, cats))
+        ssh.run("rm -f /tmp/stress.exit; (nohup sh -c '/usr/local/stress/run -a -d /mnt1 %d %s; "
+                "echo $? > /tmp/stress.exit' > /tmp/stress.log 2>&1 &)" % (cycles, cats))
         start, dead = time.time(), 0
         while time.time() - start < STRESS_RUN_LIMIT_S:
             time.sleep(STRESS_POLL_S)
-            t, out = timed_login(conf, "cat /tmp/stress.exit 2>/dev/null")
-            dead = 0 if t is not None else dead + 1
+            if g.proc.poll() is not None:
+                dead = STRESS_LOST_POLLS
+                break
+            state = stress_state(*timed_login(conf, "cat /tmp/stress.exit 2>/dev/null; true"))
+            dead = dead + 1 if state == "lost" else 0
             if dead >= STRESS_LOST_POLLS:
                 break
-            if t is not None and out.strip():
-                res["run_exit"] = out.strip()
+            if state not in ("running", "lost"):
+                res["run_exit"] = state
                 break
         else:
             res["run_exit"] = "limit"
-        lost = dead >= STRESS_LOST_POLLS
-        if lost:
+        if dead >= STRESS_LOST_POLLS:
+            res["guest"] = "lost"
             _log(outdir, "serial-tail.log", g.serial_text()[-4000:])
         # fetch individually: a partial run still yields what it wrote
-        t, listing = timed_login(conf, "ls %s" % STRESS_REPORT)
-        for name in (listing.split() if t is not None else []):
-            t, text = timed_login(conf, "cat %s/%s" % (STRESS_REPORT, name))
-            if t is None:
-                continue
-            _log(outdir, name, text)
-            if name.endswith(".out"):
-                texts.append(text)
+        if g.proc.poll() is None:
+            t, listing = timed_login(conf, "ls %s" % STRESS_REPORT)
+            for name in (listing.split() if t is not None else []):
+                t, text = timed_login(conf, "cat %s/%s" % (STRESS_REPORT, name))
+                if t is None:
+                    continue
+                _log(outdir, name, text)
+                if name.endswith(".out"):
+                    texts.append(text)
+    except SystemExit as e:
+        res["error"] = str(e)
+        err = e
     finally:
         g.quit()
         os.remove(hd1)
-    res.update(stress_report.summarize(stress_report.parse("\n".join(texts))))
-    if lost:
-        res["guest"] = "lost"
-    with open(os.path.join(outdir, "result.txt"), "w", encoding="utf-8") as f:
-        f.write(json.dumps(res) + "\n")
-    print(json.dumps(res))
+        res.update(stress_report.summarize(stress_report.parse("\n".join(texts))))
+        with open(os.path.join(outdir, "result.txt"), "w", encoding="utf-8") as f:
+            f.write(json.dumps(res) + "\n")
+        print(json.dumps(res))
+    if err:
+        raise err
 
 
 def main(argv):

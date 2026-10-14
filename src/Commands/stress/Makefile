@@ -6,8 +6,9 @@ LIBOBJS = lib/rng.o lib/pattern.o lib/report.o lib/main.o lib/sysinfo.o
 CC      = cc
 CFLAGS  = -O -Wall $(RC_CFLAGS) -Ilib
 TMAIN   = lib/stress-tmain
+VMBIN   = vm/stress-vm
 
-all: lib/libstress.a
+all: lib/libstress.a $(VMBIN)
 
 lib/libstress.a: $(LIBOBJS)
 	rm -f $@
@@ -16,6 +17,12 @@ lib/libstress.a: $(LIBOBJS)
 
 lib/%.o: lib/%.c lib/stress.h
 	$(CC) $(CFLAGS) -c $< -o $@
+
+vm/%.o: vm/%.c lib/stress.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(VMBIN): vm/vm.o lib/libstress.a
+	$(CC) $(CFLAGS) -o $@ vm/vm.o lib/libstress.a
 
 lib/t_lib: lib/t_lib.o lib/libstress.a
 	$(CC) $(CFLAGS) -o $@ lib/t_lib.o lib/libstress.a
@@ -51,6 +58,19 @@ check: lib/t_lib $(TMAIN)
 	rc=0; $(TMAIN) bogus 2>/dev/null || rc=$$?; test $$rc = 2
 	@echo t_main: ok
 
+# The first run needs 4 PASS lines and wire PASS or UNSUP; the -x run needs
+# each test to FAIL with the corrupted offset.
+check-vm: $(VMBIN)
+	rc=0; $(VMBIN) -n 2 -m 8m -i 1 >vm/t.out || rc=$$?; test $$rc = 0
+	grep '^STRESS vm pressure PASS ' vm/t.out
+	grep '^STRESS vm cow PASS ' vm/t.out
+	grep '^STRESS vm machvm PASS ' vm/t.out
+	grep '^STRESS vm brk PASS ' vm/t.out
+	grep '^STRESS vm wire \(PASS\|UNSUP\) ' vm/t.out
+	rc=0; $(VMBIN) -x -n 1 -m 4m -i 1 pressure cow machvm brk >vm/t.out || rc=$$?; test $$rc = 1
+	test `grep -c '^STRESS vm [a-z]* FAIL .*off=0x' vm/t.out` = 4
+	@echo vm: ok
+
 install: all
 
 installhdrs:
@@ -59,6 +79,6 @@ installsrc:
 	gnutar --exclude=CVS --exclude=.git -cf - . | gnutar -C $(SRCROOT) -xf -
 
 clean:
-	rm -f lib/*.o lib/libstress.a lib/t_lib $(TMAIN) lib/t.out lib/t.err
+	rm -f lib/*.o lib/libstress.a lib/t_lib $(TMAIN) lib/t.out lib/t.err vm/*.o $(VMBIN) vm/t.out
 
-.PHONY: all check install installhdrs installsrc clean
+.PHONY: all check check-vm install installhdrs installsrc clean

@@ -446,7 +446,8 @@ t_fork(struct st_ctx *c)
 				break;
 			if (r < 0 && errno != EINTR)
 				st_fail_errno(c, "waitpid");
-			if (time(NULL) - t0 > 10)
+			/* the child shares the CPU with 4 spinners per worker: 15 s seen under load */
+			if (time(NULL) - t0 > WAITSECS)
 				st_fail(c, "reason=child-hang");
 		}
 		g_kid = 0;

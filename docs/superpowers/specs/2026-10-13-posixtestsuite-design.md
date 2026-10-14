@@ -77,13 +77,16 @@ at package time; the package needs `cc` (build-base) where it runs.
 ## The runner
 
 ```
-run [-t secs] [-d workdir] [-u] [path ...]
+run [-t secs] [-d dir] [-r root] [-b baseline] [-u] [path ...]
 ```
 
 - `-t` per-test timeout, default 240 s (upstream's value).
-- `-d` work directory, default `/tmp/posix.<pid>`; removed when the run ends.
-  Leftover `/tmp/posix.*` directories from killed runs are removed at start.
-- `-u` writes this run's results over `baseline` instead of comparing.
+- `-d` directory holding the scratch directory `posix.<pid>`, default `/tmp`;
+  only that subdirectory is removed, on exit or on a signal.
+- `-r` suite root and `-b` baseline file, for the fixture tests in `t/`.
+- `-u` merges this run's results into `baseline` instead of comparing: tests
+  not run keep their entry and `FLAKY` marks survive. The merge is written to
+  `Report/baseline.new`, which `posix_dev.py baseline` copies.
 - `path` limits the run to tests under those directories, relative to the
   suite root; the default is `conformance`.
 
@@ -121,7 +124,7 @@ A baseline entry may be `FLAKY`; changes in such tests are never reported.
 
 Exit status: 0 when there is no regression, 1 on any regression, 2 when the
 run could not start (no `cc`, work directory not creatable, `baseline`
-missing without `-u`).
+missing without `-u`, `-t` not a positive integer, a path that does not exist).
 
 ## The timeout helper
 

@@ -23,14 +23,20 @@ while test $# -gt 0; do
 	esac
 done
 test $# -gt 0 || set conformance
+expr "$secs" : '[1-9][0-9]*$' >/dev/null || { echo "run: bad -t $secs" >&2; exit 2; }
 test $update = 1 || test -r "$base" || { echo "run: no baseline $base" >&2; exit 2; }
 cc -v >/dev/null 2>&1 || { echo "run: no cc" >&2; exit 2; }
 root=`cd $root && pwd` || { echo "run: no suite root" >&2; exit 2; }
-if test -z "$work"; then
-	rm -rf /tmp/posix.*	# left by killed runs
-	work=/tmp/posix.$$
-fi
+for a in "$@"; do
+	(cd "$root" && test -e "$a") || { echo "run: no such test path $a" >&2; exit 2; }
+done
+# Scratch lives in its own directory, so -d DIR never loses what DIR holds.
+test -n "$work" || work=/tmp
 mkdir -p $work || { echo "run: cannot create $work" >&2; exit 2; }
+work=$work/posix.$$
+mkdir $work || { echo "run: cannot create $work" >&2; exit 2; }
+trap 'rm -rf $work' 0
+trap 'exit 2' 1 2 15
 report=`pwd`/Report
 rm -rf $report
 mkdir -p $report/log
@@ -48,7 +54,7 @@ result() {
 }
 
 (cd $root && find "$@" \( -name '[0-9]*-*.c' -o -name '[0-9]*-[0-9]*.sh' \) -print) |
-	sort >$work/all
+	sed -e 's|^\./||' -e 's|//*|/|g' | sort -u >$work/all
 # As upstream, a build-only test with a main is linked to <path>.test under
 # $bin, a mirror of the suite root where .sh tests run, since some of them
 # run those binaries by path. So build-only tests go first.
@@ -94,7 +100,14 @@ while read f; do
 	echo "POSIX $p $r"
 	echo "POSIX $p $r" >>$report/results
 done <$work/list
-sed 's/^POSIX //' $report/results | sort >$report/baseline.new
+sed 's/^POSIX //' $report/results | sort >$work/cur
+# baseline.new is the baseline with this run's results merged in: tests not
+# run keep their entry, and FLAKY marks survive.
+if test -r "$base"; then grep -v '^[ 	]*$' "$base" | sort >$work/base; else : >$work/base; fi
+awk 'FNR == NR { old[$1] = $2; next }
+	{ print $1, ($1 in old && old[$1] == "FLAKY") ? "FLAKY" : $2; seen[$1] = 1 }
+	END { for (k in old) if (!(k in seen)) print k, old[k] }' $work/base $work/cur |
+	sort >$report/baseline.new
 
 # Summary. Fields are compared with join and awk, never grep, so a path
 # is only ever matched whole.
@@ -105,11 +118,9 @@ echo "== build failures by family" >>$sum
 awk '$3 == "BUILD-FAIL" || $3 == "LINK-FAIL" { split($2, a, "/"); f = a[3]; sub(/_.*/, "", f); print f }' 	$report/results | sort | uniq -c | awk '{ print "  " $1 " " $2 }' >>$sum
 if test $update = 1; then
 	cp $report/baseline.new "$base"
-	rm -rf $work
 	exit 0
 fi
-grep -v '^[ 	]*$' "$base" | sort >$work/base
-join $report/baseline.new $work/base >$work/both
+join $work/cur $work/base >$work/both
 for kind in regressions improvements changes; do
 	echo "== $kind" >>$sum
 	awk -v kind=$kind '$3 != "FLAKY" && $2 != $3 {
@@ -117,8 +128,7 @@ for kind in regressions improvements changes; do
 		if (k == kind) print "  " $1 " " $3 " -> " $2 }' $work/both >>$sum
 done
 echo "== new" >>$sum
-join -v1 $report/baseline.new $work/base | awk '{ print "  " $1 " " $2 }' >>$sum
+join -v1 $work/cur $work/base | awk '{ print "  " $1 " " $2 }' >>$sum
 rc=0
 test `sed -n '/^== regressions/,/^== improvements/p' $sum | grep -c '^  '` = 0 || rc=1
-rm -rf $work
 exit $rc

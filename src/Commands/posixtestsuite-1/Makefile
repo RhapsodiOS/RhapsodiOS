@@ -53,7 +53,8 @@ check-run: ptimeout
 	test `grep -c '^POSIX ' Report/results` = 18
 	test `ps -ax | grep -c ':[0-9][0-9] sleep 77'` = 0
 	test -f Report/log/conformance/interfaces/nobuild/1-1.log
-	test ! -d /tmp/posixcheck
+	test `ls /tmp/posixcheck | wc -l` = 0
+	rm -rf /tmp/posixcheck
 	@echo run: ok
 
 # Variants of t/baseline.ok exercise each kind of comparison.
@@ -86,7 +87,25 @@ check-baseline: ptimeout
 	rm -f $(B)
 	@echo baseline: ok
 
-check: check-ptimeout check-run check-baseline
+# Argument handling and baseline updates (review findings).
+check-args: ptimeout
+	rc=0; sh ./run -r t -b t/baseline.ok -t 3 -d /tmp/posixcheck ./conformance >Report.out || rc=$$?; test $$rc = 0
+	test `sed -n '/^== new/,$$p' Report/summary | grep -c '^  '` = 0
+	test `grep -c '^POSIX ' Report/results` = 18
+	rc=0; sh ./run -r t -b t/baseline.ok -t 3 -d /tmp/posixcheck conformance/ >Report.out || rc=$$?; test $$rc = 0
+	test `sed -n '/^== new/,$$p' Report/summary | grep -c '^  '` = 0
+	rc=0; sh ./run -r t -b t/baseline.ok conformence >Report.out 2>/dev/null || rc=$$?; test $$rc = 2
+	rc=0; sh ./run -r t -b t/baseline.ok -t abc >Report.out 2>/dev/null || rc=$$?; test $$rc = 2
+	rc=0; sh ./run -r t -b t/baseline.ok -t 0 >Report.out 2>/dev/null || rc=$$?; test $$rc = 2
+	mkdir /tmp/posix.keep; sh ./run -r t -b t/baseline.ok -t 3 conformance/interfaces/pass >Report.out; test -d /tmp/posix.keep; rmdir /tmp/posix.keep
+	mkdir -p /tmp/posixcheck; touch /tmp/posixcheck/keep; sh ./run -r t -b t/baseline.ok -t 3 -d /tmp/posixcheck conformance/interfaces/pass >Report.out; test -f /tmp/posixcheck/keep; rm -rf /tmp/posixcheck
+	sed 's|/fail/1-1 FAIL$$|/fail/1-1 FLAKY|' t/baseline.ok >$(B)
+	sh ./run -r t -t 3 -d /tmp/posixcheck -u -b $(B) >Report.out; grep '^conformance/interfaces/fail/1-1 FLAKY$$' $(B); test `wc -l <$(B)` = 18
+	cp t/baseline.ok $(B); sh ./run -r t -t 3 -d /tmp/posixcheck -u -b $(B) conformance/interfaces/pass >Report.out; cmp $(B) t/baseline.ok
+	rm -rf $(B) /tmp/posixcheck
+	@echo args: ok
+
+check: check-ptimeout check-run check-baseline check-args
 
 installhdrs:
 
@@ -96,4 +115,4 @@ installsrc:
 clean:
 	rm -rf Report Report.out ptimeout
 
-.PHONY: all check check-ptimeout check-run check-baseline install installhdrs installsrc clean
+.PHONY: all check check-ptimeout check-run check-baseline check-args install installhdrs installsrc clean

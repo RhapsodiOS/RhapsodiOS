@@ -15,11 +15,13 @@ Running
 
     run [-t secs] [-d workdir] [-r root] [-b baseline] [-u] [path ...]
 
-  -t secs      per-test timeout, default 240
-  -d workdir   scratch directory, default /tmp/posix.<pid>, removed at the end
+  -t secs      per-test timeout, a positive integer, default 240
+  -d dir       where the scratch directory posix.<pid> is made, default /tmp;
+               only that subdirectory is removed, at the end
   -r root      suite root, default posixtestsuite/ next to run
   -b baseline  expected results, default baseline next to run
-  -u           write this run's results over the baseline instead of comparing
+  -u           merge this run's results into the baseline instead of comparing:
+               tests not run keep their entry, FLAKY marks are kept
   path         directories under the root to run, default conformance
 
 Each test is compiled with
@@ -49,7 +51,9 @@ Results
 Report/summary counts the results, counts build and link failures per API
 family, and lists every regression (baseline PASS, now anything else),
 improvement (now PASS), other change, and test missing from the baseline.
-run exits 1 if there is a regression, 2 if it could not start, else 0.
+run exits 1 if there is a regression, 2 if it could not start (no cc, no
+baseline, bad -t, a path that does not exist), else 0. A -buildonly test with
+a main is also linked to <path>.test, where the shell tests that run it expect it.
 
 Updating the baseline
 ---------------------

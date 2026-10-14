@@ -749,7 +749,16 @@ vnode_pagein(
 	    }
 	}
 
-	if (result != PAGER_ABSENT) {
+	/*
+	 *	A page wholly beyond the end of the file cannot be paged in;
+	 *	the faulting access gets SIGBUS.
+	 */
+	if (!vs->vs_swapfile && f_offset >= vp->v_vm_info->vnode_size) {
+	    result = PAGER_ERROR;
+	    error = EFAULT;
+	}
+
+	if (result == PAGER_SUCCESS) {
 	    vm_offset_t		ioaddr = vnode_pageio_setup(m);
 	    struct uio		auio;
 	    struct iovec	aiov;

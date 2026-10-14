@@ -943,6 +943,7 @@ ufs_rename(ap)
 	register struct vnode *tdvp = ap->a_tdvp;
 	struct vnode *fvp = ap->a_fvp;
 	struct vnode *fdvp = ap->a_fdvp;
+	struct vnode *svp;
 	struct componentname *tcnp = ap->a_tcnp;
 	struct componentname *fcnp = ap->a_fcnp;
 	struct proc *p = fcnp->cn_proc;
@@ -1005,7 +1006,8 @@ abortit:
 		if ((fcnp->cn_flags & SAVESTART) == 0)
 			panic("ufs_rename: lost from startdir");
 		fcnp->cn_nameiop = DELETE;
-		(void) relookup(fdvp, &fvp, fcnp);
+		if (relookup_startdir(fdvp, &fvp, fcnp) || fvp == NULL)
+			return (0);	/* source name already gone */
 		return (VOP_REMOVE(fdvp, fvp, fcnp));
 	}
 	if (error = vn_lock(fvp, LK_EXCLUSIVE, p))
@@ -1071,16 +1073,43 @@ abortit:
 	VOP_UNLOCK(fvp, 0, p);
 	if (oldparent != dp->i_number)
 		newparent = dp->i_number;
-	if (doingdirectory && newparent) {
-		if (error)	/* write access check above */
+	if (doingdirectory) {
+		if (newparent && error)	/* write access check above */
 			goto bad;
 		if (xp != NULL)
 			vput(tvp);
-		if (error = ufs_checkpath(ip, dp, tcnp->cn_cred))
+		if (newparent) {
+			if (error = ufs_checkpath(ip, dp, tcnp->cn_cred))
+				goto out;
+		} else
+			vput(tdvp);
+		/*
+		 * The source name was looked up before we held the
+		 * source directory locked, so it may have been renamed
+		 * or removed since.  IN_RENAME and the extra link count
+		 * now keep it from changing, so check it once here,
+		 * before anything is modified.  The parents are not
+		 * locked while this is done to keep lock order sane.
+		 */
+		fcnp->cn_flags &= ~MODMASK;
+		fcnp->cn_flags |= LOCKPARENT | LOCKLEAF;
+		if ((fcnp->cn_flags & SAVESTART) == 0)
+			panic("ufs_rename: lost from startdir");
+		if (error = relookup_startdir(fdvp, &svp, fcnp)) {
+			error = ENOENT;
 			goto out;
+		}
+		vput(fdvp);
+		if (svp != fvp) {
+			if (svp != NULL)
+				vput(svp);
+			error = ENOENT;
+			goto out;
+		}
+		vput(svp);
 		if ((tcnp->cn_flags & SAVESTART) == 0)
 			panic("ufs_rename: lost to startdir");
-		if (error = relookup(tdvp, &tvp, tcnp))
+		if (error = relookup_startdir(tdvp, &tvp, tcnp))
 			goto out;
 		dp = VTOI(tdvp);
 		xp = NULL;
@@ -1203,7 +1232,7 @@ abortit:
 	fcnp->cn_flags |= LOCKPARENT | LOCKLEAF;
 	if ((fcnp->cn_flags & SAVESTART) == 0)
 		panic("ufs_rename: lost from startdir");
-	(void) relookup(fdvp, &fvp, fcnp);
+	(void) relookup_startdir(fdvp, &fvp, fcnp);
 	if (fvp != NULL) {
 		xp = VTOI(fvp);
 		dp = VTOI(fdvp);

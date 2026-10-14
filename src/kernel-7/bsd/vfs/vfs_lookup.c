@@ -534,6 +534,25 @@ bad:
 }
 
 /*
+ * relookup() vputs dvp when the lookup fails, but a rename's caller still
+ * owns that reference as the SAVESTART startdir and releases it again.
+ * Take an extra one so a failed relookup leaves the count unchanged.
+ */
+int
+relookup_startdir(dvp, vpp, cnp)
+	struct vnode *dvp, **vpp;
+	struct componentname *cnp;
+{
+	int error;
+
+	VREF(dvp);
+	error = relookup(dvp, vpp, cnp);
+	if (!error)
+		vrele(dvp);
+	return (error);
+}
+
+/*
  * relookup - lookup a path name component
  *    Used by lookup to re-aquire things.
  */

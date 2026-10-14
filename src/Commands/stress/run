@@ -1,0 +1,61 @@
+#!/bin/sh
+# usage: run [-a] [-s seed] [-t secs] [-d dir] cycles [cat ...]
+# Runs each category's runtests; -a runs the categories at the same time.
+usage="usage: run [-a] [-s seed] [-t secs] [-d dir] cycles [cat ...]"
+all=0
+opts=
+dir=/tmp
+while test $# -gt 0; do
+	case $1 in
+	-a) all=1; shift ;;
+	-s|-t) test $# -gt 2 || { echo "$usage" >&2; exit 2; }; opts="$opts $1 $2"; shift 2 ;;
+	-d) test $# -gt 2 && test -n "$2" || { echo "$usage" >&2; exit 2; }; dir=$2; shift 2 ;;
+	-*) echo "$usage" >&2; exit 2 ;;
+	*) break ;;
+	esac
+done
+test $# -ge 1 || { echo "$usage" >&2; exit 2; }
+cycles=$1; shift
+cats=${*:-vm mmap fs proc net}
+here=`cd \`dirname $0\` && pwd` || exit 2
+rep=$here/Report
+
+rm -rf "$dir"/stress.*
+mkdir -p "$rep" "$rep/cores"
+rm -f "$rep"/*.out "$rep"/summary
+
+pids=
+for c in $cats; do
+	if test $all = 1; then
+		(cd "$here/$c" && sh ./runtests $opts -d "$dir" $cycles) >"$rep/$c.out" 2>&1 &
+		pids="$pids $!"
+	else
+		(cd "$here/$c" && sh ./runtests $opts -d "$dir" $cycles) >"$rep/$c.out" 2>&1 || echo "$c" >>"$rep/bad.$$"
+	fi
+done
+for p in $pids; do wait $p || echo bg >>"$rep/bad.$$"; done
+
+for c in $cats; do
+	find "$here/$c" -name core -type f -print | while read f; do
+		n=1
+		while test -f "$rep/cores/$c.core.$n"; do n=`expr $n + 1`; done
+		mv "$f" "$rep/cores/$c.core.$n"
+	done
+done
+
+fail=0
+: >"$rep/summary"
+for c in $cats; do
+	o=$rep/$c.out
+	p=`awk '$1=="STRESS" && $4=="PASS"' "$o" | wc -l`
+	f=`awk '$1=="STRESS" && $4=="FAIL"' "$o" | wc -l`
+	u=`awk '$1=="STRESS" && $4=="UNSUP"' "$o" | wc -l`
+	echo "$c PASS=`expr $p` FAIL=`expr $f` UNSUP=`expr $u`" >>"$rep/summary"
+	test `expr $f` = 0 || fail=1
+done
+for c in $cats; do
+	awk '$1=="STRESS" && $4=="FAIL"' "$rep/$c.out" >>"$rep/summary"
+done
+test -f "$rep/bad.$$" && { echo "runtests exited nonzero:" `cat "$rep/bad.$$"` >>"$rep/summary"; rm -f "$rep/bad.$$"; fail=1; }
+cat "$rep/summary"
+exit $fail

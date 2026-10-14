@@ -158,7 +158,26 @@ check-net: $(NETBIN)
 	test `grep -c '^STRESS net [a-z]* FAIL .*off=0x' net/t.out` = 3
 	@echo net: ok
 
+# run exercises the whole chain on the vm category only.
+check-run: $(VMBIN)
+	touch /tmp/stress.junk.1
+	rc=0; sh ./run -d /tmp 1 vm >/dev/null || rc=$$?; test $$rc = 0
+	test ! -f /tmp/stress.junk.1
+	grep '^vm PASS=[0-9]* FAIL=0 ' Report/summary
+	@echo run: ok
+
+STRESSDIR = $(DSTROOT)/usr/local/stress
+
 install: all
+	for d in vm mmap fs proc net Report; do install -d -m 755 $(STRESSDIR)/$$d; done
+	install -m 755 $(VMBIN) vm/runtests $(STRESSDIR)/vm
+	install -m 755 $(MMAPBIN) mmap/runtests $(STRESSDIR)/mmap
+	install -m 755 $(FSBIN) fs/runtests $(STRESSDIR)/fs
+	install -m 755 $(PROCBIN) $(CHILDBIN) proc/runtests $(STRESSDIR)/proc
+	install -m 755 $(NETBIN) net/runtests $(STRESSDIR)/net
+	install -m 755 run $(STRESSDIR)
+	install -m 644 README $(STRESSDIR)
+
 installhdrs:
 
 installsrc:
@@ -167,4 +186,4 @@ installsrc:
 clean:
 	rm -f lib/*.o lib/libstress.a lib/t_lib $(TMAIN) lib/t.out lib/t.err vm/*.o $(VMBIN) vm/t.out mmap/*.o $(MMAPBIN) mmap/t.out fs/*.o $(FSBIN) fs/t.out proc/*.o $(PROCBIN) $(CHILDBIN) proc/t.out proc/stress-proc.old net/*.o $(NETBIN) net/t.out
 
-.PHONY: all check check-vm check-mmap check-fs check-proc check-net install installhdrs installsrc clean
+.PHONY: all check check-vm check-mmap check-fs check-proc check-net check-run install installhdrs installsrc clean

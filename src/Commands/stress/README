@@ -1,0 +1,35 @@
+stress - system stress suite for RhapsodiOS
+
+Usage
+    run [-a] [-s seed] [-t secs] [-d dir] cycles [cat ...]
+
+    cat is any of vm mmap fs proc net (default: all five).  Each cycle runs
+    every test of a category alone, then all of them at once.  Output goes to
+    Report/<cat>.out, the totals and every FAIL line to Report/summary, core
+    files to Report/cores.  Exit status is 1 if anything failed.
+
+    -a        run the categories at the same time
+    -s seed   random seed (a failure prints it; reuse it to replay)
+    -t secs   per-test time limit (default 600)
+    -d dir    scratch directory (default /tmp); files named dir/stress.* are
+              removed when run starts
+    cycles    how many times to repeat
+
+    The fs fill test fills a whole file system and runs only if STRESS_FILL_DIR
+    names a scratch one.  Each category also has its own <cat>/runtests (same
+    options, except -a and categories) and a binary stress-<cat> that takes
+    -n procs, -i iters, -t secs, -s seed, -d dir, -m size, -v, -x and test names.
+
+Result lines
+    STRESS <cat> <test> PASS iters=N procs=N ... ops=N maxlat=... seed=N
+    STRESS <cat> <test> FAIL key=value ... seed=N
+    STRESS <cat> <test> UNSUP reason="call: ERRNAME"
+
+    PASS: the test finished.  FAIL: data was wrong, a call failed, a worker
+    died (signal=N, exit=N) or the time limit hit (reason=timeout).  UNSUP:
+    the kernel lacks a feature the test needs; it is not a failure.  PASS lines
+    may carry extra key=value fields.
+
+Report/summary
+    <cat> PASS=n FAIL=n UNSUP=n      one line per category
+    STRESS ... FAIL ...              then every FAIL line

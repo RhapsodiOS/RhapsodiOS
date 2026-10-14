@@ -7,8 +7,9 @@ CC      = cc
 CFLAGS  = -O -Wall $(RC_CFLAGS) -Ilib
 TMAIN   = lib/stress-tmain
 VMBIN   = vm/stress-vm
+MMAPBIN = mmap/stress-mmap
 
-all: lib/libstress.a $(VMBIN)
+all: lib/libstress.a $(VMBIN) $(MMAPBIN)
 
 lib/libstress.a: $(LIBOBJS)
 	rm -f $@
@@ -23,6 +24,12 @@ vm/%.o: vm/%.c lib/stress.h
 
 $(VMBIN): vm/vm.o lib/libstress.a
 	$(CC) $(CFLAGS) -o $@ vm/vm.o lib/libstress.a
+
+mmap/%.o: mmap/%.c lib/stress.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(MMAPBIN): mmap/mmap.o lib/libstress.a
+	$(CC) $(CFLAGS) -o $@ mmap/mmap.o lib/libstress.a
 
 lib/t_lib: lib/t_lib.o lib/libstress.a
 	$(CC) $(CFLAGS) -o $@ lib/t_lib.o lib/libstress.a
@@ -71,6 +78,19 @@ check-vm: $(VMBIN)
 	test `grep -c '^STRESS vm [a-z]* FAIL .*off=0x' vm/t.out` = 4
 	@echo vm: ok
 
+# anon and sync are PASS or UNSUP (this kernel refuses MAP_ANON); the -x run needs each test to FAIL with the offset.
+check-mmap: $(MMAPBIN)
+	rc=0; $(MMAPBIN) -n 3 -i 2 -d /tmp >mmap/t.out || rc=$$?; test $$rc = 0
+	grep '^STRESS mmap shared PASS ' mmap/t.out
+	grep '^STRESS mmap mixed PASS ' mmap/t.out
+	grep '^STRESS mmap private PASS ' mmap/t.out
+	grep '^STRESS mmap trunc PASS ' mmap/t.out
+	grep '^STRESS mmap anon \(PASS\|UNSUP\) ' mmap/t.out
+	grep '^STRESS mmap sync \(PASS\|UNSUP\) ' mmap/t.out
+	rc=0; $(MMAPBIN) -x -i 1 -d /tmp shared mixed private >mmap/t.out || rc=$$?; test $$rc = 1
+	test `grep -c '^STRESS mmap [a-z]* FAIL .*off=0x' mmap/t.out` = 3
+	@echo mmap: ok
+
 install: all
 
 installhdrs:
@@ -79,6 +99,6 @@ installsrc:
 	gnutar --exclude=CVS --exclude=.git -cf - . | gnutar -C $(SRCROOT) -xf -
 
 clean:
-	rm -f lib/*.o lib/libstress.a lib/t_lib $(TMAIN) lib/t.out lib/t.err vm/*.o $(VMBIN) vm/t.out
+	rm -f lib/*.o lib/libstress.a lib/t_lib $(TMAIN) lib/t.out lib/t.err vm/*.o $(VMBIN) vm/t.out mmap/*.o $(MMAPBIN) mmap/t.out
 
-.PHONY: all check check-vm install installhdrs installsrc clean
+.PHONY: all check check-vm check-mmap install installhdrs installsrc clean

@@ -1,0 +1,6 @@
+pkgname = stress
+pkgver = 1
+pkgdesc = System stress tests
+maintainer = RhapsodiOS
+license = APSL
+makedepends = build-base

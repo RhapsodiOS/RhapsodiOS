@@ -715,17 +715,27 @@ static const struct st_test tests[] = {
 	{ NULL }
 };
 
-/* Without a named test the table loses its last entry, fill. */
+/* Without a named test the table loses its last entry, fill. Option
+ * values (the word after -d, say) are not test names. */
 static int
 named_any(int argc, char **argv)
 {
 	const struct st_test *t;
+	const char *p;
 	int i;
 
-	for (i = 1; i < argc; i++)
+	for (i = 1; i < argc; i++) {
+		if (argv[i][0] == '-') {
+			for (p = argv[i] + 1; *p != '\0' && strchr("nitsdm", *p) == NULL; p++)
+				;
+			if (*p != '\0' && p[1] == '\0')
+				i++;
+			continue;
+		}
 		for (t = tests; t->name != NULL; t++)
 			if (strcmp(argv[i], t->name) == 0)
 				return 1;
+	}
 	return 0;
 }
 

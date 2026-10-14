@@ -14,6 +14,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 #include "stress.h"
 
@@ -183,6 +184,7 @@ t_shared(struct st_ctx *c)
 	volatile unsigned long *ctr;
 	unsigned char *map, *buf;
 	unsigned long ready;
+	time_t start = time(NULL);
 	struct stat sb;
 	int fd, j;
 
@@ -212,7 +214,8 @@ t_shared(struct st_ctx *c)
 			if (fd >= 0) {
 				if (fstat(fd, &sb) < 0)
 					failerr(c, "fstat");
-				if ((unsigned long)sb.st_size == size) {
+				/* a stale file has an old mtime, whatever its marker */
+				if ((unsigned long)sb.st_size == size && sb.st_mtime >= start - 1) {
 					map = mapfile(c, fd, size, MAP_SHARED);
 					ctr = (volatile unsigned long *)map;
 					if (ctr[ps / sizeof *ctr - 2] == ready)

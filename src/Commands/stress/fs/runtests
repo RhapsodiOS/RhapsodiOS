@@ -1,0 +1,41 @@
+#!/bin/sh
+# usage: runtests [-s seed] [-t secs] [-n procs] cycles
+# Each cycle runs every fs test alone, then all of them at once. fill fills a
+# whole file system, so it runs (alone) only when STRESS_FILL_DIR names a
+# scratch one.
+usage="usage: runtests [-s seed] [-t secs] [-n procs] cycles"
+opts=
+while test $# -gt 1; do
+	case $1 in
+	-s|-t|-n) test $# -gt 2 || { echo "$usage" >&2; exit 2; }; opts="$opts $1 $2"; shift 2 ;;
+	*) echo "$usage" >&2; exit 2 ;;
+	esac
+done
+test $# = 1 || { echo "$usage" >&2; exit 2; }
+cd `dirname $0`; test -x ./stress-fs || { echo runtests: no ./stress-fs >&2; exit 2; }
+out=runtests.out.$$
+tests="rw append tree fsync"
+cycle=0
+rc=0
+: >$out
+while test $cycle -lt $1; do
+	for t in $tests; do
+		./stress-fs $opts $t >>$out 2>/dev/null || rc=1
+	done
+	pids=
+	for t in $tests; do
+		./stress-fs $opts $t >>$out 2>/dev/null &
+		pids="$pids $!"
+	done
+	for p in $pids; do
+		wait $p || rc=1
+	done
+	if test -n "$STRESS_FILL_DIR"; then
+		./stress-fs $opts -d "$STRESS_FILL_DIR" fill >>$out 2>/dev/null || rc=1
+	fi
+	cycle=`expr $cycle + 1`
+done
+grep '^STRESS ' $out
+grep ' FAIL ' $out >/dev/null && rc=1
+rm -f $out
+exit $rc

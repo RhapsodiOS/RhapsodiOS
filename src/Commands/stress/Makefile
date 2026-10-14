@@ -8,8 +8,9 @@ CFLAGS  = -O -Wall $(RC_CFLAGS) -Ilib
 TMAIN   = lib/stress-tmain
 VMBIN   = vm/stress-vm
 MMAPBIN = mmap/stress-mmap
+FSBIN   = fs/stress-fs
 
-all: lib/libstress.a $(VMBIN) $(MMAPBIN)
+all: lib/libstress.a $(VMBIN) $(MMAPBIN) $(FSBIN)
 
 lib/libstress.a: $(LIBOBJS)
 	rm -f $@
@@ -30,6 +31,12 @@ mmap/%.o: mmap/%.c lib/stress.h
 
 $(MMAPBIN): mmap/mmap.o lib/libstress.a
 	$(CC) $(CFLAGS) -o $@ mmap/mmap.o lib/libstress.a
+
+fs/%.o: fs/%.c lib/stress.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(FSBIN): fs/fs.o lib/libstress.a
+	$(CC) $(CFLAGS) -o $@ fs/fs.o lib/libstress.a
 
 lib/t_lib: lib/t_lib.o lib/libstress.a
 	$(CC) $(CFLAGS) -o $@ lib/t_lib.o lib/libstress.a
@@ -91,6 +98,22 @@ check-mmap: $(MMAPBIN)
 	test `grep -c '^STRESS mmap [a-z]* FAIL .*off=0x' mmap/t.out` = 3
 	@echo mmap: ok
 
+# fill only runs when STRESS_FILL_DIR names a scratch file system (1 GB takes ~20 min on the dev guest);
+# the -x run
+# needs rw and append to FAIL with an offset.
+check-fs: $(FSBIN)
+	rc=0; $(FSBIN) -n 3 -i 20 -d /tmp rw append tree fsync >fs/t.out || rc=$$?; test $$rc = 0
+	grep '^STRESS fs rw PASS ' fs/t.out
+	grep '^STRESS fs append PASS ' fs/t.out
+	grep '^STRESS fs tree PASS ' fs/t.out
+	grep '^STRESS fs fsync PASS ' fs/t.out
+	if test -n "$$STRESS_FILL_DIR"; then rc=0; $(FSBIN) -t 3000 -d $$STRESS_FILL_DIR fill >fs/t.out || rc=$$?; test $$rc = 0; grep '^STRESS fs fill PASS ' fs/t.out; fi
+	rc=0; $(FSBIN) -d /nonexistent rw >fs/t.out || rc=$$?; test $$rc = 1
+	grep 'FAIL reason="mkdir: ENOENT"' fs/t.out
+	rc=0; $(FSBIN) -x -i 5 rw append >fs/t.out || rc=$$?; test $$rc = 1
+	test `grep -c '^STRESS fs [a-z]* FAIL .*off=0x' fs/t.out` = 2
+	@echo fs: ok
+
 install: all
 
 installhdrs:
@@ -99,6 +122,6 @@ installsrc:
 	gnutar --exclude=CVS --exclude=.git -cf - . | gnutar -C $(SRCROOT) -xf -
 
 clean:
-	rm -f lib/*.o lib/libstress.a lib/t_lib $(TMAIN) lib/t.out lib/t.err vm/*.o $(VMBIN) vm/t.out mmap/*.o $(MMAPBIN) mmap/t.out
+	rm -f lib/*.o lib/libstress.a lib/t_lib $(TMAIN) lib/t.out lib/t.err vm/*.o $(VMBIN) vm/t.out mmap/*.o $(MMAPBIN) mmap/t.out fs/*.o $(FSBIN) fs/t.out
 
-.PHONY: all check check-vm check-mmap install installhdrs installsrc clean
+.PHONY: all check check-vm check-mmap check-fs install installhdrs installsrc clean

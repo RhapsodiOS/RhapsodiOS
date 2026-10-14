@@ -31,7 +31,7 @@ while test $cycle -lt $1; do
 		wait $p || rc=1
 	done
 	if test -n "$STRESS_FILL_DIR"; then
-		./stress-fs $opts -d "$STRESS_FILL_DIR" fill >>$out 2>/dev/null || rc=1
+		./stress-fs $opts -t 3000 -d "$STRESS_FILL_DIR" fill >>$out 2>/dev/null || rc=1
 	fi
 	cycle=`expr $cycle + 1`
 done

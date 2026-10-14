@@ -4,7 +4,9 @@
  * file system must give ENOSPC and give its blocks back.
  *
  * fill writes the file system holding -d until it is full: only point it at
- * a scratch file system. Naming no test runs fill too. */
+ * a scratch file system, so it runs only when named on the command line.
+ * fsync proves that fsync returns and that two descriptors agree on the data;
+ * it does not prove the data is durable on disk. */
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <dirent.h>
@@ -120,6 +122,8 @@ markdone(struct st_ctx *c)
 
 	sprintf(p, "%s/done.%d", base, c->idx);
 	fd = open(p, O_CREAT | O_WRONLY, 0600);
+	if (fd < 0 && errno == ENOENT)
+		_exit(0);		/* worker 0 failed and removed the directory: its FAIL is the cause */
 	if (fd < 0)
 		failerr(c, "open");
 	close(fd);
@@ -564,6 +568,7 @@ t_fill(struct st_ctx *c)
 	unsigned char *buf, b;
 	char path[400];
 	long round, n, nfiles, k, r, bad;
+	unsigned long first = 0;
 	int fd, hit;
 
 	buf = malloc(CHUNK);
@@ -572,6 +577,9 @@ t_fill(struct st_ctx *c)
 	limit = st_opt.mem ? st_opt.mem >> 20 : MAXFILES;
 	if (limit > MAXFILES)
 		limit = MAXFILES;
+	/* a killed run leaves its files, which would make the file system look empty */
+	sprintf(path, "rm -rf '%s'/stress.fs.fill.*", st_opt.dir);
+	system(path);
 	mkown(c, "fill");
 	for (round = 0; st_more(c, round); round++) {
 		st_op_begin(c);
@@ -644,6 +652,10 @@ t_fill(struct st_ctx *c)
 				failerr(c, "unlink");
 			sz += sizes[k];
 		}
+		if (round == 0)
+			first = sz;
+		else if (sz < first / 2)
+			failf(c, "reason=shrunk round=%ld got=%luMB first=%luMB", round, sz >> 20, first >> 20);
 		st_op_end(c, sz >> 20);
 	}
 	cleanup();
@@ -703,8 +715,29 @@ static const struct st_test tests[] = {
 	{ NULL }
 };
 
+/* Without a named test the table loses its last entry, fill. */
+static int
+named_any(int argc, char **argv)
+{
+	const struct st_test *t;
+	int i;
+
+	for (i = 1; i < argc; i++)
+		for (t = tests; t->name != NULL; t++)
+			if (strcmp(argv[i], t->name) == 0)
+				return 1;
+	return 0;
+}
+
 int
 main(int argc, char **argv)
 {
+	static struct st_test safe[sizeof tests / sizeof tests[0] - 1];
+
+	if (!named_any(argc, argv)) {
+		memcpy(safe, tests, sizeof safe);
+		safe[sizeof safe / sizeof safe[0] - 1].name = NULL;
+		return stress_main(argc, argv, "fs", safe);
+	}
 	return stress_main(argc, argv, "fs", tests);
 }

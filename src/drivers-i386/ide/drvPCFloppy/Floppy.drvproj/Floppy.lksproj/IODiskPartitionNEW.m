@@ -133,7 +133,7 @@ static Protocol *protocols[] = {
 			if (result == IO_R_SUCCESS) {
 				hasValidLabel = YES;
 				// Probe label and create partitions
-				[logicalDisk _probeLabel:(BOOL)label];
+				[logicalDisk _probeLabel:label];
 			} else {
 				IOLog("%s: No Valid Disk Label\n", deviceName);
 				// Set default parameters for partition 'a'
@@ -464,7 +464,7 @@ static Protocol *protocols[] = {
 		_labelValid = YES;
 
 		// Probe label to recreate partitions
-		[self _probeLabel:(BOOL)label_p];
+		[self _probeLabel:label_p];
 
 		result = IO_R_SUCCESS;
 	} else {
@@ -863,7 +863,7 @@ cleanup:
  * Probe for disk label.
  * From decompiled code: creates partition objects for valid partitions.
  */
-- (IOReturn)_probeLabel : (BOOL)needsLabel
+- (IOReturn)_probeLabel : (void *)label
 {
 	id physicalDisk;
 	id partition;
@@ -877,7 +877,7 @@ cleanup:
 	// Only partition 0 creates other partitions
 	if (_partition == 0) {
 		// Get disktab from structure at offset 0x2c
-		dt = (struct disktab *)((char *)needsLabel + 0x2c);
+		dt = (struct disktab *)((char *)label + 0x2c);
 		[self _initPartition:0 disktab:dt];
 
 		// Create partitions 1-6 if valid

@@ -27,7 +27,7 @@
 /*
  * Construct an I/O request.
  */
-- (id)constructRequest:(IOReturn *)statusPtr
+- (id)constructRequest:(unsigned)isWrite
              blockStart:(unsigned)blockStart
               byteCount:(unsigned)byteCount
                  buffer:(void *)buffer

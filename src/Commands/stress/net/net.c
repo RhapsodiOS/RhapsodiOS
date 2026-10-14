@@ -353,7 +353,7 @@ t_udp(struct st_ctx *c)
 	struct timeval tv;
 	fd_set rd;
 	unsigned char msg[6 + UDPMAX], *seen;
-	long i, badi, sent = 0, rcvd = 0, bp;
+	long i, badi, sent = 0, rcvd = 0, got0, bp;
 	unsigned long seq, len, key;
 	int s, sl = sizeof sa, batch = 0, n;
 
@@ -385,6 +385,7 @@ t_udp(struct st_ctx *c)
 			batch++;
 		}
 		if (batch == UDPBATCH || (batch > 0 && !st_more(c, i))) {
+			got0 = rcvd;
 			while (batch > 0) {
 				FD_ZERO(&rd);
 				FD_SET(s, &rd);
@@ -420,6 +421,8 @@ t_udp(struct st_ctx *c)
 				if (bp >= 0)
 					st_fail_data(c, "dgram", msg + 6, len, key, 0, bp);
 			}
+			if (rcvd == got0)
+				st_fail(c, "reason=no-delivery sent=%ld", sent);
 			batch = 0;
 			st_op_end(c, UDPBATCH);
 		}
@@ -427,6 +430,8 @@ t_udp(struct st_ctx *c)
 			break;
 	}
 	close(s);
+	if (c->selfcheck && !seen[badi])
+		st_fail(c, "reason=no-delivery seq=%ld", badi);
 	if (st_opt.verbose)
 		fprintf(stderr, "stress-net udp: worker %d sent=%ld lost=%ld\n", c->idx, sent, sent - rcvd);
 	free(seen);
@@ -468,6 +473,10 @@ t_unix(struct st_ctx *c)
 		unlink(g_path);
 		memset(&su, 0, sizeof su);
 		su.sun_family = AF_UNIX;
+		if (strlen(g_path) >= sizeof su.sun_path) {
+			g_path[0] = '\0';
+			nfail(c, "reason=path-too-long");
+		}
 		strcpy(su.sun_path, g_path);
 		ls = socket(AF_UNIX, SOCK_STREAM, 0);
 		if (ls < 0)

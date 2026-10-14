@@ -32,15 +32,13 @@ t_fail(struct st_ctx *c)
 	st_fail(c, "reason=planned");
 }
 
-/* The cleanup hook leaves a marker keyed to the leader's pid (our parent). */
+/* The cleanup hook leaves a fixed marker file for make check. */
 static void
 hook_fn(struct st_ctx *c)
 {
-	char p[64];
 	int fd;
 
-	sprintf(p, "/tmp/stress.tmain.hook.%d", (int)getppid());
-	fd = open(p, O_CREAT | O_WRONLY, 0600);
+	fd = open("/tmp/stress.tmain.hook", O_CREAT | O_WRONLY, 0600);
 	if (fd >= 0)
 		close(fd);
 }

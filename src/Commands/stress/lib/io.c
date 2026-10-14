@@ -33,6 +33,10 @@ st_writefull(int fd, const void *buf, unsigned long len)
 			continue;
 		if (n < 0)
 			return -1;
+		if (n == 0) {
+			errno = EIO;
+			return -1;
+		}
 		put += n;
 	}
 	return put;

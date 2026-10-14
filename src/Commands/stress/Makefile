@@ -72,11 +72,11 @@ check: lib/t_lib $(TMAIN)
 	grep '^STRESS tmain pass PASS iters=.* procs=2 .*ops=.*maxlat=.*seed=' lib/t.out
 	rc=0; $(TMAIN) fail >lib/t.out || rc=$$?; test $$rc = 1
 	grep 'STRESS tmain fail FAIL reason=planned worker=[0-9]* iter=0 seed=' lib/t.out
-	rm -f /tmp/stress.tmain.hook.*
+	rm -f /tmp/stress.tmain.hook
 	rc=0; $(TMAIN) hook >lib/t.out || rc=$$?; test $$rc = 1
 	grep 'FAIL reason=planned worker=' lib/t.out
-	test -f /tmp/stress.tmain.hook.*
-	rm -f /tmp/stress.tmain.hook.*
+	test -f /tmp/stress.tmain.hook
+	rm -f /tmp/stress.tmain.hook
 	rc=0; $(TMAIN) crash >lib/t.out || rc=$$?; test $$rc = 1
 	grep 'FAIL signal=11 worker=' lib/t.out
 	rc=0; $(TMAIN) -n 3 -t 20 crashwait >lib/t.out || rc=$$?; test $$rc = 1

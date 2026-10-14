@@ -422,6 +422,8 @@ static void
 t_rights(struct st_ctx *c)
 {
 	struct rmsg m;
+	struct imsg im;
+	msg_return_t r;
 	port_t carrier, sent[MAXRIGHTS], drop[2 * MAXRIGHTS + 1];
 	kern_return_t kr;
 	long i, badi;
@@ -447,6 +449,23 @@ t_rights(struct st_ctx *c)
 		mrecv(c, &m.h, carrier, sizeof m);
 		if (m.t.msg_type_number != n)
 			st_fail(c, "reason=badcount want=%d got=%d", n, (int)m.t.msg_type_number);
+		/* each returned right must work: a message sent through it arrives
+		 * on the receive right, which moved with it on odd iterations */
+		for (k = 0; k < n; k++) {
+			settype(&im.t1, MSG_TYPE_INTEGER_32, 32, 3);
+			im.w[0] = i;
+			im.w[1] = k;
+			im.w[2] = 0;
+			settype(&im.t2, MSG_TYPE_BYTE, 8, 0);
+			r = send5(&im.h, m.p[k], TRUE, IHDR);
+			if (r == SEND_SUCCESS) {
+				im.h.msg_size = sizeof im;
+				im.h.msg_local_port = i & 1 ? m.p[k] : sent[k];
+				r = msg_receive(&im.h, RCV_TIMEOUT, WAITMS);
+			}
+			if (r != RCV_SUCCESS || im.w[0] != i || im.w[1] != k)
+				st_fail(c, "reason=unusable-right right=%d kr=%d", k, r);
+		}
 		/* every distinct name we may hold: moved rights can come back renamed */
 		drop[0] = carrier;
 		nd = 1;
@@ -562,13 +581,15 @@ t_bootstrap(struct st_ctx *c)
 }
 
 /* sysv: semget is bound through dyld when something defines it (Libc has
- * no stub); a missing system call raises SIGSYS, so that is ignored. */
+ * no stub); a missing system call raises SIGSYS, so that is ignored. This
+ * kernel has no SysV IPC: any other outcome is reported by the body as FAIL. */
+static int sysv_r, sysv_e;
+
 static int
 p_sysv(char *why, int len)
 {
 	int (*semgetfn)(long, int, int);
 	void (*old)(int);
-	int r, e;
 
 	if (!NSIsSymbolNameDefined("_semget")) {
 		sprintf(why, "semget: %s", st_errname(ENOSYS));
@@ -576,18 +597,23 @@ p_sysv(char *why, int len)
 	}
 	semgetfn = (int (*)(long, int, int))NSAddressOfSymbol(NSLookupAndBindSymbol("_semget"));
 	old = signal(SIGSYS, SIG_IGN);
-	r = semgetfn(0, 1, 0600);	/* IPC_PRIVATE */
-	e = errno;
+	errno = 0;
+	sysv_r = semgetfn(0, 1, 0600);	/* IPC_PRIVATE */
+	sysv_e = errno;
 	signal(SIGSYS, old);
-	if (r >= 0 || (e != ENOSYS && e != EOPNOTSUPP))
-		return 0;	/* not seen on this system; the body would then need real tests */
-	sprintf(why, "semget: %s", st_errname(e));
+	if (sysv_r >= 0 || (sysv_e != ENOSYS && sysv_e != EOPNOTSUPP))
+		return 0;
+	sprintf(why, "semget: %s", st_errname(sysv_e));
 	return 1;
 }
 
 static void
 t_sysv(struct st_ctx *c)
 {
+	if (sysv_r >= 0)
+		st_fail(c, "reason=\"semget: unexpected-success\"");
+	errno = sysv_e;
+	st_fail_errno(c, "semget");
 }
 
 static const struct st_test tests[] = {
@@ -596,7 +622,7 @@ static const struct st_test tests[] = {
 	{ "rights", 500, 0, NULL, t_rights },
 	{ "deadname", 50, 0, NULL, t_deadname },
 	{ "bootstrap", 500, 0, NULL, t_bootstrap },
-	{ "sysv", 1, 0, p_sysv, t_sysv },
+	{ "sysv", 1, 1, p_sysv, t_sysv },
 	{ NULL, 0, 0, NULL, NULL }
 };
 

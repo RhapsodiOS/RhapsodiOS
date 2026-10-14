@@ -13,6 +13,7 @@ PROCBIN = proc/stress-proc
 CHILDBIN = proc/stress-exec-child
 NETBIN = net/stress-net
 IPCBIN = ipc/stress-ipc
+IPCNAMES = ipc/stress-ipc-names
 
 all: lib/libstress.a $(VMBIN) $(MMAPBIN) $(FSBIN) $(PROCBIN) $(CHILDBIN) $(NETBIN) $(IPCBIN)
 
@@ -62,6 +63,9 @@ ipc/%.o: ipc/%.c lib/stress.h
 
 $(IPCBIN): ipc/ipc.o lib/libstress.a
 	$(CC) $(CFLAGS) -o $@ ipc/ipc.o lib/libstress.a
+
+$(IPCNAMES): ipc/names.o
+	$(CC) $(CFLAGS) -o $@ ipc/names.o
 
 lib/t_lib: lib/t_lib.o lib/libstress.a
 	$(CC) $(CFLAGS) -o $@ lib/t_lib.o lib/libstress.a
@@ -174,19 +178,19 @@ check-net: $(NETBIN)
 	@echo net: ok
 
 # sysv must be UNSUP, the rest PASS or UNSUP; -x makes msg, ool and rights
-# FAIL (msg and ool at an offset). Each run is done twice: names a run left
-# registered in mach_init would break the second.
-check-ipc: $(IPCBIN)
+# FAIL (msg and ool at an offset). After each run no "stress." name may stay
+# registered in mach_init (it drops one when its port dies, so allow 5 s).
+NONAMES = n=x; for t in 1 2 3 4 5 6; do n=`$(IPCNAMES)`; test "$$n" = 0 && break; sleep 1; done; test "$$n" = 0
+
+check-ipc: $(IPCBIN) $(IPCNAMES)
 	rc=0; $(IPCBIN) -n 2 -i 50 >ipc/t.out || rc=$$?; test $$rc = 0
 	test `grep -c '^STRESS ipc \(msg\|ool\|rights\|deadname\|bootstrap\) \(PASS\|UNSUP\) ' ipc/t.out` = 5
 	grep '^STRESS ipc sysv UNSUP reason="semget: ENOSYS"' ipc/t.out
-	rc=0; $(IPCBIN) -n 2 -i 50 >ipc/t.out || rc=$$?; test $$rc = 0
-	test `grep -c '^STRESS ipc [a-z]* \(PASS\|UNSUP\) ' ipc/t.out` = 6
+	$(NONAMES)
 	rc=0; $(IPCBIN) -x -i 5 msg ool rights >ipc/t.out || rc=$$?; test $$rc = 1
 	test `grep -c '^STRESS ipc [a-z]* FAIL ' ipc/t.out` = 3
 	test `grep -c '^STRESS ipc \(msg\|ool\) FAIL .*off=0x' ipc/t.out` = 2
-	rc=0; $(IPCBIN) -x -i 5 msg ool rights >ipc/t.out || rc=$$?; test $$rc = 1
-	test `grep -c '^STRESS ipc [a-z]* FAIL ' ipc/t.out` = 3
+	$(NONAMES)
 	@echo ipc: ok
 
 # run exercises the whole chain on the vm category only.
@@ -215,6 +219,6 @@ installsrc:
 	gnutar --exclude=CVS --exclude=.git -cf - . | gnutar -C $(SRCROOT) -xf -
 
 clean:
-	rm -f lib/*.o lib/libstress.a lib/t_lib $(TMAIN) lib/t.out lib/t.err vm/*.o $(VMBIN) vm/t.out mmap/*.o $(MMAPBIN) mmap/t.out fs/*.o $(FSBIN) fs/t.out proc/*.o $(PROCBIN) $(CHILDBIN) proc/t.out proc/stress-proc.old net/*.o $(NETBIN) net/t.out ipc/*.o $(IPCBIN) ipc/t.out
+	rm -f lib/*.o lib/libstress.a lib/t_lib $(TMAIN) lib/t.out lib/t.err vm/*.o $(VMBIN) vm/t.out mmap/*.o $(MMAPBIN) mmap/t.out fs/*.o $(FSBIN) fs/t.out proc/*.o $(PROCBIN) $(CHILDBIN) proc/t.out proc/stress-proc.old net/*.o $(NETBIN) net/t.out ipc/*.o $(IPCBIN) $(IPCNAMES) ipc/t.out
 
 .PHONY: all check check-vm check-mmap check-fs check-proc check-net check-ipc check-run install installhdrs installsrc clean

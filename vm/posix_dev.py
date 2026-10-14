@@ -124,9 +124,22 @@ def tar_source():
     return buf.getvalue()
 
 
-def hex_to_bytes(text):
-    """Bytes from `od -An -v -tx1` output."""
-    return bytes.fromhex(" ".join(text.split()))
+def uu_to_bytes(text):
+    """Bytes from uuencode output (the guest has no usable od or base64)."""
+    lines = text.splitlines()
+    start = [i for i, l in enumerate(lines) if l.startswith("begin ")][0] + 1
+    out = bytearray()
+    for line in lines[start:]:
+        if line == "end":
+            break
+        n = (ord(line[0]) - 32) & 63
+        vals = [(ord(c) - 32) & 63 for c in line[1:]]
+        vals += [0] * (-len(vals) % 4)
+        for i in range(0, len(vals), 4):
+            a, b, c, d = vals[i:i + 4]
+            out += bytes([a << 2 | b >> 4, (b & 15) << 4 | c >> 2, (c & 3) << 6 | d])
+        del out[len(out) - (len(vals) // 4 * 3) + n:]
+    return bytes(out)
 
 
 def sync():
@@ -172,13 +185,13 @@ def run(args):
             break
         if time.time() > deadline:
             raise SystemExit("run not finished after %d hours" % RUN_HOURS)
-    rc, out = ssh.run("cd %s && tar cf - Report run.out status | gzip -c | od -An -v -tx1"
+    rc, out = ssh.run("cd %s && tar cf - Report run.out status | gzip -c | uuencode r.tgz"
                       % GUEST_RUN)
     if rc != 0:
         raise SystemExit("could not fetch the report: %s" % out[-500:])
     dest = os.path.join(assets(), "work", "posix", time.strftime("%Y%m%d-%H%M%S"))
     os.makedirs(dest)
-    with tarfile.open(fileobj=io.BytesIO(gzip.decompress(hex_to_bytes(out)))) as t:
+    with tarfile.open(fileobj=io.BytesIO(gzip.decompress(uu_to_bytes(out)))) as t:
         t.extractall(dest)
     save_state(last_run=dest)
     with open(os.path.join(dest, "Report", "summary")) as f:

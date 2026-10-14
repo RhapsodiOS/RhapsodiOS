@@ -960,10 +960,94 @@ def stall(kernel, label, bootargs="", no_update=False):
     print(json.dumps(res))
 
 
+# --- stress mode: the system stress suite, run on the guest ----------------
+
+STRESS_RUN_LIMIT_S = 4 * 3600
+STRESS_POLL_S = 60
+STRESS_LOST_POLLS = 5               # unanswered polls in a row = guest lost
+STRESS_REPORT = "/usr/local/stress/Report"
+
+
+def stress(kernel, label, cycles=1, bootargs="", cats=""):
+    """Build and run the stress suite on a guest; always leave a result.txt,
+    with "guest": "lost" if the guest stopped answering mid-run."""
+    import stress_dev
+    import stress_report
+    conf = _conf()
+    outdir = _new_outdir(label, "stress-0")
+    hd1 = _fresh_hd1(outdir)
+    g = Guest(outdir, hd1, _workload(), root_iops=IOPS)
+    res, texts, lost = {}, [], False
+    try:
+        ssh = Ssh(conf)
+        if kernel:
+            if not boot_or_skip(g, ssh, kernel, bootargs, outdir):
+                return
+        elif not g.wait_sshd():
+            raise SystemExit("sshd never answered")
+        stress_dev.login(ssh)
+        tar = os.path.join(outdir, "stress-src.tar")
+        with open(tar, "wb") as f:
+            f.write(stress_dev.tar_source())
+        ssh.push(tar, "/tmp/stress-src.tar")
+        rc, out = ssh.run("rm -rf /tmp/stress-src /tmp/stress-x && mkdir /tmp/stress-x && "
+                          "cd /tmp/stress-x && tar xf /tmp/stress-src.tar && "
+                          "mv stress-src /tmp/stress-src && cd /tmp/stress-src && "
+                          "make && make install DSTROOT=/")
+        _log(outdir, "build.log", out)
+        if rc != 0:
+            raise SystemExit("stress build failed: %s" % out[-300:])
+        rc, out = ssh.run(MOUNT)
+        if rc != 0:
+            raise SystemExit("mount failed: %s" % out)
+        ssh.run("(nohup sh -c '/usr/local/stress/run -a -d /mnt1 %d %s; echo $? > /tmp/stress.exit' "
+                "> /tmp/stress.log 2>&1 &)" % (cycles, cats))
+        start, dead = time.time(), 0
+        while time.time() - start < STRESS_RUN_LIMIT_S:
+            time.sleep(STRESS_POLL_S)
+            t, out = timed_login(conf, "cat /tmp/stress.exit 2>/dev/null")
+            dead = 0 if t is not None else dead + 1
+            if dead >= STRESS_LOST_POLLS:
+                break
+            if t is not None and out.strip():
+                res["run_exit"] = out.strip()
+                break
+        else:
+            res["run_exit"] = "limit"
+        lost = dead >= STRESS_LOST_POLLS
+        if lost:
+            _log(outdir, "serial-tail.log", g.serial_text()[-4000:])
+        # fetch individually: a partial run still yields what it wrote
+        t, listing = timed_login(conf, "ls %s" % STRESS_REPORT)
+        for name in (listing.split() if t is not None else []):
+            t, text = timed_login(conf, "cat %s/%s" % (STRESS_REPORT, name))
+            if t is None:
+                continue
+            _log(outdir, name, text)
+            if name.endswith(".out"):
+                texts.append(text)
+    finally:
+        g.quit()
+        os.remove(hd1)
+    res.update(stress_report.summarize(stress_report.parse("\n".join(texts))))
+    if lost:
+        res["guest"] = "lost"
+    with open(os.path.join(outdir, "result.txt"), "w", encoding="utf-8") as f:
+        f.write(json.dumps(res) + "\n")
+    print(json.dumps(res))
+
+
 def main(argv):
     p = argparse.ArgumentParser(description="FFS replay, crash and stall harness")
     sub = p.add_subparsers(dest="cmd", required=True)
     sub.add_parser("prep")
+    sr = sub.add_parser("stress")
+    sr.add_argument("--kernel", default=None,
+                    help="test kernel; default is the image's own")
+    sr.add_argument("--label", required=True)
+    sr.add_argument("--cycles", type=int, default=1)
+    sr.add_argument("--bootargs", default="")
+    sr.add_argument("--cats", default="", help="categories to run, e.g. 'vm mmap'")
     st = sub.add_parser("stall")
     st.add_argument("--kernel", required=True)
     st.add_argument("--label", required=True)
@@ -986,6 +1070,8 @@ def main(argv):
     a = p.parse_args(argv[1:])
     if a.cmd == "prep":
         prep()
+    elif a.cmd == "stress":
+        stress(a.kernel, a.label, a.cycles, a.bootargs, a.cats)
     elif a.cmd == "stall":
         stall(a.kernel, a.label, a.bootargs, a.no_update)
     elif a.cmd == "bench":

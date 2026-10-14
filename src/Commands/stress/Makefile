@@ -14,8 +14,9 @@ CHILDBIN = proc/stress-exec-child
 NETBIN = net/stress-net
 IPCBIN = ipc/stress-ipc
 IPCNAMES = ipc/stress-ipc-names
+THREADBIN = thread/stress-thread
 
-all: lib/libstress.a $(VMBIN) $(MMAPBIN) $(FSBIN) $(PROCBIN) $(CHILDBIN) $(NETBIN) $(IPCBIN)
+all: lib/libstress.a $(VMBIN) $(MMAPBIN) $(FSBIN) $(PROCBIN) $(CHILDBIN) $(NETBIN) $(IPCBIN) $(THREADBIN)
 
 lib/libstress.a: $(LIBOBJS)
 	rm -f $@
@@ -66,6 +67,12 @@ $(IPCBIN): ipc/ipc.o lib/libstress.a
 
 $(IPCNAMES): ipc/names.o
 	$(CC) $(CFLAGS) -o $@ ipc/names.o
+
+thread/%.o: thread/%.c lib/stress.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(THREADBIN): thread/thread.o lib/libstress.a
+	$(CC) $(CFLAGS) -o $@ thread/thread.o lib/libstress.a
 
 lib/t_lib: lib/t_lib.o lib/libstress.a
 	$(CC) $(CFLAGS) -o $@ lib/t_lib.o lib/libstress.a
@@ -193,6 +200,14 @@ check-ipc: $(IPCBIN) $(IPCNAMES)
 	$(NONAMES)
 	@echo ipc: ok
 
+# Six PASS lines; the -x run needs mutex, stack and cond to FAIL.
+check-thread: $(THREADBIN)
+	rc=0; $(THREADBIN) -n 1 -i 3 >thread/t.out || rc=$$?; test $$rc = 0
+	test `grep -c '^STRESS thread [a-z]* PASS ' thread/t.out` = 6
+	rc=0; $(THREADBIN) -x -i 2 mutex stack cond >thread/t.out || rc=$$?; test $$rc = 1
+	test `grep -c '^STRESS thread [a-z]* FAIL ' thread/t.out` = 3
+	@echo thread: ok
+
 # run exercises the whole chain on the vm category only.
 check-run: $(VMBIN)
 	touch /tmp/stress.junk.1
@@ -219,6 +234,6 @@ installsrc:
 	gnutar --exclude=CVS --exclude=.git -cf - . | gnutar -C $(SRCROOT) -xf -
 
 clean:
-	rm -f lib/*.o lib/libstress.a lib/t_lib $(TMAIN) lib/t.out lib/t.err vm/*.o $(VMBIN) vm/t.out mmap/*.o $(MMAPBIN) mmap/t.out fs/*.o $(FSBIN) fs/t.out proc/*.o $(PROCBIN) $(CHILDBIN) proc/t.out proc/stress-proc.old net/*.o $(NETBIN) net/t.out ipc/*.o $(IPCBIN) $(IPCNAMES) ipc/t.out
+	rm -f lib/*.o lib/libstress.a lib/t_lib $(TMAIN) lib/t.out lib/t.err vm/*.o $(VMBIN) vm/t.out mmap/*.o $(MMAPBIN) mmap/t.out fs/*.o $(FSBIN) fs/t.out proc/*.o $(PROCBIN) $(CHILDBIN) proc/t.out proc/stress-proc.old net/*.o $(NETBIN) net/t.out ipc/*.o $(IPCBIN) $(IPCNAMES) ipc/t.out thread/*.o $(THREADBIN) thread/t.out
 
-.PHONY: all check check-vm check-mmap check-fs check-proc check-net check-ipc check-run install installhdrs installsrc clean
+.PHONY: all check check-vm check-mmap check-fs check-proc check-net check-ipc check-thread check-run install installhdrs installsrc clean

@@ -1,0 +1,401 @@
+/* stress_main: options, then for each test a leader process (its own
+ * process group) that runs the workers and prints the one result line,
+ * watched by the top-level process with the -t watchdog. */
+#include <sys/types.h>
+#include <sys/time.h>
+#include <sys/wait.h>
+#include <errno.h>
+#include <signal.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#include <unistd.h>
+#include "stress.h"
+
+/* Initialized, so it is not a common symbol: ld only pulls archive
+ * members for defined ones. */
+struct st_opts st_opt = { 4, 0, 600, 0, "/tmp" };
+
+static volatile int alarmed;
+
+/* Leader state: what the workers reported. */
+static char fail[512];		/* fields of the first FAIL line */
+static char death[64];		/* first signal or nonzero exit */
+static unsigned long units, maxlat_us;
+static char inbuf[1024];
+static int inlen, eof;
+
+static void
+on_alarm(int sig)
+{
+	alarmed = 1;
+}
+
+static void
+on_chld(int sig)
+{
+}
+
+/* No SA_RESTART: the handler interrupts select and waitpid. */
+static void
+catch(int sig, void (*fn)(int))
+{
+	struct sigaction sa;
+
+	memset(&sa, 0, sizeof sa);
+	sa.sa_handler = fn;
+	sigemptyset(&sa.sa_mask);
+	sigaction(sig, &sa, NULL);
+}
+
+static double
+since(struct timeval *t0)
+{
+	struct timeval t;
+
+	gettimeofday(&t, NULL);
+	return (t.tv_sec - t0->tv_sec) + (t.tv_usec - t0->tv_usec) / 1e6;
+}
+
+void
+st_op_begin(struct st_ctx *c)
+{
+	struct timeval t;
+
+	gettimeofday(&t, NULL);
+	c->t0_sec = t.tv_sec;
+	c->t0_usec = t.tv_usec;
+}
+
+void
+st_op_end(struct st_ctx *c, unsigned long n)
+{
+	struct timeval t;
+	unsigned long us;
+
+	gettimeofday(&t, NULL);
+	us = (t.tv_sec - c->t0_sec) * 1000000UL + t.tv_usec - c->t0_usec;
+	if (us > c->maxlat_us)
+		c->maxlat_us = us;
+	c->units += n;
+}
+
+int
+st_more(struct st_ctx *c, long i)
+{
+	return i < c->iters;
+}
+
+static void
+worker(const struct st_test *t, const char *cat, int idx, int n, int fd)
+{
+	struct st_ctx c;
+	char line[64];
+
+	memset(&c, 0, sizeof c);
+	c.cat = cat;
+	c.test = t->name;
+	c.idx = idx;
+	c.nprocs = n;
+	c.iters = st_opt.iters > 0 ? st_opt.iters : t->def_iters;
+	st_rng_init(&c.rng, st_opt.seed, t->name, idx);
+	c.selfcheck = st_opt.selfcheck;
+	c.fd = fd;
+	t->body(&c);
+	sprintf(line, "STAT %lu %lu\n", c.units, c.maxlat_us);
+	write(fd, line, strlen(line));
+	_exit(0);
+}
+
+static void
+take(char *s)
+{
+	unsigned long u, l;
+
+	if (strncmp(s, "STAT ", 5) == 0 && sscanf(s + 5, "%lu %lu", &u, &l) == 2) {
+		units += u;
+		if (l > maxlat_us)
+			maxlat_us = l;
+	} else if (strncmp(s, "FAIL ", 5) == 0 && fail[0] == '\0') {
+		strncpy(fail, s + 5, sizeof fail - 1);
+	}
+}
+
+/* Waits up to secs for pipe input (or a signal) and consumes whole lines.
+ * Returns 0 when nothing arrived. */
+static int
+input(int fd, int secs)
+{
+	fd_set rd;
+	struct timeval tv;
+	char *nl;
+	int r;
+
+	FD_ZERO(&rd);
+	if (!eof)
+		FD_SET(fd, &rd);
+	tv.tv_sec = secs;
+	tv.tv_usec = 0;
+	if (select(fd + 1, &rd, NULL, NULL, &tv) <= 0 || eof)
+		return 0;
+	r = read(fd, inbuf + inlen, sizeof inbuf - 1 - inlen);
+	if (r <= 0) {
+		eof = 1;
+		return 0;
+	}
+	inlen += r;
+	inbuf[inlen] = '\0';
+	while ((nl = strchr(inbuf, '\n')) != NULL) {
+		*nl = '\0';
+		take(inbuf);
+		inlen -= nl + 1 - inbuf;
+		memmove(inbuf, nl + 1, inlen + 1);
+	}
+	if (inlen == sizeof inbuf - 1)
+		inlen = 0;		/* overlong line: drop it */
+	return 1;
+}
+
+/* Runs in its own process group; exits 0 on PASS, 1 on FAIL. */
+static void
+leader(const struct st_test *t, const char *cat)
+{
+	int fds[2], n, i, live, status, e;
+	pid_t *pids, pid;
+	struct timeval t0;
+	double secs;
+	long iters;
+	char what[640];
+
+	setpgid(0, 0);
+	catch(SIGALRM, SIG_DFL);
+	catch(SIGCHLD, on_chld);
+	n = t->solo ? 1 : st_opt.procs;
+	pids = malloc(n * sizeof *pids);
+	if (pids == NULL || pipe(fds) < 0) {
+		sprintf(what, "FAIL reason=\"%s: %s\"", pids ? "pipe" : "malloc", st_errname(errno));
+		st_line(cat, t->name, what, 1);
+		exit(1);
+	}
+	gettimeofday(&t0, NULL);
+	for (i = 0; i < n; i++) {
+		pid = fork();
+		if (pid < 0) {
+			e = errno;
+			while (--i >= 0)
+				kill(pids[i], SIGKILL);
+			while (wait(NULL) > 0 || errno == EINTR)
+				;
+			sprintf(what, "FAIL reason=\"fork: %s\"", st_errname(e));
+			st_line(cat, t->name, what, 1);
+			exit(1);
+		}
+		if (pid == 0) {
+			close(fds[0]);
+			catch(SIGCHLD, SIG_DFL);
+			worker(t, cat, i, n, fds[1]);
+		}
+		pids[i] = pid;
+	}
+	close(fds[1]);
+	/* Read while reaping: children a test forked may hold the pipe open,
+	 * so the workers' exits, not EOF, end the test. */
+	live = n;
+	while (live > 0) {
+		while (live > 0 && (pid = waitpid(-1, &status, WNOHANG)) > 0) {
+			for (i = 0; i < n && pids[i] != pid; i++)
+				;
+			if (i == n)
+				continue;
+			live--;
+			if (death[0] != '\0')
+				continue;
+			if (WIFSIGNALED(status))
+				sprintf(death, "signal=%d worker=%d", WTERMSIG(status), i);
+			else if (WEXITSTATUS(status) != 0)
+				sprintf(death, "exit=%d worker=%d", WEXITSTATUS(status), i);
+		}
+		if (live > 0)
+			input(fds[0], 1);
+	}
+	secs = since(&t0);
+	while (input(fds[0], 0))
+		;
+	if (fail[0] != '\0' || death[0] != '\0') {
+		sprintf(what, "FAIL %s", fail[0] != '\0' ? fail : death);
+		st_line(cat, t->name, what, 1);
+		exit(1);
+	}
+	if (secs < 1e-6)
+		secs = 1e-6;
+	iters = st_opt.iters > 0 ? st_opt.iters : t->def_iters;
+	sprintf(what, "PASS iters=%ld procs=%d secs=%.1f ops=%lu/s maxlat=%lums",
+		iters, n, secs, (unsigned long)(units / secs), maxlat_us / 1000);
+	st_line(cat, t->name, what, 1);
+	exit(0);
+}
+
+/* Returns 1 on FAIL. */
+static int
+run(const struct st_test *t, const char *cat)
+{
+	char why[256], what[320];
+	pid_t pid, r;
+	int status;
+
+	if (t->probe != NULL) {
+		why[0] = '\0';
+		if (t->probe(why, sizeof why)) {
+			sprintf(what, "UNSUP reason=\"%s\"", why);
+			st_line(cat, t->name, what, 0);
+			return 0;
+		}
+	}
+	fflush(stdout);
+	pid = fork();
+	if (pid < 0) {
+		sprintf(what, "FAIL reason=\"fork: %s\"", st_errname(errno));
+		st_line(cat, t->name, what, 1);
+		return 1;
+	}
+	if (pid == 0) {
+		setpgid(0, 0);
+		leader(t, cat);
+	}
+	setpgid(pid, pid);		/* both sides, so killpg never misses */
+	alarmed = 0;
+	alarm(st_opt.secs);
+	while ((r = waitpid(pid, &status, 0)) != pid) {
+		if (r < 0 && errno != EINTR)
+			break;
+		if (alarmed) {
+			killpg(pid, SIGKILL);
+			while (waitpid(pid, &status, 0) < 0 && errno == EINTR)
+				;
+			sprintf(what, "FAIL reason=timeout secs=%d", st_opt.secs);
+			st_line(cat, t->name, what, 1);
+			return 1;
+		}
+	}
+	alarm(0);
+	killpg(pid, SIGKILL);		/* anything the test left behind */
+	if (r != pid) {
+		sprintf(what, "FAIL reason=\"waitpid: %s\"", st_errname(errno));
+		st_line(cat, t->name, what, 1);
+		return 1;
+	}
+	if (WIFEXITED(status) && WEXITSTATUS(status) <= 1)
+		return WEXITSTATUS(status);	/* the leader printed the line */
+	if (WIFSIGNALED(status))
+		sprintf(what, "FAIL signal=%d worker=leader", WTERMSIG(status));
+	else
+		sprintf(what, "FAIL exit=%d worker=leader", WEXITSTATUS(status));
+	st_line(cat, t->name, what, 1);
+	return 1;
+}
+
+static int
+usage(const char *cat, const struct st_test *tests)
+{
+	fprintf(stderr, "usage: stress-%s [-n procs] [-i iters] [-t secs] [-s seed] "
+		"[-d dir] [-m bytes[k|m]] [-v] [test ...]\ntests:", cat);
+	for (; tests->name != NULL; tests++)
+		fprintf(stderr, " %s", tests->name);
+	fprintf(stderr, "\n");
+	return 2;
+}
+
+/* Decimal, with an optional k or m suffix when sfx is set. */
+static int
+number(const char *s, unsigned long *v, int sfx)
+{
+	char *end;
+
+	*v = strtoul(s, &end, 10);
+	if (end == s)
+		return -1;
+	if (sfx && (*end == 'k' || *end == 'K')) {
+		*v *= 1024;
+		end++;
+	} else if (sfx && (*end == 'm' || *end == 'M')) {
+		*v *= 1024 * 1024;
+		end++;
+	}
+	return *end == '\0' ? 0 : -1;
+}
+
+static int
+named(const char *name, int argc, char **argv)
+{
+	int i;
+
+	for (i = 0; i < argc; i++)
+		if (strcmp(argv[i], name) == 0)
+			return 1;
+	return 0;
+}
+
+int
+stress_main(int argc, char **argv, const char *cat, const struct st_test *tests)
+{
+	const struct st_test *t;
+	unsigned long v;
+	int ch, i, failed = 0;
+
+	st_opt.seed = ((unsigned long)time(NULL) ^ (unsigned long)getpid()) & ST_MASK;
+	while ((ch = getopt(argc, argv, "n:i:t:s:d:m:vx")) != -1) {
+		switch (ch) {
+		case 'n':
+			if (number(optarg, &v, 0) < 0 || v < 1)
+				return usage(cat, tests);
+			st_opt.procs = v;
+			break;
+		case 'i':
+			if (number(optarg, &v, 0) < 0 || v < 1)
+				return usage(cat, tests);
+			st_opt.iters = v;
+			break;
+		case 't':
+			if (number(optarg, &v, 0) < 0 || v < 1)
+				return usage(cat, tests);
+			st_opt.secs = v;
+			break;
+		case 's':
+			if (number(optarg, &v, 0) < 0)
+				return usage(cat, tests);
+			st_opt.seed = v & ST_MASK;
+			break;
+		case 'd':
+			st_opt.dir = optarg;
+			break;
+		case 'm':
+			if (number(optarg, &v, 1) < 0)
+				return usage(cat, tests);
+			st_opt.mem = v;
+			break;
+		case 'v':
+			st_opt.verbose = 1;
+			break;
+		case 'x':
+			st_opt.selfcheck = 1;
+			break;
+		default:
+			return usage(cat, tests);
+		}
+	}
+	argc -= optind;
+	argv += optind;
+	for (i = 0; i < argc; i++) {
+		for (t = tests; t->name != NULL && strcmp(t->name, argv[i]) != 0; t++)
+			;
+		if (t->name == NULL)
+			return usage(cat, tests);
+	}
+	fprintf(stderr, "stress-%s: seed=%lu\n", cat, st_opt.seed);
+	catch(SIGALRM, on_alarm);
+	for (t = tests; t->name != NULL; t++)
+		if (argc == 0 || named(t->name, argc, argv))
+			failed |= run(t, cat);
+	return failed;
+}

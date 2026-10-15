@@ -106,6 +106,8 @@ static int	msdosfs_sysctl __P((int *, u_int, void *, size_t *, void *,
 				    size_t, struct proc *));
 static int	msdosfs_vget __P((struct mount *, void *, struct vnode **));
 
+extern struct vfsops msdos_vfsops;
+
 static int
 update_mp(mp, argp)
 	struct mount *mp;
@@ -179,7 +181,7 @@ msdosfs_mountroot()
 	if (bdevvp(rootdev, &rootvp))
 		panic("msdosfs_mountroot: can't setup rootvp");
 
-	mp = malloc((u_long)sizeof(struct mount), M_MOUNT, M_WAITOK);
+	MALLOC(mp, struct mount *, (u_long)sizeof(struct mount), M_MOUNT, M_WAITOK);
 	bzero((char *)mp, (u_long)sizeof(struct mount));
 	mp->mnt_op = &msdos_vfsops;
 	mp->mnt_flag = 0;
@@ -192,13 +194,13 @@ msdosfs_mountroot()
 	args.mask = args.dirmask = 0777;
 
 	if ((error = mountmsdosfs(rootvp, mp, p, &args)) != 0) {
-		free(mp, M_MOUNT);
+		FREE(mp, M_MOUNT);
 		return (error);
 	}
 
 	if ((error = update_mp(mp, &args)) != 0) {
 		(void)msdosfs_unmount(mp, 0, p);
-		free(mp, M_MOUNT);
+		FREE(mp, M_MOUNT);
 		return (error);
 	}
 
@@ -303,11 +305,14 @@ msdosfs_mount(mp, path, data, ndp, p)
 	if (error)
 		return (error);
 	devvp = ndp->ni_vp;
-	NDFREE(ndp, NDF_ONLY_PNBUF);
 
-	if (!vn_isdisk(devvp, &error)) {
+	if (devvp->v_type != VBLK) {
 		vrele(devvp);
-		return (error);
+		return (ENOTBLK);
+	}
+	if (major(devvp->v_rdev) >= nblkdev) {
+		vrele(devvp);
+		return (ENXIO);
 	}
 	/*
 	 * If mount by non-root, then verify that user has necessary
@@ -463,7 +468,7 @@ mountmsdosfs(devvp, mp, p, argp)
 	}
 #endif
 
-	pmp = malloc(sizeof *pmp, M_MSDOSFSMNT, M_WAITOK);
+	MALLOC(pmp, struct msdosfsmount *, sizeof *pmp, M_MSDOSFSMNT, M_WAITOK);
 	bzero((caddr_t)pmp, sizeof *pmp);
 	pmp->pm_mountp = mp;
 
@@ -696,7 +701,7 @@ mountmsdosfs(devvp, mp, p, argp)
 	 * Allocate memory for the bitmap of allocated clusters, and then
 	 * fill it in.
 	 */
-	pmp->pm_inusemap = malloc(((pmp->pm_maxcluster + N_INUSEBITS - 1)
+	MALLOC(pmp->pm_inusemap, u_int *, ((pmp->pm_maxcluster + N_INUSEBITS - 1)
 				   / N_INUSEBITS)
 				  * sizeof(*pmp->pm_inusemap),
 				  M_MSDOSFSFAT, M_WAITOK);
@@ -743,8 +748,8 @@ error_exit:
 	(void) VOP_CLOSE(devvp, ronly ? FREAD : FREAD | FWRITE, NOCRED, p);
 	if (pmp) {
 		if (pmp->pm_inusemap)
-			free(pmp->pm_inusemap, M_MSDOSFSFAT);
-		free(pmp, M_MSDOSFSMNT);
+			FREE(pmp->pm_inusemap, M_MSDOSFSFAT);
+		FREE(pmp, M_MSDOSFSMNT);
 		mp->mnt_data = (qaddr_t)0;
 	}
 	return (error);
@@ -796,8 +801,8 @@ msdosfs_unmount(mp, mntflags, p)
 		    (pmp->pm_flags&MSDOSFSMNT_RONLY) ? FREAD : FREAD | FWRITE,
 		    NOCRED, p);
 	vrele(pmp->pm_devvp);
-	free(pmp->pm_inusemap, M_MSDOSFSFAT);
-	free(pmp, M_MSDOSFSMNT);
+	FREE(pmp->pm_inusemap, M_MSDOSFSFAT);
+	FREE(pmp, M_MSDOSFSMNT);
 	mp->mnt_data = (qaddr_t)0;
 	mp->mnt_flag &= ~MNT_LOCAL;
 	return (error);

@@ -61,10 +61,12 @@
 #include <sys/vnode.h>
 #include <sys/malloc.h>
 #include <sys/dirent.h>
+#include <sys/dir.h>
 #include <sys/signalvar.h>
 #include <sys/lock.h>
 
-#include <vm/vm.h>
+#include <sys/vm.h>
+#include <miscfs/specfs/specdev.h>
 
 #include <vfs/vfs_support.h>
 
@@ -191,10 +193,15 @@ msdosfs_create(ap)
 	error = createde(&ndirent, pdep, &dep, cnp);
 	if (error)
 		goto bad;
+	if ((cnp->cn_flags & SAVESTART) == 0)
+		FREE_ZONE(cnp->cn_pnbuf, cnp->cn_pnlen, M_NAMEI);
+	vput(ap->a_dvp);
 	*ap->a_vpp = DETOV(dep);
 	return (0);
 
 bad:
+	FREE_ZONE(cnp->cn_pnbuf, cnp->cn_pnlen, M_NAMEI);
+	vput(ap->a_dvp);
 	return (error);
 }
 
@@ -208,19 +215,24 @@ msdosfs_mknod(ap)
 	} */ *ap;
 {
 
+	int error;
+
 	switch (ap->a_vap->va_type) {
 	case VDIR:
-		return (msdosfs_mkdir((struct vop_mkdir_args *)ap));
+		error = msdosfs_mkdir((struct vop_mkdir_args *)ap);
 		break;
 
 	case VREG:
-		return (msdosfs_create((struct vop_create_args *)ap));
+		error = msdosfs_create((struct vop_create_args *)ap);
 		break;
 
 	default:
+		(void)nop_mknod(ap);
 		return (EINVAL);
 	}
-	/* NOTREACHED */
+	if (error == 0)
+		vput(*ap->a_vpp);
+	return (error);
 }
 
 static int
@@ -433,7 +445,7 @@ msdosfs_setattr(ap)
 		if (vp->v_mount->mnt_flag & MNT_RDONLY)
 			return (EROFS);
 		if (cred->cr_uid != pmp->pm_uid &&
-		    (error = suser_xxx(cred, ap->a_p, PRISON_ROOT)))
+		    (error = suser(cred, &ap->a_p->p_acflag)))
 			return (error);
 		/*
 		 * We are very inconsistent about handling unsupported
@@ -474,7 +486,7 @@ msdosfs_setattr(ap)
 			gid = pmp->pm_gid;
 		if ((cred->cr_uid != pmp->pm_uid || uid != pmp->pm_uid ||
 		    (gid != pmp->pm_gid && !groupmember(gid, cred))) &&
-		    (error = suser_xxx(cred, ap->a_p, PRISON_ROOT)))
+		    (error = suser(cred, &ap->a_p->p_acflag)))
 			return error;
 		if (uid != pmp->pm_uid || gid != pmp->pm_gid)
 			return EINVAL;
@@ -506,7 +518,7 @@ msdosfs_setattr(ap)
 		if (vp->v_mount->mnt_flag & MNT_RDONLY)
 			return (EROFS);
 		if (cred->cr_uid != pmp->pm_uid &&
-		    (error = suser_xxx(cred, ap->a_p, PRISON_ROOT)) &&
+		    (error = suser(cred, &ap->a_p->p_acflag)) &&
 		    ((vap->va_vaflags & VA_UTIMES_NULL) == 0 ||
 		    (error = VOP_ACCESS(ap->a_vp, VWRITE, cred, ap->a_p))))
 			return (error);
@@ -535,7 +547,7 @@ msdosfs_setattr(ap)
 		if (vp->v_mount->mnt_flag & MNT_RDONLY)
 			return (EROFS);
 		if (cred->cr_uid != pmp->pm_uid &&
-		    (error = suser_xxx(cred, ap->a_p, PRISON_ROOT)))
+		    (error = suser(cred, &ap->a_p->p_acflag)))
 			return (error);
 		if (vp->v_type != VDIR) {
 			/* We ignore the read and execute bits. */
@@ -569,7 +581,6 @@ msdosfs_read(ap)
 	daddr_t lbn;
 	daddr_t rablock;
 	int rasize;
-	int seqcount;
 	struct buf *bp;
 	struct vnode *vp = ap->a_vp;
 	struct denode *dep = VTODE(vp);
@@ -579,7 +590,7 @@ msdosfs_read(ap)
 	if (uio->uio_offset < 0)
 		return (EINVAL);
 
-	if ((uoff_t)uio->uio_offset > DOS_FILESIZE_MAX)
+	if ((u_quad_t)uio->uio_offset > DOS_FILESIZE_MAX)
                 return (0);
 	/*
 	 * If they didn't ask for any data, then we are done.
@@ -587,8 +598,6 @@ msdosfs_read(ap)
 	orig_resid = uio->uio_resid;
 	if (orig_resid <= 0)
 		return (0);
-
-	seqcount = ap->a_ioflag >> IO_SEQSHIFT;
 
 	isadir = dep->de_Attributes & ATTR_DIRECTORY;
 	do {
@@ -612,7 +621,7 @@ msdosfs_read(ap)
 		} else {
 			blsize = pmp->pm_bpcluster;
 			rablock = lbn + 1;
-			if (seqcount > 1 &&
+			if (vp->v_lastr + 1 == lbn &&
 			    de_cn2off(pmp, rablock) < dep->de_FileSize) {
 				rasize = pmp->pm_bpcluster;
 				error = breadn(vp, lbn, blsize,
@@ -620,6 +629,7 @@ msdosfs_read(ap)
 			} else {
 				error = bread(vp, lbn, blsize, NOCRED, &bp);
 			}
+			vp->v_lastr = lbn;
 		}
 		if (error) {
 			brelse(bp);
@@ -637,8 +647,7 @@ msdosfs_read(ap)
 		error = uiomove(bp->b_data + on, (int) n, uio);
 		brelse(bp);
 	} while (error == 0 && uio->uio_resid > 0 && n != 0);
-	if (!isadir && (error == 0 || uio->uio_resid != orig_resid) &&
-	    (vp->v_mount->mnt_flag & MNT_NOATIME) == 0)
+	if (!isadir && (error == 0 || uio->uio_resid != orig_resid))
 		dep->de_flag |= DE_ACCESS;
 	return (error);
 }
@@ -701,13 +710,13 @@ msdosfs_write(ap)
 	 * If they've exceeded their filesize limit, tell them about it.
 	 */
 	if (p &&
-	    ((uoff_t)uio->uio_offset + uio->uio_resid >
+	    ((u_quad_t)uio->uio_offset + uio->uio_resid >
 	    p->p_rlimit[RLIMIT_FSIZE].rlim_cur)) {
 		psignal(p, SIGXFSZ);
 		return (EFBIG);
 	}
 
-	if ((uoff_t)uio->uio_offset + uio->uio_resid > DOS_FILESIZE_MAX)
+	if ((u_quad_t)uio->uio_offset + uio->uio_resid > DOS_FILESIZE_MAX)
                 return (EFBIG);
 
 	/*
@@ -914,6 +923,11 @@ msdosfs_remove(ap)
 #ifdef MSDOSFS_DEBUG
 	printf("msdosfs_remove(), dep %p, v_usecount %d\n", dep, ap->a_vp->v_usecount);
 #endif
+	if (ap->a_dvp == ap->a_vp)
+		vrele(ap->a_vp);
+	else
+		vput(ap->a_vp);
+	vput(ap->a_dvp);
 	return (error);
 }
 
@@ -930,7 +944,7 @@ msdosfs_link(ap)
 		struct componentname *a_cnp;
 	} */ *ap;
 {
-	return (EOPNOTSUPP);
+	return (err_link(ap));
 }
 
 /*
@@ -1002,6 +1016,7 @@ msdosfs_rename(ap)
 	struct componentname *tcnp = ap->a_tcnp;
 	struct componentname *fcnp = ap->a_fcnp;
 	struct proc *p = fcnp->cn_proc;
+	struct vnode *svp;
 	struct denode *ip, *xp, *dp, *zp;
 	u_char toname[11], oldname[11];
 	u_long from_diroffset, to_diroffset;
@@ -1106,8 +1121,8 @@ abortit:
 	VOP_UNLOCK(fvp, 0, p);
 	if (VTODE(fdvp)->de_StartCluster != VTODE(tdvp)->de_StartCluster)
 		newparent = 1;
-	if (doingdirectory && newparent) {
-		if (error)	/* write access check above */
+	if (doingdirectory) {
+		if (newparent && error)	/* write access check above */
 			goto bad;
 		if (xp != NULL)
 			vput(tvp);
@@ -1115,16 +1130,48 @@ abortit:
 		 * doscheckpath() vput()'s dp,
 		 * so we have to do a relookup afterwards
 		 */
-		error = doscheckpath(ip, dp);
-		if (error)
+		if (newparent) {
+			error = doscheckpath(ip, dp);
+			if (error)
+				goto out;
+		} else
+			vput(tdvp);
+		/*
+		 * The source name was looked up before we held the source
+		 * directory locked, so it may have been renamed or removed
+		 * since.  DE_RENAME now keeps a directory from changing, so
+		 * check it once here, before anything is modified.  The
+		 * target and its parent are not locked while this is done,
+		 * to keep the lock order sane.
+		 */
+		fcnp->cn_flags &= ~MODMASK;
+		fcnp->cn_flags |= LOCKPARENT | LOCKLEAF;
+		if ((fcnp->cn_flags & SAVESTART) == 0)
+			panic("msdosfs_rename: lost from startdir");
+		if (relookup(fdvp, &svp, fcnp)) {
+			/* relookup released fdvp */
+			error = ENOENT;
+			ip->de_flag &= ~DE_RENAME;
+			vrele(fvp);
+			return (error);
+		}
+		vrele(fdvp);
+		VOP_UNLOCK(fdvp, 0, p);
+		if (svp != NULL)
+			vput(svp);
+		if (svp != fvp) {
+			error = ENOENT;
 			goto out;
+		}
 		if ((tcnp->cn_flags & SAVESTART) == 0)
 			panic("msdosfs_rename: lost to startdir");
-		error = relookup(tdvp, &tvp, tcnp);
+		error = relookup_startdir(tdvp, &tvp, tcnp);
 		if (error)
 			goto out;
 		dp = VTODE(tdvp);
 		xp = tvp ? VTODE(tvp) : NULL;
+		to_diroffset = dp->de_fndoffset;
+		to_count = dp->de_fndcnt;
 	}
 
 	if (xp != NULL) {
@@ -1435,12 +1482,17 @@ msdosfs_mkdir(ap)
 	error = createde(&ndirent, pdep, &dep, cnp);
 	if (error)
 		goto bad;
+	if ((cnp->cn_flags & SAVESTART) == 0)
+		FREE_ZONE(cnp->cn_pnbuf, cnp->cn_pnlen, M_NAMEI);
+	vput(ap->a_dvp);
 	*ap->a_vpp = DETOV(dep);
 	return (0);
 
 bad:
 	clusterfree(pmp, newcluster, NULL);
 bad2:
+	FREE_ZONE(cnp->cn_pnbuf, cnp->cn_pnlen, M_NAMEI);
+	vput(ap->a_dvp);
 	return (error);
 }
 
@@ -1491,15 +1543,17 @@ msdosfs_rmdir(ap)
 	 * the name cache.
 	 */
 	cache_purge(dvp);
-	VOP_UNLOCK(dvp, 0, p);
+	vput(dvp);
+	dvp = NULL;
 	/*
 	 * Truncate the directory that is being deleted.
 	 */
 	error = detrunc(ip, (u_long)0, IO_SYNC, cnp->cn_cred, p);
 	cache_purge(vp);
-
-	vn_lock(dvp, LK_EXCLUSIVE | LK_RETRY, p);
 out:
+	if (dvp)
+		vput(dvp);
+	vput(vp);
 	return (error);
 }
 
@@ -1516,7 +1570,7 @@ msdosfs_symlink(ap)
 		char *a_target;
 	} */ *ap;
 {
-	return (EOPNOTSUPP);
+	return (err_symlink(ap));
 }
 
 static int
@@ -1624,7 +1678,7 @@ msdosfs_readdir(ap)
 					strcpy(dirbuf.d_name, "..");
 					break;
 				}
-				dirbuf.d_reclen = GENERIC_DIRSIZ(&dirbuf);
+				dirbuf.d_reclen = DIRSIZ(&dirbuf);
 				if (uio->uio_resid < dirbuf.d_reclen)
 					goto out;
 				error = uiomove((caddr_t) &dirbuf,
@@ -1749,7 +1803,7 @@ msdosfs_readdir(ap)
 			else
 				dirbuf.d_name[dirbuf.d_namlen] = 0;
 			chksum = -1;
-			dirbuf.d_reclen = GENERIC_DIRSIZ(&dirbuf);
+			dirbuf.d_reclen = DIRSIZ(&dirbuf);
 			if (uio->uio_resid < dirbuf.d_reclen) {
 				brelse(bp);
 				goto out;
@@ -1820,9 +1874,6 @@ msdosfs_bmap(ap)
 		 */
 		*ap->a_runp = 0;
 	}
-	if (ap->a_runb) {
-		*ap->a_runb = 0;
-	}
 	return (pcbmap(dep, ap->a_bn, ap->a_bnp, 0, 0));
 }
 
@@ -1855,7 +1906,7 @@ msdosfs_strategy(ap)
 			return (error);
 		}
 		if ((long)bp->b_blkno == -1)
-			vfs_bio_clrbuf(bp);
+			clrbuf(bp);
 	}
 	if (bp->b_blkno == -1) {
 		biodone(bp);
@@ -1867,7 +1918,7 @@ msdosfs_strategy(ap)
 	 */
 	vp = dep->de_devvp;
 	bp->b_dev = vp->v_rdev;
-	VOP_STRATEGY(vp, bp);
+	VOCALL (vp->v_op, VOFFSET(vop_strategy), ap);
 	return (0);
 }
 

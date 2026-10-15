@@ -502,19 +502,24 @@ detrunc(dep, length, flags, cred, p)
 			bn = cntobn(pmp, eofentry);
 			error = bread(pmp->pm_devvp, bn, pmp->pm_bpcluster,
 			    NOCRED, &bp);
-			if (error) {
-				brelse(bp);
-#ifdef MSDOSFS_DEBUG
-				printf("detrunc(): bread fails %d\n", error);
-#endif
-				return (error);
-			}
-			bzero(bp->b_data + boff, pmp->pm_bpcluster - boff);
-			if (flags & IO_SYNC)
-				bwrite(bp);
-			else
-				bdwrite(bp);
+		} else {
+			/* No VM object zeroes the tail here, so do it in the buffer. */
+			bn = de_cluster(pmp, length);
+			error = bread(DETOV(dep), bn, pmp->pm_bpcluster,
+			    NOCRED, &bp);
 		}
+		if (error) {
+			brelse(bp);
+#ifdef MSDOSFS_DEBUG
+			printf("detrunc(): bread fails %d\n", error);
+#endif
+			return (error);
+		}
+		bzero(bp->b_data + boff, pmp->pm_bpcluster - boff);
+		if (flags & IO_SYNC)
+			bwrite(bp);
+		else
+			bdwrite(bp);
 	}
 
 	/*
@@ -524,10 +529,11 @@ detrunc(dep, length, flags, cred, p)
 	dep->de_FileSize = length;
 	if (!isadir)
 		dep->de_flag |= DE_UPDATE|DE_MODIFIED;
-	allerror = vtruncbuf(DETOV(dep), cred, p, length, pmp->pm_bpcluster);
+	vnode_pager_setsize(DETOV(dep), length);
+	allerror = vinvalbuf(DETOV(dep), V_SAVE, cred, p, 0, 0);
 #ifdef MSDOSFS_DEBUG
 	if (allerror)
-		printf("detrunc(): vtruncbuf error %d\n", allerror);
+		printf("detrunc(): vinvalbuf error %d\n", allerror);
 #endif
 	error = deupdat(dep, 1);
 	if (error && (allerror == 0))

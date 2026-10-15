@@ -42,3 +42,5 @@ def test_summarize_collects_leak_lines():
     s = stress_report.summarize(stress_report.parse(text))
     assert s["leaks"] == [leak]
     assert s["counts"]["vm"]["PASS"] + s["counts"]["ipc"]["PASS"] == 2
+    mb = "STRESS net tcp PASS iters=1 procs=1 secs=1.0 seed=1 mbufs=+65"
+    assert stress_report.summarize(stress_report.parse(mb + "\n"))["leaks"] == [mb]

@@ -1047,7 +1047,7 @@ def stress(kernel, label, cycles=1, bootargs="", cats="", seed=None, disk=False,
         ssh.run(stress_soak_command(soak, seed) if soak else
                 stress_run_command(stress_cats(cats, disk), cycles, seed, disk))
         start, dead = time.time(), 0
-        while time.time() - start < STRESS_RUN_LIMIT_S:
+        while time.time() - start < max(STRESS_RUN_LIMIT_S, soak + 3600):
             time.sleep(STRESS_POLL_S)
             if g.proc.poll() is not None:
                 dead = STRESS_LOST_POLLS

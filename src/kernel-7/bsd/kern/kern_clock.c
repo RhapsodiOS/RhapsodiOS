@@ -393,24 +393,30 @@ hzto(tv)
 {
 	register long ticks;
 	register long sec;
+	register long usec;
 	int s = splhigh();
-	
+
 	/*
-	 * If number of milliseconds will fit in 32 bit arithmetic,
-	 * then compute number of milliseconds to time and scale to
-	 * ticks.  Otherwise just compute number of hz in time, rounding
-	 * times greater than representible to maximum value.
+	 * Round the interval up to whole ticks, then add one tick:
+	 * timeout() counts from the last clock tick, which may be up
+	 * to a tick before now, so without it the timeout fires early.
+	 * A time that is not in the future gives 0.
 	 *
-	 * Delta times less than 25 days can be computed ``exactly''.
-	 * Maximum value for any timeout in 10ms ticks is 250 days.
+	 * Delta times up to 2146 seconds are computed in microseconds;
+	 * longer ones in whole seconds plus rounded-up microseconds.
 	 */
 	sec = tv->tv_sec - time.tv_sec;
-	if (sec <= 0x7fffffff / 1000 - 1000)
-		ticks = ((tv->tv_sec - time.tv_sec) * 1000 +
-			(tv->tv_usec - time.tv_usec) / 1000)
-				/ (tick / 1000);
-	else if (sec <= 0x7fffffff / hz)
-		ticks = sec * hz;
+	usec = tv->tv_usec - time.tv_usec;
+	if (usec < 0) {
+		sec--;
+		usec += 1000000;
+	}
+	if (sec < 0 || (sec == 0 && usec == 0))
+		ticks = 0;
+	else if (sec <= 0x7fffffff / 1000000 - 1)
+		ticks = (sec * 1000000 + usec + (tick - 1)) / tick + 1;
+	else if (sec <= 0x7fffffff / hz - 2)
+		ticks = sec * hz + (usec + (tick - 1)) / tick + 1;
 	else
 		ticks = 0x7fffffff;
 	splx(s);

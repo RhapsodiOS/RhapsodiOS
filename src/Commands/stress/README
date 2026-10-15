@@ -42,7 +42,9 @@ Usage
     UNSUP when /dev/zero is not a character device or mmap of it fails with
     EOPNOTSUPP, ENODEV or EINVAL, and FAILs when the map works but reads
     wrong data or any other call fails; the vm wire test falls back to syscalls
-    177/178 where Libc lacks mlock/munlock.  The fs rename and link tests
+    177/178 where Libc lacks mlock/munlock; it squeezes physical memory, so
+    vm/runtests leaves it out of the all-at-once phase (with pressure it
+    thrashes a 128 MB guest past the watchdog).  The fs rename and link tests
     churn names in a tree shared by the workers; misc eintr has signals
     interrupt blocking calls.
     -T secs ends a test normally (PASS) once secs have passed; -t is the watchdog.

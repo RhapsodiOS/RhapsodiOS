@@ -338,7 +338,7 @@ t_wire(struct st_ctx *c)
 	pid_t pid;
 	int status;
 
-	limit = st_opt.mem ? st_opt.mem : st_physmem() + st_physmem() / 2;
+	limit = st_opt.mem ? st_opt.mem : st_physmem();
 	limit /= c->nprocs;
 	raw = malloc(MB + ps);
 	if (raw == NULL)
@@ -537,7 +537,7 @@ static const struct st_test tests[] = {
 	{ "cow", 20, 1, NULL, t_cow },
 	{ "machvm", 200, 0, NULL, t_machvm },
 	{ "brk", 20000, 0, NULL, t_brk },
-	{ "wire", 50, 0, p_wire, t_wire },
+	{ "wire", 10, 0, p_wire, t_wire },
 	{ "clock", 1000000, 0, NULL, t_clock },
 	{ "settime", 3, 1, p_settime, t_settime, 1 },
 	{ NULL }

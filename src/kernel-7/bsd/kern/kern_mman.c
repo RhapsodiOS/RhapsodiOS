@@ -208,6 +208,7 @@ mmap(p, uap, retval)
 	vm_offset_t	file_pos;
 	boolean_t	find_space;
 	extern vm_object_t	vm_object_special();
+	extern read_write_fcn_t	mmread;
 
 	user_addr = (vm_offset_t)uap->addr;
 	user_size = (vm_size_t) uap->len;
@@ -233,6 +234,7 @@ mmap(p, uap, retval)
 		user_size = round_page(user_size);
 		if (user_size == 0)
 			return(0);
+anon:
 		user_map = current_task()->map;
 		result = vm_map_find(user_map, NULL, (vm_offset_t) 0,
 					&user_addr, user_size,
@@ -311,6 +313,13 @@ mmap(p, uap, retval)
 	}
 
 	if (vp->v_type == VCHR || vp->v_type == VSTR) {
+		/* /dev/zero (mem minor 3) maps as anonymous zero-fill memory */
+		if (vp->v_type == VCHR &&
+		    cdevsw[major(vp->v_rdev)].d_read == mmread &&
+		    minor(vp->v_rdev) == 3) {
+			flags |= MAP_ANON;
+			goto anon;
+		}
 		return(EOPNOTSUPP);
 	}
 	else {

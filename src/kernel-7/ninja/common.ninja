@@ -1,0 +1,37 @@
+rule check_local
+  command = /bin/sh ninja/configure.sh check $config BUILD.ninja
+  description = CHECK local configuration ($config)
+
+rule configure
+  command = /bin/sh ninja/configure.sh prepare $config BUILD.ninja $out
+  description = CONFIG $config
+  depfile = $outdir/configure.d
+  deps = gcc
+
+build always_check: phony
+
+rule cc
+  command = cd $outdir && obj=$object && $kcc -c $flags $source -o $object && awk -v target=$out -v base=$outdir -f ../../ninja/depfile.awk $${obj%.o}.d > $object.nd
+  description = CC $out
+  depfile = $out.nd
+  deps = gcc
+
+rule assym
+  command = cd $outdir && rm -f assym.h && $kcc -S $cflags -arch i386 ../../machdep/i386/genassym.c -o genassym.s && awk -f ../../machdep/i386/genassym.awk genassym.s > assym.h && awk -v target=$outdir/assym.h -v base=$outdir -f ../../ninja/depfile.awk genassym.d > assym.nd
+  description = ASSYM $out
+  depfile = $outdir/assym.nd
+  deps = gcc
+
+rule mig
+  command = /bin/sh ninja/mig.sh $mode $outdir
+  description = MIG $mode ($config)
+  depfile = $migdep
+  deps = gcc
+
+rule copy
+  command = mkdir -p $outdir/driverkit && cp $in $out
+  description = COPY $out
+
+rule validate
+  command = /bin/sh ninja/check-config.sh $config $outdir $manifest
+  description = VALIDATE $config

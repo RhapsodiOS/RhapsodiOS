@@ -1,0 +1,33 @@
+library_dir = $next_root/usr/local/lib
+driver_object = $library_dir/$driver_library
+objc_object = $library_dir/libkobjc.o
+pexpert_object = $library_dir/pexperti386.o
+ldflags = -e _start -segaddr __TEXT 00100000 -segaddr __LINKEDIT 00780000 -segalign 0x1000 -force_cpusubtype_ALL -u __muldi3
+link_objects = $libc_objects $kernel_objects $outdir/subr_prof.o $outdir/ioconf.o $driver_object $objc_object $pexpert_object $mach_user_objects $outdir/vers.o
+
+rule version
+  command = cd $outdir && /bin/sh ../../conf/tools/newvers/newvers.csh $$(cat ../../conf/version.major ../../conf/version.minor ../../conf/version.variant)
+  description = VERSION $config
+
+rule version_cc
+  command = cd $outdir && $kcc $includes $machine_cflags -c vers.c -o vers.o
+  description = CC $out
+
+rule link_kernel
+  command = ld -static $ldflags $link_objects -lcc -o $out && size $out && chmod 755 $out
+  description = LD $out
+
+# Historical strip backdates its output by five seconds.
+rule strip_kernel
+  command = strip -x -o $out $in && chmod +w $in && touch $out
+  description = STRIP $out
+
+build $outdir/vers.c $outdir/vers.suffix: version objects $
+  $driver_object $objc_object $pexpert_object /usr/lib/libcc.a $
+  conf/version.major conf/version.minor conf/version.variant $
+  conf/tools/newvers/newvers.csh ninja/kernel.ninja ninja/common.ninja $
+  ninja/i386.ninja ninja/release.ninja ninja/debug.ninja
+build $outdir/vers.o: version_cc $outdir/vers.c || $outdir/prepared $outdir/validated
+build $outdir/mach_kernel.sys: link_kernel objects $outdir/vers.o $
+  $driver_object $objc_object $pexpert_object /usr/lib/libcc.a | ninja/kernel.ninja
+build $outdir/mach_kernel: strip_kernel $outdir/mach_kernel.sys

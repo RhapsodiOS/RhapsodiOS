@@ -77,6 +77,7 @@
 
 #include <ufs/ffs/fs.h>
 #include <ufs/ffs/ffs_extern.h>
+#include <kern/mapfs.h>
 
 #if REV_ENDIAN_FS
 #include <ufs/ufs/ufs_byte_order.h>
@@ -676,6 +677,16 @@ ffs_valloc(ap)
 		    ip->i_mode, ip->i_number, fs->fs_fsmnt);
 		panic("ffs_valloc: dup alloc");
 	}
+
+	/*
+	 * ufs_inactive frees the inode before it recycles the vnode,
+	 * so the vnode can be the old file's, still hashed.  Drop its
+	 * vm_info: v_un would read as v_mountedhere once mkdir makes it VDIR.
+	 */
+	if ((*ap->a_vpp)->v_type == VREG)
+		vm_info_free(*ap->a_vpp);
+	(*ap->a_vpp)->v_type = VNON;
+
 	if (ip->i_blocks) {				/* XXX */
 		printf("free inode %s/%d had %d blocks\n",
 		    fs->fs_fsmnt, ino, ip->i_blocks);

@@ -1,8 +1,8 @@
 #!/bin/sh
-# usage: run [-a] [-s seed] [-t secs] [-d dir] [-D dev] cycles [cat ...]
+# usage: run [-a] [-L] [-s seed] [-t secs] [-d dir] [-D dev] cycles [cat ...]
 # Runs each category's runtests; -a runs the categories at the same time.
 # disk is not a default category: it overwrites the raw device dev.
-usage="usage: run [-a] [-s seed] [-t secs] [-d dir] [-D dev] cycles [cat ...]"
+usage="usage: run [-a] [-L] [-s seed] [-t secs] [-d dir] [-D dev] cycles [cat ...]"
 all=0
 opts=
 rawdev=
@@ -11,6 +11,7 @@ while test $# -gt 0; do
 	case $1 in
 	-a) all=1; shift ;;
 	-s|-t) test $# -gt 2 || { echo "$usage" >&2; exit 2; }; opts="$opts $1 $2"; shift 2 ;;
+	-L) opts="$opts -L"; shift ;;
 	-d) test $# -gt 2 && test -n "$2" || { echo "$usage" >&2; exit 2; }; dir=$2; shift 2 ;;
 	-D) test $# -gt 2 && test -n "$2" || { echo "$usage" >&2; exit 2; }; rawdev=$2; shift 2 ;;
 	-*) echo "$usage" >&2; exit 2 ;;
@@ -67,6 +68,8 @@ done
 for c in $cats; do
 	awk '$1=="STRESS" && $4=="FAIL"' "$rep/$c.out" >>"$rep/summary"
 done
+l=`for c in $cats; do awk '$1=="STRESS" && (/ leak=/ || / wired=\+/ || / mbufs=\+/)' "$rep/$c.out"; done`
+test -n "$l" && { echo "leaks:"; echo "$l"; } >>"$rep/summary"
 test -f "$rep/bad.$$" && { echo "runtests exited nonzero:" `cat "$rep/bad.$$"` >>"$rep/summary"; rm -f "$rep/bad.$$"; fail=1; }
 cat "$rep/summary"
 exit $fail

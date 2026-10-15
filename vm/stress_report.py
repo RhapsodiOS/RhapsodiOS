@@ -36,18 +36,20 @@ def parse(text):
 
 
 def summarize(rows):
-    counts, fails, rates = {}, [], {}
+    counts, fails, leaks, rates = {}, [], [], {}
     for r in rows:
         c = counts.setdefault(r["cat"], {"PASS": 0, "FAIL": 0, "UNSUP": 0})
         c[r["result"]] = c.get(r["result"], 0) + 1
         if r["result"] == "FAIL":
             fails.append(r["raw"])
+        if "leak" in r or "wired" in r or "mbufs" in r:
+            leaks.append(r["raw"])
         if "ops" in r and "maxlat" in r:
             t = rates.setdefault("%s.%s" % (r["cat"], r["test"]),
                                  {"ops": r["ops"], "maxlat": r["maxlat"]})
             t["ops"] = max(t["ops"], r["ops"])
             t["maxlat"] = max(t["maxlat"], r["maxlat"])
-    return {"counts": counts, "fails": fails, "rates": rates}
+    return {"counts": counts, "fails": fails, "leaks": leaks, "rates": rates}
 
 
 def compare(a, b):

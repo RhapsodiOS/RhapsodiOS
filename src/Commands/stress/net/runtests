@@ -1,11 +1,12 @@
 #!/bin/sh
-# usage: runtests [-s seed] [-t secs] [-n procs] [-d dir] cycles
+# usage: runtests [-L] [-s seed] [-t secs] [-n procs] [-d dir] cycles
 # Each cycle runs every net test alone, then all of them at once.
-usage="usage: runtests [-s seed] [-t secs] [-n procs] [-d dir] cycles"
+usage="usage: runtests [-L] [-s seed] [-t secs] [-n procs] [-d dir] cycles"
 opts=
 while test $# -gt 1; do
 	case $1 in
 	-s|-t|-n|-d) test $# -gt 2 || { echo "$usage" >&2; exit 2; }; opts="$opts $1 $2"; shift 2 ;;
+	-L) opts="$opts -L"; shift ;;
 	*) echo "$usage" >&2; exit 2 ;;
 	esac
 done

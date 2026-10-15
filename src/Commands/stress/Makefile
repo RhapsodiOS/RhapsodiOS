@@ -191,13 +191,15 @@ check-fs: $(FSBIN)
 
 # signal is the dyld regression: a copy of stress-proc pointed (same-length
 # path) at the 1998 dyld must die with exit 68; skipped if that dyld is absent.
+# pty is PASS or UNSUP; the -x run expects 4 FAILs, plus pty's if it passed.
 check-proc: $(PROCBIN) $(CHILDBIN)
 	rc=0; $(PROCBIN) -n 2 -i 50 >proc/t.out || rc=$$?; test $$rc = 0
 	test `grep -c '^STRESS proc \(fork\|exec\|signal\|stack\|pipe\) PASS ' proc/t.out` = 5
 	grep '^STRESS proc pty \(PASS\|UNSUP\) ' proc/t.out
-	rc=0; $(PROCBIN) -x -i 5 fork exec stack pipe pty >proc/t.out || rc=$$?; test $$rc = 1
-	test `grep -c '^STRESS proc [a-z]* FAIL ' proc/t.out` = 5
-	test `grep -c '^STRESS proc pty FAIL .*off=0x' proc/t.out` = 1
+	n=`grep -c '^STRESS proc pty PASS ' proc/t.out`; \
+	rc=0; $(PROCBIN) -x -i 5 fork exec stack pipe pty >proc/t.out || rc=$$?; test $$rc = 1; \
+	test `grep -c '^STRESS proc [a-z]* FAIL ' proc/t.out` = `expr 4 + $$n`; \
+	test $$n = 0 || test `grep -c '^STRESS proc pty FAIL .*off=0x' proc/t.out` = 1
 	test `grep -c '^STRESS proc \(stack\|pipe\) FAIL .*off=0x' proc/t.out` = 2
 	if test -f /usr/lib/dyld.cctools-266; then \
 		cp /usr/lib/dyld.cctools-266 /tmp/dyldOLD1; chmod 555 /tmp/dyldOLD1; \

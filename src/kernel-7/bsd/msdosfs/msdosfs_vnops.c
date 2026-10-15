@@ -61,10 +61,12 @@
 #include <sys/vnode.h>
 #include <sys/malloc.h>
 #include <sys/dirent.h>
+#include <sys/dir.h>
 #include <sys/signalvar.h>
 #include <sys/lock.h>
 
-#include <vm/vm.h>
+#include <sys/vm.h>
+#include <miscfs/specfs/specdev.h>
 
 #include <vfs/vfs_support.h>
 
@@ -433,7 +435,7 @@ msdosfs_setattr(ap)
 		if (vp->v_mount->mnt_flag & MNT_RDONLY)
 			return (EROFS);
 		if (cred->cr_uid != pmp->pm_uid &&
-		    (error = suser_xxx(cred, ap->a_p, PRISON_ROOT)))
+		    (error = suser(cred, &ap->a_p->p_acflag)))
 			return (error);
 		/*
 		 * We are very inconsistent about handling unsupported
@@ -474,7 +476,7 @@ msdosfs_setattr(ap)
 			gid = pmp->pm_gid;
 		if ((cred->cr_uid != pmp->pm_uid || uid != pmp->pm_uid ||
 		    (gid != pmp->pm_gid && !groupmember(gid, cred))) &&
-		    (error = suser_xxx(cred, ap->a_p, PRISON_ROOT)))
+		    (error = suser(cred, &ap->a_p->p_acflag)))
 			return error;
 		if (uid != pmp->pm_uid || gid != pmp->pm_gid)
 			return EINVAL;
@@ -506,7 +508,7 @@ msdosfs_setattr(ap)
 		if (vp->v_mount->mnt_flag & MNT_RDONLY)
 			return (EROFS);
 		if (cred->cr_uid != pmp->pm_uid &&
-		    (error = suser_xxx(cred, ap->a_p, PRISON_ROOT)) &&
+		    (error = suser(cred, &ap->a_p->p_acflag)) &&
 		    ((vap->va_vaflags & VA_UTIMES_NULL) == 0 ||
 		    (error = VOP_ACCESS(ap->a_vp, VWRITE, cred, ap->a_p))))
 			return (error);
@@ -535,7 +537,7 @@ msdosfs_setattr(ap)
 		if (vp->v_mount->mnt_flag & MNT_RDONLY)
 			return (EROFS);
 		if (cred->cr_uid != pmp->pm_uid &&
-		    (error = suser_xxx(cred, ap->a_p, PRISON_ROOT)))
+		    (error = suser(cred, &ap->a_p->p_acflag)))
 			return (error);
 		if (vp->v_type != VDIR) {
 			/* We ignore the read and execute bits. */
@@ -569,7 +571,6 @@ msdosfs_read(ap)
 	daddr_t lbn;
 	daddr_t rablock;
 	int rasize;
-	int seqcount;
 	struct buf *bp;
 	struct vnode *vp = ap->a_vp;
 	struct denode *dep = VTODE(vp);
@@ -579,7 +580,7 @@ msdosfs_read(ap)
 	if (uio->uio_offset < 0)
 		return (EINVAL);
 
-	if ((uoff_t)uio->uio_offset > DOS_FILESIZE_MAX)
+	if ((u_quad_t)uio->uio_offset > DOS_FILESIZE_MAX)
                 return (0);
 	/*
 	 * If they didn't ask for any data, then we are done.
@@ -587,8 +588,6 @@ msdosfs_read(ap)
 	orig_resid = uio->uio_resid;
 	if (orig_resid <= 0)
 		return (0);
-
-	seqcount = ap->a_ioflag >> IO_SEQSHIFT;
 
 	isadir = dep->de_Attributes & ATTR_DIRECTORY;
 	do {
@@ -612,7 +611,7 @@ msdosfs_read(ap)
 		} else {
 			blsize = pmp->pm_bpcluster;
 			rablock = lbn + 1;
-			if (seqcount > 1 &&
+			if (vp->v_lastr + 1 == lbn &&
 			    de_cn2off(pmp, rablock) < dep->de_FileSize) {
 				rasize = pmp->pm_bpcluster;
 				error = breadn(vp, lbn, blsize,
@@ -620,6 +619,7 @@ msdosfs_read(ap)
 			} else {
 				error = bread(vp, lbn, blsize, NOCRED, &bp);
 			}
+			vp->v_lastr = lbn;
 		}
 		if (error) {
 			brelse(bp);
@@ -637,8 +637,7 @@ msdosfs_read(ap)
 		error = uiomove(bp->b_data + on, (int) n, uio);
 		brelse(bp);
 	} while (error == 0 && uio->uio_resid > 0 && n != 0);
-	if (!isadir && (error == 0 || uio->uio_resid != orig_resid) &&
-	    (vp->v_mount->mnt_flag & MNT_NOATIME) == 0)
+	if (!isadir && (error == 0 || uio->uio_resid != orig_resid))
 		dep->de_flag |= DE_ACCESS;
 	return (error);
 }
@@ -701,13 +700,13 @@ msdosfs_write(ap)
 	 * If they've exceeded their filesize limit, tell them about it.
 	 */
 	if (p &&
-	    ((uoff_t)uio->uio_offset + uio->uio_resid >
+	    ((u_quad_t)uio->uio_offset + uio->uio_resid >
 	    p->p_rlimit[RLIMIT_FSIZE].rlim_cur)) {
 		psignal(p, SIGXFSZ);
 		return (EFBIG);
 	}
 
-	if ((uoff_t)uio->uio_offset + uio->uio_resid > DOS_FILESIZE_MAX)
+	if ((u_quad_t)uio->uio_offset + uio->uio_resid > DOS_FILESIZE_MAX)
                 return (EFBIG);
 
 	/*
@@ -1657,7 +1656,7 @@ msdosfs_readdir(ap)
 					strcpy(dirbuf.d_name, "..");
 					break;
 				}
-				dirbuf.d_reclen = GENERIC_DIRSIZ(&dirbuf);
+				dirbuf.d_reclen = DIRSIZ(&dirbuf);
 				if (uio->uio_resid < dirbuf.d_reclen)
 					goto out;
 				error = uiomove((caddr_t) &dirbuf,
@@ -1782,7 +1781,7 @@ msdosfs_readdir(ap)
 			else
 				dirbuf.d_name[dirbuf.d_namlen] = 0;
 			chksum = -1;
-			dirbuf.d_reclen = GENERIC_DIRSIZ(&dirbuf);
+			dirbuf.d_reclen = DIRSIZ(&dirbuf);
 			if (uio->uio_resid < dirbuf.d_reclen) {
 				brelse(bp);
 				goto out;
@@ -1853,9 +1852,6 @@ msdosfs_bmap(ap)
 		 */
 		*ap->a_runp = 0;
 	}
-	if (ap->a_runb) {
-		*ap->a_runb = 0;
-	}
 	return (pcbmap(dep, ap->a_bn, ap->a_bnp, 0, 0));
 }
 
@@ -1888,7 +1884,7 @@ msdosfs_strategy(ap)
 			return (error);
 		}
 		if ((long)bp->b_blkno == -1)
-			vfs_bio_clrbuf(bp);
+			clrbuf(bp);
 	}
 	if (bp->b_blkno == -1) {
 		biodone(bp);
@@ -1900,7 +1896,7 @@ msdosfs_strategy(ap)
 	 */
 	vp = dep->de_devvp;
 	bp->b_dev = vp->v_rdev;
-	VOP_STRATEGY(vp, bp);
+	VOCALL (vp->v_op, VOFFSET(vop_strategy), ap);
 	return (0);
 }
 

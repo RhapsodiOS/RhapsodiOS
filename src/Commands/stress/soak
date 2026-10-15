@@ -52,40 +52,48 @@ fi
 np=`wc -l <"$rep/soak.pool" | tr -d ' '`
 
 # the seeded generator's state is st; every pick and every job seed takes a step
+# (Park-Miller: the products stay below 2^53, so awk's doubles are exact)
 next() {
-	st=`awk -v s=$st 'BEGIN { printf "%d", (s * 1103515245 + 12345) % 2147483648 }'`
+	st=`awk -v s=$st 'BEGIN { if (s == 0) s = 1; printf "%d", (s * 16807) % 2147483647 }'`
 }
 st=$seed
 end=`expr \`date +%s\` + $total`
-pids=
+jobs=
 n=0
 while :; do
-	while test `date +%s` -lt $end && test `set -- $pids; echo $#` -lt $slots; do
+	while test `date +%s` -lt $end && test `set -- $jobs; echo $#` -lt $slots; do
 		next
 		pick=`sed -n "\`expr $st % $np + 1\`p" "$rep/soak.pool"`
 		next
 		set -- $pick
 		n=`expr $n + 1`
-		(cd "$here/$1" && ./stress-$1 $L -T $tsecs -s $st -d "$dir" $2) >"$rep/soak.job.$n" 2>/dev/null &
-		pids="$pids $!,$1,$2,$n"
+		f=$rep/soak.job.$n
+		(cd "$here/$1" && ./stress-$1 $L -T $tsecs -s $st -d "$dir" $2 >"$f" 2>/dev/null; echo $? >"$f.rc") &
+		jobs="$jobs $1,$2,$n"
 	done
-	test -n "$pids" || break
-	set -- $pids
-	job=$1
-	shift
-	pids="$*"
-	set -- `echo $job | tr , ' '`
-	wait $1
-	rc=$?
-	f=$rep/soak.job.$4
-	cat "$f" >>"$rep/soak.out"
-	# a crash before any result line must still show up as a FAIL
-	if test $rc != 0 && test -z "`grep '^STRESS ' "$f"`"; then
-		if test $rc -gt 128; then why=signal=`expr $rc - 128`; else why=exit=$rc; fi
-		echo "STRESS $2 $3 FAIL reason=$why" >>"$rep/soak.out"
-	fi
-	rm -f "$f"
+	test -n "$jobs" || break
+	# collect every finished job, so its slot refills at once
+	left=
+	for job in $jobs; do
+		set -- `echo $job | tr , ' '`
+		f=$rep/soak.job.$3
+		if test ! -s "$f.rc"; then
+			left="$left $job"
+			continue
+		fi
+		rc=`cat "$f.rc"`
+		cat "$f" >>"$rep/soak.out"
+		# a crash before any result line must still show up as a FAIL
+		if test $rc != 0 && test -z "`grep '^STRESS ' "$f"`"; then
+			if test $rc -gt 128; then why=signal=`expr $rc - 128`; else why=exit=$rc; fi
+			echo "STRESS $1 $2 FAIL reason=$why" >>"$rep/soak.out"
+		fi
+		rm -f "$f" "$f.rc"
+	done
+	test "$left" = "$jobs" && sleep 1
+	jobs=$left
 done
+wait
 rm -f "$rep/soak.pool"
 
 fail=0

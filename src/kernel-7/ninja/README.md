@@ -96,6 +96,7 @@ samu -f build.ninja -t commands BUILD.ninja/RELEASE_I386/mach_kernel
 /bin/sh ninja/tests/build.sh strip-idle /tmp/kernel-strip-idle
 /bin/sh ninja/tests/build.sh acceptance /tmp/kernel-acceptance
 /bin/sh ninja/tests/build.sh recovery /tmp/kernel-recovery
+/bin/sh ninja/tests/logging.sh safe /tmp/kernel-logging
 ```
 
 The acceptance suite uses one scratch tree for concurrent clean builds,
@@ -105,10 +106,27 @@ The recovery suite copies the source tree and existing build outputs, then
 checks failed assembly generation, version write errors, interrupted
 version generation, and successful retries for both configurations.
 
-The focused `objects`, `link`, `diagnostic`, `strip-idle`, `defines`, and
-`quoting` modes use the invoking checkout's `BUILD.ninja` outputs; run them
-in a disposable checkout when preserving those outputs matters. Their
-scratch directory holds logs and fixtures, not an isolated source tree.
+The configuration and build suites copy the kernel tree and existing outputs
+into its scratch directory before running tools. The invoking checkout is
+left untouched. `strip-idle` requires a previously linked kernel in the
+copied outputs. The toolchain-independent isolation regression is:
+
+```sh
+/bin/sh ninja/tests/isolation.sh /tmp/kernel-isolation
+```
+
+Use the streaming reader when inspecting a live build log:
+
+```sh
+/bin/sh ninja/tests/read-log.sh /tmp/kernel-build.log 20
+```
+
+Native Rhapsody `tail` maps regular files. Observing a growing file through
+that path can replace appended data with NUL bytes; this was reproduced
+without Samurai. The reader pipes the file into `tail`, avoiding its mapped
+file path. The `logging` regression verifies the resulting file bytes.
+Its `legacy` mode reproduces the unsafe direct-file observation and is
+expected to fail on the affected native kernel.
 
 Each test scratch directory must be absolute and initially absent. The
 local-override check runs on every build; an unchanged build performs no

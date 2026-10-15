@@ -3,18 +3,18 @@ set -eu
 suite=$1
 work=$2
 case "$work" in /*) ;; *) echo 'scratch directory must be absolute' >&2; exit 1 ;; esac
-here=`CDPATH= cd "\`dirname "$0"\`/../.." && pwd`
+here=`CDPATH= cd "\`dirname "$0"\`/../.." && /bin/pwd`
 test ! -e "$work" || { echo "scratch directory exists: $work" >&2; exit 1; }
 mkdir -p "$work"
-copy_tree()
-{
-    mkdir "$work/tree"
-    (cd "$here" && tar cf - bsd conf driverkit ipc kern kernserv mach mach_debug machdep mon src uxkern vm ninja build.ninja build-debug.ninja) |
-        (cd "$work/tree" && tar xf -)
-}
+work=`CDPATH= cd "$work" && /bin/pwd`
+case "$work/" in "$here/"*) echo 'scratch directory must be outside the source tree' >&2; exit 1 ;; esac
+cp -Rp "$here" "$work/tree"
+here=$work/tree
+cd "$here"
 case "$suite" in
 quoting)
     cd "$here"
+    "${SAMU-samu}" -f build.ninja configured > "$work/config.log" 2>&1
     "${SAMU-samu}" -f build.ninja -t commands BUILD.ninja/RELEASE_I386/mach_kernel > "$work/commands"
     sed 's/-DTIMEZONE="0"/-DTIMEZONE=\\"0\\"/g' "$work/commands" > "$work/altered"
     if awk -v config=RELEASE_I386 -v outdir=BUILD.ninja/RELEASE_I386 -v srcdir="`pwd`" -f ninja/check-config.awk BUILD.ninja/RELEASE_I386/Makefile "$work/altered" > "$work/quoting.log" 2>&1; then
@@ -39,7 +39,9 @@ EOF
     for config in RELEASE DEBUG; do
         manifest=build.ninja
         test "$config" != DEBUG || manifest=build-debug.ninja
-        "${SAMU-samu}" -f "$manifest" -t commands "BUILD.ninja/${config}_I386/param.o" | tail -1 > "$work/$config-command"
+        "${SAMU-samu}" -f "$manifest" configured > "$work/$config-config.log" 2>&1
+        "${SAMU-samu}" -f "$manifest" -t commands "BUILD.ninja/${config}_I386/param.o" > "$work/$config-commands"
+        tail -1 "$work/$config-commands" > "$work/$config-command"
         PATH="$work/bin:$PATH" /bin/sh "$work/$config-command" > "$work/$config.log" 2>&1
     done
     ;;
@@ -89,7 +91,6 @@ selection)
     ;;
 prepare)
     test -f "$here/build.ninja" || { echo 'FAIL: build.ninja is missing' >&2; exit 1; }
-    copy_tree
     cd "$work/tree"
     rm -rf BUILD.ninja
     "${SAMU-samu}" -f build.ninja configured > "$work/first.log" 2>&1
@@ -123,7 +124,6 @@ compare)
     test -f BUILD.ninja/DEBUG_I386/Makefile || "${SAMU-samu}" -f build-debug.ninja configured
     /bin/sh ninja/check-config.sh RELEASE BUILD.ninja/RELEASE_I386 build.ninja > "$work/release.log" 2>&1
     /bin/sh ninja/check-config.sh DEBUG BUILD.ninja/DEBUG_I386 build-debug.ninja > "$work/debug.log" 2>&1
-    copy_tree
     cd "$work/tree"
     mkdir "$work/bin" "$work/original"
     for tool in cc ld; do

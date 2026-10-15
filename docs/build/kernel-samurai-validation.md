@@ -208,7 +208,7 @@ completion markers and failure propagation; successful generated source,
 compiler settings, and link inputs are unchanged. The boot evidence above
 therefore remains the acceptance record for the retained kernel binaries.
 
-An intermittent native logging anomaly remains unresolved: two DEBUG
+At initial acceptance, a native logging anomaly remained unresolved: two DEBUG
 logs inspected while their commands were running contained NUL-filled
 output. The first caused a log-text assertion to fail despite valid
 generated outputs and a completion stamp. Three isolated repeats produced
@@ -219,10 +219,40 @@ nonfatal `corrupt build log` warning and ran only the local check.
 No runtime or Samurai source changes were
 made on the basis of an unconfirmed cause.
 
-The review's minor test-isolation deviation remains documented in
-`src/kernel-7/ninja/README.md`: focused diagnostic modes can mutate the
-invoking checkout's generated build outputs. Full acceptance and recovery
-use scratch trees; all milestone runs used disposable guest trees.
+The review also found that focused diagnostic modes could mutate the
+invoking checkout's generated build outputs. All initial milestone runs
+used disposable guest trees. Both deferred items were addressed in the
+follow-up below.
 
 Existing kernel Makefiles remain the fallback. rbuild, installation,
 packaging, PPC, and every non-kernel project remain outside this milestone.
+
+## Follow-up: test isolation and live log observation
+
+The configuration and build test scripts now copy their input tree and any
+existing build outputs before invoking tools. Scratch roots are resolved
+physically: Rhapsody's shell `pwd` can retain `/tmp` while `/bin/pwd` reports
+`/private/tmp`. Nested scratch roots are rejected to prevent recursive
+copies. The defines test also checks Samurai's command-list exit status
+before selecting its final compiler command.
+
+The isolation regression was RED on the original scripts because the first
+Samurai call ran in the caller checkout, and GREEN for all eight focused
+modes after the change, both on the host and natively. Native preparation
+and configuration-syntax suites passed with the isolated scripts. The
+invoking native kernel tree retained no `BUILD.ninja` directory.
+
+The log anomaly was reproduced without Samurai. A native C producer wrote
+409600 non-NUL bytes while the observer read its growing output. The
+unobserved control retained every byte; direct-file native `tail` introduced
+3072 NUL bytes in the regression run. The source of native `tail` uses a
+shared memory mapping for that path. Reading through `cat logfile | tail`
+instead preserved all bytes. The build-monitoring fix is
+`ninja/tests/read-log.sh`, which uses the streaming path. Its native
+regression passed with no NUL bytes in the control or observed files.
+
+This fixes how build logs are observed; it does not alter the underlying
+native mapped-file/write-cache behavior. Samurai and other non-kernel
+projects were unchanged. Evidence is retained under
+`D:/RhapsodiOS/vm/work/kernel-samurai-followup-20261015/`: isolation RED/GREEN
+fixtures, `logging-red2.log`, `minor-green2.log`, and the standalone probes.

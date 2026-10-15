@@ -3,12 +3,16 @@ set -eu
 suite=$1
 work=$2
 case "$work" in /*) ;; *) echo 'scratch directory must be absolute' >&2; exit 1 ;; esac
-here=`CDPATH= cd "\`dirname "$0"\`/../.." && pwd`
+here=`CDPATH= cd "\`dirname "$0"\`/../.." && /bin/pwd`
 test ! -e "$work" || { echo "scratch directory exists: $work" >&2; exit 1; }
 mkdir -p "$work"
+work=`CDPATH= cd "$work" && /bin/pwd`
+case "$work/" in "$here/"*) echo 'scratch directory must be outside the source tree' >&2; exit 1 ;; esac
+cp -Rp "$here" "$work/tree"
+here=$work/tree
+cd "$here"
 case "$suite" in
 recovery|recovery-assym|recovery-version-write|recovery-version-retry)
-    cp -Rp "$here" "$work/tree"
     cd "$work/tree"
     mkdir "$work/bin"
     cat > "$work/bin/awk" <<'EOF'
@@ -150,7 +154,6 @@ link)
     done
     ;;
 acceptance|incremental|concurrent)
-    cp -Rp "$here" "$work/tree"
     cd "$work/tree"
     rm -rf BUILD.ninja
     mkdir "$work/libraries" "$work/bin" "$work/original"

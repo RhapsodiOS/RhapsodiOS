@@ -7,9 +7,12 @@ samu -f build.ninja
 samu -f build-debug.ninja
 samu -f build-ppc.ninja
 samu -f build-ppc-debug.ninja
+samu -f build-universal.ninja
+samu -f build-universal-debug.ninja
 ```
 
-These select `RELEASE_I386`, `DEBUG_I386`, `RELEASE_PPC`, and `DEBUG_PPC`.
+The architecture entries select `RELEASE_I386`, `DEBUG_I386`, `RELEASE_PPC`,
+and `DEBUG_PPC`.
 Outputs are
 `BUILD.ninja/<configuration>/mach_kernel` and the unstripped
 `mach_kernel.sys`. Both i386 configurations use their historical options,
@@ -21,12 +24,30 @@ configurations define DEBUG and use `libDriver_kern.o`; DEBUG_PPC adds
 `ddm.o` and `xpr.o`. PPC links entry `start`, text at 0x5000, and vectors
 at zero. These choices come from the generated historical Makefiles.
 
+The universal entry points build matching RELEASE or DEBUG i386/PPC slices,
+then combine them with historical `lipo -create`. Outputs are
+`BUILD.ninja/RELEASE_UNIVERSAL/{mach_kernel,mach_kernel.sys}` and
+`BUILD.ninja/DEBUG_UNIVERSAL/{mach_kernel,mach_kernel.sys}`. They reuse the
+architecture manifests and their existing output directories. Each child
+checks its own dependencies on every invocation; unchanged slices avoid
+repackaging. A failed child or `lipo` command fails the universal build.
+Packaging writes a temporary file and publishes it only after success.
+PPC is the first slice for compatibility with the DR2 i386 booter.
+
+The coordinator runs one job per architecture, with up to two children
+running together. `-j 1` on the universal invocation builds the slices
+sequentially. Run only one build at a time for any architecture/configuration
+output directory; a universal RELEASE build owns both RELEASE slice builds.
+RELEASE and DEBUG universal builds can run independently. Ordinary
+`samu -f build-universal.ninja -t clean` removes universal products and keeps
+the thin kernels. Adding `-g` also removes the thin products.
+
 ## Prerequisites
 
 Use an i386 Rhapsody guest with a case-sensitive source filesystem and the
 historical compiler/linker installed. Build and install Samurai from
 `src/Developer/Commands/samurai-1` using its existing Makefile. Put `samu`,
-`cc`, `ld`, `mig`, and `relpath` on PATH. Configuration uses
+`cc`, `ld`, `mig`, `lipo`, and `relpath` on PATH. Configuration uses
 `${CONFIG_DIR-/usr/local/bin}/config`; the selected executable is recorded
 as a dependency of preparation.
 
@@ -73,7 +94,7 @@ The platform-expert contract header must also be installed as
 
 ## Build graph and maintenance
 
-Entry manifests select independent output/log directories and use
+Architecture entry manifests select independent output/log directories and use
 `subninja` for configuration scope. The fragments under this directory use
 `include` for shared rules. Source edges and link order are maintained by
 hand; no generator writes Ninja manifests during the build.
@@ -86,9 +107,10 @@ historical template, update the appropriate manifests to agree with the
 generated reference and run the configuration comparison tests.
 
 `MASTER.local`, the selected architecture's `MASTER.<arch>.local`, and
-`files.NEXT` overrides are rejected. The four entry points support the
+`files.NEXT` overrides are rejected. The architecture entry points support the
 checked-in RELEASE/DEBUG i386 and PPC configurations. Kernel installation,
-packaging, and other configurations use their existing build systems.
+distribution packaging, and other configurations use their existing build
+systems.
 
 Compiler dependencies come from native `-MD` output. MIG include
 dependencies come from native `cc -M` preprocessing with the corresponding
@@ -118,6 +140,7 @@ samu -f build.ninja -t commands BUILD.ninja/RELEASE_I386/mach_kernel
 /bin/sh ninja/tests/ppc.sh compare /tmp/kernel-ppc-compare
 /bin/sh ninja/tests/ppc.sh build /tmp/kernel-ppc-build
 /bin/sh ninja/tests/ppc.sh incremental /tmp/kernel-ppc-incremental
+/bin/sh ninja/tests/universal.sh /tmp/kernel-universal /tmp/kernel-seeds
 ```
 
 The acceptance suite uses one scratch tree for concurrent clean builds,
@@ -129,6 +152,15 @@ version generation, and successful retries for both configurations.
 
 The PPC incremental suite checks both configurations for source/header/MIG
 dependency rebuilds, failed MIG recovery, idle builds, and cleanup isolation.
+
+The universal suite accepts thin Mach-O executables from an absolute seed
+directory, `<configuration>_<architecture>/{mach_kernel,mach_kernel.sys}`, for RELEASE
+and DEBUG and architectures I386 and PPC. In its own scratch tree, small
+child graphs copy these inputs to exercise the coordinator. Full kernels or
+small executable fixtures can be supplied. Native `lipo` extraction must
+reproduce every slice byte for byte. The suite checks changed/missing inputs,
+idle builds, child and packaging failures with retries, timestamp preservation,
+and cleanup isolation.
 
 The configuration and build suites copy the kernel tree and existing outputs
 into its scratch directory before running tools. The invoking checkout is
@@ -155,5 +187,6 @@ expected to fail on the affected native kernel.
 Each test scratch directory must be absolute and initially absent. The
 local-override check runs on every build; an unchanged build performs no
 kernel-producing work. Release and debug may run concurrently. See
-`docs/build/kernel-samurai-validation.md` and
-`docs/build/kernel-samurai-ppc-validation.md` for the measured acceptance records.
+`docs/build/kernel-samurai-validation.md`,
+`docs/build/kernel-samurai-ppc-validation.md`, and
+`docs/build/kernel-samurai-universal-validation.md` for the measured acceptance records.

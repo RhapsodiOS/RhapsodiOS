@@ -1193,14 +1193,17 @@ t_storm(struct st_ctx *c)
 	}
 }
 
-/* flood: opt-in (STRESS_EXHAUST=1). Opens unix and TCP pairs until the
+/* flood: opt-in (STRESS_EXHAUST=1 or 2). Opens unix and TCP pairs until the
  * kernel or the process runs out, fills every writer until it would block
  * or has its share of FLOODFILL bytes, drains and checks every reader,
  * closes everything, and then a fresh TCP pair must still carry 64 KB. Only
  * the errnos of running out are allowed. The fill is budgeted because
  * sosend waits for mbufs even on a non-blocking socket: filling every
  * buffer to the brim on thousands of pairs uses up the cluster pool and
- * sleeps forever, taking the whole machine (sshd included) with it. */
+ * sleeps forever, taking the whole machine (sshd included) with it.
+ * STRESS_EXHAUST=2 lifts the budget (fill every pair until EWOULDBLOCK or
+ * ENOBUFS) and is expected to wedge current kernels. -x flips one byte of
+ * the first drained chunk. */
 #define FLOODMAX	4096
 #define FLOODFILL	(1024L * 1024)
 #define FLOODSMALL	100	/* per pair when there are too many for a cluster each */
@@ -1214,7 +1217,7 @@ flood_probe(char *why, int len)
 {
 	const char *e = getenv("STRESS_EXHAUST");
 
-	if (e == NULL || strcmp(e, "1") != 0) {
+	if (e == NULL || (strcmp(e, "1") != 0 && strcmp(e, "2") != 0)) {
 		sprintf(why, "needs STRESS_EXHAUST=1");
 		return 1;
 	}
@@ -1283,7 +1286,8 @@ t_flood(struct st_ctx *c)
 	}
 	if (np < FLOODMAX && !flood_out(errno))
 		efail(c, "pair");
-	cap = np > 1000 ? FLOODSMALL : FLOODFILL / (np + 1);
+	cap = strcmp(getenv("STRESS_EXHAUST"), "2") == 0 ? 0x7fffffffL :
+	      np > 1000 ? FLOODSMALL : FLOODFILL / (np + 1);
 	for (i = 0; i < np; i++) {
 		key = key3(i, 0);
 		fcntl(fl_w[i], F_SETFL, O_NONBLOCK);
@@ -1323,6 +1327,8 @@ t_flood(struct st_ctx *c)
 			if (n == 0)
 				nfail(c, "reason=short pair=%d got=%lu want=%lu", i, off, fl_n[i]);
 			idle = 0;
+			if (c->selfcheck && i == 0 && off == 0)
+				buf[0] ^= 1;
 			bad = st_check(buf, n, key, off);
 			if (bad >= 0)
 				dfail(c, "flood", buf, n, key, off, bad);

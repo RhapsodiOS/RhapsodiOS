@@ -214,7 +214,7 @@ check-net: $(NETBIN)
 	test `grep -c '^STRESS net [a-z]* FAIL .*off=0x' net/t.out` = 3
 	rc=0; $(NETBIN) -x -i 2 -d /tmp storm >net/t.out || rc=$$?; test $$rc = 1
 	grep '^STRESS net storm FAIL .*off=0x' net/t.out
-	rc=0; $(NETBIN) flood >net/t.out || rc=$$?; test $$rc = 0
+	rc=0; STRESS_EXHAUST= $(NETBIN) flood >net/t.out || rc=$$?; test $$rc = 0
 	grep '^STRESS net flood UNSUP reason="needs STRESS_EXHAUST=1"' net/t.out
 	@echo net: ok
 

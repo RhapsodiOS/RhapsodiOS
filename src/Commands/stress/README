@@ -27,6 +27,14 @@ Usage
     <cat>/runtests (same options, except -a and categories) and a binary
     stress-<cat> that takes
     -n procs, -i iters, -t secs, -T secs, -s seed, -d dir, -m size, -v, -x and test names.
+    The net storm test (64 connects against a backlog of 5) allows 90 s for a
+    pending connect: SYNs dropped on a full backlog are retransmitted in
+    backed-off waves that each admit only about backlog connects.  The net
+    flood test runs only when named and STRESS_EXHAUST=1: it exhausts files,
+    sockets and pcbs with a bounded buffer fill.  STRESS_EXHAUST=2 fills
+    every pair until EWOULDBLOCK, which is expected to wedge current kernels
+    (a non-blocking sosend sleeps waiting for mbufs); never run it on a
+    machine you need.
     -T secs ends a test normally (PASS) once secs have passed; -t is the watchdog.
 
 Result lines

@@ -57,7 +57,6 @@ function cccommand(command,key, n,a,i,t,flags,source,stem,started) {
         if (t=="-c") continue
         if (t=="-o") { i++; continue }
         if (t ~ /\.(c|m|s)$/ && t !~ /^-/) { source=canon(t); continue }
-        gsub(/\\/,"",t)
         if (t ~ /^-I/) t="-I" canon(substr(t,3))
         flags=flags (flags!="" ? " " : "") t
     }

@@ -89,6 +89,8 @@ samu -f build.ninja -t commands BUILD.ninja/RELEASE_I386/mach_kernel
 /bin/sh ninja/tests/config.sh prepare /tmp/kernel-prepare
 /bin/sh ninja/tests/config.sh compare /tmp/kernel-compare
 /bin/sh ninja/tests/config.sh syntax /tmp/kernel-syntax
+/bin/sh ninja/tests/config.sh defines /tmp/kernel-defines
+/bin/sh ninja/tests/config.sh quoting /tmp/kernel-quoting
 /bin/sh ninja/tests/build.sh objects /tmp/kernel-objects
 /bin/sh ninja/tests/build.sh link /tmp/kernel-link
 /bin/sh ninja/tests/build.sh strip-idle /tmp/kernel-strip-idle

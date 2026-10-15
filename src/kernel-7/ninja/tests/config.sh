@@ -13,6 +13,36 @@ copy_tree()
         (cd "$work/tree" && tar xf -)
 }
 case "$suite" in
+quoting)
+    cd "$here"
+    "${SAMU-samu}" -f build.ninja -t commands BUILD.ninja/RELEASE_I386/mach_kernel > "$work/commands"
+    sed 's/-DTIMEZONE="0"/-DTIMEZONE=\\"0\\"/g' "$work/commands" > "$work/altered"
+    if awk -v config=RELEASE_I386 -v outdir=BUILD.ninja/RELEASE_I386 -v srcdir="`pwd`" -f ninja/check-config.awk BUILD.ninja/RELEASE_I386/Makefile "$work/altered" > "$work/quoting.log" 2>&1; then
+        echo 'FAIL: accepted changed shell quoting' >&2; exit 1
+    fi
+    grep 'compiler/source mismatch' "$work/quoting.log" >/dev/null
+    ;;
+defines)
+    cd "$here"
+    mkdir "$work/bin"
+    cat > "$work/bin/cc" <<'EOF'
+#!/bin/sh
+timezone=no
+pst=no
+for arg do
+    case "$arg" in -DTIMEZONE=0) timezone=yes ;; -DPST=0) pst=yes ;; esac
+done
+test "$timezone/$pst" = yes/yes || { echo 'FAIL: numeric defines passed as strings' >&2; exit 1; }
+exec /usr/bin/cc "$@"
+EOF
+    chmod +x "$work/bin/cc"
+    for config in RELEASE DEBUG; do
+        manifest=build.ninja
+        test "$config" != DEBUG || manifest=build-debug.ninja
+        "${SAMU-samu}" -f "$manifest" -t commands "BUILD.ninja/${config}_I386/param.o" | tail -1 > "$work/$config-command"
+        PATH="$work/bin:$PATH" /bin/sh "$work/$config-command" > "$work/$config.log" 2>&1
+    done
+    ;;
 syntax)
     cd "$here"
     for config in RELEASE DEBUG; do

@@ -319,12 +319,15 @@ t_timer(struct st_ctx *c)
  * with sa_flags 0 and then SA_RESTART. With SA_RESTART read, waitpid and
  * flock must not return EINTR; BSD select does either way. A timer that
  * fired before the call started (a tick before the call, or an early timer)
- * gives a round that proves nothing: it is retried, then skipped. */
+ * gives a round that proves nothing: it is retried, then skipped. Over the
+ * whole test each worker must see read, waitpid and flock return EINTR at
+ * least once without SA_RESTART. */
 #define STREAM	64		/* read: 4 bursts of 16 bytes, 50 ms apart */
 #define BURST	16
 #define TRIES	5
 
 static volatile int g_tick;
+static long g_nintr[4];		/* EINTR returns without SA_RESTART, per call */
 
 static void
 on_tick(int s)
@@ -421,8 +424,10 @@ round_read(struct st_ctx *c, int restart, int drop)
 	}
 	for (;;) {
 		r = read(fds[0], buf + tot, sizeof buf - tot);
-		if (r < 0 && errno == EINTR && !restart)
+		if (r < 0 && errno == EINTR && !restart) {
+			g_nintr[0]++;
 			continue;
+		}
 		if (r < 0)
 			st_fail_errno(c, restart ? "read-restart" : "read");
 		if (r == 0)
@@ -496,8 +501,10 @@ round_wait(struct st_ctx *c, int restart)
 	}
 	for (;;) {
 		r = waitpid(g_kid, &st, 0);
-		if (r < 0 && errno == EINTR && !restart)
+		if (r < 0 && errno == EINTR && !restart) {
+			g_nintr[2]++;
 			continue;
+		}
 		break;
 	}
 	disarm();
@@ -543,8 +550,10 @@ round_flock(struct st_ctx *c, int restart)
 	}
 	for (;;) {
 		r = flock(fd, LOCK_EX);
-		if (r < 0 && errno == EINTR && !restart)
+		if (r < 0 && errno == EINTR && !restart) {
+			g_nintr[3]++;
 			continue;
+		}
 		break;
 	}
 	disarm();
@@ -558,7 +567,9 @@ round_flock(struct st_ctx *c, int restart)
 static void
 t_eintr(struct st_ctx *c)
 {
+	static const char *name[4] = { "read", "select", "waitpid", "flock" };
 	int fd, i, call, restart, t, ok;
+	long skipped = 0;
 
 	setup(c);
 	st_path(c, g_path, sizeof g_path, "eintr");
@@ -569,7 +580,7 @@ t_eintr(struct st_ctx *c)
 	for (i = 0; st_more(c, i); i++) {
 		st_op_begin(c);
 		for (call = 0; call < 4; call++)
-			for (restart = 0; restart < 2; restart++)
+			for (restart = 0; restart < 2; restart++) {
 				for (t = 0, ok = 0; t < TRIES && !ok; t++)
 					switch (call) {
 					case 0:
@@ -584,9 +595,15 @@ t_eintr(struct st_ctx *c)
 					default:
 						ok = round_flock(c, restart);
 					}
+				if (!ok)
+					skipped++;
+			}
 		st_op_end(c, 1);
 	}
 	unlink(g_path);
+	for (call = 0; call < 4; call++)
+		if (call != 1 && g_nintr[call] == 0)	/* select may restart */
+			st_fail(c, "reason=no-eintr call=%s skipped=%ld", name[call], skipped);
 }
 
 /* rlimit: each limit is set in a forked child, which reports a failure as

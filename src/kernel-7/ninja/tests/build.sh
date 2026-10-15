@@ -7,6 +7,81 @@ here=`CDPATH= cd "\`dirname "$0"\`/../.." && pwd`
 test ! -e "$work" || { echo "scratch directory exists: $work" >&2; exit 1; }
 mkdir -p "$work"
 case "$suite" in
+recovery|recovery-assym|recovery-version-write|recovery-version-retry)
+    cp -Rp "$here" "$work/tree"
+    cd "$work/tree"
+    mkdir "$work/bin"
+    cat > "$work/bin/awk" <<'EOF'
+#!/bin/sh
+case "$*" in
+*genassym.awk*)
+    echo '#broken' > assym.h
+    touch -r "$REF_HEADER" assym.h genassym.s
+    exit 17
+    ;;
+esac
+exec /usr/bin/awk "$@"
+EOF
+    chmod +x "$work/bin/awk"
+    cp -p conf/tools/newvers/newvers.csh "$work/newvers.original"
+    for config in RELEASE DEBUG; do
+        manifest=build.ninja
+        test "$config" != DEBUG || manifest=build-debug.ninja
+        outdir=BUILD.ninja/${config}_I386
+        "${SAMU-samu}" -f "$manifest" > "$work/$config-initial.log" 2>&1
+        if test "$suite" = recovery || test "$suite" = recovery-assym; then
+            cp -p "$outdir/assym.h" "$work/$config-reference.h"
+            export REF_HEADER="$work/$config-reference.h"
+            rm "$outdir/assym.h"
+            if PATH="$work/bin:$PATH" "${SAMU-samu}" -f "$manifest" "$outdir/assym.h" > "$work/$config-assym-failure.log" 2>&1; then
+                echo 'FAIL: ignored assembly generator failure' >&2; exit 1
+            fi
+            "${SAMU-samu}" -f "$manifest" "$outdir/assym.h" > "$work/$config-assym-retry.log" 2>&1
+            cmp "$REF_HEADER" "$outdir/assym.h"
+            grep 'ASSYM' "$work/$config-assym-retry.log" >/dev/null
+        fi
+        if test "$suite" = recovery || test "$suite" = recovery-version-write; then
+            rm "$outdir/vers.c"
+            mkdir "$outdir/vers.c"
+            rm "$outdir/vers.suffix"
+            if "${SAMU-samu}" -f "$manifest" "$outdir/vers.c" > "$work/$config-version-write.log" 2>&1; then
+                echo 'FAIL: ignored version output write failure' >&2; exit 1
+            fi
+            grep 'cannot create vers.c' "$work/$config-version-write.log" >/dev/null
+            rmdir "$outdir/vers.c"
+            "${SAMU-samu}" -f "$manifest" "$outdir/vers.c" > "$work/$config-version-write-retry.log" 2>&1
+            grep 'char version\[\]' "$outdir/vers.c" >/dev/null
+        fi
+        if test "$suite" = recovery || test "$suite" = recovery-version-retry; then
+            cp -p "$outdir/vers.c" "$work/$config-reference.c"
+            cp -p "$outdir/vers.suffix" "$work/$config-reference.suffix"
+            export REF_VERSION="$work/$config-reference.c"
+            export REF_SUFFIX="$work/$config-reference.suffix"
+            cat > conf/tools/newvers/newvers.csh <<'EOF'
+echo broken > vers.c
+echo broken > vers.suffix
+touch -r "$REF_VERSION" vers.c
+touch -r "$REF_SUFFIX" vers.suffix
+kill -KILL $$
+EOF
+            touch -r "$work/newvers.original" conf/tools/newvers/newvers.csh
+            rm "$outdir/vers.c"
+            status=0
+            "${SAMU-samu}" -f "$manifest" "$outdir/vers.c" > "$work/$config-version-interrupted.log" 2>&1 || status=$?
+            cp -p "$work/newvers.original" conf/tools/newvers/newvers.csh
+            test "$status" -ne 0
+            "${SAMU-samu}" -f "$manifest" "$outdir/vers.c" > "$work/$config-version-interrupted-retry.log" 2>&1
+            grep 'char version\[\]' "$outdir/vers.c" >/dev/null
+            grep 'VERSION' "$work/$config-version-interrupted-retry.log" >/dev/null
+            cmp "$REF_SUFFIX" "$outdir/vers.suffix"
+        fi
+        "${SAMU-samu}" -f "$manifest" > "$work/$config-final.log" 2>&1
+        "${SAMU-samu}" -f "$manifest" > "$work/$config-idle.log" 2>&1
+        if grep -E 'CC |ASSYM |VERSION |MIG |LD |STRIP ' "$work/$config-idle.log"; then
+            echo "FAIL: recovery did not settle for $config" >&2; exit 1
+        fi
+    done
+    ;;
 strip-idle)
     cd "$here"
     for config in RELEASE DEBUG; do

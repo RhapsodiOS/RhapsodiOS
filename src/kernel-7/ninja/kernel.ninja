@@ -6,7 +6,7 @@ ldflags = -e _start -segaddr __TEXT 00100000 -segaddr __LINKEDIT 00780000 -segal
 link_objects = $libc_objects $kernel_objects $outdir/subr_prof.o $outdir/ioconf.o $driver_object $objc_object $pexpert_object $mach_user_objects $outdir/vers.o
 
 rule version
-  command = cd $outdir && /bin/sh ../../conf/tools/newvers/newvers.csh $$(cat ../../conf/version.major ../../conf/version.minor ../../conf/version.variant)
+  command = cd $outdir && rm -f version.stamp && /bin/sh -e ../../conf/tools/newvers/newvers.csh $$(cat ../../conf/version.major ../../conf/version.minor ../../conf/version.variant) && test -s vers.c && test -s vers.suffix && touch version.stamp
   description = VERSION $config
 
 rule version_cc
@@ -22,7 +22,7 @@ rule strip_kernel
   command = strip -x -o $out $in && chmod +w $in && touch $out
   description = STRIP $out
 
-build $outdir/vers.c $outdir/vers.suffix: version objects $
+build $outdir/vers.c $outdir/vers.suffix | $outdir/version.stamp: version objects $
   $driver_object $objc_object $pexpert_object /usr/lib/libcc.a $
   conf/version.major conf/version.minor conf/version.variant $
   conf/tools/newvers/newvers.csh ninja/kernel.ninja ninja/common.ninja $

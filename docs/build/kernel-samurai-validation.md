@@ -173,6 +173,56 @@ captured symbol files, representative compiler/MIG dependencies, and
 external library/tool identities. Missing-final-output recovery performed
 only strip; a missing private debug library failed without compilation or
 release-library fallback. Restoring it returned to an idle build.
+The archive is 39604703 bytes, POSIX checksum 1879388893, SHA-256
+`7dba59348a80f0a61f23b2590afb4dc301791eca90d66ed8461bffdd1f02aa21`.
+Native and fetched host checksums agree.
+
+## Final review recovery checks
+
+The independent branch review checked all 349 source/object mappings,
+ordered link inputs, native evidence, exported symbols, artifact hashes,
+and boot logs. It identified two generator recovery defects: failed awk
+could leave a timestamp-preserved partial `assym.h`, and historical
+`newvers` could hide a failed output write or leave partial version files
+after interruption. Native fault tests reproduced both failure classes.
+
+Assembly and version output sets now declare completion stamps, removed
+before generation and created only after success. Version generation runs
+the unchanged historical script with `/bin/sh -e` and checks both outputs.
+The `recovery` test mode uses a scratch copy, preserves old timestamps
+during injected failures, and tests both configurations.
+
+The final native `recovery` run (`/tmp/kernel-samu-review-recovery2`)
+passed all cases for RELEASE and DEBUG, followed by successful relinks and
+idle builds. Cleaning RELEASE removed its new stamps while preserving the
+DEBUG stamps and kernel bytes. The full comparison and quoting suites
+also passed with the updated rules. Interrupted version recovery already
+passed on the old rule in this fixture; the write-failure test was RED
+before the fix. Assembly failure/retry was also RED before its fix.
+
+`review-recovery.tgz` retains the post-review logs and fault fixtures:
+59482 bytes, POSIX checksum 2141331984, SHA-256
+`85ec1960f7e23db5c5ddb228e4ae25a9475990df59d61e094f63d0ac6028946b`.
+Native and fetched host checksums agree. These recovery-only changes add
+completion markers and failure propagation; successful generated source,
+compiler settings, and link inputs are unchanged. The boot evidence above
+therefore remains the acceptance record for the retained kernel binaries.
+
+An intermittent native logging anomaly remains unresolved: two DEBUG
+logs inspected while their commands were running contained NUL-filled
+output. The first caused a log-text assertion to fail despite valid
+generated outputs and a completion stamp. Three isolated repeats produced
+normal logs; the unchanged full recovery suite then passed in a fresh
+tree, including both final idle checks. The earlier logs and diagnosis
+are retained in the archive. The final DEBUG idle invocation emitted a
+nonfatal `corrupt build log` warning and ran only the local check.
+No runtime or Samurai source changes were
+made on the basis of an unconfirmed cause.
+
+The review's minor test-isolation deviation remains documented in
+`src/kernel-7/ninja/README.md`: focused diagnostic modes can mutate the
+invoking checkout's generated build outputs. Full acceptance and recovery
+use scratch trees; all milestone runs used disposable guest trees.
 
 Existing kernel Makefiles remain the fallback. rbuild, installation,
 packaging, PPC, and every non-kernel project remain outside this milestone.

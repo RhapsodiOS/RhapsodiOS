@@ -17,7 +17,7 @@ rule cc
   deps = gcc
 
 rule assym
-  command = cd $outdir && rm -f assym.h && $kcc -S $cflags -arch i386 ../../machdep/i386/genassym.c -o genassym.s && awk -f ../../machdep/i386/genassym.awk genassym.s > assym.h && awk -v target=$outdir/assym.h -v base=$outdir -f ../../ninja/depfile.awk genassym.d > assym.nd
+  command = cd $outdir && rm -f assym.stamp assym.h && $kcc -S $cflags -arch i386 ../../machdep/i386/genassym.c -o genassym.s && awk -f ../../machdep/i386/genassym.awk genassym.s > assym.h && awk -v target=$outdir/assym.h -v base=$outdir -f ../../ninja/depfile.awk genassym.d > assym.nd && touch assym.stamp
   description = ASSYM $out
   depfile = $outdir/assym.nd
   deps = gcc

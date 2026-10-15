@@ -95,11 +95,20 @@ samu -f build.ninja -t commands BUILD.ninja/RELEASE_I386/mach_kernel
 /bin/sh ninja/tests/build.sh link /tmp/kernel-link
 /bin/sh ninja/tests/build.sh strip-idle /tmp/kernel-strip-idle
 /bin/sh ninja/tests/build.sh acceptance /tmp/kernel-acceptance
+/bin/sh ninja/tests/build.sh recovery /tmp/kernel-recovery
 ```
 
 The acceptance suite uses one scratch tree for concurrent clean builds,
 incremental source/header/MIG checks, failure recovery, library replacement,
 link-recipe invalidation, and configuration cleanup isolation.
+The recovery suite copies the source tree and existing build outputs, then
+checks failed assembly generation, version write errors, interrupted
+version generation, and successful retries for both configurations.
+
+The focused `objects`, `link`, `diagnostic`, `strip-idle`, `defines`, and
+`quoting` modes use the invoking checkout's `BUILD.ninja` outputs; run them
+in a disposable checkout when preserving those outputs matters. Their
+scratch directory holds logs and fixtures, not an isolated source tree.
 
 Each test scratch directory must be absolute and initially absent. The
 local-override check runs on every build; an unchanged build performs no

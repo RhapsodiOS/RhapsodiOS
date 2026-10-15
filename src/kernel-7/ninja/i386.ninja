@@ -9,7 +9,7 @@ machine_cflags = -arch i386 -I../../bsd/include -fwritable-strings -fno-common -
 cflags = -g -O3 -fno-omit-frame-pointer $cppflags $machine_cflags
 sflags = $cppflags -D__ASSEMBLER__ -arch i386
 
-build $outdir/assym.h $outdir/genassym.s: assym machdep/i386/genassym.c machdep/i386/genassym.awk || $outdir/prepared $outdir/validated
+build $outdir/assym.h $outdir/genassym.s | $outdir/assym.stamp: assym machdep/i386/genassym.c machdep/i386/genassym.awk || $outdir/prepared $outdir/validated
 build $outdir/subr_prof.o: cc bsd/kern/subr_prof.c || $outdir/prepared $outdir/validated generated
   source = ../../bsd/kern/subr_prof.c
   object = subr_prof.o

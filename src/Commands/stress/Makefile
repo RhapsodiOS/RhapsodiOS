@@ -173,6 +173,11 @@ check-fs: $(FSBIN)
 	grep '^STRESS fs append PASS ' fs/t.out
 	grep '^STRESS fs tree PASS ' fs/t.out
 	grep '^STRESS fs fsync PASS ' fs/t.out
+	rc=0; $(FSBIN) -n 3 -i 100 -d /tmp rename link >fs/t.out || rc=$$?; test $$rc = 0
+	grep '^STRESS fs rename PASS ' fs/t.out
+	grep '^STRESS fs link PASS ' fs/t.out
+	rc=0; $(FSBIN) -x -i 20 -d /tmp rename link >fs/t.out || rc=$$?; test $$rc = 1
+	test `grep -c '^STRESS fs [a-z]* FAIL ' fs/t.out` = 2
 	if test -n "$$STRESS_FILL_DIR"; then rc=0; $(FSBIN) -t 3000 -d $$STRESS_FILL_DIR fill >fs/t.out || rc=$$?; test $$rc = 0; grep '^STRESS fs fill PASS ' fs/t.out; fi
 	mkdir -p fs/rw; rc=0; (cd fs && ./stress-fs -n 1 -i 1 -d rw) >fs/t.out || rc=$$?; rm -rf fs/rw; test $$rc = 0; test `grep -c '^STRESS fs fill ' fs/t.out` = 0
 	rc=0; $(FSBIN) -d /nonexistent rw >fs/t.out || rc=$$?; test $$rc = 1

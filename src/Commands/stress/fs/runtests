@@ -15,7 +15,7 @@ done
 test $# = 1 || { echo "$usage" >&2; exit 2; }
 cd `dirname $0`; test -x ./stress-fs || { echo runtests: no ./stress-fs >&2; exit 2; }
 out=runtests.out.$$
-tests="rw append tree fsync"
+tests="rw append tree fsync rename link"
 cycle=0
 rc=0
 : >$out

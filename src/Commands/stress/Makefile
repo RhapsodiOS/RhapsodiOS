@@ -2,7 +2,7 @@
 # `make install` with DSTROOT and RC_CFLAGS. Objects are built next to their
 # sources because rbuild copies the source tree. GNU make 3.74: pattern rules
 # only, no $(call), no target-specific variables.
-LIBOBJS = lib/rng.o lib/pattern.o lib/report.o lib/main.o lib/sysinfo.o lib/io.o
+LIBOBJS = lib/rng.o lib/pattern.o lib/report.o lib/main.o lib/sysinfo.o lib/io.o lib/leak.o lib/zone_user.o
 CC      = cc
 CFLAGS  = -O -Wall $(RC_CFLAGS) -Ilib
 TMAIN   = lib/stress-tmain
@@ -24,6 +24,9 @@ lib/libstress.a: $(LIBOBJS)
 	rm -f $@
 	ar cr $@ $(LIBOBJS)
 	ranlib $@
+
+lib/zone_user.c: lib/zone.defs
+	mig -untyped -q lib/zone.defs -header lib/zone.h -user lib/zone_user.c -server /dev/null
 
 lib/%.o: lib/%.c lib/stress.h
 	$(CC) $(CFLAGS) -c $< -o $@
@@ -303,6 +306,6 @@ installsrc:
 	gnutar --exclude=CVS --exclude=.git -cf - . | gnutar -C $(SRCROOT) -xf -
 
 clean:
-	rm -f lib/*.o lib/libstress.a lib/t_lib $(TMAIN) lib/t.out lib/t.err vm/*.o $(VMBIN) vm/t.out mmap/*.o $(MMAPBIN) mmap/t.out fs/*.o $(FSBIN) fs/t.out proc/*.o $(PROCBIN) $(CHILDBIN) proc/t.out proc/stress-proc.old net/*.o $(NETBIN) net/t.out ipc/*.o $(IPCBIN) $(IPCNAMES) ipc/t.out thread/*.o $(THREADBIN) thread/t.out misc/*.o $(MISCBIN) misc/t.out disk/*.o $(DISKBIN) disk/t.out
+	rm -f lib/*.o lib/zone.h lib/zone_user.c lib/libstress.a lib/t_lib $(TMAIN) lib/t.out lib/t.err vm/*.o $(VMBIN) vm/t.out mmap/*.o $(MMAPBIN) mmap/t.out fs/*.o $(FSBIN) fs/t.out proc/*.o $(PROCBIN) $(CHILDBIN) proc/t.out proc/stress-proc.old net/*.o $(NETBIN) net/t.out ipc/*.o $(IPCBIN) $(IPCNAMES) ipc/t.out thread/*.o $(THREADBIN) thread/t.out misc/*.o $(MISCBIN) misc/t.out disk/*.o $(DISKBIN) disk/t.out
 
 .PHONY: all check check-vm check-mmap check-fs check-proc check-net check-ipc check-thread check-misc check-disk check-run install installhdrs installsrc clean

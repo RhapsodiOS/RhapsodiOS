@@ -33,6 +33,7 @@ struct st_opts {
 	int verbose;			/* -v */
 	int selfcheck;			/* -x */
 	const char *dev;		/* -D raw device, default NULL */
+	int leakfail;			/* -L or STRESS_LEAK=fail */
 };
 extern struct st_opts st_opt;
 
@@ -87,5 +88,18 @@ void st_path(struct st_ctx *c, char *buf, int len, const char *tag);
 
 /* Prints "STRESS <cat> <test> <what>[ seed=X]" on stdout. */
 void st_line(const char *cat, const char *test, const char *what, int seed);
+
+/* Kernel resource counts, taken before and after a test. */
+#define ST_LEAK_ZONES 256
+struct st_leak {
+	int nzones;			/* -1: zone info unavailable */
+	char name[ST_LEAK_ZONES][80];
+	long count[ST_LEAK_ZONES];
+	long wired;			/* -1: unavailable */
+	long mbufs;			/* -1: unavailable */
+};
+void st_leak_snap(struct st_leak *s);
+/* Appends " leak=... wired=+N mbufs=+N" (only parts past the thresholds) to out; returns 1 if anything was appended. */
+int st_leak_diff(const struct st_leak *before, const struct st_leak *after, char *out, int len);
 
 #endif

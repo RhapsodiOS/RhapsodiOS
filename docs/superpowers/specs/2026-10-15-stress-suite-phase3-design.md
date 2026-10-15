@@ -92,7 +92,8 @@ A new script, `soak [-t total-secs] [-j slots] [-T test-secs] [-s seed] [-d dir]
 
 - **Defaults:** `-t 3600`, `-j 4`, `-T 60`, categories `vm mmap fs proc net ipc thread misc` (never `disk`).
 - **Pool:** for each category, `stress-<cat> -l` lists its tests.
-- **Loop:** until the total time runs out, it keeps `-j` slots busy. Each slot picks a random `cat test` pair from the seeded pool and runs `stress-<cat> -t <test-secs> -s <seed> -d <dir> <test>`, appending its output to `Report/soak.out`.
+- **Loop:** until the total time runs out, it keeps `-j` slots busy. Each slot picks a random `cat test` pair from the seeded pool and runs `stress-<cat> -T <test-secs> -s <seed> -d <dir> <test>`, appending its output to `Report/soak.out`.
+- **Time budget:** `-T` (Ruling 3) ends a test as PASS once test-secs have passed, under the normal `-t` watchdog; paired tests whose two processes run a shared count (ipc msg/ool, net select) ignore it.
 - **Randomness:** a small awk-based generator seeded from `-s` (default: the time), logged as the first line of `soak.out`, so a run can be replayed.
 - **Summary:** per-category PASS/FAIL/UNSUP counts, the FAIL lines, and the `leaks:` section, in `Report/soak.summary`; exit 1 if any FAIL.
 - **Harness:** `ffsbench stress --soak SECS` runs it and reports like `run`.

@@ -589,6 +589,8 @@ sosend(so, addr, uio, top, control, flags)
 	register long space, len, resid;
 	int clen = 0, error, s, dontroute, mlen;
 	int atomic = sosendallatonce(so) || top;
+	int nonblock = (so->so_state & SS_NBIO) || (flags & MSG_DONTWAIT);
+	int nombufs = 0;
 
 	if (uio)
 		resid = uio->uio_resid;
@@ -670,12 +672,24 @@ restart:
 				top->m_flags |= M_EOR;
 		    } else do {
 			if (top == 0) {
-				MGETHDR(m, M_WAIT, MT_DATA);
+				MGETHDR(m, nonblock ? M_DONTWAIT : M_WAIT,
+				    MT_DATA);
+				if (m == 0)
+					snderr(atomic ? ENOBUFS : EWOULDBLOCK);
 				mlen = MHLEN;
 				m->m_pkthdr.len = 0;
 				m->m_pkthdr.rcvif = (struct ifnet *)0;
 			} else {
-				MGET(m, M_WAIT, MT_DATA);
+				MGET(m, nonblock ? M_DONTWAIT : M_WAIT,
+				    MT_DATA);
+				if (m == 0) {
+					/* A record can't go in part. */
+					if (atomic)
+						snderr(ENOBUFS);
+					/* Send the bytes already copied in. */
+					nombufs = 1;
+					break;
+				}
 				mlen = MLEN;
 			}
 			if (resid >= MINCLSIZE) {
@@ -729,6 +743,10 @@ nopages:
 		    mp = &top;
 		    if (error)
 			goto release;
+		    if (nombufs) {
+			error = EWOULDBLOCK;
+			goto release;
+		    }
 		} while (resid && space > 0);
 	} while (resid);
 
@@ -799,7 +817,12 @@ soreceive(so, paddr, uio, mp0, controlp, flagsp)
 	else
 		flags = 0;
 	if (flags & MSG_OOB) {
-		m = m_get(M_WAIT, MT_DATA);
+		m = m_get((so->so_state & SS_NBIO) || (flags & MSG_DONTWAIT) ?
+		    M_DONTWAIT : M_WAIT, MT_DATA);
+		if (m == 0) {
+			KERNEL_DEBUG(DBG_FNC_SORECEIVE | DBG_FUNC_END, ENOBUFS,0,0,0,0);
+			return (ENOBUFS);
+		}
 		error = (*pr->pr_usrreq)(so, PRU_RCVOOB, m,
 		    (struct mbuf *)(long)(flags & MSG_PEEK), (struct mbuf *)0);
 		if (error)

@@ -70,6 +70,7 @@ def up(kernel=None):
         raise SystemExit("sshd never answered")
     ssh = fb.Ssh(fb._conf())
     login(ssh)
+    ssh.run(fb.DEVZERO)
     if kernel:
         fb.boot_test_kernel(g, ssh, kernel, "")
         login(ssh)

@@ -252,17 +252,33 @@ t_brk(struct st_ctx *c)
 }
 
 /* libc has no mlock stubs on this system, so the calls are bound through
- * dyld when something defines them; otherwise the test is unsupported. */
+ * dyld when something defines them; otherwise they are the raw syscalls
+ * (177 and 178), which an older kernel answers with ENOSYS or SIGSYS. */
 static int (*lockfn)(void *, size_t);
 static int (*unlockfn)(void *, size_t);
+
+static int
+syslock(void *p, size_t len)
+{
+	return syscall(177, p, len);
+}
+
+static int
+sysunlock(void *p, size_t len)
+{
+	return syscall(178, p, len);
+}
 
 static int
 bindwire(void)
 {
 	if (lockfn != NULL)
 		return 1;
-	if (!NSIsSymbolNameDefined("_mlock") || !NSIsSymbolNameDefined("_munlock"))
-		return 0;
+	if (!NSIsSymbolNameDefined("_mlock") || !NSIsSymbolNameDefined("_munlock")) {
+		lockfn = syslock;
+		unlockfn = sysunlock;
+		return 1;
+	}
 	lockfn = (int (*)(void *, size_t))NSAddressOfSymbol(NSLookupAndBindSymbol("_mlock"));
 	unlockfn = (int (*)(void *, size_t))NSAddressOfSymbol(NSLookupAndBindSymbol("_munlock"));
 	return lockfn != NULL && unlockfn != NULL;
@@ -273,7 +289,8 @@ p_wire(char *why, int len)
 {
 	unsigned long ps = pagesz();
 	char *p = malloc(2 * ps);
-	int e;
+	void (*old)(int);
+	int e, r;
 
 	if (!bindwire()) {
 		sprintf(why, "mlock: %s", st_errname(ENOSYS));
@@ -282,11 +299,14 @@ p_wire(char *why, int len)
 	if (p == NULL)
 		return 0;
 	p = (char *)(((unsigned long)p + ps - 1) & ~(ps - 1));
-	if (lockfn(p, ps) == 0) {
+	old = signal(SIGSYS, SIG_IGN);		/* a kernel without the syscall may send it */
+	r = lockfn(p, ps);
+	e = errno;
+	signal(SIGSYS, old);
+	if (r == 0) {
 		unlockfn(p, ps);
 		return 0;
 	}
-	e = errno;
 	if (e != EPERM && e != ENOSYS && e != EOPNOTSUPP)
 		return 0;
 	sprintf(why, "mlock: %s", st_errname(e));

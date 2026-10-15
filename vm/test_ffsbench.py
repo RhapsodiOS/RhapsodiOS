@@ -370,6 +370,11 @@ def test_stress_run_command():
     assert "-D /dev/rhd1a" in cmd and "ipc disk" in cmd
 
 
+def test_devzero_command():
+    assert fb.DEVZERO.startswith("test -c /dev/zero")
+    assert "mknod /dev/zero c 3 3" in fb.DEVZERO
+
+
 def test_stress_soak_command():
     cmd = fb.stress_soak_command(600, 7)
     assert "/usr/local/stress/soak -s 7 -t 600 -d /mnt1" in cmd

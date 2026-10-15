@@ -160,8 +160,11 @@ check-mmap: $(MMAPBIN)
 	grep '^STRESS mmap trunc PASS ' mmap/t.out
 	grep '^STRESS mmap anon \(PASS\|UNSUP\) ' mmap/t.out
 	grep '^STRESS mmap sync \(PASS\|UNSUP\) ' mmap/t.out
-	rc=0; $(MMAPBIN) -x -i 1 -d /tmp shared mixed private >mmap/t.out || rc=$$?; test $$rc = 1
-	test `grep -c '^STRESS mmap [a-z]* FAIL .*off=0x' mmap/t.out` = 3
+	grep '^STRESS mmap anonshared \(PASS\|UNSUP\) ' mmap/t.out
+	grep '^STRESS mmap zero \(PASS\|UNSUP\) ' mmap/t.out
+	n=`grep -c '^STRESS mmap \(anonshared\|zero\) PASS ' mmap/t.out`; \
+	rc=0; $(MMAPBIN) -x -i 1 -d /tmp shared mixed private anonshared zero >mmap/t.out || rc=$$?; test $$rc = 1; \
+	test `grep -c '^STRESS mmap [a-z]* FAIL .*off=0x' mmap/t.out` = `expr 3 + $$n`
 	@echo mmap: ok
 
 # fill only runs when STRESS_FILL_DIR names a scratch file system (1 GB takes ~20 min on the dev guest);

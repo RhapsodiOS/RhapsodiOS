@@ -966,6 +966,7 @@ STRESS_RUN_LIMIT_S = 4 * 3600
 STRESS_POLL_S = 60
 STRESS_LOST_POLLS = 5               # unanswered polls in a row = guest lost
 STRESS_REPORT = "/usr/local/stress/Report"
+DEVZERO = "test -c /dev/zero || (mknod /dev/zero c 3 3 && chmod 666 /dev/zero)"
 
 
 def stress_state(t, out):
@@ -1027,6 +1028,7 @@ def stress(kernel, label, cycles=1, bootargs="", cats="", seed=None, disk=False,
         elif not g.wait_sshd():
             raise SystemExit("sshd never answered")
         stress_dev.login(ssh)
+        ssh.run(DEVZERO)
         tar = os.path.join(outdir, "stress-src.tar")
         with open(tar, "wb") as f:
             f.write(stress_dev.tar_source())

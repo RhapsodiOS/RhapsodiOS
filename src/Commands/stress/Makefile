@@ -127,6 +127,7 @@ check: lib/t_lib $(TMAIN)
 	grep 'FAIL reason="fork: EAGAIN"' lib/t.out
 	sleep 2; test `ps -ax | grep -c '[s]tress-tmain'` = 0
 	rc=0; $(TMAIN) bogus 2>/dev/null || rc=$$?; test $$rc = 2
+	$(TMAIN) -l >lib/t.out; grep -x pass lib/t.out; test `grep -c -x named lib/t.out` = 0
 	@echo t_main: ok
 
 # The first run needs 4 PASS lines and wire PASS or UNSUP, and no settime;

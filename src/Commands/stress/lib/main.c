@@ -373,7 +373,7 @@ static int
 usage(const char *cat, const struct st_test *tests)
 {
 	fprintf(stderr, "usage: stress-%s [-n procs] [-i iters] [-t secs] [-s seed] "
-		"[-d dir] [-m bytes[k|m]] [-D rawdev] [-v] [test ...]\ntests:", cat);
+		"[-d dir] [-m bytes[k|m]] [-D rawdev] [-v] [-l] [test ...]\ntests:", cat);
 	for (; tests->name != NULL; tests++)
 		fprintf(stderr, " %s", tests->name);
 	fprintf(stderr, "\n");
@@ -415,10 +415,10 @@ stress_main(int argc, char **argv, const char *cat, const struct st_test *tests)
 {
 	const struct st_test *t;
 	unsigned long v;
-	int ch, i, failed = 0;
+	int ch, i, list = 0, failed = 0;
 
 	st_opt.seed = ((unsigned long)time(NULL) ^ (unsigned long)getpid()) & ST_MASK;
-	while ((ch = getopt(argc, argv, "n:i:t:s:d:m:D:vx")) != -1) {
+	while ((ch = getopt(argc, argv, "n:i:t:s:d:m:D:vxl")) != -1) {
 		switch (ch) {
 		case 'n':
 			if (number(optarg, &v, 0) < 0 || v < 1)
@@ -457,6 +457,9 @@ stress_main(int argc, char **argv, const char *cat, const struct st_test *tests)
 		case 'x':
 			st_opt.selfcheck = 1;
 			break;
+		case 'l':
+			list = 1;
+			break;
 		default:
 			return usage(cat, tests);
 		}
@@ -468,6 +471,12 @@ stress_main(int argc, char **argv, const char *cat, const struct st_test *tests)
 			;
 		if (t->name == NULL)
 			return usage(cat, tests);
+	}
+	if (list) {
+		for (t = tests; t->name != NULL; t++)
+			if (!t->named_only)
+				printf("%s\n", t->name);
+		return 0;
 	}
 	fprintf(stderr, "stress-%s: seed=%lu\n", cat, st_opt.seed);
 	catch(SIGALRM, on_alarm);

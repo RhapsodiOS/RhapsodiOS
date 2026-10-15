@@ -161,6 +161,7 @@ t_forkbomb(struct st_ctx *c)
 
 static const struct st_test tests[] = {
 	{ "pass", 10, 0, NULL, t_pass },
+	{ "named", 1, 0, NULL, t_pass, 1 },
 	{ "fail", 1, 0, NULL, t_fail },
 	{ "hook", 1, 0, NULL, t_hook },
 	{ "crash", 1, 0, NULL, t_crash },

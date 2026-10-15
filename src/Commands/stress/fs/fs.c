@@ -711,43 +711,12 @@ static const struct st_test tests[] = {
 	{ "append", 2000, 0, NULL, t_append },
 	{ "tree",   500,  0, NULL, t_tree },
 	{ "fsync",  200,  0, NULL, t_fsync },
-	{ "fill",   2,    1, NULL, t_fill },
+	{ "fill",   2,    1, NULL, t_fill, 1 },
 	{ NULL }
 };
-
-/* Without a named test the table loses its last entry, fill. Option
- * values (the word after -d, say) are not test names. */
-static int
-named_any(int argc, char **argv)
-{
-	const struct st_test *t;
-	const char *p;
-	int i;
-
-	for (i = 1; i < argc; i++) {
-		if (argv[i][0] == '-') {
-			for (p = argv[i] + 1; *p != '\0' && strchr("nitsdm", *p) == NULL; p++)
-				;
-			if (*p != '\0' && p[1] == '\0')
-				i++;
-			continue;
-		}
-		for (t = tests; t->name != NULL; t++)
-			if (strcmp(argv[i], t->name) == 0)
-				return 1;
-	}
-	return 0;
-}
 
 int
 main(int argc, char **argv)
 {
-	static struct st_test safe[sizeof tests / sizeof tests[0] - 1];
-
-	if (!named_any(argc, argv)) {
-		memcpy(safe, tests, sizeof safe);
-		safe[sizeof safe / sizeof safe[0] - 1].name = NULL;
-		return stress_main(argc, argv, "fs", safe);
-	}
 	return stress_main(argc, argv, "fs", tests);
 }

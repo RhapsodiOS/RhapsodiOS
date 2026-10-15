@@ -206,8 +206,8 @@
 				/* 174 is obsolete getdents */
 #define SYS_gc_control	175
 #define SYS_add_profil	176
-				/* 177 is unused */
-				/* 178 is unused */
+#define	SYS_mlock	177
+#define	SYS_munlock	178
 				/* 179 is unused */
 #if KDEBUG
 #define SYS_kern_debug

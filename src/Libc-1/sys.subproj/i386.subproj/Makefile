@@ -28,7 +28,7 @@ OTHERLINKED = accept.s access.s acct.s add_profil.s adjtime.s bind.s\
               ktrace.s lfs_bmapv.s lfs_markv.s lfs_segclean.s\
               lfs_segwait.s link.s listen.s lseek.s lstat.s lstatv.s\
               madvise.s mincore.s mkcomplex.s mkdir.s mkfifo.s\
-              mknod.s mmap.s mount.s mprotect.s msync.s munmap.s\
+              mknod.s mlock.s mmap.s mount.s mprotect.s msync.s munlock.s munmap.s\
               nfssvc.s open.s pathconf.s pipe.s profil.s ptrace.s\
               quota.s quotactl.s read.s readlink.s readv.s reboot.s\
               recvfrom.s recvmsg.s rename.s revoke.s rmdir.s\
@@ -63,8 +63,8 @@ OTHERLINKEDOFILES = accept.o access.o acct.o add_profil.o adjtime.o\
                     ioctl.o kill.o ktrace.o lfs_bmapv.o lfs_markv.o\
                     lfs_segclean.o lfs_segwait.o link.o listen.o\
                     lseek.o lstat.o lstatv.o madvise.o mincore.o\
-                    mkcomplex.o mkdir.o mkfifo.o mknod.o mmap.o\
-                    mount.o mprotect.o msync.o munmap.o nfssvc.o\
+                    mkcomplex.o mkdir.o mkfifo.o mknod.o mlock.o mmap.o\
+                    mount.o mprotect.o msync.o munlock.o munmap.o nfssvc.o\
                     open.o pathconf.o pipe.o profil.o ptrace.o\
                     quota.o quotactl.o read.o readlink.o readv.o\
                     reboot.o recvfrom.o recvmsg.o rename.o revoke.o\

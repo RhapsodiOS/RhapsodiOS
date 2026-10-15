@@ -115,6 +115,7 @@ int	msync __P((caddr_t, size_t));
 int	mlock __P((caddr_t, size_t));
 int	munlock __P((caddr_t, size_t));
 int	madvise __P((caddr_t, size_t, int));
+int	mincore __P((caddr_t, size_t, char *));
 __END_DECLS
 
 #endif /* !_KERNEL */

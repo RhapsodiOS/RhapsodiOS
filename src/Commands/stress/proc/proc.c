@@ -477,17 +477,15 @@ t_pty(struct st_ctx *c)
 	unsigned long key, n, o, k;
 	long i, bad;
 	int mfd, sfd, nused = 0, u, status;
+	long r;
 	time_t t0;
 	pid_t pid;
 
 	for (i = 0; st_more(c, i); i++) {
 		t0 = time(NULL);
 		while ((mfd = ptyopen(m, s)) < 0) {
-			if (time(NULL) - t0 >= 5) {
-				if (nused > 0)
-					st_fail(c, "what=pty-exhausted used=%d", nused);
-				st_fail(c, "reason=\"no free pty\"");
-			}
+			if (time(NULL) - t0 >= 5)
+				st_fail(c, "reason=\"no free pty\"");	/* none is held here */
 			usleep(100000);
 		}
 		for (u = 0; u < nused && strcmp(names[u], m) != 0; u++)
@@ -509,6 +507,7 @@ t_pty(struct st_ctx *c)
 		if (tcsetattr(sfd, TCSANOW, &t) < 0)
 			st_fail_errno(c, "tcsetattr");
 		st_op_begin(c);
+		n = st_range(&c->rng, 1024, 4096);
 		pid = fork();
 		if (pid < 0)
 			st_fail_errno(c, "fork");
@@ -516,32 +515,40 @@ t_pty(struct st_ctx *c)
 			close(mfd);
 			setsid();
 			ioctl(sfd, TIOCSCTTY, 0);
-			while ((n = read(sfd, buf, sizeof buf)) > 0)
-				if (st_writefull(sfd, buf, n) < 0)
-					break;
-			_exit(0);
+			/* echo the n data bytes, then the one byte after them ends it */
+			for (o = 0; o < n; o += r) {
+				r = read(sfd, buf, n - o < sizeof buf ? n - o : sizeof buf);
+				if (r <= 0 || st_writefull(sfd, buf, r) < 0)
+					_exit(1);
+			}
+			_exit(read(sfd, buf, 1) == 1 ? 0 : 1);
 		}
 		key = key3(c->idx, i);
-		n = st_range(&c->rng, 1024, 4096);
 		bad = c->selfcheck ? (long)st_range(&c->rng, 0, n - 1) : -1;
 		st_fill(buf, n, key, 0);
 		for (o = 0; o < n; o += k) {
 			k = n - o < PTYCHUNK ? n - o : PTYCHUNK;
 			if (st_writefull(mfd, buf + o, k) != k)
 				st_fail_errno(c, "write");
-			if (st_readfull(mfd, buf + o, k) != k)
+			r = st_readfull(mfd, buf + o, k);
+			if (r < 0)
 				st_fail_errno(c, "read");
+			if (r != k)
+				st_fail(c, "reason=short-read off=0x%lx", o);
 		}
 		if (bad >= 0)
 			buf[bad] ^= 1;
 		bad = st_check(buf, n, key, 0);
 		if (bad >= 0)
 			st_fail_data(c, "pty", buf, n, key, 0, bad);
-		/* The child's exit hangs up its controlling tty; reap it before the
-		 * pair is released, or it revokes the slave of whoever reopens it. */
-		kill(pid, SIGKILL);
+		/* A session leader's exit revokes its controlling tty for everyone, so
+		 * the child must be gone while this worker still holds the pair. */
+		if (st_writefull(mfd, "q", 1) != 1)
+			st_fail_errno(c, "write quit");
 		if (waitfor(pid, &status) != pid)
 			st_fail_errno(c, "waitpid");
+		if (status != 0)
+			st_fail(c, "what=child status=0x%x", status);
 		if (st_range(&c->rng, 0, 1)) {
 			close(mfd);
 			close(sfd);
@@ -552,9 +559,13 @@ t_pty(struct st_ctx *c)
 		st_op_end(c, n);
 	}
 	for (u = 0; u < nused; u++) {
-		mfd = open(names[u], O_RDWR | O_NOCTTY);
-		if (mfd >= 0)
-			close(mfd);
+		t0 = time(NULL);
+		while ((mfd = open(names[u], O_RDWR | O_NOCTTY)) < 0) {
+			if (time(NULL) - t0 >= 5)
+				st_fail(c, "reason=\"reopen %s: %s\"", names[u], st_errname(errno));
+			usleep(100000);
+		}
+		close(mfd);
 	}
 }
 

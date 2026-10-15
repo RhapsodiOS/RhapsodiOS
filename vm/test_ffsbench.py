@@ -370,6 +370,12 @@ def test_stress_run_command():
     assert "-D /dev/rhd1a" in cmd and "ipc disk" in cmd
 
 
+def test_stress_soak_command():
+    cmd = fb.stress_soak_command(600, 7)
+    assert "/usr/local/stress/soak -s 7 -t 600 -d /mnt1" in cmd
+    assert cmd.endswith("echo $? > /tmp/stress.exit' > /tmp/stress.log 2>&1 &)")
+
+
 def test_stress_cats_adds_disk_once():
     assert fb.stress_cats("disk", True) == ["disk"]
     assert fb.stress_cats("vm", True) == ["vm", "disk"]

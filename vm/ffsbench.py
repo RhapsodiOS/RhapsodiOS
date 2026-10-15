@@ -989,6 +989,12 @@ def stress_run_command(cats, cycles, seed, disk):
                cycles, " ".join(cats)))
 
 
+def stress_soak_command(secs, seed):
+    """The remote command that starts a soak of secs seconds; the scratch files go to /mnt1."""
+    return ("rm -f /tmp/stress.exit; (nohup sh -c '/usr/local/stress/soak -s %d -t %d -d /mnt1; "
+            "echo $? > /tmp/stress.exit' > /tmp/stress.log 2>&1 &)" % (seed, secs))
+
+
 def stress_cats(cats, disk):
     """The category list for run: with disk, ensure disk is in it exactly once."""
     c = cats.split()
@@ -997,7 +1003,7 @@ def stress_cats(cats, disk):
     return c
 
 
-def stress(kernel, label, cycles=1, bootargs="", cats="", seed=None, disk=False):
+def stress(kernel, label, cycles=1, bootargs="", cats="", seed=None, disk=False, soak=0):
     """Build and run the stress suite on a guest.  result.txt is written on
     every exit path, with the seed, label and kernel to replay it: with
     "guest": "lost" if the guest stopped answering mid-run, with "bootfail"
@@ -1036,7 +1042,8 @@ def stress(kernel, label, cycles=1, bootargs="", cats="", seed=None, disk=False)
             rc, out = ssh.run(MOUNT)
             if rc != 0:
                 raise SystemExit("mount failed: %s" % out)
-        ssh.run(stress_run_command(stress_cats(cats, disk), cycles, seed, disk))
+        ssh.run(stress_soak_command(soak, seed) if soak else
+                stress_run_command(stress_cats(cats, disk), cycles, seed, disk))
         start, dead = time.time(), 0
         while time.time() - start < STRESS_RUN_LIMIT_S:
             time.sleep(STRESS_POLL_S)
@@ -1102,6 +1109,8 @@ def main(argv):
     sr.add_argument("--seed", type=int, default=None, help="default: random")
     sr.add_argument("--disk", action="store_true",
                     help="also run the raw disk tests on hd1 (unmounted, overwritten); excludes fs")
+    sr.add_argument("--soak", type=int, default=0, metavar="SECS",
+                    help="run soak for SECS seconds instead of run (all categories but disk)")
     st = sub.add_parser("stall")
     st.add_argument("--kernel", required=True)
     st.add_argument("--label", required=True)
@@ -1124,12 +1133,14 @@ def main(argv):
     a = p.parse_args(argv[1:])
     if a.cmd == "stress" and a.disk and "fs" in a.cats.split():
         p.error("--disk leaves hd1 unmounted, so it cannot be combined with fs")
+    if a.cmd == "stress" and a.soak and (a.disk or a.cats):
+        p.error("--soak runs the default categories; it cannot be combined with --disk or --cats")
     if a.cmd == "stress" and not a.disk and "disk" in a.cats.split():
         p.error("the disk category needs --disk")
     if a.cmd == "prep":
         prep()
     elif a.cmd == "stress":
-        stress(a.kernel, a.label, a.cycles, a.bootargs, a.cats, a.seed, a.disk)
+        stress(a.kernel, a.label, a.cycles, a.bootargs, a.cats, a.seed, a.disk, a.soak)
     elif a.cmd == "stall":
         stall(a.kernel, a.label, a.bootargs, a.no_update)
     elif a.cmd == "bench":

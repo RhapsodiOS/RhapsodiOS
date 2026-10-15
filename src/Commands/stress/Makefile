@@ -297,7 +297,7 @@ install: all
 	install -m 755 $(THREADBIN) thread/runtests $(STRESSDIR)/thread
 	install -m 755 $(MISCBIN) misc/runtests $(STRESSDIR)/misc
 	install -m 755 $(DISKBIN) disk/runtests $(STRESSDIR)/disk
-	install -m 755 run $(STRESSDIR)
+	install -m 755 run soak $(STRESSDIR)
 	install -m 644 README $(STRESSDIR)
 
 installhdrs:

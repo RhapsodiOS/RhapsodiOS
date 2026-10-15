@@ -651,6 +651,8 @@ sharedpair(struct st_ctx *c, unsigned char *p, unsigned long key, int first)
 		failerr(c, "fork");
 	}
 	if (kid == 0) {
+		close(a2b[1]);
+		close(b2a[0]);
 		st_fill(p + half, half, key ^ 1, half);
 		putbyte(b2a[1], 0);
 		if (getbyte(a2b[0]) < 0)

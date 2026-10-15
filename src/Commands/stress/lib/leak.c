@@ -111,7 +111,7 @@ st_leak_diff(const struct st_leak *before, const struct st_leak *after, char *ou
 		p += sprintf(p, " mbufs=+%ld", after->mbufs - before->mbufs);
 		any = 1;
 	}
-	if (any && strlen(tmp) < len)
+	if (any && strlen(out) + strlen(tmp) < (size_t)len)
 		strcat(out, tmp);
 	return any;
 }

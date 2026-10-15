@@ -27,9 +27,13 @@ lib/libstress.a: $(LIBOBJS)
 
 lib/zone_user.c: lib/zone.defs
 	mig -untyped -q lib/zone.defs -header lib/zone.h -user lib/zone_user.c -server /dev/null
+lib/zone.h: lib/zone_user.c
 
 lib/%.o: lib/%.c lib/stress.h
 	$(CC) $(CFLAGS) -c $< -o $@
+
+lib/leak.o: lib/zone_types.h
+lib/zone_user.o: lib/zone.h lib/zone_types.h
 
 vm/%.o: vm/%.c lib/stress.h
 	$(CC) $(CFLAGS) -c $< -o $@
@@ -151,7 +155,9 @@ check-vm: $(VMBIN)
 	test `grep -c '^STRESS vm [a-z]* FAIL .*off=0x' vm/t.out` = 4
 	@echo vm: ok
 
-# anon and sync are PASS or UNSUP (this kernel refuses MAP_ANON); the -x run needs each test to FAIL with the offset.
+# anon, anonshared and zero are PASS or UNSUP (UNSUP where the kernel refuses MAP_ANON
+# or the /dev/zero mapping), sync is UNSUP without msync; the -x run needs shared, mixed and
+# private to FAIL with the offset, plus anonshared and zero for each that passed.
 check-mmap: $(MMAPBIN)
 	rc=0; $(MMAPBIN) -n 3 -i 2 -d /tmp >mmap/t.out || rc=$$?; test $$rc = 0
 	grep '^STRESS mmap shared PASS ' mmap/t.out

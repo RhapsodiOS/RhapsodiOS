@@ -117,6 +117,8 @@ main(void)
 		la.wired = 532;
 		strcpy(o, "keep");
 		CHECK(st_leak_diff(&lb, &la, o, sizeof o) == 0 && strcmp(o, "keep") == 0);
+		la.wired = -1;
+		CHECK(st_leak_diff(&lb, &la, o, sizeof o) == 0 && strcmp(o, "keep") == 0);
 		clear();
 		lb.mbufs = 10;
 		la.mbufs = 75;
@@ -124,6 +126,9 @@ main(void)
 		CHECK(st_leak_diff(&lb, &la, o, sizeof o) == 1 && strcmp(o, " mbufs=+65") == 0);
 		lb.mbufs = -1;
 		strcpy(o, "keep");
+		CHECK(st_leak_diff(&lb, &la, o, sizeof o) == 0 && strcmp(o, "keep") == 0);
+		lb.mbufs = 10;
+		la.mbufs = -1;
 		CHECK(st_leak_diff(&lb, &la, o, sizeof o) == 0 && strcmp(o, "keep") == 0);
 		clear();
 		zone(&la, "new", 65);

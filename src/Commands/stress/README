@@ -31,7 +31,8 @@ Usage
     -l, -L and test names.  -l lists the tests the binary runs by default (named_only ones are left out).
     The net storm test (64 connects against a backlog of 5) allows 90 s for a
     pending connect: SYNs dropped on a full backlog are retransmitted in
-    backed-off waves that each admit only about backlog connects.  The net
+    backed-off waves that each admit only about backlog connects; a connect
+    may end in ECONNREFUSED, ETIMEDOUT or ECONNRESET.  The net
     flood test runs only when named and STRESS_EXHAUST=1: it exhausts files,
     sockets and pcbs with a bounded buffer fill.  STRESS_EXHAUST=2 fills
     every pair until EWOULDBLOCK, which is expected to wedge current kernels
@@ -87,7 +88,9 @@ soak - a timed random mix
 
     Runs randomly picked tests (as listed by stress-<cat> -l) of the categories
     (default: run's) for total seconds (default 3600), slots at a time (default 4),
-    each for at most test-secs (default 60, the stress -T budget).  The seed (printed on the first
+    each for at most test-secs (default 60, the stress -T budget).  -t bounds
+    when soak starts new jobs: a running job can overrun by up to its
+    watchdog.  The seed (printed on the first
     line of Report/soak.out) picks the same tests again; timing still varies.
     -L fails tests that leak, but concurrent tests pollute each other's leak
     snapshots (see Leak report), so expect false leaks.  Output goes to Report/soak.out.

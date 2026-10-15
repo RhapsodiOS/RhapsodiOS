@@ -21,14 +21,14 @@ Usage
               stress-disk refuses a mounted, root or symlinked device.
     cycles    how many times to repeat
 
-    The fs fill test fills a whole file system and runs only if STRESS_FILL_DIR
-    names a scratch one (it runs only when named).  The vm settime test steps the system clock as root,
+    The fs fill test fills a whole file system; it runs only when named and
+    only if STRESS_FILL_DIR names a scratch one.  The vm settime test steps the system clock as root,
     so it is opt-in: it runs only as stress-vm settime, and make check-vm runs
     it only if STRESS_SETTIME is set.  Each category also has its own
     <cat>/runtests (same options, except -a and categories) and a binary
     stress-<cat> that takes
-    -n procs, -i iters, -t secs, -T secs, -s seed, -d dir, -m size, -v, -x, -l, -L and test names.
-    -l lists the tests the binary runs by default (named_only ones are left out).
+    -n procs, -i iters, -t secs, -T secs, -s seed, -d dir, -m size, -v, -x,
+    -l, -L and test names.  -l lists the tests the binary runs by default (named_only ones are left out).
     The net storm test (64 connects against a backlog of 5) allows 90 s for a
     pending connect: SYNs dropped on a full backlog are retransmitted in
     backed-off waves that each admit only about backlog connects.  The net
@@ -36,10 +36,12 @@ Usage
     sockets and pcbs with a bounded buffer fill.  STRESS_EXHAUST=2 fills
     every pair until EWOULDBLOCK, which is expected to wedge current kernels
     (a non-blocking sosend sleeps waiting for mbufs); never run it on a
-    machine you need.
+    machine you need (GitHub #51).
     The pty test (proc) needs working ptys; mmap anon and anonshared are UNSUP
-    where MAP_ANON is refused; mmap zero needs a /dev/zero node and a kernel
-    that maps it, else UNSUP/FAIL; the vm wire test falls back to syscalls
+    where MAP_ANON is refused; mmap zero is
+    UNSUP when /dev/zero is not a character device or mmap of it fails with
+    EOPNOTSUPP, ENODEV or EINVAL, and FAILs when the map works but reads
+    wrong data or any other call fails; the vm wire test falls back to syscalls
     177/178 where Libc lacks mlock/munlock.  The fs rename and link tests
     churn names in a tree shared by the workers; misc eintr has signals
     interrupt blocking calls.
@@ -64,7 +66,11 @@ Leak report
     above +32, mbufs above +64 (at most the 3 largest zones are named).  A
     test is not failed for it unless -L or STRESS_LEAK=fail is given, which
     turns the PASS into FAIL reason=leak.  Caches such as TCP TIME_WAIT can
-    show growth on a healthy kernel.  run lists such lines under "leaks:" in
+    show growth on a healthy kernel.  -L is only meaningful for a test run
+    alone: in run's all-at-once phase and in soak, the kernel allocations of
+    the concurrent tests land in each other's snapshots (pv_entry, map
+    entries, objects, wired), so nearly every line carries leak fields there.
+    run lists such lines under "leaks:" in
     Report/summary.
 
 Report/summary
@@ -78,7 +84,8 @@ soak - a timed random mix
     (default: run's) for total seconds (default 3600), slots at a time (default 4),
     each for at most test-secs (default 60, the stress -T budget).  The seed (printed on the first
     line of Report/soak.out) picks the same tests again; timing still varies.
-    -L fails tests that leak.  Output goes to Report/soak.out.
+    -L fails tests that leak, but concurrent tests pollute each other's leak
+    snapshots (see Leak report), so expect false leaks.  Output goes to Report/soak.out.
     Report/soak.summary is laid out like Report/summary.  Exit status is 1 if
     anything failed, 2 for bad usage or no tests found.  ffsbench stress --soak
     SECS runs it in a guest.

@@ -76,6 +76,10 @@ static void bootDriverInit(void);
 id		defaultBus, defaultBusClass;
 static BOOL	printedPCMCIAMessage;
 
+#ifdef DEBUG
+int libIO_dbg;
+#endif
+
 /*
  * Config tables linked into the kernel, served after the booter's.  The
  * platform expert (pexperti386.o, built from drivers-i386/bus/drvPExpert)

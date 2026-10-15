@@ -425,7 +425,11 @@ hw_sysctl(name, namelen, oldp, oldlenp, newp, newlen, p)
 extern
 #endif /* DIAGNOSTIC */
 struct ctldebug debug0, debug1;
+#ifdef __ppc__
 extern struct ctldebug debug2;  /* dev/ppc/drvCuda needs var to debug ADB */
+#else
+struct ctldebug debug2;
+#endif
 struct ctldebug debug3, debug4;
 struct ctldebug debug5, debug6, debug7, debug8, debug9;
 struct ctldebug debug10, debug11, debug12, debug13, debug14;

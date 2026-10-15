@@ -13,7 +13,7 @@ done
 test $# = 1 || { echo "$usage" >&2; exit 2; }
 cd `dirname $0`; test -x ./stress-misc || { echo runtests: no ./stress-misc >&2; exit 2; }
 out=runtests.out.$$
-tests="flock fcntl timer rlimit fifo fds pgrp"
+tests="flock fcntl timer eintr rlimit fifo fds pgrp"
 cycle=0
 rc=0
 : >$out

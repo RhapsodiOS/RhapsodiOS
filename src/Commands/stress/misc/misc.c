@@ -315,6 +315,280 @@ t_timer(struct st_ctx *c)
 	}
 }
 
+/* eintr: SIGALRM (20 ms one-shot) against read, select, waitpid and flock,
+ * with sa_flags 0 and then SA_RESTART. With SA_RESTART read, waitpid and
+ * flock must not return EINTR; BSD select does either way. A timer that
+ * fired before the call started (a tick before the call, or an early timer)
+ * gives a round that proves nothing: it is retried, then skipped. */
+#define STREAM	64		/* read: 4 bursts of 16 bytes, 50 ms apart */
+#define BURST	16
+#define TRIES	5
+
+static volatile int g_tick;
+
+static void
+on_tick(int s)
+{
+	g_tick++;
+}
+
+static void
+disarm(void)
+{
+	struct itimerval it;
+
+	memset(&it, 0, sizeof it);
+	setitimer(ITIMER_REAL, &it, NULL);
+}
+
+/* Arms the 20 ms timer; returns the tick count to compare before the call. */
+static int
+arm(struct st_ctx *c, int restart)
+{
+	struct sigaction sa;
+	struct itimerval it;
+	int seen = g_tick;
+
+	memset(&sa, 0, sizeof sa);
+	sa.sa_handler = on_tick;
+	sigemptyset(&sa.sa_mask);
+	sa.sa_flags = restart ? SA_RESTART : 0;
+	if (sigaction(SIGALRM, &sa, NULL) < 0)
+		st_fail_errno(c, "sigaction");
+	memset(&it, 0, sizeof it);
+	it.it_value.tv_usec = 20000;
+	if (setitimer(ITIMER_REAL, &it, NULL) < 0)
+		st_fail_errno(c, "setitimer");
+	return seen;
+}
+
+static void
+reap(void)
+{
+	int st;
+
+	if (g_kid > 0) {
+		kill(g_kid, SIGKILL);
+		while (waitpid(g_kid, &st, 0) < 0 && errno == EINTR)
+			;
+		g_kid = 0;
+	}
+}
+
+static int
+kid(struct st_ctx *c)
+{
+	pid_t pid = fork();
+
+	if (pid < 0)
+		st_fail_errno(c, "fork");
+	return (int)pid;
+}
+
+/* Child writes the stream (minus one byte if drop); worker reads to EOF. */
+static int
+round_read(struct st_ctx *c, int restart, int drop)
+{
+	unsigned char stream[STREAM], buf[STREAM + BURST];
+	int fds[2], seen, n, tot = 0, i;
+	long r, bad;
+
+	if (pipe(fds) < 0)
+		st_fail_errno(c, "pipe");
+	st_fill(stream, STREAM, 0x65696e74UL, 0);
+	g_kid = kid(c);
+	if (g_kid == 0) {
+		close(fds[0]);
+		n = STREAM;
+		if (drop) {
+			memmove(stream + 3, stream + 4, STREAM - 4);
+			n--;
+		}
+		for (i = 0; i < n; i += BURST) {
+			nap(50000);
+			if (write(fds[1], stream + i, n - i < BURST ? n - i : BURST) < 0)
+				_exit(1);
+		}
+		_exit(0);
+	}
+	close(fds[1]);
+	seen = arm(c, restart);
+	if (g_tick != seen) {
+		disarm();
+		close(fds[0]);
+		reap();
+		return 0;
+	}
+	for (;;) {
+		r = read(fds[0], buf + tot, sizeof buf - tot);
+		if (r < 0 && errno == EINTR && !restart)
+			continue;
+		if (r < 0)
+			st_fail_errno(c, restart ? "read-restart" : "read");
+		if (r == 0)
+			break;
+		tot += r;
+		if (tot > STREAM)
+			break;
+	}
+	disarm();
+	close(fds[0]);
+	reap();
+	if (tot != STREAM)
+		st_fail(c, "what=stream want=%d got=%d restart=%d", STREAM, tot, restart);
+	bad = st_check(buf, STREAM, 0x65696e74UL, 0);
+	if (bad >= 0)
+		st_fail_data(c, "stream", buf, STREAM, 0x65696e74UL, 0, bad);
+	return 1;
+}
+
+/* Child waits 50 ms then writes; select on the pipe, EINTR is fine. */
+static int
+round_select(struct st_ctx *c, int restart)
+{
+	fd_set rd;
+	int fds[2], seen, r;
+
+	if (pipe(fds) < 0)
+		st_fail_errno(c, "pipe");
+	g_kid = kid(c);
+	if (g_kid == 0) {
+		close(fds[0]);
+		nap(50000);
+		write(fds[1], "x", 1);
+		_exit(0);
+	}
+	close(fds[1]);
+	FD_ZERO(&rd);
+	FD_SET(fds[0], &rd);
+	seen = arm(c, restart);
+	if (g_tick != seen) {
+		disarm();
+		close(fds[0]);
+		reap();
+		return 0;
+	}
+	r = select(fds[0] + 1, &rd, NULL, NULL, NULL);
+	disarm();
+	if (r < 0 && errno != EINTR)
+		st_fail_errno(c, "select");
+	close(fds[0]);
+	reap();
+	return 1;
+}
+
+static int
+round_wait(struct st_ctx *c, int restart)
+{
+	int seen, st;
+	pid_t r;
+
+	g_kid = kid(c);
+	if (g_kid == 0) {
+		nap(100000);
+		_exit(0);
+	}
+	seen = arm(c, restart);
+	if (g_tick != seen) {
+		disarm();
+		reap();
+		return 0;
+	}
+	for (;;) {
+		r = waitpid(g_kid, &st, 0);
+		if (r < 0 && errno == EINTR && !restart)
+			continue;
+		break;
+	}
+	disarm();
+	if (r < 0)
+		st_fail_errno(c, restart ? "waitpid-restart" : "waitpid");
+	if (r != g_kid || !WIFEXITED(st) || WEXITSTATUS(st) != 0)
+		st_fail(c, "what=waitpid pid=%ld want=%ld status=%d", (long)r, (long)g_kid, st);
+	g_kid = 0;
+	return 1;
+}
+
+/* Child locks the file and tells us, holds it 100 ms, exits. */
+static int
+round_flock(struct st_ctx *c, int restart)
+{
+	char b;
+	int fds[2], fd, seen, r;
+
+	if (pipe(fds) < 0)
+		st_fail_errno(c, "pipe");
+	g_kid = kid(c);
+	if (g_kid == 0) {
+		close(fds[0]);
+		fd = open(g_path, O_RDWR);
+		if (fd < 0 || flock(fd, LOCK_EX) < 0 || write(fds[1], "x", 1) != 1)
+			_exit(1);
+		nap(100000);
+		_exit(0);
+	}
+	close(fds[1]);
+	if (st_readfull(fds[0], &b, 1) != 1)
+		st_fail(c, "reason=flock-child-failed");
+	close(fds[0]);
+	fd = open(g_path, O_RDWR);
+	if (fd < 0)
+		st_fail_errno(c, "open");
+	seen = arm(c, restart);
+	if (g_tick != seen) {
+		disarm();
+		close(fd);
+		reap();
+		return 0;
+	}
+	for (;;) {
+		r = flock(fd, LOCK_EX);
+		if (r < 0 && errno == EINTR && !restart)
+			continue;
+		break;
+	}
+	disarm();
+	if (r < 0)
+		st_fail_errno(c, restart ? "flock-restart" : "flock");
+	close(fd);
+	reap();
+	return 1;
+}
+
+static void
+t_eintr(struct st_ctx *c)
+{
+	int fd, i, call, restart, t, ok;
+
+	setup(c);
+	st_path(c, g_path, sizeof g_path, "eintr");
+	fd = open(g_path, O_RDWR | O_CREAT | O_TRUNC, 0600);
+	if (fd < 0)
+		st_fail_errno(c, "open");
+	close(fd);
+	for (i = 0; st_more(c, i); i++) {
+		st_op_begin(c);
+		for (call = 0; call < 4; call++)
+			for (restart = 0; restart < 2; restart++)
+				for (t = 0, ok = 0; t < TRIES && !ok; t++)
+					switch (call) {
+					case 0:
+						ok = round_read(c, restart, c->selfcheck && c->idx == 0 && i == 0 && !restart && t == 0);
+						break;
+					case 1:
+						ok = round_select(c, restart);
+						break;
+					case 2:
+						ok = round_wait(c, restart);
+						break;
+					default:
+						ok = round_flock(c, restart);
+					}
+		st_op_end(c, 1);
+	}
+	unlink(g_path);
+}
+
 /* rlimit: each limit is set in a forked child, which reports a failure as
  * "key=value ..." through a pipe. */
 static volatile int g_xfsz;
@@ -800,6 +1074,7 @@ static const struct st_test tests[] = {
 	{ "flock", 2000, 0, probe_flock, t_flock },
 	{ "fcntl", 2000, 0, probe_fcntl, t_fcntl },
 	{ "timer", 50, 0, NULL, t_timer },
+	{ "eintr", 20, 0, NULL, t_eintr },
 	{ "rlimit", 1, 1, NULL, t_rlimit },
 	{ "fifo", 50, 0, probe_fifo, t_fifo },
 	{ "fds", 50, 0, NULL, t_fds },

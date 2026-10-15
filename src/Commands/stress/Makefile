@@ -242,12 +242,12 @@ check-thread: $(THREADBIN)
 	test `grep -c '^STRESS thread [a-z]* FAIL ' thread/t.out` = 3
 	@echo thread: ok
 
-# All 7 are PASS or UNSUP; the -x run needs flock and fifo to FAIL.
+# All 8 are PASS or UNSUP; the -x run needs flock, fifo and eintr to FAIL.
 check-misc: $(MISCBIN)
 	rc=0; $(MISCBIN) -n 3 -i 20 -d /tmp >misc/t.out || rc=$$?; test $$rc = 0
-	test `grep -c '^STRESS misc [a-z]* \(PASS\|UNSUP\) ' misc/t.out` = 7
-	rc=0; $(MISCBIN) -x -i 5 -d /tmp flock fifo >misc/t.out || rc=$$?; test $$rc = 1
-	test `grep -c '^STRESS misc [a-z]* FAIL ' misc/t.out` = 2
+	test `grep -c '^STRESS misc [a-z]* \(PASS\|UNSUP\) ' misc/t.out` = 8
+	rc=0; $(MISCBIN) -x -i 5 -d /tmp flock fifo eintr >misc/t.out || rc=$$?; test $$rc = 1
+	test `grep -c '^STRESS misc [a-z]* FAIL ' misc/t.out` = 3
 	@echo misc: ok
 
 # Overwrites $STRESS_DISK_DEV, a raw scratch device the caller names (the dev

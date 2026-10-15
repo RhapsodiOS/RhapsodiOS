@@ -1,17 +1,21 @@
 /* stress-proc: process and signal tests. fork/exit/wait status, exec of a
  * helper, signals delivered while the interrupted code is inside dyld (the
- * 1998 dyld dies with "dead lock", exit 68), a deep stack, and a pipe chain. */
+ * 1998 dyld dies with "dead lock", exit 68), a deep stack, a pipe chain, and a
+ * pty open/echo/close cycle. */
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/resource.h>
 #include <sys/wait.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <mach-o/dyld.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/ioctl.h>
+#include <termios.h>
 #include <time.h>
 #include <unistd.h>
 #include "stress.h"
@@ -425,12 +429,142 @@ t_pipe(struct st_ctx *c)
 	}
 }
 
+#define MAXPTY	64
+#define PTYCHUNK 128			/* pty: bytes in flight; the tty queues are small */
+
+/* Opens the first free master /dev/ptyXY; the slave name is the same with t.
+ * EBUSY, EIO and the like mean taken (by sshd or a concurrent run). */
+static int
+ptyopen(char *master, char *slave)
+{
+	static const char xs[] = "pqrs", ys[] = "0123456789abcdef";
+	int x, y, fd;
+
+	for (x = 0; x < 4; x++)
+		for (y = 0; y < 16; y++) {
+			sprintf(master, "/dev/pty%c%c", xs[x], ys[y]);
+			fd = open(master, O_RDWR | O_NOCTTY);
+			if (fd >= 0) {
+				sprintf(slave, "/dev/tty%c%c", xs[x], ys[y]);
+				return fd;
+			}
+		}
+	return -1;
+}
+
+static int
+pty_probe(char *why, int len)
+{
+	char m[32], s[32];
+	int fd = ptyopen(m, s);
+
+	if (fd < 0) {
+		strcpy(why, "no free pty");
+		return 1;
+	}
+	close(fd);
+	return 0;
+}
+
+/* pty: open a master/slave pair, push a patterned block through a child that
+ * echoes the raw slave, check it, close the pair in a random order, reap. */
+static void
+t_pty(struct st_ctx *c)
+{
+	char names[MAXPTY][32], m[32], s[32];
+	unsigned char buf[4096];
+	struct termios t;
+	unsigned long key, n, o, k;
+	long i, bad;
+	int mfd, sfd, nused = 0, u, status;
+	time_t t0;
+	pid_t pid;
+
+	for (i = 0; st_more(c, i); i++) {
+		t0 = time(NULL);
+		while ((mfd = ptyopen(m, s)) < 0) {
+			if (time(NULL) - t0 >= 5) {
+				if (nused > 0)
+					st_fail(c, "what=pty-exhausted used=%d", nused);
+				st_fail(c, "reason=\"no free pty\"");
+			}
+			usleep(100000);
+		}
+		for (u = 0; u < nused && strcmp(names[u], m) != 0; u++)
+			;
+		if (u == nused && nused < MAXPTY)
+			strcpy(names[nused++], m);
+		sfd = open(s, O_RDWR | O_NOCTTY);
+		if (sfd < 0)
+			st_fail_errno(c, "open slave");
+		if (tcgetattr(sfd, &t) < 0)
+			st_fail_errno(c, "tcgetattr");
+		t.c_iflag &= ~(IGNBRK | BRKINT | PARMRK | ISTRIP | INLCR | IGNCR | ICRNL | IXON);
+		t.c_oflag &= ~OPOST;
+		t.c_lflag &= ~(ECHO | ECHONL | ICANON | ISIG | IEXTEN);
+		t.c_cflag &= ~(CSIZE | PARENB);
+		t.c_cflag |= CS8;
+		t.c_cc[VMIN] = 1;
+		t.c_cc[VTIME] = 0;
+		if (tcsetattr(sfd, TCSANOW, &t) < 0)
+			st_fail_errno(c, "tcsetattr");
+		st_op_begin(c);
+		pid = fork();
+		if (pid < 0)
+			st_fail_errno(c, "fork");
+		if (pid == 0) {
+			close(mfd);
+			setsid();
+			ioctl(sfd, TIOCSCTTY, 0);
+			while ((n = read(sfd, buf, sizeof buf)) > 0)
+				if (st_writefull(sfd, buf, n) < 0)
+					break;
+			_exit(0);
+		}
+		key = key3(c->idx, i);
+		n = st_range(&c->rng, 1024, 4096);
+		bad = c->selfcheck ? (long)st_range(&c->rng, 0, n - 1) : -1;
+		st_fill(buf, n, key, 0);
+		for (o = 0; o < n; o += k) {
+			k = n - o < PTYCHUNK ? n - o : PTYCHUNK;
+			if (st_writefull(mfd, buf + o, k) != k)
+				st_fail_errno(c, "write");
+			if (st_readfull(mfd, buf + o, k) != k)
+				st_fail_errno(c, "read");
+		}
+		if (bad >= 0)
+			buf[bad] ^= 1;
+		bad = st_check(buf, n, key, 0);
+		if (bad >= 0)
+			st_fail_data(c, "pty", buf, n, key, 0, bad);
+		/* The child's exit hangs up its controlling tty; reap it before the
+		 * pair is released, or it revokes the slave of whoever reopens it. */
+		kill(pid, SIGKILL);
+		if (waitfor(pid, &status) != pid)
+			st_fail_errno(c, "waitpid");
+		if (st_range(&c->rng, 0, 1)) {
+			close(mfd);
+			close(sfd);
+		} else {
+			close(sfd);
+			close(mfd);
+		}
+		st_op_end(c, n);
+	}
+	for (u = 0; u < nused; u++) {
+		mfd = open(names[u], O_RDWR | O_NOCTTY);
+		if (mfd >= 0)
+			close(mfd);
+	}
+}
+
 static const struct st_test tests[] = {
 	{ "fork", 500, 0, NULL, t_fork },
 	{ "exec", 200, 0, NULL, t_exec },
 	{ "signal", 250, 1, NULL, t_signal },
 	{ "stack", 20, 0, NULL, t_stack },
 	{ "pipe", 50, 0, NULL, t_pipe },
+	{ "pty", 50, 0, pty_probe, t_pty },
 	{ NULL, 0, 0, NULL, NULL }
 };
 

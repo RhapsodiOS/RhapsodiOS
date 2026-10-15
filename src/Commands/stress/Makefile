@@ -191,8 +191,10 @@ check-fs: $(FSBIN)
 check-proc: $(PROCBIN) $(CHILDBIN)
 	rc=0; $(PROCBIN) -n 2 -i 50 >proc/t.out || rc=$$?; test $$rc = 0
 	test `grep -c '^STRESS proc \(fork\|exec\|signal\|stack\|pipe\) PASS ' proc/t.out` = 5
-	rc=0; $(PROCBIN) -x -i 5 fork exec stack pipe >proc/t.out || rc=$$?; test $$rc = 1
-	test `grep -c '^STRESS proc [a-z]* FAIL ' proc/t.out` = 4
+	grep '^STRESS proc pty \(PASS\|UNSUP\) ' proc/t.out
+	rc=0; $(PROCBIN) -x -i 5 fork exec stack pipe pty >proc/t.out || rc=$$?; test $$rc = 1
+	test `grep -c '^STRESS proc [a-z]* FAIL ' proc/t.out` = 5
+	test `grep -c '^STRESS proc pty FAIL .*off=0x' proc/t.out` = 1
 	test `grep -c '^STRESS proc \(stack\|pipe\) FAIL .*off=0x' proc/t.out` = 2
 	if test -f /usr/lib/dyld.cctools-266; then \
 		cp /usr/lib/dyld.cctools-266 /tmp/dyldOLD1; chmod 555 /tmp/dyldOLD1; \

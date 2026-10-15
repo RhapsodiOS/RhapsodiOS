@@ -193,10 +193,15 @@ msdosfs_create(ap)
 	error = createde(&ndirent, pdep, &dep, cnp);
 	if (error)
 		goto bad;
+	if ((cnp->cn_flags & SAVESTART) == 0)
+		FREE_ZONE(cnp->cn_pnbuf, cnp->cn_pnlen, M_NAMEI);
+	vput(ap->a_dvp);
 	*ap->a_vpp = DETOV(dep);
 	return (0);
 
 bad:
+	FREE_ZONE(cnp->cn_pnbuf, cnp->cn_pnlen, M_NAMEI);
+	vput(ap->a_dvp);
 	return (error);
 }
 
@@ -210,19 +215,24 @@ msdosfs_mknod(ap)
 	} */ *ap;
 {
 
+	int error;
+
 	switch (ap->a_vap->va_type) {
 	case VDIR:
-		return (msdosfs_mkdir((struct vop_mkdir_args *)ap));
+		error = msdosfs_mkdir((struct vop_mkdir_args *)ap);
 		break;
 
 	case VREG:
-		return (msdosfs_create((struct vop_create_args *)ap));
+		error = msdosfs_create((struct vop_create_args *)ap);
 		break;
 
 	default:
+		(void)nop_mknod(ap);
 		return (EINVAL);
 	}
-	/* NOTREACHED */
+	if (error == 0)
+		vput(*ap->a_vpp);
+	return (error);
 }
 
 static int
@@ -913,6 +923,11 @@ msdosfs_remove(ap)
 #ifdef MSDOSFS_DEBUG
 	printf("msdosfs_remove(), dep %p, v_usecount %d\n", dep, ap->a_vp->v_usecount);
 #endif
+	if (ap->a_dvp == ap->a_vp)
+		vrele(ap->a_vp);
+	else
+		vput(ap->a_vp);
+	vput(ap->a_dvp);
 	return (error);
 }
 
@@ -929,7 +944,7 @@ msdosfs_link(ap)
 		struct componentname *a_cnp;
 	} */ *ap;
 {
-	return (EOPNOTSUPP);
+	return (err_link(ap));
 }
 
 /*
@@ -1467,12 +1482,17 @@ msdosfs_mkdir(ap)
 	error = createde(&ndirent, pdep, &dep, cnp);
 	if (error)
 		goto bad;
+	if ((cnp->cn_flags & SAVESTART) == 0)
+		FREE_ZONE(cnp->cn_pnbuf, cnp->cn_pnlen, M_NAMEI);
+	vput(ap->a_dvp);
 	*ap->a_vpp = DETOV(dep);
 	return (0);
 
 bad:
 	clusterfree(pmp, newcluster, NULL);
 bad2:
+	FREE_ZONE(cnp->cn_pnbuf, cnp->cn_pnlen, M_NAMEI);
+	vput(ap->a_dvp);
 	return (error);
 }
 
@@ -1523,15 +1543,17 @@ msdosfs_rmdir(ap)
 	 * the name cache.
 	 */
 	cache_purge(dvp);
-	VOP_UNLOCK(dvp, 0, p);
+	vput(dvp);
+	dvp = NULL;
 	/*
 	 * Truncate the directory that is being deleted.
 	 */
 	error = detrunc(ip, (u_long)0, IO_SYNC, cnp->cn_cred, p);
 	cache_purge(vp);
-
-	vn_lock(dvp, LK_EXCLUSIVE | LK_RETRY, p);
 out:
+	if (dvp)
+		vput(dvp);
+	vput(vp);
 	return (error);
 }
 
@@ -1548,7 +1570,7 @@ msdosfs_symlink(ap)
 		char *a_target;
 	} */ *ap;
 {
-	return (EOPNOTSUPP);
+	return (err_symlink(ap));
 }
 
 static int

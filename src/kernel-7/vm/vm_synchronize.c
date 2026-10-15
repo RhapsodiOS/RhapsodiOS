@@ -94,7 +94,7 @@ map_push_range(
 {
 	vm_map_entry_t	entry;
 	vm_object_t	object;
-	vm_offset_t	tend;
+	vm_offset_t	tstart, tend;
 	int		offset;
 	kern_return_t	rtn, realRtn = KERN_SUCCESS;
 
@@ -106,30 +106,27 @@ map_push_range(
 	     ; entry != vm_map_to_entry(map)
 	     ; entry = entry->vme_next)
 	{
-		if (entry->is_a_map || entry->is_sub_map) {
-			vm_map_t sub_map;
-			/*
-			 * Recurse over this sub-map.
-			 */
-			sub_map = entry->object.sub_map;
-			rtn = map_push_range(sub_map, start, end);
-			if (rtn == KERN_FAILURE)
-				realRtn = KERN_FAILURE;
-			continue;
-		}
-		if (entry->vme_start > end || entry->vme_end <= start)
+		if (entry->vme_start >= end || entry->vme_end <= start)
 			continue;
 
-		/*
-		 * Push the pages we can see in this object chain.
-		 */
-		object = entry->object.vm_object;
-		if (entry->vme_start > start)
-			start = entry->vme_start;
+		tstart = (entry->vme_start > start) ? entry->vme_start : start;
 		tend = (entry->vme_end > end) ? end : entry->vme_end;
-		offset = entry->offset + start - entry->vme_start;
-		rtn = object_push(object, offset, offset + tend - start);
-		if (rtn)
+		offset = entry->offset + tstart - entry->vme_start;
+		if (entry->is_a_map || entry->is_sub_map) {
+			/*
+			 * Recurse over this sub-map, at the addresses the
+			 * range has inside it.
+			 */
+			rtn = map_push_range(entry->object.sub_map,
+					offset, offset + tend - tstart);
+		} else {
+			/*
+			 * Push the pages we can see in this object chain.
+			 */
+			object = entry->object.vm_object;
+			rtn = object_push(object, offset, offset + tend - tstart);
+		}
+		if (rtn != KERN_SUCCESS)
 			realRtn = KERN_FAILURE;
 	}
 	vm_map_unlock(map);
@@ -165,6 +162,15 @@ vm_pageout_page(vm_object_t object, vm_page_t m)
 		return PAGEOUT_RERUN;
 	}
 	
+	/*
+	 *  Memory no pager has taken yet (fresh anonymous or copied pages)
+	 *  has nowhere to go; leave it as it is.
+	 */
+	if (pager == vm_pager_null) {
+		vm_page_unlock_queues();
+		return PAGEOUT_SUCCESS;
+	}
+
 	vm_object_paging_begin(object);
 	
 	m->busy = TRUE;
@@ -176,17 +182,11 @@ vm_pageout_page(vm_object_t object, vm_page_t m)
 	vm_stat.pageouts++;
 
 	vm_page_unlock_queues();
-	if (pager == vm_pager_null) {
-		vm_object_paging_end(object);
-		return PAGEOUT_ERROR;
-	}
 	vm_object_unlock(object);
 	
 	pageout_succeeded = PAGEOUT_ERROR;
-	if (pager != vm_pager_null) {
-		if (vm_pager_put(pager, m) == PAGER_SUCCESS) {
-			pageout_succeeded = PAGEOUT_SUCCESS;
-		}
+	if (vm_pager_put(pager, m) == PAGER_SUCCESS) {
+		pageout_succeeded = PAGEOUT_SUCCESS;
 	}
 
 	vm_object_lock(object);

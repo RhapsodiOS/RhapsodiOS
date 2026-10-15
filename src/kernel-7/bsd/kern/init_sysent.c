@@ -106,7 +106,7 @@ int	readlink();
 int	execve();
 int	umask();
 int	chroot();
-/* int	msync(); */
+int	msync();
 int	vfork();
 int	sbrk();
 int	sstk();
@@ -371,9 +371,7 @@ struct sysent sysent[] = {
 	compat(fstat,2),	/*  62 = old fstat */
 	syss(nosys,0),			/*  63 = used internally, reserved */
 	compat(getpagesize,0),	/*  64 = old getpagesize */
-//	syss(msync,5),			/*  65 = msync */
-#warning stubbed out msync
-	syss(nosys, 0),
+	syss(msync,2),			/*  65 = msync */
 	syss(vfork,0),			/*  66 = vfork */
 	syss(nosys,0),			/*  67 was obsolete vread */
 	syss(nosys,0),			/*  68 was obsolete vwrite */
@@ -494,8 +492,8 @@ struct sysent sysent[] = {
 	syss(nosys,0),			/* 174 was getdents */
 	syss(nosys,0),			/* 175 was gc_control */
 	syss(add_profil,4),		/* 176 = add_profil */
-	syss(nosys,0),			/* 177 */
-	syss(nosys,0),			/* 178 */
+	syss(mlock,2),			/* 177 = mlock */
+	syss(munlock,2),		/* 178 = munlock */
 	syss(nosys,0),			/* 179 */
 #if KDEBUG
 	syss(syscall_kdebug,0),		/* 180 */

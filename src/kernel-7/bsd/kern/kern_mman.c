@@ -86,6 +86,7 @@
 #import <kern/task.h>
 #import <mach/vm_param.h>
 #import <vm/vm_map.h>
+#import <vm/vm_page.h>
 #import <vm/vm_pager.h>
 #import <vm/vnode_pager.h>
 #import <kern/mapfs.h>
@@ -221,10 +222,24 @@ mmap(p, uap, retval)
 	 */
 	file_pos = (vm_offset_t)uap->pos;
 
-	/* Anonymous mapping not supported, for now. */
 	if (((flags & MAP_FIXED) && !page_aligned(user_addr)) ||
-				(user_size < 0) || (flags & MAP_ANON)) {
+				(user_size < 0)) {
 		return(EINVAL);
+	}
+
+	if (flags & MAP_ANON) {
+		/* zero-fill memory, as vm_allocate makes; the fd is ignored */
+		user_addr = trunc_page(user_addr);
+		user_size = round_page(user_size);
+		if (user_size == 0)
+			return(0);
+		user_map = current_task()->map;
+		result = vm_map_find(user_map, NULL, (vm_offset_t) 0,
+					&user_addr, user_size,
+					(flags & MAP_FIXED) == 0);
+		if (result != KERN_SUCCESS)
+			goto out;
+		goto mapped;
 	}
 
 	err = fdgetf(p, uap->fd, &fp);
@@ -384,13 +399,14 @@ mmap(p, uap, retval)
 		}
 	}
 
+mapped:
 	/*
 	 *	Our memory defaults to read-write.  If it shouldn't
-	 *	be readable, protect it.
+	 *	be writable, protect it.
 	 */
 	if ((prot & PROT_WRITE) == 0) {
 		result = vm_protect(user_map, user_addr, user_size,
-					FALSE, VM_PROT_READ);
+					FALSE, prot);
 		if (result != KERN_SUCCESS) {
 			(void) vm_deallocate(user_map, user_addr, user_size);
 			goto out;
@@ -415,7 +431,8 @@ mmap(p, uap, retval)
 		}
 	}
 
-	*fdflags(p, uap->fd) |= UF_MAPPED;
+	if ((flags & MAP_ANON) == 0)
+		*fdflags(p, uap->fd) |= UF_MAPPED;
 
 	if (result == KERN_SUCCESS)
 		*retval = (register_t)user_addr;
@@ -434,6 +451,28 @@ out:
 	}
 }
 
+/*
+ * Whether [addr, addr+size) is mapped without holes and every part
+ * allows prot.
+ */
+static boolean_t
+range_mapped(map, addr, size, prot)
+	vm_map_t	map;
+	vm_offset_t	addr;
+	vm_size_t	size;
+	vm_prot_t	prot;
+{
+	boolean_t	ok;
+
+	if (addr + size < addr)
+		return (FALSE);
+	vm_map_lock_read(map);
+	ok = vm_map_check_protection(map, addr, addr + size, prot);
+	vm_map_unlock_read(map);
+	return (ok);
+}
+
+
 struct msync_args {
 		caddr_t addr;
 		int len;
@@ -444,10 +483,23 @@ msync(p, uap, retval)
 	struct msync_args *uap;
 	register_t *retval;
 {
-	/* Not yet implemented */
-	return (EOPNOTSUPP);
-}
+	vm_offset_t	addr;
+	vm_size_t	size;
+	vm_map_t	user_map;
 
+	addr = (vm_offset_t)uap->addr;
+	if ((addr & page_mask) || uap->len < 0)
+		return (EINVAL);
+	size = round_page((vm_size_t)uap->len);
+	user_map = current_task()->map;
+	if (size == 0)
+		addr = 0;	/* a zero length pushes the whole address space */
+	else if (!range_mapped(user_map, addr, size, VM_PROT_NONE))
+		return (ENOMEM);
+	if (vm_synchronize(user_map, addr, size) != KERN_SUCCESS)
+		return (EIO);
+	return (0);
+}
 
 mremap()
 {
@@ -547,8 +599,10 @@ madvise(p, uap, retval)
 	struct madvise_args *uap;
 	register_t *retval;
 {
-	/* Not yet implemented */
-	return (EOPNOTSUPP);
+	/* advice only; every valid hint is accepted and ignored */
+	if (uap->behav < MADV_NORMAL || uap->behav > MADV_DONTNEED)
+		return (EINVAL);
+	return (0);
 }
 
 struct mincore_args {
@@ -563,8 +617,22 @@ mincore(p, uap, retval)
 	struct mincore_args *uap;
 	register_t *retval;
 {
-	/* Not yet implemented */
-	return (EOPNOTSUPP);
+	vm_offset_t	addr, end;
+	vm_map_t	user_map;
+	char		*vec;
+
+	addr = trunc_page((vm_offset_t)uap->addr);
+	if (uap->len < 0)
+		return (EINVAL);
+	end = round_page((vm_offset_t)uap->addr + uap->len);
+	user_map = current_task()->map;
+	if (end > addr && !range_mapped(user_map, addr, end - addr, VM_PROT_NONE))
+		return (ENOMEM);
+	/* a page counts as resident while this map has it entered */
+	for (vec = uap->vec; addr < end; addr += PAGE_SIZE, vec++)
+		if (subyte(vec, pmap_extract(vm_map_pmap(user_map), addr) != 0) < 0)
+			return (EFAULT);
+	return (0);
 }
 
 struct mlock_args {
@@ -577,8 +645,33 @@ mlock(p, uap, retval)
 	struct mlock_args *uap;
 	register_t *retval;
 {
-	/* Not yet implemented */
-	return (EOPNOTSUPP);
+	vm_offset_t	addr;
+	vm_size_t	size;
+	vm_map_t	user_map;
+	int		error;
+
+	addr = trunc_page((vm_offset_t)uap->addr);
+	size = round_page((vm_offset_t)uap->addr + uap->len) - addr;
+	if (size == 0)
+		return (0);
+	user_map = current_task()->map;
+	/* readable, since vm_fault_wire leaves a page it cannot fault in unwired */
+	if (!range_mapped(user_map, addr, size, VM_PROT_READ))
+		return (ENOMEM);
+	/* as 4.4BSD, keep two thirds of memory pageable */
+	if (atop(size) + vm_page_wire_count > atop(mem_size) / 3)
+		return (EAGAIN);
+	/* no per-process wired count to hold RLIMIT_MEMLOCK against, so root only */
+	if (error = suser(p->p_ucred, &p->p_acflag))
+		return (error);
+	switch (vm_map_pageable(user_map, addr, addr + size, FALSE)) {
+	case KERN_SUCCESS:
+		return (0);
+	case KERN_RESOURCE_SHORTAGE:
+		return (EAGAIN);
+	default:
+		return (ENOMEM);
+	}
 }
 
 struct munlock_args {
@@ -591,8 +684,29 @@ munlock(p, uap, retval)
 	struct munlock_args *uap;
 	register_t *retval;
 {
-	/* Not yet implemented */
-	return (EOPNOTSUPP);
+	vm_offset_t	addr;
+	vm_size_t	size;
+	vm_map_t	user_map;
+	int		error;
+
+	addr = trunc_page((vm_offset_t)uap->addr);
+	size = round_page((vm_offset_t)uap->addr + uap->len) - addr;
+	if (size == 0)
+		return (0);
+	user_map = current_task()->map;
+	if (!range_mapped(user_map, addr, size, VM_PROT_NONE))
+		return (ENOMEM);
+	/* no per-process wired count to hold RLIMIT_MEMLOCK against, so root only */
+	if (error = suser(p->p_ucred, &p->p_acflag))
+		return (error);
+	switch (vm_map_pageable(user_map, addr, addr + size, TRUE)) {
+	case KERN_SUCCESS:
+		return (0);
+	case KERN_RESOURCE_SHORTAGE:
+		return (EAGAIN);
+	default:
+		return (ENOMEM);
+	}
 }
 
 int

@@ -67,6 +67,7 @@
 #include "ext2fs_extern.h"
 #include "ext2_bitmap.h"
 #include <sys/syslog.h>
+#include <kern/mapfs.h>
 
 u_long ext2gennumber;
 
@@ -191,6 +192,15 @@ ext2fs_valloc(struct vop_valloc_args *ap)
 			ip->i_e2fs_mode, ip->i_e2fs_nlink, ip->i_number, fs->e2fs_fsmnt);
 		panic("ext2fs_valloc: dup alloc");
 	}
+
+	/*
+	 * ext2fs_inactive frees the inode before it recycles the vnode,
+	 * so the vnode can be the old file's, still hashed.  Drop its
+	 * vm_info: v_un would read as v_mountedhere once mkdir makes it VDIR.
+	 */
+	if ((*ap->a_vpp)->v_type == VREG)
+		vm_info_free(*ap->a_vpp);
+	(*ap->a_vpp)->v_type = VNON;
 
 	memset(ext2fs_dinode(ip), 0, sizeof(struct ext2fs_dinode));
 	memset(&ip->i_din, 0, sizeof(ip->i_din));

@@ -208,10 +208,14 @@ check-proc: $(PROCBIN) $(CHILDBIN)
 # fdpass is PASS or UNSUP; the -x run needs tcp, udp and unix to FAIL with an offset.
 check-net: $(NETBIN)
 	rc=0; $(NETBIN) -n 4 -i 50 -d /tmp >net/t.out || rc=$$?; test $$rc = 0
-	test `grep -c '^STRESS net \(tcp\|udp\|unix\|select\|accept\) PASS ' net/t.out` = 5
+	test `grep -c '^STRESS net \(tcp\|udp\|unix\|select\|accept\|storm\) PASS ' net/t.out` = 6
 	grep '^STRESS net fdpass \(PASS\|UNSUP\) ' net/t.out
 	rc=0; $(NETBIN) -x -i 5 -d /tmp tcp udp unix >net/t.out || rc=$$?; test $$rc = 1
 	test `grep -c '^STRESS net [a-z]* FAIL .*off=0x' net/t.out` = 3
+	rc=0; $(NETBIN) -x -i 2 -d /tmp storm >net/t.out || rc=$$?; test $$rc = 1
+	grep '^STRESS net storm FAIL .*off=0x' net/t.out
+	rc=0; $(NETBIN) flood >net/t.out || rc=$$?; test $$rc = 0
+	grep '^STRESS net flood UNSUP reason="needs STRESS_EXHAUST=1"' net/t.out
 	@echo net: ok
 
 # sysv must be UNSUP, the rest PASS or UNSUP; -x makes msg, ool and rights

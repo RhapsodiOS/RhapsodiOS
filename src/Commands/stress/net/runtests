@@ -13,7 +13,7 @@ done
 test $# = 1 || { echo "$usage" >&2; exit 2; }
 cd `dirname $0`; test -x ./stress-net || { echo runtests: no ./stress-net >&2; exit 2; }
 out=runtests.out.$$
-tests="tcp udp unix select accept fdpass"
+tests="tcp udp unix select accept fdpass storm"
 cycle=0
 rc=0
 : >$out

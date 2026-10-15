@@ -6,6 +6,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
+#include <sys/resource.h>
 #include <sys/time.h>
 #include <sys/uio.h>
 #include <sys/un.h>
@@ -919,6 +920,469 @@ t_fdpass(struct st_ctx *c)
 }
 #endif
 
+/* storm: 64 connects arrive in a burst at a listener whose backlog is 5 while
+ * the server is accepting. Even connections block in connect, odd ones
+ * use a non-blocking connect and select. Refused, timed out and reset
+ * connects are allowed; every connect that succeeded must be accepted and
+ * carry a 64 byte message each way. -x corrupts one message. */
+#define STORMN		64
+#define STORMMSG	64
+/* A SYN dropped on a full backlog is retransmitted in waves that back off
+ * (a few seconds, then 12 s, 24 s ...), each admitting only about backlog
+ * connects, so a burst can take tens of seconds. The connect itself gives
+ * up with ETIMEDOUT after 75 s; select must report that before STORMWAIT. */
+#define STORMWAIT	90
+
+struct stormres {
+	int count;	/* connections the client holds */
+	int err;	/* 0, an unexpected errno, or -1: select timed out */
+};
+
+static int
+storm_allowed(int e)
+{
+	return e == ECONNREFUSED || e == ETIMEDOUT || e == ECONNRESET;
+}
+
+static void
+storm_msg(unsigned char *m, long iter, int dir, int conn)
+{
+	put32(m, conn);
+	st_fill(m + 4, STORMMSG - 4, key3(iter * 2 + dir, conn), 0);
+}
+
+static void
+stormclient(long iter, unsigned short nport, int pfd)
+{
+	struct stormres res;
+	struct sockaddr_in sa;
+	struct linger lg;
+	struct timeval tv;
+	fd_set wr;
+	unsigned char m[STORMMSG];
+	int fd[STORMN], pend[STORMN];
+	int i, e, r, maxfd, npend = 0, sl;
+
+	res.count = res.err = 0;
+	local_addr(&sa, nport);
+	for (i = 0; i < STORMN; i++) {
+		fd[i] = -1;
+		pend[i] = 0;
+	}
+	for (i = 1; i < STORMN; i += 2) {
+		fd[i] = socket(AF_INET, SOCK_STREAM, 0);
+		if (fd[i] < 0) {
+			res.err = errno;
+			goto report;
+		}
+		fcntl(fd[i], F_SETFL, O_NONBLOCK);
+		if (connect(fd[i], (struct sockaddr *)&sa, sizeof sa) == 0)
+			continue;
+		if (errno == EINPROGRESS) {
+			pend[i] = 1;
+			npend++;
+			continue;
+		}
+		e = errno;
+		close(fd[i]);
+		fd[i] = -1;
+		if (!storm_allowed(e)) {
+			res.err = e;
+			goto report;
+		}
+	}
+	for (i = 0; i < STORMN; i += 2) {
+		fd[i] = socket(AF_INET, SOCK_STREAM, 0);
+		if (fd[i] < 0) {
+			res.err = errno;
+			goto report;
+		}
+		if (connect(fd[i], (struct sockaddr *)&sa, sizeof sa) < 0) {
+			e = errno;
+			close(fd[i]);
+			fd[i] = -1;
+			if (!storm_allowed(e)) {
+				res.err = e;
+				goto report;
+			}
+		}
+	}
+	while (npend > 0) {
+		FD_ZERO(&wr);
+		maxfd = 0;
+		for (i = 0; i < STORMN; i++)
+			if (pend[i]) {
+				FD_SET(fd[i], &wr);
+				if (fd[i] > maxfd)
+					maxfd = fd[i];
+			}
+		tv.tv_sec = STORMWAIT;
+		tv.tv_usec = 0;
+		r = select(maxfd + 1, NULL, &wr, NULL, &tv);
+		if (r < 0 && errno == EINTR)
+			continue;
+		if (r <= 0) {
+			res.err = r < 0 ? errno : -1;
+			goto report;
+		}
+		for (i = 0; i < STORMN; i++) {
+			if (!pend[i] || !FD_ISSET(fd[i], &wr))
+				continue;
+			pend[i] = 0;
+			npend--;
+			e = 0;
+			sl = sizeof e;
+			if (getsockopt(fd[i], SOL_SOCKET, SO_ERROR, &e, &sl) < 0)
+				e = errno;
+			if (e == 0)
+				continue;
+			close(fd[i]);
+			fd[i] = -1;
+			if (!storm_allowed(e)) {
+				res.err = e;
+				goto report;
+			}
+		}
+	}
+	lg.l_onoff = 1;
+	lg.l_linger = 0;
+	for (i = 0; i < STORMN; i++)
+		if (fd[i] >= 0) {
+			res.count++;
+			fcntl(fd[i], F_SETFL, 0);
+			setsockopt(fd[i], SOL_SOCKET, SO_LINGER, &lg, sizeof lg);
+		}
+report:
+	if (write(pfd, &res, sizeof res) != sizeof res || res.err != 0)
+		_exit(1);
+	for (i = 0; i < STORMN; i++)
+		if (fd[i] >= 0) {
+			storm_msg(m, iter, 0, i);
+			if (writeall(fd[i], m, STORMMSG) < 0)
+				_exit(1);
+		}
+	for (i = 0; i < STORMN; i++)
+		if (fd[i] >= 0) {
+			if (readfull(fd[i], m, STORMMSG) != 0)
+				_exit(1);
+			if (get32(m) != (unsigned long)i ||
+			    st_check(m + 4, STORMMSG - 4, key3(iter * 2 + 1, i), 0) >= 0)
+				_exit(3);
+		}
+	_exit(0);
+}
+
+static void
+t_storm(struct st_ctx *c)
+{
+	struct sockaddr_in sa;
+	struct stormres res;
+	struct timeval tv, t0, now;
+	unsigned char m[STORMMSG], seen[STORMN];
+	fd_set rd;
+	pid_t kid;
+	unsigned short nport;
+	long i, badi, left, bad;
+	int ls, pp[2], acc[STORMN], na, k, r, a, have, maxfd, conn, sl;
+
+	g_kids = &kid;
+	badi = st_range(&c->rng, 0, c->iters - 1);
+	for (i = 0; st_more(c, i); i++) {
+		st_op_begin(c);
+		ls = socket(AF_INET, SOCK_STREAM, 0);
+		if (ls < 0)
+			efail(c, "socket");
+		local_addr(&sa, 0);
+		sl = sizeof sa;
+		if (bind(ls, (struct sockaddr *)&sa, sizeof sa) < 0)
+			efail(c, "bind");
+		if (getsockname(ls, (struct sockaddr *)&sa, &sl) < 0)
+			efail(c, "getsockname");
+		nport = sa.sin_port;
+		if (listen(ls, 5) < 0)
+			efail(c, "listen");
+		fcntl(ls, F_SETFL, O_NONBLOCK);
+		if (pipe(pp) < 0)
+			efail(c, "pipe");
+		kid = fork();
+		if (kid < 0)
+			efail(c, "fork");
+		if (kid == 0) {
+			close(ls);
+			close(pp[0]);
+			stormclient(i, nport, pp[1]);
+		}
+		g_nk = 1;
+		close(pp[1]);
+		gettimeofday(&t0, NULL);
+		na = have = 0;
+		for (;;) {
+			if (have && na >= res.count)
+				break;
+			gettimeofday(&now, NULL);
+			left = STORMWAIT * 1000L + 30000L - ((now.tv_sec - t0.tv_sec) * 1000L + (now.tv_usec - t0.tv_usec) / 1000L);
+			if (left <= 0)
+				nfail(c, "reason=timeout accepted=%d want=%d", na, have ? res.count : -1);
+			FD_ZERO(&rd);
+			FD_SET(ls, &rd);
+			maxfd = ls;
+			if (!have) {
+				FD_SET(pp[0], &rd);
+				if (pp[0] > maxfd)
+					maxfd = pp[0];
+			}
+			tv.tv_sec = left / 1000;
+			tv.tv_usec = (left % 1000) * 1000;
+			r = select(maxfd + 1, &rd, NULL, NULL, &tv);
+			if (r < 0 && errno == EINTR)
+				continue;
+			if (r < 0)
+				efail(c, "select");
+			if (FD_ISSET(ls, &rd)) {
+				a = accept(ls, NULL, NULL);
+				if (a >= 0) {
+					if (na >= STORMN)
+						nfail(c, "reason=extra-accept");
+					fcntl(a, F_SETFL, 0);
+					acc[na++] = a;
+				} else if (errno != EINTR && errno != EWOULDBLOCK && errno != ECONNABORTED)
+					efail(c, "accept");
+			}
+			if (!have && FD_ISSET(pp[0], &rd)) {
+				r = read(pp[0], &res, sizeof res);
+				if (r < 0 && errno == EINTR)
+					continue;
+				if (r != sizeof res)
+					nfail(c, "reason=peer-died accepted=%d", na);
+				have = 1;
+				if (res.err == -1)
+					nfail(c, "reason=\"connect select timed out\" accepted=%d", na);
+				if (res.err != 0)
+					nfail(c, "reason=\"client: %s\" accepted=%d", st_errname(res.err), na);
+			}
+		}
+		if (na != res.count)
+			nfail(c, "reason=count accepted=%d connected=%d", na, res.count);
+		memset(seen, 0, sizeof seen);
+		for (k = 0; k < na; k++) {
+			r = readfull(acc[k], m, STORMMSG);
+			if (r < 0)
+				efail(c, "read");
+			if (r > 0)
+				nfail(c, "reason=short conn=%d", k);
+			conn = get32(m);
+			if (conn >= STORMN || seen[conn])
+				nfail(c, "reason=badconn conn=%d", conn);
+			seen[conn] = 1;
+			if (c->selfcheck && i == badi && k == 0)
+				m[10] ^= 1;
+			bad = st_check(m + 4, STORMMSG - 4, key3(i * 2, conn), 0);
+			if (bad >= 0)
+				dfail(c, "storm", m + 4, STORMMSG - 4, key3(i * 2, conn), 0, bad);
+			storm_msg(m, i, 1, conn);
+			if (writeall(acc[k], m, STORMMSG) < 0)
+				efail(c, "write");
+		}
+		waitkid(c, 0);
+		g_nk = 0;
+		for (k = 0; k < na; k++)
+			close(acc[k]);
+		close(ls);
+		close(pp[0]);
+		st_op_end(c, na);
+	}
+}
+
+/* flood: opt-in (STRESS_EXHAUST=1). Opens unix and TCP pairs until the
+ * kernel or the process runs out, fills every writer until it would block
+ * or has its share of FLOODFILL bytes, drains and checks every reader,
+ * closes everything, and then a fresh TCP pair must still carry 64 KB. Only
+ * the errnos of running out are allowed. The fill is budgeted because
+ * sosend waits for mbufs even on a non-blocking socket: filling every
+ * buffer to the brim on thousands of pairs uses up the cluster pool and
+ * sleeps forever, taking the whole machine (sshd included) with it. */
+#define FLOODMAX	4096
+#define FLOODFILL	(1024L * 1024)
+#define FLOODSMALL	100	/* per pair when there are too many for a cluster each */
+#define FLOODBYTES	65536
+
+static int fl_w[FLOODMAX], fl_r[FLOODMAX];
+static unsigned long fl_n[FLOODMAX];
+
+static int
+flood_probe(char *why, int len)
+{
+	const char *e = getenv("STRESS_EXHAUST");
+
+	if (e == NULL || strcmp(e, "1") != 0) {
+		sprintf(why, "needs STRESS_EXHAUST=1");
+		return 1;
+	}
+	return 0;
+}
+
+static int
+flood_out(int e)
+{
+	return e == EMFILE || e == ENFILE || e == ENOBUFS || e == ENOMEM ||
+	       e == EADDRNOTAVAIL || e == ECONNREFUSED || e == ETIMEDOUT;
+}
+
+static int
+flood_wouldblock(int e)
+{
+	return e == EWOULDBLOCK || e == ENOBUFS;
+}
+
+/* A TCP pair through ls: w connected, r accepted; 0, or -1 with errno. */
+static int
+tcp_pair(int ls, unsigned short nport, int *w, int *r)
+{
+	int e;
+
+	*w = connect_local(nport);
+	if (*w < 0)
+		return -1;
+	while ((*r = accept(ls, NULL, NULL)) < 0 && errno == EINTR)
+		;
+	if (*r < 0) {
+		e = errno;
+		close(*w);
+		errno = e;
+		return -1;
+	}
+	return 0;
+}
+
+static void
+t_flood(struct st_ctx *c)
+{
+	static unsigned char buf[CHUNK];
+	struct rlimit rl;
+	struct linger lg;
+	unsigned long total = 0, off, key;
+	unsigned short nport;
+	long bad, idle, cap;
+	int ls, sv[2], np, i, w, r, e, n;
+
+	getrlimit(RLIMIT_NOFILE, &rl);
+	rl.rlim_cur = rl.rlim_max;
+	setrlimit(RLIMIT_NOFILE, &rl);
+	ls = listen_local(c, &nport);
+	st_op_begin(c);
+	for (np = 0; np < FLOODMAX; np++) {
+		if (np % 2 == 0) {
+			if (socketpair(AF_UNIX, SOCK_STREAM, 0, sv) < 0)
+				break;
+			w = sv[0];
+			r = sv[1];
+		} else if (tcp_pair(ls, nport, &w, &r) < 0)
+			break;
+		fl_w[np] = w;
+		fl_r[np] = r;
+	}
+	if (np < FLOODMAX && !flood_out(errno))
+		efail(c, "pair");
+	cap = np > 1000 ? FLOODSMALL : FLOODFILL / (np + 1);
+	for (i = 0; i < np; i++) {
+		key = key3(i, 0);
+		fcntl(fl_w[i], F_SETFL, O_NONBLOCK);
+		fcntl(fl_r[i], F_SETFL, O_NONBLOCK);
+		while (fl_n[i] < cap) {
+			n = cap - fl_n[i] < CHUNK ? cap - fl_n[i] : CHUNK;
+			st_fill(buf, n, key, fl_n[i]);
+			n = write(fl_w[i], buf, n);
+			if (n > 0) {
+				fl_n[i] += n;
+				continue;
+			}
+			if (n < 0 && errno == EINTR)
+				continue;
+			if (n < 0 && flood_wouldblock(errno))
+				break;
+			efail(c, "write");
+		}
+		total += fl_n[i];
+	}
+	for (i = 0; i < np; i++) {
+		key = key3(i, 0);
+		idle = 0;
+		for (off = 0; off < fl_n[i]; ) {
+			n = read(fl_r[i], buf, fl_n[i] - off < CHUNK ? fl_n[i] - off : CHUNK);
+			if (n < 0 && errno == EINTR)
+				continue;
+			if (n < 0 && errno == EWOULDBLOCK) {
+				/* bytes still in flight or waiting for a window update */
+				if (++idle > 2000)
+					nfail(c, "reason=lost pair=%d got=%lu want=%lu", i, off, fl_n[i]);
+				usleep(10000);
+				continue;
+			}
+			if (n < 0)
+				efail(c, "read");
+			if (n == 0)
+				nfail(c, "reason=short pair=%d got=%lu want=%lu", i, off, fl_n[i]);
+			idle = 0;
+			bad = st_check(buf, n, key, off);
+			if (bad >= 0)
+				dfail(c, "flood", buf, n, key, off, bad);
+			off += n;
+		}
+	}
+	lg.l_onoff = 1;
+	lg.l_linger = 0;
+	for (i = 0; i < np; i++) {
+		if (i % 2 == 1) {
+			setsockopt(fl_w[i], SOL_SOCKET, SO_LINGER, &lg, sizeof lg);
+			setsockopt(fl_r[i], SOL_SOCKET, SO_LINGER, &lg, sizeof lg);
+		}
+		close(fl_w[i]);
+		close(fl_r[i]);
+	}
+	st_op_end(c, np);
+	fprintf(stderr, "stress: net flood pairs=%d bytes=%lu\n", np, total);
+
+	/* recovery: a fresh TCP pair carries 64 KB, interleaved so neither side blocks */
+	if (tcp_pair(ls, nport, &w, &r) < 0)
+		efail(c, "connect");
+	fcntl(w, F_SETFL, O_NONBLOCK);
+	fcntl(r, F_SETFL, O_NONBLOCK);
+	key = key3(FLOODMAX, 1);
+	total = off = 0;
+	idle = 0;
+	while (off < FLOODBYTES) {
+		n = 0;
+		if (total < FLOODBYTES) {
+			st_fill(buf, CHUNK, key, total);
+			n = write(w, buf, FLOODBYTES - total < CHUNK ? FLOODBYTES - total : CHUNK);
+			if (n > 0)
+				total += n;
+			else if (n < 0 && errno != EINTR && !flood_wouldblock(errno))
+				efail(c, "write");
+		}
+		e = read(r, buf, CHUNK);
+		if (e > 0) {
+			bad = st_check(buf, e, key, off);
+			if (bad >= 0)
+				dfail(c, "recover", buf, e, key, off, bad);
+			off += e;
+			n = e;
+		} else if (e == 0)
+			nfail(c, "reason=short-recover got=%lu", off);
+		else if (errno != EINTR && errno != EWOULDBLOCK)
+			efail(c, "read");
+		if (n > 0)
+			idle = 0;
+		else if (++idle > 20000)
+			nfail(c, "reason=stuck-recover got=%lu sent=%lu", off, total);
+		else
+			usleep(1000);
+	}
+	close(w);
+	close(r);
+	close(ls);
+}
+
 static const struct st_test tests[] = {
 	{ "tcp", 3, 1, NULL, t_tcp },
 	{ "udp", 5000, 0, NULL, t_udp },
@@ -926,6 +1390,8 @@ static const struct st_test tests[] = {
 	{ "select", 500, 1, NULL, t_select },
 	{ "accept", 2000, 0, NULL, t_accept },
 	{ "fdpass", 200, 0, fdpass_probe, t_fdpass },
+	{ "storm", 20, 1, NULL, t_storm },
+	{ "flood", 1, 1, flood_probe, t_flood, 1 },
 	{ NULL, 0, 0, NULL, NULL }
 };
 

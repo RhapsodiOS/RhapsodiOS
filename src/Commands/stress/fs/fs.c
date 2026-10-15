@@ -1085,6 +1085,45 @@ verify_link(struct st_ctx *c)
 		failf(c, "reason=names got=%d want=%d", x, nn + nls);
 }
 
+/* UNSUP where the file system under -d has no hard links or symlinks
+ * (msdosfs, HFS); any other error leaves it to the test. */
+static int
+p_link(char *why, int len)
+{
+	char d[400], f[420], l[420];
+	const char *call = NULL;
+	int fd, e = 0;
+
+	if (strlen(st_opt.dir) + 40 > sizeof d)
+		return 0;
+	sprintf(d, "%s/stress.fs.lprobe.%ld", st_opt.dir, (long)getpid());
+	rmrf(d);
+	if (mkdir(d, 0700) < 0)
+		return 0;
+	sprintf(f, "%s/f", d);
+	fd = open(f, O_CREAT | O_WRONLY, 0600);
+	if (fd >= 0) {
+		close(fd);
+		sprintf(l, "%s/l", d);
+		if (link(f, l) < 0) {
+			call = "link";
+			e = errno;
+		} else {
+			sprintf(l, "%s/s", d);
+			if (symlink(f, l) < 0) {
+				call = "symlink";
+				e = errno;
+			}
+		}
+	}
+	rmrf(d);
+	/* EPERM counts only for link(): some file systems use it for "not supported" */
+	if (call == NULL || (e != EOPNOTSUPP && e != ENOSYS && (e != EPERM || call[0] != 'l')))
+		return 0;
+	sprintf(why, "%s: %s", call, st_errname(e));
+	return 1;
+}
+
 static void
 t_link(struct st_ctx *c)
 {
@@ -1180,7 +1219,7 @@ static const struct st_test tests[] = {
 	{ "tree",   500,  0, NULL, t_tree },
 	{ "fsync",  200,  0, NULL, t_fsync },
 	{ "rename", 500,  0, NULL, t_rename },
-	{ "link",   500,  0, NULL, t_link },
+	{ "link",   500,  0, p_link, t_link },
 	{ "fill",   2,    1, NULL, t_fill, 1 },
 	{ NULL }
 };

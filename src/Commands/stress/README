@@ -46,7 +46,8 @@ Usage
     177/178 where Libc lacks mlock/munlock; it squeezes physical memory, so
     vm/runtests leaves it out of the all-at-once phase (with pressure it
     thrashes a 128 MB guest past the watchdog).  The fs rename and link tests
-    churn names in a tree shared by the workers; misc eintr has signals
+    churn names in a tree shared by the workers; fs link is UNSUP where the
+    file system has no hard links or symlinks; misc eintr has signals
     interrupt blocking calls, and FAILs (reason=no-eintr) if read, waitpid or
     flock never returned EINTR without SA_RESTART.
     -T secs ends a test normally (PASS) once secs have passed; -t is the watchdog.

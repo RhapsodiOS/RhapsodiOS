@@ -1,17 +1,25 @@
-# Native i386 Samurai kernel builds
+# Samurai kernel builds
 
 From `src/kernel-7`, run:
 
 ```sh
 samu -f build.ninja
 samu -f build-debug.ninja
+samu -f build-ppc.ninja
+samu -f build-ppc-debug.ninja
 ```
 
-These build `RELEASE_I386` and `DEBUG_I386`, respectively. Outputs are
+These select `RELEASE_I386`, `DEBUG_I386`, `RELEASE_PPC`, and `DEBUG_PPC`.
+Outputs are
 `BUILD.ninja/<configuration>/mach_kernel` and the unstripped
-`mach_kernel.sys`. Both configurations use their historical options,
-including `-g -O3 -fno-omit-frame-pointer`. DEBUG additionally enables its
+`mach_kernel.sys`. Both i386 configurations use their historical options,
+including `-g -O3 -fno-omit-frame-pointer`. DEBUG_I386 additionally enables its
 diagnostic options and links `libDriver_kern_g.o`.
+
+PPC preserves its historical `-g -O2 -mcpu=604` settings. Both PPC
+configurations define DEBUG and use `libDriver_kern.o`; DEBUG_PPC adds
+`ddm.o` and `xpr.o`. PPC links entry `start`, text at 0x5000, and vectors
+at zero. These choices come from the generated historical Makefiles.
 
 ## Prerequisites
 
@@ -35,10 +43,20 @@ untyped backends installed. The kernel requires these link inputs:
 /usr/local/lib/libDriver_kern_g.o
 /usr/local/lib/libkobjc.o
 /usr/local/lib/pexperti386.o
+/usr/local/lib/pexpertpowermac.o
 /usr/lib/libcc.a
 ```
 
-Use the existing project build systems to supply those dependencies. The
+Install the libraries for the selected architecture. An i386 Rhapsody host
+can build PPC with its historical cross backends, including
+`/usr/libexec/ppc/2.7.2.1/cpp`; PPC MIG commands explicitly select `-arch ppc`.
+Both PPC configurations require `pexpertpowermac.o` and a PPC `libcc.a`.
+Run historical `ranlib` after staging `libcc.a` if the linker reports an
+out-of-date archive index.
+
+Use the existing project build systems to supply those dependencies.
+Build the platform experts from `src/drivers-i386/bus/drvPExpert/i386`
+and `src/drivers-ppc/bus/drvPExpert/powermac`, respectively. The
 DriverKit default installation may omit the debug object. From
 `src/driverkit-3/libDriver`, its existing target is:
 
@@ -67,10 +85,10 @@ stops the build before compilation. After editing MASTER, files, or a
 historical template, update the appropriate manifests to agree with the
 generated reference and run the configuration comparison tests.
 
-`MASTER.local`, `MASTER.i386.local`, and `files.NEXT` overrides are rejected.
-These entry points support the checked-in release/debug i386 configurations.
-Kernel installation, packaging, and other architectures use their existing
-build systems.
+`MASTER.local`, the selected architecture's `MASTER.<arch>.local`, and
+`files.NEXT` overrides are rejected. The four entry points support the
+checked-in RELEASE/DEBUG i386 and PPC configurations. Kernel installation,
+packaging, and other configurations use their existing build systems.
 
 Compiler dependencies come from native `-MD` output. MIG include
 dependencies come from native `cc -M` preprocessing with the corresponding
@@ -97,6 +115,9 @@ samu -f build.ninja -t commands BUILD.ninja/RELEASE_I386/mach_kernel
 /bin/sh ninja/tests/build.sh acceptance /tmp/kernel-acceptance
 /bin/sh ninja/tests/build.sh recovery /tmp/kernel-recovery
 /bin/sh ninja/tests/logging.sh safe /tmp/kernel-logging
+/bin/sh ninja/tests/ppc.sh compare /tmp/kernel-ppc-compare
+/bin/sh ninja/tests/ppc.sh build /tmp/kernel-ppc-build
+/bin/sh ninja/tests/ppc.sh incremental /tmp/kernel-ppc-incremental
 ```
 
 The acceptance suite uses one scratch tree for concurrent clean builds,
@@ -105,6 +126,9 @@ link-recipe invalidation, and configuration cleanup isolation.
 The recovery suite copies the source tree and existing build outputs, then
 checks failed assembly generation, version write errors, interrupted
 version generation, and successful retries for both configurations.
+
+The PPC incremental suite checks both configurations for source/header/MIG
+dependency rebuilds, failed MIG recovery, idle builds, and cleanup isolation.
 
 The configuration and build suites copy the kernel tree and existing outputs
 into its scratch directory before running tools. The invoking checkout is
@@ -131,4 +155,5 @@ expected to fail on the affected native kernel.
 Each test scratch directory must be absolute and initially absent. The
 local-override check runs on every build; an unchanged build performs no
 kernel-producing work. Release and debug may run concurrently. See
-`docs/build/kernel-samurai-validation.md` for the measured acceptance record.
+`docs/build/kernel-samurai-validation.md` and
+`docs/build/kernel-samurai-ppc-validation.md` for the measured acceptance records.

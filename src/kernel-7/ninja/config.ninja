@@ -1,41 +1,8 @@
-build $outdir/prepared $
-  $outdir/bpfilter.h $outdir/ccitt.h $outdir/cd9660.h $outdir/compat_43.h $
-  $outdir/confdep.h $outdir/cpus.h $outdir/cputypes.h $outdir/debug.h $
-  $outdir/diagnostic.h $outdir/driverkit.h $outdir/eon.h $outdir/ether.h $
-  $outdir/event.h $outdir/eventmeter.h $outdir/ext2fs.h $outdir/fdesc.h $
-  $outdir/ffs.h $outdir/fifo.h $outdir/gateway.h $outdir/gdb.h $
-  $outdir/hdlc.h $outdir/hfs.h $outdir/hw_ast.h $outdir/hw_footprint.h $
-  $outdir/iplmeas.h $outdir/iso.h $outdir/kdebug.h $outdir/kernel_stack.h $
-  $outdir/kernfs.h $outdir/kernobjc.h $outdir/kernremote.h $outdir/kernserv.h $
-  $outdir/ktrace.h $outdir/lfs.h $outdir/llc.h $outdir/loop.h $
-  $outdir/mach_assert.h $outdir/mach_compat.h $outdir/mach_counters.h $
-  $outdir/mach_debug.h $outdir/mach_fastlink.h $outdir/mach_fixpri.h $
-  $outdir/mach_host.h $outdir/mach_ipc_compat.h $outdir/mach_ipc_debug.h $
-  $outdir/mach_ipc_test.h $outdir/mach_kdb.h $outdir/mach_ldebug.h $
-  $outdir/mach_load.h $outdir/mach_machine_routines.h $outdir/mach_nbc.h $
-  $outdir/mach_net.h $outdir/mach_np.h $outdir/mach_old_vm_copy.h $
-  $outdir/mach_pagemap.h $outdir/mach_sctimes.h $outdir/mach_vm_debug.h $
-  $outdir/mach_xp.h $outdir/mach_xp_fpd.h $outdir/mallocdebug.h $
-  $outdir/meta_features.h $outdir/mfs.h $outdir/mrouting.h $outdir/msdos.h $
-  $outdir/multicast.h $outdir/netat.h $outdir/new_vm_code.h $
-  $outdir/nfsclient.h $outdir/nfsserver.h $outdir/norma_device.h $
-  $outdir/norma_ether.h $outdir/norma_ipc.h $outdir/norma_task.h $
-  $outdir/norma_vm.h $outdir/ns.h $outdir/nullfs.h $outdir/old_vm_code.h $
-  $outdir/pc_support.h $outdir/portal.h $outdir/ppp.h $outdir/procfs.h $
-  $outdir/pty.h $outdir/quota.h $outdir/rev_endian_fs.h $outdir/routing.h $
-  $outdir/show_space.h $outdir/simple_clock.h $outdir/sl.h $outdir/stat_time.h $
-  $outdir/tpip.h $outdir/tuba.h $outdir/tun.h $outdir/umapfs.h $
-  $outdir/union.h $outdir/uxpr.h $outdir/vnd.h $outdir/vol.h $outdir/xpr_debug.h $
-  $outdir/Makefile $outdir/ioconf.c: configure $
-  conf/MASTER conf/MASTER.i386 conf/files conf/files.i386 $
-  conf/Makefile.template conf/Makefile.i386 conf/tools/doconf/doconf.csh $
-  ninja/configure.sh ninja/config.ninja || $outdir/local_check
-
 build configured: phony $outdir/prepared
 
 build $outdir/local_check: check_local always_check
 
 build $outdir/validated: validate $outdir/Makefile $
-  $manifest ninja/common.ninja ninja/i386.ninja ninja/release.ninja ninja/debug.ninja $
-  ninja/config.ninja ninja/sources.ninja ninja/libc.ninja ninja/mig.ninja ninja/kernel.ninja $
+  $manifest ninja/common.ninja $architecture_manifest $release_manifest $debug_manifest $
+  ninja/config.ninja $configuration_outputs $sources_manifest $libc_manifest ninja/mig.ninja ninja/kernel.ninja $
   ninja/check-config.sh ninja/check-config.awk

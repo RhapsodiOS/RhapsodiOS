@@ -1,3 +1,13 @@
+arch = i386
+architecture_manifest = ninja/i386.ninja
+release_manifest = ninja/release.ninja
+debug_manifest = ninja/debug.ninja
+sources_manifest = ninja/sources.ninja
+libc_manifest = ninja/libc.ninja
+pexpert_library = pexperti386.o
+ldflags = -e _start -segaddr __TEXT 00100000 -segaddr __LINKEDIT 00780000 -segalign 0x1000 -force_cpusubtype_ALL -u __muldi3
+configuration_outputs = ninja/i386-config.ninja
+include ninja/i386-config.ninja
 include ninja/config.ninja
 
 kcc = cc -static -nostdinc -nostdlib -traditional-cpp

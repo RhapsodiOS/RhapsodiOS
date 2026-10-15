@@ -1,9 +1,9 @@
 rule check_local
-  command = /bin/sh ninja/configure.sh check $config BUILD.ninja
+  command = /bin/sh ninja/configure.sh check $config BUILD.ninja $arch
   description = CHECK local configuration ($config)
 
 rule configure
-  command = /bin/sh ninja/configure.sh prepare $config BUILD.ninja $out
+  command = /bin/sh ninja/configure.sh prepare $config BUILD.ninja $arch $out
   description = CONFIG $config
   depfile = $outdir/configure.d
   deps = gcc
@@ -17,13 +17,13 @@ rule cc
   deps = gcc
 
 rule assym
-  command = cd $outdir && rm -f assym.stamp assym.h && $kcc -S $cflags -arch i386 ../../machdep/i386/genassym.c -o genassym.s && awk -f ../../machdep/i386/genassym.awk genassym.s > assym.h && awk -v target=$outdir/assym.h -v base=$outdir -f ../../ninja/depfile.awk genassym.d > assym.nd && touch assym.stamp
+  command = cd $outdir && rm -f assym.stamp assym.h && $kcc -S $cflags $genassym_flags -arch $arch ../../machdep/$arch/genassym.c -o genassym.s && awk -f ../../machdep/$arch/genassym.awk genassym.s > assym.h && awk -v target=$outdir/assym.h -v base=$outdir -f ../../ninja/depfile.awk genassym.d > assym.nd && touch assym.stamp
   description = ASSYM $out
   depfile = $outdir/assym.nd
   deps = gcc
 
 rule mig
-  command = /bin/sh ninja/mig.sh $mode $outdir
+  command = /bin/sh ninja/mig.sh $mode $outdir $arch
   description = MIG $mode ($config)
   depfile = $migdep
   deps = gcc
@@ -33,5 +33,5 @@ rule copy
   description = COPY $out
 
 rule validate
-  command = /bin/sh ninja/check-config.sh $config $outdir $manifest
+  command = /bin/sh ninja/check-config.sh $config $outdir $manifest $arch
   description = VALIDATE $config

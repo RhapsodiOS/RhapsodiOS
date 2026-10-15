@@ -1,8 +1,7 @@
 library_dir = $next_root/usr/local/lib
 driver_object = $library_dir/$driver_library
 objc_object = $library_dir/libkobjc.o
-pexpert_object = $library_dir/pexperti386.o
-ldflags = -e _start -segaddr __TEXT 00100000 -segaddr __LINKEDIT 00780000 -segalign 0x1000 -force_cpusubtype_ALL -u __muldi3
+pexpert_object = $library_dir/$pexpert_library
 link_objects = $libc_objects $kernel_objects $outdir/subr_prof.o $outdir/ioconf.o $driver_object $objc_object $pexpert_object $mach_user_objects $outdir/vers.o
 
 rule version
@@ -26,7 +25,7 @@ build $outdir/vers.c $outdir/vers.suffix | $outdir/version.stamp: version object
   $driver_object $objc_object $pexpert_object /usr/lib/libcc.a $
   conf/version.major conf/version.minor conf/version.variant $
   conf/tools/newvers/newvers.csh ninja/kernel.ninja ninja/common.ninja $
-  ninja/i386.ninja ninja/release.ninja ninja/debug.ninja
+  $architecture_manifest $release_manifest $debug_manifest
 build $outdir/vers.o: version_cc $outdir/vers.c || $outdir/prepared $outdir/validated
 build $outdir/mach_kernel.sys: link_kernel objects $outdir/vers.o $
   $driver_object $objc_object $pexpert_object /usr/lib/libcc.a | ninja/kernel.ninja

@@ -2,6 +2,8 @@
 set -eu
 mode=$1
 out=$2
+arch=${3-i386}
+case "$arch" in i386|ppc) ;; *) echo "unsupported architecture: $arch" >&2; exit 1 ;; esac
 src=`pwd`
 case "$mode" in
 mach|host|exc|port|memory|default) dir=mach ;;
@@ -13,6 +15,7 @@ esac
 mkdir -p "$out/$dir"
 cd "$out/$dir"
 common="-MD -I. -I.. -I$src -DKERNEL"
+test "$arch" != ppc || common="-arch ppc $common"
 rm -f "$mode.stamp" "$mode.raw"
 run()
 {
@@ -31,7 +34,7 @@ run()
         *) source=$arg ;;
         esac
     done
-    cc -M -x c -traditional-cpp "-DTYPED='T'" "-DUNTYPED='U'" $typed $cppflags "$source" >> "$mode.raw"
+    cc -M -arch "$arch" -x c -traditional-cpp "-DTYPED='T'" "-DUNTYPED='U'" $typed $cppflags "$source" >> "$mode.raw"
     mig "$@"
 }
 case "$mode" in
@@ -53,7 +56,7 @@ default) run -typed $common -DKERNEL_USER -DSEQNOS -header memory_object_default
 debug) run -untyped $common -DKERNEL_SERVER -header mach_debug.h -user /dev/null -server mach_debug_server.c "$src/mach_debug/mach_debug.defs" ;;
 kern) run $common -header kern_server.h -sheader kern_server_handler.h -user /dev/null -handler kern_server_handler.c "$src/kernserv/kern_server.defs" ;;
 reply) run $common -header kern_server_reply.h -user kern_server_reply_user.c -server /dev/null "$src/kernserv/kern_server_reply.defs" ;;
-driver) run -typed $common -arch i386 -DKERNEL_SERVER -header /dev/null -user /dev/null -server driverServerServer.c driverServer.defs ;;
+driver) run -typed $common -arch "$arch" -DKERNEL_SERVER -header /dev/null -user /dev/null -server driverServerServer.c driverServer.defs ;;
 esac
 case "$mode" in
 mach) target=$out/mach/mach_interface.h ;;

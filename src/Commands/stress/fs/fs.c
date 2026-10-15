@@ -896,6 +896,7 @@ t_rename(struct st_ctx *c)
 	int op, x, y, d;
 
 	mkdirs(c, "rename");
+	own[0] = '\0';		/* a FAIL must not remove the tree while others use it */
 	for (i = 0; st_more(c, i); i++) {
 		st_op_begin(c);
 		op = st_range(&c->rng, 0, 9);
@@ -979,7 +980,8 @@ t_rename(struct st_ctx *c)
 	markdone(c);
 	if (c->idx == 0) {
 		waitdone(c, NULL);
-		if (c->selfcheck) {		/* nobody else is running: corrupt one file */
+		strcpy(own, base);		/* nobody else is running: remove it */
+		if (c->selfcheck) {		/* corrupt one file */
 			unsigned char ch;
 
 			if (nrf == 0)
@@ -1093,6 +1095,7 @@ t_link(struct st_ctx *c)
 	int op, x, y, nn;
 
 	mkdirs(c, "link");
+	own[0] = '\0';		/* a FAIL must not remove the tree while others use it */
 	for (i = 0; st_more(c, i); i++) {
 		st_op_begin(c);
 		op = st_range(&c->rng, 0, 9);
@@ -1160,6 +1163,7 @@ t_link(struct st_ctx *c)
 	markdone(c);
 	if (c->idx == 0) {
 		waitdone(c, NULL);
+		strcpy(own, base);
 		if (c->selfcheck) {
 			if (nlf == 0)
 				lnew(c, &n, &ser);

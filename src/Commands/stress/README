@@ -46,6 +46,8 @@ Usage
     churn names in a tree shared by the workers; misc eintr has signals
     interrupt blocking calls.
     -T secs ends a test normally (PASS) once secs have passed; -t is the watchdog.
+    -T does not bound ipc msg/ool or net select: their two processes run a
+    shared count, so stopping one end early would fail the other.
 
 Result lines
     STRESS <cat> <test> PASS iters=N procs=N ... ops=N maxlat=... seed=N

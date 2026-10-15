@@ -34,7 +34,9 @@ struct st_opts {
 	int selfcheck;			/* -x */
 	const char *dev;		/* -D raw device, default NULL */
 	int leakfail;			/* -L or STRESS_LEAK=fail */
-	int budget;			/* -T: st_more returns 0 after this many seconds; 0: no budget */
+	int budget;			/* -T: st_more returns 0 after this many seconds; 0: no budget.
+					 * A test whose two processes run a shared count (ipc msg/ool,
+					 * net select) sets it to 0: -T would stop one end only. */
 };
 extern struct st_opts st_opt;
 

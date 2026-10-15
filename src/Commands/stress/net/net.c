@@ -587,6 +587,9 @@ t_select(struct st_ctx *c)
 	long got = 0, frames, bad, gap;
 	int ls, k, maxfd = 0, r, need, suspect, status;
 
+	/* the client sends c->iters frames: -T would stop the server early and
+	 * the client would fail writing to closed sockets */
+	st_opt.budget = 0;
 	g_kids = &kid;
 	ls = listen_local(c, &nport);
 	kid = fork();

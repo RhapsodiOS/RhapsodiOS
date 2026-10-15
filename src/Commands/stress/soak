@@ -4,8 +4,8 @@
 # The same seed picks the same tests (timing still varies). Report/soak.out holds
 # the result lines, Report/soak.summary the totals in run's format.
 usage="usage: soak [-t total] [-j slots] [-T test-secs] [-s seed] [-d dir] [-L] [cat ...]"
-total=600
-slots=2
+total=3600
+slots=4
 tsecs=60
 seed=
 dir=/tmp
@@ -58,20 +58,33 @@ next() {
 st=$seed
 end=`expr \`date +%s\` + $total`
 pids=
+n=0
 while :; do
 	while test `date +%s` -lt $end && test `set -- $pids; echo $#` -lt $slots; do
 		next
 		pick=`sed -n "\`expr $st % $np + 1\`p" "$rep/soak.pool"`
 		next
 		set -- $pick
-		(cd "$here/$1" && ./stress-$1 $L -t $tsecs -s $st -d "$dir" $2) >>"$rep/soak.out" 2>/dev/null &
-		pids="$pids $!"
+		n=`expr $n + 1`
+		(cd "$here/$1" && ./stress-$1 $L -T $tsecs -s $st -d "$dir" $2) >"$rep/soak.job.$n" 2>/dev/null &
+		pids="$pids $!,$1,$2,$n"
 	done
 	test -n "$pids" || break
 	set -- $pids
-	wait $1
+	job=$1
 	shift
 	pids="$*"
+	set -- `echo $job | tr , ' '`
+	wait $1
+	rc=$?
+	f=$rep/soak.job.$4
+	cat "$f" >>"$rep/soak.out"
+	# a crash before any result line must still show up as a FAIL
+	if test $rc != 0 && test -z "`grep '^STRESS ' "$f"`"; then
+		if test $rc -gt 128; then why=signal=`expr $rc - 128`; else why=exit=$rc; fi
+		echo "STRESS $2 $3 FAIL reason=$why" >>"$rep/soak.out"
+	fi
+	rm -f "$f"
 done
 rm -f "$rep/soak.pool"
 

@@ -34,6 +34,7 @@ struct st_opts {
 	int selfcheck;			/* -x */
 	const char *dev;		/* -D raw device, default NULL */
 	int leakfail;			/* -L or STRESS_LEAK=fail */
+	int budget;			/* -T: st_more returns 0 after this many seconds; 0: no budget */
 };
 extern struct st_opts st_opt;
 

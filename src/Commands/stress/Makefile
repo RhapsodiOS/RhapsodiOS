@@ -105,6 +105,8 @@ check: lib/t_lib $(TMAIN)
 	lib/t_lib
 	rc=0; $(TMAIN) -n 2 pass >lib/t.out || rc=$$?; test $$rc = 0
 	grep '^STRESS tmain pass PASS iters=.* procs=2 .*ops=.*maxlat=.*seed=' lib/t.out
+	rc=0; $(TMAIN) -T 2 -i 100000000 pass >lib/t.out || rc=$$?; test $$rc = 0
+	grep '^STRESS tmain pass PASS ' lib/t.out
 	rc=0; $(TMAIN) fail >lib/t.out || rc=$$?; test $$rc = 1
 	grep 'STRESS tmain fail FAIL reason=planned worker=[0-9]* iter=0 seed=' lib/t.out
 	rm -f /tmp/stress.tmain.hook

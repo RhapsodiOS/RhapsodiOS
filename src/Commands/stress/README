@@ -26,7 +26,8 @@ Usage
     it only if STRESS_SETTIME is set.  Each category also has its own
     <cat>/runtests (same options, except -a and categories) and a binary
     stress-<cat> that takes
-    -n procs, -i iters, -t secs, -s seed, -d dir, -m size, -v, -x and test names.
+    -n procs, -i iters, -t secs, -T secs, -s seed, -d dir, -m size, -v, -x and test names.
+    -T secs ends a test normally (PASS) once secs have passed; -t is the watchdog.
 
 Result lines
     STRESS <cat> <test> PASS iters=N procs=N ... ops=N maxlat=... seed=N
@@ -48,8 +49,8 @@ soak - a timed random mix
     soak [-t total] [-j slots] [-T test-secs] [-s seed] [-d dir] [-L] [cat ...]
 
     Runs randomly picked tests (as listed by stress-<cat> -l) of the categories
-    (default: run's) for total seconds (default 600), slots at a time (default 2),
-    each with a limit of test-secs (default 60).  The seed (printed on the first
+    (default: run's) for total seconds (default 3600), slots at a time (default 4),
+    each for at most test-secs (default 60, the stress -T budget).  The seed (printed on the first
     line of Report/soak.out) picks the same tests again; timing still varies.
     Report/soak.summary is laid out like Report/summary.  Exit status is 1 if
     anything failed, 2 for bad usage or no tests found.  ffsbench stress --soak

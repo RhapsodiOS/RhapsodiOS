@@ -118,6 +118,8 @@ int
 st_more(struct st_ctx *c, long i)
 {
 	c->iter = i;
+	if (st_opt.budget > 0 && time(NULL) - c->t_start >= st_opt.budget)
+		return 0;
 	return i < c->iters;
 }
 
@@ -383,7 +385,7 @@ run(const struct st_test *t, const char *cat)
 static int
 usage(const char *cat, const struct st_test *tests)
 {
-	fprintf(stderr, "usage: stress-%s [-n procs] [-i iters] [-t secs] [-s seed] "
+	fprintf(stderr, "usage: stress-%s [-n procs] [-i iters] [-t secs] [-T secs] [-s seed] "
 		"[-d dir] [-m bytes[k|m]] [-D rawdev] [-v] [-l] [-L] [test ...]\ntests:", cat);
 	for (; tests->name != NULL; tests++)
 		fprintf(stderr, " %s", tests->name);
@@ -432,7 +434,7 @@ stress_main(int argc, char **argv, const char *cat, const struct st_test *tests)
 	st_opt.seed = ((unsigned long)time(NULL) ^ (unsigned long)getpid()) & ST_MASK;
 	if ((v_env = getenv("STRESS_LEAK")) != NULL && strcmp(v_env, "fail") == 0)
 		st_opt.leakfail = 1;
-	while ((ch = getopt(argc, argv, "n:i:t:s:d:m:D:vxlL")) != -1) {
+	while ((ch = getopt(argc, argv, "n:i:t:T:s:d:m:D:vxlL")) != -1) {
 		switch (ch) {
 		case 'n':
 			if (number(optarg, &v, 0) < 0 || v < 1)
@@ -448,6 +450,11 @@ stress_main(int argc, char **argv, const char *cat, const struct st_test *tests)
 			if (number(optarg, &v, 0) < 0 || v < 1)
 				return usage(cat, tests);
 			st_opt.secs = v;
+			break;
+		case 'T':
+			if (number(optarg, &v, 0) < 0 || v < 1)
+				return usage(cat, tests);
+			st_opt.budget = v;
 			break;
 		case 's':
 			if (number(optarg, &v, 0) < 0)

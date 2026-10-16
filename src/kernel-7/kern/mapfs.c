@@ -1738,8 +1738,9 @@ vno_flush_eof(vp, length)
 		return (0);
 	vm_page_lock_queues();
 	vm_object_lock(object);
+	/* A page being paged in waits for our vnode lock; it reads the new tail. */
 	while ((m = vm_page_lookup(object, offset)) != VM_PAGE_NULL &&
-	    m->busy) {
+	    m->busy && !m->nfspagereq) {
 		PAGE_ASSERT_WAIT(m, FALSE);
 		vm_object_unlock(object);
 		vm_page_unlock_queues();
@@ -1747,7 +1748,7 @@ vno_flush_eof(vp, length)
 		vm_page_lock_queues();
 		vm_object_lock(object);
 	}
-	if (m != VM_PAGE_NULL) {
+	if (m != VM_PAGE_NULL && !m->busy) {
 		pmap_remove_all(VM_PAGE_TO_PHYS(m));
 		if (!m->clean || pmap_is_modified(VM_PAGE_TO_PHYS(m))) {
 			m->busy = TRUE;

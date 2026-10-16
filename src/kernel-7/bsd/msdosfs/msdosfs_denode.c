@@ -313,7 +313,7 @@ deget(pmp, dirclust, diroffset, depp)
 			/* de_FileSize will be filled in further down */
 		else {
 			ldep->de_StartCluster = MSDOSFSROOT;
-			ldep->de_FileSize = pmp->pm_rootdirsize * DEV_BSIZE;
+			ldep->de_FileSize = de_bn2off(pmp, pmp->pm_rootdirsize);
 		}
 		/*
 		 * fill in time and date so that dos2unixtime() doesn't

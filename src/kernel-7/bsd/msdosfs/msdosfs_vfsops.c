@@ -61,6 +61,15 @@
 #include <sys/malloc.h>
 #include <sys/stat.h> 				/* defines ALLPERMS */
 #include <sys/disklabel.h>
+/*
+ * bsd/dev/disk.h cannot be included next to sys/disklabel.h (both define
+ * struct partition), so take only its partition-size ioctl.
+ */
+struct disk_partition_info {
+	u_int32_t block_size;
+	u_int32_t block_count;
+};
+#define DKIOCGPARTINFO	_IOR('d',29, struct disk_partition_info)
 #include <sys/vm.h>
 #include <miscfs/specfs/specdev.h>
 
@@ -384,7 +393,8 @@ mountmsdosfs(devvp, mp, p, argp)
 	struct byte_bpb710 *b710;
 	u_int8_t SecPerClust;
 	u_long clusters;
-	int	ronly, error;
+	struct disk_partition_info capacity;
+	int	ronly, error, devBlockSize;
 
 	/*
 	 * Disallow multiple mounts of the same device.
@@ -409,6 +419,8 @@ mountmsdosfs(devvp, mp, p, argp)
 	VOP_UNLOCK(devvp, 0, p);
 	if (error)
 		return (error);
+	/* Block numbers handed to bread are in the device's block size. */
+	VOP_DEVBLOCKSIZE(devvp, &devBlockSize);
 
 	bp  = NULL; /* both used in error_exit */
 	pmp = NULL;
@@ -488,8 +500,8 @@ mountmsdosfs(devvp, mp, p, argp)
 	pmp->pm_Heads = getushort(b50->bpbHeads);
 	pmp->pm_Media = b50->bpbMedia;
 
-	/* calculate the ratio of sector size to DEV_BSIZE */
-	pmp->pm_BlkPerSec = pmp->pm_BytesPerSec / DEV_BSIZE;
+	/* calculate the ratio of sector size to the device block size */
+	pmp->pm_BlkPerSec = pmp->pm_BytesPerSec / devBlockSize;
 
 #ifndef __FreeBSD__
 	if (!(argp->flags & MSDOSFSMNT_GEMDOSFS)) {
@@ -557,10 +569,27 @@ mountmsdosfs(devvp, mp, p, argp)
 	 */
 	if ( (SecPerClust == 0)
 	  || (SecPerClust & (SecPerClust - 1))
-	  || (pmp->pm_BytesPerSec < DEV_BSIZE)
 	  || (pmp->pm_BytesPerSec & (pmp->pm_BytesPerSec - 1))
 	  || (pmp->pm_HugeSectors == 0)
 	) {
+		error = EINVAL;
+		goto error_exit;
+	}
+	if (pmp->pm_BytesPerSec < devBlockSize) {
+		printf("mountmsdosfs(): %d bytes/sector is smaller than the "
+		    "device's %d-byte blocks\n", pmp->pm_BytesPerSec,
+		    devBlockSize);
+		error = EINVAL;
+		goto error_exit;
+	}
+	if (VOP_IOCTL(devvp, DKIOCGPARTINFO, (caddr_t)&capacity, FREAD,
+	    NOCRED, p) == 0 &&
+	    (u_int64_t)pmp->pm_HugeSectors * pmp->pm_BytesPerSec >
+	    (u_int64_t)capacity.block_count * capacity.block_size) {
+		printf("mountmsdosfs(): volume of %lu %d-byte sectors exceeds "
+		    "partition of %lu %lu-byte blocks\n", (u_long)pmp->pm_HugeSectors,
+		    pmp->pm_BytesPerSec, (u_long)capacity.block_count,
+		    (u_long)capacity.block_size);
 		error = EINVAL;
 		goto error_exit;
 	}
@@ -581,14 +610,14 @@ mountmsdosfs(devvp, mp, p, argp)
 		pmp->pm_rootdirblk = pmp->pm_fatblk +
 			(pmp->pm_FATs * pmp->pm_FATsecs);
 		pmp->pm_rootdirsize = (pmp->pm_RootDirEnts * sizeof(struct direntry)
-				       + DEV_BSIZE - 1)
-			/ DEV_BSIZE; /* in blocks */
+				       + devBlockSize - 1)
+			/ devBlockSize; /* in blocks */
 		pmp->pm_firstcluster = pmp->pm_rootdirblk + pmp->pm_rootdirsize;
 	}
 
 	pmp->pm_maxcluster = (pmp->pm_HugeSectors - pmp->pm_firstcluster) /
 	    SecPerClust + 1;
-	pmp->pm_fatsize = pmp->pm_FATsecs * DEV_BSIZE; /* XXX not used? */
+	pmp->pm_fatsize = pmp->pm_FATsecs * devBlockSize; /* XXX not used? */
 
 #ifndef __FreeBSD__
 	if (argp->flags & MSDOSFSMNT_GEMDOSFS) {
@@ -637,14 +666,14 @@ mountmsdosfs(devvp, mp, p, argp)
 	else
 		pmp->pm_fatblocksize = MSDOSFS_DFLTBSIZE;
 
-	pmp->pm_fatblocksec = pmp->pm_fatblocksize / DEV_BSIZE;
-	pmp->pm_bnshift = ffs(DEV_BSIZE) - 1;
+	pmp->pm_fatblocksec = pmp->pm_fatblocksize / devBlockSize;
+	pmp->pm_bnshift = ffs(devBlockSize) - 1;
 
 	/*
 	 * Compute mask and shift value for isolating cluster relative byte
 	 * offsets and cluster numbers from a file offset.
 	 */
-	pmp->pm_bpcluster = SecPerClust * DEV_BSIZE;
+	pmp->pm_bpcluster = SecPerClust * devBlockSize;
 	pmp->pm_crbomask = pmp->pm_bpcluster - 1;
 	pmp->pm_cnshift = ffs(pmp->pm_bpcluster) - 1;
 

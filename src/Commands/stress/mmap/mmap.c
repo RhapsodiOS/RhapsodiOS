@@ -551,6 +551,49 @@ t_trunc(struct st_ctx *c)
 	scratch[0] = '\0';
 }
 
+/* regrow: shrink a dirty shared map to a cut inside a page, unmap it and grow
+ * the file back; read() must show the kept bytes and zeros past the cut. */
+static void
+t_regrow(struct st_ctx *c)
+{
+	unsigned long ps = pagesz(), size = 8 * ps, cut, key, j;
+	unsigned char *map, *buf;
+	long i;
+	int fd;
+
+	st_path(c, scratch, sizeof scratch, "map");
+	buf = malloc(size);
+	if (buf == NULL)
+		failerr(c, "malloc");
+	for (i = 0; st_more(c, i); i++) {
+		st_op_begin(c);
+		key = key3(9, i, c->idx);
+		cut = st_range(&c->rng, 1, size - 1);
+		fd = openfile(c, O_RDWR | O_CREAT | O_TRUNC);
+		if (ftruncate(fd, (off_t)size) < 0)
+			failerr(c, "ftruncate");
+		map = mapfile(c, fd, size, MAP_SHARED);
+		st_fill(map, size, key, 0);
+		if (c->selfcheck && i == 0)
+			map[st_range(&c->rng, 0, cut - 1)] ^= 0x01;
+		if (ftruncate(fd, (off_t)cut) < 0)
+			failerr(c, "ftruncate");
+		munmap(map, size);
+		if (ftruncate(fd, (off_t)size) < 0)
+			failerr(c, "ftruncate");
+		readfull(c, fd, buf, size, 0);
+		chkmem(c, "kept", buf, cut, key, 0);
+		for (j = cut; j < size; j++)
+			if (buf[j] != 0)
+				failf(c, "what=regrow off=0x%lx want=00 got=%02x", j, buf[j]);
+		close(fd);
+		st_op_end(c, 8);
+	}
+	free(buf);
+	unlink(scratch);
+	scratch[0] = '\0';
+}
+
 #define ANONSIZE (64 * 1024)
 
 /* the guest's libc has no madvise or mincore stubs, so they are raw syscalls (75, 78) */
@@ -860,6 +903,7 @@ static const struct st_test tests[] = {
 	{ "mixed", 100, 1, NULL, t_mixed },
 	{ "private", 50, 0, NULL, t_private },
 	{ "trunc", 30, 0, NULL, t_trunc },
+	{ "regrow", 30, 0, NULL, t_regrow },
 	{ "anon", 200, 0, p_anon, t_anon },
 	{ "sync", 20, 0, p_sync, t_sync },
 	{ "anonshared", 100, 0, p_anon, t_anonshared },

@@ -132,6 +132,8 @@ def classify(reference, methods):
         ours.add(full)
         if not selector.startswith("_"):
             continue
+        if full in reference:
+            continue
         if full.replace(" _", " ", 1) not in reference:
             continue
         record = (full, filename, line)

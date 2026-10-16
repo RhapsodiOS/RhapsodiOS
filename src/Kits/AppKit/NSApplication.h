@@ -15,6 +15,7 @@
 @class NSEvent;
 @class NSImage;
 @class NSMenu;
+@class NSMutableData;
 
 /* Modes passed to NSRunLoop */
 APPKIT_EXTERN NSString *NSModalPanelRunLoopMode;
@@ -79,6 +80,7 @@ typedef struct NSThreadPrivate _NSThreadPrivate;
     id                  _nameTable;
     id                  _eventDelegate;
     _NSThreadPrivate     *_threadingSupport;
+    NSMutableData       *_windowCache;
 }
 
 + (NSApplication *)sharedApplication;

@@ -1,4 +1,4 @@
-from selector_check import source_methods
+from selector_check import classify, source_methods
 
 
 def _write(tmp_path, text):
@@ -214,3 +214,48 @@ def test_c_continuation_line_starting_with_a_sign_is_not_a_signature(tmp_path):
 """)
 
     assert names == {"-[Foo compute]", "-[Foo realMethod:]"}
+
+
+def test_exact_underscored_reference_selector_is_not_a_rename_or_duplicate(tmp_path):
+    (tmp_path / "Widget.m").write_text("""\
+@implementation Widget
+- (id)keyWindow
+{
+    return nil;
+}
+- (id)_keyWindow
+{
+    return nil;
+}
+@end
+""")
+    methods = list(source_methods(tmp_path))
+
+    renames, duplicates, missing, extra = classify(
+        {"-[Widget keyWindow]", "-[Widget _keyWindow]"}, methods
+    )
+
+    assert renames == []
+    assert duplicates == []
+    assert missing == []
+    assert extra == []
+
+
+def test_underscored_definition_is_reported_when_reference_has_only_plain_selector(tmp_path):
+    (tmp_path / "Widget.m").write_text("""\
+@implementation Widget
+- (id)_keyWindow
+{
+    return nil;
+}
+@end
+""")
+
+    renames, duplicates, missing, extra = classify(
+        {"-[Widget keyWindow]"}, list(source_methods(tmp_path))
+    )
+
+    assert renames == [("-[Widget _keyWindow]", "Widget.m", 2)]
+    assert duplicates == []
+    assert missing == []
+    assert extra == []

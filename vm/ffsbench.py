@@ -1232,6 +1232,15 @@ def stress(kernel, label, cycles=1, bootargs="", cats="", seed=None, disk=False,
             dead = dead + 1 if state == "lost" else 0
             if dead >= STRESS_LOST_POLLS:
                 break
+            if targets and state != "lost":
+                # fetch each target as it finishes: a later panic must not lose it
+                t, out = timed_login(conf, "cat /tmp/stressfs.out 2>/dev/null; true")
+                if t is not None:
+                    tout = out
+                    for name, (status, _, _) in parse_stressfs(out, targets).items():
+                        if status != "lost" and name not in ttexts:
+                            ttexts[name] = "\n".join(_fetch_report(
+                                conf, outdir, STRESS_REPORT + "." + name, name + "."))
             if state not in ("running", "lost"):
                 res["run_exit"] = state
                 break
@@ -1244,12 +1253,14 @@ def stress(kernel, label, cycles=1, bootargs="", cats="", seed=None, disk=False,
         if g.proc.poll() is None:
             # with --fs the UFS run's Report was saved as Report.ufs
             texts = _fetch_report(conf, outdir, STRESS_REPORT + (".ufs" if targets else ""), "")
-            for name in targets:
-                ttexts[name] = "\n".join(_fetch_report(conf, outdir, STRESS_REPORT + "." + name, name + "."))
             if targets:
-                t, tout = timed_login(conf, "cat /tmp/stressfs.out 2>/dev/null; true")
-                tout = tout if t is not None else ""
-                _log(outdir, "stressfs.out", tout)
+                t, out = timed_login(conf, "cat /tmp/stressfs.out 2>/dev/null; true")
+                tout = out if t is not None else tout
+            for name in targets:
+                if name not in ttexts:
+                    ttexts[name] = "\n".join(_fetch_report(conf, outdir, STRESS_REPORT + "." + name, name + "."))
+        if targets:
+            _log(outdir, "stressfs.out", tout)
     except BaseException as e:
         res["error"] = str(e) if isinstance(e, SystemExit) else "%s: %s" % (type(e).__name__, e)
         err = e

@@ -72,7 +72,10 @@ ext2_device_is_mounted(const char *path)
          * their documented source/type pairs are safe to omit. */
         if((!strcmp(mounts[i].f_fstypename,"volfs") && !strcmp(mounts[i].f_mntfromname,"<volfs>")) ||
             (!strcmp(mounts[i].f_fstypename,"fdesc") && !strcmp(mounts[i].f_mntfromname,"fdesc")) ||
-            (!strcmp(mounts[i].f_fstypename,"kernfs") && !strcmp(mounts[i].f_mntfromname,"kernfs"))) continue;
+            (!strcmp(mounts[i].f_fstypename,"kernfs") && !strcmp(mounts[i].f_mntfromname,"kernfs")) ||
+            /* NFS mounts (and the automounter, "automount -fstab [N]") are
+             * served over the network, never from a local device. */
+            !strcmp(mounts[i].f_fstypename,"nfs")) continue;
         if(mounts[i].f_mntfromname[0]!='/' ||
             identity(mounts[i].f_mntfromname,&source,b,&bk)<0) return -1;
         if(ak && bk && !strcmp(ak,bk)) return 1;

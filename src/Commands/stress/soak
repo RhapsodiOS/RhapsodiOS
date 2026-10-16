@@ -9,7 +9,7 @@ slots=4
 tsecs=60
 seed=
 dir=/tmp
-L=
+L=-N	# no leak report: concurrent tests show up in each other's snapshots
 while test $# -gt 0; do
 	case $1 in
 	-t) test $# -gt 1 || { echo "$usage" >&2; exit 2; }; total=$2; shift 2 ;;

@@ -279,9 +279,11 @@ leader(const struct st_test *t, const char *cat)
 	secs = since(&t0);
 	while (input(fds[0], 0))
 		;
-	st_leak_snap(&leak_after);
 	lk[0] = '\0';
-	st_leak_diff(&leak_before, &leak_after, lk, sizeof lk);
+	if (!st_opt.noleak) {
+		st_leak_snap(&leak_after);
+		st_leak_diff(&leak_before, &leak_after, lk, sizeof lk);
+	}
 	if (fail[0] != '\0') {
 		sprintf(what, "FAIL %s%s", fail, lk);
 		st_line(cat, t->name, what, 1);
@@ -328,7 +330,8 @@ run(const struct st_test *t, const char *cat)
 		}
 	}
 	fflush(stdout);
-	st_leak_snap(&leak_before);	/* the leader inherits it */
+	if (!st_opt.noleak)
+		st_leak_snap(&leak_before);	/* the leader inherits it */
 	/* blocked until leader_pid is set, so on_stop never misses the leader */
 	sigemptyset(&stop);
 	sigaddset(&stop, SIGINT);
@@ -386,7 +389,7 @@ static int
 usage(const char *cat, const struct st_test *tests)
 {
 	fprintf(stderr, "usage: stress-%s [-n procs] [-i iters] [-t secs] [-T secs] [-s seed] "
-		"[-d dir] [-m bytes[k|m]] [-D rawdev] [-v] [-l] [-L] [test ...]\ntests:", cat);
+		"[-d dir] [-m bytes[k|m]] [-D rawdev] [-v] [-l] [-L] [-N] [test ...]\ntests:", cat);
 	for (; tests->name != NULL; tests++)
 		fprintf(stderr, " %s", tests->name);
 	fprintf(stderr, "\n");
@@ -434,7 +437,7 @@ stress_main(int argc, char **argv, const char *cat, const struct st_test *tests)
 	st_opt.seed = ((unsigned long)time(NULL) ^ (unsigned long)getpid()) & ST_MASK;
 	if ((v_env = getenv("STRESS_LEAK")) != NULL && strcmp(v_env, "fail") == 0)
 		st_opt.leakfail = 1;
-	while ((ch = getopt(argc, argv, "n:i:t:T:s:d:m:D:vxlL")) != -1) {
+	while ((ch = getopt(argc, argv, "n:i:t:T:s:d:m:D:vxlLN")) != -1) {
 		switch (ch) {
 		case 'n':
 			if (number(optarg, &v, 0) < 0 || v < 1)
@@ -480,6 +483,9 @@ stress_main(int argc, char **argv, const char *cat, const struct st_test *tests)
 			break;
 		case 'l':
 			list = 1;
+			break;
+		case 'N':
+			st_opt.noleak = 1;
 			break;
 		case 'L':
 			st_opt.leakfail = 1;

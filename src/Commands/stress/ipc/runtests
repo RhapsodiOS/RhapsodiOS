@@ -25,7 +25,7 @@ while test $cycle -lt $1; do
 	pids=
 	for t in $tests; do
 		echo "stress: ipc $t" 2>/dev/null >/dev/console || true
-		./stress-ipc $opts $t >>$out 2>/dev/null &
+		./stress-ipc -N $opts $t >>$out 2>/dev/null &
 		pids="$pids $!"
 	done
 	for p in $pids; do

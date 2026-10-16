@@ -98,6 +98,22 @@ p_unsup(char *why, int len)
 }
 
 static void
+t_leaky(struct st_ctx *c)
+{
+	int fds[2], i;
+
+	/* A grandchild holds 100 pipes past the test's end, so the leader's
+	 * second leak snapshot sees them: a known leak for -N to hide. */
+	if (fork() == 0) {
+		for (i = 0; i < 100 && pipe(fds) == 0; i++)
+			;
+		sleep(5);
+		_exit(0);
+	}
+	sleep(1);
+}
+
+static void
 t_unsup(struct st_ctx *c)
 {
 }
@@ -170,6 +186,7 @@ static const struct st_test tests[] = {
 	{ "unsup", 1, 0, p_unsup, t_unsup },
 	{ "data", 1, 0, NULL, t_data },
 	{ "forkbomb", 1, 1, NULL, t_forkbomb },
+	{ "leaky", 1, 1, NULL, t_leaky, 1 },
 	{ NULL }
 };
 

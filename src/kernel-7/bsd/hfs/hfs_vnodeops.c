@@ -2107,6 +2107,7 @@ struct vop_rename_args  /* {
     struct hfsnode 			*target_hp, *targetPar_hp, *source_hp, *sourcePar_hp;
     u_short					doingdirectory = 0, oldparent = 0, newparent = 0;
     int 					retval = 0;
+    int                     sourceparent_locked = 0;
     struct timeval 			tv;
 	struct hfsCatalogInfo catInfo;
     int targetnamelen;
@@ -2155,7 +2156,8 @@ struct vop_rename_args  /* {
         goto abortit;
     }
 
-    if ((retval = vn_lock(source_vp, LK_EXCLUSIVE, p)))
+    /* The destination locks can be below the source in the directory tree. */
+    if ((retval = vn_lock(source_vp, LK_EXCLUSIVE | LK_NOWAIT, p)))
         goto abortit;
 
     sourcePar_hp = VTOH(sourcePar_vp);
@@ -2198,6 +2200,14 @@ struct vop_rename_args  /* {
             goto bad;
     }
 
+    /* Acquire every additional vnode lock before removing the destination. */
+    if (sourcePar_vp != targetPar_vp && sourcePar_vp != target_vp) {
+        retval = vn_lock(sourcePar_vp, LK_EXCLUSIVE | LK_NOWAIT, p);
+        if (retval)
+            goto bad;
+        sourceparent_locked = 1;
+    }
+
     /*
      * If the destination exists, then be sure its type (file or dir)
      * matches that of the source.  And, if it is a directory make sure
@@ -2221,14 +2231,13 @@ struct vop_rename_args  /* {
         }
 
 		/*
-		 * VOP_REMOVE will vput targetPar_vp so we better bump 
-		 * its ref count and relockit, always set target_vp to
-		 * NULL afterwards to indicate that were done with it.
+		 * VOP_REMOVE consumes one parent reference and lock. Retain
+		 * both so we never wait to relock a parent with the source held.
 		 */
+		(void) vn_lock(targetPar_vp, LK_EXCLUSIVE | LK_CANRECURSE, p);
 		VREF(targetPar_vp);
 		if (target_vp->v_type == VREG) cache_purge(VTOH(target_vp)->h_relative);
 		retval = VOP_REMOVE(targetPar_vp, target_vp, target_cnp);
-		(void) vn_lock(targetPar_vp, LK_EXCLUSIVE, p);
 
 		target_vp = NULL;
         target_hp = NULL;		
@@ -2241,15 +2250,13 @@ struct vop_rename_args  /* {
     };
 
 
-	if (newparent != oldparent)
-		vn_lock(sourcePar_vp, LK_EXCLUSIVE | LK_RETRY, p);
-
 	/* lock catalog b-tree */
 	retval = hfs_metafilelocking(VTOHFS(source_vp), kHFSCatalogFileID, LK_EXCLUSIVE, p);
-	if (retval) goto badcataloglock;
+	if (retval) goto bad;
 	
 	/* remove the existing entry from the namei cache: */
 	if (source_vp->v_type == VREG) cache_purge(VTOH(source_vp)->h_relative);
+	else cache_purge(source_vp);
 
 	retval = hfsMoveRename(	HTOVCB(source_hp), H_DIRID(source_hp), H_NAME(source_hp),
 							H_FILEID(VTOH(targetPar_vp)), target_cnp->cn_nameptr, &H_HINT(source_hp));
@@ -2264,8 +2271,10 @@ struct vop_rename_args  /* {
 	/* unlock catalog b-tree */
 	(void) hfs_metafilelocking(VTOHFS(source_vp), kHFSCatalogFileID, LK_RELEASE, p);
 
-	if (newparent != oldparent)
+	if (sourceparent_locked) {
 		VOP_UNLOCK(sourcePar_vp, 0, p);
+		sourceparent_locked = 0;
+	}
 
 	if (retval)  goto bad;
 
@@ -2330,11 +2339,10 @@ struct vop_rename_args  /* {
     }
     return (retval);
 
-badcataloglock:
-	if (newparent != oldparent)
-		VOP_UNLOCK(sourcePar_vp, 0, p);
-	
 bad:;
+    if (sourceparent_locked)
+        VOP_UNLOCK(sourcePar_vp, 0, p);
+
     if (retval && doingdirectory)
     	source_hp->h_meta->h_nodeflags &= ~IN_RENAME;
 

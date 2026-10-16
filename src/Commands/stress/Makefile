@@ -164,6 +164,7 @@ check-mmap: $(MMAPBIN)
 	grep '^STRESS mmap mixed PASS ' mmap/t.out
 	grep '^STRESS mmap private PASS ' mmap/t.out
 	grep '^STRESS mmap trunc PASS ' mmap/t.out
+	grep '^STRESS mmap regrow PASS ' mmap/t.out
 	grep '^STRESS mmap anon \(PASS\|UNSUP\) ' mmap/t.out
 	grep '^STRESS mmap sync \(PASS\|UNSUP\) ' mmap/t.out
 	grep '^STRESS mmap anonshared \(PASS\|UNSUP\) ' mmap/t.out

@@ -1586,6 +1586,7 @@ ext2fs_vget_internal(struct mount *mp,void *inoarg,struct vnode **vpp,int alloca
     struct ext2fs_node *node;
     struct vnode *vp;
     struct buf *bp;
+    struct ext2fs_dinode din;
     u_int32_t group,index,block;
     int error;
     *vpp=NULL;
@@ -1607,14 +1608,18 @@ retry:
     error=bread(ump->um_devvp,block<<fs->e2fs_fsbtodb,fs->e2fs_bsize,NOCRED,&bp);
     if (error) { brelse(bp); goto out; }
     if (bp->b_resid) { bp->b_flags |= B_INVAL; brelse(bp); error=EIO; goto out; }
+    /* Release the inode block first: getnewvnode can recycle a vnode whose
+     * inactive is waiting for this block in ext2fs_update while holding
+     * the very vnode lock getnewvnode then waits for. */
+    din=*(struct ext2fs_dinode *)((char *)bp->b_un.b_addr+(index%fs->e2fs_ipb)*EXT2_DINODE_SIZE);
+    brelse(bp);
     error=getnewvnode(VT_EXT2FS,mp,ext2fs_vnodeop_p,&vp);
-    if (error) { brelse(bp); goto out; }
+    if (error) goto out;
     MALLOC(node,struct ext2fs_node *,sizeof(*node),M_MISCFSNODE,M_WAITOK);
     bzero(node,sizeof(*node)); ip=&node->inode; vp->v_data=node; ip->i_vnode=vp;
     ip->i_number=ino; ip->i_dev=ump->um_dev; ip->i_e2fs=fs;
     lockinit(&ip->i_lock,PINOD,"ext2inode",0,0);
-    ext2fs_inode_load(ip,(struct ext2fs_dinode *)((char *)bp->b_un.b_addr+(index%fs->e2fs_ipb)*128));
-    brelse(bp);
+    ext2fs_inode_load(ip,&din);
     lockmgr(&ip->i_lock,LK_EXCLUSIVE,NULL,p);
     ip->i_devvp=ump->um_devvp; VREF(ip->i_devvp);
     if (!allocating && (ip->i_size > EXT2_FILESIZE_MAX || ip->i_mode == 0 || ip->i_nlink == 0 ||

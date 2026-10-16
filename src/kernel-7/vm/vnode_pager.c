@@ -775,9 +775,13 @@ vnode_pagein(
 		aiov.iov_len = PAGE_SIZE;
 		aiov.iov_base = (caddr_t)ioaddr;
 
+		/*
+		 * Mark the page before waiting for the vnode: a pusher holding
+		 * the vnode lock skips it instead of waiting on its busy bit.
+		 */
+		m->nfspagereq=TRUE;
 		vn_lock(vp, LK_EXCLUSIVE | LK_RETRY | LK_CANRECURSE, p);
 
-		m->nfspagereq=TRUE;
 		error = VOP_PAGEIN(vp, &auio, 0, p->p_ucred);
 		m->nfspagereq=FALSE;
 		if (error)

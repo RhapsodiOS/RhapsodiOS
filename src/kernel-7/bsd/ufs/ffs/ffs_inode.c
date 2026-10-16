@@ -308,7 +308,14 @@ ffs_truncate(ap)
 		if ((ovp->v_type == VREG) && (ovp->v_vm_info && !(ovp->v_vm_info->mapped))) {
 #endif /* MACH_NBC */
 		vnode_pager_setsize(ovp, (u_long)length);
+		/*
+		 * Not with MACH_NBC: mapfs_trunc already dropped the pages
+		 * past the end, and an uncached object's termination frees
+		 * the dirty pages a user mapping still holds unwritten.
+		 */
+#if !MACH_NBC
 		vnode_uncache(ovp);
+#endif /* !MACH_NBC */
 #if MACH_NBC
 		}
 #endif /* !MACH_NBC */
@@ -339,7 +346,9 @@ ffs_truncate(ap)
 			return (error);
 		oip->i_size = length;
 		size = blksize(fs, oip, lbn);
+#if !MACH_NBC
 		(void) vnode_uncache(ovp); /* Ignore errors! */
+#endif /* !MACH_NBC */
 		bzero((char *)bp->b_data + offset, (u_int)(size - offset));
 		allocbuf(bp, size);
 		if (aflags & B_SYNC)

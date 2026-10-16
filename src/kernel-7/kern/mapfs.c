@@ -201,6 +201,7 @@ void mapfs_cache_trim __P((void));
 void mapfs_memfree __P((struct vm_info *, boolean_t));
 int mapfs_map_remove __P((struct vm_info *, vm_offset_t, vm_size_t, boolean_t));
 void vno_flush __P((struct vnode *, vm_offset_t, vm_size_t));
+int vno_flush_eof __P((struct vnode *, vm_offset_t));
 void vmp_invalidate __P((struct vm_info *));
 int vmp_push __P((struct vm_info *));
 int vmp_push_range __P((struct vm_info *,vm_offset_t, vm_size_t));
@@ -641,6 +642,10 @@ mapfs_trunc(vp, length)
 		if (vmp->vnode_size > round_page(length))
 			vno_flush(vp, round_page(length),
 				  vmp->vnode_size - round_page(length));
+		if (vmp->vnode_size > length) {
+			vmp->vnode_size = length;
+			return (vno_flush_eof(vp, length));
+		}
 		vmp->vnode_size = length;
 		return (0);
 	}
@@ -1707,6 +1712,65 @@ void vno_flush(vp, start, size)
 	vm_page_unlock_queues();
 	if (looked_up)
 		vm_object_deallocate(object);
+}
+
+/*
+ *	Write back and free the page holding an unaligned new end of file.
+ *	A user mapping can have written past the new end in that page, and
+ *	those bytes would come back if the file grew again.  vnode_size is
+ *	already the new end, so the pageout stops there, and the page is
+ *	read back with the tail the filesystem zeroed.
+ */
+int
+vno_flush_eof(vp, length)
+	struct vnode		*vp;
+	vm_offset_t		length;
+{
+	vm_object_t		object;
+	vm_page_t		m;
+	vm_offset_t		offset = trunc_page(length);
+	int			error = 0;
+
+	if (offset == length || vp->v_vm_info->pager == vm_pager_null)
+		return (0);
+	object = vm_object_lookup(vp->v_vm_info->pager);
+	if (object == VM_OBJECT_NULL)
+		return (0);
+	vm_page_lock_queues();
+	vm_object_lock(object);
+	/* A page being paged in waits for our vnode lock; it reads the new tail. */
+	while ((m = vm_page_lookup(object, offset)) != VM_PAGE_NULL &&
+	    m->busy && !m->nfspagereq) {
+		PAGE_ASSERT_WAIT(m, FALSE);
+		vm_object_unlock(object);
+		vm_page_unlock_queues();
+		thread_block();
+		vm_page_lock_queues();
+		vm_object_lock(object);
+	}
+	if (m != VM_PAGE_NULL && !m->busy) {
+		pmap_remove_all(VM_PAGE_TO_PHYS(m));
+		if (!m->clean || pmap_is_modified(VM_PAGE_TO_PHYS(m))) {
+			m->busy = TRUE;
+			vm_object_paging_begin(object);
+			vm_object_unlock(object);
+			vm_page_unlock_queues();
+			if (vnode_pageout(m) != PAGER_SUCCESS)
+				error = vp->v_vm_info->error ?
+				    vp->v_vm_info->error : EIO;
+			vm_page_lock_queues();
+			vm_object_lock(object);
+			vm_object_paging_end(object);
+			m->busy = FALSE;
+			PAGE_WAKEUP(m);
+		}
+		if (!error)
+			vm_page_free(m);
+	}
+	vm_object_unlock(object);
+	vm_page_unlock_queues();
+	vm_object_deallocate(object);
+	return (error);
 }
 
 

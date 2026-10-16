@@ -2,7 +2,7 @@
 # `make install` with DSTROOT and RC_CFLAGS. Objects are built next to their
 # sources because rbuild copies the source tree. GNU make 3.74: pattern rules
 # only, no $(call), no target-specific variables.
-LIBOBJS = lib/rng.o lib/pattern.o lib/report.o lib/main.o lib/sysinfo.o lib/io.o
+LIBOBJS = lib/rng.o lib/pattern.o lib/report.o lib/main.o lib/sysinfo.o lib/io.o lib/leak.o lib/zone_user.o
 CC      = cc
 CFLAGS  = -O -Wall $(RC_CFLAGS) -Ilib
 TMAIN   = lib/stress-tmain
@@ -25,8 +25,15 @@ lib/libstress.a: $(LIBOBJS)
 	ar cr $@ $(LIBOBJS)
 	ranlib $@
 
+lib/zone_user.c: lib/zone.defs
+	mig -untyped -q lib/zone.defs -header lib/zone.h -user lib/zone_user.c -server /dev/null
+lib/zone.h: lib/zone_user.c
+
 lib/%.o: lib/%.c lib/stress.h
 	$(CC) $(CFLAGS) -c $< -o $@
+
+lib/leak.o: lib/zone_types.h
+lib/zone_user.o: lib/zone.h lib/zone_types.h
 
 vm/%.o: vm/%.c lib/stress.h
 	$(CC) $(CFLAGS) -c $< -o $@
@@ -102,6 +109,8 @@ check: lib/t_lib $(TMAIN)
 	lib/t_lib
 	rc=0; $(TMAIN) -n 2 pass >lib/t.out || rc=$$?; test $$rc = 0
 	grep '^STRESS tmain pass PASS iters=.* procs=2 .*ops=.*maxlat=.*seed=' lib/t.out
+	rc=0; $(TMAIN) -T 2 -i 100000000 pass >lib/t.out || rc=$$?; test $$rc = 0
+	grep '^STRESS tmain pass PASS ' lib/t.out
 	rc=0; $(TMAIN) fail >lib/t.out || rc=$$?; test $$rc = 1
 	grep 'STRESS tmain fail FAIL reason=planned worker=[0-9]* iter=0 seed=' lib/t.out
 	rm -f /tmp/stress.tmain.hook
@@ -127,6 +136,7 @@ check: lib/t_lib $(TMAIN)
 	grep 'FAIL reason="fork: EAGAIN"' lib/t.out
 	sleep 2; test `ps -ax | grep -c '[s]tress-tmain'` = 0
 	rc=0; $(TMAIN) bogus 2>/dev/null || rc=$$?; test $$rc = 2
+	$(TMAIN) -l >lib/t.out; grep -x pass lib/t.out; test `grep -c -x named lib/t.out` = 0
 	@echo t_main: ok
 
 # The first run needs 4 PASS lines and wire PASS or UNSUP, and no settime;
@@ -145,7 +155,9 @@ check-vm: $(VMBIN)
 	test `grep -c '^STRESS vm [a-z]* FAIL .*off=0x' vm/t.out` = 4
 	@echo vm: ok
 
-# anon and sync are PASS or UNSUP (this kernel refuses MAP_ANON); the -x run needs each test to FAIL with the offset.
+# anon, anonshared and zero are PASS or UNSUP (UNSUP where the kernel refuses MAP_ANON
+# or the /dev/zero mapping), sync is UNSUP without msync; the -x run needs shared, mixed and
+# private to FAIL with the offset, plus anonshared and zero for each that passed.
 check-mmap: $(MMAPBIN)
 	rc=0; $(MMAPBIN) -n 3 -i 2 -d /tmp >mmap/t.out || rc=$$?; test $$rc = 0
 	grep '^STRESS mmap shared PASS ' mmap/t.out
@@ -154,8 +166,11 @@ check-mmap: $(MMAPBIN)
 	grep '^STRESS mmap trunc PASS ' mmap/t.out
 	grep '^STRESS mmap anon \(PASS\|UNSUP\) ' mmap/t.out
 	grep '^STRESS mmap sync \(PASS\|UNSUP\) ' mmap/t.out
-	rc=0; $(MMAPBIN) -x -i 1 -d /tmp shared mixed private >mmap/t.out || rc=$$?; test $$rc = 1
-	test `grep -c '^STRESS mmap [a-z]* FAIL .*off=0x' mmap/t.out` = 3
+	grep '^STRESS mmap anonshared \(PASS\|UNSUP\) ' mmap/t.out
+	grep '^STRESS mmap zero \(PASS\|UNSUP\) ' mmap/t.out
+	n=`grep -c '^STRESS mmap \(anonshared\|zero\) PASS ' mmap/t.out`; \
+	rc=0; $(MMAPBIN) -x -i 1 -d /tmp shared mixed private anonshared zero >mmap/t.out || rc=$$?; test $$rc = 1; \
+	test `grep -c '^STRESS mmap [a-z]* FAIL .*off=0x' mmap/t.out` = `expr 3 + $$n`
 	@echo mmap: ok
 
 # fill only runs when STRESS_FILL_DIR names a scratch file system (1 GB takes ~20 min on the dev guest);
@@ -167,6 +182,11 @@ check-fs: $(FSBIN)
 	grep '^STRESS fs append PASS ' fs/t.out
 	grep '^STRESS fs tree PASS ' fs/t.out
 	grep '^STRESS fs fsync PASS ' fs/t.out
+	rc=0; $(FSBIN) -n 3 -i 100 -d /tmp rename link >fs/t.out || rc=$$?; test $$rc = 0
+	grep '^STRESS fs rename PASS ' fs/t.out
+	grep '^STRESS fs link PASS ' fs/t.out
+	rc=0; $(FSBIN) -x -i 20 -d /tmp rename link >fs/t.out || rc=$$?; test $$rc = 1
+	test `grep -c '^STRESS fs [a-z]* FAIL ' fs/t.out` = 2
 	if test -n "$$STRESS_FILL_DIR"; then rc=0; $(FSBIN) -t 3000 -d $$STRESS_FILL_DIR fill >fs/t.out || rc=$$?; test $$rc = 0; grep '^STRESS fs fill PASS ' fs/t.out; fi
 	mkdir -p fs/rw; rc=0; (cd fs && ./stress-fs -n 1 -i 1 -d rw) >fs/t.out || rc=$$?; rm -rf fs/rw; test $$rc = 0; test `grep -c '^STRESS fs fill ' fs/t.out` = 0
 	rc=0; $(FSBIN) -d /nonexistent rw >fs/t.out || rc=$$?; test $$rc = 1
@@ -177,11 +197,15 @@ check-fs: $(FSBIN)
 
 # signal is the dyld regression: a copy of stress-proc pointed (same-length
 # path) at the 1998 dyld must die with exit 68; skipped if that dyld is absent.
+# pty is PASS or UNSUP; the -x run expects 4 FAILs, plus pty's if it passed.
 check-proc: $(PROCBIN) $(CHILDBIN)
 	rc=0; $(PROCBIN) -n 2 -i 50 >proc/t.out || rc=$$?; test $$rc = 0
 	test `grep -c '^STRESS proc \(fork\|exec\|signal\|stack\|pipe\) PASS ' proc/t.out` = 5
-	rc=0; $(PROCBIN) -x -i 5 fork exec stack pipe >proc/t.out || rc=$$?; test $$rc = 1
-	test `grep -c '^STRESS proc [a-z]* FAIL ' proc/t.out` = 4
+	grep '^STRESS proc pty \(PASS\|UNSUP\) ' proc/t.out
+	n=`grep -c '^STRESS proc pty PASS ' proc/t.out`; \
+	rc=0; $(PROCBIN) -x -i 5 fork exec stack pipe pty >proc/t.out || rc=$$?; test $$rc = 1; \
+	test `grep -c '^STRESS proc [a-z]* FAIL ' proc/t.out` = `expr 4 + $$n`; \
+	test $$n = 0 || test `grep -c '^STRESS proc pty FAIL .*off=0x' proc/t.out` = 1
 	test `grep -c '^STRESS proc \(stack\|pipe\) FAIL .*off=0x' proc/t.out` = 2
 	if test -f /usr/lib/dyld.cctools-266; then \
 		cp /usr/lib/dyld.cctools-266 /tmp/dyldOLD1; chmod 555 /tmp/dyldOLD1; \
@@ -195,10 +219,14 @@ check-proc: $(PROCBIN) $(CHILDBIN)
 # fdpass is PASS or UNSUP; the -x run needs tcp, udp and unix to FAIL with an offset.
 check-net: $(NETBIN)
 	rc=0; $(NETBIN) -n 4 -i 50 -d /tmp >net/t.out || rc=$$?; test $$rc = 0
-	test `grep -c '^STRESS net \(tcp\|udp\|unix\|select\|accept\) PASS ' net/t.out` = 5
+	test `grep -c '^STRESS net \(tcp\|udp\|unix\|select\|accept\|storm\) PASS ' net/t.out` = 6
 	grep '^STRESS net fdpass \(PASS\|UNSUP\) ' net/t.out
 	rc=0; $(NETBIN) -x -i 5 -d /tmp tcp udp unix >net/t.out || rc=$$?; test $$rc = 1
 	test `grep -c '^STRESS net [a-z]* FAIL .*off=0x' net/t.out` = 3
+	rc=0; $(NETBIN) -x -i 2 -d /tmp storm >net/t.out || rc=$$?; test $$rc = 1
+	grep '^STRESS net storm FAIL .*off=0x' net/t.out
+	rc=0; STRESS_EXHAUST= $(NETBIN) flood >net/t.out || rc=$$?; test $$rc = 0
+	grep '^STRESS net flood UNSUP reason="needs STRESS_EXHAUST=1"' net/t.out
 	@echo net: ok
 
 # sysv must be UNSUP, the rest PASS or UNSUP; -x makes msg, ool and rights
@@ -225,12 +253,12 @@ check-thread: $(THREADBIN)
 	test `grep -c '^STRESS thread [a-z]* FAIL ' thread/t.out` = 3
 	@echo thread: ok
 
-# All 7 are PASS or UNSUP; the -x run needs flock and fifo to FAIL.
+# All 8 are PASS or UNSUP; the -x run needs flock, fifo and eintr to FAIL.
 check-misc: $(MISCBIN)
 	rc=0; $(MISCBIN) -n 3 -i 20 -d /tmp >misc/t.out || rc=$$?; test $$rc = 0
-	test `grep -c '^STRESS misc [a-z]* \(PASS\|UNSUP\) ' misc/t.out` = 7
-	rc=0; $(MISCBIN) -x -i 5 -d /tmp flock fifo >misc/t.out || rc=$$?; test $$rc = 1
-	test `grep -c '^STRESS misc [a-z]* FAIL ' misc/t.out` = 2
+	test `grep -c '^STRESS misc [a-z]* \(PASS\|UNSUP\) ' misc/t.out` = 8
+	rc=0; $(MISCBIN) -x -i 5 -d /tmp flock fifo eintr >misc/t.out || rc=$$?; test $$rc = 1
+	test `grep -c '^STRESS misc [a-z]* FAIL ' misc/t.out` = 3
 	@echo misc: ok
 
 # Overwrites $STRESS_DISK_DEV, a raw scratch device the caller names (the dev
@@ -293,7 +321,7 @@ install: all
 	install -m 755 $(THREADBIN) thread/runtests $(STRESSDIR)/thread
 	install -m 755 $(MISCBIN) misc/runtests $(STRESSDIR)/misc
 	install -m 755 $(DISKBIN) disk/runtests $(STRESSDIR)/disk
-	install -m 755 run $(STRESSDIR)
+	install -m 755 run soak $(STRESSDIR)
 	install -m 644 README $(STRESSDIR)
 
 installhdrs:
@@ -302,6 +330,6 @@ installsrc:
 	gnutar --exclude=CVS --exclude=.git -cf - . | gnutar -C $(SRCROOT) -xf -
 
 clean:
-	rm -f lib/*.o lib/libstress.a lib/t_lib $(TMAIN) lib/t.out lib/t.err vm/*.o $(VMBIN) vm/t.out mmap/*.o $(MMAPBIN) mmap/t.out fs/*.o $(FSBIN) fs/t.out proc/*.o $(PROCBIN) $(CHILDBIN) proc/t.out proc/stress-proc.old net/*.o $(NETBIN) net/t.out ipc/*.o $(IPCBIN) $(IPCNAMES) ipc/t.out thread/*.o $(THREADBIN) thread/t.out misc/*.o $(MISCBIN) misc/t.out disk/*.o $(DISKBIN) disk/t.out
+	rm -f lib/*.o lib/zone.h lib/zone_user.c lib/libstress.a lib/t_lib $(TMAIN) lib/t.out lib/t.err vm/*.o $(VMBIN) vm/t.out mmap/*.o $(MMAPBIN) mmap/t.out fs/*.o $(FSBIN) fs/t.out proc/*.o $(PROCBIN) $(CHILDBIN) proc/t.out proc/stress-proc.old net/*.o $(NETBIN) net/t.out ipc/*.o $(IPCBIN) $(IPCNAMES) ipc/t.out thread/*.o $(THREADBIN) thread/t.out misc/*.o $(MISCBIN) misc/t.out disk/*.o $(DISKBIN) disk/t.out
 
 .PHONY: all check check-vm check-mmap check-fs check-proc check-net check-ipc check-thread check-misc check-disk check-run install installhdrs installsrc clean

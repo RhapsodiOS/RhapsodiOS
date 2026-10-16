@@ -706,48 +706,526 @@ t_fsync(struct st_ctx *c)
 	free(got);
 }
 
+/* rename and link: each worker owns the names w<idx>.* in shared directories
+ * and records every file it makes, so it knows exactly what must be there.
+ * rename also reads other workers' files while they move. Each worker checks
+ * its own records once its loop ends; worker 0 then removes the tree. */
+#define NDIR	8
+#define MAXF	32
+#define MAXS	8
+#define MAXL	16
+#define MAXNN	4			/* link: names per file */
+#define IDSPAN	1000000UL
+#define FSIZE	64
+#define MOVED	500000000L		/* serials of moved names start here */
+
+struct rfile {
+	unsigned long id;
+	int dir;
+	long ser;
+};
+
+static struct rfile rf[MAXF], rs[MAXS];	/* files; subdirectories holding a file "f" */
+static int nrf, nrs;
+
+static void
+mkdirs(struct st_ctx *c, const char *test)
+{
+	char p[400];
+	int k;
+
+	mkshared(c, test);
+	for (k = 0; k < NDIR; k++) {
+		sprintf(p, "%s/d%d", base, k);
+		if (mkdir(p, 0700) < 0 && errno != EEXIST)
+			failerr(c, "mkdir");
+	}
+}
+
+static void
+fpath(char *buf, int dir, int idx, int kind, long ser)
+{
+	sprintf(buf, "%s/d%d/w%d.%c%ld", base, dir, idx, kind, ser);
+}
+
+static void
+mkfile(struct st_ctx *c, const char *path, unsigned long id)
+{
+	unsigned char buf[FSIZE];
+	int fd = open(path, O_WRONLY | O_CREAT | O_EXCL, 0600);
+
+	if (fd < 0)
+		failerr(c, "open");
+	st_fill(buf, FSIZE, id, 0);
+	writefull(c, fd, buf, FSIZE, 0);
+	close(fd);
+}
+
+static void
+chkfile(struct st_ctx *c, const char *path, unsigned long id)
+{
+	unsigned char buf[FSIZE];
+	long bad;
+	int fd = open(path, O_RDONLY);
+
+	if (fd < 0)
+		failerr(c, "open");
+	readfull(c, fd, buf, FSIZE, 0);
+	close(fd);
+	bad = st_check(buf, FSIZE, id, 0);
+	if (bad >= 0) {
+		cleanup();
+		st_fail_data(c, "file", buf, FSIZE, id, 0, bad);
+	}
+}
+
+/* The number of entries named w<idx>.* in d0..d7. */
+static int
+countown(struct st_ctx *c)
+{
+	char p[400], pre[16];
+	struct dirent *de;
+	DIR *d;
+	int k, n = 0;
+
+	sprintf(pre, "w%d.", c->idx);
+	for (k = 0; k < NDIR; k++) {
+		sprintf(p, "%s/d%d", base, k);
+		d = opendir(p);
+		if (d == NULL)
+			failerr(c, "opendir");
+		while ((de = readdir(d)) != NULL)
+			if (strncmp(de->d_name, pre, strlen(pre)) == 0)
+				n++;
+		closedir(d);
+	}
+	return n;
+}
+
+/* A file of another worker, if one turns up: it may vanish at any point
+ * (ENOENT), but what is read must be an id that worker could have written. */
+static void
+readforeign(struct st_ctx *c)
+{
+	char p[500], name[300];
+	unsigned char buf[FSIZE];
+	struct dirent *de;
+	DIR *d;
+	unsigned long w, n;
+	long r;
+	int fd, found = 0;
+
+	sprintf(p, "%s/d%d", base, (int)st_range(&c->rng, 0, NDIR - 1));
+	d = opendir(p);
+	if (d == NULL)
+		failerr(c, "opendir");
+	while ((de = readdir(d)) != NULL) {
+		if (de->d_name[0] == 'w' && atoi(de->d_name + 1) != c->idx && strstr(de->d_name, ".f") != NULL) {
+			strcpy(name, de->d_name);
+			found = 1;
+			if (st_range(&c->rng, 0, 3) == 0)
+				break;
+		}
+	}
+	closedir(d);
+	if (!found)
+		return;
+	strcat(p, "/");
+	strcat(p, name);
+	fd = open(p, O_RDONLY);
+	if (fd < 0 && errno == ENOENT)
+		return;
+	if (fd < 0)
+		failerr(c, "open");
+	r = st_readfull(fd, buf, FSIZE);
+	close(fd);
+	if (r != FSIZE)
+		failf(c, "reason=short-read name=%s got=%ld", name, r);
+	w = (unsigned long)atoi(name + 1);
+	for (n = 0; n <= (unsigned long)c->iters + 1; n++)
+		if (st_check(buf, FSIZE, w * IDSPAN + n, 0) < 0)
+			return;
+	cleanup();
+	st_fail_data(c, "file", buf, FSIZE, w * IDSPAN, 0, st_check(buf, FSIZE, w * IDSPAN, 0));
+}
+
+/* rename: moves a worker's files and subdirectories between d0..d7, renames
+ * one of its files over another (retiring that id), and checks its records. */
+static void
+newfile(struct st_ctx *c, unsigned long *n)
+{
+	char tmp[500], a[500];
+	unsigned long id = c->idx * IDSPAN + (*n)++;
+
+	sprintf(tmp, "%s/d%d/w%d.tmp", base, (int)st_range(&c->rng, 0, NDIR - 1), c->idx);
+	mkfile(c, tmp, id);			/* readers never see it half written */
+	rf[nrf].id = id;
+	rf[nrf].dir = st_range(&c->rng, 0, NDIR - 1);
+	rf[nrf].ser = (long)id;
+	fpath(a, rf[nrf].dir, c->idx, 'f', rf[nrf].ser);
+	if (rename(tmp, a) < 0)
+		failerr(c, "rename");
+	nrf++;
+}
+
+static void
+verify_rename(struct st_ctx *c)
+{
+	char a[500];
+	int x;
+
+	for (x = 0; x < nrf; x++) {
+		fpath(a, rf[x].dir, c->idx, 'f', rf[x].ser);
+		chkfile(c, a, rf[x].id);
+	}
+	for (x = 0; x < nrs; x++) {
+		fpath(a, rs[x].dir, c->idx, 's', rs[x].ser);
+		strcat(a, "/f");
+		chkfile(c, a, rs[x].id);
+	}
+	if ((x = countown(c)) != nrf + nrs)
+		failf(c, "reason=names got=%d want=%d", x, nrf + nrs);
+}
+
+static void
+t_rename(struct st_ctx *c)
+{
+	char a[500], b[500];
+	unsigned long n = 0, id;
+	long i, ser = MOVED;
+	int op, x, y, d;
+
+	mkdirs(c, "rename");
+	own[0] = '\0';		/* a FAIL must not remove the tree while others use it */
+	for (i = 0; st_more(c, i); i++) {
+		st_op_begin(c);
+		op = st_range(&c->rng, 0, 9);
+		if (nrf < 2 && op >= 2 && op <= 5)
+			op = 0;
+		if (nrf == 0 && op == 9)
+			op = 0;
+		if (nrf == MAXF && op <= 1)
+			op = 9;
+		if (nrs == 0 && op == 7)
+			op = 6;
+		if (nrs == MAXS && op == 6)
+			op = 7;
+		switch (op) {
+		case 0:
+		case 1:
+			newfile(c, &n);
+			break;
+		case 2:
+		case 3:
+		case 4:
+			x = st_range(&c->rng, 0, nrf - 1);
+			d = st_range(&c->rng, 0, NDIR - 1);
+			fpath(a, rf[x].dir, c->idx, 'f', rf[x].ser);
+			fpath(b, d, c->idx, 'f', ++ser);
+			if (rename(a, b) < 0)
+				failerr(c, "rename");
+			rf[x].dir = d;
+			rf[x].ser = ser;
+			break;
+		case 5:
+			x = st_range(&c->rng, 0, nrf - 1);
+			y = st_range(&c->rng, 0, nrf - 1);
+			if (x == y)
+				y = (y + 1) % nrf;
+			fpath(a, rf[x].dir, c->idx, 'f', rf[x].ser);
+			fpath(b, rf[y].dir, c->idx, 'f', rf[y].ser);
+			if (rename(a, b) < 0)
+				failerr(c, "rename");
+			rf[y].id = rf[x].id;
+			rf[x] = rf[--nrf];
+			break;
+		case 6:
+			id = c->idx * IDSPAN + n++;
+			rs[nrs].id = id;
+			rs[nrs].dir = st_range(&c->rng, 0, NDIR - 1);
+			rs[nrs].ser = (long)id;
+			fpath(a, rs[nrs].dir, c->idx, 's', rs[nrs].ser);
+			if (mkdir(a, 0700) < 0)
+				failerr(c, "mkdir");
+			strcat(a, "/f");
+			mkfile(c, a, id);
+			nrs++;
+			break;
+		case 7:
+			x = st_range(&c->rng, 0, nrs - 1);
+			d = st_range(&c->rng, 0, NDIR - 2);
+			if (d >= rs[x].dir)
+				d++;		/* never into its own directory */
+			fpath(a, rs[x].dir, c->idx, 's', rs[x].ser);
+			fpath(b, d, c->idx, 's', ++ser);
+			if (rename(a, b) < 0)
+				failerr(c, "rename");
+			rs[x].dir = d;
+			rs[x].ser = ser;
+			break;
+		case 8:
+			readforeign(c);
+			break;
+		default:
+			x = st_range(&c->rng, 0, nrf - 1);
+			fpath(a, rf[x].dir, c->idx, 'f', rf[x].ser);
+			if (unlink(a) < 0)
+				failerr(c, "unlink");
+			rf[x] = rf[--nrf];
+			break;
+		}
+		st_op_end(c, 1);
+	}
+	verify_rename(c);
+	markdone(c);
+	if (c->idx == 0) {
+		waitdone(c, NULL);
+		strcpy(own, base);		/* nobody else is running: remove it */
+		if (c->selfcheck) {		/* corrupt one file */
+			unsigned char ch;
+
+			if (nrf == 0)
+				newfile(c, &n);
+			fpath(a, rf[0].dir, c->idx, 'f', rf[0].ser);
+			x = open(a, O_RDWR);
+			if (x < 0)
+				failerr(c, "open");
+			readfull(c, x, &ch, 1, 0);
+			ch = ~ch;
+			writefull(c, x, &ch, 1, 0);
+			close(x);
+			verify_rename(c);
+		}
+		cleanup();
+	}
+}
+
+/* link: files with 1 to 4 hard links in random directories, and symlinks to
+ * them; st_nlink and readlink must agree with the records. */
+struct lfile {
+	unsigned long id;
+	int nn;
+	int dir[MAXNN + 1];
+	long ser[MAXNN + 1];
+};
+
+struct lsym {
+	int dir;
+	long ser;
+	char target[500];
+};
+
+static struct lfile lf[MAXF];
+static struct lsym ls[MAXL];
+static int nlf, nls;
+
+static void
+lnew(struct st_ctx *c, unsigned long *n, long *ser)
+{
+	char a[500];
+	struct lfile *f = &lf[nlf];
+
+	f->id = c->idx * IDSPAN + (*n)++;
+	f->nn = 1;
+	f->dir[0] = st_range(&c->rng, 0, NDIR - 1);
+	f->ser[0] = ++*ser;
+	fpath(a, f->dir[0], c->idx, 'f', f->ser[0]);
+	mkfile(c, a, f->id);
+	nlf++;
+}
+
+static void
+chklink(struct st_ctx *c, const struct lsym *s)
+{
+	char a[500], got[500];
+	long r;
+
+	fpath(a, s->dir, c->idx, 's', s->ser);
+	r = readlink(a, got, sizeof got - 1);
+	if (r < 0)
+		failerr(c, "readlink");
+	got[r] = '\0';
+	if (strcmp(got, s->target) != 0)
+		failf(c, "reason=readlink path=%s got=%s", a, got);
+}
+
+static void
+chknlink(struct st_ctx *c, const char *path, int want, struct stat *sb)
+{
+	if (stat(path, sb) < 0)
+		failerr(c, "stat");
+	if (sb->st_nlink != want)
+		failf(c, "reason=nlink path=%s got=%d want=%d", path, (int)sb->st_nlink, want);
+}
+
+static void
+verify_link(struct st_ctx *c)
+{
+	char a[500], b[500];
+	struct stat sb, sn;
+	int x, y, nn;
+
+	for (x = 0; x < nlf; x++) {
+		fpath(a, lf[x].dir[0], c->idx, 'f', lf[x].ser[0]);
+		chknlink(c, a, lf[x].nn, &sb);
+		chkfile(c, a, lf[x].id);
+		for (y = 1; y < lf[x].nn; y++) {
+			fpath(b, lf[x].dir[y], c->idx, 'f', lf[x].ser[y]);
+			if (stat(b, &sn) < 0)
+				failerr(c, "stat");
+			if (sn.st_ino != sb.st_ino || sn.st_dev != sb.st_dev)
+				failf(c, "reason=linkino path=%s", b);
+		}
+	}
+	for (x = 0; x < nls; x++)
+		chklink(c, &ls[x]);
+	for (nn = 0, x = 0; x < nlf; x++)
+		nn += lf[x].nn;
+	if ((x = countown(c)) != nn + nls)
+		failf(c, "reason=names got=%d want=%d", x, nn + nls);
+}
+
+/* UNSUP where the file system under -d has no hard links or symlinks
+ * (msdosfs, HFS); any other error leaves it to the test. */
+static int
+p_link(char *why, int len)
+{
+	char d[400], f[420], l[420];
+	const char *call = NULL;
+	int fd, e = 0;
+
+	if (strlen(st_opt.dir) + 40 > sizeof d)
+		return 0;
+	sprintf(d, "%s/stress.fs.lprobe.%ld", st_opt.dir, (long)getpid());
+	rmrf(d);
+	if (mkdir(d, 0700) < 0)
+		return 0;
+	sprintf(f, "%s/f", d);
+	fd = open(f, O_CREAT | O_WRONLY, 0600);
+	if (fd >= 0) {
+		close(fd);
+		sprintf(l, "%s/l", d);
+		if (link(f, l) < 0) {
+			call = "link";
+			e = errno;
+		} else {
+			sprintf(l, "%s/s", d);
+			if (symlink(f, l) < 0) {
+				call = "symlink";
+				e = errno;
+			}
+		}
+	}
+	rmrf(d);
+	/* EPERM counts only for link(): some file systems use it for "not supported" */
+	if (call == NULL || (e != EOPNOTSUPP && e != ENOSYS && (e != EPERM || call[0] != 'l')))
+		return 0;
+	sprintf(why, "%s: %s", call, st_errname(e));
+	return 1;
+}
+
+static void
+t_link(struct st_ctx *c)
+{
+	char a[500], b[500];
+	struct stat sb;
+	unsigned long n = 0;
+	long i, ser = 0;
+	int op, x, y, nn;
+
+	mkdirs(c, "link");
+	own[0] = '\0';		/* a FAIL must not remove the tree while others use it */
+	for (i = 0; st_more(c, i); i++) {
+		st_op_begin(c);
+		op = st_range(&c->rng, 0, 9);
+		if (nlf == 0)
+			op = 0;
+		if (nlf == MAXF && op <= 2)
+			op = 5;
+		if (nls == MAXL && op == 7)
+			op = 8;
+		switch (op) {
+		case 0:
+		case 1:
+		case 2:
+			lnew(c, &n, &ser);
+			break;
+		case 3:
+		case 4:
+		case 9:
+			x = st_range(&c->rng, 0, nlf - 1);
+			nn = lf[x].nn;
+			if (nn == MAXNN)
+				break;
+			fpath(a, lf[x].dir[0], c->idx, 'f', lf[x].ser[0]);
+			lf[x].dir[nn] = st_range(&c->rng, 0, NDIR - 1);
+			lf[x].ser[nn] = ++ser;
+			fpath(b, lf[x].dir[nn], c->idx, 'f', lf[x].ser[nn]);
+			if (link(a, b) < 0)
+				failerr(c, "link");
+			lf[x].nn++;
+			break;
+		case 5:
+		case 6:
+			x = st_range(&c->rng, 0, nlf - 1);
+			y = st_range(&c->rng, 0, lf[x].nn - 1);
+			fpath(a, lf[x].dir[y], c->idx, 'f', lf[x].ser[y]);
+			if (unlink(a) < 0)
+				failerr(c, "unlink");
+			if (--lf[x].nn == 0) {
+				lf[x] = lf[--nlf];
+			} else {
+				lf[x].dir[y] = lf[x].dir[lf[x].nn];
+				lf[x].ser[y] = lf[x].ser[lf[x].nn];
+			}
+			break;
+		case 7:
+			x = st_range(&c->rng, 0, nlf - 1);
+			ls[nls].dir = st_range(&c->rng, 0, NDIR - 1);
+			ls[nls].ser = ++ser;
+			fpath(ls[nls].target, lf[x].dir[0], c->idx, 'f', lf[x].ser[0]);
+			fpath(a, ls[nls].dir, c->idx, 's', ls[nls].ser);
+			if (symlink(ls[nls].target, a) < 0)
+				failerr(c, "symlink");
+			chklink(c, &ls[nls]);
+			nls++;
+			break;
+		default:
+			x = st_range(&c->rng, 0, nlf - 1);
+			fpath(a, lf[x].dir[0], c->idx, 'f', lf[x].ser[0]);
+			chknlink(c, a, lf[x].nn, &sb);
+			break;
+		}
+		st_op_end(c, 1);
+	}
+	verify_link(c);
+	markdone(c);
+	if (c->idx == 0) {
+		waitdone(c, NULL);
+		strcpy(own, base);
+		if (c->selfcheck) {
+			if (nlf == 0)
+				lnew(c, &n, &ser);
+			lf[0].nn++;		/* one name too many */
+			verify_link(c);
+		}
+		cleanup();
+	}
+}
+
 static const struct st_test tests[] = {
 	{ "rw",     200,  0, NULL, t_rw },
 	{ "append", 2000, 0, NULL, t_append },
 	{ "tree",   500,  0, NULL, t_tree },
 	{ "fsync",  200,  0, NULL, t_fsync },
-	{ "fill",   2,    1, NULL, t_fill },
+	{ "rename", 500,  0, NULL, t_rename },
+	{ "link",   500,  0, p_link, t_link },
+	{ "fill",   2,    1, NULL, t_fill, 1 },
 	{ NULL }
 };
-
-/* Without a named test the table loses its last entry, fill. Option
- * values (the word after -d, say) are not test names. */
-static int
-named_any(int argc, char **argv)
-{
-	const struct st_test *t;
-	const char *p;
-	int i;
-
-	for (i = 1; i < argc; i++) {
-		if (argv[i][0] == '-') {
-			for (p = argv[i] + 1; *p != '\0' && strchr("nitsdm", *p) == NULL; p++)
-				;
-			if (*p != '\0' && p[1] == '\0')
-				i++;
-			continue;
-		}
-		for (t = tests; t->name != NULL; t++)
-			if (strcmp(argv[i], t->name) == 0)
-				return 1;
-	}
-	return 0;
-}
 
 int
 main(int argc, char **argv)
 {
-	static struct st_test safe[sizeof tests / sizeof tests[0] - 1];
-
-	if (!named_any(argc, argv)) {
-		memcpy(safe, tests, sizeof safe);
-		safe[sizeof safe / sizeof safe[0] - 1].name = NULL;
-		return stress_main(argc, argv, "fs", safe);
-	}
 	return stress_main(argc, argv, "fs", tests);
 }

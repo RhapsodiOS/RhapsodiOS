@@ -8,6 +8,23 @@
 
 #define CHECK(c) do { if (!(c)) { printf("t_lib: FAIL line %d: %s\n", __LINE__, #c); return 1; } } while (0)
 
+static struct st_leak lb, la;
+
+static void
+zone(struct st_leak *s, const char *name, long count)
+{
+	strcpy(s->name[s->nzones], name);
+	s->count[s->nzones++] = count;
+}
+
+static void
+clear(void)
+{
+	memset(&lb, 0, sizeof lb);
+	memset(&la, 0, sizeof la);
+	lb.wired = la.wired = lb.mbufs = la.mbufs = 0;
+}
+
 static unsigned char big[4096], win[100], pbuf[100000], rbuf[100000];
 
 int
@@ -67,6 +84,60 @@ main(void)
 	CHECK(st_readfull(fds[0], rbuf, 10) == 0);
 	close(fds[0]);
 	CHECK(waitpid(pid, &i, 0) == pid && i == 0);
+	/* leak diff: thresholds, ordering, name matching */
+	{
+		char o[400];
+
+		clear();
+		zone(&lb, "vm.objects", 1000);
+		zone(&la, "vm.objects", 1065);
+		strcpy(o, "keep");
+		CHECK(st_leak_diff(&lb, &la, o, sizeof o) == 0 && strcmp(o, "keep") == 0);
+		clear();
+		zone(&lb, "ipc ports", 100);
+		zone(&la, "ipc ports", 165);
+		o[0] = '\0';
+		CHECK(st_leak_diff(&lb, &la, o, sizeof o) == 1 && strcmp(o, " leak=ipc_ports:+65") == 0);
+		clear();
+		zone(&lb, "a", 100);
+		zone(&lb, "b", 100);
+		zone(&lb, "c", 100);
+		zone(&lb, "d", 100);
+		zone(&la, "b", 300);
+		zone(&la, "a", 200);
+		zone(&la, "d", 500);
+		zone(&la, "c", 400);
+		o[0] = '\0';
+		CHECK(st_leak_diff(&lb, &la, o, sizeof o) == 1 && strcmp(o, " leak=d:+400,c:+300,b:+200") == 0);
+		clear();
+		la.wired = 533;
+		lb.wired = 500;
+		o[0] = '\0';
+		CHECK(st_leak_diff(&lb, &la, o, sizeof o) == 1 && strcmp(o, " wired=+33") == 0);
+		la.wired = 532;
+		strcpy(o, "keep");
+		CHECK(st_leak_diff(&lb, &la, o, sizeof o) == 0 && strcmp(o, "keep") == 0);
+		la.wired = -1;
+		CHECK(st_leak_diff(&lb, &la, o, sizeof o) == 0 && strcmp(o, "keep") == 0);
+		clear();
+		lb.mbufs = 10;
+		la.mbufs = 75;
+		o[0] = '\0';
+		CHECK(st_leak_diff(&lb, &la, o, sizeof o) == 1 && strcmp(o, " mbufs=+65") == 0);
+		lb.mbufs = -1;
+		strcpy(o, "keep");
+		CHECK(st_leak_diff(&lb, &la, o, sizeof o) == 0 && strcmp(o, "keep") == 0);
+		lb.mbufs = 10;
+		la.mbufs = -1;
+		CHECK(st_leak_diff(&lb, &la, o, sizeof o) == 0 && strcmp(o, "keep") == 0);
+		clear();
+		zone(&la, "new", 65);
+		o[0] = '\0';
+		CHECK(st_leak_diff(&lb, &la, o, sizeof o) == 1 && strcmp(o, " leak=new:+65") == 0);
+		lb.nzones = -1;
+		strcpy(o, "keep");
+		CHECK(st_leak_diff(&lb, &la, o, sizeof o) == 0 && strcmp(o, "keep") == 0);
+	}
 	printf("t_lib: ok\n");
 	return 0;
 }

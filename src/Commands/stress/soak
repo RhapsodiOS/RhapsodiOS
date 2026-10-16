@@ -1,0 +1,114 @@
+#!/bin/sh
+# usage: soak [-t total] [-j slots] [-T test-secs] [-s seed] [-d dir] [-L] [cat ...]
+# Runs randomly picked tests of the categories for total seconds, slots at a time.
+# The same seed picks the same tests (timing still varies). Report/soak.out holds
+# the result lines, Report/soak.summary the totals in run's format.
+usage="usage: soak [-t total] [-j slots] [-T test-secs] [-s seed] [-d dir] [-L] [cat ...]"
+total=3600
+slots=4
+tsecs=60
+seed=
+dir=/tmp
+L=
+while test $# -gt 0; do
+	case $1 in
+	-t) test $# -gt 1 || { echo "$usage" >&2; exit 2; }; total=$2; shift 2 ;;
+	-j) test $# -gt 1 || { echo "$usage" >&2; exit 2; }; slots=$2; shift 2 ;;
+	-T) test $# -gt 1 || { echo "$usage" >&2; exit 2; }; tsecs=$2; shift 2 ;;
+	-s) test $# -gt 1 || { echo "$usage" >&2; exit 2; }; seed=$2; shift 2 ;;
+	-d) test $# -gt 1 && test -n "$2" || { echo "$usage" >&2; exit 2; }; dir=$2; shift 2 ;;
+	-L) L=-L; shift ;;
+	-*) echo "$usage" >&2; exit 2 ;;
+	*) break ;;
+	esac
+done
+for n in "$total" "$slots" "$tsecs"; do
+	case $n in ''|*[!0-9]*|0) echo "$usage" >&2; exit 2 ;; esac
+done
+d=`cd "$dir" 2>/dev/null && pwd` || { echo "soak: $dir: no such directory" >&2; exit 2; }
+dir=$d
+cats=${*:-vm mmap fs proc net ipc thread misc}
+test -n "$seed" || seed=`awk 'BEGIN { srand(); printf "%d", rand() * 2147483648 }'`
+here=`cd \`dirname $0\` && pwd` || exit 2
+rep=$here/Report
+
+mkdir -p "$rep"
+rm -f "$rep"/soak.*
+echo "soak: seed=$seed" >"$rep/soak.out"
+
+for c in $cats; do
+	t=`(cd "$here/$c" && ./stress-$c -l) 2>/dev/null`
+	if test -z "$t"; then
+		echo "soak: skip $c" >>"$rep/soak.out"
+		continue
+	fi
+	for x in $t; do echo "$c $x"; done >>"$rep/soak.pool"
+done
+if test ! -s "$rep/soak.pool"; then
+	echo "soak: no tests found for: $cats" >&2
+	cat "$rep/soak.out" >&2
+	exit 2
+fi
+np=`wc -l <"$rep/soak.pool" | tr -d ' '`
+
+# the seeded generator's state is st; every pick and every job seed takes a step
+# (Park-Miller: the products stay below 2^53, so awk's doubles are exact)
+next() {
+	st=`awk -v s=$st 'BEGIN { if (s == 0) s = 1; printf "%d", (s * 16807) % 2147483647 }'`
+}
+st=$seed
+end=`expr \`date +%s\` + $total`
+jobs=
+n=0
+while :; do
+	while test `date +%s` -lt $end && test `set -- $jobs; echo $#` -lt $slots; do
+		next
+		pick=`sed -n "\`expr $st % $np + 1\`p" "$rep/soak.pool"`
+		next
+		set -- $pick
+		n=`expr $n + 1`
+		f=$rep/soak.job.$n
+		(cd "$here/$1" && ./stress-$1 $L -T $tsecs -s $st -d "$dir" $2 >"$f" 2>/dev/null; echo $? >"$f.rc") &
+		jobs="$jobs $1,$2,$n"
+	done
+	test -n "$jobs" || break
+	# collect every finished job, so its slot refills at once
+	left=
+	for job in $jobs; do
+		set -- `echo $job | tr , ' '`
+		f=$rep/soak.job.$3
+		if test ! -s "$f.rc"; then
+			left="$left $job"
+			continue
+		fi
+		rc=`cat "$f.rc"`
+		cat "$f" >>"$rep/soak.out"
+		# a crash before any result line must still show up as a FAIL
+		if test $rc != 0 && test -z "`grep '^STRESS ' "$f"`"; then
+			if test $rc -gt 128; then why=signal=`expr $rc - 128`; else why=exit=$rc; fi
+			echo "STRESS $1 $2 FAIL reason=$why" >>"$rep/soak.out"
+		fi
+		rm -f "$f" "$f.rc"
+	done
+	test "$left" = "$jobs" && sleep 1
+	jobs=$left
+done
+wait
+rm -f "$rep/soak.pool"
+
+fail=0
+o=$rep/soak.out
+s=$rep/soak.summary
+: >"$s"
+for c in $cats; do
+	p=`awk -v c=$c '$1=="STRESS" && $2==c && $4=="PASS"' "$o" | wc -l`
+	f=`awk -v c=$c '$1=="STRESS" && $2==c && $4=="FAIL"' "$o" | wc -l`
+	u=`awk -v c=$c '$1=="STRESS" && $2==c && $4=="UNSUP"' "$o" | wc -l`
+	echo "$c PASS=`expr $p` FAIL=`expr $f` UNSUP=`expr $u`" >>"$s"
+	test `expr $f` = 0 || fail=1
+done
+awk '$1=="STRESS" && $4=="FAIL"' "$o" >>"$s"
+l=`awk '$1=="STRESS" && (/ leak=/ || / wired=\+/ || / mbufs=\+/)' "$o"`
+test -n "$l" && { echo "leaks:"; echo "$l"; } >>"$s"
+cat "$s"
+exit $fail

@@ -1,12 +1,13 @@
 #!/bin/sh
-# usage: runtests [-s seed] [-t secs] [-n procs] [-m bytes] [-D rawdev] cycles
+# usage: runtests [-L] [-s seed] [-t secs] [-n procs] [-m bytes] [-D rawdev] cycles
 # Each cycle runs every disk test alone. They are never run at once: all of
 # them write the same first -m bytes of the device. Without -D they are UNSUP.
-usage="usage: runtests [-s seed] [-t secs] [-n procs] [-m bytes] [-D rawdev] cycles"
+usage="usage: runtests [-L] [-s seed] [-t secs] [-n procs] [-m bytes] [-D rawdev] cycles"
 opts=
 while test $# -gt 1; do
 	case $1 in
 	-s|-t|-n|-m|-D) test $# -gt 2 || { echo "$usage" >&2; exit 2; }; opts="$opts $1 $2"; shift 2 ;;
+	-L) opts="$opts -L"; shift ;;
 	*) echo "$usage" >&2; exit 2 ;;
 	esac
 done

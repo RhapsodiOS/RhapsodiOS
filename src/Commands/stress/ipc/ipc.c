@@ -279,6 +279,9 @@ t_msg(struct st_ctx *c)
 	port_t p, s;
 	long badi;
 
+	/* both ends must run the same count: -T would stop one end while the
+	 * other waits for the next message and times out */
+	st_opt.budget = 0;
 	badi = c->selfcheck ? st_range(&c->rng, 0, c->iters - 1) : -1;
 	own(c);
 	pname(c, wname, ".0");
@@ -369,6 +372,8 @@ t_ool(struct st_ctx *c)
 	port_t p;
 	long i, badi, bad;
 
+	/* both ends must run the same count (see t_msg) */
+	st_opt.budget = 0;
 	badi = c->selfcheck ? st_range(&c->rng, 0, c->iters - 1) : -1;
 	g_waitms = OOLWAITMS;
 	own(c);

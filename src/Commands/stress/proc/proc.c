@@ -1,17 +1,21 @@
 /* stress-proc: process and signal tests. fork/exit/wait status, exec of a
  * helper, signals delivered while the interrupted code is inside dyld (the
- * 1998 dyld dies with "dead lock", exit 68), a deep stack, and a pipe chain. */
+ * 1998 dyld dies with "dead lock", exit 68), a deep stack, a pipe chain, and a
+ * pty open/echo/close cycle. */
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/resource.h>
 #include <sys/wait.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <mach-o/dyld.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/ioctl.h>
+#include <termios.h>
 #include <time.h>
 #include <unistd.h>
 #include "stress.h"
@@ -425,12 +429,153 @@ t_pipe(struct st_ctx *c)
 	}
 }
 
+#define MAXPTY	64
+#define PTYCHUNK 128			/* pty: bytes in flight; the tty queues are small */
+
+/* Opens the first free master /dev/ptyXY; the slave name is the same with t.
+ * EBUSY, EIO and the like mean taken (by sshd or a concurrent run). */
+static int
+ptyopen(char *master, char *slave)
+{
+	static const char xs[] = "pqrs", ys[] = "0123456789abcdef";
+	int x, y, fd;
+
+	for (x = 0; x < 4; x++)
+		for (y = 0; y < 16; y++) {
+			sprintf(master, "/dev/pty%c%c", xs[x], ys[y]);
+			fd = open(master, O_RDWR | O_NOCTTY);
+			if (fd >= 0) {
+				sprintf(slave, "/dev/tty%c%c", xs[x], ys[y]);
+				return fd;
+			}
+		}
+	return -1;
+}
+
+static int
+pty_probe(char *why, int len)
+{
+	char m[32], s[32];
+	int fd = ptyopen(m, s);
+
+	if (fd < 0) {
+		strcpy(why, "no free pty");
+		return 1;
+	}
+	close(fd);
+	return 0;
+}
+
+/* pty: open a master/slave pair, push a patterned block through a child that
+ * echoes the raw slave, check it, close the pair in a random order, reap. */
+static void
+t_pty(struct st_ctx *c)
+{
+	char names[MAXPTY][32], m[32], s[32];
+	unsigned char buf[4096];
+	struct termios t;
+	unsigned long key, n, o, k;
+	long i, bad;
+	int mfd, sfd, nused = 0, u, status;
+	long r;
+	time_t t0;
+	pid_t pid;
+
+	for (i = 0; st_more(c, i); i++) {
+		t0 = time(NULL);
+		while ((mfd = ptyopen(m, s)) < 0) {
+			if (time(NULL) - t0 >= 5)
+				st_fail(c, "reason=\"no free pty\"");	/* none is held here */
+			usleep(100000);
+		}
+		for (u = 0; u < nused && strcmp(names[u], m) != 0; u++)
+			;
+		if (u == nused && nused < MAXPTY)
+			strcpy(names[nused++], m);
+		sfd = open(s, O_RDWR | O_NOCTTY);
+		if (sfd < 0)
+			st_fail_errno(c, "open slave");
+		if (tcgetattr(sfd, &t) < 0)
+			st_fail_errno(c, "tcgetattr");
+		t.c_iflag &= ~(IGNBRK | BRKINT | PARMRK | ISTRIP | INLCR | IGNCR | ICRNL | IXON);
+		t.c_oflag &= ~OPOST;
+		t.c_lflag &= ~(ECHO | ECHONL | ICANON | ISIG | IEXTEN);
+		t.c_cflag &= ~(CSIZE | PARENB);
+		t.c_cflag |= CS8;
+		t.c_cc[VMIN] = 1;
+		t.c_cc[VTIME] = 0;
+		if (tcsetattr(sfd, TCSANOW, &t) < 0)
+			st_fail_errno(c, "tcsetattr");
+		st_op_begin(c);
+		n = st_range(&c->rng, 1024, 4096);
+		pid = fork();
+		if (pid < 0)
+			st_fail_errno(c, "fork");
+		if (pid == 0) {
+			close(mfd);
+			setsid();
+			ioctl(sfd, TIOCSCTTY, 0);
+			/* echo the n data bytes, then the one byte after them ends it */
+			for (o = 0; o < n; o += r) {
+				r = read(sfd, buf, n - o < sizeof buf ? n - o : sizeof buf);
+				if (r <= 0 || st_writefull(sfd, buf, r) < 0)
+					_exit(1);
+			}
+			_exit(read(sfd, buf, 1) == 1 ? 0 : 1);
+		}
+		key = key3(c->idx, i);
+		bad = c->selfcheck ? (long)st_range(&c->rng, 0, n - 1) : -1;
+		st_fill(buf, n, key, 0);
+		for (o = 0; o < n; o += k) {
+			k = n - o < PTYCHUNK ? n - o : PTYCHUNK;
+			if (st_writefull(mfd, buf + o, k) != k)
+				st_fail_errno(c, "write");
+			r = st_readfull(mfd, buf + o, k);
+			if (r < 0)
+				st_fail_errno(c, "read");
+			if (r != k)
+				st_fail(c, "reason=short-read off=0x%lx", o);
+		}
+		if (bad >= 0)
+			buf[bad] ^= 1;
+		bad = st_check(buf, n, key, 0);
+		if (bad >= 0)
+			st_fail_data(c, "pty", buf, n, key, 0, bad);
+		/* A session leader's exit revokes its controlling tty for everyone, so
+		 * the child must be gone while this worker still holds the pair. */
+		if (st_writefull(mfd, "q", 1) != 1)
+			st_fail_errno(c, "write quit");
+		if (waitfor(pid, &status) != pid)
+			st_fail_errno(c, "waitpid");
+		if (status != 0)
+			st_fail(c, "what=child status=0x%x", status);
+		if (st_range(&c->rng, 0, 1)) {
+			close(mfd);
+			close(sfd);
+		} else {
+			close(sfd);
+			close(mfd);
+		}
+		st_op_end(c, n);
+	}
+	for (u = 0; u < nused; u++) {
+		t0 = time(NULL);
+		while ((mfd = open(names[u], O_RDWR | O_NOCTTY)) < 0) {
+			if (time(NULL) - t0 >= 5)
+				st_fail(c, "reason=\"reopen %s: %s\"", names[u], st_errname(errno));
+			usleep(100000);
+		}
+		close(mfd);
+	}
+}
+
 static const struct st_test tests[] = {
 	{ "fork", 500, 0, NULL, t_fork },
 	{ "exec", 200, 0, NULL, t_exec },
 	{ "signal", 250, 1, NULL, t_signal },
 	{ "stack", 20, 0, NULL, t_stack },
 	{ "pipe", 50, 0, NULL, t_pipe },
+	{ "pty", 50, 0, pty_probe, t_pty },
 	{ NULL, 0, 0, NULL, NULL }
 };
 

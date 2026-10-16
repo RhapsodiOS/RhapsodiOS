@@ -553,6 +553,19 @@ t_trunc(struct st_ctx *c)
 
 #define ANONSIZE (64 * 1024)
 
+/* the guest's libc has no madvise or mincore stubs, so they are raw syscalls (75, 78) */
+static int
+madv(void *p, size_t len, int advice)
+{
+	return syscall(75, p, len, advice);
+}
+
+static int
+minc(void *p, size_t len, char *vec)
+{
+	return syscall(78, p, len, vec);
+}
+
 /* libc has no mprotect stub on this system; vm_protect is the same call. */
 static int
 protect(unsigned char *p, int prot)
@@ -560,7 +573,7 @@ protect(unsigned char *p, int prot)
 	return vm_protect(task_self(), (vm_address_t)p, ANONSIZE, FALSE, prot) == KERN_SUCCESS ? 0 : -1;
 }
 
-/* This kernel's MAP_ANON fails with EINVAL ("not supported"), so EINVAL means UNSUP. */
+/* Older kernels refuse MAP_ANON with EINVAL ("not supported"), so EINVAL means UNSUP. */
 static int
 p_anon(char *why, int len)
 {
@@ -582,8 +595,9 @@ t_anon(struct st_ctx *c)
 {
 	unsigned char *p;
 	unsigned long key;
+	char vec[ANONSIZE / 512];
 	long i;
-	int sig;
+	int sig, j;
 
 	for (i = 0; st_more(c, i); i++) {
 		st_op_begin(c);
@@ -592,6 +606,16 @@ t_anon(struct st_ctx *c)
 		if (p == (unsigned char *)-1)
 			failerr(c, "mmap");
 		st_fill(p, ANONSIZE, key, 0);
+		if (minc(p, ANONSIZE, vec) < 0)
+			failerr(c, "mincore");
+		for (j = 0; j < ANONSIZE / pagesz(); j++)
+			if (vec[j] == 0)
+				failf(c, "reason=\"mincore: page %d not resident\"", j);
+		for (j = MADV_NORMAL; j <= MADV_DONTNEED; j++)
+			if (madv(p, ANONSIZE, j) < 0)
+				failerr(c, "madvise");
+		if (madv(p, ANONSIZE, 99) == 0 || errno != EINVAL)
+			failf(c, "reason=\"madvise: bad advice not EINVAL\"");
 		if (c->selfcheck && i == 0)
 			p[st_range(&c->rng, 0, ANONSIZE - 1)] ^= 0x01;
 		if (protect(p, VM_PROT_READ) < 0)
@@ -608,6 +632,145 @@ t_anon(struct st_ctx *c)
 			failerr(c, "munmap");
 		st_op_end(c, ANONSIZE / 1024);
 	}
+}
+
+/* Parent and forked child each fill half of the shared map p and check the
+ * other's half, in lockstep over two pipes; the child exits 0 when it is happy. */
+static void
+sharedpair(struct st_ctx *c, unsigned char *p, unsigned long key, int first)
+{
+	unsigned long half = ANONSIZE / 2;
+	int a2b[2], b2a[2], status = 0;
+
+	signal(SIGPIPE, SIG_IGN);
+	if (pipe(a2b) < 0 || pipe(b2a) < 0)
+		failerr(c, "pipe");
+	kid = fork();
+	if (kid < 0) {
+		kid = 0;
+		failerr(c, "fork");
+	}
+	if (kid == 0) {
+		close(a2b[1]);
+		close(b2a[0]);
+		st_fill(p + half, half, key ^ 1, half);
+		putbyte(b2a[1], 0);
+		if (getbyte(a2b[0]) < 0)
+			_exit(1);
+		chkmem(c, "child-map", p, half, key, 0);
+		_exit(0);
+	}
+	close(a2b[0]);
+	close(b2a[1]);
+	st_fill(p, half, key, 0);
+	if (getbyte(b2a[0]) < 0)
+		kidfail(c);
+	if (c->selfcheck && first)
+		p[half + st_range(&c->rng, 0, half - 1)] ^= 0x01;
+	putbyte(a2b[1], 0);
+	chkmem(c, "map", p + half, half, key ^ 1, half);
+	close(a2b[1]);
+	close(b2a[0]);
+	reap(c, &status);
+	if (!WIFEXITED(status) || WEXITSTATUS(status) != 0)
+		badstatus(c, status);
+}
+
+/* anonshared: MAP_SHARED anonymous memory is shared with a forked child. */
+static void
+t_anonshared(struct st_ctx *c)
+{
+	unsigned char *p;
+	long i;
+
+	for (i = 0; st_more(c, i); i++) {
+		st_op_begin(c);
+		p = mmap(NULL, ANONSIZE, RW, MAP_ANON | MAP_SHARED, -1, 0);
+		if (p == (unsigned char *)-1)
+			failerr(c, "mmap");
+		sharedpair(c, p, key3(8, i, c->idx), i == 0);
+		munmap((caddr_t)p, ANONSIZE);
+		st_op_end(c, ANONSIZE / 1024);
+	}
+}
+
+/* zero: /dev/zero reads as zeros, swallows writes, and maps as anonymous memory. */
+static int
+p_zero(char *why, int len)
+{
+	struct stat sb;
+	void *p;
+	int fd, e;
+
+	if (stat("/dev/zero", &sb) < 0 || !S_ISCHR(sb.st_mode)) {
+		sprintf(why, "/dev/zero: absent");
+		return 1;
+	}
+	fd = open("/dev/zero", O_RDWR);
+	if (fd < 0)
+		return 0;
+	p = mmap(NULL, pagesz(), RW, MAP_PRIVATE, fd, 0);
+	e = errno;
+	close(fd);
+	if (p != (void *)-1) {
+		munmap(p, pagesz());
+		return 0;
+	}
+	if (e != EOPNOTSUPP && e != ENODEV && e != EINVAL)
+		return 0;
+	sprintf(why, "mmap: %s", st_errname(e));
+	return 1;
+}
+
+static void
+chkzero(struct st_ctx *c, const char *what, const unsigned char *p, unsigned long len)
+{
+	unsigned long j;
+
+	for (j = 0; j < len; j++)
+		if (p[j] != 0)
+			failf(c, "what=%s off=0x%lx want=00 got=%02x", what, j, p[j]);
+}
+
+static void
+t_zero(struct st_ctx *c)
+{
+	unsigned char *buf, *p, *p2;
+	unsigned long key;
+	long i;
+	int fd;
+
+	buf = malloc(ANONSIZE);
+	if (buf == NULL)
+		failerr(c, "malloc");
+	fd = open("/dev/zero", O_RDWR);
+	if (fd < 0)
+		failerr(c, "open");
+	for (i = 0; st_more(c, i); i++) {
+		st_op_begin(c);
+		key = key3(9, i, c->idx);
+		st_fill(buf, ANONSIZE, key, 0);
+		if (read(fd, buf, ANONSIZE) != ANONSIZE)
+			failerr(c, "read");
+		chkzero(c, "read", buf, ANONSIZE);
+		st_fill(buf, ANONSIZE, key, 0);
+		if (write(fd, buf, ANONSIZE) != ANONSIZE)
+			failerr(c, "write");
+		p = mapfile(c, fd, ANONSIZE, MAP_PRIVATE);
+		chkzero(c, "map", p, ANONSIZE);
+		st_fill(p, ANONSIZE, key, 0);
+		p2 = mapfile(c, fd, ANONSIZE, MAP_PRIVATE);
+		chkzero(c, "map2", p2, ANONSIZE);
+		chkmem(c, "filled", p, ANONSIZE, key, 0);
+		munmap((caddr_t)p2, ANONSIZE);
+		munmap((caddr_t)p, ANONSIZE);
+		p = mapfile(c, fd, ANONSIZE, MAP_SHARED);
+		sharedpair(c, p, key, i == 0);
+		munmap((caddr_t)p, ANONSIZE);
+		st_op_end(c, ANONSIZE / 1024);
+	}
+	close(fd);
+	free(buf);
 }
 
 /* libc may have no msync stub, so the call is bound through dyld like mlock
@@ -699,6 +862,8 @@ static const struct st_test tests[] = {
 	{ "trunc", 30, 0, NULL, t_trunc },
 	{ "anon", 200, 0, p_anon, t_anon },
 	{ "sync", 20, 0, p_sync, t_sync },
+	{ "anonshared", 100, 0, p_anon, t_anonshared },
+	{ "zero", 100, 0, p_zero, t_zero },
 	{ NULL }
 };
 

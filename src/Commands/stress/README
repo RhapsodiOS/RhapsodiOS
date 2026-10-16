@@ -1,7 +1,7 @@
 stress - system stress suite for RhapsodiOS
 
 Usage
-    run [-a] [-s seed] [-t secs] [-d dir] [-D dev] cycles [cat ...]
+    run [-a] [-L] [-s seed] [-t secs] [-d dir] [-D dev] cycles [cat ...]
 
     cat is any of vm mmap fs proc net ipc thread misc (the default) or disk.
     Each cycle runs every test of a category alone, then all of them at once
@@ -10,6 +10,7 @@ Usage
     files to Report/cores.  Exit status is 1 if anything failed.
 
     -a        run the categories at the same time
+    -L        fail a test whose kernel resources leak (see Leak report)
     -s seed   random seed (a failure prints it; reuse it to replay)
     -t secs   per-test time limit (default 600)
     -d dir    scratch directory (default /tmp); files named dir/stress.* are
@@ -20,13 +21,38 @@ Usage
               stress-disk refuses a mounted, root or symlinked device.
     cycles    how many times to repeat
 
-    The fs fill test fills a whole file system and runs only if STRESS_FILL_DIR
-    names a scratch one.  The vm settime test steps the system clock as root,
+    The fs fill test fills a whole file system; it runs only when named and
+    only if STRESS_FILL_DIR names a scratch one.  The vm settime test steps the system clock as root,
     so it is opt-in: it runs only as stress-vm settime, and make check-vm runs
     it only if STRESS_SETTIME is set.  Each category also has its own
     <cat>/runtests (same options, except -a and categories) and a binary
     stress-<cat> that takes
-    -n procs, -i iters, -t secs, -s seed, -d dir, -m size, -v, -x and test names.
+    -n procs, -i iters, -t secs, -T secs, -s seed, -d dir, -m size, -v, -x,
+    -l, -L and test names.  -l lists the tests the binary runs by default (named_only ones are left out).
+    The net storm test (64 connects against a backlog of 5) allows 90 s for a
+    pending connect: SYNs dropped on a full backlog are retransmitted in
+    backed-off waves that each admit only about backlog connects; a connect
+    may end in ECONNREFUSED, ETIMEDOUT or ECONNRESET.  The net
+    flood test runs only when named and STRESS_EXHAUST=1: it exhausts files,
+    sockets and pcbs with a bounded buffer fill.  STRESS_EXHAUST=2 fills
+    every pair until EWOULDBLOCK, which is expected to wedge current kernels
+    (a non-blocking sosend sleeps waiting for mbufs); never run it on a
+    machine you need (GitHub #51).
+    The pty test (proc) needs working ptys; mmap anon and anonshared are UNSUP
+    where MAP_ANON is refused; mmap zero is
+    UNSUP when /dev/zero is not a character device or mmap of it fails with
+    EOPNOTSUPP, ENODEV or EINVAL, and FAILs when the map works but reads
+    wrong data or any other call fails; the vm wire test falls back to syscalls
+    177/178 where Libc lacks mlock/munlock; it squeezes physical memory, so
+    vm/runtests leaves it out of the all-at-once phase (with pressure it
+    thrashes a 128 MB guest past the watchdog).  The fs rename and link tests
+    churn names in a tree shared by the workers; fs link is UNSUP where the
+    file system has no hard links or symlinks; misc eintr has signals
+    interrupt blocking calls, and FAILs (reason=no-eintr) if read, waitpid or
+    flock never returned EINTR without SA_RESTART.
+    -T secs ends a test normally (PASS) once secs have passed; -t is the watchdog.
+    -T does not bound ipc msg/ool or net select: their two processes run a
+    shared count, so stopping one end early would fail the other.
 
 Result lines
     STRESS <cat> <test> PASS iters=N procs=N ... ops=N maxlat=... seed=N
@@ -40,6 +66,35 @@ Result lines
     the kernel lacks a feature the test needs; it is not a failure.  PASS lines
     may carry extra key=value fields.
 
+Leak report
+    Each result line may end with fields comparing the kernel before and after
+    the test:  leak=<zone>:+N,...  wired=+N  mbufs=+N.  They appear only for
+    growth beyond a threshold: a zone above +64 elements and +10%, wired pages
+    above +32, mbufs above +64 (at most the 3 largest zones are named).  A
+    test is not failed for it unless -L or STRESS_LEAK=fail is given, which
+    turns the PASS into FAIL reason=leak.  Caches such as TCP TIME_WAIT can
+    show growth on a healthy kernel.  -L is only meaningful for a test run
+    alone: in run's all-at-once phase and in soak, the kernel allocations of
+    the concurrent tests land in each other's snapshots (pv_entry, map
+    entries, objects, wired), so nearly every line carries leak fields there.
+    run lists such lines under "leaks:" in
+    Report/summary.
+
 Report/summary
     <cat> PASS=n FAIL=n UNSUP=n      one line per category
     STRESS ... FAIL ...              then every FAIL line
+
+soak - a timed random mix
+    soak [-t total] [-j slots] [-T test-secs] [-s seed] [-d dir] [-L] [cat ...]
+
+    Runs randomly picked tests (as listed by stress-<cat> -l) of the categories
+    (default: run's) for total seconds (default 3600), slots at a time (default 4),
+    each for at most test-secs (default 60, the stress -T budget).  -t bounds
+    when soak starts new jobs: a running job can overrun by up to its
+    watchdog.  The seed (printed on the first
+    line of Report/soak.out) picks the same tests again; timing still varies.
+    -L fails tests that leak, but concurrent tests pollute each other's leak
+    snapshots (see Leak report), so expect false leaks.  Output goes to Report/soak.out.
+    Report/soak.summary is laid out like Report/summary.  Exit status is 1 if
+    anything failed, 2 for bad usage or no tests found.  ffsbench stress --soak
+    SECS runs it in a guest.

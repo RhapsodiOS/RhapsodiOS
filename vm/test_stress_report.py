@@ -34,3 +34,13 @@ def test_compare():
     a = {"rates": {"vm.cow": {"ops": 800, "maxlat": 40}, "x.y": {"ops": 1, "maxlat": 1}}}
     b = {"rates": {"vm.cow": {"ops": 400, "maxlat": 90}}}
     assert stress_report.compare(a, b) == [("vm.cow", 800, 400, -50.0, 40, 90)]
+
+
+def test_summarize_collects_leak_lines():
+    leak = "STRESS ipc ports PASS iters=1 procs=1 secs=1.0 seed=1 leak=ipc_ports:+65 wired=+33"
+    text = "STRESS vm cow PASS iters=1 procs=1 secs=1.0 seed=1\n" + leak + "\n"
+    s = stress_report.summarize(stress_report.parse(text))
+    assert s["leaks"] == [leak]
+    assert s["counts"]["vm"]["PASS"] + s["counts"]["ipc"]["PASS"] == 2
+    mb = "STRESS net tcp PASS iters=1 procs=1 secs=1.0 seed=1 mbufs=+65"
+    assert stress_report.summarize(stress_report.parse(mb + "\n"))["leaks"] == [mb]

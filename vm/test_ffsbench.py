@@ -459,3 +459,31 @@ def test_stress_fs_rejects_unknown_target(capsys):
     with pytest.raises(SystemExit):
         fb.main(["ffsbench", "stress", "--label", "x", "--fs", "zfs"])
     assert "unknown --fs target" in capsys.readouterr().err
+
+
+def test_fs_src_tar_has_the_tool_sources_and_no_e2fsprogs():
+    import io
+    import tarfile
+    names = tarfile.open(fileobj=io.BytesIO(fb.fs_src_tar())).getnames()
+    assert "src/msdosfs-1/msdos_newfs/newfs_msdos.c" in names
+    assert "src/hfs-1/hfs_newfs/newfs_hfs.c" in names
+    assert "src/kernel-7/bsd/dev/disk.h" in names
+    assert not any(n.endswith("e2fsprogs-1.35.tar.gz") for n in names)
+
+
+def test_stress_fs_command_runs_ufs_then_each_target():
+    c = fb.stress_fs_command(["ufs", "ext2", "nfs"], "fs mmap", 7)
+    assert c.index("/usr/local/stress/run -a -s 7 -d /mnt1") < c.index("stress_fs.sh run ext2 ")
+    assert c.index("stress_fs.sh run ext2") < c.index("stress_fs.sh run nfs")
+    assert ">> /tmp/stressfs.out" in c and "/tmp/stress.exit" in c
+    assert "/usr/local/stress/run" not in fb.stress_fs_command(["msdos"], "fs", 7)
+
+
+def test_parse_stressfs_unsup_and_lost():
+    text = ('BUILD mount_hfs ok\n'
+            'STRESSFS ext2 status=ran reason="" fsck="host"\n'
+            'STRESSFS hfs status=unsup reason="mount: mount_hfs: Input/output error" fsck=""\n')
+    r = fb.parse_stressfs(text, ["ext2", "hfs", "msdos"])
+    assert r["ext2"] == ("ran", "", "host")
+    assert r["hfs"] == ("unsup", "mount: mount_hfs: Input/output error", "")
+    assert r["msdos"] == ("lost", "no result: the guest stopped answering or the run ended first", "")

@@ -67,6 +67,8 @@ failf(struct st_ctx *c, const char *fmt, ...)
 	st_fail(c, "%s", buf);
 }
 
+static void markdone(struct st_ctx *c);
+
 /* HFS refuses to remove or replace an object something has open (EBUSY);
  * that is the file system's limit, so the test ends UNSUP there. */
 static int
@@ -83,9 +85,11 @@ failerr(struct st_ctx *c, const char *call)
 	int e = errno;
 
 	cleanup();
-	if (e == EBUSY && (strcmp(call, "rmdir") == 0 || strcmp(call, "rename") == 0) &&
-	    on_hfs(st_opt.dir))
+	if (e == EBUSY && (strcmp(call, "rmdir") == 0 || strcmp(call, "rename") == 0 ||
+	    strcmp(call, "unlink") == 0) && on_hfs(st_opt.dir)) {
+		markdone(c);	/* workers waiting on the shared tree must not stall */
 		st_unsup(c, "reason=\"EBUSY: in-use object\"");
+	}
 	errno = e;
 	st_fail_errno(c, call);
 }

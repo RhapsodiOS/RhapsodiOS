@@ -1,0 +1,125 @@
+{
+ "categories": [
+  {
+   "class": "NSString",
+   "class_methods": [
+    {
+     "selector": "localizedNameOfStringEncoding:",
+     "types": "@8@4:8I12"
+    },
+    {
+     "selector": "availableStringEncodings",
+     "types": "r^I4@4:8"
+    },
+    {
+     "selector": "defaultCStringEncoding",
+     "types": "I4@4:8"
+    }
+   ],
+   "instance_methods": [
+    {
+     "selector": "getBytes:maxLength:filledLength:encoding:allowLossyConversion:range:remainingRange:",
+     "types": "c40@4:8*12I16^I20I24c28{?=II}36^{?=II}44"
+    },
+    {
+     "selector": "_getBytesInJISEncoding:range:usedBytes:lossy:",
+     "types": "v21@4:8*12{?=II}16^I24c28"
+    },
+    {
+     "selector": "dataUsingEncoding:",
+     "types": "@8@4:8I12"
+    },
+    {
+     "selector": "dataUsingEncoding:allowLossyConversion:",
+     "types": "@9@4:8I12c16"
+    },
+    {
+     "selector": "canBeConvertedToEncoding:",
+     "types": "c8@4:8I12"
+    },
+    {
+     "selector": "smallestEncoding",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "fastestEncoding",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "lossyCString",
+     "types": "r*4@4:8"
+    },
+    {
+     "selector": "cStringLength",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "cString",
+     "types": "r*4@4:8"
+    },
+    {
+     "selector": "UTF8String",
+     "types": "r*4@4:8"
+    },
+    {
+     "selector": "getCString:",
+     "types": "v8@4:8*12"
+    },
+    {
+     "selector": "getCString:maxLength:",
+     "types": "v12@4:8*12I16"
+    },
+    {
+     "selector": "getCString:maxLength:range:remainingRange:",
+     "types": "v24@4:8*12I16{?=II}20^{?=II}28"
+    }
+   ],
+   "name": "NSStringOtherEncodings"
+  }
+ ],
+ "classes": [],
+ "data_symbols": [
+  "__NSCStringCharToUnichar",
+  "__NSCStringEncoding",
+  "_kMaximumUCS2",
+  "_kMaximumUCS4",
+  "_kMaximumUTF16",
+  "_kReplacementCharacter",
+  "_lossyNEXTSTEPToASCIITable"
+ ],
+ "module": "NSStringEncodings.m",
+ "schema_version": "abi-v1",
+ "text_symbols": [
+  "_NSConvertToLower",
+  "_NSConvertToTitle",
+  "_NSConvertToUpper",
+  "_NSEUCToShiftJIS",
+  "_NSMacOSRomanToPrecompUnicode",
+  "_NSPrecompUnicodeToNEXTSTEP",
+  "_NSUnicodeToASCII",
+  "_NSUnicodeToAdobeStandard",
+  "_NSUnicodeToAdobeStandardCyrillic",
+  "_NSUnicodeToDingbat",
+  "_NSUnicodeToISOLatin1",
+  "_NSUnicodeToISOLatin2",
+  "_NSUnicodeToLossyASCII",
+  "_NSUnicodeToMacOSRoman",
+  "_NSUnicodeToNEXTSTEP",
+  "_NSUnicodeToNextEUC",
+  "_NSUnicodeToShiftJIS",
+  "_NSUnicodeToSymbol",
+  "_NSUnicodeToUTF8",
+  "_NSUnicodeToWinCodePage1250",
+  "_NSUnicodeToWinCodePage1253",
+  "_NSUnicodeToWinCodePage1254",
+  "_NSUnicodeToWinLatin1",
+  "__NSDefaultCStringEncoding",
+  "__NSDefaultFileSystemEncoding",
+  "__NSFoundationResourceCPath",
+  "__NSInitProprietaryCStringEncoding",
+  "__NSProprietaryEncodingName",
+  "__NSProprietaryEncodingToUnicode",
+  "__NSReadBytesFromFile",
+  "__NSUnicodeToProprietaryEncoding"
+ ]
+}

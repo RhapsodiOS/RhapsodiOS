@@ -1,0 +1,540 @@
+{
+  "schema_version": "source-map-v1",
+  "reference_sha256": "332B3C8C0AE0A6E40A4B93110EE16748FCD94AA0119D63F16EDE878598C681B4",
+  "mapped": [
+    {
+      "address": 1112610928,
+      "size": 296,
+      "reference_names": [
+        "-[NSStringArray count]"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringArray.m",
+      "source_line": 703
+    },
+    {
+      "address": 1112639520,
+      "size": 640,
+      "reference_names": [
+        "-[NSStringArray objectAtIndex:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringArray.m",
+      "source_line": 733
+    },
+    {
+      "address": 1112655984,
+      "size": 16,
+      "reference_names": [
+        "-[_NSUTF8ASCIIString length]"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringArray.m",
+      "source_line": 1136
+    },
+    {
+      "address": 1112657500,
+      "size": 184,
+      "reference_names": [
+        "-[_NSUTF8ASCIIString getCharacters:range:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringArray.m",
+      "source_line": 1148
+    },
+    {
+      "address": 1112735040,
+      "size": 96,
+      "reference_names": [
+        "+[NSStringArray stringArrayWithUTF8Data:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringArray.m",
+      "source_line": 600
+    },
+    {
+      "address": 1112735708,
+      "size": 240,
+      "reference_names": [
+        "_releaseArray"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringArray.m",
+      "source_line": 145
+    },
+    {
+      "address": 1112739872,
+      "size": 76,
+      "reference_names": [
+        "-[NSStringArray release]"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringArray.m",
+      "source_line": 1061
+    },
+    {
+      "address": 1112739948,
+      "size": 128,
+      "reference_names": [
+        "-[NSStringArray initWithUTF8Data:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringArray.m",
+      "source_line": 623
+    },
+    {
+      "address": 1112759304,
+      "size": 216,
+      "reference_names": [
+        "-[NSStringArray dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringArray.m",
+      "source_line": 1066
+    },
+    {
+      "address": 1112760040,
+      "size": 348,
+      "reference_names": [
+        "-[NSStringArray containsObject:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringArray.m",
+      "source_line": 805
+    },
+    {
+      "address": 1112761444,
+      "size": 48,
+      "reference_names": [
+        "-[NSStringArray retain]"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringArray.m",
+      "source_line": 1056
+    },
+    {
+      "address": 1112762496,
+      "size": 204,
+      "reference_names": [
+        "_encodeStringAsUTF8"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringArray.m",
+      "source_line": 162
+    },
+    {
+      "address": 1112765836,
+      "size": 220,
+      "reference_names": [
+        "_retainArray"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringArray.m",
+      "source_line": 135
+    },
+    {
+      "address": 1112900352,
+      "size": 116,
+      "reference_names": [
+        "-[_NSUTF8ASCIIString characterAtIndex:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringArray.m",
+      "source_line": 1140
+    },
+    {
+      "address": 1112900468,
+      "size": 80,
+      "reference_names": [
+        "-[_NSUTF8String release]"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringArray.m",
+      "source_line": 1117
+    },
+    {
+      "address": 1112900836,
+      "size": 52,
+      "reference_names": [
+        "-[_NSUTF8String retain]"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringArray.m",
+      "source_line": 1112
+    },
+    {
+      "address": 1112900888,
+      "size": 52,
+      "reference_names": [
+        "-[_NSUTF8String copyWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringArray.m",
+      "source_line": 1126
+    },
+    {
+      "address": 1112901088,
+      "size": 44,
+      "reference_names": [
+        "-[_NSUTF8ASCIIString hash]"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringArray.m",
+      "source_line": 1159
+    },
+    {
+      "address": 1112902412,
+      "size": 84,
+      "reference_names": [
+        "-[NSStringArray init]"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringArray.m",
+      "source_line": 618
+    },
+    {
+      "address": 1112902496,
+      "size": 52,
+      "reference_names": [
+        "+[NSStringArray stringArray]"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringArray.m",
+      "source_line": 596
+    },
+    {
+      "address": 1112943616,
+      "size": 96,
+      "reference_names": [
+        "+[NSStringArray stringArrayWithArray:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringArray.m",
+      "source_line": 606
+    },
+    {
+      "address": 1112943712,
+      "size": 104,
+      "reference_names": [
+        "+[NSStringArray stringArrayWithComponents:separatedByString:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringArray.m",
+      "source_line": 611
+    },
+    {
+      "address": 1112943816,
+      "size": 92,
+      "reference_names": [
+        "+[_NSUTF8String allocWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringArray.m",
+      "source_line": 1091
+    },
+    {
+      "address": 1112979424,
+      "size": 72,
+      "reference_names": [
+        "-[NSStringArray UTF8Data]"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringArray.m",
+      "source_line": 801
+    },
+    {
+      "address": 1112979496,
+      "size": 60,
+      "reference_names": [
+        "-[NSStringArray bitVectorMatchingString:option:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringArray.m",
+      "source_line": 895
+    },
+    {
+      "address": 1112979556,
+      "size": 60,
+      "reference_names": [
+        "-[NSStringArray bitVectorMatchingStringArray:option:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringArray.m",
+      "source_line": 906
+    },
+    {
+      "address": 1112979616,
+      "size": 608,
+      "reference_names": [
+        "-[NSStringArray initWithArray:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringArray.m",
+      "source_line": 633
+    },
+    {
+      "address": 1112980224,
+      "size": 384,
+      "reference_names": [
+        "-[NSStringArray initWithComponents:separatedByString:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringArray.m",
+      "source_line": 674
+    },
+    {
+      "address": 1112980608,
+      "size": 532,
+      "reference_names": [
+        "-[NSStringArray initWithWordsOfData:convertCase:locale:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringArray.m",
+      "source_line": 1006
+    },
+    {
+      "address": 1112981140,
+      "size": 348,
+      "reference_names": [
+        "-[NSStringArray initWithWordsOfHTMLData:convertCase:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringArray.m",
+      "source_line": 1036
+    },
+    {
+      "address": 1112981488,
+      "size": 348,
+      "reference_names": [
+        "-[NSStringArray initWithWordsOfRTFData:convertCase:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringArray.m",
+      "source_line": 1044
+    },
+    {
+      "address": 1112981836,
+      "size": 512,
+      "reference_names": [
+        "-[NSStringArray initWithWordsOfString:convertCase:locale:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringArray.m",
+      "source_line": 973
+    },
+    {
+      "address": 1112982348,
+      "size": 52,
+      "reference_names": [
+        "-[NSStringArray matchesString:option:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringArray.m",
+      "source_line": 902
+    },
+    {
+      "address": 1112982400,
+      "size": 820,
+      "reference_names": [
+        "-[NSStringArray matchesStringArray:option:eachMustBeMatched:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringArray.m",
+      "source_line": 914
+    },
+    {
+      "address": 1112983220,
+      "size": 36,
+      "reference_names": [
+        "-[NSStringArray retainCount]"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringArray.m",
+      "source_line": 1052
+    },
+    {
+      "address": 1112983256,
+      "size": 220,
+      "reference_names": [
+        "-[NSStringArray stringArrayByAppendingStringArray:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringArray.m",
+      "source_line": 837
+    },
+    {
+      "address": 1112983476,
+      "size": 664,
+      "reference_names": [
+        "-[NSStringArray stringArrayByAppendingStringArrays:resultingBitVectors:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringArray.m",
+      "source_line": 850
+    },
+    {
+      "address": 1112984140,
+      "size": 440,
+      "reference_names": [
+        "-[NSStringArray stringArrayWithBitVector:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringArray.m",
+      "source_line": 937
+    },
+    {
+      "address": 1112984580,
+      "size": 16,
+      "reference_names": [
+        "-[_NSUTF8ASCIIString cStringLength]"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringArray.m",
+      "source_line": 1167
+    },
+    {
+      "address": 1112984596,
+      "size": 16,
+      "reference_names": [
+        "-[_NSUTF8ASCIIString cString]"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringArray.m",
+      "source_line": 1163
+    },
+    {
+      "address": 1112984612,
+      "size": 108,
+      "reference_names": [
+        "-[_NSUTF8ASCIIString canBeConvertedToEncoding:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringArray.m",
+      "source_line": 1171
+    },
+    {
+      "address": 1112984720,
+      "size": 52,
+      "reference_names": [
+        "-[_NSUTF8ASCIIString fastestEncoding]"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringArray.m",
+      "source_line": 1176
+    },
+    {
+      "address": 1112984772,
+      "size": 240,
+      "reference_names": [
+        "-[_NSUTF8ASCIIString getBytes:maxLength:filledLength:encoding:allowLossyConversion:range:remainingRange:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringArray.m",
+      "source_line": 1184
+    },
+    {
+      "address": 1112985012,
+      "size": 52,
+      "reference_names": [
+        "-[_NSUTF8ASCIIString smallestEncoding]"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringArray.m",
+      "source_line": 1180
+    },
+    {
+      "address": 1112985064,
+      "size": 60,
+      "reference_names": [
+        "-[_NSUTF8NonASCIIString characterAtIndex:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringArray.m",
+      "source_line": 1215
+    },
+    {
+      "address": 1112985124,
+      "size": 56,
+      "reference_names": [
+        "-[_NSUTF8NonASCIIString getCharacters:range:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringArray.m",
+      "source_line": 1219
+    },
+    {
+      "address": 1112985180,
+      "size": 56,
+      "reference_names": [
+        "-[_NSUTF8NonASCIIString hash]"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringArray.m",
+      "source_line": 1223
+    },
+    {
+      "address": 1112985236,
+      "size": 16,
+      "reference_names": [
+        "-[_NSUTF8NonASCIIString length]"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringArray.m",
+      "source_line": 1211
+    },
+    {
+      "address": 1112985252,
+      "size": 88,
+      "reference_names": [
+        "-[_NSUTF8String dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringArray.m",
+      "source_line": 1106
+    },
+    {
+      "address": 1112985340,
+      "size": 92,
+      "reference_names": [
+        "-[_NSUTF8String init]"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringArray.m",
+      "source_line": 1099
+    },
+    {
+      "address": 1112985432,
+      "size": 16,
+      "reference_names": [
+        "-[_NSUTF8String retainCount]"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringArray.m",
+      "source_line": 1122
+    },
+    {
+      "address": 1112990980,
+      "size": 716,
+      "reference_names": [
+        "_appendWords"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringArray.m",
+      "source_line": 506
+    },
+    {
+      "address": 1112991816,
+      "size": 916,
+      "reference_names": [
+        "_findString"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringArray.m",
+      "source_line": 349
+    },
+    {
+      "address": 1112992732,
+      "size": 724,
+      "reference_names": [
+        "_findStringArray"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringArray.m",
+      "source_line": 409
+    },
+    {
+      "address": 1112993508,
+      "size": 192,
+      "reference_names": [
+        "_hashStr1"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringArray.m",
+      "source_line": 313
+    },
+    {
+      "address": 1112993772,
+      "size": 76,
+      "reference_names": [
+        "_isEqualStr1"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringArray.m",
+      "source_line": 337
+    },
+    {
+      "address": 1112993848,
+      "size": 76,
+      "reference_names": [
+        "_isEqualStr2"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringArray.m",
+      "source_line": 337
+    },
+    {
+      "address": 1112993924,
+      "size": 580,
+      "reference_names": [
+        "_newBitVectorForStringArray"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringArray.m",
+      "source_line": 462
+    },
+    {
+      "address": 1112994624,
+      "size": 192,
+      "reference_names": [
+        "_strHash2"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringArray.m",
+      "source_line": 313
+    }
+  ],
+  "unmapped": [],
+  "duplicate_candidates": [],
+  "boundary_disputed": []
+}

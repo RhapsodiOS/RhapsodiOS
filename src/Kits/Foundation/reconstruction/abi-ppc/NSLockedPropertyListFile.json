@@ -1,0 +1,105 @@
+{
+ "categories": [],
+ "classes": [
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "synchronize",
+     "types": "c4@4:8"
+    },
+    {
+     "selector": "removeObjectForKey:domain:",
+     "types": "v12@4:8@12@16"
+    },
+    {
+     "selector": "setObject:forKey:domain:",
+     "types": "v16@4:8@12@16@20"
+    },
+    {
+     "selector": "objectForKey:domain:",
+     "types": "@12@4:8@12@16"
+    },
+    {
+     "selector": "removeDomain:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "setDictionary:forDomain:",
+     "types": "v12@4:8@12@16"
+    },
+    {
+     "selector": "dictionaryForDomain:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "_removeDomain:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "_setDictionary:forDomain:",
+     "types": "v12@4:8@12@16"
+    },
+    {
+     "selector": "_dictionaryForDomain:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "cacheDictionary:forDomain:",
+     "types": "v12@4:8@12@16"
+    },
+    {
+     "selector": "allDomains",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "domainExists:",
+     "types": "c8@4:8@12"
+    },
+    {
+     "selector": "dealloc",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "initWithPath:",
+     "types": "@8@4:8@12"
+    }
+   ],
+   "instance_size": 24,
+   "ivars": [
+    {
+     "name": "_path",
+     "offset": 4,
+     "type": "@\"NSString\""
+    },
+    {
+     "name": "_zone",
+     "offset": 8,
+     "type": "^{?}"
+    },
+    {
+     "name": "_user",
+     "offset": 12,
+     "type": "@\"NSString\""
+    },
+    {
+     "name": "_frozeThreads",
+     "offset": 16,
+     "type": "c"
+    },
+    {
+     "name": "_cache",
+     "offset": 20,
+     "type": "@\"NSMutableDictionary\""
+    }
+   ],
+   "name": "NSLockedPropertyListFile",
+   "superclass": "NSObject"
+  }
+ ],
+ "data_symbols": [],
+ "module": "NSLockedPropertyListFile.m",
+ "schema_version": "abi-v1",
+ "text_symbols": []
+}

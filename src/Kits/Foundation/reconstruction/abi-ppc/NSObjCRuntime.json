@@ -1,0 +1,64 @@
+{
+ "categories": [
+  {
+   "class": "Protocol",
+   "class_methods": [],
+   "instance_methods": [
+    {
+     "selector": "detailedDescription",
+     "types": "@4@4:8"
+    }
+   ],
+   "name": "NSDetailedDescription"
+  },
+  {
+   "class": "NSObject",
+   "class_methods": [
+    {
+     "selector": "detailedDescriptionForClass:",
+     "types": "@8@4:8#12"
+    }
+   ],
+   "instance_methods": [],
+   "name": "NSDetailedDescription"
+  }
+ ],
+ "classes": [],
+ "data_symbols": [
+  "_NSFoundationVersionNumber",
+  "_NSFoundationVersionString",
+  "__NSAltClassNameFromString",
+  "_YES",
+  "_dummyPad1",
+  "_NO",
+  "_dummyPad2",
+  "_nil",
+  "_Nil",
+  "___NSObjectAllocatorLock",
+  "_NULL"
+ ],
+ "module": "NSObjCRuntime.m",
+ "schema_version": "abi-v1",
+ "text_symbols": [
+  "_NSClassFromString",
+  "_NSGetSizeAndAlignment",
+  "_NSLog",
+  "_NSLogv",
+  "_NSRequestConcreteImplementation",
+  "_NSSelectorFromString",
+  "_NSStringFromClass",
+  "_NSStringFromSelector",
+  "__NSBasicStdErrLog",
+  "__NSClassConformsToProtocol",
+  "__NSFullMethodName",
+  "__NSGetSizeAndAlignment",
+  "__NSIMPForObjectAndSelector",
+  "__NSIMPForSelector",
+  "__NSImplementationForObjectAndSelector",
+  "__NSLogCStringFunction",
+  "__NSMethodDescriptionForSelector",
+  "__NSRequestConcreteObject",
+  "__NSSetLogCStringFunction",
+  "__NSsnprintf"
+ ]
+}

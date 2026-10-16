@@ -1,0 +1,431 @@
+{
+  "schema_version": "source-map-v1",
+  "reference_sha256": "1165B9063ADD5672514455CA2C9830625BEA2BCE5E46126FB5E8652114C909D6",
+  "mapped": [
+    {
+      "address": 1112576500,
+      "size": 13,
+      "reference_names": [
+        "-[NSMachPort machPort]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPort.m",
+      "source_line": 394
+    },
+    {
+      "address": 1112593820,
+      "size": 13,
+      "reference_names": [
+        "-[NSMachPort delegate]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPort.m",
+      "source_line": 415
+    },
+    {
+      "address": 1112596024,
+      "size": 291,
+      "reference_names": [
+        "-[NSMachPort release]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPort.m",
+      "source_line": 453
+    },
+    {
+      "address": 1112618992,
+      "size": 13,
+      "reference_names": [
+        "_hash_port"
+      ],
+      "source_path": "src/Kits/Foundation/NSPort.m",
+      "source_line": 73
+    },
+    {
+      "address": 1112619100,
+      "size": 27,
+      "reference_names": [
+        "_isEqual_port"
+      ],
+      "source_path": "src/Kits/Foundation/NSPort.m",
+      "source_line": 77
+    },
+    {
+      "address": 1112619128,
+      "size": 266,
+      "reference_names": [
+        "+[NSMachPort newWithMachPort:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPort.m",
+      "source_line": 313
+    },
+    {
+      "address": 1112697712,
+      "size": 130,
+      "reference_names": [
+        "-[NSMachPort retain]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPort.m",
+      "source_line": 442
+    },
+    {
+      "address": 1112742432,
+      "size": 16,
+      "reference_names": [
+        "-[NSMachPort setDelegate:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPort.m",
+      "source_line": 419
+    },
+    {
+      "address": 1112750048,
+      "size": 85,
+      "reference_names": [
+        "-[NSMachPort addConnection:toRunLoop:forMode:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPort.m",
+      "source_line": 492
+    },
+    {
+      "address": 1112753588,
+      "size": 37,
+      "reference_names": [
+        "-[NSMachPort removeConnection:fromRunLoop:forMode:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPort.m",
+      "source_line": 499
+    },
+    {
+      "address": 1112773416,
+      "size": 68,
+      "reference_names": [
+        "+[NSPort allocWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPort.m",
+      "source_line": 117
+    },
+    {
+      "address": 1112775072,
+      "size": 242,
+      "reference_names": [
+        "+[NSMachPort allocWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPort.m",
+      "source_line": 290
+    },
+    {
+      "address": 1112787740,
+      "size": 417,
+      "reference_names": [
+        "-[NSMachPort initWithMachPort:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPort.m",
+      "source_line": 358
+    },
+    {
+      "address": 1112788760,
+      "size": 132,
+      "reference_names": [
+        "-[NSMachPort init]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPort.m",
+      "source_line": 348
+    },
+    {
+      "address": 1112807720,
+      "size": 67,
+      "reference_names": [
+        "+[NSPort port]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPort.m",
+      "source_line": 123
+    },
+    {
+      "address": 1112824908,
+      "size": 21,
+      "reference_names": [
+        "-[NSMachPort isEqual:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPort.m",
+      "source_line": 505
+    },
+    {
+      "address": 1112825768,
+      "size": 71,
+      "reference_names": [
+        "+[NSPort portWithMachPort:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPort.m",
+      "source_line": 128
+    },
+    {
+      "address": 1112871164,
+      "size": 204,
+      "reference_names": [
+        "+[NSMachPort resetAllPorts]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPort.m",
+      "source_line": 272
+    },
+    {
+      "address": 1112896560,
+      "size": 280,
+      "reference_names": [
+        "-[NSMachPort dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPort.m",
+      "source_line": 509
+    },
+    {
+      "address": 1113027692,
+      "size": 23,
+      "reference_names": [
+        "+[NSMachPort _enableLogging:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPort.m",
+      "source_line": 222
+    },
+    {
+      "address": 1113027716,
+      "size": 137,
+      "reference_names": [
+        "+[NSMachPort allPorts]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPort.m",
+      "source_line": 226
+    },
+    {
+      "address": 1113027856,
+      "size": 129,
+      "reference_names": [
+        "+[NSMachPort handleMachMessage:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPort.m",
+      "source_line": 238
+    },
+    {
+      "address": 1113027988,
+      "size": 82,
+      "reference_names": [
+        "+[NSMachPort portWithMachPort:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPort.m",
+      "source_line": 339
+    },
+    {
+      "address": 1113028072,
+      "size": 130,
+      "reference_names": [
+        "+[NSMachPort statusForMachPort:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPort.m",
+      "source_line": 255
+    },
+    {
+      "address": 1113028448,
+      "size": 53,
+      "reference_names": [
+        "+[NSPort newWithMachPort:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPort.m",
+      "source_line": 133
+    },
+    {
+      "address": 1113063260,
+      "size": 115,
+      "reference_names": [
+        "-[NSMachPort description]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPort.m",
+      "source_line": 398
+    },
+    {
+      "address": 1113063376,
+      "size": 13,
+      "reference_names": [
+        "-[NSMachPort hash]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPort.m",
+      "source_line": 488
+    },
+    {
+      "address": 1113063392,
+      "size": 139,
+      "reference_names": [
+        "-[NSMachPort invalidate]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPort.m",
+      "source_line": 427
+    },
+    {
+      "address": 1113063532,
+      "size": 16,
+      "reference_names": [
+        "-[NSMachPort isValid]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPort.m",
+      "source_line": 423
+    },
+    {
+      "address": 1113063548,
+      "size": 17,
+      "reference_names": [
+        "-[NSMachPort retainCount]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPort.m",
+      "source_line": 484
+    },
+    {
+      "address": 1113068212,
+      "size": 35,
+      "reference_names": [
+        "-[NSPort addConnection:toRunLoop:forMode:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPort.m",
+      "source_line": 172
+    },
+    {
+      "address": 1113068248,
+      "size": 21,
+      "reference_names": [
+        "-[NSPort classForCoder]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPort.m",
+      "source_line": 180
+    },
+    {
+      "address": 1113068272,
+      "size": 29,
+      "reference_names": [
+        "-[NSPort copyWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPort.m",
+      "source_line": 184
+    },
+    {
+      "address": 1113068304,
+      "size": 37,
+      "reference_names": [
+        "-[NSPort delegate]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPort.m",
+      "source_line": 159
+    },
+    {
+      "address": 1113068344,
+      "size": 33,
+      "reference_names": [
+        "-[NSPort encodeWithCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPort.m",
+      "source_line": 189
+    },
+    {
+      "address": 1113068380,
+      "size": 72,
+      "reference_names": [
+        "-[NSPort initWithCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPort.m",
+      "source_line": 193
+    },
+    {
+      "address": 1113068452,
+      "size": 37,
+      "reference_names": [
+        "-[NSPort initWithMachPort:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPort.m",
+      "source_line": 137
+    },
+    {
+      "address": 1113068492,
+      "size": 35,
+      "reference_names": [
+        "-[NSPort invalidate]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPort.m",
+      "source_line": 141
+    },
+    {
+      "address": 1113068528,
+      "size": 37,
+      "reference_names": [
+        "-[NSPort isValid]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPort.m",
+      "source_line": 145
+    },
+    {
+      "address": 1113068568,
+      "size": 37,
+      "reference_names": [
+        "-[NSPort machPort]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPort.m",
+      "source_line": 150
+    },
+    {
+      "address": 1113068608,
+      "size": 35,
+      "reference_names": [
+        "-[NSPort removeConnection:fromRunLoop:forMode:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPort.m",
+      "source_line": 176
+    },
+    {
+      "address": 1113068644,
+      "size": 9,
+      "reference_names": [
+        "-[NSPort replacementObjectForCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPort.m",
+      "source_line": 201
+    },
+    {
+      "address": 1113068656,
+      "size": 10,
+      "reference_names": [
+        "-[NSPort replacementObjectForPortCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPort.m",
+      "source_line": 206
+    },
+    {
+      "address": 1113068668,
+      "size": 9,
+      "reference_names": [
+        "-[NSPort reservedSpaceLength]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPort.m",
+      "source_line": 163
+    },
+    {
+      "address": 1113068680,
+      "size": 37,
+      "reference_names": [
+        "-[NSPort sendBeforeDate:components:from:reserved:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPort.m",
+      "source_line": 167
+    },
+    {
+      "address": 1113068720,
+      "size": 35,
+      "reference_names": [
+        "-[NSPort setDelegate:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPort.m",
+      "source_line": 155
+    }
+  ],
+  "unmapped": [],
+  "duplicate_candidates": [],
+  "boundary_disputed": [],
+  "by_module": {
+    "NSPort.m": {
+      "mapped": 46,
+      "unmapped": 0,
+      "duplicate_candidates": 0,
+      "boundary_disputed": 0
+    }
+  }
+}

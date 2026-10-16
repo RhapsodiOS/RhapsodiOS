@@ -1,0 +1,49 @@
+{
+ "categories": [],
+ "classes": [
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "resourceSpecifier",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "relativeString",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "scheme",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "baseURL",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "dealloc",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "initWithString:relativeToURL:",
+     "types": "@16@8:12@16@20"
+    }
+   ],
+   "instance_size": 24,
+   "ivars": [
+    {
+     "name": "_scheme",
+     "offset": 20,
+     "type": "@\"NSString\""
+    }
+   ],
+   "name": "NSAbsoluteURL",
+   "superclass": "NSURL"
+  }
+ ],
+ "data_symbols": [],
+ "module": "NSAbsoluteURL.m",
+ "schema_version": "abi-v1",
+ "text_symbols": []
+}

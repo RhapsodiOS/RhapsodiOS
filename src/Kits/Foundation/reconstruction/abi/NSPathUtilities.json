@@ -1,0 +1,256 @@
+{
+ "categories": [
+  {
+   "class": "NSArray",
+   "class_methods": [],
+   "instance_methods": [
+    {
+     "selector": "stringsByAppendingPathComponent:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "pathsMatchingExtensions:",
+     "types": "@12@8:12@16"
+    }
+   ],
+   "name": "NSArrayPathExtensions"
+  },
+  {
+   "class": "NSString",
+   "class_methods": [
+    {
+     "selector": "pathWithComponents:",
+     "types": "@12@8:12@16"
+    }
+   ],
+   "instance_methods": [
+    {
+     "selector": "stringByConvertingURLToPath",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "stringByConvertingPathToURL",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "completePathIntoString:caseSensitive:matchesIntoArray:filterTypes:",
+     "types": "I24@8:12^@16c20^@24@28"
+    },
+    {
+     "selector": "getFileSystemRepresentation:maxLength:",
+     "types": "c16@8:12*16I20"
+    },
+    {
+     "selector": "fileSystemRepresentation",
+     "types": "r*8@8:12"
+    },
+    {
+     "selector": "stringsByAppendingPaths:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "stringByResolvingSymlinksInPath",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "stringByStandardizingPath",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "stringByExpandingTildeInPath",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "stringByAbbreviatingWithTildeInPath",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "stringByAppendingPathExtension:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "stringByDeletingPathExtension",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "pathExtension",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "stringByAppendingPathComponent:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "stringByDeletingLastPathComponent",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "lastPathComponent",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "isAbsolutePath",
+     "types": "c8@8:12"
+    },
+    {
+     "selector": "pathComponents",
+     "types": "@8@8:12"
+    }
+   ],
+   "name": "NSPathUtilities"
+  }
+ ],
+ "classes": [
+  {
+   "class_methods": [
+    {
+     "selector": "pathWithComponents:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "pathStoreWithCString:",
+     "types": "@12@8:12r*16"
+    },
+    {
+     "selector": "pathStoreWithCharacters:length:",
+     "types": "@16@8:12r^S16I20"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "stringByResolvingSymlinksInPath",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "stringByStandardizingPath",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "stringByExpandingTildeInPath",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "stringByAbbreviatingWithTildeInPath",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "stringByAppendingPathExtension:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "stringByDeletingPathExtension",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "pathExtension",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "stringByAppendingPathComponent:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "stringByDeletingLastPathComponent",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "lastPathComponent",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "isAbsolutePath",
+     "types": "c8@8:12"
+    },
+    {
+     "selector": "pathComponents",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "isEqualToString:",
+     "types": "c12@8:12@16"
+    },
+    {
+     "selector": "hash",
+     "types": "I8@8:12"
+    },
+    {
+     "selector": "copyWithZone:",
+     "types": "@12@8:12^{?=}16"
+    },
+    {
+     "selector": "getCharacters:range:",
+     "types": "v20@8:12^S16{?=II}20"
+    },
+    {
+     "selector": "characterAtIndex:",
+     "types": "S12@8:12I16"
+    },
+    {
+     "selector": "length",
+     "types": "I8@8:12"
+    },
+    {
+     "selector": "retainCount",
+     "types": "I8@8:12"
+    },
+    {
+     "selector": "release",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "retain",
+     "types": "@8@8:12"
+    }
+   ],
+   "instance_size": 8,
+   "ivars": [
+    {
+     "name": "_lengthAndRefCount",
+     "offset": 4,
+     "type": "I"
+    },
+    {
+     "name": "_characters",
+     "offset": 8,
+     "type": "[0S]"
+    }
+   ],
+   "name": "NSPathStore2",
+   "superclass": "NSString"
+  }
+ ],
+ "data_symbols": [],
+ "module": "NSPathUtilities.m",
+ "schema_version": "abi-v1",
+ "text_symbols": [
+  "__NSAppendPathComponent",
+  "__NSAppendPathExtension",
+  "__NSAbbreviatePathWithTilde",
+  "__NSConvertPathToLongFileSystemName",
+  "__NSExpandTildeInPath",
+  "__NSIsAbsolutePath",
+  "__NSLengthAfterDeletingLastPathComponent",
+  "__NSLengthAfterDeletingPathExtension",
+  "__NSPathComponents",
+  "__NSResolveSymlinksInPath",
+  "__NSStandardizePath",
+  "__NSStartOfLastPathComponent",
+  "__NSStartOfPathExtension",
+  "__NSStripTrailingPathSlashes",
+  "__NSTransmutePathSlashes",
+  "__NSTempDirectory",
+  "__NSURLEscapeSequenceForCharacter",
+  "_NSFullUserName",
+  "_NSHomeDirectory",
+  "_NSHomeDirectoryForUser",
+  "_NSNeXTRootDirectory",
+  "_NSOpenStepDirectoryForUser",
+  "_NSOpenStepRootDirectory",
+  "_NSSearchPathForDirectoriesInDomains",
+  "_NSStandardApplicationPaths",
+  "_NSStandardLibraryPaths",
+  "_NSTemporaryDirectory",
+  "_NSUserName"
+ ]
+}

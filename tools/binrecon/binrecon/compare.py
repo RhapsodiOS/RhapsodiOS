@@ -105,7 +105,13 @@ class _Artifact:
     def read_at(self, offset: int, size: int) -> bytes:
         if type(offset) is not int or type(size) is not int or offset < 0 or size < 0:
             raise ComparisonError("invalid artifact read range")
-        if offset + size > self.initial.st_size:
+        # A zero-size read has nothing to fetch, so it can never run past the
+        # end of the file -- true even when offset itself is already beyond
+        # st_size, which happens every time the two artifacts differ in size
+        # by more than one CHUNK_SIZE stride (the smaller one's remaining
+        # byte count floors at 0 while the walk continues to the larger
+        # one's end).
+        if size and offset + size > self.initial.st_size:
             raise ComparisonError("artifact read is outside file")
         os.lseek(self.fd, offset, os.SEEK_SET)
         chunks, remaining = [], size

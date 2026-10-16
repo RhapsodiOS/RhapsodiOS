@@ -1,0 +1,114 @@
+{
+ "categories": [],
+ "classes": [
+  {
+   "class_methods": [
+    {
+     "selector": "signatureWithObjCTypes:",
+     "types": "@12@8:12r*16"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "debugDescription",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "description",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "numberOfArguments",
+     "types": "I8@8:12"
+    },
+    {
+     "selector": "frameLength",
+     "types": "I8@8:12"
+    },
+    {
+     "selector": "_argumentInfoAtIndex:",
+     "types": "{?=ii*^{_arginfo}i}12@8:12I16"
+    },
+    {
+     "selector": "getArgumentTypeAtIndex:",
+     "types": "r*12@8:12I16"
+    },
+    {
+     "selector": "isOneway",
+     "types": "c8@8:12"
+    },
+    {
+     "selector": "methodReturnLength",
+     "types": "I8@8:12"
+    },
+    {
+     "selector": "methodReturnType",
+     "types": "r*8@8:12"
+    },
+    {
+     "selector": "retainCount",
+     "types": "I8@8:12"
+    },
+    {
+     "selector": "release",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "retain",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "_isReturnStructInRegisters",
+     "types": "c8@8:12"
+    }
+   ],
+   "instance_size": 32,
+   "ivars": [
+    {
+     "name": "_types",
+     "offset": 4,
+     "type": "*"
+    },
+    {
+     "name": "_nargs",
+     "offset": 8,
+     "type": "i"
+    },
+    {
+     "name": "_sizeofParams",
+     "offset": 12,
+     "type": "I"
+    },
+    {
+     "name": "_returnValueLength",
+     "offset": 16,
+     "type": "I"
+    },
+    {
+     "name": "_parmInfoP",
+     "offset": 20,
+     "type": "^v"
+    },
+    {
+     "name": "_fixup",
+     "offset": 24,
+     "type": "^i"
+    },
+    {
+     "name": "_reserved",
+     "offset": 28,
+     "type": "^v"
+    }
+   ],
+   "name": "NSMethodSignature",
+   "superclass": "NSObject"
+  }
+ ],
+ "data_symbols": [
+  "__NSMethodSignatureTableLock"
+ ],
+ "module": "NSMethodSignature.m",
+ "schema_version": "abi-v1",
+ "text_symbols": []
+}

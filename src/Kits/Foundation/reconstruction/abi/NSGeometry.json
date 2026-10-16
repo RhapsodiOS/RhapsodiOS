@@ -1,0 +1,65 @@
+{
+ "categories": [
+  {
+   "class": "NSCoder",
+   "class_methods": [],
+   "instance_methods": [
+    {
+     "selector": "decodeRect",
+     "types": "{?={?=ff}{?=ff}}8@8:12"
+    },
+    {
+     "selector": "encodeRect:",
+     "types": "v24@8:12{?={?=ff}{?=ff}}16"
+    },
+    {
+     "selector": "decodeSize",
+     "types": "{?=ff}8@8:12"
+    },
+    {
+     "selector": "encodeSize:",
+     "types": "v16@8:12{?=ff}16"
+    },
+    {
+     "selector": "decodePoint",
+     "types": "{?=ff}8@8:12"
+    },
+    {
+     "selector": "encodePoint:",
+     "types": "v16@8:12{?=ff}16"
+    }
+   ],
+   "name": "NSGeometryCoding"
+  }
+ ],
+ "classes": [],
+ "data_symbols": [
+  "_NSZeroPoint",
+  "_NSZeroRect",
+  "_NSZeroSize"
+ ],
+ "module": "NSGeometry.m",
+ "schema_version": "abi-v1",
+ "text_symbols": [
+  "_NSContainsRect",
+  "_NSDivideRect",
+  "_NSEqualPoints",
+  "_NSEqualRects",
+  "_NSEqualSizes",
+  "_NSInsetRect",
+  "_NSIntegralRect",
+  "_NSIntersectionRect",
+  "_NSIntersectsRect",
+  "_NSIsEmptyRect",
+  "_NSMouseInRect",
+  "_NSOffsetRect",
+  "_NSPointFromString",
+  "_NSPointInRect",
+  "_NSRectFromString",
+  "_NSSizeFromString",
+  "_NSStringFromPoint",
+  "_NSStringFromRect",
+  "_NSStringFromSize",
+  "_NSUnionRect"
+ ]
+}

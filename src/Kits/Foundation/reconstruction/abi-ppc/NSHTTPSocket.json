@@ -1,0 +1,59 @@
+{
+ "categories": [],
+ "classes": [
+  {
+   "class_methods": [
+    {
+     "selector": "descriptorWithStreamSocket",
+     "types": "@4@4:8"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "returnSurplusBytes:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "writeData:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "readAvailableData:",
+     "types": "@8@4:8I12"
+    },
+    {
+     "selector": "connectToHost:withPort:",
+     "types": "v12@4:8@12I16"
+    },
+    {
+     "selector": "dealloc",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "initWithSocket:",
+     "types": "@8@4:8I12"
+    }
+   ],
+   "instance_size": 12,
+   "ivars": [
+    {
+     "name": "_socket",
+     "offset": 4,
+     "type": "I"
+    },
+    {
+     "name": "_surplusBytes",
+     "offset": 8,
+     "type": "@\"NSData\""
+    }
+   ],
+   "name": "NSHTTPSocket",
+   "superclass": "NSObject"
+  }
+ ],
+ "data_symbols": [],
+ "module": "NSHTTPSocket.m",
+ "schema_version": "abi-v1",
+ "text_symbols": []
+}

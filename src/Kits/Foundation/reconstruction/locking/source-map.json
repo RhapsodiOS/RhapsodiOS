@@ -1,0 +1,576 @@
+{
+  "schema_version": "source-map-v1",
+  "reference_sha256": "332B3C8C0AE0A6E40A4B93110EE16748FCD94AA0119D63F16EDE878598C681B4",
+  "mapped": [
+    {
+      "address": 1112643980,
+      "size": 124,
+      "reference_names": [
+        "-[NSLock lock]"
+      ],
+      "source_path": "src/Kits/Foundation/NSLock.m",
+      "source_line": 198
+    },
+    {
+      "address": 1112644104,
+      "size": 88,
+      "reference_names": [
+        "-[NSLock unlock]"
+      ],
+      "source_path": "src/Kits/Foundation/NSLock.m",
+      "source_line": 210
+    },
+    {
+      "address": 1112700020,
+      "size": 36,
+      "reference_names": [
+        "+[NSRecursiveLock allocWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSLock.m",
+      "source_line": 501
+    },
+    {
+      "address": 1112700472,
+      "size": 56,
+      "reference_names": [
+        "-[NSRecursiveLock init]"
+      ],
+      "source_path": "src/Kits/Foundation/NSLock.m",
+      "source_line": 505
+    },
+    {
+      "address": 1112762716,
+      "size": 56,
+      "reference_names": [
+        "-[NSLock init]"
+      ],
+      "source_path": "src/Kits/Foundation/NSLock.m",
+      "source_line": 186
+    },
+    {
+      "address": 1112762772,
+      "size": 36,
+      "reference_names": [
+        "+[NSLock allocWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSLock.m",
+      "source_line": 182
+    },
+    {
+      "address": 1112774596,
+      "size": 112,
+      "reference_names": [
+        "-[NSRecursiveLock dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSLock.m",
+      "source_line": 593
+    },
+    {
+      "address": 1112811384,
+      "size": 152,
+      "reference_names": [
+        "-[NSRecursiveLock lock]"
+      ],
+      "source_path": "src/Kits/Foundation/NSLock.m",
+      "source_line": 518
+    },
+    {
+      "address": 1112811704,
+      "size": 124,
+      "reference_names": [
+        "-[NSRecursiveLock unlock]"
+      ],
+      "source_path": "src/Kits/Foundation/NSLock.m",
+      "source_line": 532
+    },
+    {
+      "address": 1112879344,
+      "size": 112,
+      "reference_names": [
+        "-[NSLock dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSLock.m",
+      "source_line": 260
+    },
+    {
+      "address": 1112890996,
+      "size": 36,
+      "reference_names": [
+        "+[NSCondition allocWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSLock.m",
+      "source_line": 280
+    },
+    {
+      "address": 1112894780,
+      "size": 48,
+      "reference_names": [
+        "-[NSCondition init]"
+      ],
+      "source_path": "src/Kits/Foundation/NSLock.m",
+      "source_line": 284
+    },
+    {
+      "address": 1113101176,
+      "size": 36,
+      "reference_names": [
+        "+[NSConditionLock allocWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSLock.m",
+      "source_line": 342
+    },
+    {
+      "address": 1113101536,
+      "size": 88,
+      "reference_names": [
+        "+[NSDistributedLock lockWithPath:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistributedLock.m",
+      "source_line": 31
+    },
+    {
+      "address": 1113103972,
+      "size": 36,
+      "reference_names": [
+        "+[NSMultiReadUniWriteLock allocWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSLock.m",
+      "source_line": 612
+    },
+    {
+      "address": 1113129192,
+      "size": 40,
+      "reference_names": [
+        "-[NSCondition broadcast]"
+      ],
+      "source_path": "src/Kits/Foundation/NSLock.m",
+      "source_line": 306
+    },
+    {
+      "address": 1113129232,
+      "size": 112,
+      "reference_names": [
+        "-[NSCondition dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSLock.m",
+      "source_line": 328
+    },
+    {
+      "address": 1113129344,
+      "size": 64,
+      "reference_names": [
+        "-[NSCondition lock]"
+      ],
+      "source_path": "src/Kits/Foundation/NSLock.m",
+      "source_line": 295
+    },
+    {
+      "address": 1113129408,
+      "size": 40,
+      "reference_names": [
+        "-[NSCondition signal]"
+      ],
+      "source_path": "src/Kits/Foundation/NSLock.m",
+      "source_line": 310
+    },
+    {
+      "address": 1113129448,
+      "size": 24,
+      "reference_names": [
+        "-[NSCondition unlock]"
+      ],
+      "source_path": "src/Kits/Foundation/NSLock.m",
+      "source_line": 302
+    },
+    {
+      "address": 1113129472,
+      "size": 104,
+      "reference_names": [
+        "-[NSCondition waitUntilDate:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSLock.m",
+      "source_line": 319
+    },
+    {
+      "address": 1113129576,
+      "size": 64,
+      "reference_names": [
+        "-[NSCondition wait]"
+      ],
+      "source_path": "src/Kits/Foundation/NSLock.m",
+      "source_line": 314
+    },
+    {
+      "address": 1113129640,
+      "size": 20,
+      "reference_names": [
+        "-[NSConditionLock condition]"
+      ],
+      "source_path": "src/Kits/Foundation/NSLock.m",
+      "source_line": 365
+    },
+    {
+      "address": 1113129660,
+      "size": 112,
+      "reference_names": [
+        "-[NSConditionLock dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSLock.m",
+      "source_line": 482
+    },
+    {
+      "address": 1113129772,
+      "size": 128,
+      "reference_names": [
+        "-[NSConditionLock description]"
+      ],
+      "source_path": "src/Kits/Foundation/NSLock.m",
+      "source_line": 490
+    },
+    {
+      "address": 1113129900,
+      "size": 72,
+      "reference_names": [
+        "-[NSConditionLock initWithCondition:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSLock.m",
+      "source_line": 359
+    },
+    {
+      "address": 1113129972,
+      "size": 56,
+      "reference_names": [
+        "-[NSConditionLock init]"
+      ],
+      "source_path": "src/Kits/Foundation/NSLock.m",
+      "source_line": 346
+    },
+    {
+      "address": 1113130028,
+      "size": 216,
+      "reference_names": [
+        "-[NSConditionLock lockBeforeDate:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSLock.m",
+      "source_line": 421
+    },
+    {
+      "address": 1113130244,
+      "size": 140,
+      "reference_names": [
+        "-[NSConditionLock lockWhenCondition:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSLock.m",
+      "source_line": 381
+    },
+    {
+      "address": 1113130384,
+      "size": 216,
+      "reference_names": [
+        "-[NSConditionLock lockWhenCondition:beforeDate:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSLock.m",
+      "source_line": 446
+    },
+    {
+      "address": 1113130600,
+      "size": 124,
+      "reference_names": [
+        "-[NSConditionLock lock]"
+      ],
+      "source_path": "src/Kits/Foundation/NSLock.m",
+      "source_line": 369
+    },
+    {
+      "address": 1113130724,
+      "size": 96,
+      "reference_names": [
+        "-[NSConditionLock tryLockWhenCondition:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSLock.m",
+      "source_line": 406
+    },
+    {
+      "address": 1113130820,
+      "size": 96,
+      "reference_names": [
+        "-[NSConditionLock tryLock]"
+      ],
+      "source_path": "src/Kits/Foundation/NSLock.m",
+      "source_line": 393
+    },
+    {
+      "address": 1113130916,
+      "size": 92,
+      "reference_names": [
+        "-[NSConditionLock unlockWithCondition:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSLock.m",
+      "source_line": 410
+    },
+    {
+      "address": 1113131008,
+      "size": 84,
+      "reference_names": [
+        "-[NSConditionLock unlock]"
+      ],
+      "source_path": "src/Kits/Foundation/NSLock.m",
+      "source_line": 472
+    },
+    {
+      "address": 1113137628,
+      "size": 140,
+      "reference_names": [
+        "-[NSDistributedLock breakLock]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistributedLock.m",
+      "source_line": 83
+    },
+    {
+      "address": 1113137768,
+      "size": 216,
+      "reference_names": [
+        "-[NSDistributedLock dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistributedLock.m",
+      "source_line": 107
+    },
+    {
+      "address": 1113137984,
+      "size": 128,
+      "reference_names": [
+        "-[NSDistributedLock description]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistributedLock.m",
+      "source_line": 122
+    },
+    {
+      "address": 1113138112,
+      "size": 220,
+      "reference_names": [
+        "-[NSDistributedLock initWithPath:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistributedLock.m",
+      "source_line": 35
+    },
+    {
+      "address": 1113138332,
+      "size": 96,
+      "reference_names": [
+        "-[NSDistributedLock init]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistributedLock.m",
+      "source_line": 101
+    },
+    {
+      "address": 1113138428,
+      "size": 124,
+      "reference_names": [
+        "-[NSDistributedLock lockDate]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistributedLock.m",
+      "source_line": 94
+    },
+    {
+      "address": 1113138552,
+      "size": 316,
+      "reference_names": [
+        "-[NSDistributedLock tryLock]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistributedLock.m",
+      "source_line": 52
+    },
+    {
+      "address": 1113138868,
+      "size": 52,
+      "reference_names": [
+        "-[NSDistributedLock unlock]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistributedLock.m",
+      "source_line": 79
+    },
+    {
+      "address": 1113149352,
+      "size": 124,
+      "reference_names": [
+        "-[NSLock description]"
+      ],
+      "source_path": "src/Kits/Foundation/NSLock.m",
+      "source_line": 269
+    },
+    {
+      "address": 1113149476,
+      "size": 216,
+      "reference_names": [
+        "-[NSLock lockBeforeDate:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSLock.m",
+      "source_line": 234
+    },
+    {
+      "address": 1113149692,
+      "size": 96,
+      "reference_names": [
+        "-[NSLock tryLock]"
+      ],
+      "source_path": "src/Kits/Foundation/NSLock.m",
+      "source_line": 221
+    },
+    {
+      "address": 1113150024,
+      "size": 140,
+      "reference_names": [
+        "-[NSMultiReadUniWriteLock dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSLock.m",
+      "source_line": 638
+    },
+    {
+      "address": 1113150164,
+      "size": 116,
+      "reference_names": [
+        "-[NSMultiReadUniWriteLock description]"
+      ],
+      "source_path": "src/Kits/Foundation/NSLock.m",
+      "source_line": 652
+    },
+    {
+      "address": 1113150280,
+      "size": 72,
+      "reference_names": [
+        "-[NSMultiReadUniWriteLock init]"
+      ],
+      "source_path": "src/Kits/Foundation/NSLock.m",
+      "source_line": 616
+    },
+    {
+      "address": 1113150352,
+      "size": 156,
+      "reference_names": [
+        "-[NSMultiReadUniWriteLock lockForReading]"
+      ],
+      "source_path": "src/Kits/Foundation/NSLock.m",
+      "source_line": 667
+    },
+    {
+      "address": 1113150508,
+      "size": 144,
+      "reference_names": [
+        "-[NSMultiReadUniWriteLock lockForWriting]"
+      ],
+      "source_path": "src/Kits/Foundation/NSLock.m",
+      "source_line": 695
+    },
+    {
+      "address": 1113150652,
+      "size": 52,
+      "reference_names": [
+        "-[NSMultiReadUniWriteLock lock]"
+      ],
+      "source_path": "src/Kits/Foundation/NSLock.m",
+      "source_line": 719
+    },
+    {
+      "address": 1113150704,
+      "size": 128,
+      "reference_names": [
+        "-[NSMultiReadUniWriteLock tryLockForReading]"
+      ],
+      "source_path": "src/Kits/Foundation/NSLock.m",
+      "source_line": 723
+    },
+    {
+      "address": 1113150832,
+      "size": 120,
+      "reference_names": [
+        "-[NSMultiReadUniWriteLock tryLockForWriting]"
+      ],
+      "source_path": "src/Kits/Foundation/NSLock.m",
+      "source_line": 750
+    },
+    {
+      "address": 1113150952,
+      "size": 272,
+      "reference_names": [
+        "-[NSMultiReadUniWriteLock unlock]"
+      ],
+      "source_path": "src/Kits/Foundation/NSLock.m",
+      "source_line": 774
+    },
+    {
+      "address": 1113157620,
+      "size": 128,
+      "reference_names": [
+        "-[NSRecursiveLock description]"
+      ],
+      "source_path": "src/Kits/Foundation/NSLock.m",
+      "source_line": 601
+    },
+    {
+      "address": 1113157748,
+      "size": 248,
+      "reference_names": [
+        "-[NSRecursiveLock lockBeforeDate:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSLock.m",
+      "source_line": 564
+    },
+    {
+      "address": 1113157996,
+      "size": 132,
+      "reference_names": [
+        "-[NSRecursiveLock tryLock]"
+      ],
+      "source_path": "src/Kits/Foundation/NSLock.m",
+      "source_line": 548
+    },
+    {
+      "address": 1113183828,
+      "size": 64,
+      "reference_names": [
+        "_condition_broadcast_timeout_"
+      ],
+      "source_path": "src/Kits/Foundation/NSLock.m",
+      "source_line": 172
+    },
+    {
+      "address": 1113183892,
+      "size": 128,
+      "reference_names": [
+        "_condition_signal_timeout_"
+      ],
+      "source_path": "src/Kits/Foundation/NSLock.m",
+      "source_line": 137
+    },
+    {
+      "address": 1113184020,
+      "size": 560,
+      "reference_names": [
+        "_condition_wait_timeout_"
+      ],
+      "source_path": "src/Kits/Foundation/NSLock.m",
+      "source_line": 37
+    },
+    {
+      "address": 1113184580,
+      "size": 156,
+      "reference_names": [
+        "_cproc_continue_timeout_"
+      ],
+      "source_path": "src/Kits/Foundation/NSLock.m",
+      "source_line": 119
+    },
+    {
+      "address": 1113184880,
+      "size": 108,
+      "reference_names": [
+        "_dequeue_unlock_send"
+      ],
+      "source_path": "src/Kits/Foundation/NSLock.m",
+      "source_line": 157
+    }
+  ],
+  "unmapped": [],
+  "duplicate_candidates": [],
+  "boundary_disputed": []
+}

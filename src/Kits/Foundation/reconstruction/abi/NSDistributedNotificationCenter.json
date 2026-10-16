@@ -1,0 +1,197 @@
+{
+ "categories": [],
+ "classes": [
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "init",
+     "types": "@8@8:12"
+    }
+   ],
+   "instance_size": 56,
+   "ivars": [],
+   "name": "_NSLocalNotificationCenter",
+   "superclass": "NSDistributedNotificationCenter"
+  },
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "serverName",
+     "types": "r*8@8:12"
+    }
+   ],
+   "instance_size": 68,
+   "ivars": [],
+   "name": "NSConcreteMachLocalDNC",
+   "superclass": "NSConcreteMachDNC"
+  },
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "suspended",
+     "types": "c8@8:12"
+    },
+    {
+     "selector": "setSuspended:",
+     "types": "v9@8:12c16"
+    },
+    {
+     "selector": "sendMessageToServer:",
+     "types": "v12@8:12^{?=b24b8Iiiii}16"
+    },
+    {
+     "selector": "serverName",
+     "types": "r*8@8:12"
+    },
+    {
+     "selector": "handleMachMessage:",
+     "types": "v12@8:12^{?=b24b8Iiiii}16"
+    },
+    {
+     "selector": "lostServerPort:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "_suspend:",
+     "types": "v9@8:12c16"
+    },
+    {
+     "selector": "_registerName:object:suspensionBehavior:",
+     "types": "v20@8:12@16@20i24"
+    },
+    {
+     "selector": "_postNotificationToNetwork:name:object:deliverImmediately:",
+     "types": "v21@8:12@16@20@24c28"
+    },
+    {
+     "selector": "init",
+     "types": "@8@8:12"
+    }
+   ],
+   "instance_size": 68,
+   "ivars": [
+    {
+     "name": "_localPort",
+     "offset": 56,
+     "type": "i"
+    },
+    {
+     "name": "_serverPort",
+     "offset": 60,
+     "type": "i"
+    },
+    {
+     "name": "_suspended",
+     "offset": 64,
+     "type": "c"
+    }
+   ],
+   "name": "NSConcreteMachDNC",
+   "superclass": "NSDistributedNotificationCenter"
+  },
+  {
+   "class_methods": [
+    {
+     "selector": "notificationCenterForType:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "defaultCenter",
+     "types": "@8@8:12"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "removeObserver:name:object:",
+     "types": "v20@8:12@16@20@24"
+    },
+    {
+     "selector": "addObserver:selector:name:object:",
+     "types": "v24@8:12@16:20@24@28"
+    },
+    {
+     "selector": "addObserver:selector:name:object:suspensionBehavior:",
+     "types": "v28@8:12@16:20@24@28i32"
+    },
+    {
+     "selector": "postNotificationName:object:userInfo:deliverImmediately:",
+     "types": "v21@8:12@16@20@24c28"
+    },
+    {
+     "selector": "postNotificationName:object:userInfo:",
+     "types": "v20@8:12@16@20@24"
+    },
+    {
+     "selector": "postNotification:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "postNotificationName:object:",
+     "types": "v16@8:12@16@20"
+    },
+    {
+     "selector": "suspended",
+     "types": "c8@8:12"
+    },
+    {
+     "selector": "setSuspended:",
+     "types": "v9@8:12c16"
+    },
+    {
+     "selector": "_registerName:object:suspensionBehavior:",
+     "types": "v20@8:12@16@20i24"
+    },
+    {
+     "selector": "checkSuspensionBehavior:deliveryStatus:",
+     "types": "c16@8:12i16i20"
+    },
+    {
+     "selector": "changedSuspensionBehavior:name:object:",
+     "types": "v20@8:12i16@20@24"
+    },
+    {
+     "selector": "_postNotificationToNetwork:name:object:deliverImmediately:",
+     "types": "v21@8:12@16@20@24c28"
+    },
+    {
+     "selector": "_handleNotificationFromNetwork:name:object:deliveryStatus:",
+     "types": "v24@8:12@16@20@24i28"
+    },
+    {
+     "selector": "init",
+     "types": "@8@8:12"
+    }
+   ],
+   "instance_size": 56,
+   "ivars": [],
+   "name": "NSDistributedNotificationCenter",
+   "superclass": "NSNotificationCenter"
+  }
+ ],
+ "data_symbols": [
+  "_NSLocalNotificationCenterType"
+ ],
+ "module": "NSDistributedNotificationCenter.m",
+ "schema_version": "abi-v1",
+ "text_symbols": [
+  "_NSBuildPostMessage",
+  "_NSFlagsFromNotificationDeliveryBehavior",
+  "_NSFlagsFromNotificationDeliveryStatus",
+  "_NSFlagsFromNotificationSuspendAction",
+  "_NSFlagsFromNotificationSuspensionBehavior",
+  "_NSNotificationDeliveryBehaviorFromFlags",
+  "_NSNotificationDeliveryStatusFromFlags",
+  "_NSNotificationSuspendActionFromFlags",
+  "_NSParsePostMessage",
+  "_NSParseRegisterMessage",
+  "_NSParseSuspendMessage",
+  "__NSParseMessage"
+ ]
+}

@@ -102,8 +102,14 @@ def _mapping_manifest(profile, identity: InputIdentity, artifact: str = "referen
                           "endianness": architecture.endianness,
                           "ida_processor": architecture.ida_processor},
                 "runs": runs}
-    scope = analysis_scope(profile, artifact)
-    if scope:
+    #  The profile's analysis_scope selects functions in the REFERENCE image
+    #  by its own virtual addresses.  A rebuilt artifact (a relocatable
+    #  object) is linked at different addresses entirely -- it contains by
+    #  construction exactly the modules this stage covers -- so applying the
+    #  reference's ranges there filters out every function.  Scope only the
+    #  reference; select everything in a rebuilt artifact.
+    scope = analysis_scope(profile)
+    if scope and artifact == "reference":
         manifest["analysis_scope"] = [{"start": start, "end": end}
                                       for start, end in scope]
     return manifest

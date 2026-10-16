@@ -1,0 +1,51 @@
+{
+ "categories": [],
+ "classes": [
+  {
+   "class_methods": [
+    {
+     "selector": "mallocMemoryWithCapacity:",
+     "types": "^v8@4:8I12"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "dealloc",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "mallocMemoryWithCapacity:",
+     "types": "^v8@4:8I12"
+    },
+    {
+     "selector": "remainingCapacity",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "initWithCapacity:",
+     "types": "@8@4:8I12"
+    }
+   ],
+   "instance_size": 12,
+   "ivars": [
+    {
+     "name": "mutableBytes",
+     "offset": 4,
+     "type": "^v"
+    },
+    {
+     "name": "length",
+     "offset": 8,
+     "type": "I"
+    }
+   ],
+   "name": "_NSAutoreleasedMallocMemory",
+   "superclass": "NSObject"
+  }
+ ],
+ "data_symbols": [],
+ "module": "NSPrivate.m",
+ "schema_version": "abi-v1",
+ "text_symbols": []
+}

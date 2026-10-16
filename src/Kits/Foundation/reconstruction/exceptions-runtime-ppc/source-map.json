@@ -1,0 +1,686 @@
+{
+  "boundary_disputed": [],
+  "by_module": {
+    "NSDebug.m": {
+      "mapped": 21,
+      "unmapped": 0,
+      "duplicate_candidates": 0,
+      "boundary_disputed": 0
+    },
+    "NSException.m": {
+      "mapped": 36,
+      "unmapped": 0,
+      "duplicate_candidates": 0,
+      "boundary_disputed": 0
+    },
+    "NSObjCRuntime.m": {
+      "mapped": 16,
+      "unmapped": 0,
+      "duplicate_candidates": 0,
+      "boundary_disputed": 0
+    }
+  },
+  "duplicate_candidates": [],
+  "mapped": [
+    {
+      "address": 1112559712,
+      "reference_names": [
+        "_NSSelectorFromString"
+      ],
+      "size": 60,
+      "source_line": 136,
+      "source_path": "src/Kits/Foundation/NSObjCRuntime.m"
+    },
+    {
+      "address": 1112568684,
+      "reference_names": [
+        "__NSAddHandler2"
+      ],
+      "size": 340,
+      "source_line": 109,
+      "source_path": "src/Kits/Foundation/NSException.m"
+    },
+    {
+      "address": 1112569024,
+      "reference_names": [
+        "__NSRemoveHandler2"
+      ],
+      "size": 696,
+      "source_line": 156,
+      "source_path": "src/Kits/Foundation/NSException.m"
+    },
+    {
+      "address": 1112588252,
+      "reference_names": [
+        "_NSGetSizeAndAlignment"
+      ],
+      "size": 32,
+      "source_line": 377,
+      "source_path": "src/Kits/Foundation/NSObjCRuntime.m"
+    },
+    {
+      "address": 1112588284,
+      "reference_names": [
+        "__NSGetSizeAndAlignment"
+      ],
+      "size": 1492,
+      "source_line": 389,
+      "source_path": "src/Kits/Foundation/NSObjCRuntime.m"
+    },
+    {
+      "address": 1112600572,
+      "reference_names": [
+        "_NSClassFromString"
+      ],
+      "size": 104,
+      "source_line": 142,
+      "source_path": "src/Kits/Foundation/NSObjCRuntime.m"
+    },
+    {
+      "address": 1112619700,
+      "size": 1168,
+      "reference_names": [
+        "__NSInitializePlatform"
+      ],
+      "source_path": "src/Kits/Foundation/NSDebug.m",
+      "source_line": 280
+    },
+    {
+      "address": 1112645756,
+      "reference_names": [
+        "__NSAddAltHandler2"
+      ],
+      "size": 464,
+      "source_line": 269,
+      "source_path": "src/Kits/Foundation/NSException.m"
+    },
+    {
+      "address": 1112646220,
+      "reference_names": [
+        "__NSRemoveAltHandler2"
+      ],
+      "size": 340,
+      "source_line": 314,
+      "source_path": "src/Kits/Foundation/NSException.m"
+    },
+    {
+      "address": 1112660572,
+      "reference_names": [
+        "__NSIMPForSelector"
+      ],
+      "size": 32,
+      "source_line": 567,
+      "source_path": "src/Kits/Foundation/NSObjCRuntime.m"
+    },
+    {
+      "address": 1112670688,
+      "reference_names": [
+        "_NSStringFromSelector"
+      ],
+      "size": 144,
+      "source_line": 124,
+      "source_path": "src/Kits/Foundation/NSObjCRuntime.m"
+    },
+    {
+      "address": 1112761492,
+      "reference_names": [
+        "__NSMethodDescriptionForSelector"
+      ],
+      "size": 356,
+      "source_line": 610,
+      "source_path": "src/Kits/Foundation/NSObjCRuntime.m"
+    },
+    {
+      "address": 1112799520,
+      "reference_names": [
+        "__NSClassConformsToProtocol"
+      ],
+      "size": 168,
+      "source_line": 666,
+      "source_path": "src/Kits/Foundation/NSObjCRuntime.m"
+    },
+    {
+      "address": 1112800800,
+      "reference_names": [
+        "_NSSetUncaughtExceptionHandler"
+      ],
+      "size": 104,
+      "source_line": 390,
+      "source_path": "src/Kits/Foundation/NSException.m"
+    },
+    {
+      "address": 1112872436,
+      "reference_names": [
+        "_NSStringFromClass"
+      ],
+      "size": 96,
+      "source_line": 154,
+      "source_path": "src/Kits/Foundation/NSObjCRuntime.m"
+    },
+    {
+      "address": 1113045016,
+      "size": 68,
+      "reference_names": [
+        "_NSCountFrames"
+      ],
+      "source_path": "src/Kits/Foundation/NSDebug.m",
+      "source_line": 931
+    },
+    {
+      "address": 1113045084,
+      "size": 12,
+      "reference_names": [
+        "_NSDebugRecordObjectAndStack"
+      ],
+      "source_path": "src/Kits/Foundation/NSDebug.m",
+      "source_line": 64
+    },
+    {
+      "address": 1113045120,
+      "size": 84,
+      "reference_names": [
+        "_NSFrameAddress"
+      ],
+      "source_path": "src/Kits/Foundation/NSDebug.m",
+      "source_line": 906
+    },
+    {
+      "address": 1113045204,
+      "size": 72,
+      "reference_names": [
+        "_NSGetAllocationStatisticsOutputPort"
+      ],
+      "source_path": "src/Kits/Foundation/NSDebug.m",
+      "source_line": 348
+    },
+    {
+      "address": 1113045276,
+      "size": 256,
+      "reference_names": [
+        "_NSIsFreedObject"
+      ],
+      "source_path": "src/Kits/Foundation/NSDebug.m",
+      "source_line": 229
+    },
+    {
+      "address": 1113051344,
+      "size": 276,
+      "reference_names": [
+        "_NSParseAllocationEvent"
+      ],
+      "source_path": "src/Kits/Foundation/NSDebug.m",
+      "source_line": 764
+    },
+    {
+      "address": 1113051900,
+      "size": 64,
+      "reference_names": [
+        "_NSRecordAllocationEvent"
+      ],
+      "source_path": "src/Kits/Foundation/NSDebug.m",
+      "source_line": 711
+    },
+    {
+      "address": 1113052152,
+      "size": 52,
+      "reference_names": [
+        "_NSReturnAddress"
+      ],
+      "source_path": "src/Kits/Foundation/NSDebug.m",
+      "source_line": 923
+    },
+    {
+      "address": 1113052204,
+      "size": 96,
+      "reference_names": [
+        "_NSSetAllocationStatisticsOutputPort"
+      ],
+      "source_path": "src/Kits/Foundation/NSDebug.m",
+      "source_line": 354
+    },
+    {
+      "address": 1113052300,
+      "size": 288,
+      "reference_names": [
+        "_NSStringFromStack"
+      ],
+      "source_path": "src/Kits/Foundation/NSDebug.m",
+      "source_line": 873
+    },
+    {
+      "address": 1113052588,
+      "size": 248,
+      "reference_names": [
+        "_NSWaitForAllocationEvent"
+      ],
+      "source_path": "src/Kits/Foundation/NSDebug.m",
+      "source_line": 721
+    },
+    {
+      "address": 1113056276,
+      "size": 16,
+      "reference_names": [
+        "__NSFirstFrameAddress"
+      ],
+      "source_path": "src/Kits/Foundation/NSDebug.m",
+      "source_line": 851
+    },
+    {
+      "address": 1113058216,
+      "reference_names": [
+        "__NSMethodExceptionProem"
+      ],
+      "size": 408,
+      "source_line": 484,
+      "source_path": "src/Kits/Foundation/NSException.m"
+    },
+    {
+      "address": 1113058624,
+      "size": 76,
+      "reference_names": [
+        "__NSNegativeRetain"
+      ],
+      "source_path": "src/Kits/Foundation/NSDebug.m",
+      "source_line": 68
+    },
+    {
+      "address": 1113058808,
+      "size": 16,
+      "reference_names": [
+        "__NSNextFrameAddress"
+      ],
+      "source_path": "src/Kits/Foundation/NSDebug.m",
+      "source_line": 857
+    },
+    {
+      "address": 1113059068,
+      "size": 460,
+      "reference_names": [
+        "__NSPrintForDebugger"
+      ],
+      "source_path": "src/Kits/Foundation/NSDebug.m",
+      "source_line": 196
+    },
+    {
+      "address": 1113059528,
+      "size": 1444,
+      "reference_names": [
+        "__NSRecordAllocationEvent"
+      ],
+      "source_path": "src/Kits/Foundation/NSDebug.m",
+      "source_line": 711
+    },
+    {
+      "address": 1113061068,
+      "size": 16,
+      "reference_names": [
+        "__NSReturnAddressFromFrameAddress"
+      ],
+      "source_path": "src/Kits/Foundation/NSDebug.m",
+      "source_line": 863
+    },
+    {
+      "address": 1113067716,
+      "size": 116,
+      "reference_names": [
+        "_isClass"
+      ],
+      "source_path": "src/Kits/Foundation/NSDebug.m",
+      "source_line": 184
+    },
+    {
+      "address": 1113067832,
+      "size": 192,
+      "reference_names": [
+        "_isReadableAddr"
+      ],
+      "source_path": "src/Kits/Foundation/NSDebug.m",
+      "source_line": 161
+    },
+    {
+      "address": 1113068904,
+      "reference_names": [
+        "+[NSAssertionHandler currentHandler]"
+      ],
+      "size": 184,
+      "source_line": 641,
+      "source_path": "src/Kits/Foundation/NSException.m"
+    },
+    {
+      "address": 1113069808,
+      "reference_names": [
+        "+[NSException _enableLogging:]"
+      ],
+      "size": 52,
+      "source_line": 566,
+      "source_path": "src/Kits/Foundation/NSException.m"
+    },
+    {
+      "address": 1113069860,
+      "reference_names": [
+        "+[NSException exceptionWithName:reason:userInfo:]"
+      ],
+      "size": 104,
+      "source_line": 505,
+      "source_path": "src/Kits/Foundation/NSException.m"
+    },
+    {
+      "address": 1113069964,
+      "reference_names": [
+        "+[NSException raise:format:]"
+      ],
+      "size": 76,
+      "source_line": 578,
+      "source_path": "src/Kits/Foundation/NSException.m"
+    },
+    {
+      "address": 1113070040,
+      "reference_names": [
+        "+[NSException raise:format:arguments:]"
+      ],
+      "size": 152,
+      "source_line": 587,
+      "source_path": "src/Kits/Foundation/NSException.m"
+    },
+    {
+      "address": 1113073536,
+      "reference_names": [
+        "+[NSObject detailedDescriptionForClass:]"
+      ],
+      "size": 1312,
+      "source_line": 763,
+      "source_path": "src/Kits/Foundation/NSObjCRuntime.m"
+    },
+    {
+      "address": 1113075424,
+      "reference_names": [
+        "-[NSAssertionHandler handleFailureInFunction:file:lineNumber:description:]"
+      ],
+      "size": 120,
+      "source_line": 670,
+      "source_path": "src/Kits/Foundation/NSException.m"
+    },
+    {
+      "address": 1113075544,
+      "reference_names": [
+        "-[NSAssertionHandler handleFailureInMethod:object:file:lineNumber:description:]"
+      ],
+      "size": 136,
+      "source_line": 658,
+      "source_path": "src/Kits/Foundation/NSException.m"
+    },
+    {
+      "address": 1113078080,
+      "reference_names": [
+        "-[NSException copyWithZone:]"
+      ],
+      "size": 52,
+      "source_line": 618,
+      "source_path": "src/Kits/Foundation/NSException.m"
+    },
+    {
+      "address": 1113078132,
+      "reference_names": [
+        "-[NSException dealloc]"
+      ],
+      "size": 128,
+      "source_line": 521,
+      "source_path": "src/Kits/Foundation/NSException.m"
+    },
+    {
+      "address": 1113078260,
+      "reference_names": [
+        "-[NSException description]"
+      ],
+      "size": 16,
+      "source_line": 558,
+      "source_path": "src/Kits/Foundation/NSException.m"
+    },
+    {
+      "address": 1113078276,
+      "reference_names": [
+        "-[NSException encodeWithCoder:]"
+      ],
+      "size": 108,
+      "source_line": 601,
+      "source_path": "src/Kits/Foundation/NSException.m"
+    },
+    {
+      "address": 1113078384,
+      "reference_names": [
+        "-[NSException initWithCoder:]"
+      ],
+      "size": 132,
+      "source_line": 608,
+      "source_path": "src/Kits/Foundation/NSException.m"
+    },
+    {
+      "address": 1113078516,
+      "reference_names": [
+        "-[NSException initWithName:reason:userInfo:]"
+      ],
+      "size": 124,
+      "source_line": 513,
+      "source_path": "src/Kits/Foundation/NSException.m"
+    },
+    {
+      "address": 1113078640,
+      "reference_names": [
+        "-[NSException init]"
+      ],
+      "size": 80,
+      "source_line": 529,
+      "source_path": "src/Kits/Foundation/NSException.m"
+    },
+    {
+      "address": 1113078720,
+      "reference_names": [
+        "-[NSException isEqual:]"
+      ],
+      "size": 96,
+      "source_line": 550,
+      "source_path": "src/Kits/Foundation/NSException.m"
+    },
+    {
+      "address": 1113078816,
+      "reference_names": [
+        "-[NSException name]"
+      ],
+      "size": 16,
+      "source_line": 535,
+      "source_path": "src/Kits/Foundation/NSException.m"
+    },
+    {
+      "address": 1113078832,
+      "reference_names": [
+        "-[NSException raise]"
+      ],
+      "size": 60,
+      "source_line": 539,
+      "source_path": "src/Kits/Foundation/NSException.m"
+    },
+    {
+      "address": 1113078892,
+      "reference_names": [
+        "-[NSException reason]"
+      ],
+      "size": 16,
+      "source_line": 536,
+      "source_path": "src/Kits/Foundation/NSException.m"
+    },
+    {
+      "address": 1113078908,
+      "reference_names": [
+        "-[NSException replacementObjectForPortCoder:]"
+      ],
+      "size": 12,
+      "source_line": 629,
+      "source_path": "src/Kits/Foundation/NSException.m"
+    },
+    {
+      "address": 1113078920,
+      "reference_names": [
+        "-[NSException userInfo]"
+      ],
+      "size": 16,
+      "source_line": 537,
+      "source_path": "src/Kits/Foundation/NSException.m"
+    },
+    {
+      "address": 1113085704,
+      "reference_names": [
+        "-[Protocol detailedDescription]"
+      ],
+      "size": 676,
+      "source_line": 707,
+      "source_path": "src/Kits/Foundation/NSObjCRuntime.m"
+    },
+    {
+      "address": 1113087072,
+      "reference_names": [
+        "_NSGetUncaughtExceptionHandler"
+      ],
+      "size": 52,
+      "source_line": 384,
+      "source_path": "src/Kits/Foundation/NSException.m"
+    },
+    {
+      "address": 1113087996,
+      "size": 32,
+      "reference_names": [
+        "__NSAddHandler"
+      ],
+      "source_path": "src/Kits/Foundation/NSException.m",
+      "source_line": 95
+    },
+    {
+      "address": 1113088216,
+      "reference_names": [
+        "__NSClearExceptionStack"
+      ],
+      "size": 180,
+      "source_line": 242,
+      "source_path": "src/Kits/Foundation/NSException.m"
+    },
+    {
+      "address": 1113088396,
+      "reference_names": [
+        "__NSExceptionHandlerCount"
+      ],
+      "size": 52,
+      "source_line": 231,
+      "source_path": "src/Kits/Foundation/NSException.m"
+    },
+    {
+      "address": 1113088448,
+      "reference_names": [
+        "__NSExceptionObjectFromHandler"
+      ],
+      "size": 32,
+      "source_line": 224,
+      "source_path": "src/Kits/Foundation/NSException.m"
+    },
+    {
+      "address": 1113088480,
+      "reference_names": [
+        "__NSExceptionObjectFromHandler2"
+      ],
+      "size": 16,
+      "source_line": 214,
+      "source_path": "src/Kits/Foundation/NSException.m"
+    },
+    {
+      "address": 1113088496,
+      "size": 52,
+      "reference_names": [
+        "__NSExceptionRaiser"
+      ],
+      "source_path": "src/Kits/Foundation/NSException.m",
+      "source_line": 468
+    },
+    {
+      "address": 1113089480,
+      "reference_names": [
+        "__NSRaiseError"
+      ],
+      "size": 512,
+      "source_line": 413,
+      "source_path": "src/Kits/Foundation/NSException.m"
+    },
+    {
+      "address": 1113089992,
+      "size": 32,
+      "reference_names": [
+        "__NSRemoveHandler"
+      ],
+      "source_path": "src/Kits/Foundation/NSException.m",
+      "source_line": 101
+    },
+    {
+      "address": 1113090024,
+      "size": 84,
+      "reference_names": [
+        "__NSSetExceptionRaiser"
+      ],
+      "source_path": "src/Kits/Foundation/NSException.m",
+      "source_line": 474
+    },
+    {
+      "address": 1113098432,
+      "size": 300,
+      "reference_names": [
+        "_getBitfieldSizeAndAdvance"
+      ],
+      "source_path": "src/Kits/Foundation/NSObjCRuntime.m",
+      "source_line": 174
+    },
+    {
+      "address": 1113170580,
+      "reference_names": [
+        "_NSLog"
+      ],
+      "size": 68,
+      "source_line": 542,
+      "source_path": "src/Kits/Foundation/NSObjCRuntime.m"
+    },
+    {
+      "address": 1113170744,
+      "reference_names": [
+        "_NSLogv"
+      ],
+      "size": 224,
+      "source_line": 520,
+      "source_path": "src/Kits/Foundation/NSObjCRuntime.m"
+    },
+    {
+      "address": 1113172688,
+      "reference_names": [
+        "__NSBasicStdErrLog"
+      ],
+      "size": 272,
+      "source_line": 396,
+      "source_path": "src/Kits/Foundation/NSObjCRuntime.m"
+    },
+    {
+      "address": 1113176244,
+      "size": 656,
+      "reference_names": [
+        "__NSDefaultLogCString"
+      ],
+      "source_path": "src/Kits/Foundation/NSObjCRuntime.m",
+      "source_line": 432
+    },
+    {
+      "address": 1113178564,
+      "reference_names": [
+        "__NSHandleMallocError"
+      ],
+      "size": 256,
+      "source_line": 256,
+      "source_path": "src/Kits/Foundation/NSDebug.m"
+    }
+  ],
+  "reference_sha256": "332B3C8C0AE0A6E40A4B93110EE16748FCD94AA0119D63F16EDE878598C681B4",
+  "schema_version": "source-map-v1",
+  "unmapped": []
+}

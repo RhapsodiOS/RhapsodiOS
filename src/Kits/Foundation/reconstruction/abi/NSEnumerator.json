@@ -1,0 +1,83 @@
+{
+ "categories": [],
+ "classes": [
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "dealloc",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "allObjects",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "nextObject",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "invalidate",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "initWithObjects:count:target:reverse:freeWhenDone:",
+     "types": "@25@8:12^@16I20@24c28c32"
+    }
+   ],
+   "instance_size": 24,
+   "ivars": [
+    {
+     "name": "_slot",
+     "offset": 4,
+     "type": "I"
+    },
+    {
+     "name": "_limit",
+     "offset": 8,
+     "type": "I"
+    },
+    {
+     "name": "_target",
+     "offset": 12,
+     "type": "@"
+    },
+    {
+     "name": "_list",
+     "offset": 16,
+     "type": "^@"
+    },
+    {
+     "name": "_free",
+     "offset": 20,
+     "type": "c"
+    }
+   ],
+   "name": "NSIdEnumerator",
+   "superclass": "NSEnumerator"
+  },
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "allObjects",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "nextObject",
+     "types": "@8@8:12"
+    }
+   ],
+   "instance_size": 4,
+   "ivars": [],
+   "name": "NSEnumerator",
+   "superclass": "NSObject"
+  }
+ ],
+ "data_symbols": [],
+ "module": "NSEnumerator.m",
+ "schema_version": "abi-v1",
+ "text_symbols": []
+}

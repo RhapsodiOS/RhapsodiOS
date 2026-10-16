@@ -1,0 +1,5 @@
+/* i386 image 1165b9063add5672514455ca2c9830625bea2bce5e46126fb5e8652114c909d6; mapped bytes [0x4252ba04, 0x4252ba20). */
+static const unsigned short NSDecimalI386SHRTMinRead[] = {
+    0x000d, 0x8d8b, 0xf7f4, 0xffff, 0x5351, 0x0068, 0x0004, 0x8d00, 0xfc9d, 0xfff7, 0x53ff, 0xe856,
+    0x8b58, 0xfffe,
+};

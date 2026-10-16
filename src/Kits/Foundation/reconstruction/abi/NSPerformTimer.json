@@ -1,0 +1,121 @@
+{
+ "categories": [],
+ "classes": [
+  {
+   "class_methods": [
+    {
+     "selector": "newPerformSelector:target:argument:order:modes:",
+     "types": "@28@8:12:16@20@24I28@32"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "description",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "dealloc",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "retainCount",
+     "types": "I8@8:12"
+    },
+    {
+     "selector": "release",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "retain",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "fireDate",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "fire",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "invalidate",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "userInfo",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "timeInterval",
+     "types": "d8@8:12"
+    },
+    {
+     "selector": "isValid",
+     "types": "c8@8:12"
+    }
+   ],
+   "instance_size": 32,
+   "ivars": [
+    {
+     "name": "link",
+     "offset": 4,
+     "type": "@\"NSPerformTimer\""
+    },
+    {
+     "name": "target",
+     "offset": 8,
+     "type": "@"
+    },
+    {
+     "name": "selector",
+     "offset": 12,
+     "type": ":"
+    },
+    {
+     "name": "argument",
+     "offset": 16,
+     "type": "@"
+    },
+    {
+     "name": "order",
+     "offset": 20,
+     "type": "I"
+    },
+    {
+     "name": "modes",
+     "offset": 24,
+     "type": "@\"NSArray\""
+    },
+    {
+     "name": "firing",
+     "offset": 28,
+     "type": "b1"
+    },
+    {
+     "name": "invalid",
+     "offset": 28,
+     "type": "b1"
+    },
+    {
+     "name": "filler",
+     "offset": 28,
+     "type": "b14"
+    },
+    {
+     "name": "refCount",
+     "offset": 30,
+     "type": "b16"
+    }
+   ],
+   "name": "NSPerformTimer",
+   "superclass": "NSTimer"
+  }
+ ],
+ "data_symbols": [
+  "__NSPerformTimerCacheLock"
+ ],
+ "module": "NSPerformTimer.m",
+ "schema_version": "abi-v1",
+ "text_symbols": []
+}

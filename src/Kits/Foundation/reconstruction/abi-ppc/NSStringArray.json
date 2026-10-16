@@ -1,0 +1,300 @@
+{
+ "categories": [],
+ "classes": [
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "hash",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "getCharacters:range:",
+     "types": "v16@4:8^S12{?=II}16"
+    },
+    {
+     "selector": "characterAtIndex:",
+     "types": "S8@4:8I12"
+    },
+    {
+     "selector": "length",
+     "types": "I4@4:8"
+    }
+   ],
+   "instance_size": 16,
+   "ivars": [
+    {
+     "name": "_realString",
+     "offset": 8,
+     "type": "@\"NSString\""
+    },
+    {
+     "name": "_length",
+     "offset": 12,
+     "type": "I"
+    }
+   ],
+   "name": "_NSUTF8NonASCIIString",
+   "superclass": "_NSUTF8String"
+  },
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "getBytes:maxLength:filledLength:encoding:allowLossyConversion:range:remainingRange:",
+     "types": "c40@4:8*12I16^I20I24c28{?=II}36^{?=II}44"
+    },
+    {
+     "selector": "hash",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "canBeConvertedToEncoding:",
+     "types": "c8@4:8I12"
+    },
+    {
+     "selector": "smallestEncoding",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "fastestEncoding",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "cString",
+     "types": "r*4@4:8"
+    },
+    {
+     "selector": "cStringLength",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "getCharacters:range:",
+     "types": "v16@4:8^S12{?=II}16"
+    },
+    {
+     "selector": "characterAtIndex:",
+     "types": "S8@4:8I12"
+    },
+    {
+     "selector": "length",
+     "types": "I4@4:8"
+    }
+   ],
+   "instance_size": 16,
+   "ivars": [
+    {
+     "name": "_bytes",
+     "offset": 8,
+     "type": "*"
+    },
+    {
+     "name": "_length",
+     "offset": 12,
+     "type": "I"
+    }
+   ],
+   "name": "_NSUTF8ASCIIString",
+   "superclass": "_NSUTF8String"
+  },
+  {
+   "class_methods": [
+    {
+     "selector": "allocWithZone:",
+     "types": "@8@4:8^{?=}12"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "copyWithZone:",
+     "types": "@8@4:8^{?=}12"
+    },
+    {
+     "selector": "release",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "retainCount",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "retain",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "init",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "dealloc",
+     "types": "v4@4:8"
+    }
+   ],
+   "instance_size": 8,
+   "ivars": [
+    {
+     "name": "_array",
+     "offset": 4,
+     "type": "@\"NSStringArray\""
+    }
+   ],
+   "name": "_NSUTF8String",
+   "superclass": "NSString"
+  },
+  {
+   "class_methods": [
+    {
+     "selector": "stringArrayWithComponents:separatedByString:",
+     "types": "@12@4:8@12@16"
+    },
+    {
+     "selector": "stringArrayWithArray:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "stringArray",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "stringArrayWithUTF8Data:",
+     "types": "@8@4:8@12"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "initWithWordsOfHTMLData:convertCase:",
+     "types": "@12@4:8@12I16"
+    },
+    {
+     "selector": "initWithWordsOfRTFData:convertCase:",
+     "types": "@12@4:8@12I16"
+    },
+    {
+     "selector": "initWithWordsOfData:convertCase:locale:",
+     "types": "@16@4:8@12I16@20"
+    },
+    {
+     "selector": "initWithWordsOfString:convertCase:locale:",
+     "types": "@16@4:8@12I16@20"
+    },
+    {
+     "selector": "stringArrayWithBitVector:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "stringArrayByAppendingStringArrays:resultingBitVectors:",
+     "types": "@12@4:8@12^@16"
+    },
+    {
+     "selector": "stringArrayByAppendingStringArray:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "UTF8Data",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "containsObject:",
+     "types": "c8@4:8@12"
+    },
+    {
+     "selector": "bitVectorMatchingString:option:",
+     "types": "@12@4:8@12I16"
+    },
+    {
+     "selector": "matchesString:option:",
+     "types": "c12@4:8@12I16"
+    },
+    {
+     "selector": "bitVectorMatchingStringArray:option:",
+     "types": "@12@4:8@12I16"
+    },
+    {
+     "selector": "matchesStringArray:option:eachMustBeMatched:",
+     "types": "c13@4:8@12I16c20"
+    },
+    {
+     "selector": "objectAtIndex:",
+     "types": "@8@4:8I12"
+    },
+    {
+     "selector": "count",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "release",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "retainCount",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "retain",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "dealloc",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "initWithComponents:separatedByString:",
+     "types": "@12@4:8@12@16"
+    },
+    {
+     "selector": "initWithArray:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "init",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "initWithUTF8Data:",
+     "types": "@8@4:8@12"
+    }
+   ],
+   "instance_size": 24,
+   "ivars": [
+    {
+     "name": "_count",
+     "offset": 4,
+     "type": "I"
+    },
+    {
+     "name": "_extraRefCount",
+     "offset": 8,
+     "type": "I"
+    },
+    {
+     "name": "_data",
+     "offset": 12,
+     "type": "@\"NSData\""
+    },
+    {
+     "name": "_strings",
+     "offset": 16,
+     "type": "^v"
+    },
+    {
+     "name": "_reserved",
+     "offset": 20,
+     "type": "^v"
+    }
+   ],
+   "name": "NSStringArray",
+   "superclass": "NSArray"
+  }
+ ],
+ "data_symbols": [
+  "___NSEmptyStringArray",
+  "___NSStringArrayRetainLock"
+ ],
+ "module": "NSStringArray.m",
+ "schema_version": "abi-v1",
+ "text_symbols": []
+}

@@ -1,0 +1,731 @@
+{
+  "schema_version": "source-map-v1",
+  "reference_sha256": "1165B9063ADD5672514455CA2C9830625BEA2BCE5E46126FB5E8652114C909D6",
+  "mapped": [
+    {
+      "address": 1112619008,
+      "size": 31,
+      "reference_names": [
+        "-[NSConcretePortCoder encodeValueOfObjCType:at:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortCoder.m",
+      "source_line": 700
+    },
+    {
+      "address": 1112620968,
+      "size": 220,
+      "reference_names": [
+        "_encodeFastInt"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortCoder.m",
+      "source_line": 132
+    },
+    {
+      "address": 1112639220,
+      "size": 101,
+      "reference_names": [
+        "_encodeFastByte"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortCoder.m",
+      "source_line": 86
+    },
+    {
+      "address": 1112643424,
+      "size": 31,
+      "reference_names": [
+        "-[NSConcretePortCoder decodeValueOfObjCType:at:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortCoder.m",
+      "source_line": 704
+    },
+    {
+      "address": 1112644816,
+      "size": 87,
+      "reference_names": [
+        "+[NSConcretePortCoder limitDateForMode:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortCoder.m",
+      "source_line": 505
+    },
+    {
+      "address": 1112659812,
+      "size": 182,
+      "reference_names": [
+        "_encodeFastCharStar"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortCoder.m",
+      "source_line": 187
+    },
+    {
+      "address": 1112672632,
+      "size": 622,
+      "reference_names": [
+        "-[NSConcretePortCoder encodeObject:isBycopy:isByref:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortCoder.m",
+      "source_line": 708
+    },
+    {
+      "address": 1112675364,
+      "size": 92,
+      "reference_names": [
+        "-[NSConcretePortCoder invalidate]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortCoder.m",
+      "source_line": 938
+    },
+    {
+      "address": 1112675456,
+      "size": 205,
+      "reference_names": [
+        "-[NSConcretePortCoder initWithConnection:components:msgid:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortCoder.m",
+      "source_line": 534
+    },
+    {
+      "address": 1112676204,
+      "size": 397,
+      "reference_names": [
+        "-[NSConcretePortCoder dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortCoder.m",
+      "source_line": 948
+    },
+    {
+      "address": 1112680428,
+      "size": 80,
+      "reference_names": [
+        "-[NSConcretePortCoder decodeBytesWithReturnedLength:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortCoder.m",
+      "source_line": 903
+    },
+    {
+      "address": 1112689476,
+      "size": 242,
+      "reference_names": [
+        "+[NSConcretePortCoder allocWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortCoder.m",
+      "source_line": 477
+    },
+    {
+      "address": 1112691084,
+      "size": 29,
+      "reference_names": [
+        "-[NSObject classForPortCoder]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortCoder.m",
+      "source_line": 1008
+    },
+    {
+      "address": 1112697696,
+      "size": 13,
+      "reference_names": [
+        "-[NSConcretePortCoder connection]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortCoder.m",
+      "source_line": 676
+    },
+    {
+      "address": 1112698000,
+      "size": 796,
+      "reference_names": [
+        "-[NSConcretePortCoder decodeRetainedObject]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortCoder.m",
+      "source_line": 776
+    },
+    {
+      "address": 1112703584,
+      "size": 81,
+      "reference_names": [
+        "-[NSConcretePortCoder encodeBytes:length:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortCoder.m",
+      "source_line": 695
+    },
+    {
+      "address": 1112705836,
+      "size": 161,
+      "reference_names": [
+        "-[NSConcretePortCoder dispatch]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortCoder.m",
+      "source_line": 621
+    },
+    {
+      "address": 1112706000,
+      "size": 99,
+      "reference_names": [
+        "+[NSConcretePortCoder handleMachMessage:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortCoder.m",
+      "source_line": 513
+    },
+    {
+      "address": 1112706100,
+      "size": 65,
+      "reference_names": [
+        "-[NSMachPort sendBeforeTime:streamData:components:from:msgid:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPort.m",
+      "source_line": 555
+    },
+    {
+      "address": 1112706168,
+      "size": 12,
+      "reference_names": [
+        "-[NSMachPort reservedSpaceLength]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPort.m",
+      "source_line": 551
+    },
+    {
+      "address": 1112706408,
+      "size": 503,
+      "reference_names": [
+        "-[NSConcretePortCoder sendBeforeTime:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortCoder.m",
+      "source_line": 834
+    },
+    {
+      "address": 1112706912,
+      "size": 126,
+      "reference_names": [
+        "-[NSConcretePortCoder initWithConnection:msgid:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortCoder.m",
+      "source_line": 558
+    },
+    {
+      "address": 1112714260,
+      "size": 1424,
+      "reference_names": [
+        "+[NSPortMessage sendBeforeTime:streamData:components:to:from:msgid:reserved:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortMessage.m",
+      "source_line": 72
+    },
+    {
+      "address": 1112717296,
+      "size": 276,
+      "reference_names": [
+        "-[NSConcretePortCoder initWithMachMessage:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortCoder.m",
+      "source_line": 592
+    },
+    {
+      "address": 1112722124,
+      "size": 1159,
+      "reference_names": [
+        "+[NSPortMessage parseMachMessage:localPort:remotePort:msgid:stream:components:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortMessage.m",
+      "source_line": 222
+    },
+    {
+      "address": 1112725596,
+      "size": 36,
+      "reference_names": [
+        "-[NSConcretePortCoder versionForClassName:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortCoder.m",
+      "source_line": 996
+    },
+    {
+      "address": 1112760224,
+      "size": 103,
+      "reference_names": [
+        "_encodeFastData"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortCoder.m",
+      "source_line": 110
+    },
+    {
+      "address": 1112778512,
+      "size": 200,
+      "reference_names": [
+        "-[NSConcretePortCoder decodeDataObject]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortCoder.m",
+      "source_line": 922
+    },
+    {
+      "address": 1112803612,
+      "size": 100,
+      "reference_names": [
+        "-[NSConcretePortCoder importObject:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortCoder.m",
+      "source_line": 828
+    },
+    {
+      "address": 1112807088,
+      "size": 18,
+      "reference_names": [
+        "-[NSStreamData length]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortCoder.m",
+      "source_line": 421
+    },
+    {
+      "address": 1112807108,
+      "size": 13,
+      "reference_names": [
+        "-[NSStreamData bytes]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortCoder.m",
+      "source_line": 425
+    },
+    {
+      "address": 1112815788,
+      "size": 38,
+      "reference_names": [
+        "-[NSStreamData retain]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortCoder.m",
+      "source_line": 433
+    },
+    {
+      "address": 1112824812,
+      "size": 96,
+      "reference_names": [
+        "-[NSObject replacementObjectForPortCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortCoder.m",
+      "source_line": 1012
+    },
+    {
+      "address": 1112825096,
+      "size": 37,
+      "reference_names": [
+        "-[NSConcretePortCoder encodeBycopyObject:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortCoder.m",
+      "source_line": 984
+    },
+    {
+      "address": 1112828408,
+      "size": 14,
+      "reference_names": [
+        "-[NSConcretePortCoder isByref]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortCoder.m",
+      "source_line": 675
+    },
+    {
+      "address": 1112835452,
+      "size": 191,
+      "reference_names": [
+        "-[NSConcretePortCoder encodeDataObject:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortCoder.m",
+      "source_line": 909
+    },
+    {
+      "address": 1112867072,
+      "size": 13,
+      "reference_names": [
+        "-[NSConcretePortCoder importedObjects]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortCoder.m",
+      "source_line": 693
+    },
+    {
+      "address": 1112867088,
+      "size": 132,
+      "reference_names": [
+        "-[NSConcretePortCoder components]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortCoder.m",
+      "source_line": 686
+    },
+    {
+      "address": 1112960192,
+      "size": 38,
+      "reference_names": [
+        "+[NSConcretePortCoder _enableLogging:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortCoder.m",
+      "source_line": 455
+    },
+    {
+      "address": 1112960232,
+      "size": 83,
+      "reference_names": [
+        "+[NSConcretePortCoder debugDescription]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortCoder.m",
+      "source_line": 466
+    },
+    {
+      "address": 1112960316,
+      "size": 124,
+      "reference_names": [
+        "+[NSConcretePortCoder portCoderWithReceivePort:sendPort:components:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortCoder.m",
+      "source_line": 523
+    },
+    {
+      "address": 1112961168,
+      "size": 10,
+      "reference_names": [
+        "+[NSObject replacementObjectForPortCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortCoder.m",
+      "source_line": 1004
+    },
+    {
+      "address": 1112961180,
+      "size": 46,
+      "reference_names": [
+        "+[NSPortCoder portCoderWithReceivePort:sendPort:components:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortCoder.m",
+      "source_line": 408
+    },
+    {
+      "address": 1112961228,
+      "size": 12,
+      "reference_names": [
+        "+[NSPortMessage reservedSpaceLength]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortMessage.m",
+      "source_line": 68
+    },
+    {
+      "address": 1112961768,
+      "size": 205,
+      "reference_names": [
+        "-[NSConcretePortCoder authenticateWithDelegate:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortCoder.m",
+      "source_line": 647
+    },
+    {
+      "address": 1112961976,
+      "size": 39,
+      "reference_names": [
+        "-[NSConcretePortCoder decodePortObject]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortCoder.m",
+      "source_line": 682
+    },
+    {
+      "address": 1112962016,
+      "size": 78,
+      "reference_names": [
+        "-[NSConcretePortCoder decryptWithDelegate:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortCoder.m",
+      "source_line": 631
+    },
+    {
+      "address": 1112962096,
+      "size": 37,
+      "reference_names": [
+        "-[NSConcretePortCoder encodeByrefObject:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortCoder.m",
+      "source_line": 988
+    },
+    {
+      "address": 1112962136,
+      "size": 51,
+      "reference_names": [
+        "-[NSConcretePortCoder encodePortObject:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortCoder.m",
+      "source_line": 678
+    },
+    {
+      "address": 1112962188,
+      "size": 135,
+      "reference_names": [
+        "-[NSConcretePortCoder encryptWithDelegate:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortCoder.m",
+      "source_line": 639
+    },
+    {
+      "address": 1112962324,
+      "size": 154,
+      "reference_names": [
+        "-[NSConcretePortCoder initWithReceivePort:sendPort:components:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortCoder.m",
+      "source_line": 577
+    },
+    {
+      "address": 1112962480,
+      "size": 14,
+      "reference_names": [
+        "-[NSConcretePortCoder isBycopy]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortCoder.m",
+      "source_line": 674
+    },
+    {
+      "address": 1112962496,
+      "size": 60,
+      "reference_names": [
+        "-[NSConcretePortCoder sendBeforeDate:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortCoder.m",
+      "source_line": 992
+    },
+    {
+      "address": 1112962556,
+      "size": 160,
+      "reference_names": [
+        "-[NSConcretePortCoder verifyWithDelegate:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortCoder.m",
+      "source_line": 660
+    },
+    {
+      "address": 1112971976,
+      "size": 57,
+      "reference_names": [
+        "-[NSPortCoder connection]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortCoder.m",
+      "source_line": 393
+    },
+    {
+      "address": 1112972036,
+      "size": 57,
+      "reference_names": [
+        "-[NSPortCoder decodePortObject]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortCoder.m",
+      "source_line": 403
+    },
+    {
+      "address": 1112972096,
+      "size": 55,
+      "reference_names": [
+        "-[NSPortCoder dispatch]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortCoder.m",
+      "source_line": 413
+    },
+    {
+      "address": 1112972152,
+      "size": 55,
+      "reference_names": [
+        "-[NSPortCoder encodePortObject:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortCoder.m",
+      "source_line": 398
+    },
+    {
+      "address": 1112972208,
+      "size": 57,
+      "reference_names": [
+        "-[NSPortCoder isBycopy]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortCoder.m",
+      "source_line": 385
+    },
+    {
+      "address": 1112972268,
+      "size": 57,
+      "reference_names": [
+        "-[NSPortCoder isByref]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortCoder.m",
+      "source_line": 389
+    },
+    {
+      "address": 1112972328,
+      "size": 13,
+      "reference_names": [
+        "-[NSPortMessage components]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortMessage.m",
+      "source_line": 366
+    },
+    {
+      "address": 1112972344,
+      "size": 29,
+      "reference_names": [
+        "-[NSPortMessage copyWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortMessage.m",
+      "source_line": 378
+    },
+    {
+      "address": 1112972376,
+      "size": 110,
+      "reference_names": [
+        "-[NSPortMessage dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortMessage.m",
+      "source_line": 398
+    },
+    {
+      "address": 1112972488,
+      "size": 59,
+      "reference_names": [
+        "-[NSPortMessage initWithMachMessage:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortMessage.m",
+      "source_line": 359
+    },
+    {
+      "address": 1112972548,
+      "size": 41,
+      "reference_names": [
+        "-[NSPortMessage initWithReceivePort:sendPort:components:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortMessage.m",
+      "source_line": 353
+    },
+    {
+      "address": 1112972592,
+      "size": 88,
+      "reference_names": [
+        "-[NSPortMessage initWithSendPort:receivePort:components:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortMessage.m",
+      "source_line": 345
+    },
+    {
+      "address": 1112972680,
+      "size": 13,
+      "reference_names": [
+        "-[NSPortMessage msgid]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortMessage.m",
+      "source_line": 369
+    },
+    {
+      "address": 1112972696,
+      "size": 13,
+      "reference_names": [
+        "-[NSPortMessage receivePort]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortMessage.m",
+      "source_line": 367
+    },
+    {
+      "address": 1112972712,
+      "size": 64,
+      "reference_names": [
+        "-[NSPortMessage release]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortMessage.m",
+      "source_line": 388
+    },
+    {
+      "address": 1112972776,
+      "size": 22,
+      "reference_names": [
+        "-[NSPortMessage retainCount]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortMessage.m",
+      "source_line": 394
+    },
+    {
+      "address": 1112972800,
+      "size": 43,
+      "reference_names": [
+        "-[NSPortMessage retain]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortMessage.m",
+      "source_line": 383
+    },
+    {
+      "address": 1112972844,
+      "size": 88,
+      "reference_names": [
+        "-[NSPortMessage sendBeforeDate:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortMessage.m",
+      "source_line": 372
+    },
+    {
+      "address": 1112972932,
+      "size": 13,
+      "reference_names": [
+        "-[NSPortMessage sendPort]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortMessage.m",
+      "source_line": 368
+    },
+    {
+      "address": 1112972948,
+      "size": 16,
+      "reference_names": [
+        "-[NSPortMessage setMsgid:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortMessage.m",
+      "source_line": 370
+    },
+    {
+      "address": 1112973532,
+      "size": 50,
+      "reference_names": [
+        "-[NSStreamData dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortCoder.m",
+      "source_line": 446
+    },
+    {
+      "address": 1112973584,
+      "size": 13,
+      "reference_names": [
+        "-[NSStreamData mutableBytes]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortCoder.m",
+      "source_line": 429
+    },
+    {
+      "address": 1112973600,
+      "size": 32,
+      "reference_names": [
+        "-[NSStreamData release]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortCoder.m",
+      "source_line": 438
+    },
+    {
+      "address": 1112973632,
+      "size": 32,
+      "reference_names": [
+        "-[NSStreamData retainCount]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortCoder.m",
+      "source_line": 442
+    }
+  ],
+  "unmapped": [],
+  "duplicate_candidates": [],
+  "boundary_disputed": [],
+  "by_module": {
+    "NSPort.m": {
+      "mapped": 2,
+      "unmapped": 0,
+      "duplicate_candidates": 0,
+      "boundary_disputed": 0
+    },
+    "NSPortCoder.m": {
+      "mapped": 59,
+      "unmapped": 0,
+      "duplicate_candidates": 0,
+      "boundary_disputed": 0
+    },
+    "NSPortMessage.m": {
+      "mapped": 17,
+      "unmapped": 0,
+      "duplicate_candidates": 0,
+      "boundary_disputed": 0
+    }
+  }
+}

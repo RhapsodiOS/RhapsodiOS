@@ -1,0 +1,15 @@
+{
+ "categories": [],
+ "classes": [],
+ "data_symbols": [],
+ "module": "NSRange.m",
+ "schema_version": "abi-v1",
+ "text_symbols": [
+  "_NSIntersectionRange",
+  "_NSIntersectsRange",
+  "_NSRangeFromString",
+  "_NSSubtractRange",
+  "_NSStringFromRange",
+  "_NSUnionRange"
+ ]
+}

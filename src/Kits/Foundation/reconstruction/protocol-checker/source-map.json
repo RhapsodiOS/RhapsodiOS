@@ -1,0 +1,171 @@
+{
+  "schema_version": "source-map-v1",
+  "reference_sha256": "332B3C8C0AE0A6E40A4B93110EE16748FCD94AA0119D63F16EDE878598C681B4",
+  "mapped": [
+    {
+      "address": 1113010112,
+      "size": 80,
+      "reference_names": [
+        "+[NSProtocolChecker allocWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSProtocolChecker.m",
+      "source_line": 53
+    },
+    {
+      "address": 1113010192,
+      "size": 96,
+      "reference_names": [
+        "+[NSProtocolChecker protocolCheckerWithTarget:protocol:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSProtocolChecker.m",
+      "source_line": 71
+    },
+    {
+      "address": 1113012232,
+      "size": 96,
+      "reference_names": [
+        "-[NSConcreteProtocolChecker dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSProtocolChecker.m",
+      "source_line": 150
+    },
+    {
+      "address": 1113012328,
+      "size": 76,
+      "reference_names": [
+        "-[NSConcreteProtocolChecker initWithTarget:protocol:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSProtocolChecker.m",
+      "source_line": 144
+    },
+    {
+      "address": 1113012404,
+      "size": 16,
+      "reference_names": [
+        "-[NSConcreteProtocolChecker protocol]"
+      ],
+      "source_path": "src/Kits/Foundation/NSProtocolChecker.m",
+      "source_line": 140
+    },
+    {
+      "address": 1113012420,
+      "size": 16,
+      "reference_names": [
+        "-[NSConcreteProtocolChecker target]"
+      ],
+      "source_path": "src/Kits/Foundation/NSProtocolChecker.m",
+      "source_line": 136
+    },
+    {
+      "address": 1113025500,
+      "size": 76,
+      "reference_names": [
+        "-[NSProtocolChecker _conformsToProtocolNamed:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSProtocolChecker.m",
+      "source_line": 110
+    },
+    {
+      "address": 1113025576,
+      "size": 12,
+      "reference_names": [
+        "-[NSProtocolChecker awakeAfterUsingCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSProtocolChecker.m",
+      "source_line": 116
+    },
+    {
+      "address": 1113025588,
+      "size": 36,
+      "reference_names": [
+        "-[NSProtocolChecker doesNotRecognizeSelector:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSProtocolChecker.m",
+      "source_line": 120
+    },
+    {
+      "address": 1113025624,
+      "size": 156,
+      "reference_names": [
+        "-[NSProtocolChecker forwardInvocation:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSProtocolChecker.m",
+      "source_line": 100
+    },
+    {
+      "address": 1113025780,
+      "size": 48,
+      "reference_names": [
+        "-[NSProtocolChecker initWithTarget:protocol:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSProtocolChecker.m",
+      "source_line": 76
+    },
+    {
+      "address": 1113025828,
+      "size": 108,
+      "reference_names": [
+        "-[NSProtocolChecker methodDescriptionForSelector:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSProtocolChecker.m",
+      "source_line": 90
+    },
+    {
+      "address": 1113025936,
+      "size": 92,
+      "reference_names": [
+        "-[NSProtocolChecker methodSignatureForSelector:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSProtocolChecker.m",
+      "source_line": 81
+    },
+    {
+      "address": 1113026028,
+      "size": 60,
+      "reference_names": [
+        "-[NSProtocolChecker protocol]"
+      ],
+      "source_path": "src/Kits/Foundation/NSProtocolChecker.m",
+      "source_line": 61
+    },
+    {
+      "address": 1113026088,
+      "size": 88,
+      "reference_names": [
+        "-[NSProtocolChecker replacementObjectForPortCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSProtocolChecker.m",
+      "source_line": 124
+    },
+    {
+      "address": 1113026176,
+      "size": 80,
+      "reference_names": [
+        "-[NSProtocolChecker respondsToSelector:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSProtocolChecker.m",
+      "source_line": 128
+    },
+    {
+      "address": 1113026256,
+      "size": 60,
+      "reference_names": [
+        "-[NSProtocolChecker target]"
+      ],
+      "source_path": "src/Kits/Foundation/NSProtocolChecker.m",
+      "source_line": 66
+    },
+    {
+      "address": 1113028136,
+      "size": 88,
+      "reference_names": [
+        "__NSProtocolCheckerRaiseUnknownSelectorException"
+      ],
+      "source_path": "src/Kits/Foundation/NSProtocolChecker.m",
+      "source_line": 42
+    }
+  ],
+  "unmapped": [],
+  "duplicate_candidates": [],
+  "boundary_disputed": []
+}

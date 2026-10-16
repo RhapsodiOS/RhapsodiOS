@@ -1,0 +1,36 @@
+{
+ "categories": [],
+ "classes": [],
+ "data_symbols": [
+  "__NSJavaCL",
+  "__NSJavaVM",
+  "_NSJavaBundleClassLoaderClassName",
+  "_NSJavaClasses",
+  "_NSJavaLibraryPath",
+  "_NSJavaOwnVirtualMachine",
+  "_NSJavaPath",
+  "_NSJavaPathResourceLocatorClassName",
+  "_NSJavaPathSeparator",
+  "_NSJavaRoot",
+  "_NSJavaStandardClassLoaderClassName",
+  "_NSJavaUserPath"
+ ],
+ "module": "NSJavaSetup.m",
+ "schema_version": "abi-v1",
+ "text_symbols": [
+  "__NSJavaBundleClassPath",
+  "_NSJavaBundleCleanup",
+  "_NSJavaBundleSetup",
+  "_NSJavaClassLoaderForPath",
+  "_NSJavaClassesForBundle",
+  "_NSJavaClassesFromClassLoader",
+  "_NSJavaClassesFromClassLoaderFromPath",
+  "_NSJavaClassesFromPath",
+  "_NSJavaDefinitiveSetupDictionary",
+  "_NSJavaNeedsToLoadClasses",
+  "_NSJavaNeedsVirtualMachine",
+  "_NSJavaProvidesClasses",
+  "_NSJavaResourceLocatorForPath",
+  "_NSJavaSetup"
+ ]
+}

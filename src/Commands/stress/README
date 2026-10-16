@@ -63,6 +63,23 @@ Usage
     -T does not bound ipc msg/ool or net select: their two processes run a
     shared count, so stopping one end early would fail the other.
 
+Other file systems (ffsbench stress --fs)
+    vm/ffsbench.py stress --fs LIST runs the categories (default fs mmap) on
+    other file systems as well as, or instead of, UFS: ext2, hfs, msdos, nfs,
+    or all.  The workload disk is replaced by one targets disk with three
+    128 MB partitions: a is an ext2 volume made on the host (WSL mke2fs; the
+    image has no e2fsprogs), b is formatted HFS+ and c FAT16 on the guest.
+    nfs is a loopback export of /mnt1/nfsexp (on the UFS scratch disk) made
+    through NetInfo's /exports and mounted from localhost.  The guest builds
+    mount_ext2fs, mount_hfs, newfs_hfs, newfs_msdos, mount_msdos and
+    fsck_msdos from src/ext2fs-1, src/hfs-1 and src/msdosfs-1
+    (vm/stress_fs.sh), runs `run` on each mount, unmounts and checks it:
+    fsck_msdos on the guest, e2fsck and the tools/hfsimg checker on the host
+    from the disk image.  result.txt gets a "targets" section per file system
+    (ran, unsup with the reason, or lost when the guest stopped answering),
+    and each target's results are fetched as soon as it finishes, so a later
+    panic does not lose them.
+
 Result lines
     STRESS <cat> <test> PASS iters=N procs=N ... ops=N maxlat=... seed=N
     STRESS <cat> <test> FAIL key=value ... seed=N

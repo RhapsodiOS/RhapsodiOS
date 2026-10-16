@@ -130,6 +130,13 @@
  "module": "NSAutoreleasePool.m",
  "schema_version": "abi-v1",
  "text_symbols": [
+  "_NSPrintAutoreleasePools",
+  "__NSAutoreleaseHighWaterLog",
+  "__NSAutoreleaseNoPool",
+  "__NSAutoreleaseFreedObject",
+  "_NSAutoreleasePoolCountForObject",
+  "_NSAutoreleasePoolCount",
+  "_NSTopAutoreleasePoolCount",
   "_NSAutoreleaseObject",
   "_NSPopAutoreleasePool",
   "_NSPushAutoreleasePool"

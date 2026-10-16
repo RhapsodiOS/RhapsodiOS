@@ -4,6 +4,7 @@
 
 #import <Foundation/NSProxy.h>
 #import <Foundation/NSException.h>
+#import <Foundation/NSInvocation.h>
 #import <Foundation/NSMethodSignature.h>
 #import <Foundation/NSString.h>
 #import <objc/objc-runtime.h>
@@ -24,6 +25,12 @@
 
 extern BOOL class_respondsToMethod(Class aClass, SEL aSelector);
 extern id _NSMethodExceptionProem(id object, SEL aSelector);
+
+/*  Private helper used by the reference's four forwarded identity queries.
+    Its implementation lives beside NSInvocation in NSInvocation.m.  */
+@interface NSInvocationBuilder
++ (id)builderForClass:(Class)aClass;
+@end
 
 /*	Raises for a NULL selector handed to the performSelector: family.
 	Static: the reference keeps this local to NSProxy.m, separately named
@@ -74,24 +81,12 @@ extern void _NSInitializePlatform(void);
         Method objectForward;
         Method proxyForward;
 
-        /*  Set before the work, not after: _NSInitializePlatform() below
-            is free to send a message to NSProxy, which would re-enter
-            this method and recurse without end.  */
-        initialized = YES;
-
         twoArgForward = sel_registerName("forward::");
         objectForward = class_getInstanceMethod(objc_lookUpClass("NSObject"), twoArgForward);
         proxyForward = class_getInstanceMethod(objc_lookUpClass("NSProxy"), twoArgForward);
-        /*  Both lookups can come back NULL -- objc_lookUpClass returns nil
-            for a class this image does not link (NSObject.m is not in every
-            binary NSProxy.m is), and class_getInstanceMethod returns NULL
-            for a class it was handed nil for.  Skipping the patch leaves
-            -[NSProxy forward::] below in place, which raises on its own;
-            dereferencing would fault inside +initialize, before any caller
-            could see why.  */
-        if (objectForward != NULL && proxyForward != NULL)
-            proxyForward->method_imp = objectForward->method_imp;
+        proxyForward->method_imp = objectForward->method_imp;
         _NSInitializePlatform();
+        initialized = YES;
     }
 }
 
@@ -210,56 +205,54 @@ extern void _NSInitializePlatform(void);
     return isa->super_class;
 }
 
-/*  isKindOfClass:/isMemberOfClass:/conformsToProtocol:/respondsToSelector:
-    do NOT answer directly from isa the way NSObject's do.  The reference's
-    four bodies (0x42574974, 0x42574b3c, 0x42574bc8, 0x42574d18) are all the
-    same unconditional, branch-free shape: build a helper object via
-    `[NSInvocationBuilder builderForClass: [NSObject class]->isa]`, send it
-    the very selector being answered (recording that call, along with this
-    method's own argument, on the helper), `[helper setTarget: self]`, hand
-    the helper to `[self forwardInvocation: helper]`, then pull the answer
-    back out with `[helper getReturnValue: &result]`.  NSProxy routes its
-    own type-identity questions through the same forwarding path as
-    everything else it doesn't implement, rather than answering for itself
-    -- consistent with "NSProxy exists to forward" from a class that (unlike
-    NSObject) has no real state to answer from.
-
-    NSInvocationBuilder itself is not one of this task's 27+20 ABI methods,
-    has no header in this tree, and is not NSInvocation or NSMethodSignature
-    (the two dependencies the brief names for -forwardInvocation:/
-    -methodSignatureForSelector: and defers to stage 2c) -- it is a further,
-    separate private class this stage's scope does not cover. Reconstructing
-    it would mean inventing an entire undocumented class's method table.
-    What IS reconstructed here is the externally-observable shape the
-    disassembly actually shows: these four methods forward to
-    -forwardInvocation:, and since -forwardInvocation: below always raises
-    (see its own comment -- it never reads its argument), that's the
-    observable result for any NSProxy instance that hasn't overridden
-    -forwardInvocation:, exactly matching the reference.  The gap: without
-    a real NSInvocation, a subclass that DOES override -forwardInvocation:
-    to inspect the invocation's selector/arguments for one of these four
-    calls specifically will not see them here (nil is passed) -- deferred
-    to stage 2c alongside NSInvocationBuilder itself.  No test in this
-    stage exercises that path.  */
+/*  The four identity queries are routed through NSInvocationBuilder in the
+    reference (0x42574974, 0x42574b3c, 0x42574bc8, 0x42574d18).  Each builds
+    an invocation against NSObject's class, records the corresponding query
+    and argument, targets it at self, forwards it, and returns the BOOL from
+    the invocation.  */
 
 - (BOOL)isKindOfClass:(Class)aClass {
-    [self forwardInvocation:nil];
-    return NO;
+    NSInvocation *invocation = [NSInvocationBuilder builderForClass:[NSObject class]];
+    BOOL result;
+
+    [invocation isKindOfClass:aClass];
+    [invocation setTarget:self];
+    [self forwardInvocation:invocation];
+    [invocation getReturnValue:&result];
+    return result;
 }
 
 - (BOOL)isMemberOfClass:(Class)aClass {
-    [self forwardInvocation:nil];
-    return NO;
+    NSInvocation *invocation = [NSInvocationBuilder builderForClass:[NSObject class]];
+    BOOL result;
+
+    [invocation isMemberOfClass:aClass];
+    [invocation setTarget:self];
+    [self forwardInvocation:invocation];
+    [invocation getReturnValue:&result];
+    return result;
 }
 
 - (BOOL)conformsToProtocol:(Protocol *)aProtocol {
-    [self forwardInvocation:nil];
-    return NO;
+    NSInvocation *invocation = [NSInvocationBuilder builderForClass:[NSObject class]];
+    BOOL result;
+
+    [invocation conformsToProtocol:aProtocol];
+    [invocation setTarget:self];
+    [self forwardInvocation:invocation];
+    [invocation getReturnValue:&result];
+    return result;
 }
 
 - (BOOL)respondsToSelector:(SEL)aSelector {
-    [self forwardInvocation:nil];
-    return NO;
+    NSInvocation *invocation = [NSInvocationBuilder builderForClass:[NSObject class]];
+    BOOL result;
+
+    [invocation respondsToSelector:aSelector];
+    [invocation setTarget:self];
+    [self forwardInvocation:invocation];
+    [invocation getReturnValue:&result];
+    return result;
 }
 
 /*  Not part of NSProxy.h, but in the ABI's 27: a forwarding-decision
@@ -267,7 +260,8 @@ extern void _NSInitializePlatform(void);
     unconditionally, per the comment above it).  This one answers directly
     from isa, the ordinary way: YES exactly when self's own class does NOT
     already implement aSelector, i.e. when forwarding would actually be
-    needed.  Confirmed from the disassembly (0x42556170): a single
+    needed.  Confirmed from the i386 (0x42556170) and PPC (0x425856b4)
+    disassembly: a single
     class_respondsToMethod(self->isa, aSelector) call, negated.  */
 - (BOOL)willForwardSelector:(SEL)aSelector {
     return !class_respondsToMethod(isa, aSelector);
@@ -398,12 +392,9 @@ extern void _NSInitializePlatform(void);
     at offset +8, the `name` field of struct objc_class (objc-class.h:
     isa@0, super_class@4, name@8), so its receiver must be a Class; the
     only zero-argument message NSProxy sends to itself that returns a
-    Class is -class.  The selector text itself is NOT recoverable from
-    this analysis -- its __message_refs cell resolves to address
-    0x414067b4, outside this slice (in the same out-of-slice prebound-image
-    range as NSObject.m's +new selectors at 0x414067cc/0x41406990), the
-    genuine-unrecoverable case the brief warns exists alongside the
-    recoverable ones.  Using `[self class]` rather than `isa` directly also
+    Class is -class. The selector resolves through System.framework to
+    "class" at 0x4141d3a8 on PPC and 0x414067b4 on i386. Using `[self class]`
+    rather than `isa` directly also
     matches NSProxy's own purpose: a subclass that overrides -class to
     report a different apparent identity (the point of a transparent
     proxy) gets that override reflected in its description, where reading

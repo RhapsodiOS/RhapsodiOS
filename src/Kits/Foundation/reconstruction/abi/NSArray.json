@@ -1,0 +1,502 @@
+{
+ "categories": [],
+ "classes": [
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "dealloc",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "initWithCoder:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "initWithObjects:count:",
+     "types": "@16@8:12^@16I20"
+    },
+    {
+     "selector": "initWithCapacity:",
+     "types": "@12@8:12I16"
+    },
+    {
+     "selector": "init",
+     "types": "@8@8:12"
+    }
+   ],
+   "instance_size": 16,
+   "ivars": [
+    {
+     "name": "_info",
+     "offset": 4,
+     "type": "I"
+    },
+    {
+     "name": "_items",
+     "offset": 8,
+     "type": "^@"
+    },
+    {
+     "name": "_size",
+     "offset": 12,
+     "type": "I"
+    }
+   ],
+   "name": "NSConcreteMutableArray",
+   "superclass": "NSMutableArray"
+  },
+  {
+   "class_methods": [
+    {
+     "selector": "arrayWithCapacity:",
+     "types": "@12@8:12I16"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "initWithContentsOfFile:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "initWithCapacity:",
+     "types": "@12@8:12I16"
+    },
+    {
+     "selector": "sortUsingSelector:",
+     "types": "v12@8:12:16"
+    },
+    {
+     "selector": "sortUsingFunction:context:",
+     "types": "v16@8:12^?16^v20"
+    },
+    {
+     "selector": "setArray:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "removeObjectsInArray:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "removeObjectsFromIndices:numIndices:",
+     "types": "v16@8:12^I16I20"
+    },
+    {
+     "selector": "removeObjectsInRange:",
+     "types": "v16@8:12{?=II}16"
+    },
+    {
+     "selector": "removeObjectIdenticalTo:inRange:",
+     "types": "v20@8:12@16{?=II}20"
+    },
+    {
+     "selector": "removeObjectIdenticalTo:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "removeObject:inRange:",
+     "types": "v20@8:12@16{?=II}20"
+    },
+    {
+     "selector": "removeObject:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "removeObject:range:identical:",
+     "types": "v21@8:12@16{?=II}20c28"
+    },
+    {
+     "selector": "replaceObjectsInRange:withObjectsFromArray:range:",
+     "types": "v28@8:12{?=II}16@24{?=II}28"
+    },
+    {
+     "selector": "replaceObjectsInRange:withObjectsFromArray:",
+     "types": "v20@8:12{?=II}16@24"
+    },
+    {
+     "selector": "removeAllObjects",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "exchangeObjectAtIndex:withObjectAtIndex:",
+     "types": "v16@8:12I16I20"
+    },
+    {
+     "selector": "addObjectsFromArray:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "classForCoder",
+     "types": "#8@8:12"
+    },
+    {
+     "selector": "removeObjectAtIndex:",
+     "types": "v12@8:12I16"
+    },
+    {
+     "selector": "removeLastObject",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "replaceObjectAtIndex:withObject:",
+     "types": "v16@8:12I16@20"
+    },
+    {
+     "selector": "insertObject:atIndex:",
+     "types": "v16@8:12@16I20"
+    },
+    {
+     "selector": "addObject:",
+     "types": "v12@8:12@16"
+    }
+   ],
+   "instance_size": 4,
+   "ivars": [],
+   "name": "NSMutableArray",
+   "superclass": "NSArray"
+  },
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "dealloc",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "initWithCoder:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "initWithObjects:count:",
+     "types": "@16@8:12^@16I20"
+    },
+    {
+     "selector": "init",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "copyWithZone:",
+     "types": "@12@8:12^{?=}16"
+    }
+   ],
+   "instance_size": 12,
+   "ivars": [
+    {
+     "name": "_info",
+     "offset": 4,
+     "type": "I"
+    },
+    {
+     "name": "_items",
+     "offset": 8,
+     "type": "^@"
+    }
+   ],
+   "name": "NSConcreteArray",
+   "superclass": "NSArray"
+  },
+  {
+   "class_methods": [
+    {
+     "selector": "arrayWithObjects:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "arrayWithObjects:count:",
+     "types": "@16@8:12^@16I20"
+    },
+    {
+     "selector": "arrayWithObject:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "arrayWithContentsOfURL:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "arrayWithContentsOfFile:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "arrayWithArray:copyItems:",
+     "types": "@13@8:12@16c20"
+    },
+    {
+     "selector": "arrayWithArray:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "array",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "allocWithZone:",
+     "types": "@12@8:12^{?=}16"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "initWithObjects:count:",
+     "types": "@16@8:12^@16I20"
+    },
+    {
+     "selector": "initWithObjects:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "initWithContentsOfURL:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "initWithContentsOfFile:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "_initWithData:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "initWithArray:copyItems:",
+     "types": "@13@8:12@16c20"
+    },
+    {
+     "selector": "initWithArray:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "writeToURL:atomically:",
+     "types": "c13@8:12@16c20"
+    },
+    {
+     "selector": "writeToFile:atomically:",
+     "types": "c13@8:12@16c20"
+    },
+    {
+     "selector": "_stringToWrite",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "subarrayWithRange:",
+     "types": "@16@8:12{?=II}16"
+    },
+    {
+     "selector": "sortedArrayUsingSelector:hint:",
+     "types": "@16@8:12:16@20"
+    },
+    {
+     "selector": "sortedArrayUsingSelector:",
+     "types": "@12@8:12:16"
+    },
+    {
+     "selector": "sortedArrayUsingFunction:context:hint:",
+     "types": "@20@8:12^?16^v20@24"
+    },
+    {
+     "selector": "sortedArrayUsingFunction:context:",
+     "types": "@16@8:12^?16^v20"
+    },
+    {
+     "selector": "sortedArrayHint",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "reverseObjectEnumerator",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "objectEnumerator",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "makeObjectsPerformSelector:withObject:",
+     "types": "v16@8:12:16@20"
+    },
+    {
+     "selector": "makeObjectsPerformSelector:",
+     "types": "v12@8:12:16"
+    },
+    {
+     "selector": "makeObjectsPerform:withObject:",
+     "types": "v16@8:12:16@20"
+    },
+    {
+     "selector": "makeObjectsPerform:",
+     "types": "v12@8:12:16"
+    },
+    {
+     "selector": "lastObject",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "isEqualToArray:",
+     "types": "c12@8:12@16"
+    },
+    {
+     "selector": "indexOf:::",
+     "types": "i17@8:12@16i20c24"
+    },
+    {
+     "selector": "indexOfObjectIdenticalTo:inRange:",
+     "types": "I20@8:12@16{?=II}20"
+    },
+    {
+     "selector": "indexOfObjectIdenticalTo:",
+     "types": "I12@8:12@16"
+    },
+    {
+     "selector": "indexOfObject:inRange:",
+     "types": "I20@8:12@16{?=II}20"
+    },
+    {
+     "selector": "indexOfObject:",
+     "types": "I12@8:12@16"
+    },
+    {
+     "selector": "indexOfObject:range:identical:",
+     "types": "I21@8:12@16{?=II}20c28"
+    },
+    {
+     "selector": "indexOfAttributeBySelector:equalToObject:",
+     "types": "I16@8:12:16@20"
+    },
+    {
+     "selector": "getObjects:range:",
+     "types": "v20@8:12^@16{?=II}20"
+    },
+    {
+     "selector": "getObjects:",
+     "types": "v12@8:12^@16"
+    },
+    {
+     "selector": "firstObjectCommonWithArray:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "descriptionWithLocale:indent:",
+     "types": "@16@8:12@16I20"
+    },
+    {
+     "selector": "descriptionWithLocale:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "containsObjectIdenticalTo:",
+     "types": "c12@8:12@16"
+    },
+    {
+     "selector": "containsObject:",
+     "types": "c12@8:12@16"
+    },
+    {
+     "selector": "componentsJoinedByString:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "arrayByExcludingToObjectsInArray:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "arrayByExcludingIdenticalObjectsInArray:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "arrayByExcludingObjectsInArray:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "arrayByExcludingObjectsInArray:identical:",
+     "types": "@13@8:12@16c20"
+    },
+    {
+     "selector": "arrayByApplyingSelector:",
+     "types": "@12@8:12:16"
+    },
+    {
+     "selector": "arrayByAddingObjectsFromArray:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "arrayByAddingObject:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "arrayByAddingObjects:count:",
+     "types": "@16@8:12^@16I20"
+    },
+    {
+     "selector": "replacementObjectForPortCoder:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "classForCoder",
+     "types": "#8@8:12"
+    },
+    {
+     "selector": "initWithCoder:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "encodeWithCoder:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "mutableCopyWithZone:",
+     "types": "@12@8:12^{?=}16"
+    },
+    {
+     "selector": "copyWithZone:",
+     "types": "@12@8:12^{?=}16"
+    },
+    {
+     "selector": "retainCount",
+     "types": "I8@8:12"
+    },
+    {
+     "selector": "release",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "retain",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "isEqual:",
+     "types": "c12@8:12@16"
+    },
+    {
+     "selector": "hash",
+     "types": "I8@8:12"
+    },
+    {
+     "selector": "description",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "objectAtIndex:",
+     "types": "@12@8:12I16"
+    },
+    {
+     "selector": "count",
+     "types": "I8@8:12"
+    }
+   ],
+   "instance_size": 4,
+   "ivars": [],
+   "name": "NSArray",
+   "superclass": "NSObject"
+  }
+ ],
+ "data_symbols": [
+  "___NSEmptyArray"
+ ],
+ "module": "NSArray.m",
+ "schema_version": "abi-v1",
+ "text_symbols": [
+  "__NSMergeSort"
+ ]
+}

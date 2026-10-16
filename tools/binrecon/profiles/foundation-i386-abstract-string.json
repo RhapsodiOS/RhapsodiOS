@@ -1,0 +1,37 @@
+{
+  "schema_version": "profile-v1",
+  "name": "Foundation i386 abstract implementation helper",
+  "architecture": "i386",
+  "endianness": "little",
+  "reference": {
+    "path": "${BINRECON_REFERENCE}",
+    "expected_size": 1630488,
+    "expected_sha256": "1165B9063ADD5672514455CA2C9830625BEA2BCE5E46126FB5E8652114C909D6"
+  },
+  "analyzers": {
+    "ida": {
+      "enabled": true,
+      "executable": "C:/Program Files/IDA Professional 9.4/idat.exe",
+      "timeout_seconds": 5400,
+      "version": "9.4"
+    },
+    "ghidra": {
+      "enabled": false
+    },
+    "angr": {
+      "enabled": false
+    }
+  },
+  "comparison": {
+    "acceptance": "normalized-functions",
+    "ignore_metadata": [],
+    "entry_points": []
+  },
+  "output_dir": "../out/foundation-i386-abstract-string",
+  "analysis_scope": [
+    {
+      "start": 1112996612,
+      "end": 1112996760
+    }
+  ]
+}

@@ -1,0 +1,206 @@
+{
+  "schema_version": "source-map-v1",
+  "reference_sha256": "1165B9063ADD5672514455CA2C9830625BEA2BCE5E46126FB5E8652114C909D6",
+  "mapped": [
+    {
+      "address": 1112595280,
+      "size": 275,
+      "reference_names": [
+        "-[NSNotificationQueue _postAsapNotificationsForMode:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNotificationQueue.m",
+      "source_line": 280
+    },
+    {
+      "address": 1112610764,
+      "size": 162,
+      "reference_names": [
+        "-[NSNotificationQueue monitorRunLoop:mode:activity:quit:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNotificationQueue.m",
+      "source_line": 329
+    },
+    {
+      "address": 1112620940,
+      "size": 25,
+      "reference_names": [
+        "-[NSNotificationQueue _mightPostIdle]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNotificationQueue.m",
+      "source_line": 271
+    },
+    {
+      "address": 1112639636,
+      "size": 250,
+      "reference_names": [
+        "_firstEventForMode"
+      ],
+      "source_path": "src/Kits/Foundation/NSNotificationQueue.m",
+      "source_line": 137
+    },
+    {
+      "address": 1112686892,
+      "size": 364,
+      "reference_names": [
+        "_removeEventsWithMask"
+      ],
+      "source_path": "src/Kits/Foundation/NSNotificationQueue.m",
+      "source_line": 78
+    },
+    {
+      "address": 1112699172,
+      "size": 712,
+      "reference_names": [
+        "-[NSNotificationQueue _postIdleNotificationsForMode:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNotificationQueue.m",
+      "source_line": 291
+    },
+    {
+      "address": 1112721908,
+      "size": 185,
+      "reference_names": [
+        "_addEventForModes"
+      ],
+      "source_path": "src/Kits/Foundation/NSNotificationQueue.m",
+      "source_line": 59
+    },
+    {
+      "address": 1112724092,
+      "size": 171,
+      "reference_names": [
+        "+[NSNotificationQueue defaultQueue]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNotificationQueue.m",
+      "source_line": 180
+    },
+    {
+      "address": 1112727260,
+      "size": 725,
+      "reference_names": [
+        "-[NSNotificationQueue enqueueNotification:postingStyle:coalesceMask:forModes:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNotificationQueue.m",
+      "source_line": 213
+    },
+    {
+      "address": 1112755120,
+      "size": 85,
+      "reference_names": [
+        "-[NSNotificationQueue monitoringDiscontinued]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNotificationQueue.m",
+      "source_line": 346
+    },
+    {
+      "address": 1112825896,
+      "size": 52,
+      "reference_names": [
+        "_allocQueue"
+      ],
+      "source_path": "src/Kits/Foundation/NSNotificationQueue.m",
+      "source_line": 46
+    },
+    {
+      "address": 1112843864,
+      "size": 118,
+      "reference_names": [
+        "_removeAllEvents"
+      ],
+      "source_path": "src/Kits/Foundation/NSNotificationQueue.m",
+      "source_line": 117
+    },
+    {
+      "address": 1112859968,
+      "size": 60,
+      "reference_names": [
+        "-[NSNotificationQueue init]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNotificationQueue.m",
+      "source_line": 209
+    },
+    {
+      "address": 1112860028,
+      "size": 116,
+      "reference_names": [
+        "-[NSNotificationQueue initWithNotificationCenter:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNotificationQueue.m",
+      "source_line": 198
+    },
+    {
+      "address": 1112878604,
+      "size": 32,
+      "reference_names": [
+        "-[NSNotificationQueue _flushNotificationQueue]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNotificationQueue.m",
+      "source_line": 357
+    },
+    {
+      "address": 1113028228,
+      "size": 55,
+      "reference_names": [
+        "+[NSNotificationQueue setTraceEventQueue:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNotificationQueue.m",
+      "source_line": 193
+    },
+    {
+      "address": 1113067220,
+      "size": 24,
+      "reference_names": [
+        "-[NSNotificationQueue _count]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNotificationQueue.m",
+      "source_line": 275
+    },
+    {
+      "address": 1113067244,
+      "size": 92,
+      "reference_names": [
+        "-[NSNotificationQueue dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNotificationQueue.m",
+      "source_line": 362
+    },
+    {
+      "address": 1113067336,
+      "size": 55,
+      "reference_names": [
+        "-[NSNotificationQueue dequeueNotificationsMatching:coalesceMask:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNotificationQueue.m",
+      "source_line": 262
+    },
+    {
+      "address": 1113067392,
+      "size": 41,
+      "reference_names": [
+        "-[NSNotificationQueue enqueueNotification:postingStyle:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNotificationQueue.m",
+      "source_line": 256
+    },
+    {
+      "address": 1113087156,
+      "size": 119,
+      "reference_names": [
+        "_deallocQueue"
+      ],
+      "source_path": "src/Kits/Foundation/NSNotificationQueue.m",
+      "source_line": 129
+    }
+  ],
+  "unmapped": [],
+  "duplicate_candidates": [],
+  "boundary_disputed": [],
+  "by_module": {
+    "NSNotificationQueue.m": {
+      "mapped": 21,
+      "unmapped": 0,
+      "duplicate_candidates": 0,
+      "boundary_disputed": 0
+    }
+  }
+}

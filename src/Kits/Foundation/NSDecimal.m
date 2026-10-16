@@ -6,6 +6,7 @@
 #import <Foundation/NSDecimal.h>
 #import <Foundation/NSString.h>
 #import <Foundation/NSUserDefaults.h>
+#import <Foundation/NSZone.h>
 
 /*	The mantissa is a plain multi-word binary integer (base 65536, each
 	unsigned short a little-endian "digit"): NSDecimalAdd/Subtract/
@@ -153,6 +154,272 @@ BigDivideByShort(BigInteger *big, unsigned short divisor)
     return (unsigned short)remainder;
 }
 
+int NSIntegerCompare(const unsigned short *left, unsigned short leftLength,
+                     const unsigned short *right,
+                     unsigned short rightLength)
+{
+    unsigned int index;
+
+    if (leftLength > rightLength)
+        return 1;
+    if (leftLength < rightLength)
+        return -1;
+    for (index = leftLength; index != 0; index--) {
+        if (left[index - 1] > right[index - 1])
+            return 1;
+        if (left[index - 1] < right[index - 1])
+            return -1;
+    }
+    return 0;
+}
+
+int NSIntegerCopy(unsigned short *destination,
+                  unsigned short *destinationLength,
+                  const unsigned short *source, unsigned short sourceLength)
+{
+    unsigned short index;
+    int result = 0;
+
+    for (index = 0; index < sourceLength; index++) {
+        destination[index] = source[index];
+        result = index;
+    }
+    *destinationLength = sourceLength;
+#if defined(__ppc__) || defined(__POWERPC__)
+    return (int)(long)destination;
+#else
+    return result;
+#endif
+}
+
+int NSIntegerAddShort(unsigned short *destination,
+                      unsigned short *destinationLength,
+                      const unsigned short *source,
+                      unsigned short sourceLength,
+                      unsigned short addend)
+{
+    unsigned int carry = addend;
+    unsigned short index;
+
+    for (index = 0; index < sourceLength; index++) {
+        unsigned int sum = source[index] + carry;
+
+        destination[index] = (unsigned short)sum;
+        carry = sum >> 16;
+    }
+    if (carry != 0) {
+        if (*destinationLength == sourceLength)
+            return NSCalculationOverflow;
+        destination[sourceLength] = (unsigned short)carry;
+        sourceLength++;
+    }
+    *destinationLength = sourceLength;
+    return NSCalculationNoError;
+}
+
+int NSIntegerSubShort(unsigned short *destination,
+                      unsigned short *destinationLength,
+                      const unsigned short *source,
+                      unsigned short sourceLength,
+                      unsigned short subtrahend)
+{
+    unsigned int state = (unsigned int)subtrahend - 1;
+    unsigned short index;
+
+    for (index = 0; index < sourceLength; index++) {
+        unsigned int difference = (unsigned int)source[index] -
+                                  (state - 0xffffU);
+
+        destination[index] = (unsigned short)difference;
+        state = difference >> 16;
+    }
+    *destinationLength = sourceLength;
+    if (state == 0)
+        return NSCalculationOverflow;
+    while (*destinationLength != 0 &&
+           destination[*destinationLength - 1] == 0)
+        (*destinationLength)--;
+    return NSCalculationNoError;
+}
+
+int NSIntegerMultiplyByShort(unsigned short *destination,
+                             unsigned short *destinationLength,
+                             const unsigned short *source,
+                             unsigned short sourceLength,
+                             unsigned short factor)
+{
+    unsigned int carry = 0;
+    unsigned short index;
+
+    if (factor == 0) {
+        *destinationLength = 0;
+        return NSCalculationNoError;
+    }
+    if (*destinationLength < sourceLength)
+        return NSCalculationOverflow;
+    for (index = 0; index < sourceLength; index++) {
+        unsigned int product = (unsigned int)source[index] * factor + carry;
+
+        destination[index] = (unsigned short)product;
+        carry = product >> 16;
+    }
+    if (carry != 0) {
+        if (*destinationLength == sourceLength)
+            return NSCalculationOverflow;
+        destination[sourceLength++] = (unsigned short)carry;
+    }
+    *destinationLength = sourceLength;
+    return NSCalculationNoError;
+}
+
+int NSIntegerDivideByShort(unsigned short *destination,
+                           unsigned short *destinationLength,
+                           const unsigned short *source,
+                           unsigned short sourceLength,
+                           unsigned short divisor,
+                           unsigned short *remainderResult)
+{
+    unsigned int remainder = 0;
+    unsigned short index;
+
+    if (divisor == 0) {
+        *destinationLength = 0;
+        return NSCalculationDivideByZero;
+    }
+    for (index = sourceLength; index != 0; index--) {
+        unsigned int dividend = (remainder << 16) | source[index - 1];
+
+        destination[index - 1] = (unsigned short)(dividend / divisor);
+        remainder = dividend % divisor;
+    }
+    *destinationLength = sourceLength;
+    while (*destinationLength != 0 &&
+           destination[*destinationLength - 1] == 0)
+        (*destinationLength)--;
+    *remainderResult = (unsigned short)remainder;
+    return NSCalculationNoError;
+}
+
+int NSIntegerAdd(unsigned short *destination,
+                 unsigned short *destinationLength,
+                 const unsigned short *left, unsigned short leftLength,
+                 const unsigned short *right, unsigned short rightLength)
+{
+    unsigned int carry = 0;
+    unsigned int index = 0;
+    unsigned int commonLength = leftLength < rightLength
+        ? leftLength : rightLength;
+
+    for (; index < commonLength; index++) {
+        unsigned int sum = carry + left[index] + right[index];
+
+        destination[index] = (unsigned short)sum;
+        carry = sum >> 16;
+    }
+    if (index < leftLength) {
+        while ((unsigned short)carry != 0) {
+            unsigned int sum = left[index] + (unsigned short)carry;
+
+            destination[index++] = (unsigned short)sum;
+            carry = sum >> 16;
+            if (index >= leftLength)
+                break;
+        }
+        while (index < leftLength) {
+            destination[index] = left[index];
+            index++;
+        }
+    }
+    if (index < rightLength) {
+        while ((unsigned short)carry != 0) {
+            unsigned int sum = right[index] + (unsigned short)carry;
+
+            destination[index++] = (unsigned short)sum;
+            carry = sum >> 16;
+            if (index >= rightLength)
+                break;
+        }
+        while (index < rightLength) {
+            destination[index] = right[index];
+            index++;
+        }
+    }
+    if ((unsigned short)carry != 0) {
+        if (*destinationLength < index) {
+            *destinationLength = (unsigned short)index;
+            return NSCalculationOverflow;
+        }
+        destination[index] = (unsigned short)carry;
+        *destinationLength = (unsigned short)(index + 1);
+        return NSCalculationNoError;
+    }
+    *destinationLength = (unsigned short)index;
+    return NSCalculationNoError;
+}
+
+int NSIntegerSubtract(unsigned short *destination,
+                      unsigned short *destinationLength,
+                      const unsigned short *left, unsigned short leftLength,
+                      const unsigned short *right,
+                      unsigned short rightLength)
+{
+    unsigned int state = 1;
+    unsigned int index = 0;
+    unsigned int commonLength = leftLength < rightLength
+        ? leftLength : rightLength;
+
+    for (; index < commonLength; index++) {
+        unsigned int leftWord = left[index];
+        unsigned int rightWord = right[index];
+        unsigned int difference = (unsigned short)state + leftWord -
+                                  rightWord - 1;
+
+        destination[index] = (unsigned short)difference;
+        state = ((unsigned short)state + leftWord - rightWord + 0xffffU)
+                >> 16;
+    }
+    if (index < leftLength) {
+        while ((unsigned short)state == 0) {
+            unsigned int leftWord = left[index];
+
+            destination[index] = (unsigned short)(leftWord - 1);
+            state = (leftWord + 0xffffU) >> 16;
+            index++;
+            if (index >= leftLength)
+                break;
+        }
+        while (index < leftLength) {
+            destination[index] = left[index];
+            index++;
+        }
+    }
+    while (index < rightLength) {
+        unsigned int rightWord = right[index];
+        unsigned int difference = (unsigned short)state - 1 - rightWord;
+
+        destination[index] = (unsigned short)difference;
+        state = ((unsigned short)state + 0xffffU - rightWord) >> 16;
+        index++;
+    }
+    *destinationLength = (unsigned short)index;
+    if ((unsigned short)state == 0)
+        return NSCalculationOverflow;
+    while (*destinationLength != 0 &&
+           destination[*destinationLength - 1] == 0)
+        (*destinationLength)--;
+    return NSCalculationNoError;
+}
+
+int NSIntegerMaxPowerOf10Multiplier(int, short currentLength,
+                                    short maximumLength)
+{
+    unsigned short lengthDifference =
+        (unsigned short)(maximumLength - currentLength);
+    double scaled = 4.81647993 * (long double)lengthDifference;
+
+    return (unsigned short)(long long)scaled;
+}
+
 static void
 BigMultiplyByShort(BigInteger *big, unsigned short factor)
 {
@@ -185,85 +452,492 @@ BigAddShort(BigInteger *big, unsigned short addend)
         big->words[big->length++] = (unsigned short)carry;
 }
 
-/*  Shifts big left by one bit, shifting incomingBit (0 or 1) into the
-    bottom, growing big->length if a new top word is needed.  */
-static void
-BigShiftLeft1(BigInteger *big, int incomingBit)
+int NSIntegerMultiply(unsigned short *destination,
+                      unsigned short *destinationLength,
+                      const unsigned short *left, unsigned short leftLength,
+                      const unsigned short *right,
+                      unsigned short rightLength)
 {
-    int i;
-    unsigned int carry, total;
+    unsigned short *product = destination;
+    unsigned short index;
+    unsigned short leftIndex;
+    unsigned short rightIndex;
 
-    carry = (unsigned int)incomingBit;
-    for (i = 0; i < big->length; i++) {
-        total = ((unsigned int)big->words[i] << 1) | carry;
-        big->words[i] = (unsigned short)total;
-        carry = total >> 16;
+    if (leftLength == 0 || rightLength == 0) {
+        *destinationLength = 0;
+        return NSCalculationNoError;
     }
-    if (carry != 0)
-        big->words[big->length++] = (unsigned short)carry;
+    if (destination == left)
+        product = NSZoneMalloc(NULL, 2 * *destinationLength);
+    *destinationLength = (unsigned short)(leftLength + rightLength);
+    for (index = 0; index < *destinationLength; index++)
+        product[index] = 0;
+
+    for (rightIndex = 0; rightIndex < rightLength; rightIndex++) {
+        unsigned int carry = 0;
+
+        for (leftIndex = 0; leftIndex < leftLength; leftIndex++) {
+            unsigned int value = (unsigned int)left[leftIndex] *
+                                 right[rightIndex]
+                              + product[leftIndex + rightIndex] + carry;
+
+            product[leftIndex + rightIndex] = (unsigned short)value;
+            carry = value >> 16;
+        }
+        if (carry != 0)
+            product[leftIndex + rightIndex] = (unsigned short)carry;
+    }
+    while (*destinationLength != 0 &&
+           product[*destinationLength - 1] == 0)
+        (*destinationLength)--;
+
+    if (product != destination) {
+        NSIntegerCopy(destination, destinationLength, product,
+                      *destinationLength);
+        NSZoneFree(NULL, product);
+    }
+    return NSCalculationNoError;
 }
 
-/*  Schoolbook binary long division: quotient = dividend / divisor,
-    processing the dividend one bit at a time. Slower than the
-    reference's word-at-a-time Knuth division, but the values here are
-    at most a few hundred bits wide, so the simplicity is worth it.  */
-static void
-BigDivideMantissas(BigInteger *quotient, const BigInteger *dividendIn,
-                     const unsigned short *divisorWords, int divisorLength)
+int NSIntegerDivide(unsigned short *destination,
+                    unsigned short *destinationLength,
+                    const unsigned short *dividend,
+                    unsigned short dividendLength,
+                    const unsigned short *divisor,
+                    unsigned short divisorLength)
 {
-    BigInteger dividend, remainder, reduced;
-    int totalBits, bit, word, bitInWord, dividendBit, i;
+    unsigned short dividendStack[18];
+    unsigned short divisorStack[18];
+    unsigned short *normalizedDividend = dividendStack;
+    unsigned short *normalizedDivisor = divisorStack;
+    unsigned short normalizedDividendLength;
+    unsigned short normalizedDivisorLength;
+    unsigned short dividendCapacity;
+    unsigned short divisorCapacity;
+    unsigned short quotientLength;
+    unsigned short remainder;
+    unsigned short factor;
+    unsigned short divisorTop;
+    unsigned short divisorNext;
+    unsigned short step;
+    unsigned int index;
+    unsigned int quotientDigit;
+    unsigned int quotientRemainder;
+    unsigned int numerator;
+    unsigned int product;
+    unsigned int carry;
+    unsigned int borrow;
+    unsigned int subtrahend;
+    unsigned int word;
 
-    dividend = *dividendIn;
+    if (divisorLength == 0)
+        return NSCalculationDivideByZero;
+    if (NSIntegerCompare(dividend, dividendLength, divisor, divisorLength) < 0) {
+        *destinationLength = 0;
+        return NSCalculationNoError;
+    }
+    if (divisorLength == 1)
+        return NSIntegerDivideByShort(destination, destinationLength,
+                                       dividend, dividendLength, divisor[0],
+                                       &remainder);
 
-    while (divisorLength > 0 && divisorWords[divisorLength - 1] == 0)
-        divisorLength--;
+    dividendCapacity = (unsigned short)(dividendLength + 1);
+    divisorCapacity = (unsigned short)(divisorLength + 1);
+    if (dividendLength > 16)
+        normalizedDividend = NSZoneMalloc(NULL, 2 * dividendCapacity);
+    if (divisorLength > 16)
+        normalizedDivisor = NSZoneMalloc(NULL, 2 * divisorCapacity);
 
-    remainder.length = 0;
-    quotient->length = dividend.length;
-    for (i = 0; i < dividend.length; i++)
-        quotient->words[i] = 0;
+    normalizedDividendLength = dividendCapacity;
+    normalizedDivisorLength = divisorCapacity;
+    factor = (unsigned short)(0x10000U /
+                              ((unsigned int)divisor[divisorLength - 1] + 1));
+    NSIntegerMultiplyByShort(normalizedDividend, &normalizedDividendLength,
+                             dividend, dividendLength, factor);
+    NSIntegerMultiplyByShort(normalizedDivisor, &normalizedDivisorLength,
+                             divisor, divisorLength, factor);
 
-    totalBits = dividend.length * 16;
-    for (bit = totalBits - 1; bit >= 0; bit--) {
-        word = bit / 16;
-        bitInWord = bit % 16;
-        dividendBit = (dividend.words[word] >> bitInWord) & 1;
+    if (normalizedDividendLength == dividendLength)
+        normalizedDividend[normalizedDividendLength++] = 0;
+    normalizedDivisor[normalizedDivisorLength] = 0;
 
-        BigShiftLeft1(&remainder, dividendBit);
+    quotientLength = (unsigned short)(normalizedDividendLength -
+                                      normalizedDivisorLength);
+    divisorTop = normalizedDivisor[normalizedDivisorLength - 1];
+    divisorNext = normalizedDivisorLength > 1
+        ? normalizedDivisor[normalizedDivisorLength - 2] : 0;
 
-        if (CompareMantissas(remainder.words, remainder.length, divisorWords, divisorLength) >= 0) {
-            BigSubtractMantissas(&reduced, remainder.words, remainder.length, divisorWords, divisorLength);
-            remainder = reduced;
-            quotient->words[word] |= (unsigned short)(1 << bitInWord);
+    for (step = 0; step < quotientLength; step++) {
+        unsigned short position =
+            (unsigned short)(normalizedDividendLength - step - 1);
+        unsigned short outputIndex = (unsigned short)(quotientLength - step - 1);
+        unsigned int originalDigit;
+
+        numerator = ((unsigned int)normalizedDividend[position] << 16) |
+                    normalizedDividend[position - 1];
+        quotientDigit = numerator / divisorTop;
+        quotientRemainder = numerator % divisorTop;
+        originalDigit = quotientDigit;
+        if (quotientDigit == 0x10000U ||
+            quotientDigit * divisorNext >
+                (quotientRemainder << 16) + normalizedDividend[position - 2]) {
+            quotientDigit--;
+            quotientRemainder += divisorTop;
+            if (quotientRemainder <= 0xffffU &&
+                (originalDigit == 0x10001U ||
+                 quotientDigit * divisorNext >
+                    (quotientRemainder << 16) +
+                    normalizedDividend[position - 2]))
+                quotientDigit--;
+        }
+
+        carry = 0;
+        borrow = 0;
+        for (index = 0; index <= normalizedDivisorLength; index++) {
+            product = quotientDigit * normalizedDivisor[index] + carry;
+            carry = product >> 16;
+            subtrahend = (product & 0xffffU) + borrow;
+            word = normalizedDividend[position - normalizedDivisorLength +
+                                      index];
+            normalizedDividend[position - normalizedDivisorLength + index] =
+                (unsigned short)(word - subtrahend);
+            borrow = word < subtrahend;
+        }
+
+        if (borrow != 0) {
+            quotientDigit--;
+            carry = 0;
+            for (index = 0; index <= normalizedDivisorLength; index++) {
+                word = normalizedDividend[position - normalizedDivisorLength +
+                                          index] +
+                       normalizedDivisor[index] + carry;
+                normalizedDividend[position - normalizedDivisorLength + index] =
+                    (unsigned short)word;
+                carry = word >> 16;
+            }
+        }
+        destination[outputIndex] = (unsigned short)quotientDigit;
+    }
+
+    *destinationLength = quotientLength;
+    while (*destinationLength != 0 &&
+           destination[*destinationLength - 1] == 0)
+        (*destinationLength)--;
+
+    if (normalizedDivisor != divisorStack)
+        NSZoneFree(NULL, normalizedDivisor);
+    if (normalizedDividend != dividendStack)
+        NSZoneFree(NULL, normalizedDividend);
+    return NSCalculationNoError;
+}
+
+static unsigned short
+NSDecimalBuildPowerOfTen(unsigned short words[8], unsigned power)
+{
+    unsigned short length = 1;
+    unsigned index;
+
+    words[0] = 1;
+    for (index = 0; index < power; index++) {
+        unsigned int carry = 0;
+        unsigned short word;
+
+        for (word = 0; word < length; word++) {
+            unsigned int product = (unsigned int)words[word] * 10 + carry;
+
+            words[word] = (unsigned short)product;
+            carry = product >> 16;
+        }
+        if (carry != 0)
+            words[length++] = (unsigned short)carry;
+    }
+    return length;
+}
+
+#if defined(__ppc__) || defined(__POWERPC__)
+#include "NSDecimalPowerTablePPCRaw.inc"
+#include "NSDecimalPowerTablePPCSHRTMin.inc"
+#else
+#include "NSDecimalPowerTableI386Raw.inc"
+#include "NSDecimalPowerTableI386SHRTMin.inc"
+#endif
+
+/*  Models the divisor rows read by the reference. The raw snapshots cover
+    every complete count-sized span for indices 39 through 32729. Return 0
+    for a zero count, 1 for a nonzero count, or 3 outside that range.  */
+static int
+NSDecimalReferencePowerTableDivisor(unsigned power,
+                                    const unsigned short **divisor,
+                                    unsigned short *divisorLength)
+{
+    unsigned index;
+
+    if (power < 39 || power > 32729)
+        return 3;
+#if defined(__ppc__) || defined(__POWERPC__)
+    index = 9 * (power - 39);
+    *divisorLength = NSDecimalPPCRawPowerTable[index];
+    *divisor = NSDecimalPPCRawPowerTable + index + 1;
+#else
+    index = 9 * (power - 39);
+    *divisorLength = NSDecimalI386RawPowerTable[index];
+    *divisor = NSDecimalI386RawPowerTable + index + 1;
+#endif
+    return *divisorLength == 0 ? 0 : 1;
+}
+
+static int
+NSDecimalPositivePowerTableSpansAvailable(unsigned power)
+{
+    const unsigned short *divisor;
+    unsigned short divisorLength;
+    unsigned remaining = power;
+
+    if (power > 32767)
+        return 0;
+    while (remaining > 38) {
+        remaining -= 38;
+        if (remaining > 38 &&
+            NSDecimalReferencePowerTableDivisor(
+                remaining, &divisor, &divisorLength) > 1)
+            return 0;
+    }
+    return 1;
+}
+
+static int
+NSDecimalMappedNegativePowerAvailable(unsigned power,
+                                     unsigned short currentLength,
+                                     unsigned short capacity)
+{
+    const unsigned short *divisor;
+    unsigned short divisorLength;
+    unsigned remaining = power;
+
+    if (power > 32767)
+        return 0;
+    while (remaining > 38) {
+        int divisorKind;
+
+        remaining -= 38;
+        if (remaining <= 38)
+            break;
+        divisorKind = NSDecimalReferencePowerTableDivisor(
+            remaining, &divisor, &divisorLength);
+        if (divisorKind == 0)
+            currentLength = capacity;
+        else if (divisorKind != 1)
+            return 0;
+        else if (divisorLength > currentLength)
+            currentLength = 0;
+    }
+    return remaining <= 38;
+}
+
+/*  Scales a little-endian mantissa by a power of ten.  The reference uses
+    table entries in 10^38 chunks; 10^38 occupies eight 16-bit words.  The
+    positive path checks the same upper-bound word count before writing.  */
+int
+NSIntegerMultiplyByPowerOf10(unsigned short *destination,
+                             unsigned short *destinationLength,
+                             const unsigned short *source,
+                             unsigned short sourceLength, short power)
+{
+    unsigned short capacity = *destinationLength;
+    unsigned short powerOfTen[8];
+    unsigned short remainderPowerOfTen[8];
+    unsigned short powerOfTenLength;
+    unsigned short remainderPowerOfTenLength;
+    unsigned short currentLength;
+    unsigned short outOfTableDivisorLength;
+    const unsigned short *outOfTableDivisor;
+    unsigned short requiredLength;
+    int remaining;
+    int result;
+
+    if (destination != source)
+        NSIntegerCopy(destination, destinationLength, source, sourceLength);
+    if (power == 0)
+        return NSCalculationNoError;
+
+    if (power == (short)(-32767 - 1)) {
+#if defined(__ppc__) || defined(__POWERPC__)
+        outOfTableDivisor = NSDecimalPPCSHRTMinRead + 1;
+        outOfTableDivisorLength = NSDecimalPPCSHRTMinRead[0];
+#else
+        outOfTableDivisor = NSDecimalI386SHRTMinRead + 1;
+        outOfTableDivisorLength = NSDecimalI386SHRTMinRead[0];
+#endif
+        return NSIntegerDivide(destination, destinationLength,
+                               source, sourceLength, outOfTableDivisor,
+                               outOfTableDivisorLength);
+    }
+
+    if (power > 0) {
+        remaining = power;
+        requiredLength = sourceLength;
+        while (remaining > 38) {
+            requiredLength = (unsigned short)(requiredLength + 8);
+            remaining -= 38;
+        }
+        remainderPowerOfTenLength =
+            NSDecimalBuildPowerOfTen(remainderPowerOfTen,
+                                     (unsigned)remaining);
+        requiredLength = (unsigned short)(requiredLength +
+                                          remainderPowerOfTenLength);
+        if ((short)capacity < (short)requiredLength)
+            return NSCalculationOverflow;
+
+        remaining = power;
+        if (remaining <= 76) {
+            while (remaining > 38) {
+                currentLength = *destinationLength;
+                *destinationLength = capacity;
+                remaining -= 38;
+                remainderPowerOfTenLength =
+                    NSDecimalBuildPowerOfTen(remainderPowerOfTen,
+                                             (unsigned)remaining);
+                result = NSIntegerMultiply(destination, destinationLength,
+                                           destination, currentLength,
+                                           remainderPowerOfTen,
+                                           remainderPowerOfTenLength);
+                (void)result; /* The reference ignores loop-multiply errors. */
+            }
+            remainderPowerOfTenLength =
+                NSDecimalBuildPowerOfTen(remainderPowerOfTen,
+                                         (unsigned)remaining);
+            *destinationLength = capacity;
+            return NSIntegerMultiply(destination, destinationLength,
+                                     source, sourceLength,
+                                     remainderPowerOfTen,
+                                     remainderPowerOfTenLength);
+        }
+
+        if (NSDecimalPositivePowerTableSpansAvailable(
+                (unsigned)remaining)) {
+            remaining = power;
+            while (remaining > 38) {
+                currentLength = *destinationLength;
+                *destinationLength = capacity;
+                remaining -= 38;
+                if (remaining > 38) {
+                    NSDecimalReferencePowerTableDivisor(
+                        (unsigned)remaining, &outOfTableDivisor,
+                        &outOfTableDivisorLength);
+                    result = NSIntegerMultiply(destination,
+                                               destinationLength,
+                                               destination, currentLength,
+                                               outOfTableDivisor,
+                                               outOfTableDivisorLength);
+                } else {
+                    remainderPowerOfTenLength =
+                        NSDecimalBuildPowerOfTen(remainderPowerOfTen,
+                                                 (unsigned)remaining);
+                    result = NSIntegerMultiply(destination,
+                                               destinationLength,
+                                               destination, currentLength,
+                                               remainderPowerOfTen,
+                                               remainderPowerOfTenLength);
+                    (void)result;
+                }
+                (void)result;
+            }
+            remainderPowerOfTenLength =
+                NSDecimalBuildPowerOfTen(remainderPowerOfTen,
+                                         (unsigned)remaining);
+            *destinationLength = capacity;
+            return NSIntegerMultiply(destination, destinationLength,
+                                     source, sourceLength,
+                                     remainderPowerOfTen,
+                                     remainderPowerOfTenLength);
+        }
+
+        if (remaining > 38)
+            powerOfTenLength = NSDecimalBuildPowerOfTen(powerOfTen, 38);
+        while (remaining > 38) {
+            currentLength = *destinationLength;
+            *destinationLength = capacity;
+            result = NSIntegerMultiply(destination, destinationLength,
+                                       destination, currentLength,
+                                       powerOfTen, powerOfTenLength);
+            if (result != NSCalculationNoError)
+                return result;
+            remaining -= 38;
+        }
+        remainderPowerOfTenLength =
+            NSDecimalBuildPowerOfTen(remainderPowerOfTen,
+                                     (unsigned)remaining);
+        currentLength = *destinationLength;
+        *destinationLength = capacity;
+        return NSIntegerMultiply(destination, destinationLength,
+                                 destination, currentLength,
+                                 remainderPowerOfTen,
+                                 remainderPowerOfTenLength);
+    }
+
+    remaining = -(int)power;
+    if (NSDecimalMappedNegativePowerAvailable(
+            (unsigned)remaining, *destinationLength, capacity)) {
+        while (remaining > 38) {
+            int divisorKind;
+
+            currentLength = *destinationLength;
+            *destinationLength = capacity;
+            remaining -= 38;
+            if (remaining <= 38) {
+                remainderPowerOfTenLength =
+                    NSDecimalBuildPowerOfTen(remainderPowerOfTen,
+                                             (unsigned)remaining);
+                result = NSIntegerDivide(destination, destinationLength,
+                                         destination, currentLength,
+                                         remainderPowerOfTen,
+                                         remainderPowerOfTenLength);
+            } else {
+                divisorKind = NSDecimalReferencePowerTableDivisor(
+                    (unsigned)remaining, &outOfTableDivisor,
+                    &outOfTableDivisorLength);
+                if (divisorKind == 0) {
+                    result = NSIntegerDivide(destination, destinationLength,
+                                             destination, currentLength,
+                                             NULL, 0);
+                } else if (divisorKind == 1) {
+                    result = NSIntegerDivide(destination, destinationLength,
+                                             destination, currentLength,
+                                             outOfTableDivisor,
+                                             outOfTableDivisorLength);
+                } else {
+                    *destinationLength = 0;
+                    result = NSCalculationNoError;
+                }
+            }
+            (void)result; /* The reference ignores loop-divide errors. */
+        }
+        remainderPowerOfTenLength =
+            NSDecimalBuildPowerOfTen(remainderPowerOfTen,
+                                     (unsigned)remaining);
+        return NSIntegerDivide(destination, destinationLength,
+                               source, sourceLength, remainderPowerOfTen,
+                               remainderPowerOfTenLength);
+    } else {
+        powerOfTenLength = NSDecimalBuildPowerOfTen(powerOfTen, 38);
+        while (remaining > 38) {
+            currentLength = *destinationLength;
+            result = NSIntegerDivide(destination, destinationLength,
+                                     destination, currentLength,
+                                     powerOfTen, powerOfTenLength);
+            if (result != NSCalculationNoError)
+                return result;
+            remaining -= 38;
         }
     }
-
-    BigTrim(quotient);
-}
-
-/*  Multiplies (power >= 0) or divides (power < 0) big by 10^|power|.
-    Division truncates -- callers that care about the discarded digits
-    track them separately (see DropDigits/ShrinkToCapacity below).  */
-static void
-BigMultiplyByPowerOf10(BigInteger *big, int power)
-{
-    if (power >= 0) {
-        while (power-- > 0)
-            BigMultiplyByShort(big, 10);
-    } else {
-        while (power++ < 0)
-            BigDivideByShort(big, 10);
-    }
-}
-
-/*  Rough estimate (matching the reference's 4.81647993 ~= log10(65536))
-    of how many more decimal digits a mantissa with `length` of
-    `capacity` words could still absorb.  */
-static int
-MaxAdditionalDigits(int length, int capacity)
-{
-    return (int)(4.81647993 * (double)(capacity - length));
+    remainderPowerOfTenLength =
+        NSDecimalBuildPowerOfTen(remainderPowerOfTen,
+                                 (unsigned)remaining);
+    currentLength = *destinationLength;
+    return NSIntegerDivide(destination, destinationLength,
+                           destination, currentLength,
+                           remainderPowerOfTen,
+                           remainderPowerOfTenLength);
 }
 
 /*  Removes exactly `count` trailing decimal digits from big, reporting
@@ -329,8 +1003,9 @@ ShouldRoundUp(NSRoundingMode roundingMode, int digit, int keptIsOdd)
     case NSRoundBankers:
         return digit > 5 || (digit == 5 && keptIsOdd);
     case NSRoundPlain:
-    default:
         return digit >= 5;
+    default:
+        return 0;
     }
 }
 
@@ -374,7 +1049,11 @@ NSDecimalCopy(NSDecimal *destination, const NSDecimal *source)
 {
     int i;
 
+#if defined(__ppc__) || defined(__POWERPC__)
+    *(unsigned int *)destination &= 0xFFFC0000U;
+#else
     destination->_reserved = 0;
+#endif
     destination->_isNegative = source->_isNegative;
     destination->_length = source->_length;
     destination->_exponent = source->_exponent;
@@ -419,6 +1098,120 @@ NSDecimalCompact(NSDecimal *number)
     number->_isCompact = 1;
 }
 
+static int
+NSDecimalAppendDigit(NSDecimal *number, unsigned short digit)
+{
+    NSDecimal previous = *number;
+    unsigned short length = NSDecimalMaxSize;
+
+    if (NSIntegerMultiplyByShort(number->_mantissa, &length,
+                                 number->_mantissa, number->_length, 10) !=
+        NSCalculationNoError) {
+        *number = previous;
+        return 0;
+    }
+    number->_length = length;
+    length = NSDecimalMaxSize;
+    if (NSIntegerAddShort(number->_mantissa, &length, number->_mantissa,
+                          number->_length, digit) != NSCalculationNoError) {
+        *number = previous;
+        return 0;
+    }
+    number->_length = length;
+    return 1;
+}
+
+NSDecimal *
+_NSCStringToDecimal(NSDecimal *result, const char *string,
+                    const char **endPointer)
+{
+    NSDecimal number;
+    const unsigned char *cursor = (const unsigned char *)string;
+    int overflowed = 0;
+
+    memset(&number, 0, sizeof(number));
+    if (endPointer != NULL)
+        *endPointer = string;
+
+    while (*cursor == ' ' || (*cursor >= '\t' && *cursor <= '\r'))
+        cursor++;
+
+    if (*cursor == '-') {
+        number._isNegative = 1;
+        cursor++;
+    } else if (*cursor == '+') {
+        cursor++;
+    }
+
+    while (*cursor != '\0' && *cursor >= '0' && *cursor <= '9') {
+        if (!overflowed &&
+            !NSDecimalAppendDigit(&number, (unsigned short)(*cursor - '0')))
+            overflowed = 1;
+        if (overflowed) {
+            if (number._exponent == 127)
+                goto overflow;
+            number._exponent++;
+        }
+        cursor++;
+    }
+
+    if (*cursor == '.') {
+        cursor++;
+        while (*cursor != '\0' && *cursor >= '0' && *cursor <= '9') {
+            if (!overflowed &&
+                !NSDecimalAppendDigit(&number,
+                                      (unsigned short)(*cursor - '0'))) {
+                overflowed = 1;
+            } else if (!overflowed) {
+                if (number._exponent == -128)
+                    goto overflow;
+                number._exponent--;
+            }
+            cursor++;
+        }
+    }
+
+    if (*cursor == 'e' || *cursor == 'E') {
+        int exponent = 0;
+        int exponentNegative = 0;
+        int adjustedExponent;
+        unsigned char exponentChar;
+
+        cursor++;
+        if (*cursor == '-') {
+            exponentNegative = 1;
+            cursor++;
+        } else if (*cursor == '+') {
+            cursor++;
+        }
+        while ((exponentChar = *cursor) != '\0' &&
+               exponentChar >= '0' && exponentChar <= '9') {
+            exponent = exponent * 10 + exponentChar - '0';
+            cursor++;
+            if (exponent > 254)
+                goto overflow;
+        }
+        if (exponentNegative)
+            exponent = -exponent;
+        adjustedExponent = number._exponent + exponent;
+        if (adjustedExponent < -128 || adjustedExponent > 127)
+            goto overflow;
+        number._exponent = adjustedExponent;
+    }
+
+    NSDecimalCompact(&number);
+    if (endPointer != NULL)
+        *endPointer = (const char *)cursor;
+    *result = number;
+    return result;
+
+overflow:
+    number._length = 0;
+    number._isNegative = 1;
+    *result = number;
+    return result;
+}
+
 NSComparisonResult
 NSDecimalCompare(const NSDecimal *leftOperand, const NSDecimal *rightOperand)
 {
@@ -450,6 +1243,25 @@ NSDecimalCompare(const NSDecimal *leftOperand, const NSDecimal *rightOperand)
     return magnitude;
 }
 
+static BOOL
+NSDecimalRoundShouldIncrement(NSRoundingMode roundingMode, BOOL isNegative,
+                              int digit, BOOL keptIsOdd)
+{
+    switch (roundingMode) {
+    case NSRoundDown:
+        return isNegative && digit != 0;
+    case NSRoundUp:
+        return !isNegative && digit != 0;
+    case NSRoundBankers:
+        return digit > 5 || (digit == 5 &&
+            (isNegative ? !keptIsOdd : keptIsOdd));
+    case NSRoundPlain:
+        return digit >= 5;
+    default:
+        return NO;
+    }
+}
+
 void
 NSDecimalRound(NSDecimal *result, const NSDecimal *number, int scale, NSRoundingMode roundingMode)
 {
@@ -472,7 +1284,8 @@ NSDecimalRound(NSDecimal *result, const NSDecimal *number, int scale, NSRounding
     DropDigits(&value, placesToDrop, &digit, &lostPrecision);
 
     if (digit != 0) {
-        if (ShouldRoundUp(roundingMode, digit, (value.words[0] & 1) != 0))
+        if (NSDecimalRoundShouldIncrement(roundingMode, number->_isNegative,
+                                          digit, (value.words[0] & 1) != 0))
             BigAddShort(&value, 1);
         if (number->_isNegative && value.length == 0)
             result->_isNegative = 0;
@@ -494,52 +1307,54 @@ NSCalculationError
 NSDecimalNormalize(NSDecimal *number1, NSDecimal *number2, NSRoundingMode roundingMode)
 {
     NSDecimal *larger, *smaller;
-    int diff, headroom;
-    BigInteger scaled;
+    NSDecimal savedLarger;
+    unsigned short destinationLength = NSDecimalMaxSize;
+    short maxPower;
+    int difference;
 
-    diff = (int)number1->_exponent - (int)number2->_exponent;
-    if (diff == 0)
+    (void)roundingMode;
+    difference = (int)number1->_exponent - (int)number2->_exponent;
+    if (difference == 0)
         return NSCalculationNoError;
 
-    if (diff > 0) {
+    if (difference >= 0) {
         larger = number1;
         smaller = number2;
     } else {
         larger = number2;
         smaller = number1;
-        diff = -diff;
+        difference = -difference;
     }
 
-    /*  larger has the bigger exponent: try scaling its mantissa up by
-        10^diff so it can adopt smaller's (lower) exponent exactly.  */
-    BigFromMantissa(&scaled, larger->_mantissa, larger->_length);
-    BigMultiplyByPowerOf10(&scaled, diff);
-
-    if (scaled.length <= NSDecimalMaxSize) {
-        BigToMantissa(larger->_mantissa, &scaled);
-        larger->_length = scaled.length;
+    NSDecimalCopy(&savedLarger, larger);
+    if (NSIntegerMultiplyByPowerOf10(larger->_mantissa, &destinationLength,
+                                    larger->_mantissa, larger->_length,
+                                    (short)difference)
+        == NSCalculationNoError) {
+        larger->_length = destinationLength;
         larger->_exponent = smaller->_exponent;
         larger->_isCompact = 0;
         return NSCalculationNoError;
     }
 
-    /*  Scaling exactly would overflow the mantissa -- give back as
-        much precision as fits on both sides and accept the loss.  */
-    headroom = MaxAdditionalDigits(larger->_length, NSDecimalMaxSize);
-
-    BigFromMantissa(&scaled, smaller->_mantissa, smaller->_length);
-    BigMultiplyByPowerOf10(&scaled, headroom - diff);
-    BigToMantissa(smaller->_mantissa, &scaled);
-    smaller->_length = scaled.length;
-    smaller->_exponent -= (headroom - diff);
+    NSDecimalCopy(larger, &savedLarger);
+    maxPower = (short)NSIntegerMaxPowerOf10Multiplier(
+        (int)larger->_mantissa, larger->_length, NSDecimalMaxSize);
+    destinationLength = NSDecimalMaxSize;
+    NSIntegerMultiplyByPowerOf10(smaller->_mantissa, &destinationLength,
+                                 smaller->_mantissa, smaller->_length,
+                                 (short)(maxPower - difference));
+    smaller->_length = destinationLength;
+    smaller->_exponent -= (short)(maxPower - difference);
     smaller->_isCompact = 0;
 
     if (smaller->_length != 0) {
-        BigFromMantissa(&scaled, larger->_mantissa, larger->_length);
-        BigMultiplyByPowerOf10(&scaled, headroom);
-        BigToMantissa(larger->_mantissa, &scaled);
-        larger->_length = scaled.length;
-        larger->_exponent -= headroom;
+        destinationLength = NSDecimalMaxSize;
+        NSIntegerMultiplyByPowerOf10(larger->_mantissa, &destinationLength,
+                                     larger->_mantissa, larger->_length,
+                                     maxPower);
+        larger->_length = destinationLength;
+        larger->_exponent -= maxPower;
         larger->_isCompact = 0;
     } else {
         smaller->_exponent = larger->_exponent;
@@ -676,9 +1491,13 @@ NSCalculationError
 NSDecimalDivide(NSDecimal *result, const NSDecimal *leftOperand, const NSDecimal *rightOperand,
                  NSRoundingMode roundingMode)
 {
-    BigInteger dividend, quotient;
-    int exponent, shift;
+    unsigned short dividend[16];
+    unsigned short dividendLength = 16;
+    unsigned short remainder = 0;
+    BOOL lostRemainder = NO;
+    int exponent = 0;
 
+    (void)roundingMode;
     if (NSDecimalIsNotANumber(leftOperand) || NSDecimalIsNotANumber(rightOperand)) {
         SetNotANumber(result);
         return NSCalculationOverflow;
@@ -697,17 +1516,35 @@ NSDecimalDivide(NSDecimal *result, const NSDecimal *leftOperand, const NSDecimal
         dividing, so the quotient carries as much precision as the
         mantissa can hold. Division is truncated, not rounded -- the
         header documents that it "could be silently inexact".  */
-    BigFromMantissa(&dividend, leftOperand->_mantissa, leftOperand->_length);
-    BigMultiplyByPowerOf10(&dividend, 38);
-    BigDivideMantissas(&quotient, &dividend, rightOperand->_mantissa, rightOperand->_length);
+    NSIntegerMultiplyByPowerOf10(dividend, &dividendLength,
+                                 leftOperand->_mantissa, leftOperand->_length,
+                                 38);
+    NSIntegerDivide(dividend, &dividendLength, dividend, dividendLength,
+                    rightOperand->_mantissa, rightOperand->_length);
 
-    shift = 0;
-    while (quotient.length > NSDecimalMaxSize) {
-        BigDivideByShort(&quotient, 10);
-        shift++;
+    if (dividendLength > NSDecimalMaxSize) {
+        while (dividendLength > NSDecimalMaxSize + 1) {
+            if (remainder != 0)
+                lostRemainder = YES;
+            NSIntegerDivideByShort(dividend, &dividendLength,
+                                   dividend, dividendLength, 10000,
+                                   &remainder);
+            exponent += 4;
+        }
+        while (dividendLength > NSDecimalMaxSize) {
+            if (remainder != 0)
+                lostRemainder = YES;
+            NSIntegerDivideByShort(dividend, &dividendLength,
+                                   dividend, dividendLength, 10,
+                                   &remainder);
+            exponent++;
+        }
+        if (lostRemainder && (remainder == 0 || remainder == 5))
+            remainder++;
     }
 
-    exponent = shift - 38 + (int)leftOperand->_exponent - (int)rightOperand->_exponent;
+    exponent += -38 + (int)leftOperand->_exponent -
+                (int)rightOperand->_exponent;
     if (exponent < -128) {
         SetNotANumber(result);
         return NSCalculationUnderflow;
@@ -717,9 +1554,10 @@ NSDecimalDivide(NSDecimal *result, const NSDecimal *leftOperand, const NSDecimal
         return NSCalculationOverflow;
     }
 
+    NSIntegerCopy(result->_mantissa, &dividendLength,
+                  dividend, dividendLength);
+    result->_length = dividendLength;
     result->_isNegative = (leftOperand->_isNegative != rightOperand->_isNegative);
-    BigToMantissa(result->_mantissa, &quotient);
-    result->_length = quotient.length;
     result->_exponent = exponent;
     result->_isCompact = 0;
     NSDecimalCompact(result);
@@ -793,29 +1631,67 @@ NSDecimalMultiplyByPowerOf10(NSDecimal *result, const NSDecimal *number, short p
     return NSCalculationNoError;
 }
 
-/*  Worst-case size of the buffer NSDecimalString formats into.  The
-    mantissa is NSDecimalMaxSize unsigned short words, each < 65536 <
-    10^5, so the value never needs more than 5 * NSDecimalMaxSize
-    decimal digits (39 for the current MaxSize of 8; digits[] below
-    only ever needs to hold that many).  _exponent is a signed 8-bit
-    bitfield, and NSDecimalMultiplyByPowerOf10 keeps its stored value
-    in -128..127, so the positive-exponent path can pad with up to
-    127 trailing zeros.  The longest string is therefore a sign, the
-    digits, the zero padding, and the terminating NUL.  */
-#define NSDecimalMaxDigits (5 * NSDecimalMaxSize)
-#define NSDecimalMaxExponentPadding 127
-#define NSDecimalStringBufferSize \
-    (1 + NSDecimalMaxDigits + NSDecimalMaxExponentPadding + 1)
+static char *DecimalToString(const NSDecimal *decimal, char separator,
+                             char *buffer, int bufferSize)
+{
+    NSDecimal value;
+    unsigned short length, remainder;
+    int index;
+
+    if (NSDecimalIsNotANumber(decimal)) {
+        buffer[0] = 'N';
+        buffer[1] = 'a';
+        buffer[2] = 'N';
+        buffer[3] = '\0';
+        return buffer;
+    }
+    if (decimal->_length == 0) {
+        buffer[0] = '0';
+        buffer[1] = '\0';
+        return buffer;
+    }
+
+    NSDecimalCopy(&value, decimal);
+    index = bufferSize - 1;
+    buffer[index] = '\0';
+    while (value._exponent > 0) {
+        buffer[--index] = '0';
+        value._exponent--;
+    }
+    if (value._exponent == 0)
+        value._exponent = 1;
+
+    while (value._length != 0) {
+        if (++value._exponent == 1)
+            buffer[--index] = separator;
+        length = NSDecimalMaxSize;
+        NSIntegerDivideByShort(value._mantissa, &length,
+                               value._mantissa, value._length, 10,
+                               &remainder);
+        value._length = length;
+        buffer[--index] = (char)('0' + remainder);
+    }
+
+    if (value._exponent <= 0) {
+        while (value._exponent != 0) {
+            buffer[--index] = '0';
+            value._exponent++;
+        }
+        buffer[--index] = separator;
+        buffer[--index] = '0';
+    }
+    if (value._isNegative)
+        buffer[--index] = '-';
+    return &buffer[index];
+}
 
 NSString *
 NSDecimalString(const NSDecimal *decimal, NSDictionary *locale)
 {
-    char digits[64];
-    char buffer[NSDecimalStringBufferSize];
-    char *out;
+    char buffer[200];
+    char *text;
     char separator;
-    int digitCount, i, exponent, fractionDigits;
-    BigInteger value;
+    unsigned length;
 
     separator = '.';
     if (locale != nil) {
@@ -824,49 +1700,8 @@ NSDecimalString(const NSDecimal *decimal, NSDictionary *locale)
             separator = (char)[separatorString characterAtIndex:0];
     }
 
-    out = buffer;
-    if (NSDecimalIsNotANumber(decimal))
-        return [NSString stringWithCString:"NaN"];
-
-    if (decimal->_isNegative)
-        *out++ = '-';
-
-    if (decimal->_length == 0) {
-        *out++ = '0';
-        *out = '\0';
-        return [NSString stringWithCString:buffer];
-    }
-
-    BigFromMantissa(&value, decimal->_mantissa, decimal->_length);
-    digitCount = 0;
-    while (value.length != 0)
-        digits[digitCount++] = (char)('0' + BigDivideByShort(&value, 10));
-    /*  digits[] now holds the decimal digits, least significant first.  */
-
-    exponent = decimal->_exponent;
-    if (exponent >= 0) {
-        for (i = digitCount - 1; i >= 0; i--)
-            *out++ = digits[i];
-        for (i = 0; i < exponent; i++)
-            *out++ = '0';
-    } else {
-        fractionDigits = -exponent;
-        if (fractionDigits >= digitCount) {
-            *out++ = '0';
-            *out++ = separator;
-            for (i = 0; i < fractionDigits - digitCount; i++)
-                *out++ = '0';
-            for (i = digitCount - 1; i >= 0; i--)
-                *out++ = digits[i];
-        } else {
-            for (i = digitCount - 1; i >= fractionDigits; i--)
-                *out++ = digits[i];
-            *out++ = separator;
-            for (i = fractionDigits - 1; i >= 0; i--)
-                *out++ = digits[i];
-        }
-    }
-    *out = '\0';
-
-    return [NSString stringWithCString:buffer];
+    text = DecimalToString(decimal, separator, buffer, sizeof(buffer));
+    for (length = 0; text[length] != '\0'; length++)
+        ;
+    return [NSString stringWithCString:text length:length];
 }

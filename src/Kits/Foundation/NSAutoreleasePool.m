@@ -4,374 +4,740 @@
 
 #import <Foundation/NSAutoreleasePool.h>
 #import <Foundation/NSException.h>
+#import <Foundation/NSObjCRuntime.h>
 #import <Foundation/NSString.h>
 #import <Foundation/NSZone.h>
-#include <stdio.h>
+#import <Foundation/NSThread.h>
+#import <objc/objc-runtime.h>
+#include <stddef.h>
+#include <string.h>
 
-/*  Foundation-private helper this file calls that is not declared by any
-    header this project ships -- the same routine NSObject.m and NSProxy.m
-    already declare locally for their own doesNotRecognizeSelector:
-    messages.  */
 extern id _NSMethodExceptionProem(id object, SEL aSelector);
+extern void _NSBasicStdErrLog(const char *format, ...);
+extern BOOL NSKeepAllocationStatistics;
+extern void NSRecordAllocationEvent(int eventType, ...);
+extern unsigned NSAutoreleasePoolCount(void);
+extern unsigned NSTopAutoreleasePoolCount(void);
+extern unsigned NSAutoreleasePoolCountForObject(id anObject);
+extern unsigned NSPushAutoreleasePool(void);
+extern void NSPopAutoreleasePool(unsigned token);
+extern void NSAutoreleaseObject(id anObject);
 
-/*  A pool's contents: the autoreleased objects recorded against it, kept
-    here as a plain growable array of ids.  The reference keeps this in a
-    per-thread structure (reached through _NSCurrentThread(), NSThread.m
-    territory this stage does not reconstruct) segmented into fixed-size
-    "pages" the pool machinery allocates as it grows (a private
-    __NSAPAddPage) and indexed by nesting depth; none of that -- the
-    paging, the per-thread storage, or the fixed-size-page layout -- is
-    reconstructed here.  What is reconstructed is the externally
-    observable contract established by the reference's own -release
-    (0x4250d648, calls NSPopAutoreleasePool with this pool's _token) and
-    -initWithCapacity: (0x4250d5cc, calls NSPushAutoreleasePool and
-    stores its result in _token): an object handed to
-    -autorelease/+addObject: is recorded against the innermost active
-    pool and released exactly once when that pool (or an enclosing one)
-    drains.  This substitutes a single, process-global stack of plain
-    growable arrays for the reference's per-thread paged storage -- the
-    same kind of substitution NSZone.m's ExtraRefCountTable already makes
-    for NSMapTable, and for the identical reason (the real backing
-    module is not yet reconstructed); made single-threaded for the same
-    reason NSZone.m's own lock is skipped: every test in this stage runs
-    unthreaded.  */
-
-#define NSAutoreleasePoolFrameMinCapacity 16
+typedef struct NSAutoreleasePoolPage {
+	struct NSAutoreleasePoolPage *next;
+	struct NSAutoreleasePoolPage *previous;
+	unsigned count;
+} NSAutoreleasePoolPage;
 
 typedef struct {
-    id *objects;
-    unsigned count;
-    unsigned capacity;
-} NSAutoreleasePoolFrame;
+	unsigned pageCount;
+	NSAutoreleasePoolPage *page;
+	id pool;
+} NSAutoreleasePoolCursor;
 
-static NSAutoreleasePoolFrame **poolStack = 0;
-static unsigned poolStackCount = 0;
-static unsigned poolStackCapacity = 0;
+typedef struct {
+	NSAutoreleasePoolPage *pageHead;
+	unsigned objectCount;
+	unsigned highWaterMark;
+	unsigned highWaterResolution;
+	unsigned char releaseEnabled;
+	unsigned char freedObjectCheckEnabled;
+	unsigned char handlingReleaseException;
+	unsigned char routesToSubclass;
+	NSAutoreleasePoolPage *freePageHead;
+	id recycledPools[4];
+	unsigned poolCapacity;
+	unsigned poolDepth;
+	NSAutoreleasePoolCursor records[1];
+} NSAutoreleasePoolData;
 
-/*	Class-side configuration and bookkeeping state.  Like the pool stack
-	above, the reference keeps all of this in the same per-thread
-	structure (_NSCurrentThread()'s lazily created "AP data", built by
-	the out-of-scope __NSAPDataCreate); substituted here with plain
-	process-global storage for the same reason.  */
-static unsigned NSAutoreleasePoolCountHighWaterMark = 0;
-static unsigned NSAutoreleasePoolCountHighWaterResolution = 0;
-static BOOL NSAutoreleasePoolFreedObjectCheckEnabled = NO;
-static BOOL NSAutoreleasePoolReleaseEnabled = NO;
-static unsigned NSTotalAutoreleasedObjectsCount = 0;
+typedef char NSAutoreleasePoolPageHeaderIs12Bytes[
+	(sizeof(NSAutoreleasePoolPage) == 12) ? 1 : -1];
+typedef char NSAutoreleasePoolCursorIs12Bytes[
+	(sizeof(NSAutoreleasePoolCursor) == 12) ? 1 : -1];
+typedef char NSAutoreleasePoolRecordsStartAt48[
+	(offsetof(NSAutoreleasePoolData, records) == 48) ? 1 : -1];
 
-static NSAutoreleasePoolFrame *
-NSAutoreleasePoolFrameCreate(unsigned capacity)
+static unsigned NSAutoreleasePoolPageSize;
+static unsigned NSAutoreleasePoolDefaultHighWaterMark;
+static unsigned NSAutoreleasePoolDefaultHighWaterResolution;
+static BOOL NSAutoreleasePoolDefaultReleaseEnabled = YES;
+static BOOL NSAutoreleasePoolDefaultFreedObjectCheckEnabled;
+static unsigned NSTotalAutoreleasedObjectsCount;
+static Class NSAutoreleasePoolClass;
+
+static NSAutoreleasePoolCursor *
+NSAutoreleasePoolRecords(NSAutoreleasePoolData *data)
 {
-    NSAutoreleasePoolFrame *frame;
-
-    frame = (NSAutoreleasePoolFrame *)NSZoneMalloc(0, sizeof(NSAutoreleasePoolFrame));
-    frame->count = 0;
-    frame->capacity = (capacity > 0) ? capacity : NSAutoreleasePoolFrameMinCapacity;
-    frame->objects = (id *)NSZoneMalloc(0, frame->capacity * sizeof(id));
-    return frame;
+	return (NSAutoreleasePoolCursor *)((char *)data + 48);
 }
 
-static void
-NSAutoreleasePoolFrameAppend(NSAutoreleasePoolFrame *frame, id anObject)
+static NSAutoreleasePoolCursor *
+NSAutoreleasePoolRecord(NSAutoreleasePoolData *data, unsigned index)
 {
-    if (frame->count == frame->capacity) {
-        unsigned newCapacity = frame->capacity * 2;
-        id *newObjects = (id *)NSZoneMalloc(0, newCapacity * sizeof(id));
-        unsigned i;
-
-        for (i = 0; i < frame->count; i++)
-            newObjects[i] = frame->objects[i];
-        NSZoneFree(0, frame->objects);
-        frame->objects = newObjects;
-        frame->capacity = newCapacity;
-    }
-    frame->objects[frame->count++] = anObject;
+	return NSAutoreleasePoolRecords(data) + index;
 }
 
-/*	Releases every object this frame recorded, in the reverse of the
-	order it was recorded, then frees the frame itself.  */
-static void
-NSAutoreleasePoolFrameDrain(NSAutoreleasePoolFrame *frame)
+static id *
+NSAutoreleasePoolPageObjects(NSAutoreleasePoolPage *page)
 {
-    unsigned i;
-
-    for (i = frame->count; i > 0; i--)
-        [frame->objects[i - 1] release];
-    NSZoneFree(0, frame->objects);
-    NSZoneFree(0, frame);
+	return (id *)((char *)page + 12);
 }
 
-/*	Whether `token` still names a frame on the live stack.  Draining an
-	enclosing pool also drains and frees every frame nested inside it,
-	while leaving those inner pools' own instances alive holding tokens
-	that now point at freed storage.  Anything acting on a caller-held
-	token has to rule that out first: NSPopAutoreleasePool would
-	otherwise never find its target and drain the whole stack looking
-	for it, and -addObject: would append into a freed frame.  */
+/* NSThread's target-visible autoreleasePool ivar is at byte offset 24. */
+static NSAutoreleasePoolData *
+NSAutoreleasePoolDataForThread(NSThread *thread, BOOL create)
+{
+	NSAutoreleasePoolData **slot =
+		(NSAutoreleasePoolData **)((char *)thread + 24);
+	NSAutoreleasePoolData *data = *slot;
+
+	if (data == 0 && create) {
+		data = (NSAutoreleasePoolData *)NSZoneMalloc(0, 144);
+		memset(data, 0, 144);
+		data->highWaterMark = NSAutoreleasePoolDefaultHighWaterMark;
+		data->highWaterResolution = NSAutoreleasePoolDefaultHighWaterResolution;
+		data->releaseEnabled = NSAutoreleasePoolDefaultReleaseEnabled;
+		data->freedObjectCheckEnabled =
+			NSAutoreleasePoolDefaultFreedObjectCheckEnabled;
+		data->poolCapacity = 8;
+	}
+	if (data != 0 && NSAutoreleasePoolPageSize == 0)
+		NSAutoreleasePoolPageSize = NSPageSize();
+	if (data != 0 && *slot == 0)
+		*slot = data;
+	return data;
+}
+
+static NSAutoreleasePoolData *
+NSAutoreleasePoolGrowRecords(NSThread *thread, NSAutoreleasePoolData *data)
+{
+	unsigned oldCapacity = data->poolCapacity;
+	unsigned newCapacity = oldCapacity * 2;
+	unsigned oldSize = 48 + 12 * oldCapacity;
+	unsigned newSize = 48 + 12 * newCapacity;
+	NSAutoreleasePoolData **slot =
+		(NSAutoreleasePoolData **)((char *)thread + 24);
+
+	data->poolCapacity = newCapacity;
+	data = (NSAutoreleasePoolData *)NSZoneRealloc(0, data, newSize);
+	memset((char *)data + oldSize, 0, newSize - oldSize);
+	*slot = data;
+	return data;
+}
+
+static NSAutoreleasePoolPage *
+NSAutoreleasePoolAddPage(NSAutoreleasePoolData *data)
+{
+	NSAutoreleasePoolPage *page;
+
+	if (data->freePageHead != 0) {
+		page = data->freePageHead;
+		data->freePageHead = page->previous;
+		if (data->freePageHead != 0)
+			data->freePageHead->next = 0;
+	} else {
+		page = (NSAutoreleasePoolPage *)
+			NSAllocateMemoryPages(NSAutoreleasePoolPageSize);
+	}
+
+	page->next = 0;
+	page->previous = data->pageHead;
+	page->count = 0;
+	if (data->pageHead != 0)
+		data->pageHead->next = page;
+	data->pageHead = page;
+	return page;
+}
+
+static unsigned
+NSAutoreleasePoolRangeCount(NSAutoreleasePoolCursor start,
+		NSAutoreleasePoolPage *endPage, unsigned endCount)
+{
+	NSAutoreleasePoolPage *page = start.page;
+	unsigned count = 0;
+
+	if (page == 0 || endPage == 0)
+		return 0;
+	for (;;) {
+		unsigned first = page == start.page ? start.pageCount : 0;
+		unsigned last = page == endPage ? endCount : page->count;
+
+		if (last > first)
+			count += last - first;
+		if (page == endPage || page->next == 0)
+			break;
+		page = page->next;
+	}
+	return count;
+}
+
+unsigned
+NSAutoreleasePoolCount(void)
+{
+	NSAutoreleasePoolData *data =
+		NSAutoreleasePoolDataForThread(_NSCurrentThread(), NO);
+
+	return data == 0 ? 0 : data->objectCount;
+}
+
+unsigned
+NSTopAutoreleasePoolCount(void)
+{
+	NSThread *thread = _NSCurrentThread();
+	NSAutoreleasePoolData *data = NSAutoreleasePoolDataForThread(thread, NO);
+	NSAutoreleasePoolCursor *record;
+
+	if (data == 0 || data->poolDepth == 0 || data->pageHead == 0)
+		return 0;
+	record = NSAutoreleasePoolRecord(data, data->poolDepth - 1);
+	return NSAutoreleasePoolRangeCount(*record, data->pageHead,
+		data->pageHead->count);
+}
+
+unsigned
+NSAutoreleasePoolCountForObject(id anObject)
+{
+	NSAutoreleasePoolData *data =
+		NSAutoreleasePoolDataForThread(_NSCurrentThread(), NO);
+	NSAutoreleasePoolPage *page;
+	unsigned count = 0;
+
+	if (data == 0)
+		return 0;
+	for (page = data->pageHead; page != 0; page = page->previous) {
+		unsigned index;
+
+		for (index = 0; index < page->count; index++)
+			if (NSAutoreleasePoolPageObjects(page)[index] == anObject)
+				count++;
+	}
+	return count;
+}
+
 static BOOL
-NSAutoreleasePoolFrameIsLive(void *token)
+NSAutoreleaseObjectHasBeenFreed(id anObject)
 {
-    unsigned i;
+	static Class freedObjectClass;
 
-    for (i = 0; i < poolStackCount; i++)
-        if ((void *)poolStack[i] == token)
-            return YES;
-    return NO;
+	if (freedObjectClass == Nil) {
+		Object *probe = [(id)objc_lookUpClass("Object") allocWithZone:NULL];
+
+		[probe free];
+		freedObjectClass = *(Class *)probe;
+	}
+	return anObject != nil && *(Class *)anObject == freedObjectClass;
 }
 
-/*	Pushes a new, empty pool frame and returns it -- the opaque token the
-	reference's own NSPushAutoreleasePool returns and that
-	-initWithCapacity: stores in _token.  `capacity` is the new frame's
-	initial array size: the reference reads it the same way
-	-initWithCapacity: itself does, the documented meaning of that
-	method's argument (an initial-size hint, not a hard limit).  Not
-	static: the reference exports this symbol (external, __TEXT,__text),
-	the same cross-TU-entry-point category NSAutoreleaseObject's own
-	comment below describes, even though only -initWithCapacity: in this
-	file happens to call it.  No header declares it (see divergences.md)
-	-- claimed by name in reconstruction/symbols.json instead.  */
-void *
-NSPushAutoreleasePool(unsigned capacity)
+int
+_NSAutoreleaseFreedObject(id anObject)
 {
-    NSAutoreleasePoolFrame *frame;
-
-    frame = NSAutoreleasePoolFrameCreate(capacity);
-
-    if (poolStackCount == poolStackCapacity) {
-        unsigned newCapacity = (poolStackCapacity == 0) ? 8 : poolStackCapacity * 2;
-        NSAutoreleasePoolFrame **newStack = (NSAutoreleasePoolFrame **)
-            NSZoneMalloc(0, newCapacity * sizeof(NSAutoreleasePoolFrame *));
-        unsigned i;
-
-        for (i = 0; i < poolStackCount; i++)
-            newStack[i] = poolStack[i];
-        if (poolStack != 0)
-            NSZoneFree(0, poolStack);
-        poolStack = newStack;
-        poolStackCapacity = newCapacity;
-    }
-    poolStack[poolStackCount++] = frame;
-
-    return (void *)frame;
+	_NSBasicStdErrLog(
+		"*** _NSAutoreleaseFreedObject(): release of previously deallocated object (0x%x) ignored\n",
+		(unsigned)anObject);
+	return 0;
 }
 
-/*	Drains every pool from the innermost down to (and including) the one
-	`token` identifies -- covering the case where an inner pool was
-	created but never itself released before its enclosing pool is.  Not
-	static: the reference exports this symbol (external, __TEXT,__text),
-	the same cross-TU-entry-point category NSAutoreleaseObject's own
-	comment below describes, even though only +releaseAllPools and
-	-release (below) happen to call it from within this file.  No header
-	declares it (see divergences.md) -- claimed by name in
-	reconstruction/symbols.json instead.  */
 void
-NSPopAutoreleasePool(void *token)
+_NSAutoreleaseNoPool(id anObject)
 {
-    if (!NSAutoreleasePoolFrameIsLive(token))
-        return;
+	Class objectClass = *(Class *)anObject;
 
-    while (poolStackCount > 0) {
-        NSAutoreleasePoolFrame *frame = poolStack[--poolStackCount];
-        BOOL isTarget = ((void *)frame == token);
-
-        NSAutoreleasePoolFrameDrain(frame);
-        if (isTarget)
-            break;
-    }
+	NSLog(@"*** _NSAutoreleaseNoPool(): Object 0x%x of class %s autoreleased with no pool in place - just leaking\n",
+		(unsigned)anObject, objectClass->name);
 }
 
-/*	Records `anObject` against the innermost active pool.  If no pool is
-	active, the reference's own _NSAutoreleaseObject is outside this
-	stage's published analysis scope at this call, so its behaviour for
-	that case is not confirmed; no test in this stage autoreleases
-	without an active pool, so the object is simply not tracked here --
-	documented, not exercised.
+int
+_NSAutoreleaseHighWaterLog(unsigned count)
+{
+	_NSBasicStdErrLog(
+		"*** _NSAutoreleaseHighWaterLog(): %d objects in top autorelease pool\n",
+		(int)count);
+	return 0;
+}
 
-	Not static, same as NSPushAutoreleasePool/NSPopAutoreleasePool
-	above: -[NSObject autorelease] and -[NSProxy autorelease] both call
-	this symbol directly (extern declarations in NSObject.m/NSProxy.m),
-	confirmed from each site's own disassembly (a real `call` to this
-	exact exported name, not objc_msgSend) -- the same cross-file
-	relationship the reference itself has, just not one this stage's ABI
-	baseline captured, since no header declares it (see
-	divergences.md).  */
+static void
+NSAutoreleasePoolPrintRange(NSAutoreleasePoolCursor start,
+		NSAutoreleasePoolPage *endPage, unsigned endCount)
+{
+	NSAutoreleasePoolPage *page = endPage;
+
+	if (start.page == 0 || endPage == 0)
+		return;
+	for (;;) {
+		unsigned first = page == start.page ? start.pageCount : 0;
+		unsigned last = page == endPage ? endCount : page->count;
+		unsigned index;
+
+		for (index = last; index > first; index--) {
+			id object = NSAutoreleasePoolPageObjects(page)[index - 1];
+			Class objectClass = *(Class *)object;
+
+			_NSBasicStdErrLog("\t0x%x (%s)\n", (unsigned)object,
+				objectClass->name);
+		}
+		if (page == start.page)
+			break;
+		page = page->previous;
+		if (page == 0)
+			break;
+	}
+}
+
+int
+NSPrintAutoreleasePools(void)
+{
+	NSAutoreleasePoolData *data =
+		NSAutoreleasePoolDataForThread(_NSCurrentThread(), NO);
+	NSAutoreleasePoolCursor *records;
+	NSAutoreleasePoolPage *endPage;
+	unsigned endCount;
+	unsigned index;
+
+	if (data == 0 || data->poolDepth == 0 || data->pageHead == 0) {
+		_NSBasicStdErrLog("No autorelease pools.\n");
+		return 0;
+	}
+	records = NSAutoreleasePoolRecords(data);
+	endPage = data->pageHead;
+	endCount = endPage->count;
+	for (index = data->poolDepth; index > 0; index--) {
+		NSAutoreleasePoolCursor start = records[index - 1];
+		unsigned count = NSAutoreleasePoolRangeCount(start, endPage, endCount);
+
+		_NSBasicStdErrLog(
+			"Pool (level = %d): %d objects ====================\n",
+			(int)(data->poolDepth - index), (int)count);
+		NSAutoreleasePoolPrintRange(start, endPage, endCount);
+		endPage = start.page;
+		endCount = start.pageCount;
+	}
+	return 0;
+}
+
+unsigned
+NSPushAutoreleasePool(void)
+{
+	NSThread *thread = _NSCurrentThread();
+	NSAutoreleasePoolData *data = NSAutoreleasePoolDataForThread(thread, YES);
+	NSAutoreleasePoolCursor *record;
+	unsigned token;
+
+	if (data->poolDepth >= data->poolCapacity)
+		data = NSAutoreleasePoolGrowRecords(thread, data);
+	if (data->pageHead == 0)
+		NSAutoreleasePoolAddPage(data);
+	token = data->poolDepth;
+	record = NSAutoreleasePoolRecord(data, token);
+	record->pageCount = data->pageHead->count;
+	record->page = data->pageHead;
+	record->pool = 0;
+	data->routesToSubclass = 0;
+	data->poolDepth = token + 1;
+	return token;
+}
+
 void
 NSAutoreleaseObject(id anObject)
 {
-    if (anObject == 0 || poolStackCount == 0)
-        return;
-    NSAutoreleasePoolFrameAppend(poolStack[poolStackCount - 1], anObject);
-    NSTotalAutoreleasedObjectsCount++;
+	NSThread *thread;
+	NSAutoreleasePoolData *data;
+	NSAutoreleasePoolPage *page;
+	unsigned capacity;
+	unsigned count;
+
+	if (anObject == nil)
+		return;
+	thread = _NSCurrentThread();
+	data = NSAutoreleasePoolDataForThread(thread, NO);
+	if (data == 0 || data->poolDepth == 0) {
+		if (NSKeepAllocationStatistics)
+			NSRecordAllocationEvent(3, anObject);
+		_NSAutoreleaseNoPool(anObject);
+		return;
+	}
+	if (data->routesToSubclass) {
+		NSAutoreleasePoolCursor *record =
+			NSAutoreleasePoolRecord(data, data->poolDepth - 1);
+		[(id)record->pool addObject:anObject];
+		return;
+	}
+	if (NSKeepAllocationStatistics)
+		NSRecordAllocationEvent(3, anObject);
+	capacity = (NSAutoreleasePoolPageSize - 12) / sizeof(id);
+	page = data->pageHead;
+	if (page->count >= capacity) {
+		NSAutoreleasePoolAddPage(data);
+		page = data->pageHead;
+	}
+	NSAutoreleasePoolPageObjects(page)[page->count++] = anObject;
+	data->objectCount++;
+	NSTotalAutoreleasedObjectsCount++;
+	count = data->objectCount;
+	if (data->highWaterMark != 0 && count >= data->highWaterMark) {
+		if (data->highWaterResolution != 0) {
+			if ((count - data->highWaterMark) % data->highWaterResolution != 0)
+				return;
+		} else if (count != data->highWaterMark) {
+			return;
+		}
+		_NSAutoreleaseHighWaterLog(count);
+	}
+}
+
+void
+NSPopAutoreleasePool(unsigned token)
+{
+	NSThread *thread = _NSCurrentThread();
+	NSAutoreleasePoolData *data = NSAutoreleasePoolDataForThread(thread, NO);
+	NSAutoreleasePoolCursor *records;
+	NSAutoreleasePoolCursor target;
+	unsigned index;
+	BOOL checkFreedObjects;
+	BOOL releaseObjects;
+
+	if (data == 0 || data->pageHead == 0 || data->poolDepth <= token)
+		return;
+	records = NSAutoreleasePoolRecords(data);
+	target = records[token];
+	checkFreedObjects = data->freedObjectCheckEnabled;
+	releaseObjects = data->releaseEnabled;
+	if (NSKeepAllocationStatistics)
+		NSRecordAllocationEvent(8);
+	for (;;) {
+		unsigned released = 0;
+		BOOL caughtException = NO;
+		NSAutoreleasePoolPage *page;
+
+		NS_DURING
+			page = data->pageHead;
+			while (page != 0) {
+				unsigned lower = page == target.page ? target.pageCount : 0;
+
+				while (page->count > lower) {
+					id object = NSAutoreleasePoolPageObjects(page)[--page->count];
+
+					if (checkFreedObjects &&
+						NSAutoreleaseObjectHasBeenFreed(object))
+						_NSAutoreleaseFreedObject(object);
+					else if (releaseObjects)
+						[object release];
+					released++;
+				}
+				if (page == target.page)
+					break;
+				page = page->previous;
+			}
+		NS_HANDLER
+			caughtException = YES;
+			if (data->handlingReleaseException) {
+				_NSBasicStdErrLog("*** -[NSAutoreleasePool dealloc]: Exception ignored while releasing an object in an autorelease pool\n");
+			} else {
+				data->handlingReleaseException = 1;
+#if defined(__ppc__) || defined(__POWERPC__)
+				NSLog(@"*** -[NSAutoreleasePool dealloc]: Exception %@ ignored while releasing an object in an autorelease pool: %@\n",
+					[localException name], localException);
+#else
+				NSLog(@"*** -[NSAutoreleasePool dealloc]: Exception %@ ignored while releasing an object in an autorelease pool\n",
+					[localException name]);
+#endif
+				data->handlingReleaseException = 0;
+			}
+		NS_ENDHANDLER
+
+		data = NSAutoreleasePoolDataForThread(thread, NO);
+		if (caughtException)
+			break;
+		data->objectCount -= released;
+		if (released == 0)
+			break;
+	}
+
+	data = NSAutoreleasePoolDataForThread(thread, NO);
+	records = NSAutoreleasePoolRecords(data);
+	for (index = token; index < data->poolCapacity; index++) {
+		NSAutoreleasePoolCursor *record = &records[index];
+		id pool = record->pool;
+		BOOL recycled = NO;
+		unsigned slot;
+
+		if (pool != nil && *(Class *)pool == NSAutoreleasePoolClass) {
+			for (slot = 0; slot < 4; slot++) {
+				if (data->recycledPools[slot] == nil) {
+					data->recycledPools[slot] = pool;
+					recycled = YES;
+					break;
+				}
+			}
+		}
+		if (pool != nil && !recycled) {
+			NSDeallocateObject(pool);
+		}
+		if (recycled && NSKeepAllocationStatistics)
+			NSRecordAllocationEvent(1, pool);
+		record->pageCount = 0;
+		record->page = 0;
+		record->pool = 0;
+	}
+	if (NSKeepAllocationStatistics)
+		NSRecordAllocationEvent(9);
+	data->poolDepth = token;
+	data->routesToSubclass = 0;
+	if (token != 0) {
+		id parentPool = records[token - 1].pool;
+
+		if (parentPool != nil && [parentPool class] != NSAutoreleasePoolClass)
+			data->routesToSubclass = 1;
+	}
+	while (data->pageHead != 0 && data->pageHead->count == 0 &&
+		data->pageHead->previous != 0) {
+		NSAutoreleasePoolPage *page = data->pageHead;
+		NSAutoreleasePoolPage *previous = page->previous;
+
+		previous->next = 0;
+		data->pageHead = previous;
+		page->next = 0;
+		page->previous = data->freePageHead;
+		data->freePageHead = page;
+		memset((char *)page + 12, 0, NSAutoreleasePoolPageSize - 12);
+	}
 }
 
 @implementation NSAutoreleasePool
 
-/*  The reference (0x42512888) recycles up to four freed pool instances
-    through the same per-thread AP data this file substitutes away above,
-    rather than allocating fresh every time -- a pure allocation-
-    performance optimisation: a recycled instance still has its ivars
-    re-set by -init/-initWithCapacity:, so it is not observably different
-    from a freshly allocated one.  Not reconstructed; every allocation
-    here is fresh.  */
-+ (id)allocWithZone:(NSZone *)zone {
-    return NSAllocateObject(self, 0, zone);
++ (id)allocWithZone:(NSZone *)zone
+{
+	Class class = (Class)self;
+	NSThread *thread;
+	NSAutoreleasePoolData *data;
+	unsigned slot;
+
+	if (NSAutoreleasePoolClass == Nil)
+		NSAutoreleasePoolClass = [NSAutoreleasePool class];
+	if (class != NSAutoreleasePoolClass)
+		return NSAllocateObject(class, 0, zone);
+	thread = _NSCurrentThread();
+	data = NSAutoreleasePoolDataForThread(thread, YES);
+	for (slot = 0; slot < 4; slot++) {
+		id pool = data->recycledPools[slot];
+
+		if (pool != nil) {
+			data->recycledPools[slot] = nil;
+			if (NSKeepAllocationStatistics)
+				NSRecordAllocationEvent(0, pool, 0);
+			return pool;
+		}
+	}
+	return NSAllocateObject(class, 0, 0);
 }
 
-+ (void)addObject:(id)anObject {
-    NSAutoreleaseObject(anObject);
++ (void)addObject:(id)anObject
+{
+	NSAutoreleaseObject(anObject);
 }
 
-+ (BOOL)autoreleasePoolExists {
-    return poolStackCount > 0;
++ (BOOL)autoreleasePoolExists
+{
+	NSAutoreleasePoolData *data =
+		NSAutoreleasePoolDataForThread(_NSCurrentThread(), NO);
+
+	return data != 0 && data->poolDepth != 0;
 }
 
-+ (unsigned)autoreleasedObjectCount {
-    unsigned total = 0;
-    unsigned i;
-
-    for (i = 0; i < poolStackCount; i++)
-        total += poolStack[i]->count;
-    return total;
++ (unsigned)autoreleasedObjectCount
+{
+	return NSAutoreleasePoolCount();
 }
 
-+ (unsigned)topAutoreleasePoolCount {
-    if (poolStackCount == 0)
-        return 0;
-    return poolStack[poolStackCount - 1]->count;
++ (unsigned)topAutoreleasePoolCount
+{
+	return NSTopAutoreleasePoolCount();
 }
 
-+ (void)enableFreedObjectCheck:(BOOL)flag {
-    NSAutoreleasePoolFreedObjectCheckEnabled = flag;
++ (void)enableFreedObjectCheck:(BOOL)flag
+{
+	NSAutoreleasePoolData *data =
+		NSAutoreleasePoolDataForThread(_NSCurrentThread(), YES);
+	if (data->freedObjectCheckEnabled != flag)
+		data->freedObjectCheckEnabled = flag;
 }
 
-+ (void)enableRelease:(BOOL)flag {
-    NSAutoreleasePoolReleaseEnabled = flag;
++ (void)enableRelease:(BOOL)flag
+{
+	NSAutoreleasePoolData *data =
+		NSAutoreleasePoolDataForThread(_NSCurrentThread(), YES);
+	if (data->releaseEnabled != flag)
+		data->releaseEnabled = flag;
 }
 
-+ (unsigned)poolCountHighWaterMark {
-    return NSAutoreleasePoolCountHighWaterMark;
++ (unsigned)poolCountHighWaterMark
+{
+	NSAutoreleasePoolData *data =
+		NSAutoreleasePoolDataForThread(_NSCurrentThread(), NO);
+
+	return data == 0 ? 0 : data->highWaterMark;
 }
 
-+ (void)setPoolCountHighWaterMark:(unsigned)mark {
-    NSAutoreleasePoolCountHighWaterMark = mark;
++ (void)setPoolCountHighWaterMark:(unsigned)mark
+{
+	NSAutoreleasePoolData *data =
+		NSAutoreleasePoolDataForThread(_NSCurrentThread(), YES);
+	data->highWaterMark = mark;
 }
 
-+ (unsigned)poolCountHighWaterResolution {
-    return NSAutoreleasePoolCountHighWaterResolution;
++ (unsigned)poolCountHighWaterResolution
+{
+	NSAutoreleasePoolData *data =
+		NSAutoreleasePoolDataForThread(_NSCurrentThread(), NO);
+
+	return data == 0 ? 0 : data->highWaterResolution;
 }
 
-+ (void)setPoolCountHighWaterResolution:(unsigned)resolution {
-    NSAutoreleasePoolCountHighWaterResolution = resolution;
++ (void)setPoolCountHighWaterResolution:(unsigned)resolution
+{
+	NSAutoreleasePoolData *data =
+		NSAutoreleasePoolDataForThread(_NSCurrentThread(), YES);
+	data->highWaterResolution = resolution;
 }
 
-+ (void)resetTotalAutoreleasedObjects {
-    NSTotalAutoreleasedObjectsCount = 0;
++ (void)resetTotalAutoreleasedObjects
+{
+	NSTotalAutoreleasedObjectsCount = 0;
 }
 
-+ (unsigned)totalAutoreleasedObjects {
-    return NSTotalAutoreleasedObjectsCount;
++ (unsigned)totalAutoreleasedObjects
+{
+	return NSTotalAutoreleasedObjectsCount;
 }
 
-/*  A best-effort diagnostic dump: the reference's own formatting routine
-    (_NSPrintAutoreleasePools) is outside this stage's published analysis
-    scope, so its exact text is not reconstructed -- only that this lists
-    the active pools and how many objects each holds.  */
-+ (void)showPools {
-    unsigned i;
-
-    fprintf(stderr, "%u autorelease pool(s) active\n", poolStackCount);
-    for (i = 0; i < poolStackCount; i++)
-        fprintf(stderr, "  pool %u: %u autoreleased object(s)\n", i, poolStack[i]->count);
++ (void)showPools
+{
+	NSPrintAutoreleasePools();
 }
 
-+ (void)releaseAllPools {
-    if (poolStackCount > 0)
-        NSPopAutoreleasePool(poolStack[0]);
++ (void)releaseAllPools
+{
+	NSThread *thread = _NSCurrentThread();
+	NSAutoreleasePoolData **slot =
+		(NSAutoreleasePoolData **)((char *)thread + 24);
+	NSAutoreleasePoolData *data = *slot;
+	NSAutoreleasePoolPage *page;
+	unsigned index;
+
+	if (data == 0)
+		return;
+	NSPopAutoreleasePool(0);
+	*slot = 0;
+	while ((page = data->pageHead) != 0) {
+		data->pageHead = page->previous;
+		NSDeallocateMemoryPages(page, NSAutoreleasePoolPageSize);
+	}
+	while ((page = data->freePageHead) != 0) {
+		data->freePageHead = page->previous;
+		NSDeallocateMemoryPages(page, NSAutoreleasePoolPageSize);
+	}
+	for (index = 0; index < 4; index++)
+		if (data->recycledPools[index] != nil)
+			(*_dealloc)((Object *)data->recycledPools[index]);
+	NSZoneFree(0, data);
 }
 
-- (id)init {
-    return [self initWithCapacity:0];
+- (id)init
+{
+	return [self initWithCapacity:0];
 }
 
-- (id)initWithCapacity:(unsigned)numSlots {
-    _token = NSPushAutoreleasePool(numSlots);
-    return self;
+- (id)initWithCapacity:(unsigned)numSlots
+{
+	unsigned token = NSPushAutoreleasePool();
+	NSAutoreleasePoolData *data =
+		NSAutoreleasePoolDataForThread(_NSCurrentThread(), NO);
+	NSAutoreleasePoolCursor *record = NSAutoreleasePoolRecord(data, token);
+
+	_token = (void *)token;
+	record->pool = self;
+	if (NSAutoreleasePoolClass == Nil)
+		NSAutoreleasePoolClass = [NSAutoreleasePool class];
+	data->routesToSubclass = *(Class *)self != NSAutoreleasePoolClass;
+	(void)numSlots;
+	return self;
 }
 
-/*  Frees the instance itself as well as popping its frame.  -dealloc
-    below deliberately does not (the reference's own -dealloc only warns),
-    so this is the only place a pool is reclaimed; without it every pool
-    ever created leaks, which a loop that opens and closes a pool per
-    iteration -- the idiomatic use -- turns into unbounded growth.  The
-    reference reclaims instances by recycling up to four of them through
-    its per-thread AP data (see +allocWithZone: below).  */
-- (void)release {
-    NSPopAutoreleasePool(_token);
-    NSDeallocateObject(self);
+- (void)release
+{
+	NSPopAutoreleasePool((unsigned)_token);
 }
 
-/*  Calling -dealloc directly bypasses the bookkeeping -release performs
-    (popping this pool, and any pools still nested inside it, off the
-    stack).  Confirmed directly from the reference's disassembly
-    (0x4257341c): this path does not call NSPopAutoreleasePool, or the
-    superclass's -dealloc -- only the warning below.  */
-- (void)dealloc {
-    id proem = _NSMethodExceptionProem(self, _cmd);
+- (void)dealloc
+{
+	id proem = _NSMethodExceptionProem(self, _cmd);
 
-    NSLog(@"%@: WARNING: Do not call this method directly.\n", proem);
+	NSLog(@"%@: WARNING: Do not call this method directly.\n", proem);
 }
 
-- (unsigned)retainCount {
-    return 1;
+- (unsigned)retainCount
+{
+	return 1;
 }
 
-- (id)retain {
-    id proem = _NSMethodExceptionProem(self, _cmd);
+- (id)retain
+{
+	id proem = _NSMethodExceptionProem(self, _cmd);
 
-    [NSException raise:NSInvalidArgumentException
-                 format:@"%@: Cannot retain an autorelease pool", proem];
-    return self;
+	[NSException raise:NSInvalidArgumentException
+			 format:@"%@: Cannot retain an autorelease pool", proem];
+	return self;
 }
 
-- (id)autorelease {
-    id proem = _NSMethodExceptionProem(self, _cmd);
+- (id)autorelease
+{
+	id proem = _NSMethodExceptionProem(self, _cmd);
 
-    [NSException raise:NSInvalidArgumentException
-                 format:@"%@: Cannot autorelease an autorelease pool", proem];
-    return self;
+	[NSException raise:NSInvalidArgumentException
+			 format:@"%@: Cannot autorelease an autorelease pool", proem];
+	return self;
 }
 
-/*  Inserts `anObject` into *this* pool's own frame, whichever pool that
-    is -- distinct from the class method above, which always targets the
-    innermost active pool.  The reference (0x425732d8) does this by
-    calling _NSAutoreleaseObject first (recording the object against the
-    innermost pool and incrementing the global autoreleased-object
-    counter), then re-homing it into this pool's slot by shifting every
-    frame nested inside this one along a shared per-thread buffer
-    (out-of-scope internals, see the block comment above).  Reconstructed
-    here as calling NSAutoreleaseObject() first, for the same counter
-    side effect, then moving the object from the innermost frame to this
-    pool's own frame when the two differ -- preserving both the counter
-    bump and the externally observable difference from +addObject:
-    (which pool ends up holding the object) without the reference's
-    buffer-sharing mechanics.  */
-- (void)addObject:(id)anObject {
-    NSAutoreleasePoolFrame *frame = (NSAutoreleasePoolFrame *)_token;
-    NSAutoreleasePoolFrame *innermost;
+- (void)addObject:(id)anObject
+{
+	NSThread *thread;
+	NSAutoreleasePoolData *data;
+	unsigned token = (unsigned)_token;
+	unsigned depth;
+	id *insert;
 
-    if (anObject == 0 || frame == 0 || !NSAutoreleasePoolFrameIsLive((void *)frame))
-        return;
+	if (anObject == nil)
+		return;
+	NSAutoreleaseObject(anObject);
+	thread = _NSCurrentThread();
+	data = NSAutoreleasePoolDataForThread(thread, NO);
+	if (data == 0 || data->poolDepth == 0)
+		return;
+	depth = data->poolDepth;
+	if (token == depth - 1)
+		return;
+	insert = NSAutoreleasePoolPageObjects(data->pageHead) +
+		data->pageHead->count;
+	while (token < depth - 1) {
+		NSAutoreleasePoolCursor *record;
+		NSAutoreleasePoolPage *page;
+		id *source;
 
-    NSAutoreleaseObject(anObject);
-
-    if (poolStackCount == 0)
-        return;
-
-    innermost = poolStack[poolStackCount - 1];
-    if (innermost != frame) {
-        innermost->count--;
-        NSAutoreleasePoolFrameAppend(frame, anObject);
-    }
+		--depth;
+		record = NSAutoreleasePoolRecord(data, depth);
+		page = record->page;
+		source = NSAutoreleasePoolPageObjects(page) + record->pageCount++;
+		if (record->pageCount >=
+			(NSAutoreleasePoolPageSize - 12) / sizeof(id)) {
+			if (page->next == 0)
+				NSAutoreleasePoolAddPage(data);
+			record->page = page->next;
+			record->pageCount = 0;
+		}
+		*insert = *source;
+		insert = source;
+	}
+	*insert = anObject;
 }
 
 @end

@@ -27,6 +27,12 @@ extern struct objc_method_description *_NSMethodDescriptionForSelector(Class aCl
 extern BOOL _NSClassConformsToProtocol(Class aClass, Protocol *aProtocol);
 extern id _NSMethodExceptionProem(id object, SEL aSelector);
 extern void NSAutoreleaseObject(id anObject);
+__private_extern__ Class NSZombieOriginalClassForClass(Class zombieClass);
+
+struct NSProtocolName {
+    Class class_pointer;
+    const char *protocol_name;
+};
 
 /*	Raises for a NULL selector handed to the performSelector: family.
 	Static: the reference keeps this local to NSObject.m, and NSProxy.m
@@ -41,10 +47,10 @@ _NSObjectRaiseNullSelectorException(id object, SEL aSelector)
                 format:@"%@: null selector", _NSMethodExceptionProem(object, aSelector)];
 }
 
-/*  Task 8 additions.  _NSInitializePlatform backs both +load and
-    +initialize (the reference gives them identical bodies).
-    NSStringFromStack backs _NSZombie's diagnostic message (NSDebug.h's
-    "Stack processing" group, stage 3 territory -- not reconstructed).  */
+/*  _NSInitializePlatform backs both +load and +initialize (the reference
+    gives them identical bodies). NSStringFromStack backs _NSZombie's
+    diagnostic message and is implemented with the frame helpers in
+    NSDebug.m.  */
 extern void _NSInitializePlatform(void);
 extern NSString *NSStringFromStack(NSString *format, NSString *separator);
 
@@ -58,15 +64,9 @@ extern NSString *NSStringFromStack(NSString *format, NSString *separator);
     _NSInitializePlatform();
 }
 
-/*  The reference builds this as [[self alloc] init] (two chained
-    objc_msgSend calls, receiver of the second being the first's result).
-    The two selector cells it reads live in __message_refs entries this
-    slice's own relocations resolve to an address outside the slice
-    (0x414067cc/0x41406990 -- another prebound image, not present in
-    Foundation-i386), so the exact selector text can't be pulled from this
-    analysis the way the doesNotRecognizeSelector:/description strings
-    could; the two-call shape plus +new's single, unchanged definition
-    throughout the OpenStep/Cocoa lineage leave no other candidate.  */
+/*  The Foundation selector cells resolve through System.framework to
+    "alloc" and "init": PPC (0x4141d3c0/0x4141d584), i386
+    (0x414067cc/0x41406990).  */
 + (id)new {
     return [[self alloc] init];
 }
@@ -78,8 +78,7 @@ extern NSString *NSStringFromStack(NSString *format, NSString *separator);
     +alloc returns nil.  Implemented here as a deliberate, disclosed
     exception (see the stage 2a Task 7 report); confirmed against the
     reference disassembly, which is exactly this two-line handoff to
-    NSAllocateObject.  The other 45 class methods and _NSZombie are
-    untouched.  */
+    NSAllocateObject.  */
 + (id)allocWithZone:(NSZone *)zone {
     return NSAllocateObject(self, 0, zone);
 }
@@ -179,6 +178,8 @@ extern NSString *NSStringFromStack(NSString *format, NSString *separator);
 + (BOOL)isKindOfClass:(Class)aClass {
     Class candidate;
 
+    if (self->isa == Nil)
+        return NO;
     for (candidate = self->isa; candidate != Nil; candidate = candidate->super_class)
         if (candidate == aClass)
             return YES;
@@ -341,6 +342,8 @@ extern NSString *NSStringFromStack(NSString *format, NSString *separator);
 - (BOOL)isKindOfClass:(Class)aClass {
     Class candidate;
 
+    if (isa == Nil)
+        return NO;
     for (candidate = isa; candidate != Nil; candidate = candidate->super_class)
         if (candidate == aClass)
             return YES;
@@ -514,6 +517,16 @@ extern NSString *NSStringFromStack(NSString *format, NSString *separator);
 
 @end
 
+@implementation NSObject (NSConformsToProtocolNamed)
+
+- (BOOL)_conformsToProtocolNamed:(const char *)protocolName {
+    struct NSProtocolName protocol = { Nil, protocolName };
+
+    return [(id)isa conformsToProtocol:(Protocol *)&protocol];
+}
+
+@end
+
 /*  _NSZombie: NSZombieEnabled's target class.  NSDeallocateObject
     (NSZone.m) retargets a deallocated object's isa to one of these -- one
     synthesized per original class, named "NSZombie_<originalClass>" -- so
@@ -526,21 +539,8 @@ extern NSString *NSStringFromStack(NSString *format, NSString *separator);
     NSCreateMapTableWithZone/NSMapGet/NSMapInsert) and finds the reverse
     mapping for a logging call by linearly walking it
     (NSEnumerateMapTable/NSNextMapEnumeratorPair, in a small local helper
-    the reference calls _findOriginalClass).  NSMapTable.m in this tree is
-    still unimplemented stubs and is out of this task's file list, so this
-    reconstruction substitutes a private table for both directions of that
-    lookup -- the same substitution NSZone.m's ExtraRefCountTable already
-    makes for NSMapTable's overflow case, for the identical reason.  That
-    table (and the synthesis itself) live in NSZone.m, not here: NSZone.m
-    is linked into every stage-2a test binary, while this file (NSObject.m)
-    is linked only into ones that need NSObject itself, and
-    NSDeallocateObject -- the only place that creates a zombie class --
-    already lives in NSZone.m.  This file needs no accessor back into that
-    table for the diagnostic message below: the original class's name is
-    already encoded in the zombie class's own "NSZombie_<originalClass>"
-    name (set by NSZone.m's _NSZombieClassForClass), so stripping that
-    fixed prefix recovers it directly, with no second table direction or
-    cross-file lookup function needed.  */
+    the reference calls _findOriginalClass).  The diagnostic uses the same
+    reverse map walk through the private NSZone.m helper.  */
 
 @interface _NSZombie : NSProxy
 @end
@@ -563,19 +563,14 @@ extern NSString *NSStringFromStack(NSString *format, NSString *separator);
 static void
 logMessageAndRaise(SEL erroringSelector, SEL cmd, id self)
 {
-    static const char *zombiePrefix = "NSZombie_";
-    const char *zombieName = self->isa->name;
-    const char *originalName = zombieName;
+    Class originalClass = NSZombieOriginalClassForClass(self->isa);
     NSString *stack = NSStringFromStack(@"0x%x", @" ");
     NSString *message;
-
-    if (strncmp(zombieName, zombiePrefix, strlen(zombiePrefix)) == 0)
-        originalName = zombieName + strlen(zombiePrefix);
 
     message = [NSString stringWithFormat:
         @"*** Selector '%s' sent to dealloced instance 0x%x of class %s.\n"
         @"Break at '-[_NSZombie %s]' to debug. Stack=%@",
-        erroringSelector, self, originalName, cmd, stack];
+        erroringSelector, self, originalClass->name, cmd, stack];
 
     NSLog(@"*** %@", message);
     [[NSException exceptionWithName:NSGenericException reason:message userInfo:nil] raise];

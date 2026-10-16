@@ -1,0 +1,10 @@
+{
+ "categories": [],
+ "classes": [],
+ "data_symbols": [],
+ "module": "NSStringLocalizedCompare.m",
+ "schema_version": "abi-v1",
+ "text_symbols": [
+  "_NSCompareStringsWithLocale"
+ ]
+}

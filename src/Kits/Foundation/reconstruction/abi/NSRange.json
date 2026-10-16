@@ -8,6 +8,7 @@
   "_NSIntersectionRange",
   "_NSIntersectsRange",
   "_NSRangeFromString",
+  "_NSSubtractRange",
   "_NSStringFromRange",
   "_NSUnionRange"
  ]

@@ -153,6 +153,7 @@
  "text_symbols": [
   "_NSGetUncaughtExceptionHandler",
   "_NSSetUncaughtExceptionHandler",
+  "__NSAddHandler",
   "__NSAddAltHandler2",
   "__NSAddHandler2",
   "__NSClearExceptionStack",
@@ -162,6 +163,7 @@
   "__NSMethodExceptionProem",
   "__NSRaiseError",
   "__NSRemoveAltHandler2",
+  "__NSRemoveHandler",
   "__NSRemoveHandler2"
  ]
 }

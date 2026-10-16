@@ -1,0 +1,812 @@
+{
+  "schema_version": "source-map-v1",
+  "reference_sha256": "1165B9063ADD5672514455CA2C9830625BEA2BCE5E46126FB5E8652114C909D6",
+  "mapped": [
+    {
+      "address": 1112558136,
+      "size": 192,
+      "reference_names": [
+        "__decodeIntStartingWithChar"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 546
+    },
+    {
+      "address": 1112559384,
+      "size": 151,
+      "reference_names": [
+        "_checkExpected"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 667
+    },
+    {
+      "address": 1112559636,
+      "size": 125,
+      "reference_names": [
+        "-[_NSArchiverData _decodeNewPtr:label:usingTable:lastLabel:atCursor:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 722
+    },
+    {
+      "address": 1112559892,
+      "size": 30,
+      "reference_names": [
+        "__stringFromStringTableAtIndex"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 606
+    },
+    {
+      "address": 1112561904,
+      "size": 82,
+      "reference_names": [
+        "-[NSUnarchiver decodeValuesOfObjCTypes:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 1379
+    },
+    {
+      "address": 1112565468,
+      "size": 175,
+      "reference_names": [
+        "__decodeReusedCStringUsingTable"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 605
+    },
+    {
+      "address": 1112567304,
+      "size": 13,
+      "reference_names": [
+        "-[_NSArchiverData bytes]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 710
+    },
+    {
+      "address": 1112570816,
+      "size": 1391,
+      "reference_names": [
+        "__decodeValueOfObjCType"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 1136
+    },
+    {
+      "address": 1112573168,
+      "size": 13,
+      "reference_names": [
+        "-[_NSArchiverData length]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 714
+    },
+    {
+      "address": 1112574564,
+      "size": 626,
+      "reference_names": [
+        "__decodeObject"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 1057
+    },
+    {
+      "address": 1112586528,
+      "size": 51,
+      "reference_names": [
+        "-[NSUnarchiver versionForClassName:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 1464
+    },
+    {
+      "address": 1112597756,
+      "size": 70,
+      "reference_names": [
+        "-[NSUnarchiver decodeObject]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 1120
+    },
+    {
+      "address": 1112613584,
+      "size": 99,
+      "reference_names": [
+        "-[NSUnarchiver decodeValueOfObjCType:at:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 1366
+    },
+    {
+      "address": 1112615292,
+      "size": 159,
+      "reference_names": [
+        "-[NSUnarchiver decodeBytesWithReturnedLength:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 1447
+    },
+    {
+      "address": 1112615904,
+      "size": 125,
+      "reference_names": [
+        "__decodeFloatAtCursor"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 1207
+    },
+    {
+      "address": 1112629340,
+      "size": 553,
+      "reference_names": [
+        "__decodeClass"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 1015
+    },
+    {
+      "address": 1112631164,
+      "size": 128,
+      "reference_names": [
+        "__decodeCStringAtCursor"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 586
+    },
+    {
+      "address": 1112648736,
+      "size": 68,
+      "reference_names": [
+        "__addStringToStringTable"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 606
+    },
+    {
+      "address": 1112656780,
+      "size": 243,
+      "reference_names": [
+        "-[NSUnarchiver dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 1638
+    },
+    {
+      "address": 1112664444,
+      "size": 78,
+      "reference_names": [
+        "-[NSArchiver encodeValuesOfObjCTypes:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 857
+    },
+    {
+      "address": 1112667296,
+      "size": 66,
+      "reference_names": [
+        "__freeStringTable"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 687
+    },
+    {
+      "address": 1112668128,
+      "size": 160,
+      "reference_names": [
+        "__encodeInt"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 509
+    },
+    {
+      "address": 1112668432,
+      "size": 99,
+      "reference_names": [
+        "__replacementObjectForObject"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 256
+    },
+    {
+      "address": 1112676092,
+      "size": 112,
+      "reference_names": [
+        "__decodeShortAtCursor"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 1153
+    },
+    {
+      "address": 1112679152,
+      "size": 1179,
+      "reference_names": [
+        "__encodeValueOfObjCType"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 353
+    },
+    {
+      "address": 1112680508,
+      "size": 257,
+      "reference_names": [
+        "__encodeObject"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 271
+    },
+    {
+      "address": 1112688368,
+      "size": 174,
+      "reference_names": [
+        "__encodePointerIfNew"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 225
+    },
+    {
+      "address": 1112694888,
+      "size": 108,
+      "reference_names": [
+        "+[NSUnarchiver decodeClassName:asClassName:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 1579
+    },
+    {
+      "address": 1112707080,
+      "size": 246,
+      "reference_names": [
+        "__encodeOrReuseCString"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 196
+    },
+    {
+      "address": 1112727988,
+      "size": 58,
+      "reference_names": [
+        "-[NSArchiver encodeObject:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 946
+    },
+    {
+      "address": 1112733516,
+      "size": 29,
+      "reference_names": [
+        "-[NSObject classForArchiver]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 1668
+    },
+    {
+      "address": 1112733756,
+      "size": 33,
+      "reference_names": [
+        "-[NSObject replacementObjectForArchiver:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 1672
+    },
+    {
+      "address": 1112740528,
+      "size": 90,
+      "reference_names": [
+        "-[NSArchiver encodeBytes:length:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 1004
+    },
+    {
+      "address": 1112742448,
+      "size": 99,
+      "reference_names": [
+        "-[NSArchiver _replaceObject:withObject:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 934
+    },
+    {
+      "address": 1112748956,
+      "size": 163,
+      "reference_names": [
+        "-[NSUnarchiver decodeDataObject]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 1435
+    },
+    {
+      "address": 1112750236,
+      "size": 104,
+      "reference_names": [
+        "+[NSUnarchiver classNameDecodedForArchiveClassName:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 1596
+    },
+    {
+      "address": 1112750340,
+      "size": 471,
+      "reference_names": [
+        "-[NSUnarchiver decodeArrayOfObjCType:count:at:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 1396
+    },
+    {
+      "address": 1112751616,
+      "size": 97,
+      "reference_names": [
+        "__encodeCString"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 531
+    },
+    {
+      "address": 1112752052,
+      "size": 298,
+      "reference_names": [
+        "__decodeLongLongAtCursor"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 1178
+    },
+    {
+      "address": 1112753280,
+      "size": 137,
+      "reference_names": [
+        "-[NSArchiver encodeConditionalObject:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 835
+    },
+    {
+      "address": 1112753628,
+      "size": 290,
+      "reference_names": [
+        "__encodeClass"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 485
+    },
+    {
+      "address": 1112760916,
+      "size": 98,
+      "reference_names": [
+        "-[NSArchiver encodeValueOfObjCType:at:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 953
+    },
+    {
+      "address": 1112761016,
+      "size": 56,
+      "reference_names": [
+        "__createStringTable"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 676
+    },
+    {
+      "address": 1112761116,
+      "size": 89,
+      "reference_names": [
+        "-[_NSArchiverData initWithData:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 703
+    },
+    {
+      "address": 1112761208,
+      "size": 75,
+      "reference_names": [
+        "-[_NSArchiverData dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 746
+    },
+    {
+      "address": 1112761284,
+      "size": 16,
+      "reference_names": [
+        "-[_NSArchiverData _setSwap:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 718
+    },
+    {
+      "address": 1112766120,
+      "size": 654,
+      "reference_names": [
+        "-[NSUnarchiver initForReadingWithData:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 1481
+    },
+    {
+      "address": 1112767020,
+      "size": 203,
+      "reference_names": [
+        "__encodeFloat"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 383
+    },
+    {
+      "address": 1112770000,
+      "size": 183,
+      "reference_names": [
+        "__decodeDoubleAtCursor"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 1207
+    },
+    {
+      "address": 1112774632,
+      "size": 16,
+      "reference_names": [
+        "-[NSUnarchiver setObjectZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 1540
+    },
+    {
+      "address": 1112779256,
+      "size": 29,
+      "reference_names": [
+        "_realSuperClass"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 504
+    },
+    {
+      "address": 1112800876,
+      "size": 13,
+      "reference_names": [
+        "-[NSUnarchiver systemVersion]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 1556
+    },
+    {
+      "address": 1112802860,
+      "size": 47,
+      "reference_names": [
+        "-[NSUnarchiver isAtEnd]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 1552
+    },
+    {
+      "address": 1112803152,
+      "size": 168,
+      "reference_names": [
+        "+[NSUnarchiver unarchiveObjectWithData:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 1560
+    },
+    {
+      "address": 1112805992,
+      "size": 73,
+      "reference_names": [
+        "+[NSUnarchiver unarchiveObjectWithFile:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 1573
+    },
+    {
+      "address": 1112824000,
+      "size": 154,
+      "reference_names": [
+        "-[NSUnarchiver replaceObject:withObject:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 1619
+    },
+    {
+      "address": 1112836744,
+      "size": 335,
+      "reference_names": [
+        "-[NSArchiver initForWritingWithMutableData:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 755
+    },
+    {
+      "address": 1112839248,
+      "size": 108,
+      "reference_names": [
+        "__encodeShort"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 120
+    },
+    {
+      "address": 1112843024,
+      "size": 115,
+      "reference_names": [
+        "-[NSArchiver encodeDataObject:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 850
+    },
+    {
+      "address": 1112843140,
+      "size": 167,
+      "reference_names": [
+        "-[NSArchiver dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 790
+    },
+    {
+      "address": 1112869200,
+      "size": 209,
+      "reference_names": [
+        "-[NSArchiver encodeRootObject:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 809
+    },
+    {
+      "address": 1112869412,
+      "size": 455,
+      "reference_names": [
+        "-[NSArchiver encodeArrayOfObjCType:count:at:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 965
+    },
+    {
+      "address": 1112870332,
+      "size": 138,
+      "reference_names": [
+        "+[NSUnarchiver initialize]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 1472
+    },
+    {
+      "address": 1112873624,
+      "size": 125,
+      "reference_names": [
+        "+[NSArchiver archivedDataWithRootObject:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 896
+    },
+    {
+      "address": 1112873752,
+      "size": 237,
+      "reference_names": [
+        "_sizeOfType"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 312
+    },
+    {
+      "address": 1112890848,
+      "size": 13,
+      "reference_names": [
+        "-[NSUnarchiver objectZone]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 1544
+    },
+    {
+      "address": 1112978116,
+      "size": 128,
+      "reference_names": [
+        "-[NSCoder decodeNXObject]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCompatibility.m",
+      "source_line": 726
+    },
+    {
+      "address": 1112978244,
+      "size": 147,
+      "reference_names": [
+        "-[NSCoder encodeNXObject:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCompatibility.m",
+      "source_line": 713
+    },
+    {
+      "address": 1113021172,
+      "size": 60,
+      "reference_names": [
+        "+[NSArchiver archiveRootObject:toFile:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 906
+    },
+    {
+      "address": 1113021232,
+      "size": 104,
+      "reference_names": [
+        "+[NSArchiver classNameEncodedForTrueClassName:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 884
+    },
+    {
+      "address": 1113021336,
+      "size": 105,
+      "reference_names": [
+        "+[NSArchiver encodeClassName:intoClassName:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 873
+    },
+    {
+      "address": 1113021652,
+      "size": 13,
+      "reference_names": [
+        "-[NSArchiver archiverData]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 782
+    },
+    {
+      "address": 1113021668,
+      "size": 96,
+      "reference_names": [
+        "-[NSArchiver classNameEncodedForTrueClassName:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 918
+    },
+    {
+      "address": 1113021764,
+      "size": 13,
+      "reference_names": [
+        "-[NSArchiver data]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 786
+    },
+    {
+      "address": 1113021780,
+      "size": 102,
+      "reference_names": [
+        "-[NSArchiver encodeClassName:intoClassName:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 912
+    },
+    {
+      "address": 1113021884,
+      "size": 62,
+      "reference_names": [
+        "-[NSArchiver replaceObject:withObject:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 929
+    },
+    {
+      "address": 1113022188,
+      "size": 96,
+      "reference_names": [
+        "-[NSUnarchiver classNameDecodedForArchiveClassName:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 1608
+    },
+    {
+      "address": 1113022284,
+      "size": 13,
+      "reference_names": [
+        "-[NSUnarchiver data]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 1548
+    },
+    {
+      "address": 1113022300,
+      "size": 102,
+      "reference_names": [
+        "-[NSUnarchiver decodeClassName:asClassName:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 1590
+    },
+    {
+      "address": 1113022940,
+      "size": 217,
+      "reference_names": [
+        "__decodeLongAtCursor"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 1172
+    },
+    {
+      "address": 1113023160,
+      "size": 201,
+      "reference_names": [
+        "__encodeDouble"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 399
+    },
+    {
+      "address": 1113023364,
+      "size": 220,
+      "reference_names": [
+        "__encodeLong"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 134
+    },
+    {
+      "address": 1113023584,
+      "size": 268,
+      "reference_names": [
+        "__encodeLongLong"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 166
+    },
+    {
+      "address": 1113023852,
+      "size": 58,
+      "reference_names": [
+        "_classError"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 1044
+    },
+    {
+      "address": 1113024992,
+      "size": 54,
+      "reference_names": [
+        "_prematureEnd"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 638
+    },
+    {
+      "address": 1113025104,
+      "size": 58,
+      "reference_names": [
+        "_skipAggregateName"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 304
+    },
+    {
+      "address": 1113025164,
+      "size": 63,
+      "reference_names": [
+        "_typeDescriptorError"
+      ],
+      "source_path": "src/Kits/Foundation/NSArchiver.m",
+      "source_line": 248
+    }
+  ],
+  "unmapped": [],
+  "duplicate_candidates": [],
+  "boundary_disputed": [],
+  "by_module": {
+    "NSArchiver.m": {
+      "mapped": 85,
+      "unmapped": 0,
+      "duplicate_candidates": 0,
+      "boundary_disputed": 0
+    },
+    "NSCoder.m": {
+      "mapped": 0,
+      "unmapped": 0,
+      "duplicate_candidates": 0,
+      "boundary_disputed": 0
+    },
+    "NSCompatibility.m": {
+      "mapped": 2,
+      "unmapped": 0,
+      "duplicate_candidates": 0,
+      "boundary_disputed": 0
+    }
+  }
+}

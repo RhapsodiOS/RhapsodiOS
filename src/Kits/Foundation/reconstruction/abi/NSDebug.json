@@ -1,0 +1,58 @@
+{
+ "categories": [
+  {
+   "class": "NSProxy",
+   "class_methods": [],
+   "instance_methods": [
+    {
+     "selector": "printForDebugger:",
+     "types": "v12@8:12^{?=I**iilii^{stream_functions}^v}16"
+    }
+   ],
+   "name": "NSDebuggerExtras"
+  },
+  {
+   "class": "NSObject",
+   "class_methods": [],
+   "instance_methods": [
+    {
+     "selector": "printForDebugger:",
+     "types": "v12@8:12^{?=I**iilii^{stream_functions}^v}16"
+    }
+   ],
+   "name": "NSDebuggerExtras"
+  }
+ ],
+ "classes": [],
+ "data_symbols": [
+  "_NSAllocationStatisticsOutputMask",
+  "_NSDeallocateZombies",
+  "_NSDebugEnabled",
+  "_NSHangOnMallocError",
+  "_NSKeepAllocationStatistics",
+  "_NSNegativeRetainCheckEnabled",
+  "_NSZombieEnabled"
+ ],
+ "module": "NSDebug.m",
+ "schema_version": "abi-v1",
+ "text_symbols": [
+  "_NSDebugRecordObjectAndStack",
+  "__NSDoubleToBinaryString",
+  "__NSNegativeRetain",
+  "_NSIsFreedObject",
+  "__NSInitializePlatform",
+  "_NSCountFrames",
+  "_NSFrameAddress",
+  "_NSReturnAddress",
+  "_NSGetAllocationStatisticsOutputPort",
+  "_NSSetAllocationStatisticsOutputPort",
+  "_NSRecordAllocationEvent",
+  "_NSWaitForAllocationEvent",
+  "_NSParseAllocationEvent",
+  "__NSPrintForDebugger",
+  "_NSStringFromStack",
+  "__NSFirstFrameAddress",
+  "__NSNextFrameAddress",
+  "__NSReturnAddressFromFrameAddress"
+ ]
+}

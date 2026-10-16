@@ -12,7 +12,8 @@
       NSDeallocateZombies -- NSZone.m's allocation-statistics and zombie
       gates; the tests never set them
     - _NSConstantStringClassReference -- stage 3 (real NSString)
-    - NSString stub class -- stage 3; no test reaches it any more
+    - NSString stub class -- test-only placeholder; the full implementation
+      lives in NSString.m
     - _NSInitializePlatform -- backs +load/+initialize, silent no-op
     - NSStringFromStack -- NSDebug.h stack text, stage 3 territory
     Stage 2b retired: the stub NSException class and its raise-capture
@@ -78,20 +79,17 @@ void NSRecordAllocationEvent(int eventType, ...)
     and NSProxy.m each define their own static versions (stage 2b Task 11),
     and nothing referenced the stub globals.  */
 
-/*  NSLog is defined by NSObjCRuntime.m (stage 2b), which now links into
-    every suite that links this file; this file's abort()-ing stub was
-    removed when NSObjCRuntime.m joined the link line, because the two
-    definitions collided.  Its TODO body still does nothing until Task 4
-    reconstructs the real formatter.  */
+/*  NSLog and NSLogv are defined by NSObjCRuntime.m, which now links into
+    every suite that links this file.  The old abort()-ing stub was removed
+    when NSObjCRuntime.m joined the link line, because the two definitions
+    collided.  That module now reconstructs the target's formatting and
+    logging path.  */
 
-/*  NSString is not reconstructed until stage 3.  The stub
-    NSMethodSignature class that used to stand in here was removed when
-    NSMethodSignature.m was reconstructed (stage 2c) -- the two class
-    definitions collided at link time.  -methodSignatureForSelector: and
-    -description need their class objects to link; a minimal stub class,
-    not a subclass of NSObject, for the same reason the old NSException
-    stub wasn't -- ObjC dispatch is purely selector-based so the real
-    superclass doesn't matter to a stub that only aborts.  */
+/*  Full NSString behavior lives in NSString.m.  These isolated test suites
+    link selected Foundation sources only, so a minimal stub class provides
+    the NSString class object needed by -methodSignatureForSelector: and
+    -description.  Its unimplemented factories intentionally fail if a test
+    exercises those paths without linking the real NSString implementation.  */
 @interface NSString : Object
 + (id)stringWithFormat:(id)format, ...;
 + (id)stringWithCString:(const char *)bytes length:(unsigned)length;
@@ -130,9 +128,8 @@ void _NSInitializePlatform(void)
 }
 
 /*  NSStringFromStack backs _NSZombie's backtrace text (NSDebug.h's "Stack
-    processing" group) -- not reconstructed yet, and only reachable by
-    actually sending a message to a zombie, which no test in this stage
-    does, so this one keeps the usual abort()-ing shape.  */
+    processing" group); its implementation lives in NSDebug.m.  This
+    test-only aborting stand-in is used by suites that do not link NSDebug.m. */
 id NSStringFromStack(id format, id separator)
 {
     unimplemented("NSStringFromStack");

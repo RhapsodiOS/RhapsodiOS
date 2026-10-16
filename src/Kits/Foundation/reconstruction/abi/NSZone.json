@@ -18,6 +18,7 @@
   "_NSIncrementExtraRefCount",
   "_NSLogPageSize",
   "_NSPageSize",
+  "__NSPrintExtraRefCount",
   "_NSRealMemoryAvailable",
   "_NSRecycleZone",
   "_NSRoundDownToMultipleOfPageSize",
@@ -29,6 +30,10 @@
   "_NSZoneFromPointer",
   "_NSZoneMalloc",
   "_NSZoneName",
-  "_NSZoneRealloc"
+  "_NSZoneRealloc",
+  "__NSDecrementInternalRefCountWasZero",
+  "__NSGenericFree",
+  "__NSIncrementInternalRefCount",
+  "__NSInternalRefCount"
  ]
 }

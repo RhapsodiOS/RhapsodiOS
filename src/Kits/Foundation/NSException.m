@@ -3,341 +3,353 @@
 */
 
 #import <Foundation/NSException.h>
+#import <Foundation/NSDictionary.h>
 #import <Foundation/NSObjCRuntime.h>
 #import <Foundation/NSString.h>
+#import <Foundation/NSThread.h>
 #import <Foundation/NSZone.h>
 #import <Foundation/NSCoder.h>
 #import <objc/objc-class.h>
 #include <setjmp.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-/*	The active exception handlers, innermost first, chained through each
-	NSHandler2's own _others field -- so the stack lives in the callers'
-	own automatic storage and needs no allocation.
+extern NSString *NSStringFromStack(NSString *format, NSString *separator);
+extern NSString *_NSFullMethodName(id object, char *selectorName);
 
-	The reference keys this per thread (NSHandler2 carries a _thread
-	field, reached through the out-of-scope _NSCurrentThread()); NSThread.m
-	is stage 7, so this is a single process-global chain, the same
-	substitution NSAutoreleasePool.m makes for its pool stack and NSZone.m
-	for _NSRefCountLock, and for the same reason.  Every test in this stage
-	runs unthreaded.  Recorded in divergences.md.  */
-static NSHandler2 *NSExceptionHandlerStack = 0;
+/*	The target keeps a growable handler array in NSThread's exception slot
+	(at byte offset 20).  _others is the per-handler alternate-cleanup table,
+	not a chain link; _thread points back to the owning thread. */
+typedef struct {
+    unsigned generation;
+    unsigned capacity;
+    unsigned count;
+    NSHandler2 *handlers[1];
+} NSExceptionHandlerTable;
 
-/*	NS_DURING's expansion calls this with the address of an automatic it
-	just declared; the record is the caller's, so this only links it in.  */
-void
-_NSAddHandler2(NSHandler2 *handler)
+typedef struct {
+    unsigned identifier;
+    void (*function)(NSException *, void *);
+    void *context;
+} NSExceptionAltHandler;
+
+typedef struct {
+    unsigned capacity;
+    unsigned count;
+    NSExceptionAltHandler handlers[1];
+} NSExceptionAltHandlerTable;
+
+static BOOL NSExceptionLogging = NO;
+
+static NSExceptionHandlerTable **NSExceptionHandlerTableSlot(NSThread *thread)
 {
-    if (handler == 0)
-        return;
-
-    handler->_exception = nil;
-    handler->_others = (void *)NSExceptionHandlerStack;
-    handler->_thread = 0;
-    handler->_reserved1 = 0;
-    NSExceptionHandlerStack = handler;
+    return (NSExceptionHandlerTable **)((char *)thread + 20);
 }
 
-/*	Unlinks `handler`.  NS_VALUERETURN and NS_VOIDRETURN can reach this
-	for a handler that is not the innermost -- a return out of the middle
-	of a nested NS_DURING -- so this unwinds every handler inside it as
-	well rather than assuming it is on top.  */
-void
-_NSRemoveHandler2(NSHandler2 *handler)
+static NSExceptionHandlerTable *NSExceptionHandlersForThread(NSThread *thread)
 {
-    NSHandler2 *scan;
+    return *NSExceptionHandlerTableSlot(thread);
+}
 
-    if (handler == 0)
-        return;
-
-    for (scan = NSExceptionHandlerStack; scan != 0; scan = (NSHandler2 *)scan->_others) {
-        if (scan == handler) {
-            NSExceptionHandlerStack = (NSHandler2 *)handler->_others;
-            return;
-        }
+static void NSExceptionFreeAltHandlers(NSHandler2 *handler)
+{
+    if (handler->_others != 0) {
+        NSZoneFree(NULL, handler->_others);
+        handler->_others = 0;
     }
 }
 
+static void NSExceptionRunAltHandlers(NSHandler2 *handler,
+                                      NSException *exception,
+                                      BOOL whileRaising)
+{
+    NSExceptionAltHandlerTable *table =
+        (NSExceptionAltHandlerTable *)handler->_others;
+    unsigned index;
+
+    if (table == 0)
+        return;
+    for (index = 0; index < table->count; index++) {
+        NSExceptionAltHandler *entry = &table->handlers[index];
+
+        if (NSExceptionLogging) {
+            if (whileRaising)
+                NSLog(@"Invoking alt handler (%x, %x) while raising exception %@ with handler %x\n",
+                      entry->function, entry->context, exception, handler);
+            else
+                NSLog(@"Invoking alt handler (%x, %x) while removing non-top handler %x\n",
+                      entry->function, entry->context, handler);
+        }
+        (*entry->function)(exception, entry->context);
+    }
+    NSZoneFree(NULL, table);
+    handler->_others = 0;
+}
+
+/*	The binary retains these pre-NSHandler2 entry points as direct forwarding
+    wrappers.  NSHandler is opaque in the public header, so callers can only
+    pass the record pointer through to the NSHandler2 implementation.  */
+void
+_NSAddHandler(NSHandler *handler)
+{
+    _NSAddHandler2((NSHandler2 *)handler);
+}
+
+void
+_NSRemoveHandler(NSHandler *handler)
+{
+    _NSRemoveHandler2((NSHandler2 *)handler);
+}
+
+/*	NS_DURING's expansion calls this with the address of an automatic it
+    just declared; the per-thread table stores that record's address. */
+void
+_NSAddHandler2(NSHandler2 *handler)
+{
+    NSThread *thread;
+    NSExceptionHandlerTable **slot;
+    NSExceptionHandlerTable *table;
+    unsigned capacity;
+    unsigned index;
+
+    thread = _NSCurrentThread();
+    slot = NSExceptionHandlerTableSlot(thread);
+    table = *slot;
+    if (table == 0) {
+        capacity = 32;
+        table = (NSExceptionHandlerTable *)NSZoneMalloc(NULL,
+        12 + capacity * sizeof(NSHandler2 *));
+        table->generation = 0;
+        table->capacity = capacity;
+        table->count = 0;
+        *slot = table;
+        if (NSExceptionLogging)
+        NSLog(@"Creating exception handler stack %x for thread %x\n",
+              table, thread);
+    } else if (table->count >= table->capacity) {
+        capacity = table->capacity + 16;
+        table = (NSExceptionHandlerTable *)NSZoneRealloc(NULL, table,
+        12 + capacity * sizeof(NSHandler2 *));
+        table->capacity = capacity;
+        *slot = table;
+        if (NSExceptionLogging)
+        NSLog(@"Grew exception handler stack %x for thread %x to %d slots\n",
+              table, thread, capacity);
+    }
+
+    handler->_exception = nil;
+    handler->_others = 0;
+    handler->_thread = thread;
+    handler->_reserved1 = 0;
+    index = table->count++;
+    table->handlers[index] = handler;
+    if (NSExceptionLogging)
+        NSLog(@"Added top exception handler %x for stack %x for thread %x\n",
+          handler, table, thread);
+}
+
+/*	A return out of a nested NS_DURING unwinds every handler above the
+    requested record, running its alternate cleanup callbacks with nil. */
+void
+_NSRemoveHandler2(NSHandler2 *handler)
+{
+    NSThread *thread;
+    NSExceptionHandlerTable *table;
+    int index;
+    unsigned cursor;
+
+    thread = (NSThread *)handler->_thread;
+    table = thread != nil ? NSExceptionHandlersForThread(thread) : 0;
+    if (table == 0 || table->count == 0) {
+        NSLog(@"*** Attempt to remove unrecognized exception handler 0x%x\n",
+          handler);
+        return;
+    }
+
+    index = (int)table->count - 1;
+    if (table->handlers[index] == handler) {
+        NSExceptionFreeAltHandlers(handler);
+        table->handlers[index] = 0;
+        table->count--;
+        if (NSExceptionLogging)
+        NSLog(@"Removed top exception handler %x for stack %x for thread %x\n",
+              handler, table, thread);
+        return;
+    }
+
+    if (NSExceptionLogging)
+        NSLog(@"Removal of handler %x requested for stack %x for thread %x -- not on top\n",
+          handler, table, thread);
+    for (index = (int)table->count - 1; index >= 0; index--) {
+        if (table->handlers[index] == handler)
+        break;
+    }
+    if (index < 0) {
+        NSLog(@"*** Attempt to remove unrecognized exception handler 0x%x\n",
+          handler);
+        return;
+    }
+
+    NSLog(@"*** Exception handlers were not properly removed. Some code has jumped or returned out of an NS_DURING...NS_HANDLER region without using the NS_VOIDRETURN or NS_VALUERETURN macros.\n");
+    for (cursor = table->count; cursor > (unsigned)index + 1; cursor--) {
+        NSHandler2 *inner = table->handlers[cursor - 1];
+
+        NSExceptionRunAltHandlers(inner, nil, NO);
+        table->handlers[cursor - 1] = 0;
+    }
+    NSExceptionFreeAltHandlers(handler);
+    table->count = (unsigned)index;
+    table->handlers[index] = 0;
+    if (NSExceptionLogging)
+        NSLog(@"Removed non-top exception handler %x for stack %x for thread %x\n",
+          handler, table, thread);
+}
+
 /*	Read by NS_HANDLER's expansion after the transfer, which is why the
-	exception is stored on the handler record rather than in a global a
-	nested raise could overwrite before this is read.  */
+    exception is stored on the handler record rather than in a global a
+    nested raise could overwrite before this is read.  */
 NSException *
 _NSExceptionObjectFromHandler2(NSHandler2 *handler)
 {
-    if (handler == 0)
-        return nil;
     return handler->_exception;
 }
 
 /*	The pre-NSHandler2 entry point the reference still exports.  The older
-	NSHandler is opaque in the shipped header (`typedef struct _NSHandler
-	NSHandler;` with no definition), so nothing in this tree can construct
-	one; both handler generations share this file's single chain, and this
-	reads the same field the current one does.  Recorded in
-	divergences.md as structurally reconstructed, not behaviourally
-	confirmed.  */
+    NSHandler is opaque in the shipped header (`typedef struct _NSHandler
+    NSHandler;` with no definition), so nothing in this tree can construct
+    one.  */
 NSException *
 _NSExceptionObjectFromHandler(NSHandler2 *handler)
 {
     return _NSExceptionObjectFromHandler2(handler);
 }
 
-/*	How many handlers are active.  Exported by the reference; used here by
-	the test suite to assert the stack balances.  */
+/*	How many handlers are active on the current thread. */
 unsigned
 _NSExceptionHandlerCount(void)
 {
-    NSHandler2 *scan;
-    unsigned count;
+    NSExceptionHandlerTable *table =
+        NSExceptionHandlersForThread(_NSCurrentThread());
 
-    count = 0;
-    for (scan = NSExceptionHandlerStack; scan != 0; scan = (NSHandler2 *)scan->_others)
-        count++;
-
-    return count;
+    return table != 0 ? table->count : 0;
 }
 
-/*	Drops every active handler.  The reference exports this for the
-	unwind-everything case (a thread exiting, or a top-level loop
-	recovering); nothing in this stage calls it except the tests.  */
+/*	Thread teardown passes the address of its exception-handler slot. The
+    target frees the table and any alternate-action tables, then clears it. */
 void
-_NSClearExceptionStack(void)
+_NSClearExceptionStack(void **slot)
 {
-    NSExceptionHandlerStack = 0;
-}
-
-/*	The alternate handler pair.  The reference's bytes (0x425106f8 add,
-	0x425097f0 remove) show these are NOT chain operations like
-	_NSAddHandler2/_NSRemoveHandler2: each opens by fetching a per-thread
-	state record and reads a table from it (record +0x14), then works a
-	growable array of identifiers allocated 0x98 bytes on first use
-	(capacity field 12) and grown by 6 entries through a realloc-style
-	call when full.  Add appends one identifier at a 12-byte stride and
-	bumps the count; Remove scans for its argument's value, memmoves the
-	tail over the slot and decrements the count.  What the identifiers
-	are keyed by and who consumes the table is out of this stage's scope
-	-- the likely callers are Distributed Objects (stage 8).
-
-	This reconstruction keeps the observed shape -- one growable
-	identifier array, first allocation 12 entries, +6 growth, removal by
-	tail memmove -- over a single process-global table, the same
-	per-thread substitution this file's handler stack makes.  The
-	identifier is the handler's own address, which is the only value the
-	observed comparison can be shown to round-trip.  Listed in
-	divergences.md's untested table: no test can reach the semantics, and
-	the callers do not exist until stage 8.  */
-
-typedef struct {
-    unsigned	capacity;
-    unsigned	count;
-    NSHandler2	**identifiers;
-} NSAltHandlerTable;
-
-#define NSAltHandlerInitialCapacity 12
-#define NSAltHandlerCapacityGrowth 6
-
-static NSAltHandlerTable NSAltHandlers = { NSAltHandlerInitialCapacity, 0, 0 };
-
-void
-_NSAddAltHandler2(NSHandler2 *handler)
-{
-    if (handler == 0)
-        return;
-
-    if (NSAltHandlers.identifiers == 0)
-        NSAltHandlers.identifiers = (NSHandler2 **)
-            NSZoneMalloc(0, NSAltHandlers.capacity * sizeof(NSHandler2 *));
-
-    if (NSAltHandlers.count == NSAltHandlers.capacity) {
-        NSAltHandlerTable grown;
-
-        grown.capacity = NSAltHandlers.capacity + NSAltHandlerCapacityGrowth;
-        grown.count = NSAltHandlers.count;
-        grown.identifiers = (NSHandler2 **)
-            NSZoneRealloc(0, NSAltHandlers.identifiers,
-                          grown.capacity * sizeof(NSHandler2 *));
-        NSAltHandlers = grown;
-    }
-
-    NSAltHandlers.identifiers[NSAltHandlers.count++] = handler;
-}
-
-void
-_NSRemoveAltHandler2(NSHandler2 *handler)
-{
+    NSExceptionHandlerTable *table = (NSExceptionHandlerTable *)*slot;
+    NSThread *thread;
     unsigned index;
 
-    if (handler == 0)
+    if (table == 0)
         return;
+    if (NSExceptionLogging) {
+        thread = _NSCurrentThread();
+        NSLog(@"Clearing exception handler stack %x for thread %x\n",
+          table, thread);
+    }
+    for (index = 0; index < table->count; index++) {
+        NSHandler2 *handler = table->handlers[index];
 
-    for (index = 0; index < NSAltHandlers.count; index++) {
-        if (NSAltHandlers.identifiers[index] == handler) {
-            unsigned remaining = NSAltHandlers.count - index - 1;
+        if (handler->_others != 0)
+            NSZoneFree(NULL, handler->_others);
+    }
+    NSZoneFree(NULL, table);
+    *slot = 0;
+}
+
+/*	Alternate handlers belong to the innermost active handler. Their
+    identifiers are per-handler generations; callbacks run with the raised
+    exception, or with nil when non-top removal unwinds skipped frames. */
+unsigned
+_NSAddAltHandler2(void (*function)(NSException *, void *), void *context)
+{
+    NSThread *thread = _NSCurrentThread();
+    NSExceptionHandlerTable *handlers = NSExceptionHandlersForThread(thread);
+    NSExceptionAltHandlerTable *table;
+    NSHandler2 *handler;
+    NSExceptionAltHandler *entry;
+    unsigned capacity;
+
+    if (handlers == 0 || handlers->count == 0) {
+        if (NSExceptionLogging)
+        NSLog(@"*** No current exception handler for alt proc 0x%x -- ignoring\n",
+              function);
+        return 0;
+    }
+    handler = handlers->handlers[handlers->count - 1];
+    table = (NSExceptionAltHandlerTable *)handler->_others;
+    if (table == 0) {
+        capacity = 12;
+        table = (NSExceptionAltHandlerTable *)NSZoneMalloc(NULL,
+        8 + capacity * sizeof(NSExceptionAltHandler));
+        table->capacity = capacity;
+        table->count = 0;
+        handler->_others = table;
+    } else if (table->count >= table->capacity) {
+        capacity = table->capacity + 6;
+        table = (NSExceptionAltHandlerTable *)NSZoneRealloc(NULL, table,
+        8 + capacity * sizeof(NSExceptionAltHandler));
+        table->capacity = capacity;
+        handler->_others = table;
+    }
+    handlers->generation++;
+    if (handlers->generation == 0)
+        handlers->generation = 1;
+    entry = &table->handlers[table->count++];
+    entry->identifier = handlers->generation;
+    entry->function = function;
+    entry->context = context;
+    if (NSExceptionLogging)
+        NSLog(@"Adding alt handler %d (proc %x) to handler %x for thread %x\n",
+          entry->identifier, function, handler, thread);
+    return entry->identifier;
+}
+
+void
+_NSRemoveAltHandler2(unsigned identifier)
+{
+    NSThread *thread = _NSCurrentThread();
+    NSExceptionHandlerTable *handlers = NSExceptionHandlersForThread(thread);
+    unsigned handlerIndex;
+
+    if (handlers != 0) {
+        for (handlerIndex = 0; handlerIndex < handlers->count; handlerIndex++) {
+        NSHandler2 *handler = handlers->handlers[handlerIndex];
+        NSExceptionAltHandlerTable *table =
+            (NSExceptionAltHandlerTable *)handler->_others;
+        unsigned index;
+
+        if (table == 0)
+            continue;
+        for (index = 0; index < table->count; index++) {
+            if (table->handlers[index].identifier == identifier) {
+            unsigned remaining = table->count - index - 1;
 
             if (remaining != 0)
-                memmove(&NSAltHandlers.identifiers[index],
-                        &NSAltHandlers.identifiers[index + 1],
-                        remaining * sizeof(NSHandler2 *));
-            NSAltHandlers.count--;
+                memmove(&table->handlers[index],
+                    &table->handlers[index + 1],
+                    remaining * sizeof(NSExceptionAltHandler));
+            table->count--;
+            if (NSExceptionLogging)
+                NSLog(@"Removing alt handler %d to handler %x for thread %x\n",
+                  identifier, handler, thread);
             return;
-        }
-    }
-}
-
-/*	Stage 2b has no NSString (stage 3).  A `@"..."` literal is laid out by
-	this project's Objective-C frontend (src/cc-1/cc/objc/NXConstStr.h) as
-	{ Class isa; char *c_string; unsigned int len; }, so these three read
-	and build that shape -- enough for this file to carry an exception's
-	name and reason and to compare them.  NSObjCRuntime.m has the same
-	helpers, file-static there for the same reason they are file-static
-	here: neither is part of any module's exported surface, and stage 3
-	deletes both when real NSString arrives.  */
-
-typedef struct {
-    Class	isa;
-    char	*c_string;
-    unsigned	len;
-} NSExceptionStringRecord;
-
-/*	NSString.h declares this symbol `extern void *`; that header is this
-	file's declaration of record for it, so the record builder below casts
-	its address rather than re-declaring it with a struct type that would
-	conflict.  */
-
-static const char *
-_NSExceptionStringBytes(NSString *string)
-{
-    if (string == nil)
-        return NULL;
-    return ((NSExceptionStringRecord *)string)->c_string;
-}
-
-static NSString *
-_NSExceptionStringWithCString(const char *bytes)
-{
-    NSExceptionStringRecord *record;
-    unsigned length;
-
-    if (bytes == NULL)
-        return nil;
-
-    length = strlen(bytes);
-    record = (NSExceptionStringRecord *)
-        NSZoneMalloc(0, sizeof(NSExceptionStringRecord) + length + 1);
-    record->isa = (Class)&_NSConstantStringClassReference;
-    record->c_string = (char *)(record + 1);
-    record->len = length;
-    memcpy(record->c_string, bytes, length + 1);
-
-    return (NSString *)record;
-}
-
-/*	Compares two of this stage's strings by their bytes.  Sending
-	-isEqual: would dispatch to a class stage 2b does not implement;
-	stage 3 replaces this with the real message.  */
-static BOOL
-NSExceptionStringsEqual(NSString *lhs, NSString *rhs)
-{
-    const char *left;
-    const char *right;
-
-    if (lhs == rhs)
-        return YES;
-
-    left = _NSExceptionStringBytes(lhs);
-    right = _NSExceptionStringBytes(rhs);
-    if (left == NULL || right == NULL)
-        return NO;
-
-    return strcmp(left, right) == 0;
-}
-
-/*	Builds an exception's reason by formatting `format` over `argList`.
-	Shares NSLogv's specifier handling by going through it is not
-	possible -- NSLogv writes rather than returns -- so this repeats the
-	same walk into a buffer.  Both are provisional and both go away in
-	stage 3; see divergences.md.  */
-
-#define NSExceptionReasonMax 1024
-
-static NSString *
-_NSExceptionReasonFromFormat(NSString *format, va_list argList)
-{
-    const char *bytes;
-    char reason[NSExceptionReasonMax];
-    unsigned out;
-    unsigned i;
-
-    bytes = _NSExceptionStringBytes(format);
-    if (bytes == NULL)
-        return nil;
-
-    out = 0;
-    i = 0;
-    while (bytes[i] != '\0' && out < NSExceptionReasonMax - 1) {
-        if (bytes[i] != '%') {
-            reason[out++] = bytes[i++];
-            continue;
-        }
-        if (bytes[i + 1] == '%') {
-            reason[out++] = '%';
-            i += 2;
-            continue;
-        }
-        if (bytes[i + 1] == '@') {
-            id object = va_arg(argList, id);
-            const char *text = _NSExceptionStringBytes((NSString *)object);
-
-            if (text == NULL)
-                text = "(null)";
-            while (*text != '\0' && out < NSExceptionReasonMax - 1)
-                reason[out++] = *text++;
-            i += 2;
-            continue;
-        }
-        {
-            char specifier[16];
-            char converted[NSExceptionReasonMax];
-            unsigned length = 0;
-            unsigned k = 0;
-
-            specifier[length++] = bytes[i++];
-            while (bytes[i] != '\0' && length < sizeof(specifier) - 1) {
-                specifier[length++] = bytes[i];
-                if (strchr("diouxXeEfgGcsp", bytes[i]) != NULL) {
-                    i++;
-                    break;
-                }
-                i++;
             }
-            specifier[length] = '\0';
-
-            converted[0] = '\0';
-            if (strchr(specifier, 's') != NULL)
-                sprintf(converted, specifier, va_arg(argList, char *));
-            else if (strchr(specifier, 'f') != NULL ||
-                     strchr(specifier, 'e') != NULL ||
-                     strchr(specifier, 'g') != NULL)
-                sprintf(converted, specifier, va_arg(argList, double));
-            else
-                sprintf(converted, specifier, va_arg(argList, int));
-
-            while (converted[k] != '\0' && out < NSExceptionReasonMax - 1)
-                reason[out++] = converted[k++];
+        }
         }
     }
-    reason[out] = '\0';
-
-    return _NSExceptionStringWithCString(reason);
+    if (NSExceptionLogging)
+        NSLog(@"Alt handler %d for thread %x not found\n", identifier, thread);
 }
 
-/*	The exception names.  Each is a compiler-emitted NXConstantString
-	literal: stage 2b has no NSString (stage 3), and a literal is exactly
-	what a `NSString * const` global holds in the reference.  Callers
-	compare these by pointer, which works because each name is one shared
-	instance.
+/*	The exception names are compiler-emitted NXConstantString literals,
+	matching the reference's shared `NSString * const` objects.  Callers
+	compare these canonical names by pointer.
 
 	The reference exports 23 such constants; the 14 here are the ones
 	NSException.h declares.  The other 9 are declared in other stages'
@@ -367,7 +379,6 @@ NSString * const NSOldStyleException = @"NSOldStyleException";
 BOOL NSHangOnUncaughtException = NO;
 
 static NSUncaughtExceptionHandler *NSUncaughtHandler = 0;
-static BOOL NSExceptionLogging = NO;
 
 NSUncaughtExceptionHandler *
 NSGetUncaughtExceptionHandler(void)
@@ -378,6 +389,9 @@ NSGetUncaughtExceptionHandler(void)
 void
 NSSetUncaughtExceptionHandler(NSUncaughtExceptionHandler *handler)
 {
+    if (NSExceptionLogging)
+        NSLog(@"Changing uncaught exception handler from %x to %x\n",
+              NSUncaughtHandler, handler);
     NSUncaughtHandler = handler;
 }
 
@@ -393,67 +407,97 @@ NSSetUncaughtExceptionHandler(NSUncaughtExceptionHandler *handler)
 
 	With no handler active the exception is uncaught: the installed
 	handler gets it if there is one, and otherwise the process reports and
-	stops, hanging instead of exiting when NSHangOnUncaughtException asks
-	it to.  */
+    stops, hanging instead of exiting when NSHangOnUncaughtException asks
+    it to.  */
 void
 _NSRaiseError(NSException *exception)
 {
+    NSThread *thread;
+    NSExceptionHandlerTable *table;
     NSHandler2 *handler;
+    sigset_t signalMask;
 
-    if (exception == nil)
-        return;
+    thread = _NSCurrentThread();
+    table = NSExceptionHandlersForThread(thread);
 
-    handler = NSExceptionHandlerStack;
+    if (table == 0 || table->count == 0) {
+        NSString *name;
+        NSString *reason;
+        NSString *stack;
 
-    if (handler == 0) {
+        if (NSExceptionLogging)
+        NSLog(@"Raising exception %@ without top level handler\n", exception);
         if (NSUncaughtHandler != 0) {
             (*NSUncaughtHandler)(exception);
             /*  A handler that returns has declined to stop the process;
                 fall through to the default treatment below.  */
         }
-        NSLog(@"*** Uncaught exception: %@ -- %@",
-              [exception name], [exception reason]);
+#if defined(__ppc__) || defined(__POWERPC__)
+        name = [exception name];
+        reason = [exception reason];
+        stack = NSStringFromStack(@"0x%x", @" ");
+#else
+        stack = NSStringFromStack(@"0x%x", @" ");
+        reason = [exception reason];
+        name = [exception name];
+#endif
+        NSLog(@"*** Uncaught exception: <%@> %@\nstack: %@\n",
+              name, reason, stack);
         if (NSHangOnUncaughtException) {
-            for (;;)
-                ;
+        memset(&signalMask, 0, sizeof(signalMask));
+        sigsuspend(&signalMask);
         }
-        abort();
+        exit(-1);
     }
 
-    NSExceptionHandlerStack = (NSHandler2 *)handler->_others;
+    table->count--;
+    handler = table->handlers[table->count];
+    table->handlers[table->count] = 0;
+    NSExceptionRunAltHandlers(handler, exception, YES);
     handler->_exception = exception;
+    if (NSExceptionLogging)
+        NSLog(@"Raising exception %@ with handler\n", exception);
     _longjmp(handler->_state, 1);
 }
 
-/*	"-[NSObject hash]" or "+[NSObject alloc]": the prefix every method
-	diagnostic in this framework opens with.  Returns an object, not a
-	C string -- NSObject.m and NSProxy.m both substitute it with %@,
-	which is what pins the return type.
+#if defined(__ppc__) || defined(__POWERPC__)
+typedef void (*NSExceptionRaiserFunction)(NSException *exception);
+static NSExceptionRaiserFunction __NSExceptionRaiser = _NSRaiseError;
 
-	A class object is its own isa's instance, so a receiver whose isa is
-	a metaclass is a class and takes the + form.  CLS_META is the
-	metaclass bit in struct objc_class's info field (objc-class.h).  */
+NSExceptionRaiserFunction
+_NSExceptionRaiser(void)
+{
+    return __NSExceptionRaiser;
+}
+
+NSExceptionRaiserFunction
+_NSSetExceptionRaiser(NSExceptionRaiserFunction raiser)
+{
+    __NSExceptionRaiser = raiser != 0 ? raiser : _NSRaiseError;
+    return raiser;
+}
+#endif
+
+/*	The target's method proem begins with "*** -[" or "*** +[" and is
+	returned as an NSString for the framework's diagnostic format strings. */
 id
 _NSMethodExceptionProem(id object, SEL aSelector)
 {
-    char buffer[256];
+    char buffer[1024];
     const char *className;
+    const char *selectorName;
     BOOL isClassMethod;
 
-    if (object == nil)
-        return _NSExceptionStringWithCString("-[nil (null)]");
-
-    isClassMethod = ((((Class)object)->isa->info & CLS_META) != 0);
+    isClassMethod = object == [object class];
     className = ((Class)object)->isa->name;
-    if (isClassMethod)
-        className = ((Class)object)->name;
+    selectorName = (aSelector == NULL) ? "" : sel_getName(aSelector);
 
-    sprintf(buffer, "%c[%s %s]",
+    sprintf(buffer, "*** %c[%s %s]",
             isClassMethod ? '+' : '-',
             className,
-            (aSelector == NULL) ? "(null)" : sel_getName(aSelector));
+            selectorName);
 
-    return _NSExceptionStringWithCString(buffer);
+    return [NSString stringWithCString:buffer length:(unsigned)strlen(buffer)];
 }
 
 @implementation NSException
@@ -465,33 +509,27 @@ _NSMethodExceptionProem(id object, SEL aSelector)
                                            userInfo:userInfo] autorelease];
 }
 
-/*	The name, reason and userInfo ivars are assigned, not retained.
-	Stage 2b's strings are NXConstantString-shaped records whose class
-	reference is still the zeroed test placeholder (stage 3 replaces it
-	with real NSString), so a retain sent to one would dispatch through
-	a class with no method list.  The records themselves are either
-	compiler literals or NSZoneMalloc'd and never freed, so nothing is
-	leaked that would not outlive the process anyway; the exception
-	object itself takes the normal retain/autorelease path.  Stage 3
-	switches these to retain/release.  Recorded in divergences.md.  */
+/*	The target copies its name and reason and retains userInfo. */
 - (id)initWithName:(NSString *)aName reason:(NSString *)aReason userInfo:(NSDictionary *)aUserInfo
 {
-    self = [super init];
-    name = aName;
-    reason = aReason;
-    userInfo = aUserInfo;
-    reserved = 0;
+    name = [aName copyWithZone:NULL];
+    reason = [aReason copyWithZone:NULL];
+    userInfo = [aUserInfo retain];
     return self;
 }
 
 - (void)dealloc
 {
+    [name release];
+    [reason release];
+    [userInfo release];
     [super dealloc];
 }
 
 - (id)init
 {
-    return [self initWithName:nil reason:nil userInfo:nil];
+    [super dealloc];
+    return nil;
 }
 
 - (NSString *)name      { return name; }
@@ -500,25 +538,21 @@ _NSMethodExceptionProem(id object, SEL aSelector)
 
 - (void)raise
 {
+#if defined(__ppc__) || defined(__POWERPC__)
+    (*__NSExceptionRaiser)(self);
+#else
     _NSRaiseError(self);
+#endif
 }
 
-/*	Compares by name and reason rather than by identity.  Both are this
-	stage's NXConstantString-shaped records, which implement no
-	-isEqual:, so the comparison goes through NSExceptionStringsEqual
-	above.  */
+/*	The reference compares exception names after requiring an exact class
+	match.  The reason and userInfo do not participate. */
 - (BOOL)isEqual:(id)object
 {
-    NSException *other;
-
-    if (self == object)
-        return YES;
     if (object == nil || ((NSException *)object)->isa != isa)
         return NO;
 
-    other = (NSException *)object;
-    return NSExceptionStringsEqual(name, other->name) &&
-           NSExceptionStringsEqual(reason, other->reason);
+    return [name isEqual:((NSException *)object)->name];
 }
 
 - (NSString *)description
@@ -552,9 +586,10 @@ _NSMethodExceptionProem(id object, SEL aSelector)
 
 + (void)raise:(NSString *)name format:(NSString *)format arguments:(va_list)argList
 {
-    _NSRaiseError([self exceptionWithName:name
-                                   reason:_NSExceptionReasonFromFormat(format, argList)
-                                 userInfo:nil]);
+    NSString *reason = [[[NSString allocWithZone:NULL]
+        initWithFormat:format arguments:argList] autorelease];
+
+    [[self exceptionWithName:name reason:reason userInfo:nil] raise];
 }
 
 /*	NSCoding and NSCopying.  Written against the declared APIs; NOT
@@ -572,19 +607,17 @@ _NSMethodExceptionProem(id object, SEL aSelector)
 
 - (id)initWithCoder:(NSCoder *)aDecoder
 {
-    self = [super init];
-    name = [aDecoder decodeObject];
-    reason = [aDecoder decodeObject];
-    userInfo = [aDecoder decodeObject];
-    reserved = 0;
-    return self;
+    id decodedName = [aDecoder decodeObject];
+    id decodedReason = [aDecoder decodeObject];
+    id decodedUserInfo = [aDecoder decodeObject];
+
+    return [self initWithName:decodedName reason:decodedReason
+                     userInfo:decodedUserInfo];
 }
 
 - (id)copyWithZone:(NSZone *)zone
 {
-    return [[NSException allocWithZone:zone] initWithName:name
-                                                   reason:reason
-                                                 userInfo:userInfo];
+    return [self retain];
 }
 
 /*	No header in this tree declares this selector (NSObject.h declares
@@ -602,52 +635,47 @@ _NSMethodExceptionProem(id object, SEL aSelector)
 
 @implementation NSAssertionHandler
 
-/*	One shared handler for the whole process.  The reference keeps the
-	current handler in the calling thread's -threadDictionary (NSThread.m
-	and NSDictionary.m, neither reconstructed here), substituted with a
-	process-global for the same reason this file's handler stack is.
-	The class's single ivar is _reserved, so there is no per-instance
-	state to keep either way.  Recorded in divergences.md.  */
-static NSAssertionHandler *NSCurrentAssertionHandler = nil;
-
+/*	The targets keep one handler per thread in threadDictionary under
+	the NSAssertionHandler key. The instance itself carries no additional
+	state; handler identity follows the owning thread. */
 + (NSAssertionHandler *)currentHandler
 {
-    if (NSCurrentAssertionHandler == nil)
-        NSCurrentAssertionHandler = [[self allocWithZone:NULL] init];
-    return NSCurrentAssertionHandler;
+    static NSString *key = @"NSAssertionHandler";
+    NSThread *thread = _NSCurrentThread();
+    NSMutableDictionary *threadDictionary = [thread threadDictionary];
+    NSAssertionHandler *handler = [threadDictionary objectForKey:key];
+
+    if (handler == nil) {
+        handler = [[NSAssertionHandler allocWithZone:NULL] init];
+        thread = _NSCurrentThread();
+        threadDictionary = [thread threadDictionary];
+        [threadDictionary setObject:handler forKey:key];
+        [handler release];
+    }
+    return handler;
 }
 
 - (void)handleFailureInMethod:(SEL)selector object:(id)object file:(NSString *)fileName lineNumber:(int)line description:(NSString *)format, ...
 {
     va_list arguments;
-    NSString *reason;
 
     va_start(arguments, format);
-    reason = _NSExceptionReasonFromFormat(format, arguments);
-    va_end(arguments);
-
     NSLog(@"*** Assertion failure in %@, %@:%d",
-          _NSMethodExceptionProem(object, selector), fileName, line);
-
-    _NSRaiseError([NSException exceptionWithName:NSInternalInconsistencyException
-                                          reason:reason
-                                        userInfo:nil]);
+          _NSFullMethodName(object, (char *)selector), fileName, line);
+    [NSException raise:NSInternalInconsistencyException
+                format:format arguments:arguments];
+    va_end(arguments);
 }
 
 - (void)handleFailureInFunction:(NSString *)functionName file:(NSString *)fileName lineNumber:(int)line description:(NSString *)format, ...
 {
     va_list arguments;
-    NSString *reason;
 
     va_start(arguments, format);
-    reason = _NSExceptionReasonFromFormat(format, arguments);
+    NSLog(@"*** Assertion failure in %@(), %@:%d", functionName, fileName, line);
+    [NSException raise:NSInternalInconsistencyException
+                format:format arguments:arguments];
     va_end(arguments);
-
-    NSLog(@"*** Assertion failure in %@, %@:%d", functionName, fileName, line);
-
-    _NSRaiseError([NSException exceptionWithName:NSInternalInconsistencyException
-                                          reason:reason
-                                        userInfo:nil]);
 }
 
 @end

@@ -1,0 +1,54 @@
+{
+  "schema_version": "source-map-v1",
+  "reference_sha256": "332B3C8C0AE0A6E40A4B93110EE16748FCD94AA0119D63F16EDE878598C681B4",
+  "mapped": [
+    {
+      "address": 1112613304,
+      "size": 4612,
+      "reference_names": [
+        "__NSvfprintf"
+      ],
+      "source_path": "src/Kits/Foundation/NSPrintf.m",
+      "source_line": 368
+    },
+    {
+      "address": 1112699708,
+      "size": 312,
+      "reference_names": [
+        "___ultoa"
+      ],
+      "source_path": "src/Kits/Foundation/NSPrintf.m",
+      "source_line": 242
+    },
+    {
+      "address": 1112863456,
+      "size": 304,
+      "reference_names": [
+        "_cvt"
+      ],
+      "source_path": "src/Kits/Foundation/NSPrintf.m",
+      "source_line": 873
+    },
+    {
+      "address": 1112935616,
+      "size": 224,
+      "reference_names": [
+        "_exponent"
+      ],
+      "source_path": "src/Kits/Foundation/NSPrintf.m",
+      "source_line": 909
+    },
+    {
+      "address": 1113244180,
+      "size": 464,
+      "reference_names": [
+        "___uqtoa"
+      ],
+      "source_path": "src/Kits/Foundation/NSPrintf.m",
+      "source_line": 302
+    }
+  ],
+  "unmapped": [],
+  "duplicate_candidates": [],
+  "boundary_disputed": []
+}

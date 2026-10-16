@@ -8,11 +8,83 @@
 #import <Foundation/NSException.h>
 #import <Foundation/NSDebug.h>
 #import <Foundation/NSObject.h>
+#import <Foundation/NSMapTable.h>
 #import <objc/objc-runtime.h>
 #import <mach/mach.h>
 #import <mach/host_info.h>
+#import <mach/cthreads.h>
 #import <string.h>
 #import <stdio.h>
+
+extern NSString *__NSEmptyString;
+extern int _NSsnprintf(char *buffer, size_t size, char *format, ...);
+
+#if defined(__ppc__) || defined(__POWERPC__)
+volatile unsigned int __NSExternRefCountLock;
+extern int _NSIsMultiThreaded;
+
+static void NSExternRefCountLockAcquire(void)
+{
+    for (;;) {
+        unsigned oldValue;
+        unsigned acquired;
+        unsigned one = 1;
+
+        __asm__ volatile(
+            "1: lwarx %0,0,%2\n\t"
+            "cmpwi %0,0\n\t"
+            "bne- 2f\n\t"
+            "stwcx. %3,0,%2\n\t"
+            "bne- 1b\n\t"
+            "isync\n\t"
+            "li %1,1\n\t"
+            "b 3f\n"
+            "2: li %1,0\n"
+            "3:"
+            : "=&r" (oldValue), "=&r" (acquired)
+            : "r" (&__NSExternRefCountLock), "r" (one)
+            : "cr0", "memory");
+        if (acquired && oldValue == 0)
+            return;
+        cthread_yield();
+    }
+}
+
+static void NSExternRefCountLockRelease(void)
+{
+    __asm__ volatile("sync" ::: "memory");
+    __NSExternRefCountLock = 0;
+}
+#else
+extern mutex_t __NSRefCountLock;
+#endif
+
+static BOOL NSLockExtraRefCountTable(void)
+{
+#if defined(__ppc__) || defined(__POWERPC__)
+    if (!_NSIsMultiThreaded)
+        return NO;
+    NSExternRefCountLockAcquire();
+    return YES;
+#else
+    if (__NSRefCountLock == 0)
+        return NO;
+    if (mutex_try_lock(__NSRefCountLock) == 0)
+        mutex_wait_lock(__NSRefCountLock);
+    return YES;
+#endif
+}
+
+static void NSUnlockExtraRefCountTable(BOOL locked)
+{
+    if (!locked)
+        return;
+#if defined(__ppc__) || defined(__POWERPC__)
+    NSExternRefCountLockRelease();
+#else
+    *(unsigned *)__NSRefCountLock = 0;
+#endif
+}
 
 /*	Rhapsody's zones are NeXT's NXZone (<objc/zone.h>, already pulled in
 	through NSObjCRuntime.h): NSZone is that same struct under a
@@ -22,41 +94,20 @@
 	NXZoneMalloc/NXZoneRealloc/NXZoneFree macros that index a zone's own
 	function table -- not malloc_zone_t.  */
 
-static NSZone *defaultMallocZone = 0;
+__private_extern__ NSZone *__NSDefaultMallocZone;
 
-/*	Associates a name (set by NSSetZoneName) with a zone, so NSZoneName
-	can hand it back. <objc/zone.h>'s NXZone exposes only a name
-	*setter* (NXNameZone) and documents its layout past the function
-	table as implementation-specific, so there is no supported way to
-	read a name back out of the zone itself -- this small table is what
-	keeps that round trip working.  */
-#define NSZoneMaxNamedZones 16
-
-static struct {
-    NSZone *zone;
-    NSString *name;
-} namedZones[NSZoneMaxNamedZones];
-static int namedZoneCount = 0;
-
-/*	Drops `zone`'s entry, releasing the name the table retained.  A
-	recycled zone's storage returns to its parent, so a later
-	NXCreateChildZone can hand back the same address; leaving the entry
-	in place would make NSZoneName report the dead zone's name for the
-	new one, and would fill the table permanently.  */
-static void
-NSForgetZoneName(NSZone *zone)
-{
-    int i;
-
-    for (i = 0; i < namedZoneCount; i++) {
-        if (namedZones[i].zone == zone) {
-            [namedZones[i].name release];
-            namedZones[i] = namedZones[namedZoneCount - 1];
-            namedZoneCount--;
-            return;
-        }
-    }
-}
+/*	The 32-bit zone_t layout in malloc.c embeds NXZone, then its free-array
+	metadata, granularity, parent zone, and name pointer at byte offset 36.
+	Both target NSZoneName implementations read this private field directly.  */
+typedef struct {
+    NXZone functions;
+    void *freeArray;
+    int freeCount;
+    int freeMaximum;
+    int granularity;
+    NSZone *parentZone;
+    char *name;
+} NSZoneNameLayout;
 
 /*	log2 of a power-of-two value, for NSLogPageSize.  */
 static int
@@ -77,9 +128,7 @@ Log2(unsigned value)
 NSZone *
 NSDefaultMallocZone(void)
 {
-    if (defaultMallocZone == 0)
-        defaultMallocZone = (NSZone *)NXDefaultMallocZone();
-    return defaultMallocZone;
+    return __NSDefaultMallocZone;
 }
 
 NSZone *
@@ -108,7 +157,6 @@ NSRecycleZone(NSZone *zone)
         NSRecordAllocationEvent(NSZoneRecycledEvent, zone, 0, 0, 0);
 
     if (zone != 0 && zone != NSDefaultMallocZone()) {
-        NSForgetZoneName(zone);
         NXMergeZone((NXZone *)zone);
     }
 }
@@ -116,49 +164,23 @@ NSRecycleZone(NSZone *zone)
 void
 NSSetZoneName(NSZone *zone, NSString *name)
 {
-    const char *cName;
-    int i;
-
-    cName = [name cString];
+    const char *cName = [name lossyCString];
 
     if (zone == 0 || zone == NSDefaultMallocZone())
         return;
 
     NXNameZone((NXZone *)zone, cName);
-
-    /*	The table owns the name: NXNameZone copies the C string, but this
-	side table holds the NSString itself, and a caller that hands over
-	an autoreleased string would otherwise leave NSZoneName returning a
-	pointer to freed storage once the pool drained.  Retain before
-	releasing, so naming a zone with its own current name is safe.  */
-    for (i = 0; i < namedZoneCount; i++) {
-        if (namedZones[i].zone == zone) {
-            [name retain];
-            [namedZones[i].name release];
-            namedZones[i].name = name;
-            return;
-        }
-    }
-    if (namedZoneCount < NSZoneMaxNamedZones) {
-        namedZones[namedZoneCount].zone = zone;
-        namedZones[namedZoneCount].name = [name retain];
-        namedZoneCount++;
-    }
 }
 
 NSString *
 NSZoneName(NSZone *zone)
 {
-    NSZone *target;
-    int i;
+    NSZoneNameLayout *target =
+        (NSZoneNameLayout *)((zone != 0) ? zone : NSDefaultMallocZone());
 
-    target = (zone != 0) ? zone : NSDefaultMallocZone();
-
-    for (i = 0; i < namedZoneCount; i++) {
-        if (namedZones[i].zone == target)
-            return namedZones[i].name;
-    }
-    return @"";
+    if (target->name != 0)
+        return [NSString stringWithCString:target->name];
+    return __NSEmptyString;
 }
 
 NSZone *
@@ -234,6 +256,14 @@ NSZoneFree(NSZone *zone, void *ptr)
         NSRecordAllocationEvent(NSZoneFreeEvent, ptr, 0, 0, 0);
 
     NXZoneFree((NXZone *)zone, ptr);
+}
+
+void
+_NSGenericFree(void *ptr)
+{
+    if (NSKeepAllocationStatistics)
+        NSRecordAllocationEvent(NSZoneFreeEvent, ptr, 0, 0, 0);
+    free(ptr);
 }
 
 /*	Pages		*/
@@ -362,55 +392,19 @@ NSAllocateObject(Class aClass, unsigned extraBytes, NSZone *zone)
 
 	The reference (_NSDeallocateObject, disassembled directly since it
 	is within this stage's analysis scope) keeps the original-class ->
-	zombie-class lookup in a real NSMapTable (classToZombie, backed by
-	NSCreateMapTableWithZone/NSMapGet/NSMapInsert); NSMapTable.m in this
-	tree is still unimplemented stubs and out of this task's file list,
-	so this reconstruction substitutes a private table for the forward
-	direction of that lookup -- the same substitution this file's own
-	ExtraRefCountTable already makes for NSMapTable's overflow case, for
-	the identical reason.  The table lives here (not in NSObject.m,
-	alongside _NSZombie itself) because NSZone.m is linked into every
+	zombie-class lookup in an NSMapTable (classToZombie, backed by
+	NSCreateMapTableWithZone/NSMapGet/NSMapInsert).  The lookup lives here
+	(not in NSObject.m, alongside _NSZombie itself) because NSZone.m is
+	linked into every
 	stage-2a test binary, while NSObject.m is linked only into the ones
 	that need NSObject; _NSZombieClassForClass looks up _NSZombie by
 	name (objc_getClass), not by compile-time reference, so this file
-	has no link-time dependency on NSObject.m being present.  Static:
-	unlike the reference's real classToZombie, nothing outside this file
-	needs the forward direction either -- NSObject.m's diagnostic message
-	(the only other consumer of this table's information) reads the
-	original class name straight off the zombie class's own
-	"NSZombie_<originalClass>" name string instead of asking this file
-	for a reverse lookup, so no second table direction or exported
-	accessor is needed for that either.  */
+	has no link-time dependency on NSObject.m being present.  NSObject.m's
+	zombie diagnostic also needs the original class.  Its
+	NSZombieOriginalClassForClass helper walks this table in reverse,
+	matching the reference's _findOriginalClass helper.  */
 
-typedef struct {
-    Class originalClass;
-    Class zombieClass;
-} NSZombieClassEntry;
-
-static NSZombieClassEntry *zombieClasses = 0;
-static unsigned zombieClassCount = 0;
-static unsigned zombieClassCapacity = 0;
-
-static void
-NSRecordZombieClass(Class originalClass, Class zombieClass)
-{
-    if (zombieClassCount == zombieClassCapacity) {
-        unsigned newCapacity = (zombieClassCapacity == 0) ? 4 : zombieClassCapacity * 2;
-        NSZombieClassEntry *newEntries =
-            (NSZombieClassEntry *)NSZoneMalloc(0, newCapacity * sizeof(NSZombieClassEntry));
-        unsigned index;
-
-        for (index = 0; index < zombieClassCount; index++)
-            newEntries[index] = zombieClasses[index];
-        if (zombieClasses != 0)
-            NSZoneFree(0, zombieClasses);
-        zombieClasses = newEntries;
-        zombieClassCapacity = newCapacity;
-    }
-    zombieClasses[zombieClassCount].originalClass = originalClass;
-    zombieClasses[zombieClassCount].zombieClass = zombieClass;
-    zombieClassCount++;
-}
+static NSMapTable *classToZombie;
 
 /*  Finds (or synthesizes and caches) the zombie class standing in for
     originalClass.  The reference builds the pair by memmove()-cloning
@@ -429,11 +423,11 @@ _NSZombieClassForClass(Class originalClass)
     Class zombieMeta;
     const char *originalName;
     char *name;
-    unsigned index;
 
-    for (index = 0; index < zombieClassCount; index++)
-        if (zombieClasses[index].originalClass == originalClass)
-            return zombieClasses[index].zombieClass;
+    zombieClass = classToZombie != 0
+        ? (Class)NSMapGet(classToZombie, originalClass) : Nil;
+    if (zombieClass != Nil)
+        return zombieClass;
 
     zombieClass = (Class)NSZoneMalloc(0, sizeof(struct objc_class));
     memmove(zombieClass, objc_getClass("_NSZombie"), sizeof(struct objc_class));
@@ -452,9 +446,31 @@ _NSZombieClassForClass(Class originalClass)
     zombieClass->name = name;
 
     objc_addClass(zombieClass);
-    NSRecordZombieClass(originalClass, zombieClass);
+    if (classToZombie == 0) {
+        NSMapTableValueCallBacks valueCallBacks;
+
+        memset(&valueCallBacks, 0, sizeof(valueCallBacks));
+        classToZombie = NSCreateMapTableWithZone(
+            NSNonOwnedPointerMapKeyCallBacks, valueCallBacks, 1, 0);
+    }
+    NSMapInsert(classToZombie, originalClass, zombieClass);
 
     return zombieClass;
+}
+
+__private_extern__ Class
+NSZombieOriginalClassForClass(Class zombieClass)
+{
+    NSMapEnumerator enumerator;
+    void *key;
+    void *value;
+
+    enumerator = NSEnumerateMapTable(classToZombie);
+    while (NSNextMapEnumeratorPair(&enumerator, &key, &value)) {
+        if (value == zombieClass)
+            return (Class)key;
+    }
+    return Nil;
 }
 
 void
@@ -524,34 +540,26 @@ NSShouldRetainWithZone(id anObject, NSZone *requestedZone)
 
 	so the overwhelmingly common case (0, 1 or 2 extra references)
 	never needs a second lookup, and an object is only promoted to the
-	overflow table once it earns a third extra reference.  In the
-	shipped Foundation that overflow table is an NSMapTable; the one
-	here is a private equivalent, because NSMapTable.m in this tree is
-	still unimplemented stubs.  The reference also guards this table
-	with a lock (_NSRefCountLock) that starts out unallocated and is
-	only acquired once something has actually enabled threading -- the
-	unlocked, unthreaded state is exactly what every test in this
-	stage runs under, so that lock is not reconstructed here.  */
+	overflow table once it earns a third extra reference.  The shipped
+	Foundation uses an NSMapTable for overflow counts, as this source now
+	does.  The compact table starts at 256 entries and uses the reference's
+	growth, shrink, and cluster-rehash rules.  The
+	three exported accessors synchronize the tables when threading is
+	enabled: PPC uses __NSExternRefCountLock as a spin word, while i386
+	uses the mutex pointer __NSRefCountLock allocated by NSThread.  The
+	debug printer remains outside the lock, matching the reference.  */
 
-#define ExtraRefCountTableMinCapacity 16
+#define ExtraRefCountTableMinCapacity 256
 
 typedef struct {
-    unsigned count;	/* occupied slots */
-    unsigned capacity;	/* total slots, always a power of two */
-    unsigned mask;	/* capacity - 1 */
-    unsigned *slots;	/* tagged (object | tag) words; 0 == unused */
+    unsigned count;
+    unsigned capacity;
+    unsigned mask;
+    unsigned *slots;
 } ExtraRefCountTable;
 
-static ExtraRefCountTable *extraRefCounts = 0;
-
-typedef struct {
-    id object;
-    unsigned count;
-} ExtraRefCountOverflowEntry;
-
-static ExtraRefCountOverflowEntry *extraRefCountOverflow = 0;
-static unsigned extraRefCountOverflowCount = 0;
-static unsigned extraRefCountOverflowCapacity = 0;
+static ExtraRefCountTable *fewCounter = 0;
+static NSMapTable *manyCounter = 0;
 
 static unsigned
 ExtraRefCountHash(id object, unsigned mask)
@@ -560,97 +568,91 @@ ExtraRefCountHash(id object, unsigned mask)
 }
 
 static ExtraRefCountTable *
-ExtraRefCountTableCreate(unsigned capacity)
+ExtraRefCountTableCreate(void)
 {
     ExtraRefCountTable *table;
 
-    table = (ExtraRefCountTable *)NSZoneCalloc(0, 1, sizeof(ExtraRefCountTable));
+    table = (ExtraRefCountTable *)NSZoneMalloc(0, sizeof(ExtraRefCountTable));
     table->count = 0;
-    table->capacity = capacity;
-    table->mask = capacity - 1;
-    table->slots = (unsigned *)NSZoneCalloc(0, capacity, sizeof(unsigned));
+    table->capacity = ExtraRefCountTableMinCapacity;
+    table->mask = ExtraRefCountTableMinCapacity - 1;
+    table->slots = (unsigned *)NSZoneMalloc(
+        0, ExtraRefCountTableMinCapacity * sizeof(unsigned));
+    memset(table->slots, 0,
+           ExtraRefCountTableMinCapacity * sizeof(unsigned));
     return table;
 }
 
-/*	Finds `object`'s slot if it has one, otherwise the first unused
-	slot on its probe sequence -- the index either an insert or a
-	lookup needs.  */
+/* Finds the existing slot for object, or the first empty slot on its probe
+   sequence. The low two bits hold the extra-reference count tag. */
 static unsigned
 ExtraRefCountTableFindSlot(ExtraRefCountTable *table, id object)
 {
-    unsigned index;
+    unsigned index = ExtraRefCountHash(object, table->mask);
 
-    index = ExtraRefCountHash(object, table->mask);
-    while (table->slots[index] != 0 && (id)(table->slots[index] & ~3) != object)
+    while (table->slots[index] != 0 &&
+           (id)(table->slots[index] >> 2 << 2) != object)
         index = (index + 1) & table->mask;
     return index;
 }
 
-static void
-ExtraRefCountTableResize(ExtraRefCountTable *table, unsigned newCapacity)
+/* Resize and rehash the compact table. Return NO when a shrink request reaches
+   the reference's 256-slot floor. */
+static BOOL
+ExtraRefCountTableResize(ExtraRefCountTable *table, BOOL grow)
 {
-    unsigned *oldSlots;
-    unsigned oldCapacity;
-    unsigned *newSlots;
-    unsigned newMask;
-    unsigned i;
-    unsigned index;
+    unsigned *oldSlots = table->slots;
+    unsigned oldCapacity = table->capacity;
+    unsigned index, rehashed = 0;
 
-    oldSlots = table->slots;
-    oldCapacity = table->capacity;
-    newMask = newCapacity - 1;
-
-    newSlots = (unsigned *)NSZoneCalloc(0, newCapacity, sizeof(unsigned));
-
-    for (i = 0; i < oldCapacity; i++) {
-        if (oldSlots[i] != 0) {
-            index = ((oldSlots[i] & ~3) >> 2) & newMask;
-            while (newSlots[index] != 0)
-                index = (index + 1) & newMask;
-            newSlots[index] = oldSlots[i];
-        }
+    if (grow) {
+        table->capacity = oldCapacity * 2;
+        table->mask = (table->mask * 2) | 1;
+    } else {
+        if (oldCapacity <= ExtraRefCountTableMinCapacity)
+            return NO;
+        table->capacity = oldCapacity / 2;
+        table->mask >>= 1;
     }
 
+    table->slots = (unsigned *)NSZoneMalloc(
+        0, table->capacity * sizeof(unsigned));
+    memset(table->slots, 0, table->capacity * sizeof(unsigned));
+    for (index = 0; index < oldCapacity; index++) {
+        unsigned value = oldSlots[index];
+        if (value != 0) {
+            unsigned destination = ExtraRefCountHash(
+                (id)(value & ~3U), table->mask);
+            while (table->slots[destination] != 0 &&
+                   (table->slots[destination] >> 2) != (value >> 2))
+                destination = (destination + 1) & table->mask;
+            table->slots[destination] = value;
+            rehashed++;
+        }
+    }
+    if (rehashed != table->count)
+        [NSException raise:NSInternalInconsistencyException
+                    format:@"Extra reference count table is inconsistent"];
     NSZoneFree(0, oldSlots);
-    table->slots = newSlots;
-    table->capacity = newCapacity;
-    table->mask = newMask;
+    return YES;
 }
 
-/*	Standard backward-shift deletion for a linear-probed table with no
-	tombstones: after clearing the slot at `hole`, walk the probe
-	sequence that follows it and pull back any entry whose own home
-	slot still requires the hole to be empty, closing the gap so that
-	a lookup for a surviving entry never stops early.  */
+/* Reinsert the cluster following a removed slot so lookups cannot stop at the
+   newly empty slot. */
 static void
-ExtraRefCountTableCloseGap(ExtraRefCountTable *table, unsigned hole)
+ExtraRefCountTableRehash(ExtraRefCountTable *table, unsigned removed)
 {
-    unsigned scan;
-    unsigned home;
-    BOOL mustStay;
+    unsigned index = (removed + 1) & table->mask;
 
-    scan = hole;
-    for (;;) {
-        scan = (scan + 1) & table->mask;
-        if (table->slots[scan] == 0)
-            break;
+    while (table->slots[index] != 0) {
+        unsigned value = table->slots[index];
+        unsigned destination;
 
-        home = ExtraRefCountHash((id)(table->slots[scan] & ~3), table->mask);
-
-        /*  This entry must stay put if the hole lies strictly between
-            its home slot and its current slot on the probe path --
-            moving it back would make a lookup starting at its own home
-            slot stop at the hole before ever reaching it.  */
-        if (hole <= scan)
-            mustStay = (home > hole && home <= scan);
-        else
-            mustStay = (home <= scan || home > hole);
-
-        if (!mustStay) {
-            table->slots[hole] = table->slots[scan];
-            table->slots[scan] = 0;
-            hole = scan;
-        }
+        table->slots[index] = 0;
+        destination = ExtraRefCountTableFindSlot(
+            table, (id)(value & ~3U));
+        table->slots[destination] = value;
+        index = (index + 1) & table->mask;
     }
 }
 
@@ -659,130 +661,88 @@ ExtraRefCountTableRemoveSlot(ExtraRefCountTable *table, unsigned index)
 {
     table->slots[index] = 0;
     table->count--;
-
-    if (table->capacity > ExtraRefCountTableMinCapacity &&
-        table->count < table->capacity / 4)
-        ExtraRefCountTableResize(table, table->capacity / 2);
-    else
-        ExtraRefCountTableCloseGap(table, index);
-}
-
-static int
-ExtraRefCountOverflowFind(id object)
-{
-    unsigned i;
-
-    for (i = 0; i < extraRefCountOverflowCount; i++)
-        if (extraRefCountOverflow[i].object == object)
-            return (int)i;
-    return -1;
-}
-
-static void
-ExtraRefCountOverflowInsert(id object, unsigned count)
-{
-    if (extraRefCountOverflowCount == extraRefCountOverflowCapacity) {
-        unsigned newCapacity;
-        ExtraRefCountOverflowEntry *newEntries;
-        unsigned i;
-
-        newCapacity = (extraRefCountOverflowCapacity == 0) ? 4 : extraRefCountOverflowCapacity * 2;
-        newEntries = (ExtraRefCountOverflowEntry *)
-            NSZoneMalloc(0, newCapacity * sizeof(ExtraRefCountOverflowEntry));
-        for (i = 0; i < extraRefCountOverflowCount; i++)
-            newEntries[i] = extraRefCountOverflow[i];
-        if (extraRefCountOverflow != 0)
-            NSZoneFree(0, extraRefCountOverflow);
-        extraRefCountOverflow = newEntries;
-        extraRefCountOverflowCapacity = newCapacity;
-    }
-    extraRefCountOverflow[extraRefCountOverflowCount].object = object;
-    extraRefCountOverflow[extraRefCountOverflowCount].count = count;
-    extraRefCountOverflowCount++;
-}
-
-static void
-ExtraRefCountOverflowRemoveAt(unsigned index)
-{
-    extraRefCountOverflow[index] = extraRefCountOverflow[extraRefCountOverflowCount - 1];
-    extraRefCountOverflowCount--;
+    if (table->count >= table->capacity / 4 ||
+        !ExtraRefCountTableResize(table, NO))
+        ExtraRefCountTableRehash(table, index);
 }
 
 unsigned
 NSExtraRefCount(id object)
 {
-    unsigned index;
-    unsigned slot;
-    unsigned tag;
+    unsigned index, slot, result;
+    BOOL locked;
 
-    if (object == 0 || extraRefCounts == 0)
+    if (object == 0 || fewCounter == 0)
         return 0;
 
-    index = ExtraRefCountTableFindSlot(extraRefCounts, object);
-    slot = extraRefCounts->slots[index];
-
-    if (slot == 0)
-        return 0;
-
-    tag = slot & 3;
-    if (tag != 3)
-        return tag;
-
-    {
-        int found;
-
-        found = ExtraRefCountOverflowFind(object);
-        return (found >= 0) ? extraRefCountOverflow[found].count : 0;
+    locked = NSLockExtraRefCountTable();
+    index = ExtraRefCountTableFindSlot(fewCounter, object);
+    slot = fewCounter->slots[index];
+    if (slot == 0) {
+        result = 0;
+    } else if ((slot & 3) == 3) {
+        result = (unsigned)(unsigned long)NSMapGet(
+            manyCounter, (const void *)((unsigned long)object + 1));
+    } else {
+        result = slot & 3;
     }
+    NSUnlockExtraRefCountTable(locked);
+    return result;
 }
 
 void
 NSIncrementExtraRefCount(id object)
 {
-    unsigned index;
-    unsigned slot;
-    unsigned tag;
+    unsigned index, slot;
+    BOOL locked;
 
     if (object == 0)
         return;
 
-    if (extraRefCounts == 0)
-        extraRefCounts = ExtraRefCountTableCreate(ExtraRefCountTableMinCapacity);
-
-    index = ExtraRefCountTableFindSlot(extraRefCounts, object);
-    slot = extraRefCounts->slots[index];
-
-    if (slot == 0) {
-        /*  First extra reference: grow before the table is more than
-            half full, then insert with the tag set to 1.  */
-        if (extraRefCounts->count * 2 > extraRefCounts->capacity) {
-            ExtraRefCountTableResize(extraRefCounts, extraRefCounts->capacity * 2);
-            index = ExtraRefCountTableFindSlot(extraRefCounts, object);
-        }
-        extraRefCounts->slots[index] = (unsigned)object | 1;
-        extraRefCounts->count++;
-    } else {
-        tag = slot & 3;
-        if (tag == 1) {
-            extraRefCounts->slots[index] = (unsigned)object | 2;
-        } else if (tag == 2) {
-            extraRefCounts->slots[index] = (unsigned)object | 3;
-            ExtraRefCountOverflowInsert(object, 3);
-        } else {
-            int found;
-
-            found = ExtraRefCountOverflowFind(object);
-            if (found < 0) {
-                fprintf(stderr,
-                    "*** NSIncrementExtraRefCount(): extra ref count table "
-                    "corrupted for %p\n", (void *)object);
-                ExtraRefCountOverflowInsert(object, 0xFFFFFFFF);
-            } else {
-                extraRefCountOverflow[found].count++;
-            }
-        }
+    if (fewCounter == 0) {
+        fewCounter = ExtraRefCountTableCreate();
+        manyCounter = NSCreateMapTableWithZone(
+            NSNonOwnedPointerMapKeyCallBacks, NSIntMapValueCallBacks, 42, 0);
     }
 
+    locked = NSLockExtraRefCountTable();
+    index = ExtraRefCountTableFindSlot(fewCounter, object);
+    slot = fewCounter->slots[index];
+    if (slot != 0) {
+        switch (slot & 3) {
+        case 1:
+            fewCounter->slots[index] = (unsigned)object | 2;
+            break;
+        case 2:
+            fewCounter->slots[index] = (unsigned)object | 3;
+            NSMapInsertKnownAbsent(
+                manyCounter, (const void *)((unsigned long)object + 1),
+                (const void *)3);
+            break;
+        default: {
+            const void *key = (const void *)((unsigned long)object + 1);
+            unsigned count = (unsigned)(unsigned long)NSMapGet(manyCounter,
+                                                                key);
+            if (count == UINT_MAX) {
+                NSLog(@"*** Reference count overflow for '%@': probably implies a leak!",
+                      object);
+            } else {
+                count++;
+            }
+            NSMapInsert(manyCounter, key, (const void *)(unsigned long)count);
+            break;
+        }
+        }
+    } else {
+        if (fewCounter->capacity < 2 * fewCounter->count) {
+            ExtraRefCountTableResize(fewCounter, YES);
+            index = ExtraRefCountTableFindSlot(fewCounter, object);
+        }
+        fewCounter->slots[index] = (unsigned)object | 1;
+        fewCounter->count++;
+    }
+
+    NSUnlockExtraRefCountTable(locked);
     if (NSKeepAllocationStatistics)
         NSRecordAllocationEvent(NSObjectExtraRefIncrementedEvent, object);
 }
@@ -790,51 +750,141 @@ NSIncrementExtraRefCount(id object)
 BOOL
 NSDecrementExtraRefCountWasZero(id object)
 {
-    unsigned index;
-    unsigned slot;
-    unsigned tag;
-    BOOL wasZero;
+    unsigned index, slot;
+    BOOL wasZero = NO;
+    BOOL locked;
 
     if (object == 0)
         return NO;
 
     if (NSKeepAllocationStatistics)
         NSRecordAllocationEvent(NSObjectExtraRefDecrementedEvent, object);
-
-    if (extraRefCounts == 0)
+    if (fewCounter == 0)
         return YES;
 
-    index = ExtraRefCountTableFindSlot(extraRefCounts, object);
-    slot = extraRefCounts->slots[index];
-
-    wasZero = NO;
-
+    locked = NSLockExtraRefCountTable();
+    index = ExtraRefCountTableFindSlot(fewCounter, object);
+    slot = fewCounter->slots[index];
     if (slot == 0) {
         wasZero = YES;
     } else {
-        tag = slot & 3;
-        if (tag == 1) {
-            ExtraRefCountTableRemoveSlot(extraRefCounts, index);
-        } else if (tag == 3) {
-            int found;
-
-            found = ExtraRefCountOverflowFind(object);
-            if (found >= 0) {
-                if (extraRefCountOverflow[found].count == 3) {
-                    extraRefCounts->slots[index] = (unsigned)object | 2;
-                    ExtraRefCountOverflowRemoveAt(found);
-                } else {
-                    extraRefCountOverflow[found].count--;
-                }
+        switch (slot & 3) {
+        case 1:
+            ExtraRefCountTableRemoveSlot(fewCounter, index);
+            break;
+        case 3: {
+            const void *key = (const void *)((unsigned long)object + 1);
+            void *count = NSMapGet(manyCounter, key);
+            if (count == (void *)3) {
+                fewCounter->slots[index] = (unsigned)object | 2;
+                NSMapRemove(manyCounter, key);
+            } else if (count != (void *)-1) {
+                NSMapInsert(manyCounter, key,
+                            (const void *)((unsigned long)count - 1));
             }
-            /*  else: tag claims an overflow entry that is not there --
-                corrupted state.  The reference leaves the count alone
-                rather than acting on a value it does not have; matched
-                here.  */
-        } else {
-            extraRefCounts->slots[index] = (unsigned)object | (tag - 1);
+            break;
+        }
+        default:
+            fewCounter->slots[index]--;
+            break;
         }
     }
-
+    NSUnlockExtraRefCountTable(locked);
     return wasZero;
+}
+
+void
+_NSIncrementInternalRefCount(id object, unsigned *refCount, int mask, id lock)
+{
+    if (lock != 0)
+        [lock lock];
+    if ((*refCount & mask) == mask)
+        NSIncrementExtraRefCount(object);
+    else
+        ++*refCount;
+    if (lock != 0)
+        [lock unlock];
+    if (NSKeepAllocationStatistics)
+        NSRecordAllocationEvent(NSObjectInternalRefIncrementedEvent, object);
+}
+
+BOOL
+_NSDecrementInternalRefCountWasZero(id object, unsigned *refCount, int mask, id lock)
+{
+    BOOL wasZero = NO;
+
+    if (NSKeepAllocationStatistics)
+        NSRecordAllocationEvent(NSObjectInternalRefDecrementedEvent, object);
+    if (lock != 0)
+        [lock lock];
+    if ((*refCount & mask) != 0) {
+        if ((*refCount & mask) != mask || NSDecrementExtraRefCountWasZero(object))
+            --*refCount;
+    } else {
+        wasZero = YES;
+    }
+    if (lock != 0)
+        [lock unlock];
+    return wasZero;
+}
+
+unsigned
+_NSInternalRefCount(id object, unsigned refCount, int mask)
+{
+    if ((refCount & mask) == mask)
+        return NSExtraRefCount(object) + mask + 1;
+    return (refCount & mask) + 1;
+}
+
+void
+_NSPrintExtraRefCount(void)
+{
+    char *buffer;
+    char *cursor;
+    unsigned capacity, index;
+    NSMapEnumerator enumerator;
+    void *key;
+    void *value;
+
+    if (fewCounter == 0)
+        return;
+
+    capacity = fewCounter->count + NSCountMapTable(manyCounter);
+    buffer = (char *)NSZoneMalloc(0, capacity << 8);
+    cursor = buffer;
+    buffer[0] = '\0';
+
+    for (index = fewCounter->capacity; index != 0; ) {
+        unsigned slot = fewCounter->slots[--index];
+        id object;
+        Class objectClass;
+        int length;
+
+        if (slot == 0)
+            continue;
+        object = (id)(slot & ~3U);
+        objectClass = *(Class *)object;
+        length = _NSsnprintf(cursor, 255,
+                          "Object 0x%x of class %s: extra RefCount = %d\n",
+                          (unsigned)object, objectClass->name, slot & 3);
+        if (length < 0)
+            continue;
+        cursor += strlen(cursor);
+    }
+
+    enumerator = NSEnumerateMapTable(manyCounter);
+    while (NSNextMapEnumeratorPair(&enumerator, &key, &value)) {
+        id object = (id)((unsigned long)key - 1);
+        Class objectClass = *(Class *)object;
+        int length = _NSsnprintf(cursor, 255,
+                              "Object 0x%x of class %s: extra RefCount = %d\n",
+                              (unsigned)object, objectClass->name,
+                              (unsigned long)value);
+
+        if (length >= 0)
+            cursor += strlen(cursor);
+    }
+
+    NSLog(@"Extra ref count statistics:\n%s", buffer);
+    NSZoneFree(0, buffer);
 }

@@ -11,6 +11,18 @@ spec targets **i386** instead. The reason is in §1.1: the repository cannot
 build PowerPC, so a PowerPC reconstruction has no build-and-compare loop and
 could never be verified. The PowerPC slice is retained as a cross-reference.
 
+### Scope amendment (2026-10-08)
+
+After a PPC ABI coverage audit found 3,190 uncovered Objective-C records, the
+user approved expanding Foundation reconstruction to full PPC Objective-C ABI
+parity. The i386 slice remains the initial build baseline, but PPC is no longer
+cross-reference-only for ABI metadata. PPC acceptance means every class layout
+and method encoding extracted from the pinned PPC image is represented exactly
+by a shared i386 ABI record or an `abi-ppc` overlay. This amendment does not
+claim a PPC build or runtime comparison; the repository still lacks a PPC
+build-and-compare loop. The current audit records the later closure of the PPC
+ABI manifest gaps.
+
 ## Motivation
 
 `src/Kits/Foundation` is 66 headers and 66 `.m` files. The headers are Apple's,

@@ -1,0 +1,51 @@
+{
+ "categories": [],
+ "classes": [
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "initWithCoder:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "encodeWithCoder:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "copyWithZone:",
+     "types": "@12@8:12^{?=}16"
+    },
+    {
+     "selector": "isPartialStringValid:newEditingString:errorDescription:",
+     "types": "c20@8:12@16^@20^@24"
+    },
+    {
+     "selector": "getObjectValue:forString:errorDescription:",
+     "types": "c20@8:12^@16@20^@24"
+    },
+    {
+     "selector": "editingStringForObjectValue:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "attributedStringForObjectValue:withDefaultAttributes:",
+     "types": "@16@8:12@16@20"
+    },
+    {
+     "selector": "stringForObjectValue:",
+     "types": "@12@8:12@16"
+    }
+   ],
+   "instance_size": 4,
+   "ivars": [],
+   "name": "NSFormatter",
+   "superclass": "NSObject"
+  }
+ ],
+ "data_symbols": [],
+ "module": "NSFormatter.m",
+ "schema_version": "abi-v1",
+ "text_symbols": []
+}

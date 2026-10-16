@@ -1,0 +1,38 @@
+{
+ "categories": [],
+ "classes": [],
+ "data_symbols": [
+  "_NSIntHashCallBacks",
+  "_NSNonOwnedPointerHashCallBacks",
+  "_NSNonRetainedObjectHashCallBacks",
+  "_NSObjectHashCallBacks",
+  "_NSOwnedObjectIdentityHashCallBacks",
+  "_NSOwnedPointerHashCallBacks",
+  "_NSPointerToStructHashCallBacks"
+ ],
+ "module": "NSHashTable.m",
+ "schema_version": "abi-v1",
+ "text_symbols": [
+  "_NSAllHashTableObjects",
+  "_NSCompareHashTables",
+  "_NSCopyHashTableWithZone",
+  "_NSCountHashTable",
+  "_NSCreateHashTable",
+  "_NSCreateHashTableWithZone",
+  "_NSEnumerateHashTable",
+  "_NSFreeHashTable",
+  "_NSHashGet",
+  "_NSHashInsert",
+  "_NSHashInsertIfAbsent",
+  "_NSHashInsertKnownAbsent",
+  "_NSHashRemove",
+  "_NSLog2",
+  "_NSNextHashEnumeratorItem",
+  "_NSResetHashTable",
+  "_NSStringFromHashTable",
+  "__NSFastBSearchInt",
+  "__NSHashTableDescribeCString",
+  "__NSHashTableHashCString",
+  "__NSHashTableIsEqualCString"
+ ]
+}

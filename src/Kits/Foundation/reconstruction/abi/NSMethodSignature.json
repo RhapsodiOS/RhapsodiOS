@@ -105,7 +105,9 @@
    "superclass": "NSObject"
   }
  ],
- "data_symbols": [],
+ "data_symbols": [
+  "__NSMethodSignatureTableLock"
+ ],
  "module": "NSMethodSignature.m",
  "schema_version": "abi-v1",
  "text_symbols": []

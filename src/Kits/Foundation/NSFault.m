@@ -7,6 +7,8 @@
 #import <Foundation/NSString.h>
 #import <Foundation/NSInvocation.h>
 #import <Foundation/NSMethodSignature.h>
+#import <Foundation/NSObjCRuntime.h>
+#import <Foundation/NSLock.h>
 #import <objc/objc-runtime.h>
 #import <objc/Protocol.h>
 
@@ -31,7 +33,8 @@
 
     The second discovery is the faulting mechanism itself
     (+makeObjectIntoFault:withHandler:, 0x42519da4): the object's isa is
-    swapped IN PLACE (0x42519e73: mov [edi], ecx) to [NSFault class], the
+    swapped IN PLACE (0x42519e73: mov [edi], ecx) to the receiver class
+    (self, which lets NSFault subclasses supply fault-specific behavior), the
     old (isa, word@+4) pair moves into the handler's (_targetClass,
     _extraData) slots, and the object's EXCESS references move onto the
     handler: the loop bound is [anObject retainCount] (send at
@@ -67,6 +70,7 @@ extern BOOL class_respondsToMethod(Class aClass, SEL aSelector);
 extern id _NSMethodExceptionProem(id object, SEL aSelector);
 extern BOOL _NSClassConformsToProtocol(Class aClass, Protocol *aProtocol);
 extern void NSAutoreleaseObject(id anObject);
+extern NSLock *_NSGlobalRetainLock;
 
 extern void _NSInitializePlatform(void);
 
@@ -132,8 +136,7 @@ __NSFaultRaiseNullSelectorException(id object, SEL aSelector)
 /*  Self-patching +initialize: -[NSFault forward::]'s compiled body is a
     raise; once the runtime first runs +initialize the imp is swapped to
     NSObject's -forward:: (which routes to -forwardInvocation: and fires
-    the fault).  Guarded by a static flag, both classes resolved by the
-    literal name strings "NSObject"/"NSFault" (0x42551610).  */
+    the fault). Both targets set the static flag after the platform hook. */
 + (void)initialize
 {
     static BOOL initialized = NO;
@@ -143,21 +146,14 @@ __NSFaultRaiseNullSelectorException(id object, SEL aSelector)
         Method objectForward;
         Method faultForward;
 
-        /*  Set before the platform hook for the same re-entrancy reason
-            NSProxy.m's +initialize documents.  */
-        initialized = YES;
-
         twoArgForward = sel_registerName("forward::");
         objectForward = class_getInstanceMethod(objc_lookUpClass("NSObject"),
                                                 twoArgForward);
         faultForward = class_getInstanceMethod(objc_lookUpClass("NSFault"),
                                                twoArgForward);
-        /*  Either lookup can come back NULL on a link line without the
-            other class; skipping the patch leaves the raising body below
-            in place, which raises on its own.  */
-        if (objectForward != NULL && faultForward != NULL)
-            faultForward->method_imp = objectForward->method_imp;
+        faultForward->method_imp = objectForward->method_imp;
         _NSInitializePlatform();
+        initialized = YES;
     }
 }
 
@@ -216,7 +212,7 @@ __NSFaultRaiseNullSelectorException(id object, SEL aSelector)
 
 + (BOOL)conformsToProtocol:(Protocol *)aProtocol
 {
-    return _NSClassConformsToProtocol(self->isa, aProtocol);
+    return _NSClassConformsToProtocol(self, aProtocol);
 }
 
 + (BOOL)isProxy
@@ -343,7 +339,8 @@ __NSFaultRaiseNullSelectorException(id object, SEL aSelector)
 /*  The faulting operation itself, 0x42519da4.  Verbatim translation:
     gate the size (0x42519dc7: cmp [self+0x14=instance_size],
     oldClass->instance_size -- raise when the old class's instances are
-    SMALLER than NSFault's own 8, '%s' the old class's name, '%d' 8,
+    SMALLER than the receiver class's instances, '%s' the old class's name,
+    '%d' the receiver's instance size,
     proem of the receiver, i.e. the NSFault class object), then drain the
     object's excess references into the handler, then swap isa and
     _handler.  */
@@ -380,9 +377,10 @@ __NSFaultRaiseNullSelectorException(id object, SEL aSelector)
         (send at 0x42519e6b, cell 0x4260d13c = 'setTargetClass:extraData:').  */
     [aHandler setTargetClass:oldClass extraData:oldWord4];
 
-    /*  THE fault: swap isa in place.  0x42519e73: mov [edi], ecx where
-        ecx = [NSFault class].  */
-    anObject->isa = [NSFault class];
+    /*  THE fault: swap isa in place.  0x42519e73 stores the class-side
+        receiver (self) directly, so subclasses retain their own fault
+        dispatch while sharing NSFault's root-class state layout.  */
+    anObject->isa = (Class)self;
 
     /*  [handler retain] result stored INTO the object's +4 word (i.e.
         the future _handler ivar slot), not discarded: 0x42519e85:
@@ -390,8 +388,8 @@ __NSFaultRaiseNullSelectorException(id object, SEL aSelector)
     ((id *)anObject)[1] = [aHandler retain];
 }
 
-/*  The restore, 0x42519fb4.  Gate on [anObject isFault] (nil passes the
-    test-only branch but the gate send is unconditional for non-nil);
+/*  The restore, i386 0x42519fb4 / PPC 0x42581a88.  Load the handler from
+    +4 before the nil and isFault checks, matching both target prologues;
     if NO, raise '%@: object not a fault' with the proem of the NSFault
     CLASS OBJECT (proem args at 0x42519fe3-fea are ebp+8/ebp+0xc =
     self/_cmd, NOT anObject) and the format object at 0x42606b30
@@ -399,7 +397,7 @@ __NSFaultRaiseNullSelectorException(id object, SEL aSelector)
     encoding v12@8:12@16) -- the caller works on the object in place.  */
 + (void)clearFault:(id)anObject
 {
-    NSFaultHandler *handler;
+    NSFaultHandler *handler = ((NSFault *)anObject)->_handler;
     unsigned extra;
 
     if (anObject == nil || ![anObject isFault])
@@ -407,17 +405,17 @@ __NSFaultRaiseNullSelectorException(id object, SEL aSelector)
                     format:@"%@: object not a fault",
                            _NSMethodExceptionProem(self, _cmd)];
 
-    handler = ((NSFault *)anObject)->_handler;
-
     /*  [handler faultWillFire: anObject] -- the FIRST send after the
         gate (0x4251a01b-29, cell 0x42609138), BEFORE any state changes:
         the hook the fault-firing sequence (Task 12) rides on.  */
     [handler faultWillFire:anObject];
 
-    /*  Restore (isa, +4) from (targetClass, extraData).  Reference
-        0x4251a04c/0x4251a05d: mov [ebx], eax; mov [ebx+4], eax, fed by
-        the three sends at 0x4251a028-0x4251a058 (cells 0x4260916c
-        'targetClass' and 0x42609134 'extraData').  */
+    /*  Both targets send extraRefCount here and discard the result before
+        restoring the object's isa and +4 word.  */
+    [handler extraRefCount];
+
+    /*  Restore (isa, +4) from the following targetClass and extraData
+        sends (cells 0x4260916c and 0x42609134, respectively).  */
     anObject->isa = [handler targetClass];
     ((id *)anObject)[1] = [handler extraData];
 
@@ -566,11 +564,13 @@ __NSFaultRaiseNullSelectorException(id object, SEL aSelector)
     0x42606b0c (same object the class side uses).  */
 - (void)doesNotRecognizeSelector:(SEL)aSelector
 {
+    Class targetClass = [self->_handler targetClass];
+
     NSLog(@"%@: selector not recognized",
-          _NSMethodExceptionProem(self, aSelector));
+          _NSMethodExceptionProem(targetClass, aSelector));
     [NSException raise:NSInvalidArgumentException
                 format:@"%@: selector not recognized",
-                       _NSMethodExceptionProem(self, aSelector)];
+                       _NSMethodExceptionProem(targetClass, aSelector)];
 }
 
 /*  Instance description forwards to the handler (0x42573aa8: one send,
@@ -616,7 +616,11 @@ __NSFaultRaiseNullSelectorException(id object, SEL aSelector)
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
 {
+#if defined(__ppc__) || defined(__POWERPC__)
+    return [self->_handler methodSignatureForSelector:aSelector];
+#else
     return [self->_handler methodSignatureForSelector:aSelector forFault:self];
+#endif
 }
 
 @end
@@ -650,20 +654,30 @@ __NSFaultRaiseNullSelectorException(id object, SEL aSelector)
     return _extraRefCount;
 }
 
-/*  0x4251ab34: bracketed by debug-check sends; _extraRefCount@12 inc.  */
+/*  The target protects this counter with the optional global retain lock.  */
 - (void)incrementExtraRefCount
 {
+    if (_NSGlobalRetainLock != nil)
+        [_NSGlobalRetainLock lock];
     _extraRefCount++;
+    if (_NSGlobalRetainLock != nil)
+        [_NSGlobalRetainLock unlock];
 }
 
-/*  0x42518bc8: same debug-check bracketing; zero -> set flag, no dec;
-    else dec.  */
+/*  A zero count reports true without decrementing; otherwise decrement once.  */
 - (BOOL)decrementExtraRefCountWasZero
 {
+    BOOL wasZero = NO;
+
+    if (_NSGlobalRetainLock != nil)
+        [_NSGlobalRetainLock lock];
     if (_extraRefCount == 0)
-        return YES;
-    _extraRefCount--;
-    return NO;
+        wasZero = YES;
+    else
+        _extraRefCount--;
+    if (_NSGlobalRetainLock != nil)
+        [_NSGlobalRetainLock unlock];
+    return wasZero;
 }
 
 /*  0x42573c58: targetClass read, nothing else.  */
@@ -695,7 +709,12 @@ __NSFaultRaiseNullSelectorException(id object, SEL aSelector)
     target class, not a class_respondsToMethod call.  */
 - (BOOL)respondsToSelector:(SEL)aSelector forFault:(id)anObject
 {
+#if defined(__ppc__) || defined(__POWERPC__)
+    return objc_msgSend(_targetClass, @selector(instancesRespondToSelector:),
+                        aSelector, anObject);
+#else
     return [_targetClass instancesRespondToSelector:aSelector];
+#endif
 }
 
 /*  0x42573ca0: objc_msgSend(_targetClass, 'conformsToProtocol:', proto).
@@ -703,7 +722,12 @@ __NSFaultRaiseNullSelectorException(id object, SEL aSelector)
     _NSClassConformsToProtocol).  */
 - (BOOL)conformsToProtocol:(Protocol *)aProtocol forFault:(id)anObject
 {
+#if defined(__ppc__) || defined(__POWERPC__)
+    return objc_msgSend(_targetClass, @selector(conformsToProtocol:),
+                        aProtocol, anObject);
+#else
     return [_targetClass conformsToProtocol:aProtocol];
+#endif
 }
 
 /*  0x42573cc8: 5 pushes then msgSend -- stringWithFormat-shaped, format
@@ -716,21 +740,11 @@ __NSFaultRaiseNullSelectorException(id object, SEL aSelector)
     return [NSString stringWithFormat:@"<%@(Fault 0x%x)>", _targetClass, anObject];
 }
 
-/*  0x42573c68: the reference calls NSRequestConcreteImplementation
-    (stub at 0x426000e0, unavailable in this tree -- confirmed absent
-    from the guest's shipped headers and its nm output), which raises
-    NSInternalInconsistencyException for abstract implementations.
-    Reconstructed with the closest expressible equivalent: the same
-    exception with a descriptive format.  Subclasses (e.g. the reference
-    tree's _NSLazyDeserializationFaultHandler) provide the real body;
-    the base class just refuses.  */
+/*  0x42573c68: the reference calls NSRequestConcreteImplementation with
+    NSFaultHandler's class object.  */
 - (void)completeInitializationOfObject:(id)anObject
 {
-    [NSException raise:NSInternalInconsistencyException
-                format:@"*** -%c[%@ %@]: implementation not overridden",
-                       ' ',
-                       [self class],
-                       NSStringFromSelector(_cmd)];
+    NSRequestConcreteImplementation(self, _cmd, [NSFaultHandler class]);
 }
 
 /*  0x42519f40: 8-byte empty body.  */

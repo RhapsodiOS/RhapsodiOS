@@ -5,97 +5,156 @@
 
 #import <Foundation/NSObjCRuntime.h>
 #import <Foundation/NSString.h>
+#import <Foundation/NSException.h>
+#import <Foundation/NSDate.h>
+#import <Foundation/NSLock.h>
+#import <Foundation/NSProcessInfo.h>
 #import <Foundation/NSZone.h>
 #import <objc/objc-runtime.h>
 #import <objc/Protocol.h>
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
+#include <fcntl.h>
+#include <sys/types.h>
+#include <syslog.h>
+#include <time.h>
 
-/*	Stage 2b has no NSString: NSString.m is stage 3.  What it does have is
-	the layout the compiler already emits for every `@"..."` literal --
-	this project's Objective-C frontend (src/cc-1/cc/objc/NXConstStr.h)
-	lays one out as { Class isa; char *c_string; unsigned int len; }, with
-	isa pointing at _NSConstantStringClassReference.  The two helpers below
-	read and build that shape, so the four conversion functions can return
-	and accept something a caller treats as a string, and so a test can read
-	the result back.  Stage 3 replaces both with real NSString instances
-	and -cString/+stringWithCString:length:; the exported ABI does not move
-	when it does.  */
+#undef YES
+#undef NO
+#undef nil
+#undef Nil
+#ifdef NULL
+#undef NULL
+#endif
 
-typedef struct {
-    Class	isa;
-    char	*c_string;
-    unsigned	len;
-} NSObjCRuntimeStringRecord;
+/* Synthetic compatibility definitions for legacy exports whose original
+   translation unit and padding widths are unknown. */
+const BOOL YES = (BOOL)1;
+const char dummyPad1 = 0;
+const BOOL NO = (BOOL)0;
+const char dummyPad2 = 0;
+id const nil = (id)0;
+Class const Nil = (Class)0;
+void *NULL = (void *)0;
 
-/*	NSString.h declares this symbol `extern void *`; that header is this
-	file's declaration of record for it, so the record builder below casts
-	its address rather than re-declaring it with a struct type that would
-	conflict.  */
+#if defined(__ppc__) || defined(__POWERPC__)
+unsigned int __NSObjectAllocatorLock = 0;
+#endif
 
-static const char *
-_NSObjCRuntimeStringBytes(NSString *string)
+#define YES (BOOL)1
+#define NO (BOOL)0
+#define nil (id)0
+#define Nil (Class)0
+#define NULL 0
+
+#if defined(__ppc__) || defined(__POWERPC__)
+extern int _NSvsnprintf(char *buffer, size_t size, const char *format,
+                        va_list arguments);
+#endif
+extern NSRecursiveLock *_NSLogLock;
+extern int _NSProcessID(void);
+extern char *_NSProcessName(void);
+extern time_t _NSCurrentUNIXTime(void);
+extern ssize_t _NSWriteToFileDescriptor(int descriptor, const void *buffer,
+                                         size_t length);
+
+static unsigned int NSLocalizeLogDate;
+
+Class (*_NSAltClassNameFromString)(NSString *className) = NULL;
+
+#if defined(__ppc__) || defined(__POWERPC__)
+const char NSFoundationVersionString[] =
+    "@(#)PROGRAM:Foundation  PROJECT:Foundation-298.81  DEVELOPER:root  BUILT:02/20/99 00:21:12\n";
+const double NSFoundationVersionNumber = 298.81;
+#else
+const char NSFoundationVersionString[] =
+    "@(#)PROGRAM:Foundation  PROJECT:Foundation-275  DEVELOPER:root  BUILT:03/28/98 06:22:40\n";
+const double NSFoundationVersionNumber = 275.0;
+#endif
+
+int
+_NSsnprintf(char *buffer, size_t size, char *format, ...)
 {
-    if (string == nil)
-        return NULL;
-    return ((NSObjCRuntimeStringRecord *)string)->c_string;
+    va_list arguments;
+
+    va_start(arguments, format);
+#if defined(__ppc__) || defined(__POWERPC__)
+    return _NSvsnprintf(buffer, size, format, arguments);
+#else
+    return vsnprintf(buffer, size, format, arguments);
+#endif
 }
 
-static NSString *
-_NSObjCRuntimeStringWithCString(const char *bytes)
+extern unsigned NSPushAutoreleasePool(void);
+extern void NSPopAutoreleasePool(unsigned token);
+
+id
+NSRequestConcreteImplementation(id object, SEL selector, Class abstractClass)
 {
-    NSObjCRuntimeStringRecord *record;
-    unsigned length;
+    Class objectClass;
+    const char *selectorName;
 
-    if (bytes == NULL)
-        return nil;
+    objectClass = [object class];
+    selectorName = sel_getName(selector);
 
-    length = strlen(bytes);
-    record = (NSObjCRuntimeStringRecord *)
-        NSZoneMalloc(0, sizeof(NSObjCRuntimeStringRecord) + length + 1);
-    record->isa = (Class)&_NSConstantStringClassReference;
-    record->c_string = (char *)(record + 1);
-    record->len = length;
-    memcpy(record->c_string, bytes, length + 1);
+    if (objectClass == abstractClass) {
+        [NSException raise:NSInvalidArgumentException
+                    format:@"*** -%s cannot be sent to an abstract object of class %s: Create a concrete instance!",
+                          selectorName, objectClass->name];
+    } else {
+        [NSException raise:NSInvalidArgumentException
+                    format:@"*** -%s only defined for abstract class.  Define -[%s %s]!",
+                          selectorName, object->isa->name, selectorName];
+    }
 
-    return (NSString *)record;
+    return nil;
+}
+
+id
+_NSRequestConcreteObject(id object, const char *selectorName)
+{
+    [NSException raise:NSInvalidArgumentException
+                format:@"*** -%s cannot be sent to an abstract object of class %s: Create a concrete instance!",
+                       selectorName, object->isa->name];
+    return nil;
 }
 
 NSString *
 NSStringFromSelector(SEL aSelector)
 {
+    const char *name;
+
     if (aSelector == NULL)
-        return nil;
-    return _NSObjCRuntimeStringWithCString(sel_getName(aSelector));
+        [NSException raise:NSInvalidArgumentException
+                    format:@"*** NSStringFromSelector(): 0 selector"];
+    name = sel_getName(aSelector);
+    return [NSString stringWithCString:name length:strlen(name)];
 }
 
 SEL
 NSSelectorFromString(NSString *aSelectorName)
 {
-    const char *bytes = _NSObjCRuntimeStringBytes(aSelectorName);
-
-    if (bytes == NULL)
-        return NULL;
-    return sel_registerName(bytes);
+    return sel_getUid([aSelectorName cString]);
 }
 
 Class
 NSClassFromString(NSString *aClassName)
 {
-    const char *bytes = _NSObjCRuntimeStringBytes(aClassName);
+    const char *bytes = [aClassName cString];
+    Class aClass;
 
-    if (bytes == NULL)
-        return Nil;
-    return objc_lookUpClass(bytes);
+    aClass = objc_getClass(bytes);
+    if (aClass == Nil && _NSAltClassNameFromString != NULL)
+        aClass = _NSAltClassNameFromString(aClassName);
+    return aClass;
 }
 
 NSString *
 NSStringFromClass(Class aClass)
 {
-    if (aClass == Nil)
-        return nil;
-    return _NSObjCRuntimeStringWithCString(aClass->name);
+    return [NSString stringWithCString:aClass->name
+                               length:strlen(aClass->name)];
 }
 
 /*	Walks one type encoding and reports its size and alignment, returning
@@ -107,9 +166,51 @@ NSStringFromClass(Class aClass)
 
 	A struct's size is its members laid out in order, each padded up to
 	its own alignment, with the whole padded up to the widest member's
-	alignment; a union's is its widest member.  Qualifier prefixes
+	alignment.  A union reports the largest member size tracked by the
+	architecture's type walker.  Qualifier prefixes
 	(const, in, out, inout, bycopy, byref, oneway) carry no size and are
 	skipped.  */
+static unsigned
+NSBitfieldSizeAndAdvance(const char **typePtr, unsigned *alignp,
+                         unsigned offset)
+{
+    const char *cursor = *typePtr;
+    unsigned bitsUsed = 0;
+    unsigned offsetBits = 8 * offset;
+    unsigned bitsRemaining = 32 - (offsetBits % 32);
+
+    *alignp = sizeof(int);
+    if (*cursor == 'b') {
+        unsigned width;
+
+        do {
+            const char *fieldStart = cursor;
+
+            cursor++;
+            width = 0;
+            while (*cursor >= '0' && *cursor <= '9')
+                width = (width * 10) + (unsigned)(*cursor++ - '0');
+            if (width != 0) {
+                if (bitsRemaining < width) {
+                    bitsUsed += bitsRemaining;
+                    bitsRemaining = 32;
+                    cursor = fieldStart;
+                } else {
+                    bitsUsed += width;
+                    bitsRemaining -= width;
+                }
+            } else {
+                bitsUsed = 32 * ((bitsUsed + offsetBits + 31) / 32) -
+                    offsetBits;
+                bitsRemaining = 32 - ((bitsUsed + offsetBits) % 32);
+            }
+        } while (*cursor == 'b');
+    }
+
+    *typePtr = cursor;
+    return (bitsUsed + 7) >> 3;
+}
+
 static const char *
 NSSizeAndAlignmentOfType(const char *typePtr, unsigned *sizep, unsigned *alignp)
 {
@@ -122,9 +223,13 @@ NSSizeAndAlignmentOfType(const char *typePtr, unsigned *sizep, unsigned *alignp)
         typePtr++;
 
     size = 0;
-    align = 1;
+    align = 0;
 
     switch (*typePtr) {
+    case '!': case '%':
+        size = sizeof(int); align = sizeof(int); typePtr++; break;
+    case '$':
+        size = sizeof(char); align = size; typePtr++; break;
     case 'c': case 'C':
         size = sizeof(char); align = size; typePtr++; break;
     case 's': case 'S':
@@ -137,13 +242,7 @@ NSSizeAndAlignmentOfType(const char *typePtr, unsigned *sizep, unsigned *alignp)
         size = sizeof(float); align = size; typePtr++; break;
     case 'd':
         size = sizeof(double); align = sizeof(int); typePtr++; break;
-    case 'B':
-        size = sizeof(char); align = size; typePtr++; break;
-    case 'v':
-        size = 0; align = 1; typePtr++; break;
     case '*': case '@': case '#': case ':':
-        size = sizeof(void *); align = size; typePtr++; break;
-    case '?':
         size = sizeof(void *); align = size; typePtr++; break;
     case '^':
         /*  A pointer is pointer-sized whatever it points at, but the
@@ -161,10 +260,18 @@ NSSizeAndAlignmentOfType(const char *typePtr, unsigned *sizep, unsigned *alignp)
         while (*typePtr >= '0' && *typePtr <= '9')
             count = (count * 10) + (unsigned)(*typePtr++ - '0');
         typePtr = NSSizeAndAlignmentOfType(typePtr, &elementSize, &elementAlign);
-        if (*typePtr == ']')
-            typePtr++;
-        size = count * elementSize;
+        size = count * elementAlign *
+            ((elementSize + elementAlign - 1) / elementAlign);
         align = elementAlign;
+        if (*typePtr != ']') {
+            typePtr++;
+            if (alignp != 0)
+                *alignp = align;
+            [NSException raise:NSInvalidArgumentException
+                        format:@"badly formed array description"];
+        } else {
+            typePtr++;
+        }
         break;
     }
     case '{': case '(': {
@@ -172,42 +279,84 @@ NSSizeAndAlignmentOfType(const char *typePtr, unsigned *sizep, unsigned *alignp)
         BOOL isUnion = (closing == ')');
         unsigned memberSize;
         unsigned memberAlign;
+        unsigned offset = 0;
+        BOOL memberIsBitfield;
+        const char *aggregateStart = typePtr;
+#if defined(__ppc__) || defined(__POWERPC__)
+        BOOL firstMember = YES;
+        unsigned doubleAlign = sizeof(int);
+#endif
 
+        align = 1;
         typePtr++;
         while (*typePtr != '\0' && *typePtr != '=' && *typePtr != closing)
             typePtr++;
-        if (*typePtr == '=')
+        if (*typePtr == closing) {
+            typePtr++;
+            if (sizep != 0 || alignp != 0)
+                [NSException raise:NSInvalidArgumentException
+                            format:@"can't determine size of struct/union (inadequate ObjC runtime information) for: %s (forward use?)",
+                                  aggregateStart];
+            break;
+        }
+        if (*typePtr == '\0')
+            [NSException raise:NSInvalidArgumentException
+                        format:@"can't determine size of struct/union: %s (parsing error)",
+                              aggregateStart];
+        else
             typePtr++;
 
         while (*typePtr != '\0' && *typePtr != closing) {
-            typePtr = NSSizeAndAlignmentOfType(typePtr, &memberSize, &memberAlign);
+#if defined(__ppc__) || defined(__POWERPC__)
+            BOOL memberIsDouble = NO;
+#endif
+            memberIsBitfield = (*typePtr == 'b');
+            if (memberIsBitfield) {
+                memberSize = NSBitfieldSizeAndAdvance(&typePtr, &memberAlign,
+                                                     offset);
+            } else {
+#if defined(__ppc__) || defined(__POWERPC__)
+                const char *alignmentType = typePtr;
+
+                while (*alignmentType == 'N' || *alignmentType == 'O' ||
+                       *alignmentType == 'R' || *alignmentType == 'V' ||
+                       *alignmentType == 'n' || *alignmentType == 'o' ||
+                       *alignmentType == 'r')
+                    alignmentType++;
+                memberIsDouble = (*alignmentType == 'd');
+                if (memberIsDouble) {
+                    if (firstMember)
+                        doubleAlign = 8;
+                    typePtr = NSSizeAndAlignmentOfType(typePtr, &memberSize, 0);
+                    memberAlign = doubleAlign;
+                } else {
+                    typePtr = NSSizeAndAlignmentOfType(typePtr, &memberSize,
+                                                       &memberAlign);
+                }
+#else
+                typePtr = NSSizeAndAlignmentOfType(typePtr, &memberSize,
+                                                   &memberAlign);
+#endif
+            }
+            if (!memberIsBitfield && memberAlign != 0 &&
+                (offset % memberAlign) != 0)
+                offset += memberAlign - (offset % memberAlign);
+            offset += memberSize;
+#if defined(__ppc__) || defined(__POWERPC__)
+            firstMember = NO;
+#endif
             if (memberAlign > align)
                 align = memberAlign;
             if (isUnion) {
-                if (memberSize > size)
+                if (!memberIsBitfield && memberSize > size)
                     size = memberSize;
             } else {
-                if (memberAlign != 0 && (size % memberAlign) != 0)
-                    size += memberAlign - (size % memberAlign);
-                size += memberSize;
+                size = offset;
             }
         }
-        if (*typePtr == closing)
-            typePtr++;
-        if (align != 0 && (size % align) != 0)
-            size += align - (size % align);
-        break;
-    }
-    case 'b': {
-        /*  A bitfield: bN, N bits.  Reported as the bits it occupies,
-            which is what the runtime's own walkers do with it.  */
-        unsigned bits = 0;
-
         typePtr++;
-        while (*typePtr >= '0' && *typePtr <= '9')
-            bits = (bits * 10) + (unsigned)(*typePtr++ - '0');
-        size = (bits + 7) / 8;
-        align = 1;
+        if (!isUnion && align != 0 && (size % align) != 0)
+            size += align - (size % align);
         break;
     }
     default:
@@ -227,8 +376,6 @@ NSSizeAndAlignmentOfType(const char *typePtr, unsigned *sizep, unsigned *alignp)
 const char *
 NSGetSizeAndAlignment(const char *typePtr, unsigned int *sizep, unsigned int *alignp)
 {
-    if (typePtr == NULL)
-        return NULL;
     return NSSizeAndAlignmentOfType(typePtr, sizep, alignp);
 }
 
@@ -244,116 +391,151 @@ _NSGetSizeAndAlignment(const char *typePtr, unsigned int *sizep, unsigned int *a
     return NSGetSizeAndAlignment(typePtr, sizep, alignp);
 }
 
-/*	The one place this module writes a finished log line.  The reference
-	exports this symbol and routes its logging through it; keeping that
-	shape means the later stages that add timestamping or a syslog route
-	have one function to change rather than two.  */
+/* Prefix the process identity and write the formatted message to stderr. */
 void
-_NSBasicStdErrLog(const char *message)
+_NSBasicStdErrLog(const char *format, ...)
 {
-    if (message == NULL)
-        return;
-    fputs(message, stderr);
-    fputc('\n', stderr);
-    fflush(stderr);
+    char *buffer;
+    va_list arguments;
+    char *processName;
+    int processID;
+    unsigned prefixLength;
+    size_t length;
+
+    va_start(arguments, format);
+    buffer = NSZoneMalloc(NULL, 1024);
+#if defined(__ppc__) || defined(__POWERPC__)
+    processName = _NSProcessName();
+    processID = _NSProcessID();
+#else
+    processID = _NSProcessID();
+    processName = _NSProcessName();
+#endif
+    _NSsnprintf(buffer, 1024, "%s[%d] ", processName, processID);
+    prefixLength = (unsigned)strlen(buffer);
+#if defined(__ppc__) || defined(__POWERPC__)
+    _NSvsnprintf(buffer + prefixLength, 1024 - prefixLength, format,
+                 arguments);
+#else
+    vsnprintf(buffer + prefixLength, 1024 - prefixLength, format, arguments);
+#endif
+    va_end(arguments);
+    length = strlen(buffer);
+    _NSWriteToFileDescriptor(2, buffer, length);
+    NSZoneFree(NULL, buffer);
 }
 
-/*	Formats `format` over `args` and hands the result to
-	_NSBasicStdErrLog.  Stage 2b has no NSString, so this walks the
-	format's own bytes and rebuilds a C format string as it goes,
-	substituting %@ (whose argument is another NXConstantString-shaped
-	record in this stage, see the helpers at the top of this file) with
-	that record's bytes.  Every other specifier is handed to vsnprintf
-	unchanged.
+typedef int (*NSLogCStringFunction)(const char *bytes, unsigned length,
+                                    char display);
 
-	PROVISIONAL: this covers the specifiers this stage's own callers use
-	(%@, %s, %d, %u, %x, %c, %%) and no more.  Stage 3 replaces it with
-	real NSString formatting.  Recorded in divergences.md.  */
+static int
+NSDefaultLogCString(const char *bytes, unsigned length, char display)
+{
+    NSProcessInfo *processInfo;
+    NSString *processName;
+    NSString *message;
+    NSString *date;
+    const char *processNameBytes;
+    char *messageBytes;
+    unsigned messageLength;
+    int processID;
+    BOOL writeFailed;
 
-#define NSLogMessageMax 1024
+    if (bytes == NULL || length > 0x3fffffffU)
+        return 0;
+    processInfo = [NSProcessInfo processInfo];
+    processName = [processInfo processName];
+    processNameBytes = [processName cString];
+    if (_NSLogLock != nil)
+        [_NSLogLock lock];
+    ++NSLocalizeLogDate;
+    if (display) {
+        if (NSLocalizeLogDate == 1) {
+#if defined(__ppc__) || defined(__POWERPC__)
+            date = [[NSDate date]
+                descriptionWithCalendarFormat:@"%b %d %H:%M:%S" locale:nil];
+            processID = _NSProcessID();
+#else
+            processID = _NSProcessID();
+            date = [[NSDate date]
+                descriptionWithCalendarFormat:@"%b %d %H:%M:%S" locale:nil];
+#endif
+            message = [NSString stringWithFormat:
+                @"%@ %s[%d] %s  ", date, processNameBytes, processID, bytes];
+        } else {
+            time_t now = _NSCurrentUNIXTime();
+            char *date = ctime(&now);
+
+            date += 4;
+            date[15] = '\0';
+            processID = _NSProcessID();
+            message = [NSString stringWithFormat:
+                @"%s %s[%d] %s  ", date, processNameBytes, processID, bytes];
+        }
+    } else {
+        message = [NSString stringWithFormat:@"%s  ", bytes];
+    }
+    messageBytes = (char *)[message cString];
+    messageLength = (unsigned)strlen(messageBytes);
+    if (messageBytes[messageLength - 3] != '\n') {
+        messageBytes[messageLength - 2] = '\n';
+        messageLength--;
+    } else
+        messageLength -= 2;
+    messageBytes[messageLength] = '\0';
+    writeFailed = fcntl(2, F_GETFL) == -1;
+    if (!writeFailed)
+        writeFailed = _NSWriteToFileDescriptor(2, messageBytes,
+                                               messageLength) == -1;
+    if (writeFailed) {
+        openlog(processNameBytes, LOG_PID | LOG_CONS, LOG_USER);
+        syslog(LOG_ERR, "%s", bytes);
+        closelog();
+    }
+    --NSLocalizeLogDate;
+    if (_NSLogLock != nil)
+        [_NSLogLock unlock];
+    return 0;
+}
+
+static NSLogCStringFunction NSLogCStringSink = NSDefaultLogCString;
+
+NSLogCStringFunction
+_NSLogCStringFunction(void)
+{
+    return NSLogCStringSink;
+}
+
+NSLogCStringFunction
+_NSSetLogCStringFunction(NSLogCStringFunction function)
+{
+    if (function == NULL)
+        NSLogCStringSink = NSDefaultLogCString;
+    else
+        NSLogCStringSink = function;
+    return function;
+}
 
 void
 NSLogv(NSString *format, va_list args)
 {
+    unsigned pool;
+    NSString *message;
     const char *bytes;
-    char message[NSLogMessageMax];
-    unsigned out;
-    unsigned i;
+    unsigned length;
+    NSLogCStringFunction logFunction;
 
-    bytes = _NSObjCRuntimeStringBytes(format);
-    if (bytes == NULL)
+    if (format == nil)
         return;
-
-    out = 0;
-    i = 0;
-    while (bytes[i] != '\0' && out < NSLogMessageMax - 1) {
-        if (bytes[i] != '%') {
-            message[out++] = bytes[i++];
-            continue;
-        }
-
-        if (bytes[i + 1] == '%') {
-            message[out++] = '%';
-            i += 2;
-            continue;
-        }
-
-        if (bytes[i + 1] == '@') {
-            id object = va_arg(args, id);
-            const char *text = _NSObjCRuntimeStringBytes((NSString *)object);
-
-            if (text == NULL)
-                text = "(null)";
-            while (*text != '\0' && out < NSLogMessageMax - 1)
-                message[out++] = *text++;
-            i += 2;
-            continue;
-        }
-
-        {
-            /*  Copy this one specifier out and let vsprintf do it, so
-                the platform's own conversions apply rather than a
-                hand-rolled imitation of them.  */
-            char specifier[16];
-            char converted[NSLogMessageMax];
-            unsigned length = 0;
-
-            specifier[length++] = bytes[i++];
-            while (bytes[i] != '\0' && length < sizeof(specifier) - 1) {
-                specifier[length++] = bytes[i];
-                if (strchr("diouxXeEfgGcsp", bytes[i]) != NULL) {
-                    i++;
-                    break;
-                }
-                i++;
-            }
-            specifier[length] = '\0';
-
-            converted[0] = '\0';
-            vsprintf(converted, specifier, args);
-            /*  vsprintf consumed exactly one argument for this
-                specifier; step args past it by re-reading the same
-                width the specifier implies.  */
-            if (strchr(specifier, 's') != NULL)
-                (void)va_arg(args, char *);
-            else if (strchr(specifier, 'f') != NULL ||
-                     strchr(specifier, 'e') != NULL ||
-                     strchr(specifier, 'g') != NULL)
-                (void)va_arg(args, double);
-            else
-                (void)va_arg(args, int);
-
-            {
-                unsigned k = 0;
-
-                while (converted[k] != '\0' && out < NSLogMessageMax - 1)
-                    message[out++] = converted[k++];
-            }
-        }
-    }
-    message[out] = '\0';
-
-    _NSBasicStdErrLog(message);
+    pool = NSPushAutoreleasePool();
+    message = [[NSString allocWithZone:NULL]
+        initWithFormat:format locale:nil arguments:args];
+    message = [message autorelease];
+    bytes = [[message displayableString] lossyCString];
+    length = (unsigned)strlen(bytes);
+    logFunction = _NSLogCStringFunction();
+    logFunction(bytes, length, 1);
+    NSPopAutoreleasePool(pool);
 }
 
 void
@@ -373,6 +555,9 @@ NSLog(NSString *format, ...)
 	against it.  Claimed by name in reconstruction/symbols.json.  */
 
 extern id _objc_msgForward(id self, SEL op, ...);
+extern IMP class_lookupMethod(Class aClass, SEL aSelector);
+extern struct objc_method_list *class_nextMethodList(Class aClass,
+                                                       void **cursor);
 
 /*	The implementation aClass would run for aSelector, or the runtime's
 	forwarding trampoline when it has none -- the sentinel
@@ -381,16 +566,39 @@ extern id _objc_msgForward(id self, SEL op, ...);
 IMP
 _NSIMPForSelector(Class aClass, SEL aSelector)
 {
-    struct objc_method *method;
+    return class_lookupMethod(aClass, aSelector);
+}
 
-    if (aClass == Nil || aSelector == NULL)
-        return (IMP)_objc_msgForward;
+IMP
+_NSIMPForObjectAndSelector(id object, SEL aSelector)
+{
+    IMP implementation = class_lookupMethod(*(Class *)object, aSelector);
 
-    method = class_getInstanceMethod(aClass, aSelector);
-    if (method == NULL)
-        return (IMP)_objc_msgForward;
+    return implementation == (IMP)_objc_msgForward
+        ? (IMP)objc_msgSend : implementation;
+}
 
-    return method->method_imp;
+IMP
+_NSImplementationForObjectAndSelector(id object, const char *selectorName)
+{
+    SEL aSelector = sel_registerName(selectorName);
+    IMP implementation = class_lookupMethod(*(Class *)object, aSelector);
+
+    return implementation == (IMP)_objc_msgForward ? (IMP)0 : implementation;
+}
+
+NSString *
+_NSFullMethodName(id object, char *selectorName)
+{
+    char buffer[1024];
+    Class objectClass = *(Class *)object;
+
+    strcpy(buffer, object == [object class] ? "+[" : "-[");
+    strcat(buffer, objectClass->name);
+    strcat(buffer, " ");
+    strcat(buffer, selectorName);
+    strcat(buffer, "]");
+    return [NSString stringWithCString:buffer length:strlen(buffer)];
 }
 
 /*	The selector and type encoding of aClass's implementation, or NULL
@@ -401,16 +609,52 @@ _NSIMPForSelector(Class aClass, SEL aSelector)
 struct objc_method_description *
 _NSMethodDescriptionForSelector(Class aClass, SEL aSelector)
 {
-    struct objc_method *method;
+    Class candidate;
 
-    if (aClass == Nil || aSelector == NULL)
-        return NULL;
+    for (candidate = aClass; candidate != Nil;
+         candidate = candidate->super_class) {
+        if (candidate->isa->version > 2) {
+            struct objc_protocol_list *protocols = candidate->protocols;
 
-    method = class_getInstanceMethod(aClass, aSelector);
-    if (method == NULL)
-        return NULL;
+            while (protocols != NULL) {
+                int index;
 
-    return (struct objc_method_description *)method;
+                for (index = 0; index < protocols->count; index++) {
+                    struct objc_method_description *description;
+
+                    if ((candidate->info & CLS_META) != 0)
+                        description = [protocols->list[index]
+                            descriptionForClassMethod:aSelector];
+                    else
+                        description = [protocols->list[index]
+                            descriptionForInstanceMethod:aSelector];
+                    if (description != NULL)
+                        return description;
+                }
+                if (candidate->isa->version <= 4)
+                    break;
+                protocols = protocols->next;
+            }
+        }
+    }
+
+    for (candidate = aClass; candidate != Nil;
+         candidate = candidate->super_class) {
+        void *cursor = NULL;
+        struct objc_method_list *methods;
+
+        while ((methods = class_nextMethodList(candidate, &cursor)) != NULL) {
+            int index;
+
+            for (index = 0; index < methods->method_count; index++) {
+                if (methods->method_list[index].method_name == aSelector)
+                    return (struct objc_method_description *)
+                        &methods->method_list[index];
+            }
+        }
+    }
+
+    return NULL;
 }
 
 /*	Whether aClass, or anything it inherits from, adopts aProtocol.
@@ -423,7 +667,7 @@ _NSClassConformsToProtocol(Class aClass, Protocol *aProtocol)
 {
     Class candidate;
 
-    if (aClass == Nil || aProtocol == nil)
+    if (aClass == Nil)
         return NO;
 
     for (candidate = aClass; candidate != Nil; candidate = candidate->super_class) {
@@ -433,7 +677,7 @@ _NSClassConformsToProtocol(Class aClass, Protocol *aProtocol)
             int index;
 
             for (index = 0; index < protocols->count; index++) {
-                if (protocols->list[index] == aProtocol)
+                if ([protocols->list[index] conformsTo:aProtocol])
                     return YES;
             }
         }
@@ -442,13 +686,17 @@ _NSClassConformsToProtocol(Class aClass, Protocol *aProtocol)
     return NO;
 }
 
-/*	NSDetailedDescription: two diagnostic categories the reference's
-	__OBJC metadata carries but that no header in this tree declares, so
-	both are declared here, the only place that implements them, and
-	claimed by name in reconstruction/symbols.json.  The reference's exact
-	output text is outside this stage's published analysis scope; what is
-	reconstructed is the observable shape -- the name, and the methods it
-	carries.  Recorded in divergences.md.  */
+/*	NSDetailedDescription is present in the reference metadata but has no
+	public declaration in this tree.  Its two methods are kept local to this
+	module and claimed by name in reconstruction/symbols.json.  */
+
+struct NSProtocolDescriptionStorage {
+    Class isa;
+    char *name;
+    struct objc_protocol_list *protocols;
+    struct objc_method_description_list *instanceMethods;
+    struct objc_method_description_list *classMethods;
+};
 
 @interface Protocol (NSDetailedDescription)
 - (NSString *)detailedDescription;
@@ -458,7 +706,50 @@ _NSClassConformsToProtocol(Class aClass, Protocol *aProtocol)
 
 - (NSString *)detailedDescription
 {
-    return _NSObjCRuntimeStringWithCString([self name]);
+    struct NSProtocolDescriptionStorage *storage =
+        (struct NSProtocolDescriptionStorage *)self;
+    NSMutableString *description =
+        [NSMutableString stringWithCapacity:300];
+    struct objc_protocol_list *protocols = storage->protocols;
+    struct objc_method_description_list *methods;
+    int index;
+
+    [description appendFormat:@"Protocol: %s  self:%x\n", storage->name,
+                              self];
+    if (protocols != NULL) {
+        for (index = protocols->count - 1; index >= 0; index--) {
+            Protocol *protocol = protocols->list[index];
+
+            [description appendFormat:@" %s %x", [protocol name], protocol];
+        }
+        [description appendString:@"\n"];
+    }
+
+    methods = storage->instanceMethods;
+    if (methods != NULL) {
+        for (index = methods->count - 1; index >= 0; index--) {
+            struct objc_method_description *method = &methods->list[index];
+
+            [description appendFormat:@"-sel:%s %x types:%s\n",
+                                      method->name, method->name,
+                                      method->types];
+        }
+        [description appendString:@"\n"];
+    }
+
+    methods = storage->classMethods;
+    if (methods != NULL) {
+        for (index = methods->count - 1; index >= 0; index--) {
+            struct objc_method_description *method = &methods->list[index];
+
+            [description appendFormat:@"+sel:%s %x types:%s\n",
+                                      method->name, method->name,
+                                      method->types];
+        }
+        [description appendString:@"\n"];
+    }
+    [description appendString:@"\n"];
+    return description;
 }
 
 @end
@@ -471,15 +762,61 @@ _NSClassConformsToProtocol(Class aClass, Protocol *aProtocol)
 
 + (NSString *)detailedDescriptionForClass:(Class)aClass
 {
-    char buffer[256];
+    NSMutableString *description =
+        [NSMutableString stringWithCapacity:300];
+    char methodKind = (aClass->info & 2) != 0 ? '+' : '-';
+    void *cursor = NULL;
+    struct objc_method_list *methods;
+    int index;
 
-    if (aClass == Nil)
-        return nil;
+    [description appendFormat:
+        @"Class: %s version %d isize: %d self:%x super:%x isa:%x info:",
+        aClass->name, aClass->version, aClass->instance_size, aClass,
+        aClass->super_class, aClass->isa];
+    if ((aClass->info & 1) != 0)
+        [description appendString:@" CLASS"];
+    if ((aClass->info & 2) != 0)
+        [description appendString:@" META"];
+    if ((aClass->info & 4) != 0)
+        [description appendString:@" INITIALIZED"];
+    if ((aClass->info & 8) != 0)
+        [description appendString:@" POSING"];
+    if ((aClass->info & 0x10) != 0)
+        [description appendString:@" MAPPED"];
+    if ((aClass->info & 0x20) != 0)
+        [description appendString:@" FLUSH_CACHE"];
+    [description appendString:@"\n"];
 
-    strncpy(buffer, aClass->name, sizeof(buffer) - 1);
-    buffer[sizeof(buffer) - 1] = '\0';
+    if (aClass->protocols != NULL) {
+        [description appendString:@"conforms to Protocols:"];
+        for (index = aClass->protocols->count - 1; index >= 0; index--) {
+            Protocol *protocol = aClass->protocols->list[index];
 
-    return _NSObjCRuntimeStringWithCString(buffer);
+            [description appendFormat:@" %s %x", [protocol name], protocol];
+        }
+        [description appendString:@"\n"];
+    }
+
+    while ((methods = class_nextMethodList(aClass, &cursor)) != NULL) {
+        for (index = methods->method_count - 1; index >= 0; index--) {
+            struct objc_method *method = &methods->method_list[index];
+
+            [description appendFormat:
+                @"%csel:%s %x types:%s implementation:%x\n",
+                methodKind, method->method_name, method->method_name,
+                method->method_types, method->method_imp];
+        }
+        [description appendString:@"\n"];
+    }
+    [description appendString:@"\n"];
+
+    if (aClass->super_class != NULL && aClass->super_class != aClass) {
+        NSString *superDescription =
+            [self detailedDescriptionForClass:aClass->super_class];
+
+        [description appendFormat:@"%@\n", superDescription];
+    }
+    return description;
 }
 
 @end

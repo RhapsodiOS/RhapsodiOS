@@ -213,6 +213,8 @@ def attach_symbols(modules, assignment, symbols):
             section = symbol["section"]
             if section is None:
                 raise ObjcAbiError(f"{name} is undefined in the image")
+            if symbol["binding"] != "external":
+                continue
             bucket = text if section == "__TEXT,__text" else data
             bucket.append(name)
         modules[module]["text_symbols"] = sorted(text)

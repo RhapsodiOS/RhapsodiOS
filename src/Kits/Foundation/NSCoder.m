@@ -3,65 +3,88 @@
 */
 
 #import <Foundation/NSCoder.h>
-#import <Foundation/NSException.h>
+#import <Foundation/NSArchiver.h>
+#import <Foundation/NSData.h>
+#import <Foundation/NSMutableData.h>
+#import <Foundation/NSObjCRuntime.h>
+#import <Foundation/NSSerialization.h>
 #import <Foundation/NSString.h>
 #import <Foundation/NSZone.h>
 #include <stdarg.h>
 #include <string.h>
 
-/*	NSCoder's instance_size is 4 -- isa only, no storage of its own.  Its
-	five primitives have compiled bodies in the reference despite that,
-	which -- given there is nowhere for a primitive to keep state -- can
-	only mean each raises "subclass responsibility": the reference's
-	reason literal "<method>: subclass should override ..." sits in
-	__OBJC,__cstring_object, reached through _NSMethodExceptionProem plus
-	the shared raise helper every primitive calls.  A real coder
-	(NSArchiver, stage 6; NSPortCoder, stage 8) overrides all five with a
-	concrete backing store.  Tasks 3-4 fill in the remaining methods.  */
+extern int _NSsnprintf(char *buffer, size_t size, char *format, ...);
+
+#if defined(__ppc__) || defined(__POWERPC__)
+static unsigned char NSCoderEncodeNXObjectWarned;
+static unsigned char NSCoderDecodeNXObjectWarned;
+
+static void NSCoderWarnNXObjectCompatibility(id coder, SEL selector,
+                                              unsigned char *warned)
+{
+    if (!*warned) {
+        *warned = 1;
+        NSLog(@"%@: warning: Object compatibility method has been executed at least once.  Convert source code off it NOW!",
+              _NSMethodExceptionProem(coder, selector));
+    }
+}
+#endif
+
+/*	NSCoder's instance_size is 4 -- isa only, no storage of its own.
+	Its abstract primitives report subclass responsibility through
+	NSRequestConcreteImplementation.  Concrete coders provide the backing
+	store and override these methods.  */
 
 @implementation NSCoder
 
 - (void)encodeValueOfObjCType:(const char *)type at:(const void *)addr
 {
-    id proem = _NSMethodExceptionProem(self, _cmd);
-
-    [NSException raise:NSInvalidArgumentException
-                format:@"%@: subclass should override encodeValueOfObjCType:at:", proem];
+    NSRequestConcreteImplementation(self, _cmd, [NSCoder class]);
 }
 
 - (void)encodeDataObject:(NSData *)data
 {
-    id proem = _NSMethodExceptionProem(self, _cmd);
-
-    [NSException raise:NSInvalidArgumentException
-                format:@"%@: subclass should override encodeDataObject:", proem];
+    NSRequestConcreteImplementation(self, _cmd, [NSCoder class]);
 }
 
 - (void)decodeValueOfObjCType:(const char *)type at:(void *)data
 {
-    id proem = _NSMethodExceptionProem(self, _cmd);
-
-    [NSException raise:NSInvalidArgumentException
-                format:@"%@: subclass should override decodeValueOfObjCType:at:", proem];
+    NSRequestConcreteImplementation(self, _cmd, [NSCoder class]);
 }
 
 - (NSData *)decodeDataObject
 {
-    id proem = _NSMethodExceptionProem(self, _cmd);
-
-    [NSException raise:NSInvalidArgumentException
-                format:@"%@: subclass should override decodeDataObject", proem];
+    NSRequestConcreteImplementation(self, _cmd, [NSCoder class]);
     return nil;
 }
 
 - (unsigned)versionForClassName:(NSString *)className
 {
-    id proem = _NSMethodExceptionProem(self, _cmd);
-
-    [NSException raise:NSInvalidArgumentException
-                format:@"%@: subclass should override versionForClassName:", proem];
+    NSRequestConcreteImplementation(self, _cmd, [NSCoder class]);
     return 0;
 }
+
+#if defined(__ppc__) || defined(__POWERPC__)
+- (void)encodeNXObject:(id)object
+{
+    NSData *data;
+
+    NSCoderWarnNXObjectCompatibility(self, _cmd,
+                                     &NSCoderEncodeNXObjectWarned);
+    data = [NSArchiver archivedDataWithRootObject:object];
+    [self encodeDataObject:data];
+}
+
+- (id)decodeNXObject
+{
+    NSData *data;
+
+    NSCoderWarnNXObjectCompatibility(self, _cmd,
+                                     &NSCoderDecodeNXObjectWarned);
+    data = [self decodeDataObject];
+    return [NSUnarchiver unarchiveObjectWithData:data];
+}
+#endif
 
 /*
 	The object conveniences.  At NSCoder's own level every object
@@ -81,7 +104,7 @@
     id object;
 
     [self decodeValueOfObjCType:"@" at:&object];
-    return object;
+    return [object autorelease];
 }
 
 - (void)encodeBycopyObject:(id)anObject
@@ -105,11 +128,9 @@
 }
 
 /*
-	The varargs conveniences.  Each type token is consumed exactly as
-	NSGetSizeAndAlignment delimits it, then the matching va_arg is
-	taken with the default promotions: ids as ids, everything no
-	wider than an int as int (the integer promotions), anything wider
-	as double.  */
+	The base-class varargs conveniences consume one encoding byte and
+	one address argument at a time.  Concrete coders may override this
+	path with their own descriptor handling.  */
 - (void)encodeValuesOfObjCTypes:(const char *)types, ...
 {
     va_list args;
@@ -118,31 +139,10 @@
     va_start(args, types);
     cursor = types;
     while (*cursor != '\0') {
-        unsigned size, align;
-        const char *typeStart = cursor;
-        char typeBuffer[32];
-        unsigned typeLength;
+        void *value = va_arg(args, void *);
 
-        cursor = NSGetSizeAndAlignment(cursor, &size, &align);
-        typeLength = (unsigned)(cursor - typeStart);
-        if (typeLength >= sizeof(typeBuffer))
-            typeLength = sizeof(typeBuffer) - 1;
-        memcpy(typeBuffer, typeStart, typeLength);
-        typeBuffer[typeLength] = '\0';
-
-        if (typeBuffer[0] == '@') {
-            id value = va_arg(args, id);
-
-            [self encodeValueOfObjCType:typeBuffer at:&value];
-        } else if (size <= sizeof(int)) {
-            int value = va_arg(args, int);
-
-            [self encodeValueOfObjCType:typeBuffer at:&value];
-        } else {
-            double value = va_arg(args, double);
-
-            [self encodeValueOfObjCType:typeBuffer at:&value];
-        }
+        [self encodeValueOfObjCType:cursor at:value];
+        cursor++;
     }
     va_end(args);
 }
@@ -155,49 +155,32 @@
     va_start(args, types);
     cursor = types;
     while (*cursor != '\0') {
-        unsigned size, align;
-        const char *typeStart = cursor;
-        char typeBuffer[32];
-        unsigned typeLength;
-        void *destination;
+        void *destination = va_arg(args, void *);
 
-        cursor = NSGetSizeAndAlignment(cursor, &size, &align);
-        typeLength = (unsigned)(cursor - typeStart);
-        if (typeLength >= sizeof(typeBuffer))
-            typeLength = sizeof(typeBuffer) - 1;
-        memcpy(typeBuffer, typeStart, typeLength);
-        typeBuffer[typeLength] = '\0';
-
-        destination = va_arg(args, void *);
-        [self decodeValueOfObjCType:typeBuffer at:destination];
+        [self decodeValueOfObjCType:cursor at:destination];
+        cursor++;
     }
     va_end(args);
 }
 
 - (void)encodeArrayOfObjCType:(const char *)type count:(unsigned)count at:(const void *)array
 {
-    unsigned size, align;
-    unsigned i;
-    const char *element = (const char *)array;
+    unsigned length = (unsigned)strlen(type);
+    char *arrayType = __builtin_alloca(length + 16);
+    char format[] = "[%u%s]";
 
-    NSGetSizeAndAlignment(type, &size, &align);
-    for (i = 0; i < count; i++) {
-        [self encodeValueOfObjCType:type at:element];
-        element += size;
-    }
+    _NSsnprintf(arrayType, length + 16, format, count, type);
+    [self encodeValueOfObjCType:arrayType at:array];
 }
 
 - (void)decodeArrayOfObjCType:(const char *)itemType count:(unsigned)count at:(void *)array
 {
-    unsigned size, align;
-    unsigned i;
-    char *element = (char *)array;
+    unsigned length = (unsigned)strlen(itemType);
+    char *arrayType = __builtin_alloca(length + 16);
+    char format[] = "[%u%s]";
 
-    NSGetSizeAndAlignment(itemType, &size, &align);
-    for (i = 0; i < count; i++) {
-        [self decodeValueOfObjCType:itemType at:element];
-        element += size;
-    }
+    _NSsnprintf(arrayType, length + 16, format, count, itemType);
+    [self decodeValueOfObjCType:arrayType at:array];
 }
 
 /*  The parameter is NOT const: the reference's method-list encoding is
@@ -218,15 +201,14 @@
 
 - (void *)decodeBytesWithReturnedLength:(unsigned *)lengthp
 {
-    unsigned length;
-    void *buffer;
+    NSMutableData *data;
+    void *bytes;
 
-    [self decodeValueOfObjCType:"I" at:&length];
-    buffer = NSZoneMalloc([self objectZone], length);
-    [self decodeArrayOfObjCType:"c" count:length at:buffer];
-    if (lengthp != NULL)
-        *lengthp = length;
-    return buffer;
+    [self decodeValueOfObjCType:"I" at:lengthp];
+    data = [NSMutableData dataWithLength:*lengthp];
+    bytes = [data mutableBytes];
+    [self decodeArrayOfObjCType:"c" count:*lengthp at:bytes];
+    return bytes;
 }
 
 /*	NSCoder has no ivars (instance_size 4), so the base class carries
@@ -249,26 +231,21 @@
     return 1000;
 }
 
-/*
-	Property-list and typedstream compatibility.  The reference's own
-	bodies for all four methods are 2-6 message sends through the
-	encodeObject:/decodeObject selector family (its __message_refs
-	slots sit adjacent to decodeObject's), plus awake/fault machinery
-	owned by later stages.  This stage carries the sends its tests can
-	observe; the 748-byte ASCII/typedstream parser
-	(__NSParseObjectFromASCIIPropertyListOrSerialization) turns raw
-	text into real NSString/NSDictionary/NSArray/NSData records, none
-	of which exist before stages 3-4, so the parser itself is
-	reconstructed with them.  Recorded in divergences.md.
-	*/
+/*	The reference serializes property lists to NSData before encoding them as a
+	data object; decoding reverses that path with mutableContainers:NO.  */
 - (void)encodePropertyList:(id)aPropertyList
 {
-    [self encodeObject:aPropertyList];
+    NSData *data = [NSSerializer serializePropertyList:aPropertyList];
+
+    [self encodeDataObject:data];
 }
 
 - (id)decodePropertyList
 {
-    return [self decodeObject];
+    NSData *data = [self decodeDataObject];
+
+    return [NSDeserializer deserializePropertyListFromData:data
+                                         mutableContainers:NO];
 }
 
 /*  NSTypedstreamCompatibility pair.  Gate 1 (stage 2c) walked the
@@ -290,3 +267,43 @@ NXReadNSObjectFromCoder(NSCoder *decoder)
 {
     return [decoder decodeObject];
 }
+
+#if !defined(__ppc__) && !defined(__POWERPC__)
+typedef void NXTypedStream;
+
+extern void NXReadTypes(NXTypedStream *stream, const char *types, ...);
+extern int NXReadArray(NXTypedStream *stream, const char *type, int count,
+                       void *data);
+extern void NXWriteTypes(NXTypedStream *stream, const char *types, ...);
+extern int NXWriteArray(NXTypedStream *stream, const char *type, int count,
+                        const void *data);
+extern id _NSNewImmutableDataNoCopy(const void *bytes, unsigned length,
+                                    NSZone *zone);
+
+id
+NXReadNSObject(NXTypedStream *stream)
+{
+    unsigned size;
+    void *bytes;
+    id data;
+    id object;
+
+    NXReadTypes(stream, "i", &size);
+    bytes = NSZoneMalloc(NULL, size);
+    NXReadArray(stream, "c", (int)size, bytes);
+    data = _NSNewImmutableDataNoCopy(bytes, size, NULL);
+    object = [NSUnarchiver unarchiveObjectWithData:data];
+    [data release];
+    return object;
+}
+
+int
+NXWriteNSObject(NXTypedStream *stream, id object)
+{
+    NSData *data = [NSArchiver archivedDataWithRootObject:object];
+    unsigned size = [data length];
+
+    NXWriteTypes(stream, "i", &size);
+    return NXWriteArray(stream, "c", (int)size, [data bytes]);
+}
+#endif

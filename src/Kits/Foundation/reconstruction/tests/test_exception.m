@@ -21,7 +21,6 @@ static int failures = 0;
     } while (0)
 
 extern unsigned _NSExceptionHandlerCount(void);
-extern void _NSClearExceptionStack(void);
 
 static void test_handler_stack_starts_empty(void)
 {
@@ -76,20 +75,28 @@ static void test_NS_DURING_normal_path_skips_the_handler(void)
     CHECK(_NSExceptionHandlerCount() == 0);
 }
 
-extern void _NSAddAltHandler2(NSHandler2 *handler);
-extern void _NSRemoveAltHandler2(NSHandler2 *handler);
+extern unsigned _NSAddAltHandler2(void (*function)(NSException *, void *),
+                                 void *context);
+extern void _NSRemoveAltHandler2(unsigned identifier);
+
+static void TestAltHandler(NSException *exception, void *context)
+{
+    (void)exception;
+    (void)context;
+}
 
 static void test_alt_handlers_do_not_disturb_the_main_chain(void)
 {
     NSHandler2 main;
-    NSHandler2 alternate;
     unsigned before;
+    unsigned identifier;
 
     _NSAddHandler2(&main);
     before = _NSExceptionHandlerCount();
 
-    _NSAddAltHandler2(&alternate);
-    _NSRemoveAltHandler2(&alternate);
+    identifier = _NSAddAltHandler2(TestAltHandler, NULL);
+    CHECK(identifier != 0);
+    _NSRemoveAltHandler2(identifier);
 
     CHECK(_NSExceptionHandlerCount() == before);
     _NSRemoveHandler2(&main);
@@ -254,7 +261,7 @@ static void test_method_exception_proem_names_an_instance_method(void)
     id proem = _NSMethodExceptionProem(object, @selector(hash));
 
     CHECK(proem != nil);
-    CHECK(strcmp(TestStringBytes(proem), "-[NSObject hash]") == 0);
+    CHECK(strcmp(TestStringBytes(proem), "*** -[NSObject hash]") == 0);
     [object release];
 }
 
@@ -263,7 +270,7 @@ static void test_method_exception_proem_names_a_class_method(void)
     id proem = _NSMethodExceptionProem([NSObject class], @selector(alloc));
 
     CHECK(proem != nil);
-    CHECK(strcmp(TestStringBytes(proem), "+[NSObject alloc]") == 0);
+    CHECK(strcmp(TestStringBytes(proem), "*** +[NSObject alloc]") == 0);
 }
 
 /*  NSAssert's expansion calls +[NSString stringWithCString:] for __FILE__.

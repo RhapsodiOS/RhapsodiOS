@@ -1,0 +1,380 @@
+{
+  "schema_version": "source-map-v1",
+  "reference_sha256": "1165B9063ADD5672514455CA2C9830625BEA2BCE5E46126FB5E8652114C909D6",
+  "mapped": [
+    {
+      "address": 1112705468,
+      "size": 12,
+      "reference_names": [
+        "-[NSDistantObject classForPortCoder]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistantObject.m",
+      "source_line": 267
+    },
+    {
+      "address": 1112707340,
+      "size": 10,
+      "reference_names": [
+        "-[NSDistantObject replacementObjectForPortCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistantObject.m",
+      "source_line": 271
+    },
+    {
+      "address": 1112708216,
+      "size": 445,
+      "reference_names": [
+        "-[NSDistantObject forwardInvocation:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistantObject.m",
+      "source_line": 628
+    },
+    {
+      "address": 1112726724,
+      "size": 536,
+      "reference_names": [
+        "-[NSDistantObject encodeWithCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistantObject.m",
+      "source_line": 226
+    },
+    {
+      "address": 1112736936,
+      "size": 441,
+      "reference_names": [
+        "-[NSDistantObject methodSignatureForSelector:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistantObject.m",
+      "source_line": 588
+    },
+    {
+      "address": 1112757880,
+      "size": 269,
+      "reference_names": [
+        "-[NSDistantObject setProtocolForProxy:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistantObject.m",
+      "source_line": 460
+    },
+    {
+      "address": 1112764912,
+      "size": 130,
+      "reference_names": [
+        "-[NSDistantObject retain]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistantObject.m",
+      "source_line": 662
+    },
+    {
+      "address": 1112788892,
+      "size": 204,
+      "reference_names": [
+        "-[NSDistantObject initWithTarget:connection:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistantObject.m",
+      "source_line": 347
+    },
+    {
+      "address": 1112799900,
+      "size": 752,
+      "reference_names": [
+        "+[NSDistantObject newDistantObjectWithCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistantObject.m",
+      "source_line": 167
+    },
+    {
+      "address": 1112822468,
+      "size": 219,
+      "reference_names": [
+        "-[NSDistantObject release]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistantObject.m",
+      "source_line": 680
+    },
+    {
+      "address": 1112824976,
+      "size": 13,
+      "reference_names": [
+        "-[NSDistantObject connectionForProxy]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistantObject.m",
+      "source_line": 492
+    },
+    {
+      "address": 1112830372,
+      "size": 107,
+      "reference_names": [
+        "+[NSDistantObject proxyWithLocal:connection:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistantObject.m",
+      "source_line": 370
+    },
+    {
+      "address": 1112834560,
+      "size": 257,
+      "reference_names": [
+        "-[NSDistantObject initWithLocal:connection:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistantObject.m",
+      "source_line": 379
+    },
+    {
+      "address": 1112841936,
+      "size": 106,
+      "reference_names": [
+        "-[NSDistantObject invalidateProxy]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistantObject.m",
+      "source_line": 749
+    },
+    {
+      "address": 1112842044,
+      "size": 138,
+      "reference_names": [
+        "-[NSDistantObject dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistantObject.m",
+      "source_line": 760
+    },
+    {
+      "address": 1112843756,
+      "size": 107,
+      "reference_names": [
+        "+[NSDistantObject proxyWithTarget:connection:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistantObject.m",
+      "source_line": 338
+    },
+    {
+      "address": 1112865160,
+      "size": 152,
+      "reference_names": [
+        "-[NSDistantObject _anticipateRelease]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistantObject.m",
+      "source_line": 734
+    },
+    {
+      "address": 1112961080,
+      "size": 38,
+      "reference_names": [
+        "+[NSDistantObject _enableLogging:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistantObject.m",
+      "source_line": 145
+    },
+    {
+      "address": 1112961120,
+      "size": 45,
+      "reference_names": [
+        "+[NSDistantObject isAClassOfObject:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistantObject.m",
+      "source_line": 153
+    },
+    {
+      "address": 1112967340,
+      "size": 197,
+      "reference_names": [
+        "-[NSDistantObject _releaseWireCount:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistantObject.m",
+      "source_line": 715
+    },
+    {
+      "address": 1112967540,
+      "size": 234,
+      "reference_names": [
+        "-[NSDistantObject appendFormat:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistantObject.m",
+      "source_line": 290
+    },
+    {
+      "address": 1112967776,
+      "size": 10,
+      "reference_names": [
+        "-[NSDistantObject awakeAfterUsingCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistantObject.m",
+      "source_line": 276
+    },
+    {
+      "address": 1112967788,
+      "size": 52,
+      "reference_names": [
+        "-[NSDistantObject classForArchiver]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistantObject.m",
+      "source_line": 280
+    },
+    {
+      "address": 1112967840,
+      "size": 12,
+      "reference_names": [
+        "-[NSDistantObject class]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistantObject.m",
+      "source_line": 286
+    },
+    {
+      "address": 1112967852,
+      "size": 112,
+      "reference_names": [
+        "-[NSDistantObject conformsToProtocol:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistantObject.m",
+      "source_line": 329
+    },
+    {
+      "address": 1112967964,
+      "size": 167,
+      "reference_names": [
+        "-[NSDistantObject copyWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistantObject.m",
+      "source_line": 496
+    },
+    {
+      "address": 1112968132,
+      "size": 162,
+      "reference_names": [
+        "-[NSDistantObject copy]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistantObject.m",
+      "source_line": 511
+    },
+    {
+      "address": 1112968296,
+      "size": 147,
+      "reference_names": [
+        "-[NSDistantObject description]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistantObject.m",
+      "source_line": 548
+    },
+    {
+      "address": 1112968444,
+      "size": 147,
+      "reference_names": [
+        "-[NSDistantObject hash]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistantObject.m",
+      "source_line": 559
+    },
+    {
+      "address": 1112968592,
+      "size": 700,
+      "reference_names": [
+        "-[NSDistantObject initWithCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistantObject.m",
+      "source_line": 400
+    },
+    {
+      "address": 1112969292,
+      "size": 171,
+      "reference_names": [
+        "-[NSDistantObject isEqual:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistantObject.m",
+      "source_line": 570
+    },
+    {
+      "address": 1112969464,
+      "size": 167,
+      "reference_names": [
+        "-[NSDistantObject mutableCopyWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistantObject.m",
+      "source_line": 522
+    },
+    {
+      "address": 1112969632,
+      "size": 162,
+      "reference_names": [
+        "-[NSDistantObject mutableCopy]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistantObject.m",
+      "source_line": 537
+    },
+    {
+      "address": 1112969796,
+      "size": 16,
+      "reference_names": [
+        "-[NSDistantObject retainCount]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistantObject.m",
+      "source_line": 704
+    },
+    {
+      "address": 1112969812,
+      "size": 83,
+      "reference_names": [
+        "-[NSDistantObject retainWireCount]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistantObject.m",
+      "source_line": 708
+    },
+    {
+      "address": 1112969896,
+      "size": 222,
+      "reference_names": [
+        "-[NSDistantObject stringByAppendingFormat:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistantObject.m",
+      "source_line": 308
+    },
+    {
+      "address": 1112970120,
+      "size": 12,
+      "reference_names": [
+        "-[NSDistantObject zone]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistantObject.m",
+      "source_line": 584
+    },
+    {
+      "address": 1112971924,
+      "size": 51,
+      "reference_names": [
+        "-[NSObject _conformsToProtocolNamed:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSObject.m",
+      "source_line": 522
+    },
+    {
+      "address": 1112974636,
+      "size": 51,
+      "reference_names": [
+        "-[Object _conformsToProtocolNamed:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCompatibility.m",
+      "source_line": 637
+    }
+  ],
+  "unmapped": [],
+  "duplicate_candidates": [],
+  "boundary_disputed": [],
+  "by_module": {
+    "NSCompatibility.m": {
+      "mapped": 1,
+      "unmapped": 0,
+      "duplicate_candidates": 0,
+      "boundary_disputed": 0
+    },
+    "NSDistantObject.m": {
+      "mapped": 37,
+      "unmapped": 0,
+      "duplicate_candidates": 0,
+      "boundary_disputed": 0
+    },
+    "NSObject.m": {
+      "mapped": 1,
+      "unmapped": 0,
+      "duplicate_candidates": 0,
+      "boundary_disputed": 0
+    }
+  }
+}

@@ -1,0 +1,401 @@
+{
+ "categories": [],
+ "classes": [
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "copyWithZone:",
+     "types": "@8@4:8^{?=}12"
+    },
+    {
+     "selector": "dealloc",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "init",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "fileHandleForWriting",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "fileHandleForReading",
+     "types": "@4@4:8"
+    }
+   ],
+   "instance_size": 12,
+   "ivars": [
+    {
+     "name": "_readHandle",
+     "offset": 4,
+     "type": "@\"NSFileHandle\""
+    },
+    {
+     "name": "_writeHandle",
+     "offset": 8,
+     "type": "@\"NSFileHandle\""
+    }
+   ],
+   "name": "NSConcretePipe",
+   "superclass": "NSPipe"
+  },
+  {
+   "class_methods": [
+    {
+     "selector": "pipe",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "allocWithZone:",
+     "types": "@8@4:8^{?=}12"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "fileHandleForWriting",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "fileHandleForReading",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "init",
+     "types": "@4@4:8"
+    }
+   ],
+   "instance_size": 4,
+   "ivars": [],
+   "name": "NSPipe",
+   "superclass": "NSObject"
+  },
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "handleMachMessage:",
+     "types": "v8@4:8^v12"
+    },
+    {
+     "selector": "waitForDataInBackgroundAndNotify",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "waitForDataInBackgroundAndNotifyForModes:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "acceptConnectionInBackgroundAndNotify",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "acceptConnectionInBackgroundAndNotifyForModes:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "readToEndOfFileInBackgroundAndNotify",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "readToEndOfFileInBackgroundAndNotifyForModes:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "readInBackgroundAndNotify",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "readInBackgroundAndNotifyForModes:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "performFunction:modes:activity:",
+     "types": "v16@4:8^?12@16i20"
+    },
+    {
+     "selector": "copyWithZone:",
+     "types": "@8@4:8^{?=}12"
+    },
+    {
+     "selector": "dealloc",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "setPort:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "port",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "setModes:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "closeFile",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "synchronizeFile",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "truncateFileAtOffset:",
+     "types": "v12@4:8Q12"
+    },
+    {
+     "selector": "seekToFileOffset:",
+     "types": "v12@4:8Q12"
+    },
+    {
+     "selector": "seekToEndOfFile",
+     "types": "Q4@4:8"
+    },
+    {
+     "selector": "offsetInFile",
+     "types": "Q4@4:8"
+    },
+    {
+     "selector": "writeData:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "readDataToEndOfFile",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "readDataOfLength:",
+     "types": "@8@4:8I12"
+    },
+    {
+     "selector": "availableData",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "initWithPath:flags:createMode:",
+     "types": "@16@4:8@12i16i20"
+    },
+    {
+     "selector": "initWithFileDescriptor:",
+     "types": "@8@4:8i12"
+    },
+    {
+     "selector": "initWithFileDescriptor:closeOnDealloc:",
+     "types": "@9@4:8i12c16"
+    },
+    {
+     "selector": "fileDescriptor",
+     "types": "i4@4:8"
+    }
+   ],
+   "instance_size": 36,
+   "ivars": [
+    {
+     "name": "_fd",
+     "offset": 4,
+     "type": "i"
+    },
+    {
+     "name": "_nativeHandle",
+     "offset": 8,
+     "type": "^v"
+    },
+    {
+     "name": "_avars",
+     "offset": 12,
+     "type": "^v"
+    },
+    {
+     "name": "_flags",
+     "offset": 16,
+     "type": "S"
+    },
+    {
+     "name": "_port",
+     "offset": 20,
+     "type": "@\"NSPort\""
+    },
+    {
+     "name": "_modes",
+     "offset": 24,
+     "type": "@\"NSArray\""
+    },
+    {
+     "name": "hiddenData",
+     "offset": 28,
+     "type": "^{?}"
+    },
+    {
+     "name": "_activity",
+     "offset": 32,
+     "type": "S"
+    }
+   ],
+   "name": "NSConcreteFileHandle",
+   "superclass": "NSFileHandle"
+  },
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "fileDescriptor",
+     "types": "i4@4:8"
+    },
+    {
+     "selector": "closeFile",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "synchronizeFile",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "truncateFileAtOffset:",
+     "types": "v12@4:8Q12"
+    },
+    {
+     "selector": "seekToFileOffset:",
+     "types": "v12@4:8Q12"
+    },
+    {
+     "selector": "seekToEndOfFile",
+     "types": "Q4@4:8"
+    },
+    {
+     "selector": "offsetInFile",
+     "types": "Q4@4:8"
+    },
+    {
+     "selector": "writeData:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "readDataOfLength:",
+     "types": "@8@4:8I12"
+    },
+    {
+     "selector": "readDataToEndOfFile",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "availableData",
+     "types": "@4@4:8"
+    }
+   ],
+   "instance_size": 4,
+   "ivars": [],
+   "name": "NSNullFileHandle",
+   "superclass": "NSFileHandle"
+  },
+  {
+   "class_methods": [
+    {
+     "selector": "allocWithZone:",
+     "types": "@8@4:8^{?=}12"
+    },
+    {
+     "selector": "fileHandleForUpdatingAtPath:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "fileHandleForWritingAtPath:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "fileHandleForReadingAtPath:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "fileHandleWithNullDevice",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "fileHandleWithStandardError",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "fileHandleWithStandardOutput",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "fileHandleWithStandardInput",
+     "types": "@4@4:8"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "fileDescriptor",
+     "types": "i4@4:8"
+    },
+    {
+     "selector": "closeFile",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "synchronizeFile",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "truncateFileAtOffset:",
+     "types": "v12@4:8Q12"
+    },
+    {
+     "selector": "seekToFileOffset:",
+     "types": "v12@4:8Q12"
+    },
+    {
+     "selector": "seekToEndOfFile",
+     "types": "Q4@4:8"
+    },
+    {
+     "selector": "offsetInFile",
+     "types": "Q4@4:8"
+    },
+    {
+     "selector": "writeData:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "readDataOfLength:",
+     "types": "@8@4:8I12"
+    },
+    {
+     "selector": "readDataToEndOfFile",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "availableData",
+     "types": "@4@4:8"
+    }
+   ],
+   "instance_size": 4,
+   "ivars": [],
+   "name": "NSFileHandle",
+   "superclass": "NSObject"
+  }
+ ],
+ "data_symbols": [
+  "_NSFileHandleConnectionAcceptedNotification",
+  "_NSFileHandleDataAvailableNotification",
+  "_NSFileHandleNotificationDataItem",
+  "_NSFileHandleNotificationFileHandleItem",
+  "_NSFileHandleNotificationMonitorModes",
+  "_NSFileHandleOperationException",
+  "_NSFileHandleReadCompletionNotification",
+  "_NSFileHandleReadToEndOfFileCompletionNotification"
+ ],
+ "module": "NSFileHandle.m",
+ "schema_version": "abi-v1",
+ "text_symbols": [
+  "__NSErrnoMessage",
+  "__NSWriteToFileDescriptor"
+ ]
+}

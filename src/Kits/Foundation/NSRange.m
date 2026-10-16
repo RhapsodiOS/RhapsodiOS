@@ -5,6 +5,11 @@
 
 #import <Foundation/NSRange.h>
 #import <Foundation/NSString.h>
+#import <Foundation/NSScanner.h>
+#if defined(__ppc__) || defined(__POWERPC__)
+#import <Foundation/NSZone.h>
+extern unsigned int _NSCStringToUnsignedLong(char *string, char **endPointer);
+#endif
 
 /*	Exported by the reference but declared in no public header; see
 	reconstruction/divergences.md.  */
@@ -52,6 +57,35 @@ NSIntersectionRange(NSRange range1, NSRange range2)
     return result;
 }
 
+unsigned
+NSSubtractRange(NSRange range, NSRange subrange,
+                NSRange *firstRemainder, NSRange *secondRemainder)
+{
+    unsigned rangeEnd = range.location + range.length;
+    unsigned subrangeEnd = subrange.location + subrange.length;
+
+    if (subrangeEnd <= range.location || subrange.location >= rangeEnd) {
+        *firstRemainder = NSMakeRange(0, 0);
+        *secondRemainder = NSMakeRange(0, 0);
+    } else if (subrange.location <= range.location) {
+        *firstRemainder = NSMakeRange(
+            subrangeEnd,
+            rangeEnd > subrangeEnd ? rangeEnd - subrangeEnd : 0);
+        *secondRemainder = NSMakeRange(0, 0);
+    } else {
+        *firstRemainder = NSMakeRange(
+            range.location, subrange.location - range.location);
+        *secondRemainder = rangeEnd > subrangeEnd
+            ? NSMakeRange(subrangeEnd, rangeEnd - subrangeEnd)
+            : NSMakeRange(0, 0);
+    }
+#if defined(__ppc__) || defined(__POWERPC__)
+    return range.location;
+#else
+    return subrangeEnd;
+#endif
+}
+
 BOOL
 NSIntersectsRange(NSRange range1, NSRange range2)
 {
@@ -61,54 +95,69 @@ NSIntersectsRange(NSRange range1, NSRange range2)
 NSString *
 NSStringFromRange(NSRange range)
 {
+#if defined(__ppc__) || defined(__POWERPC__)
     return [NSString stringWithFormat:@"{%u, %u}", range.location, range.length];
-}
-
-/*	Pulls the next unsigned number out of a "{loc, len}"-style string,
-	starting the scan at *cursor and leaving it just past the number
-	found. Skips anything that isn't a digit (braces, commas, whitespace)
-	before it, the same approach NSGeometryScanNumber in NSGeometry.m
-	takes for its floating-point fields. A missing number reads as 0.  */
-static unsigned int
-NSRangeScanNumber(NSString *aString, unsigned *cursor)
-{
-    unsigned length, start;
-    unichar c;
-
-    length = [aString length];
-
-    while (*cursor < length) {
-        c = [aString characterAtIndex:*cursor];
-        if (c >= '0' && c <= '9')
-            break;
-        (*cursor)++;
-    }
-
-    start = *cursor;
-    while (*cursor < length) {
-        c = [aString characterAtIndex:*cursor];
-        if (c < '0' || c > '9')
-            break;
-        (*cursor)++;
-    }
-
-    if (*cursor <= start)
-        return 0;
-
-    return (unsigned int)[[aString substringWithRange:NSMakeRange(start, *cursor - start)] intValue];
+#else
+    return [NSString stringWithFormat:@"{location = %d; length = %d}",
+        range.location, range.length];
+#endif
 }
 
 NSRange
 NSRangeFromString(NSString *aString)
 {
-    NSRange range;
-    unsigned cursor;
+#if defined(__ppc__) || defined(__POWERPC__)
+    {
+        unsigned length = [aString length];
+        unsigned cursor = 0;
+        unsigned char localBuffer[1024];
+        unsigned char *buffer = localBuffer;
+        char *endPointer;
+        NSRange range;
 
-    if (aString == nil)
-        return NSMakeRange(0, 0);
+        if (length > 0x3ffU)
+            buffer = NSZoneMalloc(NULL, length + 1);
+        [aString getCString:(char *)buffer];
+        buffer[length] = 0;
 
-    cursor = 0;
-    range.location = NSRangeScanNumber(aString, &cursor);
-    range.length = NSRangeScanNumber(aString, &cursor);
-    return range;
+        while (cursor < length &&
+               !((buffer[cursor] >= '0' && buffer[cursor] <= '9') ||
+                 buffer[cursor] == '+'))
+            cursor++;
+        range.location = _NSCStringToUnsignedLong((char *)buffer + cursor,
+                                                   &endPointer);
+
+        cursor = (unsigned)(endPointer - (char *)buffer);
+        while (cursor < length &&
+               !((buffer[cursor] >= '0' && buffer[cursor] <= '9') ||
+                 buffer[cursor] == '+'))
+            cursor++;
+        range.length = _NSCStringToUnsignedLong((char *)buffer + cursor,
+                                                 &endPointer);
+
+        if (buffer != localBuffer)
+            NSZoneFree(NULL, buffer);
+        return range;
+    }
+#else
+    {
+        NSScanner *scanner = [[NSScanner allocWithZone:NULL]
+            initWithString:aString];
+        NSRange range = NSMakeRange(0, 0);
+        int location;
+        int length;
+
+        [scanner setCharactersToBeSkipped:nil];
+        if ([scanner scanUpToString:@"location = " intoString:NULL] &&
+            [scanner scanString:@"location = " intoString:NULL] &&
+            [scanner scanInt:&location] &&
+            [scanner scanUpToString:@"length = " intoString:NULL] &&
+            [scanner scanString:@"length = " intoString:NULL] &&
+            [scanner scanInt:&length])
+            range = NSMakeRange((unsigned)location, (unsigned)length);
+
+        [scanner release];
+        return range;
+    }
+#endif
 }

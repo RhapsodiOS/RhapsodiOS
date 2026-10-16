@@ -5,6 +5,7 @@
  "module": "NSDecimal.m",
  "schema_version": "abi-v1",
  "text_symbols": [
+  "__NSCStringToDecimal",
   "_NSDecimalAdd",
   "_NSDecimalCompact",
   "_NSDecimalCompare",
@@ -16,6 +17,18 @@
   "_NSDecimalPower",
   "_NSDecimalRound",
   "_NSDecimalString",
-  "_NSDecimalSubtract"
+  "_NSDecimalSubtract",
+  "_NSIntegerAdd",
+  "_NSIntegerAddShort",
+  "_NSIntegerCompare",
+  "_NSIntegerCopy",
+  "_NSIntegerDivide",
+  "_NSIntegerDivideByShort",
+  "_NSIntegerMaxPowerOf10Multiplier",
+  "_NSIntegerMultiply",
+  "_NSIntegerMultiplyByPowerOf10",
+  "_NSIntegerMultiplyByShort",
+  "_NSIntegerSubShort",
+  "_NSIntegerSubtract"
  ]
 }

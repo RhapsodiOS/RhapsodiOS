@@ -1,0 +1,408 @@
+{
+ "categories": [
+  {
+   "class": "NSLocalTimeZone",
+   "class_methods": [],
+   "instance_methods": [
+    {
+     "selector": "timeZoneForDate:",
+     "types": "@12@8:12@16"
+    }
+   ],
+   "name": "NSBackwardsCompatibility"
+  },
+  {
+   "class": "NSTimeZone",
+   "class_methods": [
+    {
+     "selector": "timeZoneArray",
+     "types": "@8@8:12"
+    }
+   ],
+   "instance_methods": [
+    {
+     "selector": "timeZoneAbbreviation",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "timeZoneSecondsFromGMT",
+     "types": "i8@8:12"
+    },
+    {
+     "selector": "timeZoneName",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "timeZoneDetailForDate:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "timeZoneDetailArray",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "isDaylightSavingTimeZone",
+     "types": "c8@8:12"
+    },
+    {
+     "selector": "timeZoneForDate:",
+     "types": "@12@8:12@16"
+    }
+   ],
+   "name": "NSBackwardsCompatibility"
+  }
+ ],
+ "classes": [
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "initWithCoder:",
+     "types": "@12@8:12@16"
+    }
+   ],
+   "instance_size": 4,
+   "ivars": [],
+   "name": "NSTimeZoneDetailDecoder",
+   "superclass": "NSObject"
+  },
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "initWithCoder:",
+     "types": "@12@8:12@16"
+    }
+   ],
+   "instance_size": 4,
+   "ivars": [],
+   "name": "NSWindowsDefaultTimeZoneDecoder",
+   "superclass": "NSObject"
+  },
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [],
+   "instance_size": 24,
+   "ivars": [],
+   "name": "NSTimeZoneDetail",
+   "superclass": "NSConcreteTimeZone"
+  },
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "replacementObjectForPortCoder:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "classForCoder",
+     "types": "#8@8:12"
+    },
+    {
+     "selector": "initWithCoder:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "encodeWithCoder:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "copyWithZone:",
+     "types": "@12@8:12^{?=}16"
+    },
+    {
+     "selector": "retainCount",
+     "types": "I8@8:12"
+    },
+    {
+     "selector": "release",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "retain",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "description",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "isDaylightSavingTimeForDate:",
+     "types": "c12@8:12@16"
+    },
+    {
+     "selector": "abbreviationForDate:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "secondsFromGMTForDate:",
+     "types": "i12@8:12@16"
+    },
+    {
+     "selector": "data",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "name",
+     "types": "@8@8:12"
+    }
+   ],
+   "instance_size": 4,
+   "ivars": [],
+   "name": "NSLocalTimeZone",
+   "superclass": "NSTimeZone"
+  },
+  {
+   "class_methods": [
+    {
+     "selector": "parseTimeZoneData:into:count:zone:",
+     "types": "c24@8:12@16^^{?}20^I24^{?=}28"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "dealloc",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "initWithExactName:data:",
+     "types": "@16@8:12@16@20"
+    },
+    {
+     "selector": "init",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "copyWithZone:",
+     "types": "@12@8:12^{?=}16"
+    },
+    {
+     "selector": "retainCount",
+     "types": "I8@8:12"
+    },
+    {
+     "selector": "release",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "retain",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "isDaylightSavingTimeForDate:",
+     "types": "c12@8:12@16"
+    },
+    {
+     "selector": "abbreviationForDate:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "secondsFromGMTForDate:",
+     "types": "i12@8:12@16"
+    },
+    {
+     "selector": "data",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "name",
+     "types": "@8@8:12"
+    }
+   ],
+   "instance_size": 24,
+   "ivars": [
+    {
+     "name": "timeZoneName",
+     "offset": 4,
+     "type": "@\"NSString\""
+    },
+    {
+     "name": "timeZoneData",
+     "offset": 8,
+     "type": "@\"NSData\""
+    },
+    {
+     "name": "timeZonePeriods",
+     "offset": 12,
+     "type": "^{?}"
+    },
+    {
+     "name": "timeZonePeriodsCount",
+     "offset": 16,
+     "type": "I"
+    },
+    {
+     "name": "refCount",
+     "offset": 20,
+     "type": "I"
+    }
+   ],
+   "name": "NSConcreteTimeZone",
+   "superclass": "NSTimeZone"
+  },
+  {
+   "class_methods": [
+    {
+     "selector": "timeZoneForSecondsFromGMT:",
+     "types": "@12@8:12i16"
+    },
+    {
+     "selector": "timeZoneWithAbbreviation:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "timeZoneWithName:data:",
+     "types": "@16@8:12@16@20"
+    },
+    {
+     "selector": "timeZoneWithName:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "allocWithZone:",
+     "types": "@12@8:12^{?=}16"
+    },
+    {
+     "selector": "abbreviationDictionary",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "knownTimeZoneNames",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "localTimeZone",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "_resetTimeZones",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "setDefaultTimeZone:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "defaultTimeZone",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "resetSystemTimeZone",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "systemTimeZone",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "replacementTimeZoneNameForName:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "dataForTimeZone:",
+     "types": "@12@8:12@16"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "initWithExactName:data:",
+     "types": "@16@8:12@16@20"
+    },
+    {
+     "selector": "initWithName:data:",
+     "types": "@16@8:12@16@20"
+    },
+    {
+     "selector": "initWithName:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "isEqualToTimeZone:",
+     "types": "c12@8:12@16"
+    },
+    {
+     "selector": "isDaylightSavingTime",
+     "types": "c8@8:12"
+    },
+    {
+     "selector": "abbreviation",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "secondsFromGMT",
+     "types": "i8@8:12"
+    },
+    {
+     "selector": "replacementObjectForPortCoder:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "classForCoder",
+     "types": "#8@8:12"
+    },
+    {
+     "selector": "initWithCoder:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "encodeWithCoder:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "copyWithZone:",
+     "types": "@12@8:12^{?=}16"
+    },
+    {
+     "selector": "isEqual:",
+     "types": "c12@8:12@16"
+    },
+    {
+     "selector": "hash",
+     "types": "I8@8:12"
+    },
+    {
+     "selector": "description",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "isDaylightSavingTimeForDate:",
+     "types": "c12@8:12@16"
+    },
+    {
+     "selector": "abbreviationForDate:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "secondsFromGMTForDate:",
+     "types": "i12@8:12@16"
+    },
+    {
+     "selector": "data",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "name",
+     "types": "@8@8:12"
+    }
+   ],
+   "instance_size": 4,
+   "ivars": [],
+   "name": "NSTimeZone",
+   "superclass": "NSObject"
+  }
+ ],
+ "data_symbols": [
+  "__NSTimeZoneData",
+  "__NSTimeZoneLock",
+  "_NSSystemTimeZoneDidChangeNotification"
+ ],
+ "module": "NSTimeZone.m",
+ "schema_version": "abi-v1",
+ "text_symbols": []
+}

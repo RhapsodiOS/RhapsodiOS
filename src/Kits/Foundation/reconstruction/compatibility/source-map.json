@@ -1,0 +1,630 @@
+{
+  "schema_version": "source-map-v1",
+  "reference_sha256": "332B3C8C0AE0A6E40A4B93110EE16748FCD94AA0119D63F16EDE878598C681B4",
+  "mapped": [
+    {
+      "address": 1113028544,
+      "size": 56,
+      "reference_names": [
+        "+[NSObject(NXCompatibilityFixes) conformsTo:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCompatibility.m",
+      "source_line": 648
+    },
+    {
+      "address": 1113028600,
+      "size": 52,
+      "reference_names": [
+        "+[NSObject(NXCompatibilityFixes) methodFor:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCompatibility.m",
+      "source_line": 654
+    },
+    {
+      "address": 1113028652,
+      "size": 76,
+      "reference_names": [
+        "+[Object allocWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCompatibility.m",
+      "source_line": 62
+    },
+    {
+      "address": 1113028728,
+      "size": 12,
+      "reference_names": [
+        "+[Object autorelease]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCompatibility.m",
+      "source_line": 69
+    },
+    {
+      "address": 1113028740,
+      "size": 52,
+      "reference_names": [
+        "+[Object instanceMethodForSelector:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCompatibility.m",
+      "source_line": 74
+    },
+    {
+      "address": 1113028792,
+      "size": 56,
+      "reference_names": [
+        "+[Object instancesRespondToSelector:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCompatibility.m",
+      "source_line": 79
+    },
+    {
+      "address": 1113028848,
+      "size": 52,
+      "reference_names": [
+        "+[Object poseAsClass:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCompatibility.m",
+      "source_line": 84
+    },
+    {
+      "address": 1113028900,
+      "size": 12,
+      "reference_names": [
+        "+[Object release]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCompatibility.m",
+      "source_line": 89
+    },
+    {
+      "address": 1113028912,
+      "size": 16,
+      "reference_names": [
+        "+[Object retainCount]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCompatibility.m",
+      "source_line": 93
+    },
+    {
+      "address": 1113028928,
+      "size": 12,
+      "reference_names": [
+        "+[Object retain]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCompatibility.m",
+      "source_line": 98
+    },
+    {
+      "address": 1113028940,
+      "size": 48,
+      "reference_names": [
+        "-[HashTable autorelease]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCompatibility.m",
+      "source_line": 319
+    },
+    {
+      "address": 1113028988,
+      "size": 212,
+      "reference_names": [
+        "-[HashTable encodeWithCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCompatibility.m",
+      "source_line": 326
+    },
+    {
+      "address": 1113029200,
+      "size": 132,
+      "reference_names": [
+        "-[HashTable(NSCoderExtensions1) freeObjects]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCompatibility.m",
+      "source_line": 341
+    },
+    {
+      "address": 1113029332,
+      "size": 400,
+      "reference_names": [
+        "-[HashTable initWithCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCompatibility.m",
+      "source_line": 351
+    },
+    {
+      "address": 1113029732,
+      "size": 76,
+      "reference_names": [
+        "-[HashTable release]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCompatibility.m",
+      "source_line": 384
+    },
+    {
+      "address": 1113029808,
+      "size": 36,
+      "reference_names": [
+        "-[HashTable retainCount]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCompatibility.m",
+      "source_line": 391
+    },
+    {
+      "address": 1113029844,
+      "size": 48,
+      "reference_names": [
+        "-[HashTable retain]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCompatibility.m",
+      "source_line": 397
+    },
+    {
+      "address": 1113029892,
+      "size": 48,
+      "reference_names": [
+        "-[List autorelease]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCompatibility.m",
+      "source_line": 408
+    },
+    {
+      "address": 1113029940,
+      "size": 116,
+      "reference_names": [
+        "-[List encodeWithCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCompatibility.m",
+      "source_line": 415
+    },
+    {
+      "address": 1113030056,
+      "size": 88,
+      "reference_names": [
+        "-[List(NSCoderExtensions1) freeObjects]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCompatibility.m",
+      "source_line": 423
+    },
+    {
+      "address": 1113030144,
+      "size": 292,
+      "reference_names": [
+        "-[List initWithCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCompatibility.m",
+      "source_line": 433
+    },
+    {
+      "address": 1113030436,
+      "size": 112,
+      "reference_names": [
+        "-[List makeObjectsPerform:withObject:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCompatibility.m",
+      "source_line": 456
+    },
+    {
+      "address": 1113030548,
+      "size": 76,
+      "reference_names": [
+        "-[List release]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCompatibility.m",
+      "source_line": 465
+    },
+    {
+      "address": 1113030624,
+      "size": 36,
+      "reference_names": [
+        "-[List retainCount]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCompatibility.m",
+      "source_line": 472
+    },
+    {
+      "address": 1113030660,
+      "size": 48,
+      "reference_names": [
+        "-[List retain]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCompatibility.m",
+      "source_line": 478
+    },
+    {
+      "address": 1113036040,
+      "size": 56,
+      "reference_names": [
+        "-[NSObject(NXCompatibilityFixes) conformsTo:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCompatibility.m",
+      "source_line": 660
+    },
+    {
+      "address": 1113036096,
+      "size": 56,
+      "reference_names": [
+        "-[NSObject(NXCompatibilityFixes) isKindOf:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCompatibility.m",
+      "source_line": 666
+    },
+    {
+      "address": 1113036152,
+      "size": 52,
+      "reference_names": [
+        "-[NSObject(NXCompatibilityFixes) methodFor:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCompatibility.m",
+      "source_line": 672
+    },
+    {
+      "address": 1113036204,
+      "size": 56,
+      "reference_names": [
+        "-[NSObject(NXCompatibilityFixes) respondsTo:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCompatibility.m",
+      "source_line": 678
+    },
+    {
+      "address": 1113039348,
+      "size": 48,
+      "reference_names": [
+        "-[Object autorelease]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCompatibility.m",
+      "source_line": 103
+    },
+    {
+      "address": 1113039396,
+      "size": 168,
+      "reference_names": [
+        "-[Object awakeAfterUsingCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCompatibility.m",
+      "source_line": 109
+    },
+    {
+      "address": 1113039564,
+      "size": 52,
+      "reference_names": [
+        "-[Object classForArchiver]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCompatibility.m",
+      "source_line": 122
+    },
+    {
+      "address": 1113039616,
+      "size": 16,
+      "reference_names": [
+        "-[Object classForCoder]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCompatibility.m",
+      "source_line": 127
+    },
+    {
+      "address": 1113039632,
+      "size": 56,
+      "reference_names": [
+        "-[Object conformsToProtocol:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCompatibility.m",
+      "source_line": 132
+    },
+    {
+      "address": 1113039688,
+      "size": 76,
+      "reference_names": [
+        "-[Object copyWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCompatibility.m",
+      "source_line": 137
+    },
+    {
+      "address": 1113039764,
+      "size": 52,
+      "reference_names": [
+        "-[Object dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCompatibility.m",
+      "source_line": 144
+    },
+    {
+      "address": 1113039816,
+      "size": 80,
+      "reference_names": [
+        "-[Object(NSCompatibility) description]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCompatibility.m",
+      "source_line": 149
+    },
+    {
+      "address": 1113039896,
+      "size": 52,
+      "reference_names": [
+        "-[Object doesNotRecognizeSelector:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCompatibility.m",
+      "source_line": 154
+    },
+    {
+      "address": 1113039948,
+      "size": 12,
+      "reference_names": [
+        "-[Object encodeWithCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCompatibility.m",
+      "source_line": 159
+    },
+    {
+      "address": 1113039960,
+      "size": 12,
+      "reference_names": [
+        "-[Object initWithCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCompatibility.m",
+      "source_line": 164
+    },
+    {
+      "address": 1113039972,
+      "size": 56,
+      "reference_names": [
+        "-[Object isKindOfClass:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCompatibility.m",
+      "source_line": 170
+    },
+    {
+      "address": 1113040028,
+      "size": 56,
+      "reference_names": [
+        "-[Object isMemberOfClass:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCompatibility.m",
+      "source_line": 175
+    },
+    {
+      "address": 1113040084,
+      "size": 52,
+      "reference_names": [
+        "-[Object methodForSelector:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCompatibility.m",
+      "source_line": 180
+    },
+    {
+      "address": 1113040136,
+      "size": 52,
+      "reference_names": [
+        "-[Object perform:withObject:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCompatibility.m",
+      "source_line": 185
+    },
+    {
+      "address": 1113040188,
+      "size": 52,
+      "reference_names": [
+        "-[Object perform:withObject:withObject:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCompatibility.m",
+      "source_line": 190
+    },
+    {
+      "address": 1113040240,
+      "size": 52,
+      "reference_names": [
+        "-[Object performSelector:withObject:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCompatibility.m",
+      "source_line": 195
+    },
+    {
+      "address": 1113040292,
+      "size": 52,
+      "reference_names": [
+        "-[Object performSelector:withObject:withObject:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCompatibility.m",
+      "source_line": 200
+    },
+    {
+      "address": 1113040344,
+      "size": 76,
+      "reference_names": [
+        "-[Object release]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCompatibility.m",
+      "source_line": 205
+    },
+    {
+      "address": 1113040420,
+      "size": 52,
+      "reference_names": [
+        "-[Object replacementObjectForArchiver:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCompatibility.m",
+      "source_line": 211
+    },
+    {
+      "address": 1113040472,
+      "size": 104,
+      "reference_names": [
+        "-[Object replacementObjectForCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCompatibility.m",
+      "source_line": 216
+    },
+    {
+      "address": 1113040576,
+      "size": 56,
+      "reference_names": [
+        "-[Object respondsToSelector:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCompatibility.m",
+      "source_line": 227
+    },
+    {
+      "address": 1113040632,
+      "size": 36,
+      "reference_names": [
+        "-[Object retainCount]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCompatibility.m",
+      "source_line": 232
+    },
+    {
+      "address": 1113040668,
+      "size": 48,
+      "reference_names": [
+        "-[Object retain]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCompatibility.m",
+      "source_line": 237
+    },
+    {
+      "address": 1113040716,
+      "size": 48,
+      "reference_names": [
+        "-[Storage autorelease]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCompatibility.m",
+      "source_line": 489
+    },
+    {
+      "address": 1113040764,
+      "size": 120,
+      "reference_names": [
+        "-[Storage encodeWithCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCompatibility.m",
+      "source_line": 496
+    },
+    {
+      "address": 1113040884,
+      "size": 284,
+      "reference_names": [
+        "-[Storage initWithCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCompatibility.m",
+      "source_line": 505
+    },
+    {
+      "address": 1113041168,
+      "size": 76,
+      "reference_names": [
+        "-[Storage release]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCompatibility.m",
+      "source_line": 534
+    },
+    {
+      "address": 1113041244,
+      "size": 36,
+      "reference_names": [
+        "-[Storage retainCount]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCompatibility.m",
+      "source_line": 541
+    },
+    {
+      "address": 1113041280,
+      "size": 48,
+      "reference_names": [
+        "-[Storage retain]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCompatibility.m",
+      "source_line": 547
+    },
+    {
+      "address": 1113041328,
+      "size": 256,
+      "reference_names": [
+        "-[StreamTable encodeWithCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCompatibility.m",
+      "source_line": 558
+    },
+    {
+      "address": 1113041584,
+      "size": 100,
+      "reference_names": [
+        "-[StreamTable(NSCoderExtensions1) freeObjects]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCompatibility.m",
+      "source_line": 577
+    },
+    {
+      "address": 1113041684,
+      "size": 288,
+      "reference_names": [
+        "-[StreamTable initWithCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCompatibility.m",
+      "source_line": 586
+    },
+    {
+      "address": 1113041972,
+      "size": 104,
+      "reference_names": [
+        "-[StreamTable(NSCoderExtensions1) nextStreamState:key:value:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCompatibility.m",
+      "source_line": 611
+    },
+    {
+      "address": 1113042076,
+      "size": 88,
+      "reference_names": [
+        "-[StreamTable(NSCoderExtensions1) valueForStreamKey:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCompatibility.m",
+      "source_line": 624
+    },
+    {
+      "address": 1113067228,
+      "size": 24,
+      "reference_names": [
+        "_exp2m1"
+      ],
+      "source_path": "src/Kits/Foundation/NSCompatibility.m",
+      "source_line": 254
+    },
+    {
+      "address": 1113067252,
+      "size": 100,
+      "reference_names": [
+        "_freePickleAndReleaseObject"
+      ],
+      "source_path": "src/Kits/Foundation/NSCompatibility.m",
+      "source_line": 280
+    },
+    {
+      "address": 1113067352,
+      "size": 236,
+      "reference_names": [
+        "_getObject_new"
+      ],
+      "source_path": "src/Kits/Foundation/NSCompatibility.m",
+      "source_line": 292
+    },
+    {
+      "address": 1113068260,
+      "size": 12,
+      "reference_names": [
+        "_noRelease"
+      ],
+      "source_path": "src/Kits/Foundation/NSCompatibility.m",
+      "source_line": 268
+    },
+    {
+      "address": 1113068692,
+      "size": 56,
+      "reference_names": [
+        "_releaseObjectST"
+      ],
+      "source_path": "src/Kits/Foundation/NSCompatibility.m",
+      "source_line": 274
+    }
+  ],
+  "unmapped": [],
+  "duplicate_candidates": [],
+  "boundary_disputed": []
+}

@@ -1,0 +1,18 @@
+{
+ "categories": [],
+ "classes": [
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [],
+   "instance_size": 0,
+   "ivars": [],
+   "name": "NSFramework_Foundation",
+   "superclass": null
+  }
+ ],
+ "data_symbols": [],
+ "module": "NSFramework_Foundation.m",
+ "schema_version": "abi-v1",
+ "text_symbols": []
+}

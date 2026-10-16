@@ -1,0 +1,10 @@
+{
+ "categories": [],
+ "classes": [],
+ "data_symbols": [],
+ "module": "NSPrintf.m",
+ "schema_version": "abi-v1",
+ "text_symbols": [
+  "__NSvsnprintf"
+ ]
+}

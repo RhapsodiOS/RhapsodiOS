@@ -1,0 +1,566 @@
+{
+  "schema_version": "source-map-v1",
+  "reference_sha256": "1165B9063ADD5672514455CA2C9830625BEA2BCE5E46126FB5E8652114C909D6",
+  "mapped": [
+    {
+      "address": 1113028700,
+      "size": 91,
+      "reference_names": [
+        "+[NSTask allocWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTask.m",
+      "source_line": 168
+    },
+    {
+      "address": 1113028792,
+      "size": 213,
+      "reference_names": [
+        "+[NSTask currentTaskDictionary]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTask.m",
+      "source_line": 176
+    },
+    {
+      "address": 1113029008,
+      "size": 81,
+      "reference_names": [
+        "+[NSTask launchedTaskWithDictionary:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTask.m",
+      "source_line": 186
+    },
+    {
+      "address": 1113029092,
+      "size": 162,
+      "reference_names": [
+        "+[NSTask launchedTaskWithLaunchPath:arguments:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTask.m",
+      "source_line": 193
+    },
+    {
+      "address": 1113029256,
+      "size": 37,
+      "reference_names": [
+        "+[NSTask launchedTaskWithPath:arguments:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTask.m",
+      "source_line": 203
+    },
+    {
+      "address": 1113029296,
+      "size": 545,
+      "reference_names": [
+        "+[NSTask taskWithPath:arguments:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTask.m",
+      "source_line": 208
+    },
+    {
+      "address": 1113041136,
+      "size": 13,
+      "reference_names": [
+        "-[NSConcreteTask _procid]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTask.m",
+      "source_line": 458
+    },
+    {
+      "address": 1113041152,
+      "size": 162,
+      "reference_names": [
+        "-[NSConcreteTask _requestNotification]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTask.m",
+      "source_line": 643
+    },
+    {
+      "address": 1113041316,
+      "size": 101,
+      "reference_names": [
+        "-[NSConcreteTask arguments]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTask.m",
+      "source_line": 414
+    },
+    {
+      "address": 1113041420,
+      "size": 101,
+      "reference_names": [
+        "-[NSConcreteTask currentDirectoryPath]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTask.m",
+      "source_line": 422
+    },
+    {
+      "address": 1113041524,
+      "size": 238,
+      "reference_names": [
+        "-[NSConcreteTask dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTask.m",
+      "source_line": 360
+    },
+    {
+      "address": 1113041764,
+      "size": 101,
+      "reference_names": [
+        "-[NSConcreteTask environment]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTask.m",
+      "source_line": 418
+    },
+    {
+      "address": 1113041868,
+      "size": 205,
+      "reference_names": [
+        "-[NSConcreteTask handleMachMessage:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTask.m",
+      "source_line": 655
+    },
+    {
+      "address": 1113042076,
+      "size": 49,
+      "reference_names": [
+        "-[NSConcreteTask init]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTask.m",
+      "source_line": 356
+    },
+    {
+      "address": 1113042128,
+      "size": 99,
+      "reference_names": [
+        "-[NSConcreteTask interrupt]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTask.m",
+      "source_line": 670
+    },
+    {
+      "address": 1113042228,
+      "size": 26,
+      "reference_names": [
+        "-[NSConcreteTask isRunning]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTask.m",
+      "source_line": 698
+    },
+    {
+      "address": 1113042256,
+      "size": 101,
+      "reference_names": [
+        "-[NSConcreteTask launchPath]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTask.m",
+      "source_line": 410
+    },
+    {
+      "address": 1113042360,
+      "size": 2399,
+      "reference_names": [
+        "-[NSConcreteTask launchWithDictionary:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTask.m",
+      "source_line": 476
+    },
+    {
+      "address": 1113044760,
+      "size": 33,
+      "reference_names": [
+        "-[NSConcreteTask launch]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTask.m",
+      "source_line": 472
+    },
+    {
+      "address": 1113044796,
+      "size": 189,
+      "reference_names": [
+        "-[NSConcreteTask setArguments:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTask.m",
+      "source_line": 377
+    },
+    {
+      "address": 1113044988,
+      "size": 189,
+      "reference_names": [
+        "-[NSConcreteTask setCurrentDirectoryPath:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTask.m",
+      "source_line": 385
+    },
+    {
+      "address": 1113045180,
+      "size": 189,
+      "reference_names": [
+        "-[NSConcreteTask setEnvironment:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTask.m",
+      "source_line": 381
+    },
+    {
+      "address": 1113045372,
+      "size": 189,
+      "reference_names": [
+        "-[NSConcreteTask setLaunchPath:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTask.m",
+      "source_line": 373
+    },
+    {
+      "address": 1113045564,
+      "size": 153,
+      "reference_names": [
+        "-[NSConcreteTask setStandardError:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTask.m",
+      "source_line": 403
+    },
+    {
+      "address": 1113045720,
+      "size": 153,
+      "reference_names": [
+        "-[NSConcreteTask setStandardInput:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTask.m",
+      "source_line": 389
+    },
+    {
+      "address": 1113045876,
+      "size": 153,
+      "reference_names": [
+        "-[NSConcreteTask setStandardOutput:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTask.m",
+      "source_line": 396
+    },
+    {
+      "address": 1113046032,
+      "size": 119,
+      "reference_names": [
+        "-[NSConcreteTask setTaskDictionary:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTask.m",
+      "source_line": 446
+    },
+    {
+      "address": 1113046152,
+      "size": 101,
+      "reference_names": [
+        "-[NSConcreteTask standardError]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTask.m",
+      "source_line": 434
+    },
+    {
+      "address": 1113046256,
+      "size": 101,
+      "reference_names": [
+        "-[NSConcreteTask standardInput]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTask.m",
+      "source_line": 426
+    },
+    {
+      "address": 1113046360,
+      "size": 101,
+      "reference_names": [
+        "-[NSConcreteTask standardOutput]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTask.m",
+      "source_line": 430
+    },
+    {
+      "address": 1113046464,
+      "size": 116,
+      "reference_names": [
+        "-[NSConcreteTask taskDictionary]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTask.m",
+      "source_line": 438
+    },
+    {
+      "address": 1113046580,
+      "size": 119,
+      "reference_names": [
+        "-[NSConcreteTask taskExitedNormally]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTask.m",
+      "source_line": 690
+    },
+    {
+      "address": 1113046700,
+      "size": 29,
+      "reference_names": [
+        "-[NSConcreteTask terminateTask]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTask.m",
+      "source_line": 686
+    },
+    {
+      "address": 1113046732,
+      "size": 99,
+      "reference_names": [
+        "-[NSConcreteTask terminate]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTask.m",
+      "source_line": 678
+    },
+    {
+      "address": 1113046832,
+      "size": 138,
+      "reference_names": [
+        "-[NSConcreteTask terminationStatus]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTask.m",
+      "source_line": 702
+    },
+    {
+      "address": 1113046972,
+      "size": 115,
+      "reference_names": [
+        "-[NSConcreteTask waitUntilExit]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTask.m",
+      "source_line": 712
+    },
+    {
+      "address": 1113076492,
+      "size": 57,
+      "reference_names": [
+        "-[NSTask arguments]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTask.m",
+      "source_line": 308
+    },
+    {
+      "address": 1113076552,
+      "size": 57,
+      "reference_names": [
+        "-[NSTask currentDirectoryPath]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTask.m",
+      "source_line": 316
+    },
+    {
+      "address": 1113076612,
+      "size": 57,
+      "reference_names": [
+        "-[NSTask environment]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTask.m",
+      "source_line": 312
+    },
+    {
+      "address": 1113076672,
+      "size": 49,
+      "reference_names": [
+        "-[NSTask init]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTask.m",
+      "source_line": 265
+    },
+    {
+      "address": 1113076724,
+      "size": 55,
+      "reference_names": [
+        "-[NSTask interrupt]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTask.m",
+      "source_line": 336
+    },
+    {
+      "address": 1113076780,
+      "size": 57,
+      "reference_names": [
+        "-[NSTask isRunning]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTask.m",
+      "source_line": 344
+    },
+    {
+      "address": 1113076840,
+      "size": 57,
+      "reference_names": [
+        "-[NSTask launchPath]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTask.m",
+      "source_line": 304
+    },
+    {
+      "address": 1113076900,
+      "size": 55,
+      "reference_names": [
+        "-[NSTask launch]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTask.m",
+      "source_line": 332
+    },
+    {
+      "address": 1113076956,
+      "size": 55,
+      "reference_names": [
+        "-[NSTask setArguments:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTask.m",
+      "source_line": 274
+    },
+    {
+      "address": 1113077012,
+      "size": 55,
+      "reference_names": [
+        "-[NSTask setCurrentDirectoryPath:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTask.m",
+      "source_line": 284
+    },
+    {
+      "address": 1113077068,
+      "size": 55,
+      "reference_names": [
+        "-[NSTask setEnvironment:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTask.m",
+      "source_line": 279
+    },
+    {
+      "address": 1113077124,
+      "size": 55,
+      "reference_names": [
+        "-[NSTask setLaunchPath:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTask.m",
+      "source_line": 269
+    },
+    {
+      "address": 1113077180,
+      "size": 55,
+      "reference_names": [
+        "-[NSTask setStandardError:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTask.m",
+      "source_line": 299
+    },
+    {
+      "address": 1113077236,
+      "size": 55,
+      "reference_names": [
+        "-[NSTask setStandardInput:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTask.m",
+      "source_line": 289
+    },
+    {
+      "address": 1113077292,
+      "size": 55,
+      "reference_names": [
+        "-[NSTask setStandardOutput:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTask.m",
+      "source_line": 294
+    },
+    {
+      "address": 1113077348,
+      "size": 57,
+      "reference_names": [
+        "-[NSTask standardError]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTask.m",
+      "source_line": 328
+    },
+    {
+      "address": 1113077408,
+      "size": 57,
+      "reference_names": [
+        "-[NSTask standardInput]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTask.m",
+      "source_line": 320
+    },
+    {
+      "address": 1113077468,
+      "size": 57,
+      "reference_names": [
+        "-[NSTask standardOutput]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTask.m",
+      "source_line": 324
+    },
+    {
+      "address": 1113077528,
+      "size": 55,
+      "reference_names": [
+        "-[NSTask terminate]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTask.m",
+      "source_line": 340
+    },
+    {
+      "address": 1113077584,
+      "size": 57,
+      "reference_names": [
+        "-[NSTask terminationStatus]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTask.m",
+      "source_line": 348
+    },
+    {
+      "address": 1113084168,
+      "size": 67,
+      "reference_names": [
+        "__NSHiddenTaskDataAllocate"
+      ],
+      "source_path": "src/Kits/Foundation/NSTask.m",
+      "source_line": 157
+    },
+    {
+      "address": 1113084236,
+      "size": 18,
+      "reference_names": [
+        "__NSHiddenTaskDataDeallocate"
+      ],
+      "source_path": "src/Kits/Foundation/NSTask.m",
+      "source_line": 109
+    },
+    {
+      "address": 1113084256,
+      "size": 75,
+      "reference_names": [
+        "__NSHiddenTaskDataReleaseAndSend"
+      ],
+      "source_path": "src/Kits/Foundation/NSTask.m",
+      "source_line": 124
+    },
+    {
+      "address": 1113084332,
+      "size": 71,
+      "reference_names": [
+        "__NSHiddenTaskDataReleaseDidDeallocate"
+      ],
+      "source_path": "src/Kits/Foundation/NSTask.m",
+      "source_line": 113
+    },
+    {
+      "address": 1113087000,
+      "size": 78,
+      "reference_names": [
+        "__waitForTermination"
+      ],
+      "source_path": "src/Kits/Foundation/NSTask.m",
+      "source_line": 140
+    }
+  ],
+  "unmapped": [],
+  "duplicate_candidates": [],
+  "boundary_disputed": [],
+  "by_module": {
+    "NSTask.m": {
+      "mapped": 56,
+      "unmapped": 0,
+      "duplicate_candidates": 0,
+      "boundary_disputed": 0
+    }
+  }
+}

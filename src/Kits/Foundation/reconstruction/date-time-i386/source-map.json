@@ -1,0 +1,1898 @@
+{
+  "schema_version": "source-map-v1",
+  "reference_sha256": "1165B9063ADD5672514455CA2C9830625BEA2BCE5E46126FB5E8652114C909D6",
+  "mapped": [
+    {
+      "address": 1112572244,
+      "size": 13,
+      "reference_names": [
+        "-[NSConcreteDate timeIntervalSinceReferenceDate]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDate.m",
+      "source_line": 443
+    },
+    {
+      "address": 1112572360,
+      "size": 13,
+      "reference_names": [
+        "-[NSDistantDate timeIntervalSinceReferenceDate]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDate.m",
+      "source_line": 339
+    },
+    {
+      "address": 1112575192,
+      "size": 21,
+      "reference_names": [
+        "+[NSDate distantFuture]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDate.m",
+      "source_line": 303
+    },
+    {
+      "address": 1112592448,
+      "size": 64,
+      "reference_names": [
+        "-[NSConcreteDate release]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDate.m",
+      "source_line": 470
+    },
+    {
+      "address": 1112600776,
+      "size": 24,
+      "reference_names": [
+        "-[NSConcreteDate initWithTimeIntervalSinceReferenceDate:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDate.m",
+      "source_line": 509
+    },
+    {
+      "address": 1112600800,
+      "size": 49,
+      "reference_names": [
+        "-[NSConcreteDate dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDate.m",
+      "source_line": 504
+    },
+    {
+      "address": 1112601100,
+      "size": 50,
+      "reference_names": [
+        "+[NSDate allocWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDate.m",
+      "source_line": 99
+    },
+    {
+      "address": 1112601436,
+      "size": 43,
+      "reference_names": [
+        "-[NSDate timeIntervalSinceNow]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDate.m",
+      "source_line": 121
+    },
+    {
+      "address": 1112613076,
+      "size": 73,
+      "reference_names": [
+        "+[NSDate dateWithTimeIntervalSinceReferenceDate:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDate.m",
+      "source_line": 275
+    },
+    {
+      "address": 1112620572,
+      "size": 13,
+      "reference_names": [
+        "-[NSDistantDate timeIntervalSinceNow]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDate.m",
+      "source_line": 344
+    },
+    {
+      "address": 1112644020,
+      "size": 21,
+      "reference_names": [
+        "+[NSDate distantPast]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDate.m",
+      "source_line": 308
+    },
+    {
+      "address": 1112644092,
+      "size": 43,
+      "reference_names": [
+        "-[NSConcreteDate retain]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDate.m",
+      "source_line": 454
+    },
+    {
+      "address": 1112646628,
+      "size": 10,
+      "reference_names": [
+        "-[NSDistantDate retain]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDate.m",
+      "source_line": 410
+    },
+    {
+      "address": 1112646640,
+      "size": 7,
+      "reference_names": [
+        "-[NSDistantDate release]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDate.m",
+      "source_line": 415
+    },
+    {
+      "address": 1112668852,
+      "size": 58,
+      "reference_names": [
+        "_last_day_of_gregorian_month"
+      ],
+      "source_path": "src/Kits/Foundation/NSCalendarDate.m",
+      "source_line": 108
+    },
+    {
+      "address": 1112673256,
+      "size": 88,
+      "reference_names": [
+        "+[NSDate dateWithTimeIntervalSinceNow:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDate.m",
+      "source_line": 259
+    },
+    {
+      "address": 1112683388,
+      "size": 153,
+      "reference_names": [
+        "_absolute_from_gregorian"
+      ],
+      "source_path": "src/Kits/Foundation/NSCalendarDate.m",
+      "source_line": 114
+    },
+    {
+      "address": 1112694164,
+      "size": 69,
+      "reference_names": [
+        "_compare_tzperiods"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimeZone.m",
+      "source_line": 157
+    },
+    {
+      "address": 1112746708,
+      "size": 58,
+      "reference_names": [
+        "_leap_year"
+      ],
+      "source_path": "src/Kits/Foundation/NSCalendarDate.m",
+      "source_line": 99
+    },
+    {
+      "address": 1112762072,
+      "size": 1072,
+      "reference_names": [
+        "+[NSConcreteTimeZone parseTimeZoneData:into:count:zone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimeZone.m",
+      "source_line": 226
+    },
+    {
+      "address": 1112763176,
+      "size": 227,
+      "reference_names": [
+        "_gregorian_from_absolute"
+      ],
+      "source_path": "src/Kits/Foundation/NSCalendarDate.m",
+      "source_line": 137
+    },
+    {
+      "address": 1112773000,
+      "size": 85,
+      "reference_names": [
+        "+[NSDate date]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDate.m",
+      "source_line": 237
+    },
+    {
+      "address": 1112773484,
+      "size": 99,
+      "reference_names": [
+        "+[NSDate dateWithTimeIntervalSince1970:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDate.m",
+      "source_line": 281
+    },
+    {
+      "address": 1112791096,
+      "size": 1244,
+      "reference_names": [
+        "__NSBSearchTZPeriods"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimeZone.m",
+      "source_line": 168
+    },
+    {
+      "address": 1112794288,
+      "size": 89,
+      "reference_names": [
+        "-[NSConcreteTimeZone secondsFromGMTForDate:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimeZone.m",
+      "source_line": 371
+    },
+    {
+      "address": 1112794732,
+      "size": 13,
+      "reference_names": [
+        "-[NSCalendarDate timeIntervalSinceReferenceDate]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCalendarDate.m",
+      "source_line": 780
+    },
+    {
+      "address": 1112799676,
+      "size": 82,
+      "reference_names": [
+        "-[NSDate isEqualToDate:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDate.m",
+      "source_line": 182
+    },
+    {
+      "address": 1112800652,
+      "size": 185,
+      "reference_names": [
+        "_appendNumber"
+      ],
+      "source_path": "src/Kits/Foundation/NSCalendarDate.m",
+      "source_line": 337
+    },
+    {
+      "address": 1112808724,
+      "size": 3902,
+      "reference_names": [
+        "-[NSCalendarDate descriptionWithCalendarFormat:locale:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCalendarDate.m",
+      "source_line": 1318
+    },
+    {
+      "address": 1112813588,
+      "size": 99,
+      "reference_names": [
+        "-[NSDate isEqual:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDate.m",
+      "source_line": 217
+    },
+    {
+      "address": 1112813860,
+      "size": 12,
+      "reference_names": [
+        "+[NSDate timeIntervalSinceReferenceDate]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDate.m",
+      "source_line": 232
+    },
+    {
+      "address": 1112814744,
+      "size": 29,
+      "reference_names": [
+        "-[NSConcreteDate copyWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDate.m",
+      "source_line": 448
+    },
+    {
+      "address": 1112828216,
+      "size": 24,
+      "reference_names": [
+        "-[NSDistantDate initWithTimeIntervalSinceReferenceDate:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDate.m",
+      "source_line": 359
+    },
+    {
+      "address": 1112828288,
+      "size": 119,
+      "reference_names": [
+        "-[NSConcreteTimeZone retain]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimeZone.m",
+      "source_line": 409
+    },
+    {
+      "address": 1112830552,
+      "size": 95,
+      "reference_names": [
+        "_appendName"
+      ],
+      "source_path": "src/Kits/Foundation/NSCalendarDate.m",
+      "source_line": 348
+    },
+    {
+      "address": 1112834820,
+      "size": 77,
+      "reference_names": [
+        "-[NSDistantDate earlierDate:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDate.m",
+      "source_line": 379
+    },
+    {
+      "address": 1112834900,
+      "size": 112,
+      "reference_names": [
+        "-[NSDate earlierDate:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDate.m",
+      "source_line": 145
+    },
+    {
+      "address": 1112835212,
+      "size": 160,
+      "reference_names": [
+        "-[NSConcreteTimeZone release]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimeZone.m",
+      "source_line": 421
+    },
+    {
+      "address": 1112835680,
+      "size": 133,
+      "reference_names": [
+        "-[NSCalendarDate secondOfMinute]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCalendarDate.m",
+      "source_line": 1048
+    },
+    {
+      "address": 1112835816,
+      "size": 64,
+      "reference_names": [
+        "-[NSCalendarDate release]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCalendarDate.m",
+      "source_line": 912
+    },
+    {
+      "address": 1112835880,
+      "size": 182,
+      "reference_names": [
+        "-[NSCalendarDate monthOfYear]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCalendarDate.m",
+      "source_line": 981
+    },
+    {
+      "address": 1112836064,
+      "size": 144,
+      "reference_names": [
+        "-[NSCalendarDate minuteOfHour]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCalendarDate.m",
+      "source_line": 1043
+    },
+    {
+      "address": 1112836208,
+      "size": 102,
+      "reference_names": [
+        "-[NSCalendarDate initWithTimeIntervalSinceReferenceDate:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCalendarDate.m",
+      "source_line": 766
+    },
+    {
+      "address": 1112836312,
+      "size": 149,
+      "reference_names": [
+        "-[NSCalendarDate hourOfDay]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCalendarDate.m",
+      "source_line": 1038
+    },
+    {
+      "address": 1112836464,
+      "size": 92,
+      "reference_names": [
+        "-[NSCalendarDate dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCalendarDate.m",
+      "source_line": 1631
+    },
+    {
+      "address": 1112836556,
+      "size": 185,
+      "reference_names": [
+        "-[NSCalendarDate dayOfMonth]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCalendarDate.m",
+      "source_line": 991
+    },
+    {
+      "address": 1112843308,
+      "size": 136,
+      "reference_names": [
+        "+[NSTimeZone defaultTimeZone]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimeZone.m",
+      "source_line": 775
+    },
+    {
+      "address": 1112883776,
+      "size": 271,
+      "reference_names": [
+        "+[NSTimeZone replacementTimeZoneNameForName:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimeZone.m",
+      "source_line": 972
+    },
+    {
+      "address": 1112884048,
+      "size": 56,
+      "reference_names": [
+        "+[NSTimeZone allocWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimeZone.m",
+      "source_line": 530
+    },
+    {
+      "address": 1112890864,
+      "size": 105,
+      "reference_names": [
+        "-[NSTimeZone initWithName:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimeZone.m",
+      "source_line": 949
+    },
+    {
+      "address": 1112898564,
+      "size": 204,
+      "reference_names": [
+        "-[NSDateFormatter initWithCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDateFormatter.m",
+      "source_line": 48
+    },
+    {
+      "address": 1112898768,
+      "size": 10,
+      "reference_names": [
+        "-[NSDate replacementObjectForPortCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDate.m",
+      "source_line": 212
+    },
+    {
+      "address": 1112898780,
+      "size": 71,
+      "reference_names": [
+        "-[NSDate encodeWithCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDate.m",
+      "source_line": 193
+    },
+    {
+      "address": 1112898852,
+      "size": 21,
+      "reference_names": [
+        "-[NSDate classForCoder]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDate.m",
+      "source_line": 188
+    },
+    {
+      "address": 1112899148,
+      "size": 165,
+      "reference_names": [
+        "-[NSConcreteTimeZone initWithExactName:data:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimeZone.m",
+      "source_line": 346
+    },
+    {
+      "address": 1112899316,
+      "size": 203,
+      "reference_names": [
+        "-[NSConcreteTimeZone dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimeZone.m",
+      "source_line": 444
+    },
+    {
+      "address": 1112901064,
+      "size": 1264,
+      "reference_names": [
+        "+[NSTimeZone systemTimeZone]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimeZone.m",
+      "source_line": 684
+    },
+    {
+      "address": 1112902328,
+      "size": 655,
+      "reference_names": [
+        "+[NSTimeZone knownTimeZoneNames]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimeZone.m",
+      "source_line": 806
+    },
+    {
+      "address": 1112902984,
+      "size": 586,
+      "reference_names": [
+        "+[NSTimeZone dataForTimeZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimeZone.m",
+      "source_line": 994
+    },
+    {
+      "address": 1113103968,
+      "size": 14,
+      "reference_names": [
+        "-[NSDateFormatter allowsNaturalLanguage]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDateFormatter.m",
+      "source_line": 30
+    },
+    {
+      "address": 1113103984,
+      "size": 13,
+      "reference_names": [
+        "-[NSDateFormatter dateFormat]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDateFormatter.m",
+      "source_line": 26
+    },
+    {
+      "address": 1113104000,
+      "size": 74,
+      "reference_names": [
+        "-[NSDateFormatter dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDateFormatter.m",
+      "source_line": 38
+    },
+    {
+      "address": 1113104076,
+      "size": 92,
+      "reference_names": [
+        "-[NSDateFormatter encodeWithCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDateFormatter.m",
+      "source_line": 43
+    },
+    {
+      "address": 1113104168,
+      "size": 422,
+      "reference_names": [
+        "-[NSDateFormatter getObjectValue:forString:errorDescription:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDateFormatter.m",
+      "source_line": 82
+    },
+    {
+      "address": 1113104592,
+      "size": 111,
+      "reference_names": [
+        "-[NSDateFormatter initWithDateFormat:allowNaturalLanguage:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDateFormatter.m",
+      "source_line": 19
+    },
+    {
+      "address": 1113104704,
+      "size": 33,
+      "reference_names": [
+        "-[NSDateFormatter init]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDateFormatter.m",
+      "source_line": 34
+    },
+    {
+      "address": 1113104740,
+      "size": 164,
+      "reference_names": [
+        "-[NSDateFormatter stringForObjectValue:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDateFormatter.m",
+      "source_line": 63
+    },
+    {
+      "address": 1113155536,
+      "size": 67,
+      "reference_names": [
+        "+[NSCalendarDate calendarDate]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCalendarDate.m",
+      "source_line": 719
+    },
+    {
+      "address": 1113155604,
+      "size": 83,
+      "reference_names": [
+        "+[NSCalendarDate dateWithString:calendarFormat:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCalendarDate.m",
+      "source_line": 709
+    },
+    {
+      "address": 1113155688,
+      "size": 85,
+      "reference_names": [
+        "+[NSCalendarDate dateWithString:calendarFormat:locale:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCalendarDate.m",
+      "source_line": 714
+    },
+    {
+      "address": 1113155776,
+      "size": 95,
+      "reference_names": [
+        "+[NSCalendarDate dateWithYear:month:day:hour:minute:second:timeZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCalendarDate.m",
+      "source_line": 704
+    },
+    {
+      "address": 1113155872,
+      "size": 86,
+      "reference_names": [
+        "+[NSCalendarDate distantFuture]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCalendarDate.m",
+      "source_line": 723
+    },
+    {
+      "address": 1113155960,
+      "size": 86,
+      "reference_names": [
+        "+[NSCalendarDate distantPast]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCalendarDate.m",
+      "source_line": 730
+    },
+    {
+      "address": 1113156048,
+      "size": 5029,
+      "reference_names": [
+        "+[NSCalendarDate dateWithNaturalLanguageString:date:locale:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCalendarDate.m",
+      "source_line": 1741
+    },
+    {
+      "address": 1113161080,
+      "size": 60,
+      "reference_names": [
+        "+[NSDate dateWithDate:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDate.m",
+      "source_line": 253
+    },
+    {
+      "address": 1113161140,
+      "size": 104,
+      "reference_names": [
+        "+[NSDate dateWithTimeInterval:sinceDate:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDate.m",
+      "source_line": 287
+    },
+    {
+      "address": 1113161244,
+      "size": 76,
+      "reference_names": [
+        "+[NSDate dateWithString:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCalendarDate.m",
+      "source_line": 1636
+    },
+    {
+      "address": 1113161320,
+      "size": 37,
+      "reference_names": [
+        "+[NSDate dateWithNaturalLanguageString:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCalendarDate.m",
+      "source_line": 2064
+    },
+    {
+      "address": 1113161360,
+      "size": 144,
+      "reference_names": [
+        "+[NSDate dateWithNaturalLanguageString:date:locale:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCalendarDate.m",
+      "source_line": 2072
+    },
+    {
+      "address": 1113161504,
+      "size": 39,
+      "reference_names": [
+        "+[NSDate dateWithNaturalLanguageString:locale:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCalendarDate.m",
+      "source_line": 2068
+    },
+    {
+      "address": 1113164336,
+      "size": 199,
+      "reference_names": [
+        "+[NSTimeZone _resetTimeZones]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimeZone.m",
+      "source_line": 760
+    },
+    {
+      "address": 1113164536,
+      "size": 266,
+      "reference_names": [
+        "+[NSTimeZone abbreviationDictionary]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimeZone.m",
+      "source_line": 867
+    },
+    {
+      "address": 1113164804,
+      "size": 143,
+      "reference_names": [
+        "+[NSTimeZone localTimeZone]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimeZone.m",
+      "source_line": 796
+    },
+    {
+      "address": 1113164948,
+      "size": 110,
+      "reference_names": [
+        "+[NSTimeZone resetSystemTimeZone]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimeZone.m",
+      "source_line": 751
+    },
+    {
+      "address": 1113165060,
+      "size": 135,
+      "reference_names": [
+        "+[NSTimeZone setDefaultTimeZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimeZone.m",
+      "source_line": 785
+    },
+    {
+      "address": 1113165196,
+      "size": 243,
+      "reference_names": [
+        "+[NSTimeZone timeZoneForSecondsFromGMT:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimeZone.m",
+      "source_line": 924
+    },
+    {
+      "address": 1113165440,
+      "size": 112,
+      "reference_names": [
+        "+[NSTimeZone timeZoneWithAbbreviation:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimeZone.m",
+      "source_line": 1027
+    },
+    {
+      "address": 1113165552,
+      "size": 71,
+      "reference_names": [
+        "+[NSTimeZone timeZoneWithName:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimeZone.m",
+      "source_line": 915
+    },
+    {
+      "address": 1113165624,
+      "size": 75,
+      "reference_names": [
+        "+[NSTimeZone timeZoneWithName:data:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimeZone.m",
+      "source_line": 919
+    },
+    {
+      "address": 1113165700,
+      "size": 33,
+      "reference_names": [
+        "+[NSTimeZone timeZoneArray]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimeZone.m",
+      "source_line": 1039
+    },
+    {
+      "address": 1113166052,
+      "size": 106,
+      "reference_names": [
+        "-[NSCalendarDate addTimeInterval:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCalendarDate.m",
+      "source_line": 1053
+    },
+    {
+      "address": 1113166160,
+      "size": 13,
+      "reference_names": [
+        "-[NSCalendarDate calendarFormat]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCalendarDate.m",
+      "source_line": 961
+    },
+    {
+      "address": 1113166176,
+      "size": 34,
+      "reference_names": [
+        "-[NSCalendarDate classForCoder]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCalendarDate.m",
+      "source_line": 784
+    },
+    {
+      "address": 1113166212,
+      "size": 116,
+      "reference_names": [
+        "-[NSCalendarDate copyWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCalendarDate.m",
+      "source_line": 1060
+    },
+    {
+      "address": 1113166328,
+      "size": 609,
+      "reference_names": [
+        "-[NSCalendarDate dateByAddingYears:months:days:hours:minutes:seconds:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCalendarDate.m",
+      "source_line": 1068
+    },
+    {
+      "address": 1113166940,
+      "size": 110,
+      "reference_names": [
+        "-[NSCalendarDate dayOfCommonEra]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCalendarDate.m",
+      "source_line": 1024
+    },
+    {
+      "address": 1113167052,
+      "size": 179,
+      "reference_names": [
+        "-[NSCalendarDate dayOfWeek]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCalendarDate.m",
+      "source_line": 1001
+    },
+    {
+      "address": 1113167232,
+      "size": 235,
+      "reference_names": [
+        "-[NSCalendarDate dayOfYear]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCalendarDate.m",
+      "source_line": 1006
+    },
+    {
+      "address": 1113167468,
+      "size": 35,
+      "reference_names": [
+        "-[NSCalendarDate descriptionWithCalendarFormat:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCalendarDate.m",
+      "source_line": 1314
+    },
+    {
+      "address": 1113167504,
+      "size": 37,
+      "reference_names": [
+        "-[NSCalendarDate descriptionWithLocale:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCalendarDate.m",
+      "source_line": 1310
+    },
+    {
+      "address": 1113167544,
+      "size": 35,
+      "reference_names": [
+        "-[NSCalendarDate description]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCalendarDate.m",
+      "source_line": 1306
+    },
+    {
+      "address": 1113167580,
+      "size": 107,
+      "reference_names": [
+        "-[NSCalendarDate encodeWithCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCalendarDate.m",
+      "source_line": 788
+    },
+    {
+      "address": 1113167688,
+      "size": 109,
+      "reference_names": [
+        "-[NSCalendarDate initWithCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCalendarDate.m",
+      "source_line": 794
+    },
+    {
+      "address": 1113167800,
+      "size": 53,
+      "reference_names": [
+        "-[NSCalendarDate initWithString:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCalendarDate.m",
+      "source_line": 807
+    },
+    {
+      "address": 1113167856,
+      "size": 39,
+      "reference_names": [
+        "-[NSCalendarDate initWithString:calendarFormat:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCalendarDate.m",
+      "source_line": 811
+    },
+    {
+      "address": 1113167896,
+      "size": 3286,
+      "reference_names": [
+        "-[NSCalendarDate initWithString:calendarFormat:locale:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCalendarDate.m",
+      "source_line": 815
+    },
+    {
+      "address": 1113171184,
+      "size": 350,
+      "reference_names": [
+        "-[NSCalendarDate initWithYear:month:day:hour:minute:second:timeZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCalendarDate.m",
+      "source_line": 737
+    },
+    {
+      "address": 1113171536,
+      "size": 47,
+      "reference_names": [
+        "-[NSCalendarDate init]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCalendarDate.m",
+      "source_line": 775
+    },
+    {
+      "address": 1113171584,
+      "size": 95,
+      "reference_names": [
+        "-[NSCalendarDate microsecondOfSecond]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCalendarDate.m",
+      "source_line": 943
+    },
+    {
+      "address": 1113171680,
+      "size": 92,
+      "reference_names": [
+        "-[NSCalendarDate replacementObjectForPortCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCalendarDate.m",
+      "source_line": 801
+    },
+    {
+      "address": 1113171772,
+      "size": 22,
+      "reference_names": [
+        "-[NSCalendarDate retainCount]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCalendarDate.m",
+      "source_line": 935
+    },
+    {
+      "address": 1113171796,
+      "size": 43,
+      "reference_names": [
+        "-[NSCalendarDate retain]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCalendarDate.m",
+      "source_line": 897
+    },
+    {
+      "address": 1113171840,
+      "size": 79,
+      "reference_names": [
+        "-[NSCalendarDate setCalendarFormat:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCalendarDate.m",
+      "source_line": 965
+    },
+    {
+      "address": 1113171920,
+      "size": 94,
+      "reference_names": [
+        "-[NSCalendarDate setTimeZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCalendarDate.m",
+      "source_line": 952
+    },
+    {
+      "address": 1113172016,
+      "size": 29,
+      "reference_names": [
+        "-[NSCalendarDate timeZoneDetail]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCalendarDate.m",
+      "source_line": 948
+    },
+    {
+      "address": 1113172048,
+      "size": 13,
+      "reference_names": [
+        "-[NSCalendarDate timeZone]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCalendarDate.m",
+      "source_line": 893
+    },
+    {
+      "address": 1113172064,
+      "size": 180,
+      "reference_names": [
+        "-[NSCalendarDate yearOfCommonEra]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCalendarDate.m",
+      "source_line": 971
+    },
+    {
+      "address": 1113172244,
+      "size": 644,
+      "reference_names": [
+        "-[NSCalendarDate years:months:days:hours:minutes:seconds:sinceDate:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCalendarDate.m",
+      "source_line": 1237
+    },
+    {
+      "address": 1113173008,
+      "size": 47,
+      "reference_names": [
+        "-[NSConcreteDate init]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDate.m",
+      "source_line": 438
+    },
+    {
+      "address": 1113173056,
+      "size": 22,
+      "reference_names": [
+        "-[NSConcreteDate retainCount]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDate.m",
+      "source_line": 495
+    },
+    {
+      "address": 1113173080,
+      "size": 85,
+      "reference_names": [
+        "-[NSConcreteTimeZone abbreviationForDate:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimeZone.m",
+      "source_line": 387
+    },
+    {
+      "address": 1113173168,
+      "size": 29,
+      "reference_names": [
+        "-[NSConcreteTimeZone copyWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimeZone.m",
+      "source_line": 405
+    },
+    {
+      "address": 1113173200,
+      "size": 13,
+      "reference_names": [
+        "-[NSConcreteTimeZone data]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimeZone.m",
+      "source_line": 367
+    },
+    {
+      "address": 1113173216,
+      "size": 31,
+      "reference_names": [
+        "-[NSConcreteTimeZone init]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimeZone.m",
+      "source_line": 341
+    },
+    {
+      "address": 1113173248,
+      "size": 96,
+      "reference_names": [
+        "-[NSConcreteTimeZone isDaylightSavingTimeForDate:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimeZone.m",
+      "source_line": 394
+    },
+    {
+      "address": 1113173344,
+      "size": 13,
+      "reference_names": [
+        "-[NSConcreteTimeZone name]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimeZone.m",
+      "source_line": 363
+    },
+    {
+      "address": 1113173360,
+      "size": 14,
+      "reference_names": [
+        "-[NSConcreteTimeZone retainCount]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimeZone.m",
+      "source_line": 440
+    },
+    {
+      "address": 1113173408,
+      "size": 100,
+      "reference_names": [
+        "-[NSDate addTimeInterval:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDate.m",
+      "source_line": 131
+    },
+    {
+      "address": 1113173508,
+      "size": 106,
+      "reference_names": [
+        "-[NSDate compare:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDate.m",
+      "source_line": 159
+    },
+    {
+      "address": 1113173616,
+      "size": 82,
+      "reference_names": [
+        "-[NSDate copyWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDate.m",
+      "source_line": 138
+    },
+    {
+      "address": 1113173700,
+      "size": 31,
+      "reference_names": [
+        "-[NSDate description]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDate.m",
+      "source_line": 177
+    },
+    {
+      "address": 1113173732,
+      "size": 58,
+      "reference_names": [
+        "-[NSDate hash]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDate.m",
+      "source_line": 226
+    },
+    {
+      "address": 1113173792,
+      "size": 74,
+      "reference_names": [
+        "-[NSDate initWithCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDate.m",
+      "source_line": 199
+    },
+    {
+      "address": 1113173868,
+      "size": 60,
+      "reference_names": [
+        "-[NSDate initWithDate:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDate.m",
+      "source_line": 206
+    },
+    {
+      "address": 1113173928,
+      "size": 63,
+      "reference_names": [
+        "-[NSDate initWithTimeInterval:sinceDate:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDate.m",
+      "source_line": 319
+    },
+    {
+      "address": 1113173992,
+      "size": 61,
+      "reference_names": [
+        "-[NSDate initWithTimeIntervalSince1970:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDate.m",
+      "source_line": 330
+    },
+    {
+      "address": 1113174056,
+      "size": 50,
+      "reference_names": [
+        "-[NSDate initWithTimeIntervalSinceNow:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDate.m",
+      "source_line": 325
+    },
+    {
+      "address": 1113174108,
+      "size": 22,
+      "reference_names": [
+        "-[NSDate initWithTimeIntervalSinceReferenceDate:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDate.m",
+      "source_line": 313
+    },
+    {
+      "address": 1113174132,
+      "size": 115,
+      "reference_names": [
+        "-[NSDate laterDate:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDate.m",
+      "source_line": 152
+    },
+    {
+      "address": 1113174248,
+      "size": 53,
+      "reference_names": [
+        "-[NSDate timeIntervalSince1970]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDate.m",
+      "source_line": 126
+    },
+    {
+      "address": 1113174304,
+      "size": 63,
+      "reference_names": [
+        "-[NSDate timeIntervalSinceDate:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDate.m",
+      "source_line": 115
+    },
+    {
+      "address": 1113174368,
+      "size": 41,
+      "reference_names": [
+        "-[NSDate timeIntervalSinceReferenceDate]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDate.m",
+      "source_line": 109
+    },
+    {
+      "address": 1113174412,
+      "size": 112,
+      "reference_names": [
+        "-[NSDate dateWithCalendarFormat:timeZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCalendarDate.m",
+      "source_line": 1701
+    },
+    {
+      "address": 1113174524,
+      "size": 168,
+      "reference_names": [
+        "-[NSDate descriptionWithCalendarFormat:timeZone:locale:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCalendarDate.m",
+      "source_line": 1730
+    },
+    {
+      "address": 1113174692,
+      "size": 184,
+      "reference_names": [
+        "-[NSDate descriptionWithLocale:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCalendarDate.m",
+      "source_line": 1715
+    },
+    {
+      "address": 1113174876,
+      "size": 789,
+      "reference_names": [
+        "-[NSDate initWithString:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCalendarDate.m",
+      "source_line": 1640
+    },
+    {
+      "address": 1113181040,
+      "size": 10,
+      "reference_names": [
+        "-[NSDistantDate addTimeInterval:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDate.m",
+      "source_line": 374
+    },
+    {
+      "address": 1113181052,
+      "size": 10,
+      "reference_names": [
+        "-[NSDistantDate autorelease]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDate.m",
+      "source_line": 419
+    },
+    {
+      "address": 1113181064,
+      "size": 56,
+      "reference_names": [
+        "-[NSDistantDate compare:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDate.m",
+      "source_line": 393
+    },
+    {
+      "address": 1113181120,
+      "size": 10,
+      "reference_names": [
+        "-[NSDistantDate copyWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDate.m",
+      "source_line": 405
+    },
+    {
+      "address": 1113181132,
+      "size": 49,
+      "reference_names": [
+        "-[NSDistantDate dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDate.m",
+      "source_line": 429
+    },
+    {
+      "address": 1113181184,
+      "size": 70,
+      "reference_names": [
+        "-[NSDistantDate init]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDate.m",
+      "source_line": 365
+    },
+    {
+      "address": 1113181256,
+      "size": 21,
+      "reference_names": [
+        "-[NSDistantDate isEqualToDate:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDate.m",
+      "source_line": 400
+    },
+    {
+      "address": 1113181280,
+      "size": 81,
+      "reference_names": [
+        "-[NSDistantDate laterDate:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDate.m",
+      "source_line": 386
+    },
+    {
+      "address": 1113181364,
+      "size": 12,
+      "reference_names": [
+        "-[NSDistantDate retainCount]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDate.m",
+      "source_line": 424
+    },
+    {
+      "address": 1113181376,
+      "size": 13,
+      "reference_names": [
+        "-[NSDistantDate timeIntervalSince1970]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDate.m",
+      "source_line": 349
+    },
+    {
+      "address": 1113181392,
+      "size": 13,
+      "reference_names": [
+        "-[NSDistantDate timeIntervalSinceDate:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDate.m",
+      "source_line": 354
+    },
+    {
+      "address": 1113181408,
+      "size": 56,
+      "reference_names": [
+        "-[NSLocalTimeZone abbreviationForDate:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimeZone.m",
+      "source_line": 479
+    },
+    {
+      "address": 1113181464,
+      "size": 34,
+      "reference_names": [
+        "-[NSLocalTimeZone classForCoder]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimeZone.m",
+      "source_line": 491
+    },
+    {
+      "address": 1113181500,
+      "size": 10,
+      "reference_names": [
+        "-[NSLocalTimeZone copyWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimeZone.m",
+      "source_line": 487
+    },
+    {
+      "address": 1113181512,
+      "size": 52,
+      "reference_names": [
+        "-[NSLocalTimeZone data]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimeZone.m",
+      "source_line": 471
+    },
+    {
+      "address": 1113181564,
+      "size": 87,
+      "reference_names": [
+        "-[NSLocalTimeZone description]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimeZone.m",
+      "source_line": 462
+    },
+    {
+      "address": 1113181652,
+      "size": 7,
+      "reference_names": [
+        "-[NSLocalTimeZone encodeWithCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimeZone.m",
+      "source_line": 495
+    },
+    {
+      "address": 1113181660,
+      "size": 56,
+      "reference_names": [
+        "-[NSLocalTimeZone initWithCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimeZone.m",
+      "source_line": 498
+    },
+    {
+      "address": 1113181716,
+      "size": 59,
+      "reference_names": [
+        "-[NSLocalTimeZone isDaylightSavingTimeForDate:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimeZone.m",
+      "source_line": 483
+    },
+    {
+      "address": 1113181776,
+      "size": 52,
+      "reference_names": [
+        "-[NSLocalTimeZone name]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimeZone.m",
+      "source_line": 467
+    },
+    {
+      "address": 1113181828,
+      "size": 7,
+      "reference_names": [
+        "-[NSLocalTimeZone release]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimeZone.m",
+      "source_line": 511
+    },
+    {
+      "address": 1113181836,
+      "size": 10,
+      "reference_names": [
+        "-[NSLocalTimeZone replacementObjectForPortCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimeZone.m",
+      "source_line": 503
+    },
+    {
+      "address": 1113181848,
+      "size": 12,
+      "reference_names": [
+        "-[NSLocalTimeZone retainCount]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimeZone.m",
+      "source_line": 514
+    },
+    {
+      "address": 1113181860,
+      "size": 10,
+      "reference_names": [
+        "-[NSLocalTimeZone retain]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimeZone.m",
+      "source_line": 507
+    },
+    {
+      "address": 1113181872,
+      "size": 56,
+      "reference_names": [
+        "-[NSLocalTimeZone secondsFromGMTForDate:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimeZone.m",
+      "source_line": 475
+    },
+    {
+      "address": 1113181928,
+      "size": 56,
+      "reference_names": [
+        "-[NSLocalTimeZone timeZoneForDate:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimeZone.m",
+      "source_line": 522
+    },
+    {
+      "address": 1113191332,
+      "size": 45,
+      "reference_names": [
+        "-[NSTimeZone abbreviationForDate:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimeZone.m",
+      "source_line": 558
+    },
+    {
+      "address": 1113191380,
+      "size": 60,
+      "reference_names": [
+        "-[NSTimeZone abbreviation]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimeZone.m",
+      "source_line": 572
+    },
+    {
+      "address": 1113191440,
+      "size": 21,
+      "reference_names": [
+        "-[NSTimeZone classForCoder]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimeZone.m",
+      "source_line": 580
+    },
+    {
+      "address": 1113191464,
+      "size": 97,
+      "reference_names": [
+        "-[NSTimeZone copyWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimeZone.m",
+      "source_line": 584
+    },
+    {
+      "address": 1113191564,
+      "size": 37,
+      "reference_names": [
+        "-[NSTimeZone data]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimeZone.m",
+      "source_line": 541
+    },
+    {
+      "address": 1113191604,
+      "size": 145,
+      "reference_names": [
+        "-[NSTimeZone description]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimeZone.m",
+      "source_line": 893
+    },
+    {
+      "address": 1113191752,
+      "size": 114,
+      "reference_names": [
+        "-[NSTimeZone encodeWithCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimeZone.m",
+      "source_line": 602
+    },
+    {
+      "address": 1113191868,
+      "size": 47,
+      "reference_names": [
+        "-[NSTimeZone hash]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimeZone.m",
+      "source_line": 647
+    },
+    {
+      "address": 1113191916,
+      "size": 319,
+      "reference_names": [
+        "-[NSTimeZone initWithCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimeZone.m",
+      "source_line": 610
+    },
+    {
+      "address": 1113192236,
+      "size": 22,
+      "reference_names": [
+        "-[NSTimeZone initWithExactName:data:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimeZone.m",
+      "source_line": 546
+    },
+    {
+      "address": 1113192260,
+      "size": 106,
+      "reference_names": [
+        "-[NSTimeZone initWithName:data:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimeZone.m",
+      "source_line": 963
+    },
+    {
+      "address": 1113192368,
+      "size": 37,
+      "reference_names": [
+        "-[NSTimeZone isDaylightSavingTimeForDate:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimeZone.m",
+      "source_line": 563
+    },
+    {
+      "address": 1113192408,
+      "size": 63,
+      "reference_names": [
+        "-[NSTimeZone isDaylightSavingTime]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimeZone.m",
+      "source_line": 576
+    },
+    {
+      "address": 1113192472,
+      "size": 99,
+      "reference_names": [
+        "-[NSTimeZone isEqual:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimeZone.m",
+      "source_line": 639
+    },
+    {
+      "address": 1113192572,
+      "size": 148,
+      "reference_names": [
+        "-[NSTimeZone isEqualToTimeZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimeZone.m",
+      "source_line": 657
+    },
+    {
+      "address": 1113192720,
+      "size": 37,
+      "reference_names": [
+        "-[NSTimeZone name]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimeZone.m",
+      "source_line": 536
+    },
+    {
+      "address": 1113192760,
+      "size": 96,
+      "reference_names": [
+        "-[NSTimeZone replacementObjectForPortCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimeZone.m",
+      "source_line": 651
+    },
+    {
+      "address": 1113192856,
+      "size": 37,
+      "reference_names": [
+        "-[NSTimeZone secondsFromGMTForDate:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimeZone.m",
+      "source_line": 553
+    },
+    {
+      "address": 1113192896,
+      "size": 60,
+      "reference_names": [
+        "-[NSTimeZone secondsFromGMT]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimeZone.m",
+      "source_line": 568
+    },
+    {
+      "address": 1113192956,
+      "size": 32,
+      "reference_names": [
+        "-[NSTimeZone isDaylightSavingTimeZone]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimeZone.m",
+      "source_line": 1071
+    },
+    {
+      "address": 1113192988,
+      "size": 29,
+      "reference_names": [
+        "-[NSTimeZone timeZoneAbbreviation]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimeZone.m",
+      "source_line": 1043
+    },
+    {
+      "address": 1113193020,
+      "size": 34,
+      "reference_names": [
+        "-[NSTimeZone timeZoneDetailArray]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimeZone.m",
+      "source_line": 1047
+    },
+    {
+      "address": 1113193056,
+      "size": 33,
+      "reference_names": [
+        "-[NSTimeZone timeZoneDetailForDate:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimeZone.m",
+      "source_line": 1051
+    },
+    {
+      "address": 1113193092,
+      "size": 141,
+      "reference_names": [
+        "-[NSTimeZone timeZoneForDate:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimeZone.m",
+      "source_line": 1055
+    },
+    {
+      "address": 1113193236,
+      "size": 29,
+      "reference_names": [
+        "-[NSTimeZone timeZoneName]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimeZone.m",
+      "source_line": 1063
+    },
+    {
+      "address": 1113193268,
+      "size": 29,
+      "reference_names": [
+        "-[NSTimeZone timeZoneSecondsFromGMT]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimeZone.m",
+      "source_line": 1067
+    },
+    {
+      "address": 1113193300,
+      "size": 281,
+      "reference_names": [
+        "-[NSTimeZoneDetailDecoder initWithCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimeZone.m",
+      "source_line": 1079
+    },
+    {
+      "address": 1113195472,
+      "size": 102,
+      "reference_names": [
+        "-[NSWindowsDefaultTimeZoneDecoder initWithCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimeZone.m",
+      "source_line": 1103
+    },
+    {
+      "address": 1113205828,
+      "size": 308,
+      "reference_names": [
+        "__NSConcoctFixedTimeZone"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimeZone.m",
+      "source_line": 189
+    },
+    {
+      "address": 1113208220,
+      "size": 90,
+      "reference_names": [
+        "_absolute_from_year_day"
+      ],
+      "source_path": "src/Kits/Foundation/NSCalendarDate.m",
+      "source_line": 171
+    },
+    {
+      "address": 1113208312,
+      "size": 72,
+      "reference_names": [
+        "_actionCharacter"
+      ],
+      "source_path": "src/Kits/Foundation/NSCalendarDate.m",
+      "source_line": 271
+    },
+    {
+      "address": 1113208384,
+      "size": 140,
+      "reference_names": [
+        "_addTokens"
+      ],
+      "source_path": "src/Kits/Foundation/NSCalendarDate.m",
+      "source_line": 240
+    },
+    {
+      "address": 1113208524,
+      "size": 157,
+      "reference_names": [
+        "_append03"
+      ],
+      "source_path": "src/Kits/Foundation/NSCalendarDate.m",
+      "source_line": 364
+    },
+    {
+      "address": 1113208684,
+      "size": 1313,
+      "reference_names": [
+        "_buildTokenMapWithDictionary"
+      ],
+      "source_path": "src/Kits/Foundation/NSCalendarDate.m",
+      "source_line": 279
+    },
+    {
+      "address": 1113210536,
+      "size": 186,
+      "reference_names": [
+        "_skipWhitespace"
+      ],
+      "source_path": "src/Kits/Foundation/NSCalendarDate.m",
+      "source_line": 481
+    }
+  ],
+  "unmapped": [],
+  "duplicate_candidates": [],
+  "boundary_disputed": [],
+  "by_module": {
+    "NSCalendarDate.m": {
+      "mapped": 65,
+      "unmapped": 0,
+      "duplicate_candidates": 0,
+      "boundary_disputed": 0
+    },
+    "NSDate.m": {
+      "mapped": 57,
+      "unmapped": 0,
+      "duplicate_candidates": 0,
+      "boundary_disputed": 0
+    },
+    "NSDateFormatter.m": {
+      "mapped": 9,
+      "unmapped": 0,
+      "duplicate_candidates": 0,
+      "boundary_disputed": 0
+    },
+    "NSTimeZone.m": {
+      "mapped": 76,
+      "unmapped": 0,
+      "duplicate_candidates": 0,
+      "boundary_disputed": 0
+    }
+  }
+}

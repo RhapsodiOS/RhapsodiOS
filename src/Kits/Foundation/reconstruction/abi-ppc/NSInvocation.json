@@ -1,0 +1,292 @@
+{
+ "categories": [
+  {
+   "class": "NSObject",
+   "class_methods": [],
+   "instance_methods": [
+    {
+     "selector": "forward::",
+     "types": "q12@4:8:12^v16"
+    }
+   ],
+   "name": "NSForwardInvocation"
+  },
+  {
+   "class": "NSObject",
+   "class_methods": [],
+   "instance_methods": [
+    {
+     "selector": "isNSIDispatchProxy",
+     "types": "c4@4:8"
+    }
+   ],
+   "name": "NSIDispatchProxy"
+  }
+ ],
+ "classes": [
+  {
+   "class_methods": [
+    {
+     "selector": "builderForClass:",
+     "types": "@8@4:8#12"
+    },
+    {
+     "selector": "builderForObject:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "initialize",
+     "types": "v4@4:8"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "forward::",
+     "types": "@12@4:8:12^:16"
+    }
+   ],
+   "instance_size": 16,
+   "ivars": [
+    {
+     "name": "isa",
+     "offset": 0,
+     "type": "#"
+    },
+    {
+     "name": "targetClass",
+     "offset": 4,
+     "type": "#"
+    },
+    {
+     "name": "target",
+     "offset": 8,
+     "type": "@"
+    },
+    {
+     "name": "reserved",
+     "offset": 12,
+     "type": "^v"
+    }
+   ],
+   "name": "NSInvocationBuilder",
+   "superclass": null
+  },
+  {
+   "class_methods": [
+    {
+     "selector": "newInvocationWithCoder:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "_preInitWithCoder:signature:valid:wireSignature:target:selector:argCount:",
+     "types": "v36@4:8@12^@16^c20^@24^@28^:32^I40"
+    },
+    {
+     "selector": "invocationWithMethodSignature:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "newInvocationWithMethodSignature:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "_enableLogging:",
+     "types": "v5@4:8c12"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "decodeReturnValueWithCoder:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "encodeReturnValueWithCoder:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "initWithCoder:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "_postInitWithCoder:signature:valid:wireSignature:target:selector:argCount:",
+     "types": "@36@4:8@12@16c20@24@28:32I40"
+    },
+    {
+     "selector": "_signatureValid",
+     "types": "c4@4:8"
+    },
+    {
+     "selector": "encodeWithCoder:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "replacementObjectForPortCoder:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "description",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "invokeWithTarget:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "invoke",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "setTarget:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "target",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "setSelector:",
+     "types": "v8@4:8:12"
+    },
+    {
+     "selector": "selector",
+     "types": ":4@4:8"
+    },
+    {
+     "selector": "methodSignature",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "getArgument:atIndex:",
+     "types": "v12@4:8^v12i16"
+    },
+    {
+     "selector": "setArgument:atIndex:",
+     "types": "v12@4:8^v12i16"
+    },
+    {
+     "selector": "getReturnValue:",
+     "types": "v8@4:8^v12"
+    },
+    {
+     "selector": "setReturnValue:",
+     "types": "v8@4:8^v12"
+    },
+    {
+     "selector": "retainCount",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "release",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "retain",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "_returnValue",
+     "types": "{?=i(cslqfd:@^v^v*)}8@8:12"
+    },
+    {
+     "selector": "retainArguments",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "argumentsRetained",
+     "types": "c4@4:8"
+    },
+    {
+     "selector": "_setArgFrame:",
+     "types": "v8@4:8^v12"
+    },
+    {
+     "selector": "dealloc",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "invalidate",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "initWithMethodSignature:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "init",
+     "types": "@4@4:8"
+    }
+   ],
+   "instance_size": 36,
+   "ivars": [
+    {
+     "name": "returnValue",
+     "offset": 4,
+     "type": "{?=\"type\"i\"value\"(?)}"
+    },
+    {
+     "name": "argumentFrame",
+     "offset": 16,
+     "type": "^v"
+    },
+    {
+     "name": "signature",
+     "offset": 20,
+     "type": "@\"NSMethodSignature\""
+    },
+    {
+     "name": "container",
+     "offset": 24,
+     "type": "@\"NSMutableArray\""
+    },
+    {
+     "name": "retainedArgs",
+     "offset": 28,
+     "type": "b1"
+    },
+    {
+     "name": "isInvalid",
+     "offset": 28,
+     "type": "b1"
+    },
+    {
+     "name": "signatureValid",
+     "offset": 28,
+     "type": "b1"
+    },
+    {
+     "name": "retainedRet",
+     "offset": 28,
+     "type": "b1"
+    },
+    {
+     "name": "externalArgFrame",
+     "offset": 28,
+     "type": "b1"
+    },
+    {
+     "name": "unused",
+     "offset": 28,
+     "type": "b3"
+    },
+    {
+     "name": "refCount",
+     "offset": 29,
+     "type": "b24"
+    },
+    {
+     "name": "reserved",
+     "offset": 32,
+     "type": "^v"
+    }
+   ],
+   "name": "NSInvocation",
+   "superclass": "NSObject"
+  }
+ ],
+ "data_symbols": [],
+ "module": "NSInvocation.m",
+ "schema_version": "abi-v1",
+ "text_symbols": []
+}

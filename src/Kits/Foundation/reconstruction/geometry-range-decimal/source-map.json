@@ -4,7 +4,7 @@
     "NSDecimal.m": {
       "boundary_disputed": 0,
       "duplicate_candidates": 0,
-      "mapped": 12,
+      "mapped": 13,
       "unmapped": 0
     },
     "NSGeometry.m": {
@@ -16,7 +16,7 @@
     "NSRange.m": {
       "boundary_disputed": 0,
       "duplicate_candidates": 0,
-      "mapped": 5,
+      "mapped": 6,
       "unmapped": 0
     }
   },
@@ -28,7 +28,7 @@
         "_NSIsEmptyRect"
       ],
       "size": 53,
-      "source_line": 40,
+      "source_line": 50,
       "source_path": "src/Kits/Foundation/NSGeometry.m"
     },
     {
@@ -37,7 +37,7 @@
         "_NSIntersectionRect"
       ],
       "size": 306,
-      "source_line": 113,
+      "source_line": 126,
       "source_path": "src/Kits/Foundation/NSGeometry.m"
     },
     {
@@ -46,7 +46,7 @@
         "_NSIntersectionRange"
       ],
       "size": 126,
-      "source_line": 33,
+      "source_line": 38,
       "source_path": "src/Kits/Foundation/NSRange.m"
     },
     {
@@ -55,7 +55,7 @@
         "_NSEqualRects"
       ],
       "size": 88,
-      "source_line": 29,
+      "source_line": 39,
       "source_path": "src/Kits/Foundation/NSGeometry.m"
     },
     {
@@ -64,7 +64,7 @@
         "_NSInsetRect"
       ],
       "size": 86,
-      "source_line": 48,
+      "source_line": 58,
       "source_path": "src/Kits/Foundation/NSGeometry.m"
     },
     {
@@ -73,7 +73,7 @@
         "_NSDivideRect"
       ],
       "size": 184,
-      "source_line": 189,
+      "source_line": 206,
       "source_path": "src/Kits/Foundation/NSGeometry.m"
     },
     {
@@ -82,7 +82,7 @@
         "_NSUnionRange"
       ],
       "size": 67,
-      "source_line": 14,
+      "source_line": 19,
       "source_path": "src/Kits/Foundation/NSRange.m"
     },
     {
@@ -91,7 +91,7 @@
         "_NSUnionRect"
       ],
       "size": 352,
-      "source_line": 90,
+      "source_line": 100,
       "source_path": "src/Kits/Foundation/NSGeometry.m"
     },
     {
@@ -100,7 +100,7 @@
         "_NSEqualSizes"
       ],
       "size": 50,
-      "source_line": 23,
+      "source_line": 33,
       "source_path": "src/Kits/Foundation/NSGeometry.m"
     },
     {
@@ -109,7 +109,7 @@
         "_NSIntersectsRect"
       ],
       "size": 205,
-      "source_line": 134,
+      "source_line": 151,
       "source_path": "src/Kits/Foundation/NSGeometry.m"
     },
     {
@@ -118,7 +118,7 @@
         "_NSContainsRect"
       ],
       "size": 140,
-      "source_line": 144,
+      "source_line": 161,
       "source_path": "src/Kits/Foundation/NSGeometry.m"
     },
     {
@@ -127,7 +127,7 @@
         "_NSPointInRect"
       ],
       "size": 76,
-      "source_line": 157,
+      "source_line": 174,
       "source_path": "src/Kits/Foundation/NSGeometry.m"
     },
     {
@@ -136,7 +136,7 @@
         "_NSIntegralRect"
       ],
       "size": 186,
-      "source_line": 75,
+      "source_line": 85,
       "source_path": "src/Kits/Foundation/NSGeometry.m"
     },
     {
@@ -145,7 +145,7 @@
         "_NSMouseInRect"
       ],
       "size": 127,
-      "source_line": 170,
+      "source_line": 187,
       "source_path": "src/Kits/Foundation/NSGeometry.m"
     },
     {
@@ -154,7 +154,7 @@
         "_NSOffsetRect"
       ],
       "size": 54,
-      "source_line": 60,
+      "source_line": 70,
       "source_path": "src/Kits/Foundation/NSGeometry.m"
     },
     {
@@ -163,7 +163,7 @@
         "_NSEqualPoints"
       ],
       "size": 50,
-      "source_line": 17,
+      "source_line": 27,
       "source_path": "src/Kits/Foundation/NSGeometry.m"
     },
     {
@@ -172,7 +172,7 @@
         "-[NSCoder decodeRect]"
       ],
       "size": 87,
-      "source_line": 357,
+      "source_line": 423,
       "source_path": "src/Kits/Foundation/NSGeometry.m"
     },
     {
@@ -181,7 +181,7 @@
         "-[NSCoder decodeSize]"
       ],
       "size": 57,
-      "source_line": 343,
+      "source_line": 409,
       "source_path": "src/Kits/Foundation/NSGeometry.m"
     },
     {
@@ -190,7 +190,7 @@
         "_NSDecimalCopy"
       ],
       "size": 98,
-      "source_line": 373,
+      "source_line": 1048,
       "source_path": "src/Kits/Foundation/NSDecimal.m"
     },
     {
@@ -199,7 +199,7 @@
         "_NSDecimalCompact"
       ],
       "size": 285,
-      "source_line": 388,
+      "source_line": 1067,
       "source_path": "src/Kits/Foundation/NSDecimal.m"
     },
     {
@@ -208,7 +208,7 @@
         "-[NSCoder encodeRect:]"
       ],
       "size": 56,
-      "source_line": 351,
+      "source_line": 417,
       "source_path": "src/Kits/Foundation/NSGeometry.m"
     },
     {
@@ -217,7 +217,7 @@
         "-[NSCoder decodePoint]"
       ],
       "size": 57,
-      "source_line": 330,
+      "source_line": 396,
       "source_path": "src/Kits/Foundation/NSGeometry.m"
     },
     {
@@ -226,7 +226,7 @@
         "-[NSCoder encodePoint:]"
       ],
       "size": 60,
-      "source_line": 325,
+      "source_line": 391,
       "source_path": "src/Kits/Foundation/NSGeometry.m"
     },
     {
@@ -235,7 +235,7 @@
         "-[NSCoder encodeSize:]"
       ],
       "size": 60,
-      "source_line": 338,
+      "source_line": 404,
       "source_path": "src/Kits/Foundation/NSGeometry.m"
     },
     {
@@ -244,7 +244,7 @@
         "_NSDecimalAdd"
       ],
       "size": 925,
-      "source_line": 552,
+      "source_line": 1367,
       "source_path": "src/Kits/Foundation/NSDecimal.m"
     },
     {
@@ -253,7 +253,7 @@
         "_NSDecimalCompare"
       ],
       "size": 258,
-      "source_line": 423,
+      "source_line": 1216,
       "source_path": "src/Kits/Foundation/NSDecimal.m"
     },
     {
@@ -262,7 +262,7 @@
         "_NSDecimalDivide"
       ],
       "size": 654,
-      "source_line": 676,
+      "source_line": 1491,
       "source_path": "src/Kits/Foundation/NSDecimal.m"
     },
     {
@@ -271,7 +271,7 @@
         "_NSDecimalMultiply"
       ],
       "size": 627,
-      "source_line": 638,
+      "source_line": 1453,
       "source_path": "src/Kits/Foundation/NSDecimal.m"
     },
     {
@@ -280,7 +280,7 @@
         "_NSDecimalMultiplyByPowerOf10"
       ],
       "size": 118,
-      "source_line": 765,
+      "source_line": 1603,
       "source_path": "src/Kits/Foundation/NSDecimal.m"
     },
     {
@@ -289,7 +289,7 @@
         "_NSDecimalNormalize"
       ],
       "size": 319,
-      "source_line": 494,
+      "source_line": 1307,
       "source_path": "src/Kits/Foundation/NSDecimal.m"
     },
     {
@@ -298,7 +298,7 @@
         "_NSDecimalPower"
       ],
       "size": 169,
-      "source_line": 731,
+      "source_line": 1569,
       "source_path": "src/Kits/Foundation/NSDecimal.m"
     },
     {
@@ -307,7 +307,7 @@
         "_NSDecimalRound"
       ],
       "size": 639,
-      "source_line": 454,
+      "source_line": 1266,
       "source_path": "src/Kits/Foundation/NSDecimal.m"
     },
     {
@@ -316,7 +316,7 @@
         "_NSDecimalString"
       ],
       "size": 168,
-      "source_line": 811,
+      "source_line": 1689,
       "source_path": "src/Kits/Foundation/NSDecimal.m"
     },
     {
@@ -325,7 +325,7 @@
         "_NSDecimalSubtract"
       ],
       "size": 73,
-      "source_line": 625,
+      "source_line": 1440,
       "source_path": "src/Kits/Foundation/NSDecimal.m"
     },
     {
@@ -334,7 +334,7 @@
         "_NSIntersectsRange"
       ],
       "size": 45,
-      "source_line": 56,
+      "source_line": 90,
       "source_path": "src/Kits/Foundation/NSRange.m"
     },
     {
@@ -343,7 +343,7 @@
         "_NSPointFromString"
       ],
       "size": 335,
-      "source_line": 273,
+      "source_line": 318,
       "source_path": "src/Kits/Foundation/NSGeometry.m"
     },
     {
@@ -352,7 +352,7 @@
         "_NSRangeFromString"
       ],
       "size": 333,
-      "source_line": 102,
+      "source_line": 107,
       "source_path": "src/Kits/Foundation/NSRange.m"
     },
     {
@@ -361,7 +361,7 @@
         "_NSRectFromString"
       ],
       "size": 549,
-      "source_line": 303,
+      "source_line": 362,
       "source_path": "src/Kits/Foundation/NSGeometry.m"
     },
     {
@@ -370,7 +370,7 @@
         "_NSSizeFromString"
       ],
       "size": 335,
-      "source_line": 288,
+      "source_line": 340,
       "source_path": "src/Kits/Foundation/NSGeometry.m"
     },
     {
@@ -379,7 +379,7 @@
         "_NSStringFromPoint"
       ],
       "size": 63,
-      "source_line": 218,
+      "source_line": 235,
       "source_path": "src/Kits/Foundation/NSGeometry.m"
     },
     {
@@ -388,7 +388,7 @@
         "_NSStringFromRange"
       ],
       "size": 53,
-      "source_line": 62,
+      "source_line": 96,
       "source_path": "src/Kits/Foundation/NSRange.m"
     },
     {
@@ -397,7 +397,7 @@
         "_NSStringFromRect"
       ],
       "size": 77,
-      "source_line": 230,
+      "source_line": 257,
       "source_path": "src/Kits/Foundation/NSGeometry.m"
     },
     {
@@ -406,8 +406,26 @@
         "_NSStringFromSize"
       ],
       "size": 63,
-      "source_line": 224,
+      "source_line": 246,
       "source_path": "src/Kits/Foundation/NSGeometry.m"
+    },
+    {
+      "address": 1113204896,
+      "size": 176,
+      "reference_names": [
+        "_NSSubtractRange"
+      ],
+      "source_path": "src/Kits/Foundation/NSRange.m",
+      "source_line": 61
+    },
+    {
+      "address": 1113210000,
+      "size": 318,
+      "reference_names": [
+        "_decimaltostr"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimal.m",
+      "source_line": 1634
     }
   ],
   "reference_sha256": "1165B9063ADD5672514455CA2C9830625BEA2BCE5E46126FB5E8652114C909D6",

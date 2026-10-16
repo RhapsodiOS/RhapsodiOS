@@ -5,7 +5,17 @@
 
 #import <Foundation/NSGeometry.h>
 #import <Foundation/NSString.h>
+#if defined(__i386__)
+#import <Foundation/NSScanner.h>
+#endif
+#if defined(__ppc__) || defined(__POWERPC__)
+#import <Foundation/NSZone.h>
+#endif
 #import <math.h>
+
+#if defined(__ppc__) || defined(__POWERPC__)
+extern double _NSstrtod(const char *string, char **endPointer);
+#endif
 
 const NSPoint NSZeroPoint = {0, 0};
 const NSSize NSZeroSize = {0, 0};
@@ -51,8 +61,8 @@ NSInsetRect(NSRect aRect, float dX, float dY)
 
     result.origin.x = aRect.origin.x + dX;
     result.origin.y = aRect.origin.y + dY;
-    result.size.width = aRect.size.width - 2.0 * dX;
-    result.size.height = aRect.size.height - 2.0 * dY;
+    result.size.width = aRect.size.width - dX - dX;
+    result.size.height = aRect.size.height - dY - dY;
     return result;
 }
 
@@ -76,7 +86,7 @@ NSIntegralRect(NSRect aRect)
 {
     NSRect result;
 
-    if (NSIsEmptyRect(aRect))
+    if (!(aRect.size.width > 0.0 && aRect.size.height > 0.0))
         return NSZeroRect;
 
     result.origin.x = floor(aRect.origin.x);
@@ -92,9 +102,12 @@ NSUnionRect(NSRect aRect, NSRect bRect)
     NSRect result;
     float minX, minY, maxX, maxY;
 
-    if (NSIsEmptyRect(aRect))
-        return bRect;
-    if (NSIsEmptyRect(bRect))
+    if (!(aRect.size.width > 0.0 && aRect.size.height > 0.0)) {
+        if (bRect.size.width > 0.0 && bRect.size.height > 0.0)
+            return bRect;
+        return NSZeroRect;
+    }
+    if (!(bRect.size.width > 0.0 && bRect.size.height > 0.0))
         return aRect;
 
     minX = (aRect.origin.x < bRect.origin.x) ? aRect.origin.x : bRect.origin.x;
@@ -114,6 +127,10 @@ NSIntersectionRect(NSRect aRect, NSRect bRect)
 {
     NSRect result;
     float minX, minY, maxX, maxY;
+
+    if (!(aRect.size.width > 0.0 && aRect.size.height > 0.0
+          && bRect.size.width > 0.0 && bRect.size.height > 0.0))
+        return NSZeroRect;
 
     minX = (aRect.origin.x > bRect.origin.x) ? aRect.origin.x : bRect.origin.x;
     minY = (aRect.origin.y > bRect.origin.y) ? aRect.origin.y : bRect.origin.y;
@@ -191,7 +208,7 @@ NSDivideRect(NSRect inRect, NSRect *slice, NSRect *rem, float amount, NSRectEdge
     *slice = inRect;
     *rem = inRect;
 
-    if (edge == NSMinYEdge || edge == NSMaxYEdge) {
+    if (edge != NSMinXEdge && edge != NSMaxXEdge) {
         if (amount > inRect.size.height)
             amount = inRect.size.height;
         slice->size.height = amount;
@@ -217,70 +234,105 @@ NSDivideRect(NSRect inRect, NSRect *slice, NSRect *rem, float amount, NSRectEdge
 NSString *
 NSStringFromPoint(NSPoint aPoint)
 {
+#if defined(__i386__)
+    return [NSString stringWithFormat:@"{x = %g; y = %g}",
+            aPoint.x, aPoint.y];
+#else
     return [NSString stringWithFormat:@"{%g, %g}", aPoint.x, aPoint.y];
+#endif
 }
 
 NSString *
 NSStringFromSize(NSSize aSize)
 {
+#if defined(__i386__)
+    return [NSString stringWithFormat:@"{width = %g; height = %g}",
+            aSize.width, aSize.height];
+#else
     return [NSString stringWithFormat:@"{%g, %g}", aSize.width, aSize.height];
+#endif
 }
 
 NSString *
 NSStringFromRect(NSRect aRect)
 {
+#if defined(__i386__)
+    return [NSString stringWithFormat:
+        @"{x = %g; y = %g; width = %g; height = %g}",
+        aRect.origin.x, aRect.origin.y, aRect.size.width, aRect.size.height];
+#else
     return [NSString stringWithFormat:@"{{%g, %g}, {%g, %g}}",
             aRect.origin.x, aRect.origin.y, aRect.size.width, aRect.size.height];
+#endif
 }
 
-/*	Pulls the next number out of a "{x, y}"-style string, starting the
-	scan at *cursor and leaving it just past the number found. Skips
-	anything that isn't part of a number (braces, commas, whitespace)
-	before it. Missing numbers read as 0, matching NSZeroPoint/Size/
-	Rect being the fallback for a string that doesn't parse.  */
-static float
-NSGeometryScanNumber(NSString *aString, unsigned *cursor)
+#if defined(__i386__)
+static BOOL
+NSGeometryScanLabeledFloat(NSScanner *scanner, NSString *label, float *value)
 {
-    unsigned length, start;
-    unichar c;
+    return [scanner scanUpToString:label intoString:NULL] &&
+        [scanner scanString:label intoString:NULL] &&
+        [scanner scanFloat:value];
+}
+#elif defined(__ppc__) || defined(__POWERPC__)
+static BOOL
+NSGeometryIsNumberStart(unsigned char character)
+{
+    return (character >= '0' && character <= '9') ||
+        character == '-' || character == '.' || character == '+';
+}
+
+static void
+NSGeometryParsePPC(NSString *aString, float *values, unsigned valueCount,
+                   BOOL terminateBeforeLastCharacter)
+{
+    char stackBuffer[1024];
+    char *buffer;
+    char *endPointer;
+    unsigned length, cursor, index;
 
     length = [aString length];
-
-    while (*cursor < length) {
-        c = [aString characterAtIndex:*cursor];
-        if ((c >= '0' && c <= '9') || c == '.' || c == '-' || c == '+')
-            break;
-        (*cursor)++;
+    buffer = length > 1023 ? NSZoneMalloc(NULL, length + 1) : stackBuffer;
+    [aString getCString:buffer];
+    if (terminateBeforeLastCharacter) {
+        buffer[(int)length - 1] = '\0';
+    } else {
+        buffer[length] = '\0';
     }
 
-    start = *cursor;
-    while (*cursor < length) {
-        c = [aString characterAtIndex:*cursor];
-        if ((c >= '0' && c <= '9') || c == '.' || c == '-' || c == '+' ||
-            c == 'e' || c == 'E')
-            (*cursor)++;
-        else
-            break;
+    cursor = 0;
+    for (index = 0; index < valueCount; index++) {
+        while (cursor < length &&
+               !NSGeometryIsNumberStart((unsigned char)buffer[cursor]))
+            cursor++;
+        values[index] = (float)_NSstrtod(buffer + cursor, &endPointer);
+        cursor = (unsigned)(endPointer - buffer);
     }
 
-    if (*cursor <= start)
-        return 0.0;
-
-    return [[aString substringWithRange:NSMakeRange(start, *cursor - start)] floatValue];
+    if (buffer != stackBuffer)
+        NSZoneFree(NULL, buffer);
 }
+#endif
 
 NSPoint
 NSPointFromString(NSString *aString)
 {
     NSPoint point;
-    unsigned cursor;
 
-    if (aString == nil)
-        return NSZeroPoint;
+#if defined(__i386__)
+    NSScanner *scanner = [[NSScanner allocWithZone:NULL]
+        initWithString:aString];
 
-    cursor = 0;
-    point.x = NSGeometryScanNumber(aString, &cursor);
-    point.y = NSGeometryScanNumber(aString, &cursor);
+    [scanner setCharactersToBeSkipped:nil];
+    if (!NSGeometryScanLabeledFloat(scanner, @"x = ", &point.x) ||
+        !NSGeometryScanLabeledFloat(scanner, @"y = ", &point.y))
+        point = NSZeroPoint;
+    [scanner release];
+#elif defined(__ppc__) || defined(__POWERPC__)
+    NSGeometryParsePPC(aString, &point.x, 2, YES);
+#else
+    point = NSZeroPoint;
+#endif
     return point;
 }
 
@@ -288,14 +340,21 @@ NSSize
 NSSizeFromString(NSString *aString)
 {
     NSSize size;
-    unsigned cursor;
 
-    if (aString == nil)
-        return NSZeroSize;
+#if defined(__i386__)
+    NSScanner *scanner = [[NSScanner allocWithZone:NULL]
+        initWithString:aString];
 
-    cursor = 0;
-    size.width = NSGeometryScanNumber(aString, &cursor);
-    size.height = NSGeometryScanNumber(aString, &cursor);
+    [scanner setCharactersToBeSkipped:nil];
+    if (!NSGeometryScanLabeledFloat(scanner, @"width = ", &size.width) ||
+        !NSGeometryScanLabeledFloat(scanner, @"height = ", &size.height))
+        size = NSZeroSize;
+    [scanner release];
+#elif defined(__ppc__) || defined(__POWERPC__)
+    NSGeometryParsePPC(aString, &size.width, 2, YES);
+#else
+    size = NSZeroSize;
+#endif
     return size;
 }
 
@@ -303,16 +362,23 @@ NSRect
 NSRectFromString(NSString *aString)
 {
     NSRect rect;
-    unsigned cursor;
 
-    if (aString == nil)
-        return NSZeroRect;
+#if defined(__i386__)
+    NSScanner *scanner = [[NSScanner allocWithZone:NULL]
+        initWithString:aString];
 
-    cursor = 0;
-    rect.origin.x = NSGeometryScanNumber(aString, &cursor);
-    rect.origin.y = NSGeometryScanNumber(aString, &cursor);
-    rect.size.width = NSGeometryScanNumber(aString, &cursor);
-    rect.size.height = NSGeometryScanNumber(aString, &cursor);
+    [scanner setCharactersToBeSkipped:nil];
+    if (!NSGeometryScanLabeledFloat(scanner, @"x = ", &rect.origin.x) ||
+        !NSGeometryScanLabeledFloat(scanner, @"y = ", &rect.origin.y) ||
+        !NSGeometryScanLabeledFloat(scanner, @"width = ", &rect.size.width) ||
+        !NSGeometryScanLabeledFloat(scanner, @"height = ", &rect.size.height))
+        rect = NSZeroRect;
+    [scanner release];
+#elif defined(__ppc__) || defined(__POWERPC__)
+    NSGeometryParsePPC(aString, &rect.origin.x, 4, NO);
+#else
+    rect = NSZeroRect;
+#endif
     return rect;
 }
 

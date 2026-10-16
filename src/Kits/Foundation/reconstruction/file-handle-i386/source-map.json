@@ -1,0 +1,737 @@
+{
+  "schema_version": "source-map-v1",
+  "reference_sha256": "1165B9063ADD5672514455CA2C9830625BEA2BCE5E46126FB5E8652114C909D6",
+  "mapped": [
+    {
+      "address": 1112830648,
+      "size": 24,
+      "reference_names": [
+        "__NSWriteToFileDescriptor"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 100
+    },
+    {
+      "address": 1113026496,
+      "size": 91,
+      "reference_names": [
+        "+[NSFileHandle allocWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 268
+    },
+    {
+      "address": 1113026588,
+      "size": 75,
+      "reference_names": [
+        "+[NSFileHandle fileHandleForReadingAtPath:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 362
+    },
+    {
+      "address": 1113026664,
+      "size": 75,
+      "reference_names": [
+        "+[NSFileHandle fileHandleForUpdatingAtPath:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 374
+    },
+    {
+      "address": 1113026740,
+      "size": 75,
+      "reference_names": [
+        "+[NSFileHandle fileHandleForWritingAtPath:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 368
+    },
+    {
+      "address": 1113026816,
+      "size": 81,
+      "reference_names": [
+        "+[NSFileHandle fileHandleWithNullDevice]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 356
+    },
+    {
+      "address": 1113026900,
+      "size": 127,
+      "reference_names": [
+        "+[NSFileHandle fileHandleWithStandardError]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 344
+    },
+    {
+      "address": 1113027028,
+      "size": 127,
+      "reference_names": [
+        "+[NSFileHandle fileHandleWithStandardInput]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 320
+    },
+    {
+      "address": 1113027156,
+      "size": 127,
+      "reference_names": [
+        "+[NSFileHandle fileHandleWithStandardOutput]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 332
+    },
+    {
+      "address": 1113028284,
+      "size": 91,
+      "reference_names": [
+        "+[NSPipe allocWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 758
+    },
+    {
+      "address": 1113028376,
+      "size": 72,
+      "reference_names": [
+        "+[NSPipe pipe]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 764
+    },
+    {
+      "address": 1113035352,
+      "size": 42,
+      "reference_names": [
+        "-[NSConcreteFileHandle acceptConnectionInBackgroundAndNotifyForModes:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 630
+    },
+    {
+      "address": 1113035396,
+      "size": 31,
+      "reference_names": [
+        "-[NSConcreteFileHandle acceptConnectionInBackgroundAndNotify]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 634
+    },
+    {
+      "address": 1113035428,
+      "size": 445,
+      "reference_names": [
+        "-[NSConcreteFileHandle availableData]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 418
+    },
+    {
+      "address": 1113035876,
+      "size": 33,
+      "reference_names": [
+        "-[NSConcreteFileHandle closeFile]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 543
+    },
+    {
+      "address": 1113035912,
+      "size": 29,
+      "reference_names": [
+        "-[NSConcreteFileHandle copyWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 556
+    },
+    {
+      "address": 1113035944,
+      "size": 132,
+      "reference_names": [
+        "-[NSConcreteFileHandle dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 726
+    },
+    {
+      "address": 1113036076,
+      "size": 33,
+      "reference_names": [
+        "-[NSConcreteFileHandle fileDescriptor]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 550
+    },
+    {
+      "address": 1113036112,
+      "size": 812,
+      "reference_names": [
+        "-[NSConcreteFileHandle handleMachMessage:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 646
+    },
+    {
+      "address": 1113036924,
+      "size": 35,
+      "reference_names": [
+        "-[NSConcreteFileHandle initWithFileDescriptor:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 388
+    },
+    {
+      "address": 1113036960,
+      "size": 29,
+      "reference_names": [
+        "-[NSConcreteFileHandle initWithFileDescriptor:closeOnDealloc:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 392
+    },
+    {
+      "address": 1113036992,
+      "size": 173,
+      "reference_names": [
+        "-[NSConcreteFileHandle initWithPath:flags:createMode:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 399
+    },
+    {
+      "address": 1113037168,
+      "size": 75,
+      "reference_names": [
+        "-[NSConcreteFileHandle offsetInFile]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 513
+    },
+    {
+      "address": 1113037244,
+      "size": 296,
+      "reference_names": [
+        "-[NSConcreteFileHandle performFunction:modes:activity:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 585
+    },
+    {
+      "address": 1113037540,
+      "size": 13,
+      "reference_names": [
+        "-[NSConcreteFileHandle port]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 565
+    },
+    {
+      "address": 1113037556,
+      "size": 615,
+      "reference_names": [
+        "-[NSConcreteFileHandle readDataOfLength:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 449
+    },
+    {
+      "address": 1113038172,
+      "size": 31,
+      "reference_names": [
+        "-[NSConcreteFileHandle readDataToEndOfFile]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 445
+    },
+    {
+      "address": 1113038204,
+      "size": 42,
+      "reference_names": [
+        "-[NSConcreteFileHandle readInBackgroundAndNotifyForModes:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 614
+    },
+    {
+      "address": 1113038248,
+      "size": 31,
+      "reference_names": [
+        "-[NSConcreteFileHandle readInBackgroundAndNotify]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 618
+    },
+    {
+      "address": 1113038280,
+      "size": 42,
+      "reference_names": [
+        "-[NSConcreteFileHandle readToEndOfFileInBackgroundAndNotifyForModes:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 622
+    },
+    {
+      "address": 1113038324,
+      "size": 31,
+      "reference_names": [
+        "-[NSConcreteFileHandle readToEndOfFileInBackgroundAndNotify]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 626
+    },
+    {
+      "address": 1113038356,
+      "size": 75,
+      "reference_names": [
+        "-[NSConcreteFileHandle seekToEndOfFile]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 520
+    },
+    {
+      "address": 1113038432,
+      "size": 56,
+      "reference_names": [
+        "-[NSConcreteFileHandle seekToFileOffset:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 527
+    },
+    {
+      "address": 1113038488,
+      "size": 270,
+      "reference_names": [
+        "-[NSConcreteFileHandle setModes:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 569
+    },
+    {
+      "address": 1113038760,
+      "size": 62,
+      "reference_names": [
+        "-[NSConcreteFileHandle setPort:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 560
+    },
+    {
+      "address": 1113038824,
+      "size": 46,
+      "reference_names": [
+        "-[NSConcreteFileHandle synchronizeFile]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 538
+    },
+    {
+      "address": 1113038872,
+      "size": 79,
+      "reference_names": [
+        "-[NSConcreteFileHandle truncateFileAtOffset:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 532
+    },
+    {
+      "address": 1113038952,
+      "size": 42,
+      "reference_names": [
+        "-[NSConcreteFileHandle waitForDataInBackgroundAndNotifyForModes:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 638
+    },
+    {
+      "address": 1113038996,
+      "size": 31,
+      "reference_names": [
+        "-[NSConcreteFileHandle waitForDataInBackgroundAndNotify]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 642
+    },
+    {
+      "address": 1113039028,
+      "size": 141,
+      "reference_names": [
+        "-[NSConcreteFileHandle writeData:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 494
+    },
+    {
+      "address": 1113040740,
+      "size": 29,
+      "reference_names": [
+        "-[NSConcretePipe copyWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 813
+    },
+    {
+      "address": 1113040772,
+      "size": 92,
+      "reference_names": [
+        "-[NSConcretePipe dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 817
+    },
+    {
+      "address": 1113040864,
+      "size": 13,
+      "reference_names": [
+        "-[NSConcretePipe fileHandleForReading]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 810
+    },
+    {
+      "address": 1113040880,
+      "size": 13,
+      "reference_names": [
+        "-[NSConcretePipe fileHandleForWriting]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 811
+    },
+    {
+      "address": 1113040896,
+      "size": 240,
+      "reference_names": [
+        "-[NSConcretePipe init]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 784
+    },
+    {
+      "address": 1113055416,
+      "size": 57,
+      "reference_names": [
+        "-[NSFileHandle availableData]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 274
+    },
+    {
+      "address": 1113055476,
+      "size": 55,
+      "reference_names": [
+        "-[NSFileHandle closeFile]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 316
+    },
+    {
+      "address": 1113055532,
+      "size": 60,
+      "reference_names": [
+        "-[NSFileHandle fileDescriptor]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 380
+    },
+    {
+      "address": 1113055592,
+      "size": 65,
+      "reference_names": [
+        "-[NSFileHandle offsetInFile]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 292
+    },
+    {
+      "address": 1113055660,
+      "size": 57,
+      "reference_names": [
+        "-[NSFileHandle readDataOfLength:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 282
+    },
+    {
+      "address": 1113055720,
+      "size": 57,
+      "reference_names": [
+        "-[NSFileHandle readDataToEndOfFile]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 278
+    },
+    {
+      "address": 1113055780,
+      "size": 65,
+      "reference_names": [
+        "-[NSFileHandle seekToEndOfFile]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 297
+    },
+    {
+      "address": 1113055848,
+      "size": 55,
+      "reference_names": [
+        "-[NSFileHandle seekToFileOffset:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 302
+    },
+    {
+      "address": 1113055904,
+      "size": 55,
+      "reference_names": [
+        "-[NSFileHandle synchronizeFile]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 312
+    },
+    {
+      "address": 1113055960,
+      "size": 55,
+      "reference_names": [
+        "-[NSFileHandle truncateFileAtOffset:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 307
+    },
+    {
+      "address": 1113056016,
+      "size": 55,
+      "reference_names": [
+        "-[NSFileHandle writeData:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 287
+    },
+    {
+      "address": 1113067436,
+      "size": 34,
+      "reference_names": [
+        "-[NSNullFileHandle availableData]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 742
+    },
+    {
+      "address": 1113067472,
+      "size": 7,
+      "reference_names": [
+        "-[NSNullFileHandle closeFile]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 751
+    },
+    {
+      "address": 1113067480,
+      "size": 12,
+      "reference_names": [
+        "-[NSNullFileHandle fileDescriptor]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 752
+    },
+    {
+      "address": 1113067492,
+      "size": 17,
+      "reference_names": [
+        "-[NSNullFileHandle offsetInFile]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 746
+    },
+    {
+      "address": 1113067512,
+      "size": 34,
+      "reference_names": [
+        "-[NSNullFileHandle readDataOfLength:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 744
+    },
+    {
+      "address": 1113067548,
+      "size": 34,
+      "reference_names": [
+        "-[NSNullFileHandle readDataToEndOfFile]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 743
+    },
+    {
+      "address": 1113067584,
+      "size": 17,
+      "reference_names": [
+        "-[NSNullFileHandle seekToEndOfFile]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 747
+    },
+    {
+      "address": 1113067604,
+      "size": 7,
+      "reference_names": [
+        "-[NSNullFileHandle seekToFileOffset:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 748
+    },
+    {
+      "address": 1113067612,
+      "size": 7,
+      "reference_names": [
+        "-[NSNullFileHandle synchronizeFile]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 750
+    },
+    {
+      "address": 1113067620,
+      "size": 7,
+      "reference_names": [
+        "-[NSNullFileHandle truncateFileAtOffset:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 749
+    },
+    {
+      "address": 1113067628,
+      "size": 7,
+      "reference_names": [
+        "-[NSNullFileHandle writeData:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 745
+    },
+    {
+      "address": 1113068040,
+      "size": 57,
+      "reference_names": [
+        "-[NSPipe fileHandleForReading]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 768
+    },
+    {
+      "address": 1113068100,
+      "size": 57,
+      "reference_names": [
+        "-[NSPipe fileHandleForWriting]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 772
+    },
+    {
+      "address": 1113068160,
+      "size": 49,
+      "reference_names": [
+        "-[NSPipe init]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 776
+    },
+    {
+      "address": 1113082784,
+      "size": 69,
+      "reference_names": [
+        "__NSErrnoMessage"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 104
+    },
+    {
+      "address": 1113082856,
+      "size": 82,
+      "reference_names": [
+        "__NSFileHandleRaiseOperationException"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 110
+    },
+    {
+      "address": 1113083872,
+      "size": 88,
+      "reference_names": [
+        "__NSHiddenDataAllocate"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 172
+    },
+    {
+      "address": 1113083960,
+      "size": 60,
+      "reference_names": [
+        "__NSHiddenDataDeallocate"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 125
+    },
+    {
+      "address": 1113084020,
+      "size": 75,
+      "reference_names": [
+        "__NSHiddenDataReleaseAndSend"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 156
+    },
+    {
+      "address": 1113084096,
+      "size": 71,
+      "reference_names": [
+        "__NSHiddenDataReleaseDidDeallocate"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 135
+    },
+    {
+      "address": 1113085456,
+      "size": 65,
+      "reference_names": [
+        "__acceptConnectionActivity"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 185
+    },
+    {
+      "address": 1113086628,
+      "size": 113,
+      "reference_names": [
+        "__readActivity"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 197
+    },
+    {
+      "address": 1113086744,
+      "size": 160,
+      "reference_names": [
+        "__readAllActivity"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 215
+    },
+    {
+      "address": 1113086904,
+      "size": 93,
+      "reference_names": [
+        "__waitForDataActivity"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileHandle.m",
+      "source_line": 231
+    }
+  ],
+  "unmapped": [],
+  "duplicate_candidates": [],
+  "boundary_disputed": [],
+  "by_module": {
+    "NSFileHandle.m": {
+      "mapped": 80,
+      "unmapped": 0,
+      "duplicate_candidates": 0,
+      "boundary_disputed": 0
+    }
+  }
+}

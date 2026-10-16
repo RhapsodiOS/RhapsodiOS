@@ -103,7 +103,9 @@
  "data_symbols": [],
  "module": "NSCoder.m",
  "schema_version": "abi-v1",
- "text_symbols": [
-  "_NXReadNSObjectFromCoder"
+  "text_symbols": [
+  "_NXReadNSObjectFromCoder",
+  "_NXReadNSObject",
+  "_NXWriteNSObject"
  ]
 }

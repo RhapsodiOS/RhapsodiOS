@@ -1,0 +1,71 @@
+{
+ "categories": [],
+ "classes": [
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "initWithCoder:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "encodeWithCoder:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "getObjectValue:forString:errorDescription:",
+     "types": "c16@4:8^@12@16^@20"
+    },
+    {
+     "selector": "stringForObjectValue:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "allowsNaturalLanguage",
+     "types": "c4@4:8"
+    },
+    {
+     "selector": "dateFormat",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "dealloc",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "initWithDateFormat:allowNaturalLanguage:",
+     "types": "@9@4:8@12c16"
+    },
+    {
+     "selector": "init",
+     "types": "@4@4:8"
+    }
+   ],
+   "instance_size": 16,
+   "ivars": [
+    {
+     "name": "_format",
+     "offset": 4,
+     "type": "@\"NSString\""
+    },
+    {
+     "name": "_naturalLanguage",
+     "offset": 8,
+     "type": "c"
+    },
+    {
+     "name": "_reserved",
+     "offset": 12,
+     "type": "i"
+    }
+   ],
+   "name": "NSDateFormatter",
+   "superclass": "NSFormatter"
+  }
+ ],
+ "data_symbols": [],
+ "module": "NSDateFormatter.m",
+ "schema_version": "abi-v1",
+ "text_symbols": []
+}

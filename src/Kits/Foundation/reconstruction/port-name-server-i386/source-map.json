@@ -1,0 +1,206 @@
+{
+  "schema_version": "source-map-v1",
+  "reference_sha256": "1165B9063ADD5672514455CA2C9830625BEA2BCE5E46126FB5E8652114C909D6",
+  "mapped": [
+    {
+      "address": 1112803320,
+      "size": 34,
+      "reference_names": [
+        "+[NSPortNameServer defaultPortNameServer]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortNameServer.m",
+      "source_line": 241
+    },
+    {
+      "address": 1112813452,
+      "size": 37,
+      "reference_names": [
+        "-[NSPortNameServer portForName:host:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortNameServer.m",
+      "source_line": 250
+    },
+    {
+      "address": 1112814220,
+      "size": 168,
+      "reference_names": [
+        "-[NSMachNMServer portForName:onHost:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortNameServer.m",
+      "source_line": 295
+    },
+    {
+      "address": 1112819192,
+      "size": 76,
+      "reference_names": [
+        "+[NSMachNMServer default]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortNameServer.m",
+      "source_line": 280
+    },
+    {
+      "address": 1112833852,
+      "size": 40,
+      "reference_names": [
+        "-[NSPortNameServer registerPort:name:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortNameServer.m",
+      "source_line": 254
+    },
+    {
+      "address": 1112834348,
+      "size": 210,
+      "reference_names": [
+        "-[NSMachNMServer registerPort:forName:signature:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortNameServer.m",
+      "source_line": 321
+    },
+    {
+      "address": 1112840716,
+      "size": 114,
+      "reference_names": [
+        "-[NSMachNMServer registerPort:forName:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortNameServer.m",
+      "source_line": 314
+    },
+    {
+      "address": 1112844156,
+      "size": 2116,
+      "reference_names": [
+        "__NSToDoAtProcessStart"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortNameServer.m",
+      "source_line": 98
+    },
+    {
+      "address": 1112879076,
+      "size": 38,
+      "reference_names": [
+        "-[NSMachNMServer init]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortNameServer.m",
+      "source_line": 286
+    },
+    {
+      "address": 1112879116,
+      "size": 41,
+      "reference_names": [
+        "-[NSMachNMServer initWithPort:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortNameServer.m",
+      "source_line": 290
+    },
+    {
+      "address": 1112970860,
+      "size": 53,
+      "reference_names": [
+        "-[NSMachNMServer copyWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortNameServer.m",
+      "source_line": 379
+    },
+    {
+      "address": 1112970916,
+      "size": 9,
+      "reference_names": [
+        "-[NSMachNMServer count]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortNameServer.m",
+      "source_line": 375
+    },
+    {
+      "address": 1112970928,
+      "size": 74,
+      "reference_names": [
+        "-[NSMachNMServer dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortNameServer.m",
+      "source_line": 387
+    },
+    {
+      "address": 1112971004,
+      "size": 53,
+      "reference_names": [
+        "-[NSMachNMServer mutableCopyWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortNameServer.m",
+      "source_line": 383
+    },
+    {
+      "address": 1112971060,
+      "size": 35,
+      "reference_names": [
+        "-[NSMachNMServer portForName:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortNameServer.m",
+      "source_line": 310
+    },
+    {
+      "address": 1112971096,
+      "size": 42,
+      "reference_names": [
+        "-[NSMachNMServer removePortForName:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortNameServer.m",
+      "source_line": 351
+    },
+    {
+      "address": 1112971140,
+      "size": 105,
+      "reference_names": [
+        "-[NSMachNMServer removePortForName:signature:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortNameServer.m",
+      "source_line": 355
+    },
+    {
+      "address": 1112972964,
+      "size": 57,
+      "reference_names": [
+        "-[NSPortNameServer portForName:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortNameServer.m",
+      "source_line": 245
+    },
+    {
+      "address": 1112973024,
+      "size": 57,
+      "reference_names": [
+        "-[NSPortNameServer portForName:onHost:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortNameServer.m",
+      "source_line": 263
+    },
+    {
+      "address": 1112973084,
+      "size": 57,
+      "reference_names": [
+        "-[NSPortNameServer registerPort:forName:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortNameServer.m",
+      "source_line": 269
+    },
+    {
+      "address": 1112973144,
+      "size": 55,
+      "reference_names": [
+        "-[NSPortNameServer removePortForName:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPortNameServer.m",
+      "source_line": 258
+    }
+  ],
+  "unmapped": [],
+  "duplicate_candidates": [],
+  "boundary_disputed": [],
+  "by_module": {
+    "NSPortNameServer.m": {
+      "mapped": 21,
+      "unmapped": 0,
+      "duplicate_candidates": 0,
+      "boundary_disputed": 0
+    }
+  }
+}

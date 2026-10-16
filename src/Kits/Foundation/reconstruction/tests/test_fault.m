@@ -479,9 +479,8 @@ static void test_the_base_handlers_completion_step_raises(void)
     [NSFault makeObjectIntoFault:target withHandler:handler];
 
     /*  completeInitializationOfObject: is abstract in the reference
-        (NSRequestConcreteImplementation, unavailable in this tree --
-        reconstructed as the same NSInternalInconsistencyException
-        raise); -self is the lazy-completion entry that reaches it
+        (NSRequestConcreteImplementation raises NSInvalidArgumentException);
+        -self is the lazy-completion entry that reaches it
         (0x42573bf0).  The reference's -self RETURNS self only after
         the completion call returns, so a raising base handler means
         the send raises.  */
@@ -494,7 +493,7 @@ static void test_the_base_handlers_completion_step_raises(void)
     caught = caughtException;
     caughtException = nil;
     CHECK(caught != nil);
-    CHECK([caught name] == NSInternalInconsistencyException);
+    CHECK([caught name] == NSInvalidArgumentException);
 
     [target release];
     [handler release];
@@ -524,7 +523,7 @@ static void test_performSelector_family_dispatches_through_the_fault(void)
     caught = caughtException;
     caughtException = nil;
     CHECK(caught != nil);
-    CHECK([caught name] == NSInternalInconsistencyException);
+    CHECK([caught name] == NSInvalidArgumentException);
 
     [target release];
     [handler release];

@@ -63,7 +63,8 @@ run() {
 	test -x $T/mount_msdos || { out $fs unsup "file system tools not built" ""; return; }
 	mkdir -p $mnt
 	err=`mountfs $fs 2>&1` || { out $fs unsup "mount: `echo $err | tr '\"' "'" | cut -c1-200`" ""; return; }
-	mount | grep -q " on $mnt " || { out $fs unsup "not mounted" ""; return; }
+	# an nfs line ends at the mount point, a local one goes on with "(local)"
+	mount | awk -v m=$mnt '$3 == m { f = 1 } END { exit !f }' || { out $fs unsup "not mounted" ""; return; }
 	rm -rf $STRESS/Report.$fs
 	(cd $STRESS && sh ./run -s $seed -d $mnt 1 $cats) > $FS/run.$fs.log 2>&1
 	cp -r $STRESS/Report $STRESS/Report.$fs

@@ -67,7 +67,7 @@ struct msdosfsmount {
 				   for directories */
 	struct vnode *pm_devvp;	/* vnode for block device mntd */
 	struct bpb50 pm_bpb;	/* BIOS parameter blk for this fs */
-	u_long pm_BlkPerSec;	/* How many DEV_BSIZE blocks fit inside a physical sector */
+	u_long pm_BlkPerSec;	/* How many device blocks fit inside a physical sector */
 	u_long pm_FATsecs;	/* actual number of fat sectors */
 	u_long pm_fatblk;	/* block # of first FAT */
 	u_long pm_rootdirblk;	/* block # (cluster # for FAT32) of root directory number */

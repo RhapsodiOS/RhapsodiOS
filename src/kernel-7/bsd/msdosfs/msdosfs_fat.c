@@ -108,8 +108,7 @@ fatblock(pmp, ofs, bnp, sizep, bop)
 	u_long bn, size;
 
 	bn = ofs / pmp->pm_fatblocksize * pmp->pm_fatblocksec;
-	size = min(pmp->pm_fatblocksec, pmp->pm_FATsecs - bn)
-	    * DEV_BSIZE;
+	size = de_bn2off(pmp, min(pmp->pm_fatblocksec, pmp->pm_FATsecs - bn));
 	bn += pmp->pm_fatblk + pmp->pm_curfat * pmp->pm_FATsecs;
 
 	if (bnp)

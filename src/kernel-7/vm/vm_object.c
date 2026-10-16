@@ -80,6 +80,7 @@
 #include <vm/vm_pageout.h>
 
 #include <mach/vm_policy.h>
+#include <vm/vnode_pager.h>
 
 
 void memory_object_release(
@@ -397,6 +398,32 @@ void vm_object_terminate(object)
 		else if (shadow_object->copy != VM_OBJECT_NULL)
 			panic("vm_object_terminate: copy/shadow inconsistency");
 		vm_object_unlock(shadow_object);
+	}
+
+	/*
+	 *	A file's object can be terminated (uncached at unmount,
+	 *	or trimmed, stolen or cleared from the object cache)
+	 *	while it holds pages dirtied through a shared mapping
+	 *	and never pushed.  Write them to the file first.
+	 */
+	if (object->pager != vm_pager_null && !object->pager->is_device &&
+	    !((vnode_pager_t) object->pager)->vs_swapfile) {
+		p = (vm_page_t) queue_first(&object->memq);
+		while (!queue_end(&object->memq, (queue_entry_t) p)) {
+			if (!p->busy && !p->absent && !p->fictitious &&
+			    !p->error && (!p->clean ||
+			    pmap_is_modified(VM_PAGE_TO_PHYS(p)))) {
+				p->busy = TRUE;
+				pmap_remove_all(VM_PAGE_TO_PHYS(p));
+				vm_object_paging_begin(object);
+				vm_object_unlock(object);
+				(void) vm_pager_put(object->pager, p);
+				vm_object_lock(object);
+				PAGE_WAKEUP(p);
+				vm_object_paging_end(object);
+			}
+			p = (vm_page_t) queue_next(&p->listq);
+		}
 	}
 
 	/*

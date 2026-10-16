@@ -59,6 +59,9 @@
 
 #include <sys/lock.h>
 #include <sys/vm.h>
+#if MACH_NBC
+#include <kern/mapfs.h>
+#endif
 
 #include <msdosfs/bpb.h>
 #include <msdosfs/msdosfsmount.h>
@@ -461,6 +464,11 @@ detrunc(dep, length, flags, cred, p)
 	}
 
 
+#if MACH_NBC
+	error = mapfs_trunc(DETOV(dep), (vm_offset_t)length);
+	if (error)
+		return (error);
+#endif
 	if (dep->de_FileSize < length) {
 		vnode_pager_setsize(DETOV(dep), length);
 		return deextend(dep, length, cred);

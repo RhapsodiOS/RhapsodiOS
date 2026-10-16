@@ -272,6 +272,8 @@ struct defid {
 extern int (**msdosfs_vnodeop_p)();
 
 int msdosfs_lookup __P((struct vop_lookup_args *));
+int msdosfs_lookup_rename __P((struct vnode *, struct vnode *,
+	struct componentname *));
 int msdosfs_inactive __P((struct vop_inactive_args *));
 int msdosfs_reclaim __P((struct vop_reclaim_args *));
 

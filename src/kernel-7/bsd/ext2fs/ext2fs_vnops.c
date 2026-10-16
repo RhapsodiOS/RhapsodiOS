@@ -1271,13 +1271,16 @@ ext2fs_vm_flush(struct vnode *vp,struct proc *p,int truncate,vm_offset_t length)
     if (vmp->error) error=vmp->error;
     else if (vmp->busy) error=EBUSY;
     else if (!vmp->mapped || !vmp->object) error=EIO;
-    else if (truncate) error=mapfs_trunc(vp,length);
     else {
-        /* Hardware-dirty user pages are outside the MapFS I/O window. */
-        vmp->dirty=TRUE;
-        vmp->dirtyoffset=0;
-        vmp->dirtysize=vmp->vnode_size;
-        error=vmp_push_range(vmp,0,vmp->vnode_size);
+        if (truncate) error=mapfs_trunc(vp,length);
+        if (!error) {
+            /* Hardware-dirty user pages are outside the MapFS I/O window.
+             * Allocate retained pages before truncate saves block pointers. */
+            vmp->dirty=TRUE;
+            vmp->dirtyoffset=0;
+            vmp->dirtysize=vmp->vnode_size;
+            error=vmp_push_range(vmp,0,vmp->vnode_size);
+        }
     }
     if (!error) error=vmp->error;
     vmp_put(vmp);

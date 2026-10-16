@@ -61,6 +61,31 @@
 #include <msdosfs/msdosfsmount.h>
 #include <msdosfs/fat.h>
 
+static int msdosfs_lookup_internal __P((struct vop_lookup_args *,
+	struct vnode *));
+
+int
+msdosfs_lookup(ap)
+	struct vop_lookup_args *ap;
+{
+	return (msdosfs_lookup_internal(ap, NULL));
+}
+
+/* Both vnodes are locked.  Check the source name without locking a leaf. */
+int
+msdosfs_lookup_rename(dvp, vp, cnp)
+	struct vnode *dvp, *vp;
+	struct componentname *cnp;
+{
+	struct vop_lookup_args ap;
+	struct vnode *unused;
+
+	ap.a_dvp = dvp;
+	ap.a_vpp = &unused;
+	ap.a_cnp = cnp;
+	return (msdosfs_lookup_internal(&ap, vp));
+}
+
 /*
  * When we search a directory the blocks containing directory entries are
  * read and examined.  The directory entries contain information that would
@@ -76,13 +101,14 @@
  * out to disk.  This way disk blocks containing directory entries and in
  * memory denode's will be in synch.
  */
-int
-msdosfs_lookup(ap)
+static int
+msdosfs_lookup_internal(ap, renamevp)
 	struct vop_lookup_args /* {
 		struct vnode *a_dvp;
 		struct vnode **a_vpp;
 		struct componentname *a_cnp;
 	} */ *ap;
+	struct vnode *renamevp;
 {
 	struct vnode *vdp = ap->a_dvp;
 	struct vnode **vpp = ap->a_vpp;
@@ -443,6 +469,16 @@ foundroot:
 		 * Return pointer to current entry in dp->i_offset.
 		 * Save directory inode pointer in ndp->ni_dvp for dirremove().
 		 */
+		if (renamevp != NULL) {
+			tdp = VTODE(renamevp);
+			if (FAT32(pmp) && cluster == MSDOSFSROOT)
+				cluster = pmp->pm_rootdirblk;
+			if (tdp->de_refcnt <= 0 ||
+			    tdp->de_dirclust != cluster ||
+			    tdp->de_diroffset != blkoff)
+				return (ENOENT);
+			return (0);
+		}
 		if (dp->de_StartCluster == scn && isadir) {	/* "." */
 			VREF(vdp);
 			*vpp = vdp;

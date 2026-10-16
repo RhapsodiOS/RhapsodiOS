@@ -402,3 +402,60 @@ def test_stress_state_ignores_ssh_noise():
     assert fb.stress_state(1.0, warn) == "running"
     assert fb.stress_state(1.0, warn + "\n0\n") == "0"
     assert fb.stress_state(1.0, "137") == "137"
+
+
+# --- phase 4: --fs targets -------------------------------------------------
+
+def test_parse_fs_defaults_and_all():
+    assert fb.parse_fs("") == ["ufs"]
+    assert fb.parse_fs("ufs") == ["ufs"]
+    assert fb.parse_fs("all") == ["ufs", "ext2", "hfs", "msdos", "nfs"]
+    assert fb.parse_fs("ext2,msdos") == ["ext2", "msdos"]
+
+
+def test_parse_fs_rejects_unknown():
+    with pytest.raises(ValueError):
+        fb.parse_fs("ext2,bogus")
+
+
+def test_targets_disk_has_three_128m_partitions(tmp_path, monkeypatch):
+    import struct
+    # the floppy label template lives with the VM assets, like stress_dev's default
+    assets = os.environ.get("RHAP_VM_ASSETS", "D:/RhapsodiOS/vm")
+    if not os.path.exists(os.path.join(assets, "install", "rhapsody_dr2_x86_InstallationFloppy.img")):
+        pytest.skip("no VM assets")
+    monkeypatch.setattr(fb, "ASSETS", assets)
+    path = str(tmp_path / "t.img")
+    fb.targets_disk(path, mb=1)
+    raw = open(path, "rb").read()
+    off = raw.index(b"dlV3")
+    sectors = 1024 * 1024 // 512
+    assert struct.unpack_from(">ii", raw, off + 190) == (0, sectors)
+    assert struct.unpack_from(">ii", raw, off + 236) == (sectors, sectors)
+    assert struct.unpack_from(">ii", raw, off + 282) == (2 * sectors, sectors)
+    assert fb.TARGET_PART == {"ext2": "a", "hfs": "b", "msdos": "c"}
+    assert fb.TARGET_MOUNT["nfs"] == "/mnt/nfs"
+
+
+def test_target_result_unsup_and_ran():
+    u = fb.target_result("hfs", "unsup", reason="mount_hfs: no such device")
+    assert u == {"status": "unsup", "reason": "mount_hfs: no such device",
+                 "counts": {}, "fails": [], "fsck": ""}
+    text = ("STRESS fs rw PASS iters=1 procs=1 secs=1.0 ops=1/s maxlat=1ms seed=1\n"
+            "STRESS fs tree FAIL reason=x worker=0 iter=0 seed=1\n")
+    r = fb.target_result("ext2", "ran", report_text=text, fsck="clean")
+    assert r["status"] == "ran" and r["fsck"] == "clean"
+    assert r["counts"]["fs"]["PASS"] == 1 and r["counts"]["fs"]["FAIL"] == 1
+    assert r["fails"] == ["STRESS fs tree FAIL reason=x worker=0 iter=0 seed=1"]
+
+
+def test_stress_fs_conflicts_with_soak(capsys):
+    with pytest.raises(SystemExit):
+        fb.main(["ffsbench", "stress", "--label", "x", "--fs", "ext2", "--soak", "60"])
+    assert "--soak runs on UFS only" in capsys.readouterr().err
+
+
+def test_stress_fs_rejects_unknown_target(capsys):
+    with pytest.raises(SystemExit):
+        fb.main(["ffsbench", "stress", "--label", "x", "--fs", "zfs"])
+    assert "unknown --fs target" in capsys.readouterr().err

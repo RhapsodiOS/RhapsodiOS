@@ -1004,6 +1004,44 @@ def stress_cats(cats, disk):
     return c
 
 
+FS_TARGETS = ["ufs", "ext2", "hfs", "msdos", "nfs"]
+TARGET_PART = {"ext2": "a", "hfs": "b", "msdos": "c"}      # partitions of the targets disk (hd2)
+TARGET_MOUNT = {"ext2": "/mnt/ext2", "hfs": "/mnt/hfs", "msdos": "/mnt/msdos", "nfs": "/mnt/nfs"}
+TARGET_MB = 128
+
+
+def parse_fs(arg):
+    """The --fs list: "" is ufs, "all" every target; unknown names raise ValueError."""
+    if not arg:
+        return ["ufs"]
+    if arg == "all":
+        return list(FS_TARGETS)
+    names = [n for n in arg.split(",") if n]
+    bad = [n for n in names if n not in FS_TARGETS]
+    if bad or not names:
+        raise ValueError("unknown --fs target: %s" % ",".join(bad or [arg]))
+    return names
+
+
+def targets_disk(path, mb=TARGET_MB):
+    """One disk with empty partitions a=ext2, b=hfs, c=msdos of mb MiB each,
+    behind a 512-byte NeXT label; the guest makes the file systems."""
+    import ext2_guest
+    ext2_guest.TEMPLATE = os.path.join(ASSETS, "install", "rhapsody_dr2_x86_InstallationFloppy.img")
+    with open(path, "wb") as f:
+        f.write(ext2_guest.wrap_volumes([bytes(mb * 1024 * 1024)] * 3))
+
+
+def target_result(name, status, reason="", report_text="", fsck=""):
+    """result.txt's record for one --fs target, from its run's STRESS lines."""
+    import stress_report
+    counts, fails = {}, []
+    if report_text:
+        sm = stress_report.summarize(stress_report.parse(report_text))
+        counts, fails = sm["counts"], sm["fails"]
+    return {"status": status, "reason": reason, "counts": counts, "fails": fails, "fsck": fsck}
+
+
 def stress(kernel, label, cycles=1, bootargs="", cats="", seed=None, disk=False, soak=0):
     """Build and run the stress suite on a guest.  result.txt is written on
     every exit path, with the seed, label and kernel to replay it: with
@@ -1111,6 +1149,8 @@ def main(argv):
     sr.add_argument("--seed", type=int, default=None, help="default: random")
     sr.add_argument("--disk", action="store_true",
                     help="also run the raw disk tests on hd1 (unmounted, overwritten); excludes fs")
+    sr.add_argument("--fs", default="", metavar="LIST",
+                    help="file systems to stress: ufs (default), ext2, hfs, msdos, nfs, comma separated, or all")
     sr.add_argument("--soak", type=int, default=0, metavar="SECS",
                     help="run soak for SECS seconds instead of run (all categories but disk)")
     st = sub.add_parser("stall")
@@ -1137,6 +1177,13 @@ def main(argv):
         p.error("--disk leaves hd1 unmounted, so it cannot be combined with fs")
     if a.cmd == "stress" and a.soak and (a.disk or a.cats):
         p.error("--soak runs the default categories; it cannot be combined with --disk or --cats")
+    if a.cmd == "stress":
+        try:
+            a.fs = parse_fs(a.fs)
+        except ValueError as e:
+            p.error(str(e))
+        if a.soak and a.fs != ["ufs"]:
+            p.error("--soak runs on UFS only; it cannot be combined with --fs")
     if a.cmd == "stress" and not a.disk and "disk" in a.cats.split():
         p.error("the disk category needs --disk")
     if a.cmd == "prep":

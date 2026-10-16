@@ -44,3 +44,16 @@ def test_summarize_collects_leak_lines():
     assert s["counts"]["vm"]["PASS"] + s["counts"]["ipc"]["PASS"] == 2
     mb = "STRESS net tcp PASS iters=1 procs=1 secs=1.0 seed=1 mbufs=+65"
     assert stress_report.summarize(stress_report.parse(mb + "\n"))["leaks"] == [mb]
+
+
+def test_summarize_targets_lines():
+    targets = {
+        "ext2": {"status": "ran", "reason": "", "fails": [], "fsck": "clean",
+                 "counts": {"fs": {"PASS": 5, "FAIL": 1, "UNSUP": 0},
+                            "mmap": {"PASS": 9, "FAIL": 0, "UNSUP": 1}}},
+        "nfs": {"status": "unsup", "reason": "no nfsd", "counts": {}, "fails": [], "fsck": ""},
+    }
+    assert stress_report.summarize_targets(targets) == [
+        "ext2 PASS=14 FAIL=1 UNSUP=1 fsck=clean",
+        "nfs unsup: no nfsd",
+    ]

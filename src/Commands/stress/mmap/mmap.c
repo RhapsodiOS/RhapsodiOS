@@ -777,12 +777,22 @@ t_zero(struct st_ctx *c)
  * in stress-vm; it takes just an address and a length here. */
 static int (*syncfn)(void *, size_t);
 
+/* Without a libc stub, msync is syscall 65 (2 arguments), like wire's
+ * 177/178 in stress-vm; a kernel without it answers ENOSYS or SIGSYS. */
+static int
+sys_msync(void *p, size_t len)
+{
+	return syscall(65, p, len);
+}
+
 static int
 bindsync(void)
 {
 	if (syncfn == NULL && NSIsSymbolNameDefined("_msync"))
 		syncfn = (int (*)(void *, size_t))NSAddressOfSymbol(NSLookupAndBindSymbol("_msync"));
-	return syncfn != NULL;
+	if (syncfn == NULL)
+		syncfn = sys_msync;
+	return 1;
 }
 
 static int
@@ -792,11 +802,9 @@ p_sync(char *why, int len)
 	char path[256];
 	void *p;
 	int fd, r, e;
+	void (*old)(int);
 
-	if (!bindsync()) {
-		sprintf(why, "msync: %s", st_errname(ENOSYS));
-		return 1;
-	}
+	bindsync();
 	sprintf(path, "%s/stress.mmap.sync.probe.%d", st_opt.dir, (int)getpid());
 	fd = open(path, O_RDWR | O_CREAT | O_TRUNC, 0600);
 	if (fd < 0)
@@ -806,8 +814,10 @@ p_sync(char *why, int len)
 	e = 0;
 	if (ftruncate(fd, (off_t)ps) == 0 &&
 	    (p = mmap(NULL, ps, RW, MAP_SHARED, fd, 0)) != (void *)-1) {
+		old = signal(SIGSYS, SIG_IGN);	/* a kernel without the syscall may send it */
 		r = syncfn(p, ps);
 		e = errno;
+		signal(SIGSYS, old);
 		munmap(p, ps);
 	}
 	close(fd);
@@ -855,6 +865,60 @@ t_sync(struct st_ctx *c)
 	free(buf);
 }
 
+/* regrow: a mapped file shrunk while mapped, unmapped and grown back
+ * must read back (with read) the pattern below the cut and zeros above it
+ * (#59: UFS lost the data below the cut, msdosfs kept the old data above). */
+static const unsigned long regrow_len[] = { 20480, 20517, 5157, 0 };
+#define REGROW (64 * 1024)
+
+static void
+t_regrow(struct st_ctx *c)
+{
+	unsigned long key, cut, j;
+	unsigned char *map, *buf;
+	long i;
+	int fd;
+
+	st_path(c, scratch, sizeof scratch, "map");
+	buf = malloc(REGROW);
+	if (buf == NULL)
+		failerr(c, "malloc");
+	for (i = 0; st_more(c, i); i++) {
+		st_op_begin(c);
+		key = key3(9, i, c->idx);
+		cut = regrow_len[i % 4];
+		fd = openfile(c, O_RDWR | O_CREAT | O_TRUNC);
+		if (ftruncate(fd, (off_t)REGROW) < 0)
+			failerr(c, "ftruncate");
+		map = mapfile(c, fd, REGROW, MAP_SHARED);
+		st_fill(map, REGROW, key, 0);
+		if (ftruncate(fd, (off_t)cut) < 0)
+			failerr(c, "ftruncate");
+		chkmem(c, "mapped", map, cut, key, 0);
+		if (munmap((caddr_t)map, REGROW) < 0)
+			failerr(c, "munmap");
+		if (ftruncate(fd, (off_t)REGROW) < 0)
+			failerr(c, "ftruncate");
+		if (fsync(fd) < 0)
+			failerr(c, "fsync");
+		close(fd);
+		fd = openfile(c, O_RDONLY);
+		readfull(c, fd, buf, REGROW, 0);
+		close(fd);
+		if (c->selfcheck && i == 0 && cut > 0)
+			buf[st_range(&c->rng, 0, cut - 1)] ^= 0x01;
+		chkmem(c, "read", buf, cut, key, 0);
+		for (j = cut; j < REGROW; j++)
+			if (buf[j] != 0)
+				failf(c, "what=zero off=0x%lx got=0x%02x len=0x%lx",
+				    j, buf[j], cut);
+		st_op_end(c, REGROW / 1024);
+	}
+	unlink(scratch);
+	scratch[0] = '\0';
+	free(buf);
+}
+
 static const struct st_test tests[] = {
 	{ "shared", 50, 0, NULL, t_shared },
 	{ "mixed", 100, 1, NULL, t_mixed },
@@ -864,6 +928,7 @@ static const struct st_test tests[] = {
 	{ "sync", 20, 0, p_sync, t_sync },
 	{ "anonshared", 100, 0, p_anon, t_anonshared },
 	{ "zero", 100, 0, p_zero, t_zero },
+	{ "regrow", 40, 0, NULL, t_regrow },
 	{ NULL }
 };
 

@@ -69,6 +69,10 @@ struct st_test {
 /* tests ends with a zero entry; returns the exit status. */
 int stress_main(int argc, char **argv, const char *cat, const struct st_test *tests);
 
+/* 1 when the leader still counts live workers but waitpid failed with err
+ * ECHILD: the children are gone without having been reaped (lost-child). */
+int st_lost(int live, int err);
+
 /* These never return: they send FAIL to the leader and _exit(1). */
 void st_fail(struct st_ctx *c, const char *fmt, ...);
 void st_fail_errno(struct st_ctx *c, const char *call);	/* reason="call: ERRNAME" */

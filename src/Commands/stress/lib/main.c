@@ -267,6 +267,10 @@ leader(const struct st_test *t, const char *cat)
 			else
 				sprintf(fail, "exit=%d worker=%d", WEXITSTATUS(status), i);
 		}
+		if (pid < 0 && fail[0] == '\0' && st_lost(live, errno)) {
+			sprintf(fail, "reason=lost-child live=%d", live);
+			live = 0;	/* nothing left to reap */
+		}
 		if (fail[0] != '\0' && !stopped) {
 			for (i = 0; i < n; i++)
 				if (pids[i] > 0)
@@ -304,6 +308,12 @@ leader(const struct st_test *t, const char *cat)
 	strcpy(p, lk);
 	st_line(cat, t->name, what, 1);
 	exit(0);
+}
+
+int
+st_lost(int live, int err)
+{
+	return live > 0 && err == ECHILD;
 }
 
 /* Returns 1 on FAIL. */

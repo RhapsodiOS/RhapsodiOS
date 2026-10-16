@@ -170,9 +170,11 @@ check-mmap: $(MMAPBIN)
 	grep '^STRESS mmap sync \(PASS\|UNSUP\) ' mmap/t.out
 	grep '^STRESS mmap anonshared \(PASS\|UNSUP\) ' mmap/t.out
 	grep '^STRESS mmap zero \(PASS\|UNSUP\) ' mmap/t.out
+	# regrow needs the #59 kernel fix; on an older kernel this line fails with #59's result
+	grep '^STRESS mmap regrow PASS ' mmap/t.out
 	n=`grep -c '^STRESS mmap \(anonshared\|zero\) PASS ' mmap/t.out`; \
-	rc=0; $(MMAPBIN) -x -i 1 -d /tmp shared mixed private anonshared zero >mmap/t.out || rc=$$?; test $$rc = 1; \
-	test `grep -c '^STRESS mmap [a-z]* FAIL .*off=0x' mmap/t.out` = `expr 3 + $$n`
+	rc=0; $(MMAPBIN) -x -i 1 -d /tmp shared mixed private anonshared zero regrow >mmap/t.out || rc=$$?; test $$rc = 1; \
+	test `grep -c '^STRESS mmap [a-z]* FAIL .*off=0x' mmap/t.out` = `expr 4 + $$n`
 	@echo mmap: ok
 
 # fill only runs when STRESS_FILL_DIR names a scratch file system (1 GB takes ~20 min on the dev guest);

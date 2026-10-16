@@ -13,7 +13,7 @@ done
 test $# = 1 || { echo "$usage" >&2; exit 2; }
 cd `dirname $0`; test -x ./stress-mmap || { echo runtests: no ./stress-mmap >&2; exit 2; }
 out=runtests.out.$$
-tests="shared mixed private trunc anon sync anonshared zero"
+tests="shared mixed private trunc anon sync anonshared zero regrow"
 cycle=0
 rc=0
 : >$out

@@ -51,6 +51,12 @@ Usage
     file system has no hard links or symlinks; misc eintr has signals
     interrupt blocking calls, and FAILs (reason=no-eintr) if read, waitpid or
     flock never returned EINTR without SA_RESTART.
+    mmap sync falls back to syscall 65 where Libc lacks msync.  mmap regrow
+    shrinks a file while it is mapped, unmaps it and grows it back; read()
+    must then return the pattern below the cut and zeros above.  It FAILs
+    on kernels without the GitHub #59 fix.  A test whose workers vanish
+    without being reaped (waitpid says there are no children while the
+    leader still counts live ones) ends as FAIL reason=lost-child.
     -T secs ends a test normally (PASS) once secs have passed; -t is the watchdog.
     -T does not bound ipc msg/ool or net select: their two processes run a
     shared count, so stopping one end early would fail the other.

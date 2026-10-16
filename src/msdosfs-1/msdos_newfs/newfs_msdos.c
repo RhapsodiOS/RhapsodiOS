@@ -55,6 +55,7 @@ static const char rcsid[] =
 #define NPB	  2		/* nibbles per byte */
 
 #define DOSMAGIC  0xaa55	/* DOS magic number */
+#define DOSBBSIZE 512		/* boot sector and FSInfo fields end here */
 #define MINBPS	  128		/* minimum bytes per sector */
 #define MAXSPC	  128		/* maximum sectors per cluster */
 #define MAXNFT	  16		/* maximum number of FATs */
@@ -640,17 +641,17 @@ main(int argc, char *argv[])
 		    setstr(bs->oem, opt_O ? opt_O : "BSD  4.4",
 			   sizeof(bs->oem));
 		    memcpy(img + x1, bootcode, sizeof(bootcode));
-		    mk2(img + bpb.bps - 2, DOSMAGIC);
+		    mk2(img + MIN(bpb.bps, DOSBBSIZE) - 2, DOSMAGIC);
 		}
 	    } else if (fat == 32 && bpb.infs != MAXU16 &&
 		       (lsn == bpb.infs ||
 			(bpb.bkbs != MAXU16 &&
 			 lsn == bpb.bkbs + bpb.infs))) {
 		mk4(img, 0x41615252);
-		mk4(img + bpb.bps - 28, 0x61417272);
-		mk4(img + bpb.bps - 24, 0xffffffff);
-		mk4(img + bpb.bps - 20, bpb.rdcl);
-		mk2(img + bpb.bps - 2, DOSMAGIC);
+		mk4(img + MIN(bpb.bps, DOSBBSIZE) - 28, 0x61417272);
+		mk4(img + MIN(bpb.bps, DOSBBSIZE) - 24, 0xffffffff);
+		mk4(img + MIN(bpb.bps, DOSBBSIZE) - 20, bpb.rdcl);
+		mk2(img + MIN(bpb.bps, DOSBBSIZE) - 2, DOSMAGIC);
 	    } else if (lsn >= bpb.res && lsn < dir &&
 		       !((lsn - bpb.res) %
 			 (bpb.spf ? bpb.spf : bpb.bspf))) {
@@ -671,7 +672,8 @@ main(int argc, char *argv[])
 		mk2(de->date, x);
 	    }
 	    if ((n = write(fd, img, bpb.bps)) == -1)
-		err(1, "%s", fname);
+		err(1, "%s: write of %u bytes at offset %u", fname, bpb.bps,
+		    lsn * bpb.bps);
 	    if (n != bpb.bps)
 		errx(1, "%s: can't write sector %u", fname, lsn);
 	}
@@ -725,7 +727,8 @@ getstdfmt(const char *fmt, struct bpb *bpb)
 /*
  * Get disk geometry and size.
  *
- * Prefer Darwin DKIOCBLKSIZE / DKIOCNUMBLKS for real devices.  Fall back to
+ * Prefer the partition's DKIOCGPARTINFO, then the drive's DKIOCBLKSIZE /
+ * DKIOCNUMBLKS, for real devices.  Fall back to
  * fstat() for regular files (including -C created images) with fake CHS.
  */
 static void
@@ -733,6 +736,7 @@ getdiskinfo(int fd, const char *fname, const char *dtype, int oflag,
 	    struct bpb *bpb)
 {
     struct stat st;
+    struct disk_partition_info part;
     int secsize, nblks;
     u_int bps, spt, hds, bsec;
 
@@ -741,7 +745,16 @@ getdiskinfo(int fd, const char *fname, const char *dtype, int oflag,
 
     secsize = 0;
     nblks = 0;
-    if (ioctl(fd, DKIOCBLKSIZE, &secsize) == 0 &&
+    /*
+     * DKIOCBLKSIZE/DKIOCNUMBLKS describe the whole drive.  A labelled
+     * partition has its own size and sector size (1024 on NeXT labels),
+     * and raw I/O to it must be in whole sectors of that size.
+     */
+    if (ioctl(fd, DKIOCGPARTINFO, &part) == 0 &&
+	part.block_size > 0 && part.block_count > 0) {
+	bps = part.block_size;
+	bsec = part.block_count;
+    } else if (ioctl(fd, DKIOCBLKSIZE, &secsize) == 0 &&
 	ioctl(fd, DKIOCNUMBLKS, &nblks) == 0 &&
 	secsize > 0 && nblks > 0) {
 	bps = (u_int)secsize;

@@ -79,6 +79,30 @@ st_fail(struct st_ctx *c, const char *fmt, ...)
 }
 
 void
+st_unsup(struct st_ctx *c, const char *fmt, ...)
+{
+	char buf[512];
+	va_list ap;
+	int n;
+	void (*fn)(struct st_ctx *) = c->cleanup;
+
+	if (fn) {
+		c->cleanup = NULL;
+		fn(c);
+	}
+	strcpy(buf, "UNSUP ");
+	va_start(ap, fmt);
+	vsprintf(buf + 6, fmt, ap);
+	va_end(ap);
+	n = strlen(buf);
+	if (n > 510)
+		n = 510;
+	buf[n++] = '\n';
+	write(c->fd, buf, n);
+	_exit(0);
+}
+
+void
 st_fail_errno(struct st_ctx *c, const char *call)
 {
 	st_fail(c, "reason=\"%s: %s\"", call, st_errname(errno));

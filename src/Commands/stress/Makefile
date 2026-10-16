@@ -137,6 +137,7 @@ check: lib/t_lib $(TMAIN)
 	sleep 2; test `ps -ax | grep -c '[s]tress-tmain'` = 0
 	rc=0; $(TMAIN) bogus 2>/dev/null || rc=$$?; test $$rc = 2
 	$(TMAIN) leaky >lib/t.out && grep 'STRESS tmain leaky PASS .* leak=' lib/t.out && sleep 6
+	rc=0; $(TMAIN) -n 3 unsupbody >lib/t.out || rc=$$?; test $$rc = 0 && grep '^STRESS tmain unsupbody UNSUP reason=planned ' lib/t.out
 	$(TMAIN) -N -L leaky >lib/t.out && grep 'STRESS tmain leaky PASS ' lib/t.out && test `grep -c ' leak=\| wired=\| mbufs=' lib/t.out` = 0 && sleep 6
 	$(TMAIN) -l >lib/t.out; grep -x pass lib/t.out; test `grep -c -x named lib/t.out` = 0
 	@echo t_main: ok

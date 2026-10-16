@@ -114,6 +114,13 @@ t_leaky(struct st_ctx *c)
 }
 
 static void
+t_unsupbody(struct st_ctx *c)
+{
+	if (c->idx == 0)
+		st_unsup(c, "reason=planned");
+}
+
+static void
 t_unsup(struct st_ctx *c)
 {
 }
@@ -187,6 +194,7 @@ static const struct st_test tests[] = {
 	{ "data", 1, 0, NULL, t_data },
 	{ "forkbomb", 1, 1, NULL, t_forkbomb },
 	{ "leaky", 1, 1, NULL, t_leaky, 1 },
+	{ "unsupbody", 1, 0, NULL, t_unsupbody, 1 },
 	{ NULL }
 };
 

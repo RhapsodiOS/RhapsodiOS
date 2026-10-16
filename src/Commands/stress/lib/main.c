@@ -21,6 +21,7 @@ static volatile int alarmed;
 
 /* Leader state: what the workers reported. */
 static long start_sec;		/* leader's start time, copied to st_ctx.t_start */
+static char unsup[512];		/* a worker's st_unsup fields, if no FAIL */
 static char fail[512];		/* the first failure: a FAIL line's fields, a signal or an exit */
 static unsigned long units, maxlat_us, clockback;
 static struct st_leak leak_before, leak_after;	/* static: ~20 KB each */
@@ -157,6 +158,8 @@ take(char *s)
 			maxlat_us = l;
 	} else if (strncmp(s, "FAIL ", 5) == 0 && fail[0] == '\0') {
 		strncpy(fail, s + 5, sizeof fail - 1);
+	} else if (strncmp(s, "UNSUP ", 6) == 0 && unsup[0] == '\0') {
+		strncpy(unsup, s + 6, sizeof unsup - 1);
 	}
 }
 
@@ -292,6 +295,11 @@ leader(const struct st_test *t, const char *cat)
 		sprintf(what, "FAIL %s%s", fail, lk);
 		st_line(cat, t->name, what, 1);
 		exit(1);
+	}
+	if (unsup[0] != '\0') {
+		sprintf(what, "UNSUP %s", unsup);
+		st_line(cat, t->name, what, 1);
+		exit(0);
 	}
 	if (secs < 1e-6)
 		secs = 1e-6;

@@ -75,6 +75,9 @@ int st_lost(int live, int err);
 
 /* These never return: they send FAIL to the leader and _exit(1). */
 void st_fail(struct st_ctx *c, const char *fmt, ...);
+/* Ends this worker as UNSUP (a feature the file system refuses mid-test);
+ * the test reports UNSUP unless another worker FAILs.  Never returns. */
+void st_unsup(struct st_ctx *c, const char *fmt, ...);
 void st_fail_errno(struct st_ctx *c, const char *call);	/* reason="call: ERRNAME" */
 void st_fail_data(struct st_ctx *c, const char *what, const unsigned char *got,
 		  unsigned long len, unsigned long key, unsigned long off, long bad);

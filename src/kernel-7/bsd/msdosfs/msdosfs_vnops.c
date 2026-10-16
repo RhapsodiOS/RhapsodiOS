@@ -66,6 +66,9 @@
 #include <sys/lock.h>
 
 #include <sys/vm.h>
+#if MACH_NBC
+#include <kern/mapfs.h>
+#endif
 #include <miscfs/specfs/specdev.h>
 
 #include <vfs/vfs_support.h>
@@ -762,6 +765,9 @@ msdosfs_write(ap)
 		if (uio->uio_offset + n > dep->de_FileSize) {
 			dep->de_FileSize = uio->uio_offset + n;
 			/* The object size needs to be set before buffer is allocated */
+#if MACH_NBC
+			if (vp->v_vm_info && !vp->v_vm_info->mapped)
+#endif
 			vnode_pager_setsize(vp, dep->de_FileSize);
 		}
 
@@ -1000,188 +1006,108 @@ msdosfs_link(ap)
  */
 static int
 msdosfs_rename(ap)
-	struct vop_rename_args /* {
-		struct vnode *a_fdvp;
-		struct vnode *a_fvp;
-		struct componentname *a_fcnp;
-		struct vnode *a_tdvp;
-		struct vnode *a_tvp;
-		struct componentname *a_tcnp;
-	} */ *ap;
+	struct vop_rename_args *ap;
 {
 	struct vnode *tdvp = ap->a_tdvp;
 	struct vnode *fvp = ap->a_fvp;
 	struct vnode *fdvp = ap->a_fdvp;
 	struct vnode *tvp = ap->a_tvp;
+	struct vnode *waitvp;
 	struct componentname *tcnp = ap->a_tcnp;
 	struct componentname *fcnp = ap->a_fcnp;
 	struct proc *p = fcnp->cn_proc;
-	struct vnode *svp;
-	struct denode *ip, *xp, *dp, *zp;
+	struct denode *ip = VTODE(fvp), *xp, *dp, *zp;
+	struct msdosfsmount *pmp = VTODE(fdvp)->de_pmp;
 	u_char toname[11], oldname[11];
-	u_long from_diroffset, to_diroffset;
+	u_long from_diroffset, to_diroffset, cn;
 	u_char to_count;
-	int doingdirectory = 0, newparent = 0;
+	int doingdirectory = 0, checked = 0;
+	int flocked = 0, fdlocked = 0;
+	int newparent = fdvp != tdvp;
 	int error;
-	u_long cn;
 	daddr_t bn;
-	struct denode *fddep;	/* from file's parent directory	 */
-	struct msdosfsmount *pmp;
 	struct direntry *dotdotp;
 	struct buf *bp;
-
-	fddep = VTODE(ap->a_fdvp);
-	pmp = fddep->de_pmp;
-
-	pmp = VFSTOMSDOSFS(fdvp->v_mount);
 
 #ifdef DIAGNOSTIC
 	if ((tcnp->cn_flags & HASBUF) == 0 ||
 	    (fcnp->cn_flags & HASBUF) == 0)
 		panic("msdosfs_rename: no name");
 #endif
-	/*
-	 * Check for cross-device rename.
-	 */
-	if ((fvp->v_mount != tdvp->v_mount) ||
-	    (tvp && (fvp->v_mount != tvp->v_mount))) {
+	if (fvp->v_mount != tdvp->v_mount ||
+	    (tvp && fvp->v_mount != tvp->v_mount)) {
 		error = EXDEV;
-abortit:
-		if (tdvp == tvp)
-			vrele(tdvp);
-		else
-			vput(tdvp);
-		if (tvp)
-			vput(tvp);
-		vrele(fdvp);
-		vrele(fvp);
-		return (error);
+		goto bad;
 	}
 
-	/*
-	 * If source and dest are the same, do nothing.
-	 */
+again:
 	if (tvp == fvp) {
 		error = 0;
-		goto abortit;
+		goto bad;
+	}
+	if (fvp == tdvp || fdvp == tvp || fvp == fdvp ||
+	    (fcnp->cn_flags & ISDOTDOT) || (tcnp->cn_flags & ISDOTDOT) ||
+	    (fcnp->cn_namelen == 1 && fcnp->cn_nameptr[0] == '.')) {
+		error = EINVAL;
+		goto bad;
 	}
 
-	error = vn_lock(fvp, LK_EXCLUSIVE, p);
-	if (error)
-		goto abortit;
-	dp = VTODE(fdvp);
-	ip = VTODE(fvp);
-
-	/*
-	 * Be sure we are not renaming ".", "..", or an alias of ".". This
-	 * leads to a crippled directory tree.  It's pretty tough to do a
-	 * "ls" or "pwd" with the "." directory entry missing, and "cd .."
-	 * doesn't work if the ".." entry is missing.
-	 */
-	if (ip->de_Attributes & ATTR_DIRECTORY) {
-		/*
-		 * Avoid ".", "..", and aliases of "." for obvious reasons.
-		 */
-		if ((fcnp->cn_namelen == 1 && fcnp->cn_nameptr[0] == '.') ||
-		    dp == ip ||
-		    (fcnp->cn_flags & ISDOTDOT) ||
-		    (tcnp->cn_flags & ISDOTDOT) ||
-		    (ip->de_flag & DE_RENAME)) {
-			VOP_UNLOCK(fvp, 0, p);
+	/* Never wait for a source lock while holding destination locks. */
+	waitvp = fvp;
+	if (vn_lock(fvp, LK_EXCLUSIVE | LK_NOWAIT, p))
+		goto retry;
+	flocked = 1;
+	if ((ip->de_Attributes & ATTR_DIRECTORY) && !doingdirectory) {
+		if (ip->de_flag & DE_RENAME) {
 			error = EINVAL;
-			goto abortit;
+			goto bad;
 		}
 		ip->de_flag |= DE_RENAME;
-		doingdirectory++;
+		doingdirectory = 1;
 	}
-
-	/*
-	 * When the target exists, both the directory
-	 * and target vnodes are returned locked.
-	 */
-	dp = VTODE(tdvp);
-	xp = tvp ? VTODE(tvp) : NULL;
-	/*
-	 * Remember direntry place to use for destination
-	 */
-	to_diroffset = dp->de_fndoffset;
-	to_count = dp->de_fndcnt;
-
-	/*
-	 * If ".." must be changed (ie the directory gets a new
-	 * parent) then the source directory must not be in the
-	 * directory heirarchy above the target, as this would
-	 * orphan everything below the source directory. Also
-	 * the user must have write permission in the source so
-	 * as to be able to change "..". We must repeat the call
-	 * to namei, as the parent directory is unlocked by the
-	 * call to doscheckpath().
-	 */
-	error = VOP_ACCESS(fvp, VWRITE, tcnp->cn_cred, tcnp->cn_proc);
-	VOP_UNLOCK(fvp, 0, p);
-	if (VTODE(fdvp)->de_StartCluster != VTODE(tdvp)->de_StartCluster)
-		newparent = 1;
-	if (doingdirectory) {
-		if (newparent && error)	/* write access check above */
+	if (doingdirectory && newparent && !checked) {
+		error = VOP_ACCESS(fvp, VWRITE, tcnp->cn_cred, p);
+		if (error)
 			goto bad;
-		if (xp != NULL)
+		VOP_UNLOCK(fvp, 0, p);
+		flocked = 0;
+		if (tvp) {
 			vput(tvp);
-		/*
-		 * doscheckpath() vput()'s dp,
-		 * so we have to do a relookup afterwards
-		 */
-		if (newparent) {
-			error = doscheckpath(ip, dp);
-			if (error)
-				goto out;
-		} else
-			vput(tdvp);
-		/*
-		 * The source name was looked up before we held the source
-		 * directory locked, so it may have been renamed or removed
-		 * since.  DE_RENAME now keeps a directory from changing, so
-		 * check it once here, before anything is modified.  The
-		 * target and its parent are not locked while this is done,
-		 * to keep the lock order sane.
-		 */
-		fcnp->cn_flags &= ~MODMASK;
-		fcnp->cn_flags |= LOCKPARENT | LOCKLEAF;
-		if ((fcnp->cn_flags & SAVESTART) == 0)
-			panic("msdosfs_rename: lost from startdir");
-		if (relookup(fdvp, &svp, fcnp)) {
-			/* relookup released fdvp */
-			error = ENOENT;
-			ip->de_flag &= ~DE_RENAME;
-			vrele(fvp);
-			return (error);
+			tvp = NULL;
 		}
-		vrele(fdvp);
-		VOP_UNLOCK(fdvp, 0, p);
-		if (svp != NULL)
-			vput(svp);
-		if (svp != fvp) {
-			error = ENOENT;
+		/* doscheckpath consumes the target parent reference. */
+		error = doscheckpath(ip, VTODE(tdvp));
+		if (error)
 			goto out;
-		}
-		if ((tcnp->cn_flags & SAVESTART) == 0)
-			panic("msdosfs_rename: lost to startdir");
 		error = relookup_startdir(tdvp, &tvp, tcnp);
 		if (error)
 			goto out;
-		dp = VTODE(tdvp);
-		xp = tvp ? VTODE(tvp) : NULL;
-		to_diroffset = dp->de_fndoffset;
-		to_count = dp->de_fndcnt;
+		checked = 1;
+		goto again;
+	}
+	if (newparent) {
+		waitvp = fdvp;
+		if (vn_lock(fdvp, LK_EXCLUSIVE | LK_NOWAIT, p))
+			goto retry;
+		fdlocked = 1;
 	}
 
+	/* Both parents and the source stay locked until the slots are moved.
+	 * Save the target slot before a same-parent source scan replaces it. */
+	dp = VTODE(tdvp);
+	zp = VTODE(fdvp);
+	to_diroffset = dp->de_fndoffset;
+	to_count = dp->de_fndcnt;
+	fcnp->cn_flags &= ~MODMASK;
+	fcnp->cn_flags |= LOCKPARENT | LOCKLEAF;
+	error = msdosfs_lookup_rename(fdvp, fvp, fcnp);
+	if (error)
+		goto bad;
+	from_diroffset = zp->de_fndoffset;
+	xp = tvp ? VTODE(tvp) : NULL;
 	if (xp != NULL) {
-		/*
-		 * Target must be empty if a directory and have no links
-		 * to it. Also, ensure source and target are compatible
-		 * (both directories, or both not directories).
-		 */
 		if (xp->de_Attributes & ATTR_DIRECTORY) {
-			if (!dosdirempty(xp)) {
+			if ((xp->de_flag & DE_RENAME) || !dosdirempty(xp)) {
 				error = ENOTEMPTY;
 				goto bad;
 			}
@@ -1194,119 +1120,54 @@ abortit:
 			error = EISDIR;
 			goto bad;
 		}
+		dp->de_fndoffset = to_diroffset;
 		error = removede(dp, xp);
 		if (error)
 			goto bad;
 		vput(tvp);
-		xp = NULL;
+		tvp = NULL;
 	}
-
-	/*
-	 * Convert the filename in tcnp into a dos filename. We copy this
-	 * into the denode and directory entry for the destination
-	 * file/directory.
-	 */
-	error = uniqdosname(VTODE(tdvp), tcnp, toname);
+	error = uniqdosname(dp, tcnp, toname);
 	if (error)
-		goto abortit;
+		goto bad;
 
 	/*
-	 * Since from wasn't locked at various places above,
-	 * have to do a relookup here.
+	 * First write a new entry in the destination
+	 * directory and mark the entry in the source directory
+	 * as deleted.  Then move the denode to the correct hash
+	 * chain for its new location in the filesystem.  And, if
+	 * we moved a directory, then update its .. entry to point
+	 * to the new parent directory.
 	 */
-	fcnp->cn_flags &= ~MODMASK;
-	fcnp->cn_flags |= LOCKPARENT | LOCKLEAF;
-	if ((fcnp->cn_flags & SAVESTART) == 0)
-		panic("msdosfs_rename: lost from startdir");
-	if (!newparent)
-		VOP_UNLOCK(tdvp, 0, p);
-	if (relookup(fdvp, &fvp, fcnp) == 0)
-		vrele(fdvp);
-	if (fvp == NULL) {
-		/*
-		 * From name has disappeared.
-		 */
-		if (doingdirectory)
-			panic("rename: lost dir entry");
-		vrele(ap->a_fvp);
-		if (newparent)
-			VOP_UNLOCK(tdvp, 0, p);
-		vrele(tdvp);
-		return 0;
+	bcopy(ip->de_Name, oldname, 11);
+	bcopy(toname, ip->de_Name, 11);	/* update denode */
+	dp->de_fndoffset = to_diroffset;
+	dp->de_fndcnt = to_count;
+	error = createde(ip, dp, (struct denode **)0, tcnp);
+	if (error) {
+		bcopy(oldname, ip->de_Name, 11);
+		goto bad;
 	}
-	xp = VTODE(fvp);
-	zp = VTODE(fdvp);
-	from_diroffset = zp->de_fndoffset;
-
-	/*
-	 * Ensure that the directory entry still exists and has not
-	 * changed till now. If the source is a file the entry may
-	 * have been unlinked or renamed. In either case there is
-	 * no further work to be done. If the source is a directory
-	 * then it cannot have been rmdir'ed or renamed; this is
-	 * prohibited by the DE_RENAME flag.
-	 */
-	if (xp != ip) {
-		if (doingdirectory)
-			panic("rename: lost dir entry");
-		vrele(ap->a_fvp);
-		VOP_UNLOCK(fvp, 0, p);
-		if (newparent)
-			VOP_UNLOCK(fdvp, 0, p);
-		xp = NULL;
-	} else {
-		vrele(fvp);
-		xp = NULL;
-
-		/*
-		 * First write a new entry in the destination
-		 * directory and mark the entry in the source directory
-		 * as deleted.  Then move the denode to the correct hash
-		 * chain for its new location in the filesystem.  And, if
-		 * we moved a directory, then update its .. entry to point
-		 * to the new parent directory.
-		 */
-		bcopy(ip->de_Name, oldname, 11);
-		bcopy(toname, ip->de_Name, 11);	/* update denode */
-		dp->de_fndoffset = to_diroffset;
-		dp->de_fndcnt = to_count;
-		error = createde(ip, dp, (struct denode **)0, tcnp);
-		if (error) {
-			bcopy(oldname, ip->de_Name, 11);
-			if (newparent)
-				VOP_UNLOCK(fdvp, 0, p);
-			VOP_UNLOCK(fvp, 0, p);
-			goto bad;
-		}
-		ip->de_refcnt++;
-		zp->de_fndoffset = from_diroffset;
-		error = removede(zp, ip);
+	ip->de_refcnt++;
+	zp->de_fndoffset = from_diroffset;
+	error = removede(zp, ip);
+	if (error) {
+		/* XXX should really panic here, fs is corrupt */
+		goto bad;
+	}
+	if (!doingdirectory) {
+		error = pcbmap(dp, de_cluster(pmp, to_diroffset), 0,
+			       &ip->de_dirclust, 0);
 		if (error) {
 			/* XXX should really panic here, fs is corrupt */
-			if (newparent)
-				VOP_UNLOCK(fdvp, 0, p);
-			VOP_UNLOCK(fvp, 0, p);
 			goto bad;
 		}
-		if (!doingdirectory) {
-			error = pcbmap(dp, de_cluster(pmp, to_diroffset), 0,
-				       &ip->de_dirclust, 0);
-			if (error) {
-				/* XXX should really panic here, fs is corrupt */
-				if (newparent)
-					VOP_UNLOCK(fdvp, 0, p);
-				VOP_UNLOCK(fvp, 0, p);
-				goto bad;
-			}
-			if (ip->de_dirclust == MSDOSFSROOT)
-				ip->de_diroffset = to_diroffset;
-			else
-				ip->de_diroffset = to_diroffset & pmp->pm_crbomask;
-		}
-		reinsert(ip);
-		if (newparent)
-			VOP_UNLOCK(fdvp, 0, p);
+		if (ip->de_dirclust == MSDOSFSROOT)
+			ip->de_diroffset = to_diroffset;
+		else
+			ip->de_diroffset = to_diroffset & pmp->pm_crbomask;
 	}
+	reinsert(ip);
 
 	/*
 	 * If we moved a directory to a new parent directory, then we must
@@ -1324,7 +1185,6 @@ abortit:
 		if (error) {
 			/* XXX should really panic here, fs is corrupt */
 			brelse(bp);
-			VOP_UNLOCK(fvp, 0, p);
 			goto bad;
 		}
 		dotdotp = (struct direntry *)bp->b_data + 1;
@@ -1334,22 +1194,52 @@ abortit:
 		error = bwrite(bp);
 		if (error) {
 			/* XXX should really panic here, fs is corrupt */
-			VOP_UNLOCK(fvp, 0, p);
 			goto bad;
 		}
 	}
 
-	VOP_UNLOCK(fvp, 0, p);
 bad:
-	if (xp)
+	if (doingdirectory) {
+		ip->de_flag &= ~DE_RENAME;
+		doingdirectory = 0;
+	}
+	if (fdlocked)
+		VOP_UNLOCK(fdvp, 0, p);
+	if (flocked)
+		VOP_UNLOCK(fvp, 0, p);
+	if (tdvp == tvp)
+		vrele(tdvp);
+	else
+		vput(tdvp);
+	if (tvp)
 		vput(tvp);
-	vput(tdvp);
 out:
-	ip->de_flag &= ~DE_RENAME;
+	if (doingdirectory)
+		ip->de_flag &= ~DE_RENAME;
 	vrele(fdvp);
 	vrele(fvp);
 	return (error);
 
+retry:
+	if (flocked) {
+		VOP_UNLOCK(fvp, 0, p);
+		flocked = 0;
+	}
+	if (tvp) {
+		vput(tvp);
+		tvp = NULL;
+	}
+	vput(tdvp);
+	/* Wait with no vnode locks, then refresh the target slot and ancestry. */
+	error = vn_lock(waitvp, LK_EXCLUSIVE | LK_RETRY, p);
+	if (error)
+		goto out;
+	VOP_UNLOCK(waitvp, 0, p);
+	error = relookup_startdir(tdvp, &tvp, tcnp);
+	if (error)
+		goto out;
+	checked = 0;
+	goto again;
 }
 
 static struct {
@@ -2036,7 +1926,7 @@ msdosfs_pagein(ap)
 }
 
 /*
- * Darwin pageout — pass through to write.
+ * Recheck EOF after the pager acquired the vnode lock.
  */
 static int
 msdosfs_pageout(ap)
@@ -2047,7 +1937,24 @@ msdosfs_pageout(ap)
 		struct ucred *a_cred;
 	} */ *ap;
 {
-	return (VOP_WRITE(ap->a_vp, ap->a_uio, ap->a_ioflag, ap->a_cred));
+	struct uio *uio = ap->a_uio;
+	off_t size = VTODE(ap->a_vp)->de_FileSize;
+	int excess = 0, error;
+
+#if MACH_NBC
+	/* Mapped writes can extend the cached size before the denode. */
+	if (ap->a_vp->v_vm_info)
+		size = ap->a_vp->v_vm_info->vnode_size;
+#endif
+	if (uio->uio_offset >= size)
+		return (0);
+	if (uio->uio_resid > size - uio->uio_offset) {
+		excess = uio->uio_resid - (size - uio->uio_offset);
+		uio->uio_resid -= excess;
+	}
+	error = VOP_WRITE(ap->a_vp, uio, ap->a_ioflag, ap->a_cred);
+	uio->uio_resid += excess;
+	return (error);
 }
 
 /*

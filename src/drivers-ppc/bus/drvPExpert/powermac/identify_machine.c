@@ -154,6 +154,18 @@ void identify_machine1()
 	powermac_dbdma_channels = powermac_init_p->powermac_dbdma_channels;
 }
 
+/* nvram_phys:
+ *   Old World NVRAM sits in mac-io and its reg is an offset.  New World
+ *   flash NVRAM (/nvram@fff04000) has an absolute reg past mac-io; adding
+ *   the mac-io base to that wraps (to 0x7ff04000 on a Sawtooth).
+ */
+static vm_offset_t nvram_phys(vm_offset_t reg)
+{
+	if (powermac_io_info.io_size != 0 && reg >= powermac_io_info.io_size)
+		return reg;
+	return powermac_io_info.io_base_phys + reg;
+}
+
 /* identify_machine2:
  *
  *   Sets up platform parameters.
@@ -189,8 +201,8 @@ void identify_machine2()
 	powermac_io_info.floppy_base_phys   = powermac_io_info.io_base_phys + get_floppy_offset();
 	powermac_io_info.ethernet_base_phys = powermac_io_info.io_base_phys + get_ethernet_offset();
 	powermac_io_info.via_base_phys      = powermac_io_info.io_base_phys + get_via_offset();
-	powermac_io_info.nvram_addr_reg_phys = powermac_io_info.io_base_phys + get_nvram_addr_offset();
-	powermac_io_info.nvram_data_reg_phys = powermac_io_info.io_base_phys + get_nvram_data_offset();
+	powermac_io_info.nvram_addr_reg_phys = nvram_phys(get_nvram_addr_offset());
+	powermac_io_info.nvram_data_reg_phys = nvram_phys(get_nvram_data_offset());
 	powermac_io_info.ide0_base_phys = powermac_io_info.io_base_phys + get_ide_offset(0);
 	powermac_io_info.ide1_base_phys = powermac_io_info.io_base_phys + get_ide_offset(1);
 
@@ -278,8 +290,13 @@ vm_offset_t get_int_cntlr_base_addr(void)
 
 	if (DTFindEntry("device_type", "open-pic", &entryP) == kSuccess)
 	{
-	    if (DTGetProperty(entryP, "reg", (void **)&address, &size) == kSuccess)
+	    if (DTGetProperty(entryP, "reg", (void **)&address, &size) == kSuccess) {
+		    /* Sawtooth's open-pic sits in mac-io and its reg is an
+		     * offset; make it absolute in the tree too, as 5.6 does. */
+		    if (IsSawtooth())
+			    *address += get_io_base_addr();
 		    return(*address);
+	    }
 	}
 
 	return(0);

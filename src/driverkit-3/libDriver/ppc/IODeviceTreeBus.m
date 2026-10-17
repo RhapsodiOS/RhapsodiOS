@@ -416,6 +416,55 @@ void DeviceTreeProbe( void )
     return( err);
 }
 
+// #interrupt-cells of the interrupt controller with this phandle: 1 on
+// Heathrow-era machines, 2 (source, sense) on a Sawtooth MPIC.
+
+static UInt32 ControllerInterruptCells( UInt32 handle )
+{
+    DTEntryIterator	iter;
+    DTEntry		entry;
+    UInt32 *		prop;
+    int			size;
+    int			result;
+    UInt32		cells = 1;
+
+    if( (DTLookupEntry( 0, "/", &entry) != kSuccess)
+     || (DTCreateEntryIterator( 0, &iter) != kSuccess))
+	return( cells );
+    do {
+	if( (DTGetProperty( entry, "AAPL,phandle", (void **)&prop, &size) == kSuccess)
+	 && (*prop == handle)) {
+	    if( DTGetProperty( entry, "#interrupt-cells", (void **)&prop, &size) == kSuccess)
+		cells = *prop;
+	    break;
+	}
+	while( (result = DTIterateEntries( iter, &entry)) == kIterationDone) {
+	    if( (result = DTExitEntry( iter, &entry)) != kSuccess)
+		break;
+	}
+	if( result == kSuccess)
+	    result = DTEnterEntry( iter, entry);
+    } while( result == kSuccess);
+    DTDisposeEntryIterator( iter);
+
+    return( cells );
+}
+
+// Is handle an interrupt parent other than this node, i.e. the controller?
+
+- (BOOL) isInterruptController:(UInt32)handle
+{
+    UInt32 *	prop;
+    UInt32	propSize;
+
+    if( 0 == handle)
+	return( NO );
+    if( [propTable getProperty:"AAPL,phandle" flags:kReferenceProperty
+                          value:(void **)&prop length:&propSize])
+	return( NO );
+    return( handle != *prop );
+}
+
 // Find interrupt addressing info
 
 - (IOReturn) interruptSpecCells:(UInt32)handle count:(UInt32 *)count
@@ -431,10 +480,9 @@ void DeviceTreeProbe( void )
     if( err)
 	return( err);
 
-    if( handle && (handle != *prop)) {
-	// This is a hack - a non-DT-parent interrupt parent
-	// is assumed the root controller.
-	*count = 1;
+    if( [self isInterruptController:handle]) {
+	// A non-DT-parent interrupt parent is assumed the root controller.
+	*count = ControllerInterruptCells( handle );
 	return( noErr );
     }
 
@@ -469,7 +517,8 @@ void DeviceTreeProbe( void )
     if( err)
 	return( err);
 
-    if( 1 == myICells) {
+    // Reached the controller: the first cell is the source.
+    if( (1 == myICells) || [self isInterruptController:handle]) {
 	*mapped = interruptSpec;
 	return( noErr);
     }
@@ -550,6 +599,14 @@ void DeviceTreeProbe( void )
         err = [self interruptSpecCells:iParent count:&myICells];
         if( err)
 	    continue;
+        if( [self isInterruptController:iParent]) {
+	    // The device names the controller itself; keep each
+	    // specifier's source cell and drop the sense cells.
+	    for( i = 0; i < (num / myICells); i++ )
+		interrupts[ i ] = interrupts[ i * myICells ];
+	    *count = num / myICells;
+	    continue;
+	}
         if( 1 == myICells)
 	    continue;
 

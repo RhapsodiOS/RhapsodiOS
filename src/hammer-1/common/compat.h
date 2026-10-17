@@ -1,8 +1,5 @@
 /*
- * Copyright (c) 2017 The DragonFly Project.  All rights reserved.
- *
- * This code is derived from software contributed to The DragonFly Project
- * by Matthew Dillon <dillon@backplane.com>
+ * Copyright (c) 2026 RhapsodiOS.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -14,7 +11,7 @@
  *    notice, this list of conditions and the following disclaimer in
  *    the documentation and/or other materials provided with the
  *    distribution.
- * 3. Neither the name of The DragonFly Project nor the names of its
+ * 3. Neither the name of the copyright holder nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific, prior written permission.
  *
@@ -32,49 +29,38 @@
  * SUCH DAMAGE.
  */
 
-#include "hammer_util.h"
+/*
+ * Rhapsody libc gaps the HAMMER tools need.  Rhapsody's printf takes %q
+ * for 64-bit conversions; %ll and %j are not supported.
+ */
+#ifndef HAMMER_COMPAT_H_
+#define HAMMER_COMPAT_H_
 
-#include <uuid.h>
+#include <sys/types.h>
 
-void hammer_uuid_create(hammer_uuid_t *uuid)
-{
-	uuid_create(uuid, NULL);
-}
+typedef long long		intmax_t;
+typedef unsigned long long	uintmax_t;
 
-int hammer_uuid_from_string(const char *str, hammer_uuid_t *uuid)
-{
-	uint32_t status = uuid_s_ok;
+#ifndef ULLONG_MAX
+#define ULLONG_MAX	0xFFFFFFFFFFFFFFFFULL
+#endif
+#ifndef LLONG_MAX
+#define LLONG_MAX	0x7FFFFFFFFFFFFFFFLL
+#endif
 
-	uuid_from_string(str, uuid, &status);
+#define strtoull	strtouq
+#define strtoll		strtoq
 
-	if (status != uuid_s_ok)
-		return(-1);
-	return(0);
-}
+ssize_t	pread(int fd, void *buf, size_t nbytes, off_t offset);
+ssize_t	pwrite(int fd, const void *buf, size_t nbytes, off_t offset);
 
-int hammer_uuid_to_string(const hammer_uuid_t *uuid, char **str)
-{
-	uint32_t status = uuid_s_ok;
+/*
+ * Size in bytes of a regular file or of the disk partition behind a
+ * device (DKIOCGPARTINFO).  Returns 0, or -1 with errno set.
+ */
+int	hammer_device_size(int fd, u_int64_t *bytes);
 
-	uuid_to_string(uuid, str, &status);
+/* libutil hexdump(3) with flags 0: offset, 16 hex bytes, ASCII. */
+void	hexdump(const void *ptr, int length, const char *hdr, int flags);
 
-	if (status != uuid_s_ok)
-		return(-1);
-	return(0);
-}
-
-int hammer_uuid_name_lookup(hammer_uuid_t *uuid, const char *str)
-{
-	uint32_t status = uuid_s_ok;
-
-	uuid_name_lookup(uuid, str, &status);
-
-	if (status != uuid_s_ok)
-		return(-1);
-	return(0);
-}
-
-int hammer_uuid_compare(const hammer_uuid_t *uuid1, const hammer_uuid_t *uuid2)
-{
-	return(uuid_compare(uuid1, uuid2, NULL));
-}
+#endif /* !HAMMER_COMPAT_H_ */

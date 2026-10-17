@@ -2,9 +2,9 @@
 #   make check CPPFLAGS=-DHAMMER_PORTABLE_TEST
 # Swap path on a little-endian host:
 #   make check CPPFLAGS=-DHAMMER_TEST_SWAP
-CC ?= cc
-CPPFLAGS ?=
-CFLAGS ?= -O2
+CC = cc
+CPPFLAGS =
+CFLAGS = -O2
 CRC = ../crc32.c ../icrc32.c
 HEADERS = ../hammer_port.h ../hammer_disk.h ../hammer_btree.h ../hammer_crc.h ../hammer_admit.h
 

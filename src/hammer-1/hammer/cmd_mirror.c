@@ -45,8 +45,6 @@ typedef struct histogram {
 	uint64_t	bytes;
 } *histogram_t;
 
-const char *ScoreBoardFile;
-const char *RestrictTarget;
 
 static int read_mrecords(int fd, char *buf, u_int size,
 			 struct hammer_ioc_mrecord_head *pickup);

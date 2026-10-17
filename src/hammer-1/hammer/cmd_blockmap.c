@@ -34,7 +34,7 @@
 
 #include "hammer.h"
 
-#include <sys/tree.h>
+#include "hammer_tree.h"
 
 /*
  * Each collect covers 1<<(19+23) bytes address space of layer 1.
@@ -113,7 +113,7 @@ dump_blockmap(int zone)
 
 	root_volume = get_root_volume();
 	rootmap = &root_volume->ondisk->vol0_blockmap[zone];
-	assert(rootmap->phys_offset != 0);
+	assert(hget64(rootmap->phys_offset) != 0);
 
 	print_blockmap(root_volume);
 
@@ -126,7 +126,7 @@ dump_blockmap(int zone)
 		/*
 		 * Dive layer 1.
 		 */
-		layer1_offset = rootmap->phys_offset +
+		layer1_offset = hget64(rootmap->phys_offset) +
 				HAMMER_BLOCKMAP_LAYER1_OFFSET(phys_offset);
 		layer1 = get_buffer_data(layer1_offset, &buffer1, 0);
 
@@ -136,14 +136,14 @@ dump_blockmap(int zone)
 			++num_bad_layer1;
 		}
 		if (xerr == ' ' &&
-		    layer1->phys_offset == HAMMER_BLOCKMAP_UNAVAIL) {
+		    hget64(layer1->phys_offset) == HAMMER_BLOCKMAP_UNAVAIL) {
 			continue;
 		}
-		printf("%c layer1 %016jx @%016jx blocks-free %jd\n",
+		printf("%c layer1 %016qx @%016qx blocks-free %qd\n",
 			xerr,
 			(uintmax_t)phys_offset,
-			(uintmax_t)layer1->phys_offset,
-			(intmax_t)layer1->blocks_free);
+			(uintmax_t)hget64(layer1->phys_offset),
+			(intmax_t)hget64(layer1->blocks_free));
 
 		for (block_offset = 0;
 		     block_offset < HAMMER_BLOCKMAP_LAYER2;
@@ -152,7 +152,7 @@ dump_blockmap(int zone)
 			/*
 			 * Dive layer 2, each entry represents a big-block.
 			 */
-			layer2_offset = layer1->phys_offset +
+			layer2_offset = hget64(layer1->phys_offset) +
 					HAMMER_BLOCKMAP_LAYER2_OFFSET(block_offset);
 			layer2 = get_buffer_data(layer2_offset, &buffer2, 0);
 
@@ -161,12 +161,12 @@ dump_blockmap(int zone)
 				xerr = 'B';
 				++num_bad_layer2;
 			}
-			if (layer2->append_off > HAMMER_BIGBLOCK_SIZE) {
+			if (hget32(layer2->append_off) > HAMMER_BIGBLOCK_SIZE) {
 				aerr = 'A';
 				++num_bad_layer2;
 			}
-			if (layer2->bytes_free < 0 ||
-			    layer2->bytes_free > HAMMER_BIGBLOCK_SIZE) {
+			if ((int32_t)hget32(layer2->bytes_free) < 0 ||
+			    (int32_t)hget32(layer2->bytes_free) > HAMMER_BIGBLOCK_SIZE) {
 				ferr = 'F';
 				++num_bad_layer2;
 			}
@@ -176,7 +176,7 @@ dump_blockmap(int zone)
 			    layer2->zone == HAMMER_ZONE_UNAVAIL_INDEX) {
 				break;
 			}
-			printf("%c%c%c     %016jx zone=%-2d ",
+			printf("%c%c%c     %016qx zone=%-2d ",
 				xerr, aerr, ferr, (uintmax_t)zone_offset, layer2->zone);
 			if (VerboseOpt) {
 				printf("vol=%-3d L1#=%-6d L2#=%-6d L1=%-7lu L2=%-7lu ",
@@ -187,15 +187,15 @@ dump_blockmap(int zone)
 					HAMMER_BLOCKMAP_LAYER2_OFFSET(zone_offset));
 			}
 			printf("app=%-7d free=%-7d",
-				layer2->append_off,
-				layer2->bytes_free);
+				hget32(layer2->append_off),
+				(int32_t)hget32(layer2->bytes_free));
 			if (VerboseOpt) {
 				double bytes_used = HAMMER_BIGBLOCK_SIZE -
-					layer2->bytes_free;
+					(int32_t)hget32(layer2->bytes_free);
 				printf(" fill=%-5.1lf crc=%08x-%08x\n",
 					bytes_used * 100 / HAMMER_BIGBLOCK_SIZE,
-					layer1->layer1_crc,
-					layer2->entry_crc);
+					hget32(layer1->layer1_crc),
+					hget32(layer2->entry_crc));
 			} else {
 				printf("\n");
 			}
@@ -227,7 +227,7 @@ hammer_cmd_checkmap(void)
 	hammer_off_t node_offset;
 
 	volume = get_root_volume();
-	node_offset = volume->ondisk->vol0_btree_root;
+	node_offset = hget64(volume->ondisk->vol0_btree_root);
 	freemap = &volume->ondisk->vol0_blockmap[HAMMER_ZONE_FREEMAP_INDEX];
 	undomap = &volume->ondisk->vol0_blockmap[HAMMER_ZONE_UNDO_INDEX];
 
@@ -263,9 +263,9 @@ check_freemap(hammer_blockmap_t freemap)
 	collect_freemap_layer1(freemap);
 
 	for (i = 0; i < HAMMER_BLOCKMAP_RADIX1; ++i) {
-		offset = freemap->phys_offset + i * sizeof(*layer1);
+		offset = hget64(freemap->phys_offset) + i * sizeof(*layer1);
 		layer1 = get_buffer_data(offset, &buffer1, 0);
-		if (layer1->phys_offset != HAMMER_BLOCKMAP_UNAVAIL)
+		if (hget64(layer1->phys_offset) != HAMMER_BLOCKMAP_UNAVAIL)
 			collect_freemap_layer2(layer1);
 	}
 	rel_buffer(buffer1);
@@ -295,35 +295,35 @@ check_btree_node(hammer_off_t node_offset, int depth)
 
 	if (badm != ' ' || badc != ' ') {  /* not good */
 		++num_bad_node;
-		printf("%c%c   NODE %016jx ",
+		printf("%c%c   NODE %016qx ",
 			badc, badm, (uintmax_t)node_offset);
 		if (node == NULL) {
 			printf("(IO ERROR)\n");
 			rel_buffer(buffer);
 			return;
 		} else {
-			printf("cnt=%02d p=%016jx type=%c depth=%d mirror=%016jx\n",
-			       node->count,
-			       (uintmax_t)node->parent,
+			printf("cnt=%02d p=%016qx type=%c depth=%d mirror=%016qx\n",
+			       (int32_t)hget32(node->count),
+			       (uintmax_t)hget64(node->parent),
 			       (node->type ? node->type : '?'),
 			       depth,
-			       (uintmax_t)node->mirror_tid);
+			       (uintmax_t)hget64(node->mirror_tid));
 		}
 	}
 
-	for (i = 0; i < node->count; ++i) {
+	for (i = 0; i < (int32_t)hget32(node->count); ++i) {
 		elm = &node->elms[i];
 
 		switch(node->type) {
 		case HAMMER_BTREE_TYPE_INTERNAL:
-			if (elm->internal.subtree_offset) {
+			if (hget64(elm->internal.subtree_offset)) {
 				collect_btree_internal(elm);
-				check_btree_node(elm->internal.subtree_offset,
+				check_btree_node(hget64(elm->internal.subtree_offset),
 						 depth + 1);
 			}
 			break;
 		case HAMMER_BTREE_TYPE_LEAF:
-			if (elm->leaf.data_offset)
+			if (hget64(elm->leaf.data_offset))
 				collect_btree_leaf(elm);
 			break;
 		default:
@@ -343,9 +343,9 @@ check_undo(hammer_blockmap_t undomap)
 	hammer_fifo_head_t head;
 
 	scan_offset = HAMMER_ENCODE_UNDO(0);
-	while (scan_offset < undomap->alloc_offset) {
+	while (scan_offset < hget64(undomap->alloc_offset)) {
 		head = get_buffer_data(scan_offset, &buffer, 0);
-		switch (head->hdr_type) {
+		switch (hget16(head->hdr_type)) {
 		case HAMMER_HEAD_TYPE_PAD:
 		case HAMMER_HEAD_TYPE_DUMMY:
 		case HAMMER_HEAD_TYPE_UNDO:
@@ -356,14 +356,14 @@ check_undo(hammer_blockmap_t undomap)
 			assert(!DebugOpt);
 			break;
 		}
-		if ((head->hdr_size & HAMMER_HEAD_ALIGN_MASK) ||
-		     head->hdr_size == 0 ||
-		     head->hdr_size > HAMMER_UNDO_ALIGN -
+		if ((hget32(head->hdr_size) & HAMMER_HEAD_ALIGN_MASK) ||
+		     hget32(head->hdr_size) == 0 ||
+		     hget32(head->hdr_size) > HAMMER_UNDO_ALIGN -
 			((u_int)scan_offset & HAMMER_UNDO_MASK)) {
 			printf("Illegal size, skipping to next boundary\n");
 			scan_offset = HAMMER_UNDO_DOALIGN(scan_offset);
 		} else {
-			scan_offset += head->hdr_size;
+			scan_offset += hget32(head->hdr_size);
 		}
 	}
 	rel_buffer(buffer);
@@ -378,7 +378,7 @@ collect_freemap_layer1(hammer_blockmap_t freemap)
 	 * as zone4 is really just zone2 address space.
 	 */
 	hammer_off_t zone4_offset = hammer_xlate_to_zoneX(
-		HAMMER_ZONE_FREEMAP_INDEX, freemap->phys_offset);
+		HAMMER_ZONE_FREEMAP_INDEX, hget64(freemap->phys_offset));
 	collect_blockmap(zone4_offset, HAMMER_BIGBLOCK_SIZE,
 		HAMMER_ZONE_FREEMAP_INDEX);
 }
@@ -392,7 +392,7 @@ collect_freemap_layer2(hammer_blockmap_layer1_t layer1)
 	 * as zone4 is really just zone2 address space.
 	 */
 	hammer_off_t zone4_offset = hammer_xlate_to_zoneX(
-		HAMMER_ZONE_FREEMAP_INDEX, layer1->phys_offset);
+		HAMMER_ZONE_FREEMAP_INDEX, hget64(layer1->phys_offset));
 	collect_blockmap(zone4_offset, HAMMER_BIGBLOCK_SIZE,
 		HAMMER_ZONE_FREEMAP_INDEX);
 }
@@ -410,7 +410,7 @@ static __inline
 void
 collect_btree_internal(hammer_btree_elm_t elm)
 {
-	collect_blockmap(elm->internal.subtree_offset,
+	collect_blockmap(hget64(elm->internal.subtree_offset),
 		sizeof(struct hammer_node_ondisk),  /* 4KB */
 		HAMMER_ZONE_BTREE_INDEX);
 }
@@ -421,7 +421,7 @@ collect_btree_leaf(hammer_btree_elm_t elm)
 {
 	int zone;
 
-	switch (elm->base.rec_type) {
+	switch (hget16(elm->base.rec_type)) {
 	case HAMMER_RECTYPE_INODE:
 	case HAMMER_RECTYPE_DIRENTRY:
 	case HAMMER_RECTYPE_EXT:
@@ -433,21 +433,21 @@ collect_btree_leaf(hammer_btree_elm_t elm)
 		break;
 	case HAMMER_RECTYPE_DATA:
 	case HAMMER_RECTYPE_DB:
-		zone = hammer_data_zone_index(elm->leaf.data_len);
+		zone = hammer_data_zone_index((int32_t)hget32(elm->leaf.data_len));
 		break;
 	default:
 		zone = HAMMER_ZONE_UNAVAIL_INDEX;
 		break;
 	}
-	collect_blockmap(elm->leaf.data_offset,
-		HAMMER_DATA_DOALIGN(elm->leaf.data_len), zone);
+	collect_blockmap(hget64(elm->leaf.data_offset),
+		HAMMER_DATA_DOALIGN((int32_t)hget32(elm->leaf.data_len)), zone);
 }
 
 static __inline
 void
 collect_undo(hammer_off_t scan_offset, hammer_fifo_head_t head)
 {
-	collect_blockmap(scan_offset, head->hdr_size,
+	collect_blockmap(scan_offset, hget32(head->hdr_size),
 		HAMMER_ZONE_UNDO_INDEX);
 }
 
@@ -468,9 +468,9 @@ collect_blockmap(hammer_off_t offset, int32_t length, int zone)
 		assert(hammer_is_zone_raw_buffer(result_offset));
 		assert(error == 0);
 	}
-	collect = collect_get(layer1.phys_offset); /* layer2 address */
+	collect = collect_get(hget64(layer1.phys_offset)); /* layer2 address */
 	track2 = collect_get_track(collect, result_offset, zone, &layer2);
-	track2->bytes_free -= length;
+	track2->bytes_free = hmk32((int32_t)hget32(track2->bytes_free) - (length));
 }
 
 static
@@ -513,12 +513,12 @@ collect_get_track(collect_t collect, hammer_off_t offset, int zone,
 
 	i = HAMMER_BLOCKMAP_LAYER2_INDEX(offset);
 	track2 = &collect->track2[i];
-	if (track2->entry_crc == 0) {
+	if (hget32(track2->entry_crc) == 0) {
 		collect->layer2[i] = *layer2;
 		collect->offsets[i] = offset & ~HAMMER_BIGBLOCK_MASK64;
 		track2->zone = zone;
-		track2->bytes_free = HAMMER_BIGBLOCK_SIZE;
-		track2->entry_crc = 1;	/* steal field to tag track load */
+		track2->bytes_free = hmk32(HAMMER_BIGBLOCK_SIZE);
+		track2->entry_crc = hmk32(1);	/* steal field to tag track load */
 	}
 	return (track2);
 }
@@ -574,7 +574,7 @@ dump_collect(collect_t collect, zone_stat_t stats)
 		 * Check big-blocks referenced by freemap, data,
 		 * B-Tree nodes and UNDO fifo.
 		 */
-		if (track2->entry_crc == 0)
+		if (hget32(track2->entry_crc) == 0)
 			continue;
 
 		if (DebugOpt) {
@@ -586,23 +586,23 @@ dump_collect(collect_t collect, zone_stat_t stats)
 			hammer_add_zone_stat_layer2(stats, layer2);
 
 		if (track2->zone != layer2->zone) {
-			printf("BZ\tblock=%016jx calc zone=%-2d, got zone=%-2d\n",
+			printf("BZ\tblock=%016qx calc zone=%-2d, got zone=%-2d\n",
 				(uintmax_t)offset,
 				track2->zone,
 				layer2->zone);
 			collect->error++;
-		} else if (track2->bytes_free != layer2->bytes_free) {
-			printf("BM\tblock=%016jx zone=%-2d calc %d free, got %d\n",
+		} else if ((int32_t)hget32(track2->bytes_free) != (int32_t)hget32(layer2->bytes_free)) {
+			printf("BM\tblock=%016qx zone=%-2d calc %d free, got %d\n",
 				(uintmax_t)offset,
 				layer2->zone,
-				track2->bytes_free,
-				layer2->bytes_free);
+				(int32_t)hget32(track2->bytes_free),
+				(int32_t)hget32(layer2->bytes_free));
 			collect->error++;
 		} else if (VerboseOpt) {
-			printf("\tblock=%016jx zone=%-2d %d free (correct)\n",
+			printf("\tblock=%016qx zone=%-2d %d free (correct)\n",
 				(uintmax_t)offset,
 				layer2->zone,
-				track2->bytes_free);
+				(int32_t)hget32(track2->bytes_free));
 		}
 	}
 }

@@ -77,28 +77,29 @@ alloc_undo_bigblock(volume_info_t volume)
 	/*
 	 * Dive layer 1.
 	 */
-	layer1_offset = freemap->phys_offset +
+	layer1_offset = hget64(freemap->phys_offset) +
 			HAMMER_BLOCKMAP_LAYER1_OFFSET(result_offset);
 	layer1 = get_buffer_data(layer1_offset, &buffer1, 0);
-	assert(layer1->phys_offset != HAMMER_BLOCKMAP_UNAVAIL);
-	--layer1->blocks_free;
+	assert(hget64(layer1->phys_offset) != HAMMER_BLOCKMAP_UNAVAIL);
+	layer1->blocks_free = hmk64(hget64(layer1->blocks_free) - 1);
 	hammer_crc_set_layer1(HammerVersion, layer1);
 	buffer1->cache.modified = 1;
 
 	/*
 	 * Dive layer 2, each entry represents a big-block.
 	 */
-	layer2_offset = layer1->phys_offset +
+	layer2_offset = hget64(layer1->phys_offset) +
 			HAMMER_BLOCKMAP_LAYER2_OFFSET(result_offset);
 	layer2 = get_buffer_data(layer2_offset, &buffer2, 0);
 	assert(layer2->zone == 0);
 	layer2->zone = HAMMER_ZONE_UNDO_INDEX;
-	layer2->append_off = HAMMER_BIGBLOCK_SIZE;
-	layer2->bytes_free = 0;
+	layer2->append_off = hmk32(HAMMER_BIGBLOCK_SIZE);
+	layer2->bytes_free = hmk32(0);
 	hammer_crc_set_layer2(HammerVersion, layer2);
 	buffer2->cache.modified = 1;
 
-	--volume->ondisk->vol0_stat_freebigblocks;
+	volume->ondisk->vol0_stat_freebigblocks =
+		hmk64(hget64(volume->ondisk->vol0_stat_freebigblocks) - 1);
 
 	rel_buffer(buffer1);
 	rel_buffer(buffer2);
@@ -124,13 +125,14 @@ alloc_blockmap(int zone, int bytes, hammer_off_t *result_offp,
 	hammer_off_t tmp_offset;
 	hammer_off_t layer1_offset;
 	hammer_off_t layer2_offset;
+	hammer_off_t next;
 	void *ptr;
 
 	volume = get_root_volume();
 
 	blockmap = &volume->ondisk->vol0_blockmap[zone];
 	freemap = &volume->ondisk->vol0_blockmap[HAMMER_ZONE_FREEMAP_INDEX];
-	assert(HAMMER_ZONE_DECODE(blockmap->next_offset) == zone);
+	assert(HAMMER_ZONE_DECODE(hget64(blockmap->next_offset)) == zone);
 
 	/*
 	 * Alignment and buffer-boundary issues.  If the allocation would
@@ -141,27 +143,30 @@ alloc_blockmap(int zone, int bytes, hammer_off_t *result_offp,
 	assert(hammer_is_index_record(zone));
 
 again:
-	assert(blockmap->next_offset != HAMMER_ZONE_ENCODE(zone + 1, 0));
+	next = hget64(blockmap->next_offset);
+	assert(next != HAMMER_ZONE_ENCODE(zone + 1, 0));
 
-	tmp_offset = blockmap->next_offset + bytes - 1;
-	if ((blockmap->next_offset ^ tmp_offset) & ~HAMMER_BUFMASK64)
-		blockmap->next_offset = tmp_offset & ~HAMMER_BUFMASK64;
+	tmp_offset = next + bytes - 1;
+	if ((next ^ tmp_offset) & ~HAMMER_BUFMASK64) {
+		next = tmp_offset & ~HAMMER_BUFMASK64;
+		blockmap->next_offset = hmk64(next);
+	}
 
 	/*
 	 * Dive layer 1.
 	 */
-	layer1_offset = freemap->phys_offset +
-			HAMMER_BLOCKMAP_LAYER1_OFFSET(blockmap->next_offset);
+	layer1_offset = hget64(freemap->phys_offset) +
+			HAMMER_BLOCKMAP_LAYER1_OFFSET(next);
 	layer1 = get_buffer_data(layer1_offset, &buffer1, 0);
-	assert(layer1->phys_offset != HAMMER_BLOCKMAP_UNAVAIL);
-	assert(!((blockmap->next_offset & HAMMER_BIGBLOCK_MASK) == 0 &&
-		layer1->blocks_free == 0));
+	assert(hget64(layer1->phys_offset) != HAMMER_BLOCKMAP_UNAVAIL);
+	assert(!((next & HAMMER_BIGBLOCK_MASK) == 0 &&
+		hget64(layer1->blocks_free) == 0));
 
 	/*
 	 * Dive layer 2, each entry represents a big-block.
 	 */
-	layer2_offset = layer1->phys_offset +
-			HAMMER_BLOCKMAP_LAYER2_OFFSET(blockmap->next_offset);
+	layer2_offset = hget64(layer1->phys_offset) +
+			HAMMER_BLOCKMAP_LAYER2_OFFSET(next);
 	layer2 = get_buffer_data(layer2_offset, &buffer2, 0);
 
 	if (layer2->zone == HAMMER_ZONE_UNAVAIL_INDEX) {
@@ -174,25 +179,26 @@ again:
 	 * zone.  If the big-block is owned by another zone skip it.
 	 */
 	if (layer2->zone == 0) {
-		--layer1->blocks_free;
+		layer1->blocks_free = hmk64(hget64(layer1->blocks_free) - 1);
 		hammer_crc_set_layer1(HammerVersion, layer1);
 		layer2->zone = zone;
-		--volume->ondisk->vol0_stat_freebigblocks;
-		assert(layer2->bytes_free == HAMMER_BIGBLOCK_SIZE);
-		assert(layer2->append_off == 0);
+		volume->ondisk->vol0_stat_freebigblocks =
+			hmk64(hget64(volume->ondisk->vol0_stat_freebigblocks) - 1);
+		assert((int32_t)hget32(layer2->bytes_free) == HAMMER_BIGBLOCK_SIZE);
+		assert(hget32(layer2->append_off) == 0);
 	}
 	if (layer2->zone != zone) {
 		blockmap->next_offset =
-			HAMMER_ZONE_LAYER2_NEXT_OFFSET(blockmap->next_offset);
+			hmk64(HAMMER_ZONE_LAYER2_NEXT_OFFSET(next));
 		goto again;
 	}
 
-	assert(layer2->append_off ==
-		(blockmap->next_offset & HAMMER_BIGBLOCK_MASK));
-	layer2->bytes_free -= bytes;
-	*result_offp = blockmap->next_offset;
-	blockmap->next_offset += bytes;
-	layer2->append_off = (int)blockmap->next_offset & HAMMER_BIGBLOCK_MASK;
+	assert(hget32(layer2->append_off) == (next & HAMMER_BIGBLOCK_MASK));
+	layer2->bytes_free = hmk32((int32_t)hget32(layer2->bytes_free) - bytes);
+	*result_offp = next;
+	next += bytes;
+	blockmap->next_offset = hmk64(next);
+	layer2->append_off = hmk32((int)next & HAMMER_BIGBLOCK_MASK);
 	hammer_crc_set_layer2(HammerVersion, layer2);
 
 	ptr = get_buffer_data(*result_offp, bufferp, 0);
@@ -228,7 +234,7 @@ blockmap_lookup_save(hammer_off_t zone_offset,
 	buffer_info_t buffer2 = NULL;
 	hammer_off_t layer1_offset;
 	hammer_off_t layer2_offset;
-	hammer_off_t result_offset = HAMMER_OFF_BAD;;
+	hammer_off_t result_offset = HAMMER_OFF_BAD;
 	int zone;
 	int error = 0;
 
@@ -258,7 +264,7 @@ blockmap_lookup_save(hammer_off_t zone_offset,
 	if (hammer_is_index_record(zone)) {
 		result_offset = hammer_xlate_to_zone2(zone_offset);
 	} else if (zone == HAMMER_ZONE_UNDO_INDEX) {
-		if (zone_offset >= blockmap->alloc_offset) {
+		if (zone_offset >= hget64(blockmap->alloc_offset)) {
 			error = -3;
 			goto done;
 		}
@@ -273,7 +279,7 @@ blockmap_lookup_save(hammer_off_t zone_offset,
 	 * header is mashed).
 	 */
 	if (hammer_is_index_record(zone) &&
-	    HAMMER_ZONE_DECODE(blockmap->alloc_offset) != zone) {
+	    HAMMER_ZONE_DECODE(hget64(blockmap->alloc_offset)) != zone) {
 		error = -4;
 		goto done;
 	}
@@ -287,7 +293,7 @@ blockmap_lookup_save(hammer_off_t zone_offset,
 	/*
 	 * Dive layer 1.
 	 */
-	layer1_offset = freemap->phys_offset +
+	layer1_offset = hget64(freemap->phys_offset) +
 			HAMMER_BLOCKMAP_LAYER1_OFFSET(result_offset);
 	layer1 = get_buffer_data(layer1_offset, &buffer1, 0);
 
@@ -295,7 +301,7 @@ blockmap_lookup_save(hammer_off_t zone_offset,
 		error = -5;
 		goto done;
 	}
-	if (layer1->phys_offset == HAMMER_BLOCKMAP_UNAVAIL) {
+	if (hget64(layer1->phys_offset) == HAMMER_BLOCKMAP_UNAVAIL) {
 		error = -6;
 		goto done;
 	}
@@ -305,11 +311,12 @@ blockmap_lookup_save(hammer_off_t zone_offset,
 	/*
 	 * Dive layer 2, each entry represents a big-block.
 	 */
-	layer2_offset = layer1->phys_offset +
+	layer2_offset = hget64(layer1->phys_offset) +
 			HAMMER_BLOCKMAP_LAYER2_OFFSET(result_offset);
 	layer2 = get_buffer_data(layer2_offset, &buffer2, 0);
 
 	if (layer2 == NULL) {
+
 		error = -7;
 		goto done;
 	}

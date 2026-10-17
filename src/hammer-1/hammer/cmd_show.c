@@ -34,8 +34,7 @@
 
 #include "hammer.h"
 
-#include <sys/tree.h>
-#include <libutil.h>
+#include "hammer_tree.h"
 
 #define FLAG_TOOFARLEFT		0x0001
 #define FLAG_TOOFARRIGHT	0x0002
@@ -119,18 +118,18 @@ hammer_cmd_show(const char *arg, int filter, int obfuscate, int indent)
 	if (init_btree_search(arg) > 0) {
 		printf("arg=\"%s\"", arg);
 		if (opt.limit > 0)
-			printf(" lo=%08x", opt.base.localization);
+			printf(" lo=%08x", hget32(opt.base.localization));
 		if (opt.limit > 1)
-			printf(" objid=%016jx", (uintmax_t)opt.base.obj_id);
+			printf(" objid=%016qx", (uintmax_t)(int64_t)hget64(opt.base.obj_id));
 		if (opt.limit > 2)
-			printf(" rt=%02x", opt.base.rec_type);
+			printf(" rt=%02x", hget16(opt.base.rec_type));
 		if (opt.limit > 3)
-			printf(" key=%016jx", (uintmax_t)opt.base.key);
+			printf(" key=%016qx", (uintmax_t)(int64_t)hget64(opt.base.key));
 		if (opt.limit > 4)
-			printf(" tid=%016jx", (uintmax_t)opt.base.create_tid);
+			printf(" tid=%016qx", (uintmax_t)hget64(opt.base.create_tid));
 		printf("\n");
 	}
-	print_btree(ondisk->vol0_btree_root);
+	print_btree(hget64(ondisk->vol0_btree_root));
 
 	if (stats) {
 		hammer_print_zone_stat(stats);
@@ -159,7 +158,7 @@ void
 print_subtree(hammer_btree_elm_t elm)
 {
 	hammer_btree_internal_elm_t i = &elm->internal;
-	print_btree_node(i->subtree_offset, i->mirror_tid, elm);
+	print_btree_node(hget64(i->subtree_offset), hget64(i->mirror_tid), elm);
 }
 
 static
@@ -184,7 +183,7 @@ print_btree_node(hammer_off_t node_offset, hammer_tid_t mirror_tid,
 	} else {
 		if (!hammer_crc_test_btree(HammerVersion, node))
 			badc = 'B';
-		if (node->mirror_tid > mirror_tid) {
+		if (hget64(node->mirror_tid) > mirror_tid) {
 			badc = 'B';
 			badm = 'M';
 		}
@@ -197,14 +196,14 @@ print_btree_node(hammer_off_t node_offset, hammer_tid_t mirror_tid,
 	if (badm != ' ' || badc != ' ')  /* not good */
 		++num_bad_node;
 
-	printf("%s%c%c   NODE %016jx ",
+	printf("%s%c%c   NODE %016qx ",
 	       INDENT, badc, badm, (uintmax_t)node_offset);
-	printf("cnt=%02d p=%016jx type=%c depth=%d mirror=%016jx",
-	       node->count,
-	       (uintmax_t)node->parent,
+	printf("cnt=%02d p=%016qx type=%c depth=%d mirror=%016qx",
+	       (int32_t)hget32(node->count),
+	       (uintmax_t)hget64(node->parent),
 	       (node->type ? node->type : '?'),
 	       depth,
-	       (uintmax_t)node->mirror_tid);
+	       (uintmax_t)hget64(node->mirror_tid));
 	printf(" fill=");
 	print_bigblock_fill(node_offset);
 	printf(" {\n");
@@ -212,7 +211,7 @@ print_btree_node(hammer_off_t node_offset, hammer_tid_t mirror_tid,
 	if (opt.stats)
 		hammer_add_zone_stat(opt.stats, node_offset, sizeof(*node));
 
-	for (i = 0; i < node->count; ++i) {
+	for (i = 0; i < (int32_t)hget32(node->count); ++i) {
 		elm = &node->elms[i];
 		ext = NULL;
 		if (opt.limit) {
@@ -230,20 +229,20 @@ print_btree_node(hammer_off_t node_offset, hammer_tid_t mirror_tid,
 		print_btree_elm(node, node_offset, elm, lbe, ext);
 	}
 	if (node->type == HAMMER_BTREE_TYPE_INTERNAL) {
-		assert(i == node->count);  /* boundary */
+		assert(i == (int32_t)hget32(node->count));  /* boundary */
 		elm = &node->elms[i];
 		print_btree_elm(node, node_offset, elm, lbe, NULL);
 	}
 	printf("%s     }\n", INDENT);
 
 	if (node->type == HAMMER_BTREE_TYPE_INTERNAL) {
-		for (i = 0; i < node->count; ++i) {
+		for (i = 0; i < (int32_t)hget32(node->count); ++i) {
 			elm = &node->elms[i];
 			if (opt.limit && opt.filter) {
 				if (test_btree_out_of_range(elm))
 					continue;
 			}
-			if (elm->internal.subtree_offset) {
+			if (hget64(elm->internal.subtree_offset)) {
 				print_subtree(elm);
 				/*
 				 * Cause show to do normal iteration after
@@ -272,12 +271,12 @@ test_node_count(hammer_node_ondisk_t node, char *badmp)
 	if (maxcount == -1) {
 		*badmp = 'U';
 		return(-1);
-	} else if (node->count > maxcount) {
+	} else if ((int32_t)hget32(node->count) > maxcount) {
 		*badmp = 'C';
 		return(-1);
-	} else if (node->count == 0) {
-		parent_node = get_buffer_data(node->parent, &buffer, 0);
-		if (parent_node->count != 1) {
+	} else if ((int32_t)hget32(node->count) == 0) {
+		parent_node = get_buffer_data(hget64(node->parent), &buffer, 0);
+		if ((int32_t)hget32(parent_node->count) != 1) {
 			*badmp = 'C';
 			rel_buffer(buffer);
 			return(-1);
@@ -298,12 +297,12 @@ is_root_btree_beg(uint8_t type, int i, hammer_btree_elm_t elm)
 	 */
 	return (type == HAMMER_BTREE_TYPE_INTERNAL &&
 		i == 0 &&
-		elm->base.localization == HAMMER_MIN_ONDISK_LOCALIZATION &&
-		elm->base.obj_id == (int64_t)HAMMER_MIN_OBJID &&
-		elm->base.key == (int64_t)HAMMER_MIN_KEY &&
-		elm->base.create_tid == 1 &&
-		elm->base.delete_tid == 1 &&
-		elm->base.rec_type == HAMMER_MIN_RECTYPE &&
+		hget32(elm->base.localization) == HAMMER_MIN_ONDISK_LOCALIZATION &&
+		(int64_t)hget64(elm->base.obj_id) == (int64_t)HAMMER_MIN_OBJID &&
+		(int64_t)hget64(elm->base.key) == (int64_t)HAMMER_MIN_KEY &&
+		hget64(elm->base.create_tid) == 1 &&
+		hget64(elm->base.delete_tid) == 1 &&
+		hget16(elm->base.rec_type) == HAMMER_MIN_RECTYPE &&
 		elm->base.obj_type == 0 &&
 		elm->base.btype != HAMMER_BTREE_TYPE_NONE);
 }
@@ -314,12 +313,12 @@ is_root_btree_end(uint8_t type, int i, hammer_btree_elm_t elm)
 {
 	return (type == HAMMER_BTREE_TYPE_INTERNAL &&
 		i != 0 &&
-		elm->base.localization == HAMMER_MAX_ONDISK_LOCALIZATION &&
-		elm->base.obj_id == HAMMER_MAX_OBJID &&
-		elm->base.key == HAMMER_MAX_KEY &&
-		elm->base.create_tid == HAMMER_MAX_TID &&
-		elm->base.delete_tid == 0 &&
-		elm->base.rec_type == HAMMER_MAX_RECTYPE &&
+		hget32(elm->base.localization) == HAMMER_MAX_ONDISK_LOCALIZATION &&
+		(int64_t)hget64(elm->base.obj_id) == HAMMER_MAX_OBJID &&
+		(int64_t)hget64(elm->base.key) == HAMMER_MAX_KEY &&
+		hget64(elm->base.create_tid) == HAMMER_MAX_TID &&
+		hget64(elm->base.delete_tid) == 0 &&
+		hget16(elm->base.rec_type) == HAMMER_MAX_RECTYPE &&
 		elm->base.obj_type == 0 &&
 		elm->base.btype == HAMMER_BTREE_TYPE_NONE);
 }
@@ -363,58 +362,58 @@ print_btree_elm(hammer_node_ondisk_t node, hammer_off_t node_offset,
 	else
 		rootelm = ' ';
 
-	if (elm->base.delete_tid)
+	if (hget64(elm->base.delete_tid))
 		deleted = 'd';
 	else
 		deleted = ' ';
 
-	if (node->type == HAMMER_BTREE_TYPE_INTERNAL && node->count == i)
+	if (node->type == HAMMER_BTREE_TYPE_INTERNAL && (int32_t)hget32(node->count) == i)
 		label = "RBN";
 	else
 		label = "ELM";
 
 	printf("%s%s %s %2d %c ",
 	       INDENT, flagstr, label, i, hammer_elm_btype(elm));
-	printf("lo=%08x objid=%016jx rt=%02x key=%016jx tid=%016jx\n",
-	       elm->base.localization,
-	       (uintmax_t)elm->base.obj_id,
-	       elm->base.rec_type,
-	       (uintmax_t)elm->base.key,
-	       (uintmax_t)elm->base.create_tid);
-	printf("%s               %c del=%016jx ot=%02x",
+	printf("lo=%08x objid=%016qx rt=%02x key=%016qx tid=%016qx\n",
+	       hget32(elm->base.localization),
+	       (uintmax_t)(int64_t)hget64(elm->base.obj_id),
+	       hget16(elm->base.rec_type),
+	       (uintmax_t)(int64_t)hget64(elm->base.key),
+	       (uintmax_t)hget64(elm->base.create_tid));
+	printf("%s               %c del=%016qx ot=%02x",
 	       INDENT,
 	       (rootelm == ' ' ? deleted : rootelm),
-	       (uintmax_t)elm->base.delete_tid,
+	       (uintmax_t)hget64(elm->base.delete_tid),
 	       elm->base.obj_type);
 
 	switch(node->type) {
 	case HAMMER_BTREE_TYPE_INTERNAL:
-		printf(" suboff=%016jx mirror=%016jx",
-		       (uintmax_t)elm->internal.subtree_offset,
-		       (uintmax_t)elm->internal.mirror_tid);
+		printf(" suboff=%016qx mirror=%016qx",
+		       (uintmax_t)hget64(elm->internal.subtree_offset),
+		       (uintmax_t)hget64(elm->internal.mirror_tid));
 		if (ext)
 			printf(" %s", ext);
 		break;
 	case HAMMER_BTREE_TYPE_LEAF:
 		switch(elm->base.btype) {
 		case HAMMER_BTREE_TYPE_RECORD:
-			printf(" dataoff=%016jx/%d",
-			       (uintmax_t)elm->leaf.data_offset,
-			       elm->leaf.data_len);
+			printf(" dataoff=%016qx/%d",
+			       (uintmax_t)hget64(elm->leaf.data_offset),
+			       (int32_t)hget32(elm->leaf.data_len));
 			p = check_data_crc(elm, &which);
-			printf(" %scrc=%08x", which, elm->leaf.data_crc);
+			printf(" %scrc=%08x", which, hget32(elm->leaf.data_crc));
 			if (p) {
 				printf(" error=%s", p);
 				++num_bad_rec;
 			}
 			printf(" fill=");
-			print_bigblock_fill(elm->leaf.data_offset);
+			print_bigblock_fill(hget64(elm->leaf.data_offset));
 			if (QuietOpt < 2)
 				print_record(elm);
 			if (opt.stats) {
 				hammer_add_zone_stat(opt.stats,
-					elm->leaf.data_offset,
-					elm->leaf.data_len);
+					hget64(elm->leaf.data_offset),
+					(int32_t)hget32(elm->leaf.data_len));
 			}
 			break;
 		default:
@@ -439,11 +438,11 @@ get_elm_flags(hammer_node_ondisk_t node, hammer_off_t node_offset,
 
 	switch(node->type) {
 	case HAMMER_BTREE_TYPE_INTERNAL:
-		child_offset = elm->internal.subtree_offset;
-		if (elm->internal.mirror_tid > node->mirror_tid)
+		child_offset = hget64(elm->internal.subtree_offset);
+		if (hget64(elm->internal.mirror_tid) > hget64(node->mirror_tid))
 			flags |= FLAG_BADMIRRORTID;
 
-		if (i == node->count) {
+		if (i == (int32_t)hget32(node->count)) {
 			if (child_offset != 0)
 				flags |= FLAG_BADCHILDPARENT;
 			switch(elm->base.btype) {
@@ -463,7 +462,7 @@ get_elm_flags(hammer_node_ondisk_t node, hammer_off_t node_offset,
 				subnode = get_buffer_data(child_offset, &buffer, 0);
 				if (subnode == NULL)
 					flags |= FLAG_BADCHILDPARENT;
-				else if (subnode->parent != node_offset)
+				else if (hget64(subnode->parent) != node_offset)
 					flags |= FLAG_BADCHILDPARENT;
 				rel_buffer(buffer);
 			}
@@ -479,21 +478,21 @@ get_elm_flags(hammer_node_ondisk_t node, hammer_off_t node_offset,
 		}
 		break;
 	case HAMMER_BTREE_TYPE_LEAF:
-		if (elm->leaf.data_offset == 0)
+		if (hget64(elm->leaf.data_offset) == 0)
 			flags |= FLAG_BADCHILDPARENT;
-		if (elm->leaf.data_len == 0)
+		if ((int32_t)hget32(elm->leaf.data_len) == 0)
 			flags |= FLAG_BADCHILDPARENT;
 
-		if (node->mirror_tid == 0 &&
-		    !(node->parent == 0 && node->count == 2)) {
+		if (hget64(node->mirror_tid) == 0 &&
+		    !(hget64(node->parent) == 0 && (int32_t)hget32(node->count) == 2)) {
 			flags |= FLAG_BADMIRRORTID;
 		}
-		if (elm->base.create_tid && node->mirror_tid &&
-		    elm->base.create_tid > node->mirror_tid) {
+		if (hget64(elm->base.create_tid) && hget64(node->mirror_tid) &&
+		    hget64(elm->base.create_tid) > hget64(node->mirror_tid)) {
 			flags |= FLAG_BADMIRRORTID;
 		}
-		if (elm->base.delete_tid && node->mirror_tid &&
-		    elm->base.delete_tid > node->mirror_tid) {
+		if (hget64(elm->base.delete_tid) && hget64(node->mirror_tid) &&
+		    hget64(elm->base.delete_tid) > hget64(node->mirror_tid)) {
 			flags |= FLAG_BADMIRRORTID;
 		}
 		switch(elm->base.btype) {
@@ -519,36 +518,36 @@ static
 int
 hammer_btree_cmp(hammer_base_elm_t key1, hammer_base_elm_t key2)
 {
-	if (key1->localization < key2->localization)
+	if (hget32(key1->localization) < hget32(key2->localization))
 		return(-5);
-	if (key1->localization > key2->localization)
+	if (hget32(key1->localization) > hget32(key2->localization))
 		return(5);
 
-	if (key1->obj_id < key2->obj_id)
+	if ((int64_t)hget64(key1->obj_id) < (int64_t)hget64(key2->obj_id))
 		return(-4);
-	if (key1->obj_id > key2->obj_id)
+	if ((int64_t)hget64(key1->obj_id) > (int64_t)hget64(key2->obj_id))
 		return(4);
 
-	if (key1->rec_type < key2->rec_type)
+	if (hget16(key1->rec_type) < hget16(key2->rec_type))
 		return(-3);
-	if (key1->rec_type > key2->rec_type)
+	if (hget16(key1->rec_type) > hget16(key2->rec_type))
 		return(3);
 
-	if (key1->key < key2->key)
+	if ((int64_t)hget64(key1->key) < (int64_t)hget64(key2->key))
 		return(-2);
-	if (key1->key > key2->key)
+	if ((int64_t)hget64(key1->key) > (int64_t)hget64(key2->key))
 		return(2);
 
-	if (key1->create_tid == 0) {
-		if (key2->create_tid == 0)
+	if (hget64(key1->create_tid) == 0) {
+		if (hget64(key2->create_tid) == 0)
 			return(0);
 		return(1);
 	}
-	if (key2->create_tid == 0)
+	if (hget64(key2->create_tid) == 0)
 		return(-1);
-	if (key1->create_tid < key2->create_tid)
+	if (hget64(key1->create_tid) < hget64(key2->create_tid))
 		return(-1);
-	if (key1->create_tid > key2->create_tid)
+	if (hget64(key1->create_tid) > hget64(key2->create_tid))
 		return(1);
 	return(0);
 }
@@ -601,7 +600,7 @@ print_bigblock_fill(hammer_off_t offset)
 	if (error) {
 		printf("B%d", error);
 	} else {
-		fill = layer2.bytes_free * 100 / HAMMER_BIGBLOCK_SIZE;
+		fill = (int32_t)hget32(layer2.bytes_free) * 100 / HAMMER_BIGBLOCK_SIZE;
 		printf("%d%%", 100 - fill);
 	}
 }
@@ -619,12 +618,12 @@ check_data_crc(hammer_btree_elm_t elm, const char **whichp)
 	hammer_crc_t crc;
 
 	*whichp = "";
-	if (elm->leaf.data_offset == 0 || elm->leaf.data_len == 0)
+	if (hget64(elm->leaf.data_offset) == 0 || (int32_t)hget32(elm->leaf.data_len) == 0)
 		return("ZO");  /* zero offset or length */
 
-	switch (elm->leaf.base.rec_type) {
+	switch (hget16(elm->leaf.base.rec_type)) {
 	case HAMMER_RECTYPE_INODE:
-		if (elm->leaf.data_len != sizeof(struct hammer_inode_data))
+		if ((int32_t)hget32(elm->leaf.data_len) != sizeof(struct hammer_inode_data))
 			return("BI");  /* bad inode size */
 		crc = get_inode_crc(&elm->leaf, whichp);
 		break;
@@ -635,7 +634,7 @@ check_data_crc(hammer_btree_elm_t elm, const char **whichp)
 
 	if (crc == 0)
 		return("Bx");  /* bad crc */
-	if (crc != elm->leaf.data_crc)
+	if (crc != hget32(elm->leaf.data_crc))
 		return("BX");  /* bad crc */
 	return(NULL);  /* success */
 }
@@ -648,18 +647,18 @@ get_inode_crc(hammer_btree_leaf_elm_t leaf, const char **whichp)
 	hammer_crc_t crc;
 	char *ptr;
 
-	ptr = get_buffer_data(leaf->data_offset, &data_buffer, 0);
+	ptr = get_buffer_data(hget64(leaf->data_offset), &data_buffer, 0);
 
 	if (HammerVersion >= HAMMER_VOL_VERSION_SEVEN) {
 		crc = iscsi_crc32(ptr, HAMMER_INODE_CRCSIZE);
-		if (crc == leaf->data_crc) {
+		if (crc == hget32(leaf->data_crc)) {
 			*whichp = "i";
 			goto end;
 		}
 	}
 
 	crc = crc32(ptr, HAMMER_INODE_CRCSIZE);
-	if (crc == leaf->data_crc) {
+	if (crc == hget32(leaf->data_crc)) {
 		*whichp = "o";
 		goto end;
 	}
@@ -682,8 +681,8 @@ __get_buf_crc(hammer_btree_leaf_elm_t leaf, crc32_ext_fn f)
 	int32_t buf_len, len;
 	char *ptr;
 
-	buf_offset = leaf->data_offset;
-	buf_len = leaf->data_len;
+	buf_offset = hget64(leaf->data_offset);
+	buf_len = (int32_t)hget32(leaf->data_len);
 
 	while (buf_len) {
 		ptr = get_buffer_data(buf_offset, &data_buffer, 0);
@@ -708,14 +707,14 @@ get_buf_crc(hammer_btree_leaf_elm_t leaf, const char **whichp)
 
 	if (HammerVersion >= HAMMER_VOL_VERSION_SEVEN) {
 		crc = __get_buf_crc(leaf, iscsi_crc32_ext);
-		if (crc == leaf->data_crc) {
+		if (crc == hget32(leaf->data_crc)) {
 			*whichp = "i";
 			goto end;
 		}
 	}
 
 	crc = __get_buf_crc(leaf, crc32_ext);
-	if (crc == leaf->data_crc) {
+	if (crc == hget32(leaf->data_crc)) {
 		*whichp = "o";
 		goto end;
 	}
@@ -755,8 +754,8 @@ print_record(hammer_btree_elm_t elm)
 	char *str1 = NULL;
 	char *str2 = NULL;
 
-	data_offset = elm->leaf.data_offset;
-	data_len = elm->leaf.data_len;
+	data_offset = hget64(elm->leaf.data_offset);
+	data_len = (int32_t)hget32(elm->leaf.data_len);
 	assert(data_offset != 0);
 	assert(data_len != 0);
 
@@ -764,28 +763,28 @@ print_record(hammer_btree_elm_t elm)
 	data = get_buffer_data(data_offset, &data_buffer, 0);
 	assert(data != NULL);
 
-	switch(elm->leaf.base.rec_type) {
+	switch(hget16(elm->leaf.base.rec_type)) {
 	case HAMMER_RECTYPE_UNKNOWN:
 		printf("\n%s%17s", INDENT, "");
 		printf("unknown");
 		break;
 	case HAMMER_RECTYPE_INODE:
 		printf("\n%s%17s", INDENT, "");
-		printf("inode size=%jd nlinks=%jd",
-		       (intmax_t)data->inode.size,
-		       (intmax_t)data->inode.nlinks);
+		printf("inode size=%qd nlinks=%qd",
+		       (intmax_t)hget64(data->inode.size),
+		       (intmax_t)hget64(data->inode.nlinks));
 		printf(" mode=%05o uflags=%08x caps=%02x",
-			data->inode.mode,
-			data->inode.uflags,
+			hget16(data->inode.mode),
+			hget32(data->inode.uflags),
 			data->inode.cap_flags);
-		printf(" pobjid=%016jx ot=%02x\n",
-			(uintmax_t)data->inode.parent_obj_id,
+		printf(" pobjid=%016qx ot=%02x\n",
+			(uintmax_t)(int64_t)hget64(data->inode.parent_obj_id),
 			data->inode.obj_type);
 		printf("%s%17s", INDENT, "");
-		printf("      ctime=%016jx mtime=%016jx atime=%016jx",
-			(uintmax_t)data->inode.ctime,
-			(uintmax_t)data->inode.mtime,
-			(uintmax_t)data->inode.atime);
+		printf("      ctime=%016qx mtime=%016qx atime=%016qx",
+			(uintmax_t)hget64(data->inode.ctime),
+			(uintmax_t)hget64(data->inode.mtime),
+			(uintmax_t)hget64(data->inode.atime));
 		if (data->inode.ext.symlink[0]) {
 			printf(" symlink=\"%s\"",
 				data->inode.ext.symlink);
@@ -794,16 +793,16 @@ print_record(hammer_btree_elm_t elm)
 	case HAMMER_RECTYPE_DIRENTRY:
 		data_len -= HAMMER_ENTRY_NAME_OFF;
 		printf("\n%s%17s", INDENT, "");
-		printf("dir-entry objid=%016jx lo=%08x",
-		       (uintmax_t)data->entry.obj_id,
-		       data->entry.localization);
+		printf("dir-entry objid=%016qx lo=%08x",
+		       (uintmax_t)(int64_t)hget64(data->entry.obj_id),
+		       hget32(data->entry.localization));
 		if (!opt.obfuscate) {
 			printf(" name=\"%*.*s\"",
 			       data_len, data_len, data->entry.name);
 		}
 		break;
 	case HAMMER_RECTYPE_FIX:
-		switch(elm->leaf.base.key) {
+		switch((int64_t)hget64(elm->leaf.base.key)) {
 		case HAMMER_FIXKEY_SYMLINK:
 			data_len -= HAMMER_SYMLINK_NAME_OFF;
 			printf("\n%s%17s", INDENT, "");
@@ -814,9 +813,9 @@ print_record(hammer_btree_elm_t elm)
 		break;
 	case HAMMER_RECTYPE_PFS:
 		printf("\n%s%17s", INDENT, "");
-		printf("pfs sync_beg_tid=%016jx sync_end_tid=%016jx\n",
-			(uintmax_t)data->pfsd.sync_beg_tid,
-			(uintmax_t)data->pfsd.sync_end_tid);
+		printf("pfs sync_beg_tid=%016qx sync_end_tid=%016qx\n",
+			(uintmax_t)hget64(data->pfsd.sync_beg_tid),
+			(uintmax_t)hget64(data->pfsd.sync_end_tid));
 		hammer_uuid_to_string(&data->pfsd.shared_uuid, &str1);
 		hammer_uuid_to_string(&data->pfsd.unique_uuid, &str2);
 		printf("%17s", "");
@@ -825,7 +824,7 @@ print_record(hammer_btree_elm_t elm)
 		printf("    unique_uuid=%s\n", str2);
 		printf("%17s", "");
 		printf("    mirror_flags=%08x label=\"%s\"",
-			data->pfsd.mirror_flags, data->pfsd.label);
+			(int32_t)hget32(data->pfsd.mirror_flags), data->pfsd.label);
 		if (data->pfsd.snapshots[0])
 			printf(" snapshots=\"%s\"", data->pfsd.snapshots);
 		free(str1);
@@ -833,8 +832,8 @@ print_record(hammer_btree_elm_t elm)
 		break;
 	case HAMMER_RECTYPE_SNAPSHOT:
 		printf("\n%s%17s", INDENT, "");
-		printf("snapshot tid=%016jx label=\"%s\"",
-			(uintmax_t)data->snap.tid, data->snap.label);
+		printf("snapshot tid=%016qx label=\"%s\"",
+			(uintmax_t)hget64(data->snap.tid), data->snap.label);
 		break;
 	case HAMMER_RECTYPE_CONFIG:
 		if (VerboseOpt > 2) {
@@ -935,15 +934,15 @@ init_btree_search(const char *arg)
 		if ((s = strchr(s, ':')) != NULL)
 			*s++ = 0;
 		if (++i == 1) {
-			opt.base.localization = _strtoul(p, 16);
+			opt.base.localization = hmk32(_strtoul(p, 16));
 		} else if (i == 2) {
-			opt.base.obj_id = _strtoull(p, 16);
+			opt.base.obj_id = hmk64(_strtoull(p, 16));
 		} else if (i == 3) {
-			opt.base.rec_type = _strtoul(p, 16);
+			opt.base.rec_type = hmk16(_strtoul(p, 16));
 		} else if (i == 4) {
-			opt.base.key = _strtoull(p, 16);
+			opt.base.key = hmk64(_strtoull(p, 16));
 		} else if (i == 5) {
-			opt.base.create_tid = _strtoull(p, 16);
+			opt.base.create_tid = hmk64(_strtoull(p, 16));
 			break;
 		}
 	}
@@ -961,44 +960,44 @@ test_btree_search(hammer_btree_elm_t elm)
 	hammer_base_elm_t base2 = &opt.base;
 	int limit = opt.limit;
 
-	if (base1->localization < base2->localization)
+	if (hget32(base1->localization) < hget32(base2->localization))
 		return(-5);
-	if (base1->localization > base2->localization)
+	if (hget32(base1->localization) > hget32(base2->localization))
 		return(5);
 	if (limit == 1)
 		return(0);  /* ignore below */
 
-	if (base1->obj_id < base2->obj_id)
+	if ((int64_t)hget64(base1->obj_id) < (int64_t)hget64(base2->obj_id))
 		return(-4);
-	if (base1->obj_id > base2->obj_id)
+	if ((int64_t)hget64(base1->obj_id) > (int64_t)hget64(base2->obj_id))
 		return(4);
 	if (limit == 2)
 		return(0);  /* ignore below */
 
-	if (base1->rec_type < base2->rec_type)
+	if (hget16(base1->rec_type) < hget16(base2->rec_type))
 		return(-3);
-	if (base1->rec_type > base2->rec_type)
+	if (hget16(base1->rec_type) > hget16(base2->rec_type))
 		return(3);
 	if (limit == 3)
 		return(0);  /* ignore below */
 
-	if (base1->key < base2->key)
+	if ((int64_t)hget64(base1->key) < (int64_t)hget64(base2->key))
 		return(-2);
-	if (base1->key > base2->key)
+	if ((int64_t)hget64(base1->key) > (int64_t)hget64(base2->key))
 		return(2);
 	if (limit == 4)
 		return(0);  /* ignore below */
 
-	if (base1->create_tid == 0) {
-		if (base2->create_tid == 0)
+	if (hget64(base1->create_tid) == 0) {
+		if (hget64(base2->create_tid) == 0)
 			return(0);
 		return(1);
 	}
-	if (base2->create_tid == 0)
+	if (hget64(base2->create_tid) == 0)
 		return(-1);
-	if (base1->create_tid < base2->create_tid)
+	if (hget64(base1->create_tid) < hget64(base2->create_tid))
 		return(-1);
-	if (base1->create_tid > base2->create_tid)
+	if (hget64(base1->create_tid) > hget64(base2->create_tid))
 		return(1);
 	return(0);
 }
@@ -1052,59 +1051,59 @@ hammer_cmd_show_undo(void)
 		stats = hammer_init_zone_stat_bits();
 
 	scan_offset = HAMMER_ENCODE_UNDO(0);
-	while (scan_offset < rootmap->alloc_offset) {
+	while (scan_offset < hget64(rootmap->alloc_offset)) {
 		head = get_buffer_data(scan_offset, &data_buffer, 0);
 		hdr = &head->head;
-		printf("%016jx ", scan_offset);
+		printf("%016qx ", scan_offset);
 
-		switch(hdr->hdr_type) {
+		switch(hget16(hdr->hdr_type)) {
 		case HAMMER_HEAD_TYPE_PAD:
-			printf("PAD(%d)", hdr->hdr_size);
+			printf("PAD(%d)", hget32(hdr->hdr_size));
 			break;
 		case HAMMER_HEAD_TYPE_DUMMY:
 			printf("DUMMY(%d)\tseq=%08x",
-				hdr->hdr_size, hdr->hdr_seq);
+				hget32(hdr->hdr_size), hget32(hdr->hdr_seq));
 			break;
 		case HAMMER_HEAD_TYPE_UNDO:
-			printf("UNDO(%u)\tseq=%08x offset=%016jx bytes=%d",
-				hdr->hdr_size, hdr->hdr_seq,
-				(uintmax_t)head->undo.undo_offset,
-				head->undo.undo_data_bytes);
+			printf("UNDO(%u)\tseq=%08x offset=%016qx bytes=%d",
+				hget32(hdr->hdr_size), hget32(hdr->hdr_seq),
+				(uintmax_t)hget64(head->undo.undo_offset),
+				(int32_t)hget32(head->undo.undo_data_bytes));
 			break;
 		case HAMMER_HEAD_TYPE_REDO:
-			printf("REDO(%u)\tseq=%08x offset=%016jx bytes=%d "
-				"objid=%016jx flags=%08x lo=%08x",
-				hdr->hdr_size, hdr->hdr_seq,
-				(uintmax_t)head->redo.redo_offset,
-				head->redo.redo_data_bytes,
-				(uintmax_t)head->redo.redo_objid,
-				head->redo.redo_flags,
-				head->redo.redo_localization);
+			printf("REDO(%u)\tseq=%08x offset=%016qx bytes=%d "
+				"objid=%016qx flags=%08x lo=%08x",
+				hget32(hdr->hdr_size), hget32(hdr->hdr_seq),
+				(uintmax_t)hget64(head->redo.redo_offset),
+				(int32_t)hget32(head->redo.redo_data_bytes),
+				(uintmax_t)(int64_t)hget64(head->redo.redo_objid),
+				hget32(head->redo.redo_flags),
+				hget32(head->redo.redo_localization));
 			break;
 		default:
 			printf("%04x(%d)\tseq=%08x",
-				hdr->hdr_type, hdr->hdr_size, hdr->hdr_seq);
+				hget16(hdr->hdr_type), hget32(hdr->hdr_size), hget32(hdr->hdr_seq));
 			break;
 		}
 
-		if (scan_offset == rootmap->first_offset)
+		if (scan_offset == hget64(rootmap->first_offset))
 			printf(" >");
-		if (scan_offset == rootmap->next_offset)
+		if (scan_offset == hget64(rootmap->next_offset))
 			printf(" <");
 		printf("\n");
 
 		if (stats)
-			hammer_add_zone_stat(stats, scan_offset, hdr->hdr_size);
+			hammer_add_zone_stat(stats, scan_offset, hget32(hdr->hdr_size));
 
-		if ((hdr->hdr_size & HAMMER_HEAD_ALIGN_MASK) ||
-		    hdr->hdr_size == 0 ||
-		    hdr->hdr_size > HAMMER_UNDO_ALIGN -
+		if ((hget32(hdr->hdr_size) & HAMMER_HEAD_ALIGN_MASK) ||
+		    hget32(hdr->hdr_size) == 0 ||
+		    hget32(hdr->hdr_size) > HAMMER_UNDO_ALIGN -
 				    ((u_int)scan_offset & HAMMER_UNDO_MASK)) {
 			printf("Illegal size field, skipping to "
 			       "next boundary\n");
 			scan_offset = HAMMER_UNDO_DOALIGN(scan_offset);
 		} else {
-			scan_offset += hdr->hdr_size;
+			scan_offset += hget32(hdr->hdr_size);
 		}
 	}
 	rel_buffer(data_buffer);

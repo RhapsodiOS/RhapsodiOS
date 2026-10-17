@@ -63,6 +63,25 @@ typedef unsigned long	uintptr_t;
 #define rounddown(x, y)	(((x) / (y)) * (y))
 #endif
 
+/* 4.4BSD-Lite <sys/queue.h> predates the accessor and iterator macros. */
+#include <sys/queue.h>
+#ifndef TAILQ_HEAD_INITIALIZER
+#define TAILQ_HEAD_INITIALIZER(head)	{ NULL, &(head).tqh_first }
+#endif
+#ifndef TAILQ_FIRST
+#define TAILQ_FIRST(head)		((head)->tqh_first)
+#endif
+#ifndef TAILQ_NEXT
+#define TAILQ_NEXT(elm, field)		((elm)->field.tqe_next)
+#endif
+#ifndef TAILQ_EMPTY
+#define TAILQ_EMPTY(head)		((head)->tqh_first == NULL)
+#endif
+#ifndef TAILQ_FOREACH
+#define TAILQ_FOREACH(var, head, field)					\
+	for ((var) = TAILQ_FIRST(head); (var); (var) = TAILQ_NEXT(var, field))
+#endif
+
 #ifndef __cplusplus
 #ifndef HAMMER_HAVE_BOOL
 #define HAMMER_HAVE_BOOL
@@ -78,6 +97,15 @@ typedef int bool;
 
 #ifndef __packed
 #define __packed	__attribute__((__packed__))
+#endif
+#ifndef __unused
+#define __unused
+#endif
+#ifndef __always_inline
+#define __always_inline	__inline
+#endif
+#ifndef __dead2
+#define __dead2		__attribute__((__noreturn__))
 #endif
 
 typedef struct { uint16_t le_; } hle16_t;

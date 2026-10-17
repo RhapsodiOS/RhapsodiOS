@@ -34,12 +34,7 @@
 
 #include "hammer_util.h"
 
-#include <sys/sysctl.h>
-
-#include <bus/cam/scsi/scsi_daio.h>
-
 static int64_t getsize(const char *str, int pw);
-static int trim_volume(volume_info_t volume);
 static void format_volume(volume_info_t volume, int nvols,const char *label);
 static hammer_off_t format_root_directory(const char *label);
 static uint64_t nowtime(void);
@@ -66,7 +61,6 @@ main(int ac, char **av)
 	int ch;
 	int i;
 	int nvols;
-	int eflag = 0;
 	const char *label = NULL;
 	volume_info_t volume;
 
@@ -91,7 +85,8 @@ main(int ac, char **av)
 			ForceOpt = 1;
 			break;
 		case 'E':
-			eflag = 1;
+			errx(1, "TRIM (-E) is not supported on Rhapsody");
+			/* not reached */
 			break;
 		case 'L':
 			label = optarg;
@@ -124,12 +119,9 @@ main(int ac, char **av)
 			break;
 		case 'V':
 			HammerVersion = strtol(optarg, NULL, 0);
-			if (HammerVersion < HAMMER_VOL_VERSION_MIN ||
-			    HammerVersion >= HAMMER_VOL_VERSION_WIP) {
-				errx(1,
-				     "I don't understand how to format "
-				     "HAMMER version %d",
-				     HammerVersion);
+			if (HammerVersion != HAMMER_VOL_VERSION_SEVEN) {
+				errx(1, "Only HAMMER version %d is supported",
+				     HAMMER_VOL_VERSION_SEVEN);
 				/* not reached */
 			}
 			break;
@@ -143,30 +135,15 @@ main(int ac, char **av)
 	av += optind;
 	nvols = ac;
 
-	if (HammerVersion == (uint32_t)-1) {
-		size_t olen = sizeof(HammerVersion);
+	if (HammerVersion == (uint32_t)-1)
 		HammerVersion = HAMMER_VOL_VERSION_DEFAULT;
 
-		if (sysctlbyname("vfs.hammer.supported_version",
-				 &HammerVersion, &olen, NULL, 0)) {
-			hwarn("HAMMER VFS not loaded, cannot get version info, "
-				"using version %d",
-				HammerVersion);
-		} else if (HammerVersion >= HAMMER_VOL_VERSION_WIP) {
-			HammerVersion = HAMMER_VOL_VERSION_WIP - 1;
-			hwarnx("HAMMER VFS supports higher version than "
-				"I understand, using version %d",
-				HammerVersion);
-		}
-	}
-
 	if (nvols == 0) {
-		errx(1, "You must specify at least one special file (volume)");
+		errx(1, "You must specify a special file (volume)");
 		/* not reached */
 	}
-	if (nvols > HAMMER_MAX_VOLUMES) {
-		errx(1, "The maximum number of volumes is %d",
-			HAMMER_MAX_VOLUMES);
+	if (nvols > 1) {
+		errx(1, "Rhapsody HAMMER is single volume only");
 		/* not reached */
 	}
 
@@ -192,13 +169,6 @@ main(int ac, char **av)
 		printf("Volume %d %s %-15s size %s\n",
 			volume->vol_no, volume->type, volume->name,
 			sizetostr(volume->size));
-
-		if (eflag) {
-			if (trim_volume(volume) == -1 && ForceOpt == 0) {
-				errx(1, "Use -f option to proceed");
-				/* not reached */
-			}
-		}
 		total += volume->size;
 	}
 
@@ -253,7 +223,7 @@ print_volume(const volume_info_t volume)
 	ondisk = volume->ondisk;
 	blockmap = &ondisk->vol0_blockmap[HAMMER_ZONE_UNDO_INDEX];
 
-	nvols = ondisk->vol_count;
+	nvols = (int32_t)hget32(ondisk->vol_count);
 	for (i = 0; i < nvols; ++i) {
 		volume_info_t p = get_volume(i);
 		total += p->size;
@@ -272,14 +242,16 @@ print_volume(const volume_info_t volume)
 	printf("root-volume:         %s\n", name);
 	if (DebugOpt) {
 		printf("header-junk-size:    %s\n",
-			sizetostr(ondisk->vol_bot_beg));
+			sizetostr(hget64(ondisk->vol_bot_beg)));
 	}
 	printf("boot-area-size:      %s\n",
-		sizetostr(ondisk->vol_mem_beg - ondisk->vol_bot_beg));
+		sizetostr(hget64(ondisk->vol_mem_beg) -
+			  hget64(ondisk->vol_bot_beg)));
 	printf("memory-log-size:     %s\n",
-		sizetostr(ondisk->vol_buf_beg - ondisk->vol_mem_beg));
+		sizetostr(hget64(ondisk->vol_buf_beg) -
+			  hget64(ondisk->vol_mem_beg)));
 	printf("undo-buffer-size:    %s\n",
-		sizetostr(HAMMER_OFF_LONG_ENCODE(blockmap->alloc_offset)));
+		sizetostr(HAMMER_OFF_LONG_ENCODE(hget64(blockmap->alloc_offset))));
 	printf("total-pre-allocated: %s\n",
 		sizetostr(HAMMER_OFF_SHORT_ENCODE(volume->vol_free_off)));
 	printf("fsid:                %s\n", fsidstr);
@@ -482,63 +454,6 @@ nowtime(void)
 	return(xtime);
 }
 
-/*
- * TRIM the volume, but only if the backing store is not a regular file
- */
-static
-int
-trim_volume(volume_info_t volume)
-{
-	size_t olen;
-	char *dev_name, *p;
-	char sysctl_name[64];
-	int trim_enabled;
-	off_t ioarg[2];
-
-	if (is_regfile(volume)) {
-		hwarnx("Cannot TRIM regular file %s", volume->name);
-		return(-1);
-	}
-	if (strncmp(volume->name, "/dev/da", 7)) {
-		hwarnx("%s does not support the TRIM command", volume->name);
-		return(-1);
-	}
-
-	/* Extract a number from /dev/da?s? */
-	dev_name = strdup(volume->name);
-	p = strtok(dev_name + strlen("/dev/da"), "s");
-	sprintf(sysctl_name, "kern.cam.da.%s.trim_enabled", p);
-	free(dev_name);
-
-	trim_enabled = 0;
-	olen = sizeof(trim_enabled);
-
-	if (sysctlbyname(sysctl_name, &trim_enabled, &olen, NULL, 0) == -1) {
-		hwarnx("%s (%s) does not support the TRIM command",
-			volume->name, sysctl_name);
-		return(-1);
-	}
-	if (!trim_enabled) {
-		hwarnx("Erase device option selected, but sysctl (%s) "
-			"is not enabled", sysctl_name);
-		return(-1);
-	}
-
-	ioarg[0] = volume->device_offset;
-	ioarg[1] = volume->size;
-
-	printf("Trimming %s %s, sectors %llu-%llu\n",
-		volume->type, volume->name,
-		(unsigned long long)ioarg[0] / 512,
-		(unsigned long long)ioarg[1] / 512);
-
-	if (ioctl(volume->fd, DAIOCTRIM, ioarg) == -1) {
-		err(1, "Trimming %s failed", volume->name);
-		/* not reached */
-	}
-
-	return(0);
-}
 
 /*
  * Format a HAMMER volume.
@@ -563,21 +478,21 @@ format_volume(volume_info_t volume, int nvols, const char *label)
 	ondisk->vol_fsid = Hammer_FSId;
 	ondisk->vol_fstype = Hammer_FSType;
 	snprintf(ondisk->vol_label, sizeof(ondisk->vol_label), "%s", label);
-	ondisk->vol_no = volume->vol_no;
-	ondisk->vol_count = nvols;
-	ondisk->vol_version = HammerVersion;
+	ondisk->vol_no = hmk32(volume->vol_no);
+	ondisk->vol_count = hmk32(nvols);
+	ondisk->vol_version = hmk32(HammerVersion);
 
 	vol_alloc = HeaderJunkSize;
-	ondisk->vol_bot_beg = vol_alloc;
+	ondisk->vol_bot_beg = hmk64(vol_alloc);
 	vol_alloc += BootAreaSize;
-	ondisk->vol_mem_beg = vol_alloc;
+	ondisk->vol_mem_beg = hmk64(vol_alloc);
 	vol_alloc += MemoryLogSize;
 
 	/*
 	 * The remaining area is the zone 2 buffer allocation area.
 	 */
-	ondisk->vol_buf_beg = vol_alloc;
-	ondisk->vol_buf_end = volume->size & ~(int64_t)HAMMER_BUFMASK;
+	ondisk->vol_buf_beg = hmk64(vol_alloc);
+	ondisk->vol_buf_end = hmk64(volume->size & ~(int64_t)HAMMER_BUFMASK);
 	vol_buf_size = HAMMER_VOL_BUF_SIZE(ondisk);
 
 	if (vol_buf_size < (int64_t)sizeof(*ondisk)) {
@@ -590,8 +505,8 @@ format_volume(volume_info_t volume, int nvols, const char *label)
 		/* not reached */
 	}
 
-	ondisk->vol_rootvol = HAMMER_ROOT_VOLNO;
-	ondisk->vol_signature = HAMMER_FSBUF_VOLUME;
+	ondisk->vol_rootvol = hmk32(HAMMER_ROOT_VOLNO);
+	ondisk->vol_signature = hmk64(HAMMER_FSBUF_VOLUME);
 
 	volume->vol_free_off = HAMMER_ENCODE_RAW_BUFFER(volume->vol_no, 0);
 	volume->vol_free_end = HAMMER_ENCODE_RAW_BUFFER(volume->vol_no,
@@ -617,7 +532,7 @@ format_volume(volume_info_t volume, int nvols, const char *label)
 		/*
 		 * Starting TID
 		 */
-		ondisk->vol0_next_tid = createtid();
+		ondisk->vol0_next_tid = hmk64(createtid());
 
 		/*
 		 * Format freemap.  vol0_stat_freebigblocks is
@@ -625,8 +540,8 @@ format_volume(volume_info_t volume, int nvols, const char *label)
 		 * other than freemap zone at this point.
 		 */
 		format_freemap(volume);
-		assert(ondisk->vol0_stat_freebigblocks == 0);
-		ondisk->vol0_stat_freebigblocks = initialize_freemap(volume);
+		assert(hget64(ondisk->vol0_stat_freebigblocks) == 0);
+		ondisk->vol0_stat_freebigblocks = hmk64(initialize_freemap(volume));
 
 		/*
 		 * Format zones that are mapped to zone-2.
@@ -642,7 +557,7 @@ format_volume(volume_info_t volume, int nvols, const char *label)
 		 * is allocated for undo zone.
 		 */
 		format_undomap(volume, &UndoBufferSize);
-		assert(ondisk->vol0_stat_bigblocks == 0);
+		assert(hget64(ondisk->vol0_stat_bigblocks) == 0);
 		ondisk->vol0_stat_bigblocks = ondisk->vol0_stat_freebigblocks;
 
 		/*
@@ -650,13 +565,15 @@ format_volume(volume_info_t volume, int nvols, const char *label)
 		 * vol0_stat_freebigblocks whenever a new big-block
 		 * is allocated for required zones.
 		 */
-		ondisk->vol0_btree_root = format_root_directory(label);
-		++ondisk->vol0_stat_inodes;	/* root inode */
+		ondisk->vol0_btree_root = hmk64(format_root_directory(label));
+		/* root inode */
+		ondisk->vol0_stat_inodes =
+			hmk64(hget64(ondisk->vol0_stat_inodes) + 1);
 	} else {
-		freeblks = initialize_freemap(volume);
+		/* Single volume only: main() refuses more than one. */
 		root_vol = get_root_volume();
-		root_vol->ondisk->vol0_stat_freebigblocks += freeblks;
-		root_vol->ondisk->vol0_stat_bigblocks += freeblks;
+		freeblks = 0;
+		assert(root_vol == volume);
 	}
 }
 
@@ -692,14 +609,14 @@ format_root_directory(const char *label)
 	/*
 	 * Populate the inode data and inode record for the root directory.
 	 */
-	idata->version = HAMMER_INODE_DATA_VERSION;
-	idata->mode = 0755;
-	idata->ctime = xtime;
-	idata->mtime = xtime;
-	idata->atime = xtime;
+	idata->version = hmk16(HAMMER_INODE_DATA_VERSION);
+	idata->mode = hmk16(0755);
+	idata->ctime = hmk64(xtime);
+	idata->mtime = hmk64(xtime);
+	idata->atime = hmk64(xtime);
 	idata->obj_type = HAMMER_OBJTYPE_DIRECTORY;
-	idata->size = 0;
-	idata->nlinks = 1;
+	idata->size = hmk64(0);
+	idata->nlinks = hmk64(1);
 	if (HammerVersion >= HAMMER_VOL_VERSION_TWO)
 		idata->cap_flags |= HAMMER_INODE_CAP_DIR_LOCAL_INO;
 	if (HammerVersion >= HAMMER_VOL_VERSION_SIX)
@@ -708,40 +625,40 @@ format_root_directory(const char *label)
 	/*
 	 * Populate the PFS data for the root PFS.
 	 */
-	pfsd->sync_low_tid = 1;
-	pfsd->sync_beg_tid = 0;
-	pfsd->sync_end_tid = 0;	/* overridden by vol0_next_tid on root PFS */
+	pfsd->sync_low_tid = hmk64(1);
+	pfsd->sync_beg_tid = hmk64(0);
+	pfsd->sync_end_tid = hmk64(0); /* overridden by vol0_next_tid on root PFS */
 	pfsd->shared_uuid = Hammer_FSId;
 	pfsd->unique_uuid = Hammer_FSId;
-	pfsd->mirror_flags = 0;
+	pfsd->mirror_flags = hmk32(0);
 	snprintf(pfsd->label, sizeof(pfsd->label), "%s", label);
 
 	/*
 	 * Create the root of the B-Tree.  The root is a leaf node so we
 	 * do not have to worry about boundary elements.
 	 */
-	bnode->parent = 0;  /* no parent */
-	bnode->count = 2;
+	bnode->parent = hmk64(0);  /* no parent */
+	bnode->count = hmk32(2);
 	bnode->type = HAMMER_BTREE_TYPE_LEAF;
-	bnode->mirror_tid = 0;
+	bnode->mirror_tid = hmk64(0);
 
 	/*
 	 * Create the first node element for the inode.
 	 */
 	elm = &bnode->elms[0];
 	elm->leaf.base.btype = HAMMER_BTREE_TYPE_RECORD;
-	elm->leaf.base.localization = HAMMER_DEF_LOCALIZATION |
-				      HAMMER_LOCALIZE_INODE;
-	elm->leaf.base.obj_id = HAMMER_OBJID_ROOT;
-	elm->leaf.base.key = 0;
-	elm->leaf.base.create_tid = create_tid;
-	elm->leaf.base.delete_tid = 0;
-	elm->leaf.base.rec_type = HAMMER_RECTYPE_INODE;
+	elm->leaf.base.localization = hmk32(HAMMER_DEF_LOCALIZATION |
+					    HAMMER_LOCALIZE_INODE);
+	elm->leaf.base.obj_id = hmk64(HAMMER_OBJID_ROOT);
+	elm->leaf.base.key = hmk64(0);
+	elm->leaf.base.create_tid = hmk64(create_tid);
+	elm->leaf.base.delete_tid = hmk64(0);
+	elm->leaf.base.rec_type = hmk16(HAMMER_RECTYPE_INODE);
 	elm->leaf.base.obj_type = HAMMER_OBJTYPE_DIRECTORY;
-	elm->leaf.create_ts = (uint32_t)time(NULL);
+	elm->leaf.create_ts = hmk32((uint32_t)time(NULL));
 
-	elm->leaf.data_offset = idata_off;
-	elm->leaf.data_len = sizeof(*idata);
+	elm->leaf.data_offset = hmk64(idata_off);
+	elm->leaf.data_len = hmk32(sizeof(*idata));
 	hammer_crc_set_leaf(HammerVersion, idata, &elm->leaf);
 
 	/*
@@ -751,18 +668,19 @@ format_root_directory(const char *label)
 	 */
 	elm = &bnode->elms[1];
 	elm->leaf.base.btype = HAMMER_BTREE_TYPE_RECORD;
-	elm->leaf.base.localization = HAMMER_DEF_LOCALIZATION |
-				      HAMMER_LOCALIZE_MISC;
-	elm->leaf.base.obj_id = HAMMER_OBJID_ROOT;
-	elm->leaf.base.key = 0;
-	elm->leaf.base.create_tid = create_tid;
-	elm->leaf.base.delete_tid = 0;
-	elm->leaf.base.rec_type = HAMMER_RECTYPE_PFS;
+	elm->leaf.base.localization = hmk32(HAMMER_DEF_LOCALIZATION |
+					    HAMMER_LOCALIZE_MISC);
+	elm->leaf.base.obj_id = hmk64(HAMMER_OBJID_ROOT);
+	elm->leaf.base.key = hmk64(0);
+	elm->leaf.base.create_tid = hmk64(create_tid);
+	elm->leaf.base.delete_tid = hmk64(0);
+	elm->leaf.base.rec_type = hmk16(HAMMER_RECTYPE_PFS);
 	elm->leaf.base.obj_type = HAMMER_OBJTYPE_DIRECTORY;
-	elm->leaf.create_ts = (uint32_t)time(NULL);
+	elm->leaf.create_ts = hmk32((uint32_t)time(NULL));
 
-	elm->leaf.data_offset = pfsd_off;
-	elm->leaf.data_len = sizeof(*pfsd);
+	elm->leaf.data_offset = hmk64(pfsd_off);
+	elm->leaf.data_len = hmk32(sizeof(*pfsd));
+
 	hammer_crc_set_leaf(HammerVersion, pfsd, &elm->leaf);
 
 	hammer_crc_set_btree(HammerVersion, bnode);

@@ -34,9 +34,6 @@
 
 #include "hammer_util.h"
 
-#include <sys/diskslice.h>
-#include <sys/diskmbr.h>
-
 static void check_volume(volume_info_t volume);
 static void get_buffer_readahead(buffer_info_t base);
 static __inline int readhammervol(volume_info_t volume);
@@ -149,17 +146,14 @@ void
 __verify_volume(const volume_info_t volume)
 {
 	hammer_volume_ondisk_t ondisk = volume->ondisk;
+	const char *why;
 	char *fstype;
 
-	if (ondisk->vol_signature != HAMMER_FSBUF_VOLUME) {
-		errx(1, "verify_volume: Invalid volume signature %016jx",
-			ondisk->vol_signature);
-		/* not reached */
-	}
-	if (ondisk->vol_rootvol != HAMMER_ROOT_VOLNO) {
-		errx(1, "verify_volume: Invalid root volume# %d",
-			ondisk->vol_rootvol);
-		/* not reached */
+	if (hammer_admit_volume(ondisk, HAMMER_BUFSIZE, volume->size, &why)) {
+		if (why != hammer_admit_needs_recovery)
+			errx(1, "verify_volume: %s: %s", volume->name, why);
+		hwarnx("%s: %s; showing it without recovery",
+			volume->name, why);
 	}
 	hammer_uuid_to_string(&ondisk->vol_fstype, &fstype);
 	if (hammer_uuid_compare(&Hammer_FSType, &ondisk->vol_fstype)) {
@@ -173,12 +167,7 @@ __verify_volume(const volume_info_t volume)
 			volume->name);
 		/* not reached */
 	}
-	if (ondisk->vol_version < HAMMER_VOL_VERSION_MIN ||
-	    ondisk->vol_version >= HAMMER_VOL_VERSION_WIP) {
-		errx(1, "verify_volume: %s: Invalid volume version %u",
-			volume->name, ondisk->vol_version);
-		/* not reached */
-	}
+
 }
 
 /*
@@ -190,7 +179,8 @@ init_volume(const char *filename, int oflags, int32_t vol_no)
 	volume_info_t volume;
 
 	volume = __alloc_volume(filename, oflags);
-	volume->vol_no = volume->ondisk->vol_no = vol_no;
+	volume->ondisk->vol_no = hmk32(vol_no);
+	volume->vol_no = vol_no;
 
 	__add_volume(volume);
 
@@ -214,9 +204,9 @@ load_volume(const char *filename, int oflags, int verify_volume)
 		    volume->name);
 		/* not reached */
 	}
-	volume->vol_no = volume->ondisk->vol_no;
+	volume->vol_no = (int32_t)hget32(volume->ondisk->vol_no);
 	if (volume->vol_no == HAMMER_ROOT_VOLNO)
-		HammerVersion = volume->ondisk->vol_version;
+		HammerVersion = hget32(volume->ondisk->vol_version);
 
 	if (valid_hammer_volumes++ == 0)
 		Hammer_FSId = volume->ondisk->vol_fsid;
@@ -235,46 +225,25 @@ static
 void
 check_volume(volume_info_t volume)
 {
-	struct partinfo pinfo;
 	struct stat st;
+	u_int64_t bytes;
 
 	/*
-	 * Allow the formatting of block devices or regular files
+	 * Allow the formatting of block devices or regular files.  A
+	 * device's size is its partition (DKIOCGPARTINFO); the NeXT label
+	 * already keeps partitions clear of the label.
 	 */
-	if (ioctl(volume->fd, DIOCGPART, &pinfo) < 0) {
-		if (fstat(volume->fd, &st) < 0) {
-			err(1, "Unable to stat %s", volume->name);
-			/* not reached */
-		}
-		if (S_ISREG(st.st_mode)) {
-			volume->size = st.st_size;
-			volume->type = "REGFILE";
-		} else {
-			errx(1, "Unsupported file type for %s", volume->name);
-			/* not reached */
-		}
-	} else {
-		/*
-		 * When formatting a block device as a HAMMER volume the
-		 * sector size must be compatible.  HAMMER uses 16384 byte
-		 * filesystem buffers.
-		 */
-		if (pinfo.reserved_blocks) {
-			errx(1, "HAMMER cannot be placed in a partition "
-				"which overlaps the disklabel or MBR");
-			/* not reached */
-		}
-		if (pinfo.media_blksize > HAMMER_BUFSIZE ||
-		    HAMMER_BUFSIZE % pinfo.media_blksize) {
-			errx(1, "A media sector size of %d is not supported",
-			     pinfo.media_blksize);
-			/* not reached */
-		}
-
-		volume->size = pinfo.media_size;
-		volume->device_offset = pinfo.media_offset;
-		volume->type = "DEVICE";
+	if (fstat(volume->fd, &st) < 0) {
+		err(1, "Unable to stat %s", volume->name);
+		/* not reached */
 	}
+	if (hammer_device_size(volume->fd, &bytes) < 0) {
+		err(1, "Unable to size %s", volume->name);
+		/* not reached */
+	}
+	volume->size = bytes;
+	volume->device_offset = 0;
+	volume->type = S_ISREG(st.st_mode) ? "REGFILE" : "DEVICE";
 }
 
 int
@@ -351,7 +320,7 @@ __alloc_buffer(hammer_off_t zone2_offset, int isnew)
 
 	if (isnew <= 0) {
 		if (readhammerbuf(buffer) == -1) {
-			err(1, "Failed to read %s:%016jx at %016jx",
+			err(1, "Failed to read %s:%016qx at %016qx",
 			    volume->name,
 			    (intmax_t)buffer->zone2_offset,
 			    (intmax_t)buffer->raw_offset);
@@ -421,15 +390,16 @@ get_buffer_readahead(const buffer_info_t base)
 	volume = base->volume;
 
 	while (ri < re) {
-		if (raw_offset >= volume->ondisk->vol_buf_end)
+		if (raw_offset >= (int64_t)hget64(volume->ondisk->vol_buf_end))
 			break;
-		if (raw_offset < volume->ondisk->vol_buf_beg || ri == 0) {
+		if (raw_offset < (int64_t)hget64(volume->ondisk->vol_buf_beg) ||
+		    ri == 0) {
 			++ri;
 			raw_offset += HAMMER_BUFSIZE;
 			continue;
 		}
 		zone2_offset = HAMMER_ENCODE_RAW_BUFFER(volume->vol_no,
-			raw_offset - volume->ondisk->vol_buf_beg);
+			raw_offset - hget64(volume->ondisk->vol_buf_beg));
 		buffer = find_buffer(zone2_offset);
 		if (buffer == NULL) {
 			/* call with -1 to prevent another readahead */
@@ -553,10 +523,10 @@ format_blockmap(volume_info_t root_vol, int zone, hammer_off_t offset)
 	zone_base = HAMMER_ZONE_ENCODE(zone, offset);
 
 	bzero(blockmap, sizeof(*blockmap));
-	blockmap->phys_offset = 0;
-	blockmap->first_offset = zone_base;
-	blockmap->next_offset = zone_base;
-	blockmap->alloc_offset = HAMMER_ENCODE(zone, 255, -1);
+	blockmap->phys_offset = hmk64(0);
+	blockmap->first_offset = hmk64(zone_base);
+	blockmap->next_offset = hmk64(zone_base);
+	blockmap->alloc_offset = hmk64(HAMMER_ENCODE(zone, 255, -1));
 	hammer_crc_set_blockmap(HammerVersion, blockmap);
 }
 
@@ -581,8 +551,8 @@ format_freemap(volume_info_t root_vol)
 		isnew = ((i % HAMMER_BUFSIZE) == 0);
 		layer1 = get_buffer_data(layer1_offset + i, &buffer, isnew);
 		bzero(layer1, sizeof(*layer1));
-		layer1->phys_offset = HAMMER_BLOCKMAP_UNAVAIL;
-		layer1->blocks_free = 0;
+		layer1->phys_offset = hmk64(HAMMER_BLOCKMAP_UNAVAIL);
+		layer1->blocks_free = hmk64(0);
 		hammer_crc_set_layer1(HammerVersion, layer1);
 	}
 	assert(i == HAMMER_BIGBLOCK_SIZE);
@@ -590,10 +560,10 @@ format_freemap(volume_info_t root_vol)
 
 	blockmap = &root_vol->ondisk->vol0_blockmap[HAMMER_ZONE_FREEMAP_INDEX];
 	bzero(blockmap, sizeof(*blockmap));
-	blockmap->phys_offset = layer1_offset;
-	blockmap->first_offset = 0;
-	blockmap->next_offset = HAMMER_ENCODE_RAW_BUFFER(0, 0);
-	blockmap->alloc_offset = HAMMER_ENCODE_RAW_BUFFER(255, -1);
+	blockmap->phys_offset = hmk64(layer1_offset);
+	blockmap->first_offset = hmk64(0);
+	blockmap->next_offset = hmk64(HAMMER_ENCODE_RAW_BUFFER(0, 0));
+	blockmap->alloc_offset = hmk64(HAMMER_ENCODE_RAW_BUFFER(255, -1));
 	hammer_crc_set_blockmap(HammerVersion, blockmap);
 }
 
@@ -636,12 +606,12 @@ initialize_freemap(volume_info_t volume)
 	for (phys_offset = HAMMER_ENCODE_RAW_BUFFER(volume->vol_no, 0);
 	     phys_offset < aligned_vol_free_end;
 	     phys_offset += HAMMER_BLOCKMAP_LAYER2) {
-		layer1_offset = freemap->phys_offset +
+		layer1_offset = hget64(freemap->phys_offset) +
 				HAMMER_BLOCKMAP_LAYER1_OFFSET(phys_offset);
 		layer1 = get_buffer_data(layer1_offset, &buffer1, 0);
-		if (layer1->phys_offset == HAMMER_BLOCKMAP_UNAVAIL) {
-			layer1->phys_offset = bootstrap_bigblock(volume);
-			layer1->blocks_free = 0;
+		if (hget64(layer1->phys_offset) == HAMMER_BLOCKMAP_UNAVAIL) {
+			layer1->phys_offset = hmk64(bootstrap_bigblock(volume));
+			layer1->blocks_free = hmk64(0);
 			buffer1->cache.modified = 1;
 			hammer_crc_set_layer1(HammerVersion, layer1);
 		}
@@ -654,15 +624,15 @@ initialize_freemap(volume_info_t volume)
 	     phys_offset < aligned_vol_free_end;
 	     phys_offset += HAMMER_BLOCKMAP_LAYER2) {
 		layer1_count = 0;
-		layer1_offset = freemap->phys_offset +
+		layer1_offset = hget64(freemap->phys_offset) +
 				HAMMER_BLOCKMAP_LAYER1_OFFSET(phys_offset);
 		layer1 = get_buffer_data(layer1_offset, &buffer1, 0);
-		assert(layer1->phys_offset != HAMMER_BLOCKMAP_UNAVAIL);
+		assert(hget64(layer1->phys_offset) != HAMMER_BLOCKMAP_UNAVAIL);
 
 		for (block_offset = 0;
 		     block_offset < HAMMER_BLOCKMAP_LAYER2;
 		     block_offset += HAMMER_BIGBLOCK_SIZE) {
-			layer2_offset = layer1->phys_offset +
+			layer2_offset = hget64(layer1->phys_offset) +
 				        HAMMER_BLOCKMAP_LAYER2_OFFSET(block_offset);
 			layer2 = get_buffer_data(layer2_offset, &buffer2, 0);
 			bzero(layer2, sizeof(*layer2));
@@ -673,24 +643,25 @@ initialize_freemap(volume_info_t volume)
 				 * of the freemap bootstrap.
 				 */
 				layer2->zone = HAMMER_ZONE_FREEMAP_INDEX;
-				layer2->append_off = HAMMER_BIGBLOCK_SIZE;
-				layer2->bytes_free = 0;
+				layer2->append_off = hmk32(HAMMER_BIGBLOCK_SIZE);
+				layer2->bytes_free = hmk32(0);
 			} else if (phys_offset + block_offset < volume->vol_free_end) {
 				layer2->zone = 0;
-				layer2->append_off = 0;
-				layer2->bytes_free = HAMMER_BIGBLOCK_SIZE;
+				layer2->append_off = hmk32(0);
+				layer2->bytes_free = hmk32(HAMMER_BIGBLOCK_SIZE);
 				++count;
 				++layer1_count;
 			} else {
 				layer2->zone = HAMMER_ZONE_UNAVAIL_INDEX;
-				layer2->append_off = HAMMER_BIGBLOCK_SIZE;
-				layer2->bytes_free = 0;
+				layer2->append_off = hmk32(HAMMER_BIGBLOCK_SIZE);
+				layer2->bytes_free = hmk32(0);
 			}
 			hammer_crc_set_layer2(HammerVersion, layer2);
 			buffer2->cache.modified = 1;
 		}
 
-		layer1->blocks_free += layer1_count;
+		layer1->blocks_free =
+			hmk64(hget64(layer1->blocks_free) + layer1_count);
 		hammer_crc_set_layer1(HammerVersion, layer1);
 		buffer1->cache.modified = 1;
 	}
@@ -783,31 +754,31 @@ format_undomap(volume_info_t root_vol, int64_t *undo_buffer_size)
 
 	blockmap = &ondisk->vol0_blockmap[HAMMER_ZONE_UNDO_INDEX];
 	bzero(blockmap, sizeof(*blockmap));
-	blockmap->phys_offset = HAMMER_BLOCKMAP_UNAVAIL;
-	blockmap->first_offset = HAMMER_ENCODE_UNDO(0);
+	blockmap->phys_offset = hmk64(HAMMER_BLOCKMAP_UNAVAIL);
+	blockmap->first_offset = hmk64(HAMMER_ENCODE_UNDO(0));
 	blockmap->next_offset = blockmap->first_offset;
-	blockmap->alloc_offset = HAMMER_ENCODE_UNDO(undo_limit);
+	blockmap->alloc_offset = hmk64(HAMMER_ENCODE_UNDO(undo_limit));
 	hammer_crc_set_blockmap(HammerVersion, blockmap);
 
 	limit_index = undo_limit / HAMMER_BIGBLOCK_SIZE;
 	assert(limit_index <= HAMMER_MAX_UNDO_BIGBLOCKS);
 
 	for (n = 0; n < limit_index; ++n)
-		ondisk->vol0_undo_array[n] = alloc_undo_bigblock(root_vol);
+		ondisk->vol0_undo_array[n] = hmk64(alloc_undo_bigblock(root_vol));
 	while (n < HAMMER_MAX_UNDO_BIGBLOCKS)
-		ondisk->vol0_undo_array[n++] = HAMMER_BLOCKMAP_UNAVAIL;
+		ondisk->vol0_undo_array[n++] = hmk64(HAMMER_BLOCKMAP_UNAVAIL);
 
 	/*
 	 * Pre-initialize the UNDO blocks (HAMMER version 4+)
 	 */
-	printf("initializing the undo map (%jd MB)\n",
-		(intmax_t)HAMMER_OFF_LONG_ENCODE(blockmap->alloc_offset) /
+	printf("initializing the undo map (%qd MB)\n",
+		(intmax_t)HAMMER_OFF_LONG_ENCODE(hget64(blockmap->alloc_offset)) /
 		(1024 * 1024));
 
-	scan = blockmap->first_offset;
+	scan = hget64(blockmap->first_offset);
 	seqno = 0;
 
-	while (scan < blockmap->alloc_offset) {
+	while (scan < hget64(blockmap->alloc_offset)) {
 		hammer_fifo_head_t head;
 		hammer_fifo_tail_t tail;
 		int bytes = HAMMER_UNDO_ALIGN;
@@ -818,14 +789,14 @@ format_undomap(volume_info_t root_vol, int64_t *undo_buffer_size)
 		tail = (void *)((char *)head + bytes - sizeof(*tail));
 
 		bzero(head, bytes);
-		head->hdr_signature = HAMMER_HEAD_SIGNATURE;
-		head->hdr_type = HAMMER_HEAD_TYPE_DUMMY;
-		head->hdr_size = bytes;
-		head->hdr_seq = seqno++;
+		head->hdr_signature = hmk16(HAMMER_HEAD_SIGNATURE);
+		head->hdr_type = hmk16(HAMMER_HEAD_TYPE_DUMMY);
+		head->hdr_size = hmk32(bytes);
+		head->hdr_seq = hmk32(seqno++);
 
-		tail->tail_signature = HAMMER_TAIL_SIGNATURE;
-		tail->tail_type = HAMMER_HEAD_TYPE_DUMMY;
-		tail->tail_size = bytes;
+		tail->tail_signature = hmk16(HAMMER_TAIL_SIGNATURE);
+		tail->tail_type = hmk16(HAMMER_HEAD_TYPE_DUMMY);
+		tail->tail_size = hmk32(bytes);
 
 		hammer_crc_set_fifo_head(HammerVersion, head, bytes);
 
@@ -864,7 +835,7 @@ print_blockmap(const volume_info_t volume)
 #define INDENT ""
 
 	printf(INDENT"vol_label\t%s\n", ondisk->vol_label);
-	printf(INDENT"vol_count\t%d\n", ondisk->vol_count);
+	printf(INDENT"vol_count\t%d\n", (int32_t)hget32(ondisk->vol_count));
 
 	hammer_uuid_to_string(&ondisk->vol_fstype, &fstype);
 	hammer_uuid_to_string(&ondisk->vol_fsid, &fsid);
@@ -877,20 +848,22 @@ print_blockmap(const volume_info_t volume)
 	free(fstype);
 	free(fsid);
 
-	printf(INDENT"vol_bot_beg\t%s\n", sizetostr(ondisk->vol_bot_beg));
-	printf(INDENT"vol_mem_beg\t%s\n", sizetostr(ondisk->vol_mem_beg));
-	printf(INDENT"vol_buf_beg\t%s\n", sizetostr(ondisk->vol_buf_beg));
-	printf(INDENT"vol_buf_end\t%s\n", sizetostr(ondisk->vol_buf_end));
-	printf(INDENT"vol0_next_tid\t%016jx\n",
-	       (uintmax_t)ondisk->vol0_next_tid);
+	printf(INDENT"vol_bot_beg\t%s\n", sizetostr(hget64(ondisk->vol_bot_beg)));
+	printf(INDENT"vol_mem_beg\t%s\n", sizetostr(hget64(ondisk->vol_mem_beg)));
+	printf(INDENT"vol_buf_beg\t%s\n", sizetostr(hget64(ondisk->vol_buf_beg)));
+	printf(INDENT"vol_buf_end\t%s\n", sizetostr(hget64(ondisk->vol_buf_end)));
+	printf(INDENT"vol0_next_tid\t%016qx\n",
+	       (uintmax_t)hget64(ondisk->vol0_next_tid));
 
 	blockmap = &ondisk->vol0_blockmap[HAMMER_ZONE_UNDO_INDEX];
-	size = HAMMER_OFF_LONG_ENCODE(blockmap->alloc_offset);
-	if (blockmap->first_offset <= blockmap->next_offset)
-		used = blockmap->next_offset - blockmap->first_offset;
+	size = HAMMER_OFF_LONG_ENCODE(hget64(blockmap->alloc_offset));
+	if (hget64(blockmap->first_offset) <= hget64(blockmap->next_offset))
+		used = hget64(blockmap->next_offset) -
+			hget64(blockmap->first_offset);
 	else
-		used = blockmap->alloc_offset - blockmap->first_offset +
-			HAMMER_OFF_LONG_ENCODE(blockmap->next_offset);
+		used = hget64(blockmap->alloc_offset) -
+			hget64(blockmap->first_offset) +
+			HAMMER_OFF_LONG_ENCODE(hget64(blockmap->next_offset));
 	printf(INDENT"undo_size\t%s\n", sizetostr(size));
 	printf(INDENT"undo_used\t%s\n", sizetostr(used));
 
@@ -898,12 +871,13 @@ print_blockmap(const volume_info_t volume)
 	       "phys             first            next             alloc\n");
 	for (i = 0; i < HAMMER_MAX_ZONES; i++) {
 		blockmap = &ondisk->vol0_blockmap[i];
-		printf(INDENT"zone %-2d %-10s %016jx %016jx %016jx %016jx\n",
+		printf(INDENT"zone %-2d %-10s %016qx %016qx %016qx %016qx\n",
 			i, zone_labels[i],
-			(uintmax_t)blockmap->phys_offset,
-			(uintmax_t)blockmap->first_offset,
-			(uintmax_t)blockmap->next_offset,
-			(uintmax_t)blockmap->alloc_offset);
+			(uintmax_t)hget64(blockmap->phys_offset),
+			(uintmax_t)hget64(blockmap->first_offset),
+			(uintmax_t)hget64(blockmap->next_offset),
+			(uintmax_t)hget64(blockmap->alloc_offset));
+
 	}
 }
 
@@ -929,6 +903,10 @@ flush_volume(volume_info_t volume)
 		TAILQ_FOREACH(buffer, &volume->buffer_lists[i], entry)
 			flush_buffer(buffer);
 	}
+	/* Upstream leaves this to the kernel's first flush; set it now. */
+	if (!volume->rdonly)
+		hammer_crc_set_volume(hget32(volume->ondisk->vol_version),
+				      volume->ondisk);
 	if (writehammervol(volume) == -1) {
 		err(1, "Write volume %d (%s)", volume->vol_no, volume->name);
 		/* not reached */

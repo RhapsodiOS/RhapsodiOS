@@ -79,6 +79,10 @@ main(void)
 	v = good(); seal(v); buf.bytes[100] ^= 1;	/* inside vol_label */
 	CHECK(admit(DEV_BYTES, sizeof(buf), EINVAL));
 
+	/* Upstream newfs_hammer leaves vol_crc 0 until the kernel's first flush. */
+	v = good(); v->vol_crc = hmk32(0);
+	CHECK(admit(DEV_BYTES, sizeof(buf), 0));
+
 	v = good(); seal(v);
 	CHECK(admit(DEV_BYTES - HAMMER_BUFSIZE, sizeof(buf), EINVAL));
 

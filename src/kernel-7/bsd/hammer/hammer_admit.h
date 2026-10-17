@@ -42,4 +42,7 @@
 int hammer_admit_volume(const void *hdr, size_t len, uint64_t device_bytes,
 			const char **why);
 
+/* *why for an otherwise valid volume whose UNDO FIFO needs recovery. */
+extern const char hammer_admit_needs_recovery[];
+
 #endif /* !VFS_HAMMER_ADMIT_H_ */

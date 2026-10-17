@@ -35,6 +35,8 @@
 
 #define REFUSE(err, msg)	do { *why = (msg); return (err); } while (0)
 
+const char hammer_admit_needs_recovery[] = "volume needs UNDO recovery";
+
 int
 hammer_admit_volume(const void *hdr, size_t len, uint64_t device_bytes,
 		    const char **why)
@@ -59,7 +61,12 @@ hammer_admit_volume(const void *hdr, size_t len, uint64_t device_bytes,
 	version = hget32(v->vol_version);
 	if (version != HAMMER_VOL_VERSION_SEVEN)
 		REFUSE(EOPNOTSUPP, "only HAMMER version 7 is supported");
-	if (!hammer_crc_test_volume(version, (hammer_volume_ondisk_t)v))
+	/*
+	 * Upstream newfs_hammer leaves vol_crc 0; the kernel sets it on its
+	 * first flush and never checks it.  Treat 0 as "not yet set".
+	 */
+	if (hget32(v->vol_crc) != 0 &&
+	    !hammer_crc_test_volume(version, (hammer_volume_ondisk_t)v))
 		REFUSE(EINVAL, "volume header CRC mismatch");
 
 	if (hget32(v->vol_count) != 1 || hget32(v->vol_rootvol) != 0)
@@ -78,6 +85,6 @@ hammer_admit_volume(const void *hdr, size_t len, uint64_t device_bytes,
 
 	undo = (struct hammer_blockmap *)&v->vol0_blockmap[HAMMER_ZONE_UNDO_INDEX];
 	if (hget64(undo->first_offset) != hget64(undo->next_offset))
-		REFUSE(EOPNOTSUPP, "volume needs UNDO recovery");
+		REFUSE(EOPNOTSUPP, hammer_admit_needs_recovery);
 	return (0);
 }

@@ -116,7 +116,7 @@ typedef uint32_t hammer_crc_t;
 
 #define HAMMER_MIN_TID		0ULL			/* unsigned */
 #define HAMMER_MAX_TID		0xFFFFFFFFFFFFFFFFULL	/* unsigned */
-#define HAMMER_MIN_KEY		-0x8000000000000000LL	/* signed */
+#define HAMMER_MIN_KEY		(-0x7FFFFFFFFFFFFFFFLL - 1) /* signed */
 #define HAMMER_MAX_KEY		0x7FFFFFFFFFFFFFFFLL	/* signed */
 #define HAMMER_MIN_OBJID	HAMMER_MIN_KEY		/* signed */
 #define HAMMER_MAX_OBJID	HAMMER_MAX_KEY		/* signed */

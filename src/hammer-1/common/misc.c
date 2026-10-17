@@ -37,15 +37,39 @@
 #include "hammer_util.h"
 
 void
+hwarn(const char *format, ...)
+{
+	char buf[512];
+	va_list ap;
+
+	snprintf(buf, sizeof(buf), "WARNING: %s", format);
+	va_start(ap, format);
+	vwarn(buf, ap);
+	va_end(ap);
+}
+
+void
+hwarnx(const char *format, ...)
+{
+	char buf[512];
+	va_list ap;
+
+	snprintf(buf, sizeof(buf), "WARNING: %s", format);
+	va_start(ap, format);
+	vwarnx(buf, ap);
+	va_end(ap);
+}
+
+void
 hammer_key_beg_init(hammer_base_elm_t base)
 {
 	bzero(base, sizeof(*base));
 
-	base->localization = HAMMER_MIN_LOCALIZATION;
-	base->obj_id = HAMMER_MIN_OBJID;
-	base->key = HAMMER_MIN_KEY;
-	base->create_tid = 1;
-	base->rec_type = HAMMER_MIN_RECTYPE;
+	base->localization = hmk32(HAMMER_MIN_LOCALIZATION);
+	base->obj_id = hmk64(HAMMER_MIN_OBJID);
+	base->key = hmk64(HAMMER_MIN_KEY);
+	base->create_tid = hmk64(1);
+	base->rec_type = hmk16(HAMMER_MIN_RECTYPE);
 	base->obj_type = 0;
 }
 
@@ -54,11 +78,11 @@ hammer_key_end_init(hammer_base_elm_t base)
 {
 	bzero(base, sizeof(*base));
 
-	base->localization = HAMMER_MAX_LOCALIZATION;
-	base->obj_id = HAMMER_MAX_OBJID;
-	base->key = HAMMER_MAX_KEY;
-	base->create_tid = HAMMER_MAX_TID;
-	base->rec_type = HAMMER_MAX_RECTYPE;
+	base->localization = hmk32(HAMMER_MAX_LOCALIZATION);
+	base->obj_id = hmk64(HAMMER_MAX_OBJID);
+	base->key = hmk64(HAMMER_MAX_KEY);
+	base->create_tid = hmk64(HAMMER_MAX_TID);
+	base->rec_type = hmk16(HAMMER_MAX_RECTYPE);
 	base->obj_type = 0;
 }
 
@@ -312,7 +336,7 @@ hammer_add_zone_stat_layer2(zone_stat_t stats,
 	hammer_blockmap_layer2_t layer2)
 {
 	_hammer_add_zone_stat(stats, layer2->zone,
-		HAMMER_BIGBLOCK_SIZE - layer2->bytes_free, 1, 0);
+		HAMMER_BIGBLOCK_SIZE - (int32_t)hget32(layer2->bytes_free), 1, 0);
 }
 
 static __inline
@@ -342,7 +366,7 @@ hammer_print_zone_stat(zone_stat_t stats)
 	printf(INDENT"zone #             "
 		"blocks       items              used[B]             used[%%]\n");
 	for (i = 0; i < HAMMER_MAX_ZONES; i++) {
-		printf(INDENT"zone %-2d %-10s %-12ju %-18ju %-19ju %g\n",
+		printf(INDENT"zone %-2d %-10s %-12qu %-18qu %-19qu %g\n",
 			i, zone_labels[i], p->blocks, p->items, p->used,
 			_calc_used_percentage(p->blocks, p->used));
 		total_blocks += p->blocks;
@@ -356,7 +380,7 @@ hammer_print_zone_stat(zone_stat_t stats)
 	 * always 100% used.
 	 */
 	printf(INDENT"--------------------------------------------------------------------------------\n");
-	printf(INDENT"total              %-12ju %-18ju %-19ju %g\n",
+	printf(INDENT"total              %-12qu %-18qu %-19qu %g\n",
 		(uintmax_t)total_blocks,
 		(uintmax_t)total_items,
 		(uintmax_t)total_used,

@@ -53,16 +53,17 @@
 #include <errno.h>
 #include <err.h>
 #include <fcntl.h>
-#include <libgen.h>
 #include <limits.h>
 #include <signal.h>
 #include <time.h>
 #include <unistd.h>
 #include <assert.h>
 
-#include <vfs/hammer/hammer_disk.h>
-#include <vfs/hammer/hammer_ioctl.h>
-#include <vfs/hammer/hammer_crc.h>
+#include "compat.h"
+#include "hammer_disk.h"
+#include "hammer_ioctl.h"
+#include "hammer_crc.h"
+#include "hammer_admit.h"
 
 #define HAMMER_BUFLISTS		64
 #define HAMMER_BUFLISTMASK	(HAMMER_BUFLISTS - 1)
@@ -186,7 +187,8 @@ int hammer_uuid_to_string(const hammer_uuid_t *uuid, char **str);
 int hammer_uuid_name_lookup(hammer_uuid_t *uuid, const char *str);
 int hammer_uuid_compare(const hammer_uuid_t *uuid1, const hammer_uuid_t *uuid2);
 
-#define hwarn(format, args...)	warn("WARNING: "format,## args)
-#define hwarnx(format, args...)	warnx("WARNING: "format,## args)
+/* gcc 2.7's preprocessor has no variadic macros; see misc.c. */
+void hwarn(const char *format, ...);
+void hwarnx(const char *format, ...);
 
 #endif /* !HAMMER_UTIL_H_ */

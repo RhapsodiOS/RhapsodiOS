@@ -34,7 +34,15 @@
 
 #include "hammer.h"
 
-#include <fstab.h>
+/*
+ * Commands this Rhapsody port supports so far.  The rest of the upstream
+ * dispatch stays below under #if 0 until its phase brings it back.
+ */
+static const char *const SupportedCmds[] = {
+	"namekey1", "namekey2", "namekey32",
+	"show", "show-undo", "blockmap", "checkmap",
+	NULL
+};
 
 static __inline void hammer_parse_blkdevs(const char *blkdevs, int oflags);
 static void __hammer_parse_blkdevs(const char *blkdevs, int oflags,
@@ -62,6 +70,8 @@ uint64_t SplitupOpt = 4ULL * 1024ULL * 1024ULL * 1024ULL;
 uint64_t MemoryLimit = 1024LLU * 1024 * 1024;
 const char *SplitupOptStr;
 const char *CyclePath;
+const char *ScoreBoardFile;
+const char *RestrictTarget;
 
 int
 main(int ac, char **av)
@@ -266,10 +276,22 @@ main(int ac, char **av)
 	/*
 	 * Parse commands
 	 */
+	{
+		const char *const *cmd;
+
+		for (cmd = SupportedCmds; *cmd; ++cmd) {
+			if (strcmp(av[0], *cmd) == 0)
+				break;
+		}
+		if (*cmd == NULL)
+			errx(1, "%s not supported yet", av[0]);
+	}
+#if 0 /* not yet supported on Rhapsody */
 	if (strcmp(av[0], "synctid") == 0) {
 		hammer_cmd_synctid(av + 1, ac - 1);
 		exit(0);
 	}
+#endif
 	if (strcmp(av[0], "namekey2") == 0) {
 		int64_t key;
 		int32_t crcx;
@@ -308,7 +330,7 @@ main(int ac, char **av)
 		}
 		if (key == 0)
 			key |= 0x100000000LL;
-		printf("0x%016jx\n", (uintmax_t)key);
+		printf("0x%016qx\n", (uintmax_t)key);
 		exit(0);
 	}
 	if (strcmp(av[0], "namekey1") == 0) {
@@ -321,7 +343,7 @@ main(int ac, char **av)
 		key = (int64_t)(crc32(av[1], strlen(av[1])) & 0x7FFFFFFF) << 32;
 		if (key == 0)
 			key |= 0x100000000LL;
-		printf("0x%016jx\n", (uintmax_t)key);
+		printf("0x%016qx\n", (uintmax_t)key);
 		exit(0);
 	}
 	if (strcmp(av[0], "namekey32") == 0) {
@@ -337,6 +359,7 @@ main(int ac, char **av)
 		printf("0x%08x\n", key);
 		exit(0);
 	}
+#if 0 /* not yet supported on Rhapsody */
 	if (strcmp(av[0], "pfs-status") == 0) {
 		hammer_cmd_pseudofs_status(av + 1, ac - 1);
 		exit(0);
@@ -516,6 +539,7 @@ main(int ac, char **av)
 		hammer_cmd_volume_blkdevs(av + 1, ac - 1);
 		exit(0);
 	}
+#endif
 
 	if (strcmp(av[0], "show") == 0) {
 		const char *arg = NULL;
@@ -553,11 +577,13 @@ main(int ac, char **av)
 		hammer_cmd_show_undo();
 		exit(0);
 	}
+#if 0 /* not yet supported on Rhapsody */
 	if (strcmp(av[0], "recover") == 0) {
 		__hammer_parse_blkdevs(blkdevs, O_RDONLY, 0, 1);
 		hammer_cmd_recover(av + 1, ac - 1);
 		exit(0);
 	}
+#endif
 	if (strcmp(av[0], "blockmap") == 0) {
 		hammer_parse_blkdevs(blkdevs, O_RDONLY);
 		hammer_cmd_blockmap();
@@ -568,11 +594,13 @@ main(int ac, char **av)
 		hammer_cmd_checkmap();
 		exit(0);
 	}
+#if 0 /* not yet supported on Rhapsody */
 	if (strcmp(av[0], "strip") == 0) {
 		__hammer_parse_blkdevs(blkdevs, O_RDWR, 0, 0);
 		hammer_cmd_strip();
 		exit(0);
 	}
+#endif
 
 	usage(1);
 	/* not reached */
@@ -607,7 +635,7 @@ __hammer_parse_blkdevs(const char *blkdevs, int oflags, int verify_volume,
 	while ((volname = copy) != NULL) {
 		if ((copy = strchr(copy, ':')) != NULL)
 			*copy++ = 0;
-		volname = getdevpath(volname, 0);
+		volname = strdup(volname);	/* no /etc/devtab on Rhapsody */
 		if (strchr(volname, ':')) {
 			__hammer_parse_blkdevs(volname, oflags, verify_volume,
 				verify_count);
@@ -622,9 +650,10 @@ __hammer_parse_blkdevs(const char *blkdevs, int oflags, int verify_volume,
 
 	assert(volume);
 	if (verify_count) {
-		if (vol_count != volume->ondisk->vol_count) {
+		if (vol_count != (int32_t)hget32(volume->ondisk->vol_count)) {
 			errx(1, "Volume header says %d volumes, but %d specified.",
-				volume->ondisk->vol_count, vol_count);
+				(int32_t)hget32(volume->ondisk->vol_count), vol_count);
+
 			/* not reached */
 		}
 		if (get_root_volume() == NULL) {

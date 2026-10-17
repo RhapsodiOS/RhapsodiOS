@@ -52,6 +52,28 @@ libkern has neither). They include `hammer_port.h` and always declare their
 prototypes, since the Rhapsody kernel defines `KERNEL`, not `_KERNEL`.
 `icrc32.c`'s slicing-by-8 path already handles big-endian hosts.
 
+### Varargs escape the type check
+
+A wrapper struct passed to `printf()`/`panic()` or any other varargs function
+compiles silently. In that position the type check catches nothing. A
+`lelint.py`-style audit (every on-disk field access must sit inside
+`hget*()` or be stored with `hmk*()`) is run over each converted file, and
+its hits are fixed or confirmed as host-struct fields of the same name. The
+first such bug it found was `hammer show` printing `mode=27777600755`.
+
+## Imported support headers
+
+`hammer_tree.h` is DragonFly `sys/sys/tree.h` at the pinned commit. Its
+`RB_SCAN` spinlock is a placeholder (`int rbh_spin`) and
+`RB_SCAN_LOCK`/`RB_SCAN_UNLOCK` do nothing, because Rhapsody's BSD side is
+uniprocessor (see the token audit in Task 5). gcc 2.7's cpp rejects an empty
+macro argument, so the storage-class argument is passed as the empty macro
+`RB_STORQUAL_NONE`.
+
+`hammer_port.h` also supplies the `<sys/queue.h>` accessors that 4.4BSD-Lite
+lacks (`TAILQ_FIRST`, `TAILQ_NEXT`, `TAILQ_EMPTY`, `TAILQ_FOREACH` and
+`TAILQ_HEAD_INITIALIZER`), plus `__unused`, `__dead2` and `__always_inline`.
+
 ## Admission
 
 `hammer_admit_volume()` (`hammer_admit.c`) is the single admission rule set,
@@ -60,7 +82,35 @@ shared by the kernel mount and the tools. It refuses:
 - A short header, an unknown device size, a wrong or byte-swapped signature,
   a CRC mismatch, bad geometry or a volume larger than its device: `EINVAL`.
 - A version other than 7, `vol_count != 1`, `vol_no != 0`, or an UNDO FIFO
-  that needs recovery: `EOPNOTSUPP`.
+  that needs recovery: `EOPNOTSUPP`. The recovery case returns the
+  `hammer_admit_needs_recovery` string, so offline tools can warn and continue.
+
+Upstream `newfs_hammer` never sets `vol_crc`. The kernel sets it on its first
+flush and never checks it. Admission therefore treats `vol_crc == 0` as "not
+yet set" and verifies any non-zero CRC. Our `newfs_hammer` sets it on every
+volume flush.
+
+## Tools (src/hammer-1)
+
+- `common/` holds the shared upstream tool sources. It also holds mirrors of
+  `crc32.c`, `icrc32.c` and `hammer_admit.c`. `tests/Makefile mirrors` runs
+  `cmp` on each against this directory.
+- The headers come from `kernel-hdrs` (`install_hammer_hdrs` in
+  `conf/Makefile.template`).
+- `common/compat.[ch]` cover Rhapsody libc gaps: `pread`/`pwrite`,
+  `strtoull`/`strtoll` (`strtouq`/`strtoq`), `intmax_t`, `ULLONG_MAX`,
+  `hexdump(3)` and `hammer_device_size()` (`DKIOCGPARTINFO` or `fstat`).
+- Rhapsody's printf supports `%q`. `%ll` prints only the low 32 bits and
+  `%j` is unknown, so every 64-bit conversion uses `%q`.
+- gcc 2.7's cpp has no variadic macros, so `hwarn`/`hwarnx` are functions.
+- `newfs_hammer` creates a single version-7 volume only. `-E` (TRIM) is
+  refused, and the version comes from `-V` or the default, not
+  `sysctlbyname`.
+- `hammer` dispatches `show`, `show-undo`, `blockmap`, `checkmap` and the
+  `namekey*` helpers. The other commands stay in `hammer.c` under `#if 0`,
+  and their sources are left out of the Makefile.
+- Rhapsody has no `/dev/zero`, and `dd` will not extend a file with `seek`.
+  Test images are made with perl `truncate`, at 2047 MiB to stay below 2^31.
 
 ## Evidence
 

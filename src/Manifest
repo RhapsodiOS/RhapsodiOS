@@ -42,6 +42,7 @@ dir     Commands/gnutar-1 all
 dir     Commands/gnuzip-1 all
 dir     Commands/grep-1 all
 dir     Developer/Commands/groff-1 all
+dir     hammer-1              all
 dir     hfs-1                 all
 dir     kernel-7              all
 dir     kernload-1            all

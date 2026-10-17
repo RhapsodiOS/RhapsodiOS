@@ -1,0 +1,15 @@
+{
+    DYNAMIC_CODE_GEN = YES;
+    FILESTABLE = {
+        H_FILES = ();
+        OTHER_SOURCES = (Makefile.preamble, Makefile, Makefile.postamble);
+        SUBPROJECTS = (newfs_hammer, hammer);
+    };
+    LANGUAGE = English;
+    MAKEFILEDIR = "$(MAKEFILEPATH)/pb_makefiles";
+    NEXTSTEP_BUILDTOOL = /bin/gnumake;
+    PROJECTNAME = hammer;
+    PROJECTTYPE = Aggregate;
+    PROJECTVERSION = 2.8;
+    TARGETS = ();
+}

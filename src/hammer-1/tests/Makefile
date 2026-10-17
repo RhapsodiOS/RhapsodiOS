@@ -10,7 +10,11 @@ COMMON = ../common/ondisk.c ../common/cache.c ../common/blockmap.c \
 HAMMER = ../hammer/hammer.c ../hammer/cmd_show.c ../hammer/cmd_blockmap.c
 IMG = /var/tmp/hammer-newfs-show.img
 
-all: newfs_hammer hammer
+all: newfs_hammer hammer hammer_walk
+
+# Portable tree manifest; the same source is compiled on DragonFly.
+hammer_walk: hammer_walk.c
+	$(CC) -O hammer_walk.c -o $@
 
 newfs_hammer: ../newfs_hammer/newfs_hammer.c $(COMMON)
 	$(CC) $(CFLAGS) ../newfs_hammer/newfs_hammer.c $(COMMON) -o $@
@@ -36,6 +40,6 @@ ppc:
 	    $(COMMON:../%=../../%)
 
 clean:
-	rm -rf newfs_hammer hammer ppc *.out
+	rm -rf newfs_hammer hammer hammer_walk ppc *.out
 
 .PHONY: all mirrors check ppc clean

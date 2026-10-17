@@ -112,6 +112,16 @@ volume flush.
 - Rhapsody has no `/dev/zero`, and `dd` will not extend a file with `seek`.
   Test images are made with perl `truncate`, at 2047 MiB to stay below 2^31.
 
+## Upstream defects found (to examine in Phase 2)
+
+- **`utimes()` does not persist** on DragonFly 6.4.2 HAMMER. An explicit mtime
+  holds in memory and through `sync`/`hammer synctid`, but a remount shows the
+  creation time again, even after a forced inode rewrite (`chmod`/`chown`).
+  Reproduced in `vm/work/dfly/run-diag-4` and `run-diag-5`
+  (`vm/dfly-reference.md`). This breaks `cp -p`, `tar x` and `make`. Phase 2
+  owns the write path; decide there whether to fix it as a labelled
+  divergence.
+
 ## Evidence
 
 | Check | CPU | Result | Date |

@@ -4,6 +4,10 @@ The disk is mixed-endian: the NeXT disk label is big-endian, the UFS
 filesystem inside it is little-endian.  Offsets here were measured against
 vm/rhapsody.vmdk, cross-validated by p_size == fs_size.
 
+ppc disks (Mac OS X Server 1.x) keep the label at the start of an
+Apple_Rhapsody_UFS partition in an Apple partition map, and their UFS is
+big-endian; the byte order is taken from the superblock magic.
+
 Label layout follows src/kernel-7/bsd/dev/disk_label.h and
 src/kernel-7/bsd/sys/disktab.h; the partition-start formula is what the boot
 loader computes at src/boot-2/i386/libsaio/disk.c:381.
@@ -16,6 +20,7 @@ LABEL_OFFSETS = (7680, 15360, 23040, 30720)
 LABEL_MAGIC = b"dlV3"
 MBR_PART_OFFSET = 446
 FDISK_NEXTNAME = 0xA7
+APM_RHAPSODY_UFS = b"Apple_Rhapsody_UFS"
 
 FS_MAGIC = 0x011954
 SBOFF = 8192
@@ -65,8 +70,25 @@ class Image(object):
                 return struct.unpack_from("<I", entry, 8)[0] * 512
         return 0
 
+    def _apm_base(self):
+        """Byte offset of the Apple_Rhapsody_UFS partition in an Apple
+        partition map, or 0 when the disk has none.  As with fdisk, the
+        label's p_base is already absolute."""
+        if self._read_at(0, 2) != b"ER":
+            return 0
+        n, count = 1, 1
+        while n <= count:
+            entry = self._read_at(n * 512, 512)
+            if entry[:2] != b"PM":
+                break
+            count = struct.unpack_from(">I", entry, 4)[0]
+            if entry[48:80].split(b"\0", 1)[0] == APM_RHAPSODY_UFS:
+                return struct.unpack_from(">I", entry, 8)[0] * 512
+            n += 1
+        return 0
+
     def _read_label(self):
-        base = self._fdisk_base()
+        base = self._apm_base() or self._fdisk_base()
         for off in LABEL_OFFSETS:
             buf = self._read_at(base + off, 1024)
             if buf[:4] == LABEL_MAGIC:
@@ -84,10 +106,13 @@ class Image(object):
 
     def _read_superblock(self):
         sb = self._read_at(self.part_start + SBOFF, SBOFF)
-        magic = struct.unpack_from("<i", sb, MAGIC_OFF)[0]
-        if magic != FS_MAGIC:
+        for self.endian in ("<", ">"):
+            magic = struct.unpack_from(self.endian + "i", sb, MAGIC_OFF)[0]
+            if magic == FS_MAGIC:
+                break
+        else:
             raise ValueError("bad UFS magic 0x%x at %d" % (magic, self.part_start + SBOFF))
-        g = lambda o: struct.unpack_from("<i", sb, o)[0]
+        g = lambda o: struct.unpack_from(self.endian + "i", sb, o)[0]
         self.iblkno = g(16)
         self.cgoffset = g(24)
         self.cgmask = g(28)
@@ -123,15 +148,15 @@ NIADDR = 3
 
 
 class Inode(object):
-    def __init__(self, ino, buf):
+    def __init__(self, ino, buf, endian="<"):
         self.ino = ino
-        self.mode, self.nlink = struct.unpack_from("<Hh", buf, 0)
-        self.size = struct.unpack_from("<Q", buf, 8)[0]
-        self.mtime = struct.unpack_from("<i", buf, 24)[0]
-        self.db = list(struct.unpack_from("<%di" % NDADDR, buf, 40))
-        self.ib = list(struct.unpack_from("<%di" % NIADDR, buf, 88))
-        self.blocks = struct.unpack_from("<i", buf, 104)[0]
-        self.uid, self.gid = struct.unpack_from("<2I", buf, 112)
+        self.mode, self.nlink = struct.unpack_from(endian + "Hh", buf, 0)
+        self.size = struct.unpack_from(endian + "Q", buf, 8)[0]
+        self.mtime = struct.unpack_from(endian + "i", buf, 24)[0]
+        self.db = list(struct.unpack_from(endian + "%di" % NDADDR, buf, 40))
+        self.ib = list(struct.unpack_from(endian + "%di" % NIADDR, buf, 88))
+        self.blocks = struct.unpack_from(endian + "i", buf, 104)[0]
+        self.uid, self.gid = struct.unpack_from(endian + "2I", buf, 112)
 
     def is_dir(self):
         return (self.mode & 0o170000) == 0o040000
@@ -157,7 +182,7 @@ def _inode_location(img, ino):
 def _inode(self, ino):
     frag, entry = _inode_location(self, ino)
     blk = self.read_frag(frag, self.bsize)
-    return Inode(ino, blk[entry:entry + DINODE_SIZE])
+    return Inode(ino, blk[entry:entry + DINODE_SIZE], self.endian)
 
 
 def _frags(self, inode):
@@ -182,7 +207,7 @@ def _frags(self, inode):
     if len(out) < need:
         if inode.ib[0]:
             ind = self.read_frag(inode.ib[0], self.bsize)
-            for b in struct.unpack_from("<%di" % self.nindir, ind, 0):
+            for b in struct.unpack_from(self.endian + "%di" % self.nindir, ind, 0):
                 if len(out) >= need:
                     break
                 take(b)
@@ -198,7 +223,7 @@ def _frags(self, inode):
     if len(out) < need:
         if inode.ib[1]:
             l1 = self.read_frag(inode.ib[1], self.bsize)
-            for b1 in struct.unpack_from("<%di" % self.nindir, l1, 0):
+            for b1 in struct.unpack_from(self.endian + "%di" % self.nindir, l1, 0):
                 if len(out) >= need:
                     break
                 if not b1:
@@ -209,7 +234,7 @@ def _frags(self, inode):
                         take(0)
                     continue
                 l2 = self.read_frag(b1, self.bsize)
-                for b in struct.unpack_from("<%di" % self.nindir, l2, 0):
+                for b in struct.unpack_from(self.endian + "%di" % self.nindir, l2, 0):
                     if len(out) >= need:
                         break
                     take(b)
@@ -241,7 +266,7 @@ def _iter_dir(self, ino):
     data = self.read_file(ino)
     p = 0
     while p < len(data):
-        d_ino, d_reclen = struct.unpack_from("<IH", data, p)
+        d_ino, d_reclen = struct.unpack_from(self.endian + "IH", data, p)
         d_type = data[p + 6]
         d_namlen = data[p + 7]
         if d_reclen == 0:

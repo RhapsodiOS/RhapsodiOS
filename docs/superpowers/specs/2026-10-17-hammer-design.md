@@ -8,7 +8,7 @@ long `fsck`. UFS and HFS give neither.
 
 The user chose to **port DragonFly BSD's HAMMER (version 1)** and cut it down to
 a **single volume with a single namespace**. PFS (pseudo-filesystems),
-mirroring, multi-volume and dedup are removed. What remains is HAMMER's core
+mirroring and multi-volume are removed. Offline dedup is kept. What remains is HAMMER's core
 architecture: a B+tree holding all filesystem records, transaction IDs on every
 record, an UNDO FIFO that makes crashes recoverable, and retained history with
 a pruner and snapshots on top.
@@ -56,7 +56,9 @@ The user's feature list, staged:
 
 - PFS (master or slave), mirroring streams, `mirror-*` commands.
 - Multiple volumes. No volume add/remove; the volume count must be 1.
-- Dedup (live or offline).
+- Live (write-time) dedup. It is experimental and off by default upstream, and
+  stays off and unsupported here *(my call)*. Offline dedup **is** supported
+  (Phase 4).
 - HAMMER2.
 - NFS export, quotas, extended attributes, `chflags` beyond what the core
   already stores.
@@ -97,18 +99,21 @@ Record origin, commit, per-file SHA256 and local changes in `bsd/hammer/ORIGIN`
 and `PORTING.md`, as `bsd/ext2fs/` does. The first import commit is
 byte-identical to upstream, and adaptations go in later commits.
 
-**Files removed from the kernel import:** `hammer_pfs.c`, `hammer_mirror.c`,
-`hammer_dedup.c`, `hammer_volume.c` (volume add/remove). Code in the remaining
+**Files removed from the kernel import:** `hammer_pfs.c`, `hammer_volume.c`
+(volume add/remove). `hammer_mirror.c` is cut down to the
+`HAMMERIOC_MIRROR_READ` scan that `hammer dedup` uses, restricted to PFS 0; the
+mirror-write side goes. Code in the remaining
 files that only serves those features is cut as files get adapted.
-**Kept:** blockmap, btree, cursor, inode, object, ondisk, io, flusher,
+**Kept:** blockmap, btree, cursor, dedup, inode, object, ondisk, io, flusher,
 transaction, undo, recover, redo, prune, reblock, rebalance, ioctl (subset),
 subs, signal, vfsops, vnops.
 
 **`hammer(8)` subset:** `info`, `show`, `blockmap`, `history`, `snapshot`/
 `snapls`/`snaprm`, `prune`/`prune-everything`, `reblock*`, `rebalance`,
 `cleanup`, `config`, `recover`, `synctid`, `version`, `checkmap`,
-`show-undo`. (`checkmap` and `show-undo` are the consistency checker, see below.) Dropped: `pfs-*`,
-`mirror-*`, `dedup*`, `volume-*`, `strip`, remote/ssh mirroring.
+`show-undo`, `dedup`, `dedup-simulate`. (`checkmap` and `show-undo` are the
+consistency checker, see below.) Dropped: `pfs-*`,
+`mirror-*`, `volume-*`, `strip`, remote/ssh mirroring.
 
 ## On-disk format
 
@@ -198,8 +203,9 @@ Universal i386+ppc build.
 `hammer cleanup` run from `/etc/daily`, so retained history never fills a
 volume on its own. Each volume gets DragonFly's default retention config on
 first run: daily snapshots kept 60 days; daily prune, rebalance and reblock
-with 5-minute budgets; monthly recopy with a 10-minute budget. The upstream
-dedup step is dropped. Users change it with `hammer config`.
+and dedup with 5-minute budgets; monthly recopy with a 10-minute budget. The
+dedup step joins the shipped schedule in Phase 4. Users change it with
+`hammer config`.
 
 ## Phases and acceptance
 
@@ -228,7 +234,8 @@ volumes, reads back volumes we wrote, and runs `hammer` inspection on them.
 - `mount -t hammer -o ro` works. Reference volumes made and filled on
   DragonFly read correctly: small and large directories (B-tree splits on
   several levels), small and large files, sparse files, short and long
-  symlinks, hard links, ownership, modes and timestamps. Contents are compared
+  symlinks, hard links, ownership, modes and timestamps, and a volume deduplicated on DragonFly
+  (shared data blocks). Contents are compared
   against checksums recorded on DragonFly.
 - CRCs are verified on read, and a corrupted node or record returns EIO without a
   panic.
@@ -287,6 +294,11 @@ volumes, reads back volumes we wrote, and runs `hammer` inspection on them.
 - As-of access: DragonFly's `@@0x<tid>` path syntax (or a mount option) gives a
   read-only view of any retained state. Historical views are read-only.
 - Interop: snapshots made on DragonFly are visible here, and the reverse.
+- **Offline dedup:** `hammer dedup` and `dedup-simulate` work. A deduplicated
+  volume passes `show` + `checkmap`, and deleting one of the sharing files frees
+  nothing until the last reference goes (blockmap accounting goes negative as
+  upstream intends). Dedup is crash-tested like the pruner. DragonFly reads our
+  deduplicated volumes identically.
 
 ### Phase 5: root filesystem (goal 10)
 

@@ -207,6 +207,13 @@ extern int DTRestartPropertyIteration(DTPropertyIterator iterator);
  */
 int DTFindEntry(const char *propName, const char *propValue, DTEntry *entryH);
 
+/* DTFindChildEntry:
+ *
+ *   Like DTFindEntry, but searches only parent and the entries below it.
+ *   Neither allocates, so both work before kalloc_init().
+ */
+int DTFindChildEntry(const DTEntry parent, const char *propName, const char *propValue, DTEntry *entryH);
+
 
 #endif /* __DEVICE_TREE__ */
 

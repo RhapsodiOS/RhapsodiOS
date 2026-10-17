@@ -430,6 +430,12 @@ int DTFindEntry(const char *propName, const char *propValue, DTEntry *entryH)
 	return( find_entry(propName, propValue, entryH));
 }
 
+int DTFindChildEntry(const DTEntry parent, const char *propName, const char *propValue, DTEntry *entryH)
+{
+	startingP = (char *) parent;
+	return( find_entry(propName, propValue, entryH));
+}
+
 int find_entry(const char *propName, const char *propValue, DTEntry *entryH)
 {
 	DeviceTreeNode *nodeP = (DeviceTreeNode *) startingP;

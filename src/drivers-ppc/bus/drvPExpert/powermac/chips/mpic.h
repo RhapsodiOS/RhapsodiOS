@@ -45,6 +45,7 @@
 #define MPIC_GLOBAL_CFG_REG 0x00001020
 #define MPIC_GLOBAL_CFG  ((v_u_long *)(POWERMAC_IO(powermac_io_info.int_cntlr_base_phys + MPIC_GLOBAL_CFG_REG)))
 #define MPIC_CASCADE        0x00000020
+#define MPIC_RESET          0x00000080
 
 #define MPIC_P0_CUR_TSK_PRI_REG  0x00020080
 #define MPIC_P0_CUR_TSK_PRI ((u_long)(powermac_io_info.int_cntlr_base_phys + MPIC_P0_CUR_TSK_PRI_REG))

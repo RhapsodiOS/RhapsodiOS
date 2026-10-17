@@ -44,70 +44,70 @@ powermac_init_t sawtooth_init = {
  * Format: INT_TBL(vector, priority, sense, polarity, mask, destination)
  */
 static u_long sawtooth_int_mapping_tbl[] = {
-    INT_TBL(  0,     4,   EDGE, ACT_HI,   MASKED, 1), /* IRQ0  - SCSI DMA        */
-    INT_TBL(  1,     4,   EDGE, ACT_HI,   MASKED, 1), /* IRQ1  - Reserved        */
-    INT_TBL(  2,     4,   EDGE, ACT_HI,   MASKED, 1), /* IRQ2  - IDE 0 DMA       */
-    INT_TBL(  3,     4,   EDGE, ACT_HI,   MASKED, 1), /* IRQ3  - IDE 1 DMA       */
-    INT_TBL(  4,     4,   EDGE, ACT_HI,   MASKED, 1), /* IRQ4  - SCC Tx A DMA    */
-    INT_TBL(  5,     4,   EDGE, ACT_HI,   MASKED, 1), /* IRQ5  - SCC Rx A DMA    */
-    INT_TBL(  6,     4,   EDGE, ACT_HI,   MASKED, 1), /* IRQ6  - SCC Tx B DMA    */
-    INT_TBL(  7,     4,   EDGE, ACT_HI,   MASKED, 1), /* IRQ7  - SCC Rx B DMA    */
-    INT_TBL(  8,     4,   EDGE, ACT_HI,   MASKED, 1), /* IRQ8  - Audio Out DMA   */
-    INT_TBL(  9,     4,   EDGE, ACT_HI,   MASKED, 1), /* IRQ9  - Audio In  DMA   */
-    INT_TBL( 10,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ10 - Reserved        */
-    INT_TBL( 11,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ11 - Reserved        */
-    INT_TBL( 12,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ12 - SCSI Dev        */
-    INT_TBL( 13,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ13 - IDE 0 Dev       */
-    INT_TBL( 14,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ14 - IDE 1 Dev       */
-    INT_TBL( 15,     4,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ15 - SCC A Dev       */
-    INT_TBL( 16,     4,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ16 - SCC B Dev       */
-    INT_TBL( 17,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ17 - Audio Dev       */
-    INT_TBL( 18,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ18 - Reserved        */
-    INT_TBL( 19,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ19 - Reserved        */
-    INT_TBL( 20,     7,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ20 - NMI             */
-    INT_TBL( 21,     2,    LVL, ACT_LOW,  MASKED, 1), /* IRQ21 - PCI Slot 1      */
-    INT_TBL( 22,     2,    LVL, ACT_LOW,  MASKED, 1), /* IRQ22 - PCI Slot 2      */
-    INT_TBL( 23,     2,    LVL, ACT_LOW,  MASKED, 1), /* IRQ23 - PCI Slot 3      */
-    INT_TBL( 24,     2,    LVL, ACT_LOW,  MASKED, 1), /* IRQ24 - PCI Slot 4      */
-    INT_TBL( 25,     1,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ25 - VIA Cascade     */
-    INT_TBL( 26,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ26 - Reserved        */
-    INT_TBL( 27,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ27 - Reserved        */
-    INT_TBL( 28,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ28 - Reserved        */
-    INT_TBL( 29,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ29 - Reserved        */
-    INT_TBL( 30,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ30 - Reserved        */
-    INT_TBL( 31,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ31 - Reserved        */
-    INT_TBL( 32,     4,   EDGE, ACT_HI,   MASKED, 1), /* IRQ32 - Eth Tx DMA      */
-    INT_TBL( 33,     4,   EDGE, ACT_HI,   MASKED, 1), /* IRQ33 - Eth Rx DMA      */
-    INT_TBL( 34,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ34 - Reserved        */
-    INT_TBL( 35,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ35 - Reserved        */
-    INT_TBL( 36,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ36 - Reserved        */
-    INT_TBL( 37,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ37 - Reserved        */
-    INT_TBL( 38,     3,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ38 - Ethernet Dev    */
-    INT_TBL( 39,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ39 - Reserved        */
-    INT_TBL( 40,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ40 - Reserved        */
-    INT_TBL( 41,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ41 - Reserved        */
-    INT_TBL( 42,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ42 - Reserved        */
-    INT_TBL( 43,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ43 - Reserved        */
-    INT_TBL( 44,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ44 - Reserved        */
-    INT_TBL( 45,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ45 - Reserved        */
-    INT_TBL( 46,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ46 - Reserved        */
-    INT_TBL( 47,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ47 - Reserved        */
-    INT_TBL( 48,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ48 - Reserved        */
-    INT_TBL( 49,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ49 - Reserved        */
-    INT_TBL( 50,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ50 - Reserved        */
-    INT_TBL( 51,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ51 - Reserved        */
-    INT_TBL( 52,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ52 - Reserved        */
-    INT_TBL( 53,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ53 - Reserved        */
-    INT_TBL( 54,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ54 - Reserved        */
-    INT_TBL( 55,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ55 - Reserved        */
-    INT_TBL( 56,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ56 - Reserved        */
-    INT_TBL( 57,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ57 - Reserved        */
-    INT_TBL( 58,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ58 - Reserved        */
-    INT_TBL( 59,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ59 - Reserved        */
-    INT_TBL( 60,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ60 - Reserved        */
-    INT_TBL( 61,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ61 - Reserved        */
-    INT_TBL( 62,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ62 - Reserved        */
-    INT_TBL( 63,     2,   EDGE, ACT_LOW,  MASKED, 1)  /* IRQ63 - Reserved        */
+    INT_TBL(  0,     8,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ0  - SCSI DMA        */
+    INT_TBL(  1,     8,   EDGE, ACT_HI,   MASKED, 1), /* IRQ1  - Reserved        */
+    INT_TBL(  2,     8,   EDGE, ACT_HI,   MASKED, 1), /* IRQ2  - IDE 0 DMA       */
+    INT_TBL(  3,     8,   EDGE, ACT_HI,   MASKED, 1), /* IRQ3  - IDE 1 DMA       */
+    INT_TBL(  4,     8,   EDGE, ACT_HI,   MASKED, 1), /* IRQ4  - SCC Tx A DMA    */
+    INT_TBL(  5,     8,   EDGE, ACT_HI,   MASKED, 1), /* IRQ5  - SCC Rx A DMA    */
+    INT_TBL(  6,     8,   EDGE, ACT_HI,   MASKED, 1), /* IRQ6  - SCC Tx B DMA    */
+    INT_TBL(  7,     8,   EDGE, ACT_HI,   MASKED, 1), /* IRQ7  - SCC Rx B DMA    */
+    INT_TBL(  8,     8,   EDGE, ACT_HI,   MASKED, 1), /* IRQ8  - Audio Out DMA   */
+    INT_TBL(  9,     8,   EDGE, ACT_HI,   MASKED, 1), /* IRQ9  - Audio In  DMA   */
+    INT_TBL( 10,     8,   EDGE, ACT_HI,   MASKED, 1), /* IRQ10 - Reserved        */
+    INT_TBL( 11,     8,   EDGE, ACT_HI,   MASKED, 1), /* IRQ11 - Reserved        */
+    INT_TBL( 12,     8,   EDGE, ACT_HI,   MASKED, 1), /* IRQ12 - SCSI Dev        */
+    INT_TBL( 13,     8,   EDGE, ACT_HI,   MASKED, 1), /* IRQ13 - IDE 0 Dev       */
+    INT_TBL( 14,     8,   EDGE, ACT_HI,   MASKED, 1), /* IRQ14 - IDE 1 Dev       */
+    INT_TBL( 15,     8,   EDGE, ACT_HI,   MASKED, 1), /* IRQ15 - SCC A Dev       */
+    INT_TBL( 16,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ16 - SCC B Dev       */
+    INT_TBL( 17,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ17 - Audio Dev       */
+    INT_TBL( 18,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ18 - Reserved        */
+    INT_TBL( 19,     8,   EDGE, ACT_HI,   MASKED, 1), /* IRQ19 - Reserved        */
+    INT_TBL( 20,     8,   EDGE, ACT_HI,   MASKED, 1), /* IRQ20 - NMI             */
+    INT_TBL( 21,     8,   EDGE, ACT_HI,   MASKED, 1), /* IRQ21 - PCI Slot 1      */
+    INT_TBL( 22,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ22 - PCI Slot 2      */
+    INT_TBL( 23,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ23 - PCI Slot 3      */
+    INT_TBL( 24,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ24 - PCI Slot 4      */
+    INT_TBL( 25,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ25 - VIA Cascade     */
+    INT_TBL( 26,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ26 - Reserved        */
+    INT_TBL( 27,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ27 - Reserved        */
+    INT_TBL( 28,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ28 - Reserved        */
+    INT_TBL( 29,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ29 - Reserved        */
+    INT_TBL( 30,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ30 - Reserved        */
+    INT_TBL( 31,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ31 - Reserved        */
+    INT_TBL( 32,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ32 - Eth Tx DMA      */
+    INT_TBL( 33,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ33 - Eth Rx DMA      */
+    INT_TBL( 34,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ34 - Reserved        */
+    INT_TBL( 35,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ35 - Reserved        */
+    INT_TBL( 36,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ36 - Reserved        */
+    INT_TBL( 37,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ37 - Reserved        */
+    INT_TBL( 38,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ38 - Ethernet Dev    */
+    INT_TBL( 39,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ39 - Reserved        */
+    INT_TBL( 40,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ40 - Reserved        */
+    INT_TBL( 41,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ41 - Reserved        */
+    INT_TBL( 42,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ42 - Reserved        */
+    INT_TBL( 43,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ43 - Reserved        */
+    INT_TBL( 44,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ44 - Reserved        */
+    INT_TBL( 45,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ45 - Reserved        */
+    INT_TBL( 46,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ46 - Reserved        */
+    INT_TBL( 47,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ47 - Reserved        */
+    INT_TBL( 48,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ48 - Reserved        */
+    INT_TBL( 49,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ49 - Reserved        */
+    INT_TBL( 50,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ50 - Reserved        */
+    INT_TBL( 51,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ51 - Reserved        */
+    INT_TBL( 52,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ52 - Reserved        */
+    INT_TBL( 53,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ53 - Reserved        */
+    INT_TBL( 54,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ54 - Reserved        */
+    INT_TBL( 55,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ55 - Reserved        */
+    INT_TBL( 56,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ56 - Reserved        */
+    INT_TBL( 57,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ57 - Reserved        */
+    INT_TBL( 58,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ58 - Reserved        */
+    INT_TBL( 59,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ59 - Reserved        */
+    INT_TBL( 60,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ60 - Reserved        */
+    INT_TBL( 61,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ61 - Reserved        */
+    INT_TBL( 62,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ62 - Reserved        */
+    INT_TBL( 63,     8,    LVL, ACT_LOW,  MASKED, 1)  /* IRQ63 - Reserved        */
 };
 
 /* VIA1 cascaded interrupts */

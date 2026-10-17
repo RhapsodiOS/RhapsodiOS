@@ -174,7 +174,7 @@ int mpic_via_cascade;
 void
 mpic_interrupt_initialize(void)
 {
-        int    cnt, cnt2;
+        int    cnt;
 	u_long tmp;
 
 //kprintf("mpic_interrupt_initialize: Entering.\n");
@@ -186,24 +186,31 @@ mpic_interrupt_initialize(void)
 	pmac_disable_irq        = mpic_disable_irq;
 	pmac_interrupt          = mpic_interrupt;
 
-	*FM_MPIC_CTRL |= FM_MPIC_ENABLE;   /* Allow access to MPIC regs */
+	/* Only Power Express gates the MPIC through Fat Man. */
+	if (IsPEx()) {
+	  *FM_MPIC_CTRL |= FM_MPIC_ENABLE;   /* Allow access to MPIC regs */
+	  eieio();
+	}
+
+	/* Reset the MPIC; it comes back with every source masked. */
+	*MPIC_GLOBAL_CFG |= MPIC_RESET;
+	eieio();
+	while (*MPIC_GLOBAL_CFG & MPIC_RESET)
+	  eieio();
+
+	for (cnt = 0; cnt < nmpic_interrupts; cnt++)
+	  stwbrx(MASKED, MPIC_INT_CFG + cnt * 0x20);
 	eieio();
 
-
-//tmp = lwbrx(0xf2041000);
-//kprintf("mpic_interrupt_initialize: Features: 0x%x.\n", tmp);
-
-  tmp = lwbrx(0xf2041080);
-//kprintf("mpic_interrupt_initialize: Features: 0x%x.\n", tmp);
+	stwbrx(0xff, MPIC_SPUR_INT_VEC);
+	eieio();
 
 	*MPIC_GLOBAL_CFG |= MPIC_CASCADE;  /* Turn on 8259 Cascade mode. */
 	eieio();
 
-	/* Mask all MPIC Interrupts */
-	stwbrx(0xf, MPIC_P0_CUR_TSK_PRI);
+	/* Accept every priority */
+	stwbrx(0x0, MPIC_P0_CUR_TSK_PRI);
 	eieio();
-
-//kprintf("mpic_interrupt_initialize: Setting Int Priv addr: 0x%x, data: %d.\n", MPIC_P0_CUR_TSK_PRI, 0xf);
 
 	/* Load the Interrupt Table */
 	for (cnt = 0; cnt < nmpic_interrupts; cnt++) {
@@ -218,69 +225,9 @@ mpic_interrupt_initialize(void)
 	}
 	eieio();
 
-	/* Dissable all of the Timer Interrupts */
-	stwbrx(MASKED, MPIC_TMR_VEC_PRI + MPIC_TMR_OFFSET * 0);
-	stwbrx(MASKED, MPIC_TMR_VEC_PRI + MPIC_TMR_OFFSET * 1);
-	stwbrx(MASKED, MPIC_TMR_VEC_PRI + MPIC_TMR_OFFSET * 2);
-	stwbrx(MASKED, MPIC_TMR_VEC_PRI + MPIC_TMR_OFFSET * 3);
-	eieio();
-
-	/* Dissable all of the IPI Interrupts */
-	stwbrx(MASKED, MPIC_IPI_VEC_PRI + 0x10 * 0);
-	stwbrx(MASKED, MPIC_IPI_VEC_PRI + 0x10 * 1);
-	stwbrx(MASKED, MPIC_IPI_VEC_PRI + 0x10 * 2);
-	stwbrx(MASKED, MPIC_IPI_VEC_PRI + 0x10 * 3);
-	eieio();
-
-	/* Set the Spurious Interrupt Vector to 0x31? */
-	stwbrx(0x31, MPIC_SPUR_INT_VEC);
-	eieio();
-
-	/* Unmask all MPIC Interrupts */
-	stwbrx(0x0, MPIC_P0_CUR_TSK_PRI);
-	eieio();
-
-//kprintf("mpic_interrupt_initialize: Setting Int Priv addr: 0x%x, data: %d.\n", MPIC_P0_CUR_TSK_PRI, 0x0);
-
-	*FM_MPIC_CTRL |= FM_MPIC_INT_SEL;   /* Turn on Interrupts from MPIC */
-	eieio();
-
-	/* Clear Interrupts on MPIC */
-	for (cnt = 0; cnt < nmpic_interrupts; cnt++) {
-
-	  /* Unmask the interrupt */
-	  tmp = lwbrx(MPIC_INT_CFG + cnt * 0x20);
-	  tmp &= ~MASKED;
-	  stwbrx(tmp, MPIC_INT_CFG + cnt * 0x20);
+	if (IsPEx()) {
+	  *FM_MPIC_CTRL |= FM_MPIC_INT_SEL;   /* Turn on Interrupts from MPIC */
 	  eieio();
-
-	  /* Wait for this interrupt to activate */
-	  for (cnt2 = 0; cnt2 < 0x80; cnt2++) {
-	    tmp = lwbrx(MPIC_INT_CFG + cnt * 0x20);
-	    if (tmp & ACTIVE) break;
-	  }
-
-	  /* Clear it if it activates */
-	  if (tmp & ACTIVE) {
-
-	    /* Ack the interrupt then end it */
-	    tmp = lwbrx(MPIC_P0_INT_ACK);
-	    stwbrx(0, MPIC_P0_EOI);
-
-	    /* Waste some time? */
-	    for (cnt2 = 0; cnt2 < 0x40; cnt2++) {
-	      tmp = lwbrx(MPIC_INT_CFG +  cnt * 0x20);
-	    }
-	  }
-
-	  /* Set the interrupt as masked again. */
-	  tmp = lwbrx(MPIC_INT_CFG + cnt * 0x20);
-	  tmp |= MASKED;
-
-#if 0
-	  if (cnt == 25) tmp &= ~MASKED; /* Allow NMI */
-#endif
-	  stwbrx(tmp, MPIC_INT_CFG + cnt * 0x20);
 	}
 
 	/* Clear Interrupts on VIA1 */
@@ -481,8 +428,8 @@ mpic_interrupt(int type, struct ppc_saved_state *ssp,
 	  /* Get the vector/irq number */
 	  irq = lwbrx(MPIC_P0_INT_ACK);
 
-	  /* Is this vector/irq really active? */
-	  if (lwbrx(MPIC_INT_CFG + irq * 0x20) & ACTIVE) {
+	  /* The spurious vector means nothing is pending. */
+	  if (irq != 0xff) {
 
             /* Set the End of Interrupt Bit */
 	    stwbrx(0, MPIC_P0_EOI);

@@ -3,18 +3,12 @@
  *  code or tables extracted from it, as desired without restriction.
  */
 
-#include <sys/param.h>
-#ifdef _KERNEL
-#include <sys/systm.h>
-#endif
+#include "hammer_port.h"
 
-#ifndef _KERNEL
-/* prototypes for the kernel are in <sys/systm.h> */
 uint32_t iscsi_crc32(const void *buf, size_t size);
 uint32_t iscsi_crc32_ext(const void *buf, size_t size, uint32_t ocrc);
 uint32_t calculate_crc32c(uint32_t crc32c, const unsigned char *buffer,
 			unsigned int length);
-#endif
 
 /*
  *  First, the polynomial itself and its table of feedback terms.  The

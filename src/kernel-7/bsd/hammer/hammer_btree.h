@@ -96,16 +96,16 @@
  * 5. create_tid
  */
 typedef struct hammer_base_elm {
-	int64_t	obj_id;		/* 00 object record is associated with */
-	int64_t key;		/* 08 indexing key (offset or namekey) */
+	hle64_t	obj_id;		/* 00 object record is associated with */
+	hle64_t key;		/* 08 indexing key (offset or namekey) */
 
-	hammer_tid_t create_tid; /* 10 transaction id for record creation */
-	hammer_tid_t delete_tid; /* 18 transaction id for record update/del */
+	hle64_t create_tid; /* 10 transaction id for record creation */
+	hle64_t delete_tid; /* 18 transaction id for record update/del */
 
-	uint16_t rec_type;	/* 20 HAMMER_RECTYPE_ */
+	hle16_t rec_type;	/* 20 HAMMER_RECTYPE_ */
 	uint8_t obj_type;	/* 22 HAMMER_OBJTYPE_ */
 	uint8_t btype;		/* 23 B-Tree element type */
-	uint32_t localization;	/* 24 B-Tree localization parameter */
+	hle32_t localization;	/* 24 B-Tree localization parameter */
 				/* 28 */
 } *hammer_base_elm_t;
 
@@ -154,10 +154,10 @@ typedef struct hammer_base_elm {
  */
 typedef struct hammer_btree_internal_elm {
 	struct hammer_base_elm base;
-	hammer_tid_t	mirror_tid;		/* mirroring support */
-	hammer_off_t	subtree_offset;
-	int32_t		reserved01;
-	int32_t		reserved02;
+	hle64_t	mirror_tid;		/* mirroring support */
+	hle64_t	subtree_offset;
+	hle32_t		reserved01;
+	hle32_t		reserved02;
 } *hammer_btree_internal_elm_t;
 
 /*
@@ -169,11 +169,11 @@ typedef struct hammer_btree_internal_elm {
  */
 typedef struct hammer_btree_leaf_elm {
 	struct hammer_base_elm base;
-	uint32_t	create_ts;
-	uint32_t	delete_ts;
-	hammer_off_t	data_offset;
-	int32_t		data_len;
-	hammer_crc_t	data_crc;
+	hle32_t	create_ts;
+	hle32_t	delete_ts;
+	hle64_t	data_offset;
+	hle32_t		data_len;
+	hle32_t	data_crc;
 } *hammer_btree_leaf_elm_t;
 
 /*
@@ -219,18 +219,18 @@ typedef struct hammer_node_ondisk {
 	/*
 	 * B-Tree node header (64 bytes)
 	 */
-	hammer_crc_t	crc;		/* MUST BE FIRST FIELD OF STRUCTURE */
-	uint32_t	reserved01;
-	hammer_off_t	parent;		/* 0 if at root of B-Tree */
-	int32_t		count;		/* maximum 62 for INTERNAL, 63 for LEAF */
+	hle32_t	crc;		/* MUST BE FIRST FIELD OF STRUCTURE */
+	hle32_t	reserved01;
+	hle64_t	parent;		/* 0 if at root of B-Tree */
+	hle32_t		count;		/* maximum 62 for INTERNAL, 63 for LEAF */
 	uint8_t		type;		/* B-Tree node type (INTERNAL or LEAF) */
 	uint8_t		reserved02;
-	uint16_t	reserved03;
-	hammer_off_t	reserved04;
-	hammer_off_t	reserved05;
-	hammer_off_t	reserved06;
-	hammer_off_t	reserved07;
-	hammer_tid_t	mirror_tid;	/* mirroring support (aggregator) */
+	hle16_t	reserved03;
+	hle64_t	reserved04;
+	hle64_t	reserved05;
+	hle64_t	reserved06;
+	hle64_t	reserved07;
+	hle64_t	mirror_tid;	/* mirroring support (aggregator) */
 
 	/*
 	 * B-Tree node element array (64x63 bytes)

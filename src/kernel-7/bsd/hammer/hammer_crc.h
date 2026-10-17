@@ -38,16 +38,11 @@
 #include "hammer_disk.h"
 #include "hammer_ioctl.h"
 
-#ifndef _KERNEL
-/*
- * These are only for userspace.
- * Userspace can't include sys/sys/systm.h.
- */
+/* Rhapsody's kernel has no crc32 in libkern; bsd/hammer supplies both. */
 uint32_t crc32(const void *buf, size_t size);
 uint32_t crc32_ext(const void *buf, size_t size, uint32_t ocrc);
 uint32_t iscsi_crc32(const void *buf, size_t size);
 uint32_t iscsi_crc32_ext(const void *buf, size_t size, uint32_t ocrc);
-#endif
 
 /*
  * hammer_datacrc() expects vol_version to be the volume version of the
@@ -88,16 +83,16 @@ hammer_crc_get_blockmap(uint32_t vol_version, hammer_blockmap_t blockmap)
 static __inline void
 hammer_crc_set_blockmap(uint32_t vol_version, hammer_blockmap_t blockmap)
 {
-	blockmap->entry_crc = hammer_crc_get_blockmap(vol_version, blockmap);
+	blockmap->entry_crc = hmk32(hammer_crc_get_blockmap(vol_version, blockmap));
 }
 
 static __inline int
 hammer_crc_test_blockmap(uint32_t vol_version, hammer_blockmap_t blockmap)
 {
-	if (blockmap->entry_crc == hammer_crc_get_blockmap(vol_version, blockmap))
+	if (hget32(blockmap->entry_crc) == hammer_crc_get_blockmap(vol_version, blockmap))
 		return(1);
 	if (vol_version >= HAMMER_VOL_VERSION_SEVEN) {
-		if (blockmap->entry_crc == hammer_crc_get_blockmap(
+		if (hget32(blockmap->entry_crc) == hammer_crc_get_blockmap(
 			HAMMER_VOL_VERSION_SIX, blockmap))
 			return(1);
 	}
@@ -116,16 +111,16 @@ hammer_crc_get_layer1(uint32_t vol_version, hammer_blockmap_layer1_t layer1)
 static __inline void
 hammer_crc_set_layer1(uint32_t vol_version, hammer_blockmap_layer1_t layer1)
 {
-	layer1->layer1_crc = hammer_crc_get_layer1(vol_version, layer1);
+	layer1->layer1_crc = hmk32(hammer_crc_get_layer1(vol_version, layer1));
 }
 
 static __inline int
 hammer_crc_test_layer1(uint32_t vol_version, hammer_blockmap_layer1_t layer1)
 {
-	if (layer1->layer1_crc == hammer_crc_get_layer1(vol_version, layer1))
+	if (hget32(layer1->layer1_crc) == hammer_crc_get_layer1(vol_version, layer1))
 		return(1);
 	if (vol_version >= HAMMER_VOL_VERSION_SEVEN) {
-		if (layer1->layer1_crc == hammer_crc_get_layer1(
+		if (hget32(layer1->layer1_crc) == hammer_crc_get_layer1(
 			HAMMER_VOL_VERSION_SIX, layer1))
 			return(1);
 	}
@@ -144,16 +139,16 @@ hammer_crc_get_layer2(uint32_t vol_version, hammer_blockmap_layer2_t layer2)
 static __inline void
 hammer_crc_set_layer2(uint32_t vol_version, hammer_blockmap_layer2_t layer2)
 {
-	layer2->entry_crc = hammer_crc_get_layer2(vol_version, layer2);
+	layer2->entry_crc = hmk32(hammer_crc_get_layer2(vol_version, layer2));
 }
 
 static __inline int
 hammer_crc_test_layer2(uint32_t vol_version, hammer_blockmap_layer2_t layer2)
 {
-	if (layer2->entry_crc == hammer_crc_get_layer2(vol_version, layer2))
+	if (hget32(layer2->entry_crc) == hammer_crc_get_layer2(vol_version, layer2))
 		return(1);
 	if (vol_version >= HAMMER_VOL_VERSION_SEVEN) {
-		if (layer2->entry_crc == hammer_crc_get_layer2(
+		if (hget32(layer2->entry_crc) == hammer_crc_get_layer2(
 			HAMMER_VOL_VERSION_SIX, layer2))
 			return(1);
 	}
@@ -173,16 +168,16 @@ hammer_crc_get_volume(uint32_t vol_version, hammer_volume_ondisk_t ondisk)
 static __inline void
 hammer_crc_set_volume(uint32_t vol_version, hammer_volume_ondisk_t ondisk)
 {
-	ondisk->vol_crc = hammer_crc_get_volume(vol_version, ondisk);
+	ondisk->vol_crc = hmk32(hammer_crc_get_volume(vol_version, ondisk));
 }
 
 static __inline int
 hammer_crc_test_volume(uint32_t vol_version, hammer_volume_ondisk_t ondisk)
 {
-	if (ondisk->vol_crc == hammer_crc_get_volume(vol_version, ondisk))
+	if (hget32(ondisk->vol_crc) == hammer_crc_get_volume(vol_version, ondisk))
 		return(1);
 	if (vol_version >= HAMMER_VOL_VERSION_SEVEN) {
-		if (ondisk->vol_crc == hammer_crc_get_volume(
+		if (hget32(ondisk->vol_crc) == hammer_crc_get_volume(
 			HAMMER_VOL_VERSION_SIX, ondisk))
 			return(1);
 	}
@@ -202,16 +197,16 @@ hammer_crc_get_fifo_head(uint32_t vol_version, hammer_fifo_head_t head, int byte
 static __inline void
 hammer_crc_set_fifo_head(uint32_t vol_version, hammer_fifo_head_t head, int bytes)
 {
-	head->hdr_crc = hammer_crc_get_fifo_head(vol_version, head, bytes);
+	head->hdr_crc = hmk32(hammer_crc_get_fifo_head(vol_version, head, bytes));
 }
 
 static __inline int
 hammer_crc_test_fifo_head(uint32_t vol_version, hammer_fifo_head_t head, int bytes)
 {
-	if (head->hdr_crc == hammer_crc_get_fifo_head(vol_version, head, bytes))
+	if (hget32(head->hdr_crc) == hammer_crc_get_fifo_head(vol_version, head, bytes))
 		return(1);
 	if (vol_version >= HAMMER_VOL_VERSION_SEVEN) {
-		if (head->hdr_crc == hammer_crc_get_fifo_head(
+		if (hget32(head->hdr_crc) == hammer_crc_get_fifo_head(
 			HAMMER_VOL_VERSION_SIX, head, bytes))
 			return(1);
 	}
@@ -230,16 +225,16 @@ hammer_crc_get_btree(uint32_t vol_version, hammer_node_ondisk_t node)
 static __inline void
 hammer_crc_set_btree(uint32_t vol_version, hammer_node_ondisk_t node)
 {
-	node->crc = hammer_crc_get_btree(vol_version, node);
+	node->crc = hmk32(hammer_crc_get_btree(vol_version, node));
 }
 
 static __inline int
 hammer_crc_test_btree(uint32_t vol_version, hammer_node_ondisk_t node)
 {
-	if (node->crc == hammer_crc_get_btree(vol_version, node))
+	if (hget32(node->crc) == hammer_crc_get_btree(vol_version, node))
 		return(1);
 	if (vol_version >= HAMMER_VOL_VERSION_SEVEN) {
-		if (node->crc == hammer_crc_get_btree(
+		if (hget32(node->crc) == hammer_crc_get_btree(
 			HAMMER_VOL_VERSION_SIX, node))
 			return(1);
 	}
@@ -261,17 +256,17 @@ hammer_crc_get_leaf(uint32_t vol_version, void *data, hammer_btree_leaf_elm_t le
 {
 	hammer_crc_t crc;
 
-	if (leaf->data_len == 0)
+	if (hget32(leaf->data_len) == 0)
 		return(0);
 
-	switch(leaf->base.rec_type) {
+	switch(hget16(leaf->base.rec_type)) {
 	case HAMMER_RECTYPE_INODE:
-		if (leaf->data_len != sizeof(struct hammer_inode_data))
+		if (hget32(leaf->data_len) != sizeof(struct hammer_inode_data))
 			return(0);  /* This shouldn't happen */
 		crc = hammer_datacrc(vol_version, data, HAMMER_INODE_CRCSIZE);
 		break;
 	default:
-		crc = hammer_datacrc(vol_version, data, leaf->data_len);
+		crc = hammer_datacrc(vol_version, data, hget32(leaf->data_len));
 		break;
 	}
 	return(crc);
@@ -282,20 +277,20 @@ hammer_crc_set_leaf(uint32_t vol_version, void *data, hammer_btree_leaf_elm_t le
 {
 #ifdef _KERNEL
 #ifdef INVARIANTS
-	if (leaf->data_len && leaf->base.rec_type == HAMMER_RECTYPE_INODE)
-		KKASSERT(leaf->data_len == sizeof(struct hammer_inode_data));
+	if (hget32(leaf->data_len) && hget16(leaf->base.rec_type) == HAMMER_RECTYPE_INODE)
+		KKASSERT(hget32(leaf->data_len) == sizeof(struct hammer_inode_data));
 #endif
 #endif
-	leaf->data_crc = hammer_crc_get_leaf(vol_version, data, leaf);
+	leaf->data_crc = hmk32(hammer_crc_get_leaf(vol_version, data, leaf));
 }
 
 static __inline int
 hammer_crc_test_leaf(uint32_t vol_version, void *data, hammer_btree_leaf_elm_t leaf)
 {
-	if (leaf->data_crc == hammer_crc_get_leaf(vol_version, data, leaf))
+	if (hget32(leaf->data_crc) == hammer_crc_get_leaf(vol_version, data, leaf))
 		return(1);
 	if (vol_version >= HAMMER_VOL_VERSION_SEVEN) {
-		if (leaf->data_crc == hammer_crc_get_leaf(
+		if (hget32(leaf->data_crc) == hammer_crc_get_leaf(
 			HAMMER_VOL_VERSION_SIX, data, leaf))
 			return(1);
 	}

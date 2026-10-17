@@ -48,19 +48,11 @@
  * builds.
  */
 
-#ifdef _KERNEL
-#include <sys/param.h>
-#include <sys/systm.h>
-#else
-#include <sys/types.h>
-#endif
+#include "hammer_port.h"
 
-#ifndef _KERNEL
-/* prototypes for the kernel are in <sys/systm.h> */
 extern const uint32_t crc32_tab[];
 uint32_t crc32(const void *buf, size_t size);
 uint32_t crc32_ext(const void *buf, size_t size, uint32_t ocrc);
-#endif
 
 #if 0
 /* see icrc32.c */

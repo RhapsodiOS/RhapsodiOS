@@ -1356,3 +1356,15 @@ unspecified-argument machine contracts. Acceptance requires the historical
 compiler to reproduce all 44 reference bytes, all eight entry-SP homing writes,
 and unchanged r3/r1. OSMSaveInterruptState returns zero; OSMSetInterruptState
 uses the incoming r3 register bits without assigning them pointer semantics.
+
+
+## Task7 bounded full bus reset execution
+
+The reference SCSIhScsiBusReset graph includes actual DelayCount500us calls
+with counts2000 and4000. ResetScsi alone executes883124 instructions; the full
+graph exceeds the previous1000000-instruction ceiling. The controller approved
+an explicit per-case ceiling4000000 for evidence-backed bounded fixtures;
+existing case budgets and other resource bounds remain unchanged. The full
+Task7 bus-reset fixture uses that budget and executes every internal body;
+unknown calls, unsupported instructions, and budget exhaustion remain fatal.
+This is routine execution evidence, not elapsed-time or physical-bus proof.

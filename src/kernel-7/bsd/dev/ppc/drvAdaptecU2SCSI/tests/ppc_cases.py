@@ -126,8 +126,8 @@ def run_case(binary: Path, case: dict, contracts: dict) -> dict:
     if any(start >= end or (end - start) % 4 for start, end in bounds):
         raise ValueError("invalid reviewed function bounds")
     limit = case["instruction_limit"]
-    if not 0 < limit <= 1000000:
-        raise ValueError("instruction limit must be in 1..1000000")
+    if not 0 < limit <= 4000000:
+        raise ValueError("instruction limit must be in 1..4000000")
     layouts = declared_abi(case) if "declaration" in case else None
     if layouts is None and len(case["arguments"]) > 8:
         raise ValueError("only reviewed r3..r10 integer/pointer arguments are supported")

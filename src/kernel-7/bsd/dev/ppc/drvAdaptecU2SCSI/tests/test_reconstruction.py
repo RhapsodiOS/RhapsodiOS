@@ -407,6 +407,34 @@ def test_task5_internal_callback_trace_executes_body(tmp_path):
         runner.run_case(image, case, {"services": {}})
 
 
+@pytest.mark.parametrize("invalid_format", ["unknown_kind", "too_many_arguments"])
+def test_task5_iolog_format_selected_abi_is_validated(tmp_path, invalid_format):
+    runner = load_script("ppc_cases")
+    image = runner_image(tmp_path, [0x7c0802a6, 0x90010008, 0x480000f9,
+                                     0x80010008, 0x7c0803a6, 0x4e800020],
+                         aliases=[("_IOLog", 0x100)])
+    case = smoke_case(24)
+    case["memory"][0]["bytes"] = b"msg\0".hex()
+    values = [0x1234, 2, 3, 4, 5, 6, 7]
+    case["arguments"] = [{"region": "buffer", "offset": 0}, *values]
+    case["external_outcomes"] = [{"service": "_IOLog", "arguments": ["msg", *values]}]
+    contract = {"boundary": "kernel-service", "arguments": ["cstring"], "return": "void",
+                "formats": {"msg": ["scalar"] * 7}, "evidence": "independent PPC IOLog caller witness"}
+    contracts = {"services": {"_IOLog": contract}}
+    # The selected ABI may use all eight supported argument registers.
+    assert runner.run_case(image, case, contracts)["observations"]["trace"] == [
+        {"target": "_IOLog", "arguments": ["msg", *values]}]
+    if invalid_format == "unknown_kind":
+        contract["formats"]["msg"] = ["unknown"]
+        case["external_outcomes"][0]["arguments"] = ["msg", values[0]]
+    else:
+        # The format itself consumes r3; eight additional arguments exceed r10.
+        contract["formats"]["msg"] = ["scalar"] * 8
+        case["external_outcomes"][0]["arguments"] = ["msg", *values, 0]
+    with pytest.raises(ValueError, match="unsupported service calling convention: _IOLog"):
+        runner.run_case(image, case, contracts)
+
+
 def test_task5_objc_provider_dispatch_rejects_frozen_internal_selector(tmp_path):
     runner = load_script("ppc_cases")
     image = runner_image(tmp_path, [0x7c0802a6, 0x90010008, 0x480000f9,

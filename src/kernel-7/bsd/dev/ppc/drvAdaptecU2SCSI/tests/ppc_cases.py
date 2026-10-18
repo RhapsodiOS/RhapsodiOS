@@ -354,7 +354,7 @@ def run_case(binary: Path, case: dict, contracts: dict) -> dict:
                         ("IOPCIDevice", "configWriteLong:value:"),
                         ("IOPCIDevice", "getIOAperture")} or not contract.get("evidence")):
                     raise ValueError("unsupported Objective-C provider")
-                validate_service_abi(name, contract)
+            validate_service_abi(name, contract)
             args = []
             outputs = {}
             for index, kind in enumerate(contract["arguments"]):

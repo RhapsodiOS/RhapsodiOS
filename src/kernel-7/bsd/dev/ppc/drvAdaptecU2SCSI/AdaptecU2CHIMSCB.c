@@ -175,3 +175,54 @@ unsigned int SCSIhSwappingSearchExeQ()
     return 0;
 }
 
+void SCSIhStandardResetBTA(AdaptecU2HHCB *hhcb)
+{
+    unsigned int i, count = hhcb->byte1f;
+    for (i = 0; i < count; ++i)
+        SCSIhStandardIndexClearBusy(hhcb, i);
+}
+
+void SCSIhSwappingResetBTA(AdaptecU2HHCB *hhcb)
+{
+    unsigned int i;
+    for (i = 0; i < 16; ++i)
+        SCSIhSwappingIndexClearBusy(hhcb, i);
+}
+
+void SCSIhStandardTargetClearBusy(AdaptecU2HHCB *hhcb, AdaptecU2HIOB *hiob)
+{
+    AdaptecU2UnitControl *unit = hiob->context.unit;
+    unsigned char saved = OSMReadUExact8(*hhcb->ioHandle, 144);
+    unsigned char index = unit->target;
+    OSMWriteUExact8(*hhcb->ioHandle, 144, hiob->control.bytes.scbNumber);
+    if (hhcb->flags & 0x20000000)
+        index += 16 * unit->lun;
+    SCSIhStandardIndexClearBusy(hhcb, index);
+    OSMWriteUExact8(*hhcb->ioHandle, 144, saved);
+}
+
+void SCSIhSwappingTargetClearBusy(AdaptecU2HHCB *hhcb, AdaptecU2HIOB *hiob)
+{
+    SCSIhSwappingIndexClearBusy(hhcb, hiob->context.unit->target);
+}
+
+void SCSIhCommonResetSoftware(AdaptecU2HHCB *hhcb)
+{
+    unsigned char i;
+    for (i = 0; i < hhcb->numberScbs; ++i)
+        hhcb->activeHiobs[i] = (AdaptecU2HIOB *)0xffffffff;
+    SCSIhCheckSyncNego(hhcb);
+    if (hhcb->firmware->setupAssignScbBuffer)
+        hhcb->firmware->setupAssignScbBuffer(hhcb);
+}
+
+void SCSIhSetAddressScratchBA32(AdaptecU2HHCB *hhcb, unsigned char offset,
+                                 const unsigned char *virtualAddress)
+{
+    unsigned int busAddress = OSDGetBusAddress(hhcb, 1, virtualAddress);
+    OSMWriteUExact8(*hhcb->ioHandle, offset, busAddress);
+    OSMWriteUExact8(*hhcb->ioHandle, offset + 1, busAddress >> 8);
+    OSMWriteUExact8(*hhcb->ioHandle, offset + 2, busAddress >> 16);
+    OSMWriteUExact8(*hhcb->ioHandle, offset + 3, busAddress >> 24);
+}
+

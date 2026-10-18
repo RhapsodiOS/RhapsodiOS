@@ -2185,6 +2185,26 @@ build $outdir/Sym8xxMisc.o: cc bsd/dev/ppc/drvSymbios8xx/Sym8xxMisc.m || $outdir
   object = Sym8xxMisc.o
   flags = $cflags
 
+build $outdir/AttoScsiInit.o: cc bsd/dev/ppc/drvAttoScsiController/AttoScsiInit.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvAttoScsiController/AttoScsiInit.m
+  object = AttoScsiInit.o
+  flags = $cflags
+
+build $outdir/AttoScsiClient.o: cc bsd/dev/ppc/drvAttoScsiController/AttoScsiClient.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvAttoScsiController/AttoScsiClient.m
+  object = AttoScsiClient.o
+  flags = $cflags
+
+build $outdir/AttoScsiExecute.o: cc bsd/dev/ppc/drvAttoScsiController/AttoScsiExecute.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvAttoScsiController/AttoScsiExecute.m
+  object = AttoScsiExecute.o
+  flags = $cflags
+
+build $outdir/AttoScsiMisc.o: cc bsd/dev/ppc/drvAttoScsiController/AttoScsiMisc.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvAttoScsiController/AttoScsiMisc.m
+  object = AttoScsiMisc.o
+  flags = $cflags
+
 build $outdir/usbcmd.o: cc bsd/dev/ppc/drvUSBCMD/usbcmd.m || $outdir/prepared $outdir/validated generated
   source = ../../bsd/dev/ppc/drvUSBCMD/usbcmd.m
   object = usbcmd.o
@@ -2488,7 +2508,7 @@ kernel_objects = $
   $outdir/DECchip2104x.o $outdir/DECchip2104xPrivate.o $outdir/ATADisk.o $outdir/ATADiskInternal.o $outdir/ATADiskKernel.o $
   $outdir/AtapiCnt.o $outdir/AtapiCntInternal.o $outdir/IdeCnt.o $outdir/IdeCntDma.o $outdir/AtapiCntCmds.o $
   $outdir/IdeCntCmds.o $outdir/IdeCntInit.o $outdir/Sym8xxInit.o $outdir/Sym8xxClient.o $outdir/Sym8xxExecute.o $
-  $outdir/Sym8xxMisc.o $outdir/usbcmd.o $outdir/ohciuim.o $outdir/OHCIDispatchTable.o $outdir/driverservices.o $
+  $outdir/Sym8xxMisc.o $outdir/AttoScsiInit.o $outdir/AttoScsiClient.o $outdir/AttoScsiExecute.o $outdir/AttoScsiMisc.o $outdir/usbcmd.o $outdir/ohciuim.o $outdir/OHCIDispatchTable.o $outdir/driverservices.o $
   $outdir/OHCIRootHub.o $outdir/UIMrootHubSimulation.o $outdir/CompositeClassDriver.o $outdir/CompositeDriverDescription.o $outdir/ConfigParse.o $
   $outdir/HubClassDriver.o $outdir/Hub2ClassDriver.o $outdir/rootHubDriver.o $outdir/usl.o $outdir/uslPipeState.o $
   $outdir/USLhubs.o $outdir/uslPipe.o $outdir/uslUtility.o $outdir/uslDescriptors.o $outdir/uslExpert.o $
@@ -2586,7 +2606,7 @@ build objects: phony $
   $outdir/DECchip2104x.o $outdir/DECchip2104xPrivate.o $outdir/ATADisk.o $outdir/ATADiskInternal.o $outdir/ATADiskKernel.o $
   $outdir/AtapiCnt.o $outdir/AtapiCntInternal.o $outdir/IdeCnt.o $outdir/IdeCntDma.o $outdir/AtapiCntCmds.o $
   $outdir/IdeCntCmds.o $outdir/IdeCntInit.o $outdir/Sym8xxInit.o $outdir/Sym8xxClient.o $outdir/Sym8xxExecute.o $
-  $outdir/Sym8xxMisc.o $outdir/usbcmd.o $outdir/ohciuim.o $outdir/OHCIDispatchTable.o $outdir/driverservices.o $
+  $outdir/Sym8xxMisc.o $outdir/AttoScsiInit.o $outdir/AttoScsiClient.o $outdir/AttoScsiExecute.o $outdir/AttoScsiMisc.o $outdir/usbcmd.o $outdir/ohciuim.o $outdir/OHCIDispatchTable.o $outdir/driverservices.o $
   $outdir/OHCIRootHub.o $outdir/UIMrootHubSimulation.o $outdir/CompositeClassDriver.o $outdir/CompositeDriverDescription.o $outdir/ConfigParse.o $
   $outdir/HubClassDriver.o $outdir/Hub2ClassDriver.o $outdir/rootHubDriver.o $outdir/usl.o $outdir/uslPipeState.o $
   $outdir/USLhubs.o $outdir/uslPipe.o $outdir/uslUtility.o $outdir/uslDescriptors.o $outdir/uslExpert.o $

@@ -806,7 +806,7 @@ def test_sequencer_download_patch_and_failure():
     assert result["results"]
 
 
-@pytest.mark.parametrize("prefix", ["reg4", "reg5", "reg6", "reg7", "reg8"])
+@pytest.mark.parametrize("prefix", ["reg4", "reg5", "reg6", "reg7", "reg8", "reg9"])
 def test_task6_reference_batch(prefix):
     cases = json.loads((TESTS / "task6-cases.json").read_text())
     selected = {**cases, "cases": [c for c in cases["cases"] if c["id"].startswith("task6-" + prefix)]}
@@ -993,6 +993,7 @@ def test_task5_group_rejects_missing_or_incorrect_implementation(tmp_path, firmw
     ledger_path.write_text(json.dumps(ledger))
     with pytest.raises((ValueError, FileNotFoundError), match=expected):
         audit.audit_service_group(evidence, repo, objects, owner)
+
 
 
 

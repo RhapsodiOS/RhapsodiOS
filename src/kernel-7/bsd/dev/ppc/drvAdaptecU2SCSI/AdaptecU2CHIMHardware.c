@@ -1,5 +1,144 @@
 #include "AdaptecU2CHIMPrivate.h"
 
+void SCSIhAbortTask(AdaptecU2HIOB *hiob)
+{
+    AdaptecU2HIOB *related = hiob->context.related;
+    AdaptecU2HHCB *hhcb = related->context.unit->hhcb;
+    unsigned char control = OSMReadUExact8(*hhcb->ioHandle, 135), i = 0;
+    if (!(control & 4))
+        SCSIhPauseAndWait(hhcb);
+    if (hhcb->numberScbs) {
+        while (i < hhcb->numberScbs && hhcb->activeHiobs[i] != related)
+            ++i;
+        if (i < hhcb->numberScbs) {
+            hhcb->firmware->abortHIOB(hhcb, related, 4);
+            switch (related->managerStatus) {
+            case 1: hiob->status = 3; hiob->hostStatus = 38; break;
+            case 2: hiob->status = 1; break;
+            case 9: hiob->status = 0; hiob->hostStatus = 37; break;
+            default: break;
+            }
+        }
+    }
+    if (i == hhcb->numberScbs) {
+        hiob->status = 3;
+        hiob->hostStatus = 36;
+    }
+    SCSIrCompleteSpecialHIOB(hiob);
+    if (!(control & 4))
+        SCSIhWriteHCNTRL(hhcb, control);
+}
+
+void SCSIhAbortTaskSet(AdaptecU2HIOB *hiob)
+{
+    AdaptecU2HHCB *hhcb = hiob->context.unit->hhcb;
+    unsigned char target = hiob->context.unit->target;
+    unsigned char control = OSMReadUExact8(*hhcb->ioHandle, 135), i;
+    AdaptecU2HIOB *active;
+    if (!(control & 4))
+        SCSIhPauseAndWait(hhcb);
+    for (i = 0; i < hhcb->numberScbs; ++i) {
+        active = hhcb->activeHiobs[i];
+        if (active != (AdaptecU2HIOB *)0xffffffff &&
+            active->context.unit->hhcb == hhcb && active->context.unit->target == target)
+            hhcb->firmware->abortHIOB(hhcb, active, 4);
+    }
+    hiob->status = 1;
+    SCSIrCompleteSpecialHIOB(hiob);
+    if (!(control & 4))
+        SCSIhWriteHCNTRL(hhcb, control);
+}
+
+unsigned char SCSIhCableSense(AdaptecU2HHCB *hhcb)
+{
+    unsigned char saved = OSMReadUExact8(*hhcb->ioHandle, 30);
+    unsigned char select = 8, result = 0, first, second, value;
+    unsigned int mode;
+    AdaptecU2PciLocation *location;
+    OSMWriteUExact8(*hhcb->ioHandle, 30, 32);
+    hhcb->hardware->checkExtArbAckEnBit(hhcb);
+    location = OSDGetHostAddress(hhcb);
+    if ((hhcb->deviceID & 0xfff0) == 0x7890)
+        select = location->words[3] ? 8 : 0;
+    mode = (hhcb->hardwareFlags >> 24) & 3;
+    if (mode == 0) {
+        OSMWriteUExact8(*hhcb->ioHandle, 30, 40);
+        OSMWriteUExact8(*hhcb->ioHandle, 29, select | 16);
+        OSMWriteUExact8(*hhcb->ioHandle, 29, select);
+        OSMWriteUExact8(*hhcb->ioHandle, 29, 0);
+        OSMWriteUExact8(*hhcb->ioHandle, 29, select | 4);
+        first = OSMReadUExact8(*hhcb->ioHandle, 29);
+        OSMWriteUExact8(*hhcb->ioHandle, 29, 0);
+        OSMWriteUExact8(*hhcb->ioHandle, 29, select | 48);
+        OSMWriteUExact8(*hhcb->ioHandle, 29, select | 32);
+        OSMWriteUExact8(*hhcb->ioHandle, 29, 32);
+        OSMWriteUExact8(*hhcb->ioHandle, 29, select | 4);
+        second = OSMReadUExact8(*hhcb->ioHandle, 29);
+        OSMWriteUExact8(*hhcb->ioHandle, 29, 0);
+        OSMWriteUExact8(*hhcb->ioHandle, 30, 0);
+        if (OSMReadUExact8(*hhcb->ioHandle, 31) & 2) {
+            if (!(first & 128)) result = 2;
+            if (!(first & 64)) result |= 1;
+            if (!(second & 64)) result |= 4;
+        } else {
+            if (!(first & 128)) result = 4;
+            if (!(first & 64)) result |= 1;
+        }
+    } else if (mode == 1) {
+        value = OSMReadUExact8(*hhcb->ioHandle, 27);
+        OSMWriteUExact8(*hhcb->ioHandle, 27, (value & 0xcf) | 0x10);
+        value = OSMReadUExact8(*hhcb->ioHandle, 29);
+        SCSIhDelayCount500us(hhcb, 0);
+        OSMWriteUExact8(*hhcb->ioHandle, 29, value | 12);
+        value = OSMReadUExact8(*hhcb->ioHandle, 30);
+        OSMWriteUExact8(*hhcb->ioHandle, 30, value | 32);
+        SCSIhDelayCount500us(hhcb, 0);
+        OSMWriteUExact8(*hhcb->ioHandle, 30, value & 0xdf);
+        value = OSMReadUExact8(*hhcb->ioHandle, 29);
+        if (!(value & 32)) result = 1;
+        if (!(value & 64)) result |= 4;
+    } else if (mode == 2) {
+        OSMWriteUExact8(*hhcb->ioHandle, 30, 32);
+        OSMWriteUExact8(*hhcb->ioHandle, 29, 2);
+        result = OSMReadUExact8(*hhcb->ioHandle, 29);
+        OSMWriteUExact8(*hhcb->ioHandle, 29, 0);
+        OSMWriteUExact8(*hhcb->ioHandle, 30, 0);
+    }
+    OSMWriteUExact8(*hhcb->ioHandle, 30, saved);
+    return result;
+}
+
+unsigned char SCSIhAIC78XXAutoTermCable(AdaptecU2HHCB *hhcb)
+{
+    unsigned char cables = SCSIhCableSense(hhcb), result;
+    if (OSMReadUExact8(*hhcb->ioHandle, 31) & 2) {
+        if (cables & 4)
+            result = ((cables & 1) == (cables & 2)) ? 8 : 0;
+        else
+            result = (!(cables & 1) || !(cables & 2)) ? 8 : 0;
+        if ((cables & 7) == 6)
+            return result & 0xef;
+        return result | 16;
+    }
+    return (!(cables & 4) || !(cables & 1)) ? 8 : 0;
+}
+
+void SCSIhAICBayonetWaitForBusStable(AdaptecU2HHCB *hhcb)
+{
+    unsigned char previous = OSMReadUExact8(*hhcb->ioHandle, 24) & 128, current;
+    unsigned int count = 8000;
+    for (;;) {
+        if (OSMReadUExact8(*hhcb->ioHandle, 31) & 12)
+            break;
+        current = (OSMReadUExact8(*hhcb->ioHandle, 24) >> 1) & 64;
+        if ((current != 0) != ((previous & 128) != 0)) {
+            previous = (current != 0) << 7;
+            if (!--count)
+                break;
+        }
+    }
+}
+
 void SCSIhSwapping32SetBreakPoint(AdaptecU2HHCB *hhcb, unsigned char mask)
 {
     unsigned char value = OSMReadUExact8(*hhcb->ioHandle, 96);

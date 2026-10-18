@@ -92,6 +92,8 @@ bsd/dev/ppc/PCPointer.m			optional event
 
 bsd/dev/ppc/drvOHare/ohare.m		optional mk_hasdrivers
 
+bsd/dev/ppc/drvPowerSupply/PowerSupply.m	optional mk_hasdrivers
+
 bsd/dev/ppc/drvApple96_SCSI/Apple96BusState.m		optional mk_hasdrivers
 bsd/dev/ppc/drvApple96_SCSI/Apple96Curio.m		optional mk_hasdrivers
 bsd/dev/ppc/drvApple96_SCSI/Apple96CurioDBDMA.m		optional mk_hasdrivers
@@ -174,3 +176,11 @@ driverkit/ppc/autoconf_ppc.m		optional driverkit
 driverkit/ppc/PPCKernBus.m		optional driverkit
 driverkit/ppc/IOAsmSupport.s		optional driverkit
 driverkit/ppc/IOSupport.c		optional driverkit
+
+bsd/dev/ppc/drvDEC21x4/DEC21x4.m	optional mk_hasdrivers
+bsd/dev/ppc/drvDEC21x4/DEC21x4Init.m	optional mk_hasdrivers
+bsd/dev/ppc/drvDEC21x4/DEC21x4KDB.m	optional mk_hasdrivers
+bsd/dev/ppc/drvDEC21x4/DEC21x4Private.m	optional mk_hasdrivers
+bsd/dev/ppc/drvDEC21x4/DEC21x4SRom.m	optional mk_hasdrivers
+bsd/dev/ppc/drvDEC21x4/DEC21x4Media.c	optional mk_hasdrivers
+bsd/dev/ppc/drvDEC21x4/DEC21x4MII.c	optional mk_hasdrivers

@@ -784,6 +784,9 @@ def test_hardware_pause_register_and_eeprom_trace():
     assert (TESTS.parent / "AdaptecU2CHIMHardware.c").is_file(), "missing hardware owner bodies"
     cases = json.loads((TESTS / "task6-cases.json").read_text())
     selected = {**cases, "cases": [c for c in cases["cases"] if c["family"] == "hardware"]}
+    source = (TESTS.parent / "AdaptecU2CHIMHardware.c").read_text()
+    for case in selected["cases"]:
+        assert re.search(r"\b" + case["entry"] + r"\([^;]*?\)\s*\{", source), case["entry"]
     runner = load_script("ppc_cases")
     result = runner.execute(OUT / "reference/image.bin", selected,
                             json.loads((TESTS / "contracts.json").read_text()))
@@ -794,6 +797,9 @@ def test_sequencer_download_patch_and_failure():
     assert (TESTS.parent / "AdaptecU2CHIMHardware.c").is_file(), "missing sequencer owner bodies"
     cases = json.loads((TESTS / "task6-cases.json").read_text())
     selected = {**cases, "cases": [c for c in cases["cases"] if c["family"] == "sequencer"]}
+    source = (TESTS.parent / "AdaptecU2CHIMHardware.c").read_text()
+    for case in selected["cases"]:
+        assert re.search(r"\b" + case["entry"] + r"\([^;]*?\)\s*\{", source), case["entry"]
     runner = load_script("ppc_cases")
     result = runner.execute(OUT / "reference/image.bin", selected,
                             json.loads((TESTS / "contracts.json").read_text()))

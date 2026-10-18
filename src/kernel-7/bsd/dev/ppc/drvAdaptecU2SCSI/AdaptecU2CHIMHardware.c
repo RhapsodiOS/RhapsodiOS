@@ -1,5 +1,75 @@
 #include "AdaptecU2CHIMPrivate.h"
 
+void SCSIhAICBayonetSeqStretchWorkaround(AdaptecU2HHCB *hhcb)
+{
+    OSMReadUExact8(*hhcb->ioHandle, 238);
+}
+
+void SCSIhWWWriteHCNTRL(const AdaptecU2IOHandle *handle, unsigned char value)
+{
+    unsigned char control;
+    if (!(value & 4)) {
+        control = OSMReadUExact8(*handle, 135);
+        if (!(control & 4)) {
+            OSMWriteUExact8(*handle, 135, control | 4);
+            while (!(OSMReadUExact8(*handle, 135) & 4))
+                ;
+        }
+        if (OSMReadUExact8(*handle, 145) & 13)
+            value |= 4;
+    }
+    OSMWriteUExact8(*handle, 135, value);
+}
+
+void SCSIhWriteHCNTRL(AdaptecU2HHCB *hhcb, unsigned char value)
+{
+    if (hhcb->hardwareFlags & 0x200000)
+        SCSIhWWWriteHCNTRL(hhcb->ioHandle, value);
+    else
+        OSMWriteUExact8(*hhcb->ioHandle, 135, value);
+}
+
+unsigned char SCSIhWWReadINTSTAT(const AdaptecU2IOHandle *handle)
+{
+    unsigned char control = OSMReadUExact8(*handle, 135), status;
+    if (control & 4)
+        return OSMReadUExact8(*handle, 145);
+    OSMWriteUExact8(*handle, 135, control | 4);
+    while (!(OSMReadUExact8(*handle, 135) & 4))
+        ;
+    status = OSMReadUExact8(*handle, 145);
+    if (status & 13)
+        control |= 4;
+    OSMWriteUExact8(*handle, 135, control);
+    return status;
+}
+
+unsigned char SCSIhReadINTSTAT(AdaptecU2HHCB *hhcb)
+{
+    if (hhcb->hardwareFlags & 0x100000)
+        return SCSIhWWReadINTSTAT(hhcb->ioHandle);
+    return OSMReadUExact8(*hhcb->ioHandle, 145);
+}
+
+void SCSIhPauseAndWait(AdaptecU2HHCB *hhcb)
+{
+    unsigned int count = 0x800000;
+    unsigned char control = OSMReadUExact8(*hhcb->ioHandle, 135);
+    SCSIhWriteHCNTRL(hhcb, control | 4);
+    do {
+        if (OSMReadUExact8(*hhcb->ioHandle, 135) & 4)
+            break;
+    } while (--count);
+    if (hhcb->hardware->seqStretchWorkaround)
+        hhcb->hardware->seqStretchWorkaround(hhcb);
+}
+
+void SCSIhUnPause(AdaptecU2HHCB *hhcb)
+{
+    unsigned char control = OSMReadUExact8(*hhcb->ioHandle, 135);
+    SCSIhWriteHCNTRL(hhcb, control & 0xfb);
+}
+
 unsigned int SCSIhScamSupportCheck()
 {
     return 0;

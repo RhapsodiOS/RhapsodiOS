@@ -4,7 +4,7 @@
 
 **Goal:** Reconstruct the supplied OpenGL implementation as a PPC/i386 RhapsodiOS framework with native Objective-C views, validate its software renderer, and then recommend a hardware-acceleration path.
 
-**Architecture:** Recover the supplied GL/GLU, engine, memory, software renderer, and dispatch contracts from PowerPC PEF evidence. Add a native context boundary and Objective-C view adapter inside OpenGL.framework, presenting through Interceptor without an AppKit-to-OpenGL link. Hardware investigation starts after software acceptance.
+**Architecture:** Recover the supplied GL/GLU, AGL context API, GLI engine, and GLD renderer contracts from PowerPC PEF evidence. NSOpenGL wraps Apple's recovered handles; private platform adaptations present through Interceptor without introducing another context ABI or an AppKit-to-OpenGL link. Hardware investigation starts after software acceptance.
 
 **Tech Stack:** C89, historical Objective-C and manual memory management, Foundation threads/locks, AppKit, Interceptor, DriverKit-facing presentation, Project Builder/pb_makefiles, Python host evidence checks, IDA, isolated PPC/i386 guests.
 
@@ -17,7 +17,9 @@
 - Produce `/System/Library/Frameworks/OpenGL.framework/Versions/A/OpenGL` and the usual framework links.
 - AppKit must not link back to OpenGL.
 - Place the new Objective-C classes in OpenGL.framework and expose them through `<OpenGL/NSOpenGL.h>` and `<OpenGL/NSOpenGLView.h>`.
-- A public QuickDraw/AGL compatibility layer and a complete later-macOS CGL API are outside phases 1 and 2.
+- Preserve the portable AGL pixel-format/context/offscreen interface and measured GLI/GLD contracts; a complete QuickDraw compatibility runtime and complete later-macOS CGL API are outside phases 1 and 2.
+- Preserve measured Apple names, signatures, constants, errors, handle semantics, shared layouts, and dispatch slots. Record necessary native ABI adaptations; do not promise unchanged PEF binary loading.
+- Put native thread/ownership state in private side tables or Objective-C objects, not additional fields in Apple ABI structures.
 - Unknown routines and no-op stubs are incomplete.
 - Phase 1 includes the software renderer implementation needed by phase 2.
 - Phase 2 provides rendering acceptance; a phase 1 build does not establish that rendering is correct.
@@ -72,17 +74,17 @@ The source grouping is proposed organization, not recovered original filenames.
 | Files | Responsibility |
 | --- | --- |
 | `Makefile`, `Makefile.preamble`, `Makefile.postamble`, `PB.project`, `Resources/Info-nextstep.plist` | Framework build, headers, dependencies, version-A installation |
-| `gl.h`, `glu.h`, `glext.h`, `OpenGL.h` | Measured GL/GLU/extension public declarations |
+| `gl.h`, `glu.h`, `glext.h`, `agl.h`, `OpenGL.h` | Measured GL/GLU/extension and portable AGL public declarations |
 | `NSOpenGL.h`, `NSOpenGLView.h` | Native Objective-C source API |
-| `Private/RGLNative.h`, `Private/RGLRenderer.h`, `Private/RGLState.h` | New native boundary, recovered renderer ABI, recovered internal state |
-| `Platform/RGLMemory.c`, `Platform/RGLThread.m`, `Platform/RGLBuffers.c`, `Platform/RGLContext.c` | Native allocation, thread ownership, drawable buffers, context lifecycle |
+| `Private/GLI.h`, `Private/GLD.h`, `Private/GLState.h` | Recovered engine/renderer ABI and internal state; no new context API |
+| `Platform/GLMemory.c`, `Platform/GLThread.m`, `Platform/GLBuffers.c`, `Library/AGLContext.c` | Private native allocation/thread/drawable adaptations and Apple context entry points |
 | `Library/GLDispatch.c`, `Library/GLState.c`, `Library/GLObjects.c`, `Library/GLLists.c` | GL exports, state/errors, shareable objects, display lists |
 | `Engine/GLTransform.c`, `Engine/GLClip.c`, `Engine/GLLight.c`, `Engine/GLEvaluate.c` | Recovered transformation, clipping, lighting, evaluation pipeline |
 | `Renderer/GLPrimitive.c`, `Renderer/GLFragment.c`, `Renderer/GLTexture.c`, `Renderer/GLPixel.c` | Software primitives, depth/stencil/blend, sampling, pixel operations |
 | `Utility/GLUProject.c`, `Utility/GLUMipmap.c`, `Utility/GLUQuadric.c`, `Utility/GLUTess.c`, `Utility/GLUNurbs.c` | GLU families present in the reference |
 | `NSOpenGLPixelFormat.m`, `NSOpenGLContext.m`, `NSOpenGLView.m` | Public Objective-C adapters |
 | `Private/NSOpenGLDrawable.h`, `NSOpenGLDrawable.m` | Interceptor attachment, clipping, conversion, presentation |
-| `reconstruction/reference.json`, `abi.md`, `native-api.md`, `ledger.json`, `batches.md`, `build-environment.md`, `validation.md` | Reviewed identities, contracts, source mapping, build and acceptance evidence |
+| `reconstruction/reference.json`, `abi.json`, `abi.md`, `native-api.md`, `ledger.json`, `batches.md`, `build-environment.md`, `validation.md` | Reviewed identities, machine-checkable Apple ABI, native deviations, source mapping, build and acceptance evidence |
 | `reconstruction/export_ida.py`, `check_evidence.py`, `tests/test_evidence.py` | PEF-aware evidence export/checking, with no bundled proprietary bytes |
 | `tests/Makefile`, `test_support.h`, `test_support.m`, named tests below | Native behavioral and rendering tests |
 | `examples/OpenGLDemo.m`, `examples/Makefile` | Two-window demonstration without nib dependencies |
@@ -93,57 +95,66 @@ demonstrates a missing prerequisite. If the recovered call graph requires extra
 source units, record their exact paths in `batches.md` before adding them; split
 along recovered responsibilities rather than growing a single renderer file.
 
-## New native interfaces
+## Apple ABI and native adaptation boundaries
 
-These are RhapsodiOS adapter contracts, not assertions about Apple's private ABI.
-Task 1 separately records every recovered `gl*`, `glu*`, and internal `gld*`
-signature with its reference address and evidence.
+Use Apple's existing entry-point families as the interfaces, not a renamed
+replacement API. The following names are confirmed exports in the supplied files;
+Task 1 must recover and freeze their exact types, argument order, return/error
+conventions, ownership, and layouts before declaring or implementing them.
+Decompiler-generated prototypes alone are insufficient.
 
-In `Private/RGLNative.h`, use opaque `RGLPixelFormat` and `RGLContext` structs,
-`unsigned int` attributes, and this status enum: `RGLOk=0`, `RGLInvalid=1`,
-`RGLNoMemory=2`, `RGLBusy=3`, `RGLNoDrawable=4`, `RGLUnsupported=5`,
-`RGLDrawableLost=6`. Status values describe adapter failures, not GL errors.
+| Boundary | Confirmed entry points to recover and use |
+| --- | --- |
+| Public AGL pixel formats | `aglChoosePixelFormat`, `aglDescribePixelFormat`, `aglNextPixelFormat`, `aglDestroyPixelFormat` |
+| Public AGL contexts | `aglCreateContext`, `aglDestroyContext`, `aglSetCurrentContext`, `aglGetCurrentContext`, `aglCopyContext` |
+| Public AGL drawable/state | `aglSetOffScreen`, `aglUpdateContext`, `aglSwapBuffers`, `aglGetInteger`, `aglSetInteger`, `aglGetError`, `aglErrorString` |
+| GLI engine | `gliChoosePixelFormat`, `gliDestroyPixelFormat`, `gliCreateContext`, `gliDestroyContext`, `gliAttachDrawable`, `gliSwapBuffers`, `gliGetFunctionDispatch`, `gliGetExtensionDispatch`, `gliGetSystemDispatch` |
+| GLD renderer | `gldChoosePixelFormat`, `gldCreateContext`, `gldDestroyContext`, `gldAttachDrawable`, `gldGetRenderDispatch`, `gldGetSystemDispatch`, texture and vertex-buffer operations |
 
-```c
-RGLStatus RGLChoosePixelFormat(const unsigned int *attrs, RGLPixelFormat **out);
-void RGLRetainPixelFormat(RGLPixelFormat *format);
-void RGLReleasePixelFormat(RGLPixelFormat *format);
-RGLStatus RGLGetPixelFormatValue(const RGLPixelFormat *format,
-                               unsigned int attribute, int *out);
-RGLStatus RGLCreateContext(RGLPixelFormat *format, RGLContext *share,
-                          RGLContext **out);
-void RGLRetainContext(RGLContext *context);
-void RGLReleaseContext(RGLContext *context);
-RGLStatus RGLMakeCurrent(RGLContext *context); /* NULL clears this thread */
-RGLContext *RGLGetCurrentContext(void);       /* borrowed, thread-local */
-RGLStatus RGLResizeDrawable(RGLContext *context, int width, int height);
-void RGLClearDrawable(RGLContext *context);
-RGLStatus RGLCopyPresentableRGBA(RGLContext *context, unsigned char *dst,
-                               unsigned long capacity, int stride);
-RGLStatus RGLFlushDrawable(RGLContext *context);
-```
+This table is the initial dependency map, not the complete export inventory. Match
+all in-scope entries identified in Task 1, including query and error functions.
+Do not flatten GLI/GLD into one table, reorder slots, replace callback prototypes,
+or treat the AGL, GLI, and GLD context handles as interchangeable without evidence.
+Record their actual call relationships and handle conversions.
 
-Creation/query functions set output pointers only on success; creation failures
-set `*out=NULL`. Retains/releases accept NULL. Resize accepts zero dimensions as
-nonpresentable, rejects negative/overflowing dimensions, and preserves old buffers
-on allocation failure. RGBA copies use byte-ordered R,G,B,A, bottom row first,
-8 bits per channel, with caller-supplied capacity/stride; reject insufficient
-capacity without writing. This is a presentation conversion, not a requirement
-to replace recovered internal pixel formats. Flush completes pending software
-work before the adapter copies the buffer selected for presentation. The recovered
-single/double-buffer semantics are fixed in Task 1 and wired in Task 4.
+`agl.h` exposes the measured AGL opaque types, including AGLContext and
+AGLPixelFormat, and supported public entry points. Preserve Apple's create/destroy
+and error-return conventions rather than adding public retain/release calls or
+a native status enum. Keep native lifetime/thread bookkeeping separate; test
+destruction through AGL as well as through an Objective-C owner so one cannot
+leave the other's context binding stale.
 
-`NSOpenGL.h` declares `typedef unsigned int NSOpenGLPixelFormatAttribute` and
-project-chosen tokens: DoubleBuffer=5, ColorSize=8, AlphaSize=11, DepthSize=12,
-StencilSize=13, OffScreen=53, Accelerated=73, Window=80, each prefixed
-`NSOpenGLPFA`. The attribute list ends in 0; size tokens consume an integer value,
-boolean tokens do not. No other token is accepted initially. These are deliberate
-adapter API values, not values extracted from the PEF reference. Require exactly
-one drawable kind; default to Window when neither is supplied. Nil attributes
-request that default. Actual size defaults and supported combinations are the
-measured software renderer defaults, recorded in Task 1, not invented bit depths.
-Accelerated is rejected until a backend exists. One software virtual screen is
-reported, numbered 0; it is not a physical-display count.
+NSOpenGL uses AGL lifecycle/pixel-format/current-context operations where they
+apply, with private native drawable association implemented behind those operations
+using the measured engine contracts. An NSView is never cast to AGLDrawable or a
+QuickDraw port. Classic-only AGL functions requiring missing QuickDraw services
+must be explicitly listed as unavailable or return a reference-supported failure;
+never publish success stubs or guess a new error code. Do not expose a CGL name
+with an AGL signature; later CGL compatibility would need separate evidence.
+
+Task 1's `abi.json` records symbol spelling, calling convention, type widths and
+signedness, parameter/return types, enum values, shared structure size/alignment/
+offsets, and dispatch slots, each linked to a header or binary observation. Record
+PPC reference, PPC Mach-O, and i386 target expectations separately. PEF transition
+vectors, TOC handling, and symbol decoration need loader/calling-convention analysis;
+a Mach-O port is not automatically binary-compatible with the original PEF modules.
+Keep a deviation table with reasons and affected callers, rather than claiming
+unmeasured ABI parity.
+
+Match NSOpenGL attribute values and type widths to an identified Apple header or
+other authoritative Apple evidence; the classic bundle does not itself establish
+NSOpenGL's later Cocoa declarations. Translate NSOpenGL attributes to AGL values
+explicitly when needed. The initial native feature set remains window/offscreen,
+single/double buffering, color/alpha/depth/stencil sizes, and rejection of required
+acceleration without an accelerated backend. Recover AGL defaults, list grammar,
+virtual-screen reporting, errors, and unsupported combinations instead of imposing
+project-chosen numeric tokens or a guessed universal pixel format.
+
+Zero-size/detached native views remain nonpresentable. Native resize allocation
+failure preserves old buffers. Presentation conversion stays private and observes
+recovered pixel formats, row stride, channel order, and buffer-selection semantics;
+it does not require a new exported RGBA-copy routine or replace the renderer's
+internal format. GL errors and AGL errors retain their separate recovered semantics.
 
 ```objc
 /* NSOpenGLPixelFormat */
@@ -173,21 +184,25 @@ reported, numbered 0; it is not a physical-display count.
 - (void)drawRect:(NSRect)rect;
 ```
 
-Invalid format/share initialization returns nil. Bad attribute queries and wrong
-drawable-kind attachments raise `NSInvalidArgumentException`. Concurrent current
-ownership raises `NSInternalInconsistencyException` and leaves both threads'
-bindings intact. Unrecoverable resize/presentation failures raise
-`NSGenericException` with the adapter status after releasing acquired locks.
-Flush of a zero-size/detached window view is a no-op; loss of a previously valid
-mapping is an error. Keep GL command errors in the recovered GL error state.
+Invalid format/share initialization returns nil. Native wrapper misuse may raise
+`NSInvalidArgumentException`; concurrent native ownership may raise
+`NSInternalInconsistencyException` without changing either binding. These are
+documented NSOpenGL adaptation behaviors, not replacements for AGL's C return/error
+contracts. Any propagated presentation exception is raised after releasing locks.
+Flush of a zero-size/detached native view is a no-op; loss of a previously valid
+mapping is an error. Preserve C GL/AGL error state independently.
 
 Use NSThread's thread dictionary and `NSThreadWillExitNotification`, which are
-implemented in this tree. A private binding object retains the C context while
-current; an ownership lock guards cross-thread acquisition. Do not overwrite
-`cthread_data`, which Foundation already uses. Public current-context lookup maps
-the current C context to its live Objective-C wrapper; retain that wrapper in the
-binding as well, and break the binding explicitly on clear/exit. Initialize shared
-locking through the Objective-C class initialization path, not a racy lazy C flag.
+implemented in this tree. Private side bookkeeping protects current-context
+lifetime and guards cross-thread ownership; it must not change the shared Apple
+context layouts. Do not overwrite `cthread_data`, which Foundation already uses.
+AGL and NSOpenGL current-context queries must resolve the same binding. Keep wrapper
+ownership separate from borrowed AGL handles; raw AGL destruction must invalidate
+native associations according to the measured destroy contract. A C-created context
+may acquire a nonowning wrapper for currentContext; never create a second GL state.
+Break bindings on clear/exit, and synchronize initialization for C-first as well as
+Objective-C-first clients. Record native thread-local behavior as a deviation if
+the reference uses a different current-context model.
 
 ## Test and build commands
 
@@ -197,14 +212,14 @@ return nonzero on failure, and emit `PASS <target>` only after all assertions pa
 roots and loaded Mach-O image paths are checked before execution. Separate processes
 are required when swapping Foundation/AppKit/Interceptor implementations.
 
-Guest commands, with `RGL_CPU` set to `ppc` or `i386` by the caller:
+Guest commands, with `OPENGL_CPU` set to `ppc` or `i386` by the caller:
 
 ```sh
-export RGL_SOURCE=/build/source
-export RGL_OUTPUT=/build/opengl-validation
-sh "$RGL_SOURCE/vm/build-opengl.sh" "$RGL_CPU" "$RGL_SOURCE" "$RGL_OUTPUT"
-gnumake -C "$RGL_SOURCE/src/Kits/OpenGL/tests" memory RC_ARCHS="$RGL_CPU" \
-  FRAMEWORK_ROOT="$RGL_OUTPUT/$RGL_CPU/sym/OpenGL.framework"
+export OPENGL_SOURCE=/build/source
+export OPENGL_OUTPUT=/build/opengl-validation
+sh "$OPENGL_SOURCE/vm/build-opengl.sh" "$OPENGL_CPU" "$OPENGL_SOURCE" "$OPENGL_OUTPUT"
+gnumake -C "$OPENGL_SOURCE/src/Kits/OpenGL/tests" memory RC_ARCHS="$OPENGL_CPU" \
+  FRAMEWORK_ROOT="$OPENGL_OUTPUT/$OPENGL_CPU/sym/OpenGL.framework"
 ```
 
 Replace `memory` with the target named by each task. `build-opengl.sh` accepts
@@ -219,7 +234,7 @@ pass a private endpoint through the existing remote helper functions.
 
 ### Task 1: Recover reference ABI and an auditable reconstruction worklist
 
-**Files:** Create the seven reconstruction evidence documents and three evidence
+**Files:** Create the reconstruction evidence documents, `abi.json`, and three evidence
 scripts/tests in the file map. Consume existing IDA APIs and Mach-O export tooling.
 **Interfaces:** `check_evidence.py reference.json ledger.json` exits 0 for consistent
 identity/accounting, 1 for missing/inconsistent evidence. `--complete` additionally
@@ -229,18 +244,18 @@ aliases, source path, prototype evidence, dependency edges, disposition, and tes
 - [ ] Write `test_changed_reference_rejected`, `test_alias_not_double_counted`, and `test_unresolved_blocks_completion` with synthetic JSON assertions: wrong hash fails; two labels at the same proven entry count once; unresolved owned entry fails `--complete`.
 - [ ] Run `python -m pytest src/Kits/OpenGL/reconstruction/tests/test_evidence.py -q`; expect missing-checker failures before implementation.
 - [ ] Implement the checker and IDA export; hash original data/resource forks, inventory all six components, and cross-check PEF exports/imports against loader metadata. Inventory code regions without symbols as well as named entries. Keep ATI evidence reference-only.
-- [ ] Recover five-component software call graph, GL/GLU types, dispatch slots, memory ownership, actual formats/defaults, sharing rules, flush behavior, and extension list in `abi.md`. Create one evidence batch per independently testable family below; give every owned routine an explicit disposition. Do not discard code merely because it has no public export.
+- [ ] Recover the five-component software call graph, GL/GLU/AGL types, GLI/GLD prototypes and dispatch slots, shared layouts, memory ownership, actual formats/defaults, sharing rules, current-context/destruction rules, flush behavior, and extension list in `abi.md` and `abi.json`. Check caller argument setup and result use against each prototype. Identify an Apple NSOpenGL header separately and record its version/provenance before declaring wrapper constants. Create one evidence batch per independently testable family; give every owned routine an explicit disposition.
 - [ ] Rerun tests and checker; expect evidence consistency PASS, while `--complete` correctly fails until reconstruction finishes. Commit `OpenGL: record reference contracts and reconstruction worklist`.
 
 ### Task 2: Establish native build and selected-framework test loading
 
 **Files:** Create framework build/resource files, test Makefile/support files,
-`tests/abi.m`, `tests/test_framework_identity.py`, and `vm/build-opengl.sh`.
-**Interfaces:** Test support provides `int RGLTestCheck(int,const char *)`,
-`int RGLTestFinish(const char *)`, and `int RGLTestVerifyImages(void)`; use historical
+`tests/abi.m`, `tests/agl_client.c`, `tests/test_framework_identity.py`, and `vm/build-opengl.sh`.
+**Interfaces:** Test support provides `int GLTestCheck(int,const char *)`,
+`int GLTestFinish(const char *)`, and `int GLTestVerifyImages(void)`; use historical
 dyld image enumeration to validate the selected image and dependency paths.
 
-- [ ] Add `test_wrong_framework_root_fails` and `test_missing_cpu_slice_fails`; assertion: exit is nonzero before rendering. Add header-width/link checks for the 32-bit ABI and version-A install name.
+- [ ] Add `test_wrong_framework_root_fails` and `test_missing_cpu_slice_fails`; assertion: exit is nonzero before rendering. Add header-width/signedness/constant/layout checks against the independently recovered `abi.json`, plus link checks for Apple exports and version-A install name. Compile an AGL C client in a separate translation unit; do not derive expected ABI values from the headers being tested.
 - [ ] Run the tests against absent and deliberately mismatched temporary fixtures; expect rejection, not silent system fallback.
 - [ ] Model framework makefiles on Interceptor, but link OpenGL to Interceptor/AppKit/Foundation. Create the staged build runner and image identity checks. Empty build products are diagnostic only and cannot satisfy Task 11.
 - [ ] Compile header probes for both CPUs and verify the installation tree under the external DSTROOT; run `abi` once implementation supplies the exports. Establish baseline availability of staged dependency slices; record blockers explicitly.
@@ -248,11 +263,11 @@ dyld image enumeration to validate the selected image and dependency paths.
 
 ### Task 3: Reconstruct memory services and GL object ownership
 
-**Files:** Create `Platform/RGLMemory.c`, `Library/GLObjects.c`, corresponding
+**Files:** Create `Platform/GLMemory.c`, `Library/GLObjects.c`, corresponding
 state declarations, and `tests/memory.c`, `tests/sharing.c`.
-**Interfaces:** Consume Task 1's exact allocation/object signatures; expose the
-pixel-format/context retain/release operations in the native interface as their
-owning structures become available. Use a test-only allocation-failure seam.
+**Interfaces:** Consume Task 1's exact allocation/object and create/destroy
+contracts. Keep any native extra lifetime bookkeeping private; add no exported
+retain/release API or shared-structure fields. Use a test-only allocation-failure seam.
 
 - [ ] Add `allocation_failure_preserves_owner` and `share_group_survives_creator`: fail each allocation site in a creation sequence, assert no leaked ownership; destroy a creating context while another owner still resolves its texture/list namespace.
 - [ ] Run targets `memory` and `sharing`; expect missing implementation or failed ownership assertions.
@@ -262,23 +277,13 @@ owning structures become available. Use a test-only allocation-failure seam.
 
 ### Task 4: Recover pixel formats, contexts, and drawable buffers
 
-**Files:** Create `Platform/RGLContext.c`, `Platform/RGLBuffers.c`,
-`Private/RGLNative.h`, recovered ABI headers, `tests/pixel_format.c`, and `tests/buffers.c`.
-**Interfaces:** Implement native choose/query/create/resize/clear/copy/flush
-signatures above; consume the exact renderer tables recovered by Task 1.
+**Files:** Create `Library/AGLContext.c`, `Platform/GLBuffers.c`, `agl.h`,
+`Private/GLI.h`, `Private/GLD.h`, recovered state declarations,
+`tests/pixel_format.c`, and `tests/buffers.c`.
+**Interfaces:** Implement the measured AGL format/context/offscreen functions and
+their actual GLI/GLD calls from Task 1. Keep resize/presentation bookkeeping private.
 
-- [ ] Test `unknown_attribute_rejected`, `accelerated_format_rejected`, `incompatible_share_rejected`, `failed_resize_preserves_pixels`, and `copy_capacity_checked`. Assert unsupported creation has a NULL output; invalid queries do not change output values; failed resize leaves old dimensions/content/objects intact; short destination gets no writes.
-
-  Pin rejection without depending on a supported color/depth combination:
-  ```c
-  unsigned int accelerated[] = { 73, 0 };
-  unsigned int unknown[] = { 0xffffffffU, 0 };
-  RGLPixelFormat *format = NULL;
-  assert(RGLChoosePixelFormat(accelerated, &format) == RGLUnsupported);
-  assert(format == NULL);
-  assert(RGLChoosePixelFormat(unknown, &format) == RGLInvalid);
-  assert(format == NULL);
-  ```
+- [ ] Test `unknown_attribute_rejected`, `accelerated_format_rejected`, `incompatible_share_rejected`, `failed_resize_preserves_pixels`, and `offscreen_row_bounds_checked` through real AGL entry points. Assert the reference-recorded NULL/boolean return and exact AGL error for each failed creation/query; query output/error consumption follows reference behavior. Assert native failed resize preserves old dimensions/content/objects and guarded offscreen rows remain intact. Freeze concrete assertions from Task 1 before implementation; do not substitute new status values.
 - [ ] Run `pixel-format` and `buffers`; expect contract failures before implementation.
 - [ ] Reconstruct format enumeration, context setup/destruction, default state, front/back/depth/stencil allocation, and render/flush dispatch. Add offscreen buffers through the same context path used by views; do not make a separate test renderer.
 - [ ] Run tests for zero/negative/extreme dimensions, explicit stride, mismatched share formats, single/double buffering, and allocator failure at each step. Verify exact byte order with RGBA bytes `0x12,0x34,0x56,0x78` on both CPUs.
@@ -286,16 +291,16 @@ signatures above; consume the exact renderer tables recovered by Task 1.
 
 ### Task 5: Enforce current-context thread ownership
 
-**Files:** Create `Platform/RGLThread.m`, `tests/current_context.m`.
-**Interfaces:** Produce `RGLMakeCurrent`/`RGLGetCurrentContext`; the private binding
-retains current state and wrapper, releases on clear/exit, and leaves prior binding
-unchanged when acquiring a context owned by another thread fails.
+**Files:** Create `Platform/GLThread.m`, `tests/current_context.m`.
+**Interfaces:** Implement `aglSetCurrentContext`/`aglGetCurrentContext` with their
+measured signatures and error conventions. Private bookkeeping coordinates native
+thread ownership, wrapper lifetime, raw AGL destruction, and clear/exit cleanup.
 
-- [ ] Add `two_threads_cannot_own_one_context`, `failed_switch_preserves_old_context`, and `thread_exit_releases_owner`. Use condition locks/barriers, not sleeps; assert RGLBusy for competing acquisition, correct old current context after failure, and success after owner exit.
+- [ ] Add `two_threads_cannot_own_one_context`, `failed_switch_preserves_old_context`, and `thread_exit_releases_owner`. Use condition locks/barriers, not sleeps; assert the failed AGL return and evidence-supported error mapping, correct prior binding, and success after owner exit. If the reference has no concurrency failure, document the native adaptation and its existing-error mapping before coding, without adding an error constant.
 - [ ] Run `current-context`; expect ownership failures before implementation.
-- [ ] Implement thread-dictionary bindings, guarded acquisition/release, and exit cleanup through the existing Foundation interfaces. Use the same current state for C GL dispatch and Objective-C currentContext.
+- [ ] Implement thread-dictionary bindings, guarded acquisition/release, and exit cleanup through existing Foundation interfaces. Keep ABI objects unchanged. Use the same current state for C GL/AGL and Objective-C currentContext, including a client that calls AGL before any NSOpenGL class is initialized.
 - [ ] Test release reentrancy: clear a binding holding the last wrapper/context references and assert teardown completes without reacquiring an already-held ownership lock. Remove ownership under the lock, then perform destruction/releases after unlocking.
-- [ ] Rerun with two independent contexts, repeated clear, nested autorelease pools, caller releasing its last reference while current, and thread exit without explicit clear. Confirm no global current-context pointer or Foundation thread-data overwrite.
+- [ ] Rerun with two independent contexts, repeated clear, nested autorelease pools, Objective-C owner release while current, raw `aglDestroyContext` for wrapped/current contexts, and thread exit without explicit clear. Apply measured AGL destroy semantics and invalidate associations without a double free. Record native thread-local deviations; confirm no Foundation thread-data overwrite.
 - [ ] Commit `OpenGL: isolate current contexts by thread`.
 
 ### Task 6: Reconstruct GL dispatch, engine, software rasterizer, and GLU
@@ -303,8 +308,9 @@ unchanged when acquiring a context owned by another thread fails.
 **Files:** Create the Library/Engine/Renderer/Utility units in the file map,
 public GL headers, and `tests/{dispatch,state,transform,primitive,fragment,texture,pixel,lists,glu}.c`.
 **Interfaces:** Every public and private signature comes from Task 1's frozen
-batch entry; GL dispatch obtains current native state from Task 5. Never expose
-the private native status enum as a GL error or invent a `gld*` prototype.
+batch entry; GL dispatch obtains the same Apple context state used by Task 5.
+Preserve distinct GLI/GLD table layouts and GL/AGL error state; invent no private
+Apple prototype or substitute dispatch ABI.
 
 Execute the following rows as separate reviewed, committed reconstruction batches,
 splitting any row further by its measured call graph. A batch lists every symbol
@@ -349,9 +355,11 @@ display invalidation/focus, and window lifecycle. Preserve historical AppKit ABI
 `tests/presentation.m`; modify Interceptor private declarations only if an existing
 implemented selector must be declared for this adapter.
 **Interfaces:** Private drawable methods: `-initWithView:(NSView *)view`,
-`-(RGLStatus)updateForContext:(RGLContext *)context`,
-`-(RGLStatus)presentContext:(RGLContext *)context`, and `-(void)detach`.
-Consume NSDirectBitmap's lock/update/flush APIs and Task 4's RGBA copy interface.
+`-(BOOL)updateForContext:(AGLContext)context`,
+`-(BOOL)presentContext:(AGLContext)context`, and `-(void)detach`.
+Consume NSDirectBitmap's lock/update/flush APIs and the recovered software buffer
+and GLI/GLD drawable contracts. These private Objective-C helpers are not exported
+Apple functions. They must not reinterpret NSView as a QuickDraw AGLDrawable.
 
 - [ ] Write `clipped_flipped_padded_present` with a bitmap test double and guards; assert only the intersection changes and the visible rows are oriented correctly. Add `server_loss_releases_lock` and `move_reacquires_bitmap_pointer` with addresses changed between locks.
 - [ ] Run `presentation`; expect missing-adapter failures, then retain these tests for mapping/lock regressions.
@@ -363,19 +371,20 @@ Consume NSDirectBitmap's lock/update/flush APIs and Task 4's RGBA copy interface
 
 **Files:** Create `NSOpenGL.h`, `NSOpenGLPixelFormat.m`, `NSOpenGLContext.m`,
 `tests/native_context.m`; update build class/header lists.
-**Interfaces:** Implement the exact public selectors, token values, and adapter
-error translation above using Tasks 4, 5, and 8. Context view associations are nonowning.
+**Interfaces:** Implement the public selectors above using Apple NSOpenGL constants
+frozen in Task 1 and explicit AGL translation where needed. Wrap AGLPixelFormat and
+AGLContext from Tasks 4/5; context view associations from Task 8 are nonowning.
 
-- [ ] Add tests asserting nil for impossible initialization, one software virtual screen, exception for screen 1/unknown queries, setView:nil clears attachment, currentContext matches C dispatch, and incompatible concurrent acquisition preserves prior state.
+- [ ] Add tests asserting nil for impossible initialization, the evidence-derived software virtual-screen count, rejection of an index outside that count, setView:nil clears attachment, currentContext matches C AGL dispatch, and incompatible concurrent acquisition preserves prior state. Pin the count/query behavior from Task 1 rather than assuming one virtual screen.
 
   Include the no-context baseline before creating a test wrapper:
   ```objc
   [NSOpenGLContext clearCurrentContext];
   assert([NSOpenGLContext currentContext] == nil);
-  assert(RGLGetCurrentContext() == NULL);
+  assert(aglGetCurrentContext() == NULL);
   ```
 - [ ] Run `native-context`; expect missing classes/selectors or failed contracts.
-- [ ] Implement the thin wrappers, ownership, error translation, view update/flush, and share-context initialization. Ensure autorelease activity cannot destroy the currently bound wrapper. Existing share objects survive drawable changes.
+- [ ] Implement thin wrappers around Apple handles and lifecycle operations, private view update/presentation, and share-context initialization. Ensure autorelease activity cannot destroy the currently bound wrapper. Existing share objects survive drawable changes. C and Objective-C clients must share one GL state, not synchronized copies.
 - [ ] Rerun with allocation failure during resize, context replacement, detach/rebind, view destruction, and thread exit. Count live wrappers/bindings/drawables returning to baseline. Verify all failure paths release locks before raising.
 - [ ] Commit `OpenGL: add native pixel format and context objects`.
 
@@ -400,7 +409,7 @@ and `vm/build-opengl.sh`; add `vm/test-opengl.sh` with `CPU SOURCE OUTPUT SUITE`
 **Interfaces:** `SUITE=phase1` runs all phase 1 targets and records individual exit
 codes and loaded-image identities. Invalid CPU/suite/roots fail before execution.
 
-- [ ] Add ABI assertions for every public GL/GLU export and Objective-C selector in the frozen inventory, 32-bit type widths, absence of unsupported declared exports, dependency direction, and actual install name.
+- [ ] Add ABI assertions for every in-scope GL/GLU/AGL export and Objective-C selector, type widths/signedness, enum values, shared field offsets/alignment, and GLI/GLD dispatch slots against `abi.json`. Check dependency direction, actual install name, and linker symbol decoration. Run separately compiled C AGL and NSOpenGL clients switching/querying the same context. Confirm no second native context API is exported.
 - [ ] Build/stage PPC and i386 separately with the runner, then a combined pb_makefiles build using `RC_ARCHS='ppc i386'` into its own output roots. Verify both Mach-O slices and complete version-A framework links/headers with the existing Mach-O reader.
 - [ ] Run `phase1` on each available target and `check_evidence.py reference.json ledger.json --complete`. Check the complete source/ABI inventory manually as well; a nonempty function body alone is not reconstruction evidence.
 - [ ] Record each CPU's build, unit, reference-evidence, and dependency status separately. Do not create OS-wide packaging or modify global manifests merely to claim integration; the explicit staged dependency build is the integration deliverable. Do not mark phase 1 complete with unresolved required code or target builds.

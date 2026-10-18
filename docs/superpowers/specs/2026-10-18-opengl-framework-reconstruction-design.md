@@ -9,7 +9,10 @@ i386, the historical Objective-C runtime, manual memory management, and the
 repository's Project Builder/pb_makefiles build conventions.
 
 The user approved the supplied mixed-version bundle as the reference and the
-proposed framework/Interceptor architecture. The user requested three phases:
+proposed framework/Interceptor architecture. Following plan review, the user
+requested matching Apple's ABI rather than introducing a separate native context
+ABI. Preserve the measured Apple interfaces and isolate necessary OS adaptations
+behind them. The user requested three phases:
 
 1. Framework reconstruction and native views.
 2. Software-rendering testing and correction.
@@ -51,6 +54,11 @@ IDA loaded OpenGLLibrary and OpenGLRendererATI as PowerPC PEF. Library entries
 include GL commands and AGL context/pixel-format operations. ATI entries include
 `gldCreateContext`, `gldAttachDrawable`, `gldGetRenderDispatch`,
 `gldGetSystemDispatch`, and texture/vertex-buffer operations.
+OpenGLEngine additionally exposes `gliChoosePixelFormat`, `gliCreateContext`,
+`gliAttachDrawable`, `gliGetFunctionDispatch`, `gliGetExtensionDispatch`,
+`gliGetSystemDispatch`, and related destruction/query functions. Preserve these
+distinct AGL, GLI, and GLD boundaries; recover their exact call relationships,
+prototypes, layouts, and dispatch slots before implementation.
 
 ATI also references external `QA*` operations, including
 `QADrawContextNew`, `QADeviceGetFirstEngine`, `QAEngineGestalt`, and
@@ -87,9 +95,9 @@ after inspecting it; do not assume an entry in a manifest alone builds a kit.
 The framework contains these logical units, without introducing extra public
 frameworks or a general-purpose plugin system:
 
-- GL entry points, recovered dispatch, and context state.
+- GL/GLU entry points, Apple AGL context operations, and recovered GLI/GLD dispatch.
 - Engine, software rendering, memory support, and GLU routines.
-- Native platform services and drawable binding.
+- Private native platform services and drawable binding behind the Apple interfaces.
 - Objective-C pixel-format, context, and view adapters.
 - An internal Interceptor presentation adapter.
 
@@ -106,10 +114,29 @@ Objective-C classes in OpenGL.framework and expose them through
 OpenGL.framework. This is a RhapsodiOS source API, not a claim of later macOS
 AppKit binary compatibility.
 
-AGL operations supply evidence for pixel formats, context lifetime, renderer
-selection, and drawable behavior. A public QuickDraw/AGL compatibility layer and
-a complete later-macOS CGL API are outside phases 1 and 2. The native context
-boundary is private; no public CGL compatibility claim is made.
+Preserve GL/GLU and the portable AGL pixel-format/context/offscreen API, including
+names, parameter and return types, constants, error conventions, and opaque handle
+semantics. Preserve measured GLI engine and GLD renderer contracts, especially
+dispatch-table order, shared structures, ownership, and callback signatures.
+Objective-C objects wrap those handles; do not interpose a second public or
+cross-module context ABI with new status codes or retain/release entry points.
+
+Recover compatibility declarations in `gl.h`, `glu.h`, `agl.h`, and private
+GLI/GLD headers from matching headers and binary evidence. Record unsupported
+classic-platform entry points separately. A complete QuickDraw compatibility
+runtime and a complete later-macOS CGL API remain outside phases 1 and 2. Never
+pass an NSView pointer as an AGLDrawable/QuickDraw port or rename an AGL function
+to CGL while retaining an incompatible signature. Native drawable binding remains
+private and uses the measured engine/renderer contracts with explicit adaptations.
+
+This targets Apple-compatible interfaces in rebuilt source and native Mach-O
+libraries. It does not load the original PEF components unchanged. Record PPC
+PEF-to-Mach-O calling convention/loader adaptations and the i386 port separately;
+source compatibility, measured data-layout compatibility, and executable binary
+compatibility are different claims. Preserve matching layouts where feasible,
+and record every necessary deviation with a caller-based justification. Keep
+native ownership/thread bookkeeping in private side tables or Objective-C objects
+rather than appending fields to a shared Apple ABI structure.
 
 ## Native Objective-C contract
 
@@ -131,7 +158,10 @@ repository's headers and compiler:
   reshape after drawable-size changes. Preserve normal NSView event handling.
 
 Document selectors, constants, widths, and error behavior in the implementation
-plan before adding public headers. The selector list above is the scope boundary;
+plan and recovered ABI manifest before adding public headers. Match Apple
+NSOpenGL attribute values and translate explicitly to AGL attributes where needed;
+do not choose new numeric values or assume the two APIs have identical lists.
+The selector list above is the scope boundary;
 it does not authorize modern Cocoa features, nib compatibility, or additional
 OpenGL extensions.
 
@@ -139,7 +169,10 @@ A context is current on at most one thread at a time. Track the current context
 per thread and require clearing before transfer. Detect concurrent ownership
 instead of allowing two threads to corrupt dispatch state. Native adapters use
 the repository's available thread facilities and must not retain a stale context
-after destruction or thread exit. Shared resources outlive any one context while
+after destruction or thread exit. Measure the supplied AGL current-context model;
+record any thread-local behavior added for native NSOpenGL as a platform adaptation,
+not historical parity. C GL/AGL callers and NSOpenGL must observe the same binding.
+Shared resources outlive any one context while
 other contexts in the share group still own them.
 
 The view retains its context and pixel format. The context's drawable association
@@ -175,8 +208,10 @@ synchronization. Unsupported acceleration requests fail honestly.
 Allocation failure must leave existing valid objects intact or fail initialization
 cleanly. Invalid pixel formats and incompatible sharing fail creation. Lost window
 server mappings invalidate presentation resources; never continue writing through
-an old pointer. Preserve reference GL error semantics, and document native
-adapter failures separately from GL command errors.
+an old pointer. Preserve reference GL and AGL error semantics, including their
+separate error state and return conventions. Do not introduce a parallel numeric
+error ABI. Native-only presentation failures remain private diagnostics and
+documented Objective-C behavior.
 
 ## AppKit prerequisites
 
@@ -205,10 +240,14 @@ offscreen test harness for phase 2. Hardware-only dependencies must not prevent
 loading or selecting the software renderer.
 
 Phase 1 acceptance requires successful PPC/i386 framework builds, header/link
-checks, an accounted-for export and routine inventory, and focused tests of
+checks, Apple ABI checks for types/constants/layouts/dispatch slots, an accounted-for
+export and routine inventory, and focused tests of
 allocation, pixel-format rejection, context ownership/sharing, drawable lifetime,
 and presentation bounds. These checks are part of implementation, not postponed
 until phase 2. Track byte order and target ABI independently for both CPUs.
+Compile a separate C GL/AGL caller and an NSOpenGL caller against the compatibility
+headers and exercise their shared context state. Export spelling alone is not ABI
+validation; use evidence-derived expectations independent of implementation headers.
 
 Phase 1 completion is structural and behavioral-unit acceptance. It must not be
 reported as software-rendering acceptance or full hardware parity.

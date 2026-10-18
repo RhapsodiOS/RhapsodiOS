@@ -36,6 +36,9 @@ def audit(stage: str, reference: Path, repo_root: Path, objects: Path | None,
         return
     if stage == "group":
         evidence = authenticate_reference(reference, repo_root)
+        if group == "AdaptecU2CHIMHardware.c":
+            audit_hardware_group(evidence, repo_root, objects)
+            return
         audit_service_group(evidence, repo_root, objects, group)
         return
     if stage != "inventory":
@@ -264,6 +267,206 @@ def audit_service_group(evidence, repo_root, objects, group):
                         raise ValueError("native event flag update differs")
                 elif int.from_bytes(native_bytes(target,4),"big") != 0x38800000 + {0:1,2:3,4:2,7:8}[index]:
                     raise ValueError("native event callback value differs")
+
+
+def audit_hardware_group(evidence, repo_root, objects):
+    driver = repo_root / ref.DRIVER
+    owner = "AdaptecU2CHIMHardware.c"
+    proof_path = driver / "reconstruction/task6.json"
+    proof = load_json(proof_path)
+    addresses = set(evidence["document"]["owners"][owner])
+    reviews = {body["address"]: body for body in proof["bodies"]}
+    if (proof.get("reference_sha256") != ref.SHA256 or len(proof["bodies"]) != 61 or
+            set(reviews) != addresses):
+        raise ValueError("Task6 review requires exactly 61 hardware bodies")
+    if objects is None:
+        raise ValueError("Task6 requires actual target objects")
+    manifest = load_json(objects / "objects.json")
+    if (manifest.get("configuration") != "RELEASE_PPC" or
+            manifest.get("hash_algorithm") != "SHA-256" or
+            manifest.get("source_revision") != proof["native_revision"] or
+            not re.fullmatch(r"[0-9a-fA-F]{40}", proof["native_revision"]) or
+            hashlib.sha256((objects / "objects.json").read_bytes()).hexdigest().upper() != proof["native_manifest_sha256"] or
+            len(manifest["objects"]) != 1):
+        raise ValueError("invalid Task6 native provenance")
+    item = manifest["objects"][0]
+    if (item["source"] != "bsd/dev/ppc/drvAdaptecU2SCSI/" + owner or
+            item["path"] != Path(item["path"]).name or item["cpu_type"] != 18):
+        raise ValueError("invalid Task6 native source/object")
+    for path, expected in [(objects / item["path"], item["sha256"]),
+                           (driver / owner, item["source_sha256"])]:
+        actual = path.read_bytes()
+        if path == driver / owner:
+            actual = actual.replace(b"\r\n", b"\n")
+        if hashlib.sha256(actual).hexdigest().upper() != expected:
+            raise ValueError("stale Task6 native source/object: " + path.name)
+    if any("warning:" in line or "error:" in line for line in (objects / item["log"]).read_text().splitlines()):
+        raise ValueError("Task6 native compilation diagnostic")
+    inputs = proof["native_inputs"]
+    if set(inputs) != {owner} | set(LAYOUT_HEADERS):
+        raise ValueError("Task6 native input closure is incomplete")
+    for name, hashes in inputs.items():
+        path = driver / name
+        blob = subprocess.check_output(["git", "show", proof["native_revision"] + ":" +
+                                        path.relative_to(repo_root).as_posix()], cwd=repo_root)
+        if (path.read_bytes().replace(b"\r\n", b"\n") != blob or
+                hashlib.sha256(blob).hexdigest().upper() != hashes["git_blob_sha256"] or
+                hashes["git_blob_sha256"] != hashes["staged_sha256"]):
+            raise ValueError("stale Task6 producing input: " + name)
+    for filename, names in [("source-inputs.sha256", set(inputs)),
+                            ("header-inputs.sha256", set(LAYOUT_HEADERS))]:
+        lines = {}
+        for line in (objects / filename).read_text().splitlines():
+            digest, path = line.split(maxsplit=1)
+            name = Path(path).name
+            if name in lines or path != "bsd/dev/ppc/drvAdaptecU2SCSI/" + name:
+                raise ValueError("invalid Task6 compiled input manifest")
+            lines[name] = digest.upper()
+        if lines != {name: inputs[name]["staged_sha256"] for name in names}:
+            raise ValueError("Task6 compiled input hashes differ")
+    audit_target_inputs(driver, objects.parent / "layout-checks")
+    payload, macho = load_image(objects / item["path"])
+    if ((macho["input"]["architecture"], macho["input"]["endianness"]) != ("ppc", "big") or
+            macho["extensions"]["macho"]["header"]["file_type"] != 1):
+        raise ValueError("Task6 native object requires PPC big-endian MH_OBJECT")
+    symbols = sorted([s for s in macho["symbols"] if s["binding"] == "external" and
+                      s["section"] == "__TEXT,__text"], key=lambda s: s["address"])
+    if {s["name"] for s in symbols} != {evidence["frozen"][a]["names"][0] for a in addresses}:
+        raise ValueError("Task6 native owner symbol coverage differs")
+    text = next(s for s in macho["sections"] if s["name"] == "__TEXT,__text")
+
+    def native_bytes(address, size):
+        section = next((s for s in macho["sections"] if s["address"] <= address <=
+                        s["address"] + s["size"] - size), None)
+        if section is None:
+            raise ValueError("Task6 native access exceeds section")
+        offset = section["offset"] + address - section["address"]
+        return payload[offset:offset+size]
+
+    cases = load_json(driver / "tests/task6-cases.json")
+    contracts = load_json(driver / "tests/contracts.json")
+    runner_spec = importlib.util.spec_from_file_location("au2_task6_runner", driver / "tests/ppc_cases.py")
+    runner = importlib.util.module_from_spec(runner_spec)
+    runner_spec.loader.exec_module(runner)
+    result = load_json(objects / "reference-results.json")
+    expected = {"binary_sha256": ref.SHA256, "cases_sha256": runner.digest(cases),
+                "contracts_sha256": runner.digest(contracts), "runner_version": runner.RUNNER_VERSION}
+    if any(result.get(key) != value for key, value in expected.items()):
+        raise ValueError("stale Task6 reference result")
+    if not re.fullmatch(r"[0-9a-fA-F]{40}", result.get("source_revision", "")):
+        raise ValueError("stale Task6 execution revision")
+    # Preserve the actual execution revision. A later evidence-only commit can
+    # reuse it only when every executable/fixture input remains byte-identical.
+    for relative in ["tests/task6-cases.json", "tests/contracts.json", "tests/ppc_cases.py"]:
+        path = driver / relative
+        blob = subprocess.check_output(["git", "show", result["source_revision"] + ":" +
+                                        path.relative_to(repo_root).as_posix()], cwd=repo_root)
+        if path.read_bytes().replace(b"\r\n", b"\n") != blob:
+            raise ValueError("stale Task6 executed input: " + relative)
+    for name in inputs:
+        path = driver / name
+        blob = subprocess.check_output(["git", "show", result["source_revision"] + ":" +
+                                        path.relative_to(repo_root).as_posix()], cwd=repo_root)
+        if hashlib.sha256(blob).hexdigest().upper() != inputs[name]["git_blob_sha256"]:
+            raise ValueError("Task6 execution/production revisions differ")
+    dependencies = proof["accepted_dependencies"]
+    if set(dependencies) != {"AdaptecU2CHIMFirmware.c", "AdaptecU2CHIMTables.c",
+                             "AdaptecU2OSMServices.m", "AdaptecU2CHIMOSD.c"}:
+        raise ValueError("Task6 accepted dependency closure is incomplete")
+    for name, dependency in dependencies.items():
+        path = driver / name
+        canonical = path.read_bytes().replace(b"\r\n", b"\n")
+        for revision in (dependency["source_revision"], result["source_revision"]):
+            blob = subprocess.check_output(["git", "show", revision + ":" +
+                                            path.relative_to(repo_root).as_posix()], cwd=repo_root)
+            if blob != canonical or hashlib.sha256(blob).hexdigest().upper() != dependency["git_blob_sha256"]:
+                raise ValueError("stale Task6 accepted source dependency: " + name)
+        if hashlib.sha256(path.read_bytes()).hexdigest().upper() != dependency["source_sha256"]:
+            raise ValueError("stale Task6 accepted staged dependency: " + name)
+        dependency_objects = objects.parent / dependency["group"]
+        dependency_manifest = dependency_objects / "objects.json"
+        if hashlib.sha256(dependency_manifest.read_bytes()).hexdigest().upper() != dependency["manifest_sha256"]:
+            raise ValueError("stale Task6 accepted dependency manifest: " + name)
+        document = load_json(dependency_manifest)
+        matches = [item for item in document["objects"] if Path(item["source"]).name == name]
+        if (document["source_revision"] != dependency["source_revision"] or len(matches) != 1 or
+                matches[0]["source_sha256"] != dependency["source_sha256"] or
+                matches[0]["sha256"] != dependency["object_sha256"] or
+                matches[0]["path"] != dependency["object"] or
+                hashlib.sha256((dependency_objects / dependency["object"]).read_bytes()).hexdigest().upper() != dependency["object_sha256"]):
+            raise ValueError("stale Task6 accepted native dependency: " + name)
+    ids = [case["id"] for case in cases["cases"]]
+    if (not ids or len(ids) != len(set(ids)) or result.get("selected_case_ids") != ids or
+            len(result.get("results", [])) != len(ids)):
+        raise ValueError("missing Task6 execution cases")
+    for case, observed in zip(cases["cases"], result["results"]):
+        if (observed.get("executed_case_id") != case["id"] or observed.get("unknown_calls") != [] or
+                observed.get("returned_to_sentinel") is not True or observed.get("observations") != case["expected"]):
+            raise ValueError("invalid Task6 successful fixture: " + case["id"])
+    sites = source_sites(repo_root, driver)
+    ledger, _ = load_ledger(driver / "reconstruction/ledger.json", evidence["image_identity"], None)
+    entries = {entry["address"]: entry for entry in ledger["entries"]}
+    proof_hash = hashlib.sha256(proof_path.read_bytes()).hexdigest().upper()
+    for index, symbol in enumerate(symbols):
+        body = next(body for body in reviews.values() if body["name"] == symbol["name"])
+        address = body["address"]
+        end = symbols[index+1]["address"] if index+1 < len(symbols) else text["address"] + text["size"]
+        code = native_bytes(symbol["address"], end - symbol["address"])
+        location = (ref.DRIVER.as_posix() + "/" + owner, body["source_line"])
+        entry = entries[address]
+        function = evidence["frozen"][address]
+        if (body["owner"] != owner or body["name"] != function["names"][0] or
+                body["reference_size"] != function["size"] or
+                len(body.get("control_flow", "")) < 24 or sites.get(symbol["name"]) != [location] or
+                (entry["source_path"], entry["source_line"]) != location or
+                entry["status"] not in ("control-flow-confirmed", "assembly-matched") or
+                not any(a["path"] == proof_path.relative_to(repo_root).as_posix() and
+                        a["sha256"] == proof_hash for a in entry["artifacts"])):
+            raise ValueError("missing Task6 reviewed body/source evidence: " + symbol["name"])
+        if (body["native_address"] != symbol["address"] or body["native_size"] != len(code) or
+                len(code) < 12 or len(code) % 4 or hashlib.sha256(code).hexdigest().upper() != body["native_sha256"]):
+            raise ValueError("Task6 native body differs: " + symbol["name"])
+        relocations = [{"address": relocation["address"], "kind": relocation["kind"],
+                        "target": relocation["target"]}
+                       for relocation in macho["extensions"]["macho"]["relocations"]
+                       if symbol["address"] <= relocation["address"] < end and
+                       relocation["section"] == "__TEXT,__text" and relocation["external"]]
+        if body["native_external_relocations"] != relocations:
+            raise ValueError("Task6 native call binding differs: " + symbol["name"])
+        selected = {case["id"] for case in cases["cases"] if case["evidence"]["entry_address"] == address}
+        if not selected or set(body["cases"]) != selected:
+            raise ValueError("missing required Task6 body fixture: " + symbol["name"])
+        if symbol["name"] == "_SCSIhScamSupportCheck" and code.hex() != contracts["input_erased"]["SCSIhScamSupportCheck"]["reference_bytes"]:
+            raise ValueError("Task6 erased machine body differs")
+    data = audit_data_accounting(evidence, repo_root)
+    row = next(row for row in data["objects"] if row["name"] == "switch_230ef4")
+    if row["status"] != "recovered" or row.get("production_evidence") != "reconstruction/task6.json":
+        raise ValueError("pending Task6 owner switch")
+    switch = proof["switches"]["switch_230ef4"]
+    body = reviews[row["function"]]
+    code = bytearray(native_bytes(body["native_address"], body["native_size"]))
+    reference_code = bytearray.fromhex("".join(i["bytes"] for i in next(f for f in evidence["document"]["functions"] if f["address"] == row["function"])["instructions"]))
+    if len(code) != 144 or len(reference_code) != 144 or switch["normalized_cases"] != list(range(10)):
+        raise ValueError("Task6 switch owner/control-flow extent differs")
+    const = next(s for s in macho["sections"] if s["name"] == "__TEXT,__const")
+    if const["size"] != 40:
+        raise ValueError("Task6 native switch table extent differs")
+    for offset, kind in [(24, "ppc-ha16-32-absolute"), (28, "ppc-lo16-32-absolute"),
+                         (40, "ppc-ha16-32-absolute"), (44, "ppc-lo16-32-absolute")]:
+        reloc = [r for r in macho["relocations"] if r["address"] == body["native_address"] + offset]
+        if len(reloc) != 1 or (reloc[0]["kind"], reloc[0]["target"], reloc[0]["addend"]) != (kind, "__TEXT,__const", 0):
+            raise ValueError("Task6 native switch table relocation differs")
+        code[offset+2:offset+4] = reference_code[offset+2:offset+4] = bytes(2)
+    if code != reference_code:
+        raise ValueError("Task6 native switch normalization/guard/case outcome differs")
+    raw = native_bytes(const["address"], 40)
+    targets = [const["address"] + int.from_bytes(raw[i:i+4], "big", signed=True) for i in range(0, 40, 4)]
+    expected_targets = [body["native_address"] + offset for offset in list(range(60, 132, 8)) + [132]]
+    if targets != expected_targets or switch["machine"]["targets"] != targets or switch["machine"]["raw"] != raw.hex():
+        raise ValueError("Task6 native switch case map differs")
+    actual_raw = {case["arguments"][0] for case in cases["cases"] if case["entry"] == "SCSIhAICBayonetGetSpeed"}
+    if not set(range(19, 29)) | {0, 18, 29, 127, 0xff93} <= actual_raw:
+        raise ValueError("Task6 switch normalized/default input fixtures missing")
 
 
 def authenticate_reference(reference, repo_root):

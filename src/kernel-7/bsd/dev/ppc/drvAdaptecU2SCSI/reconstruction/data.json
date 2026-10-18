@@ -14889,7 +14889,7 @@
           "kind": "code-offset"
         }
       ],
-      "status": "pending-owner-control-flow",
+      "status": "recovered",
       "required_gate": "owner-group-and-final",
       "consumers": [
         1708340,
@@ -15049,7 +15049,8 @@
           "target": 1708444
         }
       ],
-      "guard_start": 1708324
+      "guard_start": 1708324,
+      "production_evidence": "reconstruction/task6.json"
     },
     {
       "name": "switch_230f1c",

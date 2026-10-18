@@ -680,3 +680,10 @@ Freezing their reference bytes or assigning an owner is not product recovery.
 Final verification rejects these five obligations and the pending switch
 owner-control-flow obligations. Task4 does not claim the spec3.3 complete-data
 exit criterion has been met.
+
+Task6 adds all 61 `AdaptecU2CHIMHardware.c` bodies without changing the frozen
+476-body partition. Its source/native/control-flow and 331-case evidence is
+indexed in `task6.json`. The ledger now has 112 control-flow-confirmed entries
+and 364 unexamined entries. `switch_230ef4` has actual production control-flow
+evidence; the remaining 19 switch and five controller-data obligations are
+unchanged. Full linked-kernel pairing remains required.

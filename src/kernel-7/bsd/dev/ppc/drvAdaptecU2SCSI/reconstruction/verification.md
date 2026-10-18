@@ -299,3 +299,45 @@ relabel them. Current source/canonical/header closure is checked separately
 from the current reference-result revision/runner hash. This is intermediate
 reference execution plus PPC object/source/native review; Task16 must perform
 paired execution against linked rebuilt kernels.
+
+## Task6 hardware owner
+
+`AdaptecU2CHIMHardware.c` supplies all 61 owned bodies. The hardware group
+gate checks their exact native export set, canonical source and six-header
+producing-commit closure, per-body native hashes and source locations, ledger
+artifacts, and direct successful fixtures. The producing commit is
+`333ab0a779a625b5455570b7e778f11baa66be64`; the native PPC big-endian object
+SHA-256 is `A4C8085B3DB5951294B55B9D85B6D4F2687F4648297C248B64D1ACBD4E7D5202`.
+The compiler emitted no diagnostics for this source.
+
+`tests/task6-cases.json` contains 331 frozen reference cases, including all
+four sequencer images, readback failures without successful cleanup, EEPROM
+handshakes, register widths and masks, profiles, all breakpoint variants,
+cable modes, an actual 8,000-transition bus-stability bound, and abort completion
+paths. All internal CHIM/OSM functions and callbacks execute. The runner and
+its existing service conventions are unchanged. Polling bounds are recorded
+separately from physical elapsed time, which these fixtures do not establish.
+
+`switch_230ef4` is now recovered through the actual owner source and native
+compiler output. Its 144-byte native owner body matches the reference after
+only the four relocated table-address immediates are normalized. The group
+gate checks those relocations, the complete instruction sequence, ten native
+table targets, masked/subtracted input normalization, and executed case/default
+inputs. Five controller data envelopes and 19 other switch envelopes remain
+pending; no other body owner is accepted by this work.
+
+Task6 retains the actual reference execution revision in its saved result.
+A subsequent evidence-only commit may reuse it only when canonical Git blobs
+for the cases, contracts, runner, hardware source, six headers, and four accepted
+Task4/5 source dependencies are unchanged. Their accepted native manifests and
+object hashes are also checked. Task4 raw CRLF inputs and canonical Git blobs
+have separate hashes. Changed executable/fixture inputs or dependencies fail
+the gate; results are never relabeled to a newer revision. The public runner's
+existing current-revision validation is unchanged.
+
+Thirteen isolated mutation tests cover source, per-body review, ledger,
+fixture membership, unknown internal calls, changed runner/cases/contracts,
+dependency source/object, invalid execution revision, and native switch guard
+or target corruption even after enclosing hashes are refreshed. These are
+intermediate reference/native-object checks. Linked-kernel pairing, complete
+kernel builds, and physical adapter validation remain later obligations.

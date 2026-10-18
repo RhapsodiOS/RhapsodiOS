@@ -820,6 +820,113 @@ def test_task6_reference_batch(prefix):
     assert len(result["results"]) == len(selected["cases"])
 
 
+def test_task6_owner_native_and_control_flow_evidence(firmware_evidence):
+    audit, evidence = firmware_evidence
+    audit.audit_hardware_group(evidence, REPO, OUT / "objects/task6")
+
+
+@pytest.mark.parametrize("corruption", ["source", "review", "ledger", "case", "unknown_call",
+                                        "switch_guard", "switch_target", "executed_cases",
+                                        "executed_contracts", "executed_runner", "dependency_source",
+                                        "dependency_object", "result_revision"])
+def test_task6_owner_rejects_incomplete_evidence(tmp_path, firmware_evidence, corruption):
+    audit, evidence = firmware_evidence
+    repo = tmp_path / "repo"
+    driver = repo / audit.ref.DRIVER
+    shutil.copytree(TESTS.parent, driver, ignore=shutil.ignore_patterns("__pycache__"))
+    shutil.copyfile(REPO / ".git", repo / ".git")
+    objects = tmp_path / "objects/task6"
+    shutil.copytree(OUT / "objects/task6", objects,
+                    ignore=shutil.ignore_patterns("*.id0", "*.id1", "*.nam", "*.til", "*.i64"))
+    for dependency in ("task5", "firmware"):
+        shutil.copytree(OUT / "objects" / dependency, objects.parent / dependency,
+                        ignore=shutil.ignore_patterns("*.id0", "*.id1", "*.nam", "*.til", "*.i64"))
+    shutil.copytree(OUT / "objects/layout-checks", objects.parent / "layout-checks")
+    proof_path = driver / "reconstruction/task6.json"
+    proof = json.loads(proof_path.read_text())
+    body = next(body for body in proof["bodies"] if body["address"] == 0x1a1118)
+    ledger_path = driver / "reconstruction/ledger.json"
+    ledger = json.loads(ledger_path.read_text())
+    if corruption == "source":
+        with (driver / "AdaptecU2CHIMHardware.c").open("a") as stream:
+            stream.write("\nvoid HardwareReplacement(void) {}\n")
+        expected = "stale Task6 native source/object"
+    elif corruption == "review":
+        proof["bodies"].remove(body)
+        expected = "exactly 61 hardware bodies"
+    elif corruption == "ledger":
+        next(entry for entry in ledger["entries"] if entry["address"] == body["address"])["status"] = "unexamined"
+        expected = "reviewed body/source evidence"
+    elif corruption == "case":
+        body["cases"] = []
+        expected = "required Task6 body fixture"
+    elif corruption == "unknown_call":
+        path = objects / "reference-results.json"
+        result = json.loads(path.read_text())
+        result["results"][0]["unknown_calls"] = ["missing_internal_CHIM"]
+        path.write_text(json.dumps(result))
+        expected = "invalid Task6 successful fixture"
+    elif corruption.startswith("executed_"):
+        filename = {"executed_cases": "task6-cases.json", "executed_contracts": "contracts.json",
+                    "executed_runner": "ppc_cases.py"}[corruption]
+        with (driver / "tests" / filename).open("a") as stream:
+            stream.write("\n")
+        expected = "stale Task6"
+    elif corruption == "dependency_source":
+        with (driver / "AdaptecU2CHIMTables.c").open("a") as stream:
+            stream.write("\n/* altered dependency */\n")
+        expected = "stale Task6 accepted source dependency"
+    elif corruption == "dependency_object":
+        dependency = proof["accepted_dependencies"]["AdaptecU2CHIMTables.c"]
+        path = objects.parent / dependency["group"] / dependency["object"]
+        raw = bytearray(path.read_bytes())
+        raw[-1] ^= 1
+        path.write_bytes(raw)
+        expected = "stale Task6 accepted native dependency"
+    elif corruption == "result_revision":
+        path = objects / "reference-results.json"
+        result = json.loads(path.read_text())
+        result["source_revision"] = "HEAD"
+        path.write_text(json.dumps(result))
+        expected = "stale Task6 execution revision"
+    else:
+        manifest_path = objects / "objects.json"
+        manifest = json.loads(manifest_path.read_text())
+        item = manifest["objects"][0]
+        path = objects / item["path"]
+        payload, macho = audit.load_image(path)
+        payload = bytearray(payload)
+        text = next(section for section in macho["sections"] if section["name"] == "__TEXT,__text")
+        const = next(section for section in macho["sections"] if section["name"] == "__TEXT,__const")
+        if corruption == "switch_guard":
+            payload[text["offset"] + body["native_address"] + 11] ^= 1
+            offset = text["offset"] + body["native_address"]
+            body["native_sha256"] = audit.hashlib.sha256(payload[offset:offset+body["native_size"]]).hexdigest().upper()
+            expected = "native switch normalization/guard/case outcome differs"
+        else:
+            payload[const["offset"]:const["offset"]+4] = payload[const["offset"]+4:const["offset"]+8]
+            raw = payload[const["offset"]:const["offset"]+40]
+            machine = proof["switches"]["switch_230ef4"]["machine"]
+            machine["raw"] = raw.hex()
+            machine["targets"] = [const["address"] + int.from_bytes(raw[i:i+4], "big", signed=True)
+                                  for i in range(0, 40, 4)]
+            expected = "native switch case map differs"
+        # Refresh all enclosing hashes so the independent machine checks must fail.
+        path.write_bytes(payload)
+        item["sha256"] = audit.hashlib.sha256(payload).hexdigest().upper()
+        manifest_path.write_text(json.dumps(manifest))
+        proof["native_manifest_sha256"] = audit.hashlib.sha256(manifest_path.read_bytes()).hexdigest().upper()
+    proof_path.write_text(json.dumps(proof))
+    digest = audit.hashlib.sha256(proof_path.read_bytes()).hexdigest().upper()
+    for entry in ledger["entries"]:
+        for artifact in entry["artifacts"]:
+            if artifact["path"].endswith("reconstruction/task6.json"):
+                artifact["sha256"] = digest
+    ledger_path.write_text(json.dumps(ledger))
+    with pytest.raises((ValueError, FileNotFoundError), match=expected):
+        audit.audit_hardware_group(evidence, repo, objects)
+
+
 def test_descriptor_targets_and_profile_scalars(firmware_evidence):
     driver = TESTS.parent
     assert (driver / "AdaptecU2CHIMTables.c").is_file(), "missing symbolic descriptors and scalar/profile/device tables"
@@ -923,7 +1030,7 @@ def test_firmware_switch_metadata_all_case_values(firmware_evidence):
     assert sum(d["normalized_case_count"] for d in switches) == 592
     assert {status: sum(d["status"] == status for d in document["objects"])
             for status in ("recovered", "pending-owner-recovery", "pending-owner-control-flow")} == {
-                "recovered": 23, "pending-owner-recovery": 5, "pending-owner-control-flow": 20}
+                "recovered": 24, "pending-owner-recovery": 5, "pending-owner-control-flow": 19}
 
 
 @pytest.mark.parametrize("corruption", ["missing_source", "incorrect_source", "object", "review",

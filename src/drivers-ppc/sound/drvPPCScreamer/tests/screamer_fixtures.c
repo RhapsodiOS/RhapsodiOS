@@ -4,7 +4,7 @@
 static ScreamerStatus readreg(void *p,unsigned int reg,unsigned int *v)
 {
     ScreamerFixture *f=p;
-    if(f->irqContext) ++f->irqViolations;
+    if(f->irqContext && reg!=0) ++f->irqViolations;
     if(reg==0x20) *v=(f->now>=f->readyAt?(1U<<22):0)|
         (f->hardware[(f->lastCommand>>1)&7]<<4);
     else if(reg==0x10) *v=f->holdBusy?0x01000000U:0;
@@ -14,7 +14,7 @@ static ScreamerStatus readreg(void *p,unsigned int reg,unsigned int *v)
 static ScreamerStatus writereg(void *p,unsigned int reg,unsigned int v)
 {
     ScreamerFixture *f=p;
-    if(f->irqContext) ++f->irqViolations;
+    if(f->irqContext && reg!=0) ++f->irqViolations;
     if(++f->writeCalls==f->failWrite) return kScreamerIOError;
     f->regs[reg/4]=v;f->lastWriteAt=f->now;
     if(reg==0x10) {
@@ -28,6 +28,7 @@ static void sleepms(void *p,unsigned long ms)
 {
     ScreamerFixture *f=p;
     assert(ms<=5000);
+    if(f->irqContext) ++f->irqViolations;
     f->now=(f->now+ms)&0xffffffffUL;
 }
 static void barrier(void *p) {(void)p;}

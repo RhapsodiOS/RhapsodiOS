@@ -3,6 +3,28 @@
 #include "TASTime.h"
 #include <string.h>
 #include <limits.h>
+ScreamerStatus ScreamerAcknowledgeInterrupt(const ScreamerRuntimeOps *ops,
+    unsigned int local,unsigned int *pending)
+{
+    unsigned int control;
+    ScreamerStatus status;
+    if(!ops || !pending || local>2) return kScreamerInvalid;
+    if(local==0) {
+        if(!ops->codec.readLE32 || !ops->codec.writeLE32 || !ops->codec.barrier) return kScreamerInvalid;
+        status=ops->codec.readLE32(ops->codec.context,0,&control);
+        if(status!=kScreamerOK) return status;
+        if(control&0x1800U) {
+            /* Error and port-change are W1C. Preserve rate, subframes and enables. */
+            status=ops->codec.writeLE32(ops->codec.context,0,control);
+            if(status!=kScreamerOK) return status;
+            ops->codec.barrier(ops->codec.context);
+        }
+    }
+    /* DBDMA descriptor interrupts are pulses. MPIC owns their sole EOI;
+     * reading channel status is not a device acknowledgement operation. */
+    *pending|=1U<<local;
+    return kScreamerOK;
+}
 static ScreamerStatus dma_status(PPCDBDMAStatus s)
 {
     if(s==kPPCDBDMAOK) return kScreamerOK;

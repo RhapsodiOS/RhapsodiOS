@@ -36,4 +36,6 @@ ScreamerStatus ScreamerCaptureCompletions(ScreamerRuntime *,ScreamerStream,unsig
 ScreamerStatus ScreamerApplyControls(ScreamerRuntime *,const ScreamerControls *,unsigned long);
 ScreamerStatus ScreamerObserveJack(ScreamerRuntime *,unsigned int,unsigned long,unsigned long);
 ScreamerStatus ScreamerServiceDeferred(ScreamerRuntime *,unsigned long,unsigned int [2]);
+/* Caller holds the short interrupt lock. This path never waits or touches codec commands. */
+ScreamerStatus ScreamerAcknowledgeInterrupt(const ScreamerRuntimeOps *,unsigned int,unsigned int *);
 #endif

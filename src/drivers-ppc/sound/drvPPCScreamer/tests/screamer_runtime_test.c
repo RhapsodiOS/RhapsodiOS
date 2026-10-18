@@ -78,6 +78,14 @@ int main(void)
     unsigned int serviced[2];
     ScreamerControls controls,applied;
     setup(&r,&c,&ops);
+    fixture.regs[0]=0x7111U;fixture.irqContext=1;
+    before=fixture.commandWrites;i=0;
+    CHECK(ScreamerAcknowledgeInterrupt(&ops,0,&i)==kScreamerOK);
+    CHECK(i==1 && fixture.regs[0]==0x7111U && fixture.commandWrites==before);
+    CHECK(fixture.irqViolations==0);
+    CHECK(ScreamerAcknowledgeInterrupt(&ops,3,&i)==kScreamerInvalid && i==1);
+    CHECK(ScreamerAcknowledgeInterrupt(&ops,1,&i)==kScreamerOK && i==3);
+    fixture.irqContext=0;
     CHECK(ScreamerStart(&r,kScreamerStreamOutput,dma[1].audio,8192,4096,44100,5000)==kScreamerOK);
     CHECK(dma[1].published>0 && dma[1].starts==1);
     CHECK(r.rings[1].dataDescriptorCount==3);
@@ -92,7 +100,8 @@ int main(void)
     complete(&r.rings[1],2,0,kPPCDBDMAActive);
     CHECK(ScreamerCaptureCompletions(&r,kScreamerStreamOutput,&periods)==kScreamerOK && periods==1);
     for(i=0;i<3;++i) complete(&r.rings[1],i,0,kPPCDBDMAActive);
-    CHECK(ScreamerCaptureCompletions(&r,kScreamerStreamOutput,&periods)==kScreamerOK && periods==2);
+    complete(&r.rings[0],0,0,kPPCDBDMAActive);complete(&r.rings[0],1,0,kPPCDBDMAActive);
+    CHECK(ScreamerServiceDeferred(&r,5000,serviced)==kScreamerOK && serviced[1]==2 && serviced[0]==1);
     CHECK(ScreamerCaptureCompletions(&r,kScreamerStreamOutput,&periods)==kScreamerOK && periods==0);
     CHECK(ScreamerStop(&r,kScreamerStreamInput,5000)==kScreamerOK);
     CHECK(r.streams[1].running);
@@ -142,6 +151,10 @@ int main(void)
     before=fixture.commandWrites;
     CHECK(ScreamerObserveJack(&r,4,300,r.generation-1)==kScreamerClosed);
     CHECK(fixture.commandWrites==before);
+    r.closing=1;before=fixture.writeCalls;
+    CHECK(ScreamerServiceDeferred(&r,5000,serviced)==kScreamerClosed && !serviced[0] && !serviced[1]);
+    CHECK(fixture.writeCalls==before);
+    r.closing=0;
     controls.attenuation[0]=4;fixture.failWrite=fixture.writeCalls+3;
     CHECK(ScreamerApplyControls(&r,&controls,5000)==kScreamerIOError);
     CHECK(r.faulted && r.applied.attenuation[0]==2);

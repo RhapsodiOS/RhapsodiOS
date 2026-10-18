@@ -31,7 +31,7 @@ int main(void)
     CHECK(f.now>=752 && f.now<5000);
     CHECK((c.shadow[1]&0x280)==0x280 && !(c.shadow[1]&0x40));
     CHECK(f.regs[0x40/4]==0);
-    CHECK(f.regs[0]==0x11);
+    CHECK(f.regs[0]==0x6011);
     FixtureCodecInit(&f,&c);
     CHECK(ScreamerCodecInitialize(&c,&config,750)==kScreamerTimeout);
     CHECK(f.now<=750 && !(c.shadow[1]&4));

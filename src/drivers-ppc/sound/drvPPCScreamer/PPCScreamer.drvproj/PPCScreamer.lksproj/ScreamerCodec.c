@@ -95,7 +95,7 @@ ScreamerStatus ScreamerCodecInitialize(ScreamerCodec *c,const ScreamerMachineCon
     if(remaining(c,deadline,&left)!=kScreamerOK) return kScreamerTimeout;
     s=c->ops.writeLE32(c->ops.context,0x40,0);
     if(s!=kScreamerOK) return s;
-    c->soundControl=0x11;
+    c->soundControl=0x6011;
     s=ScreamerCodecSetRate(c,config,44100,deadline);
     if(s!=kScreamerOK) return s;
     for(i=0;i<sizeof(regs)/sizeof(regs[0]);++i) {

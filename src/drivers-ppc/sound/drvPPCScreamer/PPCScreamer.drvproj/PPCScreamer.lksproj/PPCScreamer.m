@@ -24,6 +24,16 @@ extern msg_return_t msg_send_from_kernel(msg_header_t *,msg_option_t,msg_timeout
 static NXLock *ownerLock;
 static PPCScreamer *owner;
 static unsigned long nextToken;
+static void screamer_poll(void *argument);
+static void screamer_arm_locked(PPCScreamer *self,unsigned long ms)
+{
+    if(owner!=self || self->interruptClosing || nextToken==~0UL) return;
+    if(self->timerToken) (void)ns_untimeout((func)screamer_poll,(void *)self->timerToken);
+    self->timerToken=++nextToken;
+    ns_timeout((func)screamer_poll,(void *)self->timerToken,(ns_time_t)ms*1000000UL,CALLOUT_PRI_THREAD);
+}
+static void screamer_arm(PPCScreamer *self,unsigned long ms)
+{ [ownerLock lock];screamer_arm_locked(self,ms);[ownerLock unlock]; }
 static unsigned long screamer_now(void *context)
 {
     ns_time_t time;
@@ -44,11 +54,20 @@ static ScreamerStatus screamer_read(void *context,unsigned int offset,unsigned i
     if(!self->registers[0] || offset>0x40 || (offset&3)) return kScreamerInvalid;
     *value=ReadSwap32(self->registers[0],offset);eieio();return kScreamerOK;
 }
-static ScreamerStatus screamer_write(void *context,unsigned int offset,unsigned int value)
+static ScreamerStatus screamer_irq_write(void *context,unsigned int offset,unsigned int value)
 {
     PPCScreamer *self=context;
     if(!self->registers[0] || offset>0x40 || (offset&3)) return kScreamerInvalid;
     WriteSwap32(self->registers[0],offset,value);eieio();return kScreamerOK;
+}
+static ScreamerStatus screamer_write(void *context,unsigned int offset,unsigned int value)
+{
+    PPCScreamer *self=context;
+    ScreamerStatus status;
+    if(offset==0) [self->interruptLock acquire];
+    status=screamer_irq_write(context,offset,value);
+    if(offset==0) [self->interruptLock release];
+    return status;
 }
 static ScreamerStatus screamer_platform(void *context,int enabled)
 {
@@ -120,18 +139,6 @@ static int ScreamerReadDescription(id description,ScreamerMachineConfig *config)
     return PEDAVBusGetInfo(config->controllerBase,&info)==KERN_SUCCESS && info.family==kPEDAVBusKeyLargo;
 }
 
-static void screamer_irq(void *identity,void *state,void *argument)
-{
-    PPCScreamer *self=argument;
-    [self->interruptLock acquire];
-    if(!self->interruptClosing) {
-        /* The interrupt controller owns EOI. Descriptor results are consumed
-         * only by the audio worker, which also handles a coalesced edge. */
-        self->pendingIRQs=1;
-        IOSendInterrupt(identity,state,IO_DEVICE_INTERRUPT_MSG);
-    }
-    [self->interruptLock release];
-}
 static void screamer_poll(void *argument)
 {
     unsigned long token=(unsigned long)argument;
@@ -142,7 +149,7 @@ static void screamer_poll(void *argument)
         message.msg_remote_port=IOGetKernPort([owner interruptPort]);
         message.msg_id=IO_DEVICE_INTERRUPT_MSG;
         (void)msg_send_from_kernel(&message,SEND_TIMEOUT,0);
-        ns_timeout((func)screamer_poll,argument,5000000,CALLOUT_PRI_THREAD);
+        screamer_arm_locked(owner,250);
     }
     [ownerLock unlock];
 }
@@ -150,6 +157,23 @@ static void screamer_poll(void *argument)
 static unsigned long screamer_deadline(PPCScreamer *self)
 { unsigned long d=self->runtime.codec.ops.nowMS(self->runtime.codec.ops.context);TASTimeAdd(d,2000,&d);return d; }
 #endif
+static void screamer_irq(void *identity,void *state,void *argument,unsigned int local)
+{
+    PPCScreamer *self=argument;
+    ScreamerRuntimeOps ops=self->runtime.ops;
+    [self->interruptLock acquire];
+    if(!self->interruptClosing) {
+#ifndef SCREAMER_ADAPTER_TEST
+        ops.codec.writeLE32=screamer_irq_write;
+#endif
+        (void)ScreamerAcknowledgeInterrupt(&ops,local,&self->pendingIRQs);
+        IOSendInterrupt(identity,state,IO_DEVICE_INTERRUPT_MSG);
+    }
+    [self->interruptLock release];
+}
+static void screamer_codec_irq(void *i,void *s,void *a) {screamer_irq(i,s,a,0);}
+static void screamer_output_irq(void *i,void *s,void *a) {screamer_irq(i,s,a,1);}
+static void screamer_input_irq(void *i,void *s,void *a) {screamer_irq(i,s,a,2);}
 
 static int screamer_input(NXSoundParameterTag tag,ScreamerInput *input)
 {
@@ -175,14 +199,14 @@ static NXSoundParameterTag screamer_input_tag(ScreamerInput input)
     if(owner || nextToken==~0UL) {[ownerLock unlock];return NO;}
     instance=[self alloc];
     if(!instance) {[ownerLock unlock];return NO;}
-    owner=instance;instance->machineConfig=config;instance->timerToken=++nextToken;
+    owner=instance;instance->machineConfig=config;
     [ownerLock unlock];
     instance->operationLock=[NXLock new];instance->interruptLock=[[KernLock alloc] initWithLevel:7];
     if(!instance->operationLock || !instance->interruptLock) {[instance free];return NO;}
     /* IOAudio can publish worker threads before returning failure. */
     instance->ioAudioPublished=1;
     if([instance initFromDeviceDescription:description]==nil) {[instance free];return NO;}
-    ns_timeout((func)screamer_poll,(void *)instance->timerToken,250000000,CALLOUT_PRI_THREAD);
+    screamer_arm(instance,250);
     return YES;
 }
 - (BOOL)reset
@@ -202,7 +226,9 @@ static NXSoundParameterTag screamer_input_tag(ScreamerInput input)
         page=0;
         if(kmem_alloc_wired(kernel_map,&page,PAGE_SIZE)!=KERN_SUCCESS) return NO;
         ringPages[i]=(void *)page;physical=pmap_extract(kernel_pmap,page);
-        if(!physical || (physical&(PAGE_SIZE-1))) return NO;
+        if(!physical || (physical&(PAGE_SIZE-1)) ||
+            physical>~0UL-(PAGE_SIZE-1) ||
+            pmap_extract(kernel_pmap,page+PAGE_SIZE-1)!=physical+PAGE_SIZE-1) return NO;
         flush_cache_v(page,PAGE_SIZE);invalidate_cache_v(page,PAGE_SIZE);
         pmap_enter_cache_spec(kernel_pmap,page,physical,VM_PROT_READ|VM_PROT_WRITE,TRUE,cache_disable);
         scratch[i]=IOMalloc(PAGE_SIZE+15);
@@ -248,12 +274,16 @@ static NXSoundParameterTag screamer_input_tag(ScreamerInput input)
     [ownerLock lock];if(owner==self) owner=nil;[ownerLock unlock];
     [operationLock free];[interruptLock free];return [super free];
 }
+#endif
 - (BOOL)getHandler:(IOInterruptHandler *)handler level:(unsigned int *)level
     argument:(unsigned int *)argument forInterrupt:(unsigned int)interrupt
 {
     if(interrupt>2) return NO;
-    *handler=(IOInterruptHandler)screamer_irq;*level=IPLDEVICE;*argument=(unsigned int)self;return YES;
+    *handler=(IOInterruptHandler)(interrupt==0?screamer_codec_irq:
+        (interrupt==1?screamer_output_irq:screamer_input_irq));
+    *level=IPLDEVICE;*argument=(unsigned int)self;return YES;
 }
+#ifndef SCREAMER_ADAPTER_TEST
 - (BOOL)startDMAForChannel:(unsigned int)channel read:(BOOL)read
     buffer:(IODMABuffer)buffer bufferSizeForInterrupts:(unsigned int)period
 {
@@ -287,24 +317,32 @@ static NXSoundParameterTag screamer_input_tag(ScreamerInput input)
 }
 - (void)_interruptOccurred
 {
-    unsigned int periods[2],sense,i,j;ScreamerStatus status;
+    unsigned int periods[2],sense,confirm;ScreamerStatus status;
     [operationLock lock];
     if(runtime.closing || runtime.power!=kScreamerPowerReady) {[operationLock unlock];return;}
+    [interruptLock acquire];pendingIRQs=0;[interruptLock release];
     status=screamer_read(self,0x20,&sense);
     if(status==kScreamerOK) (void)ScreamerObserveJack(&runtime,sense,screamer_now(self),runtime.generation);
+    confirm=runtime.jackCandidateValid && TASTimeBefore(screamer_now(self),runtime.jackDeadline);
     status=ScreamerServiceDeferred(&runtime,screamer_deadline(self),periods);
     [operationLock unlock];
+    if(confirm) screamer_arm(self,5);
     if(status!=kScreamerOK) return;
+    [self screamerServicePeriods:periods];
+}
+- (void)interruptOccurredForInput:(BOOL *)input forOutput:(BOOL *)output
+{ *input=NO;*output=NO; /* Period counts are handled in _interruptOccurred. */ }
+- (void)timeoutOccurred {[self _interruptOccurred];}
+#endif
+- (void)screamerServicePeriods:(unsigned int *)periods
+{
+    unsigned int i,j;
     for(i=0;i<2;++i) for(j=0;j<periods[i];++j) {
         id channel=i==kScreamerStreamInput?[self _inputChannel]:[self _outputChannel];
         if(!runtime.streams[i].running) break;
         (void)[self _attemptToStopDMAForChannel:channel];
     }
 }
-- (void)interruptOccurredForInput:(BOOL *)input forOutput:(BOOL *)output
-{ *input=NO;*output=NO; /* Period counts are handled in _interruptOccurred. */ }
-- (void)timeoutOccurred {[self _interruptOccurred];}
-#endif
 
 - (BOOL)_setParameter:(NXSoundParameterTag)tag toInt:(int)value forObject:(id)object
 {

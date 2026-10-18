@@ -25,6 +25,7 @@
 }
 + (BOOL)probe:(IODeviceDescription *)description;
 - (BOOL)reset;
+- (void)screamerServicePeriods:(unsigned int *)periods;
 - free;
 - (BOOL)startDMAForChannel:(unsigned int)channel read:(BOOL)read
     buffer:(IODMABuffer)buffer bufferSizeForInterrupts:(unsigned int)period;

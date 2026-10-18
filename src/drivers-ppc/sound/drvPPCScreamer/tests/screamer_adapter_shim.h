@@ -6,6 +6,9 @@
 typedef unsigned long UInt32;
 typedef unsigned long ByteCount;
 #define IO_R_SUCCESS 0
+#define IPLDEVICE 7
+#define IO_DEVICE_INTERRUPT_MSG 100
+void IOSendInterrupt(void *,void *,unsigned int);
 typedef unsigned int IOReturn;
 typedef unsigned int PMPowerState;
 typedef unsigned int PMPowerManagementState;
@@ -29,6 +32,7 @@ enum {NX_SoundDeviceLineOut=25,NX_SoundDeviceSpeakerOut,NX_SoundDeviceCDOut,
 - (void)_setDataEncoding:(unsigned int)v;
 - (void)_setChannelCount:(unsigned int)v;
 - (BOOL)_setParameter:(NXSoundParameterTag)t toInt:(int)v forObject:(id)o;
+- (BOOL)_attemptToStopDMAForChannel:(id)channel;
 - (int)_intValueForParameter:(NXSoundParameterTag)t forObject:(id)o;
 - (void)_getSupportedParameters:(NXSoundParameterTag *)p count:(unsigned int *)n forObject:(id)o;
 - (BOOL)_getValues:(NXSoundParameterTag *)p count:(unsigned int *)n forParameter:(NXSoundParameterTag)t forObject:(id)o;
@@ -40,6 +44,8 @@ enum {NX_SoundDeviceLineOut=25,NX_SoundDeviceSpeakerOut,NX_SoundDeviceCDOut,
 @interface TestLock : Object
 - lock;
 - unlock;
+- (void)acquire;
+- (void)release;
 @end
 @interface IOTreeDevice : Object
 { @public void *fixture; unsigned int node; id parent; }

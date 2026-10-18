@@ -7,6 +7,8 @@
 #include <stdio.h>
 #include <string.h>
 static IOTreeDevice *treeNodes[5];
+static unsigned int notifications,inputServices,outputServices;
+void IOSendInterrupt(void *identity,void *state,unsigned int message) {++notifications;}
 @implementation IOTreeDevice
 + findForIndex:(UInt32)i {return i<5?treeNodes[i]:nil;}
 - parent {return parent;}
@@ -30,6 +32,8 @@ static IOTreeDevice *treeNodes[5];
 - (void)_setSampleRate:(unsigned int)v {rate=v;}
 - (void)_setDataEncoding:(unsigned int)v {}
 - (void)_setChannelCount:(unsigned int)v {}
+- (BOOL)_attemptToStopDMAForChannel:(id)channel
+{if(channel==input) ++inputServices;else if(channel==output) ++outputServices;return NO;}
 - (BOOL)_setParameter:(NXSoundParameterTag)t toInt:(int)v forObject:(id)o
 { if(t==NX_SoundStreamSamplingRate) {[o setSamplingRate:v];return YES;} return NO; }
 - (int)_intValueForParameter:(NXSoundParameterTag)t forObject:(id)o {return -1;}
@@ -44,6 +48,8 @@ static IOTreeDevice *treeNodes[5];
 @implementation TestLock
 - lock {return self;}
 - unlock {return self;}
+- (void)acquire {}
+- (void)release {}
 @end
 
 int main(void)
@@ -55,6 +61,8 @@ int main(void)
     TestStream *stream;
     NXSoundParameterTag values[64];
     unsigned int n,i,writes;
+    unsigned int level,argument,periods[2];
+    IOInterruptHandler handler;
     int old;
     ScreamerTree tree;
     FixtureInit(&f);assert(ScreamerDiscover(&f.reader,3,&c)==kScreamerOK);
@@ -83,11 +91,29 @@ int main(void)
     assert(screamer_tree_identity(&tree)==kScreamerIdentityConflict);
     FixtureCodecInit(&f,&codec);
     assert(ScreamerCodecInitialize(&codec,&c,5000)==kScreamerOK);
-    a=[[PPCScreamer alloc] init];a->operationLock=[TestLock new];
+    a=[[PPCScreamer alloc] init];a->operationLock=[TestLock new];a->interruptLock=[TestLock new];
     a->machineConfig=c;a->runtime.config=c;a->runtime.codec=codec;
     a->runtime.initialized=1;a->runtime.power=kScreamerPowerReady;
     a->runtime.routeKnown=1;a->runtime.applied.input=kScreamerInputLine;
     a->runtime.desired=a->runtime.applied;
+    a->runtime.ops.codec=codec.ops;
+    assert([a getHandler:&handler level:&level argument:&argument forInterrupt:0]);
+    assert(level==IPLDEVICE && argument==(unsigned int)a);
+    f.irqContext=1;f.regs[0]=0x7111;writes=f.writeCalls;
+    ((void (*)(void *,void *,void *))handler)(0,0,a);
+    assert(f.writeCalls==writes+1 && !f.irqViolations && notifications==1);
+    assert([a getHandler:&handler level:&level argument:&argument forInterrupt:1]);
+    ((void (*)(void *,void *,void *))handler)(0,0,a);
+    assert(f.writeCalls==writes+1 && notifications==2);
+    a->interruptClosing=1;
+    ((void (*)(void *,void *,void *))handler)(0,0,a);
+    assert(notifications==2 && f.writeCalls==writes+1);
+    assert(![a getHandler:&handler level:&level argument:&argument forInterrupt:3]);
+    a->interruptClosing=0;f.irqContext=0;
+    a->runtime.streams[0].running=a->runtime.streams[1].running=1;
+    periods[0]=1;periods[1]=2;[a screamerServicePeriods:periods];
+    assert(inputServices==1 && outputServices==2);
+    a->runtime.streams[0].running=a->runtime.streams[1].running=0;
     stream=[TestStream new];
     assert([a _setParameter:NX_SoundStreamSamplingRate toInt:48000 forObject:stream]==NO);
     assert([stream samplingRate]==44100 && [a sampleRate]==44100);

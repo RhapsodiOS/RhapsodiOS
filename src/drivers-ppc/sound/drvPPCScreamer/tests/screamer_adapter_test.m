@@ -8,6 +8,7 @@
 #include <string.h>
 static IOTreeDevice *treeNodes[5];
 static unsigned int notifications,inputServices,outputServices;
+static ScreamerStatus test_platform(void *context,int ready) {return kScreamerOK;}
 void IOSendInterrupt(void *identity,void *state,unsigned int message) {++notifications;}
 @implementation IOTreeDevice
 + findForIndex:(UInt32)i {return i<5?treeNodes[i]:nil;}
@@ -57,6 +58,7 @@ int main(void)
     ScreamerFixture f;
     ScreamerMachineConfig c;
     ScreamerCodec codec;
+    ScreamerRuntimeOps ops;
     PPCScreamer *a;
     TestStream *stream;
     NXSoundParameterTag values[64];
@@ -65,6 +67,7 @@ int main(void)
     IOInterruptHandler handler;
     int old;
     ScreamerTree tree;
+    PMPowerState power;
     FixtureInit(&f);assert(ScreamerDiscover(&f.reader,3,&c)==kScreamerOK);
     for(i=0;i<5;++i) {treeNodes[i]=[IOTreeDevice new];treeNodes[i]->fixture=&f;treeNodes[i]->node=i+1;}
     treeNodes[3]->parent=treeNodes[2];
@@ -94,6 +97,7 @@ int main(void)
     a=[[PPCScreamer alloc] init];a->operationLock=[TestLock new];a->interruptLock=[TestLock new];
     a->machineConfig=c;a->runtime.config=c;a->runtime.codec=codec;
     a->runtime.initialized=1;a->runtime.power=kScreamerPowerReady;
+    a->runtime.clockRate=44100;
     a->runtime.routeKnown=1;a->runtime.applied.input=kScreamerInputLine;
     a->runtime.desired=a->runtime.applied;
     a->runtime.ops.codec=codec.ops;
@@ -134,6 +138,18 @@ int main(void)
     f.failWrite=f.writeCalls+1;
     assert([a _setParameter:NX_SoundDeviceInputGainLeft toInt:16384 forObject:[a _inputChannel]]==NO);
     assert([a _intValueForParameter:NX_SoundDeviceInputGainLeft forObject:[a _inputChannel]]==old);
+    FixtureCodecInit(&f,&codec);memset(&ops,0,sizeof(ops));ops.codec=codec.ops;ops.setPlatform=test_platform;
+    assert(ScreamerRuntimeInitialize(&a->runtime,&c,&ops,5000)==kScreamerOK);
+    assert([a setPowerState:(PMPowerState)99]==IO_R_INVALID_ARG);
+    assert([a getPowerState:&power]==IO_R_SUCCESS && power==PM_READY);
+    assert([a setPowerState:PM_SUSPENDED]==IO_R_SUCCESS && a->interruptSuspended);
+    assert([a getPowerState:&power]==IO_R_SUCCESS && power==PM_SUSPENDED);
+    assert([a setPowerState:PM_READY]==IO_R_SUCCESS && !a->interruptSuspended);
+    writes=f.writeCalls;
+    assert([a setPowerState:PM_READY]==IO_R_SUCCESS && f.writeCalls==writes);
+    f.failWrite=f.writeCalls+1;
+    assert([a setPowerState:PM_SUSPENDED]==IO_R_IO);
+    assert([a getPowerState:&power]==IO_R_SUCCESS && power==PM_READY);
     puts("Screamer adapter: format rejection, inherited dispatch, controls and readback passed");
     return 0;
 }

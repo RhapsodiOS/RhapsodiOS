@@ -6,6 +6,10 @@
 typedef unsigned long UInt32;
 typedef unsigned long ByteCount;
 #define IO_R_SUCCESS 0
+#define IO_R_INVALID_ARG 1
+#define IO_R_IO 2
+enum {PM_READY,PM_STANDBY,PM_SUSPENDED,PM_OFF};
+enum {PM_DISABLED,PM_ENABLED};
 #define IPLDEVICE 7
 #define IO_DEVICE_INTERRUPT_MSG 100
 void IOSendInterrupt(void *,void *,unsigned int);

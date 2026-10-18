@@ -6,7 +6,7 @@ static ScreamerStatus readreg(void *p,unsigned int reg,unsigned int *v)
     ScreamerFixture *f=p;
     if(f->irqContext && reg!=0) ++f->irqViolations;
     if(reg==0x20) *v=(f->now>=f->readyAt?(1U<<22):0)|
-        (f->hardware[(f->lastCommand>>1)&7]<<4);
+        (f->hardware[(f->lastCommand>>1)&7]<<4)|(f->sense&15U);
     else if(reg==0x10) *v=f->holdBusy?0x01000000U:0;
     else *v=f->regs[reg/4];
     return kScreamerOK;

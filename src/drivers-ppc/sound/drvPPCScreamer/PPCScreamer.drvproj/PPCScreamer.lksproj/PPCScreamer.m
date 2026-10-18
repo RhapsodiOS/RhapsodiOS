@@ -27,7 +27,7 @@ static unsigned long nextToken;
 static void screamer_poll(void *argument);
 static void screamer_arm_locked(PPCScreamer *self,unsigned long ms)
 {
-    if(owner!=self || self->interruptClosing || nextToken==~0UL) return;
+    if(owner!=self || self->interruptClosing || self->interruptSuspended || nextToken==~0UL) return;
     if(self->timerToken) (void)ns_untimeout((func)screamer_poll,(void *)self->timerToken);
     self->timerToken=++nextToken;
     ns_timeout((func)screamer_poll,(void *)self->timerToken,(ns_time_t)ms*1000000UL,CALLOUT_PRI_THREAD);
@@ -144,7 +144,7 @@ static void screamer_poll(void *argument)
     unsigned long token=(unsigned long)argument;
     msg_header_t message;
     [ownerLock lock];
-    if(owner && token==owner->timerToken && !owner->interruptClosing) {
+    if(owner && token==owner->timerToken && !owner->interruptClosing && !owner->interruptSuspended) {
         memset(&message,0,sizeof(message));message.msg_size=sizeof(message);
         message.msg_remote_port=IOGetKernPort([owner interruptPort]);
         message.msg_id=IO_DEVICE_INTERRUPT_MSG;
@@ -162,7 +162,7 @@ static void screamer_irq(void *identity,void *state,void *argument,unsigned int 
     PPCScreamer *self=argument;
     ScreamerRuntimeOps ops=self->runtime.ops;
     [self->interruptLock acquire];
-    if(!self->interruptClosing) {
+    if(!self->interruptClosing && !self->interruptSuspended) {
 #ifndef SCREAMER_ADAPTER_TEST
         ops.codec.writeLE32=screamer_irq_write;
 #endif
@@ -255,13 +255,9 @@ static NXSoundParameterTag screamer_input_tag(ScreamerInput input)
     timerToken=0;[ownerLock unlock];
     [operationLock lock];
     if(runtime.initialized) {
-        runtime.closing=1;++runtime.generation;
-        for(i=0;i<2;++i) (void)ScreamerStop(&runtime,(ScreamerStream)i,screamer_deadline(self));
-        if(runtime.streams[0].needsQuiesce || runtime.streams[1].needsQuiesce) {
+        if(ScreamerBeginClose(&runtime,screamer_deadline(self))!=kScreamerOK) {
             [operationLock unlock];return self;
         }
-        (void)ScreamerCodecSetPower(&runtime.codec,kScreamerPowerOff,screamer_deadline(self));
-        (void)screamer_platform(self,0);
     }
     [operationLock unlock];
     for(i=0;i<3;++i) [self disableInterrupt:i];
@@ -306,6 +302,18 @@ static NXSoundParameterTag screamer_input_tag(ScreamerInput input)
 }
 - (BOOL)isInputActive {return runtime.streams[kScreamerStreamInput].running!=0;}
 - (BOOL)isOutputActive {return runtime.streams[kScreamerStreamOutput].running!=0;}
+- (BOOL)_channelWillAddStream {return !runtime.closing && !runtime.faulted && runtime.power==kScreamerPowerReady;}
+- (void)_stopDMAForChannel:(id)channel
+{
+    ScreamerStatus status;
+    [operationLock lock];
+    status=ScreamerStop(&runtime,[channel isRead]?kScreamerStreamInput:kScreamerStreamOutput,screamer_deadline(self));
+    [operationLock unlock];
+    if(status!=kScreamerOK) {IOLog("PPCScreamer: retaining queued descriptors after stop failure\n");return;}
+    [channel freeDescriptors];
+    if([channel isRead]) [self _setInputActive:NO];else [self _setOutputActive:NO];
+    if(![self isInputActive] && ![self isOutputActive]) [self _setTimeout:IOAUDIO_MAXIMUM_TIMEOUT];
+}
 - (IOAudioInterruptClearFunc)interruptClearFunc {return 0;}
 /* The generic implementation blocks a second channel while the first runs. */
 - (void)_dataPendingOccurred:(id)channel
@@ -344,6 +352,52 @@ static NXSoundParameterTag screamer_input_tag(ScreamerInput input)
     }
 }
 
+- (IOReturn)getPowerState:(PMPowerState *)state
+{
+    if(!state) return IO_R_INVALID_ARG;
+    [operationLock lock];*state=currentPowerState;[operationLock unlock];return IO_R_SUCCESS;
+}
+- (IOReturn)setPowerState:(PMPowerState)state
+{
+    ScreamerStatus status;
+    unsigned int i;
+    if(state!=PM_READY && state!=PM_STANDBY && state!=PM_SUSPENDED && state!=PM_OFF) return IO_R_INVALID_ARG;
+    [operationLock lock];
+    [interruptLock acquire];interruptSuspended=1;[interruptLock release];
+#ifndef SCREAMER_ADAPTER_TEST
+    for(i=0;i<3;++i) [self disableInterrupt:i];
+    [ownerLock lock];
+    if(timerToken) (void)ns_untimeout((func)screamer_poll,(void *)timerToken);
+    timerToken=0;[ownerLock unlock];
+#else
+    (void)i;
+#endif
+    status=ScreamerSetPower(&runtime,(ScreamerPowerState)state,screamer_deadline(self));
+    if(status==kScreamerOK) {
+        currentPowerState=state;
+#ifndef SCREAMER_ADAPTER_TEST
+        if(state!=PM_READY) {
+            /* IOAudio exposes no queue-position/lifetime token for resume.
+             * Clients restart queues; saved DMA pointers cannot prove that
+             * the next framework descriptor is buffer zero. */
+            [[self _inputChannel] freeDescriptors];[[self _outputChannel] freeDescriptors];
+            [self _setInputActive:NO];[self _setOutputActive:NO];
+        }
+#endif
+    }
+    if(status==kScreamerOK && state==PM_READY) {
+        [interruptLock acquire];interruptSuspended=0;[interruptLock release];
+#ifndef SCREAMER_ADAPTER_TEST
+        for(i=0;i<3;++i) [self enableInterrupt:i];
+        screamer_arm(self,250);
+#endif
+    }
+    [operationLock unlock];return status==kScreamerOK?IO_R_SUCCESS:IO_R_IO;
+}
+- (IOReturn)getPowerManagement:(PMPowerManagementState *)state
+{ if(!state) return IO_R_INVALID_ARG;*state=PM_ENABLED;return IO_R_SUCCESS; }
+- (IOReturn)setPowerManagement:(PMPowerManagementState)state
+{ return state==PM_ENABLED || state==PM_DISABLED?IO_R_SUCCESS:IO_R_INVALID_ARG; }
 - (BOOL)_setParameter:(NXSoundParameterTag)tag toInt:(int)value forObject:(id)object
 {
     ScreamerControls controls;

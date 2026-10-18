@@ -8,6 +8,10 @@
 | Physical sleep/wake | Blocked by platform PM prerequisite; not run |
 
 No hardware support is claimed by a synthetic fixture or host test.
+Native power transitions stop framework streams. Clients must restart them:
+IOAudio exposes no stable queue-position/lifetime token with which to prove
+safe automatic resume. The C runtime tests validated-owner buffer rebuilds,
+but the native adapter deliberately supplies no resume validator.
 Additional candidates (PowerMac3,2/3,3, Screamer iMacs, Lombard/Pismo) require
 complete wiring evidence, an implemented platform backend, and their own
 physical results. Headphone sense evidence alone does not establish routing

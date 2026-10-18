@@ -7,6 +7,7 @@ typedef struct {
     void *context;
     ScreamerCodecOps codec;
     ScreamerStatus (*setPlatform)(void *,int);
+    int (*bufferValid)(void *,ScreamerStream,void *,unsigned long);
     PPCDBDMAOps dma[2];
     PPCDBDMAStorage storage[2];
 } ScreamerRuntimeOps;
@@ -21,6 +22,7 @@ typedef struct {
     ScreamerCodec codec;
     PPCDBDMARing rings[2];
     ScreamerStreamState streams[2];
+    ScreamerStreamState savedStreams[2];
     ScreamerControls desired,applied;
     ScreamerPowerState power;
     unsigned int initialized,faulted,closing,clockRate;
@@ -38,4 +40,6 @@ ScreamerStatus ScreamerObserveJack(ScreamerRuntime *,unsigned int,unsigned long,
 ScreamerStatus ScreamerServiceDeferred(ScreamerRuntime *,unsigned long,unsigned int [2]);
 /* Caller holds the short interrupt lock. This path never waits or touches codec commands. */
 ScreamerStatus ScreamerAcknowledgeInterrupt(const ScreamerRuntimeOps *,unsigned int,unsigned int *);
+ScreamerStatus ScreamerSetPower(ScreamerRuntime *,ScreamerPowerState,unsigned long);
+ScreamerStatus ScreamerBeginClose(ScreamerRuntime *,unsigned long);
 #endif

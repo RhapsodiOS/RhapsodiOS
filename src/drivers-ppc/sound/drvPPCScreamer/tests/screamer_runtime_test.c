@@ -12,6 +12,7 @@ typedef struct {
 } DMAFake;
 static DMAFake dma[2];
 static ScreamerFixture fixture;
+static unsigned int platformOffs,platformUnsafe,validBuffers;
 static PPCDBDMAStatus translate(void *p,const void *v,unsigned long *phys,unsigned long *bytes)
 {
     DMAFake *f=p;
@@ -44,14 +45,25 @@ static PPCDBDMAStatus publish(void *p,void *v,unsigned long n)
     ++f->published;return f->cacheError?kPPCDBDMACoherency:kPPCDBDMAOK;
 }
 static PPCDBDMAStatus barrier(void *p) {(void)p;return kPPCDBDMAOK;}
-static ScreamerStatus platform(void *p,int ready) {(void)p;(void)ready;return kScreamerOK;}
+static ScreamerStatus platform(void *p,int ready)
+{
+    (void)p;
+    if(!ready) {
+        ++platformOffs;
+        if((dma[0].control|dma[1].control)&kPPCDBDMARun) ++platformUnsafe;
+    }
+    return kScreamerOK;
+}
+static int buffer_valid(void *p,ScreamerStream stream,void *buffer,unsigned long bytes)
+{ (void)p;return (validBuffers&(1U<<stream)) && buffer==dma[stream].audio && bytes==8192; }
 static void setup(ScreamerRuntime *r,ScreamerMachineConfig *c,ScreamerRuntimeOps *ops)
 {
     ScreamerCodec codec;
     unsigned int i;
     FixtureInit(&fixture);FixtureCodecInit(&fixture,&codec);
+    platformOffs=platformUnsafe=0;validBuffers=3;
     CHECK(ScreamerDiscover(&fixture.reader,3,c)==kScreamerOK);
-    memset(ops,0,sizeof(*ops));ops->codec=codec.ops;ops->setPlatform=platform;
+    memset(ops,0,sizeof(*ops));ops->codec=codec.ops;ops->setPlatform=platform;ops->bufferValid=buffer_valid;
     for(i=0;i<2;++i) {
         memset(&dma[i],0,sizeof(dma[i]));
         ops->storage[i].logical=(void *)(((size_t)dma[i].desc+15)&~(size_t)15);
@@ -74,7 +86,7 @@ static void complete(PPCDBDMARing *r,unsigned long index,unsigned int residual,u
 int main(void)
 {
     ScreamerRuntime r;ScreamerMachineConfig c;ScreamerRuntimeOps ops;
-    unsigned int periods,i,before;
+    unsigned int periods,i,before,phase,wakeWrites;
     unsigned int serviced[2];
     ScreamerControls controls,applied;
     setup(&r,&c,&ops);
@@ -162,6 +174,48 @@ int main(void)
     before=fixture.commandWrites;
     CHECK(ScreamerApplyControls(&r,&r.desired,5000)==kScreamerBusy);
     CHECK(fixture.commandWrites==before);
+    setup(&r,&c,&ops);
+    controls=r.desired;controls.userMuted=0;controls.attenuation[0]=2;controls.gain[1]=9;
+    CHECK(ScreamerApplyControls(&r,&controls,5000)==kScreamerOK);
+    CHECK(ScreamerStart(&r,kScreamerStreamOutput,dma[1].audio,8192,4096,44100,5000)==kScreamerOK);
+    CHECK(ScreamerSetPower(&r,kScreamerPowerSuspended,5000)==kScreamerOK);
+    CHECK(platformOffs==1 && !platformUnsafe && !r.streams[1].running);
+    CHECK(r.desired.attenuation[0]==2 && r.desired.gain[1]==9 && !r.desired.userMuted);
+    fixture.sense=4;
+    CHECK(ScreamerSetPower(&r,kScreamerPowerReady,5000)==kScreamerOK);
+    CHECK(r.streams[1].running && dma[1].starts==2 && r.headphone);
+    CHECK(r.applied.attenuation[0]==2 && r.applied.gain[1]==9 && (fixture.hardware[1]&0x280)==0x80);
+    before=fixture.writeCalls;
+    CHECK(ScreamerSetPower(&r,kScreamerPowerReady,5000)==kScreamerOK && fixture.writeCalls==before);
+    CHECK(ScreamerSetPower(&r,(ScreamerPowerState)99,5000)==kScreamerInvalid);
+    CHECK(ScreamerSetPower(&r,kScreamerPowerOff,5000)==kScreamerOK);
+    validBuffers=0;
+    CHECK(ScreamerSetPower(&r,kScreamerPowerReady,5000)==kScreamerOK && !r.streams[1].running && dma[1].starts==2);
+    CHECK(ScreamerBeginClose(&r,5000)==kScreamerOK && r.closing && r.power==kScreamerPowerOff);
+    before=fixture.writeCalls;
+    CHECK(ScreamerServiceDeferred(&r,5000,serviced)==kScreamerClosed && fixture.writeCalls==before);
+    setup(&r,&c,&ops);
+    CHECK(ScreamerStart(&r,kScreamerStreamOutput,dma[1].audio,8192,4096,44100,5000)==kScreamerOK);
+    dma[1].holdStop=1;
+    CHECK(ScreamerSetPower(&r,kScreamerPowerSuspended,5000)==kScreamerTimeout);
+    CHECK(!platformOffs && r.streams[1].needsQuiesce && r.power==kScreamerPowerReady);
+    setup(&r,&c,&ops);
+    CHECK(ScreamerSetPower(&r,kScreamerPowerSuspended,5000)==kScreamerOK);
+    fixture.readyAt=6000;
+    CHECK(ScreamerSetPower(&r,kScreamerPowerReady,5000)==kScreamerTimeout);
+    CHECK(r.faulted && !r.streams[0].running && !r.streams[1].running && !dma[0].starts && !dma[1].starts);
+    setup(&r,&c,&ops);
+    CHECK(ScreamerSetPower(&r,kScreamerPowerSuspended,5000)==kScreamerOK);
+    before=fixture.writeCalls;
+    CHECK(ScreamerSetPower(&r,kScreamerPowerReady,5000)==kScreamerOK);
+    wakeWrites=fixture.writeCalls-before;
+    for(phase=1;phase<=wakeWrites;++phase) {
+        setup(&r,&c,&ops);
+        CHECK(ScreamerSetPower(&r,kScreamerPowerSuspended,5000)==kScreamerOK);
+        fixture.failWrite=fixture.writeCalls+phase;
+        CHECK(ScreamerSetPower(&r,kScreamerPowerReady,5000)==kScreamerIOError);
+        CHECK(r.faulted && !dma[0].starts && !dma[1].starts);
+    }
     printf("runtime: %u checks, %u failures\n",checks,failures);
     return failures!=0;
 }

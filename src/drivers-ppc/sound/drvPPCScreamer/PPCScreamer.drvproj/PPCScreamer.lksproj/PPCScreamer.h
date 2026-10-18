@@ -18,7 +18,7 @@
     id operationLock,interruptLock;
     void *registers[3];
     void *ringPages[2],*scratch[2];
-    unsigned int mapped,ioAudioPublished,interruptClosing;
+    unsigned int mapped,ioAudioPublished,interruptClosing,interruptSuspended;
     unsigned int pendingIRQs;
     unsigned long timerToken;
     PMPowerState currentPowerState;
@@ -26,6 +26,10 @@
 + (BOOL)probe:(IODeviceDescription *)description;
 - (BOOL)reset;
 - (void)screamerServicePeriods:(unsigned int *)periods;
+- (IOReturn)getPowerState:(PMPowerState *)state;
+- (IOReturn)setPowerState:(PMPowerState)state;
+- (IOReturn)getPowerManagement:(PMPowerManagementState *)state;
+- (IOReturn)setPowerManagement:(PMPowerManagementState)state;
 - free;
 - (BOOL)startDMAForChannel:(unsigned int)channel read:(BOOL)read
     buffer:(IODMABuffer)buffer bufferSizeForInterrupts:(unsigned int)period;

@@ -131,10 +131,11 @@ ScreamerStatus ScreamerStop(ScreamerRuntime *r,ScreamerStream direction,
     PPCDBDMATransition t;
     if(!r || direction<0 || direction>1) return kScreamerInvalid;
     s=&r->streams[direction];
-    if(!s->running && !s->needsQuiesce) return kScreamerOK;
+    memset(&r->savedStreams[direction],0,sizeof(r->savedStreams[direction]));
+    if(!s->running && !s->needsQuiesce) {memset(s,0,sizeof(*s));return kScreamerOK;}
     t=PPCDBDMAStopRing(&r->rings[direction],&r->ops.dma[direction],stop_deadline(r,deadline));
     if(t.status!=kPPCDBDMAOK) {r->faulted=1;return dma_status(t.status);}
-    s->running=s->needsQuiesce=0;s->remainder=0;
+    memset(s,0,sizeof(*s));
     return kScreamerOK;
 }
 ScreamerStatus ScreamerCaptureCompletions(ScreamerRuntime *r,ScreamerStream direction,
@@ -248,4 +249,86 @@ ScreamerStatus ScreamerServiceDeferred(ScreamerRuntime *r,unsigned long deadline
         if(status!=kScreamerOK) return status;
     }
     return kScreamerOK;
+}
+ScreamerStatus ScreamerSetPower(ScreamerRuntime *r,ScreamerPowerState target,
+    unsigned long deadline)
+{
+    ScreamerStatus status;
+    ScreamerPowerState previous;
+    ScreamerStreamState saved[2];
+    unsigned int i,sense,second,rate;
+    if(!r || !r->initialized || target<kScreamerPowerReady || target>kScreamerPowerOff) return kScreamerInvalid;
+    if(r->closing) return kScreamerClosed;
+    if(r->faulted) return kScreamerFault;
+    if(target==r->power) return kScreamerOK;
+    if(r->generation==ULONG_MAX) {fault(r);return kScreamerFault;}
+    ++r->generation;r->jackCandidateValid=r->routePending=0;
+    previous=r->power;rate=r->clockRate;
+    if(target!=kScreamerPowerReady) {
+        for(i=0;i<2;++i) saved[i]=previous==kScreamerPowerReady?r->streams[i]:r->savedStreams[i];
+        for(i=0;i<2;++i) {
+            status=ScreamerStop(r,(ScreamerStream)i,deadline);
+            if(status!=kScreamerOK) {fault(r);return status;}
+        }
+        if(previous==kScreamerPowerReady) {
+            status=ScreamerCodecSetPower(&r->codec,target,deadline);
+            if(status!=kScreamerOK) {fault(r);return status;}
+            status=r->ops.setPlatform(r->ops.context,0);
+            if(status!=kScreamerOK) {fault(r);return status;}
+        }
+        for(i=0;i<2;++i) r->savedStreams[i]=saved[i];
+        r->routeKnown=0;r->power=target;return kScreamerOK;
+    }
+    status=r->ops.setPlatform(r->ops.context,1);
+    if(status==kScreamerOK) status=ScreamerCodecInitialize(&r->codec,&r->config,deadline);
+    if(status==kScreamerOK) status=ScreamerCodecSetRate(&r->codec,&r->config,rate,deadline);
+    if(status==kScreamerOK) status=r->codec.ops.readLE32(r->codec.ops.context,0x20,&sense);
+    if(status==kScreamerOK) status=ScreamerCodecDelay(&r->codec,5,deadline);
+    if(status==kScreamerOK) status=r->codec.ops.readLE32(r->codec.ops.context,0x20,&second);
+    if(status==kScreamerOK) {
+        sense&=r->config.profile.headphoneMask;second&=r->config.profile.headphoneMask;
+        if(sense!=second) status=kScreamerBusy;
+        else {
+            r->headphone=r->config.profile.anySense?second!=0:second==r->config.profile.headphoneMatch;
+            r->routeKnown=1;r->power=kScreamerPowerReady;
+            status=ScreamerApplyControls(r,&r->desired,deadline);
+        }
+    }
+    if(status!=kScreamerOK) {
+        fault(r);r->power=previous;
+        (void)r->ops.setPlatform(r->ops.context,0);return status;
+    }
+    for(i=0;i<2;++i) {
+        saved[i]=r->savedStreams[i];
+        memset(&r->savedStreams[i],0,sizeof(r->savedStreams[i]));
+        if(saved[i].running && r->ops.bufferValid &&
+            r->ops.bufferValid(r->ops.context,(ScreamerStream)i,saved[i].buffer,saved[i].bytes)) {
+            status=ScreamerStart(r,(ScreamerStream)i,saved[i].buffer,saved[i].bytes,
+                saved[i].period,saved[i].rate,deadline);
+            if(status!=kScreamerOK) {fault(r);return status;}
+        }
+    }
+    return kScreamerOK;
+}
+ScreamerStatus ScreamerBeginClose(ScreamerRuntime *r,unsigned long deadline)
+{
+    unsigned int i;
+    ScreamerStatus status;
+    if(!r || !r->initialized) return kScreamerInvalid;
+    if(!r->closing) {
+        r->closing=1;
+        if(r->generation!=ULONG_MAX) ++r->generation;
+    }
+    r->routePending=r->jackCandidateValid=0;
+    for(i=0;i<2;++i) {
+        status=ScreamerStop(r,(ScreamerStream)i,deadline);
+        if(status!=kScreamerOK) {fault(r);return status;}
+    }
+    if(r->power==kScreamerPowerReady) {
+        status=ScreamerCodecSetPower(&r->codec,kScreamerPowerOff,deadline);
+        if(status!=kScreamerOK) return status;
+        status=r->ops.setPlatform(r->ops.context,0);
+        if(status!=kScreamerOK) return status;
+    }
+    r->power=kScreamerPowerOff;return kScreamerOK;
 }

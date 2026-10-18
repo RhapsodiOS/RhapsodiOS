@@ -1124,3 +1124,28 @@ def test_task5_group_rejects_missing_or_incorrect_implementation(tmp_path, firmw
 
 
 
+
+
+def _task7_reference_family(family):
+    assert (TESTS.parent / "AdaptecU2CHIMSCB.c").is_file(), "missing SCB queue/software-state owner bodies"
+    cases = json.loads((TESTS / "task7-cases.json").read_text())
+    selected = {**cases, "cases": [c for c in cases["cases"] if c["family"] == family]}
+    assert selected["cases"], "missing required Task7 family fixtures"
+    source = (TESTS.parent / "AdaptecU2CHIMSCB.c").read_text()
+    for case in selected["cases"]:
+        assert re.search(r"\b" + case["entry"] + r"\([^;]*?\)\s*\{", source), case["entry"]
+    result = load_script("ppc_cases").execute(OUT / "reference/image.bin", selected,
+                                           json.loads((TESTS / "contracts.json").read_text()))
+    assert len(result["results"]) == len(selected["cases"])
+
+
+def test_scb_queue_linkage_all_modes():
+    _task7_reference_family("scb-linkage")
+
+
+def test_scb_abort_search_and_bdr():
+    _task7_reference_family("scb-abort")
+
+
+def test_scb_exhaustion_freeze_and_reset():
+    _task7_reference_family("scb-reset")

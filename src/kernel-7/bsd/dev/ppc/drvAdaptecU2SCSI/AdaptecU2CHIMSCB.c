@@ -941,3 +941,185 @@ unsigned char SCSIhStandardAdvSearchExeQ(AdaptecU2HHCB *hhcb, AdaptecU2HIOB *hio
     return found;
 }
 
+void SCSIhStandard64AbortHIOB(AdaptecU2HHCB *hhcb, AdaptecU2HIOB *hiob, unsigned char status)
+{
+    unsigned int count = 0x800000;
+    unsigned char saved, value;
+    if (OSMReadUExact8(*hhcb->ioHandle, 238) & 16) {
+        do {
+            if (OSMReadUExact8(*hhcb->ioHandle, 238) & 64)
+                break;
+        } while (count-- != 0);
+    }
+    if ((OSMReadUExact8(*hhcb->ioHandle, 238) & 28) == 28 &&
+        OSMReadUExact8(*hhcb->ioHandle, 241) == hiob->control.bytes.scbNumber) {
+        hiob->status = 2;
+        hiob->hostStatus = status;
+        hiob->managerStatus = 2;
+        saved = OSMReadUExact8(*hhcb->ioHandle, 144);
+        value = hiob->control.bytes.scbNumber;
+        OSMWriteUExact8(*hhcb->ioHandle, 144, value);
+        value = OSMReadUExact8(*hhcb->ioHandle, 195) | 8;
+        OSMWriteUExact8(*hhcb->ioHandle, 195, value);
+        OSMWriteUExact8(*hhcb->ioHandle, 144, saved);
+        return;
+    }
+    if (SCSIhStandardSearchDoneQ(hhcb, hiob))
+        return;
+    if (hhcb->firmware->searchNewQ(hhcb, hiob, status))
+        return;
+    if (status == 8) {
+        if (hhcb->firmware->searchSeqDoneQ(hhcb, hiob, 1) ||
+            hhcb->firmware->searchExeQ(hhcb, hiob, status, 1))
+            return;
+        hiob->status = 2;
+        hiob->hostStatus = 8;
+        SCSIhTerminateCommand(hiob);
+    } else {
+        if (!hiob->hostStatus) {
+            hiob->status = 2;
+            hiob->hostStatus = status;
+        }
+        hiob->managerStatus = 9;
+        hhcb->hardwareFlags |= 0x10000;
+        hhcb->firmware->setBreakPoint(hhcb, 1);
+    }
+}
+
+void SCSIhStandardAdvAbortHIOB(AdaptecU2HHCB *hhcb, AdaptecU2HIOB *hiob, unsigned char status)
+{
+    unsigned int count = 0x800000;
+    unsigned char saved, value;
+    if (OSMReadUExact8(*hhcb->ioHandle, 238) & 16) {
+        do {
+            if (OSMReadUExact8(*hhcb->ioHandle, 238) & 64)
+                break;
+        } while (count-- != 0);
+    }
+    if ((OSMReadUExact8(*hhcb->ioHandle, 238) & 28) == 28 &&
+        OSMReadUExact8(*hhcb->ioHandle, 241) == hiob->control.bytes.scbNumber) {
+        hiob->status = 2;
+        hiob->hostStatus = status;
+        hiob->managerStatus = 2;
+        saved = OSMReadUExact8(*hhcb->ioHandle, 144);
+        value = hiob->control.bytes.scbNumber;
+        OSMWriteUExact8(*hhcb->ioHandle, 144, value);
+        value = OSMReadUExact8(*hhcb->ioHandle, 160) | 16;
+        OSMWriteUExact8(*hhcb->ioHandle, 160, value);
+        OSMWriteUExact8(*hhcb->ioHandle, 144, saved);
+        return;
+    }
+    if (SCSIhStandardSearchDoneQ(hhcb, hiob))
+        return;
+    if (hhcb->firmware->searchNewQ(hhcb, hiob, status))
+        return;
+    if (status == 8) {
+        if (hhcb->firmware->searchSeqDoneQ(hhcb, hiob, 1) ||
+            hhcb->firmware->searchExeQ(hhcb, hiob, status, 1))
+            return;
+        hiob->status = 2;
+        hiob->hostStatus = 8;
+        SCSIhTerminateCommand(hiob);
+    } else {
+        if (!hiob->hostStatus) {
+            hiob->status = 2;
+            hiob->hostStatus = status;
+        }
+        hiob->managerStatus = 9;
+        hhcb->hardwareFlags |= 0x10000;
+        hhcb->firmware->setBreakPoint(hhcb, 1);
+    }
+}
+
+void SCSIhSwappingAbortHIOB(AdaptecU2HHCB *hhcb, AdaptecU2HIOB *hiob, unsigned char status)
+{
+    if (SCSIhStandardSearchDoneQ(hhcb, hiob))
+        return;
+    if (SCSIhSwappingSearchNewQ(hhcb, hiob, status))
+        return;
+    if (status == 8) {
+        hiob->status = 2;
+        hiob->hostStatus = 8;
+        SCSIhTerminateCommand(hiob);
+    } else {
+        if (!hiob->hostStatus) {
+            hiob->status = 2;
+            hiob->hostStatus = status;
+        }
+        hiob->managerStatus = 9;
+        hhcb->hardwareFlags |= 0x10000;
+        hhcb->firmware->setBreakPoint(hhcb, 1);
+    }
+}
+
+void SCSIhSwappingAdvAbortHIOB(AdaptecU2HHCB *hhcb, AdaptecU2HIOB *hiob, unsigned char status)
+{
+    unsigned int count = 0x800000;
+    unsigned char saved, value;
+    if (OSMReadUExact8(*hhcb->ioHandle, 238) & 16) {
+        do {
+            if (OSMReadUExact8(*hhcb->ioHandle, 238) & 64)
+                break;
+        } while (count-- != 0);
+    }
+    if ((OSMReadUExact8(*hhcb->ioHandle, 238) & 28) == 28 &&
+        (OSMReadUExact8(*hhcb->ioHandle, hhcb->firmware->registers[10]) == hiob->control.bytes.scbNumber ||
+         OSMReadUExact8(*hhcb->ioHandle, 58) == hiob->control.bytes.scbNumber)) {
+        hiob->status = 2;
+        hiob->hostStatus = status;
+        hiob->managerStatus = 2;
+        saved = OSMReadUExact8(*hhcb->ioHandle, 144);
+        value = OSMReadUExact8(*hhcb->ioHandle, 241);
+        OSMWriteUExact8(*hhcb->ioHandle, 144, value);
+        value = OSMReadUExact8(*hhcb->ioHandle, 198) | 16;
+        OSMWriteUExact8(*hhcb->ioHandle, 198, value);
+        OSMWriteUExact8(*hhcb->ioHandle, 144, saved);
+        return;
+    }
+    if (SCSIhStandardSearchDoneQ(hhcb, hiob))
+        return;
+    if (SCSIhSwappingSearchNewQ(hhcb, hiob, status))
+        return;
+    if (status == 8) {
+        hiob->status = 2;
+        hiob->hostStatus = 8;
+        SCSIhTerminateCommand(hiob);
+    } else {
+        if (!hiob->hostStatus) {
+            hiob->status = 2;
+            hiob->hostStatus = status;
+        }
+        hiob->managerStatus = 9;
+        hhcb->hardwareFlags |= 0x10000;
+        hhcb->firmware->setBreakPoint(hhcb, 1);
+    }
+}
+
+void SCSIhStandard64StackBugFix(AdaptecU2HHCB *hhcb)
+{
+    unsigned char values[8], extra = 0;
+    unsigned int i;
+    if (hhcb->firmwareMode != 0)
+        return;
+    for (i = 0; i < 8; ++i) {
+        values[i] = OSMReadUExact8(*hhcb->ioHandle, 111);
+        if ((i & 1) && values[i] > 1)
+            extra = 1;
+    }
+    if (extra)
+        OSMReadUExact8(*hhcb->ioHandle, 111);
+    if (values[0] == values[2] && values[0] == values[4] && values[0] == values[6] &&
+        values[1] == values[3] && values[1] == values[5] && values[1] == values[7])
+        OSMWriteUExact8(*hhcb->ioHandle, 99, 0);
+}
+
+void SCSIhDeliverScb(AdaptecU2HHCB *hhcb, AdaptecU2HIOB *hiob)
+{
+    AdaptecU2IOHandle *handle = hhcb->ioHandle;
+    OSDBuildSCB(hiob);
+    if (hhcb->firmware->patchXferOpt)
+        hhcb->firmware->patchXferOpt(hhcb, hiob);
+    ++hhcb->qnewHead;
+    OSMWriteUExact8(*handle, hhcb->firmware->registers[8], hhcb->qnewHead);
+}
+

@@ -26,9 +26,6 @@ on it in place, each kept at its original size:
   /etc/inetd.conf             enables telnetd.
   /etc/ttys                   marks the network ptys secure, so root may
                               telnet in.
-  drvPPCGem.config            matches `gmac` (QEMU's sungem, a GEM) as well
-      as the Sun card, and keeps the RXMAC summary bit masked: QEMU raises it
-      despite MAC_RXMASK, and the driver never clears it, so it storms.
   DEC21x4Ethernet.config/Default.table  matches pci1011,19, QEMU's tulip
       (a 21143, already in the driver's Auto Detect IDs) in place of
       pci1385,1100.
@@ -38,9 +35,10 @@ background, with a sungem NIC and a telnet forward.  The machine must not
 have QEMU's default devices: the stock ATAPI CD-ROM on the second ata-3 bus
 and the USB OHCI controller raise MPIC sources the stock 5.6 kernel has no
 handler for.  The stock kernel cannot reach the network on mac99 (issue 61);
-install a RhapsodiOS kernel with the Sawtooth fixes (see `kernel`) to get
-telnet.  Boot takes about four minutes under TCG.  --snapshot discards every
-write when QEMU exits.
+install a RhapsodiOS kernel with the Sawtooth fixes (see `kernel`); its
+built-in UniNEnet drives the sungem ("gmac") and gives telnet.  Boot takes
+about four minutes under TCG.  --snapshot discards every write when QEMU
+exits.
 
 kernel writes KERNEL over /mach_kernel on DISK in place, zero-padded to the
 stock kernel's size (BootX loads by the Mach-O load commands, so the tail is
@@ -120,20 +118,6 @@ def patch_dec21x4(text):
     return text.replace(" pci1385,1100 ", " pci1011,19   ", 1)
 
 
-def patch_gem(text):
-    old = '"Matching"      = "pci108e,2bad";'
-    assert old in text
-    return text.replace(old, '"Matching" = "pci108e,2bad gmac";', 1)
-
-
-def patch_gem_imask(text):
-    # Binary, through latin-1: in _enableAdapterInterrupts, GREG_IMASK &=
-    # 0xffff7fee -> 0xffffffee, keeping the RXMAC summary bit masked.
-    old = "\x3c\x00\xff\xff\x60\x00\x7f\xee"     # lis r0,-1; ori r0,r0,0x7fee
-    assert text.count(old) == 1
-    return text.replace(old, "\x3c\x00\xff\xff\x60\x00\xff\xee")
-
-
 def patch_netinfo(text):
     header = "##\n# Start up NetInfo\n##\n"
     assert header in text and "\nnibindd\n" in text
@@ -169,8 +153,6 @@ PATCHES = [
     ("/private/etc/startup/1700_IPServices", patch_ipservices),
     ("/private/etc/inetd.conf", patch_inetd),
     ("/private/Drivers/ppc/DEC21x4Ethernet.config/Default.table", patch_dec21x4),
-    ("/private/Drivers/ppc/drvPPCGem.config/Default.table", patch_gem),
-    ("/private/Drivers/ppc/drvPPCGem.config/drvPPCGem_reloc", patch_gem_imask),
     ("/private/etc/ttys", patch_ttys),
 ]
 

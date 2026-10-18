@@ -3,6 +3,14 @@ CFLAGS ?= -std=c89 -pedantic -Wall -Wextra -Werror
 RUNNER ?=
 L = ../PPCScreamer.drvproj/PPCScreamer.lksproj
 SHARED = ../../drvPPCTASAudio/PPCTASAudio.drvproj/PPCTASAudio.lksproj
+OBJCFLAGS ?= -Wall
+SDK ?= /build/src/driverkit-3
+
+adapter-test: screamer_adapter_test
+	$(RUNNER) ./screamer_adapter_test
+
+screamer_adapter_test: screamer_adapter_test.m $(L)/PPCScreamer.m screamer_fixtures.c $(L)/ScreamerCore.c $(L)/ScreamerProfiles.c $(L)/ScreamerCodec.c $(L)/ScreamerRuntime.c $(SHARED)/PPCDBDMAAudio.c $(SHARED)/TASTime.c
+	$(CC) $(OBJCFLAGS) -DSCREAMER_ADAPTER_TEST -I. -I$(L) -I$(SHARED) -I$(SDK) $^ -o $@
 
 .PHONY: test identity-test core-test codec-test clean
 identity-test: screamer_identity_test

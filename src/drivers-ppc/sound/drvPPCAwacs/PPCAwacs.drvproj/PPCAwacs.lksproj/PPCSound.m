@@ -12,6 +12,7 @@
 #import <driverkit/generalFuncs.h>
 #import <driverkit/interruptMsg.h>
 #import <driverkit/kernelDriver.h>
+#include "../../../drvPPCScreamer/PPCScreamer.drvproj/PPCScreamer.lksproj/ScreamerTree.h"
 
 /* Global instance for interrupt handlers */
 static PPCAwacs *globalInstance = nil;
@@ -236,8 +237,17 @@ void _unscale_volume(unsigned int leftScaled, unsigned int rightScaled, int *lef
     unsigned int *soundPropertyData;
     unsigned int soundPropertyLength;
     int propertyResult;
+    ScreamerTree identityTree;
+    ScreamerIdentity codecIdentity;
 
     IOLog("PPCAwacs: probe called\n");
+
+    if (!screamer_tree_description(&identityTree, deviceDescription))
+        return NO;
+    codecIdentity = screamer_tree_identity(&identityTree);
+    if (codecIdentity == kScreamerIdentityScreamer ||
+        codecIdentity == kScreamerIdentityConflict)
+        return NO;
 
     /* Check if this is a burgundy or DVD device - we don't support those */
     compatible = [deviceDescription propertyStringFor:"compatible"];

@@ -1181,7 +1181,7 @@ def test_task7_long_bounded_fixture_cap_bounds(tmp_path):
     assert result["instructions"] == 2
 
 
-@pytest.mark.parametrize("corruption", ['source', 'native', 'native_body', 'native_relocation', 'review', 'ledger', 'case', 'unknown_call', 'executed_cases', 'executed_contracts', 'executed_runner', 'dependency_source', 'dependency_object', 'result_revision', 'executed_reference', 'executed_inventory', 'executed_initializer', 'executed_identity', 'executed_macho', 'executed_objc_abi', 'executed_source_map', 'executed_schema', 'executed_arch', 'executed_source_paths'])
+@pytest.mark.parametrize("corruption", ['source', 'native', 'native_body', 'native_relocation', 'review', 'ledger', 'case', 'unknown_call', 'executed_cases', 'executed_contracts', 'executed_runner', 'dependency_source', 'dependency_object', 'dependency_staged_hash', 'result_revision', 'executed_reference', 'executed_inventory', 'executed_initializer', 'executed_identity', 'executed_macho', 'executed_objc_abi', 'executed_source_map', 'executed_schema', 'executed_arch', 'executed_source_paths'])
 def test_task7_owner_rejects_incomplete_evidence(tmp_path, firmware_evidence, corruption):
     audit, evidence = firmware_evidence
     repo = tmp_path / "repo"
@@ -1252,6 +1252,9 @@ def test_task7_owner_rejects_incomplete_evidence(tmp_path, firmware_evidence, co
         raw[-1] ^= 1
         path.write_bytes(raw)
         expected = "stale Task7 accepted native dependency"
+    elif corruption == "dependency_staged_hash":
+        proof["accepted_dependencies"]["AdaptecU2CHIMFirmware.c"]["source_sha256"] = "0" * 64
+        expected = "stale Task7 accepted native dependency"
     elif corruption == "result_revision":
         path = objects / "reference-results.json"
         result = json.loads(path.read_text())
@@ -1296,7 +1299,7 @@ def test_task7_proof_artifact_survives_git_checkout():
 
 
 @pytest.mark.parametrize("newline", [b"\n", b"\r\n"], ids=["git-lf", "checkout-crlf"])
-def test_task7_owner_accepts_proof_checkout_endings(tmp_path, firmware_evidence, newline):
+def test_task7_owner_accepts_proof_and_dependency_checkout_endings(tmp_path, firmware_evidence, newline):
     audit, evidence = firmware_evidence
     repo = tmp_path / "repo"
     driver = repo / audit.ref.DRIVER
@@ -1315,4 +1318,10 @@ def test_task7_owner_accepts_proof_checkout_endings(tmp_path, firmware_evidence,
     canonical = subprocess.check_output(["git", "show", "HEAD:" + relative], cwd=REPO)
     assert b"\r" not in canonical
     proof_path.write_bytes(canonical.replace(b"\n", newline))
+    proof = json.loads(canonical)
+    for name in proof["accepted_dependencies"]:
+        path = driver / name
+        canonical = subprocess.check_output(["git", "show", "HEAD:" + path.relative_to(repo).as_posix()], cwd=REPO)
+        assert b"\r" not in canonical
+        path.write_bytes(canonical.replace(b"\n", newline))
     audit.audit_scb_group(evidence, repo, objects)

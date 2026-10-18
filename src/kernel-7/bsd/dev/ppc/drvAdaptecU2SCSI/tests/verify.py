@@ -399,8 +399,6 @@ def audit_scb_group(evidence, repo_root, objects):
                                             path.relative_to(repo_root).as_posix()], cwd=repo_root)
             if blob != canonical or hashlib.sha256(blob).hexdigest().upper() != dependency["git_blob_sha256"]:
                 raise ValueError("stale Task7 accepted source dependency: " + name)
-        if hashlib.sha256(path.read_bytes()).hexdigest().upper() != dependency["source_sha256"]:
-            raise ValueError("stale Task7 accepted staged dependency: " + name)
         dependency_objects = objects.parent / dependency["group"]
         dependency_manifest = dependency_objects / "objects.json"
         if hashlib.sha256(dependency_manifest.read_bytes()).hexdigest().upper() != dependency["manifest_sha256"]:

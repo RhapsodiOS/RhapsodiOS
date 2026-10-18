@@ -10,7 +10,7 @@ adapter-test: screamer_adapter_test
 	$(RUNNER) ./screamer_adapter_test
 
 screamer_adapter_test: screamer_adapter_test.m $(L)/PPCScreamer.m screamer_fixtures.c $(L)/ScreamerCore.c $(L)/ScreamerProfiles.c $(L)/ScreamerCodec.c $(L)/ScreamerRuntime.c $(SHARED)/PPCDBDMAAudio.c $(SHARED)/TASTime.c
-	$(CC) $(OBJCFLAGS) -DSCREAMER_ADAPTER_TEST -I. -I$(L) -I$(SHARED) -I$(SDK) $^ -o $@
+	$(CC) $(OBJCFLAGS) -DSCREAMER_ADAPTER_TEST -I. -I$(L) -I$(SHARED) -I$(SDK) -I../../../../kernel-7 $^ -o $@
 
 .PHONY: test identity-test core-test codec-test clean
 identity-test: screamer_identity_test

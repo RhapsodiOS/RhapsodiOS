@@ -44,7 +44,7 @@ static unsigned long screamer_now(void *context)
 static unsigned long screamer_deadline(PPCScreamer *self)
 {
     unsigned long deadline=screamer_now(self);
-    (void)TASTimeAdd(deadline,2000,&deadline);return deadline;
+    (void)TASTimeAdd(deadline,5000,&deadline);return deadline;
 }
 static void screamer_sleep(void *context,unsigned long ms)
 { (void)context;IOSleep((unsigned int)ms); }
@@ -135,6 +135,8 @@ static int ScreamerReadDescription(id description,ScreamerMachineConfig *config)
     ranges=[description memoryRangeList];interrupts=[description interruptList];
     if(!ranges || !interrupts) return 0;
     memset(&delivered,0,sizeof(delivered));delivered.rangeCount=delivered.interruptCount=3;
+    /* IOTreeDevice applies the historical bit-number XOR after PE mapping. */
+    delivered.interruptXor=0x18U;
     for(i=0;i<3;++i) {
         delivered.ranges[i].address=ranges[i].start;delivered.ranges[i].length=ranges[i].size;
         delivered.interrupts[i]=interrupts[i];
@@ -162,7 +164,7 @@ static void screamer_poll(void *argument)
 }
 #else
 static unsigned long screamer_deadline(PPCScreamer *self)
-{ unsigned long d=self->runtime.codec.ops.nowMS(self->runtime.codec.ops.context);TASTimeAdd(d,2000,&d);return d; }
+{ unsigned long d=self->runtime.codec.ops.nowMS(self->runtime.codec.ops.context);TASTimeAdd(d,5000,&d);return d; }
 #endif
 static void screamer_irq(void *identity,void *state,void *argument,unsigned int local)
 {
@@ -220,7 +222,6 @@ static NXSoundParameterTag screamer_input_tag(ScreamerInput input)
 {
     ScreamerRuntimeOps ops;
     unsigned int i,index;
-    unsigned long deadline;
     vm_offset_t page,physical;
     if(runtime.initialized || interruptClosing) return NO;
     memset(&ops,0,sizeof(ops));ops.context=self;ops.setPlatform=screamer_platform;ops.setAmplifier=screamer_amplifier;
@@ -237,8 +238,7 @@ static NXSoundParameterTag screamer_input_tag(ScreamerInput input)
         if(!physical || (physical&(PAGE_SIZE-1)) ||
             physical>~0UL-(PAGE_SIZE-1) ||
             pmap_extract(kernel_pmap,page+PAGE_SIZE-1)!=physical+PAGE_SIZE-1) return NO;
-        flush_cache_v(page,PAGE_SIZE);invalidate_cache_v(page,PAGE_SIZE);
-        pmap_enter_cache_spec(kernel_pmap,page,physical,VM_PROT_READ|VM_PROT_WRITE,TRUE,cache_disable);
+        if(!pmap_set_cache_spec(kernel_pmap,page,cache_disable)) return NO;
         scratch[i]=IOMalloc(PAGE_SIZE+15);
         if(!scratch[i]) return NO;
         ops.storage[i].logical=(void *)page;ops.storage[i].physical=physical;ops.storage[i].bytes=PAGE_SIZE;
@@ -249,8 +249,6 @@ static NXSoundParameterTag screamer_input_tag(ScreamerInput input)
         ops.dma[i].now=screamer_now;ops.dma[i].coherencyContext=self;
         ops.dma[i].publish=screamer_publish;ops.dma[i].invalidate=screamer_invalidate;ops.dma[i].barrier=screamer_dma_barrier;
     }
-    if(!TASTimeAdd(screamer_now(self),100,&deadline) ||
-        ScreamerQuiesceHardware(&ops,deadline)!=kScreamerOK) return NO;
     if(ScreamerRuntimeInitialize(&runtime,&machineConfig,&ops,screamer_deadline(self))!=kScreamerOK) return NO;
     [self setDeviceKind:"PPCScreamer"];[self setUnit:0];[self setName:"PPCScreamer0"];
     for(i=0;i<3;++i) if([self enableInterrupt:i]!=IO_R_SUCCESS) return NO;
@@ -273,7 +271,11 @@ static NXSoundParameterTag screamer_input_tag(ScreamerInput input)
     for(i=0;i<3;++i) [self disableInterrupt:i];
     if(ioAudioPublished) {IOLog("PPCScreamer: quiesced; retaining IOAudio worker resources\n");return self;}
     for(i=0;i<2;++i) {
-        if(ringPages[i]) kmem_free(kernel_map,(vm_offset_t)ringPages[i],PAGE_SIZE);
+        if(ringPages[i]) {
+            if(!pmap_set_cache_spec(kernel_pmap,(vm_offset_t)ringPages[i],cache_default)) return self;
+            kmem_free(kernel_map,(vm_offset_t)ringPages[i],PAGE_SIZE);
+            ringPages[i]=0;
+        }
         if(scratch[i]) IOFree(scratch[i],PAGE_SIZE+15);
     }
     while(mapped) {--mapped;[self unmapMemoryRange:mapped from:(vm_address_t)registers[mapped]];}
@@ -336,14 +338,14 @@ static NXSoundParameterTag screamer_input_tag(ScreamerInput input)
 }
 - (void)_interruptOccurred
 {
-    unsigned int periods[2],sense,confirm;ScreamerStatus status;
+    unsigned int periods[2],sense,confirm,pending;ScreamerStatus status;
     [operationLock lock];
     if(runtime.closing || runtime.power!=kScreamerPowerReady) {[operationLock unlock];return;}
-    [interruptLock acquire];pendingIRQs=0;[interruptLock release];
+    [interruptLock acquire];pending=pendingIRQs;pendingIRQs=0;[interruptLock release];
     status=screamer_read(self,0x20,&sense);
     if(status==kScreamerOK) (void)ScreamerObserveJack(&runtime,sense,screamer_now(self),runtime.generation);
     confirm=runtime.jackCandidateValid && TASTimeBefore(screamer_now(self),runtime.jackDeadline);
-    status=ScreamerServiceDeferred(&runtime,screamer_deadline(self),periods);
+    status=ScreamerServiceInterrupt(&runtime,pending,screamer_deadline(self),periods);
     [operationLock unlock];
     if(confirm) screamer_arm(self,5);
     if(status!=kScreamerOK) return;

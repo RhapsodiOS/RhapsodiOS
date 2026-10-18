@@ -14,6 +14,7 @@ ScreamerStatus ScreamerAcknowledgeInterrupt(const ScreamerRuntimeOps *ops,
         status=ops->codec.readLE32(ops->codec.context,0,&control);
         if(status!=kScreamerOK) return status;
         if(control&0x1800U) {
+            if(control&0x800U) *pending|=0x800U;
             /* Error and port-change are W1C. Preserve rate, subframes and enables. */
             status=ops->codec.writeLE32(ops->codec.context,0,control);
             if(status!=kScreamerOK) return status;
@@ -100,6 +101,15 @@ ScreamerStatus ScreamerRuntimeInitialize(ScreamerRuntime *r,
         !ops->codec.sleepMS || !ops->codec.barrier) return kScreamerInvalid;
     s=ops->setPlatform(ops->context,1);
     if(s!=kScreamerOK) return s;
+    s=ScreamerQuiesceHardware(ops,stop_deadline(r,deadline));
+    if(s!=kScreamerOK) {
+        /* A possibly active DMA engine must retain its clocks and memory. */
+        r->faulted=r->initialized=1;r->power=kScreamerPowerReady;
+        for(i=0;i<2;++i) {
+            r->rings[i].state=kPPCDBDMAFaulted;r->streams[i].needsQuiesce=1;
+        }
+        return s;
+    }
     s=initialize_codec(r,deadline);
     if(s!=kScreamerOK) {
         r->faulted=1;
@@ -220,6 +230,8 @@ ScreamerStatus ScreamerApplyControls(ScreamerRuntime *r,const ScreamerControls *
     if(next.input<0 || next.input>=kScreamerInputCount ||
         !r->config.profile.inputBits[next.input]) return kScreamerUnsupported;
     if(next.userMuted!=0 && next.userMuted!=1) return kScreamerInvalid;
+    if(next.input!=r->applied.input &&
+        (r->streams[0].running || r->streams[1].running)) return kScreamerBusy;
     for(i=0;i<2;++i) if(next.gain[i]>15 || next.attenuation[i]>15) return kScreamerInvalid;
     if(!next.userMuted && !r->routeKnown && !r->routePending) return kScreamerBusy;
     route=r->routePending?r->pendingHeadphone:r->headphone;
@@ -270,6 +282,17 @@ ScreamerStatus ScreamerObserveJack(ScreamerRuntime *r,unsigned int sense,
         r->pendingHeadphone=plugged;r->routePending=1;
     }
     return kScreamerOK;
+}
+ScreamerStatus ScreamerServiceInterrupt(ScreamerRuntime *r,unsigned int pending,
+    unsigned long deadline,unsigned int periods[2])
+{
+    if(!r || !periods) return kScreamerInvalid;
+    if(pending&0x800U) {
+        periods[0]=periods[1]=0;
+        if(!r->initialized || r->closing || r->power!=kScreamerPowerReady) return kScreamerClosed;
+        fault(r);return kScreamerFault;
+    }
+    return ScreamerServiceDeferred(r,deadline,periods);
 }
 ScreamerStatus ScreamerServiceDeferred(ScreamerRuntime *r,unsigned long deadline,
     unsigned int periods[2])

@@ -16,6 +16,7 @@ static ScreamerStatus writereg(void *p,unsigned int reg,unsigned int v)
     ScreamerFixture *f=p;
     if(f->irqContext && reg!=0) ++f->irqViolations;
     if(++f->writeCalls==f->failWrite) return kScreamerIOError;
+    f->now+=f->writeDelay;
     f->regs[reg/4]=v;f->lastWriteAt=f->now;
     if(reg==0x10) {
         f->lastCommand=v;++f->commandWrites;

@@ -19,4 +19,5 @@ typedef struct {
 } PEDAVBusTransport;
 void PEDAVBusBindTransport(const PEDAVBusTransport *);
 kern_return_t PEDAVBusSetStateCore(const PEDAVBusTransport *, PEDAVBusState);
+int PEDAVBusParseInterrupts(const unsigned char *,unsigned int,unsigned int [3]);
 #endif

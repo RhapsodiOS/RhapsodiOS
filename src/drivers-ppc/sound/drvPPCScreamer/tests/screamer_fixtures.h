@@ -15,7 +15,7 @@ typedef struct {
     ScreamerPropertyReader reader;
     unsigned long now,readyAt,lastWriteAt;
     unsigned int regs[24],hardware[8],lastCommand,commandWrites,writeCalls;
-    unsigned int holdBusy,failWrite,irqContext,irqViolations,sense;
+    unsigned int holdBusy,failWrite,irqContext,irqViolations,sense,writeDelay;
 } ScreamerFixture;
 void FixtureInit(ScreamerFixture *);
 void FixtureSawtooth(ScreamerFixture *);

@@ -202,7 +202,8 @@ ScreamerStatus ScreamerDiscover(const ScreamerPropertyReader *r,unsigned int can
     for(i=0;i<3;++i) {
         c.interrupts[i]=ScreamerBE32(b.bytes+i*stride);
         if(stride==8 && ScreamerBE32(b.bytes+i*stride+4)>1) return kScreamerInvalid;
-        if(c.interrupts[i]!=r->delivered->interrupts[i]) return kScreamerInvalid;
+        if((r->delivered->interruptXor!=0 && r->delivered->interruptXor!=0x18U) ||
+            (c.interrupts[i]^r->delivered->interruptXor)!=r->delivered->interrupts[i]) return kScreamerInvalid;
         c.localInterrupts[i]=i;
         for(j=0;j<i;++j) if(c.interrupts[i]==c.interrupts[j]) return kScreamerInvalid;
     }

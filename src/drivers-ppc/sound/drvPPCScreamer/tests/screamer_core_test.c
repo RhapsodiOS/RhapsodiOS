@@ -59,6 +59,9 @@ int main(void)
     CHECK(c.profile.powerKind==7 && c.profile.initOutput==1);
     CHECK(c.profile.speakerPort==2 && c.profile.headphonePort==1 && c.profile.headphoneMask==4);
     CHECK(c.profile.inputBits[kScreamerInputMic]==0x400U && c.profile.inputBits[kScreamerInputLine]==0x400U);
+    for(i=0;i<3;++i) f.delivered.interrupts[i]^=0x18U;
+    f.delivered.interruptXor=0x18U;
+    CHECK(ScreamerDiscover(&f.reader,3,&c)==kScreamerOK);
     FixtureCell(&f,2,"AAPL,address",0x90000000U);
     CHECK(ScreamerDiscover(&f.reader,3,&c)==kScreamerInvalid);
     printf("core: %u checks, %u failures\n",checks,failures);

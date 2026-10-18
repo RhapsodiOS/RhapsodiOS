@@ -3,6 +3,7 @@
 #import <objc/Object.h>
 #import <driverkit/NXSoundParameterTags.h>
 #include <stdarg.h>
+#include <machdep/ppc/DeviceTree.h>
 typedef unsigned long UInt32;
 typedef unsigned long ByteCount;
 #define IO_R_SUCCESS 0
@@ -57,6 +58,7 @@ enum {NX_SoundDeviceLineOut=25,NX_SoundDeviceSpeakerOut,NX_SoundDeviceCDOut,
 { @public void *fixture; unsigned int node; id parent; }
 + findForIndex:(UInt32)index;
 - parent;
+- getRef;
 - propertyTable;
 - getDevicePath:(char *)path maxLength:(int)length useAlias:(BOOL)alias;
 - (IOReturn)getProperty:(const char *)name flags:(unsigned long)flags value:(void **)value length:(ByteCount *)length;

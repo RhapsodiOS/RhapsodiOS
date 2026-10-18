@@ -1,5 +1,20 @@
 /* Copyright (c) 2026 RhapsodiOS Project. */
 #include "davbus_audio.h"
+int PEDAVBusParseInterrupts(const unsigned char *bytes,unsigned int length,unsigned int irq[3])
+{
+    unsigned int i,j,stride,value;
+    if(!bytes || !irq || (length!=12 && length!=24)) return 0;
+    stride=length/3;
+    for(i=0;i<3;++i) {
+        const unsigned char *p=bytes+i*stride;
+        value=((unsigned int)p[0]<<24)|((unsigned int)p[1]<<16)|((unsigned int)p[2]<<8)|p[3];
+        if(value>=64) return 0;
+        if(stride==8 && (p[4] || p[5] || p[6] || p[7]>1)) return 0;
+        for(j=0;j<i;++j) if(irq[j]==value) return 0;
+        irq[i]=value;
+    }
+    return 1;
+}
 static const PEDAVBusTransport *davbus;
 #define DAVBUS_SELECT (0x80U | 0x20U | 0x02U)
 #define DAVBUS_CLOCK 0x08U

@@ -14,7 +14,7 @@ typedef enum { kScreamerInputMic, kScreamerInputLine, kScreamerInputCD,
 typedef struct { unsigned int address, length; } ScreamerRange;
 typedef struct {
     ScreamerRange ranges[3];
-    unsigned int rangeCount, interrupts[3], interruptCount;
+    unsigned int rangeCount, interrupts[3], interruptCount,interruptXor;
 } ScreamerDeliveredResources;
 typedef struct {
     void *context;

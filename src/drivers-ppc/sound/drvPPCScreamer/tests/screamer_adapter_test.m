@@ -6,14 +6,42 @@
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 static IOTreeDevice *treeNodes[5];
+typedef struct {IOTreeDevice *parent;unsigned int next;} TestIterator;
+int DTLookupEntry(const DTEntry start,const char *path,DTEntry *entry)
+{*entry=(DTEntry)treeNodes[0];return kSuccess;}
+int DTCreateEntryIterator(const DTEntry entry,DTEntryIterator *iterator)
+{TestIterator *it=calloc(1,sizeof(*it));it->parent=(id)entry;*iterator=(DTEntryIterator)it;return kSuccess;}
+int DTDisposeEntryIterator(DTEntryIterator iterator) {free(iterator);return kSuccess;}
+int DTIterateEntries(DTEntryIterator iterator,DTEntry *entry)
+{
+    TestIterator *it=(TestIterator *)iterator;
+    ScreamerFixture *f=it->parent->fixture;
+    while(it->next<5) {
+        IOTreeDevice *node=treeNodes[it->next++];
+        if(f->parents[node->node]==it->parent->node) {*entry=(DTEntry)node;return kSuccess;}
+    }
+    *entry=0;return kIterationDone;
+}
+int DTGetProperty(const DTEntry entry,const char *name,void **value,int *length)
+{
+    IOTreeDevice *node=(id)entry;ScreamerBytes b;ScreamerFixture *f=node->fixture;
+    if(!f->reader.getProperty(f,node->node,name,&b)) return kError;
+    *value=(void *)b.bytes;*length=b.length;return kSuccess;
+}
 static unsigned int notifications,inputServices,outputServices;
 static unsigned int negotiatedRate=44100,negotiatedEncoding=NX_SoundStreamDataEncoding_Linear16,negotiatedChannels=2;
 static ScreamerStatus test_platform(void *context,int ready) {return kScreamerOK;}
+static unsigned long test_dma_read(void *context,unsigned long reg) {return 0;}
+static void test_dma_write(void *context,unsigned long reg,unsigned long value) {}
+static unsigned long test_dma_now(void *context) {return ((ScreamerFixture *)context)->now;}
+static PPCDBDMAStatus test_dma_barrier(void *context) {return kPPCDBDMAOK;}
 void IOSendInterrupt(void *identity,void *state,unsigned int message) {++notifications;}
 @implementation IOTreeDevice
-+ findForIndex:(UInt32)i {return i<5?treeNodes[i]:nil;}
++ findForIndex:(UInt32)i {return i<3?treeNodes[i]:nil;}
 - parent {return parent;}
+- getRef {return self;}
 - propertyTable {return self;}
 - getDevicePath:(char *)path maxLength:(int)length useAlias:(BOOL)alias
 { if(length<16) return nil;sprintf(path,"/node%u",node);return self; }
@@ -84,11 +112,13 @@ int main(void)
     PMPowerState power;
     FixtureInit(&f);assert(ScreamerDiscover(&f.reader,3,&c)==kScreamerOK);
     for(i=0;i<5;++i) {treeNodes[i]=[IOTreeDevice new];treeNodes[i]->fixture=&f;treeNodes[i]->node=i+1;}
-    treeNodes[3]->parent=treeNodes[2];
+    /* Native parents are bus objects; the sound child is not published. */
+    treeNodes[3]->parent=[Object new];
     /* A second, unrelated controller must never influence the candidate. */
     FixtureSetProperty(&f,5,"model","burgundy",9);
+    f.parents[5]=1;
     assert(screamer_tree_description(&tree,treeNodes[2]));
-    assert(tree.candidate==3);
+    assert(tree.nodes[tree.candidate-1]==(DTEntry)treeNodes[2]);
     assert(screamer_tree_identity(&tree)==kScreamerIdentityScreamer);
     for(i=0;i<2;++i) {
         unsigned int owners=0,j;
@@ -132,6 +162,12 @@ int main(void)
     a->runtime.streams[0].running=a->runtime.streams[1].running=1;
     periods[0]=1;periods[1]=2;[a screamerServicePeriods:periods];
     assert(inputServices==1 && outputServices==2);
+    writes=f.writeCalls;
+    assert([a _setParameter:NX_SoundDeviceAnalogInputSource toInt:NX_SoundDeviceCDIn forObject:[a _inputChannel]]==NO);
+    assert(f.writeCalls==writes && a->runtime.applied.input==kScreamerInputLine);
+    a->runtime.streams[1].running=0;
+    assert([a _setParameter:NX_SoundDeviceAnalogInputSource toInt:NX_SoundDeviceCDIn forObject:[a _inputChannel]]==NO);
+    assert(f.writeCalls==writes && a->runtime.desired.input==kScreamerInputLine);
     a->runtime.streams[0].running=a->runtime.streams[1].running=0;
     negotiatedRate=22050;negotiatedEncoding=NX_SoundStreamDataEncoding_Linear8;
     assert(![a _attemptToStartDMAForChannel:[a _outputChannel] channelStatus:NO]);
@@ -160,12 +196,19 @@ int main(void)
     assert([a _setParameter:NX_SoundDeviceInputGainLeft toInt:16384 forObject:[a _inputChannel]]==NO);
     assert([a _intValueForParameter:NX_SoundDeviceInputGainLeft forObject:[a _inputChannel]]==old);
     FixtureCodecInit(&f,&codec);memset(&ops,0,sizeof(ops));ops.codec=codec.ops;ops.setPlatform=test_platform;
+    for(i=0;i<2;++i) {
+        ops.dma[i].context=&f;ops.dma[i].readRegister=test_dma_read;
+        ops.dma[i].writeRegister=test_dma_write;ops.dma[i].now=test_dma_now;
+        ops.dma[i].barrier=test_dma_barrier;
+    }
     assert(ScreamerRuntimeInitialize(&a->runtime,&c,&ops,5000)==kScreamerOK);
     assert([a setPowerState:(PMPowerState)99]==IO_R_INVALID_ARG);
     assert([a getPowerState:&power]==IO_R_SUCCESS && power==PM_READY);
     assert([a setPowerState:PM_SUSPENDED]==IO_R_SUCCESS && a->interruptSuspended);
     assert([a getPowerState:&power]==IO_R_SUCCESS && power==PM_SUSPENDED);
+    f.writeDelay=120;
     assert([a setPowerState:PM_READY]==IO_R_SUCCESS && !a->interruptSuspended);
+    f.writeDelay=0;
     writes=f.writeCalls;
     assert([a setPowerState:PM_READY]==IO_R_SUCCESS && f.writeCalls==writes);
     f.failWrite=f.writeCalls+1;

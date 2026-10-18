@@ -12,7 +12,7 @@ typedef struct {
 } DMAFake;
 static DMAFake dma[2];
 static ScreamerFixture fixture;
-static unsigned int platformOffs,platformUnsafe,validBuffers;
+static unsigned int platformOffs,platformUnsafe,validBuffers,platformConflict,platformOwned,dmaWrites;
 static unsigned int amplifier,amplifierWrites,amplifierUnsafe;
 static ScreamerStatus set_amplifier(void *p,int enabled)
 {
@@ -40,6 +40,8 @@ static unsigned long readreg(void *p,unsigned long reg)
 static void writereg(void *p,unsigned long reg,unsigned long value)
 {
     DMAFake *f=p;
+    ++dmaWrites;
+    if(!platformOwned) ++platformUnsafe;
     if(reg==kPPCDBDMARegCommandPtr) f->pointer=value;
     if(reg==kPPCDBDMARegControl) {
         f->control=(f->control&~(value>>16))|(value&(value>>16));
@@ -56,6 +58,8 @@ static PPCDBDMAStatus barrier(void *p) {(void)p;return kPPCDBDMAOK;}
 static ScreamerStatus platform(void *p,int ready)
 {
     (void)p;
+    if(ready && platformConflict) return kScreamerBusy;
+    platformOwned=(unsigned int)ready;
     if(!ready) {
         ++platformOffs;
         if((dma[0].control|dma[1].control)&kPPCDBDMARun) ++platformUnsafe;
@@ -113,6 +117,9 @@ int main(void)
     CHECK(ScreamerStart(&r,kScreamerStreamInput,dma[0].audio,8192,4096,22050,5000)==kScreamerBusy);
     CHECK(fixture.commandWrites==before && dma[1].starts==1);
     CHECK(ScreamerStart(&r,kScreamerStreamInput,dma[0].audio,8192,4096,44100,5000)==kScreamerOK);
+    controls=r.desired;controls.input=kScreamerInputCD;before=fixture.writeCalls;
+    CHECK(ScreamerApplyControls(&r,&controls,5000)==kScreamerBusy);
+    CHECK(fixture.writeCalls==before && r.desired.input==kScreamerInputLine);
     complete(&r.rings[1],0,0,kPPCDBDMAActive);
     CHECK(ScreamerCaptureCompletions(&r,kScreamerStreamOutput,&periods)==kScreamerOK && periods==0);
     complete(&r.rings[1],1,0,kPPCDBDMAActive);
@@ -239,6 +246,22 @@ int main(void)
     CHECK(!platformOffs && !dma[0].starts && !dma[1].starts);
     dma[1].holdStop=0;
     CHECK(ScreamerQuiesceHardware(&ops,5000)==kScreamerOK);
+    setup(&r,&c,&ops);dma[1].holdStop=1;
+    before=fixture.writeCalls;
+    CHECK(ScreamerRuntimeInitialize(&r,&c,&ops,5000)==kScreamerTimeout);
+    CHECK(fixture.writeCalls==before && r.faulted && r.initialized);
+    CHECK(ScreamerBeginClose(&r,5000)==kScreamerTimeout && !platformOffs);
+    dma[1].holdStop=0;platformConflict=1;dmaWrites=0;before=fixture.writeCalls;
+    CHECK(ScreamerRuntimeInitialize(&r,&c,&ops,5000)==kScreamerBusy);
+    CHECK(!dmaWrites && fixture.writeCalls==before);
+    platformConflict=0;
+    setup(&r,&c,&ops);fixture.regs[0]|=0x800U;i=0;
+    CHECK(ScreamerAcknowledgeInterrupt(&ops,0,&i)==kScreamerOK);
+    CHECK((i&0x800U)!=0);
+    CHECK(ScreamerStart(&r,kScreamerStreamOutput,dma[1].audio,8192,4096,44100,5000)==kScreamerOK);
+    complete(&r.rings[1],0,0,kPPCDBDMAActive);
+    CHECK(ScreamerServiceInterrupt(&r,i,5000,serviced)==kScreamerFault);
+    CHECK(r.faulted && !r.streams[1].running && !serviced[0] && !serviced[1]);
     printf("runtime: %u checks, %u failures\n",checks,failures);
     return failures!=0;
 }

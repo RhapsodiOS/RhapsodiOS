@@ -54,6 +54,15 @@ int main(void)
     CHECK(!f.owner && !f.depth);
     PEDAVBusBindTransport(0);
     CHECK(PEDAVBusSetState(0x80014000U,kPEDAVBusReady)==KERN_FAILURE);
+    {
+        unsigned char raw[24]={0,0,0,24,0,0,0,1,0,0,0,9,0,0,0,0,0,0,0,10,0,0,0,0};
+        unsigned int irq[3];
+        CHECK(PEDAVBusParseInterrupts(raw,24,irq));
+        CHECK(irq[0]==24 && irq[1]==9 && irq[2]==10);
+        raw[7]=2;CHECK(!PEDAVBusParseInterrupts(raw,24,irq));raw[7]=1;
+        raw[19]=9;CHECK(!PEDAVBusParseInterrupts(raw,24,irq));
+        CHECK(!PEDAVBusParseInterrupts(raw,20,irq));
+    }
     printf("davbus: %u checks, %u failures\n",checks,failures);
     return failures!=0;
 }

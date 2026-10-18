@@ -2,7 +2,7 @@
 
 **Date:** 2026-10-17
 
-**Status:** Design approved in conversation; written spec awaiting user review.
+**Status:** Written spec approved by the user on 2026-10-17.
 
 ## Intent and success criteria
 

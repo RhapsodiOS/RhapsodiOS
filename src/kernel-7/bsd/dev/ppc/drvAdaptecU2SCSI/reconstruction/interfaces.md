@@ -1345,3 +1345,14 @@ code references and fresh IDA jump targets for all 22. Their future product
 counterparts must arise from their owning routine's recovered control flow;
 Task4 emits no orphan arrays of reference branch addresses. All unnamed
 functions remain ordinary required bodies.
+
+## Task5 erased OSM implementation carrier
+
+OSMSynchronizeRange uses the existing 32-byte IOHandle aggregate only as an
+implementation carrier for eight incoming machine words and returns its first
+word unchanged. This is not evidence of original formal grouping, handle
+semantics, or original types. Its public declaration and table slot remain
+unspecified-argument machine contracts. Acceptance requires the historical
+compiler to reproduce all 44 reference bytes, all eight entry-SP homing writes,
+and unchanged r3/r1. OSMSaveInterruptState returns zero; OSMSetInterruptState
+uses the incoming r3 register bits without assigning them pointer semantics.

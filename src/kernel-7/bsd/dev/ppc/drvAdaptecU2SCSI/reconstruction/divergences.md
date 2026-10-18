@@ -77,3 +77,10 @@ actual consuming code. Zero/reserved/header words are never invented
 callbacks, and scalar fields are never normalized because of their numeric
 appearance. In particular the two preserved subsystem tail pairs remain
 unreachable through the reference's index<=13 enumerator.
+
+Task5 controller ruling: the existing IOHandle aggregate may carry the eight
+OSMSynchronizeRange machine words in its implementation only. No original
+formal type/count/grouping is recovered, and the unspecified public ABI stays
+unchanged. This technique is conditional on exact historical target bytes and
+the frozen stack/r3/r1 effects. A backend change requires recertifying or
+rewriting this one implementation; observations may not be relaxed.

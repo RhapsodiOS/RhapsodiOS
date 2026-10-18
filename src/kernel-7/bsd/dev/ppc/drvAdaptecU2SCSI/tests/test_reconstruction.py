@@ -296,6 +296,215 @@ def smoke_case(size=16):
             "expected": {"return": 0, "memory": {"buffer+0": "00000000"}, "trace": []}}
 
 
+def test_task5_declared_void_ignores_undefined_r3(tmp_path):
+    runner = load_script("ppc_cases")
+    image = runner_image(tmp_path, [0x38601234, 0x4e800020],
+                         aliases=[("_OSMAdjustBusAddress", 0)])
+    case = smoke_case(8)
+    case.update(entry="OSMAdjustBusAddress", return_kind="void",
+                declaration="void OSMAdjustBusAddress(unsigned int *busAddress, unsigned int offset);")
+    observed = runner.run_case(image, case, {"services": {}})["observations"]
+    assert "return" not in observed
+    assert observed["memory"] == {"buffer+0": "00000000"}
+    case["declaration"] = "void OSMGetNVSize(AdaptecU2OSMContext context);"
+    with pytest.raises(ValueError, match="declaration"):
+        runner.run_case(image, case, {"services": {}})
+
+
+def test_task5_aggregate_overflow_and_narrow_stack_arguments(tmp_path):
+    runner = load_script("ppc_cases")
+    # lwz r3,56(r1); lbz r4,63(r1); add r3,r3,r4; blr
+    image = runner_image(tmp_path, [0x80610038, 0x8881003f, 0x7c632214, 0x4e800020],
+                         aliases=[("_OSMWriteUExact8", 0)])
+    case = smoke_case()
+    case.update(entry="OSMWriteUExact8", return_kind="void",
+                declaration="void OSMWriteUExact8(AdaptecU2IOHandle handle, unsigned int offset, unsigned char value);",
+                arguments=[{"bytes": "11223344" * 8}, 0x10203040, 0xabcdef12],
+                observe_stack=[{"offset": 56, "size": 8}])
+    result = runner.run_case(image, case, {"services": {}})["observations"]
+    assert result["stack"]["56"] == "1020304000000012"
+    case["arguments"][0]["bytes"] = "11223344" * 7
+    with pytest.raises(ValueError, match="aggregate"):
+        runner.run_case(image, case, {"services": {}})
+
+
+def test_task5_eieio_is_executed_and_traced(tmp_path):
+    runner = load_script("ppc_cases")
+    image = runner_image(tmp_path, [0x7c0006ac, 0x38600000, 0x4e800020])
+    case = smoke_case(12)
+    case["operations"] = ["eieio"]
+    contracts = {"services": {}, "operations": {"eieio": {
+        "evidence": "OSMWriteUExact8 reference 0x18a13c after byte store"}}}
+    assert runner.run_case(image, case, contracts)["observations"]["trace"] == [{"operation": "eieio"}]
+    contracts["operations"]["eieio"] = {}
+    with pytest.raises(ValueError, match="operation"):
+        runner.run_case(image, case, contracts)
+
+
+def test_task5_reversed_store_mmio_value_matches_memory(tmp_path):
+    runner = load_script("ppc_cases")
+    # Unicorn's PPC write hook supplies the source value for sthbrx, before
+    # the byte reversal; the register bus trace must describe stored bytes.
+    sthbrx = (31 << 26) | (5 << 21) | (4 << 11) | (918 << 1)
+    image = runner_image(tmp_path, [0x38a01234, sthbrx, 0x38600000, 0x4e800020])
+    case = smoke_case()
+    case["memory"][0]["mmio"] = "test-reversed"
+    case["external_outcomes"] = [{"register": "buffer", "access": "write", "offset": 0,
+                                   "size": 2, "value": 0x3412}]
+    contracts = {"services": {}, "mmio": {"test-reversed": [
+        {"offset": 0, "size": 2, "access": ["write"], "evidence": "independent sthbrx encoding"}]}}
+    observed = runner.run_case(image, case, contracts)["observations"]
+    assert observed["memory"] == {"buffer+0": "34120000"}
+    assert observed["trace"][0]["value"] == 0x3412
+
+
+def test_task5_void_kernel_boundary_and_symbol_pointer(tmp_path):
+    runner = load_script("ppc_cases")
+    image = runner_image(tmp_path, [0x7c0802a6, 0x90010008, 0x480000f9,
+                                     0x80010008, 0x7c0803a6, 0x4e800020])
+    case = smoke_case(24)
+    case["arguments"] = [{"symbol": "_external"}]
+    case["external_outcomes"] = [{"service": "_external", "arguments": ["external"]}]
+    contracts = {"services": {"_external": {"boundary": "kernel-service",
+        "arguments": ["pointer"], "return": "void", "evidence": "independent PPC boundary witness"}}}
+    observed = runner.run_case(image, case, contracts)["observations"]
+    assert observed["trace"] == [{"target": "_external", "arguments": ["external"]}]
+    case["external_outcomes"][0]["return"] = 3
+    with pytest.raises(ValueError, match="void"):
+        runner.run_case(image, case, contracts)
+
+
+def test_task5_kernel_output_parameter_is_bounded(tmp_path):
+    runner = load_script("ppc_cases")
+    image = runner_image(tmp_path, [0x7c0802a6, 0x90010008, 0x480000f9,
+                                     0x80010008, 0x7c0803a6, 0x4e800020])
+    case = smoke_case(24)
+    case["arguments"] = [{"region": "buffer", "offset": 0}]
+    case["external_outcomes"] = [{"service": "_external", "arguments": ["output:0"],
+        "writes": [{"argument": 0, "bytes": "12345678"}], "return": 0}]
+    contracts = {"services": {"_external": {"boundary": "kernel-service",
+        "arguments": [{"kind": "output", "size": 4}], "return": "scalar",
+        "evidence": "independent PPC caller passes four-byte output"}}}
+    assert runner.run_case(image, case, contracts)["observations"]["memory"] == {"buffer+0": "12345678"}
+    case["external_outcomes"][0]["writes"][0]["bytes"] += "00"
+    with pytest.raises(ValueError, match="output"):
+        runner.run_case(image, case, contracts)
+
+
+def test_task5_internal_callback_trace_executes_body(tmp_path):
+    runner = load_script("ppc_cases")
+    image = runner_image(tmp_path, [0x38600027, 0x4e800020],
+                         aliases=[("_OSMGetNVSize", 0)])
+    case = smoke_case(8)
+    case["arguments"] = [{"region": "buffer", "offset": 0}]
+    case["observe_calls"] = [{"entry": "OSMGetNVSize", "size": 8,
+        "arguments": [0], "declaration": "unsigned int OSMGetNVSize(AdaptecU2OSMContext context);"}]
+    result = runner.run_case(image, case, {"services": {}})["observations"]
+    assert result["return"] == 39
+    assert result["trace"] == [{"entry": "OSMGetNVSize", "arguments": ["buffer+0"]}]
+    case["observe_calls"][0]["entry"] = "_external"
+    with pytest.raises(ValueError, match="callback"):
+        runner.run_case(image, case, {"services": {}})
+
+
+def test_task5_objc_provider_dispatch_rejects_frozen_internal_selector(tmp_path):
+    runner = load_script("ppc_cases")
+    image = runner_image(tmp_path, [0x7c0802a6, 0x90010008, 0x480000f9,
+                                     0x80010008, 0x7c0803a6, 0x4e800020],
+                         aliases=[("_objc_msgSend", 0x100)])
+    case = smoke_case(24)
+    case["memory"].append({"name": "selector", "size": 64, "bytes": b"deviceDescription\0".hex()})
+    case["arguments"] = [{"region": "buffer", "offset": 0}, {"region": "selector", "offset": 0}]
+    case["external_outcomes"] = [{"service": "_objc_msgSend", "arguments": ["buffer+0", "deviceDescription"], "return": 0}]
+    dispatch = {"receiver": "buffer+0", "selector": "deviceDescription", "provider": "IODevice",
+                "arguments": ["pointer", "cstring"], "return": "pointer", "evidence": "inherited kernel provider declaration"}
+    contracts = {"services": {"_objc_msgSend": {"boundary": "kernel-service", "arguments": [],
+        "return": "void", "dispatch": [dispatch], "evidence": "explicit provider dispatch"}}}
+    assert runner.run_case(image, case, contracts)["observations"]["trace"][0]["return"] is None
+    case["memory"][-1]["bytes"] = b"resetSCSIBus\0".hex()
+    dispatch["selector"] = "resetSCSIBus"
+    with pytest.raises(ValueError, match="internal.*selector"):
+        runner.run_case(image, case, contracts)
+
+
+def test_task5_callback_aggregate_decodes_registers_and_overflow(tmp_path):
+    runner = load_script("ppc_cases")
+    image = runner_image(tmp_path, [0x38600027, 0x4e800020],
+                         aliases=[("_OSMReadStringUExact8", 0)])
+    case = smoke_case(8)
+    declaration = "void OSMReadStringUExact8(AdaptecU2IOHandle handle, unsigned int offset, unsigned char *data, unsigned int count, unsigned int strideWords);"
+    handle = {"bytes": "0000000000000002" + "00" * 24,
+              "pointers": [{"offset": 0, "value": {"region": "buffer", "offset": 0}}]}
+    case.update(entry="OSMReadStringUExact8", declaration=declaration, return_kind="void",
+                arguments=[handle, 4, {"region": "buffer", "offset": 16}, 2, 3],
+                observe_calls=[{"entry": "OSMReadStringUExact8", "declaration": declaration,
+                                "return_kind": "void", "arguments": [0] * 5}])
+    args = runner.run_case(image, case, {"services": {}})["observations"]["trace"][0]["arguments"]
+    assert args == [{"bytes": handle["bytes"], "pointers": {"0": "buffer+0", "20": None,
+                                                              "24": None, "28": None}}, 4, "buffer+16", 2, 3]
+
+
+def test_task5_profile_byvalue_uses_full_464_byte_extent(tmp_path):
+    runner = load_script("ppc_cases")
+    image = runner_image(tmp_path, [0x7c6b1b78, 0x806100a4, 0x906b0000,
+                                     0x80a101e8, 0x90ab0004, 0x4e800020],
+                         aliases=[("__freeOSMIOB", 0)])
+    profile = bytearray(464)
+    profile[136:140] = bytes.fromhex("10203040")
+    profile[460:464] = bytes.fromhex("fedcba98")
+    case = smoke_case(24)
+    case.update(entry="__freeOSMIOB", return_kind="void",
+                declaration="void _freeOSMIOB(AdaptecU2OSMIOB *iob, AdaptecU2AdapterProfile profile);",
+                arguments=[{"region": "buffer", "offset": 0}, {"bytes": profile.hex()}],
+                observe=[{"region": "buffer", "offset": 0, "size": 8}])
+    assert runner.run_case(image, case, {"services": {}})["observations"]["memory"] == {
+        "buffer+0": "10203040fedcba98"}
+    case["arguments"][1]["bytes"] = profile[:-4].hex()
+    with pytest.raises(ValueError, match="aggregate"):
+        runner.run_case(image, case, {"services": {}})
+
+
+@pytest.mark.parametrize("owner,count", [("AdaptecU2OSMServices.m", 37), ("AdaptecU2CHIMOSD.c", 14)])
+def test_task5_required_owners_have_actual_bodies(owner, count):
+    source = TESTS.parent / owner
+    assert source.is_file(), f"missing required Task5 implementation: {owner} ({count} bodies)"
+    load_script("verify").audit("group", OUT / "reference", REPO,
+                                OUT / "objects/task5", None, owner)
+
+
+def test_osm_access_width_endian_and_dma_boundary():
+    assert (TESTS.parent / "AdaptecU2OSMServices.m").is_file(), "missing recovered OSM services"
+    runner = load_script("ppc_cases")
+    cases = json.loads((TESTS / "task5-cases.json").read_text())
+    selected = [c for c in cases["cases"] if "-dma-" in c["id"] or "UExact" in c["entry"]]
+    assert len(selected) == 78, "missing access-width/endian/allocator boundary fixtures"
+    contracts = json.loads((TESTS / "contracts.json").read_text())
+    for case in selected:
+        assert runner.run_case(OUT / "reference/image.bin", case, contracts)["observations"] == case["expected"]
+
+
+def test_osd_scb_encoding_all_modes():
+    assert (TESTS.parent / "AdaptecU2CHIMOSD.c").is_file(), "missing four recovered SCB builders"
+    runner = load_script("ppc_cases")
+    cases = json.loads((TESTS / "task5-cases.json").read_text())
+    selected = [c for c in cases["cases"] if "-scb-mode" in c["id"] or "-build-dispatch" in c["id"]]
+    assert len(selected) == 36
+    contracts = json.loads((TESTS / "contracts.json").read_text())
+    for case in selected:
+        assert runner.run_case(OUT / "reference/image.bin", case, contracts)["observations"] == case["expected"]
+
+
+def test_osd_completion_status():
+    assert (TESTS.parent / "AdaptecU2CHIMOSD.c").is_file(), "missing recovered normal/special completion"
+    runner = load_script("ppc_cases")
+    cases = json.loads((TESTS / "task5-cases.json").read_text())
+    selected = [c for c in cases["cases"] if "-completion-" in c["id"] or c["id"].startswith("task5-event-")]
+    assert len(selected) == 31
+    contracts = json.loads((TESTS / "contracts.json").read_text())
+    for case in selected:
+        assert runner.run_case(OUT / "reference/image.bin", case, contracts)["observations"] == case["expected"]
+
+
 def test_ppc_runner_wrap_endian_return(tmp_path):
     runner = load_script("ppc_cases")
     # addi r3,r3,1; stw r3,0(r4); li r3,0; blr

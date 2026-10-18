@@ -5,6 +5,7 @@ import importlib.util
 import hashlib
 import json
 import re
+import subprocess
 from pathlib import Path
 
 from binrecon.identity import identify, verify_expected
@@ -33,6 +34,10 @@ def audit(stage: str, reference: Path, repo_root: Path, objects: Path | None,
     if stage == "layouts":
         audit_layouts(reference, repo_root, objects)
         return
+    if stage == "group":
+        evidence = authenticate_reference(reference, repo_root)
+        audit_service_group(evidence, repo_root, objects, group)
+        return
     if stage != "inventory":
         raise ValueError(f"{stage}: reconstruction stage is not implemented")
     evidence = authenticate_reference(reference, repo_root)
@@ -54,6 +59,118 @@ def audit(stage: str, reference: Path, repo_root: Path, objects: Path | None,
         expected = frozen[entry["address"]]
         if entry["size"] != expected["size"] or entry["names"] != expected["names"]:
             raise ValueError(f"inventory ledger differs at 0x{entry['address']:x}")
+
+
+def audit_service_group(evidence, repo_root, objects, group):
+    owners = {"AdaptecU2OSMServices.m": 37, "AdaptecU2CHIMOSD.c": 14}
+    if group not in owners:
+        raise ValueError("group: owner body recovery is not implemented: " + str(group))
+    driver = repo_root / ref.DRIVER
+    proof_path = driver / "reconstruction/task5.json"
+    if not proof_path.is_file():
+        raise ValueError("missing reviewed Task5 bodies/native evidence")
+    proof = load_json(proof_path)
+    expected_addresses = {a for owner in owners for a in evidence["document"]["owners"][owner]}
+    reviews = {item["address"]: item for item in proof["bodies"]}
+    if (proof.get("reference_sha256") != ref.SHA256 or len(proof["bodies"]) != 51 or
+            set(reviews) != expected_addresses):
+        raise ValueError("Task5 review must cover exactly 37+14 bodies")
+    if objects is None:
+        raise ValueError("group requires actual target objects")
+    manifest = load_json(objects / "objects.json")
+    if (manifest.get("configuration") != "RELEASE_PPC" or manifest.get("hash_algorithm") != "SHA-256" or
+            manifest.get("source_revision") != proof["native_revision"] or len(manifest["objects"]) != 2):
+        raise ValueError("invalid Task5 target provenance")
+    native = {}
+    for item in manifest["objects"]:
+        owner = Path(item["source"]).name
+        if (owner not in owners or item["source"] != "bsd/dev/ppc/drvAdaptecU2SCSI/" + owner or
+                item["path"] != Path(item["path"]).name or item["cpu_type"] != 18):
+            raise ValueError("invalid Task5 PPC source/object")
+        for path, digest in [(driver / owner, item["source_sha256"]),
+                             (objects / item["path"], item["sha256"])]:
+            if hashlib.sha256(path.read_bytes()).hexdigest().upper() != digest:
+                raise ValueError("stale Task5 native source/object: " + path.name)
+        payload, macho = load_image(objects / item["path"])
+        symbols = sorted([s for s in macho["symbols"] if s["binding"] == "external" and
+                          s["section"] == "__TEXT,__text"], key=lambda s: s["address"])
+        text = next(s for s in macho["sections"] if s["name"] == "__TEXT,__text")
+        bodies = {}
+        for index, symbol in enumerate(symbols):
+            end = symbols[index+1]["address"] if index+1 < len(symbols) else text["address"] + text["size"]
+            start = text["offset"] + symbol["address"] - text["address"]
+            bodies[symbol["name"]] = payload[start:start + end - symbol["address"]]
+        native[owner] = bodies
+    if set(native) != set(owners):
+        raise ValueError("missing or duplicate Task5 native owner")
+    inputs = proof["native_inputs"]
+    if set(inputs) != set(owners) | set(LAYOUT_HEADERS):
+        raise ValueError("Task5 native header/source closure is incomplete")
+    for name, hashes in inputs.items():
+        raw = (driver / name).read_bytes()
+        blob = subprocess.check_output(["git", "show", proof["native_revision"] + ":" +
+                                        (driver / name).relative_to(repo_root).as_posix()], cwd=repo_root)
+        if (hashlib.sha256(raw).hexdigest().upper() != hashes["staged_sha256"] or
+                hashlib.sha256(blob).hexdigest().upper() != hashes["git_blob_sha256"] or
+                raw.replace(b"\r\n", b"\n") != blob):
+            raise ValueError("stale Task5 producer input: " + name)
+    header_lines = {}
+    for line in (objects / "header-inputs.sha256").read_text().splitlines():
+        digest, path = line.split(maxsplit=1)
+        name = Path(path).name
+        if name in header_lines or path != "bsd/dev/ppc/drvAdaptecU2SCSI/" + name:
+            raise ValueError("invalid Task5 target header manifest")
+        header_lines[name] = digest.upper()
+    if header_lines != {name: inputs[name]["staged_sha256"] for name in LAYOUT_HEADERS}:
+        raise ValueError("Task5 target header hashes differ")
+    sites = source_sites(repo_root, driver)
+    ledger, _ = load_ledger(driver / "reconstruction/ledger.json", evidence["image_identity"], None)
+    ledger_entries = {entry["address"]: entry for entry in ledger["entries"]}
+    proof_hash = hashlib.sha256(proof_path.read_bytes()).hexdigest().upper()
+    cases = load_json(driver / "tests/task5-cases.json")
+    contracts = load_json(driver / "tests/contracts.json")
+    runner_spec = importlib.util.spec_from_file_location("au2_group_runner", driver / "tests/ppc_cases.py")
+    runner = importlib.util.module_from_spec(runner_spec)
+    runner_spec.loader.exec_module(runner)
+    result = load_json(objects / "reference-results.json")
+    runner.validate_result(result, evidence["reference_path"] / "image.bin", cases, contracts)
+    for address in evidence["document"]["owners"][group]:
+        function, review, entry = evidence["frozen"][address], reviews[address], ledger_entries[address]
+        name = function["names"][0]
+        symbol = name if name.startswith("_") else "_" + name
+        locations = sites.get(symbol, [])
+        expected_location = (ref.DRIVER.as_posix() + "/" + group, review["source_line"])
+        if (review["owner"] != group or review["name"] != name or not review.get("control_flow") or
+                locations.count(expected_location) != 1 or len(locations) != 1 or
+                (entry["source_path"], entry["source_line"]) != expected_location or
+                entry["status"] not in ("control-flow-confirmed", "assembly-matched") or
+                not any(a["path"] == proof_path.relative_to(repo_root).as_posix() and
+                        a["sha256"] == proof_hash for a in entry["artifacts"])):
+            raise ValueError(f"missing actual reviewed body/source evidence: 0x{address:x}")
+        code = native[group].get(symbol, b"")
+        if len(code) < 12 or len(code) % 4 or hashlib.sha256(code).hexdigest().upper() != review["native_sha256"]:
+            raise ValueError("Task5 native body differs: " + name)
+        selected = [case for case in cases["cases"] if case["id"] in review["cases"]]
+        if not selected or {case["id"] for case in selected} != set(review["cases"]) or any(
+                case["evidence"]["entry_address"] != address for case in selected):
+            raise ValueError("missing required successful body fixture: " + name)
+        if name.startswith("_OSMWrite") and "PCI" not in name and bytes.fromhex("7c0006ac") not in code:
+            raise ValueError("missing target eieio after MMIO write: " + name)
+        if name.removeprefix("_") in contracts["osm_input_erased"]:
+            expected = contracts["osm_input_erased"][name.removeprefix("_")]["reference_bytes"]
+            if code.hex() != expected:
+                raise ValueError("erased OSM machine contract bytes differ: " + name)
+    data = audit_data_accounting(evidence, repo_root)
+    if group == "AdaptecU2CHIMOSD.c":
+        for name in ("switch_231258", "switch_2314c0"):
+            row = next(row for row in data["objects"] if row["name"] == name)
+            if row["status"] != "recovered" or row.get("production_evidence") != "reconstruction/task5.json":
+                raise ValueError("pending required owner switch: " + name)
+            switch = proof["switches"][name]
+            if (switch["normalized_cases"] != list(range(row["normalized_case_count"])) or
+                    switch["owner_function"] != row["function"] or not switch["native_control_flow"] or
+                    not switch["default_cases"]):
+                raise ValueError("incomplete native/source switch outcomes: " + name)
 
 
 def authenticate_reference(reference, repo_root):
@@ -131,7 +248,7 @@ def authenticate_reference(reference, repo_root):
     if document.get("firmware") != ref.firmware_metadata(document["data"], data_bytes, payload, macho):
         raise ValueError("firmware reference loader/selector metadata differs")
     return {"document": document, "abi": abi, "analysis": analysis, "macho": macho,
-            "frozen": frozen, "image_identity": image_identity, "data": data_bytes, "payload": payload}
+            "frozen": frozen, "image_identity": image_identity, "data": data_bytes, "payload": payload, "reference_path": reference}
 
 
 LAYOUT_HEADERS = (

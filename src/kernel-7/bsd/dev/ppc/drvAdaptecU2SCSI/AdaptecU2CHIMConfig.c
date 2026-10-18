@@ -263,3 +263,128 @@ void SCSIhStartToRunSequencer(AdaptecU2HHCB *hhcb)
     OSMWriteUExact8(*hhcb->ioHandle, 135, 2);
     hhcb->flags &= ~0x4000;
 }
+
+void SCSIhInitializeHardware(AdaptecU2HHCB *hhcb)
+{
+    register unsigned int incomingCache asm("r28");
+    unsigned char cache, value;
+    unsigned int pci, family;
+    /* The reference retains incoming r28 on the PCI cache-line default path. */
+    asm volatile ("" : "=r" (incomingCache));
+    cache = incomingCache;
+    OSMWriteUExact8(*hhcb->ioHandle, hhcb->hardware->configurationRegister, hhcb->hostID);
+    value = OSMReadUExact8(*hhcb->ioHandle, 31) & 63;
+    if (hhcb->hardwareMode == 1 && (hhcb->flags & 0x2000))
+        value |= 32;
+    OSMWriteUExact8(*hhcb->ioHandle, 31, value);
+    hhcb->hardware->updateDataFifoThrsh(hhcb);
+    OSMWriteUExact8(*hhcb->ioHandle, 1, 128);
+    hhcb->hardware->updateCacheThEn(hhcb);
+    hhcb->hardware->processAutoTerm(hhcb);
+    value = ((hhcb->flags >> 15) & 24) + ((hhcb->flags & 0x80000000) ? 38 : 6);
+    if (hhcb->flags & 0x10000000)
+        value |= 1;
+    OSMWriteUExact8(*hhcb->ioHandle, 2, value);
+    hhcb->hardware->updateExtTerm(hhcb);
+    if (hhcb->firmware->clearAllFast20Reg)
+        hhcb->firmware->clearAllFast20Reg(hhcb);
+    pci = OSDReadPciConfiguration(hhcb, 12);
+    if (hhcb->hardwareMode == 0 && (pci & 60) == 4)
+        OSDWritePciConfiguration(hhcb, 12, pci & 0xffffffc3);
+    family = hhcb->deviceID & 0xfff0;
+    if (family == 0x7890)
+        OSDWritePciConfiguration(hhcb, 12, pci & 0xffffffc3);
+    if (hhcb->hardwareMode == 0 &&
+        ((family == 0x7890 && hhcb->bytes02[2] > 3) || family == 0x7880))
+        cache = 0;
+    else {
+        switch (pci & 60) {
+        case 8: cache = 31; break;
+        case 16: cache = 63; break;
+        case 32: cache = 127; break;
+        default: break;
+        }
+    }
+    if (family == 0x7890 && hhcb->hardwareMode == 0 && hhcb->bytes02[2] == 3) {
+        value = 0;
+        pci = OSDReadPciConfiguration(hhcb, 4);
+        OSDWritePciConfiguration(hhcb, 4, pci | 16);
+    }
+    OSMWriteUExact8(*hhcb->ioHandle, hhcb->firmware->registers[19], cache);
+    if (hhcb->deviceID == 19) {
+        pci = OSDReadPciConfiguration(hhcb, 12);
+        OSDWritePciConfiguration(hhcb, 12, pci & 0xffffff00);
+    }
+}
+
+void SCSIhAIC78XXProcessAutoTerm(AdaptecU2HHCB *hhcb)
+{
+    unsigned char cable;
+    if (hhcb->flags & 0x4000000) {
+        cable = SCSIhAIC78XXAutoTermCable(hhcb);
+        hhcb->flags = (hhcb->flags & 0xe7ffffff) |
+            ((cable & 8) ? 0x10000000 : 0) | ((cable & 16) ? 0x8000000 : 0);
+    }
+}
+
+void SCSIhAICBayonetProcessAutoTerm(AdaptecU2HHCB *hhcb)
+{
+    unsigned char cable;
+    if (hhcb->flags & 0x4000000) {
+        cable = SCSIhCableSense(hhcb);
+        hhcb->flags = (hhcb->flags & 0xe7ffffff) |
+            ((cable & 8) ? 0x10000000 : 0) | ((cable & 16) ? 0x8000000 : 0);
+        if (!(hhcb->flags & 0x800000))
+            return;
+    } else {
+        if (!(hhcb->flags & 0x800000))
+            return;
+        cable = SCSIhCableSense(hhcb);
+    }
+    hhcb->flags = (hhcb->flags & 0xfcffffff) |
+        ((cable & 64) ? 0x1000000 : 0) | ((cable & 32) ? 0x2000000 : 0);
+}
+
+void SCSIhAIC78XXUpdateExtTerm(AdaptecU2HHCB *hhcb)
+{
+    unsigned int count = 0x800000;
+    unsigned char select = 8;
+    if (hhcb->maxDevices == 16) {
+        OSMWriteUExact8(*hhcb->ioHandle, 30, 32);
+        do {
+            if (OSMReadUExact8(*hhcb->ioHandle, 30) & 16)
+                break;
+        } while (count-- != 0);
+        if ((hhcb->deviceID & 0xfff0) == 0x7890)
+            select = OSDGetHostAddress(hhcb)->words[3] ? 8 : 0;
+        else
+            OSDGetHostAddress(hhcb);
+        OSMWriteUExact8(*hhcb->ioHandle, 30, 40);
+        OSMWriteUExact8(*hhcb->ioHandle, 29, select | ((hhcb->flags & 0x8000000) ? 80 : 16));
+        OSMWriteUExact8(*hhcb->ioHandle, 29, select | ((hhcb->flags & 0x8000000) ? 64 : 0));
+        OSMWriteUExact8(*hhcb->ioHandle, 29, 0);
+        OSMWriteUExact8(*hhcb->ioHandle, 30, 0);
+    }
+}
+
+void SCSIhAICBayonetUpdateExtTerm(AdaptecU2HHCB *hhcb)
+{
+    unsigned int count = 0x800000;
+    unsigned char value = 0;
+    if (hhcb->maxDevices == 16)
+        value = (hhcb->flags >> 23) & 16;
+    if (hhcb->flags & 0x2000000)
+        value |= 32;
+    if (hhcb->flags & 0x1000000)
+        value |= 64;
+    OSMWriteUExact8(*hhcb->ioHandle, 30, 32);
+    do {
+        if (OSMReadUExact8(*hhcb->ioHandle, 30) & 16)
+            break;
+    } while (count-- != 0);
+    OSMWriteUExact8(*hhcb->ioHandle, 30, 40);
+    OSMWriteUExact8(*hhcb->ioHandle, 29, value);
+    OSMWriteUExact8(*hhcb->ioHandle, 29, value | 1);
+    OSMWriteUExact8(*hhcb->ioHandle, 30, 0);
+    OSMWriteUExact8(*hhcb->ioHandle, 29, 0);
+}

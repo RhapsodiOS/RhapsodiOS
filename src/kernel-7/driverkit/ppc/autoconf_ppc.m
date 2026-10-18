@@ -80,7 +80,7 @@ static int numConfigTables;
 
 #define BUS_LOAD_PRI_PROP	"\"Load Priority\" = \"10000\";"
 // for debugging
-#define ENET_LOAD_PRI_PROP	"\"Load Priority\" = \"7000\";"
+#define ENET_LOAD_PRI_PROP	"\"Load Priority\" = \"7200\";"
 #define VIA_LOAD_PRI_PROP	"\"Load Priority\" = \"6800\";"
 // slightly higher than default so they come before any PCI SCSI
 #define INT_IDE_LOAD_PRI_PROP   "\"Load Priority\" = \"5050\";"

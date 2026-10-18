@@ -131,7 +131,7 @@ def authenticate_reference(reference, repo_root):
     if document.get("firmware") != ref.firmware_metadata(document["data"], data_bytes, payload, macho):
         raise ValueError("firmware reference loader/selector metadata differs")
     return {"document": document, "abi": abi, "analysis": analysis, "macho": macho,
-            "frozen": frozen, "image_identity": image_identity, "data": data_bytes}
+            "frozen": frozen, "image_identity": image_identity, "data": data_bytes, "payload": payload}
 
 
 LAYOUT_HEADERS = (
@@ -353,6 +353,93 @@ def audit_layouts(reference, repo_root, objects):
         raise ValueError("target thread category/selector encodings differ")
 
 
+def audit_switch_metadata(record, function, raw, evidence):
+    """Decode the one PPC switch idiom shared by these 22 reference tables."""
+    reader = ObjcReader(evidence["payload"], evidence["macho"]["sections"], "big")
+    dispatch = record["dispatch"]
+
+    def word(address):
+        if not function["address"] <= address < function["address"] + function["size"]:
+            raise ValueError("switch instruction outside owner: " + record["name"])
+        return reader.at(address, 1)[0]
+
+    def table_address(high, low):
+        if high & 0xffff0000 != 0x3d200000 or low & 0xffff0000 != 0x39290000:
+            raise ValueError("switch table-base instructions differ: " + record["name"])
+        immediate = low & 0xffff
+        return (((high & 0xffff) << 16) +
+                (immediate - 0x10000 if immediate & 0x8000 else immediate)) & 0xffffffff
+
+    scale, load = word(dispatch - 24), word(dispatch - 20)
+    if (scale & ~(31 << 21) != 0x5400103a or
+            load & ~(31 << 16) != 0x7c00002e or
+            [word(dispatch - n) for n in (8, 4, 0)] != [0x7c004a14, 0x7c0903a6, 0x4e800420] or
+            table_address(word(dispatch - 16), word(dispatch - 12)) != record["address"]):
+        raise ValueError("switch scale/load/relative dispatch differs: " + record["name"])
+    index_register, base_register = (scale >> 21) & 31, (load >> 16) & 31
+    if base_register == 9:
+        if table_address(word(dispatch - 32), word(dispatch - 28)) != record["address"]:
+            raise ValueError("switch indexed-load table differs: " + record["name"])
+        branch_address = dispatch - 36
+    elif base_register in (30, 31):
+        # The two backend switches retain their table in callee-saved registers.
+        # Check the actual earlier lis/addi preload, not a recorded JSON label.
+        prefix = 0x3d200000  # lis r9, table@ha
+        addition = 0x38000000 | base_register << 21 | 9 << 16
+        preloaded = False
+        for address in range(function["address"], dispatch - 24, 4):
+            high, low = word(address), word(address + 4)
+            if high & 0xffff0000 == prefix and low & 0xffff0000 == addition:
+                immediate = low & 0xffff
+                value = (((high & 0xffff) << 16) +
+                         (immediate - 0x10000 if immediate & 0x8000 else immediate)) & 0xffffffff
+                preloaded |= value == record["address"]
+        if not preloaded:
+            raise ValueError("switch table preload missing: " + record["name"])
+        branch_address = dispatch - 28
+    else:
+        raise ValueError("unsupported switch indexed-load register: " + record["name"])
+    branch = word(branch_address)
+    if branch & 0xffff0003 != 0x41850000:  # bgt cr1, relative, without link
+        raise ValueError("switch unsigned default branch differs: " + record["name"])
+    displacement = branch & 0xfffc
+    default = (branch_address + (displacement - 0x10000 if displacement & 0x8000 else displacement)) & 0xffffffff
+    guard = branch_address - 4
+    while word(guard) & 0xffe00000 != 0x28800000:  # cmplwi cr1 (32-bit unsigned)
+        instruction = word(guard)
+        opcode = instruction >> 26
+        if opcode in (36, 38):  # non-updating stw/stb preserve GPRs and CR1
+            destination = None
+        elif opcode in (8, 14):  # subfic/addi preserve CR1
+            destination = (instruction >> 21) & 31
+        elif opcode == 26:  # xori
+            destination = (instruction >> 16) & 31
+        elif opcode == 31 and not instruction & 1 and (instruction >> 1) & 1023 in (138, 444):
+            destination = (instruction >> (21 if (instruction >> 1) & 1023 == 138 else 16)) & 31
+        else:
+            raise ValueError("unsupported switch guard intervening instruction: " + record["name"])
+        if destination == index_register:
+            raise ValueError("switch guard index overwritten: " + record["name"])
+        guard -= 4
+    compare = word(guard)
+    if (compare >> 16) & 31 != index_register:
+        raise ValueError("switch compared/scaled index differs: " + record["name"])
+    count = (compare & 0xffff) + 1
+    if count * 4 != len(raw) or not function["address"] <= default < function["address"] + function["size"]:
+        raise ValueError("switch machine range/default differs: " + record["name"])
+    groups = {}
+    for value in range(count):
+        target = record["address"] + int.from_bytes(raw[value*4:value*4+4], "big", signed=True)
+        groups.setdefault(target, []).append(value)
+    expected = {"normalized_lowcase": 0, "normalized_case_count": count,
+                "guard_start": guard, "default_target": default,
+                "case_map": [{"values": values, "target": target} for target, values in sorted(groups.items())]}
+    for field, value in expected.items():
+        if json.dumps(record.get(field), sort_keys=True) != json.dumps(value, sort_keys=True):
+            raise ValueError("switch metadata differs: " + record["name"] + "." + field)
+    return expected
+
+
 def audit_data_accounting(evidence, repo_root, final=False):
     contract = load_json(repo_root / ref.DRIVER / "reconstruction/data.json")
     records = contract["objects"]
@@ -437,6 +524,7 @@ def audit_data_accounting(evidence, repo_root, final=False):
                        function["address"] <= r["address"] < function["address"] + function["size"]
                        for r in evidence["analysis"]["references"]):
                 raise ValueError("switch incoming reference missing: " + name)
+            audit_switch_metadata(record, function, raw, evidence)
     if final:
         pending = [d["name"] for d in records if d["status"] != "recovered"]
         if pending:

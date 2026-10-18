@@ -593,3 +593,51 @@ def test_firmware_reference_rejects_forged_loader_metadata(tmp_path):
     manifest.write_text(json.dumps(document))
     with pytest.raises(ValueError, match="firmware reference loader/selector metadata differs"):
         load_script("verify").audit("firmware", reference, REPO, OUT / "objects/firmware", None, None)
+
+@pytest.mark.parametrize("corruption", [
+    "normalized_lowcase", "normalized_case_count", "case_map", "default_target", "guard_start",
+    "missing_normalized_lowcase", "missing_normalized_case_count", "missing_case_map",
+    "missing_default_target", "missing_guard_start", "missing_slot", "duplicate_slot",
+    "self_consistent_shift",
+])
+def test_firmware_switch_metadata_rejects_contradictions(tmp_path, firmware_evidence, corruption):
+    audit, evidence = firmware_evidence
+    document = json.loads((TESTS.parent / "reconstruction/data.json").read_text())
+    switch = next(d for d in document["objects"] if d["name"] == "switch_230ce0")
+    if corruption.startswith("missing_") and corruption != "missing_slot":
+        del switch[corruption.removeprefix("missing_")]
+    elif corruption == "normalized_lowcase":
+        switch[corruption] = 1
+    elif corruption == "normalized_case_count":
+        switch[corruption] = 6
+    elif corruption == "case_map":
+        switch[corruption][0]["target"] = 0x189be0
+    elif corruption == "default_target":
+        switch[corruption] = 0x189be0
+    elif corruption == "guard_start":
+        switch[corruption] = 0x189ba0
+    elif corruption == "missing_slot":
+        switch["case_map"][2]["values"].remove(1)
+    elif corruption == "duplicate_slot":
+        switch["case_map"][2]["values"].append(1)
+    else:
+        switch["normalized_lowcase"] = 1
+        for group in switch["case_map"]:
+            group["values"] = [value + 1 for value in group["values"]]
+    repo = tmp_path / "repo"
+    contract = repo / "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/reconstruction/data.json"
+    contract.parent.mkdir(parents=True)
+    contract.write_text(json.dumps(document))
+    with pytest.raises(ValueError, match="switch metadata differs: switch_230ce0"):
+        audit.audit_data_accounting(evidence, repo)
+
+
+def test_firmware_switch_metadata_all_case_values(firmware_evidence):
+    audit, evidence = firmware_evidence
+    document = audit.audit_data_accounting(evidence, REPO)
+    switches = [d for d in document["objects"] if d["name"].startswith("switch_")]
+    assert len(switches) == 22
+    assert sum(d["normalized_case_count"] for d in switches) == 592
+    assert {status: sum(d["status"] == status for d in document["objects"])
+            for status in ("recovered", "pending-owner-recovery", "pending-owner-control-flow")} == {
+                "recovered": 21, "pending-owner-recovery": 5, "pending-owner-control-flow": 22}

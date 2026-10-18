@@ -298,6 +298,7 @@ static PEKeyLargoTransport transport_for(Fake *fake)
     PEKeyLargoTransport transport;
 
     transport.speed = kPEKeyWestSpeed100kHz;
+    transport.audioMuxOwner = 0;
     transport.context = fake;
     transport.read8 = fake_read8;
     transport.write8 = fake_write8;
@@ -1059,6 +1060,29 @@ static void test_public_binding_ranges_and_interrupt_context(void)
     PEKeyLargoBindTransport(0);
 }
 
+static void test_davbus_mux_exclusion(void)
+{
+    Fake fake;
+    PEKeyLargoTransport transport;
+    unsigned int owner = 2;
+    init_fake(&fake);
+    transport = transport_for(&fake);
+    transport.audioMuxOwner = &owner;
+    CHECK(PEI2SSetCellStateCore(&transport, 0, kPEI2SCellRunning) ==
+        KERN_RESOURCE_SHORTAGE);
+    CHECK(fake.fcr1 == 0 && owner == 2 && fake.lockDepth == 0);
+    CHECK(PEI2SSetCellStateCore(&transport, 1, kPEI2SCellRunning) ==
+        KERN_SUCCESS);
+    CHECK(owner == 2);
+    owner = 0;
+    CHECK(PEI2SSetCellStateCore(&transport, 0, kPEI2SCellRunning) ==
+        KERN_SUCCESS);
+    CHECK(owner == 1);
+    CHECK(PEI2SSetCellStateCore(&transport, 0, kPEI2SCellDisabledReset) ==
+        KERN_SUCCESS);
+    CHECK(owner == 0);
+}
+
 int main(void)
 {
     test_error_abi_values();
@@ -1076,6 +1100,7 @@ int main(void)
     test_keywest_read_timeouts_around_ack();
     test_gpio_polarities_and_semantics();
     test_i2s_states_preserve_bits_and_order();
+    test_davbus_mux_exclusion();
     test_public_wrappers_are_not_ready();
     test_public_wrappers_validate_before_ready();
     test_public_binding_ranges_and_interrupt_context();

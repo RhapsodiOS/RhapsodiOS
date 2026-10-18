@@ -136,6 +136,11 @@ bsd/dev/ppc/drvSymbios8xx/Sym8xxClient.m 		optional mk_hasdrivers
 bsd/dev/ppc/drvSymbios8xx/Sym8xxExecute.m 		optional mk_hasdrivers
 bsd/dev/ppc/drvSymbios8xx/Sym8xxMisc.m 			optional mk_hasdrivers
 
+bsd/dev/ppc/drvAttoScsiController/AttoScsiInit.m	optional mk_hasdrivers
+bsd/dev/ppc/drvAttoScsiController/AttoScsiClient.m	optional mk_hasdrivers
+bsd/dev/ppc/drvAttoScsiController/AttoScsiExecute.m	optional mk_hasdrivers
+bsd/dev/ppc/drvAttoScsiController/AttoScsiMisc.m	optional mk_hasdrivers
+
 bsd/dev/ppc/drvUSBCMD/usbcmd.m						standard
 bsd/dev/ppc/drvUSBCMD/ohciuim.c						standard
 bsd/dev/ppc/drvUSBCMD/OHCIDispatchTable.c				standard

@@ -15,22 +15,13 @@
  */
 #import "UniNEnetPrivate.h"
 
-/*
- * MII Register definitions
- */
-#define MII_CONTROL             0
-#define MII_STATUS              1
-#define MII_ID0                 2
-#define MII_ID1                 3
-
 /* MII Control register bits */
 #define MII_CONTROL_RESET               0x8000
 #define MII_CONTROL_AUTONEG_ENABLE      0x1000
 #define MII_CONTROL_ISOLATE             0x0400
 #define MII_CONTROL_RESTART_NEGOTIATION 0x0200
 
-/* MII Auto-negotiation advertisement register */
-#define MII_ADVERTISEMENT               4
+/* MII Auto-negotiation advertisement register bits */
 #define MII_ADVERT_100BASE_TX_FD        0x0100
 #define MII_ADVERT_100BASE_TX           0x0080
 #define MII_ADVERT_10BASE_T_FD          0x0040

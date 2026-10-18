@@ -70,9 +70,9 @@ static long cpu_freq, bus_freq, cpu_pll, bus_frac;
 // the cleaned up values to the rest of the OS.
 void DetermineClockSpeeds(void)
 {
-  // New World OF reports the clocks; trust it (5.6 always ran the VIA
-  // test, which is garbage under emulation and decrementer timing hangs off it).
-  if (!((IsYosemite() || IsSawtooth()) && derive_from_of())) {
+  // New World and Gossamer OF report the clocks; trust them (5.6 always ran the
+  // VIA test, which is garbage under emulation and decrementer timing hangs off it).
+  if (!((IsGossamer() || IsYosemite() || IsSawtooth()) && derive_from_of())) {
     // Figure it out, so go do the real work.
     do_clock_test();
   }

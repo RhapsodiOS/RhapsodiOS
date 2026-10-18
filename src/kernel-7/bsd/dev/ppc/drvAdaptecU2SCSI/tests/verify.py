@@ -36,6 +36,9 @@ def audit(stage: str, reference: Path, repo_root: Path, objects: Path | None,
         return
     if stage == "group":
         evidence = authenticate_reference(reference, repo_root)
+        if group == "AdaptecU2CHIMSCB.c":
+            audit_scb_group(evidence, repo_root, objects)
+            return
         if group == "AdaptecU2CHIMHardware.c":
             audit_hardware_group(evidence, repo_root, objects)
             return
@@ -267,6 +270,192 @@ def audit_service_group(evidence, repo_root, objects, group):
                         raise ValueError("native event flag update differs")
                 elif int.from_bytes(native_bytes(target,4),"big") != 0x38800000 + {0:1,2:3,4:2,7:8}[index]:
                     raise ValueError("native event callback value differs")
+
+
+def audit_scb_group(evidence, repo_root, objects):
+    driver = repo_root / ref.DRIVER
+    owner = "AdaptecU2CHIMSCB.c"
+    proof_path = driver / "reconstruction/task7.json"
+    proof = load_json(proof_path)
+    addresses = set(evidence["document"]["owners"][owner])
+    reviews = {body["address"]: body for body in proof["bodies"]}
+    if (proof.get("reference_sha256") != ref.SHA256 or len(proof["bodies"]) != 67 or
+            set(reviews) != addresses):
+        raise ValueError("Task7 review requires exactly 67 SCB bodies")
+    if objects is None:
+        raise ValueError("Task7 requires actual target objects")
+    manifest = load_json(objects / "objects.json")
+    if (manifest.get("configuration") != "RELEASE_PPC" or
+            manifest.get("hash_algorithm") != "SHA-256" or
+            manifest.get("source_revision") != proof["native_revision"] or
+            not re.fullmatch(r"[0-9a-fA-F]{40}", proof["native_revision"]) or
+            hashlib.sha256((objects / "objects.json").read_bytes()).hexdigest().upper() != proof["native_manifest_sha256"] or
+            len(manifest["objects"]) != 1):
+        raise ValueError("invalid Task7 native provenance")
+    item = manifest["objects"][0]
+    if (item["source"] != "bsd/dev/ppc/drvAdaptecU2SCSI/" + owner or
+            item["path"] != Path(item["path"]).name or item["cpu_type"] != 18):
+        raise ValueError("invalid Task7 native source/object")
+    for path, expected in [(objects / item["path"], item["sha256"]),
+                           (driver / owner, item["source_sha256"])]:
+        actual = path.read_bytes()
+        if path == driver / owner:
+            actual = actual.replace(b"\r\n", b"\n")
+        if hashlib.sha256(actual).hexdigest().upper() != expected:
+            raise ValueError("stale Task7 native source/object: " + path.name)
+    if any("warning:" in line or "error:" in line for line in (objects / item["log"]).read_text().splitlines()):
+        raise ValueError("Task7 native compilation diagnostic")
+    inputs = proof["native_inputs"]
+    if set(inputs) != {owner} | set(LAYOUT_HEADERS):
+        raise ValueError("Task7 native input closure is incomplete")
+    for name, hashes in inputs.items():
+        path = driver / name
+        blob = subprocess.check_output(["git", "show", proof["native_revision"] + ":" +
+                                        path.relative_to(repo_root).as_posix()], cwd=repo_root)
+        if (path.read_bytes().replace(b"\r\n", b"\n") != blob or
+                hashlib.sha256(blob).hexdigest().upper() != hashes["git_blob_sha256"] or
+                hashes["git_blob_sha256"] != hashes["staged_sha256"]):
+            raise ValueError("stale Task7 producing input: " + name)
+    for filename, names in [("source-inputs.sha256", set(inputs)),
+                            ("header-inputs.sha256", set(LAYOUT_HEADERS))]:
+        lines = {}
+        for line in (objects / filename).read_text().splitlines():
+            digest, path = line.split(maxsplit=1)
+            name = Path(path).name
+            if name in lines or path != "bsd/dev/ppc/drvAdaptecU2SCSI/" + name:
+                raise ValueError("invalid Task7 compiled input manifest")
+            lines[name] = digest.upper()
+        if lines != {name: inputs[name]["staged_sha256"] for name in names}:
+            raise ValueError("Task7 compiled input hashes differ")
+    audit_target_inputs(driver, objects.parent / "layout-checks")
+    payload, macho = load_image(objects / item["path"])
+    if ((macho["input"]["architecture"], macho["input"]["endianness"]) != ("ppc", "big") or
+            macho["extensions"]["macho"]["header"]["file_type"] != 1):
+        raise ValueError("Task7 native object requires PPC big-endian MH_OBJECT")
+    symbols = sorted([s for s in macho["symbols"] if s["binding"] == "external" and
+                      s["section"] == "__TEXT,__text"], key=lambda s: s["address"])
+    if {s["name"] for s in symbols} != {evidence["frozen"][a]["names"][0] for a in addresses}:
+        raise ValueError("Task7 native owner symbol coverage differs")
+    text = next(s for s in macho["sections"] if s["name"] == "__TEXT,__text")
+
+    def native_bytes(address, size):
+        section = next((s for s in macho["sections"] if s["address"] <= address <=
+                        s["address"] + s["size"] - size), None)
+        if section is None:
+            raise ValueError("Task7 native access exceeds section")
+        offset = section["offset"] + address - section["address"]
+        return payload[offset:offset+size]
+
+    cases = load_json(driver / "tests/task7-cases.json")
+    contracts = load_json(driver / "tests/contracts.json")
+    runner_spec = importlib.util.spec_from_file_location("au2_task7_runner", driver / "tests/ppc_cases.py")
+    runner = importlib.util.module_from_spec(runner_spec)
+    runner_spec.loader.exec_module(runner)
+    result = load_json(objects / "reference-results.json")
+    expected = {"binary_sha256": ref.SHA256, "cases_sha256": runner.digest(cases),
+                "contracts_sha256": runner.digest(contracts), "runner_version": runner.RUNNER_VERSION}
+    if any(result.get(key) != value for key, value in expected.items()):
+        raise ValueError("stale Task7 reference result")
+    if not re.fullmatch(r"[0-9a-fA-F]{40}", result.get("source_revision", "")):
+        raise ValueError("stale Task7 execution revision")
+    # Preserve the actual execution revision. A later evidence-only commit can
+    # reuse it only when every executable/fixture input remains byte-identical.
+    # Reviewed repository import closure: ppc_cases -> reference and binrecon;
+    # macho -> arch/identity/objc_abi; reference -> schema; source_map -> source_paths.
+    # Importing binrecon also executes its package initializer.
+    executed_inputs = [ref.DRIVER / name for name in (
+        "tests/task7-cases.json", "tests/contracts.json", "tests/ppc_cases.py",
+        "tests/reference.py", "reconstruction/inventory.md")]
+    executed_inputs += [Path("tools/binrecon/binrecon") / (name + ".py") for name in (
+        "__init__", "identity", "macho", "objc_abi", "source_map", "schema", "arch")]
+    executed_inputs.append(Path("tools/binrecon/source_paths.py"))
+    for relative in executed_inputs:
+        path = repo_root / relative
+        blob = subprocess.check_output(["git", "show", result["source_revision"] + ":" +
+                                        relative.as_posix()], cwd=repo_root)
+        canonical = path.read_bytes().replace(b"\r\n", b"\n")
+        if relative == ref.DRIVER / "reconstruction/inventory.md":
+            # frozen_functions consumes only this block; later prose is metadata.
+            canonical, blob = [value.split(b"<!-- functions:start -->")[1].split(
+                b"<!-- functions:end -->")[0] for value in (canonical, blob)]
+        if canonical != blob:
+            raise ValueError("stale Task7 executed input: " + relative.as_posix())
+    for name in inputs:
+        path = driver / name
+        blob = subprocess.check_output(["git", "show", result["source_revision"] + ":" +
+                                        path.relative_to(repo_root).as_posix()], cwd=repo_root)
+        if hashlib.sha256(blob).hexdigest().upper() != inputs[name]["git_blob_sha256"]:
+            raise ValueError("Task7 execution/production revisions differ")
+    dependencies = proof["accepted_dependencies"]
+    if set(dependencies) != {"AdaptecU2CHIMFirmware.c", "AdaptecU2CHIMTables.c",
+                             "AdaptecU2OSMServices.m", "AdaptecU2CHIMOSD.c",
+                             "AdaptecU2CHIMHardware.c"}:
+        raise ValueError("Task7 accepted dependency closure is incomplete")
+    for name, dependency in dependencies.items():
+        path = driver / name
+        canonical = path.read_bytes().replace(b"\r\n", b"\n")
+        for revision in (dependency["source_revision"], result["source_revision"]):
+            blob = subprocess.check_output(["git", "show", revision + ":" +
+                                            path.relative_to(repo_root).as_posix()], cwd=repo_root)
+            if blob != canonical or hashlib.sha256(blob).hexdigest().upper() != dependency["git_blob_sha256"]:
+                raise ValueError("stale Task7 accepted source dependency: " + name)
+        if hashlib.sha256(path.read_bytes()).hexdigest().upper() != dependency["source_sha256"]:
+            raise ValueError("stale Task7 accepted staged dependency: " + name)
+        dependency_objects = objects.parent / dependency["group"]
+        dependency_manifest = dependency_objects / "objects.json"
+        if hashlib.sha256(dependency_manifest.read_bytes()).hexdigest().upper() != dependency["manifest_sha256"]:
+            raise ValueError("stale Task7 accepted dependency manifest: " + name)
+        document = load_json(dependency_manifest)
+        matches = [item for item in document["objects"] if Path(item["source"]).name == name]
+        if (document["source_revision"] != dependency["source_revision"] or len(matches) != 1 or
+                matches[0]["source_sha256"] != dependency["source_sha256"] or
+                matches[0]["sha256"] != dependency["object_sha256"] or
+                matches[0]["path"] != dependency["object"] or
+                hashlib.sha256((dependency_objects / dependency["object"]).read_bytes()).hexdigest().upper() != dependency["object_sha256"]):
+            raise ValueError("stale Task7 accepted native dependency: " + name)
+    ids = [case["id"] for case in cases["cases"]]
+    if (not ids or len(ids) != len(set(ids)) or result.get("selected_case_ids") != ids or
+            len(result.get("results", [])) != len(ids)):
+        raise ValueError("missing Task7 execution cases")
+    for case, observed in zip(cases["cases"], result["results"]):
+        if (observed.get("executed_case_id") != case["id"] or observed.get("unknown_calls") != [] or
+                observed.get("returned_to_sentinel") is not True or observed.get("observations") != case["expected"]):
+            raise ValueError("invalid Task7 successful fixture: " + case["id"])
+    sites = source_sites(repo_root, driver)
+    ledger, _ = load_ledger(driver / "reconstruction/ledger.json", evidence["image_identity"], None)
+    entries = {entry["address"]: entry for entry in ledger["entries"]}
+    proof_hash = hashlib.sha256(proof_path.read_bytes()).hexdigest().upper()
+    for index, symbol in enumerate(symbols):
+        body = next(body for body in reviews.values() if body["name"] == symbol["name"])
+        address = body["address"]
+        end = symbols[index+1]["address"] if index+1 < len(symbols) else text["address"] + text["size"]
+        code = native_bytes(symbol["address"], end - symbol["address"])
+        location = (ref.DRIVER.as_posix() + "/" + owner, body["source_line"])
+        entry = entries[address]
+        function = evidence["frozen"][address]
+        if (body["owner"] != owner or body["name"] != function["names"][0] or
+                body["reference_size"] != function["size"] or
+                len(body.get("control_flow", "")) < 24 or sites.get(symbol["name"]) != [location] or
+                (entry["source_path"], entry["source_line"]) != location or
+                entry["status"] not in ("control-flow-confirmed", "assembly-matched") or
+                not any(a["path"] == proof_path.relative_to(repo_root).as_posix() and
+                        a["sha256"] == proof_hash for a in entry["artifacts"])):
+            raise ValueError("missing Task7 reviewed body/source evidence: " + symbol["name"])
+        if (body["native_address"] != symbol["address"] or body["native_size"] != len(code) or
+                len(code) < 12 or len(code) % 4 or hashlib.sha256(code).hexdigest().upper() != body["native_sha256"]):
+            raise ValueError("Task7 native body differs: " + symbol["name"])
+        relocations = [{"address": relocation["address"], "kind": relocation["kind"],
+                        "target": relocation["target"]}
+                       for relocation in macho["extensions"]["macho"]["relocations"]
+                       if symbol["address"] <= relocation["address"] < end and
+                       relocation["section"] == "__TEXT,__text" and relocation["external"]]
+        if body["native_external_relocations"] != relocations:
+            raise ValueError("Task7 native call binding differs: " + symbol["name"])
+        selected = {case["id"] for case in cases["cases"] if case["evidence"]["entry_address"] == address}
+        if not selected or set(body["cases"]) != selected:
+            raise ValueError("missing required Task7 body fixture: " + symbol["name"])
+        if symbol["name"] == "_SCSIhSwappingSearchExeQ" and code.hex() != contracts["input_erased"]["SCSIhSwappingSearchExeQ"]["reference_bytes"]:
+            raise ValueError("Task7 erased machine body differs")
 
 
 def audit_hardware_group(evidence, repo_root, objects):

@@ -1162,3 +1162,121 @@ def test_task7_reference_batch(prefix):
     result = load_script("ppc_cases").execute(OUT / "reference/image.bin", selected,
                                            json.loads((TESTS / "contracts.json").read_text()))
     assert len(result["results"]) == len(selected["cases"])
+
+
+def test_task7_owner_native_and_control_flow_evidence(firmware_evidence):
+    assert (TESTS.parent / "reconstruction/task7.json").is_file(), "missing SCB owner source/native/fixture proof"
+    audit, evidence = firmware_evidence
+    audit.audit_scb_group(evidence, REPO, OUT / "objects/task7")
+
+
+def test_task7_long_bounded_fixture_cap_bounds(tmp_path):
+    runner = load_script("ppc_cases")
+    image = runner_image(tmp_path, [0x38600000, 0x4e800020])
+    for limit in (0, 4000001):
+        with pytest.raises(ValueError, match="instruction limit"):
+            runner.run_case(image, {**smoke_case(8), "instruction_limit": limit}, {"services": {}})
+    result = runner.run_case(image, {**smoke_case(8), "instruction_limit": 4000000}, {"services": {}})
+    assert result["returned_to_sentinel"] is True
+    assert result["instructions"] == 2
+
+
+@pytest.mark.parametrize("corruption", ['source', 'native', 'native_body', 'native_relocation', 'review', 'ledger', 'case', 'unknown_call', 'executed_cases', 'executed_contracts', 'executed_runner', 'dependency_source', 'dependency_object', 'result_revision', 'executed_reference', 'executed_inventory', 'executed_initializer', 'executed_identity', 'executed_macho', 'executed_objc_abi', 'executed_source_map', 'executed_schema', 'executed_arch', 'executed_source_paths'])
+def test_task7_owner_rejects_incomplete_evidence(tmp_path, firmware_evidence, corruption):
+    audit, evidence = firmware_evidence
+    repo = tmp_path / "repo"
+    driver = repo / audit.ref.DRIVER
+    shutil.copytree(TESTS.parent, driver, ignore=shutil.ignore_patterns("__pycache__"))
+    shutil.copytree(REPO / "tools/binrecon/binrecon", repo / "tools/binrecon/binrecon",
+                    ignore=shutil.ignore_patterns("__pycache__"))
+    shutil.copyfile(REPO / "tools/binrecon/source_paths.py", repo / "tools/binrecon/source_paths.py")
+    shutil.copyfile(REPO / ".git", repo / ".git")
+    objects = tmp_path / "objects/task7"
+    shutil.copytree(OUT / "objects/task7", objects,
+                    ignore=shutil.ignore_patterns("*.id0", "*.id1", "*.nam", "*.til", "*.i64"))
+    for dependency in ("task5", "task6", "firmware"):
+        shutil.copytree(OUT / "objects" / dependency, objects.parent / dependency,
+                        ignore=shutil.ignore_patterns("*.id0", "*.id1", "*.nam", "*.til", "*.i64"))
+    shutil.copytree(OUT / "objects/layout-checks", objects.parent / "layout-checks")
+    proof_path = driver / "reconstruction/task7.json"
+    proof = json.loads(proof_path.read_text())
+    body = proof["bodies"][0]
+    ledger_path = driver / "reconstruction/ledger.json"
+    ledger = json.loads(ledger_path.read_text())
+    if corruption == "source":
+        with (driver / "AdaptecU2CHIMSCB.c").open("a") as stream:
+            stream.write("\nvoid HardwareReplacement(void) {}\n")
+        expected = "stale Task7 native source/object"
+    elif corruption == "review":
+        proof["bodies"].remove(body)
+        expected = "exactly 67 SCB bodies"
+    elif corruption == "ledger":
+        next(entry for entry in ledger["entries"] if entry["address"] == body["address"])["status"] = "unexamined"
+        expected = "reviewed body/source evidence"
+    elif corruption == "case":
+        body["cases"] = []
+        expected = "required Task7 body fixture"
+    elif corruption == "unknown_call":
+        path = objects / "reference-results.json"
+        result = json.loads(path.read_text())
+        result["results"][0]["unknown_calls"] = ["missing_internal_CHIM"]
+        path.write_text(json.dumps(result))
+        expected = "invalid Task7 successful fixture"
+    elif corruption == "executed_inventory":
+        path = driver / "reconstruction/inventory.md"
+        original = path.read_text()
+        changed = original.replace("| 0x18770c |", "| 0x187708 |", 1)
+        assert changed != original
+        path.write_text(changed)
+        expected = "stale Task7 executed input"
+    elif corruption.startswith("executed_"):
+        paths = {"executed_cases": driver / "tests/task7-cases.json",
+                 "executed_contracts": driver / "tests/contracts.json",
+                 "executed_runner": driver / "tests/ppc_cases.py",
+                 "executed_reference": driver / "tests/reference.py",
+                 "executed_initializer": repo / "tools/binrecon/binrecon/__init__.py",
+                 "executed_source_paths": repo / "tools/binrecon/source_paths.py"}
+        for module in ("identity", "macho", "objc_abi", "source_map", "schema", "arch"):
+            paths["executed_" + module] = repo / ("tools/binrecon/binrecon/" + module + ".py")
+        with paths[corruption].open("a") as stream:
+            stream.write("\n")
+        expected = "stale Task7"
+    elif corruption == "dependency_source":
+        with (driver / "AdaptecU2CHIMTables.c").open("a") as stream:
+            stream.write("\n/* altered dependency */\n")
+        expected = "stale Task7 accepted source dependency"
+    elif corruption == "dependency_object":
+        dependency = proof["accepted_dependencies"]["AdaptecU2CHIMTables.c"]
+        path = objects.parent / dependency["group"] / dependency["object"]
+        raw = bytearray(path.read_bytes())
+        raw[-1] ^= 1
+        path.write_bytes(raw)
+        expected = "stale Task7 accepted native dependency"
+    elif corruption == "result_revision":
+        path = objects / "reference-results.json"
+        result = json.loads(path.read_text())
+        result["source_revision"] = "HEAD"
+        path.write_text(json.dumps(result))
+        expected = "stale Task7 execution revision"
+    elif corruption == "native":
+        item = json.loads((objects / "objects.json").read_text())["objects"][0]
+        path = objects / item["path"]
+        payload = bytearray(path.read_bytes())
+        payload[-1] ^= 1
+        path.write_bytes(payload)
+        expected = "stale Task7 native source/object"
+    elif corruption == "native_body":
+        body["native_sha256"] = "0" * 64
+        expected = "Task7 native body differs"
+    else:
+        body["native_external_relocations"] = [{"address": 0, "kind": "wrong", "target": "wrong"}]
+        expected = "Task7 native call binding differs"
+    proof_path.write_text(json.dumps(proof))
+    digest = audit.hashlib.sha256(proof_path.read_bytes()).hexdigest().upper()
+    for entry in ledger["entries"]:
+        for artifact in entry["artifacts"]:
+            if artifact["path"].endswith("reconstruction/task7.json"):
+                artifact["sha256"] = digest
+    ledger_path.write_text(json.dumps(ledger))
+    with pytest.raises((ValueError, FileNotFoundError), match=expected):
+        audit.audit_scb_group(evidence, repo, objects)

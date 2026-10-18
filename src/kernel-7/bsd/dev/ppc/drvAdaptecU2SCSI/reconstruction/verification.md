@@ -353,3 +353,21 @@ existing case budgets and other resource bounds remain unchanged. The full
 Task7 bus-reset fixture uses that budget and executes every internal body;
 unknown calls, unsupported instructions, and budget exhaustion remain fatal.
 This is routine execution evidence, not elapsed-time or physical-bus proof.
+
+### Task7 SCB owner evidence
+
+All67 SCB/software-state bodies are control-flow-confirmed in task7.json and
+the ledger. The225 frozen reference fixtures directly cover all67 entries,
+execute internal CHIM/Resource/OSD callbacks, and preserve all four shipped
+modes0/3/4/5. The full bus reset executes2649163 instructions with its explicit
+4000000 budget; the separate reset routine executes883124 instructions.
+The owner gate rejects24 isolated omissions/stale or forged evidence cases.
+
+Native source/reference execution producer is
+`deea0fd8ef1b21f13e135349da36e95871fefccd`; native object SHA-256 is
+`1EC706B6721664A71B95F7261D926A279A19747FAB1DED6662C36E149A72B051`.
+All67 native bodies exactly equal their individually reviewed bounded batch
+objects. Source plus six canonical Git headers and five accepted source/native
+dependencies are authenticated separately from the complete Python/fixture
+execution dependency closure. Metadata-only reuse retains actual producing
+revisions. No paired linked-kernel, physical adapter or timing claim is made.

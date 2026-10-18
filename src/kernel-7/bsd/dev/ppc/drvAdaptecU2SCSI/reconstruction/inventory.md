@@ -687,3 +687,10 @@ indexed in `task6.json`. The ledger now has 112 control-flow-confirmed entries
 and 364 unexamined entries. `switch_230ef4` has actual production control-flow
 evidence; the remaining 19 switch and five controller-data obligations are
 unchanged. Full linked-kernel pairing remains required.
+
+
+Task7 SCB/software-state owner now has all67 bodies control-flow-confirmed,
+with actual PPC object provenance and225 frozen reference cases covering
+all67 direct entries. See task7.json and verification.md. The original
+function-marker inventory block is unchanged; remaining owners, complete
+kernel builds and linked paired acceptance remain pending later tasks.

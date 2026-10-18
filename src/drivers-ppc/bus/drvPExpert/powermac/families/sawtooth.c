@@ -22,7 +22,7 @@
  * @APPLE_LICENSE_HEADER_END@
  */
 
-#include <machdep/ppc/interrupts.h>
+#include <interrupts.h>		/* our own: names 5.6's table (CARD18-25) */
 #include <families/sawtooth.h>
 #include <chips/keylargo.h>
 #include <chips/mpic.h>
@@ -122,87 +122,74 @@ struct powermac_interrupt sawtooth_via1_interrupts[NSAWTOOTH_VIA1_INTERRUPTS] = 
 };
 
 /* KeyLargo MPIC interrupt mapping for Sawtooth (Power Mac G4 AGP Graphics)
- * This is organized by interrupt source number (0-63)
+ * This is organized by interrupt source number (0-63); the device for each
+ * source matches the Mac OS X Server 1.2v3 (kernel 5.6) table.
  */
 struct powermac_interrupt  sawtooth_interrupts[NSAWTOOTH_INTERRUPTS] = {
-	/* 0-7: DMA interrupts */
-	{ 0,	0, 0, PMAC_DMA_SCSI0},	      /* 0 - DMA SCSI */
-	{ 0,	0, 0, -1},                    /* 1 - Reserved */
-	{ 0,	0, 0, PMAC_DMA_IDE0},         /* 2 - DMA IDE0 */
-	{ 0,	0, 0, PMAC_DMA_IDE1},         /* 3 - DMA IDE1 */
-	{ 0,	0, 0, PMAC_DMA_SCC_A_TX},     /* 4 - DMA SCC Channel A TX */
-	{ 0,	0, 0, PMAC_DMA_SCC_A_RX},     /* 5 - DMA SCC Channel A RX */
-	{ 0,	0, 0, PMAC_DMA_SCC_B_TX},     /* 6 - DMA SCC Channel B TX */
-	{ 0,	0, 0, PMAC_DMA_SCC_B_RX},     /* 7 - DMA SCC Channel B RX */
-
-	/* 8-15: Audio and device interrupts */
-	{ 0,	0, 0, PMAC_DMA_AUDIO_OUT},    /* 8 - DMA Audio Out */
-	{ 0,	0, 0, PMAC_DMA_AUDIO_IN},     /* 9 - DMA Audio In */
-	{ 0,	0, 0, -1},                    /* 10 - Reserved */
-	{ 0,	0, 0, -1},                    /* 11 - Reserved */
-	{ 0,	0, 0, PMAC_DEV_SCSI0},        /* 12 - SCSI */
-	{ 0,	0, 0, PMAC_DEV_IDE0},         /* 13 - IDE 0 */
-	{ 0,	0, 0, PMAC_DEV_IDE1},         /* 14 - IDE 1 */
-	{ 0,	0, 0, PMAC_DEV_SCC_A},        /* 15 - SCC Channel A */
-
-	/* 16-23: SCC, Audio, VIA and PCI slots */
-	{ 0,	0, 0, PMAC_DEV_SCC_B},        /* 16 - SCC Channel B */
-	{ 0,	0, 0, PMAC_DEV_AUDIO},        /* 17 - Audio */
-	{ 0,    0, 0, -1},                    /* 18 - Reserved */
-	{ 0,	0, 0, -1},                    /* 19 - Reserved */
-	{ 0, 	0, 0, PMAC_DEV_NMI},          /* 20 - NMI */
-	{ 0, 	0, 0, PMAC_DEV_CARD1},        /* 21 - PCI Slot 1 */
-	{ 0, 	0, 0, PMAC_DEV_CARD2},        /* 22 - PCI Slot 2 */
-	{ 0, 	0, 0, PMAC_DEV_CARD3},        /* 23 - PCI Slot 3 */
-
-	/* 24-31: More PCI slots and VIA cascade */
-	{ 0, 	0, 0, PMAC_DEV_CARD4},        /* 24 - PCI Slot 4 */
-	{ mpic_via1_interrupt, 0, 0, -1},     /* 25 - VIA Cascade (0x19) */
-	{ 0, 	0, 0, -1},                    /* 26 - Reserved */
-	{ 0, 	0, 0, -1},                    /* 27 - Reserved */
-	{ 0, 	0, 0, -1},                    /* 28 - Reserved */
-	{ 0, 	0, 0, -1},                    /* 29 - Reserved */
-	{ 0, 	0, 0, -1},                    /* 30 - Reserved */
-	{ 0, 	0, 0, -1},                    /* 31 - Reserved */
-	/* 32-39: USB, FireWire, Ethernet */
-	{ 0,	0, 0, PMAC_DMA_ETHERNET_TX},  /* 32 - DMA Ethernet Tx */
-	{ 0,	0, 0, PMAC_DMA_ETHERNET_RX},  /* 33 - DMA Ethernet Rx */
-	{ 0,	0, 0, -1},                    /* 34 - Reserved */
-	{ 0,	0, 0, -1},                    /* 35 - Reserved */
-	{ 0,	0, 0, -1},                    /* 36 - Reserved */
-	{ 0,	0, 0, -1},                    /* 37 - Reserved */
-	{ 0,	0, 0, PMAC_DEV_ETHERNET},     /* 38 - Ethernet */
-	{ 0,	0, 0, -1},                    /* 39 - Reserved */
-
-	/* 40-47: I2S, USB */
-	{ 0,	0, 0, -1},                    /* 40 - Reserved */
-	{ 0,	0, 0, -1},                    /* 41 - Reserved */
-	{ 0,	0, 0, -1},                    /* 42 - Reserved */
-	{ 0,	0, 0, -1},                    /* 43 - Reserved */
-	{ 0,	0, 0, -1},                    /* 44 - Reserved */
-	{ 0,	0, 0, -1},                    /* 45 - Reserved */
-	{ 0,	0, 0, -1},                    /* 46 - Reserved */
-	{ 0,	0, 0, -1},                    /* 47 - Reserved */
-
-	/* 48-55: More peripherals */
-	{ 0,	0, 0, -1},                    /* 48 - Reserved */
-	{ 0,	0, 0, -1},                    /* 49 - Reserved */
-	{ 0,	0, 0, -1},                    /* 50 - Reserved */
-	{ 0,	0, 0, -1},                    /* 51 - Reserved */
-	{ 0,	0, 0, -1},                    /* 52 - Reserved */
-	{ 0,	0, 0, -1},                    /* 53 - Reserved */
-	{ 0,	0, 0, -1},                    /* 54 - Reserved */
-	{ 0,	0, 0, -1},                    /* 55 - Reserved */
-
-	/* 56-63: Reserved */
-	{ 0,	0, 0, -1},                    /* 56 - Reserved */
-	{ 0,	0, 0, -1},                    /* 57 - Reserved */
-	{ 0,	0, 0, -1},                    /* 58 - Reserved */
-	{ 0,	0, 0, -1},                    /* 59 - Reserved */
-	{ 0,	0, 0, -1},                    /* 60 - Reserved */
-	{ 0,	0, 0, -1},                    /* 61 - Reserved */
-	{ 0,	0, 0, -1},                    /* 62 - Reserved */
-	{ 0,	0, 0, -1}                     /* 63 - Reserved */
+	{ 0,	0, 0, -1},            /* 0 - Unused */
+	{ 0,	0, 0, -1},            /* 1 - Unused */
+	{ 0,	0, 0, -1},            /* 2 - Unused */
+	{ 0,	0, 0, -1},            /* 3 - Unused */
+	{ 0,	0, 0, -1},            /* 4 - Unused */
+	{ 0,	0, 0, PMAC_DMA_SCC_A_TX}, /* 5 - DMA SCC Channel A TX */
+	{ 0,	0, 0, PMAC_DMA_SCC_A_RX}, /* 6 - DMA SCC Channel A RX */
+	{ 0,	0, 0, PMAC_DMA_SCC_B_TX}, /* 7 - DMA SCC Channel B TX */
+	{ 0,	0, 0, PMAC_DMA_SCC_B_RX}, /* 8 - DMA SCC Channel B RX */
+	{ 0,	0, 0, PMAC_DMA_AUDIO_OUT}, /* 9 - DMA Audio Out */
+	{ 0,	0, 0, PMAC_DMA_AUDIO_IN}, /* 10 - DMA Audio In */
+	{ 0,	0, 0, PMAC_DMA_UIDE}, /* 11 - DMA Ultra IDE */
+	{ 0,	0, 0, PMAC_DMA_IDE0}, /* 12 - DMA IDE 0 */
+	{ 0,	0, 0, PMAC_DMA_IDE1}, /* 13 - DMA IDE 1 */
+	{ 0,	0, 0, -1},            /* 14 - Unused */
+	{ 0,	0, 0, -1},            /* 15 - Unused */
+	{ 0,	0, 0, -1},            /* 16 - Unused */
+	{ 0,	0, 0, -1},            /* 17 - Unused */
+	{ 0,	0, 0, -1},            /* 18 - Unused */
+	{ 0,	0, 0, PMAC_DEV_UIDE}, /* 19 - Ultra IDE */
+	{ 0,	0, 0, PMAC_DEV_IDE0}, /* 20 - IDE 0 */
+	{ 0,	0, 0, PMAC_DEV_IDE1}, /* 21 - IDE 1 */
+	{ 0,	0, 0, PMAC_DEV_SCC_A}, /* 22 - SCC Channel A */
+	{ 0,	0, 0, PMAC_DEV_SCC_B}, /* 23 - SCC Channel B */
+	{ 0,	0, 0, PMAC_DEV_AUDIO}, /* 24 - Audio */
+	{ mpic_via1_interrupt, 0, 0, -1}, /* 25 - VIA Cascade (0x19) */
+	{ 0,	0, 0, -1},            /* 26 - Unused */
+	{ 0,	0, 0, PMAC_DEV_USB0}, /* 27 - USB 0 */
+	{ 0,	0, 0, PMAC_DEV_USB1}, /* 28 - USB 1 */
+	{ 0,	0, 0, -1},            /* 29 - Unused */
+	{ 0,	0, 0, -1},            /* 30 - Unused */
+	{ 0,	0, 0, -1},            /* 31 - Unused */
+	{ 0,	0, 0, -1},            /* 32 - Unused */
+	{ 0,	0, 0, -1},            /* 33 - Unused */
+	{ 0,	0, 0, -1},            /* 34 - Unused */
+	{ 0,	0, 0, -1},            /* 35 - Unused */
+	{ 0,	0, 0, -1},            /* 36 - Unused */
+	{ 0,	0, 0, -1},            /* 37 - Unused */
+	{ 0,	0, 0, PMAC_DEV_CARD18}, /* 38 - Card 18 */
+	{ 0,	0, 0, PMAC_DEV_CARD19}, /* 39 - Card 19 */
+	{ 0,	0, 0, PMAC_DEV_CARD20}, /* 40 - Card 20 */
+	{ 0,	0, 0, PMAC_DEV_CARD21}, /* 41 - Card 21 */
+	{ 0,	0, 0, PMAC_DEV_CARD22}, /* 42 - Card 22 */
+	{ 0,	0, 0, PMAC_DEV_CARD23}, /* 43 - Card 23 */
+	{ 0,	0, 0, PMAC_DEV_CARD24}, /* 44 - Card 24 */
+	{ 0,	0, 0, PMAC_DEV_CARD25}, /* 45 - Card 25 */
+	{ 0,	0, 0, PMAC_DEV_CARD0}, /* 46 - Card 0 */
+	{ 0,	0, 0, PMAC_DEV_CARD1}, /* 47 - Card 1 */
+	{ 0,	0, 0, PMAC_DEV_CARD2}, /* 48 - Card 2 */
+	{ 0,	0, 0, PMAC_DEV_CARD3}, /* 49 - Card 3 */
+	{ 0,	0, 0, PMAC_DEV_CARD4}, /* 50 - Card 4 */
+	{ 0,	0, 0, PMAC_DEV_CARD5}, /* 51 - Card 5 */
+	{ 0,	0, 0, PMAC_DEV_CARD6}, /* 52 - Card 6 */
+	{ 0,	0, 0, PMAC_DEV_CARD7}, /* 53 - Card 7 */
+	{ 0,	0, 0, PMAC_DEV_CARD8}, /* 54 - Card 8 */
+	{ 0,	0, 0, PMAC_DEV_CARD9}, /* 55 - Card 9 */
+	{ 0,	0, 0, PMAC_DEV_CARD10}, /* 56 - Card 10 */
+	{ 0,	0, 0, PMAC_DEV_CARD11}, /* 57 - Card 11 */
+	{ 0,	0, 0, PMAC_DEV_CARD12}, /* 58 - Card 12 */
+	{ 0,	0, 0, PMAC_DEV_CARD13}, /* 59 - Card 13 */
+	{ 0,	0, 0, PMAC_DEV_CARD14}, /* 60 - Card 14 */
+	{ 0,	0, 0, PMAC_DEV_CARD15}, /* 61 - Card 15 */
+	{ 0,	0, 0, PMAC_DEV_CARD16}, /* 62 - Card 16 */
+	{ 0,	0, 0, PMAC_DEV_CARD17}  /* 63 - Card 17 */
 };
 
 void configure_sawtooth(void)

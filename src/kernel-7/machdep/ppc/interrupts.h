@@ -96,8 +96,16 @@
 #define PMAC_DEV_CARD15         271
 #define PMAC_DEV_CARD16         272
 #define PMAC_DEV_CARD17         273
+#define PMAC_DEV_CARD18         274	/* 18-25: KeyLargo sources 38-45 */
+#define PMAC_DEV_CARD19         275
+#define PMAC_DEV_CARD20         276
+#define PMAC_DEV_CARD21         277
+#define PMAC_DEV_CARD22         278
+#define PMAC_DEV_CARD23         279
+#define PMAC_DEV_CARD24         280
+#define PMAC_DEV_CARD25         281
 
-#define	PMAC_DEV_PDS		280	/* Processor Direct Slot - Nubus only */
+#define	PMAC_DEV_PDS		282	/* Processor Direct Slot - Nubus only */
 
 /* Some NuBus aliases.. */
 #define	PMAC_DEV_NUBUS0		PMAC_DEV_CARD0

@@ -567,3 +567,126 @@ void SCSIhSwappingAdvSetupBDR(AdaptecU2HHCB *hhcb, AdaptecU2HIOB *hiob)
         SCSIhWriteHCNTRL(hhcb, control);
 }
 
+void SCSIhStandard64ResetSoftware(AdaptecU2HHCB *hhcb)
+{
+    unsigned int i;
+    AdaptecU2SCBDescriptor *head;
+    unsigned short mask = 0;
+    SCSIhCommonResetSoftware(hhcb);
+    for (i = 0; i < 16; ++i)
+        if (!(hhcb->devices[i].flags & 0x4000))
+            mask |= 1 << i;
+    OSMWriteUExact8(*hhcb->ioHandle, 48, mask);
+    OSMWriteUExact8(*hhcb->ioHandle, 49, mask >> 8);
+    head = SCSIRGetFreeHead(hhcb);
+    SCSIhSetAddressScratchBA32(hhcb, 60, head->virtualAddress);
+    OSMWriteUExact8(*hhcb->ioHandle, 68, head->number);
+    OSMWriteUExact8(*hhcb->ioHandle, 58, 0);
+    hhcb->qnewHead = 0;
+    OSMWriteUExact8(*hhcb->ioHandle, 59, 0);
+    SCSIhSetAddressScratchBA32(hhcb, 78, hhcb->qout);
+    OSMWriteUExact8(*hhcb->ioHandle, 112, 255);
+    OSMWriteUExact8(*hhcb->ioHandle, 76, 0);
+    hhcb->qdoneElement = 0;
+    OSMWriteUExact8(*hhcb->ioHandle, 77, 255);
+    hhcb->qdonePass = 0;
+    OSMWriteUExact8(*hhcb->ioHandle, 94, 255);
+    for (i = 0; i < 8 * (hhcb->numberScbs + 1); ++i)
+        hhcb->qout[i] = 255;
+    OSMWriteUExact8(*hhcb->ioHandle, 53, 255);
+    OSMWriteUExact8(*hhcb->ioHandle, 52, 255);
+    OSMWriteUExact8(*hhcb->ioHandle, 120, hhcb->numberScbs + 1);
+}
+
+void SCSIhSwappingResetSoftware(AdaptecU2HHCB *hhcb)
+{
+    unsigned char count = hhcb->numberScbs;
+    unsigned short i;
+    SCSIhCommonResetSoftware(hhcb);
+    OSMWriteUExact8(*hhcb->ioHandle, 64, SCSIRGetFreeHead(hhcb)->number);
+    OSMWriteUExact8(*hhcb->ioHandle, 88, 0);
+    hhcb->qnewHead = 0;
+    OSMWriteUExact8(*hhcb->ioHandle, 89, 0);
+    SCSIhSetAddressScratchBA32(hhcb, 72, hhcb->qout);
+    OSMWriteUExact8(*hhcb->ioHandle, 90, 0);
+    hhcb->qdoneElement = 0;
+    OSMWriteUExact8(*hhcb->ioHandle, 91, 255);
+    hhcb->qdonePass = 0;
+    SCSIhSetAddressScratchBA32(hhcb, 80, hhcb->scbBuffers);
+    for (i = 0; i < 8 * (count + 1); ++i)
+        hhcb->qout[i] = 255;
+    OSMWriteUExact8(*hhcb->ioHandle, 87, 255);
+    OSMWriteUExact8(*hhcb->ioHandle, 86, 255);
+    OSMWriteUExact8(*hhcb->ioHandle, 92, count + 1);
+}
+
+void SCSIhStandardAdvResetSoftware(AdaptecU2HHCB *hhcb)
+{
+    unsigned int i;
+    AdaptecU2SCBDescriptor *head;
+    unsigned int size;
+    unsigned char control;
+    unsigned char count = hhcb->numberScbs;
+    SCSIhCommonResetSoftware(hhcb);
+    head = SCSIRGetFreeHead(hhcb);
+    SCSIhSetAddressScratchBA32(hhcb, 32, head->virtualAddress);
+    OSMWriteUExact8(*hhcb->ioHandle, 58, head->number);
+    OSMWriteUExact8(*hhcb->ioHandle, 244, 0);
+    hhcb->qnewHead = 0;
+    OSMWriteUExact8(*hhcb->ioHandle, 246, 0);
+    OSMWriteUExact8(*hhcb->ioHandle, 248, 0);
+    SCSIhSetAddressScratchBA32(hhcb, 40, hhcb->qout);
+    SCSIhSetAddressScratchBA32(hhcb, 48, hhcb->qout);
+    OSMWriteUExact8(*hhcb->ioHandle, 56, 255);
+    hhcb->qdoneElement = 0;
+    OSMWriteUExact8(*hhcb->ioHandle, 52, 0);
+    hhcb->qdonePass = 0;
+    OSMWriteUExact8(*hhcb->ioHandle, 54, 255);
+    for (i = 0; i < 8 * (hhcb->numberScbs + 1); ++i)
+        hhcb->qout[i] = 255;
+    OSMWriteUExact8(*hhcb->ioHandle, 61, 255);
+    OSMWriteUExact8(*hhcb->ioHandle, 60, 255);
+    size = count + 1;
+    control = OSMReadUExact8(*hhcb->ioHandle, 250) & 0xf8;
+    do {
+        size >>= 1;
+        ++control;
+    } while (size);
+    OSMWriteUExact8(*hhcb->ioHandle, 250, control - 3);
+    OSMWriteUExact8(*hhcb->ioHandle, 74, 0);
+    OSMWriteUExact8(*hhcb->ioHandle, 77, (hhcb->hardwareFlags & 0x8000) != 0);
+}
+
+void SCSIhSwappingAdvResetSoftware(AdaptecU2HHCB *hhcb)
+{
+    unsigned char count = hhcb->numberScbs;
+    unsigned short i;
+    unsigned int size;
+    unsigned char control;
+    SCSIhCommonResetSoftware(hhcb);
+    OSMWriteUExact8(*hhcb->ioHandle, 40, SCSIRGetFreeHead(hhcb)->number);
+    OSMWriteUExact8(*hhcb->ioHandle, 244, 0);
+    hhcb->qnewHead = 0;
+    OSMWriteUExact8(*hhcb->ioHandle, 246, 0);
+    OSMWriteUExact8(*hhcb->ioHandle, 248, 0);
+    SCSIhSetAddressScratchBA32(hhcb, 41, hhcb->qout);
+    SCSIhSetAddressScratchBA32(hhcb, 49, hhcb->qout);
+    hhcb->qdoneElement = 0;
+    OSMWriteUExact8(*hhcb->ioHandle, 53, 0);
+    hhcb->qdonePass = 0;
+    SCSIhSetAddressScratchBA32(hhcb, 32, hhcb->scbBuffers);
+    for (i = 0; i < 8 * (count + 1); ++i)
+        hhcb->qout[i] = 255;
+    OSMWriteUExact8(*hhcb->ioHandle, 58, 255);
+    OSMWriteUExact8(*hhcb->ioHandle, 57, 255);
+    size = count + 1;
+    control = OSMReadUExact8(*hhcb->ioHandle, 250) & 0xf8;
+    do {
+        size >>= 1;
+        ++control;
+    } while (size);
+    OSMWriteUExact8(*hhcb->ioHandle, 250, control - 3);
+    OSMWriteUExact8(*hhcb->ioHandle, 73, 0);
+    OSMWriteUExact8(*hhcb->ioHandle, 77, (hhcb->hardwareFlags & 0x8000) != 0);
+}
+

@@ -9,37 +9,38 @@
     python vm/ppc-guest.py kernel [--base IMAGE] [--disk DISK] KERNEL
 
 create makes DISK, a qcow2 overlay on the read-only base image (by default
-~/Downloads/rhapsody.img, which is never written), and patches six files
+~/Downloads/rhapsody.img, which is never written), and patches these files
 on it in place, each kept at its original size:
 
-  /etc/startup/0200_Tune      `nvram` -> `false`.  The 5.6 kernel's
+  /etc/startup/0200_Tune      `nvram` -> `false`.  The stock 5.6 kernel's
       /dev/nvram adds PCI_IO_BASE_PHYS to the absolute reg of QEMU's
-      /nvram@fff04000 node; the sum wraps to 0x7ff04000 and the kernel
-      takes an unresolved data-access trap.
+      /nvram@fff04000 node; the sum wraps to 0x7ff04000 and it traps.
   /etc/startup/0700_Devices   loads DEC21x4Ethernet instead of Floppy.
       mac99 has no floppy, and its PMAC_DEV_FLOPPY interrupt is not in the
       Sawtooth MPIC table, so registering it panics ("Interrupt 136 not
       found"); on ppc nothing else loads a PCI NIC driver.
+  /etc/startup/1100_DirectoryServices  runs `nibindd -n`, so the local
+      NetInfo domain does not wait at boot for a parent server.
   /etc/startup/1700_IPServices  clears root's NetInfo password, then starts
       inetd as before (the server-only bootpd/management parts are dropped).
   /etc/inetd.conf             enables telnetd.
+  /etc/ttys                   marks the network ptys secure, so root may
+                              telnet in.
+  drvPPCGem.config            matches `gmac` (QEMU's sungem, a GEM) as well
+      as the Sun card, and keeps the RXMAC summary bit masked: QEMU raises it
+      despite MAC_RXMASK, and the driver never clears it, so it storms.
   DEC21x4Ethernet.config/Default.table  matches pci1011,19, QEMU's tulip
       (a 21143, already in the driver's Auto Detect IDs) in place of
       pci1385,1100.
-  /etc/ttys                   marks the network ptys secure, so root may
-                              telnet in.
 
 start boots DISK on QEMU's mac99 (a "Sawtooth" G4 to the guest) in the
-background.  The machine must not have QEMU's default devices: the stock
-ATAPI CD-ROM on the second ata-3 bus and the USB OHCI controller raise MPIC
-sources the stock 5.6 kernel has no handler for (vectors 14 and 30), and it
-spins in mpic_interrupt.  A RhapsodiOS kernel with the Sawtooth fixes (see
-`kernel`) boots to the Setup Assistant and attaches --nic tulip (DEC21x4) or
---nic sungem (drvPPCGem), but neither passes traffic yet: the tulip reads
-zeroed TX descriptors (the ppc driver's big-endian descriptor mode) and
-drvPPCGem spins on the GEM status register.  So `run` does not work yet.
-Boot takes about four minutes under TCG.  --snapshot discards every write
-when QEMU exits.
+background, with a sungem NIC and a telnet forward.  The machine must not
+have QEMU's default devices: the stock ATAPI CD-ROM on the second ata-3 bus
+and the USB OHCI controller raise MPIC sources the stock 5.6 kernel has no
+handler for.  The stock kernel cannot reach the network on mac99 (issue 61);
+install a RhapsodiOS kernel with the Sawtooth fixes (see `kernel`) to get
+telnet.  Boot takes about four minutes under TCG.  --snapshot discards every
+write when QEMU exits.
 
 kernel writes KERNEL over /mach_kernel on DISK in place, zero-padded to the
 stock kernel's size (BootX loads by the Mach-O load commands, so the tail is
@@ -47,8 +48,8 @@ ignored); it must not be larger.  Put a further overlay on DISK first
 (`qemu-img create -f qcow2 -F qcow2 -b disk.qcow2 kern.qcow2`) to keep the
 stock kernel.
 
-run logs in as root over telnet, runs COMMAND in the guest's tcsh and prints
-its output.  stop quits QEMU through QMP after query-name confirms the guest
+run logs in as root over telnet, runs COMMAND with /bin/sh, prints its
+output and exits with its status.  stop quits QEMU through QMP after query-name confirms the guest
 is NAME; run `sync; /sbin/reboot` first unless it is a --snapshot guest.
 
 Standard library only.
@@ -69,7 +70,6 @@ VM_DIR = os.path.dirname(os.path.abspath(__file__))
 QEMU_DIR = r"C:\Program Files\qemu"
 DEFAULT_BASE = os.path.join(os.path.expanduser("~"), "Downloads", "rhapsody.img")
 DEFAULT_DISK = os.path.join(VM_DIR, "work", "ppc-mosxs", "disk.qcow2")
-PROMPT = b"MOSXS-PROMPT# "
 
 IPSERVICES = """#!/bin/sh
 
@@ -126,6 +126,21 @@ def patch_gem(text):
     return text.replace(old, '"Matching" = "pci108e,2bad gmac";', 1)
 
 
+def patch_gem_imask(text):
+    # Binary, through latin-1: in _enableAdapterInterrupts, GREG_IMASK &=
+    # 0xffff7fee -> 0xffffffee, keeping the RXMAC summary bit masked.
+    old = "\x3c\x00\xff\xff\x60\x00\x7f\xee"     # lis r0,-1; ori r0,r0,0x7fee
+    assert text.count(old) == 1
+    return text.replace(old, "\x3c\x00\xff\xff\x60\x00\xff\xee")
+
+
+def patch_netinfo(text):
+    header = "##\n# Start up NetInfo\n##\n"
+    assert header in text and "\nnibindd\n" in text
+    text = text.replace("\nnibindd\n", "\nnibindd -n\n", 1)
+    return text.replace(header, "", 1)     # a comment; makes room
+
+
 def patch_ipservices(text):
     assert "inetd" in text
     return IPSERVICES
@@ -150,10 +165,12 @@ def patch_ttys(text):
 PATCHES = [
     ("/private/etc/startup/0200_Tune", patch_tune),
     ("/private/etc/startup/0700_Devices", patch_devices),
+    ("/private/etc/startup/1100_DirectoryServices", patch_netinfo),
     ("/private/etc/startup/1700_IPServices", patch_ipservices),
     ("/private/etc/inetd.conf", patch_inetd),
     ("/private/Drivers/ppc/DEC21x4Ethernet.config/Default.table", patch_dec21x4),
     ("/private/Drivers/ppc/drvPPCGem.config/Default.table", patch_gem),
+    ("/private/Drivers/ppc/drvPPCGem.config/drvPPCGem_reloc", patch_gem_imask),
     ("/private/etc/ttys", patch_ttys),
 ]
 
@@ -231,7 +248,10 @@ def cmd_start(args):
         "-prom-env", "boot-args=" + ("-v" if args.verbose else ""),
     ]
     if args.nic:
-        qemu += ["-netdev", "user,id=n0,hostfwd=tcp:127.0.0.1:%d-:23" % args.telnet_port,
+        # BOOTP must hand out a host name, or 0800_Network falls back to
+        # bpwhoami and waits for it to time out.
+        qemu += ["-netdev", "user,id=n0,hostname=mosxs,hostfwd=tcp:127.0.0.1:%d-:23"
+                 % args.telnet_port,
                  "-device", "%s,netdev=n0" % args.nic]
     if args.cdrom:
         qemu += ["-drive", "file=%s,format=raw,if=ide,index=1,media=cdrom" % args.cdrom]
@@ -327,21 +347,21 @@ class Telnet(object):
 
 
 def cmd_run(args):
+    # Markers are split by quotes in what we send, so the terminal's echo of
+    # a command line never matches them.
     t = Telnet(args.telnet_port)
     t.expect(b"login: ")
     t.send("root")
     t.expect(b"# ", timeout=120)
-    t.send("set prompt='%s'" % PROMPT.decode())
-    t.expect(PROMPT)
-    t.expect(PROMPT)
-    t.send("stty -echo")
-    t.expect(PROMPT)
-    t.send(args.command + "; echo MOSXS-STATUS=$status")
-    out = t.expect(PROMPT, timeout=args.timeout).replace(b"\r\n", b"\n")
+    t.send("exec /bin/sh")
+    t.send("PS1=''; stty -echo; echo MOSXS-''READY")
+    t.expect(b"MOSXS-READY\r\n")
+    t.send(args.command)
+    t.send("echo MOSXS-''STATUS=$?")
+    out = t.expect(b"MOSXS-STATUS=", timeout=args.timeout)
+    status = t.expect(b"\r\n")
     t.send("exit")
-    text = out.decode("latin-1")
-    body, _, status = text.rpartition("MOSXS-STATUS=")
-    sys.stdout.write(body)
+    sys.stdout.write(out.replace(b"\r\n", b"\n").decode("latin-1"))
     sys.exit(int(status.strip() or 1))
 
 
@@ -359,7 +379,7 @@ def main():
     p.add_argument("--snapshot", action="store_true")
     p.add_argument("--verbose", action="store_true", help="boot with -v")
     p.add_argument("--gui", action="store_true", help="show the screen in a window")
-    p.add_argument("--nic", help="QEMU NIC model: tulip or sungem attach, neither passes traffic yet")
+    p.add_argument("--nic", default="sungem", help="QEMU NIC model (sungem, or tulip)")
     p.add_argument("--cdrom", help="ISO to attach as hd0's slave (the second bus storms on stock 5.6)")
     p = sub.add_parser("run")
     p.add_argument("--telnet-port", type=int, default=2481)

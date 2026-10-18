@@ -828,12 +828,18 @@ def test_task6_owner_native_and_control_flow_evidence(firmware_evidence):
 @pytest.mark.parametrize("corruption", ["source", "review", "ledger", "case", "unknown_call",
                                         "switch_guard", "switch_target", "executed_cases",
                                         "executed_contracts", "executed_runner", "dependency_source",
-                                        "dependency_object", "result_revision"])
+                                        "dependency_object", "result_revision", "executed_reference",
+                                        "executed_inventory", "executed_initializer", "executed_identity",
+                                        "executed_macho", "executed_objc_abi", "executed_source_map",
+                                        "executed_schema", "executed_arch", "executed_source_paths"])
 def test_task6_owner_rejects_incomplete_evidence(tmp_path, firmware_evidence, corruption):
     audit, evidence = firmware_evidence
     repo = tmp_path / "repo"
     driver = repo / audit.ref.DRIVER
     shutil.copytree(TESTS.parent, driver, ignore=shutil.ignore_patterns("__pycache__"))
+    shutil.copytree(REPO / "tools/binrecon/binrecon", repo / "tools/binrecon/binrecon",
+                    ignore=shutil.ignore_patterns("__pycache__"))
+    shutil.copyfile(REPO / "tools/binrecon/source_paths.py", repo / "tools/binrecon/source_paths.py")
     shutil.copyfile(REPO / ".git", repo / ".git")
     objects = tmp_path / "objects/task6"
     shutil.copytree(OUT / "objects/task6", objects,
@@ -866,10 +872,23 @@ def test_task6_owner_rejects_incomplete_evidence(tmp_path, firmware_evidence, co
         result["results"][0]["unknown_calls"] = ["missing_internal_CHIM"]
         path.write_text(json.dumps(result))
         expected = "invalid Task6 successful fixture"
+    elif corruption == "executed_inventory":
+        path = driver / "reconstruction/inventory.md"
+        original = path.read_text()
+        changed = original.replace("| 0x18770c |", "| 0x187708 |", 1)
+        assert changed != original
+        path.write_text(changed)
+        expected = "stale Task6 executed input"
     elif corruption.startswith("executed_"):
-        filename = {"executed_cases": "task6-cases.json", "executed_contracts": "contracts.json",
-                    "executed_runner": "ppc_cases.py"}[corruption]
-        with (driver / "tests" / filename).open("a") as stream:
+        paths = {"executed_cases": driver / "tests/task6-cases.json",
+                 "executed_contracts": driver / "tests/contracts.json",
+                 "executed_runner": driver / "tests/ppc_cases.py",
+                 "executed_reference": driver / "tests/reference.py",
+                 "executed_initializer": repo / "tools/binrecon/binrecon/__init__.py",
+                 "executed_source_paths": repo / "tools/binrecon/source_paths.py"}
+        for module in ("identity", "macho", "objc_abi", "source_map", "schema", "arch"):
+            paths["executed_" + module] = repo / ("tools/binrecon/binrecon/" + module + ".py")
+        with paths[corruption].open("a") as stream:
             stream.write("\n")
         expected = "stale Task6"
     elif corruption == "dependency_source":

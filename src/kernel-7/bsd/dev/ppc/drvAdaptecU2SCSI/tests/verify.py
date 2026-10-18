@@ -357,12 +357,26 @@ def audit_hardware_group(evidence, repo_root, objects):
         raise ValueError("stale Task6 execution revision")
     # Preserve the actual execution revision. A later evidence-only commit can
     # reuse it only when every executable/fixture input remains byte-identical.
-    for relative in ["tests/task6-cases.json", "tests/contracts.json", "tests/ppc_cases.py"]:
-        path = driver / relative
+    # Reviewed repository import closure: ppc_cases -> reference and binrecon;
+    # macho -> arch/identity/objc_abi; reference -> schema; source_map -> source_paths.
+    # Importing binrecon also executes its package initializer.
+    executed_inputs = [ref.DRIVER / name for name in (
+        "tests/task6-cases.json", "tests/contracts.json", "tests/ppc_cases.py",
+        "tests/reference.py", "reconstruction/inventory.md")]
+    executed_inputs += [Path("tools/binrecon/binrecon") / (name + ".py") for name in (
+        "__init__", "identity", "macho", "objc_abi", "source_map", "schema", "arch")]
+    executed_inputs.append(Path("tools/binrecon/source_paths.py"))
+    for relative in executed_inputs:
+        path = repo_root / relative
         blob = subprocess.check_output(["git", "show", result["source_revision"] + ":" +
-                                        path.relative_to(repo_root).as_posix()], cwd=repo_root)
-        if path.read_bytes().replace(b"\r\n", b"\n") != blob:
-            raise ValueError("stale Task6 executed input: " + relative)
+                                        relative.as_posix()], cwd=repo_root)
+        canonical = path.read_bytes().replace(b"\r\n", b"\n")
+        if relative == ref.DRIVER / "reconstruction/inventory.md":
+            # frozen_functions consumes only this block; later prose is metadata.
+            canonical, blob = [value.split(b"<!-- functions:start -->")[1].split(
+                b"<!-- functions:end -->")[0] for value in (canonical, blob)]
+        if canonical != blob:
+            raise ValueError("stale Task6 executed input: " + relative.as_posix())
     for name in inputs:
         path = driver / name
         blob = subprocess.check_output(["git", "show", result["source_revision"] + ":" +

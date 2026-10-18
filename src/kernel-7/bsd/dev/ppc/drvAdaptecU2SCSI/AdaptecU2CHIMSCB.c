@@ -690,3 +690,254 @@ void SCSIhSwappingAdvResetSoftware(AdaptecU2HHCB *hhcb)
     OSMWriteUExact8(*hhcb->ioHandle, 77, (hhcb->hardwareFlags & 0x8000) != 0);
 }
 
+unsigned char SCSIhStandardSearchSeqDoneQ(AdaptecU2HHCB *hhcb, AdaptecU2HIOB *hiob, unsigned char terminate)
+{
+    unsigned char saved = OSMReadUExact8(*hhcb->ioHandle, 144);
+    unsigned char current = OSMReadUExact8(*hhcb->ioHandle, 112);
+    unsigned char previous = current, next, found = 0;
+    while (current != 255) {
+        OSMWriteUExact8(*hhcb->ioHandle, 144, current);
+        if (current == hiob->control.bytes.scbNumber) {
+            next = OSMReadUExact8(*hhcb->ioHandle, 198);
+            if (current != previous) {
+                OSMWriteUExact8(*hhcb->ioHandle, 144, previous);
+                OSMWriteUExact8(*hhcb->ioHandle, 198, next);
+            } else
+                OSMWriteUExact8(*hhcb->ioHandle, 112, next);
+            if (terminate) {
+                hiob->status = 0;
+                hiob->managerStatus = 1;
+                SCSIhTerminateCommand(hiob);
+            }
+            found = 1;
+            break;
+        }
+        previous = current;
+        current = OSMReadUExact8(*hhcb->ioHandle, 198);
+    }
+    OSMWriteUExact8(*hhcb->ioHandle, 144, saved);
+    return found;
+}
+
+unsigned char SCSIhStandardAdvSearchSeqDoneQ(AdaptecU2HHCB *hhcb, AdaptecU2HIOB *hiob, unsigned char terminate)
+{
+    unsigned char saved = OSMReadUExact8(*hhcb->ioHandle, 144);
+    unsigned char current = OSMReadUExact8(*hhcb->ioHandle, 56);
+    unsigned char previous = current, next, found = 0;
+    while (current != 255) {
+        OSMWriteUExact8(*hhcb->ioHandle, 144, current);
+        if (current == hiob->control.bytes.scbNumber) {
+            next = OSMReadUExact8(*hhcb->ioHandle, 165);
+            if (current != previous) {
+                OSMWriteUExact8(*hhcb->ioHandle, 144, previous);
+                OSMWriteUExact8(*hhcb->ioHandle, 165, next);
+            } else
+                OSMWriteUExact8(*hhcb->ioHandle, 56, next);
+            if (terminate) {
+                hiob->status = 0;
+                hiob->managerStatus = 1;
+                SCSIhTerminateCommand(hiob);
+            }
+            found = 1;
+            break;
+        }
+        previous = current;
+        current = OSMReadUExact8(*hhcb->ioHandle, 165);
+    }
+    OSMWriteUExact8(*hhcb->ioHandle, 144, saved);
+    return found;
+}
+
+unsigned char SCSIhStandardSearchDoneQ(AdaptecU2HHCB *hhcb, AdaptecU2HIOB *hiob)
+{
+    unsigned char current = hhcb->qdoneElement, pass = hhcb->qdonePass, observed, found = 0;
+    unsigned char *entry = hhcb->qout + 8 * current;
+    observed = entry[7];
+    while (observed == pass) {
+        if (entry[0] == hiob->control.bytes.scbNumber) {
+            while (current != hhcb->qdoneElement) {
+                entry = hhcb->qout + 8 * current;
+                if (--current == 255)
+                    current = hhcb->numberScbs;
+                entry[0] = hhcb->qout[8 * current];
+                entry[7] = observed;
+                if (current == hhcb->numberScbs)
+                    --observed;
+            }
+            if (++hhcb->qdoneElement == (unsigned char)(hhcb->numberScbs + 1)) {
+                hhcb->qdoneElement = 0;
+                ++hhcb->qdonePass;
+            }
+            hiob->status = 0;
+            hiob->managerStatus = 1;
+            SCSIhTerminateCommand(hiob);
+            found = 1;
+            --((unsigned char *)&hhcb->worddc)[2];
+            break;
+        }
+        if (++current == (unsigned char)(hhcb->numberScbs + 1)) {
+            current = 0;
+            ++pass;
+        }
+        entry = hhcb->qout + 8 * current;
+        observed = entry[7];
+    }
+    flush_cache((vm_offset_t)hhcb->qout, 8 * (hhcb->numberScbs + 1));
+    return found;
+}
+
+unsigned char SCSIhStandard64SearchNewQ(AdaptecU2HHCB *hhcb, AdaptecU2HIOB *hiob, unsigned char status)
+{
+    unsigned char current = OSMReadUExact8(*hhcb->ioHandle, hhcb->firmware->registers[10]);
+    unsigned char previous = current, head = current, next;
+    unsigned int address;
+    AdaptecU2HIOB *active;
+    while (hhcb->activeHiobs[current] != (AdaptecU2HIOB *)0xffffffff) {
+        if (current == hiob->control.bytes.scbNumber) {
+            hiob->status = 2;
+            hiob->hostStatus = status;
+            hiob->managerStatus = 2;
+            if (current == head || previous == head)
+                hhcb->firmware->updateAbortBitHostMem(hhcb, hiob);
+            else {
+                OSMWriteUExact8(*hhcb->ioHandle, hhcb->firmware->registers[8], --hhcb->qnewHead);
+                active = hhcb->activeHiobs[current];
+                next = hhcb->firmware->obtainNextScbNum(hhcb, active);
+                address = hhcb->firmware->obtainNextScbAddress(hhcb, active);
+                active = hhcb->activeHiobs[previous];
+                hhcb->firmware->updateNextScbNum(hhcb, active, next);
+                if (hhcb->firmware->updateNextScbAddress)
+                    hhcb->firmware->updateNextScbAddress(hhcb, active, address);
+                SCSIhTerminateCommand(hiob);
+            }
+            return 1;
+        }
+        previous = current;
+        current = hhcb->firmware->obtainNextScbNum(hhcb, hhcb->activeHiobs[current]);
+    }
+    return 0;
+}
+
+unsigned char SCSIhStandardAdvSearchNewQ(AdaptecU2HHCB *hhcb, AdaptecU2HIOB *hiob, unsigned char status)
+{
+    unsigned char current = OSMReadUExact8(*hhcb->ioHandle, hhcb->firmware->registers[10]);
+    unsigned char previous = current, head = current, next;
+    unsigned int address;
+    AdaptecU2HIOB *active;
+    while (hhcb->activeHiobs[current] != (AdaptecU2HIOB *)0xffffffff) {
+        if (current == hiob->control.bytes.scbNumber) {
+            hiob->status = 2;
+            hiob->hostStatus = status;
+            hiob->managerStatus = 2;
+            if (current == head || previous == head)
+                hhcb->firmware->updateAbortBitHostMem(hhcb, hiob);
+            else {
+                OSMWriteUExact8(*hhcb->ioHandle, hhcb->firmware->registers[8], --hhcb->qnewHead);
+                active = hhcb->activeHiobs[current];
+                next = hhcb->firmware->obtainNextScbNum(hhcb, active);
+                address = hhcb->firmware->obtainNextScbAddress(hhcb, active);
+                active = hhcb->activeHiobs[previous];
+                hhcb->firmware->updateNextScbNum(hhcb, active, next);
+                if (hhcb->firmware->updateNextScbAddress)
+                    hhcb->firmware->updateNextScbAddress(hhcb, active, address);
+                SCSIhTerminateCommand(hiob);
+            }
+            return 1;
+        }
+        previous = current;
+        current = hhcb->firmware->obtainNextScbNum(hhcb, hhcb->activeHiobs[current]);
+    }
+    return 0;
+}
+
+unsigned char SCSIhSwappingSearchNewQ(AdaptecU2HHCB *hhcb, AdaptecU2HIOB *hiob, unsigned char status)
+{
+    unsigned char tail = hhcb->hardware->getQNewTail(hhcb);
+    unsigned char current = OSMReadUExact8(*hhcb->ioHandle, hhcb->firmware->registers[10]);
+    unsigned char previous = current, head = current, next;
+    while (tail != hhcb->qnewHead) {
+        if (current == hiob->control.bytes.scbNumber) {
+            hiob->status = 2;
+            hiob->hostStatus = status;
+            hiob->managerStatus = 2;
+            if (current == head || previous == head)
+                hhcb->firmware->updateAbortBitHostMem(hhcb, hiob);
+            else {
+                OSMWriteUExact8(*hhcb->ioHandle, hhcb->firmware->registers[8], --hhcb->qnewHead);
+                next = hhcb->firmware->obtainNextScbNum(hhcb, hhcb->activeHiobs[current]);
+                hhcb->firmware->updateNextScbNum(hhcb, hhcb->activeHiobs[previous], next);
+                SCSIhTerminateCommand(hiob);
+            }
+            return 1;
+        }
+        previous = current;
+        current = hhcb->firmware->obtainNextScbNum(hhcb, hhcb->activeHiobs[current]);
+        ++tail;
+    }
+    return 0;
+}
+
+unsigned char SCSIhStandard64SearchExeQ(AdaptecU2HHCB *hhcb, AdaptecU2HIOB *hiob, unsigned char status, unsigned char terminate)
+{
+    unsigned char saved = OSMReadUExact8(*hhcb->ioHandle, 144);
+    unsigned char current = OSMReadUExact8(*hhcb->ioHandle, 94);
+    unsigned char previous = current, next, found = 0;
+    while (current != 255) {
+        OSMWriteUExact8(*hhcb->ioHandle, 144, current);
+        if (current == hiob->control.bytes.scbNumber) {
+            hiob->status = 2;
+            hiob->hostStatus = status;
+            hiob->managerStatus = 2;
+            next = OSMReadUExact8(*hhcb->ioHandle, 198);
+            if (current == previous)
+                OSMWriteUExact8(*hhcb->ioHandle, 94, next);
+            else {
+                OSMWriteUExact8(*hhcb->ioHandle, 144, previous);
+                OSMWriteUExact8(*hhcb->ioHandle, 198, next);
+                if (current == OSMReadUExact8(*hhcb->ioHandle, 95))
+                    OSMWriteUExact8(*hhcb->ioHandle, 95, previous);
+            }
+            if (terminate)
+                SCSIhTerminateCommand(hiob);
+            found = 1;
+            break;
+        }
+        previous = current;
+        current = OSMReadUExact8(*hhcb->ioHandle, 198);
+    }
+    OSMWriteUExact8(*hhcb->ioHandle, 144, saved);
+    return found;
+}
+
+unsigned char SCSIhStandardAdvSearchExeQ(AdaptecU2HHCB *hhcb, AdaptecU2HIOB *hiob, unsigned char status, unsigned char terminate)
+{
+    unsigned char saved = OSMReadUExact8(*hhcb->ioHandle, 144);
+    unsigned char current = OSMReadUExact8(*hhcb->ioHandle, 54);
+    unsigned char previous = current, next, found = 0;
+    while (current != 255) {
+        OSMWriteUExact8(*hhcb->ioHandle, 144, current);
+        if (current == hiob->control.bytes.scbNumber) {
+            hiob->status = 2;
+            hiob->hostStatus = status;
+            hiob->managerStatus = 2;
+            next = OSMReadUExact8(*hhcb->ioHandle, 165);
+            if (current == previous)
+                OSMWriteUExact8(*hhcb->ioHandle, 54, next);
+            else {
+                OSMWriteUExact8(*hhcb->ioHandle, 144, previous);
+                OSMWriteUExact8(*hhcb->ioHandle, 165, next);
+                if (current == OSMReadUExact8(*hhcb->ioHandle, 55))
+                    OSMWriteUExact8(*hhcb->ioHandle, 55, previous);
+            }
+            if (terminate)
+                SCSIhTerminateCommand(hiob);
+            found = 1;
+            break;
+        }
+        previous = current;
+        current = OSMReadUExact8(*hhcb->ioHandle, 165);
+    }
+    OSMWriteUExact8(*hhcb->ioHandle, 144, saved);
+    return found;
+}
+

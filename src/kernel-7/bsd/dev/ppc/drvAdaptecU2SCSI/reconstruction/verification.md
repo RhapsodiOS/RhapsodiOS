@@ -229,3 +229,14 @@ python -m pytest -p no:faulthandler tests/test_reconstruction.py -k 'layout or d
 Set PYTHONPATH to `tools/binrecon` from the repository root and use the actual
 driver test path when invoking there. Keep build artifacts/logs outside Git.
 The Task3 report identifies the exact native inputs, commit and retained outputs.
+
+Layout and standalone dispatch audits first run the same reference-input
+authentication as the inventory audit. The pinned image establishes freshly
+read class/category metadata; extracted identities, function extents/names,
+owner lists, ABI content and data records must agree. Each data object's
+fixed extent, path, recorded size/hash and full bytes are checked against the
+image, including non-callback portions of descriptor tables. Downstream
+comparisons consume those checked in-memory values without reloading the
+extracted metadata or tables. Validator-only changes can reuse an unchanged
+native witness; its manifest retains the actual producing revision and input
+hashes rather than claiming a rebuild at the validator's newer revision.

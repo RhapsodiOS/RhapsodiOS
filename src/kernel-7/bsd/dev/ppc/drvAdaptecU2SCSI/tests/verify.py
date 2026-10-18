@@ -28,6 +28,29 @@ def audit(stage: str, reference: Path, repo_root: Path, objects: Path | None,
         return
     if stage != "inventory":
         raise ValueError(f"{stage}: reconstruction stage is not implemented")
+    evidence = authenticate_reference(reference, repo_root)
+    document, analysis, macho = evidence["document"], evidence["analysis"], evidence["macho"]
+    frozen, image_identity = evidence["frozen"], evidence["image_identity"]
+    recon = repo_root / ref.DRIVER / "reconstruction"
+    source_map = load_source_map(recon / "source-map.json", reference_analysis=analysis, repo_root=repo_root)
+    if source_map["boundary_disputed"]:
+        raise ValueError("inventory source map contains disputed function boundaries")
+    current = build_source_map(analysis, macho, source_sites(repo_root, repo_root / ref.DRIVER),
+                               extra_names=objc_method_index(reference / "image.bin"))
+    if source_map != current:
+        raise ValueError("inventory source map is stale against current source sites")
+    ledger, _ = load_ledger(recon / "ledger.json", image_identity, None)
+    entries = ledger["entries"]
+    if len(entries) != 476 or {e["address"] for e in entries} != set(frozen):
+        raise ValueError("inventory ledger does not account for all 476 bodies")
+    for entry in entries:
+        expected = frozen[entry["address"]]
+        if entry["size"] != expected["size"] or entry["names"] != expected["names"]:
+            raise ValueError(f"inventory ledger differs at 0x{entry['address']:x}")
+
+
+def authenticate_reference(reference, repo_root):
+    """Authenticate extracted inputs once and pass the checked values to consumers."""
     document = load_json(reference / "reference.json")
     identity = document["identity"]
     if (identity["sha256"], identity["size"], identity["architecture"], identity["endianness"]) != (ref.SHA256, ref.SIZE, "ppc", "big"):
@@ -49,6 +72,9 @@ def audit(stage: str, reference: Path, repo_root: Path, objects: Path | None,
     if document["ranges"] != ref.RANGES or document["boundary_disputes"]:
         raise ValueError("inventory ranges are incomplete or disputed")
     payload, macho = load_image(reference / "image.bin")
+    if any(macho["input"][key] != identity[key] for key in
+           ("sha256", "size", "architecture", "endianness")):
+        raise ValueError("inventory loaded image identity differs")
     modules, methods = ref.targeted_metadata(payload, macho)
     if document["methods"] != methods or len(methods) != 25 or sum(bool(m["category"]) for m in methods) != 4:
         raise ValueError("inventory metadata methods/category aliases differ")
@@ -82,6 +108,7 @@ def audit(stage: str, reference: Path, repo_root: Path, objects: Path | None,
         expected_data[f"switch_{address:x}"] = (address, size, ref.owner_of(function, methods))
     if len(document["data"]) != len(expected_data) or {d["name"] for d in document["data"]} != set(expected_data):
         raise ValueError("inventory data objects missing or duplicated")
+    data_bytes = {}
     for data in document["data"]:
         if (data["address"], data["size"], data["owner"]) != expected_data[data["name"]]:
             raise ValueError(f"inventory data extent/owner differs: {data['name']}")
@@ -90,25 +117,12 @@ def audit(stage: str, reference: Path, repo_root: Path, objects: Path | None,
             raise ValueError(f"inventory data path differs: {data['name']}")
         verify_expected(identify(path), data["size"], data["sha256"])
         offset = reader.offset_of(data["address"])
-        if path.read_bytes() != payload[offset:offset+data["size"]]:
+        raw = path.read_bytes()
+        if raw != payload[offset:offset+data["size"]]:
             raise ValueError(f"inventory data bytes differ: {data['name']}")
-    recon = repo_root / ref.DRIVER / "reconstruction"
-    source_map = load_source_map(recon / "source-map.json", reference_analysis=analysis, repo_root=repo_root)
-    if source_map["boundary_disputed"]:
-        raise ValueError("inventory source map contains disputed function boundaries")
-    current = build_source_map(analysis, macho, source_sites(repo_root, repo_root / ref.DRIVER),
-                               extra_names=objc_method_index(reference / "image.bin"))
-    if source_map != current:
-        raise ValueError("inventory source map is stale against current source sites")
-    ledger, _ = load_ledger(recon / "ledger.json", image_identity, None)
-    entries = ledger["entries"]
-    if len(entries) != 476 or {e["address"] for e in entries} != set(frozen):
-        raise ValueError("inventory ledger does not account for all 476 bodies")
-    for entry in entries:
-        expected = frozen[entry["address"]]
-        if entry["size"] != expected["size"] or entry["names"] != expected["names"]:
-            raise ValueError(f"inventory ledger differs at 0x{entry['address']:x}")
-
+        data_bytes[data["name"]] = raw
+    return {"document": document, "abi": abi, "analysis": analysis, "macho": macho,
+            "frozen": frozen, "image_identity": image_identity, "data": data_bytes}
 
 
 LAYOUT_HEADERS = (
@@ -144,7 +158,12 @@ def declarations(driver):
 
 
 def audit_dispatch_headers(driver, reference):
-    abi = load_json(reference / "abi.json")
+    evidence = authenticate_reference(reference, driver.parents[5])
+    _audit_dispatch_headers(driver, evidence)
+
+
+def _audit_dispatch_headers(driver, evidence):
+    abi = evidence["abi"]
     klass = abi["modules"]["AdaptecU2SCSI.m"]["classes"][0]
     him = next(v["type"] for v in klass["ivars"] if v["name"] == "HIMFunc")
     expected_him = re.findall(r'"(HIM\w+)"\^\?', him)
@@ -170,7 +189,7 @@ def audit_dispatch_headers(driver, reference):
         if callbacks != expected:
             raise ValueError(f"{tag}: ordered callback slots differ")
     signatures = load_json(driver / "reconstruction/signatures.json")
-    frozen = load_json(reference / "reference.json")
+    frozen = evidence["document"]
     functions = [f for f in frozen["functions"] if f["address"] >= 0x18b754]
     records = signatures["functions"]
     if signatures["reference_sha256"] != ref.SHA256 or len(records) != 392:
@@ -241,8 +260,8 @@ def audit_target_inputs(driver, objects):
     return obj
 
 
-def audit_callback_initializers(reference, objects, macho, reader, symbols):
-    frozen = load_json(reference / "reference.json")
+def _audit_callback_initializers(evidence, objects, macho, reader, symbols):
+    frozen = evidence["document"]
     names = {f["address"]: next(n for n in f["names"] if n.startswith("_"))
              for f in frozen["functions"] if any(n.startswith("_") for n in f["names"])}
     relocations = {r["address"]: r for r in macho["relocations"]}
@@ -254,7 +273,7 @@ def audit_callback_initializers(reference, objects, macho, reader, symbols):
                ("SCSIFirmwareStandard64", "SCSIFirmwareSwapping32",
                 "SCSIFirmwareStandardAdv", "SCSIFirmwareSwappingAdv")]
     for name, symbol, first, end in tables:
-        raw = (reference / "data" / (name + ".bin")).read_bytes()
+        raw = evidence["data"][name]
         if symbol not in symbols:
             raise ValueError(f"missing typed callback initializer: {name}")
         base = symbols[symbol]
@@ -282,9 +301,9 @@ def audit_callback_initializers(reference, objects, macho, reader, symbols):
 def audit_layouts(reference, repo_root, objects):
     if objects is None:
         raise ValueError("layouts requires --objects with the target object/manifest/header closure")
-    verify_expected(identify(reference / "image.bin"), ref.SIZE, ref.SHA256)
+    evidence = authenticate_reference(reference, repo_root)
     driver = repo_root / ref.DRIVER
-    audit_dispatch_headers(driver, reference)
+    _audit_dispatch_headers(driver, evidence)
     obj = audit_target_inputs(driver, objects)
     payload, macho = load_image(obj)
     if (macho["input"]["architecture"], macho["input"]["endianness"]) != ("ppc", "big"):
@@ -300,7 +319,7 @@ def audit_layouts(reference, repo_root, objects):
         expected["_au2_" + name + "_layout"] = [layout["size"], *layout["fields"].values()]
     expected["_au2_controller_layout"] = [1488,580,604,684,1228,1408,1416,1424,512]
     symbols = {s["name"]: s["address"] for s in macho["symbols"] if s["section"] is not None}
-    audit_callback_initializers(reference, objects, macho, reader, symbols)
+    _audit_callback_initializers(evidence, objects, macho, reader, symbols)
     for name, values in expected.items():
         if name not in symbols or list(reader.at(symbols[name], len(values))) != values:
             raise ValueError(f"target size/offset constants differ: {name}")
@@ -308,7 +327,7 @@ def audit_layouts(reference, repo_root, objects):
     if set(modules) != {"layout-checks.m"}:
         raise ValueError("target metadata module differs")
     target = modules["layout-checks.m"]
-    frozen = load_json(reference / "abi.json")["modules"]
+    frozen = evidence["abi"]["modules"]
     expected_classes = frozen["AdaptecU2SCSI.m"]["classes"]
     expected_categories = frozen["AdaptecU2SCSIThread.m"]["categories"]
     def ordered(records):

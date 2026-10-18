@@ -5,6 +5,7 @@ import importlib.util
 import json
 import os
 import re
+import shutil
 import struct
 from pathlib import Path
 
@@ -64,6 +65,93 @@ def test_layout_rejects_changed_header(tmp_path):
     header.write_text(header.read_text() + "\n/* changed after target build */\n")
     with pytest.raises(ValueError, match="stale target header: AdaptecU2CHIMTypes.h"):
         audit.audit_target_inputs(driver, objects)
+
+
+@pytest.mark.parametrize("corruption", [
+    "abi_identity", "abi_metadata", "manifest_identity", "function_extent",
+    "owner_duplicate", "image_bytes",
+])
+def test_dispatch_reference_authentication(tmp_path, corruption):
+    reference = tmp_path / "reference"
+    shutil.copytree(OUT / "reference", reference)
+    if corruption == "image_bytes":
+        path = reference / "image.bin"
+        raw = bytearray(path.read_bytes())
+        raw[-1] ^= 1
+        path.write_bytes(raw)
+    else:
+        path = reference / ("abi.json" if corruption.startswith("abi_") else "reference.json")
+        data = json.loads(path.read_text())
+        if corruption in ("abi_identity", "manifest_identity"):
+            data["identity"]["sha256"] = "0" * 64
+        elif corruption == "abi_metadata":
+            # Dispatch previously read only HIMFunc, accepting other mixed metadata.
+            data["modules"]["AdaptecU2SCSI.m"]["classes"][0]["instance_size"] += 4
+        elif corruption == "function_extent":
+            data["functions"][0]["size"] += 4
+        else:
+            owner = "AdaptecU2CHIMSCB.c"
+            data["owners"][owner].append(data["owners"][owner][0])
+        path.write_text(json.dumps(data))
+    reason = {
+        "abi_identity": "targeted ABI identity or metadata",
+        "abi_metadata": "targeted ABI identity or metadata",
+        "manifest_identity": "reference identity",
+        "function_extent": "boundary/name",
+        "owner_duplicate": "owner lists",
+        "image_bytes": "identity mismatch",
+    }[corruption]
+    with pytest.raises(ValueError, match=reason):
+        load_script("verify").audit_dispatch_headers(TESTS.parent, reference)
+
+
+@pytest.mark.parametrize("corruption", [
+    "abi_identity", "table_hash", "table_missing_record", "table_extent",
+    "hardware_bytes", "firmware_bytes",
+])
+def test_layout_reference_authentication(tmp_path, corruption):
+    reference = tmp_path / "reference"
+    shutil.copytree(OUT / "reference", reference)
+    if corruption == "abi_identity":
+        path = reference / "abi.json"
+        abi = json.loads(path.read_text())
+        abi["identity"]["sha256"] = "0" * 64
+        path.write_text(json.dumps(abi))
+    else:
+        import hashlib
+        path = reference / "reference.json"
+        manifest = json.loads(path.read_text())
+        name = {"hardware_bytes": "SCSIHardwareAIC78XX",
+                "firmware_bytes": "SCSIFirmwareStandard64"}.get(corruption, "OSMRoutines")
+        record = next(item for item in manifest["data"] if item["name"] == name)
+        table = reference / record["path"]
+        raw = bytearray(table.read_bytes())
+        if corruption == "table_hash":
+            record["sha256"] = "0" * 64
+        elif corruption == "table_missing_record":
+            manifest["data"].remove(record)
+        else:
+            if corruption == "table_extent":
+                raw += bytes(4)
+                record["size"] += 4
+            else:
+                # Outside the old callback-only comparison windows. Also forge
+                # the manifest hash so the pinned image must settle integrity.
+                raw[100 if corruption == "hardware_bytes" else 0] ^= 1
+            table.write_bytes(raw)
+            record["sha256"] = hashlib.sha256(raw).hexdigest().upper()
+        path.write_text(json.dumps(manifest))
+    reason = {
+        "abi_identity": "targeted ABI identity or metadata",
+        "table_hash": "identity mismatch",
+        "table_missing_record": "data objects missing",
+        "table_extent": "data extent/owner",
+        "hardware_bytes": "data bytes differ",
+        "firmware_bytes": "data bytes differ",
+    }[corruption]
+    with pytest.raises(ValueError, match=reason):
+        load_script("verify").audit("layouts", reference, REPO,
+                                     OUT / "objects/layout-checks", None, None)
 
 
 def test_input_erased_register_contracts():

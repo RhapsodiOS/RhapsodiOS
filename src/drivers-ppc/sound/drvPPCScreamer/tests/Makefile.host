@@ -4,14 +4,20 @@ RUNNER ?=
 L = ../PPCScreamer.drvproj/PPCScreamer.lksproj
 SHARED = ../../drvPPCTASAudio/PPCTASAudio.drvproj/PPCTASAudio.lksproj
 
-.PHONY: test identity-test clean
+.PHONY: test identity-test core-test clean
 identity-test: screamer_identity_test
 	$(RUNNER) ./screamer_identity_test
 
 screamer_identity_test: screamer_identity_test.c $(wildcard $(L)/ScreamerIdentity.h)
 	$(CC) $(CFLAGS) -I$(L) $< -o $@
 
-test: identity-test
+core-test: screamer_core_test
+	$(RUNNER) ./screamer_core_test
+
+screamer_core_test: screamer_core_test.c screamer_fixtures.c $(L)/ScreamerCore.c $(L)/ScreamerProfiles.c
+	$(CC) $(CFLAGS) -I$(L) $^ -o $@
+
+test: identity-test core-test
 
 clean:
 	rm -f screamer_identity_test screamer_core_test screamer_codec_test screamer_runtime_test screamer_adapter_test

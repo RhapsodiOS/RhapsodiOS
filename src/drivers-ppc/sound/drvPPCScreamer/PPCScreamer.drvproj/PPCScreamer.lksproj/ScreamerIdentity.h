@@ -27,7 +27,7 @@ static unsigned int screamer_identity_token(const unsigned char *s,
     return 0;
 }
 
-static ScreamerIdentity ScreamerClassify(ScreamerBytes model,
+static __inline__ ScreamerIdentity ScreamerClassify(ScreamerBytes model,
     ScreamerBytes compatible)
 {
     unsigned int flags, i, start, n;

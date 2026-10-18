@@ -1,5 +1,56 @@
 #include "AdaptecU2CHIMPrivate.h"
 
+void SCSIhSetAddressScbBA32(AdaptecU2HHCB *hhcb, unsigned char offset,
+                             const unsigned char *virtualAddress)
+{
+    unsigned int address = OSDGetBusAddress(hhcb, 1, virtualAddress);
+    OSMWriteUExact8(*hhcb->ioHandle, offset, address);
+    OSMWriteUExact8(*hhcb->ioHandle, offset + 1, address >> 8);
+    OSMWriteUExact8(*hhcb->ioHandle, offset + 2, address >> 16);
+    OSMWriteUExact8(*hhcb->ioHandle, offset + 3, address >> 24);
+}
+
+unsigned int SCSIhGetEntity32FromScb(AdaptecU2HHCB *hhcb, unsigned char offset)
+{
+    unsigned int value = OSMReadUExact8(*hhcb->ioHandle, offset);
+    value |= (unsigned int)OSMReadUExact8(*hhcb->ioHandle, offset + 1) << 8;
+    value |= (unsigned int)OSMReadUExact8(*hhcb->ioHandle, offset + 2) << 16;
+    value |= (unsigned int)OSMReadUExact8(*hhcb->ioHandle, offset + 3) << 24;
+    return value;
+}
+
+unsigned int SCSIhGetAddressScbBA32(AdaptecU2HHCB *hhcb, unsigned char offset)
+{
+    return SCSIhGetEntity32FromScb(hhcb, offset);
+}
+
+unsigned int SCSIhCompareBusAddress(unsigned int left, unsigned int right)
+{
+    return left != right;
+}
+
+void SCSIhAIC78XXLoadScsiRate(AdaptecU2HHCB *hhcb, unsigned short rate)
+{
+    OSMWriteUExact8(*hhcb->ioHandle, 4, rate);
+}
+
+void SCSIhAICBayonetLoadScsiRate(AdaptecU2HHCB *hhcb, unsigned short rate)
+{
+    OSMWriteUExact8(*hhcb->ioHandle, 4, rate);
+    OSMWriteUExact8(*hhcb->ioHandle, 5, rate >> 8);
+}
+
+void SCSIhAIC78XXResetDFifo(AdaptecU2HHCB *hhcb)
+{
+    OSMWriteUExact8(*hhcb->ioHandle, 147, 1);
+}
+
+void SCSIhAICBayonetResetDFifo(AdaptecU2HHCB *hhcb)
+{
+    unsigned char value = OSMReadUExact8(*hhcb->ioHandle, 1);
+    OSMWriteUExact8(*hhcb->ioHandle, 1, value | 0x12);
+}
+
 int SCSIhLoadSequencer(const AdaptecU2IOHandle *handle,
                          const unsigned char *program, int byteCount)
 {

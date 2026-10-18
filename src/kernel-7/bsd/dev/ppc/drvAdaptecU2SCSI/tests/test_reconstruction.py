@@ -806,6 +806,20 @@ def test_sequencer_download_patch_and_failure():
     assert result["results"]
 
 
+@pytest.mark.parametrize("prefix", ["reg4"])
+def test_task6_reference_batch(prefix):
+    cases = json.loads((TESTS / "task6-cases.json").read_text())
+    selected = {**cases, "cases": [c for c in cases["cases"] if c["id"].startswith("task6-" + prefix)]}
+    source = (TESTS.parent / "AdaptecU2CHIMHardware.c").read_text()
+    assert selected["cases"]
+    for case in selected["cases"]:
+        assert re.search(r"\b" + case["entry"] + r"\([^;]*?\)\s*\{", source), case["entry"]
+    runner = load_script("ppc_cases")
+    result = runner.execute(OUT / "reference/image.bin", selected,
+                            json.loads((TESTS / "contracts.json").read_text()))
+    assert len(result["results"]) == len(selected["cases"])
+
+
 def test_descriptor_targets_and_profile_scalars(firmware_evidence):
     driver = TESTS.parent
     assert (driver / "AdaptecU2CHIMTables.c").is_file(), "missing symbolic descriptors and scalar/profile/device tables"

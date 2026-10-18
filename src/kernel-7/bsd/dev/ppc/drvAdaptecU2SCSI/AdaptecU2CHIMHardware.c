@@ -1,5 +1,52 @@
 #include "AdaptecU2CHIMPrivate.h"
 
+void SCSIhAIC78XXEnableIOErr(AdaptecU2HHCB *hhcb)
+{
+}
+
+void SCSIhAICBayonetEnableIOErr(AdaptecU2HHCB *hhcb)
+{
+    unsigned char value = OSMReadUExact8(*hhcb->ioHandle, 16);
+    OSMWriteUExact8(*hhcb->ioHandle, 16, value | 8);
+}
+
+unsigned int SCSIhAICBayonetGetScbRamCtrls(AdaptecU2HHCB *hhcb)
+{
+    return OSMReadUExact8(*hhcb->ioHandle, 132);
+}
+
+unsigned int SCSIhAIC78XXGetScbRamCtrls(AdaptecU2HHCB *hhcb)
+{
+    return OSDReadPciConfiguration(hhcb, 64);
+}
+
+void SCSIhAICBayonetPutScbRamCtrls(AdaptecU2HHCB *hhcb, unsigned int value)
+{
+    OSMWriteUExact8(*hhcb->ioHandle, 132, value);
+}
+
+void SCSIhAIC78XXPutScbRamCtrls(AdaptecU2HHCB *hhcb, unsigned int value)
+{
+    OSDWritePciConfiguration(hhcb, 64, value);
+}
+
+unsigned char SCSIhAIC78XXGetCacheThEn(AdaptecU2HHCB *hhcb)
+{
+    return (OSMReadUExact8(*hhcb->ioHandle, 132) & 0x80) != 0;
+}
+
+unsigned char SCSIhAICBayonetGetCacheThEn(AdaptecU2HHCB *hhcb)
+{
+    unsigned char control = OSMReadUExact8(*hhcb->ioHandle, 135);
+    unsigned char enabled;
+    if (!(control & 4))
+        SCSIhPauseAndWait(hhcb);
+    enabled = (OSMReadUExact8(*hhcb->ioHandle, 132) & 0x80) != 0;
+    if (!(control & 4))
+        SCSIhWriteHCNTRL(hhcb, control);
+    return enabled;
+}
+
 void SCSIhSetAddressScbBA32(AdaptecU2HHCB *hhcb, unsigned char offset,
                              const unsigned char *virtualAddress)
 {

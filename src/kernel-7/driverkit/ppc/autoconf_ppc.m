@@ -775,6 +775,14 @@ NewLoadDriver( const char * configData )
 	    free( failedList );
 	}
 
+    } else if( FindStringKey( configData, "\"Driver Name\"", tryMatch)
+	    && (0 == strcmp( tryMatch, "Floppy"))
+	    && (PCI_FLOPPY_BASE_PHYS == PCI_IO_BASE_PHYS)) {
+	// The ppc Floppy driver has no "Matching" key. Its probe programs a
+	// swim3 at PCI_FLOPPY_BASE_PHYS without looking for one, and with no
+	// floppy controller in the device tree that is the start of mac-io.
+	ret = NO;
+
     } else {
 	configTable = [IOConfigTable newForConfigData:configData];
         if( configTable) {

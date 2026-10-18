@@ -342,7 +342,7 @@ mpic_register_int(int device,
 		return;
 	}
 
-	panic("mpic_register_int: Interrupt %d not found", device);
+	printf("mpic_register_int: Interrupt %d not found\n", device);
 }
 
 #if 0

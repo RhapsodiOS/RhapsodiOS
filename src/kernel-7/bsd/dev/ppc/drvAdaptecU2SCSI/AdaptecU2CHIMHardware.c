@@ -1,5 +1,106 @@
 #include "AdaptecU2CHIMPrivate.h"
 
+void SCSIhAIC78XXUpdateCacheThEn(AdaptecU2HHCB *hhcb)
+{
+    unsigned char value;
+    if ((hhcb->deviceID & 0xfff0) == 0x7880 && hhcb->bytes02[2] &&
+        (hhcb->flags & 0x10000))
+        value = OSMReadUExact8(*hhcb->ioHandle, 132) | 0x80;
+    else {
+        hhcb->flags &= ~0x10000U;
+        value = OSMReadUExact8(*hhcb->ioHandle, 132) & 0x7f;
+    }
+    OSMWriteUExact8(*hhcb->ioHandle, 132, value);
+}
+
+void SCSIhAICBayonetUpdateCacheThEn(AdaptecU2HHCB *hhcb)
+{
+    unsigned char control = OSMReadUExact8(*hhcb->ioHandle, 135), value;
+    if (!(control & 4))
+        SCSIhPauseAndWait(hhcb);
+    value = OSMReadUExact8(*hhcb->ioHandle, 132);
+    if ((hhcb->flags & 0x18000) == 0x10000)
+        value |= 0x80;
+    else
+        value &= 0x7f;
+    OSMWriteUExact8(*hhcb->ioHandle, 132, value);
+    if (!(control & 4))
+        SCSIhWriteHCNTRL(hhcb, control);
+}
+
+void SCSIhStandardResetCCCtl(AdaptecU2HHCB *hhcb)
+{
+    OSMWriteUExact8(*hhcb->ioHandle, 238, 0);
+    OSMWriteUExact8(*hhcb->ioHandle, 235, 0);
+}
+
+void SCSIhStandardInitCCHHAddr(AdaptecU2HHCB *hhcb)
+{
+    OSMWriteUExact8(*hhcb->ioHandle, 228, 0);
+    OSMWriteUExact8(*hhcb->ioHandle, 229, 0);
+    OSMWriteUExact8(*hhcb->ioHandle, 230, 0);
+    OSMWriteUExact8(*hhcb->ioHandle, 231, 0);
+}
+
+void SCSIhAIC78XXCheckExtArbAckEnBit(AdaptecU2HHCB *hhcb)
+{
+    unsigned int count = 0x800000;
+    do {
+        if (OSMReadUExact8(*hhcb->ioHandle, 30) & 0x10)
+            break;
+    } while (count--);
+}
+
+void SCSIhAICBayonetCheckExtArbAckEnBit(AdaptecU2HHCB *hhcb)
+{
+    unsigned int count = 0x800000;
+    do {
+        if (OSMReadUExact8(*hhcb->ioHandle, 30) & 0x10)
+            break;
+    } while (count--);
+}
+
+unsigned short SCSIhAIC78XXGetSpeed(unsigned short rate, unsigned char fastMode)
+{
+    if (fastMode) {
+        switch (rate & 0x70) {
+        case 0: return 200;
+        case 0x10: return 160;
+        case 0x20: return 133;
+        default: return 36;
+        }
+    }
+    switch (rate & 0x70) {
+    case 0: return 100;
+    case 0x10: return 80;
+    case 0x20: return 67;
+    case 0x30: return 57;
+    case 0x40: return 50;
+    case 0x50: return 44;
+    case 0x60: return 40;
+    default: return 36;
+    }
+}
+
+unsigned short SCSIhAICBayonetGetSpeed(unsigned short rate, unsigned int unusedModeWord)
+{
+    unsigned short speed = 50;
+    switch ((rate & 0x7f) - 19) {
+    case 0: speed = 400; break;
+    case 1: speed = 267; break;
+    case 2: speed = 200; break;
+    case 3: speed = 160; break;
+    case 4: speed = 133; break;
+    case 5: speed = 100; break;
+    case 6: speed = 80; break;
+    case 7: speed = 67; break;
+    case 8: speed = 57; break;
+    case 9: speed = 50; break;
+    default: break;
+    }
+    return speed;
+}
+
 void SCSIhAIC78XXEnableIOErr(AdaptecU2HHCB *hhcb)
 {
 }

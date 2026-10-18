@@ -8,6 +8,7 @@
 #include <string.h>
 static IOTreeDevice *treeNodes[5];
 static unsigned int notifications,inputServices,outputServices;
+static unsigned int negotiatedRate=44100,negotiatedEncoding=NX_SoundStreamDataEncoding_Linear16,negotiatedChannels=2;
 static ScreamerStatus test_platform(void *context,int ready) {return kScreamerOK;}
 void IOSendInterrupt(void *identity,void *state,unsigned int message) {++notifications;}
 @implementation IOTreeDevice
@@ -21,7 +22,9 @@ void IOSendInterrupt(void *identity,void *state,unsigned int message) {++notific
     ScreamerBytes b;
     ScreamerFixture *f=fixture;
     if(!f->reader.getProperty(f,node,name,&b)) return 1;
-    *value=(void *)b.bytes;*length=b.length;return 0;
+    if(flags&kReferenceProperty) *value=(void *)b.bytes;
+    else if(*length) memcpy(*value,b.bytes,*length<b.length?*length:b.length);
+    *length=b.length;return 0;
 }
 @end
 
@@ -35,11 +38,22 @@ void IOSendInterrupt(void *identity,void *state,unsigned int message) {++notific
 - (void)_setChannelCount:(unsigned int)v {}
 - (BOOL)_attemptToStopDMAForChannel:(id)channel
 {if(channel==input) ++inputServices;else if(channel==output) ++outputServices;return NO;}
+- (BOOL)_attemptToStartDMAForChannel:(id)channel channelStatus:(BOOL)active
+{
+    [self _setSampleRate:negotiatedRate];[self _setDataEncoding:negotiatedEncoding];[self _setChannelCount:negotiatedChannels];
+    return [self startDMAForChannel:0 read:NO buffer:0 bufferSizeForInterrupts:4096];
+}
 - (BOOL)_setParameter:(NXSoundParameterTag)t toInt:(int)v forObject:(id)o
 { if(t==NX_SoundStreamSamplingRate) {[o setSamplingRate:v];return YES;} return NO; }
 - (int)_intValueForParameter:(NXSoundParameterTag)t forObject:(id)o {return -1;}
 - (void)_getSupportedParameters:(NXSoundParameterTag *)p count:(unsigned int *)n forObject:(id)o {*n=0;}
 - (BOOL)_getValues:(NXSoundParameterTag *)p count:(unsigned int *)n forParameter:(NXSoundParameterTag)t forObject:(id)o {*n=0;return NO;}
+@end
+@interface AdapterDevice : PPCScreamer
+@end
+@implementation AdapterDevice
+- (BOOL)startDMAForChannel:(unsigned int)channel read:(BOOL)read buffer:(IODMABuffer)buffer bufferSizeForInterrupts:(unsigned int)period
+{ return !formatRejected; }
 @end
 @implementation TestStream
 - init {rate=44100;return self;}
@@ -90,11 +104,12 @@ int main(void)
     FixtureSetProperty(&f,4,"model","awacs",6);
     FixtureSetProperty(&f,4,"compatible","awacs",6);
     assert(screamer_tree_identity(&tree)==kScreamerIdentityOther);
-    FixtureSetProperty(&f,4,"model","screamer",9);
+    FixtureSetProperty(&f,4,"model","burgundy",9);
+    FixtureSetProperty(&f,4,"compatible","screamer",9);
     assert(screamer_tree_identity(&tree)==kScreamerIdentityConflict);
     FixtureCodecInit(&f,&codec);
     assert(ScreamerCodecInitialize(&codec,&c,5000)==kScreamerOK);
-    a=[[PPCScreamer alloc] init];a->operationLock=[TestLock new];a->interruptLock=[TestLock new];
+    a=[[AdapterDevice alloc] init];a->operationLock=[TestLock new];a->interruptLock=[TestLock new];
     a->machineConfig=c;a->runtime.config=c;a->runtime.codec=codec;
     a->runtime.initialized=1;a->runtime.power=kScreamerPowerReady;
     a->runtime.clockRate=44100;
@@ -118,6 +133,12 @@ int main(void)
     periods[0]=1;periods[1]=2;[a screamerServicePeriods:periods];
     assert(inputServices==1 && outputServices==2);
     a->runtime.streams[0].running=a->runtime.streams[1].running=0;
+    negotiatedRate=22050;negotiatedEncoding=NX_SoundStreamDataEncoding_Linear8;
+    assert(![a _attemptToStartDMAForChannel:[a _outputChannel] channelStatus:NO]);
+    assert([a sampleRate]==44100 && a->runtime.clockRate==44100);
+    negotiatedEncoding=NX_SoundStreamDataEncoding_Linear16;negotiatedChannels=1;
+    assert(![a _attemptToStartDMAForChannel:[a _outputChannel] channelStatus:NO] && [a sampleRate]==44100);
+    negotiatedChannels=2;
     stream=[TestStream new];
     assert([a _setParameter:NX_SoundStreamSamplingRate toInt:48000 forObject:stream]==NO);
     assert([stream samplingRate]==44100 && [a sampleRate]==44100);

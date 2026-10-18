@@ -62,7 +62,9 @@ kern_return_t PEDAVBusGetInfo(unsigned int base,PEDAVBusInfo *info)
     if(!info || !base) return KERN_INVALID_ARGUMENT;
     if(!davbus) return KERN_FAILURE;
     if(base!=davbus->controllerBase) return KERN_INVALID_ARGUMENT;
-    info->family=davbus->family;return KERN_SUCCESS;
+    info->family=davbus->family;
+    info->capabilities=davbus->readGPIO && davbus->writeGPIO?kPEDAVBusAmplifierGPIO:0;
+    return KERN_SUCCESS;
 }
 kern_return_t PEDAVBusSetState(unsigned int base,PEDAVBusState state)
 {
@@ -71,4 +73,23 @@ kern_return_t PEDAVBusSetState(unsigned int base,PEDAVBusState state)
     if(!davbus) return KERN_FAILURE;
     if(base!=davbus->controllerBase) return KERN_INVALID_ARGUMENT;
     return PEDAVBusSetStateCore(davbus,state);
+}
+kern_return_t PEDAVBusSetAmplifier(unsigned int base,unsigned int enabled)
+{
+    unsigned char value,expected;
+    kern_return_t status;
+    if(!base || enabled>1) return KERN_INVALID_ARGUMENT;
+    if(!davbus || !davbus->readGPIO || !davbus->writeGPIO) return KERN_FAILURE;
+    if(base!=davbus->controllerBase || davbus->inInterruptContext(davbus->context)) return KERN_INVALID_ARGUMENT;
+    davbus->lock(davbus->context);
+    if(*davbus->owner!=kPEAudioMuxDAVbus || !*davbus->active) status=KERN_FAILURE;
+    else {
+        value=davbus->readGPIO(davbus->context,0x6f);
+        expected=(unsigned char)((value&~5U)|4U|enabled);
+        davbus->writeGPIO(davbus->context,0x6f,expected);
+        davbus->barrier(davbus->context);
+        value=davbus->readGPIO(davbus->context,0x6f);
+        status=(value&5U)==(expected&5U)?KERN_SUCCESS:KERN_FAILURE;
+    }
+    davbus->unlock(davbus->context);return status;
 }

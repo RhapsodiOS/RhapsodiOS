@@ -19,6 +19,7 @@
 extern msg_return_t msg_send_from_kernel(msg_header_t *,msg_option_t,msg_timeout_t);
 @interface Object (ScreamerAudioChannel)
 - (BOOL)isRead;
+- (void)freeDescriptors;
 @end
 
 static NXLock *ownerLock;
@@ -74,6 +75,11 @@ static ScreamerStatus screamer_platform(void *context,int enabled)
     PPCScreamer *self=context;
     return PEDAVBusSetState(self->machineConfig.controllerBase,
         enabled?kPEDAVBusReady:kPEDAVBusOff)==KERN_SUCCESS?kScreamerOK:kScreamerIOError;
+}
+static ScreamerStatus screamer_amplifier(void *context,int enabled)
+{
+    PPCScreamer *self=context;
+    return PEDAVBusSetAmplifier(self->machineConfig.controllerBase,(unsigned int)enabled)==KERN_SUCCESS?kScreamerOK:kScreamerIOError;
 }
 static PPCDBDMAStatus screamer_translate(void *context,const void *address,
     unsigned long *physical,unsigned long *contiguous)
@@ -136,7 +142,8 @@ static int ScreamerReadDescription(id description,ScreamerMachineConfig *config)
     reader.context=&tree;reader.nodeCount=tree.count;reader.getProperty=screamer_tree_property;
     reader.getParent=screamer_tree_parent;reader.delivered=&delivered;
     if(ScreamerDiscover(&reader,tree.candidate,config)!=kScreamerOK) return 0;
-    return PEDAVBusGetInfo(config->controllerBase,&info)==KERN_SUCCESS && info.family==kPEDAVBusKeyLargo;
+    return PEDAVBusGetInfo(config->controllerBase,&info)==KERN_SUCCESS && info.family==kPEDAVBusKeyLargo &&
+        (config->profile.powerKind!=7 || (info.capabilities&kPEDAVBusAmplifierGPIO));
 }
 
 static void screamer_poll(void *argument)
@@ -146,7 +153,7 @@ static void screamer_poll(void *argument)
     [ownerLock lock];
     if(owner && token==owner->timerToken && !owner->interruptClosing && !owner->interruptSuspended) {
         memset(&message,0,sizeof(message));message.msg_size=sizeof(message);
-        message.msg_remote_port=IOGetKernPort([owner interruptPort]);
+        message.msg_remote_port=IOConvertPort([owner interruptPort],IO_KernelIOTask,IO_Kernel);
         message.msg_id=IO_DEVICE_INTERRUPT_MSG;
         (void)msg_send_from_kernel(&message,SEND_TIMEOUT,0);
         screamer_arm_locked(owner,250);
@@ -213,9 +220,10 @@ static NXSoundParameterTag screamer_input_tag(ScreamerInput input)
 {
     ScreamerRuntimeOps ops;
     unsigned int i,index;
+    unsigned long deadline;
     vm_offset_t page,physical;
     if(runtime.initialized || interruptClosing) return NO;
-    memset(&ops,0,sizeof(ops));ops.context=self;ops.setPlatform=screamer_platform;
+    memset(&ops,0,sizeof(ops));ops.context=self;ops.setPlatform=screamer_platform;ops.setAmplifier=screamer_amplifier;
     ops.codec.context=self;ops.codec.readLE32=screamer_read;ops.codec.writeLE32=screamer_write;
     ops.codec.nowMS=screamer_now;ops.codec.sleepMS=screamer_sleep;ops.codec.barrier=screamer_barrier;
     for(i=0;i<3;++i) {
@@ -241,6 +249,8 @@ static NXSoundParameterTag screamer_input_tag(ScreamerInput input)
         ops.dma[i].now=screamer_now;ops.dma[i].coherencyContext=self;
         ops.dma[i].publish=screamer_publish;ops.dma[i].invalidate=screamer_invalidate;ops.dma[i].barrier=screamer_dma_barrier;
     }
+    if(!TASTimeAdd(screamer_now(self),100,&deadline) ||
+        ScreamerQuiesceHardware(&ops,deadline)!=kScreamerOK) return NO;
     if(ScreamerRuntimeInitialize(&runtime,&machineConfig,&ops,screamer_deadline(self))!=kScreamerOK) return NO;
     [self setDeviceKind:"PPCScreamer"];[self setUnit:0];[self setName:"PPCScreamer0"];
     for(i=0;i<3;++i) if([self enableInterrupt:i]!=IO_R_SUCCESS) return NO;
@@ -285,6 +295,7 @@ static NXSoundParameterTag screamer_input_tag(ScreamerInput input)
 {
     void *address;unsigned int bytes;ScreamerStatus status;
     (void)channel;
+    if(formatRejected || [self dataEncoding]!=NX_SoundStreamDataEncoding_Linear16 || [self channelCount]!=2) return NO;
     if(read) [self getInputChannelBuffer:&address size:&bytes];
     else [self getOutputChannelBuffer:&address size:&bytes];
     if(address!=buffer) return NO;
@@ -350,6 +361,15 @@ static NXSoundParameterTag screamer_input_tag(ScreamerInput input)
         if(!runtime.streams[i].running) break;
         (void)[self _attemptToStopDMAForChannel:channel];
     }
+}
+- (BOOL)_attemptToStartDMAForChannel:(id)channel channelStatus:(BOOL)active
+{
+    unsigned int previous=[self sampleRate];
+    BOOL started;
+    formatRejected=0;
+    started=[super _attemptToStartDMAForChannel:channel channelStatus:active];
+    if(!started) [super _setSampleRate:previous];
+    return started;
 }
 
 - (IOReturn)getPowerState:(PMPowerState *)state
@@ -525,13 +545,20 @@ rejected:
     if(ScreamerRateCode(&machineConfig,rate,&code)==kScreamerOK &&
         (!(runtime.streams[0].running || runtime.streams[1].running) || rate==runtime.clockRate))
         [super _setSampleRate:rate];
+    else formatRejected=1;
 }
 - (void)_setDataEncoding:(unsigned int)encoding
-{ if(encoding==NX_SoundStreamDataEncoding_Linear16) [super _setDataEncoding:encoding]; }
+{ if(encoding==NX_SoundStreamDataEncoding_Linear16) [super _setDataEncoding:encoding];else formatRejected=1; }
 - (void)_setChannelCount:(unsigned int)count
-{ if(count==2) [super _setChannelCount:count]; }
+{ if(count==2) [super _setChannelCount:count];else formatRejected=1; }
 #ifndef SCREAMER_ADAPTER_TEST
-- (void)_initAudioHardwareSettings { /* Runtime initialized both channels muted. */ }
+- (void)_initAudioHardwareSettings
+{
+    [super _setSampleRate:44100];
+    [super _setDataEncoding:NX_SoundStreamDataEncoding_Linear16];
+    [super _setChannelCount:2];
+    /* Runtime initialized both channels muted. */
+}
 - (unsigned int)inputGainLeft {return (unsigned int)[self _intValueForParameter:NX_SoundDeviceInputGainLeft forObject:[self _inputChannel]];}
 - (unsigned int)inputGainRight {return (unsigned int)[self _intValueForParameter:NX_SoundDeviceInputGainRight forObject:[self _inputChannel]];}
 - (int)outputAttenuationLeft {return [self _intValueForParameter:NX_SoundDeviceOutputAttenuationLeft forObject:[self _outputChannel]];}

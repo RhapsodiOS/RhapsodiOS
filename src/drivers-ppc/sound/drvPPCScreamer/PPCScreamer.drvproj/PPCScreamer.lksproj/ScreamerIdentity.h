@@ -21,6 +21,8 @@ static unsigned int screamer_identity_token(const unsigned char *s,
     unsigned int i;
     if (length == 8 && memcmp(s, "screamer", 8) == 0)
         return 1;
+    if (length == 5 && memcmp(s, "awacs", 5) == 0)
+        return 4;
     for (i = 0; i < sizeof(other) / sizeof(other[0]); ++i)
         if (length == strlen(other[i]) && memcmp(s, other[i], length) == 0)
             return 2;
@@ -30,7 +32,7 @@ static unsigned int screamer_identity_token(const unsigned char *s,
 static __inline__ ScreamerIdentity ScreamerClassify(ScreamerBytes model,
     ScreamerBytes compatible)
 {
-    unsigned int flags, i, start, n;
+    unsigned int flags, modelFlags, i, start, n,j;
     flags = 0;
     if ((model.length && !model.bytes) ||
         (compatible.length && !compatible.bytes))
@@ -44,18 +46,20 @@ static __inline__ ScreamerIdentity ScreamerClassify(ScreamerBytes model,
                 return kScreamerIdentityConflict;
         flags |= screamer_identity_token(model.bytes, n);
     }
-    start = 0;
+    modelFlags=flags;start = 0;
     for (i = 0; i < compatible.length; ++i) {
         if (compatible.bytes[i] != 0)
             continue;
-        if (i == start)
-            return kScreamerIdentityConflict;
+        if (i == start) {
+            for(j=i;j<compatible.length;++j) if(compatible.bytes[j]) return kScreamerIdentityConflict;
+            start=compatible.length;break;
+        }
         flags |= screamer_identity_token(compatible.bytes + start, i - start);
         start = i + 1;
     }
-    if (start != compatible.length || flags == 3)
+    if (start != compatible.length || ((flags&1) && ((flags&2) || modelFlags==4)))
         return kScreamerIdentityConflict;
-    return flags == 1 ? kScreamerIdentityScreamer :
-        (flags == 2 ? kScreamerIdentityOther : kScreamerIdentityUnknown);
+    return flags&1 ? kScreamerIdentityScreamer :
+        (flags&6 ? kScreamerIdentityOther : kScreamerIdentityUnknown);
 }
 #endif

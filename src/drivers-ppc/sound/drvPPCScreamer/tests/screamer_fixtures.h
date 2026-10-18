@@ -18,6 +18,7 @@ typedef struct {
     unsigned int holdBusy,failWrite,irqContext,irqViolations,sense;
 } ScreamerFixture;
 void FixtureInit(ScreamerFixture *);
+void FixtureSawtooth(ScreamerFixture *);
 void FixtureSetProperty(ScreamerFixture *, unsigned int, const char *, const void *, unsigned int);
 void FixtureCell(ScreamerFixture *, unsigned int, const char *, unsigned int);
 void FixtureSetRange(ScreamerFixture *, unsigned int, unsigned int, unsigned int);

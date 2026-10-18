@@ -13,6 +13,14 @@ typedef struct {
 static DMAFake dma[2];
 static ScreamerFixture fixture;
 static unsigned int platformOffs,platformUnsafe,validBuffers;
+static unsigned int amplifier,amplifierWrites,amplifierUnsafe;
+static ScreamerStatus set_amplifier(void *p,int enabled)
+{
+    (void)p;++amplifierWrites;
+    if(!enabled && ((fixture.hardware[1]&0x680U)!=0x280U ||
+        ((dma[0].control|dma[1].control)&kPPCDBDMARun))) ++amplifierUnsafe;
+    amplifier=(unsigned int)enabled;return kScreamerOK;
+}
 static PPCDBDMAStatus translate(void *p,const void *v,unsigned long *phys,unsigned long *bytes)
 {
     DMAFake *f=p;
@@ -216,6 +224,21 @@ int main(void)
         CHECK(ScreamerSetPower(&r,kScreamerPowerReady,5000)==kScreamerIOError);
         CHECK(r.faulted && !dma[0].starts && !dma[1].starts);
     }
+    setup(&r,&c,&ops);FixtureSawtooth(&fixture);
+    CHECK(ScreamerDiscover(&fixture.reader,3,&c)==kScreamerOK);
+    ops.setAmplifier=set_amplifier;amplifier=amplifierWrites=amplifierUnsafe=0;
+    CHECK(ScreamerRuntimeInitialize(&r,&c,&ops,5000)==kScreamerOK);
+    CHECK(amplifier==1 && amplifierWrites==1 && fixture.now>=1057);
+    CHECK((fixture.hardware[1]&0x680U)==0x680U && c.profile.powerKind==7);
+    CHECK(ScreamerSetPower(&r,kScreamerPowerSuspended,5000)==kScreamerOK);
+    CHECK(!amplifier && !amplifierUnsafe && amplifierWrites==2);
+    CHECK(ScreamerSetPower(&r,kScreamerPowerReady,5000)==kScreamerOK);
+    CHECK(amplifier && amplifierWrites==3 && (fixture.hardware[1]&0x400U));
+    setup(&r,&c,&ops);dma[1].holdStop=1;
+    CHECK(ScreamerQuiesceHardware(&ops,100)==kScreamerTimeout);
+    CHECK(!platformOffs && !dma[0].starts && !dma[1].starts);
+    dma[1].holdStop=0;
+    CHECK(ScreamerQuiesceHardware(&ops,5000)==kScreamerOK);
     printf("runtime: %u checks, %u failures\n",checks,failures);
     return failures!=0;
 }

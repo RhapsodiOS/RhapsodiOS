@@ -18,7 +18,7 @@ static int screamer_tree_property(void *context,unsigned int node,
     ByteCount length=0;
     bytes->bytes=0;bytes->length=0;
     if(!node || node>tree->count) return 0;
-    if([[tree->nodes[node-1] propertyTable] getProperty:name flags:0 value:&value
+    if([[tree->nodes[node-1] propertyTable] getProperty:name flags:kReferenceProperty value:&value
         length:&length]!=IO_R_SUCCESS) return 0;
     bytes->bytes=value;bytes->length=length;return 1;
 }

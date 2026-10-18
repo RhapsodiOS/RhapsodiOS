@@ -94,11 +94,11 @@ void FixtureInit(ScreamerFixture *f)
 {
     unsigned char r[24], map[12], irq[12], rates[8];
     static const char objects[] =
-        "output model OutputPort port-connection 3 port-type 0x6973706b\0"
+        "output model OutputPort port-connection 2 port-type 0x6973706b\0"
         "output model OutputPort port-connection 1 port-type 0x6864706e\0"
         "input model InputPort port-connection 2 port-type 0x6c696e65\0"
         "input model InputPort port-connection 3 port-type 0x63642020\0"
-        "detect model InSenseBitsDetect bit-mask 4 bit-match 4 device 2\0";
+        "detect model InSenseBitsDetect bit-mask 2 bit-match 2 device 2\0";
     memset(f, 0, sizeof(*f));
     f->count = 4; f->parents[2] = 1; f->parents[3] = 2; f->parents[4] = 3;
     f->reader.context = f; f->reader.nodeCount = 4;
@@ -126,4 +126,46 @@ void FixtureInit(ScreamerFixture *f)
     be32(rates,44100); be32(rates+4,22050);
     FixtureSetProperty(f,4,"sample-rates",rates,8);
     FixtureSetProperty(f,4,"sound-objects",objects,sizeof(objects)-1);
+}
+/* Relevant properties transcribed from the PowerMac3,1 4.2.8f1 OF dump
+ * cited in SOURCES.md. No serial numbers or unrelated firmware are included. */
+void FixtureSawtooth(ScreamerFixture *f)
+{
+    unsigned char assigned[20],rates[12],map[20],irq[24];
+    static const char *records[]={
+        "init operation 2 param 00000001 param-size 4" ,
+        "feature index 0 model Proj7PowerControl" ,
+        "feature index 1 model USBSubwoofer" ,
+        "feature index 2 model NotifySSprockets" ,
+        "detect bit-mask 2 bit-match 2 device 2 index 0 model InSenseBitsDetect" ,
+        "detect bit-mask 4 bit-match 4 device 16 index 1 model InSenseBitsDetect" ,
+        "detect bit-mask 1 bit-match 0 device 32 index 2 model InSenseBitsDetect" ,
+        "input icon-id -16526 index 0 name-id -20520 port-connection 2 port-type 0x656D6963 zero-gain 0 model ExternalMic" ,
+        "input icon-id -16526 index 1 name-id -20528 port-connection 2 port-type 0x73696E6A zero-gain 0 model InputPort" ,
+        "input icon-id -20184 index 2 name-id -20540 port-connection 3 port-type 0x6d6f646d zero-gain 0 model InputPort" ,
+        "input index 3 model NoInput" ,
+        "output device-mask 2 device-match 0 icon-id -16563 index 0 name-id -20525 port-connection 2 port-type 0x6973706B model OutputPort" ,
+        "output device-mask 2 device-match 2 icon-id -16563 index 1 name-id -20524 port-connection 1 port-type 0x6864706E model OutputPort" };
+    unsigned char objects[1200];
+    unsigned int pos=0,i,length;
+    for(i=0;i<sizeof(records)/sizeof(records[0]);++i) {
+        length=(unsigned int)strlen(records[i])+1;memcpy(objects+pos,records[i],length);pos+=length;
+    }
+    objects[pos++]=0;
+    FixtureInit(f);f->parents[2]=5;f->parents[5]=1;f->reader.nodeCount=5;
+    FixtureCell(f,5,"#address-cells",3);FixtureCell(f,5,"#size-cells",2);
+    FixtureSetProperty(f,2,"compatible","Keylargo",9);
+    be32(assigned,0x82013810U);be32(assigned+4,0);be32(assigned+8,0x80000000U);
+    be32(assigned+12,0);be32(assigned+16,0x80000);
+    FixtureSetProperty(f,2,"assigned-addresses",assigned,20);
+    be32(map,0);memcpy(map+4,assigned,12);be32(map+16,0x80000);
+    FixtureSetProperty(f,2,"ranges",map,20);
+    FixtureSetProperty(f,4,"model","343S0184",9);
+    FixtureSetProperty(f,4,"compatible","screamer\0awacs\0",16);
+    be32(rates,2);be32(rates+4,0x56220000U);be32(rates+8,0xac440000U);
+    FixtureSetProperty(f,4,"sample-rates",rates,12);
+    FixtureSetProperty(f,4,"sound-objects",objects,pos);
+    be32(irq,24);be32(irq+4,1);be32(irq+8,9);be32(irq+12,0);be32(irq+16,10);be32(irq+20,0);
+    FixtureSetProperty(f,3,"interrupts",irq,24);
+    FixtureSetInterrupt(f,0,24);FixtureSetInterrupt(f,1,9);FixtureSetInterrupt(f,2,10);
 }

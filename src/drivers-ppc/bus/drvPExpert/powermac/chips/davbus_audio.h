@@ -14,6 +14,8 @@ typedef struct {
     void (*unlock)(void *);
     void (*barrier)(void *);
     boolean_t (*inInterruptContext)(void *);
+    unsigned char (*readGPIO)(void *,unsigned int);
+    void (*writeGPIO)(void *,unsigned int,unsigned char);
 } PEDAVBusTransport;
 void PEDAVBusBindTransport(const PEDAVBusTransport *);
 kern_return_t PEDAVBusSetStateCore(const PEDAVBusTransport *, PEDAVBusState);

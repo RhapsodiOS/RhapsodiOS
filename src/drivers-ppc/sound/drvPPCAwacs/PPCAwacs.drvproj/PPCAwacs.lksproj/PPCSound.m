@@ -135,7 +135,7 @@ void _writeSoundControlReg(unsigned int baseAddr, unsigned int value)
 void enforceInOrderExecutionIO(void)
 {
     /* PowerPC eieio (Enforce In-order Execution of I/O) instruction */
-    __asm__ volatile("eieio" ::: "memory");
+    __asm__ volatile("eieio");
 }
 
 /*
@@ -291,9 +291,7 @@ void _unscale_volume(unsigned int leftScaled, unsigned int rightScaled, int *lef
     /* Check if we're on Perch hardware */
     busClass = [deviceDescription deviceClass];
     if (busClass != nil) {
-        perchDevice = [busClass performSelector:@selector(findMatchingDevice:location:)
-                                      withObject:@"perch"
-                                      withObject:nil];
+        perchDevice = [busClass findMatchingDevice:"perch" location:NULL];
         if (perchDevice != nil) {
             IOLog("PPCAwacs: Detected Perch hardware\n");
             instance->isPerchHardware = YES;

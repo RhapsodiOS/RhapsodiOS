@@ -20,6 +20,7 @@
     void *ringPages[2],*scratch[2];
     unsigned int mapped,ioAudioPublished,interruptClosing,interruptSuspended;
     unsigned int pendingIRQs;
+    unsigned int formatRejected;
     unsigned long timerToken;
     PMPowerState currentPowerState;
 }

@@ -101,7 +101,7 @@ ScreamerStatus ScreamerDiscover(const ScreamerPropertyReader *r,unsigned int can
     ScreamerBytes b,model,compat;
     ScreamerIdentity id;
     unsigned int n,sound=0,count=0,bus,root,depth,ac,sc,stride,i,j,code;
-    unsigned int clock=0,absolute=0,haveAbsolute=0,relative;
+    unsigned int clock=0,absolute=0,haveAbsolute=0,relative,assigned=0,extent=0,start=0;
     if(!r || !out || !r->getProperty || !r->getParent || !r->delivered ||
         !r->nodeCount || r->nodeCount>512 || !candidate || candidate>r->nodeCount)
         return kScreamerInvalid;
@@ -121,7 +121,7 @@ ScreamerStatus ScreamerDiscover(const ScreamerPropertyReader *r,unsigned int can
     /* Only the KeyLargo DAVbus platform backend is admitted initially. */
     for(i=0;i+8<=compat.length;++i)
         if((i==0 || compat.bytes[i-1]==0) &&
-            !memcmp(compat.bytes+i,"keylargo",8) &&
+            (!memcmp(compat.bytes+i,"keylargo",8) || !memcmp(compat.bytes+i,"Keylargo",8)) &&
             (i+8==compat.length || compat.bytes[i+8]==0)) clock=1;
     if(!clock) return kScreamerUnsupported;
     root=bus;
@@ -147,6 +147,27 @@ ScreamerStatus ScreamerDiscover(const ScreamerPropertyReader *r,unsigned int can
             if(!word(a,&absolute)) return kScreamerInvalid;
             haveAbsolute=1;
         }
+        a=prop(r,bus,"assigned-addresses");
+        if(a.length) {
+            unsigned int found=0;
+            if(!a.bytes || a.length%20) return kScreamerInvalid;
+            for(i=0;i<a.length;i+=20) {
+                unsigned int tag=ScreamerBE32(a.bytes+i);
+                if((tag&0x030000ffU)!=0x02000010U) continue;
+                if(++found>1 || ScreamerBE32(a.bytes+i+4) || ScreamerBE32(a.bytes+i+12)) return kScreamerInvalid;
+                start=ScreamerBE32(a.bytes+i+8);extent=ScreamerBE32(a.bytes+i+16);
+                if(!extent || extent-1>UINT_MAX-start || (haveAbsolute && absolute!=start)) return kScreamerInvalid;
+                absolute=start;haveAbsolute=assigned=1;
+            }
+            if(found!=1) return kScreamerUnresolved;
+            a=prop(r,bus,"ranges");
+            /* mac-io child address, PCI parent (hi,mid,lo), size. The
+             * delivered resources and PE's BAR decoding independently agree. */
+            if(!a.bytes || a.length!=20 || ScreamerBE32(a.bytes) ||
+                (ScreamerBE32(a.bytes+4)&0x03000000U)!=0x02000000U ||
+                ScreamerBE32(a.bytes+8) || ScreamerBE32(a.bytes+12)!=absolute ||
+                ScreamerBE32(a.bytes+16)!=extent) return kScreamerInvalid;
+        }
     }
     for(i=0;i<3;++i) {
         if(!cellvalue(b.bytes+i*stride,ac,&c.ranges[i].address) ||
@@ -154,11 +175,12 @@ ScreamerStatus ScreamerDiscover(const ScreamerPropertyReader *r,unsigned int can
             c.ranges[i].length<(i?0x100U:0x44U))
             return kScreamerInvalid;
         relative=c.ranges[i].address;
+        if(assigned && (relative>=extent || c.ranges[i].length>extent-relative)) return kScreamerInvalid;
         if(haveAbsolute) {
             ScreamerBytes map=prop(r,bus,"ranges");
             if(relative>UINT_MAX-absolute) return kScreamerInvalid;
             c.ranges[i].address=absolute+relative;
-            if(map.length) {
+            if(map.length && !assigned) {
                 if(!translate(r,bus,&relative,c.ranges[i].length) ||
                     relative!=c.ranges[i].address) return kScreamerInvalid;
             }
@@ -185,9 +207,17 @@ ScreamerStatus ScreamerDiscover(const ScreamerPropertyReader *r,unsigned int can
         for(j=0;j<i;++j) if(c.interrupts[i]==c.interrupts[j]) return kScreamerInvalid;
     }
     b=prop(r,sound,"sample-rates");
-    if(!b.bytes || !b.length || b.length%4 || b.length>32) return kScreamerInvalid;
-    c.rateCount=b.length/4;
-    for(i=0;i<c.rateCount;++i) c.rates[i]=ScreamerBE32(b.bytes+i*4);
+    if(!b.bytes || !b.length || b.length%4 || b.length>36) return kScreamerInvalid;
+    c.rateCount=b.length/4;start=0;assigned=0;
+    if(c.rateCount>1 && ScreamerBE32(b.bytes)==c.rateCount-1) {
+        start=1;assigned=1;--c.rateCount;
+    }
+    if(c.rateCount>8) return kScreamerInvalid;
+    for(i=0;i<c.rateCount;++i) {
+        code=ScreamerBE32(b.bytes+(i+start)*4);
+        if(assigned) {if(code&0xffffU) return kScreamerUnsupported;code>>=16;}
+        c.rates[i]=code;
+    }
     for(i=0;i<c.rateCount;++i) {
         if(ScreamerRateCode(&c,c.rates[i],&code)!=kScreamerOK) return kScreamerUnsupported;
         for(j=0;j<i;++j) if(c.rates[i]==c.rates[j]) return kScreamerInvalid;

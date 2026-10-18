@@ -343,6 +343,8 @@ keylargo_bind_davbus(DTEntry macIO)
   transport->unlock = keylargo_unlock;
   transport->barrier = keylargo_davbus_barrier;
   transport->inInterruptContext = keylargo_in_interrupt;
+  transport->readGPIO = keylargo_read_gpio8;
+  transport->writeGPIO = keylargo_write_gpio8;
   PEDAVBusBindTransport(transport);
 }
 

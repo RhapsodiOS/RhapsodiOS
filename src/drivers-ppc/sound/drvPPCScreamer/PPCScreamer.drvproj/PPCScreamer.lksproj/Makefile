@@ -6,9 +6,7 @@ NAME = drvPPCScreamer
 PROJECTVERSION = 1.0
 PROJECT_TYPE = Kernel Server
 LANGUAGE = English
-CFILES = ScreamerCore.c ScreamerProfiles.c ScreamerCodec.c ScreamerRuntime.c \
-         ../../../drvPPCTASAudio/PPCTASAudio.drvproj/PPCTASAudio.lksproj/PPCDBDMAAudio.c \
-         ../../../drvPPCTASAudio/PPCTASAudio.drvproj/PPCTASAudio.lksproj/TASTime.c
+CFILES = ScreamerCore.c ScreamerProfiles.c ScreamerCodec.c ScreamerRuntime.c PPCDBDMAAudio.c TASTime.c
 CLASSES = PPCScreamer.m
 HFILES = PPCScreamer.h ScreamerCore.h ScreamerIdentity.h ScreamerProfiles.h ScreamerCodec.h ScreamerRuntime.h ScreamerTree.h
 OTHERSRCS = Makefile.preamble Makefile Makefile.postamble Load_Commands.sect \

@@ -7,6 +7,7 @@ typedef struct {
     void *context;
     ScreamerCodecOps codec;
     ScreamerStatus (*setPlatform)(void *,int);
+    ScreamerStatus (*setAmplifier)(void *,int);
     int (*bufferValid)(void *,ScreamerStream,void *,unsigned long);
     PPCDBDMAOps dma[2];
     PPCDBDMAStorage storage[2];
@@ -42,4 +43,5 @@ ScreamerStatus ScreamerServiceDeferred(ScreamerRuntime *,unsigned long,unsigned 
 ScreamerStatus ScreamerAcknowledgeInterrupt(const ScreamerRuntimeOps *,unsigned int,unsigned int *);
 ScreamerStatus ScreamerSetPower(ScreamerRuntime *,ScreamerPowerState,unsigned long);
 ScreamerStatus ScreamerBeginClose(ScreamerRuntime *,unsigned long);
+ScreamerStatus ScreamerQuiesceHardware(const ScreamerRuntimeOps *,unsigned long);
 #endif

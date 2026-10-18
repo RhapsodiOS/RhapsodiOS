@@ -6,6 +6,7 @@
 typedef unsigned long UInt32;
 typedef unsigned long ByteCount;
 #define IO_R_SUCCESS 0
+#define kReferenceProperty 0x00010000UL
 #define IO_R_INVALID_ARG 1
 #define IO_R_IO 2
 enum {PM_READY,PM_STANDBY,PM_SUSPENDED,PM_OFF};
@@ -37,6 +38,7 @@ enum {NX_SoundDeviceLineOut=25,NX_SoundDeviceSpeakerOut,NX_SoundDeviceCDOut,
 - (void)_setChannelCount:(unsigned int)v;
 - (BOOL)_setParameter:(NXSoundParameterTag)t toInt:(int)v forObject:(id)o;
 - (BOOL)_attemptToStopDMAForChannel:(id)channel;
+- (BOOL)_attemptToStartDMAForChannel:(id)channel channelStatus:(BOOL)active;
 - (int)_intValueForParameter:(NXSoundParameterTag)t forObject:(id)o;
 - (void)_getSupportedParameters:(NXSoundParameterTag *)p count:(unsigned int *)n forObject:(id)o;
 - (BOOL)_getValues:(NXSoundParameterTag *)p count:(unsigned int *)n forParameter:(NXSoundParameterTag)t forObject:(id)o;

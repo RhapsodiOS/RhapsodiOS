@@ -26,6 +26,7 @@ typedef struct {
 typedef struct {
     unsigned int headphoneMask, headphoneMatch, anySense;
     unsigned int speakerPort, headphonePort, speakerKind, speakerParam;
+    unsigned int powerKind,initOutput;
     unsigned int inputBits[kScreamerInputCount];
 } ScreamerProfile;
 typedef struct {

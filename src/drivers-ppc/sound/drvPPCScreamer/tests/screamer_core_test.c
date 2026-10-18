@@ -15,7 +15,7 @@ int main(void)
     CHECK(c.profile.headphoneMask == 4 && c.profile.headphoneMatch == 4);
     CHECK(c.profile.inputBits[kScreamerInputLine] == 0x400U);
     CHECK(c.profile.inputBits[kScreamerInputCD] == 0x200U);
-    CHECK(c.profile.speakerPort == 3 && c.profile.headphonePort == 1);
+    CHECK(c.profile.speakerPort == 2 && c.profile.headphonePort == 1);
     CHECK(ScreamerRateCode(&c,44100,&code)==kScreamerOK && code==0);
     CHECK(ScreamerRateCode(&c,22050,&code)==kScreamerOK && code==2);
     CHECK(ScreamerRateCode(&c,48000,&code)==kScreamerUnsupported);
@@ -53,6 +53,14 @@ int main(void)
     CHECK(ScreamerQuantize(16384,32768)==8);
     CHECK(ScreamerQuantize(0xffffffffU,0xffffffffU)==15);
     for(i=0;i<16;++i) CHECK(ScreamerQuantize(i,15)==i);
+    FixtureSawtooth(&f);
+    CHECK(ScreamerDiscover(&f.reader,3,&c)==kScreamerOK);
+    CHECK(c.rateCount==2 && c.rates[0]==22050 && c.rates[1]==44100);
+    CHECK(c.profile.powerKind==7 && c.profile.initOutput==1);
+    CHECK(c.profile.speakerPort==2 && c.profile.headphonePort==1 && c.profile.headphoneMask==4);
+    CHECK(c.profile.inputBits[kScreamerInputMic]==0x400U && c.profile.inputBits[kScreamerInputLine]==0x400U);
+    FixtureCell(&f,2,"AAPL,address",0x90000000U);
+    CHECK(ScreamerDiscover(&f.reader,3,&c)==kScreamerInvalid);
     printf("core: %u checks, %u failures\n",checks,failures);
     return failures!=0;
 }

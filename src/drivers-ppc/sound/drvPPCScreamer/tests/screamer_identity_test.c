@@ -16,6 +16,7 @@ static void classify_compatible_list(void)
     CHECK(ScreamerClassify(bytes("screamer",8), bytes(0,0)) == kScreamerIdentityScreamer);
     CHECK(ScreamerClassify(bytes("screamer",9), bytes(0,0)) == kScreamerIdentityScreamer);
     CHECK(ScreamerClassify(bytes(0,0), bytes(0,0)) == kScreamerIdentityUnknown);
+    CHECK(ScreamerClassify(bytes("343S0184",9),bytes("screamer\0awacs\0",16))==kScreamerIdentityScreamer);
     CHECK(ScreamerClassify(bytes("burgundy",8), bytes(0,0)) == kScreamerIdentityOther);
 }
 static void reject_unterminated_list(void)

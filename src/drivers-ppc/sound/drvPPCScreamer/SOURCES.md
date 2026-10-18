@@ -1,8 +1,21 @@
 # Screamer source evidence
 
 New code implements hardware facts through Rhapsody DriverKit. No GPL code,
-tables, or comments are copied. Constructed fixtures are synthetic and are not
-firmware dumps or hardware validation.
+tables, or comments are copied. Most fixtures are synthetic; none establishes
+physical hardware validation.
+
+`FixtureSawtooth` separately transcribes only relevant properties from a
+[PowerMac3,1 BootROM 4.2.8f1 dump](https://mail-index.netbsd.org/port-macppc/2010/11/30/msg001285.html).
+It is firmware evidence, without a physical result from this project. The
+specific `screamer` compatibility followed by legacy `awacs` is accepted;
+contradictory explicit codec models remain rejected. The dump has counted
+16.16 rates, capitalized `Keylargo`, a PCI BAR and mac-io range, output ports
+1/2, and logical InSense bits reversed by Apple's `sndHWGetInSenseBits`.
+Apple's `parseAndActivateInit` maps operation 2 to programmable output 0.
+The Proj7 power object uses GPIO5 at 0x6f (0x05/0x04), waits 300 ms on power-on,
+and clears programmable output 0 before its 200 ms power-off delay. USB iSub,
+SSprockets notifications, telephony inputs and alternate sound-in controls
+are outside the analog PCM interface.
 
 | Reference | Pin | Evidence used |
 | --- | --- | --- |

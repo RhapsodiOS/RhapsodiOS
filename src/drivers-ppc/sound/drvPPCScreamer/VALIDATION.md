@@ -2,8 +2,15 @@
 
 | Gate | Result |
 | --- | --- |
-| Deterministic C tests | Not yet complete |
-| Period PPC build and package | Not run |
+| Deterministic C tests | Pass: identity, discovery, codec, runtime, routing, IRQ and power failure injection |
+| Period Objective-C adapter tests | Pass on cc-771.4 / GCC 2.7.2.1 and Rhapsody Objective-C runtime |
+| Kernel header installation | Pass, including installed PEDAVBus.h content comparison |
+| Platform Expert PPC build | Pass; DAVbus service definitions present in PPC Mach-O |
+| Screamer PPC bundle | Pass from an isolated staged source tree; PPC-only Mach-O PRELOAD and matching generated server name/glue |
+| Source staging | Pass: canonical helper equality, no source mutation, stale products excluded, nonempty destination rejected |
+| rbuild PPC APK | Pending: seed repository lacks dependency `drivertools` |
+| rbuild i386 rejection | Pass: rejects the explicit PPC package architecture before compilation |
+| Legacy AWACS whole-bundle build | Pending: existing `_entry` references are undeclared in PPCSoundPrivate.m; modified PPCSound.m compiles |
 | Sawtooth physical playback/capture | Not run; no machine available to this execution |
 | Physical sleep/wake | Blocked by platform PM prerequisite; not run |
 

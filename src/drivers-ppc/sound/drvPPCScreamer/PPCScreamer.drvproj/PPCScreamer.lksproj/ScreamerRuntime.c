@@ -41,6 +41,19 @@ static unsigned long stop_deadline(ScreamerRuntime *r,unsigned long deadline)
     if(left>100 && TASTimeAdd(now,100,&bounded)) return bounded;
     return deadline;
 }
+ScreamerStatus ScreamerQuiesceHardware(const ScreamerRuntimeOps *ops,unsigned long deadline)
+{
+    PPCDBDMARing ring;
+    PPCDBDMATransition transition;
+    unsigned int i;
+    if(!ops) return kScreamerInvalid;
+    for(i=0;i<2;++i) {
+        memset(&ring,0,sizeof(ring));ring.state=kPPCDBDMAFaulted;
+        transition=PPCDBDMAStopRing(&ring,&ops->dma[i],deadline);
+        if(transition.status!=kPPCDBDMAOK) return dma_status(transition.status);
+    }
+    return kScreamerOK;
+}
 static void fault(ScreamerRuntime *r)
 {
     unsigned int i;
@@ -50,6 +63,30 @@ static void fault(ScreamerRuntime *r)
     for(i=0;i<2;++i) (void)ScreamerStop(r,(ScreamerStream)i,deadline);
     (void)ScreamerCodecWrite(&r->codec,1,r->codec.shadow[1]|0x280U,deadline);
 }
+static ScreamerStatus initialize_codec(ScreamerRuntime *r,unsigned long deadline)
+{
+    ScreamerStatus status=kScreamerOK;
+    if(r->config.profile.powerKind==7) {
+        status=r->ops.setAmplifier(r->ops.context,1);
+        if(status==kScreamerOK) status=ScreamerCodecDelay(&r->codec,300,deadline);
+    }
+    if(status==kScreamerOK) status=ScreamerCodecInitialize(&r->codec,&r->config,deadline);
+    if(status==kScreamerOK && r->config.profile.initOutput)
+        status=ScreamerCodecWrite(&r->codec,1,r->codec.shadow[1]|0x400U,deadline);
+    return status;
+}
+static ScreamerStatus sleep_codec(ScreamerRuntime *r,ScreamerPowerState target,unsigned long deadline)
+{
+    ScreamerStatus status=kScreamerOK;
+    if(r->config.profile.powerKind==7) {
+        status=ScreamerCodecWrite(&r->codec,1,(r->codec.shadow[1]|0x280U)&~0x400U,deadline);
+        if(status==kScreamerOK) status=ScreamerCodecDelay(&r->codec,200,deadline);
+    }
+    if(status==kScreamerOK) status=ScreamerCodecSetPower(&r->codec,target,deadline);
+    if(status==kScreamerOK && r->config.profile.powerKind==7)
+        status=r->ops.setAmplifier(r->ops.context,0);
+    return status;
+}
 ScreamerStatus ScreamerRuntimeInitialize(ScreamerRuntime *r,
     const ScreamerMachineConfig *config,const ScreamerRuntimeOps *ops,unsigned long deadline)
 {
@@ -57,14 +94,18 @@ ScreamerStatus ScreamerRuntimeInitialize(ScreamerRuntime *r,
     unsigned int code,i,sense,second;
     if(!r || !config || !ops || !ops->setPlatform ||
         ScreamerRateCode(config,44100,&code)!=kScreamerOK) return kScreamerInvalid;
+    if(config->profile.powerKind && (config->profile.powerKind!=7 || !ops->setAmplifier)) return kScreamerUnresolved;
     memset(r,0,sizeof(*r));r->config=*config;r->ops=*ops;r->codec.ops=ops->codec;
     if(!ops->codec.nowMS || !ops->codec.readLE32 || !ops->codec.writeLE32 ||
         !ops->codec.sleepMS || !ops->codec.barrier) return kScreamerInvalid;
     s=ops->setPlatform(ops->context,1);
     if(s!=kScreamerOK) return s;
-    s=ScreamerCodecInitialize(&r->codec,config,deadline);
+    s=initialize_codec(r,deadline);
     if(s!=kScreamerOK) {
-        r->faulted=1;(void)ops->setPlatform(ops->context,0);return s;
+        r->faulted=1;
+        if(config->profile.powerKind==7) {r->initialized=1;r->power=kScreamerPowerReady;}
+        else (void)ops->setPlatform(ops->context,0);
+        return s;
     }
     r->desired.userMuted=1;r->desired.attenuation[0]=r->desired.attenuation[1]=15;
     for(i=0;i<kScreamerInputCount;++i) if(config->profile.inputBits[i]) break;
@@ -271,7 +312,7 @@ ScreamerStatus ScreamerSetPower(ScreamerRuntime *r,ScreamerPowerState target,
             if(status!=kScreamerOK) {fault(r);return status;}
         }
         if(previous==kScreamerPowerReady) {
-            status=ScreamerCodecSetPower(&r->codec,target,deadline);
+            status=sleep_codec(r,target,deadline);
             if(status!=kScreamerOK) {fault(r);return status;}
             status=r->ops.setPlatform(r->ops.context,0);
             if(status!=kScreamerOK) {fault(r);return status;}
@@ -280,7 +321,8 @@ ScreamerStatus ScreamerSetPower(ScreamerRuntime *r,ScreamerPowerState target,
         r->routeKnown=0;r->power=target;return kScreamerOK;
     }
     status=r->ops.setPlatform(r->ops.context,1);
-    if(status==kScreamerOK) status=ScreamerCodecInitialize(&r->codec,&r->config,deadline);
+    if(status!=kScreamerOK) {r->faulted=1;return status;}
+    if(status==kScreamerOK) status=initialize_codec(r,deadline);
     if(status==kScreamerOK) status=ScreamerCodecSetRate(&r->codec,&r->config,rate,deadline);
     if(status==kScreamerOK) status=r->codec.ops.readLE32(r->codec.ops.context,0x20,&sense);
     if(status==kScreamerOK) status=ScreamerCodecDelay(&r->codec,5,deadline);
@@ -295,8 +337,10 @@ ScreamerStatus ScreamerSetPower(ScreamerRuntime *r,ScreamerPowerState target,
         }
     }
     if(status!=kScreamerOK) {
-        fault(r);r->power=previous;
-        (void)r->ops.setPlatform(r->ops.context,0);return status;
+        fault(r);
+        if(r->config.profile.powerKind==7) r->power=kScreamerPowerReady;
+        else {r->power=previous;(void)r->ops.setPlatform(r->ops.context,0);}
+        return status;
     }
     for(i=0;i<2;++i) {
         saved[i]=r->savedStreams[i];
@@ -325,7 +369,7 @@ ScreamerStatus ScreamerBeginClose(ScreamerRuntime *r,unsigned long deadline)
         if(status!=kScreamerOK) {fault(r);return status;}
     }
     if(r->power==kScreamerPowerReady) {
-        status=ScreamerCodecSetPower(&r->codec,kScreamerPowerOff,deadline);
+        status=sleep_codec(r,kScreamerPowerOff,deadline);
         if(status!=kScreamerOK) return status;
         status=r->ops.setPlatform(r->ops.context,0);
         if(status!=kScreamerOK) return status;

@@ -41,6 +41,7 @@
 #import <string.h>
 #import <bsd/sys/systm.h>		/* bcopy, sprintf, strtoul, strchr */
 #import <machdep/ppc/interrupts.h>	/* pmac_register_int, SPLNET */
+#import <mach/vm_param.h>		/* page_size */
 
 /*
  * GET_DEBUGINFO snapshot, returned by -getCharValues:forParameter:count:.

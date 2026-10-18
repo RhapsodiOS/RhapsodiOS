@@ -23,7 +23,13 @@ codec-test: screamer_codec_test
 screamer_codec_test: screamer_codec_test.c screamer_fixtures.c $(L)/ScreamerCore.c $(L)/ScreamerProfiles.c $(L)/ScreamerCodec.c $(SHARED)/TASTime.c
 	$(CC) $(CFLAGS) -I$(L) -I$(SHARED) $^ -o $@
 
-test: identity-test core-test codec-test
+runtime-test: screamer_runtime_test
+	$(RUNNER) ./screamer_runtime_test
+
+screamer_runtime_test: screamer_runtime_test.c screamer_fixtures.c $(L)/ScreamerCore.c $(L)/ScreamerProfiles.c $(L)/ScreamerCodec.c $(L)/ScreamerRuntime.c $(SHARED)/PPCDBDMAAudio.c $(SHARED)/TASTime.c
+	$(CC) $(CFLAGS) -I$(L) -I$(SHARED) $^ -o $@
+
+test: identity-test core-test codec-test runtime-test
 
 clean:
 	rm -f screamer_identity_test screamer_core_test screamer_codec_test screamer_runtime_test screamer_adapter_test

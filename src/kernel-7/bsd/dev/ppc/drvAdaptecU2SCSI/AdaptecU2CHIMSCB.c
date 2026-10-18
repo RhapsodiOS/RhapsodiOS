@@ -1,5 +1,6 @@
 #include "AdaptecU2CHIMPrivate.h"
 #include <machdep/ppc/pmap.h>
+extern void *memset(void *destination, int value, unsigned int count);
 
 #define SCB_STORE_LE16(address, value) \
     __asm__ volatile ("sthbrx %0,0,%1" : : "r" (value), "r" (address) : "memory")
@@ -359,5 +360,210 @@ void SCSIhSwappingAdvQHead(AdaptecU2HHCB *hhcb, AdaptecU2HIOB *hiob)
     }
     tail = OSMReadUExact8(*hhcb->ioHandle, hhcb->firmware->registers[9]) - 1;
     OSMWriteUExact8(*hhcb->ioHandle, hhcb->firmware->registers[9], tail);
+}
+
+void SCSIhStandard64QHeadBDR(AdaptecU2HHCB *hhcb, AdaptecU2HIOB *hiob)
+{
+    AdaptecU2SCBDescriptor *next = hiob->scb->next;
+    unsigned char number = next->number;
+    unsigned int busAddress = next->busAddress;
+    unsigned char *virtualAddress = next->virtualAddress;
+    unsigned char current = OSMReadUExact8(*hhcb->ioHandle, hhcb->firmware->registers[10]);
+    AdaptecU2HIOB *previous;
+    if (current == hiob->control.bytes.scbNumber) {
+        OSMWriteUExact8(*hhcb->ioHandle, hhcb->firmware->registers[10], number);
+        SCSIhSetAddressScbBA32(hhcb, 60, virtualAddress);
+    } else {
+        while (hhcb->activeHiobs[current] != (AdaptecU2HIOB *)0xffffffff) {
+            previous = hhcb->activeHiobs[current];
+            current = hhcb->firmware->obtainNextScbNum(hhcb, previous);
+            if (current == hiob->control.bytes.scbNumber) {
+                hhcb->firmware->updateNextScbNum(hhcb, previous, number);
+                if (hhcb->firmware->updateNextScbAddress)
+                    hhcb->firmware->updateNextScbAddress(hhcb, previous, busAddress);
+                break;
+            }
+        }
+    }
+    SCSIhStandard64QHead(hhcb, hiob);
+}
+
+void SCSIhStandardAdvQHeadBDR(AdaptecU2HHCB *hhcb, AdaptecU2HIOB *hiob)
+{
+    AdaptecU2SCBDescriptor *next = hiob->scb->next;
+    unsigned char number = next->number;
+    unsigned int busAddress = next->busAddress;
+    unsigned char *virtualAddress = next->virtualAddress;
+    unsigned char current = OSMReadUExact8(*hhcb->ioHandle, hhcb->firmware->registers[10]);
+    AdaptecU2HIOB *previous;
+    if (current == hiob->control.bytes.scbNumber) {
+        OSMWriteUExact8(*hhcb->ioHandle, hhcb->firmware->registers[10], number);
+        SCSIhSetAddressScbBA32(hhcb, 32, virtualAddress);
+    } else {
+        while (hhcb->activeHiobs[current] != (AdaptecU2HIOB *)0xffffffff) {
+            previous = hhcb->activeHiobs[current];
+            current = hhcb->firmware->obtainNextScbNum(hhcb, previous);
+            if (current == hiob->control.bytes.scbNumber) {
+                hhcb->firmware->updateNextScbNum(hhcb, previous, number);
+                if (hhcb->firmware->updateNextScbAddress)
+                    hhcb->firmware->updateNextScbAddress(hhcb, previous, busAddress);
+                break;
+            }
+        }
+    }
+    SCSIhStandardAdvQHead(hhcb, hiob);
+}
+
+void SCSIhSwapping32QHeadBDR(AdaptecU2HHCB *hhcb, AdaptecU2HIOB *hiob)
+{
+    unsigned char tail = hhcb->hardware->getQNewTail(hhcb);
+    unsigned char number = hiob->scb->next->number;
+    unsigned char current = OSMReadUExact8(*hhcb->ioHandle, hhcb->firmware->registers[10]);
+    AdaptecU2HIOB *previous;
+    if (current == hiob->control.bytes.scbNumber) {
+        OSMWriteUExact8(*hhcb->ioHandle, hhcb->firmware->registers[8], ++hhcb->qnewHead);
+        return;
+    }
+    if (tail != hhcb->qnewHead) {
+        for (;;) {
+            previous = hhcb->activeHiobs[current];
+            current = hhcb->firmware->obtainNextScbNum(hhcb, previous);
+            if (current == hiob->control.bytes.scbNumber) {
+                hhcb->firmware->updateNextScbNum(hhcb, previous, number);
+                break;
+            }
+            if (++tail == hhcb->qnewHead)
+                break;
+        }
+    }
+    SCSIhSwapping32QHead(hhcb, hiob);
+}
+
+void SCSIhSwappingAdvQHeadBDR(AdaptecU2HHCB *hhcb, AdaptecU2HIOB *hiob)
+{
+    unsigned char tail = hhcb->hardware->getQNewTail(hhcb);
+    unsigned char number = hiob->scb->next->number;
+    unsigned char current = OSMReadUExact8(*hhcb->ioHandle, hhcb->firmware->registers[10]);
+    AdaptecU2HIOB *previous;
+    if (current == hiob->control.bytes.scbNumber) {
+        OSMWriteUExact8(*hhcb->ioHandle, hhcb->firmware->registers[8], ++hhcb->qnewHead);
+        return;
+    }
+    if (tail != hhcb->qnewHead) {
+        for (;;) {
+            previous = hhcb->activeHiobs[current];
+            current = hhcb->firmware->obtainNextScbNum(hhcb, previous);
+            if (current == hiob->control.bytes.scbNumber) {
+                hhcb->firmware->updateNextScbNum(hhcb, previous, number);
+                break;
+            }
+            if (++tail == hhcb->qnewHead)
+                break;
+        }
+    }
+    SCSIhSwappingAdvQHead(hhcb, hiob);
+}
+
+void SCSIhStandard64SetupBDR(AdaptecU2HHCB *hhcb, AdaptecU2HIOB *hiob)
+{
+    AdaptecU2UnitControl *unit = hiob->context.unit;
+    unsigned char control = OSMReadUExact8(*hhcb->ioHandle, 135), saved;
+    unsigned int i;
+    if (!(control & 4))
+        SCSIhPauseAndWait(hhcb);
+    saved = OSMReadUExact8(*hhcb->ioHandle, 144);
+    OSMWriteUExact8(*hhcb->ioHandle, 144, hiob->control.bytes.scbNumber);
+    for (i = 0; i < 40; ++i)
+        OSMWriteUExact8(*hhcb->ioHandle, 160 + i, 0);
+    OSMWriteUExact8(*hhcb->ioHandle, 172, 8);
+    OSMWriteUExact8(*hhcb->ioHandle, 173, unit->target);
+    OSMWriteUExact8(*hhcb->ioHandle, 199, unit->lun);
+    OSMWriteUExact8(*hhcb->ioHandle, 174, 64);
+    OSMWriteUExact8(*hhcb->ioHandle, 175, 0);
+    OSMWriteUExact8(*hhcb->ioHandle, 176, 12);
+    OSMWriteUExact8(*hhcb->ioHandle, 144, saved);
+    hhcb->activeHiobs[hiob->control.bytes.scbNumber] = hiob;
+    hiob->managerStatus = 10;
+    hhcb->hardwareFlags |= 0x10000;
+    hhcb->firmware->setBreakPoint(hhcb, 1);
+    if (!(control & 4))
+        SCSIhWriteHCNTRL(hhcb, control);
+}
+
+void SCSIhStandardAdvSetupBDR(AdaptecU2HHCB *hhcb, AdaptecU2HIOB *hiob)
+{
+    AdaptecU2UnitControl *unit = hiob->context.unit;
+    unsigned char target = unit->target | (16 * hhcb->hostID);
+    unsigned char control = OSMReadUExact8(*hhcb->ioHandle, 135), saved;
+    unsigned int i;
+    if (!(control & 4))
+        SCSIhPauseAndWait(hhcb);
+    saved = OSMReadUExact8(*hhcb->ioHandle, 144);
+    OSMWriteUExact8(*hhcb->ioHandle, 144, hiob->control.bytes.scbNumber);
+    for (i = 0; i < 40; ++i)
+        OSMWriteUExact8(*hhcb->ioHandle, 160 + i, 0);
+    OSMWriteUExact8(*hhcb->ioHandle, 160, 8);
+    OSMWriteUExact8(*hhcb->ioHandle, 161, target);
+    OSMWriteUExact8(*hhcb->ioHandle, 162, unit->lun);
+    OSMWriteUExact8(*hhcb->ioHandle, 166, 1);
+    OSMWriteUExact8(*hhcb->ioHandle, 168, 0);
+    OSMWriteUExact8(*hhcb->ioHandle, 169, 12);
+    OSMWriteUExact8(*hhcb->ioHandle, 144, saved);
+    hhcb->activeHiobs[hiob->control.bytes.scbNumber] = hiob;
+    hiob->managerStatus = 10;
+    hhcb->hardwareFlags |= 0x10000;
+    hhcb->firmware->setBreakPoint(hhcb, 1);
+    if (!(control & 4))
+        SCSIhWriteHCNTRL(hhcb, control);
+}
+
+void SCSIhSwapping32SetupBDR(AdaptecU2HHCB *hhcb, AdaptecU2HIOB *hiob)
+{
+    AdaptecU2UnitControl *unit = hiob->context.unit;
+    unsigned char control = OSMReadUExact8(*hhcb->ioHandle, 135);
+    unsigned char *scb;
+    if (!(control & 4))
+        SCSIhPauseAndWait(hhcb);
+    scb = hiob->scb->virtualAddress;
+    memset(scb, 0, 32);
+    scb[1] = 8;
+    scb[2] = unit->target;
+    scb[31] = unit->lun;
+    scb[3] = 64;
+    scb[4] = 0;
+    scb[5] = 12;
+    scb[28] = hiob->scb->next->number;
+    hhcb->activeHiobs[hiob->control.bytes.scbNumber] = hiob;
+    flush_cache((vm_offset_t)scb, 32);
+    hiob->managerStatus = 10;
+    hhcb->hardwareFlags |= 0x10000;
+    hhcb->firmware->setBreakPoint(hhcb, 1);
+    if (!(control & 4))
+        SCSIhWriteHCNTRL(hhcb, control);
+}
+
+void SCSIhSwappingAdvSetupBDR(AdaptecU2HHCB *hhcb, AdaptecU2HIOB *hiob)
+{
+    AdaptecU2UnitControl *unit = hiob->context.unit;
+    unsigned char control = OSMReadUExact8(*hhcb->ioHandle, 135);
+    unsigned char *scb;
+    if (!(control & 4))
+        SCSIhPauseAndWait(hhcb);
+    scb = hiob->scb->virtualAddress;
+    memset(scb, 0, 64);
+    scb[38] = 8;
+    scb[12] = unit->target;
+    scb[13] = unit->lun;
+    scb[14] = 1;
+    scb[16] = 0;
+    scb[17] = 12;
+    scb[11] = hiob->scb->next->number;
+    hhcb->activeHiobs[hiob->control.bytes.scbNumber] = hiob;
+    flush_cache((vm_offset_t)scb, 64);
+    hiob->managerStatus = 10;
+    hhcb->hardwareFlags |= 0x10000;
+    hhcb->firmware->setBreakPoint(hhcb, 1);
+    if (!(control & 4))
+        SCSIhWriteHCNTRL(hhcb, control);
 }
 

@@ -1,0 +1,17 @@
+CC ?= cc
+CFLAGS ?= -std=c89 -pedantic -Wall -Wextra -Werror
+RUNNER ?=
+L = ../PPCScreamer.drvproj/PPCScreamer.lksproj
+SHARED = ../../drvPPCTASAudio/PPCTASAudio.drvproj/PPCTASAudio.lksproj
+
+.PHONY: test identity-test clean
+identity-test: screamer_identity_test
+	$(RUNNER) ./screamer_identity_test
+
+screamer_identity_test: screamer_identity_test.c $(wildcard $(L)/ScreamerIdentity.h)
+	$(CC) $(CFLAGS) -I$(L) $< -o $@
+
+test: identity-test
+
+clean:
+	rm -f screamer_identity_test screamer_core_test screamer_codec_test screamer_runtime_test screamer_adapter_test

@@ -1363,3 +1363,25 @@ def test_task7_osm_lifecycle_and_callback_dependencies_preserved():
     assert (TESTS.parent / "AdaptecU2SCSI.m").read_text().count("&OSMRoutines") == 2
     assert "extern AdaptecU2OSMFunctions OSMRoutines;" in (TESTS.parent / "OSMFunctions.h").read_text()
     assert "_EnqueueOsmIOB(iob, targetStruct);" in (TESTS.parent / "AdaptecU2SCSIThread.m").read_text()
+
+
+def _task8_reference_family(family):
+    source_path = TESTS.parent / "AdaptecU2CHIMConfig.c"
+    assert source_path.is_file(), "missing hardware configuration owner bodies"
+    cases = json.loads((TESTS / "task8-cases.json").read_text())
+    selected = {**cases, "cases": [c for c in cases["cases"] if c["family"] == family]}
+    assert selected["cases"], "missing required Task8 family fixtures"
+    source = source_path.read_text()
+    for case in selected["cases"]:
+        assert re.search(r"\b" + case["entry"] + r"\([^;]*?\)\s*\{", source), case["entry"]
+    result = load_script("ppc_cases").execute(OUT / "reference/image.bin", selected,
+                                           json.loads((TESTS / "contracts.json").read_text()))
+    assert len(result["results"]) == len(selected["cases"])
+
+
+def test_chip_mode_configuration_and_sequencer_choice():
+    _task8_reference_family("configuration")
+
+
+def test_hardware_initialization_failure():
+    _task8_reference_family("initialization")

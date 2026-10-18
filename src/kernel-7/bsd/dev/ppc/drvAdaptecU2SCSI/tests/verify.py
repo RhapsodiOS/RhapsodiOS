@@ -424,7 +424,7 @@ def audit_scb_group(evidence, repo_root, objects):
     sites = source_sites(repo_root, driver)
     ledger, _ = load_ledger(driver / "reconstruction/ledger.json", evidence["image_identity"], None)
     entries = {entry["address"]: entry for entry in ledger["entries"]}
-    proof_hash = hashlib.sha256(proof_path.read_bytes()).hexdigest().upper()
+    proof_hash = hashlib.sha256(proof_path.read_bytes().replace(b"\r\n", b"\n")).hexdigest().upper()
     for index, symbol in enumerate(symbols):
         body = next(body for body in reviews.values() if body["name"] == symbol["name"])
         address = body["address"]

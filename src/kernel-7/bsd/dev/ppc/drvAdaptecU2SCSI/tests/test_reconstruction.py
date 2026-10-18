@@ -1280,3 +1280,39 @@ def test_task7_owner_rejects_incomplete_evidence(tmp_path, firmware_evidence, co
     ledger_path.write_text(json.dumps(ledger))
     with pytest.raises((ValueError, FileNotFoundError), match=expected):
         audit.audit_scb_group(evidence, repo, objects)
+
+
+def test_task7_proof_artifact_survives_git_checkout():
+    import hashlib
+    import subprocess
+    relative = (TESTS.parent / "reconstruction/task7.json").relative_to(REPO).as_posix()
+    committed = subprocess.check_output(["git", "show", "HEAD:" + relative], cwd=REPO)
+    expected = hashlib.sha256(committed).hexdigest().upper()
+    ledger = json.loads((TESTS.parent / "reconstruction/ledger.json").read_text())
+    artifacts = [artifact for entry in ledger["entries"] for artifact in entry["artifacts"]
+                 if artifact["path"] == relative]
+    assert len(artifacts) == 67
+    assert {artifact["sha256"] for artifact in artifacts} == {expected}
+
+
+@pytest.mark.parametrize("newline", [b"\n", b"\r\n"], ids=["git-lf", "checkout-crlf"])
+def test_task7_owner_accepts_proof_checkout_endings(tmp_path, firmware_evidence, newline):
+    audit, evidence = firmware_evidence
+    repo = tmp_path / "repo"
+    driver = repo / audit.ref.DRIVER
+    shutil.copytree(TESTS.parent, driver, ignore=shutil.ignore_patterns("__pycache__"))
+    shutil.copytree(REPO / "tools/binrecon/binrecon", repo / "tools/binrecon/binrecon",
+                    ignore=shutil.ignore_patterns("__pycache__"))
+    shutil.copyfile(REPO / "tools/binrecon/source_paths.py", repo / "tools/binrecon/source_paths.py")
+    shutil.copyfile(REPO / ".git", repo / ".git")
+    objects = tmp_path / "objects/task7"
+    for group in ("task7", "task5", "task6", "firmware", "layout-checks"):
+        shutil.copytree(OUT / "objects" / group, objects.parent / group,
+                        ignore=shutil.ignore_patterns("*.id0", "*.id1", "*.nam", "*.til", "*.i64"))
+    proof_path = driver / "reconstruction/task7.json"
+    relative = proof_path.relative_to(repo).as_posix()
+    import subprocess
+    canonical = subprocess.check_output(["git", "show", "HEAD:" + relative], cwd=REPO)
+    assert b"\r" not in canonical
+    proof_path.write_bytes(canonical.replace(b"\n", newline))
+    audit.audit_scb_group(evidence, repo, objects)

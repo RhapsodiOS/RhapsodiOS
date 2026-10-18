@@ -26,6 +26,8 @@
 }
 + (BOOL)probe:(IODeviceDescription *)description;
 - (BOOL)reset;
+- (void)_processDMABuffer:(void *)buffer size:(unsigned int)bytes
+    read:(BOOL)read dataEncoding:(NXSoundParameterTag)encoding channelCount:(unsigned int)count;
 - (void)screamerServicePeriods:(unsigned int *)periods;
 - (IOReturn)getPowerState:(PMPowerState *)state;
 - (IOReturn)setPowerState:(PMPowerState)state;

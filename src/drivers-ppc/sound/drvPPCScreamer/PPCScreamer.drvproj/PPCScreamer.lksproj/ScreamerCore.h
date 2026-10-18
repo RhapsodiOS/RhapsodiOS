@@ -28,11 +28,14 @@ typedef struct {
     unsigned int speakerPort, headphonePort, speakerKind, speakerParam;
     unsigned int powerKind,initOutput;
     unsigned int inputBits[kScreamerInputCount];
+    unsigned int frontMask,phaseInversion,monoMic;
+    unsigned int micMuxMask,micMuxValue;
+    unsigned int muxKind,muxInputs,source;
 } ScreamerProfile;
 typedef struct {
     ScreamerRange ranges[3];
     unsigned int interrupts[3], localInterrupts[3], controllerBase;
-    unsigned int rates[8], rateCount;
+    unsigned int rates[8], rateCount,platformFamily;
     char machine[32];
     ScreamerProfile profile;
 } ScreamerMachineConfig;

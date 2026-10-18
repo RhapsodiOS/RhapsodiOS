@@ -1,8 +1,10 @@
 /* Copyright (c) 2026 RhapsodiOS Project. */
 #import "PPCScreamer.h"
 #include "TASTime.h"
+#include "ScreamerPCM.h"
 #include <string.h>
 #include <limits.h>
+#include <bsd/dev/audioTypes.h>
 #ifndef SCREAMER_ADAPTER_TEST
 #import <driverkit/IOAudioPrivate.h>
 #import <driverkit/generalFuncs.h>
@@ -81,6 +83,11 @@ static ScreamerStatus screamer_amplifier(void *context,int enabled)
     PPCScreamer *self=context;
     return PEDAVBusSetAmplifier(self->machineConfig.controllerBase,(unsigned int)enabled)==KERN_SUCCESS?kScreamerOK:kScreamerIOError;
 }
+static ScreamerStatus screamer_input_mux(void *context,unsigned int value)
+{
+    PPCScreamer *self=context;
+    return PEDAVBusSetInputMux(self->machineConfig.controllerBase,value)==KERN_SUCCESS?kScreamerOK:kScreamerIOError;
+}
 static PPCDBDMAStatus screamer_translate(void *context,const void *address,
     unsigned long *physical,unsigned long *contiguous)
 {
@@ -144,8 +151,9 @@ static int ScreamerReadDescription(id description,ScreamerMachineConfig *config)
     reader.context=&tree;reader.nodeCount=tree.count;reader.getProperty=screamer_tree_property;
     reader.getParent=screamer_tree_parent;reader.delivered=&delivered;
     if(ScreamerDiscover(&reader,tree.candidate,config)!=kScreamerOK) return 0;
-    return PEDAVBusGetInfo(config->controllerBase,&info)==KERN_SUCCESS && info.family==kPEDAVBusKeyLargo &&
-        (config->profile.powerKind!=7 || (info.capabilities&kPEDAVBusAmplifierGPIO));
+    return PEDAVBusGetInfo(config->controllerBase,&info)==KERN_SUCCESS && info.family==config->platformFamily &&
+        ((config->profile.powerKind!=7 && config->profile.powerKind!=10) || (info.capabilities&kPEDAVBusAmplifierGPIO)) &&
+        (config->profile.muxKind!=9 || (info.capabilities&kPEDAVBusInputMux));
 }
 
 static void screamer_poll(void *argument)
@@ -196,6 +204,19 @@ static NXSoundParameterTag screamer_input_tag(ScreamerInput input)
 { return input==kScreamerInputMic?NX_SoundDeviceMicIn:(input==kScreamerInputLine?NX_SoundDeviceLineIn:NX_SoundDeviceCDIn); }
 
 @implementation PPCScreamer
+- (void)_processDMABuffer:(void *)buffer size:(unsigned int)bytes
+    read:(BOOL)read dataEncoding:(NXSoundParameterTag)encoding channelCount:(unsigned int)count
+{
+    unsigned int invert,mono;
+    volatile ScreamerRuntime *state=&runtime;
+    if(encoding!=NX_SoundStreamDataEncoding_Linear16 || count!=2) return;
+    /* Queue drains can call with operationLock held. The profile is immutable;
+     * committed route/input are aligned word snapshots. Live input changes
+     * are refused, and an output period may use either side of a jack change. */
+    invert=!read && runtime.config.profile.phaseInversion && state->headphone==0;
+    mono=read && runtime.config.profile.monoMic && state->applied.input==kScreamerInputMic;
+    (void)ScreamerPCMCorrect(buffer,bytes,invert,mono);
+}
 #ifndef SCREAMER_ADAPTER_TEST
 + initialize
 { if(self==[PPCScreamer class] && ownerLock==nil) ownerLock=[NXLock new];return [super initialize]; }
@@ -225,6 +246,7 @@ static NXSoundParameterTag screamer_input_tag(ScreamerInput input)
     vm_offset_t page,physical;
     if(runtime.initialized || interruptClosing) return NO;
     memset(&ops,0,sizeof(ops));ops.context=self;ops.setPlatform=screamer_platform;ops.setAmplifier=screamer_amplifier;
+    ops.setInputMux=screamer_input_mux;
     ops.codec.context=self;ops.codec.readLE32=screamer_read;ops.codec.writeLE32=screamer_write;
     ops.codec.nowMS=screamer_now;ops.codec.sleepMS=screamer_sleep;ops.codec.barrier=screamer_barrier;
     for(i=0;i<3;++i) {
@@ -550,14 +572,14 @@ rejected:
     else formatRejected=1;
 }
 - (void)_setDataEncoding:(unsigned int)encoding
-{ if(encoding==NX_SoundStreamDataEncoding_Linear16) [super _setDataEncoding:encoding];else formatRejected=1; }
+{ if(encoding==_NXAUDIO_FORMAT_LINEAR_16) [super _setDataEncoding:encoding];else formatRejected=1; }
 - (void)_setChannelCount:(unsigned int)count
 { if(count==2) [super _setChannelCount:count];else formatRejected=1; }
 #ifndef SCREAMER_ADAPTER_TEST
 - (void)_initAudioHardwareSettings
 {
     [super _setSampleRate:44100];
-    [super _setDataEncoding:NX_SoundStreamDataEncoding_Linear16];
+    [super _setDataEncoding:_NXAUDIO_FORMAT_LINEAR_16];
     [super _setChannelCount:2];
     /* Runtime initialized both channels muted. */
 }

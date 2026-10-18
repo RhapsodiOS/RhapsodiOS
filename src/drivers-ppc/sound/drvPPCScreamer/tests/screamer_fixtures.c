@@ -20,6 +20,10 @@ static ScreamerStatus writereg(void *p,unsigned int reg,unsigned int v)
     f->regs[reg/4]=v;f->lastWriteAt=f->now;
     if(reg==0x10) {
         f->lastCommand=v;++f->commandWrites;
+        if(f->traceCount<256) {
+            f->traceTime[f->traceCount]=f->now;
+            f->traceCommand[f->traceCount++]=v;
+        }
         if((v>>12)!=7) f->hardware[(v>>12)&7]=v&0xfff;
     }
     return kScreamerOK;
@@ -30,6 +34,7 @@ static void sleepms(void *p,unsigned long ms)
     ScreamerFixture *f=p;
     assert(ms<=5000);
     if(f->irqContext) ++f->irqViolations;
+    if(f->sleepCount<32) f->sleeps[f->sleepCount++]=(unsigned int)ms;
     f->now=(f->now+ms)&0xffffffffUL;
 }
 static void barrier(void *p) {(void)p;}
@@ -37,6 +42,7 @@ void FixtureCodecInit(ScreamerFixture *f,ScreamerCodec *c)
 {
     f->now=f->readyAt=f->lastWriteAt=0;
     f->lastCommand=f->commandWrites=f->writeCalls=0;
+    f->traceCount=f->sleepCount=0;
     f->holdBusy=f->failWrite=f->irqContext=f->irqViolations=0;
     memset(f->regs,0,sizeof(f->regs));memset(f->hardware,0,sizeof(f->hardware));
     memset(c,0,sizeof(*c));c->ops.context=f;
@@ -132,7 +138,7 @@ void FixtureInit(ScreamerFixture *f)
  * cited in SOURCES.md. No serial numbers or unrelated firmware are included. */
 void FixtureSawtooth(ScreamerFixture *f)
 {
-    unsigned char assigned[20],rates[12],map[20],irq[24];
+    unsigned char assigned[20],rates[12],map[20],irq[24],reg[24];
     static const char *records[]={
         "init operation 2 param 00000001 param-size 4" ,
         "feature index 0 model Proj7PowerControl" ,
@@ -156,6 +162,9 @@ void FixtureSawtooth(ScreamerFixture *f)
     FixtureInit(f);f->parents[2]=5;f->parents[5]=1;f->reader.nodeCount=5;
     FixtureCell(f,5,"#address-cells",3);FixtureCell(f,5,"#size-cells",2);
     FixtureSetProperty(f,2,"compatible","Keylargo",9);
+    be32(reg,0x14000);be32(reg+4,0x1000);be32(reg+8,0x8800);be32(reg+12,0x100);
+    be32(reg+16,0x8900);be32(reg+20,0x100);
+    FixtureSetProperty(f,3,"reg",reg,24);FixtureSetRange(f,0,0x80014000U,0x1000);
     be32(assigned,0x82013810U);be32(assigned+4,0);be32(assigned+8,0x80000000U);
     be32(assigned+12,0);be32(assigned+16,0x80000);
     FixtureSetProperty(f,2,"assigned-addresses",assigned,20);
@@ -169,4 +178,68 @@ void FixtureSawtooth(ScreamerFixture *f)
     be32(irq,24);be32(irq+4,1);be32(irq+8,9);be32(irq+12,0);be32(irq+16,10);be32(irq+20,0);
     FixtureSetProperty(f,3,"interrupts",irq,24);
     FixtureSetInterrupt(f,0,24);FixtureSetInterrupt(f,1,9);FixtureSetInterrupt(f,2,10);
+}
+
+#include "screamer_profile_objects.h"
+static void object_list(ScreamerFixture *f,const char * const *records,unsigned int param)
+{
+    char objects[2048],*value;
+    unsigned int n=0,len,i;
+    for(i=0;records[i];++i) {
+        len=(unsigned int)strlen(records[i])+1;
+        assert(len<=sizeof(objects)-n);
+        memcpy(objects+n,records[i],len);
+        value=strstr(objects+n,"param 0 model Proj5Speaker");
+        if(value) value[6]=(char)('0'+param);
+        n+=len;
+    }
+    FixtureSetProperty(f,4,"sound-objects",objects,n);
+}
+void FixturePismo(ScreamerFixture *f)
+{
+    unsigned char assigned[20],map[20];
+    FixtureSawtooth(f);
+    be32(assigned,0x8200b810U);be32(assigned+4,0);be32(assigned+8,0x80000000U);
+    be32(assigned+12,0);be32(assigned+16,0x80000);
+    FixtureSetProperty(f,2,"assigned-addresses",assigned,20);
+    be32(map,0);memcpy(map+4,assigned,12);be32(map+16,0x80000);
+    FixtureSetProperty(f,2,"ranges",map,20);
+    FixtureCell(f,2,"vendor-id",0x106b);FixtureCell(f,2,"device-id",0x22);
+    FixtureCell(f,4,"vendor-id",0x106b);FixtureCell(f,4,"device-id",0x0a);FixtureCell(f,4,"sub-frame",0);
+    FixtureSetProperty(f,1,"model","PowerBook3,1",13);
+    object_list(f,pismoObjects,0);
+}
+void FixtureIMac(ScreamerFixture *f,const char *machine,unsigned int param)
+{
+    FixtureSawtooth(f);
+    FixtureSetProperty(f,1,"model",machine,(unsigned int)strlen(machine)+1);
+    object_list(f,imacObjects,param);
+}
+
+/* Relevant resource/identity facts from the live Lombard capture. Its
+ * firmware has no sound-objects; the driver must use Apple's pinned patch. */
+void FixtureLombard(ScreamerFixture *f)
+{
+    unsigned char map[20],reg[24],irq[12],assigned[20];
+    unsigned int i;
+    FixtureSawtooth(f);
+    FixtureSetProperty(f,1,"model","PowerBook1,1",13);
+    FixtureSetProperty(f,2,"compatible","paddington\0heathrow",19);
+    FixtureCell(f,2,"vendor-id",0x106b);FixtureCell(f,2,"device-id",0x17);
+    be32(assigned,0x82008010);be32(assigned+4,0);be32(assigned+8,0x80800000U);
+    be32(assigned+12,0);be32(assigned+16,0x80000);
+    FixtureSetProperty(f,2,"assigned-addresses",assigned,20);
+    be32(map,0);be32(map+4,0x82008010);be32(map+8,0);be32(map+12,0x80800000U);be32(map+16,0x80000);
+    FixtureSetProperty(f,2,"ranges",map,20);
+    be32(reg,0x14000);be32(reg+4,0x1000);be32(reg+8,0x8800);be32(reg+12,0x100);
+    be32(reg+16,0x8900);be32(reg+20,0x100);
+    FixtureSetProperty(f,3,"reg",reg,24);
+    FixtureSetRange(f,0,0x80814000U,0x1000);
+    FixtureSetRange(f,1,0x80808800U,0x100);FixtureSetRange(f,2,0x80808900U,0x100);
+    be32(irq,17);be32(irq+4,8);be32(irq+8,9);FixtureSetProperty(f,3,"interrupts",irq,12);
+    for(i=0;i<3;++i) FixtureSetInterrupt(f,i,ScreamerBE32(irq+i*4));
+    FixtureSetProperty(f,4,"compatible","awacs\0screamer",15);
+    FixtureSetProperty(f,4,"model","343S0184",9);
+    FixtureCell(f,4,"vendor-id",0x106b);FixtureCell(f,4,"device-id",2);FixtureCell(f,4,"sub-frame",0);
+    FixtureSetProperty(f,4,"sound-objects",0,0);
 }

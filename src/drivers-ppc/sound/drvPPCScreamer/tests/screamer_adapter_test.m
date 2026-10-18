@@ -31,7 +31,7 @@ int DTGetProperty(const DTEntry entry,const char *name,void **value,int *length)
     *value=(void *)b.bytes;*length=b.length;return kSuccess;
 }
 static unsigned int notifications,inputServices,outputServices;
-static unsigned int negotiatedRate=44100,negotiatedEncoding=NX_SoundStreamDataEncoding_Linear16,negotiatedChannels=2;
+static unsigned int negotiatedRate=44100,negotiatedEncoding=0,negotiatedChannels=2;
 static ScreamerStatus test_platform(void *context,int ready) {return kScreamerOK;}
 static unsigned long test_dma_read(void *context,unsigned long reg) {return 0;}
 static void test_dma_write(void *context,unsigned long reg,unsigned long value) {}
@@ -89,14 +89,15 @@ void IOSendInterrupt(void *identity,void *state,unsigned int message) {++notific
 - (void)setSamplingRate:(unsigned int)v {rate=v;}
 @end
 @implementation TestLock
-- lock {return self;}
-- unlock {return self;}
+- lock {assert(!held);held=1;return self;}
+- unlock {assert(held);held=0;return self;}
 - (void)acquire {}
 - (void)release {}
 @end
 
 int main(void)
 {
+    unsigned char pcm[4]={0x12,0x34,0x01,0x00};
     ScreamerFixture f;
     ScreamerMachineConfig c;
     ScreamerCodec codec;
@@ -169,12 +170,13 @@ int main(void)
     assert([a _setParameter:NX_SoundDeviceAnalogInputSource toInt:NX_SoundDeviceCDIn forObject:[a _inputChannel]]==NO);
     assert(f.writeCalls==writes && a->runtime.desired.input==kScreamerInputLine);
     a->runtime.streams[0].running=a->runtime.streams[1].running=0;
-    negotiatedRate=22050;negotiatedEncoding=NX_SoundStreamDataEncoding_Linear8;
+    negotiatedRate=22050;negotiatedEncoding=3;
     assert(![a _attemptToStartDMAForChannel:[a _outputChannel] channelStatus:NO]);
     assert([a sampleRate]==44100 && a->runtime.clockRate==44100);
-    negotiatedEncoding=NX_SoundStreamDataEncoding_Linear16;negotiatedChannels=1;
+    negotiatedEncoding=0;negotiatedChannels=1;
     assert(![a _attemptToStartDMAForChannel:[a _outputChannel] channelStatus:NO] && [a sampleRate]==44100);
-    negotiatedChannels=2;
+    negotiatedChannels=2;negotiatedRate=44100;
+    assert([a _attemptToStartDMAForChannel:[a _outputChannel] channelStatus:NO]);
     stream=[TestStream new];
     assert([a _setParameter:NX_SoundStreamSamplingRate toInt:48000 forObject:stream]==NO);
     assert([stream samplingRate]==44100 && [a sampleRate]==44100);
@@ -214,6 +216,18 @@ int main(void)
     f.failWrite=f.writeCalls+1;
     assert([a setPowerState:PM_SUSPENDED]==IO_R_IO);
     assert([a getPowerState:&power]==IO_R_SUCCESS && power==PM_READY);
+    a->runtime.config.profile.phaseInversion=1;a->runtime.headphone=0;
+    [a _processDMABuffer:pcm size:4 read:NO dataEncoding:NX_SoundStreamDataEncoding_Linear16 channelCount:2];
+    assert(pcm[0]==0x12 && pcm[1]==0x34 && pcm[2]==0xff && pcm[3]==0);
+    a->runtime.headphone=2;
+    [a _processDMABuffer:pcm size:4 read:NO dataEncoding:NX_SoundStreamDataEncoding_Linear16 channelCount:2];
+    assert(pcm[2]==0xff && pcm[3]==0);
+    a->runtime.config.profile.monoMic=1;a->runtime.applied.input=kScreamerInputMic;
+    /* setPowerState drains capture descriptors while holding this lock. */
+    [a->operationLock lock];
+    [a _processDMABuffer:pcm size:4 read:YES dataEncoding:NX_SoundStreamDataEncoding_Linear16 channelCount:2];
+    [a->operationLock unlock];
+    assert(pcm[2]==0x12 && pcm[3]==0x34);
     puts("Screamer adapter: format rejection, inherited dispatch, controls and readback passed");
     return 0;
 }

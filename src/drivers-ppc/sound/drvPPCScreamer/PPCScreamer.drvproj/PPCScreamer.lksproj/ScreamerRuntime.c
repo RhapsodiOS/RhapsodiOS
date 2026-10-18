@@ -67,9 +67,16 @@ static void fault(ScreamerRuntime *r)
 static ScreamerStatus initialize_codec(ScreamerRuntime *r,unsigned long deadline)
 {
     ScreamerStatus status=kScreamerOK;
-    if(r->config.profile.powerKind==7) {
+    unsigned int kind=r->config.profile.powerKind;
+    r->inputMuxValid=0;
+    if(kind==6) status=ScreamerCodecDelay(&r->codec,10,deadline);
+    else if(kind==7 || kind==10) {
         status=r->ops.setAmplifier(r->ops.context,1);
-        if(status==kScreamerOK) status=ScreamerCodecDelay(&r->codec,300,deadline);
+        if(status==kScreamerOK) status=ScreamerCodecDelay(&r->codec,kind==7?300:80,deadline);
+        if(status==kScreamerOK && kind==10) {
+            status=ScreamerCodecWrite(&r->codec,1,0x280U,deadline);
+            if(status==kScreamerOK) status=ScreamerCodecDelay(&r->codec,200,deadline);
+        }
     }
     if(status==kScreamerOK) status=ScreamerCodecInitialize(&r->codec,&r->config,deadline);
     if(status==kScreamerOK && r->config.profile.initOutput)
@@ -79,12 +86,15 @@ static ScreamerStatus initialize_codec(ScreamerRuntime *r,unsigned long deadline
 static ScreamerStatus sleep_codec(ScreamerRuntime *r,ScreamerPowerState target,unsigned long deadline)
 {
     ScreamerStatus status=kScreamerOK;
-    if(r->config.profile.powerKind==7) {
-        status=ScreamerCodecWrite(&r->codec,1,(r->codec.shadow[1]|0x280U)&~0x400U,deadline);
+    unsigned int kind=r->config.profile.powerKind;
+    if(kind==7 || kind==10) {
+        unsigned int value=(r->codec.shadow[1]|0x280U)&~0x400U;
+        if(kind==10) value|=0x400U;
+        status=ScreamerCodecWrite(&r->codec,1,value,deadline);
         if(status==kScreamerOK) status=ScreamerCodecDelay(&r->codec,200,deadline);
     }
     if(status==kScreamerOK) status=ScreamerCodecSetPower(&r->codec,target,deadline);
-    if(status==kScreamerOK && r->config.profile.powerKind==7)
+    if(status==kScreamerOK && (kind==7 || kind==10))
         status=r->ops.setAmplifier(r->ops.context,0);
     return status;
 }
@@ -95,7 +105,10 @@ ScreamerStatus ScreamerRuntimeInitialize(ScreamerRuntime *r,
     unsigned int code,i,sense,second;
     if(!r || !config || !ops || !ops->setPlatform ||
         ScreamerRateCode(config,44100,&code)!=kScreamerOK) return kScreamerInvalid;
-    if(config->profile.powerKind && (config->profile.powerKind!=7 || !ops->setAmplifier)) return kScreamerUnresolved;
+    if((config->profile.powerKind!=0 && config->profile.powerKind!=6 &&
+        config->profile.powerKind!=7 && config->profile.powerKind!=10) ||
+        ((config->profile.powerKind==7 || config->profile.powerKind==10) && !ops->setAmplifier) ||
+        (config->profile.muxKind==9 && !ops->setInputMux)) return kScreamerUnresolved;
     memset(r,0,sizeof(*r));r->config=*config;r->ops=*ops;r->codec.ops=ops->codec;
     if(!ops->codec.nowMS || !ops->codec.readLE32 || !ops->codec.writeLE32 ||
         !ops->codec.sleepMS || !ops->codec.barrier) return kScreamerInvalid;
@@ -113,7 +126,7 @@ ScreamerStatus ScreamerRuntimeInitialize(ScreamerRuntime *r,
     s=initialize_codec(r,deadline);
     if(s!=kScreamerOK) {
         r->faulted=1;
-        if(config->profile.powerKind==7) {r->initialized=1;r->power=kScreamerPowerReady;}
+        if(config->profile.powerKind==7 || config->profile.powerKind==10) {r->initialized=1;r->power=kScreamerPowerReady;}
         else (void)ops->setPlatform(ops->context,0);
         return s;
     }
@@ -129,8 +142,8 @@ ScreamerStatus ScreamerRuntimeInitialize(ScreamerRuntime *r,
     sense&=config->profile.headphoneMask;
     second&=config->profile.headphoneMask;
     if(sense==second) {
-        r->headphone=config->profile.anySense ? second!=0 :
-            second==config->profile.headphoneMatch;
+        r->headphone=config->profile.frontMask && (second&config->profile.frontMask)?2U:
+            (config->profile.anySense ? second!=0 : second==config->profile.headphoneMatch);
         r->routeKnown=1;
     }
     return ScreamerApplyControls(r,&r->desired,deadline);
@@ -236,8 +249,20 @@ ScreamerStatus ScreamerApplyControls(ScreamerRuntime *r,const ScreamerControls *
     if(!next.userMuted && !r->routeKnown && !r->routePending) return kScreamerBusy;
     route=r->routePending?r->pendingHeadphone:r->headphone;
     reg=(r->codec.shadow[1]&~0x40U)|0x280U;
+    if(next.input==kScreamerInputMic)
+        reg=(reg&~r->config.profile.micMuxMask)|r->config.profile.micMuxValue;
     r->desired=next;
     status=ScreamerCodecWrite(&r->codec,1,reg,deadline);
+    if(status==kScreamerOK && r->config.profile.muxKind==9 &&
+        (!r->inputMuxValid || next.input!=r->applied.input) &&
+        (r->config.profile.muxInputs&(1U<<next.input))) {
+        status=r->ops.setInputMux(r->ops.context,0);
+        if(next.input==kScreamerInputMic) {
+            if(status==kScreamerOK) status=ScreamerCodecDelay(&r->codec,2,deadline);
+            if(status==kScreamerOK) status=r->ops.setInputMux(r->ops.context,1);
+            if(status==kScreamerOK) status=ScreamerCodecDelay(&r->codec,320,deadline);
+        }
+    }
     input=(r->codec.shadow[0]&~0xeffU)|r->config.profile.inputBits[next.input]|
         (next.gain[0]<<4)|next.gain[1];
     if(status==kScreamerOK) status=ScreamerCodecWrite(&r->codec,0,input,deadline);
@@ -246,15 +271,16 @@ ScreamerStatus ScreamerApplyControls(ScreamerRuntime *r,const ScreamerControls *
     if(status==kScreamerOK) status=ScreamerCodecWrite(&r->codec,4,atten,deadline);
     if(r->config.profile.speakerKind==5) {
         reg&=~0x800U;
-        if(route != r->config.profile.speakerParam) reg|=0x800U;
+        if((route!=0) != r->config.profile.speakerParam) reg|=0x800U;
         if(status==kScreamerOK) status=ScreamerCodecWrite(&r->codec,1,reg,deadline);
     }
     if(status==kScreamerOK) status=ScreamerCodecDelay(&r->codec,5,deadline);
-    port=route?r->config.profile.headphonePort:r->config.profile.speakerPort;
+    port=route==2?r->config.profile.speakerPort:
+        (route?r->config.profile.headphonePort:r->config.profile.speakerPort);
     if(!next.userMuted) reg&=~(port==1?0x200U:0x80U);
     if(status==kScreamerOK) status=ScreamerCodecWrite(&r->codec,1,reg,deadline);
     if(status!=kScreamerOK) {fault(r);return status;}
-    r->applied=next;r->headphone=route;
+    r->applied=next;r->headphone=route;r->inputMuxValid=1;
     if(r->routePending) r->routeKnown=1;
     r->routePending=0;
     return kScreamerOK;
@@ -268,8 +294,9 @@ ScreamerStatus ScreamerObserveJack(ScreamerRuntime *r,unsigned int sense,
     if(r->closing || generation!=r->generation) return kScreamerClosed;
     if(r->faulted) return kScreamerFault;
     if(r->power!=kScreamerPowerReady) return kScreamerBusy;
-    plugged=r->config.profile.anySense ? (sense&r->config.profile.headphoneMask)!=0 :
-        (sense&r->config.profile.headphoneMask)==r->config.profile.headphoneMatch;
+    plugged=r->config.profile.frontMask && (sense&r->config.profile.frontMask)?2U:
+        (r->config.profile.anySense ? (sense&r->config.profile.headphoneMask)!=0 :
+        (sense&r->config.profile.headphoneMask)==r->config.profile.headphoneMatch);
     if(!r->jackCandidateValid || plugged!=r->jackCandidate) {
         r->jackCandidate=plugged;r->jackCandidateValid=1;
         if(!TASTimeAdd(now,5,&r->jackDeadline)) return kScreamerTimeout;
@@ -354,14 +381,15 @@ ScreamerStatus ScreamerSetPower(ScreamerRuntime *r,ScreamerPowerState target,
         sense&=r->config.profile.headphoneMask;second&=r->config.profile.headphoneMask;
         if(sense!=second) status=kScreamerBusy;
         else {
-            r->headphone=r->config.profile.anySense?second!=0:second==r->config.profile.headphoneMatch;
+            r->headphone=r->config.profile.frontMask && (second&r->config.profile.frontMask)?2U:
+                (r->config.profile.anySense?second!=0:second==r->config.profile.headphoneMatch);
             r->routeKnown=1;r->power=kScreamerPowerReady;
             status=ScreamerApplyControls(r,&r->desired,deadline);
         }
     }
     if(status!=kScreamerOK) {
         fault(r);
-        if(r->config.profile.powerKind==7) r->power=kScreamerPowerReady;
+        if(r->config.profile.powerKind==7 || r->config.profile.powerKind==10) r->power=kScreamerPowerReady;
         else {r->power=previous;(void)r->ops.setPlatform(r->ops.context,0);}
         return status;
     }

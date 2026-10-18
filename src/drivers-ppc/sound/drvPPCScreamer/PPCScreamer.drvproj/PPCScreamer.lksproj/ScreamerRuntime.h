@@ -8,6 +8,7 @@ typedef struct {
     ScreamerCodecOps codec;
     ScreamerStatus (*setPlatform)(void *,int);
     ScreamerStatus (*setAmplifier)(void *,int);
+    ScreamerStatus (*setInputMux)(void *,unsigned int);
     int (*bufferValid)(void *,ScreamerStream,void *,unsigned long);
     PPCDBDMAOps dma[2];
     PPCDBDMAStorage storage[2];
@@ -31,6 +32,7 @@ typedef struct {
     unsigned long jackDeadline;
     unsigned int headphone,routeKnown,routePending,pendingHeadphone;
     unsigned int jackCandidate,jackCandidateValid;
+    unsigned int inputMuxValid;
 } ScreamerRuntime;
 ScreamerStatus ScreamerRuntimeInitialize(ScreamerRuntime *,const ScreamerMachineConfig *,const ScreamerRuntimeOps *,unsigned long);
 ScreamerStatus ScreamerStart(ScreamerRuntime *,ScreamerStream,void *,unsigned long,unsigned long,unsigned int,unsigned long);

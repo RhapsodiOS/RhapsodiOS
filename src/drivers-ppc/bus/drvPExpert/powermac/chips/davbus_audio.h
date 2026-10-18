@@ -8,16 +8,23 @@ typedef struct {
     void *context;
     unsigned int controllerBase, family;
     unsigned int *owner, *saved, *active;
+    /* LE FCR1 for KeyLargo/Pangea, LE FCR at 0x38 for Heathrow/Paddington. */
     unsigned int (*readFCR1)(void *);
     kern_return_t (*writeFCR1)(void *, unsigned int);
     void (*lock)(void *);
     void (*unlock)(void *);
     void (*barrier)(void *);
     boolean_t (*inInterruptContext)(void *);
+    /* Variant-specific byte access used only by the two narrow public services. */
     unsigned char (*readGPIO)(void *,unsigned int);
     void (*writeGPIO)(void *,unsigned int,unsigned char);
 } PEDAVBusTransport;
 void PEDAVBusBindTransport(const PEDAVBusTransport *);
 kern_return_t PEDAVBusSetStateCore(const PEDAVBusTransport *, PEDAVBusState);
 int PEDAVBusParseInterrupts(const unsigned char *,unsigned int,unsigned int [3]);
+unsigned int PEDAVBusFamilyForMacIO(unsigned int,unsigned int);
+int PEDAVBusValidateRanges(const unsigned char *,unsigned int,
+    unsigned int,unsigned int,unsigned int *);
+int PEDAVBusValidateMacIORanges(const unsigned char *,unsigned int,
+    unsigned int,unsigned int);
 #endif

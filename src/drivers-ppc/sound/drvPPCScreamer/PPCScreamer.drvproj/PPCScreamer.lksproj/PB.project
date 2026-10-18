@@ -2,11 +2,11 @@
     DYNAMIC_CODE_GEN = NO;
     FILESTABLE = {
         CLASSES = (PPCScreamer.m);
-        C_FILES = (ScreamerCore.c, ScreamerProfiles.c, ScreamerCodec.c, ScreamerRuntime.c,
+        C_FILES = (ScreamerCore.c, ScreamerProfiles.c, ScreamerCodec.c, ScreamerRuntime.c, ScreamerPCM.c,
             ../../../drvPPCTASAudio/PPCTASAudio.drvproj/PPCTASAudio.lksproj/PPCDBDMAAudio.c,
             ../../../drvPPCTASAudio/PPCTASAudio.drvproj/PPCTASAudio.lksproj/TASTime.c);
         H_FILES = (PPCScreamer.h, ScreamerCore.h, ScreamerIdentity.h, ScreamerProfiles.h,
-            ScreamerCodec.h, ScreamerRuntime.h, ScreamerTree.h);
+            ScreamerCodec.h, ScreamerRuntime.h, ScreamerPCM.h, ScreamerTree.h);
         OTHER_LINKED = ();
         OTHER_SOURCES = (
             Makefile.preamble,

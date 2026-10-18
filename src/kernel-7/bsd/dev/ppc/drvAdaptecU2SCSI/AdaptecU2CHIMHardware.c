@@ -1,5 +1,153 @@
 #include "AdaptecU2CHIMPrivate.h"
 
+unsigned short SCSIhAIC78XXCalcScsiOption(unsigned short speed,
+                                          unsigned char offset,
+                                          unsigned char width)
+{
+    unsigned short rate = 0;
+    if (speed >= 160 && speed <= 199) rate = 0x10;
+    else if (speed >= 133 && speed <= 159) rate = 0x20;
+    else if (speed >= 100 && speed <= 132) rate = 0;
+    else if (speed >= 80 && speed <= 99) rate = 0x10;
+    else if (speed >= 67 && speed <= 79) rate = 0x20;
+    else if (speed >= 57 && speed <= 66) rate = 0x30;
+    else if (speed >= 50 && speed <= 56) rate = 0x40;
+    else if (speed >= 44 && speed <= 49) rate = 0x50;
+    else if (speed >= 40 && speed <= 43) rate = 0x60;
+    else if (speed >= 36 && speed <= 39) rate = 0x70;
+    rate |= offset != 0;
+    if (width == 16)
+        rate |= 0x80;
+    return rate;
+}
+
+unsigned short SCSIhAICBayonetCalcScsiOption(unsigned short speed,
+                                            unsigned char offset,
+                                            unsigned char width)
+{
+    unsigned short rate = 0;
+    if (speed == 400) rate = 19;
+    else if (speed >= 267 && speed <= 399) rate = 20;
+    else if (speed >= 200 && speed <= 266) rate = 21;
+    else if (speed >= 160 && speed <= 199) rate = 22;
+    else if (speed >= 133 && speed <= 159) rate = 23;
+    else if (speed >= 100 && speed <= 132) rate = 24;
+    else if (speed >= 80 && speed <= 99) rate = 25;
+    else if (speed >= 67 && speed <= 79) rate = 26;
+    else if (speed >= 57 && speed <= 66) rate = 27;
+    else if (speed >= 50 && speed <= 56) rate = 28;
+    rate |= (offset << 8) & 0x7f00;
+    if (width == 16)
+        rate |= 0x80;
+    return rate;
+}
+
+void SCSIhAIC78XXGetProfileParameters(AdaptecU2HWInformation *information,
+                                      AdaptecU2HHCB *hhcb)
+{
+    unsigned int i;
+    unsigned char current, requested, fast;
+    for (i = 0; i < 16; ++i) {
+        current = hhcb->firmware->getOption(hhcb, i);
+        requested = hhcb->devices[i].rate;
+        fast = (hhcb->devices[i].flags >> 15) & 1;
+        information->targets[i].maximumSpeed = fast ? 200 : 100;
+        information->targets[i].requestedSpeed = SCSIhAIC78XXGetSpeed(requested, fast);
+        fast = hhcb->firmware->getFast20Reg(hhcb, i);
+        information->targets[i].currentSpeed = SCSIhAIC78XXGetSpeed(current, fast);
+        information->targets[i].currentOffset = current & 15;
+        information->targets[i].requestedOffset = (requested & 15) ?
+                                                  ((requested & 0x80) ? 8 : 15) : 0;
+        information->targets[i].maximumOffset = (current & 0x80) ? 8 : 15;
+        information->targets[i].maximumWidth = (OSMReadUExact8(*hhcb->ioHandle, 31) & 2) ? 16 : 8;
+        information->targets[i].requestedWidth = (requested & 0x80) ? 16 : 8;
+        information->targets[i].currentWidth = (current & 0x80) ? 16 : 8;
+        information->targets[i].changed = 0;
+    }
+    information->minimumSpeed = 36;
+}
+
+void SCSIhAICBayonetGetProfileParameters(AdaptecU2HWInformation *information,
+                                        AdaptecU2HHCB *hhcb)
+{
+    unsigned int i;
+    unsigned short current;
+    unsigned char requested;
+    for (i = 0; i < 16; ++i) {
+        current = hhcb->firmware->getOption(hhcb, i);
+        requested = hhcb->devices[i].period;
+        information->targets[i].maximumSpeed = ((requested & 127) <= 20) ? 400 :
+                                                ((requested & 127) <= 23) ? 200 : 100;
+        information->targets[i].requestedSpeed = SCSIhAICBayonetGetSpeed(requested, i);
+        information->targets[i].currentSpeed = SCSIhAICBayonetGetSpeed(current, i);
+        information->targets[i].currentOffset = (current >> 8) & 127;
+        information->targets[i].maximumOffset = 127;
+        information->targets[i].requestedOffset = hhcb->devices[i].offset;
+        information->targets[i].maximumWidth = (OSMReadUExact8(*hhcb->ioHandle, 31) & 2) ? 16 : 8;
+        information->targets[i].requestedWidth = (hhcb->devices[i].rate & 128) ? 16 : 8;
+        information->targets[i].currentWidth = (current & 128) ? 16 : 8;
+        information->targets[i].changed = 0;
+    }
+    information->minimumSpeed = 50;
+}
+
+void SCSIhAIC78XXPutProfileParameters(const AdaptecU2HWInformation *information,
+                                      AdaptecU2HHCB *hhcb)
+{
+    unsigned int i;
+    unsigned short speed;
+    for (i = 0; i < 16; ++i) {
+        if (information->targets[i].changed) {
+            speed = information->targets[i].requestedSpeed;
+            hhcb->devices[i].rate = SCSIhAIC78XXCalcScsiOption(speed,
+                information->targets[i].requestedOffset, information->targets[i].requestedWidth);
+            hhcb->devices[i].flags = (hhcb->devices[i].flags & 0x7fff) | ((speed > 132) << 15);
+            if (SCSIHCheckDeviceIdle(hhcb, i))
+                hhcb->firmware->xferOptAssign(hhcb, i, (hhcb->devices[i].rate & 0x81) ? 0x8f : 0);
+        }
+    }
+}
+
+void SCSIhAICBayonetPutProfileParameters(const AdaptecU2HWInformation *information,
+                                        AdaptecU2HHCB *hhcb)
+{
+    unsigned int i;
+    unsigned short option;
+    unsigned char control, rate;
+    for (i = 0; i < 16; ++i) {
+        if (information->targets[i].changed) {
+            option = SCSIhAICBayonetCalcScsiOption(information->targets[i].requestedSpeed,
+                information->targets[i].requestedOffset, information->targets[i].requestedWidth);
+            hhcb->devices[i].period = option;
+            hhcb->devices[i].offset = option >> 8;
+            hhcb->devices[i].rate = (option & 0x80) ? 0x80 : 0;
+            if (hhcb->devices[i].offset & 127)
+                hhcb->devices[i].rate |= 1;
+            if (SCSIHCheckDeviceIdle(hhcb, i)) {
+                rate = (hhcb->devices[i].rate & 0x81) ? 0x8f : 0;
+                control = OSMReadUExact8(*hhcb->ioHandle, 135);
+                if (!(control & 4))
+                    SCSIhPauseAndWait(hhcb);
+                hhcb->firmware->xferOptAssign(hhcb, i, rate);
+                if (!(control & 4))
+                    OSMWriteUExact8(*hhcb->ioHandle, 135, control);
+            }
+        }
+    }
+}
+
+unsigned char SCSIhAIC78XXGetQNewTail(AdaptecU2HHCB *hhcb)
+{
+    return OSMReadUExact8(*hhcb->ioHandle, hhcb->firmware->registers[9]);
+}
+
+unsigned char SCSIhAICBayonetGetQNewTail(AdaptecU2HHCB *hhcb)
+{
+    unsigned char value = OSMReadUExact8(*hhcb->ioHandle, hhcb->firmware->registers[9]);
+    OSMWriteUExact8(*hhcb->ioHandle, hhcb->firmware->registers[9], value);
+    return value;
+}
+
 void SCSIhAIC78XXUpdateCacheThEn(AdaptecU2HHCB *hhcb)
 {
     unsigned char value;

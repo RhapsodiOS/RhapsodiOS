@@ -118,12 +118,24 @@ ScreamerStatus ScreamerDiscover(const ScreamerPropertyReader *r,unsigned int can
     bus=r->getParent(r->context,candidate);
     if(!bus || bus>r->nodeCount) return kScreamerInvalid;
     compat=prop(r,bus,"compatible");
-    /* Only the KeyLargo DAVbus platform backend is admitted initially. */
-    for(i=0;i+8<=compat.length;++i)
-        if((i==0 || compat.bytes[i-1]==0) &&
-            (!memcmp(compat.bytes+i,"keylargo",8) || !memcmp(compat.bytes+i,"Keylargo",8)) &&
-            (i+8==compat.length || compat.bytes[i+8]==0)) clock=1;
+    if(!compat.bytes || !compat.length) return kScreamerUnsupported;
+    /* Match the independently verified Platform Expert backend family. */
+    for(i=0;i<compat.length;i=j+1) {
+        unsigned int family=0;
+        for(j=i;j<compat.length && compat.bytes[j];++j) {}
+        if(j-i==8 && (!memcmp(compat.bytes+i,"keylargo",8) ||
+            !memcmp(compat.bytes+i,"Keylargo",8))) family=1;
+        else if(j-i==6 && !memcmp(compat.bytes+i,"pangea",6)) family=2;
+        else if((j-i==8 && !memcmp(compat.bytes+i,"heathrow",8)) ||
+            (j-i==10 && !memcmp(compat.bytes+i,"paddington",10))) family=3;
+        else if(j-i==8 && !memcmp(compat.bytes+i,"intrepid",8)) return kScreamerUnsupported;
+        if(family) {
+            if(clock && clock!=family) return kScreamerInvalid;
+            clock=family;
+        }
+    }
     if(!clock) return kScreamerUnsupported;
+    c.platformFamily=clock;
     root=bus;
     for(depth=0;depth<16;++depth) {
         n=r->getParent(r->context,root);
@@ -135,6 +147,7 @@ ScreamerStatus ScreamerDiscover(const ScreamerPropertyReader *r,unsigned int can
     model=prop(r,root,"model");
     if(!model.bytes || !model.length || model.length>=sizeof(c.machine))
         return kScreamerUnresolved;
+    for(i=0;i+1<model.length;++i) if(!model.bytes[i]) return kScreamerInvalid;
     memcpy(c.machine,model.bytes,model.length); c.machine[model.length]=0;
     if(!cells(r,bus,"#address-cells",2,&ac) ||
         !cells(r,bus,"#size-cells",1,&sc)) return kScreamerInvalid;
@@ -225,9 +238,22 @@ ScreamerStatus ScreamerDiscover(const ScreamerPropertyReader *r,unsigned int can
     }
     if(ScreamerRateCode(&c,44100,&code)!=kScreamerOK) return kScreamerUnresolved;
     b=prop(r,sound,"sound-objects");
-    {
+    if(!b.length && !strcmp(c.machine,"PowerBook1,1") && c.platformFamily==3) {
+        model=prop(r,sound,"model");
+        if(!model.bytes || (model.length!=8 && model.length!=9) ||
+            memcmp(model.bytes,"343S0184",8) || (model.length==9 && model.bytes[8]) ||
+            !word(prop(r,sound,"vendor-id"),&code) || code!=0x106b ||
+            !word(prop(r,sound,"device-id"),&code) || code!=2 ||
+            !word(prop(r,sound,"sub-frame"),&code) || code ||
+            !word(prop(r,bus,"vendor-id"),&code) || code!=0x106b ||
+            !word(prop(r,bus,"device-id"),&code) || code!=0x17) return kScreamerUnresolved;
+        ScreamerLombardProfile(&c.profile);
+    } else {
         ScreamerStatus status=ScreamerResolveProfile(b,c.machine,&c.profile);
         if(status!=kScreamerOK) return status;
     }
+    if((c.profile.powerKind==6 && c.platformFamily!=3) ||
+        ((c.profile.powerKind==7 || c.profile.powerKind==10) && c.platformFamily==3))
+        return kScreamerUnsupported;
     *out=c;return kScreamerOK;
 }

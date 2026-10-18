@@ -48,7 +48,7 @@ enum {NX_SoundDeviceLineOut=25,NX_SoundDeviceSpeakerOut,NX_SoundDeviceCDOut,
 - (unsigned int)samplingRate;
 - (void)setSamplingRate:(unsigned int)v;
 @end
-@interface TestLock : Object
+@interface TestLock : Object { unsigned int held; }
 - lock;
 - unlock;
 - (void)acquire;

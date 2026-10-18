@@ -648,13 +648,8 @@ int get_machine_id(void)
 	    else if (strcmp( family, "iMac") == 0)	return(gestaltCHRP_Version1);
 	    else if (strcmp( family, "PowerMac1,1") == 0)	return(gestaltCHRP_Version1);
 	    else if (strcmp( family, "PowerMac1,2") == 0)	return(gestaltCHRP_Version1);
-		else if (strcmp( family, "PowerMac2,1") == 0)	return(gestaltCHRP_Version1);
 	    else if (strcmp( family, "PowerBook1,1") == 0)	return(gestaltCHRP_Version1);
-	    else if (strcmp( family, "PowerMac3,1") == 0)	return(gestaltSawtooth);
-	    else if (strcmp( family, "PowerMac3,2") == 0)	return(gestaltSawtooth);
-	    else if (strcmp( family, "PowerMac3,3") == 0)	return(gestaltSawtooth);
-	    else if (strcmp( family, "PowerMac5,1") == 0)	return(gestaltSawtooth);
-	    else if (strcmp( family, "PowerBook2,1") == 0)	return(gestaltSawtooth);
+	    else if (PEKeyLargoIsCore99Model(family))	return(gestaltSawtooth);
 	    else
 		panic("Unsupported machine\n");
 	}

@@ -20,21 +20,28 @@ Native power transitions stop framework streams. Clients must restart them:
 IOAudio exposes no stable queue-position/lifetime token with which to prove
 safe automatic resume. The C runtime tests validated-owner buffer rebuilds,
 but the native adapter deliberately supplies no resume validator.
-Additional candidates (PowerMac3,2/3,3, Screamer iMacs, Lombard/Pismo) require
-complete wiring evidence, an implemented platform backend, and their own
-physical results. Headphone sense evidence alone does not establish routing
-or power support.
+The continuation implements the firmware/codec/platform paths below. These are
+source and software results; every physical acceptance column remains pending.
+The private PCM handoff also requires rebuilding the kernel DriverKit audio
+objects, alongside the updated kernel cache provider and Platform Expert.
 
-| Model / firmware | Codec / profile evidence | Tests / target build | Physical audio | Physical power |
-| --- | --- | --- | --- | --- |
-| PowerMac3,1 / 4.2.8f1 (Sawtooth) | Published 343S0184 Screamer properties, Proj7 power; fixture passes | C and adapter tests pass; PPC artifact recorded below | Not run; no physical machine available | Not run; platform PM prerequisite blocked |
-| PowerMac3,2 / 3,3 | Sense corroboration only; complete profile not validated | Generic implementation builds; no model acceptance | Not run | Not run |
-| Screamer iMacs, Lombard, Pismo | Candidates; each needs supported platform and wiring evidence | No model acceptance | Not run | Not run |
+| Model / firmware | Routing/profile provenance | Software coverage | Physical audio / power |
+| --- | --- | --- | --- |
+| PowerMac3,1 / 4.2.8f1 | Published Screamer DT, Proj7 | Captured-property fixture, routing/power/adapter | Not run / platform PM pending |
+| PowerMac3,2 / 3,3 | Complete explicit firmware required; no model-only fallback | Firmware-shaped model variations and known sense policy | Not run / platform PM pending |
+| PowerMac2,1 / 2,2 / 4,1 | Apple 4.1.9f1 kiheis-sound, distinct speaker polarity | Firmware-derived object fixtures; both front jack bits, rear line out, combined plugs, both polarities, PCM phase correction | Not run / platform PM pending |
+| PowerBook1,1 / 1.0f1 | Captured identity/resources; Apple PowerBook1,1 patch supplies absent objects | Strict fallback guards, Paddington power/mux, mic/line/media-bay CD selection | Not run / platform PM pending |
+| PowerBook3,1 / 4.1.8f5 | Captured identity/resources/objects, independently confirmed by Apple firmware | Proj10 timing, programmable mux, no parallel output, mic/line routing | Not run / platform PM pending |
 
-The native build evidence and artifact hashes are in
-[2026-10-18-build.md](tests/evidence/2026-10-18-build.md). The implementation
-validated there is commit `289928f46`; later documentation changes do not imply
-new measured hardware results.
+A complete PowerMac3,2 DT was not located. Its synthetic model variation does
+not prove a profile or successful attachment on that machine. Full live iMac
+DTs were not located; their routing evidence comes from the original Apple
+firmware, with provenance recorded in [SOURCES.md](SOURCES.md).
+
+The original native build evidence is preserved in
+[2026-10-18-build.md](tests/evidence/2026-10-18-build.md). Continuation results
+are recorded separately in
+[2026-10-18-profiles.md](tests/evidence/2026-10-18-profiles.md).
 
 Physical handoff checklist, pending for each claimed model:
 

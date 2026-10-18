@@ -16,9 +16,14 @@ typedef struct {
     unsigned long now,readyAt,lastWriteAt;
     unsigned int regs[24],hardware[8],lastCommand,commandWrites,writeCalls;
     unsigned int holdBusy,failWrite,irqContext,irqViolations,sense,writeDelay;
+    unsigned int traceCount,traceCommand[256],sleepCount,sleeps[32];
+    unsigned long traceTime[256];
 } ScreamerFixture;
 void FixtureInit(ScreamerFixture *);
 void FixtureSawtooth(ScreamerFixture *);
+void FixturePismo(ScreamerFixture *);
+void FixtureLombard(ScreamerFixture *);
+void FixtureIMac(ScreamerFixture *,const char *,unsigned int);
 void FixtureSetProperty(ScreamerFixture *, unsigned int, const char *, const void *, unsigned int);
 void FixtureCell(ScreamerFixture *, unsigned int, const char *, unsigned int);
 void FixtureSetRange(ScreamerFixture *, unsigned int, unsigned int, unsigned int);

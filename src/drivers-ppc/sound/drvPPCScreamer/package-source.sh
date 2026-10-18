@@ -15,6 +15,7 @@ mkdir -p "$output/$driver" "$output/$shared" "$output/apk"
 tar -cf "$output/.driver.tar" --exclude='*.build' --exclude='*.config' --exclude='*.exe' --exclude='*.o' --exclude='*.a' \
     --exclude='screamer_identity_test' --exclude='screamer_core_test' \
     --exclude='screamer_codec_test' --exclude='screamer_runtime_test' \
+    --exclude='screamer_profile_test' --exclude='screamer_pcm_test' \
     --exclude='screamer_adapter_test' -C "$source_root/$driver" .
 (cd "$output/$driver" && tar -xf "$output/.driver.tar")
 rm -f "$output/.driver.tar"

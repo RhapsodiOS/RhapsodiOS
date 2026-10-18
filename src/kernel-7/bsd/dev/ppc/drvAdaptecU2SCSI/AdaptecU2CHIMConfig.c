@@ -151,3 +151,115 @@ void SCSIhNonStandardGetConfig(AdaptecU2HHCB *hhcb)
 void SCSIhGetCommonConfig(AdaptecU2HHCB *hhcb)
 {
 }
+
+void SCSIhGetHardwareConfiguration(AdaptecU2HHCB *hhcb)
+{
+    unsigned char i, value;
+    hhcb->configurationRegister = OSMReadUExact8(*hhcb->ioHandle, 133) & 0xfc;
+    hhcb->maxDevices = (OSMReadUExact8(*hhcb->ioHandle, 31) & 2) ? 16 : 8;
+    hhcb->flags &= 0xff9fffff;
+    for (i = 0; i < hhcb->maxDevices; ++i) {
+        hhcb->devices[i].rate = (OSMReadUExact8(*hhcb->ioHandle, 31) & 2) ? 0x81 : 1;
+        hhcb->devices[i].flags = (hhcb->devices[i].flags & 0xb81f) | 0x4780;
+    }
+    SCSIhGetIDBasedConfiguration(hhcb);
+    hhcb->hardwareFlags &= ~0x80000;
+    hhcb->flags &= ~0x800;
+    if (hhcb->hardwareFlags & 0x80000000) {
+        hhcb->fifoThreshold = hhcb->hardware->setDataFifoThrshDefault(hhcb);
+        hhcb->hostID = 7;
+        hhcb->flags = (hhcb->flags & 0x7ff3ffff) | 0x80000000;
+        hhcb->flags = (hhcb->flags & 0xfffeffff) |
+            ((hhcb->hardware->defaultCacheThresholdEnable << 16) & 0x10000);
+    } else {
+        hhcb->fifoThreshold = hhcb->hardware->readDataFifoThrsh(hhcb);
+        hhcb->hostID = OSMReadUExact8(*hhcb->ioHandle, hhcb->hardware->configurationRegister) & 15;
+        value = OSMReadUExact8(*hhcb->ioHandle, 2);
+        hhcb->flags = (hhcb->flags & 0x7ff3ffff) |
+            (((value >> 3) & 3) << 18) | ((value & 32) ? 0x80000000 : 0);
+        value = hhcb->hardware->getCacheThEn(hhcb);
+        hhcb->flags = (hhcb->flags & 0xfffeffff) | ((value << 16) & 0x10000);
+    }
+}
+
+void SCSIhGetIDBasedConfiguration(AdaptecU2HHCB *hhcb)
+{
+    unsigned int family = hhcb->deviceID & 0xfff0;
+    unsigned char i, revision = hhcb->bytes02[2];
+    hhcb->flags = (hhcb->flags & 0xe3ffffff) | 0x4000000;
+    hhcb->flags = (hhcb->flags & 0xfc7fffff) |
+        ((hhcb->idConfiguration & 0x800000) ? 0x3800000 : 0);
+    if (hhcb->hardwareMode == 0) {
+        hhcb->hardwareFlags &= 0xfcffffff;
+        if (family == 0x7550 || family == 0x3860 || family == 0x7850 || family == 0x7860)
+            hhcb->hardwareFlags |= 0x1000000;
+        hhcb->flags &= ~0x1000;
+    }
+    if (hhcb->hardwareMode == 1) {
+        if (revision == 1 && !(hhcb->deviceID & 64))
+            hhcb->flags = (hhcb->flags & 0xffff5fff) | 0x2000;
+        else if (!revision && !(hhcb->deviceID & 64))
+            hhcb->flags |= 0xa000;
+        else
+            hhcb->flags &= 0xffff5fff;
+        hhcb->hardwareFlags = (hhcb->hardwareFlags & 0xfeff7fff) | 0x2000000 |
+            ((OSDReadPciConfiguration(hhcb, 64) & 128) ? 0x8000 : 0);
+        hhcb->flags = (hhcb->flags & 0xfffdefff) | 0x1000;
+        for (i = 0; i < hhcb->maxDevices; ++i) {
+            switch ((hhcb->idConfiguration >> 20) & 3) {
+            case 0: hhcb->devices[i].period = 19; break;
+            case 1: hhcb->devices[i].period = 21; break;
+            case 2: hhcb->devices[i].period = 143; break;
+            case 3: hhcb->devices[i].period = 24; break;
+            }
+            hhcb->devices[i].offset = 127;
+        }
+    }
+    for (i = 0; i < 16; ++i) {
+        if ((hhcb->idConfiguration & 0x300000) == 0x300000)
+            hhcb->devices[i].flags &= 0x7fff;
+        else
+            hhcb->devices[i].flags |= 0x8000;
+    }
+    if ((family == 0x7890 && hhcb->hardwareMode == 0) || hhcb->hardwareMode == 1)
+        hhcb->hardwareFlags |= 0x40800000;
+    else
+        hhcb->hardwareFlags &= 0xbf7fffff;
+    if ((hhcb->idConfiguration & 0x3000000) == 0x2000000)
+        hhcb->worddc = (hhcb->worddc & 0xffffff00) | 1;
+    else if ((hhcb->idConfiguration & 0x3000000) == 0x1000000)
+        hhcb->worddc &= 0xffffff00;
+    if ((family == 0x7870 || family == 0x7550 || family == 0x7850 || family == 0x7860) &&
+        hhcb->hardwareMode == 0)
+        hhcb->hardwareFlags |= 0x300000;
+}
+
+int SCSIhStandard64SetupSequencer(AdaptecU2HHCB *hhcb)
+{
+    return SCSIhLoadSequencer(hhcb->ioHandle, Seq_s64, 2000);
+}
+
+int SCSIhSwapping32SetupSequencer(AdaptecU2HHCB *hhcb)
+{
+    return SCSIhLoadSequencer(hhcb->ioHandle, Seq_w32, 1772);
+}
+
+int SCSIhStandardAdvSetupSequencer(AdaptecU2HHCB *hhcb)
+{
+    return SCSIhLoadSequencer(hhcb->ioHandle, Seq_sAdv, 2072);
+}
+
+int SCSIhSwappingAdvSetupSequencer(AdaptecU2HHCB *hhcb)
+{
+    return SCSIhLoadSequencer(hhcb->ioHandle, Seq_wAdv, 2256);
+}
+
+void SCSIhStartToRunSequencer(AdaptecU2HHCB *hhcb)
+{
+    OSMWriteUExact8(*hhcb->ioHandle, 96, 48);
+    OSMWriteUExact8(*hhcb->ioHandle, 98, (unsigned char)hhcb->firmware->word20);
+    OSMWriteUExact8(*hhcb->ioHandle, 99, (unsigned char)hhcb->firmware->word20 >> 2);
+    OSMWriteUExact8(*hhcb->ioHandle, 104, 128);
+    OSMWriteUExact8(*hhcb->ioHandle, 135, 2);
+    hhcb->flags &= ~0x4000;
+}

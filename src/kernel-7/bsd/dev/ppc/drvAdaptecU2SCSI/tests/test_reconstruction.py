@@ -1385,3 +1385,18 @@ def test_chip_mode_configuration_and_sequencer_choice():
 
 def test_hardware_initialization_failure():
     _task8_reference_family("initialization")
+
+
+@pytest.mark.parametrize("names", [
+    ["SCSIhGetHardwareConfiguration", "SCSIhGetIDBasedConfiguration",
+     "SCSIhStandard64SetupSequencer", "SCSIhSwapping32SetupSequencer",
+     "SCSIhStandardAdvSetupSequencer", "SCSIhSwappingAdvSetupSequencer",
+     "SCSIhStartToRunSequencer"],
+    ["SCSIhInitializeHardware", "SCSIhAIC78XXProcessAutoTerm",
+     "SCSIhAICBayonetProcessAutoTerm", "SCSIhAIC78XXUpdateExtTerm",
+     "SCSIhAICBayonetUpdateExtTerm"],
+])
+def test_task8_required_configuration_batches(names):
+    source = (TESTS.parent / "AdaptecU2CHIMConfig.c").read_text()
+    for name in names:
+        assert re.search(r"\b" + name + r"\([^;]*?\)\s*\{", source), "missing configuration body: " + name

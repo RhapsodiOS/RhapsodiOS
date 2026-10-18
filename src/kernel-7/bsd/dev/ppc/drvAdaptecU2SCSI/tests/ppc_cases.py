@@ -23,7 +23,8 @@ RUNNER_VERSION = "1/unicorn-" + unicorn.__version__ + "/" + hashlib.sha256(Path(
 _spec = importlib.util.spec_from_file_location("au2_runner_reference", Path(__file__).with_name("reference.py"))
 _reference = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_reference)
-DRIVER_SYMBOLS = {name.removeprefix("_") for function in _reference.frozen_functions(REPO).values() for name in function["names"]}
+DRIVER_FUNCTIONS = tuple(_reference.frozen_functions(REPO).values())
+DRIVER_SYMBOLS = {name.removeprefix("_") for function in DRIVER_FUNCTIONS for name in function["names"]}
 
 
 def digest(value):
@@ -47,6 +48,12 @@ def run_case(binary: Path, case: dict, contracts: dict) -> dict:
     if image["input"]["sha256"] == contracts.get("reference_sha256"):
         for name, address in contracts.get("reference_aliases", {}).items():
             symbols.setdefault(name, set()).add(address)
+    driver_addresses = {address for name, addresses in symbols.items()
+                        if name.removeprefix("_") in DRIVER_SYMBOLS for address in addresses}
+    # Reference-only unnamed bodies retain their full frozen identity even
+    # when a caller supplies only a new name at an interior instruction.
+    driver_bounds = [(function["address"], function["address"] + function["size"])
+                     for function in DRIVER_FUNCTIONS] if image["input"]["sha256"] == _reference.SHA256 else []
 
     def resolve(name):
         addresses = symbols.get(name, set())
@@ -143,7 +150,8 @@ def run_case(binary: Path, case: dict, contracts: dict) -> dict:
                 contract["return"] not in ("scalar", "pointer")):
             raise ValueError(f"unsupported service calling convention: {name}")
         address = resolve(name)
-        if (name.removeprefix("_") in DRIVER_SYMBOLS or any(a <= address < b for a, b in bounds) or
+        if (name.removeprefix("_") in DRIVER_SYMBOLS or address in driver_addresses or
+                any(a <= address < b for a, b in bounds + driver_bounds) or
                 contract["boundary"] not in ("kernel-service", "callback")):
             raise ValueError(f"service replaces an internal body or has an unsupported boundary: {name}")
         if not contract.get("evidence"):
@@ -221,6 +229,8 @@ def run_case(binary: Path, case: dict, contracts: dict) -> dict:
         word = int.from_bytes(uc.mem_read(address, 4), "big")
         previous_word = word
         opcode, xo = word >> 26, (word >> 1) & 1023
+        if opcode == 31 and xo in (20, 150):
+            raise ValueError(f"unsupported reservation operation at 0x{address:x}")
         # Trap/system/privileged, cache, and synchronization operations require
         # separate hardware/ownership evidence; they must never become no-ops.
         if opcode in (3, 17) or (opcode == 19 and xo in (50, 150)) or (opcode == 31 and xo in

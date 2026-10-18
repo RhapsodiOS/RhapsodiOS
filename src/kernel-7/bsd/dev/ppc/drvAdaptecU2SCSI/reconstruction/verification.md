@@ -84,6 +84,9 @@ the exact normalized `arguments`, `return`, and optional ordinary-memory
 `writes` (`region`, `offset`, hexadecimal `bytes`). Call traces contain
 symbolic `target`, arguments and return. Bodies in the frozen driver inventory
 cannot be replaced by services, including bodies outside the selected case.
+The gate checks their independently resolved target addresses, including
+alternate names at those addresses. The pinned reference additionally retains
+all frozen driver extents, so an unnamed or interior alias cannot hide a body.
 
 A fixture memory region may name an `mmio` bank in `contracts.mmio`. A bank
 lists reviewed register records (`offset`, `size`, allowed `access` kinds,
@@ -96,8 +99,9 @@ claimed by the synthetic bank smoke test.
 
 Unknown control transfers, unsupported instructions, trap/privileged/cache/
 barrier operations, invalid memory accesses, unused outcomes and exhausted
-instruction budgets fail. Synchronization instructions are rejected for
-separate review rather than replaced with no-ops.
+instruction budgets fail. Synchronization instructions, including `lwarx`
+and `stwcx.`, are rejected for separate review rather than replaced with
+no-ops. No reservation or concurrency semantics are claimed.
 
 `execute` checks every observation against the committed `expected` object.
 `validate_result` rejects wrong binary, case, contract, source-revision or
@@ -172,8 +176,10 @@ Observe growing logs only with `ninja/tests/read-log.sh`.
 The initial unchanged baseline failed before compilation because the base
 guest lacked the framework's `PrivateHeaders` symlink. Its `Versions/B`
 headers already existed; staging that symlink fixed the prerequisite. No
-driver source was changed to address it. The task report records the clean
-scratch rerun outcome and current build limitations. The object smoke check
+driver source was changed to address it. The unchanged clean-scratch rerun
+then completed with exit 0: both Samurai RELEASE_PPC and DEBUG_PPC products,
+PPC header/start-symbol checks and idle checks passed. The task report retains
+the actual logs and hashes. The object smoke check
 produced `locc.c.o` as big-endian PPC Mach-O CPU type 18 with SHA-256
 `C6F77F053FFDC862DFE8BC8F1F28FFC647B02264F9EBF9FCE9080C2825D67016`.
 The full four-build wrapper is syntax/interface checked here; final driver

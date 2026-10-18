@@ -86,19 +86,21 @@ def test_inventory_changed_reference_and_omitted_helper_fail(reference):
         verifier.audit("inventory", output, REPO, None, None, None)
 
 
-def runner_image(tmp_path, words, base=0x1000):
+def runner_image(tmp_path, words, base=0x1000, aliases=()):
     """Independent PPC smoke image: one linked text section and two symbols."""
     code = struct.pack(">" + "I" * len(words), *words)
-    strings = b"\0_smoke\0_external\0"
+    definitions = [("_smoke", 0), ("_external", 0x100)] + list(aliases)
+    strings, symbols = b"\0", b""
+    for name, offset in definitions:
+        symbols += struct.pack(">IBBHI", len(strings), 15, 1, 0, base + offset)
+        strings += name.encode("ascii") + b"\0"
     symoff = 0x1000 + len(code)
     header = struct.pack(">7I", 0xfeedface, 18, 0, 2, 2, 148, 0)
     segment = struct.pack(">2I16s8I", 1, 124, b"__TEXT", base, 0x1000,
                           0x1000, len(code), 7, 5, 1, 0)
     section = struct.pack(">16s16s9I", b"__text", b"__TEXT", base, len(code),
                           0x1000, 2, 0, 0, 0, 0, 0)
-    symtab = struct.pack(">6I", 2, 24, symoff, 2, symoff + 24, len(strings))
-    symbols = struct.pack(">IBBHI", 1, 15, 1, 0, base)
-    symbols += struct.pack(">IBBHI", 8, 15, 1, 0, base + 0x100)
+    symtab = struct.pack(">6I", 2, 24, symoff, len(definitions), symoff + len(symbols), len(strings))
     image = tmp_path / ("smoke-%x.bin" % base)
     image.write_bytes((header + segment + section + symtab).ljust(0x1000, b"\0")
                       + code + symbols + strings)
@@ -223,6 +225,56 @@ def test_runner_rejects_internal_service():
                                           "arguments": [], "return": "scalar"}}
     with pytest.raises(ValueError, match="internal body"):
         runner.run_case(OUT / "reference/image.bin", cases["cases"][0], contracts)
+
+
+@pytest.mark.parametrize("base", [0x1000, 0x9000])
+@pytest.mark.parametrize("alias_source", ["reference_aliases", "image_symbols"])
+def test_runner_rejects_internal_alias_outside_selected_body(tmp_path, base, alias_source):
+    runner = load_script("ppc_cases")
+    # Save LR, call the different internal body through its alternate name,
+    # restore LR, and return. The target lies outside this selected case body.
+    code = [0x7c0802a6, 0x90010008, 0x480000f9, 0x80010008, 0x7c0803a6, 0x4e800020]
+    aliases = [("_sub_18914C", 0x100), ("_alternate_internal_name", 0x100)] if alias_source == "image_symbols" else []
+    image = runner_image(tmp_path, code, base, aliases)
+    case = smoke_case(24)
+    case["external_outcomes"] = [{"service": "alternate_internal_name", "arguments": [], "return": 5}]
+    contracts = {"services": {"alternate_internal_name": {
+        "boundary": "kernel-service", "evidence": "synthetic forbidden internal alias",
+        "arguments": [], "return": "scalar"}}}
+    if alias_source == "reference_aliases":
+        sha = runner.identify(image).sha256
+        case["evidence"].update(reference_sha256=sha, entry_address=base)
+        contracts.update(reference_sha256=sha, reference_aliases={
+            "sub_18914C": base + 0x100, "alternate_internal_name": base + 0x100})
+    assert "sub_18914C" in runner.DRIVER_SYMBOLS
+    with pytest.raises(ValueError, match="internal body"):
+        runner.run_case(image, case, contracts)
+
+
+@pytest.mark.parametrize("offset", [0, 4])
+def test_runner_rejects_reference_internal_alias_without_named_entry(offset):
+    runner = load_script("ppc_cases")
+    cases = json.loads((TESTS / "reference-cases.json").read_text())
+    contracts = json.loads((TESTS / "contracts.json").read_text())
+    # Remove the known unnamed helper alias. Its frozen extent still belongs
+    # to the driver, including a separately named interior instruction.
+    del contracts["reference_aliases"]["sub_18914C"]
+    contracts["reference_aliases"]["alternate_internal_name"] = 0x18914c + offset
+    contracts["services"] = {"alternate_internal_name": {
+        "boundary": "kernel-service", "evidence": "synthetic forbidden reference alias",
+        "arguments": [], "return": "scalar"}}
+    with pytest.raises(ValueError, match="internal body"):
+        runner.run_case(OUT / "reference/image.bin", cases["cases"][0], contracts)
+
+
+@pytest.mark.parametrize("word", [0x7c602028, 0x7c60212d])
+def test_runner_rejects_reservation_operations(tmp_path, word):
+    runner = load_script("ppc_cases")
+    image = runner_image(tmp_path, [word, 0x4e800020])
+    case = smoke_case(8)
+    case["arguments"] = [0, {"region": "buffer", "offset": 0}]
+    with pytest.raises(ValueError, match="unsupported reservation operation"):
+        runner.run_case(image, case, {"services": {}})
 
 
 def test_runner_scripted_register_access_and_unknown_register(tmp_path):

@@ -32,7 +32,7 @@ ScreamerStatus ScreamerRuntimeInitialize(ScreamerRuntime *r,
     const ScreamerMachineConfig *config,const ScreamerRuntimeOps *ops,unsigned long deadline)
 {
     ScreamerStatus s;
-    unsigned int code,i;
+    unsigned int code,i,sense,second;
     if(!r || !config || !ops || !ops->setPlatform ||
         ScreamerRateCode(config,44100,&code)!=kScreamerOK) return kScreamerInvalid;
     memset(r,0,sizeof(*r));r->config=*config;r->ops=*ops;r->codec.ops=ops->codec;
@@ -49,7 +49,18 @@ ScreamerStatus ScreamerRuntimeInitialize(ScreamerRuntime *r,
     if(i==kScreamerInputCount) return kScreamerUnresolved;
     r->desired.input=(ScreamerInput)i;r->applied=r->desired;
     r->power=kScreamerPowerReady;r->clockRate=44100;r->generation=1;r->initialized=1;
-    return kScreamerOK;
+    s=r->codec.ops.readLE32(r->codec.ops.context,0x20,&sense);
+    if(s==kScreamerOK) s=ScreamerCodecDelay(&r->codec,5,deadline);
+    if(s==kScreamerOK) s=r->codec.ops.readLE32(r->codec.ops.context,0x20,&second);
+    if(s!=kScreamerOK) {fault(r);return s;}
+    sense&=config->profile.headphoneMask;
+    second&=config->profile.headphoneMask;
+    if(sense==second) {
+        r->headphone=config->profile.anySense ? second!=0 :
+            second==config->profile.headphoneMatch;
+        r->routeKnown=1;
+    }
+    return ScreamerApplyControls(r,&r->desired,deadline);
 }
 ScreamerStatus ScreamerStart(ScreamerRuntime *r,ScreamerStream direction,
     void *buffer,unsigned long bytes,unsigned long period,unsigned int hz,unsigned long deadline)
@@ -128,5 +139,91 @@ ScreamerStatus ScreamerCaptureCompletions(ScreamerRuntime *r,ScreamerStream dire
     total=s->remainder+c.bytes;n=total/s->period;
     if(n>UINT_MAX) {fault(r);return kScreamerFault;}
     s->remainder=total%s->period;*periods=(unsigned int)n;
+    return kScreamerOK;
+}
+
+ScreamerStatus ScreamerApplyControls(ScreamerRuntime *r,const ScreamerControls *controls,
+    unsigned long deadline)
+{
+    ScreamerControls next;
+    ScreamerStatus status;
+    unsigned int reg,atten,route,port,input,i;
+    if(!r || !controls || !r->initialized) return kScreamerInvalid;
+    if(r->closing) return kScreamerClosed;
+    if(r->faulted) return kScreamerFault;
+    if(r->power!=kScreamerPowerReady) return kScreamerBusy;
+    next=*controls;
+    if(next.input<0 || next.input>=kScreamerInputCount ||
+        !r->config.profile.inputBits[next.input]) return kScreamerUnsupported;
+    if(next.userMuted!=0 && next.userMuted!=1) return kScreamerInvalid;
+    for(i=0;i<2;++i) if(next.gain[i]>15 || next.attenuation[i]>15) return kScreamerInvalid;
+    if(!next.userMuted && !r->routeKnown && !r->routePending) return kScreamerBusy;
+    route=r->routePending?r->pendingHeadphone:r->headphone;
+    reg=(r->codec.shadow[1]&~0x40U)|0x280U;
+    r->desired=next;
+    status=ScreamerCodecWrite(&r->codec,1,reg,deadline);
+    input=(r->codec.shadow[0]&~0xeffU)|r->config.profile.inputBits[next.input]|
+        (next.gain[0]<<4)|next.gain[1];
+    if(status==kScreamerOK) status=ScreamerCodecWrite(&r->codec,0,input,deadline);
+    atten=(next.attenuation[0]<<6)|next.attenuation[1];
+    if(status==kScreamerOK) status=ScreamerCodecWrite(&r->codec,2,atten,deadline);
+    if(status==kScreamerOK) status=ScreamerCodecWrite(&r->codec,4,atten,deadline);
+    if(r->config.profile.speakerKind==5) {
+        reg&=~0x800U;
+        if(route != r->config.profile.speakerParam) reg|=0x800U;
+        if(status==kScreamerOK) status=ScreamerCodecWrite(&r->codec,1,reg,deadline);
+    }
+    if(status==kScreamerOK) status=ScreamerCodecDelay(&r->codec,5,deadline);
+    port=route?r->config.profile.headphonePort:r->config.profile.speakerPort;
+    if(!next.userMuted) reg&=~(port==1?0x200U:0x80U);
+    if(status==kScreamerOK) status=ScreamerCodecWrite(&r->codec,1,reg,deadline);
+    if(status!=kScreamerOK) {fault(r);return status;}
+    r->applied=next;r->headphone=route;
+    if(r->routePending) r->routeKnown=1;
+    r->routePending=0;
+    return kScreamerOK;
+}
+ScreamerStatus ScreamerObserveJack(ScreamerRuntime *r,unsigned int sense,
+    unsigned long now,unsigned long generation)
+{
+    unsigned int plugged;
+    unsigned long left;
+    if(!r || !r->initialized) return kScreamerInvalid;
+    if(r->closing || generation!=r->generation) return kScreamerClosed;
+    if(r->faulted) return kScreamerFault;
+    if(r->power!=kScreamerPowerReady) return kScreamerBusy;
+    plugged=r->config.profile.anySense ? (sense&r->config.profile.headphoneMask)!=0 :
+        (sense&r->config.profile.headphoneMask)==r->config.profile.headphoneMatch;
+    if(!r->jackCandidateValid || plugged!=r->jackCandidate) {
+        r->jackCandidate=plugged;r->jackCandidateValid=1;
+        if(!TASTimeAdd(now,5,&r->jackDeadline)) return kScreamerTimeout;
+        return kScreamerOK;
+    }
+    if(TASTimeBefore(now,r->jackDeadline)) return kScreamerOK;
+    if(!TASTimeDue(now,r->jackDeadline) &&
+        !TASTimeRemaining(now,r->jackDeadline,&left)) return kScreamerTimeout;
+    if(!r->routeKnown || plugged!=r->headphone) {
+        r->pendingHeadphone=plugged;r->routePending=1;
+    }
+    return kScreamerOK;
+}
+ScreamerStatus ScreamerServiceDeferred(ScreamerRuntime *r,unsigned long deadline,
+    unsigned int periods[2])
+{
+    ScreamerStatus status;
+    unsigned int i;
+    if(!r || !periods) return kScreamerInvalid;
+    periods[0]=periods[1]=0;
+    if(r->closing) return kScreamerClosed;
+    if(r->faulted) return kScreamerFault;
+    if(r->power!=kScreamerPowerReady) return kScreamerBusy;
+    if(r->routePending) {
+        status=ScreamerApplyControls(r,&r->desired,deadline);
+        if(status!=kScreamerOK) return status;
+    }
+    for(i=0;i<2;++i) {
+        status=ScreamerCaptureCompletions(r,(ScreamerStream)i,&periods[i]);
+        if(status!=kScreamerOK) return status;
+    }
     return kScreamerOK;
 }

@@ -25,9 +25,15 @@ typedef struct {
     ScreamerPowerState power;
     unsigned int initialized,faulted,closing,clockRate;
     unsigned long generation;
+    unsigned long jackDeadline;
+    unsigned int headphone,routeKnown,routePending,pendingHeadphone;
+    unsigned int jackCandidate,jackCandidateValid;
 } ScreamerRuntime;
 ScreamerStatus ScreamerRuntimeInitialize(ScreamerRuntime *,const ScreamerMachineConfig *,const ScreamerRuntimeOps *,unsigned long);
 ScreamerStatus ScreamerStart(ScreamerRuntime *,ScreamerStream,void *,unsigned long,unsigned long,unsigned int,unsigned long);
 ScreamerStatus ScreamerStop(ScreamerRuntime *,ScreamerStream,unsigned long);
 ScreamerStatus ScreamerCaptureCompletions(ScreamerRuntime *,ScreamerStream,unsigned int *);
+ScreamerStatus ScreamerApplyControls(ScreamerRuntime *,const ScreamerControls *,unsigned long);
+ScreamerStatus ScreamerObserveJack(ScreamerRuntime *,unsigned int,unsigned long,unsigned long);
+ScreamerStatus ScreamerServiceDeferred(ScreamerRuntime *,unsigned long,unsigned int [2]);
 #endif

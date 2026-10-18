@@ -1995,6 +1995,11 @@ build $outdir/ohare.o: cc bsd/dev/ppc/drvOHare/ohare.m || $outdir/prepared $outd
   object = ohare.o
   flags = $cflags
 
+build $outdir/PowerSupply.o: cc bsd/dev/ppc/drvPowerSupply/PowerSupply.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvPowerSupply/PowerSupply.m
+  object = PowerSupply.o
+  flags = $cflags
+
 build $outdir/Apple96BusState.o: cc bsd/dev/ppc/drvApple96_SCSI/Apple96BusState.m || $outdir/prepared $outdir/validated generated
   source = ../../bsd/dev/ppc/drvApple96_SCSI/Apple96BusState.m
   object = Apple96BusState.o
@@ -2425,7 +2430,7 @@ kernel_objects = $
   $outdir/kmDevice.o $outdir/kmGraphics.o $outdir/kmLocalized.o $outdir/mem.o $outdir/nvram.o $
   $outdir/PowerSurgeMB.o $outdir/video_scroll.o $outdir/adb.o $outdir/cuda.o $outdir/pmu.o $
   $outdir/IOADBBus.o $outdir/EventShmemLock.o $outdir/EventSrcPCKeyboard.o $outdir/EventSrcPCPointer.o $outdir/PPCKeyboard.o $
-  $outdir/PPCKeymap.o $outdir/PPCMouse.o $outdir/PCPointer.o $outdir/ohare.o $outdir/Apple96BusState.o $
+  $outdir/PPCKeymap.o $outdir/PPCMouse.o $outdir/PCPointer.o $outdir/ohare.o $outdir/PowerSupply.o $outdir/Apple96BusState.o $
   $outdir/Apple96Curio.o $outdir/Apple96CurioDBDMA.o $outdir/Apple96CurioPublic.o $outdir/Apple96HWPrivate.o $outdir/Apple96Hardware.o $
   $outdir/Apple96ISR.o $outdir/Apple96SCSI.o $outdir/Apple96SCSIPrivate.o $outdir/StateMachines.o $outdir/Timestamp.o $
   $outdir/MESH_DBDMA.o $outdir/MaceEnet.o $outdir/MaceEnetPrivate.o $outdir/MaceEnetHW.o $outdir/BMacEnet.o $
@@ -2521,7 +2526,7 @@ build objects: phony $
   $outdir/kmDevice.o $outdir/kmGraphics.o $outdir/kmLocalized.o $outdir/mem.o $outdir/nvram.o $
   $outdir/PowerSurgeMB.o $outdir/video_scroll.o $outdir/adb.o $outdir/cuda.o $outdir/pmu.o $
   $outdir/IOADBBus.o $outdir/EventShmemLock.o $outdir/EventSrcPCKeyboard.o $outdir/EventSrcPCPointer.o $outdir/PPCKeyboard.o $
-  $outdir/PPCKeymap.o $outdir/PPCMouse.o $outdir/PCPointer.o $outdir/ohare.o $outdir/Apple96BusState.o $
+  $outdir/PPCKeymap.o $outdir/PPCMouse.o $outdir/PCPointer.o $outdir/ohare.o $outdir/PowerSupply.o $outdir/Apple96BusState.o $
   $outdir/Apple96Curio.o $outdir/Apple96CurioDBDMA.o $outdir/Apple96CurioPublic.o $outdir/Apple96HWPrivate.o $outdir/Apple96Hardware.o $
   $outdir/Apple96ISR.o $outdir/Apple96SCSI.o $outdir/Apple96SCSIPrivate.o $outdir/StateMachines.o $outdir/Timestamp.o $
   $outdir/MESH_DBDMA.o $outdir/MaceEnet.o $outdir/MaceEnetPrivate.o $outdir/MaceEnetHW.o $outdir/BMacEnet.o $

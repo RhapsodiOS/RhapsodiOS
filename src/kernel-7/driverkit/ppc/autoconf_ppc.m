@@ -170,6 +170,10 @@ BUS_LOAD_PRI_PROP
 "\"Bus Type\" = \"PPC\";"
 INT_SCSI_LOAD_PRI_PROP
 "\0"
+"\"Driver Name\" = \"PowerSupply\";"
+"\"Matching\" = \"redundant-power-supply\";"
+BUS_LOAD_PRI_PROP
+"\0"
 #endif		/* MK_HASDRIVERS */
 
 #if		DK_HASDRIVERS

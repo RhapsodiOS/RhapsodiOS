@@ -92,6 +92,8 @@ bsd/dev/ppc/PCPointer.m			optional event
 
 bsd/dev/ppc/drvOHare/ohare.m		optional mk_hasdrivers
 
+bsd/dev/ppc/drvPowerSupply/PowerSupply.m	optional mk_hasdrivers
+
 bsd/dev/ppc/drvApple96_SCSI/Apple96BusState.m		optional mk_hasdrivers
 bsd/dev/ppc/drvApple96_SCSI/Apple96Curio.m		optional mk_hasdrivers
 bsd/dev/ppc/drvApple96_SCSI/Apple96CurioDBDMA.m		optional mk_hasdrivers

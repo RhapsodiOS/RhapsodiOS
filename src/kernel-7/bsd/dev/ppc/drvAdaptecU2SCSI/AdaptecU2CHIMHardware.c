@@ -1,5 +1,91 @@
 #include "AdaptecU2CHIMPrivate.h"
 
+void SCSIhSwapping32SetBreakPoint(AdaptecU2HHCB *hhcb, unsigned char mask)
+{
+    unsigned char value = OSMReadUExact8(*hhcb->ioHandle, 96);
+    OSMWriteUExact8(*hhcb->ioHandle, 96, value | 8);
+    if (mask & 1)
+        value = (unsigned char)(hhcb->firmware->word20 + 4) >> 2;
+    else if (mask & 2)
+        value = hhcb->firmware->word34 >> 2;
+    else
+        return;
+    OSMWriteUExact8(*hhcb->ioHandle, 103, value);
+    OSMWriteUExact8(*hhcb->ioHandle, 104, 0);
+}
+
+void SCSIhStandard64SetBreakPoint(AdaptecU2HHCB *hhcb, unsigned char mask)
+{
+    unsigned char value = OSMReadUExact8(*hhcb->ioHandle, 96);
+    OSMWriteUExact8(*hhcb->ioHandle, 96, value | 8);
+    if (mask & 1)
+        value = (unsigned char)(hhcb->firmware->word24 + 4) >> 2;
+    else if (mask & 2)
+        value = hhcb->firmware->word34 >> 2;
+    else
+        return;
+    OSMWriteUExact8(*hhcb->ioHandle, 103, value);
+    OSMWriteUExact8(*hhcb->ioHandle, 104, 0);
+}
+
+void SCSIhSwappingAdvSetBreakPoint(AdaptecU2HHCB *hhcb, unsigned char mask)
+{
+    unsigned char value;
+    if (mask & 1)
+        value = OSMReadUExact8(*hhcb->ioHandle, 73) | 1;
+    else if (mask & 2)
+        value = OSMReadUExact8(*hhcb->ioHandle, 73) | 2;
+    else
+        return;
+    OSMWriteUExact8(*hhcb->ioHandle, 73, value);
+}
+
+void SCSIhStandardAdvSetBreakPoint(AdaptecU2HHCB *hhcb, unsigned char mask)
+{
+    unsigned char value;
+    if (mask & 1)
+        value = OSMReadUExact8(*hhcb->ioHandle, 74) | 1;
+    else if (mask & 2)
+        value = OSMReadUExact8(*hhcb->ioHandle, 74) | 2;
+    else
+        return;
+    OSMWriteUExact8(*hhcb->ioHandle, 74, value);
+}
+
+void SCSIhSwapping32ClearBreakPoint(AdaptecU2HHCB *hhcb, unsigned char mask)
+{
+    OSMWriteUExact8(*hhcb->ioHandle, 104, 128);
+}
+
+void SCSIhStandard64ClearBreakPoint(AdaptecU2HHCB *hhcb, unsigned char mask)
+{
+    OSMWriteUExact8(*hhcb->ioHandle, 104, 128);
+}
+
+void SCSIhSwappingAdvClearBreakPoint(AdaptecU2HHCB *hhcb, unsigned char mask)
+{
+    unsigned char value;
+    if (mask & 1)
+        value = OSMReadUExact8(*hhcb->ioHandle, 73) & 0xfe;
+    else if (mask & 2)
+        value = OSMReadUExact8(*hhcb->ioHandle, 73) & 0xfd;
+    else
+        return;
+    OSMWriteUExact8(*hhcb->ioHandle, 73, value);
+}
+
+void SCSIhStandardAdvClearBreakPoint(AdaptecU2HHCB *hhcb, unsigned char mask)
+{
+    unsigned char value;
+    if (mask & 1)
+        value = OSMReadUExact8(*hhcb->ioHandle, 74) & 0xfe;
+    else if (mask & 2)
+        value = OSMReadUExact8(*hhcb->ioHandle, 74) & 0xfd;
+    else
+        return;
+    OSMWriteUExact8(*hhcb->ioHandle, 74, value);
+}
+
 unsigned short SCSIhAIC78XXCalcScsiOption(unsigned short speed,
                                           unsigned char offset,
                                           unsigned char width)

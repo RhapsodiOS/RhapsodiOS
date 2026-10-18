@@ -80,7 +80,21 @@ def declared_abi(case):
     return layouts
 
 
+def machine_inputs(case):
+    if "machine_inputs" not in case:
+        return {}
+    values = case["machine_inputs"]
+    if (case.get("entry") != "SCSIhInitializeHardware" or
+            case.get("evidence", {}).get("entry_address") != 0x1931e4 or
+            case.get("declaration") != "void SCSIhInitializeHardware(AdaptecU2HHCB *hhcb);" or
+            not isinstance(values, dict) or set(values) != {"r28"} or
+            type(values["r28"]) is not int or not 0 <= values["r28"] <= 0xffffffff):
+        raise ValueError("unsupported machine input; only reviewed incoming r28 is permitted")
+    return {28: values["r28"]}
+
+
 def run_case(binary: Path, case: dict, contracts: dict) -> dict:
+    registers = machine_inputs(case)
     payload, image = load_image(binary)
     if (image["input"]["architecture"], image["input"]["endianness"]) != ("ppc", "big"):
         raise ValueError("runner requires PPC32 big-endian Mach-O")
@@ -155,6 +169,8 @@ def run_case(binary: Path, case: dict, contracts: dict) -> dict:
     initial_sp = STACK + STACK_SIZE - 4096
     cpu.reg_write(ppc.UC_PPC_REG_1, initial_sp)
     cpu.reg_write(ppc.UC_PPC_REG_LR, SENTINEL)
+    for register, value in registers.items():
+        cpu.reg_write(getattr(ppc, f"UC_PPC_REG_{register}"), value)
     regions = {}
     next_region = REGION_BASE
     for region in case["memory"]:

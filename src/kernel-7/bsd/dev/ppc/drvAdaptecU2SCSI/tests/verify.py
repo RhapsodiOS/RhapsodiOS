@@ -36,6 +36,9 @@ def audit(stage: str, reference: Path, repo_root: Path, objects: Path | None,
         return
     if stage == "group":
         evidence = authenticate_reference(reference, repo_root)
+        if group == "AdaptecU2CHIMConfig.c":
+            audit_config_group(evidence, repo_root, objects)
+            return
         if group == "AdaptecU2CHIMSCB.c":
             audit_scb_group(evidence, repo_root, objects)
             return
@@ -270,6 +273,253 @@ def audit_service_group(evidence, repo_root, objects, group):
                         raise ValueError("native event flag update differs")
                 elif int.from_bytes(native_bytes(target,4),"big") != 0x38800000 + {0:1,2:3,4:2,7:8}[index]:
                     raise ValueError("native event callback value differs")
+
+
+def audit_config_group(evidence, repo_root, objects):
+    driver = repo_root / ref.DRIVER
+    owner = "AdaptecU2CHIMConfig.c"
+    proof_path = driver / "reconstruction/task8.json"
+    proof = load_json(proof_path)
+    addresses = set(evidence["document"]["owners"][owner])
+    reviews = {body["address"]: body for body in proof["bodies"]}
+    if (proof.get("reference_sha256") != ref.SHA256 or len(proof["bodies"]) != 20 or
+            set(reviews) != addresses):
+        raise ValueError("Task8 review requires exactly 20 configuration bodies")
+    if objects is None:
+        raise ValueError("Task8 requires actual target objects")
+    manifest = load_json(objects / "objects.json")
+    if (manifest.get("configuration") != "RELEASE_PPC" or
+            manifest.get("hash_algorithm") != "SHA-256" or
+            manifest.get("source_revision") != proof["native_revision"] or
+            not re.fullmatch(r"[0-9a-fA-F]{40}", proof["native_revision"]) or
+            hashlib.sha256((objects / "objects.json").read_bytes()).hexdigest().upper() != proof["native_manifest_sha256"] or
+            len(manifest["objects"]) != 1):
+        raise ValueError("invalid Task8 native provenance")
+    item = manifest["objects"][0]
+    if (item["source"] != "bsd/dev/ppc/drvAdaptecU2SCSI/" + owner or
+            item["path"] != Path(item["path"]).name or item["cpu_type"] != 18):
+        raise ValueError("invalid Task8 native source/object")
+    for path, expected in [(objects / item["path"], item["sha256"]),
+                           (driver / owner, item["source_sha256"])]:
+        actual = path.read_bytes()
+        if path == driver / owner:
+            actual = actual.replace(b"\r\n", b"\n")
+        if hashlib.sha256(actual).hexdigest().upper() != expected:
+            raise ValueError("stale Task8 native source/object: " + path.name)
+    if any("warning:" in line or "error:" in line for line in (objects / item["log"]).read_text().splitlines()):
+        raise ValueError("Task8 native compilation diagnostic")
+    inputs = proof["native_inputs"]
+    if set(inputs) != {owner} | set(LAYOUT_HEADERS):
+        raise ValueError("Task8 native input closure is incomplete")
+    for name, hashes in inputs.items():
+        path = driver / name
+        blob = subprocess.check_output(["git", "show", proof["native_revision"] + ":" +
+                                        path.relative_to(repo_root).as_posix()], cwd=repo_root)
+        if (path.read_bytes().replace(b"\r\n", b"\n") != blob or
+                hashlib.sha256(blob).hexdigest().upper() != hashes["git_blob_sha256"] or
+                hashes["git_blob_sha256"] != hashes["staged_sha256"]):
+            raise ValueError("stale Task8 producing input: " + name)
+    for filename, names in [("source-inputs.sha256", set(inputs)),
+                            ("header-inputs.sha256", set(LAYOUT_HEADERS))]:
+        lines = {}
+        for line in (objects / filename).read_text().splitlines():
+            digest, path = line.split(maxsplit=1)
+            name = Path(path).name
+            if name in lines or path != "bsd/dev/ppc/drvAdaptecU2SCSI/" + name:
+                raise ValueError("invalid Task8 compiled input manifest")
+            lines[name] = digest.upper()
+        if lines != {name: inputs[name]["staged_sha256"] for name in names}:
+            raise ValueError("Task8 compiled input hashes differ")
+    payload, macho = load_image(objects / item["path"])
+    if ((macho["input"]["architecture"], macho["input"]["endianness"]) != ("ppc", "big") or
+            macho["extensions"]["macho"]["header"]["file_type"] != 1):
+        raise ValueError("Task8 native object requires PPC big-endian MH_OBJECT")
+    symbols = sorted([s for s in macho["symbols"] if s["binding"] == "external" and
+                      s["section"] == "__TEXT,__text"], key=lambda s: s["address"])
+    if {s["name"] for s in symbols} != {evidence["frozen"][a]["names"][0] for a in addresses}:
+        raise ValueError("Task8 native owner symbol coverage differs")
+    text = next(s for s in macho["sections"] if s["name"] == "__TEXT,__text")
+
+    def native_bytes(address, size):
+        section = next((s for s in macho["sections"] if s["address"] <= address <=
+                        s["address"] + s["size"] - size), None)
+        if section is None:
+            raise ValueError("Task8 native access exceeds section")
+        offset = section["offset"] + address - section["address"]
+        return payload[offset:offset+size]
+
+    cases = load_json(driver / "tests/task8-cases.json")
+    contracts = load_json(driver / "tests/contracts.json")
+    runner_spec = importlib.util.spec_from_file_location("au2_task8_runner", driver / "tests/ppc_cases.py")
+    runner = importlib.util.module_from_spec(runner_spec)
+    runner_spec.loader.exec_module(runner)
+    result = load_json(objects / "reference-results.json")
+    expected = {"binary_sha256": ref.SHA256, "cases_sha256": runner.digest(cases),
+                "contracts_sha256": runner.digest(contracts), "runner_version": proof["reference_runner_version"]}
+    if any(result.get(key) != value for key, value in expected.items()):
+        raise ValueError("stale Task8 reference result")
+    if not re.fullmatch(r"[0-9a-fA-F]{40}", result.get("source_revision", "")):
+        raise ValueError("stale Task8 execution revision")
+    # Preserve the actual execution revision. A later evidence-only commit can
+    # reuse it only when every executable/fixture input remains byte-identical.
+    # Reviewed repository import closure: ppc_cases -> reference and binrecon;
+    # macho -> arch/identity/objc_abi; reference -> schema; source_map -> source_paths.
+    # Importing binrecon also executes its package initializer.
+    executed_inputs = [ref.DRIVER / name for name in (
+        "tests/task8-cases.json", "tests/contracts.json", "tests/ppc_cases.py",
+        "tests/reference.py", "reconstruction/inventory.md")]
+    executed_inputs += [Path("tools/binrecon/binrecon") / (name + ".py") for name in (
+        "__init__", "identity", "macho", "objc_abi", "source_map", "schema", "arch")]
+    executed_inputs.append(Path("tools/binrecon/source_paths.py"))
+    if set(proof["execution_inputs"]) != {path.as_posix() for path in executed_inputs}:
+        raise ValueError("Task8 execution input closure is incomplete")
+    for relative in executed_inputs:
+        path = repo_root / relative
+        blob = subprocess.check_output(["git", "show", result["source_revision"] + ":" +
+                                        relative.as_posix()], cwd=repo_root)
+        canonical = path.read_bytes().replace(b"\r\n", b"\n")
+        if relative == ref.DRIVER / "reconstruction/inventory.md":
+            # frozen_functions consumes only this block; later prose is metadata.
+            canonical, blob = [value.split(b"<!-- functions:start -->")[1].split(
+                b"<!-- functions:end -->")[0] for value in (canonical, blob)]
+        if canonical != blob:
+            raise ValueError("stale Task8 executed input: " + relative.as_posix())
+        if hashlib.sha256(blob).hexdigest().upper() != proof["execution_inputs"][relative.as_posix()]["git_blob_sha256"]:
+            raise ValueError("Task8 executed Git identity differs: " + relative.as_posix())
+    runner_input = proof["execution_inputs"][(ref.DRIVER / "tests/ppc_cases.py").as_posix()]
+    if proof["reference_runner_version"] != "1/unicorn-2.1.4/" + runner_input["working_sha256"].lower():
+        raise ValueError("Task8 actual runner bytes differ")
+    for name in inputs:
+        path = driver / name
+        blob = subprocess.check_output(["git", "show", result["source_revision"] + ":" +
+                                        path.relative_to(repo_root).as_posix()], cwd=repo_root)
+        if hashlib.sha256(blob).hexdigest().upper() != inputs[name]["git_blob_sha256"]:
+            raise ValueError("Task8 execution/production revisions differ")
+    dependencies = proof["accepted_dependencies"]
+    if set(dependencies) != {"AdaptecU2CHIMFirmware.c", "AdaptecU2CHIMTables.c",
+                             "AdaptecU2OSMServices.m", "AdaptecU2CHIMOSD.c",
+                             "AdaptecU2CHIMHardware.c", "AdaptecU2CHIMSCB.c"}:
+        raise ValueError("Task8 accepted dependency closure is incomplete")
+    for name, dependency in dependencies.items():
+        path = driver / name
+        canonical = path.read_bytes().replace(b"\r\n", b"\n")
+        for revision in (dependency["source_revision"], result["source_revision"]):
+            blob = subprocess.check_output(["git", "show", revision + ":" +
+                                            path.relative_to(repo_root).as_posix()], cwd=repo_root)
+            if blob != canonical or hashlib.sha256(blob).hexdigest().upper() != dependency["git_blob_sha256"]:
+                raise ValueError("stale Task8 accepted source dependency: " + name)
+        dependency_objects = objects.parent / dependency["group"]
+        dependency_manifest = dependency_objects / "objects.json"
+        if hashlib.sha256(dependency_manifest.read_bytes()).hexdigest().upper() != dependency["manifest_sha256"]:
+            raise ValueError("stale Task8 accepted dependency manifest: " + name)
+        document = load_json(dependency_manifest)
+        matches = [item for item in document["objects"] if Path(item["source"]).name == name]
+        if (document["source_revision"] != dependency["source_revision"] or len(matches) != 1 or
+                matches[0]["source_sha256"] != dependency["source_sha256"] or
+                matches[0]["sha256"] != dependency["object_sha256"] or
+                matches[0]["path"] != dependency["object"] or
+                hashlib.sha256((dependency_objects / dependency["object"]).read_bytes()).hexdigest().upper() != dependency["object_sha256"]):
+            raise ValueError("stale Task8 accepted native dependency: " + name)
+    ids = [case["id"] for case in cases["cases"]]
+    if (not ids or len(ids) != len(set(ids)) or result.get("selected_case_ids") != ids or
+            len(result.get("results", [])) != len(ids)):
+        raise ValueError("missing Task8 execution cases")
+    for case, observed in zip(cases["cases"], result["results"]):
+        if (observed.get("executed_case_id") != case["id"] or observed.get("unknown_calls") != [] or
+                observed.get("returned_to_sentinel") is not True or observed.get("observations") != case["expected"]):
+            raise ValueError("invalid Task8 successful fixture: " + case["id"])
+    sites = source_sites(repo_root, driver)
+    ledger, _ = load_ledger(driver / "reconstruction/ledger.json", evidence["image_identity"], None)
+    entries = {entry["address"]: entry for entry in ledger["entries"]}
+    proof_hash = hashlib.sha256(proof_path.read_bytes().replace(b"\r\n", b"\n")).hexdigest().upper()
+    for index, symbol in enumerate(symbols):
+        body = next(body for body in reviews.values() if body["name"] == symbol["name"])
+        address = body["address"]
+        end = symbols[index+1]["address"] if index+1 < len(symbols) else text["address"] + text["size"]
+        code = native_bytes(symbol["address"], end - symbol["address"])
+        location = (ref.DRIVER.as_posix() + "/" + owner, body["source_line"])
+        entry = entries[address]
+        function = evidence["frozen"][address]
+        if (body["owner"] != owner or body["name"] != function["names"][0] or
+                body["reference_size"] != function["size"] or
+                len(body.get("control_flow", "")) < 24 or sites.get(symbol["name"]) != [location] or
+                (entry["source_path"], entry["source_line"]) != location or
+                entry["status"] not in ("control-flow-confirmed", "assembly-matched") or
+                not any(a["path"] == proof_path.relative_to(repo_root).as_posix() and
+                        a["sha256"] == proof_hash for a in entry["artifacts"])):
+            raise ValueError("missing Task8 reviewed body/source evidence: " + symbol["name"])
+        if (body["native_address"] != symbol["address"] or body["native_size"] != len(code) or
+                len(code) < 12 or len(code) % 4 or hashlib.sha256(code).hexdigest().upper() != body["native_sha256"]):
+            raise ValueError("Task8 native body differs: " + symbol["name"])
+        relocations = [{"address": relocation["address"], "kind": relocation["kind"],
+                        "target": relocation["target"]}
+                       for relocation in macho["extensions"]["macho"]["relocations"]
+                       if symbol["address"] <= relocation["address"] < end and
+                       relocation["section"] == "__TEXT,__text" and relocation["external"]]
+        if body["native_external_relocations"] != relocations:
+            raise ValueError("Task8 native call binding differs: " + symbol["name"])
+        selected = {case["id"] for case in cases["cases"] if case["evidence"]["entry_address"] == address}
+        if not selected or set(body["cases"]) != selected:
+            raise ValueError("missing required Task8 body fixture: " + symbol["name"])
+    audit_config_switches(evidence, repo_root, proof, payload, macho, native_bytes, cases, objects)
+
+
+def audit_config_switches(evidence, repo_root, proof, payload, macho, native_bytes, cases, objects):
+    records = audit_data_accounting(evidence, repo_root)["objects"]
+    owned = {r["name"]: r for r in records if r["owner"] == "AdaptecU2CHIMConfig.c"}
+    if set(owned) != {"switch_230e3c", "switch_230e90"} or set(proof["switches"]) != set(owned):
+        raise ValueError("Task8 requires both owned switch envelopes")
+    for name, record in owned.items():
+        review = proof["switches"][name]
+        if (record["status"] != "recovered" or record.get("owner_evidence") != "reconstruction/task8.json" or
+                review["reference_dispatch"] != record["dispatch"] or
+                review["normalized_case_count"] != record["normalized_case_count"] or
+                review["native_name"] != "_SCSIhGetCapability"):
+            raise ValueError("Task8 switch recovery evidence differs: " + name)
+    driver = repo_root / ref.DRIVER
+    helper = driver / "tests/task8_native.py"
+    blob = subprocess.check_output(["git", "show", proof["native_test_revision"] + ":" +
+                                    helper.relative_to(repo_root).as_posix()], cwd=repo_root)
+    if (helper.read_bytes().replace(b"\r\n", b"\n") != blob or
+            hashlib.sha256(blob).hexdigest().upper() != proof["native_test_sha256"]):
+        raise ValueError("stale Task8 native execution helper")
+    spec = importlib.util.spec_from_file_location("au2_task8_native", helper)
+    native = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(native)
+    selected = [c for c in cases["cases"] if c["entry"] == "SCSIhGetCapability"]
+    first, second = set(), set()
+    expected_ids = []
+    for case in selected:
+        raw = bytes.fromhex(next(r for r in case["memory"] if r["name"] == "adapter")["bytes"])
+        device, slot = int.from_bytes(raw[24:26], "big"), int.from_bytes(raw[16:20], "big")
+        first.add((device - 0x7872) & 0xffffffff)
+        if device == 0x7873:
+            second.add((slot - 1) & 0xffffffff)
+            channel = 1 if slot in (2, 8) else 2 if slot in (3, 12) else 0
+            if case["expected"]["memory"]["adapter+47"] != bytes([channel]).hex():
+                raise ValueError("Task8 frozen normalized slot semantics differ")
+        native.run_capability(objects / "1-AdaptecU2CHIMConfig.c.o",
+                              objects.parent / "task5/2-AdaptecU2CHIMOSD.c.o", case)
+        expected_ids.append(case["id"])
+    if not (set(range(21)) < first and set(range(12)) < second):
+        raise ValueError("Task8 native switch cases omit normalized/default paths")
+    if any(review["native_cases"] != expected_ids for review in proof["switches"].values()):
+        raise ValueError("Task8 native switch execution coverage differs")
+    init = next(b for b in proof["bodies"] if b["name"] == "_SCSIhInitializeHardware")
+    code = native_bytes(init["native_address"], init["native_size"])
+    words = [int.from_bytes(code[i:i+4], "big") for i in range(0, len(code), 4)]
+    # First r28 definition is clrlwi r28,r28,24: it consumes the machine input.
+    definitions = [w for w in words if (w >> 26 in (14, 15, 32, 34, 40) and (w >> 21) & 31 == 28) or
+                   (w >> 26 in (20, 21, 24, 25, 26, 27, 28, 29) and (w >> 16) & 31 == 28)]
+    if not definitions or definitions[0] != 0x579c063e or 0x9381fff0 not in words or 0x8381fff0 not in words:
+        raise ValueError("Task8 native incoming-r28 capture/callee-save differs")
+    seeded = [c for c in cases["cases"] if c["id"] in ("task8-initialize-0", "task8-initialize-1")]
+    if len(seeded) != 2 or {c["machine_inputs"]["r28"] & 255 for c in seeded} != {0xa5, 0x5a}:
+        raise ValueError("Task8 incoming-r28 default fixtures are incomplete")
+    for case in seeded:
+        last = [o for o in case["expected"]["trace"] if o.get("access") == "write"][-1]
+        if last["value"] != case["machine_inputs"]["r28"] & 255:
+            raise ValueError("Task8 incoming-r28 default write differs")
 
 
 def audit_scb_group(evidence, repo_root, objects):

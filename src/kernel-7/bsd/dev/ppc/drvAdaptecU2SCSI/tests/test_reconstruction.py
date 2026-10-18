@@ -1400,3 +1400,87 @@ def test_task8_required_configuration_batches(names):
     source = (TESTS.parent / "AdaptecU2CHIMConfig.c").read_text()
     for name in names:
         assert re.search(r"\b" + name + r"\([^;]*?\)\s*\{", source), "missing configuration body: " + name
+
+
+def test_task8_machine_input_is_separate_and_strict():
+    runner = load_script("ppc_cases")
+    assert hasattr(runner, "machine_inputs"), "missing bounded incoming-r28 contract"
+    base = {"entry": "SCSIhInitializeHardware", "evidence": {"entry_address": 0x1931e4},
+            "declaration": "void SCSIhInitializeHardware(AdaptecU2HHCB *hhcb);",
+            "machine_inputs": {"r28": 0x123456a5}}
+    assert runner.machine_inputs(base) == {28: 0x123456a5}
+    assert runner.machine_inputs({}) == {}
+    for change in ({"entry": "SCSIhGetCapability"}, {"machine_inputs": {"r27": 1}},
+                   {"machine_inputs": {"r28": -1}}, {"machine_inputs": {"r28": 0x100000000}},
+                   {"machine_inputs": {"r28": True}}, {"machine_inputs": []},
+                   {"machine_inputs": {}}, {"evidence": {"entry_address": 0}},
+                   {"declaration": "void SCSIhInitializeHardware(void);"}):
+        with pytest.raises(ValueError, match="machine input"):
+            runner.machine_inputs({**base, **change})
+
+
+def test_task8_capability_native_control_flow():
+    path = TESTS / "task8_native.py"
+    assert path.is_file(), "missing actual native configuration switch execution"
+    native = load_script("task8_native")
+    cases = json.loads((TESTS / "task8-cases.json").read_text())
+    selected = [case for case in cases["cases"] if case["entry"] == "SCSIhGetCapability"]
+    assert selected
+    for case in selected:
+        native.run_capability(OUT / "objects/task8/1-AdaptecU2CHIMConfig.c.o",
+                              OUT / "objects/task5/2-AdaptecU2CHIMOSD.c.o", case)
+
+
+def test_task8_owner_native_and_control_flow_evidence(firmware_evidence):
+    assert (TESTS.parent / "reconstruction/task8.json").is_file(), "missing configuration owner source/native/fixture proof"
+    audit, evidence = firmware_evidence
+    audit.audit_config_group(evidence, REPO, OUT / "objects/task8")
+
+
+@pytest.mark.parametrize("corruption", ["source", "native", "review", "case", "runner",
+                                        "dependency", "switch", "closure", "result", "relocation"])
+def test_task8_owner_rejects_incomplete_evidence(tmp_path, firmware_evidence, corruption):
+    audit, evidence = firmware_evidence
+    repo = tmp_path / "repo"
+    driver = repo / audit.ref.DRIVER
+    shutil.copytree(TESTS.parent, driver, ignore=shutil.ignore_patterns("__pycache__"))
+    shutil.copytree(REPO / "tools/binrecon/binrecon", repo / "tools/binrecon/binrecon",
+                    ignore=shutil.ignore_patterns("__pycache__"))
+    shutil.copyfile(REPO / "tools/binrecon/source_paths.py", repo / "tools/binrecon/source_paths.py")
+    shutil.copyfile(REPO / ".git", repo / ".git")
+    objects = tmp_path / "objects/task8"
+    for group in ("task8", "task5", "task6", "task7", "firmware"):
+        shutil.copytree(OUT / "objects" / group, objects.parent / group,
+                        ignore=shutil.ignore_patterns("*.id0", "*.id1", "*.nam", "*.til", "*.i64"))
+    proof_path = driver / "reconstruction/task8.json"
+    proof = json.loads(proof_path.read_text())
+    if corruption == "source":
+        with (driver / "AdaptecU2CHIMConfig.c").open("a") as stream:
+            stream.write("\nvoid ConfigReplacement(void) {}\n")
+    elif corruption == "native":
+        path = objects / "1-AdaptecU2CHIMConfig.c.o"
+        raw = bytearray(path.read_bytes()); raw[-1] ^= 1; path.write_bytes(raw)
+    elif corruption == "review":
+        proof["bodies"].pop()
+    elif corruption == "case":
+        path = driver / "tests/task8-cases.json"
+        cases = json.loads(path.read_text()); cases["cases"].pop(); path.write_text(json.dumps(cases))
+    elif corruption == "runner":
+        with (driver / "tests/ppc_cases.py").open("a") as stream:
+            stream.write("\n# changed execution input\n")
+    elif corruption == "dependency":
+        with (driver / "AdaptecU2CHIMSCB.c").open("a") as stream:
+            stream.write("\n# changed accepted dependency\n")
+    elif corruption == "switch":
+        proof["switches"].pop("switch_230e90")
+    elif corruption == "closure":
+        proof["execution_inputs"].pop("tools/binrecon/binrecon/__init__.py")
+    elif corruption == "result":
+        path = objects / "reference-results.json"
+        result = json.loads(path.read_text()); result["results"][0]["unknown_calls"] = ["missing"]
+        path.write_text(json.dumps(result))
+    elif corruption == "relocation":
+        next(b for b in proof["bodies"] if b["native_external_relocations"])["native_external_relocations"].pop()
+    proof_path.write_text(json.dumps(proof))
+    with pytest.raises(ValueError):
+        audit.audit_config_group(evidence, repo, objects)

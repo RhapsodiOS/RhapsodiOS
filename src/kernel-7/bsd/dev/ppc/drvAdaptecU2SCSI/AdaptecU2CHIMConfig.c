@@ -306,7 +306,6 @@ void SCSIhInitializeHardware(AdaptecU2HHCB *hhcb)
         }
     }
     if (family == 0x7890 && hhcb->hardwareMode == 0 && hhcb->bytes02[2] == 3) {
-        value = 0;
         pci = OSDReadPciConfiguration(hhcb, 4);
         OSDWritePciConfiguration(hhcb, 4, pci | 16);
     }

@@ -226,3 +226,138 @@ void SCSIhSetAddressScratchBA32(AdaptecU2HHCB *hhcb, unsigned char offset,
     OSMWriteUExact8(*hhcb->ioHandle, offset + 3, busAddress >> 24);
 }
 
+void SCSIhStandard64QHead(AdaptecU2HHCB *hhcb, AdaptecU2HIOB *hiob)
+{
+    unsigned char saved = OSMReadUExact8(*hhcb->ioHandle, 144);
+    unsigned char control = OSMReadUExact8(*hhcb->ioHandle, 0), number, oldHead;
+    AdaptecU2HIOB *active;
+    if ((control & 64) && hiob->targetStatus == 2) {
+        number = OSMReadUExact8(*hhcb->ioHandle, 52);
+        active = hhcb->activeHiobs[number];
+        if (active->context.unit->hhcb == hhcb &&
+            active->context.unit->target == hiob->context.unit->target) {
+            oldHead = OSMReadUExact8(*hhcb->ioHandle, 94);
+            OSMWriteUExact8(*hhcb->ioHandle, 94, number);
+            OSMWriteUExact8(*hhcb->ioHandle, 198, oldHead);
+            if (oldHead == 255)
+                OSMWriteUExact8(*hhcb->ioHandle, 95, number);
+            OSMWriteUExact8(*hhcb->ioHandle, 0, control & 0x33);
+            OSMReadUExact8(*hhcb->ioHandle, 0);
+        }
+    }
+    OSMWriteUExact8(*hhcb->ioHandle, 144, hiob->control.bytes.scbNumber);
+    oldHead = OSMReadUExact8(*hhcb->ioHandle, 94);
+    OSMWriteUExact8(*hhcb->ioHandle, 94, hiob->control.bytes.scbNumber);
+    OSMWriteUExact8(*hhcb->ioHandle, 198, oldHead);
+    if (oldHead == 255)
+        OSMWriteUExact8(*hhcb->ioHandle, 95, hiob->control.bytes.scbNumber);
+    OSMWriteUExact8(*hhcb->ioHandle, 144, saved);
+}
+
+void SCSIhStandardAdvQHead(AdaptecU2HHCB *hhcb, AdaptecU2HIOB *hiob)
+{
+    unsigned char saved = OSMReadUExact8(*hhcb->ioHandle, 144);
+    unsigned char control = OSMReadUExact8(*hhcb->ioHandle, 0), number, oldHead;
+    AdaptecU2HIOB *active;
+    if ((control & 64) && hiob->targetStatus == 2) {
+        number = OSMReadUExact8(*hhcb->ioHandle, 60);
+        active = hhcb->activeHiobs[number];
+        if (active->context.unit->hhcb == hhcb &&
+            active->context.unit->target == hiob->context.unit->target) {
+            oldHead = OSMReadUExact8(*hhcb->ioHandle, 54);
+            OSMWriteUExact8(*hhcb->ioHandle, 54, number);
+            OSMWriteUExact8(*hhcb->ioHandle, 165, oldHead);
+            if (oldHead == 255)
+                OSMWriteUExact8(*hhcb->ioHandle, 55, number);
+            OSMWriteUExact8(*hhcb->ioHandle, 0, control & 0x33);
+            OSMReadUExact8(*hhcb->ioHandle, 0);
+        }
+    }
+    OSMWriteUExact8(*hhcb->ioHandle, 144, hiob->control.bytes.scbNumber);
+    oldHead = OSMReadUExact8(*hhcb->ioHandle, 54);
+    OSMWriteUExact8(*hhcb->ioHandle, 54, hiob->control.bytes.scbNumber);
+    OSMWriteUExact8(*hhcb->ioHandle, 165, oldHead);
+    if (oldHead == 255)
+        OSMWriteUExact8(*hhcb->ioHandle, 55, hiob->control.bytes.scbNumber);
+    OSMWriteUExact8(*hhcb->ioHandle, 144, saved);
+}
+
+void SCSIhSwapping32QHead(AdaptecU2HHCB *hhcb, AdaptecU2HIOB *hiob)
+{
+    unsigned char head = OSMReadUExact8(*hhcb->ioHandle, hhcb->firmware->registers[10]);
+    unsigned char control = OSMReadUExact8(*hhcb->ioHandle, 0), number, tail;
+    AdaptecU2HIOB *active;
+    if ((control & 64) && hiob->targetStatus == 2) {
+        number = OSMReadUExact8(*hhcb->ioHandle, hhcb->firmware->registers[4]);
+        active = hhcb->activeHiobs[number];
+        if (active->context.unit->hhcb == hhcb &&
+            active->context.unit->target == hiob->context.unit->target) {
+            tail = OSMReadUExact8(*hhcb->ioHandle, hhcb->firmware->registers[9]) - 1;
+            OSMWriteUExact8(*hhcb->ioHandle, hhcb->firmware->registers[9], tail);
+            hhcb->firmware->updateNextScbNum(hhcb, active, head);
+            OSMWriteUExact8(*hhcb->ioHandle, 0, control & 0x33);
+            head = number;
+            OSMReadUExact8(*hhcb->ioHandle, 0);
+        }
+    }
+    if (head == hiob->control.bytes.scbNumber)
+        return;
+    hhcb->firmware->updateNextScbNum(hhcb, hiob, head);
+    OSMWriteUExact8(*hhcb->ioHandle, hhcb->firmware->registers[10], hiob->control.bytes.scbNumber);
+    tail = OSMReadUExact8(*hhcb->ioHandle, hhcb->firmware->registers[9]) - 1;
+    OSMWriteUExact8(*hhcb->ioHandle, hhcb->firmware->registers[9], tail);
+}
+
+void SCSIhSwappingAdvQHead(AdaptecU2HHCB *hhcb, AdaptecU2HIOB *hiob)
+{
+    unsigned char head = OSMReadUExact8(*hhcb->ioHandle, hhcb->firmware->registers[10]);
+    unsigned char control = OSMReadUExact8(*hhcb->ioHandle, 0), number, tail;
+    AdaptecU2HIOB *active;
+    unsigned char saved, next;
+    unsigned int count = 0x800000;
+    if ((control & 64) && hiob->targetStatus == 2) {
+        number = OSMReadUExact8(*hhcb->ioHandle, hhcb->firmware->registers[4]);
+        active = hhcb->activeHiobs[number];
+        if (active->context.unit->hhcb == hhcb &&
+            active->context.unit->target == hiob->context.unit->target) {
+            tail = OSMReadUExact8(*hhcb->ioHandle, hhcb->firmware->registers[9]) - 1;
+            OSMWriteUExact8(*hhcb->ioHandle, hhcb->firmware->registers[9], tail);
+            hhcb->firmware->updateNextScbNum(hhcb, active, head);
+            OSMWriteUExact8(*hhcb->ioHandle, 0, control & 0x33);
+            head = number;
+            OSMReadUExact8(*hhcb->ioHandle, 0);
+        }
+    }
+    if ((OSMReadUExact8(*hhcb->ioHandle, 238) & 16) &&
+        (OSMReadUExact8(*hhcb->ioHandle, 238) & 4)) {
+        do {
+            if (OSMReadUExact8(*hhcb->ioHandle, 238) & 64)
+                break;
+        } while (count-- != 0);
+        saved = OSMReadUExact8(*hhcb->ioHandle, 144);
+        if (saved != OSMReadUExact8(*hhcb->ioHandle, 241)) {
+            active = hhcb->activeHiobs[head];
+            next = hhcb->firmware->obtainNextScbNum(hhcb, active);
+            hhcb->firmware->updateNextScbNum(hhcb, active, hiob->control.bytes.scbNumber);
+            OSMWriteUExact8(*hhcb->ioHandle, 144, OSMReadUExact8(*hhcb->ioHandle, 241));
+            OSMWriteUExact8(*hhcb->ioHandle, 171, hiob->control.bytes.scbNumber);
+            OSMWriteUExact8(*hhcb->ioHandle, 144, saved);
+            if (next == hiob->control.bytes.scbNumber)
+                return;
+            hhcb->firmware->updateNextScbNum(hhcb, hiob, next);
+        } else {
+            if (head == hiob->control.bytes.scbNumber)
+                return;
+            hhcb->firmware->updateNextScbNum(hhcb, hiob, head);
+            OSMWriteUExact8(*hhcb->ioHandle, hhcb->firmware->registers[10], hiob->control.bytes.scbNumber);
+        }
+    } else {
+    if (head == hiob->control.bytes.scbNumber)
+        return;
+    hhcb->firmware->updateNextScbNum(hhcb, hiob, head);
+    OSMWriteUExact8(*hhcb->ioHandle, hhcb->firmware->registers[10], hiob->control.bytes.scbNumber);
+    }
+    tail = OSMReadUExact8(*hhcb->ioHandle, hhcb->firmware->registers[9]) - 1;
+    OSMWriteUExact8(*hhcb->ioHandle, hhcb->firmware->registers[9], tail);
+}
+

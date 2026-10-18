@@ -42,7 +42,7 @@
 extern int get_clock_frequency(void);
 extern void run_clock_test(void *tmp);
 void do_clock_test(void);
-void derive_from_of(void);
+int derive_from_of(void);
 
 // This table hold all of the oddball bus speeds
 // It does not need to be in order.
@@ -70,10 +70,9 @@ static long cpu_freq, bus_freq, cpu_pll, bus_frac;
 // the cleaned up values to the rest of the OS.
 void DetermineClockSpeeds(void)
 {
-  if (0 && IsYosemite()) {
-    // Trust OF.
-    derive_from_of();
-  } else {
+  // New World OF reports the clocks; trust it (5.6 always ran the VIA
+  // test, which is garbage under emulation and decrementer timing hangs off it).
+  if (!((IsYosemite() || IsSawtooth()) && derive_from_of())) {
     // Figure it out, so go do the real work.
     do_clock_test();
   }
@@ -177,22 +176,28 @@ void do_clock_test(void)
 }
 
 
-void derive_from_of(void)
+// Returns 0, leaving the clocks alone, when OF does not report them.
+int derive_from_of(void)
 {
   DTEntry entry;
   int     *value;
   int     size;
   long    tmp_bus_freq, diff;
 
-  DTFindEntry("device_type", "cpu", &entry);
-  DTGetProperty(entry, "clock-frequency", (void **)&value, &size);
+  if (DTFindEntry("device_type", "cpu", &entry) != kSuccess ||
+      DTGetProperty(entry, "clock-frequency", (void **)&value, &size) != kSuccess ||
+      *value <= 0)
+    return 0;
   cpu_freq = *value;
 
-  DTGetProperty(entry, "bus-frequency", (void **)&value, &size);
+  if (DTGetProperty(entry, "bus-frequency", (void **)&value, &size) != kSuccess ||
+      *value < 4)
+    return 0;
   bus_freq = *value;
 
   // First Calculate the pll mode.  Allow any integer times two.
-  cpu_pll = (4 * cpu_freq) / bus_freq;
+  // (4 * cpu_freq overflows a long above ~536MHz.)
+  cpu_pll = cpu_freq / (bus_freq / 4);
   cpu_pll = (cpu_pll / 2) + (cpu_pll & 1);
 
   // Look to see if the bus speed is close to n * 0.5 MHz
@@ -204,7 +209,7 @@ void derive_from_of(void)
   if (diff < kMaxFreqDiff) {
     bus_freq = tmp_bus_freq;
     bus_frac = 1;
-    return;
+    return 1;
   }
   
   // Look to see if the bus speed is close to n * 50/3 MHz
@@ -216,10 +221,11 @@ void derive_from_of(void)
   if (diff < kMaxFreqDiff * 3) {
     bus_freq = tmp_bus_freq;
     bus_frac = 3;
-    return;
+    return 1;
   }
   
   // Who knows... just set bus_frac = 1 and use it.
   bus_frac = 1;
+  return 1;
 }
 

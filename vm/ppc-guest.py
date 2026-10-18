@@ -4,6 +4,7 @@
     python vm/ppc-guest.py create [--base IMAGE] [--disk DISK]
     python vm/ppc-guest.py start  [--disk DISK] [--name NAME] [--telnet-port P]
                                   [--qmp-port P] [--snapshot] [--verbose] [--gui]
+                                  [--machine mac99|g3beige] [--nic MODEL]
     python vm/ppc-guest.py run    [--telnet-port P] COMMAND
     python vm/ppc-guest.py stop   [--name NAME] [--qmp-port P]
     python vm/ppc-guest.py kernel [--base IMAGE] [--disk DISK] KERNEL
@@ -39,6 +40,11 @@ install a RhapsodiOS kernel with the Sawtooth fixes (see `kernel`); its
 built-in UniNEnet drives the sungem ("gmac") and gives telnet.  Boot takes
 about four minutes under TCG.  --snapshot discards every write when QEMU
 exits.
+
+--machine g3beige boots the same disk on QEMU's Beige G3 ("Gossamer")
+instead, with a tulip NIC by default.  OpenBIOS's `load` of BootX fails on
+that machine, so boot-command runs BootX's own boot script by hand: move the
+XCOFF after </CHRP-BOOT> to load-base, then init-program go.
 
 kernel writes KERNEL over /mach_kernel on DISK in place, zero-padded to the
 stock kernel's size (BootX loads by the Mach-O load commands, so the tail is
@@ -217,24 +223,33 @@ def cmd_kernel(args):
     print("installed %s as /mach_kernel on %s" % (args.kernel, args.disk))
 
 
+G3_BOOT_COMMAND = (
+    r'boot-command=" hd:6,\System Folder\BootX" open-dev >r load-base 40000 " read" r@ $call-method'
+    r' r> close-dev load-base + load-base begin dup 6 " </CHRP" $= if 6 + dup 6 " -BOOT>" $= if'
+    r' 8 + true else false then else 1+ false then until tuck - load-base swap move init-program go')
+
+
 def cmd_start(args):
     if not os.path.exists(args.disk):
         sys.exit("%s missing; run create first" % args.disk)
     logdir = os.path.dirname(os.path.abspath(args.disk))
     qemu = [
         qemu_tool("qemu-system-ppc"), "-name", args.name,
-        "-M", "mac99,usb=off", "-m", "512", "-nodefaults", "-vga", "std", "-g", "800x600x8",
+        "-M", args.machine + ",usb=off", "-m", "512", "-nodefaults", "-vga", "std", "-g", "800x600x8",
         "-drive", "file=%s,format=qcow2,if=ide,index=0,media=disk%s"
         % (args.disk, ",snapshot=on" if args.snapshot else ""),
         "-prom-env", r"boot-device=hd:6,\\:tbxi",
         "-prom-env", "boot-args=" + ("-v" if args.verbose else ""),
     ]
-    if args.nic:
+    if args.machine == "g3beige":
+        qemu += ["-prom-env", G3_BOOT_COMMAND]
+    nic = args.nic or ("tulip" if args.machine == "g3beige" else "sungem")
+    if nic:
         # BOOTP must hand out a host name, or 0800_Network falls back to
         # bpwhoami and waits for it to time out.
         qemu += ["-netdev", "user,id=n0,hostname=mosxs,hostfwd=tcp:127.0.0.1:%d-:23"
                  % args.telnet_port,
-                 "-device", "%s,netdev=n0" % args.nic]
+                 "-device", "%s,netdev=n0" % nic]
     if args.cdrom:
         qemu += ["-drive", "file=%s,format=raw,if=ide,index=1,media=cdrom" % args.cdrom]
     qemu += [
@@ -361,7 +376,8 @@ def main():
     p.add_argument("--snapshot", action="store_true")
     p.add_argument("--verbose", action="store_true", help="boot with -v")
     p.add_argument("--gui", action="store_true", help="show the screen in a window")
-    p.add_argument("--nic", default="sungem", help="QEMU NIC model (sungem, or tulip)")
+    p.add_argument("--machine", default="mac99", choices=["mac99", "g3beige"])
+    p.add_argument("--nic", help="QEMU NIC model (default sungem on mac99, tulip on g3beige)")
     p.add_argument("--cdrom", help="ISO to attach as hd0's slave (the second bus storms on stock 5.6)")
     p = sub.add_parser("run")
     p.add_argument("--telnet-port", type=int, default=2481)

@@ -15,8 +15,8 @@
 #import <kernserv/prototypes.h>
 
 // Gem register offsets (format: (size << 16) | offset)
-#define kGemRegInterruptAck		0x4000c		// Interrupt acknowledge/status
-#define kGemRegRXKick			0x26034		// RX kick register
+#define kGemRegInterruptStatus		0x4000c
+#define kGemRegMacRxMacConfig		0x26034
 
 //
 // Utility functions for Gem register access
@@ -352,8 +352,8 @@ void _WriteGemRegister(int base, unsigned int offset_and_size, unsigned int valu
 
     // Process all pending interrupts
     do {
-        // Read interrupt acknowledge/status register
-        intStatus = _ReadGemRegister((int)memBase, kGemRegInterruptAck);
+        // Read interrupt status register
+        intStatus = _ReadGemRegister((int)memBase, kGemRegInterruptStatus);
 
         // Check for transmit completion (bit 0)
         if ((intStatus & 0x01) != 0) {
@@ -482,11 +482,11 @@ void _WriteGemRegister(int base, unsigned int offset_and_size, unsigned int valu
     // Lock debugger access
     [self reserveDebuggerLock];
 
-    // Read current RX kick register value
-    rxKickValue = _ReadGemRegister((int)memBase, kGemRegRXKick);
+    // Read current MAC RX configuration
+    rxKickValue = _ReadGemRegister((int)memBase, kGemRegMacRxMacConfig);
 
     // Set bit 0x08 to enable promiscuous mode
-    _WriteGemRegister((int)memBase, kGemRegRXKick, rxKickValue | 0x08);
+    _WriteGemRegister((int)memBase, kGemRegMacRxMacConfig, rxKickValue | 0x08);
 
     // Unlock debugger access
     [self releaseDebuggerLock];
@@ -507,11 +507,11 @@ void _WriteGemRegister(int base, unsigned int offset_and_size, unsigned int valu
     // Lock debugger access
     [self reserveDebuggerLock];
 
-    // Read current RX kick register value
-    rxKickValue = _ReadGemRegister((int)memBase, kGemRegRXKick);
+    // Read current MAC RX configuration
+    rxKickValue = _ReadGemRegister((int)memBase, kGemRegMacRxMacConfig);
 
     // Clear bit 0x08 to disable promiscuous mode (AND with 0xfff7)
-    _WriteGemRegister((int)memBase, kGemRegRXKick, rxKickValue & 0xfff7);
+    _WriteGemRegister((int)memBase, kGemRegMacRxMacConfig, rxKickValue & 0xfff7);
 
     // Unlock debugger access
     [self releaseDebuggerLock];

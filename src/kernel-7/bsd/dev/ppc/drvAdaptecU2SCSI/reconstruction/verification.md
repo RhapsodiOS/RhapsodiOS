@@ -240,3 +240,26 @@ comparisons consume those checked in-memory values without reloading the
 extracted metadata or tables. Validator-only changes can reuse an unchanged
 native witness; its manifest retains the actual producing revision and input
 hashes rather than claiming a rebuild at the validator's newer revision.
+
+## Task 4 firmware/static-data gate
+
+`verify.py firmware --reference OUT/reference --repo-root ROOT --objects OUT/objects/firmware`
+requires both actual production PPC C objects and their manifest/header hash
+closure. It authenticates the reference once, verifies all 48 envelope records,
+and compares all 21 recovered CHIM definitions: exact bytes/extents/scalars,
+261 symbolic nonzero pointers, null/header/reserved values, selectors and
+profile/device data. The actual PPC setup instructions authenticate image
+address/count metadata; field appearance alone never establishes a pointer.
+
+Focused command: `python -m pytest tests/test_reconstruction.py -k 'firmware or descriptor' -q`.
+Required named tests are `test_firmware_bytes_lengths_and_selection` and
+`test_descriptor_targets_and_profile_scalars`. Native byte/target rejection
+fixtures refresh the object hash and must still fail on the actual mismatch.
+Forged loader metadata and unresolved final data obligations are also rejected.
+
+The five pending OSM/controller envelopes require Task14 native verification.
+All 22 switch envelopes require owning-body/control-flow reproduction and
+final-analysis checking. The final gate fails while either set remains
+pending; a passing Task4 gate is not complete spec3.3 data acceptance or
+paired/hardware validation. The task report records actual producing
+revisions, intermediate versus clean native products and commands/results.

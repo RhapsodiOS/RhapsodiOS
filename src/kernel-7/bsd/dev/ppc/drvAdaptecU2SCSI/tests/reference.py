@@ -189,6 +189,41 @@ def external_dependencies(analysis):
     return result
 
 
+def firmware_metadata(records, data, payload, macho):
+    """Recover image/count/descriptor links from actual PPC wrapper instructions."""
+    by_address = {d["address"]: d for d in records}
+    reader = ObjcReader(payload, macho["sections"], "big")
+    selections = {}
+    for table in ("SCSIHardware", "SCSIFirmware"):
+        raw = data[table]
+        selections[table] = [by_address[int.from_bytes(raw[o:o+4], "big")]["name"]
+                             if int.from_bytes(raw[o:o+4], "big") else None
+                             for o in range(0, len(raw), 4)]
+    images = []
+    for mode, descriptor in enumerate(selections["SCSIFirmware"]):
+        if descriptor is None:
+            continue
+        setup = int.from_bytes(data[descriptor][84:88], "big")
+        offset = reader.offset_of(setup)
+        code = payload[offset:offset+48]
+        words = [int.from_bytes(code[o:o+4], "big") for o in range(0,48,4)]
+        if (words[3] != 0x80630008 or words[4] & 0xffff0000 != 0x3c800000 or
+                words[5] & 0xffff0000 != 0x38840000 or words[6] & 0xffff0000 != 0x38a00000):
+            raise ValueError("firmware loader wrapper ABI/instructions differ: " + descriptor)
+        low = words[5] & 0xffff
+        image_address = ((words[4] & 0xffff) << 16) + (low - 0x10000 if low & 0x8000 else low)
+        image = by_address.get(image_address)
+        length = words[6] & 0xffff
+        if not image or not image["name"].startswith("Seq_") or image["size"] != length:
+            raise ValueError("firmware loader image extent differs: " + descriptor)
+        images.append({"mode":mode,"descriptor":descriptor,"image":image["name"],
+                       "address":image_address,"length":length,"sha256":image["sha256"],
+                       "setup":setup,"wrapper_bytes":code.hex()})
+    if len(images) != 4 or len({i["image"] for i in images}) != 4:
+        raise ValueError("firmware must account for four distinct loader images")
+    return {"images":images,"selectors":selections}
+
+
 def extract_reference(binary: Path, analysis: Path, output: Path) -> dict:
     identity = identify(binary)
     verify_expected(identity, SIZE, SHA256)
@@ -221,11 +256,13 @@ def extract_reference(binary: Path, analysis: Path, output: Path) -> dict:
     output.mkdir(parents=True, exist_ok=True)
     (output / "data").mkdir(exist_ok=True)
     records = []
+    data_bytes = {}
     for name, start, end, owner in data:
         offset = reader.offset_of(start)
         if offset is None or reader.offset_of(end-1) != offset+end-start-1:
             raise ValueError(f"unbacked data object {name} at 0x{start:x}")
         raw = payload[offset:offset+end-start]
+        data_bytes[name] = raw
         path = "data/" + name + ".bin"
         (output / path).write_bytes(raw)
         records.append({"name": name, "address": start, "size": len(raw), "owner": owner,
@@ -233,7 +270,8 @@ def extract_reference(binary: Path, analysis: Path, output: Path) -> dict:
     result = {"identity": macho["input"], "analyzer": document["analyzer"], "ranges": RANGES,
               "analysis_sha256": identify(analysis).sha256, "functions": functions, "owners": owners,
               "methods": methods, "unnamed_helpers": UNNAMED, "boundary_disputes": [], "data": records,
-              "external_dependencies": external_dependencies(document)}
+              "external_dependencies": external_dependencies(document),
+              "firmware": firmware_metadata(records, data_bytes, payload, macho)}
     shutil.copyfile(binary, output / "image.bin")
     shutil.copyfile(analysis, output / "analysis.json")
     for name, value in (("reference.json", result), ("abi.json", {"identity": macho["input"], "modules": modules})):

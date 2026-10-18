@@ -505,4 +505,26 @@ struct AdaptecU2AdapterTSCB {
     unsigned int flags;
 };
 
+/* Exact mutable reference data, including reserved selector slots. */
+extern AdaptecU2HardwareDescriptor SCSIHardwareAIC78XX;
+extern AdaptecU2HardwareDescriptor SCSIHardwareAICBayonet;
+extern AdaptecU2HardwareDescriptor *SCSIHardware[3];
+extern unsigned char Seq_s64[2000];
+extern unsigned char Seq_w32[1772];
+extern unsigned char Seq_sAdv[2072];
+extern unsigned char Seq_wAdv[2256];
+extern AdaptecU2FirmwareDescriptor SCSIFirmwareStandard64;
+extern AdaptecU2FirmwareDescriptor SCSIFirmwareSwapping32;
+extern AdaptecU2FirmwareDescriptor SCSIFirmwareStandardAdv;
+extern AdaptecU2FirmwareDescriptor SCSIFirmwareSwappingAdv;
+extern AdaptecU2FirmwareDescriptor *SCSIFirmware[7];
+extern unsigned int SCSIHostType[40][2];
+extern unsigned int SCSISubSystemSubVendorType[16][2];
+extern AdaptecU2Configuration SCSIConfiguration;
+extern AdaptecU2AdapterProfile SCSIDefaultAdapterProfile;
+extern AdaptecU2AdapterProfile SCSIAdjustableAdapterProfile;
+extern AdaptecU2TargetProfile SCSIDefaultTargetProfile;
+extern AdaptecU2TargetProfile SCSIAdjustableTargetProfile;
+extern unsigned char SCSIscontrol[8];
+
 #endif

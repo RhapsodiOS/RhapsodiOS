@@ -1245,3 +1245,103 @@ than clamping to168; the known controller caller supplies168. SetupAdapter
 similarly copies caller count124. Later body recovery must retain these caller
 assumptions and observable behavior. No production behavior or ledger status
 is changed by this ABI task.
+
+## Task 4 firmware and static data
+
+`data.json` is the frozen per-envelope accounting contract for all 48 data
+ranges listed in the inventory. It records exact bytes/hash/extents, native
+field widths, pointer eligibility/targets, consumers, and the required gate.
+The 21 CHIM-owned envelopes now have production definitions. Their 261 nonzero
+pointer words are symbolic C initializers. Null callbacks, header words,
+reserved words, profile masks, PCI IDs/masks and0xff selectors remain data.
+The firmware register array is additionally interpreted byte by byte with
+its low-level consuming routines. The ABI's deliberately opaque scalar names
+are retained where the binary does not preserve original member names; an
+unreferenced stored constant is not assigned an invented callback or purpose.
+
+| Mode | Descriptor | Source image | Loader entry | Exact bytes | SHA-256 |
+| --- | --- | --- | --- | ---: | --- |
+| 0 | `SCSIFirmwareStandard64` | `Seq_s64` | `0x193124` | 2000 | `B08E925A06751F830A1C04A34812B0969E9F616A20E4710B25416C755A871420` |
+| 3 | `SCSIFirmwareSwapping32` | `Seq_w32` | `0x193154` | 1772 | `25AD3CFF17D046C2A63EC8BE8BE210541E50196A537BD635ACB057647D5ED6E5` |
+| 4 | `SCSIFirmwareStandardAdv` | `Seq_sAdv` | `0x193184` | 2072 | `AAC7445EBE26BEF9C088AA3202EC2EA939DEEFDAA393ACBDF4890BC0609E6EEF` |
+| 5 | `SCSIFirmwareSwappingAdv` | `Seq_wAdv` | `0x1931b4` | 2256 | `5D0F6D1A951C8ACF6D5E9A81529E303341DA10D6AB45475BBF12E13BE8E6107D` |
+
+Each48-byte setup wrapper loads HHCB+8 into r3, the source address into r4,
+and the immediate byte count into r5 before calling `SCSIhLoadSequencer`.
+Extraction now decodes those actual PPC instructions and checks that the
+count reaches the next image/descriptor boundary exactly. Descriptor slot84
+points to its corresponding wrapper. `SCSIFirmware[7]` is exactly
+`{Standard64,0,0,Swapping32,StandardAdv,SwappingAdv,0}`. The null modes1/2 and
+trailing null6 are preserved. `SCSIHardware[3]` is `{AIC78XX,Bayonet,0}`.
+`SCSIhSetupEnvironment`0x1922c8 and `SCSIHSetupHardware`0x192304 index the mode
+bytes directly and install descriptors at HHCB+240/+244.
+
+`SCSICreateAdapterTSCB`0x1a4044 sets hardware mode0 by default, mode1 when
+`(productID &0xff80ffff)==0x00009005`; its initial firmware modes are0 for
+`(productID &0xfff0ffff)==0x78909004`,4 for that Bayonet mask,3 otherwise.
+`SCSIxDetermineFirmwareMode`0x1a89bc then probes external SCB RAM: Bayonet
+selects4 with RAM and5 without; the0x78909004 family selects0 with RAM and3
+without; remaining products select3. `SCSIVerifyAdapter`0x1a439c installs
+matching SCB builders and sizes64/32/64/64. Its subsystem-check gate applies
+to0x78959004 with revision byte<=4, or products0x78609004/0x38609004. This
+revision gate restricts acceptance; it does not select a replacement image.
+
+`SCSIhLoadSequencer`0x19ebe0 saves SEQCTL(0x60), writes0xb1 and clears
+SEQADDR0/1(0x62/0x63), writes exactly r5 bytes to SEQRAM(0x61), cycles
+SEQCTL0xb0/0xb1, clears the address again, and reads back every byte against
+the source. The loops are at0x19ece8..0x19ed1c and0x19ee1c..0x19ee44.
+Success writes0xb0 then restores saved SEQCTL and returns0; a mismatched
+readback returns-1 immediately without the successful cleanup sequence.
+Preserve that error behavior in the later loader implementation.
+
+All 8100 source-image bytes have pointer-reference closure: each image has
+only its setup-wrapper address reference, with no direct write reference to
+any image byte. The loader has indexed source loads and no source stores.
+There is no source-image patch list or hardware-revision replacement in
+this binary. Runtime transfer-option/SG/cache/breakpoint operations modify
+SCBs, adapter scratch/registers and sequencer execution addresses. They do
+not rewrite these arrays or substitute a sequencer revision. The breakpoint
+callbacks in firmware slots256/260 use mode-specific addresses/constants;
+`SCSIhStartToRunSequencer`0x193554 uses descriptor byte35 for the idle entry.
+`SCSIhInitializeHardware`0x1931e4 applies the hardware0 AIC789x revision3
+PCI-command workaround and cache-line conditions; these affect registers.
+Bayonet's slot92 sequence-stretch callback0x1a2410 reads register0xee, while
+the corresponding AIC78XX slot is null. Descriptor scalar bytes and callback
+choices retain all such mode-specific behavior for the owning later tasks.
+
+Hardware descriptors are120 bytes:25 callback words, three native mask/control
+words, four byte scalars, two16-bit period/delay values. Firmware descriptors
+are296 bytes:14 native words,28 byte positions, then53 callback/reserved
+words. Offsets136/276 are zero scalar reserves in all four modes. Firmware
+word04 is SCB size; its low byte at7 is also used as memory-table granularity.
+The memory allocator at0x192064 calculates SCB buffer sizes from that word
+and a minimum of four SCBs; it does not use a guessed trailing HHCB sizeof.
+Other sequencer entry/breakpoint constants and unused0xff/zero positions
+retain their exact representation and consumers in `data.json`.
+
+`SCSIHostType` holds40 ID/mask pairs including the final zero/zero sentinel;
+`SCSIGetNextHostDeviceType`0x1a3d38 permits unsigned indices0..39 and leaves
+outputs untouched for a zero ID or an out-of-range index. Subsystem data has
+16 full-mask pairs, but `SCSIxGetNextSubSystemSubVendorID`0x1a8aa4 accepts
+only0..13. Entries14/15 are the preserved unreachable0x38689004/0x38699004
+pairs. `SCSIscontrol` is exactly8 bytes `{0x60,0x62,0x61,0,0,0,0,0}`;
+SCB builders index by task attribute. It has no pointer entries.
+
+Configuration's17 native scalars, both 464-byte adapter profiles and both
+124-byte target profiles are exact. Adjustable profiles are masks, not
+callback tables. The adapter profile's32 WWID bytes, five task-management
+flags and55-word union remain fully represented. The target profile uses
+the already reviewed31-word scalar-position ABI. No pointer normalization
+is applied to any profile/configuration word, even when a value resembles
+an address. HIM version4 remains a scalar before its41 callbacks; the exact
+11 CHIM/3 OSM erased-formal exceptions remain unchanged.
+
+All 22 switch envelopes contain signed32-bit table-relative offsets. Each
+resolved target is `table_base + signed_word`, not the stored word treated
+as a native pointer. `data.json` records every target (including duplicated
+default slots), containing function, instruction-byte window, index/guard
+and `lwzx/add/mtctr/bctr` dispatch. Resolved target sets match saved-analysis
+code references and fresh IDA jump targets for all 22. Their future product
+counterparts must arise from their owning routine's recovered control flow;
+Task4 emits no orphan arrays of reference branch addresses. All unnamed
+functions remain ordinary required bodies.

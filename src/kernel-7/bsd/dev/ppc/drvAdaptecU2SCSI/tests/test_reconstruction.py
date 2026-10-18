@@ -528,3 +528,68 @@ def test_runner_normalizes_only_declared_pointers(tmp_path):
     result = runner.run_case(image, case, {"services": {}})
     assert result["observations"]["return"] == "smoke"
     assert result["observations"]["memory"]["buffer+0"]["pointers"] == {"0": "smoke"}
+
+
+def test_firmware_bytes_lengths_and_selection(firmware_evidence):
+    driver = TESTS.parent
+    assert (driver / "AdaptecU2CHIMFirmware.c").is_file(), "missing four exact sequencer images"
+    audit, evidence = firmware_evidence
+    audit.audit_firmware_objects(evidence, REPO, OUT / "objects/firmware")
+
+
+def test_descriptor_targets_and_profile_scalars(firmware_evidence):
+    driver = TESTS.parent
+    assert (driver / "AdaptecU2CHIMTables.c").is_file(), "missing symbolic descriptors and scalar/profile/device tables"
+    audit, evidence = firmware_evidence
+    audit.audit_firmware_objects(evidence, REPO, OUT / "objects/firmware")
+
+
+@pytest.fixture(scope="module")
+def firmware_evidence():
+    audit = load_script("verify")
+    return audit, audit.authenticate_reference(OUT / "reference", REPO)
+
+
+@pytest.mark.parametrize("corruption", ["firmware_byte", "callback_target"])
+def test_firmware_descriptor_rejects_changed_native_data(tmp_path, firmware_evidence, corruption):
+    audit, evidence = firmware_evidence
+    objects = tmp_path / "objects"
+    source = OUT / "objects/firmware"
+    assert source.is_dir(), "missing native firmware/table objects"
+    shutil.copytree(source, objects)
+    manifest = json.loads((objects / "objects.json").read_text())
+    entry = manifest["objects"][0 if corruption == "firmware_byte" else 1]
+    obj = objects / entry["path"]
+    raw = bytearray(obj.read_bytes())
+    if corruption == "firmware_byte":
+        payload, macho = audit.load_image(obj)
+        symbol = next(s for s in macho["symbols"] if s["name"] == "_Seq_s64")
+        reader = audit.ObjcReader(payload, macho["sections"], "big")
+        raw[reader.offset_of(symbol["address"]) + 17] ^= 1
+    else:
+        old = b"_SCSIhStandard64SetupSequencer\0"
+        new = b"_SCSIhSwapping32SetupSequencer\0"
+        assert len(old) == len(new) and raw.count(old) == 1
+        raw = raw.replace(old, new)
+    obj.write_bytes(raw)
+    entry["sha256"] = audit.hashlib.sha256(raw).hexdigest().upper()
+    (objects / "objects.json").write_text(json.dumps(manifest))
+    with pytest.raises(ValueError, match="data bytes differ: Seq_s64" if corruption == "firmware_byte" else "pointer target differs: SCSIFirmwareStandard64"):
+        audit.audit_firmware_objects(evidence, REPO, objects)
+
+
+def test_firmware_final_rejects_pending_owner_data(firmware_evidence):
+    audit, evidence = firmware_evidence
+    with pytest.raises(ValueError, match="pending required data.*request_message"):
+        audit.audit_data_accounting(evidence, REPO, final=True)
+
+
+def test_firmware_reference_rejects_forged_loader_metadata(tmp_path):
+    reference = tmp_path / "reference"
+    shutil.copytree(OUT / "reference", reference)
+    manifest = reference / "reference.json"
+    document = json.loads(manifest.read_text())
+    document["firmware"]["images"][0]["length"] += 4
+    manifest.write_text(json.dumps(document))
+    with pytest.raises(ValueError, match="firmware reference loader/selector metadata differs"):
+        load_script("verify").audit("firmware", reference, REPO, OUT / "objects/firmware", None, None)

@@ -659,3 +659,24 @@ IDA exposes two sign-extended synthetic stack targets outside the PPC32 address 
 Generate the full source map with `binrecon source-map --objc-methods` and **without** `--scope-to-objc`, using the complete published analysis and this driver directory. Seed all entries with `tools/binrecon/seed_ledger.py`. Initial mapped sites are name matches only; duplicate definitions remain `duplicate_candidates`, missing bodies remain `unmapped`, and all 476 ledger entries start `unexamined`. This inventory does not certify draft behavior, target layouts, firmware lengths, or hardware operation.
 
 Reference image, raw analyzer output, helper disassembly/pseudocode, targeted ABI metadata, data bytes, and logs remain under ignored `tools/binrecon/out/adaptecu2scsi-ppc/` or the task scratch workspace. `reference.py` requires an explicit saved IDA analysis; `verify.py inventory` validates its identity and frozen address/name/extent/owner partition against this document, checks metadata/data evidence, and rejects stale or incomplete source maps and ledgers.
+
+## Task 4 data accounting status
+
+All 48 envelopes have frozen byte/hash/field/target/consumer evidence in
+`data.json`. The 21 CHIM envelopes have recovered C definitions and require
+the `firmware` native-object gate. The 22 compiler switch envelopes have
+complete reference dispatch/case accounting; their owner-group/final
+control-flow reproduction remains required, and they are not separate
+product globals. None of the 476 function bodies is excluded by this split.
+
+The controller's Task4 ruling assigns five coupled product-data repairs to
+Task14. They remain `pending-owner-recovery`, with gate
+`task14-native-and-final`: `request_message` and `adapterQ` in the controller,
+`OSMRoutines` and `event_names` in OSMFunctions, and the pooled
+`diagnostic_strings` at all actual controller/OSM consumers. The existing
+256-entry adapterQ draft differs from the512-byte reference envelope;
+the OSMRoutines draft also needs its typed definition/symbol repair.
+Freezing their reference bytes or assigning an owner is not product recovery.
+Final verification rejects these five obligations and the pending switch
+owner-control-flow obligations. Task4 does not claim the spec3.3 complete-data
+exit criterion has been met.

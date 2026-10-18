@@ -57,3 +57,23 @@ Current public occurrences are SCSIPowerEvent's forwarded r4 and
 SCSIReportAdjustableTargetProfile's discarded r3 before the proven profile
 destination in r4. Both retain all observable input positions and return
 behavior; there is no inferred pointer meaning for the unconsumed word.
+
+## Task 4 coupled data recovery split
+
+The controller explicitly assigned five OSM/controller envelopes to Task14
+because their definitions are coupled to unrecovered controller/OSM bodies:
+request_message and adapterQ (controller), OSMRoutines and event_names
+(OSMFunctions), and diagnostic_strings (all actual literal consumers).
+Task4 freezes their full bytes/hash/interpretation/targets/consumers and keeps
+machine-checkable pending statuses. Their target-verified repair remains
+mandatory and blocks final data acceptance. This is a scheduling split,
+not a waiver or a claim that an assigned/copied fixture is recovered product.
+The 22 compiler switch envelopes likewise retain owning control-flow/final
+obligations; only21 CHIM-owned envelopes gain product definitions in Task4.
+
+Table fields whose original semantic names are absent retain the Task3
+reviewed opaque scalar/union positions, with exact widths, constants and
+actual consuming code. Zero/reserved/header words are never invented
+callbacks, and scalar fields are never normalized because of their numeric
+appearance. In particular the two preserved subsystem tail pairs remain
+unreachable through the reference's index<=13 enumerator.

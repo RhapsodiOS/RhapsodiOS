@@ -2703,7 +2703,49 @@ int pmap_test_bitfields(void)
 
 
 
-void 
+boolean_t
+pmap_set_cache_spec(pmap_t pmap, vm_offset_t va, cache_spec_t caching)
+{
+    struct mapping *mp;
+    struct phys_entry *pp;
+    unsigned int wimg;
+    spl_t s;
+
+    if (pmap != kernel_pmap || (va & (PAGE_SIZE - 1)) ||
+        (caching != cache_default && caching != cache_disable))
+        return FALSE;
+    s = splhigh();
+    mp = pmap_find_mapping(pmap->space, va);
+    pp = pmap_find_physentry(pmap_extract(pmap, va));
+    if (mp == MAPPING_NULL || pp == PHYS_NULL ||
+        !mp->vm_info.bits.wired || !mp->pte->pte0.bits.valid ||
+        queue_first(&pp->phys_link) != (queue_entry_t)mp ||
+        queue_next(&mp->phys_link) != (queue_entry_t)&pp->phys_link) {
+        splx(s);
+        return FALSE;
+    }
+    wimg = caching == cache_disable ? PTE_WIMG_IO : PTE_WIMG_DEFAULT;
+    if (mp->pte->pte1.bits.wimg != wimg) {
+        /* Drain and discard the cached contents before changing WIMG. */
+        flush_cache_v(va, PAGE_SIZE);
+        invalidate_cache_v(va, PAGE_SIZE);
+        mp->pte->pte0.bits.valid = FALSE;
+        sync();
+        tlbie(va);
+        eieio();
+        tlbsync();
+        sync();
+        pp->pte1.bits.wimg = wimg;
+        mp->pte->pte1.bits.wimg = wimg;
+        eieio();
+        mp->pte->pte0.bits.valid = TRUE;
+        sync();
+    }
+    splx(s);
+    return TRUE;
+}
+
+void
 pmap_enter_cache_spec(
     pmap_t		pmap,
     vm_offset_t		va,
@@ -2717,7 +2759,7 @@ pmap_enter_cache_spec(
 	return;
 
 	pmap_enter(pmap, va, pa, prot, wired);
-	
+	(void)pmap_set_cache_spec(pmap, va, caching);
 }
 
 

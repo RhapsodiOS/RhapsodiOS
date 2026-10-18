@@ -151,6 +151,9 @@ typedef enum {
     cache_disable
 } cache_spec_t;
 
+/* Only an exclusively mapped, wired kernel page may change cache policy. */
+boolean_t pmap_set_cache_spec(pmap_t, vm_offset_t, cache_spec_t);
+
 void pmap_enter_cache_spec(
 		pmap_t		pmap,
 		vm_offset_t	va,

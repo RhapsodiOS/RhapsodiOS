@@ -59,6 +59,7 @@
 #include <interrupts.h>
 #include <chips/keylargo.h>
 #include <chips/keylargo_audio.h>
+#include <chips/davbus_audio.h>
 #include <chips/keylargo_discovery.h>
 
 extern void read_processor_clock_tval(tvalspec_t *time);
@@ -72,6 +73,10 @@ typedef struct {
   unsigned char i2cSpeed;
   lock_data_t lock;
   PEKeyLargoTransport transport;
+  PEDAVBusTransport davbus;
+  unsigned int audioMuxOwner;
+  unsigned int davbusSaved;
+  unsigned int davbusActive;
 } keylargo_audio_state_t;
 
 static keylargo_audio_state_t keylargo_audio_state;
@@ -272,6 +277,77 @@ keylargo_valid_offset(void *context, unsigned int offset,
     TRUE : FALSE;
 }
 
+static kern_return_t
+keylargo_davbus_write(void *context, unsigned int value)
+{
+  keylargo_write_fcr1(context, value);
+  return KERN_SUCCESS;
+}
+
+static void
+keylargo_davbus_barrier(void *context)
+{
+  (void)context;
+  eieio();
+  sync();
+}
+
+static void
+keylargo_bind_davbus(DTEntry macIO)
+{
+  DTEntryIterator iterator;
+  DTEntry child;
+  PEKeyLargoProperty property;
+  unsigned int offset;
+  unsigned int matches;
+  PEDAVBusTransport *transport;
+
+  property = keylargo_property(macIO, "device-id");
+  if (property.size != 4 || property.bytes == 0 ||
+    PEKeyLargoCell(property.bytes) != 0x22)
+    return;
+  if (DTCreateEntryIterator(macIO, &iterator) != kSuccess)
+    return;
+  matches = 0;
+  offset = 0;
+  while (DTIterateEntries(iterator, &child) == kSuccess) {
+    if (!keylargo_string_property_is(child, "name", "davbus") &&
+      !keylargo_string_property_is(child, "name", "awacs"))
+      continue;
+    ++matches;
+    property = keylargo_property(child, "reg");
+    if (property.bytes == 0 || property.size != 24) {
+      matches = 2;
+      break;
+    }
+    offset = PEKeyLargoCell(property.bytes);
+    if (!PEKeyLargoRangeContains(keylargo_audio_state.macIOSize,
+      offset, PEKeyLargoCell(property.bytes + 4))) {
+      matches = 2;
+      break;
+    }
+  }
+  DTDisposeEntryIterator(iterator);
+  if (matches != 1 || offset > ~0U - keylargo_audio_state.macIOBase)
+    return;
+  transport = &keylargo_audio_state.davbus;
+  transport->context = &keylargo_audio_state;
+  transport->controllerBase = keylargo_audio_state.macIOBase + offset;
+  transport->family = kPEDAVBusKeyLargo;
+  transport->owner = &keylargo_audio_state.audioMuxOwner;
+  transport->saved = &keylargo_audio_state.davbusSaved;
+  transport->active = &keylargo_audio_state.davbusActive;
+  transport->readFCR1 = keylargo_read_fcr1;
+  transport->writeFCR1 = keylargo_davbus_write;
+  transport->lock = keylargo_lock;
+  transport->unlock = keylargo_unlock;
+  transport->barrier = keylargo_davbus_barrier;
+  transport->inInterruptContext = keylargo_in_interrupt;
+  transport->readGPIO = keylargo_read_gpio8;
+  transport->writeGPIO = keylargo_write_gpio8;
+  PEDAVBusBindTransport(transport);
+}
+
 kern_return_t
 PEKeyLargoInitialize(void)
 {
@@ -283,11 +359,17 @@ PEKeyLargoInitialize(void)
   unsigned int size;
 
   PEKeyLargoBindTransport(0);
+  PEDAVBusBindTransport(0);
   if (DTFindEntry("device_type", "mac-io", &macIO) != kSuccess ||
     !PEKeyLargoGetMacIOInfo(&base, &size) ||
     base != (unsigned int)powermac_io_info.io_base_phys ||
-    size != (unsigned int)powermac_io_info.io_size ||
-    !keylargo_find_i2c(macIO, &i2c))
+    size != (unsigned int)powermac_io_info.io_size)
+    return KERN_PE_KEYLARGO_NOT_READY;
+  keylargo_audio_state.macIOBase = base;
+  keylargo_audio_state.macIOSize = size;
+  lock_init(&keylargo_audio_state.lock, TRUE);
+  keylargo_bind_davbus(macIO);
+  if (!keylargo_find_i2c(macIO, &i2c))
     return KERN_PE_KEYLARGO_NOT_READY;
   bzero(&input, sizeof(input));
   input.macIOBase = base;
@@ -305,8 +387,9 @@ PEKeyLargoInitialize(void)
   keylargo_audio_state.addressStep = discovery.addressStep;
   keylargo_audio_state.i2cRate = discovery.rate;
   keylargo_audio_state.i2cSpeed = (unsigned char)discovery.speed;
-  lock_init(&keylargo_audio_state.lock, TRUE);
   keylargo_audio_state.transport.context = &keylargo_audio_state;
+  keylargo_audio_state.transport.audioMuxOwner =
+    &keylargo_audio_state.audioMuxOwner;
   keylargo_audio_state.transport.speed = keylargo_audio_state.i2cSpeed;
   keylargo_audio_state.transport.read8 = keylargo_read8;
   keylargo_audio_state.transport.write8 = keylargo_write8;

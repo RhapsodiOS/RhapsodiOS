@@ -1149,3 +1149,16 @@ def test_scb_abort_search_and_bdr():
 
 def test_scb_exhaustion_freeze_and_reset():
     _task7_reference_family("scb-reset")
+
+
+@pytest.mark.parametrize("prefix", ["basic", "busy", "queue", "reset", "search", "abort", "bdr", "freeze"])
+def test_task7_reference_batch(prefix):
+    cases = json.loads((TESTS / "task7-cases.json").read_text())
+    selected = {**cases, "cases": [c for c in cases["cases"] if c["id"].startswith("task7-" + prefix)]}
+    assert selected["cases"], "missing Task7 batch fixtures"
+    source = (TESTS.parent / "AdaptecU2CHIMSCB.c").read_text()
+    for case in selected["cases"]:
+        assert re.search(r"\b" + case["entry"] + r"\([^;]*?\)\s*\{", source), case["entry"]
+    result = load_script("ppc_cases").execute(OUT / "reference/image.bin", selected,
+                                           json.loads((TESTS / "contracts.json").read_text()))
+    assert len(result["results"]) == len(selected["cases"])

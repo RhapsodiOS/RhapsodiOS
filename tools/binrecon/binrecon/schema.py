@@ -26,7 +26,9 @@ _SCHEMA_FILES = {
 }
 _SHA256_RE = re.compile(r"^[0-9a-fA-F]{64}$")
 
-MAX_JSON_COLLECTION = 500_000
+# Ultra2's scoped IDA analysis retains 533,525 whole-image string records.
+# Keep individual collections bounded within the existing total-node budget.
+MAX_JSON_COLLECTION = 1_000_000
 # These bound memory against malformed analyzer output; the values are sized
 # for a ~1.4 MB kernel image whose string table dominates (single-analyzer
 # exports run ~1.09M nodes, so DEFAULT gives ~4x headroom, and CONSENSUS

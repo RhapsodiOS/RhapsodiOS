@@ -106,7 +106,8 @@ def run_case(binary: Path, case: dict, contracts: dict) -> dict:
     # Newly mapped memory is zero, including segment BSS and stack.
     cpu.mem_map(STACK, STACK_SIZE, unicorn.UC_PROT_READ | unicorn.UC_PROT_WRITE)
     cpu.mem_map(SENTINEL, 4096, unicorn.UC_PROT_READ | unicorn.UC_PROT_EXEC)
-    cpu.reg_write(ppc.UC_PPC_REG_1, STACK + STACK_SIZE - 256)
+    initial_sp = STACK + STACK_SIZE - 256
+    cpu.reg_write(ppc.UC_PPC_REG_1, initial_sp)
     cpu.reg_write(ppc.UC_PPC_REG_LR, SENTINEL)
     regions = {}
     next_region = REGION_BASE
@@ -273,6 +274,18 @@ def run_case(binary: Path, case: dict, contracts: dict) -> dict:
     result = cpu.reg_read(ppc.UC_PPC_REG_3)
     observations = {"return": normalized(result) if case.get("return_kind") == "pointer" else result,
                     "memory": memory, "trace": trace}
+    if "observe_stack" in case:
+        stack = {}
+        for observation in case["observe_stack"]:
+            offset, size = observation["offset"], observation["size"]
+            address = initial_sp + offset
+            if not 0 < size <= STACK_SIZE or not STACK <= address <= STACK + STACK_SIZE - size:
+                raise ValueError("stack observation exceeds bounded stack")
+            if str(offset) in stack:
+                raise ValueError("duplicate stack observation offset")
+            stack[str(offset)] = bytes(cpu.mem_read(address, size)).hex()
+        observations["stack"] = stack
+        observations["stack_pointer"] = cpu.reg_read(ppc.UC_PPC_REG_1) - initial_sp
     return {"executed_case_id": case["id"], "observations": observations,
             "unknown_calls": [], "returned_to_sentinel": returned, "instructions": count}
 

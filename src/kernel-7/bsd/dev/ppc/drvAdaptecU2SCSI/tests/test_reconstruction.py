@@ -4,6 +4,7 @@ import copy
 import importlib.util
 import json
 import os
+import re
 import struct
 from pathlib import Path
 
@@ -33,6 +34,96 @@ def load_script(name):
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
+
+def test_target_layout_and_method_contracts(reference):
+    # The audit reads the PPC object's constants and Objective-C metadata;
+    # a host compiler's layout or comments in a header cannot satisfy it.
+    layout_source = TESTS / "layout-checks.m"
+    assert layout_source.is_file(), "missing target layout and method contract checks"
+    load_script("verify").audit("layouts", reference[1], REPO,
+                                OUT / "objects/layout-checks", None, None)
+
+
+def test_dispatch_headers_are_not_callbacks():
+    header = TESTS.parent / "AdaptecU2CHIM.h"
+    assert header.is_file(), "missing typed HIM (4+41) and OSM (0+30) dispatch contracts"
+    load_script("verify").audit_dispatch_headers(TESTS.parent,
+                                                OUT / "reference")
+
+
+def test_layout_rejects_changed_header(tmp_path):
+    audit = load_script("verify")
+    driver = tmp_path / "driver"
+    (driver / "tests").mkdir(parents=True)
+    for name in (*audit.LAYOUT_HEADERS, "tests/layout-checks.m"):
+        (driver / name).write_bytes((TESTS.parent / name).read_bytes())
+    objects = OUT / "objects/layout-checks"
+    audit.audit_target_inputs(driver, objects)
+    header = driver / "AdaptecU2CHIMTypes.h"
+    header.write_text(header.read_text() + "\n/* changed after target build */\n")
+    with pytest.raises(ValueError, match="stale target header: AdaptecU2CHIMTypes.h"):
+        audit.audit_target_inputs(driver, objects)
+
+
+def test_input_erased_register_contracts():
+    runner = load_script("ppc_cases")
+    cases = json.loads((TESTS / "reference-cases.json").read_text())
+    contracts = json.loads((TESTS / "contracts.json").read_text())
+    erased = contracts.get("input_erased", {})
+    assert len(erased) == 11, "missing exact eleven-entry input-erased ABI exception set"
+    assert {name: item["address"] for name, item in erased.items()} == {
+        "SCSISaveState": 0x1a4d78, "SCSIRestoreState": 0x1a4d84,
+        "SCSIProfileNexus": 0x1a5e00, "SCSIClearNexusTSH": 0x1a5e10,
+        "SCSIProfileNode": 0x1a5e20, "SCSIReportAdjustableNodeProfile": 0x1a5e30,
+        "SCSIAdjustNodeProfile": 0x1a5e40, "SCSISetOSMNodeContext": 0x1a5e50,
+        "SCSIhSwappingSearchExeQ": 0x1908dc, "SCSIhScamSupportCheck": 0x19cb3c,
+        "SCSIHApplyDeviceTable": 0x19db7c,
+    }
+    declarations = "\n".join(path.read_text() for path in TESTS.parent.glob("AdaptecU2CHIM*.h"))
+    unspecified = set(re.findall(r"\b(SCSI\w+)\s*\(\s*\)\s*;", declarations))
+    assert unspecified == set(erased), "unspecified arguments require an exact input-erased exception"
+    payload, macho = runner.load_image(OUT / "reference/image.bin")
+    reader = load_script("reference").ObjcReader(payload, macho["sections"], "big")
+    for item in erased.values():
+        offset = reader.offset_of(item["address"])
+        assert payload[offset:offset + item["size"]].hex() == item["reference_bytes"]
+    selected = [case for case in cases["cases"] if case["id"].startswith("abi-erased-")]
+    assert len(selected) == 22
+    assert {case["entry"] for case in selected} == set(erased)
+    for case in selected:
+        assert len(case["arguments"]) == 8
+        assert runner.run_case(OUT / "reference/image.bin", case, contracts)["observations"] == case["expected"]
+
+
+def test_osm_erased_stack_contracts():
+    runner = load_script("ppc_cases")
+    cases = json.loads((TESTS / "reference-cases.json").read_text())
+    contracts = json.loads((TESTS / "contracts.json").read_text())
+    erased = contracts.get("osm_input_erased", {})
+    assert {name: item["address"] for name, item in erased.items()} == {
+        "OSMSynchronizeRange": 0x18a484,
+        "OSMSaveInterruptState": 0x18a50c,
+        "OSMSetInterruptState": 0x18a51c,
+    }, "missing exact three-entry OSM formal-erasure set"
+    header = (TESTS.parent / "OSMFunctions.h").read_text()
+    assert set(re.findall(r"\b(OSM\w+)\s*\(\s*\)\s*;", header)) == set(erased)
+    payload, macho = runner.load_image(OUT / "reference/image.bin")
+    reader = load_script("reference").ObjcReader(payload, macho["sections"], "big")
+    for item in erased.values():
+        offset = reader.offset_of(item["address"])
+        assert payload[offset:offset + item["size"]].hex() == item["reference_bytes"]
+    selected = [case for case in cases["cases"] if case["id"].startswith("osm-erased-")]
+    assert len(selected) == 6
+    assert {case["entry"] for case in selected} == set(erased)
+    for case in selected:
+        assert len(case["arguments"]) == 8
+        assert case["expected"]["stack_pointer"] == 0
+        if case["entry"] == "OSMSynchronizeRange":
+            assert case["observe_stack"] == [{"offset": 24, "size": 32}]
+            expected_words = b"".join(value.to_bytes(4, "big") for value in case["arguments"])
+            assert case["expected"]["stack"] == {"24": expected_words.hex()}
+        assert runner.run_case(OUT / "reference/image.bin", case, contracts)["observations"] == case["expected"]
 
 
 @pytest.fixture
@@ -200,6 +291,7 @@ def test_runner_symbol_relocation_bss_and_scripted_service(tmp_path):
 def test_runner_reference_conversion_fixtures():
     runner = load_script("ppc_cases")
     cases = json.loads((TESTS / "reference-cases.json").read_text())
+    cases["cases"] = [case for case in cases["cases"] if case["id"].endswith("-conversion")]
     contracts = json.loads((TESTS / "contracts.json").read_text())
     result = runner.execute(OUT / "reference/image.bin", cases, contracts)
     runner.validate_result(result, OUT / "reference/image.bin", cases, contracts)

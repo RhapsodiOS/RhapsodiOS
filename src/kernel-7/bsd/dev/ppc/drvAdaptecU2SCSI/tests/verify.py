@@ -2,6 +2,9 @@
 
 import argparse
 import importlib.util
+import hashlib
+import json
+import re
 from pathlib import Path
 
 from binrecon.identity import identify, verify_expected
@@ -10,6 +13,7 @@ from binrecon.macho import load_image
 from binrecon.schema import load_json, load_source_map, validate_analysis_semantics, validate_document
 from binrecon.source_map import build_source_map, source_sites
 from binrecon.macho import objc_method_index
+from binrecon.objc_abi import ObjcReader, read_modules
 
 
 _spec = importlib.util.spec_from_file_location("au2_reference", Path(__file__).with_name("reference.py"))
@@ -19,6 +23,9 @@ _spec.loader.exec_module(ref)
 
 def audit(stage: str, reference: Path, repo_root: Path, objects: Path | None,
           builds: Path | None, group: str | None) -> None:
+    if stage == "layouts":
+        audit_layouts(reference, repo_root, objects)
+        return
     if stage != "inventory":
         raise ValueError(f"{stage}: reconstruction stage is not implemented")
     document = load_json(reference / "reference.json")
@@ -101,6 +108,221 @@ def audit(stage: str, reference: Path, repo_root: Path, objects: Path | None,
         expected = frozen[entry["address"]]
         if entry["size"] != expected["size"] or entry["names"] != expected["names"]:
             raise ValueError(f"inventory ledger differs at 0x{entry['address']:x}")
+
+
+
+LAYOUT_HEADERS = (
+    "AdaptecU2CHIMTypes.h", "AdaptecU2CHIM.h", "AdaptecU2CHIMPrivate.h",
+    "OSMFunctions.h", "AdaptecU2SCSI.h", "AdaptecU2SCSIPrivate.h",
+)
+
+CHIM_ERASED = {
+    "SCSISaveState": 0x1a4d78, "SCSIRestoreState": 0x1a4d84,
+    "SCSIProfileNexus": 0x1a5e00, "SCSIClearNexusTSH": 0x1a5e10,
+    "SCSIProfileNode": 0x1a5e20, "SCSIReportAdjustableNodeProfile": 0x1a5e30,
+    "SCSIAdjustNodeProfile": 0x1a5e40, "SCSISetOSMNodeContext": 0x1a5e50,
+    "SCSIhSwappingSearchExeQ": 0x1908dc, "SCSIhScamSupportCheck": 0x19cb3c,
+    "SCSIHApplyDeviceTable": 0x19db7c,
+}
+OSM_ERASED = {
+    "OSMSynchronizeRange": 0x18a484, "OSMSaveInterruptState": 0x18a50c,
+    "OSMSetInterruptState": 0x18a51c,
+}
+
+
+def declarations(driver):
+    text = "\n".join((driver / name).read_text() for name in LAYOUT_HEADERS[:3])
+    text = re.sub(r"/\*.*?\*/", "", text, flags=re.S)
+    matches = re.finditer(r"^([\w *]+?)\b((?:SCSI|OSD)\w+)\s*\(([^;]*)\);", text, re.M)
+    result = {}
+    for match in matches:
+        name = match[2]
+        if name in result:
+            raise ValueError(f"duplicate CHIM declaration: {name}")
+        result[name] = re.sub(r"\s+", " ", match[0].strip())
+    return result
+
+
+def audit_dispatch_headers(driver, reference):
+    abi = load_json(reference / "abi.json")
+    klass = abi["modules"]["AdaptecU2SCSI.m"]["classes"][0]
+    him = next(v["type"] for v in klass["ivars"] if v["name"] == "HIMFunc")
+    expected_him = re.findall(r'"(HIM\w+)"\^\?', him)
+    for filename, tag, expected in [
+        ("AdaptecU2CHIM.h", "AdaptecU2HIMFunctions", expected_him),
+        ("OSMFunctions.h", "AdaptecU2OSMFunctions", [
+            "OSMMapIOHandle", "OSMReleaseIOHandle", "OSMEvent", "OSMGetBusAddress",
+            "OSMAdjustBusAddress", "OSMGetNVSize", "OSMPutNVData", "OSMGetNVData",
+            "OSMReadUExact8", "OSMReadUExact16", "OSMReadUExact32",
+            "OSMReadStringUExact8", "OSMReadStringUExact16", "OSMReadStringUExact32",
+            "OSMWriteUExact8", "OSMWriteUExact16", "OSMWriteUExact32",
+            "OSMWriteStringUExact8", "OSMWriteStringUExact16", "OSMWriteStringUExact32",
+            "OSMSynchronizeRange", "OSMWatchdog", "OSMSaveInterruptState", "OSMSetInterruptState",
+            "OSMReadPCIConfigurationDword", "OSMReadPCIConfigurationWord", "OSMReadPCIConfigurationByte",
+            "OSMWritePCIConfigurationDword", "OSMWritePCIConfigurationWord", "OSMWritePCIConfigurationByte"]),
+    ]:
+        text = (driver / filename).read_text()
+        body = re.search(r"struct " + tag + r"\s*\{(.*?)\};", text, re.S)
+        if not body or not body[1].strip().startswith("unsigned int versionNumber;"):
+            raise ValueError(f"{tag}: version word is missing or callable")
+        # Anchor at the outer member declaration, excluding nested watchdog args.
+        callbacks = re.findall(r"^\s*[\w *]+\(\*(\w+)\)\(", body[1], re.M)
+        if callbacks != expected:
+            raise ValueError(f"{tag}: ordered callback slots differ")
+    signatures = load_json(driver / "reconstruction/signatures.json")
+    frozen = load_json(reference / "reference.json")
+    functions = [f for f in frozen["functions"] if f["address"] >= 0x18b754]
+    records = signatures["functions"]
+    if signatures["reference_sha256"] != ref.SHA256 or len(records) != 392:
+        raise ValueError("CHIM signature evidence identity/count differs")
+    by_address = {r["address"]: r for r in records}
+    if len(by_address) != 392 or set(by_address) != {f["address"] for f in functions}:
+        raise ValueError("CHIM signature evidence does not partition392 entries")
+    current = declarations(driver)
+    if set(current) != {r["name"] for r in records}:
+        raise ValueError("CHIM declaration set differs from evidence")
+    contracts = load_json(driver / "tests/contracts.json")
+    erased = contracts["input_erased"]
+    if ({name: item["address"] for name, item in erased.items()} != CHIM_ERASED or
+            sum(r["classification"] == "input-erased" for r in records) != 11):
+        raise ValueError("input-erased exception set differs")
+    osm_erased = contracts["osm_input_erased"]
+    osm_header = (driver / "OSMFunctions.h").read_text()
+    if ({name: item["address"] for name, item in osm_erased.items()} != OSM_ERASED or
+            set(re.findall(r"\b(OSM\w+)\s*\(\s*\)\s*;", osm_header)) != set(OSM_ERASED)):
+        raise ValueError("OSM input-erased exception set differs")
+    evidence = (driver / "reconstruction/interfaces.md").read_text()
+    for f in functions:
+        record = by_address[f["address"]]
+        name = record["name"]
+        if "_" + name not in f["names"] or current[name] != record["declaration"]:
+            raise ValueError(f"signature declaration differs: {name}")
+        if f["address"] not in frozen["owners"].get(record["owner"], []):
+            raise ValueError(f"signature owner differs: {name}")
+        if name in erased:
+            if record["classification"] != "input-erased" or current[name] != "unsigned int " + name + "();":
+                raise ValueError(f"erased declaration misrepresented: {name}")
+        elif (record["classification"] != "reviewed-typed" or
+              not record["evidence"].startswith("| ") or record["evidence"] not in evidence or
+              hex(f["address"])[2:] not in record["evidence"].lower() or
+              current[name].endswith("();")):
+            raise ValueError(f"missing individual typed evidence: {name}")
+
+
+def audit_target_inputs(driver, objects):
+    manifest = load_json(objects / "objects.json")
+    if (manifest.get("configuration") != "RELEASE_PPC" or
+            manifest.get("hash_algorithm") != "SHA-256" or
+            not re.fullmatch(r"[0-9a-fA-F]{40}", manifest.get("source_revision", ""))):
+        raise ValueError("invalid target build provenance")
+    entries = manifest["objects"]
+    if len(entries) != 1 or entries[0]["source"] != "bsd/dev/ppc/drvAdaptecU2SCSI/tests/layout-checks.m":
+        raise ValueError("layout object source/count differs")
+    entry = entries[0]
+    if entry["path"] != Path(entry["path"]).name or entry["cpu_type"] != 18:
+        raise ValueError("invalid PPC layout object")
+    obj = objects / entry["path"]
+    for path, expected in [(obj, entry["sha256"]),
+                           (driver / "tests/layout-checks.m", entry["source_sha256"])]:
+        if hashlib.sha256(path.read_bytes()).hexdigest().upper() != expected.upper():
+            raise ValueError(f"stale target input/object: {path.name}")
+    hashes = {}
+    for line in (objects / "header-inputs.sha256").read_text().splitlines():
+        digest, name = line.split(maxsplit=1)
+        header = Path(name).name
+        if name != "bsd/dev/ppc/drvAdaptecU2SCSI/" + header or header in hashes:
+            raise ValueError("invalid or duplicate target header provenance")
+        hashes[header] = digest.upper()
+    if set(hashes) != set(LAYOUT_HEADERS):
+        raise ValueError("target header closure is incomplete")
+    for name, expected in hashes.items():
+        if hashlib.sha256((driver / name).read_bytes()).hexdigest().upper() != expected:
+            raise ValueError(f"stale target header: {name}")
+    return obj
+
+
+def audit_callback_initializers(reference, objects, macho, reader, symbols):
+    frozen = load_json(reference / "reference.json")
+    names = {f["address"]: next(n for n in f["names"] if n.startswith("_"))
+             for f in frozen["functions"] if any(n.startswith("_") for n in f["names"])}
+    relocations = {r["address"]: r for r in macho["relocations"]}
+    tables = [("SCSIFuncPtrs", "_au2_him_type_check", 4, 168),
+              ("OSMRoutines", "_au2_osm_type_check", 4, 124)]
+    tables += [(name, "_au2_check_" + name, 0, 100) for name in
+               ("SCSIHardwareAIC78XX", "SCSIHardwareAICBayonet")]
+    tables += [(name, "_au2_check_" + name, 84, 296) for name in
+               ("SCSIFirmwareStandard64", "SCSIFirmwareSwapping32",
+                "SCSIFirmwareStandardAdv", "SCSIFirmwareSwappingAdv")]
+    for name, symbol, first, end in tables:
+        raw = (reference / "data" / (name + ".bin")).read_bytes()
+        if symbol not in symbols:
+            raise ValueError(f"missing typed callback initializer: {name}")
+        base = symbols[symbol]
+        if name in ("SCSIFuncPtrs", "OSMRoutines") and reader.at(base, 1)[0] != int.from_bytes(raw[:4], "big"):
+            raise ValueError(f"callback version word differs: {name}")
+        for offset in range(first, end, 4):
+            target = int.from_bytes(raw[offset:offset+4], "big")
+            relocation = relocations.get(base + offset)
+            if target == 0:
+                if relocation or reader.at(base + offset, 1)[0] != 0:
+                    raise ValueError(f"nonzero reserved callback: {name}+{offset}")
+            elif (target not in names or not relocation or relocation["target"] != names[target] or
+                  relocation["kind"] != "ppc-vanilla-32-absolute" or relocation["addend"] != 0):
+                raise ValueError(f"callback relocation differs: {name}+{offset}")
+    # Old cc emits incompatible function-pointer initializers as warnings.
+    # The two explicitly obsolete SDK headers are independently known inputs.
+    log = (objects / "1.log").read_text()
+    allowed = ("../../kernserv/clock_timer.h:44: warning: #warning Obsolete header file:",
+               "../../kernserv/queue.h:41: warning: #warning Obsolete header file:")
+    for line in log.splitlines():
+        if ("warning:" in line or "error:" in line) and not line.startswith(allowed):
+            raise ValueError("target callback/type diagnostic: " + line)
+
+
+def audit_layouts(reference, repo_root, objects):
+    if objects is None:
+        raise ValueError("layouts requires --objects with the target object/manifest/header closure")
+    verify_expected(identify(reference / "image.bin"), ref.SIZE, ref.SHA256)
+    driver = repo_root / ref.DRIVER
+    audit_dispatch_headers(driver, reference)
+    obj = audit_target_inputs(driver, objects)
+    payload, macho = load_image(obj)
+    if (macho["input"]["architecture"], macho["input"]["endianness"]) != ("ppc", "big"):
+        raise ValueError("layout object is not big-endian PPC")
+    reader = ObjcReader(payload, macho["sections"], "big")
+    contract = load_json(driver / "tests/layout-contracts.json")
+    if contract["reference_sha256"] != ref.SHA256:
+        raise ValueError("layout contract reference differs")
+    expected = dict(contract["constants"])
+    for name, layout in contract["layouts"].items():
+        if not layout["evidence"] or not layout["extent"]:
+            raise ValueError(f"missing layout extent/evidence: {name}")
+        expected["_au2_" + name + "_layout"] = [layout["size"], *layout["fields"].values()]
+    expected["_au2_controller_layout"] = [1488,580,604,684,1228,1408,1416,1424,512]
+    symbols = {s["name"]: s["address"] for s in macho["symbols"] if s["section"] is not None}
+    audit_callback_initializers(reference, objects, macho, reader, symbols)
+    for name, values in expected.items():
+        if name not in symbols or list(reader.at(symbols[name], len(values))) != values:
+            raise ValueError(f"target size/offset constants differ: {name}")
+    modules = read_modules(obj)
+    if set(modules) != {"layout-checks.m"}:
+        raise ValueError("target metadata module differs")
+    target = modules["layout-checks.m"]
+    frozen = load_json(reference / "abi.json")["modules"]
+    expected_classes = frozen["AdaptecU2SCSI.m"]["classes"]
+    expected_categories = frozen["AdaptecU2SCSIThread.m"]["categories"]
+    def ordered(records):
+        result = []
+        for record in records:
+            record = dict(record)
+            for key in ("instance_methods", "class_methods"):
+                record[key] = sorted(record[key], key=lambda m: m["selector"])
+            result.append(record)
+        return result
+    if ordered(target["classes"]) != ordered(expected_classes):
+        raise ValueError("target controller ivars, size, superclass or method encodings differ")
+    if ordered(target["categories"]) != ordered(expected_categories):
+        raise ValueError("target thread category/selector encodings differ")
 
 
 def main():

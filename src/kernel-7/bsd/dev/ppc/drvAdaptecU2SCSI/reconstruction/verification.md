@@ -186,3 +186,46 @@ produced `locc.c.o` as big-endian PPC Mach-O CPU type 18 with SHA-256
 `C6F77F053FFDC862DFE8BC8F1F28FFC647B02264F9EBF9FCE9080C2825D67016`.
 The full four-build wrapper is syntax/interface checked here; final driver
 compile/link acceptance remains a later reconstruction task.
+
+## ABI stack observations
+
+A case may supply `observe_stack`, a list of `{offset, size}` ranges relative
+to entry r1. The runner bounds every read to its mapped stack and rejects
+duplicate offsets. Such a case additionally observes `stack` (offset strings
+to exact byte hex) and `stack_pointer` (final r1 minus entry r1). An empty
+list still observes stack restoration. This supports the complete frozen
+OSMSynchronizeRange register-homing contract; it does not supply stack
+arguments, serialize aggregates, decode aggregate callbacks, or implement
+void-result observations. Those separate convention extensions remain
+required before their later behavioral cases can pass.
+
+## Task 3 target ABI audit
+
+`verify.py layouts --reference DIR --repo-root ROOT --objects DIR` requires
+the historical PPC `layout-checks.m` object, its `objects.json`, its `1.log`,
+and `header-inputs.sha256`. The latter lists SHA-256 and canonical kernel-root
+relative paths for the six delivered headers, captured identically before
+and after native compilation. The audit rejects changed source/header/object
+bytes, missing provenance, non-PPC objects, any unexpected compiler diagnostic,
+wrong callback relocations or reserved/version words, and mismatched metadata.
+The two existing SDK obsolete-header warnings are the only diagnostic allowance.
+The target source emits32 constant sets (535 values), all25 controller/category
+method encodings, every controller ivar, and typed initializers for eight tables.
+
+The dispatch audit binds392 CHIM declarations to their pinned addresses,
+owners and individual reviewed evidence in `reconstruction/signatures.json`.
+It requires the exact eleven CHIM and separate three OSM formal-erasure sets.
+Tests exercise22 CHIM and six OSM varied-register reference cases, including
+the complete SynchronizeRange stack writes. They do not substitute for later
+paired product execution. The seven unnamed helper declarations retain the
+frozen `sub_ADDRESS` inventory names for source-map and fixture resolution.
+
+Run the Task3 gate with the task-local Python environment:
+
+```
+python -m pytest -p no:faulthandler tests/test_reconstruction.py -k 'layout or dispatch or input_erased or osm_erased'
+```
+
+Set PYTHONPATH to `tools/binrecon` from the repository root and use the actual
+driver test path when invoking there. Keep build artifacts/logs outside Git.
+The Task3 report identifies the exact native inputs, commit and retained outputs.

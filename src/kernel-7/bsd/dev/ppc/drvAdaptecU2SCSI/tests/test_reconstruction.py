@@ -421,6 +421,12 @@ def test_task5_objc_provider_dispatch_rejects_frozen_internal_selector(tmp_path)
     contracts = {"services": {"_objc_msgSend": {"boundary": "kernel-service", "arguments": [],
         "return": "void", "dispatch": [dispatch], "evidence": "explicit provider dispatch"}}}
     assert runner.run_case(image, case, contracts)["observations"]["trace"][0]["return"] is None
+    dispatch["arguments"] = ["pointer", "cstring", "unknown"]
+    case["external_outcomes"][0]["arguments"].append(0)
+    with pytest.raises(ValueError, match="calling convention"):
+        runner.run_case(image, case, contracts)
+    dispatch["arguments"] = ["pointer", "cstring"]
+    case["external_outcomes"][0]["arguments"].pop()
     case["memory"][-1]["bytes"] = b"resetSCSIBus\0".hex()
     dispatch["selector"] = "resetSCSIBus"
     with pytest.raises(ValueError, match="internal.*selector"):
@@ -849,4 +855,73 @@ def test_firmware_switch_metadata_all_case_values(firmware_evidence):
     assert sum(d["normalized_case_count"] for d in switches) == 592
     assert {status: sum(d["status"] == status for d in document["objects"])
             for status in ("recovered", "pending-owner-recovery", "pending-owner-control-flow")} == {
-                "recovered": 21, "pending-owner-recovery": 5, "pending-owner-control-flow": 22}
+                "recovered": 23, "pending-owner-recovery": 5, "pending-owner-control-flow": 20}
+
+
+@pytest.mark.parametrize("corruption", ["missing_source", "incorrect_source", "object", "review",
+                                        "ledger", "body_case", "switch_guard", "switch_defaults"])
+def test_task5_group_rejects_missing_or_incorrect_implementation(tmp_path, firmware_evidence, corruption):
+    audit, evidence = firmware_evidence
+    repo = tmp_path / "repo"
+    driver = repo / audit.ref.DRIVER
+    shutil.copytree(TESTS.parent, driver, ignore=shutil.ignore_patterns("__pycache__"))
+    # Read the real producer commits from an isolated source copy; never mutate Git.
+    shutil.copyfile(REPO / ".git", repo / ".git")
+    objects = tmp_path / "objects/task5"
+    shutil.copytree(OUT / "objects/task5", objects)
+    shutil.copytree(OUT / "objects/layout-checks", objects.parent / "layout-checks")
+    proof_path = driver / "reconstruction/task5.json"
+    proof = json.loads(proof_path.read_text())
+    ledger_path = driver / "reconstruction/ledger.json"
+    ledger = json.loads(ledger_path.read_text())
+    owner = "AdaptecU2CHIMOSD.c"
+    review = next(b for b in proof["bodies"] if b["name"] == "_OSDAsyncEvent")
+    expected = ""
+    if corruption == "missing_source":
+        (driver / owner).unlink()
+        expected = owner
+    elif corruption == "incorrect_source":
+        with (driver / owner).open("ab") as stream:
+            stream.write(b"\nvoid OSDMissingReplacement(void) {}\n")
+        expected = "stale Task5 native source/object"
+    elif corruption in ("object", "switch_guard"):
+        manifest_path = objects / "objects.json"
+        manifest = json.loads(manifest_path.read_text())
+        item = next(i for i in manifest["objects"] if i["source"].endswith(owner))
+        obj = objects / item["path"]
+        raw, macho = audit.load_image(obj)
+        text = next(s for s in macho["sections"] if s["name"] == "__TEXT,__text")
+        raw = bytearray(raw)
+        guard = proof["switches"]["switch_2314c0"]["machine"]["guard"]
+        raw[text["offset"] + guard - text["address"] + 1] ^= 1
+        obj.write_bytes(raw)
+        expected = "stale Task5 native source/object"
+        if corruption == "switch_guard":
+            # Refresh every hash to prove the machine guard itself rejects a bad body.
+            item["sha256"] = audit.hashlib.sha256(raw).hexdigest().upper()
+            manifest_path.write_text(json.dumps(manifest))
+            proof["native_manifest_sha256"] = audit.hashlib.sha256(manifest_path.read_bytes()).hexdigest().upper()
+            offset = text["offset"] + review["native_address"] - text["address"]
+            review["native_sha256"] = audit.hashlib.sha256(raw[offset:offset+review["native_size"]]).hexdigest().upper()
+            expected = "native switch default guard differs"
+    elif corruption == "review":
+        proof["bodies"].remove(review)
+        expected = "exactly 37\\+14 bodies"
+    elif corruption == "ledger":
+        next(e for e in ledger["entries"] if e["address"] == review["address"])["status"] = "unexamined"
+        expected = "reviewed body/source evidence"
+    elif corruption == "body_case":
+        review["cases"] = []
+        expected = "required successful body fixture"
+    else:
+        proof["switches"]["switch_2314c0"]["default_cases"] = ["unexecuted-default"]
+        expected = "switch default fixtures"
+    proof_path.write_text(json.dumps(proof))
+    digest = audit.hashlib.sha256(proof_path.read_bytes()).hexdigest().upper()
+    for entry in ledger["entries"]:
+        for artifact in entry["artifacts"]:
+            if artifact["path"].endswith("reconstruction/task5.json"):
+                artifact["sha256"] = digest
+    ledger_path.write_text(json.dumps(ledger))
+    with pytest.raises((ValueError, FileNotFoundError), match=expected):
+        audit.audit_service_group(evidence, repo, objects, owner)

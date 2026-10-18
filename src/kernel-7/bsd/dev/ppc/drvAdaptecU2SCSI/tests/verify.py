@@ -79,9 +79,10 @@ def audit_service_group(evidence, repo_root, objects, group):
         raise ValueError("group requires actual target objects")
     manifest = load_json(objects / "objects.json")
     if (manifest.get("configuration") != "RELEASE_PPC" or manifest.get("hash_algorithm") != "SHA-256" or
-            manifest.get("source_revision") != proof["native_revision"] or len(manifest["objects"]) != 2):
+            manifest.get("source_revision") != proof["native_revision"] or len(manifest["objects"]) != 2 or
+            hashlib.sha256((objects / "objects.json").read_bytes()).hexdigest().upper() != proof["native_manifest_sha256"]):
         raise ValueError("invalid Task5 target provenance")
-    native = {}
+    native, native_images = {}, {}
     for item in manifest["objects"]:
         owner = Path(item["source"]).name
         if (owner not in owners or item["source"] != "bsd/dev/ppc/drvAdaptecU2SCSI/" + owner or
@@ -92,8 +93,23 @@ def audit_service_group(evidence, repo_root, objects, group):
             if hashlib.sha256(path.read_bytes()).hexdigest().upper() != digest:
                 raise ValueError("stale Task5 native source/object: " + path.name)
         payload, macho = load_image(objects / item["path"])
+        if ((macho["input"]["architecture"], macho["input"]["endianness"]) != ("ppc", "big") or
+                macho["extensions"]["macho"]["header"]["file_type"] != 1):
+            raise ValueError("Task5 native object requires PPC big-endian")
+        allowed = ("../../kernserv/clock_timer.h:44: warning: #warning Obsolete header file:",
+                   "../../kernserv/queue.h:41: warning: #warning Obsolete header file:",
+                   "../../kernserv/ns_timer.h:48: warning: #warning Obsolete header file:")
+        for line in (objects / item["log"]).read_text().splitlines():
+            if ("warning:" in line or "error:" in line) and not line.startswith(allowed):
+                raise ValueError("Task5 target diagnostic: " + line)
+        native_images[owner] = (payload, macho)
         symbols = sorted([s for s in macho["symbols"] if s["binding"] == "external" and
                           s["section"] == "__TEXT,__text"], key=lambda s: s["address"])
+        expected_symbols = {evidence["frozen"][address]["names"][0] for address in
+                            evidence["document"]["owners"][owner]}
+        expected_symbols = {name if name.startswith("_") else "_" + name for name in expected_symbols}
+        if {s["name"] for s in symbols} != expected_symbols:
+            raise ValueError("Task5 native owner symbol coverage differs: " + owner)
         text = next(s for s in macho["sections"] if s["name"] == "__TEXT,__text")
         bodies = {}
         for index, symbol in enumerate(symbols):
@@ -123,6 +139,17 @@ def audit_service_group(evidence, repo_root, objects, group):
         header_lines[name] = digest.upper()
     if header_lines != {name: inputs[name]["staged_sha256"] for name in LAYOUT_HEADERS}:
         raise ValueError("Task5 target header hashes differ")
+    source_lines = {}
+    for line in (objects / "source-inputs.sha256").read_text().splitlines():
+        digest, path = line.split(maxsplit=1)
+        name = Path(path).name
+        if name in source_lines or path != "bsd/dev/ppc/drvAdaptecU2SCSI/" + name:
+            raise ValueError("invalid Task5 staged input manifest")
+        source_lines[name] = digest.upper()
+    if source_lines != {name: hashes["staged_sha256"] for name, hashes in inputs.items()}:
+        raise ValueError("Task5 staged input hashes differ")
+    # Reuse the current e385 target layout producer; no layout/native rebuild.
+    audit_target_inputs(driver, objects.parent / "layout-checks")
     sites = source_sites(repo_root, driver)
     ledger, _ = load_ledger(driver / "reconstruction/ledger.json", evidence["image_identity"], None)
     ledger_entries = {entry["address"]: entry for entry in ledger["entries"]}
@@ -171,6 +198,72 @@ def audit_service_group(evidence, repo_root, objects, group):
                     switch["owner_function"] != row["function"] or not switch["native_control_flow"] or
                     not switch["default_cases"]):
                 raise ValueError("incomplete native/source switch outcomes: " + name)
+            owner_cases = [case for case in cases["cases"] if
+                           case["evidence"]["entry_address"] == row["function"]]
+            defaults = {"task5-completion-special-fn0", "task5-completion-special-fn12"} if name == "switch_231258" else {
+                "task5-event-0", "task5-event-9", "task5-event-4294967295"}
+            if (set(switch["default_cases"]) != defaults or
+                    not defaults <= {case["id"] for case in owner_cases}):
+                raise ValueError("missing actual switch default fixtures: " + name)
+            raw_values = {int.from_bytes(bytes.fromhex(next(region["bytes"] for region in case["memory"]
+                                        if region["name"] == "iob"))[12:16], "big")
+                          if name == "switch_231258" else case["arguments"][1] for case in owner_cases}
+            if not set(range(1, row["normalized_case_count"] + 1)) <= raw_values:
+                raise ValueError("missing actual normalized switch case fixtures: " + name)
+            payload, macho = native_images[group]
+
+            def native_bytes(address, size):
+                section = next((s for s in macho["sections"] if s["address"] <= address <=
+                                s["address"] + s["size"] - size), None)
+                if section is None:
+                    raise ValueError("native switch address exceeds target section")
+                offset = section["offset"] + address - section["address"]
+                return payload[offset:offset+size]
+
+            machine = switch["machine"]
+            start, end = machine["address"], machine["end"]
+            table = machine["table"]
+            raw = native_bytes(table, len(switch["normalized_cases"]) * 4)
+            targets = [table + int.from_bytes(raw[i:i+4], "big", signed=True)
+                       for i in range(0, len(raw), 4)]
+            if raw.hex() != machine["raw"] or targets != machine["targets"] or any(
+                    target % 4 or not start <= target < end for target in targets):
+                raise ValueError("native switch table/case targets differ: " + name)
+            guard, compare, normalize = (machine[key] for key in ("guard", "compare", "normalize"))
+            if (int.from_bytes(native_bytes(compare, 4), "big") != 0x28800000 + len(targets) - 1 or
+                    native_bytes(normalize, 4).hex() != ("3000ffff" if len(targets) == 11 else "3804ffff")):
+                raise ValueError("native switch normalization/range differs: " + name)
+            branch = int.from_bytes(native_bytes(guard, 4), "big")
+            displacement = (branch & 0xfffc) - (0x10000 if branch & 0x8000 else 0)
+            if branch >> 16 != 0x4185 or guard + displacement != machine["default"]:
+                raise ValueError("native switch default guard differs: " + name)
+            dispatch = machine["dispatch"]
+            if (native_bytes(dispatch-24, 8).hex() != "5400103a7c09002e" or
+                    native_bytes(dispatch-8, 12).hex() != "7c004a147c0903a64e800420"):
+                raise ValueError("native switch index/load/dispatch differs: " + name)
+            for offset in (-28, -12):
+                if int.from_bytes(native_bytes(dispatch+offset, 4), "big") != 0x39290000 + table:
+                    raise ValueError("native switch table base differs: " + name)
+            for index, target in enumerate(targets):
+                prefix = native_bytes(target, 8).hex()
+                if len(targets) == 11:
+                    expected = ("813f002880090000" if index == 3 else
+                                "813f00347fe3fb78" if index == 5 else
+                                "38000010901f002c" if index in (2,6,7,8) else "880400052c800001")
+                    if prefix != expected:
+                        raise ValueError("native special-completion outcome differs")
+                elif index in (1,3):
+                    if target != machine["default"] or prefix != "38a0000080030624":
+                        raise ValueError("native event default outcome differs")
+                elif index in (5,6):
+                    value = 4 if index == 5 else 5
+                    if prefix != "80030a24" + (0x38800000 + value).to_bytes(4,"big").hex():
+                        raise ValueError("native event flag/callback outcome differs")
+                    expected = "6400400090030a24" if index == 5 else "5400008090030a24"
+                    if native_bytes(target+8,8).hex() != expected:
+                        raise ValueError("native event flag update differs")
+                elif int.from_bytes(native_bytes(target,4),"big") != 0x38800000 + {0:1,2:3,4:2,7:8}[index]:
+                    raise ValueError("native event callback value differs")
 
 
 def authenticate_reference(reference, repo_root):

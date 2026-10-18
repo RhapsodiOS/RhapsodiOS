@@ -337,8 +337,8 @@
         "_AdptMallocContiguous"
       ],
       "size": 144,
-      "source_line": 61,
-      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/OSMFunctions.m"
+      "source_line": 12,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2OSMServices.m"
     },
     {
       "address": 1603484,
@@ -346,8 +346,8 @@
         "_AdptFreeContiguous"
       ],
       "size": 44,
-      "source_line": 112,
-      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/OSMFunctions.m"
+      "source_line": 28,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2OSMServices.m"
     },
     {
       "address": 1603576,
@@ -413,12 +413,273 @@
       "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2SCSIThread.m"
     },
     {
+      "address": 1610172,
+      "reference_names": [
+        "_OSMReadPCIConfigurationDword"
+      ],
+      "size": 196,
+      "source_line": 253,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2OSMServices.m"
+    },
+    {
+      "address": 1610368,
+      "reference_names": [
+        "_OSMReadPCIConfigurationWord"
+      ],
+      "size": 228,
+      "source_line": 268,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2OSMServices.m"
+    },
+    {
+      "address": 1610596,
+      "reference_names": [
+        "_OSMReadPCIConfigurationByte"
+      ],
+      "size": 228,
+      "source_line": 283,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2OSMServices.m"
+    },
+    {
+      "address": 1610824,
+      "reference_names": [
+        "_OSMWritePCIConfigurationDword"
+      ],
+      "size": 212,
+      "source_line": 298,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2OSMServices.m"
+    },
+    {
+      "address": 1611036,
+      "reference_names": [
+        "_OSMWritePCIConfigurationWord"
+      ],
+      "size": 416,
+      "source_line": 312,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2OSMServices.m"
+    },
+    {
+      "address": 1611452,
+      "reference_names": [
+        "_OSMWritePCIConfigurationByte"
+      ],
+      "size": 412,
+      "source_line": 335,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2OSMServices.m"
+    },
+    {
+      "address": 1611864,
+      "reference_names": [
+        "_OSMMapIOHandle"
+      ],
+      "size": 588,
+      "source_line": 358,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2OSMServices.m"
+    },
+    {
+      "address": 1612452,
+      "reference_names": [
+        "_OSMReleaseIOHandle"
+      ],
+      "size": 220,
+      "source_line": 409,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2OSMServices.m"
+    },
+    {
+      "address": 1613072,
+      "reference_names": [
+        "_OSMGetBusAddress"
+      ],
+      "size": 92,
+      "source_line": 212,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2OSMServices.m"
+    },
+    {
+      "address": 1613164,
+      "reference_names": [
+        "_OSMAdjustBusAddress"
+      ],
+      "size": 24,
+      "source_line": 223,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2OSMServices.m"
+    },
+    {
+      "address": 1613188,
+      "reference_names": [
+        "_OSMGetNVSize"
+      ],
+      "size": 16,
+      "source_line": 228,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2OSMServices.m"
+    },
+    {
+      "address": 1613204,
+      "reference_names": [
+        "_OSMPutNVData"
+      ],
+      "size": 16,
+      "source_line": 233,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2OSMServices.m"
+    },
+    {
+      "address": 1613220,
+      "reference_names": [
+        "_OSMGetNVData"
+      ],
+      "size": 16,
+      "source_line": 239,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2OSMServices.m"
+    },
+    {
+      "address": 1613236,
+      "reference_names": [
+        "_OSMReadUExact8"
+      ],
+      "size": 52,
+      "source_line": 67,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2OSMServices.m"
+    },
+    {
+      "address": 1613288,
+      "reference_names": [
+        "_OSMReadUExact16"
+      ],
+      "size": 92,
+      "source_line": 72,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2OSMServices.m"
+    },
+    {
+      "address": 1613380,
+      "reference_names": [
+        "_OSMReadUExact32"
+      ],
+      "size": 92,
+      "source_line": 83,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2OSMServices.m"
+    },
+    {
+      "address": 1613472,
+      "reference_names": [
+        "_OSMReadStringUExact8"
+      ],
+      "size": 108,
+      "source_line": 94,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2OSMServices.m"
+    },
+    {
+      "address": 1613580,
+      "reference_names": [
+        "_OSMReadStringUExact16"
+      ],
+      "size": 256,
+      "source_line": 105,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2OSMServices.m"
+    },
+    {
+      "address": 1613836,
+      "reference_names": [
+        "_OSMReadStringUExact32"
+      ],
+      "size": 256,
+      "source_line": 121,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2OSMServices.m"
+    },
+    {
+      "address": 1614092,
+      "reference_names": [
+        "_OSMWriteUExact8"
+      ],
+      "size": 60,
+      "source_line": 137,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2OSMServices.m"
+    },
+    {
+      "address": 1614152,
+      "reference_names": [
+        "_OSMWriteUExact16"
+      ],
+      "size": 108,
+      "source_line": 144,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2OSMServices.m"
+    },
+    {
+      "address": 1614260,
+      "reference_names": [
+        "_OSMWriteUExact32"
+      ],
+      "size": 88,
+      "source_line": 155,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2OSMServices.m"
+    },
+    {
+      "address": 1614348,
+      "reference_names": [
+        "_OSMWriteStringUExact8"
+      ],
+      "size": 112,
+      "source_line": 166,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2OSMServices.m"
+    },
+    {
+      "address": 1614460,
+      "reference_names": [
+        "_OSMWriteStringUExact16"
+      ],
+      "size": 260,
+      "source_line": 178,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2OSMServices.m"
+    },
+    {
+      "address": 1614720,
+      "reference_names": [
+        "_OSMWriteStringUExact32"
+      ],
+      "size": 260,
+      "source_line": 195,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2OSMServices.m"
+    },
+    {
+      "address": 1614980,
+      "reference_names": [
+        "_OSMSynchronizeRange"
+      ],
+      "size": 44,
+      "source_line": 438,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2OSMServices.m"
+    },
+    {
+      "address": 1615024,
+      "reference_names": [
+        "_OSMWatchdog"
+      ],
+      "size": 92,
+      "source_line": 245,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2OSMServices.m"
+    },
+    {
+      "address": 1615116,
+      "reference_names": [
+        "_OSMSaveInterruptState"
+      ],
+      "size": 16,
+      "source_line": 443,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2OSMServices.m"
+    },
+    {
+      "address": 1615132,
+      "reference_names": [
+        "_OSMSetInterruptState"
+      ],
+      "size": 12,
+      "source_line": 448,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2OSMServices.m"
+    },
+    {
       "address": 1615144,
       "reference_names": [
         "_SendIOBsMaybe"
       ],
       "size": 324,
-      "source_line": 1557,
+      "source_line": 894,
       "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/OSMFunctions.m"
     },
     {
@@ -427,7 +688,7 @@
         "_NormalPostRoutine"
       ],
       "size": 660,
-      "source_line": 2274,
+      "source_line": 1611,
       "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/OSMFunctions.m"
     },
     {
@@ -436,7 +697,7 @@
         "_ProbeTarget"
       ],
       "size": 252,
-      "source_line": 2098,
+      "source_line": 1435,
       "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/OSMFunctions.m"
     },
     {
@@ -445,7 +706,7 @@
         "_AU2Handler"
       ],
       "size": 48,
-      "source_line": 660,
+      "source_line": 576,
       "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/OSMFunctions.m"
     },
     {
@@ -454,7 +715,7 @@
         "__allocOSMIOB"
       ],
       "size": 224,
-      "source_line": 163,
+      "source_line": 79,
       "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/OSMFunctions.m"
     },
     {
@@ -463,8 +724,134 @@
         "__freeOSMIOB"
       ],
       "size": 116,
-      "source_line": 394,
+      "source_line": 310,
       "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/OSMFunctions.m"
+    },
+    {
+      "address": 1732452,
+      "reference_names": [
+        "_OSDBuildSCB"
+      ],
+      "size": 56,
+      "source_line": 12,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMOSD.c"
+    },
+    {
+      "address": 1732508,
+      "reference_names": [
+        "_OSDStandard64BuildSCB"
+      ],
+      "size": 504,
+      "source_line": 91,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMOSD.c"
+    },
+    {
+      "address": 1733012,
+      "reference_names": [
+        "_OSDSwapping32BuildSCB"
+      ],
+      "size": 564,
+      "source_line": 136,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMOSD.c"
+    },
+    {
+      "address": 1733576,
+      "reference_names": [
+        "_OSDStandardAdvBuildSCB"
+      ],
+      "size": 504,
+      "source_line": 183,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMOSD.c"
+    },
+    {
+      "address": 1734080,
+      "reference_names": [
+        "_OSDSwappingAdvBuildSCB"
+      ],
+      "size": 500,
+      "source_line": 228,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMOSD.c"
+    },
+    {
+      "address": 1734580,
+      "reference_names": [
+        "_OSDGetSGList"
+      ],
+      "size": 20,
+      "source_line": 20,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMOSD.c"
+    },
+    {
+      "address": 1734600,
+      "reference_names": [
+        "_OSDCompleteHIOB"
+      ],
+      "size": 92,
+      "source_line": 25,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMOSD.c"
+    },
+    {
+      "address": 1734692,
+      "reference_names": [
+        "_OSDCompleteSpecialHIOB"
+      ],
+      "size": 256,
+      "source_line": 35,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMOSD.c"
+    },
+    {
+      "address": 1735428,
+      "reference_names": [
+        "_OSDGetBusAddress"
+      ],
+      "size": 56,
+      "source_line": 66,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMOSD.c"
+    },
+    {
+      "address": 1735484,
+      "reference_names": [
+        "_OSDAdjustBusAddress"
+      ],
+      "size": 52,
+      "source_line": 73,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMOSD.c"
+    },
+    {
+      "address": 1735536,
+      "reference_names": [
+        "_OSDReadPciConfiguration"
+      ],
+      "size": 56,
+      "source_line": 79,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMOSD.c"
+    },
+    {
+      "address": 1735592,
+      "reference_names": [
+        "_OSDWritePciConfiguration"
+      ],
+      "size": 52,
+      "source_line": 85,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMOSD.c"
+    },
+    {
+      "address": 1735644,
+      "reference_names": [
+        "_OSDAsyncEvent"
+      ],
+      "size": 200,
+      "source_line": 274,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMOSD.c"
+    },
+    {
+      "address": 1735844,
+      "reference_names": [
+        "_OSDGetHostAddress"
+      ],
+      "size": 16,
+      "source_line": 296,
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMOSD.c"
     }
   ],
   "reference_sha256": "D01D748C10117FBFCEB25F99D88A63895C3BAC6C09A5110AD358E583316494BD",
@@ -527,214 +914,11 @@
       "size": 12
     },
     {
-      "address": 1610172,
-      "reference_names": [
-        "_OSMReadPCIConfigurationDword"
-      ],
-      "size": 196
-    },
-    {
-      "address": 1610368,
-      "reference_names": [
-        "_OSMReadPCIConfigurationWord"
-      ],
-      "size": 228
-    },
-    {
-      "address": 1610596,
-      "reference_names": [
-        "_OSMReadPCIConfigurationByte"
-      ],
-      "size": 228
-    },
-    {
-      "address": 1610824,
-      "reference_names": [
-        "_OSMWritePCIConfigurationDword"
-      ],
-      "size": 212
-    },
-    {
-      "address": 1611036,
-      "reference_names": [
-        "_OSMWritePCIConfigurationWord"
-      ],
-      "size": 416
-    },
-    {
-      "address": 1611452,
-      "reference_names": [
-        "_OSMWritePCIConfigurationByte"
-      ],
-      "size": 412
-    },
-    {
-      "address": 1611864,
-      "reference_names": [
-        "_OSMMapIOHandle"
-      ],
-      "size": 588
-    },
-    {
-      "address": 1612452,
-      "reference_names": [
-        "_OSMReleaseIOHandle"
-      ],
-      "size": 220
-    },
-    {
       "address": 1612672,
       "reference_names": [
         "_OSMEvent"
       ],
       "size": 400
-    },
-    {
-      "address": 1613072,
-      "reference_names": [
-        "_OSMGetBusAddress"
-      ],
-      "size": 92
-    },
-    {
-      "address": 1613164,
-      "reference_names": [
-        "_OSMAdjustBusAddress"
-      ],
-      "size": 24
-    },
-    {
-      "address": 1613188,
-      "reference_names": [
-        "_OSMGetNVSize"
-      ],
-      "size": 16
-    },
-    {
-      "address": 1613204,
-      "reference_names": [
-        "_OSMPutNVData"
-      ],
-      "size": 16
-    },
-    {
-      "address": 1613220,
-      "reference_names": [
-        "_OSMGetNVData"
-      ],
-      "size": 16
-    },
-    {
-      "address": 1613236,
-      "reference_names": [
-        "_OSMReadUExact8"
-      ],
-      "size": 52
-    },
-    {
-      "address": 1613288,
-      "reference_names": [
-        "_OSMReadUExact16"
-      ],
-      "size": 92
-    },
-    {
-      "address": 1613380,
-      "reference_names": [
-        "_OSMReadUExact32"
-      ],
-      "size": 92
-    },
-    {
-      "address": 1613472,
-      "reference_names": [
-        "_OSMReadStringUExact8"
-      ],
-      "size": 108
-    },
-    {
-      "address": 1613580,
-      "reference_names": [
-        "_OSMReadStringUExact16"
-      ],
-      "size": 256
-    },
-    {
-      "address": 1613836,
-      "reference_names": [
-        "_OSMReadStringUExact32"
-      ],
-      "size": 256
-    },
-    {
-      "address": 1614092,
-      "reference_names": [
-        "_OSMWriteUExact8"
-      ],
-      "size": 60
-    },
-    {
-      "address": 1614152,
-      "reference_names": [
-        "_OSMWriteUExact16"
-      ],
-      "size": 108
-    },
-    {
-      "address": 1614260,
-      "reference_names": [
-        "_OSMWriteUExact32"
-      ],
-      "size": 88
-    },
-    {
-      "address": 1614348,
-      "reference_names": [
-        "_OSMWriteStringUExact8"
-      ],
-      "size": 112
-    },
-    {
-      "address": 1614460,
-      "reference_names": [
-        "_OSMWriteStringUExact16"
-      ],
-      "size": 260
-    },
-    {
-      "address": 1614720,
-      "reference_names": [
-        "_OSMWriteStringUExact32"
-      ],
-      "size": 260
-    },
-    {
-      "address": 1614980,
-      "reference_names": [
-        "_OSMSynchronizeRange"
-      ],
-      "size": 44
-    },
-    {
-      "address": 1615024,
-      "reference_names": [
-        "_OSMWatchdog"
-      ],
-      "size": 92
-    },
-    {
-      "address": 1615116,
-      "reference_names": [
-        "_OSMSaveInterruptState"
-      ],
-      "size": 16
-    },
-    {
-      "address": 1615132,
-      "reference_names": [
-        "_OSMSetInterruptState"
-      ],
-      "size": 12
     },
     {
       "address": 1615468,
@@ -3369,109 +3553,11 @@
       "size": 2680
     },
     {
-      "address": 1732452,
-      "reference_names": [
-        "_OSDBuildSCB"
-      ],
-      "size": 56
-    },
-    {
-      "address": 1732508,
-      "reference_names": [
-        "_OSDStandard64BuildSCB"
-      ],
-      "size": 504
-    },
-    {
-      "address": 1733012,
-      "reference_names": [
-        "_OSDSwapping32BuildSCB"
-      ],
-      "size": 564
-    },
-    {
-      "address": 1733576,
-      "reference_names": [
-        "_OSDStandardAdvBuildSCB"
-      ],
-      "size": 504
-    },
-    {
-      "address": 1734080,
-      "reference_names": [
-        "_OSDSwappingAdvBuildSCB"
-      ],
-      "size": 500
-    },
-    {
-      "address": 1734580,
-      "reference_names": [
-        "_OSDGetSGList"
-      ],
-      "size": 20
-    },
-    {
-      "address": 1734600,
-      "reference_names": [
-        "_OSDCompleteHIOB"
-      ],
-      "size": 92
-    },
-    {
-      "address": 1734692,
-      "reference_names": [
-        "_OSDCompleteSpecialHIOB"
-      ],
-      "size": 256
-    },
-    {
       "address": 1734948,
       "reference_names": [
         "_SCSIxTranslateError"
       ],
       "size": 480
-    },
-    {
-      "address": 1735428,
-      "reference_names": [
-        "_OSDGetBusAddress"
-      ],
-      "size": 56
-    },
-    {
-      "address": 1735484,
-      "reference_names": [
-        "_OSDAdjustBusAddress"
-      ],
-      "size": 52
-    },
-    {
-      "address": 1735536,
-      "reference_names": [
-        "_OSDReadPciConfiguration"
-      ],
-      "size": 56
-    },
-    {
-      "address": 1735592,
-      "reference_names": [
-        "_OSDWritePciConfiguration"
-      ],
-      "size": 52
-    },
-    {
-      "address": 1735644,
-      "reference_names": [
-        "_OSDAsyncEvent"
-      ],
-      "size": 200
-    },
-    {
-      "address": 1735844,
-      "reference_names": [
-        "_OSDGetHostAddress"
-      ],
-      "size": 16
     },
     {
       "address": 1735860,

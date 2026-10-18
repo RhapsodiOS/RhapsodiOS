@@ -263,3 +263,39 @@ final-analysis checking. The final gate fails while either set remains
 pending; a passing Task4 gate is not complete spec3.3 data acceptance or
 paired/hardware validation. The task report records actual producing
 revisions, intermediate versus clean native products and commands/results.
+
+## Task 5 service/OSD owner gates
+
+`verify.py group --reference OUT/reference --repo-root ROOT --objects OUT/objects/task5 --group OWNER`
+accepts only `AdaptecU2OSMServices.m` (37 bodies) and `AdaptecU2CHIMOSD.c`
+(14 bodies). It requires the actual PPC production objects, exact owner symbol
+sets, raw source/header hashes and canonical Git blobs from the actual native
+producer, unchanged target layout inputs, individual source locations, reviewed
+control flow and corresponding ledger artifacts. `reconstruction/task5.json`
+records the seven batches, per-body native bytes/relocations/access opcodes and
+direct successful fixture IDs. Unknown owners remain unimplemented failures.
+
+`tests/task5-cases.json` freezes 199 successful reference cases. Required tests
+are `test_osm_access_width_endian_and_dma_boundary`,
+`test_osd_scb_encoding_all_modes` and `test_osd_completion_status`; they execute
+the reference code with the actual aggregate/stack/narrow argument conventions.
+Void cases omit undefined r3. The separate three OSM machine contracts retain
+their exact bytes and defined register/stack effects. Internal driver callbacks
+execute their actual bodies; provider-specific Objective-C dispatch rejects
+frozen Ultra2 selectors and unsupported argument conventions.
+
+The two owned switch envelopes now have source/native/control-flow evidence:
+`switch_231258` and `switch_2314c0`. Their gates decode actual object table
+words, normalization, guards, indexed dispatch and case/default effects, with
+executed fixtures for all normalized slots and required default inputs.
+Isolated negative tests reject missing/incorrect source, object, body review,
+ledger and fixture evidence; an incorrect native guard still fails after all
+object/proof hashes are refreshed. Five controller data envelopes and 20 other
+switches remain required pending. The final gate remains closed.
+
+Task5 native objects were produced by
+`8e60bd5b71dc6f340b06cf314033ac74d1bc0626`; later test/evidence changes do not
+relabel them. Current source/canonical/header closure is checked separately
+from the current reference-result revision/runner hash. This is intermediate
+reference execution plus PPC object/source/native review; Task16 must perform
+paired execution against linked rebuilt kernels.

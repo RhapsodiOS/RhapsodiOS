@@ -254,13 +254,16 @@ def run_case(binary: Path, case: dict, contracts: dict) -> dict:
         except ValueError as error:
             raise ValueError(f"observed callback declaration differs: {error}") from error
         observed_calls[address] = (callback["entry"], callback_layouts)
-    for name, contract in contracts["services"].items():
+    def validate_service_abi(name, contract):
         if (len(contract["arguments"]) > 8 or any(
                 kind not in ("scalar", "pointer", "cstring") if isinstance(kind, str) else
                 kind.get("kind") != "output" or kind.get("size") not in (4,)
                 for kind in contract["arguments"]) or
                 contract["return"] not in ("scalar", "pointer", "void")):
             raise ValueError(f"unsupported service calling convention: {name}")
+
+    for name, contract in contracts["services"].items():
+        validate_service_abi(name, contract)
         address = resolve(name)
         if (name.removeprefix("_") in DRIVER_SYMBOLS or address in driver_addresses or
                 any(a <= address < b for a, b in bounds + driver_bounds) or
@@ -351,6 +354,7 @@ def run_case(binary: Path, case: dict, contracts: dict) -> dict:
                         ("IOPCIDevice", "configWriteLong:value:"),
                         ("IOPCIDevice", "getIOAperture")} or not contract.get("evidence")):
                     raise ValueError("unsupported Objective-C provider")
+                validate_service_abi(name, contract)
             args = []
             outputs = {}
             for index, kind in enumerate(contract["arguments"]):

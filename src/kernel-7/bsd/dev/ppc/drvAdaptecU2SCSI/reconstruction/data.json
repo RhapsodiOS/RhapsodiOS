@@ -18076,7 +18076,7 @@
           "kind": "code-offset"
         }
       ],
-      "status": "pending-owner-control-flow",
+      "status": "recovered",
       "required_gate": "owner-group-and-final",
       "consumers": [
         1734736,
@@ -18208,7 +18208,8 @@
           "target": 1734900
         }
       ],
-      "guard_start": 1734724
+      "guard_start": 1734724,
+      "production_evidence": "reconstruction/task5.json"
     },
     {
       "name": "switch_231284",
@@ -19837,7 +19838,7 @@
           "kind": "code-offset"
         }
       ],
-      "status": "pending-owner-control-flow",
+      "status": "recovered",
       "required_gate": "owner-group-and-final",
       "consumers": [
         1735708,
@@ -20013,7 +20014,8 @@
           "target": 1735804
         }
       ],
-      "guard_start": 1735660
+      "guard_start": 1735660,
+      "production_evidence": "reconstruction/task5.json"
     },
     {
       "name": "switch_2314e0",

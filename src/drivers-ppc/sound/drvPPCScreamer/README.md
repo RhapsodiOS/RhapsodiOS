@@ -15,6 +15,7 @@ PCM is 16-bit big-endian stereo, with firmware-advertised discrete rates and a
 Controls expose only resolved analog inputs, four-bit gain/attenuation, user
 mute and debounced headphone routing. Initial output is muted. Unsupported
 codec, input and power models are declined.
+Changing the selected input while either stream runs is rejected.
 
 Power callbacks stop framework streams. Clients must restart them after wake:
 IOAudio provides no reliable queue-position token for automatic resume. System
@@ -29,8 +30,11 @@ requires the period Objective-C compiler/runtime:
 gnumake -C tests -f Makefile.host SDK=/path/to/driverkit-3 adapter-test
 ```
 
-Install current kernel headers, build Platform Expert, and use the period PPC
-toolchain with DriverTools installed. From the driver directory:
+Build and boot the updated PPC kernel containing `pmap_set_cache_spec`, install
+its headers, and build the updated Platform Expert. The original kernel's
+cache-spec routine ignores the requested cache policy. Descriptor allocation
+requires private wired pages and rejects aliases before hardware activation.
+Use the period PPC toolchain with DriverTools installed. From the driver directory:
 
 ```
 gnumake clean

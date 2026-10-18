@@ -7,6 +7,7 @@
 | Kernel header installation | Pass, including installed PEDAVBus.h content comparison |
 | Platform Expert PPC build | Pass; DAVbus service definitions present in PPC Mach-O |
 | Screamer PPC bundle | Pass from an isolated staged source tree; PPC-only Mach-O PRELOAD and matching generated server name/glue |
+| Private descriptor cache provider | Pass: actual provider model and PPC object compile; updated kernel required, physical execution pending |
 | Source staging | Pass: canonical helper equality, no source mutation, stale products excluded, nonempty destination rejected |
 | rbuild PPC APK | Pending: seed repository lacks dependency `drivertools` |
 | rbuild i386 rejection | Pass: rejects the explicit PPC package architecture before compilation |
@@ -32,7 +33,7 @@ or power support.
 
 The native build evidence and artifact hashes are in
 [2026-10-18-build.md](tests/evidence/2026-10-18-build.md). The implementation
-validated there is commit `ca218dba6`; later documentation changes do not imply
+validated there is commit `289928f46`; later documentation changes do not imply
 new measured hardware results.
 
 Physical handoff checklist, pending for each claimed model:

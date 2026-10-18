@@ -1,6 +1,46 @@
 #include <string.h>
 #include <assert.h>
 #include "screamer_fixtures.h"
+static ScreamerStatus readreg(void *p,unsigned int reg,unsigned int *v)
+{
+    ScreamerFixture *f=p;
+    if(f->irqContext) ++f->irqViolations;
+    if(reg==0x20) *v=(f->now>=f->readyAt?(1U<<22):0)|
+        (f->hardware[(f->lastCommand>>1)&7]<<4);
+    else if(reg==0x10) *v=f->holdBusy?0x01000000U:0;
+    else *v=f->regs[reg/4];
+    return kScreamerOK;
+}
+static ScreamerStatus writereg(void *p,unsigned int reg,unsigned int v)
+{
+    ScreamerFixture *f=p;
+    if(f->irqContext) ++f->irqViolations;
+    if(++f->writeCalls==f->failWrite) return kScreamerIOError;
+    f->regs[reg/4]=v;f->lastWriteAt=f->now;
+    if(reg==0x10) {
+        f->lastCommand=v;++f->commandWrites;
+        if((v>>12)!=7) f->hardware[(v>>12)&7]=v&0xfff;
+    }
+    return kScreamerOK;
+}
+static unsigned long now(void *p) {return ((ScreamerFixture *)p)->now;}
+static void sleepms(void *p,unsigned long ms)
+{
+    ScreamerFixture *f=p;
+    assert(ms<=5000);
+    f->now=(f->now+ms)&0xffffffffUL;
+}
+static void barrier(void *p) {(void)p;}
+void FixtureCodecInit(ScreamerFixture *f,ScreamerCodec *c)
+{
+    f->now=f->readyAt=f->lastWriteAt=0;
+    f->lastCommand=f->commandWrites=f->writeCalls=0;
+    f->holdBusy=f->failWrite=f->irqContext=f->irqViolations=0;
+    memset(f->regs,0,sizeof(f->regs));memset(f->hardware,0,sizeof(f->hardware));
+    memset(c,0,sizeof(*c));c->ops.context=f;
+    c->ops.readLE32=readreg;c->ops.writeLE32=writereg;
+    c->ops.nowMS=now;c->ops.sleepMS=sleepms;c->ops.barrier=barrier;
+}
 static int property(void *ctx, unsigned int node, const char *name, ScreamerBytes *b)
 {
     ScreamerFixture *f = (ScreamerFixture *)ctx;

@@ -267,6 +267,29 @@ def test_runner_rejects_reference_internal_alias_without_named_entry(offset):
         runner.run_case(OUT / "reference/image.bin", cases["cases"][0], contracts)
 
 
+@pytest.mark.parametrize("method_address", [0x1877c8, 0x188ab8])
+def test_runner_rejects_objc_internal_alias_in_non_pinned_image(tmp_path, method_address):
+    runner = load_script("ppc_cases")
+    cases = json.loads((TESTS / "reference-cases.json").read_text())
+    contracts = json.loads((TESTS / "contracts.json").read_text())
+    # Change a valid header flag, not the code or Objective-C metadata. This
+    # exercises independent class/category identities without reference bounds.
+    raw = bytearray((OUT / "reference/image.bin").read_bytes())
+    raw[27] ^= 1
+    image = tmp_path / "non-pinned-kernel.bin"
+    image.write_bytes(raw)
+    sha = runner.identify(image).sha256
+    assert sha != contracts["reference_sha256"]
+    contracts["reference_sha256"] = sha
+    cases["cases"][0]["evidence"]["reference_sha256"] = sha
+    contracts["reference_aliases"]["alternate_internal_name"] = method_address
+    contracts["services"] = {"alternate_internal_name": {
+        "boundary": "kernel-service", "evidence": "synthetic forbidden Objective-C alias",
+        "arguments": [], "return": "scalar"}}
+    with pytest.raises(ValueError, match="internal body"):
+        runner.run_case(image, cases["cases"][0], contracts)
+
+
 @pytest.mark.parametrize("word", [0x7c602028, 0x7c60212d])
 def test_runner_rejects_reservation_operations(tmp_path, word):
     runner = load_script("ppc_cases")

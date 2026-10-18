@@ -11,7 +11,9 @@ import unicorn
 from unicorn import ppc_const as ppc
 
 from binrecon.identity import identify
-from binrecon.macho import load_image
+from binrecon.macho import load_image, objc_methods_from_sections
+from binrecon.objc_abi import method_symbol_index
+from binrecon.source_map import _without_category
 
 
 REPO = Path(__file__).resolve().parents[7]
@@ -45,6 +47,13 @@ def run_case(binary: Path, case: dict, contracts: dict) -> dict:
     for symbol in image["symbols"]:
         if symbol["section"]:
             symbols.setdefault(symbol["name"], set()).add(symbol["address"])
+    for address, names in objc_methods_from_sections(
+            payload, image["sections"], endianness="big", method_names=method_symbol_index(image)).items():
+        for name in names:
+            symbols.setdefault(name, set()).add(address)
+            category_alias = _without_category(name)
+            if category_alias:
+                symbols.setdefault(category_alias, set()).add(address)
     if image["input"]["sha256"] == contracts.get("reference_sha256"):
         for name, address in contracts.get("reference_aliases", {}).items():
             symbols.setdefault(name, set()).add(address)

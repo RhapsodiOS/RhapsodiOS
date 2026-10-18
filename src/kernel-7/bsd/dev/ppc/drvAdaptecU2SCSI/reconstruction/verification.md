@@ -72,7 +72,9 @@ symbol with one C prefix removed, or null. Ordinary scalars are never
 normalized by their numeric value.
 
 Symbols resolve separately in each binary, including one ordinary Mach-O C
-prefix. `contracts.json` contains reference-only aliases for the six unnamed
+prefix and Objective-C class/category identities from that image's metadata.
+The existing source-map category aliases are retained. `contracts.json`
+contains reference-only aliases for the six unnamed
 helpers from the frozen inventory. Those addresses are available only when
 the binary hash equals the pinned reference. A rebuilt binary must supply
 its own symbols; an absent symbol fails.

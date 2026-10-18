@@ -172,3 +172,11 @@ driverkit/ppc/autoconf_ppc.m		optional driverkit
 driverkit/ppc/PPCKernBus.m		optional driverkit
 driverkit/ppc/IOAsmSupport.s		optional driverkit
 driverkit/ppc/IOSupport.c		optional driverkit
+
+bsd/dev/ppc/drvDEC21x4/DEC21x4.m	optional mk_hasdrivers
+bsd/dev/ppc/drvDEC21x4/DEC21x4Init.m	optional mk_hasdrivers
+bsd/dev/ppc/drvDEC21x4/DEC21x4KDB.m	optional mk_hasdrivers
+bsd/dev/ppc/drvDEC21x4/DEC21x4Private.m	optional mk_hasdrivers
+bsd/dev/ppc/drvDEC21x4/DEC21x4SRom.m	optional mk_hasdrivers
+bsd/dev/ppc/drvDEC21x4/DEC21x4Media.c	optional mk_hasdrivers
+bsd/dev/ppc/drvDEC21x4/DEC21x4MII.c	optional mk_hasdrivers

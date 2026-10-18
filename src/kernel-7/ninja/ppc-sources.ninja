@@ -2350,6 +2350,41 @@ build $outdir/IOSupport.o: cc driverkit/ppc/IOSupport.c || $outdir/prepared $out
   object = IOSupport.o
   flags = $cflags
 
+build $outdir/DEC21x4.o: cc bsd/dev/ppc/drvDEC21x4/DEC21x4.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvDEC21x4/DEC21x4.m
+  object = DEC21x4.o
+  flags = $cflags
+
+build $outdir/DEC21x4Init.o: cc bsd/dev/ppc/drvDEC21x4/DEC21x4Init.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvDEC21x4/DEC21x4Init.m
+  object = DEC21x4Init.o
+  flags = $cflags
+
+build $outdir/DEC21x4KDB.o: cc bsd/dev/ppc/drvDEC21x4/DEC21x4KDB.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvDEC21x4/DEC21x4KDB.m
+  object = DEC21x4KDB.o
+  flags = $cflags
+
+build $outdir/DEC21x4Private.o: cc bsd/dev/ppc/drvDEC21x4/DEC21x4Private.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvDEC21x4/DEC21x4Private.m
+  object = DEC21x4Private.o
+  flags = $cflags
+
+build $outdir/DEC21x4SRom.o: cc bsd/dev/ppc/drvDEC21x4/DEC21x4SRom.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvDEC21x4/DEC21x4SRom.m
+  object = DEC21x4SRom.o
+  flags = $cflags
+
+build $outdir/DEC21x4Media.o: cc bsd/dev/ppc/drvDEC21x4/DEC21x4Media.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvDEC21x4/DEC21x4Media.c
+  object = DEC21x4Media.o
+  flags = $cflags
+
+build $outdir/DEC21x4MII.o: cc bsd/dev/ppc/drvDEC21x4/DEC21x4MII.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvDEC21x4/DEC21x4MII.c
+  object = DEC21x4MII.o
+  flags = $cflags
+
 kernel_objects = $
   $outdir/locc.o $outdir/random.o $outdir/randomdev.o $outdir/xoodyak.o $outdir/rindex.o $
   $outdir/scanc.o $outdir/skpc.o $outdir/strtol.o $outdir/syscalls.o $outdir/vfs_bio.o $
@@ -2444,7 +2479,8 @@ kernel_objects = $
   $outdir/USLhubs.o $outdir/uslPipe.o $outdir/uslUtility.o $outdir/uslDescriptors.o $outdir/uslExpert.o $
   $outdir/uslUIMInterface.o $outdir/KBDConfigParse.o $outdir/KBDHIDEmulation.o $outdir/KeyboardModule.o $outdir/KeyboardModuleHeader.o $
   $outdir/usb_keymap.o $outdir/MouseModule.o $outdir/MouseModuleHeader.o $outdir/HIDEmulation.o $outdir/MouseConfigParse.o $
-  $outdir/autoconf_ppc.o $outdir/PPCKernBus.o $outdir/IOAsmSupport.o $outdir/IOSupport.o
+  $outdir/autoconf_ppc.o $outdir/PPCKernBus.o $outdir/IOAsmSupport.o $outdir/IOSupport.o $
+  $outdir/DEC21x4.o $outdir/DEC21x4Init.o $outdir/DEC21x4KDB.o $outdir/DEC21x4Private.o $outdir/DEC21x4SRom.o $outdir/DEC21x4Media.o $outdir/DEC21x4MII.o
 
 build objects: phony $
   $outdir/locc.o $outdir/random.o $outdir/randomdev.o $outdir/xoodyak.o $outdir/rindex.o $
@@ -2541,4 +2577,5 @@ build objects: phony $
   $outdir/uslUIMInterface.o $outdir/KBDConfigParse.o $outdir/KBDHIDEmulation.o $outdir/KeyboardModule.o $outdir/KeyboardModuleHeader.o $
   $outdir/usb_keymap.o $outdir/MouseModule.o $outdir/MouseModuleHeader.o $outdir/HIDEmulation.o $outdir/MouseConfigParse.o $
   $outdir/autoconf_ppc.o $outdir/PPCKernBus.o $outdir/IOAsmSupport.o $outdir/IOSupport.o $
+  $outdir/DEC21x4.o $outdir/DEC21x4Init.o $outdir/DEC21x4KDB.o $outdir/DEC21x4Private.o $outdir/DEC21x4SRom.o $outdir/DEC21x4Media.o $outdir/DEC21x4MII.o $
   $outdir/subr_prof.o $outdir/ioconf.o libc mach_user debug_objects

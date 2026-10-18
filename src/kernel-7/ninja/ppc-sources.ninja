@@ -2385,6 +2385,21 @@ build $outdir/DEC21x4MII.o: cc bsd/dev/ppc/drvDEC21x4/DEC21x4MII.c || $outdir/pr
   object = DEC21x4MII.o
   flags = $cflags
 
+build $outdir/UniNEnet.o: cc bsd/dev/ppc/drvUniNEnet/UniNEnet.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvUniNEnet/UniNEnet.m
+  object = UniNEnet.o
+  flags = $cflags
+
+build $outdir/UniNEnetPrivate.o: cc bsd/dev/ppc/drvUniNEnet/UniNEnetPrivate.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvUniNEnet/UniNEnetPrivate.m
+  object = UniNEnetPrivate.o
+  flags = $cflags
+
+build $outdir/UniNEnetMII.o: cc bsd/dev/ppc/drvUniNEnet/UniNEnetMII.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvUniNEnet/UniNEnetMII.m
+  object = UniNEnetMII.o
+  flags = $cflags
+
 kernel_objects = $
   $outdir/locc.o $outdir/random.o $outdir/randomdev.o $outdir/xoodyak.o $outdir/rindex.o $
   $outdir/scanc.o $outdir/skpc.o $outdir/strtol.o $outdir/syscalls.o $outdir/vfs_bio.o $
@@ -2480,7 +2495,8 @@ kernel_objects = $
   $outdir/uslUIMInterface.o $outdir/KBDConfigParse.o $outdir/KBDHIDEmulation.o $outdir/KeyboardModule.o $outdir/KeyboardModuleHeader.o $
   $outdir/usb_keymap.o $outdir/MouseModule.o $outdir/MouseModuleHeader.o $outdir/HIDEmulation.o $outdir/MouseConfigParse.o $
   $outdir/autoconf_ppc.o $outdir/PPCKernBus.o $outdir/IOAsmSupport.o $outdir/IOSupport.o $
-  $outdir/DEC21x4.o $outdir/DEC21x4Init.o $outdir/DEC21x4KDB.o $outdir/DEC21x4Private.o $outdir/DEC21x4SRom.o $outdir/DEC21x4Media.o $outdir/DEC21x4MII.o
+  $outdir/DEC21x4.o $outdir/DEC21x4Init.o $outdir/DEC21x4KDB.o $outdir/DEC21x4Private.o $outdir/DEC21x4SRom.o $outdir/DEC21x4Media.o $outdir/DEC21x4MII.o $
+  $outdir/UniNEnet.o $outdir/UniNEnetPrivate.o $outdir/UniNEnetMII.o
 
 build objects: phony $
   $outdir/locc.o $outdir/random.o $outdir/randomdev.o $outdir/xoodyak.o $outdir/rindex.o $
@@ -2578,4 +2594,5 @@ build objects: phony $
   $outdir/usb_keymap.o $outdir/MouseModule.o $outdir/MouseModuleHeader.o $outdir/HIDEmulation.o $outdir/MouseConfigParse.o $
   $outdir/autoconf_ppc.o $outdir/PPCKernBus.o $outdir/IOAsmSupport.o $outdir/IOSupport.o $
   $outdir/DEC21x4.o $outdir/DEC21x4Init.o $outdir/DEC21x4KDB.o $outdir/DEC21x4Private.o $outdir/DEC21x4SRom.o $outdir/DEC21x4Media.o $outdir/DEC21x4MII.o $
+  $outdir/UniNEnet.o $outdir/UniNEnetPrivate.o $outdir/UniNEnetMII.o $
   $outdir/subr_prof.o $outdir/ioconf.o libc mach_user debug_objects

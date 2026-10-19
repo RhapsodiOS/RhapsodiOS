@@ -4,6 +4,9 @@ import copy
 import functools
 import importlib.util
 import json
+import hashlib
+import shutil
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -139,3 +142,86 @@ def test_ack_compact_keeps_mmio_and_barrier_guards():
     case["operations"] = []
     with pytest.raises(ValueError, match="unsupported privileged/cache/barrier operation"):
         run(case)
+
+
+def test_ack_allowance_rejects_unpinned_reader_before_execution(tmp_path):
+    raw, image = runner().load_image(OUT / "reference/image.bin")
+    section = next(s for s in image["sections"] if s["address"] <= 0x189ddc < s["address"] + s["size"])
+    offset = section["offset"] + 0x189ddc - section["address"]
+    changed = bytearray(raw)
+    changed[offset + 2] ^= 1
+    path = tmp_path / "unreviewed-reader.bin"
+    path.write_bytes(changed)
+    with pytest.raises(ValueError, match="unsupported ACK exhaustion opt-in"):
+        runner().run_case(path, short_case(), json.loads((TESTS / "contracts.json").read_text()))
+
+
+def test_ack_owner_requires_actual_exhaustion_evidence():
+    spec = importlib.util.spec_from_file_location("ack_verify", TESTS / "verify.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    assert hasattr(module, "audit_negotiation_ack"), "missing executed ACK exhaustion owner gate"
+    module.audit_negotiation_ack(TESTS.parent, REPO, OUT / "objects/task9")
+
+
+@pytest.mark.parametrize("corruption", ["count", "exit", "restoration", "return", "instructions", "closure", "producer"])
+def test_ack_owner_rejects_false_boundary_evidence(tmp_path, corruption):
+    spec = importlib.util.spec_from_file_location("ack_verify_negative", TESTS / "verify.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    repo = tmp_path / "repo"
+    driver = repo / "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI"
+    proof_path = driver / "reconstruction/task9-ack.json"
+    proof = json.loads((TESTS.parent / "reconstruction/task9-ack.json").read_text())
+    paths = list(proof["execution_inputs"]) + [
+        "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMNegotiation.c"]
+    for relative in paths:
+        target = repo / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(REPO / relative, target)
+    shutil.copyfile(REPO / ".git", repo / ".git")
+    objects = tmp_path / "objects"
+    objects.mkdir()
+    for name in ("objects.json", "1-AdaptecU2CHIMNegotiation.c.o", "ack-reference-results.json"):
+        shutil.copyfile(OUT / "objects/task9" / name, objects / name)
+    path = objects / "ack-reference-results.json"
+    document = json.loads(path.read_text())
+    observed = document["reference"]["results"][0]
+    expected = "invalid Task9 ACK counter/trace/return"
+    if corruption == "count":
+        next(e for e in observed["observations"]["trace"] if "repeat" in e)["repeat"] -= 1
+    elif corruption == "exit":
+        observed["ack_poll"]["exit"] = "ack-clear"
+    elif corruption == "restoration":
+        trace = observed["observations"]["trace"]
+        trace[-6:-2] = trace[-4:-2] + trace[-6:-4]
+    elif corruption == "return":
+        observed["returned_to_sentinel"] = False
+    elif corruption == "instructions":
+        observed["instructions"] -= 1
+    elif corruption == "closure":
+        proof["execution_inputs"].pop("tools/binrecon/binrecon/__init__.py")
+        expected = "Task9 ACK execution input closure is incomplete"
+    elif corruption == "producer":
+        document["reference"]["source_revision"] = "0" * 40
+        expected = "Task9 ACK actual producer differs"
+    path.write_text(json.dumps(document))
+    proof["results_sha256"] = hashlib.sha256(path.read_bytes()).hexdigest().upper()
+    proof_path.write_text(json.dumps(proof))
+    with pytest.raises(ValueError, match=expected):
+        module.audit_negotiation_ack(driver, repo, objects)
+
+
+def test_ack_proof_and_two_ledger_sites_survive_git_checkout(tmp_path):
+    prefix = "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/reconstruction/"
+    path = prefix + "task9-ack.json"
+    blob = subprocess.check_output(["git", "show", "HEAD:" + path], cwd=REPO)
+    assert (REPO / path).read_bytes().replace(b"\r\n", b"\n") == blob
+    subprocess.check_call(["git", "checkout-index", "--prefix=" + tmp_path.as_posix() + "/", "--",
+                           path, prefix + "ledger.json"], cwd=REPO)
+    assert (tmp_path / path).read_bytes().replace(b"\r\n", b"\n") == blob
+    ledger = json.loads((tmp_path / (prefix + "ledger.json")).read_text())
+    sites = [(entry["address"], artifact["sha256"]) for entry in ledger["entries"] for artifact in entry["artifacts"]
+             if artifact["path"] == path]
+    digest = hashlib.sha256(blob).hexdigest().upper()
+    assert sites == [(0x1990e4, digest), (0x199708, digest)]

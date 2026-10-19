@@ -122,8 +122,8 @@
       "working_sha256": "097F83C88E362732FA6C2E1D5F2682DA857EDD2015236654660411C1B36330C5"
     },
     "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/tests/ppc_cases.py": {
-      "git_blob_sha256": "37C574E98444D7BFBC918C46AB655006C00F3C6726A0C5891E8CDD99D96B2B8E",
-      "working_sha256": "86DC5D2596EECA133DEDCBFFDA61581D8C3FA2937B11812DB20820926F9FF08A"
+      "git_blob_sha256": "BD9D0F0A2A3D881A558FBE9E91D57A9232379DDF71F5F3DE0DE4AB549475E8A1",
+      "working_sha256": "BD9D0F0A2A3D881A558FBE9E91D57A9232379DDF71F5F3DE0DE4AB549475E8A1"
     },
     "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/tests/reference.py": {
       "git_blob_sha256": "C1E0758E851CD700228EE08EEF9791330A980A193732409E9531F68CFD6AA6B4",
@@ -166,7 +166,7 @@
       "working_sha256": "E6C886F08AA2F64CAE34C8F3B3A18F56A2718AAE14A6CAE29BC595A40978AE7B"
     }
   },
-  "reference_runner_version": "1/unicorn-2.1.4/86dc5d2596eeca133dedcbffda61581d8c3fa2937b11812db20820926f9ff08a",
+  "reference_runner_version": "1/unicorn-2.1.4/bd9d0f0a2a3d881a558fbe9e91d57a9232379ddf71f5f3de0de4ab549475e8a1",
   "native_test_revision": "d641f073c6946fc6a2c4e52d4cb729c08fba9aa7",
   "native_test_sha256": "1D85B9926444D10376C56EED474C2B6460F76AE47982216808F007B4315B37FE",
   "native_accesses": {
@@ -2439,6 +2439,9 @@
           "kind": "ppc-br24-24-pc-relative",
           "target": "_OSMWriteUExact8"
         }
+      ],
+      "ack_exhaustion_cases": [
+        "task9-fix1-send-ack-exhaustion"
       ]
     },
     {
@@ -2602,6 +2605,9 @@
           "kind": "ppc-br24-24-pc-relative",
           "target": "_OSMReadUExact8"
         }
+      ],
+      "ack_exhaustion_cases": [
+        "task9-fix1-msgout-ack-exhaustion"
       ]
     },
     {
@@ -3137,5 +3143,14 @@
       ],
       "native_evidence": "Actual production compare chain, not an orphan table. All5 normalized table entries0..4 and guard-default5..7 execute, plus all8 unflagged period index values. Whole reference table/guard/case-map machine checks retained; linked Task16 closure remains separate."
     }
+  },
+  "ack_exhaustion": {
+    "proof": "reconstruction/task9-ack.json",
+    "sha256": "44C4D1831083E9E78402EF4920F213A17C0350C1AD6C7B3186CEBE48676A8CBD"
+  },
+  "historical_reference": {
+    "producer": "d641f073c6946fc6a2c4e52d4cb729c08fba9aa7",
+    "path": "reference-results-historical-d641.json",
+    "sha256": "23230A431A5EFE019791909D888A06069B050B02C0B7BC97D349063F8DF276EA"
   }
 }

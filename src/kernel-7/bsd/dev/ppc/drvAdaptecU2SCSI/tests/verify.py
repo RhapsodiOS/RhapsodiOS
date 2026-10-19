@@ -468,6 +468,85 @@ def audit_negotiation_group(evidence, repo_root, objects):
         if not selected or set(body["cases"]) != selected:
             raise ValueError("missing required Task9 body fixture: " + symbol["name"])
     audit_negotiation_switches(evidence, repo_root, proof, payload, macho, native_bytes, cases, objects)
+    ack_path = driver / "reconstruction/task9-ack.json"
+    if proof.get("ack_exhaustion") != {"proof": "reconstruction/task9-ack.json", "sha256":
+            hashlib.sha256(ack_path.read_bytes().replace(b"\r\n", b"\n")).hexdigest().upper()}:
+        raise ValueError("Task9 ACK owner proof differs")
+    audit_negotiation_ack(driver, repo_root, objects)
+
+
+def audit_negotiation_ack(driver, repo_root, objects):
+    """Authenticate the two actual full-entry counter-boundary executions."""
+    proof = load_json(driver / "reconstruction/task9-ack.json")
+    cases = load_json(driver / "tests/task9-ack-cases.json")
+    contracts = load_json(driver / "tests/contracts.json")
+    path = objects / "ack-reference-results.json"
+    document = load_json(path)
+    if (set(document) != {"reference"} or proof.get("reference_sha256") != ref.SHA256 or
+            hashlib.sha256(path.read_bytes()).hexdigest().upper() != proof.get("results_sha256")):
+        raise ValueError("Task9 ACK actual result identity differs")
+    result = document["reference"]
+    producer = result.get("source_revision", "")
+    if (not re.fullmatch(r"[0-9a-f]{40}", producer) or producer != proof.get("execution_revision") or
+            result.get("binary_sha256") != ref.SHA256):
+        raise ValueError("Task9 ACK actual producer differs")
+    spec = importlib.util.spec_from_file_location("au2_ack_runner", driver / "tests/ppc_cases.py")
+    runner = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(runner)
+    if (result.get("cases_sha256") != runner.digest(cases) or
+            result.get("contracts_sha256") != runner.digest(contracts)):
+        raise ValueError("stale Task9 ACK fixtures/contracts")
+    paths = [ref.DRIVER / name for name in (
+        "tests/task9-ack-cases.json", "tests/contracts.json", "tests/ppc_cases.py",
+        "tests/reference.py", "reconstruction/inventory.md", "OSMFunctions.h",
+        "AdaptecU2CHIMPrivate.h", "AdaptecU2SCSIPrivate.h")]
+    paths += [Path("tools/binrecon/binrecon") / (name + ".py") for name in (
+        "__init__", "identity", "macho", "objc_abi", "source_map", "schema", "arch")]
+    paths.append(Path("tools/binrecon/source_paths.py"))
+    if set(proof.get("execution_inputs", {})) != {p.as_posix() for p in paths}:
+        raise ValueError("Task9 ACK execution input closure is incomplete")
+    for relative in paths:
+        blob = subprocess.check_output(["git", "show", producer + ":" + relative.as_posix()], cwd=repo_root)
+        current = (repo_root / relative).read_bytes().replace(b"\r\n", b"\n")
+        if relative == ref.DRIVER / "reconstruction/inventory.md":
+            current, blob = [value.split(b"<!-- functions:start -->")[1].split(
+                b"<!-- functions:end -->")[0] for value in (current, blob)]
+        if current != blob:
+            raise ValueError("stale Task9 ACK executed input: " + relative.as_posix())
+        if hashlib.sha256(blob).hexdigest().upper() != proof["execution_inputs"][relative.as_posix()]["git_blob_sha256"]:
+            raise ValueError("Task9 ACK executed Git identity differs")
+    runner_input = proof["execution_inputs"][(ref.DRIVER / "tests/ppc_cases.py").as_posix()]
+    if (result.get("runner_version") != proof.get("runner_version") or
+            result["runner_version"] != "1/unicorn-2.1.4/" + runner_input["working_sha256"].lower()):
+        raise ValueError("Task9 ACK actual runner bytes differ")
+    manifest = load_json(objects / "objects.json")
+    item = manifest["objects"][0]
+    source = driver / "AdaptecU2CHIMNegotiation.c"
+    if (manifest["source_revision"] != proof.get("native_revision") or
+            item["sha256"] != proof.get("native_sha256") or
+            hashlib.sha256((objects / item["path"]).read_bytes()).hexdigest().upper() != item["sha256"] or
+            hashlib.sha256(source.read_bytes().replace(b"\r\n", b"\n")).hexdigest().upper() != item["source_sha256"]):
+        raise ValueError("Task9 ACK production/native closure differs")
+    required = {"task9-fix1-send-ack-exhaustion": ("SCSIhSendMessage", 0x1990e4, 234881401),
+                "task9-fix1-msgout-ack-exhaustion": ("SCSIhHandleMsgOut", 0x199708, 234881128)}
+    ids = [case["id"] for case in cases["cases"]]
+    if (len(ids) != 2 or set(ids) != set(required) or result.get("selected_case_ids") != ids or
+            len(result.get("results", [])) != 2):
+        raise ValueError("Task9 ACK requires both complete exhaustion cases")
+    for case, observed in zip(cases["cases"], result["results"]):
+        name, address, instructions = required[case["id"]]
+        expected_poll = {"reads": 0x800000, "exit": "counter"}
+        repeats = [event for event in observed.get("observations", {}).get("trace", []) if "repeat" in event]
+        expected_repeat = [{"repeat": 0x800000, "event": {
+            "target": "registers+3", "access": "read", "size": 1, "value": 1}}]
+        if (case["entry"] != name or case["evidence"]["entry_address"] != address or
+                case.get("ack_exhaustion") is not True or case.get("expected_instructions") != instructions or
+                case.get("expected_ack_poll") != expected_poll or
+                observed.get("executed_case_id") != case["id"] or observed.get("instructions") != instructions or
+                observed.get("ack_poll") != expected_poll or repeats != expected_repeat or
+                observed.get("unknown_calls") != [] or observed.get("returned_to_sentinel") is not True or
+                observed.get("observations") != case["expected"]):
+            raise ValueError("invalid Task9 ACK counter/trace/return: " + case["id"])
 
 
 

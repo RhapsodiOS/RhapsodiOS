@@ -153,8 +153,11 @@ typedef struct pcb {
      * Floating point state is
      * identical to the format
      * written by the FSAVE instruction.
+     * Kept 16-byte aligned (pcbs come 16-aligned from the zone) so it
+     * never starts 1-7 bytes before a page end: QEMU's TCG FSAVE/FRSTOR
+     * then sends the register mantissas to the wrong physical page.
      */
-    fp_state_t		fpstate;
+    fp_state_t		fpstate __attribute__ ((aligned (16)));
 
     /*
      * cthreads 'self' id

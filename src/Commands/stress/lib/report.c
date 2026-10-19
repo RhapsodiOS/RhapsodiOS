@@ -81,7 +81,7 @@ st_fail(struct st_ctx *c, const char *fmt, ...)
 void
 st_unsup(struct st_ctx *c, const char *fmt, ...)
 {
-	char buf[512];
+	char buf[2048];
 	va_list ap;
 	int n;
 	void (*fn)(struct st_ctx *) = c->cleanup;

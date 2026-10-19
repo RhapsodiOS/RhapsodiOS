@@ -487,3 +487,36 @@ def test_parse_stressfs_unsup_and_lost():
     assert r["ext2"] == ("ran", "", "host")
     assert r["hfs"] == ("unsup", "mount: mount_hfs: Input/output error", "")
     assert r["msdos"] == ("lost", "no result: the guest stopped answering or the run ended first", "")
+
+
+def test_assemble_targets_ran_unsup_lost_and_fsck():
+    tout = ('STRESSFS ext2 status=ran reason="" fsck="host"\n'
+            'STRESSFS hfs status=unsup reason="mount: no" fsck=""\n'
+            'STRESSFS msdos status=ran reason="" fsck="clean"\n')
+    texts = {"ext2": "STRESS fs rw PASS iters=1 procs=1 secs=1.0 ops=1/s maxlat=1ms seed=1\n"}
+    r = fb.assemble_targets(tout, texts, ["ext2", "hfs", "msdos", "nfs"], lambda name: "clean-" + name)
+    assert r["ext2"]["status"] == "ran" and r["ext2"]["fsck"] == "clean-ext2"
+    assert r["ext2"]["counts"]["fs"]["PASS"] == 1
+    assert r["hfs"]["status"] == "unsup" and r["hfs"]["reason"] == "mount: no"
+    assert r["msdos"]["fsck"] == "clean"
+    assert r["nfs"]["status"] == "lost"
+
+
+def test_assemble_targets_reports_a_failed_fetch():
+    tout = 'STRESSFS ext2 status=ran reason="" fsck="clean"\n'
+    r = fb.assemble_targets(tout, {}, ["ext2"], lambda name: "x")
+    assert r["ext2"]["reason"] == "results could not be fetched"
+
+
+def test_need_fetch_retries_an_empty_result():
+    assert fb.need_fetch("ext2", {"ext2": ""})
+    assert not fb.need_fetch("ext2", {"ext2": "STRESS x"})
+    assert fb.need_fetch("hfs", {})
+
+
+def test_ext2_unavailable_makes_only_ext2_unsup(monkeypatch):
+    def boom(workdir, mb=128):
+        raise OSError("wsl: not found")
+    monkeypatch.setattr(fb, "ext2_volume", boom)
+    vol, why = fb.try_ext2_volume("/nonexistent")
+    assert vol is None and "wsl: not found" in why

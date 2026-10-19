@@ -84,12 +84,15 @@ failerr(struct st_ctx *c, const char *call)
 {
 	int e = errno;
 
-	cleanup();
 	if (e == EBUSY && (strcmp(call, "rmdir") == 0 || strcmp(call, "rename") == 0 ||
 	    strcmp(call, "unlink") == 0) && on_hfs(st_opt.dir)) {
+		/* before cleanup removes the tree: markdone on a removed tree
+		 * exits 0, and the test would end PASS instead of UNSUP */
 		markdone(c);	/* workers waiting on the shared tree must not stall */
+		cleanup();
 		st_unsup(c, "reason=\"EBUSY: in-use object\"");
 	}
+	cleanup();
 	errno = e;
 	st_fail_errno(c, call);
 }

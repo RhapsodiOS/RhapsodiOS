@@ -9,7 +9,8 @@
 PATH=/usr/bin:/bin:/usr/sbin:/sbin; export PATH
 FS=/var/fs; T=$FS/bin; STRESS=/usr/local/stress
 
-# run "$@" for at most $1 seconds; status 124 if it was killed
+# run "$@" for at most $1 seconds (a kill gives status 137); a process stuck in an
+# uninterruptible kernel sleep cannot be killed, so that wait never ends
 lim() {
 	s=$1; shift
 	"$@" & p=$!
@@ -23,7 +24,7 @@ out() { echo "STRESSFS $1 status=$2 reason=\"$3\" fsck=\"$4\""; }
 
 build() {
 	mkdir -p $FS $T && cd $FS && rm -rf src && tar xf "$1" 2>/dev/null || return 1
-	S=$FS/src; K=$S/kernel-7/bsd; DL=/build/src/Commands/diskdev_cmds/disklib
+	S=$FS/src; K=$S/kernel-7/bsd; DL=$S/Commands/diskdev_cmds/disklib
 	b() { n=$1; shift; cc -O "$@" -o $T/$n > $FS/$n.log 2>&1 && echo "BUILD $n ok" || echo "BUILD $n failed"; }
 	cd $S/ext2fs-1 && b mount_ext2fs -I$K -I$K/ext2fs -Iext2_tools/include -Icommon ext2_mount/mount_ext2fs.c
 	H=$K/hfs/hfscommon/headers
@@ -60,7 +61,6 @@ mountfs() {
 
 run() {
 	fs=$1; cats=$2; seed=$3; mnt=/mnt/$fs
-	test -x $T/mount_msdos || { out $fs unsup "file system tools not built" ""; return; }
 	mkdir -p $mnt
 	err=`mountfs $fs 2>&1` || { out $fs unsup "mount: `echo $err | tr '\"' "'" | cut -c1-200`" ""; return; }
 	# an nfs line ends at the mount point, a local one goes on with "(local)"
@@ -68,14 +68,15 @@ run() {
 	rm -rf $STRESS/Report.$fs
 	(cd $STRESS && sh ./run -s $seed -d $mnt 1 $cats) > $FS/run.$fs.log 2>&1
 	cp -r $STRESS/Report $STRESS/Report.$fs
-	lim 300 umount $mnt || lim 120 umount -f $mnt
+	um=""
+	lim 300 umount $mnt || lim 120 umount -f $mnt || um="umount failed; "
 	case $fs in
 	msdos)	f=`lim 600 $T/fsck_msdos -n /dev/rhd2c 2>&1`
 		case $? in 0) f=clean ;; *) f=`echo $f | tr '\"' "'" | tail -c 200` ;; esac ;;
 	nfs)	f="n/a" ;;	# the export lives on hd1 (UFS)
 	*)	f=host ;;	# ext2 and hfs are checked from the disk image after the guest stops
 	esac
-	out $fs ran "" "$f"
+	out $fs ran "" "$um$f"
 }
 
 case $1 in

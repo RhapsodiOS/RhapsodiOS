@@ -1056,7 +1056,8 @@ def _wsl_path(path):
     return "/mnt/%s%s" % (path[0].lower(), path[2:]) if path[1:2] == ":" else path
 
 
-FS_SRC_DIRS = ("src/ext2fs-1", "src/hfs-1", "src/msdosfs-1", "src/kernel-7/bsd")
+FS_SRC_DIRS = ("src/ext2fs-1", "src/hfs-1", "src/msdosfs-1", "src/kernel-7/bsd",
+               "src/Commands/diskdev_cmds/disklib")
 
 
 def fs_src_tar():
@@ -1140,6 +1141,36 @@ def host_fsck(disk, name, mb=TARGET_MB):
     return "clean" if p.returncode == 0 else (p.stdout + p.stderr).strip()[-300:]
 
 
+def try_ext2_volume(workdir):
+    """(volume bytes, "") or (None, why): without WSL only the ext2 target is lost."""
+    try:
+        return ext2_volume(workdir), ""
+    except Exception as e:
+        return None, "ext2 volume not made on the host: %s" % e
+
+
+def need_fetch(name, ttexts):
+    """A target's results still have to be fetched (an empty fetch is retried)."""
+    return not ttexts.get(name)
+
+
+def assemble_targets(tout, ttexts, targets, fsck_fn):
+    """result.txt's "targets" from the STRESSFS lines, the fetched report texts
+    and fsck_fn(name) for targets the guest left to the host."""
+    out = {}
+    for name, (status, reason, fsck) in parse_stressfs(tout, targets).items():
+        if status == "ran" and fsck == "host":
+            try:
+                fsck = fsck_fn(name)
+            except Exception as e:
+                fsck = "host fsck failed: %s" % e
+        text = ttexts.get(name, "")
+        if status == "ran" and not text and not reason:
+            reason = "results could not be fetched"
+        out[name] = target_result(name, status, reason, text, fsck)
+    return out
+
+
 def target_result(name, status, reason="", report_text="", fsck=""):
     """result.txt's record for one --fs target, from its run's STRESS lines."""
     import stress_report
@@ -1148,6 +1179,11 @@ def target_result(name, status, reason="", report_text="", fsck=""):
         sm = stress_report.summarize(stress_report.parse(report_text))
         counts, fails = sm["counts"], sm["fails"]
     return {"status": status, "reason": reason, "counts": counts, "fails": fails, "fsck": fsck}
+
+
+def stress_report_summary_lines(targets):
+    import stress_report
+    return stress_report.summarize_targets(targets)
 
 
 def _fetch_report(conf, outdir, report, prefix):
@@ -1184,7 +1220,11 @@ def stress(kernel, label, cycles=1, bootargs="", cats="", seed=None, disk=False,
     try:
         if targets:
             os.makedirs(outdir, exist_ok=True)
-            targets_disk(tdisk, ext2=ext2_volume(outdir) if "ext2" in targets else None)
+            vol, why = try_ext2_volume(outdir) if "ext2" in targets else (None, "")
+            if why:
+                targets = [n for n in targets if n != "ext2"]
+                res["targets_unsup"] = {"ext2": why}
+            targets_disk(tdisk, ext2=vol)
         g = Guest(outdir, _fresh_hd1(outdir), tdisk if targets else _workload(), root_iops=IOPS)
         ssh = Ssh(conf)
         if kernel:
@@ -1238,7 +1278,7 @@ def stress(kernel, label, cycles=1, bootargs="", cats="", seed=None, disk=False,
                 if t is not None:
                     tout = out
                     for name, (status, _, _) in parse_stressfs(out, targets).items():
-                        if status != "lost" and name not in ttexts:
+                        if status != "lost" and need_fetch(name, ttexts):
                             ttexts[name] = "\n".join(_fetch_report(
                                 conf, outdir, STRESS_REPORT + "." + name, name + "."))
             if state not in ("running", "lost"):
@@ -1257,7 +1297,7 @@ def stress(kernel, label, cycles=1, bootargs="", cats="", seed=None, disk=False,
                 t, out = timed_login(conf, "cat /tmp/stressfs.out 2>/dev/null; true")
                 tout = out if t is not None else tout
             for name in targets:
-                if name not in ttexts:
+                if need_fetch(name, ttexts):
                     ttexts[name] = "\n".join(_fetch_report(conf, outdir, STRESS_REPORT + "." + name, name + "."))
         if targets:
             _log(outdir, "stressfs.out", tout)
@@ -1276,19 +1316,18 @@ def stress(kernel, label, cycles=1, bootargs="", cats="", seed=None, disk=False,
         hd1 = os.path.join(outdir, "hd1.img")
         if os.path.exists(hd1):
             os.remove(hd1)
-        if targets and not skipped:
-            res["targets"] = {}
-            for name, (status, reason, fsck) in parse_stressfs(tout, targets).items():
-                if status == "ran" and fsck == "host":
-                    try:
-                        fsck = host_fsck(tdisk, name)
-                    except Exception as e:
-                        fsck = "host fsck failed: %s" % e
-                res["targets"][name] = target_result(name, status, reason, ttexts.get(name, ""), fsck)
-        try:
-            os.remove(tdisk)
-        except OSError:
-            pass
+        if (targets or res.get("targets_unsup")) and not skipped:
+            res["targets"] = assemble_targets(tout, ttexts, targets, lambda n: host_fsck(tdisk, n))
+            for name, why in res.pop("targets_unsup", {}).items():
+                res["targets"][name] = target_result(name, "unsup", why)
+            for line in stress_report_summary_lines(res["targets"]):
+                print(line)
+        # keep the targets disk when a check found problems: it is the evidence
+        if not any(t.get("fsck") not in ("", "clean", "n/a") for t in res.get("targets", {}).values()):
+            try:
+                os.remove(tdisk)
+            except OSError:
+                pass
         result = os.path.join(outdir, "result.txt")
         if skipped:
             with open(result, encoding="utf-8") as f:
@@ -1352,6 +1391,8 @@ def main(argv):
             p.error(str(e))
         if a.soak and a.fs != ["ufs"]:
             p.error("--soak runs on UFS only; it cannot be combined with --fs")
+        if a.fs != ["ufs"] and (a.disk or a.cycles != 1):
+            p.error("--fs runs one cycle with hd1 mounted; it cannot be combined with --disk or --cycles")
     if a.cmd == "stress" and not a.disk and "disk" in a.cats.split():
         p.error("the disk category needs --disk")
     if a.cmd == "prep":

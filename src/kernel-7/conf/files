@@ -596,3 +596,13 @@ bsd/ext2fs/ext2fs_vfsops.c		optional ext2fs
 bsd/ext2fs/ext2fs_vnops.c		optional ext2fs
 bsd/ext2fs/ext2fs_rhapsody.c		optional ext2fs
 bsd/ext2fs/ext2_disk.c			optional ext2fs
+OPTIONS/hammerfs			optional hammerfs
+bsd/hammer/crc32.c			optional hammerfs
+bsd/hammer/icrc32.c			optional hammerfs
+bsd/hammer/hammer_admit.c		optional hammerfs
+bsd/hammer/hammer_rhapsody.c		optional hammerfs
+bsd/hammer/hammer_rostubs.c		optional hammerfs
+bsd/hammer/hammer_io.c			optional hammerfs
+bsd/hammer/hammer_ondisk.c		optional hammerfs
+bsd/hammer/hammer_subs.c		optional hammerfs
+bsd/hammer/hammer_vfsops.c		optional hammerfs

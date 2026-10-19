@@ -46,16 +46,11 @@
 
 /*
  * This structure is passed from userland to the kernel during the mount
- * system call.
+ * system call.  Rhapsody HAMMER is single-volume: one block device, no
+ * as-of or mirroring options; mount flags travel in mount(2)'s flags.
  */
-struct hammer_mount_info {
-	char		**volumes;	/* array of pointers to device names */
-	int		nvolumes;	/* number of devices */
-	int		hflags;		/* extended hammer mount flags */
-	int		master_id;	/* -1=no-mirror mode, or 0-15 */
-	uint64_t	asof;		/* asof - HAMMER_MAX_TID is current */
-	char		reserved1[136];	/* was struct export_args */
-	uint64_t	reserved2[15];
+struct hammer_args {
+	char		*fspec;		/* block device of the volume */
 };
 
 #define HMNT_NOHISTORY	0x00000001

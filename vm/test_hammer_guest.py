@@ -110,6 +110,24 @@ def test_fixture_changes_one_rule(tmp_path, kind, offset, check):
     assert set(changed) <= allowed
 
 
+@pytest.mark.skipif(not __import__('os').path.exists(
+    r'C:\Program Files\qemu\qemu-img.exe'), reason='needs qemu-img')
+def test_fixture_overlay_matches_dense_fixture(tmp_path, label):
+    import subprocess
+    vol = volume(tmp_path)
+    wrapped, dense, ov = tmp_path/'w.img', tmp_path/'v6.img', tmp_path/'v6.qcow2'
+    hg.wrap_volume_file(vol, wrapped)
+    hg.make_fixture('v6', vol, dense)
+    before = wrapped.read_bytes()
+    hg.make_fixture_overlay('v6', wrapped, ov)
+    assert wrapped.read_bytes() == before
+    flat = tmp_path/'flat.img'
+    subprocess.run([hg.QEMU_IMG, 'convert', '-O', 'raw', str(ov), str(flat)], check=True)
+    back = tmp_path/'back.img'
+    hg.unwrap_volume_file(flat, back)
+    assert back.read_bytes() == dense.read_bytes()
+
+
 def test_badcrc_breaks_only_the_crc(tmp_path):
     vol = volume(tmp_path)
     out = tmp_path/'badcrc.img'
@@ -118,6 +136,34 @@ def test_badcrc_breaks_only_the_crc(tmp_path):
     assert not hg.volume_header_sealed(new[:HEADER])
     assert new[80:84] != b'TEST'
     assert new[HEADER:] == vol.read_bytes()[HEADER:]
+
+
+def test_verify_result_accepts_clean_run():
+    assert hg.verify_result('refuse-v6', 0, 'x\nHAMMER_OK refuse-v6\n', 'boot\n', True) == []
+
+
+@pytest.mark.parametrize('status,out,serial,same,problem', [
+    (1, 'HAMMER_OK refuse-v6\n', '', True, 'status'),
+    (0, 'HAMMER_OK refuse-v66\n', '', True, 'marker'),
+    (0, 'HAMMER_OK refuse-v6\n', 'panic: oops\n', True, 'panic'),
+    (0, 'HAMMER_OK refuse-v6\n', 'hammer: leaked inodes=1\n', True, 'leak'),
+    (0, 'HAMMER_OK refuse-v6\n', '', False, 'changed'),
+])
+def test_verify_result_reports_each_failure(status, out, serial, same, problem):
+    problems = hg.verify_result('refuse-v6', status, out, serial, same)
+    assert any(problem in p for p in problems)
+
+
+def test_admit_needs_admission_message():
+    out = 'HAMMER_OK admit\n'
+    assert any('admission' in p for p in hg.verify_result('admit', 0, out, '', True))
+    assert hg.verify_result('admit', 0, out,
+                            'hammer: /dev/hd1a: v7 single volume ok\n', True) == []
+
+
+def test_run_rejects_unknown_case(tmp_path):
+    with pytest.raises(ValueError):
+        hg.run('nonsense', tmp_path/'out', tmp_path/'v.img', tmp_path)
 
 
 def test_fixture_refuses_unknown_kind(tmp_path):

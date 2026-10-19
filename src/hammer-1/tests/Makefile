@@ -10,7 +10,11 @@ COMMON = ../common/ondisk.c ../common/cache.c ../common/blockmap.c \
 HAMMER = ../hammer/hammer.c ../hammer/cmd_show.c ../hammer/cmd_blockmap.c
 IMG = /var/tmp/hammer-newfs-show.img
 
-all: newfs_hammer hammer hammer_walk
+all: newfs_hammer mount_hammer hammer hammer_walk hammer_io
+
+# Syscall checks run on a guest booted with a HAMMER kernel.
+hammer_io: hammer_io.c $(K)/hammer_mount.h
+	$(CC) -O -I$(K) hammer_io.c -o $@
 
 # Portable tree manifest; the same source is compiled on DragonFly.
 hammer_walk: hammer_walk.c
@@ -18,6 +22,9 @@ hammer_walk: hammer_walk.c
 
 newfs_hammer: ../newfs_hammer/newfs_hammer.c $(COMMON)
 	$(CC) $(CFLAGS) ../newfs_hammer/newfs_hammer.c $(COMMON) -o $@
+
+mount_hammer: ../mount_hammer/mount_hammer.c $(K)/hammer_mount.h
+	$(CC) -O -I$(K) ../mount_hammer/mount_hammer.c -o $@
 
 hammer: $(HAMMER) $(COMMON)
 	$(CC) $(CFLAGS) $(HAMMER) $(COMMON) -o $@
@@ -36,10 +43,11 @@ check: mirrors all
 ppc:
 	rm -rf ppc && mkdir ppc
 	cd ppc && $(CC) -arch ppc $(CFLAGS:-I%=-I../%) -c \
-	    ../../newfs_hammer/newfs_hammer.c $(HAMMER:../%=../../%) \
+	    ../../newfs_hammer/newfs_hammer.c ../../mount_hammer/mount_hammer.c \
+	    $(HAMMER:../%=../../%) \
 	    $(COMMON:../%=../../%)
 
 clean:
-	rm -rf newfs_hammer hammer hammer_walk ppc *.out
+	rm -rf newfs_hammer mount_hammer hammer hammer_walk hammer_io ppc *.out
 
 .PHONY: all mirrors check ppc clean

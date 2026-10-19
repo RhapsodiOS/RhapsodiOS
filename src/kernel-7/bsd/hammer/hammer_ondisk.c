@@ -39,8 +39,7 @@
  * managing in-memory structures.
  */
 
-#include <sys/nlookup.h>
-#include <sys/buf2.h>
+#include <bsd/dev/disk.h>
 
 #include "hammer.h"
 
@@ -109,23 +108,24 @@ int
 hammer_install_volume(hammer_mount_t hmp, const char *volname,
 		      struct vnode *devvp, void *data)
 {
-	struct mount *mp;
+	struct mount *mp = hmp->mp;
+	struct proc *p = current_proc();
+	int nblks, blksize;
 	hammer_volume_t volume;
 	hammer_volume_ondisk_t ondisk;
-	hammer_volume_ondisk_t img;
-	struct nlookupdata nd;
-	struct buf *bp = NULL;
+	const char *why = NULL;
+	char *hdr = NULL;
 	int error;
-	int ronly;
-	int setmp = 0;
-	int i;
-
-	mp = hmp->mp;
-	ronly = ((mp->mnt_flag & MNT_RDONLY) ? 1 : 0);
+	int ronly = ((mp->mnt_flag & MNT_RDONLY) ? 1 : 0);
+	int opened = 0;
 
 	/*
-	 * Allocate a volume structure
+	 * Rhapsody HAMMER is single-volume and never formats from the
+	 * kernel: the caller resolved the device vnode (one reference,
+	 * consumed here) and there is no volume image to install.
 	 */
+	KKASSERT(devvp != NULL && data == NULL);
+
 	++hammer_count_volumes;
 	volume = kmalloc(sizeof(*volume), hmp->m_misc, M_WAITOK|M_ZERO);
 	volume->vol_name = kstrdup(volname, hmp->m_misc);
@@ -133,141 +133,79 @@ hammer_install_volume(hammer_mount_t hmp, const char *volname,
 	hammer_io_init(&volume->io, volume, HAMMER_IOTYPE_VOLUME);
 	volume->io.offset = 0LL;
 	volume->io.bytes = HAMMER_BUFSIZE;
+	volume->devvp = devvp;
+
+	why = "device in use";
+	error = vfs_mountedon(devvp);
+	if (error == 0 && vcount(devvp) > 1)
+		error = EBUSY;
+	if (error == 0)
+		error = vinvalbuf(devvp, V_SAVE, p->p_ucred, p, 0, 0);
+	if (error == 0) {
+		why = "cannot open device";
+		error = VOP_OPEN(devvp, ronly ? FREAD : FREAD|FWRITE,
+				 p->p_ucred, p);
+		opened = (error == 0);
+	}
+	if (error == 0) {
+		/* The IDE driver refuses DKIOCGPARTINFO (EINVAL); HFS uses these. */
+		why = "cannot get partition size";
+		error = VOP_IOCTL(devvp, DKIOCNUMBLKS, (caddr_t)&nblks,
+				  FREAD, p->p_ucred, p);
+		if (error == 0)
+			error = VOP_IOCTL(devvp, DKIOCBLKSIZE, (caddr_t)&blksize,
+					  FREAD, p->p_ucred, p);
+	}
 
 	/*
-	 * Get the device vnode
+	 * Admit or refuse the volume from its header before anything else
+	 * looks at it (hammer_admit.c).
 	 */
-	if (devvp == NULL) {
-		error = nlookup_init(&nd, volume->vol_name, UIO_SYSSPACE, NLC_FOLLOW);
-		if (error == 0)
-			error = nlookup(&nd);
-		if (error == 0)
-			error = cache_vref(&nd.nl_nch, nd.nl_cred, &volume->devvp);
-		nlookup_done(&nd);
-	} else {
-		error = 0;
-		volume->devvp = devvp;
-	}
-
 	if (error == 0) {
-		if (vn_isdisk(volume->devvp, &error)) {
-			error = vfs_mountedon(volume->devvp);
-		}
+		why = "cannot read volume header";
+		hdr = kmalloc(HAMMER_BUFSIZE, M_HAMMER, M_WAITOK);
+		error = hammer_dev_read(devvp, 0, hdr, HAMMER_BUFSIZE);
 	}
-	if (error == 0 && vcount(volume->devvp) > 0)
-		error = EBUSY;
 	if (error == 0) {
-		vn_lock(volume->devvp, LK_EXCLUSIVE | LK_RETRY);
-		error = vinvalbuf(volume->devvp, V_SAVE, 0, 0);
-		if (error == 0) {
-			error = VOP_OPEN(volume->devvp,
-					 (ronly ? FREAD : FREAD|FWRITE),
-					 FSCRED, NULL);
-		}
-		vn_unlock(volume->devvp);
+		error = hammer_admit_volume(hdr, HAMMER_BUFSIZE,
+			(uint64_t)(u_int)blksize * (u_int)nblks,
+			&why);
+		if (error == 0)
+			printf("hammer: %s: v7 single volume ok\n", volname);
 	}
 	if (error) {
-		hammer_free_volume(volume);
-		return(error);
-	}
-	volume->devvp->v_rdev->si_mountpoint = mp;
-	setmp = 1;
-
-	/*
-	 * Extract the volume number from the volume header and do various
-	 * sanity checks.
-	 */
-	error = bread(volume->devvp, 0LL, HAMMER_BUFSIZE, &bp);
-	if (error)
-		goto late_failure;
-	ondisk = (void *)bp->b_data;
-
-	/*
-	 * Initialize the volume header with data if the data is specified.
-	 */
-	if (ronly == 0 && data) {
-		img = (hammer_volume_ondisk_t)data;
-		if (ondisk->vol_signature == HAMMER_FSBUF_VOLUME) {
-			hkprintf("Formatting of valid HAMMER volume %s denied. "
-				"Erase with hammer strip or dd!\n", volname);
-			error = EFTYPE;
-			goto late_failure;
-		}
-		bcopy(img, ondisk, sizeof(*img));
+		printf("hammer: %s: %s (error %d)\n", volname, why, error);
+		goto failed;
 	}
 
-	if (ondisk->vol_signature != HAMMER_FSBUF_VOLUME) {
-		hkprintf("volume %s has an invalid header\n", volume->vol_name);
-		for (i = 0; i < (int)sizeof(ondisk->vol_signature); i++) {
-			kprintf("%02x", ((char*)&ondisk->vol_signature)[i] & 0xFF);
-			if (i != (int)sizeof(ondisk->vol_signature) - 1)
-				kprintf(" ");
-		}
-		kprintf("\n");
-		error = EFTYPE;
-		goto late_failure;
-	}
-	volume->vol_no = ondisk->vol_no;
-	volume->vol_flags = ondisk->vol_flags;
+	ondisk = (void *)hdr;
+	volume->vol_no = (int32_t)hget32(ondisk->vol_no);
+	volume->vol_flags = hget32(ondisk->vol_flags);
 	volume->maxbuf_off = HAMMER_ENCODE_RAW_BUFFER(volume->vol_no,
 				    HAMMER_VOL_BUF_SIZE(ondisk));
-
-	if (RB_EMPTY(&hmp->rb_vols_root)) {
-		hmp->fsid = ondisk->vol_fsid;
-	} else if (kuuid_compare(&hmp->fsid, &ondisk->vol_fsid)) {
-		hkprintf("volume %s's fsid does not match other volumes\n",
-			volume->vol_name);
-		error = EFTYPE;
-		goto late_failure;
-	}
+	hmp->fsid = ondisk->vol_fsid;
+	RB_INSERT(hammer_vol_rb_tree, &hmp->rb_vols_root, volume);
+	hammer_volume_number_add(hmp, volume);
 
 	/*
-	 * Insert the volume structure into the red-black tree.
+	 * Admission guarantees this is the root volume (vol_no 0) of a
+	 * one-volume filesystem.  We do not hold a ref on rootvol because
+	 * that would prevent related I/O from being flushed.
 	 */
-	if (RB_INSERT(hammer_vol_rb_tree, &hmp->rb_vols_root, volume)) {
-		hkprintf("volume %s has a duplicate vol_no %d\n",
-			volume->vol_name, volume->vol_no);
-		error = EEXIST;
-	}
+	hmp->rootvol = volume;
+	hmp->nvolumes = 1;
+	mp->mnt_stat.f_blocks += hget64(ondisk->vol0_stat_bigblocks) *
+				 HAMMER_BUFFERS_PER_BIGBLOCK;
+	devvp->v_specflags |= SI_MOUNTEDON;
+	kfree(hdr, M_HAMMER);
+	return (0);
 
-	if (error == 0)
-		hammer_volume_number_add(hmp, volume);
-
-	/*
-	 * Set the root volume .  HAMMER special cases rootvol the structure.
-	 * We do not hold a ref because this would prevent related I/O
-	 * from being flushed.
-	 */
-	if (error == 0 && ondisk->vol_rootvol == ondisk->vol_no) {
-		if (ondisk->vol_rootvol != HAMMER_ROOT_VOLNO) {
-			hkprintf("volume %s has invalid root vol_no %d\n",
-				volume->vol_name, ondisk->vol_rootvol);
-			error = EINVAL;
-			goto late_failure;
-		}
-		hmp->rootvol = volume;
-		hmp->nvolumes = ondisk->vol_count;
-		if (bp) {
-			brelse(bp);
-			bp = NULL;
-		}
-		hmp->mp->mnt_stat.f_blocks += ondisk->vol0_stat_bigblocks *
-						HAMMER_BUFFERS_PER_BIGBLOCK;
-		hmp->mp->mnt_vstat.f_blocks += ondisk->vol0_stat_bigblocks *
-						HAMMER_BUFFERS_PER_BIGBLOCK;
-	}
-late_failure:
-	if (bp)
-		brelse(bp);
-	if (error) {
-		/*vinvalbuf(volume->devvp, V_SAVE, 0, 0);*/
-		if (setmp)
-			volume->devvp->v_rdev->si_mountpoint = NULL;
-		vn_lock(volume->devvp, LK_EXCLUSIVE | LK_RETRY);
-		VOP_CLOSE(volume->devvp, ronly ? FREAD : FREAD|FWRITE, NULL);
-		vn_unlock(volume->devvp);
-		hammer_free_volume(volume);
-	}
+failed:
+	if (hdr)
+		kfree(hdr, M_HAMMER);
+	if (opened)
+		VOP_CLOSE(devvp, ronly ? FREAD : FREAD|FWRITE, NOCRED, p);
+	hammer_free_volume(volume);
 	return (error);
 }
 
@@ -278,19 +216,7 @@ late_failure:
 int
 hammer_adjust_volume_mode(hammer_volume_t volume, void *data __unused)
 {
-	if (volume->devvp) {
-		vn_lock(volume->devvp, LK_EXCLUSIVE | LK_RETRY);
-		if (volume->io.hmp->ronly) {
-			/* do not call vinvalbuf */
-			VOP_OPEN(volume->devvp, FREAD, FSCRED, NULL);
-			VOP_CLOSE(volume->devvp, FREAD|FWRITE, NULL);
-		} else {
-			/* do not call vinvalbuf */
-			VOP_OPEN(volume->devvp, FREAD|FWRITE, FSCRED, NULL);
-			VOP_CLOSE(volume->devvp, FREAD, NULL);
-		}
-		vn_unlock(volume->devvp);
-	}
+	/* Phase 1 mounts are read-only and never change mode. */
 	return(0);
 }
 
@@ -302,28 +228,11 @@ int
 hammer_unload_volume(hammer_volume_t volume, void *data)
 {
 	hammer_mount_t hmp = volume->io.hmp;
-	struct buf *bp = NULL;
-	hammer_volume_ondisk_t img;
+	struct proc *p = current_proc();
 	int ronly = ((hmp->mp->mnt_flag & MNT_RDONLY) ? 1 : 0);
-	int error;
 
-	/*
-	 * Clear the volume header with data if the data is specified.
-	 */
-	if (ronly == 0 && data && volume->devvp) {
-		img = (hammer_volume_ondisk_t)data;
-		error = bread(volume->devvp, 0LL, HAMMER_BUFSIZE, &bp);
-		if (error || bp->b_bcount < sizeof(*img)) {
-			hmkprintf(hmp, "Failed to read volume header: %d\n", error);
-			brelse(bp);
-		} else {
-			bcopy(img, bp->b_data, sizeof(*img));
-			error = bwrite(bp);
-			if (error)
-				hmkprintf(hmp, "Failed to clear volume header: %d\n",
-					error);
-		}
-	}
+	/* No volume-header images: volumes are never removed (data is NULL). */
+	KKASSERT(data == NULL);
 
 	/*
 	 * Clean up the root volume pointer, which is held unlocked in hmp.
@@ -351,7 +260,7 @@ hammer_unload_volume(hammer_volume_t volume, void *data)
 	 */
 	hammer_ref_interlock_true(&volume->io.lock);
 	hammer_rel_volume(volume, 1);
-	KKASSERT(volume->io.bp == NULL);
+	KKASSERT(volume->io.data == NULL);
 
 	/*
 	 * There should be no references on the volume.
@@ -360,31 +269,10 @@ hammer_unload_volume(hammer_volume_t volume, void *data)
 
 	volume->ondisk = NULL;
 	if (volume->devvp) {
-		if (volume->devvp->v_rdev &&
-		    volume->devvp->v_rdev->si_mountpoint == hmp->mp) {
-			volume->devvp->v_rdev->si_mountpoint = NULL;
-		}
-		if (ronly) {
-			/*
-			 * Make sure we don't sync anything to disk if we
-			 * are in read-only mode (1) or critically-errored
-			 * (2).  Note that there may be dirty buffers in
-			 * normal read-only mode from crash recovery.
-			 */
-			vn_lock(volume->devvp, LK_EXCLUSIVE | LK_RETRY);
-			vinvalbuf(volume->devvp, 0, 0, 0);
-			VOP_CLOSE(volume->devvp, FREAD, NULL);
-			vn_unlock(volume->devvp);
-		} else {
-			/*
-			 * Normal termination, save any dirty buffers
-			 * (XXX there really shouldn't be any).
-			 */
-			vn_lock(volume->devvp, LK_EXCLUSIVE | LK_RETRY);
-			vinvalbuf(volume->devvp, V_SAVE, 0, 0);
-			VOP_CLOSE(volume->devvp, FREAD|FWRITE, NULL);
-			vn_unlock(volume->devvp);
-		}
+		volume->devvp->v_specflags &= ~SI_MOUNTEDON;
+		vinvalbuf(volume->devvp, ronly ? 0 : V_SAVE, NOCRED, p, 0, 0);
+		VOP_CLOSE(volume->devvp, ronly ? FREAD : FREAD|FWRITE,
+			  NOCRED, p);
 	}
 
 	/*
@@ -507,7 +395,7 @@ hammer_load_volume(hammer_volume_t volume)
 		error = hammer_io_read(volume->devvp, &volume->io,
 				       HAMMER_BUFSIZE);
 		if (error == 0) {
-			volume->ondisk = (void *)volume->io.bp->b_data;
+			volume->ondisk = (void *)volume->io.data;
                         hammer_ref_interlock_done(&volume->io.lock);
 		} else {
                         hammer_rel_volume(volume, 1);
@@ -919,7 +807,7 @@ hammer_load_buffer(hammer_buffer_t buffer, int isnew)
 					       limit);
 		}
 		if (error == 0)
-			buffer->ondisk = (void *)buffer->io.bp->b_data;
+			buffer->ondisk = (void *)buffer->io.data;
 	} else if (isnew) {
 		error = hammer_io_new(volume->devvp, &buffer->io);
 	} else {
@@ -1074,7 +962,8 @@ hammer_rel_buffer(hammer_buffer_t buffer, int locked)
 	 * NOTE: It is impossible for any associated B-Tree nodes to have
 	 * refs if the buffer has no additional refs.
 	 */
-	if (buffer->io.bp == NULL && hammer_norefs(&buffer->io.lock)) {
+	if (buffer->io.data == NULL && hammer_norefs(&buffer->io.lock)) {
+
 		RB_REMOVE(hammer_buf_rb_tree,
 			  &buffer->io.hmp->rb_bufs_root,
 			  buffer);
@@ -1683,6 +1572,7 @@ hammer_alloc_data(hammer_transaction_t trans, int32_t data_len,
 	return(data);
 }
 
+#if 0 /* write path: sync and the flusher queue return in Phase 2 */
 /*
  * Sync dirty buffers to the media and clean-up any loose ends.
  *
@@ -1771,3 +1661,4 @@ hammer_sync_scan2(struct mount *mp, struct vnode *vp, void *data)
 		info->error = error;
 	return(0);
 }
+#endif /* write path */

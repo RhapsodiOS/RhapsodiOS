@@ -45,28 +45,22 @@
 #include <sys/kernel.h>
 #include <sys/systm.h>
 #include <sys/uio.h>
+#include "hammer_rhapsody.h"
 #endif
 #include <sys/conf.h>
-#include <sys/tree.h>
 #include <sys/malloc.h>
 #include <sys/mount.h>
 #include <sys/vnode.h>
 #include <sys/proc.h>
-#include <sys/caps.h>
 #include <sys/dirent.h>
 #include <sys/stat.h>
 #include <sys/fcntl.h>
-#include <sys/lockf.h>
 #include <sys/file.h>
-#include <sys/event.h>
 #include <sys/buf.h>
 #include <sys/queue.h>
-#include <sys/ktr.h>
-#include <sys/limits.h>
 #include <sys/sysctl.h>
-#include <vm/swap_pager.h>
-#include <vm/vm_extern.h>
 
+#include "hammer_tree.h"
 #include "hammer_disk.h"
 #include "hammer_mount.h"
 #include "hammer_ioctl.h"
@@ -97,6 +91,7 @@ struct hammer_node;
 struct hammer_undo;
 struct hammer_reserve;
 struct hammer_io;
+struct bio;
 
 /*
  * Key structure used for custom RB tree inode lookups.  This prototypes
@@ -600,9 +595,9 @@ typedef struct hammer_io {
 	RB_ENTRY(hammer_io)	rb_node;     /* if modified */
 	TAILQ_ENTRY(hammer_io)	iorun_entry; /* iorun_list */
 	struct hammer_mod_rb_tree *mod_root;
-	struct buf		*bp;
+	char			*data;	   /* HAMMER-owned copy, io->bytes */
 	int64_t			offset;	   /* volume offset */
-	int			bytes;	   /* buffer cache buffer size */
+	int			bytes;	   /* buffer size */
 	int			modify_refs;
 
 	/*
@@ -905,10 +900,6 @@ typedef struct hammer_mount {
 #define HAMMER_CHKSPC_CREATE	20
 #define HAMMER_CHKSPC_REMOVE	10
 #define HAMMER_CHKSPC_EMERGENCY	0
-
-extern struct vop_ops hammer_vnode_vops;
-extern struct vop_ops hammer_spec_vops;
-extern struct vop_ops hammer_fifo_vops;
 
 extern int hammer_debug_io;
 extern int hammer_debug_general;
@@ -1547,22 +1538,6 @@ hammer_dir_localization(hammer_inode_t dip)
 	return(HAMMER_DIR_INODE_LOCALIZATION(&dip->ino_data));
 }
 
-static __inline
-hammer_io_t
-hammer_buf_peek_io(struct buf *bp)
-{
-	return((hammer_io_t)bp->b_priv);
-}
-
-static __inline
-void
-hammer_buf_attach_io(struct buf *bp, hammer_io_t io)
-{
-	/* struct buf and struct hammer_io are 1:1 */
-	KKASSERT(hammer_buf_peek_io(bp) == NULL);
-	bp->b_priv = io;
-}
-
 static __inline int
 __hammer_vol_index(int vol_no)
 {
@@ -1596,26 +1571,22 @@ hammer_volume_number_test(hammer_mount_t hmp, int n)
 	return((hmp->volume_map[i] & __hammer_vol_low(n)) != 0);
 }
 
-#define hkprintf(format, args...)			\
-	kprintf("HAMMER: "format,## args)
-#define hvkprintf(vol, format, args...)			\
-	kprintf("HAMMER(%s) "format, vol->ondisk->vol_label,## args)
-#define hmkprintf(hmp, format, args...)			\
-	kprintf("HAMMER(%s) "format, hmp->mp->mnt_stat.f_mntfromname,## args)
-#define hdkprintf(format, args...)			\
-	kprintf("%s: "format, __func__,## args)
-
-#define hkrateprintf(rate , format, args...)		\
-	krateprintf(rate, "HAMMER: "format,## args)
-#define hvkrateprintf(rate, vol, format, args...)	\
-	krateprintf(rate, "HAMMER(%s) "format, vol->ondisk->vol_label,## args)
-#define hmkrateprintf(rate, hmp, format, args...)	\
-	krateprintf(rate, "HAMMER(%s) "format, hmp->mp->mnt_stat.f_mntfromname,## args)
-#define hdkrateprintf(rate, format, args...)		\
-	krateprintf(rate, "%s: "format, __func__,## args)
-
-#define hpanic(format, args...)				\
-	panic("%s: "format, __func__,## args)
+/*
+ * gcc 2.7's preprocessor has no variadic macros, so the prefixed console
+ * helpers are functions (hammer_rhapsody.c).  The hd* variants cannot see
+ * their caller's __func__ and print a plain "HAMMER: " prefix instead.
+ */
+void	hkprintf(const char *format, ...);
+void	hvkprintf(hammer_volume_t vol, const char *format, ...);
+void	hmkprintf(hammer_mount_t hmp, const char *format, ...);
+void	hkrateprintf(struct krate *rate, const char *format, ...);
+void	hvkrateprintf(struct krate *rate, hammer_volume_t vol,
+		      const char *format, ...);
+void	hmkrateprintf(struct krate *rate, hammer_mount_t hmp,
+		      const char *format, ...);
+void	hpanic(const char *format, ...) __dead2;
+#define hdkprintf	hkprintf
+#define hdkrateprintf	hkrateprintf
 #endif  /* _KERNEL */
 
 #endif /* !VFS_HAMMER_HAMMER_H_ */

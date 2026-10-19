@@ -56,7 +56,7 @@ ssize_t	pwrite(int fd, const void *buf, size_t nbytes, off_t offset);
 
 /*
  * Size in bytes of a regular file or of the disk partition behind a
- * device (DKIOCGPARTINFO).  Returns 0, or -1 with errno set.
+ * device (DKIOCNUMBLKS x DKIOCBLKSIZE).  Returns 0, or -1 with errno set.
  */
 int	hammer_device_size(int fd, u_int64_t *bytes);
 

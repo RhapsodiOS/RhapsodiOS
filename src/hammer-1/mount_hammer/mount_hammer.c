@@ -32,222 +32,73 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <vfs/hammer/hammer_mount.h>
+/*
+ * Rhapsody port: one volume, no PFS, no history or master-id options.
+ * The kernel admits read-only mounts only in this release.
+ */
+#include <sys/param.h>
+#include <sys/mount.h>
+#include "hammer_mount.h"
 
+#include <err.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdarg.h>
-#include <stddef.h>
-#include <unistd.h>
 #include <string.h>
-#include <fcntl.h>
-#include <err.h>
-#include <mntopts.h>
+#include <unistd.h>
 
-static void test_master_id(int master_id);
-static void extract_volumes(struct hammer_mount_info *info, char **av, int ac);
-static void free_volumes(struct hammer_mount_info *info);
 static void usage(void);
 
-#define hwarnx(format, args...)	warnx("WARNING: "format,## args)
+static void
+options(char *text, int *flags)
+{
+	char *opt;
 
-#define MOPT_HAMMEROPTS		\
-	{ "history", 1, HMNT_NOHISTORY, 1 },	\
-	{ "master=", 0, HMNT_MASTERID, 1 },	\
-	{ "mirror", 1, HMNT_NOMIRROR, 1 }
-
-static struct mntopt mopts[] = { MOPT_STDOPTS, MOPT_HAMMEROPTS,
-				 MOPT_UPDATE, MOPT_NULL };
+	while ((opt = strsep(&text, ",")) != NULL) {
+		if (!strcmp(opt, "ro"))
+			*flags |= MNT_RDONLY;
+		else if (!strcmp(opt, "rw"))
+			*flags &= ~MNT_RDONLY;
+		else if (!strcmp(opt, "noexec"))
+			*flags |= MNT_NOEXEC;
+		else if (!strcmp(opt, "exec"))
+			*flags &= ~MNT_NOEXEC;
+		else if (!strcmp(opt, "nosuid"))
+			*flags |= MNT_NOSUID;
+		else if (!strcmp(opt, "suid"))
+			*flags &= ~MNT_NOSUID;
+		else if (!strcmp(opt, "nodev"))
+			*flags |= MNT_NODEV;
+		else if (!strcmp(opt, "dev"))
+			*flags &= ~MNT_NODEV;
+		else
+			errx(1, "unsupported mount option: %s", opt);
+	}
+}
 
 int
 main(int ac, char **av)
 {
-	struct hammer_mount_info info;
-	struct vfsconf vfc;
-	int mount_flags = 0;
-	int init_flags = 0;
-	int error;
-	int ch;
-	char *mountpt;
-	char *ptr;
+	struct hammer_args args;
+	int ch, flags = 0;
 
-	bzero(&info, sizeof(info));
-
-	while ((ch = getopt(ac, av, "o:T:u")) != -1) {
-		switch(ch) {
-		case 'T':
-			info.asof = strtoull(optarg, NULL, 0);
-			break;
-		case 'o':
-			getmntopts(optarg, mopts, &mount_flags, &info.hflags);
-
-			/*
-			 * Handle extended flags with parameters.
-			 */
-			if (info.hflags & HMNT_MASTERID) {
-				ptr = strstr(optarg, "master=");
-				if (ptr) {
-					info.master_id = strtol(ptr + 7, NULL, 0);
-					test_master_id(info.master_id);
-				}
-			}
-			if (info.hflags & HMNT_NOMIRROR) {
-				ptr = strstr(optarg, "nomirror");
-				if (ptr)
-					info.master_id = -1;
-			}
-			break;
-		case 'u':
-			init_flags |= MNT_UPDATE;
-			break;
-		default:
+	while ((ch = getopt(ac, av, "o:")) != -1) {
+		if (ch != 'o')
 			usage();
-			/* not reached */
-			break;
-		}
+		options(optarg, &flags);
 	}
 	ac -= optind;
 	av += optind;
-	mount_flags |= init_flags;
-
-	/*
-	 * Only the mount point need be specified in update mode.
-	 */
-	if (init_flags & MNT_UPDATE) {
-		if (ac != 1) {
-			usage();
-			/* not reached */
-		}
-		mountpt = av[0];
-		if (mount(vfc.vfc_name, mountpt, mount_flags, &info)) {
-			err(1, "mountpoint %s", mountpt);
-			/* not reached */
-		}
-		exit(0);
-	}
-
-	if (ac < 2) {
+	if (ac != 2)
 		usage();
-		/* not reached */
-	}
-
-	/*
-	 * Mount arguments: vol [vol...] mountpt
-	 */
-	extract_volumes(&info, av, ac - 1);
-	mountpt = av[ac - 1];
-
-	/*
-	 * Load the hammer module if necessary (this bit stolen from
-	 * mount_null).
-	 */
-	error = getvfsbyname("hammer", &vfc);
-	if (error && vfsisloadable("hammer")) {
-		if (vfsload("hammer") != 0) {
-			err(1, "vfsload(hammer)");
-			/* not reached */
-		}
-		endvfsent();
-		error = getvfsbyname("hammer", &vfc);
-	}
-	if (error) {
-		errx(1, "hammer filesystem is not available");
-		/* not reached */
-	}
-
-	if (mount(vfc.vfc_name, mountpt, mount_flags, &info)) {
-		perror("mount");
-		exit(1);
-	}
-	free_volumes(&info);
-
-	return(0);
+	args.fspec = av[0];
+	if (mount("hammer", av[1], flags, &args) < 0)
+		err(1, "%s on %s", args.fspec, av[1]);
+	return 0;
 }
 
-static
-void
-test_master_id(int master_id)
-{
-	switch (master_id) {
-	case 0:
-		hwarnx("A master id of 0 is the default, "
-			"explicit settings should use 1-15");
-		break;
-	case -1:
-		hwarnx("A master id of -1 is nomirror mode, "
-			"equivalent to -o nomirror option");
-		break;
-	case 1 ... 15: /* gcc */
-		/* Expected values via -o master= option */
-		break;
-	default:
-		/* This will eventually fail in hammer_vfs_mount() */
-		hwarnx("A master id of %d is not supported", master_id);
-		break;
-	}
-}
-
-/*
- * Extract a volume list
- */
-static
-void
-extract_volumes(struct hammer_mount_info *info, char **av, int ac)
-{
-	int idx = 0;
-	int arymax = 32;
-	char **ary, *ptr, *next, *orig;
-
-#define _extend_ary(ary, arymax) ({	\
-		(arymax) += 32;		\
-		realloc(ary, (arymax) * sizeof(char *)); \
-	})
-	ary = calloc(arymax, sizeof(char *));
-
-	while (ac) {
-		if (idx == arymax)
-			ary = _extend_ary(ary, arymax);
-		if (strchr(*av, ':') == NULL) {
-			ary[idx++] = strdup(*av);
-		} else {
-			orig = next = strdup(*av);
-			while ((ptr = next) != NULL) {
-				if (idx == arymax)
-					ary = _extend_ary(ary, arymax);
-				if ((next = strchr(ptr, ':')) != NULL)
-					*next++ = 0;
-				ary[idx++] = strdup(ptr);
-			}
-			free(orig);
-		}
-		--ac;
-		++av;
-	}
-	info->nvolumes = idx;
-	info->volumes = ary;
-}
-
-static
-void
-free_volumes(struct hammer_mount_info *info)
-{
-	int i;
-
-	for (i = 0; i < info->nvolumes; i++)
-		free(info->volumes[i]);
-	free(info->volumes);
-}
-
-static
-void
+static void
 usage(void)
 {
-	fprintf(stderr, "usage: mount_hammer [-o options] [-T transaction-id] "
-			"special ... node\n");
-	fprintf(stderr, "       mount_hammer [-o options] [-T transaction-id] "
-			"special[:special]* node\n");
-	fprintf(stderr, "       mount_hammer -u [-o options] node\n");
+	fprintf(stderr, "usage: mount_hammer [-o options] special node\n");
 	exit(1);
 }

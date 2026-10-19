@@ -1,18 +1,24 @@
 """HAMMER test volumes: NeXT-labelled wrapping, header fixtures, guest runs.
 
-Usage: hammer_guest.py wrap VOLUME OUT
+Usage: hammer_guest.py run CASE OUTDIR WRAPPED_VOLUME TOOLS_DIR
+       hammer_guest.py wrap VOLUME OUT
        hammer_guest.py unwrap WRAPPED OUT
        hammer_guest.py fixture KIND VOLUME OUT
+       hammer_guest.py fixture-overlay KIND WRAPPED_VOLUME OUT.qcow2
 Volumes are raw HAMMER images (what DragonFly's newfs_hammer writes to a
 whole disk).  Rhapsody sees them as partition a of a NeXT-labelled disk.
 """
+import os
 from pathlib import Path
 import shutil
 import struct
+import subprocess
 import sys
 
 import ext2_guest
 import ufs_build
+
+HERE = Path(__file__).resolve().parent
 
 HEADER = 1928           # sizeof(struct hammer_volume_ondisk)
 VOL_LABEL = 80
@@ -125,25 +131,184 @@ def make_fixture(kind: str, volume: Path, out: Path) -> None:
     shutil.copyfile(volume, out)
     with out.open('r+b') as f:
         hdr = bytearray(f.read(HEADER))
-        if kind == 'badcrc':
-            hdr[VOL_LABEL] ^= 0xFF
-        else:
-            if kind == 'badsig':
-                struct.pack_into('<Q', hdr, 0, FSBUF_VOLUME_REV)
-            elif kind == 'v6':
-                struct.pack_into('<I', hdr, VOL_VERSION, 6)
-            elif kind == 'twovol':
-                struct.pack_into('<i', hdr, VOL_COUNT, 2)
-            elif kind == 'needs-recovery':
-                nxt = struct.unpack_from('<Q', hdr, UNDO_NEXT)[0]
-                struct.pack_into('<Q', hdr, UNDO_NEXT, nxt + 512)
-                _seal_undo_blockmap(hdr)
-            seal_volume_header(hdr)
+        _break_header(kind, hdr)
         f.seek(0)
         f.write(hdr)
 
 
+def _break_header(kind, hdr):
+    if kind == 'badcrc':
+        hdr[VOL_LABEL] ^= 0xFF
+        return
+    if kind == 'badsig':
+        struct.pack_into('<Q', hdr, 0, FSBUF_VOLUME_REV)
+    elif kind == 'v6':
+        struct.pack_into('<I', hdr, VOL_VERSION, 6)
+    elif kind == 'twovol':
+        struct.pack_into('<i', hdr, VOL_COUNT, 2)
+    elif kind == 'needs-recovery':
+        nxt = struct.unpack_from('<Q', hdr, UNDO_NEXT)[0]
+        struct.pack_into('<Q', hdr, UNDO_NEXT, nxt + 512)
+        _seal_undo_blockmap(hdr)
+    seal_volume_header(hdr)
+
+
+def make_fixture_overlay(kind: str, wrapped: Path, out: Path) -> None:
+    """make_fixture on a wrapped volume, as a qcow2 overlay of WRAPPED that
+    holds only the changed header sectors (dense copies need too much disk)."""
+    if kind not in ('badsig', 'v6', 'twovol', 'badcrc', 'needs-recovery'):
+        raise ValueError('unknown fixture kind %r' % kind)
+    out = ext2_guest._new_target(out)
+    with Path(wrapped).open('rb') as f:
+        head = f.read(65536)
+        off = next(o for o in range(0, len(head), 512) if head[o:o + 4] == b'dlV3')
+        part = struct.unpack_from('>h', head, off + 112)[0] * \
+            struct.unpack_from('>i', head, off + 92)[0]
+        f.seek(part)
+        sectors = bytearray(f.read(HEADER + (-HEADER) % 512))
+    _break_header(kind, sectors)
+    _overlay(wrapped, out)
+    src = out.with_suffix('.hdr')
+    src.write_bytes(sectors)
+    try:
+        # qemu-io write -s reads its source in text mode on Windows; convert does not.
+        subprocess.run([QEMU_IMG, 'convert', '-n', '-S', '0', '-f', 'raw', str(src),
+                        '--target-image-opts',
+                        'driver=raw,offset=%d,size=%d,file.driver=qcow2,'
+                        'file.file.filename=%s' % (part, len(sectors), out)],
+                       check=True)
+    finally:
+        src.unlink()
+
+
+CASES = ('refuse-badsig', 'refuse-v6', 'refuse-twovol', 'refuse-badcrc',
+         'refuse-needs-recovery', 'refuse-rw', 'admit')
+ADMIT_MESSAGE = 'v7 single volume ok'
+QEMU_IMG = r'C:\Program Files\qemu\qemu-img.exe'
+
+
+def verify_result(case, status, stdout, serial, unchanged):
+    problems = []
+    if status != 0:
+        problems.append('case exited with status %s' % status)
+    if 'HAMMER_OK ' + case not in stdout.splitlines():
+        problems.append('missing exact case marker')
+    if 'panic:' in serial:
+        problems.append('kernel panic in serial log')
+    if 'hammer: leaked' in serial:
+        problems.append('hammer: leak reported in serial log')
+    if not unchanged:
+        problems.append('data volume changed (qemu-img compare)')
+    if case == 'admit' and ADMIT_MESSAGE not in serial:
+        problems.append('no admission message on the console')
+    return problems
+
+
+def _fmt(path):
+    return 'qcow2' if Path(path).suffix == '.qcow2' else 'raw'
+
+
+def _overlay(base, out):
+    subprocess.run([QEMU_IMG, 'create', '-q', '-f', 'qcow2', '-F', _fmt(base),
+                    '-b', str(Path(base).resolve()), str(out)], check=True)
+
+
+def _unchanged(overlay, base):
+    r = subprocess.run([QEMU_IMG, 'compare', '-f', 'qcow2', '-F', _fmt(base),
+                        str(overlay), str(Path(base).resolve())],
+                       capture_output=True, text=True)
+    return r.returncode == 0 and 'Images are identical' in r.stdout
+
+
+def run(case, outdir, volume, tools_dir):
+    """Boot a private Rhapsody guest and run one HAMMER kernel case.
+
+    The root (RHAP_TEST_IMAGE, which must carry a HAMMER kernel) and the
+    wrapped data VOLUME are both behind fresh qcow2 overlays, so neither
+    base is ever written; the data overlay is compared with its base after
+    the run.  The guest is stopped through QMP after query-name.
+    """
+    if case not in CASES:
+        raise ValueError('unsupported case %r' % case)
+    import importlib.util
+    import time
+    import uuid
+    import ufs_extract
+    root = os.environ.get('RHAP_TEST_IMAGE')
+    if not root:
+        raise ValueError('set RHAP_TEST_IMAGE to a root image with a HAMMER kernel')
+    port = int(os.environ.get('RHAP_HAMMER_QMP_PORT', '5313'))
+    ext2_guest.check_qmp_port(port)
+    outdir = ext2_guest._new_target(outdir)
+    outdir.mkdir()
+    root_ov, data_ov = outdir/'root.qcow2', outdir/'data.qcow2'
+    _overlay(root, root_ov)
+    _overlay(volume, data_ov)
+    script = ('sh run-native.sh %s /mnt/h >out.txt 2>&1\necho $? >status.txt\nsync\n'
+              % case).encode('ascii')
+    tests = HERE.parent/'src/hammer-1/tests'
+    N = ufs_extract.Node
+    nodes = [N('/', 'dir', 0o40755, 0, 0, 0, None),
+             N('/h', 'dir', 0o40755, 0, 0, 0, None),
+             N('/run-case.sh', 'reg', 0o100755, 0, 0, 0, script),
+             N('/run-native.sh', 'reg', 0o100755, 0, 0, 0,
+               (tests/'run-native.sh').read_bytes()),
+             N('/hammer_io', 'reg', 0o100755, 0, 0, 0,
+               (Path(tools_dir)/'hammer_io').read_bytes())]
+    results = outdir/'results.img'
+    results.write_bytes(ufs_build.build(ext2_guest.TEMPLATE, nodes))
+    spec = importlib.util.spec_from_file_location('hammer_console', HERE/'guest-console.py')
+    gc = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(gc)
+    name = 'hammer-' + uuid.uuid4().hex
+    data = 'file=%s,format=qcow2,if=ide,index=1,media=disk,snapshot=off' % data_ov
+    res = 'file=%s,format=raw,if=ide,index=2,media=disk,snapshot=off' % results
+    guest = ext2_guest.start_guest(gc.Guest, str(outdir), image=str(root_ov), port=port,
+                                   extra=('-name', name, '-drive', data, '-drive', res))
+    serial = outdir/'serial.log'
+    try:
+        time.sleep(6)
+        ext2_guest.check_guest(guest, name)
+        guest.line('-s'); time.sleep(135)
+        guest.line('mount -uw /'); time.sleep(5)
+        guest.line('mknod /dev/hd2a b 3 16'); time.sleep(3)
+        guest.line('mount /dev/hd2a /mnt'); time.sleep(5)
+        guest.line('cd /mnt; sh run-case.sh')
+        deadline = time.monotonic() + 1800
+        while time.monotonic() < deadline:
+            time.sleep(15)
+            if 'panic:' in serial.read_text(errors='replace'):
+                break
+            try:
+                status, stdout = ext2_guest._read_result(results)
+                if status is not None:
+                    break
+            except (OSError, ValueError):
+                pass
+        guest.shot('end')
+    finally:
+        reply = guest.cmd('query-name')
+        if reply and reply.get('return', {}).get('name') == name:
+            guest.cmd('quit')
+        try:
+            guest.proc.wait(timeout=30)
+        except subprocess.TimeoutExpired:
+            pass
+    status, stdout = ext2_guest._read_result(results)
+    (outdir/'out.txt').write_text(stdout or '')
+    (outdir/'status.txt').write_text(status or 'missing')
+    code = int(status.strip()) if status and status.strip().isdigit() else -1
+    problems = verify_result(case, code, stdout or '',
+                             serial.read_text(errors='replace'),
+                             _unchanged(data_ov, volume))
+    for problem in problems:
+        print(problem)
+    return int(bool(problems))
+
+
 def main(argv):
+    if len(argv) == 6 and argv[1] == 'run':
+        return run(*argv[2:])
     if len(argv) == 4 and argv[1] == 'wrap':
         wrap_volume_file(argv[2], argv[3])
         return 0
@@ -152,6 +317,9 @@ def main(argv):
         return 0
     if len(argv) == 5 and argv[1] == 'fixture':
         make_fixture(argv[2], argv[3], argv[4])
+        return 0
+    if len(argv) == 5 and argv[1] == 'fixture-overlay':
+        make_fixture_overlay(argv[2], argv[3], argv[4])
         return 0
     raise ValueError(__doc__)
 

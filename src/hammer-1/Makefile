@@ -12,7 +12,7 @@ NAME = hammer
 PROJECTVERSION = 2.8
 PROJECT_TYPE = Aggregate
 
-TOOLS = newfs_hammer hammer
+TOOLS = newfs_hammer mount_hammer hammer
 
 LIBRARIES =
 

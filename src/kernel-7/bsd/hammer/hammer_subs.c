@@ -778,24 +778,43 @@ hammer_sync_unlock(hammer_transaction_t trans)
 /*
  * Misc
  */
+/*
+ * The uid/gid lives little-endian in node[2..5] of the on-disk uuid
+ * (upstream read it as a native uint32_t, which only works on x86).
+ */
 uint32_t
 hammer_to_unix_xid(hammer_uuid_t *uuid)
 {
-	return(*(uint32_t *)&uuid->node[2]);
+	return((uint32_t)uuid->node[2] | (uint32_t)uuid->node[3] << 8 |
+	       (uint32_t)uuid->node[4] << 16 | (uint32_t)uuid->node[5] << 24);
 }
 
 void
 hammer_guid_to_uuid(hammer_uuid_t *uuid, uint32_t guid)
 {
 	bzero(uuid, sizeof(*uuid));
-	*(uint32_t *)&uuid->node[2] = guid;
+	uuid->node[2] = guid & 0xff;
+	uuid->node[3] = (guid >> 8) & 0xff;
+	uuid->node[4] = (guid >> 16) & 0xff;
+	uuid->node[5] = (guid >> 24) & 0xff;
 }
 
+/*
+ * HAMMER times are unsigned microseconds since the epoch; Rhapsody's
+ * time_t is a signed 32-bit long, so later times clamp to its maximum.
+ */
 void
 hammer_time_to_timespec(uint64_t xtime, struct timespec *ts)
 {
-	ts->tv_sec = (unsigned long)(xtime / 1000000);
-	ts->tv_nsec = (unsigned int)(xtime % 1000000) * 1000L;
+	uint64_t secs = xtime / 1000000;
+
+	if (secs > 0x7FFFFFFFULL) {
+		ts->tv_sec = 0x7FFFFFFF;
+		ts->tv_nsec = 0;
+	} else {
+		ts->tv_sec = (long)secs;
+		ts->tv_nsec = (long)(xtime % 1000000) * 1000L;
+	}
 }
 
 uint64_t
@@ -820,8 +839,8 @@ hammer_get_vnode_type(uint8_t obj_type)
 		return(VDIR);
 	case HAMMER_OBJTYPE_REGFILE:
 		return(VREG);
-	case HAMMER_OBJTYPE_DBFILE:
-		return(VDATABASE);
+	case HAMMER_OBJTYPE_DBFILE:	/* Rhapsody has no VDATABASE */
+		return(VREG);
 	case HAMMER_OBJTYPE_FIFO:
 		return(VFIFO);
 	case HAMMER_OBJTYPE_SOCKET:
@@ -846,8 +865,8 @@ hammer_get_dtype(uint8_t obj_type)
 		return(DT_DIR);
 	case HAMMER_OBJTYPE_REGFILE:
 		return(DT_REG);
-	case HAMMER_OBJTYPE_DBFILE:
-		return(DT_DBF);
+	case HAMMER_OBJTYPE_DBFILE:	/* Rhapsody has no DT_DBF */
+		return(DT_REG);
 	case HAMMER_OBJTYPE_FIFO:
 		return(DT_FIFO);
 	case HAMMER_OBJTYPE_SOCKET:
@@ -872,8 +891,6 @@ hammer_get_obj_type(enum vtype vtype)
 		return(HAMMER_OBJTYPE_DIRECTORY);
 	case VREG:
 		return(HAMMER_OBJTYPE_REGFILE);
-	case VDATABASE:
-		return(HAMMER_OBJTYPE_DBFILE);
 	case VFIFO:
 		return(HAMMER_OBJTYPE_FIFO);
 	case VSOCK:
@@ -898,7 +915,7 @@ hammer_nohistory(hammer_inode_t ip)
 {
 	if (ip->hmp->hflags & HMNT_NOHISTORY)
 		return(HAMMER_DELETE_DESTROY);
-	if (ip->ino_data.uflags & (SF_NOHISTORY|UF_NOHISTORY))
+	if (hget32(ip->ino_data.uflags) & (SF_NOHISTORY|UF_NOHISTORY))
 		return(HAMMER_DELETE_DESTROY);
 	return(0);
 }

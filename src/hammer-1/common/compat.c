@@ -38,15 +38,6 @@
 #include <unistd.h>
 #include "compat.h"
 
-/* Older exported headers lack the partition query added for ext2. */
-#ifndef DKIOCGPARTINFO
-struct disk_partition_info {
-	u_int32_t block_size;
-	u_int32_t block_count;
-};
-#define DKIOCGPARTINFO	_IOR('d', 29, struct disk_partition_info)
-#endif
-
 /* The tools are single-threaded, so seek-then-transfer is safe. */
 ssize_t
 pread(int fd, void *buf, size_t nbytes, off_t offset)
@@ -89,8 +80,8 @@ hexdump(const void *ptr, int length, const char *hdr, int flags)
 int
 hammer_device_size(int fd, u_int64_t *bytes)
 {
-	struct disk_partition_info part;
 	struct stat st;
+	int nblks, blksize;
 
 	if (fstat(fd, &st) < 0)
 		return (-1);
@@ -102,12 +93,14 @@ hammer_device_size(int fd, u_int64_t *bytes)
 		errno = ENODEV;
 		return (-1);
 	}
-	if (ioctl(fd, DKIOCGPARTINFO, &part) < 0)
+	/* The stock disk drivers do not implement DKIOCGPARTINFO. */
+	if (ioctl(fd, DKIOCNUMBLKS, &nblks) < 0 ||
+	    ioctl(fd, DKIOCBLKSIZE, &blksize) < 0)
 		return (-1);
-	if (part.block_size == 0 || part.block_count == 0) {
+	if (nblks <= 0 || blksize <= 0) {
 		errno = EINVAL;
 		return (-1);
 	}
-	*bytes = (u_int64_t)part.block_size * part.block_count;
+	*bytes = (u_int64_t)blksize * (u_int)nblks;
 	return (0);
 }

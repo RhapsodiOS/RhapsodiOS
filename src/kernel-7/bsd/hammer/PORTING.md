@@ -99,18 +99,56 @@ volume flush.
   `conf/Makefile.template`).
 - `common/compat.[ch]` cover Rhapsody libc gaps: `pread`/`pwrite`,
   `strtoull`/`strtoll` (`strtouq`/`strtoq`), `intmax_t`, `ULLONG_MAX`,
-  `hexdump(3)` and `hammer_device_size()` (`DKIOCGPARTINFO` or `fstat`).
+  `hexdump(3)` and `hammer_device_size()` (`fstat`, or `DKIOCNUMBLKS` x
+  `DKIOCBLKSIZE`; the stock disk drivers lack `DKIOCGPARTINFO`).
 - Rhapsody's printf supports `%q`. `%ll` prints only the low 32 bits and
   `%j` is unknown, so every 64-bit conversion uses `%q`.
 - gcc 2.7's cpp has no variadic macros, so `hwarn`/`hwarnx` are functions.
 - `newfs_hammer` creates a single version-7 volume only. `-E` (TRIM) is
   refused, and the version comes from `-V` or the default, not
   `sysctlbyname`.
+- `mount_hammer` is rewritten in the shape of `mount_ext2fs`: one special
+  file, `struct hammer_args`, and the generic ro/rw/exec/suid/dev options.
+  The PFS, history, master-id and as-of options are gone.
 - `hammer` dispatches `show`, `show-undo`, `blockmap`, `checkmap` and the
   `namekey*` helpers. The other commands stay in `hammer.c` under `#if 0`,
   and their sources are left out of the Makefile.
 - Rhapsody has no `/dev/zero`, and `dd` will not extend a file with `seek`.
   Test images are made with perl `truncate`, at 2047 MiB to stay below 2^31.
+
+## Kernel glue (Phase 1)
+
+- The kernel option is `HAMMERFS` (`options HAMMERFS`, `<hammerfs.h>`), and
+  the filesystem registers as type 19, name `hammer`, in `vfs_conf.c`.
+- `hammer_rhapsody.[ch]` hold the DragonFly kernel API that HAMMER calls:
+  kmalloc on `_MALLOC(M_HAMMER)`, a private `hammer_vsnprintf` (the kernel
+  has no snprintf and its printf has no 64-bit conversions), `tsleep`, and
+  `hammer_dev_read`, which reads the device through the buffer cache.
+- `hammer_io.c` is rewritten for read-only use. `struct hammer_io` holds a
+  kmalloc'd copy of the 16/64 KB buffer (`io->data`) rather than a `struct
+  buf`, because Rhapsody's MAXBSIZE is 8 KB. Writes, flushes and
+  modification hooks panic, and `hammer_rostubs.c` holds the write-side
+  symbols the read path still links against.
+  shortcut: copy through 8 KB `bread`; upgrade to direct `VOP_STRATEGY`
+  I/O when Phase 2 write ordering needs it.
+- The device size comes from `DKIOCNUMBLKS` and `DKIOCBLKSIZE`, as HFS
+  does. The IDE driver returns EINVAL for `DKIOCGPARTINFO`.
+- Rhapsody has no `VDATABASE` or `DT_DBF`, so `HAMMER_OBJTYPE_DBFILE`
+  objects appear as regular files.
+- `hammer_to_unix_xid` and `hammer_guid_to_uuid` assemble the uid/gid from
+  uuid bytes `node[2..5]` little-endian; upstream read them as a native
+  `uint32_t`, which is wrong on ppc.
+
+### Token and atomics audit
+
+LWKT tokens, critical sections and the `atomic_*` operations are plain
+memory operations here. The kernel is uniprocessor (`NCPUS 1`) and does not
+preempt kernel code: on i386 `catch_interrupt` checks for an AST only when
+the interrupted context is user or VM86 mode (`machdep/i386/catch.c`), and
+on ppc the interrupt return skips the AST check when returning to the
+kernel (`machdep/ppc/hw_exception.s`). Kernel code therefore switches only
+where it sleeps, which is where HAMMER already expects a token to be
+released.
 
 ## Upstream defects found (to examine in Phase 2)
 
@@ -128,4 +166,8 @@ volume flush.
 | --- | --- | --- | --- |
 | `tests: make check` (swap_test, admit_test) | i386 guest, native cc | PASS | 2026-10-17 |
 | `tests: make check CPPFLAGS=-DHAMMER_TEST_SWAP` | i386 guest, swap forced | PASS | 2026-10-17 |
+| `rbuild kernel`, HAMMERFS on: links, 212 hammer symbols | i386, ppc | PASS | 2026-10-18 |
+| `rbuild kernel`, HAMMERFS off: links, 0 hammer symbols | i386 | PASS | 2026-10-18 |
+| `rbuild buildpackage hammer-1` (newfs_hammer, mount_hammer, hammer) | i386, ppc | PASS | 2026-10-18 |
+| `hammer_guest.py run` admit, refuse-rw, refuse-{badsig,badcrc,v6,twovol,needs-recovery} | i386 guest | PASS, volume unchanged | 2026-10-18 |
 | ppc runtime | ppc | **open**, no ppc runtime available | |

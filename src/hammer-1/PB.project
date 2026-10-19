@@ -3,7 +3,7 @@
     FILESTABLE = {
         H_FILES = ();
         OTHER_SOURCES = (Makefile.preamble, Makefile, Makefile.postamble);
-        SUBPROJECTS = (newfs_hammer, hammer);
+        SUBPROJECTS = (newfs_hammer, mount_hammer, hammer);
     };
     LANGUAGE = English;
     MAKEFILEDIR = "$(MAKEFILEPATH)/pb_makefiles";

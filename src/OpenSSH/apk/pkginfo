@@ -5,3 +5,4 @@ maintainer = Wilfredo Sanchez <wsanchez@apple.com>
 license = BSD
 url = http://www.openssh.com/portable.html
 makedepends = build-base, libinfo, openssl, zlib, perl
+depend = libsystem, openssl, zlib, files

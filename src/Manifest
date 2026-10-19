@@ -31,7 +31,7 @@ dir     driverTools-1         all
 dir     Developer/Commands/enscript-1 all
 dir     ext2fs-1              all
 dir     Commands/file_cmds    all
-dir     files-5               all
+dir     files-1               all
 dir     Developer/Commands/flex-1 all
 dir     Developer/Commands/gawk-1 all
 dir     Developer/Commands/gdb-1 all

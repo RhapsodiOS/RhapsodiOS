@@ -17,7 +17,7 @@ If there is no NIC at all, shut down and try legacy `install2.cmd` with `nic.flp
 
 ## 3. SSH server
 
-OpenSSH is intended to start when `SSHSERVER=-YES-` in `/etc/hostconfig` (see `files-5` sources; startup script `1700_IPServices`).
+OpenSSH is intended to start when `SSHSERVER=-YES-` in `/etc/hostconfig` (see `files-1` sources; startup script `1700_IPServices`).
 
 - [ ] Confirm `/etc/hostconfig` has `SSHSERVER=-YES-`.
 - [ ] Confirm `sshd` is running (or start `/usr/sbin/sshd` once for testing).

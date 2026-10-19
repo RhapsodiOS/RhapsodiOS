@@ -1880,29 +1880,35 @@ def test_task9_fresh_git_checkout_proof(tmp_path):
     assert len(artifacts) == 63 and {a["sha256"] for a in artifacts} == {digest}
 
 
-def _task10_recovery_family(family):
-    assert (TESTS.parent / "AdaptecU2CHIMRecovery.c").is_file(), "missing recovery owner bodies"
-    path = TESTS / "task10-cases.json"
-    assert path.is_file(), "missing recovery reference fixtures"
-    cases = json.loads(path.read_text())
-    selected = {**cases, "cases": [c for c in cases["cases"] if c["family"] == family]}
-    assert selected["cases"], "missing recovery execution family: " + family
-    runner = load_script("ppc_cases")
-    contracts = json.loads((TESTS / "contracts.json").read_text())
-    result = runner.execute(OUT / "reference/image.bin", selected, contracts)
-    assert len(result["results"]) == len(selected["cases"])
+def _task10_recovery_family(family, firmware_evidence):
+    # Authenticate the complete actual run before selecting its family outcomes.
+    audit, evidence = firmware_evidence
+    audit.audit_recovery_group(evidence, REPO, OUT / "objects/task10")
+    cases = json.loads((TESTS / "task10-cases.json").read_text())
+    selected = [c for c in cases["cases"] if c["family"] == family]
+    result = json.loads((OUT / "objects/task10/reference-results.json").read_text())["reference"]
+    by_id = {r["executed_case_id"]: r for r in result["results"]}
+    expected_ids = {c["id"] for c in selected}
+    assert expected_ids and expected_ids == {r["executed_case_id"] for r in result["results"]
+                                           if r["executed_case_id"] in expected_ids}
+    for case in selected:
+        actual = by_id[case["id"]]
+        assert actual["unknown_calls"] == [] and actual["returned_to_sentinel"] is True
+        assert 0 < actual["instructions"] <= case.get("instruction_limit", 1000000)
+        assert actual["observations"] == case["expected"]
+        assert actual["observations"].get("memory") or actual["observations"].get("trace") or "return" in actual["observations"]
 
 
-def test_selection_parity_and_bad_sequence():
-    _task10_recovery_family("interrupt")
+def test_selection_parity_and_bad_sequence(firmware_evidence):
+    _task10_recovery_family("interrupt", firmware_evidence)
 
 
-def test_autosense_residual_and_completion():
-    _task10_recovery_family("completion")
+def test_autosense_residual_and_completion(firmware_evidence):
+    _task10_recovery_family("completion", firmware_evidence)
 
 
-def test_active_abort_vs_completion():
-    _task10_recovery_family("abort")
+def test_active_abort_vs_completion(firmware_evidence):
+    _task10_recovery_family("abort", firmware_evidence)
 
 
 @pytest.mark.parametrize("name", ['SCSIhIntSrst', 'SCSIhIntIOError', 'SCSIhCheckLength', 'SCSIhCdbAbort', 'SCSIhCheckCondition', 'SCSIhBadSeq', 'SCSIhAbortTarget', 'SCSIhIntSelto', 'SCSIhIntFree', 'SCSIhParityError', 'SCSIhStandard64RequestSense', 'SCSIhSwapping32RequestSense', 'SCSIhStandardAdvRequestSense', 'SCSIhSwappingAdvRequestSense', 'SCSIhTerminateCommand', 'SCSIhSetStat', 'SCSIhBreakInterrupt', 'SCSIhStandard64ActiveAbort', 'SCSIhSwapping32ActiveAbort', 'SCSIhStandardAdvActiveAbort', 'SCSIhSwappingAdvActiveAbort', 'SCSIhSwappingRemoveActiveAbort', 'SCSIhStandardRemoveActiveAbort', 'SCSIhStandard64ResidueCalc', 'SCSIhSwapping32ResidueCalc', 'SCSIhStandardAdvResidueCalc', 'SCSIhSwappingAdvResidueCalc', 'SCSIhSwappingRemoveAbortHIOBFromNewQ'])
@@ -1980,3 +1986,77 @@ def test_task10_proof_digest_matches_canonical_git(tmp_path):
                  for a in e["artifacts"] if a["path"].endswith("reconstruction/task10.json")]
     assert len(artifacts) == 28 and {a["sha256"] for a in artifacts} == {digest}
     assert (TESTS.parent / "reconstruction/task10.json").read_bytes().replace(b"\r\n",b"\n") == proof
+
+
+@pytest.mark.parametrize("corruption", ["source", "native", "review", "case", "runner",
+                                        "dependency", "boundary", "closure", "result", "missing_result", "observation", "relocation"])
+def test_task10_owner_rejects_incomplete_evidence(tmp_path, firmware_evidence, corruption):
+    audit, evidence = firmware_evidence
+    repo = tmp_path / "repo"
+    driver = repo / audit.ref.DRIVER
+    shutil.copytree(TESTS.parent, driver, ignore=shutil.ignore_patterns("__pycache__", "task5-cases.json", "task6-cases.json", "task7-cases.json", "task8-cases.json", "task9-cases.json", "task9-ack-cases.json"))
+    shutil.copytree(REPO / "tools/binrecon/binrecon", repo / "tools/binrecon/binrecon",
+                    ignore=shutil.ignore_patterns("__pycache__"))
+    shutil.copyfile(REPO / "tools/binrecon/source_paths.py", repo / "tools/binrecon/source_paths.py")
+    shutil.copyfile(REPO / ".git", repo / ".git")
+    objects = tmp_path / "objects/task10"
+    for group in ("task10", "task9", "task5", "task6", "task7", "task8", "firmware"):
+        shutil.copytree(OUT / "objects" / group, objects.parent / group,
+                        ignore=shutil.ignore_patterns("*.id0", "*.id1", "*.nam", "*.til", "*.i64"))
+    proof_path = driver / "reconstruction/task10.json"
+    proof = json.loads(proof_path.read_text())
+    if corruption == "source":
+        with (driver / "AdaptecU2CHIMRecovery.c").open("a") as stream:
+            stream.write("\nvoid RecoveryReplacement(void) {}\n")
+    elif corruption == "native":
+        path = objects / "1-AdaptecU2CHIMRecovery.c.o"
+        raw = bytearray(path.read_bytes()); raw[-1] ^= 1; path.write_bytes(raw)
+    elif corruption == "review":
+        proof["bodies"].pop()
+    elif corruption == "case":
+        path = driver / "tests/task10-cases.json"
+        cases = json.loads(path.read_text()); cases["cases"].pop(); path.write_text(json.dumps(cases))
+    elif corruption == "runner":
+        with (driver / "tests/ppc_cases.py").open("a") as stream:
+            stream.write("\n# changed execution input\n")
+    elif corruption == "dependency":
+        with (driver / "AdaptecU2CHIMSCB.c").open("a") as stream:
+            stream.write("\n# changed accepted dependency\n")
+    elif corruption == "boundary":
+        path = objects / "boundary-results.json"
+        result = json.loads(path.read_text()); result["sequences"][0]["mode"] = 99
+        path.write_text(json.dumps(result))
+    elif corruption == "closure":
+        proof["execution_inputs"].pop("tools/binrecon/binrecon/__init__.py")
+    elif corruption == "result":
+        path = objects / "reference-results.json"
+        result = json.loads(path.read_text()); result["reference"]["results"][0]["unknown_calls"] = ["missing"]
+        path.write_text(json.dumps(result))
+    elif corruption in ("missing_result", "observation"):
+        path = objects / "reference-results.json"
+        result = json.loads(path.read_text())
+        if corruption == "missing_result":
+            result["reference"]["results"].pop()
+        else:
+            result["reference"]["results"][0]["observations"]["memory"]["hiob+0"] = "00"
+        path.write_text(json.dumps(result))
+    elif corruption == "relocation":
+        next(b for b in proof["bodies"] if b["native_external_relocations"])["native_external_relocations"].pop()
+    proof_path.write_text(json.dumps(proof))
+    import hashlib
+    digest = hashlib.sha256(proof_path.read_bytes().replace(b"\r\n", b"\n")).hexdigest().upper()
+    ledger_path = driver / "reconstruction/ledger.json"
+    ledger = json.loads(ledger_path.read_text())
+    for entry in ledger["entries"]:
+        for artifact in entry["artifacts"]:
+            if artifact["path"].endswith("reconstruction/task10.json"):
+                artifact["sha256"] = digest
+    ledger_path.write_text(json.dumps(ledger))
+    expected = {"source": "stale Task10 native source/object", "native": "stale Task10 native source/object",
+                "review": "exactly 28 recovery bodies", "case": "stale Task10 reference result",
+                "runner": "stale Task10 executed input", "dependency": "stale Task10 accepted source dependency",
+                "boundary": "actual handoff state differs", "closure": "execution input closure is incomplete",
+                "result": "invalid Task10 successful fixture", "missing_result": "missing Task10 execution cases",
+                "observation": "invalid Task10 successful fixture", "relocation": "native call binding differs"}
+    with pytest.raises(ValueError, match=expected[corruption]):
+        audit.audit_recovery_group(evidence, repo, objects)

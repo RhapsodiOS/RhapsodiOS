@@ -1,0 +1,12 @@
+"Title"           = "drvPPCATA";
+"Family"          = "Disk";
+"Driver Name"     = "drvPPCATA";
+"Matching"        = "ide ata ATA";
+"Class Names"     = "IdeDisk IdeController AtapiController";
+"Block Major"     = "3";
+"Character Major" = "15";
+"Boot Driver"     = "no";
+"Load Priority"   = "5050";
+"Server Name" = "drvPPCATA";
+"Driver Version" = "PROGRAM:drvPPCATA  PROJECT:drvPPCATA-5  DEVELOPER:root  BUILT:Tue Nov 23 19:14:26 PST 1999";
+"Version" = "5.00";

@@ -137,3 +137,6 @@ PUBLIC_HDR_INSTALLDIR  = $(SYSTEM_VERS_HEADERS)/bsd/dev
 PRIVATE_HDR_INSTALLDIR = $(KERNEL_VERS_HEADERS)/bsd/dev
 
 OTHER_CFLAGS =  -I$(NEXT_ROOT)$(SYSTEM_LIBRARY_DIR)/Frameworks/System.framework/PrivateHeaders/machdep
+
+# Keep the firmware guard in the independent AWACS source package.
+HFILES += ../../../drvPPCScreamer/PPCScreamer.drvproj/PPCScreamer.lksproj/ScreamerTree.h ../../../drvPPCScreamer/PPCScreamer.drvproj/PPCScreamer.lksproj/ScreamerIdentity.h

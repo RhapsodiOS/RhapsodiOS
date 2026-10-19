@@ -25,6 +25,7 @@
 #include <machdep/ppc/interrupts.h>
 #include <families/yosemite.h>
 #include <chips/heathrow.h>
+#include <chips/keylargo.h>
 
 powermac_init_t yosemite_init = {
 	configure_yosemite,		// configure_machine
@@ -127,6 +128,7 @@ void configure_yosemite(void)
   nheathrow_via_interrupts = NYOSEMITE_VIA1_INTERRUPTS;
 
   powermac_info.viaIRQ = NYOSEMITE_INTERRUPTS + 2;
+  PEHeathrowDAVBusInitialize();
 }
 
 void yosemite_initialize_bats()

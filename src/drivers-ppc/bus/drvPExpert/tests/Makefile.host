@@ -15,16 +15,32 @@ pe_keylargo_test: pe_keylargo_test.c ../powermac/chips/keylargo_audio.c
 interrupt_depth_test: interrupt_depth_test.c
 	$(HOST_CC) $(HOST_CFLAGS) -o $@ interrupt_depth_test.c
 
-keylargo_discovery_test: keylargo_discovery_test.c
+pe_davbus_test: pe_davbus_test.c ../powermac/chips/davbus_audio.c \
+    ../powermac/chips/davbus_audio.h ../../../../kernel-7/machdep/ppc/PEDAVBus.h
+	$(HOST_CC) $(HOST_CFLAGS) $(HOST_CPPFLAGS) -I../../../../kernel-7 \
+	    -o $@ pe_davbus_test.c ../powermac/chips/davbus_audio.c
+
+keylargo_discovery_test: keylargo_discovery_test.c ../powermac/chips/keylargo_model.h \
+    ../powermac/chips/keylargo_discovery.h
 	$(HOST_CC) $(HOST_CFLAGS) -o $@ keylargo_discovery_test.c
 
-test: mpic_direct_test pe_keylargo_test interrupt_depth_test \
-    keylargo_discovery_test
+davbus_binding_test: davbus_binding_test.c ../powermac/chips/keylargo.c \
+    ../powermac/chips/davbus_audio.c ../powermac/chips/davbus_audio.h \
+    ../../../../kernel-7/machdep/ppc/PEDAVBus.h
+	$(HOST_CC) $(HOST_CFLAGS) $(HOST_CPPFLAGS) -I../../../../kernel-7 \
+	    -o $@ davbus_binding_test.c ../powermac/chips/davbus_audio.c
+
+test: mpic_direct_test pe_keylargo_test pe_davbus_test interrupt_depth_test \
+    keylargo_discovery_test davbus_binding_test
+	# drvPExpert builds before kernel-7 installs its headers, so it carries a copy.
+	cmp ../powermac/machdep/ppc/PEDAVBus.h ../../../../kernel-7/machdep/ppc/PEDAVBus.h
 	./mpic_direct_test
 	./pe_keylargo_test
+	./pe_davbus_test
 	./interrupt_depth_test
 	./keylargo_discovery_test
+	./davbus_binding_test
 
 clean:
-	rm -f mpic_direct_test pe_keylargo_test interrupt_depth_test \
-	    keylargo_discovery_test
+	rm -f mpic_direct_test pe_keylargo_test pe_davbus_test interrupt_depth_test \
+	    keylargo_discovery_test davbus_binding_test

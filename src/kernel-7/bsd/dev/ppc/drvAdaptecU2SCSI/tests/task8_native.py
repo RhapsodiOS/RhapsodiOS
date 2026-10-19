@@ -53,9 +53,36 @@ def configuration_access_widths(binary):
                              "access": "write" if op in (36, 37, 38, 39, 44, 45) else "read"})
         if name == "SCSIhPrepareConfig":
             stores = sorted((a["offset"], a["size"]) for a in accesses if a["access"] == "write")
-            if stores != [(1376, 2), (1376, 4)] or any(a["offset"] != 1376 or
+            if stores.count((1376, 2)) != 1 or (1376, 4) not in stores or any(a["offset"] != 1376 or
                     (a["access"] == "read" and a["size"] != 4) for a in accesses):
                 raise ValueError("PrepareConfig narrow access footprint differs")
+            mask = next(i for i, word in enumerate(words) if word >> 26 == 29 and
+                        (word >> 21) & 31 == 3 and word & 0xffff == 15)
+            pc, path = (mask + 1) * 4, []
+            for _ in range(len(words)):
+                word = words[pc // 4]
+                path += [a for a in accesses if a["instruction_offset"] == pc]
+                op = word >> 26
+                if op == 18:
+                    if word & 1:
+                        break
+                    delta = word & 0x03fffffc
+                    pc += delta - (0x04000000 if delta & 0x02000000 else 0)
+                elif op == 16:
+                    # The PCI device & 0xf0000 zero path has CR0.EQ=1.
+                    bo, bi = (word >> 21) & 31, (word >> 16) & 31
+                    if bi != 2 or bo not in (4, 12):
+                        raise ValueError("unknown subsystem zero-path branch")
+                    delta = word & 0xfffc
+                    pc += (delta - (0x10000 if delta & 0x8000 else 0)) if bo == 12 else 4
+                else:
+                    pc += 4
+                if pc < 0 or pc >= len(code):
+                    raise ValueError("subsystem zero path exceeds its body")
+            else:
+                raise ValueError("subsystem zero path did not reach its next real call")
+            if [(a["offset"], a["size"], a["access"]) for a in path] != [(1376, 2, "write")]:
+                raise ValueError("PrepareConfig zero-path narrow access footprint differs")
         elif not accesses or any((a["offset"], a["size"], a["access"]) != (223, 1, "write")
                                  for a in accesses):
             raise ValueError("GetIDBasedConfiguration narrow access footprint differs")

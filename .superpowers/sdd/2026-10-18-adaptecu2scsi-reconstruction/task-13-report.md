@@ -126,7 +126,7 @@ Final frozen pre-entry contexts127/53 each seed ONLY the independently authentic
 
 Only approved shared changes are direct strict CHIM.h prototype discovery and exact AdaptecU2PciLocation16 mapping alongside existing exact IOHandle/Profile cases. Accepted Types.h153..157/interfaces.md43 and real caller187f64/callee1a4044 authenticate r6..r9 four distinct words and productr10. Actual reference/native forwarding preserves `01020304/11223344/55667788/89abcdef` plus each full product `78959004/007f9005/12345678`; wrong width/arity/unknown alias and forged/missing public declarations remain rejected. No generic typedef or return/sentinel/machine-input guard weakening.
 
-Getter frozen raw reference cases copy0/4/168 and oversized172 (actual branch clamps to168). Actual `_fast_bcopy`148dd0..148df8 tailcalls memcpy148f00..149048 with mfmsr/mtmsr/dcbz and indirect alignment paths, unsupported privileged instructions in this strict runner. No real-body execution or privileged-instruction skip is claimed. Approved exact Task13-only external copy adapter obtains raw output ONLY from authenticated genuine relocated native SCSIFuncPtrs bytes. It verifies all41 exact symbolic relocation identities/version4, genuine source bytes/object hash, actual source/destination/count and176-byte A5 destination extent/canaries. Declared41 pointer fields compare symbolically; ordinary version and canary bytes compare exactly. No address-looking-value normalization or reference-address payload is substituted in native evidence. Canonical/adapted case hashes and raw outcomes stay separate; wrong table/relocation/source/count/extent/case identity negatives pass. Each later full native build must use its own genuine mapped table.
+Getter frozen raw reference cases forward and copy0/4/168/172 bytes unchanged. There is no size clamp or size-bound branch: the172-byte case copies the168-byte table plus the following4 bytes, the actual SCSIConfiguration version word00000004, leaving only destination bytes172..175 as A5 canaries. The prior report sentence claiming a clamp was incorrect; production source, frozen cases, adapter and raw results have always preserved172. Actual `_fast_bcopy`148dd0..148df8 tailcalls memcpy148f00..149048 with mfmsr/mtmsr/dcbz and indirect alignment paths, unsupported privileged instructions in this strict runner. No real-body execution or privileged-instruction skip is claimed. Approved exact Task13-only external copy adapter obtains raw output ONLY from authenticated genuine relocated native SCSIFuncPtrs bytes. It verifies all41 exact symbolic relocation identities/version4, genuine source bytes/object hash, actual source/destination/count and176-byte A5 destination extent/canaries. Declared41 pointer fields compare symbolically; ordinary version and canary bytes compare exactly. No address-looking-value normalization or reference-address payload is substituted in native evidence. Canonical/adapted case hashes and raw outcomes stay separate; wrong table/relocation/source/count/extent/case identity negatives pass. Each later full native build must use its own genuine mapped table.
 
 Isolated task13-api register snapshot is exactly accepted Task12 baseline canonicalSHA `4A5113A88B7D24AF5093A8E6FAC794717B936F154A4C38C864AC5F4E03B3E0C0` plus86 rows/107 directional permissions. Zero new offset-size-direction permissions relative to Task12; no duplicate offset-size row. Accepted baseline/shared contracts remain unchanged. Exact frozen union only; baseline/delta/duplicate/attribution negatives pass. Every stable combination key binds actual source owner, particular accepted callee proof, authentic linking callsite/argument and actual Task5 primitive instruction/access/count. Index covers all86 keys, with trace counts equal actual MMIO operation counts. Static authenticators check exact callback/dispatch headers, target tables/null slots, register width and actual primitive bytes. Ordinary publication gate authenticates each captured store against actual owner bounds/native-or-reference bytes, memory width and region extent; extra concrete guards retain adapter bytes31/42/43, location/product words and memory size1492 halfword/pointer1496 word. Damage negatives cover forged width/instruction/extent/owner.
 
@@ -332,3 +332,32 @@ $env:PYTHONPATH='tools/binrecon'
 ```
 
 Result: **1 PASS/0.65s/exit0**. It checks current proof against canonical Git blob; exact476 unique ledger addresses/429CF;61 owned body artifact bindings and unchanged nonowner rows; exact11-only switch delta; source-map436/24/16 and original nonowner mappings. Separate precommit scope check and final32input canonical closure PASS. Targeted verification totals51 checks across46 named/strict +4 publication negatives +1 canonical delta, all passed; no broad old CPU rerun. Canonical Task13 proof SHA **AC0332414CB305C3BA675D7194936BE44D062A10C2EC6BDA164AB30522DD6629**. Final genuine API->Resource callsite0x1100da0 has bytes483002a9 targeting0x1401048, HHCB argument0x70000018; both frozen r28 seeds remain at each real chain entry. Raw final results remain exactly the hashes above. Final handoff status stays DONE_WITH_CONCERNS for the concrete inherited freshness failures/four-build obligations, ready for independent controller review.
+
+
+## Pre-review getter clarification
+
+Controller caught a report-only contradiction in the getter chapter. The former sentence �actual branch clamps to168� is corrected above. Neither the52-byte pinned reference getter nor the delivered native/source getter has such a comparison/branch. Existing proof body review already states `source,destination,size unchanged` and `no invented bound`; proof and all61 ledger artifact hashes remain unchanged.
+
+Pinned reference SCSIGetFunctionPointers1a3d04..1a3d38, bodySHA6DEA591A4B25724E34954CEC5592C260D5D0CBB9115CBE0FAA23A10474CEB993, actual IDA instructions:
+
+```text
+1a3d04 7c0802a6  mflr r0
+1a3d08 90010008  stw r0,8(r1)
+1a3d0c 9421ffc0  stwu r1,-64(r1)
+1a3d10 7c601b78  mr r0,r3       ; save incoming destination
+1a3d14 7c852378  mr r5,r4       ; forward incoming size unchanged
+1a3d18 3c600028  lis r3,0x28
+1a3d1c 3863b398  addi r3,r3,-19560 ; source=0x27b398
+1a3d20 7c040378  mr r4,r0       ; copy destination
+1a3d24 4bfa50ad  bl 0x148dd0    ; _fast_bcopy(source,destination,size)
+1a3d28 38210040  addi r1,r1,64
+1a3d2c 80010008  lwz r0,8(r1)
+1a3d30 7c0803a6  mtlr r0
+1a3d34 4e800020  blr
+```
+
+For final case `task13-SCSIGetFunctionPointers-172`, both held5d raw results contain actual external-boundary trace `_fast_bcopy(SCSIFuncPtrs,table+0,172)` (r5=172),14 runner-counted instructions. Frozen reference external outcome writes172 bytes, with00000004 at destination168..171 and A5 only at172..175. Native adapted outcome also writes172, after validating the immutable original Table object/41 exact relocations/genuine relocated pointer bytes. `getter_copy` authenticates a mapped source section through source+172, reads `raw[offset:offset+172]`, checks both initial and adjacent version words00000004, then supplies `source[:count]`; there is no min(count,168) or synthetic source tail.
+
+Exact source adjacency: reference `_SCSIFuncPtrs`0x27b398..0x27b440, then `_SCSIConfiguration` at0x27b440 whose first4 bytes are00000004. Genuine accepted Tables object has table source0x778..0x820, then Configuration source0x820 (68-byte extent). Final relocated table0x1200778..0x1200820 and Configuration0x1200820..0x1200864; native172-byte source range0x1200778..0x1200824 therefore includes that genuine adjacent word. It lies inside authenticated __AU22,__data section0x1200000..0x1200d04. The external copy boundary remains modeled under the approved exact getter ruling; privileged fast_bcopy/memcpy execution is not claimed.
+
+Clarification used only saved raw-result reads, authenticated Mach-O byte/symbol inspection, existing Python adapter validation without PPC execution, and actual pinned IDA read-only disassembly. `OUT/task13/getter-clarification.log` and `getter-forwarding-disasm.json` retain the concrete evidence. All32 canonical execution inputs, raw public/native/arena hashes and canonical proof AC0332414CB305C3BA675D7194936BE44D062A10C2EC6BDA164AB30522DD6629 were rechecked unchanged; no CPU case was rerun or relabeled. The original held5d producer remains authoritative.

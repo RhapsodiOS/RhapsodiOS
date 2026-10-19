@@ -28,11 +28,11 @@
   },
   "native_input_archive": "tools/binrecon/out/adaptecu2scsi-ppc/task11/batch6r3-inputs.tar",
   "native_scope": "Actual773b WIP batch6r3 RELEASE_PPC object,47bodies after bounded8/8/8/8/8/7 source batches and focused access-order corrections; no metadata-only rebuild. Exact7compiled LF inputs equal separate canonical6f commit. One deliberate volatile qualifier warning retained. Intermediate CF acceptance; no linked pairing/fourbuild/physical concurrency claim.",
-  "execution_revision": "20f867f9b40ef035c6febd94179abd43b181c5c1",
+  "execution_revision": "81abee7a15334eef5b21c28bf3b61619a8ebb75c",
   "execution_inputs": {
     "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/tests/task11-cases.json": {
-      "git_blob_sha256": "5CCB423DA7A3EC5154A077B48A91A814D7298926B1C06501B31664B387DF949D",
-      "working_sha256": "5CCB423DA7A3EC5154A077B48A91A814D7298926B1C06501B31664B387DF949D"
+      "git_blob_sha256": "62B4EA245355AA7EF14A90DFDD3B9B130BB15A41ADAFBFC8C7139EE618BB6F8B",
+      "working_sha256": "62B4EA245355AA7EF14A90DFDD3B9B130BB15A41ADAFBFC8C7139EE618BB6F8B"
     },
     "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/tests/task11-contracts.json": {
       "git_blob_sha256": "DEC24F3F4C26F6F6EA5370DF9DAE26DC74BE04B255D773FB3A04F82E7428149A",
@@ -84,8 +84,8 @@
     }
   },
   "reference_runner_version": "1/unicorn-2.1.4/bd9d0f0a2a3d881a558fbe9e91d57a9232379ddf71f5f3de0de4ab549475e8a1",
-  "reference_results_sha256": "15EE6D49928845E582B52FBC7476AABF5C9381948FF13F897D43D1D126BEB3C7",
-  "supplementary_revision": "698a4ec8c7c9ad8d0ce3727e9a72a632b4e5ecf5",
+  "reference_results_sha256": "428DC5114ACEED7031FA03FD3389575A4BD2857555CE7CAD71D3549AFC2DD535",
+  "supplementary_revision": "81abee7a15334eef5b21c28bf3b61619a8ebb75c",
   "supplementary_inputs": {
     "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/tests/task11_execute.py": {
       "git_blob_sha256": "3A5D3C346F853E178539438126E3816836A61F4C2E92AFAF7793306991E4D64E",
@@ -108,8 +108,8 @@
       "working_sha256": "B4594AAC78B49C0AD3E958FB336708D1F882BC6AF7E3E260A9EC9CB2B973F465"
     },
     "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/tests/task11-cases.json": {
-      "git_blob_sha256": "5CCB423DA7A3EC5154A077B48A91A814D7298926B1C06501B31664B387DF949D",
-      "working_sha256": "5CCB423DA7A3EC5154A077B48A91A814D7298926B1C06501B31664B387DF949D"
+      "git_blob_sha256": "62B4EA245355AA7EF14A90DFDD3B9B130BB15A41ADAFBFC8C7139EE618BB6F8B",
+      "working_sha256": "62B4EA245355AA7EF14A90DFDD3B9B130BB15A41ADAFBFC8C7139EE618BB6F8B"
     },
     "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/tests/task11-contracts.json": {
       "git_blob_sha256": "DEC24F3F4C26F6F6EA5370DF9DAE26DC74BE04B255D773FB3A04F82E7428149A",
@@ -160,8 +160,8 @@
       "working_sha256": "0B7DD7EB6AFB10F9A9AD66780F79BF94897ED2154AF034CDE0DEAED6F074E90A"
     }
   },
-  "native_results_sha256": "4D92781BBDDB7B94E7381EB780B48DA6F6B8CF3D7A1110CE49A17AD9F22A065A",
-  "boundary_results_sha256": "842B251D529B11D2024927D90127C3E4284581F635A98AA424D352D5FD1BD42D",
+  "native_results_sha256": "3C9EF0DBF1C04628C4CE1ECDFAC7E4D5AC7210C9530D9CA5E1168EDA253EA219",
+  "boundary_results_sha256": "EA6E6A9CD34A4E96EFC036D38DA3B85717257D92FA0727E760D510BCDBF15AC4",
   "accepted_contracts_sha256": "7DDC8805D2B937392842D8770D0126333C1B1023EB6DBB97FA9485209A88E859",
   "contract_delta": [
     {
@@ -2536,7 +2536,7 @@
       "owner": "AdaptecU2CHIMResource.c",
       "reference_size": 96,
       "source_line": 302,
-      "control_flow": "Exact16 mask8 clears; only nonsentinel head enters actual dispatch; remaining masks and queued ownership observed.",
+      "control_flow": "Exact16 mask8 clears; nonsentinel heads invoke real dispatch. Actual AsyncEvent7 caller clears target0 mask8 and transfers its queued request through GetScb255 to host ownership; target1 mask9 retains mask1 and its device queue. No delivery/completion callback, reserved SCB unchanged.",
       "cases": [
         "task11-b3-SCSIrUnFreezeAllDeviceQueues"
       ],
@@ -2574,6 +2574,9 @@
           "original_bytes": "4BFFFC91",
           "scattered": false
         }
+      ],
+      "caller_cases": [
+        "task11-fix1-unfreeze-all-exhausted-host"
       ]
     },
     {
@@ -2645,7 +2648,7 @@
       "owner": "AdaptecU2CHIMResource.c",
       "reference_size": 104,
       "source_line": 334,
-      "control_flow": "Real HIM unit setup precedes resource pointer binding at exact40byte target stride; target/lun narrowing and neutral unit fields observed.",
+      "control_flow": "Real HIM unit setup precedes resource pointer binding at exact68byte resource stride; target/lun narrowing and neutral unit fields observed.",
       "cases": [
         "task11-b4-setunit-0",
         "task11-b4-setunit-15",
@@ -3546,7 +3549,8 @@
         "task11-b6-event-7",
         "task11-b6-event-8",
         "task11-b6-event-9",
-        "task11-b6-event-4294967295"
+        "task11-b6-event-4294967295",
+        "task11-fix1-unfreeze-all-exhausted-host"
       ],
       "native_address": 5204,
       "native_size": 276,
@@ -4299,5 +4303,39 @@
       "sha256": "79118939A60B599765673C9E9057CD1836F8034F169CBEE58382926D90B29C27",
       "contract_review": "Actual no-op HIM reference callee bytes execute at a bounded relocated code address. Native wrapper sole BR24 symbol and linked-reference wrapper branch target are authenticated; no internal hook or fabricated return."
     }
+  },
+  "fix1": {
+    "review": "I1 nonempty UnFreezeAll caller ownership transfer",
+    "actual_execution_revision": "81abee7a15334eef5b21c28bf3b61619a8ebb75c",
+    "new_case": "task11-fix1-unfreeze-all-exhausted-host",
+    "historical_raw": {
+      "reference-results-historical-20f.json": {
+        "sha256": "15EE6D49928845E582B52FBC7476AABF5C9381948FF13F897D43D1D126BEB3C7",
+        "producer": "20f867f9b40ef035c6febd94179abd43b181c5c1"
+      },
+      "native-results-historical-698a.json": {
+        "sha256": "4D92781BBDDB7B94E7381EB780B48DA6F6B8CF3D7A1110CE49A17AD9F22A065A",
+        "producer": "698a4ec8c7c9ad8d0ce3727e9a72a632b4e5ecf5"
+      },
+      "boundary-results-historical-698a.json": {
+        "sha256": "842B251D529B11D2024927D90127C3E4284581F635A98AA424D352D5FD1BD42D",
+        "producer": "698a4ec8c7c9ad8d0ce3727e9a72a632b4e5ecf5"
+      },
+      "task11-historical-dcc.json": {
+        "sha256": "BA12574B49896EE2517AF79A0C2D7D8187F2BC9B15A92A87419E3A22643D22C2"
+      }
+    },
+    "prefix_proof": {
+      "old208_case_objects_equal": true,
+      "old208_complete_results_equal": true,
+      "prefix_results_sha256": "6F98DC77DA7272BC2C3274167EBBBACDEA0BB878947495B6772DB2A1ED4CF66E",
+      "native29_actual_payload_equal": true,
+      "boundary3_complete_actual_equal": true,
+      "actual_execution_revision": "81abee7a15334eef5b21c28bf3b61619a8ebb75c",
+      "head_held_after_all_runs": "81abee7a15334eef5b21c28bf3b61619a8ebb75c",
+      "new_case_id": "task11-fix1-unfreeze-all-exhausted-host",
+      "new_case_instructions": 616
+    },
+    "scope": "One additional actual caller; full209 fresh public and required29leaf/3boundary fresh supplementary closures. Production/native/contract inputs unchanged; no native build/layout/inventory or older group corpus rerun."
   }
 }

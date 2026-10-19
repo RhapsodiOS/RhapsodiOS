@@ -146,6 +146,9 @@ def audit(evidence,repo,objects):
         raise ValueError("resource actual runner bytes differ")
     by_id={c["id"]:c for c in cases["cases"]}
     for body in bodies.values():
+        if (body["name"]=="_SCSIrUnFreezeAllDeviceQueues" and
+                body.get("caller_cases")!=["task11-fix1-unfreeze-all-exhausted-host"]):
+            raise ValueError("resource unfreeze-all caller proof binding differs")
         if body["name"]=="_SCSIRFreeUnitHandle":
             if body["cases"]!=["task11-native-freeunit-unit","task11-native-freeunit-hhcb"]:raise ValueError("resource alias native scope differs")
         elif not body["cases"] or any(by_id[c]["entry"]!=body["name"].removeprefix("_") or

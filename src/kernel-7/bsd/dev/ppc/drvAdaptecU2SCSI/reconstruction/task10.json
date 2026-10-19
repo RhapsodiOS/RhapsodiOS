@@ -40,7 +40,7 @@
     }
   },
   "native_manifest_sha256": "E39F98A1E24102B00ECA51CE0CECCB54BF12903F26961EA4EAA48559F9A4189F",
-  "native_object_scope": "All28owned production PPC BE MH_OBJECT bodies, bounded8/8/8/4 batches plus four-body access correction. Actual158reference cases,14native/refSetStat pairs,4critical SCB native/ref footprints,8actual serialized sequences. Intermediate target object only; no full linked28body pairing/four-kernel/physical timing or concurrency claim. Long poll maxima control-flow-only under controller ruling.",
+  "native_object_scope": "All28owned production PPC BE MH_OBJECT bodies, bounded8/8/8/4 batches plus four-body access correction. Actual173reference cases,14native/refSetStat pairs,4critical SCB native/ref footprints,8actual serialized sequences. Intermediate target object only; no full linked28body pairing/four-kernel/physical timing or concurrency claim. Long poll maxima control-flow-only under controller ruling.",
   "accepted_dependencies": {
     "AdaptecU2CHIMFirmware.c": {
       "group": "firmware",
@@ -124,8 +124,8 @@
   },
   "execution_inputs": {
     "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/tests/task10-cases.json": {
-      "git_blob_sha256": "9ABE1F08021C09E99C6A6812BC912A798307832597176126D1BC3B9B063337A8",
-      "working_sha256": "9ABE1F08021C09E99C6A6812BC912A798307832597176126D1BC3B9B063337A8"
+      "git_blob_sha256": "73D897D7F7A675F725FAF06BA34EED955E5AE0C9F05D123375333E8348C19BAF",
+      "working_sha256": "73D897D7F7A675F725FAF06BA34EED955E5AE0C9F05D123375333E8348C19BAF"
     },
     "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/tests/contracts.json": {
       "git_blob_sha256": "7DDC8805D2B937392842D8770D0126333C1B1023EB6DBB97FA9485209A88E859",
@@ -177,7 +177,7 @@
     }
   },
   "reference_runner_version": "1/unicorn-2.1.4/bd9d0f0a2a3d881a558fbe9e91d57a9232379ddf71f5f3de0de4ab549475e8a1",
-  "test_revision": "030d8a79fd575a4a26bf292e4404d0c2e09db1e6",
+  "test_revision": "5994b94591ef7ec569b416d4ac17895006048e06",
   "native_helper_sha256": "C670A99E092A9FFB8E13B8611A2607C88A448C89967F9F5E80B66735A04F2D50",
   "native_accesses": {
     "SCSIhSwapping32RequestSense": [
@@ -817,7 +817,11 @@
       "control_flow": "Selected SCSISEQ40 and firmwarebyte60==59 path sets manager1 and clears register0 bits; otherwise actual newQ removal supplies reason and manager1 only when removed.",
       "cases": [
         "task10-b1-remove-selected-3",
-        "task10-b1-remove-selected-5"
+        "task10-b1-remove-selected-5",
+        "task10-r1-remove-3-hit",
+        "task10-r1-remove-3-miss",
+        "task10-r1-remove-5-hit",
+        "task10-r1-remove-5-miss"
       ],
       "native_address": 2104,
       "native_size": 396,
@@ -859,7 +863,11 @@
       "control_flow": "Selected hardware path mirrors exact manager/register accesses; otherwise actual ExeQ search with reason and terminate0, manager1 only when removal succeeds.",
       "cases": [
         "task10-b1-remove-selected-0",
-        "task10-b1-remove-selected-4"
+        "task10-b1-remove-selected-4",
+        "task10-r1-remove-0-hit",
+        "task10-r1-remove-0-miss",
+        "task10-r1-remove-4-hit",
+        "task10-r1-remove-4-miss"
       ],
       "native_address": 2500,
       "native_size": 416,
@@ -1543,7 +1551,9 @@
         "task10-b3-active-dma-Standard64-147",
         "task10-b8-active-exeq-Standard64",
         "task10-b9-active-build-Standard64-False",
-        "task10-b9-active-build-Standard64-True"
+        "task10-b9-active-build-Standard64-True",
+        "task10-r1-active-0-seq",
+        "task10-r1-active-0-done"
       ],
       "native_address": 8480,
       "native_size": 1224,
@@ -1685,7 +1695,9 @@
         "task10-b3-active-dma-StandardAdv-147",
         "task10-b8-active-exeq-StandardAdv",
         "task10-b9-active-build-StandardAdv-False",
-        "task10-b9-active-build-StandardAdv-True"
+        "task10-b9-active-build-StandardAdv-True",
+        "task10-r1-active-4-seq",
+        "task10-r1-active-4-done"
       ],
       "native_address": 9704,
       "native_size": 1220,
@@ -1828,7 +1840,8 @@
         "task10-b9-active-build-SwappingAdv-False",
         "task10-b9-active-build-SwappingAdv-True",
         "task10-b16-active-cache-False",
-        "task10-b16-active-cache-True"
+        "task10-b16-active-cache-True",
+        "task10-r1-active-5-done"
       ],
       "native_address": 10924,
       "native_size": 1192,
@@ -1956,7 +1969,8 @@
       "cases": [
         "task10-b3-active-selected-Swapping32",
         "task10-b9-active-build-Swapping32-False",
-        "task10-b9-active-build-Swapping32-True"
+        "task10-b9-active-build-Swapping32-True",
+        "task10-r1-active-3-done"
       ],
       "native_address": 12116,
       "native_size": 568,
@@ -2121,7 +2135,8 @@
         "task10-b3-parity-3-224",
         "task10-b3-parity-4-224",
         "task10-b3-parity-4-128",
-        "task10-b3-parity-5-224"
+        "task10-b3-parity-5-224",
+        "task10-r1-parity-sentinel"
       ],
       "native_address": 13712,
       "native_size": 656,

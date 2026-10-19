@@ -14678,7 +14678,7 @@
           "kind": "code-offset"
         }
       ],
-      "status": "pending-owner-control-flow",
+      "status": "recovered",
       "required_gate": "owner-group-and-final",
       "consumers": [
         1694348,
@@ -14819,7 +14819,8 @@
           "target": 1694520
         }
       ],
-      "guard_start": 1694336
+      "guard_start": 1694336,
+      "owner_evidence": "reconstruction/task12.json"
     },
     {
       "name": "switch_230ef4",

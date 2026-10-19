@@ -36,6 +36,12 @@ def audit(stage: str, reference: Path, repo_root: Path, objects: Path | None,
         return
     if stage == "group":
         evidence = authenticate_reference(reference, repo_root)
+        if group == "AdaptecU2CHIMHIM.c":
+            spec = importlib.util.spec_from_file_location("au2_him_audit", repo_root / ref.DRIVER / "tests/task12_audit.py")
+            him = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(him)
+            him.audit(evidence, repo_root, objects)
+            return
         if group == "AdaptecU2CHIMResource.c":
             spec = importlib.util.spec_from_file_location("au2_resource_audit", repo_root / ref.DRIVER / "tests/task11_audit.py")
             resource = importlib.util.module_from_spec(spec)

@@ -694,3 +694,13 @@ with actual PPC object provenance and225 frozen reference cases covering
 all67 direct entries. See task7.json and verification.md. The original
 function-marker inventory block is unchanged; remaining owners, complete
 kernel builds and linked paired acceptance remain pending later tasks.
+
+Task12 HIM owner now has all31 bodies control-flow-confirmed, including
+interleavedSCSIHSetupHardware192304. task12.json binds135 actual public
+reference cases and135 mixed compiled HIM/acceptedConfig/Resource cases,
+2 authenticSCSIRInitialize entry-r28 context pairs,2 direct FreeUnit pairs
+and all8 assigned switch paths. Ledger368CF/108unexamined; map375mapped,
+85unmapped,16duplicate candidates. switch230ed4 recovered; data30recovered,
+13switch owner-CF pending,5controller-data pending. Seven existing mapped
+transitional drafts do not add CF bodies. Final four builds/fresh allcorpora
+paired acceptance remain required.

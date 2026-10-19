@@ -395,3 +395,25 @@ native widened-store/changed-return negatives. No shared runner/type/header
 or incoming-r28 exception was changed. Linked pairing, four-kernel builds,
 physical validation and prior-group final freshness/portability remain later
 Tasks12/15/16 obligations; see the Task9 report for exact paths and limits.
+
+## Task12 hardware interface
+
+Source/native/runtime input freeze78b79a22bdbdde4f6b88792bc650035590bb17c3.
+All31 SCSIH bodies are in AdaptecU2CHIMHIM.c. Actual public135 cases
+(6,304,724 instructions) and mixed compiled135 cases(6,305,734 instructions)
+passed with exact frozen observations. Two realSCSIRInitialize context pairs
+preserve explicit incomingr28 through nativeHIM/nativeConfig to MMIO255;
+2 directFreeUnit no-op pairs retain the public alias-parser Task16 obligation.
+Native switch graph proves all8 paths including index4/default no-sync and
+indices3/7 shared-sync. Owner gate resolves146 exact snapshot permission rows
+to538 raw CPU-derived operation records, actual owner/callsite/instruction
+bytes and acceptedcallee proofs. tests/task12-contracts.json is exact accepted
+Task11 snapshot plus isolatedTask12 additions; accepted shared inputs unchanged.
+
+Raw outputs: OUT/objects/task12/reference-results.json and native-results.json.
+Actual native compilation is608e9f5+WIP batch4 RELEASE_PPC, with all7 compiled
+LF inputs separately equal canonical78b79a22b blobs. This is an intermediate
+control-flow proof with pinned real reference remaining callees. Complete
+Task15 four builds, Task13 nativeAPI r28 forwarding, Task16 fresh allcorpora/
+linked pairs and all4-context witnesses remain mandatory. See fullTask12 report
+and reconstruction/task12.json for producer identities, commands and limits.

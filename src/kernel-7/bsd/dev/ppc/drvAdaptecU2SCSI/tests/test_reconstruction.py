@@ -37,6 +37,21 @@ def load_script(name):
     return module
 
 
+def test_him_memory_configuration_and_unit_handles():
+    assert (TESTS.parent / "AdaptecU2CHIMHIM.c").is_file(), "missing HIM owner bodies"
+    load_script("task12_audit").family(REPO, OUT, "memory")
+
+
+def test_him_queue_interrupt_and_idle():
+    assert (TESTS.parent / "AdaptecU2CHIMHIM.c").is_file(), "missing HIM owner bodies"
+    load_script("task12_audit").family(REPO, OUT, "queue")
+
+
+def test_him_eeprom_profile_failures():
+    assert (TESTS.parent / "AdaptecU2CHIMHIM.c").is_file(), "missing HIM owner bodies"
+    load_script("task12_audit").family(REPO, OUT, "profile")
+
+
 def test_target_layout_and_method_contracts(reference):
     # The audit reads the PPC object's constants and Objective-C metadata;
     # a host compiler's layout or comments in a header cannot satisfy it.
@@ -1049,7 +1064,7 @@ def test_firmware_switch_metadata_all_case_values(firmware_evidence):
     assert sum(d["normalized_case_count"] for d in switches) == 592
     assert {status: sum(d["status"] == status for d in document["objects"])
             for status in ("recovered", "pending-owner-recovery", "pending-owner-control-flow")} == {
-                "recovered": 29, "pending-owner-recovery": 5, "pending-owner-control-flow": 14}
+                "recovered": 30, "pending-owner-recovery": 5, "pending-owner-control-flow": 13}
 
 
 @pytest.mark.parametrize("corruption", ["missing_source", "incorrect_source", "object", "review",
@@ -2292,7 +2307,8 @@ def test_task11_canonical_git_closure_and_scoped_delta(task11_archives):
     prefix="src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/reconstruction/"
     def blob(revision,name):return subprocess.check_output(["git","show",revision+":"+prefix+name],cwd=REPO)
     base="773b8d68abf5917aaa7e95871fec394d571619b2"
-    proof=blob("HEAD","task11.json");ledger=json.loads(blob("HEAD","ledger.json"))
+    accepted="608e9f524deeaaa79910e484ee9c5008be3f863c"
+    proof=blob(accepted,"task11.json");ledger=json.loads(blob(accepted,"ledger.json"))
     digest=hashlib.sha256(proof).hexdigest().upper();own={b["address"] for b in task11_archives["proof"]["bodies"]}
     before={e["address"]:e for e in json.loads(blob(base,"ledger.json"))["entries"]}
     after={e["address"]:e for e in ledger["entries"]}
@@ -2300,7 +2316,7 @@ def test_task11_canonical_git_closure_and_scoped_delta(task11_archives):
     assert all(e["artifacts"]==[{"kind":"source-native-control-flow-and-actual-cases",
                 "path":prefix+"task11.json","sha256":digest}] for a,e in after.items() if a in own)
     assert (TESTS.parent / "reconstruction/task11.json").read_bytes().replace(b"\r\n",b"\n")==proof
-    old=json.loads(blob(base,"source-map.json"));new=json.loads(blob("HEAD","source-map.json"))
+    old=json.loads(blob(base,"source-map.json"));new=json.loads(blob(accepted,"source-map.json"))
     assert len(new["mapped"])==len(old["mapped"])+47
     old_mapped={e["address"]:e for e in old["mapped"]};new_mapped={e["address"]:e for e in new["mapped"]}
     changed={a for a in old_mapped if old_mapped[a]!=new_mapped[a]}|set(new_mapped)-set(old_mapped)
@@ -2309,5 +2325,5 @@ def test_task11_canonical_git_closure_and_scoped_delta(task11_archives):
     assert old["duplicate_candidates"]==new["duplicate_candidates"]
     assert old["boundary_disputed"]==new["boundary_disputed"]
     old={o["name"]:o for o in json.loads(blob(base,"data.json"))["objects"]}
-    new={o["name"]:o for o in json.loads(blob("HEAD","data.json"))["objects"]}
+    new={o["name"]:o for o in json.loads(blob(accepted,"data.json"))["objects"]}
     assert {n for n in old if old[n]!=new[n]}=={"switch_230f1c","switch_230f40"}

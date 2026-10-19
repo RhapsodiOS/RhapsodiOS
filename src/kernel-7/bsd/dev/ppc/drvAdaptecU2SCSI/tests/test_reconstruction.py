@@ -1909,3 +1909,74 @@ def test_active_abort_vs_completion():
 def test_task10_required_body(name):
     source = (TESTS.parent / "AdaptecU2CHIMRecovery.c").read_text()
     assert re.search(r"\b" + name + r"\([^;]*?\)\s*\{", source), "missing recovery body: " + name
+
+
+def test_task10_native_access_widths_and_order():
+    native = load_script("task10_native")
+    native.access_widths(OUT / "objects/task10/1-AdaptecU2CHIMRecovery.c.o")
+    native.access_widths(OUT / "reference/image.bin")
+
+
+def test_task10_native_order_rejects_pre_correction_object():
+    native = load_script("task10_native")
+    with pytest.raises(ValueError, match="publication differs"):
+        native.access_widths(OUT / "objects/task10/pre-correction.o")
+
+
+def test_task10_consecutive_call_boundaries():
+    path = TESTS / "task10-sequences.json"
+    assert path.is_file(), "missing actual recovery call-boundary sequences"
+    helper = load_script("task10_sequence")
+    helper.audit(json.loads(path.read_text()), json.loads((TESTS / "task10-cases.json").read_text()))
+
+
+@pytest.mark.parametrize("corruption", ["byte", "pointer"])
+def test_task10_consecutive_call_boundary_rejects_corruption(corruption):
+    helper = load_script("task10_sequence")
+    document = json.loads((TESTS / "task10-sequences.json").read_text())
+    cases = json.loads((TESTS / "task10-cases.json").read_text())
+    second = next(c for c in cases["cases"] if c["id"] == document["sequences"][0]["cases"][1])
+    region = next(r for r in second["memory"] if r["name"] == "hiob")
+    if corruption == "byte":
+        raw = bytearray.fromhex(region["bytes"])
+        raw[5] ^= 1
+        region["bytes"] = raw.hex()
+    else:
+        next(p for p in region["pointers"] if p["offset"] == 0)["value"] = {"region": "unit", "offset": 4}
+    with pytest.raises(ValueError, match="boundary bytes or pointer bindings differ"):
+        helper.audit(document, cases)
+
+
+def test_task10_poll_counter_guards():
+    native = load_script("task10_native")
+    assert hasattr(native, "counter_guards"), "missing recovery poll counter/native synchronization proof"
+    native.counter_guards(OUT / "objects/task10/1-AdaptecU2CHIMRecovery.c.o")
+
+
+def test_task10_owner_native_and_control_flow_evidence(firmware_evidence):
+    assert (TESTS.parent / "reconstruction/task10.json").is_file(), "missing recovery owner source/native/fixture proof"
+    audit, evidence = firmware_evidence
+    audit.audit_recovery_group(evidence, REPO, OUT / "objects/task10")
+
+
+def test_task10_status_native_memory_order():
+    helper = load_script("task10_native")
+    cases = [c for c in json.loads((TESTS / "task10-cases.json").read_text())["cases"]
+             if c["entry"] == "SCSIhSetStat"]
+    assert len(helper.compare_status(OUT / "reference/image.bin",
+               OUT / "objects/task10/1-AdaptecU2CHIMRecovery.c.o", cases)) == 14
+
+
+def test_task10_proof_digest_matches_canonical_git(tmp_path):
+    import hashlib
+    import subprocess
+    prefix = "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/reconstruction/"
+    proof = subprocess.check_output(["git", "show", "HEAD:"+prefix+"task10.json"], cwd=REPO)
+    ledger = json.loads(subprocess.check_output(["git", "show", "HEAD:"+prefix+"ledger.json"], cwd=REPO))
+    path = tmp_path / "task10.json"
+    path.write_bytes(proof)
+    digest = hashlib.sha256(path.read_bytes()).hexdigest().upper()
+    artifacts = [a for e in ledger["entries"] if 0x193bb8 <= e["address"] < 0x198100
+                 for a in e["artifacts"] if a["path"].endswith("reconstruction/task10.json")]
+    assert len(artifacts) == 28 and {a["sha256"] for a in artifacts} == {digest}
+    assert (TESTS.parent / "reconstruction/task10.json").read_bytes().replace(b"\r\n",b"\n") == proof

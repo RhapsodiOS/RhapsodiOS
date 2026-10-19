@@ -142,7 +142,8 @@ ENET_LOAD_PRI_PROP
 "\"Patch SROM\" = \"Yes\";"
 "\"Dump SROM\" = \"No\";"
 "\"Network Connection\" = \"AutoSense\";"
-"\"Matching\" = \"pci1011,9 pci1186,1101 pci1186,1110 pci10b8,2401 pci1109,1900 pci1385,1100 pci1109,2a00 pci1011,14 pci1011,2\";"
+/* Divergence from 5.6: pci1011,19 (21142/21143, QEMU's tulip) is added. */
+"\"Matching\" = \"pci1011,9 pci1186,1101 pci1186,1110 pci10b8,2401 pci1109,1900 pci1385,1100 pci1109,2a00 pci1011,14 pci1011,2 pci1011,19\";"
 "\"Load Priority\" = \"7000\";"
 "\0"
 "\"Driver Name\" = \"DECchip21041\";"

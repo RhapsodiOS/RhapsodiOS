@@ -1373,7 +1373,12 @@ def _task8_reference_family(family):
     assert selected["cases"], "missing required Task8 family fixtures"
     source = source_path.read_text()
     for case in selected["cases"]:
-        assert re.search(r"\b" + case["entry"] + r"\([^;]*?\)\s*\{", source), case["entry"]
+        entry = case["entry"]
+        if entry == "SCSIHInitialize":
+            assert case["id"] == "task8-extra-initialize-sequencer-failure"
+            entry = "SCSIhSwappingAdvSetupSequencer"
+            assert any(body["entry"] == entry for body in case["internal"])
+        assert re.search(r"\b" + entry + r"\([^;]*?\)\s*\{", source), entry
     result = load_script("ppc_cases").execute(OUT / "reference/image.bin", selected,
                                            json.loads((TESTS / "contracts.json").read_text()))
     assert len(result["results"]) == len(selected["cases"])
@@ -1535,3 +1540,42 @@ def test_task8_proof_digest_matches_canonical_git():
     artifacts = [artifact for entry in ledger["entries"] for artifact in entry["artifacts"]
                  if artifact["path"].endswith("reconstruction/task8.json")]
     assert len(artifacts) == 20 and {artifact["sha256"] for artifact in artifacts} == {digest}
+
+
+def test_task8_fresh_git_checkout_proof(tmp_path):
+    import hashlib
+    import subprocess
+    prefix = (TESTS.parent / "reconstruction").relative_to(REPO).as_posix() + "/"
+    paths = [prefix + name for name in ("task8.json", "ledger.json")]
+    subprocess.check_call(["git", "checkout-index", "--prefix=" + tmp_path.as_posix() + "/", "--", *paths], cwd=REPO)
+    blob = subprocess.check_output(["git", "show", "HEAD:" + paths[0]], cwd=REPO)
+    assert (tmp_path / paths[0]).read_bytes().replace(b"\r\n", b"\n") == blob
+    digest = hashlib.sha256(blob).hexdigest().upper()
+    ledger = json.loads((tmp_path / paths[1]).read_text())
+    artifacts = [a for e in ledger["entries"] for a in e["artifacts"] if a["path"].endswith("task8.json")]
+    assert len(artifacts) == 20 and {a["sha256"] for a in artifacts} == {digest}
+
+
+@pytest.mark.parametrize("corruption", ["channel_write", "external_target"])
+def test_task8_native_switch_rejects_wrong_execution(tmp_path, corruption):
+    from binrecon.macho import load_image
+    source = OUT / "objects/task8/1-AdaptecU2CHIMConfig.c.o"
+    raw, image = load_image(source)
+    raw = bytearray(raw)
+    if corruption == "channel_write":
+        text = next(s for s in image["sections"] if s["name"] == "__TEXT,__text")
+        start = next(s["address"] for s in image["symbols"] if s["name"] == "_SCSIhGetCapability")
+        offset = raw.index(bytes.fromhex("38000001"), text["offset"] + start)
+        raw[offset:offset+4] = bytes.fromhex("38000002")
+        expected = "native capability differs"
+    else:
+        token = b"_OSDGetHostAddress\0"
+        assert raw.count(token) == 1
+        raw = raw.replace(token, b"_OSDGetHostAddresX\0")
+        expected = "unexpected native external dependency"
+    changed = tmp_path / "changed.o"
+    changed.write_bytes(raw)
+    case = next(c for c in json.loads((TESTS / "task8-cases.json").read_text())["cases"]
+                if c["id"] == "task8-cap-7873-2")
+    with pytest.raises(ValueError, match=expected):
+        load_script("task8_native").run_capability(changed, OUT / "objects/task5/2-AdaptecU2CHIMOSD.c.o", case)

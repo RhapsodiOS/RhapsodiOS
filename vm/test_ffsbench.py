@@ -520,3 +520,12 @@ def test_ext2_unavailable_makes_only_ext2_unsup(monkeypatch):
     monkeypatch.setattr(fb, "ext2_volume", boom)
     vol, why = fb.try_ext2_volume("/nonexistent")
     assert vol is None and "wsl: not found" in why
+
+
+def test_print_lines_survives_a_console_that_cannot_encode():
+    import io
+    raw = io.BytesIO()
+    out = io.TextIOWrapper(raw, encoding="cp1252")
+    fb.print_lines(["msdos fsck=/t[.Å←T", "ok"], out)
+    out.flush()
+    assert raw.getvalue().splitlines()[1] == b"ok"

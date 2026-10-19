@@ -1181,6 +1181,15 @@ def target_result(name, status, reason="", report_text="", fsck=""):
     return {"status": status, "reason": reason, "counts": counts, "fails": fails, "fsck": fsck}
 
 
+def print_lines(lines, out=None):
+    """Print each line, replacing what the console's encoding cannot show
+    (fsck output may hold raw bytes): a summary must never stop the run."""
+    out = out or sys.stdout
+    enc = getattr(out, "encoding", None) or "ascii"
+    for line in lines:
+        out.write(line.encode(enc, "replace").decode(enc) + "\n")
+
+
 def stress_report_summary_lines(targets):
     import stress_report
     return stress_report.summarize_targets(targets)
@@ -1213,7 +1222,7 @@ def stress(kernel, label, cycles=1, bootargs="", cats="", seed=None, disk=False,
     if seed is None:
         seed = random.randrange(1 << 31)
     res = {"seed": seed, "label": label, "kernel": kernel or "image"}
-    texts, err, skipped, g = [], None, False, None
+    texts, err, skipped, g, summary = [], None, False, None, []
     fs = fs or ["ufs"]
     targets = [n for n in fs if n != "ufs"]
     tdisk, ttexts, tout = os.path.join(outdir, "targets.img"), {}, ""
@@ -1320,8 +1329,7 @@ def stress(kernel, label, cycles=1, bootargs="", cats="", seed=None, disk=False,
             res["targets"] = assemble_targets(tout, ttexts, targets, lambda n: host_fsck(tdisk, n))
             for name, why in res.pop("targets_unsup", {}).items():
                 res["targets"][name] = target_result(name, "unsup", why)
-            for line in stress_report_summary_lines(res["targets"]):
-                print(line)
+            summary = stress_report_summary_lines(res["targets"])
         # keep the targets disk when a check found problems: it is the evidence
         if not any(t.get("fsck") not in ("", "clean", "n/a") for t in res.get("targets", {}).values()):
             try:
@@ -1338,6 +1346,7 @@ def stress(kernel, label, cycles=1, bootargs="", cats="", seed=None, disk=False,
         with open(result, "w", encoding="utf-8") as f:
             f.write(json.dumps(res) + "\n")
         print(json.dumps(res))
+        print_lines(summary)
     if err:
         raise err
 

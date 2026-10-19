@@ -2063,3 +2063,34 @@ def test_task10_owner_rejects_incomplete_evidence(tmp_path, firmware_evidence, c
 
 def test_task10_review_recovery_exit_coverage():
     load_script("verify").audit_recovery_exits(json.loads((TESTS / "task10-cases.json").read_text()))
+
+@pytest.fixture(scope="module")
+def task10_review_cases():
+    return json.loads((TESTS / "task10-cases.json").read_text())
+
+
+@pytest.mark.parametrize("exit_name", ["parity-sentinel"] +
+                         ["remove-%s-%s" % (mode, found) for mode in (0, 3, 4, 5) for found in ("hit", "miss")] +
+                         ["active-%s-%s" % (mode, queue) for mode in (0, 3, 4, 5)
+                          for queue in (("seq", "done") if mode in (0, 4) else ("done",))])
+def test_task10_review_exit_rejects_omission(task10_review_cases, exit_name):
+    changed = {**task10_review_cases, "cases": [c for c in task10_review_cases["cases"]
+                                             if c.get("recovery_exit") != exit_name]}
+    with pytest.raises(ValueError, match="missing distinct recovery error/abort exits"):
+        load_script("verify").audit_recovery_exits(changed)
+
+
+@pytest.mark.parametrize("exit_name", ["parity-sentinel", "remove-0-hit", "active-5-done"])
+def test_task10_review_exit_rejects_observation_corruption(task10_review_cases, exit_name):
+    changed = {**task10_review_cases, "cases": list(task10_review_cases["cases"])}
+    index = next(i for i, c in enumerate(changed["cases"]) if c.get("recovery_exit") == exit_name)
+    case = copy.deepcopy(changed["cases"][index])
+    changed["cases"][index] = case
+    if exit_name == "parity-sentinel":
+        next(e for e in case["expected"]["trace"] if e.get("access") == "write")["value"] = 165
+    elif exit_name.startswith("remove"):
+        case["expected"]["memory"]["hiob+32"] = "09"
+    else:
+        case["expected"]["memory"]["resource+16"] = "00000001"
+    with pytest.raises(ValueError, match="recovery prefix|removal ownership|completion queue ownership"):
+        load_script("verify").audit_recovery_exits(changed)

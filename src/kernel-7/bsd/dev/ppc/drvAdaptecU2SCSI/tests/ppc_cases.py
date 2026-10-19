@@ -100,6 +100,21 @@ def run_case(binary: Path, case: dict, contracts: dict) -> dict:
         raise ValueError("runner requires PPC32 big-endian Mach-O")
     if image["extensions"]["macho"]["header"]["file_type"] != 2:
         raise ValueError("runner requires a linked executable")
+    ack = case.get("ack_exhaustion", False)
+    if "ack_exhaustion" in case:
+        allowed = {"SCSIhSendMessage": (0x1990e4, 756), "SCSIhHandleMsgOut": (0x199708, 736)}
+        identity = allowed.get(case["entry"])
+        internals = {b["entry"]: b["size"] for b in case.get("internal", [])}
+        required = {"OSMReadUExact8": 52, "OSMWriteUExact8": 60}
+        if case["entry"] == "SCSIhSendMessage":
+            required["SCSIhWait4Req"] = 480
+        if (ack is not True or identity != (case.get("evidence", {}).get("entry_address"), case["size"]) or
+                image["input"]["sha256"] != _reference.SHA256 or contracts.get("reference_sha256") != _reference.SHA256 or
+                internals != required or len(internals) != len(case.get("internal", [])) or
+                case.get("return_kind") != "void" or
+                type(case["instruction_limit"]) is not int or not 0 < case["instruction_limit"] <= 240000000 or
+                (case["entry"] == "SCSIhSendMessage" and case["arguments"][-1] != 1)):
+            raise ValueError("unsupported ACK exhaustion opt-in")
     symbols = {}
     for symbol in image["symbols"]:
         if symbol["section"]:
@@ -140,7 +155,7 @@ def run_case(binary: Path, case: dict, contracts: dict) -> dict:
     if any(start >= end or (end - start) % 4 for start, end in bounds):
         raise ValueError("invalid reviewed function bounds")
     limit = case["instruction_limit"]
-    if not 0 < limit <= 4000000:
+    if not ack and (type(limit) is not int or not 0 < limit <= 4000000):
         raise ValueError("instruction limit must be in 1..4000000")
     layouts = declared_abi(case) if "declaration" in case else None
     if layouts is None and len(case["arguments"]) > 8:
@@ -290,10 +305,35 @@ def run_case(binary: Path, case: dict, contracts: dict) -> dict:
         if "dispatch" in contract and name != "_objc_msgSend":
             raise ValueError("unsupported shared external dispatcher")
         services[address] = (name, contract)
-    outcomes = iter(case["external_outcomes"])
+    def scripted_outcomes():
+        for item in case["external_outcomes"]:
+            if "repeat" not in item:
+                yield item
+                continue
+            event = item.get("outcome")
+            if (not ack or set(item) != {"repeat", "outcome"} or type(item["repeat"]) is not int or
+                    not 0 < item["repeat"] <= 0x800000 or event != {
+                        "register": "registers", "access": "read", "offset": 3, "size": 1, "value": 1}):
+                raise ValueError("unsupported repeated MMIO outcome")
+            for _ in range(item["repeat"]):
+                yield event
+
+    outcomes = scripted_outcomes()
     trace, count, returned, previous_word = [], 0, False, None
+    poll_reads, poll_exit, previous_address = 0, None, None
+    ack_words = {}
+    if ack:
+        poll_start, poll_end, poll_return, poll_tail, poll_counter = (
+            (0x1992d8, 0x199314, 0x199300, 0x199314, 0x19930c) if entry == 0x1990e4 else
+            (0x199984, 0x1999c0, 0x1999ac, 0x1999c0, 0x1999b8))
+        # These pinned-image instructions are the complete poll and real OSM
+        # reader. Cache their immutable words; Unicorn still executes every one.
+        for start, end in ((poll_start, poll_end), (0x189db4, 0x189de8)):
+            for address in range(start, end, 4):
+                ack_words[address] = int.from_bytes(cpu.mem_read(address, 4), "big")
 
     def memory_access(uc, access, address, size, value, region):
+        nonlocal poll_reads
         base, extent = regions[region["name"]]
         offset = address - base
         if offset < 0 or offset + size > extent:
@@ -325,7 +365,17 @@ def run_case(binary: Path, case: dict, contracts: dict) -> dict:
             uc.mem_write(address, expected.to_bytes(size, "big"))
         elif value != expected:
             raise ValueError(f"scripted register write value differs: {case['id']} {value:#x} != {expected:#x}")
-        trace.append({"target": f"{region['name']}+{offset}", "access": kind, "size": size, "value": expected})
+        event = {"target": f"{region['name']}+{offset}", "access": kind, "size": size, "value": expected}
+        if ack and kind == "read" and uc.reg_read(ppc.UC_PPC_REG_LR) == poll_return:
+            poll_reads += 1
+            if poll_reads % 0x100000 == 0:
+                print(f"{case['id']}: {poll_reads} actual ACK reads", flush=True)
+        if ack and trace and trace[-1] == event:
+            trace[-1] = {"repeat": 2, "event": event}
+        elif ack and trace and trace[-1].get("event") == event:
+            trace[-1]["repeat"] += 1
+        else:
+            trace.append(event)
 
     for region in case["memory"]:
         base, extent = regions[region["name"]]
@@ -333,7 +383,7 @@ def run_case(binary: Path, case: dict, contracts: dict) -> dict:
                      user_data=region, begin=base, end=base + ((extent + 4095) & ~4095) - 1)
 
     def instruction(uc, address, size, _):
-        nonlocal count, returned, previous_word
+        nonlocal count, returned, previous_word, previous_address, poll_exit
         if address == SENTINEL:
             if previous_word != 0x4e800020 or uc.reg_read(ppc.UC_PPC_REG_LR) != SENTINEL:
                 raise ValueError("return sentinel reached without return link")
@@ -343,6 +393,12 @@ def run_case(binary: Path, case: dict, contracts: dict) -> dict:
         count += 1
         if count > limit:
             raise ValueError(f"instruction limit exhausted: {case['id']}")
+        last_address, previous_address = previous_address, address
+        if ack and address == poll_tail:
+            poll_exit = "counter" if last_address == poll_counter else "ack-clear"
+        if address in ack_words:
+            previous_word = ack_words[address]
+            return
         if address in services:
             name, contract = services[address]
             outcome = next(outcomes, None)
@@ -495,8 +551,11 @@ def run_case(binary: Path, case: dict, contracts: dict) -> dict:
             stack[str(offset)] = bytes(cpu.mem_read(address, size)).hex()
         observations["stack"] = stack
         observations["stack_pointer"] = cpu.reg_read(ppc.UC_PPC_REG_1) - initial_sp
-    return {"executed_case_id": case["id"], "observations": observations,
-            "unknown_calls": [], "returned_to_sentinel": returned, "instructions": count}
+    result = {"executed_case_id": case["id"], "observations": observations,
+              "unknown_calls": [], "returned_to_sentinel": returned, "instructions": count}
+    if ack:
+        result["ack_poll"] = {"reads": poll_reads, "exit": poll_exit}
+    return result
 
 
 def execute(binary, cases, contracts):
@@ -515,6 +574,11 @@ def execute(binary, cases, contracts):
         result = run_case(binary, case, contracts)
         if result["observations"] != case["expected"]:
             raise ValueError(f"frozen expected observations differ: {case['id']}: {result['observations']}")
+        if case.get("ack_exhaustion") and (result.get("ack_poll") != case.get("expected_ack_poll") or
+                                          result["instructions"] != case.get("expected_instructions")):
+            raise ValueError(f"ACK poll termination differs: {case['id']}")
+        if case.get("ack_exhaustion"):
+            print(f"{case['id']}: returned after {result['instructions']} instructions, {result['ack_poll']}", flush=True)
         results.append(result)
     return {"binary_sha256": identify(binary).sha256, "cases_sha256": digest(cases),
             "contracts_sha256": digest(contracts), "source_revision": revision(),
@@ -534,6 +598,9 @@ def validate_result(result, binary, cases, contracts):
         if (observed.get("executed_case_id") != case["id"] or observed.get("unknown_calls") != [] or
                 observed.get("returned_to_sentinel") is not True or observed.get("observations") != case["expected"]):
             raise ValueError(f"invalid case result: {case['id']}")
+        if case.get("ack_exhaustion") and (observed.get("ack_poll") != case.get("expected_ack_poll") or
+                                          observed.get("instructions") != case.get("expected_instructions")):
+            raise ValueError(f"invalid ACK poll result: {case['id']}")
 
 
 def main():

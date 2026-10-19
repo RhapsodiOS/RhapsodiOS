@@ -353,3 +353,28 @@ Complete output: OUT/task12/focused-gates.log. The inherited failure is `test_ta
 The earlier negative-only attempt was30passed/1negative-fixture mistake/1deselected; the corrected exact permission/publication subset was6passed/26deselected in5.14s. All corrected intended checks subsequently passed in the42-check run. No stale/failed preliminary result is promoted as a clean final pass.
 
 Task12 canonical Git/current31-owner delta check follows the evidence commit; its exact command/output and final commit are recorded in the concluding audit entry. Independent controller review remains required.
+
+## Canonical Git closure and self-review
+
+Evidence/audit commit: `2095ef3bd`. Canonical current-owner test:
+
+```text
+$env:PYTHONPATH='tools/binrecon'
+tools/binrecon/out/adaptecu2scsi-ppc/venv/Scripts/python.exe -m pytest -p no:faulthandler src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/tests/test_task12.py::test_him_canonical_git_and_exact_owner_delta -q
+.                                                                        [100%]
+1 passed in 1.73s
+```
+
+Complete output: OUT/task12/canonical-git.log. It reads canonical Git blobs, verifies all31 and only31 ledger rows, exact artifact digest,31 source-map additions and unchanged other mappings/duplicates/disputes, and unchanged data outside the one assigned switch. The final report-only commit preserves those exact code/proof/map/ledger/runtime artifacts. No additional CPU execution is needed for a report update.
+
+Self-review: checked all31 reference/native bodies and exact typed forwarding/slot correction; final actual current135-case native/reference observations and genuine relocations;31 actual entry/leaf coverage bindings; normalized switch/default aliases; strict real-callee bounds, MMIO operation-owner bytes/call-sites and every frozen permission; all7 compiled LF inputs/canonical Git equality and true native/source/runtime producer separation; proof-ledger source-map delta; canonical line endings; no accepted consumed contract/header/proof runtime changes; no unrelated source cleanup. `git diff --check` and staged checks are clean. Controller independent review is still the next gate.
+
+Fully expanded actual final CPU launch commands (PowerShell from the isolated worktree):
+
+```text
+$env:PYTHONPATH='tools/binrecon'
+tools/binrecon/out/adaptecu2scsi-ppc/venv/Scripts/python.exe src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/tests/ppc_cases.py reference --reference tools/binrecon/out/adaptecu2scsi-ppc/reference --cases src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/tests/task12-cases.json --contracts src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/tests/task12-contracts.json --output tools/binrecon/out/adaptecu2scsi-ppc/objects/task12/reference-results.json
+tools/binrecon/out/adaptecu2scsi-ppc/venv/Scripts/python.exe src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/tests/task12_execute.py --reference tools/binrecon/out/adaptecu2scsi-ppc/reference --objects tools/binrecon/out/adaptecu2scsi-ppc/objects/task12 --him tools/binrecon/out/adaptecu2scsi-ppc/objects/task12/1-AdaptecU2CHIMHIM.c.o --config tools/binrecon/out/adaptecu2scsi-ppc/objects/task8/1-AdaptecU2CHIMConfig.c.o --resource tools/binrecon/out/adaptecu2scsi-ppc/objects/task11/1-AdaptecU2CHIMResource.c.o
+```
+
+Actual outputs: `reference: 135 frozen cases passed`; supplementary lists135 exact case IDs and finishes `PASS135 compiled cases,2 real caller context pairs,2 FreeUnit pairs,8 switch paths; HEAD 78b79a22bdbdde4f6b88792bc650035590bb17c3`. The proof/source commit is separate from original native608e9f5+WIP; raw outputs retain their original identities.

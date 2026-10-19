@@ -243,6 +243,9 @@ extern struct vnodeopv_desc ext2fs_vnodeop_opv_desc;
 extern struct vnodeopv_desc ext2fs_specop_opv_desc;
 extern struct vnodeopv_desc ext2fs_fifoop_opv_desc;
 #endif
+#if HAMMERFS
+extern struct vnodeopv_desc hammer_vnodeop_opv_desc;
+#endif
 extern struct vnodeopv_desc cd9660_vnodeop_opv_desc;
 extern struct vnodeopv_desc cd9660_specop_opv_desc;
 extern struct vnodeopv_desc cd9660_fifoop_opv_desc;
@@ -302,6 +305,9 @@ struct vnodeopv_desc *vfs_opv_descs[] = {
 	&ext2fs_vnodeop_opv_desc,
 	&ext2fs_specop_opv_desc,
 	&ext2fs_fifoop_opv_desc,
+#endif
+#if HAMMERFS
+	&hammer_vnodeop_opv_desc,
 #endif
 #if CD9660
 	&cd9660_vnodeop_opv_desc,

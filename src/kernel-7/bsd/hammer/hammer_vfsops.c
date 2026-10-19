@@ -426,9 +426,10 @@ hammer_critical_error(hammer_mount_t hmp, hammer_inode_t ip,
 static int
 hammer_vfs_root(struct mount *mp, struct vnode **vpp)
 {
-	printf("hammer: root not available\n");
-	*vpp = NULL;
-	return(EOPNOTSUPP);
+	hammer_mount_t hmp = (void *)mp->mnt_data;
+
+	return(hammer_vget_obj(hmp, HAMMER_OBJID_ROOT, HAMMER_DEF_LOCALIZATION,
+			       vpp));
 }
 
 static int

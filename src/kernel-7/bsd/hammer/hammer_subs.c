@@ -789,6 +789,16 @@ hammer_to_unix_xid(hammer_uuid_t *uuid)
 	       (uint32_t)uuid->node[4] << 16 | (uint32_t)uuid->node[5] << 24);
 }
 
+/*
+ * Rhapsody's ino_t and dirent d_fileno are 32 bits; fold the 64-bit
+ * obj_id so stat and readdir agree.
+ */
+uint32_t
+hammer_ino32(int64_t obj_id)
+{
+	return((uint32_t)(obj_id ^ (obj_id >> 32)));
+}
+
 void
 hammer_guid_to_uuid(hammer_uuid_t *uuid, uint32_t guid)
 {

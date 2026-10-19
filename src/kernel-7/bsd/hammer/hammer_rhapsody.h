@@ -128,6 +128,10 @@ struct lwkt_token {
 #define lwkt_reltoken(tok)		((void)0)
 #define crit_enter()			((void)0)
 #define crit_exit()			((void)0)
+/* Long B-tree scans yield to user processes on DragonFly; nothing to do here. */
+#define lwkt_user_yield()		((void)0)
+/* Only the allocator asks; the read-only build never allocates (Phase 2). */
+#define vm_paging_min_dnc(pages)	0
 
 /* Threads */
 #define curthread	current_thread()
@@ -175,6 +179,8 @@ int	hammer_tsleep(void *ident, int flags, const char *wmesg, int timo);
 #define time_uptime	((long)time.tv_sec)
 #define time_second	((long)time.tv_sec)
 #define getmicrotime(tvp)	microtime(tvp)
+void	hammer_vfs_timestamp(struct timespec *ts);
+#define vfs_timestamp(ts)	hammer_vfs_timestamp(ts)
 
 /* UUIDs on disk are compared bytewise. */
 #define kuuid_compare(a, b)	bcmp((a), (b), sizeof(*(a)))

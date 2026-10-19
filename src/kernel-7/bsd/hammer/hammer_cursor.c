@@ -50,7 +50,9 @@ hammer_init_cursor(hammer_transaction_t trans, hammer_cursor_t cursor,
 	hammer_volume_t volume;
 	hammer_node_t node;
 	hammer_mount_t hmp;
+#if 0 /* phase 2 */
 	u_int tticks;
+#endif
 	int error;
 
 	bzero(cursor, sizeof(*cursor));
@@ -72,6 +74,7 @@ hammer_init_cursor(hammer_transaction_t trans, hammer_cursor_t cursor,
 	 * limiting read activity before that to try to avoid processes
 	 * stalling out in "hmrrcm".
 	 */
+#if 0 /* phase 2: read/flush time multiplexing */
 	tticks = hammer_tdmux_ticks;
 	if (trans->type != HAMMER_TRANS_FLS && tticks &&
 	    hmp->count_reclaims > hammer_limit_reclaims / tticks &&
@@ -105,6 +108,8 @@ hammer_init_cursor(hammer_transaction_t trans, hammer_cursor_t cursor,
 			tsleep(&dummy, 0, "htdmux", xticks - rticks);
 		}
 	}
+
+#endif /* phase 2 */
 
 	/*
 	 * If the cursor operation is on behalf of an inode, lock
@@ -157,7 +162,7 @@ hammer_init_cursor(hammer_transaction_t trans, hammer_cursor_t cursor,
 		volume = hammer_get_root_volume(hmp, &error);
 		if (error)
 			break;
-		node = hammer_get_node(trans, volume->ondisk->vol0_btree_root,
+		node = hammer_get_node(trans, hget64(volume->ondisk->vol0_btree_root),
 				       0, &error);
 		hammer_rel_volume(volume, 0);
 		if (error)
@@ -185,7 +190,7 @@ hammer_init_cursor(hammer_transaction_t trans, hammer_cursor_t cursor,
 			node = NULL;
 			continue;
 		}
-		if (volume->ondisk->vol0_btree_root != node->node_offset) {
+		if (hget64(volume->ondisk->vol0_btree_root) != node->node_offset) {
 			hammer_unlock(&node->lock);
 			hammer_rel_node(node);
 			node = NULL;
@@ -498,7 +503,7 @@ hammer_load_cursor_parent(hammer_cursor_t cursor, int try_exclusive)
 
 	hmp = cursor->trans->hmp;
 
-	if (cursor->node->ondisk->parent) {
+	if (hget64(cursor->node->ondisk->parent)) {
 		node = cursor->node;
 		parent = hammer_btree_get_parent(cursor->trans, node,
 						 &parent_index,
@@ -623,7 +628,7 @@ hammer_cursor_down(hammer_cursor_t cursor)
 	 */
 	hammer_cursor_downgrade(cursor);
 	node = cursor->node;
-	KKASSERT(cursor->index >= 0 && cursor->index < node->ondisk->count);
+	KKASSERT(cursor->index >= 0 && cursor->index < (int32_t)hget32(node->ondisk->count));
 	if (cursor->parent) {
 		hammer_unlock(&cursor->parent->lock);
 		hammer_rel_node(cursor->parent);
@@ -642,21 +647,21 @@ hammer_cursor_down(hammer_cursor_t cursor)
 	 * Ok, push down into elm of an internal node.
 	 */
 	KKASSERT(node->ondisk->type == HAMMER_BTREE_TYPE_INTERNAL);
-	KKASSERT(elm->internal.subtree_offset != 0);
+	KKASSERT(hget64(elm->internal.subtree_offset) != 0);
 	cursor->left_bound = &elm[0].internal.base;
 	cursor->right_bound = &elm[1].internal.base;
 	node = hammer_get_node(cursor->trans,
-			       elm->internal.subtree_offset, 0, &error);
+			       hget64(elm->internal.subtree_offset), 0, &error);
 	if (error == 0) {
 		KASSERT(elm->base.btype == node->ondisk->type,
 			("BTYPE MISMATCH %c %c NODE %p",
 			 elm->base.btype, node->ondisk->type, node));
-		if (node->ondisk->parent != cursor->parent->node_offset)
+		if (hget64(node->ondisk->parent) != cursor->parent->node_offset)
 			hpanic("node %p %016jx vs %016jx",
 				node,
-				(intmax_t)node->ondisk->parent,
+				(intmax_t)hget64(node->ondisk->parent),
 				(intmax_t)cursor->parent->node_offset);
-		KKASSERT(node->ondisk->parent == cursor->parent->node_offset);
+		KKASSERT(hget64(node->ondisk->parent) == cursor->parent->node_offset);
 	}
 
 	/*

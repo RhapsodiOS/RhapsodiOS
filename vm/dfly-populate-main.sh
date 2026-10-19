@@ -49,8 +49,7 @@ chown 1234:5678 owned
 : > m4755; chmod 4755 m4755
 mkdir d1777; chmod 1777 d1777
 : > m644; chmod 644 m644
-# DragonFly 6.4.2 HAMMER does not persist utimes(): these two keep their
-# creation time.  Task 6's fixture patches future's mtime (not CRC-covered).
+# Read these back through a read-write mount: a read-only one reports ctime.
 TZ=UTC touch -t 197001010000 old
 TZ=UTC touch -t 210001010000 future
 

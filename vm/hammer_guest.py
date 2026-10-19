@@ -123,17 +123,29 @@ def unwrap_volume_file(wrapped: Path, out: Path) -> None:
                 left -= len(buf)
 
 
+HEADER_KINDS = ('badsig', 'v6', 'twovol', 'badcrc', 'needs-recovery')
+FIXTURE_KINDS = HEADER_KINDS + ('longname',)
+
+
 def make_fixture(kind: str, volume: Path, out: Path) -> None:
-    """Copy VOLUME to OUT and break exactly one admission rule."""
-    if kind not in ('badsig', 'v6', 'twovol', 'badcrc', 'needs-recovery'):
+    """Copy VOLUME to OUT and break exactly one rule (see _fixture_patches)."""
+    if kind not in FIXTURE_KINDS:
         raise ValueError('unknown fixture kind %r' % kind)
     out = ext2_guest._new_target(out)
+    with Path(volume).open('rb') as f:
+        patches = _fixture_patches(kind, _reader(f, 0))
     shutil.copyfile(volume, out)
     with out.open('r+b') as f:
-        hdr = bytearray(f.read(HEADER))
-        _break_header(kind, hdr)
-        f.seek(0)
-        f.write(hdr)
+        for off, data in patches:
+            f.seek(off)
+            f.write(data)
+
+
+def _reader(f, base):
+    def read(off, n):
+        f.seek(base + off)
+        return f.read(n)
+    return read
 
 
 def _break_header(kind, hdr):
@@ -153,10 +165,79 @@ def _break_header(kind, hdr):
     seal_volume_header(hdr)
 
 
+VOL_BUF_BEG = 24
+VOL0_BTREE_ROOT = 240
+NODE_SIZE = 4096        # struct hammer_node_ondisk
+BUFSIZE = 16384         # HAMMER_BUFSIZE: records never cross one
+RECTYPE_INODE = 0x0001
+RECTYPE_DIRENTRY = 0x0011
+ENTRY_NAME_OFF = 16
+OBJID_ROOT = 1
+
+
+def _leaves(read):
+    """Every B-tree leaf element, as dicts with physical node/data offsets."""
+    hdr = read(0, HEADER)
+    beg = struct.unpack_from('<q', hdr, VOL_BUF_BEG)[0]
+
+    def phys(zoff):
+        return beg + (zoff & 0x000FFFFFFFFFFFFF)
+    stack = [struct.unpack_from('<Q', hdr, VOL0_BTREE_ROOT)[0]]
+    while stack:
+        noff = phys(stack.pop())
+        node = read(noff, NODE_SIZE)
+        count, ntype = struct.unpack_from('<IB', node, 16)
+        for i in range(count):
+            e = 64 + i * 64
+            if ntype == ord('I'):
+                stack.append(struct.unpack_from('<Q', node, e + 48)[0])
+            elif ntype == ord('L'):
+                obj_id, _, _, delete_tid, rec_type = \
+                    struct.unpack_from('<QQQQH', node, e)
+                doff, dlen = struct.unpack_from('<QI', node, e + 48)
+                yield dict(node=noff, elm=e, obj_id=obj_id, delete_tid=delete_tid,
+                           rec_type=rec_type, data=phys(doff), data_len=dlen)
+
+
+def _current(leaves, obj_id, rec_type):
+    return [l for l in leaves if l['obj_id'] == obj_id and
+            l['rec_type'] == rec_type and l['delete_tid'] == 0]
+
+
+def _entry(read, leaves, name):
+    """The current root-directory entry for NAME."""
+    for l in _current(leaves, OBJID_ROOT, RECTYPE_DIRENTRY):
+        if l['data_len'] == ENTRY_NAME_OFF + len(name) and \
+           read(l['data'] + ENTRY_NAME_OFF, len(name)) == name:
+            return l
+    raise ValueError('no root entry %r' % name)
+
+
+def _fixture_patches(kind, read):
+    """(volume offset, bytes) patches that make fixture KIND.
+
+    longname: root entry 'a' claims a 256-byte name (past NAME_MAX); its
+    data CRC and node CRC are resealed so only the length check can catch it.
+    """
+    if kind in HEADER_KINDS:
+        sectors = bytearray(read(0, HEADER + (-HEADER) % 512))
+        _break_header(kind, sectors)
+        return [(0, bytes(sectors))]
+    leaves = list(_leaves(read))
+    l = _entry(read, leaves, b'a')
+    n = ENTRY_NAME_OFF + 256
+    if l['data'] % BUFSIZE + n > BUFSIZE:
+        raise ValueError('entry too close to its buffer end to stretch')
+    node = bytearray(read(l['node'], NODE_SIZE))
+    struct.pack_into('<II', node, l['elm'] + 56, n, crc32c(read(l['data'], n)))
+    struct.pack_into('<I', node, 0, crc32c(bytes(node[4:])))
+    return [(l['node'], bytes(node))]
+
+
 def make_fixture_overlay(kind: str, wrapped: Path, out: Path) -> None:
     """make_fixture on a wrapped volume, as a qcow2 overlay of WRAPPED that
-    holds only the changed header sectors (dense copies need too much disk)."""
-    if kind not in ('badsig', 'v6', 'twovol', 'badcrc', 'needs-recovery'):
+    holds only the changed sectors (dense copies need too much disk)."""
+    if kind not in FIXTURE_KINDS:
         raise ValueError('unknown fixture kind %r' % kind)
     out = ext2_guest._new_target(out)
     with Path(wrapped).open('rb') as f:
@@ -164,25 +245,52 @@ def make_fixture_overlay(kind: str, wrapped: Path, out: Path) -> None:
         off = next(o for o in range(0, len(head), 512) if head[o:o + 4] == b'dlV3')
         part = struct.unpack_from('>h', head, off + 112)[0] * \
             struct.unpack_from('>i', head, off + 92)[0]
-        f.seek(part)
-        sectors = bytearray(f.read(HEADER + (-HEADER) % 512))
-    _break_header(kind, sectors)
+        read = _reader(f, part)
+        patches = []
+        for poff, data in _fixture_patches(kind, read):
+            lo, hi = poff - poff % 512, poff + len(data)
+            hi += (-hi) % 512
+            sectors = bytearray(read(lo, hi - lo))
+            sectors[poff - lo:poff - lo + len(data)] = data
+            patches.append((part + lo, bytes(sectors)))
     _overlay(wrapped, out)
     src = out.with_suffix('.hdr')
-    src.write_bytes(sectors)
     try:
-        # qemu-io write -s reads its source in text mode on Windows; convert does not.
-        subprocess.run([QEMU_IMG, 'convert', '-n', '-S', '0', '-f', 'raw', str(src),
-                        '--target-image-opts',
-                        'driver=raw,offset=%d,size=%d,file.driver=qcow2,'
-                        'file.file.filename=%s' % (part, len(sectors), out)],
-                       check=True)
+        for poff, sectors in patches:
+            src.write_bytes(sectors)
+            # qemu-io write -s reads its source in text mode on Windows; convert does not.
+            subprocess.run([QEMU_IMG, 'convert', '-n', '-S', '0', '-f', 'raw', str(src),
+                            '--target-image-opts',
+                            'driver=raw,offset=%d,size=%d,file.driver=qcow2,'
+                            'file.file.filename=%s' % (poff, len(sectors), out)],
+                           check=True)
     finally:
-        src.unlink()
+        if src.exists():
+            src.unlink()
+
+
+def walk_differences(got, want):
+    """hammer_walk -n output against a reference manifest; the content CRC
+    column (field 9) of the reference is ignored.  Returns problem lines."""
+    def norm(text):
+        rows = []
+        for line in text.splitlines():
+            f = line.split('\t')
+            if len(f) > 8:
+                f[8] = '-'
+            rows.append('\t'.join(f))
+        return rows
+    g, w = norm(got), norm(want)
+    problems = ['-' + r for r in sorted(set(w) - set(g))] + \
+               ['+' + r for r in sorted(set(g) - set(w))]
+    if not problems and len(g) != len(w):
+        problems.append('line counts differ: %d vs %d' % (len(g), len(w)))
+    return problems
 
 
 CASES = ('refuse-badsig', 'refuse-v6', 'refuse-twovol', 'refuse-badcrc',
-         'refuse-needs-recovery', 'refuse-rw', 'admit')
+         'refuse-needs-recovery', 'refuse-rw', 'admit', 'namespace',
+         'readdir-small', 'times', 'erofs', 'crafted-name')
 ADMIT_MESSAGE = 'v7 single volume ok'
 QEMU_IMG = r'C:\Program Files\qemu\qemu-img.exe'
 
@@ -255,6 +363,9 @@ def run(case, outdir, volume, tools_dir):
                (tests/'run-native.sh').read_bytes()),
              N('/hammer_io', 'reg', 0o100755, 0, 0, 0,
                (Path(tools_dir)/'hammer_io').read_bytes())]
+    if case == 'namespace':
+        nodes.append(N('/hammer_walk', 'reg', 0o100755, 0, 0, 0,
+                       (Path(tools_dir)/'hammer_walk').read_bytes()))
     results = outdir/'results.img'
     results.write_bytes(ufs_build.build(ext2_guest.TEMPLATE, nodes))
     spec = importlib.util.spec_from_file_location('hammer_console', HERE/'guest-console.py')
@@ -301,6 +412,19 @@ def run(case, outdir, volume, tools_dir):
     problems = verify_result(case, code, stdout or '',
                              serial.read_text(errors='replace'),
                              _unchanged(data_ov, volume))
+    if case == 'namespace' and code == 0:
+        # The reference manifest sits beside the base volume (ref-main.walk).
+        import gzip
+        import rhap_image
+        with rhap_image.Image(str(results)) as disk:
+            walk = gzip.decompress(disk.read_file(disk.inode(disk.resolve('/walk.gz'))))
+        (outdir/'walk.txt').write_bytes(walk)
+        base = Path(volume)
+        while base.suffix in ('.qcow2', '.wrapped'):
+            base = base.with_suffix('')
+        diff = walk_differences(walk.decode('utf-8', 'replace'),
+                                base.with_suffix('.walk').read_text())
+        problems += ['walk: ' + d for d in diff[:20]]
     for problem in problems:
         print(problem)
     return int(bool(problems))

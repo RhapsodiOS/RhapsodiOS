@@ -606,3 +606,10 @@ bsd/hammer/hammer_io.c			optional hammerfs
 bsd/hammer/hammer_ondisk.c		optional hammerfs
 bsd/hammer/hammer_subs.c		optional hammerfs
 bsd/hammer/hammer_vfsops.c		optional hammerfs
+bsd/hammer/hammer_btree.c		optional hammerfs
+bsd/hammer/hammer_cursor.c		optional hammerfs
+bsd/hammer/hammer_blockmap.c		optional hammerfs
+bsd/hammer/hammer_inode.c		optional hammerfs
+bsd/hammer/hammer_object.c		optional hammerfs
+bsd/hammer/hammer_transaction.c		optional hammerfs
+bsd/hammer/hammer_vnops.c		optional hammerfs

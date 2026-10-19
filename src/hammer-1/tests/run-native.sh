@@ -18,9 +18,35 @@ refuse-rw)
 	./hammer_io mounterr $DEV "$2" 0 $EROFS
 	;;
 admit)
-	# Until the root vnode exists (Task 6) the mount stops just after
-	# admission; the host checks the console for the admission message.
-	./hammer_io mounterr $DEV "$2" 1 $EOPNOTSUPP
+	./hammer_io mount $DEV "$2"
+	./hammer_io unmount "$2"
+	;;
+namespace)
+	# Metadata manifest for the host to diff against the DragonFly one.
+	./hammer_io mount $DEV "$2"
+	./hammer_walk -n "$2" > /tmp/walk.txt
+	gzip -9 < /tmp/walk.txt > walk.gz
+	./hammer_io unmount "$2"
+	;;
+readdir-small)
+	./hammer_io mount $DEV "$2"
+	./hammer_io readdir-small "$2/big" 20002
+	./hammer_io unmount "$2"
+	;;
+times)
+	./hammer_io mount $DEV "$2"
+	./hammer_io times "$2"
+	./hammer_io unmount "$2"
+	;;
+erofs)
+	./hammer_io mount $DEV "$2"
+	./hammer_io erofs "$2"
+	./hammer_io unmount "$2"
+	;;
+crafted-name)
+	./hammer_io mount $DEV "$2"
+	./hammer_io readdir-eio "$2"
+	./hammer_io unmount "$2"
 	;;
 *)
 	echo "unknown case $1"

@@ -70,12 +70,11 @@ out with `fat32.read_file(xfer, 'TREE.WLK')` to `vm/work/dfly/<volume>.walk`.
 - Owner `1234:5678`.
 - Modes 0, 4755, 1777 and 0644.
 - Files `old` and `future`, given 1970-01-01 and 2100-01-01 mtimes with
-  `touch -t`. **DragonFly 6.4.2 HAMMER does not persist `utimes()`.** The new
-  mtime holds in memory and through `sync`, but is gone after a remount, even
-  with a forced inode rewrite (`run-diag-4`, `run-diag-5`). Both files keep
-  their creation time. Out-of-range mtimes are therefore made by patching the
-  inode data in the image. mtime is outside the inode CRC, so the volume stays
-  valid. HAMMER cannot represent a time before 1970 at all: mtime is unsigned
+  `touch -t`. The times are on disk. `run-diag-4` and `run-diag-5` seemed to
+  show `utimes()` lost after a remount, but those remounts were read-only, and
+  DragonFly then reports ctime as atime and mtime (`HAMMER_INODE_RO`). The
+  manifest is therefore taken from a read-write `noatime` mount. HAMMER
+  cannot represent a time before 1970 at all: mtime is unsigned
   microseconds, and DragonFly refuses earlier times.
 - A file rewritten three times and a file created then deleted. These are
   separated by `hammer synctid`, so history records exist.
@@ -94,7 +93,8 @@ range, so DragonFly and Rhapsody manifests compare equal.
 | Run | Volume | Result | Date |
 | --- | --- | --- | --- |
 | `run-main-6` populate | `ref-main.img` | `show` and `checkmap` clean | 2026-10-17 |
-| `run-walk-main-2` | `ref-main.img` | `ref-main.walk`, 20,129 entries (`big/` has 20,000) | 2026-10-17 |
+| `run-walk-main-2` | `ref-main.img` | read-only mount, mtimes show ctime; kept as `ref-main-ro.walk` | 2026-10-17 |
+| `run-walk-main-rw` | copy of `ref-main.img` | `ref-main.walk`, 20,128 lines (`big/` has 20,000), read-write `noatime` mount | 2026-10-19 |
 | `run-dedup-1` populate | `ref-dedup.img` | 1,984 dedup records, 32,505,856 bytes deduplicated; `show` and `checkmap` clean | 2026-10-17 |
 | `run-walk-dedup-1` | `ref-dedup.img` | `ref-dedup.walk`, 33 entries, all 32 files with CRC 482699967 | 2026-10-17 |
 | `run-check-ours-1` | `ours-newfs.img` (our `newfs_hammer`, Task 3) | DragonFly `show` and `checkmap` clean; read-only mount OK | 2026-10-17 |

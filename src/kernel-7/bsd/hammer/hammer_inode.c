@@ -32,9 +32,9 @@
  * SUCH DAMAGE.
  */
 
-#include <vm/vm_page2.h>
 
 #include "hammer.h"
+#include <kern/mapfs.h>
 
 static int	hammer_unload_inode(hammer_inode_t ip);
 static void	hammer_free_inode(hammer_inode_t ip);
@@ -166,6 +166,16 @@ RB_GENERATE2(hammer_pfs_rb_tree, hammer_pseudofs_inmem, rb_node,
              hammer_pfs_rb_compare, uint32_t, localization);
 
 /*
+ * hammer_flusher.c and hammer_redo.c generate these; until Phase 2
+ * compiles them, inode unloading still needs the remove functions.
+ */
+RB_GENERATE(hammer_fls_rb_tree, hammer_inode, rb_flsnode,
+	    hammer_ino_rb_compare);
+RB_GENERATE2(hammer_redo_rb_tree, hammer_inode, rb_redonode,
+	     hammer_redo_rb_compare, hammer_off_t, redo_fifo_start);
+
+#if 0 /* phase 2: DragonFly vnode glue; see hammer_vnops.c */
+/*
  * The kernel is not actively referencing this vnode but is still holding
  * it cached.
  *
@@ -270,125 +280,64 @@ hammer_inode_dirty(hammer_inode_t ip)
 	}
 }
 
+#endif /* phase 2 */
+
 /*
  * Return a locked vnode for the specified inode.  The inode must be
  * referenced but NOT LOCKED on entry and will remain referenced on
- * return.
+ * return.  The vnode holds its own inode reference, dropped by
+ * hammer_vop_reclaim().
  *
- * Called from the frontend.
+ * getnewvnode() can sleep, and another thread may attach a vnode to the
+ * inode meanwhile; the spare vnode is then given back without an inode.
  */
 int
 hammer_get_vnode(hammer_inode_t ip, struct vnode **vpp)
 {
-	hammer_mount_t hmp;
+	struct proc *p = current_proc();
 	struct vnode *vp;
-	int error = 0;
-	uint8_t obj_type;
-
-	hmp = ip->hmp;
+	int error;
 
 	for (;;) {
-		if ((vp = ip->vp) == NULL) {
-			error = getnewvnode(VT_HAMMER, hmp->mp, vpp, 0, 0);
-			if (error)
-				break;
-			hammer_lock_ex(&ip->lock);
-			if (ip->vp != NULL) {
-				hammer_unlock(&ip->lock);
-				vp = *vpp;
-				vp->v_type = VBAD;
-				vx_put(vp);
-				continue;
+		if ((vp = ip->vp) != NULL) {
+			if (vget(vp, LK_EXCLUSIVE, p) == 0) {
+				if (vp == ip->vp)
+					break;
+				vput(vp);
 			}
-			hammer_ref(&ip->lock);
-			vp = *vpp;
-			ip->vp = vp;
-
-			obj_type = ip->ino_data.obj_type;
-			vp->v_type = hammer_get_vnode_type(obj_type);
-
-			hammer_inode_wakereclaims(ip);
-
-			switch(ip->ino_data.obj_type) {
-			case HAMMER_OBJTYPE_CDEV:
-			case HAMMER_OBJTYPE_BDEV:
-				vp->v_ops = &hmp->mp->mnt_vn_spec_ops;
-				addaliasu(vp, ip->ino_data.rmajor,
-					  ip->ino_data.rminor);
-				break;
-			case HAMMER_OBJTYPE_FIFO:
-				vp->v_ops = &hmp->mp->mnt_vn_fifo_ops;
-				break;
-			case HAMMER_OBJTYPE_REGFILE:
-				break;
-			default:
-				break;
-			}
-
-			/*
-			 * Only mark as the root vnode if the ip is not
-			 * historical, otherwise the VFS cache will get
-			 * confused.  The other half of the special handling
-			 * is in hammer_vop_nlookupdotdot().
-			 *
-			 * Pseudo-filesystem roots can be accessed via
-			 * non-root filesystem paths and setting VROOT may
-			 * confuse the namecache.  Set VPFSROOT instead.
-			 */
-			if (ip->obj_id == HAMMER_OBJID_ROOT) {
-				if (ip->obj_asof == hmp->asof) {
-					if (ip->obj_localization ==
-						HAMMER_DEF_LOCALIZATION)
-						vsetflags(vp, VROOT);
-					else
-						vsetflags(vp, VPFSROOT);
-				} else {
-					vsetflags(vp, VPFSROOT);
-				}
-			}
-
-			vp->v_data = (void *)ip;
-			/* vnode locked by getnewvnode() */
-			/* make related vnode dirty if inode dirty? */
-			hammer_unlock(&ip->lock);
-			if (vp->v_type == VREG) {
-				vinitvmio(vp, ip->ino_data.size,
-					  hammer_blocksize(ip->ino_data.size),
-					  hammer_blockoff(ip->ino_data.size));
-			}
-			vx_downgrade(vp);
-			break;
-		}
-
-		/*
-		 * Interlock vnode clearing.  This does not prevent the
-		 * vnode from going into a reclaimed state but it does
-		 * prevent it from being destroyed or reused so the vget()
-		 * will properly fail.
-		 */
-		hammer_lock_ex(&ip->lock);
-		if ((vp = ip->vp) == NULL) {
-			hammer_unlock(&ip->lock);
 			continue;
 		}
-		vhold(vp);
-		hammer_unlock(&ip->lock);
-
-		/*
-		 * loop if the vget fails (aka races), or if the vp
-		 * no longer matches ip->vp.
-		 */
-		if (vget(vp, LK_EXCLUSIVE) == 0) {
-			if (vp == ip->vp) {
-				vdrop(vp);
-				break;
-			}
-			vput(vp);
+		error = getnewvnode(VT_HAMMER, ip->hmp->mp, hammer_vnodeop_p,
+				    &vp);
+		if (error) {
+			*vpp = NULL;
+			return(error);
 		}
-		vdrop(vp);
+		if (ip->vp != NULL) {
+			vp->v_type = VBAD;
+			vrele(vp);
+			continue;
+		}
+		hammer_ref(&ip->lock);
+		lockinit(&ip->vnlock, PINOD, "hammer", 0, 0);
+		ip->vp = vp;
+		vp->v_data = (void *)ip;
+		vp->v_type = hammer_get_vnode_type(ip->ino_data.obj_type);
+		if (ip->obj_id == HAMMER_OBJID_ROOT && ip->obj_asof == ip->hmp->asof)
+			vp->v_flag |= VROOT;
+		/* Regular files need mapfs state under MACH_NBC, as in ffs_vget. */
+		if (vp->v_type == VREG)
+			vm_info_init(vp);
+		/*
+		 * shortcut: device and FIFO nodes keep the regular op table,
+		 * so they stat but cannot be opened; add spec/fifo tables when
+		 * a volume needs them.
+		 */
+		lockmgr(&ip->vnlock, LK_EXCLUSIVE, NULL, p);
+		break;
 	}
 	*vpp = vp;
-	return(error);
+	return(0);
 }
 
 /*
@@ -497,12 +446,12 @@ retry:
 			cachep = &dip->cache[0];
 	}
 	hammer_init_cursor(trans, &cursor, cachep, NULL);
-	cursor.key_beg.localization = localization | HAMMER_LOCALIZE_INODE;
-	cursor.key_beg.obj_id = ip->obj_id;
-	cursor.key_beg.key = 0;
-	cursor.key_beg.create_tid = 0;
-	cursor.key_beg.delete_tid = 0;
-	cursor.key_beg.rec_type = HAMMER_RECTYPE_INODE;
+	cursor.key_beg.localization = hmk32(localization | HAMMER_LOCALIZE_INODE);
+	cursor.key_beg.obj_id = hmk64(ip->obj_id);
+	cursor.key_beg.key = hmk64(0);
+	cursor.key_beg.create_tid = hmk64(0);
+	cursor.key_beg.delete_tid = hmk64(0);
+	cursor.key_beg.rec_type = hmk16(HAMMER_RECTYPE_INODE);
 	cursor.key_beg.obj_type = 0;
 
 	cursor.asof = asof;
@@ -552,7 +501,7 @@ retry:
 		 * on append by allowing the flusher to avoid checking for
 		 * record overwrites.
 		 */
-		ip->save_trunc_off = ip->ino_data.size;
+		ip->save_trunc_off = hget64(ip->ino_data.size);
 
 		/*
 		 * Locate and assign the pseudofs management structure to
@@ -667,7 +616,7 @@ loop:
 	 * Make the dummy inode a FIFO object which most copy programs
 	 * will properly ignore.
 	 */
-	ip->save_trunc_off = ip->ino_data.size;
+	ip->save_trunc_off = hget64(ip->ino_data.size);
 	ip->ino_data.obj_type = HAMMER_OBJTYPE_FIFO;
 
 	/*
@@ -748,6 +697,7 @@ __hammer_find_inode(hammer_transaction_t trans, int64_t obj_id,
 	return(ip);
 }
 
+#if 0 /* phase 2: write path */
 /*
  * Create a new filesystem object, returning the inode in *ipp.  The
  * returned inode will be referenced.  The inode is created in-memory.
@@ -936,6 +886,8 @@ hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
 	return(error);
 }
 
+#endif /* phase 2 */
+
 /*
  * Final cleanup / freeing of an inode structure
  */
@@ -1006,14 +958,14 @@ retry:
 	pfsm->pfsd.shared_uuid = pfsm->pfsd.unique_uuid;
 
 	hammer_init_cursor(trans, &cursor, (ip ? &ip->cache[1] : NULL), ip);
-	cursor.key_beg.localization = HAMMER_DEF_LOCALIZATION |
-				      HAMMER_LOCALIZE_MISC;
-	cursor.key_beg.obj_id = HAMMER_OBJID_ROOT;
-	cursor.key_beg.create_tid = 0;
-	cursor.key_beg.delete_tid = 0;
-	cursor.key_beg.rec_type = HAMMER_RECTYPE_PFS;
+	cursor.key_beg.localization = hmk32(HAMMER_DEF_LOCALIZATION |
+				      HAMMER_LOCALIZE_MISC);
+	cursor.key_beg.obj_id = hmk64(HAMMER_OBJID_ROOT);
+	cursor.key_beg.create_tid = hmk64(0);
+	cursor.key_beg.delete_tid = hmk64(0);
+	cursor.key_beg.rec_type = hmk16(HAMMER_RECTYPE_PFS);
 	cursor.key_beg.obj_type = 0;
-	cursor.key_beg.key = localization;
+	cursor.key_beg.key = hmk64(localization);
 	cursor.asof = HAMMER_MAX_TID;
 	cursor.flags |= HAMMER_CURSOR_ASOF;
 
@@ -1027,7 +979,7 @@ retry:
 			if (hammer_is_pfs_deleted(&cursor.data->pfsd)) {
 				*errorp = ENOENT;
 			} else {
-				bytes = cursor.leaf->data_len;
+				bytes = (int32_t)hget32(cursor.leaf->data_len);
 				if (bytes > sizeof(pfsm->pfsd))
 					bytes = sizeof(pfsm->pfsd);
 				bcopy(cursor.data, &pfsm->pfsd, bytes);
@@ -1047,6 +999,7 @@ retry:
 	return(pfsm);
 }
 
+#if 0 /* phase 2: write path */
 /*
  * Store pseudo-fs data.  The backend will automatically delete any prior
  * on-disk pseudo-fs data but we have to delete in-memory versions.
@@ -1160,6 +1113,9 @@ hammer_mkroot_pseudofs(hammer_transaction_t trans, struct ucred *cred,
 	return(error);
 }
 
+#endif /* phase 2 */
+
+#if 0 /* phase 2: write path */
 /*
  * Unload any vnodes & inodes associated with a PFS, return ENOTEMPTY
  * if we are unable to disassociate all the inodes.
@@ -1213,6 +1169,8 @@ hammer_unload_pseudofs(hammer_transaction_t trans, uint32_t localization)
 }
 
 
+#endif /* phase 2 */
+
 /*
  * Release a reference on a PFS
  */
@@ -1226,6 +1184,7 @@ hammer_rel_pseudofs(hammer_mount_t hmp, hammer_pseudofs_inmem_t pfsm)
 	}
 }
 
+#if 0 /* phase 2: write path */
 /*
  * Called by hammer_sync_inode().
  */
@@ -1473,6 +1432,8 @@ retry:
 	return(error);
 }
 
+#endif /* phase 2 */
+
 /*
  * Release a reference on an inode, flush as requested.
  *
@@ -1639,6 +1600,7 @@ hammer_reload_inode(hammer_inode_t ip, void *arg __unused)
 	return(0);
 }
 
+#if 0 /* phase 2: write path */
 /*
  * A transaction has modified an inode, requiring updates as specified by
  * the passed flags.
@@ -3234,6 +3196,8 @@ done:
 	return(error);
 }
 
+#endif /* phase 2 */
+
 /*
  * This routine is called when the OS is no longer actively referencing
  * the inode (but might still be keeping it cached), or when releasing
@@ -3245,8 +3209,17 @@ done:
 void
 hammer_inode_unloadable_check(hammer_inode_t ip, int getvp)
 {
+#if 0 /* phase 2 */
 	struct vnode *vp;
+#endif
 
+	/*
+	 * A read-only mount never deletes an unlinked inode: flagging one
+	 * here would leave hammer_rel_inode() waiting forever on a flush.
+	 */
+	if (ip->hmp->ronly)
+		return;
+#if 0 /* phase 2 */
 	/*
 	 * Set the DELETING flag when the link count drops to 0 and the
 	 * OS no longer has any opens on the inode.
@@ -3262,7 +3235,7 @@ hammer_inode_unloadable_check(hammer_inode_t ip, int getvp)
 	 *
 	 * Do not attempt to modify a snapshot inode (one set to read-only).
 	 */
-	if (ip->ino_data.nlinks == 0 &&
+	if (hget64(ip->ino_data.nlinks) == 0 &&
 	    ((ip->flags | ip->sync_flags) & (HAMMER_INODE_RO|HAMMER_INODE_DELETING|HAMMER_INODE_DELETED)) == 0) {
 		ip->flags |= HAMMER_INODE_DELETING;
 		ip->flags |= HAMMER_INODE_TRUNCATED;
@@ -3283,6 +3256,7 @@ hammer_inode_unloadable_check(hammer_inode_t ip, int getvp)
 		if (getvp)
 			vput(vp);
 	}
+#endif /* phase 2 */
 }
 
 /*
@@ -3335,6 +3309,7 @@ hammer_inode_wakereclaims(hammer_inode_t ip)
 	}
 }
 
+#if 0 /* phase 2: write path */
 /*
  * Setup our reclaim pipeline.  We only let so many detached (and dirty)
  * inodes build up before we start blocking.  This routine is called
@@ -3482,3 +3457,12 @@ hammer_inode_waithard(hammer_mount_t hmp)
 }
 
 #endif
+#endif /* phase 2 */
+
+/*
+ * Read-only: no inode is ever modified, so there is nothing to flush.
+ */
+void
+hammer_flush_inode(hammer_inode_t ip, int flags)
+{
+}

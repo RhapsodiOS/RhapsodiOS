@@ -61,14 +61,14 @@ struct hammer_bulk_info {
 static int
 hammer_rec_rb_compare(hammer_record_t rec1, hammer_record_t rec2)
 {
-	if (rec1->leaf.base.rec_type < rec2->leaf.base.rec_type)
+	if (hget16(rec1->leaf.base.rec_type) < hget16(rec2->leaf.base.rec_type))
 		return(-1);
-	if (rec1->leaf.base.rec_type > rec2->leaf.base.rec_type)
+	if (hget16(rec1->leaf.base.rec_type) > hget16(rec2->leaf.base.rec_type))
 		return(1);
 
-	if (rec1->leaf.base.key < rec2->leaf.base.key)
+	if ((int64_t)hget64(rec1->leaf.base.key) < (int64_t)hget64(rec2->leaf.base.key))
 		return(-1);
-	if (rec1->leaf.base.key > rec2->leaf.base.key)
+	if ((int64_t)hget64(rec1->leaf.base.key) > (int64_t)hget64(rec2->leaf.base.key))
 		return(1);
 
 	/*
@@ -103,14 +103,14 @@ hammer_rec_rb_compare(hammer_record_t rec1, hammer_record_t rec2)
 static int
 hammer_rec_cmp(hammer_base_elm_t elm, hammer_record_t rec)
 {
-	if (elm->rec_type < rec->leaf.base.rec_type)
+	if (hget16(elm->rec_type) < hget16(rec->leaf.base.rec_type))
 		return(-3);
-	if (elm->rec_type > rec->leaf.base.rec_type)
+	if (hget16(elm->rec_type) > hget16(rec->leaf.base.rec_type))
 		return(3);
 
-        if (elm->key < rec->leaf.base.key)
+        if ((int64_t)hget64(elm->key) < (int64_t)hget64(rec->leaf.base.key))
                 return(-2);
-        if (elm->key > rec->leaf.base.key)
+        if ((int64_t)hget64(elm->key) > (int64_t)hget64(rec->leaf.base.key))
                 return(2);
 
 	/*
@@ -140,25 +140,25 @@ hammer_rec_overlap_cmp(hammer_record_t rec, void *data)
 	struct hammer_bulk_info *info = data;
 	hammer_btree_leaf_elm_t leaf = &info->record->leaf;
 
-	if (rec->leaf.base.rec_type < leaf->base.rec_type)
+	if (hget16(rec->leaf.base.rec_type) < hget16(leaf->base.rec_type))
 		return(-3);
-	if (rec->leaf.base.rec_type > leaf->base.rec_type)
+	if (hget16(rec->leaf.base.rec_type) > hget16(leaf->base.rec_type))
 		return(3);
 
 	/*
 	 * Overlap compare
 	 */
-	if (leaf->base.rec_type == HAMMER_RECTYPE_DATA) {
+	if (hget16(leaf->base.rec_type) == HAMMER_RECTYPE_DATA) {
 		/* rec_beg >= leaf_end */
-		if (rec->leaf.base.key - rec->leaf.data_len >= leaf->base.key)
+		if ((int64_t)hget64(rec->leaf.base.key) - (int32_t)hget32(rec->leaf.data_len) >= (int64_t)hget64(leaf->base.key))
 			return(2);
 		/* rec_end <= leaf_beg */
-		if (rec->leaf.base.key <= leaf->base.key - leaf->data_len)
+		if ((int64_t)hget64(rec->leaf.base.key) <= (int64_t)hget64(leaf->base.key) - (int32_t)hget32(leaf->data_len))
 			return(-2);
 	} else {
-		if (rec->leaf.base.key < leaf->base.key)
+		if ((int64_t)hget64(rec->leaf.base.key) < (int64_t)hget64(leaf->base.key))
 			return(-2);
-		if (rec->leaf.base.key > leaf->base.key)
+		if ((int64_t)hget64(rec->leaf.base.key) > (int64_t)hget64(leaf->base.key))
 			return(2);
 	}
 
@@ -220,17 +220,17 @@ hammer_rec_trunc_cmp(hammer_record_t rec, void *data)
 {
 	struct rec_trunc_info *info = data;
 
-	if (rec->leaf.base.rec_type < info->rec_type)
+	if (hget16(rec->leaf.base.rec_type) < info->rec_type)
 		return(-1);
-	if (rec->leaf.base.rec_type > info->rec_type)
+	if (hget16(rec->leaf.base.rec_type) > info->rec_type)
 		return(1);
 
-	switch(rec->leaf.base.rec_type) {
+	switch(hget16(rec->leaf.base.rec_type)) {
 	case HAMMER_RECTYPE_DB:
 		/*
 		 * DB record key is not beyond the truncation point, retain.
 		 */
-		if (rec->leaf.base.key < info->trunc_off)
+		if ((int64_t)hget64(rec->leaf.base.key) < info->trunc_off)
 			return(-1);
 		break;
 	case HAMMER_RECTYPE_DATA:
@@ -238,7 +238,7 @@ hammer_rec_trunc_cmp(hammer_record_t rec, void *data)
 		 * DATA record offset start is not beyond the truncation point,
 		 * retain.
 		 */
-		if (rec->leaf.base.key - rec->leaf.data_len < info->trunc_off)
+		if ((int64_t)hget64(rec->leaf.base.key) - (int32_t)hget32(rec->leaf.data_len) < info->trunc_off)
 			return(-1);
 		break;
 	default:
@@ -273,7 +273,7 @@ hammer_alloc_mem_record(hammer_inode_t ip, int data_len)
 	record->flush_state = HAMMER_FST_IDLE;
 	record->ip = ip;
 	record->leaf.base.btype = HAMMER_BTREE_TYPE_RECORD;
-	record->leaf.data_len = data_len;
+	record->leaf.data_len = hmk32(data_len);
 	hammer_ref(&record->lock);
 
 	if (data_len) {
@@ -441,7 +441,7 @@ hammer_rel_mem_record(hammer_record_t record)
 			if (diddrop) {
 				--hmp->rsv_recs;
 				--ip->rsv_recs;
-				hmp->rsv_databytes -= record->leaf.data_len;
+				hmp->rsv_databytes -= (int32_t)hget32(record->leaf.data_len);
 
 				if (RB_EMPTY(&ip->rec_tree))
 					hammer_test_inode(ip);
@@ -554,10 +554,10 @@ hammer_rec_scan_callback(hammer_record_t rec, void *data)
 	 * Skip if not visible due to our as-of TID
 	 */
         if (cursor->flags & HAMMER_CURSOR_ASOF) {
-                if (cursor->asof < rec->leaf.base.create_tid)
+                if (cursor->asof < hget64(rec->leaf.base.create_tid))
                         return(0);
-                if (rec->leaf.base.delete_tid &&
-		    cursor->asof >= rec->leaf.base.delete_tid) {
+                if (hget64(rec->leaf.base.delete_tid) &&
+		    cursor->asof >= hget64(rec->leaf.base.delete_tid)) {
                         return(0);
 		}
         }
@@ -644,6 +644,7 @@ hammer_mem_first(hammer_cursor_t cursor)
  * exist prior to being committed to disk or indexed via the on-disk B-Tree.
  */
 
+#if 0 /* phase 2: write path */
 /*
  * Add a directory entry (dip,ncp) which references inode (ip).
  *
@@ -1389,6 +1390,8 @@ hammer_mem_add(hammer_record_t record)
  * by merging in-memory records with on-disk records.
  */
 
+#endif /* phase 2 */
+
 /*
  * Locate a particular record either in-memory or on-disk.
  *
@@ -1743,9 +1746,9 @@ again:
 		if (r <= 2 && r >= -2 && r != 0 &&
 		    cursor->ip->ino_data.obj_type == HAMMER_OBJTYPE_REGFILE &&
 		    cursor->iprec->type == HAMMER_MEM_RECORD_DATA) {
-			int64_t base1 = elm->leaf.base.key - elm->leaf.data_len;
-			int64_t base2 = cursor->iprec->leaf.base.key -
-					cursor->iprec->leaf.data_len;
+			int64_t base1 = (int64_t)hget64(elm->leaf.base.key) - (int32_t)hget32(elm->leaf.data_len);
+			int64_t base2 = (int64_t)hget64(cursor->iprec->leaf.base.key) -
+					(int32_t)hget32(cursor->iprec->leaf.data_len);
 			if (base1 == base2)
 				r = 0;
 		}
@@ -1872,11 +1875,11 @@ hammer_ip_resolve_data(hammer_cursor_t cursor)
 		error = 0;
 		if (cursor->data == NULL) {
 			hammer_io_direct_wait(record);
-			KKASSERT(record->leaf.base.rec_type ==
+			KKASSERT(hget16(record->leaf.base.rec_type) ==
 				 HAMMER_RECTYPE_DATA);
 			cursor->data = hammer_bread_ext(cursor->trans->hmp,
-						    record->leaf.data_offset,
-						    record->leaf.data_len,
+						    hget64(record->leaf.data_offset),
+						    (int32_t)hget32(record->leaf.data_len),
 						    &error,
 						    &cursor->data_buffer);
 		}
@@ -1892,6 +1895,7 @@ hammer_ip_resolve_data(hammer_cursor_t cursor)
 	return(error);
 }
 
+#if 0 /* phase 2: write path */
 /*
  * Backend truncation / record replacement - delete records in range.
  *
@@ -2659,3 +2663,4 @@ hammer_cursor_localize_data(hammer_mount_t hmp, hammer_data_ondisk_t data,
 	}
 	return(0);
 }
+#endif /* phase 2 */

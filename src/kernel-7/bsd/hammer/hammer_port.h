@@ -104,6 +104,9 @@ typedef int bool;
 #ifndef __always_inline
 #define __always_inline	__inline
 #endif
+#ifndef __noinline
+#define __noinline
+#endif
 #ifndef __debugvar
 #define __debugvar
 #endif

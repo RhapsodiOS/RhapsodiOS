@@ -345,6 +345,7 @@ typedef struct hammer_inode {
 #endif
 	int			rsv_recs;
 	struct vnode		*vp;
+	struct lock__bsd__	vnlock;		/* vnode lock (VOP_LOCK) */
 	hammer_pseudofs_inmem_t	pfsm;
 	struct hammer_lock	lock;		/* sync copy interlock */
 	off_t			trunc_off;
@@ -963,6 +964,10 @@ void	hammer_critical_error(hammer_mount_t hmp, hammer_inode_t ip,
 int	hammer_vop_inactive(struct vop_inactive_args *);
 int	hammer_vop_reclaim(struct vop_reclaim_args *);
 int	hammer_get_vnode(hammer_inode_t ip, struct vnode **vpp);
+int	hammer_vget_obj(hammer_mount_t hmp, int64_t obj_id,
+			uint32_t localization, struct vnode **vpp);
+uint32_t hammer_ino32(int64_t obj_id);
+extern int (**hammer_vnodeop_p)(void *);
 hammer_inode_t hammer_get_inode(hammer_transaction_t trans,
 			hammer_inode_t dip, int64_t obj_id,
 			hammer_tid_t asof, uint32_t localization,

@@ -37,15 +37,38 @@
 #include <sys/buf.h>
 #include <sys/vnode.h>
 #include <sys/ucred.h>
+#include <vm/vm_kern.h>
 #include "hammer.h"
+
+/*
+ * Each block starts with an 8-byte header holding its size (8 keeps the
+ * 64-bit on-disk fields aligned).  Page-sized and larger blocks (the
+ * 16/64 KB buffers) come from kmem_alloc with their own VM object: under
+ * HAMMER's alloc/free churn, kalloc's kernel_object path for large blocks
+ * (kmem_alloc_wired/kmem_free) panics in pmap_remove_all on a page that is
+ * still wired.  None of HAMMER's callers pass M_NOWAIT for such sizes.
+ */
+#define HAMMER_KHDR	8
 
 void *
 hammer_kmalloc(size_t size, int flags)
 {
-	void *ptr;
+	vm_offset_t a;
+	char *ptr;
 
-	ptr = _MALLOC(size, M_HAMMER, flags & M_NOWAIT);
-	if (ptr && (flags & M_ZERO))
+	if (size + HAMMER_KHDR >= PAGE_SIZE) {
+		if (kmem_alloc(kernel_map, &a,
+			       round_page(size + HAMMER_KHDR)) != KERN_SUCCESS)
+			return NULL;
+		ptr = (char *)a;
+	} else {
+		ptr = _MALLOC(size + HAMMER_KHDR, M_HAMMER, flags & M_NOWAIT);
+		if (ptr == NULL)
+			return NULL;
+	}
+	*(size_t *)ptr = size;
+	ptr += HAMMER_KHDR;
+	if (flags & M_ZERO)
 		bzero(ptr, size);
 	return ptr;
 }
@@ -53,7 +76,17 @@ hammer_kmalloc(size_t size, int flags)
 void
 hammer_kfree(void *ptr)
 {
-	_FREE(ptr, M_HAMMER);
+	char *base = (char *)ptr - HAMMER_KHDR;
+	size_t size;
+
+	if (ptr == NULL)
+		return;
+	size = *(size_t *)base;
+	if (size + HAMMER_KHDR >= PAGE_SIZE)
+		kmem_free(kernel_map, (vm_offset_t)base,
+			  round_page(size + HAMMER_KHDR));
+	else
+		_FREE(base, M_HAMMER);
 }
 
 char *
@@ -391,6 +424,16 @@ hpanic(const char *fmt, ...)
 	hammer_vsnprintf(buf, sizeof(buf), fmt, ap);
 	va_end(ap);
 	panic("hammer: %s", buf);
+}
+
+void
+hammer_vfs_timestamp(struct timespec *ts)
+{
+	struct timeval tv;
+
+	microtime(&tv);
+	ts->tv_sec = tv.tv_sec;
+	ts->tv_nsec = tv.tv_usec * 1000;
 }
 
 #undef tsleep	/* the kernel's own, not hammer_rhapsody.h's mapping */

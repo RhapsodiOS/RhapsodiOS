@@ -225,6 +225,16 @@ hammer_io_limit_backlog(hammer_mount_t hmp)
 }
 
 /*
+ * The B-tree scan calls this on every step; a read-only mount has no
+ * loose (written-back) buffers to clean.  The real one is in
+ * hammer_flusher.c (Phase 2).
+ */
+void
+hammer_flusher_clean_loose_ios(hammer_mount_t hmp)
+{
+}
+
+/*
  * Nothing caches a device buffer HAMMER does not own, so there is never a
  * stale alias to invalidate.
  */

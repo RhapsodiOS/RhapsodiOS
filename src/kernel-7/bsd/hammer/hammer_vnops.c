@@ -32,12 +32,10 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/mountctl.h>
-#include <sys/namecache.h>
-#include <sys/buf2.h>
-#include <vfs/fifofs/fifo.h>
-
 #include "hammer.h"
+#include <vfs/vfs_support.h>
+
+#if 0 /* phase 2: DragonFly VOPs, kept for the write path */
 
 /*
  * USERFS VNOPS
@@ -3601,4 +3599,675 @@ filt_hammervnode(struct knote *kn, long hint)
 	}
 	return (kn->kn_fflags != 0);
 }
+#endif /* phase 2 */
 
+/*
+ * Rhapsody vnode operations: 4.4BSD componentname VOPs over HAMMER's
+ * read path.  The mount is always read-only in this release, so every
+ * operation that would change the filesystem returns EROFS; the nop_*
+ * helpers release the vnodes and name buffers the caller passed in.
+ */
+int (**hammer_vnodeop_p)(void *);
+
+static int hammer_lookup_name(hammer_inode_t dip, const char *name, int nlen,
+			      int64_t *obj_idp, uint32_t *localizationp);
+
+/*
+ * Return a locked, referenced vnode for object OBJ_ID of the mount.
+ */
+int
+hammer_vget_obj(hammer_mount_t hmp, int64_t obj_id, uint32_t localization,
+		struct vnode **vpp)
+{
+	struct hammer_transaction trans;
+	hammer_inode_t ip;
+	int error;
+
+	hammer_simple_transaction(&trans, hmp);
+	ip = hammer_get_inode(&trans, NULL, obj_id, hmp->asof, localization,
+			      0, &error);
+	if (ip) {
+		error = hammer_get_vnode(ip, vpp);
+		hammer_rel_inode(ip, 0);
+	} else {
+		*vpp = NULL;
+	}
+	hammer_done_transaction(&trans);
+	return(error);
+}
+
+/*
+ * A directory entry whose name length does not fit NAME_MAX or its own
+ * record is damage; report it rather than trust it.
+ */
+static int
+hammer_entry_namelen(hammer_inode_t dip, hammer_btree_leaf_elm_t leaf)
+{
+	int nlen = (int)hget32(leaf->data_len) - (int)HAMMER_ENTRY_NAME_OFF;
+
+	if (nlen <= 0 || nlen > MAXNAMLEN) {
+		hkprintf("directory %016jx: entry %016jx has a %d-byte name\n",
+			 (intmax_t)dip->obj_id, (intmax_t)hget64(leaf->base.key),
+			 nlen);
+		return(-1);
+	}
+	return(nlen);
+}
+
+static void
+hammer_dir_cursor(hammer_cursor_t cursor, hammer_inode_t dip, int64_t key)
+{
+	cursor->key_beg.localization = hmk32(dip->obj_localization |
+					     hammer_dir_localization(dip));
+	cursor->key_beg.obj_id = hmk64(dip->obj_id);
+	cursor->key_beg.key = hmk64(key);
+	cursor->key_beg.create_tid = hmk64(0);
+	cursor->key_beg.delete_tid = hmk64(0);
+	cursor->key_beg.rec_type = hmk16(HAMMER_RECTYPE_DIRENTRY);
+	cursor->key_beg.obj_type = 0;
+	cursor->key_end = cursor->key_beg;
+	cursor->asof = dip->obj_asof;
+	cursor->flags |= HAMMER_CURSOR_END_INCLUSIVE | HAMMER_CURSOR_ASOF;
+}
+
+/*
+ * Find NAME in directory DIP.  Returns 0 with the entry's object, ENOENT,
+ * or EIO for a damaged entry on the name's hash chain.
+ */
+static int
+hammer_lookup_name(hammer_inode_t dip, const char *name, int nlen,
+		   int64_t *obj_idp, uint32_t *localizationp)
+{
+	struct hammer_transaction trans;
+	struct hammer_cursor cursor;
+	uint32_t max_iterations;
+	int64_t namekey;
+	int error, elen;
+
+	hammer_simple_transaction(&trans, dip->hmp);
+	namekey = hammer_direntry_namekey(dip, name, nlen, &max_iterations);
+	error = hammer_init_cursor(&trans, &cursor, &dip->cache[1], dip);
+	hammer_dir_cursor(&cursor, dip, namekey);
+	cursor.key_end.key = hmk64(namekey + max_iterations);
+	if (error == 0)
+		error = hammer_ip_first(&cursor);
+	while (error == 0) {
+		error = hammer_ip_resolve_data(&cursor);
+		if (error)
+			break;
+		elen = hammer_entry_namelen(dip, cursor.leaf);
+		if (elen < 0) {
+			error = EIO;
+			break;
+		}
+		if (elen == nlen &&
+		    bcmp(name, cursor.data->entry.name, nlen) == 0) {
+			*obj_idp = (int64_t)hget64(cursor.data->entry.obj_id);
+			*localizationp = hget32(cursor.data->entry.localization);
+			break;
+		}
+		error = hammer_ip_next(&cursor);
+	}
+	hammer_done_cursor(&cursor);
+	hammer_done_transaction(&trans);
+	return(error);
+}
+
+/*
+ * The ufs lookup protocol (LOCKPARENT, ISDOTDOT, the name cache), as in
+ * cd9660_lookup.
+ */
+static int
+hammer_vop_lookup(struct vop_lookup_args *ap)
+{
+	struct vnode *vdp = ap->a_dvp;
+	struct vnode **vpp = ap->a_vpp;
+	struct componentname *cnp = ap->a_cnp;
+	struct proc *p = cnp->cn_proc;
+	int flags = cnp->cn_flags;
+	int nameiop = cnp->cn_nameiop;
+	int lockparent = flags & LOCKPARENT;
+	struct vnode *pdp, *tdp;
+	hammer_inode_t dip;
+	uint32_t localization;
+	int64_t obj_id;
+	int error, vpid;
+
+	*vpp = NULL;
+	dip = VTOI(vdp);
+	if (vdp->v_type != VDIR)
+		return(ENOTDIR);
+	if ((error = VOP_ACCESS(vdp, VEXEC, cnp->cn_cred, p)) != 0)
+		return(error);
+
+	if ((error = cache_lookup(vdp, vpp, cnp)) != 0) {
+		if (error == ENOENT)
+			return(error);
+		pdp = vdp;
+		vdp = *vpp;
+		vpid = vdp->v_id;
+		if (pdp == vdp) {
+			VREF(vdp);
+			error = 0;
+		} else if (flags & ISDOTDOT) {
+			VOP_UNLOCK(pdp, 0, p);
+			error = vget(vdp, LK_EXCLUSIVE | LK_RETRY, p);
+			if (!error && lockparent && (flags & ISLASTCN))
+				error = VOP_LOCK(pdp, LK_EXCLUSIVE | LK_RETRY, p);
+		} else {
+			error = vget(vdp, LK_EXCLUSIVE | LK_RETRY, p);
+			if (!lockparent || error || !(flags & ISLASTCN))
+				VOP_UNLOCK(pdp, 0, p);
+		}
+		if (!error) {
+			if (vpid == vdp->v_id)
+				return(0);
+			vput(vdp);
+			if (lockparent && pdp != vdp && (flags & ISLASTCN))
+				VOP_UNLOCK(pdp, 0, p);
+		}
+		if ((error = VOP_LOCK(pdp, LK_EXCLUSIVE | LK_RETRY, p)) != 0)
+			return(error);
+		vdp = pdp;
+		*vpp = NULL;
+	}
+
+	localization = dip->obj_localization;
+	if (flags & ISDOTDOT) {
+		obj_id = (int64_t)hget64(dip->ino_data.parent_obj_id);
+		if (obj_id == 0)
+			obj_id = dip->obj_id;
+	} else if (cnp->cn_namelen == 1 && cnp->cn_nameptr[0] == '.') {
+		obj_id = dip->obj_id;
+	} else {
+		error = hammer_lookup_name(dip, cnp->cn_nameptr,
+					   cnp->cn_namelen, &obj_id,
+					   &localization);
+		if (error == ENOENT) {
+			if ((cnp->cn_flags & MAKEENTRY) && nameiop != CREATE)
+				cache_enter(vdp, *vpp, cnp);
+			if ((nameiop == CREATE || nameiop == RENAME) &&
+			    (flags & ISLASTCN))
+				return(EROFS);
+			return(ENOENT);
+		}
+		if (error)
+			return(error);
+	}
+
+	pdp = vdp;
+	if (flags & ISDOTDOT) {
+		VOP_UNLOCK(pdp, 0, p);
+		error = hammer_vget_obj(dip->hmp, obj_id, localization, &tdp);
+		if (error) {
+			VOP_LOCK(pdp, LK_EXCLUSIVE | LK_RETRY, p);
+			return(error);
+		}
+		if (lockparent && (flags & ISLASTCN) &&
+		    (error = VOP_LOCK(pdp, LK_EXCLUSIVE | LK_RETRY, p)) != 0) {
+			vput(tdp);
+			return(error);
+		}
+		*vpp = tdp;
+	} else if (obj_id == dip->obj_id) {
+		VREF(vdp);
+		*vpp = vdp;
+	} else {
+		error = hammer_vget_obj(dip->hmp, obj_id, localization, &tdp);
+		if (error)
+			return(error);
+		if (!lockparent || !(flags & ISLASTCN))
+			VOP_UNLOCK(pdp, 0, p);
+		*vpp = tdp;
+	}
+	if (cnp->cn_flags & MAKEENTRY)
+		cache_enter(vdp, *vpp, cnp);
+	return(0);
+}
+
+static int
+hammer_vop_open(struct vop_open_args *ap)
+{
+	return(0);
+}
+
+static int
+hammer_vop_close(struct vop_close_args *ap)
+{
+	return(0);
+}
+
+static int
+hammer_vop_access(struct vop_access_args *ap)
+{
+	struct vnode *vp = ap->a_vp;
+	hammer_inode_t ip = VTOI(vp);
+	struct ucred *cred = ap->a_cred;
+	mode_t mask = 0, mode = ap->a_mode;
+	mode_t imode = hget16(ip->ino_data.mode);
+	uid_t uid;
+	gid_t gid;
+	int i;
+
+	if (mode & VWRITE) {
+		switch (vp->v_type) {
+		case VDIR:
+		case VLNK:
+		case VREG:
+			return(EROFS);
+		default:
+			break;
+		}
+	}
+	if (cred->cr_uid == 0)
+		return(0);
+	uid = hammer_to_unix_xid(&ip->ino_data.uid);
+	gid = hammer_to_unix_xid(&ip->ino_data.gid);
+	if (cred->cr_uid == uid) {
+		if (mode & VEXEC)
+			mask |= S_IXUSR;
+		if (mode & VREAD)
+			mask |= S_IRUSR;
+		if (mode & VWRITE)
+			mask |= S_IWUSR;
+		return((imode & mask) == mask ? 0 : EACCES);
+	}
+	for (i = 0; i < cred->cr_ngroups; i++) {
+		if (cred->cr_groups[i] == gid) {
+			if (mode & VEXEC)
+				mask |= S_IXGRP;
+			if (mode & VREAD)
+				mask |= S_IRGRP;
+			if (mode & VWRITE)
+				mask |= S_IWGRP;
+			return((imode & mask) == mask ? 0 : EACCES);
+		}
+	}
+	if (mode & VEXEC)
+		mask |= S_IXOTH;
+	if (mode & VREAD)
+		mask |= S_IROTH;
+	if (mode & VWRITE)
+		mask |= S_IWOTH;
+	return((imode & mask) == mask ? 0 : EACCES);
+}
+
+static int
+hammer_vop_getattr(struct vop_getattr_args *ap)
+{
+	struct vnode *vp = ap->a_vp;
+	hammer_inode_t ip = VTOI(vp);
+	hammer_inode_data_t d = &ip->ino_data;
+	struct vattr *vap = ap->a_vap;
+	uint64_t size = hget64(d->size);
+	uint64_t nlinks = hget64(d->nlinks);
+
+	vap->va_type = hammer_get_vnode_type(d->obj_type);
+	vap->va_mode = hget16(d->mode);
+	vap->va_nlink = nlinks > 0x7fff ? 0x7fff : (short)nlinks;
+	vap->va_uid = hammer_to_unix_xid(&d->uid);
+	vap->va_gid = hammer_to_unix_xid(&d->gid);
+	vap->va_fsid = vp->v_mount->mnt_stat.f_fsid.val[0];
+	vap->va_fileid = hammer_ino32(ip->obj_id);
+	vap->va_size = size;
+	vap->va_blocksize = HAMMER_BUFSIZE;
+	hammer_time_to_timespec(hget64(d->atime), &vap->va_atime);
+	hammer_time_to_timespec(hget64(d->mtime), &vap->va_mtime);
+	hammer_time_to_timespec(hget64(d->ctime), &vap->va_ctime);
+	vap->va_gen = 1;	/* hammer inums are unique for all time */
+	vap->va_flags = hget32(d->uflags);
+	if (vap->va_type == VCHR || vap->va_type == VBLK)
+		vap->va_rdev = makedev(hget32(d->rmajor), hget32(d->rminor));
+	else
+		vap->va_rdev = 0;
+	if (size >= HAMMER_XDEMARC)
+		vap->va_bytes = HAMMER_XBUFSIZE64_DOALIGN(size);
+	else if (size > HAMMER_HBUFSIZE)
+		vap->va_bytes = HAMMER_BUFSIZE64_DOALIGN(size);
+	else
+		vap->va_bytes = HAMMER_DATA_DOALIGN(size);
+	vap->va_filerev = 0;
+	vap->va_vaflags = 0;
+	return(0);
+}
+
+/*
+ * Emit one struct dirent.  Returns 1 when the caller should stop: the
+ * record does not fit (nothing written) or uiomove failed (*errorp set).
+ */
+static int
+hammer_dirent(struct uio *uio, int64_t obj_id, int type, const char *name,
+	      int nlen, int *errorp)
+{
+	struct dirent d;
+	int reclen = (offsetof(struct dirent, d_name) + nlen + 1 + 3) & ~3;
+
+	if (uio->uio_resid < reclen)
+		return(1);
+	bzero(&d, reclen);
+	d.d_fileno = hammer_ino32(obj_id);
+	d.d_reclen = reclen;
+	d.d_type = type;
+	d.d_namlen = nlen;
+	bcopy(name, d.d_name, nlen);
+	*errorp = uiomove((caddr_t)&d, reclen, uio);
+	return(*errorp != 0);
+}
+
+/*
+ * uio_offset is a directory key: 0 is ".", 1 is "..", and real entries
+ * resume at their own namekey (on-media keys are all >= 2^32).
+ */
+static int
+hammer_vop_readdir(struct vop_readdir_args *ap)
+{
+	hammer_inode_t ip = VTOI(ap->a_vp);
+	struct uio *uio = ap->a_uio;
+	struct hammer_transaction trans;
+	struct hammer_cursor cursor;
+	hammer_btree_leaf_elm_t leaf;
+	off_t saveoff = uio->uio_offset;
+	int64_t parent;
+	int error = 0, nlen;
+
+	if (ap->a_ncookies) {		/* no NFS export in this release */
+		*ap->a_ncookies = 0;
+		*ap->a_cookies = NULL;
+	}
+	if (saveoff == 0) {
+		if (hammer_dirent(uio, ip->obj_id, DT_DIR, ".", 1, &error))
+			goto out;
+		saveoff = 1;
+	}
+	if (saveoff == 1) {
+		parent = (int64_t)hget64(ip->ino_data.parent_obj_id);
+		if (hammer_dirent(uio, parent ? parent : ip->obj_id, DT_DIR,
+				  "..", 2, &error))
+			goto out;
+		saveoff = 2;
+	}
+
+	hammer_simple_transaction(&trans, ip->hmp);
+	error = hammer_init_cursor(&trans, &cursor, &ip->cache[1], ip);
+	hammer_dir_cursor(&cursor, ip, saveoff);
+	cursor.key_end.key = hmk64(HAMMER_MAX_KEY);
+	if (error == 0)
+		error = hammer_ip_first(&cursor);
+	while (error == 0) {
+		error = hammer_ip_resolve_data(&cursor);
+		if (error)
+			break;
+		leaf = cursor.leaf;
+		saveoff = (int64_t)hget64(leaf->base.key);
+		nlen = hammer_entry_namelen(ip, leaf);
+		if (nlen < 0) {
+			error = EIO;
+			break;
+		}
+		if (hammer_dirent(uio, (int64_t)hget64(cursor.data->entry.obj_id),
+				  hammer_get_dtype(leaf->base.obj_type),
+				  cursor.data->entry.name, nlen, &error))
+			break;
+		++saveoff;
+		error = hammer_ip_next(&cursor);
+	}
+	hammer_done_cursor(&cursor);
+	hammer_done_transaction(&trans);
+	if (ap->a_eofflag)
+		*ap->a_eofflag = (error == ENOENT);
+	if (error == ENOENT)
+		error = 0;
+out:
+	uio->uio_offset = saveoff;
+	return(error);
+}
+
+static int
+hammer_vop_readlink(struct vop_readlink_args *ap)
+{
+	hammer_inode_t ip = VTOI(ap->a_vp);
+	struct hammer_transaction trans;
+	struct hammer_cursor cursor;
+	uint64_t size = hget64(ip->ino_data.size);
+	int error, len;
+
+	if (size <= HAMMER_INODE_BASESYMLEN)
+		return(uiomove(ip->ino_data.ext.symlink, (int)size, ap->a_uio));
+
+	hammer_simple_transaction(&trans, ip->hmp);
+	error = hammer_init_cursor(&trans, &cursor, &ip->cache[1], ip);
+	cursor.key_beg.localization = hmk32(ip->obj_localization |
+					    HAMMER_LOCALIZE_MISC);
+	cursor.key_beg.obj_id = hmk64(ip->obj_id);
+	cursor.key_beg.create_tid = hmk64(0);
+	cursor.key_beg.delete_tid = hmk64(0);
+	cursor.key_beg.rec_type = hmk16(HAMMER_RECTYPE_FIX);
+	cursor.key_beg.obj_type = 0;
+	cursor.key_beg.key = hmk64(HAMMER_FIXKEY_SYMLINK);
+	cursor.asof = ip->obj_asof;
+	cursor.flags |= HAMMER_CURSOR_ASOF;
+	if (error == 0)
+		error = hammer_ip_lookup(&cursor);
+	if (error == 0)
+		error = hammer_ip_resolve_data(&cursor);
+	if (error == 0) {
+		len = (int)hget32(cursor.leaf->data_len) -
+		      (int)HAMMER_SYMLINK_NAME_OFF;
+		if (len < 0 || len > MAXPATHLEN) {
+			hkprintf("symlink %016jx: bad %d-byte target\n",
+				 (intmax_t)ip->obj_id, len);
+			error = EIO;
+		} else {
+			error = uiomove(cursor.data->symlink.name, len,
+					ap->a_uio);
+		}
+	}
+	hammer_done_cursor(&cursor);
+	hammer_done_transaction(&trans);
+	return(error);
+}
+
+/*
+ * The vnode lock is a lockmgr lock in the inode.  A vnode that lost its
+ * inode (a reclaimed or never-attached one) has no lock to take.
+ */
+static int
+hammer_vop_lock(struct vop_lock_args *ap)
+{
+	struct vnode *vp = ap->a_vp;
+
+	if (VTOI(vp) == NULL) {
+		if (ap->a_flags & LK_INTERLOCK)
+			simple_unlock(&vp->v_interlock);
+		return(0);
+	}
+	return(lockmgr(&VTOI(vp)->vnlock, ap->a_flags, &vp->v_interlock,
+		       ap->a_p));
+}
+
+static int
+hammer_vop_unlock(struct vop_unlock_args *ap)
+{
+	struct vnode *vp = ap->a_vp;
+
+	if (VTOI(vp) == NULL) {
+		if (ap->a_flags & LK_INTERLOCK)
+			simple_unlock(&vp->v_interlock);
+		return(0);
+	}
+	return(lockmgr(&VTOI(vp)->vnlock, ap->a_flags | LK_RELEASE,
+		       &vp->v_interlock, ap->a_p));
+}
+
+static int
+hammer_vop_islocked(struct vop_islocked_args *ap)
+{
+	if (VTOI(ap->a_vp) == NULL)
+		return(0);
+	return(lockstatus(&VTOI(ap->a_vp)->vnlock));
+}
+
+/*
+ * Nothing is ever dirty on a read-only mount: unlock, and drop vnodes
+ * that never got an inode.
+ */
+int
+hammer_vop_inactive(struct vop_inactive_args *ap)
+{
+	struct vnode *vp = ap->a_vp;
+
+	VOP_UNLOCK(vp, 0, ap->a_p);
+	if (VTOI(vp) == NULL)
+		vgone(vp);
+	return(0);
+}
+
+/*
+ * Release the vnode's inode reference; the last one unloads the inode.
+ */
+int
+hammer_vop_reclaim(struct vop_reclaim_args *ap)
+{
+	struct vnode *vp = ap->a_vp;
+	hammer_inode_t ip = VTOI(vp);
+
+	cache_purge(vp);
+	if (ip != NULL) {
+		hammer_lock_ex(&ip->lock);
+		vp->v_data = NULL;
+		ip->vp = NULL;
+		hammer_unlock(&ip->lock);
+		hammer_rel_inode(ip, 0);
+	}
+	return(0);
+}
+
+static int
+hammer_vop_print(struct vop_print_args *ap)
+{
+	hammer_inode_t ip = VTOI(ap->a_vp);
+
+	if (ip)
+		hkprintf("obj_id %016jx, asof %016jx\n",
+			 (intmax_t)ip->obj_id, (intmax_t)ip->obj_asof);
+	return(0);
+}
+
+static int
+hammer_vop_pathconf(struct vop_pathconf_args *ap)
+{
+	switch (ap->a_name) {
+	case _PC_LINK_MAX:
+		*ap->a_retval = LINK_MAX;
+		return(0);
+	case _PC_NAME_MAX:
+		*ap->a_retval = NAME_MAX;
+		return(0);
+	case _PC_PATH_MAX:
+		*ap->a_retval = PATH_MAX;
+		return(0);
+	case _PC_PIPE_BUF:
+		*ap->a_retval = PIPE_BUF;
+		return(0);
+	case _PC_CHOWN_RESTRICTED:
+	case _PC_NO_TRUNC:
+		*ap->a_retval = 1;
+		return(0);
+	default:
+		return(EINVAL);
+	}
+}
+
+static int
+hammer_vop_create(struct vop_create_args *ap)
+{
+	(void)nop_create(ap);
+	return(EROFS);
+}
+
+static int
+hammer_vop_mknod(struct vop_mknod_args *ap)
+{
+	(void)nop_mknod(ap);
+	return(EROFS);
+}
+
+static int
+hammer_vop_mkdir(struct vop_mkdir_args *ap)
+{
+	(void)nop_mkdir(ap);
+	return(EROFS);
+}
+
+static int
+hammer_vop_remove(struct vop_remove_args *ap)
+{
+	(void)nop_remove(ap);
+	return(EROFS);
+}
+
+static int
+hammer_vop_rmdir(struct vop_rmdir_args *ap)
+{
+	(void)nop_rmdir(ap);
+	return(EROFS);
+}
+
+static int
+hammer_vop_rename(struct vop_rename_args *ap)
+{
+	(void)nop_rename(ap);
+	return(EROFS);
+}
+
+static int
+hammer_vop_link(struct vop_link_args *ap)
+{
+	(void)nop_link(ap);
+	return(EROFS);
+}
+
+static int
+hammer_vop_symlink(struct vop_symlink_args *ap)
+{
+	(void)nop_symlink(ap);
+	return(EROFS);
+}
+
+static int
+hammer_vop_erofs(void *ap)
+{
+	return(EROFS);
+}
+
+struct vnodeopv_entry_desc hammer_vnodeop_entries[] = {
+	{ &vop_default_desc, (int (*)())vn_default_error },
+	{ &vop_lookup_desc, (int (*)())hammer_vop_lookup },
+	{ &vop_create_desc, (int (*)())hammer_vop_create },
+	{ &vop_mknod_desc, (int (*)())hammer_vop_mknod },
+	{ &vop_open_desc, (int (*)())hammer_vop_open },
+	{ &vop_close_desc, (int (*)())hammer_vop_close },
+	{ &vop_access_desc, (int (*)())hammer_vop_access },
+	{ &vop_getattr_desc, (int (*)())hammer_vop_getattr },
+	{ &vop_setattr_desc, (int (*)())hammer_vop_erofs },
+	{ &vop_write_desc, (int (*)())hammer_vop_erofs },
+	{ &vop_remove_desc, (int (*)())hammer_vop_remove },
+	{ &vop_link_desc, (int (*)())hammer_vop_link },
+	{ &vop_rename_desc, (int (*)())hammer_vop_rename },
+	{ &vop_mkdir_desc, (int (*)())hammer_vop_mkdir },
+	{ &vop_rmdir_desc, (int (*)())hammer_vop_rmdir },
+	{ &vop_symlink_desc, (int (*)())hammer_vop_symlink },
+	{ &vop_readdir_desc, (int (*)())hammer_vop_readdir },
+	{ &vop_readlink_desc, (int (*)())hammer_vop_readlink },
+	{ &vop_abortop_desc, (int (*)())nop_abortop },
+	{ &vop_inactive_desc, (int (*)())hammer_vop_inactive },
+	{ &vop_reclaim_desc, (int (*)())hammer_vop_reclaim },
+	{ &vop_lock_desc, (int (*)())hammer_vop_lock },
+	{ &vop_unlock_desc, (int (*)())hammer_vop_unlock },
+	{ &vop_islocked_desc, (int (*)())hammer_vop_islocked },
+	{ &vop_print_desc, (int (*)())hammer_vop_print },
+	{ &vop_pathconf_desc, (int (*)())hammer_vop_pathconf },
+	{ NULL, NULL }
+};
+struct vnodeopv_desc hammer_vnodeop_opv_desc =
+	{ &hammer_vnodeop_p, hammer_vnodeop_entries };

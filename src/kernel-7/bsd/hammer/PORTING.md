@@ -152,13 +152,32 @@ released.
 
 ## Upstream defects found (to examine in Phase 2)
 
-- **`utimes()` does not persist** on DragonFly 6.4.2 HAMMER. An explicit mtime
-  holds in memory and through `sync`/`hammer synctid`, but a remount shows the
-  creation time again, even after a forced inode rewrite (`chmod`/`chown`).
-  Reproduced in `vm/work/dfly/run-diag-4` and `run-diag-5`
-  (`vm/dfly-reference.md`). This breaks `cp -p`, `tar x` and `make`. Phase 2
-  owns the write path; decide there whether to fix it as a labelled
-  divergence.
+- None so far.  (Task 4 logged "`utimes()` does not persist"; that was a
+  misreading.  The times are on disk: a DragonFly read-only mount flags every
+  inode `HAMMER_INODE_RO` and `getattr` then reports ctime as atime and
+  mtime.  See "Read-only mounts and times" below.)
+
+## Read-only mounts and times
+
+Upstream reports ctime as atime and mtime for `HAMMER_INODE_RO` inodes, so
+that snapshots give stable `tar | md5` results, and it sets that flag on every
+inode of a read-only mount.  Every Phase 1 mount is read-only, so this port
+reports the stored atime and mtime instead: `ls -l`, `make` and backup tools
+would otherwise see ctime everywhere.  The ctime rule returns for as-of
+(snapshot) access in Phase 4.  The DragonFly reference manifests are
+therefore taken from a read-write `noatime` mount (`vm/dfly-walk.sh`).
+
+## Kernel memory
+
+Allocations of a page or more (the 16 and 64 KB buffers) come from
+`kmem_alloc` with their own VM object, behind an 8-byte size header
+(`hammer_kmalloc`).  Through `_MALLOC`, Rhapsody serves them with
+`kmem_alloc_wired`/`kmem_free` on `kernel_object`, and under HAMMER's
+buffer churn that panics with `pmap_remove_all 3`: the freed page is still
+wired.  A gdbstub backtrace put the panic in `kfree` from
+`hammer_io_release`; guard words showed no overrun or double free.  The
+kernel fault itself is not fixed and may hit other heavy large-`_MALLOC`
+users.
 
 ## Evidence
 
@@ -170,4 +189,6 @@ released.
 | `rbuild kernel`, HAMMERFS off: links, 0 hammer symbols | i386 | PASS | 2026-10-18 |
 | `rbuild buildpackage hammer-1` (newfs_hammer, mount_hammer, hammer) | i386, ppc | PASS | 2026-10-18 |
 | `hammer_guest.py run` admit, refuse-rw, refuse-{badsig,badcrc,v6,twovol,needs-recovery} | i386 guest | PASS, volume unchanged | 2026-10-18 |
+| Task 6 read path: `rbuild kernel` links (i386 in the build root; ppc 376 hammer symbols) | i386, ppc | PASS | 2026-10-19 |
+| `hammer_guest.py run` namespace (walk matches DragonFly's read-write manifest, 20,128 lines), readdir-small (20,002 names, d_fileno == st_ino), times, erofs, crafted-name, plus the seven Task 5 cases | i386 guest | PASS, volumes unchanged | 2026-10-19 |
 | ppc runtime | ppc | **open**, no ppc runtime available | |

@@ -169,3 +169,80 @@ def test_run_rejects_unknown_case(tmp_path):
 def test_fixture_refuses_unknown_kind(tmp_path):
     with pytest.raises(ValueError):
         hg.make_fixture('nonsense', volume(tmp_path), tmp_path/'x.img')
+
+
+BUF_BEG = 1 << 20
+NODE = 4096
+
+
+def tree_volume(tmp_path):
+    """A v7 volume whose B-tree is one leaf: root dir 1 holding a, old and
+    future (objects 2-4), each with a current inode record."""
+    size = 4 << 20
+    path = tmp_path/'tree.img'
+    img = bytearray(size)
+    hdr = bytearray(HEADER)
+    struct.pack_into('<Q', hdr, 0, 0xC8414D4DC5523031)
+    struct.pack_into('<qq', hdr, 24, BUF_BEG, size)
+    struct.pack_into('<iiI', hdr, 144, 0, 1, 7)
+    struct.pack_into('<Q', hdr, 240, (8 << 60) | 0)          # vol0_btree_root
+    hg.seal_volume_header(hdr)
+    img[:HEADER] = hdr
+    node = bytearray(NODE)
+    elms = []
+    data = BUF_BEG + 65536
+
+    def leaf(obj_id, key, rec_type, payload, data):
+        img[data:data + len(payload)] = payload
+        e = bytearray(64)
+        struct.pack_into('<QQQQH', e, 0, obj_id, key, 1, 0, rec_type)
+        crced = payload[:112] if rec_type == 0x01 else payload   # HAMMER_INODE_CRCSIZE
+        struct.pack_into('<QII', e, 48, (11 << 60) | (data - BUF_BEG),
+                         len(payload), hg.crc32c(crced))
+        elms.append(e)
+    for n, name in enumerate((b'a', b'old', b'future')):
+        leaf(1, n, 0x11, struct.pack('<QII', 2 + n, 0, 0) + name, data)
+        ino = bytearray(128)
+        struct.pack_into('<Q', ino, 112, 1792249285 * 1000000)
+        leaf(2 + n, 0, 0x01, bytes(ino), data + 1024)
+        data += 2048
+    struct.pack_into('<IB', node, 16, len(elms), ord('L'))
+    for i, e in enumerate(elms):
+        node[64 + i * 64:128 + i * 64] = e
+    struct.pack_into('<I', node, 0, hg.crc32c(bytes(node[4:])))
+    img[BUF_BEG:BUF_BEG + NODE] = node
+    path.write_bytes(bytes(img))
+    return path
+
+
+def leaf_of(raw, obj_id, rec_type):
+    node = raw[BUF_BEG:BUF_BEG + NODE]
+    for i in range(struct.unpack_from('<I', node, 16)[0]):
+        e = 64 + i * 64
+        if struct.unpack_from('<Q', node, e)[0] == obj_id and \
+           struct.unpack_from('<H', node, e + 32)[0] == rec_type:
+            off, n, crc = struct.unpack_from('<QII', node, e + 48)
+            return BUF_BEG + (off & 0x000FFFFFFFFFFFFF), n, crc
+    raise KeyError(obj_id)
+
+
+def test_longname_fixture_stretches_one_entry(tmp_path):
+    vol = tree_volume(tmp_path)
+    out = tmp_path/'longname.img'
+    hg.make_fixture('longname', vol, out)
+    old, new = vol.read_bytes(), out.read_bytes()
+    node = new[BUF_BEG:BUF_BEG + NODE]
+    assert struct.unpack_from('<I', node, 0)[0] == hg.crc32c(node[4:])
+    data, n, crc = leaf_of(new, 1, 0x11)          # first entry is 'a'
+    assert n == 16 + 256
+    assert crc == hg.crc32c(new[data:data + n])
+    changed = {i for i in range(len(old)) if old[i] != new[i]}
+    assert changed <= set(range(BUF_BEG, BUF_BEG + NODE))
+
+
+def test_walk_matches_ignores_content_crc():
+    want = './a\tf\t644\t0\t0\t1\t0\t5\t4294967295\n./d\td\t755\t0\t0\t1\t0\t5\t-\n'
+    got = './a\tf\t644\t0\t0\t1\t0\t5\t-\n./d\td\t755\t0\t0\t1\t0\t5\t-\n'
+    assert hg.walk_differences(got, want) == []
+    assert hg.walk_differences(got.replace('644', '600'), want) != []
+    assert hg.walk_differences(got.splitlines(True)[0], want) != []

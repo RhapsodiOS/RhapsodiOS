@@ -44,7 +44,6 @@
 	void name(void); \
 	void name(void) { panic("hammer: " #name " not in phase 1"); }
 
-HAMMER_ROSTUB(hammer_blockmap_alloc)
-HAMMER_ROSTUB(hammer_blockmap_free)
-HAMMER_ROSTUB(hammer_blockmap_lookup_verify)
 HAMMER_ROSTUB(hammer_undo_lookup)
+HAMMER_ROSTUB(hammer_io_direct_wait)
+HAMMER_ROSTUB(hammer_inode_waitreclaims)

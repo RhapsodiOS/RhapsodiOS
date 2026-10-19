@@ -137,7 +137,7 @@ hammer_btree_iterate(hammer_cursor_t cursor)
 	node = cursor->node->ondisk;
 	if (node == NULL)
 		return(ENOENT);
-	if (cursor->index < node->count &&
+	if (cursor->index < (int32_t)hget32(node->count) &&
 	    (cursor->flags & HAMMER_CURSOR_ATEDISK)) {
 		++cursor->index;
 	}
@@ -171,7 +171,7 @@ hammer_btree_iterate(hammer_cursor_t cursor)
 		++hammer_stats_btree_iterations;
 		hammer_flusher_clean_loose_ios(hmp);
 
-		if (cursor->index == node->count) {
+		if (cursor->index == (int32_t)hget32(node->count)) {
 			if (hammer_debug_btree) {
 				hkprintf("BRACKETU %016jx[%d] -> %016jx[%d] td=%p\n",
 					(intmax_t)cursor->node->node_offset,
@@ -181,13 +181,13 @@ hammer_btree_iterate(hammer_cursor_t cursor)
 					curthread);
 			}
 			KKASSERT(cursor->parent == NULL ||
-				 cursor->parent->ondisk->elms[cursor->parent_index].internal.subtree_offset == cursor->node->node_offset);
+				 hget64(cursor->parent->ondisk->elms[cursor->parent_index].internal.subtree_offset) == cursor->node->node_offset);
 			error = hammer_cursor_up(cursor);
 			if (error)
 				break;
 			/* reload stale pointer */
 			node = cursor->node->ondisk;
-			KKASSERT(cursor->index != node->count);
+			KKASSERT(cursor->index != (int32_t)hget32(node->count));
 
 			/*
 			 * If we are reblocking we want to return internal
@@ -233,7 +233,7 @@ hammer_btree_iterate(hammer_cursor_t cursor)
 			/*
 			 * Better not be zero
 			 */
-			KKASSERT(elm->internal.subtree_offset != 0);
+			KKASSERT(hget64(elm->internal.subtree_offset) != 0);
 
 			if (s <= 0) {
 				/*
@@ -245,7 +245,7 @@ hammer_btree_iterate(hammer_cursor_t cursor)
 				 */
 				if (cursor->flags &
 				    HAMMER_CURSOR_MIRROR_FILTERED) {
-					if (elm->internal.mirror_tid <
+					if (hget64(elm->internal.mirror_tid) <
 					    cursor->cmirror->mirror_tid) {
 						hammer_cursor_mirror_filter(cursor);
 						return(0);
@@ -368,13 +368,13 @@ hammer_cursor_mirror_filter(hammer_cursor_t cursor)
 		cmirror->skip_beg = *cursor->left_bound;
 	else
 		cmirror->skip_beg = elm->internal.base;
-	while (cursor->index < ondisk->count) {
-		if (elm->internal.mirror_tid >= cmirror->mirror_tid)
+	while (cursor->index < (int32_t)hget32(ondisk->count)) {
+		if (hget64(elm->internal.mirror_tid) >= cmirror->mirror_tid)
 			break;
 		++cursor->index;
 		++elm;
 	}
-	if (cursor->index == ondisk->count)
+	if (cursor->index == (int32_t)hget32(ondisk->count))
 		cmirror->skip_end = *cursor->right_bound;
 	else
 		cmirror->skip_end = elm->internal.base;
@@ -417,7 +417,7 @@ hammer_btree_iterate_reverse(hammer_cursor_t cursor)
 	    (cursor->flags & HAMMER_CURSOR_ATEDISK)) {
 		--cursor->index;
 	}
-	if (cursor->index == cursor->node->ondisk->count)
+	if (cursor->index == (int32_t)hget32(cursor->node->ondisk->count))
 		--cursor->index;
 
 	/*
@@ -448,7 +448,7 @@ hammer_btree_iterate_reverse(hammer_cursor_t cursor)
 			}
 			/* reload stale pointer */
 			node = cursor->node->ondisk;
-			KKASSERT(cursor->index != node->count);
+			KKASSERT(cursor->index != (int32_t)hget32(node->count));
 			--cursor->index;
 			continue;
 		}
@@ -459,7 +459,7 @@ hammer_btree_iterate_reverse(hammer_cursor_t cursor)
 		 *
 		 * We recurse down through internal nodes.
 		 */
-		KKASSERT(cursor->index != node->count);
+		KKASSERT(cursor->index != (int32_t)hget32(node->count));
 		if (node->type == HAMMER_BTREE_TYPE_INTERNAL) {
 			elm = &node->elms[cursor->index];
 
@@ -484,7 +484,7 @@ hammer_btree_iterate_reverse(hammer_cursor_t cursor)
 			/*
 			 * Better not be zero
 			 */
-			KKASSERT(elm->internal.subtree_offset != 0);
+			KKASSERT(hget64(elm->internal.subtree_offset) != 0);
 
 			error = hammer_cursor_down(cursor);
 			if (error)
@@ -494,7 +494,7 @@ hammer_btree_iterate_reverse(hammer_cursor_t cursor)
 			node = cursor->node->ondisk;
 
 			/* this can assign -1 if the leaf was empty */
-			cursor->index = node->count - 1;
+			cursor->index = (int32_t)hget32(node->count) - 1;
 			continue;
 		} else {
 			elm = &node->elms[cursor->index];
@@ -591,7 +591,7 @@ hammer_btree_lookup(hammer_cursor_t cursor)
 	++hammer_stats_btree_lookups;
 	if (cursor->flags & HAMMER_CURSOR_ASOF) {
 		KKASSERT((cursor->flags & HAMMER_CURSOR_INSERT) == 0);
-		cursor->key_beg.create_tid = cursor->asof;
+		cursor->key_beg.create_tid = hmk64(cursor->asof);
 		for (;;) {
 			cursor->flags &= ~HAMMER_CURSOR_CREATE_CHECK;
 			error = btree_search(cursor, 0);
@@ -608,7 +608,7 @@ hammer_btree_lookup(hammer_cursor_t cursor)
 				hkprintf("CREATE_CHECK %016jx\n",
 					(intmax_t)cursor->create_check);
 			}
-			cursor->key_beg.create_tid = cursor->create_check;
+			cursor->key_beg.create_tid = hmk64(cursor->create_check);
 			/* loop */
 		}
 	} else {
@@ -725,8 +725,8 @@ hammer_btree_extract(hammer_cursor_t cursor, int flags)
 
 	if (elm->leaf.base.btype != HAMMER_BTREE_TYPE_RECORD)
 		return(EINVAL);
-	data_off = elm->leaf.data_offset;
-	data_len = elm->leaf.data_len;
+	data_off = hget64(elm->leaf.data_offset);
+	data_len = (int32_t)hget32(elm->leaf.data_len);
 	if (data_off == 0)
 		return(0);
 
@@ -743,7 +743,7 @@ hammer_btree_extract(hammer_cursor_t cursor, int flags)
 	 * block device).
 	 */
 	if (error == 0) {
-		switch(elm->leaf.base.rec_type) {
+		switch(hget16(elm->leaf.base.rec_type)) {
 		case HAMMER_RECTYPE_DATA:
 		case HAMMER_RECTYPE_DB:
 			if ((data_off & HAMMER_ZONE_LARGE_DATA) == 0)
@@ -764,7 +764,7 @@ hammer_btree_extract(hammer_cursor_t cursor, int flags)
 	if (error == 0 &&
 	    hammer_crc_test_leaf(hmp->version, cursor->data, &elm->leaf) == 0) {
 		hdkprintf("CRC DATA @ %016jx/%d FAILED\n",
-			(intmax_t)elm->leaf.data_offset, elm->leaf.data_len);
+			(intmax_t)hget64(elm->leaf.data_offset), (int32_t)hget32(elm->leaf.data_len));
 		if (hammer_debug_critical)
 			Debugger("CRC FAILED: DATA");
 		if (cursor->trans->flags & HAMMER_TRANSF_CRCDOM)
@@ -815,24 +815,24 @@ hammer_btree_insert(hammer_cursor_t cursor, hammer_btree_leaf_elm_t elm,
 	i = cursor->index;
 	KKASSERT(elm->base.btype != 0);
 	KKASSERT(node->type == HAMMER_BTREE_TYPE_LEAF);
-	KKASSERT(node->count < HAMMER_BTREE_LEAF_ELMS);
-	if (i != node->count) {
+	KKASSERT((int32_t)hget32(node->count) < HAMMER_BTREE_LEAF_ELMS);
+	if (i != (int32_t)hget32(node->count)) {
 		bcopy(&node->elms[i], &node->elms[i+1],
-		      (node->count - i) * sizeof(*elm));
+		      ((int32_t)hget32(node->count) - i) * sizeof(*elm));
 	}
 	node->elms[i].leaf = *elm;
-	++node->count;
+	node->count = hmk32((int32_t)hget32(node->count) + 1);
 	hammer_cursor_inserted_element(cursor->node, i);
 
 	/*
 	 * Update the leaf node's aggregate mirror_tid for mirroring
 	 * support.
 	 */
-	if (node->mirror_tid < elm->base.delete_tid) {
+	if (hget64(node->mirror_tid) < hget64(elm->base.delete_tid)) {
 		node->mirror_tid = elm->base.delete_tid;
 		*doprop = 1;
 	}
-	if (node->mirror_tid < elm->base.create_tid) {
+	if (hget64(node->mirror_tid) < hget64(elm->base.create_tid)) {
 		node->mirror_tid = elm->base.create_tid;
 		*doprop = 1;
 	}
@@ -846,7 +846,7 @@ hammer_btree_insert(hammer_cursor_t cursor, hammer_btree_leaf_elm_t elm,
 	if (i) {
 		KKASSERT(hammer_btree_cmp(&node->elms[i-1].leaf.base, &elm->base) < 0);
 	}
-	if (i != node->count - 1)
+	if (i != (int32_t)hget32(node->count) - 1)
 		KKASSERT(hammer_btree_cmp(&node->elms[i+1].leaf.base, &elm->base) > 0);
 
 	return(0);
@@ -898,24 +898,24 @@ hammer_btree_delete(hammer_cursor_t cursor, int *ndelete)
 	i = cursor->index;
 
 	KKASSERT(ondisk->type == HAMMER_BTREE_TYPE_LEAF);
-	KKASSERT(i >= 0 && i < ondisk->count);
+	KKASSERT(i >= 0 && i < (int32_t)hget32(ondisk->count));
 	hammer_modify_node_all(cursor->trans, node);
-	if (i + 1 != ondisk->count) {
+	if (i + 1 != (int32_t)hget32(ondisk->count)) {
 		bcopy(&ondisk->elms[i+1], &ondisk->elms[i],
-		      (ondisk->count - i - 1) * sizeof(ondisk->elms[0]));
+		      ((int32_t)hget32(ondisk->count) - i - 1) * sizeof(ondisk->elms[0]));
 	}
-	--ondisk->count;
+	ondisk->count = hmk32((int32_t)hget32(ondisk->count) - 1);
 	hammer_modify_node_done(node);
 	hammer_cursor_deleted_element(node, i);
 
 	/*
 	 * Validate local parent
 	 */
-	if (ondisk->parent) {
+	if (hget64(ondisk->parent)) {
 		parent = cursor->parent;
 
 		KKASSERT(parent != NULL);
-		KKASSERT(parent->node_offset == ondisk->parent);
+		KKASSERT(parent->node_offset == hget64(ondisk->parent));
 	}
 
 	/*
@@ -928,8 +928,8 @@ hammer_btree_delete(hammer_cursor_t cursor, int *ndelete)
 	 * Ignore deadlock errors, that simply means that btree_remove
 	 * was unable to recurse and had to leave us with an empty leaf.
 	 */
-	KKASSERT(cursor->index <= ondisk->count);
-	if (ondisk->count == 0) {
+	KKASSERT(cursor->index <= (int32_t)hget32(ondisk->count));
+	if ((int32_t)hget32(ondisk->count) == 0) {
 		error = btree_remove(cursor, ndelete);
 		if (error == EDEADLK)
 			error = 0;
@@ -937,7 +937,7 @@ hammer_btree_delete(hammer_cursor_t cursor, int *ndelete)
 		error = 0;
 	}
 	KKASSERT(cursor->parent == NULL ||
-		 cursor->parent_index < cursor->parent->ondisk->count);
+		 cursor->parent_index < (int32_t)hget32(cursor->parent->ondisk->count));
 	return(error);
 }
 
@@ -1022,8 +1022,8 @@ btree_search(hammer_cursor_t cursor, int flags)
 	 * initial delete-check based on the parent.
 	 */
 	if (r == 1) {
-		KKASSERT(cursor->left_bound->create_tid != 1);
-		cursor->create_check = cursor->left_bound->create_tid - 1;
+		KKASSERT(hget64(cursor->left_bound->create_tid) != 1);
+		cursor->create_check = hget64(cursor->left_bound->create_tid) - 1;
 		cursor->flags |= HAMMER_CURSOR_CREATE_CHECK;
 	}
 
@@ -1044,8 +1044,8 @@ btree_search(hammer_cursor_t cursor, int flags)
 	while (flags & HAMMER_CURSOR_INSERT) {
 		if (btree_node_is_full(cursor->node->ondisk) == 0)
 			break;
-		if (cursor->node->ondisk->parent == 0 ||
-		    cursor->parent->ondisk->count != HAMMER_BTREE_INT_ELMS) {
+		if (hget64(cursor->node->ondisk->parent) == 0 ||
+		    (int32_t)hget32(cursor->parent->ondisk->count) != HAMMER_BTREE_INT_ELMS) {
 			break;
 		}
 		++hammer_stats_btree_iterations;
@@ -1079,7 +1079,7 @@ btree_search(hammer_cursor_t cursor, int flags)
 		if (hammer_debug_btree) {
 			hkprintf("SEARCH-I %016jx count=%d\n",
 				(intmax_t)cursor->node->node_offset,
-				node->count);
+				(int32_t)hget32(node->count));
 		}
 
 		/*
@@ -1087,7 +1087,7 @@ btree_search(hammer_cursor_t cursor, int flags)
 		 * linear loop.  Locate the first node where r <= 1.
 		 */
 		i = hammer_btree_search_node(&cursor->key_beg, node);
-		while (i <= node->count) {
+		while (i <= (int32_t)hget32(node->count)) {
 			++hammer_stats_btree_elements;
 			elm = &node->elms[i];
 			r = hammer_btree_cmp(&cursor->key_beg, &elm->base);
@@ -1098,15 +1098,15 @@ btree_search(hammer_cursor_t cursor, int flags)
 			if (r < 0)
 				break;
 			if (r == 1) {
-				KKASSERT(elm->base.create_tid != 1);
-				cursor->create_check = elm->base.create_tid - 1;
+				KKASSERT(hget64(elm->base.create_tid) != 1);
+				cursor->create_check = hget64(elm->base.create_tid) - 1;
 				cursor->flags |= HAMMER_CURSOR_CREATE_CHECK;
 			}
 			++i;
 		}
 		if (hammer_debug_btree) {
 			hkprintf("SEARCH-I preI=%d/%d r=%d\n",
-				i, node->count, r);
+				i, (int32_t)hget32(node->count), r);
 		}
 
 		/*
@@ -1159,7 +1159,7 @@ btree_search(hammer_cursor_t cursor, int flags)
 			node->elms[0].base = *cursor->left_bound;
 			node->elms[0].base.btype = save;
 			hammer_modify_node_done(cursor->node);
-		} else if (i == node->count + 1) {
+		} else if (i == (int32_t)hget32(node->count) + 1) {
 			/*
 			 * If i == node->count + 1 the search terminated to
 			 * the RIGHT of the right boundary but to the LEFT
@@ -1215,7 +1215,7 @@ btree_search(hammer_cursor_t cursor, int flags)
 		/*
 		 * We better have a valid subtree offset.
 		 */
-		KKASSERT(elm->internal.subtree_offset != 0);
+		KKASSERT(hget64(elm->internal.subtree_offset) != 0);
 
 		/*
 		 * Handle insertion and deletion requirements.
@@ -1275,11 +1275,11 @@ btree_search(hammer_cursor_t cursor, int flags)
 	 */
 	++hammer_stats_btree_iterations;
 	KKASSERT (node->type == HAMMER_BTREE_TYPE_LEAF);
-	KKASSERT(node->count <= HAMMER_BTREE_LEAF_ELMS);
+	KKASSERT((int32_t)hget32(node->count) <= HAMMER_BTREE_LEAF_ELMS);
 	if (hammer_debug_btree) {
 		hkprintf("SEARCH-L %016jx count=%d\n",
 			(intmax_t)cursor->node->node_offset,
-			node->count);
+			(int32_t)hget32(node->count));
 	}
 
 	/*
@@ -1287,7 +1287,7 @@ btree_search(hammer_cursor_t cursor, int flags)
 	 * linear loop.  Locate the first node where r <= 1.
 	 */
 	i = hammer_btree_search_node(&cursor->key_beg, node);
-	while (i < node->count) {
+	while (i < (int32_t)hget32(node->count)) {
 		++hammer_stats_btree_elements;
 		elm = &node->elms[i];
 
@@ -1398,7 +1398,7 @@ hammer_btree_search_node(hammer_base_elm_t elm, hammer_node_ondisk_t node)
 	 * Don't bother if the node does not have very many elements
 	 */
 	b = 0;
-	s = node->count;
+	s = (int32_t)hget32(node->count);
 	while (s - b > 4) {
 		i = b + (s - b) / 2;
 		++hammer_stats_btree_elements;
@@ -1468,10 +1468,10 @@ btree_split_internal(hammer_cursor_t cursor)
 	 */
 	node = cursor->node;
 	ondisk = node->ondisk;
-	KKASSERT(ondisk->count > 4);
-	if (cursor->index == ondisk->count &&
+	KKASSERT((int32_t)hget32(ondisk->count) > 4);
+	if (cursor->index == (int32_t)hget32(ondisk->count) &&
 	    (node->flags & HAMMER_NODE_NONLINEAR) == 0) {
-		split = (ondisk->count + 1) * 3 / 4;
+		split = ((int32_t)hget32(ondisk->count) + 1) * 3 / 4;
 		node->flags |= HAMMER_NODE_NONLINEAR;
 	} else {
 		/*
@@ -1481,7 +1481,7 @@ btree_split_internal(hammer_cursor_t cursor)
 		 * left-hand side adjust the split point to give the
 		 * right hand side one additional node.
 		 */
-		split = (ondisk->count + 1) / 2;
+		split = ((int32_t)hget32(ondisk->count) + 1) / 2;
 		if (cursor->index <= split)
 			--split;
 	}
@@ -1491,20 +1491,20 @@ btree_split_internal(hammer_cursor_t cursor)
 	 * with 1 element and split normally.  Avoid making major
 	 * modifications until we know the whole operation will work.
 	 */
-	if (ondisk->parent == 0) {
+	if (hget64(ondisk->parent) == 0) {
 		parent = hammer_alloc_btree(cursor->trans, 0, &error);
 		if (parent == NULL)
 			goto done;
 		hammer_lock_ex(&parent->lock);
 		hammer_modify_node_noundo(cursor->trans, parent);
 		ondisk = parent->ondisk;
-		ondisk->count = 1;
-		ondisk->parent = 0;
+		ondisk->count = hmk32(1);
+		ondisk->parent = hmk64(0);
 		ondisk->mirror_tid = node->ondisk->mirror_tid;
 		ondisk->type = HAMMER_BTREE_TYPE_INTERNAL;
 		ondisk->elms[0].base = hmp->root_btree_beg;
 		ondisk->elms[0].base.btype = node->ondisk->type;
-		ondisk->elms[0].internal.subtree_offset = node->node_offset;
+		ondisk->elms[0].internal.subtree_offset = hmk64(node->node_offset);
 		ondisk->elms[0].internal.mirror_tid = ondisk->mirror_tid;
 		ondisk->elms[1].base = hmp->root_btree_end;
 		hammer_modify_node_done(parent);
@@ -1550,9 +1550,9 @@ btree_split_internal(hammer_cursor_t cursor)
 	ondisk = node->ondisk;
 	elm = &ondisk->elms[split];
 	bcopy(elm, &new_node->ondisk->elms[0],
-	      (ondisk->count - split + 1) * esize);  /* +1 for boundary */
-	new_node->ondisk->count = ondisk->count - split;
-	new_node->ondisk->parent = parent->node_offset;
+	      ((int32_t)hget32(ondisk->count) - split + 1) * esize);  /* +1 for boundary */
+	new_node->ondisk->count = hmk32(hget32(ondisk->count) - split);
+	new_node->ondisk->parent = hmk64(parent->node_offset);
 	new_node->ondisk->type = HAMMER_BTREE_TYPE_INTERNAL;
 	new_node->ondisk->mirror_tid = ondisk->mirror_tid;
 	KKASSERT(ondisk->type == new_node->ondisk->type);
@@ -1564,8 +1564,8 @@ btree_split_internal(hammer_cursor_t cursor)
 	 * a new root its parent pointer may have changed.
 	 */
 	elm->base.btype = HAMMER_BTREE_TYPE_NONE;
-	elm->internal.subtree_offset = 0;
-	ondisk->count = split;
+	elm->internal.subtree_offset = hmk64(0);
+	ondisk->count = hmk32(split);
 
 	/*
 	 * Insert the separator into the parent, fixup the parent's
@@ -1576,19 +1576,19 @@ btree_split_internal(hammer_cursor_t cursor)
 	 */
 	hammer_modify_node_all(cursor->trans, parent);
 	ondisk = parent->ondisk;
-	KKASSERT(ondisk->count != HAMMER_BTREE_INT_ELMS);
+	KKASSERT((int32_t)hget32(ondisk->count) != HAMMER_BTREE_INT_ELMS);
 	parent_elm = &ondisk->elms[parent_index+1];
 	bcopy(parent_elm, parent_elm + 1,
-	      (ondisk->count - parent_index) * esize);
+	      ((int32_t)hget32(ondisk->count) - parent_index) * esize);
 
 	/*
 	 * Why not use hammer_make_separator() here ?
 	 */
 	parent_elm->internal.base = elm->base;	/* separator P */
 	parent_elm->internal.base.btype = new_node->ondisk->type;
-	parent_elm->internal.subtree_offset = new_node->node_offset;
+	parent_elm->internal.subtree_offset = hmk64(new_node->node_offset);
 	parent_elm->internal.mirror_tid = new_node->ondisk->mirror_tid;
-	++ondisk->count;
+	ondisk->count = hmk32((int32_t)hget32(ondisk->count) + 1);
 	hammer_modify_node_done(parent);
 	hammer_cursor_inserted_element(parent, parent_index + 1);
 
@@ -1597,7 +1597,7 @@ btree_split_internal(hammer_cursor_t cursor)
 	 * The children have already been locked by
 	 * hammer_btree_lock_children().
 	 */
-	for (i = 0; i < new_node->ondisk->count; ++i) {
+	for (i = 0; i < (int32_t)hget32(new_node->ondisk->count); ++i) {
 		elm = &new_node->ondisk->elms[i];
 		error = btree_set_parent_of_child(cursor->trans, new_node, elm);
 		if (error) {
@@ -1617,9 +1617,9 @@ btree_split_internal(hammer_cursor_t cursor)
 
 		hammer_modify_volume_field(cursor->trans, volume,
 					   vol0_btree_root);
-		volume->ondisk->vol0_btree_root = parent->node_offset;
+		volume->ondisk->vol0_btree_root = hmk64(parent->node_offset);
 		hammer_modify_volume_done(volume);
-		node->ondisk->parent = parent->node_offset;
+		node->ondisk->parent = hmk64(parent->node_offset);
 		if (cursor->parent) {
 			hammer_unlock(&cursor->parent->lock);
 			hammer_rel_node(cursor->parent);
@@ -1663,7 +1663,7 @@ btree_split_internal(hammer_cursor_t cursor)
 	KKASSERT(hammer_btree_cmp(cursor->left_bound,
 		 &cursor->node->ondisk->elms[0].internal.base) <= 0);
 	KKASSERT(hammer_btree_cmp(cursor->right_bound,
-		 &cursor->node->ondisk->elms[cursor->node->ondisk->count].internal.base) >= 0);
+		 &cursor->node->ondisk->elms[(int32_t)hget32(cursor->node->ondisk->count)].internal.base) >= 0);
 
 done:
 	hammer_btree_unlock_children(cursor->trans->hmp, &lockroot, NULL);
@@ -1699,7 +1699,7 @@ btree_split_leaf(hammer_cursor_t cursor)
 	KKASSERT(hammer_btree_cmp(cursor->left_bound,
 		 &cursor->node->ondisk->elms[0].leaf.base) <= 0);
 	KKASSERT(hammer_btree_cmp(cursor->right_bound,
-		 &cursor->node->ondisk->elms[cursor->node->ondisk->count-1].leaf.base) > 0);
+		 &cursor->node->ondisk->elms[(int32_t)hget32(cursor->node->ondisk->count)-1].leaf.base) > 0);
 
 	/*
 	 * Calculate the split point.  If the insertion point is at the
@@ -1710,13 +1710,13 @@ btree_split_leaf(hammer_cursor_t cursor)
 	 */
 	leaf = cursor->node;
 	ondisk = leaf->ondisk;
-	KKASSERT(ondisk->count > 4);
-	if (cursor->index == ondisk->count &&
+	KKASSERT((int32_t)hget32(ondisk->count) > 4);
+	if (cursor->index == (int32_t)hget32(ondisk->count) &&
 	    (leaf->flags & HAMMER_NODE_NONLINEAR) == 0) {
-		split = (ondisk->count + 1) * 3 / 4;
+		split = ((int32_t)hget32(ondisk->count) + 1) * 3 / 4;
 		leaf->flags |= HAMMER_NODE_NONLINEAR;
 	} else {
-		split = (ondisk->count + 1) / 2;
+		split = ((int32_t)hget32(ondisk->count) + 1) / 2;
 	}
 
 #if 0
@@ -1727,7 +1727,7 @@ btree_split_leaf(hammer_cursor_t cursor)
 	if (cursor->index == split)
 		--split;
 #endif
-	KKASSERT(split > 0 && split < ondisk->count);
+	KKASSERT(split > 0 && split < (int32_t)hget32(ondisk->count));
 
 	error = 0;
 	hmp = leaf->hmp;
@@ -1744,20 +1744,20 @@ btree_split_leaf(hammer_cursor_t cursor)
 	 * 1 element and split normally.  Avoid making major modifications
 	 * until we know the whole operation will work.
 	 */
-	if (ondisk->parent == 0) {
+	if (hget64(ondisk->parent) == 0) {
 		parent = hammer_alloc_btree(cursor->trans, 0, &error);
 		if (parent == NULL)
 			goto done;
 		hammer_lock_ex(&parent->lock);
 		hammer_modify_node_noundo(cursor->trans, parent);
 		ondisk = parent->ondisk;
-		ondisk->count = 1;
-		ondisk->parent = 0;
+		ondisk->count = hmk32(1);
+		ondisk->parent = hmk64(0);
 		ondisk->mirror_tid = leaf->ondisk->mirror_tid;
 		ondisk->type = HAMMER_BTREE_TYPE_INTERNAL;
 		ondisk->elms[0].base = hmp->root_btree_beg;
 		ondisk->elms[0].base.btype = leaf->ondisk->type;
-		ondisk->elms[0].internal.subtree_offset = leaf->node_offset;
+		ondisk->elms[0].internal.subtree_offset = hmk64(leaf->node_offset);
 		ondisk->elms[0].internal.mirror_tid = ondisk->mirror_tid;
 		ondisk->elms[1].base = hmp->root_btree_end;
 		hammer_modify_node_done(parent);
@@ -1800,9 +1800,9 @@ btree_split_leaf(hammer_cursor_t cursor)
 	hammer_modify_node_noundo(cursor->trans, new_leaf);
 	ondisk = leaf->ondisk;
 	elm = &ondisk->elms[split];
-	bcopy(elm, &new_leaf->ondisk->elms[0], (ondisk->count - split) * esize);
-	new_leaf->ondisk->count = ondisk->count - split;
-	new_leaf->ondisk->parent = parent->node_offset;
+	bcopy(elm, &new_leaf->ondisk->elms[0], ((int32_t)hget32(ondisk->count) - split) * esize);
+	new_leaf->ondisk->count = hmk32(hget32(ondisk->count) - split);
+	new_leaf->ondisk->parent = hmk64(parent->node_offset);
 	new_leaf->ondisk->type = HAMMER_BTREE_TYPE_LEAF;
 	new_leaf->ondisk->mirror_tid = ondisk->mirror_tid;
 	KKASSERT(ondisk->type == new_leaf->ondisk->type);
@@ -1815,7 +1815,7 @@ btree_split_leaf(hammer_cursor_t cursor)
 	 * aren't any special edge cases to clean up.  We just fixup the
 	 * count.
 	 */
-	ondisk->count = split;
+	ondisk->count = hmk32(split);
 
 	/*
 	 * Insert the separator into the parent, fixup the parent's
@@ -1828,10 +1828,10 @@ btree_split_leaf(hammer_cursor_t cursor)
 	hammer_modify_node_all(cursor->trans, parent);
 	ondisk = parent->ondisk;
 	KKASSERT(split != 0);
-	KKASSERT(ondisk->count != HAMMER_BTREE_INT_ELMS);
+	KKASSERT((int32_t)hget32(ondisk->count) != HAMMER_BTREE_INT_ELMS);
 	parent_elm = &ondisk->elms[parent_index+1];
 	bcopy(parent_elm, parent_elm + 1,
-	      (ondisk->count - parent_index) * esize);
+	      ((int32_t)hget32(ondisk->count) - parent_index) * esize);
 
 	/*
 	 * elm[-1] is the right-most elm in the original node.
@@ -1841,10 +1841,10 @@ btree_split_leaf(hammer_cursor_t cursor)
 	 */
 	hammer_make_separator(&elm[-1].base, &elm[0].base, &parent_elm->base);
 	parent_elm->internal.base.btype = new_leaf->ondisk->type;
-	parent_elm->internal.subtree_offset = new_leaf->node_offset;
+	parent_elm->internal.subtree_offset = hmk64(new_leaf->node_offset);
 	parent_elm->internal.mirror_tid = new_leaf->ondisk->mirror_tid;
 	mid_boundary = &parent_elm->base;
-	++ondisk->count;
+	ondisk->count = hmk32((int32_t)hget32(ondisk->count) + 1);
 	hammer_modify_node_done(parent);
 	hammer_cursor_inserted_element(parent, parent_index + 1);
 
@@ -1859,9 +1859,9 @@ btree_split_leaf(hammer_cursor_t cursor)
 
 		hammer_modify_volume_field(cursor->trans, volume,
 					   vol0_btree_root);
-		volume->ondisk->vol0_btree_root = parent->node_offset;
+		volume->ondisk->vol0_btree_root = hmk64(parent->node_offset);
 		hammer_modify_volume_done(volume);
-		leaf->ondisk->parent = parent->node_offset;
+		leaf->ondisk->parent = hmk64(parent->node_offset);
 		if (cursor->parent) {
 			hammer_unlock(&cursor->parent->lock);
 			hammer_rel_node(cursor->parent);
@@ -1908,7 +1908,7 @@ btree_split_leaf(hammer_cursor_t cursor)
 	KKASSERT(hammer_btree_cmp(cursor->left_bound,
 		 &cursor->node->ondisk->elms[0].leaf.base) <= 0);
 	KKASSERT(hammer_btree_cmp(cursor->right_bound,
-		 &cursor->node->ondisk->elms[cursor->node->ondisk->count-1].leaf.base) > 0);
+		 &cursor->node->ondisk->elms[(int32_t)hget32(cursor->node->ondisk->count)-1].leaf.base) > 0);
 	KKASSERT(hammer_btree_cmp(cursor->left_bound, &cursor->key_beg) <= 0);
 	KKASSERT(hammer_btree_cmp(cursor->right_bound, &cursor->key_beg) > 0);
 
@@ -1951,12 +1951,12 @@ btree_remove(hammer_cursor_t cursor, int *ndelete)
 	 * an empty leaf node.  Internal nodes cannot be empty.
 	 */
 	ondisk = node->ondisk;
-	if (ondisk->parent == 0) {
+	if (hget64(ondisk->parent) == 0) {
 		KKASSERT(cursor->parent == NULL);
 		hammer_modify_node_all(cursor->trans, node);
 		KKASSERT(ondisk == node->ondisk);
 		ondisk->type = HAMMER_BTREE_TYPE_LEAF;
-		ondisk->count = 0;
+		ondisk->count = hmk32(0);
 		hammer_modify_node_done(node);
 		cursor->index = 0;
 		return(0);
@@ -1976,7 +1976,7 @@ btree_remove(hammer_cursor_t cursor, int *ndelete)
 	 * (by calling hammer_cursor_deleted_element()) so those cursors
 	 * are properly forced up the chain by the recursion.
 	 */
-	if (parent->ondisk->count == 1) {
+	if ((int32_t)hget32(parent->ondisk->count) == 1) {
 		/*
 		 * This special cursor_up_locked() call leaves the original
 		 * node exclusively locked and referenced, leaves the
@@ -2012,7 +2012,7 @@ btree_remove(hammer_cursor_t cursor, int *ndelete)
 				hammer_modify_node_all(cursor->trans, node);
 				ondisk = node->ondisk;
 				ondisk->type = HAMMER_BTREE_TYPE_DELETED;
-				ondisk->count = 0;
+				ondisk->count = hmk32(0);
 				hammer_modify_node_done(node);
 				hammer_flush_node(node, 0);
 				hammer_delete_node(cursor->trans, node);
@@ -2041,15 +2041,15 @@ btree_remove(hammer_cursor_t cursor, int *ndelete)
 			 */
 		}
 	} else {
-		KKASSERT(parent->ondisk->count > 1);
+		KKASSERT((int32_t)hget32(parent->ondisk->count) > 1);
 
 		hammer_modify_node_all(cursor->trans, parent);
 		ondisk = parent->ondisk;
 		KKASSERT(ondisk->type == HAMMER_BTREE_TYPE_INTERNAL);
 
 		elm = &ondisk->elms[cursor->parent_index];
-		KKASSERT(elm->internal.subtree_offset == node->node_offset);
-		KKASSERT(ondisk->count > 0);
+		KKASSERT(hget64(elm->internal.subtree_offset) == node->node_offset);
+		KKASSERT((int32_t)hget32(ondisk->count) > 0);
 
 		/*
 		 * We must retain the highest mirror_tid.  The deleted
@@ -2064,14 +2064,14 @@ btree_remove(hammer_cursor_t cursor, int *ndelete)
 		 * of the scan.
 		 */
 		if (cursor->parent_index) {
-			if (elm[-1].internal.mirror_tid <
-			    elm[0].internal.mirror_tid) {
+			if (hget64(elm[-1].internal.mirror_tid) <
+			    hget64(elm[0].internal.mirror_tid)) {
 				elm[-1].internal.mirror_tid =
 				    elm[0].internal.mirror_tid;
 			}
 		} else {
-			if (elm[1].internal.mirror_tid <
-			    elm[0].internal.mirror_tid) {
+			if (hget64(elm[1].internal.mirror_tid) <
+			    hget64(elm[0].internal.mirror_tid)) {
 				elm[1].internal.mirror_tid =
 				    elm[0].internal.mirror_tid;
 			}
@@ -2082,8 +2082,8 @@ btree_remove(hammer_cursor_t cursor, int *ndelete)
 		 * boundary element at end.
 		 */
 		bcopy(&elm[1], &elm[0],
-		      (ondisk->count - cursor->parent_index) * esize);
-		--ondisk->count;
+		      ((int32_t)hget32(ondisk->count) - cursor->parent_index) * esize);
+		ondisk->count = hmk32((int32_t)hget32(ondisk->count) - 1);
 		hammer_modify_node_done(parent);
 		hammer_cursor_removed_node(node, parent, cursor->parent_index);
 		hammer_cursor_deleted_element(parent, cursor->parent_index);
@@ -2141,7 +2141,7 @@ hammer_btree_do_propagation(hammer_cursor_t cursor,
 	 * original's locks and the original is tracked and must be
 	 * re-locked.
 	 */
-	mirror_tid = cursor->node->ondisk->mirror_tid;
+	mirror_tid = hget64(cursor->node->ondisk->mirror_tid);
 	KKASSERT(mirror_tid != 0);
 	ncursor = hammer_push_cursor(cursor);
 	error = hammer_btree_mirror_propagate(ncursor, mirror_tid);
@@ -2196,11 +2196,11 @@ hammer_btree_mirror_propagate(hammer_cursor_t cursor, hammer_tid_t mirror_tid)
 		 * Adjust the node's element
 		 */
 		elm = &node->ondisk->elms[cursor->index].internal;
-		if (elm->mirror_tid >= mirror_tid)
+		if (hget64(elm->mirror_tid) >= mirror_tid)
 			break;
 		hammer_modify_node(cursor->trans, node, &elm->mirror_tid,
 				   sizeof(elm->mirror_tid));
-		elm->mirror_tid = mirror_tid;
+		elm->mirror_tid = hmk64(mirror_tid);
 		hammer_modify_node_done(node);
 		if (hammer_debug_general & 0x0002) {
 			hdkprintf("propagate %016jx @%016jx:%d\n",
@@ -2213,10 +2213,10 @@ hammer_btree_mirror_propagate(hammer_cursor_t cursor, hammer_tid_t mirror_tid)
 		/*
 		 * Adjust the node's mirror_tid aggregator
 		 */
-		if (node->ondisk->mirror_tid >= mirror_tid)
+		if (hget64(node->ondisk->mirror_tid) >= mirror_tid)
 			return(0);
 		hammer_modify_node_field(cursor->trans, node, mirror_tid);
-		node->ondisk->mirror_tid = mirror_tid;
+		node->ondisk->mirror_tid = hmk64(mirror_tid);
 		hammer_modify_node_done(node);
 		if (hammer_debug_general & 0x0002) {
 			hdkprintf("propagate %016jx @%016jx\n",
@@ -2245,7 +2245,7 @@ hammer_btree_get_parent(hammer_transaction_t trans, hammer_node_t node,
 	/*
 	 * Get the node
 	 */
-	parent = hammer_get_node(trans, node->ondisk->parent, 0, errorp);
+	parent = hammer_get_node(trans, hget64(node->ondisk->parent), 0, errorp);
 	if (*errorp) {
 		KKASSERT(parent == NULL);
 		return(NULL);
@@ -2269,19 +2269,19 @@ hammer_btree_get_parent(hammer_transaction_t trans, hammer_node_t node,
 	 * Figure out which element in the parent is pointing to the
 	 * child.
 	 */
-	if (node->ondisk->count) {
+	if ((int32_t)hget32(node->ondisk->count)) {
 		i = hammer_btree_search_node(&node->ondisk->elms[0].base,
 					     parent->ondisk);
 	} else {
 		i = 0;
 	}
-	while (i < parent->ondisk->count) {
+	while (i < (int32_t)hget32(parent->ondisk->count)) {
 		elm = &parent->ondisk->elms[i];
-		if (elm->internal.subtree_offset == node->node_offset)
+		if (hget64(elm->internal.subtree_offset) == node->node_offset)
 			break;
 		++i;
 	}
-	if (i == parent->ondisk->count) {
+	if (i == (int32_t)hget32(parent->ondisk->count)) {
 		hammer_unlock(&parent->lock);
 		hpanic("Bad B-Tree link: parent %p node %p", parent, node);
 	}
@@ -2308,11 +2308,11 @@ btree_set_parent_of_child(hammer_transaction_t trans, hammer_node_t node,
 	error = 0;
 
 	if (hammer_is_internal_node_elm(elm)) {
-		child = hammer_get_node(trans, elm->internal.subtree_offset,
+		child = hammer_get_node(trans, hget64(elm->internal.subtree_offset),
 					0, &error);
 		if (error == 0) {
 			hammer_modify_node_field(trans, child, parent);
-			child->ondisk->parent = node->node_offset;
+			child->ondisk->parent = hmk64(node->node_offset);
 			hammer_modify_node_done(child);
 			hammer_rel_node(child);
 		}
@@ -2330,7 +2330,7 @@ hammer_node_lock_init(hammer_node_lock_t parent, hammer_node_t node)
 	parent->parent = NULL;
 	parent->node = node;
 	parent->index = -1;
-	parent->count = node->ondisk->count;
+	parent->count = hget32(node->ondisk->count);
 	parent->copy = NULL;
 	parent->flags = 0;
 }
@@ -2424,11 +2424,11 @@ hammer_btree_lock_children(hammer_cursor_t cursor, int depth,
 	 * pre-get the children before trying to lock the mess.  This is
 	 * only done one-level deep for now.
 	 */
-	for (i = 0; i < ondisk->count; ++i) {
+	for (i = 0; i < (int32_t)hget32(ondisk->count); ++i) {
 		++hammer_stats_btree_elements;
 		elm = &ondisk->elms[i];
 		child = hammer_get_node(cursor->trans,
-					elm->internal.subtree_offset,
+					hget64(elm->internal.subtree_offset),
 					0, &error);
 		if (child)
 			hammer_rel_node(child);
@@ -2437,13 +2437,13 @@ hammer_btree_lock_children(hammer_cursor_t cursor, int depth,
 	/*
 	 * Do it for real
 	 */
-	for (i = 0; error == 0 && i < ondisk->count; ++i) {
+	for (i = 0; error == 0 && i < (int32_t)hget32(ondisk->count); ++i) {
 		++hammer_stats_btree_elements;
 		elm = &ondisk->elms[i];
 
-		KKASSERT(elm->internal.subtree_offset != 0);
+		KKASSERT(hget64(elm->internal.subtree_offset) != 0);
 		child = hammer_get_node(cursor->trans,
-					elm->internal.subtree_offset,
+					hget64(elm->internal.subtree_offset),
 					0, &error);
 		if (child) {
 			if (hammer_lock_ex_try(&child->lock) != 0) {
@@ -2470,7 +2470,7 @@ hammer_btree_lock_children(hammer_cursor_t cursor, int depth,
 				item->parent = parent;
 				item->node = child;
 				item->index = i;
-				item->count = child->ondisk->count;
+				item->count = hget32(child->ondisk->count);
 
 				/*
 				 * Recurse (used by the rebalancing code)
@@ -2599,40 +2599,40 @@ hammer_btree_unlock_children(hammer_mount_t hmp, hammer_node_lock_t parent,
 int
 hammer_btree_cmp(hammer_base_elm_t key1, hammer_base_elm_t key2)
 {
-	if (key1->localization < key2->localization)
+	if (hget32(key1->localization) < hget32(key2->localization))
 		return(-5);
-	if (key1->localization > key2->localization)
+	if (hget32(key1->localization) > hget32(key2->localization))
 		return(5);
 
-	if (key1->obj_id < key2->obj_id)
+	if ((int64_t)hget64(key1->obj_id) < (int64_t)hget64(key2->obj_id))
 		return(-4);
-	if (key1->obj_id > key2->obj_id)
+	if ((int64_t)hget64(key1->obj_id) > (int64_t)hget64(key2->obj_id))
 		return(4);
 
-	if (key1->rec_type < key2->rec_type)
+	if (hget16(key1->rec_type) < hget16(key2->rec_type))
 		return(-3);
-	if (key1->rec_type > key2->rec_type)
+	if (hget16(key1->rec_type) > hget16(key2->rec_type))
 		return(3);
 
-	if (key1->key < key2->key)
+	if ((int64_t)hget64(key1->key) < (int64_t)hget64(key2->key))
 		return(-2);
-	if (key1->key > key2->key)
+	if ((int64_t)hget64(key1->key) > (int64_t)hget64(key2->key))
 		return(2);
 
 	/*
 	 * A create_tid of zero indicates a record which is undeletable
 	 * and must be considered to have a value of positive infinity.
 	 */
-	if (key1->create_tid == 0) {
-		if (key2->create_tid == 0)
+	if (hget64(key1->create_tid) == 0) {
+		if (hget64(key2->create_tid) == 0)
 			return(0);
 		return(1);
 	}
-	if (key2->create_tid == 0)
+	if (hget64(key2->create_tid) == 0)
 		return(-1);
-	if (key1->create_tid < key2->create_tid)
+	if (hget64(key1->create_tid) < hget64(key2->create_tid))
 		return(-1);
-	if (key1->create_tid > key2->create_tid)
+	if (hget64(key1->create_tid) > hget64(key2->create_tid))
 		return(1);
 	return(0);
 }
@@ -2645,13 +2645,13 @@ int
 hammer_btree_chkts(hammer_tid_t asof, hammer_base_elm_t base)
 {
 	if (asof == 0) {
-		if (base->delete_tid)
+		if (hget64(base->delete_tid))
 			return(1);
 		return(0);
 	}
-	if (asof < base->create_tid)
+	if (asof < hget64(base->create_tid))
 		return(-1);
-	if (base->delete_tid && asof >= base->delete_tid)
+	if (hget64(base->delete_tid) && asof >= hget64(base->delete_tid))
 		return(1);
 	return(0);
 }
@@ -2669,8 +2669,10 @@ hammer_btree_chkts(hammer_tid_t asof, hammer_base_elm_t base)
  * NOTE: It might be beneficial to just scrap this whole mess and just
  * set the separator to key2.
  */
-#define MAKE_SEPARATOR(key1, key2, dest, field)	\
-	dest->field = key1->field + ((key2->field - key1->field + 1) >> 1);
+/* -traditional-cpp has no ##, so the accessors and field type are passed in. */
+#define MAKE_SEPARATOR(key1, key2, dest, field, get, mk, type)	\
+	dest->field = mk((type)get(key1->field) +			\
+	    (((type)get(key2->field) - (type)get(key1->field) + 1) >> 1));
 
 static void
 hammer_make_separator(hammer_base_elm_t key1, hammer_base_elm_t key2,
@@ -2683,13 +2685,13 @@ hammer_make_separator(hammer_base_elm_t key1, hammer_base_elm_t key2,
 	dest->obj_id = key2->obj_id;
 	dest->create_tid = key2->create_tid;
 
-	MAKE_SEPARATOR(key1, key2, dest, localization);
-	if (key1->localization == key2->localization) {
-		MAKE_SEPARATOR(key1, key2, dest, obj_id);
-		if (key1->obj_id == key2->obj_id) {
-			MAKE_SEPARATOR(key1, key2, dest, rec_type);
-			if (key1->rec_type == key2->rec_type) {
-				MAKE_SEPARATOR(key1, key2, dest, key);
+	MAKE_SEPARATOR(key1, key2, dest, localization, hget32, hmk32, uint32_t);
+	if (hget32(key1->localization) == hget32(key2->localization)) {
+		MAKE_SEPARATOR(key1, key2, dest, obj_id, hget64, hmk64, int64_t);
+		if ((int64_t)hget64(key1->obj_id) == (int64_t)hget64(key2->obj_id)) {
+			MAKE_SEPARATOR(key1, key2, dest, rec_type, hget16, hmk16, uint16_t);
+			if (hget16(key1->rec_type) == hget16(key2->rec_type)) {
+				MAKE_SEPARATOR(key1, key2, dest, key, hget64, hmk64, int64_t);
 				/*
 				 * Don't bother creating a separator for
 				 * create_tid, which also conveniently avoids
@@ -2720,7 +2722,7 @@ btree_node_is_full(hammer_node_ondisk_t node)
 	if (n == -1)
 		hpanic("bad type %d", node->type);
 
-	return(n == node->count);
+	return(n == (int32_t)hget32(node->count));
 }
 
 void
@@ -2729,15 +2731,15 @@ hammer_print_btree_node(hammer_node_ondisk_t ondisk)
 	int i, n;
 
 	kprintf("node %p count=%d parent=%016jx type=%c\n",
-		ondisk, ondisk->count,
-		(intmax_t)ondisk->parent, ondisk->type);
+		ondisk, (int32_t)hget32(ondisk->count),
+		(intmax_t)hget64(ondisk->parent), ondisk->type);
 
 	switch (ondisk->type) {
 	case HAMMER_BTREE_TYPE_INTERNAL:
-		n = ondisk->count + 1;  /* count is NOT boundary inclusive */
+		n = (int32_t)hget32(ondisk->count) + 1;  /* count is NOT boundary inclusive */
 		break;
 	case HAMMER_BTREE_TYPE_LEAF:
-		n = ondisk->count;  /* there is no boundary */
+		n = (int32_t)hget32(ondisk->count);  /* there is no boundary */
 		break;
 	default:
 		return;  /* nothing to do */
@@ -2755,24 +2757,24 @@ hammer_print_btree_node(hammer_node_ondisk_t ondisk)
 void
 hammer_print_btree_elm(hammer_btree_elm_t elm)
 {
-	kprintf("\tobj_id       = %016jx\n", (intmax_t)elm->base.obj_id);
-	kprintf("\tkey          = %016jx\n", (intmax_t)elm->base.key);
-	kprintf("\tcreate_tid   = %016jx\n", (intmax_t)elm->base.create_tid);
-	kprintf("\tdelete_tid   = %016jx\n", (intmax_t)elm->base.delete_tid);
-	kprintf("\trec_type     = %04x\n", elm->base.rec_type);
+	kprintf("\tobj_id       = %016jx\n", (intmax_t)(int64_t)hget64(elm->base.obj_id));
+	kprintf("\tkey          = %016jx\n", (intmax_t)(int64_t)hget64(elm->base.key));
+	kprintf("\tcreate_tid   = %016jx\n", (intmax_t)hget64(elm->base.create_tid));
+	kprintf("\tdelete_tid   = %016jx\n", (intmax_t)hget64(elm->base.delete_tid));
+	kprintf("\trec_type     = %04x\n", hget16(elm->base.rec_type));
 	kprintf("\tobj_type     = %02x\n", elm->base.obj_type);
 	kprintf("\tbtype        = %02x (%c)\n", elm->base.btype,
 						hammer_elm_btype(elm));
-	kprintf("\tlocalization = %08x\n", elm->base.localization);
+	kprintf("\tlocalization = %08x\n", hget32(elm->base.localization));
 
 	if (hammer_is_internal_node_elm(elm)) {
 		kprintf("\tsubtree_off  = %016jx\n",
-			(intmax_t)elm->internal.subtree_offset);
+			(intmax_t)hget64(elm->internal.subtree_offset));
 	} else if (hammer_is_leaf_node_elm(elm)) {
 		kprintf("\tdata_offset  = %016jx\n",
-			(intmax_t)elm->leaf.data_offset);
-		kprintf("\tdata_len     = %08x\n", elm->leaf.data_len);
-		kprintf("\tdata_crc     = %08x\n", elm->leaf.data_crc);
+			(intmax_t)hget64(elm->leaf.data_offset));
+		kprintf("\tdata_len     = %08x\n", hget32(elm->leaf.data_len));
+		kprintf("\tdata_crc     = %08x\n", hget32(elm->leaf.data_crc));
 	}
 }
 
@@ -2788,11 +2790,11 @@ hammer_debug_btree_elm(hammer_cursor_t cursor, hammer_btree_elm_t elm,
 		(intmax_t)cursor->node->node_offset,
 		cursor->index,
 		hammer_elm_btype(elm),
-		elm->base.localization,
-		(intmax_t)elm->base.obj_id,
-		elm->base.rec_type,
-		(intmax_t)elm->base.key,
-		(intmax_t)elm->base.create_tid,
+		hget32(elm->base.localization),
+		(intmax_t)(int64_t)hget64(elm->base.obj_id),
+		hget16(elm->base.rec_type),
+		(intmax_t)(int64_t)hget64(elm->base.key),
+		(intmax_t)hget64(elm->base.create_tid),
 		curthread,
 		res);
 }
@@ -2810,10 +2812,10 @@ hammer_debug_btree_parent(hammer_cursor_t cursor, const char *s)
 		(intmax_t)cursor->parent->node_offset,
 		cursor->parent_index,
 		hammer_elm_btype(elm),
-		(intmax_t)cursor->left_bound->obj_id,
-		(intmax_t)elm->internal.base.obj_id,
-		(intmax_t)cursor->right_bound->obj_id,
-		(intmax_t)(elm + 1)->internal.base.obj_id,
+		(intmax_t)(int64_t)hget64(cursor->left_bound->obj_id),
+		(intmax_t)(int64_t)hget64(elm->internal.base.obj_id),
+		(intmax_t)(int64_t)hget64(cursor->right_bound->obj_id),
+		(intmax_t)(int64_t)hget64((elm + 1)->internal.base.obj_id),
 		cursor->left_bound,
 		elm,
 		cursor->right_bound,

@@ -752,3 +752,220 @@ void SCSIhHandleMsgIn(AdaptecU2HHCB *hhcb, AdaptecU2HIOB *hiob)
         }
     }
 }
+
+void SCSIhNegotiate(AdaptecU2HHCB *hhcb, AdaptecU2HIOB *hiob)
+{
+    const AdaptecU2IOHandle *handle = hhcb->ioHandle;
+    AdaptecU2DeviceTable *device = hiob->context.unit->device;
+    unsigned char target = hiob->context.unit->target, phase;
+    OSMWriteUExact8(*handle, 98, ((unsigned char)hhcb->firmware->word10) >> 2);
+    OSMWriteUExact8(*handle, 99, 0);
+    if ((OSMReadUExact8(*handle, 3) & 0xe0) != 0xa0) {
+        hhcb->firmware->xferOptAssign(hhcb, target, 0);
+        if (hhcb->firmware->clearFast20Reg)
+            hhcb->firmware->clearFast20Reg(hhcb, target);
+        return;
+    }
+    if (hiob->negotiationState == 3 || hiob->negotiationState == 4) {
+        SCSIhSendMessage(hhcb, hiob, hiob->negotiationState == 3 ? 4 : 5);
+        hiob->negotiationState = 0;
+        return;
+    }
+    hhcb->firmware->xferOptAssign(hhcb, target, 0);
+    if (hhcb->firmware->clearFast20Reg)
+        hhcb->firmware->clearFast20Reg(hhcb, target);
+    if (device->rate & 0x80) {
+        SCSIhInitiateWide(hhcb, hiob);
+        if (SCSIhWait4Req(hhcb) != 0xe0 || OSMReadUExact8(*handle, 18) != 7)
+            return;
+        if (!(device->rate & 1)) {
+            OSMReadUExact8(*handle, 6);
+            hiob->negotiationState = 0;
+            return;
+        }
+        OSMWriteUExact8(*handle, 3, 0xf0);
+        OSMReadUExact8(*handle, 6);
+        SCSIhWait4Req(hhcb);
+        phase = OSMReadUExact8(*handle, 3) & 0xe0;
+        OSMWriteUExact8(*handle, 3, phase);
+    }
+    SCSIhInitiateSync(hhcb, hiob, hhcb->hardware->getNarrowScsiOffset(hiob));
+}
+
+void SCSIhExtMsgi(AdaptecU2HHCB *hhcb, AdaptecU2HIOB *hiob)
+{
+    unsigned char count = OSMReadUExact8(*hhcb->ioHandle,
+                                       hhcb->firmware->registers[2]);
+    if ((unsigned char)SCSIhReceiveMessage(hhcb, hiob, count) != count) {
+        hiob->acknowledgeLastMessage = 1;
+        return;
+    }
+    if (hiob->message[0] == 0)
+        hhcb->firmware->modifyDataPtr(hhcb, hiob);
+    else if (hiob->negotiationState == 1) {
+        if (hiob->message[0] == 3) SCSIhVerifyWideResponse(hhcb, hiob);
+    } else if (hiob->negotiationState == 2) {
+        if (hiob->message[0] == 1) SCSIhVerifySyncResponse(hhcb, hiob);
+    } else if (hiob->message[0] == 3) SCSIhRespondToWide(hhcb, hiob);
+    else if (hiob->message[0] == 1) SCSIhRespondToSync(hhcb, hiob);
+}
+
+void SCSIhInitiateWide(AdaptecU2HHCB *hhcb, AdaptecU2HIOB *hiob)
+{
+    AdaptecU2DeviceTable *device = hiob->context.unit->device;
+    hiob->message[1] = 2;
+    hiob->negotiationState = 1;
+    hiob->message[0] = 1;
+    hiob->message[2] = 3;
+    if (device->flags & 0x200) hiob->message[3] = 1;
+    else {
+        hiob->message[3] = 0;
+        device->rate &= ~0x80;
+    }
+    SCSIhSendMessage(hhcb, hiob, 4);
+}
+
+void SCSIhVerifyWideResponse(AdaptecU2HHCB *hhcb, AdaptecU2HIOB *hiob)
+{
+    const AdaptecU2IOHandle *handle = hhcb->ioHandle;
+    unsigned char target = hiob->context.unit->target, offset, phase;
+    AdaptecU2DeviceTable *device = hiob->context.unit->device;
+    unsigned short option = hhcb->firmware->getOption(hhcb, target);
+    OSMWriteUExact8(*handle, 98, ((unsigned char)hhcb->firmware->word10) >> 2);
+    OSMWriteUExact8(*handle, 99, 0);
+    if (hiob->message[1]) {
+        option |= 0x80;
+        offset = hhcb->hardware->getWideScsiOffset(hiob);
+    } else {
+        option &= 0xff7f;
+        offset = hhcb->hardware->getNarrowScsiOffset(hiob);
+    }
+    hhcb->firmware->xferOptAssign(hhcb, target, option);
+    if (device->rate & 1) {
+        OSMWriteUExact8(*handle, 3, 0xf0);
+        OSMReadUExact8(*handle, 6);
+        SCSIhWait4Req(hhcb);
+        phase = OSMReadUExact8(*handle, 3) & 0xe0;
+        OSMWriteUExact8(*handle, 3, phase);
+        SCSIhInitiateSync(hhcb, hiob, offset);
+    } else {
+        OSMReadUExact8(*handle, 6);
+        hiob->negotiationState = 0;
+    }
+}
+
+void SCSIhInitiateSync(AdaptecU2HHCB *hhcb, AdaptecU2HIOB *hiob,
+                      unsigned char offset)
+{
+    const AdaptecU2IOHandle *handle = hhcb->ioHandle;
+    AdaptecU2DeviceTable *device = hiob->context.unit->device;
+    unsigned char phase;
+    hiob->negotiationState = 2;
+    hiob->message[0] = 1;
+    hiob->message[1] = 3;
+    hiob->message[2] = 1;
+    hiob->message[3] = hhcb->hardware->getXferPeriod(hhcb, hiob);
+    if (!(device->flags & 0x400)) {
+        offset = 0;
+        hhcb->hardware->clearScsiOffset(hiob);
+    }
+    hiob->message[4] = offset;
+    SCSIhSendMessage(hhcb, hiob, 5);
+    if (SCSIhWait4Req(hhcb) == 0xe0 && OSMReadUExact8(*handle, 18) == 7) {
+        OSMWriteUExact8(*handle, 3, 0xe0);
+        OSMReadUExact8(*handle, 6);
+        SCSIhWait4Req(hhcb);
+        phase = OSMReadUExact8(*handle, 3) & 0xe0;
+        OSMWriteUExact8(*handle, 3, phase);
+    }
+}
+
+void SCSIhVerifySyncResponse(AdaptecU2HHCB *hhcb, AdaptecU2HIOB *hiob)
+{
+    const AdaptecU2IOHandle *handle = hhcb->ioHandle;
+    unsigned char target = hiob->context.unit->target, phase;
+    unsigned short option, rate;
+    if (hiob->message[2] && hiob->message[1] > hhcb->hardware->periodLimit) {
+        OSMWriteUExact8(*handle, 3, 0xf0);
+        do {
+            OSMReadUExact8(*handle, 6);
+            phase = SCSIhWait4Req(hhcb);
+        } while (phase == 0xe0);
+        if (phase == 0xa0) {
+            OSMWriteUExact8(*handle, 3, 0xa0);
+            OSMWriteUExact8(*handle, 12, 64);
+            OSMWriteUExact8(*handle, 6, 7);
+            SCSIhWait4Req(hhcb);
+            OSMWriteUExact8(*handle, 98, ((unsigned char)hhcb->firmware->word10) >> 2);
+            OSMWriteUExact8(*handle, 99, 0);
+        } else SCSIhBadSeq(hhcb);
+    } else {
+        option = hhcb->firmware->getOption(hhcb, target);
+        rate = hhcb->hardware->calcScsiRate(hhcb, hiob->message[1], hiob->message[2]);
+        hhcb->firmware->xferOptAssign(hhcb, target, option | rate);
+        if (hhcb->firmware->logFast20Map)
+            hhcb->firmware->logFast20Map(hhcb, target, hiob->message[1]);
+        hiob->acknowledgeLastMessage = 1;
+    }
+    hiob->negotiationState = 0;
+}
+
+void SCSIhRespondToWide(AdaptecU2HHCB *hhcb, AdaptecU2HIOB *hiob)
+{
+    const AdaptecU2IOHandle *handle = hhcb->ioHandle;
+    AdaptecU2UnitControl *unit = hiob->context.unit;
+    unsigned char width = (OSMReadUExact8(*handle, 31) & 2) != 0;
+    if (hiob->message[1] < width) width = hiob->message[1];
+    if (width == 1) unit->device->rate |= 0x80;
+    if (!(unit->device->flags & 0x200)) {
+        width = 0;
+        unit->device->rate &= ~0x80;
+    }
+    hhcb->hardwareFlags |= 0x80000;
+    hhcb->firmware->xferOptAssign(hhcb, unit->target, width ? 0x80 : 0);
+    hiob->message[0] = 1;
+    hiob->message[1] = 2;
+    hiob->message[2] = 3;
+    hiob->message[3] = width;
+    unit->device->flags = (unit->device->flags & 0xffdf) | (width ? 0x20 : 0);
+    OSMWriteUExact8(*handle, 3, 0xf0);
+    hiob->negotiationState = 3;
+    hiob->acknowledgeLastMessage = 1;
+}
+
+void SCSIhRespondToSync(AdaptecU2HHCB *hhcb, AdaptecU2HIOB *hiob)
+{
+    const AdaptecU2IOHandle *handle = hhcb->ioHandle;
+    AdaptecU2DeviceTable *device = hiob->context.unit->device;
+    unsigned char target = hiob->context.unit->target;
+    unsigned char period = hhcb->hardware->getXferPeriod(hhcb, hiob), offset = 0;
+    unsigned short option = hhcb->firmware->getOption(hhcb, target), rate;
+    option = option == 143 ? 0 : option & 0x80;
+    if (hiob->message[2]) {
+        if (option) offset = hhcb->hardware->getWideScsiOffset(hiob);
+        else offset = hhcb->hardware->getNarrowScsiOffset(hiob);
+        if (hiob->message[2] < offset) offset = hiob->message[2];
+        if (hiob->message[1] <= hhcb->hardware->periodLimit) {
+            if (hiob->message[1] > period) period = hiob->message[1];
+        } else offset = 0;
+    }
+    if (!(device->flags & 0x400)) {
+        offset = 0;
+        hhcb->hardware->clearScsiOffset(hiob);
+    }
+    rate = hhcb->hardware->calcScsiRate(hhcb, period, offset);
+    hhcb->hardwareFlags |= 0x80000;
+    hhcb->firmware->xferOptAssign(hhcb, target, option | rate);
+    if (hhcb->firmware->logFast20Map)
+        hhcb->firmware->logFast20Map(hhcb, target, period);
+    hiob->message[0] = 1;
+    hiob->message[1] = 3;
+    hiob->message[2] = 1;
+    hiob->message[3] = period;
+    hiob->message[4] = offset;
+    device->flags = (device->flags & 0xffbf) |
+        ((hhcb->hardware->wasSyncXfer(offset) << 6) & 0x40);
+    OSMWriteUExact8(*handle, 3, 0xf0);
+    hiob->negotiationState = 4;
+    hiob->acknowledgeLastMessage = 1;
+}

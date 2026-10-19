@@ -1049,7 +1049,7 @@ def test_firmware_switch_metadata_all_case_values(firmware_evidence):
     assert sum(d["normalized_case_count"] for d in switches) == 592
     assert {status: sum(d["status"] == status for d in document["objects"])
             for status in ("recovered", "pending-owner-recovery", "pending-owner-control-flow")} == {
-                "recovered": 26, "pending-owner-recovery": 5, "pending-owner-control-flow": 17}
+                "recovered": 29, "pending-owner-recovery": 5, "pending-owner-control-flow": 14}
 
 
 @pytest.mark.parametrize("corruption", ["missing_source", "incorrect_source", "object", "review",

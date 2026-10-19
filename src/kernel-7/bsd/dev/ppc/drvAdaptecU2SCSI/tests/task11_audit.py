@@ -120,7 +120,8 @@ def audit(evidence,repo,objects):
         location=(DRIVER.as_posix()+"/AdaptecU2CHIMResource.c",body["source_line"])
         entry=entries[body["address"]];rel=[r for r in image["extensions"]["macho"]["relocations"]
                                          if r["section"]=="__TEXT,__text" and symbol["address"]<=r["address"]<end]
-        if (body["reference_size"]!=evidence["frozen"][body["address"]]["size"] or
+        if (body["name"] not in evidence["frozen"][body["address"]]["names"] or
+                body["reference_size"]!=evidence["frozen"][body["address"]]["size"] or
                 body["native_sha256"]!=sha(code) or body["native_address"]!=symbol["address"] or
                 body["native_size"]!=len(code) or body["native_relocations"]!=rel or
                 len(body["control_flow"])<30 or sites.get(symbol["name"])!=[location] or
@@ -147,7 +148,8 @@ def audit(evidence,repo,objects):
     for body in bodies.values():
         if body["name"]=="_SCSIRFreeUnitHandle":
             if body["cases"]!=["task11-native-freeunit-unit","task11-native-freeunit-hhcb"]:raise ValueError("resource alias native scope differs")
-        elif not body["cases"] or any(by_id[c]["entry"]!=body["name"].removeprefix("_") for c in body["cases"]):
+        elif not body["cases"] or any(by_id[c]["entry"]!=body["name"].removeprefix("_") or
+                 by_id[c]["evidence"]["entry_address"]!=body["address"] for c in body["cases"]):
             raise ValueError("resource body actual entry coverage differs")
     expected_proofs={"task5.json","task6.json","task7.json","task8.json","task9.json","task10.json"}
     if set(proof["accepted_owner_proofs"])!=expected_proofs:raise ValueError("resource dependency proof closure incomplete")

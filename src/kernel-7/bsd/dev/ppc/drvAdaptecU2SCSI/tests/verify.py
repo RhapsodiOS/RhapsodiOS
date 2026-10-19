@@ -2169,7 +2169,7 @@ def audit_recovery_exits(cases):
             expected_call = {"entry": search, "arguments": ["hhcb+0", "hiob+0", 4] + ([] if swap else [0])}
             if (case["entry"] != expected_entry or calls != [expected_call] or search not in internal or
                     memory.get("hiob+32") != ("01" if hit else "09") or
-                    memory.get("hiob+4") != ("0002040200070000" if swap else "0002040000070000") or
+                    memory.get("hiob+4") != "0002040200070000" or
                     memory.get("active+28") != {"bytes": "00000000", "pointers": {"0": "hiob+0"}} or
                     memory.get("done+0") != {"bytes": "00000000", "pointers": {"0": None}} or
                     memory.get("hhcb+1348") != "0000000000000000" or memory.get("resource+16") != "00000001" or

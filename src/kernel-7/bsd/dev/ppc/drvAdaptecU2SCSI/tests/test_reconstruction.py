@@ -1613,3 +1613,269 @@ def test_task8_native_rejects_equivalent_word_accesses():
     for case in [c for c in cases if c.get("channel_case") in ("clear", "set")]:
         with pytest.raises(ValueError, match="channel access footprint differs"):
             native.run_channel_case(original, case)
+
+
+
+def _task9_reference_family(family):
+    import functools
+    source = TESTS.parent / "AdaptecU2CHIMNegotiation.c"
+    assert source.is_file(), "missing negotiation owner bodies"
+    cases = json.loads((TESTS / "task9-cases.json").read_text())
+    selected = {**cases, "cases": [c for c in cases["cases"] if c["family"] == family]}
+    assert selected["cases"], "missing Task9 execution family"
+    text = source.read_text()
+    for case in selected["cases"]:
+        assert re.search(r"\b" + case["entry"] + r"\([^;]*?\)\s*\{", text), case["entry"]
+    runner = load_script("ppc_cases")
+    runner.load_image = functools.lru_cache(maxsize=1)(runner.load_image)
+    result = runner.execute(OUT / "reference/image.bin", selected,
+                            json.loads((TESTS / "contracts.json").read_text()))
+    assert len(result["results"]) == len(selected["cases"])
+
+
+def test_wide_sync_messages_and_responses():
+    _task9_reference_family("messages")
+
+
+def test_transfer_rate_option_and_offset():
+    _task9_reference_family("transfer")
+
+
+def test_modify_data_pointer_sg():
+    _task9_reference_family("data")
+
+
+@pytest.mark.parametrize("name", [
+    'SCSIhNegotiate',
+    'SCSIhExtMsgi',
+    'SCSIhInitiateWide',
+    'SCSIhVerifyWideResponse',
+    'SCSIhInitiateSync',
+    'SCSIhVerifySyncResponse',
+    'SCSIhRespondToWide',
+    'SCSIhRespondToSync',
+    'SCSIhSendMessage',
+    'SCSIhReceiveMessage',
+    'SCSIhHandleMsgOut',
+    'SCSIhHandleMsgIn',
+    'SCSIhAIC78XXCalcScsiRate',
+    'SCSIhAICBayonetCalcScsiRate',
+    'SCSIhAIC78XXGetXferPeriod',
+    'SCSIhAICBayonetGetXferPeriod',
+    'SCSIhStandardGetFast20Reg',
+    'SCSIhStandardAdvGetFast20Reg',
+    'SCSIhSwappingGetFast20Reg',
+    'SCSIhSwappingAdvGetFast20Reg',
+    'SCSIhStandardClearFast20Reg',
+    'SCSIhSwappingClearFast20Reg',
+    'SCSIhStandardLogFast20Map',
+    'SCSIhSwappingLogFast20Map',
+    'SCSIhSwapping32UpdateFast20HostMem',
+    'SCSIhSwapping32UpdateFast20HW',
+    'SCSIhCheckSyncNego',
+    'SCSIhStandardXferOptAssign',
+    'SCSIhHostXferOptAssign',
+    'SCSIhChkCondXferAssign',
+    'SCSIhSwapping32CommonXferAssign',
+    'SCSIhStandardAdvCommonXferAssign',
+    'SCSIhSwappingAdvCommonXferAssign',
+    'SCSIhSwapping32UpdateXferOptionHostMem',
+    'SCSIhStandardAdvUpdateXferOptionHostMem',
+    'SCSIhSwappingAdvUpdateXferOptionHostMem',
+    'SCSIhStandardGetOption',
+    'SCSIhHostGetOption',
+    'SCSIhStandard64ModifyDataPtr',
+    'SCSIhSwapping32ModifyDataPtr',
+    'SCSIhStandardAdvModifyDataPtr',
+    'SCSIhSwappingAdvModifyDataPtr',
+    'SCSIhAIC78XXGetWideScsiOffset',
+    'SCSIhAIC78XXGetNarrowScsiOffset',
+    'SCSIhAICBayonetGetScsiOffset',
+    'SCSIhAIC78XXClearScsiOffset',
+    'SCSIhAICBayonetClearScsiOffset',
+    'SCSIhAIC78XXWasSyncXfer',
+    'SCSIhAICBayonetWasSyncXfer',
+    'SCSIhAIC78XXSetDataFifoThrshDefault',
+    'SCSIhAIC78XXReadDataFifoThrsh',
+    'SCSIhAIC78XXUpdateDataFifoThrsh',
+    'SCSIhAICBayonetSetDataFifoThrshDefault',
+    'SCSIhAICBayonetReadDataFifoThrsh',
+    'SCSIhAICBayonetUpdateDataFifoThrsh',
+    'SCSIhSwappingClearAllFast20Reg',
+    'SCSIhStandard64ClearAllFast20Reg',
+    'SCSIhAIC78XXIgnoreWideResCalc',
+    'SCSIhAICBayonetIgnoreWideResCalc',
+    'SCSIhStandardAdvUpdateSGLength',
+    'SCSIhSwappingAdvUpdateSGLength',
+    'SCSIhStandardAdvUpdateSGAddress',
+    'SCSIhSwappingAdvUpdateSGAddress',
+])
+def test_task9_required_body(name):
+    source = (TESTS.parent / "AdaptecU2CHIMNegotiation.c").read_text()
+    assert re.search(r"\b" + name + r"\([^;]*?\)\s*\{", source), "missing negotiation body: " + name
+
+
+def test_task9_owner_native_and_control_flow_evidence(firmware_evidence):
+    assert (TESTS.parent / "reconstruction/task9.json").is_file(), "missing negotiation owner source/native/fixture proof"
+    audit, evidence = firmware_evidence
+    audit.audit_negotiation_group(evidence, REPO, OUT / "objects/task9")
+
+
+def test_task9_native_access_widths():
+    native = load_script("task9_native")
+    assert hasattr(native, "access_widths"), "missing native negotiation access-width checks"
+    native.access_widths(OUT / "objects/task9/1-AdaptecU2CHIMNegotiation.c.o")
+    native.access_widths(OUT / "reference/image.bin")
+
+
+@pytest.mark.parametrize("corruption", ["source", "native", "review", "case", "runner",
+                                        "dependency", "switch", "closure", "result", "relocation"])
+def test_task9_owner_rejects_incomplete_evidence(tmp_path, firmware_evidence, corruption):
+    audit, evidence = firmware_evidence
+    repo = tmp_path / "repo"
+    driver = repo / audit.ref.DRIVER
+    shutil.copytree(TESTS.parent, driver, ignore=shutil.ignore_patterns("__pycache__", "task5-cases.json", "task6-cases.json", "task7-cases.json", "task8-cases.json"))
+    shutil.copytree(REPO / "tools/binrecon/binrecon", repo / "tools/binrecon/binrecon",
+                    ignore=shutil.ignore_patterns("__pycache__"))
+    shutil.copyfile(REPO / "tools/binrecon/source_paths.py", repo / "tools/binrecon/source_paths.py")
+    shutil.copyfile(REPO / ".git", repo / ".git")
+    objects = tmp_path / "objects/task9"
+    for group in ("task9", "task5", "task6", "task7", "task8", "firmware"):
+        shutil.copytree(OUT / "objects" / group, objects.parent / group,
+                        ignore=shutil.ignore_patterns("*.id0", "*.id1", "*.nam", "*.til", "*.i64"))
+    proof_path = driver / "reconstruction/task9.json"
+    proof = json.loads(proof_path.read_text())
+    if corruption == "source":
+        with (driver / "AdaptecU2CHIMNegotiation.c").open("a") as stream:
+            stream.write("\nvoid NegotiationReplacement(void) {}\n")
+    elif corruption == "native":
+        path = objects / "1-AdaptecU2CHIMNegotiation.c.o"
+        raw = bytearray(path.read_bytes()); raw[-1] ^= 1; path.write_bytes(raw)
+    elif corruption == "review":
+        proof["bodies"].pop()
+    elif corruption == "case":
+        path = driver / "tests/task9-cases.json"
+        cases = json.loads(path.read_text()); cases["cases"].pop(); path.write_text(json.dumps(cases))
+    elif corruption == "runner":
+        with (driver / "tests/ppc_cases.py").open("a") as stream:
+            stream.write("\n# changed execution input\n")
+    elif corruption == "dependency":
+        with (driver / "AdaptecU2CHIMSCB.c").open("a") as stream:
+            stream.write("\n# changed accepted dependency\n")
+    elif corruption == "switch":
+        proof["switches"].pop("switch_230ec0")
+    elif corruption == "closure":
+        proof["execution_inputs"].pop("tools/binrecon/binrecon/__init__.py")
+    elif corruption == "result":
+        path = objects / "reference-results.json"
+        result = json.loads(path.read_text()); result["results"][0]["unknown_calls"] = ["missing"]
+        path.write_text(json.dumps(result))
+    elif corruption == "relocation":
+        next(b for b in proof["bodies"] if b["native_external_relocations"])["native_external_relocations"].pop()
+    proof_path.write_text(json.dumps(proof))
+    import hashlib
+    digest = hashlib.sha256(proof_path.read_bytes().replace(b"\r\n", b"\n")).hexdigest().upper()
+    ledger_path = driver / "reconstruction/ledger.json"
+    ledger = json.loads(ledger_path.read_text())
+    for entry in ledger["entries"]:
+        for artifact in entry["artifacts"]:
+            if artifact["path"].endswith("reconstruction/task9.json"):
+                artifact["sha256"] = digest
+    ledger_path.write_text(json.dumps(ledger))
+    expected = {"source": "stale Task9 native source/object", "native": "stale Task9 native source/object",
+                "review": "exactly 63 negotiation bodies", "case": "stale Task9 reference result",
+                "runner": "stale Task9 executed input", "dependency": "stale Task9 accepted source dependency",
+                "switch": "its owned switch envelope", "closure": "execution input closure is incomplete",
+                "result": "invalid Task9 successful fixture", "relocation": "native call binding differs"}
+    with pytest.raises(ValueError, match=expected[corruption]):
+        audit.audit_negotiation_group(evidence, repo, objects)
+
+
+@pytest.mark.parametrize("newline", [b"\n", b"\r\n"])
+def test_task9_owner_accepts_canonical_checkout(tmp_path, firmware_evidence, newline):
+    audit, evidence = firmware_evidence
+    repo = tmp_path / "repo"
+    driver = repo / audit.ref.DRIVER
+    shutil.copytree(TESTS.parent, driver, ignore=shutil.ignore_patterns("__pycache__", "task5-cases.json", "task6-cases.json", "task7-cases.json", "task8-cases.json"))
+    shutil.copytree(REPO / "tools/binrecon/binrecon", repo / "tools/binrecon/binrecon",
+                    ignore=shutil.ignore_patterns("__pycache__"))
+    shutil.copyfile(REPO / "tools/binrecon/source_paths.py", repo / "tools/binrecon/source_paths.py")
+    shutil.copyfile(REPO / ".git", repo / ".git")
+    objects = tmp_path / "objects/task9"
+    for group in ("task9", "task5", "task6", "task7", "task8", "firmware"):
+        shutil.copytree(OUT / "objects" / group, objects.parent / group,
+                        ignore=shutil.ignore_patterns("*.id0", "*.id1", "*.nam", "*.til", "*.i64"))
+    proof_path = driver / "reconstruction/task9.json"
+    proof = json.loads(proof_path.read_text())
+    paths = [proof_path, driver / "tests/task9_native.py"]
+    paths += [driver / name for name in set(proof["native_inputs"]) | set(proof["accepted_dependencies"])]
+    paths += [repo / relative for relative in proof["execution_inputs"]]
+    for path in paths:
+        path.write_bytes(path.read_bytes().replace(b"\r\n", b"\n").replace(b"\n", newline))
+    audit.audit_negotiation_group(evidence, repo, objects)
+
+
+@pytest.mark.parametrize("corruption", ["wide_store", "switch_return"])
+def test_task9_native_rejects_changed_behavior(tmp_path, corruption):
+    native = load_script("task9_native")
+    source = OUT / "objects/task9/1-AdaptecU2CHIMNegotiation.c.o"
+    name = "SCSIhAIC78XXClearScsiOffset" if corruption == "wide_store" else "SCSIhAIC78XXGetXferPeriod"
+    start, end, code, image = native.body(source, name)
+    words = [int.from_bytes(code[i:i+4], "big") for i in range(0, len(code), 4)]
+    if corruption == "wide_store":
+        index = next(i for i, word in enumerate(words) if word >> 26 == 38 and word & 0xffff == 4)
+        word = (words[index] & 0x03ffffff) | (36 << 26)
+    else:
+        index = words.index(0x3860000c)
+        word = 0x3860000d
+    section = next(s for s in image["sections"] if s["name"] == "__TEXT,__text")
+    offset = section["offset"] + start - section["address"] + index * 4
+    raw = bytearray(source.read_bytes())
+    raw[offset:offset+4] = word.to_bytes(4, "big")
+    changed = tmp_path / "changed.o"
+    changed.write_bytes(raw)
+    if corruption == "wide_store":
+        with pytest.raises(ValueError, match="byte offset access differs"):
+            native.access_widths(changed)
+    else:
+        case = next(c for c in json.loads((TESTS / "task9-cases.json").read_text())["cases"]
+                    if c["id"] == "task9-b1-period-78XX-32768-0")
+        with pytest.raises(ValueError, match="scalar result differs"):
+            native.run_scalar(changed, case)
+
+
+def test_task9_public_result_current_head_remains_strict():
+    result = json.loads((OUT / "objects/task9/reference-results.json").read_text())
+    result["source_revision"] = "0" * 40
+    with pytest.raises(ValueError, match="stale result: source_revision"):
+        load_script("ppc_cases").validate_result(
+            result, OUT / "reference/image.bin", json.loads((TESTS / "task9-cases.json").read_text()),
+            json.loads((TESTS / "contracts.json").read_text()))
+
+
+def test_task9_proof_digest_matches_canonical_git():
+    import hashlib
+    import subprocess
+    path = TESTS.parent / "reconstruction/task9.json"
+    blob = subprocess.check_output(["git", "show", "HEAD:" + path.relative_to(REPO).as_posix()], cwd=REPO)
+    assert path.read_bytes().replace(b"\r\n", b"\n") == blob
+    digest = hashlib.sha256(blob).hexdigest().upper()
+    ledger = json.loads((TESTS.parent / "reconstruction/ledger.json").read_text())
+    artifacts = [artifact for entry in ledger["entries"] for artifact in entry["artifacts"]
+                 if artifact["path"].endswith("reconstruction/task9.json")]
+    assert len(artifacts) == 63 and {artifact["sha256"] for artifact in artifacts} == {digest}
+
+
+def test_task9_fresh_git_checkout_proof(tmp_path):
+    import hashlib
+    import subprocess
+    prefix = (TESTS.parent / "reconstruction").relative_to(REPO).as_posix() + "/"
+    paths = [prefix + name for name in ("task9.json", "ledger.json")]
+    subprocess.check_call(["git", "checkout-index", "--prefix=" + tmp_path.as_posix() + "/", "--", *paths], cwd=REPO)
+    blob = subprocess.check_output(["git", "show", "HEAD:" + paths[0]], cwd=REPO)
+    assert (tmp_path / paths[0]).read_bytes().replace(b"\r\n", b"\n") == blob
+    digest = hashlib.sha256(blob).hexdigest().upper()
+    ledger = json.loads((tmp_path / paths[1]).read_text())
+    artifacts = [a for e in ledger["entries"] for a in e["artifacts"] if a["path"].endswith("task9.json")]
+    assert len(artifacts) == 63 and {a["sha256"] for a in artifacts} == {digest}
+

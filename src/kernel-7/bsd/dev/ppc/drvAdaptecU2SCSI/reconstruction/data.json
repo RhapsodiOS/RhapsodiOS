@@ -15120,7 +15120,7 @@
           "kind": "code-offset"
         }
       ],
-      "status": "pending-owner-control-flow",
+      "status": "recovered",
       "required_gate": "owner-group-and-final",
       "consumers": [
         1714348,
@@ -15268,7 +15268,8 @@
           "target": 1714480
         }
       ],
-      "guard_start": 1714328
+      "guard_start": 1714328,
+      "owner_evidence": "reconstruction/task11.json"
     },
     {
       "name": "switch_230f40",
@@ -15329,7 +15330,7 @@
           "kind": "code-offset"
         }
       ],
-      "status": "pending-owner-control-flow",
+      "status": "recovered",
       "required_gate": "owner-group-and-final",
       "consumers": [
         1715224,
@@ -15495,7 +15496,8 @@
           "target": 1715384
         }
       ],
-      "guard_start": 1715184
+      "guard_start": 1715184,
+      "owner_evidence": "reconstruction/task11.json"
     },
     {
       "name": "switch_230f60",

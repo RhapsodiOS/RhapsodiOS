@@ -1,0 +1,4303 @@
+{
+  "schema_version": 1,
+  "reference_sha256": "D01D748C10117FBFCEB25F99D88A63895C3BAC6C09A5110AD358E583316494BD",
+  "native_actual_base_revision": "773b8d68abf5917aaa7e95871fec394d571619b2",
+  "canonical_input_revision": "6f5c2333d56c1f5124ec0dc10ac7bd95b9558054",
+  "canonical_inputs": {
+    "AdaptecU2CHIMResource.c": "A6762FD98FFEC99AF870E67CB86DEA9AB88990AAB30E384DEBE64D77FCDA1ABF",
+    "AdaptecU2CHIMTypes.h": "EBCAF8DC111A1B45A63A17C55B35CD5D22AB35BB3AF46901EF7F16E55549772A",
+    "AdaptecU2CHIM.h": "B5210607C79287A4071EB3921A885BBF7011F0E61F1AE7D43708A8AEEBF94106",
+    "AdaptecU2CHIMPrivate.h": "BB3BC6F7DF328DF7772ED2F0E74EFC4CBEED70291DC626490D91F454E19EA4C0",
+    "OSMFunctions.h": "F7DBE4235865185DE6B2D2F5BC1BCCB77C5E999D5968B002B00D61CE2F5EBFD3",
+    "AdaptecU2SCSI.h": "3F91074F77D3AD83B41B477859C8B970ADDBBC0CA90145299277EAA8E6F6EE9C",
+    "AdaptecU2SCSIPrivate.h": "3FC62CD8BAC420FF920A2FAB1F9B50DE464BED138A1E502B108DCBEDAFE9C3CE"
+  },
+  "native_manifest_sha256": "0BE9C386DE244F694BDE7BFF8836DD3EDC0F6860BCFD08478178FAA5B8738002",
+  "native_inputs_sha256": "35C1E47EFA14962CF02864296175A7EAFEDEE44EF21CF2A3E8F08064C2531FD7",
+  "native_diagnostics_sha256": "61CC265DB29341947E56197FF79100596D27459CAA75806B9BA51877731C4003",
+  "native_artifacts": {
+    "tools/binrecon/out/adaptecu2scsi-ppc/task11/batch6r3-inputs.tar": "C398E05400021E9D5A623F94969693428B8EA8E04AA8019FE02DFE51A2CAF08F",
+    "tools/binrecon/out/adaptecu2scsi-ppc/task11/batch6r3-products.tar": "A38D5FD61E91F03778E5782FEB1829100B4E01E6D3208A7CFB41272A0842D1DD",
+    "tools/binrecon/out/adaptecu2scsi-ppc/task11/batch6r3-inputs.json": "35C1E47EFA14962CF02864296175A7EAFEDEE44EF21CF2A3E8F08064C2531FD7",
+    "tools/binrecon/out/adaptecu2scsi-ppc/task11/build-batch6r3.sh": "6BE625D0CCAB082D96A5A4B97B1F3796D0C3C85F931E0EC33930430397F30ED3",
+    "tools/binrecon/out/adaptecu2scsi-ppc/task11/batch6r3-native.log": "E11797CD905876E1954DE77E9F2694A880788CB82E649FDE427F78B01F714CDE",
+    "tools/binrecon/out/adaptecu2scsi-ppc/guest/environment.txt": "7C758FA97D349E9EB197CEF45EF0C6A1200DBE27D21470A2880897CFE189DDE3",
+    "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/tests/build-objects.sh": "7C986D029F130B51D1C03924B832ACD0F59EA4C52BDF16BC358A9FB9A1AAD513",
+    "tools/binrecon/out/adaptecu2scsi-ppc/guest/handoff.md": "4B57249218433CB33201ED940557C352932CE7D2710430BBA2A7C8B25F86CE6F",
+    "tools/binrecon/out/adaptecu2scsi-ppc/guest/baseline-final-proof.log": "EDA2ECB83DACEB9C4971F007B3F5BD5EB7D2F798A329E9284CF55DB51BF9F0C5"
+  },
+  "native_input_archive": "tools/binrecon/out/adaptecu2scsi-ppc/task11/batch6r3-inputs.tar",
+  "native_scope": "Actual773b WIP batch6r3 RELEASE_PPC object,47bodies after bounded8/8/8/8/8/7 source batches and focused access-order corrections; no metadata-only rebuild. Exact7compiled LF inputs equal separate canonical6f commit. One deliberate volatile qualifier warning retained. Intermediate CF acceptance; no linked pairing/fourbuild/physical concurrency claim.",
+  "execution_revision": "20f867f9b40ef035c6febd94179abd43b181c5c1",
+  "execution_inputs": {
+    "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/tests/task11-cases.json": {
+      "git_blob_sha256": "5CCB423DA7A3EC5154A077B48A91A814D7298926B1C06501B31664B387DF949D",
+      "working_sha256": "5CCB423DA7A3EC5154A077B48A91A814D7298926B1C06501B31664B387DF949D"
+    },
+    "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/tests/task11-contracts.json": {
+      "git_blob_sha256": "DEC24F3F4C26F6F6EA5370DF9DAE26DC74BE04B255D773FB3A04F82E7428149A",
+      "working_sha256": "DEC24F3F4C26F6F6EA5370DF9DAE26DC74BE04B255D773FB3A04F82E7428149A"
+    },
+    "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/tests/ppc_cases.py": {
+      "git_blob_sha256": "BD9D0F0A2A3D881A558FBE9E91D57A9232379DDF71F5F3DE0DE4AB549475E8A1",
+      "working_sha256": "BD9D0F0A2A3D881A558FBE9E91D57A9232379DDF71F5F3DE0DE4AB549475E8A1"
+    },
+    "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/tests/reference.py": {
+      "git_blob_sha256": "C1E0758E851CD700228EE08EEF9791330A980A193732409E9531F68CFD6AA6B4",
+      "working_sha256": "775E0165E308269D6F730B6B92F50119361538BD7C4CEE5D641CE6CCEC1308DD"
+    },
+    "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/reconstruction/inventory.md": {
+      "git_blob_sha256": "319101C8CC2305FBF33B3E51BDDE233865D802961981155134DD713E2EF77F3D",
+      "working_sha256": "9CDDC9E9A032D85AEF658E059F7ACB008300E98D451A97B823597062FFC09A17"
+    },
+    "tools/binrecon/binrecon/__init__.py": {
+      "git_blob_sha256": "91447944015CEC709E8AA7655F7E9D64E1E4508E7023A57FE3746911C0FC6FED",
+      "working_sha256": "91447944015CEC709E8AA7655F7E9D64E1E4508E7023A57FE3746911C0FC6FED"
+    },
+    "tools/binrecon/binrecon/identity.py": {
+      "git_blob_sha256": "679D358653D837297A1EB61472F32718F2A39D6CD1F533D4DDEE3196F77AE9F0",
+      "working_sha256": "679D358653D837297A1EB61472F32718F2A39D6CD1F533D4DDEE3196F77AE9F0"
+    },
+    "tools/binrecon/binrecon/macho.py": {
+      "git_blob_sha256": "D8F18CA1E4BE7AFCDE1C9622503099F338D15D3E1E9063E1F24208A1ADBB7370",
+      "working_sha256": "D8F18CA1E4BE7AFCDE1C9622503099F338D15D3E1E9063E1F24208A1ADBB7370"
+    },
+    "tools/binrecon/binrecon/objc_abi.py": {
+      "git_blob_sha256": "03798523E68A8C9AFED96C15FA108DBF86488D3311B1C1B089BC3EECD607816D",
+      "working_sha256": "03798523E68A8C9AFED96C15FA108DBF86488D3311B1C1B089BC3EECD607816D"
+    },
+    "tools/binrecon/binrecon/source_map.py": {
+      "git_blob_sha256": "90D00D1AF1B8EB56231DCDB377B079A18CD918C59CD3329C6E983C6BB5B8B5A0",
+      "working_sha256": "90D00D1AF1B8EB56231DCDB377B079A18CD918C59CD3329C6E983C6BB5B8B5A0"
+    },
+    "tools/binrecon/binrecon/schema.py": {
+      "git_blob_sha256": "6668027B08626208314737E1BF694898CA52F6D2AF6C61227AF63F548648373B",
+      "working_sha256": "6668027B08626208314737E1BF694898CA52F6D2AF6C61227AF63F548648373B"
+    },
+    "tools/binrecon/binrecon/arch.py": {
+      "git_blob_sha256": "0B7DD7EB6AFB10F9A9AD66780F79BF94897ED2154AF034CDE0DEAED6F074E90A",
+      "working_sha256": "0B7DD7EB6AFB10F9A9AD66780F79BF94897ED2154AF034CDE0DEAED6F074E90A"
+    },
+    "tools/binrecon/source_paths.py": {
+      "git_blob_sha256": "E6C886F08AA2F64CAE34C8F3B3A18F56A2718AAE14A6CAE29BC595A40978AE7B",
+      "working_sha256": "E6C886F08AA2F64CAE34C8F3B3A18F56A2718AAE14A6CAE29BC595A40978AE7B"
+    }
+  },
+  "reference_runner_version": "1/unicorn-2.1.4/bd9d0f0a2a3d881a558fbe9e91d57a9232379ddf71f5f3de0de4ab549475e8a1",
+  "reference_results_sha256": "15EE6D49928845E582B52FBC7476AABF5C9381948FF13F897D43D1D126BEB3C7",
+  "supplementary_revision": "698a4ec8c7c9ad8d0ce3727e9a72a632b4e5ecf5",
+  "supplementary_inputs": {
+    "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/tests/task11_execute.py": {
+      "git_blob_sha256": "3A5D3C346F853E178539438126E3816836A61F4C2E92AFAF7793306991E4D64E",
+      "working_sha256": "3A5D3C346F853E178539438126E3816836A61F4C2E92AFAF7793306991E4D64E"
+    },
+    "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/tests/task11_native.py": {
+      "git_blob_sha256": "E91093F55DD4BEF103D85414A0D695EEA9D6BFC3DAEACCDF23C8AC136DE88796",
+      "working_sha256": "E91093F55DD4BEF103D85414A0D695EEA9D6BFC3DAEACCDF23C8AC136DE88796"
+    },
+    "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/tests/task11_sequence.py": {
+      "git_blob_sha256": "F0A9AD2C15ACB368640EF4132DD46CAE9D3F7843099F0CF9A6A94E11AEB3D700",
+      "working_sha256": "F0A9AD2C15ACB368640EF4132DD46CAE9D3F7843099F0CF9A6A94E11AEB3D700"
+    },
+    "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/tests/task10_sequence.py": {
+      "git_blob_sha256": "BA3DD420931F58E47591947ABF3E5A8AC71276FADA1FE6C2B80CEF6B2769A6CD",
+      "working_sha256": "BA3DD420931F58E47591947ABF3E5A8AC71276FADA1FE6C2B80CEF6B2769A6CD"
+    },
+    "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/tests/task11-sequences.json": {
+      "git_blob_sha256": "DDDFC50E07C241AB6D618495F22B93902AA9F310C04C0AF0610A52CACBBCD5DC",
+      "working_sha256": "B4594AAC78B49C0AD3E958FB336708D1F882BC6AF7E3E260A9EC9CB2B973F465"
+    },
+    "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/tests/task11-cases.json": {
+      "git_blob_sha256": "5CCB423DA7A3EC5154A077B48A91A814D7298926B1C06501B31664B387DF949D",
+      "working_sha256": "5CCB423DA7A3EC5154A077B48A91A814D7298926B1C06501B31664B387DF949D"
+    },
+    "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/tests/task11-contracts.json": {
+      "git_blob_sha256": "DEC24F3F4C26F6F6EA5370DF9DAE26DC74BE04B255D773FB3A04F82E7428149A",
+      "working_sha256": "DEC24F3F4C26F6F6EA5370DF9DAE26DC74BE04B255D773FB3A04F82E7428149A"
+    },
+    "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/tests/ppc_cases.py": {
+      "git_blob_sha256": "BD9D0F0A2A3D881A558FBE9E91D57A9232379DDF71F5F3DE0DE4AB549475E8A1",
+      "working_sha256": "BD9D0F0A2A3D881A558FBE9E91D57A9232379DDF71F5F3DE0DE4AB549475E8A1"
+    },
+    "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/tests/reference.py": {
+      "git_blob_sha256": "C1E0758E851CD700228EE08EEF9791330A980A193732409E9531F68CFD6AA6B4",
+      "working_sha256": "775E0165E308269D6F730B6B92F50119361538BD7C4CEE5D641CE6CCEC1308DD"
+    },
+    "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/reconstruction/inventory.md": {
+      "git_blob_sha256": "319101C8CC2305FBF33B3E51BDDE233865D802961981155134DD713E2EF77F3D",
+      "working_sha256": "9CDDC9E9A032D85AEF658E059F7ACB008300E98D451A97B823597062FFC09A17"
+    },
+    "tools/binrecon/source_paths.py": {
+      "git_blob_sha256": "E6C886F08AA2F64CAE34C8F3B3A18F56A2718AAE14A6CAE29BC595A40978AE7B",
+      "working_sha256": "E6C886F08AA2F64CAE34C8F3B3A18F56A2718AAE14A6CAE29BC595A40978AE7B"
+    },
+    "tools/binrecon/binrecon/__init__.py": {
+      "git_blob_sha256": "91447944015CEC709E8AA7655F7E9D64E1E4508E7023A57FE3746911C0FC6FED",
+      "working_sha256": "91447944015CEC709E8AA7655F7E9D64E1E4508E7023A57FE3746911C0FC6FED"
+    },
+    "tools/binrecon/binrecon/identity.py": {
+      "git_blob_sha256": "679D358653D837297A1EB61472F32718F2A39D6CD1F533D4DDEE3196F77AE9F0",
+      "working_sha256": "679D358653D837297A1EB61472F32718F2A39D6CD1F533D4DDEE3196F77AE9F0"
+    },
+    "tools/binrecon/binrecon/macho.py": {
+      "git_blob_sha256": "D8F18CA1E4BE7AFCDE1C9622503099F338D15D3E1E9063E1F24208A1ADBB7370",
+      "working_sha256": "D8F18CA1E4BE7AFCDE1C9622503099F338D15D3E1E9063E1F24208A1ADBB7370"
+    },
+    "tools/binrecon/binrecon/objc_abi.py": {
+      "git_blob_sha256": "03798523E68A8C9AFED96C15FA108DBF86488D3311B1C1B089BC3EECD607816D",
+      "working_sha256": "03798523E68A8C9AFED96C15FA108DBF86488D3311B1C1B089BC3EECD607816D"
+    },
+    "tools/binrecon/binrecon/source_map.py": {
+      "git_blob_sha256": "90D00D1AF1B8EB56231DCDB377B079A18CD918C59CD3329C6E983C6BB5B8B5A0",
+      "working_sha256": "90D00D1AF1B8EB56231DCDB377B079A18CD918C59CD3329C6E983C6BB5B8B5A0"
+    },
+    "tools/binrecon/binrecon/schema.py": {
+      "git_blob_sha256": "6668027B08626208314737E1BF694898CA52F6D2AF6C61227AF63F548648373B",
+      "working_sha256": "6668027B08626208314737E1BF694898CA52F6D2AF6C61227AF63F548648373B"
+    },
+    "tools/binrecon/binrecon/arch.py": {
+      "git_blob_sha256": "0B7DD7EB6AFB10F9A9AD66780F79BF94897ED2154AF034CDE0DEAED6F074E90A",
+      "working_sha256": "0B7DD7EB6AFB10F9A9AD66780F79BF94897ED2154AF034CDE0DEAED6F074E90A"
+    }
+  },
+  "native_results_sha256": "4D92781BBDDB7B94E7381EB780B48DA6F6B8CF3D7A1110CE49A17AD9F22A065A",
+  "boundary_results_sha256": "842B251D529B11D2024927D90127C3E4284581F635A98AA424D352D5FD1BD42D",
+  "accepted_contracts_sha256": "7DDC8805D2B937392842D8770D0126333C1B1023EB6DBB97FA9485209A88E859",
+  "contract_delta": [
+    {
+      "offset": 3,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset3 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 147,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset147 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 2,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset2 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 12,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset12 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 0,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset0 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 81,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset81 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 80,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset80 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 174,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset174 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 160,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset160 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 161,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset161 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 162,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset162 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 163,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset163 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 171,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset171 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 166,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset166 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 167,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset167 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 168,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset168 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 169,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset169 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 165,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset165 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 164,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset164 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 188,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset188 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 189,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset189 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 190,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset190 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 191,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset191 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 176,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset176 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 177,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset177 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 178,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset178 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 179,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset179 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 175,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset175 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 170,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset170 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 173,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset173 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 172,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset172 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 184,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset184 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 185,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset185 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 186,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset186 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 187,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset187 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 182,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset182 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 183,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset183 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 181,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset181 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 204,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset204 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 205,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset205 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 206,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset206 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 207,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset207 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 192,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset192 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 144,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset144 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 32,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset32 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 180,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset180 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 193,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset193 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 194,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset194 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 195,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset195 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 196,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset196 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 197,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset197 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 198,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset198 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 199,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset199 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 200,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset200 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 201,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset201 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 202,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset202 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 203,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset203 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 35,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset35 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 115,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset115 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 223,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset223 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 94,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset94 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 95,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset95 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 54,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset54 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 55,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset55 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 64,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset64 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 40,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset40 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 238,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset238 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 53,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset53 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 52,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset52 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 235,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset235 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 61,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset61 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 60,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset60 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 58,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset58 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 57,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset57 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 86,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset86 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 145,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset145 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 98,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset98 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 99,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset99 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 11,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset11 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 1,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset1 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 4,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset4 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 17,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset17 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 228,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset228 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 229,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset229 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 230,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset230 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 231,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset231 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 135,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset135 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 146,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset146 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 48,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset48 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 49,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset49 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 62,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset62 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 63,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset63 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 68,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset68 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 59,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset59 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 78,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset78 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 79,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset79 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 112,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset112 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 76,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset76 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 77,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset77 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 120,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset120 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 16,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset16 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 51,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset51 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 6,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset6 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 85,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset85 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 56,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset56 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 18,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset18 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 104,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset104 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 13,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset13 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 74,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset74 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 73,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset73 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 89,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset89 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 88,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset88 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 246,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset246 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 244,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset244 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 83,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset83 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 111,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset111 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 241,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset241 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 96,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset96 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 103,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task10 actual pinned Recovery execution graphs access this exact register offset103 with width1. Per-case owner addresses and dependency_proofs distinguish Recovery operations from real Task5 OSM and accepted Task6/7/9 hardware/SCB/negotiation callees; no internal hooks."
+    },
+    {
+      "offset": 31,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task11 authenticated owned body instructions; byte register31; exact OSM access/barrier implementation accepted in reconstruction/task5.json."
+    },
+    {
+      "offset": 5,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task11 authenticated owned body instructions; byte register5; exact OSM access/barrier implementation accepted in reconstruction/task5.json."
+    },
+    {
+      "offset": 134,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task11 authenticated owned body instructions; byte register134; exact OSM access/barrier implementation accepted in reconstruction/task5.json."
+    },
+    {
+      "offset": 97,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task11 authenticated owned body instructions; byte register97; exact OSM access/barrier implementation accepted in reconstruction/task5.json."
+    },
+    {
+      "offset": 100,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task11 authenticated owned body instructions; byte register100; exact OSM access/barrier implementation accepted in reconstruction/task5.json."
+    },
+    {
+      "offset": 101,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task11 authenticated owned body instructions; byte register101; exact OSM access/barrier implementation accepted in reconstruction/task5.json."
+    },
+    {
+      "offset": 102,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task11 authenticated owned body instructions; byte register102; exact OSM access/barrier implementation accepted in reconstruction/task5.json."
+    },
+    {
+      "offset": 113,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task11 authenticated owned body instructions; byte register113; exact OSM access/barrier implementation accepted in reconstruction/task5.json."
+    },
+    {
+      "offset": 105,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task11 authenticated owned body instructions; byte register105; exact OSM access/barrier implementation accepted in reconstruction/task5.json."
+    },
+    {
+      "offset": 106,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task11 authenticated owned body instructions; byte register106; exact OSM access/barrier implementation accepted in reconstruction/task5.json."
+    },
+    {
+      "offset": 107,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task11 authenticated owned body instructions; byte register107; exact OSM access/barrier implementation accepted in reconstruction/task5.json."
+    },
+    {
+      "offset": 108,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task11 authenticated owned body instructions; byte register108; exact OSM access/barrier implementation accepted in reconstruction/task5.json."
+    },
+    {
+      "offset": 109,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task11 authenticated owned body instructions; byte register109; exact OSM access/barrier implementation accepted in reconstruction/task5.json."
+    },
+    {
+      "offset": 110,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task11 authenticated owned body instructions; byte register110; exact OSM access/barrier implementation accepted in reconstruction/task5.json."
+    },
+    {
+      "offset": 133,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task11 authenticated owned body instructions; byte register133; exact OSM access/barrier implementation accepted in reconstruction/task5.json."
+    },
+    {
+      "offset": 132,
+      "size": 1,
+      "access": [
+        "read",
+        "write"
+      ],
+      "evidence": "Task11 authenticated owned body instructions; byte register132; exact OSM access/barrier implementation accepted in reconstruction/task5.json."
+    }
+  ],
+  "accepted_dependencies": {
+    "AdaptecU2CHIMFirmware.c": {
+      "group": "firmware",
+      "source_revision": "e3851a12d1bb6f943edbd72cdead4b8f6f0931bc",
+      "source_sha256": "5619B0588FD066B9231C397A5CFF03DFF480033647F5948C314D1BEFE905331A",
+      "git_blob_sha256": "4550C999F03E8087D11668B175B4AAC94BA443BDE25DF5D45F9184DF40B543AC",
+      "object_sha256": "992F737597D6A3CA7B17CF0CA3943058C47411764F160D9013E642E5AFF3541C",
+      "object": "1-AdaptecU2CHIMFirmware.c.o",
+      "manifest_sha256": "D31B574EE25F879B6AC2F991A683220356294833FE883B50A35B4FFEB096896C"
+    },
+    "AdaptecU2CHIMTables.c": {
+      "group": "firmware",
+      "source_revision": "e3851a12d1bb6f943edbd72cdead4b8f6f0931bc",
+      "source_sha256": "91580139F591362D5F52C00BD3F00FD4153D3FE2D2763B7D0D6BDFDED09FABAC",
+      "git_blob_sha256": "C1973A98D22542E486E0B548D8550F9DD6A2E07095DD7A1C08D616C35F6D15A9",
+      "object_sha256": "67AA7E935CBBC44826838BF5D8D6943497E706722FAE93EEBB1716231F0FC062",
+      "object": "2-AdaptecU2CHIMTables.c.o",
+      "manifest_sha256": "D31B574EE25F879B6AC2F991A683220356294833FE883B50A35B4FFEB096896C"
+    },
+    "AdaptecU2OSMServices.m": {
+      "group": "task5",
+      "source_revision": "8e60bd5b71dc6f340b06cf314033ac74d1bc0626",
+      "source_sha256": "3C33BF52077FA7DFD58160D7E82D65FD08EDA864064AFBE6AA49D12FC9572658",
+      "git_blob_sha256": "3C33BF52077FA7DFD58160D7E82D65FD08EDA864064AFBE6AA49D12FC9572658",
+      "object_sha256": "FFE446DDFBFF12FF70304041FD93A2E1F7BDAF2AA15437B6CA5142A425FC7B64",
+      "object": "1-AdaptecU2OSMServices.m.o",
+      "manifest_sha256": "406886779ECE4470CD43ECD4ED4D7C6F75CE6A936FBEA8439EAB0B81138E5D34"
+    },
+    "AdaptecU2CHIMOSD.c": {
+      "group": "task5",
+      "source_revision": "8e60bd5b71dc6f340b06cf314033ac74d1bc0626",
+      "source_sha256": "0305D431CC110CD9CEC66F6118FF58307C59075FA5C3D1783DD70A3586E4C7B3",
+      "git_blob_sha256": "0305D431CC110CD9CEC66F6118FF58307C59075FA5C3D1783DD70A3586E4C7B3",
+      "object_sha256": "9FC46CCE820A749AC5CD7CCF14D70FBCE29A1189063D6932F23DC429C56FE790",
+      "object": "2-AdaptecU2CHIMOSD.c.o",
+      "manifest_sha256": "406886779ECE4470CD43ECD4ED4D7C6F75CE6A936FBEA8439EAB0B81138E5D34"
+    },
+    "AdaptecU2CHIMHardware.c": {
+      "group": "task6",
+      "source_revision": "333ab0a779a625b5455570b7e778f11baa66be64",
+      "source_sha256": "ACAC809555077AB96E605D59E4D077B9383906FF5D78226B3620A0DC75899244",
+      "git_blob_sha256": "ACAC809555077AB96E605D59E4D077B9383906FF5D78226B3620A0DC75899244",
+      "object_sha256": "A4C8085B3DB5951294B55B9D85B6D4F2687F4648297C248B64D1ACBD4E7D5202",
+      "object": "1-AdaptecU2CHIMHardware.c.o",
+      "manifest_sha256": "133832769F0E28CFADD35BBF289715708562BF8ED642C21B09333D5E88F8253A"
+    },
+    "AdaptecU2CHIMSCB.c": {
+      "group": "task7",
+      "source_revision": "deea0fd8ef1b21f13e135349da36e95871fefccd",
+      "source_sha256": "26D5E69D554C2FDE447DBA3CB17F2EF71E533390A97B3913A5E63D388F17AE62",
+      "git_blob_sha256": "26D5E69D554C2FDE447DBA3CB17F2EF71E533390A97B3913A5E63D388F17AE62",
+      "object_sha256": "1EC706B6721664A71B95F7261D926A279A19747FAB1DED6662C36E149A72B051",
+      "object": "1-AdaptecU2CHIMSCB.c.o",
+      "manifest_sha256": "636160CF0195DEB3021F55C13EB17A65FD1E48AB85954DC49A493D1A9599C911"
+    },
+    "AdaptecU2CHIMConfig.c": {
+      "group": "task8",
+      "source_revision": "0ca02cc26d12b89c2f1fc4a4e73b4300d22d563d",
+      "source_sha256": "365CE9DF9CB8F2F6500171BE35877550524FD4C610EF249459BD1BB506479B84",
+      "git_blob_sha256": "365CE9DF9CB8F2F6500171BE35877550524FD4C610EF249459BD1BB506479B84",
+      "object_sha256": "334FE655AC83C40D4C974845487E485ED0C27C83D547C39DC5F868B1DDAAE0CA",
+      "object": "1-AdaptecU2CHIMConfig.c.o",
+      "manifest_sha256": "5BCAEF1B222FA30515FB14F9A76C1AC7E75651152EE8B629E3740356E20E2EAE"
+    },
+    "AdaptecU2CHIMNegotiation.c": {
+      "group": "task9",
+      "source_revision": "059ddb279776604696f391d16a96511a95dbf9f9",
+      "source_sha256": "FD26871D82433246A8C2B03174C8BE4C9F936AA7766AA00DC250D3D345B7FEBA",
+      "git_blob_sha256": "FD26871D82433246A8C2B03174C8BE4C9F936AA7766AA00DC250D3D345B7FEBA",
+      "object_sha256": "A42D11C1DECE9D3EB26C21A6493FD3C2AAFCF702877F2B0FFD3C8E73574F14DD",
+      "object": "1-AdaptecU2CHIMNegotiation.c.o",
+      "manifest_sha256": "0454E35D0227A3A8D904B2185BC5A184702894DED17735C6DE4DB424DFCBD0FD"
+    },
+    "AdaptecU2CHIMRecovery.c": {
+      "group": "task10",
+      "source_revision": "fa9ab66a29984e668fe392602dfd56b9f47969f1",
+      "source_sha256": "8467312ACD5F5802EADEDCC64C6D25B4E3FCF66FBA93545D29C6D1951B7A75F3",
+      "git_blob_sha256": "8467312ACD5F5802EADEDCC64C6D25B4E3FCF66FBA93545D29C6D1951B7A75F3",
+      "object_sha256": "66172D8D81D9B1D7CE85E24D148B2BFCC16967099CEA67190096F65D8A6B24B1",
+      "object": "1-AdaptecU2CHIMRecovery.c.o",
+      "manifest_sha256": "E39F98A1E24102B00ECA51CE0CECCB54BF12903F26961EA4EAA48559F9A4189F"
+    }
+  },
+  "accepted_owner_proofs": {
+    "task5.json": "13B45EF2D14D70FC6A201B420BCB7BCBEF705F470B5B1C10230CE604198E9E4B",
+    "task6.json": "9EE9CB11BA1AAD259FE304FDEDF793E4B5CCAB285A1F6B071A7C15C008450CD7",
+    "task7.json": "F813058AAA9CCA3BBE1EB778F6E283B67DA7749941519E2A4B5B6ACA8B6E6E6A",
+    "task8.json": "E779D44C7590FC52C51193A02FF9EA13572799E33BAF53349652028D59CC20EC",
+    "task9.json": "2E523B7B0B8D45C95032ADA43800B6E51724AFE4EFFFED0A4FAA9CAD6E84E627",
+    "task10.json": "3BC7BA43E5FD4F8211CCA9AB56C8CE8CF00E6DAB4B8A06DEF973B0DBD9499527"
+  },
+  "reference_helpers": {
+    "SCSIHApplyMemoryTable": {
+      "address": 1646908,
+      "size": 124,
+      "sha256": "480D8506E5F8C6790BF6A6BE337E5EA067B1DDAE1F1087D7BF66D2EA3BA1D1B9",
+      "contract_review": "Actual pinned typed reference HIM body executes under exact bounds from owned resource caller, with real internal dependencies and valid complete HHCB/HIOB/descriptor queues. No internal hook; full memory/status/MMIO/callback observations checked. Future HIM source/native ownership remains Task12."
+    },
+    "SCSIHCheckDeviceIdle": {
+      "address": 1694684,
+      "size": 100,
+      "sha256": "9FA80AE2B86FED2C0227D9BA9F9424D31B683D396434BB03CD21BEFD64CCA494",
+      "contract_review": "Actual pinned typed reference HIM body executes under exact bounds from owned resource caller, with real internal dependencies and valid complete HHCB/HIOB/descriptor queues. No internal hook; full memory/status/MMIO/callback observations checked. Future HIM source/native ownership remains Task12."
+    },
+    "SCSIHCheckHostIdle": {
+      "address": 1694604,
+      "size": 80,
+      "sha256": "BD06319B2FD27C1A0D72571DF24D6DA191E7E824E5736258E7351CD98CA37E4F",
+      "contract_review": "Actual pinned typed reference HIM body executes under exact bounds from owned resource caller, with real internal dependencies and valid complete HHCB/HIOB/descriptor queues. No internal hook; full memory/status/MMIO/callback observations checked. Future HIM source/native ownership remains Task12."
+    },
+    "SCSIHGetConfiguration": {
+      "address": 1646404,
+      "size": 288,
+      "sha256": "236A20533D9C4900BFF7E77AAB42333BB4599CA656C669746139513C7FD62A99",
+      "contract_review": "Actual pinned typed reference HIM body executes under exact bounds from owned resource caller, with real internal dependencies and valid complete HHCB/HIOB/descriptor queues. No internal hook; full memory/status/MMIO/callback observations checked. Future HIM source/native ownership remains Task12."
+    },
+    "SCSIHGetHWInformation": {
+      "address": 1696068,
+      "size": 1048,
+      "sha256": "CDBEF00837D84B755748AD1CB3ED17FE8E93D8B376D150B64406584EFBCD17C6",
+      "contract_review": "Actual pinned typed reference HIM body executes under exact bounds from owned resource caller, with real internal dependencies and valid complete HHCB/HIOB/descriptor queues. No internal hook; full memory/status/MMIO/callback observations checked. Future HIM source/native ownership remains Task12."
+    },
+    "SCSIHGetMemoryTable": {
+      "address": 1646692,
+      "size": 216,
+      "sha256": "39AAF4C9A32CB90A931A99BBEFF215E40534DE357395DD6E36ED3394BEDB6D8F",
+      "contract_review": "Actual pinned typed reference HIM body executes under exact bounds from owned resource caller, with real internal dependencies and valid complete HHCB/HIOB/descriptor queues. No internal hook; full memory/status/MMIO/callback observations checked. Future HIM source/native ownership remains Task12."
+    },
+    "SCSIHInitialize": {
+      "address": 1647032,
+      "size": 240,
+      "sha256": "656B0A515CD7F65205BEB6A0D872E980C4AB09D355422900C542A5E8FE77ED35",
+      "contract_review": "Actual pinned typed reference HIM body executes under exact bounds from owned resource caller, with real internal dependencies and valid complete HHCB/HIOB/descriptor queues. No internal hook; full memory/status/MMIO/callback observations checked. Future HIM source/native ownership remains Task12."
+    },
+    "SCSIHPowerManagement": {
+      "address": 1694540,
+      "size": 48,
+      "sha256": "CCE86A30CDBCC589B8D6F969405B7478EF0F4E41B96DBF23370EB0CDDF2E2F53",
+      "contract_review": "Actual pinned typed reference HIM body executes under exact bounds from owned resource caller, with real internal dependencies and valid complete HHCB/HIOB/descriptor queues. No internal hook; full memory/status/MMIO/callback observations checked. Future HIM source/native ownership remains Task12."
+    },
+    "SCSIHPutHWInformation": {
+      "address": 1697116,
+      "size": 588,
+      "sha256": "21C1B6CA0C18CBE614F16A8A0D1A9B273C2DD4C418B265820F9BBDF0066DED2D",
+      "contract_review": "Actual pinned typed reference HIM body executes under exact bounds from owned resource caller, with real internal dependencies and valid complete HHCB/HIOB/descriptor queues. No internal hook; full memory/status/MMIO/callback observations checked. Future HIM source/native ownership remains Task12."
+    },
+    "SCSIHQueueHIOB": {
+      "address": 1694228,
+      "size": 80,
+      "sha256": "392FDE482D4BDB81EADA554D92AD8AE1C056121D58AE1D656B30BB9641DC09E6",
+      "contract_review": "Actual pinned typed reference HIM body executes under exact bounds from owned resource caller, with real internal dependencies and valid complete HHCB/HIOB/descriptor queues. No internal hook; full memory/status/MMIO/callback observations checked. Future HIM source/native ownership remains Task12."
+    },
+    "SCSIHQueueSpecialHIOB": {
+      "address": 1694308,
+      "size": 232,
+      "sha256": "F519FF09BE0B76B8B6330668151B85A37C27765E3C8660E03D95D135A2E7045A",
+      "contract_review": "Actual pinned typed reference HIM body executes under exact bounds from owned resource caller, with real internal dependencies and valid complete HHCB/HIOB/descriptor queues. No internal hook; full memory/status/MMIO/callback observations checked. Future HIM source/native ownership remains Task12."
+    },
+    "SCSIHSetUnitHandle": {
+      "address": 1693852,
+      "size": 52,
+      "sha256": "FA08E0459C99D5A0857F7521F915469C35998169FCD8C1D0935C18BD8B36749F",
+      "contract_review": "Actual pinned typed reference HIM body executes under exact bounds from owned resource caller, with real internal dependencies and valid complete HHCB/HIOB/descriptor queues. No internal hook; full memory/status/MMIO/callback observations checked. Future HIM source/native ownership remains Task12."
+    },
+    "SCSIQueueIOB": {
+      "address": 1728096,
+      "size": 1132,
+      "sha256": "3508855A1E382DEA93D1E5D2C98367F45A02472212E3AFC12E5C8292290ED855",
+      "contract_review": "Actual pinned typed reference HIM body executes under exact bounds from owned resource caller, with real internal dependencies and valid complete HHCB/HIOB/descriptor queues. No internal hook; full memory/status/MMIO/callback observations checked. Future HIM source/native ownership remains Task12."
+    },
+    "SCSIxTranslateError": {
+      "address": 1734948,
+      "size": 480,
+      "sha256": "FF2FB1F333C96DD57E154BBABB36FE4DBD9FC36C817D06888779A4A7E2270072",
+      "contract_review": "Actual pinned typed reference HIM body executes under exact bounds from owned resource caller, with real internal dependencies and valid complete HHCB/HIOB/descriptor queues. No internal hook; full memory/status/MMIO/callback observations checked. Future HIM source/native ownership remains Task12."
+    }
+  },
+  "pre_correction_sha256": "5005AD8B5BBD7A9AD288000BD2DE40850C36EF9CFA50181964A4BB0C4FE9D125",
+  "native_switches": {
+    "SCSIrAsyncEvent": {
+      "table_offset": 0,
+      "count": 8,
+      "cases": [
+        {
+          "target": 5308,
+          "first_call": "SCSIrClearHostQueue",
+          "reason": 7
+        },
+        {
+          "target": 5436,
+          "first_call": "OSDAsyncEvent",
+          "reason": null
+        },
+        {
+          "target": 5332,
+          "first_call": "SCSIrClearHostQueue",
+          "reason": 20
+        },
+        {
+          "target": 5436,
+          "first_call": "OSDAsyncEvent",
+          "reason": null
+        },
+        {
+          "target": 5356,
+          "first_call": "SCSIrClearHostQueue",
+          "reason": 5
+        },
+        {
+          "target": 5380,
+          "first_call": "SCSIrFreezeAllDeviceQueues",
+          "reason": null
+        },
+        {
+          "target": 5392,
+          "first_call": "SCSIrUnFreezeAllDeviceQueues",
+          "reason": null
+        },
+        {
+          "target": 5404,
+          "first_call": "SCSIrClearHostQueue",
+          "reason": 9
+        }
+      ]
+    },
+    "SCSIRQueueSpecialHIOB": {
+      "table_offset": 32,
+      "count": 9,
+      "cases": [
+        {
+          "target": 6236,
+          "first_call": "SCSIrAbortTask",
+          "reason": null
+        },
+        {
+          "target": 6248,
+          "first_call": "SCSIrScsiBusReset",
+          "reason": null
+        },
+        {
+          "target": 6260,
+          "first_call": "SCSIrBusDeviceReset",
+          "reason": null
+        },
+        {
+          "target": 6320,
+          "first_call": "SCSIrCompleteSpecialHIOB",
+          "reason": null
+        },
+        {
+          "target": 6336,
+          "first_call": null,
+          "reason": null
+        },
+        {
+          "target": 6272,
+          "first_call": "SCSIHQueueSpecialHIOB",
+          "reason": null
+        },
+        {
+          "target": 6284,
+          "first_call": "SCSIrAbortTaskSet",
+          "reason": null
+        },
+        {
+          "target": 6320,
+          "first_call": "SCSIrCompleteSpecialHIOB",
+          "reason": null
+        },
+        {
+          "target": 6296,
+          "first_call": "SCSIrUnFreezeDeviceQueue",
+          "reason": 4
+        }
+      ]
+    }
+  },
+  "bodies": [
+    {
+      "address": 1716812,
+      "name": "_SCSIrGetScb",
+      "owner": "AdaptecU2CHIMResource.c",
+      "reference_size": 68,
+      "source_line": 5,
+      "control_flow": "Reserve last descriptor: freeScbs<=1 returns255; successful byte decrement, head ownership and descriptor number retain reference access order.",
+      "cases": [
+        "task11-b1-get-0",
+        "task11-b1-get-1",
+        "task11-b1-get-2",
+        "task11-b1-get-255"
+      ],
+      "native_address": 0,
+      "native_size": 68,
+      "native_sha256": "689483A654CA5108F76337C4D1173FFA60F411171EAA0801F6DA018E29F85964",
+      "native_relocations": []
+    },
+    {
+      "address": 1716880,
+      "name": "_SCSIrReturnScb",
+      "owner": "AdaptecU2CHIMResource.c",
+      "reference_size": 44,
+      "source_line": 14,
+      "control_flow": "Byte increment precedes old-tail next publication and new freeTail; actual native/reference complete memory and store trace compare.",
+      "cases": [
+        "task11-b1-return-wrap"
+      ],
+      "native_address": 68,
+      "native_size": 44,
+      "native_sha256": "DDA0059724B66183DE8E9416E50DA5A1E94D966CFB0AAC4CC942BACF1DDDD575",
+      "native_relocations": []
+    },
+    {
+      "address": 1716924,
+      "name": "_SCSIrDeviceQueueAppend",
+      "owner": "AdaptecU2CHIMResource.c",
+      "reference_size": 68,
+      "source_line": 21,
+      "control_flow": "Sentinel next, empty tail-before-head publication, nonempty tail linkage and word queuedCount increment; native full access footprint compared.",
+      "cases": [
+        "task11-b1-dev-Append-empty",
+        "task11-b1-dev-Append-single",
+        "task11-b1-dev-Append-multiple"
+      ],
+      "native_address": 112,
+      "native_size": 72,
+      "native_sha256": "F3AFB45BD751C4AE63BDE3D16015175FC41B86D386201AAACF5F014A19D9E823",
+      "native_relocations": []
+    },
+    {
+      "address": 1716992,
+      "name": "_SCSIrDeviceQueueRemove",
+      "owner": "AdaptecU2CHIMResource.c",
+      "reference_size": 128,
+      "source_line": 36,
+      "control_flow": "Empty sentinel, tagged/non-tagged active-minus-queued limit, single tail-before-head versus head-next unlink and queued decrement; actual callers cover sentinel outcomes.",
+      "cases": [
+        "task11-b1-dev-Remove-single",
+        "task11-b1-dev-Remove-multiple"
+      ],
+      "native_address": 184,
+      "native_size": 136,
+      "native_sha256": "AD1BB93A84C71272AAB7496A8390F55D312B01DCD082FA4E75616EA87698500C",
+      "native_relocations": []
+    },
+    {
+      "address": 1717512,
+      "name": "_SCSIrHostQueueAppend",
+      "owner": "AdaptecU2CHIMResource.c",
+      "reference_size": 56,
+      "source_line": 54,
+      "control_flow": "Set next sentinel; empty tail-before-head publication and nonempty old-tail link; direct native/reference access ordering compared.",
+      "cases": [
+        "task11-b1-host-Append-empty",
+        "task11-b1-host-Append-single",
+        "task11-b1-host-Append-multiple"
+      ],
+      "native_address": 320,
+      "native_size": 56,
+      "native_sha256": "227A00F10368E3719903D29E090741BF358829C3D0BCB80F76C3FEC5E8A4AB63",
+      "native_relocations": []
+    },
+    {
+      "address": 1717568,
+      "name": "_SCSIrHostQueueRemove",
+      "owner": "AdaptecU2CHIMResource.c",
+      "reference_size": 64,
+      "source_line": 68,
+      "control_flow": "Empty sentinel and single versus nonlast head removal preserve tail/head order; sentinel outcome executes through FreeScb real caller.",
+      "cases": [
+        "task11-b1-host-Remove-single",
+        "task11-b1-host-Remove-multiple"
+      ],
+      "native_address": 376,
+      "native_size": 64,
+      "native_sha256": "00B0F2061EEFA43EF52B933924C843E8594D938F1F2CD09B50C6309CD8297230",
+      "native_relocations": []
+    },
+    {
+      "address": 1719232,
+      "name": "_SCSIrFreezeDeviceQueue",
+      "owner": "AdaptecU2CHIMResource.c",
+      "reference_size": 76,
+      "source_line": 82,
+      "control_flow": "First freeze saves and zeroes only nonzero limits, then OR mask; already frozen preserves saved values; actual native word accesses compared.",
+      "cases": [
+        "task11-b1-freeze-True-0-2",
+        "task11-b1-freeze-True-0-0",
+        "task11-b1-freeze-True-1-0",
+        "task11-b1-freeze-True-33-0"
+      ],
+      "native_address": 440,
+      "native_size": 84,
+      "native_sha256": "A205C752277CFE300D2B7AB05B4A8A34C69B5A683FC89C3055E499B68BB2DA21",
+      "native_relocations": []
+    },
+    {
+      "address": 1719308,
+      "name": "_SCSIrUnFreezeDeviceQueue",
+      "owner": "AdaptecU2CHIMResource.c",
+      "reference_size": 68,
+      "source_line": 98,
+      "control_flow": "Clear only requested mask; final unfreeze clears saved fields before restoring limits; partial and unfrozen paths preserve neutral storage.",
+      "cases": [
+        "task11-b1-freeze-False-0-2",
+        "task11-b1-freeze-False-0-0",
+        "task11-b1-freeze-False-1-0",
+        "task11-b1-freeze-False-33-0"
+      ],
+      "native_address": 524,
+      "native_size": 72,
+      "native_sha256": "057B6F729DB41602172F8B145D29FF90EBA89AAA5551B4CDD2B342AB2A2522A2",
+      "native_relocations": []
+    },
+    {
+      "address": 1718876,
+      "name": "_SCSIrAdjustQueue",
+      "owner": "AdaptecU2CHIMResource.c",
+      "reference_size": 96,
+      "source_line": 114,
+      "control_flow": "Single queue tail-before-head sentinel stores, head advance, middle predecessor linkage and tail replacement retain reference graph.",
+      "cases": [
+        "task11-b2-adjust-0",
+        "task11-b2-adjust-1",
+        "task11-b2-adjust-2"
+      ],
+      "native_address": 596,
+      "native_size": 96,
+      "native_sha256": "C0AF0D82C00A99567EC070171ADE26116A00A09E7EAD20CF7401C04996A89E16",
+      "native_relocations": []
+    },
+    {
+      "address": 1718680,
+      "name": "_SCSIrPostAbortedHIOB",
+      "owner": "AdaptecU2CHIMResource.c",
+      "reference_size": 64,
+      "source_line": 128,
+      "control_flow": "Decrement resource active count before status2 and supplied host reason; real OSD/protocol callback observes owner and status.",
+      "cases": [
+        "task11-b2-post-abort"
+      ],
+      "native_address": 692,
+      "native_size": 64,
+      "native_sha256": "64D3EB858BDC6EF9B1288C2CF143A04707F23C53F0C36CDB0889AC410253646F",
+      "native_relocations": [
+        {
+          "address": 736,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSDCompleteHIOB",
+          "addend": 0,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": true,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": null,
+          "original_bytes": "4BFFFD21",
+          "scattered": false
+        }
+      ]
+    },
+    {
+      "address": 1717120,
+      "name": "_SCSIrAbortHIOBInDevQ",
+      "owner": "AdaptecU2CHIMResource.c",
+      "reference_size": 148,
+      "source_line": 136,
+      "control_flow": "Traverse actual sentinel-linked device queue, unlink exact pointer once and real aborted completion; empty/missing/hit paths retain counts and callbacks.",
+      "cases": [
+        "task11-b2-dev-abort-empty",
+        "task11-b2-dev-abort-missing",
+        "task11-b2-dev-abort-head",
+        "task11-b2-dev-abort-middle",
+        "task11-b2-dev-abort-tail",
+        "task11-b2-dev-abort-single"
+      ],
+      "native_address": 756,
+      "native_size": 140,
+      "native_sha256": "29B796E5DCBC68C154DE9B7F06E9549AD95D0905BAFD28F9D4663650C133211C",
+      "native_relocations": [
+        {
+          "address": 828,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "__TEXT,__text",
+          "addend": 596,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": 1,
+          "original_bytes": "4BFFFF19",
+          "scattered": false
+        },
+        {
+          "address": 840,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "__TEXT,__text",
+          "addend": 692,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": 1,
+          "original_bytes": "4BFFFF6D",
+          "scattered": false
+        }
+      ]
+    },
+    {
+      "address": 1717632,
+      "name": "_SCSIrAbortHIOBInHostQ",
+      "owner": "AdaptecU2CHIMResource.c",
+      "reference_size": 148,
+      "source_line": 152,
+      "control_flow": "Traverse actual sentinel-linked host queue, unlink exact pointer once and real aborted completion; empty/missing/head/tail ownership observed.",
+      "cases": [
+        "task11-b2-host-abort-empty",
+        "task11-b2-host-abort-missing",
+        "task11-b2-host-abort-head",
+        "task11-b2-host-abort-middle",
+        "task11-b2-host-abort-tail",
+        "task11-b2-host-abort-single"
+      ],
+      "native_address": 896,
+      "native_size": 140,
+      "native_sha256": "36376337FA4C32986D1F15EBA35865529B1DE2E68CFE1FC3BDFDE6B33F1E2FCB",
+      "native_relocations": [
+        {
+          "address": 968,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "__TEXT,__text",
+          "addend": 596,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": 1,
+          "original_bytes": "4BFFFE8D",
+          "scattered": false
+        },
+        {
+          "address": 980,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "__TEXT,__text",
+          "addend": 692,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": 1,
+          "original_bytes": "4BFFFEE1",
+          "scattered": false
+        }
+      ]
+    },
+    {
+      "address": 1717268,
+      "name": "_SCSIrClearDeviceQueue",
+      "owner": "AdaptecU2CHIMResource.c",
+      "reference_size": 152,
+      "source_line": 168,
+      "control_flow": "Capture initial tail, advance current head before each real aborted callback; publish empty tail only when resulting head sentinel.",
+      "cases": [
+        "task11-b2-clear-True-empty",
+        "task11-b2-clear-True-single",
+        "task11-b2-clear-True-multiple"
+      ],
+      "native_address": 1036,
+      "native_size": 152,
+      "native_sha256": "EAF588ADA7BCF462EF240C796B2C216EC43075532977A660D0C0A649041BD4D1",
+      "native_relocations": [
+        {
+          "address": 1108,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "__TEXT,__text",
+          "addend": 692,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": 1,
+          "original_bytes": "4BFFFE61",
+          "scattered": false
+        },
+        {
+          "address": 1140,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "__TEXT,__text",
+          "addend": 692,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": 1,
+          "original_bytes": "4BFFFE41",
+          "scattered": false
+        }
+      ]
+    },
+    {
+      "address": 1718028,
+      "name": "_SCSIrClearHostQueue",
+      "owner": "AdaptecU2CHIMResource.c",
+      "reference_size": 152,
+      "source_line": 183,
+      "control_flow": "Capture initial host tail and drain through it, updating head before each real callback; final tail publication preserves ordering.",
+      "cases": [
+        "task11-b2-clear-False-empty",
+        "task11-b2-clear-False-single",
+        "task11-b2-clear-False-multiple"
+      ],
+      "native_address": 1188,
+      "native_size": 152,
+      "native_sha256": "0EF09E8AEAEA1C7DE443737E7CA52125A1A92CD1589BB619CA6AF1D967A05375",
+      "native_relocations": [
+        {
+          "address": 1260,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "__TEXT,__text",
+          "addend": 692,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": 1,
+          "original_bytes": "4BFFFDC9",
+          "scattered": false
+        },
+        {
+          "address": 1292,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "__TEXT,__text",
+          "addend": 692,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": 1,
+          "original_bytes": "4BFFFDA9",
+          "scattered": false
+        }
+      ]
+    },
+    {
+      "address": 1717420,
+      "name": "_SCSIrClearAllDeviceQueues",
+      "owner": "AdaptecU2CHIMResource.c",
+      "reference_size": 92,
+      "source_line": 198,
+      "control_flow": "Exact16 resource iteration with real queue drains; active counts, status reasons and completion order observed across populated and empty targets.",
+      "cases": [
+        "task11-b2-clearall-0",
+        "task11-b2-clearall-1"
+      ],
+      "native_address": 1340,
+      "native_size": 104,
+      "native_sha256": "6F8BF04DC9A691DF3C936B7B608C98D5C3FFCBA95F9A172CED1BFABFD5185031",
+      "native_relocations": [
+        {
+          "address": 1392,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "__TEXT,__text",
+          "addend": 1036,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": 1,
+          "original_bytes": "4BFFFE9D",
+          "scattered": false
+        }
+      ]
+    },
+    {
+      "address": 1717780,
+      "name": "_SCSIrFindAndAbortHIOB",
+      "owner": "AdaptecU2CHIMResource.c",
+      "reference_size": 248,
+      "source_line": 205,
+      "control_flow": "Capture initial host tail and next before matching-target removal; foreign targets remain linked and matching head/middle/tail complete once.",
+      "cases": [
+        "task11-b2-find-empty",
+        "task11-b2-find-none",
+        "task11-b2-find-all",
+        "task11-b2-find-head",
+        "task11-b2-find-tail",
+        "task11-b2-find-middle"
+      ],
+      "native_address": 1444,
+      "native_size": 244,
+      "native_sha256": "88319E68C17BB142774C7A6B3BFF41C7A3DC5242B7374CDC3A21D932CAD14734",
+      "native_relocations": [
+        {
+          "address": 1560,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "__TEXT,__text",
+          "addend": 596,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": 1,
+          "original_bytes": "4BFFFC3D",
+          "scattered": false
+        },
+        {
+          "address": 1572,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "__TEXT,__text",
+          "addend": 692,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": 1,
+          "original_bytes": "4BFFFC91",
+          "scattered": false
+        },
+        {
+          "address": 1632,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "__TEXT,__text",
+          "addend": 596,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": 1,
+          "original_bytes": "4BFFFBF5",
+          "scattered": false
+        },
+        {
+          "address": 1644,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "__TEXT,__text",
+          "addend": 692,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": 1,
+          "original_bytes": "4BFFFC49",
+          "scattered": false
+        }
+      ]
+    },
+    {
+      "address": 1716700,
+      "name": "_SCSIrAllocateScb",
+      "owner": "AdaptecU2CHIMResource.c",
+      "reference_size": 112,
+      "source_line": 226,
+      "control_flow": "Actual mode getScb byte return255 sends host queue; successful descriptor publishes number and invokes real HIM normal delivery.",
+      "cases": [
+        "task11-b3-allocate-exhausted-0",
+        "task11-b3-allocate-exhausted-1",
+        "task11-b3-allocate-Standard64",
+        "task11-b3-allocate-Swapping32",
+        "task11-b3-allocate-StandardAdv",
+        "task11-b3-allocate-SwappingAdv"
+      ],
+      "native_address": 1688,
+      "native_size": 112,
+      "native_sha256": "54CFF6C639B6EC9A736021968B00EE8F2D0BB8054FE5BCDB5EBA4CA1B2701972",
+      "native_relocations": [
+        {
+          "address": 1760,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "__TEXT,__text",
+          "addend": 320,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": 1,
+          "original_bytes": "4BFFFA61",
+          "scattered": false
+        },
+        {
+          "address": 1772,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_SCSIHQueueHIOB",
+          "addend": 0,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": true,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": null,
+          "original_bytes": "4BFFF915",
+          "scattered": false
+        }
+      ]
+    },
+    {
+      "address": 1719376,
+      "name": "_SCSIrDispatchQueuedHIOB",
+      "owner": "AdaptecU2CHIMResource.c",
+      "reference_size": 180,
+      "source_line": 233,
+      "control_flow": "Freeze blocks dequeue; actual limit/empty sentinels control allocation loop, per-queued tagged limit minus1 and unsigned count stop retained.",
+      "cases": [
+        "task11-b3-dispatch-frozen",
+        "task11-b3-dispatch-empty",
+        "task11-b3-dispatch-exhausted",
+        "task11-b3-dispatch-eligible",
+        "task11-b3-dispatch-twice"
+      ],
+      "native_address": 1800,
+      "native_size": 172,
+      "native_sha256": "96733E8423A5C2A072EBE990033BEEB75E6E2D83A6AB49624C6C901C833B7E0D",
+      "native_relocations": [
+        {
+          "address": 1856,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "__TEXT,__text",
+          "addend": 184,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": 1,
+          "original_bytes": "4BFFF979",
+          "scattered": false
+        },
+        {
+          "address": 1908,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "__TEXT,__text",
+          "addend": 1688,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": 1,
+          "original_bytes": "4BFFFF25",
+          "scattered": false
+        },
+        {
+          "address": 1924,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "__TEXT,__text",
+          "addend": 184,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": 1,
+          "original_bytes": "4BFFF935",
+          "scattered": false
+        }
+      ]
+    },
+    {
+      "address": 1718972,
+      "name": "_SCSIrFinishQueueFull",
+      "owner": "AdaptecU2CHIMResource.c",
+      "reference_size": 84,
+      "source_line": 252,
+      "control_flow": "Saved tagged limit halves only above1, then actual mask1 unfreeze and queued redispatch preserve recovery ordering.",
+      "cases": [
+        "task11-b3-qfull-0",
+        "task11-b3-qfull-1",
+        "task11-b3-qfull-5"
+      ],
+      "native_address": 1972,
+      "native_size": 84,
+      "native_sha256": "170E675C179F53592F7A5FD023E304A2D7497D5939B873AD4DDE750A349ABB33",
+      "native_relocations": [
+        {
+          "address": 2024,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "__TEXT,__text",
+          "addend": 524,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": 1,
+          "original_bytes": "4BFFFA25",
+          "scattered": false
+        },
+        {
+          "address": 2032,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "__TEXT,__text",
+          "addend": 1800,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": 1,
+          "original_bytes": "4BFFFF19",
+          "scattered": false
+        }
+      ]
+    },
+    {
+      "address": 1718408,
+      "name": "_SCSIrFreeCriteria",
+      "owner": "AdaptecU2CHIMResource.c",
+      "reference_size": 272,
+      "source_line": 260,
+      "control_flow": "Active decrement and tagged threshold, frozen idle/queue-full recovery and high-priority recoveryCount mask32 join retain actual callees and queue effects.",
+      "cases": [
+        "task11-b3-criteria-below",
+        "task11-b3-criteria-empty",
+        "task11-b3-criteria-exhausted",
+        "task11-b3-criteria-tagged",
+        "task11-b3-criteria-eligible",
+        "task11-b3-criteria-frozen-busy",
+        "task11-b3-criteria-queuefull",
+        "task11-b3-criteria-recovery-last",
+        "task11-b3-criteria-recovery-more"
+      ],
+      "native_address": 2056,
+      "native_size": 268,
+      "native_sha256": "47032AD7F9495F4BC581495E66600DF5D86D17E397C3C96A364272F4AEB824E0",
+      "native_relocations": [
+        {
+          "address": 2152,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "__TEXT,__text",
+          "addend": 184,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": 1,
+          "original_bytes": "4BFFF851",
+          "scattered": false
+        },
+        {
+          "address": 2172,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "__TEXT,__text",
+          "addend": 1688,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": 1,
+          "original_bytes": "4BFFFE1D",
+          "scattered": false
+        },
+        {
+          "address": 2200,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_SCSIHCheckDeviceIdle",
+          "addend": 0,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": true,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": null,
+          "original_bytes": "4BFFF769",
+          "scattered": false
+        },
+        {
+          "address": 2228,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "__TEXT,__text",
+          "addend": 1972,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": 1,
+          "original_bytes": "4BFFFF01",
+          "scattered": false
+        },
+        {
+          "address": 2284,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "__TEXT,__text",
+          "addend": 524,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": 1,
+          "original_bytes": "4BFFF921",
+          "scattered": false
+        },
+        {
+          "address": 2292,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "__TEXT,__text",
+          "addend": 1800,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": 1,
+          "original_bytes": "4BFFFE15",
+          "scattered": false
+        }
+      ]
+    },
+    {
+      "address": 1718180,
+      "name": "_SCSIrFreeScb",
+      "owner": "AdaptecU2CHIMResource.c",
+      "reference_size": 228,
+      "source_line": 284,
+      "control_flow": "Actual mode host remove precedes returnScb, then normal/special queued delivery before criteria release; all4 modes executed with real callbacks.",
+      "cases": [
+        "task11-b3-free-emptyhost",
+        "task11-b12-free-redispatch-Standard64",
+        "task11-b12-free-redispatch-Swapping32",
+        "task11-b12-free-redispatch-StandardAdv",
+        "task11-b12-free-redispatch-SwappingAdv",
+        "task11-b12-free-special-Standard64",
+        "task11-b12-free-special-Swapping32",
+        "task11-b12-free-special-StandardAdv",
+        "task11-b12-free-special-SwappingAdv"
+      ],
+      "native_address": 2324,
+      "native_size": 196,
+      "native_sha256": "E2C41BB063BAEA6C687F90128E95D261658116A2F6EBBE5DE769813DBC6D88BD",
+      "native_relocations": [
+        {
+          "address": 2468,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_SCSIHQueueSpecialHIOB",
+          "addend": 0,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": true,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": null,
+          "original_bytes": "4BFFF65D",
+          "scattered": false
+        },
+        {
+          "address": 2480,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_SCSIHQueueHIOB",
+          "addend": 0,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": true,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": null,
+          "original_bytes": "4BFFF651",
+          "scattered": false
+        },
+        {
+          "address": 2488,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "__TEXT,__text",
+          "addend": 2056,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": 1,
+          "original_bytes": "4BFFFE51",
+          "scattered": false
+        }
+      ]
+    },
+    {
+      "address": 1719056,
+      "name": "_SCSIrFreezeAllDeviceQueues",
+      "owner": "AdaptecU2CHIMResource.c",
+      "reference_size": 80,
+      "source_line": 296,
+      "control_flow": "Exact16 resource freezes with mask8, preserving each saved limit/neutral neighbor through actual leaf execution.",
+      "cases": [
+        "task11-b3-SCSIrFreezeAllDeviceQueues"
+      ],
+      "native_address": 2520,
+      "native_size": 92,
+      "native_sha256": "7046DD751E6D4BE300EE4DA95513F393111FAD67E0844BCE99EB86E952C6FBF7",
+      "native_relocations": [
+        {
+          "address": 2564,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "__TEXT,__text",
+          "addend": 440,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": 1,
+          "original_bytes": "4BFFF7B5",
+          "scattered": false
+        }
+      ]
+    },
+    {
+      "address": 1719136,
+      "name": "_SCSIrUnFreezeAllDeviceQueues",
+      "owner": "AdaptecU2CHIMResource.c",
+      "reference_size": 96,
+      "source_line": 302,
+      "control_flow": "Exact16 mask8 clears; only nonsentinel head enters actual dispatch; remaining masks and queued ownership observed.",
+      "cases": [
+        "task11-b3-SCSIrUnFreezeAllDeviceQueues"
+      ],
+      "native_address": 2612,
+      "native_size": 124,
+      "native_sha256": "258552AB39AA3A01D76E9DF61804852A30116B15808B4531A8FE40B24F34C841",
+      "native_relocations": [
+        {
+          "address": 2664,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "__TEXT,__text",
+          "addend": 524,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": 1,
+          "original_bytes": "4BFFF7A5",
+          "scattered": false
+        },
+        {
+          "address": 2680,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "__TEXT,__text",
+          "addend": 1800,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": 1,
+          "original_bytes": "4BFFFC91",
+          "scattered": false
+        }
+      ]
+    },
+    {
+      "address": 1718744,
+      "name": "_SCSIrPostDoneQueue",
+      "owner": "AdaptecU2CHIMResource.c",
+      "reference_size": 132,
+      "source_line": 312,
+      "control_flow": "Byte tail advancement and numberScbs wrap publish before real normal callback; multiple entries and empty ring preserve exactly-once delivery.",
+      "cases": [
+        "task11-b3-postdone-empty",
+        "task11-b3-postdone-single",
+        "task11-b3-postdone-wrap"
+      ],
+      "native_address": 2736,
+      "native_size": 128,
+      "native_sha256": "BA3355A125A2EBF880DE8E19C166D22D0682CA069B5A1F5F31735DBA049DCBFB",
+      "native_relocations": [
+        {
+          "address": 2820,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSDCompleteHIOB",
+          "addend": 0,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": true,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": null,
+          "original_bytes": "4BFFF4FD",
+          "scattered": false
+        }
+      ]
+    },
+    {
+      "address": 1714112,
+      "name": "_SCSIrStandardRemoveScbs",
+      "owner": "AdaptecU2CHIMResource.c",
+      "reference_size": 36,
+      "source_line": 323,
+      "control_flow": "Descriptor1 next becomes descriptor3 and byte freeScbs decrements; valid descriptor base binding and native/reference full footprint checked.",
+      "cases": [
+        "task11-b4-remove-scbs"
+      ],
+      "native_address": 2864,
+      "native_size": 36,
+      "native_sha256": "1E7DA01624D00EEF0FE28794AF44B320009A67636405C770256B4F61C0BCD162",
+      "native_relocations": []
+    },
+    {
+      "address": 1716296,
+      "name": "_SCSIRGetFreeHead",
+      "owner": "AdaptecU2CHIMResource.c",
+      "reference_size": 16,
+      "source_line": 329,
+      "control_flow": "Return actual HHCB freeHead pointer under frozen typed ABI; named-region pointer direct reference/native execution compared.",
+      "cases": [
+        "task11-b4-freehead"
+      ],
+      "native_address": 2900,
+      "native_size": 16,
+      "native_sha256": "B20FAF088ED83E99BBF56FC5B77B4D135581D6D62A2C87E4098445B04D5535E5",
+      "native_relocations": []
+    },
+    {
+      "address": 1714148,
+      "name": "_SCSIRSetUnitHandle",
+      "owner": "AdaptecU2CHIMResource.c",
+      "reference_size": 104,
+      "source_line": 334,
+      "control_flow": "Real HIM unit setup precedes resource pointer binding at exact40byte target stride; target/lun narrowing and neutral unit fields observed.",
+      "cases": [
+        "task11-b4-setunit-0",
+        "task11-b4-setunit-15",
+        "task11-b4-setunit-7"
+      ],
+      "native_address": 2916,
+      "native_size": 112,
+      "native_sha256": "F28E838237BEAFDC8A75A71508FB7CD65A3C5D4614373F0CC11BB62241B1FA9C",
+      "native_relocations": [
+        {
+          "address": 2964,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_SCSIHSetUnitHandle",
+          "addend": 0,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": true,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": null,
+          "original_bytes": "4BFFF46D",
+          "scattered": false
+        }
+      ]
+    },
+    {
+      "address": 1714252,
+      "name": "_SCSIRFreeUnitHandle",
+      "owner": "AdaptecU2CHIMResource.c",
+      "reference_size": 32,
+      "source_line": 341,
+      "control_flow": "Native wrapper executes its actual BR24-bound reference HIM free-unit callee for unit and HHCB pointers; public typedef alias deferred per ruling.",
+      "cases": [
+        "task11-native-freeunit-unit",
+        "task11-native-freeunit-hhcb"
+      ],
+      "native_address": 3028,
+      "native_size": 32,
+      "native_sha256": "FC0782F97348A998586B959C52069B3E9404539AF193EA001F6742CBFF6CDB06",
+      "native_relocations": [
+        {
+          "address": 3040,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_SCSIHFreeUnitHandle",
+          "addend": 0,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": true,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": null,
+          "original_bytes": "4BFFF421",
+          "scattered": false
+        }
+      ]
+    },
+    {
+      "address": 1714500,
+      "name": "_SCSIRCheckHostIdle",
+      "owner": "AdaptecU2CHIMResource.c",
+      "reference_size": 88,
+      "source_line": 346,
+      "control_flow": "Host queue early false, then16device head checks, then real HIM active ownership scan; empty/missing/busy returns executed.",
+      "cases": [
+        "task11-b4-SCSIRCheckHostIdle-idle",
+        "task11-b4-SCSIRCheckHostIdle-host-hit",
+        "task11-b4-SCSIRCheckHostIdle-host-miss",
+        "task11-b4-SCSIRCheckHostIdle-host-tail-hit",
+        "task11-b4-SCSIRCheckHostIdle-device",
+        "task11-b4-SCSIRCheckHostIdle-active",
+        "task11-b4-SCSIRCheckHostIdle-foreign-active"
+      ],
+      "native_address": 3060,
+      "native_size": 88,
+      "native_sha256": "DC59353E6BBD5B8ACFCB0176D6ADEC694C505031366BDD2A6CB4FF2EF92B237C",
+      "native_relocations": [
+        {
+          "address": 3128,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_SCSIHCheckHostIdle",
+          "addend": 0,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": true,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": null,
+          "original_bytes": "4BFFF3C9",
+          "scattered": false
+        }
+      ]
+    },
+    {
+      "address": 1714588,
+      "name": "_SCSIRCheckDeviceIdle",
+      "owner": "AdaptecU2CHIMResource.c",
+      "reference_size": 112,
+      "source_line": 355,
+      "control_flow": "Host target traversal and requested device head precede real HIM target active ownership scan; foreign queued target does not block.",
+      "cases": [
+        "task11-b4-SCSIRCheckDeviceIdle-idle",
+        "task11-b4-SCSIRCheckDeviceIdle-host-hit",
+        "task11-b4-SCSIRCheckDeviceIdle-host-miss",
+        "task11-b4-SCSIRCheckDeviceIdle-host-tail-hit",
+        "task11-b4-SCSIRCheckDeviceIdle-device",
+        "task11-b4-SCSIRCheckDeviceIdle-active",
+        "task11-b4-SCSIRCheckDeviceIdle-foreign-active"
+      ],
+      "native_address": 3148,
+      "native_size": 112,
+      "native_sha256": "96982E7A573AD6C8AF15254C89229F35F6C60EC8DC2C83E87C8F53F024214D89",
+      "native_relocations": [
+        {
+          "address": 3232,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_SCSIHCheckDeviceIdle",
+          "addend": 0,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": true,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": null,
+          "original_bytes": "4BFFF361",
+          "scattered": false
+        }
+      ]
+    },
+    {
+      "address": 1715748,
+      "name": "_SCSIRPowerManagement",
+      "owner": "AdaptecU2CHIMResource.c",
+      "reference_size": 84,
+      "source_line": 366,
+      "control_flow": "Real resource host-idle gate returns2 when busy; idle forwards exact opaque unsigned32 event bits to actual HIM status return.",
+      "cases": [
+        "task11-b4-SCSIRPowerManagement-idle",
+        "task11-b4-SCSIRPowerManagement-host-hit",
+        "task11-b4-SCSIRPowerManagement-host-miss",
+        "task11-b4-SCSIRPowerManagement-host-tail-hit",
+        "task11-b4-SCSIRPowerManagement-device",
+        "task11-b4-SCSIRPowerManagement-active",
+        "task11-b4-SCSIRPowerManagement-foreign-active"
+      ],
+      "native_address": 3260,
+      "native_size": 84,
+      "native_sha256": "1DA421FAF2E336BBDD81EC20A34F8A48BC562A1F90460D6EEDC8F7097CBA246C",
+      "native_relocations": [
+        {
+          "address": 3288,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "__TEXT,__text",
+          "addend": 3060,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": 1,
+          "original_bytes": "4BFFFF1D",
+          "scattered": false
+        },
+        {
+          "address": 3316,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_SCSIHPowerManagement",
+          "addend": 0,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": true,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": null,
+          "original_bytes": "4BFFF30D",
+          "scattered": false
+        }
+      ]
+    },
+    {
+      "address": 1713312,
+      "name": "_SCSIRGetMemoryTable",
+      "owner": "AdaptecU2CHIMResource.c",
+      "reference_size": 136,
+      "source_line": 372,
+      "control_flow": "Real HIM table setup precedes descriptors5 and3; exact byte/halfword writes for categories/alignment/20n and4n sizes preserve neighbors, native footprint checked.",
+      "cases": [
+        "task11-b4-memory-0-4",
+        "task11-b4-memory-0-255",
+        "task11-b4-memory-3-4",
+        "task11-b4-memory-3-255",
+        "task11-b4-memory-4-4",
+        "task11-b4-memory-4-255",
+        "task11-b4-memory-5-4",
+        "task11-b4-memory-5-255"
+      ],
+      "native_address": 3344,
+      "native_size": 144,
+      "native_sha256": "C2FA0C51E3B0821E443CDE4FA0FFDDD951A10FC2AA508E3C510097A5C3530799",
+      "native_relocations": [
+        {
+          "address": 3384,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_SCSIHGetMemoryTable",
+          "addend": 0,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": true,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": null,
+          "original_bytes": "4BFFF2C9",
+          "scattered": false
+        }
+      ]
+    },
+    {
+      "address": 1713244,
+      "name": "_SCSIRGetConfiguration",
+      "owner": "AdaptecU2CHIMResource.c",
+      "reference_size": 68,
+      "source_line": 391,
+      "control_flow": "Real HIM configuration/mode descriptor selection precedes firmware register24 non-tagged limit and tagged4 publication; return0 preserved.",
+      "cases": [
+        "task11-b9-getconfig-3",
+        "task11-b9-getconfig-5"
+      ],
+      "native_address": 3488,
+      "native_size": 84,
+      "native_sha256": "4C962B3C38EA6976985A1294EC0CD34E8CE8CD6B672B2F5C03DF7C75D7BC5A26",
+      "native_relocations": [
+        {
+          "address": 3516,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_SCSIHGetConfiguration",
+          "addend": 0,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": true,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": null,
+          "original_bytes": "4BFFF245",
+          "scattered": false
+        }
+      ]
+    },
+    {
+      "address": 1713448,
+      "name": "_SCSIRApplyMemoryTable",
+      "owner": "AdaptecU2CHIMResource.c",
+      "reference_size": 48,
+      "source_line": 401,
+      "control_flow": "Bind done array from descriptor3 and SCB descriptors from5 before actual HIM allocation/binding status path; complete memory and return observed.",
+      "cases": [
+        "task11-b5-apply-0-2",
+        "task11-b5-apply-0-4",
+        "task11-b5-apply-0-8",
+        "task11-b5-apply-3-2",
+        "task11-b5-apply-3-4",
+        "task11-b5-apply-3-8",
+        "task11-b5-apply-4-2",
+        "task11-b5-apply-4-4",
+        "task11-b5-apply-4-8",
+        "task11-b5-apply-5-2",
+        "task11-b5-apply-5-4",
+        "task11-b5-apply-5-8"
+      ],
+      "native_address": 3572,
+      "native_size": 48,
+      "native_sha256": "EFB2B15A1024697D4844835F640A06EBE9FCBB89F7E86509C08ED5FC62A27EB3",
+      "native_relocations": [
+        {
+          "address": 3600,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_SCSIHApplyMemoryTable",
+          "addend": 0,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": true,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": null,
+          "original_bytes": "4BFFF1F1",
+          "scattered": false
+        }
+      ]
+    },
+    {
+      "address": 1713560,
+      "name": "_SCSIrReset",
+      "owner": "AdaptecU2CHIMResource.c",
+      "reference_size": 552,
+      "source_line": 408,
+      "control_flow": "Exact byte done tail/head and word host tail/head stores; construct circular descriptor chain via actual OSD bus conversion/adjust per SCB, optional mode removal, reset16resource fields.",
+      "cases": [
+        "task11-b5-reset-0",
+        "task11-b5-reset-3",
+        "task11-b5-reset-4",
+        "task11-b5-reset-5"
+      ],
+      "native_address": 3620,
+      "native_size": 548,
+      "native_sha256": "023A9786B4DC71FA30436D8016FE61308CD050A0F2FB9445250F8BD5BF383946",
+      "native_relocations": [
+        {
+          "address": 3740,
+          "kind": "ppc-ha16-32-absolute",
+          "target": "_SCSIFirmware",
+          "addend": 0,
+          "type": 6,
+          "pc_relative": false,
+          "width": 4,
+          "external": true,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": null,
+          "original_bytes": "3D200000",
+          "scattered": false
+        },
+        {
+          "address": 3740,
+          "kind": "ppc-pair-16-absolute",
+          "target": null,
+          "addend": 0,
+          "type": 1,
+          "pc_relative": false,
+          "width": 2,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": null,
+          "original_bytes": "0000",
+          "scattered": false
+        },
+        {
+          "address": 3744,
+          "kind": "ppc-lo16-32-absolute",
+          "target": "_SCSIFirmware",
+          "addend": 0,
+          "type": 5,
+          "pc_relative": false,
+          "width": 4,
+          "external": true,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": null,
+          "original_bytes": "3B890000",
+          "scattered": false
+        },
+        {
+          "address": 3744,
+          "kind": "ppc-pair-16-absolute",
+          "target": null,
+          "addend": 0,
+          "type": 1,
+          "pc_relative": false,
+          "width": 2,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": null,
+          "original_bytes": "0000",
+          "scattered": false
+        },
+        {
+          "address": 3832,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSDGetBusAddress",
+          "addend": 0,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": true,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": null,
+          "original_bytes": "4BFFF109",
+          "scattered": false
+        },
+        {
+          "address": 3880,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSDAdjustBusAddress",
+          "addend": 0,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": true,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": null,
+          "original_bytes": "4BFFF0D9",
+          "scattered": false
+        }
+      ]
+    },
+    {
+      "address": 1713496,
+      "name": "_SCSIRInitialize",
+      "owner": "AdaptecU2CHIMResource.c",
+      "reference_size": 64,
+      "source_line": 452,
+      "control_flow": "Actual reset completes before real HIM initialize/loader mismatch failure propagates; no wrapper-specific success behavior, deeper successful initialization remains HIM Task12.",
+      "cases": [
+        "task11-b9-initialize-failure"
+      ],
+      "native_address": 4168,
+      "native_size": 68,
+      "native_sha256": "E9453A0BA39297AD3D4D69DD693FE047D751BF219464021078064A511605ABD3",
+      "native_relocations": [
+        {
+          "address": 4196,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "__TEXT,__text",
+          "addend": 3620,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": 1,
+          "original_bytes": "4BFFFDC1",
+          "scattered": false
+        },
+        {
+          "address": 4204,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_SCSIHInitialize",
+          "addend": 0,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": true,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": null,
+          "original_bytes": "4BFFEF95",
+          "scattered": false
+        }
+      ]
+    },
+    {
+      "address": 1714700,
+      "name": "_SCSIrCompleteHIOB",
+      "owner": "AdaptecU2CHIMResource.c",
+      "reference_size": 192,
+      "source_line": 458,
+      "control_flow": "Status5 frees then requeues; ordinary target40 freezes mask1 before freeing, publishes done head/slot/wrap; valid active ownership and pending callback effects observed.",
+      "cases": [
+        "task11-b5-complete-normal",
+        "task11-b5-complete-queuefull",
+        "task11-b5-complete-frozen",
+        "task11-b5-complete-ringwrap"
+      ],
+      "native_address": 4236,
+      "native_size": 192,
+      "native_sha256": "C1370008BCA97D8F5793BC8F431A6B273ED93E3AF1FB70C330E60F5C949A0833",
+      "native_relocations": [
+        {
+          "address": 4296,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "__TEXT,__text",
+          "addend": 2324,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": 1,
+          "original_bytes": "4BFFF84D",
+          "scattered": false
+        },
+        {
+          "address": 4308,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "__TEXT,__text",
+          "addend": 112,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": 1,
+          "original_bytes": "4BFFEF9D",
+          "scattered": false
+        },
+        {
+          "address": 4336,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "__TEXT,__text",
+          "addend": 440,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": 1,
+          "original_bytes": "4BFFF0C9",
+          "scattered": false
+        },
+        {
+          "address": 4348,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "__TEXT,__text",
+          "addend": 2324,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": 1,
+          "original_bytes": "4BFFF819",
+          "scattered": false
+        }
+      ]
+    },
+    {
+      "address": 1714892,
+      "name": "_SCSIrCompleteSpecialHIOB",
+      "owner": "AdaptecU2CHIMResource.c",
+      "reference_size": 260,
+      "source_line": 476,
+      "control_flow": "Functions1/2/3/7 derive correct owner, unfreeze/reset/abort-set decrement and redispatch, drain normal completions before special callback; default directly special-completes.",
+      "cases": [
+        "task11-b7-special-0-1",
+        "task11-b7-special-1-1",
+        "task11-b7-special-2-1",
+        "task11-b7-special-3-1",
+        "task11-b7-special-3-2",
+        "task11-b7-special-4-1",
+        "task11-b7-special-6-1",
+        "task11-b7-special-7-1",
+        "task11-b7-special-7-2",
+        "task11-b7-special-8-1",
+        "task11-b7-special-9-1",
+        "task11-b7-special-10-1"
+      ],
+      "native_address": 4428,
+      "native_size": 260,
+      "native_sha256": "7F1ED734DBE9222C6EBABB8917262BBEB3D5610EA0CEDB8DC8FE43BD1B57A707",
+      "native_relocations": [
+        {
+          "address": 4528,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "__TEXT,__text",
+          "addend": 2612,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": 1,
+          "original_bytes": "4BFFF885",
+          "scattered": false
+        },
+        {
+          "address": 4556,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "__TEXT,__text",
+          "addend": 2324,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": 1,
+          "original_bytes": "4BFFF749",
+          "scattered": false
+        },
+        {
+          "address": 4632,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "__TEXT,__text",
+          "addend": 524,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": 1,
+          "original_bytes": "4BFFEFF5",
+          "scattered": false
+        },
+        {
+          "address": 4640,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "__TEXT,__text",
+          "addend": 1800,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": 1,
+          "original_bytes": "4BFFF4E9",
+          "scattered": false
+        },
+        {
+          "address": 4648,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "__TEXT,__text",
+          "addend": 2736,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": 1,
+          "original_bytes": "4BFFF889",
+          "scattered": false
+        },
+        {
+          "address": 4656,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSDCompleteSpecialHIOB",
+          "addend": 0,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": true,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": null,
+          "original_bytes": "4BFFEDD1",
+          "scattered": false
+        }
+      ]
+    },
+    {
+      "address": 1715428,
+      "name": "_SCSIrScsiBusReset",
+      "owner": "AdaptecU2CHIMResource.c",
+      "reference_size": 100,
+      "source_line": 513,
+      "control_flow": "Freeze16 mask8, abort host and device queued reason6, then actual HIM reset graph; serialized completion-before-reset and reset-induced completion execute full delays.",
+      "cases": [
+        "task11-b11-complete-before-reset-second",
+        "task11-b11-reset-induces-completion"
+      ],
+      "native_address": 4688,
+      "native_size": 108,
+      "native_sha256": "BDB37E6D856BF3578434CA7B220E84C53C41D6C8E305557858272B077D003820",
+      "native_relocations": [
+        {
+          "address": 4728,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "__TEXT,__text",
+          "addend": 2520,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": 1,
+          "original_bytes": "4BFFF761",
+          "scattered": false
+        },
+        {
+          "address": 4740,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "__TEXT,__text",
+          "addend": 1188,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": 1,
+          "original_bytes": "4BFFF221",
+          "scattered": false
+        },
+        {
+          "address": 4752,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "__TEXT,__text",
+          "addend": 1340,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": 1,
+          "original_bytes": "4BFFF2AD",
+          "scattered": false
+        },
+        {
+          "address": 4760,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_SCSIHQueueSpecialHIOB",
+          "addend": 0,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": true,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": null,
+          "original_bytes": "4BFFED69",
+          "scattered": false
+        }
+      ]
+    },
+    {
+      "address": 1715528,
+      "name": "_SCSIrBusDeviceReset",
+      "owner": "AdaptecU2CHIMResource.c",
+      "reference_size": 220,
+      "source_line": 522,
+      "control_flow": "First reset freezes2, abort matching host/device reason8, increments reset and active counts; actual mode SCB exhaustion versus special delivery preserves queue ownership.",
+      "cases": [
+        "task11-b5-bdr-exhausted-0",
+        "task11-b5-bdr-exhausted-1",
+        "task11-b13-bdr-success-Standard64",
+        "task11-b13-bdr-success-Swapping32",
+        "task11-b13-bdr-success-StandardAdv",
+        "task11-b13-bdr-success-SwappingAdv"
+      ],
+      "native_address": 4796,
+      "native_size": 220,
+      "native_sha256": "813434F954666CDC9FA967C714BD89B222E53DBDFA4247CF5A2CE4EA3068A522",
+      "native_relocations": [
+        {
+          "address": 4860,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "__TEXT,__text",
+          "addend": 440,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": 1,
+          "original_bytes": "4BFFEEBD",
+          "scattered": false
+        },
+        {
+          "address": 4876,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "__TEXT,__text",
+          "addend": 1444,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": 1,
+          "original_bytes": "4BFFF299",
+          "scattered": false
+        },
+        {
+          "address": 4888,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "__TEXT,__text",
+          "addend": 1036,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": 1,
+          "original_bytes": "4BFFF0F5",
+          "scattered": false
+        },
+        {
+          "address": 4968,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "__TEXT,__text",
+          "addend": 320,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": 1,
+          "original_bytes": "4BFFEDD9",
+          "scattered": false
+        },
+        {
+          "address": 4980,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_SCSIHQueueSpecialHIOB",
+          "addend": 0,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": true,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": null,
+          "original_bytes": "4BFFEC8D",
+          "scattered": false
+        }
+      ]
+    },
+    {
+      "address": 1716108,
+      "name": "_SCSIRGetHWInformation",
+      "owner": "AdaptecU2CHIMResource.c",
+      "reference_size": 92,
+      "source_line": 537,
+      "control_flow": "All16 frozen targets expose saved tagged limit, others current limit; actual HIM hardware information callback follows resource writes.",
+      "cases": [
+        "task11-b8-hw-Get"
+      ],
+      "native_address": 5016,
+      "native_size": 92,
+      "native_sha256": "E5C33F8BB384266BA7A9978D99B0D11FB6467F766CF4D07104DB2A581DF924F6",
+      "native_relocations": [
+        {
+          "address": 5088,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_SCSIHGetHWInformation",
+          "addend": 0,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": true,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": null,
+          "original_bytes": "4BFFEC21",
+          "scattered": false
+        }
+      ]
+    },
+    {
+      "address": 1716200,
+      "name": "_SCSIRPutHWInformation",
+      "owner": "AdaptecU2CHIMResource.c",
+      "reference_size": 96,
+      "source_line": 546,
+      "control_flow": "All16 per-target frozen/current queue limit updates precede real HIM hardware/MMIO writes; isolated authenticated contract delta permits exact register access.",
+      "cases": [
+        "task11-b8-hw-Put"
+      ],
+      "native_address": 5108,
+      "native_size": 96,
+      "native_sha256": "AEFADCC06620ED5E4BF4FE643FB8B60C102A4723FD44C879ABA15EBB0A8FCBDC",
+      "native_relocations": [
+        {
+          "address": 5184,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_SCSIHPutHWInformation",
+          "addend": 0,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": true,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": null,
+          "original_bytes": "4BFFEBC1",
+          "scattered": false
+        }
+      ]
+    },
+    {
+      "address": 1715152,
+      "name": "_SCSIrAsyncEvent",
+      "owner": "AdaptecU2CHIMResource.c",
+      "reference_size": 276,
+      "source_line": 557,
+      "control_flow": "Event-minus1 guarded8slot native switch retains clear reasons7/20/5/9, freeze6/unfreeze7, defaults and suppressed OSD callback only event7.",
+      "cases": [
+        "task11-b6-event-0",
+        "task11-b6-event-1",
+        "task11-b6-event-2",
+        "task11-b6-event-3",
+        "task11-b6-event-4",
+        "task11-b6-event-5",
+        "task11-b6-event-6",
+        "task11-b6-event-7",
+        "task11-b6-event-8",
+        "task11-b6-event-9",
+        "task11-b6-event-4294967295"
+      ],
+      "native_address": 5204,
+      "native_size": 276,
+      "native_sha256": "3EF2E7C19B1DCE28B9FCCB1BE7FD50043DD153F4B6EBE360740B75BE48C6257F",
+      "native_relocations": [
+        {
+          "address": 5272,
+          "kind": "ppc-ha16-32-absolute",
+          "target": "__TEXT,__const",
+          "addend": 0,
+          "type": 6,
+          "pc_relative": false,
+          "width": 4,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": 2,
+          "original_bytes": "3D200000",
+          "scattered": false
+        },
+        {
+          "address": 5272,
+          "kind": "ppc-pair-16-absolute",
+          "target": null,
+          "addend": 6356,
+          "type": 1,
+          "pc_relative": false,
+          "width": 2,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": null,
+          "original_bytes": "18D4",
+          "scattered": false
+        },
+        {
+          "address": 5276,
+          "kind": "ppc-lo16-32-absolute",
+          "target": "__TEXT,__const",
+          "addend": 0,
+          "type": 5,
+          "pc_relative": false,
+          "width": 4,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": 2,
+          "original_bytes": "392918D4",
+          "scattered": false
+        },
+        {
+          "address": 5276,
+          "kind": "ppc-pair-16-absolute",
+          "target": null,
+          "addend": 0,
+          "type": 1,
+          "pc_relative": false,
+          "width": 2,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": null,
+          "original_bytes": "0000",
+          "scattered": false
+        },
+        {
+          "address": 5288,
+          "kind": "ppc-ha16-32-absolute",
+          "target": "__TEXT,__const",
+          "addend": 0,
+          "type": 6,
+          "pc_relative": false,
+          "width": 4,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": 2,
+          "original_bytes": "3D200000",
+          "scattered": false
+        },
+        {
+          "address": 5288,
+          "kind": "ppc-pair-16-absolute",
+          "target": null,
+          "addend": 6356,
+          "type": 1,
+          "pc_relative": false,
+          "width": 2,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": null,
+          "original_bytes": "18D4",
+          "scattered": false
+        },
+        {
+          "address": 5292,
+          "kind": "ppc-lo16-32-absolute",
+          "target": "__TEXT,__const",
+          "addend": 0,
+          "type": 5,
+          "pc_relative": false,
+          "width": 4,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": 2,
+          "original_bytes": "392918D4",
+          "scattered": false
+        },
+        {
+          "address": 5292,
+          "kind": "ppc-pair-16-absolute",
+          "target": null,
+          "addend": 0,
+          "type": 1,
+          "pc_relative": false,
+          "width": 2,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": null,
+          "original_bytes": "0000",
+          "scattered": false
+        },
+        {
+          "address": 5316,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "__TEXT,__text",
+          "addend": 1188,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": 1,
+          "original_bytes": "4BFFEFE1",
+          "scattered": false
+        },
+        {
+          "address": 5340,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "__TEXT,__text",
+          "addend": 1188,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": 1,
+          "original_bytes": "4BFFEFC9",
+          "scattered": false
+        },
+        {
+          "address": 5364,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "__TEXT,__text",
+          "addend": 1188,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": 1,
+          "original_bytes": "4BFFEFB1",
+          "scattered": false
+        },
+        {
+          "address": 5384,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "__TEXT,__text",
+          "addend": 2520,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": 1,
+          "original_bytes": "4BFFF4D1",
+          "scattered": false
+        },
+        {
+          "address": 5396,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "__TEXT,__text",
+          "addend": 2612,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": 1,
+          "original_bytes": "4BFFF521",
+          "scattered": false
+        },
+        {
+          "address": 5412,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "__TEXT,__text",
+          "addend": 1188,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": 1,
+          "original_bytes": "4BFFEF81",
+          "scattered": false
+        },
+        {
+          "address": 5424,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "__TEXT,__text",
+          "addend": 1340,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": 1,
+          "original_bytes": "4BFFF00D",
+          "scattered": false
+        },
+        {
+          "address": 5432,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "__TEXT,__text",
+          "addend": 2736,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": 1,
+          "original_bytes": "4BFFF579",
+          "scattered": false
+        },
+        {
+          "address": 5452,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSDAsyncEvent",
+          "addend": 0,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": true,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": null,
+          "original_bytes": "4BFFEAB5",
+          "scattered": false
+        }
+      ]
+    },
+    {
+      "address": 1716312,
+      "name": "_SCSIrAsyncEventCommand",
+      "owner": "AdaptecU2CHIMResource.c",
+      "reference_size": 388,
+      "source_line": 590,
+      "control_flow": "Preserve event1 dynamic hostTail reload and historical double-pass queue graph including frozenTail sentinel; event2 splice/saved-tail rotation/active restore; real single/head-foreign/tail cases.",
+      "cases": [
+        "task11-b6-command-1-empty",
+        "task11-b6-command-1-single-match",
+        "task11-b6-command-1-single-foreign",
+        "task11-b6-command-1-head-match",
+        "task11-b6-command-1-tail-match",
+        "task11-b6-command-2-empty",
+        "task11-b6-command-2-frozen",
+        "task11-b6-command-2-rotate",
+        "task11-b6-command-0-default",
+        "task11-b6-command-3-default"
+      ],
+      "native_address": 5480,
+      "native_size": 384,
+      "native_sha256": "C674B10F0EF0950AA5E61BE5DBC207E4BEDBF3B136EC93F44D31424B96FDB684",
+      "native_relocations": [
+        {
+          "address": 5564,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "__TEXT,__text",
+          "addend": 440,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": 1,
+          "original_bytes": "4BFFEBFD",
+          "scattered": false
+        }
+      ]
+    },
+    {
+      "address": 1715832,
+      "name": "_SCSIrAbortTask",
+      "owner": "AdaptecU2CHIMResource.c",
+      "reference_size": 128,
+      "source_line": 646,
+      "control_flow": "Real host abort short-circuits device search, then immediate successful special completion; both missing invokes real HIM abort path without internal replacement.",
+      "cases": [
+        "task11-b7-abort-task-host",
+        "task11-b7-abort-task-device",
+        "task11-b7-abort-task-hardware-miss"
+      ],
+      "native_address": 5864,
+      "native_size": 128,
+      "native_sha256": "40C39D277B38A3B6213435E17E6F6383FB67DD337A513706C82052914179DC60",
+      "native_relocations": [
+        {
+          "address": 5900,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "__TEXT,__text",
+          "addend": 896,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": 1,
+          "original_bytes": "4BFFEC75",
+          "scattered": false
+        },
+        {
+          "address": 5924,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "__TEXT,__text",
+          "addend": 756,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": 1,
+          "original_bytes": "4BFFEBD1",
+          "scattered": false
+        },
+        {
+          "address": 5944,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_SCSIHQueueSpecialHIOB",
+          "addend": 0,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": true,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": null,
+          "original_bytes": "4BFFE8C9",
+          "scattered": false
+        },
+        {
+          "address": 5964,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "__TEXT,__text",
+          "addend": 4428,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": 1,
+          "original_bytes": "4BFFFA01",
+          "scattered": false
+        }
+      ]
+    },
+    {
+      "address": 1715960,
+      "name": "_SCSIrAbortTaskSet",
+      "owner": "AdaptecU2CHIMResource.c",
+      "reference_size": 148,
+      "source_line": 657,
+      "control_flow": "First abort-set freezes16, actual matching host/device reason4 drains, counter increment then real HIM special callback; repeat preserves existing freeze state.",
+      "cases": [
+        "task11-b7-abort-set-0",
+        "task11-b7-abort-set-1"
+      ],
+      "native_address": 5992,
+      "native_size": 148,
+      "native_sha256": "BC325DA0E8B318FC27F5BA4F4AA34A6FDF45996C942484EDE00988ED65634E7F",
+      "native_relocations": [
+        {
+          "address": 6056,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "__TEXT,__text",
+          "addend": 440,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": 1,
+          "original_bytes": "4BFFEA11",
+          "scattered": false
+        },
+        {
+          "address": 6072,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "__TEXT,__text",
+          "addend": 1444,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": 1,
+          "original_bytes": "4BFFEDED",
+          "scattered": false
+        },
+        {
+          "address": 6084,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "__TEXT,__text",
+          "addend": 1036,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": 1,
+          "original_bytes": "4BFFEC49",
+          "scattered": false
+        },
+        {
+          "address": 6104,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_SCSIHQueueSpecialHIOB",
+          "addend": 0,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": true,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": null,
+          "original_bytes": "4BFFE829",
+          "scattered": false
+        }
+      ]
+    },
+    {
+      "address": 1714284,
+      "name": "_SCSIRQueueSpecialHIOB",
+      "owner": "AdaptecU2CHIMResource.c",
+      "reference_size": 216,
+      "source_line": 669,
+      "control_flow": "Five initial byte stores at5/6/7/32/33 precede function-minus1 guarded9slot native switch; all aliases/default and function9 unfreeze-dispatch-complete fallthrough retained.",
+      "cases": [
+        "task11-b7-queue-special-0",
+        "task11-b7-queue-special-4",
+        "task11-b7-queue-special-5",
+        "task11-b7-queue-special-6",
+        "task11-b7-queue-special-8",
+        "task11-b7-queue-special-9",
+        "task11-b7-queue-special-10",
+        "task11-b7-queue-special-255",
+        "task11-b10-special-switch-1",
+        "task11-b10-special-switch-3",
+        "task11-b10-special-switch-7",
+        "task11-b10-full-bus-reset"
+      ],
+      "native_address": 6140,
+      "native_size": 216,
+      "native_sha256": "1655FA304181D004FF7C6405A61F9FE4CC36AB4631883498F62638ABD28BD283",
+      "native_relocations": [
+        {
+          "address": 6200,
+          "kind": "ppc-ha16-32-absolute",
+          "target": "__TEXT,__const",
+          "addend": 32,
+          "type": 6,
+          "pc_relative": false,
+          "width": 4,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": 2,
+          "original_bytes": "3D200000",
+          "scattered": false
+        },
+        {
+          "address": 6200,
+          "kind": "ppc-pair-16-absolute",
+          "target": null,
+          "addend": 6388,
+          "type": 1,
+          "pc_relative": false,
+          "width": 2,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": null,
+          "original_bytes": "18F4",
+          "scattered": false
+        },
+        {
+          "address": 6204,
+          "kind": "ppc-lo16-32-absolute",
+          "target": "__TEXT,__const",
+          "addend": 32,
+          "type": 5,
+          "pc_relative": false,
+          "width": 4,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": 2,
+          "original_bytes": "392918F4",
+          "scattered": false
+        },
+        {
+          "address": 6204,
+          "kind": "ppc-pair-16-absolute",
+          "target": null,
+          "addend": 0,
+          "type": 1,
+          "pc_relative": false,
+          "width": 2,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": null,
+          "original_bytes": "0000",
+          "scattered": false
+        },
+        {
+          "address": 6216,
+          "kind": "ppc-ha16-32-absolute",
+          "target": "__TEXT,__const",
+          "addend": 32,
+          "type": 6,
+          "pc_relative": false,
+          "width": 4,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": 2,
+          "original_bytes": "3D200000",
+          "scattered": false
+        },
+        {
+          "address": 6216,
+          "kind": "ppc-pair-16-absolute",
+          "target": null,
+          "addend": 6388,
+          "type": 1,
+          "pc_relative": false,
+          "width": 2,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": null,
+          "original_bytes": "18F4",
+          "scattered": false
+        },
+        {
+          "address": 6220,
+          "kind": "ppc-lo16-32-absolute",
+          "target": "__TEXT,__const",
+          "addend": 32,
+          "type": 5,
+          "pc_relative": false,
+          "width": 4,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": 2,
+          "original_bytes": "392918F4",
+          "scattered": false
+        },
+        {
+          "address": 6220,
+          "kind": "ppc-pair-16-absolute",
+          "target": null,
+          "addend": 0,
+          "type": 1,
+          "pc_relative": false,
+          "width": 2,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": null,
+          "original_bytes": "0000",
+          "scattered": false
+        },
+        {
+          "address": 6240,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "__TEXT,__text",
+          "addend": 5864,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": 1,
+          "original_bytes": "4BFFFE89",
+          "scattered": false
+        },
+        {
+          "address": 6252,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "__TEXT,__text",
+          "addend": 4688,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": 1,
+          "original_bytes": "4BFFF9E5",
+          "scattered": false
+        },
+        {
+          "address": 6264,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "__TEXT,__text",
+          "addend": 4796,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": 1,
+          "original_bytes": "4BFFFA45",
+          "scattered": false
+        },
+        {
+          "address": 6276,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_SCSIHQueueSpecialHIOB",
+          "addend": 0,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": true,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": null,
+          "original_bytes": "4BFFE77D",
+          "scattered": false
+        },
+        {
+          "address": 6288,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "__TEXT,__text",
+          "addend": 5992,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": 1,
+          "original_bytes": "4BFFFED9",
+          "scattered": false
+        },
+        {
+          "address": 6308,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "__TEXT,__text",
+          "addend": 524,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": 1,
+          "original_bytes": "4BFFE969",
+          "scattered": false
+        },
+        {
+          "address": 6316,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "__TEXT,__text",
+          "addend": 1800,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": 1,
+          "original_bytes": "4BFFEE5D",
+          "scattered": false
+        },
+        {
+          "address": 6332,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "__TEXT,__text",
+          "addend": 4428,
+          "type": 3,
+          "pc_relative": true,
+          "width": 4,
+          "external": false,
+          "section": "__TEXT,__text",
+          "section_ordinal": 1,
+          "target_section_ordinal": 1,
+          "original_bytes": "4BFFF891",
+          "scattered": false
+        }
+      ]
+    }
+  ],
+  "deferred": [
+    "Task16 exact AdaptecU2UnitHandleArgument pointer4 alias and direct/all4paired FreeUnit cases; current wrapper uses actual native wrapper and bounded reference HIM callee.",
+    "Task16 consolidate Task11 contract delta into final shared contracts before fresh aggregate/paired cases.",
+    "Task15 four fresh committed-input builds, Task16 all476/final48data/fresh aggregate/all4paired plus incoming-r28 obligations remain."
+  ],
+  "historical_supplementary": {
+    "native-results-historical-20f.json": "460C0ED5BAEAF25B0679CF03CECC4070EFB106F2EFF6AFEDB14E2CC17AEC9644",
+    "boundary-results-historical-20f.json": "3FABBC4BCA6C964FA98C9D556647F3B5A10E31610A79006ED254D941104F1CEC",
+    "task11/final-native-boundary.py": "FBC9030325994A6C51192385D41F778853C68F54119C2371BBED8EB24C0481EB",
+    "task11/model.py": "BB0A6A3B7B65C849CC0F1846EADB805F39CAA01F3CBC9EB7041756718C510C7D",
+    "task11/common.py": "9224EF16C8E690870419547925F5727F2F411C1E58EC48452DD9773FB8E714D7"
+  },
+  "native_product_archive": "tools/binrecon/out/adaptecu2scsi-ppc/task11/batch6r3-products.tar",
+  "compiler_sdk_identity": {
+    "compiler": "Apple cc-771.4 based on gcc2.7.2.1, PPC604 target",
+    "sdk": "existing accepted /build/bootstrap-root and System.framework private/public headers in owned adaptecu2scsi-kbuild snapshot",
+    "environment": "tools/binrecon/out/adaptecu2scsi-ppc/guest/environment.txt",
+    "baseline": "tools/binrecon/out/adaptecu2scsi-ppc/guest/baseline-final-proof.log",
+    "scope": "Accepted unchanged guest SDK context; seven driver compiled inputs separately exact and authenticated. Four fresh full linked builds remain Task15."
+  },
+  "supplementary_reference_helpers": {
+    "SCSIHFreeUnitHandle": {
+      "address": 1693904,
+      "size": 12,
+      "sha256": "79118939A60B599765673C9E9057CD1836F8034F169CBEE58382926D90B29C27",
+      "contract_review": "Actual no-op HIM reference callee bytes execute at a bounded relocated code address. Native wrapper sole BR24 symbol and linked-reference wrapper branch target are authenticated; no internal hook or fabricated return."
+    }
+  }
+}

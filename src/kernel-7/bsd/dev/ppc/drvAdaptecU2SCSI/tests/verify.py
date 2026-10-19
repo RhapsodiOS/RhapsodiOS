@@ -36,6 +36,12 @@ def audit(stage: str, reference: Path, repo_root: Path, objects: Path | None,
         return
     if stage == "group":
         evidence = authenticate_reference(reference, repo_root)
+        if group == "AdaptecU2CHIMResource.c":
+            spec = importlib.util.spec_from_file_location("au2_resource_audit", repo_root / ref.DRIVER / "tests/task11_audit.py")
+            resource = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(resource)
+            resource.audit(evidence, repo_root, objects)
+            return
         if group == "AdaptecU2CHIMRecovery.c":
             audit_recovery_group(evidence, repo_root, objects)
             return
@@ -281,6 +287,32 @@ def audit_service_group(evidence, repo_root, objects, group):
                     raise ValueError("native event callback value differs")
 
 
+def audit_recovery_reference_helpers(evidence, repo_root, proof, cases):
+    frozen = {n.removeprefix("_"): f for f in evidence["frozen"].values() for n in f["names"]}
+    reader = ObjcReader(evidence["payload"], evidence["macho"]["sections"], "big")
+    for name, dependency in proof["reference_helpers"].items():
+        if name not in frozen:
+            raise ValueError("Task10 unauthenticated reference helper: " + name)
+        function = frozen[name]
+        offset = reader.offset_of(function["address"])
+        code = evidence["payload"][offset:offset+function["size"]]
+        if (dependency["address"] != function["address"] or dependency["size"] != function["size"] or
+                dependency["sha256"] != hashlib.sha256(code).hexdigest().upper() or
+                not dependency.get("contract_review")):
+            raise ValueError("Task10 pinned reference helper differs: " + name)
+    used = {dep["entry"] for case in cases["cases"] for dep in case["internal"]}
+    owner_addresses = {a: owner for owner, values in evidence["document"]["owners"].items() for a in values}
+    # Helper membership belongs to the actual producer, whose executed inputs
+    # are authenticated above. Later owner recovery cannot change that run.
+    producer_sources = set(subprocess.check_output(
+        ["git", "ls-tree", "-r", "--name-only", proof["test_revision"], "--",
+         ref.DRIVER.as_posix()], cwd=repo_root, text=True).splitlines())
+    pending = {name for name in used if (ref.DRIVER / owner_addresses[frozen[name]["address"]]).as_posix()
+               not in producer_sources}
+    if set(proof["reference_helpers"]) != pending:
+        raise ValueError("Task10 reference helper scope differs")
+
+
 def audit_recovery_group(evidence, repo_root, objects):
     driver = repo_root / ref.DRIVER
     owner = "AdaptecU2CHIMRecovery.c"
@@ -516,26 +548,7 @@ def audit_recovery_group(evidence, repo_root, objects):
         if hashlib.sha256((driver / "reconstruction" / name).read_bytes().replace(b"\r\n", b"\n")).hexdigest().upper() != digest:
             raise ValueError("stale Task10 accepted owner proof: " + name)
     frozen = {n.removeprefix("_"): f for f in evidence["frozen"].values() for n in f["names"]}
-    reader = ObjcReader(evidence["payload"], evidence["macho"]["sections"], "big")
-    for name, dependency in proof["reference_helpers"].items():
-        function = frozen[name]
-        offset = reader.offset_of(function["address"])
-        code = evidence["payload"][offset:offset+function["size"]]
-        if (dependency["address"] != function["address"] or dependency["size"] != function["size"] or
-                dependency["sha256"] != hashlib.sha256(code).hexdigest().upper() or
-                not dependency.get("contract_review")):
-            raise ValueError("Task10 pinned reference helper differs: " + name)
-    used = {dep["entry"] for case in cases["cases"] for dep in case["internal"]}
-    owner_addresses = {a: owner for owner, values in evidence["document"]["owners"].items() for a in values}
-    # Helper membership belongs to the actual producer, whose executed inputs
-    # are authenticated above. Later owner recovery cannot change that run.
-    producer_sources = set(subprocess.check_output(
-        ["git", "ls-tree", "-r", "--name-only", proof["test_revision"], "--",
-         ref.DRIVER.as_posix()], cwd=repo_root, text=True).splitlines())
-    pending = {name for name in used if (ref.DRIVER / owner_addresses[frozen[name]["address"]]).as_posix()
-               not in producer_sources}
-    if set(proof["reference_helpers"]) != pending:
-        raise ValueError("Task10 reference helper scope differs")
+    audit_recovery_reference_helpers(evidence, repo_root, proof, cases)
     for case in cases["cases"]:
         if (case.get("ack_exhaustion") or case.get("machine_inputs") or
                 not 0 < case.get("instruction_limit", 1000000) <= 4000000):

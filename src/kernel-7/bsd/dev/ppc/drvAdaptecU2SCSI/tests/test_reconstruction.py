@@ -1049,7 +1049,7 @@ def test_firmware_switch_metadata_all_case_values(firmware_evidence):
     assert sum(d["normalized_case_count"] for d in switches) == 592
     assert {status: sum(d["status"] == status for d in document["objects"])
             for status in ("recovered", "pending-owner-recovery", "pending-owner-control-flow")} == {
-                "recovered": 24, "pending-owner-recovery": 5, "pending-owner-control-flow": 19}
+                "recovered": 26, "pending-owner-recovery": 5, "pending-owner-control-flow": 17}
 
 
 @pytest.mark.parametrize("corruption", ["missing_source", "incorrect_source", "object", "review",
@@ -2096,33 +2096,42 @@ def test_task10_review_exit_rejects_observation_corruption(task10_review_cases, 
         load_script("verify").audit_recovery_exits(changed)
 
 
-def _task11_resource_family(family):
-    assert (TESTS.parent / "AdaptecU2CHIMResource.c").is_file(), "missing resource owner bodies"
-    path = TESTS / "task11-cases.json"
-    assert path.is_file(), "missing resource actual reference fixtures"
-    cases = json.loads(path.read_text())
-    selected = {**cases, "cases": [c for c in cases["cases"] if c["family"] == family]}
-    assert selected["cases"], "missing resource family: " + family
-    runner = load_script("ppc_cases")
-    result = runner.execute(OUT / "reference/image.bin", selected, json.loads((TESTS / "task11-contracts.json").read_text()))
-    assert len(result["results"]) == len(selected["cases"])
+@pytest.fixture(scope="module")
+def task11_resource_evidence(firmware_evidence):
+    audit,evidence=firmware_evidence
+    helper=load_script("task11_audit")
+    helper.audit(evidence,REPO,OUT / "objects/task11")
+    return helper,evidence
 
 
-def test_resource_queue_exhaustion_and_redispatch():
-    _task11_resource_family("queue")
+def _task11_resource_family(family,task11_resource_evidence):
+    cases=json.loads((TESTS / "task11-cases.json").read_text())
+    results=json.loads((OUT / "objects/task11/reference-results.json").read_text())["reference"]["results"]
+    selected=[c for c in cases["cases"] if c["family"]==family]
+    actual={r["executed_case_id"]:r for r in results}
+    assert selected
+    for case in selected:
+        result=actual[case["id"]]
+        assert result["unknown_calls"] == [] and result["returned_to_sentinel"] is True
+        assert 0 < result["instructions"] <= case["instruction_limit"]
+        assert result["observations"] == case["expected"]
+        assert result["observations"]["memory"] or result["observations"]["trace"] or "return" in result["observations"]
 
 
-def test_host_device_abort_freeze_unfreeze():
-    _task11_resource_family("abort")
+def test_resource_queue_exhaustion_and_redispatch(task11_resource_evidence):
+    _task11_resource_family("queue",task11_resource_evidence)
 
 
-def test_resource_completion_reset_ownership():
-    _task11_resource_family("completion")
+def test_host_device_abort_freeze_unfreeze(task11_resource_evidence):
+    _task11_resource_family("abort",task11_resource_evidence)
 
 
-def test_task11_resource_owner_evidence(firmware_evidence):
-    audit, evidence = firmware_evidence
-    audit.audit("group", OUT / "reference", REPO, OUT / "objects/task11", None, "AdaptecU2CHIMResource.c")
+def test_resource_completion_reset_ownership(task11_resource_evidence):
+    _task11_resource_family("completion",task11_resource_evidence)
+
+
+def test_task11_resource_owner_evidence(task11_resource_evidence):
+    assert task11_resource_evidence
 
 
 def test_task11_task10_helper_scope_survives_new_owner(tmp_path, firmware_evidence):
@@ -2157,3 +2166,130 @@ def test_task11_native_switch_and_publication_graph():
     binary=OUT / "objects/task11/1-AdaptecU2CHIMResource.c.o"
     assert len(helper.switch_graph(binary)) == 2
     helper.publication_widths(binary)
+
+
+@pytest.fixture(scope="module")
+def task11_archives():
+    root=OUT / "objects/task11"
+    return {"proof":json.loads((TESTS.parent / "reconstruction/task11.json").read_text()),
+            "cases":json.loads((TESTS / "task11-cases.json").read_text()),
+            "contracts":json.loads((TESTS / "task11-contracts.json").read_text()),
+            "public":json.loads((root / "reference-results.json").read_text())["reference"],
+            "native":json.loads((root / "native-results.json").read_text()),
+            "boundary":json.loads((root / "boundary-results.json").read_text())}
+
+
+@pytest.mark.parametrize("corruption",["missing","changed","extra"])
+def test_task11_historical_helper_rejects_corruption(firmware_evidence,corruption):
+    audit,evidence=firmware_evidence
+    proof=json.loads((TESTS.parent / "reconstruction/task10.json").read_text())
+    cases=json.loads((TESTS / "task10-cases.json").read_text())
+    if corruption=="missing":proof["reference_helpers"].pop(next(iter(proof["reference_helpers"])))
+    elif corruption=="changed":next(iter(proof["reference_helpers"].values()))["sha256"]="0"*64
+    else:proof["reference_helpers"]["UnownedFakeHelper"]={}
+    with pytest.raises(ValueError,match="reference helper"):
+        audit.audit_recovery_reference_helpers(evidence,REPO,proof,cases)
+
+
+@pytest.mark.parametrize("corruption",["missing-input","changed-input","false-revision"])
+def test_task11_native_canonical_input_rejects_corruption(tmp_path,task11_archives,corruption):
+    helper=load_script("task11_audit");proof=copy.deepcopy(task11_archives["proof"])
+    repo=tmp_path / "repo";driver=repo/helper.DRIVER;driver.mkdir(parents=True)
+    shutil.copyfile(REPO / ".git",repo / ".git")
+    for name in helper.NATIVE_INPUTS:shutil.copyfile(TESTS.parent/name,driver/name)
+    objects=tmp_path / "objects";shutil.copytree(OUT / "objects/task11",objects,
+                ignore=shutil.ignore_patterns("*results*","pre-correction.o"))
+    for path in proof["native_artifacts"]:
+        target=repo/path;target.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(REPO/path,target)
+    if corruption=="missing-input":
+        path=objects/"native-inputs.json";inputs=json.loads(path.read_text());inputs["inputs"].pop("AdaptecU2CHIM.h")
+        path.write_text(json.dumps(inputs));proof["native_inputs_sha256"]=helper.sha(path.read_bytes())
+    elif corruption=="changed-input":(driver/"AdaptecU2CHIMTypes.h").write_bytes(b"changed\n")
+    else:proof["canonical_input_revision"]=proof["native_actual_base_revision"]
+    with pytest.raises(ValueError,match="actual native producer|input closure|canonical input|canonical input revision"):
+        helper.audit_native_inputs(repo,objects,proof)
+
+
+@pytest.mark.parametrize("corruption",["baseline","delta"])
+def test_task11_contract_snapshot_rejects_corruption(tmp_path,task11_archives,corruption):
+    helper=load_script("task11_audit");driver=tmp_path;tests=driver/"tests";tests.mkdir()
+    for name in ("contracts.json","task11-contracts.json"):shutil.copyfile(TESTS/name,tests/name)
+    path=tests/("contracts.json" if corruption=="baseline" else "task11-contracts.json")
+    changed=json.loads(path.read_text())
+    if corruption=="baseline":changed["unrelated"]=True
+    else:changed["mmio"]["task11-hardware"][0]["offset"]+=1
+    path.write_text(json.dumps(changed))
+    with pytest.raises(ValueError,match="contract baseline|snapshot delta"):
+        helper.audit_snapshot(driver,task11_archives["proof"])
+
+
+@pytest.mark.parametrize("name",["task11_execute.py","task10_sequence.py"])
+@pytest.mark.parametrize("corruption",["omitted","changed"])
+def test_task11_supplementary_launcher_import_closure(task11_archives,name,corruption):
+    helper=load_script("task11_audit");proof=copy.deepcopy(task11_archives["proof"])
+    key=(helper.DRIVER/"tests"/name).as_posix()
+    if corruption=="omitted":proof["supplementary_inputs"].pop(key)
+    else:proof["supplementary_inputs"][key]["git_blob_sha256"]="0"*64
+    native={**task11_archives["native"],"execution_inputs":proof["supplementary_inputs"]}
+    boundary={**task11_archives["boundary"],"execution_inputs":proof["supplementary_inputs"]}
+    with pytest.raises(ValueError,match="supplementary input closure|supplementary execution input"):
+        helper.audit_supplementary(REPO,proof,native,boundary)
+
+
+@pytest.mark.parametrize("corruption",["missing","stale","observation"])
+def test_task11_public_actual_results_reject_corruption(task11_archives,corruption):
+    helper=load_script("task11_audit");result=copy.copy(task11_archives["public"])
+    result["results"]=list(result["results"])
+    if corruption=="missing":result["results"].pop()
+    elif corruption=="stale":result["source_revision"]="0"*40
+    else:
+        result["results"][0]=copy.deepcopy(result["results"][0])
+        result["results"][0]["observations"]["return"]=999
+    with pytest.raises(ValueError,match="scope/identity|invalid actual resource fixture"):
+        helper.audit_public(task11_archives["cases"],task11_archives["contracts"],result,
+                            task11_archives["proof"],load_script("ppc_cases"))
+
+
+@pytest.mark.parametrize("corruption",["byte","pointer"])
+def test_task11_serialized_boundary_rejects_corruption(task11_archives,corruption):
+    helper=load_script("task11_sequence");document=json.loads((TESTS / "task11-sequences.json").read_text())
+    cases={**task11_archives["cases"],"cases":list(task11_archives["cases"]["cases"])}
+    index=next(i for i,c in enumerate(cases["cases"]) if c["id"]==document["cases"][1])
+    case=copy.deepcopy(cases["cases"][index]);cases["cases"][index]=case
+    if corruption=="byte":
+        memory=case["memory"][0];raw=bytearray.fromhex(memory["bytes"]);raw[100]^=1;memory["bytes"]=raw.hex()
+    else:case["memory"][0]["pointers"][0]["value"]={"region":"normal","offset":0}
+    with pytest.raises(ValueError,match="handoff bytes or pointer bindings"):
+        helper.audit(document,cases,task11_archives["boundary"]["actual"])
+
+
+def test_task11_native_leaf_rejects_old_publication_order(task11_archives):
+    helper=load_script("task11_native")
+    with pytest.raises(ValueError,match="publication order differs"):
+        helper.compare(OUT / "reference/image.bin",OUT / "objects/task11/pre-correction.o",task11_archives["cases"])
+
+
+def test_task11_canonical_git_closure_and_scoped_delta(task11_archives):
+    import hashlib,subprocess
+    prefix="src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/reconstruction/"
+    def blob(revision,name):return subprocess.check_output(["git","show",revision+":"+prefix+name],cwd=REPO)
+    base="773b8d68abf5917aaa7e95871fec394d571619b2"
+    proof=blob("HEAD","task11.json");ledger=json.loads(blob("HEAD","ledger.json"))
+    digest=hashlib.sha256(proof).hexdigest().upper();own={b["address"] for b in task11_archives["proof"]["bodies"]}
+    before={e["address"]:e for e in json.loads(blob(base,"ledger.json"))["entries"]}
+    after={e["address"]:e for e in ledger["entries"]}
+    assert {a for a in before if before[a]!=after[a]}==own
+    assert all(e["artifacts"]==[{"kind":"source-native-control-flow-and-actual-cases",
+                "path":prefix+"task11.json","sha256":digest}] for a,e in after.items() if a in own)
+    assert (TESTS.parent / "reconstruction/task11.json").read_bytes().replace(b"\r\n",b"\n")==proof
+    old=json.loads(blob(base,"source-map.json"));new=json.loads(blob("HEAD","source-map.json"))
+    assert len(new["mapped"])==len(old["mapped"])+47
+    old_mapped={e["address"]:e for e in old["mapped"]};new_mapped={e["address"]:e for e in new["mapped"]}
+    changed={a for a in old_mapped if old_mapped[a]!=new_mapped[a]}|set(new_mapped)-set(old_mapped)
+    assert changed==own
+    assert {e["address"] for e in old["unmapped"]}-{e["address"] for e in new["unmapped"]}==own
+    assert old["duplicate_candidates"]==new["duplicate_candidates"]
+    assert old["boundary_disputed"]==new["boundary_disputed"]
+    old={o["name"]:o for o in json.loads(blob(base,"data.json"))["objects"]}
+    new={o["name"]:o for o in json.loads(blob("HEAD","data.json"))["objects"]}
+    assert {n for n in old if old[n]!=new[n]}=={"switch_230f1c","switch_230f40"}

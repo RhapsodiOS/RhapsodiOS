@@ -196,3 +196,77 @@ void SCSIhStandardAdvUpdateSGLength(AdaptecU2HHCB *hhcb, unsigned int length)
     OSMWriteUExact8(*handle, 205, length >> 8);
     OSMWriteUExact8(*handle, 206, length >> 16);
 }
+
+void SCSIhSwappingAdvUpdateSGLength(AdaptecU2HHCB *hhcb, unsigned int length)
+{
+    const AdaptecU2IOHandle *handle = hhcb->ioHandle;
+    OSMWriteUExact8(*handle, 164, length);
+    OSMWriteUExact8(*handle, 165, length >> 8);
+    OSMWriteUExact8(*handle, 166, length >> 16);
+}
+
+void SCSIhStandardAdvUpdateSGAddress(AdaptecU2HHCB *hhcb,
+                                   unsigned int busAddress)
+{
+    const AdaptecU2IOHandle *handle = hhcb->ioHandle;
+    OSMWriteUExact8(*handle, 200, busAddress);
+    OSMWriteUExact8(*handle, 201, busAddress >> 8);
+    OSMWriteUExact8(*handle, 202, busAddress >> 16);
+    OSMWriteUExact8(*handle, 203, busAddress >> 24);
+}
+
+void SCSIhSwappingAdvUpdateSGAddress(AdaptecU2HHCB *hhcb,
+                                   unsigned int busAddress)
+{
+    const AdaptecU2IOHandle *handle = hhcb->ioHandle;
+    OSMWriteUExact8(*handle, 160, busAddress);
+    OSMWriteUExact8(*handle, 161, busAddress >> 8);
+    OSMWriteUExact8(*handle, 162, busAddress >> 16);
+    OSMWriteUExact8(*handle, 163, busAddress >> 24);
+}
+
+void SCSIhSwapping32UpdateFast20HostMem(AdaptecU2HHCB *hhcb,
+                                      AdaptecU2HIOB *hiob, unsigned char enabled)
+{
+    unsigned char *scb = hiob->scb->virtualAddress;
+    if (enabled) scb[1] |= 4;
+    else scb[1] &= ~4;
+    flush_cache((vm_offset_t)scb, 32);
+}
+
+void SCSIhSwapping32UpdateFast20HW(AdaptecU2HHCB *hhcb,
+                                 unsigned char enabled)
+{
+    const AdaptecU2IOHandle *handle = hhcb->ioHandle;
+    unsigned char value = OSMReadUExact8(*handle, 161);
+    if (enabled) value |= 4;
+    else value &= ~4;
+    OSMWriteUExact8(*handle, 161, value);
+}
+
+void SCSIhSwapping32UpdateXferOptionHostMem(AdaptecU2HHCB *hhcb,
+                                          AdaptecU2HIOB *hiob,
+                                          unsigned short option)
+{
+    unsigned char *scb = hiob->scb->virtualAddress;
+    scb[29] = option;
+    flush_cache((vm_offset_t)scb, 32);
+}
+
+void SCSIhStandardAdvUpdateXferOptionHostMem(AdaptecU2HHCB *hhcb,
+                                           AdaptecU2HIOB *hiob,
+                                           unsigned short option)
+{
+    unsigned char *scb = hiob->scb->virtualAddress, *address = scb + 3;
+    __asm__ volatile ("sthbrx %0,0,%1" : : "r" (option), "r" (address) : "memory");
+    flush_cache((vm_offset_t)scb, 64);
+}
+
+void SCSIhSwappingAdvUpdateXferOptionHostMem(AdaptecU2HHCB *hhcb,
+                                           AdaptecU2HIOB *hiob,
+                                           unsigned short option)
+{
+    unsigned char *scb = hiob->scb->virtualAddress, *address = scb + 36;
+    __asm__ volatile ("sthbrx %0,0,%1" : : "r" (option), "r" (address) : "memory");
+    flush_cache((vm_offset_t)scb, 64);
+}

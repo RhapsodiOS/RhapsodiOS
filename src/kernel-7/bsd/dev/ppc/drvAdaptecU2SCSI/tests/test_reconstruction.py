@@ -2060,3 +2060,6 @@ def test_task10_owner_rejects_incomplete_evidence(tmp_path, firmware_evidence, c
                 "observation": "invalid Task10 successful fixture", "relocation": "native call binding differs"}
     with pytest.raises(ValueError, match=expected[corruption]):
         audit.audit_recovery_group(evidence, repo, objects)
+
+def test_task10_review_recovery_exit_coverage():
+    load_script("verify").audit_recovery_exits(json.loads((TESTS / "task10-cases.json").read_text()))

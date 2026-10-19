@@ -542,6 +542,7 @@ def audit_recovery_group(evidence, repo_root, objects):
     sequence = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(sequence)
     sequence_document = load_json(driver / "tests/task10-sequences.json")
+    audit_recovery_exits(cases)
     sequence.audit(sequence_document, cases)
     boundary = load_json(objects / "boundary-results.json")
     if (boundary["execution_revision"] != proof["test_revision"] or
@@ -2126,6 +2127,83 @@ def audit_firmware_objects(evidence, repo_root, objects):
             raise ValueError("firmware native owning symbol set differs: " + name)
         for record in owned:
             compare_firmware_data(record, evidence["data"][record["name"]], payload, macho, symbols)
+
+
+def audit_recovery_exits(cases):
+    required = {"parity-sentinel"}
+    required |= {"remove-%s-%s" % (mode, found) for mode in (0, 3, 4, 5) for found in ("hit", "miss")}
+    required |= {"active-%s-%s" % (mode, queue) for mode in (0, 3, 4, 5)
+                 for queue in (("seq", "done") if mode in (0, 4) else ("done",))}
+    selected = [c for c in cases["cases"] if "recovery_exit" in c]
+    exits = {c["recovery_exit"]: c for c in selected}
+    if set(exits) != required or len(selected) != len(required):
+        raise ValueError("missing distinct recovery error/abort exits: " + str(sorted(required - set(exits))))
+    modes = {0: "Standard64", 3: "Swapping32", 4: "StandardAdv", 5: "SwappingAdv"}
+    for key, case in exits.items():
+        trace, memory = case["expected"]["trace"], case["expected"]["memory"]
+        calls = [event for event in trace if "entry" in event]
+        entries = [event["entry"] for event in calls]
+        mmio = [(e["access"], int(e["target"].split("+")[1]), e["size"], e["value"])
+                for e in trace if "access" in e]
+        internal = {body["entry"] for body in case["internal"]}
+        regions = {r["name"]: r for r in case["memory"]}
+        if key == "parity-sentinel":
+            expected = [("read", 2, 1, 165), ("write", 2, 1, 133), ("write", 2, 1, 165),
+                        ("write", 12, 1, 68), ("write", 146, 1, 4), ("read", 145, 1, 4),
+                        ("read", 12, 1, 8), ("write", 98, 1, 43), ("write", 99, 1, 0)]
+            if (case["entry"] != "SCSIhParityError" or case["arguments"][1] != 0xffffffff or
+                    mmio != expected or entries != ["SCSIhBadSeq"] or
+                    "SCSIhBadSeq" not in internal or sum(e.get("operation") == "eieio" for e in trace) != 6):
+                raise ValueError("sentinel parity recovery prefix/real BadSeq differs")
+            continue
+        kind, mode_text, result = key.split("-")
+        mode = int(mode_text)
+        hhcb = bytes.fromhex(regions["hhcb"]["bytes"])
+        if hhcb[18] != mode or not mmio or mmio[0] != (("read", 0, 1, 0) if mode == 3 or kind == "remove"
+                                                    else ("read", {0: 53, 4: 61, 5: 58}[mode], 1, 255)):
+            raise ValueError("nonselected recovery precondition differs")
+        if kind == "remove":
+            swap, hit = mode in (3, 5), result == "hit"
+            search = "SCSIhSwappingRemoveAbortHIOBFromNewQ" if swap else "SCSIh" + modes[mode] + "SearchExeQ"
+            expected_entry = "SCSIh" + ("Swapping" if swap else "Standard") + "RemoveActiveAbort"
+            expected_call = {"entry": search, "arguments": ["hhcb+0", "hiob+0", 4] + ([] if swap else [0])}
+            if (case["entry"] != expected_entry or calls != [expected_call] or search not in internal or
+                    memory.get("hiob+32") != ("01" if hit else "09") or
+                    memory.get("hiob+4") != ("0002040200070000" if swap else "0002040000070000") or
+                    memory.get("active+28") != {"bytes": "00000000", "pointers": {"0": "hiob+0"}} or
+                    memory.get("done+0") != {"bytes": "00000000", "pointers": {"0": None}} or
+                    memory.get("hhcb+1348") != "0000000000000000" or memory.get("resource+16") != "00000001" or
+                    any(memory.get(n+"+0") != regions[n]["bytes"] for n in ("scb", "activescb"))):
+                raise ValueError("nonselected abort removal ownership/manager/terminate differs")
+            firmware = bytes.fromhex(regions["firmware"]["bytes"])
+            head = firmware[64] if swap else (94 if mode == 0 else 54)
+            writes = [event for event in mmio if event[0] == "write" and event[1] == head]
+            if writes != ([("write", head, 1, 1 if swap else 255)] if hit else []):
+                raise ValueError("nonselected abort removal queue publication differs")
+            if swap and memory.get("hhcb+216") != ("01000000" if hit else "02000000"):
+                raise ValueError("nonselected abort removal NewQ counter differs")
+        else:
+            queue = result
+            search = "SCSIhStandardSearchDoneQ" if queue == "done" else "SCSIh" + ("Standard" if mode == 0 else "StandardAdv") + "SearchSeqDoneQ"
+            completion = ["SCSIhTerminateCommand", "SCSIrCompleteHIOB", "SCSIrFreeScb", "SCSIrReturnScb", "SCSIrFreeCriteria"]
+            if (case["entry"] != "SCSIh" + modes[mode] + "ActiveAbort" or search not in internal or
+                    entries.count(search) != 1 or any(entries.count(n) != 1 for n in completion) or
+                    memory.get("hiob+4") != "0001040000000000" or memory.get("hiob+32") != "01" or
+                    memory.get("active+0") != "ffffffff" or
+                    memory.get("done+0") != {"bytes": "00000000", "pointers": {"0": "hiob+0"}} or
+                    memory.get("hhcb+1348") != "0100000001000000" or memory.get("resource+16") != "00000000" or
+                    memory.get("scb+0") != "a5" * 64 or
+                    any(e[0] == "write" and e[1] in (175, 176, 168, 169) for e in mmio)):
+                raise ValueError("found completion queue ownership/callback/no-fallback differs")
+            flushes = [e for e in trace if e.get("target") == "_flush_cache"]
+            expected_count = "0000020000000000" if queue == "done" else "0003010000000100"
+            if (memory.get("hhcb+216") != expected_count or
+                    flushes != ([{"target": "_flush_cache", "arguments": ["qout+0", 32]}] if queue == "done" else [])):
+                raise ValueError("found completion queue counters/cache differs")
+            if queue == "seq":
+                head = 112 if mode == 0 else 56
+                if ("write", head, 1, 255) not in mmio:
+                    raise ValueError("found sequencer completion unlink differs")
 
 
 def main():

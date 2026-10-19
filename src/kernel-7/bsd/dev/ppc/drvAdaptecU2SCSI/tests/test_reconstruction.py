@@ -1579,3 +1579,37 @@ def test_task8_native_switch_rejects_wrong_execution(tmp_path, corruption):
                 if c["id"] == "task8-cap-7873-2")
     with pytest.raises(ValueError, match=expected):
         load_script("task8_native").run_capability(changed, OUT / "objects/task5/2-AdaptecU2CHIMOSD.c.o", case)
+
+
+def test_task8_configuration_native_narrow_accesses():
+    native = load_script("task8_native")
+    assert hasattr(native, "configuration_access_widths"), "missing native halfword/byte access checks"
+    native.configuration_access_widths(OUT / "objects/task8/1-AdaptecU2CHIMConfig.c.o")
+    native.configuration_access_widths(OUT / "reference/image.bin")
+
+
+def test_task8_channel_clear_set_preserve_observed():
+    cases = json.loads((TESTS / "task8-cases.json").read_text())["cases"]
+    direct = [case for case in cases if case["entry"] == "SCSIhGetIDBasedConfiguration"]
+    assert direct and all(any(o["region"] == "adapter" and o["offset"] == 244 and o["size"] == 4
+                              for o in case["observe"]) for case in direct), "channel and neighbors are unobserved"
+    focused = [case for case in direct if case["id"].startswith("task8-fix1-channel-")]
+    assert {case["channel_case"] for case in focused} == {"clear", "set", "preserve"}
+    native = load_script("task8_native")
+    for case in focused:
+        native.run_channel_case(OUT / "reference/image.bin", case)
+        native.run_channel_case(OUT / "objects/task8/1-AdaptecU2CHIMConfig.c.o", case)
+
+
+def test_task8_native_rejects_equivalent_word_accesses():
+    import hashlib
+    native = load_script("task8_native")
+    assert hasattr(native, "configuration_access_widths"), "missing native narrow-store rejection"
+    original = OUT / "task8/fix1/base-objects/1-AdaptecU2CHIMConfig.c.o"
+    assert hashlib.sha256(original.read_bytes()).hexdigest().upper() == "9277FF2AC52E1B2606ACA670115E35B55412FDBDAA9DC5A609DBC128204E7419"
+    with pytest.raises(ValueError, match="PrepareConfig narrow access footprint differs"):
+        native.configuration_access_widths(original)
+    cases = json.loads((TESTS / "task8-cases.json").read_text())["cases"]
+    for case in [c for c in cases if c.get("channel_case") in ("clear", "set")]:
+        with pytest.raises(ValueError, match="channel access footprint differs"):
+            native.run_channel_case(original, case)

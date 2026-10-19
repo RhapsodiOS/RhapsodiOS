@@ -486,6 +486,17 @@ def audit_config_switches(evidence, repo_root, proof, payload, macho, native_byt
     spec = importlib.util.spec_from_file_location("au2_task8_native", helper)
     native = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(native)
+    if native.configuration_access_widths(objects / "1-AdaptecU2CHIMConfig.c.o") != proof["narrow_accesses"]:
+        raise ValueError("Task8 native narrow access proof differs")
+    direct_id = [case for case in cases["cases"] if case["entry"] == "SCSIhGetIDBasedConfiguration"]
+    if not direct_id or not all(any(o["region"] == "adapter" and o["offset"] == 244 and o["size"] == 4
+                                   for o in case["observe"]) for case in direct_id):
+        raise ValueError("Task8 channel/neighbor observations are incomplete")
+    channel_cases = [case for case in direct_id if case["id"].startswith("task8-fix1-channel-")]
+    if {case["channel_case"] for case in channel_cases} != {"clear", "set", "preserve"}:
+        raise ValueError("Task8 channel clear/set/preserve paths are incomplete")
+    for case in channel_cases:
+        native.run_channel_case(objects / "1-AdaptecU2CHIMConfig.c.o", case)
     selected = [c for c in cases["cases"] if c["entry"] == "SCSIhGetCapability"]
     first, second = set(), set()
     expected_ids = []

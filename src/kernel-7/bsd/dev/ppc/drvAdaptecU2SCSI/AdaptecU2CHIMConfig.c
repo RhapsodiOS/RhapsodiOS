@@ -23,8 +23,7 @@ void SCSIhPrepareConfig(AdaptecU2HHCB *hhcb)
             hhcb->idConfiguration = (hhcb->idConfiguration & 0x800fffff) |
                 ((device & 0x400000) ? 0x10000000 : 0) | 0xa0400000;
         else
-            hhcb->idConfiguration = (hhcb->idConfiguration & 0xffff) |
-                (subsystem & 0xffff0000);
+            *(unsigned short *)&hhcb->idConfiguration = subsystem >> 16;
     } else {
         if (subsystem)
             hhcb->deviceID = subsystem >> 16;
@@ -226,9 +225,9 @@ void SCSIhGetIDBasedConfiguration(AdaptecU2HHCB *hhcb)
     else
         hhcb->hardwareFlags &= 0xbf7fffff;
     if ((hhcb->idConfiguration & 0x3000000) == 0x2000000)
-        hhcb->worddc = (hhcb->worddc & 0xffffff00) | 1;
+        ((unsigned char *)&hhcb->worddc)[3] = 1;
     else if ((hhcb->idConfiguration & 0x3000000) == 0x1000000)
-        hhcb->worddc &= 0xffffff00;
+        ((unsigned char *)&hhcb->worddc)[3] = 0;
     if ((family == 0x7870 || family == 0x7550 || family == 0x7850 || family == 0x7860) &&
         hhcb->hardwareMode == 0)
         hhcb->hardwareFlags |= 0x300000;

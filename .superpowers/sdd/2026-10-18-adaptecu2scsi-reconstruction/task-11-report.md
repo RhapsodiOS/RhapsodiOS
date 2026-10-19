@@ -1,5 +1,7 @@
 # Task 11 resource management and dispatch report
 
+> Round1 historical record: the original208 public/20f and29native+3boundary/698a tables below describe the dcc545f58 evidence. Fixround1 appended below supersedes current execution/proof identities with209 public cases and fresh81abee7a public/supplementary results. Source/native/contract identities stay unchanged. Original proof is archived at OUT/task11/fix1/task11-historical-dcc.json.
+
 Task 11 reconstructs all 47 owned resource bodies (34 `SCSIr*`,13 `SCSIR*`) and closes its two assigned compiler switch records at intermediate control-flow acceptance. Production C remains 693 lines with frozen Task3 interfaces. Actual 208 reference cases,29 native/reference leaf pairs, two actual native switch graphs, publication footprints and three actual serialized boundary calls passed. Final linked pairing/four kernel acceptance remains Tasks15/16.
 
 ## Scope and commits
@@ -26,7 +28,7 @@ Producer identities are deliberately separate. The final native object was actua
 | Public reference-results.json raw | `20f867f9b40ef035c6febd94179abd43b181c5c1` | `15EE6D49928845E582B52FBC7476AABF5C9381948FF13F897D43D1D126BEB3C7` |
 | Supplementary native-results.json raw | `698a4ec8c7c9ad8d0ce3727e9a72a632b4e5ecf5` | `4D92781BBDDB7B94E7381EB780B48DA6F6B8CF3D7A1110CE49A17AD9F22A065A` |
 | Supplementary boundary-results.json raw | `698a4ec8c7c9ad8d0ce3727e9a72a632b4e5ecf5` | `842B251D529B11D2024927D90127C3E4284581F635A98AA424D352D5FD1BD42D` |
-| Canonical reconstruction/task11.json | owner evidence metadata | `BA12574B49896EE2517AF79A0C2D7D8187F2BC9B15A92A87419E3A22643D22C2` |
+| Round1 canonical reconstruction/task11.json | archived historical dcc evidence metadata | `BA12574B49896EE2517AF79A0C2D7D8187F2BC9B15A92A87419E3A22643D22C2` |
 
 Raw files are in `OUT/objects/task11`, where OUT=`tools/binrecon/out/adaptecu2scsi-ppc`. Original batch inputs/products/scripts/logs are in `OUT/task11`. The proof binds original archives, compiler command, diagnostics, SDK environment/handoff/baseline identities and each native symbol range, SHA and all local/external Mach-O relocations. External relocation targets come from the actual object; IDA labels are not guessed call targets.
 
@@ -48,7 +50,7 @@ One compiler warning is retained verbatim in `1.log`: passing the local volatile
 
 ### Actual public consumed-input closure
 
-All 13 inputs match the canonical producing20f Git blobs and current canonical contents. Inventory identity uses exactly the consumed functions-marker span; raw file hashes remain separately recorded. The runner version includes its actual raw source hash. Accepted shared contracts.json was restored unchanged; Task11 public CLI explicitly consumes task11-contracts.json.
+At the original freeze, all13 inputs matched producing20f Git blobs/current canonical contents; current fix closure is below. Inventory identity uses exactly the consumed functions-marker span; raw file hashes remain separately recorded. The runner version includes its actual raw source hash. Accepted shared contracts.json was restored unchanged; Task11 public CLI explicitly consumes task11-contracts.json.
 
 | Input | Producing canonical Git SHA-256 | Actual raw working SHA-256 |
 |---|---|---|
@@ -68,7 +70,7 @@ All 13 inputs match the canonical producing20f Git blobs and current canonical c
 
 ### Actual supplementary consumed-input closure
 
-The final698a launcher authenticates its entire 18 input import/JSON/inventory closure before execution, pins the reference hash and verifies HEAD still matches after all actual runs. Current audit independently checks the same exact set and producing Git blobs. The actual raw records are preserved in both result wrappers; canonical checks permit normal Git CRLF checkout conversion without hiding producer bytes.
+The final698a launcher authenticates its entire 18 input import/JSON/inventory closure before execution, pins the reference hash and verifies HEAD still matches after all actual runs. Current audit independently checks the same exact set and producing Git blobs. The actual raw records are preserved in both result wrappers. Review M3 found that final raw helper checks still reject a canonically equal CRLF checkout; this remains mandatory Task16 work. Current retained LF execution is valid; no portability fix is claimed here.
 
 | Input | Producing canonical Git SHA-256 | Actual raw working SHA-256 |
 |---|---|---|
@@ -110,7 +112,7 @@ Fixtures provide valid sentinel-terminated queue heads/tails, nonzero allocated 
 - DispatchQueuedHIOB: frozen, empty, criteria exhausted, eligible and two-entry real dequeue/allocation paths. FreeCriteria: below threshold, empty, exhausted, tagged, eligible, frozen-busy, queue-full idle, last/more priority recovery. Their real sentinel leaf outcomes control absence/presence of observable allocation, queues and callbacks.
 - GetScb allocation0/1 exhaustion and all four mode successful delivery; FreeScb real host-remove/return/get normal and special redispatch for Standard64, Swapping32, StandardAdv, SwappingAdv. Actual descriptor, cache/MMIO, manager state and ownership effects are observed.
 - Device/host abort: empty/missing, head/middle/tail/single unlink; caller AbortTask host short-circuit, device hit and hardware miss. Clear queues preserve original-tail drain order; target-filtered removal retains foreign owners. PostAborted executes real OSD error/protocol callback with one active decrement.
-- Freeze/unfreeze: initial versus already frozen, zero/nonzero saved limits, partial versus final mask restoration, queue-full savedTagged halving, mask32 priority recovery, all16target freeze/unfreeze and queued redispatch.
+- Freeze/unfreeze: initial versus already frozen, zero/nonzero saved limits, partial versus final mask restoration, queue-full savedTagged halving, mask32 priority recovery and16target freeze/unfreeze traversal. Original unfreeze-all runs had only empty heads; fix I1 below supplies the actual nonempty transfer.
 - BusDeviceReset: first/repeated freeze2 and exhausted host append versus all four mode special delivery. AbortTaskSet: first/repeated freeze16 and real host/device reason4 posting. Special completion function3/7 last/more counter paths retain release/dispatch order.
 - CompleteHIOB: ordinary done ring, queue-full freeze, status5 requeue, ring wrap; real FreeScb/FreeCriteria and next queue ownership. PostDoneQueue advances/wraps tail before callback and posts each exactly once.
 - QueueSpecialHIOB: function0/4/5/6/8/9/10/255 plus1/2/3/7. Function9 clears mask4 then dispatches and falls through successful special completion; defaults retain only the initial byte publications.
@@ -206,7 +208,7 @@ Every row binds its reference address/size, canonical source line, actual native
 - `_SCSIRInitialize`: Actual reset completes before real HIM initialize/loader mismatch failure propagates; no wrapper-specific success behavior, deeper successful initialization remains HIM Task12.
 - `_SCSIrReset`: Exact byte done tail/head and word host tail/head stores; construct circular descriptor chain via actual OSD bus conversion/adjust per SCB, optional mode removal, reset16resource fields.
 - `_SCSIrStandardRemoveScbs`: Descriptor1 next becomes descriptor3 and byte freeScbs decrements; valid descriptor base binding and native/reference full footprint checked.
-- `_SCSIRSetUnitHandle`: Real HIM unit setup precedes resource pointer binding at exact40byte target stride; target/lun narrowing and neutral unit fields observed.
+- `_SCSIRSetUnitHandle`: Real HIM unit setup precedes resource pointer binding at exact68byte resource stride; target/lun narrowing and neutral unit fields observed.
 - `_SCSIRFreeUnitHandle`: Native wrapper executes its actual BR24-bound reference HIM free-unit callee for unit and HHCB pointers; public typedef alias deferred per ruling.
 - `_SCSIRQueueSpecialHIOB`: Five initial byte stores at5/6/7/32/33 precede function-minus1 guarded9slot native switch; all aliases/default and function9 unfreeze-dispatch-complete fallthrough retained.
 - `_SCSIRCheckHostIdle`: Host queue early false, then16device head checks, then real HIM active ownership scan; empty/missing/busy returns executed.
@@ -596,3 +598,137 @@ $env:PYTHONPATH="tools/binrecon"
 git status --short
 git diff --check
 ```
+
+## Fixround1: I1 actual unfreeze-all caller ownership transfer
+
+Fix base: `dcc545f58ce4f0a4bb9472d89a6ad536afab8673`. The independent review found one Important gap: **I1 â€” Exercise unfreeze-all's nonempty-head ownership transfer.** Original direct UnFreezeAll, AsyncEvent7 and CompleteSpecial2 cases all reached it with16sentinel heads; reset cases drained queues first. Direct Dispatch tests and an internal-bound declaration did not execute the conditional caller at reference1a3b88..1a3b94/nativea6c..a78. The original all-target queued-redispatch claim was too broad. No production mismatch was found or changed.
+
+Commits: `ae1f3e66d5cd5538d9dcea8832e73193e23aae73` adds one frozen caller/guard and four focused negatives; `81abee7a15334eef5b21c28bf3b61619a8ebb75c` corrects the new blocked-request observation after an initial failing aggregate. Final proof/report metadata is committed separately. Actual final public and supplementary executions both hold81abee7a throughout. Native actual773b-WIP/canonical6f remains separate and unchanged.
+
+### New actual case and observable result
+
+`task11-fix1-unfreeze-all-exhausted-host` enters real SCSIrAsyncEvent(hhcb,7), which invokes real UnFreezeAll. Target 0 starts mask8, saved non-tagged/tagged limits2/3, limits0, logical active1/queued1 and single linked HIOB. Clearing8 restores eligibility; real Dispatch -> DeviceRemove unlinks it, Allocate -> actual GetScb returns255 because the sole SCB remains reserved/free1, and actual HostQueueAppend transfers it to host head/tail. Dispatch then executes a second actual DeviceRemove(empty) and stops. Target 1 starts mask9 and the same saved limits/counts; clearing8 leaves mask1, so its real Dispatch call preserves its device queue. Other 14targets are empty. No exhaustive mode/Boolean matrix is added.
+
+Final target0 head/tailffffffff, active1/queued0, restored limits2/3, saved0, freeze0; host head/tailhiob. Target 1 head/tailblocked, active1/queued1, current limits0, saved2/3, mask1. FreeScbs remains1, free head/tail still the same reserved self-linked descriptor; active array stays allffffffff, done ring stays empty. Both HIOBs have no SCB pointer; manager/status bytes and neutral storage are unchanged. No normal/special completion, OSD async notification or hardware delivery occurs. Full HHCB/HIOB/descriptor/active/done/reserved-SCB observations and exact 24-entry trace are frozen.
+
+Actual final new case: **616 instructions**, sentinel return, zero unknown calls. Trace contains one UnFreezeAll,16UnFreezeDevice,2Dispatch,2DeviceRemove,1Allocate,1GetScb and1HostAppend. All original instructions and real bounded callees execute with unchanged ordinary ABI/pointer/unknown-call/budget guards; no internal hook or sentinel bypass. Returned sentinel pointers remain ordinary internal caller outcomes, observed sentinel queue words stay rawffffffff.
+
+New guard audit_unfreeze_transfer is called from audit_public, hence the owner group and named family authentication. It checks actual AsyncEvent7 caller identity, valid queued/frozen/reserved-SCB preconditions, both post-ownership states, unchanged free/active ownership and exact full caller trace. The UnFreezeAll proof row binds this caller ID separately from its direct-entry cases. Negative tests reject omitted caller coverage, a direct-Dispatch substitute, changed host ownership and changed still-frozen device ownership. The existing three public stale/missing/observation negatives remain selected.
+
+### RED, correction and truthful fresh execution
+
+Coverage RED on original 208: `1 failed,419 deselected in1.10s`, with missing actual unfreeze-all nonempty caller coverage. New positive and four integrated negatives then passed5tests. During case development the normalizer correctly rejected declared ffffffff pointers; raw sentinel observations fixed the fixture without runner changes. A guard draft used SCB byte 3 instead of frozen byte9 and omitted the real second empty dequeue; both were corrected from actual execution/layout. These diagnostic logs remain.
+
+The first full public run atae1f failed on the new209th case because I changed the blocked request's initial SCB byte after exploratory freezing but did not update its expected byte9. It emitted no passing209archive. The actual ae1f supplementary 29+3 run passed but became stale when that one observation was corrected; its raw results remain separate. Exact final new-case input was then run and fully compared twice in short616instruction calls; only blocked+0 observation differed from the earlier expectation. After committing corrected observations at81abee7a, full public 209 and required input-dependent supplementary 29+3 were re-executed with HEAD/all consumed inputs held. No input field was changed after that exact validation.
+
+All original 208case objects equal producing20f objects; the complete first208actual result objects in the successful fresh209archive equal the historical20f results, including observations/instruction counts/return/unknown-call fields. This equality is checked from completed fresh archives, never reconstructed from the failed CLI. Fresh29native payloads and all 3 complete boundary payloads also equal historical698a results; actual wrapper producers/input hashes are new81abee7a. Prefix/result proof is retained in fix1/prefix-and-producer-proof.json.
+
+Complete 208result-prefix canonical SHA-256: `6F98DC77DA7272BC2C3274167EBBBACDEA0BB878947495B6772DB2A1ED4CF66E`. Current 209 families queue 77/abort 69/completion 63; total8,070,886instructions. The three named families reuse authenticated fresh 209 actual output; they do not execute duplicate full CPU graphs. Native helper freshly executes29pairs/2switches/2publication footprints and sequence helper freshly executes3boundary calls because each declared whole-case input closure changed. No native compilation or unchanged layout/inventory/accepted-group corpus was rerun.
+
+### Preserved raw producers and current proof
+
+| Artifact | Actual producer | Raw SHA-256 |
+|---|---|---|
+| `reference-results-historical-20f.json` | `20f867f9b` | `15EE6D49928845E582B52FBC7476AABF5C9381948FF13F897D43D1D126BEB3C7` |
+| `native-results-historical-698a.json` | `698a4ec8c` | `4D92781BBDDB7B94E7381EB780B48DA6F6B8CF3D7A1110CE49A17AD9F22A065A` |
+| `boundary-results-historical-698a.json` | `698a4ec8c` | `842B251D529B11D2024927D90127C3E4284581F635A98AA424D352D5FD1BD42D` |
+| `native-results-historical-ae1f.json` | `ae1f3e66d actual/stale` | `3F563666104AB071CB6391F487701384AF8855F12B673976AD0EC501A78852A9` |
+| `boundary-results-historical-ae1f.json` | `ae1f3e66d actual/stale` | `3B5751822B73E81F8A9002C62589F8BA39AD6254E71F1102C51E2E792D39550D` |
+| `reference-results.json` | `81abee7a1` | `428DC5114ACEED7031FA03FD3389575A4BD2857555CE7CAD71D3549AFC2DD535` |
+| `native-results.json` | `81abee7a1` | `3C9EF0DBF1C04628C4CE1ECDFAC7E4D5AC7210C9530D9CA5E1168EDA253EA219` |
+| `boundary-results.json` | `81abee7a1` | `EA6E6A9CD34A4E96EFC036D38DA3B85717257D92FA0727E760D510BCDBF15AC4` |
+| Current canonical task11.json | fresh closure metadata | `02DE029BAC11B897AA271778FFEE0890AF493480A231F34CE4338B895CB3FC0F` |
+| Failed public ae1f log | failure, no passing archive | `94B2A6883947184598C5DBA72CA738A49A5398237CFB98C8140EBAA250D31014` |
+
+Native object8B2368586DA6F0FD78DE9BBCE1EF520AE8D0D0DDDCC54A3478C4D3EE24257628, original native manifest/input archives/compiler diagnostics and all 7 canonical 6f input bindings are unchanged. Source map and data.json equal fix base exactly. Only 47 owned ledger proof digests plus owned factual/control-flow notes change; all other ledger entries stay equal. SetUnitHandle report/proof wording now correctly says 68-byte resource stride, not 40-byte enclosing-target allocation.
+
+### Current complete execution inputs
+
+| Closure | Input | Canonical producing Git SHA-256 | Actual working raw SHA-256 |
+|---|---|---|
+| public13 | `src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/tests/task11-cases.json` | `62B4EA245355AA7EF14A90DFDD3B9B130BB15A41ADAFBFC8C7139EE618BB6F8B` | `62B4EA245355AA7EF14A90DFDD3B9B130BB15A41ADAFBFC8C7139EE618BB6F8B` |
+| public13 | `src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/tests/task11-contracts.json` | `DEC24F3F4C26F6F6EA5370DF9DAE26DC74BE04B255D773FB3A04F82E7428149A` | `DEC24F3F4C26F6F6EA5370DF9DAE26DC74BE04B255D773FB3A04F82E7428149A` |
+| public13 | `src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/tests/ppc_cases.py` | `BD9D0F0A2A3D881A558FBE9E91D57A9232379DDF71F5F3DE0DE4AB549475E8A1` | `BD9D0F0A2A3D881A558FBE9E91D57A9232379DDF71F5F3DE0DE4AB549475E8A1` |
+| public13 | `src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/tests/reference.py` | `C1E0758E851CD700228EE08EEF9791330A980A193732409E9531F68CFD6AA6B4` | `775E0165E308269D6F730B6B92F50119361538BD7C4CEE5D641CE6CCEC1308DD` |
+| public13 | `src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/reconstruction/inventory.md` | `319101C8CC2305FBF33B3E51BDDE233865D802961981155134DD713E2EF77F3D` | `9CDDC9E9A032D85AEF658E059F7ACB008300E98D451A97B823597062FFC09A17` |
+| public13 | `tools/binrecon/binrecon/__init__.py` | `91447944015CEC709E8AA7655F7E9D64E1E4508E7023A57FE3746911C0FC6FED` | `91447944015CEC709E8AA7655F7E9D64E1E4508E7023A57FE3746911C0FC6FED` |
+| public13 | `tools/binrecon/binrecon/identity.py` | `679D358653D837297A1EB61472F32718F2A39D6CD1F533D4DDEE3196F77AE9F0` | `679D358653D837297A1EB61472F32718F2A39D6CD1F533D4DDEE3196F77AE9F0` |
+| public13 | `tools/binrecon/binrecon/macho.py` | `D8F18CA1E4BE7AFCDE1C9622503099F338D15D3E1E9063E1F24208A1ADBB7370` | `D8F18CA1E4BE7AFCDE1C9622503099F338D15D3E1E9063E1F24208A1ADBB7370` |
+| public13 | `tools/binrecon/binrecon/objc_abi.py` | `03798523E68A8C9AFED96C15FA108DBF86488D3311B1C1B089BC3EECD607816D` | `03798523E68A8C9AFED96C15FA108DBF86488D3311B1C1B089BC3EECD607816D` |
+| public13 | `tools/binrecon/binrecon/source_map.py` | `90D00D1AF1B8EB56231DCDB377B079A18CD918C59CD3329C6E983C6BB5B8B5A0` | `90D00D1AF1B8EB56231DCDB377B079A18CD918C59CD3329C6E983C6BB5B8B5A0` |
+| public13 | `tools/binrecon/binrecon/schema.py` | `6668027B08626208314737E1BF694898CA52F6D2AF6C61227AF63F548648373B` | `6668027B08626208314737E1BF694898CA52F6D2AF6C61227AF63F548648373B` |
+| public13 | `tools/binrecon/binrecon/arch.py` | `0B7DD7EB6AFB10F9A9AD66780F79BF94897ED2154AF034CDE0DEAED6F074E90A` | `0B7DD7EB6AFB10F9A9AD66780F79BF94897ED2154AF034CDE0DEAED6F074E90A` |
+| public13 | `tools/binrecon/source_paths.py` | `E6C886F08AA2F64CAE34C8F3B3A18F56A2718AAE14A6CAE29BC595A40978AE7B` | `E6C886F08AA2F64CAE34C8F3B3A18F56A2718AAE14A6CAE29BC595A40978AE7B` |
+| supplementary18 | `src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/tests/task11_execute.py` | `3A5D3C346F853E178539438126E3816836A61F4C2E92AFAF7793306991E4D64E` | `3A5D3C346F853E178539438126E3816836A61F4C2E92AFAF7793306991E4D64E` |
+| supplementary18 | `src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/tests/task11_native.py` | `E91093F55DD4BEF103D85414A0D695EEA9D6BFC3DAEACCDF23C8AC136DE88796` | `E91093F55DD4BEF103D85414A0D695EEA9D6BFC3DAEACCDF23C8AC136DE88796` |
+| supplementary18 | `src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/tests/task11_sequence.py` | `F0A9AD2C15ACB368640EF4132DD46CAE9D3F7843099F0CF9A6A94E11AEB3D700` | `F0A9AD2C15ACB368640EF4132DD46CAE9D3F7843099F0CF9A6A94E11AEB3D700` |
+| supplementary18 | `src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/tests/task10_sequence.py` | `BA3DD420931F58E47591947ABF3E5A8AC71276FADA1FE6C2B80CEF6B2769A6CD` | `BA3DD420931F58E47591947ABF3E5A8AC71276FADA1FE6C2B80CEF6B2769A6CD` |
+| supplementary18 | `src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/tests/task11-sequences.json` | `DDDFC50E07C241AB6D618495F22B93902AA9F310C04C0AF0610A52CACBBCD5DC` | `B4594AAC78B49C0AD3E958FB336708D1F882BC6AF7E3E260A9EC9CB2B973F465` |
+| supplementary18 | `src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/tests/task11-cases.json` | `62B4EA245355AA7EF14A90DFDD3B9B130BB15A41ADAFBFC8C7139EE618BB6F8B` | `62B4EA245355AA7EF14A90DFDD3B9B130BB15A41ADAFBFC8C7139EE618BB6F8B` |
+| supplementary18 | `src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/tests/task11-contracts.json` | `DEC24F3F4C26F6F6EA5370DF9DAE26DC74BE04B255D773FB3A04F82E7428149A` | `DEC24F3F4C26F6F6EA5370DF9DAE26DC74BE04B255D773FB3A04F82E7428149A` |
+| supplementary18 | `src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/tests/ppc_cases.py` | `BD9D0F0A2A3D881A558FBE9E91D57A9232379DDF71F5F3DE0DE4AB549475E8A1` | `BD9D0F0A2A3D881A558FBE9E91D57A9232379DDF71F5F3DE0DE4AB549475E8A1` |
+| supplementary18 | `src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/tests/reference.py` | `C1E0758E851CD700228EE08EEF9791330A980A193732409E9531F68CFD6AA6B4` | `775E0165E308269D6F730B6B92F50119361538BD7C4CEE5D641CE6CCEC1308DD` |
+| supplementary18 | `src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/reconstruction/inventory.md` | `319101C8CC2305FBF33B3E51BDDE233865D802961981155134DD713E2EF77F3D` | `9CDDC9E9A032D85AEF658E059F7ACB008300E98D451A97B823597062FFC09A17` |
+| supplementary18 | `tools/binrecon/source_paths.py` | `E6C886F08AA2F64CAE34C8F3B3A18F56A2718AAE14A6CAE29BC595A40978AE7B` | `E6C886F08AA2F64CAE34C8F3B3A18F56A2718AAE14A6CAE29BC595A40978AE7B` |
+| supplementary18 | `tools/binrecon/binrecon/__init__.py` | `91447944015CEC709E8AA7655F7E9D64E1E4508E7023A57FE3746911C0FC6FED` | `91447944015CEC709E8AA7655F7E9D64E1E4508E7023A57FE3746911C0FC6FED` |
+| supplementary18 | `tools/binrecon/binrecon/identity.py` | `679D358653D837297A1EB61472F32718F2A39D6CD1F533D4DDEE3196F77AE9F0` | `679D358653D837297A1EB61472F32718F2A39D6CD1F533D4DDEE3196F77AE9F0` |
+| supplementary18 | `tools/binrecon/binrecon/macho.py` | `D8F18CA1E4BE7AFCDE1C9622503099F338D15D3E1E9063E1F24208A1ADBB7370` | `D8F18CA1E4BE7AFCDE1C9622503099F338D15D3E1E9063E1F24208A1ADBB7370` |
+| supplementary18 | `tools/binrecon/binrecon/objc_abi.py` | `03798523E68A8C9AFED96C15FA108DBF86488D3311B1C1B089BC3EECD607816D` | `03798523E68A8C9AFED96C15FA108DBF86488D3311B1C1B089BC3EECD607816D` |
+| supplementary18 | `tools/binrecon/binrecon/source_map.py` | `90D00D1AF1B8EB56231DCDB377B079A18CD918C59CD3329C6E983C6BB5B8B5A0` | `90D00D1AF1B8EB56231DCDB377B079A18CD918C59CD3329C6E983C6BB5B8B5A0` |
+| supplementary18 | `tools/binrecon/binrecon/schema.py` | `6668027B08626208314737E1BF694898CA52F6D2AF6C61227AF63F548648373B` | `6668027B08626208314737E1BF694898CA52F6D2AF6C61227AF63F548648373B` |
+| supplementary18 | `tools/binrecon/binrecon/arch.py` | `0B7DD7EB6AFB10F9A9AD66780F79BF94897ED2154AF034CDE0DEAED6F074E90A` | `0B7DD7EB6AFB10F9A9AD66780F79BF94897ED2154AF034CDE0DEAED6F074E90A` |
+
+### Exact commands and retained output
+
+All commands use the isolated worktree root, PYTHONPATH=tools/binrecon and the accepted OUT venv. Full stdout/stderr and first failures are retained under OUT/task11/fix1.
+
+```powershell
+$env:PYTHONPATH="tools/binrecon"
+& tools/binrecon/out/adaptecu2scsi-ppc/venv/Scripts/python.exe -m pytest src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/tests/test_reconstruction.py -p no:faulthandler -q -k unfreeze_all_nonempty_caller_coverage *> tools/binrecon/out/adaptecu2scsi-ppc/task11/fix1/coverage-red.log
+& tools/binrecon/out/adaptecu2scsi-ppc/venv/Scripts/python.exe tools/binrecon/out/adaptecu2scsi-ppc/task11/fix1/correct-observation.py *> tools/binrecon/out/adaptecu2scsi-ppc/task11/fix1/correct-observation.log
+& tools/binrecon/out/adaptecu2scsi-ppc/venv/Scripts/python.exe src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/tests/ppc_cases.py reference --reference tools/binrecon/out/adaptecu2scsi-ppc/reference --cases src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/tests/task11-cases.json --contracts src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/tests/task11-contracts.json --output tools/binrecon/out/adaptecu2scsi-ppc/objects/task11/reference-results.json *> tools/binrecon/out/adaptecu2scsi-ppc/task11/fix1/reference-final.log
+& tools/binrecon/out/adaptecu2scsi-ppc/venv/Scripts/python.exe src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/tests/task11_execute.py --reference tools/binrecon/out/adaptecu2scsi-ppc/reference --objects tools/binrecon/out/adaptecu2scsi-ppc/objects/task11 *> tools/binrecon/out/adaptecu2scsi-ppc/task11/fix1/supplementary-final.log
+& tools/binrecon/out/adaptecu2scsi-ppc/venv/Scripts/python.exe tools/binrecon/out/adaptecu2scsi-ppc/task11/fix1/update-proof.py *> tools/binrecon/out/adaptecu2scsi-ppc/task11/fix1/prefix-and-proof.log
+& tools/binrecon/out/adaptecu2scsi-ppc/venv/Scripts/python.exe -m pytest src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/tests/test_reconstruction.py -p no:faulthandler -q -k "resource_queue_exhaustion_and_redispatch or host_device_abort_freeze_unfreeze or resource_completion_reset_ownership or task11_resource_owner_evidence or task11_unfreeze or task11_public_actual_results_reject_corruption" *> tools/binrecon/out/adaptecu2scsi-ppc/task11/fix1/scoped-final.log
+& tools/binrecon/out/adaptecu2scsi-ppc/venv/Scripts/python.exe -m pytest src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/tests/test_reconstruction.py -p no:faulthandler -q -k task11_canonical_git_closure_and_scoped_delta *> tools/binrecon/out/adaptecu2scsi-ppc/task11/fix1/canonical-final.log
+```
+
+| Log | Retained output / SHA-256 |
+|---|---|
+| `coverage-red.log` | FAILED src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/tests/test_reconstruction.py::test_task11_unfreeze_all_nonempty_caller_coverage / 1 failed, 419 deselected in 1.10s / `7A041B0BDF6CDA330E64B84FD355BA905662B93EFB854DE8394CBB831FA3DED6` |
+| `newcase-pointer-normalization-failure.log` |     raise ValueError(f"unresolved declared pointer: 0x{value:x}") / ValueError: unresolved declared pointer: 0xffffffff / `C484E6A6190BAA7E53854CABBFEA88DF7E4D1CC4E9ADE8A9946DF27656A0F93A` |
+| `coverage-offset-diagnostic.log` | FAILED src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/tests/test_reconstruction.py::test_task11_unfreeze_all_nonempty_caller_coverage / 1 failed, 419 deselected in 0.86s / `A1F4BF5ABDF8CEF9339300BF1DAEE017A1FEEC0B3A579F1A79FA41C5A8632573` |
+| `coverage-positive-negative.log` | .....                                                                    [100%] / 5 passed, 419 deselected in 2.57s / `70D91D385D2966EC63187D57E06B7F037F75FFF984C490C6DA73A6C8FFD4A5A6` |
+| `reference-failed-ae1f.log` | frozen expected observations differ: task11-fix1-unfreeze-all-exhausted-host: {'memory': {'hhcb+0': {'bytes': '0000000000000001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000ffffffffffffffff00000002000000030000000100000000000000000000000000000000000000000000000000000 / `94B2A6883947184598C5DBA72CA738A49A5398237CFB98C8140EBAA250D31014` |
+| `supplementary-ae1f.log` | PASS actual29 native/reference leaves,2switches,2publication footprints / PASS actual3 resource boundary calls; HEAD held ae1f3e66d5cd5538d9dcea8832e73193e23aae73 / `52D21948981BDB5AB2D7ECB486916DC4D61331B2F2B9D7825CF0846659189775` |
+| `correct-observation.log` | changed observation regions ['blocked+0'] / PASS exact final input/observations616 instructions, sentinel True unknown [] / `79BC3768A8EA7C70597DC7FC91D957E8718BFC3AF0A2BF10D9CE731B5B40FB41` |
+| `reference-final.log` | reference: 209 frozen cases passed / `08188717EA251425248969173E277031A1CC41AF822733CFF66B4839F65AC717` |
+| `supplementary-final.log` | PASS actual29 native/reference leaves,2switches,2publication footprints / PASS actual3 resource boundary calls; HEAD held 81abee7a15334eef5b21c28bf3b61619a8ebb75c / `4073A7E5C3943C097A221A66C36FB7E865492E1934A798EA47DF08990062D0E2` |
+| `unchanged-scope.log` | reconstruction/data.json A9C2BA26FE1ABE4BDD33F2E22C417B82F05D2C74E81C66A6AC91494FF92D8904 UNCHANGED / reconstruction/source-map.json B6F8429FBE58F7C72876299B74C833201B56750E14A24D08CA7621E67DBE3D27 UNCHANGED / `6164E1A28CE8E424882DF64C7463880777267E75B538E203650A11734E1FF851` |
+| `prefix-and-proof.log` | } / Updated actual closure and47canonical ledger proof bindings; source/native/contracts unchanged / `0A2CDDD8A83256E12F7EB76FDA4A2DD52939EA495450D50C6216B8F5FB6C44A1` |
+| `scoped-final.log` | ............                                                             [100%] / 12 passed, 412 deselected in 54.81s / `BE628EB845BA6C7FFA4F6F3643C53D5D42E51FD0ACBABDCA504D2E8D68B904A1` |
+
+The current-Git canonical test runs after committing this report/proof metadata, with its exact output retained in fix1/canonical-final.log. It checks proof Git blob/digest binding and the original47ledger/map/two-data scope. A separate fix-base delta check also verifies unchanged source/native/contracts/source-map/data and original 208case/result equality; no metadata-only native build is implied.
+
+### Remaining limitations and Minor disposition
+
+I1 is covered by the actual allowed exhausted-host caller path above; no new unfreeze-all hardware-delivery/native-linked pairing claim is made. MinorM1 qualifier warning remains in unchanged source/native raw. MinorM2 new MMIO evidence labels still need actual callee/address/proof attribution (e.g. register134 through accepted SCSIhAIC78XXUpdateDataFifoThrsh), and MinorM3 final raw helper hash comparisons still reject canonically equal CRLF files; both remain mandatory Task16 work per controller. No contract snapshot or portability code change enters this fix. M4 stride wording is factually corrected to68 in report/proof only.
+
+Task16 exact FreeUnit pointer4 alias/direct/all4linked cases, authenticated snapshot consolidation, final fresh aggregate/all4paired/476body/48data acceptance, Task9 observer and incoming-r28 obligations remain. Task15 four fresh committed-input builds remain. Physical DMA/timing, live concurrency and long Task10 maximum polls are not proved here. The intermediate native47 body CF inspection/source identity remains unchanged; final tasks retain their separate requirements. No helper/subagent, guest operation, native compilation or unrelated cleanup occurred in this fix.
+
+### Fixround1 committed metadata and final check
+
+Proof/ledger metadata commit: `6e334d3561c40f98e70c42eb8cf41c86c52fd3bb`. Its fresh canonical Git check retained `1 passed,423 deselected in1.77s` in `fix1/canonical-metadata.log`, SHA-256 `2CF0147AF3BF53D20951306C531EAA6A8651FE3A6D544BED943EC43285410FF8`. The final report-only commit is followed by the same isolated current-HEAD check in `fix1/canonical-final.log`; actual public/supplementary producer remains81abee7a.
+
+Exact fix-base delta command and output:
+
+```powershell
+$env:PYTHONPATH="tools/binrecon"
+& tools/binrecon/out/adaptecu2scsi-ppc/venv/Scripts/python.exe tools/binrecon/out/adaptecu2scsi-ppc/task11/fix1/delta-check.py *> tools/binrecon/out/adaptecu2scsi-ppc/task11/fix1/delta-check.log
+```
+
+```text
+PASS fix-base delta: source/native7+47ranges/relocs/contracts/data/source-map/accepteddeps/helpers unchanged; only47owned ledger proof bindings plus2owned explanatory reasons; one appended caller
+```
+
+Delta log SHA-256: `68E446D6039FDCEA505A5BF6E0C8414ACA107F8858A855D3D215250F180DCE48`. All stated historical raw files/logs remain in place.

@@ -15,7 +15,7 @@ static const struct {
 	{ EFAULT, "EFAULT" }, { EEXIST, "EEXIST" }, { ENOTDIR, "ENOTDIR" },
 	{ EISDIR, "EISDIR" }, { EINVAL, "EINVAL" }, { ENFILE, "ENFILE" },
 	{ EMFILE, "EMFILE" }, { ENOSPC, "ENOSPC" }, { EPIPE, "EPIPE" },
-	{ ENOSYS, "ENOSYS" }, { EOPNOTSUPP, "EOPNOTSUPP" },
+	{ ENOSYS, "ENOSYS" }, { EOPNOTSUPP, "EOPNOTSUPP" }, { EBUSY, "EBUSY" },
 	{ EPROTONOSUPPORT, "EPROTONOSUPPORT" }, { EADDRINUSE, "EADDRINUSE" },
 	{ ECONNREFUSED, "ECONNREFUSED" }, { ECONNRESET, "ECONNRESET" },
 	{ ENOBUFS, "ENOBUFS" }, { ETIMEDOUT, "ETIMEDOUT" }
@@ -76,6 +76,30 @@ st_fail(struct st_ctx *c, const char *fmt, ...)
 	strcpy(buf + n, at);
 	write(c->fd, buf, n + m);
 	_exit(1);
+}
+
+void
+st_unsup(struct st_ctx *c, const char *fmt, ...)
+{
+	char buf[2048];
+	va_list ap;
+	int n;
+	void (*fn)(struct st_ctx *) = c->cleanup;
+
+	if (fn) {
+		c->cleanup = NULL;
+		fn(c);
+	}
+	strcpy(buf, "UNSUP ");
+	va_start(ap, fmt);
+	vsprintf(buf + 6, fmt, ap);
+	va_end(ap);
+	n = strlen(buf);
+	if (n > 510)
+		n = 510;
+	buf[n++] = '\n';
+	write(c->fd, buf, n);
+	_exit(0);
 }
 
 void

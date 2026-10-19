@@ -28,7 +28,7 @@ while test $cycle -lt $1; do
 	pids=
 	for t in $together; do
 		echo "stress: vm $t" 2>/dev/null >/dev/console || true
-		./stress-vm $opts $t >>$out 2>/dev/null &
+		./stress-vm -N $opts $t >>$out 2>/dev/null &
 		pids="$pids $!"
 	done
 	for p in $pids; do

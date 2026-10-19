@@ -13,7 +13,7 @@ done
 test $# = 1 || { echo "$usage" >&2; exit 2; }
 cd `dirname $0`; test -x ./stress-mmap || { echo runtests: no ./stress-mmap >&2; exit 2; }
 out=runtests.out.$$
-tests="shared mixed private trunc regrow anon sync anonshared zero"
+tests="shared mixed private trunc anon sync anonshared zero regrow"
 cycle=0
 rc=0
 : >$out
@@ -25,7 +25,7 @@ while test $cycle -lt $1; do
 	pids=
 	for t in $tests; do
 		echo "stress: mmap $t" 2>/dev/null >/dev/console || true
-		./stress-mmap $opts $t >>$out 2>/dev/null &
+		./stress-mmap -N $opts $t >>$out 2>/dev/null &
 		pids="$pids $!"
 	done
 	for p in $pids; do

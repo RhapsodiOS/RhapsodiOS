@@ -402,3 +402,130 @@ def test_stress_state_ignores_ssh_noise():
     assert fb.stress_state(1.0, warn) == "running"
     assert fb.stress_state(1.0, warn + "\n0\n") == "0"
     assert fb.stress_state(1.0, "137") == "137"
+
+
+# --- phase 4: --fs targets -------------------------------------------------
+
+def test_parse_fs_defaults_and_all():
+    assert fb.parse_fs("") == ["ufs"]
+    assert fb.parse_fs("ufs") == ["ufs"]
+    assert fb.parse_fs("all") == ["ufs", "ext2", "hfs", "msdos", "nfs"]
+    assert fb.parse_fs("ext2,msdos") == ["ext2", "msdos"]
+
+
+def test_parse_fs_rejects_unknown():
+    with pytest.raises(ValueError):
+        fb.parse_fs("ext2,bogus")
+
+
+def test_targets_disk_has_three_128m_partitions(tmp_path, monkeypatch):
+    import struct
+    # the floppy label template lives with the VM assets, like stress_dev's default
+    assets = os.environ.get("RHAP_VM_ASSETS", "D:/RhapsodiOS/vm")
+    if not os.path.exists(os.path.join(assets, "install", "rhapsody_dr2_x86_InstallationFloppy.img")):
+        pytest.skip("no VM assets")
+    monkeypatch.setattr(fb, "ASSETS", assets)
+    path = str(tmp_path / "t.img")
+    fb.targets_disk(path, mb=1)
+    raw = open(path, "rb").read()
+    off = raw.index(b"dlV3")
+    sectors = 1024 * 1024 // 512
+    assert struct.unpack_from(">ii", raw, off + 190) == (0, sectors)
+    assert struct.unpack_from(">ii", raw, off + 236) == (sectors, sectors)
+    assert struct.unpack_from(">ii", raw, off + 282) == (2 * sectors, sectors)
+    assert fb.TARGET_PART == {"ext2": "a", "hfs": "b", "msdos": "c"}
+    assert fb.TARGET_MOUNT["nfs"] == "/mnt/nfs"
+
+
+def test_target_result_unsup_and_ran():
+    u = fb.target_result("hfs", "unsup", reason="mount_hfs: no such device")
+    assert u == {"status": "unsup", "reason": "mount_hfs: no such device",
+                 "counts": {}, "fails": [], "fsck": ""}
+    text = ("STRESS fs rw PASS iters=1 procs=1 secs=1.0 ops=1/s maxlat=1ms seed=1\n"
+            "STRESS fs tree FAIL reason=x worker=0 iter=0 seed=1\n")
+    r = fb.target_result("ext2", "ran", report_text=text, fsck="clean")
+    assert r["status"] == "ran" and r["fsck"] == "clean"
+    assert r["counts"]["fs"]["PASS"] == 1 and r["counts"]["fs"]["FAIL"] == 1
+    assert r["fails"] == ["STRESS fs tree FAIL reason=x worker=0 iter=0 seed=1"]
+
+
+def test_stress_fs_conflicts_with_soak(capsys):
+    with pytest.raises(SystemExit):
+        fb.main(["ffsbench", "stress", "--label", "x", "--fs", "ext2", "--soak", "60"])
+    assert "--soak runs on UFS only" in capsys.readouterr().err
+
+
+def test_stress_fs_rejects_unknown_target(capsys):
+    with pytest.raises(SystemExit):
+        fb.main(["ffsbench", "stress", "--label", "x", "--fs", "zfs"])
+    assert "unknown --fs target" in capsys.readouterr().err
+
+
+def test_fs_src_tar_has_the_tool_sources_and_no_e2fsprogs():
+    import io
+    import tarfile
+    names = tarfile.open(fileobj=io.BytesIO(fb.fs_src_tar())).getnames()
+    assert "src/msdosfs-1/msdos_newfs/newfs_msdos.c" in names
+    assert "src/hfs-1/hfs_newfs/newfs_hfs.c" in names
+    assert "src/kernel-7/bsd/dev/disk.h" in names
+    assert not any(n.endswith("e2fsprogs-1.35.tar.gz") for n in names)
+
+
+def test_stress_fs_command_runs_ufs_then_each_target():
+    c = fb.stress_fs_command(["ufs", "ext2", "nfs"], "fs mmap", 7)
+    assert c.index("/usr/local/stress/run -a -s 7 -d /mnt1") < c.index("stress_fs.sh run ext2 ")
+    assert c.index("stress_fs.sh run ext2") < c.index("stress_fs.sh run nfs")
+    assert ">> /tmp/stressfs.out" in c and "/tmp/stress.exit" in c
+    assert "/usr/local/stress/run" not in fb.stress_fs_command(["msdos"], "fs", 7)
+
+
+def test_parse_stressfs_unsup_and_lost():
+    text = ('BUILD mount_hfs ok\n'
+            'STRESSFS ext2 status=ran reason="" fsck="host"\n'
+            'STRESSFS hfs status=unsup reason="mount: mount_hfs: Input/output error" fsck=""\n')
+    r = fb.parse_stressfs(text, ["ext2", "hfs", "msdos"])
+    assert r["ext2"] == ("ran", "", "host")
+    assert r["hfs"] == ("unsup", "mount: mount_hfs: Input/output error", "")
+    assert r["msdos"] == ("lost", "no result: the guest stopped answering or the run ended first", "")
+
+
+def test_assemble_targets_ran_unsup_lost_and_fsck():
+    tout = ('STRESSFS ext2 status=ran reason="" fsck="host"\n'
+            'STRESSFS hfs status=unsup reason="mount: no" fsck=""\n'
+            'STRESSFS msdos status=ran reason="" fsck="clean"\n')
+    texts = {"ext2": "STRESS fs rw PASS iters=1 procs=1 secs=1.0 ops=1/s maxlat=1ms seed=1\n"}
+    r = fb.assemble_targets(tout, texts, ["ext2", "hfs", "msdos", "nfs"], lambda name: "clean-" + name)
+    assert r["ext2"]["status"] == "ran" and r["ext2"]["fsck"] == "clean-ext2"
+    assert r["ext2"]["counts"]["fs"]["PASS"] == 1
+    assert r["hfs"]["status"] == "unsup" and r["hfs"]["reason"] == "mount: no"
+    assert r["msdos"]["fsck"] == "clean"
+    assert r["nfs"]["status"] == "lost"
+
+
+def test_assemble_targets_reports_a_failed_fetch():
+    tout = 'STRESSFS ext2 status=ran reason="" fsck="clean"\n'
+    r = fb.assemble_targets(tout, {}, ["ext2"], lambda name: "x")
+    assert r["ext2"]["reason"] == "results could not be fetched"
+
+
+def test_need_fetch_retries_an_empty_result():
+    assert fb.need_fetch("ext2", {"ext2": ""})
+    assert not fb.need_fetch("ext2", {"ext2": "STRESS x"})
+    assert fb.need_fetch("hfs", {})
+
+
+def test_ext2_unavailable_makes_only_ext2_unsup(monkeypatch):
+    def boom(workdir, mb=128):
+        raise OSError("wsl: not found")
+    monkeypatch.setattr(fb, "ext2_volume", boom)
+    vol, why = fb.try_ext2_volume("/nonexistent")
+    assert vol is None and "wsl: not found" in why
+
+
+def test_print_lines_survives_a_console_that_cannot_encode():
+    import io
+    raw = io.BytesIO()
+    out = io.TextIOWrapper(raw, encoding="cp1252")
+    fb.print_lines(["msdos fsck=/t[.Å←T", "ok"], out)
+    out.flush()
+    assert raw.getvalue().splitlines()[1] == b"ok"

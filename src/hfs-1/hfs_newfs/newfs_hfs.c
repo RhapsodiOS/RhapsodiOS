@@ -183,6 +183,7 @@ int hfs_newfs(char *device, char *volumename, int forceHFS)
 	struct stat stbuf;
 	struct statfs *mp;
 	DriveInfo dip;
+	struct disk_partition_info part;
 	int n;
     int fso = 0;
 	int retval = 0;
@@ -221,6 +222,13 @@ int hfs_newfs(char *device, char *volumename, int forceHFS)
 
 	if (ioctl(fso, DKIOCBLKSIZE, &dip.sectorSize) < 0)
 		fatal("%s: %s", device, strerror(errno));
+
+	/* DKIOCNUMBLKS counts the whole drive; a labelled partition reports
+	 * its own size, so the volume stays inside it. */
+	if (ioctl(fso, DKIOCGPARTINFO, &part) == 0 && part.block_count > 0 &&
+	    part.block_size > 0)
+		dip.totalSectors = (UInt32)((unsigned long long)part.block_count *
+		    part.block_size / dip.sectorSize);
 
 //	printf("stbuf.st_rdev = %d\n", stbuf.st_rdev);
 //	printf("stbuf.st_mode = %o\n", stbuf.st_mode & S_IFMT);

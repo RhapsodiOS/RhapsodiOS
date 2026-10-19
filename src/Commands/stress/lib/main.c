@@ -21,6 +21,7 @@ static volatile int alarmed;
 
 /* Leader state: what the workers reported. */
 static long start_sec;		/* leader's start time, copied to st_ctx.t_start */
+static char unsup[512];		/* a worker's st_unsup fields, if no FAIL */
 static char fail[512];		/* the first failure: a FAIL line's fields, a signal or an exit */
 static unsigned long units, maxlat_us, clockback;
 static struct st_leak leak_before, leak_after;	/* static: ~20 KB each */
@@ -157,6 +158,8 @@ take(char *s)
 			maxlat_us = l;
 	} else if (strncmp(s, "FAIL ", 5) == 0 && fail[0] == '\0') {
 		strncpy(fail, s + 5, sizeof fail - 1);
+	} else if (strncmp(s, "UNSUP ", 6) == 0 && unsup[0] == '\0') {
+		strncpy(unsup, s + 6, sizeof unsup - 1);
 	}
 }
 
@@ -267,6 +270,10 @@ leader(const struct st_test *t, const char *cat)
 			else
 				sprintf(fail, "exit=%d worker=%d", WEXITSTATUS(status), i);
 		}
+		if (pid < 0 && fail[0] == '\0' && st_lost(live, errno)) {
+			sprintf(fail, "reason=lost-child live=%d", live);
+			live = 0;	/* nothing left to reap */
+		}
 		if (fail[0] != '\0' && !stopped) {
 			for (i = 0; i < n; i++)
 				if (pids[i] > 0)
@@ -279,13 +286,20 @@ leader(const struct st_test *t, const char *cat)
 	secs = since(&t0);
 	while (input(fds[0], 0))
 		;
-	st_leak_snap(&leak_after);
 	lk[0] = '\0';
-	st_leak_diff(&leak_before, &leak_after, lk, sizeof lk);
+	if (!st_opt.noleak) {
+		st_leak_snap(&leak_after);
+		st_leak_diff(&leak_before, &leak_after, lk, sizeof lk);
+	}
 	if (fail[0] != '\0') {
 		sprintf(what, "FAIL %s%s", fail, lk);
 		st_line(cat, t->name, what, 1);
 		exit(1);
+	}
+	if (unsup[0] != '\0') {
+		sprintf(what, "UNSUP %s", unsup);
+		st_line(cat, t->name, what, 1);
+		exit(0);
 	}
 	if (secs < 1e-6)
 		secs = 1e-6;
@@ -302,6 +316,12 @@ leader(const struct st_test *t, const char *cat)
 	strcpy(p, lk);
 	st_line(cat, t->name, what, 1);
 	exit(0);
+}
+
+int
+st_lost(int live, int err)
+{
+	return live > 0 && err == ECHILD;
 }
 
 /* Returns 1 on FAIL. */
@@ -328,7 +348,8 @@ run(const struct st_test *t, const char *cat)
 		}
 	}
 	fflush(stdout);
-	st_leak_snap(&leak_before);	/* the leader inherits it */
+	if (!st_opt.noleak)
+		st_leak_snap(&leak_before);	/* the leader inherits it */
 	/* blocked until leader_pid is set, so on_stop never misses the leader */
 	sigemptyset(&stop);
 	sigaddset(&stop, SIGINT);
@@ -386,7 +407,7 @@ static int
 usage(const char *cat, const struct st_test *tests)
 {
 	fprintf(stderr, "usage: stress-%s [-n procs] [-i iters] [-t secs] [-T secs] [-s seed] "
-		"[-d dir] [-m bytes[k|m]] [-D rawdev] [-v] [-l] [-L] [test ...]\ntests:", cat);
+		"[-d dir] [-m bytes[k|m]] [-D rawdev] [-v] [-l] [-L] [-N] [test ...]\ntests:", cat);
 	for (; tests->name != NULL; tests++)
 		fprintf(stderr, " %s", tests->name);
 	fprintf(stderr, "\n");
@@ -434,7 +455,7 @@ stress_main(int argc, char **argv, const char *cat, const struct st_test *tests)
 	st_opt.seed = ((unsigned long)time(NULL) ^ (unsigned long)getpid()) & ST_MASK;
 	if ((v_env = getenv("STRESS_LEAK")) != NULL && strcmp(v_env, "fail") == 0)
 		st_opt.leakfail = 1;
-	while ((ch = getopt(argc, argv, "n:i:t:T:s:d:m:D:vxlL")) != -1) {
+	while ((ch = getopt(argc, argv, "n:i:t:T:s:d:m:D:vxlLN")) != -1) {
 		switch (ch) {
 		case 'n':
 			if (number(optarg, &v, 0) < 0 || v < 1)
@@ -480,6 +501,9 @@ stress_main(int argc, char **argv, const char *cat, const struct st_test *tests)
 			break;
 		case 'l':
 			list = 1;
+			break;
+		case 'N':
+			st_opt.noleak = 1;
 			break;
 		case 'L':
 			st_opt.leakfail = 1;

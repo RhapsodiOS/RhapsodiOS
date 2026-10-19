@@ -234,6 +234,9 @@ MKNODS = ("(test -b /dev/hd2a || mknod /dev/hd2a b 3 16) && "
 # 0.14 MB and a floating exception.
 NEWFS = "newfs -u 63 -t 16 -c 16"
 
+# --fs replaces the workload disk with the targets disk, so only hd1 is mounted
+MOUNT_HD1 = "mkdir -p /mnt1 && mount /dev/hd1a /mnt1"
+
 MOUNT = ("mkdir -p /mnt1 /mnt2 && %s && mount /dev/hd1a /mnt1 && "
          "mount -r /dev/hd2a /mnt2" % MKNODS)
 
@@ -1004,7 +1007,209 @@ def stress_cats(cats, disk):
     return c
 
 
-def stress(kernel, label, cycles=1, bootargs="", cats="", seed=None, disk=False, soak=0):
+FS_TARGETS = ["ufs", "ext2", "hfs", "msdos", "nfs"]
+TARGET_PART = {"ext2": "a", "hfs": "b", "msdos": "c"}      # partitions of the targets disk (hd2)
+TARGET_MOUNT = {"ext2": "/mnt/ext2", "hfs": "/mnt/hfs", "msdos": "/mnt/msdos", "nfs": "/mnt/nfs"}
+TARGET_MB = 128
+
+
+def parse_fs(arg):
+    """The --fs list: "" is ufs, "all" every target; unknown names raise ValueError."""
+    if not arg:
+        return ["ufs"]
+    if arg == "all":
+        return list(FS_TARGETS)
+    names = [n for n in arg.split(",") if n]
+    bad = [n for n in names if n not in FS_TARGETS]
+    if bad or not names:
+        raise ValueError("unknown --fs target: %s" % ",".join(bad or [arg]))
+    return names
+
+
+def targets_disk(path, mb=TARGET_MB, ext2=None):
+    """One disk with partitions a=ext2, b=hfs, c=msdos of mb MiB each behind a
+    512-byte NeXT label: a holds ext2 (the volume made on the host) or zeros,
+    b and c zeros for the guest to format."""
+    import ext2_guest
+    ext2_guest.TEMPLATE = os.path.join(ASSETS, "install", "rhapsody_dr2_x86_InstallationFloppy.img")
+    with open(path, "wb") as f:
+        f.write(ext2_guest.wrap_volumes([ext2 or bytes(mb * 1024 * 1024)] + [bytes(mb * 1024 * 1024)] * 2))
+
+
+def ext2_volume(workdir, mb=TARGET_MB):
+    """An empty ext2 volume made on the host with WSL's mke2fs: the
+    project's newfs_ext2fs only runs e2fsprogs, which the image lacks."""
+    img = os.path.join(workdir, "ext2.vol")
+    with open(img, "wb") as f:
+        f.truncate(mb * 1024 * 1024)
+    subprocess.check_call(["wsl", "-e", "/usr/sbin/mke2fs", "-q", "-F", "-t", "ext2", "-r", "1",
+                           "-O", "none,filetype,sparse_super", "-I", "128", "-b", "1024",
+                           _wsl_path(img)])
+    with open(img, "rb") as f:
+        data = f.read()
+    os.remove(img)
+    return data
+
+
+def _wsl_path(path):
+    path = os.path.abspath(path).replace("\\", "/")
+    return "/mnt/%s%s" % (path[0].lower(), path[2:]) if path[1:2] == ":" else path
+
+
+FS_SRC_DIRS = ("src/ext2fs-1", "src/hfs-1", "src/msdosfs-1", "src/kernel-7/bsd",
+               "src/Commands/diskdev_cmds/disklib")
+
+
+def fs_src_tar():
+    """USTAR tar of the file systems' tool sources and the kernel headers they
+    build against (LF bytes untouched), without the e2fsprogs tarball."""
+    import io
+    import tarfile
+    repo = os.path.dirname(HERE)
+    buf = io.BytesIO()
+    with tarfile.open(fileobj=buf, mode="w", format=tarfile.USTAR_FORMAT) as t:
+        for top in FS_SRC_DIRS:
+            for root, dirs, files in os.walk(os.path.join(repo, top)):
+                dirs.sort()
+                for name in sorted(files):
+                    if name.endswith(".tar.gz"):
+                        continue
+                    path = os.path.join(root, name)
+                    arc = os.path.relpath(path, repo).replace(os.sep, "/")
+                    if len(arc) > 99:
+                        continue        # USTAR names; no tool source is that deep
+                    info = t.gettarinfo(path, arc)
+                    info.uid = info.gid = 0
+                    info.uname = info.gname = ""
+                    info.mode = 0o644
+                    with open(path, "rb") as f:
+                        t.addfile(info, f)
+    return buf.getvalue()
+
+
+def stress_fs_command(fs, cats, seed):
+    """The detached remote command for --fs: the UFS run (if listed, saved as
+    Report.ufs), then stress_fs.sh for each other target, its STRESSFS lines
+    collected in /tmp/stressfs.out, and the usual /tmp/stress.exit marker."""
+    steps = []
+    if "ufs" in fs:
+        steps.append("/usr/local/stress/run -a -s %d -d /mnt1 1 %s; "
+                     "rm -rf /usr/local/stress/Report.ufs; "
+                     "cp -r /usr/local/stress/Report /usr/local/stress/Report.ufs" % (seed, cats or ""))
+    for name in fs:
+        if name != "ufs":
+            steps.append("sh /var/fs/stress_fs.sh run %s '%s' %d >> /tmp/stressfs.out 2>&1"
+                         % (name, cats or "fs mmap", seed))
+    body = "; ".join(steps).replace("'", "'\\''")
+    return ("rm -f /tmp/stress.exit /tmp/stressfs.out; (nohup sh -c '%s; echo 0 > /tmp/stress.exit' "
+            "> /tmp/stress.log 2>&1 &)" % body)
+
+
+STRESSFS = re.compile(r'^STRESSFS (\S+) status=(\S+) reason="([^"]*)" fsck="([^"]*)"', re.M)
+
+
+def parse_stressfs(text, names):
+    """{target: (status, reason, fsck)} from stress_fs.sh's STRESSFS lines; a
+    target with no line is "lost"."""
+    got = {m.group(1): (m.group(2), m.group(3), m.group(4)) for m in STRESSFS.finditer(text)}
+    lost = ("lost", "no result: the guest stopped answering or the run ended first", "")
+    return {n: got.get(n, lost) for n in names}
+
+
+def host_fsck(disk, name, mb=TARGET_MB):
+    """fsck of an ext2 or hfs target from the stopped guest's disk image:
+    "clean", or the problems found."""
+    import struct
+    with open(disk, "rb") as f:
+        head = f.read(65536)
+        off = head.index(b"dlV3")
+        front = struct.unpack_from(">h", head, off + 112)[0] * 512
+        start = front + {"ext2": 0, "hfs": 1}[name] * mb * 1024 * 1024
+        if name == "hfs":
+            sys.path.insert(0, os.path.join(HERE, "..", "tools", "hfsimg"))
+            import check as hfscheck
+            import volume
+            problems = hfscheck.check(volume.Volume(disk, start))
+            return "clean" if not problems else "; ".join(problems)[:300]
+        f.seek(start)
+        vol = os.path.join(os.path.dirname(disk), "ext2.check")
+        with open(vol, "wb") as o:
+            o.write(f.read(mb * 1024 * 1024))
+    p = subprocess.run(["wsl", "-e", "/usr/sbin/e2fsck", "-fn", _wsl_path(vol)],
+                       capture_output=True, text=True)
+    os.remove(vol)
+    return "clean" if p.returncode == 0 else (p.stdout + p.stderr).strip()[-300:]
+
+
+def try_ext2_volume(workdir):
+    """(volume bytes, "") or (None, why): without WSL only the ext2 target is lost."""
+    try:
+        return ext2_volume(workdir), ""
+    except Exception as e:
+        return None, "ext2 volume not made on the host: %s" % e
+
+
+def need_fetch(name, ttexts):
+    """A target's results still have to be fetched (an empty fetch is retried)."""
+    return not ttexts.get(name)
+
+
+def assemble_targets(tout, ttexts, targets, fsck_fn):
+    """result.txt's "targets" from the STRESSFS lines, the fetched report texts
+    and fsck_fn(name) for targets the guest left to the host."""
+    out = {}
+    for name, (status, reason, fsck) in parse_stressfs(tout, targets).items():
+        if status == "ran" and fsck == "host":
+            try:
+                fsck = fsck_fn(name)
+            except Exception as e:
+                fsck = "host fsck failed: %s" % e
+        text = ttexts.get(name, "")
+        if status == "ran" and not text and not reason:
+            reason = "results could not be fetched"
+        out[name] = target_result(name, status, reason, text, fsck)
+    return out
+
+
+def target_result(name, status, reason="", report_text="", fsck=""):
+    """result.txt's record for one --fs target, from its run's STRESS lines."""
+    import stress_report
+    counts, fails = {}, []
+    if report_text:
+        sm = stress_report.summarize(stress_report.parse(report_text))
+        counts, fails = sm["counts"], sm["fails"]
+    return {"status": status, "reason": reason, "counts": counts, "fails": fails, "fsck": fsck}
+
+
+def print_lines(lines, out=None):
+    """Print each line, replacing what the console's encoding cannot show
+    (fsck output may hold raw bytes): a summary must never stop the run."""
+    out = out or sys.stdout
+    enc = getattr(out, "encoding", None) or "ascii"
+    for line in lines:
+        out.write(line.encode(enc, "replace").decode(enc) + "\n")
+
+
+def stress_report_summary_lines(targets):
+    import stress_report
+    return stress_report.summarize_targets(targets)
+
+
+def _fetch_report(conf, outdir, report, prefix):
+    """The .out texts of a Report directory on the guest, each also logged."""
+    texts = []
+    t, listing = timed_login(conf, "ls %s 2>/dev/null; true" % report)
+    for name in (listing.split() if t is not None else []):
+        t, text = timed_login(conf, "cat %s/%s" % (report, name))
+        if t is None:
+            continue
+        _log(outdir, prefix + name, text)
+        if name.endswith(".out"):
+            texts.append(text)
+    return texts
+
+
+def stress(kernel, label, cycles=1, bootargs="", cats="", seed=None, disk=False, soak=0, fs=None):
     """Build and run the stress suite on a guest.  result.txt is written on
     every exit path, with the seed, label and kernel to replay it: with
     "guest": "lost" if the guest stopped answering mid-run, with "bootfail"
@@ -1017,9 +1222,19 @@ def stress(kernel, label, cycles=1, bootargs="", cats="", seed=None, disk=False,
     if seed is None:
         seed = random.randrange(1 << 31)
     res = {"seed": seed, "label": label, "kernel": kernel or "image"}
-    texts, err, skipped, g = [], None, False, None
+    texts, err, skipped, g, summary = [], None, False, None, []
+    fs = fs or ["ufs"]
+    targets = [n for n in fs if n != "ufs"]
+    tdisk, ttexts, tout = os.path.join(outdir, "targets.img"), {}, ""
     try:
-        g = Guest(outdir, _fresh_hd1(outdir), _workload(), root_iops=IOPS)
+        if targets:
+            os.makedirs(outdir, exist_ok=True)
+            vol, why = try_ext2_volume(outdir) if "ext2" in targets else (None, "")
+            if why:
+                targets = [n for n in targets if n != "ext2"]
+                res["targets_unsup"] = {"ext2": why}
+            targets_disk(tdisk, ext2=vol)
+        g = Guest(outdir, _fresh_hd1(outdir), tdisk if targets else _workload(), root_iops=IOPS)
         ssh = Ssh(conf)
         if kernel:
             if not boot_or_skip(g, ssh, kernel, bootargs, outdir):
@@ -1040,11 +1255,21 @@ def stress(kernel, label, cycles=1, bootargs="", cats="", seed=None, disk=False,
         _log(outdir, "build.log", out)
         if rc != 0:
             raise SystemExit("stress build failed: %s" % out[-300:])
+        if targets:
+            ftar = os.path.join(outdir, "fs-src.tar")
+            with open(ftar, "wb") as f:
+                f.write(fs_src_tar())
+            ssh.push(ftar, "/tmp/fs-src.tar")
+            ssh.push(os.path.join(HERE, "stress_fs.sh"), "/var/fs-stress_fs.sh")
+            rc, out = ssh.run("mkdir -p /var/fs && mv /var/fs-stress_fs.sh /var/fs/stress_fs.sh && "
+                              "sh /var/fs/stress_fs.sh build /tmp/fs-src.tar")
+            _log(outdir, "fs-build.log", out)
         if not disk:
-            rc, out = ssh.run(MOUNT)
+            rc, out = ssh.run(MOUNT_HD1 if targets else MOUNT)
             if rc != 0:
                 raise SystemExit("mount failed: %s" % out)
-        ssh.run(stress_soak_command(soak, seed) if soak else
+        ssh.run(stress_fs_command(fs, cats, seed) if targets else
+                stress_soak_command(soak, seed) if soak else
                 stress_run_command(stress_cats(cats, disk), cycles, seed, disk))
         start, dead = time.time(), 0
         while time.time() - start < max(STRESS_RUN_LIMIT_S, soak + 3600):
@@ -1056,6 +1281,15 @@ def stress(kernel, label, cycles=1, bootargs="", cats="", seed=None, disk=False,
             dead = dead + 1 if state == "lost" else 0
             if dead >= STRESS_LOST_POLLS:
                 break
+            if targets and state != "lost":
+                # fetch each target as it finishes: a later panic must not lose it
+                t, out = timed_login(conf, "cat /tmp/stressfs.out 2>/dev/null; true")
+                if t is not None:
+                    tout = out
+                    for name, (status, _, _) in parse_stressfs(out, targets).items():
+                        if status != "lost" and need_fetch(name, ttexts):
+                            ttexts[name] = "\n".join(_fetch_report(
+                                conf, outdir, STRESS_REPORT + "." + name, name + "."))
             if state not in ("running", "lost"):
                 res["run_exit"] = state
                 break
@@ -1066,23 +1300,42 @@ def stress(kernel, label, cycles=1, bootargs="", cats="", seed=None, disk=False,
             _log(outdir, "serial-tail.log", g.serial_text()[-4000:])
         # fetch individually: a partial run still yields what it wrote
         if g.proc.poll() is None:
-            t, listing = timed_login(conf, "ls %s" % STRESS_REPORT)
-            for name in (listing.split() if t is not None else []):
-                t, text = timed_login(conf, "cat %s/%s" % (STRESS_REPORT, name))
-                if t is None:
-                    continue
-                _log(outdir, name, text)
-                if name.endswith(".out"):
-                    texts.append(text)
+            # with --fs the UFS run's Report was saved as Report.ufs
+            texts = _fetch_report(conf, outdir, STRESS_REPORT + (".ufs" if targets else ""), "")
+            if targets:
+                t, out = timed_login(conf, "cat /tmp/stressfs.out 2>/dev/null; true")
+                tout = out if t is not None else tout
+            for name in targets:
+                if need_fetch(name, ttexts):
+                    ttexts[name] = "\n".join(_fetch_report(conf, outdir, STRESS_REPORT + "." + name, name + "."))
+        if targets:
+            _log(outdir, "stressfs.out", tout)
     except BaseException as e:
         res["error"] = str(e) if isinstance(e, SystemExit) else "%s: %s" % (type(e).__name__, e)
         err = e
     finally:
         if g is not None:
             g.quit()
+            if targets:
+                # the host fsck reads the targets disk: QEMU must be gone first
+                try:
+                    g.proc.wait(timeout=120)
+                except Exception:
+                    pass
         hd1 = os.path.join(outdir, "hd1.img")
         if os.path.exists(hd1):
             os.remove(hd1)
+        if (targets or res.get("targets_unsup")) and not skipped:
+            res["targets"] = assemble_targets(tout, ttexts, targets, lambda n: host_fsck(tdisk, n))
+            for name, why in res.pop("targets_unsup", {}).items():
+                res["targets"][name] = target_result(name, "unsup", why)
+            summary = stress_report_summary_lines(res["targets"])
+        # keep the targets disk when a check found problems: it is the evidence
+        if not any(t.get("fsck") not in ("", "clean", "n/a") for t in res.get("targets", {}).values()):
+            try:
+                os.remove(tdisk)
+            except OSError:
+                pass
         result = os.path.join(outdir, "result.txt")
         if skipped:
             with open(result, encoding="utf-8") as f:
@@ -1093,6 +1346,7 @@ def stress(kernel, label, cycles=1, bootargs="", cats="", seed=None, disk=False,
         with open(result, "w", encoding="utf-8") as f:
             f.write(json.dumps(res) + "\n")
         print(json.dumps(res))
+        print_lines(summary)
     if err:
         raise err
 
@@ -1111,6 +1365,8 @@ def main(argv):
     sr.add_argument("--seed", type=int, default=None, help="default: random")
     sr.add_argument("--disk", action="store_true",
                     help="also run the raw disk tests on hd1 (unmounted, overwritten); excludes fs")
+    sr.add_argument("--fs", default="", metavar="LIST",
+                    help="file systems to stress: ufs (default), ext2, hfs, msdos, nfs, comma separated, or all")
     sr.add_argument("--soak", type=int, default=0, metavar="SECS",
                     help="run soak for SECS seconds instead of run (all categories but disk)")
     st = sub.add_parser("stall")
@@ -1137,12 +1393,21 @@ def main(argv):
         p.error("--disk leaves hd1 unmounted, so it cannot be combined with fs")
     if a.cmd == "stress" and a.soak and (a.disk or a.cats):
         p.error("--soak runs the default categories; it cannot be combined with --disk or --cats")
+    if a.cmd == "stress":
+        try:
+            a.fs = parse_fs(a.fs)
+        except ValueError as e:
+            p.error(str(e))
+        if a.soak and a.fs != ["ufs"]:
+            p.error("--soak runs on UFS only; it cannot be combined with --fs")
+        if a.fs != ["ufs"] and (a.disk or a.cycles != 1):
+            p.error("--fs runs one cycle with hd1 mounted; it cannot be combined with --disk or --cycles")
     if a.cmd == "stress" and not a.disk and "disk" in a.cats.split():
         p.error("the disk category needs --disk")
     if a.cmd == "prep":
         prep()
     elif a.cmd == "stress":
-        stress(a.kernel, a.label, a.cycles, a.bootargs, a.cats, a.seed, a.disk, a.soak)
+        stress(a.kernel, a.label, a.cycles, a.bootargs, a.cats, a.seed, a.disk, a.soak, a.fs)
     elif a.cmd == "stall":
         stall(a.kernel, a.label, a.bootargs, a.no_update)
     elif a.cmd == "bench":

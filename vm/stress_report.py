@@ -52,6 +52,21 @@ def summarize(rows):
     return {"counts": counts, "fails": fails, "leaks": leaks, "rates": rates}
 
 
+def summarize_targets(targets):
+    """One line per --fs target: its totals and fsck verdict, or why it did not run."""
+    out = []
+    for name, t in targets.items():
+        if t["status"] != "ran":
+            out.append("%s %s: %s" % (name, t["status"], t["reason"]))
+            continue
+        tot = {"PASS": 0, "FAIL": 0, "UNSUP": 0}
+        for c in t["counts"].values():
+            for k in tot:
+                tot[k] += c.get(k, 0)
+        out.append("%s PASS=%d FAIL=%d UNSUP=%d fsck=%s" % (name, tot["PASS"], tot["FAIL"], tot["UNSUP"], t["fsck"]))
+    return out
+
+
 def compare(a, b):
     out = []
     for name in a["rates"]:

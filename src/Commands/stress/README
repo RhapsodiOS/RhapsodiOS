@@ -28,7 +28,8 @@ Usage
     <cat>/runtests (same options, except -a and categories) and a binary
     stress-<cat> that takes
     -n procs, -i iters, -t secs, -T secs, -s seed, -d dir, -m size, -v, -x,
-    -l, -L and test names.  -l lists the tests the binary runs by default (named_only ones are left out).
+    -l, -L, -N and test names.  -l lists the tests the binary runs by default
+    (named_only ones are left out); -N drops the leak report (and overrides -L).
     The net storm test (64 connects against a backlog of 5) allows 90 s for a
     pending connect: SYNs dropped on a full backlog are retransmitted in
     backed-off waves that each admit only about backlog connects; a connect
@@ -47,12 +48,37 @@ Usage
     vm/runtests leaves it out of the all-at-once phase (with pressure it
     thrashes a 128 MB guest past the watchdog).  The fs rename and link tests
     churn names in a tree shared by the workers; fs link is UNSUP where the
-    file system has no hard links or symlinks; misc eintr has signals
+    file system has no hard links or symlinks; on HFS, rmdir or rename of an
+    object in use fails with EBUSY, which ends an fs test as UNSUP
+    (reason="EBUSY: in-use object") rather than FAIL; misc eintr has signals
     interrupt blocking calls, and FAILs (reason=no-eintr) if read, waitpid or
     flock never returned EINTR without SA_RESTART.
+    mmap sync falls back to syscall 65 where Libc lacks msync.  mmap regrow
+    shrinks a file while it is mapped, unmaps it and grows it back; read()
+    must then return the pattern below the cut and zeros above.  It FAILs
+    on kernels without the GitHub #59 fix.  A test whose workers vanish
+    without being reaped (waitpid says there are no children while the
+    leader still counts live ones) ends as FAIL reason=lost-child.
     -T secs ends a test normally (PASS) once secs have passed; -t is the watchdog.
     -T does not bound ipc msg/ool or net select: their two processes run a
     shared count, so stopping one end early would fail the other.
+
+Other file systems (ffsbench stress --fs)
+    vm/ffsbench.py stress --fs LIST runs the categories (default fs mmap) on
+    other file systems as well as, or instead of, UFS: ext2, hfs, msdos, nfs,
+    or all.  The workload disk is replaced by one targets disk with three
+    128 MB partitions: a is an ext2 volume made on the host (WSL mke2fs; the
+    image has no e2fsprogs), b is formatted HFS+ and c FAT16 on the guest.
+    nfs is a loopback export of /mnt1/nfsexp (on the UFS scratch disk) made
+    through NetInfo's /exports and mounted from localhost.  The guest builds
+    mount_ext2fs, mount_hfs, newfs_hfs, newfs_msdos, mount_msdos and
+    fsck_msdos from src/ext2fs-1, src/hfs-1 and src/msdosfs-1
+    (vm/stress_fs.sh), runs `run` on each mount, unmounts and checks it:
+    fsck_msdos on the guest, e2fsck and the tools/hfsimg checker on the host
+    from the disk image.  result.txt gets a "targets" section per file system
+    (ran, unsup with the reason, or lost when the guest stopped answering),
+    and each target's results are fetched as soon as it finishes, so a later
+    panic does not lose them.
 
 Result lines
     STRESS <cat> <test> PASS iters=N procs=N ... ops=N maxlat=... seed=N
@@ -73,10 +99,10 @@ Leak report
     above +32, mbufs above +64 (at most the 3 largest zones are named).  A
     test is not failed for it unless -L or STRESS_LEAK=fail is given, which
     turns the PASS into FAIL reason=leak.  Caches such as TCP TIME_WAIT can
-    show growth on a healthy kernel.  -L is only meaningful for a test run
-    alone: in run's all-at-once phase and in soak, the kernel allocations of
-    the concurrent tests land in each other's snapshots (pv_entry, map
-    entries, objects, wired), so nearly every line carries leak fields there.
+    show growth on a healthy kernel.  The report is only meaningful for a
+    test run alone: concurrent tests' kernel allocations land in each other's
+    snapshots (pv_entry, map entries, objects, wired).  So every runtests
+    passes -N in its all-at-once phase, and soak passes -N unless given -L.
     run lists such lines under "leaks:" in
     Report/summary.
 
@@ -93,8 +119,9 @@ soak - a timed random mix
     when soak starts new jobs: a running job can overrun by up to its
     watchdog.  The seed (printed on the first
     line of Report/soak.out) picks the same tests again; timing still varies.
-    -L fails tests that leak, but concurrent tests pollute each other's leak
-    snapshots (see Leak report), so expect false leaks.  Output goes to Report/soak.out.
+    soak runs its tests with -N; -L turns the leak report back on and fails
+    tests that leak, but concurrent tests pollute each other's snapshots (see
+    Leak report), so expect false leaks.  Output goes to Report/soak.out.
     Report/soak.summary is laid out like Report/summary.  Exit status is 1 if
     anything failed, 2 for bad usage or no tests found.  ffsbench stress --soak
     SECS runs it in a guest.

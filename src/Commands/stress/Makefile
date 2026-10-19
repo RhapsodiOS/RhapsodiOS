@@ -136,6 +136,9 @@ check: lib/t_lib $(TMAIN)
 	grep 'FAIL reason="fork: EAGAIN"' lib/t.out
 	sleep 2; test `ps -ax | grep -c '[s]tress-tmain'` = 0
 	rc=0; $(TMAIN) bogus 2>/dev/null || rc=$$?; test $$rc = 2
+	$(TMAIN) leaky >lib/t.out && grep 'STRESS tmain leaky PASS .* leak=' lib/t.out && sleep 6
+	rc=0; $(TMAIN) -n 3 unsupbody >lib/t.out || rc=$$?; test $$rc = 0 && grep '^STRESS tmain unsupbody UNSUP reason=planned ' lib/t.out
+	$(TMAIN) -N -L leaky >lib/t.out && grep 'STRESS tmain leaky PASS ' lib/t.out && test `grep -c ' leak=\| wired=\| mbufs=' lib/t.out` = 0 && sleep 6
 	$(TMAIN) -l >lib/t.out; grep -x pass lib/t.out; test `grep -c -x named lib/t.out` = 0
 	@echo t_main: ok
 
@@ -164,14 +167,15 @@ check-mmap: $(MMAPBIN)
 	grep '^STRESS mmap mixed PASS ' mmap/t.out
 	grep '^STRESS mmap private PASS ' mmap/t.out
 	grep '^STRESS mmap trunc PASS ' mmap/t.out
-	grep '^STRESS mmap regrow PASS ' mmap/t.out
 	grep '^STRESS mmap anon \(PASS\|UNSUP\) ' mmap/t.out
 	grep '^STRESS mmap sync \(PASS\|UNSUP\) ' mmap/t.out
 	grep '^STRESS mmap anonshared \(PASS\|UNSUP\) ' mmap/t.out
 	grep '^STRESS mmap zero \(PASS\|UNSUP\) ' mmap/t.out
+	# regrow needs the #59 kernel fix; on an older kernel this line fails with #59's result
+	grep '^STRESS mmap regrow PASS ' mmap/t.out
 	n=`grep -c '^STRESS mmap \(anonshared\|zero\) PASS ' mmap/t.out`; \
-	rc=0; $(MMAPBIN) -x -i 1 -d /tmp shared mixed private anonshared zero >mmap/t.out || rc=$$?; test $$rc = 1; \
-	test `grep -c '^STRESS mmap [a-z]* FAIL .*off=0x' mmap/t.out` = `expr 3 + $$n`
+	rc=0; $(MMAPBIN) -x -i 1 -d /tmp shared mixed private anonshared zero regrow >mmap/t.out || rc=$$?; test $$rc = 1; \
+	test `grep -c '^STRESS mmap [a-z]* FAIL .*off=0x' mmap/t.out` = `expr 4 + $$n`
 	@echo mmap: ok
 
 # fill only runs when STRESS_FILL_DIR names a scratch file system (1 GB takes ~20 min on the dev guest);

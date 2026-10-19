@@ -138,6 +138,10 @@ main(void)
 		strcpy(o, "keep");
 		CHECK(st_leak_diff(&lb, &la, o, sizeof o) == 0 && strcmp(o, "keep") == 0);
 	}
+	/* lost-child: live workers but waitpid says there are no children */
+	CHECK(st_lost(1, ECHILD) == 1);
+	CHECK(st_lost(0, ECHILD) == 0);
+	CHECK(st_lost(1, EINTR) == 0);
 	printf("t_lib: ok\n");
 	return 0;
 }

@@ -34,6 +34,7 @@ struct st_opts {
 	int selfcheck;			/* -x */
 	const char *dev;		/* -D raw device, default NULL */
 	int leakfail;			/* -L or STRESS_LEAK=fail */
+	int noleak;			/* -N: no leak snapshot or fields; overrides -L */
 	int budget;			/* -T: st_more returns 0 after this many seconds; 0: no budget.
 					 * A test whose two processes run a shared count (ipc msg/ool,
 					 * net select) sets it to 0: -T would stop one end only. */
@@ -68,8 +69,15 @@ struct st_test {
 /* tests ends with a zero entry; returns the exit status. */
 int stress_main(int argc, char **argv, const char *cat, const struct st_test *tests);
 
+/* 1 when the leader still counts live workers but waitpid failed with err
+ * ECHILD: the children are gone without having been reaped (lost-child). */
+int st_lost(int live, int err);
+
 /* These never return: they send FAIL to the leader and _exit(1). */
 void st_fail(struct st_ctx *c, const char *fmt, ...);
+/* Ends this worker as UNSUP (a feature the file system refuses mid-test);
+ * the test reports UNSUP unless another worker FAILs.  Never returns. */
+void st_unsup(struct st_ctx *c, const char *fmt, ...);
 void st_fail_errno(struct st_ctx *c, const char *call);	/* reason="call: ERRNAME" */
 void st_fail_data(struct st_ctx *c, const char *what, const unsigned char *got,
 		  unsigned long len, unsigned long key, unsigned long off, long bad);

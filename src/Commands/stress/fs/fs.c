@@ -9,6 +9,7 @@
  * it does not prove the data is durable on disk. */
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/mount.h>
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -66,11 +67,31 @@ failf(struct st_ctx *c, const char *fmt, ...)
 	st_fail(c, "%s", buf);
 }
 
+static void markdone(struct st_ctx *c);
+
+/* HFS refuses to remove or replace an object something has open (EBUSY);
+ * that is the file system's limit, so the test ends UNSUP there. */
+static int
+on_hfs(const char *dir)
+{
+	struct statfs sf;
+
+	return statfs(dir, &sf) == 0 && strcmp(sf.f_fstypename, "hfs") == 0;
+}
+
 static void
 failerr(struct st_ctx *c, const char *call)
 {
 	int e = errno;
 
+	if (e == EBUSY && (strcmp(call, "rmdir") == 0 || strcmp(call, "rename") == 0 ||
+	    strcmp(call, "unlink") == 0) && on_hfs(st_opt.dir)) {
+		/* before cleanup removes the tree: markdone on a removed tree
+		 * exits 0, and the test would end PASS instead of UNSUP */
+		markdone(c);	/* workers waiting on the shared tree must not stall */
+		cleanup();
+		st_unsup(c, "reason=\"EBUSY: in-use object\"");
+	}
 	cleanup();
 	errno = e;
 	st_fail_errno(c, call);

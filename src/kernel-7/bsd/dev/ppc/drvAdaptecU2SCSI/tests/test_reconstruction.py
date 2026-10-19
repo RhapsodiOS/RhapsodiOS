@@ -1482,5 +1482,56 @@ def test_task8_owner_rejects_incomplete_evidence(tmp_path, firmware_evidence, co
     elif corruption == "relocation":
         next(b for b in proof["bodies"] if b["native_external_relocations"])["native_external_relocations"].pop()
     proof_path.write_text(json.dumps(proof))
-    with pytest.raises(ValueError):
+    import hashlib
+    digest = hashlib.sha256(proof_path.read_bytes().replace(b"\r\n", b"\n")).hexdigest().upper()
+    ledger_path = driver / "reconstruction/ledger.json"
+    ledger = json.loads(ledger_path.read_text())
+    for entry in ledger["entries"]:
+        for artifact in entry["artifacts"]:
+            if artifact["path"].endswith("reconstruction/task8.json"):
+                artifact["sha256"] = digest
+    ledger_path.write_text(json.dumps(ledger))
+    expected = {"source": "stale Task8 native source/object", "native": "stale Task8 native source/object",
+                "review": "exactly 20 configuration bodies", "case": "stale Task8 reference result",
+                "runner": "stale Task8 executed input", "dependency": "stale Task8 accepted source dependency",
+                "switch": "both owned switch envelopes", "closure": "execution input closure is incomplete",
+                "result": "invalid Task8 successful fixture", "relocation": "native call binding differs"}
+    with pytest.raises(ValueError, match=expected[corruption]):
         audit.audit_config_group(evidence, repo, objects)
+
+
+@pytest.mark.parametrize("newline", [b"\n", b"\r\n"])
+def test_task8_owner_accepts_canonical_checkout(tmp_path, firmware_evidence, newline):
+    audit, evidence = firmware_evidence
+    repo = tmp_path / "repo"
+    driver = repo / audit.ref.DRIVER
+    shutil.copytree(TESTS.parent, driver, ignore=shutil.ignore_patterns("__pycache__"))
+    shutil.copytree(REPO / "tools/binrecon/binrecon", repo / "tools/binrecon/binrecon",
+                    ignore=shutil.ignore_patterns("__pycache__"))
+    shutil.copyfile(REPO / "tools/binrecon/source_paths.py", repo / "tools/binrecon/source_paths.py")
+    shutil.copyfile(REPO / ".git", repo / ".git")
+    objects = tmp_path / "objects/task8"
+    for group in ("task8", "task5", "task6", "task7", "firmware"):
+        shutil.copytree(OUT / "objects" / group, objects.parent / group,
+                        ignore=shutil.ignore_patterns("*.id0", "*.id1", "*.nam", "*.til", "*.i64"))
+    proof_path = driver / "reconstruction/task8.json"
+    proof = json.loads(proof_path.read_text())
+    paths = [proof_path, driver / "tests/task8_native.py"]
+    paths += [driver / name for name in set(proof["native_inputs"]) | set(proof["accepted_dependencies"])]
+    paths += [repo / relative for relative in proof["execution_inputs"]]
+    for path in paths:
+        path.write_bytes(path.read_bytes().replace(b"\r\n", b"\n").replace(b"\n", newline))
+    audit.audit_config_group(evidence, repo, objects)
+
+
+def test_task8_proof_digest_matches_canonical_git():
+    import hashlib
+    import subprocess
+    path = TESTS.parent / "reconstruction/task8.json"
+    blob = subprocess.check_output(["git", "show", "HEAD:" + path.relative_to(REPO).as_posix()], cwd=REPO)
+    assert path.read_bytes().replace(b"\r\n", b"\n") == blob
+    digest = hashlib.sha256(blob).hexdigest().upper()
+    ledger = json.loads((TESTS.parent / "reconstruction/ledger.json").read_text())
+    artifacts = [artifact for entry in ledger["entries"] for artifact in entry["artifacts"]
+                 if artifact["path"].endswith("reconstruction/task8.json")]
+    assert len(artifacts) == 20 and {artifact["sha256"] for artifact in artifacts} == {digest}

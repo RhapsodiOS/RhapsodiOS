@@ -2094,3 +2094,66 @@ def test_task10_review_exit_rejects_observation_corruption(task10_review_cases, 
         case["expected"]["memory"]["resource+16"] = "00000001"
     with pytest.raises(ValueError, match="recovery prefix|removal ownership|completion queue ownership"):
         load_script("verify").audit_recovery_exits(changed)
+
+
+def _task11_resource_family(family):
+    assert (TESTS.parent / "AdaptecU2CHIMResource.c").is_file(), "missing resource owner bodies"
+    path = TESTS / "task11-cases.json"
+    assert path.is_file(), "missing resource actual reference fixtures"
+    cases = json.loads(path.read_text())
+    selected = {**cases, "cases": [c for c in cases["cases"] if c["family"] == family]}
+    assert selected["cases"], "missing resource family: " + family
+    runner = load_script("ppc_cases")
+    result = runner.execute(OUT / "reference/image.bin", selected, json.loads((TESTS / "task11-contracts.json").read_text()))
+    assert len(result["results"]) == len(selected["cases"])
+
+
+def test_resource_queue_exhaustion_and_redispatch():
+    _task11_resource_family("queue")
+
+
+def test_host_device_abort_freeze_unfreeze():
+    _task11_resource_family("abort")
+
+
+def test_resource_completion_reset_ownership():
+    _task11_resource_family("completion")
+
+
+def test_task11_resource_owner_evidence(firmware_evidence):
+    audit, evidence = firmware_evidence
+    audit.audit("group", OUT / "reference", REPO, OUT / "objects/task11", None, "AdaptecU2CHIMResource.c")
+
+
+def test_task11_task10_helper_scope_survives_new_owner(tmp_path, firmware_evidence):
+    audit, evidence = firmware_evidence
+    repo = tmp_path / "repo"
+    driver = repo / audit.ref.DRIVER
+    shutil.copytree(TESTS.parent, driver, ignore=shutil.ignore_patterns("__pycache__"))
+    shutil.copytree(REPO / "tools/binrecon/binrecon", repo / "tools/binrecon/binrecon", ignore=shutil.ignore_patterns("__pycache__"))
+    shutil.copyfile(REPO / "tools/binrecon/source_paths.py", repo / "tools/binrecon/source_paths.py")
+    shutil.copyfile(REPO / ".git", repo / ".git")
+    (driver / "AdaptecU2CHIMResource.c").write_text("/* New owner cannot change historical executed helper membership. */\n")
+    audit.audit_recovery_group(evidence, repo, OUT / "objects/task10")
+
+
+@pytest.mark.parametrize("name", ['SCSIRGetConfiguration', 'SCSIRGetMemoryTable', 'SCSIRApplyMemoryTable', 'SCSIRInitialize', 'SCSIrReset', 'SCSIrStandardRemoveScbs', 'SCSIRSetUnitHandle', 'SCSIRFreeUnitHandle', 'SCSIRQueueSpecialHIOB', 'SCSIRCheckHostIdle', 'SCSIRCheckDeviceIdle', 'SCSIrCompleteHIOB', 'SCSIrCompleteSpecialHIOB', 'SCSIrAsyncEvent', 'SCSIrScsiBusReset', 'SCSIrBusDeviceReset', 'SCSIRPowerManagement', 'SCSIrAbortTask', 'SCSIrAbortTaskSet', 'SCSIRGetHWInformation', 'SCSIRPutHWInformation', 'SCSIRGetFreeHead', 'SCSIrAsyncEventCommand', 'SCSIrAllocateScb', 'SCSIrGetScb', 'SCSIrReturnScb', 'SCSIrDeviceQueueAppend', 'SCSIrDeviceQueueRemove', 'SCSIrAbortHIOBInDevQ', 'SCSIrClearDeviceQueue', 'SCSIrClearAllDeviceQueues', 'SCSIrHostQueueAppend', 'SCSIrHostQueueRemove', 'SCSIrAbortHIOBInHostQ', 'SCSIrFindAndAbortHIOB', 'SCSIrClearHostQueue', 'SCSIrFreeScb', 'SCSIrFreeCriteria', 'SCSIrPostAbortedHIOB', 'SCSIrPostDoneQueue', 'SCSIrAdjustQueue', 'SCSIrFinishQueueFull', 'SCSIrFreezeAllDeviceQueues', 'SCSIrUnFreezeAllDeviceQueues', 'SCSIrFreezeDeviceQueue', 'SCSIrUnFreezeDeviceQueue', 'SCSIrDispatchQueuedHIOB'])
+def test_task11_required_body(name):
+    source = (TESTS.parent / "AdaptecU2CHIMResource.c").read_text()
+    assert re.search(r"\b" + name + r"\([^;]*?\)\s*\{", source), "missing resource body: " + name
+
+
+def test_task11_native_resource_leaves():
+    helper = load_script("task11_native")
+    cases = json.loads((TESTS / "task11-cases.json").read_text())
+    result = helper.compare(OUT / "reference/image.bin", OUT / "objects/task11/1-AdaptecU2CHIMResource.c.o", cases)
+    assert len(result) >= 23
+
+
+def test_task11_native_switch_and_publication_graph():
+    helper = load_script("task11_native")
+    assert hasattr(helper,"switch_graph"), "missing native resource switch closure"
+    assert hasattr(helper,"publication_widths"), "missing native resource byte/publication checks"
+    binary=OUT / "objects/task11/1-AdaptecU2CHIMResource.c.o"
+    assert len(helper.switch_graph(binary)) == 2
+    helper.publication_widths(binary)

@@ -527,7 +527,13 @@ def audit_recovery_group(evidence, repo_root, objects):
             raise ValueError("Task10 pinned reference helper differs: " + name)
     used = {dep["entry"] for case in cases["cases"] for dep in case["internal"]}
     owner_addresses = {a: owner for owner, values in evidence["document"]["owners"].items() for a in values}
-    pending = {name for name in used if not (driver / owner_addresses[frozen[name]["address"]]).is_file()}
+    # Helper membership belongs to the actual producer, whose executed inputs
+    # are authenticated above. Later owner recovery cannot change that run.
+    producer_sources = set(subprocess.check_output(
+        ["git", "ls-tree", "-r", "--name-only", proof["test_revision"], "--",
+         ref.DRIVER.as_posix()], cwd=repo_root, text=True).splitlines())
+    pending = {name for name in used if (ref.DRIVER / owner_addresses[frozen[name]["address"]]).as_posix()
+               not in producer_sources}
     if set(proof["reference_helpers"]) != pending:
         raise ValueError("Task10 reference helper scope differs")
     for case in cases["cases"]:

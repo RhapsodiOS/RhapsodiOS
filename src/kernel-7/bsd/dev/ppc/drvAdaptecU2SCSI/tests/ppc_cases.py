@@ -46,7 +46,7 @@ def declared_abi(case):
     name = case["entry"].removeprefix("_")
     driver = Path(__file__).resolve().parent.parent
     headers = " ".join(" ".join((driver / header).read_text().split()) for header in
-                       ("OSMFunctions.h", "AdaptecU2CHIMPrivate.h", "AdaptecU2SCSIPrivate.h"))
+                       ("OSMFunctions.h", "AdaptecU2CHIMPrivate.h", "AdaptecU2SCSIPrivate.h", "AdaptecU2CHIM.h"))
     match = re.fullmatch(r"(.+?)\b" + re.escape(name) + r"\((.*)\);", declaration)
     if not match or declaration not in headers:
         raise ValueError("case declaration does not bind its production entry")
@@ -62,6 +62,8 @@ def declared_abi(case):
             layouts.append(("aggregate", 32))
         elif parameter.startswith("AdaptecU2AdapterProfile "):
             layouts.append(("aggregate", 464))
+        elif parameter.startswith("AdaptecU2PciLocation "):
+            layouts.append(("aggregate", 16))
         elif parameter.startswith("unsigned char "):
             layouts.append(("scalar", 1))
         elif parameter.startswith("unsigned short "):

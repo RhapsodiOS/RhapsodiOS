@@ -1,0 +1,64 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "abi-v1.json",
+ "title": "Objective-C ABI for one translation unit, version 1",
+ "type": "object",
+ "additionalProperties": false,
+ "required": ["schema_version", "module", "classes", "categories",
+              "text_symbols", "data_symbols"],
+ "properties": {
+  "schema_version": { "const": "abi-v1" },
+  "module": { "type": "string" },
+  "classes": { "type": "array", "items": { "$ref": "#/$defs/class" } },
+  "categories": { "type": "array", "items": { "$ref": "#/$defs/category" } },
+  "text_symbols": { "type": "array", "items": { "type": "string" } },
+  "data_symbols": { "type": "array", "items": { "type": "string" } }
+ },
+ "$defs": {
+  "method": {
+   "type": "object",
+   "additionalProperties": false,
+   "required": ["selector", "types"],
+   "properties": {
+    "selector": { "type": "string" },
+    "types": { "type": "string" }
+   }
+  },
+  "ivar": {
+   "type": "object",
+   "additionalProperties": false,
+   "required": ["name", "type", "offset"],
+   "properties": {
+    "name": { "type": "string" },
+    "type": { "type": "string" },
+    "offset": { "type": "integer", "minimum": 0 }
+   }
+  },
+  "class": {
+   "type": "object",
+   "additionalProperties": false,
+   "required": ["name", "superclass", "instance_size", "info", "ivars",
+                "instance_methods", "class_methods"],
+   "properties": {
+    "name": { "type": "string" },
+    "superclass": { "type": ["string", "null"] },
+    "instance_size": { "type": "integer", "minimum": 0 },
+    "info": { "type": "integer", "minimum": 0 },
+    "ivars": { "type": "array", "items": { "$ref": "#/$defs/ivar" } },
+    "instance_methods": { "type": "array", "items": { "$ref": "#/$defs/method" } },
+    "class_methods": { "type": "array", "items": { "$ref": "#/$defs/method" } }
+   }
+  },
+  "category": {
+   "type": "object",
+   "additionalProperties": false,
+   "required": ["name", "class", "instance_methods", "class_methods"],
+   "properties": {
+    "name": { "type": "string" },
+    "class": { "type": "string" },
+    "instance_methods": { "type": "array", "items": { "$ref": "#/$defs/method" } },
+    "class_methods": { "type": "array", "items": { "$ref": "#/$defs/method" } }
+   }
+  }
+ }
+}

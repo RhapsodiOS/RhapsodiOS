@@ -1,0 +1,106 @@
+{
+ "categories": [],
+ "classes": [
+  {
+   "class_methods": [
+    {
+     "selector": "defaultQueue",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "setTraceEventQueue:",
+     "types": "v9@8:12c16"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "monitoringDiscontinued",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "_mightPostIdle",
+     "types": "c8@8:12"
+    },
+    {
+     "selector": "monitorRunLoop:mode:activity:quit:",
+     "types": "c24@8:12@16@20i24^c28"
+    },
+    {
+     "selector": "_postIdleNotificationsForMode:",
+     "types": "c12@8:12@16"
+    },
+    {
+     "selector": "_postAsapNotificationsForMode:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "_flushNotificationQueue",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "dequeueNotificationsMatching:coalesceMask:",
+     "types": "v16@8:12@16I20"
+    },
+    {
+     "selector": "enqueueNotification:postingStyle:",
+     "types": "v16@8:12@16i20"
+    },
+    {
+     "selector": "enqueueNotification:postingStyle:coalesceMask:forModes:",
+     "types": "v24@8:12@16i20I24@28"
+    },
+    {
+     "selector": "_count",
+     "types": "i8@8:12"
+    },
+    {
+     "selector": "dealloc",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "init",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "initWithNotificationCenter:",
+     "types": "@12@8:12@16"
+    }
+   ],
+   "instance_size": 24,
+   "ivars": [
+    {
+     "name": "_notificationCenter",
+     "offset": 4,
+     "type": "@\"NSNotificationCenter\""
+    },
+    {
+     "name": "_asapQueue",
+     "offset": 8,
+     "type": "@"
+    },
+    {
+     "name": "_idleQueue",
+     "offset": 12,
+     "type": "@"
+    },
+    {
+     "name": "_attached",
+     "offset": 16,
+     "type": "c"
+    },
+    {
+     "name": "_reserved",
+     "offset": 20,
+     "type": "^v"
+    }
+   ],
+   "name": "NSNotificationQueue",
+   "superclass": "NSObject"
+  }
+ ],
+ "data_symbols": [],
+ "module": "NSNotificationQueue.m",
+ "schema_version": "abi-v1",
+ "text_symbols": []
+}

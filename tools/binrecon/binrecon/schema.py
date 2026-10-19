@@ -21,6 +21,8 @@ _SCHEMA_FILES = {
     "ledger-v1.json": "ledger-v1.json",
     "source-map-v1": "source-map-v1.json",
     "source-map-v1.json": "source-map-v1.json",
+    "abi-v1": "abi-v1.json",
+    "abi-v1.json": "abi-v1.json",
 }
 _SHA256_RE = re.compile(r"^[0-9a-fA-F]{64}$")
 

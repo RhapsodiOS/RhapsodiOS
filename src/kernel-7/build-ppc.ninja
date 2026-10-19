@@ -1,0 +1,7 @@
+ninja_required_version = 1.9
+builddir = BUILD.ninja/RELEASE_PPC
+outdir = BUILD.ninja/RELEASE_PPC
+include ninja/common.ninja
+subninja ninja/ppc-release.ninja
+
+default BUILD.ninja/RELEASE_PPC/mach_kernel

@@ -186,7 +186,7 @@ extern void *floppyMalloc(unsigned int size, vm_address_t *allocAddrOut,
 	[self setUnit:unit];
 	
 	// Initialize disk object pointer
-	_nextLogicalDisk = nil;                    // offset 0x108
+	_diskId = nil;                             // offset 0x108
 	
 	// Set default parameters (720KB DD settings).
 	//
@@ -289,7 +289,7 @@ extern void *floppyMalloc(unsigned int size, vm_address_t *allocAddrOut,
 	result = [self updateReadyStateInt];
 	
 	// If ready and no disk object allocated yet
-	if ((result == 0) && (_nextLogicalDisk == nil)) {
+	if ((result == 0) && (_diskId == nil)) {
 		// Update physical parameters (probe geometry)
 		result = [self updatePhysicalParametersInt];
 		

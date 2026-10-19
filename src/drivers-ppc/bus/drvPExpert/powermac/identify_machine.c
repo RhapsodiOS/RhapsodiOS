@@ -648,13 +648,8 @@ int get_machine_id(void)
 	    else if (strcmp( family, "iMac") == 0)	return(gestaltCHRP_Version1);
 	    else if (strcmp( family, "PowerMac1,1") == 0)	return(gestaltCHRP_Version1);
 	    else if (strcmp( family, "PowerMac1,2") == 0)	return(gestaltCHRP_Version1);
-		else if (strcmp( family, "PowerMac2,1") == 0)	return(gestaltCHRP_Version1);
 	    else if (strcmp( family, "PowerBook1,1") == 0)	return(gestaltCHRP_Version1);
-	    else if (strcmp( family, "PowerMac3,1") == 0)	return(gestaltSawtooth);
-	    else if (strcmp( family, "PowerMac3,2") == 0)	return(gestaltSawtooth);
-	    else if (strcmp( family, "PowerMac3,3") == 0)	return(gestaltSawtooth);
-	    else if (strcmp( family, "PowerMac5,1") == 0)	return(gestaltSawtooth);
-	    else if (strcmp( family, "PowerBook2,1") == 0)	return(gestaltSawtooth);
+	    else if (PEKeyLargoIsCore99Model(family))	return(gestaltSawtooth);
 	    else
 		panic("Unsupported machine\n");
 	}
@@ -730,9 +725,25 @@ int PEEditDTEntry( DTEntry dtEntry, char * nodeName, int index,
     int         *classCode;
     int         size;
     static int  usbDeviceFound = 0;
+    static DTEntry davbusEntry;
+    static unsigned int davbusInterrupts[3];
+    extern int PEDAVBusParseInterrupts(const unsigned char *,unsigned int,unsigned int *);
 
     /* Sawtooth-specific: Handle PCI bridge class code for AGP */
     if( powermac_info.class == POWERMAC_CLASS_SAWTOOTH) {
+        /* DK's generic mapper assumes one cell per interrupt. Supply the
+         * three MPIC source numbers before its historical XOR conversion. */
+        if(index == 0 && (strcmp(nodeName,"davbus") == 0 || strcmp(nodeName,"awacs") == 0)) {
+            void *raw;
+            if((davbusEntry == 0 || davbusEntry == dtEntry) &&
+                DTGetProperty(dtEntry,"interrupts",&raw,&size) == kSuccess &&
+                PEDAVBusParseInterrupts(raw,(unsigned int)size,davbusInterrupts)) {
+                davbusEntry=dtEntry;*propName="AAPL,interrupts";
+                *propData=davbusInterrupts;*propSize=sizeof(davbusInterrupts);
+                return 0;
+            }
+            return -1;
+        }
         if( 0 == strcmp( nodeName, "pci") && index == 0) {
             if( kSuccess == DTGetProperty(dtEntry, "class-code", (void **)&classCode, &size)) {
                 if( *classCode == 0x060400) {  /* PCI-to-PCI bridge */

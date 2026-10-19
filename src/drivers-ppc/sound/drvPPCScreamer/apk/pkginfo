@@ -1,0 +1,7 @@
+pkgname = drvppcscreamer
+pkgver = 1
+pkgdesc = PowerPC Screamer DAVbus audio driver
+arch = ppc-apple-rhapsody
+maintainer = RhapsodiOS Developers
+license = APSL
+makedepends = build-base, drivertools, driverkit, machkit, kernload, libstreams

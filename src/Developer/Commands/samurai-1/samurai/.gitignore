@@ -1,0 +1,7 @@
+# Build outputs
+*.o
+*.obj
+*.exe
+/samu
+/port-types
+/_smoketest/

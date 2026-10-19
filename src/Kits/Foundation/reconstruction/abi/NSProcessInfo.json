@@ -1,0 +1,118 @@
+{
+ "categories": [],
+ "classes": [
+  {
+   "class_methods": [
+    {
+     "selector": "processInfo",
+     "types": "@8@8:12"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "platformOSDictionary",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "operatingSystemName",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "operatingSystem",
+     "types": "I8@8:12"
+    },
+    {
+     "selector": "userHomeDirectory",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "userFullName",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "userName",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "globallyUniqueString",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "setProcessName:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "processName",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "hostName",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "setArguments:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "arguments",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "environment",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "dealloc",
+     "types": "v8@8:12"
+    }
+   ],
+   "instance_size": 24,
+   "ivars": [
+    {
+     "name": "environment",
+     "offset": 4,
+     "type": "@\"NSDictionary\""
+    },
+    {
+     "name": "arguments",
+     "offset": 8,
+     "type": "@\"NSArray\""
+    },
+    {
+     "name": "hostName",
+     "offset": 12,
+     "type": "@\"NSString\""
+    },
+    {
+     "name": "name",
+     "offset": 16,
+     "type": "@\"NSString\""
+    },
+    {
+     "name": "reserved",
+     "offset": 20,
+     "type": "^v"
+    }
+   ],
+   "name": "NSProcessInfo",
+   "superclass": "NSObject"
+  }
+ ],
+ "data_symbols": [],
+ "module": "NSProcessInfo.m",
+ "schema_version": "abi-v1",
+ "text_symbols": [
+  "__NSArgc",
+  "__NSArgv",
+  "__NSCurrentTime",
+  "__NSCurrentUNIXTime",
+  "__NSEnviron",
+  "__NSGetDirectory2",
+  "__NSGetEnvironmentVariable",
+  "__NSProcessID",
+  "__NSProcessName",
+  "__NSProcessPath",
+  "__NSSearchForNameInPath"
+ ]
+}

@@ -43,6 +43,7 @@
  *
  */
 
+#ifndef KEYLARGO_BINDING_HOST_TEST
 #include <mach/boolean.h>
 #include <kern/lock.h>
 #include <mach/clock_types.h>
@@ -58,8 +59,10 @@
 #include <powermac.h>
 #include <interrupts.h>
 #include <chips/keylargo.h>
-#include <chips/keylargo_audio.h>
-#include <chips/keylargo_discovery.h>
+#endif
+#include "keylargo_audio.h"
+#include "davbus_audio.h"
+#include "keylargo_discovery.h"
 
 extern void read_processor_clock_tval(tvalspec_t *time);
 
@@ -72,6 +75,10 @@ typedef struct {
   unsigned char i2cSpeed;
   lock_data_t lock;
   PEKeyLargoTransport transport;
+  PEDAVBusTransport davbus;
+  unsigned int audioMuxOwner;
+  unsigned int davbusSaved;
+  unsigned int davbusActive;
 } keylargo_audio_state_t;
 
 static keylargo_audio_state_t keylargo_audio_state;
@@ -272,6 +279,151 @@ keylargo_valid_offset(void *context, unsigned int offset,
     TRUE : FALSE;
 }
 
+static kern_return_t
+keylargo_davbus_write(void *context, unsigned int value)
+{
+  keylargo_audio_state_t *state;
+  unsigned int offset;
+
+  state = (keylargo_audio_state_t *)context;
+  offset = state->davbus.family == kPEDAVBusPaddington ?
+    0x38 : KEYLARGO_FCR1_OFFSET;
+  stwbrx(value, POWERMAC_IO(state->macIOBase + offset));
+  eieio();
+  sync();
+  return KERN_SUCCESS;
+}
+
+static unsigned int
+keylargo_davbus_read(void *context)
+{
+  keylargo_audio_state_t *state;
+  unsigned int offset;
+  unsigned int value;
+
+  state = (keylargo_audio_state_t *)context;
+  offset = state->davbus.family == kPEDAVBusPaddington ?
+    0x38 : KEYLARGO_FCR1_OFFSET;
+  eieio();
+  value = lwbrx(POWERMAC_IO(state->macIOBase + offset));
+  sync();
+  return value;
+}
+
+static void
+keylargo_davbus_barrier(void *context)
+{
+  (void)context;
+  eieio();
+  sync();
+}
+
+static void
+keylargo_bind_davbus(DTEntry macIO)
+{
+  DTEntryIterator iterator;
+  DTEntry child;
+  PEKeyLargoProperty property;
+  unsigned int controller;
+  unsigned int family;
+  unsigned int vendor;
+  unsigned int device;
+  unsigned int cells;
+  unsigned int matches;
+  PEDAVBusTransport *transport;
+
+  if (!PEKeyLargoCellProperty(keylargo_property(macIO, "vendor-id"),
+    &vendor) || !PEKeyLargoCellProperty(
+    keylargo_property(macIO, "device-id"), &device))
+    return;
+  family = PEDAVBusFamilyForMacIO(vendor, device);
+  if (family == 0 ||
+    (family == kPEDAVBusPaddington ?
+    powermac_info.class != POWERMAC_CLASS_YOSEMITE :
+    powermac_info.class != POWERMAC_CLASS_SAWTOOTH))
+    return;
+  if (!PEKeyLargoCellProperty(keylargo_property(macIO, "#address-cells"),
+    &cells) || cells != 1 ||
+    !PEKeyLargoCellProperty(keylargo_property(macIO, "#size-cells"),
+    &cells) || cells != 1)
+    return;
+  property = keylargo_property(macIO, "ranges");
+  if (!PEDAVBusValidateMacIORanges(property.bytes, property.size,
+    keylargo_audio_state.macIOBase, keylargo_audio_state.macIOSize))
+    return;
+  if (DTCreateEntryIterator(macIO, &iterator) != kSuccess)
+    return;
+  matches = 0;
+  controller = 0;
+  while (DTIterateEntries(iterator, &child) == kSuccess) {
+    if (!keylargo_string_property_is(child, "name", "davbus") &&
+      !keylargo_string_property_is(child, "name", "awacs"))
+      continue;
+    ++matches;
+    property = keylargo_property(child, "reg");
+    if (!PEDAVBusValidateRanges(property.bytes, property.size,
+      keylargo_audio_state.macIOBase, keylargo_audio_state.macIOSize,
+      &controller)) {
+      matches = 2;
+      break;
+    }
+  }
+  DTDisposeEntryIterator(iterator);
+  if (matches != 1 || controller !=
+    (unsigned int)powermac_io_info.audio_base_phys)
+    return;
+  transport = &keylargo_audio_state.davbus;
+  transport->context = &keylargo_audio_state;
+  transport->controllerBase = controller;
+  transport->family = family;
+  transport->owner = &keylargo_audio_state.audioMuxOwner;
+  transport->saved = &keylargo_audio_state.davbusSaved;
+  transport->active = &keylargo_audio_state.davbusActive;
+  transport->readFCR1 = keylargo_davbus_read;
+  transport->writeFCR1 = keylargo_davbus_write;
+  transport->lock = keylargo_lock;
+  transport->unlock = keylargo_unlock;
+  transport->barrier = keylargo_davbus_barrier;
+  transport->inInterruptContext = keylargo_in_interrupt;
+  transport->readGPIO = keylargo_read_gpio8;
+  transport->writeGPIO = keylargo_write_gpio8;
+  PEDAVBusBindTransport(transport);
+}
+
+static boolean_t
+keylargo_prepare_audio(DTEntry *macIO)
+{
+  unsigned int base;
+  unsigned int size;
+
+  PEKeyLargoBindTransport(0);
+  PEDAVBusBindTransport(0);
+  keylargo_audio_state.davbus.family = 0;
+  if (DTFindEntry("device_type", "mac-io", macIO) != kSuccess ||
+    !PEKeyLargoGetMacIOInfo(&base, &size) ||
+    base != (unsigned int)powermac_io_info.io_base_phys ||
+    size != (unsigned int)powermac_io_info.io_size)
+    return FALSE;
+  keylargo_audio_state.macIOBase = base;
+  keylargo_audio_state.macIOSize = size;
+  lock_init(&keylargo_audio_state.lock, TRUE);
+  return TRUE;
+}
+
+kern_return_t
+PEHeathrowDAVBusInitialize(void)
+{
+  DTEntry macIO;
+
+  if (!keylargo_prepare_audio(&macIO))
+    return KERN_PE_KEYLARGO_NOT_READY;
+  if (powermac_info.class != POWERMAC_CLASS_YOSEMITE)
+    return KERN_PE_KEYLARGO_NOT_READY;
+  keylargo_bind_davbus(macIO);
+  return keylargo_audio_state.davbus.family == kPEDAVBusPaddington ?
+    KERN_SUCCESS : KERN_PE_KEYLARGO_NOT_READY;
+}
+
 kern_return_t
 PEKeyLargoInitialize(void)
 {
@@ -279,19 +431,21 @@ PEKeyLargoInitialize(void)
   DTEntry i2c;
   PEKeyLargoDiscoveryInput input;
   PEKeyLargoDiscovery discovery;
-  unsigned int base;
-  unsigned int size;
+  PEKeyLargoProperty device;
 
-  PEKeyLargoBindTransport(0);
-  if (DTFindEntry("device_type", "mac-io", &macIO) != kSuccess ||
-    !PEKeyLargoGetMacIOInfo(&base, &size) ||
-    base != (unsigned int)powermac_io_info.io_base_phys ||
-    size != (unsigned int)powermac_io_info.io_size ||
-    !keylargo_find_i2c(macIO, &i2c))
+  if (!keylargo_prepare_audio(&macIO))
+    return KERN_PE_KEYLARGO_NOT_READY;
+  device = keylargo_property(macIO, "device-id");
+  if (device.bytes != 0 && device.size == 4 &&
+    (PEKeyLargoCell(device.bytes) == 0x10 ||
+    PEKeyLargoCell(device.bytes) == 0x17))
+    return KERN_PE_KEYLARGO_NOT_READY;
+  keylargo_bind_davbus(macIO);
+  if (!keylargo_find_i2c(macIO, &i2c))
     return KERN_PE_KEYLARGO_NOT_READY;
   bzero(&input, sizeof(input));
-  input.macIOBase = base;
-  input.macIOSize = size;
+  input.macIOBase = keylargo_audio_state.macIOBase;
+  input.macIOSize = keylargo_audio_state.macIOSize;
   input.reg = keylargo_property(i2c, "reg");
   input.absoluteAddress = keylargo_property(i2c, "AAPL,address");
   input.addressStep = keylargo_property(i2c, "AAPL,address-step");
@@ -299,14 +453,13 @@ PEKeyLargoInitialize(void)
   if (!PEKeyLargoParseDiscovery(&input, &discovery))
     return KERN_PE_KEYLARGO_NOT_READY;
 
-  keylargo_audio_state.macIOBase = base;
-  keylargo_audio_state.macIOSize = size;
   keylargo_audio_state.i2cOffset = discovery.i2cOffset;
   keylargo_audio_state.addressStep = discovery.addressStep;
   keylargo_audio_state.i2cRate = discovery.rate;
   keylargo_audio_state.i2cSpeed = (unsigned char)discovery.speed;
-  lock_init(&keylargo_audio_state.lock, TRUE);
   keylargo_audio_state.transport.context = &keylargo_audio_state;
+  keylargo_audio_state.transport.audioMuxOwner =
+    &keylargo_audio_state.audioMuxOwner;
   keylargo_audio_state.transport.speed = keylargo_audio_state.i2cSpeed;
   keylargo_audio_state.transport.read8 = keylargo_read8;
   keylargo_audio_state.transport.write8 = keylargo_write8;
@@ -326,6 +479,7 @@ PEKeyLargoInitialize(void)
   return KERN_SUCCESS;
 }
 
+#ifndef KEYLARGO_BINDING_HOST_TEST
 /* DBDMA Channel Map for KeyLargo */
 powermac_dbdma_channels_t keylargo_dbdma_channels =
 { -1,      // KeyLargo does not have Curio
@@ -342,3 +496,4 @@ powermac_dbdma_channels_t keylargo_dbdma_channels =
   0x0A,    // IDE 0
   0x0B,    // IDE 1
 };
+#endif

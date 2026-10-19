@@ -79,6 +79,7 @@ dir     Developer/Commands/pb_makefiles-1 all
 dir     Developer/Commands/perl-1 all
 dir     Developer/Commands/project_makefiles-1 all
 dir     Developer/Commands/rcs-1 all
+dir     Developer/Commands/samurai-1 all
 dir     relcontrol-10         all
 dir     Commands/rsync-1 all
 dir     sendmail-1            all

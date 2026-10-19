@@ -32,3 +32,5 @@
 
 @end
 
+FOUNDATION_EXPORT NSString *NSHostName(void);
+

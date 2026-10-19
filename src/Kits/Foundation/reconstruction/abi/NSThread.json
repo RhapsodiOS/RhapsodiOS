@@ -1,0 +1,171 @@
+{
+ "categories": [],
+ "classes": [
+  {
+   "class_methods": [
+    {
+     "selector": "sleepForTimeInterval:",
+     "types": "v16@8:12d16"
+    },
+    {
+     "selector": "sleepUntilDate:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "exit",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "detachNewThreadSelector:toTarget:withObject:",
+     "types": "v20@8:12:16@20@24"
+    },
+    {
+     "selector": "isMultiThreaded",
+     "types": "c8@8:12"
+    },
+    {
+     "selector": "currentThread",
+     "types": "@8@8:12"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "_threadName",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "_setThreadName:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "description",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "_exit",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "setRunLoop:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "runLoop",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "threadDictionary",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "dealloc",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "init",
+     "types": "@8@8:12"
+    }
+   ],
+   "instance_size": 52,
+   "ivars": [
+    {
+     "name": "seqNum",
+     "offset": 4,
+     "type": "I"
+    },
+    {
+     "name": "lastStack",
+     "offset": 8,
+     "type": "I"
+    },
+    {
+     "name": "threadDictionary",
+     "offset": 12,
+     "type": "@\"NSMutableDictionary\""
+    },
+    {
+     "name": "runLoop",
+     "offset": 16,
+     "type": "@"
+    },
+    {
+     "name": "excHandlers",
+     "offset": 20,
+     "type": "^v"
+    },
+    {
+     "name": "autoreleasePool",
+     "offset": 24,
+     "type": "^v"
+    },
+    {
+     "name": "doQueue",
+     "offset": 28,
+     "type": "@"
+    },
+    {
+     "name": "doConversation",
+     "offset": 32,
+     "type": "@"
+    },
+    {
+     "name": "doConversationCount",
+     "offset": 36,
+     "type": "I"
+    },
+    {
+     "name": "doConversationRequest",
+     "offset": 40,
+     "type": "@"
+    },
+    {
+     "name": "reserved1",
+     "offset": 44,
+     "type": "^v"
+    },
+    {
+     "name": "reserved",
+     "offset": 48,
+     "type": "^v"
+    }
+   ],
+   "name": "NSThread",
+   "superclass": "NSObject"
+  }
+ ],
+ "data_symbols": [
+  "_NSDidBecomeSingleThreadedNotification",
+  "_NSThreadWillExitNotification",
+  "_NSWillBecomeMultiThreadedNotification",
+  "__NSConnectionHashTableLock",
+  "__NSConnectionModesLock",
+  "__NSConnectionTableLock",
+  "__NSDistantObjectSelectorsTableLock",
+  "__NSGlobalRetainLock",
+  "__NSIsMultiThreaded",
+  "__NSLogLock",
+  "__NSPortTableLock",
+  "__NSStringRetainLock",
+  "__NSTempFileCounterLock",
+  "__NSUniqueStringCounterLock",
+  "__NSUniqueCStringLock",
+  "__NSSimpleHashingLock",
+  "__NSHostTableLock",
+  "___NSSequenceLock",
+  "___NSDebugRecordLock",
+  "___NSAllocatorLock",
+  "___NSRefCountLock",
+  "__NSURLFormatterRegistrarLock",
+  "__NSURLHandlerRegistrarLock",
+  "__NSPlaceholderValueLock"
+ ],
+ "module": "NSThread.m",
+ "schema_version": "abi-v1",
+ "text_symbols": [
+  "__NSCurrentThread",
+  "__NSMilliSleep",
+  "__NSToDoAtFirstThreadStart",
+  "__NSToDoAtLastThreadExit"
+ ]
+}

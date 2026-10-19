@@ -96,3 +96,76 @@ memmap_end_of_memory(
 	return (maxmem_bytes);
     return (extmem_bytes);
 }
+
+/*
+ * Kernel virtual address that pmap_bootstrap() reserves above the V == P
+ * map of physical memory.  This must track:
+ *
+ *	machdep/i386/pmap.c		pmap_bootstrap()'s 64MB base size
+ *	kern/zalloc.c			zone_map_sizer()
+ *	machdep/i386/unix_startup.c	buffer_map_sizer()
+ *
+ * The real sizers cannot be called this early: buffer_map_sizer() memoizes
+ * bufpages, nbuf and niobuf, which startup_early() consumes later.
+ */
+#define EST_KMEM_BASE	(64 * 1024 * 1024)
+#define EST_ZONE_MIN	(12 * 1024 * 1024)	/* zone_map_size_min */
+#define EST_ZONE_MAX	(128 * 1024 * 1024)	/* zone_map_size_max */
+#define EST_MAXBSIZE	8192			/* bsd/sys/param.h MAXBSIZE */
+#define EST_MAXPHYS	(64 * 1024)		/* bsd/i386/param.h MAXPHYS */
+#define CLAMP_STEP	(16 * 1024 * 1024)
+
+static unsigned int
+kmem_va_estimate(unsigned int mem, unsigned int page_size)
+{
+    unsigned int	zone, bufpages, nbuf, niobuf;
+
+    zone = mem / 8;
+    if (zone < EST_ZONE_MIN)
+	zone = EST_ZONE_MIN;
+    else if (zone > EST_ZONE_MAX)
+	zone = EST_ZONE_MAX;
+
+    bufpages = (mem / 50) / page_size;
+    nbuf = (bufpages < 16 ? 16 : bufpages) + 64;
+
+    niobuf = bufpages / (EST_MAXPHYS / page_size);
+    if (niobuf > 1024)
+	niobuf = 1024;
+    if (niobuf < 32)
+	niobuf = 32;
+
+    return (EST_KMEM_BASE + zone + nbuf * EST_MAXBSIZE + niobuf * EST_MAXPHYS);
+}
+
+/*
+ * Subtract on the budget side so the sum can never wrap.
+ */
+static int
+kmem_va_fits(unsigned int mem, unsigned int budget, unsigned int page_size)
+{
+    return (mem <= budget &&
+	    kmem_va_estimate(mem, page_size) <= budget - mem);
+}
+
+/*
+ * The most physical memory that, with the kernel reserve above it, fits a
+ * kernel window of "budget" bytes.  Memory that fits is returned unchanged;
+ * otherwise the result is rounded down to a 16MB step first, so it depends
+ * only on the budget and not on how much memory was detected.  Returns 0 if
+ * nothing fits.
+ */
+unsigned int
+memmap_clamp(unsigned int end, unsigned int budget, unsigned int page_size)
+{
+    if (kmem_va_fits(end, budget, page_size))
+	return (end);
+
+    end &= ~(CLAMP_STEP - 1);
+    while (!kmem_va_fits(end, budget, page_size)) {
+	if (end < CLAMP_STEP)
+	    return (0);
+	end -= CLAMP_STEP;
+    }
+    return (end);
+}

@@ -376,6 +376,76 @@ def test_i386_sectdiff_rejects_type_3_follower(tmp_path):
         read_macho(write_fixture(tmp_path, blob))
 
 
+def test_reads_i386_sectdiff_relocation_paired_with_the_next_entry(tmp_path):
+    """GCC 2.7.2.1's "call $+5; pop reg" PIC-base idiom addresses local float
+    constants as (constant address - PIC base), which Mach-O expresses as a
+    GENERIC_RELOC_SECTDIFF scattered entry immediately followed by a
+    scattered GENERIC_RELOC_PAIR carrying the other half. Every i386 module
+    this reconstruction built that touches floating point emits this pair."""
+    # field already holds (data - text) = 0x1004 - 0x1000 = 4, so addend is 0.
+    text = struct.pack("<i", 4)
+    sectdiff = struct.pack("<II", 0xA2000000, 0x1004)
+    pair = struct.pack("<II", 0xA1000000, 0x1000)
+    blob = build_macho_fixture(text=text, relocations=sectdiff + pair)
+
+    document = read_macho(write_fixture(tmp_path, blob))
+
+    assert document["relocations"] == [
+        {"address": 0x1000, "kind": "i386-sectdiff-32-absolute",
+         "target": "__DATA,__data", "addend": 0},
+    ]
+    raw = {item["kind"]: item for item in document["extensions"]["macho"]["relocations"]}
+    assert set(raw) == {"i386-sectdiff-32-absolute", "i386-pair-32-absolute"}
+    assert raw["i386-sectdiff-32-absolute"] == {
+        "address": 0x1000,
+        "kind": "i386-sectdiff-32-absolute",
+        "target": "__DATA,__data",
+        "addend": 0,
+        "type": 2,
+        "pc_relative": False,
+        "width": 4,
+        "external": False,
+        "section": "__TEXT,__text",
+        "section_ordinal": 1,
+        "target_section_ordinal": 2,
+        "original_bytes": "04000000",
+    }
+    assert raw["i386-pair-32-absolute"]["target"] is None
+    assert raw["i386-pair-32-absolute"]["addend"] == 0x1000
+
+
+def test_i386_sectdiff_with_extra_displacement_keeps_it_in_the_addend(tmp_path):
+    # field holds (data - text) + 6 = 4 + 6 = 10.
+    text = struct.pack("<i", 10)
+    sectdiff = struct.pack("<II", 0xA2000000, 0x1004)
+    pair = struct.pack("<II", 0xA1000000, 0x1000)
+    blob = build_macho_fixture(text=text, relocations=sectdiff + pair)
+
+    document = read_macho(write_fixture(tmp_path, blob))
+
+    assert document["relocations"] == [
+        {"address": 0x1000, "kind": "i386-sectdiff-32-absolute",
+         "target": "__DATA,__data", "addend": 6},
+    ]
+
+
+def test_i386_sectdiff_requires_a_scattered_pair_entry(tmp_path):
+    sectdiff = struct.pack("<II", 0xA2000000, 0x1004)
+    non_scattered_pair = struct.pack("<iI", 0, (2 << 25) | (1 << 27))
+    blob = build_macho_fixture(relocations=sectdiff + non_scattered_pair)
+
+    with pytest.raises(MachOFormatError, match="SECTDIFF requires a scattered PAIR entry"):
+        read_macho(write_fixture(tmp_path, blob))
+
+
+def test_i386_sectdiff_as_the_last_entry_is_rejected(tmp_path):
+    sectdiff = struct.pack("<II", 0xA2000000, 0x1004)
+    blob = build_macho_fixture(relocations=sectdiff)
+
+    with pytest.raises(MachOFormatError, match="SECTDIFF requires a scattered PAIR entry"):
+        read_macho(write_fixture(tmp_path, blob))
+
+
 @pytest.mark.parametrize(
     ("address", "length"),
     [(3, 0), (2, 1), (0, 2)],
@@ -821,3 +891,16 @@ def test_ppc_sectdiff_requires_a_scattered_pair(tmp_path):
 
     with pytest.raises(MachOFormatError, match="SECTDIFF requires a scattered PAIR"):
         read_macho(write_ppc(tmp_path, text, relocations))
+
+
+def test_reads_a_dylib(tmp_path):
+    from binrecon.macho import MH_DYLIB, read_macho
+    from macho_fixture import build_macho_fixture
+
+    path = tmp_path / "libthing.dylib"
+    path.write_bytes(build_macho_fixture(file_type=MH_DYLIB))
+
+    document = read_macho(path)
+
+    assert document["input"]["architecture"] == "i386"
+    assert any(section["name"] == "__TEXT,__text" for section in document["sections"])

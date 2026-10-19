@@ -1,0 +1,42 @@
+{
+ "categories": [],
+ "classes": [],
+ "data_symbols": [
+  "_NSIntMapKeyCallBacks",
+  "_NSIntMapValueCallBacks",
+  "_NSNonOwnedPointerMapKeyCallBacks",
+  "_NSNonOwnedPointerMapValueCallBacks",
+  "_NSNonOwnedPointerOrNullMapKeyCallBacks",
+  "_NSNonRetainedObjectMapKeyCallBacks",
+  "_NSNonRetainedObjectMapValueCallBacks",
+  "_NSObjectMapKeyCallBacks",
+  "_NSObjectMapValueCallBacks",
+  "_NSOwnedPointerMapKeyCallBacks",
+  "_NSOwnedPointerMapValueCallBacks"
+ ],
+ "module": "NSMapTable.m",
+ "schema_version": "abi-v1",
+ "text_symbols": [
+  "_NSAllMapTableKeys",
+  "_NSAllMapTableValues",
+  "_NSCompareMapTables",
+  "_NSCopyMapTableWithZone",
+  "_NSCountMapTable",
+  "_NSCreateMapTable",
+  "_NSCreateMapTableWithZone",
+  "_NSEnumerateMapTable",
+  "_NSFreeMapTable",
+  "_NSMapGet",
+  "_NSMapInsert",
+  "_NSMapInsertIfAbsent",
+  "_NSMapInsertKnownAbsent",
+  "_NSMapMember",
+  "_NSMapRemove",
+  "_NSNextMapEnumeratorPair",
+  "_NSResetMapTable",
+  "_NSStringFromMapTable",
+  "__NSMapTableDescribeCString",
+  "__NSMapTableHashCString",
+  "__NSMapTableIsEqualCString"
+ ]
+}

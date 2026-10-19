@@ -1,0 +1,298 @@
+{
+ "categories": [
+  {
+   "class": "NSDate",
+   "class_methods": [
+    {
+     "selector": "dateWithNaturalLanguageString:locale:",
+     "types": "@16@8:12@16@20"
+    },
+    {
+     "selector": "dateWithNaturalLanguageString:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "dateWithNaturalLanguageString:date:locale:",
+     "types": "@20@8:12@16@20@24"
+    }
+   ],
+   "instance_methods": [],
+   "name": "NSNaturalLanguageDate"
+  },
+  {
+   "class": "NSCalendarDate",
+   "class_methods": [
+    {
+     "selector": "dateWithNaturalLanguageString:date:locale:",
+     "types": "@20@8:12@16@20@24"
+    }
+   ],
+   "instance_methods": [],
+   "name": "NSNaturalLanguageDate"
+  },
+  {
+   "class": "NSDate",
+   "class_methods": [
+    {
+     "selector": "dateWithString:",
+     "types": "@12@8:12@16"
+    }
+   ],
+   "instance_methods": [
+    {
+     "selector": "initWithString:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "descriptionWithLocale:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "descriptionWithCalendarFormat:timeZone:locale:",
+     "types": "@20@8:12@16@20@24"
+    },
+    {
+     "selector": "dateWithCalendarFormat:timeZone:",
+     "types": "@16@8:12@16@20"
+    }
+   ],
+   "name": "NSCalendarDateExtras"
+  },
+  {
+   "class": "NSScanner",
+   "class_methods": [],
+   "instance_methods": [
+    {
+     "selector": "_scanDecimal:into:",
+     "types": "c16@8:12I16^i20"
+    },
+    {
+     "selector": "_remainingString",
+     "types": "@8@8:12"
+    }
+   ],
+   "name": "NSRemainingString"
+  }
+ ],
+ "classes": [
+  {
+   "class_methods": [
+    {
+     "selector": "dateWithString:calendarFormat:locale:",
+     "types": "@20@8:12@16@20@24"
+    },
+    {
+     "selector": "dateWithString:calendarFormat:",
+     "types": "@16@8:12@16@20"
+    },
+    {
+     "selector": "dateWithYear:month:day:hour:minute:second:timeZone:",
+     "types": "@36@8:12i16I20I24I28I32I36@40"
+    },
+    {
+     "selector": "calendarDate",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "distantPast",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "distantFuture",
+     "types": "@8@8:12"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "initWithCoder:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "encodeWithCoder:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "replacementObjectForPortCoder:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "classForCoder",
+     "types": "#8@8:12"
+    },
+    {
+     "selector": "initWithString:calendarFormat:locale:",
+     "types": "@20@8:12@16@20@24"
+    },
+    {
+     "selector": "initWithString:calendarFormat:",
+     "types": "@16@8:12@16@20"
+    },
+    {
+     "selector": "descriptionWithCalendarFormat:locale:",
+     "types": "@16@8:12@16@20"
+    },
+    {
+     "selector": "descriptionWithCalendarFormat:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "descriptionWithLocale:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "description",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "addTimeInterval:",
+     "types": "@16@8:12d16"
+    },
+    {
+     "selector": "years:months:days:hours:minutes:seconds:sinceDate:",
+     "types": "v36@8:12^i16^i20^i24^i28^i32^i36@40"
+    },
+    {
+     "selector": "dateByAddingYears:months:days:hours:minutes:seconds:",
+     "types": "@32@8:12i16i20i24i28i32i36"
+    },
+    {
+     "selector": "microsecondOfSecond",
+     "types": "i8@8:12"
+    },
+    {
+     "selector": "secondOfMinute",
+     "types": "i8@8:12"
+    },
+    {
+     "selector": "minuteOfHour",
+     "types": "i8@8:12"
+    },
+    {
+     "selector": "hourOfDay",
+     "types": "i8@8:12"
+    },
+    {
+     "selector": "dayOfYear",
+     "types": "i8@8:12"
+    },
+    {
+     "selector": "dayOfWeek",
+     "types": "i8@8:12"
+    },
+    {
+     "selector": "dayOfMonth",
+     "types": "i8@8:12"
+    },
+    {
+     "selector": "monthOfYear",
+     "types": "i8@8:12"
+    },
+    {
+     "selector": "yearOfCommonEra",
+     "types": "i8@8:12"
+    },
+    {
+     "selector": "dayOfCommonEra",
+     "types": "i8@8:12"
+    },
+    {
+     "selector": "setCalendarFormat:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "calendarFormat",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "setTimeZone:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "timeZone",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "timeZoneDetail",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "timeIntervalSinceReferenceDate",
+     "types": "d8@8:12"
+    },
+    {
+     "selector": "copyWithZone:",
+     "types": "@12@8:12^{?=}16"
+    },
+    {
+     "selector": "initWithYear:month:day:hour:minute:second:timeZone:",
+     "types": "@36@8:12i16I20I24I28I32I36@40"
+    },
+    {
+     "selector": "init",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "initWithTimeIntervalSinceReferenceDate:",
+     "types": "@16@8:12d16"
+    },
+    {
+     "selector": "dealloc",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "retainCount",
+     "types": "I8@8:12"
+    },
+    {
+     "selector": "release",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "retain",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "initWithString:",
+     "types": "@12@8:12@16"
+    }
+   ],
+   "instance_size": 28,
+   "ivars": [
+    {
+     "name": "refCount",
+     "offset": 4,
+     "type": "I"
+    },
+    {
+     "name": "_timeIntervalSinceReferenceDate",
+     "offset": 8,
+     "type": "d"
+    },
+    {
+     "name": "_timeZone",
+     "offset": 16,
+     "type": "@\"NSTimeZone\""
+    },
+    {
+     "name": "_formatString",
+     "offset": 20,
+     "type": "@\"NSString\""
+    },
+    {
+     "name": "_reserved",
+     "offset": 24,
+     "type": "^v"
+    }
+   ],
+   "name": "NSCalendarDate",
+   "superclass": "NSDate"
+  }
+ ],
+ "data_symbols": [
+  "__NSNaturalLanguageCacheLock"
+ ],
+ "module": "NSCalendarDate.m",
+ "schema_version": "abi-v1",
+ "text_symbols": []
+}

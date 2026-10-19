@@ -1,0 +1,245 @@
+{
+ "categories": [],
+ "classes": [
+  {
+   "class_methods": [
+    {
+     "selector": "statusForMachPort:",
+     "types": "v12@8:12i16"
+    },
+    {
+     "selector": "allocWithZone:",
+     "types": "@12@8:12^{?=}16"
+    },
+    {
+     "selector": "portWithMachPort:",
+     "types": "@12@8:12i16"
+    },
+    {
+     "selector": "newWithMachPort:",
+     "types": "@12@8:12i16"
+    },
+    {
+     "selector": "_enableLogging:",
+     "types": "v9@8:12c16"
+    },
+    {
+     "selector": "resetAllPorts",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "allPorts",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "handleMachMessage:",
+     "types": "v12@8:12^v16"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "removeConnection:fromRunLoop:forMode:",
+     "types": "v20@8:12@16@20@24"
+    },
+    {
+     "selector": "addConnection:toRunLoop:forMode:",
+     "types": "v20@8:12@16@20@24"
+    },
+    {
+     "selector": "description",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "isEqual:",
+     "types": "c12@8:12@16"
+    },
+    {
+     "selector": "hash",
+     "types": "I8@8:12"
+    },
+    {
+     "selector": "isValid",
+     "types": "c8@8:12"
+    },
+    {
+     "selector": "invalidate",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "dealloc",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "delegate",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "setDelegate:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "machPort",
+     "types": "i8@8:12"
+    },
+    {
+     "selector": "release",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "retainCount",
+     "types": "I8@8:12"
+    },
+    {
+     "selector": "retain",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "initWithMachPort:",
+     "types": "@12@8:12i16"
+    },
+    {
+     "selector": "init",
+     "types": "@8@8:12"
+    }
+   ],
+   "instance_size": 20,
+   "ivars": [
+    {
+     "name": "isValid",
+     "offset": 4,
+     "type": "b1"
+    },
+    {
+     "name": "isDying",
+     "offset": 4,
+     "type": "b1"
+    },
+    {
+     "name": "filler",
+     "offset": 4,
+     "type": "b6"
+    },
+    {
+     "name": "refCount",
+     "offset": 5,
+     "type": "b24"
+    },
+    {
+     "name": "machPort",
+     "offset": 8,
+     "type": "i"
+    },
+    {
+     "name": "delegate",
+     "offset": 12,
+     "type": "@"
+    },
+    {
+     "name": "reserved",
+     "offset": 16,
+     "type": "^v"
+    }
+   ],
+   "name": "NSMachPort",
+   "superclass": "NSPort"
+  },
+  {
+   "class_methods": [
+    {
+     "selector": "newWithMachPort:",
+     "types": "@12@8:12i16"
+    },
+    {
+     "selector": "portWithMachPort:",
+     "types": "@12@8:12i16"
+    },
+    {
+     "selector": "port",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "allocWithZone:",
+     "types": "@12@8:12^{?=}16"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "removeConnection:fromRunLoop:forMode:",
+     "types": "v20@8:12@16@20@24"
+    },
+    {
+     "selector": "addConnection:toRunLoop:forMode:",
+     "types": "v20@8:12@16@20@24"
+    },
+    {
+     "selector": "sendBeforeDate:components:from:reserved:",
+     "types": "c24@8:12@16@20@24I28"
+    },
+    {
+     "selector": "encodeWithCoder:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "replacementObjectForPortCoder:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "initWithCoder:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "replacementObjectForCoder:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "classForCoder",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "copyWithZone:",
+     "types": "@12@8:12^{?=}16"
+    },
+    {
+     "selector": "reservedSpaceLength",
+     "types": "I8@8:12"
+    },
+    {
+     "selector": "delegate",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "setDelegate:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "machPort",
+     "types": "i8@8:12"
+    },
+    {
+     "selector": "isValid",
+     "types": "c8@8:12"
+    },
+    {
+     "selector": "invalidate",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "initWithMachPort:",
+     "types": "@12@8:12i16"
+    }
+   ],
+   "instance_size": 4,
+   "ivars": [],
+   "name": "NSPort",
+   "superclass": "NSObject"
+  }
+ ],
+ "data_symbols": [
+  "_NSPortDidBecomeInvalidNotification"
+ ],
+ "module": "NSPort.m",
+ "schema_version": "abi-v1",
+ "text_symbols": []
+}

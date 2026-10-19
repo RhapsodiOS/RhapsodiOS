@@ -107,6 +107,8 @@ int			num_regions;
 vm_size_t		mem_size;
 int			mem_map_ranges = 0;	/* ranges, if the map set end of memory */
 vm_offset_t		mem_map_top = 0;	/* the map's contiguous RAM top */
+vm_size_t		mem_size_detected = 0;	/* before the clamp */
+vm_size_t		mem_size_budget = 0;	/* kernel window left for it */
 
 /* parameters passed from bootstrap loader */
 unsigned int cnvmem = 0;	/* must be in .data section */
@@ -472,6 +474,29 @@ size_memory(void)
 	mem_map_ranges = n;
 	mem_map_top = top;
     }
+
+    /*
+     * Physical memory is mapped V == P from kernel VA 0, pmap_bootstrap()
+     * reserves more kernel VA above it, and maps the VESA frame buffer above
+     * that.  All of it has to fit the kernel's window, so give back whatever
+     * memory does not.  The frame buffer comes off the budget first, so a
+     * large machine keeps its VBE console.
+     */
+    mem_size_detected = end_of_memory;
+    mem_size_budget = VM_MAX_KERNEL_ADDRESS - VM_MIN_KERNEL_ADDRESS;
+    if (kernBootStruct->vbeCurrentMode.xResolution != 0) {
+	boot_vbe_mode	*mode = &kernBootStruct->vbeCurrentMode;
+	vm_offset_t	start = trunc_page(mode->frameBuffer);
+	vm_size_t	fb;
+
+	/* the expression pmap_bootstrap() maps */
+	fb = round_page(mode->frameBuffer +
+			mode->bytesPerScanline * mode->yResolution +
+			(mode->frameBuffer - start)) - start;
+	if (fb < mem_size_budget)
+	    mem_size_budget -= fb;
+    }
+    end_of_memory = memmap_clamp(end_of_memory, mem_size_budget, page_size);
 
     /*
      * This is the Mach notion of

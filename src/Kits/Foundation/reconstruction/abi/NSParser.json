@@ -1,0 +1,365 @@
+{
+ "categories": [
+  {
+   "class": "NSString",
+   "class_methods": [],
+   "instance_methods": [
+    {
+     "selector": "propertyListFromStringsFileFormat",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "propertyList",
+     "types": "@8@8:12"
+    }
+   ],
+   "name": "NSExtendedStringPropertyListParsing"
+  }
+ ],
+ "classes": [
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "parseOldOrNewStringsFile",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "parseDictionary",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "parseDictionaryBracketLess",
+     "types": "@8@8:12"
+    }
+   ],
+   "instance_size": 72,
+   "ivars": [],
+   "name": "_NSPListParserOldStyle",
+   "superclass": "NSPropertyListParser"
+  },
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "parseDictionary",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "parseArray",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "initWithString:",
+     "types": "@12@8:12@16"
+    }
+   ],
+   "instance_size": 72,
+   "ivars": [],
+   "name": "NSPropertyListParser",
+   "superclass": "NSParser"
+  },
+  {
+   "class_methods": [
+    {
+     "selector": "parsedGrammarForString:",
+     "types": "@12@8:12@16"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "parseData",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "parseSuite:separator:allowOmitLastSeparator:",
+     "types": "@17@8:12@16@20c24"
+    },
+    {
+     "selector": "parseDictionaryOfKey:value:",
+     "types": "@16@8:12@16@20"
+    },
+    {
+     "selector": "parseSuiteOfPairsKey:separator:value:separator:allowOmitLastSeparator:",
+     "types": "@25@8:12@16@20@24@28c32"
+    },
+    {
+     "selector": "expectTokenEqualTo:mask:",
+     "types": "v16@8:12@16I20"
+    },
+    {
+     "selector": "expectSeparatorEqualTo:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "parseSeparatorEqualTo:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "parseSeparator",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "parseNumber",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "parseString",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "parseQuotedString",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "parseUnquotedString",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "peekTokenType",
+     "types": "I8@8:12"
+    },
+    {
+     "selector": "peekTokenWithMask:",
+     "types": "@12@8:12I16"
+    },
+    {
+     "selector": "parseTokenEqualTo:mask:",
+     "types": "@16@8:12@16I20"
+    },
+    {
+     "selector": "parseTokenWithMask:",
+     "types": "@12@8:12I16"
+    },
+    {
+     "selector": "expectEndOfInput",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "expect:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "parse:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "parseError:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "setString:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "setEnableFloatParsing:",
+     "types": "v9@8:12c16"
+    },
+    {
+     "selector": "setEnableIntegerParsing:",
+     "types": "v9@8:12c16"
+    },
+    {
+     "selector": "setQuotingWithSingleQuote:double:",
+     "types": "v13@8:12c16c20"
+    },
+    {
+     "selector": "setMultipleCharacterSeparators:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "setMonoCharacterSeparatorCharacters:usualPunctuation:",
+     "types": "v13@8:12@16c20"
+    },
+    {
+     "selector": "setUnquotedStringCharacters:lowerCaseLetters:upperCaseLetters:digits:",
+     "types": "v21@8:12@16c20c24c28"
+    },
+    {
+     "selector": "setUnquotedStringStartCharacters:lowerCaseLetters:upperCaseLetters:digits:",
+     "types": "v21@8:12@16c20c24c28"
+    },
+    {
+     "selector": "dealloc",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "initWithGrammar:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "parseMetaRuleBody",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "parseMetaSyntaxSequence",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "parseMetaSyntaxLeafResultShouldBeSkipped:",
+     "types": "@12@8:12^c16"
+    },
+    {
+     "selector": "nextToken",
+     "types": "v8@8:12"
+    }
+   ],
+   "instance_size": 72,
+   "ivars": [
+    {
+     "name": "_grammar",
+     "offset": 4,
+     "type": "@\"NSDictionary\""
+    },
+    {
+     "name": "_tokenizationParameters",
+     "offset": 8,
+     "type": "^v"
+    },
+    {
+     "name": "_tokenBuffer",
+     "offset": 12,
+     "type": "(?)"
+    },
+    {
+     "name": "_tokenMax",
+     "offset": 16,
+     "type": "I"
+    },
+    {
+     "name": "_tokenCount",
+     "offset": 20,
+     "type": "I"
+    },
+    {
+     "name": "_input",
+     "offset": 24,
+     "type": "(?)"
+    },
+    {
+     "name": "_inputLength",
+     "offset": 28,
+     "type": "I"
+    },
+    {
+     "name": "_inputIsASCII",
+     "offset": 32,
+     "type": "c"
+    },
+    {
+     "name": "_tokenBufferReady",
+     "offset": 33,
+     "type": "c"
+    },
+    {
+     "name": "_tokenIsASCII",
+     "offset": 34,
+     "type": "c"
+    },
+    {
+     "name": "_tokenType",
+     "offset": 35,
+     "type": "C"
+    },
+    {
+     "name": "_inputPos",
+     "offset": 36,
+     "type": "I"
+    },
+    {
+     "name": "_inputLine",
+     "offset": 40,
+     "type": "I"
+    },
+    {
+     "name": "_tokenInputPos",
+     "offset": 44,
+     "type": "I"
+    },
+    {
+     "name": "_parseStack",
+     "offset": 48,
+     "type": "^@"
+    },
+    {
+     "name": "_parseStackMax",
+     "offset": 52,
+     "type": "I"
+    },
+    {
+     "name": "_parseStackCount",
+     "offset": 56,
+     "type": "I"
+    },
+    {
+     "name": "_allStrings",
+     "offset": 60,
+     "type": "^{?}"
+    },
+    {
+     "name": "_zone",
+     "offset": 64,
+     "type": "^{?}"
+    },
+    {
+     "name": "_reserved2",
+     "offset": 68,
+     "type": "^v"
+    }
+   ],
+   "name": "NSParser",
+   "superclass": "NSObject"
+  },
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "description",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "copyWithZone:",
+     "types": "@12@8:12^{?=}16"
+    },
+    {
+     "selector": "dealloc",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "initWithType:arg:",
+     "types": "@16@8:12i16@20"
+    }
+   ],
+   "instance_size": 16,
+   "ivars": [
+    {
+     "name": "type",
+     "offset": 4,
+     "type": "i"
+    },
+    {
+     "name": "theIndex",
+     "offset": 8,
+     "type": "I"
+    },
+    {
+     "name": "arg",
+     "offset": 12,
+     "type": "@"
+    }
+   ],
+   "name": "_NSParserSyntaxNode",
+   "superclass": "NSObject"
+  }
+ ],
+ "data_symbols": [],
+ "module": "NSParser.m",
+ "schema_version": "abi-v1",
+ "text_symbols": [
+  "__NSParseObjectFromASCIIPropertyListOrSerialization"
+ ]
+}

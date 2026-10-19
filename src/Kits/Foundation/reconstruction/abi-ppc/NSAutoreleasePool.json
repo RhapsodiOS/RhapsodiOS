@@ -1,0 +1,144 @@
+{
+ "categories": [],
+ "classes": [
+  {
+   "class_methods": [
+    {
+     "selector": "resetTotalAutoreleasedObjects",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "totalAutoreleasedObjects",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "setPoolCountHighWaterResolution:",
+     "types": "v8@4:8I12"
+    },
+    {
+     "selector": "poolCountHighWaterResolution",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "setPoolCountHighWaterMark:",
+     "types": "v8@4:8I12"
+    },
+    {
+     "selector": "poolCountHighWaterMark",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "enableFreedObjectCheck:",
+     "types": "v5@4:8c12"
+    },
+    {
+     "selector": "enableRelease:",
+     "types": "v5@4:8c12"
+    },
+    {
+     "selector": "autoreleasePoolExists",
+     "types": "c4@4:8"
+    },
+    {
+     "selector": "topAutoreleasePoolCount",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "autoreleasedObjectCount",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "showPools",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "releaseAllPools",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "addObject:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "allocWithZone:",
+     "types": "@8@4:8^{?=}12"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "dealloc",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "autorelease",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "retainCount",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "retain",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "release",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "addObject:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "initWithCapacity:",
+     "types": "@8@4:8I12"
+    },
+    {
+     "selector": "init",
+     "types": "@4@4:8"
+    }
+   ],
+   "instance_size": 20,
+   "ivars": [
+    {
+     "name": "_token",
+     "offset": 4,
+     "type": "^v"
+    },
+    {
+     "name": "_reserved3",
+     "offset": 8,
+     "type": "^v"
+    },
+    {
+     "name": "_reserved2",
+     "offset": 12,
+     "type": "^v"
+    },
+    {
+     "name": "_reserved",
+     "offset": 16,
+     "type": "^v"
+    }
+   ],
+   "name": "NSAutoreleasePool",
+   "superclass": "NSObject"
+  }
+ ],
+ "data_symbols": [],
+ "module": "NSAutoreleasePool.m",
+ "schema_version": "abi-v1",
+ "text_symbols": [
+  "_NSAutoreleaseObject",
+  "_NSAutoreleasePoolCount",
+  "_NSAutoreleasePoolCountForObject",
+  "_NSPopAutoreleasePool",
+  "_NSPrintAutoreleasePools",
+  "_NSPushAutoreleasePool",
+  "_NSTopAutoreleasePoolCount",
+  "__NSAutoreleaseFreedObject",
+  "__NSAutoreleaseHighWaterLog",
+  "__NSAutoreleaseNoPool"
+ ]
+}

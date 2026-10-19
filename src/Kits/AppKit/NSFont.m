@@ -5,6 +5,33 @@
 
 #import <AppKit/NSFont.h>
 
-// Stub implementation
-// TODO: Implement NSFont methods
+@implementation NSFont
+
+- (NSString *)fontName
+{
+    return _name ? _name : @"Helvetica";
+}
+
+- (float)pointSize
+{
+    return _size;
+}
+
+- (id)copy
+{
+    return [self copyWithZone:[self zone]];
+}
+
+- (id)copyWithZone:(NSZone *)zone
+{
+    (void)zone;
+    return [self retain];
+}
+
+- (unsigned)retainCount
+{
+    return -1;
+}
+
+@end
 

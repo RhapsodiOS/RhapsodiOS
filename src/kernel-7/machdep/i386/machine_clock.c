@@ -52,6 +52,7 @@
 #import <machdep/i386/intr_exported.h>
 
 static tvalspec_t	time_of_boot;	/* rel to 1/1/70 (UNIX T[0]) */
+static tvalspec_t	last_calendar;	/* last calendar time handed out */
 
 /*
  * Nanosecond event counter ;-)
@@ -60,6 +61,7 @@ static tvalspec_t	time_of_boot;	/* rel to 1/1/70 (UNIX T[0]) */
 static struct _system_clock {
     tvalspec_t		counter;
     unsigned int	last_timer_count;
+    tvalspec_t		last_stamp;	/* last stamp handed out */
     mapped_tvalspec_t	*mapped_counter;
     unsigned int	timer_const;
 } system_clock;
@@ -282,25 +284,31 @@ clock_get_counter(
     clock_type_t 	which_clock
 )
 {
-    tvalspec_t		result = system_time_stamp();
+    tvalspec_t		result;
+    int			s = splclock();
+
+    // one spl section, so a tick cannot slip an adjtime step in between
+    result = system_time_stamp();
 
     switch (which_clock) {
 
     case System:
 	break;
 
-    case Calendar: {
-	int		s = splclock();
-
+    case Calendar:
     	ADD_TVALSPEC(&result, &time_of_boot);
-	splx(s);
+	// a reload the tick has not counted yet lacks its adjtime step
+	if (CMP_TVALSPEC(&result, &last_calendar) < 0)
+	    result = last_calendar;
+	else
+	    last_calendar = result;
 	break;
-    }
 
     default:
 	result = TVALSPEC_ZERO;
 	break;
     }
+    splx(s);
     
     return (result);
 }
@@ -311,15 +319,17 @@ clock_set_counter(
     tvalspec_t 		value
 )
 {
-    tvalspec_t		counter = system_time_stamp();
+    tvalspec_t		counter;
+    int			s = splclock();
+
+    counter = system_time_stamp();
 
     switch (which_clock) {
 
     case Calendar: {
-	int		s = splclock();
-
 	time_of_boot = value;
 	SUB_TVALSPEC(&time_of_boot, &counter);
+	last_calendar = value;
 	splx(s);
 
 	writetodc(&value.tv_sec);
@@ -328,6 +338,7 @@ clock_set_counter(
 
     default:
     	/* Can only set the calendar */
+	splx(s);
 	break;
     }
 }
@@ -454,7 +465,6 @@ system_time_stamp(void)
 	system_clock.last_timer_count = 0;
     else
 	system_clock.last_timer_count = current_timer_count;
-    splx(s);
 
     // check for tick overflow
     if (current_timer_count > last_timer_count) {
@@ -468,6 +478,13 @@ system_time_stamp(void)
     		system_clock.timer_const;
 
     ADD_TVALSPEC_NSEC(&result, fraction);
+
+    // a second reload before the tick runs restarts the fraction; hold still
+    if (CMP_TVALSPEC(&result, &system_clock.last_stamp) < 0)
+	result = system_clock.last_stamp;
+    else
+	system_clock.last_stamp = result;
+    splx(s);
 
     return (result);
 }

@@ -1,0 +1,191 @@
+{
+ "categories": [
+  {
+   "class": "NSHTTPConnection",
+   "class_methods": [],
+   "instance_methods": [
+    {
+     "selector": "signalHeaders:complete:forRequest:",
+     "types": "v16@4:8@12c16@20"
+    },
+    {
+     "selector": "signalDataBlock:forRequest:finished:",
+     "types": "v13@4:8@12@16c20"
+    },
+    {
+     "selector": "signalConnectionFailureForRequest:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "signalTaskCompletion",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "signalMessage:",
+     "types": "v8@4:8^{?=I@@^{_NSHTTPConnectionClientMessage}}12"
+    },
+    {
+     "selector": "fetchResponseForRequest:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "numberDataBytesForRequest:withHeaders:",
+     "types": "I12@4:8@12@16"
+    },
+    {
+     "selector": "enrichedHeadersFromHeaders:andStatus:",
+     "types": "@12@4:8@12@16"
+    },
+    {
+     "selector": "fetchHeadersForRequest:connectionDied:",
+     "types": "@12@4:8@12^c16"
+    },
+    {
+     "selector": "_findCRLF:length:",
+     "types": "*12@4:8*12I16"
+    },
+    {
+     "selector": "processRequests:",
+     "types": "v8@4:8@12"
+    }
+   ],
+   "name": "NSHTTPConnectionBackgroundThread"
+  }
+ ],
+ "classes": [
+  {
+   "class_methods": [
+    {
+     "selector": "connectionForHost:port:",
+     "types": "@12@4:8@12I16"
+    },
+    {
+     "selector": "cachedConnectionForHost:port:",
+     "types": "@12@4:8@12I16"
+    },
+    {
+     "selector": "initialize",
+     "types": "v4@4:8"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "portBecameInvalid:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "handlePortMessage:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "requestWasCancelled:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "connectionFailedDuringRequest:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "receivedDataBlock:forRequest:finished:",
+     "types": "v13@4:8@12@16c20"
+    },
+    {
+     "selector": "receivedHeaders:forRequest:",
+     "types": "v12@4:8@12@16"
+    },
+    {
+     "selector": "cancelFetchOfURL:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "cancelRequest:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "enqueueRequest:forClient:",
+     "types": "v12@4:8@12@16"
+    },
+    {
+     "selector": "sendRequestSynchronously:headers:",
+     "types": "@12@4:8@12^@16"
+    },
+    {
+     "selector": "remotePortNumber",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "host",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "initWithHost:port:",
+     "types": "@12@4:8@12I16"
+    },
+    {
+     "selector": "_nextSynchCondition",
+     "types": "i4@4:8"
+    }
+   ],
+   "instance_size": 44,
+   "ivars": [
+    {
+     "name": "_port",
+     "offset": 4,
+     "type": "@\"NSPort\""
+    },
+    {
+     "name": "_host",
+     "offset": 8,
+     "type": "@\"NSHost\""
+    },
+    {
+     "name": "_remotePort",
+     "offset": 12,
+     "type": "I"
+    },
+    {
+     "name": "_lock",
+     "offset": 16,
+     "type": "@\"NSLock\""
+    },
+    {
+     "name": "_newJobs",
+     "offset": 20,
+     "type": "@\"NSMutableArray\""
+    },
+    {
+     "name": "_completedJobs",
+     "offset": 24,
+     "type": "^v"
+    },
+    {
+     "name": "_currentSynchCondition",
+     "offset": 28,
+     "type": "i"
+    },
+    {
+     "name": "_synchCompletedJobs",
+     "offset": 32,
+     "type": "@\"NSMutableArray\""
+    },
+    {
+     "name": "_synchLock",
+     "offset": 36,
+     "type": "@\"NSConditionLock\""
+    },
+    {
+     "name": "_socket",
+     "offset": 40,
+     "type": "@\"NSHTTPSocket\""
+    }
+   ],
+   "name": "NSHTTPConnection",
+   "superclass": "NSObject"
+  }
+ ],
+ "data_symbols": [],
+ "module": "NSHTTPConnection.m",
+ "schema_version": "abi-v1",
+ "text_symbols": []
+}

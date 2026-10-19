@@ -1,0 +1,7 @@
+ninja_required_version = 1.9
+builddir = BUILD.ninja/DEBUG_PPC
+outdir = BUILD.ninja/DEBUG_PPC
+include ninja/common.ninja
+subninja ninja/ppc-debug.ninja
+
+default BUILD.ninja/DEBUG_PPC/mach_kernel

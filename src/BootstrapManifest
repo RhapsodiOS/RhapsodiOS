@@ -74,3 +74,4 @@ dir     Commands/developer_cmds all
 dir     Developer/Commands/pswrap all
 dir     Commands/zsh            all
 dir     Commands/tcsh           all
+dir     Developer/Commands/samurai-1 all

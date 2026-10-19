@@ -1,0 +1,309 @@
+{
+ "categories": [],
+ "classes": [
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "lossyCString",
+     "types": "r*8@8:12"
+    },
+    {
+     "selector": "cString",
+     "types": "r*8@8:12"
+    },
+    {
+     "selector": "release",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "retainCount",
+     "types": "I8@8:12"
+    },
+    {
+     "selector": "retain",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "stringByAppendingString:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "_newSubstringWithRange:zone:",
+     "types": "@20@8:12{?=II}16^{?=}24"
+    },
+    {
+     "selector": "getBytes:maxLength:filledLength:encoding:allowLossyConversion:range:remainingRange:",
+     "types": "c40@8:12*16I20^I24I28c32{?=II}36^{?=II}44"
+    },
+    {
+     "selector": "hash",
+     "types": "I8@8:12"
+    },
+    {
+     "selector": "hasSuffix:",
+     "types": "c12@8:12@16"
+    },
+    {
+     "selector": "hasPrefix:",
+     "types": "c12@8:12@16"
+    },
+    {
+     "selector": "compare:options:range:",
+     "types": "i24@8:12@16I20{?=II}24"
+    },
+    {
+     "selector": "isEqualToString:",
+     "types": "c12@8:12@16"
+    },
+    {
+     "selector": "isEqual:",
+     "types": "c12@8:12@16"
+    },
+    {
+     "selector": "_fastCStringContents",
+     "types": "r*8@8:12"
+    },
+    {
+     "selector": "substringWithRange:",
+     "types": "@16@8:12{?=II}16"
+    },
+    {
+     "selector": "copyWithZone:",
+     "types": "@12@8:12^{?=}16"
+    },
+    {
+     "selector": "canBeConvertedToEncoding:",
+     "types": "c12@8:12I16"
+    },
+    {
+     "selector": "smallestEncoding",
+     "types": "I8@8:12"
+    },
+    {
+     "selector": "fastestEncoding",
+     "types": "I8@8:12"
+    },
+    {
+     "selector": "cStringLength",
+     "types": "I8@8:12"
+    },
+    {
+     "selector": "length",
+     "types": "I8@8:12"
+    },
+    {
+     "selector": "getCharacters:range:",
+     "types": "v20@8:12^S16{?=II}20"
+    },
+    {
+     "selector": "characterAtIndex:",
+     "types": "S12@8:12I16"
+    }
+   ],
+   "instance_size": 8,
+   "ivars": [
+    {
+     "name": "_flags",
+     "offset": 4,
+     "type": "{?=\"refs\"b8\"hasExternalRefCount\"b1\"\"b7\"numBytes\"b16}"
+    }
+   ],
+   "name": "NSInlineCString",
+   "superclass": "NSString"
+  },
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "retain",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "dealloc",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "initWithCStringNoCopy:length:",
+     "types": "@16@8:12*16I20"
+    },
+    {
+     "selector": "initWithCStringNoCopy:length:referencedString:",
+     "types": "@20@8:12*16I20@24"
+    }
+   ],
+   "instance_size": 20,
+   "ivars": [
+    {
+     "name": "_referenceString",
+     "offset": 16,
+     "type": "@\"NSSimpleCString\""
+    }
+   ],
+   "name": "NSCSubstring",
+   "superclass": "NSCString"
+  },
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "dealloc",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "release",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "retainCount",
+     "types": "I8@8:12"
+    },
+    {
+     "selector": "retain",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "initWithCString:length:",
+     "types": "@16@8:12r*16I20"
+    },
+    {
+     "selector": "initWithCStringNoCopy:length:",
+     "types": "@16@8:12*16I20"
+    },
+    {
+     "selector": "initWithCStringNoCopy:length:freeWhenDone:",
+     "types": "@17@8:12*16I20c24"
+    }
+   ],
+   "instance_size": 16,
+   "ivars": [
+    {
+     "name": "_flags",
+     "offset": 12,
+     "type": "{?=\"refs\"b8\"freeWhenDone\"b1\"hasExternalRefCount\"b1\"\"b5\"canWriteIntoBuffer\"b1\"capacity\"b16}"
+    }
+   ],
+   "name": "NSCString",
+   "superclass": "NSSimpleCString"
+  },
+  {
+   "class_methods": [
+    {
+     "selector": "allocWithZone:",
+     "types": "@12@8:12^{?=}16"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "dealloc",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "stringByAppendingString:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "_newSubstringWithRange:zone:",
+     "types": "@20@8:12{?=II}16^{?=}24"
+    },
+    {
+     "selector": "getBytes:maxLength:filledLength:encoding:allowLossyConversion:range:remainingRange:",
+     "types": "c40@8:12*16I20^I24I28c32{?=II}36^{?=II}44"
+    },
+    {
+     "selector": "hash",
+     "types": "I8@8:12"
+    },
+    {
+     "selector": "hasSuffix:",
+     "types": "c12@8:12@16"
+    },
+    {
+     "selector": "hasPrefix:",
+     "types": "c12@8:12@16"
+    },
+    {
+     "selector": "compare:options:range:",
+     "types": "i24@8:12@16I20{?=II}24"
+    },
+    {
+     "selector": "isEqualToString:",
+     "types": "c12@8:12@16"
+    },
+    {
+     "selector": "isEqual:",
+     "types": "c12@8:12@16"
+    },
+    {
+     "selector": "_fastCStringContents",
+     "types": "r*8@8:12"
+    },
+    {
+     "selector": "copyWithZone:",
+     "types": "@12@8:12^{?=}16"
+    },
+    {
+     "selector": "canBeConvertedToEncoding:",
+     "types": "c12@8:12I16"
+    },
+    {
+     "selector": "smallestEncoding",
+     "types": "I8@8:12"
+    },
+    {
+     "selector": "fastestEncoding",
+     "types": "I8@8:12"
+    },
+    {
+     "selector": "cStringLength",
+     "types": "I8@8:12"
+    },
+    {
+     "selector": "length",
+     "types": "I8@8:12"
+    },
+    {
+     "selector": "getCharacters:range:",
+     "types": "v20@8:12^S16{?=II}20"
+    },
+    {
+     "selector": "characterAtIndex:",
+     "types": "S12@8:12I16"
+    },
+    {
+     "selector": "initWithCStringNoCopy:length:",
+     "types": "@16@8:12*16I20"
+    }
+   ],
+   "instance_size": 12,
+   "ivars": [
+    {
+     "name": "bytes",
+     "offset": 4,
+     "type": "*"
+    },
+    {
+     "name": "numBytes",
+     "offset": 8,
+     "type": "I"
+    }
+   ],
+   "name": "NSSimpleCString",
+   "superclass": "NSString"
+  }
+ ],
+ "data_symbols": [],
+ "module": "NSSimpleCString.m",
+ "schema_version": "abi-v1",
+ "text_symbols": [
+  "__NSUniqueCString",
+  "_NSCompareCString",
+  "_NSHashCString",
+  "__NSNewInlineCString",
+  "__NSNewInlineCStringFromString"
+ ]
+}

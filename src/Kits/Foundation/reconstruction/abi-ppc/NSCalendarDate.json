@@ -1,0 +1,298 @@
+{
+ "categories": [
+  {
+   "class": "NSDate",
+   "class_methods": [
+    {
+     "selector": "dateWithNaturalLanguageString:locale:",
+     "types": "@12@4:8@12@16"
+    },
+    {
+     "selector": "dateWithNaturalLanguageString:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "dateWithNaturalLanguageString:date:locale:",
+     "types": "@16@4:8@12@16@20"
+    }
+   ],
+   "instance_methods": [],
+   "name": "NSNaturalLanguageDate"
+  },
+  {
+   "class": "NSCalendarDate",
+   "class_methods": [
+    {
+     "selector": "dateWithNaturalLanguageString:date:locale:",
+     "types": "@16@4:8@12@16@20"
+    }
+   ],
+   "instance_methods": [],
+   "name": "NSNaturalLanguageDate"
+  },
+  {
+   "class": "NSDate",
+   "class_methods": [
+    {
+     "selector": "dateWithString:",
+     "types": "@8@4:8@12"
+    }
+   ],
+   "instance_methods": [
+    {
+     "selector": "initWithString:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "descriptionWithLocale:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "descriptionWithCalendarFormat:timeZone:locale:",
+     "types": "@16@4:8@12@16@20"
+    },
+    {
+     "selector": "dateWithCalendarFormat:timeZone:",
+     "types": "@12@4:8@12@16"
+    }
+   ],
+   "name": "NSCalendarDateExtras"
+  },
+  {
+   "class": "NSScanner",
+   "class_methods": [],
+   "instance_methods": [
+    {
+     "selector": "_scanDecimal:into:",
+     "types": "c12@4:8I12^i16"
+    },
+    {
+     "selector": "_remainingString",
+     "types": "@4@4:8"
+    }
+   ],
+   "name": "NSRemainingString"
+  }
+ ],
+ "classes": [
+  {
+   "class_methods": [
+    {
+     "selector": "dateWithString:calendarFormat:locale:",
+     "types": "@16@4:8@12@16@20"
+    },
+    {
+     "selector": "dateWithString:calendarFormat:",
+     "types": "@12@4:8@12@16"
+    },
+    {
+     "selector": "dateWithYear:month:day:hour:minute:second:timeZone:",
+     "types": "@36@4:8i12I16I20I24I28I32@40"
+    },
+    {
+     "selector": "calendarDate",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "distantPast",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "distantFuture",
+     "types": "@4@4:8"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "initWithCoder:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "encodeWithCoder:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "replacementObjectForPortCoder:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "classForCoder",
+     "types": "#4@4:8"
+    },
+    {
+     "selector": "initWithString:calendarFormat:locale:",
+     "types": "@16@4:8@12@16@20"
+    },
+    {
+     "selector": "initWithString:calendarFormat:",
+     "types": "@12@4:8@12@16"
+    },
+    {
+     "selector": "descriptionWithCalendarFormat:locale:",
+     "types": "@12@4:8@12@16"
+    },
+    {
+     "selector": "descriptionWithCalendarFormat:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "descriptionWithLocale:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "description",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "addTimeInterval:",
+     "types": "@12@4:8d12"
+    },
+    {
+     "selector": "years:months:days:hours:minutes:seconds:sinceDate:",
+     "types": "v36@4:8^i12^i16^i20^i24^i28^i32@40"
+    },
+    {
+     "selector": "dateByAddingYears:months:days:hours:minutes:seconds:",
+     "types": "@28@4:8i12i16i20i24i28i32"
+    },
+    {
+     "selector": "microsecondOfSecond",
+     "types": "i4@4:8"
+    },
+    {
+     "selector": "secondOfMinute",
+     "types": "i4@4:8"
+    },
+    {
+     "selector": "minuteOfHour",
+     "types": "i4@4:8"
+    },
+    {
+     "selector": "hourOfDay",
+     "types": "i4@4:8"
+    },
+    {
+     "selector": "dayOfYear",
+     "types": "i4@4:8"
+    },
+    {
+     "selector": "dayOfWeek",
+     "types": "i4@4:8"
+    },
+    {
+     "selector": "dayOfMonth",
+     "types": "i4@4:8"
+    },
+    {
+     "selector": "monthOfYear",
+     "types": "i4@4:8"
+    },
+    {
+     "selector": "yearOfCommonEra",
+     "types": "i4@4:8"
+    },
+    {
+     "selector": "dayOfCommonEra",
+     "types": "i4@4:8"
+    },
+    {
+     "selector": "setCalendarFormat:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "calendarFormat",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "setTimeZone:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "timeZone",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "timeZoneDetail",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "timeIntervalSinceReferenceDate",
+     "types": "d4@4:8"
+    },
+    {
+     "selector": "copyWithZone:",
+     "types": "@8@4:8^{?=}12"
+    },
+    {
+     "selector": "initWithYear:month:day:hour:minute:second:timeZone:",
+     "types": "@36@4:8i12I16I20I24I28I32@40"
+    },
+    {
+     "selector": "init",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "initWithTimeIntervalSinceReferenceDate:",
+     "types": "@12@4:8d12"
+    },
+    {
+     "selector": "dealloc",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "retainCount",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "release",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "retain",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "initWithString:",
+     "types": "@8@4:8@12"
+    }
+   ],
+   "instance_size": 28,
+   "ivars": [
+    {
+     "name": "refCount",
+     "offset": 4,
+     "type": "I"
+    },
+    {
+     "name": "_timeIntervalSinceReferenceDate",
+     "offset": 8,
+     "type": "d"
+    },
+    {
+     "name": "_timeZone",
+     "offset": 16,
+     "type": "@\"NSTimeZone\""
+    },
+    {
+     "name": "_formatString",
+     "offset": 20,
+     "type": "@\"NSString\""
+    },
+    {
+     "name": "_reserved",
+     "offset": 24,
+     "type": "^v"
+    }
+   ],
+   "name": "NSCalendarDate",
+   "superclass": "NSDate"
+  }
+ ],
+ "data_symbols": [
+  "__NSNaturalLanguageCacheLock"
+ ],
+ "module": "NSCalendarDate.m",
+ "schema_version": "abi-v1",
+ "text_symbols": []
+}

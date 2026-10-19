@@ -40,14 +40,22 @@
 
 @class NSString;
 
+FOUNDATION_EXPORT const double NSFoundationVersionNumber;
+
 FOUNDATION_EXPORT NSString *NSStringFromSelector(SEL aSelector);
 FOUNDATION_EXPORT SEL NSSelectorFromString(NSString *aSelectorName);
 FOUNDATION_EXPORT Class NSClassFromString(NSString *aClassName);
 FOUNDATION_EXPORT NSString *NSStringFromClass(Class aClass);
 FOUNDATION_EXPORT const char *NSGetSizeAndAlignment(const char *typePtr, unsigned int *sizep, unsigned int *alignp);
+FOUNDATION_EXPORT id NSRequestConcreteImplementation(id object, SEL selector, Class abstractClass);
 
 FOUNDATION_EXPORT void NSLog(NSString *format, ...);
 FOUNDATION_EXPORT void NSLogv(NSString *format, va_list args);
+typedef int (*NSLogCStringFunction)(const char *bytes, unsigned length,
+                                    char display);
+FOUNDATION_EXPORT NSLogCStringFunction _NSLogCStringFunction(void);
+FOUNDATION_EXPORT NSLogCStringFunction _NSSetLogCStringFunction(
+    NSLogCStringFunction function);
 
 typedef enum _NSComparisonResult {NSOrderedAscending = -1, NSOrderedSame, NSOrderedDescending} NSComparisonResult;
 
@@ -98,4 +106,3 @@ enum {NSNotFound = 0x7fffffff};
 #endif
 
 #endif	/* __GNUC__ */
-

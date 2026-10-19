@@ -1,0 +1,40 @@
+{
+ "categories": [],
+ "classes": [],
+ "data_symbols": [
+  "___NSSimpleHashingRetainLock"
+ ],
+ "module": "NSSimpleHashing.m",
+ "schema_version": "abi-v1",
+ "text_symbols": [
+  "_NSCopySimpleDictionary",
+  "_NSCopySimpleSet",
+  "_NSCreateSimpleDictionary",
+  "_NSCreateSimpleSet",
+  "_NSFreeSimpleDictionary",
+  "_NSFreeSimpleSet",
+  "_NSReleaseSimpleDictionary",
+  "_NSReleaseSimpleSet",
+  "_NSResetSimpleDictionary",
+  "_NSResetSimpleSet",
+  "_NSRetainSimpleDictionary",
+  "_NSRetainSimpleSet",
+  "_NSSimpleDictionaryCount",
+  "_NSSimpleDictionaryDecrementValue",
+  "_NSSimpleDictionaryDelete",
+  "_NSSimpleDictionaryDeleteEntriesWithValue",
+  "_NSSimpleDictionaryGetBucket",
+  "_NSSimpleDictionaryIncrementValue",
+  "_NSSimpleDictionaryInsert",
+  "_NSSimpleDictionaryLookup",
+  "_NSSimpleDictionaryNumBuckets",
+  "_NSSimpleDictionaryRetainCount",
+  "_NSSimpleSetCount",
+  "_NSSimpleSetDelete",
+  "_NSSimpleSetGetBucket",
+  "_NSSimpleSetInsert",
+  "_NSSimpleSetLookup",
+  "_NSSimpleSetNumBuckets",
+  "_NSSimpleSetRetainCount"
+ ]
+}

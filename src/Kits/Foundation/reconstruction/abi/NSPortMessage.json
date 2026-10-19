@@ -1,0 +1,10 @@
+{
+ "categories": [],
+ "classes": [],
+ "data_symbols": [
+  "__NSMsgSendCount"
+ ],
+ "module": "NSPortMessage.m",
+ "schema_version": "abi-v1",
+ "text_symbols": []
+}

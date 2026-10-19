@@ -1,0 +1,70 @@
+{
+ "categories": [
+  {
+   "class": "NSString",
+   "class_methods": [],
+   "instance_methods": [
+    {
+     "selector": "_getBytesAsData:maxLength:filledLength:encoding:allowLossyConversion:range:remainingRange:",
+     "types": "c40@8:12^@16I20^I24I28c32{?=II}36^{?=II}44"
+    },
+    {
+     "selector": "_getCharactersAsStringInRange:",
+     "types": "@16@8:12{?=II}16"
+    }
+   ],
+   "name": "NSDistantString"
+  },
+  {
+   "class": "NSMutableString",
+   "class_methods": [],
+   "instance_methods": [
+    {
+     "selector": "replacementObjectForPortCoder:",
+     "types": "@12@8:12@16"
+    }
+   ],
+   "name": "NSDistantString"
+  }
+ ],
+ "classes": [
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "getBytes:maxLength:filledLength:encoding:allowLossyConversion:range:remainingRange:",
+     "types": "c40@8:12*16I20^I24I28c32{?=II}36^{?=II}44"
+    },
+    {
+     "selector": "getCString:",
+     "types": "v12@8:12*16"
+    },
+    {
+     "selector": "getCString:maxLength:",
+     "types": "v16@8:12*16I20"
+    },
+    {
+     "selector": "getCString:maxLength:range:remainingRange:",
+     "types": "v28@8:12*16I20{?=II}24^{?=II}32"
+    },
+    {
+     "selector": "getCharacters:range:",
+     "types": "v20@8:12^S16{?=II}20"
+    },
+    {
+     "selector": "getCharacters:",
+     "types": "v12@8:12^S16"
+    }
+   ],
+   "instance_size": 28,
+   "ivars": [],
+   "name": "NSMutableStringProxy",
+   "superclass": "NSDistantObject"
+  }
+ ],
+ "data_symbols": [],
+ "module": "NSDistantString.m",
+ "schema_version": "abi-v1",
+ "text_symbols": []
+}

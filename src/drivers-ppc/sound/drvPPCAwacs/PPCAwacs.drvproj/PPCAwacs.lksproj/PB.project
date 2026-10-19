@@ -2,7 +2,9 @@
     DYNAMIC_CODE_GEN = NO;
     FILESTABLE = {
         CLASSES = (PPCSound.m, PPCSoundPrivate.m);
-        H_FILES = (PPCSound.h);
+        H_FILES = (PPCSound.h,
+            ../../../drvPPCScreamer/PPCScreamer.drvproj/PPCScreamer.lksproj/ScreamerTree.h,
+            ../../../drvPPCScreamer/PPCScreamer.drvproj/PPCScreamer.lksproj/ScreamerIdentity.h);
         OTHER_LINKED = ();
         OTHER_SOURCES = (
             Makefile.preamble,

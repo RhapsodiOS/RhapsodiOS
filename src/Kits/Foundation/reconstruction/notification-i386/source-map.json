@@ -1,0 +1,467 @@
+{
+  "schema_version": "source-map-v1",
+  "reference_sha256": "1165B9063ADD5672514455CA2C9830625BEA2BCE5E46126FB5E8652114C909D6",
+  "mapped": [
+    {
+      "address": 1112553736,
+      "size": 216,
+      "reference_names": [
+        "__addToTables"
+      ],
+      "source_path": "src/Kits/Foundation/NSNotification.m",
+      "source_line": 107
+    },
+    {
+      "address": 1112558328,
+      "size": 946,
+      "reference_names": [
+        "-[NSNotificationCenter postNotificationName:object:userInfo:flags:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNotification.m",
+      "source_line": 861
+    },
+    {
+      "address": 1112567696,
+      "size": 744,
+      "reference_names": [
+        "-[NSNotificationCenter removeObserver:name:object:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNotification.m",
+      "source_line": 913
+    },
+    {
+      "address": 1112572316,
+      "size": 43,
+      "reference_names": [
+        "-[NSNotificationCenter postNotificationName:object:userInfo:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNotification.m",
+      "source_line": 856
+    },
+    {
+      "address": 1112575216,
+      "size": 39,
+      "reference_names": [
+        "-[NSNotificationCenter postNotificationName:object:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNotification.m",
+      "source_line": 847
+    },
+    {
+      "address": 1112575304,
+      "size": 505,
+      "reference_names": [
+        "+[NSNotificationCenter defaultCenter]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNotification.m",
+      "source_line": 701
+    },
+    {
+      "address": 1112577416,
+      "size": 162,
+      "reference_names": [
+        "__replaceInTables"
+      ],
+      "source_path": "src/Kits/Foundation/NSNotification.m",
+      "source_line": 194
+    },
+    {
+      "address": 1112617256,
+      "size": 253,
+      "reference_names": [
+        "__redoTables"
+      ],
+      "source_path": "src/Kits/Foundation/NSNotification.m",
+      "source_line": 147
+    },
+    {
+      "address": 1112644044,
+      "size": 47,
+      "reference_names": [
+        "-[NSNotificationCenter addObserver:selector:name:object:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNotification.m",
+      "source_line": 744
+    },
+    {
+      "address": 1112646464,
+      "size": 64,
+      "reference_names": [
+        "-[NSConcreteNotification release]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNotification.m",
+      "source_line": 685
+    },
+    {
+      "address": 1112648908,
+      "size": 439,
+      "reference_names": [
+        "-[NSNotificationCenter addObserver:selector:name:object:flags:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNotification.m",
+      "source_line": 749
+    },
+    {
+      "address": 1112652068,
+      "size": 13,
+      "reference_names": [
+        "-[NSConcreteNotification object]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNotification.m",
+      "source_line": 668
+    },
+    {
+      "address": 1112652084,
+      "size": 50,
+      "reference_names": [
+        "+[NSNotification allocWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNotification.m",
+      "source_line": 486
+    },
+    {
+      "address": 1112654848,
+      "size": 329,
+      "reference_names": [
+        "__postNotification"
+      ],
+      "source_path": "src/Kits/Foundation/NSNotification.m",
+      "source_line": 426
+    },
+    {
+      "address": 1112655768,
+      "size": 154,
+      "reference_names": [
+        "-[NSConcreteNotification dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNotification.m",
+      "source_line": 633
+    },
+    {
+      "address": 1112658152,
+      "size": 160,
+      "reference_names": [
+        "-[NSConcreteNotification initWithName:object:userInfo:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNotification.m",
+      "source_line": 646
+    },
+    {
+      "address": 1112678732,
+      "size": 15,
+      "reference_names": [
+        "-[NSConcreteNotification name]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNotification.m",
+      "source_line": 663
+    },
+    {
+      "address": 1112694756,
+      "size": 13,
+      "reference_names": [
+        "-[NSConcreteNotification userInfo]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNotification.m",
+      "source_line": 673
+    },
+    {
+      "address": 1112704216,
+      "size": 861,
+      "reference_names": [
+        "-[NSNotificationCenter postNotification:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNotification.m",
+      "source_line": 803
+    },
+    {
+      "address": 1112709084,
+      "size": 158,
+      "reference_names": [
+        "-[NSNotificationCenter _bundleLoaded]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNotification.m",
+      "source_line": 1059
+    },
+    {
+      "address": 1112710496,
+      "size": 77,
+      "reference_names": [
+        "+[NSNotification notificationWithName:object:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNotification.m",
+      "source_line": 495
+    },
+    {
+      "address": 1112720500,
+      "size": 43,
+      "reference_names": [
+        "-[NSConcreteNotification retain]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNotification.m",
+      "source_line": 678
+    },
+    {
+      "address": 1112752948,
+      "size": 37,
+      "reference_names": [
+        "-[NSNotificationCenter removeObserver:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNotification.m",
+      "source_line": 908
+    },
+    {
+      "address": 1112813884,
+      "size": 335,
+      "reference_names": [
+        "-[NSNotificationCenter applyCallBack:context:name:object:literally:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNotification.m",
+      "source_line": 989
+    },
+    {
+      "address": 1112816524,
+      "size": 133,
+      "reference_names": [
+        "-[NSNotificationCenter countObserversName:object:literally:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNotification.m",
+      "source_line": 1036
+    },
+    {
+      "address": 1112834088,
+      "size": 219,
+      "reference_names": [
+        "-[NSNotificationCenter init]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNotification.m",
+      "source_line": 1100
+    },
+    {
+      "address": 1112852124,
+      "size": 9,
+      "reference_names": [
+        "_NSNotificationSuspensionBehaviorNoInterest"
+      ],
+      "source_path": "src/Kits/Foundation/NSNotification.m",
+      "source_line": 95
+    },
+    {
+      "address": 1112852136,
+      "size": 13,
+      "reference_names": [
+        "_NSNotificationSuspensionBehaviorFromFlags"
+      ],
+      "source_path": "src/Kits/Foundation/NSNotification.m",
+      "source_line": 90
+    },
+    {
+      "address": 1112852152,
+      "size": 19,
+      "reference_names": [
+        "_NSHigherNotificationSuspensionBehavior"
+      ],
+      "source_path": "src/Kits/Foundation/NSNotification.m",
+      "source_line": 101
+    },
+    {
+      "address": 1112860144,
+      "size": 78,
+      "reference_names": [
+        "-[NSNotificationCenter suspensionBehaviorName:object:literally:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNotification.m",
+      "source_line": 1050
+    },
+    {
+      "address": 1112860224,
+      "size": 256,
+      "reference_names": [
+        "-[NSNotificationCenter dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNotification.m",
+      "source_line": 1125
+    },
+    {
+      "address": 1112878636,
+      "size": 70,
+      "reference_names": [
+        "-[NSNotificationCenter _taskNowMultiThreaded]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNotification.m",
+      "source_line": 1078
+    },
+    {
+      "address": 1112882944,
+      "size": 22,
+      "reference_names": [
+        "-[NSConcreteNotification retainCount]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNotification.m",
+      "source_line": 692
+    },
+    {
+      "address": 1112975136,
+      "size": 79,
+      "reference_names": [
+        "+[NSNotification notificationWithName:object:userInfo:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNotification.m",
+      "source_line": 502
+    },
+    {
+      "address": 1112980852,
+      "size": 21,
+      "reference_names": [
+        "-[NSNotification classForCoder]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNotification.m",
+      "source_line": 509
+    },
+    {
+      "address": 1112980876,
+      "size": 29,
+      "reference_names": [
+        "-[NSNotification copyWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNotification.m",
+      "source_line": 514
+    },
+    {
+      "address": 1112980908,
+      "size": 344,
+      "reference_names": [
+        "-[NSNotification description]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNotification.m",
+      "source_line": 519
+    },
+    {
+      "address": 1112981252,
+      "size": 122,
+      "reference_names": [
+        "-[NSNotification encodeWithCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNotification.m",
+      "source_line": 540
+    },
+    {
+      "address": 1112981376,
+      "size": 47,
+      "reference_names": [
+        "-[NSNotification hash]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNotification.m",
+      "source_line": 547
+    },
+    {
+      "address": 1112981424,
+      "size": 171,
+      "reference_names": [
+        "-[NSNotification initWithCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNotification.m",
+      "source_line": 552
+    },
+    {
+      "address": 1112981596,
+      "size": 70,
+      "reference_names": [
+        "-[NSNotification init]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNotification.m",
+      "source_line": 565
+    },
+    {
+      "address": 1112981668,
+      "size": 262,
+      "reference_names": [
+        "-[NSNotification isEqual:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNotification.m",
+      "source_line": 574
+    },
+    {
+      "address": 1112981932,
+      "size": 37,
+      "reference_names": [
+        "-[NSNotification name]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNotification.m",
+      "source_line": 606
+    },
+    {
+      "address": 1112981972,
+      "size": 37,
+      "reference_names": [
+        "-[NSNotification object]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNotification.m",
+      "source_line": 612
+    },
+    {
+      "address": 1112982012,
+      "size": 10,
+      "reference_names": [
+        "-[NSNotification replacementObjectForPortCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNotification.m",
+      "source_line": 618
+    },
+    {
+      "address": 1112982024,
+      "size": 37,
+      "reference_names": [
+        "-[NSNotification userInfo]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNotification.m",
+      "source_line": 623
+    },
+    {
+      "address": 1112982064,
+      "size": 49,
+      "reference_names": [
+        "-[NSNotificationCenter _taskNowSingleThreaded]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNotification.m",
+      "source_line": 1090
+    },
+    {
+      "address": 1112982116,
+      "size": 539,
+      "reference_names": [
+        "-[NSNotificationCenter description]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNotification.m",
+      "source_line": 1146
+    },
+    {
+      "address": 1113005808,
+      "size": 12,
+      "reference_names": [
+        "_countObserversCallBack"
+      ],
+      "source_path": "src/Kits/Foundation/NSNotification.m",
+      "source_line": 241
+    },
+    {
+      "address": 1113007136,
+      "size": 40,
+      "reference_names": [
+        "_suspensionBehaviorCallBack"
+      ],
+      "source_path": "src/Kits/Foundation/NSNotification.m",
+      "source_line": 248
+    }
+  ],
+  "unmapped": [],
+  "duplicate_candidates": [],
+  "boundary_disputed": [],
+  "by_module": {
+    "NSNotification.m": {
+      "mapped": 50,
+      "unmapped": 0,
+      "duplicate_candidates": 0,
+      "boundary_disputed": 0
+    }
+  }
+}

@@ -60,6 +60,9 @@ typedef struct {
 }
 
 + (NSInvocation *)invocationWithMethodSignature:(NSMethodSignature *)sig;
+#if defined(__ppc__) || defined(__POWERPC__)
++ (NSInvocation *)newInvocationWithMethodSignature:(NSMethodSignature *)sig;
+#endif
 
 - (SEL)selector;
 - (void)setSelector:(SEL)selector;

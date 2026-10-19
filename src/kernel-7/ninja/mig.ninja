@@ -1,0 +1,144 @@
+# One producer per actual set of MIG outputs.
+
+build $outdir/mach/mach_interface.h $outdir/mach/mach_kernloader.h $outdir/mach/mach_user_internal.h $outdir/mach/mach_server.c $outdir/mach/port_allocate.c $outdir/mach/port_deallocate.c $outdir/mach/port_set_add.c $outdir/mach/port_set_remove.c $outdir/mach/port_set_allocate.c $outdir/mach/port_set_backlog.c $outdir/mach/port_status.c $outdir/mach/vm_allocate.c $outdir/mach/vm_deallocate.c $outdir/mach/port_set_deallocate.c $outdir/mach/task_set_special_port.c $outdir/mach/task_get_special_port.c $outdir/mach/thread_abort.c $outdir/mach/thread_get_special_port.c $outdir/mach/thread_set_special_port.c $outdir/mach/thread_suspend.c $outdir/mach/vm_read.c $outdir/mach/vm_write.c $outdir/mach/vm_protect.c | $outdir/mach/mach.stamp: mig mach/mach.defs | ninja/mig.sh ninja/depfile.awk || $outdir/prepared $outdir/validated
+  mode = mach
+  migdep = $outdir/mach/mach.nd
+
+build $outdir/mach/mach_host.h $outdir/mach/mach_host_server.c | $outdir/mach/host.stamp: mig mach/mach_host.defs | ninja/mig.sh ninja/depfile.awk || $outdir/prepared $outdir/validated
+  mode = host
+  migdep = $outdir/mach/host.nd
+
+build $outdir/mach/exc.h $outdir/mach/exc_server.c | $outdir/mach/exc.stamp: mig mach/exc.defs | ninja/mig.sh ninja/depfile.awk || $outdir/prepared $outdir/validated
+  mode = exc
+  migdep = $outdir/mach/exc.nd
+
+build $outdir/mach/mach_port_server.c | $outdir/mach/port.stamp: mig mach/mach_port.defs | ninja/mig.sh ninja/depfile.awk || $outdir/prepared $outdir/validated
+  mode = port
+  migdep = $outdir/mach/port.nd
+
+build $outdir/mach/memory_object_user.h $outdir/mach/memory_object_user.c | $outdir/mach/memory.stamp: mig mach/memory_object.defs | ninja/mig.sh ninja/depfile.awk || $outdir/prepared $outdir/validated
+  mode = memory
+  migdep = $outdir/mach/memory.nd
+
+build $outdir/mach/memory_object_default.h $outdir/mach/memory_object_default_user.c | $outdir/mach/default.stamp: mig mach/memory_object_default.defs | ninja/mig.sh ninja/depfile.awk || $outdir/prepared $outdir/validated
+  mode = default
+  migdep = $outdir/mach/default.nd
+
+build $outdir/mach_debug/mach_debug.h $outdir/mach_debug/mach_debug_server.c | $outdir/mach_debug/debug.stamp: mig mach_debug/mach_debug.defs | ninja/mig.sh ninja/depfile.awk || $outdir/prepared $outdir/validated
+  mode = debug
+  migdep = $outdir/mach_debug/debug.nd
+
+build $outdir/kernserv/kern_server.h $outdir/kernserv/kern_server_handler.h $outdir/kernserv/kern_server_handler.c | $outdir/kernserv/kern.stamp: mig kernserv/kern_server.defs | ninja/mig.sh ninja/depfile.awk || $outdir/prepared $outdir/validated
+  mode = kern
+  migdep = $outdir/kernserv/kern.nd
+
+build $outdir/kernserv/kern_server_reply.h $outdir/kernserv/kern_server_reply_user.c | $outdir/kernserv/reply.stamp: mig kernserv/kern_server_reply.defs | ninja/mig.sh ninja/depfile.awk || $outdir/prepared $outdir/validated
+  mode = reply
+  migdep = $outdir/kernserv/reply.nd
+
+build $outdir/driverkit/driverServerServer.c | $outdir/driverkit/driver.stamp: mig $outdir/driverkit/driverServer.defs | ninja/mig.sh ninja/depfile.awk || $outdir/prepared $outdir/validated
+  mode = driver
+  migdep = $outdir/driverkit/driver.nd
+
+build $outdir/driverkit/driverServer.defs: copy $next_root/System/Library/Frameworks/System.framework/PrivateHeaders/driverkit/driverServer.defs || $outdir/prepared $outdir/validated
+
+build $outdir/port_allocate.o: cc $outdir/mach/port_allocate.c || $outdir/prepared $outdir/validated generated
+  source = mach/port_allocate.c
+  object = port_allocate.o
+  flags = $cflags -DMACH_USER_API -Dport_allocate=port_allocate_EXTERNAL
+
+build $outdir/port_deallocate.o: cc $outdir/mach/port_deallocate.c || $outdir/prepared $outdir/validated generated
+  source = mach/port_deallocate.c
+  object = port_deallocate.o
+  flags = $cflags -DMACH_USER_API -Dport_deallocate=port_deallocate_EXTERNAL
+
+build $outdir/port_set_add.o: cc $outdir/mach/port_set_add.c || $outdir/prepared $outdir/validated generated
+  source = mach/port_set_add.c
+  object = port_set_add.o
+  flags = $cflags -DMACH_USER_API -Dport_set_add=port_set_add_EXTERNAL
+
+build $outdir/port_set_remove.o: cc $outdir/mach/port_set_remove.c || $outdir/prepared $outdir/validated generated
+  source = mach/port_set_remove.c
+  object = port_set_remove.o
+  flags = $cflags -DMACH_USER_API -Dport_set_remove=port_set_remove_EXTERNAL
+
+build $outdir/port_set_allocate.o: cc $outdir/mach/port_set_allocate.c || $outdir/prepared $outdir/validated generated
+  source = mach/port_set_allocate.c
+  object = port_set_allocate.o
+  flags = $cflags -DMACH_USER_API -Dport_set_allocate=port_set_allocate_EXTERNAL
+
+build $outdir/port_set_backlog.o: cc $outdir/mach/port_set_backlog.c || $outdir/prepared $outdir/validated generated
+  source = mach/port_set_backlog.c
+  object = port_set_backlog.o
+  flags = $cflags -DMACH_USER_API -Dport_set_backlog=port_set_backlog_EXTERNAL
+
+build $outdir/port_status.o: cc $outdir/mach/port_status.c || $outdir/prepared $outdir/validated generated
+  source = mach/port_status.c
+  object = port_status.o
+  flags = $cflags -DMACH_USER_API -Dport_status=port_status_EXTERNAL
+
+build $outdir/vm_allocate.o: cc $outdir/mach/vm_allocate.c || $outdir/prepared $outdir/validated generated
+  source = mach/vm_allocate.c
+  object = vm_allocate.o
+  flags = $cflags -DMACH_USER_API -Dvm_allocate=vm_allocate_EXTERNAL
+
+build $outdir/vm_deallocate.o: cc $outdir/mach/vm_deallocate.c || $outdir/prepared $outdir/validated generated
+  source = mach/vm_deallocate.c
+  object = vm_deallocate.o
+  flags = $cflags -DMACH_USER_API -Dvm_deallocate=vm_deallocate_EXTERNAL
+
+build $outdir/port_set_deallocate.o: cc $outdir/mach/port_set_deallocate.c || $outdir/prepared $outdir/validated generated
+  source = mach/port_set_deallocate.c
+  object = port_set_deallocate.o
+  flags = $cflags -DMACH_USER_API -Dport_set_deallocate=port_set_deallocate_EXTERNAL
+
+build $outdir/task_set_special_port.o: cc $outdir/mach/task_set_special_port.c || $outdir/prepared $outdir/validated generated
+  source = mach/task_set_special_port.c
+  object = task_set_special_port.o
+  flags = $cflags -DMACH_USER_API -Dtask_set_special_port=task_set_special_port_EXTERNAL
+
+build $outdir/task_get_special_port.o: cc $outdir/mach/task_get_special_port.c || $outdir/prepared $outdir/validated generated
+  source = mach/task_get_special_port.c
+  object = task_get_special_port.o
+  flags = $cflags -DMACH_USER_API -Dtask_get_special_port=task_get_special_port_EXTERNAL
+
+build $outdir/thread_abort.o: cc $outdir/mach/thread_abort.c || $outdir/prepared $outdir/validated generated
+  source = mach/thread_abort.c
+  object = thread_abort.o
+  flags = $cflags -DMACH_USER_API -Dthread_abort=thread_abort_EXTERNAL
+
+build $outdir/thread_get_special_port.o: cc $outdir/mach/thread_get_special_port.c || $outdir/prepared $outdir/validated generated
+  source = mach/thread_get_special_port.c
+  object = thread_get_special_port.o
+  flags = $cflags -DMACH_USER_API -Dthread_get_special_port=thread_get_special_port_EXTERNAL
+
+build $outdir/thread_set_special_port.o: cc $outdir/mach/thread_set_special_port.c || $outdir/prepared $outdir/validated generated
+  source = mach/thread_set_special_port.c
+  object = thread_set_special_port.o
+  flags = $cflags -DMACH_USER_API -Dthread_set_special_port=thread_set_special_port_EXTERNAL
+
+build $outdir/thread_suspend.o: cc $outdir/mach/thread_suspend.c || $outdir/prepared $outdir/validated generated
+  source = mach/thread_suspend.c
+  object = thread_suspend.o
+  flags = $cflags -DMACH_USER_API -Dthread_suspend=thread_suspend_EXTERNAL
+
+build $outdir/vm_read.o: cc $outdir/mach/vm_read.c || $outdir/prepared $outdir/validated generated
+  source = mach/vm_read.c
+  object = vm_read.o
+  flags = $cflags -DMACH_USER_API -Dvm_read=vm_read_EXTERNAL
+
+build $outdir/vm_write.o: cc $outdir/mach/vm_write.c || $outdir/prepared $outdir/validated generated
+  source = mach/vm_write.c
+  object = vm_write.o
+  flags = $cflags -DMACH_USER_API -Dvm_write=vm_write_EXTERNAL
+
+build $outdir/vm_protect.o: cc $outdir/mach/vm_protect.c || $outdir/prepared $outdir/validated generated
+  source = mach/vm_protect.c
+  object = vm_protect.o
+  flags = $cflags -DMACH_USER_API -Dvm_protect=vm_protect_EXTERNAL
+
+mach_user_objects = $outdir/port_allocate.o $outdir/port_deallocate.o $outdir/port_set_add.o $outdir/port_set_remove.o $outdir/port_set_allocate.o $outdir/port_set_backlog.o $outdir/port_status.o $outdir/vm_allocate.o $outdir/vm_deallocate.o $outdir/port_set_deallocate.o $outdir/task_set_special_port.o $outdir/task_get_special_port.o $outdir/thread_abort.o $outdir/thread_get_special_port.o $outdir/thread_set_special_port.o $outdir/thread_suspend.o $outdir/vm_read.o $outdir/vm_write.o $outdir/vm_protect.o
+
+build mach_user: phony $outdir/port_allocate.o $outdir/port_deallocate.o $outdir/port_set_add.o $outdir/port_set_remove.o $outdir/port_set_allocate.o $outdir/port_set_backlog.o $outdir/port_status.o $outdir/vm_allocate.o $outdir/vm_deallocate.o $outdir/port_set_deallocate.o $outdir/task_set_special_port.o $outdir/task_get_special_port.o $outdir/thread_abort.o $outdir/thread_get_special_port.o $outdir/thread_set_special_port.o $outdir/thread_suspend.o $outdir/vm_read.o $outdir/vm_write.o $outdir/vm_protect.o
+
+build generated: phony $outdir/assym.h $outdir/mach/mach_interface.h $outdir/mach/mach_kernloader.h $outdir/mach/mach_user_internal.h $outdir/mach/mach_server.c $outdir/mach/port_allocate.c $outdir/mach/port_deallocate.c $outdir/mach/port_set_add.c $outdir/mach/port_set_remove.c $outdir/mach/port_set_allocate.c $outdir/mach/port_set_backlog.c $outdir/mach/port_status.c $outdir/mach/vm_allocate.c $outdir/mach/vm_deallocate.c $outdir/mach/port_set_deallocate.c $outdir/mach/task_set_special_port.c $outdir/mach/task_get_special_port.c $outdir/mach/thread_abort.c $outdir/mach/thread_get_special_port.c $outdir/mach/thread_set_special_port.c $outdir/mach/thread_suspend.c $outdir/mach/vm_read.c $outdir/mach/vm_write.c $outdir/mach/vm_protect.c $outdir/mach/mach_host.h $outdir/mach/mach_host_server.c $outdir/mach/exc.h $outdir/mach/exc_server.c $outdir/mach/mach_port_server.c $outdir/mach/memory_object_user.h $outdir/mach/memory_object_user.c $outdir/mach/memory_object_default.h $outdir/mach/memory_object_default_user.c $outdir/mach_debug/mach_debug.h $outdir/mach_debug/mach_debug_server.c $outdir/kernserv/kern_server.h $outdir/kernserv/kern_server_handler.h $outdir/kernserv/kern_server_handler.c $outdir/kernserv/kern_server_reply.h $outdir/kernserv/kern_server_reply_user.c $outdir/driverkit/driverServerServer.c

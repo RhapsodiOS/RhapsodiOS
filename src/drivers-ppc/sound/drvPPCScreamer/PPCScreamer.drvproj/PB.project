@@ -1,0 +1,9 @@
+{
+    FILESTABLE = {
+        SUBPROJECTS = (PPCScreamer.lksproj);
+        OTHER_SOURCES = (Makefile, Makefile.preamble, Makefile.postamble, Default.table, DriverInfo);
+    };
+    PROJECTNAME = PPCScreamer;
+    PROJECTTYPE = Driver;
+    PROJECTVERSION = 1.0;
+}

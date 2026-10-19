@@ -15,12 +15,14 @@ FOUNDATION_EXPORT NSString * const NSPortDidBecomeInvalidNotification;
 
 + (NSPort *)port;
 + (NSPort *)portWithMachPort:(int)machPort;
++ (NSPort *)newWithMachPort:(int)machPort;
 - (id)initWithMachPort:(int)machPort;
 
 - (void)invalidate;
 - (BOOL)isValid;
 
 - (int)machPort;
+- (id)classForCoder;
 
 - (void)setDelegate:(id)anId;
 - (id)delegate;

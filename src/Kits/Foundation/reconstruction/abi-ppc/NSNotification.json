@@ -1,0 +1,297 @@
+{
+ "categories": [],
+ "classes": [
+  {
+   "class_methods": [
+    {
+     "selector": "defaultCenter",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "setNotificationCenterSerializeRemoves:",
+     "types": "v5@4:8c12"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "_bundleLoaded",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "dealloc",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "init",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "_taskNowSingleThreaded",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "_taskNowMultiThreaded",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "description",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "removeObserver:name:object:",
+     "types": "v16@4:8@12@16@20"
+    },
+    {
+     "selector": "removeObserver:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "suspensionBehaviorName:object:literally:",
+     "types": "i13@4:8@12@16c20"
+    },
+    {
+     "selector": "countObserversName:object:literally:",
+     "types": "I13@4:8@12@16c20"
+    },
+    {
+     "selector": "applyCallBack:context:name:object:literally:",
+     "types": "v21@4:8^?12^v16@20@24c28"
+    },
+    {
+     "selector": "postNotificationName:object:userInfo:",
+     "types": "v16@4:8@12@16@20"
+    },
+    {
+     "selector": "postNotificationName:object:userInfo:flags:",
+     "types": "v20@4:8@12@16@20I24"
+    },
+    {
+     "selector": "postNotificationName:object:",
+     "types": "v12@4:8@12@16"
+    },
+    {
+     "selector": "postNotification:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "addObserver:selector:name:object:",
+     "types": "v20@4:8@12:16@20@24"
+    },
+    {
+     "selector": "addObserver:selector:name:object:flags:",
+     "types": "v24@4:8@12:16@20@24I28"
+    }
+   ],
+   "instance_size": 56,
+   "ivars": [
+    {
+     "name": "_lock",
+     "offset": 4,
+     "type": "@"
+    },
+    {
+     "name": "_registry",
+     "offset": 8,
+     "type": "^v"
+    },
+    {
+     "name": "_registry_size",
+     "offset": 12,
+     "type": "I"
+    },
+    {
+     "name": "_registry_count",
+     "offset": 16,
+     "type": "I"
+    },
+    {
+     "name": "_niltable",
+     "offset": 20,
+     "type": "^i"
+    },
+    {
+     "name": "_niltable_size",
+     "offset": 24,
+     "type": "I"
+    },
+    {
+     "name": "_niltable_count",
+     "offset": 28,
+     "type": "I"
+    },
+    {
+     "name": "_hashtable",
+     "offset": 32,
+     "type": "^i"
+    },
+    {
+     "name": "_hashtable_size",
+     "offset": 36,
+     "type": "I"
+    },
+    {
+     "name": "_hashtable_count",
+     "offset": 40,
+     "type": "I"
+    },
+    {
+     "name": "_deleted_count",
+     "offset": 44,
+     "type": "I"
+    },
+    {
+     "name": "_reserved1",
+     "offset": 48,
+     "type": "^v"
+    },
+    {
+     "name": "_reserved",
+     "offset": 52,
+     "type": "^v"
+    }
+   ],
+   "name": "NSNotificationCenter",
+   "superclass": "NSObject"
+  },
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "dealloc",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "initWithName:object:userInfo:",
+     "types": "@16@4:8@12@16@20"
+    },
+    {
+     "selector": "retainCount",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "release",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "retain",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "userInfo",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "object",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "name",
+     "types": "@4@4:8"
+    }
+   ],
+   "instance_size": 16,
+   "ivars": [
+    {
+     "name": "nameAndRefCount",
+     "offset": 4,
+     "type": "@\"NSString\""
+    },
+    {
+     "name": "object",
+     "offset": 8,
+     "type": "@"
+    },
+    {
+     "name": "userInfo",
+     "offset": 12,
+     "type": "@\"NSDictionary\""
+    }
+   ],
+   "name": "NSConcreteNotification",
+   "superclass": "NSNotification"
+  },
+  {
+   "class_methods": [
+    {
+     "selector": "notificationWithName:object:userInfo:",
+     "types": "@16@4:8@12@16@20"
+    },
+    {
+     "selector": "notificationWithName:object:",
+     "types": "@12@4:8@12@16"
+    },
+    {
+     "selector": "allocWithZone:",
+     "types": "@8@4:8^{?=}12"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "init",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "replacementObjectForPortCoder:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "classForCoder",
+     "types": "#4@4:8"
+    },
+    {
+     "selector": "initWithCoder:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "encodeWithCoder:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "copyWithZone:",
+     "types": "@8@4:8^{?=}12"
+    },
+    {
+     "selector": "isEqual:",
+     "types": "c8@4:8@12"
+    },
+    {
+     "selector": "hash",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "description",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "userInfo",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "object",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "name",
+     "types": "@4@4:8"
+    }
+   ],
+   "instance_size": 4,
+   "ivars": [],
+   "name": "NSNotification",
+   "superclass": "NSObject"
+  }
+ ],
+ "data_symbols": [
+  "__NSNotificationCenterLock"
+ ],
+ "module": "NSNotification.m",
+ "schema_version": "abi-v1",
+ "text_symbols": [
+  "_NSHigherNotificationSuspensionBehavior",
+  "_NSNotificationSuspensionBehaviorFromFlags",
+  "_NSNotificationSuspensionBehaviorNoInterest"
+ ]
+}

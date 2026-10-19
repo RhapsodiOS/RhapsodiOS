@@ -20,7 +20,7 @@ GLOBAL_RESOURCES = Default.table Display.modes TwoMeg.table TwoMeg.modes\
 
 LOCAL_RESOURCES = Localizable.strings TwoMeg.strings PCIOneMB.strings\
                   PCITwoMB.strings GD5446_PCIOneMB.strings GD5446_PCITwoMB.strings\
-                  Help
+                  DriverHelp
 
 TOOLS = CirrusLogicGD5434DisplayDriver.lksproj
 

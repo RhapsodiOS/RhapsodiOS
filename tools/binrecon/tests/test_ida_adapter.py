@@ -1493,6 +1493,73 @@ def test_exporter_does_not_drop_a_real_operand_hidden_behind_a_blank_implicit_on
     assert len(operands[0]["relocations"]) == 1
 
 
+def test_absolute_symbol_segment_is_treated_as_zero_fill(tmp_path):
+    """IDA gives every absolute-valued symbol (no section, akin to an N_ABS
+    nlist entry) its own tiny 'ABS'-class segment with no real file backing
+    -- the same non-backing status as the 'XTRN' segment it already
+    synthesizes for undefined externals. Only an unlinked relocatable
+    object (as opposed to every previously-analyzed linked reference dylib)
+    produces one, since IDA only needs an ABS placeholder segment once
+    absolute local symbols exist with nothing for the loader to map them
+    against."""
+    import importlib.util
+
+    script = Path(__file__).parents[1] / "adapters" / "ida" / "export_analysis.py"
+    spec = importlib.util.spec_from_file_location(
+        "binrecon_test_ida_exporter_abs_segment", script)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    input_path = tmp_path / "fixture.i64"
+    input_path.write_bytes(b"\x90\xC3")
+    identity = identify(input_path)
+
+    modules = _fake_modules(identity)
+    base = 0x1000
+
+    class Segment:
+        start_ea = base
+        end_ea = base + identity.size
+        perm = 5
+        type = 2
+
+    class AbsSegment:
+        start_ea = 0x9000
+        end_ea = 0x9004
+        perm = 0
+        type = 10
+
+    modules["ida_segment"] = SimpleNamespace(
+        SEGPERM_READ=1, SEGPERM_WRITE=2, SEGPERM_EXEC=4,
+        SEG_BSS=9, SEG_XTRN=1,
+        getseg=lambda address: (
+            Segment() if base <= address < base + identity.size else
+            AbsSegment() if 0x9000 <= address < 0x9004 else None
+        ),
+        get_segm_name=lambda segment: (
+            "ABS" if isinstance(segment, AbsSegment) else "__text"
+        ),
+        get_segm_class=lambda segment: (
+            "ABS" if isinstance(segment, AbsSegment) else "CODE"
+        ),
+    )
+    modules["idautils"].Segments = lambda: [base, 0x9000]
+
+    mapping = _mapping(identity)
+
+    document = module.collect_analysis(
+        input_path, identity.size, identity.sha256, modules=modules, mapping=mapping
+    )
+
+    sections = {item["name"]: item for item in document["extensions"]["ida"]["sections"]}
+    assert sections["ABS"] == {
+        "name": "ABS", "address": 0x9000, "offset": 0, "size": 4,
+        "zero_fill": True, "initialized": False,
+    }
+    validate_document("analysis-v1", document)
+    validate_analysis_semantics(document)
+
+
 def test_exporter_accepts_a_ppc_database_when_the_manifest_asks_for_one(tmp_path):
     import importlib.util
 

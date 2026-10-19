@@ -1878,3 +1878,34 @@ def test_task9_fresh_git_checkout_proof(tmp_path):
     ledger = json.loads((tmp_path / paths[1]).read_text())
     artifacts = [a for e in ledger["entries"] for a in e["artifacts"] if a["path"].endswith("task9.json")]
     assert len(artifacts) == 63 and {a["sha256"] for a in artifacts} == {digest}
+
+
+def _task10_recovery_family(family):
+    assert (TESTS.parent / "AdaptecU2CHIMRecovery.c").is_file(), "missing recovery owner bodies"
+    path = TESTS / "task10-cases.json"
+    assert path.is_file(), "missing recovery reference fixtures"
+    cases = json.loads(path.read_text())
+    selected = {**cases, "cases": [c for c in cases["cases"] if c["family"] == family]}
+    assert selected["cases"], "missing recovery execution family: " + family
+    runner = load_script("ppc_cases")
+    contracts = json.loads((TESTS / "contracts.json").read_text())
+    result = runner.execute(OUT / "reference/image.bin", selected, contracts)
+    assert len(result["results"]) == len(selected["cases"])
+
+
+def test_selection_parity_and_bad_sequence():
+    _task10_recovery_family("interrupt")
+
+
+def test_autosense_residual_and_completion():
+    _task10_recovery_family("completion")
+
+
+def test_active_abort_vs_completion():
+    _task10_recovery_family("abort")
+
+
+@pytest.mark.parametrize("name", ['SCSIhIntSrst', 'SCSIhIntIOError', 'SCSIhCheckLength', 'SCSIhCdbAbort', 'SCSIhCheckCondition', 'SCSIhBadSeq', 'SCSIhAbortTarget', 'SCSIhIntSelto', 'SCSIhIntFree', 'SCSIhParityError', 'SCSIhStandard64RequestSense', 'SCSIhSwapping32RequestSense', 'SCSIhStandardAdvRequestSense', 'SCSIhSwappingAdvRequestSense', 'SCSIhTerminateCommand', 'SCSIhSetStat', 'SCSIhBreakInterrupt', 'SCSIhStandard64ActiveAbort', 'SCSIhSwapping32ActiveAbort', 'SCSIhStandardAdvActiveAbort', 'SCSIhSwappingAdvActiveAbort', 'SCSIhSwappingRemoveActiveAbort', 'SCSIhStandardRemoveActiveAbort', 'SCSIhStandard64ResidueCalc', 'SCSIhSwapping32ResidueCalc', 'SCSIhStandardAdvResidueCalc', 'SCSIhSwappingAdvResidueCalc', 'SCSIhSwappingRemoveAbortHIOBFromNewQ'])
+def test_task10_required_body(name):
+    source = (TESTS.parent / "AdaptecU2CHIMRecovery.c").read_text()
+    assert re.search(r"\b" + name + r"\([^;]*?\)\s*\{", source), "missing recovery body: " + name

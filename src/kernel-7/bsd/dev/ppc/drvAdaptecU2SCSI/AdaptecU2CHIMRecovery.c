@@ -184,7 +184,7 @@ unsigned char SCSIhSwappingRemoveAbortHIOBFromNewQ(AdaptecU2HHCB *hhcb, AdaptecU
     AdaptecU2IOHandle *handle = hhcb->ioHandle;
     unsigned char tail = hhcb->hardware->getQNewTail(hhcb);
     unsigned char current = OSMReadUExact8(*handle, hhcb->firmware->registers[10]);
-    unsigned char first = current, previous, next;
+    unsigned char first = current, previous = current, next;
     while (tail != hhcb->qnewHead) {
         if (current == hiob->control.bytes.scbNumber) {
             hiob->status = 2;

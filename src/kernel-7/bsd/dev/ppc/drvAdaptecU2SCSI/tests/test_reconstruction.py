@@ -2168,6 +2168,10 @@ def test_task11_native_switch_and_publication_graph():
     helper.publication_widths(binary)
 
 
+def test_task11_unfreeze_all_nonempty_caller_coverage():
+    load_script("task11_audit").audit_unfreeze_transfer(json.loads((TESTS / "task11-cases.json").read_text()))
+
+
 @pytest.fixture(scope="module")
 def task11_archives():
     root=OUT / "objects/task11"
@@ -2247,6 +2251,20 @@ def test_task11_public_actual_results_reject_corruption(task11_archives,corrupti
         result["results"][0]["observations"]["return"]=999
     with pytest.raises(ValueError,match="scope/identity|invalid actual resource fixture"):
         helper.audit_public(task11_archives["cases"],task11_archives["contracts"],result,
+                            task11_archives["proof"],load_script("ppc_cases"))
+
+
+@pytest.mark.parametrize("corruption",["omitted","direct-dispatch","host-owner","frozen-owner"])
+def test_task11_unfreeze_caller_gate_rejects_corruption(task11_archives,corruption):
+    helper=load_script("task11_audit");cases={**task11_archives["cases"],"cases":list(task11_archives["cases"]["cases"])}
+    index=next(i for i,c in enumerate(cases["cases"]) if c.get("resource_exit")=="unfreeze-all-exhausted-host")
+    case=copy.deepcopy(cases["cases"][index]);cases["cases"][index]=case
+    if corruption=="omitted":cases["cases"].pop(index)
+    elif corruption=="direct-dispatch":case["entry"]="SCSIrDispatchQueuedHIOB"
+    elif corruption=="host-owner":case["expected"]["memory"]["hhcb+0"]["pointers"]["1364"]=None
+    else:case["expected"]["memory"]["hhcb+0"]["pointers"]["316"]="hiob+0"
+    with pytest.raises(ValueError,match="unfreeze-all.*coverage|unfreeze-all.*preconditions|unfreeze-all.*ownership"):
+        helper.audit_public(cases,task11_archives["contracts"],task11_archives["public"],
                             task11_archives["proof"],load_script("ppc_cases"))
 
 

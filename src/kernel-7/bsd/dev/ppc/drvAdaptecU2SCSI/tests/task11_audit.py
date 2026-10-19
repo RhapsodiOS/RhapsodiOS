@@ -223,6 +223,7 @@ def audit_supplementary(repo,proof,native_result,boundary):
 
 
 def audit_public(cases,contracts,result,proof,runner):
+    audit_unfreeze_transfer(cases)
     if (result["binary_sha256"]!=proof["reference_sha256"] or result["cases_sha256"]!=runner.digest(cases) or
             result["contracts_sha256"]!=runner.digest(contracts) or result["runner_version"]!=proof["reference_runner_version"] or
             result["source_revision"]!=proof["execution_revision"] or
@@ -234,3 +235,53 @@ def audit_public(cases,contracts,result,proof,runner):
                 actual["returned_to_sentinel"] is not True or actual["observations"]!=case["expected"] or
                 not 0<actual["instructions"]<=case["instruction_limit"]<=4000000):
             raise ValueError("invalid actual resource fixture: "+case["id"])
+
+
+def audit_unfreeze_transfer(cases):
+    selected=[c for c in cases["cases"] if c.get("resource_exit")=="unfreeze-all-exhausted-host"]
+    if len(selected)!=1:raise ValueError("missing actual unfreeze-all nonempty caller coverage")
+    case=selected[0];memory={m["name"]:m for m in case["memory"]}
+    def word(raw,offset,size=4):return int.from_bytes(bytes.fromhex(raw)[offset:offset+size],"big")
+    def pointer(region,offset):
+        return next((p["value"] for p in memory[region].get("pointers",[]) if p["offset"]==offset),
+                    word(memory[region]["bytes"],offset))
+    h=memory["hhcb"]["bytes"];expected=case["expected"]["memory"]
+    final=expected["hhcb+0"]
+    def result_pointer(offset):return final["pointers"].get(str(offset),word(final["bytes"],offset))
+    if (case["entry"]!="SCSIrAsyncEvent" or case["arguments"]!=[{"region":"hhcb","offset":0},7] or
+            case["family"]!="abort" or case["external_outcomes"] or
+            word(h,7,1)!=1 or word(h,1352,1)!=1 or pointer("hhcb",1364)!=0xffffffff or
+            pointer("hhcb",1368)!=0xffffffff or pointer("hhcb",1356)!={"region":"descriptor","offset":0} or
+            pointer("hhcb",1360)!={"region":"descriptor","offset":0}):
+        raise ValueError("unfreeze-all caller preconditions differ")
+    for target,name in ((0,"hiob"),(1,"blocked")):
+        q=248+68*target
+        if (pointer("hhcb",q)!={"region":name,"offset":0} or pointer("hhcb",q+4)!={"region":name,"offset":0} or
+                [word(h,q+o) for o in (8,12,16,20,24,40,64)]!=[0,0,1,2,3,8+target,1] or
+                pointer(name,28)!=0xffffffff or pointer(name,24)!=0):
+            raise ValueError("unfreeze-all queued ownership preconditions differ")
+        if target==0:
+            values=[2,3,1,0,0,0,0]
+            heads=(0xffffffff,0xffffffff)
+        else:
+            values=[0,0,1,2,3,1,1]
+            heads=("blocked+0","blocked+0")
+        if ([word(final["bytes"],q+o) for o in (8,12,16,20,24,40,64)]!=values or
+                (result_pointer(q),result_pointer(q+4))!=heads):
+            raise ValueError("unfreeze-all device ownership transfer differs")
+    if ((result_pointer(1364),result_pointer(1368))!=("hiob+0","hiob+0") or
+            (result_pointer(1356),result_pointer(1360))!=("descriptor+0","descriptor+0") or
+            word(final["bytes"],1352,1)!=1 or word(expected["hiob+0"]["bytes"],9,1)!=255 or
+            expected["active+0"]!="ffffffff"*3):
+        raise ValueError("unfreeze-all exhausted host ownership differs")
+    trace=[{"entry":"SCSIrUnFreezeAllDeviceQueues","arguments":["hhcb+0"]}]
+    for target in range(16):
+        trace.append({"entry":"SCSIrUnFreezeDeviceQueue","arguments":["hhcb+"+str(248+68*target),8]})
+        if target<2:trace.append({"entry":"SCSIrDispatchQueuedHIOB","arguments":["hiob+0" if target==0 else "blocked+0"]})
+        if target==0:
+            trace += [{"entry":"SCSIrDeviceQueueRemove","arguments":["hhcb+248"]}]
+            trace += [{"entry":name,"arguments":["hhcb+0","hiob+0"]} for name in
+                      ("SCSIrAllocateScb","SCSIrGetScb","SCSIrHostQueueAppend")]
+            trace += [{"entry":"SCSIrDeviceQueueRemove","arguments":["hhcb+248"]}]
+    if case["expected"]["trace"]!=trace:
+        raise ValueError("unfreeze-all actual caller allocation/callback trace differs")

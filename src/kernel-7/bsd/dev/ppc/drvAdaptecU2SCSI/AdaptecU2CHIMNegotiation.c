@@ -104,3 +104,46 @@ unsigned char SCSIhSwappingAdvGetFast20Reg(AdaptecU2HHCB *hhcb,
 {
     return 0;
 }
+
+unsigned char SCSIhAIC78XXGetWideScsiOffset(AdaptecU2HIOB *hiob)
+{
+    return 8;
+}
+
+unsigned char SCSIhAIC78XXGetNarrowScsiOffset(AdaptecU2HIOB *hiob)
+{
+    return 15;
+}
+
+unsigned char SCSIhAICBayonetGetScsiOffset(AdaptecU2HIOB *hiob)
+{
+    return hiob->context.unit->device->offset;
+}
+
+void SCSIhAIC78XXClearScsiOffset(AdaptecU2HIOB *hiob)
+{
+    hiob->context.unit->device->rate &= 0xf0;
+}
+
+void SCSIhAICBayonetClearScsiOffset(AdaptecU2HIOB *hiob)
+{
+    AdaptecU2DeviceTable *device = hiob->context.unit->device;
+    unsigned char offset = device->offset & 0x80;
+    device->rate &= 0xf0;
+    device->offset = offset;
+}
+
+unsigned int SCSIhAIC78XXWasSyncXfer(unsigned char offset)
+{
+    return (offset & 15) != 0;
+}
+
+unsigned int SCSIhAICBayonetWasSyncXfer(unsigned char offset)
+{
+    return (offset & 0x7f) != 0;
+}
+
+unsigned char SCSIhAIC78XXSetDataFifoThrshDefault(AdaptecU2HHCB *hhcb)
+{
+    return 3;
+}

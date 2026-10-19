@@ -367,7 +367,7 @@ tools/binrecon/out/adaptecu2scsi-ppc/venv/Scripts/python.exe -m pytest -p no:fau
 
 Complete output: OUT/task12/canonical-git.log. It reads canonical Git blobs, verifies all31 and only31 ledger rows, exact artifact digest,31 source-map additions and unchanged other mappings/duplicates/disputes, and unchanged data outside the one assigned switch. The final report-only commit preserves those exact code/proof/map/ledger/runtime artifacts. No additional CPU execution is needed for a report update.
 
-Self-review: checked all31 reference/native bodies and exact typed forwarding/slot correction; final actual current135-case native/reference observations and genuine relocations;31 actual entry/leaf coverage bindings; normalized switch/default aliases; strict real-callee bounds, MMIO operation-owner bytes/call-sites and every frozen permission; all7 compiled LF inputs/canonical Git equality and true native/source/runtime producer separation; proof-ledger source-map delta; canonical line endings; no accepted consumed contract/header/proof runtime changes; no unrelated source cleanup. `git diff --check` and staged checks are clean. Controller independent review is still the next gate.
+Self-review: checked all31 reference/native bodies and exact typed forwarding/slot correction; final actual current135-case native/reference observations and genuine relocations;31 actual entry/leaf coverage bindings; normalized switch/default aliases; strict real-callee bounds, MMIO operation-owner bytes/call-sites and every frozen permission; all7 compiled LF inputs/canonical Git equality and true native/source/runtime producer separation; proof-ledger source-map delta; canonical line endings; no accepted consumed contract/header/proof runtime changes; no unrelated source cleanup. Current-worktree `git diff --check` and staged checks were clean. The whole-range check has two preserved historical-launcher EOF notices, detailed below. Controller independent review is still the next gate.
 
 Fully expanded actual final CPU launch commands (PowerShell from the isolated worktree):
 
@@ -378,3 +378,7 @@ tools/binrecon/out/adaptecu2scsi-ppc/venv/Scripts/python.exe src/kernel-7/bsd/de
 ```
 
 Actual outputs: `reference: 135 frozen cases passed`; supplementary lists135 exact case IDs and finishes `PASS135 compiled cases,2 real caller context pairs,2 FreeUnit pairs,8 switch paths; HEAD 78b79a22bdbdde4f6b88792bc650035590bb17c3`. The proof/source commit is separate from original native608e9f5+WIP; raw outputs retain their original identities.
+
+## Preserved launcher whitespace
+
+Final `git diff --check 608e9f524deeaaa79910e484ee9c5008be3f863c..HEAD` returns1 with exactly two `new blank line at EOF` notices: committed historical compiler copies `tests/task12-build-provenance/native.ps1:10` and `native.py:29`. These are exact authenticated historical producer bytes, deliberately preserved with original manifests rather than cosmetically trimmed/relabelled. Current-worktree/staged checks and the full range excluding only those two historical copies are clean. This is a recorded minor provenance-format limitation; no product/runtime source or actual CPU input changed. The tracked worktree is clean after the report correction commit.

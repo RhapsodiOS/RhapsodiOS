@@ -10,21 +10,34 @@
 
 void SCSIhSetStat(AdaptecU2HIOB *hiob)
 {
-    unsigned char host = hiob->hostStatus;
-    unsigned char target = hiob->targetStatus;
-    if (host == 0 && (target == 0 || target == 4 || target == 16 || target == 20))
-        hiob->status = 1;
-    else if (hiob->status != 2) {
-        if ((host == 4 || host == 8) &&
-            (target == 0 || target == 4 || target == 16 || target == 20))
-            hiob->status = 1;
-        else
-            hiob->status = 3;
-    } else if (host != 4 && host != 8)
-        hiob->status = 3;
-    else if (target != 0 && target != 4 && target != 16 && target != 20) {
-        hiob->hostStatus = 0;
-        hiob->status = 3;
+    volatile AdaptecU2HIOB *state = hiob;
+    unsigned char host = state->hostStatus, target;
+    if (host == 0) {
+        target = state->targetStatus;
+        if (target == 0 || target == 4 || target == 16 || target == 20) {
+            state->status = 1;
+            return;
+        }
+    }
+    if (state->status != 2) {
+        if (host == 4 || host == 8) {
+            target = state->targetStatus;
+            if (target == 0 || target == 4 || target == 16 || target == 20) {
+                state->status = 1;
+                return;
+            }
+        }
+        state->status = 3;
+        return;
+    }
+    if (host != 4 && host != 8) {
+        state->status = 3;
+        return;
+    }
+    target = state->targetStatus;
+    if (target != 0 && target != 4 && target != 16 && target != 20) {
+        state->hostStatus = 0;
+        state->status = 3;
     }
 }
 
@@ -290,6 +303,7 @@ void SCSIhSwappingAdvRequestSense(AdaptecU2HHCB *hhcb, AdaptecU2HIOB *hiob)
     unsigned short length = hiob->senseLength;
     AdaptecU2UnitControl *unit = hiob->context.unit;
     unsigned int address, i;
+    unsigned char control;
     scb[12] &= 15;
     hiob->managerStatus = 7;
     scb[14] = 6;
@@ -298,9 +312,10 @@ void SCSIhSwappingAdvRequestSense(AdaptecU2HHCB *hhcb, AdaptecU2HIOB *hiob)
     scb[26] = 0;
     scb[27] = 0;
     scb[25] = unit->lun << 5;
+    control = scb[13];
     scb[29] = 0;
     scb[28] = hiob->senseLength;
-    scb[13] = scb[13] & ~0x40;
+    scb[13] = control & ~0x40;
     scb[38] = 0;
     address = OSDGetBusAddress(hhcb, 1, hiob->auxiliary.sense);
     RECOVERY_STORE_LE32(scb + 0, address);
@@ -622,9 +637,9 @@ void SCSIhSwappingAdvActiveAbort(AdaptecU2HHCB *hhcb, AdaptecU2HIOB *hiob)
     if (!SCSIhStandardSearchDoneQ(hhcb, hiob)) {
         volatile unsigned char *scb = hiob->scb->virtualAddress;
         volatile unsigned char *control = scb + 38;
-        value = scb[38] | 0x18;
-        *control = scb[38] | 0x10;
-        *control = value;
+        value = scb[38];
+        *control = value | 0x10;
+        *control = value | 0x18;
         scb[16] = 0;
         scb[17] = (hiob->control.flags & 0x4000) ? 13 : 6;
         SCSIhSwappingAdvQHead(hhcb, hiob);
@@ -647,9 +662,11 @@ void SCSIhSwapping32ActiveAbort(AdaptecU2HHCB *hhcb, AdaptecU2HIOB *hiob)
         hiob->managerStatus = 2;
     } else if (!SCSIhStandardSearchDoneQ(hhcb, hiob)) {
         volatile unsigned char *scb = hiob->scb->virtualAddress;
-        value = scb[1];
-        scb[0] |= 8;
-        scb[1] = value | 8;
+        unsigned char control;
+        value = scb[0];
+        control = scb[1];
+        scb[0] = value | 8;
+        scb[1] = control | 8;
         scb[4] = 0;
         scb[5] = (hiob->control.flags & 0x4000) ? 13 : 6;
         SCSIhSwapping32QHead(hhcb, hiob);

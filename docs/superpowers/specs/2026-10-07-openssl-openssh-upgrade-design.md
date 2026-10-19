@@ -304,3 +304,57 @@ What 7.4p1 needed:
 - Two cosmetic results: `__nonnull__` attribute warnings, which gcc 2.x
   ignores, and NeXT `ar` refusing to update an already-fat `libssh.a` on a
   rebuild in the same tree.
+
+## Appendix: Verification results
+
+All runs were on private snapshot guests of `rhap-i386-bootstrapped-v2.img`,
+except the last two rows, which used `rhap-i386-bootstrapped-v3.img`, a copy of
+v2 with the stack installed. **The ppc slices were built and inspected, not run:**
+there is no ppc runtime box.
+
+Shipped configuration: the new getsid kernel (kernel-155.0.0-7, master plus the
+`v2-kernel` FFS fixes), zlib 1.1.3, OpenSSL 0.9.8zh, OpenSSH 7.4p1 and the new
+`files`. The image keeps DR2's own libSystem, so OpenSSH uses `getpgrp()` and
+OpenSSL uses `times()` where the tree libSystem would give `getsid()` and
+`ftime()`.
+
+| Check | Result |
+|---|---|
+| OpenSSL universal `rbuild buildpackage` | exit 0, ppc and i386 |
+| `libcrypto.0.9.8.dylib`, `libssl.0.9.8.dylib`, `usr/bin/openssl` fat headers | ppc and i386 each |
+| `libcrypto.dylib`, `libssl.dylib` | symlinks to the 0.9.8 dylibs |
+| `opensslconf.h` | no `OPENSSL_NO_IDEA`, `_HW`, `_ASM` or `_SHA512`; `__ppc__` guard blocks carry the per-arch values |
+| OpenSSL `make test`, i386 | exit 0 (the "ERROR in CLIENT" lines are the proxy-rights negative cases) |
+| OpenSSL thin `--arch i386` build | exit 0 |
+| TLS check | guest `openssl s_client -tls1` with the shipped bundle plus a test CA verified a SHA-256 chain on the host `s_server`: `Verify return code: 0 (ok)`, TLSv1 |
+| OpenSSH universal build | exit 0; ppc and i386 `ssh`, `sshd`, `sftp-server`; no man pages |
+| `files` | `sshd` in passwd, master.passwd and group; `/var/empty` root:wheel 755; `ssh-keygen -A` in `1700_IPServices` |
+| NetInfo | `nidump` diff: passwd `4a5 > sshd:*:75:75::0:0:sshd Privilege separation:/var/empty:/noshell`, group `21a22 > sshd:*:75:`; `/users/sshd` reads back uid 75 |
+| Boot | banner `SSH-2.0-OpenSSH_7.4` after a reboot |
+| Windows OpenSSH 9.5p2, no options | curve25519-sha256, ssh-ed25519, chacha20-poly1305, root password login |
+| File transfer | `scp`, `scp -O` and `sftp` round-trip 1 MB with identical SHA-256 |
+| Privilege separation | the preauth child runs as uid 75 |
+| Old host keys | RSA1 and DSA checksums unchanged; rsa, ecdsa and ed25519 created |
+| 2.3.0p1 `sshd_config` | fatal before (only an RSA1 `HostKey`); `sshd -t` exits 0 after `1700_IPServices` comments the line out |
+| `vm/rhap-remote.ps1` | reaches both an old 3.2.3p1 sshd and the new one |
+| v3 image, fresh snapshot boot | kernel, `SSH-2.0-OpenSSH_7.4`, Windows client login and the three transfers all pass |
+| v3 image, `openssl version` | `OpenSSL 0.9.8zh` |
+
+Deviations from the design, each forced by a build or run failure:
+
+- i386 uses `no-sse2` (the NeXT assembler has no MMX) and `-DOPENSSL_NO_HW_PADLOCK`
+  (gcc 2.x rejects the engine's `+` constraint). The cpuid, DES and CAST assembly
+  stays in C because it is not position independent; the rest of the i386 assembly
+  is used.
+- `sha512.c` skips its i386 `bswapl` inline asm, which gcc 2.x miscompiles at `-O3`.
+  SHA-512 stays enabled.
+- OpenSSL man pages ship with the `ssl` suffix, so they do not collide with
+  `passwd.1` and `md5.1`.
+- `usr/bin/openssl` links libcrypto and libssl statically, as the 0.9.5a project
+  did; only the libssl dylib references libcrypto.
+- OpenSSH needs `-DSETEUID_BREAKS_SETUID -DBROKEN_SETREUID -DBROKEN_SETREGID`,
+  because Rhapsody refuses `setreuid` like Darwin.
+
+Not covered: the ppc slices at runtime, and the tree Libc and Libsystem, which
+cannot yet replace DR2's because they lack the typedstream API DR2's `lookupd`
+needs.

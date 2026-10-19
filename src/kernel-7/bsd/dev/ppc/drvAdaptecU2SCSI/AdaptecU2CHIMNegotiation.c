@@ -147,3 +147,52 @@ unsigned char SCSIhAIC78XXSetDataFifoThrshDefault(AdaptecU2HHCB *hhcb)
 {
     return 3;
 }
+
+unsigned char SCSIhAIC78XXReadDataFifoThrsh(AdaptecU2HHCB *hhcb)
+{
+    return OSMReadUExact8(*hhcb->ioHandle, 134) >> 6;
+}
+
+void SCSIhAIC78XXUpdateDataFifoThrsh(AdaptecU2HHCB *hhcb)
+{
+    OSMWriteUExact8(*hhcb->ioHandle, 134, hhcb->fifoThreshold << 6);
+}
+
+unsigned char SCSIhAICBayonetSetDataFifoThrshDefault(AdaptecU2HHCB *hhcb)
+{
+    return 119;
+}
+
+unsigned char SCSIhAICBayonetReadDataFifoThrsh(AdaptecU2HHCB *hhcb)
+{
+    return OSMReadUExact8(*hhcb->ioHandle, 251);
+}
+
+void SCSIhAICBayonetUpdateDataFifoThrsh(AdaptecU2HHCB *hhcb)
+{
+    OSMWriteUExact8(*hhcb->ioHandle, 251, hhcb->fifoThreshold);
+}
+
+void SCSIhSwappingClearAllFast20Reg(AdaptecU2HHCB *hhcb)
+{
+    unsigned short target = 0;
+    do {
+        hhcb->devices[target].flags &= ~0x2000;
+        ++target;
+    } while (target <= 15);
+}
+
+void SCSIhStandard64ClearAllFast20Reg(AdaptecU2HHCB *hhcb)
+{
+    const AdaptecU2IOHandle *handle = hhcb->ioHandle;
+    OSMWriteUExact8(*handle, hhcb->firmware->registers[17], 0);
+    OSMWriteUExact8(*handle, hhcb->firmware->registers[18], 0);
+}
+
+void SCSIhStandardAdvUpdateSGLength(AdaptecU2HHCB *hhcb, unsigned int length)
+{
+    const AdaptecU2IOHandle *handle = hhcb->ioHandle;
+    OSMWriteUExact8(*handle, 204, length);
+    OSMWriteUExact8(*handle, 205, length >> 8);
+    OSMWriteUExact8(*handle, 206, length >> 16);
+}

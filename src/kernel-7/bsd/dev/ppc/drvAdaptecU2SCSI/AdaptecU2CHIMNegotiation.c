@@ -1,4 +1,5 @@
 #include "AdaptecU2CHIMPrivate.h"
+#include <machdep/ppc/pmap.h>
 
 unsigned short SCSIhAIC78XXCalcScsiRate(AdaptecU2HHCB *hhcb,
                                      unsigned char period, unsigned char offset)
@@ -269,4 +270,132 @@ void SCSIhSwappingAdvUpdateXferOptionHostMem(AdaptecU2HHCB *hhcb,
     unsigned char *scb = hiob->scb->virtualAddress, *address = scb + 36;
     __asm__ volatile ("sthbrx %0,0,%1" : : "r" (option), "r" (address) : "memory");
     flush_cache((vm_offset_t)scb, 64);
+}
+
+void SCSIhStandardClearFast20Reg(AdaptecU2HHCB *hhcb, unsigned char target)
+{
+    const AdaptecU2IOHandle *handle = hhcb->ioHandle;
+    unsigned char reg, mask, value;
+    if (target > 7) {
+        mask = 1 << (target - 8);
+        reg = hhcb->firmware->registers[18];
+    } else {
+        mask = 1 << target;
+        reg = hhcb->firmware->registers[17];
+    }
+    value = OSMReadUExact8(*handle, reg);
+    OSMWriteUExact8(*handle, reg, value & (unsigned char)~mask);
+    value = OSMReadUExact8(*handle, 1) & ~0x20;
+    OSMWriteUExact8(*handle, 1, value);
+}
+
+void SCSIhSwappingClearFast20Reg(AdaptecU2HHCB *hhcb, unsigned char target)
+{
+    const AdaptecU2IOHandle *handle = hhcb->ioHandle;
+    unsigned char i, value;
+    AdaptecU2HIOB *hiob;
+    hhcb->devices[target].flags &= ~0x2000;
+    if (hhcb->firmware->updateFast20HW)
+        hhcb->firmware->updateFast20HW(hhcb, 0);
+    for (i = 0; i < hhcb->numberScbs; ++i) {
+        hiob = hhcb->activeHiobs[i];
+        if (hiob != (AdaptecU2HIOB *)0xffffffff &&
+            target == hiob->context.unit->target) {
+            if (hhcb->firmware->updateFast20HostMem)
+                hhcb->firmware->updateFast20HostMem(hhcb, hiob, 0);
+        }
+    }
+    value = OSMReadUExact8(*handle, 1) & ~0x20;
+    OSMWriteUExact8(*handle, 1, value);
+}
+
+void SCSIhStandardLogFast20Map(AdaptecU2HHCB *hhcb, unsigned char target,
+                             unsigned char period)
+{
+    const AdaptecU2IOHandle *handle = hhcb->ioHandle;
+    unsigned char control = OSMReadUExact8(*handle, 1), reg, mask, value;
+    if (target > 7) {
+        mask = 1 << (target - 8);
+        reg = hhcb->firmware->registers[18];
+    } else {
+        mask = 1 << target;
+        reg = hhcb->firmware->registers[17];
+    }
+    value = OSMReadUExact8(*handle, reg);
+    if (period > 24) {
+        value &= ~mask;
+        control &= ~0x20;
+    } else {
+        value |= mask;
+        control |= 0x20;
+    }
+    OSMWriteUExact8(*handle, reg, value);
+    OSMWriteUExact8(*handle, 1, control);
+}
+
+void SCSIhSwappingLogFast20Map(AdaptecU2HHCB *hhcb, unsigned char target,
+                             unsigned char period)
+{
+    const AdaptecU2IOHandle *handle = hhcb->ioHandle;
+    unsigned char control = OSMReadUExact8(*handle, 1), i, enabled;
+    AdaptecU2HIOB *hiob;
+    if (period > 24) {
+        hhcb->devices[target].flags &= ~0x2000;
+        control &= ~0x20;
+        enabled = 0;
+    } else {
+        hhcb->devices[target].flags |= 0x2000;
+        control |= 0x20;
+        enabled = 1;
+    }
+    if (hhcb->firmware->updateFast20HW)
+        hhcb->firmware->updateFast20HW(hhcb, enabled);
+    for (i = 0; i < hhcb->numberScbs; ++i) {
+        hiob = hhcb->activeHiobs[i];
+        if (hiob != (AdaptecU2HIOB *)0xffffffff &&
+            target == hiob->context.unit->target) {
+            if (hhcb->firmware->updateFast20HostMem)
+                hhcb->firmware->updateFast20HostMem(hhcb, hiob, enabled);
+        }
+    }
+    OSMWriteUExact8(*handle, 1, control);
+}
+
+void SCSIhStandardXferOptAssign(AdaptecU2HHCB *hhcb, unsigned char target,
+                               unsigned short option)
+{
+    const AdaptecU2IOHandle *handle = hhcb->ioHandle;
+    OSMWriteUExact8(*handle, hhcb->firmware->registers[5] + target, option);
+    if (hhcb->hardwareFlags & 0x80000) {
+        OSMWriteUExact8(*handle, 4, option);
+        hhcb->hardwareFlags &= ~0x80000;
+    }
+}
+
+void SCSIhHostXferOptAssign(AdaptecU2HHCB *hhcb, unsigned char target,
+                           unsigned short option)
+{
+    unsigned char i;
+    AdaptecU2HIOB *hiob;
+    if (hhcb->firmware->commonXferAssign)
+        hhcb->firmware->commonXferAssign(hhcb, target, option);
+    for (i = 0; i < hhcb->numberScbs; ++i) {
+        hiob = hhcb->activeHiobs[i];
+        if (hiob != (AdaptecU2HIOB *)0xffffffff &&
+            target == hiob->context.unit->target) {
+            if (hhcb->firmware->updateXferOptionHostMem)
+                hhcb->firmware->updateXferOptionHostMem(hhcb, hiob, option);
+        }
+    }
+}
+
+unsigned short SCSIhStandardGetOption(AdaptecU2HHCB *hhcb, unsigned char target)
+{
+    return OSMReadUExact8(*hhcb->ioHandle,
+                         hhcb->firmware->registers[5] + target);
+}
+
+unsigned short SCSIhHostGetOption(AdaptecU2HHCB *hhcb, unsigned char target)
+{
+    return hhcb->devices[target].option;
 }

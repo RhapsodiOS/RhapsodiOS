@@ -371,3 +371,27 @@ objects. Source plus six canonical Git headers and five accepted source/native
 dependencies are authenticated separately from the complete Python/fixture
 execution dependency closure. Metadata-only reuse retains actual producing
 revisions. No paired linked-kernel, physical adapter or timing claim is made.
+
+## Task9 negotiation and transfer state
+
+All63 owned bodies in [0x198100,0x19cb3c) are control-flow-confirmed in
+task9.json and the ledger. The456 frozen reference cases directly cover all63
+entries, with actual internal bodies, all four modes and exact MMIO/cache
+ordering. The212 final native scalar cases include all5 normalized entries
+and3 guard defaults of switch_230ec0, plus its unflagged period paths. Sixteen
+critical native/reference access checks preserve byte stores, reversed
+halfwords, cache lengths and both HIOB residue word publications.
+
+Actual native producer is059ddb279776604696f391d16a96511a95dbf9f9; native
+object SHA256 isA42D11C1DECE9D3EB26C21A6493FD3C2AAFCF702877F2B0FFD3C8E73574F14DD.
+Actual public456case/helper producer isd641f073c6946fc6a2c4e52d4cb729c08fba9aa7.
+The original CLI reference envelope is retained. Complete13input execution
+closure, separate production plus six-header native closure, seven accepted
+source/native dependencies and four particular owner proofs are checked;
+metadata-only reuse preserves actual producers. Public current-HEAD result
+validation remains strict. The scoped gate passes source/object/case/runner/
+dependency/switch/import/result/relocation mutations, LF/CRLF checkouts and
+native widened-store/changed-return negatives. No shared runner/type/header
+or incoming-r28 exception was changed. Linked pairing, four-kernel builds,
+physical validation and prior-group final freshness/portability remain later
+Tasks12/15/16 obligations; see the Task9 report for exact paths and limits.

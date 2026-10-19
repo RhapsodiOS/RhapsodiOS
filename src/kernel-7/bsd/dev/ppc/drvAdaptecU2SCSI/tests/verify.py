@@ -356,7 +356,10 @@ def audit_negotiation_group(evidence, repo_root, objects):
     runner_spec = importlib.util.spec_from_file_location("au2_task9_runner", driver / "tests/ppc_cases.py")
     runner = importlib.util.module_from_spec(runner_spec)
     runner_spec.loader.exec_module(runner)
-    result = load_json(objects / "reference-results.json")
+    result_document = load_json(objects / "reference-results.json")
+    if set(result_document) != {"reference"}:
+        raise ValueError("Task9 public reference result envelope differs")
+    result = result_document["reference"]
     expected = {"binary_sha256": ref.SHA256, "cases_sha256": runner.digest(cases),
                 "contracts_sha256": runner.digest(contracts), "runner_version": proof["reference_runner_version"]}
     if any(result.get(key) != value for key, value in expected.items()):
@@ -493,7 +496,7 @@ def audit_negotiation_switches(evidence, repo_root, proof, payload, macho, nativ
     if native.access_widths(binary) != proof["native_accesses"]:
         raise ValueError("Task9 native access proof differs")
     selected = [c for c in cases["cases"] if c["entry"] == "SCSIhAIC78XXGetXferPeriod"]
-    indices, asynchronous, expected_ids = set(), set(), []
+    indices, unflagged, expected_ids = set(), set(), []
     for case in selected:
         raw = bytes.fromhex(next(r for r in case["memory"] if r["name"] == "device")["bytes"])
         index = (raw[4] >> 4) & 7
@@ -501,14 +504,14 @@ def audit_negotiation_switches(evidence, repo_root, proof, payload, macho, nativ
             indices.add(index)
             expected = {0: 12, 1: 16, 2: 19, 3: 19}.get(index, 25)
         else:
-            asynchronous.add(index)
+            unflagged.add(index)
             expected = 6 * index + (26 if raw[4] & 0x40 else 25)
         if case["expected"]["return"] != expected:
             raise ValueError("Task9 frozen period semantics differ")
         native.run_scalar(binary, case)
         expected_ids.append(case["id"])
-    if indices != set(range(8)) or asynchronous != set(range(8)) or review["native_cases"] != expected_ids:
-        raise ValueError("Task9 switch cases omit normalized/default or asynchronous paths")
+    if indices != set(range(8)) or unflagged != set(range(8)) or review["native_cases"] != expected_ids:
+        raise ValueError("Task9 switch cases omit normalized/default or unflagged paths")
     frozen = {name.removeprefix("_"): f for f in evidence["frozen"].values() for name in f["names"]}
     owner_proofs = {"AdaptecU2CHIMNegotiation.c": "reconstruction/task9.json",
                     "AdaptecU2OSMServices.m": "reconstruction/task5.json",

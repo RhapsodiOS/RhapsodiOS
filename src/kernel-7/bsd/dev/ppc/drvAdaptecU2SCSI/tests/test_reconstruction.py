@@ -1768,7 +1768,7 @@ def test_task9_owner_rejects_incomplete_evidence(tmp_path, firmware_evidence, co
         proof["execution_inputs"].pop("tools/binrecon/binrecon/__init__.py")
     elif corruption == "result":
         path = objects / "reference-results.json"
-        result = json.loads(path.read_text()); result["results"][0]["unknown_calls"] = ["missing"]
+        result = json.loads(path.read_text()); result["reference"]["results"][0]["unknown_calls"] = ["missing"]
         path.write_text(json.dumps(result))
     elif corruption == "relocation":
         next(b for b in proof["bodies"] if b["native_external_relocations"])["native_external_relocations"].pop()
@@ -1845,7 +1845,7 @@ def test_task9_native_rejects_changed_behavior(tmp_path, corruption):
 
 
 def test_task9_public_result_current_head_remains_strict():
-    result = json.loads((OUT / "objects/task9/reference-results.json").read_text())
+    result = json.loads((OUT / "objects/task9/reference-results.json").read_text())["reference"]
     result["source_revision"] = "0" * 40
     with pytest.raises(ValueError, match="stale result: source_revision"):
         load_script("ppc_cases").validate_result(
@@ -1878,4 +1878,3 @@ def test_task9_fresh_git_checkout_proof(tmp_path):
     ledger = json.loads((tmp_path / paths[1]).read_text())
     artifacts = [a for e in ledger["entries"] for a in e["artifacts"] if a["path"].endswith("task9.json")]
     assert len(artifacts) == 63 and {a["sha256"] for a in artifacts} == {digest}
-

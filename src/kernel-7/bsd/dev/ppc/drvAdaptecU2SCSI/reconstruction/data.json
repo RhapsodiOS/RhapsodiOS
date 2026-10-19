@@ -15559,7 +15559,7 @@
           "kind": "code-offset"
         }
       ],
-      "status": "pending-owner-control-flow",
+      "status": "recovered",
       "required_gate": "owner-group-and-final",
       "consumers": [
         1724244,
@@ -15705,7 +15705,8 @@
           "target": 1724360
         }
       ],
-      "guard_start": 1724232
+      "guard_start": 1724232,
+      "owner_evidence": "reconstruction/task13.json"
     },
     {
       "name": "switch_230f80",
@@ -15766,7 +15767,7 @@
           "kind": "code-offset"
         }
       ],
-      "status": "pending-owner-control-flow",
+      "status": "recovered",
       "required_gate": "owner-group-and-final",
       "consumers": [
         1724388,
@@ -15912,7 +15913,8 @@
           "target": 1724476
         }
       ],
-      "guard_start": 1724376
+      "guard_start": 1724376,
+      "owner_evidence": "reconstruction/task13.json"
     },
     {
       "name": "switch_230fa0",
@@ -15997,7 +15999,7 @@
           "kind": "code-offset"
         }
       ],
-      "status": "pending-owner-control-flow",
+      "status": "recovered",
       "required_gate": "owner-group-and-final",
       "consumers": [
         1727372,
@@ -16126,7 +16128,8 @@
           "target": 1727424
         }
       ],
-      "guard_start": 1727360
+      "guard_start": 1727360,
+      "owner_evidence": "reconstruction/task13.json"
     },
     {
       "name": "switch_230fd0",
@@ -16253,7 +16256,7 @@
           "kind": "code-offset"
         }
       ],
-      "status": "pending-owner-control-flow",
+      "status": "recovered",
       "required_gate": "owner-group-and-final",
       "consumers": [
         1728796,
@@ -16436,7 +16439,8 @@
           "target": 1729160
         }
       ],
-      "guard_start": 1728784
+      "guard_start": 1728784,
+      "owner_evidence": "reconstruction/task13.json"
     },
     {
       "name": "switch_23101c",
@@ -16887,7 +16891,7 @@
           "kind": "code-offset"
         }
       ],
-      "status": "pending-owner-control-flow",
+      "status": "recovered",
       "required_gate": "owner-group-and-final",
       "consumers": [
         1731844,
@@ -17168,7 +17172,8 @@
           "target": 1732368
         }
       ],
-      "guard_start": 1731956
+      "guard_start": 1731956,
+      "owner_evidence": "reconstruction/task13.json"
     },
     {
       "name": "switch_231140",
@@ -17427,7 +17432,7 @@
           "kind": "code-offset"
         }
       ],
-      "status": "pending-owner-control-flow",
+      "status": "recovered",
       "required_gate": "owner-group-and-final",
       "consumers": [
         1731852,
@@ -17629,7 +17634,8 @@
           "target": 1732216
         }
       ],
-      "guard_start": 1732036
+      "guard_start": 1732036,
+      "owner_evidence": "reconstruction/task13.json"
     },
     {
       "name": "switch_2311e4",
@@ -17816,7 +17822,7 @@
           "kind": "code-offset"
         }
       ],
-      "status": "pending-owner-control-flow",
+      "status": "recovered",
       "required_gate": "owner-group-and-final",
       "consumers": [
         1732260,
@@ -18004,7 +18010,8 @@
           "target": 1732368
         }
       ],
-      "guard_start": 1732248
+      "guard_start": 1732248,
+      "owner_evidence": "reconstruction/task13.json"
     },
     {
       "name": "switch_231258",
@@ -18667,7 +18674,7 @@
           "kind": "code-offset"
         }
       ],
-      "status": "pending-owner-control-flow",
+      "status": "recovered",
       "required_gate": "owner-group-and-final",
       "consumers": [
         1735004,
@@ -18948,7 +18955,8 @@
           "target": 1735420
         }
       ],
-      "guard_start": 1734992
+      "guard_start": 1734992,
+      "owner_evidence": "reconstruction/task13.json"
     },
     {
       "name": "switch_2313a8",
@@ -19207,7 +19215,7 @@
           "kind": "code-offset"
         }
       ],
-      "status": "pending-owner-control-flow",
+      "status": "recovered",
       "required_gate": "owner-group-and-final",
       "consumers": [
         1735092,
@@ -19409,7 +19417,8 @@
           "target": 1735268
         }
       ],
-      "guard_start": 1735080
+      "guard_start": 1735080,
+      "owner_evidence": "reconstruction/task13.json"
     },
     {
       "name": "switch_23144c",
@@ -19596,7 +19605,7 @@
           "kind": "code-offset"
         }
       ],
-      "status": "pending-owner-control-flow",
+      "status": "recovered",
       "required_gate": "owner-group-and-final",
       "consumers": [
         1735312,
@@ -19784,7 +19793,8 @@
           "target": 1735420
         }
       ],
-      "guard_start": 1735300
+      "guard_start": 1735300,
+      "owner_evidence": "reconstruction/task13.json"
     },
     {
       "name": "switch_2314c0",
@@ -20515,7 +20525,7 @@
           "kind": "code-offset"
         }
       ],
-      "status": "pending-owner-control-flow",
+      "status": "recovered",
       "required_gate": "owner-group-and-final",
       "consumers": [
         1737208,
@@ -20810,7 +20820,8 @@
           "target": 1737876
         }
       ],
-      "guard_start": 1737180
+      "guard_start": 1737180,
+      "owner_evidence": "reconstruction/task13.json"
     }
   ]
 }

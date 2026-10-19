@@ -704,3 +704,5 @@ and all8 assigned switch paths. Ledger368CF/108unexamined; map375mapped,
 13switch owner-CF pending,5controller-data pending. Seven existing mapped
 transitional drafts do not add CF bodies. Final four builds/fresh allcorpora
 paired acceptance remain required.
+
+Task13 Transport19/API42 now account for all392 CHIM bodies at control-flow level. task13.json binds787 actual public reference and787 genuine native root cases, both API caller r28 pairs and both independently mapped private-byte pairs. All11 assigned switch envelopes recovered (ten native jump tables/401 entries and the12-selector NV conditional graph). Ledger429CF/47unexamined; map436mapped/24unmapped/16duplicate candidates; data41recovered/2switch-pending/5controller-body-pending. All41 public dispatch identities/version4/168-byte bounds retained. Current six-object mixed arena is supplementary; Task14 controller bodies and Task15/16 four full builds, fresh all-corpus closure and independently mapped architectural contexts remain required.

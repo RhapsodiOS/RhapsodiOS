@@ -20,6 +20,11 @@ sha,load,DRIVER=identity.sha,identity.load,identity.DRIVER
 SOURCES=("AdaptecU2CHIMTransport.c","AdaptecU2CHIMAPI.c")
 BASE="92691668a38e846d1ba853f7b969eff25bb28dde"
 BASE_CONTRACTS="4A5113A88B7D24AF5093A8E6FAC794717B936F154A4C38C864AC5F4E03B3E0C0"
+OWNER_PROOFS={"AdaptecU2OSMServices.m":"task5.json","AdaptecU2CHIMOSD.c":"task5.json",
+              "AdaptecU2CHIMHardware.c":"task6.json","AdaptecU2CHIMSCB.c":"task7.json",
+              "AdaptecU2CHIMConfig.c":"task8.json","AdaptecU2CHIMNegotiation.c":"task9.json",
+              "AdaptecU2CHIMRecovery.c":"task10.json","AdaptecU2CHIMResource.c":"task11.json",
+              "AdaptecU2CHIMHIM.c":"task12.json",SOURCES[0]:"task13.json",SOURCES[1]:"task13.json"}
 
 
 def exact_rows(rows,expected,label):
@@ -69,6 +74,13 @@ def native_inputs(repo,objects,proof):
             raise ValueError("API actual compiler launcher/input provenance differs")
     if {Path(p).name for p in proof["native_build_provenance_copies"]}!={"build.py","build.ps1","build-b9.sh","b9-inputs.json","build-transport.py","build-transport.ps1","build-b10.sh","b10-inputs.json"}:
         raise ValueError("API compiler provenance copy closure incomplete")
+    selected=load(objects/"objects.json");selected_inputs=load(objects/"native-inputs.json")
+    if (selected.get("kind")!="selected-original-translation-units" or selected.get("source_revision")!=BASE or
+            selected.get("canonical_input_revision")!=proof["canonical_input_revision"] or selected.get("configuration")!="RELEASE_PPC" or
+            selected_inputs.get("kind")!="selected-original-input-union" or selected_inputs.get("source_revision")!=BASE or
+            selected_inputs.get("canonical_input_revision")!=proof["canonical_input_revision"] or selected_inputs.get("work_in_progress") is not True or
+            len(selected["objects"])!=2 or set(selected_inputs["translation_units"])!=set(SOURCES) or set(selected_inputs["inputs"])!=set(identity.NATIVE_INPUTS)):
+        raise ValueError("API selected original translation-unit index differs")
     binaries={}
     for index,source in enumerate(SOURCES,1):
         producer=proof["native_producers"][source];directory=repo/producer["objects_root"]
@@ -98,6 +110,11 @@ def native_inputs(repo,objects,proof):
                 actual[Path(name).name]=digest.upper()
             if actual!={n:inputs["inputs"][n]["staged_sha256"] for n in names}:raise ValueError("API original source/header manifests differ")
         item=next(r for r in manifest["objects"] if Path(r["source"]).name==source)
+        selected_item={**item,"producer_manifest":producer["manifest"],"producer_inputs":producer["inputs"]}
+        selected_unit={"producer_manifest":producer["manifest"],"producer_inputs":producer["inputs"],"compiled_inputs":list(compiled)}
+        if (selected["objects"][index-1]!=selected_item or selected_inputs["translation_units"][source]!=selected_unit or
+                any(selected_inputs["inputs"][n]!=inputs["inputs"][n] for n in compiled)):
+            raise ValueError("API selected index relabels an original producer")
         original_index=manifest["objects"].index(item)+1;path=str(index)+"-"+source+".o"
         if (item["source"]!="bsd/dev/ppc/drvAdaptecU2SCSI/"+source or item["path"]!=path or item["cpu_type"]!=18 or
                 item["sha256"]!=sha((objects/path).read_bytes()) or item["source_sha256"]!=proof["canonical_inputs"][source] or
@@ -106,6 +123,9 @@ def native_inputs(repo,objects,proof):
                 (objects/(str(index)+".command")).read_text().strip()!=item["command"] or (objects/(str(index)+".log")).read_bytes()):
             raise ValueError("API actual native object/command/diagnostics differs")
         binaries[source]=objects/path
+    expected_manifest="".join(proof["canonical_inputs"][n].lower()+"  bsd/dev/ppc/drvAdaptecU2SCSI/"+n+"\n" for n in identity.NATIVE_INPUTS)
+    if (objects/"source-inputs.sha256").read_text()!=expected_manifest:
+        raise ValueError("API selected source manifest differs")
     return binaries
 
 
@@ -125,12 +145,17 @@ def scopes(evidence,repo,objects,proof,binaries):
         wanted={b["name"] for b in bodies.values() if b["source"]==source}
         actual={s["name"] for s in image["symbols"] if s["binding"]=="external" and s["section"]=="__TEXT,__text"}
         if actual!=wanted or len(actual)!=(19 if source==SOURCES[0] else 42):raise ValueError("API native19/42 symbol closure differs")
+    functions={f["address"]:f for f in evidence["document"]["functions"]}
     for address,b in bodies.items():
-        f=evidence["frozen"][address];start,code,image=leaf.body(binaries[b["source"]],b["name"].removeprefix("_"))
+        f=functions[address];start,code,image=leaf.body(binaries[b["source"]],b["name"].removeprefix("_"))
         rel=[r for r in image["extensions"]["macho"]["relocations"] if r["section"]=="__TEXT,__text" and start<=r["address"]<start+len(code)]
         site=((DRIVER/b["source"]).as_posix(),b["source_line"])
         entry=by_address[address]
+        section=next(s for s in evidence["macho"]["sections"] if s["address"]<=address and address+f["size"]<=s["address"]+s["size"])
+        offset=section["offset"]+address-section["address"];reference_code=evidence["payload"][offset:offset+f["size"]]
+        accesses=module("task13_graph").memory_accesses
         if (b["name"] not in f["names"] or b["reference_size"]!=f["size"] or b["reference_blocks"]!=f["blocks"] or b["reference_calls"]!=f["calls"] or
+                b["reference_sha256"]!=sha(reference_code) or b["reference_memory_instructions"]!=accesses(address,reference_code) or b["native_memory_instructions"]!=accesses(start,code) or
                 (start,len(code),sha(code),rel)!=(b["native_address"],b["native_size"],b["native_sha256"],b["native_relocations"]) or
                 sites.get(b["name"])!=[site] or len(b["control_flow"])<35 or not b["cases"] or
                 (entry["source_path"],entry["source_line"])!=site or entry["status"]!="control-flow-confirmed" or
@@ -161,6 +186,33 @@ def mmio_index(results,contracts,owners,accepted):
         trace=collections.Counter((int(e["target"].split("+")[1]),e["size"],e["access"]) for e in result["observations"]["trace"] if e.get("target","").startswith("registers+"))
         if counts!=trace:raise ValueError("API exact MMIO attribution misses actual observations")
     return {key:sorted(rows.values(),key=lambda r:json.dumps(r,sort_keys=True)) for key,rows in sorted(records.items())}
+
+
+def publication_checks(cases,results,manifest,bodies):
+    accesses=module("task13_graph").memory_accesses
+    by_name={b["name"].removeprefix("_"):b for b in bodies.values()}
+    widths={"SCSICreateAdapterTSCB":{31:1,42:1,43:1,0:4,4:4,8:4,12:4,16:4,20:4},
+            "SCSISetMemoryPointer":{1492:2,1496:4}}
+    for c,r in zip(cases,results):
+        regions={m["name"]:m["size"] for m in c["memory"]}
+        for p in r["publications"]:
+            b=by_name.get(p["owner"])
+            if b is None:raise ValueError("API publication owner differs")
+            native=manifest["definitions"]["_"+p["owner"]]
+            address=p["instruction"]
+            if native["arena_address"]<=address<native["arena_address"]+native["size"]:
+                start=native["arena_address"];offset=b["native_address"]-start;records=b["native_memory_instructions"]
+            else:
+                start=b["address"];offset=0;records=b["reference_memory_instructions"]
+                if not start<=address<start+b["reference_size"]:raise ValueError("API publication exceeds actual owner")
+            record=next((a for a in records if a["address"]==address+offset),None)
+            decoded=accesses(address,bytes.fromhex(p["bytes"]))
+            if (record is None or record["bytes"]!=p["bytes"] or len(decoded)!=1 or decoded[0]["direction"]!="write" or
+                    p["size"]!=decoded[0]["width"] or p["region"] not in regions or
+                    not 0<=p["offset"]<=regions[p["region"]]-p["size"]):
+                raise ValueError("API actual publication instruction/width/extent differs")
+            if p["region"]=="adapter" and p["offset"] in widths.get(p["owner"],{}) and p["size"]!=widths[p["owner"]][p["offset"]]:
+                raise ValueError("API adapter byte/halfword/word publication differs")
 
 
 def audit(evidence,repo,objects):
@@ -212,21 +264,37 @@ def audit(evidence,repo,objects):
         raise ValueError("API eleven reference switches pending/missing/extra")
     getter=load(driver/"tests/task13-getter.json");record=next(r for r in data if r["name"]=="SCSIFuncPtrs")
     if getter!={k:record[k] for k in getter}:raise ValueError("API dispatch reference identities/version/table bounds differ")
-    results=[];coverage=collections.defaultdict(set)
+    module("verify")._audit_dispatch_headers(driver,evidence)
+    results=[];coverage=collections.defaultdict(set);reference_owned=collections.defaultdict(set)
     for c,p,n in zip(cases["cases"],public["results"],supplement["results"]):
         adapted=native.getter_copy(native.adapt(c,manifest),objects/"native-arena.macho",manifest)
         if (p["executed_case_id"]!=c["id"] or p["observations"]!=c["expected"] or p["unknown_calls"] or not p["returned_to_sentinel"] or
                 n["executed_case_id"]!=c["id"] or n["observations"]!=adapted["expected"] or n["unknown_calls"] or not n["returned_to_sentinel"] or
                 n["canonical_case_sha256"]!=runner.digest(c) or n["adapted_case_sha256"]!=runner.digest(adapted) or
                 not 0<p["instructions"]<=c["instruction_limit"]<=4000000 or not 0<n["instructions"]<=c["instruction_limit"] or
-                n["stack_pointer"]!=runner.STACK+runner.STACK_SIZE-4096 or n["nonvolatile_preserved"]!={str(r):0xa5000000+r for r in range(14,32)}):
+                n["stack_pointer"]!=runner.STACK+runner.STACK_SIZE-4096 or n["nonvolatile_preserved"]!={str(r):0xa5000000+r for r in range(14,32)} or
+                not any(e["entry"]==c["entry"] and e["address"]==manifest["definitions"]["_"+c["entry"]]["arena_address"] for e in n["entries"])):
             raise ValueError("API actual paired observation/ABI differs: "+c["id"])
         for name,addresses in n["owned_instructions"].items():
-            d=manifest["definitions"]["_"+name]
-            if not addresses or any(a%4 or not d["arena_address"]<=a<d["arena_address"]+d["size"] for a in addresses):raise ValueError("API actual native coverage exceeds owner")
-            coverage[name].update(addresses)
+            d=manifest["definitions"]["_"+name];f=frozen[name]
+            if not addresses:raise ValueError("API actual coverage is empty")
+            for address in addresses:
+                if address%4:raise ValueError("API actual instruction coverage is unaligned")
+                if d["arena_address"]<=address<d["arena_address"]+d["size"]:coverage[name].add(address)
+                elif f["address"]<=address<f["address"]+f["size"]:reference_owned[name].add(address)
+                else:raise ValueError("API actual coverage exceeds genuine native/reference owner")
         results.append((c["id"],n))
     if set(coverage)!=set(native.OWNED):raise ValueError("API actual native coverage omits owned bodies")
+    publication_checks(cases["cases"],supplement["results"],manifest,bodies)
+    if {name:sorted(points) for name,points in sorted(reference_owned.items())}!=proof["mixed_owned_reference_coverage"]:
+        raise ValueError("API mixed reference callee limitation differs from actual execution")
+    by_id={r["executed_case_id"]:r for r in supplement["results"]}
+    for selector in range(2,14):
+        result=by_id["task13-SCSIGetNVOSMSegment-2-"+str(selector)+"-0"]
+        calls=[c for c in result["api_calls"] if c["owner"]=="SCSIGetNVOSMSegment" and c["callee"]=="SCSIHReadSEEPROM"]
+        expected_offset=32 if selector in (2,8) else 64 if selector in (3,12) else 0
+        if len(calls)!=1 or calls[0]["arguments"][2:4]!=[expected_offset,32]:
+            raise ValueError("API actual twelve NV conditional selectors differ")
     for g in graphs:
         if "targets" in g:
             source=next(b["source"] for b in bodies.values() if b["name"]=="_"+g["owner"]);delta=manifest["definitions"]["_"+g["owner"]]["arena_address"]-next(b["native_address"] for b in bodies.values() if b["name"]=="_"+g["owner"])
@@ -247,6 +315,28 @@ def audit(evidence,repo,objects):
             for e,name in zip(entries,wanted):
                 address=frozen[name]["address"] if label=="reference" else manifest["definitions"]["_"+name]["arena_address"]
                 if e["address"]!=address:raise ValueError("API caller witness entry is not genuine source/native")
+            calls=[x for x in r["api_calls"] if x["owner"]=="SCSIInitialize" and x["callee"]=="SCSIRInitialize"]
+            if len(calls)!=1:raise ValueError("API genuine Resource caller identity/count differs")
+            call=calls[0];payload,image=(evidence["payload"],evidence["macho"]) if label=="reference" else load_image(objects/"native-arena.macho")
+            body=frozen["SCSIInitialize"] if label=="reference" else manifest["definitions"]["_SCSIInitialize"]
+            body_address=body["address"] if label=="reference" else body["arena_address"]
+            pc=call["callsite"];section=next(s for s in image["sections"] if s["address"]<=pc and pc+4<=s["address"]+s["size"])
+            offset=section["offset"]+pc-section["address"];code=payload[offset:offset+4];word=int.from_bytes(code,"big");displacement=word&0x3fffffc
+            target=pc+displacement-(0x4000000 if displacement&0x2000000 else 0)
+            expected_target=frozen["SCSIRInitialize"]["address"] if label=="reference" else manifest["definitions"]["_SCSIRInitialize"]["arena_address"]
+            address=runner.REGION_BASE
+            for region in c["memory"]:
+                if region["name"]=="adapter":break
+                address+=(region["size"]+4095)&~4095
+            if (not body_address<=pc<body_address+body["size"] or code.hex()!=call["bytes"] or word>>26!=18 or word&3!=1 or target!=expected_target or
+                    call["owner_address"]!=0x1a4644 or call["callee_address"]!=0x1a2558 or call["arguments"][0]!=address+24):
+                raise ValueError("API actual Resource linking callsite/argument differs")
+            if label=="native":
+                api=next(b for b in bodies.values() if b["name"]=="_SCSIInitialize")
+                location=pc-body_address+body["source_address"]
+                relocations=[x for x in api["native_relocations"] if x["address"]==location and x["kind"]=="ppc-br24-24-pc-relative"]
+                if len(relocations)!=1 or relocations[0]["target"]!="_SCSIRInitialize" or not relocations[0]["external"]:
+                    raise ValueError("API genuine native Resource relocation differs")
             results.append((label+"/"+c["id"],r))
     if len(supplement["private_stack_contexts"])!=2 or [c["initial_private_byte"] for c in private_cases["cases"]]!=[127,53]:
         raise ValueError("API PostBusScan private-byte seed scope differs")
@@ -268,6 +358,8 @@ def audit(evidence,repo,objects):
                 raise ValueError("API genuine private-byte storage/load/callback/downstream witness differs")
             results.append((label+"/"+c["id"],result))
     accepted={int(a):p for a,p in proof["operation_owner_proofs"].items()}
+    if accepted!={a:OWNER_PROOFS[f["owner"]] for a,f in evidence["frozen"].items() if f["owner"] in OWNER_PROOFS}:
+        raise ValueError("API operation owner proof attribution is not the exact accepted partition")
     if mmio_index(results,contracts,evidence["frozen"],accepted)!=proof["mmio_operations"]:raise ValueError("API exact owner/callee/callsite MMIO attribution differs")
     module("task12_audit").validate_operations(objects,manifest,results,evidence["frozen"])
     return proof,public,supplement

@@ -20,6 +20,24 @@ TABLES = {
         (548, 41, "SCSIBackEndISR", "switch_231140"))}
 
 
+def memory_accesses(start,code):
+    direct={32:("read",4),33:("read",4),34:("read",1),35:("read",1),36:("write",4),37:("write",4),38:("write",1),39:("write",1),
+            40:("read",2),41:("read",2),42:("read",2),43:("read",2),44:("write",2),45:("write",2),46:("read",4),47:("write",4)}
+    indexed={23:("read",4),55:("read",4),87:("read",1),119:("read",1),151:("write",4),183:("write",4),215:("write",1),247:("write",1),
+             279:("read",2),311:("read",2),343:("read",2),375:("read",2),407:("write",2),439:("write",2)}
+    result=[]
+    for i in range(0,len(code),4):
+        word=int.from_bytes(code[i:i+4],"big");opcode=word>>26
+        convention=direct.get(opcode) if opcode!=31 else indexed.get((word>>1)&1023)
+        if convention:
+            row={"address":start+i,"bytes":code[i:i+4].hex(),"direction":convention[0],"width":convention[1],"base_register":(word>>16)&31}
+            if opcode==31:row["index_register"]=(word>>11)&31
+            else:row["displacement"]=(word&65535)-(65536 if word&32768 else 0)
+            if opcode in (46,47):row["elements"]=32-((word>>21)&31)
+            result.append(row)
+    return result
+
+
 def leaf():
     spec=importlib.util.spec_from_file_location("au2_api_graph_leaf",Path(__file__).with_name("task11_native.py"))
     value=importlib.util.module_from_spec(spec);spec.loader.exec_module(value);return value

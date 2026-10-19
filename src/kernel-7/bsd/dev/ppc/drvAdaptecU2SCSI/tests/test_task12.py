@@ -124,15 +124,19 @@ def test_him_publication_guards_reject_widened_table(archives):
 def test_him_canonical_git_and_exact_owner_delta(archives):
     a=module("task12_audit");prefix=a.DRIVER/"reconstruction"
     blob=lambda rev,name:subprocess.check_output(["git","show",rev+":"+(prefix/name).as_posix()],cwd=REPO)
-    proof=blob("HEAD","task12.json");after=json.loads(blob("HEAD","ledger.json"));before=json.loads(blob("608e9f524deeaaa79910e484ee9c5008be3f863c","ledger.json"))
+    accepted="92691668a38e846d1ba853f7b969eff25bb28dde"
+    proof=blob("HEAD","task12.json");after=json.loads(blob(accepted,"ledger.json"));before=json.loads(blob("608e9f524deeaaa79910e484ee9c5008be3f863c","ledger.json"))
     own={b["address"] for b in archives["proof"]["bodies"]};assert len(own)==31
     for x,y in zip(before["entries"],after["entries"]):
         if x["address"] not in own:assert x==y
         else:assert y["status"]=="control-flow-confirmed" and y["artifacts"]==[{"kind":"source-native-control-flow-and-frozen-cases","path":(prefix/"task12.json").as_posix(),"sha256":a.sha(proof)}]
     assert (TESTS.parent/"reconstruction/task12.json").read_bytes().replace(b"\r\n",b"\n")==proof
-    old=json.loads(blob("608e9f524deeaaa79910e484ee9c5008be3f863c","data.json"));new=json.loads(blob("HEAD","data.json"))
+    old=json.loads(blob("608e9f524deeaaa79910e484ee9c5008be3f863c","data.json"));new=json.loads(blob(accepted,"data.json"))
     assert [o for o in old["objects"] if o["name"]!="switch_230ed4"]==[o for o in new["objects"] if o["name"]!="switch_230ed4"]
-    old=json.loads(blob("608e9f524deeaaa79910e484ee9c5008be3f863c","source-map.json"));new=json.loads(blob("HEAD","source-map.json"))
+    switch=next(o for o in old["objects"] if o["name"]=="switch_230ed4")
+    switch={**switch,"status":"recovered","owner_evidence":"reconstruction/task12.json"}
+    assert next(o for o in new["objects"] if o["name"]=="switch_230ed4")==switch
+    old=json.loads(blob("608e9f524deeaaa79910e484ee9c5008be3f863c","source-map.json"));new=json.loads(blob(accepted,"source-map.json"))
     assert len(new["mapped"])==len(old["mapped"])+31
     assert {e["address"] for e in old["unmapped"]}-{e["address"] for e in new["unmapped"]}==own
     assert [e for e in old["mapped"] if e["address"] not in own]==[e for e in new["mapped"] if e["address"] not in own]

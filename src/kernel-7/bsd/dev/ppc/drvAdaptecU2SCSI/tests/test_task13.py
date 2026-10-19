@@ -2,6 +2,7 @@
 
 import importlib.util
 import copy
+import subprocess
 import json
 from pathlib import Path
 import pytest
@@ -18,12 +19,17 @@ def module(name):
     return value
 
 
-def family(name):
+@pytest.fixture(scope="module")
+def public_results():
     gate = module("verify")
     for owner in ("AdaptecU2CHIMTransport.c", "AdaptecU2CHIMAPI.c"):
         gate.audit("group", OUT/"reference", REPO, OUT/"objects/task13", None, owner)
-    cases = json.loads((TESTS/"task13-cases.json").read_text())
     results = json.loads((OUT/"objects/task13/reference-results.json").read_text())["reference"]
+    return results
+
+
+def family(name, results):
+    cases = json.loads((TESTS/"task13-cases.json").read_text())
     selected = [c for c in cases["cases"] if c["family"] == name]
     assert selected
     actual = {r["executed_case_id"]: r for r in results["results"]}
@@ -34,16 +40,16 @@ def family(name):
         assert 0 < result["instructions"] <= case["instruction_limit"]
 
 
-def test_public_table_and_memory_contract():
-    family("memory")
+def test_public_table_and_memory_contract(public_results):
+    family("memory",public_results)
 
 
-def test_scan_lun_profiles_and_firmware_mode():
-    family("scan")
+def test_scan_lun_profiles_and_firmware_mode(public_results):
+    family("scan",public_results)
 
 
-def test_front_back_isr_and_special_iob():
-    family("queue")
+def test_front_back_isr_and_special_iob(public_results):
+    family("queue",public_results)
 
 
 def test_public_declaration_discovery():
@@ -179,3 +185,69 @@ def test_private_byte_scope_rejects_damage(damage,monkeypatch):
         read=Path.read_text
         monkeypatch.setattr(Path,"read_text",lambda path,*a,**k:json.dumps(mapping) if path.name=="task13-stack-mapping.json" else read(path,*a,**k))
     with pytest.raises(ValueError):stack.run(OUT/"reference/image.bin",case)
+
+
+@pytest.mark.parametrize("damage",["extra_row","missing_row","extra_switch","missing_switch"])
+def test_task12_historical_range_rejects_wrong_delta(monkeypatch,damage):
+    test=module("test_task12");original=subprocess.check_output
+    accepted="92691668a38e846d1ba853f7b969eff25bb28dde";base="608e9f524deeaaa79910e484ee9c5008be3f863c"
+    prefix="src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/reconstruction/"
+    proof=json.loads((TESTS.parent/"reconstruction/task12.json").read_text());own={b["address"] for b in proof["bodies"]}
+    filename="ledger.json" if damage.endswith("row") else "data.json"
+    before=json.loads(original(["git","show",base+":"+prefix+filename],cwd=REPO))
+    after=json.loads(original(["git","show",accepted+":"+prefix+filename],cwd=REPO))
+    if damage=="extra_row":next(e for e in after["entries"] if e["address"] not in own)["reason"]="extra mutation"
+    elif damage=="missing_row":
+        index=next(i for i,e in enumerate(after["entries"]) if e["address"] in own);after["entries"][index]=before["entries"][index]
+    elif damage=="extra_switch":next(o for o in after["objects"] if o["name"]=="switch_230f60")["interpretation"]="extra mutation"
+    else:
+        index=next(i for i,o in enumerate(after["objects"]) if o["name"]=="switch_230ed4");after["objects"][index]=before["objects"][index]
+    def changed(command,*args,**kwargs):
+        if command==["git","show",accepted+":"+prefix+filename]:return json.dumps(after).encode()
+        return original(command,*args,**kwargs)
+    monkeypatch.setattr(subprocess,"check_output",changed)
+    with pytest.raises(AssertionError):test.test_him_canonical_git_and_exact_owner_delta({"proof":proof})
+
+
+@pytest.mark.parametrize("damage",["width","instruction","extent","owner"])
+def test_publication_rejects_damage(damage):
+    audit=module("task13_audit")
+    proof=json.loads((TESTS.parent/"reconstruction/task13.json").read_text())
+    cases=json.loads((TESTS/"task13-cases.json").read_text())["cases"]
+    case=next(c for c in cases if c["entry"]=="SCSISetMemoryPointer")
+    results=json.loads((OUT/"objects/task13/native-results.json").read_text())["results"]
+    result=copy.deepcopy(next(r for r in results if r["executed_case_id"]==case["id"]))
+    publication=result["publications"][0]
+    if damage=="width":publication["size"]=1
+    elif damage=="instruction":publication["bytes"]="90000000"
+    elif damage=="extent":publication["offset"]=next(m["size"] for m in case["memory"] if m["name"]==publication["region"])
+    else:publication["owner"]="SCSIRInitialize"
+    manifest=json.loads((OUT/"objects/task13/arena.json").read_text())
+    with pytest.raises(ValueError):audit.publication_checks([case],[result],manifest,{b["address"]:b for b in proof["bodies"]})
+
+
+def test_task13_canonical_git_and_exact_owner_delta():
+    audit=module("task13_audit");prefix=audit.DRIVER/"reconstruction"
+    blob=lambda revision,name:subprocess.check_output(["git","show",revision+":"+(prefix/name).as_posix()],cwd=REPO)
+    proof_raw=blob("HEAD","task13.json");proof=json.loads(proof_raw)
+    assert audit.identity.canonical((TESTS.parent/"reconstruction/task13.json").read_bytes(),Path("task13.json"))==proof_raw
+    own={b["address"] for b in proof["bodies"]};assert len(own)==61
+    before=json.loads(blob(audit.BASE,"ledger.json"));after=json.loads(blob("HEAD","ledger.json"))
+    old=audit.exact_rows(before["entries"],{e["address"] for e in before["entries"]},"before476")
+    assert len(old)==476
+    new=audit.exact_rows(after["entries"],old,"after476")
+    assert sum(e["status"]=="control-flow-confirmed" for e in new.values())==429
+    for address,record in new.items():
+        if address not in own:assert record==old[address]
+        else:
+            assert record["status"]=="control-flow-confirmed"
+            assert record["artifacts"]==[{"kind":"source-native-control-flow-and-frozen-cases","path":(prefix/"task13.json").as_posix(),"sha256":audit.sha(proof_raw)}]
+    old_data=json.loads(blob(audit.BASE,"data.json"));new_data=json.loads(blob("HEAD","data.json"))
+    expected=copy.deepcopy(old_data)
+    assigned=[r for r in expected["objects"] if r.get("required_task")==13];assert len(assigned)==11
+    for record in assigned:record.update(status="recovered",owner_evidence="reconstruction/task13.json")
+    assert new_data==expected
+    old_map=json.loads(blob(audit.BASE,"source-map.json"));new_map=json.loads(blob("HEAD","source-map.json"))
+    assert len(new_map["mapped"])==436 and len(new_map["unmapped"])==24 and len(new_map["duplicate_candidates"])==16
+    assert {e["address"] for e in old_map["unmapped"]}-{e["address"] for e in new_map["unmapped"]}==own
+    assert [e for e in old_map["mapped"] if e["address"] not in own]==[e for e in new_map["mapped"] if e["address"] not in own]

@@ -417,3 +417,36 @@ control-flow proof with pinned real reference remaining callees. Complete
 Task15 four builds, Task13 nativeAPI r28 forwarding, Task16 fresh allcorpora/
 linked pairs and all4-context witnesses remain mandatory. See fullTask12 report
 and reconstruction/task12.json for producer identities, commands and limits.
+
+
+## Task13 transport and public API
+
+Source/runtime execution freeze5d3b106789f600dc0897003efd0d9bf8d197c020.
+Transport19/API42 are recovered, all392 CHIM bodies accounted; ledger429CF
+of476, map436mapped/24unmapped/16duplicate candidates, data41recovered /
+2switch-pending /5controller-body-pending. task13.json binds787 frozen public
+cases and787 genuine native root cases, plus2 full realAPI r28 context pairs
+and2 independently mapped original private-byte pairs. Both owner gates
+validate all61 bodies jointly, all11 switch envelopes, ten native tables /
+401 entries, exact41 public dispatch identities/version4/168-byte bounds,
+actual MMIO owner/callee/callsite/primitive attribution and store widths.
+
+Actual native producers remain distinct: base926+WIP b10Transport andb9API;
+each actual compiled source+6headers matches canonical5d LF blobs. The old
+b9Transport warning/object remains rejecting evidence: original private
+uninitialized qualifier was wrongly allocated to incomingr27, so minimal
+volatile BYTE storage now materializes the original private machine byte.
+No default/formal or after-entry register/stack patch was introduced.
+Exact pre-entry byte127/53 witnesses produce37/32 after realcallback48->1.
+
+Public raw SHA8682A7165634C97B0FE6459984937A1BA25B42660F76C4B3F274C73942727672;
+native raw E022F0C4B2B670AFA9E982670D9B6A70D326C07B8A342002F5345C5C259EF816.
+Supplementary six-object arena includes genuine Tables/HIM/Resource/Config;
+remaining callees execute pinned reference code. Exact getter-only external
+copy adaptation derives its output from the genuine relocated native table;
+privileged fast_bcopy/memcpy is not claimed executed. Public ABI parser adds
+only CHIM.h strict discovery and exactPciLocation16 mapping. Older current
+owner gates fail contracts/runner freshness, with raw evidence unchanged.
+Task16 fresh consolidated runtime/allcorpora and all4 independently mapped
+fullnative builds/context pairs remain mandatory; see Task13 report for
+actual commands/results, accepted rulings, source reviews and inherited limits.

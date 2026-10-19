@@ -1035,7 +1035,7 @@
         "_SCSIhGetCapability"
       ],
       "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMConfig.c",
-      "source_line": 48
+      "source_line": 47
     },
     {
       "address": 1648392,
@@ -1044,7 +1044,7 @@
         "_SCSIhStandardGetConfig"
       ],
       "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMConfig.c",
-      "source_line": 100
+      "source_line": 99
     },
     {
       "address": 1648476,
@@ -1053,7 +1053,7 @@
         "_SCSIhGetMaxHardwareScbs"
       ],
       "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMConfig.c",
-      "source_line": 109
+      "source_line": 108
     },
     {
       "address": 1649516,
@@ -1062,7 +1062,7 @@
         "_SCSIhNonStandardGetConfig"
       ],
       "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMConfig.c",
-      "source_line": 145
+      "source_line": 144
     },
     {
       "address": 1649556,
@@ -1071,7 +1071,7 @@
         "_SCSIhGetCommonConfig"
       ],
       "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMConfig.c",
-      "source_line": 151
+      "source_line": 150
     },
     {
       "address": 1649568,
@@ -1080,7 +1080,7 @@
         "_SCSIhGetHardwareConfiguration"
       ],
       "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMConfig.c",
-      "source_line": 155
+      "source_line": 154
     },
     {
       "address": 1650236,
@@ -1089,7 +1089,7 @@
         "_SCSIhGetIDBasedConfiguration"
       ],
       "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMConfig.c",
-      "source_line": 185
+      "source_line": 184
     },
     {
       "address": 1650980,
@@ -1098,7 +1098,7 @@
         "_SCSIhStandard64SetupSequencer"
       ],
       "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMConfig.c",
-      "source_line": 237
+      "source_line": 236
     },
     {
       "address": 1651028,
@@ -1107,7 +1107,7 @@
         "_SCSIhSwapping32SetupSequencer"
       ],
       "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMConfig.c",
-      "source_line": 242
+      "source_line": 241
     },
     {
       "address": 1651076,
@@ -1116,7 +1116,7 @@
         "_SCSIhStandardAdvSetupSequencer"
       ],
       "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMConfig.c",
-      "source_line": 247
+      "source_line": 246
     },
     {
       "address": 1651124,
@@ -1125,7 +1125,7 @@
         "_SCSIhSwappingAdvSetupSequencer"
       ],
       "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMConfig.c",
-      "source_line": 252
+      "source_line": 251
     },
     {
       "address": 1651172,
@@ -1134,7 +1134,7 @@
         "_SCSIhInitializeHardware"
       ],
       "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMConfig.c",
-      "source_line": 267
+      "source_line": 266
     },
     {
       "address": 1652052,
@@ -1143,7 +1143,7 @@
         "_SCSIhStartToRunSequencer"
       ],
       "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMConfig.c",
-      "source_line": 257
+      "source_line": 256
     },
     {
       "address": 1652396,
@@ -1152,7 +1152,7 @@
         "_SCSIhAIC78XXProcessAutoTerm"
       ],
       "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMConfig.c",
-      "source_line": 319
+      "source_line": 318
     },
     {
       "address": 1652480,
@@ -1161,7 +1161,7 @@
         "_SCSIhAICBayonetProcessAutoTerm"
       ],
       "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMConfig.c",
-      "source_line": 329
+      "source_line": 328
     },
     {
       "address": 1652628,
@@ -1170,7 +1170,7 @@
         "_SCSIhAIC78XXUpdateExtTerm"
       ],
       "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMConfig.c",
-      "source_line": 347
+      "source_line": 346
     },
     {
       "address": 1653212,
@@ -1179,7 +1179,7 @@
         "_SCSIhAICBayonetUpdateExtTerm"
       ],
       "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMConfig.c",
-      "source_line": 369
+      "source_line": 368
     },
     {
       "address": 1690428,

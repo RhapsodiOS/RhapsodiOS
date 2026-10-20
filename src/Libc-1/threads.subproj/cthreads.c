@@ -201,15 +201,21 @@ cthread_body(self)
 				cthread_exit(t->result);
 			}
 
+			/*
+			 * Let go of t while we still hold its lock: once
+			 * T_RETURNED is seen, the joiner frees t and may reuse
+			 * it, and a fork() child frees every other cproc's
+			 * incarnation, so a stale one would be freed twice.
+			 */
+			cthread_assoc(self, NO_CTHREAD);
 			if (t->state & T_DETACHED) {
 				mutex_unlock(&t->lock);
 				cthread_free(t);
 			} else {
 				t->state |= T_RETURNED;
-				mutex_unlock(&t->lock);
 				condition_signal(&t->done);
+				mutex_unlock(&t->lock);
 			}
-			cthread_assoc(self, NO_CTHREAD);
 			mutex_lock(&cthread_lock);
 			n_cthreads -= 1;
 		} else {

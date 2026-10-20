@@ -666,10 +666,21 @@ ffs_valloc(ap)
 	ino = (ino_t)ffs_hashalloc(pip, cg, (long)ipref, mode, ffs_nodealloccg);
 	if (ino == 0)
 		goto noinodes;
+again:
 	error = VFS_VGET(pvp->v_mount, ino, ap->a_vpp);
 	if (error) {
 		VOP_VFREE(pvp, ino, mode);
 		return (error);
+	}
+	/*
+	 * An old fifo's or device's vnode (see below) keeps that type's
+	 * ops and v_un, so a new regular file would write through
+	 * fifo_write.  Release it; its i_mode is 0, so ufs_inactive
+	 * reclaims it, and the next VFS_VGET builds a fresh vnode.
+	 */
+	if ((*ap->a_vpp)->v_op != ffs_vnodeop_p) {
+		vput(*ap->a_vpp);
+		goto again;
 	}
 	ip = VTOI(*ap->a_vpp);
 	if (ip->i_mode) {

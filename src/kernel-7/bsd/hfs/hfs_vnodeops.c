@@ -3326,6 +3326,7 @@ struct vop_reclaim_args /* {
     struct vnode *vp = ap->a_vp;
     struct vnode *tp = NULL;
     struct hfsnode *hp = VTOH(vp);
+    struct hfsfilemeta *fm;
     extern int prtactive;
     DBG_FUNC_NAME("reclaim");
     DBG_VOP_LOCKS_DECL(1);
@@ -3361,8 +3362,8 @@ struct vop_reclaim_args /* {
 			/*
 			 * if there are still more forks, make the fork ptr point to another
 			 */
-            if ((hp->h_meta->h_usecount > 0) && (hp->h_meta->h_fork == vp)) {
-                hp->h_meta->h_fork = hp->h_sibling;
+            if (hp->h_meta->h_fork == vp) {
+                hp->h_meta->h_fork = hp->h_sibling;		/* NULL once the last fork goes */
 			}
 				
 
@@ -3382,8 +3383,16 @@ struct vop_reclaim_args /* {
                 hp->h_sibling = NULL;
             };
 
+            fm = hp->h_meta;
             HFSFILEMETA_UNLOCK(hp, CURRENT_PROC);
             hp->h_meta = NULL;
+
+            /* A complex node reclaimed before its forks (force unmount) leaves the meta to the last fork */
+            if ((hp->h_relative == NULL) && (fm->h_fork == NULL)) {
+                if (fm->h_nodeflags & IN_LONGNAME)
+                    FREE(fm->h_namePtr, M_HFSNODE);
+                FREE(fm, M_HFSNODE);
+            }
 
             /* h_relative could be NULL, if a force unmount was done, and the complex node is already gone */
             if (hp->h_relative) {
@@ -3423,12 +3432,14 @@ struct vop_reclaim_args /* {
 		  		VTOH(VTOH(tp)->h_sibling)->h_relative = NULL;
 		  	}
 		
+		  if (tp == NULL) {		/* else the forks still use the meta, and the last one frees it */
 		  if (hp->h_meta->h_nodeflags & IN_LONGNAME) {
         	DBG_ASSERT(H_NAME(hp) != NULL);
 		  	FREE(H_NAME(hp), M_HFSNODE);
 		  	}
 		
 		  FREE(hp->h_meta, M_HFSNODE);
+		  }
 		  hp->h_meta = NULL;
 		  hp->h_relative = NULL;
 

@@ -239,8 +239,11 @@ vn_close(vp, flags, cred, p)
 	int error;
 
 #if MACH_NBC
-	if ((vp->v_type == VREG) && vp->v_vm_info)
+	if ((vp->v_type == VREG) && vp->v_vm_info) {
+		if (p == NULL)		/* closef(fp, 0); unmap_vnode needs a process */
+			p = current_proc();
 		unmap_vnode(vp,p);
+	}
 #endif /* MACH_NBC */
 
 	if (flags & FWRITE)

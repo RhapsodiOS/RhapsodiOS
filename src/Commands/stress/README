@@ -56,7 +56,11 @@ Usage
     name a removed object), which ends the test as UNSUP
     (reason="ESTALE: object removed by another worker"); misc eintr has signals
     interrupt blocking calls, and FAILs (reason=no-eintr) if read, waitpid or
-    flock never returned EINTR without SA_RESTART.
+    flock never returned EINTR without SA_RESTART; like misc flock it is
+    UNSUP where flock fails with EOPNOTSUPP (NFS, msdosfs).  misc fifo is
+    UNSUP where mkfifo fails with EOPNOTSUPP, ENOSYS or EINVAL (msdosfs);
+    net unix is UNSUP where the file system has no socket nodes (msdosfs:
+    reason="connect: ENOTSOCK").
     mmap sync falls back to syscall 65 where Libc lacks msync.  mmap regrow
     shrinks a file while it is mapped, unmaps it and grows it back; read()
     must then return the pattern below the cut and zeros above.  It FAILs

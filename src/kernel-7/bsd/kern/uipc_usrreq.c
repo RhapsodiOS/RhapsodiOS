@@ -703,6 +703,10 @@ unp_gc()
 	if (unp_gcing)
 		return;
 	unp_gcing = 1;
+	/* Allocate before marking: a sleep between mark and sweep lets new files go in flight unmarked. */
+	nextra_ref = nfiles;
+	extra_ref = _MALLOC_ZONE(nextra_ref * sizeof(struct file *),
+					M_FILE, M_WAITOK);
 	unp_defer = 0;
 	for (fp = filehead.lh_first; fp != 0; fp = fp->f_list.le_next)
 		fp->f_flag &= ~(FMARK|FDEFER);
@@ -784,9 +788,6 @@ unp_gc()
 	 *
 	 * 91/09/19, bsy@cs.cmu.edu
 	 */
-	nextra_ref = nfiles;
-	extra_ref = _MALLOC_ZONE(nextra_ref * sizeof(struct file *),
-					M_FILE, M_WAITOK);
 	for (nunref = 0, fp = filehead.lh_first, fpp = extra_ref; fp != 0;
 	    fp = nextfp) {
 		nextfp = fp->f_list.le_next;
@@ -800,7 +801,8 @@ unp_gc()
 		}
 	}
 	for (i = nunref, fpp = extra_ref; --i >= 0; ++fpp)
-		sorflush((struct socket *)(*fpp)->f_data);
+		if ((*fpp)->f_type == DTYPE_SOCKET && (*fpp)->f_data != 0)
+			sorflush((struct socket *)(*fpp)->f_data);
 	for (i = nunref, fpp = extra_ref; --i >= 0; ++fpp)
 		(void) closef(*fpp, (struct proc *)0);
 	_FREE_ZONE((caddr_t)extra_ref,

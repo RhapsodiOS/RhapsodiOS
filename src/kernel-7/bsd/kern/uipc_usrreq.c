@@ -788,8 +788,9 @@ unp_gc()
 	 *
 	 * 91/09/19, bsy@cs.cmu.edu
 	 */
-	for (nunref = 0, fp = filehead.lh_first, fpp = extra_ref; fp != 0;
-	    fp = nextfp) {
+	/* nfiles can grow while the allocation sleeps; the rest wait for the next gc */
+	for (nunref = 0, fp = filehead.lh_first, fpp = extra_ref;
+	    fp != 0 && nunref < nextra_ref; fp = nextfp) {
 		nextfp = fp->f_list.le_next;
 		if (fp->f_count == 0)
 			continue;

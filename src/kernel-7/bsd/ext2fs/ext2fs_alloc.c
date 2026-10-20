@@ -181,10 +181,21 @@ ext2fs_valloc(struct vop_valloc_args *ap)
 	ino = (ino_t)ext2fs_hashalloc(pip, cg, (long)ipref, mode, ext2fs_nodealloccg);
 	if (ino == 0)
 		goto noinodes;
+again:
 	error = ext2fs_vget_alloc(pvp->v_mount, ino, ap->a_vpp);
 	if (error) {
 		VOP_VFREE(pvp, ino, mode);
 		return (error);
+	}
+	/*
+	 * An old fifo's or device's vnode (see below) keeps that type's
+	 * ops and v_un, so a new regular file would write through
+	 * fifo_write.  Release it; its dtime is set, so ext2fs_inactive
+	 * reclaims it, and the next ext2fs_vget_alloc builds a fresh vnode.
+	 */
+	if ((*ap->a_vpp)->v_op != ext2fs_vnodeop_p) {
+		vput(*ap->a_vpp);
+		goto again;
 	}
 	ip = VTOI(*ap->a_vpp);
 	if (ip->i_e2fs_mode && ip->i_e2fs_nlink != 0) {

@@ -387,6 +387,11 @@ ext2fs_alloccg(ip, cg, bpref, size)
 		ext2fs_io_error(fs,error);
 		return (0);
 	}
+	/* bread can sleep on the busy bitmap while another allocator takes the last block */
+	if (fs->e2fs_gd[cg].ext2bgd_nbfree == 0) {
+		brelse(bp);
+		return (0);
+	}
 	bbp = (char *)bp->b_data;
 
 	if (dtog(fs, bpref) != cg)
@@ -480,6 +485,10 @@ ext2fs_nodealloccg(ip, cg, ipref, mode)
 		bp->b_flags |= B_INVAL;
 		brelse(bp);
 		ext2fs_io_error(fs,error);
+		return (0);
+	}
+	if (fs->e2fs_gd[cg].ext2bgd_nifree == 0) {	/* see ext2fs_alloccg */
+		brelse(bp);
 		return (0);
 	}
 	ibp = (char *)bp->b_data;

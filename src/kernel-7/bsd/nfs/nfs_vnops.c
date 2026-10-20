@@ -723,8 +723,9 @@ nfs_setattr(ap)
  			 */
  			tsize = np->n_size;
 #if MACH_NBC
-			if ((vp->v_type == VREG)  && (vp->v_vm_info)
-				&& vp->v_vm_info->mapped) {
+			/* unmapped too: a user mapping's pages past the new
+			 * end must go, as ffs_truncate does */
+			if ((vp->v_type == VREG)  && (vp->v_vm_info)) {
 				error = mapfs_trunc(vp,vap->va_size);
 				if (error) {
 #if DIAGNOSTIC

@@ -523,10 +523,35 @@ again:
 }
 
 /*
- * Vnode op for write using bio
+ * Vnode op for write using bio.  NFS has no vnode lock, so O_APPEND writers
+ * are serialised here: each must read the size and write at it before the
+ * next does, or two of them write at the same end and the file loses data.
+ * They take turns in arrival order; a writer that appends in a loop would
+ * otherwise take the turn again before the ones it woke can run.
  */
+static int nfs_write1 __P((struct vop_write_args *));
+
 int
 nfs_write(ap)
+	struct vop_write_args *ap;
+{
+	struct nfsnode *np = VTONFS(ap->a_vp);
+	u_long ticket;
+	int error;
+
+	if ((ap->a_ioflag & IO_APPEND) == 0)
+		return (nfs_write1(ap));
+	ticket = np->n_appendnext++;
+	while (np->n_appendturn != ticket)
+		(void) tsleep((caddr_t)&np->n_appendturn, PRIBIO, "nfsappend", 0);
+	error = nfs_write1(ap);
+	np->n_appendturn++;
+	wakeup((caddr_t)&np->n_appendturn);
+	return (error);
+}
+
+static int
+nfs_write1(ap)
 	struct vop_write_args /* {
 		struct vnode *a_vp;
 		struct uio *a_uio;

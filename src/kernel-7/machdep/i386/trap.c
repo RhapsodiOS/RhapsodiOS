@@ -75,6 +75,11 @@ kernel_try_recover(
 	except_frame_t		*frame
 );
 static
+boolean_t
+on_user_return(
+	thread_saved_state_t	*saved_state
+);
+static
 void
 kernel_recover_thread(
 	thread_saved_state_t	*saved_state
@@ -256,7 +261,7 @@ kernel_trap(
 	if (kernel_try_recover(frame))
 	    return;
 	    
-	if (va < KERNEL_LINEAR_BASE) {
+	if (va < KERNEL_LINEAR_BASE && on_user_return(state)) {
 	    /*
 	     * This can happen on return to user mode
 	     * when a private thread LDT contains
@@ -472,6 +477,25 @@ kernel_try_recover(
     current_thread()->recover = 0;
     
     return (TRUE);
+}
+
+/*
+ * TRUE if the trap came from the segment register pops or
+ * the iret of RETURN (locore.s) restoring the user state:
+ * only that code runs with the stack inside the save area,
+ * which is what kernel_recover_thread relies on.
+ */
+static
+boolean_t
+on_user_return(
+    thread_saved_state_t	*state
+)
+{
+    thread_saved_state_t	*user_regs = USER_REGS(current_thread());
+    vm_offset_t			stack_ptr = (vm_offset_t)&state->frame.esp;
+
+    return (stack_ptr >= (vm_offset_t)&user_regs->regs.gs &&
+	    stack_ptr <= (vm_offset_t)&user_regs->frame.eip);
 }
 
 static

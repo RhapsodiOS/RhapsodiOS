@@ -698,15 +698,27 @@ start:
 		splx(s);
 		if ((bp = getnewbuf(slpflag, slptimeo)) == NULL)
 			goto start;
-		binshash(bp, BUFHASH(vp, blkno));
-		allocbuf(bp, size);
-		bp->b_blkno = bp->b_lblkno = blkno;
 		s = splbio();
+		/*
+		 * getnewbuf may have slept writing a delayed buffer, and
+		 * another thread may have made this block meanwhile.
+		 */
+		if (incore(vp, blkno)) {
+			SET(bp->b_flags, B_INVAL);
+			binshash(bp, &invalhash);
+			splx(s);
+			brelse(bp);
+			goto start;
+		}
+		binshash(bp, BUFHASH(vp, blkno));
+		bp->b_blkno = bp->b_lblkno = blkno;
 		bgetvp(vp, bp);
 #if FFSDEBUG
 		ffsdebug_check_dup(vp, blkno, bp);
 #endif
 		splx(s);
+		/* Can sleep too, so only once the busy buffer is findable. */
+		allocbuf(bp, size);
 	}
 	return (bp);
 }

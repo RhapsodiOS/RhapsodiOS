@@ -481,8 +481,13 @@ ufs_setattr(ap)
 		    ((vap->va_vaflags & VA_UTIMES_NULL) == 0 || 
 		    (error = VOP_ACCESS(vp, VWRITE, cred, p))))
 			return (error);
-		if (vap->va_atime.tv_sec != VNOVAL)
+		if (vap->va_atime.tv_sec != VNOVAL) {
 			ip->i_flag |= IN_ACCESS;
+			/* VOP_UPDATE takes a timeval and keeps only the seconds;
+			 * the NFS server's exclusive create verifier needs all
+			 * of va_atime back */
+			ip->i_atimensec = vap->va_atime.tv_nsec;
+		}
 		if (vap->va_mtime.tv_sec != VNOVAL)
 			ip->i_flag |= IN_CHANGE | IN_UPDATE;
 		atimeval.tv_sec = vap->va_atime.tv_sec;

@@ -132,6 +132,10 @@ struct nfsnode {
 	union {
 		struct timespec	nf_mtim;
 		off_t		nd_direof;	/* Dir. EOF offset cache */
+		struct {
+			u_long	nf_next;	/* next O_APPEND writer's turn */
+			u_long	nf_turn;	/* O_APPEND writer now writing */
+		} nf_append;			/* regular files */
 	} n_un2;
 	union {
 		struct sillyrename *nf_silly;	/* Ptr to silly rename struct */
@@ -147,6 +151,8 @@ struct nfsnode {
 #define n_sillyrename	n_un3.nf_silly
 #define n_cookieverf	n_un1.nd_cookieverf
 #define n_direofoffset	n_un2.nd_direof
+#define n_appendnext	n_un2.nf_append.nf_next
+#define n_appendturn	n_un2.nf_append.nf_turn
 #define n_cookies	n_un3.nd_cook
 
 /*

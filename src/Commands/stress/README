@@ -50,7 +50,11 @@ Usage
     churn names in a tree shared by the workers; fs link is UNSUP where the
     file system has no hard links or symlinks; on HFS, rmdir or rename of an
     object in use fails with EBUSY, which ends an fs test as UNSUP
-    (reason="EBUSY: in-use object") rather than FAIL; misc eintr has signals
+    (reason="EBUSY: in-use object") rather than FAIL; on NFS a call on a
+    file or directory another worker removed after this worker looked it up
+    fails with ESTALE (the client has no vnode locks, and a file handle cannot
+    name a removed object), which ends the test as UNSUP
+    (reason="ESTALE: object removed by another worker"); misc eintr has signals
     interrupt blocking calls, and FAILs (reason=no-eintr) if read, waitpid or
     flock never returned EINTR without SA_RESTART.
     mmap sync falls back to syscall 65 where Libc lacks msync.  mmap regrow

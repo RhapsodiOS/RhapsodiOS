@@ -69,14 +69,27 @@ failf(struct st_ctx *c, const char *fmt, ...)
 
 static void markdone(struct st_ctx *c);
 
-/* HFS refuses to remove or replace an object something has open (EBUSY);
- * that is the file system's limit, so the test ends UNSUP there. */
+/* HFS refuses to remove or replace an object something has open (EBUSY).
+ * NFS gives ESTALE when another worker removes a file or directory between
+ * this worker's lookup and its call on it: the client has no vnode locks,
+ * and a file handle cannot name a removed object.  Both are the file
+ * system's limit, so the test ends UNSUP there. */
 static int
-on_hfs(const char *dir)
+on_fs(const char *dir, const char *type)
 {
 	struct statfs sf;
 
-	return statfs(dir, &sf) == 0 && strcmp(sf.f_fstypename, "hfs") == 0;
+	return statfs(dir, &sf) == 0 && strcmp(sf.f_fstypename, type) == 0;
+}
+
+static void
+unsupfs(struct st_ctx *c, const char *why)
+{
+	/* before cleanup removes the tree: markdone on a removed tree
+	 * exits 0, and the test would end PASS instead of UNSUP */
+	markdone(c);	/* workers waiting on the shared tree must not stall */
+	cleanup();
+	st_unsup(c, why);
 }
 
 static void
@@ -85,13 +98,10 @@ failerr(struct st_ctx *c, const char *call)
 	int e = errno;
 
 	if (e == EBUSY && (strcmp(call, "rmdir") == 0 || strcmp(call, "rename") == 0 ||
-	    strcmp(call, "unlink") == 0) && on_hfs(st_opt.dir)) {
-		/* before cleanup removes the tree: markdone on a removed tree
-		 * exits 0, and the test would end PASS instead of UNSUP */
-		markdone(c);	/* workers waiting on the shared tree must not stall */
-		cleanup();
-		st_unsup(c, "reason=\"EBUSY: in-use object\"");
-	}
+	    strcmp(call, "unlink") == 0) && on_fs(st_opt.dir, "hfs"))
+		unsupfs(c, "reason=\"EBUSY: in-use object\"");
+	if (e == ESTALE && on_fs(st_opt.dir, "nfs"))
+		unsupfs(c, "reason=\"ESTALE: object removed by another worker\"");
 	cleanup();
 	errno = e;
 	st_fail_errno(c, call);
@@ -859,6 +869,8 @@ readforeign(struct st_ctx *c)
 	if (fd < 0)
 		failerr(c, "open");
 	r = st_readfull(fd, buf, FSIZE);
+	if (r < 0)
+		failerr(c, "read");	/* ESTALE on NFS: see on_fs() */
 	close(fd);
 	if (r != FSIZE)
 		failf(c, "reason=short-read name=%s got=%ld", name, r);

@@ -66,9 +66,10 @@ cc acpi-shutdown-test.c -o acpi-shutdown-test && ./acpi-shutdown-test
 ```
 
 The clock test covers 32-bit LAPIC countdowns, fractional ticks, reloads,
-repeated reads and the original PIT source. Calibration substitutes a running
-hardware clock and an inaccurate spin delay, including sample overshoot and a
-stopped reference clock. The shutdown test checks that a power-button SCI
+repeated reads and the original PIT source. Calibration substitutes a
+simulated 8254 counter 2 and LAPIC timer and injects processor stalls: inside a
+start or end read pair, past counter 2's range, and in every sample (which must
+fall back to the 8254). The shutdown test checks that a power-button SCI
 acknowledges the event and requests both halt and powerdown with public SDK
 headers. Hardware boot, timing and actual power-off are separate runtime checks.
 

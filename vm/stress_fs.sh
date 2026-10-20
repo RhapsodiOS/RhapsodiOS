@@ -66,7 +66,9 @@ run() {
 	# an nfs line ends at the mount point, a local one goes on with "(local)"
 	mount | awk -v m=$mnt '$3 == m { f = 1 } END { exit !f }' || { out $fs unsup "not mounted" ""; return; }
 	rm -rf $STRESS/Report.$fs
-	(cd $STRESS && sh ./run -s $seed -d $mnt 1 $cats) > $FS/run.$fs.log 2>&1
+	# msdos fs rw takes about 1000 s, past the default 600 s watchdog
+	wd=""; test $fs = msdos && wd="-t 1500"
+	(cd $STRESS && sh ./run -s $seed $wd -d $mnt 1 $cats) > $FS/run.$fs.log 2>&1
 	cp -r $STRESS/Report $STRESS/Report.$fs
 	um=""
 	lim 300 umount $mnt || lim 120 umount -f $mnt || um="umount failed; "

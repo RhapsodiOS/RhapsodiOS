@@ -82,7 +82,49 @@ struct fifoinfo {
 	struct socket	*fi_writesock;
 	long		fi_readers;
 	long		fi_writers;
+	long		fi_busy;	/* threads asleep with the vnode unlocked */
 };
+
+/*
+ * Free the fifoinfo once nobody has it open or sleeps in it.
+ */
+static int
+fifo_release(vp, fip)
+	struct vnode *vp;
+	struct fifoinfo *fip;
+{
+	int error1, error2;
+
+	if (fip->fi_readers > 0 || fip->fi_writers > 0 || fip->fi_busy > 0)
+		return (0);
+	if (vp->v_fifoinfo == fip)
+		vp->v_fifoinfo = NULL;
+	error1 = soclose(fip->fi_readsock);
+	error2 = soclose(fip->fi_writesock);
+	FREE_ZONE(fip, sizeof *fip, M_VNODE);
+	if (error1)
+		return (error1);
+	return (error2);
+}
+
+/*
+ * Relock the vnode after sleeping with fi_busy held, and drop fi_busy.
+ * Returns nonzero, with fip possibly freed, if the vnode was revoked.
+ */
+static int
+fifo_unbusy(vp, fip, p)
+	struct vnode *vp;
+	struct fifoinfo *fip;
+	struct proc *p;
+{
+	int revoked;
+
+	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, p);
+	fip->fi_busy--;
+	revoked = (vp->v_fifoinfo != fip);
+	(void)fifo_release(vp, fip);
+	return (revoked);
+}
 
 int (**fifo_vnodeop_p)();
 struct vnodeopv_entry_desc fifo_vnodeop_entries[] = {
@@ -195,7 +237,7 @@ fifo_open(ap)
 			vp->v_fifoinfo = NULL;
 			return (error);
 		}
-		fip->fi_readers = fip->fi_writers = 0;
+		fip->fi_readers = fip->fi_writers = fip->fi_busy = 0;
 		wso->so_state |= SS_CANTRCVMORE;
 		wso->so_snd.sb_lowat = PIPE_BUF;
 		rso->so_state |= SS_CANTSENDMORE;
@@ -218,10 +260,12 @@ fifo_open(ap)
 	}
 	if ((ap->a_mode & FREAD) && (ap->a_mode & O_NONBLOCK) == 0) {
 		if (fip->fi_writers == 0) {
+			fip->fi_busy++;
 			VOP_UNLOCK(vp, 0, p);
 			error = tsleep((caddr_t)&fip->fi_readers,
 			    PCATCH | PSOCK, "fifoor", 0);
-			vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, p);
+			if (fifo_unbusy(vp, fip, p))
+				return (EBADF);
 			if (error)
 				goto bad;
 			if (fip->fi_readers == 1) {
@@ -238,10 +282,12 @@ fifo_open(ap)
 			}
 		} else {
 			if (fip->fi_readers == 0) {
+				fip->fi_busy++;
 				VOP_UNLOCK(vp, 0, p);
 				error = tsleep((caddr_t)&fip->fi_writers,
 				    PCATCH | PSOCK, "fifoow", 0);
-				vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, p);
+				if (fifo_unbusy(vp, fip, p))
+					return (EBADF);
 				if (error)
 					goto bad;
 				if (fip->fi_writers == 1) {
@@ -271,7 +317,8 @@ fifo_read(ap)
 	} */ *ap;
 {
 	struct uio *uio = ap->a_uio;
-	struct socket *rso = ap->a_vp->v_fifoinfo->fi_readsock;
+	struct fifoinfo *fip = ap->a_vp->v_fifoinfo;
+	struct socket *rso = fip->fi_readsock;
 	struct proc *p = uio->uio_procp;
 	int error, startresid;
 
@@ -284,10 +331,10 @@ fifo_read(ap)
 	if (ap->a_ioflag & IO_NDELAY)
 		rso->so_state |= SS_NBIO;
 	startresid = uio->uio_resid;
+	fip->fi_busy++;
 	VOP_UNLOCK(ap->a_vp, 0, p);
 	error = soreceive(rso, (struct mbuf **)0, uio, (struct mbuf **)0,
 	    (struct mbuf **)0, (int *)0);
-	vn_lock(ap->a_vp, LK_EXCLUSIVE | LK_RETRY, p);
 	/*
 	 * Clear EOF indication after first such return.
 	 */
@@ -295,6 +342,7 @@ fifo_read(ap)
 		rso->so_state &= ~SS_CANTRCVMORE;
 	if (ap->a_ioflag & IO_NDELAY)
 		rso->so_state &= ~SS_NBIO;
+	(void)fifo_unbusy(ap->a_vp, fip, p);
 	return (error);
 }
 
@@ -310,7 +358,8 @@ fifo_write(ap)
 		struct ucred *a_cred;
 	} */ *ap;
 {
-	struct socket *wso = ap->a_vp->v_fifoinfo->fi_writesock;
+	struct fifoinfo *fip = ap->a_vp->v_fifoinfo;
+	struct socket *wso = fip->fi_writesock;
 	struct proc *p = ap->a_uio->uio_procp;
 	int error;
 
@@ -320,11 +369,12 @@ fifo_write(ap)
 #endif
 	if (ap->a_ioflag & IO_NDELAY)
 		wso->so_state |= SS_NBIO;
+	fip->fi_busy++;
 	VOP_UNLOCK(ap->a_vp, 0, p);
 	error = sosend(wso, (struct mbuf *)0, ap->a_uio, 0, (struct mbuf *)0, 0);
-	vn_lock(ap->a_vp, LK_EXCLUSIVE | LK_RETRY, p);
 	if (ap->a_ioflag & IO_NDELAY)
 		wso->so_state &= ~SS_NBIO;
+	(void)fifo_unbusy(ap->a_vp, fip, p);
 	return (error);
 }
 
@@ -438,8 +488,21 @@ fifo_close(ap)
 {
 	register struct vnode *vp = ap->a_vp;
 	register struct fifoinfo *fip = vp->v_fifoinfo;
-	int error1, error2;
 
+	if (fip == NULL)
+		return (0);
+	if ((ap->a_fflag & (FREAD | FWRITE)) == 0) {
+		/*
+		 * vclean of an open fifo: its files will close through
+		 * deadfs, so forget them and wake anyone asleep in it.
+		 */
+		vp->v_fifoinfo = NULL;
+		fip->fi_readers = fip->fi_writers = 0;
+		socantsendmore(fip->fi_writesock);
+		socantrcvmore(fip->fi_readsock);
+		wakeup((caddr_t)&fip->fi_readers);
+		wakeup((caddr_t)&fip->fi_writers);
+	}
 	if (ap->a_fflag & FREAD) {
 		fip->fi_readers--;
 		if (fip->fi_readers == 0)
@@ -450,15 +513,7 @@ fifo_close(ap)
 		if (fip->fi_writers == 0)
 			socantrcvmore(fip->fi_readsock);
 	}
-	if (vp->v_usecount > 1)
-		return (0);
-	error1 = soclose(fip->fi_readsock);
-	error2 = soclose(fip->fi_writesock);
-	FREE_ZONE(fip, sizeof *fip, M_VNODE);
-	vp->v_fifoinfo = NULL;
-	if (error1)
-		return (error1);
-	return (error2);
+	return (fifo_release(vp, fip));
 }
 
 /*

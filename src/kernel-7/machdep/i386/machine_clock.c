@@ -50,6 +50,9 @@
 #import	<machdep/i386/timer.h>
 #import <machdep/i386/timer_inline.h>
 #import <machdep/i386/intr_exported.h>
+#import <machdep/i386/io_inline.h>
+#import <machdep/i386/cpu_inline.h>
+#import <machdep/i386/aux_timer_inline.h>
 
 static tvalspec_t	time_of_boot;	/* rel to 1/1/70 (UNIX T[0]) */
 static tvalspec_t	last_calendar;	/* last calendar time handed out */
@@ -64,9 +67,75 @@ static struct _system_clock {
     tvalspec_t		last_stamp;	/* last stamp handed out */
     mapped_tvalspec_t	*mapped_counter;
     unsigned int	timer_const;
+    unsigned int	tsc_per_tick;	/* 0: no TSC, count interrupts */
+    unsigned long long	reload_tsc;	/* TSC at the reload counter counts */
 } system_clock;
 
 static tvalspec_t	system_time_stamp(void);
+
+#define EFL_ID		0x200000	/* toggles only with CPUID */
+#define CPUID_TSC	0x10
+
+static inline unsigned long long
+rdtsc(void)
+{
+    unsigned int	lo, hi;
+
+    asm volatile(".byte 0x0f, 0x31" : "=a" (lo), "=d" (hi));
+    return (((unsigned long long)hi << 32) | lo);
+}
+
+/*
+ * TSC counts per tick, timed by the 8254's counter 2 counting down from
+ * 0xFFFF as pexpert's local APIC calibration does.  Counter 2 needs no
+ * interrupt, and each read sits between two TSC reads, so a sample
+ * whose reads were held off, or where counter 2 ran out, is refused.
+ * 0 when there is no TSC or no clean sample.
+ */
+static unsigned int
+tsc_calibrate(void)
+{
+    timer_ctl_reg_t	reg;
+    unsigned int	efl = eflags(), eax, edx, port61, pit, i, tries;
+    unsigned long long	t0, t1, t2, t3;
+
+    set_eflags(efl ^ EFL_ID);
+    if (((eflags() ^ efl) & EFL_ID) == 0)
+	return (0);
+    set_eflags(efl);
+    asm volatile("pushl %%ebx; cpuid; popl %%ebx"
+	    : "=a" (eax), "=d" (edx) : "0" (1) : "ecx");
+    if ((edx & CPUID_TSC) == 0)
+	return (0);
+
+    port61 = inb(0x61);
+    outb(0x61, (port61 & ~0x02) | 0x01);	/* counter 2 gate on, speaker off */
+    reg = (timer_ctl_reg_t){ 0 };
+    reg.mode = TIMER_EVENTMODE;
+    reg.rw = TIMER_CTL_RW_BOTH;
+    reg.sel = TIMER_CNT2_SEL;
+    for (tries = 0; tries < 5; tries++) {
+	timer_set_ctl(reg);
+	t0 = rdtsc();
+	aux_timer_start();
+	t1 = rdtsc();
+	for (i = 0; i < 1000000; i++) {
+	    t2 = rdtsc();
+	    aux_timer_stop(&pit);
+	    t3 = rdtsc();
+	    if (pit >= system_clock.timer_const)
+		break;
+	}
+	if (!(inb(0x61) & 0x20) && i < 1000000 &&
+	    (t1 - t0) + (t3 - t2) < (t3 - t0) / 256)
+	    break;
+    }
+    outb(0x61, port61);
+    if (tries == 5)
+	return (0);
+    /* from the midpoint of the start pair to the midpoint of the end pair */
+    return ((t2 + t3 - t0 - t1) * system_clock.timer_const / (2 * pit));
+}
 
 /*
  * Where the fraction of a tick comes from: a countdown that reloads at
@@ -81,6 +150,44 @@ timer_read_count(void)
 }
 
 static unsigned int	(*tick_source_read)(void) = timer_read_count;
+
+/*
+ * Reloads of the tick source since the one system_clock.counter has
+ * counted.  The TSC keeps counting while the processor is held off and
+ * the reloads' interrupts merge, so it can tell two reloads from one.
+ * Sets *count to the source's count and *reload to the TSC at its
+ * latest reload, or 0 if the read was held off; returns -1 when the
+ * TSC cannot tell.  Call at splclock.
+ */
+static int
+tick_reloads(
+    unsigned int	*count,
+    unsigned long long	*reload
+)
+{
+    unsigned int	per = system_clock.tsc_per_tick;
+    unsigned long long	t0, t1, since;
+
+    *reload = 0;
+    if (per == 0) {
+	*count = (*tick_source_read)();
+	return (-1);
+    }
+    t0 = rdtsc();
+    *count = (*tick_source_read)();
+    t1 = rdtsc();
+    if (t1 - t0 > per / 16)
+	return (-1);
+    *reload = t0 + (t1 - t0) / 2 -
+	(unsigned long long)(system_clock.timer_const - *count) * per /
+		system_clock.timer_const;
+    if (system_clock.reload_tsc == 0)
+	return (-1);
+    since = *reload - system_clock.reload_tsc + per / 2;
+    if ((long long)since < 0)
+	return (0);
+    return (since / per);
+}
 
 unsigned int
 clock_set_tick_source(
@@ -99,6 +206,7 @@ clock_set_tick_source(
     tick_source_read = read_count;
     system_clock.timer_const = count_per_tick;
     system_clock.last_timer_count = count_per_tick;
+    system_clock.reload_tsc = 0;	/* the next tick sets it */
     splx(s);
 
     return (count_per_tick);
@@ -131,8 +239,21 @@ system_timer_dispatch(
     thread_saved_state_t	*state = (thread_saved_state_t *)_state;
     tvalspec_t			now;
     struct _interrupt_location	loc;
+    unsigned int		count;
+    unsigned long long		reload;
+    int				n;
 
-    ADD_TVALSPEC_NSEC(&system_clock.counter, NSEC_PER_TICK);
+    // count every reload since the last tick, not this interrupt: held
+    // off, two reloads raise one interrupt, or a counted one raises its own
+    n = tick_reloads(&count, &reload);
+    if (reload)
+	system_clock.reload_tsc = reload;
+    else if (system_clock.reload_tsc)
+	system_clock.reload_tsc += system_clock.tsc_per_tick;
+    if (n < 0)
+	n = 1;
+    while (n-- > 0)
+	ADD_TVALSPEC_NSEC(&system_clock.counter, NSEC_PER_TICK);
     system_clock.last_timer_count = system_clock.timer_const;
 
     if (state) {
@@ -274,6 +395,8 @@ machine_clock_init(void)
     system_clock.last_timer_count = system_clock.timer_const;
 
     splx(s);
+
+    system_clock.tsc_per_tick = tsc_calibrate();
 }
 
 /*
@@ -451,14 +574,15 @@ static tvalspec_t
 system_time_stamp(void)
 {
     unsigned int	current_timer_count, last_timer_count;
+    unsigned long long	reload;
     clock_res_t		fraction;
     tvalspec_t		result;
-    int			s = splclock();
+    int			n, s = splclock();
 
     // take a snapshot of the whole counter state
     result = system_clock.counter;
     last_timer_count = system_clock.last_timer_count;
-    current_timer_count = (*tick_source_read)();
+    n = tick_reloads(&current_timer_count, &reload);
     // once a wrap is seen, store 0 (never read in NDIV mode) so that
     // every later read counts the tick until the interrupt runs
     if (current_timer_count > last_timer_count)
@@ -466,11 +590,11 @@ system_time_stamp(void)
     else
 	system_clock.last_timer_count = current_timer_count;
 
-    // check for tick overflow
-    if (current_timer_count > last_timer_count) {
-	// we missed a tick
+    // count reloads the tick has not; without the TSC, see one wrap
+    if (n < 0)
+	n = (current_timer_count > last_timer_count);
+    while (n-- > 0)
 	ADD_TVALSPEC_NSEC(&result, NSEC_PER_TICK);
-    }
 
     // convert fraction to ns; the source's count per tick spans one tick
     fraction = (system_clock.timer_const - current_timer_count);

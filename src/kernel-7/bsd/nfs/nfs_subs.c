@@ -2222,6 +2222,9 @@ nfsrv_errmap(nd, err)
 			else if (*errp > err)
 				break;
 		}
+		/* where NOENT is not a valid reply, the directory was removed */
+		if (err == ENOENT)
+			return (NFSERR_STALE);
 		return ((int)*defaulterrp);
 	    } else
 		return (err & 0xffff);

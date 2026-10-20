@@ -444,7 +444,7 @@ t_unix(struct st_ctx *c)
 {
 	pid_t kid;
 	struct sockaddr_un su;
-	int sv[2], ls, s;
+	int sv[2], ls, s, cs;
 	long i, badi, bad;
 
 	g_kids = &kid;
@@ -488,28 +488,69 @@ t_unix(struct st_ctx *c)
 		}
 		if (listen(ls, 5) < 0)
 			efail(c, "listen");
-		kid = fork();
-		if (kid < 0)
-			efail(c, "fork");
-		if (kid == 0) {
-			close(ls);
-			s = socket(AF_UNIX, SOCK_STREAM, 0);
-			if (s < 0 || connect(s, (struct sockaddr *)&su, sizeof su) < 0)
-				_exit(1);
-			sendstream(s, key3(i, 1), -1);
-			_exit(0);
-		}
-		g_nk = 1;
+		/* connected here, not in the child: a failed connect must not
+		 * leave this process blocked in accept */
+		cs = socket(AF_UNIX, SOCK_STREAM, 0);
+		if (cs < 0)
+			efail(c, "socket");
+		if (connect(cs, (struct sockaddr *)&su, sizeof su) < 0)
+			efail(c, "connect");
 		s = accept_fd(c, ls);
 		close(ls);
 		unlink(g_path);
 		g_path[0] = '\0';
+		kid = fork();
+		if (kid < 0)
+			efail(c, "fork");
+		if (kid == 0) {
+			close(s);
+			sendstream(cs, key3(i, 1), -1);
+			_exit(0);
+		}
+		g_nk = 1;
+		close(cs);
 		recvstream(c, s, key3(i, 1));
 		close(s);
 		waitkid(c, 0);
 		g_nk = 0;
 		st_op_end(c, 2 * MB);
 	}
+}
+
+/* UNSUP where the file system under -d has no socket nodes (msdosfs
+ * makes a regular file, so connect fails with ENOTSOCK). */
+static int
+unix_probe(char *why, int len)
+{
+	struct sockaddr_un su;
+	const char *call = "bind";
+	int ls, s = -1, e = 0;
+
+	memset(&su, 0, sizeof su);
+	su.sun_family = AF_UNIX;
+	if (strlen(st_opt.dir) + 40 > sizeof su.sun_path)
+		return 0;		/* the body FAILs path-too-long */
+	sprintf(su.sun_path, "%s/stress.net.uprobe.%d", st_opt.dir, (int)getpid());
+	unlink(su.sun_path);
+	ls = socket(AF_UNIX, SOCK_STREAM, 0);
+	if (ls < 0)
+		return 0;
+	if (bind(ls, (struct sockaddr *)&su, sizeof su) < 0)
+		e = errno;
+	else {
+		call = "connect";
+		if (listen(ls, 1) == 0 && (s = socket(AF_UNIX, SOCK_STREAM, 0)) >= 0 &&
+		    connect(s, (struct sockaddr *)&su, sizeof su) < 0)
+			e = errno;
+		unlink(su.sun_path);
+	}
+	if (s >= 0)
+		close(s);
+	close(ls);
+	if (e != ENOTSOCK && e != EOPNOTSUPP && e != ENOSYS)
+		return 0;
+	sprintf(why, "%s: %s", call, st_errname(e));
+	return 1;
 }
 
 static void
@@ -1395,7 +1436,7 @@ t_flood(struct st_ctx *c)
 static const struct st_test tests[] = {
 	{ "tcp", 3, 1, NULL, t_tcp },
 	{ "udp", 5000, 0, NULL, t_udp },
-	{ "unix", 3, 1, NULL, t_unix },
+	{ "unix", 3, 1, unix_probe, t_unix },
 	{ "select", 500, 1, NULL, t_select },
 	{ "accept", 2000, 0, NULL, t_accept },
 	{ "fdpass", 200, 0, fdpass_probe, t_fdpass },

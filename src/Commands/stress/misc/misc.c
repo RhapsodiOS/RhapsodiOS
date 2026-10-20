@@ -1079,7 +1079,8 @@ probe_fifo(char *why, int len)
 	char path[PATHLEN];
 
 	sprintf(path, "%s/stress.misc.probe.%d", st_opt.dir, (int)getpid());
-	if (mkfifo(path, 0600) < 0 && (errno == ENOSYS || errno == EOPNOTSUPP)) {
+	/* msdosfs has no fifos: EINVAL */
+	if (mkfifo(path, 0600) < 0 && (errno == ENOSYS || errno == EOPNOTSUPP || errno == EINVAL)) {
 		sprintf(why, "mkfifo: %s", st_errname(errno));
 		return 1;
 	}
@@ -1091,7 +1092,7 @@ static const struct st_test tests[] = {
 	{ "flock", 2000, 0, probe_flock, t_flock },
 	{ "fcntl", 2000, 0, probe_fcntl, t_fcntl },
 	{ "timer", 50, 0, NULL, t_timer },
-	{ "eintr", 20, 0, NULL, t_eintr },
+	{ "eintr", 20, 0, probe_flock, t_eintr },
 	{ "rlimit", 1, 1, NULL, t_rlimit },
 	{ "fifo", 50, 0, probe_fifo, t_fifo },
 	{ "fds", 50, 0, NULL, t_fds },

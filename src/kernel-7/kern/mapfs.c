@@ -197,7 +197,9 @@ int mapfs_get __P((struct vnode *,vm_offset_t, vm_size_t));
 int remap_vnode __P((struct vnode *,vm_offset_t, vm_size_t));
 void vmp_put __P((struct vm_info *));
 void vmp_get __P((struct vm_info *));
-void mapfs_cache_trim __P((void));
+void mapfs_cache_trim __P((struct vnode *));
+static struct vm_info *mapfs_victim __P((struct vnode *, boolean_t));
+static void mapfs_window_free __P((struct vm_info *));
 void mapfs_memfree __P((struct vm_info *, boolean_t));
 int mapfs_map_remove __P((struct vm_info *, vm_offset_t, vm_size_t, boolean_t));
 void vno_flush __P((struct vnode *, vm_offset_t, vm_size_t));
@@ -577,19 +579,20 @@ remap_vnode(vp, start, size)
 			register struct vm_info	*vmp1;
 
 			vm_info_lock();
-			vmp1 = VM_INFO_NULL;
-			if (!queue_empty(&vm_info_queue)) {
-				vmp1 = (struct vm_info *)
-						queue_first(&vm_info_queue);
+			vmp1 = mapfs_victim(vp, TRUE);
+			if (vmp1 != VM_INFO_NULL)
 				vm_info_dequeue(vmp1);
-			}
 			vm_info_unlock();
 			/*
 			 *	If we found someone, free up its memory.
 			 */
 			if (vmp1 != VM_INFO_NULL) {
 				mfs_alloc_unlock();
-				mapfs_memfree(vmp1, TRUE);
+				if (vp->v_tag != VT_NFS &&
+				    vmp1->vnode->v_tag == VT_NFS)
+					mapfs_window_free(vmp1);
+				else
+					mapfs_memfree(vmp1, TRUE);
 				mfs_alloc_lock();
 			}
 			else {
@@ -850,7 +853,7 @@ vmp_put(vmp)
 	lock_write_done(&vmp->lock);
 
 	if (mfs_files_mapped > mfs_files_max)
-		mapfs_cache_trim();
+		mapfs_cache_trim(vmp->vnode);
 
 	if (vmp->invalidate) {
 		vmp->invalidate = FALSE;
@@ -928,26 +931,75 @@ mapfs_memfree(vmp, flush)
 }
 
 /*
+ *	mapfs_victim:
+ *
+ *	The first LRU entry a caller working on vp may free, with the
+ *	vm_info lock held.  Freeing an NFS file's mapping can wait on the
+ *	NFS server, and a caller working on a local file can hold that
+ *	file's vnode lock: over a loopback mount the server is an nfsd
+ *	here, which then waits on itself.  So a caller on a local file
+ *	skips NFS entries, except, with va set, one that still has map
+ *	space, which mapfs_window_free can take without waiting on NFS.
+ */
+static struct vm_info *
+mapfs_victim(vp, va)
+	struct vnode	*vp;
+	boolean_t	va;
+{
+	register struct vm_info	*vmp;
+
+	for (vmp = (struct vm_info *) queue_first(&vm_info_queue);
+	     !queue_end(&vm_info_queue, (queue_entry_t) vmp);
+	     vmp = (struct vm_info *) queue_next(&vmp->lru_links))
+		if (vp->v_tag == VT_NFS || vmp->vnode->v_tag != VT_NFS ||
+		    (va && vmp->size > 0))
+			return (vmp);
+	return (VM_INFO_NULL);
+}
+
+/*
+ *	mapfs_window_free:
+ *
+ *	Free only the map space of a dequeued entry: no push, and its
+ *	object stays cached, so nothing here waits on its file system.
+ *	Dirty pages stay in the object for a later vmp_push.
+ */
+static void
+mapfs_window_free(vmp)
+	register struct vm_info	*vmp;
+{
+	lock_write(&vmp->lock);
+	lock_set_recursive(&vmp->lock);
+	(void) mapfs_map_remove(vmp, vmp->va, vmp->va + vmp->size, FALSE);
+	vmp->va = 0;
+	vmp->size = 0;
+	lock_clear_recursive(&vmp->lock);
+	lock_write_done(&vmp->lock);
+	vm_info_lock();
+	if (vmp->mapped && !vmp->queued && vmp->use_count == 0)
+		vm_info_enqueue(vmp);
+	vm_info_unlock();
+}
+
+/*
  *	mapfs_cache_trim:
  *
  *	trim the number of files in the cache to be less than the max
- *	we want.
+ *	we want.  vp is the file the caller is working on.
  */
 void
-mapfs_cache_trim()
+mapfs_cache_trim(vp)
+	struct vnode	*vp;
 {
 	register struct vm_info	*vmp;
 
 	while (TRUE) {
 		vm_info_lock();
-		if (mfs_files_mapped <= mfs_files_max) {
+		if (mfs_files_mapped <= mfs_files_max ||
+		    (vmp = mapfs_victim(vp, FALSE)) == VM_INFO_NULL) {
 			vm_info_unlock();
 			return;
 		}
-		/*
-		 * grab file at head of lru list.
-		 */
-		vmp = (struct vm_info *) queue_first(&vm_info_queue);
 		vm_info_dequeue(vmp);
 		vm_info_unlock();
 		/*
@@ -1895,6 +1947,12 @@ vmp_push(vmp)
 		return(0);
 	start = vmp->offset;
 	size = vmp->size;
+#if PERFMODS
+	if (size == 0) {	/* mapfs_window_free took the window */
+		start = vmp->dirtyoffset;
+		size = vmp->dirtysize;
+	}
+#endif /* PERFMODS */
 	
 	/* vmp->dirty is set FALSE in vmp_push_range */
 	error = vmp_push_range(vmp, start, size);

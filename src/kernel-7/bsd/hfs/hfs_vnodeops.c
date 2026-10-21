@@ -3347,7 +3347,8 @@ struct vop_reclaim_args /* {
     hfs_vhashrem(hp);	
 
     /* release the file meta */
-    if ((vp->v_type == VREG) || (vp->v_type == VLNK)) {
+    /* Any fork, not just VREG and VLNK: hfs_makenode gives a bound socket's fork VSOCK */
+    if ((vp->v_type != VNON) && (H_FORKTYPE(hp) != kDirCmplx)) {
         DBG_ASSERT(hp->h_meta != NULL);
 
         if (H_FORKTYPE(hp) == kSysFile) {

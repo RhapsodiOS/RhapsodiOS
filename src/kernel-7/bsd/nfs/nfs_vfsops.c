@@ -933,7 +933,7 @@ nfs_unmount(mp, mntflags, p)
 	if (error)
 		return(error);
 	vp = NFSTOV(np);
-	if (vp->v_usecount > 2) {
+	if (vp->v_usecount > 2 && (mntflags & MNT_FORCE) == 0) {
 		vput(vp);
 		return (EBUSY);
 	}

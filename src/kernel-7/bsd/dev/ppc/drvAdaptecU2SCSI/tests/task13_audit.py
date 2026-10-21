@@ -362,4 +362,5 @@ def audit(evidence,repo,objects):
         raise ValueError("API operation owner proof attribution is not the exact accepted partition")
     if mmio_index(results,contracts,evidence["frozen"],accepted)!=proof["mmio_operations"]:raise ValueError("API exact owner/callee/callsite MMIO attribution differs")
     module("task12_audit").validate_operations(objects,manifest,results,evidence["frozen"])
+    module("task13_fix1_audit").audit(evidence,repo)
     return proof,public,supplement

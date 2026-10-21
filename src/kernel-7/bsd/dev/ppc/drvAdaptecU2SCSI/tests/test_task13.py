@@ -40,16 +40,29 @@ def family(name, results):
         assert 0 < result["instructions"] <= case["instruction_limit"]
 
 
+def review_paths(*findings):
+    checks=module("task13_fix1_checks")
+    cases=json.loads((TESTS/"task13-fix1-cases.json").read_text())["cases"]
+    for label in ("reference","native"):
+        results=json.loads((OUT/("objects/task13-fix1/"+label+"-results.json")).read_text())["results"]
+        checks.complete_cases(cases,results)
+        for finding in findings:checks.require_paths(finding,cases,results)
+        for case,result in zip(cases,results):checks.effects(case,result)
+
+
 def test_public_table_and_memory_contract(public_results):
     family("memory",public_results)
+    review_paths("I1")
 
 
 def test_scan_lun_profiles_and_firmware_mode(public_results):
     family("scan",public_results)
+    review_paths("I1")
 
 
 def test_front_back_isr_and_special_iob(public_results):
     family("queue",public_results)
+    review_paths("I2","I3")
 
 
 def test_public_declaration_discovery():

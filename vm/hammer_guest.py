@@ -124,7 +124,7 @@ def unwrap_volume_file(wrapped: Path, out: Path) -> None:
 
 
 HEADER_KINDS = ('badsig', 'v6', 'twovol', 'badcrc', 'needs-recovery')
-FIXTURE_KINDS = HEADER_KINDS + ('longname',)
+FIXTURE_KINDS = HEADER_KINDS + ('longname', 'baddata')
 
 
 def make_fixture(kind: str, volume: Path, out: Path) -> None:
@@ -170,6 +170,7 @@ VOL0_BTREE_ROOT = 240
 NODE_SIZE = 4096        # struct hammer_node_ondisk
 BUFSIZE = 16384         # HAMMER_BUFSIZE: records never cross one
 RECTYPE_INODE = 0x0001
+RECTYPE_DATA = 0x0010
 RECTYPE_DIRENTRY = 0x0011
 ENTRY_NAME_OFF = 16
 OBJID_ROOT = 1
@@ -218,12 +219,19 @@ def _fixture_patches(kind, read):
 
     longname: root entry 'a' claims a 256-byte name (past NAME_MAX); its
     data CRC and node CRC are resealed so only the length check can catch it.
+    baddata: one byte inside the first data record of root file
+    'size1048577' is flipped, so that record's data CRC fails.
     """
     if kind in HEADER_KINDS:
         sectors = bytearray(read(0, HEADER + (-HEADER) % 512))
         _break_header(kind, sectors)
         return [(0, bytes(sectors))]
     leaves = list(_leaves(read))
+    if kind == 'baddata':
+        obj_id = struct.unpack('<Q', read(_entry(read, leaves, b'size1048577')['data'], 8))[0]
+        rec = min(_current(leaves, obj_id, RECTYPE_DATA), key=lambda l: l['data'])
+        spot = rec['data'] + rec['data_len'] // 2
+        return [(spot, bytes([read(spot, 1)[0] ^ 0xFF]))]
     l = _entry(read, leaves, b'a')
     n = ENTRY_NAME_OFF + 256
     if l['data'] % BUFSIZE + n > BUFSIZE:
@@ -269,14 +277,15 @@ def make_fixture_overlay(kind: str, wrapped: Path, out: Path) -> None:
             src.unlink()
 
 
-def walk_differences(got, want):
-    """hammer_walk -n output against a reference manifest; the content CRC
-    column (field 9) of the reference is ignored.  Returns problem lines."""
+def walk_differences(got, want, ignore_crc=True):
+    """hammer_walk output against a reference manifest.  With ignore_crc
+    (hammer_walk -n) the content CRC column, field 9, is not compared.
+    Returns problem lines."""
     def norm(text):
         rows = []
         for line in text.splitlines():
             f = line.split('\t')
-            if len(f) > 8:
+            if ignore_crc and len(f) > 8:
                 f[8] = '-'
             rows.append('\t'.join(f))
         return rows
@@ -290,7 +299,8 @@ def walk_differences(got, want):
 
 CASES = ('refuse-badsig', 'refuse-v6', 'refuse-twovol', 'refuse-badcrc',
          'refuse-needs-recovery', 'refuse-rw', 'admit', 'namespace',
-         'readdir-small', 'times', 'erofs', 'crafted-name')
+         'readdir-small', 'times', 'erofs', 'crafted-name', 'data', 'holes',
+         'mmap', 'dedup', 'crafted-data')
 ADMIT_MESSAGE = 'v7 single volume ok'
 QEMU_IMG = r'C:\Program Files\qemu\qemu-img.exe'
 
@@ -363,7 +373,7 @@ def run(case, outdir, volume, tools_dir):
                (tests/'run-native.sh').read_bytes()),
              N('/hammer_io', 'reg', 0o100755, 0, 0, 0,
                (Path(tools_dir)/'hammer_io').read_bytes())]
-    if case == 'namespace':
+    if case in ('namespace', 'data', 'dedup'):
         nodes.append(N('/hammer_walk', 'reg', 0o100755, 0, 0, 0,
                        (Path(tools_dir)/'hammer_walk').read_bytes()))
     results = outdir/'results.img'
@@ -412,7 +422,7 @@ def run(case, outdir, volume, tools_dir):
     problems = verify_result(case, code, stdout or '',
                              serial.read_text(errors='replace'),
                              _unchanged(data_ov, volume))
-    if case == 'namespace' and code == 0:
+    if case in ('namespace', 'data', 'dedup') and code == 0:
         # The reference manifest sits beside the base volume (ref-main.walk).
         import gzip
         import rhap_image
@@ -423,7 +433,8 @@ def run(case, outdir, volume, tools_dir):
         while base.suffix in ('.qcow2', '.wrapped'):
             base = base.with_suffix('')
         diff = walk_differences(walk.decode('utf-8', 'replace'),
-                                base.with_suffix('.walk').read_text())
+                                base.with_suffix('.walk').read_text(),
+                                ignore_crc=(case == 'namespace'))
         problems += ['walk: ' + d for d in diff[:20]]
     for problem in problems:
         print(problem)

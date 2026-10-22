@@ -4240,6 +4240,159 @@ hammer_vop_erofs(void *ap)
 	return(EROFS);
 }
 
+/*
+ * File data goes through the buffer cache in 8 KB logical blocks
+ * (MAXBSIZE); strategy fills each block from the data records covering it.
+ */
+#define HAMMER_LBLKSIZE	8192
+
+/*
+ * Copy file bytes [offset, offset + len) into dst: the ported "hard way"
+ * of upstream hammer_vop_strategy_read().  A data record's key is its end
+ * offset, so the first record touching offset has key > offset.  Holes and
+ * the tail past the last record read as zeros.  A data CRC failure makes
+ * hammer_ip_resolve_data() log it and return EIO.
+ */
+static int
+hammer_read_range(hammer_inode_t ip, int64_t offset, char *dst, int len)
+{
+	struct hammer_transaction trans;
+	struct hammer_cursor cursor;
+	int64_t rec_offset, ran_end;
+	int error, boff = 0, roff, n, dlen;
+
+	hammer_simple_transaction(&trans, ip->hmp);
+	error = hammer_init_cursor(&trans, &cursor, &ip->cache[1], ip);
+	cursor.key_beg.localization = hmk32(ip->obj_localization |
+					    HAMMER_LOCALIZE_MISC);
+	cursor.key_beg.obj_id = hmk64(ip->obj_id);
+	cursor.key_beg.create_tid = hmk64(0);
+	cursor.key_beg.delete_tid = hmk64(0);
+	cursor.key_beg.obj_type = 0;
+	cursor.key_beg.key = hmk64(offset + 1);
+	cursor.key_beg.rec_type = hmk16(HAMMER_RECTYPE_DATA);
+	cursor.asof = ip->obj_asof;
+	cursor.flags |= HAMMER_CURSOR_ASOF | HAMMER_CURSOR_END_INCLUSIVE;
+	cursor.key_end = cursor.key_beg;
+	ran_end = offset + len;
+	cursor.key_end.key = hmk64(ran_end + MAXPHYS + 1);
+
+	if (error == 0)
+		error = hammer_ip_first(&cursor);
+	while (error == 0) {
+		dlen = (int)hget32(cursor.leaf->data_len);
+		rec_offset = (int64_t)hget64(cursor.leaf->base.key) - dlen;
+		n = (int)(rec_offset - (offset + boff));
+		if (n > 0) {
+			if (n > len - boff)
+				n = len - boff;
+			bzero(dst + boff, n);
+			boff += n;
+			n = 0;
+		}
+		roff = -n;
+		n = dlen - roff;
+		if (n <= 0)
+			n = 0;
+		else if (n > len - boff)
+			n = len - boff;
+		if (n) {
+			error = hammer_ip_resolve_data(&cursor);
+			if (error)
+				break;
+			bcopy((char *)cursor.data + roff, dst + boff, n);
+		}
+		boff += n;
+		if (boff == len)
+			break;
+		error = hammer_ip_next(&cursor);
+	}
+	if (error == ENOENT)
+		error = 0;
+	if (error == 0 && boff < len)
+		bzero(dst + boff, len - boff);
+	hammer_done_cursor(&cursor);
+	hammer_done_transaction(&trans);
+	if (error)
+		hkprintf("file %016jx: read at %016jx failed, error %d\n",
+			 (intmax_t)ip->obj_id, (intmax_t)offset, error);
+	return(error);
+}
+
+static int
+hammer_vop_read(struct vop_read_args *ap)
+{
+	struct vnode *vp = ap->a_vp;
+	hammer_inode_t ip = VTOI(vp);
+	struct uio *uio = ap->a_uio;
+	int64_t size = (int64_t)hget64(ip->ino_data.size);
+	struct buf *bp;
+	daddr_t lbn;
+	int64_t left;
+	int error = 0, boff, n;
+
+	if (vp->v_type != VREG)
+		return(vp->v_type == VDIR ? EISDIR : EINVAL);
+	while (uio->uio_resid > 0 && uio->uio_offset < size) {
+		lbn = (daddr_t)(uio->uio_offset / HAMMER_LBLKSIZE);
+		boff = (int)(uio->uio_offset % HAMMER_LBLKSIZE);
+		n = HAMMER_LBLKSIZE - boff;
+		if (n > uio->uio_resid)
+			n = uio->uio_resid;
+		left = size - uio->uio_offset;
+		if (n > left)
+			n = (int)left;
+		error = bread(vp, lbn, HAMMER_LBLKSIZE, NOCRED, &bp);
+		if (error) {
+			brelse(bp);
+			break;
+		}
+		error = uiomove((char *)bp->b_data + boff, n, uio);
+		brelse(bp);
+		if (error)
+			break;
+	}
+	return(error);
+}
+
+static int
+hammer_vop_strategy(struct vop_strategy_args *ap)
+{
+	struct buf *bp = ap->a_bp;
+	hammer_inode_t ip = VTOI(bp->b_vp);
+	int error;
+
+	if ((bp->b_flags & B_READ) == 0)
+		error = EROFS;
+	else
+		error = hammer_read_range(ip,
+				(int64_t)bp->b_lblkno * HAMMER_LBLKSIZE,
+				bp->b_data, bp->b_bcount);
+	if (error) {
+		bp->b_error = error;
+		bp->b_flags |= B_ERROR;
+	}
+	bp->b_resid = 0;
+	biodone(bp);
+	return(error);
+}
+
+/* Logical blocks are not device blocks: identity mapping, no clustering. */
+static int
+hammer_vop_bmap(struct vop_bmap_args *ap)
+{
+	if (ap->a_vpp)
+		*ap->a_vpp = ap->a_vp;
+	if (ap->a_bnp)
+		*ap->a_bnp = ap->a_bn;
+	if (ap->a_runp)
+		*ap->a_runp = 0;
+	return(0);
+}
+
+/* Generic 4.4BSD ops that never look at the inode. */
+extern int ufs_seek(), ufs_select(), ufs_mmap(), ufs_pagein();
+
 struct vnodeopv_entry_desc hammer_vnodeop_entries[] = {
 	{ &vop_default_desc, (int (*)())vn_default_error },
 	{ &vop_lookup_desc, (int (*)())hammer_vop_lookup },
@@ -4250,7 +4403,17 @@ struct vnodeopv_entry_desc hammer_vnodeop_entries[] = {
 	{ &vop_access_desc, (int (*)())hammer_vop_access },
 	{ &vop_getattr_desc, (int (*)())hammer_vop_getattr },
 	{ &vop_setattr_desc, (int (*)())hammer_vop_erofs },
+	{ &vop_read_desc, (int (*)())hammer_vop_read },
 	{ &vop_write_desc, (int (*)())hammer_vop_erofs },
+	{ &vop_strategy_desc, (int (*)())hammer_vop_strategy },
+	{ &vop_bmap_desc, (int (*)())hammer_vop_bmap },
+	{ &vop_fsync_desc, (int (*)())nop_fsync },
+	{ &vop_seek_desc, (int (*)())ufs_seek },
+	{ &vop_select_desc, (int (*)())ufs_select },
+	{ &vop_mmap_desc, (int (*)())ufs_mmap },
+	{ &vop_pagein_desc, (int (*)())ufs_pagein },
+	{ &vop_pageout_desc, (int (*)())hammer_vop_erofs },
+	{ &vop_lease_desc, (int (*)())nop_lease },
 	{ &vop_remove_desc, (int (*)())hammer_vop_remove },
 	{ &vop_link_desc, (int (*)())hammer_vop_link },
 	{ &vop_rename_desc, (int (*)())hammer_vop_rename },

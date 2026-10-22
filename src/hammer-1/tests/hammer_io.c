@@ -42,8 +42,13 @@
  *	times DIR			DIR/old has mtime 0, DIR/future 0x7fffffff
  *	erofs DIR			every change under DIR fails with EROFS;
  *					statfs says "hammer"
+ *	holes FILE			sparse-file reads (see holes())
+ *	mmap FILE			mmap matches read, tail past EOF is zero
+ *	readeio FILE			reading FILE fails with EIO
+ *	readok FILE			FILE reads to EOF without error
  */
 #include <sys/types.h>
+#include <sys/mman.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
 #include <dirent.h>
@@ -163,6 +168,101 @@ times(const char *dir)
 	return 0;
 }
 
+/* Rhapsody's libc has no pread(2). */
+static ssize_t
+pread(int fd, void *buf, size_t n, off_t off)
+{
+	if (lseek(fd, off, SEEK_SET) == -1)
+		return -1;
+	return read(fd, buf, n);
+}
+
+static int
+allzero(const char *p, int n)
+{
+	while (n-- > 0)
+		if (*p++)
+			return 0;
+	return 1;
+}
+
+/*
+ * The 512 MiB sparse file has data at 0, at 256 MiB and in its last byte.
+ * Holes read as zeros; each data spot read on its own matches the same
+ * bytes inside a larger read that straddles an 8 KB block boundary.
+ */
+static int
+holes(const char *path)
+{
+	static char big[16384];
+	char b[16];
+	struct stat st;
+	off_t mib = 1024 * 1024, end;
+	int fd;
+
+	CHECK((fd = open(path, O_RDONLY)) >= 0);
+	CHECK(fstat(fd, &st) == 0);
+	end = st.st_size;
+	CHECK(end == 512 * mib);
+	CHECK(pread(fd, b, 16, 0) == 16 && !allzero(b, 16));
+	CHECK(pread(fd, big, 16384, 0) == 16384 && bcmp(big, b, 16) == 0);
+	CHECK(pread(fd, b, 16, mib) == 16 && allzero(b, 16));
+	CHECK(pread(fd, b, 1, 256 * mib - 1) == 1 && b[0] == 0);
+	CHECK(pread(fd, b, 16, 256 * mib) == 16 && !allzero(b, 16));
+	CHECK(pread(fd, big, 16384, 256 * mib - 8192) == 16384 &&
+	      allzero(big, 8192) && bcmp(big + 8192, b, 16) == 0);
+	CHECK(pread(fd, big, 8192, end - 8192) == 8192 &&
+	      pread(fd, b, 1, end - 1) == 1 && big[8191] == b[0]);
+	CHECK(pread(fd, b, 16, end) == 0);
+	CHECK(pread(fd, b, 16, end - 4) == 4);
+	close(fd);
+	printf("%s: holes zero, data consistent, EOF short reads\n", path);
+	return 0;
+}
+
+/* mmap matches read(), and the last page reads zero past EOF. */
+static int
+mapcheck(const char *path)
+{
+	static char buf[65536];
+	struct stat st;
+	char *m;
+	long pg = getpagesize(), len;
+	int fd;
+
+	CHECK((fd = open(path, O_RDONLY)) >= 0);
+	CHECK(fstat(fd, &st) == 0 && st.st_size < sizeof(buf));
+	CHECK(read(fd, buf, sizeof(buf)) == st.st_size);
+	len = (st.st_size + pg - 1) / pg * pg;
+	m = mmap(0, len, PROT_READ, MAP_SHARED, fd, 0);
+	CHECK(m != (char *)-1);
+	CHECK(bcmp(m, buf, st.st_size) == 0);
+	CHECK(allzero(m + st.st_size, len - st.st_size));
+	munmap(m, len);
+	close(fd);
+	printf("%s: mmap matches read, tail zero\n", path);
+	return 0;
+}
+
+/* Read a whole file; WANT is 0 for success or the errno read must fail with. */
+static int
+readall(const char *path, int want)
+{
+	static char buf[65536];
+	int fd, n;
+
+	CHECK((fd = open(path, O_RDONLY)) >= 0);
+	while ((n = read(fd, buf, sizeof(buf))) > 0)
+		;
+	if (want)
+		CHECK(n == -1 && errno == want);
+	else
+		CHECK(n == 0);
+	close(fd);
+	printf("%s: read %s\n", path, want ? "fails as expected" : "ok");
+	return 0;
+}
+
 #define EROFS_CHECK(x) do { errno = 0; CHECK((x) == -1 && errno == EROFS); } while (0)
 
 static int
@@ -204,6 +304,14 @@ main(int ac, char **av)
 		return times(av[2]);
 	if (ac == 3 && strcmp(av[1], "erofs") == 0)
 		return erofs(av[2]);
+	if (ac == 3 && strcmp(av[1], "holes") == 0)
+		return holes(av[2]);
+	if (ac == 3 && strcmp(av[1], "mmap") == 0)
+		return mapcheck(av[2]);
+	if (ac == 3 && strcmp(av[1], "readeio") == 0)
+		return readall(av[2], EIO);
+	if (ac == 3 && strcmp(av[1], "readok") == 0)
+		return readall(av[2], 0);
 	fprintf(stderr, "usage: hammer_io CHECK ARGS (see source)\n");
 	return 2;
 }

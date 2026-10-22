@@ -94,6 +94,7 @@ range, so DragonFly and Rhapsody manifests compare equal.
 | --- | --- | --- | --- |
 | `run-main-6` populate | `ref-main.img` | `show` and `checkmap` clean | 2026-10-17 |
 | `run-walk-main-2` | `ref-main.img` | read-only mount, mtimes show ctime; kept as `ref-main-ro.walk` | 2026-10-17 |
+| `run-walk-dedup-rw` | copy of `ref-dedup.img` | `ref-dedup.walk`, read-write `noatime` mount; identical to the read-only manifest | 2026-10-19 |
 | `run-walk-main-rw` | copy of `ref-main.img` | `ref-main.walk`, 20,128 lines (`big/` has 20,000), read-write `noatime` mount | 2026-10-19 |
 | `run-dedup-1` populate | `ref-dedup.img` | 1,984 dedup records, 32,505,856 bytes deduplicated; `show` and `checkmap` clean | 2026-10-17 |
 | `run-walk-dedup-1` | `ref-dedup.img` | `ref-dedup.walk`, 33 entries, all 32 files with CRC 482699967 | 2026-10-17 |

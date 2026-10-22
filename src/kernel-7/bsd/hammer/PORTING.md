@@ -167,6 +167,16 @@ would otherwise see ctime everywhere.  The ctime rule returns for as-of
 (snapshot) access in Phase 4.  The DragonFly reference manifests are
 therefore taken from a read-write `noatime` mount (`vm/dfly-walk.sh`).
 
+## File data (Phase 1)
+
+`read` goes through the buffer cache in 8 KB logical blocks; `strategy`
+fills each block from the data records covering it (upstream's buffered
+"hard way"; the direct and double-buffered paths are not used), zeroing
+holes and the tail.  `bmap` is the identity mapping.  `mmap` pages in
+through `ufs_pagein`, which is `VOP_READ`.  A data CRC failure is EIO.
+`fsync` is `nop_fsync`: vnode reclaim calls it before dropping cached
+blocks, and an error there would leave them on a recycled vnode.
+
 ## Kernel memory
 
 Allocations of a page or more (the 16 and 64 KB buffers) come from
@@ -191,4 +201,5 @@ users.
 | `hammer_guest.py run` admit, refuse-rw, refuse-{badsig,badcrc,v6,twovol,needs-recovery} | i386 guest | PASS, volume unchanged | 2026-10-18 |
 | Task 6 read path: `rbuild kernel` links (i386 in the build root; ppc 376 hammer symbols) | i386, ppc | PASS | 2026-10-19 |
 | `hammer_guest.py run` namespace (walk matches DragonFly's read-write manifest, 20,128 lines), readdir-small (20,002 names, d_fileno == st_ino), times, erofs, crafted-name, plus the seven Task 5 cases | i386 guest | PASS, volumes unchanged | 2026-10-19 |
+| Task 7 file data: `hammer_guest.py run` data and dedup (full walks with content CRCs match DragonFly), holes, mmap, crafted-data (EIO, other files still read), plus all Task 5 and 6 cases | i386 guest | PASS, volumes unchanged | 2026-10-19 |
 | ppc runtime | ppc | **open**, no ppc runtime available | |

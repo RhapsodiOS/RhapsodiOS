@@ -43,6 +43,29 @@ erofs)
 	./hammer_io erofs "$2"
 	./hammer_io unmount "$2"
 	;;
+data|dedup)
+	# Full manifest with content CRCs for the host to diff.
+	./hammer_io mount $DEV "$2"
+	./hammer_walk "$2" > /tmp/walk.txt
+	gzip -9 < /tmp/walk.txt > walk.gz
+	./hammer_io unmount "$2"
+	;;
+holes)
+	./hammer_io mount $DEV "$2"
+	./hammer_io holes "$2/sparse"
+	./hammer_io unmount "$2"
+	;;
+mmap)
+	./hammer_io mount $DEV "$2"
+	./hammer_io mmap "$2/size16385"
+	./hammer_io unmount "$2"
+	;;
+crafted-data)
+	./hammer_io mount $DEV "$2"
+	./hammer_io readeio "$2/size1048577"
+	./hammer_io readok "$2/size16385"
+	./hammer_io unmount "$2"
+	;;
 crafted-name)
 	./hammer_io mount $DEV "$2"
 	./hammer_io readdir-eio "$2"

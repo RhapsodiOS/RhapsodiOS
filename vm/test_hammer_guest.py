@@ -200,12 +200,13 @@ def tree_volume(tmp_path):
         struct.pack_into('<QII', e, 48, (11 << 60) | (data - BUF_BEG),
                          len(payload), hg.crc32c(crced))
         elms.append(e)
-    for n, name in enumerate((b'a', b'old', b'future')):
+    for n, name in enumerate((b'a', b'old', b'future', b'size1048577')):
         leaf(1, n, 0x11, struct.pack('<QII', 2 + n, 0, 0) + name, data)
         ino = bytearray(128)
         struct.pack_into('<Q', ino, 112, 1792249285 * 1000000)
         leaf(2 + n, 0, 0x01, bytes(ino), data + 1024)
         data += 2048
+    leaf(5, 256, 0x10, bytes(range(256)), data)     # size1048577's first block
     struct.pack_into('<IB', node, 16, len(elms), ord('L'))
     for i, e in enumerate(elms):
         node[64 + i * 64:128 + i * 64] = e
@@ -238,6 +239,24 @@ def test_longname_fixture_stretches_one_entry(tmp_path):
     assert crc == hg.crc32c(new[data:data + n])
     changed = {i for i in range(len(old)) if old[i] != new[i]}
     assert changed <= set(range(BUF_BEG, BUF_BEG + NODE))
+
+
+def test_baddata_fixture_flips_one_data_byte(tmp_path):
+    vol = tree_volume(tmp_path)
+    out = tmp_path/'baddata.img'
+    hg.make_fixture('baddata', vol, out)
+    old, new = vol.read_bytes(), out.read_bytes()
+    data, n, crc = leaf_of(old, 5, 0x10)
+    changed = [i for i in range(len(old)) if old[i] != new[i]]
+    assert len(changed) == 1 and data <= changed[0] < data + n
+    assert hg.crc32c(new[data:data + n]) != crc      # the data CRC now fails
+
+
+def test_walk_exact_compares_content_crc():
+    want = './a\tf\t644\t0\t0\t1\t0\t5\t4294967295\n'
+    assert hg.walk_differences(want, want, ignore_crc=False) == []
+    assert hg.walk_differences(want.replace('4294967295', '1'), want,
+                               ignore_crc=False) != []
 
 
 def test_walk_matches_ignores_content_crc():

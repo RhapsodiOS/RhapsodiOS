@@ -84,3 +84,36 @@ formal type/count/grouping is recovered, and the unspecified public ABI stays
 unchanged. This technique is conditional on exact historical target bytes and
 the frozen stack/r3/r1 effects. A backend change requires recertifying or
 rewriting this one implementation; observations may not be relaxed.
+
+## Task 14 controller and OSM lifecycle fixes
+
+Three genuine reference bugs are fixed; each site carries a "Divergence"
+comment. Every other quirk of the lifecycle code is kept as found.
+
+- `ProbeTarget` wrote the probe target and LUN through
+  `iob->transportSpecific`, but `-threadExecuteRequest:` sets that pointer to
+  NULL and `AllocOSMIOB` never restores it. Once an execute IOB was recycled,
+  a probe of a missing target wrote two bytes at low memory 0x10/0x12 and the
+  CHIM then read the target back from there. The rebuilt `ProbeTarget` points
+  `transportSpecific` back at the IOB's own transport record first.
+- `NormalPostRoutine`'s parity-error retry (CHIM status 35) put the IOB back
+  on the waiting queue and sent it, then fell through to complete the
+  command, cancel its timeout and free the same IOB. That corrupted the IOB
+  pool and target queues and woke the client while the retry was still in
+  the HIM. The rebuilt retry path cancels the old timeout, keeps the command
+  counted in `outstandingCount`, requeues it and returns.
+- `-threadExecuteRequest:` never freed the IOB it had allocated when building
+  the scatter/gather list failed (too many pages, no physical address, or a
+  short descriptor range). Each failure leaked the IOB and left `numIOBs`
+  raised, which also shrank the reusable pool. The rebuilt failure path
+  calls `FreeOSMIOB` before waking the client.
+
+Kept as found: `PostProbe`, `PostProtocolAutoConfig` and
+`PostRoutineEventResetHW` read the IOB's status or task set just after
+`FreeOSMIOB` (the IOB normally goes back to the pool, and a freed one is not
+reused before the read on this non-preemptive kernel); `CleanupWaitingQ`
+decrements `numActiveIOBs` for IOBs that were never active, which only skews
+`numQueueSamples`; `-free` releases each target but not its target TSCB
+storage; and `initializationTSH` is left pointing at
+`-initFromDeviceDescription:`'s stack buffer after it returns, which nothing
+reads afterwards.

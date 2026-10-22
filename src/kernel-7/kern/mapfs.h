@@ -96,7 +96,8 @@ struct vm_info {
 			filesize:1,		/* want size as reflected in ip */
 			mapped:1,		/* mapped into KERNEL VM? */
 			dying:1,		/* vm_info being freed */
-			nfsdirty:1;		/* locally modified */
+			nfsdirty:1,		/* locally modified */
+			orphan:1;		/* freed by the last vmp_put */
 	vm_size_t	dirtysize;	/* unwritten data so far */
 	vm_offset_t	dirtyoffset;	/* unwritten data so far */
 };

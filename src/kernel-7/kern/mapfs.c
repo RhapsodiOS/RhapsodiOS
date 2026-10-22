@@ -300,6 +300,7 @@ vm_info_init(vp)
 	vmp->filesize = FALSE;
 	vmp->mapped = FALSE;
 	vmp->dying = FALSE;
+	vmp->orphan = FALSE;
 
 	vmp->vnode_size = 0;
 	vmp->vnode = vp;
@@ -315,6 +316,7 @@ vm_info_init(vp)
 void vm_info_free(struct vnode *vp)
 {
 	register struct vm_info *vmp = vp->v_vm_info;
+	boolean_t orphan = FALSE;
 
 	if (vmp == VM_INFO_NULL)
 		return;
@@ -333,11 +335,26 @@ void vm_info_free(struct vnode *vp)
 
 #if MACH_NBC
 	mapfs_uncache(vp);		/* could block here */
+	/*
+	 * Take it off the LRU queue: anything enqueued while we blocked
+	 * would be left there freed, and so would a file a forced unmount
+	 * reclaims while it is still open (map_count > 0, so mapfs_uncache
+	 * left it alone).  A user that does not hold the vnode lock
+	 * (mapfs_sync, vn_close) may still have it: its vmp_put frees it.
+	 * Waiting for it here could deadlock, as its push may wait for
+	 * the vnode lock our caller holds.
+	 */
+	vm_info_lock();
+	if (vmp->queued)
+		vm_info_dequeue(vmp);
+	orphan = vmp->orphan = (vmp->use_count > 0);
+	vm_info_unlock();
 #endif 
 	vp->v_vm_info = VM_INFO_NULL;
 	wakeup(vmp);			/* wakeup other threads blocked on vmp */
 
-	zfree(vm_info_zone, (vm_offset_t)vmp);	/* could block here */
+	if (!orphan)
+		zfree(vm_info_zone, (vm_offset_t)vmp);	/* could block here */
 }
 
 #if	MACH_NBC  /* [ */
@@ -520,8 +537,8 @@ unmap_vnode(vp, p)
 		vm_object_deactivate_pages(object);
 		vm_object_unlock(object);
 		if (close_flush || vmp->close_flush) {
-			vmp_put(vmp);
 			vmp->map_count--;
+			vmp_put(vmp);	/* may free it, see vm_info_free */
 		}
 	}
 }
@@ -838,19 +855,27 @@ void
 vmp_put(vmp)
 	register struct vm_info	*vmp;
 {
+	boolean_t	dying, orphan;
+
 	/*
 	 *	Place back on LRU list if noone else using it.
 	 */
 	vm_info_lock();
-	if (--vmp->use_count == 0) {
+	dying = vmp->dying;
+	if (--vmp->use_count == 0 && !dying)
 		vm_info_enqueue(vmp);
-	}
+	orphan = vmp->orphan && vmp->use_count == 0;
 	vm_info_unlock();
 	/*
 	 *	Let others at file.
 	 */
 	lock_clear_recursive(&vmp->lock);
 	lock_write_done(&vmp->lock);
+
+	if (orphan)		/* vm_info_free left it to us */
+		zfree(vm_info_zone, (vm_offset_t)vmp);
+	if (dying)
+		return;
 
 	if (mfs_files_mapped > mfs_files_max)
 		mapfs_cache_trim(vmp->vnode);
@@ -976,7 +1001,7 @@ mapfs_window_free(vmp)
 	lock_clear_recursive(&vmp->lock);
 	lock_write_done(&vmp->lock);
 	vm_info_lock();
-	if (vmp->mapped && !vmp->queued && vmp->use_count == 0)
+	if (vmp->mapped && !vmp->queued && vmp->use_count == 0 && !vmp->dying)
 		vm_info_enqueue(vmp);
 	vm_info_unlock();
 }

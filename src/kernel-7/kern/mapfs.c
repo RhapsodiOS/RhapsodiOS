@@ -509,7 +509,13 @@ unmap_vnode(vp, p)
 		
 	VOP_GETATTR(vp, &vattr, cred, p);
 	links = vattr.va_nlink;  /* may uncache, see below */
-	vmp->map_count--;
+	/*
+	 * A close of an open that never took a map_count (opened before the
+	 * file had a pager) can drop this hold while we block: never go
+	 * below zero, or mapfs_cache_clear skips the file and pins its mount.
+	 */
+	if (vmp->map_count > 0)
+		vmp->map_count--;
 
 	if (links == 0) {
 		mapfs_memfree(vmp, FALSE);
@@ -537,7 +543,8 @@ unmap_vnode(vp, p)
 		vm_object_deactivate_pages(object);
 		vm_object_unlock(object);
 		if (close_flush || vmp->close_flush) {
-			vmp->map_count--;
+			if (vmp->map_count > 0)
+				vmp->map_count--;
 			vmp_put(vmp);	/* may free it, see vm_info_free */
 		}
 	}
@@ -763,7 +770,8 @@ mapfs_trunc(vp, length)
 	if (error)
 		kprintf("mapfs_trunc: vmp_push %d\n", error);
 #endif /* DIAGNOSTIC */
-	vmp->map_count--;
+	if (vmp->map_count > 0)		/* see unmap_vnode */
+		vmp->map_count--;
 
 out:
 	vmp_put(vmp);

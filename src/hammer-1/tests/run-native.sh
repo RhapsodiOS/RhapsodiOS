@@ -50,6 +50,17 @@ data|dedup)
 	gzip -9 < /tmp/walk.txt > walk.gz
 	./hammer_io unmount "$2"
 	;;
+cycle)
+	# Mount lifecycle: leaks are reported at each last unmount.
+	i=0
+	while [ $i -lt 100 ]; do
+		./hammer_io mount $DEV "$2"
+		./hammer_walk -n "$2" > /dev/null
+		./hammer_io unmount "$2"
+		i=`expr $i + 1`
+	done
+	echo "$i mount/walk/unmount cycles"
+	;;
 holes)
 	./hammer_io mount $DEV "$2"
 	./hammer_io holes "$2/sparse"

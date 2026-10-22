@@ -189,6 +189,53 @@ wired.  A gdbstub backtrace put the panic in `kfree` from
 kernel fault itself is not fixed and may hit other heavy large-`_MALLOC`
 users.
 
+## Provenance check (Phase 1)
+
+`sha256sum -c ORIGIN` in this directory fails only for files this port
+changed or removed:
+
+- Modified: `crc32.c`, `icrc32.c`, `hammer.h`, `hammer_btree.h`,
+  `hammer_crc.h`, `hammer_disk.h`, `hammer_mount.h`, `hammer_blockmap.c`,
+  `hammer_btree.c`, `hammer_cursor.c`, `hammer_inode.c`, `hammer_io.c`,
+  `hammer_object.c`, `hammer_ondisk.c`, `hammer_subs.c`, `hammer_vfsops.c`,
+  `hammer_vnops.c`.
+- Removed (single volume, no PFS): `hammer_pfs.c`, `hammer_volume.c`.
+
+In `src/hammer-1` it fails for `hammer/Makefile`, `hammer/cmd_blockmap.c`,
+`hammer/cmd_mirror.c`, `hammer/cmd_show.c`, `hammer/hammer.c`,
+`mount_hammer/{Makefile,mount_hammer.8,mount_hammer.c}` and
+`newfs_hammer/{Makefile,newfs_hammer.c}` (modified), and for the shared
+sources moved to `common/` (`blockmap.c`, `cache.c`, `hammer_util.h`,
+`misc.c`, `ondisk.c`, `uuid.c`).
+
+`grep -L "DragonFly Project"` lists only files that are new (`hammer_admit.[ch]`,
+`hammer_port.h`, `hammer_rhapsody.[ch]`, `hammer_rostubs.c`,
+`common/compat.[ch]` and the `common/` mirrors of the kernel's admission
+and CRC files) or carry another upstream notice (`crc32.c` and `icrc32.c`:
+Gary S. Brown; `hammer_tree.h`: Niels Provos; `hammer/test_dupkey.c` has
+none upstream).  `hammer_io.c` keeps the DragonFly notice with a RhapsodiOS
+line added.
+
+## Left for Phase 2
+
+- `hammer_rostubs.c` panics in `hammer_undo_lookup`, `hammer_io_direct_wait`
+  and `hammer_inode_waitreclaims`; none is reachable on a read-only mount.
+- `hammer_io.c` panics in `hammer_io_new`, the write and done interlocks
+  and `hammer_modify_volume`/`_buffer` (and their `_done`), and makes the
+  flush, wait and modify-list hooks no-ops.
+- Write paths behind `#if 0 /* phase 2 */`: `hammer_object.c` (record add,
+  sync and delete), `hammer_inode.c` (create, update, flush, sync, PFS save
+  and unload, reclaim throttling), the read/flush time multiplexing in
+  `hammer_cursor.c`, and the DragonFly VOPs in `hammer_vnops.c`.
+- Not compiled yet: `hammer_flusher.c`, `hammer_undo.c`, `hammer_redo.c`,
+  `hammer_recover.c`, `hammer_reblock.c`, `hammer_rebalance.c`,
+  `hammer_prune.c`, `hammer_dedup.c`, `hammer_mirror.c`, `hammer_ioctl.c`,
+  `hammer_signal.c`.  `hammer_inode.c` generates the flush and redo trees
+  until the flusher and redo units return.
+- Device and FIFO nodes use the regular op table (they stat but cannot be
+  opened); readdir returns no NFS cookies; `hammer info` waits for the
+  ioctls.
+
 ## Evidence
 
 | Check | CPU | Result | Date |
@@ -202,4 +249,8 @@ users.
 | Task 6 read path: `rbuild kernel` links (i386 in the build root; ppc 376 hammer symbols) | i386, ppc | PASS | 2026-10-19 |
 | `hammer_guest.py run` namespace (walk matches DragonFly's read-write manifest, 20,128 lines), readdir-small (20,002 names, d_fileno == st_ino), times, erofs, crafted-name, plus the seven Task 5 cases | i386 guest | PASS, volumes unchanged | 2026-10-19 |
 | Task 7 file data: `hammer_guest.py run` data and dedup (full walks with content CRCs match DragonFly), holes, mmap, crafted-data (EIO, other files still read), plus all Task 5 and 6 cases | i386 guest | PASS, volumes unchanged | 2026-10-19 |
+| `hammer_guest.py run cycle`: 100 mount -o ro / walk -n / unmount cycles on ref-main, no `hammer: leaked`, no panic | i386 guest | PASS, volume unchanged | 2026-10-22 |
+| Regression on the HAMMER kernel: ext2 `readonly` (v2-based root; on the golden root ext2fs's own `DKIOCGPARTINFO` call fails with EINVAL, as it does without HAMMER), HFS `read`, UFS root boot | i386 guest | PASS | 2026-10-22 |
+| `sha256sum -c ORIGIN` and notice check (see "Provenance check") | host | as documented | 2026-10-22 |
+| ppc: kernel (376 hammer symbols) and hammer-1 package built; `make check CPPFLAGS=-DHAMMER_TEST_SWAP` passes on i386 | ppc build | PASS | 2026-10-22 |
 | ppc runtime | ppc | **open**, no ppc runtime available | |

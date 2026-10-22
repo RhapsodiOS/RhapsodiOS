@@ -300,7 +300,7 @@ def walk_differences(got, want, ignore_crc=True):
 CASES = ('refuse-badsig', 'refuse-v6', 'refuse-twovol', 'refuse-badcrc',
          'refuse-needs-recovery', 'refuse-rw', 'admit', 'namespace',
          'readdir-small', 'times', 'erofs', 'crafted-name', 'data', 'holes',
-         'mmap', 'dedup', 'crafted-data')
+         'mmap', 'dedup', 'crafted-data', 'cycle')
 ADMIT_MESSAGE = 'v7 single volume ok'
 QEMU_IMG = r'C:\Program Files\qemu\qemu-img.exe'
 
@@ -373,7 +373,7 @@ def run(case, outdir, volume, tools_dir):
                (tests/'run-native.sh').read_bytes()),
              N('/hammer_io', 'reg', 0o100755, 0, 0, 0,
                (Path(tools_dir)/'hammer_io').read_bytes())]
-    if case in ('namespace', 'data', 'dedup'):
+    if case in ('namespace', 'data', 'dedup', 'cycle'):
         nodes.append(N('/hammer_walk', 'reg', 0o100755, 0, 0, 0,
                        (Path(tools_dir)/'hammer_walk').read_bytes()))
     results = outdir/'results.img'
@@ -395,7 +395,7 @@ def run(case, outdir, volume, tools_dir):
         guest.line('mknod /dev/hd2a b 3 16'); time.sleep(3)
         guest.line('mount /dev/hd2a /mnt'); time.sleep(5)
         guest.line('cd /mnt; sh run-case.sh')
-        deadline = time.monotonic() + 1800
+        deadline = time.monotonic() + (14400 if case == 'cycle' else 1800)
         while time.monotonic() < deadline:
             time.sleep(15)
             if 'panic:' in serial.read_text(errors='replace'):

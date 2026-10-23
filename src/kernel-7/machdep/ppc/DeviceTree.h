@@ -214,6 +214,15 @@ int DTFindEntry(const char *propName, const char *propValue, DTEntry *entryH);
  */
 int DTFindChildEntry(const DTEntry parent, const char *propName, const char *propValue, DTEntry *entryH);
 
+/* DTIterateChildren:
+ *
+ *   Walks parent's direct children without an iterator, so it works before kalloc_init().
+ *   Start with *index = 0; each call returns the next child in *child and advances *index.
+ *   Returns:    kSuccess = *child is the next child
+ *               kIterationDone = no more children
+ */
+int DTIterateChildren(const DTEntry parent, unsigned long *index, DTEntry *child);
+
 
 #endif /* __DEVICE_TREE__ */
 

@@ -310,7 +310,7 @@ keylargo_davbus_barrier(void *context)
 static void
 keylargo_bind_davbus(DTEntry macIO)
 {
-  DTEntryIterator iterator;
+  unsigned long index;
   DTEntry child;
   PEKeyLargoProperty property;
   unsigned int controller;
@@ -340,11 +340,11 @@ keylargo_bind_davbus(DTEntry macIO)
   if (!PEDAVBusValidateMacIORanges(property.bytes, property.size,
     keylargo_audio_state.macIOBase, keylargo_audio_state.macIOSize))
     return;
-  if (DTCreateEntryIterator(macIO, &iterator) != kSuccess)
-    return;
+  /* Runs from configure_machine, before kalloc_init(): no DT iterator. */
+  index = 0;
   matches = 0;
   controller = 0;
-  while (DTIterateEntries(iterator, &child) == kSuccess) {
+  while (DTIterateChildren(macIO, &index, &child) == kSuccess) {
     if (!keylargo_string_property_is(child, "name", "davbus") &&
       !keylargo_string_property_is(child, "name", "awacs"))
       continue;
@@ -357,7 +357,6 @@ keylargo_bind_davbus(DTEntry macIO)
       break;
     }
   }
-  DTDisposeEntryIterator(iterator);
   if (matches != 1 || controller !=
     (unsigned int)powermac_io_info.audio_base_phys)
     return;

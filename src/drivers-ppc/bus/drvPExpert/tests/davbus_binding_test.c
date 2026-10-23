@@ -42,9 +42,7 @@ void read_processor_clock_tval(tvalspec_t *now) {memset(now,0,sizeof(*now));}
 
 typedef struct { const char *name;unsigned char bytes[24];int size; } Property;
 struct OpaqueDTEntry {Property properties[10];unsigned int count;};
-struct OpaqueDTEntryIterator {unsigned int child;};
 static struct OpaqueDTEntry bus,audio,secondAudio,i2c;
-static struct OpaqueDTEntryIterator iterator;
 static int duplicate,hasI2C;
 static void cell(unsigned char *p,unsigned int v)
 {p[0]=(unsigned char)(v>>24);p[1]=(unsigned char)(v>>16);p[2]=(unsigned char)(v>>8);p[3]=(unsigned char)v;}
@@ -65,18 +63,23 @@ int DTGetProperty(const DTEntry node,const char *name,void **bytes,int *size)
     }
     return kError;
 }
-int DTCreateEntryIterator(const DTEntry node,DTEntryIterator *it)
-{CHECK(node==&bus);iterator.child=0;*it=&iterator;return kSuccess;}
-int DTIterateEntries(DTEntryIterator it,DTEntry *child)
+int DTFindChildEntry(const DTEntry node,const char *name,const char *value,DTEntry *entry)
 {
-    if(it->child++==0) {*child=&audio;return kSuccess;}
-    if(it->child==2 && duplicate) {*child=&secondAudio;return kSuccess;}
-    if(hasI2C && it->child==(duplicate?3U:2U)) {
+    CHECK(node==&bus);
+    if(!hasI2C || strcmp(value,"i2c") ||
+        (strcmp(name,"name") && strcmp(name,"device_type"))) return kError;
+    ++i2cSearches;*entry=&i2c;return kSuccess;
+}
+int DTIterateChildren(const DTEntry node,unsigned long *index,DTEntry *child)
+{
+    CHECK(node==&bus);
+    if((*index)++==0) {*child=&audio;return kSuccess;}
+    if(*index==2 && duplicate) {*child=&secondAudio;return kSuccess;}
+    if(hasI2C && *index==(duplicate?3U:2U)) {
         ++i2cSearches;*child=&i2c;return kSuccess;
     }
     return kIterationDone;
 }
-int DTDisposeEntryIterator(DTEntryIterator it) {CHECK(it==&iterator);return kSuccess;}
 static void fixture(unsigned int device)
 {
     Property *p;

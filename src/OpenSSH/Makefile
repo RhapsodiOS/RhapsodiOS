@@ -9,15 +9,20 @@ Project               = openssh
 ProjectName           = OpenSSH
 UserType              = Administrator
 ToolType              = Services
-Extra_CC_Flags        = -Wno-precomp -DBROKEN_GETADDRINFO -Dgetaddrinfo=fake_getaddrinfo -Dcrc32=crcsum32 # crc32() symbol conflicts with zlib (!)
-Extra_LD_Flags        = -L.
-Extra_Configure_Flags = --sysconfdir="/etc" --disable-suid-ssh
-Extra_Install_Flags   = sysconfdir="$(DSTROOT)$(ETCDIR)" MANPAGES=""
+# Rhapsody, like Darwin, refuses setreuid/setregid and a setuid after seteuid
+# ("setreuid 75: Operation not permitted" in sshd's privsep child).
+Extra_CC_Flags        = -Wno-precomp -DSETEUID_BREAKS_SETUID -DBROKEN_SETREUID -DBROKEN_SETREGID
+Extra_LD_Flags        = -L. -Lopenbsd-compat
+# The system zlib is 1.1.3, which configure refuses unless told otherwise.
+Extra_Configure_Flags = --sysconfdir="/etc" --with-privsep-user=sshd --with-privsep-path=/var/empty --without-zlib-version-check
+Extra_Install_Flags   = sysconfdir="$(DSTROOT)$(ETCDIR)"
+GnuAfterInstall       = remove-manpages
 
 # It's a GNU Source project
 include $(MAKEFILEPATH)/CoreOS/ReleaseControl/GNUSource.make
 
-Install_Target = install
+# Plain "install" also makes host keys and runs sshd -t at package time.
+Install_Target = install-nokeys
 
-build::
-	$(_v) $(MAKE) -C $(BuildDirectory) $(Environment) manpages
+remove-manpages:
+	$(_v) $(RM) -r "$(DSTROOT)$(MANDIR)"

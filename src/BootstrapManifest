@@ -64,7 +64,7 @@ dir     kernload-1              all
 
 # Files and commands in the build-base package closure.
 dir     Commands/adv_cmds       all
-dir     files-5                 all
+dir     files-1                 all
 dir     Commands/basic_cmds     all
 dir     Commands/system_cmds    all
 dir     Commands/shell_cmds     all

@@ -478,15 +478,27 @@ intr_initialize(
 
     cli();
 
-    initialize_master(	MASTER_ICW1,
-    			MASTER_ICW2,
-			MASTER_ICW3,
-			MASTER_ICW4);
-
+    /*
+     * Slave first, masked at once, then the master.  ICW1 clears a PIC's
+     * mask, so a device still asserting a slave irq across a warm reboot
+     * (a level-triggered PCI NIC nobody has acknowledged) drives the
+     * cascade the moment the slave is initialized.  Done the other way
+     * round, the already-initialized master latches IRQ 2, and the sti
+     * below takes that interrupt before paging is on -- through IDT gates
+     * whose code segment is only valid once it is, so the kernel runs off
+     * into nonexistent memory.  With the slave masked first, the master's
+     * ICW1 resets its edge sense while the cascade line is already low.
+     */
     initialize_slave(	SLAVE_ICW1,
     			SLAVE_ICW2,
 			SLAVE_ICW3,
 			SLAVE_ICW4);
+    set_slave_mask((intr_ocw1_t) { 0xff });
+
+    initialize_master(	MASTER_ICW1,
+    			MASTER_ICW2,
+			MASTER_ICW3,
+			MASTER_ICW4);
 
     mask = INTR_MASK_ALL;
     for (i = 0, m = ipl_mask; i++ < INTR_NIPL; m++)

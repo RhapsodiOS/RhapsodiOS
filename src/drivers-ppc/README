@@ -13,6 +13,11 @@ bus
    hardware-tested
 
 ide
+ * drvPPCATA - packaged as drvppcata-1.apk; copy of
+   src/kernel-7/bsd/dev/ppc/drvPPCATA plus drvATADisk with ATADisk renamed to
+   IdeDisk (the shipped bundle's class name) and drvPPCATA's ata_extern.h and
+   IdeCntPublic.h used for both; not covered by tools/ppc_package_check.py;
+   not yet load-tested
  * drvPPCSwimFloppy - blacklisted WIP; needs compile and then test
 
 input

@@ -9,11 +9,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *      This product includes software developed by Markus Friedl.
- * 4. The name of the author may not be used to endorse or promote products
- *    derived from this software without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
@@ -27,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-/** 
+/**
  ** logintest.c:  simple test driver for platform-independent login recording
  **               and lastlog retrieval
  **/
@@ -36,6 +31,10 @@
 
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <sys/socket.h>
+
+#include <netinet/in.h>
+
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -48,8 +47,7 @@
 
 #include "loginrec.h"
 
-RCSID("$Id: logintest.c,v 1.1.1.1 2000/07/13 03:13:08 wsanchez Exp $");
-
+extern char *__progname;
 
 #define PAUSE_BEFORE_LOGOUT 3
 
@@ -74,10 +72,10 @@ dump_logininfo(struct logininfo *li, char *descname)
 	       "\t\t\tfamily\t%d\n\t\t}\n"
 	       "\t}\n"
 	       "}\n",
-	       descname, li->progname, li->type, 
+	       descname, li->progname, li->type,
 	       li->pid, li->uid, li->line,
-	       li->username, li->hostname, li->exit, 
-	       li->termination, li->tv_sec, li->tv_usec, 
+	       li->username, li->hostname, li->exit,
+	       li->termination, li->tv_sec, li->tv_usec,
 	       li->hostaddr.sa.sa_family);
 }
 
@@ -134,7 +132,7 @@ testAPI()
 
 	if (nologtest)
 		return 1;
-  
+
 	line_stripname(stripline, li1->line, sizeof(stripline));
 
 	printf("Performing an invalid login attempt (no type field)\n--\n");
@@ -159,11 +157,11 @@ testAPI()
 #endif
 	printf("--\n");
 	login_login(li1);
-  
+
 	snprintf(cmdstring, sizeof(cmdstring), "who | grep '%s '",
 		 stripline);
 	system(cmdstring);
-  
+
 	printf("--\nPausing for %d second(s)...\n", PAUSE_BEFORE_LOGOUT);
 	sleep(PAUSE_BEFORE_LOGOUT);
 
@@ -205,12 +203,12 @@ testAPI()
 #endif
 
 	printf("--\nThe output of 'last' shown next should have "
-	       "an entry for root \n  on %s for the time shown above:\n--\n", 
+	       "an entry for root \n  on %s for the time shown above:\n--\n",
 	       stripline);
 	snprintf(cmdstring, sizeof(cmdstring), "last | grep '%s ' | head -3",
 		 stripline);
 	system(cmdstring);
-	     
+
 	printf("--\nEnd of login test.\n");
 
 	login_free_entry(li1);
@@ -255,9 +253,9 @@ testOutput()
 /* show which options got compiled in */
 void
 showOptions(void)
-{  
+{
 	printf("**\n** Compile-time options\n**\n");
-  
+
 	printf("login recording methods selected:\n");
 #ifdef USE_LOGIN
 	printf("\tUSE_LOGIN\n");
@@ -266,7 +264,7 @@ showOptions(void)
 	printf("\tUSE_UTMP (UTMP_FILE=%s)\n", UTMP_FILE);
 #endif
 #ifdef USE_UTMPX
-	printf("\tUSE_UTMPX (UTMPX_FILE=%s)\n", UTMPX_FILE);
+	printf("\tUSE_UTMPX\n");
 #endif
 #ifdef USE_WTMP
 	printf("\tUSE_WTMP (WTMP_FILE=%s)\n", WTMP_FILE);
@@ -287,23 +285,24 @@ main(int argc, char *argv[])
 {
 	printf("Platform-independent login recording test driver\n");
 
+	__progname = ssh_get_progname(argv[0]);
 	if (argc == 2) {
 		if (strncmp(argv[1], "-i", 3) == 0)
 			compile_opts_only = 1;
 		else if (strncmp(argv[1], "-v", 3) == 0)
 			be_verbose=1;
 	}
-      
+
 	if (!compile_opts_only) {
 		if (be_verbose && !testOutput())
 			return 1;
-    
+
 		if (!testAPI())
 			return 1;
 	}
 
 	showOptions();
-  
+
 	return 0;
 } /* main() */
 

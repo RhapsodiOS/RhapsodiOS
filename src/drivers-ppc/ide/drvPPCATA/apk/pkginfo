@@ -1,0 +1,6 @@
+pkgname = drvppcata
+pkgver = 1
+pkgdesc = PowerPC ATA/ATAPI controller and disk driver
+maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
+license = APSL
+makedepends = build-base, drivertools, driverkit, machkit, kernload, libstreams

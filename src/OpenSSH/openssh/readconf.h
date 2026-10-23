@@ -1,3 +1,5 @@
+/* $OpenBSD: readconf.h,v 1.117 2016/07/15 00:24:30 djm Exp $ */
+
 /*
  * Author: Tatu Ylonen <ylo@cs.hut.fi>
  * Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
@@ -11,135 +13,204 @@
  * called by a name other than "ssh" or "Secure Shell".
  */
 
-/* RCSID("$OpenBSD: readconf.h,v 1.22 2000/10/11 20:14:39 markus Exp $"); */
-
 #ifndef READCONF_H
 #define READCONF_H
 
-/* Data structure for representing a forwarding request. */
-
-typedef struct {
-	u_short	  port;		/* Port to forward. */
-	char	 *host;		/* Host to connect. */
-	u_short	  host_port;	/* Port to connect on host. */
-}       Forward;
 /* Data structure for representing option data. */
+
+#define MAX_SEND_ENV		256
+#define SSH_MAX_HOSTS_FILES	32
+#define MAX_CANON_DOMAINS	32
+#define PATH_MAX_SUN		(sizeof((struct sockaddr_un *)0)->sun_path)
+
+struct allowed_cname {
+	char *source_list;
+	char *target_list;
+};
 
 typedef struct {
 	int     forward_agent;	/* Forward authentication agent. */
 	int     forward_x11;	/* Forward X11 display. */
+	int     forward_x11_timeout;	/* Expiration for Cookies */
+	int     forward_x11_trusted;	/* Trust Forward X11 display. */
+	int     exit_on_forward_failure;	/* Exit if bind(2) fails for -L/-R */
 	char   *xauth_location;	/* Location for xauth program */
-	int     gateway_ports;	/* Allow remote connects to forwarded ports. */
+	struct ForwardOptions fwd_opts;	/* forwarding options */
 	int     use_privileged_port;	/* Don't use privileged port if false. */
-	int     rhosts_authentication;	/* Try rhosts authentication. */
 	int     rhosts_rsa_authentication;	/* Try rhosts with RSA
 						 * authentication. */
 	int     rsa_authentication;	/* Try RSA authentication. */
-	int     dsa_authentication;	/* Try DSA authentication. */
-	int     skey_authentication;	/* Try S/Key or TIS authentication. */
-#ifdef KRB4
-	int     kerberos_authentication;	/* Try Kerberos
-						 * authentication. */
-#endif
-#ifdef AFS
-	int     kerberos_tgt_passing;	/* Try Kerberos tgt passing. */
-	int     afs_token_passing;	/* Try AFS token passing. */
-#endif
+	int     pubkey_authentication;	/* Try ssh2 pubkey authentication. */
+	int     hostbased_authentication;	/* ssh2's rhosts_rsa */
+	int     challenge_response_authentication;
+					/* Try S/Key or TIS, authentication. */
+	int     gss_authentication;	/* Try GSS authentication */
+	int     gss_deleg_creds;	/* Delegate GSS credentials */
 	int     password_authentication;	/* Try password
 						 * authentication. */
 	int     kbd_interactive_authentication; /* Try keyboard-interactive auth. */
 	char	*kbd_interactive_devices; /* Keyboard-interactive auth devices. */
-	int     fallback_to_rsh;/* Use rsh if cannot connect with ssh. */
-	int     use_rsh;	/* Always use rsh (don\'t try ssh). */
 	int     batch_mode;	/* Batch mode: do not ask for passwords. */
 	int     check_host_ip;	/* Also keep track of keys for IP address */
 	int     strict_host_key_checking;	/* Strict host key checking. */
 	int     compression;	/* Compress packets in both directions. */
 	int     compression_level;	/* Compression level 1 (fast) to 9
 					 * (best). */
-	int     keepalives;	/* Set SO_KEEPALIVE. */
+	int     tcp_keep_alive;	/* Set SO_KEEPALIVE. */
+	int	ip_qos_interactive;	/* IP ToS/DSCP/class for interactive */
+	int	ip_qos_bulk;		/* IP ToS/DSCP/class for bulk traffic */
 	LogLevel log_level;	/* Level for logging. */
 
 	int     port;		/* Port to connect. */
+	int     address_family;
 	int     connection_attempts;	/* Max attempts (seconds) before
 					 * giving up */
+	int     connection_timeout;	/* Max time (seconds) before
+					 * aborting connection attempt */
 	int     number_of_password_prompts;	/* Max number of password
 						 * prompts. */
 	int     cipher;		/* Cipher to use. */
 	char   *ciphers;	/* SSH2 ciphers in order of preference. */
+	char   *macs;		/* SSH2 macs in order of preference. */
+	char   *hostkeyalgorithms;	/* SSH2 server key types in order of preference. */
+	char   *kex_algorithms;	/* SSH2 kex methods in order of preference. */
 	int	protocol;	/* Protocol in order of preference. */
 	char   *hostname;	/* Real host to connect. */
+	char   *host_key_alias;	/* hostname alias for .ssh/known_hosts */
 	char   *proxy_command;	/* Proxy command for connecting the host. */
 	char   *user;		/* User to log in as. */
 	int     escape_char;	/* Escape character; -2 = none */
 
-	char   *system_hostfile;/* Path for /etc/ssh_known_hosts. */
-	char   *user_hostfile;	/* Path for $HOME/.ssh/known_hosts. */
-	char   *system_hostfile2;
-	char   *user_hostfile2;
+	u_int	num_system_hostfiles;	/* Paths for /etc/ssh/ssh_known_hosts */
+	char   *system_hostfiles[SSH_MAX_HOSTS_FILES];
+	u_int	num_user_hostfiles;	/* Path for $HOME/.ssh/known_hosts */
+	char   *user_hostfiles[SSH_MAX_HOSTS_FILES];
+	char   *preferred_authentications;
+	char   *bind_address;	/* local socket address for connection to sshd */
+	char   *pkcs11_provider; /* PKCS#11 provider */
+	int	verify_host_key_dns;	/* Verify host key using DNS */
 
-	int     num_identity_files;	/* Number of files for RSA identities. */
-	int     num_identity_files2;	/* DSA identities. */
+	int     num_identity_files;	/* Number of files for RSA/DSA identities. */
 	char   *identity_files[SSH_MAX_IDENTITY_FILES];
-	char   *identity_files2[SSH_MAX_IDENTITY_FILES];
+	int    identity_file_userprovided[SSH_MAX_IDENTITY_FILES];
+	struct sshkey *identity_keys[SSH_MAX_IDENTITY_FILES];
+
+	int	num_certificate_files; /* Number of extra certificates for ssh. */
+	char	*certificate_files[SSH_MAX_CERTIFICATE_FILES];
+	int	certificate_file_userprovided[SSH_MAX_CERTIFICATE_FILES];
+	struct sshkey *certificates[SSH_MAX_CERTIFICATE_FILES];
+
+	int	add_keys_to_agent;
+	char   *identity_agent;		/* Optional path to ssh-agent socket */
 
 	/* Local TCP/IP forward requests. */
 	int     num_local_forwards;
-	Forward local_forwards[SSH_MAX_FORWARDS_PER_DIRECTION];
+	struct Forward *local_forwards;
 
 	/* Remote TCP/IP forward requests. */
 	int     num_remote_forwards;
-	Forward remote_forwards[SSH_MAX_FORWARDS_PER_DIRECTION];
+	struct Forward *remote_forwards;
+	int	clear_forwardings;
+
+	/* stdio forwarding (-W) host and port */
+	char   *stdio_forward_host;
+	int	stdio_forward_port;
+
+	int	enable_ssh_keysign;
+	int64_t rekey_limit;
+	int	rekey_interval;
+	int	no_host_authentication_for_localhost;
+	int	identities_only;
+	int	server_alive_interval;
+	int	server_alive_count_max;
+
+	int     num_send_env;
+	char   *send_env[MAX_SEND_ENV];
+
+	char	*control_path;
+	int	control_master;
+	int     control_persist; /* ControlPersist flag */
+	int     control_persist_timeout; /* ControlPersist timeout (seconds) */
+
+	int	hash_known_hosts;
+
+	int	tun_open;	/* tun(4) */
+	int     tun_local;	/* force tun device (optional) */
+	int     tun_remote;	/* force tun device (optional) */
+
+	char	*local_command;
+	int	permit_local_command;
+	int	visual_host_key;
+
+	int	request_tty;
+
+	int	proxy_use_fdpass;
+
+	int	num_canonical_domains;
+	char	*canonical_domains[MAX_CANON_DOMAINS];
+	int	canonicalize_hostname;
+	int	canonicalize_max_dots;
+	int	canonicalize_fallback_local;
+	int	num_permitted_cnames;
+	struct allowed_cname permitted_cnames[MAX_CANON_DOMAINS];
+
+	char	*revoked_host_keys;
+
+	int	 fingerprint_hash;
+
+	int	 update_hostkeys; /* one of SSH_UPDATE_HOSTKEYS_* */
+
+	char   *hostbased_key_types;
+	char   *pubkey_key_types;
+
+	char   *jump_user;
+	char   *jump_host;
+	int	jump_port;
+	char   *jump_extra;
+
+	char	*ignored_unknown; /* Pattern list of unknown tokens to ignore */
 }       Options;
 
+#define SSH_CANONICALISE_NO	0
+#define SSH_CANONICALISE_YES	1
+#define SSH_CANONICALISE_ALWAYS	2
 
-/*
- * Initializes options to special values that indicate that they have not yet
- * been set.  Read_config_file will only set options with this value. Options
- * are processed in the following order: command line, user config file,
- * system config file.  Last, fill_default_options is called.
- */
-void    initialize_options(Options * options);
+#define SSHCTL_MASTER_NO	0
+#define SSHCTL_MASTER_YES	1
+#define SSHCTL_MASTER_AUTO	2
+#define SSHCTL_MASTER_ASK	3
+#define SSHCTL_MASTER_AUTO_ASK	4
 
-/*
- * Called after processing other sources of option data, this fills those
- * options for which no value has been specified with their default values.
- */
-void    fill_default_options(Options * options);
+#define REQUEST_TTY_AUTO	0
+#define REQUEST_TTY_NO		1
+#define REQUEST_TTY_YES		2
+#define REQUEST_TTY_FORCE	3
 
-/*
- * Processes a single option line as used in the configuration files. This
- * only sets those values that have not already been set. Returns 0 for legal
- * options
- */
-int
-process_config_line(Options * options, const char *host,
-    char *line, const char *filename, int linenum,
-    int *activep);
+#define SSHCONF_CHECKPERM	1  /* check permissions on config file */
+#define SSHCONF_USERCONF	2  /* user provided config file not system */
+#define SSHCONF_POSTCANON	4  /* After hostname canonicalisation */
+#define SSHCONF_NEVERMATCH	8  /* Match/Host never matches; internal only */
 
-/*
- * Reads the config file and modifies the options accordingly.  Options
- * should already be initialized before this call.  This never returns if
- * there is an error.  If the file does not exist, this returns immediately.
- */
-void
-read_config_file(const char *filename, const char *host,
-    Options * options);
+#define SSH_UPDATE_HOSTKEYS_NO	0
+#define SSH_UPDATE_HOSTKEYS_YES	1
+#define SSH_UPDATE_HOSTKEYS_ASK	2
 
-/*
- * Adds a local TCP/IP port forward to options.  Never returns if there is an
- * error.
- */
-void
-add_local_forward(Options * options, u_short port, const char *host,
-    u_short host_port);
+void     initialize_options(Options *);
+void     fill_default_options(Options *);
+void	 fill_default_options_for_canonicalization(Options *);
+int	 process_config_line(Options *, struct passwd *, const char *,
+    const char *, char *, const char *, int, int *, int);
+int	 read_config_file(const char *, struct passwd *, const char *,
+    const char *, Options *, int);
+int	 parse_forward(struct Forward *, const char *, int, int);
+int	 parse_jump(const char *, Options *, int);
+int	 default_ssh_port(void);
+int	 option_clear_or_none(const char *);
+void	 dump_client_config(Options *o, const char *host);
 
-/*
- * Adds a remote TCP/IP port forward to options.  Never returns if there is
- * an error.
- */
-void
-add_remote_forward(Options * options, u_short port, const char *host,
-    u_short host_port);
+void	 add_local_forward(Options *, const struct Forward *);
+void	 add_remote_forward(Options *, const struct Forward *);
+void	 add_identity_file(Options *, const char *, const char *, int);
+void	 add_certificate_file(Options *, const char *, int);
 
 #endif				/* READCONF_H */

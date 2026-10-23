@@ -1,51 +1,52 @@
-/*
- * Author: Tatu Ylonen <ylo@cs.hut.fi>
- * Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
- *                    All rights reserved
- * Functions to interface with the SSH_AUTHENTICATION_FD socket.
- *
- * As far as I am concerned, the code I have written for this software
- * can be used freely for any purpose.  Any derived versions of this
- * software must be clearly marked as such, and if the derived work is
- * incompatible with the protocol description in the RFC file, it must be
- * called by a name other than "ssh" or "Secure Shell".
- */
+/* $OpenBSD: authfile.h,v 1.21 2015/01/08 10:14:08 djm Exp $ */
 
-/* $OpenBSD: authfile.h,v 1.5 2000/10/16 09:38:44 djm Exp $ */
+/*
+ * Copyright (c) 2000, 2013 Markus Friedl.  All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+ * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+ * IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+ * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
 
 #ifndef AUTHFILE_H
 #define AUTHFILE_H
 
+struct sshbuf;
+struct sshkey;
 
-/*
- * Saves the authentication (private) key in a file, encrypting it with
- * passphrase.
- * For RSA keys: The identification of the file (lowest 64 bits of n)
- * will precede the key to provide identification of the key without
- * needing a passphrase.
- */
-int
-save_private_key(const char *filename, const char *passphrase,
-    Key * private_key, const char *comment);
+/* XXX document these */
+/* XXX some of these could probably be merged/retired */
 
-/*
- * Loads the public part of the key file (public key and comment). Returns 0
- * if an error occurred; zero if the public key was successfully read.  The
- * comment of the key is returned in comment_return if it is non-NULL; the
- * caller must free the value with xfree.
- */
-int load_public_key(const char *filename, Key * pub, char **comment_return);
-int try_load_public_key(const char *filename, Key * pub, char **comment_return);
-
-/*
- * Loads the private key from the file.  Returns 0 if an error is encountered
- * (file does not exist or is not readable, or passphrase is bad). This
- * initializes the private key.  The comment of the key is returned in
- * comment_return if it is non-NULL; the caller must free the value with
- * xfree.
- */
-int
-load_private_key(const char *filename, const char *passphrase,
-    Key * private_key, char **comment_return);
+int sshkey_save_private(struct sshkey *, const char *,
+    const char *, const char *, int, const char *, int);
+int sshkey_load_file(int, struct sshbuf *);
+int sshkey_load_cert(const char *, struct sshkey **);
+int sshkey_load_public(const char *, struct sshkey **, char **);
+int sshkey_load_private(const char *, const char *, struct sshkey **, char **);
+int sshkey_load_private_cert(int, const char *, const char *,
+    struct sshkey **, int *);
+int sshkey_load_private_type(int, const char *, const char *,
+    struct sshkey **, char **, int *);
+int sshkey_load_private_type_fd(int fd, int type, const char *passphrase,
+    struct sshkey **keyp, char **commentp);
+int sshkey_perm_ok(int, const char *);
+int sshkey_in_file(struct sshkey *, const char *, int, int);
+int sshkey_check_revoked(struct sshkey *key, const char *revoked_keys_file);
 
 #endif

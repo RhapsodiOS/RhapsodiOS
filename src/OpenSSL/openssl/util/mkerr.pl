@@ -7,7 +7,10 @@ my $static = 1;
 my $recurse = 0;
 my $reindex = 0;
 my $dowrite = 0;
+my $staticloader = "";
 
+my $pack_errcode;
+my $load_errcode;
 
 while (@ARGV) {
 	my $arg = $ARGV[0];
@@ -29,6 +32,9 @@ while (@ARGV) {
 	} elsif($arg eq "-nostatic") {
 		$static = 0;
 		shift @ARGV;
+	} elsif($arg eq "-staticloader") {
+		$staticloader = "static ";
+		shift @ARGV;
 	} elsif($arg eq "-write") {
 		$dowrite = 1;
 		shift @ARGV;
@@ -38,7 +44,8 @@ while (@ARGV) {
 }
 
 if($recurse) {
-	@source = (<crypto/*.c>, <crypto/*/*.c>, ,<rsaref/*.c>, <ssl/*.c>);
+	@source = ( <crypto/*.c>, <crypto/*/*.c>, <ssl/*.c>,
+			<fips/*.c>, <fips/*/*.c>);
 } else {
 	@source = @ARGV;
 }
@@ -53,11 +60,14 @@ while(<IN>)
 {
 	if(/^L\s+(\S+)\s+(\S+)\s+(\S+)/) {
 		$hinc{$1} = $2;
+		$libinc{$2} = $1;
 		$cskip{$3} = $1;
 		if($3 ne "NONE") {
 			$csrc{$1} = $3;
 			$fmax{$1} = 99;
 			$rmax{$1} = 99;
+			$fassigned{$1} = ":";
+			$rassigned{$1} = ":";
 			$fnew{$1} = 0;
 			$rnew{$1} = 0;
 		}
@@ -74,93 +84,154 @@ close IN;
 # Scan each header file in turn and make a list of error codes
 # and function names
 
-while (($lib, $hdr) = each %hinc)
+while (($hdr, $lib) = each %libinc)
 {
 	next if($hdr eq "NONE");
 	print STDERR "Scanning header file $hdr\n" if $debug; 
-	open(IN, "<$hdr") || die "Can't open Header file $hdr\n";
-	my $line = "", $def= "";
-	while(<IN>) {
-	    last if(/BEGIN\s+ERROR\s+CODES/);
-	    if ($line ne '') {
-		$_ = $line . $_;
-		$line = '';
-	    }
+	my $line = "", $def= "", $linenr = 0, $gotfile = 0;
+	if (open(IN, "<$hdr")) {
+	    $gotfile = 1;
+	    while(<IN>) {
+		$linenr++;
+		print STDERR "line: $linenr\r" if $debug;
 
-	    if (/\\$/) {
-		$line = $_;
-		next;
-	    }
+		last if(/BEGIN\s+ERROR\s+CODES/);
+		if ($line ne '') {
+		    $_ = $line . $_;
+		    $line = '';
+		}
 
-	    $cpp = 1 if /^#.*ifdef.*cplusplus/;  # skip "C" declaration
-	    if ($cpp) {
-		$cpp = 0 if /^#.*endif/;
-		next;
-	    }
+		if (/\\$/) {
+		    $line = $_;
+		    next;
+		}
 
-	    next if (/^#/);                      # skip preprocessor directives
+		if(/\/\*/) {
+		    if (not /\*\//) {		# multiline comment...
+			$line = $_;		# ... just accumulate
+			next; 
+		    } else {
+			s/\/\*.*?\*\///gs;	# wipe it
+		    }
+		}
 
-	    s/\/\*.*?\*\///gs;                   # ignore comments
-	    s/{[^{}]*}//gs;                      # ignore {} blocks
+		if ($cpp) {
+		    $cpp++ if /^#\s*if/;
+		    $cpp-- if /^#\s*endif/;
+		    next;
+		}
+		$cpp = 1 if /^#.*ifdef.*cplusplus/;  # skip "C" declaration
 
-	    if (/{|\/\*/) { # Add a } so editor works...
-		$line = $_;
-	    } else {
-		$def .= $_;
+		next if (/^\#/);                      # skip preprocessor directives
+
+		s/{[^{}]*}//gs;                      # ignore {} blocks
+
+		if (/\{|\/\*/) { # Add a } so editor works...
+		    $line = $_;
+		} else {
+		    $def .= $_;
+		}
 	    }
 	}
 
+	print STDERR "                                  \r" if $debug;
+        $defnr = 0;
+	# Delete any DECLARE_ macros
+	$def =~ s/DECLARE_\w+\([\w,\s]+\)//gs;
 	foreach (split /;/, $def) {
+	    $defnr++;
+	    print STDERR "def: $defnr\r" if $debug;
+
+	    # The goal is to collect function names from function declarations.
+
 	    s/^[\n\s]*//g;
 	    s/[\n\s]*$//g;
-	    next if(/typedef\W/);
-	    if (/\(\*(\w*)\([^\)]+/) {
-		my $name = $1;
+
+	    # Skip over recognized non-function declarations
+	    next if(/typedef\W/ or /DECLARE_STACK_OF/ or /TYPEDEF_.*_OF/);
+
+	    # Remove STACK_OF(foo)
+	    s/STACK_OF\(\w+\)/void/;
+
+	    # Reduce argument lists to empty ()
+	    # fold round brackets recursively: (t(*v)(t),t) -> (t{}{},t) -> {}
+	    while(/\(.*\)/s) {
+		s/\([^\(\)]+\)/\{\}/gs;
+		s/\(\s*\*\s*(\w+)\s*\{\}\s*\)/$1/gs;	#(*f{}) -> f
+	    }
+	    # pretend as we didn't use curly braces: {} -> ()
+	    s/\{\}/\(\)/gs;
+
+	    if (/(\w+)\s*\(\).*/s) {	# first token prior [first] () is
+		my $name = $1;		# a function name!
 		$name =~ tr/[a-z]/[A-Z]/;
 		$ftrans{$name} = $1;
-	    } elsif (/\w+\W+(\w+)\W*\(\s*\)$/s){
-		# K&R C
-		next ;
-	    } elsif (/\w+\W+\w+\W*\(.*\)$/s) {
-		while (not /\(\)$/s) {
-		    s/[^\(\)]*\)$/\)/s;
-		    s/\([^\(\)]*\)\)$/\)/s;
-		}
-		s/\(void\)//;
-		/(\w+)\W*\(\)/s;
-		my $name = $1;
-		$name =~ tr/[a-z]/[A-Z]/;
-		$ftrans{$name} = $1;
-	    } elsif (/\(/ and not (/=/ or /DECLARE_STACK/)) {
+	    } elsif (/[\(\)]/ and not (/=/)) {
 		print STDERR "Header $hdr: cannot parse: $_;\n";
 	    }
 	}
+
+	print STDERR "                                  \r" if $debug;
 
 	next if $reindex;
 
 	# Scan function and reason codes and store them: keep a note of the
 	# maximum code used.
 
-	while(<IN>) {
-		if(/^#define\s+(\S+)\s+(\S+)/) {
+	if ($gotfile) {
+	  while(<IN>) {
+		if(/^\#\s*define\s+(\S+)\s+(\S+)/) {
 			$name = $1;
 			$code = $2;
+			next if $name =~ /^${lib}err/;
 			unless($name =~ /^${lib}_([RF])_(\w+)$/) {
 				print STDERR "Invalid error code $name\n";
 				next;
 			}
 			if($1 eq "R") {
 				$rcodes{$name} = $code;
+				if ($rassigned{$lib} =~ /:$code:/) {
+					print STDERR "!! ERROR: $lib reason code $code assigned twice\n";
+				}
+				$rassigned{$lib} .= "$code:";
 				if(!(exists $rextra{$name}) &&
 					 ($code > $rmax{$lib}) ) {
 					$rmax{$lib} = $code;
 				}
 			} else {
+				if ($fassigned{$lib} =~ /:$code:/) {
+					print STDERR "!! ERROR: $lib function code $code assigned twice\n";
+				}
+				$fassigned{$lib} .= "$code:";
 				if($code > $fmax{$lib}) {
 					$fmax{$lib} = $code;
 				}
 				$fcodes{$name} = $code;
 			}
+		}
+	  }
+	}
+
+	if ($debug) {
+		if (defined($fmax{$lib})) {
+			print STDERR "Max function code fmax" . "{" . "$lib" . "} = $fmax{$lib}\n";
+			$fassigned{$lib} =~ m/^:(.*):$/;
+			@fassigned = sort {$a <=> $b} split(":", $1);
+			print STDERR "  @fassigned\n";
+		}
+		if (defined($rmax{$lib})) {
+			print STDERR "Max reason code rmax" . "{" . "$lib" . "} = $rmax{$lib}\n";
+			$rassigned{$lib} =~ m/^:(.*):$/;
+			@rassigned = sort {$a <=> $b} split(":", $1);
+			print STDERR "  @rassigned\n";
+		}
+	}
+
+	if ($lib eq "SSL") {
+		if ($rmax{$lib} >= 1000) {
+			print STDERR "!! ERROR: SSL error codes 1000+ are reserved for alerts.\n";
+			print STDERR "!!        Any new alerts must be added to $config.\n";
+			print STDERR "\n";
 		}
 	}
 	close IN;
@@ -181,6 +252,7 @@ while (($lib, $hdr) = each %hinc)
 foreach $file (@source) {
 	# Don't parse the error source file.
 	next if exists $cskip{$file};
+	print STDERR "File loaded: ".$file."\r" if $debug;
 	open(IN, "<$file") || die "Can't open source file $file\n";
 	while(<IN>) {
 		if(/(([A-Z0-9]+)_F_([A-Z0-9_]+))/) {
@@ -204,6 +276,7 @@ foreach $file (@source) {
 	}
 	close IN;
 }
+print STDERR "                                  \n" if $debug;
 
 # Now process each library in turn.
 
@@ -230,47 +303,140 @@ foreach $lib (keys %csrc)
 
 	# Rewrite the header file
 
-	open(IN, "<$hfile") || die "Can't Open Header File $hfile\n";
-
-	# Copy across the old file
-	while(<IN>) {
+	if (open(IN, "<$hfile")) {
+	    # Copy across the old file
+	    while(<IN>) {
 		push @out, $_;
 		last if (/BEGIN ERROR CODES/);
+	    }
+	    close IN;
+	} else {
+	    push @out,
+"/* ====================================================================\n",
+" * Copyright (c) 2001-2011 The OpenSSL Project.  All rights reserved.\n",
+" *\n",
+" * Redistribution and use in source and binary forms, with or without\n",
+" * modification, are permitted provided that the following conditions\n",
+" * are met:\n",
+" *\n",
+" * 1. Redistributions of source code must retain the above copyright\n",
+" *    notice, this list of conditions and the following disclaimer. \n",
+" *\n",
+" * 2. Redistributions in binary form must reproduce the above copyright\n",
+" *    notice, this list of conditions and the following disclaimer in\n",
+" *    the documentation and/or other materials provided with the\n",
+" *    distribution.\n",
+" *\n",
+" * 3. All advertising materials mentioning features or use of this\n",
+" *    software must display the following acknowledgment:\n",
+" *    \"This product includes software developed by the OpenSSL Project\n",
+" *    for use in the OpenSSL Toolkit. (http://www.openssl.org/)\"\n",
+" *\n",
+" * 4. The names \"OpenSSL Toolkit\" and \"OpenSSL Project\" must not be used to\n",
+" *    endorse or promote products derived from this software without\n",
+" *    prior written permission. For written permission, please contact\n",
+" *    openssl-core\@openssl.org.\n",
+" *\n",
+" * 5. Products derived from this software may not be called \"OpenSSL\"\n",
+" *    nor may \"OpenSSL\" appear in their names without prior written\n",
+" *    permission of the OpenSSL Project.\n",
+" *\n",
+" * 6. Redistributions of any form whatsoever must retain the following\n",
+" *    acknowledgment:\n",
+" *    \"This product includes software developed by the OpenSSL Project\n",
+" *    for use in the OpenSSL Toolkit (http://www.openssl.org/)\"\n",
+" *\n",
+" * THIS SOFTWARE IS PROVIDED BY THE OpenSSL PROJECT ``AS IS'' AND ANY\n",
+" * EXPRESSED OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE\n",
+" * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR\n",
+" * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE OpenSSL PROJECT OR\n",
+" * ITS CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,\n",
+" * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT\n",
+" * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;\n",
+" * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)\n",
+" * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,\n",
+" * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)\n",
+" * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED\n",
+" * OF THE POSSIBILITY OF SUCH DAMAGE.\n",
+" * ====================================================================\n",
+" *\n",
+" * This product includes cryptographic software written by Eric Young\n",
+" * (eay\@cryptsoft.com).  This product includes software written by Tim\n",
+" * Hudson (tjh\@cryptsoft.com).\n",
+" *\n",
+" */\n",
+"\n",
+"#ifndef HEADER_${lib}_ERR_H\n",
+"#define HEADER_${lib}_ERR_H\n",
+"\n",
+"/* BEGIN ERROR CODES */\n";
 	}
-	close IN;
-
 	open (OUT, ">$hfile") || die "Can't Open File $hfile for writing\n";
 
 	print OUT @out;
 	undef @out;
 	print OUT <<"EOF";
-/* The following lines are auto generated by the script mkerr.pl. Any changes
+/*
+ * The following lines are auto generated by the script mkerr.pl. Any changes
  * made after this point may be overwritten when the script is next run.
  */
+EOF
+	if($static) {
+		print OUT <<"EOF";
+${staticloader}void ERR_load_${lib}_strings(void);
 
+EOF
+	} else {
+		print OUT <<"EOF";
+${staticloader}void ERR_load_${lib}_strings(void);
+${staticloader}void ERR_unload_${lib}_strings(void);
+${staticloader}void ERR_${lib}_error(int function, int reason, char *file, int line);
+# define ${lib}err(f,r) ERR_${lib}_error((f),(r),__FILE__,__LINE__)
+
+EOF
+	}
+	print OUT <<"EOF";
 /* Error codes for the $lib functions. */
 
 /* Function codes. */
 EOF
 
 	foreach $i (@function) {
-		$z=6-int(length($i)/8);
+		$z=48 - length($i);
 		if($fcodes{$i} eq "X") {
-			$fcodes{$i} = ++$fmax{$lib};
+			$fassigned{$lib} =~ m/^:([^:]*):/;
+			$findcode = $1;
+			if (!defined($findcode)) {
+				$findcode = $fmax{$lib};
+			}
+			while ($fassigned{$lib} =~ m/:$findcode:/) {
+				$findcode++;
+			}
+			$fcodes{$i} = $findcode;
+			$fassigned{$lib} .= "$findcode:";
 			print STDERR "New Function code $i\n" if $debug;
 		}
-		printf OUT "#define $i%s $fcodes{$i}\n","\t" x $z;
+		printf OUT "# define $i%s $fcodes{$i}\n"," " x $z;
 	}
 
 	print OUT "\n/* Reason codes. */\n";
 
 	foreach $i (@reasons) {
-		$z=6-int(length($i)/8);
+		$z=48 - length($i);
 		if($rcodes{$i} eq "X") {
-			$rcodes{$i} = ++$rmax{$lib};
+			$rassigned{$lib} =~ m/^:([^:]*):/;
+			$findcode = $1;
+			if (!defined($findcode)) {
+				$findcode = $rmax{$lib};
+			}
+			while ($rassigned{$lib} =~ m/:$findcode:/) {
+				$findcode++;
+			}
+			$rcodes{$i} = $findcode;
+			$rassigned{$lib} .= "$findcode:";
 			print STDERR "New Reason code   $i\n" if $debug;
 		}
-		printf OUT "#define $i%s $rcodes{$i}\n","\t" x $z;
+		printf OUT "# define $i%s $rcodes{$i}\n"," " x $z;
 	}
 	print OUT <<"EOF";
 
@@ -278,7 +444,6 @@ EOF
 }
 #endif
 #endif
-
 EOF
 	close OUT;
 
@@ -287,9 +452,17 @@ EOF
 	# First, read any existing reason string definitions:
 	my %err_reason_strings;
 	if (open(IN,"<$cfile")) {
+		my $line = "";
 		while (<IN>) {
-			if (/\b(${lib}_R_\w*)\b.*\"(.*)\"/) {
-				$err_reason_strings{$1} = $2;
+			chomp;
+			$_ = $line . $_;
+			$line = "";
+			if (/{ERR_REASON\(/) {
+				if (/\b(${lib}_R_\w*)\b.*\"(.*)\"/) {
+					$err_reason_strings{$1} = $2;
+				} else {
+					$line = $_;
+				}
 			}
 		}
 		close(IN);
@@ -303,20 +476,34 @@ EOF
 		$hincf = "\"$hfile\"";
 	}
 
+	# If static we know the error code at compile time so use it
+	# in error definitions.
+
+	if ($static)
+		{
+		$pack_errcode = "ERR_LIB_${lib}";
+		$load_errcode = "0";
+		}
+	else
+		{
+		$pack_errcode = "0";
+		$load_errcode = "ERR_LIB_${lib}";
+		}
+
 
 	open (OUT,">$cfile") || die "Can't open $cfile for writing";
 
 	print OUT <<"EOF";
 /* $cfile */
 /* ====================================================================
- * Copyright (c) 1999 The OpenSSL Project.  All rights reserved.
+ * Copyright (c) 1999-2011 The OpenSSL Project.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
  *
  * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer. 
+ *    notice, this list of conditions and the following disclaimer.
  *
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in
@@ -362,7 +549,8 @@ EOF
  *
  */
 
-/* NOTE: this file was auto generated by the mkerr.pl script: any changes
+/*
+ * NOTE: this file was auto generated by the mkerr.pl script: any changes
  * made to it will be overwritten when the script next updates this file,
  * only reason strings will be preserved.
  */
@@ -372,9 +560,12 @@ EOF
 #include $hincf
 
 /* BEGIN ERROR CODES */
-#ifndef NO_ERR
-static ERR_STRING_DATA ${lib}_str_functs[]=
-	{
+#ifndef OPENSSL_NO_ERR
+
+# define ERR_FUNC(func) ERR_PACK($pack_errcode,func,0)
+# define ERR_REASON(reason) ERR_PACK($pack_errcode,0,reason)
+
+static ERR_STRING_DATA ${lib}_str_functs[] = {
 EOF
 	# Add each function code: if a function name is found then use it.
 	foreach $i (@function) {
@@ -384,19 +575,23 @@ EOF
 		if(exists $ftrans{$fn}) {
 			$fn = $ftrans{$fn};
 		}
-		print OUT "{ERR_PACK(0,$i,0),\t\"$fn\"},\n";
+#		print OUT "{ERR_PACK($pack_errcode,$i,0),\t\"$fn\"},\n";
+		if(length($i) + length($fn) > 58) {
+			print OUT "    {ERR_FUNC($i),\n     \"$fn\"},\n";
+		} else {
+			print OUT "    {ERR_FUNC($i), \"$fn\"},\n";
+		}
 	}
 	print OUT <<"EOF";
-{0,NULL}
-	};
+    {0, NULL}
+};
 
-static ERR_STRING_DATA ${lib}_str_reasons[]=
-	{
+static ERR_STRING_DATA ${lib}_str_reasons[] = {
 EOF
 	# Add each reason code.
 	foreach $i (@reasons) {
 		my $rn;
-		my $nspc = 0;
+		my $rstr = "ERR_REASON($i)";
 		if (exists $err_reason_strings{$i}) {
 			$rn = $err_reason_strings{$i};
 		} else {
@@ -404,78 +599,87 @@ EOF
 			$rn = $1;
 			$rn =~ tr/_[A-Z]/ [a-z]/;
 		}
-		$nspc = 40 - length($i) unless length($i) > 40;
-		$nspc = " " x $nspc;
-		print OUT "{${i}${nspc},\"$rn\"},\n";
+		if(length($i) + length($rn) > 56) {
+			print OUT "    {${rstr},\n     \"$rn\"},\n";
+		} else {
+			print OUT "    {${rstr}, \"$rn\"},\n";
+		}
 	}
 if($static) {
 	print OUT <<"EOF";
-{0,NULL}
-	};
+    {0, NULL}
+};
 
 #endif
 
-void ERR_load_${lib}_strings(void)
-	{
-	static int init=1;
+${staticloader}void ERR_load_${lib}_strings(void)
+{
+#ifndef OPENSSL_NO_ERR
 
-	if (init)
-		{
-		init=0;
-#ifndef NO_ERR
-		ERR_load_strings(ERR_LIB_${lib},${lib}_str_functs);
-		ERR_load_strings(ERR_LIB_${lib},${lib}_str_reasons);
+    if (ERR_func_error_string(${lib}_str_functs[0].error) == NULL) {
+        ERR_load_strings($load_errcode, ${lib}_str_functs);
+        ERR_load_strings($load_errcode, ${lib}_str_reasons);
+    }
 #endif
-
-		}
-	}
+}
 EOF
 } else {
 	print OUT <<"EOF";
-{0,NULL}
-	};
+    {0, NULL}
+};
 
 #endif
 
 #ifdef ${lib}_LIB_NAME
-static ERR_STRING_DATA ${lib}_lib_name[]=
-        {
-{0	,${lib}_LIB_NAME},
-{0,NULL}
-	};
+static ERR_STRING_DATA ${lib}_lib_name[] = {
+    {0, ${lib}_LIB_NAME},
+    {0, NULL}
+};
 #endif
 
+static int ${lib}_lib_error_code = 0;
+static int ${lib}_error_init = 1;
 
-int ${lib}_lib_error_code=0;
+${staticloader}void ERR_load_${lib}_strings(void)
+{
+    if (${lib}_lib_error_code == 0)
+        ${lib}_lib_error_code = ERR_get_next_error_library();
 
-void ERR_load_${lib}_strings(void)
-	{
-	static int init=1;
-
-	if (${lib}_lib_error_code == 0)
-		${lib}_lib_error_code=ERR_get_next_error_library();
-
-	if (init)
-		{
-		init=0;
-#ifndef NO_ERR
-		ERR_load_strings(${lib}_lib_error_code,${lib}_str_functs);
-		ERR_load_strings(${lib}_lib_error_code,${lib}_str_reasons);
+    if (${lib}_error_init) {
+        ${lib}_error_init = 0;
+#ifndef OPENSSL_NO_ERR
+        ERR_load_strings(${lib}_lib_error_code, ${lib}_str_functs);
+        ERR_load_strings(${lib}_lib_error_code, ${lib}_str_reasons);
 #endif
 
 #ifdef ${lib}_LIB_NAME
-		${lib}_lib_name->error = ERR_PACK(${lib}_lib_error_code,0,0);
-		ERR_load_strings(0,${lib}_lib_name);
+        ${lib}_lib_name->error = ERR_PACK(${lib}_lib_error_code, 0, 0);
+        ERR_load_strings(0, ${lib}_lib_name);
 #endif
-		}
-	}
+    }
+}
 
-void ERR_${lib}_error(int function, int reason, char *file, int line)
-	{
-	if (${lib}_lib_error_code == 0)
-		${lib}_lib_error_code=ERR_get_next_error_library();
-	ERR_PUT_error(${lib}_lib_error_code,function,reason,file,line);
-	}
+${staticloader}void ERR_unload_${lib}_strings(void)
+{
+    if (${lib}_error_init == 0) {
+#ifndef OPENSSL_NO_ERR
+        ERR_unload_strings(${lib}_lib_error_code, ${lib}_str_functs);
+        ERR_unload_strings(${lib}_lib_error_code, ${lib}_str_reasons);
+#endif
+
+#ifdef ${lib}_LIB_NAME
+        ERR_unload_strings(0, ${lib}_lib_name);
+#endif
+        ${lib}_error_init = 1;
+    }
+}
+
+${staticloader}void ERR_${lib}_error(int function, int reason, char *file, int line)
+{
+    if (${lib}_lib_error_code == 0)
+        ${lib}_lib_error_code = ERR_get_next_error_library();
+    ERR_PUT_error(${lib}_lib_error_code, function, reason, file, line);
+}
 EOF
 
 }
@@ -484,7 +688,7 @@ EOF
 	undef %err_reason_strings;
 }
 
-if($debug && defined(%notrans)) {
+if($debug && %notrans) {
 	print STDERR "The following function codes were not translated:\n";
 	foreach(sort keys %notrans)
 	{
@@ -502,7 +706,7 @@ foreach (keys %rcodes) {
 	push (@runref, $_) unless exists $urcodes{$_};
 }
 
-if($debug && defined(@funref) ) {
+if($debug && @funref) {
 	print STDERR "The following function codes were not referenced:\n";
 	foreach(sort @funref)
 	{
@@ -510,7 +714,7 @@ if($debug && defined(@funref) ) {
 	}
 }
 
-if($debug && defined(@runref) ) {
+if($debug && @runref) {
 	print STDERR "The following reason codes were not referenced:\n";
 	foreach(sort @runref)
 	{

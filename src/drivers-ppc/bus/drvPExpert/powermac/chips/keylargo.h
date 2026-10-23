@@ -42,5 +42,6 @@ extern powermac_dbdma_channels_t keylargo_dbdma_channels;
 extern boolean_t PEKeyLargoGetMacIOInfo(unsigned int *base,
     unsigned int *size);
 extern kern_return_t PEKeyLargoInitialize(void);
+extern kern_return_t PEHeathrowDAVBusInitialize(void);
 
 #endif /* _INTERRUPT_KEYLARGO_H_ */

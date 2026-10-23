@@ -573,13 +573,18 @@ found_aliased:
 	zone = HAMMER_ZONE_DECODE(buf_offset);
 	if (hammer_is_index_record(zone)) {
 		zone2_offset = hammer_blockmap_lookup(hmp, buf_offset, errorp);
-	} else if (zone == HAMMER_ZONE_UNDO_INDEX) {
-		zone2_offset = hammer_undo_lookup(hmp, buf_offset, errorp);
-	} else {
-		/* Must be zone-2 (not 1 or 4 or 15) */
-		KKASSERT(zone == HAMMER_ZONE_RAW_BUFFER_INDEX);
+	} else if (zone == HAMMER_ZONE_RAW_BUFFER_INDEX) {
 		zone2_offset = buf_offset;
 		*errorp = 0;
+	} else {
+		/*
+		 * Zone 1, 4 or 15, or the UNDO zone (read only by recovery,
+		 * Phase 2): a crafted or damaged offset, not a panic.
+		 */
+		hkprintf("buffer %016jx: not a readable zone\n",
+			 (intmax_t)buf_offset);
+		*errorp = EIO;
+		return(NULL);
 	}
 	if (*errorp)
 		return(NULL);
@@ -594,7 +599,13 @@ found_aliased:
 	if (volume == NULL)
 		return(NULL);
 
-	KKASSERT(zone2_offset < volume->maxbuf_off);
+	if (zone2_offset >= volume->maxbuf_off) {
+		hkprintf("buffer %016jx: past the end of the volume\n",
+			 (intmax_t)buf_offset);
+		hammer_rel_volume(volume, 0);
+		*errorp = EIO;
+		return(NULL);
+	}
 
 	/*
 	 * Allocate a new buffer structure.  We will check for races later.
@@ -1100,7 +1111,17 @@ hammer_get_node(hammer_transaction_t trans, hammer_off_t node_offset,
 	hammer_node_t node;
 	int doload;
 
-	KKASSERT(hammer_is_zone_btree(node_offset));
+	/*
+	 * A child offset comes from its parent on disk: it must be a
+	 * B-Tree zone address of a whole node, or the volume is damaged.
+	 */
+	if (!hammer_is_zone_btree(node_offset) ||
+	    (node_offset & (sizeof(struct hammer_node_ondisk) - 1))) {
+		hkprintf("B-Tree node offset %016jx is invalid\n",
+			 (intmax_t)node_offset);
+		*errorp = EIO;
+		return(NULL);
+	}
 
 	/*
 	 * Locate the structure, allocating one if necessary.
@@ -1211,6 +1232,21 @@ hammer_load_node(hammer_transaction_t trans, hammer_node_t node, int isnew)
 			} else {
 				node->flags |= HAMMER_NODE_CRCGOOD;
 			}
+		}
+		/*
+		 * A node whose type or element count is impossible would
+		 * send every B-Tree walk past elms[]; treat it like a CRC
+		 * failure (EIO).
+		 */
+		if (isnew == 0 && (node->flags & HAMMER_NODE_CRCBAD) == 0 &&
+		    !((node->ondisk->type == HAMMER_BTREE_TYPE_LEAF &&
+		       hget32(node->ondisk->count) <= HAMMER_BTREE_LEAF_ELMS) ||
+		      (node->ondisk->type == HAMMER_BTREE_TYPE_INTERNAL &&
+		       hget32(node->ondisk->count) <= HAMMER_BTREE_INT_ELMS))) {
+			hkprintf("B-Tree node %016jx: type %d, count %u\n",
+				 (intmax_t)node->node_offset,
+				 node->ondisk->type, hget32(node->ondisk->count));
+			node->flags |= HAMMER_NODE_CRCBAD;
 		}
 	}
 	if (node->flags & HAMMER_NODE_CRCBAD) {

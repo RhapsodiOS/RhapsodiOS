@@ -124,7 +124,8 @@ def unwrap_volume_file(wrapped: Path, out: Path) -> None:
 
 
 HEADER_KINDS = ('badsig', 'v6', 'twovol', 'badcrc', 'needs-recovery')
-FIXTURE_KINDS = HEADER_KINDS + ('longname', 'baddata')
+FIXTURE_KINDS = HEADER_KINDS + ('longname', 'baddata', 'badcount', 'badlen',
+                                'badoff', 'dotdot', 'dirhash')
 
 
 def make_fixture(kind: str, volume: Path, out: Path) -> None:
@@ -174,6 +175,10 @@ RECTYPE_DATA = 0x0010
 RECTYPE_DIRENTRY = 0x0011
 ENTRY_NAME_OFF = 16
 OBJID_ROOT = 1
+INODE_SIZE = 128        # struct hammer_inode_data
+INODE_PARENT = 24
+INODE_CAP_FLAGS = 65
+INODE_CRCSIZE = 112     # HAMMER_INODE_CRCSIZE: mtime and atime are not CRCd
 
 
 def _leaves(read):
@@ -227,6 +232,32 @@ def _fixture_patches(kind, read):
         _break_header(kind, sectors)
         return [(0, bytes(sectors))]
     leaves = list(_leaves(read))
+    if kind in ('badcount', 'badlen', 'badoff'):
+        l = _entry(read, leaves, b'a')
+        node = bytearray(read(l['node'], NODE_SIZE))
+        if kind == 'badcount':
+            struct.pack_into('<I', node, 16, 200)           # 63 is the most
+        elif kind == 'badlen':
+            struct.pack_into('<I', node, l['elm'] + 56, 70000)
+        else:
+            struct.pack_into('<Q', node, l['elm'] + 48, 0)
+        struct.pack_into('<I', node, 0, crc32c(bytes(node[4:])))
+        return [(l['node'], bytes(node))]
+    if kind in ('dotdot', 'dirhash'):
+        if kind == 'dotdot':
+            obj_id = struct.unpack('<Q', read(_entry(read, leaves, b'd1777')['data'], 8))[0]
+        else:
+            obj_id = OBJID_ROOT
+        l = _current(leaves, obj_id, RECTYPE_INODE)[0]
+        ino = bytearray(read(l['data'], INODE_SIZE))
+        if kind == 'dotdot':
+            struct.pack_into('<Q', ino, INODE_PARENT, obj_id)
+        else:
+            ino[INODE_CAP_FLAGS] = (ino[INODE_CAP_FLAGS] & ~0x03) | 0x02  # DIRHASH_ALG2
+        node = bytearray(read(l['node'], NODE_SIZE))
+        struct.pack_into('<I', node, l['elm'] + 60, crc32c(bytes(ino[:INODE_CRCSIZE])))
+        struct.pack_into('<I', node, 0, crc32c(bytes(node[4:])))
+        return [(l['data'], bytes(ino)), (l['node'], bytes(node))]
     if kind == 'baddata':
         obj_id = struct.unpack('<Q', read(_entry(read, leaves, b'size1048577')['data'], 8))[0]
         rec = min(_current(leaves, obj_id, RECTYPE_DATA), key=lambda l: l['data'])
@@ -300,7 +331,8 @@ def walk_differences(got, want, ignore_crc=True):
 CASES = ('refuse-badsig', 'refuse-v6', 'refuse-twovol', 'refuse-badcrc',
          'refuse-needs-recovery', 'refuse-rw', 'admit', 'namespace',
          'readdir-small', 'times', 'erofs', 'crafted-name', 'data', 'holes',
-         'mmap', 'dedup', 'crafted-data', 'cycle')
+         'mmap', 'dedup', 'crafted-data', 'cycle', 'negread', 'crafted-count',
+         'crafted-len', 'crafted-off', 'crafted-dotdot', 'crafted-dirhash')
 ADMIT_MESSAGE = 'v7 single volume ok'
 QEMU_IMG = r'C:\Program Files\qemu\qemu-img.exe'
 

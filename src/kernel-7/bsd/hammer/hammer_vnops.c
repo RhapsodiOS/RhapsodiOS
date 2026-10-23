@@ -3684,8 +3684,10 @@ hammer_lookup_name(hammer_inode_t dip, const char *name, int nlen,
 	int64_t namekey;
 	int error, elen;
 
-	hammer_simple_transaction(&trans, dip->hmp);
 	namekey = hammer_direntry_namekey(dip, name, nlen, &max_iterations);
+	if (namekey < 0)
+		return(EIO);
+	hammer_simple_transaction(&trans, dip->hmp);
 	error = hammer_init_cursor(&trans, &cursor, &dip->cache[1], dip);
 	hammer_dir_cursor(&cursor, dip, namekey);
 	cursor.key_end.key = hmk64(namekey + max_iterations);
@@ -3774,9 +3776,17 @@ hammer_vop_lookup(struct vop_lookup_args *ap)
 
 	localization = dip->obj_localization;
 	if (flags & ISDOTDOT) {
+		/*
+		 * namei never asks for ".." of the mount root, so a
+		 * directory that names itself (or no parent) is damage;
+		 * looking it up would relock the directory we hold.
+		 */
 		obj_id = (int64_t)hget64(dip->ino_data.parent_obj_id);
-		if (obj_id == 0)
-			obj_id = dip->obj_id;
+		if (obj_id == 0 || obj_id == dip->obj_id) {
+			hkprintf("directory %016jx: bad parent %016jx\n",
+				 (intmax_t)dip->obj_id, (intmax_t)obj_id);
+			return(EIO);
+		}
 	} else if (cnp->cn_namelen == 1 && cnp->cn_nameptr[0] == '.') {
 		obj_id = dip->obj_id;
 	} else {
@@ -4333,6 +4343,9 @@ hammer_vop_read(struct vop_read_args *ap)
 
 	if (vp->v_type != VREG)
 		return(vp->v_type == VDIR ? EISDIR : EINVAL);
+	/* lseek accepts negative offsets; ffs_read refuses them too. */
+	if (uio->uio_offset < 0)
+		return(EINVAL);
 	while (uio->uio_resid > 0 && uio->uio_offset < size) {
 		lbn = (daddr_t)(uio->uio_offset / HAMMER_LBLKSIZE);
 		boff = (int)(uio->uio_offset % HAMMER_LBLKSIZE);

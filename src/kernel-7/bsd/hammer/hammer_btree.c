@@ -727,15 +727,40 @@ hammer_btree_extract(hammer_cursor_t cursor, int flags)
 		return(EINVAL);
 	data_off = hget64(elm->leaf.data_offset);
 	data_len = (int32_t)hget32(elm->leaf.data_len);
-	if (data_off == 0)
+	if (data_off == 0 && data_len == 0)
 		return(0);
+
+	/*
+	 * A record's data must be a meta or data zone extent of at most
+	 * 64 KB; anything else is a damaged or crafted volume.
+	 */
+	if (data_off == 0 || data_len < 0 || data_len > HAMMER_XBUFSIZE ||
+	    HAMMER_ZONE_DECODE(data_off) < HAMMER_ZONE_META_INDEX ||
+	    HAMMER_ZONE_DECODE(data_off) > HAMMER_ZONE_SMALL_DATA_INDEX) {
+		hkprintf("record %016jx: bad data %016jx/%d\n",
+			 (intmax_t)hget64(elm->leaf.base.obj_id),
+			 (intmax_t)data_off, data_len);
+		return(EIO);
+	}
 
 	/*
 	 * Load the data
 	 */
-	KKASSERT(data_len >= 0 && data_len <= HAMMER_XBUFSIZE);
 	cursor->data = hammer_bread_ext(hmp, data_off, data_len,
 					&error, &cursor->data_buffer);
+
+	/*
+	 * _hammer_bread() aligns only the start; the extent must also end
+	 * inside the buffer it landed in (a cached one can be smaller).
+	 */
+	if (error == 0 && (int)(data_off & HAMMER_BUFMASK) + data_len >
+	    cursor->data_buffer->io.bytes) {
+		hkprintf("record %016jx: data %016jx/%d crosses its buffer\n",
+			 (intmax_t)hget64(elm->leaf.base.obj_id),
+			 (intmax_t)data_off, data_len);
+		cursor->data = NULL;
+		return(EIO);
+	}
 
 	/*
 	 * Mark the data buffer as not being meta-data if it isn't

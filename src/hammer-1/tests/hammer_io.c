@@ -46,6 +46,9 @@
  *	mmap FILE			mmap matches read, tail past EOF is zero
  *	readeio FILE			reading FILE fails with EIO
  *	readok FILE			FILE reads to EOF without error
+ *	negread FILE			a read at a negative offset fails with EINVAL
+ *	lookupeio PATH			looking PATH up fails with EIO
+ *	dotdot DIR			DIR/.. (DIR its own parent) fails with EIO
  */
 #include <sys/types.h>
 #include <sys/mman.h>
@@ -263,6 +266,52 @@ readall(const char *path, int want)
 	return 0;
 }
 
+/* A read at a negative offset is refused, not served from before the buffer. */
+static int
+negread(const char *path)
+{
+	static char buf[65536];
+	int fd;
+
+	CHECK((fd = open(path, O_RDONLY)) >= 0);
+	CHECK(lseek(fd, (off_t)-8191, SEEK_SET) == (off_t)-8191);
+	errno = 0;
+	CHECK(read(fd, buf, sizeof(buf)) == -1 && errno == EINVAL);
+	close(fd);
+	printf("%s: negative-offset read fails with EINVAL\n", path);
+	return 0;
+}
+
+/* Looking PATH up fails with EIO (damaged metadata), with no panic. */
+static int
+lookupeio(const char *path)
+{
+	struct stat st;
+
+	errno = 0;
+	CHECK(lstat(path, &st) == -1 && errno == EIO);
+	printf("%s: lookup fails with EIO\n", path);
+	return 0;
+}
+
+/*
+ * DIR claims itself as its parent: "DIR/.." is EIO, and asking to remove it
+ * fails rather than relocking DIR.
+ */
+static int
+dotdot(const char *dir)
+{
+	char path[1024];
+	struct stat st;
+
+	sprintf(path, "%s/..", dir);
+	errno = 0;
+	CHECK(lstat(path, &st) == -1 && errno == EIO);
+	CHECK(rmdir(path) == -1);
+	printf("%s: .. to itself fails with EIO\n", dir);
+	return 0;
+}
+
 #define EROFS_CHECK(x) do { errno = 0; CHECK((x) == -1 && errno == EROFS); } while (0)
 
 static int
@@ -312,6 +361,12 @@ main(int ac, char **av)
 		return readall(av[2], EIO);
 	if (ac == 3 && strcmp(av[1], "readok") == 0)
 		return readall(av[2], 0);
+	if (ac == 3 && strcmp(av[1], "negread") == 0)
+		return negread(av[2]);
+	if (ac == 3 && strcmp(av[1], "lookupeio") == 0)
+		return lookupeio(av[2]);
+	if (ac == 3 && strcmp(av[1], "dotdot") == 0)
+		return dotdot(av[2]);
 	fprintf(stderr, "usage: hammer_io CHECK ARGS (see source)\n");
 	return 2;
 }

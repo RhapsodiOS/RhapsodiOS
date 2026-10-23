@@ -469,6 +469,12 @@ retry:
 	 * information.  Copy the information to the in-memory inode
 	 * and cache the B-Tree node to improve future operations.
 	 */
+	if (*errorp == 0 && (cursor.data == NULL ||
+	    hget32(cursor.leaf->data_len) != sizeof(struct hammer_inode_data))) {
+		hkprintf("inode %016jx: record holds %u bytes, not an inode\n",
+			 (intmax_t)obj_id, hget32(cursor.leaf->data_len));
+		*errorp = EIO;
+	}
 	if (*errorp == 0) {
 		ip->ino_leaf = cursor.node->ondisk->elms[cursor.index].leaf;
 		ip->ino_data = cursor.data->inode;

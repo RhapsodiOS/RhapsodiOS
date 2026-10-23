@@ -4,6 +4,7 @@
 # Every case prints "HAMMER_OK <case>" only after all its checks pass.
 set -e
 DEV=/dev/hd1a
+EIO=5
 EINVAL=22
 EROFS=30
 EOPNOTSUPP=45
@@ -75,6 +76,31 @@ crafted-data)
 	./hammer_io mount $DEV "$2"
 	./hammer_io readeio "$2/size1048577"
 	./hammer_io readok "$2/size16385"
+	./hammer_io unmount "$2"
+	;;
+negread)
+	./hammer_io mount $DEV "$2"
+	./hammer_io negread "$2/size16385"
+	./hammer_io unmount "$2"
+	;;
+crafted-count)
+	# The bad leaf also holds the root inode, so the mount itself fails.
+	./hammer_io mounterr $DEV "$2" 1 $EIO
+	;;
+crafted-len|crafted-off)
+	./hammer_io mount $DEV "$2"
+	./hammer_io readdir-eio "$2"
+	./hammer_io readok "$2/size16385"
+	./hammer_io unmount "$2"
+	;;
+crafted-dotdot)
+	./hammer_io mount $DEV "$2"
+	./hammer_io dotdot "$2/d1777"
+	./hammer_io unmount "$2"
+	;;
+crafted-dirhash)
+	./hammer_io mount $DEV "$2"
+	./hammer_io lookupeio "$2/a"
 	./hammer_io unmount "$2"
 	;;
 crafted-name)

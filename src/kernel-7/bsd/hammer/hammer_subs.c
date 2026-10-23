@@ -1053,9 +1053,16 @@ hammer_direntry_namekey(hammer_inode_t dip, const void *name, int len,
 	case HAMMER_INODE_CAP_DIRHASH_ALG2:
 	case HAMMER_INODE_CAP_DIRHASH_ALG3:
 	default:
-		key = 0;			/* compiler warning */
-		*max_iterationsp = 1;		/* sanity */
-		hpanic("bad algorithm %p", dip);
+		/*
+		 * The on-disk directory names a hash this code does not
+		 * know (upstream panicked).  -1 is never a valid key; the
+		 * caller turns it into EIO.
+		 */
+		hkprintf("directory %016jx: unknown name hash %d\n",
+			 (intmax_t)dip->obj_id,
+			 dip->ino_data.cap_flags & HAMMER_INODE_CAP_DIRHASH_MASK);
+		key = -1;
+		*max_iterationsp = 0;
 		break;
 	}
 	return(key);

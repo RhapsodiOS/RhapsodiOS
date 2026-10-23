@@ -200,13 +200,16 @@ def tree_volume(tmp_path):
         struct.pack_into('<QII', e, 48, (11 << 60) | (data - BUF_BEG),
                          len(payload), hg.crc32c(crced))
         elms.append(e)
-    for n, name in enumerate((b'a', b'old', b'future', b'size1048577')):
+    for n, name in enumerate((b'a', b'old', b'future', b'size1048577', b'd1777')):
         leaf(1, n, 0x11, struct.pack('<QII', 2 + n, 0, 0) + name, data)
         ino = bytearray(128)
+        struct.pack_into('<Q', ino, 24, 1)                      # parent_obj_id
         struct.pack_into('<Q', ino, 112, 1792249285 * 1000000)
         leaf(2 + n, 0, 0x01, bytes(ino), data + 1024)
         data += 2048
     leaf(5, 256, 0x10, bytes(range(256)), data)     # size1048577's first block
+    data += 2048
+    leaf(1, 0, 0x01, bytes(128), data)              # the root directory's inode
     struct.pack_into('<IB', node, 16, len(elms), ord('L'))
     for i, e in enumerate(elms):
         node[64 + i * 64:128 + i * 64] = e
@@ -250,6 +253,72 @@ def test_baddata_fixture_flips_one_data_byte(tmp_path):
     changed = [i for i in range(len(old)) if old[i] != new[i]]
     assert len(changed) == 1 and data <= changed[0] < data + n
     assert hg.crc32c(new[data:data + n]) != crc      # the data CRC now fails
+
+
+def node_sealed(raw):
+    node = raw[BUF_BEG:BUF_BEG + NODE]
+    return struct.unpack_from('<I', node, 0)[0] == hg.crc32c(node[4:])
+
+
+def entry_a_elm(raw):
+    """(offset of 'a''s leaf element, data_offset, data_len) in the leaf."""
+    node = raw[BUF_BEG:BUF_BEG + NODE]
+    for i in range(struct.unpack_from('<I', node, 16)[0]):
+        e = 64 + i * 64
+        if struct.unpack_from('<QQ', node, e) == (1, 0) and \
+           struct.unpack_from('<H', node, e + 32)[0] == 0x11:
+            off, n = struct.unpack_from('<QI', node, e + 48)
+            return BUF_BEG + e, off, n
+    raise KeyError('a')
+
+
+def test_badcount_fixture_overflows_the_leaf(tmp_path):
+    vol = tree_volume(tmp_path)
+    out = tmp_path/'badcount.img'
+    hg.make_fixture('badcount', vol, out)
+    new = out.read_bytes()
+    assert struct.unpack_from('<I', new, BUF_BEG + 16)[0] == 200
+    assert node_sealed(new)
+
+
+def test_badlen_fixture_claims_an_oversized_record(tmp_path):
+    vol = tree_volume(tmp_path)
+    out = tmp_path/'badlen.img'
+    hg.make_fixture('badlen', vol, out)
+    old, new = vol.read_bytes(), out.read_bytes()
+    _, off, n = entry_a_elm(new)
+    assert n == 70000 and off == entry_a_elm(old)[1]
+    assert node_sealed(new)
+
+
+def test_badoff_fixture_drops_the_data_offset(tmp_path):
+    vol = tree_volume(tmp_path)
+    out = tmp_path/'badoff.img'
+    hg.make_fixture('badoff', vol, out)
+    new = out.read_bytes()
+    _, off, n = entry_a_elm(new)
+    assert off == 0 and n == entry_a_elm(vol.read_bytes())[2]
+    assert node_sealed(new)
+
+
+def test_dotdot_fixture_makes_a_directory_its_own_parent(tmp_path):
+    vol = tree_volume(tmp_path)
+    out = tmp_path/'dotdot.img'
+    hg.make_fixture('dotdot', vol, out)
+    new = out.read_bytes()
+    data, n, crc = leaf_of(new, 6, 0x01)            # d1777 is object 6
+    assert struct.unpack_from('<Q', new, data + 24)[0] == 6
+    assert crc == hg.crc32c(new[data:data + 112]) and node_sealed(new)
+
+
+def test_dirhash_fixture_names_an_unknown_hash(tmp_path):
+    vol = tree_volume(tmp_path)
+    out = tmp_path/'dirhash.img'
+    hg.make_fixture('dirhash', vol, out)
+    new = out.read_bytes()
+    data, n, crc = leaf_of(new, 1, 0x01)            # the root inode
+    assert new[data + 65] & 0x03 == 0x02
+    assert crc == hg.crc32c(new[data:data + 112]) and node_sealed(new)
 
 
 def test_walk_exact_compares_content_crc():

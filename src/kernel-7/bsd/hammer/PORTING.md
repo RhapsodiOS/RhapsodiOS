@@ -177,6 +177,43 @@ through `ufs_pagein`, which is `VOP_READ`.  A data CRC failure is EIO.
 `fsync` is `nop_fsync`: vnode reclaim calls it before dropping cached
 blocks, and an error there would leave them on a recycled vnode.
 
+## Damaged and crafted volumes
+
+Upstream asserts or panics on several impossible on-disk values.  On a
+read-only data volume, which may be any disk someone hands you, each of
+these is an EIO with a console line instead:
+
+- A B-Tree node whose type is not leaf or internal, or whose element count
+  exceeds 63 (leaf) or 62 (internal): treated like a node CRC failure
+  (`hammer_load_node`).
+- A child node offset outside the B-Tree zone or not node-aligned
+  (`hammer_get_node`).
+- A record whose data length is outside 0..64 KB, whose data offset is 0
+  with a length, outside the meta and data zones, or whose extent runs past
+  the buffer it lands in (`hammer_btree_extract`).
+- A buffer offset in zone 1, 3 (UNDO), 4 or 15, or past the end of the
+  volume (`hammer_get_buffer`).
+- An inode record that is not exactly one `struct hammer_inode_data`
+  (`hammer_get_inode`).
+- A directory naming an unknown name-hash algorithm
+  (`hammer_direntry_namekey` returns -1).
+- A directory whose parent is itself or 0 (lookup of `..`; `namei` never asks
+  for `..` of the mount root).
+- A directory entry whose name is longer than `NAME_MAX` or shorter than one
+  byte, and a symlink record shorter than its header.
+
+A read at a negative file offset fails with EINVAL, as in `ffs_read`.
+
+## Directory offsets and telldir
+
+A directory's seek offset is the 64-bit HAMMER namekey of the next entry
+(0 and 1 are `.` and `..`).  Sequential `getdirentries` and `lseek` with a
+64-bit `off_t` work, but Rhapsody's `getdirentries` returns `*basep` as a
+`long` and Libc keeps `dd_seek` as a `long`, so `telldir`/`seekdir` lose the
+upper 32 bits, where the hash lives.  A `seekdir` on a HAMMER directory
+therefore restarts or repeats the listing.  Fixing it needs a 32-bit
+directory cookie scheme; it is not done in Phase 1.
+
 ## Kernel memory
 
 Allocations of a page or more (the 16 and 64 KB buffers) come from
@@ -232,6 +269,8 @@ line added.
   `hammer_prune.c`, `hammer_dedup.c`, `hammer_mirror.c`, `hammer_ioctl.c`,
   `hammer_signal.c`.  `hammer_inode.c` generates the flush and redo trees
   until the flusher and redo units return.
+- `telldir`/`seekdir` on HAMMER directories (see "Directory offsets and
+  telldir").
 - Device and FIFO nodes use the regular op table (they stat but cannot be
   opened); readdir returns no NFS cookies; `hammer info` waits for the
   ioctls.

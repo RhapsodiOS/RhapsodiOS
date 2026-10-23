@@ -98,6 +98,19 @@ keylargo_property(DTEntry entry, const char *name)
   return property;
 }
 
+static boolean_t
+keylargo_string_property_is(DTEntry entry, const char *name,
+  const char *expected)
+{
+  PEKeyLargoProperty property;
+  unsigned int length;
+
+  property = keylargo_property(entry, name);
+  length = strlen(expected) + 1;
+  return property.bytes != 0 && property.size == length &&
+    strcmp((const char *)property.bytes, expected) == 0;
+}
+
 boolean_t
 PEKeyLargoGetMacIOInfo(unsigned int *base, unsigned int *size)
 {

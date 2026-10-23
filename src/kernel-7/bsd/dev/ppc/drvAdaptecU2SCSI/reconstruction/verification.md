@@ -450,3 +450,127 @@ owner gates fail contracts/runner freshness, with raw evidence unchanged.
 Task16 fresh consolidated runtime/allcorpora and all4 independently mapped
 fullnative builds/context pairs remain mandatory; see Task13 report for
 actual commands/results, accepted rulings, source reviews and inherited limits.
+
+## Task16 linked-kernel verification
+
+Evidence is in `reconstruction/task16.json`; scripts and raw outputs are in
+`vm/work/au2-t16` (outside git). Nothing here needs a guest: both kernels are
+read from disk.
+
+- Reference: MOSXS 1.2v3 `mach_kernel`, cksum `3765629243 2983828`, SHA-256
+  `D01D748C...6494BD`.
+- Rebuilt: the Task15 PPC kernel from `f7765cdb5`, cksum `3685141911 3056040`,
+  SHA-256 `A9AA8B26...4C708B0B`. Its 22 driver sources equal this tree.
+
+### Body comparison
+
+`cmp476.py <kernel>` compares all 476 driver bodies of the linked kernel
+with the reference, mapped by symbol, by ObjC method IMP for the 25 methods,
+and by `_sub_XXXXXX` symbol for the seven unnamed helpers. It reuses the
+Task14 normalization: calls, symbols, strings and selectors resolve by name,
+and the two unnamed statics (`request_message`, `event_names`) by the code
+that uses them. Classes: exact; registers-only (register choice, spill
+slots and frame size); reordered (same basic blocks, instructions reordered
+inside them); differs.
+
+| Class | Bodies |
+|---|---:|
+| exact | 160 |
+| registers-only | 25 |
+| reordered | 20 |
+| differs | 271 |
+
+The 271 differing bodies were triaged in three groups:
+
+- 122 have the same calls, symbol references, memory accesses and
+  constants (as multisets) in a different block layout.
+- 103 have the same call sequence on every CFG path (NFA language
+  equality over calls, checked with a mutation self-test) and the same
+  sets of accesses and constants. Most of the remaining differences are
+  reloads and base+offset folding.
+- 46 were reviewed by hand. Three are the Task14 labelled divergences
+  (`-threadExecuteRequest:`, `NormalPostRoutine`, `ProbeTarget`). The
+  other 43 are compiler differences: stack temporaries for byte-reversed
+  accesses, base+offset folding, jump tables compiled as compare chains,
+  tail merging, and a byte-swapped constant folded at compile time. One
+  harmless source difference: `SCSIClearTargetTSH` passes `&adapter->hhcb`
+  where the reference passes `target->unit.hhcb`, the same pointer once the
+  unit handle is set, and the callee ignores the argument.
+  `SCSIGetNVOSMSegment` computes the SEEPROM length unsigned where the
+  reference uses signed, which is harmless because the size is 0, 64 or
+  128. Each reason is in `task16.json`.
+
+No real behavioral difference was found, so no source changed and no new
+divergence was added. The 47 OSM/controller ledger rows are now
+control-flow-confirmed, or intentional-mismatch for the three divergences,
+with `task16.json` as their artifact.
+
+### Frozen cases on the linked kernel
+
+`runcases.py` runs every frozen corpus with the unchanged `ppc_cases.run_case`,
+on the reference and on the linked kernel. For the rebuilt image it changes
+three things:
+
+- Body extents are the rebuilt image's own.
+- The two contract-aliased objects are named at their rebuilt addresses:
+  `event_names`, which is byte- and pointer-equal, and the `IODevice`
+  class-name string.
+- It seeds the incoming r28 and the PostBusScan private byte the same way
+  the Task12/13 runners do.
+
+| Corpus | Cases | Reference | Rebuilt |
+|---|---:|---|---|
+| reference, task5-8 | 1004 | pass | pass |
+| task9 | 456 | pass | pass |
+| task9-ack | 2 | pass | not run (the runner allows ACK exhaustion only on the pinned reference) |
+| task10, task11 | 382 | pass | pass |
+| task12 | 135 | pass | 126 pass; 9 differ only in the undeclared HHCB+244 hardware-table pointer (0x278cf4 against 0x290880, both `SCSIHardwareAICBayonet`) |
+| task12/13 context, task13 stack | 6 | pass | pass |
+| task13 | 787 | pass | 785 pass; 2 `SCSIGetFunctionPointers` getter cases need the reference-only scripted table copy (the body is exact; the table matches by pointer target) |
+| task13-fix1 | 22 | pass | pass |
+
+The frozen cases enter 427 of the 476 bodies directly and 9 more as
+internal callees, including all 43 compiler-differing hand-reviewed bodies.
+The 40 that are never executed are controller/OSM methods and lifecycle
+routines, which have only the static comparison above.
+
+### Data parity
+
+`datacheck.py <kernel>` compares every `data.json` object in the linked
+kernel byte for byte. Pointer slots are compared by their target's name or
+string. All 25 non-switch objects are equal: the four `_Seq_*` firmware
+arrays, all CHIM tables (including `SCSIFuncPtrs`, `SCSIHardware*` and
+`SCSIFirmware*` by pointer target), `OSMRoutines`, `adapterQ`,
+`request_message` and `event_names`. The diagnostic literal pool is checked
+through each consumer's string references in the body comparison. The 22
+compiler switch tables are checked through their owning bodies. All 48
+data objects are now recovered.
+
+### Task13 concerns
+
+The "stale result" and "uncommitted input" gate failures listed in the
+Task13 report are freshness checks on harness identity hashes. Removing the
+fixture JSON from git history makes them permanent. They do not indicate a
+behavioral problem, and the fresh linked-kernel runs above replace them. The
+Task11 volatile-qualifier warning in `SCSIrAsyncEventCommand` is still in the
+Task15 build and is harmless. The "four native builds" obligation is met by
+the single linked kernel. The `task13-fix1.json` proof was never committed,
+so `test_fix1_canonical_proof_and_runtime_identity` still fails.
+
+### Tests
+
+`tests/conftest.py` hard-links the stripped fixtures from `AU2_FIXTURES`
+for the session. Tests whose fixtures or generated
+`tools/binrecon/out` evidence are absent skip, with the missing path as the
+reason. Two tests that pinned the pre-Task14 draft `OSMFunctions.m` were
+removed. The Task13 delta test now reads the Task13 acceptance commit
+`55e348168` and checks the current map at 469 mapped, 7 unmapped and 0
+duplicates.
+
+### Not verified
+
+- Runtime on hardware or in an emulated machine: probe, DMA, interrupts,
+  timing and concurrency.
+- The 40 bodies the frozen cases never execute, beyond the static comparison.
+- The two ACK-exhaustion cases on the rebuilt image.
+- Tests that need `tools/binrecon/out`, which is not present here.

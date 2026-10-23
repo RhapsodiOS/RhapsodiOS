@@ -49,7 +49,7 @@
           "kind": "scalar"
         }
       ],
-      "status": "pending-owner-recovery",
+      "status": "recovered",
       "required_gate": "task14-native-and-final",
       "consumers": [
         1606852,
@@ -63,7 +63,8 @@
       "interpretation": "6-word writable Mach message template1,24,0,0,0,0x232324; last word is message ID scalar, not pointer. Controller submit/interrupt paths copy and populate ports.",
       "reference_bytes": "000000010000001800000000000000000000000000232324",
       "required_task": 14,
-      "reference_section": "__DATA,__data"
+      "reference_section": "__DATA,__data",
+      "owner_evidence": "reconstruction/task16.json"
     },
     {
       "name": "OSMRoutines",
@@ -293,7 +294,7 @@
           "kind": "pointer"
         }
       ],
-      "status": "pending-owner-recovery",
+      "status": "recovered",
       "required_gate": "task14-native-and-final",
       "consumers": [
         1605484
@@ -301,7 +302,8 @@
       "interpretation": "124-byte writable OSM dispatch: version scalar0 plus30 callbacks. Exact three erased-formal slots21/23/24 preserve reviewed machine contracts; existing draft definition requires Task14 typed replacement.",
       "reference_bytes": "000000000018985800189aa400189b8000189d1000189d6c00189d8400189d9400189da400189db400189de800189e4400189ea000189f0c0018a00c0018a10c0018a1480018a1b40018a20c0018a27c0018a3800018a4840018a4b00018a50c0018a51c001891bc0018928000189364001894480018951c001896bc",
       "required_task": 14,
-      "reference_section": "__DATA,__data"
+      "reference_section": "__DATA,__data",
+      "owner_evidence": "reconstruction/task16.json"
     },
     {
       "name": "adapterQ",
@@ -1082,7 +1084,7 @@
           "kind": "pointer"
         }
       ],
-      "status": "pending-owner-recovery",
+      "status": "recovered",
       "required_gate": "task14-native-and-final",
       "consumers": [
         1603540,
@@ -1097,7 +1099,8 @@
       "interpretation": "512 writable zero bytes =64 native8-byte queue heads, initial sentinel links zero until module/controller initialization. Existing256-entry draft/constructor is pending Task14 repair.",
       "reference_bytes": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
       "required_task": 14,
-      "reference_section": "__DATA,__data"
+      "reference_section": "__DATA,__data",
+      "owner_evidence": "reconstruction/task16.json"
     },
     {
       "name": "diagnostic_strings",
@@ -1116,7 +1119,7 @@
           "kind": "bytes"
         }
       ],
-      "status": "pending-owner-recovery",
+      "status": "recovered",
       "required_gate": "task14-native-and-final",
       "consumers": [
         1604164,
@@ -1696,7 +1699,8 @@
         }
       ],
       "required_task": 14,
-      "reference_section": "__DATA,__data"
+      "reference_section": "__DATA,__data",
+      "owner_evidence": "reconstruction/task16.json"
     },
     {
       "name": "SCSIHardwareAIC78XX",
@@ -12891,7 +12895,7 @@
           "kind": "pointer"
         }
       ],
-      "status": "pending-owner-recovery",
+      "status": "recovered",
       "required_gate": "task14-native-and-final",
       "consumers": [
         1613020
@@ -12929,7 +12933,8 @@
         }
       },
       "required_task": 14,
-      "reference_section": "__TEXT,__const"
+      "reference_section": "__TEXT,__const",
+      "owner_evidence": "reconstruction/task16.json"
     },
     {
       "name": "switch_230ce0",
@@ -12984,7 +12989,7 @@
           "kind": "code-offset"
         }
       ],
-      "status": "pending-owner-control-flow",
+      "status": "recovered",
       "required_gate": "owner-group-and-final",
       "consumers": [
         1612740,
@@ -13138,7 +13143,8 @@
           "target": 1613012
         }
       ],
-      "guard_start": 1612700
+      "guard_start": 1612700,
+      "owner_evidence": "reconstruction/task16.json"
     },
     {
       "name": "switch_230cfc",
@@ -13631,7 +13637,7 @@
           "kind": "code-offset"
         }
       ],
-      "status": "pending-owner-control-flow",
+      "status": "recovered",
       "required_gate": "owner-group-and-final",
       "consumers": [
         1616152,
@@ -13946,7 +13952,8 @@
           "target": 1616392
         }
       ],
-      "guard_start": 1616140
+      "guard_start": 1616140,
+      "owner_evidence": "reconstruction/task16.json"
     },
     {
       "name": "switch_230e3c",

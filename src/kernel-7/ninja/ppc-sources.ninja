@@ -2205,6 +2205,86 @@ build $outdir/AttoScsiMisc.o: cc bsd/dev/ppc/drvAttoScsiController/AttoScsiMisc.
   object = AttoScsiMisc.o
   flags = $cflags
 
+build $outdir/AdaptecU2CHIMAPI.o: cc bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMAPI.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMAPI.c
+  object = AdaptecU2CHIMAPI.o
+  flags = $cflags
+
+build $outdir/AdaptecU2CHIMConfig.o: cc bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMConfig.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMConfig.c
+  object = AdaptecU2CHIMConfig.o
+  flags = $cflags
+
+build $outdir/AdaptecU2CHIMFirmware.o: cc bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMFirmware.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMFirmware.c
+  object = AdaptecU2CHIMFirmware.o
+  flags = $cflags
+
+build $outdir/AdaptecU2CHIMHIM.o: cc bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHIM.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHIM.c
+  object = AdaptecU2CHIMHIM.o
+  flags = $cflags
+
+build $outdir/AdaptecU2CHIMHardware.o: cc bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHardware.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHardware.c
+  object = AdaptecU2CHIMHardware.o
+  flags = $cflags
+
+build $outdir/AdaptecU2CHIMNegotiation.o: cc bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMNegotiation.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMNegotiation.c
+  object = AdaptecU2CHIMNegotiation.o
+  flags = $cflags
+
+build $outdir/AdaptecU2CHIMOSD.o: cc bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMOSD.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMOSD.c
+  object = AdaptecU2CHIMOSD.o
+  flags = $cflags
+
+build $outdir/AdaptecU2CHIMRecovery.o: cc bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMRecovery.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMRecovery.c
+  object = AdaptecU2CHIMRecovery.o
+  flags = $cflags
+
+build $outdir/AdaptecU2CHIMResource.o: cc bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMResource.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMResource.c
+  object = AdaptecU2CHIMResource.o
+  flags = $cflags
+
+build $outdir/AdaptecU2CHIMSCB.o: cc bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMSCB.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMSCB.c
+  object = AdaptecU2CHIMSCB.o
+  flags = $cflags
+
+build $outdir/AdaptecU2CHIMTables.o: cc bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMTables.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMTables.c
+  object = AdaptecU2CHIMTables.o
+  flags = $cflags
+
+build $outdir/AdaptecU2CHIMTransport.o: cc bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMTransport.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMTransport.c
+  object = AdaptecU2CHIMTransport.o
+  flags = $cflags
+
+build $outdir/AdaptecU2OSMServices.o: cc bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2OSMServices.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2OSMServices.m
+  object = AdaptecU2OSMServices.o
+  flags = $cflags
+
+build $outdir/AdaptecU2SCSI.o: cc bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2SCSI.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2SCSI.m
+  object = AdaptecU2SCSI.o
+  flags = $cflags
+
+build $outdir/AdaptecU2SCSIThread.o: cc bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2SCSIThread.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2SCSIThread.m
+  object = AdaptecU2SCSIThread.o
+  flags = $cflags
+
+build $outdir/OSMFunctions.o: cc bsd/dev/ppc/drvAdaptecU2SCSI/OSMFunctions.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvAdaptecU2SCSI/OSMFunctions.m
+  object = OSMFunctions.o
+  flags = $cflags
+
 build $outdir/usbcmd.o: cc bsd/dev/ppc/drvUSBCMD/usbcmd.m || $outdir/prepared $outdir/validated generated
   source = ../../bsd/dev/ppc/drvUSBCMD/usbcmd.m
   object = usbcmd.o
@@ -2508,7 +2588,7 @@ kernel_objects = $
   $outdir/DECchip2104x.o $outdir/DECchip2104xPrivate.o $outdir/ATADisk.o $outdir/ATADiskInternal.o $outdir/ATADiskKernel.o $
   $outdir/AtapiCnt.o $outdir/AtapiCntInternal.o $outdir/IdeCnt.o $outdir/IdeCntDma.o $outdir/AtapiCntCmds.o $
   $outdir/IdeCntCmds.o $outdir/IdeCntInit.o $outdir/Sym8xxInit.o $outdir/Sym8xxClient.o $outdir/Sym8xxExecute.o $
-  $outdir/Sym8xxMisc.o $outdir/AttoScsiInit.o $outdir/AttoScsiClient.o $outdir/AttoScsiExecute.o $outdir/AttoScsiMisc.o $outdir/usbcmd.o $outdir/ohciuim.o $outdir/OHCIDispatchTable.o $outdir/driverservices.o $
+  $outdir/Sym8xxMisc.o $outdir/AttoScsiInit.o $outdir/AttoScsiClient.o $outdir/AttoScsiExecute.o $outdir/AttoScsiMisc.o $outdir/AdaptecU2CHIMAPI.o $outdir/AdaptecU2CHIMConfig.o $outdir/AdaptecU2CHIMFirmware.o $outdir/AdaptecU2CHIMHIM.o $outdir/AdaptecU2CHIMHardware.o $outdir/AdaptecU2CHIMNegotiation.o $outdir/AdaptecU2CHIMOSD.o $outdir/AdaptecU2CHIMRecovery.o $outdir/AdaptecU2CHIMResource.o $outdir/AdaptecU2CHIMSCB.o $outdir/AdaptecU2CHIMTables.o $outdir/AdaptecU2CHIMTransport.o $outdir/AdaptecU2OSMServices.o $outdir/AdaptecU2SCSI.o $outdir/AdaptecU2SCSIThread.o $outdir/OSMFunctions.o $outdir/usbcmd.o $outdir/ohciuim.o $outdir/OHCIDispatchTable.o $outdir/driverservices.o $
   $outdir/OHCIRootHub.o $outdir/UIMrootHubSimulation.o $outdir/CompositeClassDriver.o $outdir/CompositeDriverDescription.o $outdir/ConfigParse.o $
   $outdir/HubClassDriver.o $outdir/Hub2ClassDriver.o $outdir/rootHubDriver.o $outdir/usl.o $outdir/uslPipeState.o $
   $outdir/USLhubs.o $outdir/uslPipe.o $outdir/uslUtility.o $outdir/uslDescriptors.o $outdir/uslExpert.o $
@@ -2606,7 +2686,7 @@ build objects: phony $
   $outdir/DECchip2104x.o $outdir/DECchip2104xPrivate.o $outdir/ATADisk.o $outdir/ATADiskInternal.o $outdir/ATADiskKernel.o $
   $outdir/AtapiCnt.o $outdir/AtapiCntInternal.o $outdir/IdeCnt.o $outdir/IdeCntDma.o $outdir/AtapiCntCmds.o $
   $outdir/IdeCntCmds.o $outdir/IdeCntInit.o $outdir/Sym8xxInit.o $outdir/Sym8xxClient.o $outdir/Sym8xxExecute.o $
-  $outdir/Sym8xxMisc.o $outdir/AttoScsiInit.o $outdir/AttoScsiClient.o $outdir/AttoScsiExecute.o $outdir/AttoScsiMisc.o $outdir/usbcmd.o $outdir/ohciuim.o $outdir/OHCIDispatchTable.o $outdir/driverservices.o $
+  $outdir/Sym8xxMisc.o $outdir/AttoScsiInit.o $outdir/AttoScsiClient.o $outdir/AttoScsiExecute.o $outdir/AttoScsiMisc.o $outdir/AdaptecU2CHIMAPI.o $outdir/AdaptecU2CHIMConfig.o $outdir/AdaptecU2CHIMFirmware.o $outdir/AdaptecU2CHIMHIM.o $outdir/AdaptecU2CHIMHardware.o $outdir/AdaptecU2CHIMNegotiation.o $outdir/AdaptecU2CHIMOSD.o $outdir/AdaptecU2CHIMRecovery.o $outdir/AdaptecU2CHIMResource.o $outdir/AdaptecU2CHIMSCB.o $outdir/AdaptecU2CHIMTables.o $outdir/AdaptecU2CHIMTransport.o $outdir/AdaptecU2OSMServices.o $outdir/AdaptecU2SCSI.o $outdir/AdaptecU2SCSIThread.o $outdir/OSMFunctions.o $outdir/usbcmd.o $outdir/ohciuim.o $outdir/OHCIDispatchTable.o $outdir/driverservices.o $
   $outdir/OHCIRootHub.o $outdir/UIMrootHubSimulation.o $outdir/CompositeClassDriver.o $outdir/CompositeDriverDescription.o $outdir/ConfigParse.o $
   $outdir/HubClassDriver.o $outdir/Hub2ClassDriver.o $outdir/rootHubDriver.o $outdir/usl.o $outdir/uslPipeState.o $
   $outdir/USLhubs.o $outdir/uslPipe.o $outdir/uslUtility.o $outdir/uslDescriptors.o $outdir/uslExpert.o $

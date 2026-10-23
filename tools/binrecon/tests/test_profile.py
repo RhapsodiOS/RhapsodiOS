@@ -360,6 +360,7 @@ PPC_PROFILES = sorted(
 def test_ppc_profile_inventory():
     assert [path.name for path in PPC_PROFILES] == [
         "53c96-bundle-ppc.json", "53c96-ppc.json",
+        "adaptecu2scsi-ppc.json",
         "applepcibus-bundle-ppc.json", "applepcibus-ppc.json",
         "ata-bundle-ppc.json", "ata-ppc.json",
         "awacs-bundle-ppc.json", "awacs-ppc.json",
@@ -411,4 +412,5 @@ def test_ppc_profiles_are_reference_only_ida_runs(path):
     assert document["analyzers"]["ida"]["enabled"] is True
     assert document["analyzers"]["ghidra"]["enabled"] is False
     assert document["analyzers"]["angr"]["enabled"] is False
-    assert document["output_dir"] == f"../out/{path.stem}"
+    suffix = "/baseline" if path.name == "adaptecu2scsi-ppc.json" else ""
+    assert document["output_dir"] == f"../out/{path.stem}{suffix}"

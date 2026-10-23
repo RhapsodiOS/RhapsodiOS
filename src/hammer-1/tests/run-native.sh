@@ -8,6 +8,20 @@ EIO=5
 EINVAL=22
 EROFS=30
 EOPNOTSUPP=45
+
+# A volume this kernel wrote must look undamaged to the hammer tool.
+checkvol() {
+	./hammer -f /dev/rhd1a show > /tmp/show.txt 2>&1
+	if grep -E ' bad (nodes|elms|records)$' /tmp/show.txt; then
+		echo "show: damage"; exit 1
+	fi
+	./hammer -f /dev/rhd1a checkmap > /tmp/checkmap.txt 2>&1
+	if grep -E "^B[ZM]	| errors$| bad nodes$" /tmp/checkmap.txt; then
+		echo "checkmap: damage"; exit 1
+	fi
+	echo "show and checkmap: no damage"
+}
+
 case "$1" in
 refuse-badsig|refuse-badcrc)
 	./hammer_io mounterr $DEV "$2" 1 $EINVAL
@@ -15,8 +29,19 @@ refuse-badsig|refuse-badcrc)
 refuse-v6|refuse-twovol|refuse-needs-recovery)
 	./hammer_io mounterr $DEV "$2" 1 $EOPNOTSUPP
 	;;
-refuse-rw)
-	./hammer_io mounterr $DEV "$2" 0 $EROFS
+rw-empty)
+	./hammer_io mount-rw $DEV "$2"
+	sync
+	./hammer_io unmount "$2"
+	checkvol
+	;;
+refuse-rw-recovery)
+	./hammer_io mounterr $DEV "$2" 0 $EOPNOTSUPP
+	;;
+refuse-rw-pfs)
+	./hammer_io mounterr $DEV "$2" 0 $EOPNOTSUPP
+	./hammer_io mount $DEV "$2"
+	./hammer_io unmount "$2"
 	;;
 admit)
 	./hammer_io mount $DEV "$2"

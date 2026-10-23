@@ -166,11 +166,9 @@ RB_GENERATE2(hammer_pfs_rb_tree, hammer_pseudofs_inmem, rb_node,
              hammer_pfs_rb_compare, uint32_t, localization);
 
 /*
- * hammer_flusher.c and hammer_redo.c generate these; until Phase 2
- * compiles them, inode unloading still needs the remove functions.
+ * hammer_redo.c generates this; until it is compiled (Phase 3), inode
+ * unloading still needs the remove functions.
  */
-RB_GENERATE(hammer_fls_rb_tree, hammer_inode, rb_flsnode,
-	    hammer_ino_rb_compare);
 RB_GENERATE2(hammer_redo_rb_tree, hammer_inode, rb_redonode,
 	     hammer_redo_rb_compare, hammer_off_t, redo_fifo_start);
 
@@ -281,6 +279,16 @@ hammer_inode_dirty(hammer_inode_t ip)
 }
 
 #endif /* phase 2 */
+
+/*
+ * DragonFly marks the vnode dirty here for vn_unlock().  Rhapsody has no
+ * such flag: sync walks every vnode and checks the inode's own dirty
+ * flags (hammer_sync_vnodes).
+ */
+void
+hammer_inode_dirty(hammer_inode_t ip)
+{
+}
 
 /*
  * Return a locked vnode for the specified inode.  The inode must be
@@ -1190,7 +1198,6 @@ hammer_rel_pseudofs(hammer_mount_t hmp, hammer_pseudofs_inmem_t pfsm)
 	}
 }
 
-#if 0 /* phase 2: write path */
 /*
  * Called by hammer_sync_inode().
  */
@@ -1215,13 +1222,13 @@ retry:
 	if ((ip->flags & (HAMMER_INODE_ONDISK|HAMMER_INODE_DELONDISK)) ==
 	    HAMMER_INODE_ONDISK) {
 		hammer_normalize_cursor(cursor);
-		cursor->key_beg.localization = ip->obj_localization |
-					       HAMMER_LOCALIZE_INODE;
-		cursor->key_beg.obj_id = ip->obj_id;
-		cursor->key_beg.key = 0;
-		cursor->key_beg.create_tid = 0;
-		cursor->key_beg.delete_tid = 0;
-		cursor->key_beg.rec_type = HAMMER_RECTYPE_INODE;
+		cursor->key_beg.localization = hmk32(ip->obj_localization |
+					       HAMMER_LOCALIZE_INODE);
+		cursor->key_beg.obj_id = hmk64(ip->obj_id);
+		cursor->key_beg.key = hmk64(0);
+		cursor->key_beg.create_tid = hmk64(0);
+		cursor->key_beg.delete_tid = hmk64(0);
+		cursor->key_beg.rec_type = hmk16(HAMMER_RECTYPE_INODE);
 		cursor->key_beg.obj_type = 0;
 		cursor->asof = ip->obj_asof;
 		cursor->flags &= ~HAMMER_CURSOR_INITMASK;
@@ -1271,9 +1278,9 @@ retry:
 		record->type = HAMMER_MEM_RECORD_INODE;
 		record->flush_state = HAMMER_FST_FLUSH;
 		record->leaf = ip->sync_ino_leaf;
-		record->leaf.base.create_tid = trans->tid;
-		record->leaf.data_len = sizeof(ip->sync_ino_data);
-		record->leaf.create_ts = trans->time32;
+		record->leaf.base.create_tid = hmk64(trans->tid);
+		record->leaf.data_len = hmk32(sizeof(ip->sync_ino_data));
+		record->leaf.create_ts = hmk32(trans->time32);
 		record->data = (void *)&ip->sync_ino_data;
 		record->flags |= HAMMER_RECF_INTERLOCK_BE;
 
@@ -1284,7 +1291,7 @@ retry:
 		 * the job.
 		 */
 		if ((ip->flags & HAMMER_INODE_WOULDBLOCK) &&
-		    ip->sync_ino_data.size != ip->ino_data.size) {
+		    hget64(ip->sync_ino_data.size) != hget64(ip->ino_data.size)) {
 			redirty = 1;
 			ip->sync_ino_data.size = ip->ino_data.size;
 		} else {
@@ -1339,7 +1346,7 @@ retry:
 				hammer_modify_volume_field(trans,
 							   trans->rootvol,
 							   vol0_stat_inodes);
-				++ip->hmp->rootvol->ondisk->vol0_stat_inodes;
+				ip->hmp->rootvol->ondisk->vol0_stat_inodes = hmk64((int64_t)hget64(ip->hmp->rootvol->ondisk->vol0_stat_inodes) + 1);
 				hammer_modify_volume_done(trans->rootvol);
 				ip->flags |= HAMMER_INODE_ONDISK;
 				if (hammer_debug_inode)
@@ -1385,13 +1392,13 @@ retry:
 	}
 
 	hammer_normalize_cursor(cursor);
-	cursor->key_beg.localization = ip->obj_localization |
-				       HAMMER_LOCALIZE_INODE;
-	cursor->key_beg.obj_id = ip->obj_id;
-	cursor->key_beg.key = 0;
-	cursor->key_beg.create_tid = 0;
-	cursor->key_beg.delete_tid = 0;
-	cursor->key_beg.rec_type = HAMMER_RECTYPE_INODE;
+	cursor->key_beg.localization = hmk32(ip->obj_localization |
+				       HAMMER_LOCALIZE_INODE);
+	cursor->key_beg.obj_id = hmk64(ip->obj_id);
+	cursor->key_beg.key = hmk64(0);
+	cursor->key_beg.create_tid = hmk64(0);
+	cursor->key_beg.delete_tid = hmk64(0);
+	cursor->key_beg.rec_type = hmk16(HAMMER_RECTYPE_INODE);
 	cursor->key_beg.obj_type = 0;
 	cursor->asof = ip->obj_asof;
 	cursor->flags &= ~HAMMER_CURSOR_INITMASK;
@@ -1438,7 +1445,6 @@ retry:
 	return(error);
 }
 
-#endif /* phase 2 */
 
 /*
  * Release a reference on an inode, flush as requested.
@@ -1606,7 +1612,6 @@ hammer_reload_inode(hammer_inode_t ip, void *arg __unused)
 	return(0);
 }
 
-#if 0 /* phase 2: write path */
 /*
  * A transaction has modified an inode, requiring updates as specified by
  * the passed flags.
@@ -1671,7 +1676,7 @@ hammer_update_atime_quick(hammer_inode_t ip)
 	int res = -1;
 
 	if ((ip->flags & HAMMER_INODE_RO) ||
-	    (ip->hmp->mp->mnt_flag & MNT_NOATIME)) {
+	    hammer_noatime) {
 		/*
 		 * Silently indicate success on read-only mount/snap
 		 */
@@ -1685,9 +1690,8 @@ hammer_update_atime_quick(hammer_inode_t ip)
 		vfs_timestamp(&ts);
 		hammer_lock_ex(&ip->lock);
 		if (ip->flags & HAMMER_INODE_ATIME) {
-			ip->ino_data.atime =
-			    (unsigned long)ts.tv_sec * 1000000ULL +
-			    ts.tv_nsec / 1000;
+			ip->ino_data.atime = hmk64((unsigned long)ts.tv_sec * 1000000ULL +
+			    ts.tv_nsec / 1000);
 			res = 0;
 		}
 		hammer_unlock(&ip->lock);
@@ -2071,7 +2075,9 @@ hammer_flush_inode_core(hammer_inode_t ip, hammer_flush_group_t flg, int flags)
 	++hmp->count_iqueued;
 	++hammer_count_iqueued;
 	++flg->total_count;
+#if 0 /* phase 3: REDO; without REDO records redo_fifo_next stays 0 */
 	hammer_redo_fifo_start_flush(ip);
+#endif
 
 #if 0
 	/*
@@ -2526,16 +2532,18 @@ hammer_sync_inode_done(hammer_inode_t ip, int error)
 	 * The backend may have adjusted nlinks, so if the adjusted nlinks
 	 * does not match the fronttend set the frontend's DDIRTY flag again.
 	 */
-	if (ip->ino_data.nlinks != ip->sync_ino_data.nlinks)
+	if (hget64(ip->ino_data.nlinks) != hget64(ip->sync_ino_data.nlinks))
 		ip->flags |= HAMMER_INODE_DDIRTY;
 
 	/*
 	 * Fix up the dirty buffer status.
 	 */
-	if (ip->vp && RB_ROOT(&ip->vp->v_rbdirty_tree)) {
+	if (ip->vp && ip->vp->v_dirtyblkhd.lh_first != NULL) {
 		ip->flags |= HAMMER_INODE_BUFS;
 	}
+#if 0 /* phase 3: REDO; RDIRTY is only set by hammer_generate_redo() */
 	hammer_redo_fifo_end_flush(ip);
+#endif
 
 	/*
 	 * Re-set the XDIRTY flag if some of the inode's in-memory records
@@ -2803,8 +2811,8 @@ hammer_sync_record_callback(hammer_record_t record, void *data)
 	 * have the record's entire key properly set up.
 	 */
 	if (record->type != HAMMER_MEM_RECORD_DEL) {
-		record->leaf.base.create_tid = trans->tid;
-		record->leaf.create_ts = trans->time32;
+		record->leaf.base.create_tid = hmk64(trans->tid);
+		record->leaf.create_ts = hmk32(trans->time32);
 	}
 
 	/*
@@ -2819,6 +2827,7 @@ hammer_sync_record_callback(hammer_record_t record, void *data)
 	 * prevent them from being executed (because the meta-data has
 	 * already been synchronized).
 	 */
+#if 0 /* phase 3: REDO; RECF_REDO is only set with a REDO_WRITE */
 	if (record->flags & HAMMER_RECF_REDO) {
 		KKASSERT(record->type == HAMMER_MEM_RECORD_DATA);
 		hammer_generate_redo(trans, record->ip,
@@ -2828,6 +2837,7 @@ hammer_sync_record_callback(hammer_record_t record, void *data)
 				     NULL,
 				     record->leaf.data_len);
 	}
+#endif
 
 	for (;;) {
 		error = hammer_ip_sync_record_cursor(cursor, record);
@@ -2896,7 +2906,7 @@ hammer_sync_inode(hammer_transaction_t trans, hammer_inode_t ip)
 	 *
 	 * This cannot block.
 	 */
-	nlinks = ip->ino_data.nlinks;
+	nlinks = hget64(ip->ino_data.nlinks);
 	next = TAILQ_FIRST(&ip->target_list);
 	while ((depend = next) != NULL) {
 		next = TAILQ_NEXT(depend, target_entry);
@@ -2944,9 +2954,9 @@ hammer_sync_inode(hammer_transaction_t trans, hammer_inode_t ip)
 	/*
 	 * Set dirty if we had to modify the link count.
 	 */
-	if (ip->sync_ino_data.nlinks != nlinks) {
+	if (hget64(ip->sync_ino_data.nlinks) != nlinks) {
 		KKASSERT((int64_t)nlinks >= 0);
-		ip->sync_ino_data.nlinks = nlinks;
+		ip->sync_ino_data.nlinks = hmk64(nlinks);
 		ip->sync_flags |= HAMMER_INODE_DDIRTY;
 	}
 
@@ -3001,12 +3011,14 @@ hammer_sync_inode(hammer_transaction_t trans, hammer_inode_t ip)
 		 * range for multiple prior truncation entries in the REDO
 		 * log.
 		 */
+#if 0 /* phase 3: REDO; RDIRTY is only set by hammer_generate_redo() */
 		if (trans->hmp->version >= HAMMER_VOL_VERSION_FOUR &&
 		    (ip->flags & HAMMER_INODE_RDIRTY)) {
 			hammer_generate_redo(trans, ip, aligned_trunc_off,
 					     HAMMER_REDO_TERM_TRUNC,
 					     NULL, 0);
 		}
+#endif
 
 		/*
 		 * Clear the truncation flag on the backend after we have
@@ -3066,7 +3078,7 @@ hammer_sync_inode(hammer_transaction_t trans, hammer_inode_t ip)
 	 * but not DB or DATA records.  Those must have already been deleted
 	 * by the normal truncation mechanic.
 	 */
-	if (error == 0 && ip->sync_ino_data.nlinks == 0 &&
+	if (error == 0 && hget64(ip->sync_ino_data.nlinks) == 0 &&
 		RB_EMPTY(&ip->rec_tree)  &&
 	    (ip->sync_flags & HAMMER_INODE_DELETING) &&
 	    (ip->flags & HAMMER_INODE_DELETED) == 0) {
@@ -3084,10 +3096,10 @@ hammer_sync_inode(hammer_transaction_t trans, hammer_inode_t ip)
 			 * copy of the inode record.  The DELETED flag handles
 			 * this, do not set DDIRTY.
 			 */
-			ip->ino_leaf.base.delete_tid = trans->tid;
-			ip->sync_ino_leaf.base.delete_tid = trans->tid;
-			ip->ino_leaf.delete_ts = trans->time32;
-			ip->sync_ino_leaf.delete_ts = trans->time32;
+			ip->ino_leaf.base.delete_tid = hmk64(trans->tid);
+			ip->sync_ino_leaf.base.delete_tid = hmk64(trans->tid);
+			ip->ino_leaf.delete_ts = hmk32(trans->time32);
+			ip->sync_ino_leaf.delete_ts = hmk32(trans->time32);
 
 
 			/*
@@ -3098,7 +3110,7 @@ hammer_sync_inode(hammer_transaction_t trans, hammer_inode_t ip)
 				hammer_modify_volume_field(trans,
 							   trans->rootvol,
 							   vol0_stat_inodes);
-				--ip->hmp->rootvol->ondisk->vol0_stat_inodes;
+				ip->hmp->rootvol->ondisk->vol0_stat_inodes = hmk64(hget64(ip->hmp->rootvol->ondisk->vol0_stat_inodes) - 1);
 				hammer_modify_volume_done(trans->rootvol);
 			}
 			hammer_sync_unlock(trans);
@@ -3164,10 +3176,10 @@ defer_buffer_flush:
 		 * Also set the create_tid in both the frontend and backend
 		 * copy of the inode record.
 		 */
-		ip->ino_leaf.base.create_tid = trans->tid;
-		ip->ino_leaf.create_ts = trans->time32;
-		ip->sync_ino_leaf.base.create_tid = trans->tid;
-		ip->sync_ino_leaf.create_ts = trans->time32;
+		ip->ino_leaf.base.create_tid = hmk64(trans->tid);
+		ip->ino_leaf.create_ts = hmk32(trans->time32);
+		ip->sync_ino_leaf.base.create_tid = hmk64(trans->tid);
+		ip->sync_ino_leaf.create_ts = hmk32(trans->time32);
 		ip->sync_flags |= HAMMER_INODE_DDIRTY;
 		break;
 	}
@@ -3202,7 +3214,6 @@ done:
 	return(error);
 }
 
-#endif /* phase 2 */
 
 /*
  * This routine is called when the OS is no longer actively referencing
@@ -3315,7 +3326,6 @@ hammer_inode_wakereclaims(hammer_inode_t ip)
 	}
 }
 
-#if 0 /* phase 2: write path */
 /*
  * Setup our reclaim pipeline.  We only let so many detached (and dirty)
  * inodes build up before we start blocking.  This routine is called
@@ -3340,10 +3350,10 @@ hammer_inode_waitreclaims(hammer_transaction_t trans)
 	 * Track inode load, delay if the number of reclaiming inodes is
 	 * between 2/4 and 4/4 hammer_limit_reclaims, depending.
 	 */
-	if (curthread->td_proc) {
+	if (current_proc()) {
 		struct hammer_inostats *stats;
 
-		stats = hammer_inode_inostats(hmp, curthread->td_proc->p_pid);
+		stats = hammer_inode_inostats(hmp, current_proc()->p_pid);
 		++stats->count;
 
 		if (stats->count > hammer_limit_reclaims / 2)
@@ -3351,7 +3361,7 @@ hammer_inode_waitreclaims(hammer_transaction_t trans)
 		lower_limit = hammer_limit_reclaims - stats->count;
 		if (hammer_debug_general & 0x10000) {
 			hdkprintf("pid %5d limit %d\n",
-				(int)curthread->td_proc->p_pid, lower_limit);
+				(int)current_proc()->p_pid, lower_limit);
 		}
 	} else {
 		lower_limit = hammer_limit_reclaims * 3 / 4;
@@ -3405,9 +3415,9 @@ hammer_inode_inostats(hammer_mount_t hmp, pid_t pid)
 	/*
 	 * Decay the entry
 	 */
-	if (stats->count && stats->ltick != ticks) {
-		delta = ticks - stats->ltick;
-		stats->ltick = ticks;
+	if (stats->count && stats->ltick != hammer_ticks()) {
+		delta = hammer_ticks() - stats->ltick;
+		stats->ltick = hammer_ticks();
 		if (delta <= 0 || delta > hz * 60)
 			stats->count = 0;
 		else
@@ -3463,12 +3473,3 @@ hammer_inode_waithard(hammer_mount_t hmp)
 }
 
 #endif
-#endif /* phase 2 */
-
-/*
- * Read-only: no inode is ever modified, so there is nothing to flush.
- */
-void
-hammer_flush_inode(hammer_inode_t ip, int flags)
-{
-}

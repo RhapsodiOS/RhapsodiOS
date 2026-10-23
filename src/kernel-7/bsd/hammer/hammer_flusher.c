@@ -42,8 +42,9 @@
 
 #include "hammer.h"
 
+struct hammer_flusher_info;
 static void hammer_flusher_master_thread(void *arg);
-static void hammer_flusher_slave_thread(void *arg);
+static void hammer_flusher_run_group(struct hammer_flusher_info *info);
 static int hammer_flusher_flush(hammer_mount_t hmp, int *nomorep);
 static int hammer_flusher_flush_inode(hammer_inode_t ip, void *data);
 
@@ -194,7 +195,6 @@ void
 hammer_flusher_create(hammer_mount_t hmp)
 {
 	hammer_flusher_info_t info;
-	int i;
 
 	hmp->flusher.signal = 0;
 	hmp->flusher.done = 0;
@@ -203,15 +203,16 @@ hammer_flusher_create(hammer_mount_t hmp)
 	TAILQ_INIT(&hmp->flusher.run_list);
 	TAILQ_INIT(&hmp->flusher.ready_list);
 
-	lwkt_create(hammer_flusher_master_thread, hmp,
-		    &hmp->flusher.td, NULL, 0, -1, "hammer-M");
-	for (i = 0; i < HAMMER_MAX_FLUSHERS; ++i) {
-		info = kmalloc(sizeof(*info), hmp->m_misc, M_WAITOK|M_ZERO);
-		info->hmp = hmp;
-		TAILQ_INSERT_TAIL(&hmp->flusher.ready_list, info, entry);
-		lwkt_create(hammer_flusher_slave_thread, info,
-			    &info->td, NULL, 0, -1, "hammer-S%d", i);
-	}
+	/*
+	 * One flusher thread per mount: the master runs each flush group
+	 * itself (hammer_flusher_run_group) rather than handing it to
+	 * HAMMER_MAX_FLUSHERS slave threads.
+	 */
+	info = kmalloc(sizeof(*info), hmp->m_misc, M_WAITOK|M_ZERO);
+	info->hmp = hmp;
+	TAILQ_INSERT_TAIL(&hmp->flusher.ready_list, info, entry);
+	hammer_kthread_create(hammer_flusher_master_thread, hmp,
+			      &hmp->flusher.td);
 }
 
 void
@@ -230,15 +231,11 @@ hammer_flusher_destroy(hammer_mount_t hmp)
 	}
 
 	/*
-	 * Kill the slaves
+	 * Free the flush group runner
 	 */
 	while ((info = TAILQ_FIRST(&hmp->flusher.ready_list)) != NULL) {
 		KKASSERT(info->runstate == 0);
 		TAILQ_REMOVE(&hmp->flusher.ready_list, info, entry);
-		info->runstate = -1;
-		wakeup(&info->runstate);
-		while (info->td)
-			tsleep(&info->td, 0, "hmrwwc", 0);
 		kfree(info, hmp->m_misc);
 	}
 }
@@ -386,26 +383,16 @@ hammer_flusher_flush(hammer_mount_t hmp, int *nomorep)
 		KKASSERT(hmp->next_flush_group != flg);
 
 		/*
-		 * Place the flg in the flusher structure and start the
-		 * slaves running.  The slaves will compete for inodes
-		 * to flush.
-		 *
-		 * Make a per-thread copy of the transaction.
+		 * Run the flg's inodes on this thread, with a copy of the
+		 * transaction (upstream gave each slave thread one).
 		 */
-		while ((info = TAILQ_FIRST(&hmp->flusher.ready_list)) != NULL) {
-			TAILQ_REMOVE(&hmp->flusher.ready_list, info, entry);
-			info->flg = flg;
-			info->runstate = 1;
-			info->trans = hmp->flusher.trans;
-			TAILQ_INSERT_TAIL(&hmp->flusher.run_list, info, entry);
-			wakeup(&info->runstate);
-		}
-
-		/*
-		 * Wait for all slaves to finish running
-		 */
-		while (TAILQ_FIRST(&hmp->flusher.run_list) != NULL)
-			tsleep(&hmp->flusher.ready_list, 0, "hmrfcc", 0);
+		info = TAILQ_FIRST(&hmp->flusher.ready_list);
+		TAILQ_REMOVE(&hmp->flusher.ready_list, info, entry);
+		info->flg = flg;
+		info->runstate = 1;
+		info->trans = hmp->flusher.trans;
+		TAILQ_INSERT_TAIL(&hmp->flusher.run_list, info, entry);
+		hammer_flusher_run_group(info);
 
 		/*
 		 * Do the final finalization, clean up
@@ -454,40 +441,20 @@ hammer_flusher_flush(hammer_mount_t hmp, int *nomorep)
 
 
 /*
- * The slave flusher thread pulls work off the master flush list until no
- * work is left.
+ * Flush the inodes of info->flg (upstream's slave thread body, one pass).
  */
 static void
-hammer_flusher_slave_thread(void *arg)
+hammer_flusher_run_group(hammer_flusher_info_t info)
 {
-	hammer_flush_group_t flg;
-	hammer_flusher_info_t info;
-	hammer_mount_t hmp;
+	hammer_mount_t hmp = info->hmp;
 
-	info = arg;
-	hmp = info->hmp;
-	lwkt_gettoken(&hmp->fs_token);
+	RB_SCAN(hammer_fls_rb_tree, &info->flg->flush_tree, NULL,
+		hammer_flusher_flush_inode, info);
 
-	for (;;) {
-		while (info->runstate == 0)
-			tsleep(&info->runstate, 0, "hmrssw", 0);
-		if (info->runstate < 0)
-			break;
-		flg = info->flg;
-
-		RB_SCAN(hammer_fls_rb_tree, &flg->flush_tree, NULL,
-			hammer_flusher_flush_inode, info);
-
-		info->runstate = 0;
-		info->flg = NULL;
-		TAILQ_REMOVE(&hmp->flusher.run_list, info, entry);
-		TAILQ_INSERT_TAIL(&hmp->flusher.ready_list, info, entry);
-		wakeup(&hmp->flusher.ready_list);
-	}
-	info->td = NULL;
-	wakeup(&info->td);
-	lwkt_reltoken(&hmp->fs_token);
-	lwkt_exit();
+	info->runstate = 0;
+	info->flg = NULL;
+	TAILQ_REMOVE(&hmp->flusher.run_list, info, entry);
+	TAILQ_INSERT_TAIL(&hmp->flusher.ready_list, info, entry);
 }
 
 void
@@ -547,7 +514,6 @@ hammer_flusher_flush_inode(hammer_inode_t ip, void *data)
 	++hammer_stats_inode_flushes;
 
 	hammer_flusher_clean_loose_ios(hmp);
-	vm_wait_nominal();
 	error = hammer_sync_inode(trans, ip);
 
 	/*
@@ -705,7 +671,7 @@ hammer_flusher_finalize(hammer_transaction_t trans, int final)
 	 */
 	cundomap = &hmp->blockmap[HAMMER_ZONE_UNDO_INDEX];
 	hammer_lock_ex(&hmp->undo_lock);
-	save_undo_next_offset = cundomap->next_offset;
+	save_undo_next_offset = hget64(cundomap->next_offset);
 	hammer_unlock(&hmp->undo_lock);
 	hammer_flusher_flush_undos(hmp, HAMMER_FLUSH_UNDOS_FORCED);
 
@@ -738,11 +704,11 @@ hammer_flusher_finalize(hammer_transaction_t trans, int final)
 	dundomap = &root_volume->ondisk->vol0_blockmap[HAMMER_ZONE_UNDO_INDEX];
 	cundomap = &hmp->blockmap[HAMMER_ZONE_UNDO_INDEX];
 
-	if (dundomap->first_offset != cundomap->first_offset ||
-		   dundomap->next_offset != save_undo_next_offset) {
+	if (hget64(dundomap->first_offset) != hget64(cundomap->first_offset) ||
+		   hget64(dundomap->next_offset) != save_undo_next_offset) {
 		hammer_modify_volume_noundo(NULL, root_volume);
 		dundomap->first_offset = cundomap->first_offset;
-		dundomap->next_offset = save_undo_next_offset;
+		dundomap->next_offset = hmk64(save_undo_next_offset);
 		hammer_crc_set_blockmap(hmp->version, dundomap);
 		hammer_modify_volume_done(root_volume);
 	}
@@ -761,8 +727,8 @@ hammer_flusher_finalize(hammer_transaction_t trans, int final)
 	 */
 	if (root_volume->io.modified) {
 		hammer_modify_volume_noundo(NULL, root_volume);
-		if (root_volume->ondisk->vol0_next_tid < trans->tid)
-			root_volume->ondisk->vol0_next_tid = trans->tid;
+		if (hget64(root_volume->ondisk->vol0_next_tid) < trans->tid)
+			root_volume->ondisk->vol0_next_tid = hmk64(trans->tid);
 		hammer_crc_set_volume(hmp->version, root_volume->ondisk);
 		hammer_modify_volume_done(root_volume);
 		hammer_io_write_interlock(&root_volume->io);
@@ -832,10 +798,10 @@ hammer_flusher_finalize(hammer_transaction_t trans, int final)
 	 */
 	if (final) {
 		cundomap = &hmp->blockmap[HAMMER_ZONE_UNDO_INDEX];
-		if (cundomap->first_offset != save_undo_next_offset) {
-			cundomap->first_offset = save_undo_next_offset;
+		if (hget64(cundomap->first_offset) != save_undo_next_offset) {
+			cundomap->first_offset = hmk64(save_undo_next_offset);
 			hmp->hflags |= HMNT_UNDO_DIRTY;
-		} else if (cundomap->first_offset != cundomap->next_offset) {
+		} else if (hget64(cundomap->first_offset) != hget64(cundomap->next_offset)) {
 			hmp->hflags |= HMNT_UNDO_DIRTY;
 		} else {
 			hmp->hflags &= ~HMNT_UNDO_DIRTY;

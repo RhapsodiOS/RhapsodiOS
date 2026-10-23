@@ -956,6 +956,7 @@ extern int hammer_double_buffer;
 extern int hammer_btree_full_undo;
 extern int hammer_yield_check;
 extern int hammer_fsync_mode;
+extern int hammer_noatime;
 extern int hammer_autoflush;
 extern int64_t hammer_contention_count;
 

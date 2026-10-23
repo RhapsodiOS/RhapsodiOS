@@ -130,11 +130,26 @@ struct lwkt_token {
 #define crit_exit()			((void)0)
 /* Long B-tree scans yield to user processes on DragonFly; nothing to do here. */
 #define lwkt_user_yield()		((void)0)
-/* Only the allocator asks; the read-only build never allocates (Phase 2). */
+/*
+ * DragonFly's free-page tests (the allocator and the inode flush).  The
+ * dirty-buffer limit (hammer_rhapsody_limits) bounds HAMMER's own memory.
+ */
 #define vm_paging_min_dnc(pages)	0
+#define vm_paging_severe()		0
 
 /* Threads */
 #define curthread	current_thread()
+
+/*
+ * Kernel threads (the flusher): a Mach kernel thread in kernel_task.
+ * hammer_kthread_exit() does not return.
+ */
+void	hammer_kthread_create(void (*func)(void *), void *arg, thread_t *tdp);
+void	hammer_kthread_exit(void);
+#define lwkt_exit()	hammer_kthread_exit()
+
+/* Dirty-buffer and inode limits, scaled to physical memory at init. */
+void	hammer_rhapsody_limits(long *dirtybufspace, int *inodes);
 
 /* Atomics: plain operations on a non-preemptive uniprocessor. */
 static __inline int
@@ -178,6 +193,8 @@ int	hammer_tsleep(void *ident, int flags, const char *wmesg, int timo);
 /* Time */
 #define time_uptime	((long)time.tv_sec)
 #define time_second	((long)time.tv_sec)
+/* DragonFly's ticks; Rhapsody keeps only the time of day. */
+#define hammer_ticks()	((int)(time.tv_sec * hz + time.tv_usec / (1000000 / hz)))
 #define getmicrotime(tvp)	microtime(tvp)
 void	hammer_vfs_timestamp(struct timespec *ts);
 #define vfs_timestamp(ts)	hammer_vfs_timestamp(ts)
@@ -188,5 +205,7 @@ void	hammer_vfs_timestamp(struct timespec *ts);
 /* Device reads in MAXBSIZE chunks; offset and bytes are DEV_BSIZE multiples. */
 struct vnode;
 int	hammer_dev_read(struct vnode *devvp, int64_t offset, void *dst, int bytes);
+int	hammer_io_write_sync(struct vnode *devvp, int64_t offset,
+			     const void *src, int bytes);
 
 #endif /* !VFS_HAMMER_RHAPSODY_H_ */

@@ -573,13 +573,19 @@ found_aliased:
 	zone = HAMMER_ZONE_DECODE(buf_offset);
 	if (hammer_is_index_record(zone)) {
 		zone2_offset = hammer_blockmap_lookup(hmp, buf_offset, errorp);
+	} else if (zone == HAMMER_ZONE_UNDO_INDEX) {
+		/*
+		 * Only the UNDO FIFO code (hammer_undo.c, hammer_recover.c)
+		 * asks for these; B-Tree and record offsets are checked
+		 * against their own zones first.
+		 */
+		zone2_offset = hammer_undo_lookup(hmp, buf_offset, errorp);
 	} else if (zone == HAMMER_ZONE_RAW_BUFFER_INDEX) {
 		zone2_offset = buf_offset;
 		*errorp = 0;
 	} else {
 		/*
-		 * Zone 1, 4 or 15, or the UNDO zone (read only by recovery,
-		 * Phase 2): a crafted or damaged offset, not a panic.
+		 * Zone 1, 4 or 15: a crafted or damaged offset, not a panic.
 		 */
 		hkprintf("buffer %016jx: not a readable zone\n",
 			 (intmax_t)buf_offset);
@@ -1608,93 +1614,83 @@ hammer_alloc_data(hammer_transaction_t trans, int32_t data_len,
 	return(data);
 }
 
-#if 0 /* write path: sync and the flusher queue return in Phase 2 */
 /*
  * Sync dirty buffers to the media and clean-up any loose ends.
  *
  * These functions do not start the flusher going, they simply
  * queue everything up to the flusher.
+ *
+ * Rhapsody has no vsyncscan(); the mount's vnode list is walked as
+ * ffs_sync() walks it, and VOP_FSYNC queues each dirty inode.
  */
-static int hammer_sync_scan2(struct mount *mp, struct vnode *vp, void *data);
+static int
+hammer_sync_vnodes(hammer_mount_t hmp, int waitfor)
+{
+	struct mount *mp = hmp->mp;
+	struct proc *p = current_proc();
+	struct vnode *vp, *nvp;
+	hammer_inode_t ip;
+	int error, allerror = 0;
 
-struct hammer_sync_info {
-	int error;
-};
+	simple_lock(&mntvnode_slock);
+loop:
+	for (vp = mp->mnt_vnodelist.lh_first; vp != NULL; vp = nvp) {
+		if (vp->v_mount != mp)
+			goto loop;
+		simple_lock(&vp->v_interlock);
+		nvp = vp->v_mntvnodes.le_next;
+		ip = VTOI(vp);
+		if (ip == NULL || vp->v_type == VNON || vp->v_type == VBAD ||
+		    ((ip->flags & HAMMER_INODE_MODMASK) == 0 &&
+		     vp->v_dirtyblkhd.lh_first == NULL)) {
+			simple_unlock(&vp->v_interlock);
+			continue;
+		}
+		simple_unlock(&mntvnode_slock);
+		error = vget(vp, LK_EXCLUSIVE | LK_NOWAIT | LK_INTERLOCK, p);
+		if (error) {
+			simple_lock(&mntvnode_slock);
+			if (error == ENOENT)
+				goto loop;
+			continue;
+		}
+		error = VOP_FSYNC(vp, p->p_ucred, waitfor, p);
+		if (error)
+			allerror = error;
+		VOP_UNLOCK(vp, 0, p);
+		vrele(vp);
+		simple_lock(&mntvnode_slock);
+	}
+	simple_unlock(&mntvnode_slock);
+	return(allerror);
+}
 
 int
 hammer_queue_inodes_flusher(hammer_mount_t hmp, int waitfor)
 {
-	struct hammer_sync_info info;
-
-	info.error = 0;
-	if (waitfor == MNT_WAIT) {
-		vsyncscan(hmp->mp, VMSC_GETVP | VMSC_ONEPASS,
-			  hammer_sync_scan2, &info);
-	} else {
-		vsyncscan(hmp->mp, VMSC_GETVP | VMSC_ONEPASS | VMSC_NOWAIT,
-			  hammer_sync_scan2, &info);
-	}
-	return(info.error);
+	return(hammer_sync_vnodes(hmp, waitfor == MNT_WAIT ?
+				  MNT_WAIT : MNT_NOWAIT));
 }
 
 /*
- * Filesystem sync.  If doing a synchronous sync make a second pass on
- * the vnodes in case any were already flushing during the first pass,
- * and activate the flusher twice (the second time brings the UNDO FIFO's
- * start position up to the end position after the first call).
- *
- * If doing a lazy sync make just one pass on the vnode list, ignoring
- * any new vnodes added to the list while the sync is in progress.
+ * Filesystem sync.  A synchronous sync activates the flusher twice (the
+ * second time brings the UNDO FIFO's start position up to the end
+ * position after the first call).
  */
 int
 hammer_sync_hmp(hammer_mount_t hmp, int waitfor)
 {
-	struct hammer_sync_info info;
-	int flags;
-
-	flags = VMSC_GETVP;
-	if (waitfor & MNT_LAZY)
-		flags |= VMSC_ONEPASS;
-
-	info.error = 0;
-	vsyncscan(hmp->mp, flags | VMSC_NOWAIT, hammer_sync_scan2, &info);
-
-	if (info.error == 0 && (waitfor & MNT_WAIT)) {
-		vsyncscan(hmp->mp, flags, hammer_sync_scan2, &info);
-	}
-        if (waitfor == MNT_WAIT) {
-                hammer_flusher_sync(hmp);
-                hammer_flusher_sync(hmp);
-	} else {
-                hammer_flusher_async(hmp, NULL);
-                hammer_flusher_async(hmp, NULL);
-	}
-	return(info.error);
-}
-
-static int
-hammer_sync_scan2(struct mount *mp, struct vnode *vp, void *data)
-{
-	struct hammer_sync_info *info = data;
-	hammer_inode_t ip;
 	int error;
 
-	ip = VTOI(vp);
-	if (ip == NULL)
-		return(0);
-	if (vp->v_type == VNON || vp->v_type == VBAD) {
-		vclrisdirty(vp);
-		return(0);
+	error = hammer_sync_vnodes(hmp, MNT_NOWAIT);
+	if (error == 0 && waitfor == MNT_WAIT)
+		error = hammer_sync_vnodes(hmp, MNT_WAIT);
+	if (waitfor == MNT_WAIT) {
+		hammer_flusher_sync(hmp);
+		hammer_flusher_sync(hmp);
+	} else {
+		hammer_flusher_async(hmp, NULL);
+		hammer_flusher_async(hmp, NULL);
 	}
-	if ((ip->flags & HAMMER_INODE_MODMASK) == 0 &&
-	    RB_EMPTY(&vp->v_rbdirty_tree))
-	{
-		vclrisdirty(vp);
-		return(0);
-	}
-	error = VOP_FSYNC(vp, MNT_NOWAIT, 0);
-	if (error)
-		info->error = error;
-	return(0);
+	return(error);
 }
-#endif /* write path */

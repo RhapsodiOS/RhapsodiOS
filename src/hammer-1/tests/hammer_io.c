@@ -35,6 +35,7 @@
  *
  *	mounterr DEV POINT RDONLY ERRNO	mount(2) fails with ERRNO
  *	mount DEV POINT			read-only mount(2) succeeds
+ *	mount-rw DEV POINT		read-write mount(2) succeeds
  *	unmount POINT			unmount(2) succeeds
  *	readdir-small DIR COUNT		512-byte getdirentries sees COUNT unique
  *					names, each d_fileno equal to lstat st_ino
@@ -85,12 +86,12 @@ mounterr(char *dev, const char *point, int rdonly, int want)
 }
 
 static int
-domount(char *dev, const char *point)
+domount(char *dev, const char *point, int flags)
 {
 	struct hammer_args args;
 
 	args.fspec = dev;
-	CHECK(mount("hammer", point, MNT_RDONLY, &args) == 0);
+	CHECK(mount("hammer", point, flags, &args) == 0);
 	return 0;
 }
 
@@ -340,7 +341,9 @@ main(int ac, char **av)
 	if (ac == 6 && strcmp(av[1], "mounterr") == 0)
 		return mounterr(av[2], av[3], atoi(av[4]), atoi(av[5]));
 	if (ac == 4 && strcmp(av[1], "mount") == 0)
-		return domount(av[2], av[3]);
+		return domount(av[2], av[3], MNT_RDONLY);
+	if (ac == 4 && strcmp(av[1], "mount-rw") == 0)
+		return domount(av[2], av[3], 0);
 	if (ac == 3 && strcmp(av[1], "unmount") == 0) {
 		CHECK(unmount(av[2], 0) == 0);
 		return 0;

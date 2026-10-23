@@ -5,7 +5,8 @@ Design: `docs/superpowers/specs/2026-10-17-hammer-design.md`.
 Plan: `docs/superpowers/plans/2026-10-17-hammer-phase1.md`.
 
 This is a single-volume, single-namespace (root PFS only), version-7 HAMMER.
-Phase 1 is read-only.
+Phase 1 is read-only; Phase 2 (`docs/superpowers/plans/2026-10-23-hammer-phase2.md`)
+adds read-write mounts.
 
 ## Removed upstream units
 
@@ -55,11 +56,13 @@ prototypes, since the Rhapsody kernel defines `KERNEL`, not `_KERNEL`.
 ### Varargs escape the type check
 
 A wrapper struct passed to `printf()`/`panic()` or any other varargs function
-compiles silently. In that position the type check catches nothing. A
-`lelint.py`-style audit (every on-disk field access must sit inside
-`hget*()` or be stored with `hmk*()`) is run over each converted file, and
-its hits are fixed or confirmed as host-struct fields of the same name. The
-first such bug it found was `hammer show` printing `mode=27777600755`.
+compiles silently. In that position the type check catches nothing.
+`src/hammer-1/tests/lelint.py` reports every on-disk field passed to a
+varargs function outside `hget*()`; host-struct fields with the same names
+(`ip->obj_id`, `io->offset`, ...) are listed in the script.  The host test
+`vm/test_hammer_guest.py` runs it over every compiled kernel source and
+expects nothing.  The first such bug it found was `hammer show` printing
+`mode=27777600755`.
 
 ## Imported support headers
 
@@ -124,13 +127,10 @@ volume flush.
   kmalloc on `_MALLOC(M_HAMMER)`, a private `hammer_vsnprintf` (the kernel
   has no snprintf and its printf has no 64-bit conversions), `tsleep`, and
   `hammer_dev_read`, which reads the device through the buffer cache.
-- `hammer_io.c` is rewritten for read-only use. `struct hammer_io` holds a
-  kmalloc'd copy of the 16/64 KB buffer (`io->data`) rather than a `struct
-  buf`, because Rhapsody's MAXBSIZE is 8 KB. Writes, flushes and
-  modification hooks panic, and `hammer_rostubs.c` holds the write-side
-  symbols the read path still links against.
-  shortcut: copy through 8 KB `bread`; upgrade to direct `VOP_STRATEGY`
-  I/O when Phase 2 write ordering needs it.
+- `hammer_io.c` is rewritten.  `struct hammer_io` holds a kmalloc'd copy of
+  the 16/64 KB buffer (`io->data`) rather than a `struct buf`, because
+  Rhapsody's MAXBSIZE is 8 KB.  Reads copy through 8 KB `bread`; see "Write
+  path" for writes.
 - The device size comes from `DKIOCNUMBLKS` and `DKIOCBLKSIZE`, as HFS
   does. The IDE driver returns EINVAL for `DKIOCGPARTINFO`.
 - Rhapsody has no `VDATABASE` or `DT_DBF`, so `HAMMER_OBJTYPE_DBFILE`
@@ -253,22 +253,60 @@ Gary S. Brown; `hammer_tree.h`: Niels Provos; `hammer/test_dupkey.c` has
 none upstream).  `hammer_io.c` keeps the DragonFly notice with a RhapsodiOS
 line added.
 
+## Write path (Phase 2)
+
+- **Device writes are synchronous.**  `hammer_io_flush()` writes `io->data`
+  through `hammer_io_write_sync()` (8 KB `getblk`/`bwrite` chunks, the
+  mirror of `hammer_dev_read`) and returns when the device has it, so the
+  flusher's stage order (data, UNDO, volume header, meta-data) is the
+  on-disk order and no write is ever left running.
+  shortcut: synchronous 8 KB writes; move to async VOP_STRATEGY with
+  completion ordering when throughput matters.
+- **Dirty buffers stay in kernel memory until the flusher writes them.**
+  Upstream let the kernel write dirty data and UNDO buffers whenever it
+  liked; here only the flusher writes, so a modified io keeps `io->data`
+  across its last release, and every dirty type counts in
+  `locked_dirty_space`, against `hammer_limit_dirtybufspace`.
+- **One flusher thread per read-write mount**, a Mach kernel thread
+  (`hammer_kthread_create`, the argument passed through `ith_other`)
+  started by the mount and stopped, after `hammer_flush_dirty()`, by
+  unmount.  Upstream's slave pool becomes `hammer_flusher_run_group()`, run
+  inline by that thread.  LWKT tokens stay no-ops (see the token audit);
+  `hammer_lock_*` stay real.
+- **Read-write admission** (`hammer_admit_rw`, after `hammer_admit_volume`):
+  recovery stage 1 scans the UNDO FIFO for the end of its sequence space
+  (this also sets `hmp->undo_seqno`) and refuses any active range with
+  EOPNOTSUPP; and B-Tree keys sort by localization first, so the tree's last
+  element is the only one whose PFS needs checking.  `hammer_recover.c` is
+  compiled for stage 1 and the FIFO scan only; replay waits for Phase 3.
+- **No REDO.**  `hammer_generate_redo_sync`, REDO_TERM generation and the
+  redo FIFO bookkeeping are fenced; the flags that would trigger them are
+  only set by REDO generation.  `hammer_fsync_mode` is a full flush.
+- **Memory limits scale with RAM** (`hammer_rhapsody_limits`, from
+  `hammer_vfs_init`): `hammer_limit_dirtybufspace = min(mem/16, 32 MB)`, and
+  upstream's `hammer_limit_reclaims` is capped at `max(mem/65536, 256)`.
+  On 128 MB that is 8 MB and 2048.
+- **Sync** walks the mount's vnode list as `ffs_sync` does (Rhapsody has no
+  `vsyncscan`), fsyncs dirty inodes, then runs the flusher twice.
+- **Critical write errors** set `hmp->ronly = 2`.  Upstream also set
+  MNT_RDONLY and reopened the device read-only (`hammer_adjust_volume_mode`,
+  removed with `hammer_volume.c`); the HAMMER VOPs check `hmp->ronly`.
+- Rhapsody has no `ticks`, `MNT_NOATIME` or `VINACTIVE`: `hammer_ticks()`
+  derives a tick count from the time of day, atime updates stay off
+  (`hammer_noatime`), and a vnode with no users has `v_usecount == 0`.
+- The UNDO zone is readable through `hammer_get_buffer` again
+  (`hammer_undo_lookup`); B-Tree and record offsets are checked against their
+  own zones before they get there.
+
 ## Left for Phase 2
 
-- `hammer_rostubs.c` panics in `hammer_undo_lookup`, `hammer_io_direct_wait`
-  and `hammer_inode_waitreclaims`; none is reachable on a read-only mount.
-- `hammer_io.c` panics in `hammer_io_new`, the write and done interlocks
-  and `hammer_modify_volume`/`_buffer` (and their `_done`), and makes the
-  flush, wait and modify-list hooks no-ops.
-- Write paths behind `#if 0 /* phase 2 */`: `hammer_object.c` (record add,
-  sync and delete), `hammer_inode.c` (create, update, flush, sync, PFS save
-  and unload, reclaim throttling), the read/flush time multiplexing in
+- Write paths still behind `#if 0 /* phase 2 */`: `hammer_inode.c` (create,
+  PFS save and unload), the read/flush time multiplexing in
   `hammer_cursor.c`, and the DragonFly VOPs in `hammer_vnops.c`.
-- Not compiled yet: `hammer_flusher.c`, `hammer_undo.c`, `hammer_redo.c`,
-  `hammer_recover.c`, `hammer_reblock.c`, `hammer_rebalance.c`,
-  `hammer_prune.c`, `hammer_dedup.c`, `hammer_mirror.c`, `hammer_ioctl.c`,
-  `hammer_signal.c`.  `hammer_inode.c` generates the flush and redo trees
-  until the flusher and redo units return.
+- Not compiled yet: `hammer_redo.c`, `hammer_reblock.c`,
+  `hammer_rebalance.c`, `hammer_prune.c`, `hammer_dedup.c`,
+  `hammer_mirror.c`, `hammer_ioctl.c`, `hammer_signal.c`.  `hammer_inode.c`
+  generates the redo tree until the redo unit returns.
 - `telldir`/`seekdir` on HAMMER directories (see "Directory offsets and
   telldir").
 - Device and FIFO nodes use the regular op table (they stat but cannot be

@@ -5,6 +5,7 @@ Usage: hammer_guest.py run CASE OUTDIR WRAPPED_VOLUME TOOLS_DIR
        hammer_guest.py unwrap WRAPPED OUT
        hammer_guest.py fixture KIND VOLUME OUT
        hammer_guest.py fixture-overlay KIND WRAPPED_VOLUME OUT.qcow2
+       hammer_guest.py dfly-check RAW_VOLUME OUTDIR
 Volumes are raw HAMMER images (what DragonFly's newfs_hammer writes to a
 whole disk).  Rhapsody sees them as partition a of a NeXT-labelled disk.
 """
@@ -125,7 +126,7 @@ def unwrap_volume_file(wrapped: Path, out: Path) -> None:
 
 HEADER_KINDS = ('badsig', 'v6', 'twovol', 'badcrc', 'needs-recovery')
 FIXTURE_KINDS = HEADER_KINDS + ('longname', 'baddata', 'badcount', 'badlen',
-                                'badoff', 'dotdot', 'dirhash')
+                                'badoff', 'dotdot', 'dirhash', 'pfs')
 
 
 def make_fixture(kind: str, volume: Path, out: Path) -> None:
@@ -174,6 +175,7 @@ RECTYPE_INODE = 0x0001
 RECTYPE_DATA = 0x0010
 RECTYPE_DIRENTRY = 0x0011
 ENTRY_NAME_OFF = 16
+ELM_LOCALIZATION = 36   # in struct hammer_base_elm
 OBJID_ROOT = 1
 INODE_SIZE = 128        # struct hammer_inode_data
 INODE_PARENT = 24
@@ -226,11 +228,28 @@ def _fixture_patches(kind, read):
     data CRC and node CRC are resealed so only the length check can catch it.
     baddata: one byte inside the first data record of root file
     'size1048577' is flipped, so that record's data CRC fails.
+    pfs: the B-Tree's last element moves to PFS 1 (localization
+    0x00010002); keys sort by localization first, so the tree stays ordered.
     """
     if kind in HEADER_KINDS:
         sectors = bytearray(read(0, HEADER + (-HEADER) % 512))
         _break_header(kind, sectors)
         return [(0, bytes(sectors))]
+    if kind == 'pfs':
+        hdr = read(0, HEADER)
+        beg = struct.unpack_from('<q', hdr, VOL_BUF_BEG)[0]
+        zoff = struct.unpack_from('<Q', hdr, VOL0_BTREE_ROOT)[0]
+        while True:
+            noff = beg + (zoff & 0x000FFFFFFFFFFFFF)
+            node = bytearray(read(noff, NODE_SIZE))
+            count, ntype = struct.unpack_from('<IB', node, 16)
+            last = 64 + (count - 1) * 64
+            if ntype == ord('L'):
+                break
+            zoff = struct.unpack_from('<Q', node, last + 48)[0]
+        struct.pack_into('<I', node, last + ELM_LOCALIZATION, 0x00010002)
+        struct.pack_into('<I', node, 0, crc32c(bytes(node[4:])))
+        return [(noff, bytes(node))]
     leaves = list(_leaves(read))
     if kind in ('badcount', 'badlen', 'badoff'):
         l = _entry(read, leaves, b'a')
@@ -329,10 +348,17 @@ def walk_differences(got, want, ignore_crc=True):
 
 
 CASES = ('refuse-badsig', 'refuse-v6', 'refuse-twovol', 'refuse-badcrc',
-         'refuse-needs-recovery', 'refuse-rw', 'admit', 'namespace',
+         'refuse-needs-recovery', 'rw-empty', 'refuse-rw-recovery',
+         'refuse-rw-pfs', 'admit', 'namespace',
          'readdir-small', 'times', 'erofs', 'crafted-name', 'data', 'holes',
          'mmap', 'dedup', 'crafted-data', 'cycle', 'negread', 'crafted-count',
          'crafted-len', 'crafted-off', 'crafted-dotdot', 'crafted-dirhash')
+# Cases that write the data volume: no unchanged check; the result is
+# exported and checked on DragonFly instead (HAMMER_NO_DFLY=1 skips that).
+WRITE_CASES = ('rw-empty',)
+DFLY_ISO = os.environ.get(
+    'DFLY_ISO', r'D:\RhapsodiOS\vm\work\dfly\iso\dfly-x86_64-6.4.2_REL.iso')
+UNDO_FIRST = UNDO_MAP + 8
 ADMIT_MESSAGE = 'v7 single volume ok'
 QEMU_IMG = r'C:\Program Files\qemu\qemu-img.exe'
 
@@ -352,6 +378,64 @@ def verify_result(case, status, stdout, serial, unchanged):
     if case == 'admit' and ADMIT_MESSAGE not in serial:
         problems.append('no admission message on the console')
     return problems
+
+
+def header_problems(hdr: bytes):
+    """A volume header our kernel left behind: sealed, UNDO FIFO empty."""
+    problems = []
+    if struct.unpack_from('<I', hdr, VOL_CRC)[0] and not volume_header_sealed(hdr):
+        problems.append('volume header CRC does not verify')
+    first, nxt = struct.unpack_from('<QQ', hdr, UNDO_FIRST)
+    if first != nxt:
+        problems.append('UNDO FIFO not empty: first %016x next %016x' % (first, nxt))
+    return problems
+
+
+def export_volume(data_ov: Path, outdir: Path) -> Path:
+    """The case's data overlay as a raw HAMMER volume, OUTDIR/export.img."""
+    wrapped = Path(outdir)/'export.wrapped'
+    subprocess.run([QEMU_IMG, 'convert', '-q', '-f', 'qcow2', '-O', 'raw',
+                    str(data_ov), str(wrapped)], check=True)
+    raw = Path(outdir)/'export.img'
+    try:
+        unwrap_volume_file(wrapped, raw)
+    finally:
+        wrapped.unlink()
+    return raw
+
+
+def recover_differences(tree: str, rec: str):
+    """Regular files 'hammer recover' rebuilt against the mounted tree, as
+    (size, content CRC) multisets: recover names files its own way."""
+    def files(text):
+        out = []
+        for line in text.splitlines():
+            f = line.split('\t')
+            if len(f) > 8 and f[1] == 'f':
+                out.append((f[6], f[8]))
+        return sorted(out)
+    t, r = files(tree), files(rec)
+    if t == r:
+        return []
+    return ['recover: %d (size, crc) pairs differ from the tree' %
+            len(set(t) ^ set(r))]
+
+
+def dfly_check(raw: Path, outdir: Path):
+    """vm/dfly-check.sh on DragonFly against RAW; findings (empty = clean)."""
+    import dfly_guest
+    import fat32
+    status, text = dfly_guest.run_script(
+        DFLY_ISO, str(raw), (HERE/'dfly-check.sh').read_text(), Path(outdir),
+        {'walk.c': (HERE.parent/'src/hammer-1/tests/hammer_walk.c').read_bytes()})
+    if status != 0 or 'CHECK_OK' not in text:
+        return ['DragonFly check failed (status %s)' % status] + \
+            ['dfly: ' + l for l in text.splitlines()[-10:]]
+    xfer = (Path(outdir)/'xfer.img').read_bytes()
+    tree = fat32.read_file(xfer, 'TREE.WLK').decode('latin-1')
+    rec = fat32.read_file(xfer, 'REC.WLK').decode('latin-1')
+    (Path(outdir)/'tree.walk').write_text(tree)
+    return recover_differences(tree, rec)
 
 
 def _fmt(path):
@@ -405,9 +489,13 @@ def run(case, outdir, volume, tools_dir):
                (tests/'run-native.sh').read_bytes()),
              N('/hammer_io', 'reg', 0o100755, 0, 0, 0,
                (Path(tools_dir)/'hammer_io').read_bytes())]
-    if case in ('namespace', 'data', 'dedup', 'cycle'):
+    writes = case in WRITE_CASES
+    if case in ('namespace', 'data', 'dedup', 'cycle') or writes:
         nodes.append(N('/hammer_walk', 'reg', 0o100755, 0, 0, 0,
                        (Path(tools_dir)/'hammer_walk').read_bytes()))
+    if writes:
+        nodes.append(N('/hammer', 'reg', 0o100755, 0, 0, 0,
+                       (Path(tools_dir)/'hammer').read_bytes()))
     results = outdir/'results.img'
     results.write_bytes(ufs_build.build(ext2_guest.TEMPLATE, nodes))
     spec = importlib.util.spec_from_file_location('hammer_console', HERE/'guest-console.py')
@@ -453,7 +541,16 @@ def run(case, outdir, volume, tools_dir):
     code = int(status.strip()) if status and status.strip().isdigit() else -1
     problems = verify_result(case, code, stdout or '',
                              serial.read_text(errors='replace'),
-                             _unchanged(data_ov, volume))
+                             writes or _unchanged(data_ov, volume))
+    if writes and code == 0:
+        raw = export_volume(data_ov, outdir)
+        try:
+            with raw.open('rb') as f:
+                problems += header_problems(f.read(HEADER))
+            if not problems and os.environ.get('HAMMER_NO_DFLY') != '1':
+                problems += dfly_check(raw, outdir/'dfly')
+        finally:
+            raw.unlink()
     if case in ('namespace', 'data', 'dedup') and code == 0:
         # The reference manifest sits beside the base volume (ref-main.walk).
         import gzip
@@ -485,6 +582,11 @@ def main(argv):
     if len(argv) == 5 and argv[1] == 'fixture':
         make_fixture(argv[2], argv[3], argv[4])
         return 0
+    if len(argv) == 4 and argv[1] == 'dfly-check':
+        problems = dfly_check(Path(argv[2]), Path(argv[3]))
+        for problem in problems:
+            print(problem)
+        return int(bool(problems))
     if len(argv) == 5 and argv[1] == 'fixture-overlay':
         make_fixture_overlay(argv[2], argv[3], argv[4])
         return 0

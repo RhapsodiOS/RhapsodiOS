@@ -66,8 +66,8 @@ hammer_undo_lookup(hammer_mount_t hmp, hammer_off_t zone3_off, int *errorp)
 	if (*errorp)
 		return(0);
 	undomap = &hmp->blockmap[HAMMER_ZONE_UNDO_INDEX];
-	KKASSERT(hammer_is_zone_undo(undomap->alloc_offset));
-	KKASSERT(zone3_off < undomap->alloc_offset);
+	KKASSERT(hammer_is_zone_undo(hget64(undomap->alloc_offset)));
+	KKASSERT(zone3_off < hget64(undomap->alloc_offset));
 
 	result_offset = hammer_xlate_to_undo(root_volume->ondisk, zone3_off);
 
@@ -113,10 +113,12 @@ hammer_generate_undo(hammer_transaction_t trans,
 	 * at least one SYNC record telling the recovery code how far
 	 * out-of-span it must go to run the REDOs.
 	 */
+#if 0 /* phase 3: REDO; with no REDO records there is nothing to span */
 	if ((hmp->flags & HAMMER_MOUNT_REDO_SYNC) == 0 &&
 	    hmp->version >= HAMMER_VOL_VERSION_FOUR) {
 		hammer_generate_redo_sync(trans);
 	}
+#endif
 
 	/*
 	 * Enter the offset into our undo history.  If there is an existing
@@ -144,9 +146,9 @@ hammer_generate_undo(hammer_transaction_t trans,
 		 * Fetch the layout offset in the UNDO FIFO, wrap it as
 		 * necessary.
 		 */
-		if (undomap->next_offset == undomap->alloc_offset)
-			undomap->next_offset = HAMMER_ENCODE_UNDO(0);
-		next_offset = undomap->next_offset;
+		if (hget64(undomap->next_offset) == hget64(undomap->alloc_offset))
+			undomap->next_offset = hmk64(HAMMER_ENCODE_UNDO(0));
+		next_offset = hget64(undomap->next_offset);
 
 		/*
 		 * This is a tail-chasing FIFO, when we hit the start of a new
@@ -195,15 +197,15 @@ hammer_generate_undo(hammer_transaction_t trans,
 			KKASSERT(((int)next_offset & HAMMER_UNDO_MASK) != 0);
 			tail = (void *)((char *)undo + bytes - sizeof(*tail));
 			if ((void *)undo != (void *)tail) {
-				tail->tail_signature = HAMMER_TAIL_SIGNATURE;
-				tail->tail_type = HAMMER_HEAD_TYPE_PAD;
-				tail->tail_size = bytes;
+				tail->tail_signature = hmk16(HAMMER_TAIL_SIGNATURE);
+				tail->tail_type = hmk16(HAMMER_HEAD_TYPE_PAD);
+				tail->tail_size = hmk32(bytes);
 			}
-			undo->head.hdr_signature = HAMMER_HEAD_SIGNATURE;
-			undo->head.hdr_type = HAMMER_HEAD_TYPE_PAD;
-			undo->head.hdr_size = bytes;
+			undo->head.hdr_signature = hmk16(HAMMER_HEAD_SIGNATURE);
+			undo->head.hdr_type = hmk16(HAMMER_HEAD_TYPE_PAD);
+			undo->head.hdr_size = hmk32(bytes);
 			/* NO CRC OR SEQ NO */
-			undomap->next_offset += bytes;
+			undomap->next_offset = hmk64(hget64(undomap->next_offset) + (bytes));
 			hammer_modify_buffer_done(buffer);
 			hammer_stats_undo += bytes;
 			continue;
@@ -224,23 +226,23 @@ hammer_generate_undo(hammer_transaction_t trans,
 				(intmax_t)next_offset, bytes, n);
 		}
 
-		undo->head.hdr_signature = HAMMER_HEAD_SIGNATURE;
-		undo->head.hdr_type = HAMMER_HEAD_TYPE_UNDO;
-		undo->head.hdr_size = bytes;
-		undo->head.hdr_seq = hmp->undo_seqno++;
-		undo->head.hdr_crc = 0;
-		undo->undo_offset = zone_off;
-		undo->undo_data_bytes = n;
+		undo->head.hdr_signature = hmk16(HAMMER_HEAD_SIGNATURE);
+		undo->head.hdr_type = hmk16(HAMMER_HEAD_TYPE_UNDO);
+		undo->head.hdr_size = hmk32(bytes);
+		undo->head.hdr_seq = hmk32(hmp->undo_seqno++);
+		undo->head.hdr_crc = hmk32(0);
+		undo->undo_offset = hmk64(zone_off);
+		undo->undo_data_bytes = hmk32(n);
 		bcopy(base, undo + 1, n);
 
 		tail = (void *)((char *)undo + bytes - sizeof(*tail));
-		tail->tail_signature = HAMMER_TAIL_SIGNATURE;
-		tail->tail_type = HAMMER_HEAD_TYPE_UNDO;
-		tail->tail_size = bytes;
+		tail->tail_signature = hmk16(HAMMER_TAIL_SIGNATURE);
+		tail->tail_type = hmk16(HAMMER_HEAD_TYPE_UNDO);
+		tail->tail_size = hmk32(bytes);
 
 		KKASSERT(bytes >= sizeof(undo->head));
 		hammer_crc_set_fifo_head(hmp->version, &undo->head, bytes);
-		undomap->next_offset += bytes;
+		undomap->next_offset = hmk64(hget64(undomap->next_offset) + (bytes));
 		hammer_stats_undo += bytes;
 
 		/*
@@ -256,19 +258,19 @@ hammer_generate_undo(hammer_transaction_t trans,
 		 * we do not adjust undomap->next_offset.
 		 */
 		bytes = HAMMER_UNDO_ALIGN -
-			((int)undomap->next_offset & HAMMER_UNDO_MASK);
+			((int)hget64(undomap->next_offset) & HAMMER_UNDO_MASK);
 		if (bytes != HAMMER_UNDO_ALIGN) {
 			KKASSERT(bytes >= sizeof(struct hammer_fifo_tail));
 			undo = (void *)(tail + 1);
 			tail = (void *)((char *)undo + bytes - sizeof(*tail));
 			if ((void *)undo != (void *)tail) {
-				tail->tail_signature = HAMMER_TAIL_SIGNATURE;
-				tail->tail_type = HAMMER_HEAD_TYPE_PAD;
-				tail->tail_size = bytes;
+				tail->tail_signature = hmk16(HAMMER_TAIL_SIGNATURE);
+				tail->tail_type = hmk16(HAMMER_HEAD_TYPE_PAD);
+				tail->tail_size = hmk32(bytes);
 			}
-			undo->head.hdr_signature = HAMMER_HEAD_SIGNATURE;
-			undo->head.hdr_type = HAMMER_HEAD_TYPE_PAD;
-			undo->head.hdr_size = bytes;
+			undo->head.hdr_signature = hmk16(HAMMER_HEAD_SIGNATURE);
+			undo->head.hdr_type = hmk16(HAMMER_HEAD_TYPE_PAD);
+			undo->head.hdr_size = hmk32(bytes);
 			/* NO CRC OR SEQ NO */
 		}
 		hammer_modify_buffer_done(buffer);
@@ -315,15 +317,15 @@ hammer_format_undo(hammer_mount_t hmp, void *base, uint32_t seqno)
 		head = (void *)((char *)base + i);
 		tail = (void *)((char *)head + bytes - sizeof(*tail));
 
-		head->hdr_signature = HAMMER_HEAD_SIGNATURE;
-		head->hdr_type = HAMMER_HEAD_TYPE_DUMMY;
-		head->hdr_size = bytes;
-		head->hdr_seq = seqno++;
-		head->hdr_crc = 0;
+		head->hdr_signature = hmk16(HAMMER_HEAD_SIGNATURE);
+		head->hdr_type = hmk16(HAMMER_HEAD_TYPE_DUMMY);
+		head->hdr_size = hmk32(bytes);
+		head->hdr_seq = hmk32(seqno++);
+		head->hdr_crc = hmk32(0);
 
-		tail->tail_signature = HAMMER_TAIL_SIGNATURE;
-		tail->tail_type = HAMMER_HEAD_TYPE_DUMMY;
-		tail->tail_size = bytes;
+		tail->tail_signature = hmk16(HAMMER_TAIL_SIGNATURE);
+		tail->tail_type = hmk16(HAMMER_HEAD_TYPE_DUMMY);
+		tail->tail_size = hmk32(bytes);
 
 		hammer_crc_set_fifo_head(hmp->version, head, bytes);
 	}
@@ -364,12 +366,12 @@ hammer_upgrade_undo_4(hammer_transaction_t trans)
 	 */
 	next_offset = HAMMER_ENCODE_UNDO(0);
 	undomap = &hmp->blockmap[HAMMER_ZONE_UNDO_INDEX];
-	undomap->next_offset = next_offset;
-	undomap->first_offset = next_offset;
+	undomap->next_offset = hmk64(next_offset);
+	undomap->first_offset = hmk64(next_offset);
 
 	undomap = &root_volume->ondisk->vol0_blockmap[HAMMER_ZONE_UNDO_INDEX];
-	undomap->next_offset = next_offset;
-	undomap->first_offset = next_offset;
+	undomap->next_offset = hmk64(next_offset);
+	undomap->first_offset = hmk64(next_offset);
 
 	/*
 	 * Loop over the entire UNDO space creating DUMMY entries.  Sequence
@@ -378,23 +380,23 @@ hammer_upgrade_undo_4(hammer_transaction_t trans)
 	seqno = 0;
 	bytes = HAMMER_UNDO_ALIGN;
 
-	while (next_offset != undomap->alloc_offset) {
+	while (next_offset != hget64(undomap->alloc_offset)) {
 		head = hammer_bnew(hmp, next_offset, &error, &buffer);
 		if (error)
 			break;
 		hammer_modify_buffer_noundo(NULL, buffer);
 		tail = (void *)((char *)head + bytes - sizeof(*tail));
 
-		head->hdr_signature = HAMMER_HEAD_SIGNATURE;
-		head->hdr_type = HAMMER_HEAD_TYPE_DUMMY;
-		head->hdr_size = bytes;
-		head->hdr_seq = seqno;
-		head->hdr_crc = 0;
+		head->hdr_signature = hmk16(HAMMER_HEAD_SIGNATURE);
+		head->hdr_type = hmk16(HAMMER_HEAD_TYPE_DUMMY);
+		head->hdr_size = hmk32(bytes);
+		head->hdr_seq = hmk32(seqno);
+		head->hdr_crc = hmk32(0);
 
 		tail = (void *)((char *)head + bytes - sizeof(*tail));
-		tail->tail_signature = HAMMER_TAIL_SIGNATURE;
-		tail->tail_type = HAMMER_HEAD_TYPE_DUMMY;
-		tail->tail_size = bytes;
+		tail->tail_signature = hmk16(HAMMER_TAIL_SIGNATURE);
+		tail->tail_type = hmk16(HAMMER_HEAD_TYPE_DUMMY);
+		tail->tail_size = hmk32(bytes);
 
 		hammer_crc_set_fifo_head(hmp->version, head, bytes);
 		hammer_modify_buffer_done(buffer);
@@ -486,13 +488,13 @@ hammer_undo_used(hammer_transaction_t trans)
 	dundomap = &trans->rootvol->ondisk->
 				vol0_blockmap[HAMMER_ZONE_UNDO_INDEX];
 
-	if (dundomap->first_offset <= cundomap->next_offset) {
-		bytes = cundomap->next_offset - dundomap->first_offset;
+	if (hget64(dundomap->first_offset) <= hget64(cundomap->next_offset)) {
+		bytes = hget64(cundomap->next_offset) - hget64(dundomap->first_offset);
 	} else {
-		bytes = cundomap->alloc_offset - dundomap->first_offset +
-			HAMMER_OFF_LONG_ENCODE(cundomap->next_offset);
+		bytes = hget64(cundomap->alloc_offset) - hget64(dundomap->first_offset) +
+			HAMMER_OFF_LONG_ENCODE(hget64(cundomap->next_offset));
 	}
-	max_bytes = HAMMER_OFF_SHORT_ENCODE(cundomap->alloc_offset);
+	max_bytes = HAMMER_OFF_SHORT_ENCODE(hget64(cundomap->alloc_offset));
 	KKASSERT(bytes <= max_bytes);
 	return(bytes);
 }
@@ -507,7 +509,7 @@ hammer_undo_space(hammer_transaction_t trans)
 	int64_t max_bytes;
 
 	rootmap = &trans->hmp->blockmap[HAMMER_ZONE_UNDO_INDEX];
-	max_bytes = HAMMER_OFF_SHORT_ENCODE(rootmap->alloc_offset);
+	max_bytes = HAMMER_OFF_SHORT_ENCODE(hget64(rootmap->alloc_offset));
 	return(max_bytes - hammer_undo_used(trans));
 }
 
@@ -518,7 +520,7 @@ hammer_undo_max(hammer_mount_t hmp)
 	int64_t max_bytes;
 
 	rootmap = &hmp->blockmap[HAMMER_ZONE_UNDO_INDEX];
-	max_bytes = HAMMER_OFF_SHORT_ENCODE(rootmap->alloc_offset);
+	max_bytes = HAMMER_OFF_SHORT_ENCODE(hget64(rootmap->alloc_offset));
 
 	return(max_bytes);
 }
@@ -535,7 +537,7 @@ hammer_undo_reclaim(hammer_io_t io)
 	hammer_off_t next_offset;
 
 	undomap = &io->hmp->blockmap[HAMMER_ZONE_UNDO_INDEX];
-	next_offset = undomap->next_offset & ~HAMMER_BUFMASK64;
+	next_offset = hget64(undomap->next_offset) & ~HAMMER_BUFMASK64;
 	if (HAMMER_ITOB(io)->zoneX_offset == next_offset)
 		return(0);
 	return(1);

@@ -334,3 +334,72 @@ def test_walk_matches_ignores_content_crc():
     assert hg.walk_differences(got, want) == []
     assert hg.walk_differences(got.replace('644', '600'), want) != []
     assert hg.walk_differences(got.splitlines(True)[0], want) != []
+
+
+def test_pfs_fixture_moves_the_last_element_to_pfs1(tmp_path):
+    vol = tree_volume(tmp_path)
+    out = tmp_path/'pfs.img'
+    hg.make_fixture('pfs', vol, out)
+    old, new = vol.read_bytes(), out.read_bytes()
+    count = struct.unpack_from('<I', new, BUF_BEG + 16)[0]
+    last = BUF_BEG + 64 + (count - 1) * 64
+    assert struct.unpack_from('<I', new, last + 36)[0] == 0x00010002
+    assert node_sealed(new)
+    changed = {i for i in range(len(old)) if old[i] != new[i]}
+    assert changed <= set(range(BUF_BEG, BUF_BEG + NODE))
+
+
+def test_header_problems_accepts_a_clean_header(tmp_path):
+    assert hg.header_problems(volume(tmp_path).read_bytes()[:HEADER]) == []
+
+
+def test_header_problems_reports_crc_and_undo(tmp_path):
+    hdr = bytearray(volume(tmp_path).read_bytes()[:HEADER])
+    hdr[80] ^= 1
+    assert any('CRC' in p for p in hg.header_problems(bytes(hdr)))
+    hdr[80] ^= 1
+    struct.pack_into('<Q', hdr, UNDO_MAP + 16, (3 << 60) + 512)
+    hg.seal_volume_header(hdr)
+    assert any('UNDO' in p for p in hg.header_problems(bytes(hdr)))
+
+
+def test_recover_differences_compares_file_contents_not_names():
+    tree = './a\tf\t644\t0\t0\t1\t5\t9\t111\n./d\td\t755\t0\t0\t2\t0\t9\t-\n'
+    rec = './PFS0/x\tf\t600\t0\t0\t1\t5\t1\t111\n'
+    assert hg.recover_differences(tree, rec) == []
+    assert hg.recover_differences(tree, rec.replace('111', '112')) != []
+    assert hg.recover_differences(tree, '') != []
+
+
+LELINT = __import__('pathlib').Path(__file__).resolve().parent.parent/'src/hammer-1/tests'
+
+
+def _lelint():
+    spec = importlib.util.spec_from_file_location('lelint', LELINT/'lelint.py')
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def test_lelint_reports_only_unwrapped_varargs_fields(tmp_path):
+    src = tmp_path/'x.c'
+    src.write_text('void f(void) {\n'
+                   '\tprintf("%d %d", node->count,\n'
+                   '\t       hget32(node->count));\n'
+                   '\tn = node->count + 1;\n'
+                   '\thkprintf("%jd\\n", (intmax_t)ip->obj_id);\n'
+                   '}\n')
+    hits = _lelint().lint({'count': 32, 'obj_id': 64}, str(src))
+    assert len(hits) == 1 and ':2:' in hits[0]
+
+
+def test_lelint_clean_over_compiled_kernel_sources():
+    root = LELINT.parent.parent/'kernel-7'
+    files = [root/l.split()[0] for l in (root/'conf/files').read_text().splitlines()
+             if l.startswith('bsd/hammer/') and l.split()[0].endswith('.c')]
+    assert files
+    fields = {l.split()[0]: int(l.split()[1])
+              for l in (LELINT/'fields.txt').read_text().splitlines()}
+    lint = _lelint()
+    hits = [h for f in files for h in lint.lint(fields, str(f))]
+    assert hits == []

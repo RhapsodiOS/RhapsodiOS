@@ -38,6 +38,9 @@
 #include <sys/vnode.h>
 #include <sys/ucred.h>
 #include <vm/vm_kern.h>
+#include <mach/vm_param.h>
+#include <kern/thread.h>
+#include <kern/task.h>
 #include "hammer.h"
 
 /*
@@ -479,4 +482,90 @@ hammer_dev_read(struct vnode *devvp, int64_t offset, void *dst, int bytes)
 		bytes -= chunk;
 	}
 	return 0;
+}
+
+/*
+ * Write bytes from src to a block device at offset, MAXBSIZE at a time,
+ * waiting for each chunk.  The chunking matches hammer_dev_read, so the
+ * device buffer cache never holds two differently sized buffers for the
+ * same block.
+ * shortcut: synchronous 8 KB writes; move to async VOP_STRATEGY with
+ * completion ordering when throughput matters.
+ */
+int
+hammer_io_write_sync(struct vnode *devvp, int64_t offset, const void *src,
+		     int bytes)
+{
+	struct buf *bp;
+	int chunk, error, bsize = devvp->v_specsize;
+	const char *p = src;
+
+	if (bsize <= 0 || (offset % bsize) || (bytes % bsize))
+		return EINVAL;
+	while (bytes > 0) {
+		chunk = bytes > MAXBSIZE ? MAXBSIZE : bytes;
+		bp = getblk(devvp, (daddr_t)(offset / bsize), chunk, 0, 0);
+		bcopy(p, bp->b_data, chunk);
+		if ((error = bwrite(bp)) != 0)
+			return error;
+		offset += chunk;
+		p += chunk;
+		bytes -= chunk;
+	}
+	return 0;
+}
+
+/*
+ * Kernel threads.  kernel_thread() starts a continuation with no
+ * argument, so the function and its argument ride in ith_other.
+ */
+struct hammer_kthread_start {
+	void	(*func)(void *);
+	void	*arg;
+};
+
+static void
+hammer_kthread_trampoline(void)
+{
+	struct hammer_kthread_start *ks = current_thread()->ith_other;
+	void (*func)(void *) = ks->func;
+	void *arg = ks->arg;
+
+	hammer_kfree(ks);
+	func(arg);
+	hammer_kthread_exit();
+}
+
+void
+hammer_kthread_create(void (*func)(void *), void *arg, thread_t *tdp)
+{
+	struct hammer_kthread_start *ks;
+
+	ks = hammer_kmalloc(sizeof(*ks), M_WAITOK);
+	ks->func = func;
+	ks->arg = arg;
+	*tdp = kernel_thread(kernel_task, hammer_kthread_trampoline, ks);
+}
+
+void
+hammer_kthread_exit(void)
+{
+	(void) thread_terminate(current_thread());
+	thread_halt_self();
+	/* NOTREACHED */
+}
+
+/*
+ * hammer_limit_dirtybufspace = min(mem/16, 32 MB) and
+ * hammer_limit_inodes = max(mem/65536, 256): 8 MB and 2048 on 128 MB.
+ */
+void
+hammer_rhapsody_limits(long *dirtybufspace, int *inodes)
+{
+	*dirtybufspace = mem_size / 16;
+	if (*dirtybufspace > 32 * 1024 * 1024)
+		*dirtybufspace = 32 * 1024 * 1024;
+	*inodes = mem_size / 65536;
+	if (*inodes < 256)
+		*inodes = 256;
 }

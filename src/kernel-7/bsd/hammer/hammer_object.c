@@ -644,7 +644,6 @@ hammer_mem_first(hammer_cursor_t cursor)
  * exist prior to being committed to disk or indexed via the on-disk B-Tree.
  */
 
-#if 0 /* phase 2: write path */
 /*
  * Add a directory entry (dip,ncp) which references inode (ip).
  *
@@ -671,19 +670,19 @@ hammer_ip_add_direntry(hammer_transaction_t trans,
 	record = hammer_alloc_mem_record(dip, HAMMER_ENTRY_SIZE(bytes));
 
 	record->type = HAMMER_MEM_RECORD_ADD;
-	record->leaf.base.localization = dip->obj_localization |
-					 hammer_dir_localization(dip);
-	record->leaf.base.obj_id = dip->obj_id;
-	record->leaf.base.key = hammer_direntry_namekey(dip, name, bytes,
-							 &max_iterations);
-	record->leaf.base.rec_type = HAMMER_RECTYPE_DIRENTRY;
+	record->leaf.base.localization = hmk32(dip->obj_localization |
+					 hammer_dir_localization(dip));
+	record->leaf.base.obj_id = hmk64(dip->obj_id);
+	record->leaf.base.key = hmk64(hammer_direntry_namekey(dip, name, bytes,
+							 &max_iterations));
+	record->leaf.base.rec_type = hmk16(HAMMER_RECTYPE_DIRENTRY);
 	record->leaf.base.obj_type = ip->ino_leaf.base.obj_type;
-	record->data->entry.obj_id = ip->obj_id;
-	record->data->entry.localization = ip->obj_localization;
+	record->data->entry.obj_id = hmk64(ip->obj_id);
+	record->data->entry.localization = hmk32(ip->obj_localization);
 	bcopy(name, record->data->entry.name, bytes);
 
-	++ip->ino_data.nlinks;
-	ip->ino_data.ctime = trans->time;
+	ip->ino_data.nlinks = hmk64(hget64(ip->ino_data.nlinks) + 1);
+	ip->ino_data.ctime = hmk64(trans->time);
 	hammer_modify_inode(trans, ip, HAMMER_INODE_DDIRTY);
 
 	/*
@@ -706,8 +705,8 @@ hammer_ip_add_direntry(hammer_transaction_t trans,
 	cursor.asof = ip->obj_asof;
 
 	while (hammer_ip_lookup(&cursor) == 0) {
-		++record->leaf.base.key;
-		KKASSERT(record->leaf.base.key > 0);
+		record->leaf.base.key = hmk64((int64_t)hget64(record->leaf.base.key) + 1);
+		KKASSERT((int64_t)hget64(record->leaf.base.key) > 0);
 		cursor.key_beg.key = record->leaf.base.key;
 		if (--max_iterations == 0) {
 			hammer_rel_mem_record(record);
@@ -740,8 +739,8 @@ hammer_ip_add_direntry(hammer_transaction_t trans,
 	}
 	error = hammer_mem_add(record);
 	if (error == 0) {
-		dip->ino_data.mtime = trans->time;
-		dip->ino_data.ctime = trans->time;
+		dip->ino_data.mtime = hmk64(trans->time);
+		dip->ino_data.ctime = hmk64(trans->time);
 		hammer_modify_inode(trans, dip, HAMMER_INODE_MTIME | HAMMER_INODE_DDIRTY);
 	}
 failed:
@@ -804,7 +803,7 @@ hammer_ip_del_direntry(hammer_transaction_t trans,
 		record = hammer_alloc_mem_record(dip, 0);
 		record->type = HAMMER_MEM_RECORD_DEL;
 		record->leaf.base = cursor->leaf->base;
-		KKASSERT(dip->obj_id == record->leaf.base.obj_id);
+		KKASSERT(dip->obj_id == (int64_t)hget64(record->leaf.base.obj_id));
 
 		/*
 		 * ip may be NULL, indicating the deletion of a directory
@@ -853,15 +852,15 @@ hammer_ip_del_direntry(hammer_transaction_t trans,
 	 */
 	if (error == 0) {
 		if (ip) {
-			--ip->ino_data.nlinks;	/* do before we might block */
-			ip->ino_data.ctime = trans->time;
+			ip->ino_data.nlinks = hmk64(hget64(ip->ino_data.nlinks) - 1);	/* do before we might block */
+			ip->ino_data.ctime = hmk64(trans->time);
 		}
-		dip->ino_data.mtime = trans->time;
+		dip->ino_data.mtime = hmk64(trans->time);
 		hammer_modify_inode(trans, dip, HAMMER_INODE_MTIME);
 		if (ip) {
 			hammer_modify_inode(trans, ip, HAMMER_INODE_DDIRTY);
-			if (ip->ino_data.nlinks == 0 &&
-			    (ip->vp == NULL || (ip->vp->v_flag & VINACTIVE))) {
+			if (hget64(ip->ino_data.nlinks) == 0 &&
+			    (ip->vp == NULL || ip->vp->v_usecount == 0)) {
 				hammer_done_cursor(cursor);
 				hammer_inode_unloadable_check(ip, 1);
 				hammer_flush_inode(ip, 0);
@@ -892,8 +891,8 @@ hammer_ip_add_record(hammer_transaction_t trans, hammer_record_t record)
 	hammer_inode_t ip = record->ip;
 	int error;
 
-	KKASSERT(record->leaf.base.localization != 0);
-	record->leaf.base.obj_id = ip->obj_id;
+	KKASSERT(hget32(record->leaf.base.localization) != 0);
+	record->leaf.base.obj_id = hmk64(ip->obj_id);
 	record->leaf.base.obj_type = ip->ino_leaf.base.obj_type;
 	error = hammer_mem_add(record);
 	return(error);
@@ -978,13 +977,13 @@ hammer_ip_add_bulk(hammer_inode_t ip, off_t file_offset, void *data, int bytes,
 		return(NULL);
 	}
 	record->type = HAMMER_MEM_RECORD_DATA;
-	record->leaf.base.rec_type = HAMMER_RECTYPE_DATA;
+	record->leaf.base.rec_type = hmk16(HAMMER_RECTYPE_DATA);
 	record->leaf.base.obj_type = ip->ino_leaf.base.obj_type;
-	record->leaf.base.obj_id = ip->obj_id;
-	record->leaf.base.key = file_offset + bytes;
-	record->leaf.base.localization = ip->obj_localization |
-					 HAMMER_LOCALIZE_MISC;
-	record->leaf.data_len = bytes;
+	record->leaf.base.obj_id = hmk64(ip->obj_id);
+	record->leaf.base.key = hmk64(file_offset + bytes);
+	record->leaf.base.localization = hmk32(ip->obj_localization |
+					 HAMMER_LOCALIZE_MISC);
+	record->leaf.data_len = hmk32(bytes);
 	hammer_crc_set_leaf(ip->hmp->version, data, &record->leaf);
 	KKASSERT(*errorp == 0);
 
@@ -1100,16 +1099,16 @@ hammer_record_needs_overwrite_delete(hammer_record_t record)
 	int r;
 
 	if (ip->ino_data.obj_type == HAMMER_OBJTYPE_DBFILE)
-		file_offset = record->leaf.base.key;
+		file_offset = (int64_t)hget64(record->leaf.base.key);
 	else
-		file_offset = record->leaf.base.key - record->leaf.data_len;
+		file_offset = (int64_t)hget64(record->leaf.base.key) - (int32_t)hget32(record->leaf.data_len);
 	r = (file_offset < ip->save_trunc_off);
 	if (ip->ino_data.obj_type == HAMMER_OBJTYPE_DBFILE) {
-		if (ip->save_trunc_off <= record->leaf.base.key)
-			ip->save_trunc_off = record->leaf.base.key + 1;
+		if (ip->save_trunc_off <= (int64_t)hget64(record->leaf.base.key))
+			ip->save_trunc_off = (int64_t)hget64(record->leaf.base.key) + 1;
 	} else {
-		if (ip->save_trunc_off < record->leaf.base.key)
-			ip->save_trunc_off = record->leaf.base.key;
+		if (ip->save_trunc_off < (int64_t)hget64(record->leaf.base.key))
+			ip->save_trunc_off = (int64_t)hget64(record->leaf.base.key);
 	}
 	return(r);
 }
@@ -1130,7 +1129,7 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 
 	KKASSERT(record->flush_state == HAMMER_FST_FLUSH);
 	KKASSERT(record->flags & HAMMER_RECF_INTERLOCK_BE);
-	KKASSERT(record->leaf.base.localization != 0);
+	KKASSERT(hget32(record->leaf.base.localization) != 0);
 
 	/*
 	 * Any direct-write related to the record must complete before we
@@ -1161,8 +1160,8 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 	 */
 	if (record->type == HAMMER_MEM_RECORD_DATA &&
 	    hammer_record_needs_overwrite_delete(record)) {
-		file_offset = record->leaf.base.key - record->leaf.data_len;
-		bytes = HAMMER_BUFSIZE_DOALIGN(record->leaf.data_len);
+		file_offset = (int64_t)hget64(record->leaf.base.key) - (int32_t)hget32(record->leaf.data_len);
+		bytes = HAMMER_BUFSIZE_DOALIGN((int32_t)hget32(record->leaf.data_len));
 		KKASSERT((file_offset & HAMMER_BUFMASK) == 0);
 		error = hammer_ip_delete_range(
 				cursor, record->ip,
@@ -1231,7 +1230,7 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 		hdkprintf("DOINSERT LOOKUP %d\n", error);
 	if (error == 0) {
 		hdkprintf("duplicate rec at (%016jx)\n",
-			(intmax_t)record->leaf.base.key);
+			(intmax_t)(int64_t)hget64(record->leaf.base.key));
 		if (hammer_debug_critical)
 			Debugger("duplicate record1");
 		error = EIO;
@@ -1253,17 +1252,17 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 		 * committed to disk, we need only adjust the layer2
 		 * statistics in the same transaction as our B-Tree insert.
 		 */
-		KKASSERT(record->leaf.data_offset != 0);
+		KKASSERT(hget64(record->leaf.data_offset) != 0);
 		error = hammer_blockmap_finalize(trans,
 						 record->resv,
-						 record->leaf.data_offset,
-						 record->leaf.data_len);
-	} else if (record->data && record->leaf.data_len) {
+						 hget64(record->leaf.data_offset),
+						 (int32_t)hget32(record->leaf.data_len));
+	} else if (record->data && (int32_t)hget32(record->leaf.data_len)) {
 		/*
 		 * Wholely cached record, with data.  Allocate the data.
 		 */
-		bdata = hammer_alloc_data(trans, record->leaf.data_len,
-					  record->leaf.base.rec_type,
+		bdata = hammer_alloc_data(trans, (int32_t)hget32(record->leaf.data_len),
+					  hget16(record->leaf.base.rec_type),
 					  &record->leaf.data_offset,
 					  &cursor->data_buffer,
 					  0, &error);
@@ -1271,14 +1270,14 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 			goto done_unlock;
 		hammer_crc_set_leaf(hmp->version, record->data, &record->leaf);
 		hammer_modify_buffer_noundo(trans, cursor->data_buffer);
-		bcopy(record->data, bdata, record->leaf.data_len);
+		bcopy(record->data, bdata, (int32_t)hget32(record->leaf.data_len));
 		hammer_modify_buffer_done(cursor->data_buffer);
 	} else {
 		/*
 		 * Wholely cached record, without data.
 		 */
-		record->leaf.data_offset = 0;
-		record->leaf.data_crc = 0;
+		record->leaf.data_offset = hmk64(0);
+		record->leaf.data_crc = hmk32(0);
 	}
 
 	error = hammer_btree_insert(cursor, &record->leaf, &doprop);
@@ -1287,7 +1286,7 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 			error,
 			(intmax_t)cursor->node->node_offset,
 			cursor->index,
-			(intmax_t)record->leaf.base.key);
+			(intmax_t)(int64_t)hget64(record->leaf.base.key));
 	}
 
 	/*
@@ -1314,7 +1313,7 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 			KKASSERT(record->type == HAMMER_MEM_RECORD_ADD);
 			record->flags &= ~HAMMER_RECF_DELETED_FE;
 			record->type = HAMMER_MEM_RECORD_DEL;
-			KKASSERT(record->ip->obj_id == record->leaf.base.obj_id);
+			KKASSERT(record->ip->obj_id == (int64_t)hget64(record->leaf.base.obj_id));
 			KKASSERT(record->flush_state == HAMMER_FST_FLUSH);
 			record->flags &= ~HAMMER_RECF_CONVERT_DELETE;
 			KKASSERT((record->flags & (HAMMER_RECF_COMMITTED |
@@ -1330,9 +1329,9 @@ hammer_ip_sync_record_cursor(hammer_cursor_t cursor, hammer_record_t record)
 			++record->ip->rec_generation;
 		}
 	} else {
-		if (record->leaf.data_offset) {
-			hammer_blockmap_free(trans, record->leaf.data_offset,
-					     record->leaf.data_len);
+		if (hget64(record->leaf.data_offset)) {
+			hammer_blockmap_free(trans, hget64(record->leaf.data_offset),
+					     (int32_t)hget32(record->leaf.data_len));
 		}
 	}
 done_unlock:
@@ -1375,7 +1374,7 @@ hammer_mem_add(hammer_record_t record)
 	}
 	++hmp->rsv_recs;
 	++record->ip->rsv_recs;
-	record->ip->hmp->rsv_databytes += record->leaf.data_len;
+	record->ip->hmp->rsv_databytes += (int32_t)hget32(record->leaf.data_len);
 	record->flags |= HAMMER_RECF_ONRBTREE;
 	hammer_modify_inode(NULL, record->ip, HAMMER_INODE_XDIRTY);
 	hammer_rel_mem_record(record);
@@ -1390,7 +1389,6 @@ hammer_mem_add(hammer_record_t record)
  * by merging in-memory records with on-disk records.
  */
 
-#endif /* phase 2 */
 
 /*
  * Locate a particular record either in-memory or on-disk.
@@ -1895,7 +1893,6 @@ hammer_ip_resolve_data(hammer_cursor_t cursor)
 	return(error);
 }
 
-#if 0 /* phase 2: write path */
 /*
  * Backend truncation / record replacement - delete records in range.
  *
@@ -1936,34 +1933,34 @@ hammer_ip_delete_range(hammer_cursor_t cursor, hammer_inode_t ip,
 	KKASSERT(trans->type == HAMMER_TRANS_FLS);
 retry:
 	hammer_normalize_cursor(cursor);
-	cursor->key_beg.localization = ip->obj_localization |
-				       HAMMER_LOCALIZE_MISC;
-	cursor->key_beg.obj_id = ip->obj_id;
-	cursor->key_beg.create_tid = 0;
-	cursor->key_beg.delete_tid = 0;
+	cursor->key_beg.localization = hmk32(ip->obj_localization |
+				       HAMMER_LOCALIZE_MISC);
+	cursor->key_beg.obj_id = hmk64(ip->obj_id);
+	cursor->key_beg.create_tid = hmk64(0);
+	cursor->key_beg.delete_tid = hmk64(0);
 	cursor->key_beg.obj_type = 0;
 
 	if (ip->ino_data.obj_type == HAMMER_OBJTYPE_DBFILE) {
-		cursor->key_beg.key = ran_beg;
-		cursor->key_beg.rec_type = HAMMER_RECTYPE_DB;
+		cursor->key_beg.key = hmk64(ran_beg);
+		cursor->key_beg.rec_type = hmk16(HAMMER_RECTYPE_DB);
 	} else {
 		/*
 		 * The key in the B-Tree is (base+bytes), so the first possible
 		 * matching key is ran_beg + 1.
 		 */
-		cursor->key_beg.key = ran_beg + 1;
-		cursor->key_beg.rec_type = HAMMER_RECTYPE_DATA;
+		cursor->key_beg.key = hmk64(ran_beg + 1);
+		cursor->key_beg.rec_type = hmk16(HAMMER_RECTYPE_DATA);
 	}
 
 	cursor->key_end = cursor->key_beg;
 	if (ip->ino_data.obj_type == HAMMER_OBJTYPE_DBFILE) {
-		cursor->key_end.key = ran_end;
+		cursor->key_end.key = hmk64(ran_end);
 	} else {
 		tmp64 = ran_end + MAXPHYS + 1;	/* work around GCC-4 bug */
 		if (tmp64 < ran_end)
-			cursor->key_end.key = HAMMER_MAX_KEY;
+			cursor->key_end.key = hmk64(HAMMER_MAX_KEY);
 		else
-			cursor->key_end.key = ran_end + MAXPHYS + 1;
+			cursor->key_end.key = hmk64(ran_end + MAXPHYS + 1);
 	}
 
 	cursor->asof = ip->obj_asof;
@@ -1981,8 +1978,8 @@ retry:
 	while (error == 0) {
 		leaf = cursor->leaf;
 
-		KKASSERT(leaf->base.delete_tid == 0);
-		KKASSERT(leaf->base.obj_id == ip->obj_id);
+		KKASSERT(hget64(leaf->base.delete_tid) == 0);
+		KKASSERT((int64_t)hget64(leaf->base.obj_id) == ip->obj_id);
 
 		/*
 		 * There may be overlap cases for regular file data.  Also
@@ -1992,16 +1989,16 @@ retry:
 		 * Note that due to duplicates (mem & media) allowed by
 		 * DELETE_VISIBILITY, off can wind up less then ran_beg.
 		 */
-		if (leaf->base.rec_type == HAMMER_RECTYPE_DATA) {
-			off = leaf->base.key - leaf->data_len;
+		if (hget16(leaf->base.rec_type) == HAMMER_RECTYPE_DATA) {
+			off = (int64_t)hget64(leaf->base.key) - (int32_t)hget32(leaf->data_len);
 			/*
 			 * Check the left edge case.  We currently do not
 			 * split existing records.
 			 */
-			if (off < ran_beg && leaf->base.key > ran_beg) {
+			if (off < ran_beg && (int64_t)hget64(leaf->base.key) > ran_beg) {
 				hpanic("hammer left edge case %016jx %d",
-					(intmax_t)leaf->base.key,
-					leaf->data_len);
+					(intmax_t)(int64_t)hget64(leaf->base.key),
+					(int32_t)hget32(leaf->data_len));
 			}
 
 			/*
@@ -2009,7 +2006,7 @@ retry:
 			 * record can be completely out of bounds, which
 			 * terminates the search.
 			 *
-			 * base->key is exclusive of the right edge while
+			 * (int64_t)hget64(base->key) is exclusive of the right edge while
 			 * ran_end is inclusive of the right edge.  The
 			 * (key - data_len) left boundary is inclusive.
 			 *
@@ -2017,13 +2014,13 @@ retry:
 			 * we missing a + 1 somewhere?  Note that ran_end
 			 * could overflow.
 			 */
-			if (leaf->base.key - 1 > ran_end) {
-				if (leaf->base.key - leaf->data_len > ran_end)
+			if ((int64_t)hget64(leaf->base.key) - 1 > ran_end) {
+				if ((int64_t)hget64(leaf->base.key) - (int32_t)hget32(leaf->data_len) > ran_end)
 					break;
 				hpanic("hammer right edge case");
 			}
 		} else {
-			off = leaf->base.key;
+			off = (int64_t)hget64(leaf->base.key);
 		}
 
 		/*
@@ -2127,18 +2124,18 @@ hammer_ip_delete_clean(hammer_cursor_t cursor, hammer_inode_t ip, int *countp)
 	KKASSERT(trans->type == HAMMER_TRANS_FLS);
 retry:
 	hammer_normalize_cursor(cursor);
-	cursor->key_beg.localization = ip->obj_localization |
-				       HAMMER_LOCALIZE_MISC;
-	cursor->key_beg.obj_id = ip->obj_id;
-	cursor->key_beg.create_tid = 0;
-	cursor->key_beg.delete_tid = 0;
+	cursor->key_beg.localization = hmk32(ip->obj_localization |
+				       HAMMER_LOCALIZE_MISC);
+	cursor->key_beg.obj_id = hmk64(ip->obj_id);
+	cursor->key_beg.create_tid = hmk64(0);
+	cursor->key_beg.delete_tid = hmk64(0);
 	cursor->key_beg.obj_type = 0;
-	cursor->key_beg.rec_type = HAMMER_RECTYPE_CLEAN_START;
-	cursor->key_beg.key = HAMMER_MIN_KEY;
+	cursor->key_beg.rec_type = hmk16(HAMMER_RECTYPE_CLEAN_START);
+	cursor->key_beg.key = hmk64(HAMMER_MIN_KEY);
 
 	cursor->key_end = cursor->key_beg;
-	cursor->key_end.rec_type = HAMMER_RECTYPE_MAX;
-	cursor->key_end.key = HAMMER_MAX_KEY;
+	cursor->key_end.rec_type = hmk16(HAMMER_RECTYPE_MAX);
+	cursor->key_end.key = hmk64(HAMMER_MAX_KEY);
 
 	cursor->asof = ip->obj_asof;
 	cursor->flags &= ~HAMMER_CURSOR_INITMASK;
@@ -2154,7 +2151,7 @@ retry:
 	while (error == 0) {
 		leaf = cursor->leaf;
 
-		KKASSERT(leaf->base.delete_tid == 0);
+		KKASSERT(hget64(leaf->base.delete_tid) == 0);
 
 		/*
 		 * Mark the record and B-Tree entry as deleted.  This will
@@ -2299,26 +2296,26 @@ hammer_create_at_cursor(hammer_cursor_t cursor, hammer_btree_leaf_elm_t leaf,
 
 	hammer_sync_lock_sh(trans);
 
-	if (leaf->data_len) {
-		ndata = hammer_alloc_data(trans, leaf->data_len,
-					  leaf->base.rec_type,
+	if ((int32_t)hget32(leaf->data_len)) {
+		ndata = hammer_alloc_data(trans, (int32_t)hget32(leaf->data_len),
+					  hget16(leaf->base.rec_type),
 					  &ndata_offset, &data_buffer,
 					  0, &error);
 		if (ndata == NULL) {
 			hammer_sync_unlock(trans);
 			return (error);
 		}
-		leaf->data_offset = ndata_offset;
+		leaf->data_offset = hmk64(ndata_offset);
 		hammer_modify_buffer_noundo(trans, data_buffer);
 
 		switch(mode) {
 		case HAMMER_CREATE_MODE_UMIRROR:
-			error = copyin(udata, ndata, leaf->data_len);
+			error = copyin(udata, ndata, (int32_t)hget32(leaf->data_len));
 			if (error == 0) {
 				if (hammer_crc_test_leaf(hmp->version, ndata, leaf) == 0) {
 					hdkprintf("CRC DATA @ %016jx/%d MISMATCH ON PIPE\n",
 						(intmax_t)ndata_offset,
-						leaf->data_len);
+						(int32_t)hget32(leaf->data_len));
 					error = EINVAL;
 				} else {
 					error = hammer_cursor_localize_data(
@@ -2327,7 +2324,7 @@ hammer_create_at_cursor(hammer_cursor_t cursor, hammer_btree_leaf_elm_t leaf,
 			}
 			break;
 		case HAMMER_CREATE_MODE_SYS:
-			bcopy(udata, ndata, leaf->data_len);
+			bcopy(udata, ndata, (int32_t)hget32(leaf->data_len));
 			error = 0;
 			hammer_crc_set_leaf(hmp->version, ndata, leaf);
 			break;
@@ -2337,7 +2334,7 @@ hammer_create_at_cursor(hammer_cursor_t cursor, hammer_btree_leaf_elm_t leaf,
 		}
 		hammer_modify_buffer_done(data_buffer);
 	} else {
-		leaf->data_offset = 0;
+		leaf->data_offset = hmk64(0);
 		error = 0;
 		ndata = NULL;
 	}
@@ -2368,11 +2365,11 @@ hammer_create_at_cursor(hammer_cursor_t cursor, hammer_btree_leaf_elm_t leaf,
 	 * an inode we have to track it.
 	 */
 	if (error == 0 &&
-	    leaf->base.rec_type == HAMMER_RECTYPE_INODE &&
-	    leaf->base.delete_tid == 0) {
+	    hget16(leaf->base.rec_type) == HAMMER_RECTYPE_INODE &&
+	    hget64(leaf->base.delete_tid) == 0) {
 		hammer_modify_volume_field(trans, trans->rootvol,
 					   vol0_stat_inodes);
-		++trans->hmp->rootvol->ondisk->vol0_stat_inodes;
+		trans->hmp->rootvol->ondisk->vol0_stat_inodes = hmk64((int64_t)hget64(trans->hmp->rootvol->ondisk->vol0_stat_inodes) + 1);
 		hammer_modify_volume_done(trans->rootvol);
 	}
 
@@ -2380,12 +2377,12 @@ hammer_create_at_cursor(hammer_cursor_t cursor, hammer_btree_leaf_elm_t leaf,
 	 * vol0_next_tid must track the highest TID stored in the filesystem.
 	 * We do not need to generate undo for this update.
 	 */
-	high_tid = leaf->base.create_tid;
-	if (high_tid < leaf->base.delete_tid)
-		high_tid = leaf->base.delete_tid;
-	if (trans->rootvol->ondisk->vol0_next_tid < high_tid) {
+	high_tid = hget64(leaf->base.create_tid);
+	if (high_tid < hget64(leaf->base.delete_tid))
+		high_tid = hget64(leaf->base.delete_tid);
+	if (hget64(trans->rootvol->ondisk->vol0_next_tid) < high_tid) {
 		hammer_modify_volume_noundo(trans, trans->rootvol);
-		trans->rootvol->ondisk->vol0_next_tid = high_tid;
+		trans->rootvol->ondisk->vol0_next_tid = hmk64(high_tid);
 		hammer_modify_volume_done(trans->rootvol);
 	}
 
@@ -2400,8 +2397,8 @@ failed:
 	/*
 	 * Cleanup
 	 */
-	if (error && leaf->data_offset) {
-		hammer_blockmap_free(trans, leaf->data_offset, leaf->data_len);
+	if (error && hget64(leaf->data_offset)) {
+		hammer_blockmap_free(trans, hget64(leaf->data_offset), (int32_t)hget32(leaf->data_len));
 
 	}
 	hammer_sync_unlock(trans);
@@ -2461,26 +2458,26 @@ hammer_delete_at_cursor(hammer_cursor_t cursor, int delete_flags,
 	 * as well.  delete_tid can be 0 (undelete -- used by mirroring).
 	 */
 	if (delete_flags & HAMMER_DELETE_ADJUST) {
-		if (elm->base.rec_type == HAMMER_RECTYPE_INODE) {
-			if (elm->leaf.base.delete_tid == 0 && delete_tid)
+		if (hget16(elm->base.rec_type) == HAMMER_RECTYPE_INODE) {
+			if (hget64(elm->leaf.base.delete_tid) == 0 && delete_tid)
 				icount = -1;
-			if (elm->leaf.base.delete_tid && delete_tid == 0)
+			if (hget64(elm->leaf.base.delete_tid) && delete_tid == 0)
 				icount = 1;
 		}
 
 		hammer_modify_node(trans, node, elm, sizeof(*elm));
-		elm->leaf.base.delete_tid = delete_tid;
-		elm->leaf.delete_ts = delete_ts;
+		elm->leaf.base.delete_tid = hmk64(delete_tid);
+		elm->leaf.delete_ts = hmk32(delete_ts);
 		hammer_modify_node_done(node);
 
-		if (elm->leaf.base.delete_tid > node->ondisk->mirror_tid) {
+		if (hget64(elm->leaf.base.delete_tid) > hget64(node->ondisk->mirror_tid)) {
 			hammer_modify_node_field(trans, node, mirror_tid);
 			node->ondisk->mirror_tid = elm->leaf.base.delete_tid;
 			hammer_modify_node_done(node);
 			doprop = 1;
 			if (hammer_debug_general & 0x0002) {
 				hdkprintf("propagate %016jx @%016jx\n",
-					(intmax_t)elm->leaf.base.delete_tid,
+					(intmax_t)hget64(elm->leaf.base.delete_tid),
 					(intmax_t)node->node_offset);
 			}
 		}
@@ -2502,8 +2499,8 @@ hammer_delete_at_cursor(hammer_cursor_t cursor, int delete_flags,
 		 * as its create_tid.  In a chain of record updates
 		 * this could result in a duplicate record.
 		 */
-		KKASSERT(elm->leaf.base.delete_tid !=
-			 elm->leaf.base.create_tid);
+		KKASSERT(hget64(elm->leaf.base.delete_tid) !=
+			 hget64(elm->leaf.base.create_tid));
 	}
 
 	/*
@@ -2513,14 +2510,14 @@ hammer_delete_at_cursor(hammer_cursor_t cursor, int delete_flags,
 	 * Adjust the ATEDISK flag to properly support iterations.
 	 */
 	if (delete_flags & HAMMER_DELETE_DESTROY) {
-		data_offset = elm->leaf.data_offset;
-		data_len = elm->leaf.data_len;
+		data_offset = hget64(elm->leaf.data_offset);
+		data_len = (int32_t)hget32(elm->leaf.data_len);
 		if (doprop) {
 			save_leaf = elm->leaf;
 			leaf = &save_leaf;
 		}
-		if (elm->base.rec_type == HAMMER_RECTYPE_INODE &&
-		    elm->leaf.base.delete_tid == 0) {
+		if (hget16(elm->base.rec_type) == HAMMER_RECTYPE_INODE &&
+		    hget64(elm->leaf.base.delete_tid) == 0) {
 			icount = -1;
 		}
 
@@ -2561,12 +2558,12 @@ hammer_delete_at_cursor(hammer_cursor_t cursor, int delete_flags,
 		if (icount) {
 			hammer_modify_volume_field(trans, trans->rootvol,
 						   vol0_stat_inodes);
-			trans->rootvol->ondisk->vol0_stat_inodes += icount;
+			trans->rootvol->ondisk->vol0_stat_inodes = hmk64((int64_t)hget64(trans->rootvol->ondisk->vol0_stat_inodes) + (icount));
 			hammer_modify_volume_done(trans->rootvol);
 		}
-		if (trans->rootvol->ondisk->vol0_next_tid < delete_tid) {
+		if (hget64(trans->rootvol->ondisk->vol0_next_tid) < delete_tid) {
 			hammer_modify_volume_noundo(trans, trans->rootvol);
-			trans->rootvol->ondisk->vol0_next_tid = delete_tid;
+			trans->rootvol->ondisk->vol0_next_tid = hmk64(delete_tid);
 			hammer_modify_volume_done(trans->rootvol);
 		}
 	}
@@ -2617,18 +2614,18 @@ hammer_ip_check_directory_empty(hammer_transaction_t trans, hammer_inode_t ip)
 	 */
 	hammer_init_cursor(trans, &cursor, &ip->cache[1], ip);
 
-	cursor.key_beg.localization = ip->obj_localization |
-				      hammer_dir_localization(ip);
-	cursor.key_beg.obj_id = ip->obj_id;
-	cursor.key_beg.create_tid = 0;
-	cursor.key_beg.delete_tid = 0;
+	cursor.key_beg.localization = hmk32(ip->obj_localization |
+				      hammer_dir_localization(ip));
+	cursor.key_beg.obj_id = hmk64(ip->obj_id);
+	cursor.key_beg.create_tid = hmk64(0);
+	cursor.key_beg.delete_tid = hmk64(0);
 	cursor.key_beg.obj_type = 0;
-	cursor.key_beg.rec_type = HAMMER_RECTYPE_ENTRY_START;
-	cursor.key_beg.key = HAMMER_MIN_KEY;
+	cursor.key_beg.rec_type = hmk16(HAMMER_RECTYPE_ENTRY_START);
+	cursor.key_beg.key = hmk64(HAMMER_MIN_KEY);
 
 	cursor.key_end = cursor.key_beg;
-	cursor.key_end.rec_type = HAMMER_RECTYPE_MAX;
-	cursor.key_end.key = HAMMER_MAX_KEY;
+	cursor.key_end.rec_type = hmk16(HAMMER_RECTYPE_MAX);
+	cursor.key_end.key = hmk64(HAMMER_MAX_KEY);
 
 	cursor.asof = ip->obj_asof;
 	cursor.flags |= HAMMER_CURSOR_END_INCLUSIVE | HAMMER_CURSOR_ASOF;
@@ -2653,14 +2650,13 @@ hammer_cursor_localize_data(hammer_mount_t hmp, hammer_data_ondisk_t data,
 {
 	uint32_t localization;
 
-	if (leaf->base.rec_type == HAMMER_RECTYPE_DIRENTRY) {
-		localization = leaf->base.localization &
+	if (hget16(leaf->base.rec_type) == HAMMER_RECTYPE_DIRENTRY) {
+		localization = hget32(leaf->base.localization) &
 			       HAMMER_LOCALIZE_PSEUDOFS_MASK;
-		if (data->entry.localization != localization) {
-			data->entry.localization = localization;
+		if (hget32(data->entry.localization) != localization) {
+			data->entry.localization = hmk32(localization);
 			hammer_crc_set_leaf(hmp->version, data, leaf);
 		}
 	}
 	return(0);
 }
-#endif /* phase 2 */

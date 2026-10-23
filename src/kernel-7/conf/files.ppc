@@ -136,6 +136,23 @@ bsd/dev/ppc/drvSymbios8xx/Sym8xxClient.m 		optional mk_hasdrivers
 bsd/dev/ppc/drvSymbios8xx/Sym8xxExecute.m 		optional mk_hasdrivers
 bsd/dev/ppc/drvSymbios8xx/Sym8xxMisc.m 			optional mk_hasdrivers
 
+bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMAPI.c	optional mk_hasdrivers
+bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMConfig.c	optional mk_hasdrivers
+bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMFirmware.c	optional mk_hasdrivers
+bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHIM.c	optional mk_hasdrivers
+bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHardware.c	optional mk_hasdrivers
+bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMNegotiation.c	optional mk_hasdrivers
+bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMOSD.c	optional mk_hasdrivers
+bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMRecovery.c	optional mk_hasdrivers
+bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMResource.c	optional mk_hasdrivers
+bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMSCB.c	optional mk_hasdrivers
+bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMTables.c	optional mk_hasdrivers
+bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMTransport.c	optional mk_hasdrivers
+bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2OSMServices.m	optional mk_hasdrivers
+bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2SCSI.m	optional mk_hasdrivers
+bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2SCSIThread.m	optional mk_hasdrivers
+bsd/dev/ppc/drvAdaptecU2SCSI/OSMFunctions.m	optional mk_hasdrivers
+
 bsd/dev/ppc/drvUSBCMD/usbcmd.m						standard
 bsd/dev/ppc/drvUSBCMD/ohciuim.c						standard
 bsd/dev/ppc/drvUSBCMD/OHCIDispatchTable.c				standard

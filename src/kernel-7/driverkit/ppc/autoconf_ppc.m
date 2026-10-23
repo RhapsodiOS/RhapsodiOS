@@ -165,7 +165,7 @@ BUS_LOAD_PRI_PROP
 "\"Bus Type\" = \"PPC\";"
 "\0"
 "\"Driver Name\" = \"AdaptecU2SCSI\";"
-"\"Matching\" = \"ADPT,2940U2B ADPT,3950U2B ADPT,2930CU ADPT,2930U\";"
+"\"Matching\" = \"ADPT,2940U2B ADPT,3950U2B ADPT,2930CU ADPT,2930U ADPT,2940U2W ADPT,2940UW\";"
 "\"Class Names\" = \"AdaptecU2SCSI\";"
 "\"Bus Type\" = \"PPC\";"
 INT_SCSI_LOAD_PRI_PROP

@@ -245,7 +245,8 @@ def test_task13_canonical_git_and_exact_owner_delta():
     proof_raw=blob("HEAD","task13.json");proof=json.loads(proof_raw)
     assert audit.identity.canonical((TESTS.parent/"reconstruction/task13.json").read_bytes(),Path("task13.json"))==proof_raw
     own={b["address"] for b in proof["bodies"]};assert len(own)==61
-    before=json.loads(blob(audit.BASE,"ledger.json"));after=json.loads(blob("HEAD","ledger.json"))
+    accepted="55e348168a68a94c131fd7fa7afcb8c29b866764"  # Task13 acceptance; later tasks change these records
+    before=json.loads(blob(audit.BASE,"ledger.json"));after=json.loads(blob(accepted,"ledger.json"))
     old=audit.exact_rows(before["entries"],{e["address"] for e in before["entries"]},"before476")
     assert len(old)==476
     new=audit.exact_rows(after["entries"],old,"after476")
@@ -255,12 +256,14 @@ def test_task13_canonical_git_and_exact_owner_delta():
         else:
             assert record["status"]=="control-flow-confirmed"
             assert record["artifacts"]==[{"kind":"source-native-control-flow-and-frozen-cases","path":(prefix/"task13.json").as_posix(),"sha256":audit.sha(proof_raw)}]
-    old_data=json.loads(blob(audit.BASE,"data.json"));new_data=json.loads(blob("HEAD","data.json"))
+    old_data=json.loads(blob(audit.BASE,"data.json"));new_data=json.loads(blob(accepted,"data.json"))
     expected=copy.deepcopy(old_data)
     assigned=[r for r in expected["objects"] if r.get("required_task")==13];assert len(assigned)==11
     for record in assigned:record.update(status="recovered",owner_evidence="reconstruction/task13.json")
     assert new_data==expected
-    old_map=json.loads(blob(audit.BASE,"source-map.json"));new_map=json.loads(blob("HEAD","source-map.json"))
+    old_map=json.loads(blob(audit.BASE,"source-map.json"));new_map=json.loads(blob(accepted,"source-map.json"))
     assert len(new_map["mapped"])==436 and len(new_map["unmapped"])==24 and len(new_map["duplicate_candidates"])==16
+    current=json.loads((TESTS.parent/"reconstruction/source-map.json").read_text())
+    assert (len(current["mapped"]),len(current["unmapped"]),len(current["duplicate_candidates"]))==(469,7,0)
     assert {e["address"] for e in old_map["unmapped"]}-{e["address"] for e in new_map["unmapped"]}==own
     assert [e for e in old_map["mapped"] if e["address"] not in own]==[e for e in new_map["mapped"] if e["address"] not in own]

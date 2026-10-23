@@ -1,25 +1,20 @@
 /*
  * FloppyDiskThread.h - FloppyDisk Thread category
- *
- * Thread-based operations for floppy disk
  */
 
 #import "FloppyDisk.h"
 
 @interface FloppyDisk(Thread)
-
-// Thread methods
-- (void)fdCmdDispatch:(void *)command;
+- (void)fdCmdDispatch:(fdBuf_t *)fdBuf;
 - (IOReturn)fdEjectInt;
-- (IOReturn)fdRwCommon:(void *)ioReq;
-- (void)logRwErr:(void *)ioReq block:(unsigned)block status:(IOReturn)status readFlag:(BOOL)isRead;
-- (void)motorOffCheck;
-- (IOReturn)setDensityInt:(unsigned)density;
-- (IOReturn)setGapInt:(unsigned)gap;
-- (IOReturn)setSectSizeInt:(unsigned)sectSize;
-- (void)unlockIoQLock;
+- (IOReturn)fdRwCommon:(fdBuf_t *)fdBuf;
+- (void)logRwErr:(const char *)errType block:(int)block status:(fd_return_t)status readFlag:(BOOL)readFlag;
+- (IOReturn)setDensityInt:(int)density;
+- (IOReturn)setSectSizeInt:(int)sectSize;
+- (IOReturn)setGapInt:(int)gapLength;
 - (IOReturn)updatePhysicalParametersInt;
-
+- (void)unlockIoQLock;
+- (void)motorOffCheck;
 @end
 
 /* End of FloppyDiskThread.h */

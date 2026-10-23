@@ -436,6 +436,15 @@ int DTFindChildEntry(const DTEntry parent, const char *propName, const char *pro
 	return( find_entry(propName, propValue, entryH));
 }
 
+int
+DTIterateChildren(const DTEntry parent, unsigned long *index, DTEntry *child)
+{
+	if (*index >= ((RealDTEntry) parent)->nChildren)
+		return kIterationDone;
+	*child = (*index)++ == 0 ? GetFirstChild(parent) : GetNextChild(*child);
+	return kSuccess;
+}
+
 int find_entry(const char *propName, const char *propValue, DTEntry *entryH)
 {
 	DeviceTreeNode *nodeP = (DeviceTreeNode *) startingP;

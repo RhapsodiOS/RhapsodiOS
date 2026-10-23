@@ -173,9 +173,14 @@ MakeReferenceTable( DTEntry dtEntry )
 
 	table = MakeReferenceTable( child);
 
-        // Look for existence of a debug property to skip
+        // Look for existence of a debug property to skip.
+        // Divergence from 5.6: also skip escc-legacy, which repeats escc's
+        // channels and interrupts, so its ch-a/ch-b could only fail to allocate.
         if( [table getProperty:"AAPL,ignore" flags:kReferenceProperty
-                value:&prop length:&propSize])
+                value:&prop length:&propSize]
+         && ([table getProperty:"name" flags:kReferenceProperty
+                value:&prop length:&propSize]
+          || strcmp( (char *) prop, "escc-legacy")))
             dev = [self createDevice:table ref:(id)child];
 	else
 	    dev = nil;

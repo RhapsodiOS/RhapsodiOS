@@ -121,6 +121,23 @@ churn)
 	./hammer_io unmount "$2"
 	checkvol
 	;;
+enospc)
+	# Fill to ENOSPC, try every change at the edge, check after a
+	# remount, empty, and use the freed space again.
+	./hammer_io mount-rw $DEV "$2"
+	./enospc_ops fill "$2"
+	./hammer_io unmount "$2"
+	./hammer_io mount $DEV "$2"
+	./enospc_ops check "$2"
+	./hammer_io unmount "$2"
+	./hammer_io mount-rw $DEV "$2"
+	./enospc_ops empty "$2"
+	./hammer_io unmount "$2"
+	./hammer_io mount-rw $DEV "$2"
+	./enospc_ops refill "$2"
+	./hammer_io unmount "$2"
+	checkvol
+	;;
 refuse-rw-recovery)
 	./hammer_io mounterr $DEV "$2" 0 $EOPNOTSUPP
 	;;

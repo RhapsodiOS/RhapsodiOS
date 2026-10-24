@@ -11,7 +11,7 @@ HAMMER = ../hammer/hammer.c ../hammer/cmd_show.c ../hammer/cmd_blockmap.c
 IMG = /var/tmp/hammer-newfs-show.img
 
 all: newfs_hammer mount_hammer hammer hammer_walk hammer_io ns_ops data_ops \
-	scale_ops
+	scale_ops enospc_ops
 
 # Syscall checks run on a guest booted with a HAMMER kernel.
 hammer_io: hammer_io.c $(K)/hammer_mount.h
@@ -30,6 +30,9 @@ data_ops: data_ops.c
 
 scale_ops: scale_ops.c
 	$(CC) -O scale_ops.c -o $@
+
+enospc_ops: enospc_ops.c
+	$(CC) -O enospc_ops.c -o $@
 
 newfs_hammer: ../newfs_hammer/newfs_hammer.c $(COMMON)
 	$(CC) $(CFLAGS) ../newfs_hammer/newfs_hammer.c $(COMMON) -o $@
@@ -60,6 +63,6 @@ ppc:
 
 clean:
 	rm -rf newfs_hammer mount_hammer hammer hammer_walk hammer_io ns_ops \
-	    data_ops scale_ops ppc *.out
+	    data_ops scale_ops enospc_ops ppc *.out
 
 .PHONY: all mirrors check ppc clean

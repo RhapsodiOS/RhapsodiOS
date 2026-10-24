@@ -354,7 +354,7 @@ def walk_differences(got, want, ignore_crc=True, ignore_mtime=False,
 
 CASES = ('refuse-badsig', 'refuse-v6', 'refuse-twovol', 'refuse-badcrc',
          'refuse-needs-recovery', 'rw-empty', 'ns-ops', 'data-ops', 'unlinked',
-         'fsync-crash', 'fsync-check', 'big-dir', 'big-file', 'churn',
+         'fsync-crash', 'fsync-check', 'big-dir', 'big-file', 'churn', 'enospc',
          'refuse-rw-recovery',
          'refuse-rw-pfs', 'admit', 'namespace',
          'readdir-small', 'times', 'erofs', 'crafted-name', 'data', 'holes',
@@ -363,7 +363,7 @@ CASES = ('refuse-badsig', 'refuse-v6', 'refuse-twovol', 'refuse-badcrc',
 # Cases that write the data volume: no unchanged check; the result is
 # exported and checked on DragonFly instead (HAMMER_NO_DFLY=1 skips that).
 WRITE_CASES = ('rw-empty', 'ns-ops', 'data-ops', 'unlinked', 'fsync-crash',
-               'big-dir', 'big-file', 'churn')
+               'big-dir', 'big-file', 'churn', 'enospc')
 # Write cases that end without an unmount: nothing to check on the host
 # (the next case, fsync-check, mounts what they left).
 CRASH_CASES = ('fsync-crash',)
@@ -382,7 +382,8 @@ RECOVER_SKIP = {'data-ops': ('trunc',)}
 CASE_TOOLS = {'ns-ops': ('ns_ops',), 'data-ops': ('data_ops',),
               'unlinked': ('data_ops',), 'fsync-crash': ('data_ops',),
               'fsync-check': ('data_ops', 'hammer'), 'big-dir': ('scale_ops',),
-              'big-file': ('scale_ops',), 'churn': ('scale_ops',)}
+              'big-file': ('scale_ops',), 'churn': ('scale_ops',),
+              'enospc': ('enospc_ops',)}
 DFLY_ISO = os.environ.get(
     'DFLY_ISO', r'D:\RhapsodiOS\vm\work\dfly\iso\dfly-x86_64-6.4.2_REL.iso')
 UNDO_FIRST = UNDO_MAP + 8
@@ -402,6 +403,8 @@ def verify_result(case, status, stdout, serial, unchanged):
         problems.append('kernel panic in serial log')
     if 'hammer: leaked' in serial:
         problems.append('hammer: leak reported in serial log')
+    if '" empty.' in serial:
+        problems.append('kernel zone exhausted (serial log)')
     if not unchanged:
         problems.append('data volume changed (qemu-img compare)')
     if case == 'admit' and ADMIT_MESSAGE not in serial:

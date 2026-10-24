@@ -154,6 +154,12 @@ def test_verify_result_reports_each_failure(status, out, serial, same, problem):
     assert any(problem in p for p in problems)
 
 
+def test_verify_result_reports_kernel_zone_exhaustion():
+    out = 'HAMMER_OK refuse-v6\n'
+    assert any('zone' in p for p in hg.verify_result(
+        'refuse-v6', 0, out, 'zone "vm objects" empty.\n', True))
+
+
 def test_admit_needs_admission_message():
     out = 'HAMMER_OK admit\n'
     assert any('admission' in p for p in hg.verify_result('admit', 0, out, '', True))

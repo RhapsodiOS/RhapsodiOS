@@ -361,6 +361,17 @@ line added.
   or the dirty buffers reach `hammer_limit_dirtybufspace`, by running the
   flusher.
 
+## Space and memory (Phase 2)
+
+- Out of space, create, mkdir, write, rename and link either work or fail
+  with ENOSPC (`hammer_checkspace` runs before any change), leaving no
+  half-made object; removal still works.  Deleted data is kept as history
+  until pruning (Phase 3), so freed space comes back at once only in a
+  no-history directory (`UF_NOHISTORY`, which new files inherit).
+- Every guest case runs on a 128 MB guest (`vm/guest-console.py`), where
+  the dirty-buffer limit is 8 MB; the harness also fails a case whose
+  console reports an empty kernel zone.
+
 ## Left for Phase 2
 
 - Still behind `#if 0 /* phase 2 */`: `hammer_inode.c`'s PFS save and

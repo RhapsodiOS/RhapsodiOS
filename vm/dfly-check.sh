@@ -29,6 +29,10 @@ echo "recover: no damaged records"
 echo "== mount ro"
 mount_hammer -o ro $VOL $H
 /tmp/walk $H > /tmp/x/TREE.WLK
+# A case naming a file in /tmp/in/history gets DragonFly's history of it.
+if [ -f /tmp/in/history ]; then
+	hammer history $H/`cat /tmp/in/history` > /tmp/x/HIST.TXT
+fi
 ls -la $H
 umount $H
 echo "CHECK_OK"

@@ -47,6 +47,9 @@ typedef unsigned long long	uintmax_t;
 #ifndef LLONG_MAX
 #define LLONG_MAX	0x7FFFFFFFFFFFFFFFLL
 #endif
+#ifndef LLONG_MIN
+#define LLONG_MIN	(-LLONG_MAX - 1LL)
+#endif
 
 #define strtoull	strtouq
 #define strtoll		strtoq

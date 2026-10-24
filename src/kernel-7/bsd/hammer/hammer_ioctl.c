@@ -40,6 +40,7 @@ static int hammer_ioc_gethistory(hammer_transaction_t trans, hammer_inode_t ip,
 				struct hammer_ioc_history *hist);
 static int hammer_ioc_synctid(hammer_transaction_t trans, hammer_inode_t ip,
 				struct hammer_ioc_synctid *std);
+#if 0 /* phase 4: the other HAMMER ioctls */
 static int hammer_ioc_get_version(hammer_transaction_t trans,
 				hammer_inode_t ip,
 				struct hammer_ioc_version *ver);
@@ -61,6 +62,12 @@ static int hammer_ioc_set_config(hammer_transaction_t trans, hammer_inode_t ip,
 static int hammer_ioc_get_data(hammer_transaction_t trans, hammer_inode_t ip,
 				struct hammer_ioc_data *data);
 
+#endif /* phase 4 */
+
+/*
+ * The HAMMER ioctls Phase 2 supports: GETHISTORY and SYNCTID.  The others
+ * return EOPNOTSUPP until their units are ported (Phase 4).
+ */
 int
 hammer_ioctl(hammer_inode_t ip, u_long com, caddr_t data, int fflag,
 	     struct ucred *cred)
@@ -69,200 +76,20 @@ hammer_ioctl(hammer_inode_t ip, u_long com, caddr_t data, int fflag,
 	struct hammer_mount *hmp;
 	int error;
 
-	error = caps_priv_check(cred, SYSCAP_NOVFS_IOCTL);
+	/* vn_ioctl hands HAMMER every ioctl on its files (isatty too) */
+	if (IOCGROUP(com) != 'h')
+		return (ENOTTY);
 	hmp = ip->hmp;
-
 	hammer_start_transaction(&trans, hmp);
 
 	switch(com) {
-	case HAMMERIOC_PRUNE:
-		if (error == 0 && hmp->ronly)
-			error = EROFS;
-		if (error == 0) {
-			error = hammer_ioc_prune(&trans, ip,
-					(struct hammer_ioc_prune *)data);
-		}
-		break;
 	case HAMMERIOC_GETHISTORY:
 		error = hammer_ioc_gethistory(&trans, ip,
 					(struct hammer_ioc_history *)data);
 		break;
-	case HAMMERIOC_REBLOCK:
-		if (error == 0 && hmp->ronly)
-			error = EROFS;
-		if (error == 0) {
-			error = hammer_ioc_reblock(&trans, ip,
-					(struct hammer_ioc_reblock *)data);
-		}
-		break;
-	case HAMMERIOC_REBALANCE:
-		/*
-		 * Rebalancing needs to lock a lot of B-Tree nodes.  The
-		 * children and children's children.  Systems with very
-		 * little memory will not be able to do it.
-		 */
-		if (error == 0 && hmp->ronly)
-			error = EROFS;
-		if (error == 0 && nbuf < HAMMER_REBALANCE_MIN_BUFS) {
-			hkprintf("System has insufficient buffers "
-				"to rebalance the tree.  nbuf < %d\n",
-				HAMMER_REBALANCE_MIN_BUFS);
-			error = ENOSPC;
-		}
-		if (error == 0) {
-			error = hammer_ioc_rebalance(&trans, ip,
-					(struct hammer_ioc_rebalance *)data);
-		}
-		break;
 	case HAMMERIOC_SYNCTID:
 		error = hammer_ioc_synctid(&trans, ip,
 					(struct hammer_ioc_synctid *)data);
-		break;
-	case HAMMERIOC_GET_PSEUDOFS:
-		error = hammer_ioc_get_pseudofs(&trans, ip,
-				    (struct hammer_ioc_pseudofs_rw *)data);
-		break;
-	case HAMMERIOC_SET_PSEUDOFS:
-		if (error == 0 && hmp->ronly)
-			error = EROFS;
-		if (error == 0) {
-			error = hammer_ioc_set_pseudofs(&trans, ip, cred,
-				    (struct hammer_ioc_pseudofs_rw *)data);
-		}
-		break;
-	case HAMMERIOC_UPG_PSEUDOFS:
-		if (error == 0 && hmp->ronly)
-			error = EROFS;
-		if (error == 0) {
-			error = hammer_ioc_upgrade_pseudofs(&trans, ip,
-				    (struct hammer_ioc_pseudofs_rw *)data);
-		}
-		break;
-	case HAMMERIOC_DGD_PSEUDOFS:
-		if (error == 0 && hmp->ronly)
-			error = EROFS;
-		if (error == 0) {
-			error = hammer_ioc_downgrade_pseudofs(&trans, ip,
-				    (struct hammer_ioc_pseudofs_rw *)data);
-		}
-		break;
-	case HAMMERIOC_RMR_PSEUDOFS:
-		if (error == 0 && hmp->ronly)
-			error = EROFS;
-		if (error == 0) {
-			error = hammer_ioc_destroy_pseudofs(&trans, ip,
-				    (struct hammer_ioc_pseudofs_rw *)data);
-		}
-		break;
-	case HAMMERIOC_WAI_PSEUDOFS:
-		if (error == 0) {
-			error = hammer_ioc_wait_pseudofs(&trans, ip,
-				    (struct hammer_ioc_pseudofs_rw *)data);
-		}
-		break;
-	case HAMMERIOC_MIRROR_READ:
-		if (error == 0) {
-			error = hammer_ioc_mirror_read(&trans, ip,
-				    (struct hammer_ioc_mirror_rw *)data);
-		}
-		break;
-	case HAMMERIOC_MIRROR_WRITE:
-		if (error == 0 && hmp->ronly)
-			error = EROFS;
-		if (error == 0) {
-			error = hammer_ioc_mirror_write(&trans, ip,
-				    (struct hammer_ioc_mirror_rw *)data);
-		}
-		break;
-	case HAMMERIOC_GET_VERSION:
-		error = hammer_ioc_get_version(&trans, ip,
-				    (struct hammer_ioc_version *)data);
-		break;
-	case HAMMERIOC_GET_INFO:
-		error = hammer_ioc_get_info(&trans,
-				    (struct hammer_ioc_info *)data);
-		break;
-	case HAMMERIOC_SET_VERSION:
-		if (error == 0 && hmp->ronly)
-			error = EROFS;
-		if (error == 0) {
-			error = hammer_ioc_set_version(&trans, ip,
-					    (struct hammer_ioc_version *)data);
-		}
-		break;
-	case HAMMERIOC_ADD_VOLUME:
-		if (error == 0 && hmp->ronly)
-			error = EROFS;
-		if (error == 0) {
-			error = caps_priv_check(cred, SYSCAP_NOVFS_IOCTL);
-			if (error == 0)
-				error = hammer_ioc_volume_add(&trans, ip,
-					    (struct hammer_ioc_volume *)data);
-		}
-		break;
-	case HAMMERIOC_DEL_VOLUME:
-		if (error == 0 && hmp->ronly)
-			error = EROFS;
-		if (error == 0) {
-			error = caps_priv_check(cred, SYSCAP_NOVFS_IOCTL);
-			if (error == 0)
-				error = hammer_ioc_volume_del(&trans, ip,
-					    (struct hammer_ioc_volume *)data);
-		}
-		break;
-	case HAMMERIOC_LIST_VOLUMES:
-		error = hammer_ioc_volume_list(&trans, ip,
-		    (struct hammer_ioc_volume_list *)data);
-		break;
-	case HAMMERIOC_ADD_SNAPSHOT:
-		if (error == 0 && hmp->ronly)
-			error = EROFS;
-		if (error == 0) {
-			error = hammer_ioc_add_snapshot(
-					&trans, ip, (struct hammer_ioc_snapshot *)data);
-		}
-		break;
-	case HAMMERIOC_DEL_SNAPSHOT:
-		if (error == 0 && hmp->ronly)
-			error = EROFS;
-		if (error == 0) {
-			error = hammer_ioc_del_snapshot(
-					&trans, ip, (struct hammer_ioc_snapshot *)data);
-		}
-		break;
-	case HAMMERIOC_GET_SNAPSHOT:
-		error = hammer_ioc_get_snapshot(
-					&trans, ip, (struct hammer_ioc_snapshot *)data);
-		break;
-	case HAMMERIOC_GET_CONFIG:
-		error = hammer_ioc_get_config(
-					&trans, ip, (struct hammer_ioc_config *)data);
-		break;
-	case HAMMERIOC_SET_CONFIG:
-		if (error == 0 && hmp->ronly)
-			error = EROFS;
-		if (error == 0) {
-			error = hammer_ioc_set_config(
-					&trans, ip, (struct hammer_ioc_config *)data);
-		}
-		break;
-	case HAMMERIOC_DEDUP:
-		if (error == 0 && hmp->ronly)
-			error = EROFS;
-		if (error == 0) {
-			error = hammer_ioc_dedup(
-					&trans, ip, (struct hammer_ioc_dedup *)data);
-		}
-		break;
-	case HAMMERIOC_GET_DATA:
-		if (error == 0) {
-			error = hammer_ioc_get_data(
-					&trans, ip, (struct hammer_ioc_data *)data);
-		}
-		break;
-	case HAMMERIOC_SCAN_PSEUDOFS:
-		error = hammer_ioc_scan_pseudofs(
-				&trans, ip, (struct hammer_ioc_pseudofs_rw *)data);
 		break;
 	default:
 		error = EOPNOTSUPP;
@@ -321,16 +148,16 @@ hammer_ioc_gethistory(hammer_transaction_t trans, hammer_inode_t ip,
 		return(error);
 	}
 
-	cursor.key_beg.obj_id = hist->obj_id;
-	cursor.key_beg.create_tid = hist->beg_tid;
-	cursor.key_beg.delete_tid = 0;
+	cursor.key_beg.obj_id = hmk64(hist->obj_id);
+	cursor.key_beg.create_tid = hmk64(hist->beg_tid);
+	cursor.key_beg.delete_tid = hmk64(0);
 	cursor.key_beg.obj_type = 0;
-	if (cursor.key_beg.create_tid == HAMMER_MIN_TID)
-		cursor.key_beg.create_tid = 1;
+	if (hist->beg_tid == HAMMER_MIN_TID)
+		cursor.key_beg.create_tid = hmk64(1);
 
-	cursor.key_end.obj_id = hist->obj_id;
-	cursor.key_end.create_tid = hist->end_tid;
-	cursor.key_end.delete_tid = 0;
+	cursor.key_end.obj_id = hmk64(hist->obj_id);
+	cursor.key_end.create_tid = hmk64(hist->end_tid);
+	cursor.key_end.delete_tid = hmk64(0);
 	cursor.key_end.obj_type = 0;
 
 	cursor.flags |= HAMMER_CURSOR_END_EXCLUSIVE;
@@ -342,27 +169,27 @@ hammer_ioc_gethistory(hammer_transaction_t trans, hammer_inode_t ip,
 		 * first possible record containing the offset 'key'
 		 * has an on-disk key of (key + 1).
 		 */
-		cursor.key_beg.key = hist->key;
-		cursor.key_end.key = HAMMER_MAX_KEY;
-		cursor.key_beg.localization = ip->obj_localization |
-					      HAMMER_LOCALIZE_MISC;
-		cursor.key_end.localization = ip->obj_localization |
-					      HAMMER_LOCALIZE_MISC;
+		cursor.key_beg.key = hmk64(hist->key);
+		cursor.key_end.key = hmk64(HAMMER_MAX_KEY);
+		cursor.key_beg.localization = hmk32(ip->obj_localization |
+					      HAMMER_LOCALIZE_MISC);
+		cursor.key_end.localization = hmk32(ip->obj_localization |
+					      HAMMER_LOCALIZE_MISC);
 
 		switch(ip->ino_data.obj_type) {
 		case HAMMER_OBJTYPE_REGFILE:
-			++cursor.key_beg.key;
-			cursor.key_beg.rec_type = HAMMER_RECTYPE_DATA;
+			cursor.key_beg.key = hmk64(hist->key + 1);
+			cursor.key_beg.rec_type = hmk16(HAMMER_RECTYPE_DATA);
 			break;
 		case HAMMER_OBJTYPE_DIRECTORY:
-			cursor.key_beg.rec_type = HAMMER_RECTYPE_DIRENTRY;
-			cursor.key_beg.localization = ip->obj_localization |
-						hammer_dir_localization(ip);
-			cursor.key_end.localization = ip->obj_localization |
-						hammer_dir_localization(ip);
+			cursor.key_beg.rec_type = hmk16(HAMMER_RECTYPE_DIRENTRY);
+			cursor.key_beg.localization = hmk32(ip->obj_localization |
+						hammer_dir_localization(ip));
+			cursor.key_end.localization = hmk32(ip->obj_localization |
+						hammer_dir_localization(ip));
 			break;
 		case HAMMER_OBJTYPE_DBFILE:
-			cursor.key_beg.rec_type = HAMMER_RECTYPE_DB;
+			cursor.key_beg.rec_type = hmk16(HAMMER_RECTYPE_DB);
 			break;
 		default:
 			error = EINVAL;
@@ -373,14 +200,14 @@ hammer_ioc_gethistory(hammer_transaction_t trans, hammer_inode_t ip,
 		/*
 		 * The inode itself.
 		 */
-		cursor.key_beg.key = 0;
-		cursor.key_end.key = 0;
-		cursor.key_beg.rec_type = HAMMER_RECTYPE_INODE;
-		cursor.key_end.rec_type = HAMMER_RECTYPE_INODE;
-		cursor.key_beg.localization = ip->obj_localization |
-					      HAMMER_LOCALIZE_INODE;
-		cursor.key_end.localization = ip->obj_localization |
-					      HAMMER_LOCALIZE_INODE;
+		cursor.key_beg.key = hmk64(0);
+		cursor.key_end.key = hmk64(0);
+		cursor.key_beg.rec_type = hmk16(HAMMER_RECTYPE_INODE);
+		cursor.key_end.rec_type = hmk16(HAMMER_RECTYPE_INODE);
+		cursor.key_beg.localization = hmk32(ip->obj_localization |
+					      HAMMER_LOCALIZE_INODE);
+		cursor.key_end.localization = hmk32(ip->obj_localization |
+					      HAMMER_LOCALIZE_INODE);
 	}
 
 	error = hammer_btree_first(&cursor);
@@ -412,6 +239,10 @@ static void
 add_history(hammer_inode_t ip, struct hammer_ioc_history *hist,
 	    hammer_btree_elm_t elm)
 {
+	int64_t key = (int64_t)hget64(elm->leaf.base.key);
+	int32_t data_len = (int32_t)hget32(elm->leaf.data_len);
+	hammer_tid_t create_tid = hget64(elm->leaf.base.create_tid);
+	hammer_tid_t delete_tid = hget64(elm->leaf.base.delete_tid);
 	int i;
 
 	if (elm->base.btype != HAMMER_BTREE_TYPE_RECORD)
@@ -421,41 +252,41 @@ add_history(hammer_inode_t ip, struct hammer_ioc_history *hist,
 		/*
 		 * Adjust nxt_key
 		 */
-		if (hist->nxt_key > elm->leaf.base.key - elm->leaf.data_len &&
-		    hist->key < elm->leaf.base.key - elm->leaf.data_len) {
-			hist->nxt_key = elm->leaf.base.key - elm->leaf.data_len;
+		if (hist->nxt_key > (key - data_len) &&
+		    hist->key < (key - data_len)) {
+			hist->nxt_key = (key - data_len);
 		}
-		if (hist->nxt_key > elm->leaf.base.key)
-			hist->nxt_key = elm->leaf.base.key;
+		if (hist->nxt_key > key)
+			hist->nxt_key = key;
 
 		/*
 		 * Record is beyond MAXPHYS, there won't be any more records
 		 * in the iteration covering the requested offset (key).
 		 */
-		if (elm->leaf.base.key >= MAXPHYS &&
-		    elm->leaf.base.key - MAXPHYS > hist->key) {
+		if (key >= MAXPHYS &&
+		    key - MAXPHYS > hist->key) {
 			hist->head.flags |= HAMMER_IOC_HISTORY_NEXT_KEY;
 		}
 
 		/*
 		 * Data-range of record does not cover the key.
 		 */
-		if (elm->leaf.base.key - elm->leaf.data_len > hist->key)
+		if ((key - data_len) > hist->key)
 			return;
 
 	} else if (hist->head.flags & HAMMER_IOC_HISTORY_ATKEY) {
 		/*
 		 * Adjust nxt_key
 		 */
-		if (hist->nxt_key > elm->leaf.base.key &&
-		    hist->key < elm->leaf.base.key) {
-			hist->nxt_key = elm->leaf.base.key;
+		if (hist->nxt_key > key &&
+		    hist->key < key) {
+			hist->nxt_key = key;
 		}
 
 		/*
 		 * Record is beyond the requested key.
 		 */
-		if (elm->leaf.base.key > hist->key)
+		if (key > hist->key)
 			hist->head.flags |= HAMMER_IOC_HISTORY_NEXT_KEY;
 	}
 
@@ -464,16 +295,16 @@ add_history(hammer_inode_t ip, struct hammer_ioc_history *hist,
 	 */
 	i = hist->count;
 	if ((i == 0 ||
-	     elm->leaf.base.create_tid != hist->hist_ary[i - 1].tid) &&
-	    elm->leaf.base.create_tid >= hist->beg_tid &&
-	    elm->leaf.base.create_tid < hist->end_tid) {
+	     create_tid != hist->hist_ary[i - 1].tid) &&
+	    create_tid >= hist->beg_tid &&
+	    create_tid < hist->end_tid) {
 		if (hist->count == HAMMER_MAX_HISTORY_ELMS) {
-			hist->nxt_tid = elm->leaf.base.create_tid;
+			hist->nxt_tid = create_tid;
 			hist->head.flags |= HAMMER_IOC_HISTORY_NEXT_TID;
 			return;
 		}
-		hist->hist_ary[i].tid = elm->leaf.base.create_tid;
-		hist->hist_ary[i].time32 = elm->leaf.create_ts;
+		hist->hist_ary[i].tid = create_tid;
+		hist->hist_ary[i].time32 = hget32(elm->leaf.create_ts);
 		++hist->count;
 	}
 
@@ -487,16 +318,16 @@ add_history(hammer_inode_t ip, struct hammer_ioc_history *hist,
 	 *            [     ]
 	 */
 	i = hist->count;
-	if (elm->leaf.base.delete_tid &&
-	    elm->leaf.base.delete_tid >= hist->beg_tid &&
-	    elm->leaf.base.delete_tid < hist->end_tid) {
+	if (delete_tid &&
+	    delete_tid >= hist->beg_tid &&
+	    delete_tid < hist->end_tid) {
 		if (i == HAMMER_MAX_HISTORY_ELMS) {
-			hist->nxt_tid = elm->leaf.base.delete_tid;
+			hist->nxt_tid = delete_tid;
 			hist->head.flags |= HAMMER_IOC_HISTORY_NEXT_TID;
 			return;
 		}
-		hist->hist_ary[i].tid = elm->leaf.base.delete_tid;
-		hist->hist_ary[i].time32 = elm->leaf.delete_ts;
+		hist->hist_ary[i].tid = delete_tid;
+		hist->hist_ary[i].time32 = hget32(elm->leaf.delete_ts);
 		++hist->count;
 	}
 }
@@ -539,6 +370,7 @@ hammer_ioc_synctid(hammer_transaction_t trans, hammer_inode_t ip,
 	return(error);
 }
 
+#if 0 /* phase 4: the other HAMMER ioctls */
 /*
  * Retrieve version info.
  *
@@ -1088,3 +920,4 @@ failed:
 	hammer_done_cursor(&cursor);
 	return (error);
 }
+#endif /* phase 4 */

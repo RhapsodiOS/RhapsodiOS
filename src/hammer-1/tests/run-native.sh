@@ -154,6 +154,21 @@ two"
 	./hammer_io unmount "$2"
 	checkvol
 	;;
+history)
+	# Three versions of h, each committed by synctid; the host compares
+	# the TIDs with DragonFly's history of the exported volume.
+	./hammer_io mount-rw $DEV "$2"
+	for v in one two three; do
+		echo $v > "$2/h"
+		./hammer synctid "$2"
+	done
+	./hammer history "$2/h" > hist.txt
+	cat hist.txt
+	test `grep -c '^    [0-9a-f]* ' hist.txt` -eq 3
+	./hammer_io notty "$2/h"
+	./hammer_io unmount "$2"
+	checkvol
+	;;
 refuse-rw-recovery)
 	./hammer_io mounterr $DEV "$2" 0 $EOPNOTSUPP
 	;;

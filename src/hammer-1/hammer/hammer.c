@@ -40,7 +40,7 @@
  */
 static const char *const SupportedCmds[] = {
 	"namekey1", "namekey2", "namekey32",
-	"show", "show-undo", "blockmap", "checkmap",
+	"show", "show-undo", "blockmap", "checkmap", "synctid", "history",
 	NULL
 };
 
@@ -286,12 +286,14 @@ main(int ac, char **av)
 		if (*cmd == NULL)
 			errx(1, "%s not supported yet", av[0]);
 	}
-#if 0 /* not yet supported on Rhapsody */
 	if (strcmp(av[0], "synctid") == 0) {
 		hammer_cmd_synctid(av + 1, ac - 1);
 		exit(0);
 	}
-#endif
+	if (strncmp(av[0], "history", 7) == 0) {
+		hammer_cmd_history(av[0] + 7, av + 1, ac - 1);
+		exit(0);
+	}
 	if (strcmp(av[0], "namekey2") == 0) {
 		int64_t key;
 		int32_t crcx;
@@ -461,10 +463,6 @@ main(int ac, char **av)
 		exit(0);
 	}
 
-	if (strncmp(av[0], "history", 7) == 0) {
-		hammer_cmd_history(av[0] + 7, av + 1, ac - 1);
-		exit(0);
-	}
 	if (strcmp(av[0], "rebalance") == 0) {
 		signal(SIGINT, sigalrm);
 		hammer_cmd_rebalance(av + 1, ac - 1);

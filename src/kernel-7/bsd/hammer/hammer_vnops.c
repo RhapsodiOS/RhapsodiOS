@@ -4271,6 +4271,16 @@ hammer_vop_pathconf(struct vop_pathconf_args *ap)
 }
 
 /*
+ * HAMMER ioctls on any file of the mount (hammer_ioctl.c says which).
+ */
+static int
+hammer_vop_ioctl(struct vop_ioctl_args *ap)
+{
+	return(hammer_ioctl(VTOI(ap->a_vp), ap->a_command, ap->a_data,
+			    ap->a_fflag, ap->a_cred));
+}
+
+/*
  * Make a new object named by CNP in directory DVP: a file, a directory,
  * or (TARGET non-NULL) a symlink.  Upstream's hammer_vop_ncreate,
  * nmkdir and nsymlink.  Returns the new vnode locked in *vpp.
@@ -5314,6 +5324,7 @@ struct vnodeopv_entry_desc hammer_vnodeop_entries[] = {
 	{ &vop_islocked_desc, (int (*)())hammer_vop_islocked },
 	{ &vop_print_desc, (int (*)())hammer_vop_print },
 	{ &vop_pathconf_desc, (int (*)())hammer_vop_pathconf },
+	{ &vop_ioctl_desc, (int (*)())hammer_vop_ioctl },
 	{ NULL, NULL }
 };
 struct vnodeopv_desc hammer_vnodeop_opv_desc =

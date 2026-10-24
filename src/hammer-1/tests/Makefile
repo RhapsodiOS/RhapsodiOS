@@ -7,7 +7,8 @@ CFLAGS = -O -I../common -I$(K)
 COMMON = ../common/ondisk.c ../common/cache.c ../common/blockmap.c \
 	 ../common/misc.c ../common/uuid.c ../common/compat.c \
 	 ../common/crc32.c ../common/icrc32.c ../common/hammer_admit.c
-HAMMER = ../hammer/hammer.c ../hammer/cmd_show.c ../hammer/cmd_blockmap.c
+HAMMER = ../hammer/hammer.c ../hammer/cmd_show.c ../hammer/cmd_blockmap.c \
+	 ../hammer/cmd_synctid.c ../hammer/cmd_history.c
 IMG = /var/tmp/hammer-newfs-show.img
 
 all: newfs_hammer mount_hammer hammer hammer_walk hammer_io ns_ops data_ops \

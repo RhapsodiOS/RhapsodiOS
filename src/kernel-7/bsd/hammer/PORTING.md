@@ -386,6 +386,23 @@ line added.
 - An inode still cached at unmount is named on the console before the
   assertion that the inode tree is empty.
 
+## History (Phase 2)
+
+- `hammer_ioctl.c` compiles `HAMMERIOC_GETHISTORY` and `HAMMERIOC_SYNCTID`
+  (ported to the byte-order accessors); the other HAMMER ioctls stay behind
+  `#if 0 /* phase 4 */` and fail `EOPNOTSUPP`.  `hammer synctid` and
+  `hammer history` are built into the tool.
+- 4.4BSD `vn_ioctl` answers `ENOTTY` for any ioctl on a regular file or
+  directory without asking the filesystem.  It now passes them to
+  `VOP_IOCTL` for `VT_HAMMER` vnodes only (forwarding for every filesystem
+  would reach `hfs_ioctl`'s raw fcntl command numbers from ioctl(2)).
+  `hammer_ioctl` answers `ENOTTY` for anything outside group `'h'`, so
+  `isatty` and the like behave as on any other file.
+- The `history` case writes a file three times with `hammer synctid`
+  between: `hammer history` lists three increasing TIDs, the ones synctid
+  printed, and DragonFly's `hammer history` of the exported volume lists
+  the same.
+
 ## Left for Phase 2
 
 - Still behind `#if 0 /* phase 2 */`: `hammer_inode.c`'s PFS save and
@@ -394,13 +411,14 @@ line added.
   Rhapsody ones).
 - Not compiled yet: `hammer_redo.c`, `hammer_reblock.c`,
   `hammer_rebalance.c`, `hammer_prune.c`, `hammer_dedup.c`,
-  `hammer_mirror.c`, `hammer_ioctl.c`, `hammer_signal.c`.  `hammer_inode.c`
-  generates the redo tree until the redo unit returns.
+  `hammer_mirror.c`, `hammer_signal.c`; of `hammer_ioctl.c` only history
+  and synctid.  `hammer_inode.c` generates the redo tree until the redo
+  unit returns.
 - `telldir`/`seekdir` on HAMMER directories (see "Directory offsets and
   telldir").
 - Device and FIFO nodes use the regular op table (they stat but cannot be
   opened); readdir returns no NFS cookies; `hammer info` waits for the
-  ioctls.
+  other ioctls.
 
 ## Evidence
 

@@ -15,7 +15,8 @@ PROJECT_TYPE = Tool
 HFILES = hammer.h
 
 CFILES = hammer.c cmd_show.c cmd_blockmap.c ondisk.c cache.c blockmap.c\
-         misc.c uuid.c compat.c crc32.c icrc32.c hammer_admit.c
+         misc.c uuid.c compat.c crc32.c icrc32.c hammer_admit.c\
+         cmd_synctid.c cmd_history.c
 
 OTHERSRCS = Makefile.preamble Makefile Makefile.postamble\
             hammer.8

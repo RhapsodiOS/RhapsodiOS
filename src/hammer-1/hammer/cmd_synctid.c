@@ -73,7 +73,7 @@ hammer_cmd_synctid(char **av, int ac)
 		err(1, "Synctid %s failed", filesystem);
 		/* not reached */
 	} else {
-		printf("0x%016jx\n", (uintmax_t)synctid.tid);
+		printf("0x%016qx\n", (uintmax_t)synctid.tid);
 	}
 	close(fd);
 }

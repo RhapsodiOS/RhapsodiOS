@@ -485,6 +485,10 @@ vn_ioctl(fp, com, data, p)
 		}
 		if (com == FIONBIO || com == FIOASYNC)	/* XXX */
 			return (0);			/* XXX */
+		/* HAMMER's history and synctid ioctls act on its files. */
+		if (vp->v_tag == VT_HAMMER)
+			return (VOP_IOCTL(vp, com, data, fp->f_flag,
+					  p->p_ucred, p));
 		/* fall into ... */
 
 	default:

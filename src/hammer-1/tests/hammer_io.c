@@ -58,6 +58,7 @@
  *	dotdot DIR			DIR/.. (DIR its own parent) fails with EIO
  */
 #include <sys/types.h>
+#include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
@@ -67,6 +68,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <termios.h>
 #include <unistd.h>
 #include "hammer_mount.h"
 
@@ -131,6 +133,23 @@ remount(const char *point, const char *mode, int want)
  * With FILE open for writing, downgrading POINT fails with EBUSY; forced,
  * it works and the descriptor can no longer write.
  */
+/*
+ * A terminal ioctl on a HAMMER file fails ENOTTY, as on any other file.
+ */
+static int
+notty(const char *file)
+{
+	struct termios t;
+	int fd;
+
+	CHECK((fd = open(file, O_RDONLY)) >= 0);
+	errno = 0;
+	CHECK(ioctl(fd, TIOCGETA, &t) == -1 && errno == ENOTTY);
+	close(fd);
+	printf("%s: terminal ioctls fail ENOTTY\n", file);
+	return 0;
+}
+
 static int
 busy(const char *point, const char *file)
 {
@@ -402,6 +421,8 @@ main(int ac, char **av)
 		return remount(av[2], av[3], atoi(av[4]));
 	if (ac == 4 && strcmp(av[1], "busy") == 0)
 		return busy(av[2], av[3]);
+	if (ac == 3 && strcmp(av[1], "notty") == 0)
+		return notty(av[2]);
 	if (ac == 3 && strcmp(av[1], "unmount") == 0) {
 		CHECK(unmount(av[2], 0) == 0);
 		return 0;

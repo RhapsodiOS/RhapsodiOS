@@ -615,3 +615,4 @@ bsd/hammer/hammer_vnops.c		optional hammerfs
 bsd/hammer/hammer_flusher.c		optional hammerfs
 bsd/hammer/hammer_undo.c		optional hammerfs
 bsd/hammer/hammer_recover.c		optional hammerfs
+bsd/hammer/hammer_ioctl.c		optional hammerfs

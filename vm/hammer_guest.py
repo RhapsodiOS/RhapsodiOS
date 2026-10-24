@@ -10,6 +10,7 @@ Volumes are raw HAMMER images (what DragonFly's newfs_hammer writes to a
 whole disk).  Rhapsody sees them as partition a of a NeXT-labelled disk.
 """
 import os
+import re
 from pathlib import Path
 import shutil
 import struct
@@ -355,6 +356,7 @@ def walk_differences(got, want, ignore_crc=True, ignore_mtime=False,
 CASES = ('refuse-badsig', 'refuse-v6', 'refuse-twovol', 'refuse-badcrc',
          'refuse-needs-recovery', 'rw-empty', 'ns-ops', 'data-ops', 'unlinked',
          'fsync-crash', 'fsync-check', 'big-dir', 'big-file', 'churn', 'enospc', 'remount',
+         'history',
          'refuse-rw-recovery',
          'refuse-rw-pfs', 'admit', 'namespace',
          'readdir-small', 'times', 'erofs', 'crafted-name', 'data', 'holes',
@@ -363,7 +365,7 @@ CASES = ('refuse-badsig', 'refuse-v6', 'refuse-twovol', 'refuse-badcrc',
 # Cases that write the data volume: no unchanged check; the result is
 # exported and checked on DragonFly instead (HAMMER_NO_DFLY=1 skips that).
 WRITE_CASES = ('rw-empty', 'ns-ops', 'data-ops', 'unlinked', 'fsync-crash',
-               'big-dir', 'big-file', 'churn', 'enospc', 'remount')
+               'big-dir', 'big-file', 'churn', 'enospc', 'remount', 'history')
 # Write cases that end without an unmount: nothing to check on the host
 # (the next case, fsync-check, mounts what they left).
 CRASH_CASES = ('fsync-crash',)
@@ -459,13 +461,34 @@ def recover_differences(tree: str, rec: str, skip=()):
     return ['recover: %d files under 1 MiB not rebuilt intact' % len(missing)]
 
 
-def dfly_check(raw: Path, outdir: Path, recover_skip=()):
-    """vm/dfly-check.sh on DragonFly against RAW; findings (empty = clean)."""
+def history_problems(guest, dfly, versions=3):
+    """Compare `hammer history` output: VERSIONS increasing TIDs, as DragonFly lists."""
+    def tids(text):
+        return re.findall(r'^    ([0-9a-f]{16}) ', text, re.M)
+    g, d = tids(guest), tids(dfly)
+    problems = []
+    if len(g) != versions:
+        problems.append('history: %d versions, want %d' % (len(g), versions))
+    if g != sorted(set(g)):
+        problems.append('history: TIDs not increasing: %s' % ' '.join(g))
+    if g != d:
+        problems.append('history: DragonFly lists %s' % ' '.join(d))
+    return problems
+
+
+def dfly_check(raw: Path, outdir: Path, recover_skip=(), history=None):
+    """vm/dfly-check.sh on DragonFly against RAW; findings (empty = clean).
+
+    HISTORY names a file (relative to the mount) whose `hammer history`
+    DragonFly writes to HIST.TXT; it is saved as outdir/dfly-history.txt.
+    """
     import dfly_guest
     import fat32
+    files = {'walk.c': (HERE.parent/'src/hammer-1/tests/hammer_walk.c').read_bytes()}
+    if history:
+        files['history'] = history.encode('ascii')
     status, text = dfly_guest.run_script(
-        DFLY_ISO, str(raw), (HERE/'dfly-check.sh').read_text(), Path(outdir),
-        {'walk.c': (HERE.parent/'src/hammer-1/tests/hammer_walk.c').read_bytes()})
+        DFLY_ISO, str(raw), (HERE/'dfly-check.sh').read_text(), Path(outdir), files)
     if status != 0 or 'CHECK_OK' not in text:
         return ['DragonFly check failed (status %s)' % status] + \
             ['dfly: ' + l for l in text.splitlines()[-10:]]
@@ -473,6 +496,8 @@ def dfly_check(raw: Path, outdir: Path, recover_skip=()):
     tree = fat32.read_file(xfer, 'TREE.WLK').decode('latin-1')
     rec = fat32.read_file(xfer, 'REC.WLK').decode('latin-1')
     (Path(outdir)/'tree.walk').write_text(tree)
+    if history:
+        (Path(outdir)/'dfly-history.txt').write_bytes(fat32.read_file(xfer, 'HIST.TXT'))
     return recover_differences(tree, rec, recover_skip)
 
 
@@ -592,7 +617,15 @@ def run(case, outdir, volume, tools_dir):
                 problems += header_problems(f.read(HEADER))
             if not problems and os.environ.get('HAMMER_NO_DFLY') != '1':
                 problems += dfly_check(raw, outdir/'dfly',
-                                       RECOVER_SKIP.get(case, ()))
+                                       RECOVER_SKIP.get(case, ()),
+                                       'h' if case == 'history' else None)
+                if case == 'history' and not problems:
+                    import rhap_image
+                    with rhap_image.Image(str(results)) as disk:
+                        hist = disk.read_file(disk.inode(disk.resolve('/hist.txt')))
+                    problems += history_problems(
+                        hist.decode('latin-1'),
+                        (outdir/'dfly'/'dfly-history.txt').read_text('latin-1'))
         finally:
             raw.unlink()
     if case in WALK_CASES and code == 0:

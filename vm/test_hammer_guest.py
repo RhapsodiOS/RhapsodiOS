@@ -438,3 +438,20 @@ def test_lelint_clean_over_compiled_kernel_sources():
     lint = _lelint()
     hits = [h for f in files for h in lint.lint(fields, str(f))]
     assert hits == []
+
+
+HIST = ('/mnt/h/h\t0000000100000745 clean {\n'
+        '    0000000100022a40 24-Oct-2026 10:00:01\n'
+        '    0000000100022b00 24-Oct-2026 10:00:02\n'
+        '    0000000100022c80 24-Oct-2026 10:00:03\n'
+        '}\n')
+
+
+def test_history_problems_wants_increasing_tids_dragonfly_also_lists():
+    dfly = HIST.replace('/mnt/h/h', '/tmp/h/h').replace('10:00', '03:00')
+    assert hg.history_problems(HIST, dfly) == []
+    two = HIST.replace('    0000000100022c80 24-Oct-2026 10:00:03\n', '')
+    assert hg.history_problems(two, two) != []
+    back = HIST.replace('22b00', '22d00')
+    assert hg.history_problems(back, back) != []
+    assert hg.history_problems(HIST, dfly.replace('22c80', '22c90')) != []

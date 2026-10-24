@@ -169,6 +169,22 @@ history)
 	./hammer_io unmount "$2"
 	checkvol
 	;;
+measure)
+	# Numbers for PORTING.md: memory around a 64 MB write, flush times.
+	./hammer_io mount-rw $DEV "$2"
+	vm_stat || true
+	date
+	dd if=/dev/rhd0a of="$2/m" bs=65536 count=1024
+	date
+	vm_stat || true
+	/usr/bin/time ./hammer synctid "$2"
+	echo x >> "$2/m"
+	/usr/bin/time ./hammer synctid "$2"
+	/usr/bin/time ./hammer synctid "$2"
+	./hammer_io unmount "$2"
+	vm_stat || true
+	checkvol
+	;;
 refuse-rw-recovery)
 	./hammer_io mounterr $DEV "$2" 0 $EOPNOTSUPP
 	;;
@@ -211,15 +227,26 @@ data|dedup)
 	./hammer_io unmount "$2"
 	;;
 cycle)
-	# Mount lifecycle: leaks are reported at each last unmount.
+	# Mount lifecycle with a write per cycle: leaks are reported at each
+	# last unmount; every file written must survive the later cycles.
 	i=0
 	while [ $i -lt 100 ]; do
-		./hammer_io mount $DEV "$2"
+		./hammer_io mount-rw $DEV "$2"
 		./hammer_walk -n "$2" > /dev/null
+		mkdir -p "$2/cycle"
+		echo "cycle $i" > "$2/cycle/$i"
 		./hammer_io unmount "$2"
 		i=`expr $i + 1`
 	done
-	echo "$i mount/walk/unmount cycles"
+	./hammer_io mount $DEV "$2"
+	i=0
+	while [ $i -lt 100 ]; do
+		test "`cat $2/cycle/$i`" = "cycle $i"
+		i=`expr $i + 1`
+	done
+	./hammer_io unmount "$2"
+	checkvol
+	echo "$i mount-rw/walk/write/unmount cycles"
 	;;
 holes)
 	./hammer_io mount $DEV "$2"

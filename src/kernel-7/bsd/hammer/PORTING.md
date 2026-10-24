@@ -6,7 +6,9 @@ Plan: `docs/superpowers/plans/2026-10-17-hammer-phase1.md`.
 
 This is a single-volume, single-namespace (root PFS only), version-7 HAMMER.
 Phase 1 is read-only; Phase 2 (`docs/superpowers/plans/2026-10-23-hammer-phase2.md`)
-adds read-write mounts.
+adds read-write mounts with UNDO, `mount -u` and file history.  Both phases
+are accepted on i386 (see "Evidence"); crash recovery by UNDO replay is
+Phase 3.
 
 ## Removed upstream units
 
@@ -403,12 +405,35 @@ line added.
   printed, and DragonFly's `hammer history` of the exported volume lists
   the same.
 
-## Left for Phase 2
+## Measured (Phase 2)
 
-- Still behind `#if 0 /* phase 2 */`: `hammer_inode.c`'s PFS save and
-  unload, the read/flush time multiplexing in `hammer_cursor.c`, and the
-  DragonFly VOPs in `hammer_vnops.c` (kept as the reference for the
-  Rhapsody ones).
+One 128 MB i386 guest on QEMU's emulated IDE disk (`measure` case, 2 GB
+blank volume):
+
+- Writing 64 MB (`dd`, 64 KB writes): 68 s, about 1 MB/s.  Wired memory
+  rises by about 8.6 MB while the file is written (the dirty-buffer limit:
+  each dirty HAMMER buffer is a kmalloc'd copy until the flusher writes it)
+  and returns to within 14 pages of the starting level after unmount; no
+  pageouts.
+- `hammer synctid` (a full flush cycle, run twice) over two runs: 2.30 to
+  2.44 s after the 64 MB write, 0.07 to 0.10 s after a one-byte append,
+  0.01 s with nothing dirty.
+- Every case runs on the 128 MB guest, including 20,000-entry directories
+  and a 512 MiB file; none has reported an empty kernel zone.
+
+## Left for Phase 3 and later
+
+- Phase 3: UNDO replay at mount (`hammer_recover.c` stage 2 is behind
+  `#if 0 /* phase 3 */`; a volume needing recovery is refused rw), REDO
+  (`hammer_redo.c` and the REDO paths in `hammer_inode.c`), the pruner and
+  the reblocker.  Until the pruner, deleted data stays on the volume as
+  history.
+- Still behind `#if 0 /* phase 2 */` by design: `hammer_inode.c`'s PFS
+  save and unload (one namespace, no PFS), the read/flush time
+  multiplexing in `hammer_cursor.c` (one flusher thread on a uniprocessor),
+  and the DragonFly VOPs in `hammer_vnops.c` (kept as the reference for
+  the Rhapsody ones).
+- ppc: the kernel builds and links; no ppc runtime has been run.
 - Not compiled yet: `hammer_redo.c`, `hammer_reblock.c`,
   `hammer_rebalance.c`, `hammer_prune.c`, `hammer_dedup.c`,
   `hammer_mirror.c`, `hammer_signal.c`; of `hammer_ioctl.c` only history
@@ -437,4 +462,11 @@ line added.
 | Regression on the HAMMER kernel: ext2 `readonly` (v2-based root; on the golden root ext2fs's own `DKIOCGPARTINFO` call fails with EINVAL, as it does without HAMMER), HFS `read`, UFS root boot | i386 guest | PASS | 2026-10-22 |
 | `sha256sum -c ORIGIN` and notice check (see "Provenance check") | host | as documented | 2026-10-22 |
 | ppc: kernel (376 hammer symbols) and hammer-1 package built; `make check CPPFLAGS=-DHAMMER_TEST_SWAP` passes on i386 | ppc build | PASS | 2026-10-22 |
+| Phase 2 write cases on the final kernel: rw-empty, ns-ops and data-ops (walks match DragonFly's), unlinked, fsync-crash then fsync-check, remount, history (TIDs match DragonFly's `hammer history`), measure; each followed by DragonFly show, checkmap, recover and a read-only mount of the exported volume | i386 guest | PASS | 2026-10-24 |
+| Phase 2 slow cases on the final kernel: big-dir (20,000 entries, midway walk matches DragonFly's), big-file (512 MiB), churn (1,000 rounds), enospc; DragonFly checks clean | i386 guest | PASS | 2026-10-24 |
+| `cycle` with a write per cycle: 100 mount-rw / walk / write / unmount cycles, every file intact, no leak, no panic, DragonFly check clean | i386 guest | PASS | 2026-10-24 |
+| Every Phase 1 case on the final kernel (refuse-*, admit, namespace, readdir-small, times, erofs, crafted-*, data, holes, mmap, dedup, negread) | i386 guest | PASS, volumes unchanged | 2026-10-24 |
+| Regression on the final kernel: ext2 `readonly` (v2-based root), HFS `read`, UFS root boot (every guest case) | i386 guest | PASS | 2026-10-24 |
+| `python -m pytest vm/test_hammer_guest.py` (harness, lelint over every compiled HAMMER source) | host | PASS | 2026-10-24 |
+| ppc: kernel with the Phase 2 sources links, 441 hammer symbols | ppc build | PASS | 2026-10-24 |
 | ppc runtime | ppc | **open**, no ppc runtime available | |

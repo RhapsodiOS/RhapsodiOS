@@ -37,7 +37,9 @@ class AnalysisSnapshot:
 
 
 _ADAPTER_ORDER = (("ida", "IDA"), ("ghidra", "Ghidra"), ("angr", "angr"))
-_MAX_ANALYSIS_JSON = 16 * 1024 * 1024
+# The scoped Ultra2 reference is 35,288,778 bytes, including whole-image
+# strings. Match the IDA adapter's bounded 64 MiB export budget.
+_MAX_ANALYSIS_JSON = 64 * 1024 * 1024
 # The measured EISABus consensus is 37,959,802 bytes. 64 MiB leaves 76%
 # growth headroom while keeping publication verification explicitly bounded.
 _MAX_CONSENSUS_JSON = 64 * 1024 * 1024

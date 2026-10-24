@@ -35,6 +35,7 @@
 
 #import <machdep/ppc/proc_reg.h>
 #import "IOMacRiscPCI.h"
+#import <string.h>
 
 #define INFO	if(0)	kprintf
 
@@ -224,6 +225,16 @@ typedef struct AddressCell AddressCell;
     static AddressCell	ioAddrCell = { 0, 0, 0, 0, kPCIIOSpace,
                                         0, 0, 0, 0, 0, 0, 0, 0 };
     UInt32		ioPhys;
+    char	*	compatible;
+    ByteCount		propSize;
+
+    // UniNorth takes offset bit 2 from the data access, not the address
+    // cycle (as Linux's has_uninorth does); Bandit and Chaos ignore it.
+    if( (noErr == [[device propertyTable] getProperty:"compatible"
+                    flags:kReferenceProperty value:(void **) &compatible
+                    length:&propSize])
+     && (0 == strcmp( compatible, "uni-north")))
+	dataLaneMask = 4;
 
     // Look for our IO memory aperture
     err = [self resolveAddressCell:(UInt32 *)&ioAddrCell
@@ -289,7 +300,7 @@ typedef struct AddressCell AddressCell;
         eieio();
     }
 
-    return( configData);
+    return( (volatile UInt32 *)((char *) configData + (offset & dataLaneMask)));
 }
 
 - (LogicalAddress) getIOAperture

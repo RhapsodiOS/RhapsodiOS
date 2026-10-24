@@ -22,183 +22,104 @@
  * @APPLE_LICENSE_HEADER_END@
  */
 
-/*
- * AdaptecU2SCSI.h - Adaptec Ultra2 SCSI Controller Driver
- * Header file with instance variable structure matching binary layout
- */
+#ifndef _ADAPTECU2_SCSI_H_
+#define _ADAPTECU2_SCSI_H_
 
 #import <driverkit/IOSCSIController.h>
 #import <driverkit/scsiTypes.h>
 #import <mach/mach_interface.h>
+#include "AdaptecU2CHIM.h"
+
+@class NXLock;
+@class IOMemoryDescriptor;
+typedef struct AdaptecU2AttachedTarget AdaptecU2AttachedTarget;
+
+/* The one-argument executeRequest: selector accepts this command envelope,
+ * not IOSCSIRequest. The other two selectors accept IOSCSIRequest. */
+typedef struct AdaptecU2Command {
+    int operation;
+    unsigned long cdbLength;
+    unsigned long word08;
+    unsigned long word0c;
+    IOSCSIRequest *request;
+    id completionLock;
+    int result;
+    void *buffer;
+    vm_task_t client;
+    queue_chain_t link;
+} AdaptecU2Command;
 
 @interface AdaptecU2SCSI : IOSCSIController
 {
-    @public
-    // Offset 0x244 - Pointer to stack buffer (points to local stack in methods)
-    unsigned char *stackBuffer;
-
-    // Offset 0x248 - PCI device/vendor ID
-    unsigned int pciDeviceID;
-    
-    // Offset 0x24c - Padding to align to 0x25c
-    unsigned char padding1[16];
-    
-    // Offset 0x25c - Configuration buffer
-    unsigned int configBuffer[64];
-    
-    // Offset 0x2a0 - Working memory pointer
-    void *workingMemory;
-    
-    // Offset 0x2a4 - Working memory size
-    unsigned int workingMemorySize;
-    
-    // Offset 0x2a8 - HIM adapter handle
-    void *himHandle;
-    
-    // Offset 0x2ac - Profile/parameter buffer (used for OSMIO params)
-    void *profileBuffer[32];
-    
-    // Offset 0x320 (800 decimal) - Number of targets
-    unsigned int numTargets;
-    
-    // Offset 0x324 - Padding
-    unsigned char padding2[16];
-    
-    // Offset 0x334 - Copy source pointer
-    void *copySource;
-
-    // Offset 0x338 - Padding to 0x3b0
-    unsigned char padding3a[120];
-
-    // Offset 0x3b0 - Adapter's own SCSI ID
-    unsigned int adapterSCSIID;
-
-    // Offset 0x3b4 - Padding to 0x3bc
-    unsigned char padding3b[8];
-
-    // Offset 0x3bc - Profile flags
-    unsigned char profileFlags[128];
-    
-    // Offset 0x43c - Padding to 0x47c
-    unsigned char padding4[64];
-    
-    // Offset 0x47c - Copy destination pointer
-    void *copyDest;
-    
-    // Offset 0x480 - Target structures array (one per target)
-    void *targetStructures[16];
-    
-    // Offset 0x4c0 - Reserved
-    unsigned int reserved1;
-    
-    // Offset 0x4c4 - Reserved
-    unsigned int reserved2;
-    
-    // Offset 0x4c8 - Reserved
-    unsigned int reserved3;
-    
-    // Offset 0x4cc - CHIM function table (0xa8 bytes = 42 function pointers)
-    void *chimFunctionTable[42];
-    
-    // Offset 0x574 - Free IOB pool count
-    unsigned int freeIOBCount;
-    
-    // Offset 0x578 - CHIM working memory / num samples
-    void *chimWorkingMemory;
-    
-    // Offset 0x57c - Padding
-    unsigned int padding5;
-    
-    // Offset 0x580 - Incoming queue (also reused as free IOB queue head/tail)
-    queue_head_t incomingQueue;
-    
-    // Offset 0x588 - Pending queue  
-    queue_head_t pendingQueue;
-    
-    // Offset 0x590 - Disconnected queue
-    queue_head_t disconnectedQueue;
-    
-    // Offset 0x598 - Max queue length statistic
+@public
+    /* These three handle ivars are ^v in the reference metadata. */
+    void *initializationTSH;
+    unsigned int productID;
+    AdaptecU2PciLocation pciLocation;
+    AdaptecU2Configuration configuration;
+    void *pTscb;
+    unsigned int tscbSize;
+    void *adapterTSH;
+    AdaptecU2AdapterProfile profile;
+    unsigned int iobReserveSize;
+    AdaptecU2AttachedTarget *pAttachedTarget[16];
+    int autoConfigActive;
+    int frozen;
+    int resetActive;
+    AdaptecU2HIMFunctions HIMFunc;
+    int numIOBs;
+    int numActiveIOBs;
+    int targetProbeCount;
+    queue_head_t iobQ;
+    queue_head_t handleQ;
+    queue_head_t commandQ;
     unsigned int maxQueueLen;
-    
-    // Offset 0x59c - Sum of queue lengths statistic
-    unsigned int sumQueueLengths;
-    
-    // Offset 0x5a0 - Active command pointer
-    void *activeCommand;
-    
-    // Offset 0x5a4 - Adapter IRQ number
-    int adapterIRQ;
-    
-    // Offset 0x5a8 - Incoming queue lock (NXLock)
-    id incomingQueueLock;
-    
-    // Offset 0x5ac - Kernel interrupt port
-    port_t kernelInterruptPort;
-    
-    // Offset 0x5b0 - I/O thread running flag
-    unsigned char ioThreadRunning;
-    
-    // Offset 0x5b1 - Initialization complete flag
-    unsigned char initComplete;
-    
-    // Offset 0x5b2 - Padding
-    unsigned char padding6[2];
-    
-    // Offset 0x5b4 - Condition lock method: initWith:
-    void *condLockInitWith;
-    
-    // Offset 0x5b8 - Condition lock method: free
-    void *condLockFree;
-    
-    // Offset 0x5bc - Condition lock method: lock
-    void *condLockLock;
-    
-    // Offset 0x5c0 - Condition lock method: lockWhen:
-    void *condLockLockWhen;
-    
-    // Offset 0x5c4 - Condition lock method: unlockWith:
-    void *condLockUnlockWith;
-    
-    // Offset 0x5c8 - Lock method pointer
-    void *lockMethod;
-    
-    // Offset 0x5cc - Unlock method pointer
-    void *unlockMethod;
+    unsigned int queueLenTotal;
+    unsigned int outstandingCount;
+    unsigned int interrupt;
+    NXLock *commandLock;
+    int interruptPortKern;
+    char threadStarted;
+    char initTime;
+    id (*NXConditionLock_initWith)(id, SEL, int);
+    id (*NXConditionLock_free)(id, SEL);
+    id (*NXConditionLock_lock)(id, SEL);
+    id (*NXConditionLock_lockWhen)(id, SEL, int);
+    id (*NXConditionLock_unlockWith)(id, SEL, int);
+    id (*NXLock_lock)(id, SEL);
+    id (*NXLock_unlock)(id, SEL);
 }
 
-// Initialization
-- initFromDeviceDescription : deviceDescription;
++ initialize;
++ (BOOL)probe:deviceDescription;
+- initFromDeviceDescription:deviceDescription;
 - free;
-
-// Adapter discovery and setup
+- (void)registerHandlerForIRQ:(int)irq;
+- (BOOL)getWorkingMemoryForCHIM;
 - (BOOL)findAdapter;
 - (BOOL)initAdapter;
-- (BOOL)scanAdapter;
 - (BOOL)allocateAdapterMemory;
-- (BOOL)createOSMIOBPool;
-- (BOOL)getWorkingMemoryForCHIM;
-- (BOOL)registerHandlerForIRQ:(unsigned int)irq;
-
-// SCSI command execution
-- (sc_status_t)executeRequest:(IOSCSIRequest *)scsiReq;
-- (sc_status_t)executeRequest:(IOSCSIRequest *)scsiReq
-                       buffer:(void *)buffer
-                       client:(vm_task_t)client;
-- (sc_status_t)executeRequest:(IOSCSIRequest *)scsiReq
-           ioMemoryDescriptor:(IOMemoryDescriptor *)ioMemoryDescriptor;
-
-// Bus management
+- (void)createOSMIOBPool;
+- (BOOL)scanAdapter;
+- (sc_status_t)executeRequest:(AdaptecU2Command *)command;
+- (sc_status_t)executeRequest:(IOSCSIRequest *)request
+                       buffer:(void *)buffer client:(vm_task_t)client;
+- (sc_status_t)executeRequest:(IOSCSIRequest *)request
+           ioMemoryDescriptor:(IOMemoryDescriptor *)descriptor;
 - (sc_status_t)resetSCSIBus;
-
-// Configuration queries
 - (int)numberOfTargets;
 - (unsigned int)maxTransfer;
-
-// Statistics
 - (unsigned int)numQueueSamples;
 - (unsigned int)sumQueueLengths;
 - (unsigned int)maxQueueLength;
 - (void)resetStats;
-
 @end
+
+@interface AdaptecU2SCSI (AdaptecU2SCSIThread)
+- (void)timeoutOccurred;
+- (void)threadResetSCSIBus:(AdaptecU2Command *)command;
+- (void)threadExecuteRequest:(AdaptecU2Command *)command;
+- (void)commandRequestOccurred;
+@end
+
+#endif

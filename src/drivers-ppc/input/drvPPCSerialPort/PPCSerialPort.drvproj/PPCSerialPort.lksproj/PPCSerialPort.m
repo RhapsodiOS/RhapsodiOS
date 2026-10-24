@@ -227,9 +227,11 @@ static void watchState(PPCSerialPort *self, unsigned int *statePtr, unsigned int
         }
     }
 
-    /* Validate we have exactly 3 interrupts */
+    /* Validate we have the SCC interrupt and its TX/RX DMA interrupts.
+       Divergence from 5.6: also accept the SCC interrupt alone, as QEMU's
+       g3beige OpenBIOS lists it; the DMA handlers only count interrupts. */
     numInterrupts = [devDesc numInterrupts];
-    if (numInterrupts != 3) {
+    if (numInterrupts != 3 && numInterrupts != 1) {
         MyIOLog("initFromDeviceDescription: wrong number of interrupts (%d)]\n\r", numInterrupts);
         objc_msgSend(self, @selector(free));
         return nil;

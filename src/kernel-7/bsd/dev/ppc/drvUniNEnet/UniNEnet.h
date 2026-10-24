@@ -35,6 +35,7 @@
 #import <driverkit/IOEthernet.h>
 #import <driverkit/IONetbufQueue.h>
 #import <driverkit/ppc/IOTreeDevice.h>
+#import <driverkit/ppc/IOPCIDevice.h>
 #import <driverkit/ppc/IODBDMA.h>
 #import <driverkit/generalFuncs.h>
 #import <driverkit/IOPower.h>
@@ -46,14 +47,19 @@
 
 typedef void  *		IOPPCAddress;
 
+/*
+ * A GMAC descriptor is 16 bytes (control word, buffer address), one
+ * IODBDMADescriptor in size; 128 of them fill each 2KB half of the
+ * page _allocateMemory sets up.
+ */
 typedef struct enet_dma_cmd_t
 {
-    IODBDMADescriptor	desc_seg[2];
+    IODBDMADescriptor	desc_seg[1];
 } enet_dma_cmd_t;
 
 typedef struct enet_txdma_cmd_t
 {
-    IODBDMADescriptor	desc_seg[3];
+    IODBDMADescriptor	desc_seg[1];
 } enet_txdma_cmd_t;
 
 /*
@@ -121,13 +127,11 @@ typedef struct enet_txdma_cmd_t
      */
     unsigned long			currentPowerState;
     unsigned long			numberOfPowerStates;
-    IOPMPowerState			powerStates[2];
 
     u_int16_t				hashTableUseCount[256];
     u_int16_t				hashTableMask[16];
 
     u_int8_t				chipId;
-    BOOL				chipIdVerified;
 }
 
 /*

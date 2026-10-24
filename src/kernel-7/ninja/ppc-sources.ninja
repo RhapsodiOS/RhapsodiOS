@@ -1995,6 +1995,11 @@ build $outdir/ohare.o: cc bsd/dev/ppc/drvOHare/ohare.m || $outdir/prepared $outd
   object = ohare.o
   flags = $cflags
 
+build $outdir/PowerSupply.o: cc bsd/dev/ppc/drvPowerSupply/PowerSupply.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvPowerSupply/PowerSupply.m
+  object = PowerSupply.o
+  flags = $cflags
+
 build $outdir/Apple96BusState.o: cc bsd/dev/ppc/drvApple96_SCSI/Apple96BusState.m || $outdir/prepared $outdir/validated generated
   source = ../../bsd/dev/ppc/drvApple96_SCSI/Apple96BusState.m
   object = Apple96BusState.o
@@ -2180,6 +2185,106 @@ build $outdir/Sym8xxMisc.o: cc bsd/dev/ppc/drvSymbios8xx/Sym8xxMisc.m || $outdir
   object = Sym8xxMisc.o
   flags = $cflags
 
+build $outdir/AttoScsiInit.o: cc bsd/dev/ppc/drvAttoScsiController/AttoScsiInit.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvAttoScsiController/AttoScsiInit.m
+  object = AttoScsiInit.o
+  flags = $cflags
+
+build $outdir/AttoScsiClient.o: cc bsd/dev/ppc/drvAttoScsiController/AttoScsiClient.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvAttoScsiController/AttoScsiClient.m
+  object = AttoScsiClient.o
+  flags = $cflags
+
+build $outdir/AttoScsiExecute.o: cc bsd/dev/ppc/drvAttoScsiController/AttoScsiExecute.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvAttoScsiController/AttoScsiExecute.m
+  object = AttoScsiExecute.o
+  flags = $cflags
+
+build $outdir/AttoScsiMisc.o: cc bsd/dev/ppc/drvAttoScsiController/AttoScsiMisc.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvAttoScsiController/AttoScsiMisc.m
+  object = AttoScsiMisc.o
+  flags = $cflags
+
+build $outdir/AdaptecU2CHIMAPI.o: cc bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMAPI.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMAPI.c
+  object = AdaptecU2CHIMAPI.o
+  flags = $cflags
+
+build $outdir/AdaptecU2CHIMConfig.o: cc bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMConfig.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMConfig.c
+  object = AdaptecU2CHIMConfig.o
+  flags = $cflags
+
+build $outdir/AdaptecU2CHIMFirmware.o: cc bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMFirmware.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMFirmware.c
+  object = AdaptecU2CHIMFirmware.o
+  flags = $cflags
+
+build $outdir/AdaptecU2CHIMHIM.o: cc bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHIM.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHIM.c
+  object = AdaptecU2CHIMHIM.o
+  flags = $cflags
+
+build $outdir/AdaptecU2CHIMHardware.o: cc bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHardware.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHardware.c
+  object = AdaptecU2CHIMHardware.o
+  flags = $cflags
+
+build $outdir/AdaptecU2CHIMNegotiation.o: cc bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMNegotiation.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMNegotiation.c
+  object = AdaptecU2CHIMNegotiation.o
+  flags = $cflags
+
+build $outdir/AdaptecU2CHIMOSD.o: cc bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMOSD.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMOSD.c
+  object = AdaptecU2CHIMOSD.o
+  flags = $cflags
+
+build $outdir/AdaptecU2CHIMRecovery.o: cc bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMRecovery.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMRecovery.c
+  object = AdaptecU2CHIMRecovery.o
+  flags = $cflags
+
+build $outdir/AdaptecU2CHIMResource.o: cc bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMResource.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMResource.c
+  object = AdaptecU2CHIMResource.o
+  flags = $cflags
+
+build $outdir/AdaptecU2CHIMSCB.o: cc bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMSCB.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMSCB.c
+  object = AdaptecU2CHIMSCB.o
+  flags = $cflags
+
+build $outdir/AdaptecU2CHIMTables.o: cc bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMTables.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMTables.c
+  object = AdaptecU2CHIMTables.o
+  flags = $cflags
+
+build $outdir/AdaptecU2CHIMTransport.o: cc bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMTransport.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMTransport.c
+  object = AdaptecU2CHIMTransport.o
+  flags = $cflags
+
+build $outdir/AdaptecU2OSMServices.o: cc bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2OSMServices.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2OSMServices.m
+  object = AdaptecU2OSMServices.o
+  flags = $cflags
+
+build $outdir/AdaptecU2SCSI.o: cc bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2SCSI.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2SCSI.m
+  object = AdaptecU2SCSI.o
+  flags = $cflags
+
+build $outdir/AdaptecU2SCSIThread.o: cc bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2SCSIThread.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2SCSIThread.m
+  object = AdaptecU2SCSIThread.o
+  flags = $cflags
+
+build $outdir/OSMFunctions.o: cc bsd/dev/ppc/drvAdaptecU2SCSI/OSMFunctions.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvAdaptecU2SCSI/OSMFunctions.m
+  object = OSMFunctions.o
+  flags = $cflags
+
 build $outdir/usbcmd.o: cc bsd/dev/ppc/drvUSBCMD/usbcmd.m || $outdir/prepared $outdir/validated generated
   source = ../../bsd/dev/ppc/drvUSBCMD/usbcmd.m
   object = usbcmd.o
@@ -2345,6 +2450,56 @@ build $outdir/IOSupport.o: cc driverkit/ppc/IOSupport.c || $outdir/prepared $out
   object = IOSupport.o
   flags = $cflags
 
+build $outdir/DEC21x4.o: cc bsd/dev/ppc/drvDEC21x4/DEC21x4.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvDEC21x4/DEC21x4.m
+  object = DEC21x4.o
+  flags = $cflags
+
+build $outdir/DEC21x4Init.o: cc bsd/dev/ppc/drvDEC21x4/DEC21x4Init.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvDEC21x4/DEC21x4Init.m
+  object = DEC21x4Init.o
+  flags = $cflags
+
+build $outdir/DEC21x4KDB.o: cc bsd/dev/ppc/drvDEC21x4/DEC21x4KDB.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvDEC21x4/DEC21x4KDB.m
+  object = DEC21x4KDB.o
+  flags = $cflags
+
+build $outdir/DEC21x4Private.o: cc bsd/dev/ppc/drvDEC21x4/DEC21x4Private.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvDEC21x4/DEC21x4Private.m
+  object = DEC21x4Private.o
+  flags = $cflags
+
+build $outdir/DEC21x4SRom.o: cc bsd/dev/ppc/drvDEC21x4/DEC21x4SRom.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvDEC21x4/DEC21x4SRom.m
+  object = DEC21x4SRom.o
+  flags = $cflags
+
+build $outdir/DEC21x4Media.o: cc bsd/dev/ppc/drvDEC21x4/DEC21x4Media.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvDEC21x4/DEC21x4Media.c
+  object = DEC21x4Media.o
+  flags = $cflags
+
+build $outdir/DEC21x4MII.o: cc bsd/dev/ppc/drvDEC21x4/DEC21x4MII.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvDEC21x4/DEC21x4MII.c
+  object = DEC21x4MII.o
+  flags = $cflags
+
+build $outdir/UniNEnet.o: cc bsd/dev/ppc/drvUniNEnet/UniNEnet.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvUniNEnet/UniNEnet.m
+  object = UniNEnet.o
+  flags = $cflags
+
+build $outdir/UniNEnetPrivate.o: cc bsd/dev/ppc/drvUniNEnet/UniNEnetPrivate.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvUniNEnet/UniNEnetPrivate.m
+  object = UniNEnetPrivate.o
+  flags = $cflags
+
+build $outdir/UniNEnetMII.o: cc bsd/dev/ppc/drvUniNEnet/UniNEnetMII.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvUniNEnet/UniNEnetMII.m
+  object = UniNEnetMII.o
+  flags = $cflags
+
 kernel_objects = $
   $outdir/locc.o $outdir/random.o $outdir/randomdev.o $outdir/xoodyak.o $outdir/rindex.o $
   $outdir/scanc.o $outdir/skpc.o $outdir/strtol.o $outdir/syscalls.o $outdir/vfs_bio.o $
@@ -2425,7 +2580,7 @@ kernel_objects = $
   $outdir/kmDevice.o $outdir/kmGraphics.o $outdir/kmLocalized.o $outdir/mem.o $outdir/nvram.o $
   $outdir/PowerSurgeMB.o $outdir/video_scroll.o $outdir/adb.o $outdir/cuda.o $outdir/pmu.o $
   $outdir/IOADBBus.o $outdir/EventShmemLock.o $outdir/EventSrcPCKeyboard.o $outdir/EventSrcPCPointer.o $outdir/PPCKeyboard.o $
-  $outdir/PPCKeymap.o $outdir/PPCMouse.o $outdir/PCPointer.o $outdir/ohare.o $outdir/Apple96BusState.o $
+  $outdir/PPCKeymap.o $outdir/PPCMouse.o $outdir/PCPointer.o $outdir/ohare.o $outdir/PowerSupply.o $outdir/Apple96BusState.o $
   $outdir/Apple96Curio.o $outdir/Apple96CurioDBDMA.o $outdir/Apple96CurioPublic.o $outdir/Apple96HWPrivate.o $outdir/Apple96Hardware.o $
   $outdir/Apple96ISR.o $outdir/Apple96SCSI.o $outdir/Apple96SCSIPrivate.o $outdir/StateMachines.o $outdir/Timestamp.o $
   $outdir/MESH_DBDMA.o $outdir/MaceEnet.o $outdir/MaceEnetPrivate.o $outdir/MaceEnetHW.o $outdir/BMacEnet.o $
@@ -2433,13 +2588,15 @@ kernel_objects = $
   $outdir/DECchip2104x.o $outdir/DECchip2104xPrivate.o $outdir/ATADisk.o $outdir/ATADiskInternal.o $outdir/ATADiskKernel.o $
   $outdir/AtapiCnt.o $outdir/AtapiCntInternal.o $outdir/IdeCnt.o $outdir/IdeCntDma.o $outdir/AtapiCntCmds.o $
   $outdir/IdeCntCmds.o $outdir/IdeCntInit.o $outdir/Sym8xxInit.o $outdir/Sym8xxClient.o $outdir/Sym8xxExecute.o $
-  $outdir/Sym8xxMisc.o $outdir/usbcmd.o $outdir/ohciuim.o $outdir/OHCIDispatchTable.o $outdir/driverservices.o $
+  $outdir/Sym8xxMisc.o $outdir/AttoScsiInit.o $outdir/AttoScsiClient.o $outdir/AttoScsiExecute.o $outdir/AttoScsiMisc.o $outdir/AdaptecU2CHIMAPI.o $outdir/AdaptecU2CHIMConfig.o $outdir/AdaptecU2CHIMFirmware.o $outdir/AdaptecU2CHIMHIM.o $outdir/AdaptecU2CHIMHardware.o $outdir/AdaptecU2CHIMNegotiation.o $outdir/AdaptecU2CHIMOSD.o $outdir/AdaptecU2CHIMRecovery.o $outdir/AdaptecU2CHIMResource.o $outdir/AdaptecU2CHIMSCB.o $outdir/AdaptecU2CHIMTables.o $outdir/AdaptecU2CHIMTransport.o $outdir/AdaptecU2OSMServices.o $outdir/AdaptecU2SCSI.o $outdir/AdaptecU2SCSIThread.o $outdir/OSMFunctions.o $outdir/usbcmd.o $outdir/ohciuim.o $outdir/OHCIDispatchTable.o $outdir/driverservices.o $
   $outdir/OHCIRootHub.o $outdir/UIMrootHubSimulation.o $outdir/CompositeClassDriver.o $outdir/CompositeDriverDescription.o $outdir/ConfigParse.o $
   $outdir/HubClassDriver.o $outdir/Hub2ClassDriver.o $outdir/rootHubDriver.o $outdir/usl.o $outdir/uslPipeState.o $
   $outdir/USLhubs.o $outdir/uslPipe.o $outdir/uslUtility.o $outdir/uslDescriptors.o $outdir/uslExpert.o $
   $outdir/uslUIMInterface.o $outdir/KBDConfigParse.o $outdir/KBDHIDEmulation.o $outdir/KeyboardModule.o $outdir/KeyboardModuleHeader.o $
   $outdir/usb_keymap.o $outdir/MouseModule.o $outdir/MouseModuleHeader.o $outdir/HIDEmulation.o $outdir/MouseConfigParse.o $
-  $outdir/autoconf_ppc.o $outdir/PPCKernBus.o $outdir/IOAsmSupport.o $outdir/IOSupport.o
+  $outdir/autoconf_ppc.o $outdir/PPCKernBus.o $outdir/IOAsmSupport.o $outdir/IOSupport.o $
+  $outdir/DEC21x4.o $outdir/DEC21x4Init.o $outdir/DEC21x4KDB.o $outdir/DEC21x4Private.o $outdir/DEC21x4SRom.o $outdir/DEC21x4Media.o $outdir/DEC21x4MII.o $
+  $outdir/UniNEnet.o $outdir/UniNEnetPrivate.o $outdir/UniNEnetMII.o
 
 build objects: phony $
   $outdir/locc.o $outdir/random.o $outdir/randomdev.o $outdir/xoodyak.o $outdir/rindex.o $
@@ -2521,7 +2678,7 @@ build objects: phony $
   $outdir/kmDevice.o $outdir/kmGraphics.o $outdir/kmLocalized.o $outdir/mem.o $outdir/nvram.o $
   $outdir/PowerSurgeMB.o $outdir/video_scroll.o $outdir/adb.o $outdir/cuda.o $outdir/pmu.o $
   $outdir/IOADBBus.o $outdir/EventShmemLock.o $outdir/EventSrcPCKeyboard.o $outdir/EventSrcPCPointer.o $outdir/PPCKeyboard.o $
-  $outdir/PPCKeymap.o $outdir/PPCMouse.o $outdir/PCPointer.o $outdir/ohare.o $outdir/Apple96BusState.o $
+  $outdir/PPCKeymap.o $outdir/PPCMouse.o $outdir/PCPointer.o $outdir/ohare.o $outdir/PowerSupply.o $outdir/Apple96BusState.o $
   $outdir/Apple96Curio.o $outdir/Apple96CurioDBDMA.o $outdir/Apple96CurioPublic.o $outdir/Apple96HWPrivate.o $outdir/Apple96Hardware.o $
   $outdir/Apple96ISR.o $outdir/Apple96SCSI.o $outdir/Apple96SCSIPrivate.o $outdir/StateMachines.o $outdir/Timestamp.o $
   $outdir/MESH_DBDMA.o $outdir/MaceEnet.o $outdir/MaceEnetPrivate.o $outdir/MaceEnetHW.o $outdir/BMacEnet.o $
@@ -2529,11 +2686,13 @@ build objects: phony $
   $outdir/DECchip2104x.o $outdir/DECchip2104xPrivate.o $outdir/ATADisk.o $outdir/ATADiskInternal.o $outdir/ATADiskKernel.o $
   $outdir/AtapiCnt.o $outdir/AtapiCntInternal.o $outdir/IdeCnt.o $outdir/IdeCntDma.o $outdir/AtapiCntCmds.o $
   $outdir/IdeCntCmds.o $outdir/IdeCntInit.o $outdir/Sym8xxInit.o $outdir/Sym8xxClient.o $outdir/Sym8xxExecute.o $
-  $outdir/Sym8xxMisc.o $outdir/usbcmd.o $outdir/ohciuim.o $outdir/OHCIDispatchTable.o $outdir/driverservices.o $
+  $outdir/Sym8xxMisc.o $outdir/AttoScsiInit.o $outdir/AttoScsiClient.o $outdir/AttoScsiExecute.o $outdir/AttoScsiMisc.o $outdir/AdaptecU2CHIMAPI.o $outdir/AdaptecU2CHIMConfig.o $outdir/AdaptecU2CHIMFirmware.o $outdir/AdaptecU2CHIMHIM.o $outdir/AdaptecU2CHIMHardware.o $outdir/AdaptecU2CHIMNegotiation.o $outdir/AdaptecU2CHIMOSD.o $outdir/AdaptecU2CHIMRecovery.o $outdir/AdaptecU2CHIMResource.o $outdir/AdaptecU2CHIMSCB.o $outdir/AdaptecU2CHIMTables.o $outdir/AdaptecU2CHIMTransport.o $outdir/AdaptecU2OSMServices.o $outdir/AdaptecU2SCSI.o $outdir/AdaptecU2SCSIThread.o $outdir/OSMFunctions.o $outdir/usbcmd.o $outdir/ohciuim.o $outdir/OHCIDispatchTable.o $outdir/driverservices.o $
   $outdir/OHCIRootHub.o $outdir/UIMrootHubSimulation.o $outdir/CompositeClassDriver.o $outdir/CompositeDriverDescription.o $outdir/ConfigParse.o $
   $outdir/HubClassDriver.o $outdir/Hub2ClassDriver.o $outdir/rootHubDriver.o $outdir/usl.o $outdir/uslPipeState.o $
   $outdir/USLhubs.o $outdir/uslPipe.o $outdir/uslUtility.o $outdir/uslDescriptors.o $outdir/uslExpert.o $
   $outdir/uslUIMInterface.o $outdir/KBDConfigParse.o $outdir/KBDHIDEmulation.o $outdir/KeyboardModule.o $outdir/KeyboardModuleHeader.o $
   $outdir/usb_keymap.o $outdir/MouseModule.o $outdir/MouseModuleHeader.o $outdir/HIDEmulation.o $outdir/MouseConfigParse.o $
   $outdir/autoconf_ppc.o $outdir/PPCKernBus.o $outdir/IOAsmSupport.o $outdir/IOSupport.o $
+  $outdir/DEC21x4.o $outdir/DEC21x4Init.o $outdir/DEC21x4KDB.o $outdir/DEC21x4Private.o $outdir/DEC21x4SRom.o $outdir/DEC21x4Media.o $outdir/DEC21x4MII.o $
+  $outdir/UniNEnet.o $outdir/UniNEnetPrivate.o $outdir/UniNEnetMII.o $
   $outdir/subr_prof.o $outdir/ioconf.o libc mach_user debug_objects

@@ -410,6 +410,14 @@ hw_sysctl(name, namelen, oldp, oldlenp, newp, newlen, p)
 #ifdef __ppc__
 	case HW_NEWWORLD:
 		return (sysctl_rdint(oldp, oldlenp, newp, IsYosemite()));
+	case HW_POWERSUPPLY: {
+		extern int gPowerSupplyGood;
+
+		/* -1: no redundant supply was found */
+		if (gPowerSupplyGood == -1)
+			return (EOPNOTSUPP);
+		return (sysctl_rdint(oldp, oldlenp, newp, gPowerSupplyGood));
+	}
 #endif
 	default:
 		return (EOPNOTSUPP);

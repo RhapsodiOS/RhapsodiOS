@@ -92,6 +92,8 @@ bsd/dev/ppc/PCPointer.m			optional event
 
 bsd/dev/ppc/drvOHare/ohare.m		optional mk_hasdrivers
 
+bsd/dev/ppc/drvPowerSupply/PowerSupply.m	optional mk_hasdrivers
+
 bsd/dev/ppc/drvApple96_SCSI/Apple96BusState.m		optional mk_hasdrivers
 bsd/dev/ppc/drvApple96_SCSI/Apple96Curio.m		optional mk_hasdrivers
 bsd/dev/ppc/drvApple96_SCSI/Apple96CurioDBDMA.m		optional mk_hasdrivers
@@ -136,6 +138,27 @@ bsd/dev/ppc/drvSymbios8xx/Sym8xxClient.m 		optional mk_hasdrivers
 bsd/dev/ppc/drvSymbios8xx/Sym8xxExecute.m 		optional mk_hasdrivers
 bsd/dev/ppc/drvSymbios8xx/Sym8xxMisc.m 			optional mk_hasdrivers
 
+bsd/dev/ppc/drvAttoScsiController/AttoScsiInit.m	optional mk_hasdrivers
+bsd/dev/ppc/drvAttoScsiController/AttoScsiClient.m	optional mk_hasdrivers
+bsd/dev/ppc/drvAttoScsiController/AttoScsiExecute.m	optional mk_hasdrivers
+bsd/dev/ppc/drvAttoScsiController/AttoScsiMisc.m	optional mk_hasdrivers
+bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMAPI.c	optional mk_hasdrivers
+bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMConfig.c	optional mk_hasdrivers
+bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMFirmware.c	optional mk_hasdrivers
+bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHIM.c	optional mk_hasdrivers
+bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHardware.c	optional mk_hasdrivers
+bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMNegotiation.c	optional mk_hasdrivers
+bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMOSD.c	optional mk_hasdrivers
+bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMRecovery.c	optional mk_hasdrivers
+bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMResource.c	optional mk_hasdrivers
+bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMSCB.c	optional mk_hasdrivers
+bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMTables.c	optional mk_hasdrivers
+bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMTransport.c	optional mk_hasdrivers
+bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2OSMServices.m	optional mk_hasdrivers
+bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2SCSI.m	optional mk_hasdrivers
+bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2SCSIThread.m	optional mk_hasdrivers
+bsd/dev/ppc/drvAdaptecU2SCSI/OSMFunctions.m	optional mk_hasdrivers
+
 bsd/dev/ppc/drvUSBCMD/usbcmd.m						standard
 bsd/dev/ppc/drvUSBCMD/ohciuim.c						standard
 bsd/dev/ppc/drvUSBCMD/OHCIDispatchTable.c				standard
@@ -170,3 +193,15 @@ driverkit/ppc/autoconf_ppc.m		optional driverkit
 driverkit/ppc/PPCKernBus.m		optional driverkit
 driverkit/ppc/IOAsmSupport.s		optional driverkit
 driverkit/ppc/IOSupport.c		optional driverkit
+
+bsd/dev/ppc/drvDEC21x4/DEC21x4.m	optional mk_hasdrivers
+bsd/dev/ppc/drvDEC21x4/DEC21x4Init.m	optional mk_hasdrivers
+bsd/dev/ppc/drvDEC21x4/DEC21x4KDB.m	optional mk_hasdrivers
+bsd/dev/ppc/drvDEC21x4/DEC21x4Private.m	optional mk_hasdrivers
+bsd/dev/ppc/drvDEC21x4/DEC21x4SRom.m	optional mk_hasdrivers
+bsd/dev/ppc/drvDEC21x4/DEC21x4Media.c	optional mk_hasdrivers
+bsd/dev/ppc/drvDEC21x4/DEC21x4MII.c	optional mk_hasdrivers
+
+bsd/dev/ppc/drvUniNEnet/UniNEnet.m			optional mk_hasdrivers
+bsd/dev/ppc/drvUniNEnet/UniNEnetPrivate.m		optional mk_hasdrivers
+bsd/dev/ppc/drvUniNEnet/UniNEnetMII.m			optional mk_hasdrivers

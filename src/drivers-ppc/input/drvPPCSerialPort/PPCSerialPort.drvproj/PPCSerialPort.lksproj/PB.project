@@ -2,7 +2,7 @@
     FILESTABLE = {
         CLASSES = (PPCSerialPort.m);
         H_FILES = (PPCSerialPort.h);
-        OTHER_SOURCES = (Makefile, Makefile.preamble, Makefile.postamble, Makefile.driver_preamble, Load_Commands.sect);
+        OTHER_SOURCES = (Makefile, Makefile.preamble, Makefile.postamble, Load_Commands.sect);
     };
     LANGUAGE = English;
     LOCALIZABLE_FILES = {};

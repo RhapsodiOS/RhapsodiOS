@@ -1,8 +1,7 @@
 ###############################################################################
 #  Makefile.preamble
-#  Copyright 1999-2000, Apple Computer, Inc.
-#
-#  This Makefile is used for maintaining the driver project.
 ###############################################################################
 
--include Makefile.driver_preamble
+NEXTSTEP_BUILD_OUTPUT_DIR = $(SYMROOT)/$(NAME)
+WINDOWS_BUILD_OUTPUT_DIR = $(SYMROOT)/$(NAME)
+PDO_UNIX_BUILD_OUTPUT_DIR = $(SYMROOT)/$(NAME)

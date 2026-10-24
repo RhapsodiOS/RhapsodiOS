@@ -78,6 +78,49 @@ fsync-check)
 	./hammer_io unmount "$2"
 	checkvol
 	;;
+big-dir)
+	# 20,000 entries, half removed (the host diffs this walk with
+	# DragonFly's), then all; remounts between stages.
+	./hammer_io mount-rw $DEV "$2"
+	./scale_ops dir-fill "$2"
+	./hammer_io unmount "$2"
+	./hammer_io mount $DEV "$2"
+	./scale_ops dir-half "$2"
+	./hammer_walk -n "$2" > /tmp/walk.txt
+	gzip -9 < /tmp/walk.txt > walk.gz
+	./hammer_io unmount "$2"
+	./hammer_io mount-rw $DEV "$2"
+	./scale_ops dir-empty "$2"
+	./hammer_io unmount "$2"
+	./hammer_io mount $DEV "$2"
+	./scale_ops gone "$2"
+	./hammer_io unmount "$2"
+	checkvol
+	;;
+big-file)
+	./hammer_io mount-rw $DEV "$2"
+	./scale_ops file-write "$2"
+	./hammer_io unmount "$2"
+	./hammer_io mount $DEV "$2"
+	./scale_ops file-check "$2"
+	./hammer_io unmount "$2"
+	./hammer_io mount-rw $DEV "$2"
+	./scale_ops file-delete "$2"
+	./hammer_io unmount "$2"
+	./hammer_io mount $DEV "$2"
+	./scale_ops gone "$2"
+	./hammer_io unmount "$2"
+	checkvol
+	;;
+churn)
+	./hammer_io mount-rw $DEV "$2"
+	./scale_ops churn "$2"
+	./hammer_io unmount "$2"
+	./hammer_io mount $DEV "$2"
+	./scale_ops churn-check "$2"
+	./hammer_io unmount "$2"
+	checkvol
+	;;
 refuse-rw-recovery)
 	./hammer_io mounterr $DEV "$2" 0 $EOPNOTSUPP
 	;;

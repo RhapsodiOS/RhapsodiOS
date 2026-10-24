@@ -354,22 +354,25 @@ def walk_differences(got, want, ignore_crc=True, ignore_mtime=False,
 
 CASES = ('refuse-badsig', 'refuse-v6', 'refuse-twovol', 'refuse-badcrc',
          'refuse-needs-recovery', 'rw-empty', 'ns-ops', 'data-ops', 'unlinked',
-         'fsync-crash', 'fsync-check', 'refuse-rw-recovery',
+         'fsync-crash', 'fsync-check', 'big-dir', 'big-file', 'churn',
+         'refuse-rw-recovery',
          'refuse-rw-pfs', 'admit', 'namespace',
          'readdir-small', 'times', 'erofs', 'crafted-name', 'data', 'holes',
          'mmap', 'dedup', 'crafted-data', 'cycle', 'negread', 'crafted-count',
          'crafted-len', 'crafted-off', 'crafted-dotdot', 'crafted-dirhash')
 # Cases that write the data volume: no unchanged check; the result is
 # exported and checked on DragonFly instead (HAMMER_NO_DFLY=1 skips that).
-WRITE_CASES = ('rw-empty', 'ns-ops', 'data-ops', 'unlinked', 'fsync-crash')
+WRITE_CASES = ('rw-empty', 'ns-ops', 'data-ops', 'unlinked', 'fsync-crash',
+               'big-dir', 'big-file', 'churn')
 # Write cases that end without an unmount: nothing to check on the host
 # (the next case, fsync-check, mounts what they left).
 CRASH_CASES = ('fsync-crash',)
 # Walks compared with a reference beside the base volume.  Workload cases
 # name their reference (made by the same workload on DragonFly) and ignore
 # mtimes; the others use <base volume>.walk.
-WALK_CASES = ('namespace', 'data', 'dedup', 'ns-ops', 'data-ops')
-WORKLOAD_WALKS = {'ns-ops': 'ns-ops.walk', 'data-ops': 'data-ops.walk'}
+WALK_CASES = ('namespace', 'data', 'dedup', 'ns-ops', 'data-ops', 'big-dir')
+WORKLOAD_WALKS = {'ns-ops': 'ns-ops.walk', 'data-ops': 'data-ops.walk',
+                  'big-dir': 'big-dir.walk'}
 # A file written through MAP_SHARED: Rhapsody's VM need not have written
 # those pages back by the remount (data_ops.c, verify-remount).
 LOOSE_CRC = {'data-ops': ('./map',)}
@@ -378,10 +381,13 @@ RECOVER_SKIP = {'data-ops': ('trunc',)}
 # Tools each case ships beside hammer_io.
 CASE_TOOLS = {'ns-ops': ('ns_ops',), 'data-ops': ('data_ops',),
               'unlinked': ('data_ops',), 'fsync-crash': ('data_ops',),
-              'fsync-check': ('data_ops', 'hammer')}
+              'fsync-check': ('data_ops', 'hammer'), 'big-dir': ('scale_ops',),
+              'big-file': ('scale_ops',), 'churn': ('scale_ops',)}
 DFLY_ISO = os.environ.get(
     'DFLY_ISO', r'D:\RhapsodiOS\vm\work\dfly\iso\dfly-x86_64-6.4.2_REL.iso')
 UNDO_FIRST = UNDO_MAP + 8
+# Cases that may run for hours on the emulated guest.
+SLOW_CASES = ('cycle', 'big-dir', 'big-file', 'churn', 'enospc')
 ADMIT_MESSAGE = 'v7 single volume ok'
 QEMU_IMG = r'C:\Program Files\qemu\qemu-img.exe'
 
@@ -549,7 +555,7 @@ def run(case, outdir, volume, tools_dir):
         guest.line('mknod /dev/hd2a b 3 16'); time.sleep(3)
         guest.line('mount /dev/hd2a /mnt'); time.sleep(5)
         guest.line('cd /mnt; sh run-case.sh')
-        deadline = time.monotonic() + (14400 if case == 'cycle' else 1800)
+        deadline = time.monotonic() + (14400 if case in SLOW_CASES else 1800)
         while time.monotonic() < deadline:
             time.sleep(15)
             if 'panic:' in serial.read_text(errors='replace'):

@@ -298,11 +298,38 @@ line added.
   (`hammer_undo_lookup`); B-Tree and record offsets are checked against their
   own zones before they get there.
 
+## Namespace operations (Phase 2)
+
+- create, mkdir, symlink, link, remove, rmdir and rename are Rhapsody
+  componentname VOPs (`ufs_*` is the model for what each releases; each
+  ends in the matching `nop_*` helper).  The HAMMER work inside is
+  upstream's `hammer_vop_n*()` with DragonFly's namecache calls replaced by
+  `cache_purge()`.
+- `lookup` returns EJUSTRETURN with SAVENAME for a missing last component
+  of a CREATE or RENAME, checks write access for DELETE and RENAME, and
+  applies the sticky-directory rule.
+- rename(2) already refuses mismatched types and a source that is the
+  target directory, and makes a rename onto the same object a no-op.  The
+  VOP adds the subtree check (`hammer_checkpath`, walking `parent_obj_id`
+  as `ufs_checkpath` walks `..`), and a non-empty target directory fails in
+  `hammer_dounlink` with ENOTEMPTY.  DragonFly's own rename removes the
+  source name when both names are links to one file; Rhapsody's is the POSIX
+  no-op.
+- New objects get the caller's uid and the directory's gid, and lose a
+  setgid bit outside the caller's groups (`ufs_makeinode`); upstream's
+  `vop_helper_create_uid` (SUIDDIR) is DragonFly-only.
+- `mknod` stays EOPNOTSUPP.
+  shortcut: device and FIFO nodes cannot be opened yet (they would need the
+  spec and fifo op tables).
+- `inactive` queues an inode with no links left for deletion and recycles
+  its vnode at once; `reclaim` releases with a flush, as upstream does.
+
 ## Left for Phase 2
 
-- Write paths still behind `#if 0 /* phase 2 */`: `hammer_inode.c` (create,
-  PFS save and unload), the read/flush time multiplexing in
-  `hammer_cursor.c`, and the DragonFly VOPs in `hammer_vnops.c`.
+- Still behind `#if 0 /* phase 2 */`: `hammer_inode.c`'s PFS save and
+  unload, the read/flush time multiplexing in `hammer_cursor.c`, and the
+  DragonFly VOPs in `hammer_vnops.c` (kept as the reference for the
+  Rhapsody ones).
 - Not compiled yet: `hammer_redo.c`, `hammer_reblock.c`,
   `hammer_rebalance.c`, `hammer_prune.c`, `hammer_dedup.c`,
   `hammer_mirror.c`, `hammer_ioctl.c`, `hammer_signal.c`.  `hammer_inode.c`

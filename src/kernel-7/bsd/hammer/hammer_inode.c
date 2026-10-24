@@ -711,7 +711,6 @@ __hammer_find_inode(hammer_transaction_t trans, int64_t obj_id,
 	return(ip);
 }
 
-#if 0 /* phase 2: write path */
 /*
  * Create a new filesystem object, returning the inode in *ipp.  The
  * returned inode will be referenced.  The inode is created in-memory.
@@ -727,7 +726,8 @@ hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
 {
 	hammer_mount_t hmp;
 	hammer_inode_t ip;
-	uid_t xuid;
+	mode_t mode;
+	gid_t gid;
 	int error;
 	int64_t namekey;
 	uint32_t dummy;
@@ -739,7 +739,7 @@ hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
 	 * have been deleted.  In HAMMER, this will cause a record
 	 * syncing assertion later on in the flush code.
 	 */
-	if (dip && dip->ino_data.nlinks == 0) {
+	if (dip && hget64(dip->ino_data.nlinks) == 0) {
 		*ipp = NULL;
                 return (EINVAL);
 	}
@@ -779,10 +779,10 @@ hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
 	RB_INIT(&ip->rec_tree);
 	TAILQ_INIT(&ip->target_list);
 
-	ip->ino_data.atime = trans->time;
-	ip->ino_data.mtime = trans->time;
-	ip->ino_data.size = 0;
-	ip->ino_data.nlinks = 0;
+	ip->ino_data.atime = hmk64(trans->time);
+	ip->ino_data.mtime = hmk64(trans->time);
+	ip->ino_data.size = hmk64(0);
+	ip->ino_data.nlinks = hmk64(0);
 
 	/*
 	 * A nohistory designator on the parent directory is inherited by
@@ -790,24 +790,24 @@ hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
 	 * sysad can turn it off.
 	 */
 	if (dip) {
-		ip->ino_data.uflags = dip->ino_data.uflags &
-				      (SF_NOHISTORY|UF_NOHISTORY|UF_NODUMP);
+		ip->ino_data.uflags = hmk32(hget32(dip->ino_data.uflags) &
+				      (SF_NOHISTORY|UF_NOHISTORY|UF_NODUMP));
 	}
 
 	ip->ino_leaf.base.btype = HAMMER_BTREE_TYPE_RECORD;
-	ip->ino_leaf.base.localization = ip->obj_localization |
-					 HAMMER_LOCALIZE_INODE;
-	ip->ino_leaf.base.obj_id = ip->obj_id;
-	ip->ino_leaf.base.key = 0;
-	ip->ino_leaf.base.create_tid = 0;
-	ip->ino_leaf.base.delete_tid = 0;
-	ip->ino_leaf.base.rec_type = HAMMER_RECTYPE_INODE;
+	ip->ino_leaf.base.localization = hmk32(ip->obj_localization |
+					 HAMMER_LOCALIZE_INODE);
+	ip->ino_leaf.base.obj_id = hmk64(ip->obj_id);
+	ip->ino_leaf.base.key = hmk64(0);
+	ip->ino_leaf.base.create_tid = hmk64(0);
+	ip->ino_leaf.base.delete_tid = hmk64(0);
+	ip->ino_leaf.base.rec_type = hmk16(HAMMER_RECTYPE_INODE);
 	ip->ino_leaf.base.obj_type = hammer_get_obj_type(vap->va_type);
 
 	ip->ino_data.obj_type = ip->ino_leaf.base.obj_type;
-	ip->ino_data.version = HAMMER_INODE_DATA_VERSION;
-	ip->ino_data.mode = vap->va_mode;
-	ip->ino_data.ctime = trans->time;
+	ip->ino_data.version = hmk16(HAMMER_INODE_DATA_VERSION);
+	ip->ino_data.mode = hmk16(vap->va_mode);
+	ip->ino_data.ctime = hmk64(trans->time);
 
 	/*
 	 * If we are running version 2 or greater directory entries are
@@ -834,42 +834,25 @@ hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
 	if (dip)
 		ip->ino_data.parent_obj_id = dip->ino_leaf.base.obj_id;
 
-	switch(ip->ino_leaf.base.obj_type) {
-	case HAMMER_OBJTYPE_CDEV:
-	case HAMMER_OBJTYPE_BDEV:
-		ip->ino_data.rmajor = vap->va_rmajor;
-		ip->ino_data.rminor = vap->va_rminor;
-		break;
-	default:
-		break;
-	}
-
 	/*
-	 * Calculate default uid/gid and overwrite with information from
-	 * the vap.
+	 * Device nodes are not made (hammer_vop_mknod), so rmajor/rminor
+	 * stay 0.
+	 *
+	 * Ownership as ufs_makeinode gives it: the caller's uid and the
+	 * directory's gid, and a setgid bit outside the caller's groups is
+	 * dropped.  Upstream's vop_helper_create_uid (SUIDDIR) and the vattr
+	 * uuids are DragonFly-only.
 	 */
+	mode = vap->va_mode;
+	gid = 0;
 	if (dip) {
-		xuid = hammer_to_unix_xid(&dip->ino_data.uid);
-		xuid = vop_helper_create_uid(hmp->mp, dip->ino_data.mode,
-					     xuid, cred, &vap->va_mode);
-	} else {
-		xuid = 0;
-	}
-	ip->ino_data.mode = vap->va_mode;
-
-	if (vap->va_vaflags & VA_UID_UUID_VALID)
-		ip->ino_data.uid = vap->va_uid_uuid;
-	else if (vap->va_uid != (uid_t)VNOVAL)
-		hammer_guid_to_uuid(&ip->ino_data.uid, vap->va_uid);
-	else
-		hammer_guid_to_uuid(&ip->ino_data.uid, xuid);
-
-	if (vap->va_vaflags & VA_GID_UUID_VALID)
-		ip->ino_data.gid = vap->va_gid_uuid;
-	else if (vap->va_gid != (gid_t)VNOVAL)
-		hammer_guid_to_uuid(&ip->ino_data.gid, vap->va_gid);
-	else if (dip)
 		ip->ino_data.gid = dip->ino_data.gid;
+		gid = hammer_to_unix_xid(&dip->ino_data.gid);
+	}
+	if ((mode & S_ISGID) && cred->cr_uid != 0 && !groupmember(gid, cred))
+		mode &= ~S_ISGID;
+	ip->ino_data.mode = hmk16(mode);
+	hammer_guid_to_uuid(&ip->ino_data.uid, cred->cr_uid);
 
 	hammer_ref(&ip->lock);
 
@@ -899,8 +882,6 @@ hammer_create_inode(hammer_transaction_t trans, struct vattr *vap,
 	*ipp = ip;
 	return(error);
 }
-
-#endif /* phase 2 */
 
 /*
  * Final cleanup / freeing of an inode structure
@@ -3226,9 +3207,7 @@ done:
 void
 hammer_inode_unloadable_check(hammer_inode_t ip, int getvp)
 {
-#if 0 /* phase 2 */
 	struct vnode *vp;
-#endif
 
 	/*
 	 * A read-only mount never deletes an unlinked inode: flagging one
@@ -3236,7 +3215,6 @@ hammer_inode_unloadable_check(hammer_inode_t ip, int getvp)
 	 */
 	if (ip->hmp->ronly)
 		return;
-#if 0 /* phase 2 */
 	/*
 	 * Set the DELETING flag when the link count drops to 0 and the
 	 * OS no longer has any opens on the inode.
@@ -3264,16 +3242,16 @@ hammer_inode_unloadable_check(hammer_inode_t ip, int getvp)
 		}
 
 		/*
-		 * Final cleanup
+		 * Final cleanup: the file's cached blocks are discarded,
+		 * not written (DragonFly's nvtruncbuf to 0).
 		 */
 		if (ip->vp)
-			nvtruncbuf(ip->vp, 0, HAMMER_BUFSIZE, 0, 0);
+			vinvalbuf(ip->vp, 0, NOCRED, current_proc(), 0, 0);
 		if (ip->flags & HAMMER_INODE_MODMASK)
 			hammer_inode_dirty(ip);
 		if (getvp)
 			vput(vp);
 	}
-#endif /* phase 2 */
 }
 
 /*

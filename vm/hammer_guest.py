@@ -327,16 +327,19 @@ def make_fixture_overlay(kind: str, wrapped: Path, out: Path) -> None:
             src.unlink()
 
 
-def walk_differences(got, want, ignore_crc=True):
+def walk_differences(got, want, ignore_crc=True, ignore_mtime=False):
     """hammer_walk output against a reference manifest.  With ignore_crc
-    (hammer_walk -n) the content CRC column, field 9, is not compared.
-    Returns problem lines."""
+    (hammer_walk -n) the content CRC column, field 9, is not compared;
+    with ignore_mtime (trees made by a workload, not copied) field 8 is
+    not either.  Returns problem lines."""
     def norm(text):
         rows = []
         for line in text.splitlines():
             f = line.split('\t')
             if ignore_crc and len(f) > 8:
                 f[8] = '-'
+            if ignore_mtime and len(f) > 7:
+                f[7] = '-'
             rows.append('\t'.join(f))
         return rows
     g, w = norm(got), norm(want)
@@ -348,14 +351,19 @@ def walk_differences(got, want, ignore_crc=True):
 
 
 CASES = ('refuse-badsig', 'refuse-v6', 'refuse-twovol', 'refuse-badcrc',
-         'refuse-needs-recovery', 'rw-empty', 'refuse-rw-recovery',
+         'refuse-needs-recovery', 'rw-empty', 'ns-ops', 'refuse-rw-recovery',
          'refuse-rw-pfs', 'admit', 'namespace',
          'readdir-small', 'times', 'erofs', 'crafted-name', 'data', 'holes',
          'mmap', 'dedup', 'crafted-data', 'cycle', 'negread', 'crafted-count',
          'crafted-len', 'crafted-off', 'crafted-dotdot', 'crafted-dirhash')
 # Cases that write the data volume: no unchanged check; the result is
 # exported and checked on DragonFly instead (HAMMER_NO_DFLY=1 skips that).
-WRITE_CASES = ('rw-empty',)
+WRITE_CASES = ('rw-empty', 'ns-ops')
+# Walks compared with a reference beside the base volume.  Workload cases
+# name their reference (made by the same workload on DragonFly) and ignore
+# mtimes; the others use <base volume>.walk.
+WALK_CASES = ('namespace', 'data', 'dedup', 'ns-ops')
+WORKLOAD_WALKS = {'ns-ops': 'ns-ops.walk'}
 DFLY_ISO = os.environ.get(
     'DFLY_ISO', r'D:\RhapsodiOS\vm\work\dfly\iso\dfly-x86_64-6.4.2_REL.iso')
 UNDO_FIRST = UNDO_MAP + 8
@@ -406,19 +414,19 @@ def export_volume(data_ov: Path, outdir: Path) -> Path:
 
 def recover_differences(tree: str, rec: str):
     """Regular files 'hammer recover' rebuilt against the mounted tree, as
-    (size, content CRC) multisets: recover names files its own way."""
+    sets of (size, content CRC): recover names files its own way and
+    rebuilds a file once however many links it has."""
     def files(text):
-        out = []
+        out = set()
         for line in text.splitlines():
             f = line.split('\t')
             if len(f) > 8 and f[1] == 'f':
-                out.append((f[6], f[8]))
-        return sorted(out)
-    t, r = files(tree), files(rec)
-    if t == r:
+                out.add((f[6], f[8]))
+        return out
+    diff = files(tree) ^ files(rec)
+    if not diff:
         return []
-    return ['recover: %d (size, crc) pairs differ from the tree' %
-            len(set(t) ^ set(r))]
+    return ['recover: %d (size, crc) pairs differ from the tree' % len(diff)]
 
 
 def dfly_check(raw: Path, outdir: Path):
@@ -496,6 +504,9 @@ def run(case, outdir, volume, tools_dir):
     if writes:
         nodes.append(N('/hammer', 'reg', 0o100755, 0, 0, 0,
                        (Path(tools_dir)/'hammer').read_bytes()))
+    if case == 'ns-ops':
+        nodes.append(N('/ns_ops', 'reg', 0o100755, 0, 0, 0,
+                       (Path(tools_dir)/'ns_ops').read_bytes()))
     results = outdir/'results.img'
     results.write_bytes(ufs_build.build(ext2_guest.TEMPLATE, nodes))
     spec = importlib.util.spec_from_file_location('hammer_console', HERE/'guest-console.py')
@@ -551,7 +562,7 @@ def run(case, outdir, volume, tools_dir):
                 problems += dfly_check(raw, outdir/'dfly')
         finally:
             raw.unlink()
-    if case in ('namespace', 'data', 'dedup') and code == 0:
+    if case in WALK_CASES and code == 0:
         # The reference manifest sits beside the base volume (ref-main.walk).
         import gzip
         import rhap_image
@@ -561,9 +572,11 @@ def run(case, outdir, volume, tools_dir):
         base = Path(volume)
         while base.suffix in ('.qcow2', '.wrapped'):
             base = base.with_suffix('')
-        diff = walk_differences(walk.decode('utf-8', 'replace'),
-                                base.with_suffix('.walk').read_text(),
-                                ignore_crc=(case == 'namespace'))
+        ref = base.parent/WORKLOAD_WALKS[case] if case in WORKLOAD_WALKS \
+            else base.with_suffix('.walk')
+        diff = walk_differences(walk.decode('utf-8', 'replace'), ref.read_text(),
+                                ignore_crc=(case in ('namespace', 'ns-ops')),
+                                ignore_mtime=case in WORKLOAD_WALKS)
         problems += ['walk: ' + d for d in diff[:20]]
     for problem in problems:
         print(problem)

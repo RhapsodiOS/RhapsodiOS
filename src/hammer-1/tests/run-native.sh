@@ -35,6 +35,17 @@ rw-empty)
 	./hammer_io unmount "$2"
 	checkvol
 	;;
+ns-ops)
+	# Namespace workload; the host diffs the walk with DragonFly's.
+	./hammer_io mount-rw $DEV "$2"
+	./ns_ops "$2"
+	./hammer_io unmount "$2"
+	./hammer_io mount $DEV "$2"
+	./hammer_walk -n "$2" > /tmp/walk.txt
+	gzip -9 < /tmp/walk.txt > walk.gz
+	./hammer_io unmount "$2"
+	checkvol
+	;;
 refuse-rw-recovery)
 	./hammer_io mounterr $DEV "$2" 0 $EOPNOTSUPP
 	;;

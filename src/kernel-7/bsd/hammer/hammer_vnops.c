@@ -3602,10 +3602,12 @@ filt_hammervnode(struct knote *kn, long hint)
 #endif /* phase 2 */
 
 /*
- * Rhapsody vnode operations: 4.4BSD componentname VOPs over HAMMER's
- * read path.  The mount is always read-only in this release, so every
- * operation that would change the filesystem returns EROFS; the nop_*
- * helpers release the vnodes and name buffers the caller passed in.
+ * Rhapsody vnode operations: 4.4BSD componentname VOPs over HAMMER.
+ * The namespace operations follow the 4.4BSD protocol (ufs_* is the
+ * model): each releases the vnodes and name buffer it is passed, through
+ * the matching nop_* helper, whether it succeeds or not.  The HAMMER work
+ * inside each is upstream's hammer_vop_n*() with the namecache calls
+ * replaced by cache_purge().
  */
 int (**hammer_vnodeop_p)(void *);
 
@@ -3671,6 +3673,41 @@ hammer_dir_cursor(hammer_cursor_t cursor, hammer_inode_t dip, int64_t key)
 }
 
 /*
+ * Position an initialized CURSOR on NAME's entry in directory DIP, by
+ * scanning the name's hash chain (the hammer_ip_*() functions merge
+ * in-memory records with on-disk ones).  Returns 0, ENOENT, or EIO for a
+ * damaged entry on the chain.
+ */
+static int
+hammer_find_entry(hammer_cursor_t cursor, hammer_inode_t dip,
+		  const char *name, int nlen)
+{
+	uint32_t max_iterations;
+	int64_t namekey;
+	int error, elen;
+
+	namekey = hammer_direntry_namekey(dip, name, nlen, &max_iterations);
+	if (namekey < 0)
+		return(EIO);
+	hammer_dir_cursor(cursor, dip, namekey);
+	cursor->key_end.key = hmk64(namekey + max_iterations);
+	error = hammer_ip_first(cursor);
+	while (error == 0) {
+		error = hammer_ip_resolve_data(cursor);
+		if (error)
+			break;
+		elen = hammer_entry_namelen(dip, cursor->leaf);
+		if (elen < 0)
+			return(EIO);
+		if (elen == nlen &&
+		    bcmp(name, cursor->data->entry.name, nlen) == 0)
+			break;
+		error = hammer_ip_next(cursor);
+	}
+	return(error);
+}
+
+/*
  * Find NAME in directory DIP.  Returns 0 with the entry's object, ENOENT,
  * or EIO for a damaged entry on the name's hash chain.
  */
@@ -3680,39 +3717,31 @@ hammer_lookup_name(hammer_inode_t dip, const char *name, int nlen,
 {
 	struct hammer_transaction trans;
 	struct hammer_cursor cursor;
-	uint32_t max_iterations;
-	int64_t namekey;
-	int error, elen;
+	int error;
 
-	namekey = hammer_direntry_namekey(dip, name, nlen, &max_iterations);
-	if (namekey < 0)
-		return(EIO);
 	hammer_simple_transaction(&trans, dip->hmp);
 	error = hammer_init_cursor(&trans, &cursor, &dip->cache[1], dip);
-	hammer_dir_cursor(&cursor, dip, namekey);
-	cursor.key_end.key = hmk64(namekey + max_iterations);
 	if (error == 0)
-		error = hammer_ip_first(&cursor);
-	while (error == 0) {
-		error = hammer_ip_resolve_data(&cursor);
-		if (error)
-			break;
-		elen = hammer_entry_namelen(dip, cursor.leaf);
-		if (elen < 0) {
-			error = EIO;
-			break;
-		}
-		if (elen == nlen &&
-		    bcmp(name, cursor.data->entry.name, nlen) == 0) {
-			*obj_idp = (int64_t)hget64(cursor.data->entry.obj_id);
-			*localizationp = hget32(cursor.data->entry.localization);
-			break;
-		}
-		error = hammer_ip_next(&cursor);
+		error = hammer_find_entry(&cursor, dip, name, nlen);
+	if (error == 0) {
+		*obj_idp = (int64_t)hget64(cursor.data->entry.obj_id);
+		*localizationp = hget32(cursor.data->entry.localization);
 	}
 	hammer_done_cursor(&cursor);
 	hammer_done_transaction(&trans);
 	return(error);
+}
+
+/*
+ * Deleting or renaming an entry of a sticky directory takes ownership of
+ * the directory or the entry (ufs_lookup).
+ */
+static int
+hammer_sticky_denied(hammer_inode_t dip, hammer_inode_t ip, struct ucred *cred)
+{
+	return((hget16(dip->ino_data.mode) & S_ISTXT) && cred->cr_uid != 0 &&
+	       cred->cr_uid != hammer_to_unix_xid(&dip->ino_data.uid) &&
+	       cred->cr_uid != hammer_to_unix_xid(&ip->ino_data.uid));
 }
 
 /*
@@ -3794,15 +3823,40 @@ hammer_vop_lookup(struct vop_lookup_args *ap)
 					   cnp->cn_namelen, &obj_id,
 					   &localization);
 		if (error == ENOENT) {
+			/*
+			 * A missing last component may be created: the
+			 * caller gets EJUSTRETURN with the name saved.
+			 */
+			if ((nameiop == CREATE || nameiop == RENAME) &&
+			    (flags & ISLASTCN)) {
+				error = VOP_ACCESS(vdp, VWRITE, cnp->cn_cred, p);
+				if (error)
+					return(error);
+				cnp->cn_flags |= SAVENAME;
+				if (!lockparent)
+					VOP_UNLOCK(vdp, 0, p);
+				return(EJUSTRETURN);
+			}
 			if ((cnp->cn_flags & MAKEENTRY) && nameiop != CREATE)
 				cache_enter(vdp, *vpp, cnp);
-			if ((nameiop == CREATE || nameiop == RENAME) &&
-			    (flags & ISLASTCN))
-				return(EROFS);
 			return(ENOENT);
 		}
 		if (error)
 			return(error);
+	}
+
+	/*
+	 * Removing or renaming an existing last component needs write
+	 * access to the directory; a rename keeps the name (ufs_lookup).
+	 */
+	if ((nameiop == DELETE || nameiop == RENAME) && (flags & ISLASTCN)) {
+		if ((error = VOP_ACCESS(vdp, VWRITE, cnp->cn_cred, p)) != 0)
+			return(error);
+		if (nameiop == RENAME) {
+			if (obj_id == dip->obj_id)
+				return(EISDIR);
+			cnp->cn_flags |= SAVENAME;
+		}
 	}
 
 	pdp = vdp;
@@ -3826,6 +3880,12 @@ hammer_vop_lookup(struct vop_lookup_args *ap)
 		error = hammer_vget_obj(dip->hmp, obj_id, localization, &tdp);
 		if (error)
 			return(error);
+		if ((nameiop == DELETE || nameiop == RENAME) &&
+		    (flags & ISLASTCN) &&
+		    hammer_sticky_denied(dip, VTOI(tdp), cnp->cn_cred)) {
+			vput(tdp);
+			return(EPERM);
+		}
 		if (!lockparent || !(flags & ISLASTCN))
 			VOP_UNLOCK(pdp, 0, p);
 		*vpp = tdp;
@@ -3859,7 +3919,8 @@ hammer_vop_access(struct vop_access_args *ap)
 	gid_t gid;
 	int i;
 
-	if (mode & VWRITE) {
+	if ((mode & VWRITE) &&
+	    ((vp->v_mount->mnt_flag & MNT_RDONLY) || ip->hmp->ronly)) {
 		switch (vp->v_type) {
 		case VDIR:
 		case VLNK:
@@ -4118,36 +4179,54 @@ hammer_vop_islocked(struct vop_islocked_args *ap)
 }
 
 /*
- * Nothing is ever dirty on a read-only mount: unlock, and drop vnodes
- * that never got an inode.
+ * The last use of the vnode is gone.  An inode with no links left is
+ * queued for deletion and its vnode recycled at once (upstream's
+ * hammer_vop_inactive); vnodes that never got an inode are dropped.
  */
 int
 hammer_vop_inactive(struct vop_inactive_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
+	hammer_inode_t ip = VTOI(vp);
 
 	VOP_UNLOCK(vp, 0, ap->a_p);
-	if (VTOI(vp) == NULL)
+	if (ip == NULL) {
 		vgone(vp);
+		return(0);
+	}
+	if (hget64(ip->ino_data.nlinks) == 0 && ip->hmp->ronly == 0) {
+		hammer_inode_unloadable_check(ip, 0);
+		if (ip->flags & HAMMER_INODE_MODMASK)
+			hammer_flush_inode(ip, 0);
+		vrecycle(vp, (struct slock *)0, ap->a_p);
+	}
 	return(0);
 }
 
 /*
- * Release the vnode's inode reference; the last one unloads the inode.
+ * Release the vnode's inode reference; the last one unloads the inode,
+ * after a final flush if it is dirty (upstream's hammer_vop_reclaim).
  */
 int
 hammer_vop_reclaim(struct vop_reclaim_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	hammer_inode_t ip = VTOI(vp);
+	hammer_mount_t hmp;
 
 	cache_purge(vp);
 	if (ip != NULL) {
+		hmp = ip->hmp;
 		hammer_lock_ex(&ip->lock);
 		vp->v_data = NULL;
 		ip->vp = NULL;
+		if ((ip->flags & HAMMER_INODE_RECLAIM) == 0) {
+			++hammer_count_reclaims;
+			++hmp->count_reclaims;
+			ip->flags |= HAMMER_INODE_RECLAIM;
+		}
 		hammer_unlock(&ip->lock);
-		hammer_rel_inode(ip, 0);
+		hammer_rel_inode(ip, 1);
 	}
 	return(0);
 }
@@ -4188,60 +4267,415 @@ hammer_vop_pathconf(struct vop_pathconf_args *ap)
 	}
 }
 
+/*
+ * Make a new object named by CNP in directory DVP: a file, a directory,
+ * or (TARGET non-NULL) a symlink.  Upstream's hammer_vop_ncreate,
+ * nmkdir and nsymlink.  Returns the new vnode locked in *vpp.
+ */
+static int
+hammer_newobj(struct vnode *dvp, struct vnode **vpp,
+	      struct componentname *cnp, struct vattr *vap, char *target)
+{
+	struct hammer_transaction trans;
+	hammer_inode_t dip = VTOI(dvp);
+	hammer_inode_t nip;
+	hammer_mount_t hmp = dip->hmp;
+	hammer_record_t record;
+	int error, bytes;
+
+	*vpp = NULL;
+	if (hmp->ronly || (dip->flags & HAMMER_INODE_RO))
+		return(EROFS);
+	if ((error = hammer_checkspace(hmp, HAMMER_CHKSPC_CREATE)) != 0)
+		return(error);
+
+	hammer_start_transaction(&trans, hmp);
+	error = hammer_create_inode(&trans, vap, cnp->cn_cred, dip,
+				    cnp->cn_nameptr, cnp->cn_namelen,
+				    NULL, &nip);
+	if (error) {
+		hammer_done_transaction(&trans);
+		return(error);
+	}
+
+	/*
+	 * A symlink stores its target as pure data, not a string: in the
+	 * inode when it fits, else in a record of its own.
+	 */
+	if (target) {
+		bytes = strlen(target);
+		if (bytes <= HAMMER_INODE_BASESYMLEN) {
+			bcopy(target, nip->ino_data.ext.symlink, bytes);
+		} else {
+			record = hammer_alloc_mem_record(nip, bytes);
+			record->type = HAMMER_MEM_RECORD_GENERAL;
+			record->leaf.base.localization =
+				hmk32(nip->obj_localization |
+				      HAMMER_LOCALIZE_MISC);
+			record->leaf.base.key = hmk64(HAMMER_FIXKEY_SYMLINK);
+			record->leaf.base.rec_type = hmk16(HAMMER_RECTYPE_FIX);
+			record->leaf.data_len = hmk32(bytes);
+			KKASSERT(HAMMER_SYMLINK_NAME_OFF == 0);
+			bcopy(target, record->data->symlink.name, bytes);
+			error = hammer_ip_add_record(&trans, record);
+		}
+		if (error == 0) {
+			nip->ino_data.size = hmk64(bytes);
+			hammer_modify_inode(&trans, nip, HAMMER_INODE_DDIRTY);
+		}
+	}
+
+	/*
+	 * Add the new object to the directory, which also bumps its link
+	 * count.
+	 */
+	if (error == 0)
+		error = hammer_ip_add_direntry(&trans, dip, cnp->cn_nameptr,
+					       cnp->cn_namelen, nip);
+	if (error == 0)
+		error = hammer_get_vnode(nip, vpp);
+	hammer_rel_inode(nip, 0);
+	hammer_done_transaction(&trans);
+	return(error);
+}
+
 static int
 hammer_vop_create(struct vop_create_args *ap)
 {
+	int error;
+
+	error = hammer_newobj(ap->a_dvp, ap->a_vpp, ap->a_cnp, ap->a_vap, NULL);
 	(void)nop_create(ap);
-	return(EROFS);
+	return(error);
 }
 
+/*
+ * shortcut: device and FIFO nodes cannot be opened yet (they would need
+ * the spec and fifo op tables); refuse to make them.
+ */
 static int
 hammer_vop_mknod(struct vop_mknod_args *ap)
 {
 	(void)nop_mknod(ap);
-	return(EROFS);
+	return(EOPNOTSUPP);
 }
 
 static int
 hammer_vop_mkdir(struct vop_mkdir_args *ap)
 {
+	int error;
+
+	error = hammer_newobj(ap->a_dvp, ap->a_vpp, ap->a_cnp, ap->a_vap, NULL);
 	(void)nop_mkdir(ap);
-	return(EROFS);
+	return(error);
+}
+
+/*
+ * The symlink's vnode is not returned (ufs_symlink drops it too).
+ */
+static int
+hammer_vop_symlink(struct vop_symlink_args *ap)
+{
+	int error;
+
+	ap->a_vap->va_type = VLNK;
+	error = hammer_newobj(ap->a_dvp, ap->a_vpp, ap->a_cnp, ap->a_vap,
+			      ap->a_target);
+	if (error == 0)
+		vput(*ap->a_vpp);
+	(void)nop_symlink(ap);
+	return(error);
+}
+
+/*
+ * Remove NAME from directory DIP (upstream's hammer_dounlink).  ISDIR
+ * says what the entry must be: 1 a directory (which must be empty), 0
+ * anything else, -1 either.  The inode's link count drops; the inode
+ * itself goes when nothing uses it any more.
+ */
+static int
+hammer_dounlink(hammer_transaction_t trans, hammer_inode_t dip,
+		const char *name, int nlen, int isdir)
+{
+	struct hammer_cursor cursor;
+	hammer_mount_t hmp = dip->hmp;
+	hammer_inode_t ip;
+	int error;
+
+	if (dip->flags & HAMMER_INODE_RO)
+		return(EROFS);
+retry:
+	ip = NULL;
+	error = hammer_init_cursor(trans, &cursor, &dip->cache[1], dip);
+	if (error == 0)
+		error = hammer_find_entry(&cursor, dip, name, nlen);
+
+	/*
+	 * Get the entry's inode to adjust its link count.  To avoid a
+	 * deadlock with the flusher the directory's inode lock is dropped
+	 * while acquiring it.
+	 */
+	if (error == 0) {
+		hammer_unlock(&cursor.ip->lock);
+		ip = hammer_get_inode(trans, dip,
+				      hget64(cursor.data->entry.obj_id),
+				      hmp->asof,
+				      hget32(cursor.data->entry.localization),
+				      0, &error);
+		hammer_lock_sh(&cursor.ip->lock);
+		if (error == ENOENT) {
+			hkprintf("removing entry \"%.*s\" with no inode "
+				 "%016jx\n", nlen, name,
+				 (intmax_t)hget64(cursor.data->entry.obj_id));
+			error = 0;
+		}
+	}
+	if (error == 0 && isdir >= 0 && ip) {
+		if (isdir &&
+		    ip->ino_data.obj_type != HAMMER_OBJTYPE_DIRECTORY)
+			error = ENOTDIR;
+		else if (isdir == 0 &&
+		    ip->ino_data.obj_type == HAMMER_OBJTYPE_DIRECTORY)
+			error = EISDIR;
+	}
+
+	/*
+	 * A directory must be empty.  The check can block, so our own
+	 * cursor's node locks are released around it; any change to the
+	 * cursor meanwhile means a retry.
+	 */
+	if (error == 0 && ip &&
+	    ip->ino_data.obj_type == HAMMER_OBJTYPE_DIRECTORY) {
+		hammer_unlock_cursor(&cursor);
+		error = hammer_ip_check_directory_empty(trans, ip);
+		hammer_lock_cursor(&cursor);
+		if (error == 0 && (cursor.flags & HAMMER_CURSOR_RETEST))
+			error = EDEADLK;
+	}
+
+	/*
+	 * hammer_ip_del_direntry() may terminate the cursor; terminating
+	 * it twice is fine.
+	 */
+	if (error == 0)
+		error = hammer_ip_del_direntry(trans, &cursor, dip, ip);
+	hammer_done_cursor(&cursor);
+	if (ip)
+		hammer_rel_inode(ip, 0);
+	if (error == EDEADLK)
+		goto retry;
+	return(error);
+}
+
+static int
+hammer_unlink_cnp(struct vnode *dvp, struct componentname *cnp, int isdir)
+{
+	struct hammer_transaction trans;
+	hammer_inode_t dip = VTOI(dvp);
+	hammer_mount_t hmp = dip->hmp;
+	int error;
+
+	if (hmp->ronly)
+		return(EROFS);
+	if (hammer_nohistory(dip) == 0 &&
+	    (error = hammer_checkspace(hmp, HAMMER_CHKSPC_REMOVE)) != 0)
+		return(error);
+	hammer_start_transaction(&trans, hmp);
+	error = hammer_dounlink(&trans, dip, cnp->cn_nameptr, cnp->cn_namelen,
+				isdir);
+	hammer_done_transaction(&trans);
+	return(error);
 }
 
 static int
 hammer_vop_remove(struct vop_remove_args *ap)
 {
+	int error;
+
+	error = hammer_unlink_cnp(ap->a_dvp, ap->a_cnp, 0);
+	if (error == 0)
+		cache_purge(ap->a_vp);
 	(void)nop_remove(ap);
-	return(EROFS);
+	return(error);
 }
 
 static int
 hammer_vop_rmdir(struct vop_rmdir_args *ap)
 {
+	int error;
+
+	error = hammer_unlink_cnp(ap->a_dvp, ap->a_cnp, 1);
+	if (error == 0) {
+		cache_purge(ap->a_dvp);
+		cache_purge(ap->a_vp);
+	}
 	(void)nop_rmdir(ap);
-	return(EROFS);
+	return(error);
 }
 
-static int
-hammer_vop_rename(struct vop_rename_args *ap)
-{
-	(void)nop_rename(ap);
-	return(EROFS);
-}
-
+/*
+ * VP is referenced but not locked; TDVP is locked.
+ */
 static int
 hammer_vop_link(struct vop_link_args *ap)
 {
+	struct hammer_transaction trans;
+	hammer_inode_t dip = VTOI(ap->a_tdvp);
+	hammer_inode_t ip = VTOI(ap->a_vp);
+	hammer_mount_t hmp = dip->hmp;
+	int error;
+
+	if (ap->a_tdvp->v_mount != ap->a_vp->v_mount ||
+	    dip->obj_localization != ip->obj_localization)
+		error = EXDEV;
+	else if (hmp->ronly || ((dip->flags | ip->flags) & HAMMER_INODE_RO))
+		error = EROFS;
+	else if (ap->a_vp->v_type == VDIR)
+		error = EPERM;
+	else if (hget64(ip->ino_data.nlinks) >= LINK_MAX)
+		error = EMLINK;
+	else
+		error = hammer_checkspace(hmp, HAMMER_CHKSPC_CREATE);
+	if (error == 0) {
+		hammer_start_transaction(&trans, hmp);
+		error = hammer_ip_add_direntry(&trans, dip,
+					       ap->a_cnp->cn_nameptr,
+					       ap->a_cnp->cn_namelen, ip);
+		hammer_done_transaction(&trans);
+	}
 	(void)nop_link(ap);
-	return(EROFS);
+	return(error);
 }
 
+/*
+ * Moving directory IP under TDIP must not make IP its own ancestor:
+ * walk TDIP's parents up to the root (ufs_checkpath).
+ */
 static int
-hammer_vop_symlink(struct vop_symlink_args *ap)
+hammer_checkpath(hammer_inode_t ip, hammer_inode_t tdip)
 {
-	(void)nop_symlink(ap);
-	return(EROFS);
+	struct hammer_transaction trans;
+	hammer_inode_t pip;
+	int64_t obj_id = tdip->obj_id, child;
+	int error = 0;
+
+	hammer_simple_transaction(&trans, ip->hmp);
+	while (obj_id != HAMMER_OBJID_ROOT) {
+		if (obj_id == ip->obj_id) {
+			error = EINVAL;
+			break;
+		}
+		pip = hammer_get_inode(&trans, NULL, obj_id, ip->hmp->asof,
+				       ip->obj_localization, 0, &error);
+		if (pip == NULL)
+			break;
+		child = obj_id;
+		obj_id = (int64_t)hget64(pip->ino_data.parent_obj_id);
+		hammer_rel_inode(pip, 0);
+		if (obj_id == 0 || obj_id == child) {
+			hkprintf("directory %016jx: bad parent %016jx\n",
+				 (intmax_t)child, (intmax_t)obj_id);
+			error = EIO;
+			break;
+		}
+	}
+	hammer_done_transaction(&trans);
+	return(error);
+}
+
+/*
+ * Rename (upstream's hammer_vop_nrename): drop any existing target
+ * entry, enter the object under the new name, then remove the old name.
+ * rename(2) has already refused mismatched types, a source that is the
+ * target directory, and turned a rename onto the same object into a
+ * no-op.  TDVP and TVP are locked; FDVP and FVP only referenced.
+ */
+static int
+hammer_vop_rename(struct vop_rename_args *ap)
+{
+	struct vnode *fvp = ap->a_fvp, *tvp = ap->a_tvp;
+	struct componentname *fcnp = ap->a_fcnp, *tcnp = ap->a_tcnp;
+	struct hammer_transaction trans;
+	struct hammer_cursor cursor;
+	hammer_inode_t fdip, tdip, ip;
+	hammer_mount_t hmp;
+	int error;
+
+	if (fvp->v_mount != ap->a_tdvp->v_mount ||
+	    (tvp && fvp->v_mount != tvp->v_mount)) {
+		error = EXDEV;
+		goto done;
+	}
+	fdip = VTOI(ap->a_fdvp);
+	tdip = VTOI(ap->a_tdvp);
+	ip = VTOI(fvp);
+	hmp = ip->hmp;
+	error = 0;
+	if (fvp == tvp)
+		goto done;
+	if (fdip->obj_localization != tdip->obj_localization ||
+	    fdip->obj_localization != ip->obj_localization) {
+		error = EXDEV;
+		goto done;
+	}
+	if (hmp->ronly ||
+	    ((fdip->flags | tdip->flags | ip->flags) & HAMMER_INODE_RO)) {
+		error = EROFS;
+		goto done;
+	}
+	if (fvp->v_type == VDIR) {
+		if ((fcnp->cn_namelen == 1 && fcnp->cn_nameptr[0] == '.') ||
+		    fdip == ip || ((fcnp->cn_flags | tcnp->cn_flags) & ISDOTDOT)) {
+			error = EINVAL;
+			goto done;
+		}
+		if (fdip != tdip && (error = hammer_checkpath(ip, tdip)) != 0)
+			goto done;
+	}
+	if ((error = hammer_checkspace(hmp, HAMMER_CHKSPC_CREATE)) != 0)
+		goto done;
+
+	hammer_start_transaction(&trans, hmp);
+	if (tvp)
+		error = hammer_dounlink(&trans, tdip, tcnp->cn_nameptr,
+					tcnp->cn_namelen, -1);
+	if (error == 0) {
+		error = hammer_ip_add_direntry(&trans, tdip, tcnp->cn_nameptr,
+					       tcnp->cn_namelen, ip);
+		if (error == 0) {
+			ip->ino_data.parent_obj_id = hmk64(tdip->obj_id);
+			ip->ino_data.ctime = hmk64(trans.time);
+			hammer_modify_inode(&trans, ip, HAMMER_INODE_DDIRTY);
+		}
+	}
+
+	/*
+	 * Remove the old name.  A deadlock here retries.
+	 */
+	while (error == 0) {
+		error = hammer_init_cursor(&trans, &cursor, &fdip->cache[1],
+					   fdip);
+		if (error == 0)
+			error = hammer_find_entry(&cursor, fdip,
+						  fcnp->cn_nameptr,
+						  fcnp->cn_namelen);
+		if (error == 0)
+			error = hammer_ip_del_direntry(&trans, &cursor, fdip,
+						       ip);
+		hammer_done_cursor(&cursor);
+		if (error != EDEADLK)
+			break;
+		error = 0;
+	}
+	hammer_done_transaction(&trans);
+	if (error == 0) {
+		cache_purge(fvp);
+		if (tvp)
+			cache_purge(tvp);
+	}
+done:
+	(void)nop_rename(ap);
+	return(error);
 }
 
 static int

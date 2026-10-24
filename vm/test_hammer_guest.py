@@ -336,6 +336,14 @@ def test_walk_matches_ignores_content_crc():
     assert hg.walk_differences(got.splitlines(True)[0], want) != []
 
 
+def test_walk_can_ignore_mtimes_of_workload_trees():
+    want = './a\tf\t644\t0\t0\t1\t0\t5\t-\n'
+    got = want.replace('\t5\t', '\t99\t')
+    assert hg.walk_differences(got, want) != []
+    assert hg.walk_differences(got, want, ignore_mtime=True) == []
+    assert hg.walk_differences(got.replace('644', '600'), want, ignore_mtime=True) != []
+
+
 def test_pfs_fixture_moves_the_last_element_to_pfs1(tmp_path):
     vol = tree_volume(tmp_path)
     out = tmp_path/'pfs.img'
@@ -369,6 +377,8 @@ def test_recover_differences_compares_file_contents_not_names():
     assert hg.recover_differences(tree, rec) == []
     assert hg.recover_differences(tree, rec.replace('111', '112')) != []
     assert hg.recover_differences(tree, '') != []
+    links = tree + './b\tf\t644\t0\t0\t2\t5\t9\t111\t=./a\n'
+    assert hg.recover_differences(links, rec) == []
 
 
 LELINT = __import__('pathlib').Path(__file__).resolve().parent.parent/'src/hammer-1/tests'

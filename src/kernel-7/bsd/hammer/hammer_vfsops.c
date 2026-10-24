@@ -143,6 +143,7 @@ static int	hammer_vfs_sysctl(int *name, u_int namelen, void *oldp,
 				  struct proc *p);
 static void	hammer_free_hmp(struct mount *mp);
 static int	hammer_admit_rw(hammer_mount_t hmp, const char **why);
+static int	hammer_update_mount(struct mount *mp, struct proc *p);
 
 struct vfsops hammer_vfsops = {
 	hammer_vfs_mount,
@@ -203,8 +204,10 @@ hammer_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	size_t done;
 	int error;
 
-	if (mp->mnt_flag & (MNT_UPDATE | MNT_RELOAD | MNT_EXPORTED))
+	if (mp->mnt_flag & (MNT_RELOAD | MNT_EXPORTED))
 		return(EOPNOTSUPP);
+	if (mp->mnt_flag & MNT_UPDATE)
+		return(hammer_update_mount(mp, p));
 	if ((error = copyin(data, (caddr_t)&args, sizeof(args))) != 0)
 		return(error);
 	if ((error = copyinstr(args.fspec, from, sizeof(from), &done)) != 0)
@@ -373,6 +376,49 @@ hammer_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	return(hammer_vfs_statfs(mp, &mp->mnt_stat, p));
 }
 
+/*
+ * mount -u: switch between read-only and read-write (upstream's
+ * MNT_UPDATE case).  mount(2) has set MNT_RDONLY for a downgrade, or
+ * MNT_WANTRDWR for an upgrade, and restores the flags if this fails.
+ * An upgrade must pass read-write admission and starts the flusher.  A
+ * downgrade, as ffs_mount does, refuses while a file is open for writing
+ * unless forced (FORCECLOSE revokes it), then flushes everything and
+ * stops the flusher.  Cached inodes take the new mode.
+ */
+static int
+hammer_update_mount(struct mount *mp, struct proc *p)
+{
+	hammer_mount_t hmp = (void *)mp->mnt_data;
+	const char *why;
+	int error = 0, flags;
+
+	if (hmp->ronly && (mp->mnt_flag & MNT_WANTRDWR)) {
+		error = hammer_admit_rw(hmp, &why);
+		if (error) {
+			printf("hammer: %s: %s\n", mp->mnt_stat.f_mntfromname, why);
+			return(error);
+		}
+		hmp->ronly = 0;
+		RB_SCAN(hammer_ino_rb_tree, &hmp->rb_inos_root, NULL,
+			hammer_reload_inode, NULL);
+		hammer_flusher_create(hmp);
+	} else if (hmp->ronly == 0 && (mp->mnt_flag & MNT_RDONLY)) {
+		flags = WRITECLOSE;
+		if (mp->mnt_flag & MNT_FORCE)
+			flags |= FORCECLOSE;
+		if ((error = vflush(mp, NULLVP, flags)) != 0)
+			return(error);
+		hammer_sync_hmp(hmp, MNT_WAIT);
+		if (hammer_flush_dirty(hmp, 30) < 0)
+			return(EBUSY);	/* stays rw, nothing dropped */
+		hmp->ronly = 1;
+		RB_SCAN(hammer_ino_rb_tree, &hmp->rb_inos_root, NULL,
+			hammer_reload_inode, NULL);
+		hammer_flusher_destroy(hmp);
+	}
+	return(error);
+}
+
 static int
 hammer_vfs_start(struct mount *mp, int flags, struct proc *p)
 {
@@ -391,6 +437,18 @@ hammer_vfs_unmount(struct mount *mp, int mntflags, struct proc *p)
 	if (error == 0)
 		hammer_free_hmp(mp);
 	return(error);
+}
+
+/*
+ * An inode still cached when the mount goes away is a leak: name it.
+ */
+static int
+hammer_report_inode_callback(hammer_inode_t ip, void *data)
+{
+	hkprintf("inode %016jx left at unmount: flags %08x flush state %d "
+		 "refs %d\n", (intmax_t)ip->obj_id, ip->flags,
+		 ip->flush_state, hammer_isactive(&ip->lock));
+	return(0);
 }
 
 /*
@@ -434,6 +492,9 @@ hammer_free_hmp(struct mount *mp)
 		hammer_flusher_destroy(hmp);
 	}
 
+	if (!RB_EMPTY(&hmp->rb_inos_root))
+		RB_SCAN(hammer_ino_rb_tree, &hmp->rb_inos_root, NULL,
+			hammer_report_inode_callback, NULL);
 	KKASSERT(RB_EMPTY(&hmp->rb_inos_root));
 	RB_SCAN(hammer_buf_rb_tree, &hmp->rb_bufs_root, NULL,
 		hammer_unload_buffer, NULL);

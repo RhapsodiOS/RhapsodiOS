@@ -38,6 +38,7 @@
 .Nd mount a HAMMER file system
 .Sh SYNOPSIS
 .Nm
+.Op Fl u
 .Op Fl o Ar options
 .Ar special
 .Ar node
@@ -49,18 +50,25 @@ utility attaches the single-volume HAMMER file system on
 at mount point
 .Ar node .
 The kernel must be built with the HAMMERFS option.
-This release mounts HAMMER version 7 volumes read-only; a mount without
-.Cm ro
-fails with
-.Er EROFS .
-Multi-volume file systems, pseudo-file systems and volumes that need
-UNDO recovery are refused.
+HAMMER version 7 volumes mount read-only or read-write.
+Multi-volume file systems and volumes that need UNDO recovery are
+refused; so is a read-write mount of a volume holding pseudo-file
+systems.
 .Pp
 The options are as follows:
 .Bl -tag -width indent
+.It Fl u
+Change a mounted file system between read-only and read-write, as
+.Fl o Cm update
+does.
+A change to read-only fails with
+.Er EBUSY
+while a file is open for writing, unless
+.Cm force
+is given, which revokes such files.
 .It Fl o Ar options
 A comma-separated list of options: ro, rw, noexec, exec, nosuid, suid,
-nodev and dev.
+nodev, dev, update and force.
 Other options are rejected.
 .El
 .Sh SEE ALSO

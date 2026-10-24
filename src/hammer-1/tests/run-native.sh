@@ -138,6 +138,22 @@ enospc)
 	./hammer_io unmount "$2"
 	checkvol
 	;;
+remount)
+	# mount -u between read-only and read-write.
+	./hammer_io mount $DEV "$2"
+	./hammer_io remount "$2" rw 0
+	echo one > "$2/a"
+	./hammer_io busy "$2" "$2/b"
+	./hammer_io erofs "$2"
+	./hammer_io remount "$2" rw 0
+	echo two >> "$2/a"
+	./hammer_io remount "$2" ro 0
+	./hammer_io erofs "$2"
+	test "`cat $2/a`" = "one
+two"
+	./hammer_io unmount "$2"
+	checkvol
+	;;
 refuse-rw-recovery)
 	./hammer_io mounterr $DEV "$2" 0 $EOPNOTSUPP
 	;;

@@ -34,7 +34,8 @@
 
 /*
  * Rhapsody port: one volume, no PFS, no history or master-id options.
- * The kernel admits read-only mounts only in this release.
+ * -u (or -o update) switches a mounted volume between ro and rw; -o force
+ * lets a downgrade revoke files open for writing.
  */
 #include <sys/param.h>
 #include <sys/mount.h>
@@ -70,6 +71,10 @@ options(char *text, int *flags)
 			*flags |= MNT_NODEV;
 		else if (!strcmp(opt, "dev"))
 			*flags &= ~MNT_NODEV;
+		else if (!strcmp(opt, "update"))
+			*flags |= MNT_UPDATE;
+		else if (!strcmp(opt, "force"))
+			*flags |= MNT_FORCE;
 		else
 			errx(1, "unsupported mount option: %s", opt);
 	}
@@ -81,10 +86,13 @@ main(int ac, char **av)
 	struct hammer_args args;
 	int ch, flags = 0;
 
-	while ((ch = getopt(ac, av, "o:")) != -1) {
-		if (ch != 'o')
+	while ((ch = getopt(ac, av, "o:u")) != -1) {
+		if (ch == 'u')
+			flags |= MNT_UPDATE;
+		else if (ch == 'o')
+			options(optarg, &flags);
+		else
 			usage();
-		options(optarg, &flags);
 	}
 	ac -= optind;
 	av += optind;
@@ -99,6 +107,6 @@ main(int ac, char **av)
 static void
 usage(void)
 {
-	fprintf(stderr, "usage: mount_hammer [-o options] special node\n");
+	fprintf(stderr, "usage: mount_hammer [-u] [-o options] special node\n");
 	exit(1);
 }

@@ -372,6 +372,20 @@ line added.
   the dirty-buffer limit is 8 MB; the harness also fails a case whose
   console reports an empty kernel zone.
 
+## Remount (Phase 2)
+
+- `mount -u` (`mount_hammer -u`, or `-o update`) switches between ro and
+  rw.  An upgrade passes read-write admission again and starts the flusher;
+  a downgrade, as `ffs_mount` does, fails `EBUSY` while a file is open for
+  writing unless forced (`-o force` revokes it), then flushes everything
+  and stops the flusher.  Cached inodes take the new mode.
+- A downgrade whose flush does not finish within 30 cycles fails `EBUSY`
+  and stays rw; upstream would go ro and drop what was still dirty.
+- `hammer_flusher_create` clears `flusher.exiting`: a flusher restarted by
+  an upgrade otherwise exited at once and left its flush groups unrun.
+- An inode still cached at unmount is named on the console before the
+  assertion that the inode tree is empty.
+
 ## Left for Phase 2
 
 - Still behind `#if 0 /* phase 2 */`: `hammer_inode.c`'s PFS save and

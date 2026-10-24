@@ -197,6 +197,7 @@ hammer_flusher_create(hammer_mount_t hmp)
 	hammer_flusher_info_t info;
 
 	hmp->flusher.signal = 0;
+	hmp->flusher.exiting = 0;	/* a mount -u upgrade restarts it */
 	hmp->flusher.done = 0;
 	hmp->flusher.next = 1;
 	hammer_ref(&hmp->flusher.finalize_lock);

@@ -36,6 +36,12 @@
  *	mounterr DEV POINT RDONLY ERRNO	mount(2) fails with ERRNO
  *	mount DEV POINT			read-only mount(2) succeeds
  *	mount-rw DEV POINT		read-write mount(2) succeeds
+ *	remount POINT ro|rw|ro-force ERRNO
+ *					mount -u succeeds (ERRNO 0) or fails
+ *					with ERRNO
+ *	busy POINT FILE			FILE open for writing: a downgrade
+ *					fails with EBUSY, works forced, and the
+ *					descriptor can no longer write
  *	unmount POINT			unmount(2) succeeds
  *	readdir-small DIR COUNT		512-byte getdirentries sees COUNT unique
  *					names, each d_fileno equal to lstat st_ino
@@ -92,6 +98,54 @@ domount(char *dev, const char *point, int flags)
 
 	args.fspec = dev;
 	CHECK(mount("hammer", point, flags, &args) == 0);
+	return 0;
+}
+
+/*
+ * mount -u of POINT to MODE (ro, rw, or ro-force); WANT is 0 for success
+ * or the errno the update must fail with.
+ */
+static int
+remount(const char *point, const char *mode, int want)
+{
+	struct hammer_args args;
+	int flags = MNT_UPDATE, rc;
+
+	if (strcmp(mode, "rw") != 0)
+		flags |= MNT_RDONLY;
+	if (strcmp(mode, "ro-force") == 0)
+		flags |= MNT_FORCE;
+	args.fspec = NULL;
+	errno = 0;
+	rc = mount("hammer", point, flags, &args);
+	if (want)
+		CHECK(rc == -1 && errno == want);
+	else
+		CHECK(rc == 0);
+	printf("mount -u %s %s: %s\n", mode, point,
+	       want ? "fails as expected" : "ok");
+	return 0;
+}
+
+/*
+ * With FILE open for writing, downgrading POINT fails with EBUSY; forced,
+ * it works and the descriptor can no longer write.
+ */
+static int
+busy(const char *point, const char *file)
+{
+	int fd;
+
+	CHECK((fd = open(file, O_WRONLY | O_CREAT, 0644)) >= 0);
+	CHECK(write(fd, "x", 1) == 1);
+	if (remount(point, "ro", EBUSY) != 0)
+		return 1;
+	if (remount(point, "ro-force", 0) != 0)
+		return 1;
+	errno = 0;
+	CHECK(write(fd, "y", 1) == -1);
+	close(fd);
+	printf("%s: open for writing blocks a downgrade until forced\n", file);
 	return 0;
 }
 
@@ -344,6 +398,10 @@ main(int ac, char **av)
 		return domount(av[2], av[3], MNT_RDONLY);
 	if (ac == 4 && strcmp(av[1], "mount-rw") == 0)
 		return domount(av[2], av[3], 0);
+	if (ac == 5 && strcmp(av[1], "remount") == 0)
+		return remount(av[2], av[3], atoi(av[4]));
+	if (ac == 4 && strcmp(av[1], "busy") == 0)
+		return busy(av[2], av[3]);
 	if (ac == 3 && strcmp(av[1], "unmount") == 0) {
 		CHECK(unmount(av[2], 0) == 0);
 		return 0;

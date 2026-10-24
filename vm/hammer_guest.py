@@ -354,7 +354,7 @@ def walk_differences(got, want, ignore_crc=True, ignore_mtime=False,
 
 CASES = ('refuse-badsig', 'refuse-v6', 'refuse-twovol', 'refuse-badcrc',
          'refuse-needs-recovery', 'rw-empty', 'ns-ops', 'data-ops', 'unlinked',
-         'fsync-crash', 'fsync-check', 'big-dir', 'big-file', 'churn', 'enospc',
+         'fsync-crash', 'fsync-check', 'big-dir', 'big-file', 'churn', 'enospc', 'remount',
          'refuse-rw-recovery',
          'refuse-rw-pfs', 'admit', 'namespace',
          'readdir-small', 'times', 'erofs', 'crafted-name', 'data', 'holes',
@@ -363,7 +363,7 @@ CASES = ('refuse-badsig', 'refuse-v6', 'refuse-twovol', 'refuse-badcrc',
 # Cases that write the data volume: no unchanged check; the result is
 # exported and checked on DragonFly instead (HAMMER_NO_DFLY=1 skips that).
 WRITE_CASES = ('rw-empty', 'ns-ops', 'data-ops', 'unlinked', 'fsync-crash',
-               'big-dir', 'big-file', 'churn', 'enospc')
+               'big-dir', 'big-file', 'churn', 'enospc', 'remount')
 # Write cases that end without an unmount: nothing to check on the host
 # (the next case, fsync-check, mounts what they left).
 CRASH_CASES = ('fsync-crash',)

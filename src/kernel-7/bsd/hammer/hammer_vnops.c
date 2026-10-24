@@ -34,6 +34,8 @@
 
 #include "hammer.h"
 #include <vfs/vfs_support.h>
+#include <sys/resourcevar.h>
+#include <kern/mapfs.h>
 
 #if 0 /* phase 2: DragonFly VOPs, kept for the write path */
 
@@ -3613,6 +3615,7 @@ int (**hammer_vnodeop_p)(void *);
 
 static int hammer_lookup_name(hammer_inode_t dip, const char *name, int nlen,
 			      int64_t *obj_idp, uint32_t *localizationp);
+static int hammer_fsync_ip(hammer_inode_t ip, int waitfor);
 
 /*
  * Return a locked, referenced vnode for object OBJ_ID of the mount.
@@ -4678,11 +4681,6 @@ done:
 	return(error);
 }
 
-static int
-hammer_vop_erofs(void *ap)
-{
-	return(EROFS);
-}
 
 /*
  * File data goes through the buffer cache in 8 KB logical blocks
@@ -4802,6 +4800,10 @@ hammer_vop_read(struct vop_read_args *ap)
 	return(error);
 }
 
+/*
+ * Writes never dirty these buffers (hammer_vop_write stores whole HAMMER
+ * blocks itself), so a write here is a bug, not data to keep.
+ */
 static int
 hammer_vop_strategy(struct vop_strategy_args *ap)
 {
@@ -4809,12 +4811,15 @@ hammer_vop_strategy(struct vop_strategy_args *ap)
 	hammer_inode_t ip = VTOI(bp->b_vp);
 	int error;
 
-	if ((bp->b_flags & B_READ) == 0)
-		error = EROFS;
-	else
+	if ((bp->b_flags & B_READ) == 0) {
+		hkprintf("file %016jx: unexpected buffer write at block %d\n",
+			 (intmax_t)ip->obj_id, (int)bp->b_lblkno);
+		error = EIO;
+	} else {
 		error = hammer_read_range(ip,
 				(int64_t)bp->b_lblkno * HAMMER_LBLKSIZE,
 				bp->b_data, bp->b_bcount);
+	}
 	if (error) {
 		bp->b_error = error;
 		bp->b_flags |= B_ERROR;
@@ -4822,6 +4827,435 @@ hammer_vop_strategy(struct vop_strategy_args *ap)
 	bp->b_resid = 0;
 	biodone(bp);
 	return(error);
+}
+
+/*
+ * Bring the file's cached 8 KB blocks inside the HAMMER block at BASE
+ * (BSIZE bytes, now BLK) up to date; blocks not cached are left alone.
+ */
+static void
+hammer_update_bufs(struct vnode *vp, int64_t base, int bsize, char *blk)
+{
+	struct buf *bp;
+	daddr_t lbn;
+	int off;
+
+	for (off = 0; off < bsize; off += HAMMER_LBLKSIZE) {
+		lbn = (daddr_t)((base + off) / HAMMER_LBLKSIZE);
+		if (incore(vp, lbn) == NULL)
+			continue;
+		bp = getblk(vp, lbn, HAMMER_LBLKSIZE, 0, 0);
+		if ((bp->b_flags & B_DONE) && bp->b_bcount == HAMMER_LBLKSIZE)
+			bcopy(blk + off, bp->b_data, HAMMER_LBLKSIZE);
+		else
+			bp->b_flags |= B_INVAL;
+		brelse(bp);
+	}
+}
+
+/*
+ * Drop the file's cached blocks from logical block LBN on, so bytes past
+ * a new EOF cannot come back if the file grows again.  The file never
+ * has dirty blocks (hammer_vop_strategy), only clean ones.
+ */
+static void
+hammer_drop_bufs(struct vnode *vp, daddr_t lbn)
+{
+	struct buf *bp;
+	int s;
+
+	s = splbio();
+restart:
+	for (bp = vp->v_cleanblkhd.lh_first; bp; bp = bp->b_vnbufs.le_next) {
+		if (bp->b_lblkno < lbn)
+			continue;
+		if (bp->b_flags & B_BUSY) {
+			bp->b_flags |= B_WANTED;
+			tsleep((caddr_t)bp, 0, "hmrdrop", 0);
+		} else {
+			bremfree(bp);
+			bp->b_flags |= B_BUSY | B_INVAL;
+			brelse(bp);
+		}
+		goto restart;
+	}
+	splx(s);
+}
+
+/*
+ * Store the HAMMER block at BASE, BSIZE bytes of BLK, as one bulk record
+ * replacing any older record of the block.  A file that is one block no
+ * bigger than HAMMER_HBUFSIZE gets a record cut to its SIZE, as
+ * upstream's strategy write does.
+ */
+static int
+hammer_write_block(hammer_inode_t ip, int64_t base, int bsize, int64_t size,
+		   char *blk)
+{
+	hammer_record_t record;
+	int bytes, error;
+
+	if (base == 0 && size <= HAMMER_HBUFSIZE)
+		bytes = HAMMER_DATA_DOALIGN_WITH(int, size);
+	else
+		bytes = bsize;
+	if (bytes == 0)
+		return(0);
+	record = hammer_ip_add_bulk(ip, base, blk, bytes, &error);
+	if (record == NULL)
+		return(error);
+	return(hammer_io_direct_write(ip->hmp, record, blk));
+}
+
+/*
+ * Write file data a HAMMER block at a time (16 KB below 1 MB, 64 KB
+ * above): each block touched is assembled from its old contents and the
+ * new bytes and stored as one bulk record, as upstream's strategy write
+ * stores a whole buffer.  Upstream's overwrite and truncation code
+ * relies on data records being whole blocks, which 8 KB vnode buffers
+ * (MAXBSIZE) cannot give, so those only cache reads and are kept up to
+ * date here.
+ * shortcut: a write of part of a block rewrites the whole block; keep a
+ * pending block per inode if small writes are too slow.
+ */
+static int
+hammer_vop_write(struct vop_write_args *ap)
+{
+	struct vnode *vp = ap->a_vp;
+	struct uio *uio = ap->a_uio;
+	struct proc *p = uio->uio_procp;
+	hammer_inode_t ip = VTOI(vp);
+	hammer_mount_t hmp = ip->hmp;
+	struct hammer_transaction trans;
+	int64_t size, base, end;
+	int resid = uio->uio_resid;
+	int bsize, boff, n, flags, error = 0;
+	mode_t mode;
+	char *blk;
+
+	if (vp->v_type != VREG)
+		return(EINVAL);
+	if (hmp->ronly || (ip->flags & HAMMER_INODE_RO))
+		return(EROFS);
+	if (ap->a_ioflag & IO_APPEND)
+		uio->uio_offset = (int64_t)hget64(ip->ino_data.size);
+	if (uio->uio_offset < 0 ||
+	    uio->uio_offset + uio->uio_resid < uio->uio_offset)
+		return(EFBIG);
+	if (uio->uio_resid == 0)
+		return(0);
+	if (p && uio->uio_offset + uio->uio_resid >
+	    p->p_rlimit[RLIMIT_FSIZE].rlim_cur) {
+		psignal(p, SIGXFSZ);
+		return(EFBIG);
+	}
+
+	blk = kmalloc(HAMMER_XBUFSIZE, M_HAMMER, M_WAITOK);
+	hammer_start_transaction(&trans, hmp);
+	while (uio->uio_resid > 0) {
+		if ((error = hammer_checkspace(hmp, HAMMER_CHKSPC_WRITE)) != 0)
+			break;
+
+		/*
+		 * Keep a pipeline with the flusher (upstream's rsv_recs
+		 * check), and keep the dirty buffers, which live in kernel
+		 * memory until flushed, under hammer_limit_dirtybufspace.
+		 */
+		if (ip->rsv_recs >= hammer_limit_inode_recs ||
+		    hammer_flusher_meta_limit(hmp)) {
+			hammer_flush_inode(ip, HAMMER_FLUSH_SIGNAL);
+			hammer_flusher_sync(hmp);
+		}
+
+		size = (int64_t)hget64(ip->ino_data.size);
+		bsize = hammer_blocksize(uio->uio_offset);
+		base = uio->uio_offset & ~(int64_t)(bsize - 1);
+		boff = (int)(uio->uio_offset - base);
+		n = bsize - boff;
+		if (n > uio->uio_resid)
+			n = uio->uio_resid;
+
+		/*
+		 * The block's old contents, zeros past EOF.
+		 */
+		if ((boff != 0 || n != bsize) && base < size) {
+			error = hammer_read_range(ip, base, blk, bsize);
+			if (error)
+				break;
+			if (size < base + bsize)
+				bzero(blk + (int)(size - base),
+				      (int)(base + bsize - size));
+		} else {
+			bzero(blk, bsize);
+		}
+		if ((error = uiomove(blk + boff, n, uio)) != 0)
+			break;
+		end = base + boff + n;
+		if (end < size)
+			end = size;
+		if ((error = hammer_write_block(ip, base, bsize, end, blk)) != 0)
+			break;
+
+		flags = HAMMER_INODE_MTIME;
+		if (end > size) {
+			ip->ino_data.size = hmk64(end);
+			flags |= HAMMER_INODE_SDIRTY;
+			if (vp->v_vm_info && !vp->v_vm_info->mapped)
+				vnode_pager_setsize(vp, (u_long)end);
+		}
+		ip->ino_data.mtime = hmk64(trans.time);
+		hammer_modify_inode(&trans, ip, flags);
+		hammer_update_bufs(vp, base, bsize, blk);
+		hammer_stats_file_write += n;
+	}
+
+	/*
+	 * A write by someone other than root clears setuid and setgid, as
+	 * ffs_write does.
+	 */
+	mode = hget16(ip->ino_data.mode);
+	if (resid > uio->uio_resid && ap->a_cred && ap->a_cred->cr_uid != 0 &&
+	    (mode & (S_ISUID | S_ISGID))) {
+		ip->ino_data.mode = hmk16(mode & ~(S_ISUID | S_ISGID));
+		hammer_modify_inode(&trans, ip, HAMMER_INODE_DDIRTY);
+	}
+	hammer_done_transaction(&trans);
+	kfree(blk, M_HAMMER);
+	if (error == 0 && (ap->a_ioflag & IO_SYNC))
+		error = hammer_fsync_ip(ip, MNT_WAIT);
+	return(error);
+}
+
+/*
+ * Change the size of regular file IP to SIZE (upstream's setattr size
+ * case).  Shrinking drops frontend records past SIZE, leaves the backend
+ * a truncation point to delete whole on-media blocks from, and rewrites
+ * the HAMMER block holding the new EOF with zeros past it (DragonFly does
+ * that through nvtruncbuf).  Growing only changes the size: the new
+ * range is a hole and reads as zeros.
+ */
+static int
+hammer_setsize(hammer_inode_t ip, struct vnode *vp, int64_t size)
+{
+	int64_t osize = (int64_t)hget64(ip->ino_data.size);
+	int64_t base;
+	int bsize, error = 0;
+	char *blk;
+
+#if MACH_NBC
+	if ((error = mapfs_trunc(vp, (vm_offset_t)size)) != 0)
+		return(error);
+#endif
+	if (size < osize) {
+		hammer_ip_frontend_trunc(ip, size);
+		if ((ip->flags & HAMMER_INODE_TRUNCATED) == 0) {
+			ip->flags |= HAMMER_INODE_TRUNCATED;
+			ip->trunc_off = size;
+		} else if (ip->trunc_off > size) {
+			ip->trunc_off = size;
+		}
+		bsize = hammer_blocksize(size);
+		base = size & ~(int64_t)(bsize - 1);
+		if (size > base) {
+			blk = kmalloc(bsize, M_HAMMER, M_WAITOK);
+			error = hammer_read_range(ip, base, blk, bsize);
+			if (error == 0) {
+				bzero(blk + (int)(size - base),
+				      bsize - (int)(size - base));
+				error = hammer_write_block(ip, base, bsize, size,
+							   blk);
+			}
+			if (error == 0)
+				hammer_update_bufs(vp, base, bsize, blk);
+			kfree(blk, M_HAMMER);
+			base += bsize;
+		}
+		hammer_drop_bufs(vp, (daddr_t)(base / HAMMER_LBLKSIZE));
+	}
+	if (error == 0) {
+		ip->ino_data.size = hmk64(size);
+		if (vp->v_vm_info && !vp->v_vm_info->mapped)
+			vnode_pager_setsize(vp, (u_long)size);
+	}
+	return(error);
+}
+
+/*
+ * Attribute changes, with ufs_setattr's rules (ufs_chmod, ufs_chown) and
+ * upstream's HAMMER updates.  Changes made before a refusal are kept and
+ * flushed, as ufs_setattr keeps them.
+ */
+static int
+hammer_vop_setattr(struct vop_setattr_args *ap)
+{
+	struct vnode *vp = ap->a_vp;
+	struct vattr *vap = ap->a_vap;
+	struct ucred *cred = ap->a_cred;
+	struct proc *p = ap->a_p;
+	struct hammer_transaction trans;
+	hammer_inode_t ip = VTOI(vp);
+	hammer_mount_t hmp = ip->hmp;
+	uint32_t uflags = hget32(ip->ino_data.uflags);
+	mode_t mode = hget16(ip->ino_data.mode);
+	uid_t uid = hammer_to_unix_xid(&ip->ino_data.uid), nuid;
+	gid_t gid = hammer_to_unix_xid(&ip->ino_data.gid), ngid;
+	int modflags = 0, error = 0;
+
+	if (vap->va_type != VNON || vap->va_nlink != VNOVAL ||
+	    vap->va_fsid != VNOVAL || vap->va_fileid != VNOVAL ||
+	    vap->va_blocksize != VNOVAL || vap->va_rdev != VNOVAL ||
+	    (int)vap->va_bytes != VNOVAL || vap->va_gen != VNOVAL)
+		return(EINVAL);
+	if ((vp->v_mount->mnt_flag & MNT_RDONLY) || hmp->ronly ||
+	    (ip->flags & HAMMER_INODE_RO))
+		return(EROFS);
+	if (hammer_nohistory(ip) == 0 &&
+	    (error = hammer_checkspace(hmp, HAMMER_CHKSPC_REMOVE)) != 0)
+		return(error);
+
+	hammer_start_transaction(&trans, hmp);
+	if (vap->va_flags != VNOVAL) {
+		if (cred->cr_uid != uid &&
+		    (error = suser(cred, &p->p_acflag)) != 0)
+			goto done;
+		if (cred->cr_uid == 0) {
+			if ((uflags & (SF_IMMUTABLE | SF_APPEND)) &&
+			    securelevel > 0) {
+				error = EPERM;
+				goto done;
+			}
+			uflags = vap->va_flags;
+		} else {
+			if ((uflags & (SF_IMMUTABLE | SF_APPEND)) ||
+			    (vap->va_flags & UF_SETTABLE) != vap->va_flags) {
+				error = EPERM;
+				goto done;
+			}
+			uflags = (uflags & SF_SETTABLE) |
+				 (vap->va_flags & UF_SETTABLE);
+		}
+		ip->ino_data.uflags = hmk32(uflags);
+		ip->ino_data.ctime = hmk64(trans.time);
+		modflags |= HAMMER_INODE_DDIRTY;
+		if (vap->va_flags & (IMMUTABLE | APPEND))
+			goto done;
+	}
+	if (uflags & (IMMUTABLE | APPEND)) {
+		error = EPERM;
+		goto done;
+	}
+	if (vap->va_uid != (uid_t)VNOVAL || vap->va_gid != (gid_t)VNOVAL) {
+		nuid = vap->va_uid == (uid_t)VNOVAL ? uid : vap->va_uid;
+		ngid = vap->va_gid == (gid_t)VNOVAL ? gid : vap->va_gid;
+		if ((cred->cr_uid != uid || nuid != uid ||
+		     (ngid != gid && !groupmember(ngid, cred))) &&
+		    (error = suser(cred, &p->p_acflag)) != 0)
+			goto done;
+		if (nuid != uid && cred->cr_uid != 0)
+			mode &= ~S_ISUID;
+		if (ngid != gid && cred->cr_uid != 0)
+			mode &= ~S_ISGID;
+		hammer_guid_to_uuid(&ip->ino_data.uid, nuid);
+		hammer_guid_to_uuid(&ip->ino_data.gid, ngid);
+		ip->ino_data.mode = hmk16(mode);
+		ip->ino_data.ctime = hmk64(trans.time);
+		modflags |= HAMMER_INODE_DDIRTY;
+		uid = nuid;
+		gid = ngid;
+	}
+	if (vap->va_size != VNOVAL) {
+		if (vp->v_type == VDIR) {
+			error = EISDIR;
+			goto done;
+		}
+		if (vp->v_type != VREG) {
+			error = EINVAL;
+			goto done;
+		}
+		if (vap->va_size != hget64(ip->ino_data.size)) {
+			error = hammer_setsize(ip, vp, vap->va_size);
+			if (error)
+				goto done;
+			ip->ino_data.mtime = hmk64(trans.time);
+			modflags |= HAMMER_INODE_MTIME | HAMMER_INODE_DDIRTY;
+		}
+	}
+	if (vap->va_atime.tv_sec != VNOVAL || vap->va_mtime.tv_sec != VNOVAL) {
+		if (cred->cr_uid != uid &&
+		    (error = suser(cred, &p->p_acflag)) != 0 &&
+		    ((vap->va_vaflags & VA_UTIMES_NULL) == 0 ||
+		     (error = VOP_ACCESS(vp, VWRITE, cred, p)) != 0))
+			goto done;
+		error = 0;
+		if (vap->va_atime.tv_sec != VNOVAL) {
+			ip->ino_data.atime =
+				hmk64(hammer_timespec_to_time(&vap->va_atime));
+			modflags |= HAMMER_INODE_ATIME;
+		}
+		if (vap->va_mtime.tv_sec != VNOVAL) {
+			ip->ino_data.mtime =
+				hmk64(hammer_timespec_to_time(&vap->va_mtime));
+			modflags |= HAMMER_INODE_MTIME;
+		}
+	}
+	if (vap->va_mode != (mode_t)VNOVAL) {
+		if (cred->cr_uid != uid &&
+		    (error = suser(cred, &p->p_acflag)) != 0)
+			goto done;
+		if (cred->cr_uid) {
+			if (vp->v_type != VDIR && (vap->va_mode & S_ISTXT)) {
+				error = EFTYPE;
+				goto done;
+			}
+			if (!groupmember(gid, cred) && (vap->va_mode & S_ISGID)) {
+				error = EPERM;
+				goto done;
+			}
+		}
+		mode = (mode & ~ALLPERMS) | (vap->va_mode & ALLPERMS);
+		ip->ino_data.mode = hmk16(mode);
+		ip->ino_data.ctime = hmk64(trans.time);
+		modflags |= HAMMER_INODE_DDIRTY;
+	}
+done:
+	if (modflags)
+		hammer_modify_inode(&trans, ip, modflags);
+	hammer_done_transaction(&trans);
+	return(error);
+}
+
+/*
+ * A full flush of the inode (there is no REDO), waited for with
+ * MNT_WAIT, then, if the volume header's UNDO start still lags the last
+ * flush, one more flusher cycle: until it catches up a crash would undo
+ * that flush.  A clean, idle inode costs nothing, which matters because
+ * vnode reclaim calls VOP_FSYNC on every vnode.
+ */
+static int
+hammer_fsync_ip(hammer_inode_t ip, int waitfor)
+{
+	hammer_mount_t hmp = ip->hmp;
+
+	if ((ip->flags & HAMMER_INODE_MODMASK) ||
+	    ip->flush_state != HAMMER_FST_IDLE) {
+		++hammer_count_fsyncs;
+		hammer_flush_inode(ip, HAMMER_FLUSH_SIGNAL);
+		if (waitfor == MNT_WAIT)
+			hammer_wait_inode(ip);
+	}
+	if (waitfor == MNT_WAIT && (hmp->hflags & HMNT_UNDO_DIRTY))
+		hammer_flusher_sync(hmp);
+	return(ip->error);
+}
+
+static int
+hammer_vop_fsync(struct vop_fsync_args *ap)
+{
+	hammer_inode_t ip = VTOI(ap->a_vp);
+
+	if (ip == NULL || ip->hmp->ronly)
+		return(0);
+	return(hammer_fsync_ip(ip, ap->a_waitfor));
 }
 
 /* Logical blocks are not device blocks: identity mapping, no clustering. */
@@ -4837,8 +5271,11 @@ hammer_vop_bmap(struct vop_bmap_args *ap)
 	return(0);
 }
 
-/* Generic 4.4BSD ops that never look at the inode. */
-extern int ufs_seek(), ufs_select(), ufs_mmap(), ufs_pagein();
+/*
+ * Generic 4.4BSD ops that never look at the inode; ufs_pageout writes
+ * through VOP_WRITE.
+ */
+extern int ufs_seek(), ufs_select(), ufs_mmap(), ufs_pagein(), ufs_pageout();
 
 struct vnodeopv_entry_desc hammer_vnodeop_entries[] = {
 	{ &vop_default_desc, (int (*)())vn_default_error },
@@ -4849,17 +5286,17 @@ struct vnodeopv_entry_desc hammer_vnodeop_entries[] = {
 	{ &vop_close_desc, (int (*)())hammer_vop_close },
 	{ &vop_access_desc, (int (*)())hammer_vop_access },
 	{ &vop_getattr_desc, (int (*)())hammer_vop_getattr },
-	{ &vop_setattr_desc, (int (*)())hammer_vop_erofs },
+	{ &vop_setattr_desc, (int (*)())hammer_vop_setattr },
 	{ &vop_read_desc, (int (*)())hammer_vop_read },
-	{ &vop_write_desc, (int (*)())hammer_vop_erofs },
+	{ &vop_write_desc, (int (*)())hammer_vop_write },
 	{ &vop_strategy_desc, (int (*)())hammer_vop_strategy },
 	{ &vop_bmap_desc, (int (*)())hammer_vop_bmap },
-	{ &vop_fsync_desc, (int (*)())nop_fsync },
+	{ &vop_fsync_desc, (int (*)())hammer_vop_fsync },
 	{ &vop_seek_desc, (int (*)())ufs_seek },
 	{ &vop_select_desc, (int (*)())ufs_select },
 	{ &vop_mmap_desc, (int (*)())ufs_mmap },
 	{ &vop_pagein_desc, (int (*)())ufs_pagein },
-	{ &vop_pageout_desc, (int (*)())hammer_vop_erofs },
+	{ &vop_pageout_desc, (int (*)())ufs_pageout },
 	{ &vop_lease_desc, (int (*)())nop_lease },
 	{ &vop_remove_desc, (int (*)())hammer_vop_remove },
 	{ &vop_link_desc, (int (*)())hammer_vop_link },

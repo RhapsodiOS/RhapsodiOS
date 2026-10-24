@@ -557,9 +557,48 @@ hammer_io_set_modlist(hammer_io_t io)
 }
 
 /*
- * File data goes through HAMMER buffers (see hammer_vop_strategy), so a
- * record never has a direct write to wait for.  Upstream also removed
- * buffer aliases of the record's data here; that is kept.
+ * Store a bulk data record's bytes (DATA, data_len of them, from
+ * hammer_ip_add_bulk) at its reserved offset and add the record to its
+ * inode.  Upstream wrote large records straight to the device from the
+ * vnode's buffer; here every size goes through a HAMMER buffer, which the
+ * flusher writes with the other dirty data.  A record that fills a whole
+ * large-data buffer does not read the old contents first.  On error the
+ * record is thrown away.
+ */
+int
+hammer_io_direct_write(hammer_mount_t hmp, hammer_record_t record,
+		       const void *data)
+{
+	hammer_buffer_t buffer = NULL;
+	hammer_off_t off = hget64(record->leaf.data_offset);
+	int bytes = (int)hget32(record->leaf.data_len);
+	void *ptr;
+	int error;
+
+	KKASSERT(hammer_is_zone_record(off));
+	if ((off & HAMMER_XBUFMASK64) == 0 && bytes == HAMMER_XBUFSIZE)
+		ptr = hammer_bnew_ext(hmp, off, bytes, &error, &buffer);
+	else
+		ptr = hammer_bread_ext(hmp, off, bytes, &error, &buffer);
+	if (error == 0) {
+		hammer_io_modify(&buffer->io, 1);
+		bcopy(data, ptr, bytes);
+		hammer_io_modify_done(&buffer->io);
+		hammer_ip_replace_bulk(hmp, record);
+	} else {
+		hdkprintf("failed @ %016jx\n", (intmax_t)off);
+		record->flags |= HAMMER_RECF_DELETED_FE;
+		hammer_rel_mem_record(record);
+	}
+	if (buffer)
+		hammer_rel_buffer(buffer, 0);
+	return(error);
+}
+
+/*
+ * File data goes through HAMMER buffers (hammer_io_direct_write above),
+ * so a record never has a direct write to wait for.  Upstream also
+ * removed buffer aliases of the record's data here; that is kept.
  */
 void
 hammer_io_direct_wait(hammer_record_t record)

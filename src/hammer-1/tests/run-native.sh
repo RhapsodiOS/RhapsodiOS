@@ -46,6 +46,38 @@ ns-ops)
 	./hammer_io unmount "$2"
 	checkvol
 	;;
+data-ops)
+	# File data workload, checked before and after a remount; the host
+	# diffs the walk (with content CRCs) with DragonFly's.
+	./hammer_io mount-rw $DEV "$2"
+	./data_ops write "$2"
+	./data_ops verify "$2"
+	./hammer_io unmount "$2"
+	./hammer_io mount $DEV "$2"
+	./data_ops verify-remount "$2"
+	./hammer_walk "$2" > /tmp/walk.txt
+	gzip -9 < /tmp/walk.txt > walk.gz
+	./hammer_io unmount "$2"
+	checkvol
+	;;
+unlinked)
+	./hammer_io mount-rw $DEV "$2"
+	./data_ops unlinked "$2"
+	./hammer_io unmount "$2"
+	checkvol
+	;;
+fsync-crash)
+	# No unmount: the host quits the guest with the volume mounted.
+	./hammer_io mount-rw $DEV "$2"
+	./data_ops durable "$2"
+	;;
+fsync-check)
+	# The volume fsync-crash left; mounting it needs no recovery.
+	./hammer_io mount $DEV "$2"
+	./data_ops durable-check "$2"
+	./hammer_io unmount "$2"
+	checkvol
+	;;
 refuse-rw-recovery)
 	./hammer_io mounterr $DEV "$2" 0 $EOPNOTSUPP
 	;;

@@ -10,7 +10,7 @@ COMMON = ../common/ondisk.c ../common/cache.c ../common/blockmap.c \
 HAMMER = ../hammer/hammer.c ../hammer/cmd_show.c ../hammer/cmd_blockmap.c
 IMG = /var/tmp/hammer-newfs-show.img
 
-all: newfs_hammer mount_hammer hammer hammer_walk hammer_io ns_ops
+all: newfs_hammer mount_hammer hammer hammer_walk hammer_io ns_ops data_ops
 
 # Syscall checks run on a guest booted with a HAMMER kernel.
 hammer_io: hammer_io.c $(K)/hammer_mount.h
@@ -20,9 +20,12 @@ hammer_io: hammer_io.c $(K)/hammer_mount.h
 hammer_walk: hammer_walk.c
 	$(CC) -O hammer_walk.c -o $@
 
-# Namespace workload; the same source is compiled on DragonFly.
+# Namespace and file data workloads; the same sources are compiled on DragonFly.
 ns_ops: ns_ops.c
 	$(CC) -O ns_ops.c -o $@
+
+data_ops: data_ops.c
+	$(CC) -O data_ops.c -o $@
 
 newfs_hammer: ../newfs_hammer/newfs_hammer.c $(COMMON)
 	$(CC) $(CFLAGS) ../newfs_hammer/newfs_hammer.c $(COMMON) -o $@
@@ -52,6 +55,6 @@ ppc:
 	    $(COMMON:../%=../../%)
 
 clean:
-	rm -rf newfs_hammer mount_hammer hammer hammer_walk hammer_io ns_ops ppc *.out
+	rm -rf newfs_hammer mount_hammer hammer hammer_walk hammer_io ns_ops data_ops ppc *.out
 
 .PHONY: all mirrors check ppc clean

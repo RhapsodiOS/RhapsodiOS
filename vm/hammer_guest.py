@@ -327,16 +327,18 @@ def make_fixture_overlay(kind: str, wrapped: Path, out: Path) -> None:
             src.unlink()
 
 
-def walk_differences(got, want, ignore_crc=True, ignore_mtime=False):
+def walk_differences(got, want, ignore_crc=True, ignore_mtime=False,
+                     loose_crc=()):
     """hammer_walk output against a reference manifest.  With ignore_crc
     (hammer_walk -n) the content CRC column, field 9, is not compared;
     with ignore_mtime (trees made by a workload, not copied) field 8 is
-    not either.  Returns problem lines."""
+    not either; paths in loose_crc have their CRC ignored.  Returns
+    problem lines."""
     def norm(text):
         rows = []
         for line in text.splitlines():
             f = line.split('\t')
-            if ignore_crc and len(f) > 8:
+            if (ignore_crc or f[0] in loose_crc) and len(f) > 8:
                 f[8] = '-'
             if ignore_mtime and len(f) > 7:
                 f[7] = '-'
@@ -351,19 +353,32 @@ def walk_differences(got, want, ignore_crc=True, ignore_mtime=False):
 
 
 CASES = ('refuse-badsig', 'refuse-v6', 'refuse-twovol', 'refuse-badcrc',
-         'refuse-needs-recovery', 'rw-empty', 'ns-ops', 'refuse-rw-recovery',
+         'refuse-needs-recovery', 'rw-empty', 'ns-ops', 'data-ops', 'unlinked',
+         'fsync-crash', 'fsync-check', 'refuse-rw-recovery',
          'refuse-rw-pfs', 'admit', 'namespace',
          'readdir-small', 'times', 'erofs', 'crafted-name', 'data', 'holes',
          'mmap', 'dedup', 'crafted-data', 'cycle', 'negread', 'crafted-count',
          'crafted-len', 'crafted-off', 'crafted-dotdot', 'crafted-dirhash')
 # Cases that write the data volume: no unchanged check; the result is
 # exported and checked on DragonFly instead (HAMMER_NO_DFLY=1 skips that).
-WRITE_CASES = ('rw-empty', 'ns-ops')
+WRITE_CASES = ('rw-empty', 'ns-ops', 'data-ops', 'unlinked', 'fsync-crash')
+# Write cases that end without an unmount: nothing to check on the host
+# (the next case, fsync-check, mounts what they left).
+CRASH_CASES = ('fsync-crash',)
 # Walks compared with a reference beside the base volume.  Workload cases
 # name their reference (made by the same workload on DragonFly) and ignore
 # mtimes; the others use <base volume>.walk.
-WALK_CASES = ('namespace', 'data', 'dedup', 'ns-ops')
-WORKLOAD_WALKS = {'ns-ops': 'ns-ops.walk'}
+WALK_CASES = ('namespace', 'data', 'dedup', 'ns-ops', 'data-ops')
+WORKLOAD_WALKS = {'ns-ops': 'ns-ops.walk', 'data-ops': 'data-ops.walk'}
+# A file written through MAP_SHARED: Rhapsody's VM need not have written
+# those pages back by the remount (data_ops.c, verify-remount).
+LOOSE_CRC = {'data-ops': ('./map',)}
+# Files ending in a hole: hammer recover sizes them by their data.
+RECOVER_SKIP = {'data-ops': ('trunc',)}
+# Tools each case ships beside hammer_io.
+CASE_TOOLS = {'ns-ops': ('ns_ops',), 'data-ops': ('data_ops',),
+              'unlinked': ('data_ops',), 'fsync-crash': ('data_ops',),
+              'fsync-check': ('data_ops', 'hammer')}
 DFLY_ISO = os.environ.get(
     'DFLY_ISO', r'D:\RhapsodiOS\vm\work\dfly\iso\dfly-x86_64-6.4.2_REL.iso')
 UNDO_FIRST = UNDO_MAP + 8
@@ -412,24 +427,30 @@ def export_volume(data_ov: Path, outdir: Path) -> Path:
     return raw
 
 
-def recover_differences(tree: str, rec: str):
-    """Regular files 'hammer recover' rebuilt against the mounted tree, as
-    sets of (size, content CRC): recover names files its own way and
-    rebuilds a file once however many links it has."""
-    def files(text):
+def recover_differences(tree: str, rec: str, skip=()):
+    """Regular files 'hammer recover' rebuilt, against the mounted tree.
+
+    recover names files its own way and rebuilds a hard-linked file once,
+    so files are compared as (size, content CRC) pairs.  It rebuilds only
+    data below 1 MiB (HAMMER_XDEMARC) and sizes a file by its data, so
+    larger files, and the names in SKIP (files ending in a hole), are not
+    compared; the same holds on volumes DragonFly wrote itself.  Every
+    other tree file must come back intact."""
+    def files(text, limit):
         out = set()
         for line in text.splitlines():
-            f = line.split('\t')
-            if len(f) > 8 and f[1] == 'f':
+            f = line.split('	')
+            if len(f) > 8 and f[1] == 'f' and                (limit is None or (int(f[6]) < limit and
+                                  f[0].rsplit('/', 1)[-1] not in skip)):
                 out.add((f[6], f[8]))
         return out
-    diff = files(tree) ^ files(rec)
-    if not diff:
+    missing = files(tree, 1 << 20) - files(rec, None)
+    if not missing:
         return []
-    return ['recover: %d (size, crc) pairs differ from the tree' % len(diff)]
+    return ['recover: %d files under 1 MiB not rebuilt intact' % len(missing)]
 
 
-def dfly_check(raw: Path, outdir: Path):
+def dfly_check(raw: Path, outdir: Path, recover_skip=()):
     """vm/dfly-check.sh on DragonFly against RAW; findings (empty = clean)."""
     import dfly_guest
     import fat32
@@ -443,7 +464,7 @@ def dfly_check(raw: Path, outdir: Path):
     tree = fat32.read_file(xfer, 'TREE.WLK').decode('latin-1')
     rec = fat32.read_file(xfer, 'REC.WLK').decode('latin-1')
     (Path(outdir)/'tree.walk').write_text(tree)
-    return recover_differences(tree, rec)
+    return recover_differences(tree, rec, recover_skip)
 
 
 def _fmt(path):
@@ -504,9 +525,11 @@ def run(case, outdir, volume, tools_dir):
     if writes:
         nodes.append(N('/hammer', 'reg', 0o100755, 0, 0, 0,
                        (Path(tools_dir)/'hammer').read_bytes()))
-    if case == 'ns-ops':
-        nodes.append(N('/ns_ops', 'reg', 0o100755, 0, 0, 0,
-                       (Path(tools_dir)/'ns_ops').read_bytes()))
+    for tool in CASE_TOOLS.get(case, ()):
+        if tool == 'hammer' and writes:
+            continue
+        nodes.append(N('/' + tool, 'reg', 0o100755, 0, 0, 0,
+                       (Path(tools_dir)/tool).read_bytes()))
     results = outdir/'results.img'
     results.write_bytes(ufs_build.build(ext2_guest.TEMPLATE, nodes))
     spec = importlib.util.spec_from_file_location('hammer_console', HERE/'guest-console.py')
@@ -553,13 +576,14 @@ def run(case, outdir, volume, tools_dir):
     problems = verify_result(case, code, stdout or '',
                              serial.read_text(errors='replace'),
                              writes or _unchanged(data_ov, volume))
-    if writes and code == 0:
+    if writes and code == 0 and case not in CRASH_CASES:
         raw = export_volume(data_ov, outdir)
         try:
             with raw.open('rb') as f:
                 problems += header_problems(f.read(HEADER))
             if not problems and os.environ.get('HAMMER_NO_DFLY') != '1':
-                problems += dfly_check(raw, outdir/'dfly')
+                problems += dfly_check(raw, outdir/'dfly',
+                                       RECOVER_SKIP.get(case, ()))
         finally:
             raw.unlink()
     if case in WALK_CASES and code == 0:
@@ -576,7 +600,8 @@ def run(case, outdir, volume, tools_dir):
             else base.with_suffix('.walk')
         diff = walk_differences(walk.decode('utf-8', 'replace'), ref.read_text(),
                                 ignore_crc=(case in ('namespace', 'ns-ops')),
-                                ignore_mtime=case in WORKLOAD_WALKS)
+                                ignore_mtime=case in WORKLOAD_WALKS,
+                                loose_crc=LOOSE_CRC.get(case, ()))
         problems += ['walk: ' + d for d in diff[:20]]
     for problem in problems:
         print(problem)

@@ -344,6 +344,15 @@ def test_walk_can_ignore_mtimes_of_workload_trees():
     assert hg.walk_differences(got.replace('644', '600'), want, ignore_mtime=True) != []
 
 
+def test_walk_loose_crc_ignores_only_the_named_paths():
+    want = './map\tf\t644\t0\t0\t1\t5\t9\t111\n./a\tf\t644\t0\t0\t1\t5\t9\t222\n'
+    got = want.replace('111', '333')
+    assert hg.walk_differences(got, want, ignore_crc=False) != []
+    assert hg.walk_differences(got, want, ignore_crc=False, loose_crc=('./map',)) == []
+    assert hg.walk_differences(got.replace('222', '444'), want, ignore_crc=False,
+                               loose_crc=('./map',)) != []
+
+
 def test_pfs_fixture_moves_the_last_element_to_pfs1(tmp_path):
     vol = tree_volume(tmp_path)
     out = tmp_path/'pfs.img'
@@ -379,6 +388,16 @@ def test_recover_differences_compares_file_contents_not_names():
     assert hg.recover_differences(tree, '') != []
     links = tree + './b\tf\t644\t0\t0\t2\t5\t9\t111\t=./a\n'
     assert hg.recover_differences(links, rec) == []
+
+
+def test_recover_differences_skips_large_files_and_named_holes():
+    tree = ('./big\tf\t644\t0\t0\t1\t1048577\t9\t7\n'
+            './h\tf\t644\t0\t0\t1\t40000\t9\t8\n'
+            './a\tf\t644\t0\t0\t1\t5\t9\t111\n')
+    rec = './PFS00000/a\tf\t644\t0\t0\t1\t5\t1\t111\n'
+    assert hg.recover_differences(tree, rec, skip=('h',)) == []
+    assert hg.recover_differences(tree, rec) != []
+    assert hg.recover_differences(tree, '', skip=('h',)) != []
 
 
 LELINT = __import__('pathlib').Path(__file__).resolve().parent.parent/'src/hammer-1/tests'

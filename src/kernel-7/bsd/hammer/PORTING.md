@@ -324,6 +324,43 @@ line added.
 - `inactive` queues an inode with no links left for deletion and recycles
   its vnode at once; `reclaim` releases with a flush, as upstream does.
 
+## File data writes (Phase 2)
+
+- **Writes store whole HAMMER blocks.**  Upstream's data records are
+  always whole blocks (16 KB below 1 MB, 64 KB above, or one short record
+  for a file of at most 8 KB), and its overwrite and truncation code depends
+  on it: an overwrite deletes old records in 16 KB units and truncation cuts
+  at `hammer_blocksize(trunc_off)`, and neither ever splits a record.
+  Rhapsody's vnode buffers are 8 KB (MAXBSIZE), so `hammer_vop_write`
+  assembles each block it touches from the old contents (read through
+  `hammer_read_range`) and the new bytes, and stores it with
+  `hammer_ip_add_bulk` and `hammer_io_direct_write`, which copies the data
+  into a HAMMER buffer for the flusher.  The 8 KB vnode buffers only cache
+  reads and are updated in place; `strategy` refuses writes.
+  shortcut: a write of part of a block rewrites the whole block; keep a
+  pending block per inode if small writes are too slow.
+- **Truncation** drops frontend records past the new size, leaves the
+  backend a truncation point, rewrites the block holding the new EOF with
+  zeros past it (DragonFly does this through `nvtruncbuf`), and drops
+  cached vnode buffers past it.  Growing a file makes a hole.
+- **fsync** flushes the inode and, if the volume header's UNDO start still
+  lags the last flush, waits one more flusher cycle: with no REDO a crash
+  before that cycle would undo the flush.  A clean idle inode costs nothing
+  (vnode reclaim calls VOP_FSYNC on every vnode).
+- **setattr** follows `ufs_setattr` (`ufs_chmod`, `ufs_chown`, the file
+  flags and utimes rules); `pageout` is `ufs_pageout` (through VOP_WRITE).
+- **mmap(MAP_SHARED) writes** are seen by `read()` while the file is
+  mounted, but Rhapsody writes such pages back only when the pageout daemon
+  cleans them: it has no `msync()`, pager teardown (`vnode_dealloc`,
+  `vm_object_terminate`) writes no pages, and `fsync` pushes only the dirty
+  range `mapfs` recorded for its own I/O.  This holds for every filesystem.
+- An unlinked file keeps its inode until the last close
+  (`hammer_vop_inactive`); its data stays as history until pruning, so free
+  space does not return then.
+- The frontend throttles writes when an inode has too many pending records
+  or the dirty buffers reach `hammer_limit_dirtybufspace`, by running the
+  flusher.
+
 ## Left for Phase 2
 
 - Still behind `#if 0 /* phase 2 */`: `hammer_inode.c`'s PFS save and

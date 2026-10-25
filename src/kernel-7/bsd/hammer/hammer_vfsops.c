@@ -232,7 +232,10 @@ hammer_vfs_mount(struct mount *mp, char *path, caddr_t data,
 	}
 	if (p->p_ucred->cr_uid != 0) {
 		vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY, p);
-		error = VOP_ACCESS(devvp, VREAD, p->p_ucred, p);
+		/* a read-write mount must be able to write (ffs_mount) */
+		error = VOP_ACCESS(devvp, VREAD |
+				   ((mp->mnt_flag & MNT_RDONLY) ? 0 : VWRITE),
+				   p->p_ucred, p);
 		VOP_UNLOCK(devvp, 0, p);
 		if (error) {
 			vrele(devvp);
@@ -377,6 +380,39 @@ hammer_vfs_mount(struct mount *mp, char *path, caddr_t data,
 }
 
 /*
+ * A file unlinked while still open is deleted at its last close, which a
+ * read-only mount cannot do: such a file keeps a downgrade back.
+ */
+static int
+hammer_open_unlinked_callback(hammer_inode_t ip, void *data)
+{
+	if (ip->vp && ip->vp->v_usecount > 0 &&
+	    hget64(ip->ino_data.nlinks) == 0)
+		return(-1);
+	return(0);
+}
+
+/*
+ * Check access MODE to the volume's device, as ffs_mount does for
+ * users other than root.
+ */
+static int
+hammer_devaccess(hammer_mount_t hmp, int mode, struct proc *p)
+{
+	hammer_volume_t rootvol;
+	int error;
+
+	rootvol = hammer_get_root_volume(hmp, &error);
+	if (error)
+		return(error);
+	vn_lock(rootvol->devvp, LK_EXCLUSIVE | LK_RETRY, p);
+	error = VOP_ACCESS(rootvol->devvp, mode, p->p_ucred, p);
+	VOP_UNLOCK(rootvol->devvp, 0, p);
+	hammer_rel_volume(rootvol, 0);
+	return(error);
+}
+
+/*
  * mount -u: switch between read-only and read-write (upstream's
  * MNT_UPDATE case).  mount(2) has set MNT_RDONLY for a downgrade, or
  * MNT_WANTRDWR for an upgrade, and restores the flags if this fails.
@@ -393,6 +429,9 @@ hammer_update_mount(struct mount *mp, struct proc *p)
 	int error = 0, flags;
 
 	if (hmp->ronly && (mp->mnt_flag & MNT_WANTRDWR)) {
+		if (p->p_ucred->cr_uid != 0 &&
+		    (error = hammer_devaccess(hmp, VREAD | VWRITE, p)) != 0)
+			return(error);
 		error = hammer_admit_rw(hmp, &why);
 		if (error) {
 			printf("hammer: %s: %s\n", mp->mnt_stat.f_mntfromname, why);
@@ -408,6 +447,9 @@ hammer_update_mount(struct mount *mp, struct proc *p)
 			flags |= FORCECLOSE;
 		if ((error = vflush(mp, NULLVP, flags)) != 0)
 			return(error);
+		if (RB_SCAN(hammer_ino_rb_tree, &hmp->rb_inos_root, NULL,
+			    hammer_open_unlinked_callback, NULL) != 0)
+			return(EBUSY);
 		hammer_sync_hmp(hmp, MNT_WAIT);
 		if (hammer_flush_dirty(hmp, 30) < 0)
 			return(EBUSY);	/* stays rw, nothing dropped */

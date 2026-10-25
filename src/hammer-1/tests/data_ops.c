@@ -449,6 +449,95 @@ do_durable_check(void)
 	return 0;
 }
 
+/*
+ * File NAME is SIZE bytes: seed SEED's pattern below KEEP, zeros above,
+ * except byte XOFF (when >= 0), which is XBYTE.
+ */
+static void
+check_regrown(const char *name, int seed, long keep, long size, long xoff,
+	      int xbyte)
+{
+	struct stat st;
+	long off;
+	int fd, i, n, want;
+
+	if ((fd = open(p(name), O_RDONLY)) == -1 || fstat(fd, &st) != 0 ||
+	    st.st_size != size) {
+		fail(name);
+		return;
+	}
+	for (off = 0; off < size; off += n) {
+		n = size - off > (long)sizeof(buf) ? (int)sizeof(buf) :
+		    (int)(size - off);
+		if (read(fd, buf, n) != n) {
+			fail(name);
+			break;
+		}
+		for (i = 0; i < n; i++) {
+			want = off + i < keep ? pat(seed, off + i) : 0;
+			if (off + i == xoff)
+				want = xbyte;
+			if ((buf[i] & 0xff) != want) {
+				printf("%s: byte %ld is %d, want %d\n", name,
+				       off + i, buf[i] & 0xff, want);
+				fail(name);
+				close(fd);
+				return;
+			}
+		}
+	}
+	close(fd);
+}
+
+static void
+sync_file(const char *name)
+{
+	int fd = open(p(name), O_RDONLY);
+
+	if (fd == -1 || fsync(fd) != 0 || close(fd) != 0)
+		fail(name);
+}
+
+/*
+ * regrow: data on disk, truncated into the middle of a block and grown
+ * again, reads zeros past the cut, before and after the backend has
+ * flushed the truncation, and keeps them when a byte is written there.
+ */
+static void
+do_regrow(void)
+{
+	int fd;
+
+	mkpattern("rg", 20, 40000, 8192);
+	sync_file("rg");
+	if (truncate(p("rg"), 20001) != 0 || truncate(p("rg"), 40000) != 0)
+		fail("truncate rg");
+	check_regrown("rg", 20, 20001, 40000, -1, 0);
+	if ((fd = open(p("rg"), O_WRONLY)) == -1)
+		fail("open rg");
+	buf[0] = 'x';
+	if (lseek(fd, 35000, SEEK_SET) == -1 || write(fd, buf, 1) != 1 ||
+	    fsync(fd) != 0 || close(fd) != 0)
+		fail("write rg");
+	check_regrown("rg", 20, 20001, 40000, 35000, 'x');
+
+	mkpattern("rg2", 21, 40000, 8192);
+	sync_file("rg2");
+	if (truncate(p("rg2"), 20001) != 0)
+		fail("truncate rg2");
+	sync_file("rg2");
+	if (truncate(p("rg2"), 40000) != 0)
+		fail("grow rg2");
+	check_regrown("rg2", 21, 20001, 40000, -1, 0);
+}
+
+static void
+do_regrow_check(void)
+{
+	check_regrown("rg", 20, 20001, 40000, 35000, 'x');
+	check_regrown("rg2", 21, 20001, 40000, -1, 0);
+}
+
 int
 main(int argc, char **argv)
 {
@@ -473,6 +562,10 @@ main(int argc, char **argv)
 		do_durable();
 	else if (strcmp(argv[1], "durable-check") == 0)
 		do_durable_check();
+	else if (strcmp(argv[1], "regrow") == 0)
+		do_regrow();
+	else if (strcmp(argv[1], "regrow-check") == 0)
+		do_regrow_check();
 	else
 		return 2;
 	if (failures) {

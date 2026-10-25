@@ -62,6 +62,7 @@
 #include <sys/mman.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -133,6 +134,165 @@ remount(const char *point, const char *mode, int want)
  * With FILE open for writing, downgrading POINT fails with EBUSY; forced,
  * it works and the descriptor can no longer write.
  */
+#define EPERM_CHECK(x) do { errno = 0; CHECK((x) == -1 && errno == EPERM); } while (0)
+
+/*
+ * Immutable and append-only flags hold as on ufs: an immutable file
+ * cannot be opened for writing, truncated, removed, renamed or linked; an
+ * append-only one only appended to; an append-only directory keeps its
+ * entries.
+ */
+static int
+flags(const char *dir)
+{
+	char f[1024], g[1024], d[1024], x[1024];
+	int fd;
+
+	sprintf(f, "%s/flagged", dir);
+	sprintf(g, "%s/flagged2", dir);
+	sprintf(d, "%s/flagdir", dir);
+	sprintf(x, "%s/flagdir/x", dir);
+	CHECK((fd = open(f, O_WRONLY | O_CREAT, 0644)) >= 0 && close(fd) == 0);
+	CHECK(chflags(f, UF_IMMUTABLE) == 0);
+	EPERM_CHECK(open(f, O_WRONLY));
+	EPERM_CHECK(truncate(f, 0));
+	EPERM_CHECK(unlink(f));
+	EPERM_CHECK(rename(f, g));
+	EPERM_CHECK(link(f, g));
+	CHECK(chflags(f, UF_APPEND) == 0);
+	EPERM_CHECK(open(f, O_WRONLY));
+	CHECK((fd = open(f, O_WRONLY | O_APPEND)) >= 0);
+	CHECK(write(fd, "x", 1) == 1 && close(fd) == 0);
+	EPERM_CHECK(unlink(f));
+	CHECK(chflags(f, 0) == 0 && unlink(f) == 0);
+	CHECK(mkdir(d, 0755) == 0);
+	CHECK((fd = open(x, O_WRONLY | O_CREAT, 0644)) >= 0 && close(fd) == 0);
+	CHECK(chflags(d, UF_APPEND) == 0);
+	EPERM_CHECK(unlink(x));
+	EPERM_CHECK(rename(x, g));
+	CHECK(chflags(d, 0) == 0 && unlink(x) == 0 && rmdir(d) == 0);
+	printf("%s: immutable and append-only flags hold\n", dir);
+	return 0;
+}
+
+/*
+ * A user who owns POINT but may only read DEV can mount it read-only,
+ * not read-write, and cannot upgrade it.  DEV's mode is restored.
+ */
+static int
+usermount(char *dev, const char *point)
+{
+	struct hammer_args args;
+	struct stat st;
+	pid_t pid;
+	int status, err[3];
+
+	CHECK(stat(dev, &st) == 0);
+	CHECK(chown(point, 99, 99) == 0 && chmod(dev, 0644) == 0);
+	if ((pid = fork()) == 0) {
+		args.fspec = dev;
+		if (setgid(99) != 0 || setuid(99) != 0)
+			_exit(10);
+		errno = 0;
+		err[0] = mount("hammer", point, 0, &args) == 0 ? 0 : errno;
+		if (err[0] == 0)
+			unmount(point, 0);
+		err[1] = mount("hammer", point, MNT_RDONLY, &args) == 0 ? 0 : errno;
+		err[2] = mount("hammer", point, MNT_UPDATE, &args) == 0 ? 0 : errno;
+		printf("user mount rw %d, ro %d, upgrade %d\n",
+		       err[0], err[1], err[2]);
+		fflush(stdout);
+		if (err[1] == 0 && unmount(point, 0) != 0)
+			_exit(11);
+		_exit(err[0] == EACCES && err[1] == 0 && err[2] == EACCES ? 0 : 12);
+	}
+	CHECK(pid > 0 && waitpid(pid, &status, 0) == pid);
+	CHECK(chmod(dev, st.st_mode & 07777) == 0 && chown(point, 0, 0) == 0);
+	CHECK(WIFEXITED(status) && WEXITSTATUS(status) == 0);
+	printf("%s: a read-only device is only mounted read-only\n", dev);
+	return 0;
+}
+
+/*
+ * A file unlinked while open must not outlive a downgrade: with FILE
+ * open and unlinked, mount -u ro of POINT fails EBUSY, forced or not.
+ */
+static int
+busy_unlinked(const char *point, const char *file)
+{
+	int fd;
+
+	CHECK((fd = open(file, O_WRONLY | O_CREAT, 0644)) >= 0);
+	CHECK(write(fd, "x", 1) == 1 && close(fd) == 0);
+	CHECK((fd = open(file, O_RDONLY)) >= 0 && unlink(file) == 0);
+	if (remount(point, "ro", EBUSY) != 0 ||
+	    remount(point, "ro-force", EBUSY) != 0)
+		return 1;
+	close(fd);
+	printf("%s: an open unlinked file blocks a downgrade\n", file);
+	return 0;
+}
+
+/*
+ * Two processes rename over the same name: one moves d/a to e/t and
+ * back, the other keeps making d/c and renaming it onto d/a.  Afterwards
+ * every name must still lead to a file with exactly one link.
+ */
+static int
+rename_race(const char *dir, int rounds)
+{
+	char d[1024], e[1024], a[1024], c[1024], t[1024], path[1100];
+	struct dirent *dp;
+	struct stat st;
+	DIR *dirp;
+	pid_t pid;
+	int i, fd, status, names = 0;
+	const char *sub[2];
+
+	sprintf(d, "%s/d", dir);
+	sprintf(e, "%s/e", dir);
+	sprintf(a, "%s/d/a", dir);
+	sprintf(c, "%s/d/c", dir);
+	sprintf(t, "%s/e/t", dir);
+	CHECK(mkdir(d, 0755) == 0 && mkdir(e, 0755) == 0);
+	CHECK((fd = open(a, O_WRONLY | O_CREAT, 0644)) >= 0 && close(fd) == 0);
+	if ((pid = fork()) == 0) {
+		for (i = 0; i < rounds; i++) {
+			fd = open(c, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+			if (fd >= 0) {
+				write(fd, "c", 1);
+				close(fd);
+			}
+			rename(c, a);
+		}
+		_exit(0);
+	}
+	CHECK(pid > 0);
+	for (i = 0; i < rounds; i++) {
+		rename(a, t);
+		rename(t, a);
+	}
+	CHECK(waitpid(pid, &status, 0) == pid);
+	sub[0] = d;
+	sub[1] = e;
+	for (i = 0; i < 2; i++) {
+		CHECK((dirp = opendir(sub[i])) != NULL);
+		while ((dp = readdir(dirp)) != NULL) {
+			if (strcmp(dp->d_name, ".") == 0 ||
+			    strcmp(dp->d_name, "..") == 0)
+				continue;
+			sprintf(path, "%s/%s", sub[i], dp->d_name);
+			CHECK(lstat(path, &st) == 0);
+			CHECK(st.st_nlink == 1);
+			names++;
+		}
+		closedir(dirp);
+	}
+	printf("%d racing rename rounds: %d names, each one link\n",
+	       rounds, names);
+	return 0;
+}
+
 /*
  * A terminal ioctl on a HAMMER file fails ENOTTY, as on any other file.
  */
@@ -423,6 +583,14 @@ main(int ac, char **av)
 		return busy(av[2], av[3]);
 	if (ac == 3 && strcmp(av[1], "notty") == 0)
 		return notty(av[2]);
+	if (ac == 3 && strcmp(av[1], "flags") == 0)
+		return flags(av[2]);
+	if (ac == 4 && strcmp(av[1], "usermount") == 0)
+		return usermount(av[2], av[3]);
+	if (ac == 4 && strcmp(av[1], "busy-unlinked") == 0)
+		return busy_unlinked(av[2], av[3]);
+	if (ac == 4 && strcmp(av[1], "rename-race") == 0)
+		return rename_race(av[2], atoi(av[3]));
 	if (ac == 3 && strcmp(av[1], "unmount") == 0) {
 		CHECK(unmount(av[2], 0) == 0);
 		return 0;

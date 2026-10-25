@@ -307,6 +307,14 @@ line added.
   ends in the matching `nop_*` helper).  The HAMMER work inside is
   upstream's `hammer_vop_n*()` with DragonFly's namecache calls replaced by
   `cache_purge()`.
+- rename(2) leaves the source unlocked between its lookup and
+  `VOP_RENAME`, so rename looks the source name up again and fails ENOENT
+  if it now names another object (as `ufs_rename` does), and removes the
+  old name only if it is still the object's.
+- Immutable and append-only flags are enforced where ufs enforces them
+  (`ufs_access`, `ufs_open`, remove, rmdir, link, rename; setattr already
+  refused changes).  A user other than root needs write access to the
+  device for a read-write mount or an upgrade, as with `ffs_mount`.
 - `lookup` returns EJUSTRETURN with SAVENAME for a missing last component
   of a CREATE or RENAME, checks write access for DELETE and RENAME, and
   applies the sticky-directory rule.
@@ -339,6 +347,11 @@ line added.
   `hammer_ip_add_bulk` and `hammer_io_direct_write`, which copies the data
   into a HAMMER buffer for the flusher.  The 8 KB vnode buffers only cache
   reads and are updated in place; `strategy` refuses writes.
+- `hammer_read_range` clips on-media records at a truncation the backend
+  has not yet flushed (`trunc_off`, `sync_trunc_off`), as upstream's
+  strategy read does: a file truncated and grown again reads zeros past
+  the cut, and a later partial write cannot bring the old bytes back
+  (`regrow` case).
   shortcut: a write of part of a block rewrites the whole block; keep a
   pending block per inode if small writes are too slow.
 - **Truncation** drops frontend records past the new size, leaves the
@@ -381,6 +394,8 @@ line added.
   a downgrade, as `ffs_mount` does, fails `EBUSY` while a file is open for
   writing unless forced (`-o force` revokes it), then flushes everything
   and stops the flusher.  Cached inodes take the new mode.
+- A downgrade fails `EBUSY`, forced or not, while a file that was unlinked
+  is still open: its inode can only be deleted read-write.
 - A downgrade whose flush does not finish within 30 cycles fails `EBUSY`
   and stays rw; upstream would go ro and drop what was still dirty.
 - `hammer_flusher_create` clears `flusher.exiting`: a flusher restarted by
@@ -469,4 +484,5 @@ blank volume):
 | Regression on the final kernel: ext2 `readonly` (v2-based root), HFS `read`, UFS root boot (every guest case) | i386 guest | PASS | 2026-10-24 |
 | `python -m pytest vm/test_hammer_guest.py` (harness, lelint over every compiled HAMMER source) | host | PASS | 2026-10-24 |
 | ppc: kernel with the Phase 2 sources links, 441 hammer symbols | ppc build | PASS | 2026-10-24 |
+| Review fixes, each failing first on the previous kernel: regrow (stale bytes at 32768 after truncate and regrow), flags (immutable file opened for writing), usermount (a user mounted a read-only device rw), remount (downgrade with an open unlinked file); then every case above, ext2 `readonly` and HFS `read` rerun on the fixed kernel; ppc links, 441 hammer symbols | i386 guest, ppc build | PASS | 2026-10-24 |
 | ppc runtime | ppc | **open**, no ppc runtime available | |

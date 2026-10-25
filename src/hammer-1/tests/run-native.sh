@@ -147,6 +147,7 @@ remount)
 	./hammer_io erofs "$2"
 	./hammer_io remount "$2" rw 0
 	echo two >> "$2/a"
+	./hammer_io busy-unlinked "$2" "$2/u"
 	./hammer_io remount "$2" ro 0
 	./hammer_io erofs "$2"
 	test "`cat $2/a`" = "one
@@ -166,6 +167,32 @@ history)
 	cat hist.txt
 	test `grep -c '^    [0-9a-f]* ' hist.txt` -eq 3
 	./hammer_io notty "$2/h"
+	./hammer_io unmount "$2"
+	checkvol
+	;;
+regrow)
+	# Data on disk, truncated mid-block and grown: zeros past the cut.
+	./hammer_io mount-rw $DEV "$2"
+	./data_ops regrow "$2"
+	./hammer_io unmount "$2"
+	./hammer_io mount $DEV "$2"
+	./data_ops regrow-check "$2"
+	./hammer_io unmount "$2"
+	checkvol
+	;;
+flags)
+	./hammer_io mount-rw $DEV "$2"
+	./hammer_io flags "$2"
+	./hammer_io unmount "$2"
+	checkvol
+	;;
+usermount)
+	./hammer_io usermount $DEV "$2"
+	checkvol
+	;;
+rename-race)
+	./hammer_io mount-rw $DEV "$2"
+	./hammer_io rename-race "$2" 2000
 	./hammer_io unmount "$2"
 	checkvol
 	;;

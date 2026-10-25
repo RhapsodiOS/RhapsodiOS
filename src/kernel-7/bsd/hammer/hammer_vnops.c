@@ -3898,9 +3898,15 @@ hammer_vop_lookup(struct vop_lookup_args *ap)
 	return(0);
 }
 
+/*
+ * An append-only file opens for writing only to append (ufs_open).
+ */
 static int
 hammer_vop_open(struct vop_open_args *ap)
 {
+	if ((hget32(VTOI(ap->a_vp)->ino_data.uflags) & APPEND) &&
+	    (ap->a_mode & (FWRITE | O_APPEND)) == FWRITE)
+		return(EPERM);
 	return(0);
 }
 
@@ -3933,6 +3939,8 @@ hammer_vop_access(struct vop_access_args *ap)
 			break;
 		}
 	}
+	if ((mode & VWRITE) && (hget32(ip->ino_data.uflags) & IMMUTABLE))
+		return(EPERM);
 	if (cred->cr_uid == 0)
 		return(0);
 	uid = hammer_to_unix_xid(&ip->ino_data.uid);
@@ -4451,6 +4459,10 @@ retry:
 		    ip->ino_data.obj_type == HAMMER_OBJTYPE_DIRECTORY)
 			error = EISDIR;
 	}
+	if (error == 0 &&
+	    ((hget32(dip->ino_data.uflags) & APPEND) ||
+	     (ip && (hget32(ip->ino_data.uflags) & (IMMUTABLE | APPEND)))))
+		error = EPERM;		/* ufs_remove, ufs_rmdir */
 
 	/*
 	 * A directory must be empty.  The check can block, so our own
@@ -4543,7 +4555,8 @@ hammer_vop_link(struct vop_link_args *ap)
 		error = EXDEV;
 	else if (hmp->ronly || ((dip->flags | ip->flags) & HAMMER_INODE_RO))
 		error = EROFS;
-	else if (ap->a_vp->v_type == VDIR)
+	else if (ap->a_vp->v_type == VDIR ||
+	    (hget32(ip->ino_data.uflags) & (IMMUTABLE | APPEND)))
 		error = EPERM;
 	else if (hget64(ip->ino_data.nlinks) >= LINK_MAX)
 		error = EMLINK;
@@ -4612,6 +4625,8 @@ hammer_vop_rename(struct vop_rename_args *ap)
 	struct hammer_cursor cursor;
 	hammer_inode_t fdip, tdip, ip;
 	hammer_mount_t hmp;
+	int64_t obj_id;
+	uint32_t localization;
 	int error;
 
 	if (fvp->v_mount != ap->a_tdvp->v_mount ||
@@ -4636,6 +4651,11 @@ hammer_vop_rename(struct vop_rename_args *ap)
 		error = EROFS;
 		goto done;
 	}
+	if ((hget32(ip->ino_data.uflags) & (IMMUTABLE | APPEND)) ||
+	    (hget32(fdip->ino_data.uflags) & APPEND)) {
+		error = EPERM;		/* ufs_rename */
+		goto done;
+	}
 	if (fvp->v_type == VDIR) {
 		if ((fcnp->cn_namelen == 1 && fcnp->cn_nameptr[0] == '.') ||
 		    fdip == ip || ((fcnp->cn_flags | tcnp->cn_flags) & ISDOTDOT)) {
@@ -4646,6 +4666,19 @@ hammer_vop_rename(struct vop_rename_args *ap)
 			goto done;
 	}
 	if ((error = hammer_checkspace(hmp, HAMMER_CHKSPC_CREATE)) != 0)
+		goto done;
+
+
+	/*
+	 * FDVP and FVP have been unlocked since the source was looked up, so
+	 * the name may now be another object's (ufs_rename looks it up
+	 * again).
+	 */
+	error = hammer_lookup_name(fdip, fcnp->cn_nameptr, fcnp->cn_namelen,
+				   &obj_id, &localization);
+	if (error == 0 && obj_id != ip->obj_id)
+		error = ENOENT;
+	if (error)
 		goto done;
 
 	hammer_start_transaction(&trans, hmp);
@@ -4663,7 +4696,9 @@ hammer_vop_rename(struct vop_rename_args *ap)
 	}
 
 	/*
-	 * Remove the old name.  A deadlock here retries.
+	 * Remove the old name.  A deadlock here retries.  If the name went
+	 * away, or now names another object, while we slept, the object
+	 * already has only its new name.
 	 */
 	while (error == 0) {
 		error = hammer_init_cursor(&trans, &cursor, &fdip->cache[1],
@@ -4672,10 +4707,15 @@ hammer_vop_rename(struct vop_rename_args *ap)
 			error = hammer_find_entry(&cursor, fdip,
 						  fcnp->cn_nameptr,
 						  fcnp->cn_namelen);
+		if (error == 0 &&
+		    (int64_t)hget64(cursor.data->entry.obj_id) != ip->obj_id)
+			error = ENOENT;
 		if (error == 0)
 			error = hammer_ip_del_direntry(&trans, &cursor, fdip,
 						       ip);
 		hammer_done_cursor(&cursor);
+		if (error == ENOENT)
+			error = 0;
 		if (error != EDEADLK)
 			break;
 		error = 0;
@@ -4697,6 +4737,20 @@ done:
  * (MAXBSIZE); strategy fills each block from the data records covering it.
  */
 #define HAMMER_LBLKSIZE	8192
+
+/*
+ * How many of the N bytes at file offset AT lie below truncation point
+ * TRUNC.
+ */
+static int
+hammer_clip(int64_t at, int n, int64_t trunc)
+{
+	if (trunc <= at)
+		return(0);
+	if (trunc < at + n)
+		return((int)(trunc - at));
+	return(n);
+}
 
 /*
  * Copy file bytes [offset, offset + len) into dst: the ported "hard way"
@@ -4748,6 +4802,19 @@ hammer_read_range(hammer_inode_t ip, int64_t offset, char *dst, int len)
 			n = 0;
 		else if (n > len - boff)
 			n = len - boff;
+
+		/*
+		 * On-media records past a truncation the backend has not
+		 * finished are already gone (upstream's strategy read clip);
+		 * in-memory records were written after it.
+		 */
+		if (n && hammer_cursor_ondisk(&cursor)) {
+			if (ip->flags & HAMMER_INODE_TRUNCATED)
+				n = hammer_clip(rec_offset + roff, n, ip->trunc_off);
+			if (ip->sync_flags & HAMMER_INODE_TRUNCATED)
+				n = hammer_clip(rec_offset + roff, n,
+						ip->sync_trunc_off);
+		}
 		if (n) {
 			error = hammer_ip_resolve_data(&cursor);
 			if (error)

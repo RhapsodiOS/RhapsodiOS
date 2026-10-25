@@ -356,7 +356,7 @@ def walk_differences(got, want, ignore_crc=True, ignore_mtime=False,
 CASES = ('refuse-badsig', 'refuse-v6', 'refuse-twovol', 'refuse-badcrc',
          'refuse-needs-recovery', 'rw-empty', 'ns-ops', 'data-ops', 'unlinked',
          'fsync-crash', 'fsync-check', 'big-dir', 'big-file', 'churn', 'enospc', 'remount',
-         'history', 'measure',
+         'history', 'measure', 'regrow', 'flags', 'usermount', 'rename-race',
          'refuse-rw-recovery',
          'refuse-rw-pfs', 'admit', 'namespace',
          'readdir-small', 'times', 'erofs', 'crafted-name', 'data', 'holes',
@@ -366,7 +366,7 @@ CASES = ('refuse-badsig', 'refuse-v6', 'refuse-twovol', 'refuse-badcrc',
 # exported and checked on DragonFly instead (HAMMER_NO_DFLY=1 skips that).
 WRITE_CASES = ('rw-empty', 'ns-ops', 'data-ops', 'unlinked', 'fsync-crash',
                'big-dir', 'big-file', 'churn', 'enospc', 'remount', 'history',
-               'cycle', 'measure')
+               'cycle', 'measure', 'regrow', 'flags', 'usermount', 'rename-race')
 # Write cases that end without an unmount: nothing to check on the host
 # (the next case, fsync-check, mounts what they left).
 CRASH_CASES = ('fsync-crash',)
@@ -380,13 +380,13 @@ WORKLOAD_WALKS = {'ns-ops': 'ns-ops.walk', 'data-ops': 'data-ops.walk',
 # those pages back by the remount (data_ops.c, verify-remount).
 LOOSE_CRC = {'data-ops': ('./map',)}
 # Files ending in a hole: hammer recover sizes them by their data.
-RECOVER_SKIP = {'data-ops': ('trunc',)}
+RECOVER_SKIP = {'data-ops': ('trunc',), 'regrow': ('rg2',)}
 # Tools each case ships beside hammer_io.
 CASE_TOOLS = {'ns-ops': ('ns_ops',), 'data-ops': ('data_ops',),
               'unlinked': ('data_ops',), 'fsync-crash': ('data_ops',),
               'fsync-check': ('data_ops', 'hammer'), 'big-dir': ('scale_ops',),
               'big-file': ('scale_ops',), 'churn': ('scale_ops',),
-              'enospc': ('enospc_ops',)}
+              'enospc': ('enospc_ops',), 'regrow': ('data_ops',)}
 DFLY_ISO = os.environ.get(
     'DFLY_ISO', r'D:\RhapsodiOS\vm\work\dfly\iso\dfly-x86_64-6.4.2_REL.iso')
 UNDO_FIRST = UNDO_MAP + 8

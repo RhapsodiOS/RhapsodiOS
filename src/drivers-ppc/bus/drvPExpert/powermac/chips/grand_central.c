@@ -218,7 +218,7 @@ gc_register_int(int device, spl_t level, void (*handler)(int, void *, void *),
 		return;
 	}
 
-	panic("gc_register_int: Interrupt %d not found", device);
+	printf("gc_register_int: Interrupt %d not found\n", device);
 }
 
 static spl_t

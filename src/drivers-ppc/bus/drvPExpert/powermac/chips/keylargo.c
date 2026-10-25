@@ -49,7 +49,6 @@
 #include <mach/clock_types.h>
 #include <machdep/ppc/DeviceTree.h>
 #include <sys/systm.h>
-#include <string.h>
 
 #ifndef NULL
 #define	NULL	((void *) 0)	/* lion@apple.com 2/12/97 */
@@ -125,26 +124,16 @@ PEKeyLargoGetMacIOInfo(unsigned int *base, unsigned int *size)
     keylargo_property(macIO, "reg"), base, size) ? TRUE : FALSE;
 }
 
+/*
+ * Runs from configure_machine, before kalloc_init(), so no entry
+ * iterator: those kalloc, and freeing one then lands in an uninitialised
+ * kmem_free.
+ */
 static boolean_t
 keylargo_find_i2c(DTEntry macIO, DTEntry *i2c)
 {
-  DTEntryIterator iterator;
-  DTEntry child;
-  boolean_t found;
-
-  if (DTCreateEntryIterator(macIO, &iterator) != kSuccess)
-    return FALSE;
-  found = FALSE;
-  while (DTIterateEntries(iterator, &child) == kSuccess) {
-    if (keylargo_string_property_is(child, "name", "i2c") ||
-      keylargo_string_property_is(child, "device_type", "i2c")) {
-      *i2c = child;
-      found = TRUE;
-      break;
-    }
-  }
-  DTDisposeEntryIterator(iterator);
-  return found;
+  return DTFindChildEntry(macIO, "name", "i2c", i2c) == kSuccess ||
+    DTFindChildEntry(macIO, "device_type", "i2c", i2c) == kSuccess;
 }
 
 static unsigned char
@@ -321,7 +310,7 @@ keylargo_davbus_barrier(void *context)
 static void
 keylargo_bind_davbus(DTEntry macIO)
 {
-  DTEntryIterator iterator;
+  unsigned long index;
   DTEntry child;
   PEKeyLargoProperty property;
   unsigned int controller;
@@ -351,11 +340,11 @@ keylargo_bind_davbus(DTEntry macIO)
   if (!PEDAVBusValidateMacIORanges(property.bytes, property.size,
     keylargo_audio_state.macIOBase, keylargo_audio_state.macIOSize))
     return;
-  if (DTCreateEntryIterator(macIO, &iterator) != kSuccess)
-    return;
+  /* Runs from configure_machine, before kalloc_init(): no DT iterator. */
+  index = 0;
   matches = 0;
   controller = 0;
-  while (DTIterateEntries(iterator, &child) == kSuccess) {
+  while (DTIterateChildren(macIO, &index, &child) == kSuccess) {
     if (!keylargo_string_property_is(child, "name", "davbus") &&
       !keylargo_string_property_is(child, "name", "awacs"))
       continue;
@@ -368,7 +357,6 @@ keylargo_bind_davbus(DTEntry macIO)
       break;
     }
   }
-  DTDisposeEntryIterator(iterator);
   if (matches != 1 || controller !=
     (unsigned int)powermac_io_info.audio_base_phys)
     return;

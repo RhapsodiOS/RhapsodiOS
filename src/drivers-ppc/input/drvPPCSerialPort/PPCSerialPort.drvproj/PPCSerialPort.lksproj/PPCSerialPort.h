@@ -23,10 +23,11 @@
  */
 
 /*
- * PPCSerialPort.h - Interface for PowerPC Serial Port driver.
+ * PPCSerialPort.h - Zilog 85C30 SCC serial port driver for PowerPC Macs.
  *
- * This driver supports the Zilog 85C30 SCC (Serial Communications Controller)
- * commonly found in PowerPC-based Macintosh systems.
+ * The Port structure and its member names are the ones the shipped 1.2v3
+ * binary publishes in its ivar type encoding; the offsets in comments are
+ * from the start of Port, which sits at object offset 296.
  */
 
 #ifndef _BSD_DEV_PPC_PPCSERIALPORT_H_
@@ -34,264 +35,202 @@
 
 #import <driverkit/return.h>
 #import <driverkit/driverTypes.h>
-#import <driverkit/IODevice.h>
+#import <driverkit/IODirectDevice.h>
 #import <driverkit/generalFuncs.h>
 #import <sys/types.h>
+#import <mach/boolean.h>
+#import <kern/thread_call.h>
 
-// SCC Register addresses (write register select)
-#define SCC_WR0         0   // Transmit/Receive buffer and External status
-#define SCC_WR1         1   // Transmit/Receive interrupt and data transfer mode
-#define SCC_WR2         2   // Interrupt vector
-#define SCC_WR3         3   // Receive parameters and control
-#define SCC_WR4         4   // Transmit/Receive miscellaneous parameters
-#define SCC_WR5         5   // Transmit parameters and controls
-#define SCC_WR6         6   // Sync characters or SDLC address field
-#define SCC_WR7         7   // Sync character or SDLC flag
-#define SCC_WR8         8   // Transmit buffer
-#define SCC_WR9         9   // Master interrupt control and reset
-#define SCC_WR10        10  // Miscellaneous transmit/receive control bits
-#define SCC_WR11        11  // Clock mode control
-#define SCC_WR12        12  // Lower byte of baud rate generator time constant
-#define SCC_WR13        13  // Upper byte of baud rate generator time constant
-#define SCC_WR14        14  // Miscellaneous control bits
-#define SCC_WR15        15  // External/Status interrupt control
+/* PortDevice events (IOSerialInterface numbering). */
+#define PD_E_ACTIVE                 5
+#define PD_E_TXQ_SIZE               11
+#define PD_E_RXQ_SIZE               15
+#define PD_E_TXQ_LOW_WATER          19
+#define PD_E_RXQ_LOW_WATER          23
+#define PD_E_TXQ_HIGH_WATER         27
+#define PD_E_RXQ_HIGH_WATER         31
+#define PD_E_TXQ_AVAILABLE          35
+#define PD_E_RXQ_AVAILABLE          39
+#define PD_E_TXQ_FLUSH              40
+#define PD_E_RXQ_FLUSH              47
+#define PD_E_DATA_RATE              51
+#define PD_E_RX_DATA_RATE           55
+#define PD_E_DATA_SIZE              59
+#define PD_E_RX_DATA_SIZE           63
+#define PD_E_DATA_INTEGRITY         67
+#define PD_E_RX_DATA_INTEGRITY      71
+#define PD_E_DELAY                  75
+#define PD_E_DATA_LATENCY           79
+#define PD_E_FLOW_CONTROL           83
+#define PD_E_VALID_DATA_BYTE        85
+#define PD_E_SPECIAL_BYTE           89
+#define PD_RS232_E_MIN_LATENCY      229
+#define PD_RS232_E_XOFF_BYTE        233
+#define PD_RS232_E_XON_BYTE         237
+#define PD_RS232_E_STOP_BITS        243
+#define PD_RS232_E_RX_STOP_BITS     247
+#define PD_RS232_E_LINE_BREAK       249
 
-// SCC Read register addresses
-#define SCC_RR0         0   // Transmit/Receive buffer status and External status
-#define SCC_RR1         1   // Special Receive Condition status
-#define SCC_RR2         2   // Modified interrupt vector (channel B only)
-#define SCC_RR3         3   // Interrupt pending bits (channel A only)
-#define SCC_RR8         8   // Receive buffer
-#define SCC_RR10        10  // Miscellaneous status
-#define SCC_RR12        12  // Lower byte of baud rate generator time constant
-#define SCC_RR13        13  // Upper byte of baud rate generator time constant
-#define SCC_RR15        15  // External/Status interrupt information
+/* PortDevice state bits. */
+#define PD_S_ACQUIRED               0x80000000
+#define PD_S_ACTIVE                 0x40000000
+#define PD_S_TX_BUSY                0x10000000
+#define PD_S_TXQ_EMPTY              0x04000000
+#define PD_S_TXQ_LOW_WATER          0x02000000
+#define PD_S_TXQ_HIGH_WATER         0x01000000
+#define PD_S_TXQ_FULL               0x00800000
+#define PD_S_RXQ_EMPTY              0x00080000
+#define PD_S_RXQ_LOW_WATER          0x00040000
+#define PD_S_RXQ_HIGH_WATER         0x00020000
+#define PD_S_RXQ_FULL               0x00010000
+#define PD_RS232_S_DELAY            0x00001000  /* private: a PD_E_DELAY is running */
+#define PD_RS232_S_BRK              0x00000800
+#define PD_RS232_S_DCD              0x00000040
+#define PD_RS232_S_CTS              0x00000020
+#define PD_RS232_A_RXO              0x00000010  /* FlowControl: software receive flow */
 
-// Parity types
-#define PARITY_NONE     1
-#define PARITY_ODD      2
-#define PARITY_EVEN     3
-#define PARITY_MARK     4
-#define PARITY_SPACE    5
+/* One ring buffer.  NextChar is where the next byte goes in, LastChar where
+   the next byte comes out. */
+typedef struct {
+    char           *Start;          /*  0 */
+    char           *End;            /*  4 */
+    char           *NextChar;       /*  8 */
+    char           *LastChar;       /* 12 */
+    unsigned int    Size;           /* 16 */
+    unsigned int    InQueue;        /* 20 */
+} CirQueue;                         /* 24 */
 
-// State bit flags
-#define STATE_ACTIVE        0x40000000  // Port is active/open
-#define STATE_TX_ENABLED    0x00800000  // Transmit enabled
-#define STATE_RX_ENABLED    0x00080000  // Receive enabled
+typedef struct {
+    unsigned long   BufferSize;
+    unsigned long   HighWater;
+    unsigned long   LowWater;
+    char            OverRun;
+} QueueStats;                       /* 16 */
 
-// DTR/RTS flow control bits
-#define STATE_DTR           0x00000002  // DTR signal state
-#define STATE_RTS           0x00000004  // RTS signal state
-#define STATE_CTS           0x00000010  // CTS signal state
-#define STATE_DCD           0x00000020  // DCD signal state
-#define STATE_FLOW_MASK     0x00000006  // Flow control mask
+typedef struct {
+    id              Self;                       /*   0 */
+    unsigned int    Instance;                   /*   4 */
+    char           *PortName;                   /*   8 */
+    unsigned long   State;                      /*  12 */
+    unsigned long   WatchStateMask;             /*  16 */
+    struct { unsigned int lock_data[4]; } WatchLock;  /* 20 */
+    CirQueue        RX;                         /*  36 */
+    CirQueue        TX;                         /*  60 */
+    QueueStats      RXStats;                    /*  84 */
+    QueueStats      TXStats;                    /* 100 */
+    unsigned int    Base;                       /* 116 */
+    unsigned int    CharLength;                 /* 120 */
+    unsigned int    StopBits;                   /* 124 */
+    unsigned int    TX_Parity;                  /* 128 */
+    unsigned int    RX_Parity;                  /* 132 */
+    unsigned int    BreakLength;                /* 136 */
+    unsigned long   BaudRate;                   /* 140 */
+    unsigned short  DLRimage;                   /* 144 */
+    unsigned char   LCRimage;                   /* 146 */
+    unsigned char   FCRimage;                   /* 147 */
+    unsigned char   IERmask;                    /* 148 */
+    unsigned char   RBRmask;                    /* 149 */
+    unsigned long   MasterClock;                /* 152 */
+    char            MinLatency;                 /* 156 */
+    char            WaitingForTXIdle;           /* 157 */
+    unsigned char   XONchar;                    /* 158 */
+    unsigned char   XOFFchar;                   /* 159 */
+    unsigned long   SWspecial[8];               /* 160: 256-bit character map */
+    unsigned long   FlowControl;                /* 192 */
+    int             RXOstate;                   /* 196 */
+    int             TXOstate;                   /* 200 */
+    unsigned char   xOffSent;                   /* 204 */
+    unsigned int    GlobalRecvChars;            /* 208 */
+    unsigned int    OverRunChars;               /* 212 */
+    void           *FrameTOEntry;               /* 216 */
+    void           *DataLatTOEntry;             /* 220 */
+    void           *DelayTOEntry;               /* 224 */
+    void           *HeartBeatTOEntry;           /* 228 */
+    tvalspec_t      FrameInterval;              /* 232 */
+    tvalspec_t      DataLatInterval;            /* 240 */
+    tvalspec_t      CharLatInterval;            /* 248 */
+    tvalspec_t      HeartBeatInterval;          /* 256 */
+    struct {
+        unsigned long   ints;
+        unsigned long   txInts;
+        unsigned long   rxInts;
+        unsigned long   mdmInts;
+        unsigned long   txChars;
+        unsigned long   rxChars;
+    } Stats;                                    /* 264 */
+    unsigned char   AreTransmitting;            /* 288 */
+    unsigned char   baudRateGeneratorEnable;    /* 289 */
+    unsigned char   baudRateGeneratorLo;        /* 290 */
+    unsigned char   baudRateGeneratorHi;        /* 291 */
+    unsigned int    rtxcFrequency;              /* 292 */
+    unsigned char   lastWR[15];                 /* 296: last value written to each WR */
+    char           *ControlRegister;            /* 312 */
+    char           *DataRegister;               /* 316 */
+    unsigned int    ChipBaseAddress;            /* 320 */
+    unsigned int    ConfigWriteRegister;        /* 324: channel B control, read for RR2 */
+    unsigned char   whichPort;                  /* 328: 0 = ch-a, 1 = ch-b */
+    char           *DMABuffer;                  /* 332 */
+    char           *TxDMABase;                  /* 336 */
+    unsigned int    TxDMALength;                /* 340 */
+    char           *RxDMABase;                  /* 344 */
+    unsigned int    RxDMALength;                /* 348 */
+    unsigned char   InterruptNumbers[3];        /* 352 */
+    unsigned char   ourReceiveBits;             /* 355 */
+    unsigned char   ourTransmitBits;            /* 356 */
+    unsigned char   ourClockSource;             /* 357 */
+    unsigned char   haveQueuedRxSIH;            /* 358 */
+    unsigned char   haveQueuedTxSIH;            /* 359 */
+    unsigned short  ourMachineType;             /* 360 */
+} Port;                                         /* 364 */
 
-// TX queue state levels (bits 24-27 in state)
-#define TX_STATE_MASK       0x07800000
-#define TX_STATE_EMPTY      0x06000000  // Queue empty
-#define TX_STATE_BELOW_LOW  0x04000000  // Below low watermark
-#define TX_STATE_BELOW_MED  0x02000000  // Below medium watermark
-#define TX_STATE_BELOW_HIGH 0x00000000  // Below high watermark
-#define TX_STATE_ABOVE_HIGH 0x01000000  // Above high watermark
+@protocol PortDevices
 
-// RX queue state levels (bits 16-19 in state)
-#define RX_STATE_MASK       0x000F0000
-#define RX_STATE_EMPTY      0x000C0000  // Queue empty
-#define RX_STATE_BELOW_LOW  0x00040000  // Below low watermark
-#define RX_STATE_ABOVE_HIGH 0x00020000  // Above high watermark
-#define RX_STATE_CRITICAL   0x00030000  // Critical level
-
-// Event type markers
-#define EVENT_OVERFLOW      0x6C        // Queue overflow event
-#define EVENT_STATE_CHANGE  0x53        // State change event
-
-// Ring buffer size limits
-#define MIN_RING_BUFFER_SIZE    0x12        // 18 bytes minimum
-#define MAX_RING_BUFFER_SIZE    0x40000     // 256KB maximum
-
-// DMA buffer sizes
-#define DMA_RX_BUFFER_SIZE      0x1000      // 4KB RX DMA buffer
-#define DMA_TX_BUFFER_SIZE      0x1000      // 4KB TX DMA buffer
-
-@interface PPCSerialPort : IODevice
-{
-    IOPPCDeviceDescription *deviceDescription;
-    void *sccBaseAddress;           // SCC base address (memory-mapped)
-    void *sccControlReg;            // SCC control register address
-    void *sccDataReg;               // SCC data register address
-    unsigned int sccChannel;        // SCC channel (A or B)
-    unsigned int dataBits;          // Data bits: 5/6/7/8 bits
-    unsigned int stopBits;          // Stop bits: 1 or 2
-    unsigned int parity;            // Parity type
-    unsigned int flowControl;       // Flow control setting
-    unsigned int baudRate;          // Baud rate in bps
-    unsigned int clockRate;         // SCC clock rate
-    unsigned int charTimeNS;        // Character time in nanoseconds
-    unsigned int charTimeFracNS;    // Character time fractional ns
-    unsigned char flags;            // Driver flags
-    unsigned int currentState;      // Current port state
-    unsigned char statusFlags;      // Status flags
-    unsigned int watchStateMask;    // Watch state mask for waiting
-    int watchStateLock;             // Lock for watch state operations
-
-    // RX (Receive) Ring Buffer
-    unsigned int rxQueueCapacity;   // RX queue capacity
-    unsigned int rxQueueUsed;       // RX queue used count
-    unsigned int rxQueueHighWater;  // RX queue high watermark
-    unsigned int rxQueueLowWater;   // RX queue low watermark
-    unsigned int rxQueueTarget;     // RX queue target level
-    unsigned int rxQueueWatermark;  // RX queue current watermark
-    void *rxQueueStart;             // RX queue start pointer
-    void *rxQueueEnd;               // RX queue end pointer
-    void *rxQueueWrite;             // RX queue write pointer
-    void *rxQueueRead;              // RX queue read pointer
-    unsigned int rxQueueOverflow;   // RX queue overflow flag
-
-    // TX (Transmit) Ring Buffer
-    unsigned int txQueueCapacity;   // TX queue capacity
-    unsigned int txQueueUsed;       // TX queue used count
-    unsigned int txQueueLowWater;   // TX queue low watermark
-    unsigned int txQueueMedWater;   // TX queue medium watermark
-    unsigned int txQueueHighWater;  // TX queue high watermark
-    unsigned int txQueueTarget;     // TX queue target level
-    void *txQueueStart;             // TX queue start pointer
-    void *txQueueEnd;               // TX queue end pointer
-    void *txQueueWrite;             // TX queue write pointer
-    void *txQueueRead;              // TX queue read pointer
-
-    unsigned int defaultRingBufferSize; // Default ring buffer size
-    unsigned char xonChar;          // XON character for flow control
-    unsigned char xoffChar;         // XOFF character for flow control
-    unsigned int charFilterBitmap[8]; // Character filter bitmap 256 bits
-    unsigned char flowControlMode;  // Flow control mode flags
-    unsigned char controlFlags;     // Additional control flags
-    unsigned short stateEventMask;  // State change event mask
-    int flowControlState;           // Flow control state
-
-    // DMA support
-    BOOL useDMA;                    // Use DMA for transfers
-    void *rxDMABuffer;              // RX DMA buffer
-    void *txDMABuffer;              // TX DMA buffer
-    unsigned int rxDMASize;         // RX DMA buffer size
-    unsigned int txDMASize;         // TX DMA buffer size
-
-    // Interrupt handling
-    void *interruptPort;            // Interrupt port
-    unsigned int interruptLevel;    // Interrupt level
-    unsigned int interruptCount;    // Total interrupt count
-    unsigned int rxInterruptCount;  // RX interrupt count
-    unsigned int txInterruptCount;  // TX interrupt count
-    unsigned int extInterruptCount; // External/Status interrupt count
-
-    // SCC register cache values
-    unsigned char ierValue;         // Interrupt Enable Register value (WR1)
-    unsigned char txPendingFlag;    // TX transmission pending flag
-    unsigned char reserved[2];      // Padding for alignment
-}
-
-/*
- * Probe for device presence.
- */
-+ (BOOL)probe:(IODeviceDescription *)deviceDescription;
-
-/*
- * Acquire the serial port.
- */
-- (IOReturn)acquire:(void *)refCon;
-
-/*
- * Release the serial port.
- */
-- (IOReturn)release;
-
-/*
- * Initialize from device description.
- */
-- (id)initFromDeviceDescription:(IODeviceDescription *)deviceDescription;
-
-/*
- * Free the instance.
- */
-- (void)free;
-
-/*
- * Dequeue data from the serial port.
- */
 - (IOReturn)dequeueData:(unsigned char *)buffer
              bufferSize:(unsigned int)size
           transferCount:(unsigned int *)count
                minCount:(unsigned int)minCount;
-
-/*
- * Dequeue an event from the serial port.
- */
-- (IOReturn)dequeueEvent:(unsigned int *)event
-                    data:(unsigned int *)data
-                   sleep:(BOOL)sleep;
-
-/*
- * Enqueue data to the serial port.
- */
 - (IOReturn)enqueueData:(unsigned char *)buffer
              bufferSize:(unsigned int)size
           transferCount:(unsigned int *)count
                   sleep:(BOOL)sleep;
-
-/*
- * Enqueue an event to the serial port.
- */
-- (IOReturn)enqueueEvent:(unsigned int)event
-                    data:(unsigned int)data
+- (IOReturn)dequeueEvent:(unsigned long *)event
+                    data:(unsigned long *)data
                    sleep:(BOOL)sleep;
+- (IOReturn)enqueueEvent:(unsigned long)event
+                    data:(unsigned long)data
+                   sleep:(BOOL)sleep;
+- (IOReturn)requestEvent:(unsigned long)event
+                    data:(unsigned long *)data;
+- (IOReturn)executeEvent:(unsigned long)event
+                    data:(unsigned long)data;
+- (unsigned long)nextEvent;
+- (IOReturn)watchState:(unsigned long *)state
+                  mask:(unsigned long)mask;
+- (unsigned long)getState;
+- (IOReturn)setState:(unsigned long)state
+                mask:(unsigned long)mask;
+- (IOReturn)release;
+- (IOReturn)acquire:(BOOL)sleep;
 
-/*
- * Execute an event.
- */
-- (IOReturn)executeEvent:(unsigned int)event
-                    data:(unsigned int)data;
+@end
 
-/*
- * Request an event.
- */
-- (IOReturn)requestEvent:(unsigned int)event
-                    data:(unsigned int *)data;
+@interface PPCSerialPort : IODirectDevice <PortDevices>
+{
+@public
+    Port  Port;         /* all per-port state, at object offset 296 */
+    Port *port;         /* &self->Port, at object offset 660 */
+}
 
-/*
- * Get the next event.
- */
-- (unsigned int)nextEvent;
-
-/*
- * Get the current state.
- */
-- (unsigned int)getState;
-
-/*
- * Set the state with mask.
- */
-- (IOReturn)setState:(unsigned int)state
-                mask:(unsigned int)mask;
-
-/*
- * Watch state with mask.
- */
-- (IOReturn)watchState:(unsigned int *)state
-                  mask:(unsigned int)mask;
-
-/*
- * Get character values for a parameter.
- */
-- (IOReturn)getCharValues:(unsigned char *)values
-             forParameter:(IOParameterName)parameter
++ (BOOL)probe:(IODeviceDescription *)deviceDescription;
+- initFromDeviceDescription:(IODeviceDescription *)deviceDescription;
+- free;
+- (BOOL)getHandler:(IOInterruptHandler *)handler
+             level:(unsigned int *)ipl
+          argument:(unsigned int *)arg
+      forInterrupt:(unsigned int)localInterrupt;
+- (IOReturn)getCharValues:(unsigned char *)parameterArray
+             forParameter:(IOParameterName)parameterName
                     count:(unsigned int *)count;
-
-/*
- * Get interrupt handler information.
- */
-- (IOReturn)getHandler:(IOInterruptHandler *)handler
-                 level:(unsigned int *)level
-              argument:(void **)argument
-          forInterrupt:(unsigned int)interruptType;
 
 @end
 

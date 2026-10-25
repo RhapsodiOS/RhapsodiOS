@@ -1,0 +1,47 @@
+DEC21X4XInspector = {
+    ACTIONS = {
+	"cancel:" = "cancel:"; 
+	"ok:" = "ok:"; 
+	"selectConnector:" = "selectConnector:"; 
+    }; 
+    OUTLETS = {
+	boundingBox = boundingBox; 
+	cancelButtonCell = cancelButtonCell; 
+	connectorBox = connectorBox; 
+	connectorBrowser = connectorBrowser; 
+	connectorPanel = connectorPanel; 
+	connectorPanelTitle = connectorPanelTitle; 
+	connectorTitleField = connectorTitleField; 
+	inspectorBox = inspectorBox; 
+	okButtonCell = okButtonCell; 
+	selectButton = selectButton; 
+	titleBox = titleBox; 
+    }; 
+    SUPERCLASS = IODeviceInspector; 
+};
+IODeviceInspector = {
+    ACTIONS = {
+	"channelOrInterruptPicked:" = "channelOrInterruptPicked:"; 
+	"rangeDidChange:" = "rangeDidChange:"; 
+	"showInfo:" = "showInfo:"; 
+    }; 
+    OUTLETS = {
+	accessoryHolder = accessoryHolder; 
+	dmaBox = dmaBox; 
+	dmaMatrix = dmaMatrix; 
+	infoButton = infoButton; 
+	infoPanel = infoPanel; 
+	infoText = infoText; 
+	inspectionView = inspectionView; 
+	irqBox = irqBox; 
+	irqMatrix = irqMatrix; 
+	memoryBox = memoryBox; 
+	memoryController = memoryController; 
+	origWindow = origWindow; 
+	portsBox = portsBox; 
+	portsController = portsController; 
+	statusTitle = statusTitle; 
+    }; 
+    SUPERCLASS = Object; 
+};
+FirstResponder = {ACTIONS = {}; SUPERCLASS = Object; };

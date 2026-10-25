@@ -80,7 +80,7 @@ static int numConfigTables;
 
 #define BUS_LOAD_PRI_PROP	"\"Load Priority\" = \"10000\";"
 // for debugging
-#define ENET_LOAD_PRI_PROP	"\"Load Priority\" = \"7000\";"
+#define ENET_LOAD_PRI_PROP	"\"Load Priority\" = \"7200\";"
 #define VIA_LOAD_PRI_PROP	"\"Load Priority\" = \"6800\";"
 // slightly higher than default so they come before any PCI SCSI
 #define INT_IDE_LOAD_PRI_PROP   "\"Load Priority\" = \"5050\";"
@@ -103,9 +103,48 @@ static const char * inKernelConfigTables =
 "\"Matching\" = \"bmac bmac+\";"
 ENET_LOAD_PRI_PROP
 "\0"
+"\"Driver Name\" = \"UniNEnet\";"
+"\"Matching\" = \"gmac\";"
+"\"Load Priority\" = \"7200\";"
+"\0"
 "\"Driver Name\" = \"MaceEnet\";"
 "\"Matching\" = \"mace\";"
 ENET_LOAD_PRI_PROP
+"\0"
+"\"Driver Name\" = \"DEC21x4\";"
+"\"Memory Maps\" = \"\";"
+"\"Share IRQ Levels\" = \"YES\";"
+"\"Bus Type\" = \"PCI\";"
+"\"TX Threshold\" = \"4\";"
+"\"TX Ring Size\" = \"128\";"
+"\"TX Queue Size\" = \"1024\";"
+"\"TX Interrupt Threshold\" = \"32\";"
+"\"RX Ring Size\" = \"32\";"
+"\"Max Burst Length\" = \"8\";"
+"\"Capture Effect\" = \"No\";"
+"\"Patch SROM\" = \"Yes\";"
+"\"Dump SROM\" = \"No\";"
+"\"Network Connection\" = \"AutoSense\";"
+"\"Matching\" = \"apple21143\";"
+"\"Load Priority\" = \"7200\";"
+"\0"
+"\"Driver Name\" = \"DEC21x4\";"
+"\"Memory Maps\" = \"\";"
+"\"Share IRQ Levels\" = \"YES\";"
+"\"Bus Type\" = \"PCI\";"
+"\"TX Threshold\" = \"4\";"
+"\"TX Ring Size\" = \"128\";"
+"\"TX Queue Size\" = \"1024\";"
+"\"TX Interrupt Threshold\" = \"32\";"
+"\"RX Ring Size\" = \"32\";"
+"\"Max Burst Length\" = \"8\";"
+"\"Capture Effect\" = \"No\";"
+"\"Patch SROM\" = \"Yes\";"
+"\"Dump SROM\" = \"No\";"
+"\"Network Connection\" = \"AutoSense\";"
+/* Divergence from 5.6: pci1011,19 (21142/21143, QEMU's tulip) is added. */
+"\"Matching\" = \"pci1011,9 pci1186,1101 pci1186,1110 pci10b8,2401 pci1109,1900 pci1385,1100 pci1109,2a00 pci1011,14 pci1011,2 pci1011,19\";"
+"\"Load Priority\" = \"7000\";"
 "\0"
 "\"Driver Name\" = \"DECchip21041\";"
 "\"Matching\" = \"pci1011,14\";"
@@ -164,11 +203,20 @@ BUS_LOAD_PRI_PROP
 "\"Class Names\" = \"Sym8xxController\";"
 "\"Bus Type\" = \"PPC\";"
 "\0"
+"\"Driver Name\" = \"AttoScsi\";"
+"\"Matching\" = \"ATTO,ExpressPCIProLVD ATTO,ExpressPCIProUL2D\";"
+"\"Class Names\" = \"AttoScsiController\";"
+"\"Bus Type\" = \"PPC\";"
+"\0"
 "\"Driver Name\" = \"AdaptecU2SCSI\";"
-"\"Matching\" = \"ADPT,2940U2B ADPT,3950U2B ADPT,2930CU ADPT,2930U\";"
+"\"Matching\" = \"ADPT,2940U2B ADPT,3950U2B ADPT,2930CU ADPT,2930U ADPT,2940U2W ADPT,2940UW\";"
 "\"Class Names\" = \"AdaptecU2SCSI\";"
 "\"Bus Type\" = \"PPC\";"
 INT_SCSI_LOAD_PRI_PROP
+"\0"
+"\"Driver Name\" = \"PowerSupply\";"
+"\"Matching\" = \"redundant-power-supply\";"
+BUS_LOAD_PRI_PROP
 "\0"
 #endif		/* MK_HASDRIVERS */
 
@@ -770,6 +818,14 @@ NewLoadDriver( const char * configData )
                 [failedList[ i ] taken:NO];
 	    free( failedList );
 	}
+
+    } else if( FindStringKey( configData, "\"Driver Name\"", tryMatch)
+	    && (0 == strcmp( tryMatch, "Floppy"))
+	    && (PCI_FLOPPY_BASE_PHYS == PCI_IO_BASE_PHYS)) {
+	// The ppc Floppy driver has no "Matching" key. Its probe programs a
+	// swim3 at PCI_FLOPPY_BASE_PHYS without looking for one, and with no
+	// floppy controller in the device tree that is the start of mac-io.
+	ret = NO;
 
     } else {
 	configTable = [IOConfigTable newForConfigData:configData];

@@ -133,8 +133,6 @@ u_int32_t ReadUniNRegister(IOPPCAddress ioBaseEnet, u_int32_t reg_offset)
 
 - initFromDeviceDescription:(IOTreeDevice *)devDesc
 {
-    u_int32_t macAddrHigh;
-    u_int32_t macAddrLow;
     volatile u_int32_t *uniNorthReg;
     struct ifnet *ifp;
 
@@ -158,10 +156,10 @@ u_int32_t ReadUniNRegister(IOPPCAddress ioBaseEnet, u_int32_t reg_offset)
 
     /* Configure PCI registers */
     /* Write 0x16 to PCI command register (offset 4): enable bus master + memory space */
-    [devDesc configWriteLong:4 value:0x16];
+    [(IOPCIDevice *)devDesc configWriteLong:4 value:0x16];
 
     /* Write 0x608 to PCI latency/cache line register (offset 0xc) */
-    [devDesc configWriteLong:0xc value:0x608];
+    [(IOPCIDevice *)devDesc configWriteLong:0xc value:0x608];
 
     /* Map Ethernet controller registers to kernel virtual address space */
     [self mapMemoryRange:0 to:&ioBaseEnet findSpace:YES cache:IO_CacheOff];
@@ -195,11 +193,7 @@ u_int32_t ReadUniNRegister(IOPPCAddress ioBaseEnet, u_int32_t reg_offset)
     multicastEnabled = NO;
 
     /* Attach to network stack with our MAC address */
-    /* Split 6-byte MAC address into two u_int32_t values for the call */
-    macAddrHigh = *(u_int32_t *)&myAddress.ea_byte[0];  /* First 4 bytes */
-    macAddrLow = (myAddress.ea_byte[4] << 8) | myAddress.ea_byte[5];  /* Last 2 bytes */
-
-    networkInterface = [super attachToNetworkWithAddress:macAddrHigh :macAddrLow];
+    networkInterface = [super attachToNetworkWithAddress:myAddress];
 
     /* Get the BSD ifnet structure and set IFF_SIMPLEX flag */
     ifp = (struct ifnet *)[networkInterface getIONetworkIfnet];
@@ -359,8 +353,8 @@ u_int32_t ReadUniNRegister(IOPPCAddress ioBaseEnet, u_int32_t reg_offset)
 
 - (BOOL)resetAndEnable:(BOOL)enable
 {
-    /* Clear chip ID verification flag */
-    chipIdVerified = NO;
+    /* Not enabled until the chip is initialized again */
+    resetAndEnabled = NO;
 
     /* Clear any pending timeout */
     [self clearTimeout];
@@ -411,8 +405,8 @@ u_int32_t ReadUniNRegister(IOPPCAddress ioBaseEnet, u_int32_t reg_offset)
     /* Start watchdog timer (300ms interval) */
     [self setRelativeTimeout:300];
 
-    /* Mark chip as verified and initialized */
-    chipIdVerified = YES;
+    /* Chip is initialized; _monitorLinkStatus may start it */
+    resetAndEnabled = YES;
 
     /* Mark interface as running */
     [self setRunning:YES];
@@ -429,7 +423,6 @@ u_int32_t ReadUniNRegister(IOPPCAddress ioBaseEnet, u_int32_t reg_offset)
 - (void)interruptOccurred
 {
     u_int32_t interruptStatus;
-    u_int32_t *txWatchdogCounter;
 
     /* Acquire debugger lock for thread safety */
     [self reserveDebuggerLock];
@@ -441,11 +434,6 @@ u_int32_t ReadUniNRegister(IOPPCAddress ioBaseEnet, u_int32_t reg_offset)
 
         /* Check for transmit completion interrupt */
         if ((interruptStatus & kIntrStatus_TxComplete) != 0) {
-            /* Increment transmit watchdog counter (used by timeoutOccurred) */
-            /* This counter tracks transmit activity for hang detection */
-            txWatchdogCounter = (u_int32_t *)((u_int8_t *)self + 0x5c4);
-            (*txWatchdogCounter)++;
-
             /* Process completed transmit packets */
             [self _transmitInterruptOccurred];
 
@@ -506,7 +494,7 @@ u_int32_t ReadUniNRegister(IOPPCAddress ioBaseEnet, u_int32_t reg_offset)
     [self releaseDebuggerLock];
 
     /* Schedule next timeout for 300ms (watchdog interval) */
-    [self relativeTimeout:300];
+    [self setRelativeTimeout:300];
 }
 
 /*-------------------------------------------------------------------------
@@ -695,8 +683,8 @@ u_int32_t ReadUniNRegister(IOPPCAddress ioBaseEnet, u_int32_t reg_offset)
     /* Handle power state transitions */
     if (state == 3) {
         /* Power state 3 requires chip reset */
-        /* Clear chip ID verification flag before reset */
-        chipIdVerified = NO;
+        /* Not enabled across the reset */
+        resetAndEnabled = NO;
 
         /* Perform chip reset */
         [self _resetChip];

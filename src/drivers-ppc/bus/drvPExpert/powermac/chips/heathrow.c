@@ -234,7 +234,7 @@ heathrow_register_int(int device, spl_t level, void (*handler)(int, void *, void
 		return;
 	}
 
-	panic("heathrow_register_int: Interrupt %d not found", device);
+	printf("heathrow_register_int: Interrupt %d not found\n", device);
 }
 
 static spl_t
@@ -276,6 +276,9 @@ heathrow_disable_irq(int irq)
   return TRUE;
 }
 
+/* External Int 1-8 (bits 21-28), as read through the byte-swapped register. */
+#define HEATHROW_LEVEL1_SLOTS	0x0000e01f
+
 static void
 heathrow_interrupt( int type, struct ppc_saved_state *ssp,
 	       unsigned int dsisr, unsigned int dar)
@@ -285,6 +288,11 @@ heathrow_interrupt( int type, struct ppc_saved_state *ssp,
 
 	irq1 = *HEATHROW_INTERRUPT_EVENTS1_REG;
 	irq2 = *HEATHROW_INTERRUPT_EVENTS2_REG;
+	/* Divergence from 5.6: also take the level-triggered PCI slots that are
+	   still asserted, as Linux does; EVENTS only latches edges, so a held
+	   card interrupt otherwise storms with nothing dispatched (QEMU g3beige). */
+	irq1 |= *HEATHROW_INTERRUPT_LEVELS1_REG & *HEATHROW_INTERRUPT_MASK1_REG
+		& HEATHROW_LEVEL1_SLOTS;
 	eieio();
 
 	*HEATHROW_INTERRUPT_CLEAR1_REG = irq1;	/* Clear out interrupts */

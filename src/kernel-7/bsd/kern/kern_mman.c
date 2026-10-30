@@ -340,8 +340,8 @@ anon:
 		}
 		
 		pager = vnode_pager_setup(vp, FALSE, TRUE);
-		if (pager == vm_pager_null)
-			return(EBADF);	/* reclaimed by a forced unmount */
+		if (pager == vm_pager_null)	/* ETXTBSY: an active swap file; EBADF: reclaimed */
+			return(vp->v_vm_info ? ETXTBSY : EBADF);
 		
 		/*
 		 *  Set credentials:
@@ -791,10 +791,10 @@ map_fd(fd, offset, va, findspace, size)
 	 */
 
 	pager = vnode_pager_setup(vp, FALSE, TRUE);
-	if (pager == vm_pager_null) {	/* reclaimed by a forced unmount */
+	if (pager == vm_pager_null) {	/* an active swap file, or reclaimed by a forced unmount */
 		if (findspace)
 			(void) vm_deallocate(user_map, user_addr, user_size);
-		return(KERN_INVALID_ARGUMENT);
+		return(vp->v_vm_info ? KERN_PROTECTION_FAILURE : KERN_INVALID_ARGUMENT);
 	}
 
 	/*

@@ -630,6 +630,9 @@ vnode_pager_create(vp)
  *	vnode_pager_setup
  *
  *	Set up a vstruct for a given vnode.  This is an exported routine.
+ *	Returns vm_pager_null if vp is an active pager (swap) file, with
+ *	v_vm_info still set, or was reclaimed by a forced unmount, with
+ *	v_vm_info NULL; callers tell the two apart by v_vm_info.
  */
 vm_pager_t
 vnode_pager_setup(vp, is_text, can_cache)
@@ -660,6 +663,7 @@ vnode_pager_setup(vp, is_text, can_cache)
 		     !queue_end(&pager_files, &pf->pf_chain);
 		     pf = (pager_file_t) queue_next(&pf->pf_chain)) {
 			if (pf->pf_vp == vp) {
+				unix_release();
 				return(vm_pager_null);
 			}
 		}

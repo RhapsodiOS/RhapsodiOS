@@ -530,7 +530,7 @@ pmap_bootstrap(
 	     * and is bounded by a memory size of 8MB.
 	     */
 	    hash_table_size = 64*1024; rounded_mem_size = 8*1024*1024;
-	    while (hash_table_size < 32*1024*104 &&
+	    while (hash_table_size < 32*1024*1024 &&
 		   rounded_mem_size < mem_size) {
 		hash_table_size *= 2; rounded_mem_size *= 2;
 	    }

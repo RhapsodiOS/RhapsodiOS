@@ -927,7 +927,8 @@ vnode_lock_retry:
 		error = VOP_PAGEOUT(vp, &auio, 0, p->p_ucred);
 		if (error)
 		    result = PAGER_ERROR;
-		vp->v_vm_info->error = error;
+		if (vp->v_vm_info)	/* NULL if a forced reclaim ran while we waited */
+		    vp->v_vm_info->error = error;
 			
 		VOP_UNLOCK(vp, 0, p);
 
@@ -1401,7 +1402,8 @@ vnode_dealloc(pager)
 	    pf->pf_count--;
 	} else {
 	    vp->v_flag &= ~VTEXT;
-	    vp->v_vm_info->pager = vm_pager_null; /* so vrele will free */
+	    if (vp->v_vm_info)	/* NULL once vm_info_free released the object */
+		vp->v_vm_info->pager = vm_pager_null; /* so vrele will free */
     
 	    vp->v_flag |= VAGE; /* put this vnode at the head of freelist */
 	    vrele(vp);

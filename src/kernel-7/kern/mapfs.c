@@ -498,6 +498,10 @@ map_vnode(vp,p)
 
 	pager = vmp->pager = (vm_pager_t) vnode_pager_setup(vp, FALSE, TRUE);
 				/* not a TEXT file, can cache */
+	if (vp->v_vm_info != vmp) {	/* reclaimed: vmp is an orphan our pin frees */
+		vmp_put(vmp);
+		return;
+	}
 	/*
 	 *	Lookup what object is actually holding this file's
 	 *	pages so we can flush them when necessary.  This

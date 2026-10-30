@@ -340,6 +340,8 @@ anon:
 		}
 		
 		pager = vnode_pager_setup(vp, FALSE, TRUE);
+		if (pager == vm_pager_null)
+			return(EBADF);	/* reclaimed by a forced unmount */
 		
 		/*
 		 *  Set credentials:
@@ -789,6 +791,11 @@ map_fd(fd, offset, va, findspace, size)
 	 */
 
 	pager = vnode_pager_setup(vp, FALSE, TRUE);
+	if (pager == vm_pager_null) {	/* reclaimed by a forced unmount */
+		if (findspace)
+			(void) vm_deallocate(user_map, user_addr, user_size);
+		return(KERN_INVALID_ARGUMENT);
+	}
 
 	/*
 	 *	Map into private map, then copy into our address space.
@@ -810,7 +817,7 @@ map_fd(fd, offset, va, findspace, size)
 	/*
 	 * Set credentials.
 	 */
-	if (vp->v_vm_info->cred == NULL) {
+	if (vp->v_vm_info && vp->v_vm_info->cred == NULL) {	/* may be reclaimed by now */
 		crhold(current_proc()->p_ucred);
 		vp->v_vm_info->cred = current_proc()->p_ucred;
 	}

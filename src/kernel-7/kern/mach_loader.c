@@ -198,6 +198,7 @@ parse_machfile(
 	struct load_command	*lcp, *next;
 	struct dylinker_command	*dlp = 0;
 	vm_pager_t		pager;
+	unsigned long		end_of_file;
 	load_return_t		ret;
 	vm_offset_t		addr;
 	vm_size_t		size;
@@ -247,6 +248,10 @@ parse_machfile(
 	 *	Get the pager for the file.
 	 */
 	pager = (vm_pager_t) vnode_pager_setup(vp, FALSE, TRUE);
+	if (pager == vm_pager_null)
+		return(LOAD_FAILURE);	/* vp reclaimed by a forced unmount */
+	/* read now: v_vm_info goes if vp is reclaimed while we block below */
+	end_of_file = vp->v_vm_info->vnode_size;
 
 	/*
 	 *	Map portion that must be accessible directly into
@@ -306,7 +311,7 @@ parse_machfile(
 					       (struct segment_command *) lcp,
 						   pager, file_offset,
 						   macho_size,
-						   vp->v_vm_info->vnode_size,
+						   end_of_file,
 						   map,
 						   result);
 				break;

@@ -596,6 +596,10 @@ vnode_pager_create(vp)
 
 	if (vs == VNODE_PAGER_NULL)
 		return(vs);
+	if (!vp->v_vm_info) {	/* reclaimed while zalloc blocked */
+		zfree(vstruct_zone, (vm_offset_t)vs);
+		return(VNODE_PAGER_NULL);
+	}
 
 	bzero((caddr_t)vs, sizeof(struct vstruct));
 
@@ -606,7 +610,9 @@ vnode_pager_create(vp)
 	vs->vs_swapfile = FALSE;
 
 	error = VOP_GETATTR(vp, &vattr, p->p_ucred, p);
-	if (!error) {
+	if (!vp->v_vm_info)
+	    ;	/* reclaimed while we blocked; vs may already be in use, keep it */
+	else if (!error) {
 	    size = vattr.va_size;
 	    vp->v_vm_info->vnode_size = size;
 	}
@@ -641,6 +647,10 @@ vnode_pager_setup(vp, is_text, can_cache)
 	if(!vp->v_vm_info)
 		vm_info_init(vp);
 #endif /* MACH_NBC */
+	if (!vp->v_vm_info) {	/* reclaimed by a forced unmount */
+		unix_release();
+		return(vm_pager_null);
+	}
 
 	if (vp->v_vm_info->pager == vm_pager_null) {
 		/*
@@ -654,7 +664,7 @@ vnode_pager_setup(vp, is_text, can_cache)
 			}
 		}
 		(void) vnode_pager_create(vp);
-		if (can_cache)
+		if (can_cache && vp->v_vm_info)
 			vm_object_cache_object(
 				vm_object_lookup(vp->v_vm_info->pager), TRUE);
 	} 
@@ -665,7 +675,8 @@ vnode_pager_setup(vp, is_text, can_cache)
 	 * here if necessary.
 	 */
 	zfree(vstruct_zone, zalloc(vstruct_zone));
-	return(vp->v_vm_info->pager);
+	/* vm_pager_null if a forced unmount reclaimed vp while we blocked */
+	return(vp->v_vm_info ? vp->v_vm_info->pager : vm_pager_null);
 }
 
 #ifdef	i386
@@ -753,7 +764,8 @@ vnode_pagein(
 	 *	A page wholly beyond the end of the file cannot be paged in;
 	 *	the faulting access gets SIGBUS.
 	 */
-	if (!vs->vs_swapfile && f_offset >= vp->v_vm_info->vnode_size) {
+	if (!vs->vs_swapfile && vp->v_vm_info &&	/* NULL once reclaimed: deadfs fails the read */
+	    f_offset >= vp->v_vm_info->vnode_size) {
 	    result = PAGER_ERROR;
 	    error = EFAULT;
 	}
@@ -786,7 +798,8 @@ vnode_pagein(
 		m->nfspagereq=FALSE;
 		if (error)
 		    result = PAGER_ERROR;
-		vp->v_vm_info->error = error;
+		if (vp->v_vm_info)	/* NULL if a forced reclaim ran while we waited */
+		    vp->v_vm_info->error = error;
 
 		VOP_UNLOCK(vp, 0, p);
 

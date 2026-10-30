@@ -1698,9 +1698,12 @@ mapfs_fsync(vp)
 	int error=0;
 	vmp = vp->v_vm_info;
 	/*
-	 * Not while a forced reclaim holds VXLOCK (vinvalbuf from vclean):
-	 * its pageouts would wait on that VXLOCK, and so would a pinned push
-	 * holding vmp->lock.  The unpushed pages go with the vm_info.
+	 * Not under VXLOCK (vinvalbuf from vclean): each pageout's vn_lock
+	 * would sleep on that VXLOCK for good, and so would a pinned push
+	 * holding vmp->lock.  Only a forced reclaim gets here mapped: mapped
+	 * means mapfs holds the object, whose pager holds a vnode reference
+	 * (vnode_pager_create), so a recycled vnode (v_usecount 0) never is.
+	 * The unpushed pages of a forced reclaim go with the vm_info.
 	 */
 	if (vp->v_type == VREG && vmp != VM_INFO_NULL && vmp->mapped &&
 	    !(vp->v_flag & VXLOCK)) {

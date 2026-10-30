@@ -24,11 +24,3 @@ TIMESYNC=-YES-
 QTSSERVER=-NO-
 WEBSERVER=-NO-
 SSHSERVER=-YES-
-
-# Tuning
-if [ "${AFPSERVER}" = "-YES-" ] ||
-   [ "${QTSSERVER}" = "-YES-" ]; then
-  SERVER=-YES-
-else
-  SERVER=-NO-
-fi

@@ -29,7 +29,6 @@
 /* definitions */
 extern char rootdevice[8];
 extern int nbuf;
-extern int srv;
 extern int bufpages;
 extern int ncl;
 extern vm_offset_t mem_size;
@@ -53,7 +52,6 @@ struct kernargs {
 	"kdp", &kdp_flag,
 	"preempt", &default_preemption_rate,
 	"htab", &hash_table_factlog2,
-	"srv", &srv,
 	"ncl", &ncl,
 	"symtab", &symbol_table_addr,
 	0,0,

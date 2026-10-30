@@ -77,7 +77,6 @@ int		bufpages = BUFPAGES;
 int		bufpages = 0;
 #endif
 int		show_space = 0;
-int  		  srv;        /* Flag indicates a server boot when set */
 int             ncl = 0;
 vm_map_t	buffer_map;
 

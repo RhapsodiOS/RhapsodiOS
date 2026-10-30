@@ -852,7 +852,7 @@ vnode_pageout(
 	f_offset = m->offset + m->object->paging_offset;
 
 #if	MACH_NBC
-	if (!vs->vs_swapfile) {
+	if (!vs->vs_swapfile && vp->v_vm_info) {	/* NULL once reclaimed: deadfs fails the write */
 	    /*
 	     *	Be sure that a paging operation doesn't
 	     *	accidently extend the size of "mapped" file.
@@ -880,7 +880,8 @@ vnode_pageout(
 		 */
 		f_offset = ptoa(entry.offset);
 		vp = pager_file_list[entry.index]->pf_vp;
-		if (f_offset + size > vp->v_vm_info->vnode_size)
+		if (vp->v_vm_info &&	/* NULL if a forced unmount reclaimed the pager file */
+		    f_offset + size > vp->v_vm_info->vnode_size)
 		    vp->v_vm_info->vnode_size = f_offset + size;
 	    }
 	}
@@ -1332,6 +1333,7 @@ vnode_pager_truncate(pf_entry entry)
 	 */
 	truncpage = pf->pf_hipage + 1;
 	if (pf->pf_lowat == 0 || truncpage <= pf->pf_lowat ||
+	    !vp->v_vm_info ||	/* NULL if a forced unmount reclaimed the pager file */
 	    vp->v_vm_info->vnode_size < ptoa(truncpage)) {
 		lock_done(&pf->pf_lock);
 		return;
@@ -1342,7 +1344,8 @@ vnode_pager_truncate(pf_entry entry)
 	ASSERT( (int) vattr.va_size >= 0 );
 
 	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, p);
-	if ((error = VOP_SETATTR(vp, &vattr, vp->v_vm_info->cred, p))) {
+	if (vp->v_vm_info &&	/* the lock may have waited out a forced reclaim */
+	    (error = VOP_SETATTR(vp, &vattr, vp->v_vm_info->cred, p))) {
 		printf("vnode_deallocpage: error truncating %s,"
 			" error = %d\n", pf->pf_name, error);
 	}

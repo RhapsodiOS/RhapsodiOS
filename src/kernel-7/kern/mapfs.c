@@ -192,11 +192,13 @@ int		mfs_files_mapped = 0;		/* current # mapped */
 
 void vm_info_enqueue __P((struct vm_info *));
 void vm_info_dequeue __P((struct vm_info *));
-void mapfs_put __P((struct vnode *));
 int mapfs_get __P((struct vnode *,vm_offset_t, vm_size_t));
-int remap_vnode __P((struct vnode *,vm_offset_t, vm_size_t));
+int remap_vnode __P((struct vm_info *,vm_offset_t, vm_size_t));
 void vmp_put __P((struct vm_info *));
 void vmp_get __P((struct vm_info *));
+static void vm_info_release __P((struct vm_info *));
+static void vmp_pin __P((struct vm_info *));
+static void vmp_unpin __P((struct vm_info *, boolean_t));
 void mapfs_cache_trim __P((struct vnode *));
 static struct vm_info *mapfs_victim __P((struct vnode *, boolean_t));
 static void mapfs_window_free __P((struct vm_info *));
@@ -312,6 +314,15 @@ vm_info_init(vp)
 
 /*
  * Loadable file system support to avoid exporting struct vm_info.
+ *
+ * Lifetime of a vm_info: a thread may use one only while it holds its
+ * vnode's lock (vclean, the caller here, drains that lock first) or a pin.
+ * A pin is a use_count, taken under vm_info_lock while the entry is still
+ * reachable: from v_vm_info before the thread first blocks, or from
+ * vm_info_queue before vm_info_lock is dropped.  Here, under that lock,
+ * an unpinned entry is freed at once; a pinned one is marked orphan and
+ * the last vmp_unpin frees it.  Neither waits for the other: a pinned
+ * push can be waiting for the VXLOCK our caller holds.
  */
 void vm_info_free(struct vnode *vp)
 {
@@ -334,30 +345,96 @@ void vm_info_free(struct vnode *vp)
 	vmp->dying = TRUE;
 
 #if MACH_NBC
-	mapfs_uncache(vp);		/* could block here */
-	/*
-	 * Take it off the LRU queue: anything enqueued while we blocked
-	 * would be left there freed, and so would a file a forced unmount
-	 * reclaims while it is still open (map_count > 0, so mapfs_uncache
-	 * left it alone).  A user that does not hold the vnode lock
-	 * (mapfs_sync, vn_close) may still have it: its vmp_put frees it.
-	 * Waiting for it here could deadlock, as its push may wait for
-	 * the vnode lock our caller holds.
-	 */
 	vm_info_lock();
 	if (vmp->queued)
 		vm_info_dequeue(vmp);
 	orphan = vmp->orphan = (vmp->use_count > 0);
-	vm_info_unlock();
-#endif 
 	vp->v_vm_info = VM_INFO_NULL;
+	vm_info_unlock();
 	wakeup(vmp);			/* wakeup other threads blocked on vmp */
 
 	if (!orphan)
-		zfree(vm_info_zone, (vm_offset_t)vmp);	/* could block here */
+		vm_info_release(vmp);
+#else
+	vp->v_vm_info = VM_INFO_NULL;
+	wakeup(vmp);			/* wakeup other threads blocked on vmp */
+
+	zfree(vm_info_zone, (vm_offset_t)vmp);	/* could block here */
+#endif
 }
 
 #if	MACH_NBC  /* [ */
+/*
+ *	vm_info_release:
+ *
+ *	Free a dying vm_info and what it holds: its window, its object
+ *	reference and its credential.  No one else can use it now.  This
+ *	can run under a forced reclaim's VXLOCK, where a pageout of the file
+ *	would wait forever, so nothing here pushes: when no one else maps
+ *	the object, its unpushed pages are dropped before the object goes.
+ */
+static void
+vm_info_release(vmp)
+	register struct vm_info	*vmp;
+{
+	vm_object_t	object = vmp->object;
+
+	if (vmp->size > 0)
+		(void) mapfs_map_remove(vmp, vmp->va, vmp->va + vmp->size, FALSE);
+	if (object != VM_OBJECT_NULL) {
+		vm_object_lock(object);
+		if (object->ref_count > 1 || object->paging_in_progress == 0) {
+			if (object->ref_count == 1)
+				vm_object_page_remove(object, 0, (vm_offset_t) ~0);
+			vm_object_unlock(object);
+			vm_object_deallocate(object);
+		} else	/* a pageout in flight may wait for our VXLOCK: leak it */
+			vm_object_unlock(object);
+	}
+	if (vmp->cred != NOCRED)
+		crfree(vmp->cred);
+	zfree(vm_info_zone, (vm_offset_t)vmp);
+}
+
+/*
+ *	vmp_pin:
+ *
+ *	Pin a vm_info, with vm_info_lock held, and take it off the LRU
+ *	queue: a queued entry has no users.
+ */
+static void
+vmp_pin(vmp)
+	register struct vm_info	*vmp;
+{
+	if (vmp->queued)
+		vm_info_dequeue(vmp);
+	vmp->use_count++;
+}
+
+/*
+ *	vmp_unpin:
+ *
+ *	Drop a pin.  The last one puts a mapped entry back on the LRU queue
+ *	if requeue is set, or frees an entry vm_info_free left to it; either
+ *	way this is the caller's last touch of vmp.
+ */
+static void
+vmp_unpin(vmp, requeue)
+	register struct vm_info	*vmp;
+	boolean_t		requeue;
+{
+	boolean_t	orphan;
+
+	vm_info_lock();
+	if (--vmp->use_count == 0 && requeue && vmp->mapped &&
+	    !vmp->queued && !vmp->dying)
+		vm_info_enqueue(vmp);
+	orphan = vmp->orphan && vmp->use_count == 0;
+	vm_info_unlock();
+	if (orphan)
+		vm_info_release(vmp);
+}
+
 void
 vm_info_enqueue(vmp)
 	struct vm_info	*vmp;
@@ -479,8 +556,8 @@ unmap_vnode(vp, p)
 	struct vattr	vattr;
 
 	vmp = vp->v_vm_info;
-	if (!vmp->mapped)
-		return;	/* not a mapped file */
+	if (vmp == VM_INFO_NULL || !vmp->mapped)
+		return;	/* not a mapped file, or exec's, reclaimed meanwhile */
 	/* 
 	 * If the file, which was prev mapped and closed is opened with 
 	 * O_NO_MFS, the map_count will be zero when close
@@ -506,7 +583,10 @@ unmap_vnode(vp, p)
 	 */
 
 	vmp->map_count++;
-		
+	vm_info_lock();
+	vmp_pin(vmp);	/* vn_close holds no vnode lock, and this can block */
+	vm_info_unlock();
+
 	VOP_GETATTR(vp, &vattr, cred, p);
 	links = vattr.va_nlink;  /* may uncache, see below */
 	/*
@@ -545,9 +625,10 @@ unmap_vnode(vp, p)
 		if (close_flush || vmp->close_flush) {
 			if (vmp->map_count > 0)
 				vmp->map_count--;
-			vmp_put(vmp);	/* may free it, see vm_info_free */
+			vmp_put(vmp);
 		}
 	}
+	vmp_unpin(vmp, TRUE);	/* may free it, see vm_info_free */
 }
 
 /*
@@ -558,16 +639,15 @@ unmap_vnode(vp, p)
  *	starting at the "start" address for "size" bytes.
  */
 int
-remap_vnode(vp, start, size)
-	register struct vnode	*vp;
+remap_vnode(vmp, start, size)
+	register struct vm_info	*vmp;	/* not v_vm_info: exec's I/O may outlive it */
 	vm_offset_t		start;
 	register vm_size_t	size;
 {
-	register struct vm_info	*vmp;
+	register struct vnode	*vp = vmp->vnode;
 	vm_offset_t		addr, offset;
 	kern_return_t		ret;
 	int error=0;
-	vmp = vp->v_vm_info;
 	/*
 	 *	Remove old mapping (making its space available).
 	 */
@@ -605,18 +685,21 @@ remap_vnode(vp, start, size)
 			vm_info_lock();
 			vmp1 = mapfs_victim(vp, TRUE);
 			if (vmp1 != VM_INFO_NULL)
-				vm_info_dequeue(vmp1);
+				vmp_pin(vmp1);
 			vm_info_unlock();
 			/*
 			 *	If we found someone, free up its memory.
 			 */
 			if (vmp1 != VM_INFO_NULL) {
+				boolean_t window = vp->v_tag != VT_NFS &&
+				    vmp1->vnode->v_tag == VT_NFS;
+
 				mfs_alloc_unlock();
-				if (vp->v_tag != VT_NFS &&
-				    vmp1->vnode->v_tag == VT_NFS)
+				if (window)
 					mapfs_window_free(vmp1);
 				else
 					mapfs_memfree(vmp1, TRUE);
+				vmp_unpin(vmp1, window);
 				mfs_alloc_lock();
 			}
 			else {
@@ -722,7 +805,7 @@ mapfs_trunc(vp, length)
 		if ((length < vmp->offset) ||
 		   ((length + n - 1) >= (vmp->offset + vmp->size))) {
 			NFSTRACE4(NFSTRC_MTR_RMAP, vp, vmp->offset, vmp->size, n);
-			error = remap_vnode(vp, length, n);
+			error = remap_vnode(vmp, length, n);
 			if (error) {
 #if DIAGNOSTIC
 				kprintf("mapfs_trunc: remap_vnode %d\n", error);
@@ -810,21 +893,9 @@ mapfs_get(vp, start, size)
 		size = mfs_max_window;
 
 	if (size > vmp->size) {
-		error = remap_vnode(vp, start, size);
+		error = remap_vnode(vmp, start, size);
 	}
 	return(error);
-}
-
-/*
- *	mapfs_put:
- *
- *	Indicate that locked access is no longer desired of a file.
- */
-void
-mapfs_put(vp)
-	register struct vnode	*vp;
-{
-	vmp_put(vp->v_vm_info);
 }
 
 /*
@@ -841,10 +912,7 @@ vmp_get(vmp)
 	 *	Remove from LRU list (if its there).
 	 */
 	vm_info_lock();
-	if (vmp->queued) {
-		vm_info_dequeue(vmp);
-	}
-	vmp->use_count++;	/* to protect requeueing in vmp_put */
+	vmp_pin(vmp);		/* to protect requeueing in vmp_put */
 	vm_info_unlock();
 
 	/*
@@ -863,35 +931,29 @@ void
 vmp_put(vmp)
 	register struct vm_info	*vmp;
 {
-	boolean_t	dying, orphan;
+	struct vnode	*vp = vmp->vnode;
+	boolean_t	dying = vmp->dying;
 
-	/*
-	 *	Place back on LRU list if noone else using it.
-	 */
-	vm_info_lock();
-	dying = vmp->dying;
-	if (--vmp->use_count == 0 && !dying)
-		vm_info_enqueue(vmp);
-	orphan = vmp->orphan && vmp->use_count == 0;
-	vm_info_unlock();
 	/*
 	 *	Let others at file.
 	 */
 	lock_clear_recursive(&vmp->lock);
 	lock_write_done(&vmp->lock);
 
-	if (orphan)		/* vm_info_free left it to us */
-		zfree(vm_info_zone, (vm_offset_t)vmp);
+	/* still pinned, as vmp_invalidate can block */
+	while (!dying && vmp->invalidate) {
+		vmp->invalidate = FALSE;
+		vmp_invalidate(vmp);
+	}
+	/*
+	 *	Place back on LRU list if noone else using it.
+	 */
+	vmp_unpin(vmp, TRUE);	/* may free it, see vm_info_free */
 	if (dying)
 		return;
 
 	if (mfs_files_mapped > mfs_files_max)
-		mapfs_cache_trim(vmp->vnode);
-
-	if (vmp->invalidate) {
-		vmp->invalidate = FALSE;
-		vmp_invalidate(vmp);
-	}
+		mapfs_cache_trim(vp);
 }
 
 /*
@@ -993,7 +1055,7 @@ mapfs_victim(vp, va)
 /*
  *	mapfs_window_free:
  *
- *	Free only the map space of a dequeued entry: no push, and its
+ *	Free only the map space of a pinned entry: no push, and its
  *	object stays cached, so nothing here waits on its file system.
  *	Dirty pages stay in the object for a later vmp_push.
  */
@@ -1008,10 +1070,6 @@ mapfs_window_free(vmp)
 	vmp->size = 0;
 	lock_clear_recursive(&vmp->lock);
 	lock_write_done(&vmp->lock);
-	vm_info_lock();
-	if (vmp->mapped && !vmp->queued && vmp->use_count == 0 && !vmp->dying)
-		vm_info_enqueue(vmp);
-	vm_info_unlock();
 }
 
 /*
@@ -1033,12 +1091,13 @@ mapfs_cache_trim(vp)
 			vm_info_unlock();
 			return;
 		}
-		vm_info_dequeue(vmp);
+		vmp_pin(vmp);
 		vm_info_unlock();
 		/*
 		 *	Free up its memory.
 		 */
 		mapfs_memfree(vmp, TRUE);
+		vmp_unpin(vmp, FALSE);
 	}
 }
 
@@ -1059,8 +1118,10 @@ mapfs_cache_clear()
 	vmp = (struct vm_info *) queue_first(&vm_info_queue);
 	while (!queue_end(&vm_info_queue, (queue_entry_t) vmp)) {
 		if (vmp->map_count == 0) {
+			vmp_pin(vmp);
 			vm_info_unlock();
 			mapfs_memfree(vmp, TRUE);
+			vmp_unpin(vmp, FALSE);
 			vm_info_lock();
 			/*
 			 * mapfs_memfree increments version number, causing
@@ -1289,10 +1350,12 @@ mapfs_io(vp, uio, rw, ioflag, cred)
 		}
 	}
 
+	/* exec reads without the vnode lock: a forced reclaim may have run */
+	if ((vmp = vp->v_vm_info) == VM_INFO_NULL)
+		return (EIO);
 	error = mapfs_get(vp, (vm_offset_t)uio->uio_offset, uio->uio_resid);
 	if (error)
 	        goto out;
-	vmp = vp->v_vm_info;
 
 	if ((rw == UIO_WRITE) && (ioflag & IO_APPEND)) {
 		uio->uio_offset = vmp->vnode_size;
@@ -1396,7 +1459,7 @@ mapfs_io(vp, uio, rw, ioflag, cred)
 			 * only read up to the end of the file
 			 */
 			if ((diff = (int)(vmp->vnode_size - uio->uio_offset)) <= 0) {
-				mapfs_put(vp);
+				vmp_put(vmp);
 				return (0);
 			}
 			if (diff < n)
@@ -1414,7 +1477,7 @@ mapfs_io(vp, uio, rw, ioflag, cred)
 			if ((mapfsio_size = (vmp->size << 1)) > mfs_max_window)
 			        mapfsio_size = mfs_max_window;
 
-			error = remap_vnode(vp, (vm_offset_t)uio->uio_offset, mapfsio_size);
+			error = remap_vnode(vmp, (vm_offset_t)uio->uio_offset, mapfsio_size);
 			/*
 			 * remap_vnode does a push of the dirty pages and then
 			 * sets vmp->dirtyoffset and vmp->dirtysize to 0
@@ -1565,7 +1628,7 @@ mapfs_io(vp, uio, rw, ioflag, cred)
 	}
 #endif /* PERFMODS */
 out:
-	mapfs_put(vp);
+	vmp_put(vmp);
 	return(error);
 }
 
@@ -1587,15 +1650,17 @@ mapfs_sync()
 	while (!queue_end(&vm_info_queue, (queue_entry_t) vmp)) {
 		next = (struct vm_info *) queue_next(&vmp->lru_links);
 		if (vmp->dirty) {
+			vmp_pin(vmp);	/* before a forced reclaim can free it */
 			vm_info_unlock();
 			vmp_get(vmp);
 			error = vmp_push(vmp);
 			vmp_put(vmp);
+			vmp_unpin(vmp, TRUE);
 			if (error)
 				goto out;
 			vm_info_lock();
 			/*
-			 *	Since we unlocked, the get and put
+			 *	Since we unlocked, the pin and unpin
 			 *	operations would increment version by
 			 *	two, so add two to our version.
 			 *	If anything else happened in the meantime,
@@ -1632,7 +1697,16 @@ mapfs_fsync(vp)
 	struct vm_info	*vmp;
 	int error=0;
 	vmp = vp->v_vm_info;
-	if (vp->v_type == VREG && vmp != VM_INFO_NULL && vmp->mapped) {
+	/*
+	 * Not under VXLOCK (vinvalbuf from vclean): each pageout's vn_lock
+	 * would sleep on that VXLOCK for good, and so would a pinned push
+	 * holding vmp->lock.  Only a forced reclaim gets here mapped: mapped
+	 * means mapfs holds the object, whose pager holds a vnode reference
+	 * (vnode_pager_create), so a recycled vnode (v_usecount 0) never is.
+	 * The unpushed pages of a forced reclaim go with the vm_info.
+	 */
+	if (vp->v_type == VREG && vmp != VM_INFO_NULL && vmp->mapped &&
+	    !(vp->v_flag & VXLOCK)) {
 		vmp_get(vmp);
 		error = vmp_push(vmp);
 		vmp_put(vmp);
@@ -2031,7 +2105,8 @@ vmp_push_range(vmp, start, size)
 	/* Cleanup error before we start */
 	vmp->error = 0;
 
-	while (start < end) {
+	/* not once reclaimed: a pageout would find no vm_info, or wait on VXLOCK */
+	while (start < end && !vmp->dying) {
 		m = vm_page_lookup(object, start);
 		/* We don't want to deadlock on the page we are bring in */
 		if ((m != VM_PAGE_NULL) && (m->nfspagereq == FALSE)){

@@ -97,7 +97,7 @@ struct vm_info {
 			mapped:1,		/* mapped into KERNEL VM? */
 			dying:1,		/* vm_info being freed */
 			nfsdirty:1,		/* locally modified */
-			orphan:1;		/* freed by the last vmp_put */
+			orphan:1;		/* freed by the last vmp_unpin */
 	vm_size_t	dirtysize;	/* unwritten data so far */
 	vm_offset_t	dirtyoffset;	/* unwritten data so far */
 };

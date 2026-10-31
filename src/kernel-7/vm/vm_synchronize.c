@@ -50,6 +50,10 @@
 
 #import <mach/mach_types.h>	/* to get vm_address_t */
 
+#import <sys/proc.h>
+#import <sys/vnode.h>
+#import <vm/vnode_pager.h>
+
 
 static kern_return_t map_push_range(vm_map_t map, vm_offset_t start, vm_offset_t end);
 	
@@ -97,6 +101,9 @@ map_push_range(
 	vm_offset_t	tstart, tend;
 	int		offset;
 	kern_return_t	rtn, realRtn = KERN_SUCCESS;
+	vm_pager_t	pager;
+	struct vnode	*vp;
+	struct proc	*p = current_proc();
 
 	vm_map_lock_read(map);
 	/*
@@ -124,7 +131,33 @@ map_push_range(
 			 * Push the pages we can see in this object chain.
 			 */
 			object = entry->object.vm_object;
-			rtn = object_push(object, offset, offset + tend - tstart);
+			if (object != VM_OBJECT_NULL &&
+			    (pager = object->pager) != vm_pager_null &&
+			    !pager->is_device &&
+			    !((vnode_pager_t) pager)->vs_swapfile) {
+				/*
+				 * A file's object: hold its vnode lock across
+				 * the push, so vnode_pageout's no-wait lock
+				 * recurses instead of failing against a writer.
+				 * Take it before the map lock and before any
+				 * page is busy, as a writer does; our object
+				 * reference keeps the pager's vnode.
+				 */
+				vp = ((vnode_pager_t) pager)->vs_vp;
+				vm_object_reference(object);
+				vm_map_unlock_read(map);
+				vn_lock(vp, LK_EXCLUSIVE | LK_RETRY |
+				    LK_CANRECURSE, p);
+				rtn = object_push(object, offset,
+				    offset + tend - tstart);
+				VOP_UNLOCK(vp, 0, p);
+				vm_object_deallocate(object);
+				vm_map_lock_read(map);
+				/* the map may have changed: go on after tend */
+				(void) vm_map_lookup_entry(map, tend - 1, &entry);
+			} else
+				rtn = object_push(object, offset,
+				    offset + tend - tstart);
 		}
 		if (rtn != KERN_SUCCESS)
 			realRtn = KERN_FAILURE;
@@ -146,6 +179,15 @@ vm_pageout_page(vm_object_t object, vm_page_t m)
 	
 	vm_page_lock_queues();
 	if (m->clean && !pmap_is_modified(VM_PAGE_TO_PHYS(m))) {
+		vm_page_unlock_queues();
+		return PAGEOUT_SUCCESS;
+	}
+
+	/*
+	 *  A page being paged in has nothing to push, and its pagein may be
+	 *  waiting for the vnode lock our caller holds.
+	 */
+	if (m->nfspagereq) {
 		vm_page_unlock_queues();
 		return PAGEOUT_SUCCESS;
 	}

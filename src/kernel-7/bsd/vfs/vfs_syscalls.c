@@ -2015,10 +2015,11 @@ fsync(p, uap, retval)
 	if (error = getvnode(p, uap->fd, &fp))
 		return (error);
 	vp = (struct vnode *)fp->f_data;
+	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, p);
 #if MACH_NBC
+	/* under the vnode lock, so its pageouts recurse instead of failing */
 	mapfs_fsync(vp);
 #endif
-	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, p);
 	error = VOP_FSYNC(vp, fp->f_cred, MNT_WAIT, p);
 	VOP_UNLOCK(vp, 0, p);
 	return (error);

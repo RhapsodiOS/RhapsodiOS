@@ -443,10 +443,10 @@ newvnode:
 		 * Once the desired number of vnodes are allocated, we start reusing
 		 * from the freelist.
 		 */
-		if (freevnodes < VNODE_FREE_MIN) {
+		if (freevnodes < VNODE_FREE_MIN && !(p->p_flag & P_NFSD)) {
 			/*
 			 * if we are low on vnodes on the freelist attempt to get
-			 * some back from the VM object cache
+			 * some back from the VM object cache (not an nfsd: see below)
 			 */
 			simple_unlock(&vnode_free_list_slock);
 			vm_object_cache_steal(vnodetarget);
@@ -457,8 +457,10 @@ newvnode:
 		 * Recycling an NFS client vnode with I/O pending waits for an
 		 * nfsd, which over loopback may be this thread or one waiting
 		 * on it.  Prefer a vnode that cannot wait on NFS.  An nfsd
-		 * never takes one that can; it gets a new vnode instead.  A
-		 * skipped vnode keeps its buffers for sync or a later recycle.
+		 * never takes one that can, nor steals from the object cache
+		 * (terminating an NFS object pushes its pages); it gets a new
+		 * vnode instead.  A skipped vnode keeps its buffers for sync
+		 * or a later recycle.
 		 */
 		for (cnt = 0, vp = vnode_free_list.tqh_first;
 				vp != NULLVP; cnt++, vp = vp->v_freelist.tqe_next) {
@@ -497,7 +499,7 @@ newvnode:
 
 		if (reused > VNODE_TOOMANY_REUSED) {
 			reused = 0;
-			if (freevnodes < VNODE_FREE_ENOUGH) {
+			if (freevnodes < VNODE_FREE_ENOUGH && !(p->p_flag & P_NFSD)) {
 				simple_unlock(&vnode_free_list_slock);
 				simple_unlock(&vp->v_interlock);
 				vm_object_cache_steal(vnodetarget);

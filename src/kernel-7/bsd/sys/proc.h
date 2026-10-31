@@ -282,6 +282,8 @@ struct extern_proc {
 #define	P_FSTRACE	0x10000	/* tracing via file system (elsewhere?) */
 #define	P_SSTEP		0x20000	/* process needs single-step fixup ??? */
 
+#define	P_NFSD		0x40000	/* Serving NFS requests (in nfssvc_nfsd). */
+
 /*
  * Shareable process credentials (always resident).  This includes a reference
  * to the current user credentials as well as real and saved ids that may be

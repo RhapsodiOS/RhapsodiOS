@@ -331,7 +331,7 @@ run(const struct st_test *t, const char *cat)
 	char why[256], what[320];
 	sigset_t stop;
 	pid_t pid, r;
-	int status, p;
+	int status, p, secs;
 
 	if (t->probe != NULL) {
 		why[0] = '\0';
@@ -371,7 +371,8 @@ run(const struct st_test *t, const char *cat)
 	leader_pid = pid;
 	sigprocmask(SIG_SETMASK, &oldmask, NULL);
 	alarmed = 0;
-	alarm(st_opt.secs);
+	secs = st_opt.secs * (t->scale != NULL ? t->scale() : 1);
+	alarm(secs);
 	while ((r = waitpid(pid, &status, 0)) != pid) {
 		if (r < 0 && errno != EINTR)
 			break;
@@ -380,7 +381,7 @@ run(const struct st_test *t, const char *cat)
 			while (waitpid(pid, &status, 0) < 0 && errno == EINTR)
 				;
 			leader_pid = 0;
-			sprintf(what, "FAIL reason=timeout secs=%d", st_opt.secs);
+			sprintf(what, "FAIL reason=timeout secs=%d", secs);
 			st_line(cat, t->name, what, 1);
 			return 1;
 		}

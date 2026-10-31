@@ -67,6 +67,12 @@ Usage
     on kernels without the GitHub #59 fix.  A test whose workers vanish
     without being reaped (waitpid says there are no children while the
     leader still counts live ones) ends as FAIL reason=lost-child.
+    vm pressure holds a working set of 1.5x RAM (or -m) and checks every
+    page of it.  Its watchdog scales with that set: -t (or the 600 s
+    default) times one per started 192 MB, the set of a 128 MB guest, which
+    pages it in about 140-210 s on QEMU TCG.  A 512 MB guest's 768 MB takes
+    about 820 s and gets 4x, 2400 s; a timeout reports the scaled secs.
+    There is no cap: a 32-bit working set keeps the factor at most 22.
     -T secs ends a test normally (PASS) once secs have passed; -t is the watchdog.
     -T does not bound ipc msg/ool or net select: their two processes run a
     shared count, so stopping one end early would fail the other.

@@ -6,7 +6,7 @@
             "$(NEXT_ROOT)/System/Library/Frameworks/System.framework/PrivateHeaders/bsd/hfs/hfscommon/headers", 
             "$(NEXT_ROOT)/System/Library/Frameworks/System.framework/PrivateHeaders/bsd/hfs/hfscommon/headers/system"
         ); 
-        H_FILES = (kl_com.h); 
+        H_FILES = (kl_com.h, hfs_endian.h); 
         OTHER_LINKED = (hfsutil_main.c, hfs_KSUser.c, kl_com.c); 
         OTHER_SOURCES = (
             Makefile.preamble, 

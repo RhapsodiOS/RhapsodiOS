@@ -148,7 +148,16 @@ enum {
 };
 
 
+/*
+ * i386 Mach pages are 8K (two hardware pages), which would map a 4K-block
+ * volume into mixed 8K and 4K logical blocks; the cluster code assumes one
+ * block size per file, so i386 uses the 4K ppc gets from its page size.
+ */
+#if defined(__i386__)
+#define MAXLOGBLOCKSIZE 4096
+#else
 #define MAXLOGBLOCKSIZE PAGE_SIZE
+#endif
 #define MAXLOGBLOCKSIZEBLOCKS (MAXLOGBLOCKSIZE/512)
 /* NOTE: Special support will be needed for LOGBLOCKMAPENTRIES > kHFSPlusExtentDensity (=8) */
 #define LOGBLOCKMAPENTRIES 8

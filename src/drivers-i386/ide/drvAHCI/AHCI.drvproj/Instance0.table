@@ -3,6 +3,7 @@
 "Family" = "Disk";
 "Instance" = "0";
 "Version" = "1.00";
+"Share IRQ Levels" = "YES";
 "Server Name" = "AHCI";
 "Bus Type" = "PCI";
 "Location" = "";

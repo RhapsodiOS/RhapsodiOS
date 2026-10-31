@@ -126,10 +126,9 @@ void sleep(int seconds)
     gBS->Stall((UINTN)seconds * 1000000);
 }
 
-/* choose.c's interactive picker (chooseDriverFromList/chooseSimple) calls
- * gets() to read a typed choice.  Both callers are on the prompting path
- * that loadBootDrivers(0, 0, 0)'s non-prompting arguments never reach, so
- * this loader has no keyboard-line-editing gets() of its own (boot-2's
+/* choose.c's interactive picker (chooseSimple) calls gets() to read a
+ * typed choice.  This loader never calls chooseSimple, so
+ * it has no keyboard-line-editing gets() of its own (boot-2's
  * gets.c needs the real-mode time18()/readKeyboardStatus() BIOS calls this
  * EFI build doesn't have) -- a stub that reports "no input" is enough to
  * link and is never exercised. */

@@ -218,6 +218,13 @@ means injecting an I/O error at that specific read, which QEMU's `blkdebug`
 driver can do. That is a worthwhile harness and it is not part of this spec;
 if change 2 is ever suspected, `blkdebug` is the route.
 
+Change 2's gap, and the unattended crash boot that Run 6 could not reach,
+were later closed on the fixed kernel; see the Outcome of
+`2026-09-25-ufs-gap-tests-design.md`. There, all three of `ffs_reload`'s
+`bread` failure sites were made to fail and released their buffers, the
+`fs_ronly` and 4 GB clamp fixes were shown, and a crashed machine, both
+dirty-flag-only and after a real power-off, came up multi-user unattended.
+
 ## Risks
 
 Change 1 is the only one that alters the behaviour of a working system, and its

@@ -1,0 +1,7 @@
+{
+    DYNAMIC_CODE_GEN = YES;
+    FILESTABLE = { OTHER_SOURCES = (Makefile, Makefile.preamble); SUBPROJECTS = (Intel82596NetworkDriver.drvproj); };
+    LANGUAGE = English; MAKEFILEDIR = "$(MAKEFILEPATH)/pb_makefiles";
+    NEXTSTEP_BUILDTOOL = /bin/gnumake; NEXTSTEP_INSTALLDIR = "$(NEXT_ROOT)/private/Drivers";
+    PROJECTNAME = Intel82596NetworkDriver; PROJECTTYPE = Aggregate; PROJECTVERSION = 2.6;
+}

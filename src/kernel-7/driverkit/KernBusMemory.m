@@ -216,6 +216,7 @@ _KernBusMemoryCreateMapping(
     kern_return_t	result;
     vm_map_t		map = task->map;
     vm_offset_t		virtAddr;
+    vm_offset_t		offset = physAddr & page_mask;
     cache_spec_t	caching;
 	
     vm_map_reference(map);
@@ -225,7 +226,7 @@ _KernBusMemoryCreateMapping(
     else
     	*destAddr = trunc_page(*destAddr);
     
-    length = round_page(length);
+    length = round_page(offset + length);
 
     result = vm_map_find(
     			map,
@@ -275,6 +276,8 @@ _KernBusMemoryCreateMapping(
     }
     
     vm_map_deallocate(map);
+    
+    *destAddr = trunc_page(*destAddr) + offset;
     
     return KERN_SUCCESS;
 }

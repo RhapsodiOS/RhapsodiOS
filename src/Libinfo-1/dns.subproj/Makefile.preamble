@@ -89,7 +89,9 @@ SHARED_HEADERS = options.h resolv.h
 SHARED_ARPA_HEADERS = nameser.h
 INITIAL_INITIAL_TARGETS = install_project_headers
 
-PUBLIC_ARPA_HEADERS = nameser.h inet.h
+# arpa/inet.h is the kernel's (kernel-7/bsd/include/arpa), the one every
+# build compiles against: apk refuses a path two packages both ship.
+PUBLIC_ARPA_HEADERS = nameser.h
 PUBLIC_BSD_HEADERS = resolv.h
 
 # Other dependencies of this project

@@ -27,7 +27,7 @@ Upload from the repository `src/` tree. Prefer one project path over `-All`:
 
 ```powershell
 powershell -NoProfile -File vm\sync-src.ps1 -Path rbuild-1
-powershell -NoProfile -File vm\sync-src.ps1 -Path cctools-2
+powershell -NoProfile -File vm\sync-src.ps1 -Path Developer/Commands/cctools-2
 ```
 
 `-All` uploads the entire `src/` tree. Exactly one of `-All` or `-Path` is required.

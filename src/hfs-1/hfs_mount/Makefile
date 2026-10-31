@@ -12,7 +12,7 @@ NAME = mount_hfs
 PROJECTVERSION = 2.8
 PROJECT_TYPE = Tool
 
-HFILES = mount_hfs.h
+HFILES = mount_hfs.h hfs_endian.h
 
 CFILES = mount_hfs.c
 

@@ -1,0 +1,32 @@
+{
+    IBClasses = (
+        {
+            ACTIONS = {attributesPicked = id; rangePicked = id; }; 
+            CLASS = FieldPrint; 
+            LANGUAGE = ObjC; 
+            OUTLETS = {
+                accessoryView = id; 
+                attrButton = id; 
+                attributeMatrix = id; 
+                rangeButton = id; 
+                rangeMatrix = id; 
+            }; 
+            SUPERCLASS = NSView; 
+        }, 
+        {CLASS = FirstResponder; LANGUAGE = ObjC; SUPERCLASS = NSObject; }, 
+        {
+            ACTIONS = {attributesPicked = id; rangePicked = id; }; 
+            CLASS = MyObject; 
+            LANGUAGE = ObjC; 
+            OUTLETS = {
+                accessoryView = id; 
+                attrButton = id; 
+                attributeMatrix = id; 
+                rangeButton = id; 
+                rangeMatrix = id; 
+            }; 
+            SUPERCLASS = Object; 
+        }
+    ); 
+    IBVersion = 1; 
+}

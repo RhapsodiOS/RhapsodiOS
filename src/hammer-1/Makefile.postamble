@@ -1,0 +1,4 @@
+# The HAMMER tool projects build from this aggregate.
+after_install:
+	mkdir -p $(DSTROOT)/usr/share/licenses/hammer
+	install -m 444 PROVENANCE.md $(DSTROOT)/usr/share/licenses/hammer

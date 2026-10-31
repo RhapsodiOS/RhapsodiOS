@@ -55,7 +55,7 @@
 #endif
 
 #import <kernserv/clock_timer.h>
-#import "IdeCntPublic.h"
+#import "../drvPPCATA/IdeCntPublic.h"
 
 /*
  * We will preallocate command buffers for doing I/O. This avoids a deadlock

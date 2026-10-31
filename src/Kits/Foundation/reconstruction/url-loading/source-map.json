@@ -1,0 +1,1589 @@
+{
+  "schema_version": "source-map-v1",
+  "reference_sha256": "332B3C8C0AE0A6E40A4B93110EE16748FCD94AA0119D63F16EDE878598C681B4",
+  "mapped": [
+    {
+      "address": 1113247204,
+      "size": 376,
+      "reference_names": [
+        "-[NSAbsoluteURL initWithString:relativeToURL:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSURL.m",
+      "source_line": 1063
+    },
+    {
+      "address": 1113247580,
+      "size": 96,
+      "reference_names": [
+        "-[NSAbsoluteURL dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSURL.m",
+      "source_line": 1097
+    },
+    {
+      "address": 1113247676,
+      "size": 16,
+      "reference_names": [
+        "-[NSAbsoluteURL baseURL]"
+      ],
+      "source_path": "src/Kits/Foundation/NSURL.m",
+      "source_line": 1102
+    },
+    {
+      "address": 1113247692,
+      "size": 56,
+      "reference_names": [
+        "-[NSAbsoluteURL scheme]"
+      ],
+      "source_path": "src/Kits/Foundation/NSURL.m",
+      "source_line": 1106
+    },
+    {
+      "address": 1113247748,
+      "size": 116,
+      "reference_names": [
+        "-[NSAbsoluteURL relativeString]"
+      ],
+      "source_path": "src/Kits/Foundation/NSURL.m",
+      "source_line": 1110
+    },
+    {
+      "address": 1113247864,
+      "size": 76,
+      "reference_names": [
+        "-[NSAbsoluteURL resourceSpecifier]"
+      ],
+      "source_path": "src/Kits/Foundation/NSURL.m",
+      "source_line": 1114
+    },
+    {
+      "address": 1113247940,
+      "size": 744,
+      "reference_names": [
+        "_standardizedURLPathFromComponents"
+      ],
+      "source_path": "src/Kits/Foundation/NSURL.m",
+      "source_line": 280
+    },
+    {
+      "address": 1113248684,
+      "size": 56,
+      "reference_names": [
+        "+[NSURL URLWithString:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSURL.m",
+      "source_line": 495
+    },
+    {
+      "address": 1113248740,
+      "size": 56,
+      "reference_names": [
+        "-[NSURL initWithString:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSURL.m",
+      "source_line": 445
+    },
+    {
+      "address": 1113248796,
+      "size": 92,
+      "reference_names": [
+        "+[NSURL URLWithString:relativeToURL:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSURL.m",
+      "source_line": 499
+    },
+    {
+      "address": 1113248888,
+      "size": 364,
+      "reference_names": [
+        "-[NSURL initWithString:relativeToURL:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSURL.m",
+      "source_line": 449
+    },
+    {
+      "address": 1113249252,
+      "size": 312,
+      "reference_names": [
+        "-[NSURL initWithScheme:host:path:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSURL.m",
+      "source_line": 377
+    },
+    {
+      "address": 1113249564,
+      "size": 468,
+      "reference_names": [
+        "-[NSURL initFileURLWithPath:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSURL.m",
+      "source_line": 406
+    },
+    {
+      "address": 1113250032,
+      "size": 84,
+      "reference_names": [
+        "+[NSURL fileURLWithPath:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSURL.m",
+      "source_line": 441
+    },
+    {
+      "address": 1113250116,
+      "size": 112,
+      "reference_names": [
+        "-[NSURL dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSURL.m",
+      "source_line": 869
+    },
+    {
+      "address": 1113250228,
+      "size": 272,
+      "reference_names": [
+        "-[NSURL isEqual:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSURL.m",
+      "source_line": 801
+    },
+    {
+      "address": 1113250500,
+      "size": 64,
+      "reference_names": [
+        "-[NSURL hash]"
+      ],
+      "source_path": "src/Kits/Foundation/NSURL.m",
+      "source_line": 857
+    },
+    {
+      "address": 1113250564,
+      "size": 156,
+      "reference_names": [
+        "-[NSURL encodeWithCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSURL.m",
+      "source_line": 485
+    },
+    {
+      "address": 1113250720,
+      "size": 152,
+      "reference_names": [
+        "-[NSURL initWithCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSURL.m",
+      "source_line": 473
+    },
+    {
+      "address": 1113250872,
+      "size": 156,
+      "reference_names": [
+        "-[NSURL description]"
+      ],
+      "source_path": "src/Kits/Foundation/NSURL.m",
+      "source_line": 862
+    },
+    {
+      "address": 1113251028,
+      "size": 52,
+      "reference_names": [
+        "-[NSURL copyWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSURL.m",
+      "source_line": 796
+    },
+    {
+      "address": 1113251080,
+      "size": 1072,
+      "reference_names": [
+        "-[NSURL absoluteString]"
+      ],
+      "source_path": "src/Kits/Foundation/NSURL.m",
+      "source_line": 503
+    },
+    {
+      "address": 1113252152,
+      "size": 16,
+      "reference_names": [
+        "-[NSURL relativeString]"
+      ],
+      "source_path": "src/Kits/Foundation/NSURL.m",
+      "source_line": 567
+    },
+    {
+      "address": 1113252168,
+      "size": 16,
+      "reference_names": [
+        "-[NSURL baseURL]"
+      ],
+      "source_path": "src/Kits/Foundation/NSURL.m",
+      "source_line": 664
+    },
+    {
+      "address": 1113252184,
+      "size": 148,
+      "reference_names": [
+        "-[NSURL absoluteURL]"
+      ],
+      "source_path": "src/Kits/Foundation/NSURL.m",
+      "source_line": 668
+    },
+    {
+      "address": 1113252332,
+      "size": 268,
+      "reference_names": [
+        "-[NSURL standardizedURL]"
+      ],
+      "source_path": "src/Kits/Foundation/NSURL.m",
+      "source_line": 876
+    },
+    {
+      "address": 1113252600,
+      "size": 64,
+      "reference_names": [
+        "-[NSURL scheme]"
+      ],
+      "source_path": "src/Kits/Foundation/NSURL.m",
+      "source_line": 682
+    },
+    {
+      "address": 1113252664,
+      "size": 52,
+      "reference_names": [
+        "-[NSURL resourceSpecifier]"
+      ],
+      "source_path": "src/Kits/Foundation/NSURL.m",
+      "source_line": 686
+    },
+    {
+      "address": 1113252716,
+      "size": 204,
+      "reference_names": [
+        "-[NSURL host]"
+      ],
+      "source_path": "src/Kits/Foundation/NSURL.m",
+      "source_line": 690
+    },
+    {
+      "address": 1113252920,
+      "size": 228,
+      "reference_names": [
+        "-[NSURL port]"
+      ],
+      "source_path": "src/Kits/Foundation/NSURL.m",
+      "source_line": 702
+    },
+    {
+      "address": 1113253148,
+      "size": 204,
+      "reference_names": [
+        "-[NSURL user]"
+      ],
+      "source_path": "src/Kits/Foundation/NSURL.m",
+      "source_line": 718
+    },
+    {
+      "address": 1113253352,
+      "size": 192,
+      "reference_names": [
+        "-[NSURL password]"
+      ],
+      "source_path": "src/Kits/Foundation/NSURL.m",
+      "source_line": 730
+    },
+    {
+      "address": 1113253544,
+      "size": 232,
+      "reference_names": [
+        "-[NSURL _relativeURLPath]"
+      ],
+      "source_path": "src/Kits/Foundation/NSURL.m",
+      "source_line": 571
+    },
+    {
+      "address": 1113253776,
+      "size": 64,
+      "reference_names": [
+        "-[NSURL relativePath]"
+      ],
+      "source_path": "src/Kits/Foundation/NSURL.m",
+      "source_line": 779
+    },
+    {
+      "address": 1113253840,
+      "size": 500,
+      "reference_names": [
+        "-[NSURL _absoluteURLPath]"
+      ],
+      "source_path": "src/Kits/Foundation/NSURL.m",
+      "source_line": 586
+    },
+    {
+      "address": 1113254340,
+      "size": 64,
+      "reference_names": [
+        "-[NSURL path]"
+      ],
+      "source_path": "src/Kits/Foundation/NSURL.m",
+      "source_line": 742
+    },
+    {
+      "address": 1113254404,
+      "size": 192,
+      "reference_names": [
+        "-[NSURL parameterString]"
+      ],
+      "source_path": "src/Kits/Foundation/NSURL.m",
+      "source_line": 753
+    },
+    {
+      "address": 1113254596,
+      "size": 196,
+      "reference_names": [
+        "-[NSURL query]"
+      ],
+      "source_path": "src/Kits/Foundation/NSURL.m",
+      "source_line": 766
+    },
+    {
+      "address": 1113254792,
+      "size": 164,
+      "reference_names": [
+        "-[NSURL fragment]"
+      ],
+      "source_path": "src/Kits/Foundation/NSURL.m",
+      "source_line": 746
+    },
+    {
+      "address": 1113254956,
+      "size": 76,
+      "reference_names": [
+        "-[NSURL isFileURL]"
+      ],
+      "source_path": "src/Kits/Foundation/NSURL.m",
+      "source_line": 792
+    },
+    {
+      "address": 1113255032,
+      "size": 640,
+      "reference_names": [
+        "-[NSURL URLRelativeToBaseURL:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSURL.m",
+      "source_line": 820
+    },
+    {
+      "address": 1113255672,
+      "size": 64,
+      "reference_names": [
+        "-[NSURL resourceDataUsingCache:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSURL.m",
+      "source_line": 899
+    },
+    {
+      "address": 1113255736,
+      "size": 844,
+      "reference_names": [
+        "-[NSURL loadResourceDataNotifyingClient:usingCache:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSURL.m",
+      "source_line": 911
+    },
+    {
+      "address": 1113256580,
+      "size": 76,
+      "reference_names": [
+        "-[NSURL propertyForKey:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSURL.m",
+      "source_line": 970
+    },
+    {
+      "address": 1113256656,
+      "size": 80,
+      "reference_names": [
+        "-[NSURL setResourceData:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSURL.m",
+      "source_line": 980
+    },
+    {
+      "address": 1113256736,
+      "size": 88,
+      "reference_names": [
+        "-[NSURL setProperty:forKey:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSURL.m",
+      "source_line": 990
+    },
+    {
+      "address": 1113256824,
+      "size": 160,
+      "reference_names": [
+        "-[NSURL URLHandleUsingCache:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSURL.m",
+      "source_line": 1002
+    },
+    {
+      "address": 1113256984,
+      "size": 176,
+      "reference_names": [
+        "-[NSURL URLHandle:resourceDataDidBecomeAvailable:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSURL.m",
+      "source_line": 1019
+    },
+    {
+      "address": 1113257160,
+      "size": 12,
+      "reference_names": [
+        "-[NSURL URLHandleResourceDidBeginLoading:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSURL.m",
+      "source_line": 1037
+    },
+    {
+      "address": 1113257172,
+      "size": 368,
+      "reference_names": [
+        "-[NSURL URLHandleResourceDidFinishLoading:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSURL.m",
+      "source_line": 1040
+    },
+    {
+      "address": 1113257540,
+      "size": 364,
+      "reference_names": [
+        "-[NSURL URLHandleResourceDidCancelLoading:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSURL.m",
+      "source_line": 1046
+    },
+    {
+      "address": 1113257904,
+      "size": 376,
+      "reference_names": [
+        "-[NSURL URLHandle:resourceDidFailLoadingWithReason:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSURL.m",
+      "source_line": 1052
+    },
+    {
+      "address": 1113258280,
+      "size": 140,
+      "reference_names": [
+        "__NSURLEscapeSequenceForCharacter"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 721
+    },
+    {
+      "address": 1113258420,
+      "size": 1320,
+      "reference_names": [
+        "__NSParseStringToGenericURLComponents"
+      ],
+      "source_path": "src/Kits/Foundation/NSURL.m",
+      "source_line": 60
+    },
+    {
+      "address": 1113263760,
+      "size": 176,
+      "reference_names": [
+        "_newClientMessage"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPConnection.m",
+      "source_line": 73
+    },
+    {
+      "address": 1113263936,
+      "size": 112,
+      "reference_names": [
+        "_freeClientMessage"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPConnection.m",
+      "source_line": 90
+    },
+    {
+      "address": 1113264048,
+      "size": 572,
+      "reference_names": [
+        "-[NSHTTPConnection _nextSynchCondition]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPConnection.m",
+      "source_line": 184
+    },
+    {
+      "address": 1113264620,
+      "size": 160,
+      "reference_names": [
+        "+[NSHTTPConnection initialize]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPConnection.m",
+      "source_line": 109
+    },
+    {
+      "address": 1113264780,
+      "size": 260,
+      "reference_names": [
+        "+[NSHTTPConnection cachedConnectionForHost:port:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPConnection.m",
+      "source_line": 117
+    },
+    {
+      "address": 1113265040,
+      "size": 272,
+      "reference_names": [
+        "+[NSHTTPConnection connectionForHost:port:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPConnection.m",
+      "source_line": 135
+    },
+    {
+      "address": 1113265312,
+      "size": 292,
+      "reference_names": [
+        "-[NSHTTPConnection initWithHost:port:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPConnection.m",
+      "source_line": 156
+    },
+    {
+      "address": 1113265604,
+      "size": 16,
+      "reference_names": [
+        "-[NSHTTPConnection host]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPConnection.m",
+      "source_line": 174
+    },
+    {
+      "address": 1113265620,
+      "size": 16,
+      "reference_names": [
+        "-[NSHTTPConnection remotePortNumber]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPConnection.m",
+      "source_line": 179
+    },
+    {
+      "address": 1113265636,
+      "size": 528,
+      "reference_names": [
+        "-[NSHTTPConnection sendRequestSynchronously:headers:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPConnection.m",
+      "source_line": 236
+    },
+    {
+      "address": 1113266164,
+      "size": 468,
+      "reference_names": [
+        "-[NSHTTPConnection enqueueRequest:forClient:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPConnection.m",
+      "source_line": 274
+    },
+    {
+      "address": 1113266632,
+      "size": 224,
+      "reference_names": [
+        "-[NSHTTPConnection cancelRequest:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPConnection.m",
+      "source_line": 301
+    },
+    {
+      "address": 1113266856,
+      "size": 216,
+      "reference_names": [
+        "-[NSHTTPConnection cancelFetchOfURL:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPConnection.m",
+      "source_line": 315
+    },
+    {
+      "address": 1113267072,
+      "size": 228,
+      "reference_names": [
+        "-[NSHTTPConnection receivedHeaders:forRequest:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPConnection.m",
+      "source_line": 335
+    },
+    {
+      "address": 1113267300,
+      "size": 372,
+      "reference_names": [
+        "-[NSHTTPConnection receivedDataBlock:forRequest:finished:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPConnection.m",
+      "source_line": 346
+    },
+    {
+      "address": 1113267672,
+      "size": 52,
+      "reference_names": [
+        "-[NSHTTPConnection connectionFailedDuringRequest:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPConnection.m",
+      "source_line": 376
+    },
+    {
+      "address": 1113267724,
+      "size": 276,
+      "reference_names": [
+        "-[NSHTTPConnection requestWasCancelled:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPConnection.m",
+      "source_line": 381
+    },
+    {
+      "address": 1113268000,
+      "size": 668,
+      "reference_names": [
+        "-[NSHTTPConnection handlePortMessage:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPConnection.m",
+      "source_line": 403
+    },
+    {
+      "address": 1113268668,
+      "size": 324,
+      "reference_names": [
+        "-[NSHTTPConnection portBecameInvalid:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPConnection.m",
+      "source_line": 471
+    },
+    {
+      "address": 1113268992,
+      "size": 684,
+      "reference_names": [
+        "-[NSHTTPConnection processRequests:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPConnection.m",
+      "source_line": 721
+    },
+    {
+      "address": 1113269676,
+      "size": 112,
+      "reference_names": [
+        "-[NSHTTPConnection _findCRLF:length:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPConnection.m",
+      "source_line": 492
+    },
+    {
+      "address": 1113269788,
+      "size": 1724,
+      "reference_names": [
+        "-[NSHTTPConnection fetchHeadersForRequest:connectionDied:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPConnection.m",
+      "source_line": 579
+    },
+    {
+      "address": 1113271512,
+      "size": 792,
+      "reference_names": [
+        "-[NSHTTPConnection enrichedHeadersFromHeaders:andStatus:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPConnection.m",
+      "source_line": 535
+    },
+    {
+      "address": 1113272304,
+      "size": 252,
+      "reference_names": [
+        "-[NSHTTPConnection numberDataBytesForRequest:withHeaders:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPConnection.m",
+      "source_line": 517
+    },
+    {
+      "address": 1113272556,
+      "size": 628,
+      "reference_names": [
+        "-[NSHTTPConnection fetchResponseForRequest:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPConnection.m",
+      "source_line": 680
+    },
+    {
+      "address": 1113273184,
+      "size": 268,
+      "reference_names": [
+        "-[NSHTTPConnection signalMessage:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPConnection.m",
+      "source_line": 766
+    },
+    {
+      "address": 1113273452,
+      "size": 76,
+      "reference_names": [
+        "-[NSHTTPConnection signalTaskCompletion]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPConnection.m",
+      "source_line": 793
+    },
+    {
+      "address": 1113273528,
+      "size": 128,
+      "reference_names": [
+        "-[NSHTTPConnection signalConnectionFailureForRequest:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPConnection.m",
+      "source_line": 800
+    },
+    {
+      "address": 1113273656,
+      "size": 148,
+      "reference_names": [
+        "-[NSHTTPConnection signalDataBlock:forRequest:finished:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPConnection.m",
+      "source_line": 811
+    },
+    {
+      "address": 1113273804,
+      "size": 148,
+      "reference_names": [
+        "-[NSHTTPConnection signalHeaders:complete:forRequest:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPConnection.m",
+      "source_line": 821
+    },
+    {
+      "address": 1113273952,
+      "size": 100,
+      "reference_names": [
+        "-[NSHTTPSocket initWithSocket:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPSocket.m",
+      "source_line": 28
+    },
+    {
+      "address": 1113274052,
+      "size": 108,
+      "reference_names": [
+        "+[NSHTTPSocket descriptorWithStreamSocket]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPSocket.m",
+      "source_line": 36
+    },
+    {
+      "address": 1113274160,
+      "size": 112,
+      "reference_names": [
+        "-[NSHTTPSocket dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPSocket.m",
+      "source_line": 41
+    },
+    {
+      "address": 1113274272,
+      "size": 320,
+      "reference_names": [
+        "-[NSHTTPSocket connectToHost:withPort:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPSocket.m",
+      "source_line": 48
+    },
+    {
+      "address": 1113274592,
+      "size": 308,
+      "reference_names": [
+        "-[NSHTTPSocket readAvailableData:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPSocket.m",
+      "source_line": 74
+    },
+    {
+      "address": 1113274900,
+      "size": 184,
+      "reference_names": [
+        "-[NSHTTPSocket writeData:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPSocket.m",
+      "source_line": 107
+    },
+    {
+      "address": 1113275084,
+      "size": 212,
+      "reference_names": [
+        "-[NSHTTPSocket returnSurplusBytes:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPSocket.m",
+      "source_line": 122
+    },
+    {
+      "address": 1113275296,
+      "size": 224,
+      "reference_names": [
+        "-[NSHTTPRequest initWithMethod:URL:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPRequest.m",
+      "source_line": 22
+    },
+    {
+      "address": 1113275520,
+      "size": 176,
+      "reference_names": [
+        "-[NSHTTPRequest dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPRequest.m",
+      "source_line": 34
+    },
+    {
+      "address": 1113275696,
+      "size": 120,
+      "reference_names": [
+        "-[NSHTTPRequest addHeader:value:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPRequest.m",
+      "source_line": 44
+    },
+    {
+      "address": 1113275816,
+      "size": 92,
+      "reference_names": [
+        "-[NSHTTPRequest setData:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPRequest.m",
+      "source_line": 50
+    },
+    {
+      "address": 1113275908,
+      "size": 500,
+      "reference_names": [
+        "-[NSHTTPRequest serializedRequest]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPRequest.m",
+      "source_line": 57
+    },
+    {
+      "address": 1113276408,
+      "size": 16,
+      "reference_names": [
+        "-[NSHTTPRequest requestMethod]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPRequest.m",
+      "source_line": 94
+    },
+    {
+      "address": 1113276424,
+      "size": 16,
+      "reference_names": [
+        "-[NSHTTPRequest URL]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPRequest.m",
+      "source_line": 98
+    },
+    {
+      "address": 1113276440,
+      "size": 16,
+      "reference_names": [
+        "-[NSHTTPRequest _client]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPRequest.m",
+      "source_line": 102
+    },
+    {
+      "address": 1113276456,
+      "size": 84,
+      "reference_names": [
+        "-[NSHTTPRequest _setClient:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPRequest.m",
+      "source_line": 106
+    },
+    {
+      "address": 1113276540,
+      "size": 124,
+      "reference_names": [
+        "-[NSHTTPRequest fetchesURL:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPRequest.m",
+      "source_line": 112
+    },
+    {
+      "address": 1113276664,
+      "size": 16,
+      "reference_names": [
+        "-[NSHTTPRequest _condition]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPRequest.m",
+      "source_line": 118
+    },
+    {
+      "address": 1113276680,
+      "size": 16,
+      "reference_names": [
+        "-[NSHTTPRequest _setCondition:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPRequest.m",
+      "source_line": 122
+    },
+    {
+      "address": 1113276696,
+      "size": 84,
+      "reference_names": [
+        "+[NSFileURLHandle initialize]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileURLHandle.m",
+      "source_line": 21
+    },
+    {
+      "address": 1113276780,
+      "size": 108,
+      "reference_names": [
+        "+[NSFileURLHandle canInitWithURL:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileURLHandle.m",
+      "source_line": 27
+    },
+    {
+      "address": 1113276888,
+      "size": 212,
+      "reference_names": [
+        "+[NSFileURLHandle cachedHandleForURL:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileURLHandle.m",
+      "source_line": 36
+    },
+    {
+      "address": 1113277100,
+      "size": 144,
+      "reference_names": [
+        "-[NSFileURLHandle initWithURL:cached:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileURLHandle.m",
+      "source_line": 51
+    },
+    {
+      "address": 1113277244,
+      "size": 160,
+      "reference_names": [
+        "-[NSFileURLHandle dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileURLHandle.m",
+      "source_line": 64
+    },
+    {
+      "address": 1113277404,
+      "size": 136,
+      "reference_names": [
+        "-[NSFileURLHandle loadInForeground]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileURLHandle.m",
+      "source_line": 75
+    },
+    {
+      "address": 1113277540,
+      "size": 96,
+      "reference_names": [
+        "-[NSFileURLHandle writeData:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileURLHandle.m",
+      "source_line": 88
+    },
+    {
+      "address": 1113277636,
+      "size": 132,
+      "reference_names": [
+        "-[NSFileURLHandle propertyForKey:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileURLHandle.m",
+      "source_line": 99
+    },
+    {
+      "address": 1113277768,
+      "size": 56,
+      "reference_names": [
+        "-[NSFileURLHandle propertyForKeyIfAvailable:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileURLHandle.m",
+      "source_line": 112
+    },
+    {
+      "address": 1113277824,
+      "size": 332,
+      "reference_names": [
+        "-[NSFileURLHandle writeProperty:forKey:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileURLHandle.m",
+      "source_line": 120
+    },
+    {
+      "address": 1113278156,
+      "size": 268,
+      "reference_names": [
+        "-[NSFileURLHandle beginLoadInBackground]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileURLHandle.m",
+      "source_line": 142
+    },
+    {
+      "address": 1113278424,
+      "size": 104,
+      "reference_names": [
+        "-[NSFileURLHandle endLoadInBackground]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileURLHandle.m",
+      "source_line": 161
+    },
+    {
+      "address": 1113278528,
+      "size": 112,
+      "reference_names": [
+        "-[NSFileURLHandle flushCachedData]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileURLHandle.m",
+      "source_line": 169
+    },
+    {
+      "address": 1113278640,
+      "size": 172,
+      "reference_names": [
+        "-[NSFileURLHandle _backgroundFileLoadCompleted:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileURLHandle.m",
+      "source_line": 179
+    },
+    {
+      "address": 1113278812,
+      "size": 116,
+      "reference_names": [
+        "+[NSHTTPURLHandle initialize]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPURLHandle.m",
+      "source_line": 32
+    },
+    {
+      "address": 1113278928,
+      "size": 524,
+      "reference_names": [
+        "+[NSHTTPURLHandle canonicalHTTPURLForURL:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPURLHandle.m",
+      "source_line": 37
+    },
+    {
+      "address": 1113279452,
+      "size": 104,
+      "reference_names": [
+        "+[NSHTTPURLHandle canInitWithURL:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPURLHandle.m",
+      "source_line": 70
+    },
+    {
+      "address": 1113279556,
+      "size": 200,
+      "reference_names": [
+        "+[NSHTTPURLHandle cachedHandleForURL:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPURLHandle.m",
+      "source_line": 75
+    },
+    {
+      "address": 1113279756,
+      "size": 216,
+      "reference_names": [
+        "-[NSHTTPURLHandle initWithURL:cached:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPURLHandle.m",
+      "source_line": 88
+    },
+    {
+      "address": 1113279972,
+      "size": 156,
+      "reference_names": [
+        "-[NSHTTPURLHandle dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPURLHandle.m",
+      "source_line": 99
+    },
+    {
+      "address": 1113280128,
+      "size": 16,
+      "reference_names": [
+        "-[NSHTTPURLHandle writeData:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPURLHandle.m",
+      "source_line": 108
+    },
+    {
+      "address": 1113280144,
+      "size": 16,
+      "reference_names": [
+        "-[NSHTTPURLHandle _URL]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPURLHandle.m",
+      "source_line": 111
+    },
+    {
+      "address": 1113280160,
+      "size": 16,
+      "reference_names": [
+        "-[NSHTTPURLHandle _redirectedHandle]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPURLHandle.m",
+      "source_line": 112
+    },
+    {
+      "address": 1113280176,
+      "size": 280,
+      "reference_names": [
+        "-[NSHTTPURLHandle inRedirectionLoop]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPURLHandle.m",
+      "source_line": 114
+    },
+    {
+      "address": 1113280456,
+      "size": 724,
+      "reference_names": [
+        "-[NSHTTPURLHandle propertyForKey:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPURLHandle.m",
+      "source_line": 131
+    },
+    {
+      "address": 1113281180,
+      "size": 192,
+      "reference_names": [
+        "-[NSHTTPURLHandle propertyForKeyIfAvailable:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPURLHandle.m",
+      "source_line": 181
+    },
+    {
+      "address": 1113281372,
+      "size": 16,
+      "reference_names": [
+        "-[NSHTTPURLHandle writeProperty:forKey:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPURLHandle.m",
+      "source_line": 109
+    },
+    {
+      "address": 1113281388,
+      "size": 164,
+      "reference_names": [
+        "-[NSHTTPURLHandle flushCachedData]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPURLHandle.m",
+      "source_line": 190
+    },
+    {
+      "address": 1113281552,
+      "size": 512,
+      "reference_names": [
+        "-[NSHTTPURLHandle loadInForeground]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPURLHandle.m",
+      "source_line": 210
+    },
+    {
+      "address": 1113282064,
+      "size": 412,
+      "reference_names": [
+        "-[NSHTTPURLHandle beginLoadInBackground]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPURLHandle.m",
+      "source_line": 251
+    },
+    {
+      "address": 1113282476,
+      "size": 124,
+      "reference_names": [
+        "-[NSHTTPURLHandle endLoadInBackground]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPURLHandle.m",
+      "source_line": 200
+    },
+    {
+      "address": 1113282600,
+      "size": 296,
+      "reference_names": [
+        "-[NSHTTPURLHandle redirectedHandleFromHeaders:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPURLHandle.m",
+      "source_line": 279
+    },
+    {
+      "address": 1113282896,
+      "size": 616,
+      "reference_names": [
+        "-[NSHTTPURLHandle receivedDataBlock:forRequest:finished:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPURLHandle.m",
+      "source_line": 336
+    },
+    {
+      "address": 1113283512,
+      "size": 780,
+      "reference_names": [
+        "-[NSHTTPURLHandle receivedHeaders:forRequest:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPURLHandle.m",
+      "source_line": 292
+    },
+    {
+      "address": 1113284292,
+      "size": 148,
+      "reference_names": [
+        "-[NSHTTPURLHandle connectionFailedDuringRequest:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPURLHandle.m",
+      "source_line": 375
+    },
+    {
+      "address": 1113284440,
+      "size": 12,
+      "reference_names": [
+        "-[NSHTTPURLHandle requestWasCancelled:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPURLHandle.m",
+      "source_line": 383
+    },
+    {
+      "address": 1113284452,
+      "size": 60,
+      "reference_names": [
+        "-[NSHTTPURLHandle URLHandle:resourceDataDidBecomeAvailable:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPURLHandle.m",
+      "source_line": 386
+    },
+    {
+      "address": 1113284512,
+      "size": 12,
+      "reference_names": [
+        "-[NSHTTPURLHandle URLHandleResourceDidBeginLoading:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPURLHandle.m",
+      "source_line": 390
+    },
+    {
+      "address": 1113284524,
+      "size": 96,
+      "reference_names": [
+        "-[NSHTTPURLHandle URLHandleResourceDidFinishLoading:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPURLHandle.m",
+      "source_line": 393
+    },
+    {
+      "address": 1113284620,
+      "size": 112,
+      "reference_names": [
+        "-[NSHTTPURLHandle URLHandleResourceDidCancelLoading:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPURLHandle.m",
+      "source_line": 401
+    },
+    {
+      "address": 1113284732,
+      "size": 92,
+      "reference_names": [
+        "-[NSHTTPURLHandle URLHandle:resourceDidFailLoadingWithReason:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPURLHandle.m",
+      "source_line": 410
+    },
+    {
+      "address": 1113284824,
+      "size": 264,
+      "reference_names": [
+        "-[NSHTTPURLHandle didLoadBytes:loadComplete:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHTTPURLHandle.m",
+      "source_line": 418
+    },
+    {
+      "address": 1113285088,
+      "size": 196,
+      "reference_names": [
+        "+[NSURLHandle initialize]"
+      ],
+      "source_path": "src/Kits/Foundation/NSURLHandle.m",
+      "source_line": 29
+    },
+    {
+      "address": 1113285284,
+      "size": 64,
+      "reference_names": [
+        "+[NSURLHandle registerURLHandleClass:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSURLHandle.m",
+      "source_line": 39
+    },
+    {
+      "address": 1113285348,
+      "size": 116,
+      "reference_names": [
+        "+[NSURLHandle canInitWithURL:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSURLHandle.m",
+      "source_line": 274
+    },
+    {
+      "address": 1113285464,
+      "size": 160,
+      "reference_names": [
+        "+[NSURLHandle URLHandleClassForURL:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSURLHandle.m",
+      "source_line": 47
+    },
+    {
+      "address": 1113285624,
+      "size": 168,
+      "reference_names": [
+        "+[NSURLHandle cachedHandleForURL:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSURLHandle.m",
+      "source_line": 285
+    },
+    {
+      "address": 1113285792,
+      "size": 160,
+      "reference_names": [
+        "-[NSURLHandle initWithURL:cached:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSURLHandle.m",
+      "source_line": 300
+    },
+    {
+      "address": 1113285952,
+      "size": 124,
+      "reference_names": [
+        "-[NSURLHandle dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSURLHandle.m",
+      "source_line": 315
+    },
+    {
+      "address": 1113286076,
+      "size": 36,
+      "reference_names": [
+        "-[NSURLHandle availableResourceData]"
+      ],
+      "source_path": "src/Kits/Foundation/NSURLHandle.m",
+      "source_line": 193
+    },
+    {
+      "address": 1113286112,
+      "size": 608,
+      "reference_names": [
+        "-[NSURLHandle resourceData]"
+      ],
+      "source_path": "src/Kits/Foundation/NSURLHandle.m",
+      "source_line": 134
+    },
+    {
+      "address": 1113286720,
+      "size": 88,
+      "reference_names": [
+        "-[NSURLHandle writeData:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSURLHandle.m",
+      "source_line": 359
+    },
+    {
+      "address": 1113286808,
+      "size": 16,
+      "reference_names": [
+        "-[NSURLHandle status]"
+      ],
+      "source_path": "src/Kits/Foundation/NSURLHandle.m",
+      "source_line": 61
+    },
+    {
+      "address": 1113286824,
+      "size": 92,
+      "reference_names": [
+        "-[NSURLHandle failureReason]"
+      ],
+      "source_path": "src/Kits/Foundation/NSURLHandle.m",
+      "source_line": 72
+    },
+    {
+      "address": 1113286916,
+      "size": 116,
+      "reference_names": [
+        "-[NSURLHandle addClient:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSURLHandle.m",
+      "source_line": 85
+    },
+    {
+      "address": 1113287032,
+      "size": 56,
+      "reference_names": [
+        "-[NSURLHandle removeClient:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSURLHandle.m",
+      "source_line": 95
+    },
+    {
+      "address": 1113287088,
+      "size": 152,
+      "reference_names": [
+        "-[NSURLHandle loadInBackground]"
+      ],
+      "source_path": "src/Kits/Foundation/NSURLHandle.m",
+      "source_line": 103
+    },
+    {
+      "address": 1113287240,
+      "size": 132,
+      "reference_names": [
+        "-[NSURLHandle cancelLoadInBackground]"
+      ],
+      "source_path": "src/Kits/Foundation/NSURLHandle.m",
+      "source_line": 120
+    },
+    {
+      "address": 1113287372,
+      "size": 88,
+      "reference_names": [
+        "-[NSURLHandle propertyForKey:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSURLHandle.m",
+      "source_line": 328
+    },
+    {
+      "address": 1113287460,
+      "size": 88,
+      "reference_names": [
+        "-[NSURLHandle propertyForKeyIfAvailable:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSURLHandle.m",
+      "source_line": 338
+    },
+    {
+      "address": 1113287548,
+      "size": 88,
+      "reference_names": [
+        "-[NSURLHandle writeProperty:forKey:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSURLHandle.m",
+      "source_line": 348
+    },
+    {
+      "address": 1113287636,
+      "size": 152,
+      "reference_names": [
+        "-[NSURLHandle flushCachedData]"
+      ],
+      "source_path": "src/Kits/Foundation/NSURLHandle.m",
+      "source_line": 202
+    },
+    {
+      "address": 1113287788,
+      "size": 88,
+      "reference_names": [
+        "-[NSURLHandle loadInForeground]"
+      ],
+      "source_path": "src/Kits/Foundation/NSURLHandle.m",
+      "source_line": 370
+    },
+    {
+      "address": 1113287876,
+      "size": 84,
+      "reference_names": [
+        "-[NSURLHandle beginLoadInBackground]"
+      ],
+      "source_path": "src/Kits/Foundation/NSURLHandle.m",
+      "source_line": 381
+    },
+    {
+      "address": 1113287960,
+      "size": 84,
+      "reference_names": [
+        "-[NSURLHandle endLoadInBackground]"
+      ],
+      "source_path": "src/Kits/Foundation/NSURLHandle.m",
+      "source_line": 390
+    },
+    {
+      "address": 1113288044,
+      "size": 224,
+      "reference_names": [
+        "-[NSURLHandle backgroundLoadDidFailWithReason:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSURLHandle.m",
+      "source_line": 219
+    },
+    {
+      "address": 1113288268,
+      "size": 332,
+      "reference_names": [
+        "-[NSURLHandle didLoadBytes:loadComplete:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSURLHandle.m",
+      "source_line": 243
+    }
+  ],
+  "unmapped": [],
+  "duplicate_candidates": [],
+  "boundary_disputed": [],
+  "by_module": {
+    "src/Kits/Foundation/NSFileURLHandle.m": {
+      "mapped": 14,
+      "unmapped": 0,
+      "duplicate_candidates": 0,
+      "boundary_disputed": 0
+    },
+    "src/Kits/Foundation/NSHTTPConnection.m": {
+      "mapped": 28,
+      "unmapped": 0,
+      "duplicate_candidates": 0,
+      "boundary_disputed": 0
+    },
+    "src/Kits/Foundation/NSHTTPRequest.m": {
+      "mapped": 12,
+      "unmapped": 0,
+      "duplicate_candidates": 0,
+      "boundary_disputed": 0
+    },
+    "src/Kits/Foundation/NSHTTPSocket.m": {
+      "mapped": 7,
+      "unmapped": 0,
+      "duplicate_candidates": 0,
+      "boundary_disputed": 0
+    },
+    "src/Kits/Foundation/NSHTTPURLHandle.m": {
+      "mapped": 28,
+      "unmapped": 0,
+      "duplicate_candidates": 0,
+      "boundary_disputed": 0
+    },
+    "src/Kits/Foundation/NSPathUtilities.m": {
+      "mapped": 1,
+      "unmapped": 0,
+      "duplicate_candidates": 0,
+      "boundary_disputed": 0
+    },
+    "src/Kits/Foundation/NSURL.m": {
+      "mapped": 46,
+      "unmapped": 0,
+      "duplicate_candidates": 0,
+      "boundary_disputed": 0
+    },
+    "src/Kits/Foundation/NSURLHandle.m": {
+      "mapped": 25,
+      "unmapped": 0,
+      "duplicate_candidates": 0,
+      "boundary_disputed": 0
+    }
+  }
+}

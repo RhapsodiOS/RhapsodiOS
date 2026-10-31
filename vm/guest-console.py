@@ -63,10 +63,11 @@ def write_png(path, w, h, rgb):
 def qemu_args(image, persist, port, com1, nic, extra, serial):
     """The qemu-system-i386 command line a Guest runs.  nic is the -device
     value without its netdev, e.g. "ne2k_pci" or "i82559er,addr=03.0"."""
+    fmt = "qcow2" if image.lower().endswith(".qcow2") else "raw"
     args = [
         "qemu-system-i386", "-M", "pc", "-cpu", "pentium", "-accel", "tcg",
         "-m", "128", "-nodefaults", "-vga", "cirrus", "-display", "none",
-        "-drive", "file=%s,format=raw,if=ide,index=0,media=disk" % image,
+        "-drive", "file=%s,format=%s,if=ide,index=0,media=disk" % (image, fmt),
         "-netdev", "user,id=n0", "-device", "%s,netdev=n0" % nic,
         "-serial", com1, "-serial", "file:%s" % serial,
         "-rtc", "base=1998-05-08T12:00:00",

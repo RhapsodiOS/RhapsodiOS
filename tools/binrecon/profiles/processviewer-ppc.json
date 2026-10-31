@@ -1,0 +1,30 @@
+{
+  "schema_version": "profile-v1",
+  "name": "ProcessViewer PowerPC reconstruction",
+  "architecture": "ppc",
+  "endianness": "big",
+  "reference": {
+    "path": "${BINRECON_REFERENCE}",
+    "expected_size": 70852,
+    "expected_sha256": "4a08718bd848e733a7e4ef8ef8f7b9a282a2fe56c8d38b14f23622c9983b7179"
+  },
+  "rebuilt": {
+    "path": "${BINRECON_REBUILT}"
+  },
+  "analyzers": {
+    "ida": {
+      "enabled": true,
+      "executable": "C:/Program Files/IDA Professional 9.4/idat.exe",
+      "timeout_seconds": 900,
+      "version": "9.4"
+    },
+    "ghidra": {"enabled": false},
+    "angr": {"enabled": false}
+  },
+  "comparison": {
+    "acceptance": "normalized-functions",
+    "ignore_metadata": [],
+    "entry_points": []
+  },
+  "output_dir": "../out/processviewer-ppc"
+}

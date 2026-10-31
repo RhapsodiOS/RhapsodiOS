@@ -7,6 +7,8 @@
 
 @class NSString, NSArray, NSDictionary, NSDate, NSData;
 
+FOUNDATION_EXPORT NSString * const NSSystemTimeZoneDidChangeNotification;
+
 @interface NSTimeZone : NSObject <NSCopying, NSCoding>
 
 - (NSString *)name;

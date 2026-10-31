@@ -13,11 +13,11 @@ PROJECTVERSION = 2.7
 PROJECT_TYPE = Tool
 LANGUAGE = English
 
-HFILES = pico.h osdep.h ebind.h edef.h efunc.h estruct.h
+HFILES = headers.h pico.h ebind.h edef.h efunc.h estruct.h
 
-CFILES = ansi.c attach.c basic.c bind.c browse.c buffer.c composer.c\
-         display.c file.c fileio.c line.c main.c osdep.c pico.c\
-         random.c region.c search.c spell.c tcap.c window.c word.c
+CFILES = attach.c basic.c bind.c browse.c buffer.c composer.c display.c\
+         file.c fileio.c line.c main.c pico.c pico_os.c random.c region.c\
+         search.c window.c word.c
 
 OTHERSRCS = Makefile.preamble Makefile Makefile.postamble
 
@@ -33,9 +33,9 @@ DEBUG_LIBS = $(LIBS)
 PROF_LIBS = $(LIBS)
 
 
-NEXTSTEP_PB_CFLAGS = -Dnxt -DJOB_CONTROL -DANSI
-WINDOWS_PB_CFLAGS = -Dnxt -DJOB_CONTROL -DANSI
-PDO_UNIX_PB_CFLAGS = -Dnxt -DJOB_CONTROL -DANSI
+NEXTSTEP_PB_CFLAGS = -Drhp -DJOB_CONTROL -DMOUSE
+WINDOWS_PB_CFLAGS = -Drhp -DJOB_CONTROL -DMOUSE
+PDO_UNIX_PB_CFLAGS = -Drhp -DJOB_CONTROL -DMOUSE
 
 
 NEXTSTEP_OBJCPLUS_COMPILER = /usr/bin/cc

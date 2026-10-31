@@ -25,6 +25,7 @@
 - (id)initForWritingWithMutableData:(NSMutableData *)mdata;
     
 - (NSMutableData *)archiverData;
+- (NSMutableData *)data;
 
 - (void)encodeRootObject:(id)rootObject;
 - (void)encodeConditionalObject:(id)object;
@@ -32,6 +33,8 @@
 + (NSData *)archivedDataWithRootObject:(id)rootObject;
 
 + (BOOL)archiveRootObject:(id)rootObject toFile:(NSString *)path;
++ (void)encodeClassName:(NSString *)trueName intoClassName:(NSString *)inArchiveName;
++ (NSString *)classNameEncodedForTrueClassName:(NSString *)trueName;
 
 - (void)encodeClassName:(NSString *)trueName intoClassName:(NSString *)inArchiveName;
 - (NSString *)classNameEncodedForTrueClassName:(NSString *)trueName;
@@ -50,7 +53,7 @@
     unsigned		systemVersion;
     signed char		streamerVersion;
     NSMapTable		*pointerTable;
-    NSMapTable		*stringTable;
+    void		*stringTable;
     NSMapTable		*classVersions;
     int			lastLabel;
     NSMutableDictionary	*map;
@@ -59,6 +62,8 @@
 }
 
 - (id)initForReadingWithData:(NSData *)data;
+
+- (NSData *)data;
 
 - (void)setObjectZone:(NSZone *)zone;
 - (NSZone *)objectZone;
@@ -87,7 +92,7 @@ FOUNDATION_EXPORT NSString * const NSInconsistentArchiveException;
 
 /************		Object call back		****************/
 
-@interface NSObject (NSArchiverCallback)
+@interface NSObject (NSArchiverCallBack)
 
 - (Class)classForArchiver;
 - (id)replacementObjectForArchiver:(NSArchiver *)archiver;

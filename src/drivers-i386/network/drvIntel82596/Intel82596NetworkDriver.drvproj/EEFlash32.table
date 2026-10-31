@@ -1,0 +1,15 @@
+"Title" = "IntelEEFlash32";
+"Family" = "Network";
+"Instance" = "0";
+"Driver Name" = "IntelEEFlash32";
+"Bus Type" = "EISA";
+"Auto Detect IDs" = "0x25d41010";
+"Location" = "";
+"DMA Channels" = "";
+"IRQ Levels" = "";
+"Memory Maps" = "";
+"Valid IRQ Levels" = "";
+"Help File" = "IntelFlash32.rtfd";
+"Server Name" = "Intel82596NetworkDriver";
+"Driver Version" = "PROGRAM:Intel82596NetworkDriver  PROJECT:drvIntel82596-25  DEVELOPER:root  BUILT:Sat Mar 28 21:54:23 PST 1998";
+"Version" = "5.00";

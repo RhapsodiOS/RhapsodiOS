@@ -3,9 +3,8 @@
  * Intel EtherExpress 16 Network Driver
  */
 
-#import <driverkit/IONetworkDeviceDescription.h>
-#import <driverkit/IOEthernetDriver.h>
-#import <driverkit/IODirectDevice.h>
+#import <driverkit/IODeviceDescription.h>
+#import <driverkit/IOEthernet.h>
 
 /* Connector types */
 #define CONNECTOR_AUI          0         /* AUI (Attachment Unit Interface) */
@@ -38,61 +37,36 @@ typedef struct {
     unsigned short size;
 } mem_region_t;
 
-/* Receive frame header structure */
+/* The 14-byte Ethernet header is read from the RFD data area. */
 typedef struct {
-    unsigned short status;
-    unsigned short length;
+    unsigned char bytes[16];
 } recv_hdr_t;
 
-@interface EtherExpress16 : IOEthernetDriver
+@interface EtherExpress16 : IOEthernet
 {
-    /* Hardware configuration */
-    unsigned short ioBase;                    /* I/O port base address */
-    unsigned short irq;                       /* IRQ number */
-    unsigned short memBase;                   /* Shared memory base address */
-    unsigned short memSize;                   /* Shared memory size */
-    enet_addr_t stationAddress;               /* MAC address */
-
-    /* Instance state flags */
-    BOOL isRunning;                           /* Adapter running state */
-    BOOL isPromiscuous;                       /* Promiscuous mode enabled */
-    BOOL isMulticast;                         /* Multicast mode enabled */
-    BOOL interruptDisabled;                   /* Interrupt disabled flag */
-
-    /* Network interface */
-    id networkInterface;                      /* Network interface instance */
-
-    /* Hardware configuration registers */
-    unsigned int connectorType;               /* Connector type (0=AUI, 1=BNC, 2=RJ-45) */
-    unsigned int boardType;                   /* Board type index */
-    unsigned short configFlag;                /* Configuration flag (0xBABB when configured) */
-    BOOL multicastConfigured;                 /* Multicast addresses configured */
-
-    /* Statistics */
-    unsigned int txErrors;                    /* TX error count */
-    unsigned int txCollisions;                /* TX collision count */
-    unsigned int txSuccess;                   /* TX success count */
-    unsigned int rxErrors;                    /* RX error count */
-
-    /* Memory management */
-    unsigned short memFree;                   /* Free memory pointer */
-    unsigned short memAvailSize;              /* Available memory size */
-    unsigned short scbOffset;                 /* System Control Block offset in adapter memory */
-
-    /* Transmit state */
-    BOOL txInProgress;                        /* Transmit operation in progress */
-    unsigned short txCmdOffset;               /* Transmit command block offset */
-    unsigned short txTbdOffset;               /* Transmit buffer descriptor offset */
-    unsigned short txBufferOffset;            /* Transmit buffer offset */
-
-    /* Queue pointers */
-    id txQueue;                               /* Transmit queue */
-
-    /* Receive state */
-    unsigned short rxHeadOffset;              /* Receive frame head offset */
-    unsigned short rxTailOffset;              /* Receive frame tail offset */
-    unsigned short rbdHeadOffset;             /* Receive buffer head offset */
-    unsigned short rbdTailOffset;             /* Receive buffer tail offset */
+    unsigned short base;
+    int irq;
+    enet_addr_t myAddress;
+    IONetwork *network;
+    struct { int val[14]; } resetLabel;
+    unsigned short boardID;
+    int interfaceConnector;
+    int boardType;
+    id xmtQueue;
+    char xmtActive;
+    char promiscuousEnabled;
+    char multicastEnabled;
+    char multicastConfigured;
+    unsigned short membase;
+    unsigned int memused;
+    unsigned short scb_off;
+    unsigned short frf_off;
+    unsigned short lrf_off;
+    unsigned short frb_off;
+    unsigned short lrb_off;
+    unsigned short tcb_off;
+    unsigned short tbd_off;
+    unsigned short tbuf_off;
 }
 
 /* Class Methods */
@@ -110,8 +84,8 @@ typedef struct {
                count:(unsigned int *)count;
 
 /* Hardware Initialization */
-- (BOOL)hwInit:(BOOL)reset;
-- (BOOL)swInit;
+- (void)hwInit:(BOOL)reset;
+- (void)swInit;
 
 /* Promiscuous and Multicast Mode Control */
 - (BOOL)enablePromiscuousMode;
@@ -124,33 +98,32 @@ typedef struct {
 /* Interrupt Management */
 - (void)interruptOccurred;
 - (void)timeoutOccurred;
-- (void)clearTimeout;
 
 /* Interrupt Control */
-- (void)enableAllInterrupts;
+- (IOReturn)enableAllInterrupts;
 - (void)disableAllInterrupts;
 
 /* Transmit Methods */
 - (void)transmit:(netbuf_t)packet;
-- (unsigned int)sendPacket:(void *)data length:(unsigned int)len;
+- (void)sendPacket:(void *)data length:(unsigned int)len;
 
 /* Receive Methods */
-- (unsigned int)receivePacket:(void *)data length:(unsigned int)maxlen timeout:(unsigned int)timeout;
+- (void)receivePacket:(void *)data length:(unsigned int *)length timeout:(unsigned int)timeout;
 
 /* Memory Management */
-- (unsigned short)memAlloc:(unsigned short)size;
-- (unsigned short)memAvail;
-- (mem_region_t)memRegion:(unsigned short)addr;
+- (unsigned short)memAlloc:(unsigned int)size;
+- (unsigned int)memAvail;
+- (unsigned short)memRegion:(unsigned int)size;
 
 /* Command Block List Operations */
-- (BOOL)performCBL:(unsigned short)addr;
+- (void)performCBL:(unsigned short)addr;
 - (void)abortCBL;
 
 /* Receive Operations */
-- (BOOL)recvInit;
-- (BOOL)recvStart;
-- (BOOL)recvRestart;
-- (void)recvFrame:(void *)frame hdr:(recv_hdr_t *)hdr ok:(BOOL)status;
+- (void)recvInit;
+- (void)recvStart;
+- (void)recvRestart;
+- (void)recvFrame:(unsigned short)frameOffset hdr:(recv_hdr_t *)hdr ok:(BOOL)status;
 
 /* Interrupt Handlers */
 - (void)cxIntr;
@@ -160,11 +133,11 @@ typedef struct {
 
 /* Private Category - Internal Implementation */
 @interface EtherExpress16(EtherExpress16Private)
-- (BOOL)__configEE16:(IODeviceDescription *)deviceDescription;
-- (BOOL)__resetEE16:(BOOL)enable;
-- (void)__configureMulticastAddresses;
+- (id)_configEE16:(BOOL)doConfig;
+- (id)_resetEE16:(BOOL)enable;
+- (void)_configureMulticastAddresses;
 - (BOOL)ia_setup;
-- (BOOL)xmtInit;
+- (void)xmtInit;
 @end
 
 /* Kernel Server Instance */

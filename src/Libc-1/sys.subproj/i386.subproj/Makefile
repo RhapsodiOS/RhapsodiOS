@@ -23,7 +23,7 @@ OTHERLINKED = accept.s access.s acct.s add_profil.s adjtime.s bind.s\
               getdirentries.s getdirentryattr.s getdtablesize.s\
               getegid.s geteuid.s getfh.s getfsstat.s getgid.s\
               getgroups.s getitimer.s getpeername.s getpgrp.s getpid.s\
-              getppid.s getpriority.s getrlimit.s getrusage.s\
+              getppid.s getpriority.s getrlimit.s getrusage.s getsid.s\
               getsockname.s getsockopt.s getuid.s ioctl.s kill.s\
               ktrace.s lfs_bmapv.s lfs_markv.s lfs_segclean.s\
               lfs_segwait.s link.s listen.s lseek.s lstat.s lstatv.s\
@@ -59,7 +59,7 @@ OTHERLINKEDOFILES = accept.o access.o acct.o add_profil.o adjtime.o\
                     getegid.o geteuid.o getfh.o getfsstat.o getgid.o\
                     getgroups.o getitimer.o getpeername.o getpgrp.o\
                     getpid.o getppid.o getpriority.o getrlimit.o\
-                    getrusage.o getsockname.o getsockopt.o getuid.o\
+                    getrusage.o getsid.o getsockname.o getsockopt.o getuid.o\
                     ioctl.o kill.o ktrace.o lfs_bmapv.o lfs_markv.o\
                     lfs_segclean.o lfs_segwait.o link.o listen.o\
                     lseek.o lstat.o lstatv.o madvise.o mincore.o\

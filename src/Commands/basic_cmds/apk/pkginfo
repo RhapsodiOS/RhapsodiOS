@@ -1,5 +1,5 @@
 pkgname = basic-cmds
-pkgver = 25
+pkgver = 26
 pkgdesc = Basic user commands.
 maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
 license = APSL

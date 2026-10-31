@@ -1,0 +1,24 @@
+.TH NEWFS_EXT2FS 8
+.SH NAME
+newfs_ext2fs \- create a supported ext2 filesystem
+.SH SYNOPSIS
+.B newfs_ext2fs
+[\-b 1024|2048|4096] [\-L label] [\-m percent] special [blocks]
+.SH DESCRIPTION
+Invokes /sbin/mke2fs directly with revision 1, 128-byte inodes, and features
+filetype and sparse_super only. Default block size is 1024 bytes; reserved
+space defaults to 5 percent. Labels are at most 16 bytes. Percent is an integer
+between 0 and 50. An optional positive blocks count is measured in the selected
+block size. Regular-file images are supported. Mounted targets and failed
+mount-table/device inspection are refused before execution.
+The selected partition capacity is inspected read-only before the formatter
+starts; unavailable or invalid queries and oversized explicit counts are
+refused. No legacy whole-drive size fallback is used. Internal -F permits
+raw character devices and regular-file images after these checks. Existing
+regular images may grow with an explicit count within checked native offset/block-address bounds. Device counts always remain within their selected partition.
+
+.SH EXIT STATUS
+Returns the formatter status; invalid options return 16 and inspection or
+child-process failures return 8.
+.SH SEE ALSO
+fsck_ext2fs(8), mount_ext2fs(8), mke2fs(8)

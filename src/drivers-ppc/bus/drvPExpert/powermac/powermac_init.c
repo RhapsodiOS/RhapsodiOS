@@ -359,13 +359,21 @@ void display_machine_class(void)
            "Power Macintosh %s class machine\n", str );
 }
 
+static void display_frequency(const char *label, unsigned long hz)
+{
+  if (hz < 1000000000)
+    printf("%s %d.%02d MHz\n", label, hz / 1000000, (hz / 10000) % 100);
+  else
+    printf("%s %d.%02d GHz\n", label, hz / 1000000000, (hz / 10000000) % 100);
+}
+
 void display_machine_info(void)
 {
-  printf("CPU Frequency: %9d Hz\n", powermac_machine_info.cpu_clock_rate_hz);
-  printf("BUS Frequency: %9d Hz\n", powermac_machine_info.bus_clock_rate_hz);
+  display_frequency("CPU Frequency:", powermac_machine_info.cpu_clock_rate_hz);
+  display_frequency("BUS Frequency:", powermac_machine_info.bus_clock_rate_hz);
 
   if (powermac_machine_info.l2_clock_rate_hz != 0)
-    printf("L2 Frequency:  %9d Hz\n", powermac_machine_info.l2_clock_rate_hz);
+    display_frequency("L2 Frequency: ", powermac_machine_info.l2_clock_rate_hz);
 
 #if 0
   kprintf("g_raw_cpu:         %9d\n", g_raw_cpu);

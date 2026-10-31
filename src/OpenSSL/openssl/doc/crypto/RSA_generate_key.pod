@@ -19,7 +19,7 @@ be seeded prior to calling RSA_generate_key().
 
 The modulus size will be B<num> bits, and the public exponent will be
 B<e>. Key sizes with B<num> E<lt> 1024 should be considered insecure.
-The exponent is an odd number, typically 3 or 65535.
+The exponent is an odd number, typically 3, 17 or 65537.
 
 A callback function may be used to provide feedback about the
 progress of the key generation. If B<callback> is not B<NULL>, it
@@ -59,7 +59,8 @@ RSA_generate_key() goes into an infinite loop for illegal input values.
 
 =head1 SEE ALSO
 
-L<err(3)|err(3)>, L<rand(3)|rand(3)>, L<rsa(3)|rsa(3)>, L<RSA_free(3)|RSA_free(3)>
+L<ERR_get_error(3)|ERR_get_error(3)>, L<rand(3)|rand(3)>, L<rsa(3)|rsa(3)>,
+L<RSA_free(3)|RSA_free(3)>
 
 =head1 HISTORY
 

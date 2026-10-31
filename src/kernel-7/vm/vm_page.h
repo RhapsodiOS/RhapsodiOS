@@ -244,6 +244,7 @@ void		vm_page_free(vm_page_t);
 void		vm_page_addfree(vm_page_t);
 void		vm_page_activate(vm_page_t);
 void		vm_page_deactivate(vm_page_t);
+void		vm_page_deactivate_first(vm_page_t);
 void		vm_page_rename(vm_page_t, vm_object_t, vm_offset_t);
 void		vm_page_insert(vm_page_t, vm_object_t, vm_offset_t);
 void		vm_page_remove(vm_page_t);

@@ -1,0 +1,9 @@
+ninja_required_version = 1.9
+builddir = BUILD.ninja/RELEASE_UNIVERSAL
+outdir = BUILD.ninja/RELEASE_UNIVERSAL
+i386_outdir = BUILD.ninja/RELEASE_I386
+ppc_outdir = BUILD.ninja/RELEASE_PPC
+i386_manifest = build.ninja
+ppc_manifest = build-ppc.ninja
+include ninja/universal.ninja
+default BUILD.ninja/RELEASE_UNIVERSAL/mach_kernel BUILD.ninja/RELEASE_UNIVERSAL/mach_kernel.sys

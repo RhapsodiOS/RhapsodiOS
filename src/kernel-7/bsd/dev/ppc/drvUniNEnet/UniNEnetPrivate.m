@@ -370,9 +370,9 @@ static u_int32_t hashIndex(u_int8_t *addr)
     WriteUniNRegister(ioBaseEnet, kTxDescBase, txDMACommandsPhys);
     WriteUniNRegister(ioBaseEnet, kTxDescBaseHi, 0);  /* Upper 32 bits (always 0 on 32-bit) */
 
-    /* Calculate TX ring size encoding (log2 of ring size) */
+    /* TX ring size field: the ring holds 32 << ringSize entries */
     ringSize = 0;
-    regValue = txMaxCommand;
+    regValue = txMaxCommand >> 5;
     while ((regValue > 1) && (ringSize < 13)) {
         ringSize++;
         regValue >>= 1;
@@ -388,9 +388,9 @@ static u_int32_t hashIndex(u_int8_t *addr)
     WriteUniNRegister(ioBaseEnet, kRxDescBaseHi, 0);  /* Upper 32 bits (always 0) */
     WriteUniNRegister(ioBaseEnet, kRxKick, 0x7C);  /* Initial kick value (124) */
 
-    /* Calculate RX ring size encoding */
+    /* RX ring size field: the ring holds 32 << ringSize entries */
     ringSize = 0;
-    regValue = rxMaxCommand;
+    regValue = rxMaxCommand >> 5;
     while ((regValue > 1) && (ringSize < 13)) {
         ringSize++;
         regValue >>= 1;
@@ -513,9 +513,11 @@ static u_int32_t hashIndex(u_int8_t *addr)
     /* Read current interrupt mask */
     intMask = ReadUniNRegister(ioBaseEnet, kMacIntMask);
 
-    /* Clear specific interrupt mask bits to enable interrupts */
-    /* Keeps bits 0x00008011 masked, unmasks all others */
-    intMask &= 0xFFFF7FEE;
+    /* Unmask TX done (0x01) and RX done (0x10), the only causes
+     * -interruptOccurred services.  5.6 also unmasks the RX MAC summary bit
+     * (0xFFFF7FEE); nothing reads MAC RX status to clear it, so any RX MAC
+     * event (QEMU's sungem raises them despite kRxMask) storms. */
+    intMask &= 0xFFFFFFEE;
 
     /* Write back the modified mask */
     WriteUniNRegister(ioBaseEnet, kMacIntMask, intMask);
@@ -707,8 +709,8 @@ static u_int32_t hashIndex(u_int8_t *addr)
     // Update tail pointer to next position
     txCommandTail = next;
 
-    // Kick the transmit DMA engine
-    WriteUniNRegister(ioBaseEnet, kTxKick, 0);
+    // Kick the transmit DMA engine: it sends up to, not including, the kick index
+    WriteUniNRegister(ioBaseEnet, kTxKick, txCommandTail);
 
     return YES;
 }
@@ -760,20 +762,23 @@ static u_int32_t hashIndex(u_int8_t *addr)
             /* Get pointer to current descriptor */
             desc = &rxDMACommands[currentIndex];
 
-            /* Read descriptor status word (offset +2) */
-            status = OSSwapInt16(desc->desc_seg[0].address);
+            /* The descriptor is a little-endian 64-bit control word, then
+             * the buffer address.  Bytes 2-3 (low half of operation) hold
+             * OWN (bit 7 of byte 3) and the frame length; the high word
+             * (address) holds the BAD and hash-pass flags. */
+            status = (u_int16_t)desc->desc_seg[0].operation;
 
-            /* Check ownership bit (bit 7 of high byte) */
+            /* Check ownership bit */
             if ((status & 0x80) != 0) {
                 /* Hardware still owns this descriptor - we're done */
                 goto receiveComplete;
             }
 
             /* Extract packet length (lower 15 bits) */
-            packetLength = status & 0x7FFF;
+            packetLength = OSSwapInt16(status) & 0x7FFF;
 
-            /* Read status flags from descriptor (offset +4, shifted left 24 bits in original code) */
-            statusWord = OSSwapInt32(desc->desc_seg[0].cmdDep);
+            /* Read status flags from the control word's high half */
+            statusWord = OSSwapInt32(desc->desc_seg[0].address);
 
             /* Validate packet length (60-1514 bytes) and check error bit */
             if ((packetLength < 60) || (packetLength > 1514) || ((statusWord & 0x40000000) != 0)) {
@@ -786,9 +791,10 @@ static u_int32_t hashIndex(u_int8_t *addr)
 
             if (packetError) {
 resetDescriptor:
-                /* Reset descriptor for reuse - set ownership bit and clear status */
-                desc->desc_seg[0].address = OSSwapInt16(0xF085);  /* 0x85F0 swapped */
-                desc->desc_seg[0].cmdDep = 0;
+                /* Reset descriptor for reuse: hand the same buffer back to
+                 * the chip (OWN, 0x5F0-byte buffer), clear the status */
+                desc->desc_seg[0].operation = 0xF085;  /* bytes 2-3: 0x85F0 LE */
+                desc->desc_seg[0].address = 0;
             }
             else {
                 /* Check for unwanted multicast packet (if not in promiscuous mode) */
@@ -1455,6 +1461,7 @@ receiveComplete:
     u_int16_t phyAuxStatus;
     u_int32_t phyMode;
     u_int16_t xifConfig;
+    u_int16_t linkMode;
     BOOL linkUp = NO;
     BOOL fullDuplex = NO;
     char *speedStr;
@@ -1518,7 +1525,7 @@ receiveComplete:
         [self miiReadWord:&phyAuxStatus reg:0x19 phy:phyId];
 
         /* Extract speed/duplex from bits 8-10 */
-        u_int16_t linkMode = (phyAuxStatus >> 8) & 7;
+        linkMode = (phyAuxStatus >> 8) & 7;
 
         /* Configure MII mode based on link speed */
         xifConfig = (u_int16_t)ReadUniNRegister(ioBaseEnet, kPCSMIIControl);

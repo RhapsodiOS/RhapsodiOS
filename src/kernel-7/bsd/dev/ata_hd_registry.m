@@ -14,6 +14,7 @@
 #import <driverkit/kernelDriver.h>
 #import <machkit/NXLock.h>
 
+#import "disk.h"
 #import "ata_hd_registry.h"
 #import "ata_hd_registry_core.h"
 
@@ -975,6 +976,13 @@ ata_hd_ioctl(dev_t dev, u_long cmd, caddr_t data, int flag,
     unit = IO_DISK_UNIT(dev);
     map = &ata_hd_maps[unit];
     switch (cmd) {
+    case DKIOCGPARTINFO:
+        if (IO_DISK_PART(dev) == ATA_HD_LIVE_PART) {
+            [ata_hd_lock unlock];
+            return ENXIO;
+        }
+        disk = ata_hd_disk_for_dev_locked(dev);
+        break;
     case DKIOCSFORMAT:
     case DKIOCGFORMAT:
     case DKIOCGLABEL:
@@ -1009,6 +1017,26 @@ ata_hd_ioctl(dev_t dev, u_long cmd, caddr_t data, int flag,
 
     ioResult = IO_R_SUCCESS;
     switch (cmd) {
+    case DKIOCGPARTINFO:
+    {
+        struct disk_partition_info result;
+        unsigned int physicalSize,physicalCount;
+        if (map->liveId == nil || disk == map->liveId) return ENXIO;
+        result.block_size = [disk blockSize];
+        result.block_count = [disk diskSize];
+        physicalSize = [map->liveId blockSize];
+        physicalCount = [map->liveId diskSize];
+        /* Reject the unlabelled partition-zero whole-drive fallback too. */
+        if (result.block_size == 0 || result.block_size > 0x7fffffffU ||
+            result.block_count == 0 || result.block_count > 0x7fffffffU ||
+            physicalSize == 0 || physicalSize > 0x7fffffffU ||
+            physicalCount == 0 || physicalCount > 0x7fffffffU ||
+            (u_int64_t)result.block_size*result.block_count >=
+            (u_int64_t)physicalSize*physicalCount)
+            return EINVAL;
+        *(struct disk_partition_info *)data = result;
+        return 0;
+    }
     case DKIOCSFORMAT:
         ioResult = [disk setFormatted:*(u_int *)data];
         break;

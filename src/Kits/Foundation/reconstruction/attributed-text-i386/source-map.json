@@ -1,0 +1,962 @@
+{
+  "schema_version": "source-map-v1",
+  "reference_sha256": "1165B9063ADD5672514455CA2C9830625BEA2BCE5E46126FB5E8652114C909D6",
+  "mapped": [
+    {
+      "address": 1112553368,
+      "size": 161,
+      "reference_names": [
+        "-[NSRLEArray objectAtIndex:effectiveRange:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 471
+    },
+    {
+      "address": 1112554176,
+      "size": 145,
+      "reference_names": [
+        "_blockForLocation"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 92
+    },
+    {
+      "address": 1112554324,
+      "size": 40,
+      "reference_names": [
+        "-[NSConcreteMutableAttributedString attributesAtIndex:effectiveRange:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 984
+    },
+    {
+      "address": 1112557908,
+      "size": 32,
+      "reference_names": [
+        "-[NSConcreteMutableAttributedString length]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 980
+    },
+    {
+      "address": 1112561204,
+      "size": 63,
+      "reference_names": [
+        "-[NSAttributedString attribute:atIndex:effectiveRange:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 1255
+    },
+    {
+      "address": 1112567052,
+      "size": 13,
+      "reference_names": [
+        "-[NSConcreteMutableAttributedString string]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 976
+    },
+    {
+      "address": 1112593620,
+      "size": 175,
+      "reference_names": [
+        "-[NSRLEArray objectAtIndex:effectiveRange:runIndex:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 475
+    },
+    {
+      "address": 1112601592,
+      "size": 284,
+      "reference_names": [
+        "-[NSAttributedString attribute:atIndex:longestEffectiveRange:inRange:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 1325
+    },
+    {
+      "address": 1112605700,
+      "size": 62,
+      "reference_names": [
+        "-[NSConcreteMutableAttributedString attribute:atIndex:effectiveRange:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 989
+    },
+    {
+      "address": 1112605828,
+      "size": 269,
+      "reference_names": [
+        "-[NSAttributedString attributesAtIndex:longestEffectiveRange:inRange:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 1296
+    },
+    {
+      "address": 1112608576,
+      "size": 86,
+      "reference_names": [
+        "__NSAttributeDictionaryClass"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 136
+    },
+    {
+      "address": 1112612628,
+      "size": 447,
+      "reference_names": [
+        "-[NSConcreteMutableAttributedString attribute:atIndex:longestEffectiveRange:inRange:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 996
+    },
+    {
+      "address": 1112614900,
+      "size": 146,
+      "reference_names": [
+        "-[NSConcreteMutableAttributedString setAttributes:range:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 1057
+    },
+    {
+      "address": 1112617820,
+      "size": 1042,
+      "reference_names": [
+        "-[NSMutableRLEArray replaceObjectsInRange:withObject:length:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 545
+    },
+    {
+      "address": 1112622696,
+      "size": 7,
+      "reference_names": [
+        "-[NSConcreteMutableAttributedString edited:range:changeInLength:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 1175
+    },
+    {
+      "address": 1112625932,
+      "size": 971,
+      "reference_names": [
+        "-[NSMutableRLEArray insertObject:range:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 661
+    },
+    {
+      "address": 1112637256,
+      "size": 112,
+      "reference_names": [
+        "-[NSMutableRLEArray _setBlockCapacity:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 532
+    },
+    {
+      "address": 1112642188,
+      "size": 358,
+      "reference_names": [
+        "-[NSConcreteMutableAttributedString replaceCharactersInRange:withString:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 1093
+    },
+    {
+      "address": 1112647304,
+      "size": 280,
+      "reference_names": [
+        "-[NSMutableAttributedString addAttributes:range:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 1557
+    },
+    {
+      "address": 1112648624,
+      "size": 47,
+      "reference_names": [
+        "-[NSAttributedString length]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 1251
+    },
+    {
+      "address": 1112648672,
+      "size": 62,
+      "reference_names": [
+        "-[NSRLEArray objectAtRunIndex:length:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 463
+    },
+    {
+      "address": 1112655572,
+      "size": 115,
+      "reference_names": [
+        "-[NSConcreteAttributedString attributesAtIndex:effectiveRange:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 883
+    },
+    {
+      "address": 1112668580,
+      "size": 270,
+      "reference_names": [
+        "-[NSConcreteMutableAttributedString addAttribute:value:range:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 1068
+    },
+    {
+      "address": 1112671324,
+      "size": 113,
+      "reference_names": [
+        "-[NSConcreteAttributedString attribute:atIndex:effectiveRange:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 892
+    },
+    {
+      "address": 1112675952,
+      "size": 137,
+      "reference_names": [
+        "-[NSRLEArray dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 424
+    },
+    {
+      "address": 1112676604,
+      "size": 32,
+      "reference_names": [
+        "-[NSConcreteAttributedString length]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 879
+    },
+    {
+      "address": 1112677436,
+      "size": 270,
+      "reference_names": [
+        "-[NSMutableAttributedString removeAttribute:range:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 1578
+    },
+    {
+      "address": 1112680332,
+      "size": 95,
+      "reference_names": [
+        "-[NSRLEArray initWithRefCountedRunArray:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 413
+    },
+    {
+      "address": 1112681732,
+      "size": 378,
+      "reference_names": [
+        "-[NSConcreteMutableAttributedString replaceCharactersInRange:withAttributedString:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 1119
+    },
+    {
+      "address": 1112688716,
+      "size": 31,
+      "reference_names": [
+        "-[NSRLEArray init]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 409
+    },
+    {
+      "address": 1112688756,
+      "size": 13,
+      "reference_names": [
+        "-[NSConcreteAttributedString string]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 875
+    },
+    {
+      "address": 1112699916,
+      "size": 457,
+      "reference_names": [
+        "-[NSConcreteAttributedString initWithAttributedString:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 855
+    },
+    {
+      "address": 1112705080,
+      "size": 111,
+      "reference_names": [
+        "-[NSConcreteAttributedString initWithString:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 827
+    },
+    {
+      "address": 1112705480,
+      "size": 92,
+      "reference_names": [
+        "-[NSConcreteAttributedString dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 908
+    },
+    {
+      "address": 1112707352,
+      "size": 92,
+      "reference_names": [
+        "-[NSConcreteMutableAttributedString dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 1178
+    },
+    {
+      "address": 1112715764,
+      "size": 41,
+      "reference_names": [
+        "-[NSMutableRLEArray deleteObjectsInRange:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 730
+    },
+    {
+      "address": 1112716032,
+      "size": 91,
+      "reference_names": [
+        "+[NSMutableAttributedString allocWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 1486
+    },
+    {
+      "address": 1112719524,
+      "size": 91,
+      "reference_names": [
+        "-[NSConcreteMutableAttributedString initWithString:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 953
+    },
+    {
+      "address": 1112720156,
+      "size": 268,
+      "reference_names": [
+        "-[NSRLEArray _makeNewListFrom:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 501
+    },
+    {
+      "address": 1112720588,
+      "size": 91,
+      "reference_names": [
+        "+[NSAttributedString allocWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 1220
+    },
+    {
+      "address": 1112723284,
+      "size": 38,
+      "reference_names": [
+        "-[NSConcreteMutableAttributedString init]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 918
+    },
+    {
+      "address": 1112730092,
+      "size": 615,
+      "reference_names": [
+        "-[NSConcreteMutableAttributedString initWithAttributedString:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 922
+    },
+    {
+      "address": 1112737444,
+      "size": 87,
+      "reference_names": [
+        "-[NSMutableAttributedString appendAttributedString:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 1620
+    },
+    {
+      "address": 1112738740,
+      "size": 231,
+      "reference_names": [
+        "-[NSConcreteAttributedString initWithString:attributes:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 836
+    },
+    {
+      "address": 1112740512,
+      "size": 13,
+      "reference_names": [
+        "-[NSConcreteMutableAttributedString _runArrayHoldingAttributes]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 1053
+    },
+    {
+      "address": 1112740696,
+      "size": 63,
+      "reference_names": [
+        "-[NSMutableRLEArray copyWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 734
+    },
+    {
+      "address": 1112740760,
+      "size": 60,
+      "reference_names": [
+        "-[NSAttributedString copyWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 1231
+    },
+    {
+      "address": 1112741776,
+      "size": 87,
+      "reference_names": [
+        "-[NSMutableAttributedString setAttributedString:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 1629
+    },
+    {
+      "address": 1112773088,
+      "size": 63,
+      "reference_names": [
+        "-[NSRLEArray mutableCopyWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 496
+    },
+    {
+      "address": 1112773356,
+      "size": 60,
+      "reference_names": [
+        "-[NSAttributedString mutableCopyWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 1236
+    },
+    {
+      "address": 1112775556,
+      "size": 13,
+      "reference_names": [
+        "-[NSConcreteAttributedString _runArrayHoldingAttributes]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 904
+    },
+    {
+      "address": 1112868132,
+      "size": 145,
+      "reference_names": [
+        "-[NSAttributedString initWithCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 1430
+    },
+    {
+      "address": 1112868280,
+      "size": 388,
+      "reference_names": [
+        "-[NSAttributedString attributedSubstringFromRange:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 1260
+    },
+    {
+      "address": 1112873992,
+      "size": 435,
+      "reference_names": [
+        "__NSReadMutableAttributedStringWithCoder"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 146
+    },
+    {
+      "address": 1112882968,
+      "size": 38,
+      "reference_names": [
+        "-[NSConcreteAttributedString init]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 823
+    },
+    {
+      "address": 1112896544,
+      "size": 7,
+      "reference_names": [
+        "-[NSMutableAttributedString endEditing]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 1639
+    },
+    {
+      "address": 1112896552,
+      "size": 7,
+      "reference_names": [
+        "-[NSMutableAttributedString beginEditing]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 1636
+    },
+    {
+      "address": 1113088736,
+      "size": 22,
+      "reference_names": [
+        "+[NSAttributedString _setAttributedDictionaryClass:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 1227
+    },
+    {
+      "address": 1113093224,
+      "size": 81,
+      "reference_names": [
+        "+[NSSimpleAttributeDictionary emptyAttributeDictionary]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 195
+    },
+    {
+      "address": 1113093308,
+      "size": 529,
+      "reference_names": [
+        "+[NSSimpleAttributeDictionary newWithDictionary:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 206
+    },
+    {
+      "address": 1113094016,
+      "size": 152,
+      "reference_names": [
+        "-[NSAttributedString attributedStringByWeaklyAddingAttributes:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 1418
+    },
+    {
+      "address": 1113094168,
+      "size": 57,
+      "reference_names": [
+        "-[NSAttributedString attributesAtIndex:effectiveRange:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 1246
+    },
+    {
+      "address": 1113094228,
+      "size": 34,
+      "reference_names": [
+        "-[NSAttributedString classForCoder]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 1380
+    },
+    {
+      "address": 1113094264,
+      "size": 322,
+      "reference_names": [
+        "-[NSAttributedString description]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 1398
+    },
+    {
+      "address": 1113094588,
+      "size": 382,
+      "reference_names": [
+        "-[NSAttributedString encodeWithCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 1444
+    },
+    {
+      "address": 1113094972,
+      "size": 47,
+      "reference_names": [
+        "-[NSAttributedString hash]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 1389
+    },
+    {
+      "address": 1113095020,
+      "size": 99,
+      "reference_names": [
+        "-[NSAttributedString isEqual:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 1393
+    },
+    {
+      "address": 1113095120,
+      "size": 304,
+      "reference_names": [
+        "-[NSAttributedString isEqualToAttributedString:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 1354
+    },
+    {
+      "address": 1113095424,
+      "size": 10,
+      "reference_names": [
+        "-[NSAttributedString replacementObjectForPortCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 1384
+    },
+    {
+      "address": 1113095436,
+      "size": 57,
+      "reference_names": [
+        "-[NSAttributedString string]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 1241
+    },
+    {
+      "address": 1113097864,
+      "size": 34,
+      "reference_names": [
+        "-[NSConcreteMutableAttributedString classForCoder]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 1162
+    },
+    {
+      "address": 1113097900,
+      "size": 74,
+      "reference_names": [
+        "-[NSConcreteMutableAttributedString initWithCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 1166
+    },
+    {
+      "address": 1113097976,
+      "size": 215,
+      "reference_names": [
+        "-[NSConcreteMutableAttributedString initWithString:attributes:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 960
+    },
+    {
+      "address": 1113107424,
+      "size": 277,
+      "reference_names": [
+        "-[NSMutableAttributedString addAttribute:value:range:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 1536
+    },
+    {
+      "address": 1113107704,
+      "size": 286,
+      "reference_names": [
+        "-[NSMutableAttributedString addAttributesWeakly:range:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 1493
+    },
+    {
+      "address": 1113107992,
+      "size": 52,
+      "reference_names": [
+        "-[NSMutableAttributedString deleteCharactersInRange:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 1624
+    },
+    {
+      "address": 1113108044,
+      "size": 44,
+      "reference_names": [
+        "-[NSMutableAttributedString insertAttributedString:atIndex:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 1616
+    },
+    {
+      "address": 1113108088,
+      "size": 76,
+      "reference_names": [
+        "-[NSMutableAttributedString mutableString]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 1529
+    },
+    {
+      "address": 1113108164,
+      "size": 226,
+      "reference_names": [
+        "-[NSMutableAttributedString replaceCharactersInRange:withAttributedString:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 1599
+    },
+    {
+      "address": 1113108392,
+      "size": 55,
+      "reference_names": [
+        "-[NSMutableAttributedString replaceCharactersInRange:withString:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 1521
+    },
+    {
+      "address": 1113108448,
+      "size": 55,
+      "reference_names": [
+        "-[NSMutableAttributedString setAttributes:range:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 1525
+    },
+    {
+      "address": 1113109732,
+      "size": 59,
+      "reference_names": [
+        "-[NSMutableStringProxyForMutableAttributedString characterAtIndex:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 1188
+    },
+    {
+      "address": 1113109792,
+      "size": 74,
+      "reference_names": [
+        "-[NSMutableStringProxyForMutableAttributedString dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 1192
+    },
+    {
+      "address": 1113109868,
+      "size": 66,
+      "reference_names": [
+        "-[NSMutableStringProxyForMutableAttributedString getCharacters:range:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 1197
+    },
+    {
+      "address": 1113109936,
+      "size": 88,
+      "reference_names": [
+        "-[NSMutableStringProxyForMutableAttributedString initWithMutableAttributedString:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 1201
+    },
+    {
+      "address": 1113110024,
+      "size": 50,
+      "reference_names": [
+        "-[NSMutableStringProxyForMutableAttributedString length]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 1208
+    },
+    {
+      "address": 1113110076,
+      "size": 48,
+      "reference_names": [
+        "-[NSMutableStringProxyForMutableAttributedString replaceCharactersInRange:withString:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 1212
+    },
+    {
+      "address": 1113119528,
+      "size": 29,
+      "reference_names": [
+        "-[NSRLEArray copyWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 492
+    },
+    {
+      "address": 1113119560,
+      "size": 16,
+      "reference_names": [
+        "-[NSRLEArray count]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 443
+    },
+    {
+      "address": 1113119576,
+      "size": 184,
+      "reference_names": [
+        "-[NSRLEArray description]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 447
+    },
+    {
+      "address": 1113122460,
+      "size": 29,
+      "reference_names": [
+        "-[NSSimpleAttributeDictionary copyWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 253
+    },
+    {
+      "address": 1113122492,
+      "size": 13,
+      "reference_names": [
+        "-[NSSimpleAttributeDictionary count]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 236
+    },
+    {
+      "address": 1113122508,
+      "size": 139,
+      "reference_names": [
+        "-[NSSimpleAttributeDictionary dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 339
+    },
+    {
+      "address": 1113122648,
+      "size": 76,
+      "reference_names": [
+        "-[NSSimpleAttributeDictionary keyEnumerator]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 246
+    },
+    {
+      "address": 1113122724,
+      "size": 177,
+      "reference_names": [
+        "-[NSSimpleAttributeDictionary mutableCopyWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 257
+    },
+    {
+      "address": 1113122904,
+      "size": 707,
+      "reference_names": [
+        "-[NSSimpleAttributeDictionary newWithKey:object:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 272
+    },
+    {
+      "address": 1113123612,
+      "size": 57,
+      "reference_names": [
+        "-[NSSimpleAttributeDictionary objectForKey:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 240
+    },
+    {
+      "address": 1113123672,
+      "size": 158,
+      "reference_names": [
+        "-[NSSimpleAttributeDictionary release]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 362
+    },
+    {
+      "address": 1113123832,
+      "size": 14,
+      "reference_names": [
+        "-[NSSimpleAttributeDictionary retainCount]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 377
+    },
+    {
+      "address": 1113123848,
+      "size": 113,
+      "reference_names": [
+        "-[NSSimpleAttributeDictionary retain]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 349
+    },
+    {
+      "address": 1113123964,
+      "size": 172,
+      "reference_names": [
+        "-[NSSimpleAttributeDictionary slotForKey:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 315
+    },
+    {
+      "address": 1113124136,
+      "size": 74,
+      "reference_names": [
+        "-[NSSimpleAttributeDictionaryEnumerator dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 400
+    },
+    {
+      "address": 1113124212,
+      "size": 95,
+      "reference_names": [
+        "-[NSSimpleAttributeDictionaryEnumerator initWithAttributeDictionary:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 385
+    },
+    {
+      "address": 1113124308,
+      "size": 42,
+      "reference_names": [
+        "-[NSSimpleAttributeDictionaryEnumerator nextObject]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 394
+    },
+    {
+      "address": 1113146204,
+      "size": 81,
+      "reference_names": [
+        "_emptyAttributedString"
+      ],
+      "source_path": "src/Kits/Foundation/NSAttributedString.m",
+      "source_line": 752
+    }
+  ],
+  "unmapped": [],
+  "duplicate_candidates": [],
+  "boundary_disputed": [],
+  "by_module": {
+    "NSAttributedString.m": {
+      "mapped": 105,
+      "unmapped": 0,
+      "duplicate_candidates": 0,
+      "boundary_disputed": 0
+    }
+  }
+}

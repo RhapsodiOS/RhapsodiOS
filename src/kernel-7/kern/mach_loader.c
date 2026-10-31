@@ -955,6 +955,14 @@ get_macho_vnode(
 		goto bad1;
 #if MACH_NBC
 	VOP_UNLOCK(vp, 0, p);
+	/*
+	 * Map the vnode ourselves.  Otherwise vn_rdwr() maps it behind our
+	 * back whenever the file already has a pager, and nothing here
+	 * unmaps it before the caller's vrele(), so the map_count leaks and
+	 * the file system can never be unmounted.  Balanced below, or by
+	 * vn_close() on the error path.
+	 */
+	map_vnode(vp, p);
 #endif /* MACH_NBC */
 	if(error = vn_rdwr(UIO_READ, vp, (caddr_t)&header, sizeof(header), 0,
 	    UIO_SYSSPACE, IO_NODELOCKED, p->p_ucred, &resid, p))
@@ -1004,6 +1012,9 @@ get_macho_vnode(
 		*file_offset = fat_arch.offset;
 		*macho_size = fat_arch.size;
 		*vpp = vp;
+#if MACH_NBC
+		unmap_vnode(vp, p);
+#endif /* MACH_NBC */
 		// leaks otherwise - A.R
 		FREE_ZONE(ndp->ni_cnd.cn_pnbuf, ndp->ni_cnd.cn_pnlen, M_NAMEI);
 		
@@ -1021,6 +1032,9 @@ get_macho_vnode(
 		}
 		*macho_size =  attr.va_size;
 		*vpp = vp;
+#if MACH_NBC
+		unmap_vnode(vp, p);
+#endif /* MACH_NBC */
 		// leaks otherwise - A.R
 		FREE_ZONE(ndp->ni_cnd.cn_pnbuf, ndp->ni_cnd.cn_pnlen, M_NAMEI);
 

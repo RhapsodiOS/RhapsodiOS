@@ -29,6 +29,10 @@
  *
  * HISTORY
  *
+ * 26 Sep 2026
+ *	The hardware moved behind an intr_controller_t so the platform
+ *	expert can put the APICs in place of the 8259s: 64 irqs, the
+ *	8259s serving the first 16 through the controller defined here.
  * 5 July 1993 ? at NeXT
  *	Removed software interrupt support.
  * 	Changed lower_ipl() to never raise masked_ipl.
@@ -55,11 +59,17 @@
 
 static intr_dispatch_t	dispatch_table[INTR_NIRQ];
 static intr_irq_mask_t	ipl_mask[INTR_NIPL];
-static intr_dispatch_t	*defer_table[INTR_NIPL];
+static pexpert_irq_mask_t	defer_table[INTR_NIPL];
 
 static int		current_ipl, masked_ipl;
 static intr_irq_mask_t	current_irq_mask, disabled_irq_mask;
+static intr_irq_mask_t	current_hard_mask;
 static intr_irq_mask_t	current_elcr;
+
+static const intr_controller_t	*controller;
+static const intr_controller_t	i8259_controller;
+
+#define I8259_NIRQ		16	// what the 8259 pair serves
 
 /*
  * A specific EOI for one input of one PIC.
@@ -99,8 +109,8 @@ send_eoi(
     int			irq
 )
 {
-    if (irq >= INTR_NIRQ / 2) {
-	send_slave_eoi_command(specific_eoi(irq - INTR_NIRQ / 2));
+    if (irq >= I8259_NIRQ / 2) {
+	send_slave_eoi_command(specific_eoi(irq - I8259_NIRQ / 2));
 	send_master_eoi_command(specific_eoi(INTR_SLAVE_IRQ));
     }
     else
@@ -114,7 +124,7 @@ set_elcr(
 )
 {
     union {
-	intr_irq_mask_t		full;
+	unsigned short		full;
 	struct {
 	    unsigned short
 				half	:8,
@@ -127,10 +137,10 @@ set_elcr(
 	} slave;
     } new_mask;
 
-    new_mask.full.mask = mask.mask;
+    new_mask.full = (unsigned short) mask.mask;
     
-    if (new_mask.full.mask != current_elcr.mask) {
-    	current_elcr = new_mask.full;
+    if (mask.mask != current_elcr.mask) {
+    	current_elcr = mask;
 
 	set_master_elcr((intr_elcr_t) {
 					    new_mask.master.half });
@@ -142,16 +152,18 @@ set_elcr(
 
 /*
  * Set the interrupt masks of both PICs
- * according to the irq mask.
+ * according to the irq mask.  The
+ * cascade input is never masked.
  */
-static inline
+static
 void
-set_irq_mask(
-    intr_irq_mask_t		mask
+i8259_set_mask(
+    pexpert_irq_mask_t		mask,
+    pexpert_irq_mask_t		disabled
 )
 {
     union {
-	intr_irq_mask_t		full;
+	unsigned short		full;
 	struct {
 	    unsigned short
 				half	:8,
@@ -164,16 +176,36 @@ set_irq_mask(
 	} slave;
     } new_mask;
     
-    new_mask.full.mask = mask.mask | disabled_irq_mask.mask;
+    new_mask.full = (unsigned short) mask & ~(unsigned short) INTR_MASK_SLAVE;
 
-    if (new_mask.full.mask != current_irq_mask.mask) {
-	current_irq_mask = new_mask.full;
+    set_master_mask((intr_ocw1_t) {
+					new_mask.master.half });
 
-	set_master_mask((intr_ocw1_t) {
-					    new_mask.master.half });
+    set_slave_mask((intr_ocw1_t) {
+					new_mask.slave.half });
+}
 
-	set_slave_mask((intr_ocw1_t) {
-					    new_mask.slave.half });
+/*
+ * Set the irq mask on whichever
+ * controller is in charge.
+ */
+static inline
+void
+set_irq_mask(
+    intr_irq_mask_t		mask
+)
+{
+    intr_irq_mask_t		new_mask, hard_mask;
+    
+    new_mask.mask = mask.mask | disabled_irq_mask.mask;
+    /* IPL0 masks include unregistered IRQs, which must stay disabled. */
+    hard_mask.mask = ipl_mask[INTR_IPL0].mask | disabled_irq_mask.mask;
+
+    if (new_mask.mask != current_irq_mask.mask ||
+		hard_mask.mask != current_hard_mask.mask) {
+	current_irq_mask = new_mask;
+	current_hard_mask = hard_mask;
+	(*controller->set_mask)(new_mask.mask, hard_mask.mask);
     }
 }
 
@@ -268,11 +300,15 @@ lower_ipl(
     int			old_ipl
 )
 {
-    intr_dispatch_t	**d, *i;
+    intr_dispatch_t	*i;
+    int			level, irq;
     
-    for (d = &defer_table[old_ipl]; d > &defer_table[ipl]; d--)
-	if (i = *d) {
-	    *d = 0;
+    for (level = old_ipl; level > ipl; level--)
+	while (defer_table[level]) {
+	    for (irq = 0; !(defer_table[level] & INTR_MASK_IRQ(irq)); irq++)
+		;
+	    defer_table[level] &= ~INTR_MASK_IRQ(irq);
+	    i = &dispatch_table[irq];
 
 	    (void) set_ipl(i->ipl);
 	    
@@ -435,19 +471,34 @@ intr_initialize(
 )
 {
     intr_irq_mask_t	*m;
-    int			i, mask;
+    int			i;
+    pexpert_irq_mask_t	mask;
+
+    controller = &i8259_controller;
 
     cli();
+
+    /*
+     * Slave first, masked at once, then the master.  ICW1 clears a PIC's
+     * mask, so a device still asserting a slave irq across a warm reboot
+     * (a level-triggered PCI NIC nobody has acknowledged) drives the
+     * cascade the moment the slave is initialized.  Done the other way
+     * round, the already-initialized master latches IRQ 2, and the sti
+     * below takes that interrupt before paging is on -- through IDT gates
+     * whose code segment is only valid once it is, so the kernel runs off
+     * into nonexistent memory.  With the slave masked first, the master's
+     * ICW1 resets its edge sense while the cascade line is already low.
+     */
+    initialize_slave(	SLAVE_ICW1,
+    			SLAVE_ICW2,
+			SLAVE_ICW3,
+			SLAVE_ICW4);
+    set_slave_mask((intr_ocw1_t) { 0xff });
 
     initialize_master(	MASTER_ICW1,
     			MASTER_ICW2,
 			MASTER_ICW3,
 			MASTER_ICW4);
-
-    initialize_slave(	SLAVE_ICW1,
-    			SLAVE_ICW2,
-			SLAVE_ICW3,
-			SLAVE_ICW4);
 
     mask = INTR_MASK_ALL;
     for (i = 0, m = ipl_mask; i++ < INTR_NIPL; m++)
@@ -477,10 +528,11 @@ intr_register_irq(
 )
 {
     intr_irq_mask_t	*m;
-    int			i, mask;
+    int			i;
+    pexpert_irq_mask_t	mask;
     boolean_t		e;
 
-    if (irq < 0 || irq >= INTR_NIRQ || irq == INTR_SLAVE_IRQ)
+    if (irq < 0 || irq >= INTR_NIRQ || !(*controller->irq_valid)(irq))
 	return (FALSE);
 
     if (ipl < 0 || ipl >= INTR_NIPL)
@@ -518,10 +570,11 @@ intr_unregister_irq(
 )
 {
     intr_irq_mask_t	*m;
-    int			i, mask;
+    int			i;
+    pexpert_irq_mask_t	mask;
     boolean_t		e;
 
-    if (irq < 0 || irq >= INTR_NIRQ || irq == INTR_SLAVE_IRQ)
+    if (irq < 0 || irq >= INTR_NIRQ)
 	return (FALSE);
 
     if (!dispatch_table[irq].routine)
@@ -536,6 +589,7 @@ intr_unregister_irq(
     mask = INTR_MASK_IRQ(irq);
     for (i = 0, m = ipl_mask; i < INTR_NIPL; i++, m++) {
 	m->mask |= mask;
+	defer_table[i] &= ~mask;
     }
 
     set_irq_mask(ipl_mask[masked_ipl]);
@@ -554,7 +608,7 @@ intr_enable_irq(
 {
     boolean_t	e;
 
-    if (irq < 0 || irq >= INTR_NIRQ || irq == INTR_SLAVE_IRQ)
+    if (irq < 0 || irq >= INTR_NIRQ || !(*controller->irq_valid)(irq))
 	return (FALSE);
 
     e = intr_disbl();
@@ -574,7 +628,7 @@ intr_disable_irq(
 {
     boolean_t	e;
 
-    if (irq < 0 || irq >= INTR_NIRQ || irq == INTR_SLAVE_IRQ)
+    if (irq < 0 || irq >= INTR_NIRQ || !(*controller->irq_valid)(irq))
 	return (FALSE);
 
     e = intr_disbl();
@@ -594,10 +648,11 @@ intr_change_ipl(
 )
 {
     intr_irq_mask_t	*m;
-    int			i, mask;
+    int			i;
+    pexpert_irq_mask_t	mask;
     boolean_t		e;
 
-    if (irq < 0 || irq >= INTR_NIRQ || irq == INTR_SLAVE_IRQ)
+    if (irq < 0 || irq >= INTR_NIRQ)
 	return (FALSE);
 
     if (ipl < 0 || ipl >= INTR_NIPL)
@@ -625,17 +680,17 @@ intr_change_ipl(
     return (TRUE);
 }
 
-boolean_t
-intr_change_mode(
+static
+int
+i8259_set_trigger(
     int		irq,
-    boolean_t	level_trig
+    int		level_trig
 )
 {
     intr_irq_mask_t	reg;
-    boolean_t		e;
 #define _T_	TRUE
 #define _F_	FALSE
-    static boolean_t	valid_irq[INTR_NIRQ] = {
+    static boolean_t	valid_irq[I8259_NIRQ] = {
 			    _F_, _F_, _F_, _T_, _T_, _T_, _T_, _T_,
 			    _F_, _T_, _T_, _T_, _T_, _F_, _T_, _T_
 			};
@@ -645,11 +700,9 @@ intr_change_mode(
     if (!eisa_present())
     	return (FALSE);
 
-    if (irq < 0 || irq >= INTR_NIRQ || !valid_irq[irq])
+    if (irq < 0 || irq >= I8259_NIRQ || !valid_irq[irq])
 	return (FALSE);
 	
-    e = intr_disbl();
-    
     reg = current_elcr;
     
     if (level_trig)
@@ -659,9 +712,111 @@ intr_change_mode(
 	
     set_elcr(reg);
     
+    return (TRUE);
+}
+
+boolean_t
+intr_change_mode(
+    int		irq,
+    boolean_t	level_trig
+)
+{
+    boolean_t		e, result;
+
+    if (irq < 0 || irq >= INTR_NIRQ)
+	return (FALSE);
+	
+    e = intr_disbl();
+    
+    result = (*controller->set_trigger)(irq, level_trig) ? TRUE : FALSE;
+    
     (void) intr_enbl(e);
     
-    return (TRUE);
+    return (result);
+}
+
+/*
+ * The 8259 pair as a controller.
+ */
+
+static
+int
+i8259_irq_valid(
+    int		irq
+)
+{
+    return (irq >= 0 && irq < I8259_NIRQ && irq != INTR_SLAVE_IRQ);
+}
+
+static
+void
+i8259_eoi(
+    int		irq
+)
+{
+    send_eoi(irq);
+}
+
+/*
+ * Check for phantom interrupt.
+ *
+ * A spurious interrupt leaves no in-service bit set in the PIC that
+ * reported it, which is how it is recognised here.  The master and
+ * slave cases are not symmetric.
+ *
+ * A spurious IRQ 7 needs no acknowledgement: the master has nothing
+ * in service.  A spurious IRQ 15 does, because the master already
+ * acknowledged the cascade and set its IRQ 2 in-service bit before
+ * the slave reported the interrupt as spurious.  Returning without
+ * clearing that bit leaves the cascade permanently in service, and
+ * the master then refuses every later slave interrupt (IRQ 8-15)
+ * while continuing to deliver the higher-priority IRQ 0.
+ */
+static
+int
+i8259_is_spurious(
+    int		irq
+)
+{
+    if (irq == INTR_MASTER_PHANTOM_IRQ &&
+		(get_master_isr() & INTR_PHANTOM_IRQ_MASK) == 0)
+	return (TRUE);
+    if (irq == INTR_SLAVE_PHANTOM_IRQ &&
+		(get_slave_isr() & INTR_PHANTOM_IRQ_MASK) == 0) {
+	send_master_eoi_command(specific_eoi(INTR_SLAVE_IRQ));
+	return (TRUE);
+    }
+    return (FALSE);
+}
+
+static const intr_controller_t	i8259_controller = {
+    "8259",
+    i8259_irq_valid,
+    i8259_set_mask,
+    i8259_eoi,
+    i8259_is_spurious,
+    i8259_set_trigger
+};
+
+/*
+ * Hand the irqs to another controller,
+ * the platform expert's APICs.  The old
+ * one is left with everything masked.
+ */
+void
+intr_set_controller(
+    const intr_controller_t	*new_controller
+)
+{
+    boolean_t	e;
+
+    e = intr_disbl();
+
+    (*controller->set_mask)(INTR_MASK_ALL, INTR_MASK_ALL);
+    controller = new_controller;
+    (*controller->set_mask)(current_irq_mask.mask, current_hard_mask.mask);
+
+    (void) intr_enbl(e);
 }
 
 struct {
@@ -680,50 +835,37 @@ intr_handler(
 {
     thread_saved_state_t	*state = (thread_saved_state_t *)_state;
     int				irq = state->trapno - INTR_VECT_OFF;
-    intr_dispatch_t		*i = &dispatch_table[irq];
+    intr_dispatch_t		*i;
     int				old_masked_ipl;
 
     intr_cnt.intr++;
 
     /*
      * Check for phantom interrupt.
-     *
-     * A spurious interrupt leaves no in-service bit set in the PIC that
-     * reported it, which is how it is recognised here.  The master and
-     * slave cases are not symmetric.
-     *
-     * A spurious IRQ 7 needs no acknowledgement: the master has nothing
-     * in service.  A spurious IRQ 15 does, because the master already
-     * acknowledged the cascade and set its IRQ 2 in-service bit before
-     * the slave reported the interrupt as spurious.  Returning without
-     * clearing that bit leaves the cascade permanently in service, and
-     * the master then refuses every later slave interrupt (IRQ 8-15)
-     * while continuing to deliver the higher-priority IRQ 0.
+     * The controller knows how to
+     * recognise and acknowledge one.
      */
-    if (irq == INTR_MASTER_PHANTOM_IRQ &&
-		(get_master_isr() & INTR_PHANTOM_IRQ_MASK) == 0) {
+    if (irq < 0 || irq >= INTR_NIRQ || (*controller->is_spurious)(irq)) {
 	 intr_cnt.phantom++;
 	 return;
     }
-    if (irq == INTR_SLAVE_PHANTOM_IRQ &&
-		(get_slave_isr() & INTR_PHANTOM_IRQ_MASK) == 0) {
-	 intr_cnt.phantom++;
-	 send_master_eoi_command(specific_eoi(INTR_SLAVE_IRQ));
-	 return;
-    }
+
+    i = &dispatch_table[irq];
 
     /*
      * Mask this interrupt before
      * acknowledging so that level
-     * triggered inputs work.
+     * triggered inputs work. Lower-priority edge inputs may arrive while
+     * a higher-priority level input is pending; keep that input masked.
      */
-    old_masked_ipl = set_masked_ipl(i->ipl);
+    old_masked_ipl = masked_ipl;
+    if (i->ipl > masked_ipl)
+	(void) set_masked_ipl(i->ipl);
 
     /*
-     * Acknowledge by sending
-     * an EOI command to the PICs.
+     * Acknowledge it.
      */
-    send_eoi(irq);
+    (*controller->eoi)(irq);
 
     /*
      * Leave this interrupt
@@ -745,7 +887,7 @@ intr_handler(
 		
 	sti(); (*i->routine)(i->which, state, old_ipl); cli();
 	
-	(void) set_ipl(old_ipl);
+	lower_ipl(old_ipl, i->ipl);
 	(void) set_masked_ipl(old_masked_ipl);
     }
     /*
@@ -755,6 +897,6 @@ intr_handler(
     else {
 	intr_cnt.defer++;
 		
-    	defer_table[i->ipl] = i;
+	defer_table[i->ipl] |= INTR_MASK_IRQ(irq);
     }
 }

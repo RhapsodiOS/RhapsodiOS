@@ -1,0 +1,148 @@
+{
+ "categories": [],
+ "classes": [
+  {
+   "class_methods": [
+    {
+     "selector": "deserializePropertyListLazilyFromData:atCursor:length:mutableContainers:",
+     "types": "@21@8:12@16^I20I24c28"
+    },
+    {
+     "selector": "_setLazyThreshold:",
+     "types": "v12@8:12I16"
+    },
+    {
+     "selector": "deserializePropertyListFromData:atCursor:mutableContainers:",
+     "types": "@17@8:12@16^I20c24"
+    },
+    {
+     "selector": "deserializePropertyListFromData:mutableContainers:",
+     "types": "@13@8:12@16c20"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [],
+   "instance_size": 4,
+   "ivars": [],
+   "name": "NSDeserializer",
+   "superclass": "NSObject"
+  },
+  {
+   "class_methods": [
+    {
+     "selector": "serializePropertyList:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "serializePropertyList:intoData:",
+     "types": "v16@8:12@16@20"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [],
+   "instance_size": 4,
+   "ivars": [],
+   "name": "NSSerializer",
+   "superclass": "NSObject"
+  },
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "objectForKey:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "allKeys",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "objectAtIndex:",
+     "types": "@12@8:12I16"
+    },
+    {
+     "selector": "count",
+     "types": "I8@8:12"
+    }
+   ],
+   "instance_size": 8,
+   "ivars": [],
+   "name": "_NSLazyDeserializationFault",
+   "superclass": "NSFault"
+  },
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "serializeIntoData:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "completeInitializationOfObject:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "dealloc",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "initWithData:range:count:mutable:lazyThreshold:isDict:",
+     "types": "@33@8:12@16{?=II}20I28c32I36c40"
+    }
+   ],
+   "instance_size": 44,
+   "ivars": [
+    {
+     "name": "_data",
+     "offset": 16,
+     "type": "@\"NSData\""
+    },
+    {
+     "name": "_range",
+     "offset": 20,
+     "type": "{?=\"location\"I\"length\"I}"
+    },
+    {
+     "name": "_cnt",
+     "offset": 28,
+     "type": "I"
+    },
+    {
+     "name": "_lazy",
+     "offset": 32,
+     "type": "I"
+    },
+    {
+     "name": "_keys",
+     "offset": 36,
+     "type": "@\"NSArray\""
+    },
+    {
+     "name": "_mutable",
+     "offset": 40,
+     "type": "c"
+    },
+    {
+     "name": "_isDict",
+     "offset": 41,
+     "type": "c"
+    }
+   ],
+   "name": "_NSLazyDeserializationFaultHandler",
+   "superclass": "NSFaultHandler"
+  }
+ ],
+ "data_symbols": [],
+ "module": "NSSerialization.m",
+ "schema_version": "abi-v1",
+  "text_symbols": [
+  "_decodeFastByte",
+  "__NSDeserializeObject",
+  "__NSWalkData",
+  "__NSParseAndRelease",
+  "__NSParseAndRetain",
+  "__NSParseAndAutorelease"
+ ]
+}

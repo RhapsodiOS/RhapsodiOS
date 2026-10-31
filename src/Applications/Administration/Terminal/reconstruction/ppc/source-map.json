@@ -1,0 +1,6841 @@
+{
+  "boundary_disputed": [],
+  "duplicate_candidates": [],
+  "mapped": [
+    {
+      "address": 9828,
+      "reference_names": [
+        "-[CommandPanel showPanel]"
+      ],
+      "size": 336,
+      "source_line": 17,
+      "source_path": "src/Applications/Administration/Terminal/CommandPanel.m"
+    },
+    {
+      "address": 10164,
+      "reference_names": [
+        "-[CommandPanel commandEntered:]"
+      ],
+      "size": 548,
+      "source_line": 48,
+      "source_path": "src/Applications/Administration/Terminal/CommandPanel.m"
+    },
+    {
+      "address": 10712,
+      "reference_names": [
+        "-[CommandPanel control:textView:doCommandBySelector:]"
+      ],
+      "size": 336,
+      "source_line": 95,
+      "source_path": "src/Applications/Administration/Terminal/CommandPanel.m"
+    },
+    {
+      "address": 11048,
+      "reference_names": [
+        "_itoa"
+      ],
+      "size": 76,
+      "source_line": 5,
+      "source_path": "src/Applications/Administration/Terminal/IntegerString.c"
+    },
+    {
+      "address": 11124,
+      "reference_names": [
+        "_getDefaultColors"
+      ],
+      "size": 784,
+      "source_line": 22,
+      "source_path": "src/Applications/Administration/Terminal/TerminalDefaults.m"
+    },
+    {
+      "address": 11908,
+      "reference_names": [
+        "_defaultsFromDB"
+      ],
+      "size": 1036,
+      "source_line": 68,
+      "source_path": "src/Applications/Administration/Terminal/TerminalDefaults.m"
+    },
+    {
+      "address": 12944,
+      "reference_names": [
+        "_writeDefaultsToTypedStream"
+      ],
+      "size": 396,
+      "source_line": 136,
+      "source_path": "src/Applications/Administration/Terminal/TerminalDefaults.m"
+    },
+    {
+      "address": 13340,
+      "reference_names": [
+        "_readDefaultsFromTypedStream"
+      ],
+      "size": 1584,
+      "source_line": 161,
+      "source_path": "src/Applications/Administration/Terminal/TerminalDefaults.m"
+    },
+    {
+      "address": 14924,
+      "reference_names": [
+        "-[DirtMonitor init]"
+      ],
+      "size": 1640,
+      "source_line": 117,
+      "source_path": "src/Applications/Administration/Terminal/DirtMonitor.m"
+    },
+    {
+      "address": 16564,
+      "reference_names": [
+        "-[DirtMonitor registerDevice:withFD:]"
+      ],
+      "size": 488,
+      "source_line": 204,
+      "source_path": "src/Applications/Administration/Terminal/DirtMonitor.m"
+    },
+    {
+      "address": 17052,
+      "reference_names": [
+        "-[DirtMonitor setShellsClean:runningBackgroundClean:fastAudits:cleanCommands:]"
+      ],
+      "size": 280,
+      "source_line": 259,
+      "source_path": "src/Applications/Administration/Terminal/DirtMonitor.m"
+    },
+    {
+      "address": 17332,
+      "reference_names": [
+        "-[DirtMonitor unregisterDevice:]"
+      ],
+      "size": 332,
+      "source_line": 235,
+      "source_path": "src/Applications/Administration/Terminal/DirtMonitor.m"
+    },
+    {
+      "address": 17664,
+      "reference_names": [
+        "-[DirtMonitor releaseKnownTask:taskDied:]"
+      ],
+      "size": 552,
+      "source_line": 514,
+      "source_path": "src/Applications/Administration/Terminal/DirtMonitor.m"
+    },
+    {
+      "address": 18216,
+      "reference_names": [
+        "-[DirtMonitor uncacheThreads:]"
+      ],
+      "size": 288,
+      "source_line": 543,
+      "source_path": "src/Applications/Administration/Terminal/DirtMonitor.m"
+    },
+    {
+      "address": 18504,
+      "reference_names": [
+        "-[DirtMonitor isDeviceDirty:]"
+      ],
+      "size": 1920,
+      "source_line": 334,
+      "source_path": "src/Applications/Administration/Terminal/DirtMonitor.m"
+    },
+    {
+      "address": 20424,
+      "reference_names": [
+        "_isCommandClean"
+      ],
+      "size": 324,
+      "source_line": 5,
+      "source_path": "src/Applications/Administration/Terminal/ShellPolicy.c"
+    },
+    {
+      "address": 20748,
+      "reference_names": [
+        "-[DirtMonitor getProcNames:onDevice:howMany:]"
+      ],
+      "size": 480,
+      "source_line": 293,
+      "source_path": "src/Applications/Administration/Terminal/DirtMonitor.m"
+    },
+    {
+      "address": 21228,
+      "reference_names": [
+        "_taskIsBlocked"
+      ],
+      "size": 488,
+      "source_line": 52,
+      "source_path": "src/Applications/Administration/Terminal/DirtMonitor.m"
+    },
+    {
+      "address": 21716,
+      "reference_names": [
+        "-[DirtMonitor compactFreePortStack]"
+      ],
+      "size": 112,
+      "source_line": 565,
+      "source_path": "src/Applications/Administration/Terminal/DirtMonitor.m"
+    },
+    {
+      "address": 21828,
+      "reference_names": [
+        "-[DirtMonitor extendFreePortStack]"
+      ],
+      "size": 476,
+      "source_line": 577,
+      "source_path": "src/Applications/Administration/Terminal/DirtMonitor.m"
+    },
+    {
+      "address": 22304,
+      "reference_names": [
+        "-[DirtMonitor handleMachMessage:]"
+      ],
+      "size": 424,
+      "source_line": 598,
+      "source_path": "src/Applications/Administration/Terminal/DirtMonitor.m"
+    },
+    {
+      "address": 22728,
+      "reference_names": [
+        "-[Emulation setTerminal:]"
+      ],
+      "size": 16,
+      "source_line": 8,
+      "source_path": "src/Applications/Administration/Terminal/Emulation.m"
+    },
+    {
+      "address": 22744,
+      "reference_names": [
+        "-[Emulation terminal]"
+      ],
+      "size": 16,
+      "source_line": 13,
+      "source_path": "src/Applications/Administration/Terminal/Emulation.m"
+    },
+    {
+      "address": 22760,
+      "reference_names": [
+        "-[Emulation initDefaults:]"
+      ],
+      "size": 60,
+      "source_line": 71,
+      "source_path": "src/Applications/Administration/Terminal/Emulation.m"
+    },
+    {
+      "address": 22820,
+      "reference_names": [
+        "-[Emulation key:]"
+      ],
+      "size": 496,
+      "source_line": 172,
+      "source_path": "src/Applications/Administration/Terminal/Emulation.m"
+    },
+    {
+      "address": 23316,
+      "reference_names": [
+        "-[Emulation deAlternatize:]"
+      ],
+      "size": 188,
+      "source_line": 223,
+      "source_path": "src/Applications/Administration/Terminal/Emulation.m"
+    },
+    {
+      "address": 23504,
+      "reference_names": [
+        "-[Emulation termDidResize:]"
+      ],
+      "size": 36,
+      "source_line": 89,
+      "source_path": "src/Applications/Administration/Terminal/Emulation.m"
+    },
+    {
+      "address": 23540,
+      "reference_names": [
+        "-[Emulation setDefaults:]"
+      ],
+      "size": 88,
+      "source_line": 77,
+      "source_path": "src/Applications/Administration/Terminal/Emulation.m"
+    },
+    {
+      "address": 23628,
+      "reference_names": [
+        "-[Emulation translateChars:len:]"
+      ],
+      "size": 12,
+      "source_line": 18,
+      "source_path": "src/Applications/Administration/Terminal/Emulation.m"
+    },
+    {
+      "address": 23640,
+      "reference_names": [
+        "-[Emulation ctrloutput:]"
+      ],
+      "size": 328,
+      "source_line": 24,
+      "source_path": "src/Applications/Administration/Terminal/Emulation.m"
+    },
+    {
+      "address": 23968,
+      "reference_names": [
+        "-[Emulation wrapoutput]"
+      ],
+      "size": 144,
+      "source_line": 96,
+      "source_path": "src/Applications/Administration/Terminal/Emulation.m"
+    },
+    {
+      "address": 24112,
+      "reference_names": [
+        "-[Emulation output:len:]"
+      ],
+      "size": 396,
+      "source_line": 108,
+      "source_path": "src/Applications/Administration/Terminal/Emulation.m"
+    },
+    {
+      "address": 24508,
+      "reference_names": [
+        "-[Emulation autowrapIsOn]"
+      ],
+      "size": 20,
+      "source_line": 66,
+      "source_path": "src/Applications/Administration/Terminal/Emulation.m"
+    },
+    {
+      "address": 24528,
+      "reference_names": [
+        "-[Emulation metaCharacter]"
+      ],
+      "size": 16,
+      "source_line": 61,
+      "source_path": "src/Applications/Administration/Terminal/Emulation.m"
+    },
+    {
+      "address": 24544,
+      "reference_names": [
+        "_char_offset"
+      ],
+      "size": 312,
+      "source_line": 40,
+      "source_path": "src/Applications/Administration/Terminal/WordBoundary.c"
+    },
+    {
+      "address": 24856,
+      "reference_names": [
+        "+[FieldPrint fieldPrint:]"
+      ],
+      "size": 1056,
+      "source_line": 22,
+      "source_path": "src/Applications/Administration/Terminal/FieldPrint.m"
+    },
+    {
+      "address": 25912,
+      "reference_names": [
+        "-[FieldPrint isFlipped]"
+      ],
+      "size": 16,
+      "source_line": 69,
+      "source_path": "src/Applications/Administration/Terminal/FieldPrint.m"
+    },
+    {
+      "address": 25928,
+      "reference_names": [
+        "-[FieldPrint print:]"
+      ],
+      "size": 160,
+      "source_line": 74,
+      "source_path": "src/Applications/Administration/Terminal/FieldPrint.m"
+    },
+    {
+      "address": 26088,
+      "reference_names": [
+        "-[FieldPrint adjustPageHeightNew:top:bottom:limit:]"
+      ],
+      "size": 180,
+      "source_line": 88,
+      "source_path": "src/Applications/Administration/Terminal/FieldPrint.m"
+    },
+    {
+      "address": 26268,
+      "reference_names": [
+        "-[FieldPrint drawRect:]"
+      ],
+      "size": 1524,
+      "source_line": 103,
+      "source_path": "src/Applications/Administration/Terminal/FieldPrint.m"
+    },
+    {
+      "address": 27792,
+      "reference_names": [
+        "-[FieldPrint rangePicked:]"
+      ],
+      "size": 516,
+      "source_line": 167,
+      "source_path": "src/Applications/Administration/Terminal/FieldPrint.m"
+    },
+    {
+      "address": 28308,
+      "reference_names": [
+        "-[FieldPrint attributesPicked:]"
+      ],
+      "size": 156,
+      "source_line": 205,
+      "source_path": "src/Applications/Administration/Terminal/FieldPrint.m"
+    },
+    {
+      "address": 28464,
+      "reference_names": [
+        "_seekPos"
+      ],
+      "size": 148,
+      "source_line": 204,
+      "source_path": "src/Applications/Administration/Terminal/FindCharacters.c"
+    },
+    {
+      "address": 28612,
+      "reference_names": [
+        "_openFStream"
+      ],
+      "size": 68,
+      "source_line": 211,
+      "source_path": "src/Applications/Administration/Terminal/FindCharacters.c"
+    },
+    {
+      "address": 28680,
+      "reference_names": [
+        "_nextGetChar"
+      ],
+      "size": 372,
+      "source_line": 218,
+      "source_path": "src/Applications/Administration/Terminal/FindCharacters.c"
+    },
+    {
+      "address": 29052,
+      "reference_names": [
+        "_prevGetChar"
+      ],
+      "size": 356,
+      "source_line": 246,
+      "source_path": "src/Applications/Administration/Terminal/FindCharacters.c"
+    },
+    {
+      "address": 29408,
+      "reference_names": [
+        "_peekChar"
+      ],
+      "size": 340,
+      "source_line": 270,
+      "source_path": "src/Applications/Administration/Terminal/FindCharacters.c"
+    },
+    {
+      "address": 29748,
+      "reference_names": [
+        "_seekFStream"
+      ],
+      "size": 12,
+      "source_line": 285,
+      "source_path": "src/Applications/Administration/Terminal/FindCharacters.c"
+    },
+    {
+      "address": 29760,
+      "reference_names": [
+        "_getPosition"
+      ],
+      "size": 340,
+      "source_line": 289,
+      "source_path": "src/Applications/Administration/Terminal/FindCharacters.c"
+    },
+    {
+      "address": 30100,
+      "reference_names": [
+        "_cmpFStream"
+      ],
+      "size": 124,
+      "source_line": 305,
+      "source_path": "src/Applications/Administration/Terminal/FindCharacters.c"
+    },
+    {
+      "address": 30224,
+      "reference_names": [
+        "-[FieldView initWithFrame:]"
+      ],
+      "size": 680,
+      "source_line": 326,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 30904,
+      "reference_names": [
+        "-[FieldView isFlipped]"
+      ],
+      "size": 16,
+      "source_line": 364,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 30920,
+      "reference_names": [
+        "-[FieldView setDrawCursOK:]"
+      ],
+      "size": 16,
+      "source_line": 777,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 30936,
+      "reference_names": [
+        "-[FieldView drawCursOK]"
+      ],
+      "size": 20,
+      "source_line": 782,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 30956,
+      "reference_names": [
+        "-[FieldView setDrawsLineAtRightEdge:]"
+      ],
+      "size": 16,
+      "source_line": 795,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 30972,
+      "reference_names": [
+        "-[FieldView drawsLineAtRightEdge]"
+      ],
+      "size": 20,
+      "source_line": 800,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 30992,
+      "reference_names": [
+        "-[FieldView setUpWithDefaults:]"
+      ],
+      "size": 564,
+      "source_line": 642,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 31556,
+      "reference_names": [
+        "-[FieldView invalidate]"
+      ],
+      "size": 96,
+      "source_line": 1092,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 31652,
+      "reference_names": [
+        "-[FieldView dealloc]"
+      ],
+      "size": 92,
+      "source_line": 1086,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 31744,
+      "reference_names": [
+        "-[FieldView setUpGState]"
+      ],
+      "size": 116,
+      "source_line": 369,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 31860,
+      "reference_names": [
+        "-[FieldView resetCursorRects]"
+      ],
+      "size": 108,
+      "source_line": 735,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 31968,
+      "reference_names": [
+        "-[FieldView windowHook::]"
+      ],
+      "size": 12,
+      "source_line": 740,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 31980,
+      "reference_names": [
+        "-[FieldView setFrameSize:]"
+      ],
+      "size": 1788,
+      "source_line": 850,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 33768,
+      "reference_names": [
+        "-[FieldView sizeEmulationTo::]"
+      ],
+      "size": 480,
+      "source_line": 805,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 34248,
+      "reference_names": [
+        "-[FieldView width]"
+      ],
+      "size": 16,
+      "source_line": 757,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 34264,
+      "reference_names": [
+        "-[FieldView height]"
+      ],
+      "size": 16,
+      "source_line": 762,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 34280,
+      "reference_names": [
+        "-[FieldView windowWillResize:toSize:]"
+      ],
+      "size": 932,
+      "source_line": 411,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 35212,
+      "reference_names": [
+        "-[FieldView setupFont:]"
+      ],
+      "size": 548,
+      "source_line": 376,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 35760,
+      "reference_names": [
+        "-[FieldView copyFont:]"
+      ],
+      "size": 368,
+      "source_line": 547,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 36128,
+      "reference_names": [
+        "-[FieldView pasteFont:]"
+      ],
+      "size": 756,
+      "source_line": 569,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 36884,
+      "reference_names": [
+        "-[FieldView changeFont:]"
+      ],
+      "size": 448,
+      "source_line": 511,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 37332,
+      "reference_names": [
+        "-[FieldView windowDidBecomeMain:]"
+      ],
+      "size": 84,
+      "source_line": 746,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 37416,
+      "reference_names": [
+        "-[FieldView setDelegate:]"
+      ],
+      "size": 92,
+      "source_line": 703,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 37508,
+      "reference_names": [
+        "-[FieldView delegate]"
+      ],
+      "size": 16,
+      "source_line": 684,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 37524,
+      "reference_names": [
+        "-[FieldView setDefaults:]"
+      ],
+      "size": 740,
+      "source_line": 447,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 38264,
+      "reference_names": [
+        "-[FieldView removeScroller]"
+      ],
+      "size": 572,
+      "source_line": 1020,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 38836,
+      "reference_names": [
+        "-[FieldView reinstateScroller]"
+      ],
+      "size": 520,
+      "source_line": 1052,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 39356,
+      "reference_names": [
+        "-[FieldView print:]"
+      ],
+      "size": 64,
+      "source_line": 751,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 39420,
+      "reference_names": [
+        "-[FieldView emulator]"
+      ],
+      "size": 100,
+      "source_line": 689,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 39520,
+      "reference_names": [
+        "-[FieldView recordDefaultsChanges]"
+      ],
+      "size": 400,
+      "source_line": 614,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 39920,
+      "reference_names": [
+        "-[FieldView defaults]"
+      ],
+      "size": 96,
+      "source_line": 696,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 40016,
+      "reference_names": [
+        "-[FieldView disablePSOutput]"
+      ],
+      "size": 20,
+      "source_line": 767,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 40036,
+      "reference_names": [
+        "-[FieldView enablePSOutput]"
+      ],
+      "size": 20,
+      "source_line": 772,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 40056,
+      "reference_names": [
+        "-[Filer handleFileActivity:]"
+      ],
+      "size": 192,
+      "source_line": 81,
+      "source_path": "src/Applications/Administration/Terminal/Filer.m"
+    },
+    {
+      "address": 40248,
+      "reference_names": [
+        "-[Filer init]"
+      ],
+      "size": 144,
+      "source_line": 12,
+      "source_path": "src/Applications/Administration/Terminal/Filer.m"
+    },
+    {
+      "address": 40392,
+      "reference_names": [
+        "-[Filer close]"
+      ],
+      "size": 196,
+      "source_line": 23,
+      "source_path": "src/Applications/Administration/Terminal/Filer.m"
+    },
+    {
+      "address": 40588,
+      "reference_names": [
+        "-[Filer dealloc]"
+      ],
+      "size": 100,
+      "source_line": 40,
+      "source_path": "src/Applications/Administration/Terminal/Filer.m"
+    },
+    {
+      "address": 40688,
+      "reference_names": [
+        "-[Filer setTarget:]"
+      ],
+      "size": 16,
+      "source_line": 47,
+      "source_path": "src/Applications/Administration/Terminal/Filer.m"
+    },
+    {
+      "address": 40704,
+      "reference_names": [
+        "-[Filer target]"
+      ],
+      "size": 16,
+      "source_line": 52,
+      "source_path": "src/Applications/Administration/Terminal/Filer.m"
+    },
+    {
+      "address": 40720,
+      "reference_names": [
+        "-[Filer setFd:]"
+      ],
+      "size": 272,
+      "source_line": 57,
+      "source_path": "src/Applications/Administration/Terminal/Filer.m"
+    },
+    {
+      "address": 40992,
+      "reference_names": [
+        "-[Filer fd]"
+      ],
+      "size": 56,
+      "source_line": 76,
+      "source_path": "src/Applications/Administration/Terminal/Filer.m"
+    },
+    {
+      "address": 41048,
+      "reference_names": [
+        "_tryOutput"
+      ],
+      "size": 152,
+      "source_line": 40,
+      "source_path": "src/Applications/Administration/Terminal/Filer.c"
+    },
+    {
+      "address": 41200,
+      "reference_names": [
+        "-[Filer handleOutput:]"
+      ],
+      "size": 472,
+      "source_line": 93,
+      "source_path": "src/Applications/Administration/Terminal/Filer.m"
+    },
+    {
+      "address": 41672,
+      "reference_names": [
+        "-[Filer output:len:]"
+      ],
+      "size": 152,
+      "source_line": 127,
+      "source_path": "src/Applications/Administration/Terminal/Filer.m"
+    },
+    {
+      "address": 41824,
+      "reference_names": [
+        "-[Filer output:]"
+      ],
+      "size": 80,
+      "source_line": 133,
+      "source_path": "src/Applications/Administration/Terminal/Filer.m"
+    },
+    {
+      "address": 41904,
+      "reference_names": [
+        "-[Filer outputChar:]"
+      ],
+      "size": 64,
+      "source_line": 138,
+      "source_path": "src/Applications/Administration/Terminal/Filer.m"
+    },
+    {
+      "address": 41968,
+      "reference_names": [
+        "+[FindPanel alloc]"
+      ],
+      "size": 144,
+      "source_line": 24,
+      "source_path": "src/Applications/Administration/Terminal/FindPanel.m"
+    },
+    {
+      "address": 42112,
+      "reference_names": [
+        "-[FindPanel findPanel]"
+      ],
+      "size": 216,
+      "source_line": 38,
+      "source_path": "src/Applications/Administration/Terminal/FindPanel.m"
+    },
+    {
+      "address": 42328,
+      "reference_names": [
+        "-[FindPanel findPanel:]"
+      ],
+      "size": 204,
+      "source_line": 114,
+      "source_path": "src/Applications/Administration/Terminal/FindPanel.m"
+    },
+    {
+      "address": 42532,
+      "reference_names": [
+        "-[FindPanel enterSelection:]"
+      ],
+      "size": 368,
+      "source_line": 134,
+      "source_path": "src/Applications/Administration/Terminal/FindPanel.m"
+    },
+    {
+      "address": 42900,
+      "reference_names": [
+        "-[FindPanel doFind:findBackwards:]"
+      ],
+      "size": 804,
+      "source_line": 168,
+      "source_path": "src/Applications/Administration/Terminal/FindPanel.m"
+    },
+    {
+      "address": 43704,
+      "reference_names": [
+        "-[FindPanel findNext:]"
+      ],
+      "size": 56,
+      "source_line": 223,
+      "source_path": "src/Applications/Administration/Terminal/FindPanel.m"
+    },
+    {
+      "address": 43760,
+      "reference_names": [
+        "-[FindPanel findPrevious:]"
+      ],
+      "size": 56,
+      "source_line": 228,
+      "source_path": "src/Applications/Administration/Terminal/FindPanel.m"
+    },
+    {
+      "address": 43816,
+      "reference_names": [
+        "-[FindPanel importFindText:]"
+      ],
+      "size": 296,
+      "source_line": 57,
+      "source_path": "src/Applications/Administration/Terminal/FindPanel.m"
+    },
+    {
+      "address": 44112,
+      "reference_names": [
+        "-[FindPanel exportFindText:]"
+      ],
+      "size": 260,
+      "source_line": 90,
+      "source_path": "src/Applications/Administration/Terminal/FindPanel.m"
+    },
+    {
+      "address": 44372,
+      "reference_names": [
+        "+[Shell handleSignal]"
+      ],
+      "size": 192,
+      "source_line": 68,
+      "source_path": "src/Applications/Administration/Terminal/Shell.m"
+    },
+    {
+      "address": 44564,
+      "reference_names": [
+        "_handleSIGCHLD"
+      ],
+      "size": 72,
+      "source_line": 36,
+      "source_path": "src/Applications/Administration/Terminal/Shell.m"
+    },
+    {
+      "address": 44636,
+      "reference_names": [
+        "+[Shell handleFileActivity:]"
+      ],
+      "size": 140,
+      "source_line": 88,
+      "source_path": "src/Applications/Administration/Terminal/Shell.m"
+    },
+    {
+      "address": 44776,
+      "reference_names": [
+        "+[Shell initialize]"
+      ],
+      "size": 292,
+      "source_line": 44,
+      "source_path": "src/Applications/Administration/Terminal/Shell.m"
+    },
+    {
+      "address": 45068,
+      "reference_names": [
+        "+[Shell freeAll]"
+      ],
+      "size": 60,
+      "source_line": 63,
+      "source_path": "src/Applications/Administration/Terminal/Shell.m"
+    },
+    {
+      "address": 45128,
+      "reference_names": [
+        "-[Shell init]"
+      ],
+      "size": 148,
+      "source_line": 99,
+      "source_path": "src/Applications/Administration/Terminal/Shell.m"
+    },
+    {
+      "address": 45276,
+      "reference_names": [
+        "-[Shell kill]"
+      ],
+      "size": 120,
+      "source_line": 339,
+      "source_path": "src/Applications/Administration/Terminal/Shell.m"
+    },
+    {
+      "address": 45396,
+      "reference_names": [
+        "-[Shell invalidate]"
+      ],
+      "size": 108,
+      "source_line": 351,
+      "source_path": "src/Applications/Administration/Terminal/Shell.m"
+    },
+    {
+      "address": 45504,
+      "reference_names": [
+        "-[Shell dealloc]"
+      ],
+      "size": 92,
+      "source_line": 361,
+      "source_path": "src/Applications/Administration/Terminal/Shell.m"
+    },
+    {
+      "address": 45596,
+      "reference_names": [
+        "-[Shell findslot:]"
+      ],
+      "size": 124,
+      "source_line": 150,
+      "source_path": "src/Applications/Administration/Terminal/Shell.m"
+    },
+    {
+      "address": 45720,
+      "reference_names": [
+        "-[Shell login]"
+      ],
+      "size": 320,
+      "source_line": 166,
+      "source_path": "src/Applications/Administration/Terminal/Shell.m"
+    },
+    {
+      "address": 46040,
+      "reference_names": [
+        "-[Shell logout]"
+      ],
+      "size": 384,
+      "source_line": 200,
+      "source_path": "src/Applications/Administration/Terminal/Shell.m"
+    },
+    {
+      "address": 46424,
+      "reference_names": [
+        "-[Shell system:login:folder:env:]"
+      ],
+      "size": 1044,
+      "source_line": 243,
+      "source_path": "src/Applications/Administration/Terminal/Shell.m"
+    },
+    {
+      "address": 47468,
+      "reference_names": [
+        "-[Shell setExitAction:]"
+      ],
+      "size": 16,
+      "source_line": 111,
+      "source_path": "src/Applications/Administration/Terminal/Shell.m"
+    },
+    {
+      "address": 47484,
+      "reference_names": [
+        "-[Shell exitAction]"
+      ],
+      "size": 16,
+      "source_line": 116,
+      "source_path": "src/Applications/Administration/Terminal/Shell.m"
+    },
+    {
+      "address": 47500,
+      "reference_names": [
+        "-[Shell pid]"
+      ],
+      "size": 16,
+      "source_line": 121,
+      "source_path": "src/Applications/Administration/Terminal/Shell.m"
+    },
+    {
+      "address": 47516,
+      "reference_names": [
+        "-[Shell pty]"
+      ],
+      "size": 16,
+      "source_line": 126,
+      "source_path": "src/Applications/Administration/Terminal/Shell.m"
+    },
+    {
+      "address": 47532,
+      "reference_names": [
+        "-[Shell command]"
+      ],
+      "size": 16,
+      "source_line": 131,
+      "source_path": "src/Applications/Administration/Terminal/Shell.m"
+    },
+    {
+      "address": 47548,
+      "reference_names": [
+        "-[Shell slaveMinorDevice]"
+      ],
+      "size": 200,
+      "source_line": 136,
+      "source_path": "src/Applications/Administration/Terminal/Shell.m"
+    },
+    {
+      "address": 47748,
+      "reference_names": [
+        "-[Terminal setUpWithDefaults:inFolder:env:]"
+      ],
+      "size": 948,
+      "source_line": 43,
+      "source_path": "src/Applications/Administration/Terminal/Terminal.m"
+    },
+    {
+      "address": 48696,
+      "reference_names": [
+        "-[Terminal fileName]"
+      ],
+      "size": 16,
+      "source_line": 539,
+      "source_path": "src/Applications/Administration/Terminal/Terminal.m"
+    },
+    {
+      "address": 48712,
+      "reference_names": [
+        "-[Terminal sharesFile]"
+      ],
+      "size": 20,
+      "source_line": 540,
+      "source_path": "src/Applications/Administration/Terminal/Terminal.m"
+    },
+    {
+      "address": 48732,
+      "reference_names": [
+        "-[Terminal setFileName:sharesFile:]"
+      ],
+      "size": 320,
+      "source_line": 541,
+      "source_path": "src/Applications/Administration/Terminal/Terminal.m"
+    },
+    {
+      "address": 49052,
+      "reference_names": [
+        "-[Terminal setDefaults:]"
+      ],
+      "size": 836,
+      "source_line": 112,
+      "source_path": "src/Applications/Administration/Terminal/Terminal.m"
+    },
+    {
+      "address": 49888,
+      "reference_names": [
+        "-[Terminal shell]"
+      ],
+      "size": 16,
+      "source_line": 515,
+      "source_path": "src/Applications/Administration/Terminal/Terminal.m"
+    },
+    {
+      "address": 49904,
+      "reference_names": [
+        "-[Terminal cancelDelayedPerforms]"
+      ],
+      "size": 152,
+      "source_line": 318,
+      "source_path": "src/Applications/Administration/Terminal/Terminal.m"
+    },
+    {
+      "address": 50056,
+      "reference_names": [
+        "-[Terminal invalidate]"
+      ],
+      "size": 320,
+      "source_line": 175,
+      "source_path": "src/Applications/Administration/Terminal/Terminal.m"
+    },
+    {
+      "address": 50376,
+      "reference_names": [
+        "-[Terminal dealloc]"
+      ],
+      "size": 168,
+      "source_line": 328,
+      "source_path": "src/Applications/Administration/Terminal/Terminal.m"
+    },
+    {
+      "address": 50544,
+      "reference_names": [
+        "-[Terminal setEmulator:]"
+      ],
+      "size": 16,
+      "source_line": 533,
+      "source_path": "src/Applications/Administration/Terminal/Terminal.m"
+    },
+    {
+      "address": 50560,
+      "reference_names": [
+        "-[Terminal outputdata:len:]"
+      ],
+      "size": 776,
+      "source_line": 1066,
+      "source_path": "src/Applications/Administration/Terminal/Terminal.m"
+    },
+    {
+      "address": 51336,
+      "reference_names": [
+        "-[Terminal scheduleUpdate]"
+      ],
+      "size": 424,
+      "source_line": 417,
+      "source_path": "src/Applications/Administration/Terminal/Terminal.m"
+    },
+    {
+      "address": 51760,
+      "reference_names": [
+        "-[Terminal shellDevice]"
+      ],
+      "size": 16,
+      "source_line": 534,
+      "source_path": "src/Applications/Administration/Terminal/Terminal.m"
+    },
+    {
+      "address": 51776,
+      "reference_names": [
+        "-[Terminal endOfFileOn:]"
+      ],
+      "size": 76,
+      "source_line": 668,
+      "source_path": "src/Applications/Administration/Terminal/Terminal.m"
+    },
+    {
+      "address": 51852,
+      "reference_names": [
+        "-[Terminal childExit:status:]"
+      ],
+      "size": 936,
+      "source_line": 753,
+      "source_path": "src/Applications/Administration/Terminal/Terminal.m"
+    },
+    {
+      "address": 52788,
+      "reference_names": [
+        "-[Terminal removeDirtTimers]"
+      ],
+      "size": 140,
+      "source_line": 1215,
+      "source_path": "src/Applications/Administration/Terminal/Terminal.m"
+    },
+    {
+      "address": 52928,
+      "reference_names": [
+        "-[Terminal output:]"
+      ],
+      "size": 56,
+      "source_line": 577,
+      "source_path": "src/Applications/Administration/Terminal/Terminal.m"
+    },
+    {
+      "address": 52984,
+      "reference_names": [
+        "-[Terminal output:len:]"
+      ],
+      "size": 56,
+      "source_line": 582,
+      "source_path": "src/Applications/Administration/Terminal/Terminal.m"
+    },
+    {
+      "address": 53040,
+      "reference_names": [
+        "-[Terminal outputChar:]"
+      ],
+      "size": 56,
+      "source_line": 663,
+      "source_path": "src/Applications/Administration/Terminal/Terminal.m"
+    },
+    {
+      "address": 53096,
+      "reference_names": [
+        "-[Terminal broadcastSize]"
+      ],
+      "size": 196,
+      "source_line": 516,
+      "source_path": "src/Applications/Administration/Terminal/Terminal.m"
+    },
+    {
+      "address": 53292,
+      "reference_names": [
+        "-[Terminal setFrameSize:]"
+      ],
+      "size": 256,
+      "source_line": 733,
+      "source_path": "src/Applications/Administration/Terminal/Terminal.m"
+    },
+    {
+      "address": 53548,
+      "reference_names": [
+        "-[Terminal keyDown:]"
+      ],
+      "size": 760,
+      "source_line": 674,
+      "source_path": "src/Applications/Administration/Terminal/Terminal.m"
+    },
+    {
+      "address": 54308,
+      "reference_names": [
+        "-[Terminal acceptsFirstResponder]"
+      ],
+      "size": 16,
+      "source_line": 512,
+      "source_path": "src/Applications/Administration/Terminal/Terminal.m"
+    },
+    {
+      "address": 54324,
+      "reference_names": [
+        "-[Terminal paste:]"
+      ],
+      "size": 616,
+      "source_line": 611,
+      "source_path": "src/Applications/Administration/Terminal/Terminal.m"
+    },
+    {
+      "address": 54940,
+      "reference_names": [
+        "-[Terminal pasteText:]"
+      ],
+      "size": 144,
+      "source_line": 587,
+      "source_path": "src/Applications/Administration/Terminal/Terminal.m"
+    },
+    {
+      "address": 55084,
+      "reference_names": [
+        "-[Terminal serviceOwner]"
+      ],
+      "size": 16,
+      "source_line": 535,
+      "source_path": "src/Applications/Administration/Terminal/Terminal.m"
+    },
+    {
+      "address": 55100,
+      "reference_names": [
+        "-[Terminal setServiceOwner:]"
+      ],
+      "size": 16,
+      "source_line": 536,
+      "source_path": "src/Applications/Administration/Terminal/Terminal.m"
+    },
+    {
+      "address": 55116,
+      "reference_names": [
+        "-[Terminal DOwinHandle]"
+      ],
+      "size": 16,
+      "source_line": 537,
+      "source_path": "src/Applications/Administration/Terminal/Terminal.m"
+    },
+    {
+      "address": 55132,
+      "reference_names": [
+        "-[Terminal setDOwinHandle:]"
+      ],
+      "size": 16,
+      "source_line": 538,
+      "source_path": "src/Applications/Administration/Terminal/Terminal.m"
+    },
+    {
+      "address": 55148,
+      "reference_names": [
+        "-[Terminal setTitle:]"
+      ],
+      "size": 156,
+      "source_line": 335,
+      "source_path": "src/Applications/Administration/Terminal/Terminal.m"
+    },
+    {
+      "address": 55304,
+      "reference_names": [
+        "-[Terminal setCustomTitle:]"
+      ],
+      "size": 168,
+      "source_line": 345,
+      "source_path": "src/Applications/Administration/Terminal/Terminal.m"
+    },
+    {
+      "address": 55472,
+      "reference_names": [
+        "-[Terminal redisplayTitle:]"
+      ],
+      "size": 64,
+      "source_line": 358,
+      "source_path": "src/Applications/Administration/Terminal/Terminal.m"
+    },
+    {
+      "address": 55536,
+      "reference_names": [
+        "-[Terminal windowWillResize:toSize:]"
+      ],
+      "size": 216,
+      "source_line": 364,
+      "source_path": "src/Applications/Administration/Terminal/Terminal.m"
+    },
+    {
+      "address": 55752,
+      "reference_names": [
+        "-[Terminal windowHook::]"
+      ],
+      "size": 324,
+      "source_line": 381,
+      "source_path": "src/Applications/Administration/Terminal/Terminal.m"
+    },
+    {
+      "address": 56076,
+      "reference_names": [
+        "-[Terminal handleCursorBlinkTimer:]"
+      ],
+      "size": 292,
+      "source_line": 491,
+      "source_path": "src/Applications/Administration/Terminal/Terminal.m"
+    },
+    {
+      "address": 56368,
+      "reference_names": [
+        "-[Terminal cursorBlink:]"
+      ],
+      "size": 232,
+      "source_line": 475,
+      "source_path": "src/Applications/Administration/Terminal/Terminal.m"
+    },
+    {
+      "address": 56600,
+      "reference_names": [
+        "-[Terminal windowDidResignKey:]"
+      ],
+      "size": 264,
+      "source_line": 298,
+      "source_path": "src/Applications/Administration/Terminal/Terminal.m"
+    },
+    {
+      "address": 56864,
+      "reference_names": [
+        "-[Terminal windowDidBecomeKey:]"
+      ],
+      "size": 304,
+      "source_line": 276,
+      "source_path": "src/Applications/Administration/Terminal/Terminal.m"
+    },
+    {
+      "address": 57168,
+      "reference_names": [
+        "-[Terminal windowDidBecomeMain:]"
+      ],
+      "size": 164,
+      "source_line": 193,
+      "source_path": "src/Applications/Administration/Terminal/Terminal.m"
+    },
+    {
+      "address": 57332,
+      "reference_names": [
+        "-[Terminal windowDidResignMain:]"
+      ],
+      "size": 120,
+      "source_line": 207,
+      "source_path": "src/Applications/Administration/Terminal/Terminal.m"
+    },
+    {
+      "address": 57452,
+      "reference_names": [
+        "-[Terminal debugToggle:]"
+      ],
+      "size": 380,
+      "source_line": 238,
+      "source_path": "src/Applications/Administration/Terminal/Terminal.m"
+    },
+    {
+      "address": 57832,
+      "reference_names": [
+        "-[Terminal mouseEntered:]"
+      ],
+      "size": 152,
+      "source_line": 220,
+      "source_path": "src/Applications/Administration/Terminal/Terminal.m"
+    },
+    {
+      "address": 57984,
+      "reference_names": [
+        "-[Terminal mouseExited:]"
+      ],
+      "size": 92,
+      "source_line": 232,
+      "source_path": "src/Applications/Administration/Terminal/Terminal.m"
+    },
+    {
+      "address": 58076,
+      "reference_names": [
+        "-[Terminal emulator]"
+      ],
+      "size": 16,
+      "source_line": 532,
+      "source_path": "src/Applications/Administration/Terminal/Terminal.m"
+    },
+    {
+      "address": 58092,
+      "reference_names": [
+        "-[Terminal windowWillMiniaturize:]"
+      ],
+      "size": 92,
+      "source_line": 1229,
+      "source_path": "src/Applications/Administration/Terminal/Terminal.m"
+    },
+    {
+      "address": 58184,
+      "reference_names": [
+        "-[Terminal windowDidDeminiaturize:]"
+      ],
+      "size": 160,
+      "source_line": 1237,
+      "source_path": "src/Applications/Administration/Terminal/Terminal.m"
+    },
+    {
+      "address": 58344,
+      "reference_names": [
+        "-[Terminal windowShouldClose:]"
+      ],
+      "size": 1328,
+      "source_line": 831,
+      "source_path": "src/Applications/Administration/Terminal/Terminal.m"
+    },
+    {
+      "address": 59672,
+      "reference_names": [
+        "-[Terminal updateDirtIfNeeded]"
+      ],
+      "size": 248,
+      "source_line": 400,
+      "source_path": "src/Applications/Administration/Terminal/Terminal.m"
+    },
+    {
+      "address": 59920,
+      "reference_names": [
+        "-[Terminal defaults]"
+      ],
+      "size": 16,
+      "source_line": 513,
+      "source_path": "src/Applications/Administration/Terminal/Terminal.m"
+    },
+    {
+      "address": 59936,
+      "reference_names": [
+        "-[Terminal window]"
+      ],
+      "size": 16,
+      "source_line": 514,
+      "source_path": "src/Applications/Administration/Terminal/Terminal.m"
+    },
+    {
+      "address": 59952,
+      "reference_names": [
+        "-[Terminal getExtraWinInfo:]"
+      ],
+      "size": 228,
+      "source_line": 265,
+      "source_path": "src/Applications/Administration/Terminal/Terminal.m"
+    },
+    {
+      "address": 60180,
+      "reference_names": [
+        "-[Terminal pruneNumLinesTo:]"
+      ],
+      "size": 500,
+      "source_line": 1133,
+      "source_path": "src/Applications/Administration/Terminal/Terminal.m"
+    },
+    {
+      "address": 60680,
+      "reference_names": [
+        "-[Terminal draggingEntered:]"
+      ],
+      "size": 60,
+      "source_line": 913,
+      "source_path": "src/Applications/Administration/Terminal/Terminal.m"
+    },
+    {
+      "address": 60740,
+      "reference_names": [
+        "-[Terminal draggingUpdated:]"
+      ],
+      "size": 52,
+      "source_line": 918,
+      "source_path": "src/Applications/Administration/Terminal/Terminal.m"
+    },
+    {
+      "address": 60792,
+      "reference_names": [
+        "-[Terminal prepareForDragOperation:]"
+      ],
+      "size": 340,
+      "source_line": 923,
+      "source_path": "src/Applications/Administration/Terminal/Terminal.m"
+    },
+    {
+      "address": 61132,
+      "reference_names": [
+        "-[Terminal performDragOperation:]"
+      ],
+      "size": 680,
+      "source_line": 954,
+      "source_path": "src/Applications/Administration/Terminal/Terminal.m"
+    },
+    {
+      "address": 61812,
+      "reference_names": [
+        "-[Terminal isDead]"
+      ],
+      "size": 20,
+      "source_line": 511,
+      "source_path": "src/Applications/Administration/Terminal/Terminal.m"
+    },
+    {
+      "address": 61832,
+      "reference_names": [
+        "-[Terminal setSpringLoadedPaste:]"
+      ],
+      "size": 184,
+      "source_line": 565,
+      "source_path": "src/Applications/Administration/Terminal/Terminal.m"
+    },
+    {
+      "address": 62016,
+      "reference_names": [
+        "-[Terminal _acceptColor:atPoint:]"
+      ],
+      "size": 536,
+      "source_line": 1014,
+      "source_path": "src/Applications/Administration/Terminal/Terminal.m"
+    },
+    {
+      "address": 62552,
+      "reference_names": [
+        "-[Terminal displayWindowStatus:]"
+      ],
+      "size": 400,
+      "source_line": 1191,
+      "source_path": "src/Applications/Administration/Terminal/Terminal.m"
+    },
+    {
+      "address": 62952,
+      "reference_names": [
+        "-[Terminal updateWindowStatus]"
+      ],
+      "size": 148,
+      "source_line": 1179,
+      "source_path": "src/Applications/Administration/Terminal/Terminal.m"
+    },
+    {
+      "address": 63100,
+      "reference_names": [
+        "-[Terminal handleDirtTimer:]"
+      ],
+      "size": 452,
+      "source_line": 446,
+      "source_path": "src/Applications/Administration/Terminal/Terminal.m"
+    },
+    {
+      "address": 63552,
+      "reference_names": [
+        "_winTitle"
+      ],
+      "size": 860,
+      "source_line": 40,
+      "source_path": "src/Applications/Administration/Terminal/WindowTitle.c"
+    },
+    {
+      "address": 64412,
+      "reference_names": [
+        "_pathCompress"
+      ],
+      "size": 316,
+      "source_line": 7,
+      "source_path": "src/Applications/Administration/Terminal/PathCompress.c"
+    },
+    {
+      "address": 64728,
+      "reference_names": [
+        "-[TerminalAgent initDefaults:inFolder:env:]"
+      ],
+      "size": 1064,
+      "source_line": 31,
+      "source_path": "src/Applications/Administration/Terminal/TerminalAgent.m"
+    },
+    {
+      "address": 65792,
+      "reference_names": [
+        "-[TerminalAgent setTerminal:]"
+      ],
+      "size": 16,
+      "source_line": 21,
+      "source_path": "src/Applications/Administration/Terminal/TerminalAgent.m"
+    },
+    {
+      "address": 65808,
+      "reference_names": [
+        "-[TerminalAgent terminal]"
+      ],
+      "size": 16,
+      "source_line": 26,
+      "source_path": "src/Applications/Administration/Terminal/TerminalAgent.m"
+    },
+    {
+      "address": 65824,
+      "reference_names": [
+        "_compareStrings"
+      ],
+      "size": 44,
+      "source_line": 9,
+      "source_path": "src/Applications/Administration/Terminal/FindCharacters.c"
+    },
+    {
+      "address": 65868,
+      "reference_names": [
+        "+[TerminalApp initialize]"
+      ],
+      "size": 260,
+      "source_line": 112,
+      "source_path": "src/Applications/Administration/Terminal/TerminalApp.m"
+    },
+    {
+      "address": 66128,
+      "reference_names": [
+        "-[TerminalApp _newInstance]"
+      ],
+      "size": 76,
+      "source_line": 132,
+      "source_path": "src/Applications/Administration/Terminal/TerminalApp.m"
+    },
+    {
+      "address": 66204,
+      "reference_names": [
+        "+[TerminalApp sharedApplication]"
+      ],
+      "size": 96,
+      "source_line": 141,
+      "source_path": "src/Applications/Administration/Terminal/TerminalApp.m"
+    },
+    {
+      "address": 66300,
+      "reference_names": [
+        "-[TerminalApp new:]"
+      ],
+      "size": 56,
+      "source_line": 768,
+      "source_path": "src/Applications/Administration/Terminal/TerminalApp.m"
+    },
+    {
+      "address": 66356,
+      "reference_names": [
+        "-[TerminalApp newShell:]"
+      ],
+      "size": 60,
+      "source_line": 553,
+      "source_path": "src/Applications/Administration/Terminal/TerminalApp.m"
+    },
+    {
+      "address": 66416,
+      "reference_names": [
+        "-[TerminalApp newShell:env:]"
+      ],
+      "size": 60,
+      "source_line": 558,
+      "source_path": "src/Applications/Administration/Terminal/TerminalApp.m"
+    },
+    {
+      "address": 66476,
+      "reference_names": [
+        "-[TerminalApp newShell:inFolder:env:]"
+      ],
+      "size": 628,
+      "source_line": 563,
+      "source_path": "src/Applications/Administration/Terminal/TerminalApp.m"
+    },
+    {
+      "address": 67104,
+      "reference_names": [
+        "-[TerminalApp runCommand:usingShell:inFolder:windowTitle:closeOnExit:]"
+      ],
+      "size": 260,
+      "source_line": 623,
+      "source_path": "src/Applications/Administration/Terminal/TerminalApp.m"
+    },
+    {
+      "address": 67364,
+      "reference_names": [
+        "-[TerminalApp msgPaste:]"
+      ],
+      "size": 144,
+      "source_line": 536,
+      "source_path": "src/Applications/Administration/Terminal/TerminalApp.m"
+    },
+    {
+      "address": 67508,
+      "reference_names": [
+        "-[TerminalApp setupDefaults]"
+      ],
+      "size": 684,
+      "source_line": 822,
+      "source_path": "src/Applications/Administration/Terminal/TerminalApp.m"
+    },
+    {
+      "address": 68192,
+      "reference_names": [
+        "-[TerminalApp applicationWillFinishLaunching:]"
+      ],
+      "size": 896,
+      "source_line": 880,
+      "source_path": "src/Applications/Administration/Terminal/TerminalApp.m"
+    },
+    {
+      "address": 69088,
+      "reference_names": [
+        "-[TerminalApp DOServicesOK]"
+      ],
+      "size": 128,
+      "source_line": 788,
+      "source_path": "src/Applications/Administration/Terminal/TerminalApp.m"
+    },
+    {
+      "address": 69216,
+      "reference_names": [
+        "-[TerminalApp applicationDidFinishLaunching:]"
+      ],
+      "size": 1440,
+      "source_line": 926,
+      "source_path": "src/Applications/Administration/Terminal/TerminalApp.m"
+    },
+    {
+      "address": 70656,
+      "reference_names": [
+        "-[TerminalApp doStartupAction]"
+      ],
+      "size": 248,
+      "source_line": 798,
+      "source_path": "src/Applications/Administration/Terminal/TerminalApp.m"
+    },
+    {
+      "address": 70904,
+      "reference_names": [
+        "-[TerminalApp applicationDidUnhide:]"
+      ],
+      "size": 316,
+      "source_line": 1158,
+      "source_path": "src/Applications/Administration/Terminal/TerminalApp.m"
+    },
+    {
+      "address": 71220,
+      "reference_names": [
+        "-[TerminalApp preferences:]"
+      ],
+      "size": 312,
+      "source_line": 176,
+      "source_path": "src/Applications/Administration/Terminal/TerminalApp.m"
+    },
+    {
+      "address": 71532,
+      "reference_names": [
+        "-[TerminalApp prefWindowVisible]"
+      ],
+      "size": 20,
+      "source_line": 148,
+      "source_path": "src/Applications/Administration/Terminal/TerminalApp.m"
+    },
+    {
+      "address": 71552,
+      "reference_names": [
+        "-[TerminalApp setPrefWindowVisible:]"
+      ],
+      "size": 16,
+      "source_line": 153,
+      "source_path": "src/Applications/Administration/Terminal/TerminalApp.m"
+    },
+    {
+      "address": 71568,
+      "reference_names": [
+        "-[TerminalApp prefManager]"
+      ],
+      "size": 160,
+      "source_line": 158,
+      "source_path": "src/Applications/Administration/Terminal/TerminalApp.m"
+    },
+    {
+      "address": 71728,
+      "reference_names": [
+        "-[TerminalApp hasPrefManager]"
+      ],
+      "size": 24,
+      "source_line": 1763,
+      "source_path": "src/Applications/Administration/Terminal/TerminalApp.m"
+    },
+    {
+      "address": 71752,
+      "reference_names": [
+        "-[TerminalApp info:]"
+      ],
+      "size": 340,
+      "source_line": 718,
+      "source_path": "src/Applications/Administration/Terminal/TerminalApp.m"
+    },
+    {
+      "address": 72092,
+      "reference_names": [
+        "-[TerminalApp applicationShouldTerminate:]"
+      ],
+      "size": 1864,
+      "source_line": 1020,
+      "source_path": "src/Applications/Administration/Terminal/TerminalApp.m"
+    },
+    {
+      "address": 73956,
+      "reference_names": [
+        "-[TerminalApp recalculateDirtyWindows]"
+      ],
+      "size": 376,
+      "source_line": 1651,
+      "source_path": "src/Applications/Administration/Terminal/TerminalApp.m"
+    },
+    {
+      "address": 74332,
+      "reference_names": [
+        "-[TerminalApp doingForcedQuit]"
+      ],
+      "size": 28,
+      "source_line": 1768,
+      "source_path": "src/Applications/Administration/Terminal/TerminalApp.m"
+    },
+    {
+      "address": 74360,
+      "reference_names": [
+        "-[TerminalApp validateMenuItem:]"
+      ],
+      "size": 716,
+      "source_line": 473,
+      "source_path": "src/Applications/Administration/Terminal/TerminalApp.m"
+    },
+    {
+      "address": 75076,
+      "reference_names": [
+        "-[TerminalApp setWindowStatus:withScroller:debug:setMember:]"
+      ],
+      "size": 28,
+      "source_line": 1695,
+      "source_path": "src/Applications/Administration/Terminal/TerminalApp.m"
+    },
+    {
+      "address": 75104,
+      "reference_names": [
+        "-[TerminalApp print:]"
+      ],
+      "size": 176,
+      "source_line": 1682,
+      "source_path": "src/Applications/Administration/Terminal/TerminalApp.m"
+    },
+    {
+      "address": 75280,
+      "reference_names": [
+        "-[TerminalApp showServiceManager:]"
+      ],
+      "size": 172,
+      "source_line": 741,
+      "source_path": "src/Applications/Administration/Terminal/TerminalApp.m"
+    },
+    {
+      "address": 75452,
+      "reference_names": [
+        "-[TerminalApp serviceCache]"
+      ],
+      "size": 132,
+      "source_line": 205,
+      "source_path": "src/Applications/Administration/Terminal/TerminalApp.m"
+    },
+    {
+      "address": 75584,
+      "reference_names": [
+        "-[TerminalApp lazyDestroyZone:wait:]"
+      ],
+      "size": 220,
+      "source_line": 1749,
+      "source_path": "src/Applications/Administration/Terminal/TerminalApp.m"
+    },
+    {
+      "address": 75804,
+      "reference_names": [
+        "-[TerminalApp killZone:]"
+      ],
+      "size": 36,
+      "source_line": 1744,
+      "source_path": "src/Applications/Administration/Terminal/TerminalApp.m"
+    },
+    {
+      "address": 75840,
+      "reference_names": [
+        "-[TerminalApp dirtMonitor]"
+      ],
+      "size": 240,
+      "source_line": 217,
+      "source_path": "src/Applications/Administration/Terminal/TerminalApp.m"
+    },
+    {
+      "address": 76080,
+      "reference_names": [
+        "-[TerminalApp cleanCommands]"
+      ],
+      "size": 388,
+      "source_line": 233,
+      "source_path": "src/Applications/Administration/Terminal/TerminalApp.m"
+    },
+    {
+      "address": 76468,
+      "reference_names": [
+        "-[TerminalApp save:]"
+      ],
+      "size": 64,
+      "source_line": 283,
+      "source_path": "src/Applications/Administration/Terminal/TerminalApp.m"
+    },
+    {
+      "address": 76532,
+      "reference_names": [
+        "-[TerminalApp saveAs:]"
+      ],
+      "size": 64,
+      "source_line": 288,
+      "source_path": "src/Applications/Administration/Terminal/TerminalApp.m"
+    },
+    {
+      "address": 76596,
+      "reference_names": [
+        "-[TerminalApp save:mustPrompt:howMany:inFile:]"
+      ],
+      "size": 2240,
+      "source_line": 293,
+      "source_path": "src/Applications/Administration/Terminal/TerminalApp.m"
+    },
+    {
+      "address": 78836,
+      "reference_names": [
+        "-[TerminalApp makePanelGoToLibrary:]"
+      ],
+      "size": 252,
+      "source_line": 1261,
+      "source_path": "src/Applications/Administration/Terminal/TerminalApp.m"
+    },
+    {
+      "address": 79088,
+      "reference_names": [
+        "-[TerminalApp open:]"
+      ],
+      "size": 284,
+      "source_line": 1288,
+      "source_path": "src/Applications/Administration/Terminal/TerminalApp.m"
+    },
+    {
+      "address": 79372,
+      "reference_names": [
+        "-[TerminalApp openFile:]"
+      ],
+      "size": 1480,
+      "source_line": 1311,
+      "source_path": "src/Applications/Administration/Terminal/TerminalApp.m"
+    },
+    {
+      "address": 80852,
+      "reference_names": [
+        "-[TerminalApp monStart:]"
+      ],
+      "size": 12,
+      "source_line": 1773,
+      "source_path": "src/Applications/Administration/Terminal/TerminalApp.m"
+    },
+    {
+      "address": 80864,
+      "reference_names": [
+        "-[TerminalApp monStop:]"
+      ],
+      "size": 12,
+      "source_line": 1777,
+      "source_path": "src/Applications/Administration/Terminal/TerminalApp.m"
+    },
+    {
+      "address": 80876,
+      "reference_names": [
+        "-[TerminalApp application:openTempFile:]"
+      ],
+      "size": 56,
+      "source_line": 645,
+      "source_path": "src/Applications/Administration/Terminal/TerminalApp.m"
+    },
+    {
+      "address": 80932,
+      "reference_names": [
+        "-[TerminalApp application:openFile:]"
+      ],
+      "size": 488,
+      "source_line": 1416,
+      "source_path": "src/Applications/Administration/Terminal/TerminalApp.m"
+    },
+    {
+      "address": 81420,
+      "reference_names": [
+        "-[TerminalApp openServicesFile:]"
+      ],
+      "size": 1636,
+      "source_line": 1450,
+      "source_path": "src/Applications/Administration/Terminal/TerminalApp.m"
+    },
+    {
+      "address": 83056,
+      "reference_names": [
+        "-[TerminalApp updateLibraryMenu]"
+      ],
+      "size": 596,
+      "source_line": 1215,
+      "source_path": "src/Applications/Administration/Terminal/TerminalApp.m"
+    },
+    {
+      "address": 83652,
+      "reference_names": [
+        "-[TerminalApp openLibraryTerm:]"
+      ],
+      "size": 124,
+      "source_line": 1579,
+      "source_path": "src/Applications/Administration/Terminal/TerminalApp.m"
+    },
+    {
+      "address": 83776,
+      "reference_names": [
+        "-[TerminalApp maybeUpdateLibraryMenu]"
+      ],
+      "size": 172,
+      "source_line": 1196,
+      "source_path": "src/Applications/Administration/Terminal/TerminalApp.m"
+    },
+    {
+      "address": 83948,
+      "reference_names": [
+        "-[TerminalApp quickTitle:]"
+      ],
+      "size": 572,
+      "source_line": 1603,
+      "source_path": "src/Applications/Administration/Terminal/TerminalApp.m"
+    },
+    {
+      "address": 84520,
+      "reference_names": [
+        "-[TerminalApp quickTitleOK:]"
+      ],
+      "size": 88,
+      "source_line": 1591,
+      "source_path": "src/Applications/Administration/Terminal/TerminalApp.m"
+    },
+    {
+      "address": 84608,
+      "reference_names": [
+        "-[TerminalApp quickTitleCancel:]"
+      ],
+      "size": 88,
+      "source_line": 1597,
+      "source_path": "src/Applications/Administration/Terminal/TerminalApp.m"
+    },
+    {
+      "address": 84696,
+      "reference_names": [
+        "-[TerminalApp newCommand:]"
+      ],
+      "size": 112,
+      "source_line": 760,
+      "source_path": "src/Applications/Administration/Terminal/TerminalApp.m"
+    },
+    {
+      "address": 84808,
+      "reference_names": [
+        "-[TerminalApp serviceProvider]"
+      ],
+      "size": 16,
+      "source_line": 200,
+      "source_path": "src/Applications/Administration/Terminal/TerminalApp.m"
+    },
+    {
+      "address": 84824,
+      "reference_names": [
+        "-[TerminalApp fontManager:willIncludeFont:]"
+      ],
+      "size": 152,
+      "source_line": 1183,
+      "source_path": "src/Applications/Administration/Terminal/TerminalApp.m"
+    },
+    {
+      "address": 84976,
+      "reference_names": [
+        "-[TerminalApp shell]"
+      ],
+      "size": 172,
+      "source_line": 774,
+      "source_path": "src/Applications/Administration/Terminal/TerminalApp.m"
+    },
+    {
+      "address": 85148,
+      "reference_names": [
+        "-[TerminalApp setPerformingPrint:]"
+      ],
+      "size": 16,
+      "source_line": 1677,
+      "source_path": "src/Applications/Administration/Terminal/TerminalApp.m"
+    },
+    {
+      "address": 85164,
+      "reference_names": [
+        "-[TerminalApp applicationDidBecomeActive:]"
+      ],
+      "size": 88,
+      "source_line": 1148,
+      "source_path": "src/Applications/Administration/Terminal/TerminalApp.m"
+    },
+    {
+      "address": 85252,
+      "reference_names": [
+        "-[TerminalApp displayAppStatus:]"
+      ],
+      "size": 112,
+      "source_line": 650,
+      "source_path": "src/Applications/Administration/Terminal/TerminalApp.m"
+    },
+    {
+      "address": 85364,
+      "reference_names": [
+        "-[TerminalApp resetAppStatus]"
+      ],
+      "size": 72,
+      "source_line": 661,
+      "source_path": "src/Applications/Administration/Terminal/TerminalApp.m"
+    },
+    {
+      "address": 85436,
+      "reference_names": [
+        "-[TerminalApp updateAppStatus]"
+      ],
+      "size": 644,
+      "source_line": 667,
+      "source_path": "src/Applications/Administration/Terminal/TerminalApp.m"
+    },
+    {
+      "address": 86080,
+      "reference_names": [
+        "-[TerminalApp activateNext:forward:includeMini:]"
+      ],
+      "size": 432,
+      "source_line": 1704,
+      "source_path": "src/Applications/Administration/Terminal/TerminalApp.m"
+    },
+    {
+      "address": 86512,
+      "reference_names": [
+        "_handleSIGHUP"
+      ],
+      "size": 72,
+      "source_line": 104,
+      "source_path": "src/Applications/Administration/Terminal/TerminalApp.m"
+    },
+    {
+      "address": 86584,
+      "reference_names": [
+        "-[TerminalDO init]"
+      ],
+      "size": 340,
+      "source_line": 123,
+      "source_path": "src/Applications/Administration/Terminal/TerminalDO.m"
+    },
+    {
+      "address": 86924,
+      "reference_names": [
+        "_environmentDataFromDictionary"
+      ],
+      "size": 424,
+      "source_line": 48,
+      "source_path": "src/Applications/Administration/Terminal/TerminalDO.m"
+    },
+    {
+      "address": 87348,
+      "reference_names": [
+        "_environmentFrom"
+      ],
+      "size": 284,
+      "source_line": 83,
+      "source_path": "src/Applications/Administration/Terminal/TerminalDO.m"
+    },
+    {
+      "address": 87632,
+      "reference_names": [
+        "-[TerminalDO protocolVersion]"
+      ],
+      "size": 20,
+      "source_line": 152,
+      "source_path": "src/Applications/Administration/Terminal/TerminalDO.m"
+    },
+    {
+      "address": 87652,
+      "reference_names": [
+        "-[TerminalDO runCommand:windowTitle:]"
+      ],
+      "size": 116,
+      "source_line": 157,
+      "source_path": "src/Applications/Administration/Terminal/TerminalDO.m"
+    },
+    {
+      "address": 87768,
+      "reference_names": [
+        "-[TerminalDO runCommand:windowType:windowHandle:shellType:windowTitle:returnCode:]"
+      ],
+      "size": 112,
+      "source_line": 168,
+      "source_path": "src/Applications/Administration/Terminal/TerminalDO.m"
+    },
+    {
+      "address": 87880,
+      "reference_names": [
+        "-[TerminalDO runCommand:inputData:outputData:waitForReturn:directory:returnCode:]"
+      ],
+      "size": 112,
+      "source_line": 179,
+      "source_path": "src/Applications/Administration/Terminal/TerminalDO.m"
+    },
+    {
+      "address": 87992,
+      "reference_names": [
+        "-[TerminalDO runCommand:inputData:outputData:errorData:waitForReturn:windowType:windowHandle:exitAction:shellType:windowTitle:directory:environment:returnCode:]"
+      ],
+      "size": 3256,
+      "source_line": 191,
+      "source_path": "src/Applications/Administration/Terminal/TerminalDO.m"
+    },
+    {
+      "address": 91248,
+      "reference_names": [
+        "-[TString _createIfNecessary]"
+      ],
+      "size": 120,
+      "source_line": 7,
+      "source_path": "src/Applications/Administration/Terminal/TString.m"
+    },
+    {
+      "address": 91368,
+      "reference_names": [
+        "-[TString stringValue]"
+      ],
+      "size": 92,
+      "source_line": 17,
+      "source_path": "src/Applications/Administration/Terminal/TString.m"
+    },
+    {
+      "address": 91460,
+      "reference_names": [
+        "-[TString setStringValue:]"
+      ],
+      "size": 156,
+      "source_line": 24,
+      "source_path": "src/Applications/Administration/Terminal/TString.m"
+    },
+    {
+      "address": 91616,
+      "reference_names": [
+        "-[TString empty]"
+      ],
+      "size": 56,
+      "source_line": 39,
+      "source_path": "src/Applications/Administration/Terminal/TString.m"
+    },
+    {
+      "address": 91672,
+      "reference_names": [
+        "-[TString dealloc]"
+      ],
+      "size": 92,
+      "source_line": 45,
+      "source_path": "src/Applications/Administration/Terminal/TString.m"
+    },
+    {
+      "address": 91764,
+      "reference_names": [
+        "-[vt100 linefeed]"
+      ],
+      "size": 124,
+      "source_line": 85,
+      "source_path": "src/Applications/Administration/Terminal/vt100.m"
+    },
+    {
+      "address": 91888,
+      "reference_names": [
+        "-[vt100 revlinefeed]"
+      ],
+      "size": 116,
+      "source_line": 100,
+      "source_path": "src/Applications/Administration/Terminal/vt100.m"
+    },
+    {
+      "address": 92004,
+      "reference_names": [
+        "-[vt100 reset]"
+      ],
+      "size": 256,
+      "source_line": 113,
+      "source_path": "src/Applications/Administration/Terminal/vt100.m"
+    },
+    {
+      "address": 92260,
+      "reference_names": [
+        "-[vt100 initDefaults:]"
+      ],
+      "size": 316,
+      "source_line": 10,
+      "source_path": "src/Applications/Administration/Terminal/vt100.m"
+    },
+    {
+      "address": 92576,
+      "reference_names": [
+        "-[vt100 dealloc]"
+      ],
+      "size": 120,
+      "source_line": 28,
+      "source_path": "src/Applications/Administration/Terminal/vt100.m"
+    },
+    {
+      "address": 92696,
+      "reference_names": [
+        "-[vt100 key:]"
+      ],
+      "size": 776,
+      "source_line": 774,
+      "source_path": "src/Applications/Administration/Terminal/vt100.m"
+    },
+    {
+      "address": 93472,
+      "reference_names": [
+        "-[vt100 termDidResize:]"
+      ],
+      "size": 168,
+      "source_line": 50,
+      "source_path": "src/Applications/Administration/Terminal/vt100.m"
+    },
+    {
+      "address": 93640,
+      "reference_names": [
+        "-[vt100 _insertline:]"
+      ],
+      "size": 136,
+      "source_line": 420,
+      "source_path": "src/Applications/Administration/Terminal/vt100.m"
+    },
+    {
+      "address": 93776,
+      "reference_names": [
+        "-[vt100 _deleteline:]"
+      ],
+      "size": 136,
+      "source_line": 434,
+      "source_path": "src/Applications/Administration/Terminal/vt100.m"
+    },
+    {
+      "address": 93912,
+      "reference_names": [
+        "-[vt100 _deletechar:]"
+      ],
+      "size": 84,
+      "source_line": 448,
+      "source_path": "src/Applications/Administration/Terminal/vt100.m"
+    },
+    {
+      "address": 93996,
+      "reference_names": [
+        "-[vt100 vt100DoCSI:]"
+      ],
+      "size": 2828,
+      "source_line": 455,
+      "source_path": "src/Applications/Administration/Terminal/vt100.m"
+    },
+    {
+      "address": 96824,
+      "reference_names": [
+        "-[vt100 vt100Private:]"
+      ],
+      "size": 512,
+      "source_line": 356,
+      "source_path": "src/Applications/Administration/Terminal/vt100.m"
+    },
+    {
+      "address": 97336,
+      "reference_names": [
+        "-[vt100 vt100CollectArgs:]"
+      ],
+      "size": 264,
+      "source_line": 672,
+      "source_path": "src/Applications/Administration/Terminal/vt100.m"
+    },
+    {
+      "address": 97600,
+      "reference_names": [
+        "-[vt100 vt100CollectString:]"
+      ],
+      "size": 268,
+      "source_line": 699,
+      "source_path": "src/Applications/Administration/Terminal/vt100.m"
+    },
+    {
+      "address": 97868,
+      "reference_names": [
+        "-[vt100 vt100string:]"
+      ],
+      "size": 116,
+      "source_line": 725,
+      "source_path": "src/Applications/Administration/Terminal/vt100.m"
+    },
+    {
+      "address": 97984,
+      "reference_names": [
+        "-[vt100 vt100CSI:]"
+      ],
+      "size": 136,
+      "source_line": 344,
+      "source_path": "src/Applications/Administration/Terminal/vt100.m"
+    },
+    {
+      "address": 98120,
+      "reference_names": [
+        "-[vt100 vt100CharsetG0:]"
+      ],
+      "size": 128,
+      "source_line": 302,
+      "source_path": "src/Applications/Administration/Terminal/vt100.m"
+    },
+    {
+      "address": 98248,
+      "reference_names": [
+        "-[vt100 vt100CharsetG1:]"
+      ],
+      "size": 128,
+      "source_line": 311,
+      "source_path": "src/Applications/Administration/Terminal/vt100.m"
+    },
+    {
+      "address": 98376,
+      "reference_names": [
+        "-[vt100 vt100Hash:]"
+      ],
+      "size": 272,
+      "source_line": 320,
+      "source_path": "src/Applications/Administration/Terminal/vt100.m"
+    },
+    {
+      "address": 98648,
+      "reference_names": [
+        "-[vt100 vt100Escape:]"
+      ],
+      "size": 588,
+      "source_line": 210,
+      "source_path": "src/Applications/Administration/Terminal/vt100.m"
+    },
+    {
+      "address": 99236,
+      "reference_names": [
+        "-[vt100 translateChars:len:]"
+      ],
+      "size": 284,
+      "source_line": 740,
+      "source_path": "src/Applications/Administration/Terminal/vt100.m"
+    },
+    {
+      "address": 99520,
+      "reference_names": [
+        "-[vt100 setTerminal:]"
+      ],
+      "size": 100,
+      "source_line": 22,
+      "source_path": "src/Applications/Administration/Terminal/vt100.m"
+    },
+    {
+      "address": 99620,
+      "reference_names": [
+        "-[vt100 setDefaults:]"
+      ],
+      "size": 148,
+      "source_line": 37,
+      "source_path": "src/Applications/Administration/Terminal/vt100.m"
+    },
+    {
+      "address": 99768,
+      "reference_names": [
+        "-[vt100 ctrloutput:]"
+      ],
+      "size": 524,
+      "source_line": 135,
+      "source_path": "src/Applications/Administration/Terminal/vt100.m"
+    },
+    {
+      "address": 100292,
+      "reference_names": [
+        "-[vt100 wrapoutput]"
+      ],
+      "size": 180,
+      "source_line": 65,
+      "source_path": "src/Applications/Administration/Terminal/vt100.m"
+    },
+    {
+      "address": 100472,
+      "reference_names": [
+        "-[vt52 initDefaults:]"
+      ],
+      "size": 60,
+      "source_line": 13,
+      "source_path": "src/Applications/Administration/Terminal/vt52.m"
+    },
+    {
+      "address": 100532,
+      "reference_names": [
+        "-[vt52 key:]"
+      ],
+      "size": 896,
+      "source_line": 63,
+      "source_path": "src/Applications/Administration/Terminal/vt52.m"
+    },
+    {
+      "address": 101428,
+      "reference_names": [
+        "-[vt52 vt52getcol:]"
+      ],
+      "size": 52,
+      "source_line": 208,
+      "source_path": "src/Applications/Administration/Terminal/vt52.m"
+    },
+    {
+      "address": 101480,
+      "reference_names": [
+        "-[vt52 vt52getline:]"
+      ],
+      "size": 64,
+      "source_line": 201,
+      "source_path": "src/Applications/Administration/Terminal/vt52.m"
+    },
+    {
+      "address": 101544,
+      "reference_names": [
+        "-[vt52 vt52Escape:]"
+      ],
+      "size": 536,
+      "source_line": 216,
+      "source_path": "src/Applications/Administration/Terminal/vt52.m"
+    },
+    {
+      "address": 102080,
+      "reference_names": [
+        "-[vt52 vt100Emulator:]"
+      ],
+      "size": 16,
+      "source_line": 8,
+      "source_path": "src/Applications/Administration/Terminal/vt52.m"
+    },
+    {
+      "address": 102096,
+      "reference_names": [
+        "-[vt52 translateChars:len:]"
+      ],
+      "size": 260,
+      "source_line": 27,
+      "source_path": "src/Applications/Administration/Terminal/vt52.m"
+    },
+    {
+      "address": 102356,
+      "reference_names": [
+        "-[vt52 setDefaults:]"
+      ],
+      "size": 96,
+      "source_line": 19,
+      "source_path": "src/Applications/Administration/Terminal/vt52.m"
+    },
+    {
+      "address": 102452,
+      "reference_names": [
+        "-[vt52 ctrloutput:]"
+      ],
+      "size": 324,
+      "source_line": 151,
+      "source_path": "src/Applications/Administration/Terminal/vt52.m"
+    },
+    {
+      "address": 102776,
+      "reference_names": [
+        "-[vt52 wrapoutput]"
+      ],
+      "size": 28,
+      "source_line": 58,
+      "source_path": "src/Applications/Administration/Terminal/vt52.m"
+    },
+    {
+      "address": 102804,
+      "reference_names": [
+        "-[vt52 reset]"
+      ],
+      "size": 156,
+      "source_line": 290,
+      "source_path": "src/Applications/Administration/Terminal/vt52.m"
+    },
+    {
+      "address": 102960,
+      "reference_names": [
+        "+[MutableEvent mutableEventWithEvent:]"
+      ],
+      "size": 328,
+      "source_line": 5,
+      "source_path": "src/Applications/Administration/Terminal/MutableEvent.m"
+    },
+    {
+      "address": 103288,
+      "reference_names": [
+        "-[MutableEvent setChar:]"
+      ],
+      "size": 120,
+      "source_line": 36,
+      "source_path": "src/Applications/Administration/Terminal/MutableEvent.m"
+    },
+    {
+      "address": 103408,
+      "reference_names": [
+        "-[MutableEvent setChars:]"
+      ],
+      "size": 92,
+      "source_line": 44,
+      "source_path": "src/Applications/Administration/Terminal/MutableEvent.m"
+    },
+    {
+      "address": 103500,
+      "reference_names": [
+        "-[MutableEvent setKeyCode:]"
+      ],
+      "size": 16,
+      "source_line": 51,
+      "source_path": "src/Applications/Administration/Terminal/MutableEvent.m"
+    },
+    {
+      "address": 103516,
+      "reference_names": [
+        "-[MutableEvent setModifierFlags:]"
+      ],
+      "size": 16,
+      "source_line": 56,
+      "source_path": "src/Applications/Administration/Terminal/MutableEvent.m"
+    },
+    {
+      "address": 103532,
+      "reference_names": [
+        "-[MutableEvent charValue]"
+      ],
+      "size": 216,
+      "source_line": 19,
+      "source_path": "src/Applications/Administration/Terminal/MutableEvent.m"
+    },
+    {
+      "address": 103748,
+      "reference_names": [
+        "-[NSPopUpButton(WhyIsntThisInTheAppKit) itemWithTag:]"
+      ],
+      "size": 156,
+      "source_line": 52,
+      "source_path": "src/Applications/Administration/Terminal/ServiceManager.m"
+    },
+    {
+      "address": 103904,
+      "reference_names": [
+        "_FVshow"
+      ],
+      "size": 204,
+      "source_line": 232,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 104108,
+      "reference_names": [
+        "-[FieldView _rawscrollup:to:lines:]"
+      ],
+      "size": 1068,
+      "source_line": 1680,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 105176,
+      "reference_names": [
+        "-[FieldView _rawscrolldown:to:lines:]"
+      ],
+      "size": 1080,
+      "source_line": 1756,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 106256,
+      "reference_names": [
+        "-[FieldView _rawclear:to:]"
+      ],
+      "size": 316,
+      "source_line": 1670,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 106572,
+      "reference_names": [
+        "-[FieldView _sscrollup:to:lines:]"
+      ],
+      "size": 196,
+      "source_line": 1829,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 106768,
+      "reference_names": [
+        "-[FieldView _sscrolldown:to:lines:]"
+      ],
+      "size": 200,
+      "source_line": 1853,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 106968,
+      "reference_names": [
+        "-[FieldView _sclear:to:]"
+      ],
+      "size": 120,
+      "source_line": 1659,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 107088,
+      "reference_names": [
+        "_addData"
+      ],
+      "size": 368,
+      "source_line": 262,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 107456,
+      "reference_names": [
+        "-[FieldView _smark:len:attr:at::back:]"
+      ],
+      "size": 776,
+      "source_line": 2474,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 108232,
+      "reference_names": [
+        "-[FieldView refreshscreen]"
+      ],
+      "size": 732,
+      "source_line": 2662,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 108964,
+      "reference_names": [
+        "-[FieldView _srclear:to:]"
+      ],
+      "size": 252,
+      "source_line": 2053,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 109216,
+      "reference_names": [
+        "-[FieldView _srscrollup:to:lines:]"
+      ],
+      "size": 196,
+      "source_line": 2112,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 109412,
+      "reference_names": [
+        "-[FieldView _srscrolldown:to:lines:]"
+      ],
+      "size": 208,
+      "source_line": 2133,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 109620,
+      "reference_names": [
+        "-[FieldView _refresh]"
+      ],
+      "size": 376,
+      "source_line": 2077,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 109996,
+      "reference_names": [
+        "-[FieldView _lscrollup:to:lines:]"
+      ],
+      "size": 632,
+      "source_line": 2179,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 110628,
+      "reference_names": [
+        "-[FieldView _lscrolldown:to:lines:]"
+      ],
+      "size": 288,
+      "source_line": 2154,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 110916,
+      "reference_names": [
+        "-[FieldView _lclear:to:]"
+      ],
+      "size": 560,
+      "source_line": 2228,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 111476,
+      "reference_names": [
+        "-[FieldView _bclear:to:]"
+      ],
+      "size": 752,
+      "source_line": 2270,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 112228,
+      "reference_names": [
+        "-[FieldView _bclear:from:]"
+      ],
+      "size": 840,
+      "source_line": 2302,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 113068,
+      "reference_names": [
+        "-[FieldView _sshighlight::::isLit:]"
+      ],
+      "size": 1176,
+      "source_line": 2597,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 114244,
+      "reference_names": [
+        "-[FieldView _highlight::to::in::isLit:]"
+      ],
+      "size": 436,
+      "source_line": 2524,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 114680,
+      "reference_names": [
+        "-[FieldView _highlight::to::isLit:]"
+      ],
+      "size": 76,
+      "source_line": 2588,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 114756,
+      "reference_names": [
+        "-[FieldView _highlightsel:to:isLit:]"
+      ],
+      "size": 84,
+      "source_line": 2517,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 114840,
+      "reference_names": [
+        "-[FieldView _srhclear:to:]"
+      ],
+      "size": 212,
+      "source_line": 1877,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 115052,
+      "reference_names": [
+        "-[FieldView _srhscrollup:to:lines:]"
+      ],
+      "size": 196,
+      "source_line": 1891,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 115248,
+      "reference_names": [
+        "-[FieldView _srhscrolldown:to:lines:]"
+      ],
+      "size": 208,
+      "source_line": 1911,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 115456,
+      "reference_names": [
+        "-[FieldView _lscrollup:]"
+      ],
+      "size": 500,
+      "source_line": 2333,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 115956,
+      "reference_names": [
+        "_killSelIfNecessary"
+      ],
+      "size": 168,
+      "source_line": 48,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 116124,
+      "reference_names": [
+        "-[FieldView _mark:len:]"
+      ],
+      "size": 424,
+      "source_line": 2429,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 116548,
+      "reference_names": [
+        "-[FieldView isSelected::]"
+      ],
+      "size": 100,
+      "source_line": 1117,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 116648,
+      "reference_names": [
+        "-[FieldView _delayedCursor:]"
+      ],
+      "size": 128,
+      "source_line": 1647,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 116776,
+      "reference_names": [
+        "-[FieldView _cursor]"
+      ],
+      "size": 1588,
+      "source_line": 1544,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 118364,
+      "reference_names": [
+        "-[FieldView _clearcursor]"
+      ],
+      "size": 360,
+      "source_line": 1490,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 118724,
+      "reference_names": [
+        "-[FieldView(FieldDraw) drawRect:]"
+      ],
+      "size": 360,
+      "source_line": 2843,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 119084,
+      "reference_names": [
+        "-[FieldView setWrap]"
+      ],
+      "size": 52,
+      "source_line": 787,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 119136,
+      "reference_names": [
+        "-[FieldView _binsert::bytes:]"
+      ],
+      "size": 120,
+      "source_line": 2391,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 119256,
+      "reference_names": [
+        "-[FieldView _bdelete::bytes:]"
+      ],
+      "size": 120,
+      "source_line": 2381,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 119376,
+      "reference_names": [
+        "-[FieldView(FieldMouseScroll) _scrollTo:]"
+      ],
+      "size": 532,
+      "source_line": 1931,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 119908,
+      "reference_names": [
+        "-[FieldView scrollTo:]"
+      ],
+      "size": 112,
+      "source_line": 2045,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 120020,
+      "reference_names": [
+        "-[FieldView pageUp]"
+      ],
+      "size": 96,
+      "source_line": 2413,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 120116,
+      "reference_names": [
+        "-[FieldView pageDown]"
+      ],
+      "size": 124,
+      "source_line": 2421,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 120240,
+      "reference_names": [
+        "-[FieldView lineUp]"
+      ],
+      "size": 68,
+      "source_line": 2401,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 120308,
+      "reference_names": [
+        "-[FieldView lineDown]"
+      ],
+      "size": 84,
+      "source_line": 2407,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 120392,
+      "reference_names": [
+        "-[FieldView positionFrom:]"
+      ],
+      "size": 432,
+      "source_line": 1982,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 120824,
+      "reference_names": [
+        "-[FieldView setScroller:]"
+      ],
+      "size": 92,
+      "source_line": 711,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 120916,
+      "reference_names": [
+        "-[FieldView reflectPosition]"
+      ],
+      "size": 320,
+      "source_line": 1101,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 121236,
+      "reference_names": [
+        "-[FieldView _autoScrollTo:]"
+      ],
+      "size": 156,
+      "source_line": 2957,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 121392,
+      "reference_names": [
+        "-[FieldView _smartAutoScrollTo:]"
+      ],
+      "size": 168,
+      "source_line": 2980,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 121560,
+      "reference_names": [
+        "-[FieldView _dragEnd::]"
+      ],
+      "size": 568,
+      "source_line": 1417,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 122128,
+      "reference_names": [
+        "-[FieldView _singleClick::]"
+      ],
+      "size": 132,
+      "source_line": 1223,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 122260,
+      "reference_names": [
+        "-[FieldView findPrevWord:::]"
+      ],
+      "size": 220,
+      "source_line": 3047,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 122480,
+      "reference_names": [
+        "-[FieldView findNextWord:::]"
+      ],
+      "size": 292,
+      "source_line": 3078,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 122772,
+      "reference_names": [
+        "-[FieldView findMatchingDelimiter:::delimChars:backwards:]"
+      ],
+      "size": 328,
+      "source_line": 3109,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 123100,
+      "reference_names": [
+        "-[FieldView _doubleClick::]"
+      ],
+      "size": 520,
+      "source_line": 1242,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 123620,
+      "reference_names": [
+        "-[FieldView _tripleClick::]"
+      ],
+      "size": 200,
+      "source_line": 1471,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 123820,
+      "reference_names": [
+        "-[FieldView _drag::]"
+      ],
+      "size": 1040,
+      "source_line": 1291,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 124860,
+      "reference_names": [
+        "-[FieldView _shiftClick::]"
+      ],
+      "size": 260,
+      "source_line": 1452,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 125120,
+      "reference_names": [
+        "-[FieldView _clearSelection]"
+      ],
+      "size": 128,
+      "source_line": 1534,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 125248,
+      "reference_names": [
+        "-[FieldView _point:toPosition::]"
+      ],
+      "size": 1140,
+      "source_line": 2998,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 126388,
+      "reference_names": [
+        "-[FieldView hackRoutine:]"
+      ],
+      "size": 232,
+      "source_line": 1397,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 126620,
+      "reference_names": [
+        "-[FieldView(FieldMouseScroll) mouseDown:]"
+      ],
+      "size": 1304,
+      "source_line": 2871,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 127924,
+      "reference_names": [
+        "-[FieldView selStream]"
+      ],
+      "size": 896,
+      "source_line": 1130,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 128820,
+      "reference_names": [
+        "-[FieldView(FieldMouseScroll) copy:]"
+      ],
+      "size": 260,
+      "source_line": 3138,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 129080,
+      "reference_names": [
+        "-[FieldView clearScrollback:]"
+      ],
+      "size": 732,
+      "source_line": 3217,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 129812,
+      "reference_names": [
+        "-[FieldView(FieldMouseScroll) selectAll:]"
+      ],
+      "size": 208,
+      "source_line": 3194,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 130020,
+      "reference_names": [
+        "_strindex"
+      ],
+      "size": 172,
+      "source_line": 13,
+      "source_path": "src/Applications/Administration/Terminal/FindCharacters.c"
+    },
+    {
+      "address": 130192,
+      "reference_names": [
+        "_strrindex"
+      ],
+      "size": 76,
+      "source_line": 32,
+      "source_path": "src/Applications/Administration/Terminal/FindCharacters.c"
+    },
+    {
+      "address": 130268,
+      "reference_names": [
+        "_striindex"
+      ],
+      "size": 380,
+      "source_line": 49,
+      "source_path": "src/Applications/Administration/Terminal/FindCharacters.c"
+    },
+    {
+      "address": 130648,
+      "reference_names": [
+        "_stririndex"
+      ],
+      "size": 76,
+      "source_line": 69,
+      "source_path": "src/Applications/Administration/Terminal/FindCharacters.c"
+    },
+    {
+      "address": 130724,
+      "reference_names": [
+        "-[FieldView(FieldMouseScroll) find:]"
+      ],
+      "size": 1216,
+      "source_line": 3128,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 131940,
+      "reference_names": [
+        "-[FieldView bfind:]"
+      ],
+      "size": 1208,
+      "source_line": 3133,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 133148,
+      "reference_names": [
+        "-[FieldView selStr]"
+      ],
+      "size": 112,
+      "source_line": 1212,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 133260,
+      "reference_names": [
+        "-[FieldView jumpToSelection:]"
+      ],
+      "size": 240,
+      "source_line": 2030,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 133500,
+      "reference_names": [
+        "-[FieldView(FieldMouseScroll) validRequestorForSendType:returnType:]"
+      ],
+      "size": 144,
+      "source_line": 3156,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 133644,
+      "reference_names": [
+        "-[FieldView(FieldMouseScroll) writeSelectionToPasteboard:types:]"
+      ],
+      "size": 336,
+      "source_line": 3166,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 133980,
+      "reference_names": [
+        "_CreateFlagMapFromZone"
+      ],
+      "size": 396,
+      "source_line": 22,
+      "source_path": "src/Applications/Administration/Terminal/FlagMap.c"
+    },
+    {
+      "address": 134376,
+      "reference_names": [
+        "_FreeFlagMap"
+      ],
+      "size": 56,
+      "source_line": 41,
+      "source_path": "src/Applications/Administration/Terminal/FlagMap.c"
+    },
+    {
+      "address": 134432,
+      "reference_names": [
+        "_FlagIsSet"
+      ],
+      "size": 60,
+      "source_line": 47,
+      "source_path": "src/Applications/Administration/Terminal/FlagMap.c"
+    },
+    {
+      "address": 134492,
+      "reference_names": [
+        "_SetFlag"
+      ],
+      "size": 356,
+      "source_line": 54,
+      "source_path": "src/Applications/Administration/Terminal/FlagMap.c"
+    },
+    {
+      "address": 134848,
+      "reference_names": [
+        "_become_root"
+      ],
+      "size": 72,
+      "source_line": 33,
+      "source_path": "src/Applications/Administration/Terminal/ProcessIdentity.c"
+    },
+    {
+      "address": 134920,
+      "reference_names": [
+        "_become_user"
+      ],
+      "size": 72,
+      "source_line": 38,
+      "source_path": "src/Applications/Administration/Terminal/ProcessIdentity.c"
+    },
+    {
+      "address": 134992,
+      "reference_names": [
+        "_main"
+      ],
+      "size": 720,
+      "source_line": 24,
+      "source_path": "src/Applications/Administration/Terminal/TerminalMain.m"
+    },
+    {
+      "address": 135712,
+      "reference_names": [
+        "_get_process_info_from_pid"
+      ],
+      "size": 288,
+      "source_line": 13,
+      "source_path": "src/Applications/Administration/Terminal/ProcessInfo.c"
+    },
+    {
+      "address": 136000,
+      "reference_names": [
+        "_cmdtok"
+      ],
+      "size": 632,
+      "source_line": 15,
+      "source_path": "src/Applications/Administration/Terminal/ShellExec.c"
+    },
+    {
+      "address": 136632,
+      "reference_names": [
+        "_execs"
+      ],
+      "size": 296,
+      "source_line": 88,
+      "source_path": "src/Applications/Administration/Terminal/ShellExec.c"
+    },
+    {
+      "address": 136928,
+      "reference_names": [
+        "_execs0"
+      ],
+      "size": 400,
+      "source_line": 103,
+      "source_path": "src/Applications/Administration/Terminal/ShellExec.c"
+    },
+    {
+      "address": 137328,
+      "reference_names": [
+        "_ChunkMalloc"
+      ],
+      "size": 184,
+      "source_line": 87,
+      "source_path": "src/Applications/Administration/Terminal/Chunk.c"
+    },
+    {
+      "address": 137512,
+      "reference_names": [
+        "_ChunkRealloc"
+      ],
+      "size": 124,
+      "source_line": 142,
+      "source_path": "src/Applications/Administration/Terminal/Chunk.c"
+    },
+    {
+      "address": 137636,
+      "reference_names": [
+        "_ChunkGrow"
+      ],
+      "size": 156,
+      "source_line": 115,
+      "source_path": "src/Applications/Administration/Terminal/Chunk.c"
+    },
+    {
+      "address": 137792,
+      "reference_names": [
+        "_ChunkCopy"
+      ],
+      "size": 140,
+      "source_line": 184,
+      "source_path": "src/Applications/Administration/Terminal/Chunk.c"
+    },
+    {
+      "address": 137932,
+      "reference_names": [
+        "_ChunkDup"
+      ],
+      "size": 96,
+      "source_line": 204,
+      "source_path": "src/Applications/Administration/Terminal/Chunk.c"
+    },
+    {
+      "address": 138028,
+      "reference_names": [
+        "_ChunkCompress"
+      ],
+      "size": 176,
+      "source_line": 160,
+      "source_path": "src/Applications/Administration/Terminal/Chunk.c"
+    },
+    {
+      "address": 138204,
+      "reference_names": [
+        "_ChunkAdd"
+      ],
+      "size": 124,
+      "source_line": 214,
+      "source_path": "src/Applications/Administration/Terminal/Chunk.c"
+    },
+    {
+      "address": 138328,
+      "reference_names": [
+        "_newNode"
+      ],
+      "size": 136,
+      "source_line": 284,
+      "source_path": "src/Applications/Administration/Terminal/Chunk.c"
+    },
+    {
+      "address": 138464,
+      "reference_names": [
+        "_reallocNode"
+      ],
+      "size": 84,
+      "source_line": 241,
+      "source_path": "src/Applications/Administration/Terminal/Chunk.c"
+    },
+    {
+      "address": 138548,
+      "reference_names": [
+        "_overNode"
+      ],
+      "size": 272,
+      "source_line": 417,
+      "source_path": "src/Applications/Administration/Terminal/Chunk.c"
+    },
+    {
+      "address": 138820,
+      "reference_names": [
+        "_insertNode"
+      ],
+      "size": 460,
+      "source_line": 474,
+      "source_path": "src/Applications/Administration/Terminal/Chunk.c"
+    },
+    {
+      "address": 139280,
+      "reference_names": [
+        "_freeLine"
+      ],
+      "size": 80,
+      "source_line": 308,
+      "source_path": "src/Applications/Administration/Terminal/Chunk.c"
+    },
+    {
+      "address": 139360,
+      "reference_names": [
+        "_truncateLine"
+      ],
+      "size": 140,
+      "source_line": 581,
+      "source_path": "src/Applications/Administration/Terminal/Chunk.c"
+    },
+    {
+      "address": 139500,
+      "reference_names": [
+        "_printLine"
+      ],
+      "size": 256,
+      "source_line": 24,
+      "source_path": "src/Applications/Administration/Terminal/PrintLine.c"
+    },
+    {
+      "address": 139756,
+      "reference_names": [
+        "_insertChars"
+      ],
+      "size": 12,
+      "source_line": 568,
+      "source_path": "src/Applications/Administration/Terminal/Chunk.c"
+    },
+    {
+      "address": 139768,
+      "reference_names": [
+        "_deleteChars"
+      ],
+      "size": 12,
+      "source_line": 648,
+      "source_path": "src/Applications/Administration/Terminal/Chunk.c"
+    },
+    {
+      "address": 139780,
+      "reference_names": [
+        "_clearTo"
+      ],
+      "size": 196,
+      "source_line": 601,
+      "source_path": "src/Applications/Administration/Terminal/Chunk.c"
+    },
+    {
+      "address": 139976,
+      "reference_names": [
+        "_clearFrom"
+      ],
+      "size": 156,
+      "source_line": 630,
+      "source_path": "src/Applications/Administration/Terminal/Chunk.c"
+    },
+    {
+      "address": 140132,
+      "reference_names": [
+        "_lineLength"
+      ],
+      "size": 56,
+      "source_line": 342,
+      "source_path": "src/Applications/Administration/Terminal/Chunk.c"
+    },
+    {
+      "address": 140188,
+      "reference_names": [
+        "_startsleft"
+      ],
+      "size": 148,
+      "source_line": 10,
+      "source_path": "src/Applications/Administration/Terminal/WordBoundary.c"
+    },
+    {
+      "address": 140336,
+      "reference_names": [
+        "_startsright"
+      ],
+      "size": 140,
+      "source_line": 20,
+      "source_path": "src/Applications/Administration/Terminal/WordBoundary.c"
+    },
+    {
+      "address": 140476,
+      "reference_names": [
+        "_iswordchar"
+      ],
+      "size": 156,
+      "source_line": 30,
+      "source_path": "src/Applications/Administration/Terminal/WordBoundary.c"
+    },
+    {
+      "address": 140632,
+      "reference_names": [
+        "_wordEnds"
+      ],
+      "size": 1288,
+      "source_line": 13,
+      "source_path": "src/Applications/Administration/Terminal/WordSelection.c"
+    },
+    {
+      "address": 141920,
+      "reference_names": [
+        "_nextWord"
+      ],
+      "size": 44,
+      "source_line": 77,
+      "source_path": "src/Applications/Administration/Terminal/WordSelection.c"
+    },
+    {
+      "address": 141964,
+      "reference_names": [
+        "_prevWord"
+      ],
+      "size": 44,
+      "source_line": 86,
+      "source_path": "src/Applications/Administration/Terminal/WordSelection.c"
+    },
+    {
+      "address": 142008,
+      "reference_names": [
+        "_findCharacters"
+      ],
+      "size": 240,
+      "source_line": 118,
+      "source_path": "src/Applications/Administration/Terminal/FindCharacters.c"
+    },
+    {
+      "address": 142248,
+      "reference_names": [
+        "_lineToString"
+      ],
+      "size": 128,
+      "source_line": 323,
+      "source_path": "src/Applications/Administration/Terminal/Chunk.c"
+    },
+    {
+      "address": 142376,
+      "reference_names": [
+        "_appendLines"
+      ],
+      "size": 268,
+      "source_line": 656,
+      "source_path": "src/Applications/Administration/Terminal/Chunk.c"
+    },
+    {
+      "address": 142644,
+      "reference_names": [
+        "_splitLine"
+      ],
+      "size": 312,
+      "source_line": 365,
+      "source_path": "src/Applications/Administration/Terminal/Chunk.c"
+    },
+    {
+      "address": 142956,
+      "reference_names": [
+        "_charAt"
+      ],
+      "size": 84,
+      "source_line": 352,
+      "source_path": "src/Applications/Administration/Terminal/Chunk.c"
+    },
+    {
+      "address": 143040,
+      "reference_names": [
+        "_nodeAndCharAt"
+      ],
+      "size": 96,
+      "source_line": 307,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 143136,
+      "reference_names": [
+        "__PSsplat"
+      ],
+      "size": 200,
+      "source_line": 66,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 143336,
+      "reference_names": [
+        "_FVmovetoshow"
+      ],
+      "size": 256,
+      "source_line": 136,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 143592,
+      "reference_names": [
+        "_FVmovetoashow"
+      ],
+      "size": 272,
+      "source_line": 198,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 143864,
+      "reference_names": [
+        "_debugActivate"
+      ],
+      "size": 80,
+      "source_line": 81,
+      "source_path": "src/Applications/Administration/Terminal/DebugDPS.m"
+    },
+    {
+      "address": 143944,
+      "reference_names": [
+        "_debugDeactivate"
+      ],
+      "size": 112,
+      "source_line": 87,
+      "source_path": "src/Applications/Administration/Terminal/DebugDPS.m"
+    },
+    {
+      "address": 144056,
+      "reference_names": [
+        "_getActiveApp"
+      ],
+      "size": 112,
+      "source_line": 96,
+      "source_path": "src/Applications/Administration/Terminal/DebugDPS.m"
+    },
+    {
+      "address": 144168,
+      "reference_names": [
+        "_TermMovetoShow"
+      ],
+      "size": 256,
+      "source_line": 167,
+      "source_path": "src/Applications/Administration/Terminal/FieldView.m"
+    },
+    {
+      "address": 144424,
+      "reference_names": [
+        "_TermCaret"
+      ],
+      "size": 152,
+      "source_line": 105,
+      "source_path": "src/Applications/Administration/Terminal/DebugDPS.m"
+    },
+    {
+      "address": 144576,
+      "reference_names": [
+        "_TermUnderline"
+      ],
+      "size": 152,
+      "source_line": 117,
+      "source_path": "src/Applications/Administration/Terminal/DebugDPS.m"
+    },
+    {
+      "address": 144728,
+      "reference_names": [
+        "-[Preferences init]"
+      ],
+      "size": 616,
+      "source_line": 21,
+      "source_path": "src/Applications/Administration/Terminal/Preferences.m"
+    },
+    {
+      "address": 145344,
+      "reference_names": [
+        "-[Preferences showPrefWindow:]"
+      ],
+      "size": 92,
+      "source_line": 217,
+      "source_path": "src/Applications/Administration/Terminal/Preferences.m"
+    },
+    {
+      "address": 145436,
+      "reference_names": [
+        "-[Preferences changePane:]"
+      ],
+      "size": 80,
+      "source_line": 224,
+      "source_path": "src/Applications/Administration/Terminal/Preferences.m"
+    },
+    {
+      "address": 145516,
+      "reference_names": [
+        "-[Preferences reflectChoiceOfPane:]"
+      ],
+      "size": 732,
+      "source_line": 229,
+      "source_path": "src/Applications/Administration/Terminal/Preferences.m"
+    },
+    {
+      "address": 146248,
+      "reference_names": [
+        "-[Preferences terminalDidBecomeMain:]"
+      ],
+      "size": 252,
+      "source_line": 167,
+      "source_path": "src/Applications/Administration/Terminal/Preferences.m"
+    },
+    {
+      "address": 146500,
+      "reference_names": [
+        "-[Preferences terminalDidResignMain:]"
+      ],
+      "size": 324,
+      "source_line": 180,
+      "source_path": "src/Applications/Administration/Terminal/Preferences.m"
+    },
+    {
+      "address": 146824,
+      "reference_names": [
+        "-[Preferences doFlush]"
+      ],
+      "size": 92,
+      "source_line": 205,
+      "source_path": "src/Applications/Administration/Terminal/Preferences.m"
+    },
+    {
+      "address": 146916,
+      "reference_names": [
+        "-[Preferences setUpButtons:]"
+      ],
+      "size": 328,
+      "source_line": 60,
+      "source_path": "src/Applications/Administration/Terminal/Preferences.m"
+    },
+    {
+      "address": 147244,
+      "reference_names": [
+        "-[Preferences revert:]"
+      ],
+      "size": 252,
+      "source_line": 88,
+      "source_path": "src/Applications/Administration/Terminal/Preferences.m"
+    },
+    {
+      "address": 147496,
+      "reference_names": [
+        "-[Preferences setDefaultX:]"
+      ],
+      "size": 212,
+      "source_line": 99,
+      "source_path": "src/Applications/Administration/Terminal/Preferences.m"
+    },
+    {
+      "address": 147708,
+      "reference_names": [
+        "-[Preferences ok:]"
+      ],
+      "size": 356,
+      "source_line": 108,
+      "source_path": "src/Applications/Administration/Terminal/Preferences.m"
+    },
+    {
+      "address": 148064,
+      "reference_names": [
+        "-[Preferences suggest:]"
+      ],
+      "size": 252,
+      "source_line": 122,
+      "source_path": "src/Applications/Administration/Terminal/Preferences.m"
+    },
+    {
+      "address": 148316,
+      "reference_names": [
+        "-[Preferences showDefaultX:]"
+      ],
+      "size": 56,
+      "source_line": 277,
+      "source_path": "src/Applications/Administration/Terminal/Preferences.m"
+    },
+    {
+      "address": 148372,
+      "reference_names": [
+        "-[Preferences showDefault:]"
+      ],
+      "size": 260,
+      "source_line": 133,
+      "source_path": "src/Applications/Administration/Terminal/Preferences.m"
+    },
+    {
+      "address": 148632,
+      "reference_names": [
+        "-[Preferences okButton]"
+      ],
+      "size": 16,
+      "source_line": 195,
+      "source_path": "src/Applications/Administration/Terminal/Preferences.m"
+    },
+    {
+      "address": 148648,
+      "reference_names": [
+        "-[Preferences windowShouldClose:]"
+      ],
+      "size": 104,
+      "source_line": 294,
+      "source_path": "src/Applications/Administration/Terminal/Preferences.m"
+    },
+    {
+      "address": 148752,
+      "reference_names": [
+        "-[Preferences handleReturnByProxy:]"
+      ],
+      "size": 96,
+      "source_line": 211,
+      "source_path": "src/Applications/Administration/Terminal/Preferences.m"
+    },
+    {
+      "address": 148848,
+      "reference_names": [
+        "-[Preferences windowDidBecomeKey:]"
+      ],
+      "size": 112,
+      "source_line": 282,
+      "source_path": "src/Applications/Administration/Terminal/Preferences.m"
+    },
+    {
+      "address": 148960,
+      "reference_names": [
+        "-[Preferences windowWillClose:]"
+      ],
+      "size": 56,
+      "source_line": 289,
+      "source_path": "src/Applications/Administration/Terminal/Preferences.m"
+    },
+    {
+      "address": 149016,
+      "reference_names": [
+        "-[Preferences windowDidResignKey:]"
+      ],
+      "size": 112,
+      "source_line": 302,
+      "source_path": "src/Applications/Administration/Terminal/Preferences.m"
+    },
+    {
+      "address": 149128,
+      "reference_names": [
+        "-[Preferences notifyController:withArg:]"
+      ],
+      "size": 120,
+      "source_line": 309,
+      "source_path": "src/Applications/Administration/Terminal/Preferences.m"
+    },
+    {
+      "address": 149248,
+      "reference_names": [
+        "-[Preferences setCurrentTerminal:]"
+      ],
+      "size": 244,
+      "source_line": 144,
+      "source_path": "src/Applications/Administration/Terminal/Preferences.m"
+    },
+    {
+      "address": 149492,
+      "reference_names": [
+        "-[Preferences currentTerminal]"
+      ],
+      "size": 16,
+      "source_line": 200,
+      "source_path": "src/Applications/Administration/Terminal/Preferences.m"
+    },
+    {
+      "address": 149508,
+      "reference_names": [
+        "-[EmulationController setFromStruct:]"
+      ],
+      "size": 80,
+      "source_line": 58,
+      "source_path": "src/Applications/Administration/Terminal/EmulationController.m"
+    },
+    {
+      "address": 149588,
+      "reference_names": [
+        "-[EmulationController showDefault:]"
+      ],
+      "size": 248,
+      "source_line": 42,
+      "source_path": "src/Applications/Administration/Terminal/EmulationController.m"
+    },
+    {
+      "address": 149836,
+      "reference_names": [
+        "-[EmulationController suggest:]"
+      ],
+      "size": 72,
+      "source_line": 67,
+      "source_path": "src/Applications/Administration/Terminal/EmulationController.m"
+    },
+    {
+      "address": 149908,
+      "reference_names": [
+        "-[EmulationController setMeta:opts:::lock:]"
+      ],
+      "size": 92,
+      "source_line": 73,
+      "source_path": "src/Applications/Administration/Terminal/EmulationController.m"
+    },
+    {
+      "address": 150000,
+      "reference_names": [
+        "-[EmulationController displayValues::::]"
+      ],
+      "size": 296,
+      "source_line": 106,
+      "source_path": "src/Applications/Administration/Terminal/EmulationController.m"
+    },
+    {
+      "address": 150296,
+      "reference_names": [
+        "-[EmulationController revert:]"
+      ],
+      "size": 72,
+      "source_line": 84,
+      "source_path": "src/Applications/Administration/Terminal/EmulationController.m"
+    },
+    {
+      "address": 150368,
+      "reference_names": [
+        "-[EmulationController setDefault]"
+      ],
+      "size": 300,
+      "source_line": 127,
+      "source_path": "src/Applications/Administration/Terminal/EmulationController.m"
+    },
+    {
+      "address": 150668,
+      "reference_names": [
+        "-[EmulationController setStruct:]"
+      ],
+      "size": 172,
+      "source_line": 91,
+      "source_path": "src/Applications/Administration/Terminal/EmulationController.m"
+    },
+    {
+      "address": 150840,
+      "reference_names": [
+        "-[EmulationController firstVisible:]"
+      ],
+      "size": 60,
+      "source_line": 37,
+      "source_path": "src/Applications/Administration/Terminal/EmulationController.m"
+    },
+    {
+      "address": 150900,
+      "reference_names": [
+        "-[EmulationController lastVisible:]"
+      ],
+      "size": 12,
+      "source_line": 32,
+      "source_path": "src/Applications/Administration/Terminal/EmulationController.m"
+    },
+    {
+      "address": 150912,
+      "reference_names": [
+        "-[MiscController setFromStruct:]"
+      ],
+      "size": 76,
+      "source_line": 30,
+      "source_path": "src/Applications/Administration/Terminal/MiscController.m"
+    },
+    {
+      "address": 150988,
+      "reference_names": [
+        "-[MiscController showDefault:]"
+      ],
+      "size": 244,
+      "source_line": 36,
+      "source_path": "src/Applications/Administration/Terminal/MiscController.m"
+    },
+    {
+      "address": 151232,
+      "reference_names": [
+        "-[MiscController suggest]"
+      ],
+      "size": 72,
+      "source_line": 47,
+      "source_path": "src/Applications/Administration/Terminal/MiscController.m"
+    },
+    {
+      "address": 151304,
+      "reference_names": [
+        "-[MiscController setScrollback:lines:wrap:autoFocus:lock:]"
+      ],
+      "size": 92,
+      "source_line": 52,
+      "source_path": "src/Applications/Administration/Terminal/MiscController.m"
+    },
+    {
+      "address": 151396,
+      "reference_names": [
+        "-[MiscController displayScrollback:lines:wrap:autoFocus:]"
+      ],
+      "size": 400,
+      "source_line": 64,
+      "source_path": "src/Applications/Administration/Terminal/MiscController.m"
+    },
+    {
+      "address": 151796,
+      "reference_names": [
+        "-[MiscController revert]"
+      ],
+      "size": 72,
+      "source_line": 85,
+      "source_path": "src/Applications/Administration/Terminal/MiscController.m"
+    },
+    {
+      "address": 151868,
+      "reference_names": [
+        "-[MiscController setDefault]"
+      ],
+      "size": 352,
+      "source_line": 91,
+      "source_path": "src/Applications/Administration/Terminal/MiscController.m"
+    },
+    {
+      "address": 152220,
+      "reference_names": [
+        "-[MiscController setStruct:]"
+      ],
+      "size": 208,
+      "source_line": 107,
+      "source_path": "src/Applications/Administration/Terminal/MiscController.m"
+    },
+    {
+      "address": 152428,
+      "reference_names": [
+        "-[MiscController checkSettings]"
+      ],
+      "size": 448,
+      "source_line": 120,
+      "source_path": "src/Applications/Administration/Terminal/MiscController.m"
+    },
+    {
+      "address": 152876,
+      "reference_names": [
+        "-[MiscController firstVisible:]"
+      ],
+      "size": 60,
+      "source_line": 141,
+      "source_path": "src/Applications/Administration/Terminal/MiscController.m"
+    },
+    {
+      "address": 152936,
+      "reference_names": [
+        "-[MiscController lastVisible:]"
+      ],
+      "size": 12,
+      "source_line": 146,
+      "source_path": "src/Applications/Administration/Terminal/MiscController.m"
+    },
+    {
+      "address": 152948,
+      "reference_names": [
+        "-[MiscController handleReturn:]"
+      ],
+      "size": 196,
+      "source_line": 151,
+      "source_path": "src/Applications/Administration/Terminal/MiscController.m"
+    },
+    {
+      "address": 153144,
+      "reference_names": [
+        "-[MiscController limitLines:]"
+      ],
+      "size": 148,
+      "source_line": 162,
+      "source_path": "src/Applications/Administration/Terminal/MiscController.m"
+    },
+    {
+      "address": 153292,
+      "reference_names": [
+        "-[MiscController unlimitLines:]"
+      ],
+      "size": 148,
+      "source_line": 172,
+      "source_path": "src/Applications/Administration/Terminal/MiscController.m"
+    },
+    {
+      "address": 153440,
+      "reference_names": [
+        "-[ProcessMonitorController setFromStruct:]"
+      ],
+      "size": 12,
+      "source_line": 28,
+      "source_path": "src/Applications/Administration/Terminal/ProcessMonitorController.m"
+    },
+    {
+      "address": 153452,
+      "reference_names": [
+        "-[ProcessMonitorController showDefault:]"
+      ],
+      "size": 248,
+      "source_line": 101,
+      "source_path": "src/Applications/Administration/Terminal/ProcessMonitorController.m"
+    },
+    {
+      "address": 153700,
+      "reference_names": [
+        "-[ProcessMonitorController displayMonitor:shellsClean:runningBkgndClean:fastAudits:cleanCommands:]"
+      ],
+      "size": 364,
+      "source_line": 114,
+      "source_path": "src/Applications/Administration/Terminal/ProcessMonitorController.m"
+    },
+    {
+      "address": 154064,
+      "reference_names": [
+        "-[ProcessMonitorController revert]"
+      ],
+      "size": 92,
+      "source_line": 38,
+      "source_path": "src/Applications/Administration/Terminal/ProcessMonitorController.m"
+    },
+    {
+      "address": 154156,
+      "reference_names": [
+        "-[ProcessMonitorController setDefault]"
+      ],
+      "size": 100,
+      "source_line": 44,
+      "source_path": "src/Applications/Administration/Terminal/ProcessMonitorController.m"
+    },
+    {
+      "address": 154256,
+      "reference_names": [
+        "-[ProcessMonitorController enablementChanged:]"
+      ],
+      "size": 112,
+      "source_line": 85,
+      "source_path": "src/Applications/Administration/Terminal/ProcessMonitorController.m"
+    },
+    {
+      "address": 154368,
+      "reference_names": [
+        "-[ProcessMonitorController runningBackgroundChanged:]"
+      ],
+      "size": 112,
+      "source_line": 93,
+      "source_path": "src/Applications/Administration/Terminal/ProcessMonitorController.m"
+    },
+    {
+      "address": 154480,
+      "reference_names": [
+        "-[ProcessMonitorController writeCommands]"
+      ],
+      "size": 120,
+      "source_line": 64,
+      "source_path": "src/Applications/Administration/Terminal/ProcessMonitorController.m"
+    },
+    {
+      "address": 154600,
+      "reference_names": [
+        "-[ProcessMonitorController suggest]"
+      ],
+      "size": 92,
+      "source_line": 51,
+      "source_path": "src/Applications/Administration/Terminal/ProcessMonitorController.m"
+    },
+    {
+      "address": 154692,
+      "reference_names": [
+        "-[ProcessMonitorController setStruct:]"
+      ],
+      "size": 92,
+      "source_line": 57,
+      "source_path": "src/Applications/Administration/Terminal/ProcessMonitorController.m"
+    },
+    {
+      "address": 154784,
+      "reference_names": [
+        "-[ProcessMonitorController firstVisible:]"
+      ],
+      "size": 84,
+      "source_line": 142,
+      "source_path": "src/Applications/Administration/Terminal/ProcessMonitorController.m"
+    },
+    {
+      "address": 154868,
+      "reference_names": [
+        "-[ProcessMonitorController lastVisible:]"
+      ],
+      "size": 12,
+      "source_line": 33,
+      "source_path": "src/Applications/Administration/Terminal/ProcessMonitorController.m"
+    },
+    {
+      "address": 154880,
+      "reference_names": [
+        "-[ProcessMonitorController add:]"
+      ],
+      "size": 868,
+      "source_line": 148,
+      "source_path": "src/Applications/Administration/Terminal/ProcessMonitorController.m"
+    },
+    {
+      "address": 155748,
+      "reference_names": [
+        "-[ProcessMonitorController remove:]"
+      ],
+      "size": 192,
+      "source_line": 200,
+      "source_path": "src/Applications/Administration/Terminal/ProcessMonitorController.m"
+    },
+    {
+      "address": 155940,
+      "reference_names": [
+        "-[ProcessMonitorController tableViewSelectionDidChange:]"
+      ],
+      "size": 116,
+      "source_line": 222,
+      "source_path": "src/Applications/Administration/Terminal/ProcessMonitorController.m"
+    },
+    {
+      "address": 156056,
+      "reference_names": [
+        "-[ProcessMonitorController controlTextDidChange:]"
+      ],
+      "size": 200,
+      "source_line": 230,
+      "source_path": "src/Applications/Administration/Terminal/ProcessMonitorController.m"
+    },
+    {
+      "address": 156256,
+      "reference_names": [
+        "-[ProcessMonitorController promulgateSettings]"
+      ],
+      "size": 256,
+      "source_line": 72,
+      "source_path": "src/Applications/Administration/Terminal/ProcessMonitorController.m"
+    },
+    {
+      "address": 156512,
+      "reference_names": [
+        "-[ProcessMonitorController numberOfRowsInTableView:]"
+      ],
+      "size": 76,
+      "source_line": 246,
+      "source_path": "src/Applications/Administration/Terminal/ProcessMonitorController.m"
+    },
+    {
+      "address": 156588,
+      "reference_names": [
+        "-[ProcessMonitorController tableView:objectValueForTableColumn:row:]"
+      ],
+      "size": 124,
+      "source_line": 253,
+      "source_path": "src/Applications/Administration/Terminal/ProcessMonitorController.m"
+    },
+    {
+      "address": 156712,
+      "reference_names": [
+        "-[ProcessMonitorController tableView:setObjectValue:forTableColumn:row:]"
+      ],
+      "size": 120,
+      "source_line": 262,
+      "source_path": "src/Applications/Administration/Terminal/ProcessMonitorController.m"
+    },
+    {
+      "address": 156832,
+      "reference_names": [
+        "-[ShellController setFromStruct:]"
+      ],
+      "size": 12,
+      "source_line": 28,
+      "source_path": "src/Applications/Administration/Terminal/ShellController.m"
+    },
+    {
+      "address": 156844,
+      "reference_names": [
+        "-[ShellController showDefault:]"
+      ],
+      "size": 152,
+      "source_line": 33,
+      "source_path": "src/Applications/Administration/Terminal/ShellController.m"
+    },
+    {
+      "address": 156996,
+      "reference_names": [
+        "-[ShellController setShell:source:]"
+      ],
+      "size": 140,
+      "source_line": 43,
+      "source_path": "src/Applications/Administration/Terminal/ShellController.m"
+    },
+    {
+      "address": 157136,
+      "reference_names": [
+        "-[ShellController revert]"
+      ],
+      "size": 92,
+      "source_line": 50,
+      "source_path": "src/Applications/Administration/Terminal/ShellController.m"
+    },
+    {
+      "address": 157228,
+      "reference_names": [
+        "-[ShellController setDefault]"
+      ],
+      "size": 100,
+      "source_line": 56,
+      "source_path": "src/Applications/Administration/Terminal/ShellController.m"
+    },
+    {
+      "address": 157328,
+      "reference_names": [
+        "-[ShellController suggest]"
+      ],
+      "size": 92,
+      "source_line": 63,
+      "source_path": "src/Applications/Administration/Terminal/ShellController.m"
+    },
+    {
+      "address": 157420,
+      "reference_names": [
+        "-[ShellController setStruct:]"
+      ],
+      "size": 92,
+      "source_line": 69,
+      "source_path": "src/Applications/Administration/Terminal/ShellController.m"
+    },
+    {
+      "address": 157512,
+      "reference_names": [
+        "-[ShellController checkSettings]"
+      ],
+      "size": 740,
+      "source_line": 76,
+      "source_path": "src/Applications/Administration/Terminal/ShellController.m"
+    },
+    {
+      "address": 158252,
+      "reference_names": [
+        "-[ShellController firstVisible:]"
+      ],
+      "size": 84,
+      "source_line": 117,
+      "source_path": "src/Applications/Administration/Terminal/ShellController.m"
+    },
+    {
+      "address": 158336,
+      "reference_names": [
+        "-[ShellController lastVisible:]"
+      ],
+      "size": 12,
+      "source_line": 123,
+      "source_path": "src/Applications/Administration/Terminal/ShellController.m"
+    },
+    {
+      "address": 158348,
+      "reference_names": [
+        "-[ShellController shellChanged:]"
+      ],
+      "size": 136,
+      "source_line": 128,
+      "source_path": "src/Applications/Administration/Terminal/ShellController.m"
+    },
+    {
+      "address": 158484,
+      "reference_names": [
+        "-[ShellController sourceDotLoginChanged:]"
+      ],
+      "size": 92,
+      "source_line": 139,
+      "source_path": "src/Applications/Administration/Terminal/ShellController.m"
+    },
+    {
+      "address": 158576,
+      "reference_names": [
+        "-[StartupController setFromStruct:]"
+      ],
+      "size": 12,
+      "source_line": 29,
+      "source_path": "src/Applications/Administration/Terminal/StartupController.m"
+    },
+    {
+      "address": 158588,
+      "reference_names": [
+        "-[StartupController showDefault:]"
+      ],
+      "size": 324,
+      "source_line": 34,
+      "source_path": "src/Applications/Administration/Terminal/StartupController.m"
+    },
+    {
+      "address": 158912,
+      "reference_names": [
+        "-[StartupController setAction:file:fastLaunch:lockRevert:]"
+      ],
+      "size": 416,
+      "source_line": 57,
+      "source_path": "src/Applications/Administration/Terminal/StartupController.m"
+    },
+    {
+      "address": 159328,
+      "reference_names": [
+        "-[StartupController suggest]"
+      ],
+      "size": 92,
+      "source_line": 86,
+      "source_path": "src/Applications/Administration/Terminal/StartupController.m"
+    },
+    {
+      "address": 159420,
+      "reference_names": [
+        "-[StartupController revert]"
+      ],
+      "size": 188,
+      "source_line": 92,
+      "source_path": "src/Applications/Administration/Terminal/StartupController.m"
+    },
+    {
+      "address": 159608,
+      "reference_names": [
+        "-[StartupController setStruct:]"
+      ],
+      "size": 40,
+      "source_line": 101,
+      "source_path": "src/Applications/Administration/Terminal/StartupController.m"
+    },
+    {
+      "address": 159648,
+      "reference_names": [
+        "-[StartupController checkSettings]"
+      ],
+      "size": 688,
+      "source_line": 106,
+      "source_path": "src/Applications/Administration/Terminal/StartupController.m"
+    },
+    {
+      "address": 160336,
+      "reference_names": [
+        "-[StartupController firstVisible:]"
+      ],
+      "size": 84,
+      "source_line": 138,
+      "source_path": "src/Applications/Administration/Terminal/StartupController.m"
+    },
+    {
+      "address": 160420,
+      "reference_names": [
+        "-[StartupController lastVisible:]"
+      ],
+      "size": 12,
+      "source_line": 144,
+      "source_path": "src/Applications/Administration/Terminal/StartupController.m"
+    },
+    {
+      "address": 160432,
+      "reference_names": [
+        "-[StartupController startupFilesChanged:]"
+      ],
+      "size": 172,
+      "source_line": 149,
+      "source_path": "src/Applications/Administration/Terminal/StartupController.m"
+    },
+    {
+      "address": 160604,
+      "reference_names": [
+        "-[StartupController setPathRequest:]"
+      ],
+      "size": 236,
+      "source_line": 162,
+      "source_path": "src/Applications/Administration/Terminal/StartupController.m"
+    },
+    {
+      "address": 160840,
+      "reference_names": [
+        "-[StartupController pathWasSet:]"
+      ],
+      "size": 324,
+      "source_line": 181,
+      "source_path": "src/Applications/Administration/Terminal/StartupController.m"
+    },
+    {
+      "address": 161164,
+      "reference_names": [
+        "-[StartupController fastStartupChanged:]"
+      ],
+      "size": 92,
+      "source_line": 198,
+      "source_path": "src/Applications/Administration/Terminal/StartupController.m"
+    },
+    {
+      "address": 161256,
+      "reference_names": [
+        "-[StartupController startupActionChanged:]"
+      ],
+      "size": 140,
+      "source_line": 207,
+      "source_path": "src/Applications/Administration/Terminal/StartupController.m"
+    },
+    {
+      "address": 161396,
+      "reference_names": [
+        "-[StartupController setDefault]"
+      ],
+      "size": 40,
+      "source_line": 221,
+      "source_path": "src/Applications/Administration/Terminal/StartupController.m"
+    },
+    {
+      "address": 161436,
+      "reference_names": [
+        "-[StartupController forceSetDefault]"
+      ],
+      "size": 228,
+      "source_line": 226,
+      "source_path": "src/Applications/Administration/Terminal/StartupController.m"
+    },
+    {
+      "address": 161664,
+      "reference_names": [
+        "-[StartupController savePanelDidChangeStartupDefaults:]"
+      ],
+      "size": 56,
+      "source_line": 238,
+      "source_path": "src/Applications/Administration/Terminal/StartupController.m"
+    },
+    {
+      "address": 161720,
+      "reference_names": [
+        "-[TextAttributeController revert]"
+      ],
+      "size": 12,
+      "source_line": 41,
+      "source_path": "src/Applications/Administration/Terminal/TextAttributeController.m"
+    },
+    {
+      "address": 161732,
+      "reference_names": [
+        "-[TextAttributeController setFromStruct:]"
+      ],
+      "size": 180,
+      "source_line": 45,
+      "source_path": "src/Applications/Administration/Terminal/TextAttributeController.m"
+    },
+    {
+      "address": 161912,
+      "reference_names": [
+        "-[TextAttributeController setDefault]"
+      ],
+      "size": 412,
+      "source_line": 59,
+      "source_path": "src/Applications/Administration/Terminal/TextAttributeController.m"
+    },
+    {
+      "address": 162324,
+      "reference_names": [
+        "-[TextAttributeController showDefault:]"
+      ],
+      "size": 232,
+      "source_line": 97,
+      "source_path": "src/Applications/Administration/Terminal/TextAttributeController.m"
+    },
+    {
+      "address": 162556,
+      "reference_names": [
+        "-[TextAttributeController suggest]"
+      ],
+      "size": 12,
+      "source_line": 118,
+      "source_path": "src/Applications/Administration/Terminal/TextAttributeController.m"
+    },
+    {
+      "address": 162568,
+      "reference_names": [
+        "-[TextAttributeController setStruct:]"
+      ],
+      "size": 244,
+      "source_line": 122,
+      "source_path": "src/Applications/Administration/Terminal/TextAttributeController.m"
+    },
+    {
+      "address": 162812,
+      "reference_names": [
+        "-[TextAttributeController firstVisible:]"
+      ],
+      "size": 200,
+      "source_line": 143,
+      "source_path": "src/Applications/Administration/Terminal/TextAttributeController.m"
+    },
+    {
+      "address": 163012,
+      "reference_names": [
+        "-[TextAttributeController lastVisible:]"
+      ],
+      "size": 12,
+      "source_line": 149,
+      "source_path": "src/Applications/Administration/Terminal/TextAttributeController.m"
+    },
+    {
+      "address": 163024,
+      "reference_names": [
+        "-[TextAttributeController windowDidBecomeKey:]"
+      ],
+      "size": 100,
+      "source_line": 154,
+      "source_path": "src/Applications/Administration/Terminal/TextAttributeController.m"
+    },
+    {
+      "address": 163124,
+      "reference_names": [
+        "-[TitleBarController init]"
+      ],
+      "size": 84,
+      "source_line": 40,
+      "source_path": "src/Applications/Administration/Terminal/TitleBarController.m"
+    },
+    {
+      "address": 163208,
+      "reference_names": [
+        "-[TitleBarController awakeFromNib]"
+      ],
+      "size": 96,
+      "source_line": 46,
+      "source_path": "src/Applications/Administration/Terminal/TitleBarController.m"
+    },
+    {
+      "address": 163304,
+      "reference_names": [
+        "-[TitleBarController setFromStruct:]"
+      ],
+      "size": 104,
+      "source_line": 51,
+      "source_path": "src/Applications/Administration/Terminal/TitleBarController.m"
+    },
+    {
+      "address": 163408,
+      "reference_names": [
+        "-[TitleBarController showDefault:]"
+      ],
+      "size": 180,
+      "source_line": 58,
+      "source_path": "src/Applications/Administration/Terminal/TitleBarController.m"
+    },
+    {
+      "address": 163588,
+      "reference_names": [
+        "-[TitleBarController suggest]"
+      ],
+      "size": 68,
+      "source_line": 70,
+      "source_path": "src/Applications/Administration/Terminal/TitleBarController.m"
+    },
+    {
+      "address": 163656,
+      "reference_names": [
+        "-[TitleBarController setBits:custom:lock:]"
+      ],
+      "size": 188,
+      "source_line": 75,
+      "source_path": "src/Applications/Administration/Terminal/TitleBarController.m"
+    },
+    {
+      "address": 163844,
+      "reference_names": [
+        "-[TitleBarController displayBits:custom:]"
+      ],
+      "size": 760,
+      "source_line": 93,
+      "source_path": "src/Applications/Administration/Terminal/TitleBarController.m"
+    },
+    {
+      "address": 164604,
+      "reference_names": [
+        "-[TitleBarController revert]"
+      ],
+      "size": 64,
+      "source_line": 141,
+      "source_path": "src/Applications/Administration/Terminal/TitleBarController.m"
+    },
+    {
+      "address": 164668,
+      "reference_names": [
+        "-[TitleBarController setDefault]"
+      ],
+      "size": 256,
+      "source_line": 146,
+      "source_path": "src/Applications/Administration/Terminal/TitleBarController.m"
+    },
+    {
+      "address": 164924,
+      "reference_names": [
+        "-[TitleBarController titleBits]"
+      ],
+      "size": 120,
+      "source_line": 164,
+      "source_path": "src/Applications/Administration/Terminal/TitleBarController.m"
+    },
+    {
+      "address": 165044,
+      "reference_names": [
+        "-[TitleBarController checkSettings]"
+      ],
+      "size": 292,
+      "source_line": 178,
+      "source_path": "src/Applications/Administration/Terminal/TitleBarController.m"
+    },
+    {
+      "address": 165336,
+      "reference_names": [
+        "-[TitleBarController setStruct:]"
+      ],
+      "size": 200,
+      "source_line": 201,
+      "source_path": "src/Applications/Administration/Terminal/TitleBarController.m"
+    },
+    {
+      "address": 165536,
+      "reference_names": [
+        "-[TitleBarController firstVisible:]"
+      ],
+      "size": 72,
+      "source_line": 213,
+      "source_path": "src/Applications/Administration/Terminal/TitleBarController.m"
+    },
+    {
+      "address": 165608,
+      "reference_names": [
+        "-[TitleBarController lastVisible:]"
+      ],
+      "size": 12,
+      "source_line": 219,
+      "source_path": "src/Applications/Administration/Terminal/TitleBarController.m"
+    },
+    {
+      "address": 165620,
+      "reference_names": [
+        "-[TitleBarController titleBitsChanged:]"
+      ],
+      "size": 212,
+      "source_line": 224,
+      "source_path": "src/Applications/Administration/Terminal/TitleBarController.m"
+    },
+    {
+      "address": 165832,
+      "reference_names": [
+        "-[TitleBarController textDidEndEditing:]"
+      ],
+      "size": 224,
+      "source_line": 240,
+      "source_path": "src/Applications/Administration/Terminal/TitleBarController.m"
+    },
+    {
+      "address": 166056,
+      "reference_names": [
+        "-[WindowController setFromStruct:]"
+      ],
+      "size": 108,
+      "source_line": 71,
+      "source_path": "src/Applications/Administration/Terminal/WindowController.m"
+    },
+    {
+      "address": 166164,
+      "reference_names": [
+        "-[WindowController showDefault:]"
+      ],
+      "size": 344,
+      "source_line": 198,
+      "source_path": "src/Applications/Administration/Terminal/WindowController.m"
+    },
+    {
+      "address": 166508,
+      "reference_names": [
+        "-[WindowController suggest]"
+      ],
+      "size": 476,
+      "source_line": 215,
+      "source_path": "src/Applications/Administration/Terminal/WindowController.m"
+    },
+    {
+      "address": 166984,
+      "reference_names": [
+        "-[WindowController setRows:cols:exitAction:font:size:lock:]"
+      ],
+      "size": 360,
+      "source_line": 315,
+      "source_path": "src/Applications/Administration/Terminal/WindowController.m"
+    },
+    {
+      "address": 167344,
+      "reference_names": [
+        "-[WindowController displayRows:cols:exitAction:font:size:]"
+      ],
+      "size": 260,
+      "source_line": 269,
+      "source_path": "src/Applications/Administration/Terminal/WindowController.m"
+    },
+    {
+      "address": 167604,
+      "reference_names": [
+        "-[WindowController displayFont:inSize:]"
+      ],
+      "size": 696,
+      "source_line": 287,
+      "source_path": "src/Applications/Administration/Terminal/WindowController.m"
+    },
+    {
+      "address": 168300,
+      "reference_names": [
+        "-[WindowController revert]"
+      ],
+      "size": 80,
+      "source_line": 339,
+      "source_path": "src/Applications/Administration/Terminal/WindowController.m"
+    },
+    {
+      "address": 168380,
+      "reference_names": [
+        "-[WindowController setDefault]"
+      ],
+      "size": 408,
+      "source_line": 344,
+      "source_path": "src/Applications/Administration/Terminal/WindowController.m"
+    },
+    {
+      "address": 168788,
+      "reference_names": [
+        "-[WindowController setStruct:]"
+      ],
+      "size": 448,
+      "source_line": 79,
+      "source_path": "src/Applications/Administration/Terminal/WindowController.m"
+    },
+    {
+      "address": 169236,
+      "reference_names": [
+        "-[WindowController checkSettings]"
+      ],
+      "size": 1596,
+      "source_line": 102,
+      "source_path": "src/Applications/Administration/Terminal/WindowController.m"
+    },
+    {
+      "address": 170832,
+      "reference_names": [
+        "-[WindowController setFontRequest:]"
+      ],
+      "size": 272,
+      "source_line": 51,
+      "source_path": "src/Applications/Administration/Terminal/WindowController.m"
+    },
+    {
+      "address": 171104,
+      "reference_names": [
+        "-[WindowController receiveFontFromTrap:]"
+      ],
+      "size": 128,
+      "source_line": 40,
+      "source_path": "src/Applications/Administration/Terminal/WindowController.m"
+    },
+    {
+      "address": 171232,
+      "reference_names": [
+        "-[WindowController firstVisible:]"
+      ],
+      "size": 84,
+      "source_line": 258,
+      "source_path": "src/Applications/Administration/Terminal/WindowController.m"
+    },
+    {
+      "address": 171316,
+      "reference_names": [
+        "-[WindowController lastVisible:]"
+      ],
+      "size": 72,
+      "source_line": 264,
+      "source_path": "src/Applications/Administration/Terminal/WindowController.m"
+    },
+    {
+      "address": 171388,
+      "reference_names": [
+        "-[WindowController fontTrapDidResignFirstResponder]"
+      ],
+      "size": 104,
+      "source_line": 246,
+      "source_path": "src/Applications/Administration/Terminal/WindowController.m"
+    },
+    {
+      "address": 171492,
+      "reference_names": [
+        "-[WindowController windowDidResignKey:]"
+      ],
+      "size": 108,
+      "source_line": 364,
+      "source_path": "src/Applications/Administration/Terminal/WindowController.m"
+    },
+    {
+      "address": 171600,
+      "reference_names": [
+        "-[FontTrap acceptsFirstResponder]"
+      ],
+      "size": 16,
+      "source_line": 20,
+      "source_path": "src/Applications/Administration/Terminal/FontTrap.m"
+    },
+    {
+      "address": 171616,
+      "reference_names": [
+        "-[FontTrap changeFont:]"
+      ],
+      "size": 1164,
+      "source_line": 25,
+      "source_path": "src/Applications/Administration/Terminal/FontTrap.m"
+    },
+    {
+      "address": 172780,
+      "reference_names": [
+        "-[FontTrap resignFirstResponder]"
+      ],
+      "size": 60,
+      "source_line": 101,
+      "source_path": "src/Applications/Administration/Terminal/FontTrap.m"
+    },
+    {
+      "address": 172840,
+      "reference_names": [
+        "-[FontTrap initWithFrame:]"
+      ],
+      "size": 92,
+      "source_line": 15,
+      "source_path": "src/Applications/Administration/Terminal/FontTrap.m"
+    },
+    {
+      "address": 172932,
+      "reference_names": [
+        "-[ServiceCache init]"
+      ],
+      "size": 376,
+      "source_line": 50,
+      "source_path": "src/Applications/Administration/Terminal/ServiceCache.m"
+    },
+    {
+      "address": 173308,
+      "reference_names": [
+        "-[ServiceCache setOKToSave:]"
+      ],
+      "size": 96,
+      "source_line": 87,
+      "source_path": "src/Applications/Administration/Terminal/ServiceCache.m"
+    },
+    {
+      "address": 173404,
+      "reference_names": [
+        "-[ServiceCache serviceSetChanged]"
+      ],
+      "size": 108,
+      "source_line": 229,
+      "source_path": "src/Applications/Administration/Terminal/ServiceCache.m"
+    },
+    {
+      "address": 173512,
+      "reference_names": [
+        "-[ServiceCache loadServiceSet]"
+      ],
+      "size": 1500,
+      "source_line": 96,
+      "source_path": "src/Applications/Administration/Terminal/ServiceCache.m"
+    },
+    {
+      "address": 175012,
+      "reference_names": [
+        "-[ServiceCache disableOfferExamples]"
+      ],
+      "size": 20,
+      "source_line": 302,
+      "source_path": "src/Applications/Administration/Terminal/ServiceCache.m"
+    },
+    {
+      "address": 175032,
+      "reference_names": [
+        "-[ServiceCache readService:fromFile:zone:]"
+      ],
+      "size": 484,
+      "source_line": 261,
+      "source_path": "src/Applications/Administration/Terminal/ServiceCache.m"
+    },
+    {
+      "address": 175516,
+      "reference_names": [
+        "-[ServiceCache discardServices]"
+      ],
+      "size": 208,
+      "source_line": 307,
+      "source_path": "src/Applications/Administration/Terminal/ServiceCache.m"
+    },
+    {
+      "address": 175724,
+      "reference_names": [
+        "-[ServiceCache serviceSet]"
+      ],
+      "size": 16,
+      "source_line": 327,
+      "source_path": "src/Applications/Administration/Terminal/ServiceCache.m"
+    },
+    {
+      "address": 175740,
+      "reference_names": [
+        "-[ServiceCache updateServicesFile]"
+      ],
+      "size": 2460,
+      "source_line": 526,
+      "source_path": "src/Applications/Administration/Terminal/ServiceCache.m"
+    },
+    {
+      "address": 178200,
+      "reference_names": [
+        "-[ServiceCache saveService:inSlot:]"
+      ],
+      "size": 176,
+      "source_line": 383,
+      "source_path": "src/Applications/Administration/Terminal/ServiceCache.m"
+    },
+    {
+      "address": 178376,
+      "reference_names": [
+        "-[ServiceCache importService:from:]"
+      ],
+      "size": 324,
+      "source_line": 399,
+      "source_path": "src/Applications/Administration/Terminal/ServiceCache.m"
+    },
+    {
+      "address": 178700,
+      "reference_names": [
+        "-[ServiceCache addNewTermService:]"
+      ],
+      "size": 364,
+      "source_line": 419,
+      "source_path": "src/Applications/Administration/Terminal/ServiceCache.m"
+    },
+    {
+      "address": 179064,
+      "reference_names": [
+        "-[ServiceCache removeServiceAt:]"
+      ],
+      "size": 360,
+      "source_line": 442,
+      "source_path": "src/Applications/Administration/Terminal/ServiceCache.m"
+    },
+    {
+      "address": 179424,
+      "reference_names": [
+        "-[ServiceCache writeServices]"
+      ],
+      "size": 476,
+      "source_line": 486,
+      "source_path": "src/Applications/Administration/Terminal/ServiceCache.m"
+    },
+    {
+      "address": 179900,
+      "reference_names": [
+        "-[ServiceCache writeService:toFile:]"
+      ],
+      "size": 180,
+      "source_line": 470,
+      "source_path": "src/Applications/Administration/Terminal/ServiceCache.m"
+    },
+    {
+      "address": 180080,
+      "reference_names": [
+        "-[ServiceCache checkFile:forNaughtyModes:]"
+      ],
+      "size": 256,
+      "source_line": 241,
+      "source_path": "src/Applications/Administration/Terminal/ServiceCache.m"
+    },
+    {
+      "address": 180336,
+      "reference_names": [
+        "-[ServiceCache convertString:toPrintable:]"
+      ],
+      "size": 196,
+      "source_line": 332,
+      "source_path": "src/Applications/Administration/Terminal/ServiceCache.m"
+    },
+    {
+      "address": 180532,
+      "reference_names": [
+        "-[ServiceCache convertPrintable:toString:]"
+      ],
+      "size": 176,
+      "source_line": 354,
+      "source_path": "src/Applications/Administration/Terminal/ServiceCache.m"
+    },
+    {
+      "address": 180708,
+      "reference_names": [
+        "-[ServiceCache loadCommandsMenu]"
+      ],
+      "size": 12,
+      "source_line": 379,
+      "source_path": "src/Applications/Administration/Terminal/ServiceCache.m"
+    },
+    {
+      "address": 180720,
+      "reference_names": [
+        "-[ServiceManager cellCountFor:]"
+      ],
+      "size": 88,
+      "source_line": 176,
+      "source_path": "src/Applications/Administration/Terminal/ServiceManager.m"
+    },
+    {
+      "address": 180808,
+      "reference_names": [
+        "-[ServiceManager init]"
+      ],
+      "size": 428,
+      "source_line": 73,
+      "source_path": "src/Applications/Administration/Terminal/ServiceManager.m"
+    },
+    {
+      "address": 181236,
+      "reference_names": [
+        "-[ServiceManager go:]"
+      ],
+      "size": 852,
+      "source_line": 102,
+      "source_path": "src/Applications/Administration/Terminal/ServiceManager.m"
+    },
+    {
+      "address": 182088,
+      "reference_names": [
+        "-[ServiceManager renewForServiceSet:]"
+      ],
+      "size": 276,
+      "source_line": 185,
+      "source_path": "src/Applications/Administration/Terminal/ServiceManager.m"
+    },
+    {
+      "address": 182364,
+      "reference_names": [
+        "-[ServiceManager isDirty]"
+      ],
+      "size": 20,
+      "source_line": 668,
+      "source_path": "src/Applications/Administration/Terminal/ServiceManager.m"
+    },
+    {
+      "address": 182384,
+      "reference_names": [
+        "-[ServiceManager setDirty:]"
+      ],
+      "size": 112,
+      "source_line": 673,
+      "source_path": "src/Applications/Administration/Terminal/ServiceManager.m"
+    },
+    {
+      "address": 182496,
+      "reference_names": [
+        "-[ServiceManager updateForCurrentDirtiness]"
+      ],
+      "size": 276,
+      "source_line": 685,
+      "source_path": "src/Applications/Administration/Terminal/ServiceManager.m"
+    },
+    {
+      "address": 182772,
+      "reference_names": [
+        "-[ServiceManager editSelectedServiceName:]"
+      ],
+      "size": 312,
+      "source_line": 701,
+      "source_path": "src/Applications/Administration/Terminal/ServiceManager.m"
+    },
+    {
+      "address": 183084,
+      "reference_names": [
+        "-[ServiceManager serviceSelected:]"
+      ],
+      "size": 492,
+      "source_line": 951,
+      "source_path": "src/Applications/Administration/Terminal/ServiceManager.m"
+    },
+    {
+      "address": 183576,
+      "reference_names": [
+        "-[ServiceManager setControlsFromService:]"
+      ],
+      "size": 400,
+      "source_line": 604,
+      "source_path": "src/Applications/Administration/Terminal/ServiceManager.m"
+    },
+    {
+      "address": 183976,
+      "reference_names": [
+        "-[ServiceManager setupExecBoxForWindowType:routingFlags:andSetPopUp:]"
+      ],
+      "size": 900,
+      "source_line": 886,
+      "source_path": "src/Applications/Administration/Terminal/ServiceManager.m"
+    },
+    {
+      "address": 184876,
+      "reference_names": [
+        "-[ServiceManager setControlsIn:fromFlags:]"
+      ],
+      "size": 252,
+      "source_line": 532,
+      "source_path": "src/Applications/Administration/Terminal/ServiceManager.m"
+    },
+    {
+      "address": 185128,
+      "reference_names": [
+        "-[ServiceManager polymorphicOptsChanged:]"
+      ],
+      "size": 356,
+      "source_line": 995,
+      "source_path": "src/Applications/Administration/Terminal/ServiceManager.m"
+    },
+    {
+      "address": 185484,
+      "reference_names": [
+        "-[ServiceManager execTypeChanged:]"
+      ],
+      "size": 156,
+      "source_line": 869,
+      "source_path": "src/Applications/Administration/Terminal/ServiceManager.m"
+    },
+    {
+      "address": 185640,
+      "reference_names": [
+        "-[ServiceManager makeDirty:]"
+      ],
+      "size": 56,
+      "source_line": 731,
+      "source_path": "src/Applications/Administration/Terminal/ServiceManager.m"
+    },
+    {
+      "address": 185696,
+      "reference_names": [
+        "-[ServiceManager add:]"
+      ],
+      "size": 888,
+      "source_line": 311,
+      "source_path": "src/Applications/Administration/Terminal/ServiceManager.m"
+    },
+    {
+      "address": 186584,
+      "reference_names": [
+        "-[ServiceManager freeService:]"
+      ],
+      "size": 76,
+      "source_line": 860,
+      "source_path": "src/Applications/Administration/Terminal/ServiceManager.m"
+    },
+    {
+      "address": 186660,
+      "reference_names": [
+        "-[ServiceManager whyAreSettingsNotAcceptable]"
+      ],
+      "size": 148,
+      "source_line": 246,
+      "source_path": "src/Applications/Administration/Terminal/ServiceManager.m"
+    },
+    {
+      "address": 186808,
+      "reference_names": [
+        "-[ServiceManager nameUnique:]"
+      ],
+      "size": 220,
+      "source_line": 205,
+      "source_path": "src/Applications/Administration/Terminal/ServiceManager.m"
+    },
+    {
+      "address": 187028,
+      "reference_names": [
+        "-[ServiceManager fillServiceFromWindow:]"
+      ],
+      "size": 524,
+      "source_line": 555,
+      "source_path": "src/Applications/Administration/Terminal/ServiceManager.m"
+    },
+    {
+      "address": 187552,
+      "reference_names": [
+        "-[ServiceManager setFlags:fromControlsIn:]"
+      ],
+      "size": 188,
+      "source_line": 221,
+      "source_path": "src/Applications/Administration/Terminal/ServiceManager.m"
+    },
+    {
+      "address": 187740,
+      "reference_names": [
+        "-[ServiceManager setFlagsFromCell:]"
+      ],
+      "size": 104,
+      "source_line": 238,
+      "source_path": "src/Applications/Administration/Terminal/ServiceManager.m"
+    },
+    {
+      "address": 187844,
+      "reference_names": [
+        "-[ServiceManager change:]"
+      ],
+      "size": 512,
+      "source_line": 279,
+      "source_path": "src/Applications/Administration/Terminal/ServiceManager.m"
+    },
+    {
+      "address": 188356,
+      "reference_names": [
+        "-[ServiceManager warnAboutStrangeness:]"
+      ],
+      "size": 196,
+      "source_line": 518,
+      "source_path": "src/Applications/Administration/Terminal/ServiceManager.m"
+    },
+    {
+      "address": 188552,
+      "reference_names": [
+        "-[ServiceManager checkSettings]"
+      ],
+      "size": 224,
+      "source_line": 258,
+      "source_path": "src/Applications/Administration/Terminal/ServiceManager.m"
+    },
+    {
+      "address": 188776,
+      "reference_names": [
+        "-[ServiceManager windowShouldClose:]"
+      ],
+      "size": 748,
+      "source_line": 383,
+      "source_path": "src/Applications/Administration/Terminal/ServiceManager.m"
+    },
+    {
+      "address": 189524,
+      "reference_names": [
+        "-[ServiceManager remove:]"
+      ],
+      "size": 340,
+      "source_line": 737,
+      "source_path": "src/Applications/Administration/Terminal/ServiceManager.m"
+    },
+    {
+      "address": 189864,
+      "reference_names": [
+        "-[ServiceManager windowDidResize:]"
+      ],
+      "size": 124,
+      "source_line": 782,
+      "source_path": "src/Applications/Administration/Terminal/ServiceManager.m"
+    },
+    {
+      "address": 189988,
+      "reference_names": [
+        "-[ServiceManager windowWillResize:toSize:]"
+      ],
+      "size": 84,
+      "source_line": 766,
+      "source_path": "src/Applications/Administration/Terminal/ServiceManager.m"
+    },
+    {
+      "address": 190072,
+      "reference_names": [
+        "-[ServiceManager controlTextDidChange:]"
+      ],
+      "size": 56,
+      "source_line": 776,
+      "source_path": "src/Applications/Administration/Terminal/ServiceManager.m"
+    },
+    {
+      "address": 190128,
+      "reference_names": [
+        "-[ServiceManager control:textShouldEndEditing:]"
+      ],
+      "size": 296,
+      "source_line": 639,
+      "source_path": "src/Applications/Administration/Terminal/ServiceManager.m"
+    },
+    {
+      "address": 190424,
+      "reference_names": [
+        "-[ServiceManager controlTextDidEndEditing:]"
+      ],
+      "size": 584,
+      "source_line": 793,
+      "source_path": "src/Applications/Administration/Terminal/ServiceManager.m"
+    },
+    {
+      "address": 191008,
+      "reference_names": [
+        "-[ServiceManager save:]"
+      ],
+      "size": 888,
+      "source_line": 439,
+      "source_path": "src/Applications/Administration/Terminal/ServiceManager.m"
+    },
+    {
+      "address": 191896,
+      "reference_names": [
+        "-[ServiceManager saveService:]"
+      ],
+      "size": 124,
+      "source_line": 846,
+      "source_path": "src/Applications/Administration/Terminal/ServiceManager.m"
+    },
+    {
+      "address": 192020,
+      "reference_names": [
+        "-[ServiceProvider provideService:userData:error:]"
+      ],
+      "size": 476,
+      "source_line": 743,
+      "source_path": "src/Applications/Administration/Terminal/ServiceProvider.m"
+    },
+    {
+      "address": 192496,
+      "reference_names": [
+        "-[ServiceProvider doService:pasteboard:isDrag:dragTerm:errBuff:]"
+      ],
+      "size": 6248,
+      "source_line": 201,
+      "source_path": "src/Applications/Administration/Terminal/ServiceProvider.m"
+    },
+    {
+      "address": 198744,
+      "reference_names": [
+        "-[ServiceProvider newCommand:shell:env:]"
+      ],
+      "size": 60,
+      "source_line": 44,
+      "source_path": "src/Applications/Administration/Terminal/ServiceProvider.m"
+    },
+    {
+      "address": 198804,
+      "reference_names": [
+        "-[ServiceProvider newCommand:shell:path:env:]"
+      ],
+      "size": 320,
+      "source_line": 51,
+      "source_path": "src/Applications/Administration/Terminal/ServiceProvider.m"
+    },
+    {
+      "address": 199124,
+      "reference_names": [
+        "-[ServiceProvider ok:]"
+      ],
+      "size": 80,
+      "source_line": 76,
+      "source_path": "src/Applications/Administration/Terminal/ServiceProvider.m"
+    },
+    {
+      "address": 199204,
+      "reference_names": [
+        "-[ServiceProvider cancel:]"
+      ],
+      "size": 80,
+      "source_line": 82,
+      "source_path": "src/Applications/Administration/Terminal/ServiceProvider.m"
+    },
+    {
+      "address": 199284,
+      "reference_names": [
+        "-[ServiceProvider pasteboard:containsType:]"
+      ],
+      "size": 140,
+      "source_line": 108,
+      "source_path": "src/Applications/Administration/Terminal/ServiceProvider.m"
+    },
+    {
+      "address": 199424,
+      "reference_names": [
+        "-[ServiceProvider copyString:]"
+      ],
+      "size": 224,
+      "source_line": 121,
+      "source_path": "src/Applications/Administration/Terminal/ServiceProvider.m"
+    },
+    {
+      "address": 199648,
+      "reference_names": [
+        "-[ServiceProvider ensureNibLoaded]"
+      ],
+      "size": 316,
+      "source_line": 177,
+      "source_path": "src/Applications/Administration/Terminal/ServiceProvider.m"
+    },
+    {
+      "address": 199964,
+      "reference_names": [
+        "-[ServiceProvider replace:with:in:]"
+      ],
+      "size": 384,
+      "source_line": 140,
+      "source_path": "src/Applications/Administration/Terminal/ServiceProvider.m"
+    },
+    {
+      "address": 200348,
+      "reference_names": [
+        "-[ServiceProvider windowWillResize:toSize:]"
+      ],
+      "size": 220,
+      "source_line": 88,
+      "source_path": "src/Applications/Administration/Terminal/ServiceProvider.m"
+    }
+  ],
+  "reference_sha256": "B83EDEF820DF31A406FBFBBFB86DD5B80DB6818BD6D8BD14211680F2BD8E57D7",
+  "schema_version": "source-map-v1",
+  "unmapped": [
+    {
+      "address": 9280,
+      "reference_names": [
+        "start"
+      ],
+      "size": 48
+    },
+    {
+      "address": 9332,
+      "reference_names": [
+        "__start"
+      ],
+      "size": 316
+    },
+    {
+      "address": 9652,
+      "reference_names": [
+        "__call_mod_init_funcs"
+      ],
+      "size": 76
+    },
+    {
+      "address": 9728,
+      "reference_names": [
+        "__dyld_init_check"
+      ],
+      "size": 60
+    },
+    {
+      "address": 9788,
+      "reference_names": [
+        "dyld_stub_binding_helper"
+      ],
+      "size": 24
+    },
+    {
+      "address": 9812,
+      "reference_names": [
+        "__dyld_func_lookup"
+      ],
+      "size": 16
+    },
+    {
+      "address": 208976,
+      "reference_names": [
+        "_exit"
+      ],
+      "size": 36
+    },
+    {
+      "address": 209012,
+      "reference_names": [
+        "__objcInit"
+      ],
+      "size": 36
+    },
+    {
+      "address": 209048,
+      "reference_names": [
+        "_NSBeep"
+      ],
+      "size": 36
+    },
+    {
+      "address": 209084,
+      "reference_names": [
+        "_NSLog"
+      ],
+      "size": 36
+    },
+    {
+      "address": 209120,
+      "reference_names": [
+        "_objc_msgSend"
+      ],
+      "size": 36
+    },
+    {
+      "address": 209156,
+      "reference_names": [
+        "_NSZoneFree"
+      ],
+      "size": 36
+    },
+    {
+      "address": 209192,
+      "reference_names": [
+        "_free"
+      ],
+      "size": 36
+    },
+    {
+      "address": 209228,
+      "reference_names": [
+        "_strcpy"
+      ],
+      "size": 36
+    },
+    {
+      "address": 209264,
+      "reference_names": [
+        "_strlen"
+      ],
+      "size": 36
+    },
+    {
+      "address": 209300,
+      "reference_names": [
+        "_NSZoneMalloc"
+      ],
+      "size": 36
+    },
+    {
+      "address": 209336,
+      "reference_names": [
+        "_NSDefaultMallocZone"
+      ],
+      "size": 36
+    },
+    {
+      "address": 209372,
+      "reference_names": [
+        "__NSExceptionObjectFromHandler2"
+      ],
+      "size": 36
+    },
+    {
+      "address": 209408,
+      "reference_names": [
+        "__NSRemoveHandler2"
+      ],
+      "size": 36
+    },
+    {
+      "address": 209444,
+      "reference_names": [
+        "_NSBitsPerPixelFromDepth"
+      ],
+      "size": 36
+    },
+    {
+      "address": 209480,
+      "reference_names": [
+        "__setjmp"
+      ],
+      "size": 36
+    },
+    {
+      "address": 209516,
+      "reference_names": [
+        "__NSAddHandler2"
+      ],
+      "size": 36
+    },
+    {
+      "address": 209552,
+      "reference_names": [
+        "_sprintf"
+      ],
+      "size": 36
+    },
+    {
+      "address": 209588,
+      "reference_names": [
+        "_thread_info"
+      ],
+      "size": 36
+    },
+    {
+      "address": 209624,
+      "reference_names": [
+        "_task_threads"
+      ],
+      "size": 36
+    },
+    {
+      "address": 209660,
+      "reference_names": [
+        "_rindex"
+      ],
+      "size": 36
+    },
+    {
+      "address": 209696,
+      "reference_names": [
+        "_unix_pid"
+      ],
+      "size": 36
+    },
+    {
+      "address": 209732,
+      "reference_names": [
+        "_bzero"
+      ],
+      "size": 36
+    },
+    {
+      "address": 209768,
+      "reference_names": [
+        "_port_rename"
+      ],
+      "size": 36
+    },
+    {
+      "address": 209804,
+      "reference_names": [
+        "_processor_set_tasks"
+      ],
+      "size": 36
+    },
+    {
+      "address": 209840,
+      "reference_names": [
+        "_kill"
+      ],
+      "size": 36
+    },
+    {
+      "address": 209876,
+      "reference_names": [
+        "_ioctl"
+      ],
+      "size": 36
+    },
+    {
+      "address": 209912,
+      "reference_names": [
+        "_strcmp"
+      ],
+      "size": 36
+    },
+    {
+      "address": 209948,
+      "reference_names": [
+        "_NSZoneRealloc"
+      ],
+      "size": 36
+    },
+    {
+      "address": 209984,
+      "reference_names": [
+        "_getpid"
+      ],
+      "size": 36
+    },
+    {
+      "address": 210020,
+      "reference_names": [
+        "_task_set_special_port"
+      ],
+      "size": 36
+    },
+    {
+      "address": 210056,
+      "reference_names": [
+        "_port_allocate"
+      ],
+      "size": 36
+    },
+    {
+      "address": 210092,
+      "reference_names": [
+        "_vm_deallocate"
+      ],
+      "size": 36
+    },
+    {
+      "address": 210128,
+      "reference_names": [
+        "_port_deallocate"
+      ],
+      "size": 36
+    },
+    {
+      "address": 210164,
+      "reference_names": [
+        "_host_processor_set_priv"
+      ],
+      "size": 36
+    },
+    {
+      "address": 210200,
+      "reference_names": [
+        "_mach_error"
+      ],
+      "size": 36
+    },
+    {
+      "address": 210236,
+      "reference_names": [
+        "_host_processor_sets"
+      ],
+      "size": 36
+    },
+    {
+      "address": 210272,
+      "reference_names": [
+        "_host_priv_self"
+      ],
+      "size": 36
+    },
+    {
+      "address": 210308,
+      "reference_names": [
+        "_objc_msgSend_stret"
+      ],
+      "size": 36
+    },
+    {
+      "address": 210344,
+      "reference_names": [
+        "_PSashow"
+      ],
+      "size": 36
+    },
+    {
+      "address": 210380,
+      "reference_names": [
+        "_PSmoveto"
+      ],
+      "size": 36
+    },
+    {
+      "address": 210416,
+      "reference_names": [
+        "_NSRectFill"
+      ],
+      "size": 36
+    },
+    {
+      "address": 210452,
+      "reference_names": [
+        "_PSsetgray"
+      ],
+      "size": 36
+    },
+    {
+      "address": 210488,
+      "reference_names": [
+        "_ceil"
+      ],
+      "size": 36
+    },
+    {
+      "address": 210524,
+      "reference_names": [
+        "_floor"
+      ],
+      "size": 36
+    },
+    {
+      "address": 210560,
+      "reference_names": [
+        "_NSZoneFromPointer"
+      ],
+      "size": 36
+    },
+    {
+      "address": 210596,
+      "reference_names": [
+        "_sel_getName"
+      ],
+      "size": 36
+    },
+    {
+      "address": 210632,
+      "reference_names": [
+        "_atof"
+      ],
+      "size": 36
+    },
+    {
+      "address": 210668,
+      "reference_names": [
+        "_NSRunAlertPanel"
+      ],
+      "size": 36
+    },
+    {
+      "address": 210704,
+      "reference_names": [
+        "_strncmp"
+      ],
+      "size": 36
+    },
+    {
+      "address": 210740,
+      "reference_names": [
+        "_NSTextFontInfo"
+      ],
+      "size": 36
+    },
+    {
+      "address": 210776,
+      "reference_names": [
+        "_bcopy"
+      ],
+      "size": 36
+    },
+    {
+      "address": 210812,
+      "reference_names": [
+        "_objc_msgSendSuper"
+      ],
+      "size": 36
+    },
+    {
+      "address": 210848,
+      "reference_names": [
+        "_write"
+      ],
+      "size": 36
+    },
+    {
+      "address": 210884,
+      "reference_names": [
+        "_NSSetZoneName"
+      ],
+      "size": 36
+    },
+    {
+      "address": 210920,
+      "reference_names": [
+        "_NSCreateZone"
+      ],
+      "size": 36
+    },
+    {
+      "address": 210956,
+      "reference_names": [
+        "_fstat"
+      ],
+      "size": 36
+    },
+    {
+      "address": 210992,
+      "reference_names": [
+        "_read"
+      ],
+      "size": 36
+    },
+    {
+      "address": 211028,
+      "reference_names": [
+        "_chdir"
+      ],
+      "size": 36
+    },
+    {
+      "address": 211064,
+      "reference_names": [
+        "__exit"
+      ],
+      "size": 36
+    },
+    {
+      "address": 211100,
+      "reference_names": [
+        "_getegid"
+      ],
+      "size": 36
+    },
+    {
+      "address": 211136,
+      "reference_names": [
+        "_getgid"
+      ],
+      "size": 36
+    },
+    {
+      "address": 211172,
+      "reference_names": [
+        "_geteuid"
+      ],
+      "size": 36
+    },
+    {
+      "address": 211208,
+      "reference_names": [
+        "_setpgid"
+      ],
+      "size": 36
+    },
+    {
+      "address": 211244,
+      "reference_names": [
+        "_dup2"
+      ],
+      "size": 36
+    },
+    {
+      "address": 211280,
+      "reference_names": [
+        "_tcsetattr"
+      ],
+      "size": 36
+    },
+    {
+      "address": 211316,
+      "reference_names": [
+        "_memset"
+      ],
+      "size": 36
+    },
+    {
+      "address": 211352,
+      "reference_names": [
+        "_tcgetattr"
+      ],
+      "size": 36
+    },
+    {
+      "address": 211388,
+      "reference_names": [
+        "_setgid"
+      ],
+      "size": 36
+    },
+    {
+      "address": 211424,
+      "reference_names": [
+        "_setuid"
+      ],
+      "size": 36
+    },
+    {
+      "address": 211460,
+      "reference_names": [
+        "_setsid"
+      ],
+      "size": 36
+    },
+    {
+      "address": 211496,
+      "reference_names": [
+        "_vfork"
+      ],
+      "size": 36
+    },
+    {
+      "address": 211532,
+      "reference_names": [
+        "_fcntl"
+      ],
+      "size": 36
+    },
+    {
+      "address": 211568,
+      "reference_names": [
+        "_fchmod"
+      ],
+      "size": 36
+    },
+    {
+      "address": 211604,
+      "reference_names": [
+        "_fchown"
+      ],
+      "size": 36
+    },
+    {
+      "address": 211640,
+      "reference_names": [
+        "_openpty"
+      ],
+      "size": 36
+    },
+    {
+      "address": 211676,
+      "reference_names": [
+        "_chmod"
+      ],
+      "size": 36
+    },
+    {
+      "address": 211712,
+      "reference_names": [
+        "_chown"
+      ],
+      "size": 36
+    },
+    {
+      "address": 211748,
+      "reference_names": [
+        "_getgrnam"
+      ],
+      "size": 36
+    },
+    {
+      "address": 211784,
+      "reference_names": [
+        "_lseek"
+      ],
+      "size": 36
+    },
+    {
+      "address": 211820,
+      "reference_names": [
+        "_open"
+      ],
+      "size": 36
+    },
+    {
+      "address": 211856,
+      "reference_names": [
+        "_time"
+      ],
+      "size": 36
+    },
+    {
+      "address": 211892,
+      "reference_names": [
+        "_endttyent"
+      ],
+      "size": 36
+    },
+    {
+      "address": 211928,
+      "reference_names": [
+        "_getttyent"
+      ],
+      "size": 36
+    },
+    {
+      "address": 211964,
+      "reference_names": [
+        "_setttyent"
+      ],
+      "size": 36
+    },
+    {
+      "address": 212000,
+      "reference_names": [
+        "_close"
+      ],
+      "size": 36
+    },
+    {
+      "address": 212036,
+      "reference_names": [
+        "_pipe"
+      ],
+      "size": 36
+    },
+    {
+      "address": 212072,
+      "reference_names": [
+        "_getpwuid"
+      ],
+      "size": 36
+    },
+    {
+      "address": 212108,
+      "reference_names": [
+        "_getuid"
+      ],
+      "size": 36
+    },
+    {
+      "address": 212144,
+      "reference_names": [
+        "_signal"
+      ],
+      "size": 36
+    },
+    {
+      "address": 212180,
+      "reference_names": [
+        "_sigsetmask"
+      ],
+      "size": 36
+    },
+    {
+      "address": 212216,
+      "reference_names": [
+        "_wait3"
+      ],
+      "size": 36
+    },
+    {
+      "address": 212252,
+      "reference_names": [
+        "_index"
+      ],
+      "size": 36
+    },
+    {
+      "address": 212288,
+      "reference_names": [
+        "_NSHomeDirectory"
+      ],
+      "size": 36
+    },
+    {
+      "address": 212324,
+      "reference_names": [
+        "_strcat"
+      ],
+      "size": 36
+    },
+    {
+      "address": 212360,
+      "reference_names": [
+        "_objc_msgSendSuper_stret"
+      ],
+      "size": 36
+    },
+    {
+      "address": 212396,
+      "reference_names": [
+        "_PSWait"
+      ],
+      "size": 36
+    },
+    {
+      "address": 212432,
+      "reference_names": [
+        "_NSInterfaceStyleForKey"
+      ],
+      "size": 36
+    },
+    {
+      "address": 212468,
+      "reference_names": [
+        "_NSEqualSizes"
+      ],
+      "size": 36
+    },
+    {
+      "address": 212504,
+      "reference_names": [
+        "_fclose"
+      ],
+      "size": 36
+    },
+    {
+      "address": 212540,
+      "reference_names": [
+        "_fopen"
+      ],
+      "size": 36
+    },
+    {
+      "address": 212576,
+      "reference_names": [
+        "_mkdir"
+      ],
+      "size": 36
+    },
+    {
+      "address": 212612,
+      "reference_names": [
+        "_stat"
+      ],
+      "size": 36
+    },
+    {
+      "address": 212648,
+      "reference_names": [
+        "_NSWindowList"
+      ],
+      "size": 36
+    },
+    {
+      "address": 212684,
+      "reference_names": [
+        "_NSCountWindows"
+      ],
+      "size": 36
+    },
+    {
+      "address": 212720,
+      "reference_names": [
+        "_NSShowSystemInfoPanel"
+      ],
+      "size": 36
+    },
+    {
+      "address": 212756,
+      "reference_names": [
+        "_memcpy"
+      ],
+      "size": 36
+    },
+    {
+      "address": 212792,
+      "reference_names": [
+        "_access"
+      ],
+      "size": 36
+    },
+    {
+      "address": 212828,
+      "reference_names": [
+        "_DPSGetCurrentContext"
+      ],
+      "size": 36
+    },
+    {
+      "address": 212864,
+      "reference_names": [
+        "_setprivexec"
+      ],
+      "size": 36
+    },
+    {
+      "address": 212900,
+      "reference_names": [
+        "_NSPageSize"
+      ],
+      "size": 36
+    },
+    {
+      "address": 212936,
+      "reference_names": [
+        "_NSRecycleZone"
+      ],
+      "size": 36
+    },
+    {
+      "address": 212972,
+      "reference_names": [
+        "_tgetent"
+      ],
+      "size": 36
+    },
+    {
+      "address": 213008,
+      "reference_names": [
+        "_setenv"
+      ],
+      "size": 36
+    },
+    {
+      "address": 213044,
+      "reference_names": [
+        "_wait4"
+      ],
+      "size": 36
+    },
+    {
+      "address": 213080,
+      "reference_names": [
+        "_select"
+      ],
+      "size": 36
+    },
+    {
+      "address": 213116,
+      "reference_names": [
+        "_strpbrk"
+      ],
+      "size": 36
+    },
+    {
+      "address": 213152,
+      "reference_names": [
+        "_execl"
+      ],
+      "size": 36
+    },
+    {
+      "address": 213188,
+      "reference_names": [
+        "_setpgrp"
+      ],
+      "size": 36
+    },
+    {
+      "address": 213224,
+      "reference_names": [
+        "_unlink"
+      ],
+      "size": 36
+    },
+    {
+      "address": 213260,
+      "reference_names": [
+        "_mktemp"
+      ],
+      "size": 36
+    },
+    {
+      "address": 213296,
+      "reference_names": [
+        "_fork"
+      ],
+      "size": 36
+    },
+    {
+      "address": 213332,
+      "reference_names": [
+        "_bootstrap_register"
+      ],
+      "size": 36
+    },
+    {
+      "address": 213368,
+      "reference_names": [
+        "_random"
+      ],
+      "size": 36
+    },
+    {
+      "address": 213404,
+      "reference_names": [
+        "_srandom"
+      ],
+      "size": 36
+    },
+    {
+      "address": 213440,
+      "reference_names": [
+        "_NSFrameRect"
+      ],
+      "size": 36
+    },
+    {
+      "address": 213476,
+      "reference_names": [
+        "_NSRectFillList"
+      ],
+      "size": 36
+    },
+    {
+      "address": 213512,
+      "reference_names": [
+        "____tolower"
+      ],
+      "size": 36
+    },
+    {
+      "address": 213548,
+      "reference_names": [
+        "____runetype"
+      ],
+      "size": 36
+    },
+    {
+      "address": 213584,
+      "reference_names": [
+        "_setreuid"
+      ],
+      "size": 36
+    },
+    {
+      "address": 213620,
+      "reference_names": [
+        "_strncpy"
+      ],
+      "size": 36
+    },
+    {
+      "address": 213656,
+      "reference_names": [
+        "_malloc"
+      ],
+      "size": 36
+    },
+    {
+      "address": 213692,
+      "reference_names": [
+        "_perror"
+      ],
+      "size": 36
+    },
+    {
+      "address": 213728,
+      "reference_names": [
+        "_sysctl"
+      ],
+      "size": 36
+    },
+    {
+      "address": 213764,
+      "reference_names": [
+        "_execvp"
+      ],
+      "size": 36
+    },
+    {
+      "address": 213800,
+      "reference_names": [
+        "_realloc"
+      ],
+      "size": 36
+    },
+    {
+      "address": 213836,
+      "reference_names": [
+        "_printf"
+      ],
+      "size": 36
+    },
+    {
+      "address": 213872,
+      "reference_names": [
+        "___swbuf"
+      ],
+      "size": 36
+    },
+    {
+      "address": 213908,
+      "reference_names": [
+        "_NSIntersectionRect"
+      ],
+      "size": 36
+    },
+    {
+      "address": 213944,
+      "reference_names": [
+        "_atoi"
+      ],
+      "size": 36
+    },
+    {
+      "address": 213980,
+      "reference_names": [
+        "_NXIsPrint"
+      ],
+      "size": 36
+    },
+    {
+      "address": 214016,
+      "reference_names": [
+        "_fprintf"
+      ],
+      "size": 36
+    },
+    {
+      "address": 214052,
+      "reference_names": [
+        "_NSUpdateDynamicServices"
+      ],
+      "size": 36
+    },
+    {
+      "address": 214088,
+      "reference_names": [
+        "_strstr"
+      ],
+      "size": 36
+    },
+    {
+      "address": 214124,
+      "reference_names": [
+        "_sscanf"
+      ],
+      "size": 36
+    },
+    {
+      "address": 214160,
+      "reference_names": [
+        "_fgets"
+      ],
+      "size": 36
+    },
+    {
+      "address": 214196,
+      "reference_names": [
+        "_fdopen"
+      ],
+      "size": 36
+    },
+    {
+      "address": 214232,
+      "reference_names": [
+        "_strchr"
+      ],
+      "size": 36
+    }
+  ]
+}

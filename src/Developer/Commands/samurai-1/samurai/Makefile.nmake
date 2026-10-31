@@ -1,0 +1,22 @@
+# Makefile.nmake - build samu.exe with MSVC CL/LINK via NMAKE.
+# Run inside the MSVC env (PATH/INCLUDE/LIB set)
+# compat.h is force-included into every TU.
+
+CC      = cl
+LINKER  = link
+CFLAGS  = -nologo -W3 -FIcompat.h
+LIBS    = libc.lib kernel32.lib
+
+OBJ = build.obj deps.obj env.obj graph.obj htab.obj log.obj \
+	parse.obj samu.obj scan.obj tool.obj tree.obj util.obj os-windows.obj
+
+all: samu.exe
+
+samu.exe: $(OBJ)
+	$(LINKER) -nologo -subsystem:console -nodefaultlib:oldnames -out:$@ $(OBJ) $(LIBS)
+
+.c.obj:
+	$(CC) $(CFLAGS) -c $<
+
+clean:
+	-del /q *.obj samu.exe

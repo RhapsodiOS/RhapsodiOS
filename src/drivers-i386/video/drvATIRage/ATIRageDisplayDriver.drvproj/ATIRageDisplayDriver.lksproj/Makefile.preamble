@@ -1,0 +1,6 @@
+# The installed kernelserver.make.preamble adds the SGS version object after
+# the generated instance object in LOADABLES. Keep the system preamble's order.
+ifndef VERSIONING_SYSTEM
+    VERSIONING_SYSTEM = next-sgs
+endif
+NEXTSTEP_PB_CFLAGS += -traditional-cpp

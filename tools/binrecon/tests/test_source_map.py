@@ -315,10 +315,41 @@ def test_source_map_semantics_rejects_noncanonical_source_paths(source_path):
         schema.validate_source_map_semantics(document)
 
 
-def test_loader_validates_the_committed_eisabus_source_map_schema_and_semantics():
+def test_loader_validates_the_historical_eisabus_source_map_schema_and_semantics():
     repo_root = Path(__file__).parents[3]
-    source_map = repo_root / "src/drivers-i386/bus/drvEISABus/reconstruction/source-map.json"
+    source_map = repo_root / "tools/binrecon/tests/fixtures/eisabus-source-map.json"
 
     document = schema.load_source_map(source_map)
 
     assert document["reference_sha256"] == "8F252AF66CD49A8E03B51E57E90CB613D0B9DC1602263F4B7B6393E483977B23"
+
+
+def test_summarizes_buckets_by_owning_module():
+    from binrecon.source_map import summarize_by_module
+
+    document = {
+        "mapped": [
+            {"address": 1, "size": 4,
+             "reference_names": ["-[NSCoder(NSGeometryCoding) decodePoint]"]},
+            {"address": 2, "size": 4, "reference_names": ["_NSUnionRange"]},
+        ],
+        "unmapped": [
+            {"address": 3, "size": 4,
+             "reference_names": ["-[NSCoder(NSGeometryCoding) encodePoint:]"]},
+            {"address": 4, "size": 4, "reference_names": ["_NSSomethingElse"]},
+        ],
+        "duplicate_candidates": [],
+        "boundary_disputed": [],
+    }
+    ownership = {
+        "-[NSCoder(NSGeometryCoding) decodePoint]": "NSGeometry.m",
+        "-[NSCoder(NSGeometryCoding) encodePoint:]": "NSGeometry.m",
+        "_NSUnionRange": "NSRange.m",
+    }
+
+    assert summarize_by_module(document, ownership) == {
+        "NSGeometry.m": {"mapped": 1, "unmapped": 1,
+                         "duplicate_candidates": 0, "boundary_disputed": 0},
+        "NSRange.m": {"mapped": 1, "unmapped": 0,
+                      "duplicate_candidates": 0, "boundary_disputed": 0},
+    }

@@ -128,6 +128,8 @@ TEST(test_pkginfo_write) {
     strlist_push(&p.build_depends, "cc");
     strlist_push(&p.build_depends, "gnumake");
     p.has_build_depends = 1;
+    strlist_push(&p.depends, "libsystem");
+    strlist_push(&p.depends, "csu");
     package_set(&p.license, "unknown");
     package_set(&p.url, "http://example.com/make");
     CHECK_INT(pkginfo_write(&p, "/tmp/rbtest.PKGINFO"), 0);
@@ -137,6 +139,8 @@ TEST(test_pkginfo_write) {
     CHECK(strstr(out, "pkgver = 3.79\n") != 0);
     CHECK(strstr(out, "arch = universal-apple-rhapsody\n") != 0);
     CHECK(strstr(out, "makedepends = cc gnumake\n") != 0);
+    /* apk installs runtime dependencies first; its key is "depend". */
+    CHECK(strstr(out, "\ndepend = libsystem csu\n") != 0);
     CHECK(strstr(out, "license = unknown\n") != 0);
     CHECK(strstr(out, "url = http://example.com/make\n") != 0);
     CHECK(strstr(out, "builddepends =") == 0);
@@ -160,6 +164,8 @@ TEST(test_build_apk_is_posix_ustar_and_extracts) {
     char wrapper[160];
     char log[160];
     char metadata[192];
+    char script[192];
+    char first_name[101];
     char payload[192];
     char extracted_payload[192];
     char extracted_long_payload[560];
@@ -184,6 +190,7 @@ TEST(test_build_apk_is_posix_ustar_and_extracts) {
     sprintf(wrapper, "%s/gnutar", scratch);
     sprintf(log, "%s/tar.log", scratch);
     sprintf(metadata, "%s/.PKGINFO", root);
+    sprintf(script, "%s/.post-install", root);
     sprintf(payload, "%s/payload", root);
     sprintf(extracted_payload, "%s/payload", extracted);
     sprintf(closed_stdin_output, "%s/closed-stdin.apk", scratch);
@@ -206,6 +213,9 @@ TEST(test_build_apk_is_posix_ustar_and_extracts) {
     fp = fopen(metadata, "w");
     CHECK(fp != 0);
     if (fp != 0) { fputs("pkgname = integration\n", fp); fclose(fp); }
+    fp = fopen(script, "w");
+    CHECK(fp != 0);
+    if (fp != 0) { fputs("#!/bin/sh\nexit 0\n", fp); fclose(fp); }
     fp = fopen(payload, "w");
     CHECK(fp != 0);
     if (fp != 0) { fputs("payload", fp); fclose(fp); }
@@ -224,12 +234,23 @@ TEST(test_build_apk_is_posix_ustar_and_extracts) {
     CHECK_INT(pkginfo_build_apk(root_alias, output, &tc), 0);
     CHECK_INT(physical_directory(root_alias, physical_root,
                                  sizeof(physical_root)), 0);
-    sprintf(expected, "%s\n-w\n-x\nustar\n.\n", physical_root);
+    /* apk-tools reads .PKGINFO and the scripts first, and names members
+       without "./". */
+    sprintf(expected, "%s\n-w\n-x\nustar\n.PKGINFO\n.post-install\npayload\nusr\n",
+            physical_root);
     CHECK_STR(slurp(log), expected);
     free(tc.archive_create);
     tc.archive_create = xstrdup(real_archive_create);
     CHECK_INT(gzip_decompress(tc.gzip, output, raw_archive), 0);
     CHECK_INT(strict_ustar_types(raw_archive), 0);
+    fp = fopen(raw_archive, "r");
+    CHECK(fp != 0);
+    if (fp != 0) {
+        CHECK_INT((int)fread(first_name, 1, 100, fp), 100);
+        first_name[100] = '\0';
+        fclose(fp);
+        CHECK_STR(first_name, ".PKGINFO");
+    }
     CHECK_INT(apk_validate(output, &tc), 0);
     CHECK_INT(apk_extract(output, extracted, &tc), 0);
     CHECK_STR(slurp(extracted_payload), "payload");
@@ -357,10 +378,14 @@ TEST(test_pkginfo_read_arch_makedepends) {
         "pkgver = 1\n"
         "makedepends = build-base, driverkit\n"
         "makedepends_ppc = drvpexpert\n"
-        "makedepends_i386 = foo, bar\n");
+        "makedepends_i386 = foo, bar\n"
+        "depend = basic-cmds, csu libsystem\n");
     package_init(&p);
     CHECK_INT(pkginfo_read(&p, "/tmp/rb-pkginfo-read/archdeps"), 0);
     CHECK_INT(p.build_depends.count, 2);
+    CHECK_INT(p.depends.count, 3);
+    if (p.depends.count == 3)
+        CHECK_STR(p.depends.items[2], "libsystem");
     CHECK_INT(p.build_depends_ppc.count, 1);
     if (p.build_depends_ppc.count == 1)
         CHECK_STR(p.build_depends_ppc.items[0], "drvpexpert");

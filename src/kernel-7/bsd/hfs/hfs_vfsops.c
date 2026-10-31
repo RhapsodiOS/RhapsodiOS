@@ -113,6 +113,7 @@
 
 #include "hfs.h"
 #include "hfs_dbg.h"
+#include "hfs_endian.h"
 #include "mount_hfs.h"
 
 #include "hfscommon/headers/FileMgrInternal.h"
@@ -578,6 +579,7 @@ hfs_mountfs(struct vnode *devvp, struct mount *mp, struct proc *p)
         goto error_exit;
 	};
     mdbp = (HFSMasterDirectoryBlock*) ((char *)bp->b_data + IOBYTEOFFSETFORBLK(kMasterDirectoryBlock, size));
+    SWAP_MDB(mdbp);		/* to host order; every path below swaps it back before releasing bp */
 
     DBG_VFS(("hfs_mountfs: allocating hfsmount structure...\n"));
     MALLOC(hfsmp, struct hfsmount *, sizeof(struct hfsmount), M_HFSMNT, M_WAITOK);
@@ -599,7 +601,10 @@ hfs_mountfs(struct vnode *devvp, struct mount *mp, struct proc *p)
 
 	if (mdbp->drSigWord == kHFSPlusSigWord) {
 		DBG_VFS(("hfs_mountfs: mounting wrapper-less HFS-Plus volume...\n"));
+		SWAP_MDB(mdbp);		/* it is a volume header, not an MDB */
+		SWAP_VH((HFSPlusVolumeHeader*) bp->b_data);
         retval = hfs_MountHFSPlusVolume(hfsmp, (HFSPlusVolumeHeader*) bp->b_data, 0, p);
+		SWAP_VH((HFSPlusVolumeHeader*) bp->b_data);
 	}
 	else if (mdbp->drEmbedSigWord == kHFSPlusSigWord) {
 		u_long				embBlkOffset;
@@ -607,6 +612,7 @@ hfs_mountfs(struct vnode *devvp, struct mount *mp, struct proc *p)
 
 		embBlkOffset = (mdbp->drEmbedExtent.startBlock * (mdbp->drAlBlkSiz)/kHFSBlockSize) + mdbp->drAlBlSt;
         DBG_VFS(("hfs_mountfs: mounting embedded HFS-Plus volume at sector %ld...\n", embBlkOffset));
+		SWAP_MDB(mdbp);
 		brelse(bp);
 		bp = NULL;		/* done with MDB, go grab Volume Header */
 		mdbp = NULL;
@@ -622,11 +628,14 @@ hfs_mountfs(struct vnode *devvp, struct mount *mp, struct proc *p)
 		};
 		vhp = (HFSPlusVolumeHeader*) ((char *)bp->b_data + IOBYTEOFFSETFORBLK(kMasterDirectoryBlock, size));
 
+		SWAP_VH(vhp);
 		retval = hfs_MountHFSPlusVolume(hfsmp, vhp, embBlkOffset, p);
+		SWAP_VH(vhp);
     }
     else { // pass all other volume formats to MountHFSVolume  
 		DBG_VFS(("hfs_mountfs: mounting regular HFS volume...\n"));
 		retval = hfs_MountHFSVolume( hfsmp, mdbp, p);
+		SWAP_MDB(mdbp);
 	}
 
     if ( retval ) {
@@ -1204,6 +1213,7 @@ short hfs_flushMDB(struct hfsmount *hfsmp, int waitfor)
     ASSERT(bp->b_bcount == size);
 
 	mdb = (HFSMasterDirectoryBlock *)((char *)bp->b_data + IOBYTEOFFSETFORBLK(kMasterDirectoryBlock, size));
+	SWAP_MDB(mdb);		/* to host order; back to disk order before it is written */
 
 	VCB_LOCK(vcb);
 	mdb->drCrDate	= vcb->vcbCrDate;
@@ -1238,6 +1248,8 @@ short hfs_flushMDB(struct hfsmount *hfsmp, int waitfor)
 	mdb->drCTFlSize	= fcb->fcbPLen;
 	mdb->drCTClpSiz	= fcb->fcbClmpSize;
 	VCB_UNLOCK(vcb);
+
+	SWAP_MDB(mdb);
 
 
     if (waitfor != MNT_WAIT)
@@ -1279,6 +1291,7 @@ short hfs_flushvolumeheader(struct hfsmount *hfsmp, int waitfor)
 
 	volumeHeader = (HFSPlusVolumeHeader *)((char *)bp->b_data +
 					IOBYTEOFFSETFORBLK((vcb->hfsPlusIOPosOffset / 512) + kMasterDirectoryBlock, size));
+	SWAP_VH(volumeHeader);		/* to host order; back to disk order before it is written */
 
 	/*
 	 * For embedded HFS+ volumes, update create date if neccessary
@@ -1294,13 +1307,16 @@ short hfs_flushvolumeheader(struct hfsmount *hfsmp, int waitfor)
 			if (bp2) brelse(bp2);
 		} else {
 			mdb = (HFSMasterDirectoryBlock *)((char *)bp2->b_data + IOBYTEOFFSETFORBLK(kMasterDirectoryBlock, kMDBSize));
+			SWAP_MDB(mdb);
 			if ( mdb->drCrDate != vcb->vcbCrDate )
 			  {
 				mdb->drCrDate = vcb->vcbCrDate;		/* ppick up the new create date */
+				SWAP_MDB(mdb);
 				(void) bwrite(bp2);					/* write out the changes */
 			  }
 			else
 			  {
+				SWAP_MDB(mdb);
 				brelse(bp2);						/* just release it */
 			  }
 		  }	
@@ -1370,6 +1386,8 @@ short hfs_flushvolumeheader(struct hfsmount *hfsmp, int waitfor)
 		volumeHeader->attributesFile.clumpSize = fcb->fcbClmpSize;
 		volumeHeader->attributesFile.totalBlocks = fcb->fcbPLen / vcb->blockSize;
 	  }
+
+	SWAP_VH(volumeHeader);
 
     if (waitfor != MNT_WAIT)
         bawrite(bp);

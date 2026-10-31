@@ -1,0 +1,8 @@
+build configured: phony $outdir/prepared
+
+build $outdir/local_check: check_local always_check
+
+build $outdir/validated: validate $outdir/Makefile $
+  $manifest ninja/common.ninja $architecture_manifest $release_manifest $debug_manifest $
+  ninja/config.ninja $configuration_outputs $sources_manifest $libc_manifest ninja/mig.ninja ninja/kernel.ninja $
+  ninja/check-config.sh ninja/check-config.awk

@@ -123,6 +123,3 @@ OTHER_CFLAGS = -Wno-precomp
 # This definition will suppress stripping of debug symbols when an executable
 # is installed.  By default it is YES.
 # STRIP_ON_INSTALL = NO
-
-INCLUDED_ARCHS = ppc
-OTHER_RECURSIVE_VARIABLES += INCLUDED_ARCHS

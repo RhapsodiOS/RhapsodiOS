@@ -6,7 +6,7 @@
 ## Summary
 
 Port Alpine's `apk-tools` 2.0_pre12 (already vendored at
-`src/apk-tools-1/apk-tools/`) so it builds and runs on Rhapsody, giving the
+`src/Commands/apk-tools-1/apk-tools/`) so it builds and runs on Rhapsody, giving the
 system a native apk package manager to replace dpkg's install/query/remove
 role. Validation is done via a **host-proxy build** — portability is fixed and
 proven on the dev host (approximating the Rhapsody toolchain), and the final
@@ -17,9 +17,9 @@ does not attempt the full migration.
 
 ### Context / current state
 
-- `src/apk-tools-1/apk-tools/` — Alpine apk-tools 2.0_pre12, ~7,144 LOC C,
+- `src/Commands/apk-tools-1/apk-tools/` — Alpine apk-tools 2.0_pre12, ~7,144 LOC C,
   `VERSION := 2.0_pre12`. Vendored as-is; not yet built in the tree.
-- `src/apk-tools-1/dpkg/control` — the project already carries a Debian control
+- `src/Commands/apk-tools-1/dpkg/control` — the project already carries a Debian control
   file (so `rbuild`/`darwin-buildall` would package it), but it lacks a
   RhapsodiOS project Makefile to drive the standard build.
 - `rbuild` (branch `rbuild-c89`) already produces `.apk` files and extracts them
@@ -67,7 +67,7 @@ The "assess first" step is captured here; the port is small and well-characteriz
 
 ## Approach
 
-A host-proxy portability pass on `src/apk-tools-1/apk-tools/`:
+A host-proxy portability pass on `src/Commands/apk-tools-1/apk-tools/`:
 
 1. Attempt to build on the dev host with flags approximating Apple gcc 2.95
    (`-std=gnu89` plus warnings) and `zlib` linked; capture and triage the errors.
@@ -95,7 +95,7 @@ A host-proxy portability pass on `src/apk-tools-1/apk-tools/`:
    that may need the tree's own headers on Rhapsody.
 4. **apk-tools build system**: confirm `make` + `make install` produce a working
    `apk` with `DESTDIR`/`SBINDIR`; adjust only what blocks the host build.
-5. **RhapsodiOS project Makefile** at `src/apk-tools-1/Makefile`: implement the
+5. **RhapsodiOS project Makefile** at `src/Commands/apk-tools-1/Makefile`: implement the
    standard targets (`install`, `installhdrs`, `installsrc`, `clean`) used by the
    build flow (`rbuild` → `chroot make install DSTROOT=…`), mapping `DSTROOT` to
    apk-tools' `DESTDIR` (and appropriate `SBINDIR`), mirroring sibling projects
@@ -122,10 +122,10 @@ A host-proxy portability pass on `src/apk-tools-1/apk-tools/`:
 
 ## Deliverables
 
-- Portability patches under `src/apk-tools-1/apk-tools/` (compat shims + minimal
+- Portability patches under `src/Commands/apk-tools-1/apk-tools/` (compat shims + minimal
   Makefile tweaks), kept close to upstream.
-- `src/apk-tools-1/Makefile` — RhapsodiOS project wrapper for the standard build.
-- `src/apk-tools-1/PORTING.md` — what changed, why, and the target-validation
+- `src/Commands/apk-tools-1/Makefile` — RhapsodiOS project wrapper for the standard build.
+- `src/Commands/apk-tools-1/PORTING.md` — what changed, why, and the target-validation
   checklist.
 
 ## Out of scope (deferred to later cycles)

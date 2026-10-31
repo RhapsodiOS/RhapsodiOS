@@ -14,9 +14,15 @@ FOUNDATION_EXPORT NSString *NSURLFileScheme;
 @interface NSURL: NSObject <NSCoding, NSCopying, NSURLHandleClient>
 {
     NSString *_urlString;
+#if defined(__ppc__) || defined(__POWERPC__)
     NSURL *_baseURL;
     void *_clients;
     void *_reserved;
+#else
+    NSURL *_base;
+    void *_reserved1;
+    void *_reserved2;
+#endif
 }
         
 // Convenience initializers
@@ -52,7 +58,9 @@ FOUNDATION_EXPORT NSString *NSURLFileScheme;
 
 - (BOOL)isFileURL; // Whether the scheme is file:; if [myURL isFileURL] is YES, then [myURL path] is suitable for input into NSFileManager or NSPathUtilities.
 
+#if defined(__ppc__) || defined(__POWERPC__)
 - (NSURL *)standardizedURL;
+#endif
 @end
 
 @interface NSURL (NSURLLoading)

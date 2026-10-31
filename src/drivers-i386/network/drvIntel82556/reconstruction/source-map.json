@@ -1,0 +1,837 @@
+{
+  "boundary_disputed": [],
+  "duplicate_candidates": [],
+  "mapped": [
+    {
+      "address": 0,
+      "reference_names": [
+        "_IOIsPhysicallyContiguous"
+      ],
+      "size": 138,
+      "source_line": 21,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/Intel82556.m"
+    },
+    {
+      "address": 140,
+      "reference_names": [
+        "_IOMallocPage"
+      ],
+      "size": 61,
+      "source_line": 38,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/Intel82556.m"
+    },
+    {
+      "address": 204,
+      "reference_names": [
+        "_IOMallocNonCached"
+      ],
+      "size": 77,
+      "source_line": 49,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/Intel82556.m"
+    },
+    {
+      "address": 284,
+      "reference_names": [
+        "-[Intel82556 _recAllocateNetbuf]"
+      ],
+      "size": 70,
+      "source_line": 67,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/Intel82556.m"
+    },
+    {
+      "address": 356,
+      "reference_names": [
+        "__resetFunc"
+      ],
+      "size": 60,
+      "source_line": 58,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/Intel82556.m"
+    },
+    {
+      "address": 416,
+      "reference_names": [
+        "-[Intel82556 _waitCu:]"
+      ],
+      "size": 117,
+      "source_line": 75,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/Intel82556.m"
+    },
+    {
+      "address": 536,
+      "reference_names": [
+        "-[Intel82556 _waitScb]"
+      ],
+      "size": 90,
+      "source_line": 87,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/Intel82556.m"
+    },
+    {
+      "address": 628,
+      "reference_names": [
+        "-[Intel82556 _abortReceiveUnit]"
+      ],
+      "size": 207,
+      "source_line": 99,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/Intel82556.m"
+    },
+    {
+      "address": 836,
+      "reference_names": [
+        "-[Intel82556 _scheduleReset]"
+      ],
+      "size": 96,
+      "source_line": 117,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/Intel82556.m"
+    },
+    {
+      "address": 932,
+      "reference_names": [
+        "-[Intel82556 _initRfdList]"
+      ],
+      "size": 715,
+      "source_line": 127,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/Intel82556.m"
+    },
+    {
+      "address": 1648,
+      "reference_names": [
+        "-[Intel82556 _initTcbList]"
+      ],
+      "size": 432,
+      "source_line": 184,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/Intel82556.m"
+    },
+    {
+      "address": 2080,
+      "reference_names": [
+        "-[Intel82556 _memAlloc:]"
+      ],
+      "size": 104,
+      "source_line": 221,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/Intel82556.m"
+    },
+    {
+      "address": 2184,
+      "reference_names": [
+        "-[Intel82556 _selfTest]"
+      ],
+      "size": 434,
+      "source_line": 234,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/Intel82556.m"
+    },
+    {
+      "address": 2620,
+      "reference_names": [
+        "-[Intel82556 _startTransmit]"
+      ],
+      "size": 195,
+      "source_line": 264,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/Intel82556.m"
+    },
+    {
+      "address": 2816,
+      "reference_names": [
+        "-[Intel82556 _startReceiveUnit]"
+      ],
+      "size": 342,
+      "source_line": 282,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/Intel82556.m"
+    },
+    {
+      "address": 3160,
+      "reference_names": [
+        "-[Intel82556 _transmitPacket:]"
+      ],
+      "size": 578,
+      "source_line": 310,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/Intel82556.m"
+    },
+    {
+      "address": 3740,
+      "reference_names": [
+        "-[Intel82556 serviceTransmitQueue]"
+      ],
+      "size": 75,
+      "source_line": 386,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/Intel82556.m"
+    },
+    {
+      "address": 3816,
+      "reference_names": [
+        "-[Intel82556 acknowledgeInterrupts:]"
+      ],
+      "size": 207,
+      "source_line": 397,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/Intel82556.m"
+    },
+    {
+      "address": 4024,
+      "reference_names": [
+        "-[Intel82556 free]"
+      ],
+      "size": 292,
+      "source_line": 415,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/Intel82556.m"
+    },
+    {
+      "address": 4316,
+      "reference_names": [
+        "-[Intel82556 _hwInit]"
+      ],
+      "size": 651,
+      "source_line": 438,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/Intel82556.m"
+    },
+    {
+      "address": 4968,
+      "reference_names": [
+        "-[Intel82556 hwInit]"
+      ],
+      "size": 463,
+      "source_line": 492,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/Intel82556.m"
+    },
+    {
+      "address": 5432,
+      "reference_names": [
+        "-[Intel82556 allocateNetbuf]"
+      ],
+      "size": 83,
+      "source_line": 531,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/Intel82556.m"
+    },
+    {
+      "address": 5516,
+      "reference_names": [
+        "-[Intel82556 initFromDeviceDescription:]"
+      ],
+      "size": 308,
+      "source_line": 544,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/Intel82556.m"
+    },
+    {
+      "address": 5824,
+      "reference_names": [
+        "-[Intel82556 resetAndEnable:]"
+      ],
+      "size": 169,
+      "source_line": 564,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/Intel82556.m"
+    },
+    {
+      "address": 5996,
+      "reference_names": [
+        "-[Intel82556 clearIrqLatch]"
+      ],
+      "size": 7,
+      "source_line": 581,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/Intel82556.m"
+    },
+    {
+      "address": 6004,
+      "reference_names": [
+        "-[Intel82556 swInit]"
+      ],
+      "size": 115,
+      "source_line": 584,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/Intel82556.m"
+    },
+    {
+      "address": 6120,
+      "reference_names": [
+        "-[Intel82556 coldInit]"
+      ],
+      "size": 733,
+      "source_line": 595,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/Intel82556.m"
+    },
+    {
+      "address": 6856,
+      "reference_names": [
+        "-[Intel82556 receiveInterruptOccurred:]"
+      ],
+      "size": 743,
+      "source_line": 646,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/Intel82556.m"
+    },
+    {
+      "address": 7600,
+      "reference_names": [
+        "-[Intel82556 transmitInterruptOccurred]"
+      ],
+      "size": 386,
+      "source_line": 711,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/Intel82556.m"
+    },
+    {
+      "address": 7988,
+      "reference_names": [
+        "-[Intel82556 setThrottleTimers]"
+      ],
+      "size": 219,
+      "source_line": 745,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/Intel82556.m"
+    },
+    {
+      "address": 8208,
+      "reference_names": [
+        "-[Intel82556 nop:]"
+      ],
+      "size": 380,
+      "source_line": 764,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/Intel82556.m"
+    },
+    {
+      "address": 8588,
+      "reference_names": [
+        "-[Intel82556 dump:]"
+      ],
+      "size": 288,
+      "source_line": 798,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/Intel82556.m"
+    },
+    {
+      "address": 8876,
+      "reference_names": [
+        "-[Intel82556 config]"
+      ],
+      "size": 420,
+      "source_line": 825,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/Intel82556.m"
+    },
+    {
+      "address": 9296,
+      "reference_names": [
+        "-[Intel82556 iaSetup]"
+      ],
+      "size": 260,
+      "source_line": 880,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/Intel82556.m"
+    },
+    {
+      "address": 9556,
+      "reference_names": [
+        "-[Intel82556 mcSetup]"
+      ],
+      "size": 504,
+      "source_line": 904,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/Intel82556.m"
+    },
+    {
+      "address": 10060,
+      "reference_names": [
+        "-[Intel82556 interruptOccurred]"
+      ],
+      "size": 7,
+      "source_line": 956,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/Intel82556.m"
+    },
+    {
+      "address": 10068,
+      "reference_names": [
+        "-[Intel82556 transmit:]"
+      ],
+      "size": 127,
+      "source_line": 959,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/Intel82556.m"
+    },
+    {
+      "address": 10196,
+      "reference_names": [
+        "-[Intel82556 timeoutOccurred]"
+      ],
+      "size": 47,
+      "source_line": 969,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/Intel82556.m"
+    },
+    {
+      "address": 10244,
+      "reference_names": [
+        "-[Intel82556 enablePromiscuousMode]"
+      ],
+      "size": 42,
+      "source_line": 975,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/Intel82556.m"
+    },
+    {
+      "address": 10288,
+      "reference_names": [
+        "-[Intel82556 disablePromiscuousMode]"
+      ],
+      "size": 39,
+      "source_line": 982,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/Intel82556.m"
+    },
+    {
+      "address": 10328,
+      "reference_names": [
+        "-[Intel82556 enableMulticastMode]"
+      ],
+      "size": 22,
+      "source_line": 989,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/Intel82556.m"
+    },
+    {
+      "address": 10352,
+      "reference_names": [
+        "-[Intel82556 disableMulticastMode]"
+      ],
+      "size": 74,
+      "source_line": 996,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/Intel82556.m"
+    },
+    {
+      "address": 10428,
+      "reference_names": [
+        "-[Intel82556 addMulticastAddress:]"
+      ],
+      "size": 65,
+      "source_line": 1004,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/Intel82556.m"
+    },
+    {
+      "address": 10496,
+      "reference_names": [
+        "-[Intel82556 removeMulticastAddress:]"
+      ],
+      "size": 58,
+      "source_line": 1011,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/Intel82556.m"
+    },
+    {
+      "address": 10556,
+      "reference_names": [
+        "-[Intel82556 receivePacket:length:timeout:]"
+      ],
+      "size": 523,
+      "source_line": 1017,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/Intel82556.m"
+    },
+    {
+      "address": 11080,
+      "reference_names": [
+        "-[Intel82556 sendPacket:length:]"
+      ],
+      "size": 586,
+      "source_line": 1068,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/Intel82556.m"
+    },
+    {
+      "address": 11668,
+      "reference_names": [
+        "-[Intel82556 transmitQueueSize]"
+      ],
+      "size": 12,
+      "source_line": 1115,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/Intel82556.m"
+    },
+    {
+      "address": 11680,
+      "reference_names": [
+        "-[Intel82556 transmitQueueCount]"
+      ],
+      "size": 29,
+      "source_line": 1117,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/Intel82556.m"
+    },
+    {
+      "address": 11712,
+      "reference_names": [
+        "-[Intel82556 sendPortCommand:with:]"
+      ],
+      "size": 7,
+      "source_line": 1121,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/Intel82556.m"
+    },
+    {
+      "address": 11720,
+      "reference_names": [
+        "-[Intel82556 sendChannelAttention]"
+      ],
+      "size": 7,
+      "source_line": 1123,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/Intel82556.m"
+    },
+    {
+      "address": 11728,
+      "reference_names": [
+        "-[Intel82556 getEthernetAddress]"
+      ],
+      "size": 7,
+      "source_line": 1125,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/Intel82556.m"
+    },
+    {
+      "address": 11736,
+      "reference_names": [
+        "-[Intel82556 resetPLXchip]"
+      ],
+      "size": 7,
+      "source_line": 1127,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/Intel82556.m"
+    },
+    {
+      "address": 11744,
+      "reference_names": [
+        "-[Intel82556 initPLXchip]"
+      ],
+      "size": 7,
+      "source_line": 1129,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/Intel82556.m"
+    },
+    {
+      "address": 11752,
+      "reference_names": [
+        "-[Intel82556 lockDBRT]"
+      ],
+      "size": 7,
+      "source_line": 1131,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/Intel82556.m"
+    },
+    {
+      "address": 11760,
+      "reference_names": [
+        "-[Intel82556 enableAdapterInterrupts]"
+      ],
+      "size": 7,
+      "source_line": 1133,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/Intel82556.m"
+    },
+    {
+      "address": 11768,
+      "reference_names": [
+        "-[Intel82556 disableAdapterInterrupts]"
+      ],
+      "size": 7,
+      "source_line": 1135,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/Intel82556.m"
+    },
+    {
+      "address": 11776,
+      "reference_names": [
+        "-[Intel82556 getPowerState:]"
+      ],
+      "size": 12,
+      "source_line": 1138,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/Intel82556.m"
+    },
+    {
+      "address": 11788,
+      "reference_names": [
+        "-[Intel82556 setPowerState:]"
+      ],
+      "size": 85,
+      "source_line": 1140,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/Intel82556.m"
+    },
+    {
+      "address": 11876,
+      "reference_names": [
+        "-[Intel82556 getPowerManagement:]"
+      ],
+      "size": 12,
+      "source_line": 1150,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/Intel82556.m"
+    },
+    {
+      "address": 11888,
+      "reference_names": [
+        "-[Intel82556 setPowerManagement:]"
+      ],
+      "size": 12,
+      "source_line": 1152,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/Intel82556.m"
+    },
+    {
+      "address": 11900,
+      "reference_names": [
+        "_getNetBuffer"
+      ],
+      "size": 219,
+      "source_line": 19,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/Intel82556Buf.m"
+    },
+    {
+      "address": 12120,
+      "reference_names": [
+        "_recycleNetbuf"
+      ],
+      "size": 173,
+      "source_line": 51,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/Intel82556Buf.m"
+    },
+    {
+      "address": 12296,
+      "reference_names": [
+        "-[Intel82556Buf initWithRequestedSize:actualSize:count:]"
+      ],
+      "size": 408,
+      "source_line": 80,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/Intel82556Buf.m"
+    },
+    {
+      "address": 12704,
+      "reference_names": [
+        "-[Intel82556Buf free]"
+      ],
+      "size": 184,
+      "source_line": 137,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/Intel82556Buf.m"
+    },
+    {
+      "address": 12888,
+      "reference_names": [
+        "-[Intel82556Buf getNetBuffer]"
+      ],
+      "size": 16,
+      "source_line": 157,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/Intel82556Buf.m"
+    },
+    {
+      "address": 12904,
+      "reference_names": [
+        "-[Intel82556Buf numFree]"
+      ],
+      "size": 13,
+      "source_line": 162,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/Intel82556Buf.m"
+    },
+    {
+      "address": 12920,
+      "reference_names": [
+        "_card_irq"
+      ],
+      "size": 80,
+      "source_line": 13,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/IntelPRO100EISA.m"
+    },
+    {
+      "address": 13000,
+      "reference_names": [
+        "+[IntelPRO100EISA probe:]"
+      ],
+      "size": 175,
+      "source_line": 29,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/IntelPRO100EISA.m"
+    },
+    {
+      "address": 13176,
+      "reference_names": [
+        "-[IntelPRO100EISA initFromDeviceDescription:]"
+      ],
+      "size": 340,
+      "source_line": 55,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/IntelPRO100EISA.m"
+    },
+    {
+      "address": 13516,
+      "reference_names": [
+        "-[IntelPRO100EISA clearIrqLatch]"
+      ],
+      "size": 88,
+      "source_line": 81,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/IntelPRO100EISA.m"
+    },
+    {
+      "address": 13604,
+      "reference_names": [
+        "-[IntelPRO100EISA interruptOccurred]"
+      ],
+      "size": 198,
+      "source_line": 95,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/IntelPRO100EISA.m"
+    },
+    {
+      "address": 13804,
+      "reference_names": [
+        "-[IntelPRO100EISA sendPortCommand:with:]"
+      ],
+      "size": 48,
+      "source_line": 119,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/IntelPRO100EISA.m"
+    },
+    {
+      "address": 13852,
+      "reference_names": [
+        "-[IntelPRO100EISA sendChannelAttention]"
+      ],
+      "size": 27,
+      "source_line": 125,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/IntelPRO100EISA.m"
+    },
+    {
+      "address": 13880,
+      "reference_names": [
+        "-[IntelPRO100EISA initPLXchip]"
+      ],
+      "size": 182,
+      "source_line": 131,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/IntelPRO100EISA.m"
+    },
+    {
+      "address": 14064,
+      "reference_names": [
+        "-[IntelPRO100EISA resetPLXchip]"
+      ],
+      "size": 67,
+      "source_line": 166,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/IntelPRO100EISA.m"
+    },
+    {
+      "address": 14132,
+      "reference_names": [
+        "-[IntelPRO100EISA lockDBRT]"
+      ],
+      "size": 155,
+      "source_line": 178,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/IntelPRO100EISA.m"
+    },
+    {
+      "address": 14288,
+      "reference_names": [
+        "-[IntelPRO100EISA enableAdapterInterrupts]"
+      ],
+      "size": 39,
+      "source_line": 195,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/IntelPRO100EISA.m"
+    },
+    {
+      "address": 14328,
+      "reference_names": [
+        "-[IntelPRO100EISA disableAdapterInterrupts]"
+      ],
+      "size": 43,
+      "source_line": 204,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/IntelPRO100EISA.m"
+    },
+    {
+      "address": 14372,
+      "reference_names": [
+        "-[IntelPRO100EISA getEthernetAddress]"
+      ],
+      "size": 49,
+      "source_line": 213,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/IntelPRO100EISA.m"
+    },
+    {
+      "address": 14424,
+      "reference_names": [
+        "+[IntelPRO100PCI probe:]"
+      ],
+      "size": 651,
+      "source_line": 13,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/IntelPRO100PCI.m"
+    },
+    {
+      "address": 15076,
+      "reference_names": [
+        "-[IntelPRO100PCI initFromDeviceDescription:]"
+      ],
+      "size": 302,
+      "source_line": 76,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/IntelPRO100PCI.m"
+    },
+    {
+      "address": 15380,
+      "reference_names": [
+        "-[IntelPRO100PCI clearIrqLatch]"
+      ],
+      "size": 28,
+      "source_line": 99,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/IntelPRO100PCI.m"
+    },
+    {
+      "address": 15408,
+      "reference_names": [
+        "-[IntelPRO100PCI interruptOccurred]"
+      ],
+      "size": 136,
+      "source_line": 107,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/IntelPRO100PCI.m"
+    },
+    {
+      "address": 15544,
+      "reference_names": [
+        "-[IntelPRO100PCI sendPortCommand:with:]"
+      ],
+      "size": 48,
+      "source_line": 123,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/IntelPRO100PCI.m"
+    },
+    {
+      "address": 15592,
+      "reference_names": [
+        "-[IntelPRO100PCI sendChannelAttention]"
+      ],
+      "size": 31,
+      "source_line": 129,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/IntelPRO100PCI.m"
+    },
+    {
+      "address": 15624,
+      "reference_names": [
+        "-[IntelPRO100PCI initPLXchip]"
+      ],
+      "size": 77,
+      "source_line": 135,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/IntelPRO100PCI.m"
+    },
+    {
+      "address": 15704,
+      "reference_names": [
+        "-[IntelPRO100PCI resetPLXchip]"
+      ],
+      "size": 67,
+      "source_line": 146,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/IntelPRO100PCI.m"
+    },
+    {
+      "address": 15772,
+      "reference_names": [
+        "-[IntelPRO100PCI lockDBRT]"
+      ],
+      "size": 138,
+      "source_line": 158,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/IntelPRO100PCI.m"
+    },
+    {
+      "address": 15912,
+      "reference_names": [
+        "-[IntelPRO100PCI enableAdapterInterrupts]"
+      ],
+      "size": 31,
+      "source_line": 175,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/IntelPRO100PCI.m"
+    },
+    {
+      "address": 15944,
+      "reference_names": [
+        "-[IntelPRO100PCI disableAdapterInterrupts]"
+      ],
+      "size": 31,
+      "source_line": 183,
+      "source_path": "src/drivers-i386/network/drvIntel82556/Intel82556.drvproj/Intel82556.lksproj/IntelPRO100PCI.m"
+    },
+    {
+      "address": 15976,
+      "reference_names": [
+        "+[Intel82556NetworkDriverKernelServerInstance kernelServerInstance]"
+      ],
+      "size": 12,
+      "source_path": "src/driverTools-1/KernelServerProjectType/CreateKLLDInstance.sh",
+      "source_line": 81
+    },
+    {
+      "address": 15988,
+      "reference_names": [
+        "+[Intel82556NetworkDriverVersion driverKitVersionForIntel82556NetworkDriver]"
+      ],
+      "size": 12,
+      "source_path": "src/driverTools-1/KernelServerProjectType/CreateKLLDInstance.sh",
+      "source_line": 95
+    }
+  ],
+  "reference_sha256": "C26B34F0A07346F20C1D51795C601BED436CF3BE20E0AB6882E98C9114508B72",
+  "schema_version": "source-map-v1",
+  "unmapped": []
+}

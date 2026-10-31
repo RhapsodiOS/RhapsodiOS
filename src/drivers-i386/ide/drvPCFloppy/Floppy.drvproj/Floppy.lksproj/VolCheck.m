@@ -100,8 +100,8 @@
 	id diskObject;
 	id nextDisk;
 	
-	// Get disk object from offset 0x108 (_nextLogicalDisk)
-	diskObject = _nextLogicalDisk;
+	// Get disk object from offset 0x108 (_diskId)
+	diskObject = _diskId;
 	
 	// Call nextLogicalDisk method on the disk object
 	nextDisk = [diskObject nextLogicalDisk];

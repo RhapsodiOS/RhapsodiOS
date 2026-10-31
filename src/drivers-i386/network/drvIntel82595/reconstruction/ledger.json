@@ -1,0 +1,2308 @@
+{
+  "schema_version": "ledger-v1",
+  "reference_sha256": "B40292EBBF8CF29922C079487A31F530633B0FC3DC04BB25BF1B9E8887E44684",
+  "rebuilt_sha256": "7450620F254EFD2C59DC644F3BD50BE5A39AE8454809B513EBF3CA9D2563ACFC",
+  "entries": [
+    {
+      "address": 0,
+      "size": 229,
+      "names": [
+        "+[CogentEM525 probe:]"
+      ],
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/CogentEM525.m",
+      "source_line": 5,
+      "status": "control-flow-confirmed",
+      "reason": "IDA pseudocode and disassembly reviewed against the mapped source, with independent review: branch order, register widths, bank changes, delays, selector arguments, ownership, queue transitions and return behavior. IDA method boundaries are authoritative; angr splits this relocatable Objective-C code differently.",
+      "reviewer": "Codex; independent review_82595",
+      "analyzer_agreement": {
+        "status": "disputed",
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA method partition selected after disassembly review; combined reference consensus is disputed."
+        ]
+      },
+      "artifacts": [
+        {
+          "kind": "analysis-reference",
+          "path": "published/analysis-reference-ida.json",
+          "sha256": "72A6F8D89298AE59EDD01AF3B96BE8135AE8F5232625D930D23E452CE7ED863E"
+        },
+        {
+          "kind": "consensus-reference",
+          "path": "published/consensus-reference.json",
+          "sha256": "C1E67C7B88913E8ED8162BEF93420D7B3683F40304962FE3C83A701FF6E59358"
+        },
+        {
+          "kind": "ida-review",
+          "path": "ida-review.json",
+          "sha256": "344C3C8E643FF116B0B5349B2FC72473C77540EE0540984B19E63ED4832A9597"
+        }
+      ]
+    },
+    {
+      "address": 232,
+      "size": 1214,
+      "names": [
+        "-[CogentEM525 coldInit]"
+      ],
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/CogentEM525.m",
+      "source_line": 33,
+      "status": "control-flow-confirmed",
+      "reason": "IDA pseudocode and disassembly reviewed against the mapped source, with independent review: branch order, register widths, bank changes, delays, selector arguments, ownership, queue transitions and return behavior. IDA method boundaries are authoritative; angr splits this relocatable Objective-C code differently.",
+      "reviewer": "Codex; independent review_82595",
+      "analyzer_agreement": {
+        "status": "disputed",
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA method partition selected after disassembly review; combined reference consensus is disputed."
+        ]
+      },
+      "artifacts": [
+        {
+          "kind": "analysis-reference",
+          "path": "published/analysis-reference-ida.json",
+          "sha256": "72A6F8D89298AE59EDD01AF3B96BE8135AE8F5232625D930D23E452CE7ED863E"
+        },
+        {
+          "kind": "consensus-reference",
+          "path": "published/consensus-reference.json",
+          "sha256": "C1E67C7B88913E8ED8162BEF93420D7B3683F40304962FE3C83A701FF6E59358"
+        },
+        {
+          "kind": "ida-review",
+          "path": "ida-review.json",
+          "sha256": "344C3C8E643FF116B0B5349B2FC72473C77540EE0540984B19E63ED4832A9597"
+        }
+      ]
+    },
+    {
+      "address": 1448,
+      "size": 12,
+      "names": [
+        "-[CogentEM525 description]"
+      ],
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/CogentEM525.m",
+      "source_line": 49,
+      "status": "control-flow-confirmed",
+      "reason": "IDA pseudocode and disassembly reviewed against the mapped source, with independent review: branch order, register widths, bank changes, delays, selector arguments, ownership, queue transitions and return behavior. IDA method boundaries are authoritative; angr splits this relocatable Objective-C code differently.",
+      "reviewer": "Codex; independent review_82595",
+      "analyzer_agreement": {
+        "status": "disputed",
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA method partition selected after disassembly review; combined reference consensus is disputed."
+        ]
+      },
+      "artifacts": [
+        {
+          "kind": "analysis-reference",
+          "path": "published/analysis-reference-ida.json",
+          "sha256": "72A6F8D89298AE59EDD01AF3B96BE8135AE8F5232625D930D23E452CE7ED863E"
+        },
+        {
+          "kind": "consensus-reference",
+          "path": "published/consensus-reference.json",
+          "sha256": "C1E67C7B88913E8ED8162BEF93420D7B3683F40304962FE3C83A701FF6E59358"
+        },
+        {
+          "kind": "ida-review",
+          "path": "ida-review.json",
+          "sha256": "344C3C8E643FF116B0B5349B2FC72473C77540EE0540984B19E63ED4832A9597"
+        }
+      ]
+    },
+    {
+      "address": 1460,
+      "size": 229,
+      "names": [
+        "+[CogentEM595 probe:]"
+      ],
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/CogentEM595.m",
+      "source_line": 7,
+      "status": "control-flow-confirmed",
+      "reason": "IDA pseudocode and disassembly reviewed against the mapped source, with independent review: branch order, register widths, bank changes, delays, selector arguments, ownership, queue transitions and return behavior. IDA method boundaries are authoritative; angr splits this relocatable Objective-C code differently.",
+      "reviewer": "Codex; independent review_82595",
+      "analyzer_agreement": {
+        "status": "disputed",
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA method partition selected after disassembly review; combined reference consensus is disputed."
+        ]
+      },
+      "artifacts": [
+        {
+          "kind": "analysis-reference",
+          "path": "published/analysis-reference-ida.json",
+          "sha256": "72A6F8D89298AE59EDD01AF3B96BE8135AE8F5232625D930D23E452CE7ED863E"
+        },
+        {
+          "kind": "consensus-reference",
+          "path": "published/consensus-reference.json",
+          "sha256": "C1E67C7B88913E8ED8162BEF93420D7B3683F40304962FE3C83A701FF6E59358"
+        },
+        {
+          "kind": "ida-review",
+          "path": "ida-review.json",
+          "sha256": "344C3C8E643FF116B0B5349B2FC72473C77540EE0540984B19E63ED4832A9597"
+        }
+      ]
+    },
+    {
+      "address": 1692,
+      "size": 267,
+      "names": [
+        "-[CogentEM595 coldInit]"
+      ],
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/CogentEM595.m",
+      "source_line": 35,
+      "status": "control-flow-confirmed",
+      "reason": "IDA pseudocode and disassembly reviewed against the mapped source, with independent review: branch order, register widths, bank changes, delays, selector arguments, ownership, queue transitions and return behavior. IDA method boundaries are authoritative; angr splits this relocatable Objective-C code differently.",
+      "reviewer": "Codex; independent review_82595",
+      "analyzer_agreement": {
+        "status": "disputed",
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA method partition selected after disassembly review; combined reference consensus is disputed."
+        ]
+      },
+      "artifacts": [
+        {
+          "kind": "analysis-reference",
+          "path": "published/analysis-reference-ida.json",
+          "sha256": "72A6F8D89298AE59EDD01AF3B96BE8135AE8F5232625D930D23E452CE7ED863E"
+        },
+        {
+          "kind": "consensus-reference",
+          "path": "published/consensus-reference.json",
+          "sha256": "C1E67C7B88913E8ED8162BEF93420D7B3683F40304962FE3C83A701FF6E59358"
+        },
+        {
+          "kind": "ida-review",
+          "path": "ida-review.json",
+          "sha256": "344C3C8E643FF116B0B5349B2FC72473C77540EE0540984B19E63ED4832A9597"
+        }
+      ]
+    },
+    {
+      "address": 1960,
+      "size": 12,
+      "names": [
+        "-[CogentEM595 description]"
+      ],
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/CogentEM595.m",
+      "source_line": 60,
+      "status": "control-flow-confirmed",
+      "reason": "IDA pseudocode and disassembly reviewed against the mapped source, with independent review: branch order, register widths, bank changes, delays, selector arguments, ownership, queue transitions and return behavior. IDA method boundaries are authoritative; angr splits this relocatable Objective-C code differently.",
+      "reviewer": "Codex; independent review_82595",
+      "analyzer_agreement": {
+        "status": "disputed",
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA method partition selected after disassembly review; combined reference consensus is disputed."
+        ]
+      },
+      "artifacts": [
+        {
+          "kind": "analysis-reference",
+          "path": "published/analysis-reference-ida.json",
+          "sha256": "72A6F8D89298AE59EDD01AF3B96BE8135AE8F5232625D930D23E452CE7ED863E"
+        },
+        {
+          "kind": "consensus-reference",
+          "path": "published/consensus-reference.json",
+          "sha256": "C1E67C7B88913E8ED8162BEF93420D7B3683F40304962FE3C83A701FF6E59358"
+        },
+        {
+          "kind": "ida-review",
+          "path": "ida-review.json",
+          "sha256": "344C3C8E643FF116B0B5349B2FC72473C77540EE0540984B19E63ED4832A9597"
+        }
+      ]
+    },
+    {
+      "address": 1972,
+      "size": 605,
+      "names": [
+        "-[i82595eeprom initWithBase:CurrentBank:]"
+      ],
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/i82595eeprom.m",
+      "source_line": 15,
+      "status": "control-flow-confirmed",
+      "reason": "IDA pseudocode and disassembly reviewed against the mapped source, with independent review: branch order, register widths, bank changes, delays, selector arguments, ownership, queue transitions and return behavior. IDA method boundaries are authoritative; angr splits this relocatable Objective-C code differently.",
+      "reviewer": "Codex; independent review_82595",
+      "analyzer_agreement": {
+        "status": "disputed",
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA method partition selected after disassembly review; combined reference consensus is disputed."
+        ]
+      },
+      "artifacts": [
+        {
+          "kind": "analysis-reference",
+          "path": "published/analysis-reference-ida.json",
+          "sha256": "72A6F8D89298AE59EDD01AF3B96BE8135AE8F5232625D930D23E452CE7ED863E"
+        },
+        {
+          "kind": "consensus-reference",
+          "path": "published/consensus-reference.json",
+          "sha256": "C1E67C7B88913E8ED8162BEF93420D7B3683F40304962FE3C83A701FF6E59358"
+        },
+        {
+          "kind": "ida-review",
+          "path": "ida-review.json",
+          "sha256": "344C3C8E643FF116B0B5349B2FC72473C77540EE0540984B19E63ED4832A9597"
+        }
+      ]
+    },
+    {
+      "address": 2580,
+      "size": 521,
+      "names": [
+        "-[i82595eeprom readWord:]"
+      ],
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/i82595eeprom.m",
+      "source_line": 49,
+      "status": "control-flow-confirmed",
+      "reason": "IDA pseudocode and disassembly reviewed against the mapped source, with independent review: branch order, register widths, bank changes, delays, selector arguments, ownership, queue transitions and return behavior. IDA method boundaries are authoritative; angr splits this relocatable Objective-C code differently.",
+      "reviewer": "Codex; independent review_82595",
+      "analyzer_agreement": {
+        "status": "disputed",
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA method partition selected after disassembly review; combined reference consensus is disputed."
+        ]
+      },
+      "artifacts": [
+        {
+          "kind": "analysis-reference",
+          "path": "published/analysis-reference-ida.json",
+          "sha256": "72A6F8D89298AE59EDD01AF3B96BE8135AE8F5232625D930D23E452CE7ED863E"
+        },
+        {
+          "kind": "consensus-reference",
+          "path": "published/consensus-reference.json",
+          "sha256": "C1E67C7B88913E8ED8162BEF93420D7B3683F40304962FE3C83A701FF6E59358"
+        },
+        {
+          "kind": "ida-review",
+          "path": "ida-review.json",
+          "sha256": "344C3C8E643FF116B0B5349B2FC72473C77540EE0540984B19E63ED4832A9597"
+        }
+      ]
+    },
+    {
+      "address": 3104,
+      "size": 13,
+      "names": [
+        "-[i82595eeprom getContents]"
+      ],
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/i82595eeprom.m",
+      "source_line": 73,
+      "status": "control-flow-confirmed",
+      "reason": "IDA pseudocode and disassembly reviewed against the mapped source, with independent review: branch order, register widths, bank changes, delays, selector arguments, ownership, queue transitions and return behavior. IDA method boundaries are authoritative; angr splits this relocatable Objective-C code differently.",
+      "reviewer": "Codex; independent review_82595",
+      "analyzer_agreement": {
+        "status": "disputed",
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA method partition selected after disassembly review; combined reference consensus is disputed."
+        ]
+      },
+      "artifacts": [
+        {
+          "kind": "analysis-reference",
+          "path": "published/analysis-reference-ida.json",
+          "sha256": "72A6F8D89298AE59EDD01AF3B96BE8135AE8F5232625D930D23E452CE7ED863E"
+        },
+        {
+          "kind": "consensus-reference",
+          "path": "published/consensus-reference.json",
+          "sha256": "C1E67C7B88913E8ED8162BEF93420D7B3683F40304962FE3C83A701FF6E59358"
+        },
+        {
+          "kind": "ida-review",
+          "path": "ida-review.json",
+          "sha256": "344C3C8E643FF116B0B5349B2FC72473C77540EE0540984B19E63ED4832A9597"
+        }
+      ]
+    },
+    {
+      "address": 3120,
+      "size": 50,
+      "names": [
+        "-[Intel82595 _onboardMemoryAvailable]"
+      ],
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/Intel82595.m",
+      "source_line": 13,
+      "status": "control-flow-confirmed",
+      "reason": "IDA pseudocode and disassembly reviewed against the mapped source, with independent review: branch order, register widths, bank changes, delays, selector arguments, ownership, queue transitions and return behavior. IDA method boundaries are authoritative; angr splits this relocatable Objective-C code differently.",
+      "reviewer": "Codex; independent review_82595",
+      "analyzer_agreement": {
+        "status": "disputed",
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA method partition selected after disassembly review; combined reference consensus is disputed."
+        ]
+      },
+      "artifacts": [
+        {
+          "kind": "analysis-reference",
+          "path": "published/analysis-reference-ida.json",
+          "sha256": "72A6F8D89298AE59EDD01AF3B96BE8135AE8F5232625D930D23E452CE7ED863E"
+        },
+        {
+          "kind": "consensus-reference",
+          "path": "published/consensus-reference.json",
+          "sha256": "C1E67C7B88913E8ED8162BEF93420D7B3683F40304962FE3C83A701FF6E59358"
+        },
+        {
+          "kind": "ida-review",
+          "path": "ida-review.json",
+          "sha256": "344C3C8E643FF116B0B5349B2FC72473C77540EE0540984B19E63ED4832A9597"
+        }
+      ]
+    },
+    {
+      "address": 3172,
+      "size": 46,
+      "names": [
+        "-[Intel82595 _allocateOnboardMemory:]"
+      ],
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/Intel82595.m",
+      "source_line": 19,
+      "status": "control-flow-confirmed",
+      "reason": "IDA pseudocode and disassembly reviewed against the mapped source, with independent review: branch order, register widths, bank changes, delays, selector arguments, ownership, queue transitions and return behavior. IDA method boundaries are authoritative; angr splits this relocatable Objective-C code differently.",
+      "reviewer": "Codex; independent review_82595",
+      "analyzer_agreement": {
+        "status": "disputed",
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA method partition selected after disassembly review; combined reference consensus is disputed."
+        ]
+      },
+      "artifacts": [
+        {
+          "kind": "analysis-reference",
+          "path": "published/analysis-reference-ida.json",
+          "sha256": "72A6F8D89298AE59EDD01AF3B96BE8135AE8F5232625D930D23E452CE7ED863E"
+        },
+        {
+          "kind": "consensus-reference",
+          "path": "published/consensus-reference.json",
+          "sha256": "C1E67C7B88913E8ED8162BEF93420D7B3683F40304962FE3C83A701FF6E59358"
+        },
+        {
+          "kind": "ida-review",
+          "path": "ida-review.json",
+          "sha256": "344C3C8E643FF116B0B5349B2FC72473C77540EE0540984B19E63ED4832A9597"
+        }
+      ]
+    },
+    {
+      "address": 3220,
+      "size": 1802,
+      "names": [
+        "-[Intel82595 _mcSetup]"
+      ],
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/Intel82595.m",
+      "source_line": 26,
+      "status": "control-flow-confirmed",
+      "reason": "IDA pseudocode and disassembly reviewed against the mapped source, with independent review: branch order, register widths, bank changes, delays, selector arguments, ownership, queue transitions and return behavior. IDA method boundaries are authoritative; angr splits this relocatable Objective-C code differently.",
+      "reviewer": "Codex; independent review_82595",
+      "analyzer_agreement": {
+        "status": "disputed",
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA method partition selected after disassembly review; combined reference consensus is disputed."
+        ]
+      },
+      "artifacts": [
+        {
+          "kind": "analysis-reference",
+          "path": "published/analysis-reference-ida.json",
+          "sha256": "72A6F8D89298AE59EDD01AF3B96BE8135AE8F5232625D930D23E452CE7ED863E"
+        },
+        {
+          "kind": "consensus-reference",
+          "path": "published/consensus-reference.json",
+          "sha256": "C1E67C7B88913E8ED8162BEF93420D7B3683F40304962FE3C83A701FF6E59358"
+        },
+        {
+          "kind": "ida-review",
+          "path": "ida-review.json",
+          "sha256": "344C3C8E643FF116B0B5349B2FC72473C77540EE0540984B19E63ED4832A9597"
+        }
+      ]
+    },
+    {
+      "address": 5024,
+      "size": 57,
+      "names": [
+        "-[Intel82595 _memoryRegion:]"
+      ],
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/Intel82595.m",
+      "source_line": 75,
+      "status": "control-flow-confirmed",
+      "reason": "IDA pseudocode and disassembly reviewed against the mapped source, with independent review: branch order, register widths, bank changes, delays, selector arguments, ownership, queue transitions and return behavior. IDA method boundaries are authoritative; angr splits this relocatable Objective-C code differently.",
+      "reviewer": "Codex; independent review_82595",
+      "analyzer_agreement": {
+        "status": "disputed",
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA method partition selected after disassembly review; combined reference consensus is disputed."
+        ]
+      },
+      "artifacts": [
+        {
+          "kind": "analysis-reference",
+          "path": "published/analysis-reference-ida.json",
+          "sha256": "72A6F8D89298AE59EDD01AF3B96BE8135AE8F5232625D930D23E452CE7ED863E"
+        },
+        {
+          "kind": "consensus-reference",
+          "path": "published/consensus-reference.json",
+          "sha256": "C1E67C7B88913E8ED8162BEF93420D7B3683F40304962FE3C83A701FF6E59358"
+        },
+        {
+          "kind": "ida-review",
+          "path": "ida-review.json",
+          "sha256": "344C3C8E643FF116B0B5349B2FC72473C77540EE0540984B19E63ED4832A9597"
+        }
+      ]
+    },
+    {
+      "address": 5084,
+      "size": 1007,
+      "names": [
+        "-[Intel82595 _receiveInterruptOccurred]"
+      ],
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/Intel82595.m",
+      "source_line": 82,
+      "status": "control-flow-confirmed",
+      "reason": "IDA pseudocode and disassembly reviewed against the mapped source, with independent review: branch order, register widths, bank changes, delays, selector arguments, ownership, queue transitions and return behavior. IDA method boundaries are authoritative; angr splits this relocatable Objective-C code differently.",
+      "reviewer": "Codex; independent review_82595",
+      "analyzer_agreement": {
+        "status": "disputed",
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA method partition selected after disassembly review; combined reference consensus is disputed."
+        ]
+      },
+      "artifacts": [
+        {
+          "kind": "analysis-reference",
+          "path": "published/analysis-reference-ida.json",
+          "sha256": "72A6F8D89298AE59EDD01AF3B96BE8135AE8F5232625D930D23E452CE7ED863E"
+        },
+        {
+          "kind": "consensus-reference",
+          "path": "published/consensus-reference.json",
+          "sha256": "C1E67C7B88913E8ED8162BEF93420D7B3683F40304962FE3C83A701FF6E59358"
+        },
+        {
+          "kind": "ida-review",
+          "path": "ida-review.json",
+          "sha256": "344C3C8E643FF116B0B5349B2FC72473C77540EE0540984B19E63ED4832A9597"
+        }
+      ]
+    },
+    {
+      "address": 6092,
+      "size": 461,
+      "names": [
+        "-[Intel82595 _transmitInterruptOccurred]"
+      ],
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/Intel82595.m",
+      "source_line": 122,
+      "status": "control-flow-confirmed",
+      "reason": "IDA pseudocode and disassembly reviewed against the mapped source, with independent review: branch order, register widths, bank changes, delays, selector arguments, ownership, queue transitions and return behavior. IDA method boundaries are authoritative; angr splits this relocatable Objective-C code differently.",
+      "reviewer": "Codex; independent review_82595",
+      "analyzer_agreement": {
+        "status": "disputed",
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA method partition selected after disassembly review; combined reference consensus is disputed."
+        ]
+      },
+      "artifacts": [
+        {
+          "kind": "analysis-reference",
+          "path": "published/analysis-reference-ida.json",
+          "sha256": "72A6F8D89298AE59EDD01AF3B96BE8135AE8F5232625D930D23E452CE7ED863E"
+        },
+        {
+          "kind": "consensus-reference",
+          "path": "published/consensus-reference.json",
+          "sha256": "C1E67C7B88913E8ED8162BEF93420D7B3683F40304962FE3C83A701FF6E59358"
+        },
+        {
+          "kind": "ida-review",
+          "path": "ida-review.json",
+          "sha256": "344C3C8E643FF116B0B5349B2FC72473C77540EE0540984B19E63ED4832A9597"
+        }
+      ]
+    },
+    {
+      "address": 6556,
+      "size": 185,
+      "names": [
+        "+[Intel82595 probeIDRegisterAt:]"
+      ],
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/Intel82595.m",
+      "source_line": 145,
+      "status": "control-flow-confirmed",
+      "reason": "IDA pseudocode and disassembly reviewed against the mapped source, with independent review: branch order, register widths, bank changes, delays, selector arguments, ownership, queue transitions and return behavior. IDA method boundaries are authoritative; angr splits this relocatable Objective-C code differently.",
+      "reviewer": "Codex; independent review_82595",
+      "analyzer_agreement": {
+        "status": "disputed",
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA method partition selected after disassembly review; combined reference consensus is disputed."
+        ]
+      },
+      "artifacts": [
+        {
+          "kind": "analysis-reference",
+          "path": "published/analysis-reference-ida.json",
+          "sha256": "72A6F8D89298AE59EDD01AF3B96BE8135AE8F5232625D930D23E452CE7ED863E"
+        },
+        {
+          "kind": "consensus-reference",
+          "path": "published/consensus-reference.json",
+          "sha256": "C1E67C7B88913E8ED8162BEF93420D7B3683F40304962FE3C83A701FF6E59358"
+        },
+        {
+          "kind": "ida-review",
+          "path": "ida-review.json",
+          "sha256": "344C3C8E643FF116B0B5349B2FC72473C77540EE0540984B19E63ED4832A9597"
+        }
+      ]
+    },
+    {
+      "address": 6744,
+      "size": 465,
+      "names": [
+        "-[Intel82595 initFromDeviceDescription:]"
+      ],
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/Intel82595.m",
+      "source_line": 162,
+      "status": "control-flow-confirmed",
+      "reason": "IDA pseudocode and disassembly reviewed against the mapped source, with independent review: branch order, register widths, bank changes, delays, selector arguments, ownership, queue transitions and return behavior. IDA method boundaries are authoritative; angr splits this relocatable Objective-C code differently.",
+      "reviewer": "Codex; independent review_82595",
+      "analyzer_agreement": {
+        "status": "disputed",
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA method partition selected after disassembly review; combined reference consensus is disputed."
+        ]
+      },
+      "artifacts": [
+        {
+          "kind": "analysis-reference",
+          "path": "published/analysis-reference-ida.json",
+          "sha256": "72A6F8D89298AE59EDD01AF3B96BE8135AE8F5232625D930D23E452CE7ED863E"
+        },
+        {
+          "kind": "consensus-reference",
+          "path": "published/consensus-reference.json",
+          "sha256": "C1E67C7B88913E8ED8162BEF93420D7B3683F40304962FE3C83A701FF6E59358"
+        },
+        {
+          "kind": "ida-review",
+          "path": "ida-review.json",
+          "sha256": "344C3C8E643FF116B0B5349B2FC72473C77540EE0540984B19E63ED4832A9597"
+        }
+      ]
+    },
+    {
+      "address": 7212,
+      "size": 131,
+      "names": [
+        "-[Intel82595 free]"
+      ],
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/Intel82595.m",
+      "source_line": 185,
+      "status": "control-flow-confirmed",
+      "reason": "IDA pseudocode and disassembly reviewed against the mapped source, with independent review: branch order, register widths, bank changes, delays, selector arguments, ownership, queue transitions and return behavior. IDA method boundaries are authoritative; angr splits this relocatable Objective-C code differently.",
+      "reviewer": "Codex; independent review_82595",
+      "analyzer_agreement": {
+        "status": "disputed",
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA method partition selected after disassembly review; combined reference consensus is disputed."
+        ]
+      },
+      "artifacts": [
+        {
+          "kind": "analysis-reference",
+          "path": "published/analysis-reference-ida.json",
+          "sha256": "72A6F8D89298AE59EDD01AF3B96BE8135AE8F5232625D930D23E452CE7ED863E"
+        },
+        {
+          "kind": "consensus-reference",
+          "path": "published/consensus-reference.json",
+          "sha256": "C1E67C7B88913E8ED8162BEF93420D7B3683F40304962FE3C83A701FF6E59358"
+        },
+        {
+          "kind": "ida-review",
+          "path": "ida-review.json",
+          "sha256": "344C3C8E643FF116B0B5349B2FC72473C77540EE0540984B19E63ED4832A9597"
+        }
+      ]
+    },
+    {
+      "address": 7344,
+      "size": 412,
+      "names": [
+        "-[Intel82595 resetAndEnable:]"
+      ],
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/Intel82595.m",
+      "source_line": 195,
+      "status": "control-flow-confirmed",
+      "reason": "IDA pseudocode and disassembly reviewed against the mapped source, with independent review: branch order, register widths, bank changes, delays, selector arguments, ownership, queue transitions and return behavior. IDA method boundaries are authoritative; angr splits this relocatable Objective-C code differently.",
+      "reviewer": "Codex; independent review_82595",
+      "analyzer_agreement": {
+        "status": "disputed",
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA method partition selected after disassembly review; combined reference consensus is disputed."
+        ]
+      },
+      "artifacts": [
+        {
+          "kind": "analysis-reference",
+          "path": "published/analysis-reference-ida.json",
+          "sha256": "72A6F8D89298AE59EDD01AF3B96BE8135AE8F5232625D930D23E452CE7ED863E"
+        },
+        {
+          "kind": "consensus-reference",
+          "path": "published/consensus-reference.json",
+          "sha256": "C1E67C7B88913E8ED8162BEF93420D7B3683F40304962FE3C83A701FF6E59358"
+        },
+        {
+          "kind": "ida-review",
+          "path": "ida-review.json",
+          "sha256": "344C3C8E643FF116B0B5349B2FC72473C77540EE0540984B19E63ED4832A9597"
+        }
+      ]
+    },
+    {
+      "address": 7756,
+      "size": 12,
+      "names": [
+        "-[Intel82595 coldInit]"
+      ],
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/Intel82595.m",
+      "source_line": 216,
+      "status": "control-flow-confirmed",
+      "reason": "IDA pseudocode and disassembly reviewed against the mapped source, with independent review: branch order, register widths, bank changes, delays, selector arguments, ownership, queue transitions and return behavior. IDA method boundaries are authoritative; angr splits this relocatable Objective-C code differently.",
+      "reviewer": "Codex; independent review_82595",
+      "analyzer_agreement": {
+        "status": "disputed",
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA method partition selected after disassembly review; combined reference consensus is disputed."
+        ]
+      },
+      "artifacts": [
+        {
+          "kind": "analysis-reference",
+          "path": "published/analysis-reference-ida.json",
+          "sha256": "72A6F8D89298AE59EDD01AF3B96BE8135AE8F5232625D930D23E452CE7ED863E"
+        },
+        {
+          "kind": "consensus-reference",
+          "path": "published/consensus-reference.json",
+          "sha256": "C1E67C7B88913E8ED8162BEF93420D7B3683F40304962FE3C83A701FF6E59358"
+        },
+        {
+          "kind": "ida-review",
+          "path": "ida-review.json",
+          "sha256": "344C3C8E643FF116B0B5349B2FC72473C77540EE0540984B19E63ED4832A9597"
+        }
+      ]
+    },
+    {
+      "address": 7768,
+      "size": 12,
+      "names": [
+        "-[Intel82595 description]"
+      ],
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/Intel82595.m",
+      "source_line": 217,
+      "status": "control-flow-confirmed",
+      "reason": "IDA pseudocode and disassembly reviewed against the mapped source, with independent review: branch order, register widths, bank changes, delays, selector arguments, ownership, queue transitions and return behavior. IDA method boundaries are authoritative; angr splits this relocatable Objective-C code differently.",
+      "reviewer": "Codex; independent review_82595",
+      "analyzer_agreement": {
+        "status": "disputed",
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA method partition selected after disassembly review; combined reference consensus is disputed."
+        ]
+      },
+      "artifacts": [
+        {
+          "kind": "analysis-reference",
+          "path": "published/analysis-reference-ida.json",
+          "sha256": "72A6F8D89298AE59EDD01AF3B96BE8135AE8F5232625D930D23E452CE7ED863E"
+        },
+        {
+          "kind": "consensus-reference",
+          "path": "published/consensus-reference.json",
+          "sha256": "C1E67C7B88913E8ED8162BEF93420D7B3683F40304962FE3C83A701FF6E59358"
+        },
+        {
+          "kind": "ida-review",
+          "path": "ida-review.json",
+          "sha256": "344C3C8E643FF116B0B5349B2FC72473C77540EE0540984B19E63ED4832A9597"
+        }
+      ]
+    },
+    {
+      "address": 7780,
+      "size": 207,
+      "names": [
+        "-[Intel82595 resetChip]"
+      ],
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/Intel82595.m",
+      "source_line": 219,
+      "status": "control-flow-confirmed",
+      "reason": "IDA pseudocode and disassembly reviewed against the mapped source, with independent review: branch order, register widths, bank changes, delays, selector arguments, ownership, queue transitions and return behavior. IDA method boundaries are authoritative; angr splits this relocatable Objective-C code differently.",
+      "reviewer": "Codex; independent review_82595",
+      "analyzer_agreement": {
+        "status": "disputed",
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA method partition selected after disassembly review; combined reference consensus is disputed."
+        ]
+      },
+      "artifacts": [
+        {
+          "kind": "analysis-reference",
+          "path": "published/analysis-reference-ida.json",
+          "sha256": "72A6F8D89298AE59EDD01AF3B96BE8135AE8F5232625D930D23E452CE7ED863E"
+        },
+        {
+          "kind": "consensus-reference",
+          "path": "published/consensus-reference.json",
+          "sha256": "C1E67C7B88913E8ED8162BEF93420D7B3683F40304962FE3C83A701FF6E59358"
+        },
+        {
+          "kind": "ida-review",
+          "path": "ida-review.json",
+          "sha256": "344C3C8E643FF116B0B5349B2FC72473C77540EE0540984B19E63ED4832A9597"
+        }
+      ]
+    },
+    {
+      "address": 7988,
+      "size": 1289,
+      "names": [
+        "-[Intel82595 initializeChip]"
+      ],
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/Intel82595.m",
+      "source_line": 228,
+      "status": "control-flow-confirmed",
+      "reason": "IDA pseudocode and disassembly reviewed against the mapped source, with independent review: branch order, register widths, bank changes, delays, selector arguments, ownership, queue transitions and return behavior. IDA method boundaries are authoritative; angr splits this relocatable Objective-C code differently.",
+      "reviewer": "Codex; independent review_82595",
+      "analyzer_agreement": {
+        "status": "disputed",
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA method partition selected after disassembly review; combined reference consensus is disputed."
+        ]
+      },
+      "artifacts": [
+        {
+          "kind": "analysis-reference",
+          "path": "published/analysis-reference-ida.json",
+          "sha256": "72A6F8D89298AE59EDD01AF3B96BE8135AE8F5232625D930D23E452CE7ED863E"
+        },
+        {
+          "kind": "consensus-reference",
+          "path": "published/consensus-reference.json",
+          "sha256": "C1E67C7B88913E8ED8162BEF93420D7B3683F40304962FE3C83A701FF6E59358"
+        },
+        {
+          "kind": "ida-review",
+          "path": "ida-review.json",
+          "sha256": "344C3C8E643FF116B0B5349B2FC72473C77540EE0540984B19E63ED4832A9597"
+        }
+      ]
+    },
+    {
+      "address": 9280,
+      "size": 12,
+      "names": [
+        "-[Intel82595 busConfig]"
+      ],
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/Intel82595.m",
+      "source_line": 252,
+      "status": "control-flow-confirmed",
+      "reason": "IDA pseudocode and disassembly reviewed against the mapped source, with independent review: branch order, register widths, bank changes, delays, selector arguments, ownership, queue transitions and return behavior. IDA method boundaries are authoritative; angr splits this relocatable Objective-C code differently.",
+      "reviewer": "Codex; independent review_82595",
+      "analyzer_agreement": {
+        "status": "disputed",
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA method partition selected after disassembly review; combined reference consensus is disputed."
+        ]
+      },
+      "artifacts": [
+        {
+          "kind": "analysis-reference",
+          "path": "published/analysis-reference-ida.json",
+          "sha256": "72A6F8D89298AE59EDD01AF3B96BE8135AE8F5232625D930D23E452CE7ED863E"
+        },
+        {
+          "kind": "consensus-reference",
+          "path": "published/consensus-reference.json",
+          "sha256": "C1E67C7B88913E8ED8162BEF93420D7B3683F40304962FE3C83A701FF6E59358"
+        },
+        {
+          "kind": "ida-review",
+          "path": "ida-review.json",
+          "sha256": "344C3C8E643FF116B0B5349B2FC72473C77540EE0540984B19E63ED4832A9597"
+        }
+      ]
+    },
+    {
+      "address": 9292,
+      "size": 87,
+      "names": [
+        "-[Intel82595 connectorConfig]"
+      ],
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/Intel82595.m",
+      "source_line": 253,
+      "status": "control-flow-confirmed",
+      "reason": "IDA pseudocode and disassembly reviewed against the mapped source, with independent review: branch order, register widths, bank changes, delays, selector arguments, ownership, queue transitions and return behavior. IDA method boundaries are authoritative; angr splits this relocatable Objective-C code differently.",
+      "reviewer": "Codex; independent review_82595",
+      "analyzer_agreement": {
+        "status": "disputed",
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA method partition selected after disassembly review; combined reference consensus is disputed."
+        ]
+      },
+      "artifacts": [
+        {
+          "kind": "analysis-reference",
+          "path": "published/analysis-reference-ida.json",
+          "sha256": "72A6F8D89298AE59EDD01AF3B96BE8135AE8F5232625D930D23E452CE7ED863E"
+        },
+        {
+          "kind": "consensus-reference",
+          "path": "published/consensus-reference.json",
+          "sha256": "C1E67C7B88913E8ED8162BEF93420D7B3683F40304962FE3C83A701FF6E59358"
+        },
+        {
+          "kind": "ida-review",
+          "path": "ida-review.json",
+          "sha256": "344C3C8E643FF116B0B5349B2FC72473C77540EE0540984B19E63ED4832A9597"
+        }
+      ]
+    },
+    {
+      "address": 9380,
+      "size": 791,
+      "names": [
+        "-[Intel82595 rxInit]"
+      ],
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/Intel82595.m",
+      "source_line": 255,
+      "status": "control-flow-confirmed",
+      "reason": "IDA pseudocode and disassembly reviewed against the mapped source, with independent review: branch order, register widths, bank changes, delays, selector arguments, ownership, queue transitions and return behavior. IDA method boundaries are authoritative; angr splits this relocatable Objective-C code differently.",
+      "reviewer": "Codex; independent review_82595",
+      "analyzer_agreement": {
+        "status": "disputed",
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA method partition selected after disassembly review; combined reference consensus is disputed."
+        ]
+      },
+      "artifacts": [
+        {
+          "kind": "analysis-reference",
+          "path": "published/analysis-reference-ida.json",
+          "sha256": "72A6F8D89298AE59EDD01AF3B96BE8135AE8F5232625D930D23E452CE7ED863E"
+        },
+        {
+          "kind": "consensus-reference",
+          "path": "published/consensus-reference.json",
+          "sha256": "C1E67C7B88913E8ED8162BEF93420D7B3683F40304962FE3C83A701FF6E59358"
+        },
+        {
+          "kind": "ida-review",
+          "path": "ida-review.json",
+          "sha256": "344C3C8E643FF116B0B5349B2FC72473C77540EE0540984B19E63ED4832A9597"
+        }
+      ]
+    },
+    {
+      "address": 10172,
+      "size": 471,
+      "names": [
+        "-[Intel82595 txInit]"
+      ],
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/Intel82595.m",
+      "source_line": 279,
+      "status": "control-flow-confirmed",
+      "reason": "IDA pseudocode and disassembly reviewed against the mapped source, with independent review: branch order, register widths, bank changes, delays, selector arguments, ownership, queue transitions and return behavior. IDA method boundaries are authoritative; angr splits this relocatable Objective-C code differently.",
+      "reviewer": "Codex; independent review_82595",
+      "analyzer_agreement": {
+        "status": "disputed",
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA method partition selected after disassembly review; combined reference consensus is disputed."
+        ]
+      },
+      "artifacts": [
+        {
+          "kind": "analysis-reference",
+          "path": "published/analysis-reference-ida.json",
+          "sha256": "72A6F8D89298AE59EDD01AF3B96BE8135AE8F5232625D930D23E452CE7ED863E"
+        },
+        {
+          "kind": "consensus-reference",
+          "path": "published/consensus-reference.json",
+          "sha256": "C1E67C7B88913E8ED8162BEF93420D7B3683F40304962FE3C83A701FF6E59358"
+        },
+        {
+          "kind": "ida-review",
+          "path": "ida-review.json",
+          "sha256": "344C3C8E643FF116B0B5349B2FC72473C77540EE0540984B19E63ED4832A9597"
+        }
+      ]
+    },
+    {
+      "address": 10644,
+      "size": 12,
+      "names": [
+        "-[Intel82595 onboardMemoryPresent]"
+      ],
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/Intel82595.m",
+      "source_line": 299,
+      "status": "control-flow-confirmed",
+      "reason": "IDA pseudocode and disassembly reviewed against the mapped source, with independent review: branch order, register widths, bank changes, delays, selector arguments, ownership, queue transitions and return behavior. IDA method boundaries are authoritative; angr splits this relocatable Objective-C code differently.",
+      "reviewer": "Codex; independent review_82595",
+      "analyzer_agreement": {
+        "status": "disputed",
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA method partition selected after disassembly review; combined reference consensus is disputed."
+        ]
+      },
+      "artifacts": [
+        {
+          "kind": "analysis-reference",
+          "path": "published/analysis-reference-ida.json",
+          "sha256": "72A6F8D89298AE59EDD01AF3B96BE8135AE8F5232625D930D23E452CE7ED863E"
+        },
+        {
+          "kind": "consensus-reference",
+          "path": "published/consensus-reference.json",
+          "sha256": "C1E67C7B88913E8ED8162BEF93420D7B3683F40304962FE3C83A701FF6E59358"
+        },
+        {
+          "kind": "ida-review",
+          "path": "ida-review.json",
+          "sha256": "344C3C8E643FF116B0B5349B2FC72473C77540EE0540984B19E63ED4832A9597"
+        }
+      ]
+    },
+    {
+      "address": 10656,
+      "size": 152,
+      "names": [
+        "-[Intel82595 enableAllInterrupts]"
+      ],
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/Intel82595.m",
+      "source_line": 301,
+      "status": "control-flow-confirmed",
+      "reason": "IDA pseudocode and disassembly reviewed against the mapped source, with independent review: branch order, register widths, bank changes, delays, selector arguments, ownership, queue transitions and return behavior. IDA method boundaries are authoritative; angr splits this relocatable Objective-C code differently.",
+      "reviewer": "Codex; independent review_82595",
+      "analyzer_agreement": {
+        "status": "disputed",
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA method partition selected after disassembly review; combined reference consensus is disputed."
+        ]
+      },
+      "artifacts": [
+        {
+          "kind": "analysis-reference",
+          "path": "published/analysis-reference-ida.json",
+          "sha256": "72A6F8D89298AE59EDD01AF3B96BE8135AE8F5232625D930D23E452CE7ED863E"
+        },
+        {
+          "kind": "consensus-reference",
+          "path": "published/consensus-reference.json",
+          "sha256": "C1E67C7B88913E8ED8162BEF93420D7B3683F40304962FE3C83A701FF6E59358"
+        },
+        {
+          "kind": "ida-review",
+          "path": "ida-review.json",
+          "sha256": "344C3C8E643FF116B0B5349B2FC72473C77540EE0540984B19E63ED4832A9597"
+        }
+      ]
+    },
+    {
+      "address": 10808,
+      "size": 144,
+      "names": [
+        "-[Intel82595 disableAllInterrupts]"
+      ],
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/Intel82595.m",
+      "source_line": 308,
+      "status": "control-flow-confirmed",
+      "reason": "IDA pseudocode and disassembly reviewed against the mapped source, with independent review: branch order, register widths, bank changes, delays, selector arguments, ownership, queue transitions and return behavior. IDA method boundaries are authoritative; angr splits this relocatable Objective-C code differently.",
+      "reviewer": "Codex; independent review_82595",
+      "analyzer_agreement": {
+        "status": "disputed",
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA method partition selected after disassembly review; combined reference consensus is disputed."
+        ]
+      },
+      "artifacts": [
+        {
+          "kind": "analysis-reference",
+          "path": "published/analysis-reference-ida.json",
+          "sha256": "72A6F8D89298AE59EDD01AF3B96BE8135AE8F5232625D930D23E452CE7ED863E"
+        },
+        {
+          "kind": "consensus-reference",
+          "path": "published/consensus-reference.json",
+          "sha256": "C1E67C7B88913E8ED8162BEF93420D7B3683F40304962FE3C83A701FF6E59358"
+        },
+        {
+          "kind": "ida-review",
+          "path": "ida-review.json",
+          "sha256": "344C3C8E643FF116B0B5349B2FC72473C77540EE0540984B19E63ED4832A9597"
+        }
+      ]
+    },
+    {
+      "address": 10952,
+      "size": 477,
+      "names": [
+        "-[Intel82595 interruptOccurred]"
+      ],
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/Intel82595.m",
+      "source_line": 316,
+      "status": "control-flow-confirmed",
+      "reason": "IDA pseudocode and disassembly reviewed against the mapped source, with independent review: branch order, register widths, bank changes, delays, selector arguments, ownership, queue transitions and return behavior. IDA method boundaries are authoritative; angr splits this relocatable Objective-C code differently.",
+      "reviewer": "Codex; independent review_82595",
+      "analyzer_agreement": {
+        "status": "disputed",
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA method partition selected after disassembly review; combined reference consensus is disputed."
+        ]
+      },
+      "artifacts": [
+        {
+          "kind": "analysis-reference",
+          "path": "published/analysis-reference-ida.json",
+          "sha256": "72A6F8D89298AE59EDD01AF3B96BE8135AE8F5232625D930D23E452CE7ED863E"
+        },
+        {
+          "kind": "consensus-reference",
+          "path": "published/consensus-reference.json",
+          "sha256": "C1E67C7B88913E8ED8162BEF93420D7B3683F40304962FE3C83A701FF6E59358"
+        },
+        {
+          "kind": "ida-review",
+          "path": "ida-review.json",
+          "sha256": "344C3C8E643FF116B0B5349B2FC72473C77540EE0540984B19E63ED4832A9597"
+        }
+      ]
+    },
+    {
+      "address": 11432,
+      "size": 195,
+      "names": [
+        "-[Intel82595 timeoutOccurred]"
+      ],
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/Intel82595.m",
+      "source_line": 331,
+      "status": "control-flow-confirmed",
+      "reason": "IDA pseudocode and disassembly reviewed against the mapped source, with independent review: branch order, register widths, bank changes, delays, selector arguments, ownership, queue transitions and return behavior. IDA method boundaries are authoritative; angr splits this relocatable Objective-C code differently.",
+      "reviewer": "Codex; independent review_82595",
+      "analyzer_agreement": {
+        "status": "disputed",
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA method partition selected after disassembly review; combined reference consensus is disputed."
+        ]
+      },
+      "artifacts": [
+        {
+          "kind": "analysis-reference",
+          "path": "published/analysis-reference-ida.json",
+          "sha256": "72A6F8D89298AE59EDD01AF3B96BE8135AE8F5232625D930D23E452CE7ED863E"
+        },
+        {
+          "kind": "consensus-reference",
+          "path": "published/consensus-reference.json",
+          "sha256": "C1E67C7B88913E8ED8162BEF93420D7B3683F40304962FE3C83A701FF6E59358"
+        },
+        {
+          "kind": "ida-review",
+          "path": "ida-review.json",
+          "sha256": "344C3C8E643FF116B0B5349B2FC72473C77540EE0540984B19E63ED4832A9597"
+        }
+      ]
+    },
+    {
+      "address": 11628,
+      "size": 916,
+      "names": [
+        "-[Intel82595 transmit:]"
+      ],
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/Intel82595.m",
+      "source_line": 344,
+      "status": "control-flow-confirmed",
+      "reason": "IDA pseudocode and disassembly reviewed against the mapped source, with independent review: branch order, register widths, bank changes, delays, selector arguments, ownership, queue transitions and return behavior. IDA method boundaries are authoritative; angr splits this relocatable Objective-C code differently.",
+      "reviewer": "Codex; independent review_82595",
+      "analyzer_agreement": {
+        "status": "disputed",
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA method partition selected after disassembly review; combined reference consensus is disputed."
+        ]
+      },
+      "artifacts": [
+        {
+          "kind": "analysis-reference",
+          "path": "published/analysis-reference-ida.json",
+          "sha256": "72A6F8D89298AE59EDD01AF3B96BE8135AE8F5232625D930D23E452CE7ED863E"
+        },
+        {
+          "kind": "consensus-reference",
+          "path": "published/consensus-reference.json",
+          "sha256": "C1E67C7B88913E8ED8162BEF93420D7B3683F40304962FE3C83A701FF6E59358"
+        },
+        {
+          "kind": "ida-review",
+          "path": "ida-review.json",
+          "sha256": "344C3C8E643FF116B0B5349B2FC72473C77540EE0540984B19E63ED4832A9597"
+        }
+      ]
+    },
+    {
+      "address": 12544,
+      "size": 71,
+      "names": [
+        "-[Intel82595 enablePromiscuousMode]"
+      ],
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/Intel82595.m",
+      "source_line": 363,
+      "status": "control-flow-confirmed",
+      "reason": "IDA pseudocode and disassembly reviewed against the mapped source, with independent review: branch order, register widths, bank changes, delays, selector arguments, ownership, queue transitions and return behavior. IDA method boundaries are authoritative; angr splits this relocatable Objective-C code differently.",
+      "reviewer": "Codex; independent review_82595",
+      "analyzer_agreement": {
+        "status": "disputed",
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA method partition selected after disassembly review; combined reference consensus is disputed."
+        ]
+      },
+      "artifacts": [
+        {
+          "kind": "analysis-reference",
+          "path": "published/analysis-reference-ida.json",
+          "sha256": "72A6F8D89298AE59EDD01AF3B96BE8135AE8F5232625D930D23E452CE7ED863E"
+        },
+        {
+          "kind": "consensus-reference",
+          "path": "published/consensus-reference.json",
+          "sha256": "C1E67C7B88913E8ED8162BEF93420D7B3683F40304962FE3C83A701FF6E59358"
+        },
+        {
+          "kind": "ida-review",
+          "path": "ida-review.json",
+          "sha256": "344C3C8E643FF116B0B5349B2FC72473C77540EE0540984B19E63ED4832A9597"
+        }
+      ]
+    },
+    {
+      "address": 12616,
+      "size": 60,
+      "names": [
+        "-[Intel82595 disablePromiscuousMode]"
+      ],
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/Intel82595.m",
+      "source_line": 370,
+      "status": "control-flow-confirmed",
+      "reason": "IDA pseudocode and disassembly reviewed against the mapped source, with independent review: branch order, register widths, bank changes, delays, selector arguments, ownership, queue transitions and return behavior. IDA method boundaries are authoritative; angr splits this relocatable Objective-C code differently.",
+      "reviewer": "Codex; independent review_82595",
+      "analyzer_agreement": {
+        "status": "disputed",
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA method partition selected after disassembly review; combined reference consensus is disputed."
+        ]
+      },
+      "artifacts": [
+        {
+          "kind": "analysis-reference",
+          "path": "published/analysis-reference-ida.json",
+          "sha256": "72A6F8D89298AE59EDD01AF3B96BE8135AE8F5232625D930D23E452CE7ED863E"
+        },
+        {
+          "kind": "consensus-reference",
+          "path": "published/consensus-reference.json",
+          "sha256": "C1E67C7B88913E8ED8162BEF93420D7B3683F40304962FE3C83A701FF6E59358"
+        },
+        {
+          "kind": "ida-review",
+          "path": "ida-review.json",
+          "sha256": "344C3C8E643FF116B0B5349B2FC72473C77540EE0540984B19E63ED4832A9597"
+        }
+      ]
+    },
+    {
+      "address": 12676,
+      "size": 65,
+      "names": [
+        "-[Intel82595 addMulticastAddress:]"
+      ],
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/Intel82595.m",
+      "source_line": 378,
+      "status": "control-flow-confirmed",
+      "reason": "IDA pseudocode and disassembly reviewed against the mapped source, with independent review: branch order, register widths, bank changes, delays, selector arguments, ownership, queue transitions and return behavior. IDA method boundaries are authoritative; angr splits this relocatable Objective-C code differently.",
+      "reviewer": "Codex; independent review_82595",
+      "analyzer_agreement": {
+        "status": "disputed",
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA method partition selected after disassembly review; combined reference consensus is disputed."
+        ]
+      },
+      "artifacts": [
+        {
+          "kind": "analysis-reference",
+          "path": "published/analysis-reference-ida.json",
+          "sha256": "72A6F8D89298AE59EDD01AF3B96BE8135AE8F5232625D930D23E452CE7ED863E"
+        },
+        {
+          "kind": "consensus-reference",
+          "path": "published/consensus-reference.json",
+          "sha256": "C1E67C7B88913E8ED8162BEF93420D7B3683F40304962FE3C83A701FF6E59358"
+        },
+        {
+          "kind": "ida-review",
+          "path": "ida-review.json",
+          "sha256": "344C3C8E643FF116B0B5349B2FC72473C77540EE0540984B19E63ED4832A9597"
+        }
+      ]
+    },
+    {
+      "address": 12744,
+      "size": 58,
+      "names": [
+        "-[Intel82595 removeMulticastAddress:]"
+      ],
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/Intel82595.m",
+      "source_line": 384,
+      "status": "control-flow-confirmed",
+      "reason": "IDA pseudocode and disassembly reviewed against the mapped source, with independent review: branch order, register widths, bank changes, delays, selector arguments, ownership, queue transitions and return behavior. IDA method boundaries are authoritative; angr splits this relocatable Objective-C code differently.",
+      "reviewer": "Codex; independent review_82595",
+      "analyzer_agreement": {
+        "status": "disputed",
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA method partition selected after disassembly review; combined reference consensus is disputed."
+        ]
+      },
+      "artifacts": [
+        {
+          "kind": "analysis-reference",
+          "path": "published/analysis-reference-ida.json",
+          "sha256": "72A6F8D89298AE59EDD01AF3B96BE8135AE8F5232625D930D23E452CE7ED863E"
+        },
+        {
+          "kind": "consensus-reference",
+          "path": "published/consensus-reference.json",
+          "sha256": "C1E67C7B88913E8ED8162BEF93420D7B3683F40304962FE3C83A701FF6E59358"
+        },
+        {
+          "kind": "ida-review",
+          "path": "ida-review.json",
+          "sha256": "344C3C8E643FF116B0B5349B2FC72473C77540EE0540984B19E63ED4832A9597"
+        }
+      ]
+    },
+    {
+      "address": 12804,
+      "size": 955,
+      "names": [
+        "-[Intel82595 receivePacket:length:timeout:]"
+      ],
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/Intel82595.m",
+      "source_line": 389,
+      "status": "control-flow-confirmed",
+      "reason": "IDA pseudocode and disassembly reviewed against the mapped source, with independent review: branch order, register widths, bank changes, delays, selector arguments, ownership, queue transitions and return behavior. IDA method boundaries are authoritative; angr splits this relocatable Objective-C code differently.",
+      "reviewer": "Codex; independent review_82595",
+      "analyzer_agreement": {
+        "status": "disputed",
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA method partition selected after disassembly review; combined reference consensus is disputed."
+        ]
+      },
+      "artifacts": [
+        {
+          "kind": "analysis-reference",
+          "path": "published/analysis-reference-ida.json",
+          "sha256": "72A6F8D89298AE59EDD01AF3B96BE8135AE8F5232625D930D23E452CE7ED863E"
+        },
+        {
+          "kind": "consensus-reference",
+          "path": "published/consensus-reference.json",
+          "sha256": "C1E67C7B88913E8ED8162BEF93420D7B3683F40304962FE3C83A701FF6E59358"
+        },
+        {
+          "kind": "ida-review",
+          "path": "ida-review.json",
+          "sha256": "344C3C8E643FF116B0B5349B2FC72473C77540EE0540984B19E63ED4832A9597"
+        }
+      ]
+    },
+    {
+      "address": 13760,
+      "size": 1121,
+      "names": [
+        "-[Intel82595 sendPacket:length:]"
+      ],
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/Intel82595.m",
+      "source_line": 412,
+      "status": "control-flow-confirmed",
+      "reason": "IDA pseudocode and disassembly reviewed against the mapped source, with independent review: branch order, register widths, bank changes, delays, selector arguments, ownership, queue transitions and return behavior. IDA method boundaries are authoritative; angr splits this relocatable Objective-C code differently.",
+      "reviewer": "Codex; independent review_82595",
+      "analyzer_agreement": {
+        "status": "disputed",
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA method partition selected after disassembly review; combined reference consensus is disputed."
+        ]
+      },
+      "artifacts": [
+        {
+          "kind": "analysis-reference",
+          "path": "published/analysis-reference-ida.json",
+          "sha256": "72A6F8D89298AE59EDD01AF3B96BE8135AE8F5232625D930D23E452CE7ED863E"
+        },
+        {
+          "kind": "consensus-reference",
+          "path": "published/consensus-reference.json",
+          "sha256": "C1E67C7B88913E8ED8162BEF93420D7B3683F40304962FE3C83A701FF6E59358"
+        },
+        {
+          "kind": "ida-review",
+          "path": "ida-review.json",
+          "sha256": "344C3C8E643FF116B0B5349B2FC72473C77540EE0540984B19E63ED4832A9597"
+        }
+      ]
+    },
+    {
+      "address": 14884,
+      "size": 12,
+      "names": [
+        "-[Intel82595ISA description]"
+      ],
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/Intel82595ISA.m",
+      "source_line": 7,
+      "status": "control-flow-confirmed",
+      "reason": "IDA pseudocode and disassembly reviewed against the mapped source, with independent review: branch order, register widths, bank changes, delays, selector arguments, ownership, queue transitions and return behavior. IDA method boundaries are authoritative; angr splits this relocatable Objective-C code differently.",
+      "reviewer": "Codex; independent review_82595",
+      "analyzer_agreement": {
+        "status": "disputed",
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA method partition selected after disassembly review; combined reference consensus is disputed."
+        ]
+      },
+      "artifacts": [
+        {
+          "kind": "analysis-reference",
+          "path": "published/analysis-reference-ida.json",
+          "sha256": "72A6F8D89298AE59EDD01AF3B96BE8135AE8F5232625D930D23E452CE7ED863E"
+        },
+        {
+          "kind": "consensus-reference",
+          "path": "published/consensus-reference.json",
+          "sha256": "C1E67C7B88913E8ED8162BEF93420D7B3683F40304962FE3C83A701FF6E59358"
+        },
+        {
+          "kind": "ida-review",
+          "path": "ida-review.json",
+          "sha256": "344C3C8E643FF116B0B5349B2FC72473C77540EE0540984B19E63ED4832A9597"
+        }
+      ]
+    },
+    {
+      "address": 14896,
+      "size": 362,
+      "names": [
+        "-[Intel82595ISA resetChip]"
+      ],
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/Intel82595ISA.m",
+      "source_line": 9,
+      "status": "control-flow-confirmed",
+      "reason": "IDA pseudocode and disassembly reviewed against the mapped source, with independent review: branch order, register widths, bank changes, delays, selector arguments, ownership, queue transitions and return behavior. IDA method boundaries are authoritative; angr splits this relocatable Objective-C code differently.",
+      "reviewer": "Codex; independent review_82595",
+      "analyzer_agreement": {
+        "status": "disputed",
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA method partition selected after disassembly review; combined reference consensus is disputed."
+        ]
+      },
+      "artifacts": [
+        {
+          "kind": "analysis-reference",
+          "path": "published/analysis-reference-ida.json",
+          "sha256": "72A6F8D89298AE59EDD01AF3B96BE8135AE8F5232625D930D23E452CE7ED863E"
+        },
+        {
+          "kind": "consensus-reference",
+          "path": "published/consensus-reference.json",
+          "sha256": "C1E67C7B88913E8ED8162BEF93420D7B3683F40304962FE3C83A701FF6E59358"
+        },
+        {
+          "kind": "ida-review",
+          "path": "ida-review.json",
+          "sha256": "344C3C8E643FF116B0B5349B2FC72473C77540EE0540984B19E63ED4832A9597"
+        }
+      ]
+    },
+    {
+      "address": 15260,
+      "size": 908,
+      "names": [
+        "-[Intel82595ISA busConfig]"
+      ],
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/Intel82595ISA.m",
+      "source_line": 27,
+      "status": "control-flow-confirmed",
+      "reason": "IDA pseudocode and disassembly reviewed against the mapped source, with independent review: branch order, register widths, bank changes, delays, selector arguments, ownership, queue transitions and return behavior. IDA method boundaries are authoritative; angr splits this relocatable Objective-C code differently.",
+      "reviewer": "Codex; independent review_82595",
+      "analyzer_agreement": {
+        "status": "disputed",
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA method partition selected after disassembly review; combined reference consensus is disputed."
+        ]
+      },
+      "artifacts": [
+        {
+          "kind": "analysis-reference",
+          "path": "published/analysis-reference-ida.json",
+          "sha256": "72A6F8D89298AE59EDD01AF3B96BE8135AE8F5232625D930D23E452CE7ED863E"
+        },
+        {
+          "kind": "consensus-reference",
+          "path": "published/consensus-reference.json",
+          "sha256": "C1E67C7B88913E8ED8162BEF93420D7B3683F40304962FE3C83A701FF6E59358"
+        },
+        {
+          "kind": "ida-review",
+          "path": "ida-review.json",
+          "sha256": "344C3C8E643FF116B0B5349B2FC72473C77540EE0540984B19E63ED4832A9597"
+        }
+      ]
+    },
+    {
+      "address": 16168,
+      "size": 224,
+      "names": [
+        "-[Intel82595ISA irqConfig]"
+      ],
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/Intel82595ISA.m",
+      "source_line": 55,
+      "status": "control-flow-confirmed",
+      "reason": "IDA pseudocode and disassembly reviewed against the mapped source, with independent review: branch order, register widths, bank changes, delays, selector arguments, ownership, queue transitions and return behavior. IDA method boundaries are authoritative; angr splits this relocatable Objective-C code differently.",
+      "reviewer": "Codex; independent review_82595",
+      "analyzer_agreement": {
+        "status": "disputed",
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA method partition selected after disassembly review; combined reference consensus is disputed."
+        ]
+      },
+      "artifacts": [
+        {
+          "kind": "analysis-reference",
+          "path": "published/analysis-reference-ida.json",
+          "sha256": "72A6F8D89298AE59EDD01AF3B96BE8135AE8F5232625D930D23E452CE7ED863E"
+        },
+        {
+          "kind": "consensus-reference",
+          "path": "published/consensus-reference.json",
+          "sha256": "C1E67C7B88913E8ED8162BEF93420D7B3683F40304962FE3C83A701FF6E59358"
+        },
+        {
+          "kind": "ida-review",
+          "path": "ida-review.json",
+          "sha256": "344C3C8E643FF116B0B5349B2FC72473C77540EE0540984B19E63ED4832A9597"
+        }
+      ]
+    },
+    {
+      "address": 16392,
+      "size": 229,
+      "names": [
+        "+[IntelEEPro10Plus probe:]"
+      ],
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/IntelEEPro10+.m",
+      "source_line": 5,
+      "status": "control-flow-confirmed",
+      "reason": "IDA pseudocode and disassembly reviewed against the mapped source, with independent review: branch order, register widths, bank changes, delays, selector arguments, ownership, queue transitions and return behavior. IDA method boundaries are authoritative; angr splits this relocatable Objective-C code differently.",
+      "reviewer": "Codex; independent review_82595",
+      "analyzer_agreement": {
+        "status": "disputed",
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA method partition selected after disassembly review; combined reference consensus is disputed."
+        ]
+      },
+      "artifacts": [
+        {
+          "kind": "analysis-reference",
+          "path": "published/analysis-reference-ida.json",
+          "sha256": "72A6F8D89298AE59EDD01AF3B96BE8135AE8F5232625D930D23E452CE7ED863E"
+        },
+        {
+          "kind": "consensus-reference",
+          "path": "published/consensus-reference.json",
+          "sha256": "C1E67C7B88913E8ED8162BEF93420D7B3683F40304962FE3C83A701FF6E59358"
+        },
+        {
+          "kind": "ida-review",
+          "path": "ida-review.json",
+          "sha256": "344C3C8E643FF116B0B5349B2FC72473C77540EE0540984B19E63ED4832A9597"
+        }
+      ]
+    },
+    {
+      "address": 16624,
+      "size": 28,
+      "names": [
+        "-[IntelEEPro10Plus busConfig]"
+      ],
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/IntelEEPro10+.m",
+      "source_line": 33,
+      "status": "control-flow-confirmed",
+      "reason": "IDA pseudocode and disassembly reviewed against the mapped source, with independent review: branch order, register widths, bank changes, delays, selector arguments, ownership, queue transitions and return behavior. IDA method boundaries are authoritative; angr splits this relocatable Objective-C code differently.",
+      "reviewer": "Codex; independent review_82595",
+      "analyzer_agreement": {
+        "status": "disputed",
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA method partition selected after disassembly review; combined reference consensus is disputed."
+        ]
+      },
+      "artifacts": [
+        {
+          "kind": "analysis-reference",
+          "path": "published/analysis-reference-ida.json",
+          "sha256": "72A6F8D89298AE59EDD01AF3B96BE8135AE8F5232625D930D23E452CE7ED863E"
+        },
+        {
+          "kind": "consensus-reference",
+          "path": "published/consensus-reference.json",
+          "sha256": "C1E67C7B88913E8ED8162BEF93420D7B3683F40304962FE3C83A701FF6E59358"
+        },
+        {
+          "kind": "ida-review",
+          "path": "ida-review.json",
+          "sha256": "344C3C8E643FF116B0B5349B2FC72473C77540EE0540984B19E63ED4832A9597"
+        }
+      ]
+    },
+    {
+      "address": 16652,
+      "size": 155,
+      "names": [
+        "-[IntelEEPro10Plus coldInit]"
+      ],
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/IntelEEPro10+.m",
+      "source_line": 35,
+      "status": "control-flow-confirmed",
+      "reason": "IDA pseudocode and disassembly reviewed against the mapped source, with independent review: branch order, register widths, bank changes, delays, selector arguments, ownership, queue transitions and return behavior. IDA method boundaries are authoritative; angr splits this relocatable Objective-C code differently.",
+      "reviewer": "Codex; independent review_82595",
+      "analyzer_agreement": {
+        "status": "disputed",
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA method partition selected after disassembly review; combined reference consensus is disputed."
+        ]
+      },
+      "artifacts": [
+        {
+          "kind": "analysis-reference",
+          "path": "published/analysis-reference-ida.json",
+          "sha256": "72A6F8D89298AE59EDD01AF3B96BE8135AE8F5232625D930D23E452CE7ED863E"
+        },
+        {
+          "kind": "consensus-reference",
+          "path": "published/consensus-reference.json",
+          "sha256": "C1E67C7B88913E8ED8162BEF93420D7B3683F40304962FE3C83A701FF6E59358"
+        },
+        {
+          "kind": "ida-review",
+          "path": "ida-review.json",
+          "sha256": "344C3C8E643FF116B0B5349B2FC72473C77540EE0540984B19E63ED4832A9597"
+        }
+      ]
+    },
+    {
+      "address": 16808,
+      "size": 220,
+      "names": [
+        "-[IntelEEPro10Plus resetChip]"
+      ],
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/IntelEEPro10+.m",
+      "source_line": 47,
+      "status": "control-flow-confirmed",
+      "reason": "IDA pseudocode and disassembly reviewed against the mapped source, with independent review: branch order, register widths, bank changes, delays, selector arguments, ownership, queue transitions and return behavior. IDA method boundaries are authoritative; angr splits this relocatable Objective-C code differently.",
+      "reviewer": "Codex; independent review_82595",
+      "analyzer_agreement": {
+        "status": "disputed",
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA method partition selected after disassembly review; combined reference consensus is disputed."
+        ]
+      },
+      "artifacts": [
+        {
+          "kind": "analysis-reference",
+          "path": "published/analysis-reference-ida.json",
+          "sha256": "72A6F8D89298AE59EDD01AF3B96BE8135AE8F5232625D930D23E452CE7ED863E"
+        },
+        {
+          "kind": "consensus-reference",
+          "path": "published/consensus-reference.json",
+          "sha256": "C1E67C7B88913E8ED8162BEF93420D7B3683F40304962FE3C83A701FF6E59358"
+        },
+        {
+          "kind": "ida-review",
+          "path": "ida-review.json",
+          "sha256": "344C3C8E643FF116B0B5349B2FC72473C77540EE0540984B19E63ED4832A9597"
+        }
+      ]
+    },
+    {
+      "address": 17028,
+      "size": 224,
+      "names": [
+        "-[IntelEEPro10Plus irqConfig]"
+      ],
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/IntelEEPro10+.m",
+      "source_line": 57,
+      "status": "control-flow-confirmed",
+      "reason": "IDA pseudocode and disassembly reviewed against the mapped source, with independent review: branch order, register widths, bank changes, delays, selector arguments, ownership, queue transitions and return behavior. IDA method boundaries are authoritative; angr splits this relocatable Objective-C code differently.",
+      "reviewer": "Codex; independent review_82595",
+      "analyzer_agreement": {
+        "status": "disputed",
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA method partition selected after disassembly review; combined reference consensus is disputed."
+        ]
+      },
+      "artifacts": [
+        {
+          "kind": "analysis-reference",
+          "path": "published/analysis-reference-ida.json",
+          "sha256": "72A6F8D89298AE59EDD01AF3B96BE8135AE8F5232625D930D23E452CE7ED863E"
+        },
+        {
+          "kind": "consensus-reference",
+          "path": "published/consensus-reference.json",
+          "sha256": "C1E67C7B88913E8ED8162BEF93420D7B3683F40304962FE3C83A701FF6E59358"
+        },
+        {
+          "kind": "ida-review",
+          "path": "ida-review.json",
+          "sha256": "344C3C8E643FF116B0B5349B2FC72473C77540EE0540984B19E63ED4832A9597"
+        }
+      ]
+    },
+    {
+      "address": 17252,
+      "size": 12,
+      "names": [
+        "-[IntelEEPro10Plus onboardMemoryPresent]"
+      ],
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/IntelEEPro10+.m",
+      "source_line": 70,
+      "status": "control-flow-confirmed",
+      "reason": "IDA pseudocode and disassembly reviewed against the mapped source, with independent review: branch order, register widths, bank changes, delays, selector arguments, ownership, queue transitions and return behavior. IDA method boundaries are authoritative; angr splits this relocatable Objective-C code differently.",
+      "reviewer": "Codex; independent review_82595",
+      "analyzer_agreement": {
+        "status": "disputed",
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA method partition selected after disassembly review; combined reference consensus is disputed."
+        ]
+      },
+      "artifacts": [
+        {
+          "kind": "analysis-reference",
+          "path": "published/analysis-reference-ida.json",
+          "sha256": "72A6F8D89298AE59EDD01AF3B96BE8135AE8F5232625D930D23E452CE7ED863E"
+        },
+        {
+          "kind": "consensus-reference",
+          "path": "published/consensus-reference.json",
+          "sha256": "C1E67C7B88913E8ED8162BEF93420D7B3683F40304962FE3C83A701FF6E59358"
+        },
+        {
+          "kind": "ida-review",
+          "path": "ida-review.json",
+          "sha256": "344C3C8E643FF116B0B5349B2FC72473C77540EE0540984B19E63ED4832A9597"
+        }
+      ]
+    },
+    {
+      "address": 17264,
+      "size": 12,
+      "names": [
+        "-[IntelEEPro10Plus description]"
+      ],
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/IntelEEPro10+.m",
+      "source_line": 71,
+      "status": "control-flow-confirmed",
+      "reason": "IDA pseudocode and disassembly reviewed against the mapped source, with independent review: branch order, register widths, bank changes, delays, selector arguments, ownership, queue transitions and return behavior. IDA method boundaries are authoritative; angr splits this relocatable Objective-C code differently.",
+      "reviewer": "Codex; independent review_82595",
+      "analyzer_agreement": {
+        "status": "disputed",
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA method partition selected after disassembly review; combined reference consensus is disputed."
+        ]
+      },
+      "artifacts": [
+        {
+          "kind": "analysis-reference",
+          "path": "published/analysis-reference-ida.json",
+          "sha256": "72A6F8D89298AE59EDD01AF3B96BE8135AE8F5232625D930D23E452CE7ED863E"
+        },
+        {
+          "kind": "consensus-reference",
+          "path": "published/consensus-reference.json",
+          "sha256": "C1E67C7B88913E8ED8162BEF93420D7B3683F40304962FE3C83A701FF6E59358"
+        },
+        {
+          "kind": "ida-review",
+          "path": "ida-review.json",
+          "sha256": "344C3C8E643FF116B0B5349B2FC72473C77540EE0540984B19E63ED4832A9597"
+        }
+      ]
+    },
+    {
+      "address": 17276,
+      "size": 229,
+      "names": [
+        "+[IntelEEPro10 probe:]"
+      ],
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/IntelEEPro10.m",
+      "source_line": 5,
+      "status": "control-flow-confirmed",
+      "reason": "IDA pseudocode and disassembly reviewed against the mapped source, with independent review: branch order, register widths, bank changes, delays, selector arguments, ownership, queue transitions and return behavior. IDA method boundaries are authoritative; angr splits this relocatable Objective-C code differently.",
+      "reviewer": "Codex; independent review_82595",
+      "analyzer_agreement": {
+        "status": "disputed",
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA method partition selected after disassembly review; combined reference consensus is disputed."
+        ]
+      },
+      "artifacts": [
+        {
+          "kind": "analysis-reference",
+          "path": "published/analysis-reference-ida.json",
+          "sha256": "72A6F8D89298AE59EDD01AF3B96BE8135AE8F5232625D930D23E452CE7ED863E"
+        },
+        {
+          "kind": "consensus-reference",
+          "path": "published/consensus-reference.json",
+          "sha256": "C1E67C7B88913E8ED8162BEF93420D7B3683F40304962FE3C83A701FF6E59358"
+        },
+        {
+          "kind": "ida-review",
+          "path": "ida-review.json",
+          "sha256": "344C3C8E643FF116B0B5349B2FC72473C77540EE0540984B19E63ED4832A9597"
+        }
+      ]
+    },
+    {
+      "address": 17508,
+      "size": 66,
+      "names": [
+        "-[IntelEEPro10 intelEEPro10PnPInit]"
+      ],
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/IntelEEPro10.m",
+      "source_line": 33,
+      "status": "control-flow-confirmed",
+      "reason": "IDA pseudocode and disassembly reviewed against the mapped source, with independent review: branch order, register widths, bank changes, delays, selector arguments, ownership, queue transitions and return behavior. IDA method boundaries are authoritative; angr splits this relocatable Objective-C code differently.",
+      "reviewer": "Codex; independent review_82595",
+      "analyzer_agreement": {
+        "status": "disputed",
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA method partition selected after disassembly review; combined reference consensus is disputed."
+        ]
+      },
+      "artifacts": [
+        {
+          "kind": "analysis-reference",
+          "path": "published/analysis-reference-ida.json",
+          "sha256": "72A6F8D89298AE59EDD01AF3B96BE8135AE8F5232625D930D23E452CE7ED863E"
+        },
+        {
+          "kind": "consensus-reference",
+          "path": "published/consensus-reference.json",
+          "sha256": "C1E67C7B88913E8ED8162BEF93420D7B3683F40304962FE3C83A701FF6E59358"
+        },
+        {
+          "kind": "ida-review",
+          "path": "ida-review.json",
+          "sha256": "344C3C8E643FF116B0B5349B2FC72473C77540EE0540984B19E63ED4832A9597"
+        }
+      ]
+    },
+    {
+      "address": 17576,
+      "size": 1139,
+      "names": [
+        "-[IntelEEPro10 coldInit]"
+      ],
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/IntelEEPro10.m",
+      "source_line": 47,
+      "status": "control-flow-confirmed",
+      "reason": "IDA pseudocode and disassembly reviewed against the mapped source, with independent review: branch order, register widths, bank changes, delays, selector arguments, ownership, queue transitions and return behavior. IDA method boundaries are authoritative; angr splits this relocatable Objective-C code differently.",
+      "reviewer": "Codex; independent review_82595",
+      "analyzer_agreement": {
+        "status": "disputed",
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA method partition selected after disassembly review; combined reference consensus is disputed."
+        ]
+      },
+      "artifacts": [
+        {
+          "kind": "analysis-reference",
+          "path": "published/analysis-reference-ida.json",
+          "sha256": "72A6F8D89298AE59EDD01AF3B96BE8135AE8F5232625D930D23E452CE7ED863E"
+        },
+        {
+          "kind": "consensus-reference",
+          "path": "published/consensus-reference.json",
+          "sha256": "C1E67C7B88913E8ED8162BEF93420D7B3683F40304962FE3C83A701FF6E59358"
+        },
+        {
+          "kind": "ida-review",
+          "path": "ida-review.json",
+          "sha256": "344C3C8E643FF116B0B5349B2FC72473C77540EE0540984B19E63ED4832A9597"
+        }
+      ]
+    },
+    {
+      "address": 18716,
+      "size": 228,
+      "names": [
+        "-[IntelEEPro10 resetChip]"
+      ],
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/IntelEEPro10.m",
+      "source_line": 61,
+      "status": "control-flow-confirmed",
+      "reason": "IDA pseudocode and disassembly reviewed against the mapped source, with independent review: branch order, register widths, bank changes, delays, selector arguments, ownership, queue transitions and return behavior. IDA method boundaries are authoritative; angr splits this relocatable Objective-C code differently.",
+      "reviewer": "Codex; independent review_82595",
+      "analyzer_agreement": {
+        "status": "disputed",
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA method partition selected after disassembly review; combined reference consensus is disputed."
+        ]
+      },
+      "artifacts": [
+        {
+          "kind": "analysis-reference",
+          "path": "published/analysis-reference-ida.json",
+          "sha256": "72A6F8D89298AE59EDD01AF3B96BE8135AE8F5232625D930D23E452CE7ED863E"
+        },
+        {
+          "kind": "consensus-reference",
+          "path": "published/consensus-reference.json",
+          "sha256": "C1E67C7B88913E8ED8162BEF93420D7B3683F40304962FE3C83A701FF6E59358"
+        },
+        {
+          "kind": "ida-review",
+          "path": "ida-review.json",
+          "sha256": "344C3C8E643FF116B0B5349B2FC72473C77540EE0540984B19E63ED4832A9597"
+        }
+      ]
+    },
+    {
+      "address": 18944,
+      "size": 224,
+      "names": [
+        "-[IntelEEPro10 irqConfig]"
+      ],
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/IntelEEPro10.m",
+      "source_line": 71,
+      "status": "control-flow-confirmed",
+      "reason": "IDA pseudocode and disassembly reviewed against the mapped source, with independent review: branch order, register widths, bank changes, delays, selector arguments, ownership, queue transitions and return behavior. IDA method boundaries are authoritative; angr splits this relocatable Objective-C code differently.",
+      "reviewer": "Codex; independent review_82595",
+      "analyzer_agreement": {
+        "status": "disputed",
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA method partition selected after disassembly review; combined reference consensus is disputed."
+        ]
+      },
+      "artifacts": [
+        {
+          "kind": "analysis-reference",
+          "path": "published/analysis-reference-ida.json",
+          "sha256": "72A6F8D89298AE59EDD01AF3B96BE8135AE8F5232625D930D23E452CE7ED863E"
+        },
+        {
+          "kind": "consensus-reference",
+          "path": "published/consensus-reference.json",
+          "sha256": "C1E67C7B88913E8ED8162BEF93420D7B3683F40304962FE3C83A701FF6E59358"
+        },
+        {
+          "kind": "ida-review",
+          "path": "ida-review.json",
+          "sha256": "344C3C8E643FF116B0B5349B2FC72473C77540EE0540984B19E63ED4832A9597"
+        }
+      ]
+    },
+    {
+      "address": 19168,
+      "size": 12,
+      "names": [
+        "-[IntelEEPro10 onboardMemoryPresent]"
+      ],
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/IntelEEPro10.m",
+      "source_line": 85,
+      "status": "control-flow-confirmed",
+      "reason": "IDA pseudocode and disassembly reviewed against the mapped source, with independent review: branch order, register widths, bank changes, delays, selector arguments, ownership, queue transitions and return behavior. IDA method boundaries are authoritative; angr splits this relocatable Objective-C code differently.",
+      "reviewer": "Codex; independent review_82595",
+      "analyzer_agreement": {
+        "status": "disputed",
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA method partition selected after disassembly review; combined reference consensus is disputed."
+        ]
+      },
+      "artifacts": [
+        {
+          "kind": "analysis-reference",
+          "path": "published/analysis-reference-ida.json",
+          "sha256": "72A6F8D89298AE59EDD01AF3B96BE8135AE8F5232625D930D23E452CE7ED863E"
+        },
+        {
+          "kind": "consensus-reference",
+          "path": "published/consensus-reference.json",
+          "sha256": "C1E67C7B88913E8ED8162BEF93420D7B3683F40304962FE3C83A701FF6E59358"
+        },
+        {
+          "kind": "ida-review",
+          "path": "ida-review.json",
+          "sha256": "344C3C8E643FF116B0B5349B2FC72473C77540EE0540984B19E63ED4832A9597"
+        }
+      ]
+    },
+    {
+      "address": 19180,
+      "size": 12,
+      "names": [
+        "-[IntelEEPro10 description]"
+      ],
+      "source_path": "src/drivers-i386/network/drvIntel82595/Intel82595NetworkDriver.drvproj/Intel82595NetworkDriver.lksproj/IntelEEPro10.m",
+      "source_line": 86,
+      "status": "control-flow-confirmed",
+      "reason": "IDA pseudocode and disassembly reviewed against the mapped source, with independent review: branch order, register widths, bank changes, delays, selector arguments, ownership, queue transitions and return behavior. IDA method boundaries are authoritative; angr splits this relocatable Objective-C code differently.",
+      "reviewer": "Codex; independent review_82595",
+      "analyzer_agreement": {
+        "status": "disputed",
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA method partition selected after disassembly review; combined reference consensus is disputed."
+        ]
+      },
+      "artifacts": [
+        {
+          "kind": "analysis-reference",
+          "path": "published/analysis-reference-ida.json",
+          "sha256": "72A6F8D89298AE59EDD01AF3B96BE8135AE8F5232625D930D23E452CE7ED863E"
+        },
+        {
+          "kind": "consensus-reference",
+          "path": "published/consensus-reference.json",
+          "sha256": "C1E67C7B88913E8ED8162BEF93420D7B3683F40304962FE3C83A701FF6E59358"
+        },
+        {
+          "kind": "ida-review",
+          "path": "ida-review.json",
+          "sha256": "344C3C8E643FF116B0B5349B2FC72473C77540EE0540984B19E63ED4832A9597"
+        }
+      ]
+    },
+    {
+      "address": 19192,
+      "size": 12,
+      "names": [
+        "+[Intel82595NetworkDriverKernelServerInstance kernelServerInstance]"
+      ],
+      "source_path": null,
+      "source_line": null,
+      "status": "control-flow-confirmed",
+      "reason": "Generated kernel-server instance accessor returns the address of Intel82595NetworkDriver_instance; supplied by kernelserver.make, with no handwritten definition.",
+      "reviewer": "Codex; independent review_82595",
+      "analyzer_agreement": {
+        "status": "disputed",
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA method partition selected after disassembly review; combined reference consensus is disputed."
+        ]
+      },
+      "artifacts": [
+        {
+          "kind": "analysis-reference",
+          "path": "published/analysis-reference-ida.json",
+          "sha256": "72A6F8D89298AE59EDD01AF3B96BE8135AE8F5232625D930D23E452CE7ED863E"
+        },
+        {
+          "kind": "consensus-reference",
+          "path": "published/consensus-reference.json",
+          "sha256": "C1E67C7B88913E8ED8162BEF93420D7B3683F40304962FE3C83A701FF6E59358"
+        },
+        {
+          "kind": "ida-review",
+          "path": "ida-review.json",
+          "sha256": "344C3C8E643FF116B0B5349B2FC72473C77540EE0540984B19E63ED4832A9597"
+        }
+      ]
+    },
+    {
+      "address": 19204,
+      "size": 12,
+      "names": [
+        "+[Intel82595NetworkDriverVersion driverKitVersionForIntel82595NetworkDriver]"
+      ],
+      "source_path": null,
+      "source_line": null,
+      "status": "control-flow-confirmed",
+      "reason": "Generated driverKitVersion accessor returns 500 (DriverKit 5.00); supplied by kernelserver.make, with no handwritten definition.",
+      "reviewer": "Codex; independent review_82595",
+      "analyzer_agreement": {
+        "status": "disputed",
+        "analyzers": [
+          "IDA",
+          "angr"
+        ],
+        "reasons": [
+          "IDA method partition selected after disassembly review; combined reference consensus is disputed."
+        ]
+      },
+      "artifacts": [
+        {
+          "kind": "analysis-reference",
+          "path": "published/analysis-reference-ida.json",
+          "sha256": "72A6F8D89298AE59EDD01AF3B96BE8135AE8F5232625D930D23E452CE7ED863E"
+        },
+        {
+          "kind": "consensus-reference",
+          "path": "published/consensus-reference.json",
+          "sha256": "C1E67C7B88913E8ED8162BEF93420D7B3683F40304962FE3C83A701FF6E59358"
+        },
+        {
+          "kind": "ida-review",
+          "path": "ida-review.json",
+          "sha256": "344C3C8E643FF116B0B5349B2FC72473C77540EE0540984B19E63ED4832A9597"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+AFTER_BUILD += copy-processviewer-resources
+
+.PHONY: copy-processviewer-resources
+copy-processviewer-resources:
+	$(MKDIRS) "$(GLOBAL_RESOURCE_DIR)"
+	cd Resources && tar cf - . | (cd "$(GLOBAL_RESOURCE_DIR)" && tar xpf -)

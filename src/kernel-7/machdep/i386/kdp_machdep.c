@@ -58,6 +58,13 @@
 #import <bsd/sys/conf.h>
 
 #define KDP_TEST_HARNESS 0
+
+void
+call_kdp(void)
+{
+    asm volatile("int3");
+}
+
 #if KDP_TEST_HARNESS
 /*#define dprintf(x) safe_prf(x)*/
 #define dprintf(x) kprintf x

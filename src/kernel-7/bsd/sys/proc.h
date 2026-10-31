@@ -79,6 +79,7 @@ struct	session {
 	struct	vnode *s_ttyvp;		/* Vnode of controlling terminal. */
 	struct	tty *s_ttyp;		/* Controlling terminal. */
 	char	s_login[MAXLOGNAME];	/* Setlogin() name. */
+	pid_t	s_sid;			/* Session ID, outlives s_leader. */
 };
 
 /*

@@ -87,6 +87,19 @@
 
 - allocateResourcesForDeviceDescription: descr;
 
+/*
+ * Message signalled interrupts.  Returns the irq the function raises
+ * once enabled, or -1 when the machine is not in APIC mode or the
+ * function has neither MSI nor MSI-X.
+ */
+- (int)enableMSIForDevice: (unsigned char)devNum
+		 function: (unsigned char)funNum
+		      bus: (unsigned char)busNum;
+
+- (int)disableMSIForDevice: (unsigned char)devNum
+		  function: (unsigned char)funNum
+		       bus: (unsigned char)busNum;
+
 @end
 
 #endif	/* DRIVER_PRIVATE */

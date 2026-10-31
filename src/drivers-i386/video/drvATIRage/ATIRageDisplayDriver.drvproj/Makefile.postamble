@@ -1,0 +1,7 @@
+# Recovered tables already include both fields; preserve their reference bytes.
+.PHONY: post_copy_tables driver_version_edit
+post_copy_tables:
+	@:
+
+driver_version_edit:
+	@:

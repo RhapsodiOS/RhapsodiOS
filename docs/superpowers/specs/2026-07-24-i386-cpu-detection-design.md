@@ -64,7 +64,7 @@ where it is consumed by prebuilt Rhapsody DR2 binaries — `dyld`, `libsys` — 
 cannot be patched and whose arch tables stop at `CPU_SUBTYPE_PENTII_M5` =
 `CPU_SUBTYPE_INTEL(6, 5)`.
 
-Our own `src/cctools-2/libmacho/arch.c` degrades gracefully for unknown i386
+Our own `src/Developer/Commands/cctools-2/libmacho/arch.c` degrades gracefully for unknown i386
 subtypes (`NXGetArchInfoFromCpuType()` synthesizes a description;
 `NXFindBestFatArch()` has a `default:` fallback chain). Whether DR2's older copy
 does the same is unverifiable without booting. The design therefore reports a
@@ -79,7 +79,7 @@ Two kernel files:
   override.
 
 No changes to `mach/machine.h`, `kern/mach_fat.c`, `kern/mach_loader.c`,
-`bsd/kern/kern_sysctl.c`, or anything under `src/cctools-2/`.
+`bsd/kern/kern_sysctl.c`, or anything under `src/Developer/Commands/cctools-2/`.
 
 Plus one host-side addition outside the kernel: `tools/cpusubtype-test/`, a
 regression test that compiles the real `kern_machdep.c` on the development host
@@ -96,7 +96,7 @@ Replace both i386 functions with a host-subtype-agnostic form modeled on
 `machdep/ppc/kern_machdep.c`, which carries Apple's own comment that it should
 track `best_arch.c` in cctools. The preference order is taken from the
 `CPU_TYPE_I386` case of `NXFindBestFatArch()` in
-`src/cctools-2/libmacho/arch.c`: after an exact match, a post-Pentium host
+`src/Developer/Commands/cctools-2/libmacho/arch.c`: after an exact match, a post-Pentium host
 prefers `586`, then `486`, then `i386_ALL`, then `486SX`, then any other Intel
 subtype.
 

@@ -1,0 +1,69 @@
+{
+    IBClasses = (
+        {
+            ACTIONS = {exportProcessList = id; showHelp = id; }; 
+            CLASS = FirstResponder; 
+            LANGUAGE = ObjC; 
+            SUPERCLASS = NSObject; 
+        }, 
+        {
+            CLASS = Inspector; 
+            LANGUAGE = ObjC; 
+            OUTLETS = {
+                argsView = id; 
+                argumentsTable = id; 
+                invalidSelectionText = id; 
+                invalidSelectionView = id; 
+                parentField = id; 
+                pathField = id; 
+                pidField = id; 
+                pidView = id; 
+                processGroupField = id; 
+                realMemoryField = id; 
+                savedUidField = id; 
+                splitView = id; 
+                statsView = id; 
+                tabContainer = id; 
+                tabView = id; 
+                terminalField = id; 
+                timeField = id; 
+                virtualMemoryField = id; 
+            }; 
+            SUPERCLASS = NSObject; 
+        }, 
+        {
+            ACTIONS = {
+                bumpRate = id; 
+                changeSortOrder = id; 
+                exportProcessList = id; 
+                getProcesses = id; 
+                hideColumn = id; 
+                killProcesses = id; 
+                print = id; 
+                refilter = id; 
+                resetRate = id; 
+                resort = id; 
+                setShowType = id; 
+                showAboutPanel = id; 
+                showAllColumns = id; 
+                showMoreInfoAboutSelection = id; 
+                toggleMoreInfo = id; 
+            }; 
+            CLASS = ProcessControl; 
+            LANGUAGE = ObjC; 
+            OUTLETS = {
+                countField = id; 
+                filterText = id; 
+                inspector = id; 
+                moreInfoSwitch = id; 
+                processTable = id; 
+                rateField = id; 
+                sortOrderButton = id; 
+                typePopup = id; 
+            }; 
+            SUPERCLASS = NSResponder; 
+        }, 
+        {CLASS = ProcessTableView; LANGUAGE = ObjC; SUPERCLASS = NSTableView; }
+    ); 
+    IBVersion = 1; 
+}

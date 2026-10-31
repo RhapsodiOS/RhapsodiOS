@@ -46,6 +46,7 @@
 #import <machdep/i386/idt.h>
 #import <machdep/i386/configure.h>
 #import <machdep/i386/kernBootStruct.h>
+#import <machdep/i386/memmap.h>
 #import <machdep/i386/serial_dbg.h>
 #include <sys/reboot.h>
 #include <sys/errno.h>
@@ -54,10 +55,20 @@
 
 extern char rootdevice[];
 extern int nbuf;
-extern int srv;
 extern int ncl;
 static unsigned int maxmem;
 static int subtype = 0;
+
+/*
+ * Try supported platform features by default. A zero-valued boot switch
+ * disables that feature for recovery; a nonzero value still requires usable
+ * hardware/firmware. rsdp=0x... is where the booter found the ACPI tables.
+ */
+int	pexpert_apic = 1;
+int	pexpert_rsdp;
+int	pexpert_lapictimer = 1;
+int	pexpert_smp = 1;
+int	pexpert_acpi = 1;
 
 struct kernargs {
 	char *name;
@@ -67,9 +78,13 @@ struct kernargs {
 	"rootdev", (int*) rootdevice,
 	"maxmem", &maxmem,
 	"subtype", &subtype,
-	"srv", &srv,
 	"ncl", &ncl,
 	"serial", &serial_dbg_port,
+	"apic", &pexpert_apic,
+	"rsdp", &pexpert_rsdp,
+	"lapictimer", &pexpert_lapictimer,
+	"smp", &pexpert_smp,
+	"acpi", &pexpert_acpi,
 	0,0,
 };
 
@@ -88,6 +103,10 @@ struct mem_region	mem_region[2];
 int			num_regions;
 
 vm_size_t		mem_size;
+int			mem_map_ranges = 0;	/* ranges, if the map set end of memory */
+vm_offset_t		mem_map_top = 0;	/* the map's contiguous RAM top */
+vm_size_t		mem_size_detected = 0;	/* before the clamp */
+vm_size_t		mem_size_budget = 0;	/* kernel window left for it */
 
 /* parameters passed from bootstrap loader */
 unsigned int cnvmem = 0;	/* must be in .data section */
@@ -436,7 +455,8 @@ size_memory(void)
 {
     KERNBOOTSTRUCT	*kernBootStruct = (KERNBOOTSTRUCT *)KERNSTRUCT_ADDR;
     vm_offset_t		end_of_image, end_of_memory;
-    int			i;
+    int			i, n;
+    unsigned int	top;
 #define KB(x)		((x)*1024)
 
     end_of_image = getlastaddr();
@@ -444,10 +464,37 @@ size_memory(void)
     for (i=0; i < kernBootStruct->numBootDrivers; i++)
         end_of_image += kernBootStruct->driverConfig[i].size;
 
-    if (maxmem)
-        end_of_memory = KB(maxmem);
-    else
-        end_of_memory = KB(extmem);
+    n = memmap_count(kernBootStruct->memMapCount);
+    top = n ? memmap_contiguous_top(kernBootStruct->memMap, n) : 0x100000;
+    end_of_memory = memmap_end_of_memory(top, maxmem ? KB(maxmem) : 0,
+					 KB(extmem));
+    if (n && top > 0x100000) {
+	mem_map_ranges = n;
+	mem_map_top = top;
+    }
+
+    /*
+     * Physical memory is mapped V == P from kernel VA 0, pmap_bootstrap()
+     * reserves more kernel VA above it, and maps the VESA frame buffer above
+     * that.  All of it has to fit the kernel's window, so give back whatever
+     * memory does not.  The frame buffer comes off the budget first, so a
+     * large machine keeps its VBE console.
+     */
+    mem_size_detected = end_of_memory;
+    mem_size_budget = VM_MAX_KERNEL_ADDRESS - VM_MIN_KERNEL_ADDRESS;
+    if (kernBootStruct->vbeCurrentMode.xResolution != 0) {
+	boot_vbe_mode	*mode = &kernBootStruct->vbeCurrentMode;
+	vm_offset_t	start = trunc_page(mode->frameBuffer);
+	vm_size_t	fb;
+
+	/* the expression pmap_bootstrap() maps */
+	fb = round_page(mode->frameBuffer +
+			mode->bytesPerScanline * mode->yResolution +
+			(mode->frameBuffer - start)) - start;
+	if (fb < mem_size_budget)
+	    mem_size_budget -= fb;
+    }
+    end_of_memory = memmap_clamp(end_of_memory, mem_size_budget, page_size);
 
     /*
      * This is the Mach notion of

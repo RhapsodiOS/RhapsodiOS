@@ -5,6 +5,7 @@
         H_FILES = (); 
         OTHER_LINKED = (
             creat.c, 
+            ftime.c, 
             gethostid.c, 
             getwd.c, 
             killpg.c, 

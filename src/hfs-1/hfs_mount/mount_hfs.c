@@ -49,6 +49,7 @@
 #include "mount_hfs.h"
 #include "MacOSTypes.h"
 #include "HFSVolumes.h"
+#include "hfs_endian.h"
 
 #include <sys/attr.h>
 
@@ -200,13 +201,13 @@ u_long getVolumeCreateDate(const char *device)
 
 	/* get the create date from the MDB (embedded case) or Volume Header */
 
-	if ((mdbPtr->drSigWord == kHFSSigWord)  &&  (mdbPtr->drEmbedSigWord == kHFSPlusSigWord)) {
+	if ((SWAP_BE16(mdbPtr->drSigWord) == kHFSSigWord)  &&  (SWAP_BE16(mdbPtr->drEmbedSigWord) == kHFSPlusSigWord)) {
 		/* Embedded volume*/
-		volume_create_time = mdbPtr->drCrDate;
-	} else if (mdbPtr->drSigWord == kHFSPlusSigWord ) {
+		volume_create_time = SWAP_BE32(mdbPtr->drCrDate);
+	} else if (SWAP_BE16(mdbPtr->drSigWord) == kHFSPlusSigWord ) {
 		HFSPlusVolumeHeader * volHdrPtr = (HFSPlusVolumeHeader *) bufPtr;
 
-		volume_create_time = volHdrPtr->createDate;
+		volume_create_time = SWAP_BE32(volHdrPtr->createDate);
 	} else {
 		goto exit;	/* cound not match signature */
 	}

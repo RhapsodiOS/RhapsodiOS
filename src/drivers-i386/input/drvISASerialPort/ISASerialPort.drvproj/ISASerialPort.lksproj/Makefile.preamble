@@ -15,3 +15,7 @@ OTHER_CFLAGS = -I$(NEXT_ROOT)$(SYSTEM_LIBRARY_DIR)/Frameworks/System.framework/P
 
 # Any custom linker flags you want to use
 # LDFLAGS +=
+
+# Nothing outside the driver includes its header, and the project names no
+# directory to install it in, which stops installhdrs.
+PUBLIC_HEADERS =

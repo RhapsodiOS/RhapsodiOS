@@ -1,0 +1,27 @@
+{
+  "schema_version": "profile-v1",
+  "name": "Interceptor PowerPC reconstruction",
+  "architecture": "ppc",
+  "endianness": "big",
+  "reference": {
+    "path": "${BINRECON_REFERENCE}",
+    "expected_size": 145364,
+    "expected_sha256": "8b98846ae99cc7b8120a5dcf8b9a21855700895d0df5fe0da403c9f183d63a96"
+  },
+  "analyzers": {
+    "ida": {
+      "enabled": true,
+      "executable": "C:/Program Files/IDA Professional 9.4/idat.exe",
+      "timeout_seconds": 900,
+      "version": "9.4"
+    },
+    "ghidra": {"enabled": false},
+    "angr": {"enabled": false}
+  },
+  "comparison": {
+    "acceptance": "normalized-functions",
+    "ignore_metadata": [],
+    "entry_points": []
+  },
+  "output_dir": "../out/interceptor-ppc"
+}

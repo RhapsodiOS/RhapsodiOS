@@ -5,7 +5,7 @@ from binrecon.macho import objc_methods_from_sections
 BASE = 0x1000
 
 
-def _build(prefix="<"):
+def _build(prefix="<", first_imp=0x2000):
     """One class with an instance and a class method, plus one category."""
     blob = bytearray(0x200)
 
@@ -29,7 +29,7 @@ def _build(prefix="<"):
     # objc_category: category_name, class_name, instance_methods, class_methods
     put(0x80, BASE + 0x120, BASE + 0x110, BASE + 0xE0, BASE + 0x170)
     # method lists: obsolete, count, then (sel, types, imp)
-    put(0xA0, 0, 1, BASE + 0x130, BASE + 0x140, 0x2000)
+    put(0xA0, 0, 1, BASE + 0x130, BASE + 0x140, first_imp)
     put(0xC0, 0, 1, BASE + 0x150, BASE + 0x140, 0x2100)
     put(0xE0, 0, 1, BASE + 0x160, BASE + 0x140, 0x2200)
     put(0x170, 0, 1, BASE + 0x190, BASE + 0x140, 0x2300)
@@ -60,6 +60,12 @@ def test_recovers_instance_class_and_category_methods():
         0x2200: ["-[Thing(Extra) extraThing]"],
         0x2300: ["+[Thing(Extra) makeExtra]"],
     }
+
+
+def test_indexes_a_method_whose_i386_loadable_imp_is_address_zero():
+    index = objc_methods_from_sections(_build(first_imp=0), SECTIONS)
+
+    assert index[0] == ["-[Thing doThing]"]
 
 
 def test_returns_empty_when_there_is_no_module_info():
@@ -103,6 +109,20 @@ def test_objc_method_index_is_empty_for_a_binary_with_no_objc(tmp_path):
     assert objc_method_index(target) == {}
 
 
+def test_objc_method_index_accepts_dylibs_in_both_byte_orders(tmp_path):
+    from tests.macho_fixture import MH_DYLIB, build_macho_fixture
+
+    for architecture in ("i386", "ppc"):
+        target = tmp_path / f"framework-{architecture}"
+        target.write_bytes(
+            build_macho_fixture(
+                file_type=MH_DYLIB, architecture=architecture, relocations=b""
+            )
+        )
+
+        assert objc_method_index(target) == {}
+
+
 def test_recovers_methods_from_big_endian_metadata():
     index = objc_methods_from_sections(_build(">"), SECTIONS, endianness="big")
 
@@ -116,3 +136,27 @@ def test_recovers_methods_from_big_endian_metadata():
 
 def test_big_endian_metadata_read_as_little_endian_finds_nothing():
     assert objc_methods_from_sections(_build(">"), SECTIONS) == {}
+
+
+def test_resolves_a_prebound_selector_outside_the_image():
+    """A selector pointer prebinding rewrote to an address outside the image
+    is recovered from ``method_names`` (imp -> symbol), the same fallback
+    ``objc_abi.ObjcReader.selector`` uses."""
+    blob = bytearray(_build())
+    # Point doThing's selector at an address no section backs.
+    struct.pack_into("<I", blob, 0xA0 + 8, 0x9000)
+
+    index = objc_methods_from_sections(
+        bytes(blob), SECTIONS, method_names={0x2000: "-[Thing doThing]"}
+    )
+
+    assert index[0x2000] == ["-[Thing doThing]"]
+
+
+def test_drops_a_prebound_selector_with_no_matching_symbol():
+    blob = bytearray(_build())
+    struct.pack_into("<I", blob, 0xA0 + 8, 0x9000)
+
+    index = objc_methods_from_sections(bytes(blob), SECTIONS)
+
+    assert 0x2000 not in index

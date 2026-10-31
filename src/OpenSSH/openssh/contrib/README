@@ -1,67 +1,70 @@
-Other patches and addons for OpenSSH. Please send submissions to 
-djm@ibs.com.au
-
-In this directory
------------------
-
-chroot.diff:
-
-Ricardo Cerqueira's <rmcc@clix.pt> patch to enable chrooting using the
-wu-ftpd style magic home directories (containing '/./'). More details in
-the head of the patch itself.
-
-make-ssh-known-hosts:
-
-Tero Kivinen's <Tero.Kivinen@hut.fi> PERL script to generate
-ssh_known_hosts files by trawling tjhrough the DNS. More details in the
-manpage.
-
-ssh-copy-id:
-
-Phil Hands' <phil@hands.com> shell script to automate the process of adding
-your public key to a remote machine's ~/.ssh/authorized_keys file.
-
-gnome-ssh-askpass:
-
-A GNOME passphrase requester of my own creation. Compilation instructions
-are in the top of the file.
-
-sshd.pam.generic:
-
-A generic PAM config file which may be useful on your system. YMMV
-
-sshd.pam.freebsd
-
-A PAM config file which works with FreeBSD's PAM port. Contributed by
-Dominik Brettnacher <domi@saargate.de>
-
-redhat:
-
-RPM spec file an scripts for building Redhat packages
-
-suse:
-
-RPM spec file an scripts for building SuSE packages
-
+Other patches and addons for OpenSSH. Please send submissions to
+djm@mindrot.org
 
 Externally maintained
 ---------------------
 
-liblogin:
+SSH Proxy Command -- connect.c
 
-liblogin is Andre Lucas' cross platform login library. It handles all the 
-yucky details of wtmp, utmp and lastlog (which every OS vendor has
-seen fit to implement differently) in one clean library.
+Shun-ichi GOTO <gotoh@imasy.or.jp> has written a very useful ProxyCommand
+which allows the use of outbound SSH from behind a SOCKS4, SOCKS5 or
+https CONNECT style proxy server. His page for connect.c has extensive
+documentation on its use as well as compiled versions for Win32.
 
-OpenSSH will require liblogin in the near future, but for now it is 
-recommended for users with login logging problems or curiosity.
+https://bitbucket.org/gotoh/connect/wiki/Home
 
-http://dspace.dial.pipex.com/andre.lucas/liblogin.html
 
 X11 SSH Askpass:
 
 Jim Knoble <jmknoble@pobox.com> has written an excellent X11
 passphrase requester. This is highly recommended:
 
-http://www.ntrnet.net/~jmknoble/software/x11-ssh-askpass/index.html
+http://www.jmknoble.net/software/x11-ssh-askpass/
+
+
+In this directory
+-----------------
+
+ssh-copy-id:
+
+Phil Hands' <phil@hands.com> shell script to automate the process of adding
+your public key to a remote machine's ~/.ssh/authorized_keys file.
+
+gnome-ssh-askpass[12]:
+
+A GNOME and Gtk2 passphrase requesters. Use "make gnome-ssh-askpass1" or
+"make gnome-ssh-askpass2" to build.
+
+sshd.pam.generic:
+
+A generic PAM config file which may be useful on your system. YMMV
+
+sshd.pam.freebsd:
+
+A PAM config file which works with FreeBSD's PAM port. Contributed by
+Dominik Brettnacher <domi@saargate.de>
+
+findssl.sh:
+
+Search for all instances of OpenSSL headers and libraries and print their 
+versions.  This is intended to help diagnose OpenSSH's "OpenSSL headers do not
+match your library" errors. 
+
+aix:
+    Files to build an AIX native (installp or SMIT installable) package.
+
+caldera:
+    RPM spec file and scripts for building Caldera OpenLinuix packages
+
+cygwin:
+    Support files for Cygwin
+
+hpux:
+    Support files for HP-UX
+
+redhat:
+    RPM spec file and scripts for building Redhat packages
+
+suse:
+    RPM spec file and scripts for building SuSE packages
 

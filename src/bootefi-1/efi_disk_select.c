@@ -8,6 +8,7 @@
 #define DP_END_TYPE         0x7F
 #define DP_MEDIA_TYPE       0x04
 #define DP_MEDIA_HARDDRIVE  0x01
+#define DP_MEDIA_CDROM      0x02
 
 static unsigned long le32(const unsigned char *p)
 {
@@ -52,5 +53,7 @@ int efi_dp_is_parent(const unsigned char *disk, const unsigned char *part)
     for (i = 0; i < n; i++)
         if (disk[i] != part[i])
             return 0;
-    return part[n] == DP_MEDIA_TYPE && part[n + 1] == DP_MEDIA_HARDDRIVE;
+    return part[n] == DP_MEDIA_TYPE &&
+           (part[n + 1] == DP_MEDIA_HARDDRIVE ||
+            part[n + 1] == DP_MEDIA_CDROM);
 }

@@ -1,0 +1,437 @@
+{
+ "categories": [],
+ "classes": [
+  {
+   "class_methods": [
+    {
+     "selector": "allocWithZone:",
+     "types": "@12@8:12^{?=}16"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "characterAtIndex:",
+     "types": "S12@8:12I16"
+    },
+    {
+     "selector": "length",
+     "types": "I8@8:12"
+    },
+    {
+     "selector": "initWithBytes:length:encoding:",
+     "types": "@20@8:12r*16I20I24"
+    },
+    {
+     "selector": "initWithData:encoding:",
+     "types": "@16@8:12@16I20"
+    },
+    {
+     "selector": "initWithFormat:locale:arguments:",
+     "types": "@20@8:12@16@20^v24"
+    },
+    {
+     "selector": "initWithString:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "initWithCString:",
+     "types": "@12@8:12r*16"
+    },
+    {
+     "selector": "initWithCString:length:",
+     "types": "@16@8:12r*16I20"
+    },
+    {
+     "selector": "initWithCStringNoCopy:length:freeWhenDone:",
+     "types": "@17@8:12*16I20c24"
+    },
+    {
+     "selector": "initWithCharacters:length:",
+     "types": "@16@8:12r^S16I20"
+    },
+    {
+     "selector": "initWithCharactersNoCopy:length:freeWhenDone:",
+     "types": "@17@8:12^S16I20c24"
+    },
+    {
+     "selector": "init",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "dealloc",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "release",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "retainCount",
+     "types": "I8@8:12"
+    },
+    {
+     "selector": "retain",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "autorelease",
+     "types": "@8@8:12"
+    }
+   ],
+   "instance_size": 8,
+   "ivars": [
+    {
+     "name": "zoneForString",
+     "offset": 4,
+     "type": "^{?}"
+    }
+   ],
+   "name": "NSPlaceholderString",
+   "superclass": "NSString"
+  },
+  {
+   "class_methods": [
+    {
+     "selector": "stringWithContentsOfURL:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "stringWithContentsOfFile:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "stringWithFormat:locale:",
+     "types": "@16@8:12@16@20"
+    },
+    {
+     "selector": "stringWithFormat:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "localizedStringWithFormat:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "stringWithCString:length:",
+     "types": "@16@8:12r*16I20"
+    },
+    {
+     "selector": "stringWithCString:",
+     "types": "@12@8:12r*16"
+    },
+    {
+     "selector": "stringWithCharacters:length:",
+     "types": "@16@8:12r^S16I20"
+    },
+    {
+     "selector": "stringWithString:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "string",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "allocWithZone:",
+     "types": "@12@8:12^{?=}16"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "initWithCoder:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "encodeWithCoder:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "replacementObjectForPortCoder:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "classForCoder",
+     "types": "#8@8:12"
+    },
+    {
+     "selector": "initWithFormat:locale:arguments:",
+     "types": "@20@8:12@16@20^v24"
+    },
+    {
+     "selector": "initWithCStringNoCopy:length:freeWhenDone:",
+     "types": "@17@8:12*16I20c24"
+    },
+    {
+     "selector": "initWithCharactersNoCopy:length:freeWhenDone:",
+     "types": "@17@8:12^S16I20c24"
+    },
+    {
+     "selector": "initWithFormat:arguments:",
+     "types": "@16@8:12@16^v20"
+    },
+    {
+     "selector": "initWithFormat:locale:",
+     "types": "@16@8:12@16@20"
+    },
+    {
+     "selector": "initWithFormat:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "initWithContentsOfURL:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "initWithContentsOfFile:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "_initWithDataOfUnknownEncoding:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "initWithData:encoding:",
+     "types": "@16@8:12@16I20"
+    },
+    {
+     "selector": "initWithString:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "initWithCharacters:length:",
+     "types": "@16@8:12r^S16I20"
+    },
+    {
+     "selector": "initWithCString:",
+     "types": "@12@8:12r*16"
+    },
+    {
+     "selector": "initWithCString:length:",
+     "types": "@16@8:12r*16I20"
+    },
+    {
+     "selector": "writeToURL:atomically:",
+     "types": "c13@8:12@16c20"
+    },
+    {
+     "selector": "writeToFile:atomically:",
+     "types": "c13@8:12@16c20"
+    },
+    {
+     "selector": "displayableString",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "lineRangeForRange:",
+     "types": "{?=II}16@8:12{?=II}16"
+    },
+    {
+     "selector": "getLineStart:end:contentsEnd:forRange:",
+     "types": "v28@8:12^I16^I20^I24{?=II}28"
+    },
+    {
+     "selector": "capitalizedString",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "lowercaseString",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "uppercaseString",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "_caseCopyAux::flags:",
+     "types": "@20@8:12^?16^?20I24"
+    },
+    {
+     "selector": "intValue",
+     "types": "i8@8:12"
+    },
+    {
+     "selector": "floatValue",
+     "types": "f8@8:12"
+    },
+    {
+     "selector": "doubleValue",
+     "types": "d8@8:12"
+    },
+    {
+     "selector": "stringByAppendingFormat:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "stringByAppendingString:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "substringToIndex:",
+     "types": "@12@8:12I16"
+    },
+    {
+     "selector": "substringFromIndex:",
+     "types": "@12@8:12I16"
+    },
+    {
+     "selector": "substringWithRange:",
+     "types": "@16@8:12{?=II}16"
+    },
+    {
+     "selector": "_newSubstringFromRange:zone:",
+     "types": "@20@8:12{?=II}16^{?=}24"
+    },
+    {
+     "selector": "_newSubstringWithRange:zone:",
+     "types": "@20@8:12{?=II}16^{?=}24"
+    },
+    {
+     "selector": "getCharacters:",
+     "types": "v12@8:12^S16"
+    },
+    {
+     "selector": "getCharacters:range:",
+     "types": "v20@8:12^S16{?=II}20"
+    },
+    {
+     "selector": "hasSuffix:",
+     "types": "c12@8:12@16"
+    },
+    {
+     "selector": "hasPrefix:",
+     "types": "c12@8:12@16"
+    },
+    {
+     "selector": "commonPrefixWithString:options:",
+     "types": "@16@8:12@16I20"
+    },
+    {
+     "selector": "componentsSeparatedByString:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "rangeOfCharacterFromSet:",
+     "types": "{?=II}12@8:12@16"
+    },
+    {
+     "selector": "rangeOfCharacterFromSet:options:",
+     "types": "{?=II}16@8:12@16I20"
+    },
+    {
+     "selector": "rangeOfCharacterFromSet:options:range:",
+     "types": "{?=II}24@8:12@16I20{?=II}24"
+    },
+    {
+     "selector": "rangeOfString:",
+     "types": "{?=II}12@8:12@16"
+    },
+    {
+     "selector": "rangeOfString:options:",
+     "types": "{?=II}16@8:12@16I20"
+    },
+    {
+     "selector": "rangeOfString:options:range:",
+     "types": "{?=II}24@8:12@16I20{?=II}24"
+    },
+    {
+     "selector": "rangeOfComposedCharacterSequenceAtIndex:",
+     "types": "{?=II}12@8:12I16"
+    },
+    {
+     "selector": "localizedCaseInsensitiveCompare:",
+     "types": "i12@8:12@16"
+    },
+    {
+     "selector": "localizedCompare:",
+     "types": "i12@8:12@16"
+    },
+    {
+     "selector": "caseInsensitiveCompare:",
+     "types": "i12@8:12@16"
+    },
+    {
+     "selector": "compare:",
+     "types": "i12@8:12@16"
+    },
+    {
+     "selector": "compare:options:",
+     "types": "i16@8:12@16I20"
+    },
+    {
+     "selector": "compare:options:range:locale:",
+     "types": "i28@8:12@16I20{?=II}24@32"
+    },
+    {
+     "selector": "compare:options:range:",
+     "types": "i24@8:12@16I20{?=II}24"
+    },
+    {
+     "selector": "isEqualToString:",
+     "types": "c12@8:12@16"
+    },
+    {
+     "selector": "hash",
+     "types": "I8@8:12"
+    },
+    {
+     "selector": "isEqual:",
+     "types": "c12@8:12@16"
+    },
+    {
+     "selector": "mutableCopyWithZone:",
+     "types": "@12@8:12^{?=}16"
+    },
+    {
+     "selector": "copyWithZone:",
+     "types": "@12@8:12^{?=}16"
+    },
+    {
+     "selector": "description",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "quotedStringRepresentation",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "_stringRepresentation",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "_fastCStringContents",
+     "types": "r*8@8:12"
+    },
+    {
+     "selector": "characterAtIndex:",
+     "types": "S12@8:12I16"
+    },
+    {
+     "selector": "length",
+     "types": "I8@8:12"
+    }
+   ],
+   "instance_size": 4,
+   "ivars": [],
+   "name": "NSString",
+   "superclass": "NSObject"
+  }
+ ],
+ "data_symbols": [
+  "_NSCharacterConversionException",
+  "_NSParseErrorException",
+  "__NSPlaceholderStringLock"
+ ],
+ "module": "NSString.m",
+ "schema_version": "abi-v1",
+ "text_symbols": [
+  "__NSPlaceholderStringFromZone",
+  "__NSNewStringFromCString",
+  "__NSFastMultiCStringConcat",
+  "_NSHashString",
+  "__NSNewStringByAppendingStrings",
+  "_NSBOOLFromString",
+  "_NSStringFromBOOL"
+ ]
+}

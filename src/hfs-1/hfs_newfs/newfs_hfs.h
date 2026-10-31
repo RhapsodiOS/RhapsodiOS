@@ -44,10 +44,12 @@ enum {
 };
 
 
-enum {
-	FALSE = 0,
-	TRUE  = 1
-};
+#ifndef FALSE
+#define FALSE 0
+#endif
+#ifndef TRUE
+#define TRUE 1
+#endif
 
 /*
  *	This is the straight GMT conversion constant:

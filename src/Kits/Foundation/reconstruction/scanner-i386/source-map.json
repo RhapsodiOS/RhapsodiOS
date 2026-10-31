@@ -1,0 +1,401 @@
+{
+  "schema_version": "source-map-v1",
+  "reference_sha256": "1165B9063ADD5672514455CA2C9830625BEA2BCE5E46126FB5E8652114C909D6",
+  "mapped": [
+    {
+      "address": 1112720744,
+      "size": 1163,
+      "reference_names": [
+        "__NSScanDoubleFromString"
+      ],
+      "source_path": "src/Kits/Foundation/NSScanner.m",
+      "source_line": 325
+    },
+    {
+      "address": 1112730708,
+      "size": 1460,
+      "reference_names": [
+        "__NSScanIntFromString"
+      ],
+      "source_path": "src/Kits/Foundation/NSScanner.m",
+      "source_line": 173
+    },
+    {
+      "address": 1112754276,
+      "size": 13,
+      "reference_names": [
+        "-[NSConcreteScanner string]"
+      ],
+      "source_path": "src/Kits/Foundation/NSScanner.m",
+      "source_line": 899
+    },
+    {
+      "address": 1112754292,
+      "size": 13,
+      "reference_names": [
+        "-[NSConcreteScanner scanLocation]"
+      ],
+      "source_path": "src/Kits/Foundation/NSScanner.m",
+      "source_line": 903
+    },
+    {
+      "address": 1112754308,
+      "size": 13,
+      "reference_names": [
+        "-[NSConcreteScanner charactersToBeSkipped]"
+      ],
+      "source_path": "src/Kits/Foundation/NSScanner.m",
+      "source_line": 907
+    },
+    {
+      "address": 1112755860,
+      "size": 118,
+      "reference_names": [
+        "-[NSConcreteScanner setScanLocation:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSScanner.m",
+      "source_line": 911
+    },
+    {
+      "address": 1112758464,
+      "size": 13,
+      "reference_names": [
+        "-[NSConcreteScanner locale]"
+      ],
+      "source_path": "src/Kits/Foundation/NSScanner.m",
+      "source_line": 920
+    },
+    {
+      "address": 1112761488,
+      "size": 49,
+      "reference_names": [
+        "-[NSScanner initWithString:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSScanner.m",
+      "source_line": 862
+    },
+    {
+      "address": 1112761540,
+      "size": 143,
+      "reference_names": [
+        "-[NSConcreteScanner initWithString:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSScanner.m",
+      "source_line": 924
+    },
+    {
+      "address": 1112761684,
+      "size": 110,
+      "reference_names": [
+        "-[NSConcreteScanner dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSScanner.m",
+      "source_line": 933
+    },
+    {
+      "address": 1112763936,
+      "size": 99,
+      "reference_names": [
+        "+[NSScanner allocWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSScanner.m",
+      "source_line": 564
+    },
+    {
+      "address": 1112770808,
+      "size": 67,
+      "reference_names": [
+        "-[NSConcreteScanner setLocale:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSScanner.m",
+      "source_line": 940
+    },
+    {
+      "address": 1112780576,
+      "size": 160,
+      "reference_names": [
+        "-[NSScanner scanFloat:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSScanner.m",
+      "source_line": 709
+    },
+    {
+      "address": 1112780736,
+      "size": 148,
+      "reference_names": [
+        "-[NSScanner scanDouble:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSScanner.m",
+      "source_line": 724
+    },
+    {
+      "address": 1112806092,
+      "size": 76,
+      "reference_names": [
+        "+[NSScanner scannerWithString:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSScanner.m",
+      "source_line": 866
+    },
+    {
+      "address": 1112808132,
+      "size": 16,
+      "reference_names": [
+        "-[NSConcreteScanner caseSensitive]"
+      ],
+      "source_path": "src/Kits/Foundation/NSScanner.m",
+      "source_line": 947
+    },
+    {
+      "address": 1112833428,
+      "size": 408,
+      "reference_names": [
+        "-[NSScanner scanUpToString:intoString:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSScanner.m",
+      "source_line": 791
+    },
+    {
+      "address": 1112835372,
+      "size": 78,
+      "reference_names": [
+        "-[NSConcreteScanner setCharactersToBeSkipped:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSScanner.m",
+      "source_line": 951
+    },
+    {
+      "address": 1112842924,
+      "size": 34,
+      "reference_names": [
+        "-[NSConcreteScanner scanInt:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSScanner.m",
+      "source_line": 956
+    },
+    {
+      "address": 1112856172,
+      "size": 408,
+      "reference_names": [
+        "-[NSScanner scanString:intoString:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSScanner.m",
+      "source_line": 736
+    },
+    {
+      "address": 1112867048,
+      "size": 23,
+      "reference_names": [
+        "-[NSConcreteScanner setCaseSensitive:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSScanner.m",
+      "source_line": 961
+    },
+    {
+      "address": 1112877060,
+      "size": 408,
+      "reference_names": [
+        "-[NSScanner scanUpToCharactersFromSet:intoString:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSScanner.m",
+      "source_line": 819
+    },
+    {
+      "address": 1112877468,
+      "size": 209,
+      "reference_names": [
+        "-[NSScanner isAtEnd]"
+      ],
+      "source_path": "src/Kits/Foundation/NSScanner.m",
+      "source_line": 847
+    },
+    {
+      "address": 1113093080,
+      "size": 144,
+      "reference_names": [
+        "+[NSScanner localizedScannerWithString:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSScanner.m",
+      "source_line": 872
+    },
+    {
+      "address": 1113119760,
+      "size": 9,
+      "reference_names": [
+        "-[NSScanner caseSensitive]"
+      ],
+      "source_path": "src/Kits/Foundation/NSScanner.m",
+      "source_line": 602
+    },
+    {
+      "address": 1113119772,
+      "size": 61,
+      "reference_names": [
+        "-[NSScanner charactersToBeSkipped]"
+      ],
+      "source_path": "src/Kits/Foundation/NSScanner.m",
+      "source_line": 598
+    },
+    {
+      "address": 1113119836,
+      "size": 219,
+      "reference_names": [
+        "-[NSScanner copyWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSScanner.m",
+      "source_line": 883
+    },
+    {
+      "address": 1113120056,
+      "size": 9,
+      "reference_names": [
+        "-[NSScanner locale]"
+      ],
+      "source_path": "src/Kits/Foundation/NSScanner.m",
+      "source_line": 606
+    },
+    {
+      "address": 1113120068,
+      "size": 432,
+      "reference_names": [
+        "-[NSScanner scanCharactersFromSet:intoString:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSScanner.m",
+      "source_line": 763
+    },
+    {
+      "address": 1113120500,
+      "size": 1352,
+      "reference_names": [
+        "-[NSScanner scanHexInt:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSScanner.m",
+      "source_line": 621
+    },
+    {
+      "address": 1113121852,
+      "size": 132,
+      "reference_names": [
+        "-[NSScanner scanInt:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSScanner.m",
+      "source_line": 610
+    },
+    {
+      "address": 1113121984,
+      "size": 57,
+      "reference_names": [
+        "-[NSScanner scanLocation]"
+      ],
+      "source_path": "src/Kits/Foundation/NSScanner.m",
+      "source_line": 577
+    },
+    {
+      "address": 1113122044,
+      "size": 132,
+      "reference_names": [
+        "-[NSScanner scanLongLong:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSScanner.m",
+      "source_line": 698
+    },
+    {
+      "address": 1113122176,
+      "size": 55,
+      "reference_names": [
+        "-[NSScanner setCaseSensitive:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSScanner.m",
+      "source_line": 590
+    },
+    {
+      "address": 1113122232,
+      "size": 55,
+      "reference_names": [
+        "-[NSScanner setCharactersToBeSkipped:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSScanner.m",
+      "source_line": 586
+    },
+    {
+      "address": 1113122288,
+      "size": 55,
+      "reference_names": [
+        "-[NSScanner setLocale:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSScanner.m",
+      "source_line": 594
+    },
+    {
+      "address": 1113122344,
+      "size": 55,
+      "reference_names": [
+        "-[NSScanner setScanLocation:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSScanner.m",
+      "source_line": 582
+    },
+    {
+      "address": 1113122400,
+      "size": 57,
+      "reference_names": [
+        "-[NSScanner string]"
+      ],
+      "source_path": "src/Kits/Foundation/NSScanner.m",
+      "source_line": 572
+    },
+    {
+      "address": 1113143624,
+      "size": 1623,
+      "reference_names": [
+        "__NSScanLongLongFromString"
+      ],
+      "source_path": "src/Kits/Foundation/NSScanner.m",
+      "source_line": 249
+    },
+    {
+      "address": 1113190864,
+      "size": 113,
+      "reference_names": [
+        "-[NSScanner _remainingString]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCalendarDate.m",
+      "source_line": 434
+    },
+    {
+      "address": 1113190980,
+      "size": 208,
+      "reference_names": [
+        "-[NSScanner _scanDecimal:into:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSCalendarDate.m",
+      "source_line": 443
+    },
+    {
+      "address": 1113206816,
+      "size": 1155,
+      "reference_names": [
+        "__NSScanDecimalFromString"
+      ],
+      "source_path": "src/Kits/Foundation/NSScanner.m",
+      "source_line": 489
+    }
+  ],
+  "unmapped": [],
+  "duplicate_candidates": [],
+  "boundary_disputed": [],
+  "by_module": {
+    "NSCalendarDate.m": {
+      "mapped": 2,
+      "unmapped": 0,
+      "duplicate_candidates": 0,
+      "boundary_disputed": 0
+    },
+    "NSScanner.m": {
+      "mapped": 40,
+      "unmapped": 0,
+      "duplicate_candidates": 0,
+      "boundary_disputed": 0
+    }
+  }
+}

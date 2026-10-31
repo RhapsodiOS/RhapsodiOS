@@ -9,3 +9,6 @@
 "I/O Ports" = "0x300-0x30f 0x110-0x110";
 "Valid IRQ Levels" = "3 5 7 9 10 11 12 15";
 "Help File" = "EtherLink3ISA.rtfd";
+"Server Name" = "EtherLink3";
+"Driver Version" = "PROGRAM:EtherLink3  PROJECT:drvEtherLink3-16  DEVELOPER:root  BUILT:Sat Mar 28 22:15:04 PST 1998";
+"Version" = "5.01";

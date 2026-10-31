@@ -1,5 +1,12 @@
 # PPCSerialPort reconstruction findings
 
+> **2026-10-23: superseded.** `PPCSerialPort.m`/`.h` were rewritten from IDA's typed decompilation
+> of the reference, using the `Port` layout from its ivar type encoding (now byte-identical, 1312
+> bytes). The driver builds as `drvppcserialport`. On QEMU it registers both channels on mac99 and
+> g3beige, and passes data both ways. The line ranges in `ledger.json` and `source-map.json` below
+> refer to the old draft and are stale. Deliberate differences from the binary are marked
+> "Divergence from 5.6" in the source.
+
 ## Standing constraint: nothing was compiled
 
 There is no PowerPC toolchain and no host C compiler in this environment. Nothing in this

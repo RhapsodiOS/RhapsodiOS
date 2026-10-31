@@ -52,7 +52,6 @@
 #import <sys/param.h>
 #import <sys/proc.h>
 
-#import <fp_emul.h>
 #import <pc_support.h>
 
 zone_t		pcb_zone;

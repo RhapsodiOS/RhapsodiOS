@@ -117,6 +117,8 @@ $targetCshHeaderText = Get-Content -Raw (Join-Path $repoRoot 'src\Commands\basic
 $targetCshManualText = Get-Content -Raw (Join-Path $repoRoot 'src\Commands\basic_cmds\csh.tproj\csh.1')
 $targetCshLexText = Get-Content -Raw (Join-Path $repoRoot 'src\Commands\basic_cmds\csh.tproj\lex.c')
 
+$syncLibText = Get-Content -Raw (Join-Path $VmDir 'sync-src-lib.ps1')
+Assert-Match $syncLibText '\$cpioCommand -idu \|\|' 'guest cpio stamps files with the guest clock, so host mtimes ahead of it cannot loop make'
 Assert-Match $syncScriptText '--format cpio' 'sync archive uses portable cpio format'
 Assert-Match $syncScriptText ([regex]::Escape('--format cpio -cf $ArchivePath -C $ArchiveParent -- $ArchiveLeaf')) 'producer terminates options before archive leaf'
 Assert-NotMatch $syncScriptText '--format ustar' 'sync archive no longer uses ustar'
@@ -166,8 +168,8 @@ Assert-Match $quotedFixExec 'exit \$status\s*$' 'chmod pass reports failure stat
 Assert-Throws { New-RhapFixExecBitsCommand -RemoteSrc '/build/src' -RemoteTree '/build/src/p' -ExecutablePaths @("p/line`nbreak") } 'chmod pass rejects control characters in paths'
 $emptyFixExec = New-RhapFixExecBitsCommand -RemoteSrc '/build/src' -RemoteTree '/build/src/zlib-1' -ExecutablePaths @()
 Assert-NotMatch $emptyFixExec 'chmod a\+x' 'chmod pass with no git executables only clears bits'
-$manyPaths = @(1..400 | ForEach-Object { 'perl-1/perl/lib/' + ('d' * 60) + "/script$_.pl" })
-$batchedFixExec = New-RhapFixExecBitsCommand -RemoteSrc '/build/src' -RemoteTree '/build/src/perl-1' -ExecutablePaths $manyPaths
+$manyPaths = @(1..400 | ForEach-Object { 'Developer/Commands/perl-1/perl/lib/' + ('d' * 60) + "/script$_.pl" })
+$batchedFixExec = New-RhapFixExecBitsCommand -RemoteSrc '/build/src' -RemoteTree '/build/src/Developer/Commands/perl-1' -ExecutablePaths $manyPaths
 $chmodLines = @($batchedFixExec -split "`n" | Where-Object { $_.StartsWith('chmod a+x ') })
 Assert-Equal ($chmodLines.Count -gt 1) $true 'chmod pass splits long lists'
 Assert-Equal (@($chmodLines | Where-Object { [Text.Encoding]::UTF8.GetByteCount($_) -gt 8192 }).Count) 0 'every chmod invocation stays far below target ARG_MAX'

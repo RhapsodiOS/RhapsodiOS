@@ -12,7 +12,7 @@ NAME = newfs_hfs
 PROJECTVERSION = 2.8
 PROJECT_TYPE = Tool
 
-HFILES = newfs_hfs.h
+HFILES = newfs_hfs.h hfs_endian.h
 
 CFILES = HFSVolumeInit.c newfs_hfs.c
 

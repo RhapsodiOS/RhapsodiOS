@@ -1,0 +1,258 @@
+{
+ "categories": [
+  {
+   "class": "NSRunLoop",
+   "class_methods": [],
+   "instance_methods": [
+    {
+     "selector": "cancelPerformSelector:target:argument:",
+     "types": "v16@4:8:12@16@20"
+    },
+    {
+     "selector": "performSelector:target:argument:order:modes:",
+     "types": "v24@4:8:12@16@20I24@28"
+    }
+   ],
+   "name": "NSPerformTimerStuff"
+  },
+  {
+   "class": "NSObject",
+   "class_methods": [
+    {
+     "selector": "cancelPreviousPerformRequestsWithTarget:selector:object:",
+     "types": "v16@4:8@12:16@20"
+    }
+   ],
+   "instance_methods": [
+    {
+     "selector": "performSelector:object:afterDelay:",
+     "types": "v12@4:8:12@16d12"
+    },
+    {
+     "selector": "performSelector:withObject:afterDelay:inModes:",
+     "types": "v24@4:8:12@16d12@28"
+    },
+    {
+     "selector": "performSelector:withObject:afterDelay:",
+     "types": "v12@4:8:12@16d12"
+    }
+   ],
+   "name": "NSDelayedPerforming"
+  }
+ ],
+ "classes": [
+  {
+   "class_methods": [
+    {
+     "selector": "currentRunLoop",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "_taskNowSingleThreaded",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "_taskNowMultiThreaded",
+     "types": "v4@4:8"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "configureAsServer",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "runBeforeDate:",
+     "types": "c8@4:8@12"
+    },
+    {
+     "selector": "runUntilDate:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "run",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "runMode:untilDate:",
+     "types": "c12@4:8@12@16"
+    },
+    {
+     "selector": "runMode:beforeDate:",
+     "types": "c12@4:8@12@16"
+    },
+    {
+     "selector": "acceptInputForMode:beforeDate:",
+     "types": "v12@4:8@12@16"
+    },
+    {
+     "selector": "acceptInputForModeInfo:beforeTime:",
+     "types": "^{?=@{?=b24b8Iiiii}}12@4:8^{?=^{modeInfo}@dc^{?}^{?}}12d12"
+    },
+    {
+     "selector": "_wakeup",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "limitDateForMode:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "_invalidateTimers",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "removeTimersWithTarget:selector:withObject:",
+     "types": "v16@4:8@12:16@20"
+    },
+    {
+     "selector": "_nextTimerInterval:forMode:modeInfo:",
+     "types": "c16@4:8^d12@16^{?=^{modeInfo}@dc^{?}^{?}}20"
+    },
+    {
+     "selector": "_doPerformersForMode:reclaim:",
+     "types": "v9@4:8@12c16"
+    },
+    {
+     "selector": "containsTimer:forMode:",
+     "types": "c12@4:8@12@16"
+    },
+    {
+     "selector": "timersForMode:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "removeTimer:forMode:",
+     "types": "v12@4:8@12@16"
+    },
+    {
+     "selector": "addTimer:forMode:",
+     "types": "v12@4:8@12@16"
+    },
+    {
+     "selector": "containsPort:forMode:",
+     "types": "c12@4:8@12@16"
+    },
+    {
+     "selector": "portsForMode:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "removePort:forMode:",
+     "types": "v12@4:8@12@16"
+    },
+    {
+     "selector": "addPort:forMode:",
+     "types": "v12@4:8@12@16"
+    },
+    {
+     "selector": "allModes",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "addRunLoopActivityMonitor:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "description",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "currentMode",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "release",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "retainCount",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "retain",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "dealloc",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "init",
+     "types": "@4@4:8"
+    }
+   ],
+   "instance_size": 48,
+   "ivars": [
+    {
+     "name": "_modes",
+     "offset": 4,
+     "type": "^v"
+    },
+    {
+     "name": "_currentMode",
+     "offset": 8,
+     "type": "@"
+    },
+    {
+     "name": "_callout",
+     "offset": 12,
+     "type": "@"
+    },
+    {
+     "name": "_callouts",
+     "offset": 16,
+     "type": "^v"
+    },
+    {
+     "name": "_timers",
+     "offset": 20,
+     "type": "^v"
+    },
+    {
+     "name": "_condition",
+     "offset": 24,
+     "type": "@"
+    },
+    {
+     "name": "_currentSet",
+     "offset": 28,
+     "type": "^v"
+    },
+    {
+     "name": "_msg",
+     "offset": 32,
+     "type": "*"
+    },
+    {
+     "name": "_performers",
+     "offset": 36,
+     "type": "^v"
+    },
+    {
+     "name": "_wakeupPort",
+     "offset": 40,
+     "type": "@"
+    },
+    {
+     "name": "_winMessagePort",
+     "offset": 44,
+     "type": "@"
+    }
+   ],
+   "name": "NSRunLoop",
+   "superclass": "NSObject"
+  }
+ ],
+ "data_symbols": [
+  "_NSDefaultRunLoopMode",
+  "__NSMsgReceiveCount",
+  "__NSMsgResizeCount"
+ ],
+ "module": "NSRunLoop.m",
+ "schema_version": "abi-v1",
+ "text_symbols": [
+  "_NSCheapPortSetAcceptInput"
+ ]
+}

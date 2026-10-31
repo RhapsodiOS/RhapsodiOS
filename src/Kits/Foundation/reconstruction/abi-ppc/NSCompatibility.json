@@ -1,0 +1,309 @@
+{
+ "categories": [
+  {
+   "class": "StreamTable",
+   "class_methods": [],
+   "instance_methods": [
+    {
+     "selector": "nextStreamState:key:value:",
+     "types": "c16@4:8^{?=ii}12r^^v16^@20"
+    },
+    {
+     "selector": "valueForStreamKey:",
+     "types": "@8@4:8r^v12"
+    },
+    {
+     "selector": "freeObjects",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "initWithCoder:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "encodeWithCoder:",
+     "types": "v8@4:8@12"
+    }
+   ],
+   "name": "NSCoderExtensions1"
+  },
+  {
+   "class": "HashTable",
+   "class_methods": [],
+   "instance_methods": [
+    {
+     "selector": "freeObjects",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "initWithCoder:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "encodeWithCoder:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "autorelease",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "release",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "retainCount",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "retain",
+     "types": "@4@4:8"
+    }
+   ],
+   "name": "NSCoderExtensions1"
+  },
+  {
+   "class": "List",
+   "class_methods": [],
+   "instance_methods": [
+    {
+     "selector": "freeObjects",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "makeObjectsPerform:withObject:",
+     "types": "v12@4:8:12@16"
+    },
+    {
+     "selector": "initWithCoder:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "encodeWithCoder:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "autorelease",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "release",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "retainCount",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "retain",
+     "types": "@4@4:8"
+    }
+   ],
+   "name": "NSCoderExtensions1"
+  },
+  {
+   "class": "Storage",
+   "class_methods": [],
+   "instance_methods": [
+    {
+     "selector": "initWithCoder:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "encodeWithCoder:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "autorelease",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "release",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "retainCount",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "retain",
+     "types": "@4@4:8"
+    }
+   ],
+   "name": "NSCoderExtensions1"
+  },
+  {
+   "class": "Object",
+   "class_methods": [
+    {
+     "selector": "instanceMethodForSelector:",
+     "types": "^?8@4:8:12"
+    },
+    {
+     "selector": "instancesRespondToSelector:",
+     "types": "c8@4:8:12"
+    },
+    {
+     "selector": "poseAsClass:",
+     "types": "v8@4:8#12"
+    },
+    {
+     "selector": "allocWithZone:",
+     "types": "@8@4:8^{?=}12"
+    },
+    {
+     "selector": "retainCount",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "autorelease",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "release",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "retain",
+     "types": "@4@4:8"
+    }
+   ],
+   "instance_methods": [
+    {
+     "selector": "classForArchiver",
+     "types": "#4@4:8"
+    },
+    {
+     "selector": "classForCoder",
+     "types": "#4@4:8"
+    },
+    {
+     "selector": "replacementObjectForArchiver:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "replacementObjectForCoder:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "awakeAfterUsingCoder:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "encodeWithCoder:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "initWithCoder:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "doesNotRecognizeSelector:",
+     "types": "v8@4:8:12"
+    },
+    {
+     "selector": "methodForSelector:",
+     "types": "^?8@4:8:12"
+    },
+    {
+     "selector": "dealloc",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "copyWithZone:",
+     "types": "@8@4:8^{?=}12"
+    },
+    {
+     "selector": "description",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "performSelector:withObject:withObject:",
+     "types": "@16@4:8:12@16@20"
+    },
+    {
+     "selector": "performSelector:withObject:",
+     "types": "@12@4:8:12@16"
+    },
+    {
+     "selector": "perform:withObject:withObject:",
+     "types": "@16@4:8:12@16@20"
+    },
+    {
+     "selector": "perform:withObject:",
+     "types": "@12@4:8:12@16"
+    },
+    {
+     "selector": "isMemberOfClass:",
+     "types": "c8@4:8#12"
+    },
+    {
+     "selector": "isKindOfClass:",
+     "types": "c8@4:8#12"
+    },
+    {
+     "selector": "conformsToProtocol:",
+     "types": "c8@4:8@12"
+    },
+    {
+     "selector": "respondsToSelector:",
+     "types": "c8@4:8:12"
+    },
+    {
+     "selector": "autorelease",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "release",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "retainCount",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "retain",
+     "types": "@4@4:8"
+    }
+   ],
+   "name": "NSCompatibility"
+  },
+  {
+   "class": "NSObject",
+   "class_methods": [
+    {
+     "selector": "methodFor:",
+     "types": "^?8@4:8:12"
+    },
+    {
+     "selector": "conformsTo:",
+     "types": "c8@4:8@12"
+    }
+   ],
+   "instance_methods": [
+    {
+     "selector": "methodFor:",
+     "types": "^?8@4:8:12"
+    },
+    {
+     "selector": "conformsTo:",
+     "types": "c8@4:8@12"
+    },
+    {
+     "selector": "respondsTo:",
+     "types": "c8@4:8:12"
+    },
+    {
+     "selector": "isKindOf:",
+     "types": "c8@4:8@12"
+    }
+   ],
+   "name": "NXCompatibilityFixes"
+  }
+ ],
+ "classes": [],
+ "data_symbols": [],
+ "module": "NSCompatibility.m",
+ "schema_version": "abi-v1",
+ "text_symbols": []
+}

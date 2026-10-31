@@ -1,5 +1,5 @@
 "Version" = "5.00";
-"Boot Drivers" = "PS2Keyboard EISABus PCIBus";
+"Boot Drivers" = "PS2Keyboard";
 "Active Drivers" = "";
 "Kernel" = "mach_kernel";
 "Kernel Flags" = "rootdev=en0";

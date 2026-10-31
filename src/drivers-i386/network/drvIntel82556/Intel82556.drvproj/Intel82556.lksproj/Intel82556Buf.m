@@ -1,310 +1,167 @@
-/*
- * Intel82556Buf.m
- * Intel EtherExpress PRO/100 Network Driver - Buffer Management
- */
-
+/* Reconstructed from the i386 Intel82556NetworkDriver reference. */
 #import "Intel82556.h"
 #import <driverkit/generalFuncs.h>
 #import <driverkit/kernelDriver.h>
 
-/* External symbols */
-extern unsigned int _page_size;
-extern unsigned int _page_mask;
+extern unsigned int page_size;
+extern unsigned int page_mask;
 
-/* Static function for getting network buffer from pool */
-static void *_getNetBuffer(id pool);
+#define BUFFER_GUARD 0xcafe2badU
+
+typedef struct Intel82556BufferNode {
+    Intel82556Buf *owner;
+    unsigned int startGuard;
+    netbuf_t netbuf;
+    struct Intel82556BufferNode *next;
+    unsigned int *endGuard;
+} Intel82556BufferNode;
+
+netbuf_t getNetBuffer(void *poolObject)
+{
+    Intel82556Buf *pool = (Intel82556Buf *)poolObject;
+    Intel82556BufferNode *node = pool->freeList;
+
+    [pool->freeListLock lock];
+    if (node == 0) {
+        [pool->freeListLock unlock];
+        return 0;
+    }
+    pool->freeList = node->next;
+    --pool->numFree;
+    [pool->freeListLock unlock];
+
+    if (node->startGuard != BUFFER_GUARD)
+        IOPanic("getNetBuffer: buffer underrun");
+    if (*node->endGuard != BUFFER_GUARD)
+        IOPanic("getNetBuffer: buffer overrun");
+
+    node->netbuf = nb_alloc_wrapper(node + 1, pool->bufSizeUser,
+                                    (void (*)(void *))recycleNetbuf, node);
+    if (node->netbuf == 0) {
+        [pool->freeListLock lock];
+        node->next = pool->freeList;
+        pool->freeList = node;
+        ++pool->numFree;
+        [pool->freeListLock unlock];
+    }
+    return node->netbuf;
+}
+
+/* The original wrapper callback receives data, size, and its saved context. */
+void recycleNetbuf(void *data, unsigned int size, void *context)
+{
+    Intel82556BufferNode *node = context;
+    Intel82556Buf *pool = node->owner;
+
+    (void)data;
+    (void)size;
+    if (node->startGuard != BUFFER_GUARD)
+        IOPanic("recycleNetbuf: buffer underrun");
+    if (*node->endGuard != BUFFER_GUARD)
+        IOPanic("recycleNetbuf: buffer overrun");
+
+    if (pool->freeInProgress != 0) {
+        [pool->freeListLock lock];
+        ++pool->numFree;
+        [pool->freeListLock unlock];
+        if (pool->bufCount == pool->numFree)
+            [pool free];
+    } else {
+        [pool->freeListLock lock];
+        node->next = pool->freeList;
+        pool->freeList = node;
+        ++pool->numFree;
+        [pool->freeListLock unlock];
+    }
+}
 
 @implementation Intel82556Buf
 
-/*
- * Initialize with requested size
- *
- * Buffer pool structure (in self):
- *   +0x04: Initialization flag (1 if initialized)
- *   +0x05: Shutdown flag (1 if shutting down)
- *   +0x08: Head pointer (free list)
- *   +0x0C: Free count (number of free buffers)
- *   +0x10: Buffer entry size (buffer size + overhead)
- *   +0x14: Actual buffer size (aligned to 4 bytes)
- *   +0x18: Total count (total buffers allocated)
- *   +0x1C: Physical address
- *   +0x20: Virtual address
- *   +0x24: Lock object (NXSpinLock)
- *
- * Buffer entry structure:
- *   +0x00: Pointer to buffer pool (self)
- *   +0x04: Magic value 1 (0xCAFE2BAD)
- *   +0x08: User data
- *   +0x0C: Next pointer (for free list)
- *   +0x10: Pointer to magic value 2
- *   ... buffer data ...
- *   +size-4: Magic value 2 (0xCAFE2BAD)
- */
-- initWithRequestedSize:(unsigned int)reqSize
-             actualSize:(unsigned int *)actSize
+- initWithRequestedSize:(unsigned int)requested
+             actualSize:(unsigned int *)actual
                   count:(unsigned int)count
 {
-    id lockObj;
-    unsigned int alignedSize;
-    unsigned int entrySize;
-    unsigned int buffersPerPage;
-    unsigned int pagesNeeded;
-    unsigned int totalSize;
-    vm_address_t physAddr;
-    vm_address_t virtAddr;
-    unsigned char *bufferEntry;
-    unsigned char *pageStart;
-    unsigned char *pageEnd;
-    int i;
+    unsigned int slotsPerPage;
+    unsigned int bytes;
+    unsigned int pageStart;
+    Intel82556BufferNode *node;
 
-    /* Check if already initialized */
-    if (*(unsigned char *)(((char *)self) + 4) != 0) {
+    if (initFlag != 0)
         return self;
-    }
-
-    /* Mark as initialized */
-    *(unsigned char *)(((char *)self) + 4) = 1;
-
-    /* Create lock object */
-    lockObj = [[objc_getClass("NXSpinLock") alloc] init];
-    *(id *)(((char *)self) + 0x24) = lockObj;
-
-    /* Determine actual buffer size (minimum 0x5EA = 1514 bytes) */
-    if (reqSize < 0x5EA) {
-        alignedSize = 0x5EA;
-    } else {
-        alignedSize = reqSize;
-    }
-
-    /* Align to 4-byte boundary */
-    if ((alignedSize & 3) != 0) {
-        alignedSize = (alignedSize + 3) & ~3;
-    }
-
-    *(unsigned int *)(((char *)self) + 0x14) = alignedSize;
-    *actSize = alignedSize;
-
-    /* Calculate entry size (24-byte overhead + buffer size) */
-    entrySize = alignedSize + 0x18;
-    *(unsigned int *)(((char *)self) + 0x10) = entrySize;
-
-    /* Verify entry size doesn't exceed page size */
-    if (_page_size < entrySize) {
+    initFlag = 1;
+    freeListLock = [NXSpinLock new];
+    bufSizeUser = requested <= 1513 ? 1514 : requested;
+    if ((bufSizeUser & 3) != 0)
+        bufSizeUser = (bufSizeUser + 3) & ~3U;
+    *actual = bufSizeUser;
+    bufSize = bufSizeUser + 24;
+    if (page_size < bufSize)
         IOPanic("Intel82556Buf: max buffer size exceeded");
-    }
 
-    /* Calculate how many buffers fit per page */
-    buffersPerPage = _page_size / entrySize;
-
-    /* Calculate pages needed */
-    pagesNeeded = ((count + buffersPerPage - 1) / buffersPerPage);
-
-    /* Calculate total size */
-    totalSize = pagesNeeded * _page_size;
-
-    /* Allocate non-cached memory */
-    virtAddr = IOMallocNonCached(totalSize,
-                                 (vm_address_t *)(((char *)self) + 0x1C),
-                                 (vm_address_t *)(((char *)self) + 0x20));
-
-    if (virtAddr == 0) {
+    slotsPerPage = page_size / bufSize;
+    bytes = page_size * ((slotsPerPage + count - 1) / slotsPerPage);
+    pageStart = (unsigned int)IOMallocNonCached(bytes, &memPtr, &memSize);
+    if (pageStart == 0) {
         IOLog("Intel82556Buf: IOMallocNonCached failed\n");
         return nil;
     }
 
-    /* Initialize pool state */
-    *(unsigned char *)(((char *)self) + 5) = 0;     /* Not shutting down */
-    *(unsigned int *)(((char *)self) + 8) = 0;      /* Free list head = NULL */
-    *(unsigned int *)(((char *)self) + 0x18) = 0;   /* Total count = 0 */
-    *(unsigned int *)(((char *)self) + 0x0C) = 0;   /* Free count = 0 */
-
-    /* Initialize all buffer entries */
-    bufferEntry = (unsigned char *)virtAddr;
-    pageEnd = (unsigned char *)((_page_mask & *(unsigned int *)(((char *)self) + 0x1C)) +
-                                 *(unsigned int *)(((char *)self) + 0x20));
-
-    pageStart = (unsigned char *)virtAddr;
-
-    while (1) {
-        /* Check if we can fit another entry in current page */
-        if (entrySize <= (_page_size - (bufferEntry - pageStart))) {
-            /* Entry fits in current page */
-        } else {
-            /* Move to next page */
-            pageStart = pageStart + _page_size;
-            bufferEntry = pageStart;
-
-            /* Check if we've reached the end */
-            if (bufferEntry >= pageEnd) {
-                break;
-            }
+    freeInProgress = 0;
+    freeList = 0;
+    bufCount = 0;
+    numFree = 0;
+    node = (Intel82556BufferNode *)pageStart;
+    for (;;) {
+        if (bufSize > page_size - ((unsigned int)node - pageStart)) {
+            pageStart += page_size;
+            if (pageStart == (((unsigned int)memPtr + memSize) & ~page_mask))
+                return self;
+            node = (Intel82556BufferNode *)pageStart;
         }
+        node->owner = self;
+        node->startGuard = BUFFER_GUARD;
+        node->netbuf = 0;
+        node->endGuard = (unsigned int *)((char *)node + bufSize - 4);
+        *node->endGuard = BUFFER_GUARD;
 
-        /* Initialize buffer entry */
-        /* +0x00: Pointer to pool */
-        *(id *)bufferEntry = self;
-
-        /* +0x04: Magic value 1 */
-        *(unsigned int *)(bufferEntry + 4) = 0xCAFE2BAD;
-
-        /* +0x08: User data (initially 0) */
-        *(unsigned int *)(bufferEntry + 8) = 0;
-
-        /* +0x10: Pointer to magic value 2 (at end of buffer) */
-        *(unsigned int **)(bufferEntry + 0x10) =
-            (unsigned int *)(bufferEntry + entrySize - 4);
-
-        /* Write magic value 2 at end of buffer */
-        *(unsigned int *)(bufferEntry + entrySize - 4) = 0xCAFE2BAD;
-
-        /* Add entry to free list */
-        [lockObj lock];
-
-        /* +0x0C: Next pointer = current head */
-        *(unsigned int *)(bufferEntry + 0x0C) = *(unsigned int *)(((char *)self) + 8);
-
-        /* Update head to this entry */
-        *(unsigned int *)(((char *)self) + 8) = (unsigned int)bufferEntry;
-
-        /* Increment free count */
-        *(unsigned int *)(((char *)self) + 0x0C) += 1;
-
-        /* Increment total count */
-        *(unsigned int *)(((char *)self) + 0x18) += 1;
-
-        [lockObj unlock];
-
-        /* Move to next entry */
-        bufferEntry += entrySize;
+        [freeListLock lock];
+        node->next = freeList;
+        freeList = node;
+        ++numFree;
+        ++bufCount;
+        [freeListLock unlock];
+        node = (Intel82556BufferNode *)((char *)node + bufSize);
     }
-
-    return self;
 }
 
-/*
- * Free resources
- */
-- (void)free
+- free
 {
-    id lockObj;
-    unsigned char shutdownFlag;
-    int freeCount;
-    int totalCount;
-    vm_address_t virtAddr;
-    vm_size_t size;
-
-    lockObj = *(id *)(((char *)self) + 0x24);
-    shutdownFlag = *(unsigned char *)(((char *)self) + 5);
-
-    if (shutdownFlag == 0) {
-        /* Not already shutting down */
-
-        /* Set shutdown flag */
-        [lockObj lock];
-        *(unsigned char *)(((char *)self) + 5) = 1;
-        [lockObj unlock];
-
-        /* Check if all buffers are returned */
-        freeCount = *(int *)(((char *)self) + 0x0C);
-        totalCount = *(int *)(((char *)self) + 0x18);
-
-        if (freeCount != totalCount) {
-            /* Not all buffers returned yet - delayed free */
-            return;
-        }
-
-        /* All buffers returned - free immediately */
-        [lockObj free];
-
-        virtAddr = *(vm_address_t *)(((char *)self) + 0x20);
-        size = *(vm_size_t *)(((char *)self) + 0x1C);
-        IOFree((void *)virtAddr, size);
-    } else {
-        /* Already shutting down */
-
-        /* Check if all buffers are returned */
-        freeCount = *(int *)(((char *)self) + 0x0C);
-        totalCount = *(int *)(((char *)self) + 0x18);
-
-        if (freeCount != totalCount) {
-            /* Not all buffers returned yet */
-            return;
-        }
-
-        /* All buffers returned - free now */
-        [lockObj free];
-
-        virtAddr = *(vm_address_t *)(((char *)self) + 0x20);
-        size = *(vm_size_t *)(((char *)self) + 0x1C);
-        IOFree((void *)virtAddr, size);
-
+    if (freeInProgress != 0) {
+        if (bufCount != numFree)
+            return self;
+        [freeListLock free];
+        IOFree(memPtr, memSize);
         IOLog("Intel82556Buf: delayed free accomplished\n");
+    } else {
+        [freeListLock lock];
+        freeInProgress = 1;
+        [freeListLock unlock];
+        if (bufCount != numFree)
+            return self;
+        [freeListLock free];
+        IOFree(memPtr, memSize);
     }
-
-    /* Call superclass free */
     return [super free];
 }
 
-/*
- * Get a network buffer
- */
-- (void *)getNetBuffer
+- (netbuf_t)getNetBuffer
 {
-    return _getNetBuffer(self);
+    return getNetBuffer(self);
 }
 
-/*
- * Get number of free buffers
- */
 - (unsigned int)numFree
 {
-    return *(unsigned int *)(((char *)self) + 0x0C);
+    return numFree;
 }
 
 @end
-
-/*
- * Static helper function to get a buffer from the pool
- *
- * Pool structure:
- *   +0x08: Head pointer (free list)
- *   +0x0C: Free count
- *   +0x14: Actual buffer size
- *   +0x24: Lock object
- *
- * Buffer entry:
- *   +0x0C: Next pointer
- *   +0x14: Start of actual buffer data
- */
-static void *_getNetBuffer(id pool)
-{
-    id lockObj;
-    unsigned int *entry;
-    unsigned int next;
-    void *buffer = NULL;
-
-    lockObj = *(id *)(((char *)pool) + 0x24);
-
-    [lockObj lock];
-
-    /* Get head of free list */
-    entry = *(unsigned int **)(((char *)pool) + 8);
-
-    if (entry != NULL) {
-        /* Get next pointer from entry */
-        next = entry[3];  /* +0x0C offset / 4 = index 3 */
-
-        /* Update head to next */
-        *(unsigned int *)(((char *)pool) + 8) = next;
-
-        /* Decrement free count */
-        *(unsigned int *)(((char *)pool) + 0x0C) -= 1;
-
-        /* Buffer data starts at offset +0x14 from entry */
-        buffer = (void *)((unsigned char *)entry + 0x14);
-    }
-
-    [lockObj unlock];
-
-    return buffer;
-}

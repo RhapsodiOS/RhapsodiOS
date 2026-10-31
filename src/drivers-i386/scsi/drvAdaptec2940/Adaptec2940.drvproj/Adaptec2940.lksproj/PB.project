@@ -2,8 +2,9 @@
     DRIVERNAME = Adaptec2940;
     DYNAMIC_CODE_GEN = YES;
     FILESTABLE = {
-        CLASSES = (Adaptec2940.m, Adaptec2940Routines.m, Adaptec2940Thread.m);
-        H_FILES = (Adaptec2940.h, Adaptec2940Private.h, Adaptec2940Types.h);
+        CLASSES = (Adaptec2940.m, Adaptec2940Routines.m, Adaptec2940Thread.m, SCSIBus.m);
+        C_FILES = (Adaptec2940Sequencer.c, Adaptec2940HIM.c, Adaptec2940ExtMsgi.c, Adaptec2940Scb.c, Adaptec2940Special.c, Adaptec2940BusReset.c, Adaptec2940Timeout.c, Adaptec2940Command.c, Adaptec2940CheckCondition.c, Adaptec2940Bios.c, Adaptec2940HandleMsgi.c, Adaptec2940Interrupt.c, Adaptec2940Config.c, Adaptec2940Recovery.c, Adaptec2940Optima.c);
+        H_FILES = (Adaptec2940.h, Adaptec2940Private.h, Adaptec2940Types.h, SCSIBus.h);
         OTHER_SOURCES = (Makefile.preamble, Makefile, Makefile.postamble, Load_Commands.sect);
     };
     LANGUAGE = English;

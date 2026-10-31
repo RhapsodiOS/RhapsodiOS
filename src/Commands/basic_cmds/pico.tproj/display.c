@@ -1,5 +1,5 @@
 #if	!defined(lint) && !defined(DOS)
-static char rcsid[] = "$Id: display.c,v 1.1.1.1 1999/04/15 17:45:12 wsanchez Exp $";
+static char rcsid[] = "$Id: display.c,v 4.106 2001/12/19 00:02:42 hubert Exp $";
 #endif
 /*
  * Program:	Display functions
@@ -15,28 +15,16 @@ static char rcsid[] = "$Id: display.c,v 1.1.1.1 1999/04/15 17:45:12 wsanchez Exp
  *
  * Please address all bugs and comments to "pine-bugs@cac.washington.edu"
  *
- * Copyright 1991-1993  University of Washington
  *
- *  Permission to use, copy, modify, and distribute this software and its
- * documentation for any purpose and without fee to the University of
- * Washington is hereby granted, provided that the above copyright notice
- * appears in all copies and that both the above copyright notice and this
- * permission notice appear in supporting documentation, and that the name
- * of the University of Washington not be used in advertising or publicity
- * pertaining to distribution of the software without specific, written
- * prior permission.  This software is made available "as is", and
- * THE UNIVERSITY OF WASHINGTON DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED,
- * WITH REGARD TO THIS SOFTWARE, INCLUDING WITHOUT LIMITATION ALL IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE, AND IN
- * NO EVENT SHALL THE UNIVERSITY OF WASHINGTON BE LIABLE FOR ANY SPECIAL,
- * INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
- * LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, TORT
- * (INCLUDING NEGLIGENCE) OR STRICT LIABILITY, ARISING OUT OF OR IN CONNECTION
- * WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
- *
- * Pine and Pico are trademarks of the University of Washington.
- * No commercial use of these trademarks may be made without prior
- * written permission of the University of Washington.
+ * Pine and Pico are registered trademarks of the University of Washington.
+ * No commercial use of these trademarks may be made without prior written
+ * permission of the University of Washington.
+ * 
+ * Pine, Pico, and Pilot software and its included text are Copyright
+ * 1989-2001 by the University of Washington.
+ * 
+ * The full text of our legal notices is contained in the file called
+ * CPYRIGHT, included with this distribution.
  *
  */
 /*
@@ -47,49 +35,85 @@ static char rcsid[] = "$Id: display.c,v 1.1.1.1 1999/04/15 17:45:12 wsanchez Exp
  *
  */
 
-#include        <stdio.h>
-#include	"osdep.h"
-#include        "pico.h"
-#include	"estruct.h"
-#include        "edef.h"
-#include        "efunc.h"
+#include	"headers.h"
 
 
 #ifdef	ANSI
-    int vtmove(int, int);
-    int vtputc(CELL);
-    int vtpute(CELL);
-    int vteeol(void);
-    int updateline(int, CELL *, CELL *, short *);
-    int updext(void);
-    int mlputi(int, int);
-    int mlputli(long, int);
-    int showCompTitle(void);
+    void vtmove(int, int);
+    void vtputc(CELL);
+    void vtpute(CELL);
+    void vteeol(void);
+    void updateline(int, CELL *, CELL *, short *);
+    void updext(void);
+    void mlputi(int, int);
+    void pprints(int, int);
+    void mlputli(long, int);
+    void showCompTitle(void);
     int nlforw(void);
     int dumbroot(int, int);
     int dumblroot(long, int);
 #else
-    int vtmove();
-    int vtputc();
-    int vtpute();
-    int vteeol();
-    int updateline();
-    int updext();
-    int mlputi();
-    int mlputli();
-    int showCompTitle();
+    void vtmove();
+    void vtputc();
+    void vtpute();
+    void vteeol();
+    void updateline();
+    void updext();
+    void mlputi();
+    void pprints();
+    void mlputli();
+    void showCompTitle();
     int nlforw();
     int dumbroot();
     int dumblroot();
 #endif
 
 
-#define WFDEBUG 0                       /* Window flag debug. */
+/*
+ * Standard pico keymenus...
+ */
+static KEYMENU menu_pico[] = {
+    {"^G", "Get Help", KS_SCREENHELP},	{"^O", "WriteOut", KS_SAVEFILE},
+    {"^R", "Read File", KS_READFILE},	{"^Y", "Prev Pg", KS_PREVPAGE},
+    {"^K", "Cut Text", KS_NONE},	{"^C", "Cur Pos", KS_CURPOSITION},
+    {"^X", "Exit", KS_EXIT},		{"^J", "Justify", KS_JUSTIFY},
+    {"^W", "Where is", KS_WHEREIS},	{"^V", "Next Pg", KS_NEXTPAGE},
+    {"^U", NULL, KS_NONE},
+#ifdef	SPELLER
+    {"^T", "To Spell", KS_SPELLCHK}
+#else
+    {"^D", "Del Char", KS_NONE}
+#endif
+};
+#define	UNCUT_KEY	10
 
-typedef struct  VIDEO {
-        short   v_flag;                 /* Flags */
-        CELL    v_text[1];              /* Screen data. */
-}       VIDEO;
+
+static KEYMENU menu_compose[] = {
+    {"^G", "Get Help", KS_SCREENHELP},	{"^X", NULL, KS_SEND},
+    {"^R", "Read File", KS_READFILE},	{"^Y", "Prev Pg", KS_PREVPAGE},
+    {"^K", "Cut Text", KS_NONE},	{"^O", "Postpone", KS_POSTPONE},
+    {"^C", "Cancel", KS_CANCEL},	{"^J", "Justify", KS_JUSTIFY},
+    {NULL, NULL, KS_NONE},		{"^V", "Next Pg", KS_NEXTPAGE},
+    {"^U", NULL, KS_NONE},
+#ifdef	SPELLER
+    {"^T", "To Spell", KS_SPELLCHK}
+#else
+    {"^D", "Del Char", KS_NONE}
+#endif
+};
+#define	EXIT_KEY	1
+#define	PSTPN_KEY	5
+#define	WHERE_KEY	8
+
+
+/*
+ * Definition's for pico's modeline
+ */
+#define	PICO_TITLE	"  UW PICO(tm) %s  "
+#define	PICO_MOD_MSG	"Modified  "
+#define	PICO_NEWBUF_MSG	" New Buffer "
+
+#define WFDEBUG 0                       /* Window flag debug. */
 
 #define VFCHG   0x0001                  /* Changed flag			*/
 #define	VFEXT	0x0002			/* extended (beyond column 80)	*/
@@ -98,13 +122,16 @@ typedef struct  VIDEO {
 
 int     vtrow   = 0;                    /* Row location of SW cursor */
 int     vtcol   = 0;                    /* Column location of SW cursor */
-int     ttrow   = HUGE;                 /* Row location of HW cursor */
-int     ttcol   = HUGE;                 /* Column location of HW cursor */
+int     ttrow   = FARAWAY;              /* Row location of HW cursor */
+int     ttcol   = FARAWAY;              /* Column location of HW cursor */
 int	lbound	= 0;			/* leftmost column of current line
 					   being displayed */
 
 VIDEO   **vscreen;                      /* Virtual screen. */
 VIDEO   **pscreen;                      /* Physical screen. */
+
+#define	ISCONTROL(C)	((C) < 0x20 || (C) == 0x7F \
+			 || ((gmode & P_HICTRL) && ((C) > 0x7F && (C) < 0xA0)))
 
 
 /*
@@ -118,6 +145,9 @@ vtinit()
 {
     register int i;
     register VIDEO *vp;
+
+    if(Pmaster == NULL)
+      vtterminalinfo(gmode & MDTCAPWINS);
 
     (*term.t_open)();
 
@@ -147,6 +177,8 @@ vtinit()
 		     NULL);
             return(FALSE);
 	}
+	else
+	  memset(vp, ' ', sizeof(VIDEO)+(term.t_ncol*sizeof(CELL)));
 
 	vp->v_flag = 0;
         vscreen[i] = vp;
@@ -165,12 +197,21 @@ vtinit()
 		     NULL);
             return(FALSE);
 	}
+	else
+	  memset(vp, ' ', sizeof(VIDEO)+(term.t_ncol*sizeof(CELL)));
 
 	vp->v_flag = 0;
         pscreen[i] = vp;
     }
 
     return(TRUE);
+}
+
+vtterminalinfo(termcap_wins)
+    int termcap_wins;
+{
+    return((term.t_terminalinfo) ? (*term.t_terminalinfo)(termcap_wins)
+				 : (Pmaster ? 0 : TRUE));
 }
 
 
@@ -180,6 +221,7 @@ vtinit()
  * system prompt will be written in the line). Shut down the channel to the
  * terminal.
  */
+void
 vttidy()
 {
     movecursor(term.t_nrow-1, 0);
@@ -195,6 +237,7 @@ vttidy()
  * screen. There is no checking for nonsense values; this might be a good
  * idea during the early stages.
  */
+void
 vtmove(row, col)
 int row, col;
 {
@@ -209,6 +252,7 @@ int row, col;
  * only puts printing characters into the virtual terminal buffers. Only
  * column overflow is checked.
  */
+void
 vtputc(c)
 CELL c;
 {
@@ -230,10 +274,10 @@ CELL c;
 	}
         while ((vtcol&0x07) != 0);
     }
-    else if (c.c < 0x20 || c.c == 0x7F) {
+    else if (ISCONTROL(c.c)){
 	ac.c = '^';
         vtputc(ac);
-	ac.c = (c.c ^ 0x40);
+	ac.c = ((c.c & 0x7f) | 0x40);
         vtputc(ac);
     }
     else
@@ -245,6 +289,7 @@ CELL c;
  * not yet on left edge, don't print it yet. check for overflow on
  * the right margin.
  */
+void
 vtpute(c)
 CELL c;
 {
@@ -266,10 +311,10 @@ CELL c;
         }
         while (((vtcol + lbound)&0x07) != 0 && vtcol < term.t_ncol);
     }
-    else if (c.c < 0x20 || c.c == 0x7F) {
+    else if (ISCONTROL(c.c)){
 	ac.c = '^';
         vtpute(ac);
-	ac.c = (c.c ^ 0x40);
+	ac.c = ((c.c & 0x7f) | 0x40);
         vtpute(ac);
     }
     else {
@@ -284,6 +329,7 @@ CELL c;
  * Erase from the end of the software cursor to the end of the line on which
  * the software cursor is located.
  */
+void
 vteeol()
 {
     register VIDEO      *vp;
@@ -304,6 +350,7 @@ vteeol()
  * correct for the current window. Third, make the virtual and physical
  * screens the same.
  */
+void
 update()
 {
     register LINE   *lp;
@@ -317,7 +364,14 @@ update()
 
 #if	TYPEAH
     if (typahead())
-	return(TRUE);
+	return;
+#endif
+
+#ifdef _WINDOWS
+    /* This tells our MS Windows module to not bother updating the
+     * cursor position while a massive screen update is in progress.
+     */
+    mswin_beginupdate ();
 #endif
 
 /*
@@ -418,10 +472,10 @@ update()
 			 * to the top, and the composer is not being 
 			 * displayed...
 			 */
-		    if(Pmaster && !ComposerEditing 
+		    if(Pmaster && Pmaster->headents && !ComposerEditing 
 		       && (lback(lp) == wp->w_bufp->b_linep)
 		       && (ComposerTopLine == COMPOSER_TOP_LINE))
-		      j += entry_line(LASTHDR, TRUE);
+		      j += entry_line(1000, TRUE); /* Never > 1000 headers */
 
 		    scrolldown(wp, -1, j);
 		    break;
@@ -437,7 +491,7 @@ update()
 			if(!ComposerEditing 
 			   && (ComposerTopLine != COMPOSER_TOP_LINE))
 			  scrollup(wp, COMPOSER_TOP_LINE, 
-				   j+entry_line(LASTHDR, TRUE));
+				   j+entry_line(1000, TRUE));
 			else
 			  scrollup(wp, -1, j);
 		    }
@@ -456,10 +510,10 @@ out:
 	     * if the line at the top of the page is the top line
 	     * in the body, show the header...
 	     */
-	    if(Pmaster && !ComposerEditing){
+	    if(Pmaster && Pmaster->headents && !ComposerEditing){
 		if(lback(wp->w_linep) == wp->w_bufp->b_linep){
 		    if(ComposerTopLine == COMPOSER_TOP_LINE){
-			i = term.t_nrow - 4 - HeaderLen();
+			i = term.t_nrow - 2 - term.t_mrow - HeaderLen();
 			if(i > 0 && nlforw() >= i) {	/* room for header ? */
 			    if((i = nlforw()/2) == 0 && term.t_nrow&1)
 			      i = 1;
@@ -552,13 +606,13 @@ out:
 
         if (c.c == '\t')
             curcol |= 0x07;
-        else if (c.c < 0x20 || c.c == 0x7F)
+        else if (ISCONTROL(c.c))
             ++curcol;
 
         ++curcol;
     }
 
-    if (curcol >= term.t_ncol - 1) { 		/* extended line. */
+    if (curcol >= term.t_ncol) { 		/* extended line. */
 	/* flag we are extended and changed */
 	vscreen[currow]->v_flag |= VFEXT | VFCHG;
 	updext();				/* and output extended line */
@@ -580,7 +634,7 @@ out:
 		/* always flag extended lines as changed */
 		vscreen[i]->v_flag |= VFCHG;
 		if ((wp != curwp) || (lp != wp->w_dotp) ||
-		    (curcol < term.t_ncol - 1)) {
+		    (curcol < term.t_ncol)) {
 		    vtmove(i, 0);
 		    for (j = 0; j < llength(lp); ++j)
 		      vtputc(lgetc(lp, j));
@@ -604,10 +658,12 @@ out:
 
     if (sgarbf != FALSE){
 	if(Pmaster){
+	    int rv;
+       
 	    showCompTitle();
 
 	    if(ComposerTopLine != COMPOSER_TOP_LINE){
-		UpdateHeader();			/* arrange things */
+		UpdateHeader(0);		/* arrange things */
 		PaintHeader(COMPOSER_TOP_LINE, TRUE);
 	    }
 
@@ -621,10 +677,15 @@ out:
 		peeol();
 		vscreen[i]->v_flag |= VFCHG;
 	    }
+	    rv = (*Pmaster->showmsg)('X' & 0x1f);	/* ctrl-L */
+	    ttresize();
+	    picosigs();		/* restore altered handlers */
+	    if(rv)		/* Did showmsg corrupt the display? */
+	      PaintBody(0);	/* Yes, repaint */
 	    movecursor(wheadp->w_toprow, 0);
 	}
 	else{
-	    for (i = 0; i < term.t_nrow - 2; ++i){
+	    for (i = 0; i < term.t_nrow-term.t_mrow; ++i){
 		vscreen[i]->v_flag |= VFCHG;
 		vp1 = pscreen[i];
 		c.c = ' ';
@@ -651,14 +712,15 @@ out:
      * the "updateline" code is only called with a line that has been updated
      * for sure.
      */
-    if(Pmaster){
-	i = curwp->w_toprow;
-	c.c = term.t_nrow-2;
-    }
-    else{
-	i = 0;
-	c.c = term.t_nrow;
-    }
+    if(Pmaster)
+      i = curwp->w_toprow;
+    else
+      i = 0;
+
+    if (term.t_nrow > term.t_mrow)
+       c.c = term.t_nrow - term.t_mrow;
+    else
+       c.c = 0;
 
     for (; i < (int)c.c; ++i){
 
@@ -670,8 +732,12 @@ out:
         if (j & VFCHG){
 
 #if	TYPEAH
-	    if (typahead())
-	        return(TRUE);
+	    if (typahead()){
+#ifdef _WINDOWS
+		mswin_endupdate ();
+#endif
+	        return;
+	    }
 #endif
             vp2 = pscreen[i];
 
@@ -683,33 +749,22 @@ out:
     if(Pmaster == NULL){
 
 	if(sgarbk != FALSE){
-	    movecursor(term.t_nrow-1, 0);
-	    peeol();
-	    movecursor(term.t_nrow, 0);
-	    peeol();
+	    if(term.t_mrow > 0){
+		movecursor(term.t_nrow-1, 0);
+		peeol();
+		movecursor(term.t_nrow, 0);
+		peeol();
+	    }
+
 	    if(lastflag&CFFILL){
-#ifdef	SPELLER
-		wkeyhelp("GORYKCXJWVUT",
-		         "Get Help,WriteOut,Read File,Prev Pg,Cut Text,Cur Pos,Exit,Justify,Where is,Next Pg,UnJustify,To Spell");
-
-#else
-		wkeyhelp("GORYKCXJWVUD",
-                         "Get Help,WriteOut,Read File,Prev Pg,Cut Text,Cur Pos,Exit,Justify,Where is,Next Pg,UnJustify,Del Char");
-
-#endif
+		menu_pico[UNCUT_KEY].label = "UnJustify";
 		emlwrite("Can now UnJustify!", NULL);
-		mpresf = HUGE;	/* remove this after next keystroke! */
+		mpresf = FARAWAY;	/* remove this after next keystroke! */
 	    }
-	    else{
-#ifdef SPELLER
-		wkeyhelp("GORYKCXJWVUT",
-		         "Get Help,WriteOut,Read File,Prev Pg,Cut Text,Cur Pos,Exit,Justify,Where is,Next Pg,UnCut Text,To Spell");
-#else
-		wkeyhelp("GORYKCXJWVUD",
-		         "Get Help,WriteOut,Read File,Prev Pg,Cut Text,Cur Pos,Exit,Justify,Where is,Next Pg,UnCut Text,Del Char");
+	    else
+	      menu_pico[UNCUT_KEY].label = "UnCut Text";
 
-#endif
-	    }
+	    wkeyhelp(menu_pico);
 	    sgarbk = FALSE;
         }
     }
@@ -717,14 +772,25 @@ out:
     /* Finally, update the hardware cursor and flush out buffers. */
 
     movecursor(currow, curcol - lbound);
+#ifdef _WINDOWS
+    mswin_endupdate ();
+
+    /* 
+     * Update the scroll bars.  This function is where curbp->b_linecnt
+     * is really managed.  See update_scroll.
+     */
+    update_scroll ();
+#endif
     (*term.t_flush)();
 }
+
 
 /* updext - update the extended line which the cursor is currently
  *	    on at a column greater than the terminal width. The line
  *	    will be scrolled right or left to let the user see where
  *	    the cursor is
  */
+void
 updext()
 {
     register int rcursor;		/* real cursor location */
@@ -758,6 +824,7 @@ updext()
  * row and column variables. It does try an exploit erase to end of line. The
  * RAINBOW version of this routine uses fast video.
  */
+void
 updateline(row, vline, pline, flags)
 int  row;
 CELL vline[];				/* what we want it to end up as */
@@ -795,7 +862,7 @@ short *flags;				/* and how we want it that way  */
     /* if both lines are the same, no update needs to be done */
     if (cp1 == cp3){
 	*flags &= ~VFCHG;			/* mark it clean */
-	return(TRUE);
+	return;
     }
 
     /* find out if there is a match on the right */
@@ -833,7 +900,7 @@ short *flags;				/* and how we want it that way  */
 	    }
 
 	    if (cp7==cp2 && cp4-cp2 > 3){
-		o_insert((char)cp1->c);     /* insert the char */
+		o_insert((int)cp1->c);  /* insert the char */
 		display = FALSE;        /* only do it once!! */
 	    }
 	}
@@ -879,44 +946,50 @@ short *flags;				/* and how we want it that way  */
  * change the modeline format by hacking at this routine. Called by "update"
  * any time there is a dirty window.
  */
+void
 modeline(wp)
 WINDOW *wp;
 {
     if(Pmaster){
-	static char keys[13], labels[160];
-	
         if(ComposerEditing)
 	  ShowPrompt();
 	else{
-#ifdef	SPELLER
-	    sprintf(keys, "GCRYKOXJ%cVUT", 
-		    (Pmaster->alt_ed != NULL) ? '_' : 'W');
-	    sprintf(labels, "Get Help,Cancel,Read File,Prev Pg,Cut Text,Postpone,Send,Justify,%s,Next Pg,%s,To Spell",  
-#else
-	    sprintf(keys, "GCRYKOXJ%cVUD", 
-		    (Pmaster->alt_ed != NULL) ? '_' : 'W');
-	    sprintf(labels, "Get Help,Cancel,Read File,Prev Pg,Cut Text,Postpone,Send,Justify,%s,Next Pg,%s,Del Char",  
-#endif
-		    (Pmaster->alt_ed) ? "Alt Edit" : "Where is",
-		    (thisflag&CFFILL) ? "UnFill" : "UnCut Text");
-	    wkeyhelp(keys, labels);
+	    menu_compose[EXIT_KEY].label  = (Pmaster->headents)
+					      ? "Send" :"Exit";
+	    menu_compose[PSTPN_KEY].name  = (Pmaster->headents)
+					      ? "^O" : NULL;
+	    menu_compose[PSTPN_KEY].label = (Pmaster->headents)
+					      ? "Postpone" : NULL;
+	    menu_compose[WHERE_KEY].name  = (Pmaster->alt_ed) ? "^_" : "^W";
+	    menu_compose[WHERE_KEY].label = (Pmaster->alt_ed) ? "Alt Edit" 
+							      : "Where is";
+	    KS_OSDATASET(&menu_compose[WHERE_KEY],
+			 (Pmaster->alt_ed) ? KS_ALTEDITOR : KS_WHEREIS);
+	    menu_compose[UNCUT_KEY].label = (thisflag&CFFILL) ? "UnJustify"
+							      : "UnCut Text";
+	    wkeyhelp(menu_compose);
+#ifdef _WINDOWS
+	    /* When alt editor is available "Where is" is not on the menu
+	     * but the command is still available.  This call enables any
+	     * "Where is" menu items. */
+	    if (Pmaster->alt_ed)
+		mswin_menuitemadd (MENU|CTRL|'W', "", KS_WHEREIS, 0);
+#endif 
 	}
     }
     else{
 	register char *cp;
 	register int n;		/* cursor position count */
 	register BUFFER *bp;
-	register i;		/* loop index */
-	register lchar;		/* character to draw line in buffer with */
+	register int i;		/* loop index */
+	register int lchar;	/* character to draw line in buffer with */
 	char     tline[NLINE];	/* buffer for part of mode line */
 	CELL     c;
 
 	n = 0;
 	c.a = 1;
-#if     MSDOS
 	vtmove(1, 0);
 	vteeol();
-#endif
 	vscreen[n]->v_flag |= VFCHG; /* Redraw next time. */
 	vtmove(n, 0);		/* Seek to right line. */
 
@@ -933,50 +1006,52 @@ WINDOW *wp;
 
 	n = 1;
 
-	sprintf((cp=tline), "  UW PICO(tm) %s  ", version);	/* VERSION */
-	
-	while ((c.c = *cp++) != 0) {
+	sprintf(cp = tline, PICO_TITLE, version);	/* write version */
+
+	while(c.c = *cp++){
 	    vtputc(c);
 	    ++n;
 	}
 
-	if (bp->b_fname[0] != 0){            /* File name. */
-	    sprintf(tline," File: ");
-	    cp = &bp->b_fname[0];
+	if(bp->b_fname[0]){				/* File name? */
+	    char *p, *endp, *prefix;
 
-	    if(strlen(cp) > (term.t_ncol-n-22)){   /* room for full path ? */
-		strcat(tline,".../");
-		while(strlen(cp) >= (term.t_ncol-n-22)){
-		    if(strchr(cp,'/') == NULL)
-		      cp = (char *)strchr(&bp->b_fname[0],'\0')-term.t_ncol-n-22;
-		    else
-		      cp = (char *)strchr(cp,'/') + 1;
+	    prefix = NULL;				/* for abreviation */
+	    endp   = strchr(cp = bp->b_fname, '\0');	/* find eol */
+	    i	   = term.t_ncol - n - 22;		/* space available */
+	    while(i > 0 && endp - cp > i){
+		if(!prefix){
+		    prefix = ".../";			/* path won't fit! */
+		    i -= 4;
 		}
+
+		if(!(p = strchr(cp, '/'))){		/* neat break? */
+		    cp = endp - i;			/* do best we can */
+		    break;
+		}
+		else
+		  cp = p + 1;
 	    }
 
-	    strcat(tline,cp);
+	    sprintf(tline, "%*.sFile: %s%s",
+		    ((i - (endp - cp)) > 0) ? (i - (endp - cp))/2 : 0, " ",
+		    prefix ? prefix : "", cp);
 
-	    c.c = ' ';
-	    for(i=((term.t_ncol-n-12-strlen(tline))/2); i > 0; n++, i--)
+	    for(cp = tline; c.c = *cp; cp++, n++)
 	      vtputc(c);
-
-	    cp = &tline[0];
-
-	    while ((c.c = *cp++) != 0){
-		vtputc(c);
-		++n;
-            }
-
         }
         else{
-	    cp = " New Buffer ";
-	    c.c = lchar;
-            for(i=(term.t_ncol-strlen(cp))/2; n < i; n++)
-	      vtputc(c);
-	    while ((c.c = *cp++) != 0) {
+	    cp = PICO_NEWBUF_MSG;
+	    if(sizeof(PICO_NEWBUF_MSG) < term.t_ncol){	/* enough room? */
+		c.c = lchar;
+		for(i = (term.t_ncol-sizeof(PICO_NEWBUF_MSG))/2; n < i; n++)
+		  vtputc(c);
+	    }
+
+	    while(c.c = *cp++){
 		vtputc(c);
 		++n;
-            }
+	    }
 	}
 
 #if WFDEBUG
@@ -988,22 +1063,20 @@ WINDOW *wp;
 	vtputc((wp->w_flag&WFFORCE)!=0 ? 'F' : lchar);
 	n += 6;
 #endif
-
-	if ((bp->b_flag&BFCHG) != 0)                /* "MOD" if changed. */
-	  cp = "Modified  ";
-	else
-	  cp = "          ";
+	i = term.t_ncol - n;				/* space available */
+	cp = NULL;
+	if(bp->b_flag&BFCHG){				/* "MOD" if changed. */
+	    cp = PICO_MOD_MSG;
+	    i  = (i > sizeof(PICO_MOD_MSG)) ? i - sizeof(PICO_MOD_MSG) : 0;
+	}
 
 	c.c = lchar;
-	while (n < (term.t_ncol - strlen(cp))){	    /* Pad to full width. */
-	    vtputc(c);
-	    ++n;
-        }
+	while(i-- > 0)					/* Pad width */
+	  vtputc(c);
 
-	while ((c.c = *cp++) != 0){
+	if(cp)
+	  while(c.c = *cp++)
 	    vtputc(c);
-	    ++n;
-	}
     }
 }
 
@@ -1014,6 +1087,7 @@ WINDOW *wp;
  * and column "col". The row and column arguments are origin 0. Optimize out
  * random calls. Update "ttrow" and "ttcol".
  */
+void
 movecursor(row, col)
 int row, col;
 {
@@ -1026,24 +1100,44 @@ int row, col;
 
 
 /*
+ * Erase any sense we have of the cursor's HW location...
+ */
+void
+clearcursor()
+{
+    ttrow = ttcol = FARAWAY;
+}
+
+void
+get_cursor(row, col)
+    int *row, *col;
+{
+    if(row)
+      *row = ttrow;
+    if(col)
+      *col = ttcol;
+}
+
+
+/*
  * Erase the message line. This is a special routine because the message line
  * is not considered to be part of the virtual screen. It always works
  * immediately; the terminal buffer is flushed via a call to the flusher.
  */
+void
 mlerase()
 {
-    int i;
+    if (term.t_nrow < term.t_mrow)
+      return;
 
-    movecursor(term.t_nrow - 2, 0);
+    movecursor(term.t_nrow - term.t_mrow, 0);
     (*term.t_rev)(0);
     if (eolexist == TRUE)
       peeol();
-    else {
-        for (i = 0; i < term.t_ncol - 1; i++)
-	  (*term.t_putchar)(' ');
-        movecursor(term.t_nrow, 1);	/* force the move! */
-        movecursor(term.t_nrow, 0);
-    }
+    else
+      while(++ttcol < term.t_ncol)		/* track's ttcol */
+	(*term.t_putchar)(' ');
+
     (*term.t_flush)();
     mpresf = FALSE;
 }
@@ -1059,57 +1153,106 @@ mlyesno(prompt, dflt)
 char  *prompt;
 int   dflt;
 {
-    int  c;				/* input character */
+    int     rv;
+    char    buf[NLINE];
+    KEYMENU menu_yesno[12];
 
-#ifdef	MAYBELATER
-    wkeyhelp("0C0000000000", "Cancel");
-    if(Pmaster)
+#ifdef _WINDOWS
+    if (mswin_usedialog ()) 
+      switch (mswin_yesno (prompt)) {
+	default:
+	case 0:		return (ABORT);
+	case 1:		return (TRUE);
+	case 2:		return (FALSE);
+      }
+#endif  
+
+    for(rv = 0; rv < 12; rv++){
+	menu_yesno[rv].name = NULL;
+	KS_OSDATASET(&menu_yesno[rv], KS_NONE);
+    }
+
+    menu_yesno[1].name  = "Y";
+    menu_yesno[1].label = (dflt == TRUE) ? "[Yes]" : "Yes";
+    menu_yesno[6].name  = "^C";
+    menu_yesno[6].label = "Cancel";
+    menu_yesno[7].name  = "N";
+    menu_yesno[7].label = (dflt == FALSE) ? "[No]" : "No";
+    wkeyhelp(menu_yesno);		/* paint generic menu */
+    sgarbk = TRUE;			/* mark menu dirty */
+    if(Pmaster && curwp)
       curwp->w_flag |= WFMODE;
-    else
-      sgarbf = TRUE;
-#endif
-    if(dflt >= 0)
-      sprintf(s, "%s? [%c] : ", prompt, (dflt) ? 'y' : 'n');
-    else
-      sprintf(s, "%s (y/n)? ", prompt);
 
+    sprintf(buf, "%s ? ", prompt);
+    mlwrite(buf, NULL);
+    (*term.t_rev)(1);
+    rv = -1;
     while(1){
-	mlwrite(s, NULL);
+	switch(GetKey()){
+	  case (CTRL|'M') :		/* default */
+	    if(dflt >= 0){
+		pputs((dflt) ? "Yes" : "No", 1);
+		rv = dflt;
+	    }
+	    else
+	      (*term.t_beep)();
 
-	(*term.t_rev)(1);
-	while((c = GetKey()) == NODATA)
-	  ;				/* don't repaint if timeout */
-	(*term.t_rev)(0);
+	    break;
 
-	if(dflt >= 0 && c == (CTRL|'M')){
-	    (*term.t_rev)(1);
-	    pputs((dflt) ? "Yes" : "No", 1);
-	    (*term.t_rev)(0);
-	    return(dflt);
-	}
-
-	if (c == (CTRL|'C') || c == F3){	/* Bail out! */
-	    (*term.t_rev)(1);
+	  case (CTRL|'C') :		/* Bail out! */
+	  case F2         :
 	    pputs("ABORT", 1);
-	    (*term.t_rev)(0);
-	    return(ABORT);
-	}
+	    rv = ABORT;
+	    break;
 
-	if (c=='y' || c=='Y'){
-	    (*term.t_rev)(1);
+	  case 'y' :
+	  case 'Y' :
+	  case F3  :
 	    pputs("Yes", 1);
-	    (*term.t_rev)(0);
-	    return(TRUE);
+	    rv = TRUE;
+	    break;
+
+	  case 'n' :
+	  case 'N' :
+	  case F4  :
+	    pputs("No", 1);
+	    rv = FALSE;
+	    break;
+
+	  case (CTRL|'G') :
+	    if(term.t_mrow == 0 && km_popped == 0){
+		movecursor(term.t_nrow-2, 0);
+		peeol();
+		term.t_mrow = 2;
+		(*term.t_rev)(0);
+		wkeyhelp(menu_yesno);		/* paint generic menu */
+		mlwrite(buf, NULL);
+		(*term.t_rev)(1);
+		sgarbk = TRUE;			/* mark menu dirty */
+		km_popped++;
+		break;
+	    }
+	    /* else fall through */
+
+	  default:
+	    (*term.t_beep)();
+	  case NODATA :
+	    break;
 	}
 
-	if (c=='n' || c=='N'){
-	    (*term.t_rev)(1);
-	    pputs("No", 1);
+	(*term.t_flush)();
+	if(rv != -1){
 	    (*term.t_rev)(0);
-	    return(FALSE);
+	    if(km_popped){
+		term.t_mrow = 0;
+		movecursor(term.t_nrow, 0);
+		peeol();
+		sgarbf = 1;
+		km_popped = 0;
+	    }
+
+	    return(rv);
 	}
-	else
-	  (*term.t_beep)();
     }
 }
 
@@ -1122,11 +1265,12 @@ int   dflt;
  * lets macros run at full speed. The reply is always terminated by a carriage
  * return. Handle erase, kill, and abort keys.
  */
-mlreply(prompt, buf, nbuf, flg)
-char  *prompt, *buf;
-int    nbuf, flg;
+mlreply(prompt, buf, nbuf, flg, extras)
+char	  *prompt, *buf;
+int	   nbuf, flg;
+EXTRAKEYS *extras;
 {
-    return(mlreplyd(prompt, buf, nbuf, flg|QDEFLT));
+    return(mlreplyd(prompt, buf, nbuf, flg|QDEFLT, extras));
 }
 
 
@@ -1135,9 +1279,9 @@ int    nbuf, flg;
  */
 static int rfkm[12][2] = {
     { F1,  (CTRL|'G')},
-    { F2,  0 },
-    { F3,  (CTRL|'C')},
-    { F4,  (CTRL|'T')},
+    { F2,  (CTRL|'C')},
+    { F3,  0 },
+    { F4,  0 },
     { F5,  0 },
     { F6,  0 },
     { F7,  0 },
@@ -1157,40 +1301,133 @@ static int rfkm[12][2] = {
  *            and ff means for-file which checks that all chars are allowed
  *            in file names.
  */
-mlreplyd(prompt, buf, nbuf, flg)
-char  *prompt;
-char  *buf;
-int    nbuf, flg;
+mlreplyd(prompt, buf, nbuf, flg, extras)
+char	  *prompt;
+char	  *buf;
+int	   nbuf, flg;
+EXTRAKEYS *extras;
 {
     register int    c;				/* current char       */
     register char   *b;				/* pointer in buf     */
-    register int    i;
+    register int    i, j;
     register int    maxl;
     register int    plen;
     int      changed = FALSE;
+    int      return_val = 0;
+    KEYMENU  menu_mlreply[12];
+    int	     extra_v[12];
 
-    mlwrite(prompt, NULL);
-    plen = strlen(prompt);
+#ifdef _WINDOWS
+    if (mswin_usedialog ()) {
+	MDlgButton		btn_list[12];
+	int			i, j;
+
+	memset (&btn_list, 0, sizeof (MDlgButton) * 12);
+	j = 0;
+	for (i = 0; extras && extras[i].name != NULL; ++i) {
+	    if (extras[i].label[0] != '\0') {
+		if ((extras[i].key & CTRL) == CTRL) 
+		    btn_list[j].ch = (extras[i].key & ~CTRL) - '@';
+		else
+		    btn_list[j].ch = extras[i].key;
+		btn_list[j].rval = extras[i].key;
+		btn_list[j].name = extras[i].name;
+		btn_list[j++].label = extras[i].label;
+	    }
+	}
+	btn_list[j].ch = -1;
+
+	return (mswin_dialog (prompt, buf, nbuf, ((flg&QDEFLT) > 0), 
+			FALSE, btn_list, NULL, 0));
+    }
+#endif
+
+    menu_mlreply[0].name = "^G";
+    menu_mlreply[0].label = "Get Help";
+    KS_OSDATASET(&menu_mlreply[0], KS_SCREENHELP);
+    for(j = 0, i = 1; i < 6; i++){	/* insert odd extras */
+	menu_mlreply[i].name = NULL;
+	KS_OSDATASET(&menu_mlreply[i], KS_NONE);
+	rfkm[2*i][1] = 0;
+	if(extras){
+	    for(; extras[j].name && j != 2*(i-1); j++)
+	      ;
+
+	    if(extras[j].name){
+		rfkm[2*i][1]	      = extras[j].key;
+		menu_mlreply[i].name  = extras[j].name;
+		menu_mlreply[i].label = extras[j].label;
+		KS_OSDATASET(&menu_mlreply[i], KS_OSDATAGET(&extras[j]));
+	    }
+	}
+    }
+
+    menu_mlreply[6].name = "^C";
+    menu_mlreply[6].label = "Cancel";
+    KS_OSDATASET(&menu_mlreply[6], KS_NONE);
+    for(j = 0, i = 7; i < 12; i++){	/* insert even extras */
+	menu_mlreply[i].name = NULL;
+	rfkm[2*(i-6)+1][1] = 0;
+	if(extras){
+	    for(; extras[j].name && j != (2*(i-6)) - 1; j++)
+	      ;
+
+	    if(extras[j].name){
+		rfkm[2*(i-6)+1][1]    = extras[j].key;
+		menu_mlreply[i].name  = extras[j].name;
+		menu_mlreply[i].label = extras[j].label;
+		KS_OSDATASET(&menu_mlreply[i], KS_OSDATAGET(&extras[j]));
+	    }
+	}
+    }
+
+    /* set up what to watch for and return values */
+    memset(extra_v, 0, sizeof(extra_v));
+    for(i = 0, j = 0; i < 12 && extras && extras[i].name; i++)
+      extra_v[j++] = extras[i].key;
+
+    plen = mlwrite(prompt, NULL);		/* paint prompt */
     if(!(flg&QDEFLT))
       *buf = '\0';
 
     (*term.t_rev)(1);
 
-    maxl = (nbuf < term.t_ncol - plen - 1) ? nbuf : term.t_ncol - plen - 1;
+    maxl = (nbuf-1 < term.t_ncol - plen - 1) ? nbuf-1 : term.t_ncol - plen - 1;
 
     pputs(buf, 1);
-    b = &buf[strlen(buf)];
+    b = &buf[(flg & QBOBUF) ? 0 : strlen(buf)];
     
+    (*term.t_rev)(0);
+    wkeyhelp(menu_mlreply);		/* paint generic menu */
+    sgarbk = 1;				/* mark menu dirty */
+    (*term.t_rev)(1);
+
     for (;;) {
-	movecursor(ttrow, plen+b-buf);
+	movecursor(term.t_nrow - term.t_mrow, plen + b - buf);
 	(*term.t_flush)();
 
-
+#ifdef	MOUSE
+	mouse_in_content(KEY_MOUSE, -1, -1, 0x5, 0);
+	register_mfunc(mouse_in_content, 
+		       term.t_nrow - term.t_mrow, plen,
+		       term.t_nrow - term.t_mrow, plen + maxl);
+#endif
+#ifdef	_WINDOWS
+	mswin_allowpaste(MSWIN_PASTE_LINE);
+#endif
 	while((c = GetKey()) == NODATA)
 	  ;
 
-	switch(normal(c, rfkm, 2)){
+#ifdef	MOUSE
+	clear_mfunc(mouse_in_content);
+#endif
+#ifdef	_WINDOWS
+	mswin_allowpaste(MSWIN_PASTE_DISABLE);
+#endif
+
+	switch(c = normalize_cmd(c, rfkm, 1)){
 	  case (CTRL|'A') :			/* CTRL-A beginning     */
+	  case KEY_HOME :
 	    b = buf;
 	    continue;
 
@@ -1200,13 +1437,15 @@ int    nbuf, flg;
 	    continue;
 
 	  case (CTRL|'C') :			/* CTRL-C abort		*/
-	    pputs("^C", 1);
+	    pputs("ABORT", 1);
 	    ctrlg(FALSE, 0);
 	    (*term.t_rev)(0);
 	    (*term.t_flush)();
-	    return(ABORT);
+	    return_val = ABORT;
+	    goto ret;
 
 	  case (CTRL|'E') :			/* CTRL-E end of line   */
+	  case KEY_END  :
 	    b = &buf[strlen(buf)];
 	    continue;
 
@@ -1216,10 +1455,25 @@ int    nbuf, flg;
 	    continue;
 
 	  case (CTRL|'G') :			/* CTRL-G help		*/
+	    if(term.t_mrow == 0 && km_popped == 0){
+		movecursor(term.t_nrow-2, 0);
+		peeol();
+		sgarbk = 1;			/* mark menu dirty */
+		km_popped++;
+		term.t_mrow = 2;
+		(*term.t_rev)(0);
+		wkeyhelp(menu_mlreply);		/* paint generic menu */
+		plen = mlwrite(prompt, NULL);		/* paint prompt */
+		(*term.t_rev)(1);
+		pputs(buf, 1);
+		break;
+	    }
+
 	    pputs("HELP", 1);
 	    (*term.t_rev)(0);
 	    (*term.t_flush)();
-	    return(HELPCH);
+	    return_val = HELPCH;
+	    goto ret;
 
 	  case (CTRL|'H') :			/* CTRL-H backspace	*/
 	  case 0x7f :				/*        rubout	*/
@@ -1230,6 +1484,7 @@ int    nbuf, flg;
 	    (*term.t_putchar)('\b');
 
 	  case (CTRL|'D') :			/* CTRL-D delete char   */
+	  case KEY_DEL :
 	    changed=TRUE;
 	    i = 0;
 	    do					/* blat out left char   */
@@ -1239,11 +1494,8 @@ int    nbuf, flg;
 
 	  case (CTRL|'L') :			/* CTRL-L redraw	*/
 	    (*term.t_rev)(0);
-	    return(CTRL|'L');
-
-	  case (CTRL|'T') :			/* CTRL-T special	*/
-	    (*term.t_rev)(0);
-	    return(CTRL|'T');
+	    return_val = (CTRL|'L');
+	    goto ret;
 
 	  case (CTRL|'K') :			/* CTRL-K kill line	*/
 	    changed=TRUE;
@@ -1252,38 +1504,75 @@ int    nbuf, flg;
 	    movecursor(ttrow, plen);
 	    break;
 
-	  case K_PAD_LEFT:
+	  case KEY_LEFT:
 	    if(ttcol > plen)
 	      b--;
 	    continue;
 
-	  case K_PAD_RIGHT:
+	  case KEY_RIGHT:
 	    if(*b != '\0')
 	      b++;
 	    continue;
 
-	  case F3 :				/* abort */
-	    pputs("ABORT", 1);
-	    ctrlg(FALSE, 0);
-	    (*term.t_rev)(0);
-	    (*term.t_flush)();
-	    return(ABORT);
-
 	  case F1 :				/* sort of same thing */
 	    (*term.t_rev)(0);
 	    (*term.t_flush)();
-	    return(HELPCH);
+	    return_val = HELPCH;
+	    goto ret;
 
 	  case (CTRL|'M') :			/*        newline       */
 	    (*term.t_rev)(0);
 	    (*term.t_flush)();
-	    return(changed);
+	    return_val = changed;
+	    goto ret;
+
+#ifdef	MOUSE
+	  case KEY_MOUSE :
+	    {
+	      MOUSEPRESS mp;
+
+	      mouse_get_last (NULL, &mp);
+
+	      /* The clicked line have anything special on it? */
+	      switch(mp.button){
+		case M_BUTTON_LEFT :			/* position cursor */
+		  mp.col -= plen;			/* normalize column */
+		  if(mp.col >= 0 && mp.col <= strlen(buf))
+		    b = buf + mp.col;
+
+		  break;
+
+		case M_BUTTON_RIGHT :
+#ifdef	_WINDOWS
+		  mswin_allowpaste(MSWIN_PASTE_LINE);
+		  mswin_paste_popup();
+		  mswin_allowpaste(MSWIN_PASTE_DISABLE);
+		  break;
+#endif
+
+		case M_BUTTON_MIDDLE :			/* NO-OP for now */
+		default:				/* just ignore */
+		  break;
+	      }
+	    }
+
+	    continue;
+#endif
 
 	  default : 
 	    if(strlen(buf) >= maxl){		/* contain the text      */
 		(*term.t_beep)();
 		continue;
 	    }
+
+	    /* look for match in extra_v */
+	    for(i = 0; i < 12; i++)
+	      if(c && c == extra_v[i]){
+		  (*term.t_rev)(0);
+		  return_val = c;
+		  goto ret;
+	      }
+
 	    changed=TRUE;
 
 	    if(c&(~0xff)){			/* bag ctrl/special chars */
@@ -1297,11 +1586,19 @@ int    nbuf, flg;
 			continue;
 		    }
 		}
+		if(flg&QNODQT){	                /* reject double quotes? */
+		    if(c == '"'){
+			(*term.t_beep)();
+			continue;
+		    }
+		}
+		
+
 		do				/* blat out left char   */
 		  b[i+1] = b[i];
-		while(i-- >= 0);
-		*b++ = c;
-		pputc(c, 0);
+		while(i-- > 0);
+
+		pputc(*b++ = c, 0);
 	    }
 	}
 
@@ -1314,6 +1611,17 @@ int    nbuf, flg;
 	while(ttcol <= i)
 	  pputc(' ', 0);
     }
+
+ret:
+    if(km_popped){
+	term.t_mrow = 0;
+	movecursor(term.t_nrow, 0);
+	peeol();
+	sgarbf = 1;
+	km_popped = 0;
+    }
+
+    return(return_val);
 }
 
 
@@ -1334,8 +1642,8 @@ void	*arg;
 
     mlerase();
 
-    if((l = strlen(message)) == 0)		/* nothing to write, bag it */
-      return;
+    if((l = strlen(message)) == 0 || term.t_nrow < 2)	
+      return;    /* nothing to write or no space to write, bag it */
 
     /*
      * next, figure out where the to move the cursor so the message 
@@ -1346,7 +1654,7 @@ void	*arg;
 	switch(ap[1]){
 	  case '%':
 	  case 'c':
-	    l += 1;
+	    l += arg ? 2 : 1;
 	    break;
 	  case 'd':
 	    l += (long)dumbroot((int)arg, 10);
@@ -1361,15 +1669,15 @@ void	*arg;
 	    l += (long)dumbroot((int)arg, 16);
 	    break;
 	  case 's':
-            l += strlen((char *)arg);
+            l += arg ? strlen((char *)arg) : 2;
 	    break;
 	}
     }
 
-    if(l-4 <= term.t_ncol)			/* this wouldn't be good */
-      movecursor(term.t_nrow-2, (term.t_ncol - (int)l - 4)/2);
+    if(l+4 <= term.t_ncol)
+      movecursor(term.t_nrow-term.t_mrow, (term.t_ncol - ((int)l + 4))/2);
     else
-      movecursor(term.t_nrow-2, 0);
+      movecursor(term.t_nrow-term.t_mrow, 0);
 
     (*term.t_rev)(1);
     pputs("[ ", 1);
@@ -1379,7 +1687,11 @@ void	*arg;
 	else if(*bufp == '%'){
 	    switch(*++bufp){
 	      case 'c':
-		pputc((char)(int)arg, 0);
+		if(arg)
+		  pputc((char)(int)arg, 0);
+		else {
+		    pputs("%c", 0);
+		}
 		break;
 	      case 'd':
 		mlputi((int)arg, 10);
@@ -1394,7 +1706,7 @@ void	*arg;
 		mlputi((int)arg, 8);
 		break;
 	      case 's':
-		pputs((char *)arg, 0);
+		pputs(arg ? (char *)arg : "%s", 0);
 		break;
 	      case '%':
 	      default:
@@ -1479,10 +1791,11 @@ void *arg;
     while(ttcol < term.t_ncol)
       pputc(' ', 0);
 
-    movecursor(term.t_nrow - 2, c);
+    movecursor(term.t_nrow - term.t_mrow, c);
     (*term.t_rev)(0);
     (*term.t_flush)();
     mpresf = TRUE;
+    return(c);
 }
 
 
@@ -1490,6 +1803,7 @@ void *arg;
  * Write out an integer, in the specified radix. Update the physical cursor
  * position. This will not handle any negative numbers; maybe it should.
  */
+void
 mlputi(i, r)
 int i, r;
 {
@@ -1513,6 +1827,7 @@ int i, r;
 /*
  * do the same except as a long integer.
  */
+void
 mlputli(l, r)
 long l;
 int  r;
@@ -1542,6 +1857,7 @@ int  r;
  *        r  is the row at which to begin scrolling
  *        n  is the number of lines to scrol
  */
+void
 scrolldown(wp, r, n)
 WINDOW *wp;
 int     r, n;
@@ -1573,8 +1889,8 @@ int     r, n;
 	bcopy(vp1, vp2, term.t_ncol * sizeof(CELL));
     }
     pprints(r+n-1, r);
-    ttrow = HUGE;
-    ttcol = HUGE;
+    ttrow = FARAWAY;
+    ttcol = FARAWAY;
 #endif /* TERMCAP */
 }
 
@@ -1584,6 +1900,7 @@ int     r, n;
  *            display, and update the pscreen array to reflect those
  *            moves...
  */
+void
 scrollup(wp, r, n)
 WINDOW *wp;
 int     r, n;
@@ -1617,8 +1934,8 @@ int     r, n;
 	i++;
     }
     pprints(wp->w_toprow+wp->w_ntrows-n, wp->w_toprow+wp->w_ntrows-1);
-    ttrow = HUGE;
-    ttcol = HUGE;
+    ttrow = FARAWAY;
+    ttcol = FARAWAY;
 #endif /* TERMCAP */
 }
 
@@ -1627,6 +1944,7 @@ int     r, n;
  * print spaces in the physical screen starting from row abs(n) working in
  * either the positive or negative direction (depending on sign of n).
  */
+void
 pprints(x, y)
 int x, y;
 {
@@ -1679,7 +1997,7 @@ unsigned  *chs;
 	if(l >= 0)
 	  (*chs) += llength(lp);
     }
-    *r = i-l-2;
+    *r = i - l - term.t_mrow;
     return(l+curwp->w_toprow);
 }
 
@@ -1704,11 +2022,17 @@ int  row, col;
     if (old_ncol == term.t_ncol && old_nrow == term.t_nrow)
       return(TRUE);
 
-    curwp->w_toprow = 2;
-    curwp->w_ntrows = term.t_nrow-4; 	      /* "-4" for mode line and keys */
+    if(curwp){
+	curwp->w_toprow = 2;
+	curwp->w_ntrows = term.t_nrow - curwp->w_toprow - term.t_mrow;
+    }
 
-    if(Pmaster)
-      fillcol = (term.t_ncol > 80) ? 77 : term.t_ncol - 6;
+    if(Pmaster){
+	fillcol = Pmaster->fillcolumn;
+	(*Pmaster->resize)();
+    }
+    else if(userfillcol > 0)
+      fillcol = userfillcol;
     else
       fillcol = term.t_ncol - 6;	       /* we control the fill column */
 
@@ -1766,13 +2090,12 @@ int  row, col;
     }
 
     if(!ResizeBrowser()){
-	if(Pmaster){
+	if(Pmaster && Pmaster->headents){
 	    ResizeHeader();
 	}
 	else{
-	    lchange(WFHARD);                   /* set update flags... */
-	    curwp->w_flag |= WFMODE;           /* and modeline so we  */
-	    refresh(0, 1);                     /* redraw the whole enchilada. */
+	    curwp->w_flag |= (WFHARD | WFMODE);
+	    refresh(0, 1);                     /* redraw whole enchilada. */
 	    update();                          /* do it */
 	}
     }
@@ -1780,28 +2103,48 @@ int  row, col;
     return(TRUE);
 }
 
+void
+redraw_pico_for_callback()
+{
+    refresh(0, 1);
+    update();
+}
+
 
 /*
  * showCompTitle - display the anchor line passed in from pine
  */
+void
 showCompTitle()
 {
     if(Pmaster){
 	register char *bufp;
 	extern   char *pico_anchor;
+	COLOR_PAIR *lastc = NULL;
 
 	if((bufp = pico_anchor) == NULL)
-	  return(1);
-
+	  return;
+	
 	movecursor(COMPOSER_TITLE_LINE, 0);
-	(*term.t_rev)(1);   
+	if (Pmaster->colors && Pmaster->colors->tbcp &&
+	    pico_is_good_colorpair(Pmaster->colors->tbcp)){
+	  lastc = pico_get_cur_color();
+	  (void)pico_set_colorp(Pmaster->colors->tbcp, PSC_NONE);
+	}
+	else
+	  (*term.t_rev)(1);   
 	while (ttcol < term.t_ncol)
 	  if(*bufp != '\0')
 	    pputc(*bufp++, 1);
           else
 	    pputc(' ', 1);
 
-	(*term.t_rev)(0);
+	if (lastc){
+	  (void)pico_set_colorp(lastc, PSC_NONE);
+	  free_color_pair(&lastc);
+	}
+	else
+	  (*term.t_rev)(0);
 	movecursor(COMPOSER_TITLE_LINE + 1, 0);
 	peeol();
     }
@@ -1812,6 +2155,7 @@ showCompTitle()
 /*
  * zotdisplay - blast malloc'd space created for display maps
  */
+void
 zotdisplay()
 {
     register int i;
@@ -1848,17 +2192,25 @@ nlforw()
  * pputc - output the given char, keep track of it on the physical screen
  *	   array, and keep track of the cursor
  */
+void
 pputc(c, a)
 int   c;				/* char to write */
 int   a;				/* and its attribute */
 {
     if((ttcol >= 0 && ttcol < term.t_ncol) 
        && (ttrow >= 0 && ttrow <= term.t_nrow)){
-/*	(*term.t_rev)(a);*/
-	(*term.t_putchar)(c);			/* write it */
-/*	(*term.t_rev)(!a);*/
-	pscreen[ttrow]->v_text[ttcol].c = c;	/* keep track of it */
-	pscreen[ttrow]->v_text[ttcol++].a = a;	/* keep track of it */
+       
+	/*
+	 * Some terminals scroll when you write in the lower right corner
+	 * of the screen, so don't write there.
+	 */
+	if(!(ttrow == term.t_nrow && ttcol == term.t_ncol -1)){
+	    (*term.t_putchar)(c);			/* write it */
+	    pscreen[ttrow]->v_text[ttcol].c = c;	/* keep track of it */
+	    pscreen[ttrow]->v_text[ttcol].a = a;	/* keep track of it */
+	}
+
+	ttcol++;
     }
 }
 
@@ -1866,6 +2218,7 @@ int   a;				/* and its attribute */
 /*
  * pputs - print a string and keep track of the cursor
  */
+void
 pputs(s, a)
 register char *s;			/* string to write */
 register int   a;			/* and its attribute */
@@ -1879,6 +2232,7 @@ register int   a;			/* and its attribute */
  * peeol - physical screen array erase to end of the line.  remember to
  *	   track the cursor.
  */
+void
 peeol()
 {
     register int r = ttrow;
@@ -1887,7 +2241,14 @@ peeol()
 
     cl.c = ' ';
     cl.a = 0;
-    (*term.t_eeol)();
+
+    /*
+     * Don't clear if we think we are sitting past the last column,
+     * that erases the last column if we just wrote it.
+     */
+    if(c < term.t_ncol)
+      (*term.t_eeol)();
+
     while(c < term.t_ncol && c >= 0 && r <= term.t_nrow && r >= 0)
       pscreen[r]->v_text[c++] = cl;
 }
@@ -1911,6 +2272,7 @@ int l, o;
 /*
  * pclear() - clear the physical screen from row x through row y
  */
+void
 pclear(x, y)
 register int x;
 register int y;
@@ -1961,10 +2323,11 @@ CELL c;
     register int   i;
     register CELL *p;
 
-    if(o_insert((char)c.c)){		/* if we've got it, use it! */
+    if(o_insert((int) c.c)){		/* if we've got it, use it! */
 	p = pscreen[ttrow]->v_text;	/* then clean up physical screen */
 	for(i = term.t_ncol-1; i > ttcol; i--)
 	  p[i] = p[i-1];		/* shift right */
+
 	p[ttcol++] = c;			/* insert new char */
 	
 	return(1);
@@ -2018,6 +2381,19 @@ int      key;
     register int  i = 0;
     register int  j = 0;
     register int  l;
+    COLOR_PAIR *lastc = NULL;
+    COLOR_PAIR *kncp = NULL;
+    COLOR_PAIR *klcp = NULL;
+
+    if (Pmaster && Pmaster->colors){
+      if(pico_is_good_colorpair(Pmaster->colors->klcp))
+        klcp = Pmaster->colors->klcp;
+
+      if(klcp && pico_is_good_colorpair(Pmaster->colors->kncp))
+        kncp = Pmaster->colors->kncp;
+
+      lastc = pico_get_cur_color();
+    }
 
     l = strlen(pmt);
     while(1){
@@ -2027,9 +2403,12 @@ int      key;
 	if(pmt[j] == key)
 	  j++;
 
+	if (pscr(line, i) == NULL)
+	  return;
+	
 	if(pscr(line, i)->c != pmt[j]){
 	    if(j >= 1 && pmt[j-1] == key)
-	      j--;
+ 	      j--;
 	    break;
 	}
 
@@ -2038,20 +2417,33 @@ int      key;
     }
 
     movecursor(line, column+i);
+    if(klcp) (void)pico_set_colorp(klcp, PSC_NONE);
     buf = &pmt[j];
     do{
 	if(*buf == key){
 	    buf++;
-	    (*term.t_rev)(1);
+	    if(kncp)
+	      (void)pico_set_colorp(kncp, PSC_NONE);
+	    else
+	      (void)(*term.t_rev)(1);
+
 	    pputc(*buf, 1);
-	    (*term.t_rev)(0);
+	    if(kncp)
+	      (void)pico_set_colorp(klcp, PSC_NONE);
+	    else
+	      (void)(*term.t_rev)(0);
 	}
 	else{
 	    pputc(*buf, 0);
 	}
     }    
     while(*++buf != '\0');
+
     peeol();
+    if (lastc){
+      (void)pico_set_colorp(lastc, PSC_NONE);
+      free_color_pair(&lastc);
+    }
     (*term.t_flush)();
 }
 
@@ -2060,74 +2452,115 @@ int      key;
 /*
  *  wkeyhelp - paint list of possible commands on the bottom
  *             of the display (yet another pine clone)
+ *  NOTE: function key mode is handled here since all the labels
+ *        are the same...
  */
-wkeyhelp(keys, helptxt)
-char	*keys;
-char	*helptxt;
+void
+wkeyhelp(keymenu)
+KEYMENU *keymenu;
 {
-    char *obufp, *ibufp = helptxt, *kbufp = HelpKeyNames, *startp;
-    int  i, j, spaces, index, copy, extra;
+    char *obufp, *p, fkey[4];
+    char  linebuf[2*NLINE];	/* "2" is for space for invert tokens */
+    int   row, slot, tspace, adjusted_tspace, nspace[6], index, n;
+#ifdef	MOUSE
+    char  nbuf[NLINE];
+#endif
+
+#ifdef _WINDOWS
+    pico_config_menu_items (keymenu);
+#endif
+
+    if(term.t_mrow == 0)
+      return;
 
     /*
-     * make hardware cursor position change known!!
+     * Calculate amount of space for the names column by column...
      */
-#if	defined(DOS) && defined(MOUSE)
-    register_keys(keys, helptxt, NODATA);
-#endif
-    extra  = (kbufp && kbufp[2] == ',') ? 2 : 3;
-    spaces = term.t_ncol/6;
-    for(i=1;i>=0;i--){
-	*s = '\0';
-	obufp = &s[strlen(s)];
-	for(j=1;j<=6;j++){
-	    index = j + (6*(1 - i));
-	    copy = keys[index-1] - '0';
-	    if(kbufp != NULL){
-		do{
-		    if((*kbufp == '~') && (!copy))
-		      kbufp++;
-		    if(copy)
-		      *obufp++ = *kbufp++;
-		    else{
-			*obufp++ = ' ';
-			kbufp++;
-		    }
-		}
-		while((*kbufp != ',')? 1 : !(kbufp++));
-	    }
-	    else{
-		if(copy){
-		    *obufp++ = '~';
-		    *obufp++ = '^';
-		    *obufp++ = '~';
-		    *obufp++ = copy + '0';
-		}
-		else{
-		    *obufp++ = ' ';
-		    *obufp++ = ' ';
-		}
-	    }
+    for(index = 0; index < 6; index++)
+      if(!(gmode&MDFKEY)){
+	  nspace[index] = (keymenu[index].name)
+			    ? strlen(keymenu[index].name) : 0;
+	  if(keymenu[index+6].name 
+	     && (n = strlen(keymenu[index+6].name)) > nspace[index])
+	    nspace[index] = n;
 
-	    *obufp++ = ' ';
-	    startp = obufp;
-	    /*
-	     * we use "spaces-3" because of length key names
-	     */
-	    while(obufp - startp < (spaces-extra)) {
-		if((copy) && ((*ibufp != '\0') && (*ibufp != ',')))
-		  *obufp++ = *ibufp++;
+	  nspace[index]++;
+      }
+      else
+	nspace[index] = (index < 4) ? 3 : 4;
+
+    tspace = term.t_ncol/6;		/* total space for each item */
+    /*
+     * Avoid writing in bottom right corner so we won't scroll screens that
+     * scroll when you do that. The way this is setup, we won't do that
+     * unless the number of columns is evenly divisible by 6.
+     */
+    adjusted_tspace = (6 * tspace == term.t_ncol) ? tspace - 1 : tspace;
+
+    index  = 0;
+    for(row = 0; row <= 1; row++){
+	linebuf[0] = '\0';
+	obufp = &linebuf[0];
+	for(slot = 0; slot < 6; slot++){
+	    if(keymenu[index].name && keymenu[index].label){
+		if(gmode&MDFKEY){
+		    p = fkey;
+		    sprintf(fkey, "F%d", (2 * slot) + row + 1);
+		}
 		else
+		  p = keymenu[index].name;
+#ifdef	MOUSE
+		sprintf(nbuf, "%.*s %s", nspace[slot], p,
+			keymenu[index].label);
+		register_key(index,
+			     (gmode&MDFKEY) ? F1 + (2 * slot) + row:
+			     (keymenu[index].name[0] == '^')
+			       ? (CTRL | keymenu[index].name[1])
+			       : (keymenu[index].name[0] == 'S'
+				  && !strcmp(keymenu[index].name, "Spc"))
+				   ? ' '
+				   : keymenu[index].name[0],
+			     nbuf, invert_label,
+			     term.t_nrow - 1 + row, (slot * tspace),
+			     strlen(nbuf),
+			     (Pmaster && Pmaster->colors) 
+			       ? Pmaster->colors->kncp: NULL,
+			     (Pmaster && Pmaster->colors) 
+			       ? Pmaster->colors->klcp: NULL);
+#endif
+
+		n = nspace[slot];
+		while(p && *p && n--){
+		    *obufp++ = '~';	/* insert "invert" token */
+		    *obufp++ = *p++;
+		}
+
+		while(n-- > 0)
+		  *obufp++ = ' ';
+
+		p = keymenu[index].label;
+		n = ((slot == 5 && row == 1) ? adjusted_tspace
+					     : tspace) - nspace[slot];
+		while(p && *p && n-- > 0)
+		  *obufp++ = *p++;
+
+		while(n-- > 0)
 		  *obufp++ = ' ';
 	    }
-	    if(copy){
-		while((*ibufp != ',') && (*ibufp != '\0'))
-		  ibufp++;
-		if(*ibufp != '\0')
-		  ibufp++;
+	    else{
+		n = (slot == 5 && row == 1) ? adjusted_tspace : tspace;
+		while(n--)
+		  *obufp++ = ' ';
+
+#ifdef	MOUSE
+		register_key(index, NODATA, "", NULL, 0, 0, 0, NULL, NULL);
+#endif
 	    }
+
 	    *obufp = '\0';
+	    index++;
 	}
-	wstripe(term.t_nrow-i,0,s,'~');
+
+	wstripe(term.t_nrow - 1 + row, 0, linebuf, '~');
     }
 }
-

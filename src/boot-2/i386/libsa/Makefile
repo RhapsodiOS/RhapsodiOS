@@ -4,7 +4,6 @@ include ../MakePaths.dir
 
 UTILDIR = ../util
 INSTALL_SA_DIR = $(DSTROOT)/System/Library/Frameworks/System.framework/Versions/B/PrivateHeaders/standalone
-INSTALL_MD_DIR = $(DSTROOT)/System/Library/Frameworks/System.framework/Versions/B/PrivateHeaders/machdep/i386
 
 DEBUG = -O
 CFLAGS	= $(RC_CFLAGS) $(DEBUG) $(MORECPP) -arch i386 -g -Wmost -Wno-precomp \
@@ -38,7 +37,6 @@ HFILES = saio.h ufs_byteorder.h zalloc.h memory.h
 EXPORTED_HFILES = libsa.h libsaio.h saio.h io_inline.h kernBootStruct.h \
 		memory.h console.h fontio.h
 INSTALLED_SA_HFILES = libsa.h
-INSTALLED_MD_HFILES = kernBootStruct.h
 OTHERFILES = Makefile
 ALLSRC =  $(SFILES) $(CFILES) \
 	$(HFILES) $(OTHERFILES)
@@ -55,12 +53,13 @@ libsa.a: $(SA_OBJS)
 clean::
 	rm -rf $(SYMROOT)/libsa.a $(SYMROOT)/libsaio.a
 
-$(INSTALL_SA_DIR) $(INSTALL_MD_DIR):
+$(INSTALL_SA_DIR):
 	$(MKDIRS) $@
 
-installhdrs:: $(INSTALL_SA_DIR) $(INSTALL_MD_DIR)
+# machdep/i386/kernBootStruct.h is the kernel's to install: apk refuses a
+# path two packages both ship.
+installhdrs:: $(INSTALL_SA_DIR)
 	cp $(INSTALLED_SA_HFILES) $(INSTALL_SA_DIR)
-	cp $(INSTALLED_MD_HFILES) $(INSTALL_MD_DIR)
 	
 include ../MakeInc.dir
 

@@ -1,5 +1,0 @@
-"Title" = "PCMCIABus";
-"Family" = "Bus";
-"Class Names" = "PCMCIAResourceDriver";
-"Boot Driver" = "Yes";
-"Bus Class" = "PCMCIAKernBus";

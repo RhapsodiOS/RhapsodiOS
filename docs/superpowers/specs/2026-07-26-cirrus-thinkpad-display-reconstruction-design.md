@@ -484,9 +484,9 @@ they list no sources at all.
 
 > **Corrected after Task 8 — this line was a Critical defect. Do not act on
 > it.** **`SFILES` is not a pb_makefiles variable at all.** Nothing in
-> `src/pb_makefiles-1` or `src/driverTools-1` defines or consumes it, so
+> `src/Developer/Commands/pb_makefiles-1` or `src/driverTools-1` defines or consumes it, so
 > assembly listed under `SFILES` is silently never assembled and never linked.
-> The working pair, as `src/awk-1/Makefile:17,24` uses it and as the stock
+> The working pair, as `src/Developer/Commands/awk-1/Makefile:17,24` uses it and as the stock
 > `Makefile.postamble` template documents it, is `OTHERLINKED = smapi.s` with
 > `OTHERLINKEDOFILES = smapi.o`; `common.make:242` folds `OTHERLINKEDOFILES`
 > into `LOCAL_OFILES` and `common.make:240` folds `OTHERLINKED` into

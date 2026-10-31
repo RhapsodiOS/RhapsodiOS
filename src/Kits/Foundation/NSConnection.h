@@ -8,7 +8,7 @@
 #import <Foundation/NSHashTable.h>
 #import <Foundation/NSMapTable.h>
 
-@class NSMutableData, NSDistantObject, NSException, NSData, NSRunLoop;
+@class NSMutableData, NSDistantObject, NSException, NSData, NSRunLoop, NSInvocation;
 @class NSPort;
 
 /*****************	NSConnection	**************************/
@@ -94,6 +94,8 @@
 - (void)removeRunLoop:(NSRunLoop *)runloop;
 
 - (void)runInNewThread;
+
+- (void)sendInvocation:(NSInvocation *)invocation target:(id)target;
 
 - (NSArray *)remoteObjects;
 - (NSArray *)localObjects;

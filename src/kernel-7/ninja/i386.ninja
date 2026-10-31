@@ -1,0 +1,35 @@
+arch = i386
+architecture_manifest = ninja/i386.ninja
+release_manifest = ninja/release.ninja
+debug_manifest = ninja/debug.ninja
+sources_manifest = ninja/sources.ninja
+libc_manifest = ninja/libc.ninja
+pexpert_library = pexperti386.o
+ldflags = -e _start -segaddr __TEXT 00100000 -segaddr __LINKEDIT 00780000 -segalign 0x1000 -force_cpusubtype_ALL -u __muldi3
+configuration_outputs = ninja/i386-config.ninja
+include ninja/i386-config.ninja
+include ninja/config.ninja
+
+kcc = cc -static -nostdinc -nostdlib -traditional-cpp
+next_root =
+includes = -I. -I../.. -I../../bsd -I../../bsd/include -I../../machdep -I../../bsd/netat -I../../bsd/netat/h -I../../bsd/netat/at -I$next_root/System/Library/Frameworks/System.framework/PrivateHeaders -I$next_root/System/Library/Frameworks/System.framework/Headers -I$next_root/System/Library/Frameworks/System.framework/Headers/bsd
+defines = $ident -DARCH_PRIVATE -D_KERNEL -DKERNEL -DKERNEL_PRIVATE -DDRIVER_PRIVATE -DKERNEL_BUILD -D__APPLE__ -DNeXT -D_NEXT_SOURCE
+cppflags = -MD -imacros meta_features.h $includes $defines
+machine_cflags = -arch i386 -I../../bsd/include -fwritable-strings -fno-common -fpascal-strings
+cflags = -g -O3 -fno-omit-frame-pointer $cppflags $machine_cflags
+sflags = $cppflags -D__ASSEMBLER__ -arch i386
+
+build $outdir/assym.h $outdir/genassym.s | $outdir/assym.stamp: assym machdep/i386/genassym.c machdep/i386/genassym.awk || $outdir/prepared $outdir/validated
+build $outdir/subr_prof.o: cc bsd/kern/subr_prof.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/kern/subr_prof.c
+  object = subr_prof.o
+  flags = $cflags
+build $outdir/ioconf.o: cc $outdir/ioconf.c || $outdir/prepared $outdir/validated generated
+  source = ioconf.c
+  object = ioconf.o
+  flags = $cflags
+
+include ninja/mig.ninja
+include ninja/libc.ninja
+include ninja/sources.ninja
+include ninja/kernel.ninja

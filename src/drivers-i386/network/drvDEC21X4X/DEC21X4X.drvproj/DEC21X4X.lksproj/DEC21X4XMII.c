@@ -76,7 +76,7 @@ static const unsigned int _AdminControlConversionTable[] = {
  * Allocates PHY structure if needed, initializes function pointers,
  * and attempts to initialize each PHY found.
  */
-int FindAndInitMiiPhys(int adapter)
+int FindAndInitMiiPhys(void *adapter)
 {
     BOOL retryFromZero;
     char initSuccess;
@@ -383,7 +383,7 @@ void InitPhyInfoEntries(int phyAddr)
  * Returns:
  *   Success/failure
  */
-int MiiGenGetConnection(int adapter, unsigned short *connectionType)
+int MiiGenGetConnection(void *adapter, unsigned short *connectionType)
 {
     char success;
     int phyAddr;
@@ -423,7 +423,7 @@ int MiiGenGetConnection(int adapter, unsigned short *connectionType)
  * Returns:
  *   Capabilities bitmap from adapter offset 0x226
  */
-unsigned short MiiGenGetCapabilities(int adapter)
+unsigned short MiiGenGetCapabilities(void *adapter)
 {
     // Return accumulated capabilities at offset 0x226
     return *(unsigned short *)(adapter + 0x226);
@@ -440,7 +440,7 @@ unsigned short MiiGenGetCapabilities(int adapter)
  * Returns:
  *   TRUE if connection type is supported
  */
-int MiiGenCheckConnection(int adapter, unsigned short connectionType)
+int MiiGenCheckConnection(void *adapter, unsigned short connectionType)
 {
     char success;
     int phyAddr;
@@ -462,7 +462,7 @@ int MiiGenCheckConnection(int adapter, unsigned short connectionType)
  *   adapter - Adapter info structure
  *   status - Output pointer for status value
  */
-void MiiGenAdminStatus(int adapter, unsigned int status)
+void MiiGenAdminStatus(void *adapter, unsigned int status)
 {
     int phyAddr;
 
@@ -494,7 +494,7 @@ void MiiGenAdminStatus(int adapter, unsigned int status)
  *   5 - Isolate
  *   6 - Restore
  */
-unsigned int MiiGenAdminControl(int adapter, unsigned short control)
+unsigned int MiiGenAdminControl(void *adapter, unsigned short control)
 {
     int phyAddr;
 
@@ -537,7 +537,7 @@ unsigned int MiiGenAdminControl(int adapter, unsigned short control)
  * Parameters:
  *   adapter - Adapter info structure
  */
-void MiiFreeResources(int adapter)
+void MiiFreeResources(void *adapter)
 {
     int phyAddr;
 
@@ -564,7 +564,7 @@ void MiiFreeResources(int adapter)
  * Returns:
  *   Success/failure from PHY-specific function
  */
-int MiiGenGetConnectionStatus(int adapter, unsigned int status)
+int MiiGenGetConnectionStatus(void *adapter, void *status)
 {
     int phyAddr;
     char success;
@@ -574,7 +574,7 @@ int MiiGenGetConnectionStatus(int adapter, unsigned int status)
     phyAddr = *(int *)(adapter + 0x22c + *(int *)(adapter + 500) * 4);
 
     // Call PHY-specific GetConnectionStatus function (offset 0x60)
-    success = (*(char (**)(int, int, unsigned int))(phyAddr + 0x60))
+    success = (*(char (**)(void *, int, void *))(phyAddr + 0x60))
                 (adapter, phyAddr, status);
 
     return (int)success;
@@ -590,7 +590,7 @@ int MiiGenGetConnectionStatus(int adapter, unsigned int status)
  * Returns:
  *   TRUE if PHYs were found and initialized
  */
-BOOL MiiGenInit(int adapter)
+BOOL MiiGenInit(void *adapter)
 {
     int phyAddr;
     char success;
@@ -631,7 +631,7 @@ BOOL MiiGenInit(int adapter)
  * Returns:
  *   Success/failure from PHY-specific function
  */
-int MiiGenSetConnection(int adapter, unsigned short param2, unsigned short param3)
+int MiiGenSetConnection(void *adapter, unsigned short param2, unsigned short param3)
 {
     int phyAddr;
     char success;
@@ -654,7 +654,7 @@ int MiiGenSetConnection(int adapter, unsigned short param2, unsigned short param
  * Parameters:
  *   adapter - Adapter info structure
  */
-void MiiOutThreeState(int adapter)
+void MiiOutThreeState(void *adapter)
 {
     unsigned short csr9Port;
 
@@ -683,31 +683,19 @@ void MiiOutThreeState(int adapter)
     IODelay(1);
 }
 
-int MiiPhyAdminControl(void *adapter, int phyAddr, int control)
-{
-    return 0;
-}
-
-int MiiPhyAdminStatus(void *adapter, int phyAddr)
-{
-    return 0;
-}
-
-int MiiPhyGetCapabilities(void *adapter, int phyAddr)
-{
-    return 0;
-}
-
 int MiiPhyGetConnectionStatus(void *adapter, int phyAddr, unsigned short *status)
 {
     char success;
-    unsigned short statusBits;
     unsigned short localAbility;
     unsigned short partnerAbility;
     unsigned short commonAbility;
     unsigned int phyId;
     unsigned char regData[4];
+    unsigned short negotiationStatus;
+    unsigned short linkStatus;
 
+    negotiationStatus = 0;
+    linkStatus = 0;
     commonAbility = 0;
 
     // Read control register (register 0)
@@ -737,40 +725,25 @@ int MiiPhyGetConnectionStatus(void *adapter, int phyAddr, unsigned short *status
     // TODO: Get PHY ID from offset 4
     phyId = *(unsigned int *)(phyAddr + 4);
 
-    // Determine speed/duplex from PHY status
+    // The low bits report negotiated speed/duplex; 0x200 and 0x400
+    // distinguish forced mode from completed auto-negotiation.
     if (phyId == 0x3e00000) {
-        // Broadcom PHY: check if link up
-        statusBits = 0x200;  // Assume link up
-
-        // Check if N-Way enabled (bit 4 of control at offset 0xd)
+        negotiationStatus = 0x200;
+        if ((*(unsigned char *)(phyAddr + 0xd) & 0x10) != 0)
+            negotiationStatus = 0x400;
+    } else if ((*(unsigned char *)(phyAddr + 0xe) & 8) != 0) {
         if ((*(unsigned char *)(phyAddr + 0xd) & 0x10) != 0) {
-            statusBits = 0x400;  // N-Way complete
-        }
-    }
-    else {
-        // Check link status (bit 2 of status register at offset 0xe)
-        if ((*(unsigned char *)(phyAddr + 0xe) & 8) == 0) {
-            statusBits = 0;  // No link
-        }
-        else {
-            // Link is up
-            // Check if N-Way enabled
-            if ((*(unsigned char *)(phyAddr + 0xd) & 0x10) != 0) {
-                // N-Way enabled - check if complete (bit 5 of status)
-                if ((*(unsigned char *)(phyAddr + 0xe) & 0x20) == 0) {
-                    *status = 0x3ff;  // N-Way not complete
-                    return 0;
-                }
-                statusBits = 0x400;  // N-Way complete
+            if ((*(unsigned char *)(phyAddr + 0xe) & 0x20) == 0) {
+                *status = 0x3ff;
+                return 0;
             }
-            else {
-                statusBits = 0x200;  // Link up, no N-Way
-            }
+            negotiationStatus = 0x400;
+        } else {
+            negotiationStatus = 0x200;
         }
     }
 
-    // If N-Way complete, check common abilities
-    if ((phyId != 0x3e00000) && (statusBits == 0x400)) {
+    if (phyId != 0x3e00000 && negotiationStatus == 0x400) {
         // Get local and partner abilities
         (*(void (**)(void *, int, unsigned short *))(phyAddr + 0x74))
             (adapter, phyAddr, &localAbility);
@@ -778,58 +751,40 @@ int MiiPhyGetConnectionStatus(void *adapter, int phyAddr, unsigned short *status
         (*(void (**)(void *, int, unsigned short *))(phyAddr + 0x7c))
             (adapter, phyAddr, &partnerAbility);
 
-        // Check for Level One PHY special handling
+        // Level One PHYs report a vendor-specific negotiated ability.
         if (phyId == 0x20005c00) {
-            // Read vendor-specific register 0x19
             success = (*(char (**)(void *, int, int, unsigned char *))(phyAddr + 0x6c))
                       (adapter, phyAddr, 0x19, regData);
-
             if (success != 0) {
-                // Check bit 6 to determine 100Base-TX vs 10Base-T
-                if ((regData[0] & 0x40) == 0) {
-                    commonAbility = localAbility & 0x80;  // 10Base-T FD
-                }
-                else {
-                    commonAbility = localAbility & 0x20;  // 100Base-TX FD
-                }
+                commonAbility = (regData[0] & 0x40) != 0
+                    ? localAbility & 0x20 : localAbility & 0x80;
+            } else {
+                commonAbility = 0;
             }
         }
         else {
-            // Standard: AND local and partner abilities
             commonAbility = localAbility & partnerAbility;
         }
-
-        // If no common abilities, return error
         if (commonAbility == 0) {
             *status = 0x400;
             return 0;
         }
     }
 
-    // Check for link established (bit 2 of status register)
     if ((*(unsigned char *)(phyAddr + 0xe) & 4) == 0) {
-        // No link - re-read status register
         success = (*(char (**)(void *, int, int, int))(phyAddr + 0x6c))
                   (adapter, phyAddr, 1, phyAddr + 0xe);
-
         if (success == 0) {
             return 0;
         }
-
-        // Check link status again
-        if ((*(unsigned char *)(phyAddr + 0xe) & 4) == 0) {
-            statusBits = 0;  // Still no link
-        }
-        else {
-            statusBits = 2;  // Link just came up
-        }
+        linkStatus = ((*(unsigned char *)(phyAddr + 0xe) & 4) == 0) ? 0 : 2;
     }
     else {
-        statusBits = 1;  // Link already up
+        linkStatus = 1;
     }
 
-    *status = statusBits | (statusBits ? statusBits : 0);
-    return (statusBits != 0);
+    *status = linkStatus | negotiationStatus;
+    return linkStatus != 0;
 }
 
 int MiiPhyGetConnectionType(void *adapter, int phyAddr, unsigned short *connectionType)
@@ -1223,24 +1178,13 @@ void MiiPhyWriteRegister(void *adapter, int phyAddr, int regAddr, int value)
     MiiOutThreeState(adapter);
 }
 
-int DC21X4MiiAutoDetect(void *adapter)
-{
-    return 0;
-}
-
-int DC21X4MiiAutoSense(void *adapter)
-{
-    return 0;
-}
-
 void WriteMii(void *adapter, int data, int count)
 {
     unsigned short csr9Port;
     unsigned int bitValue;
 
     // Get CSR9 port address (offset 0x30 in adapter info)
-    // TODO: csr9Port = *(unsigned short *)(adapter + 0x30);
-    csr9Port = 0;  // TODO
+    csr9Port = *(unsigned short *)(adapter + 0x30);
 
     // Write each bit MSB first
     if (count > 0) {
@@ -1366,7 +1310,7 @@ void MiiPhyAdminStatus(void *adapter, int phyAddr, unsigned int *status)
  *   5 - Isolate
  *   6 - Restore saved state
  */
-void MiiPhyAdminControl(int adapter, int phyAddr, unsigned int control)
+void MiiPhyAdminControl(void *adapter, int phyAddr, unsigned int control)
 {
     BOOL bVar1;
     int iteration;
@@ -1408,8 +1352,11 @@ void MiiPhyAdminControl(int adapter, int phyAddr, unsigned int control)
 
 apply_control:
     // Get base control value and OR with conversion table value
+    /* The reference indexes a 16-bit view of the table at 2 * control.
+     * The table is stored as 32-bit entries, so select each entry's low word.
+     */
     newControlValue = *(unsigned short *)(phyAddr + 0xc) |
-                      *(unsigned short *)(&_AdminControlConversionTable + control * 4);
+                      (unsigned short)_AdminControlConversionTable[control];
 
     // Write to PHY control register (reg 0) using function pointer at offset 0x70
     (*(void (**)(int, int, int, unsigned short))(phyAddr + 0x70))

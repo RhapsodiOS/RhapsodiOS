@@ -113,13 +113,17 @@ but its *contents* are absolute. The booters, the kernel and `disk` all agree:
   (`src/files-5/apk/.pre-install`, `.post-install`) unmounts and remounts
   `/dev`. No other apk carries scripts.
 - **rbuild writes no runtime `depend`,** only `makedepends`
-  (`src/rbuild-1/pkginfo.c`).
+  (`src/rbuild-1/pkginfo.c`). (Before phase 2; now it carries a
+  `pkginfo`'s `depend` into `.PKGINFO`, and `files` depends on
+  `basic-cmds`, `csu` and `libsystem`, which its scripts run with.)
 - **apk 2.0_pre12 takes file paths.** `apk add` accepts `.apk` paths
   (`apk_db_pkg_add_file`), and `--initdb` creates
   `var/lib/apk/{world,installed,scripts}` under `--root`
-  (`src/apk-tools-1/apk-tools/src/add.c`, `database.c`).
+  (`src/Commands/apk-tools-1/apk-tools/src/add.c`, `database.c`).
 - **apk-tools, OpenSSL and OpenSSH are in no manifest.** OpenSSL 0.9.5a has
-  `openssl passwd -crypt` (`apps/passwd.c`).
+  `openssl passwd -crypt` (`apps/passwd.c`). (Before phase 2; now all three
+  are in `src/Manifest` and build universal. `docs/build/apk-root-install.md`
+  records what each needed.)
 
 **Kernel**
 - **UFS mounts in either byte order,** because the i386 config enables `revfs`.
@@ -136,7 +140,9 @@ but its *contents* are absolute. The booters, the kernel and `disk` all agree:
 - **Root is remounted read-write by `mount -vat ufs`** in `0100_LocalMounts`.
 - **SSH is already wired up.** `1700_IPServices` generates the host keys and
   starts `sshd` when `SSHSERVER=-YES-`, which is `files`' default.
-- **`iftab` configures every interface over BOOTP** (`bootpc`).
+- **`iftab` configures every interface over BOOTP** (`bootpc`). (Before
+  phase 4; now `0800_Network` tries `dhcpcd` first, and `bootpc` isn't
+  built. `dhcpcd` needs `/dev/bpf*`, which the BPF driver creates.)
 
 **Measured layouts**
 - **`golden.img`:** label `secsize` 1024 and `dl_front` 160. Label copies at
@@ -178,8 +184,8 @@ but its *contents* are absolute. The booters, the kernel and `disk` all agree:
 | 2 | **Packages missing from the world build.** Add `apk-tools-1`, OpenSSL and OpenSSH to `src/Manifest`, build them universal, and check off apk-tools' `PORTING.md` target list. | On a Rhapsody guest, `apk add --root <scratch> --initdb <all apks>` succeeds and `var/lib/apk/installed` lists every package; `sshd` starts and accepts a password login | none |
 | 3 | **General host UFS writer** (`vm/instmedia/ufs.py`). | Round-trips through `rhap_image` with label `secsize` 512 (fdisk disk) and 2048 (CD); `fsck -n` passes on its output in a guest | none |
 | 4 | **Pure-apk live root and hard-disk install media**, plus a pre-installed image. | The media reaches the installer menu under BIOS and UEFI. The pre-installed image boots multi-user to `login:` and accepts SSH | 1, 3 |
-| 5 | **Installer**: `src/installer-1/` with `mbrinst` and `rhapinstall`. | Milestone B, as defined under *Goal* | 2, 4 |
-| 6 | **El Torito CD**: ISO/El Torito writer, 2.88 MB BIOS floppy image, EFI catalog entry, 2048-byte reads in `bootefi`, `rootdev=cdrom`. | *Done*, as defined under *Goal* | 5 |
+| 5 | **Installer**: `src/installer-1/` with `mbrinst` and `rhapinstall`. (Before phase 5; now `sysinstall` in `src/cdis-3/sysinstall.tproj` plus `driverDetect` in `src/driverkit-3`, per `docs/superpowers/specs/2026-10-05-sysinstall-design.md`. Phase 5a is done: `docs/build/sysinstall.md`. 5b is the developer and windowing sets, 5c upgrades.) | Milestone B, as defined under *Goal* | 2, 4 |
+| 6 | **El Torito CD**: ISO/El Torito writer, 2.88 MB BIOS floppy image, EFI catalog entry, 2048-byte reads in `bootefi`, `rootdev=cdrom`. | *Done*, as defined under *Goal* (Before phase 6; now met over an IDE CD: `docs/build/instmedia-cd.md`. Its BIOS image is a 16 MB hard-disk-emulation image, not a 2.88 MB floppy.) | 5 |
 
 Phases 1–3 are independent. Phase 4 answers whether a system built only from our
 apks boots at all, which has never been shown. Every later phase depends on that
@@ -219,6 +225,15 @@ and ESP that `hdimage.py` does.
 The ISO 9660 directory lists only the boot images. The UFS isn't visible to ISO
 readers.
 
+(Before phase 6; now the BIOS image is hard-disk emulation: a 16 MB image
+with `boot0`, one `0xA7` entry, `boot1`, `boot2` and a small UFS, so the
+booter takes its normal hard-disk path and `boot1f` is gone. The disc is
+the system area; descriptors, path tables and root directory at sectors
+16-21; `BOOT.CAT`, `README.TXT`, `BIOSBOOT.IMG` (sector 24), `EFIBOOT.IMG`
+(sector 8216, 64 MB); then the UFS at sector 40992. `d_front` is a signed
+short and can't hold that, so the label has `d_front` 16 and `p_base`
+40976. Label copies are at bytes 0, 7680, 15360 and 23040.)
+
 - **BIOS boot:** floppy emulation, so the booter reads the kernel from the
   emulated `fd0`. The kernel attaches the ATAPI drive through EIDE or AHCI as
   `sd*`, and `rootdev=cdrom` mounts the UFS read-only.
@@ -252,7 +267,10 @@ fdisk disks*.
 **Phase 6**
 - **2048-byte media in `bootefi`:** `ebiosread` accepts BLOCK_IO media with
   2048-byte blocks by reading the containing block into a bounce buffer and
-  returning its 512-byte sectors.
+  returning its 512-byte sectors. (Before phase 6; now it also finds the
+  label at byte 7680 of a 2048-byte disk without reading LBA 0, and treats
+  the El Torito image's handle as a child of the CD. Nothing changed in
+  boot2; the phase's cleanup then dropped its floppy code.)
 
 ## Host builder (`vm/instmedia/`)
 
@@ -260,6 +278,11 @@ fdisk disks*.
 python vm/instmedia/build.py --repo out/apks/i386 --efi BOOTIA32.EFI \
        --form disk|cd [--preinstalled] --out <image>
 ```
+
+(Before phase 4; now `cd vm && python -m instmedia.build --repo DIR --efi
+BOOTIA32.EFI --out IMAGE [--preinstalled]`, which builds the disk form.
+`--form` arrives with the CD form in phase 6. `docs/build/instmedia-live.md`
+records the commands.)
 
 **Rules**
 - **No Apple bits.** Every byte on the media comes from our apks or our own
@@ -277,9 +300,10 @@ python vm/instmedia/build.py --repo out/apks/i386 --efi BOOTIA32.EFI \
 
 | Module | Job | Reuses |
 |---|---|---|
-| `apkrepo.py` | Index a flat apk directory and parse `.PKGINFO`. Prefers the `i386` variant over `universal`, and refuses packages available only for `ppc`. | none |
+| `collect.py` | Added in phase 4. Gather the apks into one flat directory: the bootstrapped image's universal apks, then newer builds. | `rhap_image.py` |
+| `apkrepo.py` | Index a flat apk directory and parse `.PKGINFO`. Prefers the `i386` variant over `universal`, and refuses packages available only for `ppc`. Leaves out `-hdrs` and `-obj` companions, which repeat their base packages' files. | none |
 | `rootfs.py` | Build a node tree from apk payloads: mode, uid/gid, mtime, symlinks, hard links, device nodes. Apply an overlay directory. Report every path claimed by two packages, since `apk add` would refuse them later. | none |
-| `live.py` | Compose the live root: every apk (`files` first), then the live overlay, then `/System/Installation/Packages/*.apk` and `/System/Installation/esp.img.gz`. With `--preinstalled`, it skips the overlay and applies the installed-system templates for `hd0` instead. | `rootfs` |
+| `live.py` | Compose the live root: every apk (`files` first), then the live overlay, then `/System/Installation/Packages/*.apk` and `/System/Installation/esp.img.gz`. With `--preinstalled`, it skips the overlay and applies the installed-system templates for `hd0` instead, plus the `/private/Devices` link the installer makes. | `rootfs` |
 | `ufs.py` | Phase 3 writer. Computes geometry the way `newfs` would (bsize 8192, fsize 1024 or 2048), handles several cylinder groups and single and double indirect blocks, and supports symlinks, hard links and device nodes. Little-endian by default, like DR2 media. | `ufs_cg.py` for cylinder-group tables |
 | `label.py` | NeXT `dlV3` label: three copies, checksum, boot-block locations. On an fdisk disk it writes what `disk -i -b` writes: `secsize` 512, absolute `p_base` and `d_boot0_blkno`, and `dl_label_blkno` = `relsect` + 15/30/45. On the CD: `secsize` 2048 with no fdisk table. | `label_checksum` in `ufs_build.py` |
 | `ufs_geometry.py` | `newfs`'s geometry arithmetic from `mkfs.c`, matching three Apple-made filesystems field for field. | none |
@@ -293,7 +317,10 @@ python vm/instmedia/build.py --repo out/apks/i386 --efi BOOTIA32.EFI \
 - **The apks:** `vm/fetch-apks.ps1` pulls them from the build guest into a flat
   local directory, using the tar-over-ssh transport of `sync-src.ps1` in
   reverse. `/build/repo` holds the universal apks, and the rbuild destination
-  directories hold the i386 kernel and drivers.
+  directories hold the i386 kernel and drivers. (Before phase 4; now
+  `collect.py` makes the flat directory. It reads the universal apks straight
+  out of the bootstrapped image's `/build/repo`, then adds directories of
+  newer builds, fetched with `guest-remote.ps1 -Fetch`.)
 - **`BOOTIA32.EFI`:** comes from the host clang/lld-link build (`bootefi-1` is
   in no manifest), so it's passed in as a file.
 
@@ -327,6 +354,26 @@ DR2-media workflows.
 | `Kernel Flags` | `rootdev=hd1a` | `rootdev=cdrom` |
 | `Boot Drivers` | `EISABus PCIBus PS2Keyboard EIDE AHCI` | same |
 
+(Before phase 4; now the installer is CDIS, see *Installer*, and the
+overlay holds:
+- `/private/etc/rc.cdrom`, copied from the `cdis` apk's inert
+  `/private/etc/rc.cdrom.hidden`
+- `Instance0.table`, rendered from CDIS's `Instance0-i386.table` template,
+  so `Boot Drivers` also names `NE2K`
+- `/System/Installation/Packages/*.apk` and `/System/Installation/esp.img.gz`
+
+No mount point is added: the `cdis` apk ships `/private/var/tmp/mnta`,
+where CDIS mounts its target.)
+
+(Before phase 5; now the overlay's `rc.cdrom` is a hook that runs
+`/System/Installation/CDIS/sysinstall`, and the overlay also links
+`/private/Devices` to `Drivers/i386`, so `driverDetect` finds the drivers
+through `/usr/Devices`. `Instance0.table` names generic Boot Drivers
+`EISABus PCIBus PS2Keyboard EIDE AHCI ISASerialPort` and Active Driver
+`VGA`, not `NE2K`, which `driverDetect -l` loads by PCI ID instead.
+`/System/Installation/Packages` holds only the apks a set names. See
+`docs/build/sysinstall.md`.)
+
 **Startup**
 - `rc.boot` sees `/System/Installation` plus `rc.cdrom`, skips fsck, and leaves
   root read-only.
@@ -344,7 +391,8 @@ The kernel has no MFS, so nothing is writable until the target is mounted:
 **`/dev`** is the static set of nodes from the `files` apk. Phase 4 checks their
 majors against the kernel: `sd` = 6 from `conf.c`, and `hd` = 3 and `fd` = 1
 registered by DriverKit at runtime. A wrong major gets fixed in `MAKEDEV`, not
-in the builder.
+in the builder. (Before phase 4; now the check also covers the character
+majors, `sd` 14, `hd` 15 and `fd` 41. All of `files`' nodes pass.)
 
 ## Installer (`src/installer-1/`)
 
@@ -357,6 +405,37 @@ One project, built by rbuild into one apk. It carries:
 Everything sits at inert paths. The apk lands in the live root and on the
 target like any other; only the builder's overlay copies `rc.cdrom` into place,
 and only on the live root.
+
+(Before phase 4; now phases 4 and 5 build on `cdis-3`, Apple's CD installer,
+instead of a new project. The same rule holds:
+- The `cdis` apk ships the script as `/private/etc/rc.cdrom.hidden`, and the
+  builder makes it live on the media only.
+- The installed-system templates live in
+  `/System/Installation/CDIS/templates`. The Instance0 template comes per
+  architecture: `Instance0-i386.table` carries the overrides under
+  *Installed-system configuration*, and `Instance0-ppc.table` is Mac OS X
+  Server 1.2.1's ppc `Default.table`.
+- The target mounts at CDIS's `/private/var/tmp/mnta`, not
+  `/Installation/Target`.
+- `sysconfig` isn't built, so CDIS asks its language question first. On the
+  phase 4 media, answering it and the Intel warning brings `pickdisk`'s disk
+  list up.
+- The release line reads `relcontrol`'s
+  `/System/Library/CoreServices/software_version`.
+
+`mbrinst` and the steps below are what phase 5 fits into CDIS.)
+
+(Before phase 5; now `mbrinst`, `rhapinstall` and `src/installer-1/` don't
+exist. The installer is `sysinstall`, a curses program in
+`src/cdis-3/sysinstall.tproj`, with `driverDetect` beside `driverLoader`, as
+`docs/superpowers/specs/2026-10-05-sysinstall-design.md` designs it. The
+perl installer, `rc.cdrom.x86`, `rc.cdrom.PPC` and the non-English strings
+are gone from `cdis-3`; `sysinstall` writes the MBR and the ESP itself, then
+runs `disk -i -b`. Its write phase is `docs/build/sysinstall.md`'s table. The
+two-run `apk add` of `rhapinstall` step 7 became one run with `files` first,
+because `apk` resolves `files`' dependencies only among the apks it is given,
+and step 9's `umount` became best-effort, because a kernel bug can keep the
+target busy until shutdown.)
 
 ### `mbrinst`
 
@@ -395,7 +474,7 @@ POSIX `sh`, with no here-documents.
 
 | # | Step | Command |
 |---|---|---|
-| 1 | Pick a disk | Candidates are `mbrinst -list` minus the disk holding the live root (from `mount`'s `/` line). Refused if none are left, or if the chosen disk is under 1 GB. |
+| 1 | Pick a disk | Candidates are `mbrinst -list` minus the disk holding the live root (from the device number of `/`, `stat`). Refused if none are left, or if the chosen disk is under 1 GB. |
 | 2 | Confirm | The user types `yes` to erase `hdN` or `sdN`. |
 | 3 | Root password | Asked twice with `stty -echo`. It can't be empty; only the first 8 characters count, and the prompt says so. Hashed with `openssl passwd -crypt`. |
 | 4 | MBR and ESP | `gzip -dc /System/Installation/esp.img.gz \| mbrinst /dev/rhdNh` |
@@ -420,11 +499,20 @@ Written by `rhapinstall` step 8 from templates in the installer apk; only the
 device name gets substituted. The builder's `--preinstalled` image renders the
 same templates for `hd0`, so the configuration has a single source.
 
+(Before phase 5; now `sysinstall` step 6 renders them, and step 7's
+`driverDetect -w` rewrites the system `Instance0.table`: `Boot Drivers` is
+`EISABus PCIBus PS2Keyboard` plus the ticked disk controller, and `Active
+Drivers` lists the chosen network, display, audio and input drivers plus
+`BPF`. NE2K is therefore an Active Driver whose own `Instance0.table` has
+`Location` filled in, and it loads by that, not by the booter. The
+`--preinstalled` image keeps the template's table.)
+
 | File | Content | Why |
 |---|---|---|
 | `/private/etc/fstab` | `/dev/hdNa / ufs rw 1 1`, and nothing else | `0100_LocalMounts`' `mount -vat ufs` remounts root read-write. `fstab.hd`'s mfs `/tmp` line is left out because the kernel has no MFS. |
-| `/private/Drivers/i386/System.config/Instance0.table` | `Default.table`'s keys, with overrides: `Boot Drivers` = `EISABus PCIBus PS2Keyboard EIDE AHCI`; `Active Drivers` = `Default.table`'s list plus `Intel1000`; `Kernel Flags` = `rootdev=hdNa`; `Boot Graphics` = `No` | Read by boot2, and by `bootefi` after phase 1. Graphics off gives a text boot. `Intel1000` drives QEMU's `-device e1000` and is loaded by `0700_Devices`. |
-| `/private/etc/hostconfig` | `files`' copy with `APPLETALK`, `AUTOMOUNT` and `TIMESYNC` set to `-NO-`. `SSHSERVER=-YES-`, `HOSTNAME=-AUTOMATIC-` and `ROUTER=-AUTOMATIC-` are left as they are. | The network comes up over BOOTP. `1700_IPServices` makes the host keys on first boot and starts `sshd`. |
+| `/private/Drivers/i386/System.config/Instance0.table` | `Default.table`'s keys, with overrides: `Boot Drivers` = `EISABus PCIBus PS2Keyboard EIDE AHCI`; `Active Drivers` = `Default.table`'s list plus `Intel1000`; `Kernel Flags` = `rootdev=hdNa`; `Boot Graphics` = `No`. (Before phase 4; now `Boot Drivers` adds `NE2K`, and `Active Drivers` adds `BPF`, not `Intel1000`.) | Read by boot2, and by `bootefi` after phase 1. Graphics off gives a text boot. `Intel1000` drives QEMU's `-device e1000` and is loaded by `0700_Devices`. (Before phase 4; now QEMU's `ne2k_pci` is the test card. As an Active Driver with only its `Default.table`, `driverLoader` never probes NE2K; as a Boot Driver the kernel probes it by PCI IDs on any slot. `BPF` makes the `/dev/bpf*` nodes `dhcpcd` needs.) |
+| `/private/Devices` | A link to `Drivers/i386`. (Added in phase 4.) | `driverLoader` reads the system table through `/usr/Devices`, which `files` links to `../private/Devices`. CDIS makes this link on its target (`rc.cdrom`), so no apk ships it: a universal apk's one link would be wrong on ppc. |
+| `/private/etc/hostconfig` | `files`' copy with `APPLETALK`, `AUTOMOUNT` and `TIMESYNC` set to `-NO-`. `SSHSERVER=-YES-`, `HOSTNAME=-AUTOMATIC-` and `ROUTER=-AUTOMATIC-` are left as they are. | The network comes up over BOOTP. `1700_IPServices` makes the host keys on first boot and starts `sshd`. (Before phase 4; now the network comes up over DHCP, through `dhcpcd`.) |
 | `/private/etc/master.passwd`, then `chroot T /usr/sbin/pwd_mkdb -p /etc/master.passwd` | Root's password field set to the step 3 hash | `files` ships `root:*`, which allows no login on the console or over SSH. `pwd_mkdb` takes only `-p`/`-v` and always writes `/etc`, so it runs under `chroot` (`Commands/shell_cmds/chroot`). |
 
 **Left alone because they're already correct:**
@@ -436,7 +524,9 @@ same templates for `hd0`, so the configuration has a single source.
 
 **Checked absent on the target:** `/etc/rc.cdrom` and `/System/Installation`.
 Both come only from the live overlay. If either reached the target, `rc` would
-run the installer again at every boot.
+run the installer again at every boot. (Before phase 4; now only
+`/etc/rc.cdrom`, because the `cdis` apk installs `/System/Installation`
+everywhere. `rc` needs both, so the missing `rc.cdrom` is enough.)
 
 **Pre-installed image password:** a fixed test password, stored as a
 precomputed DES crypt hash in the builder's test configuration. The builder
@@ -462,13 +552,17 @@ images in a per-run temp directory. Nothing boots or writes `golden.img` or
 - Two logs: the firmware and loader console, and the kernel console on COM2.
 - Screenshots over QMP. Later phases add
   `-device e1000 -netdev user,hostfwd=tcp::2222-:22` for the SSH gates.
+  (Before phase 4; now `--nic ne2k_pci --ssh-port 2549` adds `-device
+  ne2k_pci` and forwards host port 2549, clear of the build guest's 2222.
+  `--hd1 IMAGE --boot-hd1` boots the media as `hd1` with the blank target as
+  `hd0`.)
 
 | # | Host tests | QEMU / guest gate |
 |---|---|---|
 | 1 | `fat32` round-trip; `rhap_image` reads a file back out of a rebased hybrid disk; `bootefi` host tests for the fdisk label walk, the device-path parent check and the boot-string append | The rebased hybrid disk reaches `rootdev 300` and userland under SeaBIOS and IA32 UEFI; the two-disk layout still boots |
 | 2 | none | On the build guest: `apk add --root <tmp> --initdb <all>` succeeds and `installed` is complete; `sshd` accepts a login |
 | 3 | `unittest`: `rhap_image` round-trip with label `secsize` 512 and 2048, with several cylinder groups, symlinks, hard links, device nodes and double-indirect files | `fsck -n` on the output, attached to a temp copy of an i386 guest |
-| 4 | `hdimage` layout; `rootfs` reports conflicting paths | The media reaches the installer menu under BIOS and UEFI. The `--preinstalled` image reaches `login:` and `ssh -p 2222 root@localhost` succeeds |
+| 4 | `hdimage` layout; `rootfs` reports conflicting paths | The media reaches the installer menu under BIOS and UEFI. The `--preinstalled` image reaches `login:` and `ssh -p 2222 root@localhost` succeeds (port 2549 since phase 4) |
 | 5 | `mbrinst` compiled on the host against a file target: its MBR and ESP placement must be byte-identical to `hdimage.py`'s. `rhapinstall` runs under the host `sh` with stub tools on `PATH`, checking the command order and every failure-menu path | Install onto a blank temp disk, then boot that disk alone under BIOS and UEFI to `login:` and SSH with the step 3 password |
 | 6 | ISO 9660 and El Torito structures read back; the floppy image fits in 2.88 MB | `-cdrom` boots under BIOS and UEFI, the install completes, and the installed disk boots |
 
@@ -477,14 +571,31 @@ images in a per-run temp directory. Nothing boots or writes `golden.img` or
 Most serious first.
 
 1. **A pure-apk userland has never booted.** Phase 4 is designed to hit this
-   first.
+   first. (Retired by phase 4: under SeaBIOS and IA32 UEFI, the media
+   reaches CDIS's menus and the pre-installed disk reaches a multi-user
+   `login:` and accepts SSH. Getting there took:
+   - NE2K as a Boot Driver, and BPF with a current `files` for DHCP
+   - a bus counter in `drvPCIBus` that `bootefi`'s 256-bus scan no longer
+     wraps
+   - headers two apks both shipped, left to the kernel
+
+   `docs/build/instmedia-live.md` records the rest.)
 2. **The ATAPI CD root is untested:** `rootdev=cdrom` over EIDE or AHCI, and
    `docs/drivers/drvEIDE-issues.md` records past ATAPI command failures. Only
-   phase 6 depends on it.
+   phase 6 depends on it. (Before phase 6; now it works over EIDE, once
+   EIDE uses `Dual_EIDE.table` so the secondary channel is probed. AHCI
+   needed a kernel fix for mapping device memory, then hangs in an IRQ 11
+   interrupt storm, RhapsodiOS/RhapsodiOS#39, so an AHCI-only CD can't boot
+   yet.)
 3. **apk 2.0_pre12 has never run on Rhapsody.** File-overlap refusals are
    possible. `files` must be installed first so that `var -> private/var`
-   exists before apk creates `var/lib/apk`.
+   exists before apk creates `var/lib/apk`. (Retired by phase 2: `--initdb`
+   now creates `private/var/lib/apk` and the `var` link itself, and 44 base
+   apks install together. The `-hdrs` and `-obj` companions do overlap their
+   base packages, so they are left out.)
 4. **OpenSSL 0.9.5a and OpenSSH 2.3.0p1 have never been through rbuild.**
+   (Retired by phase 2: both build universal, and the packaged `sshd`
+   accepts a password login.)
 5. **Real BIOSes that don't use LBA-assisted translation** will mis-read boot0's
    CHS values. Such machines can only boot the disk through UEFI.
 6. **QEMU may not pick LBA translation for every target size** (unverified,
@@ -498,12 +609,24 @@ Most serious first.
    safe because its partition's end CHS is 1023/254/63, which forces LBA.
    Mitigations: always end the `0xA7` partition on a cylinder boundary, pass
    `bios-chs-trans=lba` in the QEMU harness, and add a 1-4 GB target to the
-   phase 5 gate.
+   phase 5 gate. (Verified by phase 5a: the 4 GB install, Gate 3, wrote
+   LBA-assisted CHS that matches `build_uefi_image.py` byte for byte, with
+   the `0xA7` entry ending 521/254/63, and booted under SeaBIOS. Risks 5
+   and 6 stand as warnings for real BIOSes; the QEMU case is retired.)
 7. **Unknowns in the environment:** whether QEMU's slirp answers Rhapsody's
    plain-BOOTP `bootpc`, and whether NetInfo, if `netinfod` brings up a local
-   domain, takes precedence over `master.passwd` for logins.
+   domain, takes precedence over `master.passwd` for logins. (Answered by
+   phase 4:
+   - `0800_Network` tries `dhcpcd` first, and slirp's DHCP gives `en0`
+     10.0.2.15. `bootpc` isn't built.
+   - `nibindd`, `lookupd` and `niutil` aren't built either, so no NetInfo
+     domain comes up. `getpwnam` reads `master.passwd`, and the console and
+     SSH logins both work.
+   - Slirp names no host, so `0800_Network` waits for `bpwhoami` to time
+     out on every boot.)
 8. **CD capacity:** installed tree plus apks might exceed 650 MB. The fallback
-   is a `live.list` subset.
+   is a `live.list` subset. (Before phase 6; now the disc is about 295 MB,
+   so the fallback isn't needed.)
 
 ## Out of scope
 

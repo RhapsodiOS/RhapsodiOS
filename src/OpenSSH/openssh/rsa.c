@@ -1,3 +1,4 @@
+/* $OpenBSD: rsa.c,v 1.32 2014/06/24 01:13:21 djm Exp $ */
 /*
  * Author: Tatu Ylonen <ylo@cs.hut.fi>
  * Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
@@ -8,7 +9,7 @@
  * software must be clearly marked as such, and if the derived work is
  * incompatible with the protocol description in the RFC file, it must be
  * called by a name other than "ssh" or "Secure Shell".
- * 
+ *
  *
  * Copyright (c) 1999 Niels Provos.  All rights reserved.
  *
@@ -60,139 +61,128 @@
  */
 
 #include "includes.h"
-RCSID("$OpenBSD: rsa.c,v 1.16 2000/09/07 20:27:53 deraadt Exp $");
+
+#include <sys/types.h>
+
+#include <stdarg.h>
+#include <string.h>
 
 #include "rsa.h"
-#include "ssh.h"
-#include "xmalloc.h"
-#include "entropy.h"
-
-int rsa_verbose = 1;
+#include "log.h"
+#include "ssherr.h"
 
 int
-rsa_alive()
-{
-	RSA *key;
-
-	seed_rng();
-	key = RSA_generate_key(32, 3, NULL, NULL);
-	if (key == NULL)
-		return (0);
-	RSA_free(key);
-	return (1);
-}
-
-/*
- * Generates RSA public and private keys.  This initializes the data
- * structures; they should be freed with rsa_clear_private_key and
- * rsa_clear_public_key.
- */
-
-void
-rsa_generate_key(RSA *prv, RSA *pub, unsigned int bits)
-{
-	RSA *key;
-
-	seed_rng();
-	
-	if (rsa_verbose) {
-		printf("Generating RSA keys:  ");
-		fflush(stdout);
-	}
-	key = RSA_generate_key(bits, 35, NULL, NULL);
-	if (key == NULL)
-		fatal("rsa_generate_key: key generation failed.");
-
-	/* Copy public key parameters */
-	pub->n = BN_new();
-	BN_copy(pub->n, key->n);
-	pub->e = BN_new();
-	BN_copy(pub->e, key->e);
-
-	/* Copy private key parameters */
-	prv->n = BN_new();
-	BN_copy(prv->n, key->n);
-	prv->e = BN_new();
-	BN_copy(prv->e, key->e);
-	prv->d = BN_new();
-	BN_copy(prv->d, key->d);
-	prv->p = BN_new();
-	BN_copy(prv->p, key->p);
-	prv->q = BN_new();
-	BN_copy(prv->q, key->q);
-
-	prv->dmp1 = BN_new();
-	BN_copy(prv->dmp1, key->dmp1);
-
-	prv->dmq1 = BN_new();
-	BN_copy(prv->dmq1, key->dmq1);
-
-	prv->iqmp = BN_new();
-	BN_copy(prv->iqmp, key->iqmp);
-
-	RSA_free(key);
-
-	if (rsa_verbose)
-		printf("Key generation complete.\n");
-}
-
-void
 rsa_public_encrypt(BIGNUM *out, BIGNUM *in, RSA *key)
 {
-	unsigned char *inbuf, *outbuf;
-	int len, ilen, olen;
+	u_char *inbuf = NULL, *outbuf = NULL;
+	int len, ilen, olen, r = SSH_ERR_INTERNAL_ERROR;
 
 	if (BN_num_bits(key->e) < 2 || !BN_is_odd(key->e))
-		fatal("rsa_public_encrypt() exponent too small or not odd");
+		return SSH_ERR_INVALID_ARGUMENT;
 
 	olen = BN_num_bytes(key->n);
-	outbuf = xmalloc(olen);
+	if ((outbuf = malloc(olen)) == NULL) {
+		r = SSH_ERR_ALLOC_FAIL;
+		goto out;
+	}
 
 	ilen = BN_num_bytes(in);
-	inbuf = xmalloc(ilen);
+	if ((inbuf = malloc(ilen)) == NULL) {
+		r = SSH_ERR_ALLOC_FAIL;
+		goto out;
+	}
 	BN_bn2bin(in, inbuf);
 
 	if ((len = RSA_public_encrypt(ilen, inbuf, outbuf, key,
-	    RSA_PKCS1_PADDING)) <= 0)
-		fatal("rsa_public_encrypt() failed");
+	    RSA_PKCS1_PADDING)) <= 0) {
+		r = SSH_ERR_LIBCRYPTO_ERROR;
+		goto out;
+	}
 
-	BN_bin2bn(outbuf, len, out);
+	if (BN_bin2bn(outbuf, len, out) == NULL) {
+		r = SSH_ERR_LIBCRYPTO_ERROR;
+		goto out;
+	}
+	r = 0;
 
-	memset(outbuf, 0, olen);
-	memset(inbuf, 0, ilen);
-	xfree(outbuf);
-	xfree(inbuf);
+ out:
+	if (outbuf != NULL) {
+		explicit_bzero(outbuf, olen);
+		free(outbuf);
+	}
+	if (inbuf != NULL) {
+		explicit_bzero(inbuf, ilen);
+		free(inbuf);
+	}
+	return r;
 }
 
-void
+int
 rsa_private_decrypt(BIGNUM *out, BIGNUM *in, RSA *key)
 {
-	unsigned char *inbuf, *outbuf;
-	int len, ilen, olen;
+	u_char *inbuf = NULL, *outbuf = NULL;
+	int len, ilen, olen, r = SSH_ERR_INTERNAL_ERROR;
 
 	olen = BN_num_bytes(key->n);
-	outbuf = xmalloc(olen);
+	if ((outbuf = malloc(olen)) == NULL) {
+		r = SSH_ERR_ALLOC_FAIL;
+		goto out;
+	}
 
 	ilen = BN_num_bytes(in);
-	inbuf = xmalloc(ilen);
+	if ((inbuf = malloc(ilen)) == NULL) {
+		r = SSH_ERR_ALLOC_FAIL;
+		goto out;
+	}
 	BN_bn2bin(in, inbuf);
 
 	if ((len = RSA_private_decrypt(ilen, inbuf, outbuf, key,
-	    RSA_PKCS1_PADDING)) <= 0)
-		fatal("rsa_private_decrypt() failed");
-
-	BN_bin2bn(outbuf, len, out);
-
-	memset(outbuf, 0, olen);
-	memset(inbuf, 0, ilen);
-	xfree(outbuf);
-	xfree(inbuf);
+	    RSA_PKCS1_PADDING)) <= 0) {
+		r = SSH_ERR_LIBCRYPTO_ERROR;
+		goto out;
+	} else if (BN_bin2bn(outbuf, len, out) == NULL) {
+		r = SSH_ERR_LIBCRYPTO_ERROR;
+		goto out;
+	}
+	r = 0;
+ out:
+	if (outbuf != NULL) {
+		explicit_bzero(outbuf, olen);
+		free(outbuf);
+	}
+	if (inbuf != NULL) {
+		explicit_bzero(inbuf, ilen);
+		free(inbuf);
+	}
+	return r;
 }
 
-/* Set whether to output verbose messages during key generation. */
-
-void
-rsa_set_verbose(int verbose)
+/* calculate p-1 and q-1 */
+int
+rsa_generate_additional_parameters(RSA *rsa)
 {
-	rsa_verbose = verbose;
+	BIGNUM *aux = NULL;
+	BN_CTX *ctx = NULL;
+	int r;
+
+	if ((ctx = BN_CTX_new()) == NULL)
+		return SSH_ERR_ALLOC_FAIL;
+	if ((aux = BN_new()) == NULL) {
+		r = SSH_ERR_ALLOC_FAIL;
+		goto out;
+	}
+
+	if ((BN_sub(aux, rsa->q, BN_value_one()) == 0) ||
+	    (BN_mod(rsa->dmq1, rsa->d, aux, ctx) == 0) ||
+	    (BN_sub(aux, rsa->p, BN_value_one()) == 0) ||
+	    (BN_mod(rsa->dmp1, rsa->d, aux, ctx) == 0)) {
+		r = SSH_ERR_LIBCRYPTO_ERROR;
+		goto out;
+	}
+	r = 0;
+ out:
+	BN_clear_free(aux);
+	BN_CTX_free(ctx);
+	return r;
 }
+

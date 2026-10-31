@@ -33,6 +33,10 @@
  * plain C translation units.  Nothing in this header may depend on the
  * @interface.
  *
+ * The ring-buffer helper the queue-touching units share lives in
+ * ISASerialPortQueue.h, not here, because a static in this header would reach
+ * the chip unit too and the reference has no copy there.
+ *
  * HISTORY
  */
 
@@ -72,16 +76,17 @@
 #define FCR_TRIGGER_8   0x80
 #define FCR_TRIGGER_14  0xC0
 
-// UART Chip Types
-#define CHIP_UNKNOWN    0
-#define CHIP_8250       1
-#define CHIP_16450      2
-#define CHIP_16550      3
-#define CHIP_UNKNOWN_FIFO 4
-#define CHIP_16550A     5
-#define CHIP_16650      6
-#define CHIP_16750      7
-#define CHIP_16950      8
+// UART Chip Types -- these are row numbers in Chip[], nothing else, and each
+// one names the part the reference's LongName names.  0 means "no UART here".
+#define CHIP_UNKNOWN        0   // "Unknown", selected by the "Auto" key
+#define CHIP_8250           1   // "8250"
+#define CHIP_16450          2   // "8250A or 16450"
+#define CHIP_16C1450        3   // "16C1450"
+#define CHIP_16550_BADFIFO  4   // "16550 with defective FIFO"
+#define CHIP_16550AF        5   // "16550AF/C/CF"
+#define CHIP_16C1550        6   // "16C1550"
+#define CHIP_ST16C650       7   // "ST16C650"
+#define CHIP_82510          8   // "82510"
 
 // Parity types
 #define PARITY_NONE     1
@@ -93,7 +98,23 @@
 // State bit flags
 #define STATE_ACTIVE        0x40000000  // Port is active/open
 #define STATE_TX_ENABLED    0x00800000  // Transmit enabled
-#define STATE_RX_ENABLED    0x00080000  // Receive enabled
+
+/*
+ * Two different bits, and they are not interchangeable.
+ *
+ * STATE_RX_ENABLED is what a reader waits on: RX_dequeueEvent and
+ * RX_dequeueData pass it to watchState, and the reference pushes 0x80000 at
+ * both those sites (21443 and 22292).
+ *
+ * STATE_RX_GATE is what the two interrupt handlers test before draining the
+ * receive buffer, as `test byte ptr [state+2], 0x40` at 13237, 16340 and 16449
+ * - bit 22, not bit 19.  acquire: sets State to 0xA0400018, which carries
+ * STATE_RX_GATE and NOT STATE_RX_ENABLED, so gating the handlers on the latter
+ * leaves the receive path dead: bytes are read out of the RBR and dropped.
+ * `test byte ptr ..., 8` appears nowhere in the reference's __text.
+ */
+#define STATE_RX_ENABLED    0x00080000  // Receive enabled, the watchState mask
+#define STATE_RX_GATE       0x00400000  // Handler-internal receive gate
 
 // DTR/RTS flow control bits
 #define STATE_DTR           0x00000002  // DTR signal state
@@ -103,10 +124,10 @@
 // TX queue state levels (bits 24-27 in state)
 #define TX_STATE_MASK       0x07800000
 #define TX_STATE_EMPTY      0x06000000  // Queue empty
-#define TX_STATE_BELOW_LOW  0x04000000  // Below low watermark
 #define TX_STATE_BELOW_MED  0x02000000  // Below medium watermark
 #define TX_STATE_BELOW_HIGH 0x00000000  // Below high watermark
 #define TX_STATE_ABOVE_HIGH 0x01000000  // Above high watermark
+#define TX_STATE_CRITICAL   0x01800000  // Above capacity-3, mirrors RX_STATE_CRITICAL
 
 // RX queue state levels (bits 16-19 in state)
 #define RX_STATE_MASK       0x000F0000
@@ -163,6 +184,11 @@ typedef struct {
  * 32-bit word and FlowControl likewise; Self points back at the owning
  * Objective-C object, which is how a C translation unit reaches the object
  * when it genuinely must.
+ *
+ * The twelve fields spelled `unsigned long` are the ones the reference's ivar
+ * type encoding spells `L`: same width as `unsigned int` on i386 and so zero
+ * codegen difference, but the encoding the runtime publishes is then
+ * byte-identical to the reference's.
  */
 typedef struct {
     id              Self;               /*   0 */
@@ -216,6 +242,42 @@ typedef struct {
     } Stats;
 } Port;                                 /* 304 */
 
+/*
+ * One row of the chip table, 20 bytes.  Port.Type indexes it, so the nine rows
+ * are the whole set of parts this driver knows about.
+ *
+ * MaxBaud is in half-bits per second, the same units as Port.BaudRate, so the
+ * 230400 on a 16550AF is 115200 bps.  FIFOsize is the usable FIFO depth and is
+ * zero on every part that has none; FIFOsize != 0 is exactly Type > 4, which is
+ * the form the test takes at _activatePort and _executeEvent.  ShortName is
+ * what the "Chip Type" Instance-table key is matched against and LongName is
+ * what the startup banner prints.
+ */
+typedef struct {
+    unsigned long   MaxBaud;        /*  0 - half-bits/s */
+    unsigned int    FIFOsize;       /*  4 */
+    void          (*IntHandler)(void *identity, void *state, Port *port); /* 8 */
+    char           *ShortName;      /* 12 */
+    char           *LongName;       /* 16 */
+} ChipInfo;                         /* 20 */
+
+/*
+ * Nine rows, external and not const, at the head of __DATA,__data.  The
+ * definition is in ISASerialPort.m rather than in the chip translation unit
+ * because IntHandler names that file's two static interrupt handlers, and
+ * msr_state_lut sits directly behind it for the same reason its only readers
+ * are there.  Together they are the whole of the reference's 196-byte
+ * __DATA,__data.
+ */
+extern ChipInfo Chip[9];
+
+/*
+ * MSR high nibble -> the modem bits of State, shifted into place by 5.  It
+ * swaps bits 1 and 3, mapping the hardware order (CTS, DSR, RI, DCD) onto the
+ * driver's (CTS, DCD, RI, DSR).
+ */
+extern unsigned char msr_state_lut[16];
+
 /* ISASerialPortChip.c */
 extern int identifyChip(Port *port);
 extern void initChip(Port *port);
@@ -225,7 +287,7 @@ extern void programChip(Port *port);
 extern IOReturn TX_enqueueEvent(Port *port, unsigned char event,
                                 unsigned int data, BOOL sleep);
 extern IOReturn RX_dequeueEvent(Port *port, unsigned char *eventType,
-                                unsigned int *eventData, BOOL sleep);
+                                unsigned long *eventData, BOOL sleep);
 extern IOReturn RX_dequeueData(Port *port, unsigned char *byteOut, BOOL sleep);
 extern unsigned int validateRingBufferSize(unsigned int requestedSize, Queue *q);
 extern void freeRingBuffer(Queue *q);
@@ -233,6 +295,6 @@ extern int allocateRingBuffer(Queue *q);
 
 /* ISASerialPortFlow.c */
 extern unsigned int flowMachine(Port *port);
-extern IOReturn watchState(Port *port, unsigned int *state, unsigned int mask);
+extern IOReturn watchState(Port *port, unsigned long *state, unsigned long mask);
 
 #endif /* _BSD_DEV_I386_ISASERIALPORTINTERNAL_H_ */

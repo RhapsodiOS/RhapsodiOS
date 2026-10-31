@@ -1,0 +1,34 @@
+.TH EXT2FS.UTIL 8
+.SH NAME
+ext2fs.util \- Workspace filesystem protocol for ext2
+.SH SYNOPSIS
+.B /usr/filesystems/ext2fs.fs/ext2fs.util
+\-p device removable|fixed readonly|writable
+.br
+.B ext2fs.util
+\-P device removable|fixed
+.br
+.B ext2fs.util
+\-m device mountpoint removable|fixed readonly|writable
+.br
+.B ext2fs.util
+\-u device mountpoint
+.br
+.B ext2fs.util
+\-r|\-i device removable|fixed
+.SH DESCRIPTION
+Device tokens follow the existing helper convention: hd1 addresses
+/private/dev/hd1a and its raw counterpart /private/dev/rhd1a.
+Probe validates the supported kernel disk profile without changing the volume
+and writes ext2fs.name and ext2fs.label in /usr/filesystems/ext2fs.fs.
+Mount uses /sbin/mount -t ext2fs and honors read-only access. Writable
+mounts of dirty volumes are refused; forced mounting is unsupported.
+Repair invokes fsck_ext2fs -p. Initialization invokes newfs_ext2fs with its
+supported defaults. Neither operation proceeds when mount inspection fails
+or the target is mounted. No automatic repair accompanies a mount.
+.SH EXIT STATUS
+Uses kernserv/loadable_fs.h FSUR codes. Shell exit status is the code modulo
+256: recognized 255, initialization-recognized (-P) 248, unrecognized 254, success 253, I/O failure 252,
+unclean 251, invalid arguments 250. Reboot advice is reported after repair.
+.SH SEE ALSO
+newfs_ext2fs(8), fsck_ext2fs(8), mount_ext2fs(8)

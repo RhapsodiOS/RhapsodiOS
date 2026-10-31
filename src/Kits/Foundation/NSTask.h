@@ -56,6 +56,10 @@
 - (int)terminationStatus;
 	// raises if isRunning.
 
+#if defined(__ppc__) || defined(__POWERPC__)
+- (unsigned int)processIdentifier;
+#endif
+
 @end
 
 @interface NSTask (NSTaskConveniences)

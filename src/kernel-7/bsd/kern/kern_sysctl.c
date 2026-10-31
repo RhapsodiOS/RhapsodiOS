@@ -410,6 +410,14 @@ hw_sysctl(name, namelen, oldp, oldlenp, newp, newlen, p)
 #ifdef __ppc__
 	case HW_NEWWORLD:
 		return (sysctl_rdint(oldp, oldlenp, newp, IsYosemite()));
+	case HW_POWERSUPPLY: {
+		extern int gPowerSupplyGood;
+
+		/* -1: no redundant supply was found */
+		if (gPowerSupplyGood == -1)
+			return (EOPNOTSUPP);
+		return (sysctl_rdint(oldp, oldlenp, newp, gPowerSupplyGood));
+	}
 #endif
 	default:
 		return (EOPNOTSUPP);
@@ -425,7 +433,11 @@ hw_sysctl(name, namelen, oldp, oldlenp, newp, newlen, p)
 extern
 #endif /* DIAGNOSTIC */
 struct ctldebug debug0, debug1;
+#ifdef __ppc__
 extern struct ctldebug debug2;  /* dev/ppc/drvCuda needs var to debug ADB */
+#else
+struct ctldebug debug2;
+#endif
 struct ctldebug debug3, debug4;
 struct ctldebug debug5, debug6, debug7, debug8, debug9;
 struct ctldebug debug10, debug11, debug12, debug13, debug14;

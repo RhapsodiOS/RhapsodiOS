@@ -73,7 +73,6 @@ int		bufpages = BUFPAGES;
 int		bufpages = 0;
 #endif
 int		show_space = 0;
-int  		srv = 0;          /* Flag indicates a server boot when set */
 int             ncl = 0;
 vm_map_t	buffer_map;
 
@@ -100,20 +99,8 @@ buffer_map_sizer(void)
      */
     if (bufpages == 0) {
 #if MACH_NBC
-            if (srv) {
-	            if (mem_size > (64 * 1024 * 1024)) {
-		            bufpages = atop(mem_size) / 2;
-			    
-			    if ((mem_size - ptoa(bufpages)) < (64 * 1024 * 1024))
-			            bufpages = atop(mem_size - (64 * 1024 * 1024));
-		    } else {
-		            bufpages = atop(mem_size / 100);
-		            bufpages = bufpages * 3; /* 3% */
-		    }
-	    } else {
-                    bufpages = atop(mem_size / 100);
-	            bufpages = bufpages * 3;  /* 3% */
-	    }
+	    bufpages = atop(mem_size / 100);
+	    bufpages = bufpages * 3;  /* 3% */
 #else
 	    bufpages = atop(mem_size / 20) & ~1; /* force even */
 

@@ -1,0 +1,5 @@
+AFTER_BUILD += copy-terminal-resources
+.PHONY: copy-terminal-resources
+copy-terminal-resources:
+	$(MKDIRS) "$(GLOBAL_RESOURCE_DIR)"
+	cd Resources && tar cf - . | (cd "$(GLOBAL_RESOURCE_DIR)" && tar xpf -)

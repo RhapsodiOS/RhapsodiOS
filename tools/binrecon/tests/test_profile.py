@@ -360,6 +360,7 @@ PPC_PROFILES = sorted(
 def test_ppc_profile_inventory():
     assert [path.name for path in PPC_PROFILES] == [
         "53c96-bundle-ppc.json", "53c96-ppc.json",
+        "adaptecu2scsi-ppc.json",
         "applepcibus-bundle-ppc.json", "applepcibus-ppc.json",
         "ata-bundle-ppc.json", "ata-ppc.json",
         "awacs-bundle-ppc.json", "awacs-ppc.json",
@@ -367,9 +368,11 @@ def test_ppc_profile_inventory():
         "burgundy-bundle-ppc.json", "burgundy-ppc.json",
         "cuda-bundle-ppc.json", "cuda-ppc.json",
         "dec21040-bundle-ppc.json", "dec21040-ppc.json",
+        "driverloader-ppc.json",
         "floppy-bundle-ppc.json", "floppy-ppc.json",
         "gem-bundle-ppc.json", "gem-ppc.json",
         "gnic-bundle-ppc.json", "gnic-ppc.json",
+        "interceptor-ppc.json",
         "ioadbdevice-ppc.json",
         "iodisplay-bundle-ppc.json", "iodisplay-ppc.json",
         "iondrvsupport-bundle-ppc.json", "iondrvsupport-ppc.json",
@@ -378,12 +381,17 @@ def test_ppc_profile_inventory():
         "ohare-bundle-ppc.json", "ohare-ppc.json",
         "pmu-bundle-ppc.json", "pmu-ppc.json",
         "ppcserialport-bundle-ppc.json", "ppcserialport-ppc.json",
+        "processviewer-ppc.json",
         "scsiserver-bundle-ppc.json", "scsiserver-ppc.json",
         "scsitape-bundle-ppc.json", "scsitape-postload-ppc.json",
         "scsitape-ppc.json", "scsitape-preload-ppc.json",
         "stblocksize-ppc.json", "sym8xx-bundle-ppc.json",
-        "sym8xx-ppc.json",
+        "sym8xx-ppc.json", "terminal-ppc.json",
     ]
+
+
+# driverLoader builds a ppc slice, so its profile compares a rebuilt artifact.
+PPC_PROFILES_WITH_REBUILT = {"driverloader-ppc.json", "processviewer-ppc.json"}
 
 
 @pytest.mark.parametrize("path", PPC_PROFILES, ids=lambda path: path.name)
@@ -393,9 +401,16 @@ def test_ppc_profiles_are_reference_only_ida_runs(path):
     assert document["schema_version"] == "profile-v1"
     assert document["architecture"] == "ppc"
     assert document["endianness"] == "big"
-    assert document["reference"] == {"path": "${BINRECON_REFERENCE}"}
-    assert "rebuilt" not in document
+    assert document["reference"]["path"] == "${BINRECON_REFERENCE}"
+    assert set(document["reference"]) <= {
+        "path", "expected_size", "expected_sha256"
+    }
+    if path.name in PPC_PROFILES_WITH_REBUILT:
+        assert document["rebuilt"] == {"path": "${BINRECON_REBUILT}"}
+    else:
+        assert "rebuilt" not in document
     assert document["analyzers"]["ida"]["enabled"] is True
     assert document["analyzers"]["ghidra"]["enabled"] is False
     assert document["analyzers"]["angr"]["enabled"] is False
-    assert document["output_dir"] == f"../out/{path.stem}"
+    suffix = "/baseline" if path.name == "adaptecu2scsi-ppc.json" else ""
+    assert document["output_dir"] == f"../out/{path.stem}{suffix}"

@@ -229,8 +229,8 @@ struct tree_private {
 
     else {
 	// Try NewWorld mapping
-	// NB: IsYosemite == IsNewWorld
-        if ([self parent] && (IsYosemite())) {
+	// NB: IsYosemite || IsSawtooth == IsNewWorld
+        if ([self parent] && (IsYosemite() || IsSawtooth())) {
 	    propSize = 16;
 	    err = [[self parent] mapInterrupts:self
 			interrupts:intBuf num:&propSize];

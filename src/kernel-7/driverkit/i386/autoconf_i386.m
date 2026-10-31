@@ -63,6 +63,7 @@
 
 #import <bsd/dev/ata_hd_registry.h>
 #import <machdep/i386/kernBootStruct.h>
+#import <pexpert/pexpert_i386.h>
 
 boolean_t eisa_id(int slot, unsigned int *_id);
 
@@ -74,6 +75,28 @@ static void bootDriverInit(void);
 
 id		defaultBus, defaultBusClass;
 static BOOL	printedPCMCIAMessage;
+
+#ifdef DEBUG
+int libIO_dbg;
+#endif
+
+/*
+ * Config tables linked into the kernel, served after the booter's.  The
+ * platform expert (pexperti386.o, built from drivers-i386/bus/drvPExpert)
+ * is linked in rather than loaded, so the booter has no bundle to take its
+ * table from; it lives here instead, as PPCKernBus's does in autoconf_ppc.m.
+ * The buses read their settings ("PnP", "PnP Read Port", "Verbose",
+ * "PCMCIA Memory Base", "PCMCIA Memory Length") from this table.
+ */
+static const char *inKernelConfigTables =
+
+"\"Bus Class\" = \"PExpert\";"
+"\"Class Names\" = \"EISAResourceDriver PCIResourceDriver PCMCIAResourceDriver\";"
+"\"Family\" = \"Bus\";"
+"\"Instance\" = \"0\";"
+"\"Version\" = \"5.0\";"
+"\0"
+;
 
 /*
  * Native indirect driver classes.
@@ -160,6 +183,12 @@ probeNativeDevices(void)
 
 	if (!ata_hd_registry_init())
 		panic("ATA hd registry initialization failed");
+
+	//
+	// Let the platform expert read the firmware tables and, if asked,
+	// switch to the APICs, before any driver registers an interrupt.
+
+	pexpert_init();
 
 	//
 	// Initialize drivers and modules loaded by booter.
@@ -572,7 +601,7 @@ void probeDirectDevices(void)
  * KERNBOOTSTRUCT.config is a set of contiguous strings, NULL separated.
  * The end of the list is delineated by a double NULL.
  */
-const char *findBootConfigString(int n)
+static const char *bootConfigString(int n)
 {
 	KERNBOOTSTRUCT *kernBootStruct = KERNSTRUCT_ADDR;
 	int stringsFound;
@@ -598,6 +627,33 @@ const char *findBootConfigString(int n)
 		}
 	}
 	return cp;
+}
+
+/*
+ * The n'th config string: the booter's, then the ones linked into the
+ * kernel.
+ */
+const char *findBootConfigString(int n)
+{
+	static int	numBootStrings = -1;
+	const char	*cp;
+
+	cp = bootConfigString(n);
+	if (cp != NULL)
+		return cp;
+
+	if (numBootStrings < 0) {
+		for (numBootStrings = 0;
+		     bootConfigString(numBootStrings) != NULL;
+		     numBootStrings++)
+			continue;
+	}
+	n -= numBootStrings;
+	for (cp = inKernelConfigTables; *cp != '\0'; cp += strlen(cp) + 1) {
+		if (n-- == 0)
+			return cp;
+	}
+	return NULL;
 }
 
 

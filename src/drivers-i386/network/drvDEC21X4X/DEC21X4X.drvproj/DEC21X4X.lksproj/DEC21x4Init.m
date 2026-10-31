@@ -34,513 +34,418 @@
 
 - (BOOL)_initAdapter
 {
-    // TODO: This method needs access to adapter private data structure
-    // The following implementation uses placeholder accessors that need to be
-    // replaced with actual structure field access
-
     BOOL linkDetected = YES;
-    void *adapterInfo = NULL;  // TODO: Get adapter info structure
+    void *adapterInfo = self->Adapter;
+    unsigned int chipRevision;
+    unsigned int *word;
+    unsigned char *byte;
+    unsigned int mediaMode;
+    BOOL miiLink;
+    unsigned int i;
 
-    // Write GEP sequence registers if present
-    // TODO: Access gepSequenceCount and gepSequence from adapter structure
-    int gepSequenceCount = 0;  // adapterInfo->gepSequenceCount
-    if (gepSequenceCount > 0) {
-        for (int i = 0; i < gepSequenceCount; i++) {
+    word = (unsigned int *)adapterInfo;
+    byte = (unsigned char *)adapterInfo;
+    if (word[35] > 0) {
+        for (i = 0; i < word[35]; i++) {
             IODelay(5);
-            // TODO: DC21X4WriteGepRegister(adapterInfo, adapterInfo->gepSequence[i]);
+            DC21X4WriteGepRegister(adapterInfo,
+                                   ((unsigned short *)adapterInfo)[72 + i]);
         }
     }
 
-    // Initialize registers
     [self _initRegisters];
 
-    // Initialize MII PHY if present
-    // TODO: Check adapterInfo->miiPresent flag
-    BOOL miiPresent = NO;
-    if (miiPresent) {
-        // TODO: Set adapterInfo->phyInitialized = NO;
-        BOOL phyInitOk = DC21X4PhyInit(adapterInfo);
-        // TODO: adapterInfo->phyInitSuccess = phyInitOk;
-
-        // TODO: Check chip revision and clear certain capability bits for 0x191011/0xff1011
-        unsigned int chipRevision = 0;  // TODO: adapterInfo->chipRevision
-        if (phyInitOk && chipRevision == 0x191011 || chipRevision == 0xff1011) {
-            // TODO: Clear specific media capability bits
+    if (byte[485]) {
+        byte[490] = NO;
+        byte[486] = DC21X4PhyInit(adapterInfo);
+        chipRevision = word[21];
+        if (!byte[495] && byte[486] &&
+            (chipRevision == CHIP_REV_DC21142 || chipRevision == 0xff1011)) {
+            word[127] &= 0xf7ffefef;
+            word[128] &= 0xf7ffefef;
         }
     }
 
-    // Configure based on chip revision
-    unsigned int chipRevision = 0;  // TODO: Get from adapter structure
-    unsigned int mediaCapabilities = 0;
-    unsigned int mediaType = 0;
-    unsigned char mediaOptions = 0;
-
+    chipRevision = word[21];
+    mediaMode = word[152];
     switch (chipRevision) {
-        case 0x21011:  // DC21040
-            // TODO: Set timer interval to 100ms
-            // TODO: Configure media blocks with 0x80020000 flags
+    case 0x141011:
+        word[29] = 100000;
+        word[54] |= word[27] | 0x80020000;
+        word[62] |= word[27] | 0x80020000;
+        word[70] |= word[27] | 0x80020000;
+        if (word[30] == 516) word[30] = 512;
+        if (byte[121] & 1) DC21X4EnableNway(adapterInfo);
+        if (byte[121] & 8) {
+            word[60] |= 0xf038;
+            word[68] |= 0xf038;
+            word[33] = (byte[124] & 2) ? 1 : 2;
+        } else {
+            word[33] = byte[120];
+            word[31] &= 1U << word[33];
+        }
+        if (byte[121] & 2) {
+            word[54] |= 0x200;
+            word[52] = 32573;
+            byte[484] = YES;
+        } else if (byte[121] & 4) {
+            word[52] = 20287;
+        }
+        break;
 
-            if (mediaType == 0x204) {
-                mediaType = 0x200;  // Change to AUI
-                // TODO: Set SIA values and enable scrambler
-            } else if ((mediaOptions & 0x04) != 0) {
-                // TODO: Configure for BNC
-            }
+    case 0x91011:
+        word[29] = 100000;
+        word[54] |= word[27] | 0x80020000;
+        word[62] |= word[27] | 0x80020000;
+        word[70] |= word[27] | 0x80020000;
+        if (word[30] == 516) {
+            word[30] = 512;
+            word[52] = 65533;
+            word[54] |= 0x200;
+            byte[484] = YES;
+        } else {
+            if (byte[121] & 4) word[52] = 53247;
+        }
+        word[33] = byte[120];
+        word[31] &= 1U << word[33];
+        break;
 
-            // TODO: Set current media and filter capabilities
-            break;
+    case CHIP_REV_DC21040:
+        word[29] = 100000;
+        word[54] |= word[27] | 0x80020000;
+        word[62] |= word[27] | 0x80020000;
+        word[70] |= word[27] | 0x80020000;
+        if (word[30] == 516) {
+            word[30] = 512;
+            word[52] = 65533;
+            word[54] |= 0x200;
+            byte[484] = YES;
+        } else if (byte[121] & 4) {
+            word[52] = 53247;
+        }
+        word[33] = byte[120];
+        word[31] &= 1U << word[33];
+        break;
 
-        case 0x91011:  // DC21140
-            // TODO: Configure all media blocks with appropriate flags
-            // TODO: Set up SIA registers for various media types
+    case CHIP_REV_DC21142:
+    case 0xff1011:
+        word[54] |= word[27] | 0x82420000;
+        word[86] |= word[27] | 0x82420000;
+        word[62] |= word[27] | 0x82420000;
+        word[70] |= word[27] | 0x82420000;
+        word[78] |= 0x82020000;
+        word[94] |= 0x82020000;
+        word[102] |= 0x82020000;
+        word[110] |= 0x82020000;
+        word[118] |= 0x82020000;
+        word[54] |= 0x01000000;
+        word[86] |= 0x01000000;
+        word[62] |= 0x01000000;
+        word[70] |= 0x01000000;
+        word[78] |= 0x02080000;
+        word[94] |= 0x02080000;
+        word[110] |= 0x02080000;
+        word[118] |= 0x02080000;
+        if (byte[121] & 2) {
+            word[54] |= 0x200;
+            word[86] |= 0x200;
+            word[94] |= 0x200;
+            word[118] |= 0x200;
+            byte[484] = YES;
+        }
+        if (byte[121] & 8) {
+            word[29] = 100000;
+        } else {
+            word[33] = byte[120];
+            word[31] &= 1U << word[33];
+            word[29] = (byte[32 * word[33] + 219] & 1) ? 100000 : 1000000;
+        }
+        break;
 
-            if ((mediaOptions & 0x02) != 0) {
-                // TODO: Enable scrambler for 100BaseTX
-            }
-
-            if ((mediaOptions & 0x08) == 0) {
-                // TODO: Set media index from mediaType
-            } else {
-                // TODO: Set timer interval to 100ms
-            }
-            break;
-
-        case 0x141011:  // DC21041
-            // TODO: Set timer interval to 100ms
-            // TODO: Configure media blocks
-
-            if (mediaType == 0x204) {
-                mediaType = 0x200;
-            }
-
-            if ((mediaOptions & 0x01) != 0) {
-                DC21X4EnableNway(adapterInfo);
-            }
-
-            if ((mediaOptions & 0x08) == 0) {
-                // TODO: Set media index
-            } else {
-                // TODO: Configure GEP for autosense
-            }
-
-            if ((mediaOptions & 0x02) != 0) {
-                // TODO: Enable scrambler
-            } else if ((mediaOptions & 0x04) != 0) {
-                // TODO: Configure for BNC
-            }
-            break;
-
-        case 0x191011:  // DC21143
-        case 0xff1011:
-            // TODO: Configure media blocks for 21143
-
-            if (mediaType == 0x204) {
-                mediaType = 0x200;
-            }
-
-            // TODO: Check if PHY is present and enable Nway if appropriate
-            BOOL phyInitSuccess = NO;
-            BOOL phyNwayCapable = NO;
-            if ((mediaOptions & 0x01) != 0 && (!phyInitSuccess || !phyNwayCapable)) {
-                DC21X4EnableNway(adapterInfo);
-            }
-
-            if ((mediaOptions & 0x08) == 0) {
-                // TODO: Set media index from mediaType
-                int mediaIndex = 0;
-                if (mediaIndex == 3 || (mediaIndex >= 5 && mediaIndex <= 8)) {
-                    // TODO: Set timer to 1000ms for 10BaseT
-                } else {
-                    // TODO: Set timer to 100ms
-                }
-            } else {
-                // TODO: Configure GEP for autosense
-                // TODO: Determine media index based on capabilities
-            }
-
-            if ((mediaOptions & 0x02) != 0) {
-                // TODO: Enable scrambler
-            } else if ((mediaOptions & 0x04) != 0) {
-                // TODO: Configure for BNC
-            }
-            break;
-
-        default:
-            IOLog("Unknown adapter - initializeAdapter failed\n");
-            return NO;
+    default:
+        IOLog("Unknown adapter - initializeAdapter failed\n");
+        break;
     }
 
-    // Handle MII PHY connection if present
-    // TODO: Check phyInitSuccess flag
-    BOOL phyInitSuccess = NO;
-    if (phyInitSuccess) {
-        // TODO: Handle Broadcom PHY special case
-        BOOL isBroadcomPhy = NO;
-        unsigned char broadcomPhyOptions = 0;
-        if (isBroadcomPhy && (broadcomPhyOptions & 0x08) != 0) {
-            // TODO: Configure Broadcom PHY for autosense
+    if (byte[486]) {
+        if (byte[496] && (byte[505] & 8)) {
+            word[126] &= 0xff00;
+            byte[504] |= 9;
+            word[33] = 0;
         }
-
-        phyInitSuccess = DC21X4SetPhyConnection(adapterInfo);
-        if (!phyInitSuccess) {
-            if (mediaCapabilities == 0) {
-                IOLog("Warning: unsupported media\n");
-            }
-        }
-    } else {
-        if (mediaCapabilities == 0) {
-            IOLog("Warning: unsupported media\n");
-        }
+        byte[486] = DC21X4SetPhyConnection(adapterInfo);
+    } else if (word[31] == 0) {
+        IOLog("Warning: unsupported media\n");
     }
+    word[26] |= word[8 * word[33] + 54];
+    word[154] = word[153];
+    if (byte[484]) word[154] &= 0xfffff3ff;
 
-    // TODO: Merge media capabilities into opmode register
-    // TODO: Copy CSR6 template to opmode
-
-    // TODO: Check if scrambler is disabled and clear scrambler bit
-
-    // Start transmit
     [self _startTransmit];
-
-    // Set address filtering
     if (![self _setAddressFiltering:YES]) {
         return NO;
     }
 
-    // Handle media mode = 3 (MII) or no PHY
-    int mediaMode = 0;  // TODO: Get from adapter structure
-    if (mediaMode == 3 || !phyInitSuccess) {
+    if (mediaMode == 3 || !byte[486]) {
         DC21X4StopReceiverAndTransmitter(adapterInfo);
-        // TODO: Write CSR6 with opmode & ~0x2002
-        // TODO: Increment counter
+        outl(self->ioBase + CSR6_OPMODE, word[26] & 0xffffdffd);
         IODelay(1000);
         DC21X4InitializeMediaRegisters(adapterInfo, 0);
     }
 
-    // TODO: Set resetInProgress flag to YES
+    byte[497] = YES;
     DC21X4StartAdapter(adapterInfo);
-
-    // Detect link
-    if (mediaMode == 3) {
-        // Media mode is MII, link detected in startAdapter
-    } else if (!phyInitSuccess) {
-        // No PHY, do autosense
-        // TODO: Check if Broadcom PHY present or media capabilities include 10BaseT/100BaseTX
-        BOOL needAutosense = NO;
-        if (needAutosense) {
-            linkDetected = DC21X4MediaDetect(adapterInfo);
-        }
-    } else {
-        // MII PHY present, try auto-detect
-        linkDetected = DC21X4MiiAutoDetect(adapterInfo);
-        if (!phyInitSuccess || (!linkDetected && mediaCapabilities != 0)) {
-            // Fallback to non-MII autosense
-            // TODO: Check conditions
-            BOOL needAutosense = NO;
-            if (needAutosense) {
+    if (mediaMode != 3) {
+        if (!byte[486]) {
+            if (!byte[496] || (byte[124] & 6))
                 linkDetected = DC21X4MediaDetect(adapterInfo);
+        } else {
+            miiLink = DC21X4MiiAutoDetect(adapterInfo);
+            if (!byte[486] || (!miiLink && word[31] != 0)) {
+                if (!byte[496] || (byte[124] & 6))
+                    linkDetected = DC21X4MediaDetect(adapterInfo);
             }
         }
+        if (linkDetected && word[136] == 0)
+            DC21X4StartAutoSenseTimer(adapterInfo, 6000);
     }
+    byte[498] = NO;
 
-    // Start autosense timer if link not detected and not already timing
-    // TODO: Check timerHandle
-    int timerHandle = 0;
-    if (linkDetected && timerHandle == 0) {
-        DC21X4StartAutoSenseTimer(adapterInfo, 6000);
-    }
-
-    // TODO: Set resetInProgress flag to NO
-
-    return YES;
+    return 1;
 }
 
 - (void)_initRegisters
 {
-    unsigned int busMode = 0;
-    unsigned int chipRevision = 0;  // TODO: Get from adapter structure
-    unsigned int chipStep = 0;      // TODO: Get from adapter structure  
-    void *adapterInfo = NULL;       // TODO: Get adapter info structure
-    vm_address_t physAddr;
+    void *adapterInfo = self->Adapter;
+    unsigned int chipRevision;
+    unsigned int chipStep;
+    unsigned int busMode;
+    IOPhysicalAddress physAddr;
     IOReturn ret;
-    
+
+    chipRevision = *(unsigned int *)((char *)adapterInfo + 0x54);
+    chipStep = *(unsigned char *)((char *)adapterInfo + 8);
+
     // Stop the adapter
     DC21X4StopAdapter(adapterInfo);
-    
+
     // For DC21140, write CSR6 and stop again
     if (chipRevision == 0x91011) {
-        // TODO: Write CSR6 (opmode & ~0x2002)
-        // TODO: outl(ioBaseAddr + CSR6, opmode & ~0x2002);
+        outl(self->ioBase + CSR6_OPMODE,
+             *(unsigned int *)((char *)adapterInfo + 0x68) & 0xffffdffd);
         DC21X4StopAdapter(adapterInfo);
     }
-    
+
     // Setup bus mode register (CSR0) based on chip revision
     busMode = 0;
-    
-    if (chipRevision == 0x21011 ||          // DC21040
-        chipRevision == 0x141011 ||          // DC21041
-        (chipRevision == 0x91011 && (chipStep & 0xF0) == 0x10)) {  // DC21140 rev 1.x
+    if (chipRevision == CHIP_REV_DC21040 || chipRevision == 0x141011 ||
+        (chipRevision == 0x91011 && (chipStep & 0xf0) == 0x10)) {
         busMode = 0x1000;  // Additional cache alignment
     }
-    
+
     // Write bus mode register
-    // CSR0 = 0x1A04000 | busMode
-    // Bits: Big/Little Endian, Cache Alignment, Burst Length, etc.
-    // TODO: outl(ioBaseAddr + CSR0, 0x1A04000 | busMode);
-    
+    outl(self->ioBase + CSR0_BUS_MODE,
+         (busMode & 0xfe5f3fff) | 0x01a04000);
+
     // Get physical address of RX descriptor ring
-    // TODO: Use actual rxRingPhys field
-    void *rxRingVirt = NULL;  // TODO: Get from adapter structure
-    ret = IOPhysicalFromVirtual(IOVmTaskSelf(), (vm_address_t)rxRingVirt, &physAddr);
+    ret = IOPhysicalFromVirtual(IOVmTaskSelf(), (vm_address_t)self->rxRing, &physAddr);
     if (ret != IO_R_SUCCESS) {
         IOLog("%s: IOPhysicalFromVirtual() error\n", [self name]);
         return;
     }
     
     // Write RX descriptor list base address (CSR3)
-    // TODO: outl(ioBaseAddr + CSR3, physAddr);
-    
+    outl(self->ioBase + CSR3_RX_LIST_BASE, physAddr);
+
     // Get physical address of TX descriptor ring
-    // TODO: Use actual txRingPhys field
-    void *txRingVirt = NULL;  // TODO: Get from adapter structure
-    ret = IOPhysicalFromVirtual(IOVmTaskSelf(), (vm_address_t)txRingVirt, &physAddr);
+    ret = IOPhysicalFromVirtual(IOVmTaskSelf(), (vm_address_t)self->txRing, &physAddr);
     if (ret != IO_R_SUCCESS) {
         IOLog("%s: IOPhysicalFromVirtual() error\n", [self name]);
         return;
     }
     
     // Write TX descriptor list base address (CSR4)
-    // TODO: outl(ioBaseAddr + CSR4, physAddr);
-    
+    outl(self->ioBase + CSR4_TX_LIST_BASE, physAddr);
+
     // For DC21040, initialize SIA register
-    if (chipRevision == 0x21011) {
+    if (chipRevision == CHIP_REV_DC21040) {
         // Write 0 to SIA CSR13
-        // TODO: outl(ioBaseAddr + SIA_CSR13, 0);
+        outl(self->ioBase + CSR13_SIA_CONNECTIVITY, 0);
     }
 }
 
-- (BOOL)_resetAndEnable:(BOOL)enable
+- (BOOL)resetAndEnable:(BOOL)enable
 {
-    void *adapterInfo = NULL;  // TODO: Get adapter info structure
-    unsigned int chipRevision = 0;  // TODO: Get from adapter structure
-    unsigned int chipStep = 0;      // TODO: Get from adapter structure
+    void *adapterInfo = self->Adapter;
+    unsigned int chipRevision;
+    unsigned int chipStep;
     unsigned int savedInterruptMask;
-    BOOL success;
-    
-    // TODO: Clear hardwareResetInProgress flag (offset 0x182)
-    // *(BOOL *)(self + 0x182) = NO;
-    
+    IOReturn ret;
+    unsigned int i;
+    unsigned int mediaType;
+    unsigned char defaultMedium;
+    unsigned int *descriptorControl;
+    const char *mediumName;
+
+    chipRevision = *(unsigned int *)((char *)adapterInfo + 0x54);
+    chipStep = *(unsigned char *)((char *)adapterInfo + 8);
+    self->resetAndEnabled = NO;
+
     // Clear any pending timeouts
     [self clearTimeout];
-    
+
     // Disable interrupts
     [self disableAdapterInterrupts];
-    
+
     // Stop autosense timer if running
-    // TODO: Check timerHandle at offset 0x220
-    int timerHandle = 0;  // TODO: adapterInfo->timerHandle
-    if (timerHandle != 0) {
+    if (*((unsigned int *)adapterInfo + 136) != 0) {
         DC21X4StopAutoSenseTimer(adapterInfo);
     }
-    
+
     // Initialize setup frame descriptors (16 entries)
-    // TODO: This accesses setupFrameDescriptors array
-    for (int i = 0; i < 16; i++) {
-        // TODO: Set descriptor buffer addresses
-        // adapterInfo->setupFrameDescriptors[i].bufferAddr = 
-        //     adapterInfo->setupFrameBase + (i * 8);
+    for (i = 0; i < 16; i++) {
+        ((unsigned int *)adapterInfo)[i + 3] =
+            *(unsigned int *)adapterInfo + (8 * i);
     }
-    
+
     // Setup frame descriptor control words
-    // TODO: Set descriptor 0 control word at offset 0x1FC
-    // *(unsigned int *)(adapterInfo + 0x1FC) = 0x0801B85B;
-    // TODO: Set descriptor 1 control word at offset 0x200
-    // *(unsigned int *)(adapterInfo + 0x200) = 0x0001BFFF;
-    
+    descriptorControl = (unsigned int *)((char *)adapterInfo + 0x1fc);
+    descriptorControl[0] = 0x0801b85b;
+    descriptorControl[1] = 0x0001bfff;
+
     // Chip-specific descriptor flags
-    if (chipRevision == 0x191011) {  // DC21143
-        // TODO: Set bit 26 in descriptor 0
-        // *(unsigned int *)(adapterInfo + 0x1FC) |= 0x04000000;
+    if (chipRevision == CHIP_REV_DC21142) {
+        descriptorControl[0] |= 0x04000000;
     } else if (chipRevision == 0xFF1011) {
-        // TODO: Set bit 27 in descriptor 1
-        // *(unsigned int *)(adapterInfo + 0x200) |= 0x08000000;
-        // TODO: Set bit 26 in descriptor 0
-        // *(unsigned int *)(adapterInfo + 0x1FC) |= 0x04000000;
+        descriptorControl[1] |= 0x08000000;
+        descriptorControl[0] |= 0x04000000;
     }
-    
+
     // Stop the adapter
     DC21X4StopAdapter(adapterInfo);
-    
+
     // Set various reset flags
-    // TODO: Set flags at offsets 0x1EC, 0x1ED, 0x1F2
-    // *(BOOL *)(adapterInfo + 0x1EC) = YES;  // txInterruptEnabled
-    // *(BOOL *)(adapterInfo + 0x1ED) = YES;  // rxInterruptEnabled  
-    // *(BOOL *)(adapterInfo + 0x1F2) = YES;  // resetInProgress
-    
+    *((unsigned char *)adapterInfo + 0x1ec) = YES;
+    *((unsigned char *)adapterInfo + 0x1ed) = YES;
+    *((unsigned char *)adapterInfo + 0x1f2) = YES;
+
     // Initialize CSR template values
-    // TODO: Set CSR6 template at offset 0x264
-    // *(unsigned int *)(adapterInfo + 0x264) = 0x4F02;
-    // TODO: Set CSR7 template at offset 0x26C
-    // *(unsigned int *)(adapterInfo + 0x26C) = 0x48D3;
-    
+    *((unsigned int *)adapterInfo + 153) = 0x4f02;
+    *((unsigned int *)adapterInfo + 155) = 0x48d3;
+
     // Initialize GEP values
-    // TODO: Set GEP direction at offset 0x6C
-    // *(unsigned int *)(adapterInfo + 0x6C) = 0x4000;
-    // TODO: Set GEP data at offset 0x70
-    // *(unsigned int *)(adapterInfo + 0x70) = 0;
-    
+    *((unsigned int *)adapterInfo + 27) = 0x4000;
+    *((unsigned int *)adapterInfo + 28) = 0;
+
     // DC21040 special handling
-    if (chipRevision == 0x21011) {
+    if (chipRevision == CHIP_REV_DC21040) {
         if (chipStep == 0x00 || chipStep == 0x20 || chipStep == 0x22) {
-            // Clear bit 11 in CSR6 template for early revisions
-            // TODO: *(unsigned int *)(adapterInfo + 0x264) &= ~0x800;
-            // TODO: *(unsigned int *)(adapterInfo + 0x6C) = 0x4000;
+            *((unsigned int *)adapterInfo + 153) &= ~0x800;
+            *((unsigned int *)adapterInfo + 27) = 0x4000;
         }
     }
-    
+
     // Initialize RX ring
     if (![self _initRxRing]) {
         [self setRunning:NO];
         return NO;
     }
-    
+
     // Initialize TX ring
     if (![self _initTxRing]) {
         [self setRunning:NO];
         return NO;
     }
-    
+
     // Parse SROM
-    if (![self _parseSROM]) {
+    if (![self parseSROM]) {
         IOLog("%s: Error while parsing SROM\n", [self name]);
         [self setRunning:NO];
         return NO;
     }
-    
+
     // If not enabling, just set running and return success
     if (!enable) {
-        [self setRunning:YES];
+        [self setRunning:NO];
+        self->resetAndEnabled = YES;
         return YES;
     }
-    
+
     // Verify media support
-    // TODO: Get mediaType from offset 0x78
-    unsigned int mediaType = 0;  // TODO: *(unsigned int *)(adapterInfo + 0x78)
-    if (![self _verifyMediaSupport:mediaType]) {
+    mediaType = *((unsigned int *)adapterInfo + 30);
+    if (![self verifyMediaSupport:mediaType]) {
         // Use default medium instead
-        // TODO: Get defaultMedium from offset 0x80
-        unsigned char defaultMedium = 0;  // TODO: *(unsigned char *)(adapterInfo + 0x80)
-        
-        // TODO: Get medium name from MediumString table
-        const char *mediumName = "unknown";  // TODO: MediumString[defaultMedium]
-        
+        defaultMedium = *((unsigned char *)adapterInfo + 0x80);
+        mediumName = MediumString[defaultMedium];
         IOLog("%s: Unsupported medium. Using default: %s\n", [self name], mediumName);
-        
-        // TODO: Set mediaType to defaultMedium
-        // *(unsigned int *)(adapterInfo + 0x78) = defaultMedium;
+        *((unsigned int *)adapterInfo + 30) = *((unsigned int *)adapterInfo + 32);
     }
-    
+
     // Save interrupt mask and clear certain bits
-    // TODO: Get interrupt mask from offset 0x1FC
-    savedInterruptMask = 0;  // TODO: *(unsigned int *)(adapterInfo + 0x1FC)
-    // TODO: Clear bits in interrupt mask
-    // *(unsigned int *)(adapterInfo + 0x1FC) &= 0xF7FFEFEF;
-    
+    savedInterruptMask = descriptorControl[0];
+    descriptorControl[0] &= 0xf7ffefef;
+
     // Enable all interrupts
-    success = [self enableAllInterrupts];
-    if (!success) {
+    ret = [self enableAllInterrupts];
+    if (ret != IO_R_SUCCESS) {
         IOLog("%s: Cannot enable interrupts\n", [self name]);
         [self setRunning:NO];
         return NO;
     }
-    
+
     // Initialize adapter
     if (![self _initAdapter]) {
         IOLog("%s: initAdapter failed\n", [self name]);
         [self setRunning:NO];
         return NO;
     }
-    
+
     // Restore interrupt mask
-    // TODO: *(unsigned int *)(adapterInfo + 0x1FC) = savedInterruptMask;
-    
+    descriptorControl[0] = savedInterruptMask;
+
     // Enable adapter interrupts
     [self enableAdapterInterrupts];
-    
+
     // Set running flag
     [self setRunning:YES];
-    
-    // TODO: Set hardwareResetInProgress flag (offset 0x182)
-    // *(BOOL *)(self + 0x182) = YES;
-    
+    self->resetAndEnabled = YES;
+
     return YES;
 }
 
-- (BOOL)_verifyMediaSupport:(unsigned int)mediaType
+- (BOOL)verifyMediaSupport:(unsigned int)mediaType
 {
-    BOOL result;
     unsigned int phyIndex;
-    int phyCount;
-    void *adapterInfo;
-    unsigned int supportedMediaMask;
-    BOOL miiPhyPresent;
-    BOOL phyValid;
+    unsigned int miiType;
     unsigned short phyMediaSupport;
-    unsigned short mediaBit;
-    unsigned char miiType;
-
-    // TODO: Get adapterInfo from offset 0x334
-    adapterInfo = NULL;  // TODO: *(void **)(self + 0x334)
-
-    // TODO: Get supported media mask from offset 0x338
-    supportedMediaMask = 0;  // TODO: *(unsigned int *)(self + 0x338)
 
     // Quick check: if bit 11 is set OR the mediaType bit is set in the mask,
     // then this media type is supported
     if ((mediaType & 0x800) != 0 ||
-        (supportedMediaMask & (1 << (mediaType & 0x1f))) != 0) {
+        ((1U << mediaType) & self->MediaCapableSaved) != 0) {
         return YES;
     }
 
     // Need to check MII PHY support
-    // TODO: Check if MII PHY is present at offset 0x1e5 in adapterInfo
-    miiPhyPresent = NO;  // TODO: *(BOOL *)(adapterInfo + 0x1e5)
-
-    if (miiPhyPresent) {
-        phyCount = 0;
-        do {
-            // TODO: Check if PHY entry is valid
-            // PHY structure starts at offset 0x230, each entry is 0x30 bytes
-            phyValid = NO;  // TODO: *(BOOL *)((phyCount * 0x30) + 0x230 + adapterInfo)
-
-            if (phyValid) {
-                phyIndex = 0;
-                do {
-                    // TODO: Get PHY media support bitmap at offset 0x23c
-                    phyMediaSupport = 0;  // TODO: *(unsigned short *)((phyCount * 0x30) + 0x23c + adapterInfo)
-
-                    // TODO: Get media bit from MediaBitTable
-                    mediaBit = 0;  // TODO: MediaBitTable[phyIndex]
-
-                    // Check if this media type is supported by the PHY
-                    if ((mediaBit & phyMediaSupport) != 0) {
-                        // TODO: Convert media type to MII type
-                        miiType = 0;  // TODO: ConvertMediaTypeToMiiType[mediaType & 0xff]
-
-                        if (phyIndex == miiType) {
-                            // Found matching media support
-                            return YES;
-                        }
-                    }
-
-                    phyIndex++;
-                } while (phyIndex < MEDIUM_STRING_COUNT);
-            }
-
-            phyCount++;
-        } while (phyCount < 1);  // Only check first PHY
+    if (*((unsigned char *)self->Adapter + 0x1e5) == 0) {
+        return NO;
     }
 
-    // Media type not supported
+    for (phyIndex = 0; phyIndex < 1; phyIndex++) {
+        if (*((unsigned char *)self->Adapter + 0x230 + (phyIndex * 0x30)) == 0) {
+            continue;
+        }
+
+        phyMediaSupport = *(unsigned short *)((char *)self->Adapter +
+                                               0x23c + (phyIndex * 0x30));
+        for (miiType = 0; miiType < MEDIA_BIT_TABLE_COUNT; miiType++) {
+            if ((phyMediaSupport & MediaBitTable[miiType]) != 0 &&
+                miiType == ConvertMediaTypeToMiiType[(unsigned char)mediaType]) {
+                return YES;
+            }
+        }
+    }
+
     return NO;
 }
 

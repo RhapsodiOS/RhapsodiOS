@@ -7,7 +7,7 @@
             "$(NEXT_ROOT)/System/Library/Frameworks/System.framework/PrivateHeaders/bsd/hfs/hfscommon/headers/system"
         ); 
         FRAMEWORKS = (); 
-        H_FILES = (mount_hfs.h); 
+        H_FILES = (mount_hfs.h, hfs_endian.h); 
         OTHER_LIBS = (disk); 
         OTHER_LINKED = (mount_hfs.c); 
         OTHER_SOURCES = (Makefile.preamble, Makefile, Makefile.postamble); 

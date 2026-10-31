@@ -1,0 +1,6 @@
+"Intel82595NetworkDriver" = "Cogent EM595 PCMCIA";
+"Long Name" = "Cogent EM595 PCMCIA Ethernet Adapter";
+
+/* The string which will be displayed to inform the user that no parameter setting is necessary. */
+"N/A" = "This PCMCIA adapter will configure itself automatically.";
+

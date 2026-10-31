@@ -49,6 +49,10 @@
 #import <sys/tty.h>
 
 extern struct tty	cons;
+extern int		mem_map_ranges;
+extern vm_offset_t	mem_map_top;
+extern vm_size_t	mem_size_detected;
+extern vm_size_t	mem_size_budget;
 
 #import <kern/assert.h>
 
@@ -73,7 +77,6 @@ int		bufpages = BUFPAGES;
 int		bufpages = 0;
 #endif
 int		show_space = 0;
-int  		  srv;        /* Flag indicates a server boot when set */
 int             ncl = 0;
 vm_map_t	buffer_map;
 
@@ -228,11 +231,21 @@ startup(
 
     printf(version);
 
+    if (mem_map_ranges > 0)
+	printf("memory map: %d ranges, top 0x%x\n", mem_map_ranges, mem_map_top);
+    else
+	printf("no memory map, using extmem\n");
+
 #define MEG	(1024*1024)
     printf("physical memory = %d.%d%d megabytes.\n",
 	mem_size/MEG,
 	((mem_size%MEG)*10)/MEG,
 	((mem_size%(MEG/10))*100)/MEG);
+
+    if (mem_size != mem_size_detected)
+	printf("physical memory clamped from %d MB to %d MB "
+	       "(%d MB of kernel address space is available for it).\n",
+	       mem_size_detected/MEG, mem_size/MEG, mem_size_budget/MEG);
 
     /*
      * Allocate space for system data structures.

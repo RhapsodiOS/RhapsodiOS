@@ -52,6 +52,7 @@
 #import <machdep/i386/intr_exported.h>
 
 static tvalspec_t	time_of_boot;	/* rel to 1/1/70 (UNIX T[0]) */
+static tvalspec_t	last_calendar;	/* last calendar time handed out */
 
 /*
  * Nanosecond event counter ;-)
@@ -59,12 +60,49 @@ static tvalspec_t	time_of_boot;	/* rel to 1/1/70 (UNIX T[0]) */
 
 static struct _system_clock {
     tvalspec_t		counter;
-    timer_cnt_val_t	last_timer_count;
+    unsigned int	last_timer_count;
+    tvalspec_t		last_stamp;	/* last stamp handed out */
     mapped_tvalspec_t	*mapped_counter;
-    timer_cnt_val_t	timer_const;
+    unsigned int	timer_const;
 } system_clock;
 
 static tvalspec_t	system_time_stamp(void);
+
+/*
+ * Where the fraction of a tick comes from: a countdown that reloads at
+ * timer_const on every tick interrupt.  The 8254's counter 0 by default;
+ * the platform expert can offer the local APIC timer instead.
+ */
+static unsigned int
+timer_read_count(void)
+{
+    timer_latch(TIMER_CNT0_SEL);
+    return (timer_read(TIMER_CNT0_SEL));
+}
+
+static unsigned int	(*tick_source_read)(void) = timer_read_count;
+
+unsigned int
+clock_set_tick_source(
+    unsigned int	(*read_count)(void),
+    unsigned int	counts_per_second
+)
+{
+    unsigned int	count_per_tick;
+    int			s;
+
+    count_per_tick = counts_per_second / TICKS_PER_SEC;
+    if ((counts_per_second % TICKS_PER_SEC) >= (TICKS_PER_SEC / 2))
+    	count_per_tick++;
+
+    s = splclock();
+    tick_source_read = read_count;
+    system_clock.timer_const = count_per_tick;
+    system_clock.last_timer_count = count_per_tick;
+    splx(s);
+
+    return (count_per_tick);
+}
 
 static struct _system_timer {
     boolean_t		is_set;
@@ -246,25 +284,31 @@ clock_get_counter(
     clock_type_t 	which_clock
 )
 {
-    tvalspec_t		result = system_time_stamp();
+    tvalspec_t		result;
+    int			s = splclock();
+
+    // one spl section, so a tick cannot slip an adjtime step in between
+    result = system_time_stamp();
 
     switch (which_clock) {
 
     case System:
 	break;
 
-    case Calendar: {
-	int		s = splclock();
-
+    case Calendar:
     	ADD_TVALSPEC(&result, &time_of_boot);
-	splx(s);
+	// a reload the tick has not counted yet lacks its adjtime step
+	if (CMP_TVALSPEC(&result, &last_calendar) < 0)
+	    result = last_calendar;
+	else
+	    last_calendar = result;
 	break;
-    }
 
     default:
 	result = TVALSPEC_ZERO;
 	break;
     }
+    splx(s);
     
     return (result);
 }
@@ -275,15 +319,17 @@ clock_set_counter(
     tvalspec_t 		value
 )
 {
-    tvalspec_t		counter = system_time_stamp();
+    tvalspec_t		counter;
+    int			s = splclock();
+
+    counter = system_time_stamp();
 
     switch (which_clock) {
 
     case Calendar: {
-	int		s = splclock();
-
 	time_of_boot = value;
 	SUB_TVALSPEC(&time_of_boot, &counter);
+	last_calendar = value;
 	splx(s);
 
 	writetodc(&value.tv_sec);
@@ -292,6 +338,7 @@ clock_set_counter(
 
     default:
     	/* Can only set the calendar */
+	splx(s);
 	break;
     }
 }
@@ -403,7 +450,7 @@ timer_set_deadline(
 static tvalspec_t
 system_time_stamp(void)
 {
-    timer_cnt_val_t	current_timer_count, last_timer_count;
+    unsigned int	current_timer_count, last_timer_count;
     clock_res_t		fraction;
     tvalspec_t		result;
     int			s = splclock();
@@ -411,15 +458,13 @@ system_time_stamp(void)
     // take a snapshot of the whole counter state
     result = system_clock.counter;
     last_timer_count = system_clock.last_timer_count;
-    timer_latch(TIMER_CNT0_SEL);
-    current_timer_count = timer_read(TIMER_CNT0_SEL);
+    current_timer_count = (*tick_source_read)();
     // once a wrap is seen, store 0 (never read in NDIV mode) so that
     // every later read counts the tick until the interrupt runs
     if (current_timer_count > last_timer_count)
 	system_clock.last_timer_count = 0;
     else
 	system_clock.last_timer_count = current_timer_count;
-    splx(s);
 
     // check for tick overflow
     if (current_timer_count > last_timer_count) {
@@ -427,11 +472,19 @@ system_time_stamp(void)
 	ADD_TVALSPEC_NSEC(&result, NSEC_PER_TICK);
     }
 
-    // convert fraction to ns
+    // convert fraction to ns; the source's count per tick spans one tick
     fraction = (system_clock.timer_const - current_timer_count);
-    fraction = fraction * (NSEC_PER_SEC / TIMER_CONSTANT);
+    fraction = ((unsigned long long)fraction * NSEC_PER_TICK) /
+    		system_clock.timer_const;
 
     ADD_TVALSPEC_NSEC(&result, fraction);
+
+    // a second reload before the tick runs restarts the fraction; hold still
+    if (CMP_TVALSPEC(&result, &system_clock.last_stamp) < 0)
+	result = system_clock.last_stamp;
+    else
+	system_clock.last_stamp = result;
+    splx(s);
 
     return (result);
 }

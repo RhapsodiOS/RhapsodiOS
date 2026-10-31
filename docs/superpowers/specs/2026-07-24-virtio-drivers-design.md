@@ -75,8 +75,8 @@ devices are virtio-blk and virtio-scsi, and both are covered.
 Everything below was verified in-tree rather than assumed.
 
 - **Static libraries are supported.** `LIBRARY_STYLE = STATIC` selects an
-  `ar`/`libtool` archive rule (`src/pb_makefiles-1/library.make:107`), and
-  `LOADABLES` includes `$(OTHER_LIBS)` (`src/pb_makefiles-1/common.make:288`),
+  `ar`/`libtool` archive rule (`src/Developer/Commands/pb_makefiles-1/library.make:107`), and
+  `LOADABLES` includes `$(OTHER_LIBS)` (`src/Developer/Commands/pb_makefiles-1/common.make:288`),
   so a `.a` can be linked into a kernel server.
 - **Kernel servers get flags a library does not.** `PROJTYPE_CFLAGS` injects
   `-static -DKERNEL -D_KERNEL` plus `-DKERNEL_SERVER_INSTANCE=`

@@ -1,0 +1,15 @@
+# Task 2 binary evidence
+
+Reference identity: `C86447845EE31FE61DBD91037DFCFAAF0AD65B994463539C8370AEAA9E960C0E`.
+
+The following implementations were checked against the IDA 9.4 pseudocode and complete disassembly preserved in the ignored reference evidence export. Address ranges are half-open and all addresses are from the supplied i386 image.
+
+| Reference range | Functions | Confirmed behavior |
+|---|---|---|
+| `0x2728..0x27a8` | `OS_InPortByte`, `OS_InPortWord`, `OS_InPortLong`, `OS_OutPortByte`, `OS_OutPortWord`, `OS_OutPortLong`, `OS_start_timer`, `OS_stop_timer`, `OS_Lock`, `OS_UnLock` | `IN`/`OUT` widths are byte/word/dword. Each output increments its corresponding 32-bit counter (`xxx_8_0`, `xxx_11_0`, `xxx_14_0`) with a locked increment and returns zero. Timer and lock hooks are empty and take no arguments. |
+| `0x6e88..0x6fc8` | `queueSearchSelect`, `queueSelectFail` | Selection starts at card byte `+15`, wraps across 16 targets, chooses a nonempty target with eligibility byte `+204 == 0`, removes its head, advances the cursor, and sets card flag `0x40`. Failed selection reinserts the current SCCB at the head and increments the byte count. |
+| `0x6fc8..0x7140` | `queueCmdComplete`, `queueDisconnect`, `queueFlushSccb` | Completion applies host/SCSI status rules, restores saved CDB state when flag `+95 & 8`, updates residual for opcodes 3/4, decrements the 16-bit card command count, performs the observed final-command port sequence, calls the SCCB callback, sets card flag `0x40`, and clears current SCCB. Disconnect indexes the 33-entry array by tag and increments the per-LUN byte at target `+32+lun`. Flush visits slots 0 through 32, completes each nonnull SCCB in ascending slot order, then clears 32 per-LUN bytes. |
+| `0x71ec..0x7358` | `queueAddSccb`, `queueFindSccb`, `utilUpdateResidual` | Selection queues are doubly linked through SCCB `+76/+80`, with byte count at target `+205`. Find unlinks the first identity match and returns 1, otherwise 0. Residual update clears length for transfer-state bit 2, sums SG lengths from the saved index/offset for bit 4 until `index*8 >= length`, and otherwise subtracts ATC at `+56`. |
+| `0x7358..0x7440` | `Wait1Second`, `Wait` | `Wait` saves/restores timer reload at `base+108`, acknowledges/starts the timer with exact byte accesses, and polls in order `base+66 & 1`, `base+69 & 2`, `base+66 & 4`. `Wait1Second` calls `Wait(base,0x99)` at most four times and tests the latter two completion bits after each call. |
+
+The production translation unit compiles as freestanding i386 with warnings as errors. Its emitted assembly contains the expected six `inb/inw/inl/outb/outw/outl` instructions and three `lock; incl` counter updates. The mock suite executes production functions and covers port widths/counters, empty/search, singleton and multi-node removal, selection/requeue, disconnect/flush, residual update modes, and the complete `Wait` port trace. Host execution validates the state logic; target layout and translation-unit compilation were checked separately as i386.

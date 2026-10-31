@@ -1,0 +1,621 @@
+{
+  "schema_version": "source-map-v1",
+  "reference_sha256": "332B3C8C0AE0A6E40A4B93110EE16748FCD94AA0119D63F16EDE878598C681B4",
+  "mapped": [
+    {
+      "address": 1112543052,
+      "size": 312,
+      "reference_names": [
+        "_NSHashCString"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleCString.m",
+      "source_line": 131
+    },
+    {
+      "address": 1112544596,
+      "size": 44,
+      "reference_names": [
+        "-[NSSimpleCString hash]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleCString.m",
+      "source_line": 498
+    },
+    {
+      "address": 1112546820,
+      "size": 328,
+      "reference_names": [
+        "-[NSInlineCString release]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleCString.m",
+      "source_line": 629
+    },
+    {
+      "address": 1112547992,
+      "size": 260,
+      "reference_names": [
+        "-[NSInlineCString retain]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleCString.m",
+      "source_line": 612
+    },
+    {
+      "address": 1112549084,
+      "size": 16,
+      "reference_names": [
+        "-[NSSimpleCString length]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleCString.m",
+      "source_line": 240
+    },
+    {
+      "address": 1112549160,
+      "size": 72,
+      "reference_names": [
+        "-[NSInlineCString hash]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleCString.m",
+      "source_line": 693
+    },
+    {
+      "address": 1112550028,
+      "size": 324,
+      "reference_names": [
+        "-[NSSimpleCString isEqualToString:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleCString.m",
+      "source_line": 437
+    },
+    {
+      "address": 1112550744,
+      "size": 16,
+      "reference_names": [
+        "-[NSSimpleCString _fastCStringContents]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleCString.m",
+      "source_line": 262
+    },
+    {
+      "address": 1112551868,
+      "size": 120,
+      "reference_names": [
+        "-[NSInlineCString copyWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleCString.m",
+      "source_line": 698
+    },
+    {
+      "address": 1112552088,
+      "size": 16,
+      "reference_names": [
+        "-[NSSimpleCString cStringLength]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleCString.m",
+      "source_line": 244
+    },
+    {
+      "address": 1112552116,
+      "size": 388,
+      "reference_names": [
+        "-[NSInlineCString isEqual:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleCString.m",
+      "source_line": 779
+    },
+    {
+      "address": 1112553520,
+      "size": 408,
+      "reference_names": [
+        "-[NSSimpleCString isEqual:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleCString.m",
+      "source_line": 413
+    },
+    {
+      "address": 1112555124,
+      "size": 60,
+      "reference_names": [
+        "-[NSInlineCString cString]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleCString.m",
+      "source_line": 667
+    },
+    {
+      "address": 1112555836,
+      "size": 264,
+      "reference_names": [
+        "__NSNewInlineCString"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleCString.m",
+      "source_line": 1195
+    },
+    {
+      "address": 1112560116,
+      "size": 224,
+      "reference_names": [
+        "-[NSSimpleCString getCharacters:range:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleCString.m",
+      "source_line": 312
+    },
+    {
+      "address": 1112568388,
+      "size": 32,
+      "reference_names": [
+        "_capacityToExternal"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleCString.m",
+      "source_line": 216
+    },
+    {
+      "address": 1112569968,
+      "size": 248,
+      "reference_names": [
+        "-[NSSimpleCString getBytes:maxLength:filledLength:encoding:allowLossyConversion:range:remainingRange:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleCString.m",
+      "source_line": 328
+    },
+    {
+      "address": 1112570216,
+      "size": 260,
+      "reference_names": [
+        "-[NSCString retain]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleCString.m",
+      "source_line": 560
+    },
+    {
+      "address": 1112570972,
+      "size": 16,
+      "reference_names": [
+        "-[NSInlineCString length]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleCString.m",
+      "source_line": 659
+    },
+    {
+      "address": 1112570988,
+      "size": 328,
+      "reference_names": [
+        "-[NSCString release]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleCString.m",
+      "source_line": 577
+    },
+    {
+      "address": 1112574276,
+      "size": 76,
+      "reference_names": [
+        "-[NSCString retainCount]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleCString.m",
+      "source_line": 600
+    },
+    {
+      "address": 1112574352,
+      "size": 304,
+      "reference_names": [
+        "-[NSInlineCString isEqualToString:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleCString.m",
+      "source_line": 755
+    },
+    {
+      "address": 1112590580,
+      "size": 60,
+      "reference_names": [
+        "_capacityToInternal"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleCString.m",
+      "source_line": 207
+    },
+    {
+      "address": 1112594668,
+      "size": 104,
+      "reference_names": [
+        "-[NSSimpleCString copyWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleCString.m",
+      "source_line": 266
+    },
+    {
+      "address": 1112599148,
+      "size": 100,
+      "reference_names": [
+        "-[NSCString initWithCStringNoCopy:length:freeWhenDone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleCString.m",
+      "source_line": 537
+    },
+    {
+      "address": 1112599248,
+      "size": 20,
+      "reference_names": [
+        "-[NSSimpleCString initWithCStringNoCopy:length:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleCString.m",
+      "source_line": 234
+    },
+    {
+      "address": 1112599268,
+      "size": 240,
+      "reference_names": [
+        "-[NSInlineCString getCharacters:range:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleCString.m",
+      "source_line": 717
+    },
+    {
+      "address": 1112608964,
+      "size": 36,
+      "reference_names": [
+        "+[NSSimpleCString allocWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleCString.m",
+      "source_line": 230
+    },
+    {
+      "address": 1112612648,
+      "size": 84,
+      "reference_names": [
+        "___sprint"
+      ],
+      "source_path": "src/Kits/Foundation/NSPrintf.m",
+      "source_line": 172
+    },
+    {
+      "address": 1112612732,
+      "size": 516,
+      "reference_names": [
+        "___sfvwrite"
+      ],
+      "source_path": "src/Kits/Foundation/NSPrintf.m",
+      "source_line": 89
+    },
+    {
+      "address": 1112619216,
+      "size": 100,
+      "reference_names": [
+        "__NSvsnprintf"
+      ],
+      "source_path": "src/Kits/Foundation/NSPrintf.m",
+      "source_line": 187
+    },
+    {
+      "address": 1112620900,
+      "size": 96,
+      "reference_names": [
+        "-[NSSimpleCString dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleCString.m",
+      "source_line": 523
+    },
+    {
+      "address": 1112620996,
+      "size": 92,
+      "reference_names": [
+        "-[NSCString dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleCString.m",
+      "source_line": 554
+    },
+    {
+      "address": 1112623916,
+      "size": 256,
+      "reference_names": [
+        "-[NSInlineCString hasSuffix:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleCString.m",
+      "source_line": 832
+    },
+    {
+      "address": 1112655924,
+      "size": 60,
+      "reference_names": [
+        "-[NSInlineCString _fastCStringContents]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleCString.m",
+      "source_line": 675
+    },
+    {
+      "address": 1112669924,
+      "size": 484,
+      "reference_names": [
+        "_isEqualCStringToString"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleCString.m",
+      "source_line": 181
+    },
+    {
+      "address": 1112671972,
+      "size": 224,
+      "reference_names": [
+        "-[NSSimpleCString hasPrefix:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleCString.m",
+      "source_line": 373
+    },
+    {
+      "address": 1112694952,
+      "size": 184,
+      "reference_names": [
+        "-[NSInlineCString characterAtIndex:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleCString.m",
+      "source_line": 704
+    },
+    {
+      "address": 1112700908,
+      "size": 264,
+      "reference_names": [
+        "-[NSInlineCString getBytes:maxLength:filledLength:encoding:allowLossyConversion:range:remainingRange:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleCString.m",
+      "source_line": 733
+    },
+    {
+      "address": 1112701916,
+      "size": 324,
+      "reference_names": [
+        "-[NSInlineCString substringWithRange:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleCString.m",
+      "source_line": 850
+    },
+    {
+      "address": 1112703248,
+      "size": 220,
+      "reference_names": [
+        "-[NSSimpleCString compare:options:range:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleCString.m",
+      "source_line": 351
+    },
+    {
+      "address": 1112705892,
+      "size": 304,
+      "reference_names": [
+        "_NSCompareCString"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleCString.m",
+      "source_line": 154
+    },
+    {
+      "address": 1112708520,
+      "size": 16,
+      "reference_names": [
+        "-[NSInlineCString cStringLength]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleCString.m",
+      "source_line": 663
+    },
+    {
+      "address": 1112713896,
+      "size": 168,
+      "reference_names": [
+        "-[NSSimpleCString characterAtIndex:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleCString.m",
+      "source_line": 298
+    },
+    {
+      "address": 1112714204,
+      "size": 3320,
+      "reference_names": [
+        "__NSstrtod"
+      ],
+      "source_path": "src/Kits/Foundation/NSStrtod.m",
+      "source_line": 148
+    },
+    {
+      "address": 1112723752,
+      "size": 244,
+      "reference_names": [
+        "-[NSInlineCString hasPrefix:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleCString.m",
+      "source_line": 815
+    },
+    {
+      "address": 1112726968,
+      "size": 316,
+      "reference_names": [
+        "__NSUniqueCString"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleCString.m",
+      "source_line": 34
+    },
+    {
+      "address": 1112738736,
+      "size": 52,
+      "reference_names": [
+        "-[NSInlineCString fastestEncoding]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleCString.m",
+      "source_line": 679
+    },
+    {
+      "address": 1112757788,
+      "size": 296,
+      "reference_names": [
+        "-[NSSimpleCString _newSubstringWithRange:zone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleCString.m",
+      "source_line": 272
+    },
+    {
+      "address": 1112772980,
+      "size": 52,
+      "reference_names": [
+        "-[NSSimpleCString fastestEncoding]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleCString.m",
+      "source_line": 248
+    },
+    {
+      "address": 1112794416,
+      "size": 636,
+      "reference_names": [
+        "-[NSSimpleCString stringByAppendingString:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleCString.m",
+      "source_line": 459
+    },
+    {
+      "address": 1112796272,
+      "size": 236,
+      "reference_names": [
+        "-[NSSimpleCString hasSuffix:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleCString.m",
+      "source_line": 393
+    },
+    {
+      "address": 1112802464,
+      "size": 644,
+      "reference_names": [
+        "-[NSInlineCString stringByAppendingString:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleCString.m",
+      "source_line": 894
+    },
+    {
+      "address": 1112835876,
+      "size": 60,
+      "reference_names": [
+        "-[NSInlineCString lossyCString]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleCString.m",
+      "source_line": 671
+    },
+    {
+      "address": 1112852424,
+      "size": 128,
+      "reference_names": [
+        "-[NSCSubstring initWithCStringNoCopy:length:referencedString:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleCString.m",
+      "source_line": 936
+    },
+    {
+      "address": 1112852552,
+      "size": 116,
+      "reference_names": [
+        "-[NSCSubstring dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleCString.m",
+      "source_line": 964
+    },
+    {
+      "address": 1112852668,
+      "size": 56,
+      "reference_names": [
+        "-[NSCString initWithCStringNoCopy:length:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleCString.m",
+      "source_line": 533
+    },
+    {
+      "address": 1112865084,
+      "size": 396,
+      "reference_names": [
+        "__NSNewInlineCStringFromString"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleCString.m",
+      "source_line": 1210
+    },
+    {
+      "address": 1112899828,
+      "size": 328,
+      "reference_names": [
+        "-[NSInlineCString _newSubstringWithRange:zone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleCString.m",
+      "source_line": 867
+    },
+    {
+      "address": 1112937528,
+      "size": 240,
+      "reference_names": [
+        "-[NSInlineCString compare:options:range:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleCString.m",
+      "source_line": 796
+    },
+    {
+      "address": 1113195204,
+      "size": 132,
+      "reference_names": [
+        "-[NSCString initWithCString:length:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleCString.m",
+      "source_line": 544
+    },
+    {
+      "address": 1113195336,
+      "size": 108,
+      "reference_names": [
+        "-[NSCSubstring initWithCStringNoCopy:length:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleCString.m",
+      "source_line": 943
+    },
+    {
+      "address": 1113195444,
+      "size": 200,
+      "reference_names": [
+        "-[NSCSubstring retain]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleCString.m",
+      "source_line": 950
+    },
+    {
+      "address": 1113205340,
+      "size": 108,
+      "reference_names": [
+        "-[NSInlineCString canBeConvertedToEncoding:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleCString.m",
+      "source_line": 687
+    },
+    {
+      "address": 1113205448,
+      "size": 76,
+      "reference_names": [
+        "-[NSInlineCString retainCount]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleCString.m",
+      "source_line": 652
+    },
+    {
+      "address": 1113205524,
+      "size": 52,
+      "reference_names": [
+        "-[NSInlineCString smallestEncoding]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleCString.m",
+      "source_line": 683
+    },
+    {
+      "address": 1113221956,
+      "size": 108,
+      "reference_names": [
+        "-[NSSimpleCString canBeConvertedToEncoding:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleCString.m",
+      "source_line": 256
+    },
+    {
+      "address": 1113222064,
+      "size": 52,
+      "reference_names": [
+        "-[NSSimpleCString smallestEncoding]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleCString.m",
+      "source_line": 252
+    }
+  ],
+  "unmapped": [],
+  "duplicate_candidates": [],
+  "boundary_disputed": []
+}

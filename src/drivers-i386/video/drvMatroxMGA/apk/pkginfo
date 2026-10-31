@@ -1,0 +1,7 @@
+pkgname = drvmatroxmga
+pkgver = 1.0
+pkgdesc = Matrox MGA display driver
+maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
+# author = Mirko Viviani <mirko.viviani@gmail.com>
+license = BSD
+makedepends = build-base, drivertools, driverkit, kernload

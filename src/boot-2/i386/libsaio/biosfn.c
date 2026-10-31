@@ -100,17 +100,28 @@ int memsize(int which)
 #define E820_NVS        4
 #define E820_UNUSABLE   5
 
+#define E820_ADDR_MAX	0xFFFFF000	/* page-aligned below 4GB */
+
 /*
- * Get memory map using the INT 0x15, E820h call
- * Returns total usable memory in KB, or 0 on failure
- * This is the modern method that supports >4GB RAM
+ * Read the BIOS INT 0x15, E820h memory map.
+ *
+ * Fills "map" with up to maxEntries ranges clamped to 32 bits, and returns
+ * the top of the contiguous run of usable RAM starting at 1MB - the highest
+ * address the kernel can map V == P without crossing a hole.  Returns
+ * EXTENDED_ADDR itself if the BIOS has no E820 map or reports no RAM
+ * adjoining 1MB.
+ *
+ * The run is anchored at 1MB rather than 0 deliberately: E820 always reports
+ * the legacy hole at 0x9FC00-0x100000, so a run anchored at 0 would stop at
+ * 640K.  Conventional memory is handled by memsize(0).
  */
-unsigned long getMemoryMap(e820_entry_t *map, int maxEntries, int *numEntries)
+unsigned long getMemoryMap(boot_mem_range_t *map, int maxEntries, int *numEntries)
 {
-    unsigned long continuation = 0;
-    unsigned long total_mem = 0;
-    int count = 0;
-    e820_entry_t entry;
+    unsigned long	continuation = 0;
+    unsigned long	top;
+    int			count = 0;
+    int			i;
+    e820_entry_t	entry;
 
     if (!map || !numEntries || maxEntries < 1) {
         return 0;
@@ -119,37 +130,41 @@ unsigned long getMemoryMap(e820_entry_t *map, int maxEntries, int *numEntries)
     *numEntries = 0;
 
     do {
-        /* Set up for E820 call */
         bb.intno = 0x15;
         bb.eax.rx = 0xE820;
         bb.edx.rx = 0x534D4150;  /* 'SMAP' signature */
         bb.ebx.rx = continuation;
-        bb.ecx.rx = 24;  /* Size of buffer */
+        bb.ecx.rx = sizeof(entry);
+
+	/*
+	 * The BIOS writes the entry through ES:DI.  boot2 runs its stack just
+	 * below 64K (STACK_ADDR), so &entry is reachable with ES == 0 - but
+	 * "bb" is a shared global that vbe.c and get_diskinfo() leave their
+	 * own segment in, so ES is set here rather than inherited.
+	 */
+	bb.es = 0;
         bb.edi.rr = ((unsigned)&entry & 0xffff);
 
         bios(&bb);
 
-        /* Check for errors */
         if (bb.flags.cf || bb.eax.rx != 0x534D4150) {
             break;
         }
 
-        /* Copy entry to map if there's space */
-        if (count < maxEntries) {
-            map[count] = entry;
+	/* Drop ranges that start above 4GB; clip any that cross it. */
+	if (count < maxEntries && entry.base_hi == 0) {
+	    unsigned long end = entry.base_lo + entry.length_lo;
 
-            /* Only count usable RAM */
-            if (entry.type == E820_RAM && entry.length > 0) {
-                /* Add to total, capping at 4GB to prevent overflow */
-                unsigned long long end = entry.base + entry.length;
-                if (end > 0x100000000ULL) {
-                    end = 0x100000000ULL;
-                }
-                if (entry.base < 0x100000000ULL) {
-                    total_mem += (unsigned long)((end - entry.base) / 1024);
-                }
-            }
-            count++;
+	    if (entry.length_hi != 0 || end < entry.base_lo ||
+		end > E820_ADDR_MAX)
+		end = E820_ADDR_MAX;
+
+	    if (end > entry.base_lo) {
+		map[count].base = entry.base_lo;
+		map[count].end  = end;
+		map[count].type = entry.type;
+		count++;
+	    }
         }
 
         continuation = bb.ebx.rx;
@@ -157,7 +172,21 @@ unsigned long getMemoryMap(e820_entry_t *map, int maxEntries, int *numEntries)
     } while (continuation != 0 && count < maxEntries);
 
     *numEntries = count;
-    return (count > 0) ? total_mem : 0;
+
+    /*
+     * Top of the contiguous RAM run starting at 1MB.  E820 entries are not
+     * guaranteed sorted, so rescan from the start whenever the run grows.
+     */
+    top = EXTENDED_ADDR;
+    for (i = 0; i < count; i++) {
+	if (map[i].type == BOOT_MEM_RAM &&
+	    map[i].base <= top && map[i].end > top) {
+	    top = map[i].end;
+	    i = -1;
+	}
+    }
+
+    return top;
 }
 
 /*

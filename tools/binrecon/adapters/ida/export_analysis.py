@@ -461,10 +461,15 @@ def collect_analysis(input_path, expected_size, expected_sha256, modules=None, m
         if segment_size < 0:
             raise ExportError(f"segment at {segment.start_ea:#x} has invalid size")
         segment_class = str(ida_segment.get_segm_class(segment) or "").upper()
+        # SEG_ABSSYM (class "ABS") is IDA's synthetic absolute-symbol
+        # segment: it holds no artifact content, so like BSS/XTRN it hashes
+        # as zero rather than requiring file backing. Standalone executables
+        # such as pswrap produce one.
         zero_fill = (
             segment.type == ida_segment.SEG_BSS
             or segment.type == getattr(ida_segment, "SEG_XTRN", None)
-            or segment_class in ("BSS", "COMMON", "XTRN", "EXTERN")
+            or segment.type == getattr(ida_segment, "SEG_ABSSYM", None)
+            or segment_class in ("BSS", "COMMON", "XTRN", "EXTERN", "ABS")
         )
         if zero_fill:
             contents_hash = _hash_zeros(segment_size)
@@ -511,8 +516,14 @@ def collect_analysis(input_path, expected_size, expected_sha256, modules=None, m
         if not _in_scope(source, scope):
             continue
         for target in idautils.CodeRefsFrom(source, False):
+            # IDA may expose sign-extended stack-segment pseudo targets even
+            # in a 32-bit database. They are not valid effective addresses.
+            if not 0 <= target <= 0xFFFFFFFF:
+                continue
             references.append({"address": source, "target": target, "kind": "code"})
         for target in idautils.DataRefsFrom(source):
+            if not 0 <= target <= 0xFFFFFFFF:
+                continue
             references.append({"address": source, "target": target, "kind": "data"})
 
     relocations = _collect_relocations(modules)
@@ -609,7 +620,15 @@ def collect_analysis(input_path, expected_size, expected_sha256, modules=None, m
                     "target": target,
                     "name": modules["ida_name"].get_name(target) if target is not None else None,
                 })
-        names = sorted({name for ea, name in idautils.Names() if ea == canonical_entry})
+        names = {name for ea, name in idautils.Names() if ea == canonical_entry}
+        if not names:
+            # idautils.Names() omits IDA's default function names (sub_XXXX),
+            # so a stripped binary would otherwise export unnamed functions
+            # that source-map-v1 cannot represent.
+            default_name = modules["ida_name"].get_name(canonical_entry)
+            if default_name:
+                names.add(default_name)
+        names = sorted(names)
         functions.append({
             "address": minimum_start,
             "size": maximum_end - minimum_start,

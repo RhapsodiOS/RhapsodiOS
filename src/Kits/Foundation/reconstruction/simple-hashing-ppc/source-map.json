@@ -1,0 +1,350 @@
+{
+  "schema_version": "source-map-v1",
+  "reference_sha256": "332B3C8C0AE0A6E40A4B93110EE16748FCD94AA0119D63F16EDE878598C681B4",
+  "mapped": [
+    {
+      "address": 1112542396,
+      "size": 600,
+      "reference_names": [
+        "__NSSimpleDictFindBucketMatch"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleHashing.m",
+      "source_line": 163
+    },
+    {
+      "address": 1112542996,
+      "size": 56,
+      "reference_names": [
+        "_NSSimpleDictionaryLookup"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleHashing.m",
+      "source_line": 477
+    },
+    {
+      "address": 1112543364,
+      "size": 20,
+      "reference_names": [
+        "_NSSimpleDictionaryCount"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleHashing.m",
+      "source_line": 440
+    },
+    {
+      "address": 1112543384,
+      "size": 652,
+      "reference_names": [
+        "__NSSimpleDictionaryFindBuckets"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleHashing.m",
+      "source_line": 163
+    },
+    {
+      "address": 1112544036,
+      "size": 264,
+      "reference_names": [
+        "_NSSimpleDictionaryInsert"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleHashing.m",
+      "source_line": 592
+    },
+    {
+      "address": 1112545480,
+      "size": 60,
+      "reference_names": [
+        "_NSSimpleDictionaryGetBucket"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleHashing.m",
+      "source_line": 460
+    },
+    {
+      "address": 1112555428,
+      "size": 48,
+      "reference_names": [
+        "_NSSimpleSetGetBucket"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleHashing.m",
+      "source_line": 469
+    },
+    {
+      "address": 1112559864,
+      "size": 240,
+      "reference_names": [
+        "__NSSimpleDictFindBucketNoMatch"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleHashing.m",
+      "source_line": 321
+    },
+    {
+      "address": 1112566420,
+      "size": 20,
+      "reference_names": [
+        "_NSSimpleSetCount"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleHashing.m",
+      "source_line": 445
+    },
+    {
+      "address": 1112566964,
+      "size": 552,
+      "reference_names": [
+        "__NSSimpleSetFindBucketMatch"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleHashing.m",
+      "source_line": 242
+    },
+    {
+      "address": 1112567588,
+      "size": 56,
+      "reference_names": [
+        "_NSSimpleSetLookup"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleHashing.m",
+      "source_line": 489
+    },
+    {
+      "address": 1112576988,
+      "size": 224,
+      "reference_names": [
+        "_NSSimpleDictionaryDelete"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleHashing.m",
+      "source_line": 622
+    },
+    {
+      "address": 1112587424,
+      "size": 592,
+      "reference_names": [
+        "__NSSimpleSetFindBuckets"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleHashing.m",
+      "source_line": 242
+    },
+    {
+      "address": 1112588016,
+      "size": 236,
+      "reference_names": [
+        "_NSSimpleSetInsert"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleHashing.m",
+      "source_line": 757
+    },
+    {
+      "address": 1112593976,
+      "size": 200,
+      "reference_names": [
+        "_NSCreateSimpleDictionary"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleHashing.m",
+      "source_line": 359
+    },
+    {
+      "address": 1112600168,
+      "size": 112,
+      "reference_names": [
+        "_NSFreeSimpleDictionary"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleHashing.m",
+      "source_line": 419
+    },
+    {
+      "address": 1112609000,
+      "size": 212,
+      "reference_names": [
+        "_NSResetSimpleDictionary"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleHashing.m",
+      "source_line": 797
+    },
+    {
+      "address": 1112610840,
+      "size": 64,
+      "reference_names": [
+        "_NSSimpleDictionaryNumBuckets"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleHashing.m",
+      "source_line": 450
+    },
+    {
+      "address": 1112642424,
+      "size": 128,
+      "reference_names": [
+        "_NSCopySimpleDictionary"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleHashing.m",
+      "source_line": 395
+    },
+    {
+      "address": 1112659676,
+      "size": 176,
+      "reference_names": [
+        "_NSCreateSimpleSet"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleHashing.m",
+      "source_line": 378
+    },
+    {
+      "address": 1112671804,
+      "size": 100,
+      "reference_names": [
+        "_NSFreeSimpleSet"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleHashing.m",
+      "source_line": 430
+    },
+    {
+      "address": 1112674748,
+      "size": 200,
+      "reference_names": [
+        "__NSSimpleSetFindBucketNoMatch"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleHashing.m",
+      "source_line": 340
+    },
+    {
+      "address": 1112695872,
+      "size": 344,
+      "reference_names": [
+        "__NSResizeSimpleDictionary"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleHashing.m",
+      "source_line": 501
+    },
+    {
+      "address": 1112702240,
+      "size": 64,
+      "reference_names": [
+        "_NSSimpleSetNumBuckets"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleHashing.m",
+      "source_line": 455
+    },
+    {
+      "address": 1112712120,
+      "size": 176,
+      "reference_names": [
+        "_NSSimpleSetDelete"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleHashing.m",
+      "source_line": 783
+    },
+    {
+      "address": 1112742584,
+      "size": 280,
+      "reference_names": [
+        "__NSResizeSimpleSet"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleHashing.m",
+      "source_line": 528
+    },
+    {
+      "address": 1112785240,
+      "size": 196,
+      "reference_names": [
+        "_NSResetSimpleSet"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleHashing.m",
+      "source_line": 833
+    },
+    {
+      "address": 1112830228,
+      "size": 116,
+      "reference_names": [
+        "_NSCopySimpleSet"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleHashing.m",
+      "source_line": 408
+    },
+    {
+      "address": 1112987080,
+      "size": 204,
+      "reference_names": [
+        "_NSReleaseSimpleDictionary"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleHashing.m",
+      "source_line": 737
+    },
+    {
+      "address": 1112987284,
+      "size": 204,
+      "reference_names": [
+        "_NSReleaseSimpleSet"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleHashing.m",
+      "source_line": 879
+    },
+    {
+      "address": 1112987596,
+      "size": 192,
+      "reference_names": [
+        "_NSRetainSimpleDictionary"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleHashing.m",
+      "source_line": 722
+    },
+    {
+      "address": 1112987788,
+      "size": 192,
+      "reference_names": [
+        "_NSRetainSimpleSet"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleHashing.m",
+      "source_line": 864
+    },
+    {
+      "address": 1112987980,
+      "size": 228,
+      "reference_names": [
+        "_NSSimpleDictionaryDecrementValue"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleHashing.m",
+      "source_line": 663
+    },
+    {
+      "address": 1112988208,
+      "size": 324,
+      "reference_names": [
+        "_NSSimpleDictionaryDeleteEntriesWithValue"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleHashing.m",
+      "source_line": 683
+    },
+    {
+      "address": 1112988532,
+      "size": 236,
+      "reference_names": [
+        "_NSSimpleDictionaryIncrementValue"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleHashing.m",
+      "source_line": 638
+    },
+    {
+      "address": 1112988768,
+      "size": 20,
+      "reference_names": [
+        "_NSSimpleDictionaryRetainCount"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleHashing.m",
+      "source_line": 752
+    },
+    {
+      "address": 1112988788,
+      "size": 20,
+      "reference_names": [
+        "_NSSimpleSetRetainCount"
+      ],
+      "source_path": "src/Kits/Foundation/NSSimpleHashing.m",
+      "source_line": 894
+    }
+  ],
+  "unmapped": [],
+  "duplicate_candidates": [],
+  "boundary_disputed": [],
+  "by_module": {
+    "NSSimpleHashing.m": {
+      "mapped": 37,
+      "unmapped": 0,
+      "duplicate_candidates": 0,
+      "boundary_disputed": 0
+    }
+  }
+}

@@ -1,0 +1,9 @@
+# Keep object, symbol, and staged framework roots caller-controlled.
+OBJROOT ?= $(SYMROOT)/obj
+SYMROOT ?= $(CURDIR)/BUILD
+DSTROOT ?= $(CURDIR)/DSTROOT
+
+# Implemented test groups are added by their owning reconstruction tasks.
+.PHONY: abi bitmap shape copy ipc client framebuffer palette screen direct-bitmap integration
+abi bitmap shape copy ipc client framebuffer palette screen direct-bitmap integration:
+	$(MAKE) -C tests $@ RC_ARCHS="$(RC_ARCHS)" OBJROOT="$(OBJROOT)" SYMROOT="$(SYMROOT)" DSTROOT="$(DSTROOT)" FRAMEWORK_ROOT="$(FRAMEWORK_ROOT)"

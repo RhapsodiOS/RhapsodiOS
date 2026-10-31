@@ -133,7 +133,7 @@ This check is weaker than it looks, for two independent reasons.
 `docs/boot/sarld-driver-link-limit.md` only hits drivers linked *after* a
 failure — so a failure of this driver's link could not have shown up as a
 lost boot driver. Separately, *[inference, from
-`src/cctools-2/ld/symbols.c:3523`/`ld.c:2059` and
+`src/Developer/Commands/cctools-2/ld/symbols.c:3523`/`ld.c:2059` and
 `rld.c:402-405`/`1493`/`1674-1676`]*: an undefined-symbol error is raised via
 `error()`, which unloads only the one driver, not via `fatal()`→`cleanup()`,
 which is what sets the cascade latch that `sarld-driver-link-limit.md`

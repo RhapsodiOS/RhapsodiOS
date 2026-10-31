@@ -497,7 +497,7 @@ correct, and the objects really were simply never compiled:
   `driverkit/KernBusMemory.h`, `driverkit/KernDevice.h`,
   `driverkit/IODirectDevicePrivate.h`,
   `driverkit/i386/IOEISADeviceDescriptionPrivate.h`,
-  `driverkit/i386/IOPCMCIATuplePrivate.h`, `objc/List.h` (at `src/cc-791/cc/objc/List.h`).
+  `driverkit/i386/IOPCMCIATuplePrivate.h`, `objc/List.h` (at `src/Developer/Commands/cc-791/cc/objc/List.h`).
 - *`PCMCIA_SOCKET_LIST` and friends undefined.* They are defined in
   `src/kernel-7/driverkit/i386/PCMCIAKernBus.h`, but only inside
   `#ifdef DRIVER_PRIVATE`, and the three `.m` files define `KERNEL_PRIVATE`

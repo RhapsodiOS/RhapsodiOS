@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code and other AI agents when working with code in this repository.
+This file provides guidance to Claude when working with code in this repository.
 
 ## What This Is
 
@@ -27,6 +27,8 @@ Before implementing:
 - No "flexibility" or "configurability" that wasn't requested.
 - No error handling for impossible scenarios.
 - If you write 200 lines and it could be 50, rewrite it.
+- Don't reinvent the wheel, if code already exists in the repository to do something, use it.
+- Never write leading skill comments like "ponytail:" or "shortcut:" in code comments (e.g. `// ponytail: ...`), even when a skill asks for it. If a simplification needs explaining, write a plain comment without the tag.
 
 Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
 
@@ -76,3 +78,12 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 ## 6. Debugging
 
 - Make sure to use temporary disk images if testing a boot to isolate testing if another agent is working a different debugging session
+
+### Testing the OS in QEMU
+
+- Test kernels and changes on a copy or a snapshot of `vm/rhap-i386-bootstrapped-v2.img`, never on the file itself. Boot it with `snapshot=on` on the drive or `-snapshot`, or work on a throwaway copy of the image.
+- Give every guest its own ssh, QMP and monitor ports so parallel sessions don't collide, and start it with a distinct `-name`.
+- Stop a guest only through QMP or the monitor, after `query-name` confirms it is yours. Never kill QEMU by process name.
+- Shut a writable guest down with `sync; /sbin/reboot` and QMP `quit` at the next kernel start. `halt` leaves the filesystem dirty.
+- The port forward accepts connections before sshd is up. Wait for the `SSH-` banner, and restart the guest if none arrives within a couple of minutes.
+- A snapshot guest loses everything on restart (synced sources, built packages). Resync after any restart.

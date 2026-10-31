@@ -1,0 +1,1106 @@
+{
+  "schema_version": "source-map-v1",
+  "reference_sha256": "1165B9063ADD5672514455CA2C9830625BEA2BCE5E46126FB5E8652114C909D6",
+  "mapped": [
+    {
+      "address": 1112605440,
+      "size": 158,
+      "reference_names": [
+        "-[NSFileManager getFileSystemRepresentation:maxLength:withPath:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 651
+    },
+    {
+      "address": 1112625128,
+      "size": 76,
+      "reference_names": [
+        "+[NSFileManager defaultManager]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 618
+    },
+    {
+      "address": 1112668068,
+      "size": 26,
+      "reference_names": [
+        "__NSRemoveDirectory2"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 268
+    },
+    {
+      "address": 1112668096,
+      "size": 31,
+      "reference_names": [
+        "__NSCreateDirectory2"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 260
+    },
+    {
+      "address": 1112677708,
+      "size": 889,
+      "reference_names": [
+        "__NSDirectoryList"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 810
+    },
+    {
+      "address": 1112705572,
+      "size": 19,
+      "reference_names": [
+        "-[NSFileAttributes fileType]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 1988
+    },
+    {
+      "address": 1112713984,
+      "size": 161,
+      "reference_names": [
+        "_NSStatFileType"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 553
+    },
+    {
+      "address": 1112715684,
+      "size": 78,
+      "reference_names": [
+        "+[NSFileAttributes attributesWithStat:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 1906
+    },
+    {
+      "address": 1112720424,
+      "size": 74,
+      "reference_names": [
+        "-[NSFileAttributes dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 1913
+    },
+    {
+      "address": 1112728376,
+      "size": 91,
+      "reference_names": [
+        "-[NSFileManager fileAttributesAtPath:traverseLink:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 683
+    },
+    {
+      "address": 1112728468,
+      "size": 248,
+      "reference_names": [
+        "__NSFileExistsAtPath"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 511
+    },
+    {
+      "address": 1112732236,
+      "size": 98,
+      "reference_names": [
+        "_fileStat"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 77
+    },
+    {
+      "address": 1112741888,
+      "size": 176,
+      "reference_names": [
+        "-[NSFileManager directoryContentsAtPath:matchingExtension:options:keepExtension:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 888
+    },
+    {
+      "address": 1112745244,
+      "size": 202,
+      "reference_names": [
+        "-[NSFileManager fileExistsAtPath:isDirectory:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 748
+    },
+    {
+      "address": 1112746668,
+      "size": 39,
+      "reference_names": [
+        "-[NSFileManager directoryContentsAtPath:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 1459
+    },
+    {
+      "address": 1112750812,
+      "size": 141,
+      "reference_names": [
+        "-[NSFileManager fileExistsAtPath:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 737
+    },
+    {
+      "address": 1112756880,
+      "size": 327,
+      "reference_names": [
+        "__NSFileAccessModes"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 180
+    },
+    {
+      "address": 1112757268,
+      "size": 98,
+      "reference_names": [
+        "_fileStatFollow"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 84
+    },
+    {
+      "address": 1112758556,
+      "size": 88,
+      "reference_names": [
+        "__NSFileAccessibleForMode"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 249
+    },
+    {
+      "address": 1112761072,
+      "size": 26,
+      "reference_names": [
+        "__NSSetDirectory2"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 256
+    },
+    {
+      "address": 1112761300,
+      "size": 102,
+      "reference_names": [
+        "-[NSFileManager changeCurrentDirectoryPath:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 643
+    },
+    {
+      "address": 1112764132,
+      "size": 623,
+      "reference_names": [
+        "-[NSFileAttributes objectForKey:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 1918
+    },
+    {
+      "address": 1112773152,
+      "size": 46,
+      "reference_names": [
+        "-[NSFileAttributes fileModificationDate]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 1983
+    },
+    {
+      "address": 1112778736,
+      "size": 21,
+      "reference_names": [
+        "-[NSFileManager isReadableFileAtPath:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 763
+    },
+    {
+      "address": 1112782292,
+      "size": 20,
+      "reference_names": [
+        "__NSMoveFile"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 92
+    },
+    {
+      "address": 1112784756,
+      "size": 13,
+      "reference_names": [
+        "-[_NSUserAccount accountNumber]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 1709
+    },
+    {
+      "address": 1112786000,
+      "size": 616,
+      "reference_names": [
+        "-[NSFileManager changeFileAttributes:atPath:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 692
+    },
+    {
+      "address": 1112786616,
+      "size": 25,
+      "reference_names": [
+        "-[NSFileAttributes fileSize]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 1992
+    },
+    {
+      "address": 1112786724,
+      "size": 94,
+      "reference_names": [
+        "+[_NSUserAccount accountWithName:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 1674
+    },
+    {
+      "address": 1112787468,
+      "size": 21,
+      "reference_names": [
+        "-[NSFileManager isExecutableFileAtPath:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 771
+    },
+    {
+      "address": 1112801040,
+      "size": 19,
+      "reference_names": [
+        "-[NSFileAttributes filePosixPermissions]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 1996
+    },
+    {
+      "address": 1112802340,
+      "size": 367,
+      "reference_names": [
+        "-[NSFileManager fileSystemRepresentationWithPath:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 1591
+    },
+    {
+      "address": 1112813492,
+      "size": 95,
+      "reference_names": [
+        "-[NSFileManager stringWithFileSystemRepresentation:length:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 1641
+    },
+    {
+      "address": 1112814388,
+      "size": 104,
+      "reference_names": [
+        "-[NSFileManager currentDirectoryPath]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 631
+    },
+    {
+      "address": 1112825948,
+      "size": 93,
+      "reference_names": [
+        "__NSOpenFileDescriptor"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 156
+    },
+    {
+      "address": 1112852212,
+      "size": 397,
+      "reference_names": [
+        "-[_NSUserAccount initWithPasswordEntry:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 1725
+    },
+    {
+      "address": 1112852612,
+      "size": 13,
+      "reference_names": [
+        "-[_NSUserAccount accountName]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 1713
+    },
+    {
+      "address": 1112861904,
+      "size": 1894,
+      "reference_names": [
+        "-[NSFileManager removeFileAtPath:handler:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 1327
+    },
+    {
+      "address": 1112863800,
+      "size": 113,
+      "reference_names": [
+        "-[NSFileManager directoryCanBeCreatedAtPath:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 1487
+    },
+    {
+      "address": 1112869868,
+      "size": 143,
+      "reference_names": [
+        "+[_NSUserAccount initialize]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 1658
+    },
+    {
+      "address": 1112870012,
+      "size": 175,
+      "reference_names": [
+        "+[_NSUserAccount accountWithNumber:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 1684
+    },
+    {
+      "address": 1112870188,
+      "size": 143,
+      "reference_names": [
+        "+[_NSGroupAccount initialize]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 1783
+    },
+    {
+      "address": 1112872388,
+      "size": 61,
+      "reference_names": [
+        "+[NSFileManager initialize]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 613
+    },
+    {
+      "address": 1112879204,
+      "size": 21,
+      "reference_names": [
+        "-[NSFileManager isWritableFileAtPath:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 767
+    },
+    {
+      "address": 1112888200,
+      "size": 76,
+      "reference_names": [
+        "__NSCreateDirectory"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 272
+    },
+    {
+      "address": 1112898364,
+      "size": 123,
+      "reference_names": [
+        "-[NSFileManager pathContentOfSymbolicLinkAtPath:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 926
+    },
+    {
+      "address": 1112898488,
+      "size": 73,
+      "reference_names": [
+        "-[NSFileManager createDirectoryAtPath:attributes:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 1479
+    },
+    {
+      "address": 1113025596,
+      "size": 227,
+      "reference_names": [
+        "+[NSAllDescendantPathsEnumerator newWithPath:prepend:attributes:cross:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 2100
+    },
+    {
+      "address": 1113030732,
+      "size": 94,
+      "reference_names": [
+        "+[_NSGroupAccount accountWithName:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 1799
+    },
+    {
+      "address": 1113030828,
+      "size": 175,
+      "reference_names": [
+        "+[_NSGroupAccount accountWithNumber:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 1809
+    },
+    {
+      "address": 1113031004,
+      "size": 42,
+      "reference_names": [
+        "+[_NSGroupAccount currentAccount]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 1830
+    },
+    {
+      "address": 1113031048,
+      "size": 42,
+      "reference_names": [
+        "+[_NSUserAccount currentAccount]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 1705
+    },
+    {
+      "address": 1113031092,
+      "size": 13,
+      "reference_names": [
+        "-[NSAllDescendantPathsEnumerator _under]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 2115
+    },
+    {
+      "address": 1113031108,
+      "size": 167,
+      "reference_names": [
+        "-[NSAllDescendantPathsEnumerator dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 2119
+    },
+    {
+      "address": 1113031276,
+      "size": 13,
+      "reference_names": [
+        "-[NSAllDescendantPathsEnumerator directoryAttributes]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 2129
+    },
+    {
+      "address": 1113031292,
+      "size": 13,
+      "reference_names": [
+        "-[NSAllDescendantPathsEnumerator fileAttributes]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 2133
+    },
+    {
+      "address": 1113031308,
+      "size": 653,
+      "reference_names": [
+        "-[NSAllDescendantPathsEnumerator nextObject]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 2137
+    },
+    {
+      "address": 1113031964,
+      "size": 97,
+      "reference_names": [
+        "-[NSAllDescendantPathsEnumerator skipDescendents]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 2190
+    },
+    {
+      "address": 1113054028,
+      "size": 38,
+      "reference_names": [
+        "-[NSDictionary fileGroupOwnerAccountName]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 2054
+    },
+    {
+      "address": 1113054068,
+      "size": 9,
+      "reference_names": [
+        "-[NSDictionary fileGroupOwnerAccountNumber]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 2058
+    },
+    {
+      "address": 1113054080,
+      "size": 38,
+      "reference_names": [
+        "-[NSDictionary fileModificationDate]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 2033
+    },
+    {
+      "address": 1113054120,
+      "size": 38,
+      "reference_names": [
+        "-[NSDictionary fileOwnerAccountName]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 2046
+    },
+    {
+      "address": 1113054160,
+      "size": 9,
+      "reference_names": [
+        "-[NSDictionary fileOwnerAccountNumber]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 2050
+    },
+    {
+      "address": 1113054172,
+      "size": 61,
+      "reference_names": [
+        "-[NSDictionary filePosixPermissions]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 2041
+    },
+    {
+      "address": 1113054236,
+      "size": 56,
+      "reference_names": [
+        "-[NSDictionary fileSize]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 2029
+    },
+    {
+      "address": 1113054292,
+      "size": 56,
+      "reference_names": [
+        "-[NSDictionary fileSystemFileNumber]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 2067
+    },
+    {
+      "address": 1113054348,
+      "size": 56,
+      "reference_names": [
+        "-[NSDictionary fileSystemNumber]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 2062
+    },
+    {
+      "address": 1113054404,
+      "size": 38,
+      "reference_names": [
+        "-[NSDictionary fileType]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 2037
+    },
+    {
+      "address": 1113054444,
+      "size": 57,
+      "reference_names": [
+        "-[NSDirectoryEnumerator directoryAttributes]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 2082
+    },
+    {
+      "address": 1113054504,
+      "size": 57,
+      "reference_names": [
+        "-[NSDirectoryEnumerator fileAttributes]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 2077
+    },
+    {
+      "address": 1113054564,
+      "size": 57,
+      "reference_names": [
+        "-[NSDirectoryEnumerator nextObject]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 2087
+    },
+    {
+      "address": 1113054624,
+      "size": 55,
+      "reference_names": [
+        "-[NSDirectoryEnumerator skipDescendents]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 2092
+    },
+    {
+      "address": 1113054912,
+      "size": 60,
+      "reference_names": [
+        "-[NSFileAttributes count]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 1947
+    },
+    {
+      "address": 1113054972,
+      "size": 59,
+      "reference_names": [
+        "-[NSFileAttributes fileGroupOwnerAccountName]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 2009
+    },
+    {
+      "address": 1113055032,
+      "size": 13,
+      "reference_names": [
+        "-[NSFileAttributes fileGroupOwnerAccountNumber]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 2014
+    },
+    {
+      "address": 1113055048,
+      "size": 59,
+      "reference_names": [
+        "-[NSFileAttributes fileOwnerAccountName]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 2000
+    },
+    {
+      "address": 1113055108,
+      "size": 13,
+      "reference_names": [
+        "-[NSFileAttributes fileOwnerAccountNumber]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 2005
+    },
+    {
+      "address": 1113055124,
+      "size": 13,
+      "reference_names": [
+        "-[NSFileAttributes fileSystemFileNumber]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 2022
+    },
+    {
+      "address": 1113055140,
+      "size": 13,
+      "reference_names": [
+        "-[NSFileAttributes fileSystemNumber]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 2018
+    },
+    {
+      "address": 1113055156,
+      "size": 60,
+      "reference_names": [
+        "-[NSFileAttributes hash]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 1959
+    },
+    {
+      "address": 1113055216,
+      "size": 140,
+      "reference_names": [
+        "-[NSFileAttributes isEqual:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 1965
+    },
+    {
+      "address": 1113055356,
+      "size": 60,
+      "reference_names": [
+        "-[NSFileAttributes keyEnumerator]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 1953
+    },
+    {
+      "address": 1113056072,
+      "size": 354,
+      "reference_names": [
+        "-[NSFileManager _posixPathComponentsWithPath:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 952
+    },
+    {
+      "address": 1113056428,
+      "size": 1841,
+      "reference_names": [
+        "-[NSFileManager _replicatePath:atPath:operation:fileMap:handler:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 982
+    },
+    {
+      "address": 1113058272,
+      "size": 76,
+      "reference_names": [
+        "-[NSFileManager contentsAtPath:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 1503
+    },
+    {
+      "address": 1113058348,
+      "size": 1141,
+      "reference_names": [
+        "-[NSFileManager contentsEqualAtPath:andPath:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 1136
+    },
+    {
+      "address": 1113059492,
+      "size": 194,
+      "reference_names": [
+        "-[NSFileManager copyPath:toPath:handler:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 1259
+    },
+    {
+      "address": 1113059688,
+      "size": 389,
+      "reference_names": [
+        "-[NSFileManager createFileAtPath:contents:attributes:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 1507
+    },
+    {
+      "address": 1113060080,
+      "size": 155,
+      "reference_names": [
+        "-[NSFileManager createSymbolicLinkAtPath:pathContent:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 939
+    },
+    {
+      "address": 1113060236,
+      "size": 57,
+      "reference_names": [
+        "-[NSFileManager dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 626
+    },
+    {
+      "address": 1113060296,
+      "size": 124,
+      "reference_names": [
+        "-[NSFileManager enumeratorAtPath:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 1466
+    },
+    {
+      "address": 1113060420,
+      "size": 387,
+      "reference_names": [
+        "-[NSFileManager fileSystemAttributesAtPath:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 1545
+    },
+    {
+      "address": 1113060808,
+      "size": 231,
+      "reference_names": [
+        "-[NSFileManager isDeletableFileAtPath:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 909
+    },
+    {
+      "address": 1113061040,
+      "size": 48,
+      "reference_names": [
+        "-[NSFileManager linkPath:toPath:handler:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 1254
+    },
+    {
+      "address": 1113061088,
+      "size": 1384,
+      "reference_names": [
+        "-[NSFileManager movePath:toPath:handler:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 1268
+    },
+    {
+      "address": 1113062472,
+      "size": 51,
+      "reference_names": [
+        "-[NSFileManager subpathsAtPath:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 1475
+    },
+    {
+      "address": 1113078888,
+      "size": 13,
+      "reference_names": [
+        "-[_NSGroupAccount accountName]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 1838
+    },
+    {
+      "address": 1113078904,
+      "size": 13,
+      "reference_names": [
+        "-[_NSGroupAccount accountNumber]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 1834
+    },
+    {
+      "address": 1113078920,
+      "size": 47,
+      "reference_names": [
+        "-[_NSGroupAccount description]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 1898
+    },
+    {
+      "address": 1113078968,
+      "size": 189,
+      "reference_names": [
+        "-[_NSGroupAccount groupDictionary]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 1872
+    },
+    {
+      "address": 1113079160,
+      "size": 32,
+      "reference_names": [
+        "-[_NSGroupAccount hash]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 1885
+    },
+    {
+      "address": 1113079192,
+      "size": 385,
+      "reference_names": [
+        "-[_NSGroupAccount initWithGroupEntry:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 1846
+    },
+    {
+      "address": 1113079580,
+      "size": 157,
+      "reference_names": [
+        "-[_NSGroupAccount isEqual:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 1889
+    },
+    {
+      "address": 1113079740,
+      "size": 13,
+      "reference_names": [
+        "-[_NSGroupAccount members]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 1842
+    },
+    {
+      "address": 1113079756,
+      "size": 47,
+      "reference_names": [
+        "-[_NSUserAccount description]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 1775
+    },
+    {
+      "address": 1113079804,
+      "size": 13,
+      "reference_names": [
+        "-[_NSUserAccount fullName]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 1717
+    },
+    {
+      "address": 1113079820,
+      "size": 32,
+      "reference_names": [
+        "-[_NSUserAccount hash]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 1762
+    },
+    {
+      "address": 1113079852,
+      "size": 13,
+      "reference_names": [
+        "-[_NSUserAccount homeDirectory]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 1721
+    },
+    {
+      "address": 1113079868,
+      "size": 157,
+      "reference_names": [
+        "-[_NSUserAccount isEqual:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 1766
+    },
+    {
+      "address": 1113080028,
+      "size": 224,
+      "reference_names": [
+        "-[_NSUserAccount userDictionary]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 1747
+    },
+    {
+      "address": 1113082224,
+      "size": 16,
+      "reference_names": [
+        "__NSCloseFileDescriptor"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 176
+    },
+    {
+      "address": 1113082252,
+      "size": 26,
+      "reference_names": [
+        "__NSDeleteFile2"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 264
+    },
+    {
+      "address": 1113084668,
+      "size": 24,
+      "reference_names": [
+        "__NSReadFromFileDescriptor"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 172
+    },
+    {
+      "address": 1113084904,
+      "size": 128,
+      "reference_names": [
+        "__NSSetFileModificationUNIXTime"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 330
+    },
+    {
+      "address": 1113085524,
+      "size": 350,
+      "reference_names": [
+        "__convertToUTF8"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 784
+    },
+    {
+      "address": 1113085876,
+      "size": 749,
+      "reference_names": [
+        "__fillDictionary"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 565
+    },
+    {
+      "address": 1113087588,
+      "size": 122,
+      "reference_names": [
+        "_loadDictionaries"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 476
+    },
+    {
+      "address": 1113087712,
+      "size": 146,
+      "reference_names": [
+        "_loadGroupDictionaries"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 491
+    },
+    {
+      "address": 1113088444,
+      "size": 151,
+      "reference_names": [
+        "_setFileStat"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 365
+    },
+    {
+      "address": 1113088596,
+      "size": 36,
+      "reference_names": [
+        "_statEqual"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 287
+    },
+    {
+      "address": 1113088632,
+      "size": 18,
+      "reference_names": [
+        "_statHash"
+      ],
+      "source_path": "src/Kits/Foundation/NSFileManager.m",
+      "source_line": 280
+    }
+  ],
+  "unmapped": [],
+  "duplicate_candidates": [],
+  "boundary_disputed": [],
+  "by_module": {
+    "NSFileManager.m": {
+      "mapped": 121,
+      "unmapped": 0,
+      "duplicate_candidates": 0,
+      "boundary_disputed": 0
+    }
+  }
+}

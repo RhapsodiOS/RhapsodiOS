@@ -21,5 +21,6 @@
 - (NSString *)label;
 - (void)setLabel:(NSString *)label;
 - (void)replaceObject:(id)oldObject withObject:(id)newObject;
+- (void)instantiateWithObjectInstantiator:(id)objectInstantiator;
 - (void)establishConnection;
 @end

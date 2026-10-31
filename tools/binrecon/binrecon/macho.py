@@ -6,12 +6,14 @@ from typing import Any
 from . import __version__
 from .arch import Architecture, ArchitectureError, architecture_for_cpu_type
 from .identity import identify
+from .objc_abi import ObjcAbiError, ObjcReader, method_symbol_index
 
 
 MH_MAGIC = 0xFEEDFACE
 MH_OBJECT = 1
 MH_EXECUTE = 2
 MH_PRELOAD = 5
+MH_DYLIB = 6
 MH_BUNDLE = 8
 LC_SEGMENT = 1
 LC_SYMTAB = 2
@@ -19,6 +21,11 @@ LC_UNIXTHREAD = 5
 S_ZEROFILL = 0x1
 S_GB_ZEROFILL = 0xC
 S_THREAD_LOCAL_ZEROFILL = 0x12
+FAT_MAGIC = 0xCAFEBABE
+_FAT_ARCH = struct.Struct(">5I")
+GENERIC_RELOC_PAIR = 1
+GENERIC_RELOC_SECTDIFF = 2
+GENERIC_RELOC_LOCAL_SECTDIFF = 4
 
 _ZERO_FILL_TYPES = frozenset(
     (S_ZEROFILL, S_GB_ZEROFILL, S_THREAD_LOCAL_ZEROFILL)
@@ -117,12 +124,72 @@ def _command_record(
     }
 
 
-def read_macho(path: Path) -> dict[str, Any]:
+def _architecture_name(cpu_type: int) -> str:
+    """Name a fat entry's architecture from its CPU type alone.
+
+    ``architecture_for_cpu_type`` requires the caller to already know the byte
+    order and rejects a mismatch, but a fat table entry carries only the CPU
+    type — the slice's own header decides its endianness. Try both.
+    """
+    for endianness in ("little", "big"):
+        try:
+            return architecture_for_cpu_type(cpu_type, endianness).name
+        except ArchitectureError:
+            continue
+    return f"cpu-type-{cpu_type}"
+
+
+def is_fat(data: bytes) -> bool:
+    """Report whether an image is a fat container rather than a thin Mach-O."""
+    if len(data) < 8:
+        return False
+    (magic,) = struct.unpack_from(">I", data, 0)
+    return magic == FAT_MAGIC
+
+
+def extract_slice(data: bytes, architecture: str) -> bytes:
+    """Return the bytes of a fat container's named architecture slice.
+
+    A slice is a complete Mach-O whose internal offsets are relative to its own
+    start, so the returned bytes parse exactly like a thin image.
+    """
+    if not is_fat(data):
+        raise MachOFormatError("input is not a fat Mach-O container")
+    (_, count) = struct.unpack_from(">2I", data, 0)
+    if 8 + count * _FAT_ARCH.size > len(data):
+        raise MachOFormatError("fat header declares more slices than the file holds")
+    present = []
+    for index in range(count):
+        cpu_type, _subtype, offset, size, _align = _FAT_ARCH.unpack_from(
+            data, 8 + index * _FAT_ARCH.size
+        )
+        name = _architecture_name(cpu_type)
+        present.append(name)
+        if name != architecture:
+            continue
+        if offset + size > len(data):
+            raise MachOFormatError(
+                f"fat slice {name} runs past end of file at offset {offset}"
+            )
+        return data[offset:offset + size]
+    raise MachOFormatError(
+        f"fat container has no {architecture} slice; it holds "
+        + ", ".join(sorted(present))
+    )
+
+
+def load_image(path: Path) -> tuple[bytes, dict[str, Any]]:
     identity = identify(Path(path))
     data = identity.path.read_bytes()
     digest = hashlib.sha256(data).hexdigest().upper()
     if len(data) != identity.size or digest != identity.sha256:
         raise MachOFormatError(f"input changed while reading: {identity.path}")
+
+    if is_fat(data):
+        raise MachOFormatError(
+            f"{identity.path} is a fat Mach-O container; extract a thin slice "
+            "first with 'binrecon extract-slice' and point the profile at that"
+        )
 
     architecture = _select_architecture(data)
     layouts = architecture.layouts
@@ -135,10 +202,10 @@ def read_macho(path: Path) -> dict[str, Any]:
         commands_size,
         flags,
     ) = _unpack(layouts.header, data, 0, "Mach-O header")
-    if file_type not in (MH_OBJECT, MH_PRELOAD, MH_BUNDLE, MH_EXECUTE):
+    if file_type not in (MH_OBJECT, MH_PRELOAD, MH_DYLIB, MH_BUNDLE, MH_EXECUTE):
         raise MachOFormatError(
             f"unsupported Mach-O file type {file_type}; "
-            "expected MH_OBJECT, MH_PRELOAD, MH_BUNDLE or MH_EXECUTE"
+            "expected MH_OBJECT, MH_PRELOAD, MH_DYLIB, MH_BUNDLE or MH_EXECUTE"
         )
 
     command_start = layouts.header.size
@@ -314,7 +381,7 @@ def read_macho(path: Path) -> dict[str, Any]:
     sections = [
         {key: section[key] for key in section_fields} for section in raw_sections
     ]
-    return {
+    document = {
         "schema_version": "analysis-v1",
         "input": {
             "path": str(identity.path),
@@ -326,7 +393,7 @@ def read_macho(path: Path) -> dict[str, Any]:
         "analyzer": {
             "name": "binrecon-macho",
             "version": __version__,
-            "invocation": "binrecon.macho.read_macho",
+            "invocation": "binrecon.macho.load_image",
         },
         "sections": sorted(
             sections,
@@ -407,6 +474,13 @@ def read_macho(path: Path) -> dict[str, Any]:
             }
         },
     }
+    return data, document
+
+
+def read_macho(path: Path) -> dict[str, Any]:
+    """Return the analysis document for an image, discarding its raw payload."""
+    _payload, document = load_image(path)
+    return document
 
 
 _MODULE_INFO_SECTION = "__OBJC,__module_info"
@@ -420,13 +494,17 @@ _OBJC_STRUCTS = {
 }
 
 
-def objc_methods_from_sections(payload, sections, endianness="little"):
+def objc_methods_from_sections(payload, sections, endianness="little", method_names=None):
     """Map each Objective-C method implementation address to its names.
 
     A linked executable names no methods in its symbol table, so the runtime
-    metadata is the only source of address-to-name for them.
+    metadata is the only source of address-to-name for them. Selector
+    pointers that prebinding rewrote outside the image are resolved via
+    ``method_names`` (imp address -> "-[Class sel]"/"+[Class(Category) sel]"),
+    reusing ``objc_abi.ObjcReader.selector``'s fallback so both agree.
     """
     layout = _OBJC_STRUCTS[endianness]
+    reader = ObjcReader(payload, sections, endianness, method_names)
     spans = [s for s in sections if s.get("size")]
 
     def offset_of(address):
@@ -465,8 +543,9 @@ def objc_methods_from_sections(payload, sections, endianness="little"):
             if base + 12 > len(payload):
                 return
             selector_address, _types, imp = layout["method"].unpack_from(payload, base)
-            selector = text(selector_address)
-            if not selector or not imp:
+            try:
+                selector = reader.selector(selector_address, imp)
+            except ObjcAbiError:
                 continue
             index.setdefault(imp, set()).add(f"{sign}[{owner} {selector}]")
 
@@ -529,6 +608,7 @@ def objc_method_index(path):
     return objc_methods_from_sections(
         Path(path).read_bytes(), document["sections"],
         endianness=document["input"]["endianness"],
+        method_names=method_symbol_index(document),
     )
 
 
@@ -601,13 +681,34 @@ def _read_relocations(
     return _decode_i386_relocations(data, sections, symbol_names, architecture)
 
 
+def _i386_scattered_target(sections, word, entry_context):
+    """Return the section whose range contains (or immediately follows) word."""
+    matches = [
+        candidate for candidate in sections
+        if candidate["size"] and
+        candidate["address"] <= word < candidate["address"] + candidate["size"]
+    ]
+    if not matches:
+        matches = [
+            candidate for candidate in sections
+            if word == candidate["address"] + candidate["size"]
+        ]
+    if len(matches) != 1:
+        raise MachOFormatError(
+            f"{entry_context}: scattered relocation target 0x{word:x} "
+            "is outside or ambiguous"
+        )
+    return matches[0]
+
+
 def _decode_i386_relocations(
     data: bytes,
     sections: list[dict[str, Any]],
     symbol_names: list[str],
     architecture,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    result: list[dict[str, Any]] = []
+    semantic: list[dict[str, Any]] = []
+    raw: list[dict[str, Any]] = []
     for section_index, section in enumerate(sections):
         count = section["relocation_count"]
         context = (
@@ -621,11 +722,8 @@ def _decode_i386_relocations(
             )
         table_size = count * architecture.layouts.relocation_info.size
         _checked_slice(data, section["relocation_offset"], table_size, context)
-        skip_next = False
-        for relocation_index in range(count):
-            if skip_next:
-                skip_next = False
-                continue
+        relocation_index = 0
+        while relocation_index < count:
             entry_offset = (
                 section["relocation_offset"]
                 + relocation_index * architecture.layouts.relocation_info.size
@@ -644,74 +742,72 @@ def _decode_i386_relocations(
             raw_address = address & 0xFFFFFFFF
             scattered = bool(raw_address & 0x80000000)
             target_section_ordinal = None
-            sectdiff_pair_value = None
+            pair_raw = None
             if scattered:
                 address = raw_address & 0x00FFFFFF
                 relocation_type = (raw_address >> 24) & 0xF
                 length = (raw_address >> 28) & 0x3
                 pc_relative = bool(raw_address & (1 << 30))
                 # GENERIC_RELOC_VANILLA=0, PAIR=1, SECTDIFF=2, LOCAL_SECTDIFF=4.
-                if relocation_type == 1:
+                if relocation_type == GENERIC_RELOC_PAIR:
                     raise MachOFormatError(
                         f"{entry_context}: unexpected scattered PAIR without a "
                         "SECTDIFF principal"
                     )
-                if relocation_type in (2, 4):
+                if relocation_type in (
+                    GENERIC_RELOC_SECTDIFF,
+                    GENERIC_RELOC_LOCAL_SECTDIFF,
+                ):
                     if relocation_index + 1 >= count:
-                        raise MachOFormatError(
-                            f"{entry_context}: SECTDIFF requires a scattered PAIR"
-                        )
-                    pair_offset = (
-                        section["relocation_offset"]
-                        + (relocation_index + 1)
-                        * architecture.layouts.relocation_info.size
-                    )
+                        raise MachOFormatError(f"{entry_context}: SECTDIFF requires a scattered PAIR entry")
+                    pair_offset = entry_offset + architecture.layouts.relocation_info.size
                     pair_context = (
                         f"load command {section['command_index']} section "
-                        f"{section['section_in_segment']} (global {section_index}) "
-                        f"relocation {relocation_index + 1} at file offset "
-                        f"0x{pair_offset:x}"
+                        f"{section['section_in_segment']} (global {section_index}) relocation "
+                        f"{relocation_index + 1} at file offset 0x{pair_offset:x}"
                     )
                     pair_address, pair_word = _unpack(
-                        architecture.layouts.relocation_info,
-                        data,
-                        pair_offset,
+                        architecture.layouts.relocation_info, data, pair_offset,
                         pair_context,
                     )
-                    pair_raw = pair_address & 0xFFFFFFFF
-                    pair_scattered = bool(pair_raw & 0x80000000)
-                    pair_type = (pair_raw >> 24) & 0xF
-                    if not pair_scattered or pair_type != 1:
+                    pair_raw_address = pair_address & 0xFFFFFFFF
+                    pair_type = (pair_raw_address >> 24) & 0xF
+                    if not (pair_raw_address & 0x80000000) or pair_type != GENERIC_RELOC_PAIR:
                         raise MachOFormatError(
-                            f"{entry_context}: SECTDIFF requires a scattered PAIR"
+                            f"{entry_context}: SECTDIFF requires a scattered PAIR entry"
                         )
-                    sectdiff_pair_value = pair_word
-                    skip_next = True
+                    target_section = _i386_scattered_target(sections, word, entry_context)
+                    target = target_section["name"]
+                    target_section_ordinal = target_section["ordinal"]
+                    external = False
+                    difference = word - pair_word
+                    pair_raw = {
+                        "address": section["address"] + address,
+                        "kind": "i386-pair-32-absolute",
+                        "target": None,
+                        "addend": pair_word,
+                        "type": GENERIC_RELOC_PAIR,
+                        "pc_relative": bool(pair_raw_address & (1 << 30)),
+                        "width": 4,
+                        "external": False,
+                        "section": section["name"],
+                        "section_ordinal": section["ordinal"],
+                        "target_section_ordinal": None,
+                        "original_bytes": pair_word.to_bytes(4, architecture.endianness).hex().upper(),
+                    }
                 elif relocation_type != 0:
                     raise MachOFormatError(
                         f"{entry_context}: unsupported scattered relocation type "
                         f"{relocation_type}"
                     )
-                matches = [
-                    candidate for candidate in sections
-                    if candidate["size"] and
-                    candidate["address"] <= word < candidate["address"] + candidate["size"]
-                ]
-                if not matches:
-                    matches = [
-                        candidate for candidate in sections
-                        if word == candidate["address"] + candidate["size"]
-                    ]
-                if len(matches) != 1:
-                    raise MachOFormatError(
-                        f"{entry_context}: scattered relocation target 0x{word:x} "
-                        "is outside or ambiguous"
-                    )
-                target_section = matches[0]
-                target = target_section["name"]
-                target_section_ordinal = target_section["ordinal"]
-                external = False
+                else:
+                    target_section = _i386_scattered_target(sections, word, entry_context)
+                    target = target_section["name"]
+                    target_section_ordinal = target_section["ordinal"]
+                    external = False
+                    difference = None
             else:
+                difference = None
                 length = (word >> 25) & 0x3
                 pc_relative = bool(word & (1 << 24))
                 external = bool(word & (1 << 27))
@@ -747,8 +843,13 @@ def _decode_i386_relocations(
                         target_section = sections[symbol_number - 1]
                         target = target_section["name"]
                         target_section_ordinal = symbol_number
-            if scattered and relocation_type in (2, 4):
-                type_name = "sectdiff" if relocation_type == 2 else "local-sectdiff"
+            if scattered and relocation_type in (
+                GENERIC_RELOC_SECTDIFF, GENERIC_RELOC_LOCAL_SECTDIFF
+            ):
+                type_name = (
+                    "sectdiff" if relocation_type == GENERIC_RELOC_SECTDIFF
+                    else "local-sectdiff"
+                )
             else:
                 type_name = ("scattered-vanilla" if scattered else
                              ("vanilla" if relocation_type == 0 else f"type-{relocation_type}"))
@@ -763,33 +864,40 @@ def _decode_i386_relocations(
             # comparison a stable semantic addend without changing stored bits.
             field_value = int.from_bytes(field, architecture.endianness, signed=pc_relative)
             relocation_address = section["address"] + address
-            if sectdiff_pair_value is not None:
-                addend = field_value - (word - sectdiff_pair_value)
+            if difference is not None:
+                # SECTDIFF's field already holds (A - B) plus any extra
+                # displacement; a signed field_value reproduces that even when
+                # the raw bytes were unpacked as unsigned above (length<=2 here
+                # never sets the sign bit for the small in-module deltas this
+                # module emits, but stay explicit rather than assume that).
+                signed_field = int.from_bytes(field, architecture.endianness, signed=True)
+                addend = signed_field - difference
             else:
                 addend = (field_value + (relocation_address if pc_relative else 0)
                           - target_section["address"]
                           if target_section_ordinal is not None else field_value)
-            result.append(
-                {
-                    "address": relocation_address,
-                    "kind": f"{architecture.name}-{type_name}-{width * 8}-{relative}",
-                    "target": target,
-                    "addend": addend,
-                    "type": relocation_type,
-                    "pc_relative": pc_relative,
-                    "width": width,
-                    "external": external,
-                    "section": section["name"],
-                    "section_ordinal": section["ordinal"],
-                    "target_section_ordinal": target_section_ordinal,
-                    "original_bytes": field.hex().upper(),
-                }
-            )
-    semantic = [
-        {key: relocation[key] for key in _RELOCATION_FIELDS}
-        for relocation in result
-    ]
-    return semantic, result
+            record = {
+                "address": relocation_address,
+                "kind": f"{architecture.name}-{type_name}-{width * 8}-{relative}",
+                "target": target,
+                "addend": addend,
+                "type": relocation_type,
+                "pc_relative": pc_relative,
+                "width": width,
+                "external": external,
+                "section": section["name"],
+                "section_ordinal": section["ordinal"],
+                "target_section_ordinal": target_section_ordinal,
+                "original_bytes": field.hex().upper(),
+            }
+            semantic.append({key: record[key] for key in _RELOCATION_FIELDS})
+            raw.append(record)
+            if pair_raw is not None:
+                raw.append(pair_raw)
+                relocation_index += 2
+            else:
+                relocation_index += 1
+    return semantic, raw
 
 
 PPC_RELOC_VANILLA = 0

@@ -335,6 +335,7 @@ bsd/ufs/ufs/ufs_vfsops.c	standard
 bsd/ufs/ufs/ufs_vnops.c		standard
 
 bsd/hfs/hfs_btreeio.c				optional hfs
+bsd/hfs/hfs_endian.c				optional hfs
 bsd/hfs/hfs_lockf.c				optional hfs
 bsd/hfs/hfs_lookup.c				optional hfs
 bsd/hfs/hfs_readwrite.c				optional hfs
@@ -581,3 +582,37 @@ bsd/netat/adsp_misc.c			optional netat
 bsd/netat/sys_glue.c			optional netat
 bsd/netat/sys_dep.c			optional netat
 bsd/netat/drv_dep.c			optional netat
+
+OPTIONS/ext2fs				optional ext2fs
+bsd/ext2fs/ext2fs_alloc.c		optional ext2fs
+bsd/ext2fs/ext2fs_balloc.c		optional ext2fs
+bsd/ext2fs/ext2fs_bmap.c		optional ext2fs
+bsd/ext2fs/ext2fs_bswap.c		optional ext2fs
+bsd/ext2fs/ext2fs_inode.c		optional ext2fs
+bsd/ext2fs/ext2fs_lookup.c		optional ext2fs
+bsd/ext2fs/ext2fs_readwrite.c		optional ext2fs
+bsd/ext2fs/ext2fs_subr.c		optional ext2fs
+bsd/ext2fs/ext2fs_vfsops.c		optional ext2fs
+bsd/ext2fs/ext2fs_vnops.c		optional ext2fs
+bsd/ext2fs/ext2fs_rhapsody.c		optional ext2fs
+bsd/ext2fs/ext2_disk.c			optional ext2fs
+OPTIONS/hammerfs			optional hammerfs
+bsd/hammer/crc32.c			optional hammerfs
+bsd/hammer/icrc32.c			optional hammerfs
+bsd/hammer/hammer_admit.c		optional hammerfs
+bsd/hammer/hammer_rhapsody.c		optional hammerfs
+bsd/hammer/hammer_io.c			optional hammerfs
+bsd/hammer/hammer_ondisk.c		optional hammerfs
+bsd/hammer/hammer_subs.c		optional hammerfs
+bsd/hammer/hammer_vfsops.c		optional hammerfs
+bsd/hammer/hammer_btree.c		optional hammerfs
+bsd/hammer/hammer_cursor.c		optional hammerfs
+bsd/hammer/hammer_blockmap.c		optional hammerfs
+bsd/hammer/hammer_inode.c		optional hammerfs
+bsd/hammer/hammer_object.c		optional hammerfs
+bsd/hammer/hammer_transaction.c		optional hammerfs
+bsd/hammer/hammer_vnops.c		optional hammerfs
+bsd/hammer/hammer_flusher.c		optional hammerfs
+bsd/hammer/hammer_undo.c		optional hammerfs
+bsd/hammer/hammer_recover.c		optional hammerfs
+bsd/hammer/hammer_ioctl.c		optional hammerfs

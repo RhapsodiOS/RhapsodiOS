@@ -1,0 +1,1566 @@
+{
+  "schema_version": "source-map-v1",
+  "reference_sha256": "332B3C8C0AE0A6E40A4B93110EE16748FCD94AA0119D63F16EDE878598C681B4",
+  "mapped": [
+    {
+      "address": 1112555184,
+      "size": 244,
+      "reference_names": [
+        "-[NSConcreteData deserializeIntAtCursor:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 569
+    },
+    {
+      "address": 1112560492,
+      "size": 80,
+      "reference_names": [
+        "-[NSData deserializeBytes:length:atCursor:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSerialization.m",
+      "source_line": 687
+    },
+    {
+      "address": 1112560588,
+      "size": 296,
+      "reference_names": [
+        "-[NSData getBytes:range:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 1600
+    },
+    {
+      "address": 1112564960,
+      "size": 472,
+      "reference_names": [
+        "-[NSConcreteData deserializeAlignedBytesLengthAtCursor:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 596
+    },
+    {
+      "address": 1112568420,
+      "size": 36,
+      "reference_names": [
+        "-[NSConcreteData bytes]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 647
+    },
+    {
+      "address": 1112579500,
+      "size": 3088,
+      "reference_names": [
+        "__NSWalkData"
+      ],
+      "source_path": "src/Kits/Foundation/NSSerialization.m",
+      "source_line": 1110
+    },
+    {
+      "address": 1112605624,
+      "size": 60,
+      "reference_names": [
+        "-[NSConcreteMutableData bytes]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 1105
+    },
+    {
+      "address": 1112607600,
+      "size": 284,
+      "reference_names": [
+        "_decodeFastInt"
+      ],
+      "source_path": "src/Kits/Foundation/NSSerialization.m",
+      "source_line": 105
+    },
+    {
+      "address": 1112610480,
+      "size": 120,
+      "reference_names": [
+        "_decodeFastByte"
+      ],
+      "source_path": "src/Kits/Foundation/NSSerialization.m",
+      "source_line": 97
+    },
+    {
+      "address": 1112617928,
+      "size": 16,
+      "reference_names": [
+        "-[NSConcreteMutableData length]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 1097
+    },
+    {
+      "address": 1112623616,
+      "size": 16,
+      "reference_names": [
+        "-[NSConcreteData length]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 475
+    },
+    {
+      "address": 1112635356,
+      "size": 276,
+      "reference_names": [
+        "-[NSConcreteData release]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 682
+    },
+    {
+      "address": 1112645072,
+      "size": 80,
+      "reference_names": [
+        "+[NSData allocWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 1508
+    },
+    {
+      "address": 1112653060,
+      "size": 532,
+      "reference_names": [
+        "-[NSConcreteData initWithBytes:length:copy:freeWhenDone:bytesAreVM:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 410
+    },
+    {
+      "address": 1112653808,
+      "size": 132,
+      "reference_names": [
+        "-[NSConcreteData dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 726
+    },
+    {
+      "address": 1112656460,
+      "size": 232,
+      "reference_names": [
+        "-[NSConcreteData retain]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 660
+    },
+    {
+      "address": 1112657684,
+      "size": 180,
+      "reference_names": [
+        "-[NSData initWithContentsOfFile:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 2013
+    },
+    {
+      "address": 1112669820,
+      "size": 104,
+      "reference_names": [
+        "-[NSData deserializeInts:count:atCursor:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSerialization.m",
+      "source_line": 672
+    },
+    {
+      "address": 1112670408,
+      "size": 112,
+      "reference_names": [
+        "_decodeFastData"
+      ],
+      "source_path": "src/Kits/Foundation/NSSerialization.m",
+      "source_line": 148
+    },
+    {
+      "address": 1112698592,
+      "size": 168,
+      "reference_names": [
+        "_decodeFastCharStar"
+      ],
+      "source_path": "src/Kits/Foundation/NSSerialization.m",
+      "source_line": 160
+    },
+    {
+      "address": 1112702304,
+      "size": 196,
+      "reference_names": [
+        "-[NSConcreteMutableData increaseLengthBy:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 1158
+    },
+    {
+      "address": 1112703196,
+      "size": 52,
+      "reference_names": [
+        "-[NSConcreteData copyWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 656
+    },
+    {
+      "address": 1112728908,
+      "size": 80,
+      "reference_names": [
+        "+[NSMutableData allocWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 2151
+    },
+    {
+      "address": 1112731884,
+      "size": 2864,
+      "reference_names": [
+        "__NSDeserializeObject"
+      ],
+      "source_path": "src/Kits/Foundation/NSSerialization.m",
+      "source_line": 1562
+    },
+    {
+      "address": 1112735324,
+      "size": 108,
+      "reference_names": [
+        "+[NSData dataWithBytesNoCopy:length:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 1987
+    },
+    {
+      "address": 1112735432,
+      "size": 276,
+      "reference_names": [
+        "-[NSConcreteMutableData release]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 1432
+    },
+    {
+      "address": 1112740076,
+      "size": 108,
+      "reference_names": [
+        "+[NSData dataWithBytes:length:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 1981
+    },
+    {
+      "address": 1112741044,
+      "size": 112,
+      "reference_names": [
+        "__setupBytes"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 1010
+    },
+    {
+      "address": 1112741156,
+      "size": 188,
+      "reference_names": [
+        "-[NSConcreteMutableData initWithCapacity:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 1057
+    },
+    {
+      "address": 1112743408,
+      "size": 192,
+      "reference_names": [
+        "-[NSData getBytes:length:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 1592
+    },
+    {
+      "address": 1112747968,
+      "size": 132,
+      "reference_names": [
+        "-[NSConcreteMutableData dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 1476
+    },
+    {
+      "address": 1112751604,
+      "size": 368,
+      "reference_names": [
+        "__NSMutableDataGrowBytes"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 1020
+    },
+    {
+      "address": 1112752564,
+      "size": 128,
+      "reference_names": [
+        "-[NSConcreteMutableData serializeInt:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 1295
+    },
+    {
+      "address": 1112761356,
+      "size": 88,
+      "reference_names": [
+        "+[NSData dataWithContentsOfFile:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 1993
+    },
+    {
+      "address": 1112767984,
+      "size": 200,
+      "reference_names": [
+        "-[NSConcreteMutableData setLength:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 1117
+    },
+    {
+      "address": 1112772748,
+      "size": 232,
+      "reference_names": [
+        "-[NSConcreteMutableData retain]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 1410
+    },
+    {
+      "address": 1112773816,
+      "size": 60,
+      "reference_names": [
+        "-[NSConcreteMutableData mutableBytes]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 1111
+    },
+    {
+      "address": 1112774708,
+      "size": 80,
+      "reference_names": [
+        "-[NSMutableData initWithLength:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 2360
+    },
+    {
+      "address": 1112776848,
+      "size": 104,
+      "reference_names": [
+        "+[NSDeserializer deserializePropertyListFromData:atCursor:mutableContainers:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSerialization.m",
+      "source_line": 1530
+    },
+    {
+      "address": 1112778568,
+      "size": 104,
+      "reference_names": [
+        "__NSNewImmutableData"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 1489
+    },
+    {
+      "address": 1112780572,
+      "size": 344,
+      "reference_names": [
+        "-[NSConcreteMutableData initWithBytes:length:copy:freeWhenDone:bytesAreVM:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 1073
+    },
+    {
+      "address": 1112782372,
+      "size": 216,
+      "reference_names": [
+        "-[NSConcreteMutableData deserializeIntAtCursor:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 1272
+    },
+    {
+      "address": 1112785436,
+      "size": 532,
+      "reference_names": [
+        "-[NSConcreteMutableData serializeAlignedBytes:length:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 1378
+    },
+    {
+      "address": 1112812172,
+      "size": 84,
+      "reference_names": [
+        "-[NSData initWithCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 1646
+    },
+    {
+      "address": 1112820760,
+      "size": 124,
+      "reference_names": [
+        "-[NSData writeToFile:atomically:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 1956
+    },
+    {
+      "address": 1112821180,
+      "size": 744,
+      "reference_names": [
+        "__NSWriteBytesToFile"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 304
+    },
+    {
+      "address": 1112825992,
+      "size": 136,
+      "reference_names": [
+        "-[NSData deserializeAlignedBytesLengthAtCursor:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSerialization.m",
+      "source_line": 677
+    },
+    {
+      "address": 1112826128,
+      "size": 108,
+      "reference_names": [
+        "+[NSDeserializer deserializePropertyListFromData:mutableContainers:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSerialization.m",
+      "source_line": 1551
+    },
+    {
+      "address": 1112827392,
+      "size": 1580,
+      "reference_names": [
+        "+[NSSerializer serializePropertyList:intoData:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSerialization.m",
+      "source_line": 1506
+    },
+    {
+      "address": 1112834476,
+      "size": 188,
+      "reference_names": [
+        "-[NSConcreteMutableData serializeInt:atIndex:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 1304
+    },
+    {
+      "address": 1112846648,
+      "size": 64,
+      "reference_names": [
+        "-[NSData initWithBytes:length:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 2005
+    },
+    {
+      "address": 1112846744,
+      "size": 508,
+      "reference_names": [
+        "-[NSData subdataWithRange:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 2091
+    },
+    {
+      "address": 1112852356,
+      "size": 52,
+      "reference_names": [
+        "__NSParseAndAutorelease"
+      ],
+      "source_path": "src/Kits/Foundation/NSSerialization.m",
+      "source_line": 1458
+    },
+    {
+      "address": 1112853784,
+      "size": 200,
+      "reference_names": [
+        "-[NSConcreteMutableData appendBytes:length:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 1133
+    },
+    {
+      "address": 1112867320,
+      "size": 40,
+      "reference_names": [
+        "_toHexDigit"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 1527
+    },
+    {
+      "address": 1112867568,
+      "size": 68,
+      "reference_names": [
+        "_to2HexDigits"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 1542
+    },
+    {
+      "address": 1112874452,
+      "size": 644,
+      "reference_names": [
+        "-[NSData description]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 1526
+    },
+    {
+      "address": 1112875096,
+      "size": 100,
+      "reference_names": [
+        "+[NSData data]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 1975
+    },
+    {
+      "address": 1112875256,
+      "size": 12,
+      "reference_names": [
+        "-[NSData replacementObjectForPortCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 1651
+    },
+    {
+      "address": 1112875268,
+      "size": 64,
+      "reference_names": [
+        "-[NSData encodeWithCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 1642
+    },
+    {
+      "address": 1112879060,
+      "size": 52,
+      "reference_names": [
+        "-[NSMutableData classForCoder]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 2159
+    },
+    {
+      "address": 1112879112,
+      "size": 56,
+      "reference_names": [
+        "-[NSConcreteMutableData init]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 1053
+    },
+    {
+      "address": 1112879248,
+      "size": 52,
+      "reference_names": [
+        "-[NSData initWithContentsOfMappedFile:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 2044
+    },
+    {
+      "address": 1112879300,
+      "size": 44,
+      "reference_names": [
+        "__NSMapBytesFromFile"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 262
+    },
+    {
+      "address": 1112879508,
+      "size": 52,
+      "reference_names": [
+        "-[NSData classForCoder]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 1638
+    },
+    {
+      "address": 1112938188,
+      "size": 120,
+      "reference_names": [
+        "-[NSMutableData serializeDataAt:ofObjCType:context:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSerialization.m",
+      "source_line": 1465
+    },
+    {
+      "address": 1112938308,
+      "size": 248,
+      "reference_names": [
+        "_encodeNSDataInt"
+      ],
+      "source_path": "src/Kits/Foundation/NSSerialization.m",
+      "source_line": 694
+    },
+    {
+      "address": 1112941252,
+      "size": 228,
+      "reference_names": [
+        "+[NSSerializer serializePropertyList:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSerialization.m",
+      "source_line": 1510
+    },
+    {
+      "address": 1113091796,
+      "size": 52,
+      "reference_names": [
+        "+[NSDeserializer _setLazyThreshold:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSerialization.m",
+      "source_line": 1526
+    },
+    {
+      "address": 1113091848,
+      "size": 220,
+      "reference_names": [
+        "+[NSDeserializer deserializePropertyListLazilyFromData:atCursor:length:mutableContainers:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSerialization.m",
+      "source_line": 1537
+    },
+    {
+      "address": 1113093376,
+      "size": 184,
+      "reference_names": [
+        "-[NSData deserializeDataAt:ofObjCType:atCursor:context:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSerialization.m",
+      "source_line": 1483
+    },
+    {
+      "address": 1113093820,
+      "size": 436,
+      "reference_names": [
+        "-[_NSLazyDeserializationFault allKeys]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSerialization.m",
+      "source_line": 475
+    },
+    {
+      "address": 1113094256,
+      "size": 68,
+      "reference_names": [
+        "-[_NSLazyDeserializationFault count]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSerialization.m",
+      "source_line": 471
+    },
+    {
+      "address": 1113094324,
+      "size": 412,
+      "reference_names": [
+        "-[_NSLazyDeserializationFault objectAtIndex:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSerialization.m",
+      "source_line": 556
+    },
+    {
+      "address": 1113094736,
+      "size": 504,
+      "reference_names": [
+        "-[_NSLazyDeserializationFault objectForKey:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSerialization.m",
+      "source_line": 517
+    },
+    {
+      "address": 1113095240,
+      "size": 836,
+      "reference_names": [
+        "-[_NSLazyDeserializationFaultHandler completeInitializationOfObject:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSerialization.m",
+      "source_line": 392
+    },
+    {
+      "address": 1113096076,
+      "size": 112,
+      "reference_names": [
+        "-[_NSLazyDeserializationFaultHandler dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSerialization.m",
+      "source_line": 386
+    },
+    {
+      "address": 1113096188,
+      "size": 128,
+      "reference_names": [
+        "-[_NSLazyDeserializationFaultHandler initWithData:range:count:mutable:lazyThreshold:isDict:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSerialization.m",
+      "source_line": 373
+    },
+    {
+      "address": 1113096316,
+      "size": 152,
+      "reference_names": [
+        "-[_NSLazyDeserializationFaultHandler serializeIntoData:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSerialization.m",
+      "source_line": 460
+    },
+    {
+      "address": 1113096468,
+      "size": 52,
+      "reference_names": [
+        "__NSParseAndRelease"
+      ],
+      "source_path": "src/Kits/Foundation/NSSerialization.m",
+      "source_line": 1446
+    },
+    {
+      "address": 1113096520,
+      "size": 52,
+      "reference_names": [
+        "__NSParseAndRetain"
+      ],
+      "source_path": "src/Kits/Foundation/NSSerialization.m",
+      "source_line": 1452
+    },
+    {
+      "address": 1113097980,
+      "size": 72,
+      "reference_names": [
+        "_encodeNSDataByte"
+      ],
+      "source_path": "src/Kits/Foundation/NSSerialization.m",
+      "source_line": 996
+    },
+    {
+      "address": 1113098052,
+      "size": 176,
+      "reference_names": [
+        "_encodeNSDataCharStar"
+      ],
+      "source_path": "src/Kits/Foundation/NSSerialization.m",
+      "source_line": 773
+    },
+    {
+      "address": 1113098228,
+      "size": 164,
+      "reference_names": [
+        "_extract_field_elmt"
+      ],
+      "source_path": "src/Kits/Foundation/NSSerialization.m",
+      "source_line": 836
+    },
+    {
+      "address": 1113098392,
+      "size": 40,
+      "reference_names": [
+        "_getBitfieldSize"
+      ],
+      "source_path": "src/Kits/Foundation/NSSerialization.m",
+      "source_line": 802
+    },
+    {
+      "address": 1113098732,
+      "size": 264,
+      "reference_names": [
+        "_insert_field_elmt"
+      ],
+      "source_path": "src/Kits/Foundation/NSSerialization.m",
+      "source_line": 855
+    },
+    {
+      "address": 1113099292,
+      "size": 88,
+      "reference_names": [
+        "_rareBug"
+      ],
+      "source_path": "src/Kits/Foundation/NSSerialization.m",
+      "source_line": 115
+    },
+    {
+      "address": 1113099472,
+      "size": 436,
+      "reference_names": [
+        "_walkBitfields"
+      ],
+      "source_path": "src/Kits/Foundation/NSSerialization.m",
+      "source_line": 898
+    },
+    {
+      "address": 1113101212,
+      "size": 88,
+      "reference_names": [
+        "+[NSData dataWithContentsOfMappedFile:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 2001
+    },
+    {
+      "address": 1113101300,
+      "size": 88,
+      "reference_names": [
+        "+[NSData dataWithContentsOfURL:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 1997
+    },
+    {
+      "address": 1113101388,
+      "size": 148,
+      "reference_names": [
+        "+[NSData dataWithData:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 2128
+    },
+    {
+      "address": 1113104008,
+      "size": 88,
+      "reference_names": [
+        "+[NSMutableData dataWithCapacity:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 2346
+    },
+    {
+      "address": 1113104096,
+      "size": 88,
+      "reference_names": [
+        "+[NSMutableData dataWithLength:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 2350
+    },
+    {
+      "address": 1113114352,
+      "size": 20,
+      "reference_names": [
+        "-[NSConcreteData _bytesAreVM]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 652
+    },
+    {
+      "address": 1113114372,
+      "size": 224,
+      "reference_names": [
+        "-[NSConcreteData deserializeIntAtIndex:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 510
+    },
+    {
+      "address": 1113114596,
+      "size": 324,
+      "reference_names": [
+        "-[NSConcreteData deserializeInts:count:atIndex:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 533
+    },
+    {
+      "address": 1113114920,
+      "size": 168,
+      "reference_names": [
+        "-[NSConcreteData getBytes:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 479
+    },
+    {
+      "address": 1113115088,
+      "size": 196,
+      "reference_names": [
+        "-[NSConcreteData getBytes:length:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 484
+    },
+    {
+      "address": 1113115284,
+      "size": 300,
+      "reference_names": [
+        "-[NSConcreteData getBytes:range:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 491
+    },
+    {
+      "address": 1113115584,
+      "size": 72,
+      "reference_names": [
+        "-[NSConcreteData init]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 406
+    },
+    {
+      "address": 1113115656,
+      "size": 24,
+      "reference_names": [
+        "-[NSConcreteData retainCount]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 718
+    },
+    {
+      "address": 1113120072,
+      "size": 20,
+      "reference_names": [
+        "-[NSConcreteMutableData _bytesAreVM]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 1101
+    },
+    {
+      "address": 1113120092,
+      "size": 244,
+      "reference_names": [
+        "-[NSConcreteMutableData appendData:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 1145
+    },
+    {
+      "address": 1113120336,
+      "size": 200,
+      "reference_names": [
+        "-[NSConcreteMutableData deserializeIntAtIndex:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 1219
+    },
+    {
+      "address": 1113120536,
+      "size": 296,
+      "reference_names": [
+        "-[NSConcreteMutableData deserializeInts:count:atIndex:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 1238
+    },
+    {
+      "address": 1113120832,
+      "size": 304,
+      "reference_names": [
+        "-[NSConcreteMutableData replaceBytesInRange:withBytes:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 1175
+    },
+    {
+      "address": 1113121136,
+      "size": 212,
+      "reference_names": [
+        "-[NSConcreteMutableData resetBytesInRange:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 1197
+    },
+    {
+      "address": 1113121348,
+      "size": 24,
+      "reference_names": [
+        "-[NSConcreteMutableData retainCount]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 1468
+    },
+    {
+      "address": 1113121372,
+      "size": 364,
+      "reference_names": [
+        "-[NSConcreteMutableData serializeAlignedBytesLength:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 1354
+    },
+    {
+      "address": 1113121736,
+      "size": 180,
+      "reference_names": [
+        "-[NSConcreteMutableData serializeInts:count:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 1320
+    },
+    {
+      "address": 1113121916,
+      "size": 232,
+      "reference_names": [
+        "-[NSConcreteMutableData serializeInts:count:atIndex:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 1333
+    },
+    {
+      "address": 1113131092,
+      "size": 16,
+      "reference_names": [
+        "-[NSData _bytesAreVM]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 1952
+    },
+    {
+      "address": 1113131108,
+      "size": 784,
+      "reference_names": [
+        "-[NSData _compressIfNeeded]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 1821
+    },
+    {
+      "address": 1113131892,
+      "size": 380,
+      "reference_names": [
+        "-[NSData _decompressIfNeeded]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 1901
+    },
+    {
+      "address": 1113132272,
+      "size": 564,
+      "reference_names": [
+        "-[NSData _intersectsBitVectorMaybeCompressed:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 1732
+    },
+    {
+      "address": 1113132836,
+      "size": 60,
+      "reference_names": [
+        "-[NSData bytes]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 1521
+    },
+    {
+      "address": 1113132896,
+      "size": 80,
+      "reference_names": [
+        "-[NSData copyWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 2079
+    },
+    {
+      "address": 1113132976,
+      "size": 72,
+      "reference_names": [
+        "-[NSData deserializeIntAtCursor:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSerialization.m",
+      "source_line": 665
+    },
+    {
+      "address": 1113133048,
+      "size": 104,
+      "reference_names": [
+        "-[NSData deserializeIntAtIndex:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSerialization.m",
+      "source_line": 651
+    },
+    {
+      "address": 1113133152,
+      "size": 108,
+      "reference_names": [
+        "-[NSData deserializeInts:count:atIndex:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSerialization.m",
+      "source_line": 658
+    },
+    {
+      "address": 1113133260,
+      "size": 180,
+      "reference_names": [
+        "-[NSData getBytes:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 1577
+    },
+    {
+      "address": 1113133440,
+      "size": 640,
+      "reference_names": [
+        "-[NSData hash]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 1656
+    },
+    {
+      "address": 1113134080,
+      "size": 48,
+      "reference_names": [
+        "-[NSData initWithBytes:length:copy:freeWhenDone:bytesAreVM:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 1945
+    },
+    {
+      "address": 1113134128,
+      "size": 64,
+      "reference_names": [
+        "-[NSData initWithBytesNoCopy:length:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 2009
+    },
+    {
+      "address": 1113134192,
+      "size": 168,
+      "reference_names": [
+        "-[NSData initWithContentsOfURL:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 2031
+    },
+    {
+      "address": 1113134360,
+      "size": 180,
+      "reference_names": [
+        "-[NSData initWithData:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 2060
+    },
+    {
+      "address": 1113134540,
+      "size": 284,
+      "reference_names": [
+        "-[NSData intersectionWithBitVector:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 1781
+    },
+    {
+      "address": 1113134824,
+      "size": 156,
+      "reference_names": [
+        "-[NSData intersectsBitVector:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 1721
+    },
+    {
+      "address": 1113134980,
+      "size": 144,
+      "reference_names": [
+        "-[NSData isEqual:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 1937
+    },
+    {
+      "address": 1113135124,
+      "size": 224,
+      "reference_names": [
+        "-[NSData isEqualToBitVector:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 1675
+    },
+    {
+      "address": 1113135348,
+      "size": 164,
+      "reference_names": [
+        "-[NSData isEqualToData:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 1621
+    },
+    {
+      "address": 1113135512,
+      "size": 60,
+      "reference_names": [
+        "-[NSData length]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 1516
+    },
+    {
+      "address": 1113135572,
+      "size": 80,
+      "reference_names": [
+        "-[NSData mutableCopyWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 2086
+    },
+    {
+      "address": 1113135652,
+      "size": 156,
+      "reference_names": [
+        "-[NSData numberOfSetBits]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 1706
+    },
+    {
+      "address": 1113135808,
+      "size": 296,
+      "reference_names": [
+        "-[NSData unionWithBitVector:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 1800
+    },
+    {
+      "address": 1113136104,
+      "size": 164,
+      "reference_names": [
+        "-[NSData writeToURL:atomically:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 1963
+    },
+    {
+      "address": 1113151224,
+      "size": 460,
+      "reference_names": [
+        "-[NSMutableData _unionBitVectorMaybeCompressed:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 2205
+    },
+    {
+      "address": 1113151684,
+      "size": 212,
+      "reference_names": [
+        "-[NSMutableData appendBytes:length:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 2265
+    },
+    {
+      "address": 1113151896,
+      "size": 256,
+      "reference_names": [
+        "-[NSMutableData appendData:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 2277
+    },
+    {
+      "address": 1113152152,
+      "size": 164,
+      "reference_names": [
+        "-[NSMutableData increaseLengthBy:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 2290
+    },
+    {
+      "address": 1113152316,
+      "size": 60,
+      "reference_names": [
+        "-[NSMutableData initWithCapacity:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 2354
+    },
+    {
+      "address": 1113152376,
+      "size": 200,
+      "reference_names": [
+        "-[NSMutableData intersectBitVector:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 2189
+    },
+    {
+      "address": 1113152576,
+      "size": 60,
+      "reference_names": [
+        "-[NSMutableData mutableBytes]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 2256
+    },
+    {
+      "address": 1113152636,
+      "size": 308,
+      "reference_names": [
+        "-[NSMutableData replaceBytesInRange:withBytes:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 2302
+    },
+    {
+      "address": 1113152944,
+      "size": 216,
+      "reference_names": [
+        "-[NSMutableData resetBytesInRange:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 2321
+    },
+    {
+      "address": 1113153160,
+      "size": 132,
+      "reference_names": [
+        "-[NSMutableData serializeAlignedBytes:length:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 2163
+    },
+    {
+      "address": 1113153292,
+      "size": 208,
+      "reference_names": [
+        "-[NSMutableData serializeAlignedBytesLength:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSerialization.m",
+      "source_line": 629
+    },
+    {
+      "address": 1113153500,
+      "size": 88,
+      "reference_names": [
+        "-[NSMutableData serializeInt:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSerialization.m",
+      "source_line": 594
+    },
+    {
+      "address": 1113153588,
+      "size": 100,
+      "reference_names": [
+        "-[NSMutableData serializeInt:atIndex:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSerialization.m",
+      "source_line": 610
+    },
+    {
+      "address": 1113153688,
+      "size": 96,
+      "reference_names": [
+        "-[NSMutableData serializeInts:count:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSerialization.m",
+      "source_line": 605
+    },
+    {
+      "address": 1113153784,
+      "size": 148,
+      "reference_names": [
+        "-[NSMutableData serializeInts:count:atIndex:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSerialization.m",
+      "source_line": 622
+    },
+    {
+      "address": 1113153932,
+      "size": 148,
+      "reference_names": [
+        "-[NSMutableData setData:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 2340
+    },
+    {
+      "address": 1113154080,
+      "size": 56,
+      "reference_names": [
+        "-[NSMutableData setLength:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 2261
+    },
+    {
+      "address": 1113154136,
+      "size": 196,
+      "reference_names": [
+        "-[NSMutableData unionBitVector:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 2173
+    },
+    {
+      "address": 1113162732,
+      "size": 60,
+      "reference_names": [
+        "-[NSSubrangeData _bytesAreVM]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 795
+    },
+    {
+      "address": 1113162792,
+      "size": 68,
+      "reference_names": [
+        "-[NSSubrangeData bytes]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 791
+    },
+    {
+      "address": 1113162860,
+      "size": 52,
+      "reference_names": [
+        "-[NSSubrangeData copyWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 921
+    },
+    {
+      "address": 1113162912,
+      "size": 96,
+      "reference_names": [
+        "-[NSSubrangeData dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 1003
+    },
+    {
+      "address": 1113163008,
+      "size": 236,
+      "reference_names": [
+        "-[NSSubrangeData deserializeIntAtCursor:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 897
+    },
+    {
+      "address": 1113163244,
+      "size": 220,
+      "reference_names": [
+        "-[NSSubrangeData deserializeIntAtIndex:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 840
+    },
+    {
+      "address": 1113163464,
+      "size": 332,
+      "reference_names": [
+        "-[NSSubrangeData deserializeInts:count:atIndex:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 862
+    },
+    {
+      "address": 1113163796,
+      "size": 172,
+      "reference_names": [
+        "-[NSSubrangeData getBytes:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 826
+    },
+    {
+      "address": 1113163968,
+      "size": 188,
+      "reference_names": [
+        "-[NSSubrangeData getBytes:length:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 832
+    },
+    {
+      "address": 1113164156,
+      "size": 284,
+      "reference_names": [
+        "-[NSSubrangeData getBytes:range:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 799
+    },
+    {
+      "address": 1113164440,
+      "size": 392,
+      "reference_names": [
+        "-[NSSubrangeData initWithData:range:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 750
+    },
+    {
+      "address": 1113164832,
+      "size": 92,
+      "reference_names": [
+        "-[NSSubrangeData init]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 743
+    },
+    {
+      "address": 1113164924,
+      "size": 16,
+      "reference_names": [
+        "-[NSSubrangeData length]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 787
+    },
+    {
+      "address": 1113164940,
+      "size": 276,
+      "reference_names": [
+        "-[NSSubrangeData release]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 952
+    },
+    {
+      "address": 1113165216,
+      "size": 24,
+      "reference_names": [
+        "-[NSSubrangeData retainCount]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 995
+    },
+    {
+      "address": 1113165240,
+      "size": 232,
+      "reference_names": [
+        "-[NSSubrangeData retain]"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 926
+    },
+    {
+      "address": 1113181176,
+      "size": 104,
+      "reference_names": [
+        "__NSNewImmutableDataNoCopy"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 1498
+    },
+    {
+      "address": 1113183776,
+      "size": 52,
+      "reference_names": [
+        "_allZeros"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 217
+    },
+    {
+      "address": 1113184988,
+      "size": 60,
+      "reference_names": [
+        "_firstByteAfterIntersecting"
+      ],
+      "source_path": "src/Kits/Foundation/NSData.m",
+      "source_line": 206
+    }
+  ],
+  "unmapped": [],
+  "duplicate_candidates": [],
+  "boundary_disputed": []
+}

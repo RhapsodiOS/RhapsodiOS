@@ -23,6 +23,7 @@
 
 @interface NSObject (NSDistributedObjects)
 
++ (id)replacementObjectForPortCoder:(NSPortCoder *)coder;
 - (Class)classForPortCoder;
 
 - (id)replacementObjectForPortCoder:(NSPortCoder *)coder;

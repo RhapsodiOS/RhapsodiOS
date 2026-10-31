@@ -1,0 +1,7 @@
+pkgname = pswrap
+pkgver = 1.009
+pkgdesc = Display PostScript wrapper generator
+maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
+license = unknown
+url = https://github.com/johnsonjh/NeXTDPS
+makedepends = build-base

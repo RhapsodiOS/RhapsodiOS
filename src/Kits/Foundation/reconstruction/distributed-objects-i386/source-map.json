@@ -1,0 +1,1031 @@
+{
+  "schema_version": "source-map-v1",
+  "reference_sha256": "1165B9063ADD5672514455CA2C9830625BEA2BCE5E46126FB5E8652114C909D6",
+  "mapped": [
+    {
+      "address": 1112637368,
+      "size": 13,
+      "reference_names": [
+        "-[NSThread lastConversation]"
+      ],
+      "source_path": "src/Kits/Foundation/NSThread.m",
+      "source_line": 571
+    },
+    {
+      "address": 1112640608,
+      "size": 494,
+      "reference_names": [
+        "+[NSConnection doQueuedWork]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 1255
+    },
+    {
+      "address": 1112672404,
+      "size": 114,
+      "reference_names": [
+        "-[NSConnection retain]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 551
+    },
+    {
+      "address": 1112675664,
+      "size": 13,
+      "reference_names": [
+        "-[NSConnection sendPort]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 2103
+    },
+    {
+      "address": 1112697888,
+      "size": 18,
+      "reference_names": [
+        "_hashConnection"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 274
+    },
+    {
+      "address": 1112703860,
+      "size": 355,
+      "reference_names": [
+        "-[NSConnection release]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 566
+    },
+    {
+      "address": 1112705452,
+      "size": 13,
+      "reference_names": [
+        "-[NSConnection receivePort]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 2107
+    },
+    {
+      "address": 1112705592,
+      "size": 206,
+      "reference_names": [
+        "-[NSConnection handleReleasedProxies:length:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 690
+    },
+    {
+      "address": 1112705800,
+      "size": 33,
+      "reference_names": [
+        "-[NSConnection getReleasedProxies:length:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 686
+    },
+    {
+      "address": 1112706180,
+      "size": 225,
+      "reference_names": [
+        "-[NSConnection finishEncoding:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 784
+    },
+    {
+      "address": 1112707040,
+      "size": 38,
+      "reference_names": [
+        "_isEqualConnection"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 283
+    },
+    {
+      "address": 1112708664,
+      "size": 115,
+      "reference_names": [
+        "-[NSConnection hasRunLoop:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 1695
+    },
+    {
+      "address": 1112708780,
+      "size": 67,
+      "reference_names": [
+        "-[NSConnection decodeReleasedProxies:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 707
+    },
+    {
+      "address": 1112711164,
+      "size": 2819,
+      "reference_names": [
+        "-[NSConnection sendInvocation:target:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 924
+    },
+    {
+      "address": 1112718108,
+      "size": 994,
+      "reference_names": [
+        "-[NSConnection getReplyWithSequence:withRunLoop:inThread:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 842
+    },
+    {
+      "address": 1112725464,
+      "size": 130,
+      "reference_names": [
+        "-[NSConnection versionForClassNamed:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 493
+    },
+    {
+      "address": 1112728956,
+      "size": 216,
+      "reference_names": [
+        "+[NSConnection connectionWithReceivePort:sendPort:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 1297
+    },
+    {
+      "address": 1112729172,
+      "size": 802,
+      "reference_names": [
+        "-[NSConnection handlePortCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 598
+    },
+    {
+      "address": 1112735604,
+      "size": 192,
+      "reference_names": [
+        "-[NSConnection addClassNamed:version:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 506
+    },
+    {
+      "address": 1112760900,
+      "size": 13,
+      "reference_names": [
+        "_hashProxy"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 329
+    },
+    {
+      "address": 1112789096,
+      "size": 109,
+      "reference_names": [
+        "-[NSConnection getRemote:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 1434
+    },
+    {
+      "address": 1112789452,
+      "size": 568,
+      "reference_names": [
+        "-[NSConnection insertProxy:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 1460
+    },
+    {
+      "address": 1112813748,
+      "size": 109,
+      "reference_names": [
+        "-[NSConnection getLocal:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 1447
+    },
+    {
+      "address": 1112814492,
+      "size": 251,
+      "reference_names": [
+        "-[NSConnection addRunLoop:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 2119
+    },
+    {
+      "address": 1112814776,
+      "size": 135,
+      "reference_names": [
+        "+[NSConnection connectionWithRegisteredName:host:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 1811
+    },
+    {
+      "address": 1112819700,
+      "size": 1731,
+      "reference_names": [
+        "-[NSConnection initWithReceivePort:sendPort:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 1315
+    },
+    {
+      "address": 1112821748,
+      "size": 56,
+      "reference_names": [
+        "+[NSConnection rootProxyForConnectionWithRegisteredName:host:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 1823
+    },
+    {
+      "address": 1112822688,
+      "size": 196,
+      "reference_names": [
+        "-[NSConnection addPortsToRunLoop:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 1527
+    },
+    {
+      "address": 1112824992,
+      "size": 103,
+      "reference_names": [
+        "-[NSConnection addPortsToAllRunLoops]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 1519
+    },
+    {
+      "address": 1112835012,
+      "size": 197,
+      "reference_names": [
+        "-[NSConnection setRootObject:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 1843
+    },
+    {
+      "address": 1112839220,
+      "size": 27,
+      "reference_names": [
+        "_isEqualProxy"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 337
+    },
+    {
+      "address": 1112842336,
+      "size": 86,
+      "reference_names": [
+        "-[NSConnection rootProxy]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 1865
+    },
+    {
+      "address": 1112842424,
+      "size": 104,
+      "reference_names": [
+        "-[NSConnection removeProxy:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 1609
+    },
+    {
+      "address": 1112842528,
+      "size": 205,
+      "reference_names": [
+        "-[NSConnection registerName:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 2082
+    },
+    {
+      "address": 1112842736,
+      "size": 65,
+      "reference_names": [
+        "-[NSConnection init]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 520
+    },
+    {
+      "address": 1112842804,
+      "size": 120,
+      "reference_names": [
+        "-[NSConnection _objectWithName:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 1679
+    },
+    {
+      "address": 1112865384,
+      "size": 22,
+      "reference_names": [
+        "-[NSConnection setRequestTimeout:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 1827
+    },
+    {
+      "address": 1112865408,
+      "size": 22,
+      "reference_names": [
+        "-[NSConnection setReplyTimeout:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 1835
+    },
+    {
+      "address": 1112865432,
+      "size": 219,
+      "reference_names": [
+        "-[NSConnection proxyWithLocal:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 1651
+    },
+    {
+      "address": 1112865652,
+      "size": 461,
+      "reference_names": [
+        "-[NSConnection dispatchInvocation:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 2018
+    },
+    {
+      "address": 1112866116,
+      "size": 592,
+      "reference_names": [
+        "-[NSConnection _shouldDispatch:invocation:sequence:coder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 1166
+    },
+    {
+      "address": 1112866708,
+      "size": 286,
+      "reference_names": [
+        "-[NSConnection _cleanupAndAuthenticate:sequence:conversation:invocation:raise:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 714
+    },
+    {
+      "address": 1112872928,
+      "size": 523,
+      "reference_names": [
+        "+[NSConnection initialize]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 525
+    },
+    {
+      "address": 1112873452,
+      "size": 147,
+      "reference_names": [
+        "+[NSConnection defaultConnection]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 1799
+    },
+    {
+      "address": 1112880136,
+      "size": 220,
+      "reference_names": [
+        "-[NSConnection setDelegate:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 1872
+    },
+    {
+      "address": 1112880356,
+      "size": 810,
+      "reference_names": [
+        "-[NSConnection returnResult:exception:sequence:imports:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 802
+    },
+    {
+      "address": 1112881168,
+      "size": 195,
+      "reference_names": [
+        "-[NSConnection removeRequestMode:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 1987
+    },
+    {
+      "address": 1112881364,
+      "size": 147,
+      "reference_names": [
+        "-[NSConnection removeAllRequestModes]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 2009
+    },
+    {
+      "address": 1112881512,
+      "size": 1121,
+      "reference_names": [
+        "-[NSConnection handleRequest:sequence:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 1067
+    },
+    {
+      "address": 1112882636,
+      "size": 195,
+      "reference_names": [
+        "-[NSConnection addRequestMode:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 1965
+    },
+    {
+      "address": 1112899004,
+      "size": 13,
+      "reference_names": [
+        "-[NSConnection rootObject]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 1861
+    },
+    {
+      "address": 1112899020,
+      "size": 125,
+      "reference_names": [
+        "-[NSConnection requestModes]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 2071
+    },
+    {
+      "address": 1112960440,
+      "size": 38,
+      "reference_names": [
+        "+[NSConnection _enableLogging:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 451
+    },
+    {
+      "address": 1112960480,
+      "size": 172,
+      "reference_names": [
+        "+[NSConnection _toggleLogging]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 459
+    },
+    {
+      "address": 1112960652,
+      "size": 98,
+      "reference_names": [
+        "+[NSConnection allConnections]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 1764
+    },
+    {
+      "address": 1112960752,
+      "size": 98,
+      "reference_names": [
+        "+[NSConnection connectionsCount]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 1775
+    },
+    {
+      "address": 1112960852,
+      "size": 31,
+      "reference_names": [
+        "+[NSConnection currentConversation]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 2099
+    },
+    {
+      "address": 1112960884,
+      "size": 196,
+      "reference_names": [
+        "+[NSConnection statistics]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 1786
+    },
+    {
+      "address": 1112961240,
+      "size": 145,
+      "reference_names": [
+        "+[NSThread mapConversationToThread:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSThread.m",
+      "source_line": 622
+    },
+    {
+      "address": 1112961388,
+      "size": 13,
+      "reference_names": [
+        "-[NSConcreteDistantObjectRequest connection]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 2206
+    },
+    {
+      "address": 1112961404,
+      "size": 13,
+      "reference_names": [
+        "-[NSConcreteDistantObjectRequest conversation]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 2210
+    },
+    {
+      "address": 1112961420,
+      "size": 131,
+      "reference_names": [
+        "-[NSConcreteDistantObjectRequest dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 2221
+    },
+    {
+      "address": 1112961552,
+      "size": 115,
+      "reference_names": [
+        "-[NSConcreteDistantObjectRequest initWithInvocation:conversation:sequence:importedObjects:connection:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 2191
+    },
+    {
+      "address": 1112961668,
+      "size": 13,
+      "reference_names": [
+        "-[NSConcreteDistantObjectRequest invocation]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 2202
+    },
+    {
+      "address": 1112961684,
+      "size": 82,
+      "reference_names": [
+        "-[NSConcreteDistantObjectRequest replyWithException:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 2214
+    },
+    {
+      "address": 1112962716,
+      "size": 314,
+      "reference_names": [
+        "-[NSConnection _queueRequestForThread:invocation:conversation:sequence:coder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 1233
+    },
+    {
+      "address": 1112963032,
+      "size": 494,
+      "reference_names": [
+        "-[NSConnection dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 1730
+    },
+    {
+      "address": 1112963528,
+      "size": 13,
+      "reference_names": [
+        "-[NSConnection delegate]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 1881
+    },
+    {
+      "address": 1112963544,
+      "size": 482,
+      "reference_names": [
+        "-[NSConnection description]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 1897
+    },
+    {
+      "address": 1112964028,
+      "size": 14,
+      "reference_names": [
+        "-[NSConnection enableMultipleThreads]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 2111
+    },
+    {
+      "address": 1112964044,
+      "size": 19,
+      "reference_names": [
+        "-[NSConnection independentConversationQueueing]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 1889
+    },
+    {
+      "address": 1112964064,
+      "size": 309,
+      "reference_names": [
+        "-[NSConnection invalidate]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 1943
+    },
+    {
+      "address": 1112964376,
+      "size": 16,
+      "reference_names": [
+        "-[NSConnection isValid]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 1893
+    },
+    {
+      "address": 1112964392,
+      "size": 174,
+      "reference_names": [
+        "-[NSConnection localObjects]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 1559
+    },
+    {
+      "address": 1112964568,
+      "size": 96,
+      "reference_names": [
+        "-[NSConnection localProxies]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 1574
+    },
+    {
+      "address": 1112964664,
+      "size": 16,
+      "reference_names": [
+        "-[NSConnection multipleThreadsEnabled]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 2115
+    },
+    {
+      "address": 1112964680,
+      "size": 119,
+      "reference_names": [
+        "-[NSConnection newConversation]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 1689
+    },
+    {
+      "address": 1112964800,
+      "size": 125,
+      "reference_names": [
+        "-[NSConnection portalDied:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 1710
+    },
+    {
+      "address": 1112964928,
+      "size": 164,
+      "reference_names": [
+        "-[NSConnection proxyForObject:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 1635
+    },
+    {
+      "address": 1112965092,
+      "size": 205,
+      "reference_names": [
+        "-[NSConnection releaseName:count:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 743
+    },
+    {
+      "address": 1112965300,
+      "size": 96,
+      "reference_names": [
+        "-[NSConnection remoteObjects]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 1548
+    },
+    {
+      "address": 1112965396,
+      "size": 201,
+      "reference_names": [
+        "-[NSConnection removeLocal:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 1618
+    },
+    {
+      "address": 1112965600,
+      "size": 103,
+      "reference_names": [
+        "-[NSConnection removePortsFromAllRunLoops]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 1585
+    },
+    {
+      "address": 1112965704,
+      "size": 196,
+      "reference_names": [
+        "-[NSConnection removePortsFromRunLoop:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 1593
+    },
+    {
+      "address": 1112965900,
+      "size": 174,
+      "reference_names": [
+        "-[NSConnection removeRunLoop:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 2135
+    },
+    {
+      "address": 1112966076,
+      "size": 13,
+      "reference_names": [
+        "-[NSConnection replyTimeout]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 1839
+    },
+    {
+      "address": 1112966092,
+      "size": 43,
+      "reference_names": [
+        "-[NSConnection requestLimit]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 1706
+    },
+    {
+      "address": 1112966136,
+      "size": 13,
+      "reference_names": [
+        "-[NSConnection requestTimeout]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 1831
+    },
+    {
+      "address": 1112966152,
+      "size": 15,
+      "reference_names": [
+        "-[NSConnection retainCount]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 562
+    },
+    {
+      "address": 1112966168,
+      "size": 49,
+      "reference_names": [
+        "-[NSConnection runInNewThread]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 2147
+    },
+    {
+      "address": 1112966220,
+      "size": 192,
+      "reference_names": [
+        "-[NSConnection run]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 2151
+    },
+    {
+      "address": 1112966412,
+      "size": 502,
+      "reference_names": [
+        "-[NSConnection sendReleasedProxies]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 756
+    },
+    {
+      "address": 1112966916,
+      "size": 380,
+      "reference_names": [
+        "-[NSConnection sendWireCountForTarget:port:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 471
+    },
+    {
+      "address": 1112967296,
+      "size": 25,
+      "reference_names": [
+        "-[NSConnection setIndependentConversationQueueing:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 1885
+    },
+    {
+      "address": 1112967324,
+      "size": 13,
+      "reference_names": [
+        "-[NSConnection statistics]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 1544
+    },
+    {
+      "address": 1112970132,
+      "size": 57,
+      "reference_names": [
+        "-[NSDistantObjectRequest connection]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 2174
+    },
+    {
+      "address": 1112970192,
+      "size": 57,
+      "reference_names": [
+        "-[NSDistantObjectRequest conversation]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 2178
+    },
+    {
+      "address": 1112970252,
+      "size": 57,
+      "reference_names": [
+        "-[NSDistantObjectRequest invocation]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 2170
+    },
+    {
+      "address": 1112970312,
+      "size": 55,
+      "reference_names": [
+        "-[NSDistantObjectRequest replyWithException:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 2182
+    },
+    {
+      "address": 1112970368,
+      "size": 37,
+      "reference_names": [
+        "-[NSDistributedObjectsStatistics addStatistics:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 399
+    },
+    {
+      "address": 1112970408,
+      "size": 111,
+      "reference_names": [
+        "-[NSDistributedObjectsStatistics allKeys]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 406
+    },
+    {
+      "address": 1112970520,
+      "size": 82,
+      "reference_names": [
+        "-[NSDistributedObjectsStatistics copyWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 437
+    },
+    {
+      "address": 1112970604,
+      "size": 12,
+      "reference_names": [
+        "-[NSDistributedObjectsStatistics count]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 417
+    },
+    {
+      "address": 1112970616,
+      "size": 47,
+      "reference_names": [
+        "-[NSDistributedObjectsStatistics keyEnumerator]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 421
+    },
+    {
+      "address": 1112970664,
+      "size": 195,
+      "reference_names": [
+        "-[NSDistributedObjectsStatistics objectForKey:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 425
+    },
+    {
+      "address": 1112973888,
+      "size": 242,
+      "reference_names": [
+        "-[NSThread addConversation:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSThread.m",
+      "source_line": 575
+    },
+    {
+      "address": 1112974132,
+      "size": 43,
+      "reference_names": [
+        "-[NSThread clearConversationRequest]"
+      ],
+      "source_path": "src/Kits/Foundation/NSThread.m",
+      "source_line": 603
+    },
+    {
+      "address": 1112974176,
+      "size": 13,
+      "reference_names": [
+        "-[NSThread conversationRequest]"
+      ],
+      "source_path": "src/Kits/Foundation/NSThread.m",
+      "source_line": 608
+    },
+    {
+      "address": 1112974192,
+      "size": 277,
+      "reference_names": [
+        "-[NSThread removeConversation]"
+      ],
+      "source_path": "src/Kits/Foundation/NSThread.m",
+      "source_line": 588
+    },
+    {
+      "address": 1112974472,
+      "size": 85,
+      "reference_names": [
+        "-[NSThread setConversationRequest:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSThread.m",
+      "source_line": 612
+    },
+    {
+      "address": 1112974560,
+      "size": 73,
+      "reference_names": [
+        "-[NSThread workQueue]"
+      ],
+      "source_path": "src/Kits/Foundation/NSThread.m",
+      "source_line": 631
+    },
+    {
+      "address": 1112974688,
+      "size": 392,
+      "reference_names": [
+        "__NSHandleDORequest"
+      ],
+      "source_path": "src/Kits/Foundation/NSConnection.m",
+      "source_line": 229
+    }
+  ],
+  "unmapped": [],
+  "duplicate_candidates": [],
+  "boundary_disputed": [],
+  "by_module": {
+    "NSConnection.m": {
+      "mapped": 104,
+      "unmapped": 0,
+      "duplicate_candidates": 0,
+      "boundary_disputed": 0
+    },
+    "NSThread.m": {
+      "mapped": 8,
+      "unmapped": 0,
+      "duplicate_candidates": 0,
+      "boundary_disputed": 0
+    }
+  }
+}

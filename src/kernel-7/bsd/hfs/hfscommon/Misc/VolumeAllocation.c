@@ -182,6 +182,7 @@ Internal routines:
 
 #include "../../hfs.h"
 #include "../../hfs_dbg.h"
+#include "../../hfs_endian.h"
 	#endif 	/* TARGET_OS_MAC */
 #endif	/* PRAGMA_LOAD_SUPPORTED */
 
@@ -708,7 +709,7 @@ OSErr UpdateFreeCount (
 		}
 		
 		//	We count free blocks by inverting the word in the bitmap and counting set bits.
-		temp = ~(*currentWord);
+		temp = SWAP_BE32 (~(*currentWord));
 		while (temp) {
 			++freeCount;
 			temp &= temp-1;			//	this clears least significant bit that is currently set
@@ -742,7 +743,7 @@ OSErr UpdateFreeCount (
 		}
 		
 		//	We count free blocks by inverting the word in the bitmap and counting set bits.
-		temp = ~(*currentWord);
+		temp = SWAP_BE32 (~(*currentWord));
 		while (numBlocks != 0) {
 			if (temp & kHighBitInWordMask)
 				++freeCount;
@@ -1065,7 +1066,7 @@ OSErr BlockAllocateAny(
 		wordIndexInBlock = (startingBlock & kBitsWithinBlockMask) / kBitsPerWord;
 		buffer += wordIndexInBlock;
 		wordsLeft = kWordsPerBlock - wordIndexInBlock;
-		currentWord = *buffer;
+		currentWord = SWAP_BE32 (*buffer);
 		bitMask = kHighBitInWordMask >> (startingBlock & kBitsWithinWordMask);
 	}
 	
@@ -1103,7 +1104,7 @@ OSErr BlockAllocateAny(
 				wordsLeft = kWordsPerBlock;
 			}
 			
-			currentWord = *buffer;
+			currentWord = SWAP_BE32 (*buffer);
 		}
 	}
 
@@ -1140,7 +1141,7 @@ OSErr BlockAllocateAny(
 		//	Next bit
 		bitMask >>= 1;
 		if (bitMask == 0) {
-			*buffer = currentWord;					//	update value in bitmap
+			*buffer = SWAP_BE32 (currentWord);					//	update value in bitmap
 			
 			//	Next word
 			bitMask = kHighBitInWordMask;
@@ -1164,10 +1165,10 @@ OSErr BlockAllocateAny(
 				wordsLeft = kWordsPerBlock;
 			}
 			
-			currentWord = *buffer;
+			currentWord = SWAP_BE32 (*buffer);
 		}
 	}
-	*buffer = currentWord;							//	update the last change
+	*buffer = SWAP_BE32 (currentWord);							//	update the last change
 
 Exit:
 	if (err == noErr) {
@@ -1263,13 +1264,13 @@ static OSErr BlockMarkAllocated(
 			bitMask &= ~(kAllBitsSetInWord >> (firstBit + numBits));	//	turn off bits after last
 		}
 #if DEBUG_BUILD
-		if ((*currentWord & bitMask) != 0) {
+		if ((*currentWord & SWAP_BE32 (bitMask)) != 0) {
 			DebugStr("\pFATAL: blocks already allocated!");
 			//err = fsDSIntErr;
 			//goto Exit;
 		}
 #endif
-		*currentWord |= bitMask;					//	set the bits in the bitmap
+		*currentWord |= SWAP_BE32 (bitMask);					//	set the bits in the bitmap
 		numBlocks -= numBits;						//	adjust number of blocks left to allocate
 
 		++currentWord;								//	move to next word
@@ -1306,7 +1307,7 @@ static OSErr BlockMarkAllocated(
 			//goto Exit;
 		}
 #endif
-		*currentWord = bitMask;
+		*currentWord = SWAP_BE32 (bitMask);
 		numBlocks -= kBitsPerWord;
 
 		++currentWord;								//	move to next word
@@ -1337,13 +1338,13 @@ static OSErr BlockMarkAllocated(
 			wordsLeft = kWordsPerBlock;
 		}
 #if DEBUG_BUILD
-		if ((*currentWord & bitMask) != 0) {
+		if ((*currentWord & SWAP_BE32 (bitMask)) != 0) {
 			DebugStr("\pFATAL: blocks already allocated!");
 			//err = fsDSIntErr;
 			//goto Exit;
 		}
 #endif
-		*currentWord |= bitMask;						//	set the bits in the bitmap
+		*currentWord |= SWAP_BE32 (bitMask);						//	set the bits in the bitmap
 
 		//	No need to update currentWord or wordsLeft
 	}
@@ -1438,13 +1439,13 @@ static OSErr BlockMarkFree(
 			bitMask &= ~(kAllBitsSetInWord >> (firstBit + numBits));	//	turn off bits after last
 		}
 #if DEBUG_BUILD
-		if ((*currentWord & bitMask) != bitMask) {
+		if ((*currentWord & SWAP_BE32 (bitMask)) != SWAP_BE32 (bitMask)) {
 			DebugStr("\pFATAL: blocks not allocated!");
 			//err = fsDSIntErr;
 			//goto Exit;
 		}
 #endif
-		*currentWord &= ~bitMask;					//	clear the bits in the bitmap
+		*currentWord &= SWAP_BE32 (~bitMask);					//	clear the bits in the bitmap
 		numBlocks -= numBits;						//	adjust number of blocks left to free
 
 		++currentWord;								//	move to next word
@@ -1475,7 +1476,7 @@ static OSErr BlockMarkFree(
 		}
 
 #if DEBUG_BUILD
-		if (*currentWord != kAllBitsSetInWord) {
+		if (*currentWord != SWAP_BE32 (kAllBitsSetInWord)) {
 			DebugStr("\pFATAL: blocks not allocated!");
 			//err = fsDSIntErr;
 			//goto Exit;
@@ -1512,13 +1513,13 @@ static OSErr BlockMarkFree(
 			wordsLeft = kWordsPerBlock;
 		}
 #if DEBUG_BUILD
-		if ((*currentWord & bitMask) != bitMask) {
+		if ((*currentWord & SWAP_BE32 (bitMask)) != SWAP_BE32 (bitMask)) {
 			DebugStr("\pFATAL: blocks not allocated!");
 			//err = fsDSIntErr;
 			//goto Exit;
 		}
 #endif
-		*currentWord &= ~bitMask;						//	clear the bits in the bitmap
+		*currentWord &= SWAP_BE32 (~bitMask);						//	clear the bits in the bitmap
 
 		//	No need to update currentWord or wordsLeft
 	}
@@ -1604,11 +1605,11 @@ static OSErr BlockVerifyAllocated(
 		}
 
 		//	Make sure all the bits are set
-		if ((*currentWord & bitMask) != bitMask) {
+		if ((*currentWord & SWAP_BE32 (bitMask)) != SWAP_BE32 (bitMask)) {
 			*foundUnmarkedBlock = true;				//	found an error
 			if ( (!FORDISKFIRSTAID) || (GetDFAStage() == kRepairStage) )
 			{
-				*currentWord |= bitMask;			// set the bits in the bitmap
+				*currentWord |= SWAP_BE32 (bitMask);			// set the bits in the bitmap
 				MarkBlock_glue((Ptr) buffer);		// this block is now dirty
 			}
 		}
@@ -1643,11 +1644,11 @@ static OSErr BlockVerifyAllocated(
 		}
 		
 		//	Make sure all the blocks are allocated
-		if (*currentWord != bitMask) {
+		if (*currentWord != SWAP_BE32 (bitMask)) {
 			*foundUnmarkedBlock = true;				//	found an error
 			if ( (!FORDISKFIRSTAID) || (GetDFAStage() == kRepairStage) )
 			{
-				*currentWord = bitMask;				// update the bitmap
+				*currentWord = SWAP_BE32 (bitMask);				// update the bitmap
 				MarkBlock_glue((Ptr) buffer);		// this block is now dirty
 			}
 		}
@@ -1681,11 +1682,11 @@ static OSErr BlockVerifyAllocated(
 		}
 		
 		//	Make sure all the bits are set
-		if ((*currentWord & bitMask) != bitMask) {
+		if ((*currentWord & SWAP_BE32 (bitMask)) != SWAP_BE32 (bitMask)) {
 			*foundUnmarkedBlock = true;					//	found an error
 			if ( (!FORDISKFIRSTAID) || (GetDFAStage() == kRepairStage) )
 			{
-				*currentWord |= bitMask;				//	set the bits in the bitmap
+				*currentWord |= SWAP_BE32 (bitMask);				//	set the bits in the bitmap
 				MarkBlock_glue((Ptr) buffer);			//	this block is now dirty
 			}
 		}
@@ -1858,7 +1859,7 @@ static OSErr BlockFindContiguous(
 		currentWord		= buffer + wordIndexInBlock;
 				
 		wordsLeft		= wordIndexInBlock;
-		tempWord		= *currentWord;
+		tempWord		= SWAP_BE32 (*currentWord);
 		bitMask			= kHighBitInWordMask >> ( currentBlock & kBitsWithinWordMask );
 		currentSector	= currentBlock / kBitsPerBlock;
 	}
@@ -1908,7 +1909,7 @@ static OSErr BlockFindContiguous(
 					
 				wordsLeft	= ( currentBlock & kBitsWithinBlockMask ) / kBitsPerWord;
 				currentWord	= buffer + wordsLeft;
-				tempWord	= *currentWord;
+				tempWord	= SWAP_BE32 (*currentWord);
 				bitMask		= kHighBitInWordMask >> ( currentBlock & kBitsWithinWordMask );
 
 				continue;												//	Back to the while loop
@@ -1946,7 +1947,7 @@ NextWord:
 				wordsLeft		= kWordsPerBlock - 1;
 			}
 			
-			tempWord = *currentWord;							//	Grab the current word
+			tempWord = SWAP_BE32 (*currentWord);							//	Grab the current word
 
 			//
 			//	If we found a whole word of free blocks, quickly skip over it.
@@ -2010,7 +2011,7 @@ NextWord:
 
 		wordIndexInBlock = (currentBlock & kBitsWithinBlockMask) / kBitsPerWord;
 		currentWord		= buffer + wordIndexInBlock;
-		tempWord		= *currentWord;
+		tempWord		= SWAP_BE32 (*currentWord);
 		wordsLeft		= kWordsPerBlock - wordIndexInBlock;
 		bitMask			= kHighBitInWordMask >> (currentBlock & kBitsWithinWordMask);
 	}
@@ -2054,7 +2055,7 @@ NextWord:
 					currentWord		= buffer;
 					wordsLeft		= kWordsPerBlock;
 				}
-				tempWord = *currentWord;			//	grab the current word
+				tempWord = SWAP_BE32 (*currentWord);			//	grab the current word
 			}
 		}
 	}

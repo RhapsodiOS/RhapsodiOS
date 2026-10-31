@@ -1,0 +1,25 @@
+{
+    IBClasses = (
+        {CLASS = FirstResponder; LANGUAGE = ObjC; SUPERCLASS = NSObject; }, 
+        {
+            ACTIONS = {cancel = id; ok = id; }; 
+            CLASS = ServiceProvider; 
+            LANGUAGE = ObjC; 
+            OUTLETS = {
+                addArgsField = id; 
+                addArgsServiceTitle = id; 
+                addArgsWindow = id; 
+                addInputCommandTitle = id; 
+                addInputServiceTitle = id; 
+                addInputText = id; 
+                addInputWindow = id; 
+                bothArgsField = id; 
+                bothInputText = id; 
+                bothServiceTitle = id; 
+                bothWindow = id; 
+            }; 
+            SUPERCLASS = Object; 
+        }
+    ); 
+    IBVersion = 1; 
+}

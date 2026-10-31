@@ -158,6 +158,11 @@ typedef struct {
 #define ByProtocol 2
 
 typedef struct {
+    EFI_GUID    VendorGuid;
+    void       *VendorTable;
+} EFI_CONFIGURATION_TABLE;
+
+typedef struct {
     char                             Hdr[24];
     CHAR16                          *FirmwareVendor;
     UINT32                           FirmwareRevision;
@@ -169,6 +174,8 @@ typedef struct {
     EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL *StdErr;
     void                            *RuntimeServices;
     EFI_BOOT_SERVICES               *BootServices;
+    UINTN                            NumberOfTableEntries;
+    EFI_CONFIGURATION_TABLE         *ConfigurationTable;
 } EFI_SYSTEM_TABLE;
 
 extern EFI_SYSTEM_TABLE  *gST;

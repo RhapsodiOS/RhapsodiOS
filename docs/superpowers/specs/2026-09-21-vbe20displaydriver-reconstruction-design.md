@@ -392,7 +392,7 @@ panic names, links before it. The booter shows `rld(): Undefined symbols:
 _VBEModeInfo2IODisplayInfo`, and the kernel logs `configureDriver: driver
 class 'VBE20DisplayDriver' was not loaded`. That it would not cascade at other
 positions either is an inference, from
-`src/cctools-2/ld/symbols.c:3523`/`ld.c:2059` and
+`src/Developer/Commands/cctools-2/ld/symbols.c:3523`/`ld.c:2059` and
 `rld.c:402-405`/`1493`/`1674-1676`: an undefined-symbol failure is raised via
 `error()`, which unloads only the one driver, not via `fatal()`→`cleanup()`,
 which is what `docs/boot/sarld-driver-link-limit.md`'s cascade (a malloc

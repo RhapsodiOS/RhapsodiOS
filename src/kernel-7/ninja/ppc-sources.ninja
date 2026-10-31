@@ -1,0 +1,2698 @@
+# Explicit PPC sources and historical link order; maintained by hand.
+
+build $outdir/locc.o: cc bsd/libkern/locc.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/libkern/locc.c
+  object = locc.o
+  flags = $cflags
+
+build $outdir/random.o: cc bsd/libkern/random.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/libkern/random.c
+  object = random.o
+  flags = $cflags
+
+build $outdir/randomdev.o: cc bsd/dev/random/randomdev.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/random/randomdev.c
+  object = randomdev.o
+  flags = $cflags
+
+build $outdir/xoodyak.o: cc bsd/dev/random/xoodyak.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/random/xoodyak.c
+  object = xoodyak.o
+  flags = $cflags
+
+build $outdir/rindex.o: cc bsd/libkern/rindex.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/libkern/rindex.c
+  object = rindex.o
+  flags = $cflags
+
+build $outdir/scanc.o: cc bsd/libkern/scanc.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/libkern/scanc.c
+  object = scanc.o
+  flags = $cflags
+
+build $outdir/skpc.o: cc bsd/libkern/skpc.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/libkern/skpc.c
+  object = skpc.o
+  flags = $cflags
+
+build $outdir/strtol.o: cc bsd/libkern/strtol.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/libkern/strtol.c
+  object = strtol.o
+  flags = $cflags
+
+build $outdir/syscalls.o: cc bsd/kern/syscalls.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/kern/syscalls.c
+  object = syscalls.o
+  flags = $cflags
+
+build $outdir/vfs_bio.o: cc bsd/vfs/vfs_bio.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/vfs/vfs_bio.c
+  object = vfs_bio.o
+  flags = $cflags
+
+build $outdir/vfs_cache.o: cc bsd/vfs/vfs_cache.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/vfs/vfs_cache.c
+  object = vfs_cache.o
+  flags = $cflags
+
+build $outdir/vfs_cluster.o: cc bsd/vfs/vfs_cluster.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/vfs/vfs_cluster.c
+  object = vfs_cluster.o
+  flags = $cflags
+
+build $outdir/vfs_conf.o: cc bsd/vfs/vfs_conf.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/vfs/vfs_conf.c
+  object = vfs_conf.o
+  flags = $cflags
+
+build $outdir/vfs_init.o: cc bsd/vfs/vfs_init.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/vfs/vfs_init.c
+  object = vfs_init.o
+  flags = $cflags
+
+build $outdir/vfs_lookup.o: cc bsd/vfs/vfs_lookup.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/vfs/vfs_lookup.c
+  object = vfs_lookup.o
+  flags = $cflags
+
+build $outdir/vfs_subr.o: cc bsd/vfs/vfs_subr.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/vfs/vfs_subr.c
+  object = vfs_subr.o
+  flags = $cflags
+
+build $outdir/vfs_syscalls.o: cc bsd/vfs/vfs_syscalls.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/vfs/vfs_syscalls.c
+  object = vfs_syscalls.o
+  flags = $cflags
+
+build $outdir/vfs_support.o: cc bsd/vfs/vfs_support.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/vfs/vfs_support.c
+  object = vfs_support.o
+  flags = $cflags
+
+build $outdir/vfs_vnops.o: cc bsd/vfs/vfs_vnops.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/vfs/vfs_vnops.c
+  object = vfs_vnops.o
+  flags = $cflags
+
+build $outdir/vnode_if.o: cc bsd/vfs/vnode_if.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/vfs/vnode_if.c
+  object = vnode_if.o
+  flags = $cflags
+
+build $outdir/dead_vnops.o: cc bsd/miscfs/deadfs/dead_vnops.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/miscfs/deadfs/dead_vnops.c
+  object = dead_vnops.o
+  flags = $cflags
+
+build $outdir/fdesc_vfsops.o: cc bsd/miscfs/fdesc/fdesc_vfsops.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/miscfs/fdesc/fdesc_vfsops.c
+  object = fdesc_vfsops.o
+  flags = $cflags
+
+build $outdir/fdesc_vnops.o: cc bsd/miscfs/fdesc/fdesc_vnops.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/miscfs/fdesc/fdesc_vnops.c
+  object = fdesc_vnops.o
+  flags = -g -O0 $cppflags $machine_cflags
+
+build $outdir/fifo_vnops.o: cc bsd/miscfs/fifofs/fifo_vnops.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/miscfs/fifofs/fifo_vnops.c
+  object = fifo_vnops.o
+  flags = $cflags
+
+build $outdir/portal_vfsops.o: cc bsd/miscfs/portal/portal_vfsops.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/miscfs/portal/portal_vfsops.c
+  object = portal_vfsops.o
+  flags = $cflags
+
+build $outdir/portal_vnops.o: cc bsd/miscfs/portal/portal_vnops.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/miscfs/portal/portal_vnops.c
+  object = portal_vnops.o
+  flags = $cflags
+
+build $outdir/spec_vnops.o: cc bsd/miscfs/specfs/spec_vnops.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/miscfs/specfs/spec_vnops.c
+  object = spec_vnops.o
+  flags = $cflags
+
+build $outdir/union_subr.o: cc bsd/miscfs/union/union_subr.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/miscfs/union/union_subr.c
+  object = union_subr.o
+  flags = $cflags
+
+build $outdir/union_vfsops.o: cc bsd/miscfs/union/union_vfsops.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/miscfs/union/union_vfsops.c
+  object = union_vfsops.o
+  flags = $cflags
+
+build $outdir/union_vnops.o: cc bsd/miscfs/union/union_vnops.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/miscfs/union/union_vnops.c
+  object = union_vnops.o
+  flags = $cflags
+
+build $outdir/cd9660_bmap.o: cc bsd/isofs/cd9660/cd9660_bmap.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/isofs/cd9660/cd9660_bmap.c
+  object = cd9660_bmap.o
+  flags = $cflags
+
+build $outdir/cd9660_lookup.o: cc bsd/isofs/cd9660/cd9660_lookup.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/isofs/cd9660/cd9660_lookup.c
+  object = cd9660_lookup.o
+  flags = $cflags
+
+build $outdir/cd9660_node.o: cc bsd/isofs/cd9660/cd9660_node.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/isofs/cd9660/cd9660_node.c
+  object = cd9660_node.o
+  flags = $cflags
+
+build $outdir/cd9660_rrip.o: cc bsd/isofs/cd9660/cd9660_rrip.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/isofs/cd9660/cd9660_rrip.c
+  object = cd9660_rrip.o
+  flags = $cflags
+
+build $outdir/cd9660_util.o: cc bsd/isofs/cd9660/cd9660_util.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/isofs/cd9660/cd9660_util.c
+  object = cd9660_util.o
+  flags = $cflags
+
+build $outdir/cd9660_vfsops.o: cc bsd/isofs/cd9660/cd9660_vfsops.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/isofs/cd9660/cd9660_vfsops.c
+  object = cd9660_vfsops.o
+  flags = $cflags
+
+build $outdir/cd9660_vnops.o: cc bsd/isofs/cd9660/cd9660_vnops.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/isofs/cd9660/cd9660_vnops.c
+  object = cd9660_vnops.o
+  flags = $cflags
+
+build $outdir/bpf.o: cc bsd/net/bpf.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/net/bpf.c
+  object = bpf.o
+  flags = $cflags
+
+build $outdir/if.o: cc bsd/net/if.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/net/if.c
+  object = if.o
+  flags = $cflags
+
+build $outdir/if_ethersubr.o: cc bsd/net/if_ethersubr.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/net/if_ethersubr.c
+  object = if_ethersubr.o
+  flags = $cflags
+
+build $outdir/if_loop.o: cc bsd/net/if_loop.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/net/if_loop.c
+  object = if_loop.o
+  flags = $cflags
+
+build $outdir/radix.o: cc bsd/net/radix.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/net/radix.c
+  object = radix.o
+  flags = $cflags
+
+build $outdir/raw_cb.o: cc bsd/net/raw_cb.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/net/raw_cb.c
+  object = raw_cb.o
+  flags = $cflags
+
+build $outdir/raw_usrreq.o: cc bsd/net/raw_usrreq.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/net/raw_usrreq.c
+  object = raw_usrreq.o
+  flags = $cflags
+
+build $outdir/route.o: cc bsd/net/route.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/net/route.c
+  object = route.o
+  flags = $cflags
+
+build $outdir/rtsock.o: cc bsd/net/rtsock.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/net/rtsock.c
+  object = rtsock.o
+  flags = $cflags
+
+build $outdir/netbuf.o: cc bsd/net/netbuf.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/net/netbuf.c
+  object = netbuf.o
+  flags = $cflags
+
+build $outdir/netisr.o: cc bsd/net/netisr.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/net/netisr.c
+  object = netisr.o
+  flags = $cflags
+
+build $outdir/if_ether.o: cc bsd/netinet/if_ether.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/netinet/if_ether.c
+  object = if_ether.o
+  flags = $cflags
+
+build $outdir/igmp.o: cc bsd/netinet/igmp.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/netinet/igmp.c
+  object = igmp.o
+  flags = $cflags
+
+build $outdir/in.o: cc bsd/netinet/in.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/netinet/in.c
+  object = in.o
+  flags = $cflags
+
+build $outdir/in_bootp.o: cc bsd/netinet/in_bootp.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/netinet/in_bootp.c
+  object = in_bootp.o
+  flags = $cflags
+
+build $outdir/in_pcb.o: cc bsd/netinet/in_pcb.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/netinet/in_pcb.c
+  object = in_pcb.o
+  flags = $cflags
+
+build $outdir/in_proto.o: cc bsd/netinet/in_proto.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/netinet/in_proto.c
+  object = in_proto.o
+  flags = $cflags
+
+build $outdir/ip_icmp.o: cc bsd/netinet/ip_icmp.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/netinet/ip_icmp.c
+  object = ip_icmp.o
+  flags = $cflags
+
+build $outdir/ip_input.o: cc bsd/netinet/ip_input.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/netinet/ip_input.c
+  object = ip_input.o
+  flags = $cflags
+
+build $outdir/ip_output.o: cc bsd/netinet/ip_output.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/netinet/ip_output.c
+  object = ip_output.o
+  flags = $cflags
+
+build $outdir/raw_ip.o: cc bsd/netinet/raw_ip.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/netinet/raw_ip.c
+  object = raw_ip.o
+  flags = $cflags
+
+build $outdir/tcp_debug.o: cc bsd/netinet/tcp_debug.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/netinet/tcp_debug.c
+  object = tcp_debug.o
+  flags = $cflags
+
+build $outdir/tcp_input.o: cc bsd/netinet/tcp_input.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/netinet/tcp_input.c
+  object = tcp_input.o
+  flags = $cflags
+
+build $outdir/tcp_output.o: cc bsd/netinet/tcp_output.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/netinet/tcp_output.c
+  object = tcp_output.o
+  flags = $cflags
+
+build $outdir/tcp_subr.o: cc bsd/netinet/tcp_subr.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/netinet/tcp_subr.c
+  object = tcp_subr.o
+  flags = $cflags
+
+build $outdir/tcp_timer.o: cc bsd/netinet/tcp_timer.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/netinet/tcp_timer.c
+  object = tcp_timer.o
+  flags = $cflags
+
+build $outdir/tcp_usrreq.o: cc bsd/netinet/tcp_usrreq.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/netinet/tcp_usrreq.c
+  object = tcp_usrreq.o
+  flags = $cflags
+
+build $outdir/udp_usrreq.o: cc bsd/netinet/udp_usrreq.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/netinet/udp_usrreq.c
+  object = udp_usrreq.o
+  flags = $cflags
+
+build $outdir/krpc_subr.o: cc bsd/nfs/krpc_subr.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/nfs/krpc_subr.c
+  object = krpc_subr.o
+  flags = $cflags
+
+build $outdir/nfs_bio.o: cc bsd/nfs/nfs_bio.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/nfs/nfs_bio.c
+  object = nfs_bio.o
+  flags = $cflags
+
+build $outdir/nfs_boot.o: cc bsd/nfs/nfs_boot.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/nfs/nfs_boot.c
+  object = nfs_boot.o
+  flags = $cflags
+
+build $outdir/nfs_node.o: cc bsd/nfs/nfs_node.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/nfs/nfs_node.c
+  object = nfs_node.o
+  flags = $cflags
+
+build $outdir/nfs_nqlease.o: cc bsd/nfs/nfs_nqlease.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/nfs/nfs_nqlease.c
+  object = nfs_nqlease.o
+  flags = $cflags
+
+build $outdir/nfs_serv.o: cc bsd/nfs/nfs_serv.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/nfs/nfs_serv.c
+  object = nfs_serv.o
+  flags = $cflags
+
+build $outdir/nfs_socket.o: cc bsd/nfs/nfs_socket.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/nfs/nfs_socket.c
+  object = nfs_socket.o
+  flags = $cflags
+
+build $outdir/nfs_srvcache.o: cc bsd/nfs/nfs_srvcache.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/nfs/nfs_srvcache.c
+  object = nfs_srvcache.o
+  flags = $cflags
+
+build $outdir/nfs_subs.o: cc bsd/nfs/nfs_subs.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/nfs/nfs_subs.c
+  object = nfs_subs.o
+  flags = $cflags
+
+build $outdir/nfs_syscalls.o: cc bsd/nfs/nfs_syscalls.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/nfs/nfs_syscalls.c
+  object = nfs_syscalls.o
+  flags = $cflags
+
+build $outdir/nfs_vfsops.o: cc bsd/nfs/nfs_vfsops.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/nfs/nfs_vfsops.c
+  object = nfs_vfsops.o
+  flags = $cflags
+
+build $outdir/nfs_vnops.o: cc bsd/nfs/nfs_vnops.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/nfs/nfs_vnops.c
+  object = nfs_vnops.o
+  flags = $cflags
+
+build $outdir/ffs_alloc.o: cc bsd/ufs/ffs/ffs_alloc.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/ufs/ffs/ffs_alloc.c
+  object = ffs_alloc.o
+  flags = $cflags
+
+build $outdir/ffs_balloc.o: cc bsd/ufs/ffs/ffs_balloc.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/ufs/ffs/ffs_balloc.c
+  object = ffs_balloc.o
+  flags = $cflags
+
+build $outdir/ffs_inode.o: cc bsd/ufs/ffs/ffs_inode.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/ufs/ffs/ffs_inode.c
+  object = ffs_inode.o
+  flags = $cflags
+
+build $outdir/ffs_subr.o: cc bsd/ufs/ffs/ffs_subr.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/ufs/ffs/ffs_subr.c
+  object = ffs_subr.o
+  flags = $cflags
+
+build $outdir/ffs_tables.o: cc bsd/ufs/ffs/ffs_tables.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/ufs/ffs/ffs_tables.c
+  object = ffs_tables.o
+  flags = $cflags
+
+build $outdir/ffs_vfsops.o: cc bsd/ufs/ffs/ffs_vfsops.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/ufs/ffs/ffs_vfsops.c
+  object = ffs_vfsops.o
+  flags = $cflags
+
+build $outdir/ffs_vnops.o: cc bsd/ufs/ffs/ffs_vnops.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/ufs/ffs/ffs_vnops.c
+  object = ffs_vnops.o
+  flags = $cflags
+
+build $outdir/ufs_bmap.o: cc bsd/ufs/ufs/ufs_bmap.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/ufs/ufs/ufs_bmap.c
+  object = ufs_bmap.o
+  flags = $cflags
+
+build $outdir/ufs_byte_order.o: cc bsd/ufs/ufs/ufs_byte_order.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/ufs/ufs/ufs_byte_order.c
+  object = ufs_byte_order.o
+  flags = $cflags
+
+build $outdir/ufs_ihash.o: cc bsd/ufs/ufs/ufs_ihash.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/ufs/ufs/ufs_ihash.c
+  object = ufs_ihash.o
+  flags = $cflags
+
+build $outdir/ufs_inode.o: cc bsd/ufs/ufs/ufs_inode.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/ufs/ufs/ufs_inode.c
+  object = ufs_inode.o
+  flags = $cflags
+
+build $outdir/ufs_lockf.o: cc bsd/ufs/ufs/ufs_lockf.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/ufs/ufs/ufs_lockf.c
+  object = ufs_lockf.o
+  flags = $cflags
+
+build $outdir/ufs_lookup.o: cc bsd/ufs/ufs/ufs_lookup.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/ufs/ufs/ufs_lookup.c
+  object = ufs_lookup.o
+  flags = $cflags
+
+build $outdir/ufs_quota.o: cc bsd/ufs/ufs/ufs_quota.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/ufs/ufs/ufs_quota.c
+  object = ufs_quota.o
+  flags = $cflags
+
+build $outdir/ufs_vfsops.o: cc bsd/ufs/ufs/ufs_vfsops.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/ufs/ufs/ufs_vfsops.c
+  object = ufs_vfsops.o
+  flags = $cflags
+
+build $outdir/ufs_vnops.o: cc bsd/ufs/ufs/ufs_vnops.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/ufs/ufs/ufs_vnops.c
+  object = ufs_vnops.o
+  flags = $cflags
+
+build $outdir/hfs_btreeio.o: cc bsd/hfs/hfs_btreeio.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/hfs/hfs_btreeio.c
+  object = hfs_btreeio.o
+  flags = $cflags
+
+build $outdir/hfs_endian.o: cc bsd/hfs/hfs_endian.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/hfs/hfs_endian.c
+  object = hfs_endian.o
+  flags = $cflags
+
+build $outdir/hfs_lockf.o: cc bsd/hfs/hfs_lockf.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/hfs/hfs_lockf.c
+  object = hfs_lockf.o
+  flags = $cflags
+
+build $outdir/hfs_lookup.o: cc bsd/hfs/hfs_lookup.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/hfs/hfs_lookup.c
+  object = hfs_lookup.o
+  flags = $cflags
+
+build $outdir/hfs_readwrite.o: cc bsd/hfs/hfs_readwrite.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/hfs/hfs_readwrite.c
+  object = hfs_readwrite.o
+  flags = $cflags
+
+build $outdir/hfs_vfsops.o: cc bsd/hfs/hfs_vfsops.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/hfs/hfs_vfsops.c
+  object = hfs_vfsops.o
+  flags = $cflags
+
+build $outdir/hfs_vfsutils.o: cc bsd/hfs/hfs_vfsutils.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/hfs/hfs_vfsutils.c
+  object = hfs_vfsutils.o
+  flags = $cflags
+
+build $outdir/hfs_vhash.o: cc bsd/hfs/hfs_vhash.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/hfs/hfs_vhash.c
+  object = hfs_vhash.o
+  flags = $cflags
+
+build $outdir/hfs_vnodeops.o: cc bsd/hfs/hfs_vnodeops.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/hfs/hfs_vnodeops.c
+  object = hfs_vnodeops.o
+  flags = $cflags
+
+build $outdir/MacOSStubs.o: cc bsd/hfs/MacOSStubs.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/hfs/MacOSStubs.c
+  object = MacOSStubs.o
+  flags = $cflags
+
+build $outdir/BTree.o: cc bsd/hfs/hfscommon/BTree/BTree.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/hfs/hfscommon/BTree/BTree.c
+  object = BTree.o
+  flags = $cflags
+
+build $outdir/BTreeAllocate.o: cc bsd/hfs/hfscommon/BTree/BTreeAllocate.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/hfs/hfscommon/BTree/BTreeAllocate.c
+  object = BTreeAllocate.o
+  flags = $cflags
+
+build $outdir/BTreeMiscOps.o: cc bsd/hfs/hfscommon/BTree/BTreeMiscOps.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/hfs/hfscommon/BTree/BTreeMiscOps.c
+  object = BTreeMiscOps.o
+  flags = $cflags
+
+build $outdir/BTreeNodeOps.o: cc bsd/hfs/hfscommon/BTree/BTreeNodeOps.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/hfs/hfscommon/BTree/BTreeNodeOps.c
+  object = BTreeNodeOps.o
+  flags = $cflags
+
+build $outdir/BTreeScanner.o: cc bsd/hfs/hfscommon/BTree/BTreeScanner.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/hfs/hfscommon/BTree/BTreeScanner.c
+  object = BTreeScanner.o
+  flags = $cflags
+
+build $outdir/BTreeTreeOps.o: cc bsd/hfs/hfscommon/BTree/BTreeTreeOps.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/hfs/hfscommon/BTree/BTreeTreeOps.c
+  object = BTreeTreeOps.o
+  flags = $cflags
+
+build $outdir/CatSearch.o: cc bsd/hfs/hfscommon/Catalog/CatSearch.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/hfs/hfscommon/Catalog/CatSearch.c
+  object = CatSearch.o
+  flags = $cflags
+
+build $outdir/Catalog.o: cc bsd/hfs/hfscommon/Catalog/Catalog.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/hfs/hfscommon/Catalog/Catalog.c
+  object = Catalog.o
+  flags = $cflags
+
+build $outdir/CatalogIterators.o: cc bsd/hfs/hfscommon/Catalog/CatalogIterators.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/hfs/hfscommon/Catalog/CatalogIterators.c
+  object = CatalogIterators.o
+  flags = $cflags
+
+build $outdir/CatalogUtilities.o: cc bsd/hfs/hfscommon/Catalog/CatalogUtilities.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/hfs/hfscommon/Catalog/CatalogUtilities.c
+  object = CatalogUtilities.o
+  flags = $cflags
+
+build $outdir/FileIDsServices.o: cc bsd/hfs/hfscommon/Catalog/FileIDsServices.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/hfs/hfscommon/Catalog/FileIDsServices.c
+  object = FileIDsServices.o
+  flags = $cflags
+
+build $outdir/Attributes.o: cc bsd/hfs/hfscommon/Misc/Attributes.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/hfs/hfscommon/Misc/Attributes.c
+  object = Attributes.o
+  flags = $cflags
+
+build $outdir/BTreeWrapper.o: cc bsd/hfs/hfscommon/Misc/BTreeWrapper.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/hfs/hfscommon/Misc/BTreeWrapper.c
+  object = BTreeWrapper.o
+  flags = $cflags
+
+build $outdir/FileExtentMapping.o: cc bsd/hfs/hfscommon/Misc/FileExtentMapping.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/hfs/hfscommon/Misc/FileExtentMapping.c
+  object = FileExtentMapping.o
+  flags = $cflags
+
+build $outdir/FileMgrInit.o: cc bsd/hfs/hfscommon/Misc/FileMgrInit.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/hfs/hfscommon/Misc/FileMgrInit.c
+  object = FileMgrInit.o
+  flags = $cflags
+
+build $outdir/GenericMRUCache.o: cc bsd/hfs/hfscommon/Misc/GenericMRUCache.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/hfs/hfscommon/Misc/GenericMRUCache.c
+  object = GenericMRUCache.o
+  flags = $cflags
+
+build $outdir/HFSInstrumentation.o: cc bsd/hfs/hfscommon/Misc/HFSInstrumentation.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/hfs/hfscommon/Misc/HFSInstrumentation.c
+  object = HFSInstrumentation.o
+  flags = $cflags
+
+build $outdir/HFSUtilities.o: cc bsd/hfs/hfscommon/Misc/HFSUtilities.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/hfs/hfscommon/Misc/HFSUtilities.c
+  object = HFSUtilities.o
+  flags = $cflags
+
+build $outdir/VolumeAllocation.o: cc bsd/hfs/hfscommon/Misc/VolumeAllocation.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/hfs/hfscommon/Misc/VolumeAllocation.c
+  object = VolumeAllocation.o
+  flags = $cflags
+
+build $outdir/VolumeCheck.o: cc bsd/hfs/hfscommon/Misc/VolumeCheck.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/hfs/hfscommon/Misc/VolumeCheck.c
+  object = VolumeCheck.o
+  flags = $cflags
+
+build $outdir/VolumeRequests.o: cc bsd/hfs/hfscommon/Misc/VolumeRequests.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/hfs/hfscommon/Misc/VolumeRequests.c
+  object = VolumeRequests.o
+  flags = $cflags
+
+build $outdir/ConvertUTF.o: cc bsd/hfs/hfscommon/Unicode/ConvertUTF.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/hfs/hfscommon/Unicode/ConvertUTF.c
+  object = ConvertUTF.o
+  flags = $cflags
+
+build $outdir/UnicodeWrappers.o: cc bsd/hfs/hfscommon/Unicode/UnicodeWrappers.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/hfs/hfscommon/Unicode/UnicodeWrappers.c
+  object = UnicodeWrappers.o
+  flags = $cflags
+
+build $outdir/cmu_syscalls.o: cc bsd/kern/cmu_syscalls.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/kern/cmu_syscalls.c
+  object = cmu_syscalls.o
+  flags = $cflags
+
+build $outdir/init_main.o: cc bsd/kern/init_main.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/kern/init_main.c
+  object = init_main.o
+  flags = $cflags
+
+build $outdir/init_sysent.o: cc bsd/kern/init_sysent.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/kern/init_sysent.c
+  object = init_sysent.o
+  flags = $cflags
+
+build $outdir/kern_acct.o: cc bsd/kern/kern_acct.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/kern/kern_acct.c
+  object = kern_acct.o
+  flags = $cflags
+
+build $outdir/kern_clock.o: cc bsd/kern/kern_clock.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/kern/kern_clock.c
+  object = kern_clock.o
+  flags = $cflags
+
+build $outdir/kern_core.o: cc bsd/kern/kern_core.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/kern/kern_core.c
+  object = kern_core.o
+  flags = $cflags
+
+build $outdir/kern_symfile.o: cc bsd/kern/kern_symfile.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/kern/kern_symfile.c
+  object = kern_symfile.o
+  flags = $cflags
+
+build $outdir/kern_descrip.o: cc bsd/kern/kern_descrip.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/kern/kern_descrip.c
+  object = kern_descrip.o
+  flags = $cflags
+
+build $outdir/kern_exec.o: cc bsd/kern/kern_exec.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/kern/kern_exec.c
+  object = kern_exec.o
+  flags = $cflags
+
+build $outdir/kern_exit.o: cc bsd/kern/kern_exit.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/kern/kern_exit.c
+  object = kern_exit.o
+  flags = $cflags
+
+build $outdir/kern_fork.o: cc bsd/kern/kern_fork.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/kern/kern_fork.c
+  object = kern_fork.o
+  flags = $cflags
+
+build $outdir/kern_lock.o: cc bsd/kern/kern_lock.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/kern/kern_lock.c
+  object = kern_lock.o
+  flags = $cflags
+
+build $outdir/kern_malloc.o: cc bsd/kern/kern_malloc.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/kern/kern_malloc.c
+  object = kern_malloc.o
+  flags = $cflags
+
+build $outdir/kern_mman.o: cc bsd/kern/kern_mman.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/kern/kern_mman.c
+  object = kern_mman.o
+  flags = $cflags
+
+build $outdir/kern_physio.o: cc bsd/kern/kern_physio.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/kern/kern_physio.c
+  object = kern_physio.o
+  flags = $cflags
+
+build $outdir/kern_proc.o: cc bsd/kern/kern_proc.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/kern/kern_proc.c
+  object = kern_proc.o
+  flags = $cflags
+
+build $outdir/kern_prot.o: cc bsd/kern/kern_prot.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/kern/kern_prot.c
+  object = kern_prot.o
+  flags = $cflags
+
+build $outdir/kern_resource.o: cc bsd/kern/kern_resource.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/kern/kern_resource.c
+  object = kern_resource.o
+  flags = $cflags
+
+build $outdir/kern_shutdown.o: cc bsd/kern/kern_shutdown.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/kern/kern_shutdown.c
+  object = kern_shutdown.o
+  flags = $cflags
+
+build $outdir/kern_sig.o: cc bsd/kern/kern_sig.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/kern/kern_sig.c
+  object = kern_sig.o
+  flags = $cflags
+
+build $outdir/kern_subr.o: cc bsd/kern/kern_subr.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/kern/kern_subr.c
+  object = kern_subr.o
+  flags = $cflags
+
+build $outdir/kern_synch.o: cc bsd/kern/kern_synch.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/kern/kern_synch.c
+  object = kern_synch.o
+  flags = $cflags
+
+build $outdir/kern_sysctl.o: cc bsd/kern/kern_sysctl.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/kern/kern_sysctl.c
+  object = kern_sysctl.o
+  flags = $cflags
+
+build $outdir/kern_time.o: cc bsd/kern/kern_time.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/kern/kern_time.c
+  object = kern_time.o
+  flags = $cflags
+
+build $outdir/kern_xxx.o: cc bsd/kern/kern_xxx.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/kern/kern_xxx.c
+  object = kern_xxx.o
+  flags = $cflags
+
+build $outdir/mach_process.o: cc bsd/kern/mach_process.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/kern/mach_process.c
+  object = mach_process.o
+  flags = $cflags
+
+build $outdir/qsort.o: cc bsd/kern/qsort.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/kern/qsort.c
+  object = qsort.o
+  flags = $cflags
+
+build $outdir/subr_disk.o: cc bsd/kern/subr_disk.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/kern/subr_disk.c
+  object = subr_disk.o
+  flags = $cflags
+
+build $outdir/subr_log.o: cc bsd/kern/subr_log.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/kern/subr_log.c
+  object = subr_log.o
+  flags = $cflags
+
+build $outdir/subr_prf.o: cc bsd/kern/subr_prf.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/kern/subr_prf.c
+  object = subr_prf.o
+  flags = $cflags
+
+build $outdir/subr_xxx.o: cc bsd/kern/subr_xxx.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/kern/subr_xxx.c
+  object = subr_xxx.o
+  flags = $cflags
+
+build $outdir/sys_generic.o: cc bsd/kern/sys_generic.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/kern/sys_generic.c
+  object = sys_generic.o
+  flags = $cflags
+
+build $outdir/sys_socket.o: cc bsd/kern/sys_socket.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/kern/sys_socket.c
+  object = sys_socket.o
+  flags = $cflags
+
+build $outdir/tty.o: cc bsd/kern/tty.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/kern/tty.c
+  object = tty.o
+  flags = $cflags
+
+build $outdir/tty_compat.o: cc bsd/kern/tty_compat.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/kern/tty_compat.c
+  object = tty_compat.o
+  flags = $cflags
+
+build $outdir/tty_conf.o: cc bsd/kern/tty_conf.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/kern/tty_conf.c
+  object = tty_conf.o
+  flags = $cflags
+
+build $outdir/tty_pty.o: cc bsd/kern/tty_pty.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/kern/tty_pty.c
+  object = tty_pty.o
+  flags = $cflags
+
+build $outdir/tty_subr.o: cc bsd/kern/tty_subr.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/kern/tty_subr.c
+  object = tty_subr.o
+  flags = $cflags
+
+build $outdir/tty_tty.o: cc bsd/kern/tty_tty.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/kern/tty_tty.c
+  object = tty_tty.o
+  flags = $cflags
+
+build $outdir/uipc_domain.o: cc bsd/kern/uipc_domain.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/kern/uipc_domain.c
+  object = uipc_domain.o
+  flags = $cflags
+
+build $outdir/uipc_mbuf.o: cc bsd/kern/uipc_mbuf.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/kern/uipc_mbuf.c
+  object = uipc_mbuf.o
+  flags = $cflags
+
+build $outdir/uipc_proto.o: cc bsd/kern/uipc_proto.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/kern/uipc_proto.c
+  object = uipc_proto.o
+  flags = $cflags
+
+build $outdir/uipc_socket.o: cc bsd/kern/uipc_socket.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/kern/uipc_socket.c
+  object = uipc_socket.o
+  flags = $cflags
+
+build $outdir/uipc_socket2.o: cc bsd/kern/uipc_socket2.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/kern/uipc_socket2.c
+  object = uipc_socket2.o
+  flags = $cflags
+
+build $outdir/uipc_syscalls.o: cc bsd/kern/uipc_syscalls.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/kern/uipc_syscalls.c
+  object = uipc_syscalls.o
+  flags = $cflags
+
+build $outdir/uipc_usrreq.o: cc bsd/kern/uipc_usrreq.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/kern/uipc_usrreq.c
+  object = uipc_usrreq.o
+  flags = $cflags
+
+build $outdir/param.o: cc conf/param.c || $outdir/prepared $outdir/validated generated
+  source = ../../conf/param.c
+  object = param.o
+  flags = $cflags
+
+build $outdir/ipc_entry.o: cc ipc/ipc_entry.c || $outdir/prepared $outdir/validated generated
+  source = ../../ipc/ipc_entry.c
+  object = ipc_entry.o
+  flags = $cflags
+
+build $outdir/ipc_hash.o: cc ipc/ipc_hash.c || $outdir/prepared $outdir/validated generated
+  source = ../../ipc/ipc_hash.c
+  object = ipc_hash.o
+  flags = $cflags
+
+build $outdir/ipc_init.o: cc ipc/ipc_init.c || $outdir/prepared $outdir/validated generated
+  source = ../../ipc/ipc_init.c
+  object = ipc_init.o
+  flags = $cflags
+
+build $outdir/ipc_kmsg.o: cc ipc/ipc_kmsg.c || $outdir/prepared $outdir/validated generated
+  source = ../../ipc/ipc_kmsg.c
+  object = ipc_kmsg.o
+  flags = $cflags
+
+build $outdir/ipc_marequest.o: cc ipc/ipc_marequest.c || $outdir/prepared $outdir/validated generated
+  source = ../../ipc/ipc_marequest.c
+  object = ipc_marequest.o
+  flags = $cflags
+
+build $outdir/ipc_mqueue.o: cc ipc/ipc_mqueue.c || $outdir/prepared $outdir/validated generated
+  source = ../../ipc/ipc_mqueue.c
+  object = ipc_mqueue.o
+  flags = $cflags
+
+build $outdir/ipc_notify.o: cc ipc/ipc_notify.c || $outdir/prepared $outdir/validated generated
+  source = ../../ipc/ipc_notify.c
+  object = ipc_notify.o
+  flags = $cflags
+
+build $outdir/ipc_object.o: cc ipc/ipc_object.c || $outdir/prepared $outdir/validated generated
+  source = ../../ipc/ipc_object.c
+  object = ipc_object.o
+  flags = $cflags
+
+build $outdir/ipc_port.o: cc ipc/ipc_port.c || $outdir/prepared $outdir/validated generated
+  source = ../../ipc/ipc_port.c
+  object = ipc_port.o
+  flags = $cflags
+
+build $outdir/ipc_pset.o: cc ipc/ipc_pset.c || $outdir/prepared $outdir/validated generated
+  source = ../../ipc/ipc_pset.c
+  object = ipc_pset.o
+  flags = $cflags
+
+build $outdir/ipc_right.o: cc ipc/ipc_right.c || $outdir/prepared $outdir/validated generated
+  source = ../../ipc/ipc_right.c
+  object = ipc_right.o
+  flags = $cflags
+
+build $outdir/ipc_space.o: cc ipc/ipc_space.c || $outdir/prepared $outdir/validated generated
+  source = ../../ipc/ipc_space.c
+  object = ipc_space.o
+  flags = $cflags
+
+build $outdir/ipc_splay.o: cc ipc/ipc_splay.c || $outdir/prepared $outdir/validated generated
+  source = ../../ipc/ipc_splay.c
+  object = ipc_splay.o
+  flags = $cflags
+
+build $outdir/ipc_table.o: cc ipc/ipc_table.c || $outdir/prepared $outdir/validated generated
+  source = ../../ipc/ipc_table.c
+  object = ipc_table.o
+  flags = $cflags
+
+build $outdir/ipc_thread.o: cc ipc/ipc_thread.c || $outdir/prepared $outdir/validated generated
+  source = ../../ipc/ipc_thread.c
+  object = ipc_thread.o
+  flags = $cflags
+
+build $outdir/mach_debug.o: cc ipc/mach_debug.c || $outdir/prepared $outdir/validated generated
+  source = ../../ipc/mach_debug.c
+  object = mach_debug.o
+  flags = $cflags
+
+build $outdir/mach_msg.o: cc ipc/mach_msg.c || $outdir/prepared $outdir/validated generated
+  source = ../../ipc/mach_msg.c
+  object = mach_msg.o
+  flags = $cflags
+
+build $outdir/mach_port.o: cc ipc/mach_port.c || $outdir/prepared $outdir/validated generated
+  source = ../../ipc/mach_port.c
+  object = mach_port.o
+  flags = $cflags
+
+build $outdir/ast.o: cc kern/ast.c || $outdir/prepared $outdir/validated generated
+  source = ../../kern/ast.c
+  object = ast.o
+  flags = $cflags
+
+build $outdir/counters.o: cc kern/counters.c || $outdir/prepared $outdir/validated generated
+  source = ../../kern/counters.c
+  object = counters.o
+  flags = $cflags
+
+build $outdir/exception.o: cc kern/exception.c || $outdir/prepared $outdir/validated generated
+  source = ../../kern/exception.c
+  object = exception.o
+  flags = $cflags
+
+build $outdir/host.o: cc kern/host.c || $outdir/prepared $outdir/validated generated
+  source = ../../kern/host.c
+  object = host.o
+  flags = $cflags
+
+build $outdir/ipc_host.o: cc kern/ipc_host.c || $outdir/prepared $outdir/validated generated
+  source = ../../kern/ipc_host.c
+  object = ipc_host.o
+  flags = $cflags
+
+build $outdir/ipc_kobject.o: cc kern/ipc_kobject.c || $outdir/prepared $outdir/validated generated
+  source = ../../kern/ipc_kobject.c
+  object = ipc_kobject.o
+  flags = $cflags
+
+build $outdir/ipc_mig.o: cc kern/ipc_mig.c || $outdir/prepared $outdir/validated generated
+  source = ../../kern/ipc_mig.c
+  object = ipc_mig.o
+  flags = $cflags
+
+build $outdir/ipc_sched.o: cc kern/ipc_sched.c || $outdir/prepared $outdir/validated generated
+  source = ../../kern/ipc_sched.c
+  object = ipc_sched.o
+  flags = $cflags
+
+build $outdir/ipc_tt.o: cc kern/ipc_tt.c || $outdir/prepared $outdir/validated generated
+  source = ../../kern/ipc_tt.c
+  object = ipc_tt.o
+  flags = $cflags
+
+build $outdir/ipc_xxx.o: cc kern/ipc_xxx.c || $outdir/prepared $outdir/validated generated
+  source = ../../kern/ipc_xxx.c
+  object = ipc_xxx.o
+  flags = $cflags
+
+build $outdir/iprintf.o: cc kern/iprintf.c || $outdir/prepared $outdir/validated generated
+  source = ../../kern/iprintf.c
+  object = iprintf.o
+  flags = $cflags
+
+build $outdir/kalloc.o: cc kern/kalloc.c || $outdir/prepared $outdir/validated generated
+  source = ../../kern/kalloc.c
+  object = kalloc.o
+  flags = $cflags
+
+build $outdir/kernel_stack.o: cc kern/kernel_stack.c || $outdir/prepared $outdir/validated generated
+  source = ../../kern/kernel_stack.c
+  object = kernel_stack.o
+  flags = $cflags
+
+build $outdir/lock.o: cc kern/lock.c || $outdir/prepared $outdir/validated generated
+  source = ../../kern/lock.c
+  object = lock.o
+  flags = $cflags
+
+build $outdir/mach_clock.o: cc kern/mach_clock.c || $outdir/prepared $outdir/validated generated
+  source = ../../kern/mach_clock.c
+  object = mach_clock.o
+  flags = $cflags
+
+build $outdir/mach_factor.o: cc kern/mach_factor.c || $outdir/prepared $outdir/validated generated
+  source = ../../kern/mach_factor.c
+  object = mach_factor.o
+  flags = $cflags
+
+build $outdir/mach_header.o: cc kern/mach_header.c || $outdir/prepared $outdir/validated generated
+  source = ../../kern/mach_header.c
+  object = mach_header.o
+  flags = $cflags
+
+build $outdir/mach_init.o: cc kern/mach_init.c || $outdir/prepared $outdir/validated generated
+  source = ../../kern/mach_init.c
+  object = mach_init.o
+  flags = $cflags
+
+build $outdir/mach_fat.o: cc kern/mach_fat.c || $outdir/prepared $outdir/validated generated
+  source = ../../kern/mach_fat.c
+  object = mach_fat.o
+  flags = $cflags
+
+build $outdir/mach_loader.o: cc kern/mach_loader.c || $outdir/prepared $outdir/validated generated
+  source = ../../kern/mach_loader.c
+  object = mach_loader.o
+  flags = $cflags
+
+build $outdir/mach_net.o: cc kern/mach_net.c || $outdir/prepared $outdir/validated generated
+  source = ../../kern/mach_net.c
+  object = mach_net.o
+  flags = $cflags
+
+build $outdir/machine.o: cc kern/machine.c || $outdir/prepared $outdir/validated generated
+  source = ../../kern/machine.c
+  object = machine.o
+  flags = $cflags
+
+build $outdir/mapfs.o: cc kern/mapfs.c || $outdir/prepared $outdir/validated generated
+  source = ../../kern/mapfs.c
+  object = mapfs.o
+  flags = $cflags
+
+build $outdir/miniMon.o: cc kern/miniMon.c || $outdir/prepared $outdir/validated generated
+  source = ../../kern/miniMon.c
+  object = miniMon.o
+  flags = $cflags
+
+build $outdir/ns_timer.o: cc kern/ns_timer.c || $outdir/prepared $outdir/validated generated
+  source = ../../kern/ns_timer.c
+  object = ns_timer.o
+  flags = $cflags
+
+build $outdir/parallel.o: cc kern/parallel.c || $outdir/prepared $outdir/validated generated
+  source = ../../kern/parallel.c
+  object = parallel.o
+  flags = $cflags
+
+build $outdir/power.o: cc kern/power.c || $outdir/prepared $outdir/validated generated
+  source = ../../kern/power.c
+  object = power.o
+  flags = $cflags
+
+build $outdir/priority.o: cc kern/priority.c || $outdir/prepared $outdir/validated generated
+  source = ../../kern/priority.c
+  object = priority.o
+  flags = $cflags
+
+build $outdir/processor.o: cc kern/processor.c || $outdir/prepared $outdir/validated generated
+  source = ../../kern/processor.c
+  object = processor.o
+  flags = $cflags
+
+build $outdir/queue.o: cc kern/queue.c || $outdir/prepared $outdir/validated generated
+  source = ../../kern/queue.c
+  object = queue.o
+  flags = $cflags
+
+build $outdir/kdp.o: cc kern/kdp.c || $outdir/prepared $outdir/validated generated
+  source = ../../kern/kdp.c
+  object = kdp.o
+  flags = $cflags
+
+build $outdir/kdp_udp.o: cc kern/kdp_udp.c || $outdir/prepared $outdir/validated generated
+  source = ../../kern/kdp_udp.c
+  object = kdp_udp.o
+  flags = $cflags
+
+build $outdir/sched_prim.o: cc kern/sched_prim.c || $outdir/prepared $outdir/validated generated
+  source = ../../kern/sched_prim.c
+  object = sched_prim.o
+  flags = $cflags
+
+build $outdir/slave.o: cc kern/slave.c || $outdir/prepared $outdir/validated generated
+  source = ../../kern/slave.c
+  object = slave.o
+  flags = $cflags
+
+build $outdir/syscall_subr.o: cc kern/syscall_subr.c || $outdir/prepared $outdir/validated generated
+  source = ../../kern/syscall_subr.c
+  object = syscall_subr.o
+  flags = $cflags
+
+build $outdir/syscall_sw.o: cc kern/syscall_sw.c || $outdir/prepared $outdir/validated generated
+  source = ../../kern/syscall_sw.c
+  object = syscall_sw.o
+  flags = $cflags
+
+build $outdir/task.o: cc kern/task.c || $outdir/prepared $outdir/validated generated
+  source = ../../kern/task.c
+  object = task.o
+  flags = $cflags
+
+build $outdir/thread.o: cc kern/thread.c || $outdir/prepared $outdir/validated generated
+  source = ../../kern/thread.c
+  object = thread.o
+  flags = $cflags
+
+build $outdir/thread_call.o: cc kern/thread_call.c || $outdir/prepared $outdir/validated generated
+  source = ../../kern/thread_call.c
+  object = thread_call.o
+  flags = $cflags
+
+build $outdir/thread_swap.o: cc kern/thread_swap.c || $outdir/prepared $outdir/validated generated
+  source = ../../kern/thread_swap.c
+  object = thread_swap.o
+  flags = $cflags
+
+build $outdir/time_stamp.o: cc kern/time_stamp.c || $outdir/prepared $outdir/validated generated
+  source = ../../kern/time_stamp.c
+  object = time_stamp.o
+  flags = $cflags
+
+build $outdir/timer.o: cc kern/timer.c || $outdir/prepared $outdir/validated generated
+  source = ../../kern/timer.c
+  object = timer.o
+  flags = $cflags
+
+build $outdir/zalloc.o: cc kern/zalloc.c || $outdir/prepared $outdir/validated generated
+  source = ../../kern/zalloc.c
+  object = zalloc.o
+  flags = $cflags
+
+build $outdir/kern_server.o: cc kernserv/kern_server.c || $outdir/prepared $outdir/validated generated
+  source = ../../kernserv/kern_server.c
+  object = kern_server.o
+  flags = $cflags
+
+build $outdir/kern_notify.o: cc kernserv/kern_notify.c || $outdir/prepared $outdir/validated generated
+  source = ../../kernserv/kern_notify.c
+  object = kern_notify.o
+  flags = $cflags
+
+build $outdir/kern_server_handler.o: cc $outdir/kernserv/kern_server_handler.c || $outdir/prepared $outdir/validated generated
+  source = kernserv/kern_server_handler.c
+  object = kern_server_handler.o
+  flags = $cflags
+
+build $outdir/kern_server_reply_user.o: cc $outdir/kernserv/kern_server_reply_user.c || $outdir/prepared $outdir/validated generated
+  source = kernserv/kern_server_reply_user.c
+  object = kern_server_reply_user.o
+  flags = $cflags
+
+build $outdir/exc_server.o: cc $outdir/mach/exc_server.c || $outdir/prepared $outdir/validated generated
+  source = mach/exc_server.c
+  object = exc_server.o
+  flags = $cflags
+
+build $outdir/mach_host_server.o: cc $outdir/mach/mach_host_server.c || $outdir/prepared $outdir/validated generated
+  source = mach/mach_host_server.c
+  object = mach_host_server.o
+  flags = $cflags
+
+build $outdir/mach_port_server.o: cc $outdir/mach/mach_port_server.c || $outdir/prepared $outdir/validated generated
+  source = mach/mach_port_server.c
+  object = mach_port_server.o
+  flags = $cflags
+
+build $outdir/mach_server.o: cc $outdir/mach/mach_server.c || $outdir/prepared $outdir/validated generated
+  source = mach/mach_server.c
+  object = mach_server.o
+  flags = $cflags
+
+build $outdir/mach_debug_server.o: cc $outdir/mach_debug/mach_debug_server.c || $outdir/prepared $outdir/validated generated
+  source = mach_debug/mach_debug_server.c
+  object = mach_debug_server.o
+  flags = $cflags
+
+build $outdir/ux_exception.o: cc uxkern/ux_exception.c || $outdir/prepared $outdir/validated generated
+  source = ../../uxkern/ux_exception.c
+  object = ux_exception.o
+  flags = $cflags
+
+build $outdir/vm_fault.o: cc vm/vm_fault.c || $outdir/prepared $outdir/validated generated
+  source = ../../vm/vm_fault.c
+  object = vm_fault.o
+  flags = $cflags
+
+build $outdir/vm_init.o: cc vm/vm_init.c || $outdir/prepared $outdir/validated generated
+  source = ../../vm/vm_init.c
+  object = vm_init.o
+  flags = $cflags
+
+build $outdir/vm_kern.o: cc vm/vm_kern.c || $outdir/prepared $outdir/validated generated
+  source = ../../vm/vm_kern.c
+  object = vm_kern.o
+  flags = $cflags
+
+build $outdir/vm_map.o: cc vm/vm_map.c || $outdir/prepared $outdir/validated generated
+  source = ../../vm/vm_map.c
+  object = vm_map.o
+  flags = $cflags
+
+build $outdir/vm_mem_region.o: cc vm/vm_mem_region.c || $outdir/prepared $outdir/validated generated
+  source = ../../vm/vm_mem_region.c
+  object = vm_mem_region.o
+  flags = $cflags
+
+build $outdir/vm_object.o: cc vm/vm_object.c || $outdir/prepared $outdir/validated generated
+  source = ../../vm/vm_object.c
+  object = vm_object.o
+  flags = $cflags
+
+build $outdir/vm_pageout.o: cc vm/vm_pageout.c || $outdir/prepared $outdir/validated generated
+  source = ../../vm/vm_pageout.c
+  object = vm_pageout.o
+  flags = $cflags
+
+build $outdir/vm_pager.o: cc vm/vm_pager.c || $outdir/prepared $outdir/validated generated
+  source = ../../vm/vm_pager.c
+  object = vm_pager.o
+  flags = $cflags
+
+build $outdir/vm_policy.o: cc vm/vm_policy.c || $outdir/prepared $outdir/validated generated
+  source = ../../vm/vm_policy.c
+  object = vm_policy.o
+  flags = $cflags
+
+build $outdir/vm_resident.o: cc vm/vm_resident.c || $outdir/prepared $outdir/validated generated
+  source = ../../vm/vm_resident.c
+  object = vm_resident.o
+  flags = $cflags
+
+build $outdir/vm_synchronize.o: cc vm/vm_synchronize.c || $outdir/prepared $outdir/validated generated
+  source = ../../vm/vm_synchronize.c
+  object = vm_synchronize.o
+  flags = $cflags
+
+build $outdir/vm_unix.o: cc vm/vm_unix.c || $outdir/prepared $outdir/validated generated
+  source = ../../vm/vm_unix.c
+  object = vm_unix.o
+  flags = $cflags
+
+build $outdir/vm_user.o: cc vm/vm_user.c || $outdir/prepared $outdir/validated generated
+  source = ../../vm/vm_user.c
+  object = vm_user.o
+  flags = $cflags
+
+build $outdir/vnode_pager.o: cc vm/vnode_pager.c || $outdir/prepared $outdir/validated generated
+  source = ../../vm/vnode_pager.c
+  object = vnode_pager.o
+  flags = $cflags
+
+build $outdir/objc_support.o: cc driverkit/objc_support.m || $outdir/prepared $outdir/validated generated
+  source = ../../driverkit/objc_support.m
+  object = objc_support.o
+  flags = $cflags
+
+build $outdir/autoconfCommon.o: cc driverkit/autoconfCommon.m || $outdir/prepared $outdir/validated generated
+  source = ../../driverkit/autoconfCommon.m
+  object = autoconfCommon.o
+  flags = $cflags
+
+build $outdir/KernLock.o: cc driverkit/KernLock.m || $outdir/prepared $outdir/validated generated
+  source = ../../driverkit/KernLock.m
+  object = KernLock.o
+  flags = $cflags
+
+build $outdir/KernBus.o: cc driverkit/KernBus.m || $outdir/prepared $outdir/validated generated
+  source = ../../driverkit/KernBus.m
+  object = KernBus.o
+  flags = $cflags
+
+build $outdir/KernBusMemory.o: cc driverkit/KernBusMemory.m || $outdir/prepared $outdir/validated generated
+  source = ../../driverkit/KernBusMemory.m
+  object = KernBusMemory.o
+  flags = $cflags
+
+build $outdir/KernBusInterrupt.o: cc driverkit/KernBusInterrupt.m || $outdir/prepared $outdir/validated generated
+  source = ../../driverkit/KernBusInterrupt.m
+  object = KernBusInterrupt.o
+  flags = $cflags
+
+build $outdir/KernDevice.o: cc driverkit/KernDevice.m || $outdir/prepared $outdir/validated generated
+  source = ../../driverkit/KernDevice.m
+  object = KernDevice.o
+  flags = $cflags
+
+build $outdir/KernDeviceDescription.o: cc driverkit/KernDeviceDescription.m || $outdir/prepared $outdir/validated generated
+  source = ../../driverkit/KernDeviceDescription.m
+  object = KernDeviceDescription.o
+  flags = $cflags
+
+build $outdir/KernStringList.o: cc driverkit/KernStringList.m || $outdir/prepared $outdir/validated generated
+  source = ../../driverkit/KernStringList.m
+  object = KernStringList.o
+  flags = $cflags
+
+build $outdir/driverServerXXX.o: cc driverkit/driverServerXXX.m || $outdir/prepared $outdir/validated generated
+  source = ../../driverkit/driverServerXXX.m
+  object = driverServerXXX.o
+  flags = $cflags
+
+build $outdir/driverServerServer.o: cc $outdir/driverkit/driverServerServer.c || $outdir/prepared $outdir/validated generated
+  source = driverkit/driverServerServer.c
+  object = driverServerServer.o
+  flags = $cflags
+
+build $outdir/SCSIDiskKern.o: cc bsd/dev/SCSIDiskKern.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/SCSIDiskKern.m
+  object = SCSIDiskKern.o
+  flags = $cflags
+
+build $outdir/SCSIGenericKern.o: cc bsd/dev/SCSIGenericKern.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/SCSIGenericKern.m
+  object = SCSIGenericKern.o
+  flags = $cflags
+
+build $outdir/ev.o: cc bsd/dev/ev.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ev.c
+  object = ev.o
+  flags = $cflags
+
+build $outdir/ddm.o: cc driverkit/ddm.c || $outdir/prepared $outdir/validated generated
+  source = ../../driverkit/ddm.c
+  object = ddm.o
+  flags = $cflags
+
+build $outdir/atp_alloc.o: cc bsd/netat/atp_alloc.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/netat/atp_alloc.c
+  object = atp_alloc.o
+  flags = $cflags
+
+build $outdir/atp_misc.o: cc bsd/netat/atp_misc.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/netat/atp_misc.c
+  object = atp_misc.o
+  flags = $cflags
+
+build $outdir/atp_open.o: cc bsd/netat/atp_open.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/netat/atp_open.c
+  object = atp_open.o
+  flags = $cflags
+
+build $outdir/atp_read.o: cc bsd/netat/atp_read.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/netat/atp_read.c
+  object = atp_read.o
+  flags = $cflags
+
+build $outdir/atp_write.o: cc bsd/netat/atp_write.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/netat/atp_write.c
+  object = atp_write.o
+  flags = $cflags
+
+build $outdir/asp_proto.o: cc bsd/netat/asp_proto.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/netat/asp_proto.c
+  object = asp_proto.o
+  flags = $cflags
+
+build $outdir/ddp_aep.o: cc bsd/netat/ddp_aep.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/netat/ddp_aep.c
+  object = ddp_aep.o
+  flags = $cflags
+
+build $outdir/ddp.o: cc bsd/netat/ddp.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/netat/ddp.c
+  object = ddp.o
+  flags = $cflags
+
+build $outdir/ddp_brt.o: cc bsd/netat/ddp_brt.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/netat/ddp_brt.c
+  object = ddp_brt.o
+  flags = $cflags
+
+build $outdir/ddp_proto.o: cc bsd/netat/ddp_proto.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/netat/ddp_proto.c
+  object = ddp_proto.o
+  flags = $cflags
+
+build $outdir/ddp_nbp.o: cc bsd/netat/ddp_nbp.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/netat/ddp_nbp.c
+  object = ddp_nbp.o
+  flags = $cflags
+
+build $outdir/ddp_rtmp.o: cc bsd/netat/ddp_rtmp.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/netat/ddp_rtmp.c
+  object = ddp_rtmp.o
+  flags = $cflags
+
+build $outdir/ddp_sip.o: cc bsd/netat/ddp_sip.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/netat/ddp_sip.c
+  object = ddp_sip.o
+  flags = $cflags
+
+build $outdir/ddp_rtmptable.o: cc bsd/netat/ddp_rtmptable.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/netat/ddp_rtmptable.c
+  object = ddp_rtmptable.o
+  flags = $cflags
+
+build $outdir/ddp_r_rtmp.o: cc bsd/netat/ddp_r_rtmp.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/netat/ddp_r_rtmp.c
+  object = ddp_r_rtmp.o
+  flags = $cflags
+
+build $outdir/ddp_r_zip.o: cc bsd/netat/ddp_r_zip.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/netat/ddp_r_zip.c
+  object = ddp_r_zip.o
+  flags = $cflags
+
+build $outdir/ddp_aarp.o: cc bsd/netat/ddp_aarp.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/netat/ddp_aarp.c
+  object = ddp_aarp.o
+  flags = $cflags
+
+build $outdir/ddp_lap.o: cc bsd/netat/ddp_lap.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/netat/ddp_lap.c
+  object = ddp_lap.o
+  flags = $cflags
+
+build $outdir/adsp_CLDeny.o: cc bsd/netat/adsp_CLDeny.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/netat/adsp_CLDeny.c
+  object = adsp_CLDeny.o
+  flags = $cflags
+
+build $outdir/adsp_Read.o: cc bsd/netat/adsp_Read.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/netat/adsp_Read.c
+  object = adsp_Read.o
+  flags = $cflags
+
+build $outdir/adsp_Timer.o: cc bsd/netat/adsp_Timer.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/netat/adsp_Timer.c
+  object = adsp_Timer.o
+  flags = $cflags
+
+build $outdir/adsp_attention.o: cc bsd/netat/adsp_attention.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/netat/adsp_attention.c
+  object = adsp_attention.o
+  flags = $cflags
+
+build $outdir/adsp_CLListen.o: cc bsd/netat/adsp_CLListen.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/netat/adsp_CLListen.c
+  object = adsp_CLListen.o
+  flags = $cflags
+
+build $outdir/adsp_NewCID.o: cc bsd/netat/adsp_NewCID.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/netat/adsp_NewCID.c
+  object = adsp_NewCID.o
+  flags = $cflags
+
+build $outdir/adsp_TimerElem.o: cc bsd/netat/adsp_TimerElem.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/netat/adsp_TimerElem.c
+  object = adsp_TimerElem.o
+  flags = $cflags
+
+build $outdir/adsp_reset.o: cc bsd/netat/adsp_reset.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/netat/adsp_reset.c
+  object = adsp_reset.o
+  flags = $cflags
+
+build $outdir/adsp_Close.o: cc bsd/netat/adsp_Close.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/netat/adsp_Close.c
+  object = adsp_Close.o
+  flags = $cflags
+
+build $outdir/adsp_Open.o: cc bsd/netat/adsp_Open.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/netat/adsp_Open.c
+  object = adsp_Open.o
+  flags = $cflags
+
+build $outdir/adsp_RxAttn.o: cc bsd/netat/adsp_RxAttn.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/netat/adsp_RxAttn.c
+  object = adsp_RxAttn.o
+  flags = $cflags
+
+build $outdir/adsp_Write.o: cc bsd/netat/adsp_Write.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/netat/adsp_Write.c
+  object = adsp_Write.o
+  flags = $cflags
+
+build $outdir/adsp_Control.o: cc bsd/netat/adsp_Control.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/netat/adsp_Control.c
+  object = adsp_Control.o
+  flags = $cflags
+
+build $outdir/adsp_RxData.o: cc bsd/netat/adsp_RxData.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/netat/adsp_RxData.c
+  object = adsp_RxData.o
+  flags = $cflags
+
+build $outdir/adsp.o: cc bsd/netat/adsp.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/netat/adsp.c
+  object = adsp.o
+  flags = $cflags
+
+build $outdir/adsp_Init.o: cc bsd/netat/adsp_Init.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/netat/adsp_Init.c
+  object = adsp_Init.o
+  flags = $cflags
+
+build $outdir/adsp_Options.o: cc bsd/netat/adsp_Options.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/netat/adsp_Options.c
+  object = adsp_Options.o
+  flags = $cflags
+
+build $outdir/adsp_stream.o: cc bsd/netat/adsp_stream.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/netat/adsp_stream.c
+  object = adsp_stream.o
+  flags = $cflags
+
+build $outdir/adsp_InitGlobals.o: cc bsd/netat/adsp_InitGlobals.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/netat/adsp_InitGlobals.c
+  object = adsp_InitGlobals.o
+  flags = $cflags
+
+build $outdir/adsp_Packet.o: cc bsd/netat/adsp_Packet.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/netat/adsp_Packet.c
+  object = adsp_Packet.o
+  flags = $cflags
+
+build $outdir/adsp_Status.o: cc bsd/netat/adsp_Status.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/netat/adsp_Status.c
+  object = adsp_Status.o
+  flags = $cflags
+
+build $outdir/adsp_misc.o: cc bsd/netat/adsp_misc.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/netat/adsp_misc.c
+  object = adsp_misc.o
+  flags = $cflags
+
+build $outdir/sys_glue.o: cc bsd/netat/sys_glue.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/netat/sys_glue.c
+  object = sys_glue.o
+  flags = $cflags
+
+build $outdir/sys_dep.o: cc bsd/netat/sys_dep.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/netat/sys_dep.c
+  object = sys_dep.o
+  flags = $cflags
+
+build $outdir/drv_dep.o: cc bsd/netat/drv_dep.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/netat/drv_dep.c
+  object = drv_dep.o
+  flags = $cflags
+
+build $outdir/ext2fs_alloc.o: cc bsd/ext2fs/ext2fs_alloc.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/ext2fs/ext2fs_alloc.c
+  object = ext2fs_alloc.o
+  flags = $cflags
+
+build $outdir/ext2fs_balloc.o: cc bsd/ext2fs/ext2fs_balloc.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/ext2fs/ext2fs_balloc.c
+  object = ext2fs_balloc.o
+  flags = $cflags
+
+build $outdir/ext2fs_bmap.o: cc bsd/ext2fs/ext2fs_bmap.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/ext2fs/ext2fs_bmap.c
+  object = ext2fs_bmap.o
+  flags = $cflags
+
+build $outdir/ext2fs_bswap.o: cc bsd/ext2fs/ext2fs_bswap.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/ext2fs/ext2fs_bswap.c
+  object = ext2fs_bswap.o
+  flags = $cflags
+
+build $outdir/ext2fs_inode.o: cc bsd/ext2fs/ext2fs_inode.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/ext2fs/ext2fs_inode.c
+  object = ext2fs_inode.o
+  flags = $cflags
+
+build $outdir/ext2fs_lookup.o: cc bsd/ext2fs/ext2fs_lookup.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/ext2fs/ext2fs_lookup.c
+  object = ext2fs_lookup.o
+  flags = $cflags
+
+build $outdir/ext2fs_readwrite.o: cc bsd/ext2fs/ext2fs_readwrite.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/ext2fs/ext2fs_readwrite.c
+  object = ext2fs_readwrite.o
+  flags = $cflags
+
+build $outdir/ext2fs_subr.o: cc bsd/ext2fs/ext2fs_subr.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/ext2fs/ext2fs_subr.c
+  object = ext2fs_subr.o
+  flags = $cflags
+
+build $outdir/ext2fs_vfsops.o: cc bsd/ext2fs/ext2fs_vfsops.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/ext2fs/ext2fs_vfsops.c
+  object = ext2fs_vfsops.o
+  flags = $cflags
+
+build $outdir/ext2fs_vnops.o: cc bsd/ext2fs/ext2fs_vnops.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/ext2fs/ext2fs_vnops.c
+  object = ext2fs_vnops.o
+  flags = $cflags
+
+build $outdir/ext2fs_rhapsody.o: cc bsd/ext2fs/ext2fs_rhapsody.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/ext2fs/ext2fs_rhapsody.c
+  object = ext2fs_rhapsody.o
+  flags = $cflags
+
+build $outdir/ext2_disk.o: cc bsd/ext2fs/ext2_disk.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/ext2fs/ext2_disk.c
+  object = ext2_disk.o
+  flags = $cflags
+
+build $outdir/vol.o: cc bsd/dev/vol.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/vol.c
+  object = vol.o
+  flags = $cflags
+
+build $outdir/if_en.o: cc bsd/if/ppc/if_en.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/if/ppc/if_en.c
+  object = if_en.o
+  flags = $cflags
+
+build $outdir/mace.o: cc bsd/if/ppc/mace.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/if/ppc/mace.c
+  object = mace.o
+  flags = $cflags
+
+build $outdir/if_blue.o: cc bsd/net/if_blue.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/net/if_blue.c
+  object = if_blue.o
+  flags = $cflags
+
+build $outdir/ndrv.o: cc bsd/net/ndrv.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/net/ndrv.c
+  object = ndrv.o
+  flags = $cflags
+
+build $outdir/in_cksum.o: cc bsd/netinet/in_cksum.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/netinet/in_cksum.c
+  object = in_cksum.o
+  flags = $cflags
+
+build $outdir/xpr.o: cc kern/xpr.c || $outdir/prepared $outdir/validated generated
+  source = ../../kern/xpr.c
+  object = xpr.o
+  flags = $cflags
+
+build $outdir/APM.o: cc machdep/ppc/APM.c || $outdir/prepared $outdir/validated generated
+  source = ../../machdep/ppc/APM.c
+  object = APM.o
+  flags = $cflags
+
+build $outdir/alignment.o: cc machdep/ppc/alignment.c || $outdir/prepared $outdir/validated generated
+  source = ../../machdep/ppc/alignment.c
+  object = alignment.o
+  flags = $cflags
+
+build $outdir/ast_ppc.o: cc machdep/ppc/ast_ppc.c || $outdir/prepared $outdir/validated generated
+  source = ../../machdep/ppc/ast_ppc.c
+  object = ast_ppc.o
+  flags = $cflags
+
+build $outdir/DeviceTree.o: cc machdep/ppc/DeviceTree.c || $outdir/prepared $outdir/validated generated
+  source = ../../machdep/ppc/DeviceTree.c
+  object = DeviceTree.o
+  flags = $cflags
+
+build $outdir/dbdma.o: cc machdep/ppc/dbdma.c || $outdir/prepared $outdir/validated generated
+  source = ../../machdep/ppc/dbdma.c
+  object = dbdma.o
+  flags = $cflags
+
+build $outdir/diag.o: cc machdep/ppc/diag.c || $outdir/prepared $outdir/validated generated
+  source = ../../machdep/ppc/diag.c
+  object = diag.o
+  flags = $cflags
+
+build $outdir/fault_copy.o: cc machdep/ppc/fault_copy.c || $outdir/prepared $outdir/validated generated
+  source = ../../machdep/ppc/fault_copy.c
+  object = fault_copy.o
+  flags = $cflags
+
+build $outdir/fpu_ppc.o: cc machdep/ppc/fpu_ppc.c || $outdir/prepared $outdir/validated generated
+  source = ../../machdep/ppc/fpu_ppc.c
+  object = fpu_ppc.o
+  flags = $cflags
+
+build $outdir/htab.o: cc machdep/ppc/htab.c || $outdir/prepared $outdir/validated generated
+  source = ../../machdep/ppc/htab.c
+  object = htab.o
+  flags = $cflags
+
+build $outdir/kdp_machdep.o: cc machdep/ppc/kdp_machdep.c || $outdir/prepared $outdir/validated generated
+  source = ../../machdep/ppc/kdp_machdep.c
+  object = kdp_machdep.o
+  flags = $cflags
+
+build $outdir/kern_machdep.o: cc machdep/ppc/kern_machdep.c || $outdir/prepared $outdir/validated generated
+  source = ../../machdep/ppc/kern_machdep.c
+  object = kern_machdep.o
+  flags = $cflags
+
+build $outdir/machdep.o: cc machdep/ppc/machdep.c || $outdir/prepared $outdir/validated generated
+  source = ../../machdep/ppc/machdep.c
+  object = machdep.o
+  flags = $cflags
+
+build $outdir/machine_clock.o: cc machdep/ppc/machine_clock.c || $outdir/prepared $outdir/validated generated
+  source = ../../machdep/ppc/machine_clock.c
+  object = machine_clock.o
+  flags = $cflags
+
+build $outdir/miniMonMachdep.o: cc machdep/ppc/miniMonMachdep.c || $outdir/prepared $outdir/validated generated
+  source = ../../machdep/ppc/miniMonMachdep.c
+  object = miniMonMachdep.o
+  flags = $cflags
+
+build $outdir/misc.o: cc machdep/ppc/misc.c || $outdir/prepared $outdir/validated generated
+  source = ../../machdep/ppc/misc.c
+  object = misc.o
+  flags = $cflags
+
+build $outdir/pcb.o: cc machdep/ppc/pcb.c || $outdir/prepared $outdir/validated generated
+  source = ../../machdep/ppc/pcb.c
+  object = pcb.o
+  flags = $cflags
+
+build $outdir/pmap.o: cc machdep/ppc/pmap.c || $outdir/prepared $outdir/validated generated
+  source = ../../machdep/ppc/pmap.c
+  object = pmap.o
+  flags = $cflags
+
+build $outdir/PseudoKernel.o: cc machdep/ppc/PseudoKernel.c || $outdir/prepared $outdir/validated generated
+  source = ../../machdep/ppc/PseudoKernel.c
+  object = PseudoKernel.o
+  flags = $cflags
+
+build $outdir/serial_io.o: cc machdep/ppc/serial_io.c || $outdir/prepared $outdir/validated generated
+  source = ../../machdep/ppc/serial_io.c
+  object = serial_io.o
+  flags = $cflags
+
+build $outdir/swapgeneric.o: cc machdep/ppc/swapgeneric.m || $outdir/prepared $outdir/validated generated
+  source = ../../machdep/ppc/swapgeneric.m
+  object = swapgeneric.o
+  flags = $cflags
+
+build $outdir/syscall_names.o: cc machdep/ppc/syscall_names.c || $outdir/prepared $outdir/validated generated
+  source = ../../machdep/ppc/syscall_names.c
+  object = syscall_names.o
+  flags = $cflags
+
+build $outdir/systemcalls.o: cc machdep/ppc/systemcalls.c || $outdir/prepared $outdir/validated generated
+  source = ../../machdep/ppc/systemcalls.c
+  object = systemcalls.o
+  flags = $cflags
+
+build $outdir/trap.o: cc machdep/ppc/trap.c || $outdir/prepared $outdir/validated generated
+  source = ../../machdep/ppc/trap.c
+  object = trap.o
+  flags = $cflags
+
+build $outdir/unix_signal.o: cc machdep/ppc/unix_signal.c || $outdir/prepared $outdir/validated generated
+  source = ../../machdep/ppc/unix_signal.c
+  object = unix_signal.o
+  flags = $cflags
+
+build $outdir/unix_startup.o: cc machdep/ppc/unix_startup.c || $outdir/prepared $outdir/validated generated
+  source = ../../machdep/ppc/unix_startup.c
+  object = unix_startup.o
+  flags = $cflags
+
+build $outdir/bcopy.o: cc machdep/ppc/bcopy.s || $outdir/prepared $outdir/validated generated
+  source = ../../machdep/ppc/bcopy.s
+  object = bcopy.o
+  flags = $sflags
+
+build $outdir/cache.o: cc machdep/ppc/cache.s || $outdir/prepared $outdir/validated generated
+  source = ../../machdep/ppc/cache.s
+  object = cache.o
+  flags = $sflags
+
+build $outdir/cswtch.o: cc machdep/ppc/cswtch.s || $outdir/prepared $outdir/validated generated
+  source = ../../machdep/ppc/cswtch.s
+  object = cswtch.o
+  flags = $sflags
+
+build $outdir/fpu.o: cc machdep/ppc/fpu.s || $outdir/prepared $outdir/validated generated
+  source = ../../machdep/ppc/fpu.s
+  object = fpu.o
+  flags = $sflags
+
+build $outdir/hw_exception.o: cc machdep/ppc/hw_exception.s || $outdir/prepared $outdir/validated generated
+  source = ../../machdep/ppc/hw_exception.s
+  object = hw_exception.o
+  flags = $sflags
+
+build $outdir/lowmem_vectors.o: cc machdep/ppc/lowmem_vectors.s || $outdir/prepared $outdir/validated generated
+  source = ../../machdep/ppc/lowmem_vectors.s
+  object = lowmem_vectors.o
+  flags = $sflags
+
+build $outdir/mcount.o: cc machdep/ppc/mcount.s || $outdir/prepared $outdir/validated generated
+  source = ../../machdep/ppc/mcount.s
+  object = mcount.o
+  flags = $sflags
+
+build $outdir/misc_asm.o: cc machdep/ppc/misc_asm.s || $outdir/prepared $outdir/validated generated
+  source = ../../machdep/ppc/misc_asm.s
+  object = misc_asm.o
+  flags = $sflags
+
+build $outdir/movc.o: cc machdep/ppc/movc.s || $outdir/prepared $outdir/validated generated
+  source = ../../machdep/ppc/movc.s
+  object = movc.o
+  flags = $sflags
+
+build $outdir/setjmp.o: cc machdep/ppc/setjmp.s || $outdir/prepared $outdir/validated generated
+  source = ../../machdep/ppc/setjmp.s
+  object = setjmp.o
+  flags = $sflags
+
+build $outdir/start.o: cc machdep/ppc/start.s || $outdir/prepared $outdir/validated generated
+  source = ../../machdep/ppc/start.s
+  object = start.o
+  flags = $sflags
+
+build $outdir/xsumas.o: cc machdep/ppc/xsumas.s || $outdir/prepared $outdir/validated generated
+  source = ../../machdep/ppc/xsumas.s
+  object = xsumas.o
+  flags = $sflags
+
+build $outdir/abs.o: cc machdep/ppc/libc/abs.s || $outdir/prepared $outdir/validated generated
+  source = ../../machdep/ppc/libc/abs.s
+  object = abs.o
+  flags = $sflags
+
+build $outdir/bcmp.o: cc machdep/ppc/libc/bcmp.s || $outdir/prepared $outdir/validated generated
+  source = ../../machdep/ppc/libc/bcmp.s
+  object = bcmp.o
+  flags = $sflags
+
+build $outdir/ffs.o: cc machdep/ppc/libc/ffs.s || $outdir/prepared $outdir/validated generated
+  source = ../../machdep/ppc/libc/ffs.s
+  object = ffs.o
+  flags = $sflags
+
+build $outdir/conf.o: cc bsd/dev/ppc/conf.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/conf.c
+  object = conf.o
+  flags = $cflags
+
+build $outdir/cons.o: cc bsd/dev/ppc/cons.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/cons.c
+  object = cons.o
+  flags = $cflags
+
+build $outdir/FBConsole.o: cc bsd/dev/ppc/FBConsole.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/FBConsole.c
+  object = FBConsole.o
+  flags = $cflags
+
+build $outdir/SerialConsole.o: cc bsd/dev/ppc/SerialConsole.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/SerialConsole.c
+  object = SerialConsole.o
+  flags = $cflags
+
+build $outdir/km.o: cc bsd/dev/ppc/km.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/km.m
+  object = km.o
+  flags = $cflags
+
+build $outdir/kmDevice.o: cc bsd/dev/ppc/kmDevice.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/kmDevice.m
+  object = kmDevice.o
+  flags = $cflags
+
+build $outdir/kmGraphics.o: cc bsd/dev/ppc/kmGraphics.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/kmGraphics.m
+  object = kmGraphics.o
+  flags = $cflags
+
+build $outdir/kmLocalized.o: cc bsd/dev/ppc/kmLocalized.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/kmLocalized.m
+  object = kmLocalized.o
+  flags = $cflags
+
+build $outdir/mem.o: cc bsd/dev/ppc/mem.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/mem.c
+  object = mem.o
+  flags = $cflags
+
+build $outdir/nvram.o: cc bsd/dev/ppc/nvram.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/nvram.c
+  object = nvram.o
+  flags = $cflags
+
+build $outdir/PowerSurgeMB.o: cc bsd/dev/ppc/PowerSurgeMB.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/PowerSurgeMB.m
+  object = PowerSurgeMB.o
+  flags = $cflags
+
+build $outdir/video_scroll.o: cc bsd/dev/ppc/video_scroll.s || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/video_scroll.s
+  object = video_scroll.o
+  flags = $sflags
+
+build $outdir/adb.o: cc bsd/dev/ppc/adb.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/adb.m
+  object = adb.o
+  flags = $cflags
+
+build $outdir/cuda.o: cc bsd/dev/ppc/drvCuda/cuda.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvCuda/cuda.m
+  object = cuda.o
+  flags = $cflags
+
+build $outdir/pmu.o: cc bsd/dev/ppc/drvPMU/pmu.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvPMU/pmu.m
+  object = pmu.o
+  flags = $cflags
+
+build $outdir/IOADBBus.o: cc bsd/dev/ppc/IOADBBus.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/IOADBBus.m
+  object = IOADBBus.o
+  flags = $cflags
+
+build $outdir/EventShmemLock.o: cc bsd/dev/ppc/EventShmemLock.s || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/EventShmemLock.s
+  object = EventShmemLock.o
+  flags = $sflags
+
+build $outdir/EventSrcPCKeyboard.o: cc bsd/dev/ppc/EventSrcPCKeyboard.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/EventSrcPCKeyboard.m
+  object = EventSrcPCKeyboard.o
+  flags = $cflags
+
+build $outdir/EventSrcPCPointer.o: cc bsd/dev/ppc/EventSrcPCPointer.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/EventSrcPCPointer.m
+  object = EventSrcPCPointer.o
+  flags = $cflags
+
+build $outdir/PPCKeyboard.o: cc bsd/dev/ppc/PPCKeyboard.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/PPCKeyboard.m
+  object = PPCKeyboard.o
+  flags = $cflags
+
+build $outdir/PPCKeymap.o: cc bsd/dev/ppc/PPCKeymap.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/PPCKeymap.c
+  object = PPCKeymap.o
+  flags = $cflags
+
+build $outdir/PPCMouse.o: cc bsd/dev/ppc/PPCMouse.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/PPCMouse.m
+  object = PPCMouse.o
+  flags = $cflags
+
+build $outdir/PCPointer.o: cc bsd/dev/ppc/PCPointer.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/PCPointer.m
+  object = PCPointer.o
+  flags = $cflags
+
+build $outdir/ohare.o: cc bsd/dev/ppc/drvOHare/ohare.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvOHare/ohare.m
+  object = ohare.o
+  flags = $cflags
+
+build $outdir/PowerSupply.o: cc bsd/dev/ppc/drvPowerSupply/PowerSupply.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvPowerSupply/PowerSupply.m
+  object = PowerSupply.o
+  flags = $cflags
+
+build $outdir/Apple96BusState.o: cc bsd/dev/ppc/drvApple96_SCSI/Apple96BusState.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvApple96_SCSI/Apple96BusState.m
+  object = Apple96BusState.o
+  flags = $cflags
+
+build $outdir/Apple96Curio.o: cc bsd/dev/ppc/drvApple96_SCSI/Apple96Curio.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvApple96_SCSI/Apple96Curio.m
+  object = Apple96Curio.o
+  flags = $cflags
+
+build $outdir/Apple96CurioDBDMA.o: cc bsd/dev/ppc/drvApple96_SCSI/Apple96CurioDBDMA.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvApple96_SCSI/Apple96CurioDBDMA.m
+  object = Apple96CurioDBDMA.o
+  flags = $cflags
+
+build $outdir/Apple96CurioPublic.o: cc bsd/dev/ppc/drvApple96_SCSI/Apple96CurioPublic.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvApple96_SCSI/Apple96CurioPublic.m
+  object = Apple96CurioPublic.o
+  flags = $cflags
+
+build $outdir/Apple96HWPrivate.o: cc bsd/dev/ppc/drvApple96_SCSI/Apple96HWPrivate.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvApple96_SCSI/Apple96HWPrivate.m
+  object = Apple96HWPrivate.o
+  flags = $cflags
+
+build $outdir/Apple96Hardware.o: cc bsd/dev/ppc/drvApple96_SCSI/Apple96Hardware.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvApple96_SCSI/Apple96Hardware.m
+  object = Apple96Hardware.o
+  flags = $cflags
+
+build $outdir/Apple96ISR.o: cc bsd/dev/ppc/drvApple96_SCSI/Apple96ISR.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvApple96_SCSI/Apple96ISR.m
+  object = Apple96ISR.o
+  flags = $cflags
+
+build $outdir/Apple96SCSI.o: cc bsd/dev/ppc/drvApple96_SCSI/Apple96SCSI.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvApple96_SCSI/Apple96SCSI.m
+  object = Apple96SCSI.o
+  flags = $cflags
+
+build $outdir/Apple96SCSIPrivate.o: cc bsd/dev/ppc/drvApple96_SCSI/Apple96SCSIPrivate.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvApple96_SCSI/Apple96SCSIPrivate.m
+  object = Apple96SCSIPrivate.o
+  flags = $cflags
+
+build $outdir/StateMachines.o: cc bsd/dev/ppc/drvApple96_SCSI/StateMachines.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvApple96_SCSI/StateMachines.m
+  object = StateMachines.o
+  flags = $cflags
+
+build $outdir/Timestamp.o: cc bsd/dev/ppc/drvApple96_SCSI/Timestamp.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvApple96_SCSI/Timestamp.c
+  object = Timestamp.o
+  flags = $cflags
+
+build $outdir/MESH_DBDMA.o: cc bsd/dev/ppc/drvAppleMesh_SCSI/MESH_DBDMA.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvAppleMesh_SCSI/MESH_DBDMA.m
+  object = MESH_DBDMA.o
+  flags = $cflags
+
+build $outdir/MaceEnet.o: cc bsd/dev/ppc/drvMaceEnet/MaceEnet.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvMaceEnet/MaceEnet.m
+  object = MaceEnet.o
+  flags = $cflags
+
+build $outdir/MaceEnetPrivate.o: cc bsd/dev/ppc/drvMaceEnet/MaceEnetPrivate.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvMaceEnet/MaceEnetPrivate.m
+  object = MaceEnetPrivate.o
+  flags = $cflags
+
+build $outdir/MaceEnetHW.o: cc bsd/dev/ppc/drvMaceEnet/MaceEnetHW.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvMaceEnet/MaceEnetHW.m
+  object = MaceEnetHW.o
+  flags = $cflags
+
+build $outdir/BMacEnet.o: cc bsd/dev/ppc/drvBMacEnet/BMacEnet.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvBMacEnet/BMacEnet.m
+  object = BMacEnet.o
+  flags = $cflags
+
+build $outdir/BMacEnetPrivate.o: cc bsd/dev/ppc/drvBMacEnet/BMacEnetPrivate.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvBMacEnet/BMacEnetPrivate.m
+  object = BMacEnetPrivate.o
+  flags = $cflags
+
+build $outdir/BMacEnetHW.o: cc bsd/dev/ppc/drvBMacEnet/BMacEnetHW.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvBMacEnet/BMacEnetHW.m
+  object = BMacEnetHW.o
+  flags = $cflags
+
+build $outdir/BMacEnetMII.o: cc bsd/dev/ppc/drvBMacEnet/BMacEnetMII.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvBMacEnet/BMacEnetMII.m
+  object = BMacEnetMII.o
+  flags = $cflags
+
+build $outdir/DECchip21040.o: cc bsd/dev/ppc/drvDECchip21040/DECchip21040.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvDECchip21040/DECchip21040.m
+  object = DECchip21040.o
+  flags = $cflags
+
+build $outdir/DECchip21041.o: cc bsd/dev/ppc/drvDECchip21040/DECchip21041.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvDECchip21040/DECchip21041.m
+  object = DECchip21041.o
+  flags = $cflags
+
+build $outdir/DECchip2104x.o: cc bsd/dev/ppc/drvDECchip21040/DECchip2104x.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvDECchip21040/DECchip2104x.m
+  object = DECchip2104x.o
+  flags = $cflags
+
+build $outdir/DECchip2104xPrivate.o: cc bsd/dev/ppc/drvDECchip21040/DECchip2104xPrivate.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvDECchip21040/DECchip2104xPrivate.m
+  object = DECchip2104xPrivate.o
+  flags = $cflags
+
+build $outdir/ATADisk.o: cc bsd/dev/ppc/drvATADisk/ATADisk.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvATADisk/ATADisk.m
+  object = ATADisk.o
+  flags = $cflags
+
+build $outdir/ATADiskInternal.o: cc bsd/dev/ppc/drvATADisk/ATADiskInternal.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvATADisk/ATADiskInternal.m
+  object = ATADiskInternal.o
+  flags = $cflags
+
+build $outdir/ATADiskKernel.o: cc bsd/dev/ppc/drvATADisk/ATADiskKernel.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvATADisk/ATADiskKernel.m
+  object = ATADiskKernel.o
+  flags = $cflags
+
+build $outdir/AtapiCnt.o: cc bsd/dev/ppc/drvPPCATA/AtapiCnt.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvPPCATA/AtapiCnt.m
+  object = AtapiCnt.o
+  flags = $cflags
+
+build $outdir/AtapiCntInternal.o: cc bsd/dev/ppc/drvPPCATA/AtapiCntInternal.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvPPCATA/AtapiCntInternal.m
+  object = AtapiCntInternal.o
+  flags = $cflags
+
+build $outdir/IdeCnt.o: cc bsd/dev/ppc/drvPPCATA/IdeCnt.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvPPCATA/IdeCnt.m
+  object = IdeCnt.o
+  flags = $cflags
+
+build $outdir/IdeCntDma.o: cc bsd/dev/ppc/drvPPCATA/IdeCntDma.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvPPCATA/IdeCntDma.m
+  object = IdeCntDma.o
+  flags = $cflags
+
+build $outdir/AtapiCntCmds.o: cc bsd/dev/ppc/drvPPCATA/AtapiCntCmds.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvPPCATA/AtapiCntCmds.m
+  object = AtapiCntCmds.o
+  flags = $cflags
+
+build $outdir/IdeCntCmds.o: cc bsd/dev/ppc/drvPPCATA/IdeCntCmds.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvPPCATA/IdeCntCmds.m
+  object = IdeCntCmds.o
+  flags = $cflags
+
+build $outdir/IdeCntInit.o: cc bsd/dev/ppc/drvPPCATA/IdeCntInit.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvPPCATA/IdeCntInit.m
+  object = IdeCntInit.o
+  flags = $cflags
+
+build $outdir/Sym8xxInit.o: cc bsd/dev/ppc/drvSymbios8xx/Sym8xxInit.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvSymbios8xx/Sym8xxInit.m
+  object = Sym8xxInit.o
+  flags = $cflags
+
+build $outdir/Sym8xxClient.o: cc bsd/dev/ppc/drvSymbios8xx/Sym8xxClient.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvSymbios8xx/Sym8xxClient.m
+  object = Sym8xxClient.o
+  flags = $cflags
+
+build $outdir/Sym8xxExecute.o: cc bsd/dev/ppc/drvSymbios8xx/Sym8xxExecute.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvSymbios8xx/Sym8xxExecute.m
+  object = Sym8xxExecute.o
+  flags = $cflags
+
+build $outdir/Sym8xxMisc.o: cc bsd/dev/ppc/drvSymbios8xx/Sym8xxMisc.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvSymbios8xx/Sym8xxMisc.m
+  object = Sym8xxMisc.o
+  flags = $cflags
+
+build $outdir/AttoScsiInit.o: cc bsd/dev/ppc/drvAttoScsiController/AttoScsiInit.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvAttoScsiController/AttoScsiInit.m
+  object = AttoScsiInit.o
+  flags = $cflags
+
+build $outdir/AttoScsiClient.o: cc bsd/dev/ppc/drvAttoScsiController/AttoScsiClient.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvAttoScsiController/AttoScsiClient.m
+  object = AttoScsiClient.o
+  flags = $cflags
+
+build $outdir/AttoScsiExecute.o: cc bsd/dev/ppc/drvAttoScsiController/AttoScsiExecute.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvAttoScsiController/AttoScsiExecute.m
+  object = AttoScsiExecute.o
+  flags = $cflags
+
+build $outdir/AttoScsiMisc.o: cc bsd/dev/ppc/drvAttoScsiController/AttoScsiMisc.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvAttoScsiController/AttoScsiMisc.m
+  object = AttoScsiMisc.o
+  flags = $cflags
+
+build $outdir/AdaptecU2CHIMAPI.o: cc bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMAPI.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMAPI.c
+  object = AdaptecU2CHIMAPI.o
+  flags = $cflags
+
+build $outdir/AdaptecU2CHIMConfig.o: cc bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMConfig.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMConfig.c
+  object = AdaptecU2CHIMConfig.o
+  flags = $cflags
+
+build $outdir/AdaptecU2CHIMFirmware.o: cc bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMFirmware.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMFirmware.c
+  object = AdaptecU2CHIMFirmware.o
+  flags = $cflags
+
+build $outdir/AdaptecU2CHIMHIM.o: cc bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHIM.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHIM.c
+  object = AdaptecU2CHIMHIM.o
+  flags = $cflags
+
+build $outdir/AdaptecU2CHIMHardware.o: cc bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHardware.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHardware.c
+  object = AdaptecU2CHIMHardware.o
+  flags = $cflags
+
+build $outdir/AdaptecU2CHIMNegotiation.o: cc bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMNegotiation.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMNegotiation.c
+  object = AdaptecU2CHIMNegotiation.o
+  flags = $cflags
+
+build $outdir/AdaptecU2CHIMOSD.o: cc bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMOSD.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMOSD.c
+  object = AdaptecU2CHIMOSD.o
+  flags = $cflags
+
+build $outdir/AdaptecU2CHIMRecovery.o: cc bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMRecovery.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMRecovery.c
+  object = AdaptecU2CHIMRecovery.o
+  flags = $cflags
+
+build $outdir/AdaptecU2CHIMResource.o: cc bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMResource.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMResource.c
+  object = AdaptecU2CHIMResource.o
+  flags = $cflags
+
+build $outdir/AdaptecU2CHIMSCB.o: cc bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMSCB.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMSCB.c
+  object = AdaptecU2CHIMSCB.o
+  flags = $cflags
+
+build $outdir/AdaptecU2CHIMTables.o: cc bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMTables.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMTables.c
+  object = AdaptecU2CHIMTables.o
+  flags = $cflags
+
+build $outdir/AdaptecU2CHIMTransport.o: cc bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMTransport.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMTransport.c
+  object = AdaptecU2CHIMTransport.o
+  flags = $cflags
+
+build $outdir/AdaptecU2OSMServices.o: cc bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2OSMServices.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2OSMServices.m
+  object = AdaptecU2OSMServices.o
+  flags = $cflags
+
+build $outdir/AdaptecU2SCSI.o: cc bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2SCSI.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2SCSI.m
+  object = AdaptecU2SCSI.o
+  flags = $cflags
+
+build $outdir/AdaptecU2SCSIThread.o: cc bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2SCSIThread.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2SCSIThread.m
+  object = AdaptecU2SCSIThread.o
+  flags = $cflags
+
+build $outdir/OSMFunctions.o: cc bsd/dev/ppc/drvAdaptecU2SCSI/OSMFunctions.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvAdaptecU2SCSI/OSMFunctions.m
+  object = OSMFunctions.o
+  flags = $cflags
+
+build $outdir/usbcmd.o: cc bsd/dev/ppc/drvUSBCMD/usbcmd.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvUSBCMD/usbcmd.m
+  object = usbcmd.o
+  flags = $cflags
+
+build $outdir/ohciuim.o: cc bsd/dev/ppc/drvUSBCMD/ohciuim.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvUSBCMD/ohciuim.c
+  object = ohciuim.o
+  flags = $cflags
+
+build $outdir/OHCIDispatchTable.o: cc bsd/dev/ppc/drvUSBCMD/OHCIDispatchTable.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvUSBCMD/OHCIDispatchTable.c
+  object = OHCIDispatchTable.o
+  flags = $cflags
+
+build $outdir/driverservices.o: cc bsd/dev/ppc/drvUSBCMD/driverservices.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvUSBCMD/driverservices.c
+  object = driverservices.o
+  flags = $cflags
+
+build $outdir/OHCIRootHub.o: cc bsd/dev/ppc/drvUSBCMD/OHCIRootHub.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvUSBCMD/OHCIRootHub.c
+  object = OHCIRootHub.o
+  flags = $cflags
+
+build $outdir/UIMrootHubSimulation.o: cc bsd/dev/ppc/drvUSBCMD/UIMrootHubSimulation.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvUSBCMD/UIMrootHubSimulation.c
+  object = UIMrootHubSimulation.o
+  flags = $cflags
+
+build $outdir/CompositeClassDriver.o: cc bsd/dev/ppc/drvUSBCMD/CompositeClassDriver/CompositeClassDriver.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvUSBCMD/CompositeClassDriver/CompositeClassDriver.c
+  object = CompositeClassDriver.o
+  flags = $cflags
+
+build $outdir/CompositeDriverDescription.o: cc bsd/dev/ppc/drvUSBCMD/CompositeClassDriver/CompositeDriverDescription.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvUSBCMD/CompositeClassDriver/CompositeDriverDescription.c
+  object = CompositeDriverDescription.o
+  flags = $cflags
+
+build $outdir/ConfigParse.o: cc bsd/dev/ppc/drvUSBCMD/CompositeClassDriver/ConfigParse.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvUSBCMD/CompositeClassDriver/ConfigParse.c
+  object = ConfigParse.o
+  flags = $cflags
+
+build $outdir/HubClassDriver.o: cc bsd/dev/ppc/drvUSBCMD/HubClassDriver/HubClassDriver.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvUSBCMD/HubClassDriver/HubClassDriver.c
+  object = HubClassDriver.o
+  flags = $cflags
+
+build $outdir/Hub2ClassDriver.o: cc bsd/dev/ppc/drvUSBCMD/HubClassDriver/Hub2ClassDriver.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvUSBCMD/HubClassDriver/Hub2ClassDriver.c
+  object = Hub2ClassDriver.o
+  flags = $cflags
+
+build $outdir/rootHubDriver.o: cc bsd/dev/ppc/drvUSBCMD/HubClassDriver/rootHubDriver.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvUSBCMD/HubClassDriver/rootHubDriver.c
+  object = rootHubDriver.o
+  flags = $cflags
+
+build $outdir/usl.o: cc bsd/dev/ppc/drvUSBCMD/Library/usl.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvUSBCMD/Library/usl.c
+  object = usl.o
+  flags = $cflags
+
+build $outdir/uslPipeState.o: cc bsd/dev/ppc/drvUSBCMD/Library/uslPipeState.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvUSBCMD/Library/uslPipeState.c
+  object = uslPipeState.o
+  flags = $cflags
+
+build $outdir/USLhubs.o: cc bsd/dev/ppc/drvUSBCMD/Library/USLhubs.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvUSBCMD/Library/USLhubs.c
+  object = USLhubs.o
+  flags = $cflags
+
+build $outdir/uslPipe.o: cc bsd/dev/ppc/drvUSBCMD/Library/uslPipe.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvUSBCMD/Library/uslPipe.c
+  object = uslPipe.o
+  flags = $cflags
+
+build $outdir/uslUtility.o: cc bsd/dev/ppc/drvUSBCMD/Library/uslUtility.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvUSBCMD/Library/uslUtility.c
+  object = uslUtility.o
+  flags = $cflags
+
+build $outdir/uslDescriptors.o: cc bsd/dev/ppc/drvUSBCMD/Library/uslDescriptors.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvUSBCMD/Library/uslDescriptors.c
+  object = uslDescriptors.o
+  flags = $cflags
+
+build $outdir/uslExpert.o: cc bsd/dev/ppc/drvUSBCMD/Library/uslExpert.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvUSBCMD/Library/uslExpert.c
+  object = uslExpert.o
+  flags = $cflags
+
+build $outdir/uslUIMInterface.o: cc bsd/dev/ppc/drvUSBCMD/Library/uslUIMInterface.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvUSBCMD/Library/uslUIMInterface.c
+  object = uslUIMInterface.o
+  flags = $cflags
+
+build $outdir/KBDConfigParse.o: cc bsd/dev/ppc/drvUSBCMD/kbd/KBDConfigParse.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvUSBCMD/kbd/KBDConfigParse.c
+  object = KBDConfigParse.o
+  flags = $cflags
+
+build $outdir/KBDHIDEmulation.o: cc bsd/dev/ppc/drvUSBCMD/kbd/KBDHIDEmulation.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvUSBCMD/kbd/KBDHIDEmulation.c
+  object = KBDHIDEmulation.o
+  flags = $cflags
+
+build $outdir/KeyboardModule.o: cc bsd/dev/ppc/drvUSBCMD/kbd/KeyboardModule.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvUSBCMD/kbd/KeyboardModule.c
+  object = KeyboardModule.o
+  flags = $cflags
+
+build $outdir/KeyboardModuleHeader.o: cc bsd/dev/ppc/drvUSBCMD/kbd/KeyboardModuleHeader.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvUSBCMD/kbd/KeyboardModuleHeader.c
+  object = KeyboardModuleHeader.o
+  flags = $cflags
+
+build $outdir/usb_keymap.o: cc bsd/dev/ppc/drvUSBCMD/kbd/usb_keymap.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvUSBCMD/kbd/usb_keymap.c
+  object = usb_keymap.o
+  flags = $cflags
+
+build $outdir/MouseModule.o: cc bsd/dev/ppc/drvUSBCMD/mouse/MouseModule.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvUSBCMD/mouse/MouseModule.c
+  object = MouseModule.o
+  flags = $cflags
+
+build $outdir/MouseModuleHeader.o: cc bsd/dev/ppc/drvUSBCMD/mouse/MouseModuleHeader.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvUSBCMD/mouse/MouseModuleHeader.c
+  object = MouseModuleHeader.o
+  flags = $cflags
+
+build $outdir/HIDEmulation.o: cc bsd/dev/ppc/drvUSBCMD/mouse/HIDEmulation.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvUSBCMD/mouse/HIDEmulation.c
+  object = HIDEmulation.o
+  flags = $cflags
+
+build $outdir/MouseConfigParse.o: cc bsd/dev/ppc/drvUSBCMD/mouse/MouseConfigParse.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvUSBCMD/mouse/MouseConfigParse.c
+  object = MouseConfigParse.o
+  flags = $cflags
+
+build $outdir/autoconf_ppc.o: cc driverkit/ppc/autoconf_ppc.m || $outdir/prepared $outdir/validated generated
+  source = ../../driverkit/ppc/autoconf_ppc.m
+  object = autoconf_ppc.o
+  flags = $cflags
+
+build $outdir/PPCKernBus.o: cc driverkit/ppc/PPCKernBus.m || $outdir/prepared $outdir/validated generated
+  source = ../../driverkit/ppc/PPCKernBus.m
+  object = PPCKernBus.o
+  flags = $cflags
+
+build $outdir/IOAsmSupport.o: cc driverkit/ppc/IOAsmSupport.s || $outdir/prepared $outdir/validated generated
+  source = ../../driverkit/ppc/IOAsmSupport.s
+  object = IOAsmSupport.o
+  flags = $sflags
+
+build $outdir/IOSupport.o: cc driverkit/ppc/IOSupport.c || $outdir/prepared $outdir/validated generated
+  source = ../../driverkit/ppc/IOSupport.c
+  object = IOSupport.o
+  flags = $cflags
+
+build $outdir/DEC21x4.o: cc bsd/dev/ppc/drvDEC21x4/DEC21x4.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvDEC21x4/DEC21x4.m
+  object = DEC21x4.o
+  flags = $cflags
+
+build $outdir/DEC21x4Init.o: cc bsd/dev/ppc/drvDEC21x4/DEC21x4Init.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvDEC21x4/DEC21x4Init.m
+  object = DEC21x4Init.o
+  flags = $cflags
+
+build $outdir/DEC21x4KDB.o: cc bsd/dev/ppc/drvDEC21x4/DEC21x4KDB.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvDEC21x4/DEC21x4KDB.m
+  object = DEC21x4KDB.o
+  flags = $cflags
+
+build $outdir/DEC21x4Private.o: cc bsd/dev/ppc/drvDEC21x4/DEC21x4Private.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvDEC21x4/DEC21x4Private.m
+  object = DEC21x4Private.o
+  flags = $cflags
+
+build $outdir/DEC21x4SRom.o: cc bsd/dev/ppc/drvDEC21x4/DEC21x4SRom.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvDEC21x4/DEC21x4SRom.m
+  object = DEC21x4SRom.o
+  flags = $cflags
+
+build $outdir/DEC21x4Media.o: cc bsd/dev/ppc/drvDEC21x4/DEC21x4Media.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvDEC21x4/DEC21x4Media.c
+  object = DEC21x4Media.o
+  flags = $cflags
+
+build $outdir/DEC21x4MII.o: cc bsd/dev/ppc/drvDEC21x4/DEC21x4MII.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvDEC21x4/DEC21x4MII.c
+  object = DEC21x4MII.o
+  flags = $cflags
+
+build $outdir/UniNEnet.o: cc bsd/dev/ppc/drvUniNEnet/UniNEnet.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvUniNEnet/UniNEnet.m
+  object = UniNEnet.o
+  flags = $cflags
+
+build $outdir/UniNEnetPrivate.o: cc bsd/dev/ppc/drvUniNEnet/UniNEnetPrivate.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvUniNEnet/UniNEnetPrivate.m
+  object = UniNEnetPrivate.o
+  flags = $cflags
+
+build $outdir/UniNEnetMII.o: cc bsd/dev/ppc/drvUniNEnet/UniNEnetMII.m || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/dev/ppc/drvUniNEnet/UniNEnetMII.m
+  object = UniNEnetMII.o
+  flags = $cflags
+
+kernel_objects = $
+  $outdir/locc.o $outdir/random.o $outdir/randomdev.o $outdir/xoodyak.o $outdir/rindex.o $
+  $outdir/scanc.o $outdir/skpc.o $outdir/strtol.o $outdir/syscalls.o $outdir/vfs_bio.o $
+  $outdir/vfs_cache.o $outdir/vfs_cluster.o $outdir/vfs_conf.o $outdir/vfs_init.o $outdir/vfs_lookup.o $
+  $outdir/vfs_subr.o $outdir/vfs_syscalls.o $outdir/vfs_support.o $outdir/vfs_vnops.o $outdir/vnode_if.o $
+  $outdir/dead_vnops.o $outdir/fdesc_vfsops.o $outdir/fdesc_vnops.o $outdir/fifo_vnops.o $outdir/portal_vfsops.o $
+  $outdir/portal_vnops.o $outdir/spec_vnops.o $outdir/union_subr.o $outdir/union_vfsops.o $outdir/union_vnops.o $
+  $outdir/cd9660_bmap.o $outdir/cd9660_lookup.o $outdir/cd9660_node.o $outdir/cd9660_rrip.o $outdir/cd9660_util.o $
+  $outdir/cd9660_vfsops.o $outdir/cd9660_vnops.o $outdir/bpf.o $outdir/if.o $outdir/if_ethersubr.o $
+  $outdir/if_loop.o $outdir/radix.o $outdir/raw_cb.o $outdir/raw_usrreq.o $outdir/route.o $
+  $outdir/rtsock.o $outdir/netbuf.o $outdir/netisr.o $outdir/if_ether.o $outdir/igmp.o $
+  $outdir/in.o $outdir/in_bootp.o $outdir/in_pcb.o $outdir/in_proto.o $outdir/ip_icmp.o $
+  $outdir/ip_input.o $outdir/ip_output.o $outdir/raw_ip.o $outdir/tcp_debug.o $outdir/tcp_input.o $
+  $outdir/tcp_output.o $outdir/tcp_subr.o $outdir/tcp_timer.o $outdir/tcp_usrreq.o $outdir/udp_usrreq.o $
+  $outdir/krpc_subr.o $outdir/nfs_bio.o $outdir/nfs_boot.o $outdir/nfs_node.o $outdir/nfs_nqlease.o $
+  $outdir/nfs_serv.o $outdir/nfs_socket.o $outdir/nfs_srvcache.o $outdir/nfs_subs.o $outdir/nfs_syscalls.o $
+  $outdir/nfs_vfsops.o $outdir/nfs_vnops.o $outdir/ffs_alloc.o $outdir/ffs_balloc.o $outdir/ffs_inode.o $
+  $outdir/ffs_subr.o $outdir/ffs_tables.o $outdir/ffs_vfsops.o $outdir/ffs_vnops.o $outdir/ufs_bmap.o $
+  $outdir/ufs_byte_order.o $outdir/ufs_ihash.o $outdir/ufs_inode.o $outdir/ufs_lockf.o $outdir/ufs_lookup.o $
+  $outdir/ufs_quota.o $outdir/ufs_vfsops.o $outdir/ufs_vnops.o $outdir/hfs_btreeio.o $outdir/hfs_endian.o $
+  $outdir/hfs_lockf.o $outdir/hfs_lookup.o $outdir/hfs_readwrite.o $outdir/hfs_vfsops.o $outdir/hfs_vfsutils.o $
+  $outdir/hfs_vhash.o $outdir/hfs_vnodeops.o $outdir/MacOSStubs.o $outdir/BTree.o $outdir/BTreeAllocate.o $
+  $outdir/BTreeMiscOps.o $outdir/BTreeNodeOps.o $outdir/BTreeScanner.o $outdir/BTreeTreeOps.o $outdir/CatSearch.o $
+  $outdir/Catalog.o $outdir/CatalogIterators.o $outdir/CatalogUtilities.o $outdir/FileIDsServices.o $outdir/Attributes.o $
+  $outdir/BTreeWrapper.o $outdir/FileExtentMapping.o $outdir/FileMgrInit.o $outdir/GenericMRUCache.o $outdir/HFSInstrumentation.o $
+  $outdir/HFSUtilities.o $outdir/VolumeAllocation.o $outdir/VolumeCheck.o $outdir/VolumeRequests.o $outdir/ConvertUTF.o $
+  $outdir/UnicodeWrappers.o $outdir/cmu_syscalls.o $outdir/init_main.o $outdir/init_sysent.o $outdir/kern_acct.o $
+  $outdir/kern_clock.o $outdir/kern_core.o $outdir/kern_symfile.o $outdir/kern_descrip.o $outdir/kern_exec.o $
+  $outdir/kern_exit.o $outdir/kern_fork.o $outdir/kern_lock.o $outdir/kern_malloc.o $outdir/kern_mman.o $
+  $outdir/kern_physio.o $outdir/kern_proc.o $outdir/kern_prot.o $outdir/kern_resource.o $outdir/kern_shutdown.o $
+  $outdir/kern_sig.o $outdir/kern_subr.o $outdir/kern_synch.o $outdir/kern_sysctl.o $outdir/kern_time.o $
+  $outdir/kern_xxx.o $outdir/mach_process.o $outdir/qsort.o $outdir/subr_disk.o $outdir/subr_log.o $
+  $outdir/subr_prf.o $outdir/subr_xxx.o $outdir/sys_generic.o $outdir/sys_socket.o $outdir/tty.o $
+  $outdir/tty_compat.o $outdir/tty_conf.o $outdir/tty_pty.o $outdir/tty_subr.o $outdir/tty_tty.o $
+  $outdir/uipc_domain.o $outdir/uipc_mbuf.o $outdir/uipc_proto.o $outdir/uipc_socket.o $outdir/uipc_socket2.o $
+  $outdir/uipc_syscalls.o $outdir/uipc_usrreq.o $outdir/param.o $outdir/ipc_entry.o $outdir/ipc_hash.o $
+  $outdir/ipc_init.o $outdir/ipc_kmsg.o $outdir/ipc_marequest.o $outdir/ipc_mqueue.o $outdir/ipc_notify.o $
+  $outdir/ipc_object.o $outdir/ipc_port.o $outdir/ipc_pset.o $outdir/ipc_right.o $outdir/ipc_space.o $
+  $outdir/ipc_splay.o $outdir/ipc_table.o $outdir/ipc_thread.o $outdir/mach_debug.o $outdir/mach_msg.o $
+  $outdir/mach_port.o $outdir/ast.o $outdir/counters.o $outdir/exception.o $outdir/host.o $
+  $outdir/ipc_host.o $outdir/ipc_kobject.o $outdir/ipc_mig.o $outdir/ipc_sched.o $outdir/ipc_tt.o $
+  $outdir/ipc_xxx.o $outdir/iprintf.o $outdir/kalloc.o $outdir/kernel_stack.o $outdir/lock.o $
+  $outdir/mach_clock.o $outdir/mach_factor.o $outdir/mach_header.o $outdir/mach_init.o $outdir/mach_fat.o $
+  $outdir/mach_loader.o $outdir/mach_net.o $outdir/machine.o $outdir/mapfs.o $outdir/miniMon.o $
+  $outdir/ns_timer.o $outdir/parallel.o $outdir/power.o $outdir/priority.o $outdir/processor.o $
+  $outdir/queue.o $outdir/kdp.o $outdir/kdp_udp.o $outdir/sched_prim.o $outdir/slave.o $
+  $outdir/syscall_subr.o $outdir/syscall_sw.o $outdir/task.o $outdir/thread.o $outdir/thread_call.o $
+  $outdir/thread_swap.o $outdir/time_stamp.o $outdir/timer.o $outdir/zalloc.o $outdir/kern_server.o $
+  $outdir/kern_notify.o $outdir/kern_server_handler.o $outdir/kern_server_reply_user.o $outdir/exc_server.o $outdir/mach_host_server.o $
+  $outdir/mach_port_server.o $outdir/mach_server.o $outdir/mach_debug_server.o $outdir/ux_exception.o $outdir/vm_fault.o $
+  $outdir/vm_init.o $outdir/vm_kern.o $outdir/vm_map.o $outdir/vm_mem_region.o $outdir/vm_object.o $
+  $outdir/vm_pageout.o $outdir/vm_pager.o $outdir/vm_policy.o $outdir/vm_resident.o $outdir/vm_synchronize.o $
+  $outdir/vm_unix.o $outdir/vm_user.o $outdir/vnode_pager.o $outdir/objc_support.o $outdir/autoconfCommon.o $
+  $outdir/KernLock.o $outdir/KernBus.o $outdir/KernBusMemory.o $outdir/KernBusInterrupt.o $outdir/KernDevice.o $
+  $outdir/KernDeviceDescription.o $outdir/KernStringList.o $outdir/driverServerXXX.o $outdir/driverServerServer.o $outdir/SCSIDiskKern.o $
+  $outdir/SCSIGenericKern.o $outdir/ev.o $ddm_object $outdir/atp_alloc.o $outdir/atp_misc.o $
+  $outdir/atp_open.o $outdir/atp_read.o $outdir/atp_write.o $outdir/asp_proto.o $outdir/ddp_aep.o $
+  $outdir/ddp.o $outdir/ddp_brt.o $outdir/ddp_proto.o $outdir/ddp_nbp.o $outdir/ddp_rtmp.o $
+  $outdir/ddp_sip.o $outdir/ddp_rtmptable.o $outdir/ddp_r_rtmp.o $outdir/ddp_r_zip.o $outdir/ddp_aarp.o $
+  $outdir/ddp_lap.o $outdir/adsp_CLDeny.o $outdir/adsp_Read.o $outdir/adsp_Timer.o $outdir/adsp_attention.o $
+  $outdir/adsp_CLListen.o $outdir/adsp_NewCID.o $outdir/adsp_TimerElem.o $outdir/adsp_reset.o $outdir/adsp_Close.o $
+  $outdir/adsp_Open.o $outdir/adsp_RxAttn.o $outdir/adsp_Write.o $outdir/adsp_Control.o $outdir/adsp_RxData.o $
+  $outdir/adsp.o $outdir/adsp_Init.o $outdir/adsp_Options.o $outdir/adsp_stream.o $outdir/adsp_InitGlobals.o $
+  $outdir/adsp_Packet.o $outdir/adsp_Status.o $outdir/adsp_misc.o $outdir/sys_glue.o $outdir/sys_dep.o $
+  $outdir/drv_dep.o $outdir/ext2fs_alloc.o $outdir/ext2fs_balloc.o $outdir/ext2fs_bmap.o $outdir/ext2fs_bswap.o $
+  $outdir/ext2fs_inode.o $outdir/ext2fs_lookup.o $outdir/ext2fs_readwrite.o $outdir/ext2fs_subr.o $outdir/ext2fs_vfsops.o $
+  $outdir/ext2fs_vnops.o $outdir/ext2fs_rhapsody.o $outdir/ext2_disk.o $outdir/vol.o $outdir/if_en.o $
+  $outdir/mace.o $outdir/if_blue.o $outdir/ndrv.o $outdir/in_cksum.o $xpr_object $
+  $outdir/APM.o $outdir/alignment.o $outdir/ast_ppc.o $outdir/DeviceTree.o $outdir/dbdma.o $
+  $outdir/diag.o $outdir/fault_copy.o $outdir/fpu_ppc.o $outdir/htab.o $outdir/kdp_machdep.o $
+  $outdir/kern_machdep.o $outdir/machdep.o $outdir/machine_clock.o $outdir/miniMonMachdep.o $outdir/misc.o $
+  $outdir/pcb.o $outdir/pmap.o $outdir/PseudoKernel.o $outdir/serial_io.o $outdir/swapgeneric.o $
+  $outdir/syscall_names.o $outdir/systemcalls.o $outdir/trap.o $outdir/unix_signal.o $outdir/unix_startup.o $
+  $outdir/bcopy.o $outdir/cache.o $outdir/cswtch.o $outdir/fpu.o $outdir/hw_exception.o $
+  $outdir/lowmem_vectors.o $outdir/mcount.o $outdir/misc_asm.o $outdir/movc.o $outdir/setjmp.o $
+  $outdir/start.o $outdir/xsumas.o $outdir/abs.o $outdir/bcmp.o $outdir/ffs.o $
+  $outdir/conf.o $outdir/cons.o $outdir/FBConsole.o $outdir/SerialConsole.o $outdir/km.o $
+  $outdir/kmDevice.o $outdir/kmGraphics.o $outdir/kmLocalized.o $outdir/mem.o $outdir/nvram.o $
+  $outdir/PowerSurgeMB.o $outdir/video_scroll.o $outdir/adb.o $outdir/cuda.o $outdir/pmu.o $
+  $outdir/IOADBBus.o $outdir/EventShmemLock.o $outdir/EventSrcPCKeyboard.o $outdir/EventSrcPCPointer.o $outdir/PPCKeyboard.o $
+  $outdir/PPCKeymap.o $outdir/PPCMouse.o $outdir/PCPointer.o $outdir/ohare.o $outdir/PowerSupply.o $outdir/Apple96BusState.o $
+  $outdir/Apple96Curio.o $outdir/Apple96CurioDBDMA.o $outdir/Apple96CurioPublic.o $outdir/Apple96HWPrivate.o $outdir/Apple96Hardware.o $
+  $outdir/Apple96ISR.o $outdir/Apple96SCSI.o $outdir/Apple96SCSIPrivate.o $outdir/StateMachines.o $outdir/Timestamp.o $
+  $outdir/MESH_DBDMA.o $outdir/MaceEnet.o $outdir/MaceEnetPrivate.o $outdir/MaceEnetHW.o $outdir/BMacEnet.o $
+  $outdir/BMacEnetPrivate.o $outdir/BMacEnetHW.o $outdir/BMacEnetMII.o $outdir/DECchip21040.o $outdir/DECchip21041.o $
+  $outdir/DECchip2104x.o $outdir/DECchip2104xPrivate.o $outdir/ATADisk.o $outdir/ATADiskInternal.o $outdir/ATADiskKernel.o $
+  $outdir/AtapiCnt.o $outdir/AtapiCntInternal.o $outdir/IdeCnt.o $outdir/IdeCntDma.o $outdir/AtapiCntCmds.o $
+  $outdir/IdeCntCmds.o $outdir/IdeCntInit.o $outdir/Sym8xxInit.o $outdir/Sym8xxClient.o $outdir/Sym8xxExecute.o $
+  $outdir/Sym8xxMisc.o $outdir/AttoScsiInit.o $outdir/AttoScsiClient.o $outdir/AttoScsiExecute.o $outdir/AttoScsiMisc.o $outdir/AdaptecU2CHIMAPI.o $outdir/AdaptecU2CHIMConfig.o $outdir/AdaptecU2CHIMFirmware.o $outdir/AdaptecU2CHIMHIM.o $outdir/AdaptecU2CHIMHardware.o $outdir/AdaptecU2CHIMNegotiation.o $outdir/AdaptecU2CHIMOSD.o $outdir/AdaptecU2CHIMRecovery.o $outdir/AdaptecU2CHIMResource.o $outdir/AdaptecU2CHIMSCB.o $outdir/AdaptecU2CHIMTables.o $outdir/AdaptecU2CHIMTransport.o $outdir/AdaptecU2OSMServices.o $outdir/AdaptecU2SCSI.o $outdir/AdaptecU2SCSIThread.o $outdir/OSMFunctions.o $outdir/usbcmd.o $outdir/ohciuim.o $outdir/OHCIDispatchTable.o $outdir/driverservices.o $
+  $outdir/OHCIRootHub.o $outdir/UIMrootHubSimulation.o $outdir/CompositeClassDriver.o $outdir/CompositeDriverDescription.o $outdir/ConfigParse.o $
+  $outdir/HubClassDriver.o $outdir/Hub2ClassDriver.o $outdir/rootHubDriver.o $outdir/usl.o $outdir/uslPipeState.o $
+  $outdir/USLhubs.o $outdir/uslPipe.o $outdir/uslUtility.o $outdir/uslDescriptors.o $outdir/uslExpert.o $
+  $outdir/uslUIMInterface.o $outdir/KBDConfigParse.o $outdir/KBDHIDEmulation.o $outdir/KeyboardModule.o $outdir/KeyboardModuleHeader.o $
+  $outdir/usb_keymap.o $outdir/MouseModule.o $outdir/MouseModuleHeader.o $outdir/HIDEmulation.o $outdir/MouseConfigParse.o $
+  $outdir/autoconf_ppc.o $outdir/PPCKernBus.o $outdir/IOAsmSupport.o $outdir/IOSupport.o $
+  $outdir/DEC21x4.o $outdir/DEC21x4Init.o $outdir/DEC21x4KDB.o $outdir/DEC21x4Private.o $outdir/DEC21x4SRom.o $outdir/DEC21x4Media.o $outdir/DEC21x4MII.o $
+  $outdir/UniNEnet.o $outdir/UniNEnetPrivate.o $outdir/UniNEnetMII.o
+
+build objects: phony $
+  $outdir/locc.o $outdir/random.o $outdir/randomdev.o $outdir/xoodyak.o $outdir/rindex.o $
+  $outdir/scanc.o $outdir/skpc.o $outdir/strtol.o $outdir/syscalls.o $outdir/vfs_bio.o $
+  $outdir/vfs_cache.o $outdir/vfs_cluster.o $outdir/vfs_conf.o $outdir/vfs_init.o $outdir/vfs_lookup.o $
+  $outdir/vfs_subr.o $outdir/vfs_syscalls.o $outdir/vfs_support.o $outdir/vfs_vnops.o $outdir/vnode_if.o $
+  $outdir/dead_vnops.o $outdir/fdesc_vfsops.o $outdir/fdesc_vnops.o $outdir/fifo_vnops.o $outdir/portal_vfsops.o $
+  $outdir/portal_vnops.o $outdir/spec_vnops.o $outdir/union_subr.o $outdir/union_vfsops.o $outdir/union_vnops.o $
+  $outdir/cd9660_bmap.o $outdir/cd9660_lookup.o $outdir/cd9660_node.o $outdir/cd9660_rrip.o $outdir/cd9660_util.o $
+  $outdir/cd9660_vfsops.o $outdir/cd9660_vnops.o $outdir/bpf.o $outdir/if.o $outdir/if_ethersubr.o $
+  $outdir/if_loop.o $outdir/radix.o $outdir/raw_cb.o $outdir/raw_usrreq.o $outdir/route.o $
+  $outdir/rtsock.o $outdir/netbuf.o $outdir/netisr.o $outdir/if_ether.o $outdir/igmp.o $
+  $outdir/in.o $outdir/in_bootp.o $outdir/in_pcb.o $outdir/in_proto.o $outdir/ip_icmp.o $
+  $outdir/ip_input.o $outdir/ip_output.o $outdir/raw_ip.o $outdir/tcp_debug.o $outdir/tcp_input.o $
+  $outdir/tcp_output.o $outdir/tcp_subr.o $outdir/tcp_timer.o $outdir/tcp_usrreq.o $outdir/udp_usrreq.o $
+  $outdir/krpc_subr.o $outdir/nfs_bio.o $outdir/nfs_boot.o $outdir/nfs_node.o $outdir/nfs_nqlease.o $
+  $outdir/nfs_serv.o $outdir/nfs_socket.o $outdir/nfs_srvcache.o $outdir/nfs_subs.o $outdir/nfs_syscalls.o $
+  $outdir/nfs_vfsops.o $outdir/nfs_vnops.o $outdir/ffs_alloc.o $outdir/ffs_balloc.o $outdir/ffs_inode.o $
+  $outdir/ffs_subr.o $outdir/ffs_tables.o $outdir/ffs_vfsops.o $outdir/ffs_vnops.o $outdir/ufs_bmap.o $
+  $outdir/ufs_byte_order.o $outdir/ufs_ihash.o $outdir/ufs_inode.o $outdir/ufs_lockf.o $outdir/ufs_lookup.o $
+  $outdir/ufs_quota.o $outdir/ufs_vfsops.o $outdir/ufs_vnops.o $outdir/hfs_btreeio.o $outdir/hfs_endian.o $
+  $outdir/hfs_lockf.o $outdir/hfs_lookup.o $outdir/hfs_readwrite.o $outdir/hfs_vfsops.o $outdir/hfs_vfsutils.o $
+  $outdir/hfs_vhash.o $outdir/hfs_vnodeops.o $outdir/MacOSStubs.o $outdir/BTree.o $outdir/BTreeAllocate.o $
+  $outdir/BTreeMiscOps.o $outdir/BTreeNodeOps.o $outdir/BTreeScanner.o $outdir/BTreeTreeOps.o $outdir/CatSearch.o $
+  $outdir/Catalog.o $outdir/CatalogIterators.o $outdir/CatalogUtilities.o $outdir/FileIDsServices.o $outdir/Attributes.o $
+  $outdir/BTreeWrapper.o $outdir/FileExtentMapping.o $outdir/FileMgrInit.o $outdir/GenericMRUCache.o $outdir/HFSInstrumentation.o $
+  $outdir/HFSUtilities.o $outdir/VolumeAllocation.o $outdir/VolumeCheck.o $outdir/VolumeRequests.o $outdir/ConvertUTF.o $
+  $outdir/UnicodeWrappers.o $outdir/cmu_syscalls.o $outdir/init_main.o $outdir/init_sysent.o $outdir/kern_acct.o $
+  $outdir/kern_clock.o $outdir/kern_core.o $outdir/kern_symfile.o $outdir/kern_descrip.o $outdir/kern_exec.o $
+  $outdir/kern_exit.o $outdir/kern_fork.o $outdir/kern_lock.o $outdir/kern_malloc.o $outdir/kern_mman.o $
+  $outdir/kern_physio.o $outdir/kern_proc.o $outdir/kern_prot.o $outdir/kern_resource.o $outdir/kern_shutdown.o $
+  $outdir/kern_sig.o $outdir/kern_subr.o $outdir/kern_synch.o $outdir/kern_sysctl.o $outdir/kern_time.o $
+  $outdir/kern_xxx.o $outdir/mach_process.o $outdir/qsort.o $outdir/subr_disk.o $outdir/subr_log.o $
+  $outdir/subr_prf.o $outdir/subr_xxx.o $outdir/sys_generic.o $outdir/sys_socket.o $outdir/tty.o $
+  $outdir/tty_compat.o $outdir/tty_conf.o $outdir/tty_pty.o $outdir/tty_subr.o $outdir/tty_tty.o $
+  $outdir/uipc_domain.o $outdir/uipc_mbuf.o $outdir/uipc_proto.o $outdir/uipc_socket.o $outdir/uipc_socket2.o $
+  $outdir/uipc_syscalls.o $outdir/uipc_usrreq.o $outdir/param.o $outdir/ipc_entry.o $outdir/ipc_hash.o $
+  $outdir/ipc_init.o $outdir/ipc_kmsg.o $outdir/ipc_marequest.o $outdir/ipc_mqueue.o $outdir/ipc_notify.o $
+  $outdir/ipc_object.o $outdir/ipc_port.o $outdir/ipc_pset.o $outdir/ipc_right.o $outdir/ipc_space.o $
+  $outdir/ipc_splay.o $outdir/ipc_table.o $outdir/ipc_thread.o $outdir/mach_debug.o $outdir/mach_msg.o $
+  $outdir/mach_port.o $outdir/ast.o $outdir/counters.o $outdir/exception.o $outdir/host.o $
+  $outdir/ipc_host.o $outdir/ipc_kobject.o $outdir/ipc_mig.o $outdir/ipc_sched.o $outdir/ipc_tt.o $
+  $outdir/ipc_xxx.o $outdir/iprintf.o $outdir/kalloc.o $outdir/kernel_stack.o $outdir/lock.o $
+  $outdir/mach_clock.o $outdir/mach_factor.o $outdir/mach_header.o $outdir/mach_init.o $outdir/mach_fat.o $
+  $outdir/mach_loader.o $outdir/mach_net.o $outdir/machine.o $outdir/mapfs.o $outdir/miniMon.o $
+  $outdir/ns_timer.o $outdir/parallel.o $outdir/power.o $outdir/priority.o $outdir/processor.o $
+  $outdir/queue.o $outdir/kdp.o $outdir/kdp_udp.o $outdir/sched_prim.o $outdir/slave.o $
+  $outdir/syscall_subr.o $outdir/syscall_sw.o $outdir/task.o $outdir/thread.o $outdir/thread_call.o $
+  $outdir/thread_swap.o $outdir/time_stamp.o $outdir/timer.o $outdir/zalloc.o $outdir/kern_server.o $
+  $outdir/kern_notify.o $outdir/kern_server_handler.o $outdir/kern_server_reply_user.o $outdir/exc_server.o $outdir/mach_host_server.o $
+  $outdir/mach_port_server.o $outdir/mach_server.o $outdir/mach_debug_server.o $outdir/ux_exception.o $outdir/vm_fault.o $
+  $outdir/vm_init.o $outdir/vm_kern.o $outdir/vm_map.o $outdir/vm_mem_region.o $outdir/vm_object.o $
+  $outdir/vm_pageout.o $outdir/vm_pager.o $outdir/vm_policy.o $outdir/vm_resident.o $outdir/vm_synchronize.o $
+  $outdir/vm_unix.o $outdir/vm_user.o $outdir/vnode_pager.o $outdir/objc_support.o $outdir/autoconfCommon.o $
+  $outdir/KernLock.o $outdir/KernBus.o $outdir/KernBusMemory.o $outdir/KernBusInterrupt.o $outdir/KernDevice.o $
+  $outdir/KernDeviceDescription.o $outdir/KernStringList.o $outdir/driverServerXXX.o $outdir/driverServerServer.o $outdir/SCSIDiskKern.o $
+  $outdir/SCSIGenericKern.o $outdir/ev.o  $outdir/atp_alloc.o $outdir/atp_misc.o $
+  $outdir/atp_open.o $outdir/atp_read.o $outdir/atp_write.o $outdir/asp_proto.o $outdir/ddp_aep.o $
+  $outdir/ddp.o $outdir/ddp_brt.o $outdir/ddp_proto.o $outdir/ddp_nbp.o $outdir/ddp_rtmp.o $
+  $outdir/ddp_sip.o $outdir/ddp_rtmptable.o $outdir/ddp_r_rtmp.o $outdir/ddp_r_zip.o $outdir/ddp_aarp.o $
+  $outdir/ddp_lap.o $outdir/adsp_CLDeny.o $outdir/adsp_Read.o $outdir/adsp_Timer.o $outdir/adsp_attention.o $
+  $outdir/adsp_CLListen.o $outdir/adsp_NewCID.o $outdir/adsp_TimerElem.o $outdir/adsp_reset.o $outdir/adsp_Close.o $
+  $outdir/adsp_Open.o $outdir/adsp_RxAttn.o $outdir/adsp_Write.o $outdir/adsp_Control.o $outdir/adsp_RxData.o $
+  $outdir/adsp.o $outdir/adsp_Init.o $outdir/adsp_Options.o $outdir/adsp_stream.o $outdir/adsp_InitGlobals.o $
+  $outdir/adsp_Packet.o $outdir/adsp_Status.o $outdir/adsp_misc.o $outdir/sys_glue.o $outdir/sys_dep.o $
+  $outdir/drv_dep.o $outdir/ext2fs_alloc.o $outdir/ext2fs_balloc.o $outdir/ext2fs_bmap.o $outdir/ext2fs_bswap.o $
+  $outdir/ext2fs_inode.o $outdir/ext2fs_lookup.o $outdir/ext2fs_readwrite.o $outdir/ext2fs_subr.o $outdir/ext2fs_vfsops.o $
+  $outdir/ext2fs_vnops.o $outdir/ext2fs_rhapsody.o $outdir/ext2_disk.o $outdir/vol.o $outdir/if_en.o $
+  $outdir/mace.o $outdir/if_blue.o $outdir/ndrv.o $outdir/in_cksum.o  $
+  $outdir/APM.o $outdir/alignment.o $outdir/ast_ppc.o $outdir/DeviceTree.o $outdir/dbdma.o $
+  $outdir/diag.o $outdir/fault_copy.o $outdir/fpu_ppc.o $outdir/htab.o $outdir/kdp_machdep.o $
+  $outdir/kern_machdep.o $outdir/machdep.o $outdir/machine_clock.o $outdir/miniMonMachdep.o $outdir/misc.o $
+  $outdir/pcb.o $outdir/pmap.o $outdir/PseudoKernel.o $outdir/serial_io.o $outdir/swapgeneric.o $
+  $outdir/syscall_names.o $outdir/systemcalls.o $outdir/trap.o $outdir/unix_signal.o $outdir/unix_startup.o $
+  $outdir/bcopy.o $outdir/cache.o $outdir/cswtch.o $outdir/fpu.o $outdir/hw_exception.o $
+  $outdir/lowmem_vectors.o $outdir/mcount.o $outdir/misc_asm.o $outdir/movc.o $outdir/setjmp.o $
+  $outdir/start.o $outdir/xsumas.o $outdir/abs.o $outdir/bcmp.o $outdir/ffs.o $
+  $outdir/conf.o $outdir/cons.o $outdir/FBConsole.o $outdir/SerialConsole.o $outdir/km.o $
+  $outdir/kmDevice.o $outdir/kmGraphics.o $outdir/kmLocalized.o $outdir/mem.o $outdir/nvram.o $
+  $outdir/PowerSurgeMB.o $outdir/video_scroll.o $outdir/adb.o $outdir/cuda.o $outdir/pmu.o $
+  $outdir/IOADBBus.o $outdir/EventShmemLock.o $outdir/EventSrcPCKeyboard.o $outdir/EventSrcPCPointer.o $outdir/PPCKeyboard.o $
+  $outdir/PPCKeymap.o $outdir/PPCMouse.o $outdir/PCPointer.o $outdir/ohare.o $outdir/PowerSupply.o $outdir/Apple96BusState.o $
+  $outdir/Apple96Curio.o $outdir/Apple96CurioDBDMA.o $outdir/Apple96CurioPublic.o $outdir/Apple96HWPrivate.o $outdir/Apple96Hardware.o $
+  $outdir/Apple96ISR.o $outdir/Apple96SCSI.o $outdir/Apple96SCSIPrivate.o $outdir/StateMachines.o $outdir/Timestamp.o $
+  $outdir/MESH_DBDMA.o $outdir/MaceEnet.o $outdir/MaceEnetPrivate.o $outdir/MaceEnetHW.o $outdir/BMacEnet.o $
+  $outdir/BMacEnetPrivate.o $outdir/BMacEnetHW.o $outdir/BMacEnetMII.o $outdir/DECchip21040.o $outdir/DECchip21041.o $
+  $outdir/DECchip2104x.o $outdir/DECchip2104xPrivate.o $outdir/ATADisk.o $outdir/ATADiskInternal.o $outdir/ATADiskKernel.o $
+  $outdir/AtapiCnt.o $outdir/AtapiCntInternal.o $outdir/IdeCnt.o $outdir/IdeCntDma.o $outdir/AtapiCntCmds.o $
+  $outdir/IdeCntCmds.o $outdir/IdeCntInit.o $outdir/Sym8xxInit.o $outdir/Sym8xxClient.o $outdir/Sym8xxExecute.o $
+  $outdir/Sym8xxMisc.o $outdir/AttoScsiInit.o $outdir/AttoScsiClient.o $outdir/AttoScsiExecute.o $outdir/AttoScsiMisc.o $outdir/AdaptecU2CHIMAPI.o $outdir/AdaptecU2CHIMConfig.o $outdir/AdaptecU2CHIMFirmware.o $outdir/AdaptecU2CHIMHIM.o $outdir/AdaptecU2CHIMHardware.o $outdir/AdaptecU2CHIMNegotiation.o $outdir/AdaptecU2CHIMOSD.o $outdir/AdaptecU2CHIMRecovery.o $outdir/AdaptecU2CHIMResource.o $outdir/AdaptecU2CHIMSCB.o $outdir/AdaptecU2CHIMTables.o $outdir/AdaptecU2CHIMTransport.o $outdir/AdaptecU2OSMServices.o $outdir/AdaptecU2SCSI.o $outdir/AdaptecU2SCSIThread.o $outdir/OSMFunctions.o $outdir/usbcmd.o $outdir/ohciuim.o $outdir/OHCIDispatchTable.o $outdir/driverservices.o $
+  $outdir/OHCIRootHub.o $outdir/UIMrootHubSimulation.o $outdir/CompositeClassDriver.o $outdir/CompositeDriverDescription.o $outdir/ConfigParse.o $
+  $outdir/HubClassDriver.o $outdir/Hub2ClassDriver.o $outdir/rootHubDriver.o $outdir/usl.o $outdir/uslPipeState.o $
+  $outdir/USLhubs.o $outdir/uslPipe.o $outdir/uslUtility.o $outdir/uslDescriptors.o $outdir/uslExpert.o $
+  $outdir/uslUIMInterface.o $outdir/KBDConfigParse.o $outdir/KBDHIDEmulation.o $outdir/KeyboardModule.o $outdir/KeyboardModuleHeader.o $
+  $outdir/usb_keymap.o $outdir/MouseModule.o $outdir/MouseModuleHeader.o $outdir/HIDEmulation.o $outdir/MouseConfigParse.o $
+  $outdir/autoconf_ppc.o $outdir/PPCKernBus.o $outdir/IOAsmSupport.o $outdir/IOSupport.o $
+  $outdir/DEC21x4.o $outdir/DEC21x4Init.o $outdir/DEC21x4KDB.o $outdir/DEC21x4Private.o $outdir/DEC21x4SRom.o $outdir/DEC21x4Media.o $outdir/DEC21x4MII.o $
+  $outdir/UniNEnet.o $outdir/UniNEnetPrivate.o $outdir/UniNEnetMII.o $
+  $outdir/subr_prof.o $outdir/ioconf.o libc mach_user debug_objects

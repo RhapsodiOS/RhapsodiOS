@@ -1,3 +1,5 @@
 CLEAN_ALL_SUBPROJECTS = YES
 OTHER_GENERATED_OFILES = $(VERS_OFILE)
+# os.h and pico_os.c come from osdep, the way pico's own makefiles make them
+OTHER_INITIAL_TARGETS = $(SFILE_DIR)/os.h $(SFILE_DIR)/pico_os.c
 -include ../Makefile.include

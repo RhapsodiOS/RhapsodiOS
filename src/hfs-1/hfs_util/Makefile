@@ -12,7 +12,7 @@ NAME = hfs.util
 PROJECTVERSION = 2.8
 PROJECT_TYPE = Tool
 
-HFILES = kl_com.h
+HFILES = kl_com.h hfs_endian.h
 
 CFILES = hfsutil_main.c hfs_KSUser.c kl_com.c
 

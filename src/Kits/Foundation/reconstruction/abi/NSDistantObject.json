@@ -1,0 +1,235 @@
+{
+ "categories": [
+  {
+   "class": "Object",
+   "class_methods": [],
+   "instance_methods": [
+    {
+     "selector": "_conformsToProtocolNamed:",
+     "types": "c12@8:12r*16"
+    }
+   ],
+   "name": "NSConformsToProtocolNamed"
+  },
+  {
+   "class": "NSObject",
+   "class_methods": [],
+   "instance_methods": [
+    {
+     "selector": "_conformsToProtocolNamed:",
+     "types": "c12@8:12r*16"
+    }
+   ],
+   "name": "NSConformsToProtocolNamed"
+  }
+ ],
+ "classes": [
+  {
+   "class_methods": [
+    {
+     "selector": "_enableLogging:",
+     "types": "v9@8:12c16"
+    },
+    {
+     "selector": "newDistantObjectWithCoder:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "isAClassOfObject:",
+     "types": "c12@8:12@16"
+    },
+    {
+     "selector": "proxyWithLocal:connection:",
+     "types": "@16@8:12@16@20"
+    },
+    {
+     "selector": "proxyWithTarget:connection:",
+     "types": "@16@8:12@16@20"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "awakeAfterUsingCoder:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "initWithCoder:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "encodeWithCoder:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "classForArchiver",
+     "types": "#8@8:12"
+    },
+    {
+     "selector": "classForPortCoder",
+     "types": "#8@8:12"
+    },
+    {
+     "selector": "replacementObjectForPortCoder:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "zone",
+     "types": "^{?=}8@8:12"
+    },
+    {
+     "selector": "mutableCopy",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "mutableCopyWithZone:",
+     "types": "@12@8:12^{?=}16"
+    },
+    {
+     "selector": "copy",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "copyWithZone:",
+     "types": "@12@8:12^{?=}16"
+    },
+    {
+     "selector": "appendFormat:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "stringByAppendingFormat:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "description",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "hash",
+     "types": "I8@8:12"
+    },
+    {
+     "selector": "isEqual:",
+     "types": "c12@8:12@16"
+    },
+    {
+     "selector": "_anticipateRelease",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "_releaseWireCount:",
+     "types": "v12@8:12I16"
+    },
+    {
+     "selector": "retainWireCount",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "release",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "dealloc",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "retainCount",
+     "types": "I8@8:12"
+    },
+    {
+     "selector": "retain",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "invalidateProxy",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "forwardInvocation:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "setProtocolForProxy:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "connectionForProxy",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "initWithLocal:connection:",
+     "types": "@16@8:12@16@20"
+    },
+    {
+     "selector": "initWithTarget:connection:",
+     "types": "@16@8:12@16@20"
+    },
+    {
+     "selector": "class",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "methodSignatureForSelector:",
+     "types": "@12@8:12:16"
+    },
+    {
+     "selector": "conformsToProtocol:",
+     "types": "c12@8:12@16"
+    }
+   ],
+   "instance_size": 28,
+   "ivars": [
+    {
+     "name": "name",
+     "offset": 4,
+     "type": "@"
+    },
+    {
+     "name": "wire",
+     "offset": 8,
+     "type": "b2"
+    },
+    {
+     "name": "unused",
+     "offset": 8,
+     "type": "b6"
+    },
+    {
+     "name": "refCount",
+     "offset": 9,
+     "type": "b24"
+    },
+    {
+     "name": "conn",
+     "offset": 12,
+     "type": "@\"NSConnection\""
+    },
+    {
+     "name": "wireCount",
+     "offset": 16,
+     "type": "I"
+    },
+    {
+     "name": "_knownSelectors",
+     "offset": 20,
+     "type": "^v"
+    },
+    {
+     "name": "_reserved",
+     "offset": 24,
+     "type": "^v"
+    }
+   ],
+   "name": "NSDistantObject",
+   "superclass": "NSProxy"
+  }
+ ],
+ "data_symbols": [
+  "___NSMethodDescriptionForSelectorSignature",
+  "___NSReleaseSignature"
+ ],
+ "module": "NSDistantObject.m",
+ "schema_version": "abi-v1",
+ "text_symbols": []
+}

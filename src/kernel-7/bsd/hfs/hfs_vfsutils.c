@@ -118,6 +118,7 @@
 #include "hfscommon/headers/system/MacOSStubs.h"
 #include "hfscommon/headers/FileMgrInternal.h"
 #include "hfscommon/headers/BTreesPrivate.h"
+#include "hfs_endian.h"
 #include "hfscommon/headers/system/HFSUnicodeWrappers.h"
 
 #define		SUPPORTS_MAC_ALIASES	0
@@ -308,6 +309,18 @@ OSErr hfs_MountHFSPlusVolume( register struct hfsmount *hfsmp, HFSPlusVolumeHead
     retval = ValidVolumeHeader(vhp);	/*	make sure this is an HFS Plus disk */
     if (retval)
     	return MacToVFSError(retval);
+
+#if BYTE_ORDER == LITTLE_ENDIAN
+	/*
+	 * hfs_endian.c knows the catalog and extents record formats only;
+	 * refuse a volume that has an attributes B-tree rather than read its
+	 * nodes in the wrong byte order.  Nothing is set up yet to release.
+	 */
+	if (vhp->attributesFile.logicalSize.hi != 0 || vhp->attributesFile.logicalSize.lo != 0) {
+		printf("hfs: can't mount an HFS Plus volume that has an attributes B-tree on this CPU\n");
+		return (EINVAL);
+	}
+#endif
     
     /*
      * The VolumeHeader seems OK: transfer info from it into VCB
@@ -1074,12 +1087,12 @@ void CopyVNodeToCatalogNode (struct vnode *vp, struct CatalogNodeData *nodeData)
 	    };
 	
 	    if (vp->v_type == VLNK) {
-	        ((struct FInfo *)(&nodeData->finderInfo))->fdType = kSymLinkFileType;
-	        ((struct FInfo *)(&nodeData->finderInfo))->fdCreator = kSymLinkCreator;
+	        ((struct FInfo *)(&nodeData->finderInfo))->fdType = SWAP_BE32(kSymLinkFileType);	/* FinderInfo stays big-endian */
+	        ((struct FInfo *)(&nodeData->finderInfo))->fdCreator = SWAP_BE32(kSymLinkCreator);
 	
 			/* Set this up as an alias */
 			#if SUPPORTS_MAC_ALIASES
-				((struct FInfo *)(&nodeData->finderInfo))->fdFlags |= kIsAlias;
+				((struct FInfo *)(&nodeData->finderInfo))->fdFlags |= SWAP_BE16(kIsAlias);
 			#endif
 		}
 	}
@@ -1290,7 +1303,7 @@ void CopyCatalogToHFSNode(struct hfsCatalogInfo *catalogInfo, struct hfsnode *hp
     isResource 		= (forkType == kRsrcFork);
     isDirectory		= (catalogInfo->nodeData.nodeType == kCatalogFolderNode);
     isHFSPlus 		= (vcb->vcbSigWord == kHFSPlusSigWord);
-    finderFlags 	= ((struct FInfo *)(&catalogInfo->nodeData.finderInfo))->fdFlags;
+    finderFlags 	= SWAP_BE16(((struct FInfo *)(&catalogInfo->nodeData.finderInfo))->fdFlags);
     DBG_UTILS(("\t\t forkType:%d, isResource:%d, isDirectory:%d, isHFSPlus:%d\n", forkType, isResource, isDirectory, isHFSPlus));
 
 	/* Copy over the name if NOT set yet */
@@ -2686,7 +2699,7 @@ unsigned long BestBlockSizeFit(unsigned long allocationBlockSize,
        from being handled as two 6K logical blocks instead of 3 4K logical blocks.
        Even though the former (the result of the loop below) is the larger allocation
        block size, the latter is more efficient: */
-    if (allocationBlockSize % PAGE_SIZE == 0) return PAGE_SIZE;
+    if (allocationBlockSize % MAXLOGBLOCKSIZE == 0) return MAXLOGBLOCKSIZE;	/* PAGE_SIZE, but 4K on i386: see hfs.h */
 
     /* No clear winner exists: pick the largest even fraction <= MAXBSIZE: */
     baseBlockCount = allocationBlockSize / baseMultiple;				/* Now guaranteed to be an even multiple */

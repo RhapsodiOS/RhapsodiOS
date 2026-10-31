@@ -1,0 +1,181 @@
+{
+    IBClasses = (
+        {
+            ACTIONS = {firstVisible = id; revert = id; showDefault = id; suggest = id; }; 
+            CLASS = EmulationController; 
+            LANGUAGE = ObjC; 
+            OUTLETS = {
+                altBox = id; 
+                altMatrix = id; 
+                altMsg = id; 
+                checkMatrix = id; 
+                keypadCheck = id; 
+                strictCheck = id; 
+                translateCheck = id; 
+            }; 
+            SUPERCLASS = Object; 
+        }, 
+        {CLASS = FirstResponder; LANGUAGE = ObjC; SUPERCLASS = NSObject; }, 
+        {
+            ACTIONS = {changeFont = id; }; 
+            CLASS = FontTrap; 
+            LANGUAGE = ObjC; 
+            OUTLETS = {fontTarget = id; targetProxy = id; }; 
+            SUPERCLASS = NSView; 
+        }, 
+        {
+            ACTIONS = {handleReturn = id; limitLines = id; unlimitLines = id; }; 
+            CLASS = MiscController; 
+            LANGUAGE = ObjC; 
+            OUTLETS = {
+                autoFocusCheck = id; 
+                lineLimitField = id; 
+                linesLimited = id; 
+                linesUnlimited = id; 
+                okButton = id; 
+                otherOptionsMatrix = id; 
+                scrollbackEnableCheck = id; 
+                wrapCheck = id; 
+            }; 
+            SUPERCLASS = Object; 
+        }, 
+        {
+            ACTIONS = {
+                changePane = id; 
+                handleReturnByProxy = id; 
+                ok = id; 
+                revert = id; 
+                setDefaultX = id; 
+                showDefaultX = id; 
+                showPrefWindow = id; 
+                suggest = id; 
+                windowDidBecomeKey = id; 
+                windowDidResignKey = id; 
+            }; 
+            CLASS = Preferences; 
+            LANGUAGE = ObjC; 
+            OUTLETS = {
+                buttonMatrix = id; 
+                container = id; 
+                currentTerminal = id; 
+                emulationCntl = id; 
+                emulationPane = id; 
+                installedPane = id; 
+                miscCntl = id; 
+                miscPane = id; 
+                okButton = id; 
+                paneSelector = id; 
+                processMonitorCntl = id; 
+                processMonitorPane = id; 
+                revertButton = id; 
+                setDefaultButton = id; 
+                shellCntl = id; 
+                shellPane = id; 
+                showDefaultButton = id; 
+                startupCntl = id; 
+                startupPane = id; 
+                suggestButton = id; 
+                textAttrCntl = id; 
+                textAttrPane = id; 
+                titleBarCntl = id; 
+                titleBarPane = id; 
+                window = id; 
+                windowCntl = id; 
+                windowPane = id; 
+            }; 
+            SUPERCLASS = Object; 
+        }, 
+        {
+            ACTIONS = {
+                add = id; 
+                enablementChanged = id; 
+                firstVisible = id; 
+                lastVisible = id; 
+                remove = id; 
+                runningBackgroundChanged = id; 
+            }; 
+            CLASS = ProcessMonitorController; 
+            LANGUAGE = ObjC; 
+            OUTLETS = {
+                addButton = id; 
+                checkMatrix = id; 
+                cleanScrollView = id; 
+                cleanTableView = id; 
+                monitorCheck = id; 
+                newCleanField = id; 
+                removeButton = id; 
+                runningCleanCheck = id; 
+            }; 
+            SUPERCLASS = NSObject; 
+        }, 
+        {
+            ACTIONS = {firstVisible = id; shellChanged = id; sourceDotLoginChanged = id; }; 
+            CLASS = ShellController; 
+            LANGUAGE = ObjC; 
+            OUTLETS = {shellForm = id; sourceCheck = id; }; 
+            SUPERCLASS = Object; 
+        }, 
+        {
+            ACTIONS = {
+                firstVisible = id; 
+                setDefault = id; 
+                setFont = id; 
+                setFromStruct = id; 
+                setStruct = id; 
+                showDefault = id; 
+                suggest = id; 
+            }; 
+            CLASS = SizeAndFontController; 
+            LANGUAGE = ObjC; 
+            OUTLETS = {fontDisplayField = id; sizeForm = id; }; 
+            SUPERCLASS = Object; 
+        }, 
+        {
+            ACTIONS = {
+                fastStartupChanged = id; 
+                firstVisible = id; 
+                pathWasSet = id; 
+                setPathRequest = id; 
+                startupActionChanged = id; 
+            }; 
+            CLASS = StartupController; 
+            LANGUAGE = ObjC; 
+            OUTLETS = {actionMatrix = id; fastAutolaunchCheck = id; pathForm = id; }; 
+            SUPERCLASS = Object; 
+        }, 
+        {
+            CLASS = TextAttributeController; 
+            LANGUAGE = ObjC; 
+            OUTLETS = {
+                BlinkTextWell = id; 
+                BoldTextWell = id; 
+                CursorBlinkButton = id; 
+                CursorSelector = id; 
+                CursorWell = id; 
+                DoubleStrikeButton = id; 
+                InverseBackWell = id; 
+                InverseTextWell = id; 
+                NormalBackWell = id; 
+                NormalTextWell = id; 
+                SelectionWell = id; 
+                prefObject = id; 
+            }; 
+            SUPERCLASS = Object; 
+        }, 
+        {
+            ACTIONS = {customTitleChanged = id; titleBitsChanged = id; }; 
+            CLASS = TitleBarController; 
+            LANGUAGE = ObjC; 
+            OUTLETS = {elementMatrix = id; fakeTitle = id; prefObject = id; titleForm = id; }; 
+            SUPERCLASS = Object; 
+        }, 
+        {
+            ACTIONS = {firstVisible = id; setFontRequest = id; }; 
+            CLASS = WindowController; 
+            LANGUAGE = ObjC; 
+            OUTLETS = {fontField = id; fontTrap = id; shellExitMatrix = id; sizeForm = id; }; 
+            SUPERCLASS = Object; 
+        }
+    ); 
+    IBVersion = 1; 
+}

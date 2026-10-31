@@ -1,0 +1,38 @@
+{
+  "schema_version": "profile-v1",
+  "name": "drvATIMach64DisplayDriver reconstruction",
+  "architecture": "i386",
+  "endianness": "little",
+  "reference": {
+    "path": "${BINRECON_REFERENCE}"
+  },
+  "rebuilt": {
+    "path": "${BINRECON_REBUILT}"
+  },
+  "analyzers": {
+    "ghidra": {
+      "enabled": false,
+      "version": "disabled",
+      "timeout_seconds": 900,
+      "executable": ""
+    },
+    "ida": {
+      "enabled": true,
+      "version": "9.4",
+      "timeout_seconds": 900,
+      "executable": "C:/Program Files/IDA Professional 9.4/idat.exe"
+    },
+    "angr": {
+      "enabled": false,
+      "version": "9.3.0",
+      "timeout_seconds": 900,
+      "executable": ".venv-binrecon/Scripts/python.exe"
+    }
+  },
+  "comparison": {
+    "ignore_metadata": [],
+    "entry_points": [],
+    "acceptance": "normalized-functions"
+  },
+  "output_dir": "../out/atimach64-final"
+}

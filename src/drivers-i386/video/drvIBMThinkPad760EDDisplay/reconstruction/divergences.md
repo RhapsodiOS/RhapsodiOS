@@ -2398,14 +2398,14 @@ absent from the rebuilt binary for the same reason they are absent from the
 Cirrus one.
 
 The strongest account the tree itself supports is this.
-`src/pb_makefiles-1/next-sgs.make:36-45` does define `$(VERS_FILE)` /
+`src/Developer/Commands/pb_makefiles-1/next-sgs.make:36-45` does define `$(VERS_FILE)` /
 `$(VERS_OFILE)` and the rule that generates them, but nothing links
 `$(VERS_OFILE)` unless `OTHER_GENERATED_OFILES` picks it up, and for a Kernel
 Server that comes only from
 `src/driverTools-1/KernelServerProjectType/kernelserver.make.preamble:8-10`,
 pulled in by the **optional** `-include` at `kernelserver.make:99-102` from
 `$(LOCAL_DEVELOPER_DIR)/Makefiles/pb_makefiles` — `/Local/Developer/Makefiles/pb_makefiles`
-per `src/pb_makefiles-1/platform-variables.make:54`. If that preamble is not
+per `src/Developer/Commands/pb_makefiles-1/platform-variables.make:54`. If that preamble is not
 installed there on the guest, the `-include` is silent and no version object is
 ever added. This is not a proven root cause: the guest filesystem was not
 inspected. It is recorded here so the recurrence is on the record rather than
@@ -2528,7 +2528,7 @@ recorded here as measurement, not repaired: this task's gate was compilation.
 
 Before attributing any of the twelve to the compiler, the compiler was ruled
 out. `drvCirrusLogicGD5434` is built by the same project machinery at the same
-`OPTIMIZE_BUILD_CFLAGS = -O` (`src/pb_makefiles-1/flags.make:124`), and both its
+`OPTIMIZE_BUILD_CFLAGS = -O` (`src/Developer/Commands/pb_makefiles-1/flags.make:124`), and both its
 reference and a real rebuild of it are on hand. Its
 `(ProgramDAC) setGammaTable` and `(ProgramDAC) setTransferTable:count:` are
 **byte-identical, instruction for instruction**, between reference and rebuild —
@@ -2976,7 +2976,7 @@ check: does its rebuilt prologue contain a `sub esp`? The reference has none.
 
 **5. Diagnose the missing version bundle.** Neither driver's build emits its
 `_VERS_STRING`/`_VERS_NUM` stub and the cause is still unproven. The strongest
-in-repo account is that `src/pb_makefiles-1/next-sgs.make:36-45` generates
+in-repo account is that `src/Developer/Commands/pb_makefiles-1/next-sgs.make:36-45` generates
 `$(NAME)_vers.c`, but nothing links `$(VERS_OFILE)` unless
 `OTHER_GENERATED_OFILES` picks it up — which for a Kernel Server comes from
 `src/driverTools-1/KernelServerProjectType/kernelserver.make.preamble:8-10`

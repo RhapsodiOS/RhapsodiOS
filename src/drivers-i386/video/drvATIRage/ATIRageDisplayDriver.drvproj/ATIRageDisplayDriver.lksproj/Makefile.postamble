@@ -1,0 +1,8 @@
+# These objects are compiled by the dedicated historical i386 build harness.
+# Appending here keeps the symbolic BIOS transitions after the generated
+# ATIRageDisplayDriver_instance.o in the kernel-server link.
+LOADABLES += $(ATI_BIOS16_I386) $(ATI_BIOS_WRAPPER_I386) $(ATI_THUNK_I386)
+
+# The Rhapsody makefiles do not define VERS_OFILE for this project type.
+VERS_OFILE = $(OBJROOT)/$(NAME)_vers.o
+OTHER_GENERATED_OFILES += $(VERS_OFILE)

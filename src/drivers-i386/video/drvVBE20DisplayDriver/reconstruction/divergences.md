@@ -986,7 +986,7 @@ recorded here for whoever reaches the Kernel Server functions.
   unlikely to explain the differences. What was ruled out, and what was not:
 
   - The layout is not a difference; both are that four-field format.
-  - `next-sgs` does not reproduce the reference. `src/pb_makefiles-1/next-sgs.make`
+  - `next-sgs` does not reproduce the reference. `src/Developer/Commands/pb_makefiles-1/next-sgs.make`
     names the symbol `_<name>_VERS_STRING`, which is what drvCirrus's
     *reference* carries (`.../drvCirrusLogicGD5434/reconstruction/divergences.md`,
     section "Static storage"); this reference's `_<name>_vers` is a third

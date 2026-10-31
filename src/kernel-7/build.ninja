@@ -1,0 +1,6 @@
+ninja_required_version = 1.9
+builddir = BUILD.ninja/RELEASE_I386
+outdir = BUILD.ninja/RELEASE_I386
+include ninja/common.ninja
+subninja ninja/release.ninja
+default BUILD.ninja/RELEASE_I386/mach_kernel

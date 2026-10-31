@@ -13,9 +13,9 @@ PROJECTVERSION = 5.00
 PROJECT_TYPE = Driver
 LANGUAGE = English
 
-GLOBAL_RESOURCES = Default.table
+GLOBAL_RESOURCES = Default.table EtherLink3EISA.table EtherLink3PCMCIA.table EtherLink3PnP.table
 
-LOCAL_RESOURCES = Localizable.strings DriverHelp
+LOCAL_RESOURCES = Localizable.strings EtherLink3EISA.strings EtherLink3PCMCIA.strings EtherLink3PnP.strings DriverHelp
 
 TOOLS = EtherLink3.lksproj
 

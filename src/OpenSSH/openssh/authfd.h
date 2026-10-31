@@ -1,3 +1,5 @@
+/* $OpenBSD: authfd.h,v 1.39 2015/12/04 16:41:28 markus Exp $ */
+
 /*
  * Author: Tatu Ylonen <ylo@cs.hut.fi>
  * Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
@@ -11,12 +13,35 @@
  * called by a name other than "ssh" or "Secure Shell".
  */
 
-/* RCSID("$OpenBSD: authfd.h,v 1.13 2000/10/09 21:51:00 markus Exp $"); */
-
 #ifndef AUTHFD_H
 #define AUTHFD_H
 
-#include "buffer.h"
+/* List of identities returned by ssh_fetch_identitylist() */
+struct ssh_identitylist {
+	size_t nkeys;
+	struct sshkey **keys;
+	char **comments;
+};
+
+int	ssh_get_authentication_socket(int *fdp);
+void	ssh_close_authentication_socket(int sock);
+
+int	ssh_lock_agent(int sock, int lock, const char *password);
+int	ssh_fetch_identitylist(int sock, int version,
+	    struct ssh_identitylist **idlp);
+void	ssh_free_identitylist(struct ssh_identitylist *idl);
+int	ssh_add_identity_constrained(int sock, struct sshkey *key,
+	    const char *comment, u_int life, u_int confirm);
+int	ssh_remove_identity(int sock, struct sshkey *key);
+int	ssh_update_card(int sock, int add, const char *reader_id,
+	    const char *pin, u_int life, u_int confirm);
+int	ssh_remove_all_identities(int sock, int version);
+
+int	ssh_decrypt_challenge(int sock, struct sshkey* key, BIGNUM *challenge,
+	    u_char session_id[16], u_char response[16]);
+int	ssh_agent_sign(int sock, struct sshkey *key,
+	    u_char **sigp, size_t *lenp,
+	    const u_char *data, size_t datalen, const char *alg, u_int compat);
 
 /* Messages for the authentication agent connection. */
 #define SSH_AGENTC_REQUEST_RSA_IDENTITIES	1
@@ -38,96 +63,30 @@
 #define SSH2_AGENTC_REMOVE_IDENTITY		18
 #define SSH2_AGENTC_REMOVE_ALL_IDENTITIES	19
 
+/* smartcard */
+#define SSH_AGENTC_ADD_SMARTCARD_KEY		20
+#define SSH_AGENTC_REMOVE_SMARTCARD_KEY		21
+
+/* lock/unlock the agent */
+#define SSH_AGENTC_LOCK				22
+#define SSH_AGENTC_UNLOCK			23
+
+/* add key with constraints */
+#define SSH_AGENTC_ADD_RSA_ID_CONSTRAINED	24
+#define SSH2_AGENTC_ADD_ID_CONSTRAINED		25
+#define SSH_AGENTC_ADD_SMARTCARD_KEY_CONSTRAINED 26
+
+#define	SSH_AGENT_CONSTRAIN_LIFETIME		1
+#define	SSH_AGENT_CONSTRAIN_CONFIRM		2
+
+/* extended failure messages */
+#define SSH2_AGENT_FAILURE			30
+
 /* additional error code for ssh.com's ssh-agent2 */
-#define SSH_COM_AGENT2_FAILURE                   102
+#define SSH_COM_AGENT2_FAILURE			102
 
 #define	SSH_AGENT_OLD_SIGNATURE			0x01
-
-
-typedef struct {
-	int     fd;
-	Buffer  identities;
-	int     howmany;
-}       AuthenticationConnection;
-
-/* Returns the number of the authentication fd, or -1 if there is none. */
-int     ssh_get_authentication_socket();
-
-/*
- * This should be called for any descriptor returned by
- * ssh_get_authentication_socket().  Depending on the way the descriptor was
- * obtained, this may close the descriptor.
- */
-void    ssh_close_authentication_socket(int authfd);
-
-/*
- * Opens and connects a private socket for communication with the
- * authentication agent.  Returns NULL if an error occurred and the
- * connection could not be opened.  The connection should be closed by the
- * caller by calling ssh_close_authentication_connection().
- */
-AuthenticationConnection *ssh_get_authentication_connection();
-
-/*
- * Closes the connection to the authentication agent and frees any associated
- * memory.
- */
-void    ssh_close_authentication_connection(AuthenticationConnection *auth);
-
-/*
- * Returns the first authentication identity held by the agent or NULL if
- * no identies are available. Caller must free comment and key.
- * Note that you cannot mix calls with different versions.
- */
-Key	*ssh_get_first_identity(AuthenticationConnection *auth, char **comment, int version);
-
-/*
- * Returns the next authentication identity for the agent.  Other functions
- * can be called between this and ssh_get_first_identity or two calls of this
- * function.  This returns NULL if there are no more identities.  The caller
- * must free key and comment after a successful return.
- */
-Key	*ssh_get_next_identity(AuthenticationConnection *auth, char **comment, int version);
-
-/*
- * Requests the agent to decrypt the given challenge.  Returns true if the
- * agent claims it was able to decrypt it.
- */
-int
-ssh_decrypt_challenge(AuthenticationConnection *auth,
-    Key *key, BIGNUM * challenge,
-    unsigned char session_id[16],
-    unsigned int response_type,
-    unsigned char response[16]);
-
-/* Requests the agent to sign data using key */
-int
-ssh_agent_sign(AuthenticationConnection *auth,
-    Key *key,
-    unsigned char **sigp, int *lenp,
-    unsigned char *data, int datalen);
-
-/*
- * Adds an identity to the authentication server.  This call is not meant to
- * be used by normal applications.  This returns true if the identity was
- * successfully added.
- */
-int
-ssh_add_identity(AuthenticationConnection *auth, Key *key,
-    const char *comment);
-
-/*
- * Removes the identity from the authentication server.  This call is not
- * meant to be used by normal applications.  This returns true if the
- * identity was successfully added.
- */
-int     ssh_remove_identity(AuthenticationConnection *auth, Key *key);
-
-/*
- * Removes all identities from the authentication agent.  This call is not
- * meant to be used by normal applications.  This returns true if the
- * operation was successful.
- */
-int     ssh_remove_all_identities(AuthenticationConnection *auth, int version);
+#define	SSH_AGENT_RSA_SHA2_256			0x02
+#define	SSH_AGENT_RSA_SHA2_512			0x04
 
 #endif				/* AUTHFD_H */

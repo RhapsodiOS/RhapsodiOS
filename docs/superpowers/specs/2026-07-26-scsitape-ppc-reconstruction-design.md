@@ -152,7 +152,7 @@ Three techniques, each of which cost a review cycle to discover:
   instruction shapes, and it carries Apple's own argument names.
 - **When a constant or type is unknown, search this tree before recording it as
   undeterminable.** Every such item in spec 2 was defined in
-  `src/kernel-7/mach/`, `src/kernel-7/ipc/` or `src/cc-1`. Investigation had
+  `src/kernel-7/mach/`, `src/kernel-7/ipc/` or `src/Developer/Commands/cc-1`. Investigation had
   stopped at "not in this binary" instead of "not in this tree".
 
 ## 3. Design
@@ -284,9 +284,9 @@ prove the driver builds or runs, and this spec does not claim otherwise.
 ## 5. Follow-on work
 
 - **A PowerPC build.** The tree already carries the pieces: a PowerPC assembler
-  and linker relocation support in `src/cctools-2` (`as/ppc.c`,
+  and linker relocation support in `src/Developer/Commands/cctools-2` (`as/ppc.c`,
   `as/ppc-opcode.h`, `ld/ppc_reloc.c`) and GCC's `rs6000` configuration in
-  `src/cc-1`. Standing one up would compile-verify this spec's four bodies,
+  `src/Developer/Commands/cc-1`. Standing one up would compile-verify this spec's four bodies,
   discharge everything spec 2 deferred, and make `parity_check.py` and
   `import_check.py` usable.
 - **Spec 2's deferred work.** The 12 stub wrapper bodies and 6 absent bodies in

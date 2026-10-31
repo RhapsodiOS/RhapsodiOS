@@ -744,7 +744,7 @@ verifiable from the repo:
   `OTHER_RESOURCES`, but the generated `PCParallelPort.drvproj/Makefile` has
   `GLOBAL_RESOURCES =` empty — so nothing copies it into `ParallelPort.config/`.
 - The `post_copy_tables` rule lives in `driver.make`, which is **not** in this repo:
-  `src/pb_makefiles-1/` has no `driver.make`, so the rule comes from the guest's installed
+  `src/Developer/Commands/pb_makefiles-1/` has no `driver.make`, so the rule comes from the guest's installed
   `$(MAKEFILEPATH)/pb_makefiles`. It cannot be inspected or patched from here.
 
 Task 10 should either add `Default.table` to `GLOBAL_RESOURCES` (or copy it in a

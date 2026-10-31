@@ -251,7 +251,7 @@ make_cmd=${MAKE-make}
 mkdir -p "$tmp/pb.sym/pb_makefiles.build/derived_src" \
     "$tmp/pb-all.sym/pb_makefiles.build/derived_src"
 pb_header_rc=0
-(cd "$src_dir/pb_makefiles-1" && "$make_cmd" -n \
+(cd "$src_dir/Developer/Commands/pb_makefiles-1" && "$make_cmd" -n \
         OBJROOT="$tmp/pb.obj" SYMROOT="$tmp/pb.sym" \
         DSTROOT="$tmp/pb.hdr" installhdrs) >"$tmp/pb-header.trace" 2>&1 || \
     pb_header_rc=$?
@@ -262,7 +262,7 @@ elif test "$pb_header_rc" -ne 0; then
     say_fail "cannot trace pb_makefiles-1 installhdrs"
 fi
 echo 'print-cfiles: ; @echo $(CFILES)' >"$tmp/print-cfiles.make"
-if ! (cd "$src_dir/pb_makefiles-1" && "$make_cmd" -s \
+if ! (cd "$src_dir/Developer/Commands/pb_makefiles-1" && "$make_cmd" -s \
         -f Makefile -f "$tmp/print-cfiles.make" DFILES= DDFILES= \
         print-cfiles) >"$tmp/pb-all.trace" 2>&1; then
     cat "$tmp/pb-all.trace" >&2
@@ -276,7 +276,7 @@ fi
 # entry must install the owned Mach-O headers for that canonical source root.
 cctools_hdr="$tmp/cctools.hdr"
 cctools_srcroot="$tmp/cctools-295-2"
-if ! (cd "$src_dir/cctools-2" && "$make_cmd" -s RC_OS=teflon \
+if ! (cd "$src_dir/Developer/Commands/cctools-2" && "$make_cmd" -s RC_OS=teflon \
         SRCROOT="$cctools_srcroot" DSTROOT="$cctools_hdr" installhdrs) \
         >"$tmp/cctools-header.trace" 2>&1; then
     cat "$tmp/cctools-header.trace" >&2
@@ -286,7 +286,7 @@ elif test ! -f "$cctools_hdr/System/Library/Frameworks/System.framework/Versions
     say_fail "cctools installhdrs omits owned Mach-O headers"
 fi
 pb_multi_rc=0
-(cd "$src_dir/pb_makefiles-1" && "$make_cmd" -pn \
+(cd "$src_dir/Developer/Commands/pb_makefiles-1" && "$make_cmd" -pn \
         OBJROOT="$tmp/pb-all.obj" SYMROOT="$tmp/pb-all.sym" \
         DSTROOT="$tmp/pb-all.dst" DFILES= DDFILES= \
         install installhdrs) >"$tmp/pb-multi.db" 2>&1 || pb_multi_rc=$?
@@ -357,12 +357,12 @@ assert_before()
     fi
 }
 
-assert_before bison-1 all cc-1 all
-assert_before pb_makefiles-1 headers kernel-7 headers
-assert_before project_makefiles-1 headers kernel-7 headers
+assert_before Developer/Commands/bison-1 all Developer/Commands/cc-1 all
+assert_before Developer/Commands/pb_makefiles-1 headers kernel-7 headers
+assert_before Developer/Commands/project_makefiles-1 headers kernel-7 headers
 
 for provider in architecture-1 kernel-7 Libstreams-1 objc4-1 driverkit-3 \
-        cctools-2; do
+        Developer/Commands/cctools-2; do
     assert_before "$provider" headers Libc-1 all
 done
 

@@ -93,6 +93,10 @@
 #import <sys/user.h>
 #import <sys/vnode.h>
 #import <sys/uio.h>
+#include <ext2fs.h>
+#if EXT2FS
+#include <ext2fs/ext2_disk.h>
+#endif
 /* Needed for VOP_DEBLOCKSIZE, ip usage */
 #include <ufs/ufs/quota.h>
 #include <ufs/ufs/inode.h>
@@ -203,7 +207,6 @@ int vmp_push_range __P((struct vm_info *,vm_offset_t, vm_size_t));
 void vmp_push_all __P((struct vm_info *));
 /* Missing from headers so provided the prototypes */
 void vm_object_deactivate_pages __P((vm_object_t));
-void vm_object_deactivate_pages_first __P((vm_object_t));
 void vm_page_deactivate __P((vm_page_t));
 void vm_page_activate __P((vm_page_t));
 kern_return_t vm_allocate_with_pager __P((vm_map_t, vm_offset_t *, vm_size_t, boolean_t, vm_pager_t,vm_offset_t));
@@ -1030,7 +1033,7 @@ mapfs_map_remove(vmp, start, end, flush)
 	object = vmp->object;
 	if (object != VM_OBJECT_NULL) {
 		vm_object_lock(object);
-		vm_object_deactivate_pages_first(object);
+		vm_object_deactivate_pages(object);
 		vm_object_unlock(object);
 	}
 
@@ -1106,6 +1109,19 @@ mapfs_io(vp, uio, rw, ioflag, cred)
 	if (uio->uio_resid == 0) {
 		return (0);
 	}
+
+#if EXT2FS
+	/* Enrolled ext2 writes bypass VOP_WRITE. Check the effective append
+	 * offset before mapfs_get can remap or any data/size state changes. */
+	if (rw == UIO_WRITE && vp->v_tag == VT_EXT2FS) {
+		off_t offset = (ioflag & IO_APPEND) ?
+		    vp->v_vm_info->vnode_size : uio->uio_offset;
+		if (offset < 0 || (u_int64_t)offset > EXT2_FILESIZE_MAX ||
+		    (u_int64_t)uio->uio_resid >
+		    EXT2_FILESIZE_MAX - (u_int64_t)offset)
+			return EFBIG;
+	}
+#endif
 
 	if ((int) uio->uio_offset < 0 ||
 	    (int) ((int)uio->uio_offset + uio->uio_resid) < 0) {
@@ -1330,7 +1346,18 @@ mapfs_io(vp, uio, rw, ioflag, cred)
 		if (rw == UIO_WRITE)
 			vmp->nfsdirty = TRUE;
 
+		{
+#if EXT2FS
+		int resid = uio->uio_resid;
+#endif
 		error = uiomove((caddr_t)va, (int)n, uio);
+#if EXT2FS
+		/* Ordinary mapped reads bypass the filesystem's VOP_READ. */
+		if (rw == UIO_READ && uio->uio_resid < resid &&
+		    vp->v_tag == VT_EXT2FS && !(vp->v_mount->mnt_flag & MNT_RDONLY))
+			VTOI(vp)->i_flag |= IN_ACCESS;
+#endif
+		}
 
 		vmp->busy = FALSE;
 

@@ -38,6 +38,13 @@ class QemuArgsTest(unittest.TestCase):
         self.assertEqual(a[-2:], list(extra))
         self.assertIn("tcp:127.0.0.1:4600,server,nowait", a)
 
+    def test_qcow2_image_gets_qcow2_format(self):
+        a = gc.qemu_args("run/disk.qcow2", False, 4481, "null", "ne2k_pci",
+                         (), "s.log")
+        self.assertIn(
+            "file=run/disk.qcow2,format=qcow2,if=ide,index=0,media=disk", a)
+        self.assertEqual(a[a.index("-drive") + 2], "-snapshot")
+
 
 def _load_guest_console(image):
     # guest-console.py reads RHAP_TEST_IMAGE when it is imported

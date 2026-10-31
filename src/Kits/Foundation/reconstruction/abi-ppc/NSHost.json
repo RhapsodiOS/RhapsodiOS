@@ -1,0 +1,102 @@
+{
+ "categories": [],
+ "classes": [
+  {
+   "class_methods": [
+    {
+     "selector": "hostWithAddress:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "hostWithName:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "currentHost",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "_hostWithHostEntry:",
+     "types": "@8@4:8^{hostent=*^*ii^*}12"
+    },
+    {
+     "selector": "_hostWithHostEntry:name:",
+     "types": "@12@4:8^{hostent=*^*ii^*}12@16"
+    },
+    {
+     "selector": "flushHostCache",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "setHostCacheEnabled:",
+     "types": "v5@4:8c12"
+    },
+    {
+     "selector": "isHostCacheEnabled",
+     "types": "c4@4:8"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "description",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "addresses",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "address",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "names",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "name",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "isEqualToHost:",
+     "types": "c8@4:8@12"
+    },
+    {
+     "selector": "_initWithHostEntry:name:",
+     "types": "@12@4:8^{hostent=*^*ii^*}12@16"
+    },
+    {
+     "selector": "dealloc",
+     "types": "v4@4:8"
+    }
+   ],
+   "instance_size": 16,
+   "ivars": [
+    {
+     "name": "names",
+     "offset": 4,
+     "type": "@\"NSMutableArray\""
+    },
+    {
+     "name": "addresses",
+     "offset": 8,
+     "type": "@\"NSMutableArray\""
+    },
+    {
+     "name": "reserved",
+     "offset": 12,
+     "type": "^v"
+    }
+   ],
+   "name": "NSHost",
+   "superclass": "NSObject"
+  }
+ ],
+ "data_symbols": [],
+ "module": "NSHost.m",
+ "schema_version": "abi-v1",
+ "text_symbols": [
+  "_NSHostName"
+ ]
+}

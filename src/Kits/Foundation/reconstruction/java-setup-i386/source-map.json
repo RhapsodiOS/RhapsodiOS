@@ -1,0 +1,179 @@
+{
+  "schema_version": "source-map-v1",
+  "reference_sha256": "1165B9063ADD5672514455CA2C9830625BEA2BCE5E46126FB5E8652114C909D6",
+  "mapped": [
+    {
+      "address": 1112787636,
+      "size": 88,
+      "reference_names": [
+        "_NSJavaProvidesClasses"
+      ],
+      "source_path": "src/Kits/Foundation/NSJavaSetup.m",
+      "source_line": 97
+    },
+    {
+      "address": 1112874644,
+      "size": 123,
+      "reference_names": [
+        "_NSJavaNeedsVirtualMachine"
+      ],
+      "source_path": "src/Kits/Foundation/NSJavaSetup.m",
+      "source_line": 79
+    },
+    {
+      "address": 1112887532,
+      "size": 668,
+      "reference_names": [
+        "__NSJavaAbsolutePath"
+      ],
+      "source_path": "src/Kits/Foundation/NSJavaSetup.m",
+      "source_line": 155
+    },
+    {
+      "address": 1112888480,
+      "size": 1199,
+      "reference_names": [
+        "_NSJavaBundleSetup"
+      ],
+      "source_path": "src/Kits/Foundation/NSJavaSetup.m",
+      "source_line": 666
+    },
+    {
+      "address": 1112993524,
+      "size": 232,
+      "reference_names": [
+        "_NSJavaBundleCleanup"
+      ],
+      "source_path": "src/Kits/Foundation/NSJavaSetup.m",
+      "source_line": 827
+    },
+    {
+      "address": 1112993756,
+      "size": 421,
+      "reference_names": [
+        "_NSJavaClassLoaderForPath"
+      ],
+      "source_path": "src/Kits/Foundation/NSJavaSetup.m",
+      "source_line": 251
+    },
+    {
+      "address": 1112994180,
+      "size": 29,
+      "reference_names": [
+        "_NSJavaClassesForBundle"
+      ],
+      "source_path": "src/Kits/Foundation/NSJavaSetup.m",
+      "source_line": 534
+    },
+    {
+      "address": 1112994212,
+      "size": 81,
+      "reference_names": [
+        "_NSJavaClassesFromClassLoader"
+      ],
+      "source_path": "src/Kits/Foundation/NSJavaSetup.m",
+      "source_line": 340
+    },
+    {
+      "address": 1112994296,
+      "size": 98,
+      "reference_names": [
+        "_NSJavaClassesFromClassLoaderFromPath"
+      ],
+      "source_path": "src/Kits/Foundation/NSJavaSetup.m",
+      "source_line": 349
+    },
+    {
+      "address": 1112994396,
+      "size": 122,
+      "reference_names": [
+        "_NSJavaClassesFromPath"
+      ],
+      "source_path": "src/Kits/Foundation/NSJavaSetup.m",
+      "source_line": 516
+    },
+    {
+      "address": 1112994520,
+      "size": 637,
+      "reference_names": [
+        "_NSJavaDefinitiveSetupDictionary"
+      ],
+      "source_path": "src/Kits/Foundation/NSJavaSetup.m",
+      "source_line": 113
+    },
+    {
+      "address": 1112995160,
+      "size": 66,
+      "reference_names": [
+        "_NSJavaNeedsToLoadClasses"
+      ],
+      "source_path": "src/Kits/Foundation/NSJavaSetup.m",
+      "source_line": 108
+    },
+    {
+      "address": 1112995228,
+      "size": 192,
+      "reference_names": [
+        "_NSJavaResourceLocatorForPath"
+      ],
+      "source_path": "src/Kits/Foundation/NSJavaSetup.m",
+      "source_line": 232
+    },
+    {
+      "address": 1112995420,
+      "size": 18,
+      "reference_names": [
+        "_NSJavaSetup"
+      ],
+      "source_path": "src/Kits/Foundation/NSJavaSetup.m",
+      "source_line": 463
+    },
+    {
+      "address": 1112995440,
+      "size": 603,
+      "reference_names": [
+        "_NSJavaSpecifiedClassesForBundle"
+      ],
+      "source_path": "src/Kits/Foundation/NSJavaSetup.m",
+      "source_line": 370
+    },
+    {
+      "address": 1112997872,
+      "size": 47,
+      "reference_names": [
+        "__KeyOfClass"
+      ],
+      "source_path": "src/Kits/Foundation/NSJavaSetup.m",
+      "source_line": 85
+    },
+    {
+      "address": 1113000120,
+      "size": 124,
+      "reference_names": [
+        "__NSJavaBundleClassPath"
+      ],
+      "source_path": "src/Kits/Foundation/NSJavaSetup.m",
+      "source_line": 222
+    },
+    {
+      "address": 1113000244,
+      "size": 136,
+      "reference_names": [
+        "__NSJavaClassesFromVector"
+      ],
+      "source_path": "src/Kits/Foundation/NSJavaSetup.m",
+      "source_line": 326
+    }
+  ],
+  "unmapped": [],
+  "duplicate_candidates": [],
+  "boundary_disputed": [],
+  "by_module": {
+    "NSJavaSetup.m": {
+      "mapped": 18,
+      "unmapped": 0,
+      "duplicate_candidates": 0,
+      "boundary_disputed": 0
+    }
+  }
+}

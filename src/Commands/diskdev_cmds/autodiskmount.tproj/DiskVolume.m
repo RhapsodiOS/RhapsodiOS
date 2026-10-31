@@ -405,6 +405,8 @@ int foreignMountDevice(const char *fsName, const char *devName, const char *part
 	return [self mount_foreign];
     if (strcmp(fs_type, FS_TYPE_MSDOS) == 0)
 	return [self mount_foreign];
+    if (strcmp(fs_type, FS_TYPE_EXT2FS) == 0)
+	return [self mount_foreign];
     return (FALSE);
 }
 
@@ -720,6 +722,48 @@ int foreignMountDevice(const char *fsName, const char *devName, const char *part
 #ifdef DEBUG
 			printf("ret for %s is %d\n", devPart, ret);
 #endif DEBUG
+		    }
+		}
+		/* Reuse the exposed partition-a candidate, after known filesystems. */
+		{
+		    unsigned i;
+		    boolean_t claimed = FALSE;
+		    for (i = 0; i < [list count]; i++) {
+			DiskVolume * known = [list objectAt:i];
+			if (strcmp(known->dev_name, devPart) == 0) {
+			    claimed = TRUE;
+			    break;
+			}
+		    }
+		    if (!claimed) {
+			fs_p = fsstat_lookup_spec(stat_p, stat_number,
+						 specName, FS_TYPE_EXT2FS);
+			if (fs_p) {
+			    disk = [self getMountedVolume:devName Type:type
+				    FSSpec:fs_p Writable:isWritable
+				    Removable:isRemovable];
+			    if (disk != nil)
+				[list addObject:disk];
+			}
+			else {
+			    int fd = open(specName, O_NDELAY | O_RDONLY);
+			    if (fd >= 0) {
+				close(fd);
+				ret = foreignProbe(FS_TYPE_EXT2FS, devName, devPart,
+						   isRemovable, isWritable, TRUE);
+				if (ret == FSUR_RECOGNIZED) {
+				    disk = [[DiskVolume alloc] init];
+				    [disk setDiskDeviceName:devName];
+				    [disk setFSType:FS_TYPE_EXT2FS];
+				    [disk setDiskName:foreignLabel(FS_TYPE_EXT2FS)];
+				    [disk setDeviceType:type];
+				    [disk setWritable:isWritable];
+				    [disk setRemovable:isRemovable];
+				    [disk setDeviceName:devPart];
+				    [list addObject:disk];
+				}
+			    }
+			}
 		    }
 		}
 	    }

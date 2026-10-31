@@ -21,6 +21,7 @@ typedef struct {
     int has_build_depends;
     strlist build_depends_i386;
     strlist build_depends_ppc;
+    strlist depends;            /* runtime: .PKGINFO "depend" for apk */
 } Package;
 
 void package_init(Package *p);

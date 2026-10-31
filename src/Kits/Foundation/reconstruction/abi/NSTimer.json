@@ -1,0 +1,206 @@
+{
+ "categories": [],
+ "classes": [
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "_isEqualTimerWithTarget:selector:withObject:",
+     "types": "c20@8:12@16:20@24"
+    },
+    {
+     "selector": "description",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "retainCount",
+     "types": "I8@8:12"
+    },
+    {
+     "selector": "release",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "retain",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "dealloc",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "fireDate",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "fire",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "invalidate",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "userInfo",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "timeInterval",
+     "types": "d8@8:12"
+    },
+    {
+     "selector": "isValid",
+     "types": "c8@8:12"
+    },
+    {
+     "selector": "initWithFireDate:interval:target:selector:userInfo:repeats:userInfoIsArgument:",
+     "types": "@37@8:12@16d20@28:32@36c40c44"
+    }
+   ],
+   "instance_size": 32,
+   "ivars": [
+    {
+     "name": "fireDate",
+     "offset": 4,
+     "type": "@\"NSDate\""
+    },
+    {
+     "name": "target",
+     "offset": 8,
+     "type": "@"
+    },
+    {
+     "name": "selector",
+     "offset": 12,
+     "type": ":"
+    },
+    {
+     "name": "userInfo",
+     "offset": 16,
+     "type": "@"
+    },
+    {
+     "name": "firing",
+     "offset": 20,
+     "type": "b1"
+    },
+    {
+     "name": "repeats",
+     "offset": 20,
+     "type": "b1"
+    },
+    {
+     "name": "invalid",
+     "offset": 20,
+     "type": "b1"
+    },
+    {
+     "name": "argumented",
+     "offset": 20,
+     "type": "b1"
+    },
+    {
+     "name": "filler",
+     "offset": 20,
+     "type": "b4"
+    },
+    {
+     "name": "refCount",
+     "offset": 21,
+     "type": "b24"
+    },
+    {
+     "name": "timeInterval",
+     "offset": 24,
+     "type": "d"
+    }
+   ],
+   "name": "NSConcreteTimer",
+   "superclass": "NSTimer"
+  },
+  {
+   "class_methods": [
+    {
+     "selector": "timerWithFireDate:target:selector:userInfo:",
+     "types": "@24@8:12@16@20:24@28"
+    },
+    {
+     "selector": "scheduleTimerWithTimeInterval:target:selector:withObject:inModes:",
+     "types": "v32@8:12d16@24:28@32@36"
+    },
+    {
+     "selector": "scheduleTimerWithTimeInterval:target:selector:withObject:",
+     "types": "v28@8:12d16@24:28@32"
+    },
+    {
+     "selector": "scheduledTimerWithTimeInterval:target:selector:userInfo:repeats:",
+     "types": "@29@8:12d16@24:28@32c36"
+    },
+    {
+     "selector": "timerWithTimeInterval:target:selector:userInfo:repeats:",
+     "types": "@29@8:12d16@24:28@32c36"
+    },
+    {
+     "selector": "scheduledTimerWithTimeInterval:invocation:repeats:",
+     "types": "@21@8:12d16@24c28"
+    },
+    {
+     "selector": "timerWithTimeInterval:invocation:repeats:",
+     "types": "@21@8:12d16@24c28"
+    },
+    {
+     "selector": "allocWithZone:",
+     "types": "@12@8:12^{?=}16"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "_isEqualTimerWithTarget:selector:withObject:",
+     "types": "c20@8:12@16:20@24"
+    },
+    {
+     "selector": "fireDate",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "userInfo",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "fire",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "timeInterval",
+     "types": "d8@8:12"
+    },
+    {
+     "selector": "isValid",
+     "types": "c8@8:12"
+    },
+    {
+     "selector": "invalidate",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "scheduleInModes:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "schedule",
+     "types": "v8@8:12"
+    }
+   ],
+   "instance_size": 4,
+   "ivars": [],
+   "name": "NSTimer",
+   "superclass": "NSObject"
+  }
+ ],
+ "data_symbols": [],
+ "module": "NSTimer.m",
+ "schema_version": "abi-v1",
+ "text_symbols": []
+}

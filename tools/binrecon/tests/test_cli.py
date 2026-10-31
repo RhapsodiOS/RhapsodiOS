@@ -565,6 +565,139 @@ def test_source_map_command_writes_validated_document(tmp_path, monkeypatch):
     assert document["mapped"][0]["source_line"] == 1
 
 
+def test_source_map_command_with_ownership_writes_by_module_counts(tmp_path, monkeypatch):
+    import json
+
+    from binrecon.cli import main
+
+    source_dir = tmp_path / "src" / "driver"
+    source_dir.mkdir(parents=True)
+    (source_dir / "bus.c").write_text(
+        "int testSlotForID(unsigned slot)\n{\n    return slot;\n}\n", encoding="utf-8"
+    )
+    (source_dir / "helper.c").write_text(
+        "int helperFunc(unsigned slot)\n{\n    return slot;\n}\n", encoding="utf-8"
+    )
+    analysis_path = tmp_path / "reference.analysis.json"
+    analysis_path.write_text(
+        json.dumps(
+            {
+                "schema_version": "analysis-v1",
+                "input": {"path": "x", "size": 32, "sha256": "B" * 64,
+                          "architecture": "i386", "endianness": "little"},
+                "analyzer": {"name": "fixture", "version": "1", "invocation": "fixture"},
+                "sections": [{"name": "__TEXT,__text", "address": 4096, "offset": 0,
+                              "size": 32, "permissions": "rx", "sha256": "B" * 64}],
+                "symbols": [],
+                "relocations": [],
+                "functions": [
+                    {
+                        "address": 4096,
+                        "size": 16,
+                        "names": ["_testSlotForID"],
+                        "blocks": [],
+                        "instructions": [],
+                        "calls": [],
+                        "confidence": 1.0,
+                    },
+                    {
+                        "address": 4112,
+                        "size": 16,
+                        "names": ["_helperFunc"],
+                        "blocks": [],
+                        "instructions": [],
+                        "calls": [],
+                        "confidence": 1.0,
+                    },
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    ownership_path = tmp_path / "ownership.json"
+    ownership_path.write_text(
+        json.dumps({"_testSlotForID": "bus.c", "_helperFunc": "helper.c"}),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr("binrecon.cli.read_macho", lambda path: {"symbols": []})
+    output_path = tmp_path / "source-map.json"
+
+    exit_code = main(
+        [
+            "source-map",
+            "--reference-analysis", str(analysis_path),
+            "--binary", str(analysis_path),
+            "--source-dir", str(source_dir),
+            "--repo-root", str(tmp_path),
+            "--ownership", str(ownership_path),
+            "--output", str(output_path),
+        ]
+    )
+
+    assert exit_code == 0
+    document = json.loads(output_path.read_text(encoding="utf-8"))
+    assert document["by_module"] == {
+        "bus.c": {"mapped": 1, "unmapped": 0, "duplicate_candidates": 0, "boundary_disputed": 0},
+        "helper.c": {"mapped": 1, "unmapped": 0, "duplicate_candidates": 0, "boundary_disputed": 0},
+    }
+
+
+def test_source_map_command_without_ownership_omits_by_module(tmp_path, monkeypatch):
+    import json
+
+    from binrecon.cli import main
+
+    source_dir = tmp_path / "src" / "driver"
+    source_dir.mkdir(parents=True)
+    (source_dir / "bus.c").write_text(
+        "int testSlotForID(unsigned slot)\n{\n    return slot;\n}\n", encoding="utf-8"
+    )
+    analysis_path = tmp_path / "reference.analysis.json"
+    analysis_path.write_text(
+        json.dumps(
+            {
+                "schema_version": "analysis-v1",
+                "input": {"path": "x", "size": 16, "sha256": "B" * 64,
+                          "architecture": "i386", "endianness": "little"},
+                "analyzer": {"name": "fixture", "version": "1", "invocation": "fixture"},
+                "sections": [{"name": "__TEXT,__text", "address": 4096, "offset": 0,
+                              "size": 16, "permissions": "rx", "sha256": "B" * 64}],
+                "symbols": [],
+                "relocations": [],
+                "functions": [
+                    {
+                        "address": 4096,
+                        "size": 16,
+                        "names": ["_testSlotForID"],
+                        "blocks": [],
+                        "instructions": [],
+                        "calls": [],
+                        "confidence": 1.0,
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr("binrecon.cli.read_macho", lambda path: {"symbols": []})
+    output_path = tmp_path / "source-map.json"
+
+    exit_code = main(
+        [
+            "source-map",
+            "--reference-analysis", str(analysis_path),
+            "--binary", str(analysis_path),
+            "--source-dir", str(source_dir),
+            "--repo-root", str(tmp_path),
+            "--output", str(output_path),
+        ]
+    )
+
+    assert exit_code == 0
+    document = json.loads(output_path.read_text(encoding="utf-8"))
+    assert "by_module" not in document
+
+
 def test_source_map_command_rejects_malformed_analysis_without_traceback(tmp_path, capsys):
     import json
 

@@ -1,7 +1,0 @@
-pkgname = apk-tools
-pkgver = 2.0_pre12
-pkgdesc = APK Tools
-maintainer = Alpine Linux maintainers
-license = GPL
-url = https://github.com/alpinelinux/apk-tools
-makedepends = build-base

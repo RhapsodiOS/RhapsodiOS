@@ -1,0 +1,660 @@
+{
+  "boundary_disputed": [],
+  "duplicate_candidates": [],
+  "mapped": [
+    {
+      "address": 11504,
+      "reference_names": [
+        "_main"
+      ],
+      "size": 820,
+      "source_line": 53,
+      "source_path": "src/driverkit-3/driverLoader/driverLoader.m"
+    },
+    {
+      "address": 12324,
+      "reference_names": [
+        "_usage"
+      ],
+      "size": 112,
+      "source_line": 132,
+      "source_path": "src/driverkit-3/driverLoader/driverLoader.m"
+    },
+    {
+      "address": 12436,
+      "reference_names": [
+        "_inquire"
+      ],
+      "size": 156,
+      "source_line": 144,
+      "source_path": "src/driverkit-3/driverLoader/driverLoader.m"
+    },
+    {
+      "address": 12592,
+      "reference_names": [
+        "_processDriverList"
+      ],
+      "size": 240,
+      "source_line": 160,
+      "source_path": "src/driverkit-3/driverLoader/driverLoader.m"
+    },
+    {
+      "address": 12832,
+      "reference_names": [
+        "_processDriver"
+      ],
+      "size": 316,
+      "source_line": 193,
+      "source_path": "src/driverkit-3/driverLoader/driverLoader.m"
+    },
+    {
+      "address": 13148,
+      "reference_names": [
+        "_loadDriver"
+      ],
+      "size": 584,
+      "source_line": 227,
+      "source_path": "src/driverkit-3/driverLoader/driverLoader.m"
+    },
+    {
+      "address": 13732,
+      "reference_names": [
+        "_unloadDriver"
+      ],
+      "size": 572,
+      "source_line": 274,
+      "source_path": "src/driverkit-3/driverLoader/driverLoader.m"
+    },
+    {
+      "address": 14304,
+      "reference_names": [
+        "_getInstanceFile"
+      ],
+      "size": 312,
+      "source_line": 333,
+      "source_path": "src/driverkit-3/driverLoader/driverLoader.m"
+    },
+    {
+      "address": 14616,
+      "reference_names": [
+        "_configDriver"
+      ],
+      "size": 552,
+      "source_line": 356,
+      "source_path": "src/driverkit-3/driverLoader/driverLoader.m"
+    },
+    {
+      "address": 15168,
+      "reference_names": [
+        "_securityCheck"
+      ],
+      "size": 92,
+      "source_line": 413,
+      "source_path": "src/driverkit-3/driverLoader/driverLoader.m"
+    },
+    {
+      "address": 15260,
+      "reference_names": [
+        "_securityCheckDir"
+      ],
+      "size": 616,
+      "source_line": 422,
+      "source_path": "src/driverkit-3/driverLoader/driverLoader.m"
+    },
+    {
+      "address": 15876,
+      "reference_names": [
+        "_prePostExec"
+      ],
+      "size": 424,
+      "source_line": 486,
+      "source_path": "src/driverkit-3/driverLoader/driverLoader.m"
+    },
+    {
+      "address": 16300,
+      "reference_names": [
+        "_kl_init"
+      ],
+      "size": 440,
+      "source_line": 76,
+      "source_path": "src/driverkit-3/driverLoader/kl_com.m"
+    },
+    {
+      "address": 16740,
+      "reference_names": [
+        "_kl_com_log"
+      ],
+      "size": 456,
+      "source_line": 139,
+      "source_path": "src/driverkit-3/driverLoader/kl_com.m"
+    },
+    {
+      "address": 17196,
+      "reference_names": [
+        "_print_string"
+      ],
+      "size": 16,
+      "source_line": 212,
+      "source_path": "src/driverkit-3/driverLoader/kl_com.m"
+    },
+    {
+      "address": 17212,
+      "reference_names": [
+        "_ping"
+      ],
+      "size": 96,
+      "source_line": 228,
+      "source_path": "src/driverkit-3/driverLoader/kl_com.m"
+    },
+    {
+      "address": 17308,
+      "reference_names": [
+        "_kl_com_add"
+      ],
+      "size": 176,
+      "source_line": 249,
+      "source_path": "src/driverkit-3/driverLoader/kl_com.m"
+    },
+    {
+      "address": 17484,
+      "reference_names": [
+        "_kl_com_delete"
+      ],
+      "size": 124,
+      "source_line": 277,
+      "source_path": "src/driverkit-3/driverLoader/kl_com.m"
+    },
+    {
+      "address": 17608,
+      "reference_names": [
+        "_kl_com_load"
+      ],
+      "size": 136,
+      "source_line": 295,
+      "source_path": "src/driverkit-3/driverLoader/kl_com.m"
+    },
+    {
+      "address": 17744,
+      "reference_names": [
+        "_kl_com_unload"
+      ],
+      "size": 124,
+      "source_line": 320,
+      "source_path": "src/driverkit-3/driverLoader/kl_com.m"
+    },
+    {
+      "address": 17868,
+      "reference_names": [
+        "_kl_com_get_state"
+      ],
+      "size": 220,
+      "source_line": 335,
+      "source_path": "src/driverkit-3/driverLoader/kl_com.m"
+    },
+    {
+      "address": 18088,
+      "reference_names": [
+        "_kl_com_error"
+      ],
+      "size": 68,
+      "source_line": 375,
+      "source_path": "src/driverkit-3/driverLoader/kl_com.m"
+    },
+    {
+      "address": 18156,
+      "reference_names": [
+        "_kl_com_wait"
+      ],
+      "size": 124,
+      "source_line": 381,
+      "source_path": "src/driverkit-3/driverLoader/kl_com.m"
+    },
+    {
+      "address": 23144,
+      "reference_names": [
+        "_kern_loader_look_up"
+      ],
+      "size": 72,
+      "source_line": 40,
+      "source_path": "src/kernload-1/libkernload/kern_loader_look_up.c"
+    }
+  ],
+  "reference_sha256": "CD8DD33035AAE133CE4AB1D6A203807CBCEABC3D5D300326FF105AD33D9D3E14",
+  "schema_version": "source-map-v1",
+  "unmapped": [
+    {
+      "address": 10956,
+      "reference_names": [
+        "start"
+      ],
+      "size": 48
+    },
+    {
+      "address": 11008,
+      "reference_names": [
+        "__start"
+      ],
+      "size": 320
+    },
+    {
+      "address": 11328,
+      "reference_names": [
+        "__call_mod_init_funcs"
+      ],
+      "size": 76
+    },
+    {
+      "address": 11404,
+      "reference_names": [
+        "__dyld_init_check"
+      ],
+      "size": 60
+    },
+    {
+      "address": 11464,
+      "reference_names": [
+        "dyld_stub_binding_helper"
+      ],
+      "size": 24
+    },
+    {
+      "address": 11488,
+      "reference_names": [
+        "__dyld_func_lookup"
+      ],
+      "size": 16
+    },
+    {
+      "address": 18280,
+      "reference_names": [
+        "_kern_loader_abort"
+      ],
+      "size": 272
+    },
+    {
+      "address": 18552,
+      "reference_names": [
+        "_kern_loader_load_server"
+      ],
+      "size": 296
+    },
+    {
+      "address": 18848,
+      "reference_names": [
+        "_kern_loader_unload_server"
+      ],
+      "size": 312
+    },
+    {
+      "address": 19160,
+      "reference_names": [
+        "_kern_loader_add_server"
+      ],
+      "size": 312
+    },
+    {
+      "address": 19472,
+      "reference_names": [
+        "_kern_loader_delete_server"
+      ],
+      "size": 312
+    },
+    {
+      "address": 19784,
+      "reference_names": [
+        "_kern_loader_server_task_port"
+      ],
+      "size": 364
+    },
+    {
+      "address": 20148,
+      "reference_names": [
+        "_kern_loader_server_com_port"
+      ],
+      "size": 364
+    },
+    {
+      "address": 20512,
+      "reference_names": [
+        "_kern_loader_status_port"
+      ],
+      "size": 116
+    },
+    {
+      "address": 20628,
+      "reference_names": [
+        "_kern_loader_ping"
+      ],
+      "size": 132
+    },
+    {
+      "address": 20760,
+      "reference_names": [
+        "_kern_loader_log_level"
+      ],
+      "size": 272
+    },
+    {
+      "address": 21032,
+      "reference_names": [
+        "_kern_loader_get_log"
+      ],
+      "size": 272
+    },
+    {
+      "address": 21304,
+      "reference_names": [
+        "_kern_loader_server_list"
+      ],
+      "size": 320
+    },
+    {
+      "address": 21624,
+      "reference_names": [
+        "_kern_loader_server_info_old"
+      ],
+      "size": 760
+    },
+    {
+      "address": 22384,
+      "reference_names": [
+        "_kern_loader_server_info"
+      ],
+      "size": 760
+    },
+    {
+      "address": 23772,
+      "reference_names": [
+        "_kern_loader_reply_handler"
+      ],
+      "size": 264
+    },
+    {
+      "address": 26712,
+      "reference_names": [
+        "_exit"
+      ],
+      "size": 36
+    },
+    {
+      "address": 26748,
+      "reference_names": [
+        "__objcInit"
+      ],
+      "size": 36
+    },
+    {
+      "address": 26784,
+      "reference_names": [
+        "_system"
+      ],
+      "size": 36
+    },
+    {
+      "address": 26820,
+      "reference_names": [
+        "_strstr"
+      ],
+      "size": 36
+    },
+    {
+      "address": 26856,
+      "reference_names": [
+        "_free"
+      ],
+      "size": 36
+    },
+    {
+      "address": 26892,
+      "reference_names": [
+        "_strcmp"
+      ],
+      "size": 36
+    },
+    {
+      "address": 26928,
+      "reference_names": [
+        "_scandir"
+      ],
+      "size": 36
+    },
+    {
+      "address": 26964,
+      "reference_names": [
+        "_chdir"
+      ],
+      "size": 36
+    },
+    {
+      "address": 27000,
+      "reference_names": [
+        "_getwd"
+      ],
+      "size": 36
+    },
+    {
+      "address": 27036,
+      "reference_names": [
+        "__IOProbeDriver"
+      ],
+      "size": 36
+    },
+    {
+      "address": 27072,
+      "reference_names": [
+        "_vm_deallocate"
+      ],
+      "size": 36
+    },
+    {
+      "address": 27108,
+      "reference_names": [
+        "__IOUnloadDriver"
+      ],
+      "size": 36
+    },
+    {
+      "address": 27144,
+      "reference_names": [
+        "_device_master_self"
+      ],
+      "size": 36
+    },
+    {
+      "address": 27180,
+      "reference_names": [
+        "_close"
+      ],
+      "size": 36
+    },
+    {
+      "address": 27216,
+      "reference_names": [
+        "_map_fd"
+      ],
+      "size": 36
+    },
+    {
+      "address": 27252,
+      "reference_names": [
+        "_open"
+      ],
+      "size": 36
+    },
+    {
+      "address": 27288,
+      "reference_names": [
+        "_stat"
+      ],
+      "size": 36
+    },
+    {
+      "address": 27324,
+      "reference_names": [
+        "_sprintf"
+      ],
+      "size": 36
+    },
+    {
+      "address": 27360,
+      "reference_names": [
+        "_gets"
+      ],
+      "size": 36
+    },
+    {
+      "address": 27396,
+      "reference_names": [
+        "_printf"
+      ],
+      "size": 36
+    },
+    {
+      "address": 27432,
+      "reference_names": [
+        "_fprintf"
+      ],
+      "size": 36
+    },
+    {
+      "address": 27468,
+      "reference_names": [
+        "_objc_msgSend"
+      ],
+      "size": 36
+    },
+    {
+      "address": 27504,
+      "reference_names": [
+        "_IOLog"
+      ],
+      "size": 36
+    },
+    {
+      "address": 27540,
+      "reference_names": [
+        "_msg_receive"
+      ],
+      "size": 36
+    },
+    {
+      "address": 27576,
+      "reference_names": [
+        "_port_set_add"
+      ],
+      "size": 36
+    },
+    {
+      "address": 27612,
+      "reference_names": [
+        "_port_set_allocate"
+      ],
+      "size": 36
+    },
+    {
+      "address": 27648,
+      "reference_names": [
+        "_task_set_special_port"
+      ],
+      "size": 36
+    },
+    {
+      "address": 27684,
+      "reference_names": [
+        "_cthread_detach"
+      ],
+      "size": 36
+    },
+    {
+      "address": 27720,
+      "reference_names": [
+        "_cthread_fork"
+      ],
+      "size": 36
+    },
+    {
+      "address": 27756,
+      "reference_names": [
+        "_cthread_set_name"
+      ],
+      "size": 36
+    },
+    {
+      "address": 27792,
+      "reference_names": [
+        "_ur_cthread_self"
+      ],
+      "size": 36
+    },
+    {
+      "address": 27828,
+      "reference_names": [
+        "_cthread_init"
+      ],
+      "size": 36
+    },
+    {
+      "address": 27864,
+      "reference_names": [
+        "_bootstrap_status"
+      ],
+      "size": 36
+    },
+    {
+      "address": 27900,
+      "reference_names": [
+        "_port_allocate"
+      ],
+      "size": 36
+    },
+    {
+      "address": 27936,
+      "reference_names": [
+        "_task_by_unix_pid"
+      ],
+      "size": 36
+    },
+    {
+      "address": 27972,
+      "reference_names": [
+        "_msg_send"
+      ],
+      "size": 36
+    },
+    {
+      "address": 28008,
+      "reference_names": [
+        "_strncpy"
+      ],
+      "size": 36
+    },
+    {
+      "address": 28044,
+      "reference_names": [
+        "_mig_dealloc_reply_port"
+      ],
+      "size": 36
+    },
+    {
+      "address": 28080,
+      "reference_names": [
+        "_msg_rpc"
+      ],
+      "size": 36
+    },
+    {
+      "address": 28116,
+      "reference_names": [
+        "_mig_get_reply_port"
+      ],
+      "size": 36
+    },
+    {
+      "address": 28152,
+      "reference_names": [
+        "_bootstrap_look_up"
+      ],
+      "size": 36
+    }
+  ]
+}

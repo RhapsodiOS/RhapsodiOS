@@ -1,0 +1,84 @@
+.\" Copyright (c) 2007 The DragonFly Project.  All rights reserved.
+.\"
+.\" This code is derived from software contributed to The DragonFly Project
+.\" by Matthew Dillon <dillon@backplane.com>
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\"
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.Dd October 18, 2026
+.Dt MOUNT_HAMMER 8
+.Os
+.Sh NAME
+.Nm mount_hammer
+.Nd mount a HAMMER file system
+.Sh SYNOPSIS
+.Nm
+.Op Fl u
+.Op Fl o Ar options
+.Ar special
+.Ar node
+.Sh DESCRIPTION
+The
+.Nm
+utility attaches the single-volume HAMMER file system on
+.Ar special
+at mount point
+.Ar node .
+The kernel must be built with the HAMMERFS option.
+HAMMER version 7 volumes mount read-only or read-write.
+Multi-volume file systems and volumes that need UNDO recovery are
+refused; so is a read-write mount of a volume holding pseudo-file
+systems.
+.Pp
+The options are as follows:
+.Bl -tag -width indent
+.It Fl u
+Change a mounted file system between read-only and read-write, as
+.Fl o Cm update
+does.
+A change to read-only fails with
+.Er EBUSY
+while a file is open for writing, unless
+.Cm force
+is given, which revokes such files.
+.It Fl o Ar options
+A comma-separated list of options: ro, rw, noexec, exec, nosuid, suid,
+nodev, dev, update and force.
+Other options are rejected.
+.El
+.Sh SEE ALSO
+.Xr mount 2 ,
+.Xr unmount 2 ,
+.Xr hammer 8 ,
+.Xr mount 8 ,
+.Xr newfs_hammer 8
+.Sh HISTORY
+The
+.Nm
+utility first appeared in
+.Dx 1.11 .

@@ -22,6 +22,8 @@ FOUNDATION_EXPORT NSString * const NSRegistrationDomain;
 
 + (NSUserDefaults *)standardUserDefaults;
 + (void)resetStandardUserDefaults;
++ (void)setStandardUserDefaults:(NSUserDefaults *)defaults;
++ (NSArray *)nonUserDefaultsArguments;
 
 - (id)init;
 - (id)initWithUser:(NSString *)username;
@@ -29,6 +31,9 @@ FOUNDATION_EXPORT NSString * const NSRegistrationDomain;
 - (id)objectForKey:(NSString *)defaultName;
 - (void)setObject:(id)value forKey:(NSString *)defaultName;
 - (void)removeObjectForKey:(NSString *)defaultName;
+- (id)objectForKey:(NSString *)defaultName inDomain:(NSString *)domainName;
+- (void)setObject:(id)value forKey:(NSString *)defaultName inDomain:(NSString *)domainName;
+- (void)removeObjectForKey:(NSString *)defaultName inDomain:(NSString *)domainName;
 
 - (NSString *)stringForKey:(NSString *)defaultName;
 - (NSArray *)arrayForKey:(NSString *)defaultName;
@@ -36,10 +41,14 @@ FOUNDATION_EXPORT NSString * const NSRegistrationDomain;
 - (NSData *)dataForKey:(NSString *)defaultName;
 - (NSArray *)stringArrayForKey:(NSString *)defaultName;
 - (int)integerForKey:(NSString *)defaultName; 
+- (long long)longForKey:(NSString *)defaultName;
+- (double)doubleForKey:(NSString *)defaultName;
 - (float)floatForKey:(NSString *)defaultName; 
 - (BOOL)boolForKey:(NSString *)defaultName;  
 
 - (void)setInteger:(int)value forKey:(NSString *)defaultName;
+- (void)setLong:(long long)value forKey:(NSString *)defaultName;
+- (void)setDouble:(double)value forKey:(NSString *)defaultName;
 - (void)setFloat:(float)value forKey:(NSString *)defaultName;
 - (void)setBool:(BOOL)value forKey:(NSString *)defaultName;
 

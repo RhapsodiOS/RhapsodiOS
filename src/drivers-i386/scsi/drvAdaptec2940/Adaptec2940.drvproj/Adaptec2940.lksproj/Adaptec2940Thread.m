@@ -14,126 +14,162 @@
 #import <kernserv/prototypes.h>
 #import <string.h>
 
+extern int msg_send_from_kernel(void *message, int send_size, int receive_size);
+
+static const unsigned int CmdMessageTemplate[6] = {
+	0x01000000, 0x00000018, 0, 0, 0, 0x00232324
+};
+
 @implementation Adaptec2940(Private)
-
-/*
- * Allocate an SCB.
- */
-- (struct scb *)allocScb
-{
-	int i;
-	struct scb *scb;
-
-	for (i = 0; i < AIC_NUM_SCBS; i++) {
-		scb = &scbArray[i];
-		if (!scb->in_use) {
-			scb->in_use = TRUE;
-			numFreeScbs--;
-			return scb;
-		}
-	}
-
-	return NULL;
-}
-
-/*
- * Free an SCB.
- */
-- (void)freeScb:(struct scb *)scb
-{
-	if (scb && scb->in_use) {
-		scb->in_use = FALSE;
-		numFreeScbs++;
-	}
-}
 
 /*
  * Execute command buffer in thread context.
  */
-- (void)threadExecuteRequest:(void *)commandBuf
+- (void)threadExecuteRequest:(Adaptec2940RequestMessage *)message
 {
-	Adaptec2940CommandBuf *cmdBuf = (Adaptec2940CommandBuf *)commandBuf;
-	struct scb *scb;
-	IOSCSIRequest *scsiReq;
-	int i;
+	unsigned char *request = (unsigned char *)message->request;
+	Adaptec2940HostInfo *hostInfo = channelInfo[message->channel].hostInfo;
+	Adaptec2940SCB *scb = [self allocScb];
+	unsigned char cdbGroup = request[2] & 0xe0;
+	unsigned char reservedBits;
+	unsigned int commandLength;
+	unsigned int bufferAddress = (unsigned int)(unsigned long)message->buffer;
+	unsigned int remaining = *(unsigned int *)(request + 16);
+	unsigned int originalLength = remaining;
+	unsigned int pageCount = remaining == 0 ? 0 :
+		((((bufferAddress + remaining + page_mask) & ~page_mask) -
+		  (bufferAddress & ~page_mask)) / page_size);
+	unsigned int physicalAddress;
+	unsigned int status;
+	unsigned int index;
+	unsigned int cursor = bufferAddress;
+	int useSimpleQueue = 0;
 
-	scsiReq = cmdBuf->scsiReq;
-
-	/* Allocate SCB */
-	scb = [self allocScb];
-	if (scb == NULL) {
-		/* No free SCBs - queue for later */
-		queue_enter(&pendingQ, cmdBuf, Adaptec2940CommandBuf *, link);
-		return;
+	if (cdbGroup == 0) {
+		commandLength = 6;
+		reservedBits = request[7];
+	} else if (cdbGroup == 0x20 || cdbGroup == 0x40) {
+		commandLength = 10;
+		reservedBits = request[11];
+	} else if (cdbGroup == 0xa0) {
+		commandLength = 12;
+		reservedBits = request[13];
+	} else if (cdbGroup == 0xc0 || cdbGroup == 0xe0) {
+		commandLength = (request[27] & 0xf0) ? request[27] >> 4 :
+			(cdbGroup == 0xc0 ? 6 : 10);
+		reservedBits = 0;
+	} else {
+		goto invalid_request;
 	}
+	if ((reservedBits & 3) != 0 || pageCount > A2940_SG_MAX)
+		goto invalid_request;
 
-	cmdBuf->scb = scb;
-	scb->cmdBuf = cmdBuf;
-
-	/* Build SCB */
-	bzero(scb, sizeof(struct scb));
-	scb->in_use = TRUE;
-
-	/* Set target/channel/lun */
-	scb->tcl = (scsiReq->target << 4) | scsiReq->lun;
-
-	/* Copy CDB */
-	scb->cmdlen = scsiReq->cdbLength;
-	bcopy(scsiReq->cdb, &scb->cdb, scsiReq->cdbLength);
-	scb->cmdptr = (unsigned int)&scb->cdb;
-
-	/* Setup data transfer */
-	if (scsiReq->maxTransfer > 0) {
-		scb->data_ptr = (unsigned int)cmdBuf->buffer;
-		scb->data_count = scsiReq->maxTransfer;
-
-		/* Build scatter/gather list if needed */
-		if (scsiReq->maxTransfer > PAGE_SIZE) {
-			int sg_count = 0;
-			unsigned int remaining = scsiReq->maxTransfer;
-			unsigned int addr = (unsigned int)cmdBuf->buffer;
-
-			while (remaining > 0 && sg_count < AIC_SG_COUNT) {
-				unsigned int len = (remaining > PAGE_SIZE) ? PAGE_SIZE : remaining;
-				scb->sg_list[sg_count].addr = addr;
-				scb->sg_list[sg_count].len = len;
-				addr += len;
-				remaining -= len;
-				sg_count++;
-			}
-
-			scb->sg_count = sg_count;
-			scb->sg_ptr = (unsigned int)scb->sg_list;
-			scb->control = 0x08;  /* SG enable */
-		} else {
-			scb->sg_count = 0;
-			scb->sg_ptr = 0;
-			scb->control = 0;
+	scb->host_info = hostInfo;
+	scb->scb_status = 2;
+	if ((*((unsigned char *)self + 360) & 1) != 0) {
+		scb->flags |= 0x80;
+		*(unsigned int *)((unsigned char *)scb + 48) = sizeof(esense_reply_t);
+		status = IOPhysicalFromVirtual(message->client_task,
+			(vm_offset_t)(request + 56), (vm_offset_t *)&scb->sense_physical);
+		if (status != 0) {
+			IOLog("%s: Can't get physical address of sense data\n", [self name]);
+			scb->flags &= (unsigned char)~0x80;
 		}
 	} else {
-		scb->data_ptr = 0;
-		scb->data_count = 0;
+		scb->flags &= (unsigned char)~0x80;
+	}
+
+	if ((request[24] & 1) != 0) {
+		useSimpleQueue = ((*((unsigned char *)self + 360) & 2) != 0) &&
+			((request[24] & 2) == 0);
+		if (useSimpleQueue || [channelInfo[message->channel].owner numReserved] > 9)
+			scb->control |= 0x40;
+		if (useSimpleQueue) {
+			scb->control |= 0x20;
+			scb->control &= 0xfc;
+		} else {
+			scb->control &= (unsigned char)~0x20;
+		}
+	} else {
+		scb->control &= (unsigned char)~0x20;
+	}
+	if (pageCount > 1)
+		scb->control |= 0x80;
+	scb->target_channel_lun = (unsigned char)(16 * request[0]);
+	scb->target_channel_lun |= hostInfo->bytes[18];
+	scb->target_channel_lun |= request[1];
+	status = IOPhysicalFromVirtual(IOVmTaskSelf(), (vm_offset_t)scb->cdb,
+		(vm_offset_t *)&physicalAddress);
+	if (status != 0) {
+		IOLog("%s: Can't get physical address of CDB\n", [self name]);
+		IOPanic("Adaptec2940");
+	}
+	scb->command_pointer = physicalAddress;
+	scb->command_length = (unsigned char)commandLength;
+	bcopy(request + 2, scb->cdb, 12);
+	scb->command_buffer = message;
+	IOGetTimestamp(&scb->start_time);
+	scb->timeout_port = interruptPortKern;
+	scb->total_transfer_length = 0;
+
+	for (index = 0; index < pageCount; ++index) {
+		unsigned int pageEnd = (cursor + page_mask + 1) & ~page_mask;
+		unsigned int chunk = remaining < pageEnd - cursor ? remaining : pageEnd - cursor;
+		status = IOPhysicalFromVirtual(message->client_task, (vm_offset_t)cursor,
+			(vm_offset_t *)&physicalAddress);
+		if (status != 0) {
+			IOLog("%s: Can't get physical address\n", [self name]);
+			goto physical_failure;
+		}
+		scb->sg_list[index].address = physicalAddress;
+		scb->sg_list[index].length = chunk;
+		scb->total_transfer_length += chunk;
+		cursor += chunk;
+		remaining -= chunk;
+	}
+	if (pageCount != 0) {
+		status = IOPhysicalFromVirtual(IOVmTaskSelf(), (vm_offset_t)scb->sg_list,
+			(vm_offset_t *)&physicalAddress);
+		if (status != 0) {
+			IOLog("%s: Can't get physical address of sg list\n", [self name]);
+			IOPanic("Adaptec2940");
+		}
+		scb->sg_count = (unsigned char)pageCount;
+		scb->sg_pointer = physicalAddress;
+	} else {
 		scb->sg_count = 0;
-		scb->sg_ptr = 0;
-		scb->control = 0;
+	}
+	PH_ScbSend((int)(unsigned long)scb);
+	if (scb->host_status == 1 || scb->host_status == 2 || scb->host_status == 4) {
+		IOLog("%s: Premature SCB completion\n", [self name]);
+		message->status = 14;
+		goto complete_request;
+	}
+	if (scb->host_status == 0x80) {
+		IOLog("%s: Host Adaptor Rejected Command\n", [self name]);
+		message->status = 14;
+		goto complete_request;
 	}
 
-	scb->total_xfer_len = scsiReq->maxTransfer;
-	scb->target_status = 0;
-
-	/* Add to outstanding queue */
-	queue_enter(&outstandingQ, scb, struct scb *, scbQ);
-	outstandingCount++;
-
-	/* Send to controller */
-	outb(ioBase + AIC_QINFIFO, scb - scbArray);
-
-	/* Update statistics */
-	totalCommands++;
-	if (outstandingCount > maxQueueLen) {
+	queue_enter(&activeQ, scb, Adaptec2940SCB *, queue_link);
+	IOScheduleFunc(a2940Timeout, scb, *(unsigned int *)(request + 20));
+	++outstandingCount;
+	if (outstandingCount > maxQueueLen)
 		maxQueueLen = outstandingCount;
-	}
 	queueLenTotal += outstandingCount;
+	++totalCommands;
+	return;
+
+invalid_request:
+	message->status = 7;
+	goto complete_request;
+physical_failure:
+	message->status = 14;
+complete_request:
+	[self freeScb:scb];
+	*(int *)(request + 28) = message->status;
+	[message->condition_lock lock];
+	[message->condition_lock unlockWith:1];
 }
 
 /*
@@ -216,17 +252,30 @@
 /*
  * Execute command buffer.
  */
-- (IOReturn)executeCmdBuf:(void *)commandBuf
+- (int)executeCmdBuf:(Adaptec2940RequestMessage *)message
 {
-	Adaptec2940CommandBuf *cmdBuf = (Adaptec2940CommandBuf *)commandBuf;
+	unsigned int commandMessage[6];
+	int result = 0;
+	int sendResult;
 
+	bcopy(CmdMessageTemplate, commandMessage, sizeof(commandMessage));
+	message->status = 100;
+	message->condition_lock = [[NXConditionLock alloc] initWith:0];
 	[commandLock lock];
-	queue_enter(&commandQ, cmdBuf, Adaptec2940CommandBuf *, link);
+	queue_enter(&commandQ, message, Adaptec2940RequestMessage *, queue_link);
 	[commandLock unlock];
 
-	[self runPendingCommands];
+	commandMessage[4] = interruptPortKern;
+	sendResult = msg_send_from_kernel(commandMessage, 0, 0);
+	if (sendResult != 0) {
+		IOLog("%s: msg_send_from_kernel() returned %d\n", [self name], sendResult);
+		result = -703;
+	} else {
+		[message->condition_lock lockWhen:1];
+	}
+	[message->condition_lock free];
 
-	return IO_R_SUCCESS;
+	return result;
 }
 
 @end

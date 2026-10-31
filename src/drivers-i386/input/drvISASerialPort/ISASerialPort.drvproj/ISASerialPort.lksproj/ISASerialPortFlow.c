@@ -30,8 +30,22 @@
  */
 
 #import "ISASerialPortInternal.h"
+#import "ISASerialPortQueue.h"
 #import <driverkit/generalFuncs.h>
 #import <kernserv/prototypes.h>
+/*
+ * watchState takes Port.WatchLock with the Mach spin lock, whose test-and-set
+ * is a bare xchgl and needs no critical section - see the comment at the call.
+ */
+#import <mach/machine/simple_lock.h>
+/*
+ * The reference's fourth translation unit includes <driverkit/i386/ioPorts.h>
+ * even though it performs no port I/O: the reference emits four groups of the
+ * outb() inline-asm statics (_xxx.86/.89/.92 at 0x80c4, 0x80d0, 0x80dc, 0x80e8,
+ * 48 bytes of __DATA,__bss), one per translation unit, and TU 4's group is
+ * never incremented. Including it here reproduces that group.
+ */
+#import <driverkit/i386/ioPorts.h>
 
 /*
  * Flow control state machine.
@@ -113,7 +127,7 @@ unsigned int flowMachine(Port *port)
  * WatchStateMask and wakes the other threads sleeping on it.  Returning around
  * that block leaves those waiters blocked forever.
  */
-IOReturn watchState(Port *port, unsigned int *state, unsigned int mask)
+IOReturn watchState(Port *port, unsigned long *state, unsigned long mask)
 {
     BOOL needsActiveCheck = NO;
     unsigned int desiredState = *state;
@@ -150,27 +164,32 @@ IOReturn watchState(Port *port, unsigned int *state, unsigned int mask)
             goto wakeWaiters;
         }
 
-        // State hasn't changed yet - wait for it
-
-        // Acquire lock using test-and-set loop
-        while (port->WatchLock.locked != 0) {
-            // Spin while lock is held
-        }
-
-        // Atomic test and set
-        IOEnterCriticalSection();
-        if (port->WatchLock.locked == 1) {
-            IOExitCriticalSection();
-            continue;  // Lost race, try again
-        }
-        port->WatchLock.locked = 1;
-        IOExitCriticalSection();
+        /*
+         * State hasn't changed yet - wait for it.
+         *
+         * Reference 23684-23705 is simple_lock() inlined, instruction for
+         * instruction: lea edx,[esi+14h], then a spin on cmp [edx],0 / jnz,
+         * then mov eax,1 / xchg eax,[edx] / xor eax,1 / test eax,eax / jz back
+         * to the spin.  On x86 xchg against memory is atomic on its own, so
+         * there is no critical section here and no lock released afterwards -
+         * thread_sleep drops it.  Port.WatchLock stays a private anonymous
+         * struct rather than becoming a simple_lock_data_t because the
+         * reference's own ivar type encoding spells it {?="locked"I}, an
+         * unsigned int; the two are layout-identical, hence the cast.
+         */
+        simple_lock((simple_lock_t)&port->WatchLock);
 
         // Set the mask of bits we're watching
         port->WatchStateMask |= actualMask;
 
-        // Sleep waiting for state change
-        thread_sleep(&port->WatchStateMask, &port->WatchLock.locked, 1);  // 1 = interruptible
+        // Sleep waiting for state change.  The reference passes the lock's own
+        // address (lea eax,[esi+14h] at 23712), so take &WatchLock and cast it
+        // exactly as the simple_lock() call above does; reaching for
+        // &WatchLock.locked yields the same address but the wrong type, and the
+        // resulting incompatible-pointer warning is noise in a list this
+        // reconstruction reads as a load-failure signal.
+        thread_sleep(&port->WatchStateMask,
+                     (simple_lock_t)&port->WatchLock, 1);  // 1 = interruptible
 
         // Get the result of the wait
         waitResult = thread_wait_result();

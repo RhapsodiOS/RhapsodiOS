@@ -128,6 +128,13 @@ struct drive_location {
 	char	location[ 128 ];
 };
 
+/* Capacity of the selected logical partition, in its own block units.
+ * Live devices and whole-drive fallback partitions are not supported. */
+struct disk_partition_info {
+	u_int32_t block_size;
+	u_int32_t block_count;
+};
+
 #define	DKIOCGLABEL	_IOR('d', 0,struct disk_label)			// read label
 #define	DKIOCSLABEL	_IOW('d', 1,struct disk_label)			// write label
 #define	DKIOCGBITMAP	_IO('d', 2)			// read bitmap
@@ -157,5 +164,6 @@ struct drive_location {
 						// media drive
 #define DKIOCCANCELAUTOMOUNT _IOW('d',27, dev_t)	// cancel automount request
 #define DKIOCGLOCATION	_IOR('d',28, struct drive_location)	// arch dependent location descrip
+#define DKIOCGPARTINFO	_IOR('d',29, struct disk_partition_info)
 #endif	/* _BSD_DEV_DISK_ */
 

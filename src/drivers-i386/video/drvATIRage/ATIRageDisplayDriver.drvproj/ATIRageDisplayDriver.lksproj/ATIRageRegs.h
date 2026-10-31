@@ -1,100 +1,63 @@
-/*
- * ATIRageRegs.h - ATI Rage Register Definitions
- * Based on XFree86 r128 driver register definitions
- */
-
 #ifndef __ATIRAGEREGS_H__
 #define __ATIRAGEREGS_H__
 
-/* MMIO Register Offsets */
-#define R128_MMIOSIZE                   0x4000
+/* MMIO register offsets recovered from drvATIRage instruction operands.
+ * register_base_address points at framebuffer + 0x7ffc00. Names describe
+ * observed uses; offsets are the parity-critical contract. */
+#define ATI_FRAMEBUFFER_SIZE          0x00800000
+#define ATI_REGISTER_WINDOW_OFFSET    0x007ffc00
+#define ATI_FIFO_STATUS               0x000310
+#define ATI_GUI_STATUS                0x000338
+#define ATI_GUI_REG_182               0x0002d8
+#define ATI_GUI_REG_109               0x0001b4
+#define ATI_GUI_REG_076               0x000130
+#define ATI_SRC_Y_X                   0x00018c
+#define ATI_SRC_WIDTH_HEIGHT          0x000198
+#define ATI_DST_Y_X                   0x00010c
+#define ATI_DST_WIDTH_HEIGHT          0x000118
+#define ATI_BASE_PORT_OFFSET_D0       0x0000d0
+#define ATI_BASE_PORT_OFFSET_A0       0x0000a0
+#define ATI_RESET_BIT                 0x00000100
+#define ATI_GUI_RESET_MASK            0x00ae0000
+#define ATI_FIFO_MAX                  0x00008000
+#define ATI_IDLE_TIMEOUT              0x0007a120
 
-/* Configuration Registers */
-#define R128_CONFIG_MEMSIZE             0x00f8
-#define R128_CONFIG_MEMSIZE_EMBEDDED    0x0114
-#define R128_CONFIG_APER_SIZE           0x0108
-#define R128_CONFIG_REG_1_BASE          0x010c
-#define R128_CONFIG_REG_APER_SIZE       0x0110
+/* Additional GUI register offsets are retained by their observed index.
+ * Semantic names are added only when supported by the reference's callers. */
+#define ATI_GUI_REG_064               0x000100
+#define ATI_GUI_REG_067               0x00010c
+#define ATI_GUI_REG_069               0x000114
+#define ATI_GUI_REG_070               0x000118
+#define ATI_GUI_REG_073               0x000124
+#define ATI_GUI_REG_074               0x000128
+#define ATI_GUI_REG_075               0x00012c
+#define ATI_GUI_REG_096               0x000180
+#define ATI_GUI_REG_099               0x00018c
+#define ATI_GUI_REG_102               0x000198
+#define ATI_GUI_REG_105               0x0001a4
+#define ATI_GUI_REG_108               0x0001b0
+#define ATI_GUI_REG_109               0x0001b4
+#define ATI_GUI_REG_160               0x000280
+#define ATI_GUI_REG_161               0x000284
+#define ATI_GUI_REG_162               0x000288
+#define ATI_GUI_REG_168               0x0002a0
+#define ATI_GUI_REG_169               0x0002a4
+#define ATI_GUI_REG_171               0x0002ac
+#define ATI_GUI_REG_172               0x0002b0
+#define ATI_GUI_REG_176               0x0002c0
+#define ATI_GUI_REG_177               0x0002c4
+#define ATI_GUI_REG_178               0x0002c8
+#define ATI_GUI_REG_181               0x0002d4
 
-/* CRTC Registers */
-#define R128_CRTC_GEN_CNTL              0x0050
-#  define R128_CRTC_DBL_SCAN_EN         (1 <<  0)
-#  define R128_CRTC_INTERLACE_EN        (1 <<  1)
-#  define R128_CRTC_CSYNC_EN            (1 <<  4)
-#  define R128_CRTC_CUR_EN              (1 << 16)
-#  define R128_CRTC_CUR_MODE_MASK       (7 << 17)
-#  define R128_CRTC_EXT_DISP_EN         (1 << 24)
-#  define R128_CRTC_EN                  (1 << 25)
-#  define R128_CRTC_DISP_REQ_EN_B       (1 << 26)
+/* The original C routines use repository DriverKit port-I/O primitives.
+ * Keep their widths and delay behavior in the callers. */
+#import <driverkit/i386/ioPorts.h>
 
-#define R128_CRTC_EXT_CNTL              0x0054
-#  define R128_CRTC_VGA_XOVERSCAN       (1 <<  0)
-#  define R128_VGA_ATI_LINEAR           (1 <<  3)
-#  define R128_XCRT_CNT_EN              (1 <<  6)
-#  define R128_CRTC_HSYNC_DIS           (1 <<  8)
-#  define R128_CRTC_VSYNC_DIS           (1 <<  9)
-#  define R128_CRTC_DISPLAY_DIS         (1 << 10)
-
-#define R128_CRTC_H_TOTAL_DISP          0x0200
-#define R128_CRTC_H_SYNC_STRT_WID       0x0204
-#define R128_CRTC_V_TOTAL_DISP          0x0208
-#define R128_CRTC_V_SYNC_STRT_WID       0x020c
-#define R128_CRTC_OFFSET                0x0224
-#define R128_CRTC_OFFSET_CNTL           0x0228
-#define R128_CRTC_PITCH                 0x022c
-
-/* DAC Registers */
-#define R128_DAC_CNTL                   0x0058
-#  define R128_DAC_RANGE_CNTL           (3 <<  0)
-#  define R128_DAC_BLANKING             (1 <<  2)
-#  define R128_DAC_CRT_SEL_CRTC2        (1 <<  4)
-#  define R128_DAC_PALETTE_ACC_CTL      (1 <<  5)
-#  define R128_DAC_8BIT_EN              (1 <<  8)
-#  define R128_DAC_VGA_ADR_EN           (1 << 13)
-#  define R128_DAC_MASK_ALL             (0xff << 24)
-
-#define R128_PALETTE_INDEX              0x00b0
-#define R128_PALETTE_DATA               0x00b4
-#define R128_PALETTE_30_DATA            0x00b8
-
-/* Memory Controller Registers */
-#define R128_MEM_CNTL                   0x0140
-#  define R128_MEM_CTLR_STATUS_IDLE     (1 << 0)
-#  define R128_MEM_NUM_CHANNELS_MASK    0x00000001
-#  define R128_MEM_USE_B_CH_ONLY        0x00000002
-
-/* General Control Registers */
-#define R128_GEN_RESET_CNTL             0x00f0
-#  define R128_SOFT_RESET_GUI           (1 <<  0)
-#  define R128_SOFT_RESET_VCLK          (1 <<  8)
-#  define R128_SOFT_RESET_PCLK          (1 <<  9)
-#  define R128_SOFT_RESET_ECP           (1 << 10)
-#  define R128_SOFT_RESET_DISPENG_XCLK  (1 << 11)
-
-#define R128_GEN_TEST_CNTL              0x00d4
-
-/* BIOS Definitions */
-#define R128_VBIOS_SIZE                 0x00010000
-#define R128_BIOS_BASE                  0xC0000
-
-/* Memory Types */
-#define R128_MEM_SDR_SGRAM              0
-#define R128_MEM_SDR_SGRAM_2_1          1
-#define R128_MEM_DDR_SGRAM              2
-
-/* Cursor Registers */
-#define R128_CUR_OFFSET                 0x0260
-#define R128_CUR_HORZ_VERT_POSN         0x0264
-#define R128_CUR_HORZ_VERT_OFF          0x0268
-#define R128_CUR_CLR0                   0x026c
-#define R128_CUR_CLR1                   0x0270
-
-/* Register read/write macros */
-#define INREG8(addr)        (*(volatile unsigned char *)(addr))
-#define INREG16(addr)       (*(volatile unsigned short *)(addr))
-#define INREG(addr)         (*(volatile unsigned int *)(addr))
-#define OUTREG8(addr, val)  (*(volatile unsigned char *)(addr) = (val))
-#define OUTREG16(addr, val) (*(volatile unsigned short *)(addr) = (val))
-#define OUTREG(addr, val)   (*(volatile unsigned int *)(addr) = (val))
+#define ATI_INREG8(base, offset)       (*(volatile unsigned char *)((base) + (offset)))
+#define ATI_INREG16(base, offset)      (*(volatile unsigned short *)((base) + (offset)))
+#define ATI_INREG32(base, offset)      (*(volatile unsigned int *)((base) + (offset)))
+#define ATI_OUTREG8(base, offset, val) (ATI_INREG8((base), (offset)) = (val))
+#define ATI_OUTREG16(base, offset, val) (ATI_INREG16((base), (offset)) = (val))
+#define ATI_OUTREG32(base, offset, val) (ATI_INREG32((base), (offset)) = (val))
 
 #endif /* __ATIRAGEREGS_H__ */

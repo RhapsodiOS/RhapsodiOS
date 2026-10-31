@@ -75,7 +75,7 @@ def test_source_sites_finds_objc_methods_and_c_functions(tmp_path):
     assert "_helper" not in sites
 
 
-def test_source_sites_keys_category_methods_separately_from_the_class(tmp_path):
+def test_source_sites_indexes_category_methods_by_class_and_category(tmp_path):
     source_dir = tmp_path / "src" / "driver"
     source_dir.mkdir(parents=True)
     (source_dir / "PCIKernBusPrivate.m").write_text(
@@ -100,11 +100,31 @@ def test_source_sites_keys_category_methods_separately_from_the_class(tmp_path):
     sites = source_sites(tmp_path, source_dir)
 
     assert sites["-[PCIKernBus someMethod]"] == [
-        ("src/driver/PCIKernBusPrivate.m", 3)
+        ("src/driver/PCIKernBusPrivate.m", 3),
+        ("src/driver/PCIKernBusPrivate.m", 11),
     ]
     assert sites["-[PCIKernBus(Private) someMethod]"] == [
         ("src/driver/PCIKernBusPrivate.m", 11)
     ]
+
+
+def test_source_sites_finds_assembly_labels(tmp_path):
+    source_dir = tmp_path / "src" / "driver"
+    source_dir.mkdir(parents=True)
+    (source_dir / "bios.s").write_text(
+        "\t.text\n"
+        "\t.globl __bios16\n"
+        "__bios16:\n"
+        "\tret\n"
+        "local_data:\n"
+        "\t.long 0\n",
+        encoding="utf-8",
+    )
+
+    sites = source_sites(tmp_path, source_dir)
+
+    assert sites["__bios16"] == [("src/driver/bios.s", 3)]
+    assert sites["local_data"] == [("src/driver/bios.s", 5)]
 
 
 def test_source_sites_joins_wrapped_multiline_selector(tmp_path):
@@ -815,6 +835,61 @@ def test_build_source_map_keeps_analysis_names_verbatim_but_resolves_via_symbol_
     assert document["mapped"][0]["reference_names"] == ["sub_2000"]
     assert document["mapped"][0]["source_path"] == "src/driver/x.c"
     assert document["mapped"][0]["source_line"] == 4
+
+
+def test_build_source_map_matches_category_method_to_class_implementation_alias():
+    analysis = _analysis(
+        [_function(0x2100, 0x10, ["-[PCIKernBus(Private) scrollTo:]"])]
+    )
+    sites = {"-[PCIKernBus scrollTo:]": [("src/driver/Bus.m", 42)]}
+
+    document = build_source_map(analysis, {"symbols": []}, sites)
+
+    assert document["mapped"] == [
+        {
+            "address": 0x2100,
+            "size": 0x10,
+            "reference_names": ["-[PCIKernBus(Private) scrollTo:]"],
+            "source_path": "src/driver/Bus.m",
+            "source_line": 42,
+        }
+    ]
+    assert document["unmapped"] == []
+
+
+def test_build_source_map_prefers_exact_category_definition_over_class_alias():
+    analysis = _analysis(
+        [_function(0x2200, 0x10, ["-[PCIKernBus(Private) scrollTo:]"])]
+    )
+    sites = {
+        "-[PCIKernBus scrollTo:]": [("src/driver/Bus.m", 12)],
+        "-[PCIKernBus(Private) scrollTo:]": [("src/driver/Bus.m", 42)],
+    }
+
+    document = build_source_map(analysis, {"symbols": []}, sites)
+
+    assert document["mapped"][0]["source_line"] == 42
+    assert document["duplicate_candidates"] == []
+
+
+def test_build_source_map_keeps_ambiguous_categoryless_aliases_ambiguous():
+    analysis = _analysis(
+        [_function(0x2300, 0x10, ["-[PCIKernBus(Private) scrollTo:]"])]
+    )
+    sites = {
+        "-[PCIKernBus scrollTo:]": [
+            ("src/driver/BusA.m", 12),
+            ("src/driver/BusB.m", 42),
+        ]
+    }
+
+    document = build_source_map(analysis, {"symbols": []}, sites)
+
+    assert document["mapped"] == []
+    assert document["duplicate_candidates"][0]["candidates"] == [
+        {"source_path": "src/driver/BusA.m", "source_line": 12},
+        {"source_path": "src/driver/BusB.m", "source_line": 42},
+    ]
 
 
 def test_build_source_map_rejects_nameless_analysis_function():

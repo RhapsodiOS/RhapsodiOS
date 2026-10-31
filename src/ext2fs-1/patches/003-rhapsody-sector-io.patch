@@ -1,0 +1,66 @@
+--- a/lib/ext2fs/unix_io.c
++++ b/lib/ext2fs/unix_io.c
+@@ -85,7 +85,7 @@
+ static void reuse_cache(io_channel channel, struct unix_private_data *data,
+ 		 struct unix_cache *cache, unsigned long block);
+ 
+-#if defined(__CYGWIN__) || defined(__FreeBSD__)
++#if defined(__CYGWIN__) || defined(__FreeBSD__) || defined(__Rhapsody__)
+ #define NEED_BOUNCE_BUFFER
+ #else
+ #undef NEED_BOUNCE_BUFFER
+@@ -147,7 +147,7 @@
+ }
+ #else /* NEED_BOUNCE_BUFFER */
+ /*
+- * Windows and FreeBSD block devices only allow sector alignment IO in offset and size
++ * Windows, FreeBSD and Rhapsody devices require sector-aligned I/O
+  */
+ static errcode_t raw_read_blk(io_channel channel,
+ 			      struct unix_private_data *data,
+@@ -157,7 +157,7 @@
+ 	errcode_t	retval;
+ 	size_t		size, alignsize, fragment;
+ 	ext2_loff_t	location;
+-	int		total = 0, actual;
++	int		total = 0, actual = 0;
+ #define BLOCKALIGN 512
+ 	char		sector[BLOCKALIGN];
+ 
+@@ -175,27 +175,31 @@
+ 	alignsize = size - fragment;
+ 	if (alignsize) {
+ 		actual = read(data->dev, buf, alignsize);
++		if (actual > 0)
++			total = actual;
+ 		if (actual != alignsize)
+ 			goto short_read;
+ 	}
+ 	if (fragment) {
+ 		actual = read(data->dev, sector, BLOCKALIGN);
++		if (actual > 0) {
++			size_t copied = actual < fragment ? actual : fragment;
++			memcpy((char *) buf+total, sector, copied);
++			total += copied;
++		}
+ 		if (actual != BLOCKALIGN)
+ 			goto short_read;
+-		memcpy(buf+alignsize, sector, fragment);
+ 	}
+ 	return 0;
+ 
+ short_read:
+-	if (actual>0)
+-		total += actual;
+ 	retval = EXT2_ET_SHORT_READ;
+ 
+ error_out:
+-	memset((char *) buf+total, 0, size-actual);
++	memset((char *) buf+total, 0, size-total);
+ 	if (channel->read_error)
+ 		retval = (channel->read_error)(channel, block, count, buf,
+-					       size, actual, retval);
++					       size, total, retval);
+ 	return retval;
+ }
+ #endif

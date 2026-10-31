@@ -297,188 +297,6 @@ const unsigned short MediaToStatusConversionTable[] = {
     0x0000   // Entry 17
 };
 
-int CheckConnectionSupport(void *adapter, int connection)
-{
-    return 0;
-}
-
-int ConvertConnectionToControl(int connection)
-{
-    return 0;
-}
-
-int ConvertMediaTypeToNwayLocalAbility(int mediaType)
-{
-    return 0;
-}
-
-int ConvertNwayToConnectionType(int nway)
-{
-    return 0;
-}
-
-unsigned int CRC32(unsigned char *data, int length)
-{
-    return 0;
-}
-
-int DC21040Parser(void *adapter)
-{
-    return 0;
-}
-
-void DC2104InitializeSiaRegisters(void *adapter)
-{
-}
-
-int DC2114Sense100BaseTxLink(void *adapter)
-{
-    return 0;
-}
-
-int DC21X4AutoSense(void *adapter)
-{
-    return 0;
-}
-
-void DC21X4DisableInterrupt(void *adapter)
-{
-}
-
-void DC21X4DisableNway(void *adapter)
-{
-}
-
-int DC21X4DynamicAutoSense(void *adapter)
-{
-    return 0;
-}
-
-void DC21X4EnableInterrupt(void *adapter)
-{
-}
-
-void DC21X4EnableNway(void *adapter)
-{
-}
-
-void DC21X4IndicateMediaStatus(void *adapter, int status)
-{
-}
-
-void DC21X4InitializeGepRegisters(void *adapter)
-{
-}
-
-void DC21X4InitializeMediaRegisters(void *adapter)
-{
-}
-
-int DC21X4MediaDetect(void *adapter)
-{
-    return 0;
-}
-
-int DC21X4ParseExtendedBlock(void *adapter, unsigned char *block)
-{
-    return 0;
-}
-
-int DC21X4ParseFixedBlock(void *adapter, unsigned char *block)
-{
-    return 0;
-}
-
-int DC21X4ParseSRom(void *adapter)
-{
-    return 0;
-}
-
-int DC21X4PhyInit(void *adapter)
-{
-    return 0;
-}
-
-void DC21X4SetPhyConnection(void *adapter, int connection)
-{
-}
-
-void DC21X4SetPhyControl(void *adapter, int control)
-{
-}
-
-int DC21X4StartAdapter(void *adapter)
-{
-    return 0;
-}
-
-void DC21X4StartAutoSenseTimer(void *adapter, int timeout)
-{
-}
-
-void DC21X4StartTimer(void *adapter, int timeout)
-{
-}
-
-void DC21X4StopAdapter(void *adapter)
-{
-}
-
-void DC21X4StopAutoSenseTimer(void *adapter)
-{
-}
-
-void DC21X4StopReceiverAndTransmitter(void *adapter)
-{
-}
-
-int DC21X4SwitchMedia(void *adapter, int mediaType)
-{
-    return 0;
-}
-
-void DC21X4WriteGepRegister(void *adapter, int value)
-{
-}
-
-int GetBroadcomPhyConnectionType(void *adapter)
-{
-    return 0;
-}
-
-const char *getDriverName(void)
-{
-    return "DEC21X4X";
-}
-
-void HandleBroadcomMediaChangeFrom10To100(void *adapter)
-{
-}
-
-void HandleGepInterrupt(void *adapter)
-{
-}
-
-void HandleLinkChangeInterrupt(void *adapter)
-{
-}
-
-void HandleLinkFailInterrupt(void *adapter)
-{
-}
-
-void HandleLinkPassInterrupt(void *adapter)
-{
-}
-
-void InitPhyInfoEntries(void *adapter)
-{
-}
-
-void mediaTimeoutOccurred(void *adapter)
-{
-}
-
 void scheduleFunc(void *adapter, void *func, int timeout)
 {
     // Schedule a callback function with timeout in milliseconds
@@ -784,7 +602,7 @@ int VerifyChecksum(unsigned char *srom, int length)
  * Parameters:
  *   adapter - Adapter info structure
  */
-void mediaTimeoutOccurred(int adapter)
+void mediaTimeoutOccurred(void *adapter)
 {
     void *driverObject;
 
@@ -795,7 +613,7 @@ void mediaTimeoutOccurred(int adapter)
     objc_msgSend(driverObject, "reserveDebuggerLock");
 
     // Perform dynamic auto-sense
-    DC21X4DynamicAutoSense(0, adapter, 0, 0);
+    DC21X4DynamicAutoSense(0, adapter);
 
     // Release debugger lock
     objc_msgSend(driverObject, "releaseDebuggerLock");
@@ -812,7 +630,7 @@ void mediaTimeoutOccurred(int adapter)
  * This function handles link state changes for different chip revisions
  * and manages the auto-sense state machine.
  */
-void HandleLinkPassInterrupt(int adapter, unsigned int *csrValue)
+void HandleLinkPassInterrupt(void *adapter, unsigned int *csrValue)
 {
     unsigned int chipRevision;
     unsigned int mediaState;
@@ -1003,7 +821,7 @@ handle_link_down:
  * This function handles link failure events and manages media switching
  * and auto-sense timers.
  */
-void HandleLinkFailInterrupt(int adapter, unsigned int *csrValue)
+void HandleLinkFailInterrupt(void *adapter, unsigned int *csrValue)
 {
     unsigned char flagValue;
     unsigned int chipRevision;
@@ -1160,7 +978,7 @@ setup_timer:
  * This function handles link state changes detected by the chip
  * and switches media or indicates status accordingly.
  */
-void HandleLinkChangeInterrupt(int adapter)
+void HandleLinkChangeInterrupt(void *adapter)
 {
     unsigned int csrValue;
     BOOL linkUp;
@@ -1235,7 +1053,7 @@ void HandleLinkChangeInterrupt(int adapter)
  * This function handles GEP interrupts which can indicate PHY
  * link changes or other hardware events.
  */
-void HandleGepInterrupt(int adapter)
+void HandleGepInterrupt(void *adapter)
 {
     char phyInitSuccess;
     unsigned int gepValue;
@@ -1300,7 +1118,7 @@ void HandleGepInterrupt(int adapter)
  * Retrieves the driver name from the driver object using Objective-C
  * message passing.
  */
-const char *getDriverName(int adapter)
+const char *getDriverName(void *adapter)
 {
     void *driverObject;
 
@@ -1325,7 +1143,7 @@ const char *getDriverName(int adapter)
  * Writes to the GEP register with chip-specific handling.
  * DC21142/DC21143 use CSR15 at offset 0x48, other chips use CSR12 at offset 0x3c.
  */
-unsigned long long DC21X4WriteGepRegister(int adapter, unsigned int value)
+unsigned long long DC21X4WriteGepRegister(void *adapter, unsigned int value)
 {
     int chipRevision;
     unsigned int combinedValue;
@@ -1388,7 +1206,7 @@ unsigned long long DC21X4WriteGepRegister(int adapter, unsigned int value)
  * and connection types. It configures the appropriate registers for the
  * selected media type.
  */
-unsigned int DC21X4SwitchMedia(unsigned int adapter, unsigned int connectionType)
+unsigned int DC21X4SwitchMedia(void *adapter, unsigned int connectionType)
 {
     BOOL enableAutoSense;
     unsigned int returnValue;
@@ -1727,7 +1545,7 @@ indicate_status:
  * Clears the Start Transmit and Start Receiver bits in CSR6
  * and waits for the controller to stop.
  */
-void DC21X4StopReceiverAndTransmitter(int adapter)
+void DC21X4StopReceiverAndTransmitter(void *adapter)
 {
     int loopCount;
 
@@ -1762,7 +1580,7 @@ void DC21X4StopReceiverAndTransmitter(int adapter)
  *
  * Cancels any pending auto-sense timer and clears the timer state.
  */
-void DC21X4StopAutoSenseTimer(int adapter)
+void DC21X4StopAutoSenseTimer(void *adapter)
 {
     // Clear timer state
     *(int *)(adapter + 0x220) = 0;
@@ -1783,7 +1601,7 @@ void DC21X4StopAutoSenseTimer(int adapter)
  *
  * Indicates link down and performs a software reset of the controller.
  */
-void DC21X4StopAdapter(int adapter)
+void DC21X4StopAdapter(void *adapter)
 {
     // Indicate media status down
     DC21X4IndicateMediaStatus(adapter, 0);
@@ -1810,7 +1628,7 @@ void DC21X4StopAdapter(int adapter)
  *
  * Schedules the media timeout callback to fire after the specified delay.
  */
-void DC21X4StartTimer(int adapter, int timeout)
+void DC21X4StartTimer(void *adapter, int timeout)
 {
     // Schedule timer callback
     scheduleFunc(adapter, (void *)mediaTimeoutOccurred, timeout);
@@ -1826,7 +1644,7 @@ void DC21X4StartTimer(int adapter, int timeout)
  *
  * Sets the auto-sense timer state and schedules the media timeout callback.
  */
-void DC21X4StartAutoSenseTimer(int adapter, int timeout)
+void DC21X4StartAutoSenseTimer(void *adapter, int timeout)
 {
     // Set timer state to 1 (active)
     *(int *)(adapter + 0x220) = 1;
@@ -1848,7 +1666,7 @@ void DC21X4StartAutoSenseTimer(int adapter, int timeout)
  * Enables the receiver and transmitter by setting bits in CSR6.
  * Special handling for DC21040 with no media selected.
  */
-unsigned long long DC21X4StartAdapter(int adapter)
+unsigned long long DC21X4StartAdapter(void *adapter)
 {
     unsigned int writeValue;
     unsigned short portAddress;
@@ -1934,7 +1752,7 @@ void DC21X4SetPhyControl(void *adapter, unsigned short control)
  *
  * Sets up both MAC and MII PHY for the selected connection type.
  */
-int DC21X4SetPhyConnection(int adapter)
+int DC21X4SetPhyConnection(void *adapter)
 {
     char success;
     int currentPhyIndex;
@@ -1971,7 +1789,7 @@ int DC21X4SetPhyConnection(int adapter)
  * Complex PHY initialization including GEP sequence, capability detection,
  * and media type configuration.
  */
-int DC21X4PhyInit(int adapter)
+int DC21X4PhyInit(void *adapter)
 {
     unsigned short *phyCapabilitiesPtr;
     char initSuccess;
@@ -2154,145 +1972,67 @@ int DC21X4PhyInit(int adapter)
  * This is the main SROM parser that extracts network configuration,
  * media capabilities, and connection information from the serial ROM.
  */
-BOOL DC21X4ParseSRom(int adapter, int *sromData)
+BOOL DC21X4ParseSRom(void *adapter, unsigned char *sromData)
 {
-    BOOL returnValue;
-    unsigned short blockCount;
-    unsigned char connectionType;
-    unsigned int chipRevision;
-    unsigned short *blockPtr;
-    char checksumValid;
-    short crc32Value;
-    const char *driverName;
-    int blockIndex;
-    int connectionIndex;
-    const char *errorMessage;
-    unsigned char sromVersion;
-    unsigned short *currentPtr;
-    unsigned char infoLeafOffset;
-    unsigned short infoLeafLength;
-    int toshiba_id1;
-    int toshiba_id2;
-    unsigned char blockType;
-    unsigned short capabilities;
-    int connectionOffset;
-
-    // Default connection data for various media types
-    // Format appears to be: media_type, capabilities, values...
-    unsigned char defaultConnectionData[] = {
-        0, 8, 0x1f, 4, 0, 0x0b, 0x8e, 0,     // Entry 0
-        3, 0x1b, 0x6d, 0,                     // Entry 1
-        4, 3, 0x8e, 0,                        // Entry 2
-        5, 0x1b, 0x6d, 0                      // Entry 3
+    static const unsigned char defaultConnectionData[] = {
+        0, 8, 31, 4, 0, 11, 0x8e, 0, 3, 27,
+        'm', 0, 4, 3, 0x8e, 0, 5, 27, 'm', 0
     };
+    BOOL returnValue = TRUE;
+    unsigned short blockCount = 0;
+    unsigned char connectionType = 0;
+    unsigned int chipRevision;
+    unsigned char *currentPtr = (unsigned char *)defaultConnectionData;
+    unsigned char *blockPtr;
+    unsigned char sromVersion;
+    unsigned char infoLeafLength;
+    unsigned short capabilities;
+    unsigned short crcValue;
+    unsigned int blockIndex;
+    const char *driverName;
 
-    // Toshiba OEM identifier
-    toshiba_id1 = 0x30354544;  // "DE50"
-    toshiba_id2 = 0x41582d30;  // "0-XA"
-
-    blockCount = 0;
-    returnValue = TRUE;
-    currentPtr = (unsigned short *)defaultConnectionData;
-
-    // Check SROM format version
-    sromVersion = *(unsigned char *)((int)sromData + 0x12);
-
-    // Verify CRC32 checksum at offset 0x7e
-    crc32Value = CRC32(sromData, 0x7e);
-
-    if ((*(short *)((int)sromData + 0x7e) != crc32Value)) {
-        // Try alternate CRC location at 0x5e
-        crc32Value = CRC32(sromData, 0x5e);
-
-        if (*(short *)((int)sromData + 0x5e) != crc32Value) {
-            // CRC failed - check if legacy DC21040 format
-            if ((*(int *)(adapter + 0x54) != 0x91011) ||
-                ((*sromData == 0 && ((short)sromData[1] == 0)) ||
-                 (VerifyChecksum((unsigned char *)sromData, 0) == 0))) {
-                // Invalid checksum
-                driverName = getDriverName(adapter);
-                errorMessage = "%s: Invalid SROM Checksum, aborting...\n";
-                goto log_error;
+    sromVersion = sromData[0x12];
+    crcValue = (unsigned short)CRC32(sromData, 126);
+    if (*(unsigned short *)(sromData + 126) != crcValue) {
+        crcValue = (unsigned short)CRC32(sromData, 94);
+        if (*(unsigned short *)(sromData + 94) != crcValue) {
+            if (*(unsigned int *)(adapter + 0x54) != 0x91011 ||
+                ((*(unsigned int *)sromData == 0 && *(unsigned short *)(sromData + 4) == 0) ||
+                 VerifyChecksum(sromData, 0) == 0)) {
+                IOLog("%s: Invalid SROM Checksum, aborting...\n", getDriverName(adapter));
+                return FALSE;
             }
-
-            // Legacy DC21040 SROM
-            driverName = getDriverName(adapter);
-            IOLog("%s: Legacy SROM found...\n", driverName);
-            driverName = getDriverName(adapter);
-            IOLog("%s: Network interface may not function correctly\n", driverName);
-
-            // Copy MAC address from offset 0
+            IOLog("%s: Legacy SROM found...\n", getDriverName(adapter));
+            IOLog("%s: Network interface may not function correctly\n", getDriverName(adapter));
             bcopy(sromData, (void *)(adapter + 0x4c), 6);
-
-            // Clear version byte
-            *(unsigned char *)((int)sromData + 0x12) = 0;
-            currentPtr = (unsigned short *)defaultConnectionData;
+            sromData[0x12] = 0;
+            currentPtr = (unsigned char *)defaultConnectionData;
         }
     }
 
-    // Check for Toshiba OEM (vendor ID 0x1179, device 0x204)
-    if (((short)*sromData == 0x1179) && (*(short *)((int)sromData + 2) == 0x204)) {
-        *(char *)(adapter + 0x1ef) = 1;
-    }
+    if (*(unsigned short *)sromData == 0x1179 &&
+        *(unsigned short *)(sromData + 2) == 0x0204)
+        *(unsigned char *)(adapter + 0x1ef) = 1;
 
-    // Handle SROM format version
-    sromVersion = *(unsigned char *)((int)sromData + 0x12);
-
-    if (sromVersion == 1) {
-        goto parse_version_1_or_newer;
-    }
-
-    if (sromVersion > 1) {
-        if ((sromVersion > 4) || (sromVersion < 3)) {
-            // Unsupported version
-            goto unsupported_version;
+    sromVersion = sromData[0x12];
+    if (sromVersion == 1 || (sromVersion >= 3 && sromVersion <= 4)) {
+        IOLog("%s: SROM format version: 0x%02x\n", getDriverName(adapter), sromVersion);
+        infoLeafLength = sromData[0x1b];
+        if (*(unsigned int *)(sromData + 20) == 0 && *(unsigned short *)(sromData + 24) == 0) {
+            IOLog("%s: NULL Network Address\n", getDriverName(adapter));
+            return FALSE;
         }
-        goto parse_version_1_or_newer;
-    }
-
-    if (sromVersion != 0) {
-unsupported_version:
-        driverName = getDriverName(adapter);
-        IOLog("%s: Unsupported SROM format version (0x%02x)!\n", driverName, sromVersion);
+        bcopy(sromData + 20, (void *)(adapter + 0x4c), 6);
+        currentPtr = sromData + infoLeafLength;
+    } else if (sromVersion != 0) {
+        IOLog("%s: Unsupported SROM format version (0x%02x)!\n",
+              getDriverName(adapter), sromVersion);
         return FALSE;
     }
 
-    // Version 0 - use default connection data
-    goto setup_connection_blocks;
-
-parse_version_1_or_newer:
-    driverName = getDriverName(adapter);
-    IOLog("%s: SROM format version: 0x%02x\n", driverName, sromVersion);
-
-    // Get info leaf offset and length
-    infoLeafOffset = *(unsigned char *)((int)sromData + 0x1a);
-    infoLeafLength = (unsigned short)*(unsigned char *)((int)sromData + 0x1b);
-
-    // Verify MAC address is not null
-    if ((sromData[5] == 0) && ((short)sromData[6] == 0)) {
-        driverName = getDriverName(adapter);
-        errorMessage = "%s: NULL Network Address\n";
-log_error:
-        IOLog(errorMessage, driverName);
-        return FALSE;
-    }
-
-    // Copy MAC address from offset 10 (0xa)
-    bcopy(sromData + 5, (void *)(adapter + 0x4c), 6);
-
-    // Set pointer to info leaf
-    currentPtr = (unsigned short *)((unsigned int)infoLeafLength + (int)sromData);
-
-setup_connection_blocks:
-    // Clear supported media mask
-    *(int *)(adapter + 0x7c) = 0;
-
-    // Get chip revision
+    *(unsigned int *)(adapter + 0x7c) = 0;
     chipRevision = *(unsigned int *)(adapter + 0x54);
-
     if (chipRevision == 0x141011) {
-        // DC21140
-        // Set up default SIA registers
         *(unsigned int *)(adapter + 0xcc) = 0xef01;
         *(unsigned int *)(adapter + 0xd0) = 0xff3f;
         *(unsigned int *)(adapter + 0xd4) = 8;
@@ -2303,97 +2043,46 @@ setup_connection_blocks:
         *(unsigned int *)(adapter + 0x110) = 0x705;
         *(unsigned int *)(adapter + 0x114) = 0xe;
 
-        // Parse connection blocks
-        blockCount = (unsigned short)(*(unsigned char *)((int)currentPtr + 2));
-        blockPtr = (unsigned short *)((int)currentPtr + 3);
-
-        blockIndex = 0;
-        if (blockCount != 0) {
-            do {
-                blockType = (unsigned char)*blockPtr & 0x3f;
-
-                if (blockType < 9) {
-                    // Valid connection type - set supported media bit
-                    *(unsigned int *)(adapter + 0x7c) =
-                        *(unsigned int *)(adapter + 0x7c) | (1 << ((unsigned char)*blockPtr & 0x1f));
-
-                    currentPtr = (unsigned short *)((int)blockPtr + 1);
-
-                    // Check compact format bit
-                    if ((*blockPtr & 0x40) != 0) {
-                        // Extended format - 3 words of data
-                        connectionOffset = (unsigned int)blockType * 0x20;
-                        *(unsigned int *)(connectionOffset + 0xcc + adapter) =
-                            (unsigned int)*(unsigned short *)((int)blockPtr + 1);
-                        *(unsigned int *)(connectionOffset + 0xd0 + adapter) =
-                            (unsigned int)*(unsigned short *)((int)blockPtr + 3);
-                        *(unsigned int *)(connectionOffset + 0xd4 + adapter) =
-                            (unsigned int)*(unsigned short *)((int)blockPtr + 5);
-                        currentPtr = (unsigned short *)((int)blockPtr + 7);
-                    }
+        currentPtr += 2;
+        blockCount = *currentPtr++;
+        for (blockIndex = 0; blockIndex < blockCount; ++blockIndex) {
+            unsigned char mediaCode = *currentPtr & 0x3f;
+            if (mediaCode <= 8) {
+                *(unsigned int *)(adapter + 0x7c) |= 1U << mediaCode;
+                blockPtr = currentPtr + 1;
+                if ((*currentPtr & 0x40) != 0) {
+                    unsigned int mediaOffset = mediaCode * 0x20;
+                    *(unsigned int *)(adapter + 0xcc + mediaOffset) = *(unsigned short *)blockPtr;
+                    *(unsigned int *)(adapter + 0xd0 + mediaOffset) = *(unsigned short *)(blockPtr + 2);
+                    *(unsigned int *)(adapter + 0xd4 + mediaOffset) = *(unsigned short *)(blockPtr + 4);
+                    currentPtr = blockPtr + 6;
+                } else {
+                    currentPtr = blockPtr;
                 }
-                else {
-                    // Unknown block type - skip it
-                    if ((*blockPtr & 0x40) == 0) {
-                        currentPtr = blockPtr + 2;
-                    }
-                    else {
-                        currentPtr = blockPtr + 8;
-                    }
-                }
-
-                blockPtr = currentPtr;
-                blockIndex = blockIndex + 1;
-            } while (blockIndex < (int)(unsigned int)blockCount);
+            } else {
+                currentPtr += ((*currentPtr & 0x40) != 0) ? 16 : 4;
+            }
         }
-
-        goto finalize_parsing;
-    }
-
-    if (chipRevision < 0x141012) {
-        if (chipRevision == 0x91011) {
-            // DC21040
-            // Check for DE500-XA board
-            if ((sromVersion < 2) && (*(int *)(adapter + 8) == 0x11)) {
-                returnValue = FALSE;
-                if ((toshiba_id1 == *(int *)((int)sromData + 0x1d)) &&
-                    (toshiba_id2 == *(int *)((int)sromData + 0x21))) {
-                    returnValue = TRUE;
-                }
-                *(char *)(adapter + 100) = returnValue;
-            }
-            else {
-                // Get polarity from bit 15
-                *(unsigned char *)(adapter + 100) = ((unsigned char)(*currentPtr >> 15)) ^ 1;
-            }
-
-            capabilities = (unsigned char)currentPtr[1] | 0x100;
-            blockCount = (unsigned short)*(unsigned char *)((int)currentPtr + 3);
-            currentPtr = currentPtr + 2;
-
-            blockIndex = 0;
-            if (blockCount != 0) {
-                do {
-                    if ((sromVersion < 3) || ((*currentPtr & 0x80) == 0)) {
-                        DC21X4ParseFixedBlock(adapter, &currentPtr, capabilities, &connectionType);
-                    }
-                    else {
-                        DC21X4ParseExtendedBlock(adapter, &currentPtr, capabilities, &connectionType);
-                    }
-                    blockIndex = blockIndex + 1;
-                } while (blockIndex < (int)(unsigned int)blockCount);
-            }
-
-            goto check_primary_block;
+    } else if (chipRevision == 0x91011) {
+        if (sromVersion < 2 && *(unsigned int *)(adapter + 8) == 0x11) {
+            returnValue = *(unsigned int *)(sromData + 29) == 0x30354544 &&
+                          *(unsigned int *)(sromData + 33) == 0x41582d30;
+            *(unsigned char *)(adapter + 100) = returnValue;
+        } else {
+            *(unsigned char *)(adapter + 100) = ((*currentPtr & 0x80) == 0);
         }
-    }
-    else if ((chipRevision == 0x191011) || (chipRevision == 0xff1011)) {
-        // DC21142/DC21143
-        if (sromVersion < 3) {
+        currentPtr += 2;
+        capabilities = (unsigned short)(*currentPtr++ | 0x100);
+        blockCount = *currentPtr++;
+        for (blockIndex = 0; blockIndex < blockCount; ++blockIndex) {
+            if (sromVersion > 2 && (*currentPtr & 0x80) != 0)
+                DC21X4ParseExtendedBlock(adapter, &currentPtr, capabilities, &connectionType);
+            else
+                DC21X4ParseFixedBlock(adapter, &currentPtr, capabilities, &connectionType);
+        }
+    } else if (chipRevision == 0x191011 || chipRevision == 0xff1011) {
+        if (sromVersion <= 2)
             return FALSE;
-        }
-
-        // Set up default values
         *(unsigned int *)(adapter + 0xcc) = 1;
         *(unsigned int *)(adapter + 0xd0) = 0xff3f;
         *(unsigned int *)(adapter + 0xd4) = 8;
@@ -2403,47 +2092,27 @@ setup_connection_blocks:
         *(unsigned int *)(adapter + 0x10c) = 9;
         *(unsigned int *)(adapter + 0x110) = 0x705;
         *(unsigned int *)(adapter + 0x114) = 0xe;
+        *(unsigned char *)(adapter + 100) = ((*currentPtr & 0x80) == 0);
+        currentPtr += 2;
+        blockCount = *currentPtr++;
+        for (blockIndex = 0; blockIndex < blockCount; ++blockIndex)
+            DC21X4ParseExtendedBlock(adapter, &currentPtr, 0, &connectionType);
+    } else {
+        returnValue = FALSE;
+    }
 
-        // Get polarity from bit 15
-        *(unsigned char *)(adapter + 100) = ((unsigned char)(*currentPtr >> 15)) ^ 1;
-
-        blockCount = (unsigned short)(*(unsigned char *)((int)currentPtr + 2));
-        currentPtr = (unsigned short *)((int)currentPtr + 3);
-
-        blockIndex = 0;
-        if (blockCount != 0) {
-            do {
-                DC21X4ParseExtendedBlock(adapter, &currentPtr, 0, &connectionType);
-                blockIndex = blockIndex + 1;
-            } while (blockIndex < (int)(unsigned int)blockCount);
-        }
-
-check_primary_block:
-        // Check if primary block needs to be set
-        if ((*(char *)(adapter + 0x65) == 0) && (*(int *)(adapter + 0x88) > 0)) {
+    if (chipRevision == 0x91011 || chipRevision == 0x191011 || chipRevision == 0xff1011) {
+        if (*(unsigned char *)(adapter + 0x65) == 0 && *(unsigned int *)(adapter + 0x88) > 0)
             *(unsigned int *)(adapter + 0x80) =
-                *(unsigned int *)(adapter + 0x9c + (*(int *)(adapter + 0x88) * 4));
-        }
-
-        goto finalize_parsing;
+                *(unsigned int *)(adapter + 0x9c + 4 * *(unsigned int *)(adapter + 0x88));
     }
-
-    returnValue = FALSE;
-
-finalize_parsing:
-    // If single block and MII PHY not present, set default media type
-    if ((blockCount == 1) && (*(int *)(adapter + 0x7c) != 0) &&
-        (*(char *)(adapter + 0x1e5) == 0)) {
-        *(unsigned int *)(adapter + 0x78) = *(unsigned int *)(adapter + 0x78) & 0xfffff700;
-        *(unsigned int *)(adapter + 0x78) =
-            *(unsigned int *)(adapter + 0x78) | (unsigned int)connectionType;
+    if (blockCount == 1 && *(unsigned int *)(adapter + 0x7c) != 0 &&
+        *(unsigned char *)(adapter + 0x1e5) == 0) {
+        *(unsigned int *)(adapter + 0x78) &= 0xfffff700;
+        *(unsigned int *)(adapter + 0x78) |= connectionType;
     }
-
-    // If no supported media types, enable promiscuous mode
-    if ((*(unsigned char *)(adapter + 0x7c) & 7) == 0) {
-        *(unsigned int *)(adapter + 0x68) = *(unsigned int *)(adapter + 0x68) | 0x40000;
-    }
-
+    if ((*(unsigned char *)(adapter + 0x7c) & 7) == 0)
+        *(unsigned int *)(adapter + 0x68) |= 0x40000;
     return returnValue;
 }
 
@@ -2451,272 +2120,191 @@ finalize_parsing:
  * DC21X4ParseFixedBlock
  * Parse fixed-format (compact 4-byte) SROM connection blocks
  */
-BOOL DC21X4ParseFixedBlock(void *adapter, unsigned char *blockPtr,
-                            unsigned char connectionType)
+void DC21X4ParseFixedBlock(void *adapter, unsigned char **blockPtr,
+                           unsigned short connectionType, unsigned char *sromData)
 {
-    unsigned short blockWord0;
-    unsigned short blockWord1;
-    unsigned short mediaBit;
-    unsigned short mediaCode;
-    unsigned int tempReg;
-    unsigned short gepControl;
-    unsigned short gepData;
-    unsigned short csr6Bits;
-    unsigned short testPattern;
-    unsigned short portSelect;
-    BOOL isPrimary;
+    unsigned char *block;
+    unsigned int mediaCode;
+    unsigned int mediaOffset;
+    unsigned int csr6Bits;
+    unsigned int linkTest;
 
-    // Read the two 16-bit words from the block
-    blockWord0 = *(unsigned short *)blockPtr;
-    blockWord1 = *(unsigned short *)(blockPtr + 2);
-
-    // Extract media code (bits 0-5)
-    mediaCode = blockWord0 & 0x3f;
-
-    // Extract GP control value (bits 7-14)
-    gepControl = (blockWord0 >> 7) & 0xff;
-
-    // Extract GP data value (bits 0-6 of second word)
-    gepData = blockWord1 & 0x7f;
-
-    // Extract CSR6 bits (bits 7-12 of second word)
-    csr6Bits = (blockWord1 >> 7) & 0x3f;
-
-    // Check primary block flag (bit 6 of first word)
-    isPrimary = (blockWord0 & 0x40) != 0;
-
-    // Get media bit for this media type
-    mediaBit = _ConnectionType[mediaCode];
-
-    // Update supported media mask
-    // TODO: *(unsigned int *)(adapter + 0x7c) |= (1 << mediaBit);
-    tempReg = *(unsigned int *)(adapter + 0x7c);
-    tempReg |= (1 << mediaBit);
-    *(unsigned int *)(adapter + 0x7c) = tempReg;
-
-    // If this is the primary block or matches the requested connection type
-    if (isPrimary || (connectionType == mediaCode)) {
-        // Store CSR6 configuration bits
-        // TODO: *(unsigned short *)(adapter + 0x17c) = csr6Bits;
-        *(unsigned short *)(adapter + 0x17c) = csr6Bits;
-
-        // Store GP control value
-        // TODO: *(unsigned short *)(adapter + 0x19e) = gepControl;
-        *(unsigned short *)(adapter + 0x19e) = gepControl;
-
-        // Store GP data value
-        // TODO: *(unsigned short *)(adapter + 0x1a0) = gepData;
-        *(unsigned short *)(adapter + 0x1a0) = gepData;
-
-        // Extract test pattern (bit 13 of second word)
-        testPattern = (blockWord1 >> 13) & 1;
-        // TODO: *(unsigned char *)(adapter + 0x1a4) = testPattern;
-        *(unsigned char *)(adapter + 0x1a4) = testPattern;
-
-        // Extract port select (bits 14-15 of second word)
-        portSelect = (blockWord1 >> 14) & 3;
-        // TODO: *(unsigned char *)(adapter + 0x1a5) = portSelect;
-        *(unsigned char *)(adapter + 0x1a5) = portSelect;
-
-        // Store media code as default media type
-        // TODO: *(unsigned char *)(adapter + 0x78) = mediaCode;
-        *(unsigned char *)(adapter + 0x78) = mediaCode;
+    block = *blockPtr;
+    mediaCode = block[0] & 0x3f;
+    if (mediaCode > 8) {
+        *blockPtr = block + 10;
+        return;
     }
 
-    return TRUE;
+    mediaOffset = mediaCode * 0x20;
+    *(unsigned int *)(adapter + 0x7c) |= 1U << mediaCode;
+    *(unsigned int *)(adapter + 0xc4 + mediaOffset) = connectionType;
+    *(unsigned int *)(adapter + 0xc8 + mediaOffset) = block[1];
+    csr6Bits = (*(unsigned int *)(block + 2) & 0x71) << 18;
+    *(unsigned int *)(adapter + 0xd8 + mediaOffset) = csr6Bits;
+    *(unsigned int *)(adapter + 0xdc + mediaOffset) =
+        (block[2] & 0x80) != 0 ? 0xffffffffU : 0;
+    linkTest = (short)*(unsigned short *)(block + 2) < 0
+        ? 0 : 1U << ((*(unsigned int *)(block + 2) & 0x0e) >> 1);
+    *(unsigned int *)(adapter + 0xe0 + mediaOffset) = linkTest;
+
+    if ((block[2] & 0x40) != 0)
+        *(unsigned int *)(adapter + 0xd8 + mediaOffset) |= *(unsigned int *)(adapter + 0x6c);
+    else
+        *(unsigned int *)(adapter + 0xd8 + mediaOffset) |= *(unsigned int *)(adapter + 0x70);
+
+    if (linkTest != 0 && mediaCode != 4 && mediaCode != 5 && mediaCode != 8)
+        *(unsigned int *)(adapter + 0xa0 + 4 * (*(unsigned int *)(adapter + 0x88))++) = mediaCode;
+
+    if ((block[3] & 0x40) != 0) {
+        *(unsigned char *)(adapter + 0x65) = 1;
+        *(unsigned int *)(adapter + 0x80) = mediaCode;
+    }
+    SRomLocalAdvertisement(adapter, (unsigned char)mediaCode);
+    *sromData = (unsigned char)mediaCode;
+    *blockPtr = block + 4;
 }
 
 /*
  * DC21X4ParseExtendedBlock
  * Parse extended-format (variable-length) SROM connection blocks
  */
-BOOL DC21X4ParseExtendedBlock(void *adapter, unsigned char *blockPtr,
-                               unsigned char connectionType, unsigned char *sromData)
+void DC21X4ParseExtendedBlock(void *adapter, unsigned char **blockPtr,
+                              unsigned short connectionType, unsigned char *sromData)
 {
+    unsigned char *block;
+    unsigned char *cursor;
+    unsigned char *blockEnd;
     unsigned char blockType;
     unsigned char blockLength;
     unsigned char mediaCode;
-    unsigned short mediaBit;
-    unsigned int tempReg;
-    unsigned char phyNumber;
-    unsigned char *sequencePtr;
-    unsigned char seqLength;
+    unsigned char flags;
+    unsigned char count;
     int i;
-    unsigned short gepValue;
-    unsigned short csr13Value, csr14Value, csr15Value;
-    unsigned short csr6Bits;
-    BOOL isPrimary;
 
-    // Get block type and length
-    blockType = *blockPtr;
-    blockLength = *(blockPtr + 1);
+    block = *blockPtr;
+    cursor = block;
+    blockLength = *cursor++ & 0x7f;
+    blockEnd = cursor + blockLength;
+    blockType = *cursor++;
 
-    // Block type determines how to parse
     switch (blockType) {
         case 0:
-            // Type 0: Fixed format block (4 bytes) - delegate to fixed parser
-            return DC21X4ParseFixedBlock(adapter, blockPtr + 2, connectionType);
-
-        case 1:  // MII PHY block
-        case 3:  // MII PHY block (alternate format)
-            // Extract media code
-            mediaCode = *(blockPtr + 3);
-            mediaBit = _ConnectionType[mediaCode];
-
-            // Update supported media mask
-            tempReg = *(unsigned int *)(adapter + 0x7c);
-            tempReg |= (1 << mediaBit);
-            *(unsigned int *)(adapter + 0x7c) = tempReg;
-
-            // Check if this is primary or matches requested type
-            isPrimary = (*(blockPtr + 2) & 0x40) != 0;
-            if (isPrimary || (connectionType == mediaCode)) {
-                // Store default media type
-                *(unsigned char *)(adapter + 0x78) = mediaCode;
-
-                // Get PHY number
-                phyNumber = *(blockPtr + 2) & 0x1f;
-                // TODO: *(unsigned char *)(adapter + 0x1e4) = phyNumber;
-                *(unsigned char *)(adapter + 0x1e4) = phyNumber;
-
-                // Mark MII PHY as present
-                // TODO: *(BOOL *)(adapter + 0x1e5) = TRUE;
-                *(char *)(adapter + 0x1e5) = 1;
-
-                // Get GP control sequence length and pointer
-                seqLength = *(blockPtr + 4);
-                sequencePtr = blockPtr + 5;
-
-                // Store reset sequence
-                if (seqLength > 0) {
-                    // TODO: Store at adapter + 0x1f4
-                    for (i = 0; i < seqLength && i < 16; i++) {
-                        *(unsigned short *)(adapter + 0x1f4 + (i * 2)) =
-                            *(unsigned short *)(sequencePtr + (i * 2));
+            DC21X4ParseFixedBlock(adapter, &cursor, connectionType, sromData);
+            break;
+        case 1:
+        case 3:
+            flags = *cursor++;
+            if (flags == 0) {
+                *(unsigned short *)(adapter + 580) = connectionType;
+                count = *cursor++;
+                *(unsigned int *)(adapter + 564) = count;
+                if (count <= 5) {
+                    if (blockType == 1) {
+                        for (i = 0; i < count; ++i)
+                            *(unsigned short *)(adapter + 582 + i * 2) = *cursor++;
+                    } else {
+                        if (count != 0) {
+                            *(unsigned short *)(adapter + 580) = *(unsigned short *)cursor;
+                            --count;
+                            *(unsigned int *)(adapter + 564) = count;
+                            cursor += 2;
+                        }
+                        for (i = 0; i < count; ++i, cursor += 2)
+                            *(unsigned short *)(adapter + 582 + i * 2) = *(unsigned short *)cursor;
                     }
-                    // TODO: *(unsigned char *)(adapter + 0x1f3) = seqLength;
-                    *(unsigned char *)(adapter + 0x1f3) = seqLength;
-                }
-
-                // Skip to init sequence
-                sequencePtr += (seqLength * 2);
-                seqLength = *sequencePtr;
-                sequencePtr++;
-
-                // Store init sequence
-                if (seqLength > 0) {
-                    // TODO: Store at adapter + 0x214
-                    for (i = 0; i < seqLength && i < 16; i++) {
-                        *(unsigned short *)(adapter + 0x214 + (i * 2)) =
-                            *(unsigned short *)(sequencePtr + (i * 2));
+                    count = *cursor++;
+                    *(unsigned int *)(adapter + 568) = count;
+                    if (count <= 5) {
+                        if (blockType == 1) {
+                            for (i = 0; i < count; ++i)
+                                *(unsigned short *)(adapter + 592 + i * 2) = *cursor++;
+                        } else {
+                            for (i = 0; i < count; ++i, cursor += 2)
+                                *(unsigned short *)(adapter + 592 + i * 2) = *(unsigned short *)cursor;
+                        }
+                        *(unsigned short *)(adapter + 572) = *(unsigned short *)cursor & 0xf800;
+                        cursor += 2;
+                        *(unsigned short *)(adapter + 574) = *(unsigned short *)cursor & 0x03e0;
+                        cursor += 2;
+                        *(unsigned short *)(adapter + 576) = *(unsigned short *)cursor & 0xf800;
+                        cursor += 2;
+                        *(unsigned short *)(adapter + 578) = *(unsigned short *)cursor & 0xf800;
+                        cursor += 2;
+                        *(unsigned char *)(adapter + 560) = 1;
+                        *(unsigned char *)(adapter + 485) = 1;
+                        if (blockType == 3)
+                            *(unsigned int *)(adapter + 604) = (unsigned int)*cursor++ << 29;
                     }
-                    // TODO: *(unsigned char *)(adapter + 0x213) = seqLength;
-                    *(unsigned char *)(adapter + 0x213) = seqLength;
                 }
             }
             break;
-
-        case 2:  // Compact media block
-            // Extract media code (byte 3)
-            mediaCode = *(blockPtr + 3);
-            mediaBit = _ConnectionType[mediaCode];
-
-            // Update supported media mask
-            tempReg = *(unsigned int *)(adapter + 0x7c);
-            tempReg |= (1 << mediaBit);
-            *(unsigned int *)(adapter + 0x7c) = tempReg;
-
-            // Check if primary or matches requested type
-            isPrimary = (*(blockPtr + 2) & 0x40) != 0;
-            if (isPrimary || (connectionType == mediaCode)) {
-                // Store default media type
-                *(unsigned char *)(adapter + 0x78) = mediaCode;
-
-                // Get CSR13-15 values
-                csr13Value = *(unsigned short *)(blockPtr + 4);
-                csr14Value = *(unsigned short *)(blockPtr + 6);
-                csr15Value = *(unsigned short *)(blockPtr + 8);
-
-                // TODO: Store at adapter + 0x196, 0x19a, 0x19c
-                *(unsigned short *)(adapter + 0x196) = csr13Value;
-                *(unsigned short *)(adapter + 0x19a) = csr14Value;
-                *(unsigned short *)(adapter + 0x19c) = csr15Value;
-
-                // Get GP control value (byte 10)
-                gepValue = *(blockPtr + 10);
-                // TODO: *(unsigned short *)(adapter + 0x19e) = gepValue;
-                *(unsigned short *)(adapter + 0x19e) = gepValue;
-            }
-            break;
-
-        case 4:  // Extended media block with auto-sense
-            // Extract media code
-            mediaCode = *(blockPtr + 3);
-            mediaBit = _ConnectionType[mediaCode];
-
-            // Update supported media mask
-            tempReg = *(unsigned int *)(adapter + 0x7c);
-            tempReg |= (1 << mediaBit);
-            *(unsigned int *)(adapter + 0x7c) = tempReg;
-
-            // Check if primary or matches requested type
-            isPrimary = (*(blockPtr + 2) & 0x40) != 0;
-            if (isPrimary || (connectionType == mediaCode)) {
-                // Store default media type
-                *(unsigned char *)(adapter + 0x78) = mediaCode;
-
-                // Get CSR13-15 values
-                csr13Value = *(unsigned short *)(blockPtr + 4);
-                csr14Value = *(unsigned short *)(blockPtr + 6);
-                csr15Value = *(unsigned short *)(blockPtr + 8);
-
-                // TODO: Store at adapter + 0x196, 0x19a, 0x19c
-                *(unsigned short *)(adapter + 0x196) = csr13Value;
-                *(unsigned short *)(adapter + 0x19a) = csr14Value;
-                *(unsigned short *)(adapter + 0x19c) = csr15Value;
-
-                // Get CSR6 bits (bytes 10-11)
-                csr6Bits = *(unsigned short *)(blockPtr + 10);
-                // TODO: *(unsigned short *)(adapter + 0x17c) = csr6Bits;
-                *(unsigned short *)(adapter + 0x17c) = csr6Bits;
-
-                // Get GP control (bytes 12-13)
-                gepValue = *(unsigned short *)(blockPtr + 12);
-                // TODO: *(unsigned short *)(adapter + 0x19e) = gepValue;
-                *(unsigned short *)(adapter + 0x19e) = gepValue;
-            }
-            break;
-
-        case 5:  // Reset sequence (alternate format)
-            // Get sequence length
-            seqLength = *(blockPtr + 2);
-            sequencePtr = blockPtr + 3;
-
-            // Store reset sequence
-            if (seqLength > 0) {
-                // TODO: Store at adapter + 0x1f4
-                for (i = 0; i < seqLength && i < 16; i++) {
-                    *(unsigned short *)(adapter + 0x1f4 + (i * 2)) =
-                        *(unsigned short *)(sequencePtr + (i * 2));
+        case 2:
+            mediaCode = *cursor & 0x3f;
+            if (mediaCode <= 8) {
+                *(unsigned int *)(adapter + 0x7c) |= 1U << mediaCode;
+                flags = *cursor++ & 0x40;
+                if (flags != 0) {
+                    *(unsigned int *)(adapter + 0xcc + mediaCode * 0x20) = *(unsigned short *)cursor;
+                    cursor += 2;
+                    *(unsigned int *)(adapter + 0xd0 + mediaCode * 0x20) = *(unsigned short *)cursor;
+                    cursor += 2;
+                    *(unsigned int *)(adapter + 0xd4 + mediaCode * 0x20) = *(unsigned short *)cursor;
+                    cursor += 2;
                 }
-                // TODO: *(unsigned char *)(adapter + 0x1f3) = seqLength;
-                *(unsigned char *)(adapter + 0x1f3) = seqLength;
+                *(unsigned int *)(adapter + 0xc4 + mediaCode * 0x20) = *(unsigned short *)cursor;
+                *(unsigned int *)(adapter + 0xc8 + mediaCode * 0x20) = *((unsigned short *)cursor + 1);
+                SRomLocalAdvertisement(adapter, mediaCode);
+                *sromData = mediaCode;
             }
             break;
-
+        case 4:
+            mediaCode = *cursor++ & 0x3f;
+            if (mediaCode <= 8) {
+                *(unsigned int *)(adapter + 0x7c) |= 1U << mediaCode;
+                *(unsigned int *)(adapter + 0xc4 + mediaCode * 0x20) = *(unsigned short *)cursor;
+                cursor += 2;
+                *(unsigned int *)(adapter + 0xc8 + mediaCode * 0x20) = *(unsigned short *)cursor;
+                cursor += 2;
+                *(unsigned int *)(adapter + 0xd8 + mediaCode * 0x20) = (*(unsigned int *)cursor & 0x71) << 18;
+                *(unsigned int *)(adapter + 0xdc + mediaCode * 0x20) =
+                    (*(short *)cursor < 0) ? 0xffffffffU : 0;
+                *(unsigned int *)(adapter + 0xe0 + mediaCode * 0x20) =
+                    (*(short *)cursor < 0) ? 0 : 1U << ((*(unsigned int *)cursor & 0x0e) >> 1);
+                if ((*(unsigned char *)(adapter + 0xda + mediaCode * 0x20) & 0x40) != 0)
+                    *(unsigned int *)(adapter + 0xd8 + mediaCode * 0x20) |= *(unsigned int *)(adapter + 0x6c);
+                else
+                    *(unsigned int *)(adapter + 0xd8 + mediaCode * 0x20) |= *(unsigned int *)(adapter + 0x70);
+                if (*(unsigned int *)(adapter + 0xe0 + mediaCode * 0x20) != 0 &&
+                    mediaCode != 4 && mediaCode != 5 && mediaCode != 8)
+                    *(unsigned int *)(adapter + 0xa0 + 4 * (*(unsigned int *)(adapter + 0x88))++) = mediaCode;
+                if ((block[4] & 0x40) != 0) {
+                    *(unsigned char *)(adapter + 0x65) = 1;
+                    *(unsigned int *)(adapter + 0x80) = mediaCode;
+                }
+                SRomLocalAdvertisement(adapter, mediaCode);
+                *sromData = mediaCode;
+            }
+            break;
+        case 5:
+            count = *cursor++;
+            *(unsigned int *)(adapter + 0x8c) = count;
+            if (count <= 5) {
+                for (i = 0; i < count; ++i, cursor += 2)
+                    *(unsigned short *)(adapter + 0x90 + i * 2) = *(unsigned short *)cursor;
+            }
+            break;
         default:
-            // Unknown block type - skip it
-            return TRUE;
+            break;
     }
-
-    return TRUE;
+    *blockPtr = blockEnd;
 }
 
 /*
  * DC21X4MiiAutoSense
  * Handle MII auto-sensing with connection status monitoring
  */
-int DC21X4MiiAutoSense(int adapter)
+int DC21X4MiiAutoSense(void *adapter)
 {
     BOOL shouldFallback;
     unsigned int indicateStatus;
@@ -2813,7 +2401,7 @@ check_fallback:
  * DC21X4MiiAutoDetect
  * Perform MII auto-detection with polling for link
  */
-int DC21X4MiiAutoDetect(int adapter)
+int DC21X4MiiAutoDetect(void *adapter)
 {
     unsigned int indicateStatus;
     int pollCount;
@@ -2877,7 +2465,7 @@ int DC21X4MiiAutoDetect(int adapter)
  * DC21X4MediaDetect
  * Main media detection function for all chip variants
  */
-int DC21X4MediaDetect(int adapter)
+int DC21X4MediaDetect(void *adapter)
 {
     int tempValue;
     BOOL shouldFallback;
@@ -3087,42 +2675,26 @@ return_mii_ready:
  * DC21X4InitializeMediaRegisters
  * Initialize media-specific registers based on chip type
  */
-void DC21X4InitializeMediaRegisters(int adapter, char usePhyInit)
+void DC21X4InitializeMediaRegisters(void *adapter, char usePhyInit)
 {
     unsigned int chipRevision;
 
     chipRevision = *(unsigned int *)(adapter + 0x54);
-
-    // DC21040 or DC21140 - use SIA registers
-    if (chipRevision != 0x141011) {
-        if (chipRevision < 0x141012) {
-            if (chipRevision != 0x21011) {
-                // DC21041 - use GEP registers
-                if (chipRevision != 0x91011) {
-                    return;
-                }
-                DC21X4InitializeGepRegisters(adapter, usePhyInit);
-                return;
-            }
-        }
-        else {
-            // DC21142/DC21143 - use GEP registers
-            if ((chipRevision != 0x191011) && (chipRevision != 0xff1011)) {
-                return;
-            }
-            DC21X4InitializeGepRegisters(adapter, usePhyInit);
-        }
+    if (chipRevision == 0x141011 || chipRevision == 0x21011) {
+        DC2104InitializeSiaRegisters(adapter, 0x46d0);
+    } else if (chipRevision == 0x91011) {
+        DC21X4InitializeGepRegisters(adapter, usePhyInit);
+    } else if (chipRevision == 0x191011 || chipRevision == 0xff1011) {
+        DC21X4InitializeGepRegisters(adapter, usePhyInit);
+        DC2104InitializeSiaRegisters(adapter, 0x46d0);
     }
-
-    // DC21040/DC21140 - initialize SIA registers
-    DC2104InitializeSiaRegisters(adapter, 0x46d0);
 }
 
 /*
  * DC21X4InitializeGepRegisters
  * Initialize General Purpose Port registers
  */
-void DC21X4InitializeGepRegisters(int adapter, char usePhyInit)
+void DC21X4InitializeGepRegisters(void *adapter, char usePhyInit)
 {
     int currentMedia;
     int phyIndex;
@@ -3171,7 +2743,7 @@ void DC21X4InitializeGepRegisters(int adapter, char usePhyInit)
  * DC21X4IndicateMediaStatus
  * Indicate media link status and configure speed/duplex settings
  */
-void DC21X4IndicateMediaStatus(int adapter, int linkStatus)
+void DC21X4IndicateMediaStatus(void *adapter, int linkStatus)
 {
     int currentMedia;
     unsigned int csr12Value;
@@ -3351,7 +2923,7 @@ void DC21X4IndicateMediaStatus(int adapter, int linkStatus)
  * DC21X4EnableNway
  * Enable N-Way auto-negotiation for supported chip variants
  */
-void DC21X4EnableNway(int adapter)
+void DC21X4EnableNway(void *adapter)
 {
     char nwayCapable;
     unsigned int chipRevision;
@@ -3478,7 +3050,7 @@ disable_nway:
  * DC21X4EnableInterrupt
  * Enable interrupts by writing to CSR7 (interrupt mask register)
  */
-void DC21X4EnableInterrupt(int adapter)
+void DC21X4EnableInterrupt(void *adapter)
 {
     // Write interrupt mask register
     // TODO: *(unsigned int *)(adapter + 0x1fc) contains the interrupt mask
@@ -3490,7 +3062,7 @@ void DC21X4EnableInterrupt(int adapter)
  * DC21X4DynamicAutoSense
  * Handle dynamic auto-sensing with MII and non-MII fallback
  */
-void DC21X4DynamicAutoSense(void *timerArg, int adapter)
+void DC21X4DynamicAutoSense(void *timerArg, void *adapter)
 {
     unsigned int timerDelay;
     char miiLinkOk;
@@ -3542,7 +3114,7 @@ schedule_timer:
  * DC21X4DisableNway
  * Disable N-Way auto-negotiation for all chip variants
  */
-void DC21X4DisableNway(int adapter)
+void DC21X4DisableNway(void *adapter)
 {
     unsigned int chipRevision;
 
@@ -3596,7 +3168,7 @@ clear_csr6_bit:
  * DC21X4DisableInterrupt
  * Disable all interrupts by writing 0 to CSR7
  */
-void DC21X4DisableInterrupt(int adapter)
+void DC21X4DisableInterrupt(void *adapter)
 {
     // Write 0 to interrupt mask register (CSR7)
     out(*(unsigned short *)(adapter + 0x28), 0);
@@ -3606,7 +3178,7 @@ void DC21X4DisableInterrupt(int adapter)
  * DC21X4AutoSense
  * Complex auto-sensing state machine for media detection
  */
-int DC21X4AutoSense(unsigned int adapter)
+int DC21X4AutoSense(void *adapter)
 {
     unsigned char linkStatus;
     unsigned int chipRevision;
@@ -3994,7 +3566,7 @@ restart_nway:
  * DC2114Sense100BaseTxLink
  * Sense 100Base-TX link on DC21140 family chips
  */
-BOOL DC2114Sense100BaseTxLink(int adapter)
+BOOL DC2114Sense100BaseTxLink(void *adapter)
 {
     int outerRetries;
     unsigned int csr6Value;
@@ -4207,7 +3779,7 @@ cleanup_and_continue:
  * DC2104InitializeSiaRegisters
  * Initialize Serial Interface Adapter registers for DC21040/DC21140/DC21142/DC21143
  */
-void DC2104InitializeSiaRegisters(int adapter, unsigned int resetValue)
+void DC2104InitializeSiaRegisters(void *adapter, unsigned int resetValue)
 {
     int chipRevision;
     unsigned short csr15Port;
@@ -4259,7 +3831,7 @@ void DC2104InitializeSiaRegisters(int adapter, unsigned int resetValue)
  * DC21040Parser
  * Parse SROM data for DC21040 chip (which doesn't have real SROM)
  */
-BOOL DC21040Parser(int adapter)
+BOOL DC21040Parser(void *adapter)
 {
     BOOL validChecksum;
     unsigned char sromByte;

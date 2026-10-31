@@ -10,7 +10,6 @@
 #import <objc/objc-runtime.h>
 #import "DECchip21140Private.h"
 #import "DECchip21140Shared.h"
-#import "DECchip21140Inline.h"
 
 extern vm_offset_t page_mask;
 
@@ -24,7 +23,7 @@ extern vm_offset_t page_mask;
  * Parameters:
  *   netBuf        - Network buffer to map
  *   descriptor    - Pointer to DMA descriptor to update
- *   isSetupFrame  - TRUE if this is a setup frame, FALSE for normal packet
+ *   isSetupFrame  - TRUE for an RX ring buffer with its fixed allocation size
  *
  * Returns:
  *   TRUE (1) on success, FALSE (0) on failure
@@ -36,14 +35,14 @@ IOUpdateDescriptorFromNetBuf(netbuf_t netBuf,
 {
     int packetSize;
     unsigned int virtualAddr;
-    unsigned int physAddr1;
-    unsigned int physAddr2;
+    vm_offset_t physAddr1;
+    vm_offset_t physAddr2;
     int buffer1Size;
     int buffer2Size;
     unsigned int pageAlignedAddr;
     vm_task_t task;
 
-    /* Determine packet size - setup frames are fixed size (0x5f0 = 1520 bytes) */
+    /* RX ring buffers use 0x5f0 bytes; normal TX buffers use their netbuf size. */
     if (isSetupFrame) {
         packetSize = 0x5f0;
     } else {
@@ -62,57 +61,28 @@ IOUpdateDescriptorFromNetBuf(netbuf_t netBuf,
     /* Set buffer 1 size (lower 11 bits) */
     descriptor->control = (descriptor->control & 0xFFFFF800) | (packetSize & 0x7FF);
 
-    /* Get physical address for buffer 1 */
+    /* Get the first physical segment. */
     task = IOVmTaskSelf();
-    physAddr1 = IOPhysicalFromVirtual(task, (vm_offset_t)virtualAddr);
-
-    if (physAddr1 == 0) {
-        /*
-         * Physical address translation failed
-         * Check if buffer crosses page boundary
-         */
-        if ((virtualAddr & ~page_mask) != ((virtualAddr + packetSize) & ~page_mask)) {
-            /* Buffer crosses a page boundary - need to split into two buffers */
-
-            /* Calculate the page-aligned address */
-            pageAlignedAddr = (virtualAddr + page_mask) & ~page_mask;
-
-            /* Calculate size of first buffer (up to page boundary) */
-            buffer1Size = pageAlignedAddr - virtualAddr;
-
-            /* Set buffer 1 size in descriptor */
-            descriptor->control = (descriptor->control & 0xFFFFF800) |
-                                 (buffer1Size & 0x7FF);
-
-            /* Calculate buffer 2 size (remainder after page boundary) */
-            buffer2Size = packetSize - buffer1Size;
-
-            /* Set buffer 2 size in descriptor (bits 11-21) */
-            descriptor->control = (descriptor->control & 0xFFC007FF) |
-                                 ((buffer2Size & 0x7FF) << DESC_CTRL_SIZE2_SHIFT);
-
-            /* Get physical addresses for both buffers */
-            physAddr1 = IOPhysicalFromVirtual(task, (vm_offset_t)virtualAddr);
-            physAddr2 = IOPhysicalFromVirtual(task, (vm_offset_t)pageAlignedAddr);
-
-            if (physAddr2 != 0) {
-                /* Second buffer address conversion also failed */
-                return FALSE;
-            }
-
-            /* Store physical addresses in descriptor */
-            descriptor->buffer1 = physAddr1;
-            descriptor->buffer2 = physAddr2;
-        }
-
-        /* Return TRUE - buffer handled (matches decompiled) */
-        return TRUE;
-    } else {
-        /* Store physical address for single buffer */
-        descriptor->buffer1 = physAddr1;
-        /* Return FALSE (matches decompiled LAB_00000f8c) */
+    if (IOPhysicalFromVirtual(task, (vm_offset_t)virtualAddr, &physAddr1) != IO_R_SUCCESS) {
         return FALSE;
     }
+
+    descriptor->buffer1 = physAddr1;
+    if ((virtualAddr & ~page_mask) == ((virtualAddr + packetSize) & ~page_mask)) {
+        return TRUE;
+    }
+
+    pageAlignedAddr = (virtualAddr + page_mask) & ~page_mask;
+    buffer1Size = pageAlignedAddr - virtualAddr;
+    buffer2Size = packetSize - buffer1Size;
+    descriptor->control = (descriptor->control & 0xFFFFF800) | (buffer1Size & 0x7FF);
+    descriptor->control = (descriptor->control & 0xFFC007FF) |
+                          ((buffer2Size & 0x7FF) << DESC_CTRL_SIZE2_SHIFT);
+    if (IOPhysicalFromVirtual(task, (vm_offset_t)pageAlignedAddr, &physAddr2) != IO_R_SUCCESS) {
+        return FALSE;
+    }
+    descriptor->buffer2 = physAddr2;
+    return TRUE;
 }
 
 /* Import for category implementation */
@@ -126,65 +96,64 @@ IOUpdateDescriptorFromNetBuf(netbuf_t netBuf,
 /*
  * Allocate memory for descriptor rings and buffers
  */
-- (BOOL)allocateMemory
+- (BOOL)_allocateMemory
 {
     int i;
-    vm_task_t vmTask;
+    vm_offset_t physicalAddress;
 
     /* Set memory size needed: RX ring (64) + TX ring (32) + setup frame */
-    _descriptorMemorySize = 0x6f0;
+    memorySize = 0x6f0;
 
     /* Check that one page is sufficient */
-    if (page_size < _descriptorMemorySize) {
+    if (page_size < memorySize) {
         IOLog("%s: 1 page limit exceeded for descriptor memory\n", [self name]);
         return NO;
     }
 
     /* Allocate physically contiguous memory (low memory for DMA) */
-    _descriptorMemory = (void *)IOMallocLow(_descriptorMemorySize);
-    if (_descriptorMemory == NULL) {
-        IOLog("%s: can't allocate 0x%x bytes of memory\n", [self name], _descriptorMemorySize);
+    memoryPtr = (void *)IOMallocLow(memorySize);
+    if (memoryPtr == NULL) {
+        IOLog("%s: can't allocate 0x%x bytes of memory\n", [self name], memorySize);
         return NO;
     }
 
     /* Set up RX ring pointer (align to 16-byte boundary) - 64 descriptors */
-    _rxRing = (DECchipDescriptor *)_descriptorMemory;
-    if (((unsigned int)_rxRing & 0x0F) != 0) {
-        _rxRing = (DECchipDescriptor *)(((unsigned int)_descriptorMemory + 0x0F) & 0xFFFFFFF0);
+    rxRing = (DECchipDescriptor *)memoryPtr;
+    if (((unsigned int)rxRing & 0x0F) != 0) {
+        rxRing = (DECchipDescriptor *)(((unsigned int)memoryPtr + 0x0F) & 0xFFFFFFF0);
     }
 
     /* Initialize RX descriptors and netbuf array */
     for (i = 0; i < DECCHIP21140_RX_RING_SIZE; i++) {
-        bzero(&_rxRing[i], sizeof(DECchipDescriptor));
-        _rxNetBufs[i] = NULL;
+        bzero(&rxRing[i], sizeof(DECchipDescriptor));
+        rxNetbuf[i] = NULL;
     }
 
     /* Set up TX ring pointer (RX ring + 0x400, align to 16-byte boundary) - 32 descriptors */
-    _txRing = (DECchipDescriptor *)((unsigned int)_rxRing + 0x400);
-    if (((unsigned int)_txRing & 0x0F) != 0) {
-        _txRing = (DECchipDescriptor *)(((unsigned int)_rxRing + 0x40F) & 0xFFFFFFF0);
+    txRing = (DECchipDescriptor *)((unsigned int)rxRing + 0x400);
+    if (((unsigned int)txRing & 0x0F) != 0) {
+        txRing = (DECchipDescriptor *)(((unsigned int)rxRing + 0x40F) & 0xFFFFFFF0);
     }
 
     /* Initialize TX descriptors and netbuf array */
     for (i = 0; i < DECCHIP21140_TX_RING_SIZE; i++) {
-        bzero(&_txRing[i], sizeof(DECchipDescriptor));
-        _txNetBufs[i] = NULL;
+        bzero(&txRing[i], sizeof(DECchipDescriptor));
+        txNetbuf[i] = NULL;
     }
 
     /* Set up setup frame buffer (TX ring + 0x200, align to 16-byte boundary) */
-    _setupFrame = (void *)((unsigned int)_txRing + 0x200);
-    if (((unsigned int)_setupFrame & 0x0F) != 0) {
-        _setupFrame = (void *)(((unsigned int)_txRing + 0x20F) & 0xFFFFFFF0);
+    setupBuffer = (void *)((unsigned int)txRing + 0x200);
+    if (((unsigned int)setupBuffer & 0x0F) != 0) {
+        setupBuffer = (void *)(((unsigned int)txRing + 0x20F) & 0xFFFFFFF0);
     }
 
     /* Get physical address of setup frame */
-    vmTask = IOVmTaskSelf();
-    _setupFramePhys = IOPhysicalFromVirtual(vmTask, (vm_offset_t)_setupFrame);
-
-    if (_setupFramePhys == 0) {
+    if (IOPhysicalFromVirtual(IOVmTaskSelf(), (vm_offset_t)setupBuffer,
+                              &physicalAddress) != IO_R_SUCCESS) {
         IOLog("%s: Invalid shared memory address\n", [self name]);
         return NO;
     }
+    setupBufferPhysical = physicalAddress;
 
     return YES;
 }
@@ -193,20 +162,19 @@ IOUpdateDescriptorFromNetBuf(netbuf_t netBuf,
  * Get station (MAC) address
  * Reads the Ethernet MAC address from the Serial ROM
  */
-- (void)getStationAddress:(enet_addr_t *)addr
+- (void)_getStationAddress:(enet_addr_t *)addr
 {
     unsigned short csrPort;
     unsigned int i, j;
     unsigned short readData;
     unsigned int bitCount;
-    unsigned int romAddress;
     unsigned int dataBit;
     unsigned int regValue;
 
     /* Read 3 words (6 bytes) for MAC address */
     for (i = 0; i < 3; i++) {
         /* CSR9 (Serial ROM) port */
-        csrPort = _portBase + 0x48;
+        csrPort = ioBase + 0x48;
 
         /* Send start sequence to serial ROM */
         outw(csrPort, 0x4800);
@@ -237,13 +205,11 @@ IOUpdateDescriptorFromNetBuf(netbuf_t netBuf,
         IODelay(250);
 
         /* Clock out address bits */
-        bitCount = _sromAddressBits;
-        romAddress = _sromAddress;
-
+        bitCount = sromAddressBits;
         if (bitCount != 0) {
             for (j = 0; j < bitCount; j++) {
                 /* Get bit value - shift right by (bitCount - j - 1) */
-                dataBit = ((romAddress >> 1) + i) >> ((bitCount - j) - 1) & 1;
+                dataBit = ((enetAddressOffset >> 1) + i) >> ((bitCount - j) - 1) & 1;
 
                 if (dataBit < 2) {
                     /* Shift bit into position and clock it out */
@@ -291,18 +257,18 @@ IOUpdateDescriptorFromNetBuf(netbuf_t netBuf,
 /*
  * Initialize chip hardware
  */
-- (BOOL)initChip
+- (BOOL)_initChip
 {
     BOOL result;
 
     /* Initialize CSR registers */
-    [self initRegisters];
+    [self _initRegisters];
 
     /* Start transmit engine */
-    [self startTransmit];
+    [self _startTransmit];
 
     /* Set up address filtering with blocking mode */
-    result = [self setAddressFiltering:YES];
+    result = [self _setAddressFiltering:YES];
 
     return (result != NO);
 }
@@ -310,43 +276,37 @@ IOUpdateDescriptorFromNetBuf(netbuf_t netBuf,
 /*
  * Initialize CSR registers
  */
-- (void)initRegisters
+- (void)_initRegisters
 {
-    vm_task_t vmTask;
     vm_offset_t physAddr;
     unsigned int csrValue;
     unsigned int linkStatus;
 
     /* Reset chip first */
-    [self resetChip];
+    [self _resetChip];
 
     /* Write bus mode register (CSR0) - 0x6000 */
-    outl(_portBase, 0x6000);
+    outl(ioBase, 0x6000);
 
     /* Get physical address of RX ring and write to CSR3 */
-    vmTask = IOVmTaskSelf();
-    physAddr = IOPhysicalFromVirtual(vmTask, (vm_offset_t)_rxRing);
-
-    if (physAddr != 0) {
+    if (IOPhysicalFromVirtual(IOVmTaskSelf(), (vm_offset_t)rxRing, &physAddr) != IO_R_SUCCESS) {
         IOLog("%s: Invalid shared memory address\n", [self name]);
         return;
     }
 
-    outl(_portBase + 0x18, physAddr);  /* CSR3 */
+    outl(ioBase + 0x18, physAddr);  /* CSR3 */
 
     /* Get physical address of TX ring and write to CSR4 */
-    physAddr = IOPhysicalFromVirtual(vmTask, (vm_offset_t)_txRing);
-
-    if (physAddr != 0) {
+    if (IOPhysicalFromVirtual(IOVmTaskSelf(), (vm_offset_t)txRing, &physAddr) != IO_R_SUCCESS) {
         IOLog("%s: Invalid shared memory address\n", [self name]);
         return;
     }
 
-    outl(_portBase + 0x20, physAddr);  /* CSR4 */
+    outl(ioBase + 0x20, physAddr);  /* CSR4 */
 
     /* Set CSR6 (command register) based on media type */
     csrValue = 0;
-    switch (_mediaType) {
+    switch (dataRateMode) {
         case 0:  /* 10Base-T */
             csrValue = 0x400000;
             break;
@@ -367,52 +327,52 @@ IOUpdateDescriptorFromNetBuf(netbuf_t netBuf,
             break;
     }
 
-    _cachedCSR6 = csrValue;
-    outl(_portBase + 0x30, csrValue);  /* CSR6 */
+    operationMode = csrValue;
+    outl(ioBase + 0x30, csrValue);  /* CSR6 */
 
     /* Initialize state variables */
-    _linkStatus = 0x10049;
+    interruptMask = 0x10049;
 
     /* For Cogent adapters (vendor subtype 0x10b8), check link status */
-    if (_vendorID == 0x10b8) {
+    if ((subVendorDeviceID & 0xffff) == 0x10b8) {
         /* Reset SIA */
-        outl(_portBase + 0x60, 0x101);  /* CSR12 */
-        outl(_portBase + 0x60, 0x100);
+        outl(ioBase + 0x60, 0x101);  /* CSR12 */
+        outl(ioBase + 0x60, 0x100);
         IOSleep(100);
-        outl(_portBase + 0x60, 0);
+        outl(ioBase + 0x60, 0);
         IOSleep(1000);
 
         /* Check link status */
-        linkStatus = inl(_portBase + 0x60);
+        linkStatus = inl(ioBase + 0x60);
         if ((linkStatus & 0x80) != 0) {
             IOLog("%s: no link detected, check network connection\n", [self name]);
         }
     }
 
     /* Call vendor-specific GP port initialization */
-    switch (_vendorType) {
+    switch (hardwareVendorID) {
         case 1:  /* Cogent */
-            if (_mediaType == 5) {
-                [self initGPPortRegisterForCogent100Mb];
-            } else if (_mediaType == 0) {
-                [self initGPPortRegisterForCogent10Mb];
+            if (dataRateMode == 5) {
+                [self _initGPPortRegisterForCogent100Mb];
+            } else if (dataRateMode == 0) {
+                [self _initGPPortRegisterForCogent10Mb];
             }
             break;
 
         case 0:  /* DEC */
-            if (_mediaType == 5) {
-                [self initGPPortRegisterForCogent100Mb];
+            if (dataRateMode == 5) {
+                [self _initGPPortRegisterForCogent100Mb];
             }
             break;
 
         case 2:  /* DE500 */
-            if (_mediaType == 5) {
-                [self initGPPortRegisterForDE500100Mb];
+            if (dataRateMode == 5) {
+                [self _initGPPortRegisterForDE500100Mb];
             }
             break;
 
         case 4:  /* Custom */
-            [self initGPPortRegisterForCustom];
+            [self _initGPPortRegisterForCustom];
             break;
     }
 }
@@ -420,7 +380,7 @@ IOUpdateDescriptorFromNetBuf(netbuf_t netBuf,
 /*
  * Initialize receive descriptor ring
  */
-- (BOOL)initRxRing
+- (BOOL)_initRxRing
 {
     int i;
     unsigned char *descByte;
@@ -428,36 +388,36 @@ IOUpdateDescriptorFromNetBuf(netbuf_t netBuf,
     /* Initialize all RX descriptors (64 descriptors for 21140) */
     for (i = 0; i < DECCHIP21140_RX_RING_SIZE; i++) {
         /* Zero the descriptor */
-        bzero(&_rxRing[i], sizeof(DECchipDescriptor));
+        bzero(&rxRing[i], sizeof(DECchipDescriptor));
 
         /* Clear ownership bit (bit 7 of status byte 3) */
-        descByte = (unsigned char *)&_rxRing[i] + 3;
+        descByte = (unsigned char *)&rxRing[i] + 3;
         *descByte &= 0x7F;
 
         /* Allocate network buffer if not already allocated */
-        if (_rxNetBufs[i] == NULL) {
-            _rxNetBufs[i] = [self allocateNetbuf];
-            if (_rxNetBufs[i] == NULL) {
+        if (rxNetbuf[i] == NULL) {
+            rxNetbuf[i] = [self allocateNetbuf];
+            if (rxNetbuf[i] == NULL) {
                 IOPanic("allocateNetbuf returned NULL in _initRxRing");
             }
         }
 
         /* Update descriptor from network buffer (use setup frame size for RX) */
-        if (!IOUpdateDescriptorFromNetBuf(_rxNetBufs[i], &_rxRing[i], TRUE)) {
+        if (!IOUpdateDescriptorFromNetBuf(rxNetbuf[i], &rxRing[i], TRUE)) {
             IOPanic("_initRxRing");
         }
 
         /* Set ownership bit to DMA (bit 7 of status byte 3) */
-        descByte = (unsigned char *)&_rxRing[i] + 3;
+        descByte = (unsigned char *)&rxRing[i] + 3;
         *descByte |= 0x80;
     }
 
     /* Set end of ring marker (bit 1 of last descriptor's control byte 3) */
-    descByte = (unsigned char *)&_rxRing[DECCHIP21140_RX_RING_SIZE - 1] + 7;
+    descByte = (unsigned char *)&rxRing[DECCHIP21140_RX_RING_SIZE - 1] + 7;
     *descByte |= 0x02;
 
     /* Initialize RX ring head pointer */
-    _rxHead = 0;
+    rxDoneIndex = 0;
 
     return YES;
 }
@@ -465,7 +425,7 @@ IOUpdateDescriptorFromNetBuf(netbuf_t netBuf,
 /*
  * Initialize transmit descriptor ring
  */
-- (BOOL)initTxRing
+- (BOOL)_initTxRing
 {
     int i;
     unsigned char *descByte;
@@ -474,39 +434,39 @@ IOUpdateDescriptorFromNetBuf(netbuf_t netBuf,
     /* Initialize all TX descriptors (32 descriptors for 21140) */
     for (i = 0; i < DECCHIP21140_TX_RING_SIZE; i++) {
         /* Zero the descriptor */
-        bzero(&_txRing[i], sizeof(DECchipDescriptor));
+        bzero(&txRing[i], sizeof(DECchipDescriptor));
 
         /* Clear ownership bit (bit 7 of status byte 3) */
-        descByte = (unsigned char *)&_txRing[i] + 3;
+        descByte = (unsigned char *)&txRing[i] + 3;
         *descByte &= 0x7F;
 
         /* Free any existing network buffer */
-        if (_txNetBufs[i] != NULL) {
-            nb_free(_txNetBufs[i]);
-            _txNetBufs[i] = NULL;
+        if (txNetbuf[i] != NULL) {
+            nb_free(txNetbuf[i]);
+            txNetbuf[i] = NULL;
         }
     }
 
     /* Set end of ring marker (bit 1 of last descriptor's control byte 3) */
-    descByte = (unsigned char *)&_txRing[DECCHIP21140_TX_RING_SIZE - 1] + 7;
+    descByte = (unsigned char *)&txRing[DECCHIP21140_TX_RING_SIZE - 1] + 7;
     *descByte |= 0x02;
 
     /* Initialize TX ring pointers */
-    _txHead = 0;
-    _txCompletionIndex = 0;
-    _txTail = DECCHIP21140_TX_RING_SIZE;  /* All 32 descriptors available */
-    _txInterruptCounter = 0;
+    txPutIndex = 0;
+    txDoneIndex = 0;
+    txNumFree = DECCHIP21140_TX_RING_SIZE;  /* All 32 descriptors available */
+    txIntCount = 0;
 
     /* Free existing transmit queue if present */
-    if (_transmitQueue != nil) {
-        [_transmitQueue free];
+    if (transmitQueue != nil) {
+        [transmitQueue free];
     }
 
     /* Allocate new IONetbufQueue with max count of 128 (0x80) */
     newQueue = [objc_getClass("IONetbufQueue") alloc];
-    _transmitQueue = [newQueue initWithMaxCount:0x80];
+    transmitQueue = [newQueue initWithMaxCount:0x80];
 
-    if (_transmitQueue == nil) {
+    if (transmitQueue == nil) {
         IOPanic("_initTxRing");
     }
 
@@ -516,7 +476,7 @@ IOUpdateDescriptorFromNetBuf(netbuf_t netBuf,
 /*
  * Load setup filter frame
  */
-- (void)loadSetupFilter:(BOOL)perfect
+- (BOOL)_loadSetupFilter:(BOOL)perfect
 {
     DECchipDescriptor *txDesc;
     unsigned char *descByte;
@@ -524,21 +484,21 @@ IOUpdateDescriptorFromNetBuf(netbuf_t netBuf,
     int timeout;
 
     /* Check if TX descriptor available */
-    if (_txTail == 0) {
-        return;
+    if (txNumFree == 0) {
+        return NO;
     }
 
     /* Get pointer to current TX descriptor */
-    txDesc = &_txRing[_txHead];
+    txDesc = &txRing[txPutIndex];
 
     /* Advance TX head pointer */
-    _txHead++;
-    if (_txHead == DECCHIP21140_TX_RING_SIZE) {
-        _txHead = 0;
+    txPutIndex++;
+    if (txPutIndex == DECCHIP21140_TX_RING_SIZE) {
+        txPutIndex = 0;
     }
 
     /* Decrement available descriptor count */
-    _txTail--;
+    txNumFree--;
 
     /* Clear control field, preserving end-of-ring marker if present */
     descByte = (unsigned char *)&txDesc->control + 3;
@@ -563,7 +523,7 @@ IOUpdateDescriptorFromNetBuf(netbuf_t netBuf,
     txDesc->control &= 0xFFC007FF;
 
     /* Set buffer 1 physical address to setup frame */
-    txDesc->buffer1 = _setupFramePhys;
+    txDesc->buffer1 = setupBufferPhysical;
 
     /* Clear buffer 2 address */
     txDesc->buffer2 = 0;
@@ -576,39 +536,40 @@ IOUpdateDescriptorFromNetBuf(netbuf_t netBuf,
     *descByte |= 0x80;
 
     /* Write to CSR1 (TX poll demand) to start transmission */
-    outl(_portBase + 8, 1);
+    outl(ioBase + 8, 1);
 
     /* If blocking mode (perfect filtering), wait for completion */
     if (perfect) {
         timeout = 9999;
         while (timeout >= 0) {
             IODelay(5);
-            csr5 = inl(_portBase + 0x28);  /* CSR5 */
+            csr5 = inl(ioBase + 0x28);  /* CSR5 */
 
             /* Check for transmit interrupt (bit 2) */
             if (csr5 & 0x04) {
                 /* Clear the interrupt */
-                outl(_portBase + 0x28, csr5);
+                outl(ioBase + 0x28, csr5);
                 break;
             }
             timeout--;
         }
 
         /* Free the descriptor */
-        _txCompletionIndex++;
-        if (_txCompletionIndex == DECCHIP21140_TX_RING_SIZE) {
-            _txCompletionIndex = 0;
+        txDoneIndex++;
+        if (txDoneIndex == DECCHIP21140_TX_RING_SIZE) {
+            txDoneIndex = 0;
         }
 
         /* Increment available count */
-        _txTail++;
+        txNumFree++;
     }
+    return YES;
 }
 
 /*
  * Handle receive interrupt
  */
-- (void)receiveInterruptOccurred
+- (void)_receiveInterruptOccurred
 {
     DECchipDescriptor *rxDesc;
     unsigned char *descByte;
@@ -625,7 +586,7 @@ IOUpdateDescriptorFromNetBuf(netbuf_t netBuf,
 
     /* Process all received packets */
     while (1) {
-        rxDesc = &_rxRing[_rxHead];
+        rxDesc = &rxRing[rxDoneIndex];
 
         /* Check ownership bit - if set, DMA still owns it */
         descByte = (unsigned char *)&rxDesc->status + 3;
@@ -648,10 +609,10 @@ IOUpdateDescriptorFromNetBuf(netbuf_t netBuf,
         isGoodPacket = ((errorStatus & 0x83) == 0x03) && (packetLength > 59);
 
         if (isGoodPacket) {
-            oldNetBuf = _rxNetBufs[_rxHead];
+            oldNetBuf = rxNetbuf[rxDoneIndex];
 
             /* Filter multicast packets if not in promiscuous mode */
-            if (!_isEnabled && (errorStatus & 0x04)) {
+            if (!isPromiscuous && (errorStatus & 0x04)) {
                 /* Multicast packet - check if unwanted */
                 superInfo.receiver = self;
                 superInfo.class = objc_getClass("IOEthernet");
@@ -671,22 +632,24 @@ IOUpdateDescriptorFromNetBuf(netbuf_t netBuf,
 
                 if (newNetBuf != NULL) {
                     /* Replace buffer in array */
-                    _rxNetBufs[_rxHead] = newNetBuf;
-                    shouldDeliver = YES;
-
+                    rxNetbuf[rxDoneIndex] = newNetBuf;
                     /* Update descriptor with new buffer */
-                    if (!IOUpdateDescriptorFromNetBuf(_rxNetBufs[_rxHead], &_rxRing[_rxHead], TRUE)) {
+                    if (!IOUpdateDescriptorFromNetBuf(rxNetbuf[rxDoneIndex], &rxRing[rxDoneIndex], TRUE)) {
                         IOPanic("DECchip21040: IOUpdateDescriptorFromNetBuf\n");
                     }
+
+                    shouldDeliver = YES;
 
                     /* Adjust old buffer size to actual packet length */
                     bufSize = nb_size(oldNetBuf);
                     nb_shrink_bot(oldNetBuf, bufSize - packetLength);
+                } else {
+                    shouldDeliver = NO;
                 }
             }
         } else {
             /* Packet had errors */
-            [_networkInterface incrementInputErrors];
+            [networkInterface incrementInputErrors];
         }
 
         /* Reset descriptor status and return ownership to DMA */
@@ -695,15 +658,15 @@ IOUpdateDescriptorFromNetBuf(netbuf_t netBuf,
         *descByte |= 0x80;
 
         /* Advance RX head pointer */
-        _rxHead++;
-        if (_rxHead == DECCHIP21140_RX_RING_SIZE) {
-            _rxHead = 0;
+        rxDoneIndex++;
+        if (rxDoneIndex == DECCHIP21140_RX_RING_SIZE) {
+            rxDoneIndex = 0;
         }
 
         /* If we have a good packet to deliver, pass it to network stack */
         if (shouldDeliver) {
             [self releaseDebuggerLock];
-            [_networkInterface handleInputPacket:oldNetBuf extra:0];
+            [networkInterface handleInputPacket:oldNetBuf extra:0];
             [self reserveDebuggerLock];
         }
     }
@@ -712,16 +675,16 @@ IOUpdateDescriptorFromNetBuf(netbuf_t netBuf,
 /*
  * Reset chip hardware
  */
-- (void)resetChip
+- (void)_resetChip
 {
     /* Write 1 to CSR0 to initiate software reset */
-    outl(_portBase, 1);
+    outl(ioBase, 1);
 
     /* Wait 100 microseconds for reset to start */
     IODelay(100);
 
     /* Write 0 to CSR0 to complete reset */
-    outl(_portBase, 0);
+    outl(ioBase, 0);
 
     /* Sleep 1 millisecond for reset to stabilize */
     IOSleep(1);
@@ -731,7 +694,7 @@ IOUpdateDescriptorFromNetBuf(netbuf_t netBuf,
  * Set address filtering mode
  * Builds the setup frame with station address, broadcast, and multicast addresses
  */
-- (BOOL)setAddressFiltering:(BOOL)enable
+- (BOOL)_setAddressFiltering:(BOOL)enable
 {
     unsigned short *macAddr;
     unsigned int *setupFrame;
@@ -746,8 +709,8 @@ IOUpdateDescriptorFromNetBuf(netbuf_t netBuf,
     unsigned int word;
     BOOL result;
 
-    setupFrame = (unsigned int *)_setupFrame;
-    macAddr = (unsigned short *)&_stationAddress;
+    setupFrame = (unsigned int *)setupBuffer;
+    macAddr = (unsigned short *)&myAddress;
 
     /* Copy station (MAC) address as first entry (3 16-bit words = 12 bytes) */
     for (i = 0; i < 3; i++) {
@@ -763,7 +726,7 @@ IOUpdateDescriptorFromNetBuf(netbuf_t netBuf,
     entryIndex = 2;
 
     /* If attached to network, add multicast addresses */
-    if (_isAttached) {
+    if (multicastEnabled) {
         /* Get multicast queue from superclass IOEthernet */
         superInfo.receiver = self;
         superInfo.class = objc_getClass("IOEthernet");
@@ -802,42 +765,42 @@ IOUpdateDescriptorFromNetBuf(netbuf_t netBuf,
 
     /* Fill remaining entries by copying the first entry (station address) */
     for (; entryIndex < 16; entryIndex++) {
-        bcopy(_setupFrame, (char *)_setupFrame + (entryIndex * 12), 12);
+        bcopy(setupBuffer, (char *)setupBuffer + (entryIndex * 12), 12);
     }
 
     /* Load the setup frame to the chip */
-    result = [self loadSetupFilter:enable];
+    result = [self _loadSetupFilter:enable];
     return (result != NO);
 }
 
 /*
  * Start receive engine
  */
-- (void)startReceive
+- (void)_startReceive
 {
     /* Set Start Receive bit (bit 1) in cached CSR6 */
-    ((unsigned char *)&_cachedCSR6)[0] |= 0x02;
+    ((unsigned char *)&operationMode)[0] |= 0x02;
 
     /* Write cached value to CSR6 command register */
-    outl(_portBase + 0x30, _cachedCSR6);
+    outl(ioBase + 0x30, operationMode);
 }
 
 /*
  * Start transmit engine
  */
-- (void)startTransmit
+- (void)_startTransmit
 {
     /* Set Start Transmit bit (bit 13 = 0x20 in byte 1) in cached CSR6 */
-    ((unsigned char *)&_cachedCSR6)[1] |= 0x20;
+    ((unsigned char *)&operationMode)[1] |= 0x20;
 
     /* Write cached value to CSR6 command register */
-    outl(_portBase + 0x30, _cachedCSR6);
+    outl(ioBase + 0x30, operationMode);
 }
 
 /*
  * Handle transmit interrupt
  */
-- (void)transmitInterruptOccurred
+- (void)_transmitInterruptOccurred
 {
     DECchipDescriptor *txDesc;
     unsigned short *status;
@@ -847,12 +810,12 @@ IOUpdateDescriptorFromNetBuf(netbuf_t netBuf,
     /* Process completed TX descriptors */
     while (1) {
         /* Check if there are descriptors to process (tail > 31 means all available) */
-        if (_txTail > 31) {
+        if (txNumFree > 31) {
             return;
         }
 
         /* Get descriptor at TX completion index */
-        txDesc = &_txRing[_txCompletionIndex];
+        txDesc = &txRing[txDoneIndex];
 
         /* Check ownership bit - if DMA still owns it, we're done */
         descByte = (unsigned char *)&txDesc->status + 3;
@@ -869,50 +832,50 @@ IOUpdateDescriptorFromNetBuf(netbuf_t netBuf,
             /* Check for errors (bits in 0x4702) */
             if (*status & 0x4702) {
                 /* Error occurred */
-                [_networkInterface incrementOutputErrors];
+                [networkInterface incrementOutputErrors];
             } else {
                 /* Successful transmission */
-                [_networkInterface incrementOutputPackets];
+                [networkInterface incrementOutputPackets];
             }
 
             /* Process collision statistics */
             if (*status & 0x0100) {
                 /* Excessive collisions (bit 8) */
                 collisionCount = 16;
-                [_networkInterface incrementCollisionsBy:collisionCount];
+                [networkInterface incrementCollisionsBy:collisionCount];
             } else if (*status & 0x0078) {
                 /* Normal collisions (bits 3-6) */
                 collisionCount = (*status >> 3) & 0x0F;
-                [_networkInterface incrementCollisionsBy:collisionCount];
+                [networkInterface incrementCollisionsBy:collisionCount];
             }
 
             /* Check for deferred transmission with collision (bits 1 and 9) */
             if ((*status & 0x0202) == 0x0200) {
-                [_networkInterface incrementCollisions];
+                [networkInterface incrementCollisions];
             }
 
             /* Free the transmitted netbuf */
-            if (_txNetBufs[_txCompletionIndex] != NULL) {
-                nb_free(_txNetBufs[_txCompletionIndex]);
-                _txNetBufs[_txCompletionIndex] = NULL;
+            if (txNetbuf[txDoneIndex] != NULL) {
+                nb_free(txNetbuf[txDoneIndex]);
+                txNetbuf[txDoneIndex] = NULL;
             }
         }
 
         /* Advance TX completion pointer */
-        _txCompletionIndex++;
-        if (_txCompletionIndex == DECCHIP21140_TX_RING_SIZE) {
-            _txCompletionIndex = 0;
+        txDoneIndex++;
+        if (txDoneIndex == DECCHIP21140_TX_RING_SIZE) {
+            txDoneIndex = 0;
         }
 
         /* Increment available descriptor count */
-        _txTail++;
+        txNumFree++;
     }
 }
 
 /*
  * Transmit a packet using the descriptor ring
  */
-- (BOOL)transmitPacket:(netbuf_t)pkt
+- (BOOL)_transmitPacket:(netbuf_t)pkt
 {
     DECchipDescriptor *txDesc;
     unsigned char *descByte;
@@ -924,7 +887,7 @@ IOUpdateDescriptorFromNetBuf(netbuf_t netBuf,
     [self reserveDebuggerLock];
 
     /* Check if TX descriptors available */
-    if (_txTail == 0) {
+    if (txNumFree == 0) {
         /* No descriptors available */
         [self releaseDebuggerLock];
         nb_free(pkt);
@@ -932,10 +895,10 @@ IOUpdateDescriptorFromNetBuf(netbuf_t netBuf,
     }
 
     /* Get descriptor at TX head */
-    txDesc = &_txRing[_txHead];
+    txDesc = &txRing[txPutIndex];
 
     /* Store netbuf in array */
-    _txNetBufs[_txHead] = pkt;
+    txNetbuf[txPutIndex] = pkt;
 
     /* Clear control field, preserving end-of-ring marker if present */
     descByte = (unsigned char *)&txDesc->control + 3;
@@ -964,10 +927,10 @@ IOUpdateDescriptorFromNetBuf(netbuf_t netBuf,
     *descByte |= 0x40;
 
     /* Set interrupt on completion every 16 packets */
-    _txInterruptCounter++;
-    if (_txInterruptCounter == 16) {
+    txIntCount++;
+    if (txIntCount == 16) {
         *descByte |= 0x80;  /* Set interrupt bit */
-        _txInterruptCounter = 0;
+        txIntCount = 0;
     } else {
         *descByte &= 0x7F;  /* Clear interrupt bit */
     }
@@ -980,16 +943,16 @@ IOUpdateDescriptorFromNetBuf(netbuf_t netBuf,
     *descByte |= 0x80;
 
     /* Advance TX head pointer */
-    _txHead++;
-    if (_txHead == DECCHIP21140_TX_RING_SIZE) {
-        _txHead = 0;
+    txPutIndex++;
+    if (txPutIndex == DECCHIP21140_TX_RING_SIZE) {
+        txPutIndex = 0;
     }
 
     /* Decrement available descriptor count */
-    _txTail--;
+    txNumFree--;
 
     /* Write to CSR1 (TX poll demand) to trigger transmission */
-    outl(_portBase + 8, 1);
+    outl(ioBase + 8, 1);
 
     /* Release debugger lock */
     [self releaseDebuggerLock];
@@ -1001,7 +964,7 @@ IOUpdateDescriptorFromNetBuf(netbuf_t netBuf,
  * Verify checksum
  * Verifies serial ROM is responding by reading checksum address
  */
-- (BOOL)verifyCheckSum
+- (BOOL)_verifyCheckSum
 {
     unsigned short csrPort;
     unsigned int i;
@@ -1009,7 +972,7 @@ IOUpdateDescriptorFromNetBuf(netbuf_t netBuf,
     unsigned int dataBit;
 
     /* CSR9 (Serial ROM) port */
-    csrPort = _portBase + 0x48;
+    csrPort = ioBase + 0x48;
 
     /* Send start sequence to serial ROM */
     outw(csrPort, 0x4800);
@@ -1040,7 +1003,7 @@ IOUpdateDescriptorFromNetBuf(netbuf_t netBuf,
     IODelay(250);
 
     /* Clock out address bits for address 3 (checksum location) */
-    bitCount = _sromAddressBits;
+    bitCount = sromAddressBits;
 
     if (bitCount != 0) {
         for (i = 0; i < bitCount; i++) {
@@ -1085,18 +1048,53 @@ IOUpdateDescriptorFromNetBuf(netbuf_t netBuf,
  * Receive a packet (blocking)
  * Used for debugging/polling mode only
  */
-- (BOOL)receivePacket:(void *)data
+- (void)receivePacket:(void *)data
                length:(unsigned int *)length
               timeout:(unsigned int)timeout
 {
-    return NO;
+    DECchipDescriptor *desc;
+    unsigned char *statusByte;
+    unsigned int remaining = timeout * 1000;
+    unsigned int packetLength;
+
+    *length = 0;
+    if (!resetAndEnabled) {
+        return;
+    }
+    for (;;) {
+        desc = &rxRing[rxDoneIndex];
+        statusByte = (unsigned char *)&desc->status + 3;
+        while (*statusByte & 0x80) {
+            if (remaining <= 0) {
+                return;
+            }
+            IODelay(50);
+            remaining -= 50;
+        }
+        statusByte = (unsigned char *)&desc->status;
+        packetLength = (desc->status >> 16) & 0x7fff;
+        if ((statusByte[1] & 0x83) == 3 && packetLength > 0x3f) {
+            break;
+        }
+        *((unsigned char *)&desc->status + 3) |= 0x80;
+        if (++rxDoneIndex == DECCHIP21140_RX_RING_SIZE) {
+            rxDoneIndex = 0;
+        }
+    }
+    *length = packetLength - 4;
+    bcopy((void *)nb_map(rxNetbuf[rxDoneIndex]), data, *length);
+    desc->status = 0;
+    *((unsigned char *)&desc->status + 3) |= 0x80;
+    if (++rxDoneIndex == DECCHIP21140_RX_RING_SIZE) {
+        rxDoneIndex = 0;
+    }
 }
 
 /*
  * Send a packet (blocking)
  * Used for debugging/polling mode only
  */
-- (BOOL)sendPacket:(void *)data length:(unsigned int)length
+- (void)sendPacket:(void *)data length:(unsigned int)length
 {
     DECchipDescriptor *txDesc;
     unsigned char *descByte;
@@ -1105,32 +1103,32 @@ IOUpdateDescriptorFromNetBuf(netbuf_t netBuf,
     int pollCount;
 
     /* Only work in polling mode */
-    if (!_isPollingMode) {
-        return NO;
+    if (!resetAndEnabled) {
+        return;
     }
 
     /* Process any completed transmissions first */
-    [self transmitInterruptOccurred];
+    [self _transmitInterruptOccurred];
 
     /* Check if TX descriptors available */
-    if (_txTail == 0) {
+    if (txNumFree == 0) {
         IOLog("%s: _sendPacket: No free tx descriptors\n", [self name]);
-        return NO;
+        return;
     }
 
     /* Get descriptor at TX head */
-    txDesc = &_txRing[_txHead];
+    txDesc = &txRing[txPutIndex];
 
     /* Clear netbuf entry for this descriptor */
-    _txNetBufs[_txHead] = NULL;
+    txNetbuf[txPutIndex] = NULL;
 
     /* Copy data to debug netbuf */
-    bufferData = (void *)nb_map(_debugNetBuf);
+    bufferData = (void *)nb_map(KDB_txBuf);
     bcopy(data, bufferData, length);
 
     /* Adjust netbuf size to packet length */
-    originalBufferSize = nb_size(_debugNetBuf);
-    nb_shrink_bot(_debugNetBuf, originalBufferSize - length);
+    originalBufferSize = nb_size(KDB_txBuf);
+    nb_shrink_bot(KDB_txBuf, originalBufferSize - length);
 
     /* Clear control field, preserving end-of-ring marker if present */
     descByte = (unsigned char *)&txDesc->control + 3;
@@ -1144,10 +1142,10 @@ IOUpdateDescriptorFromNetBuf(netbuf_t netBuf,
     }
 
     /* Update descriptor from debug netbuf */
-    if (!IOUpdateDescriptorFromNetBuf(_debugNetBuf, txDesc, NO)) {
+    if (!IOUpdateDescriptorFromNetBuf(KDB_txBuf, txDesc, NO)) {
         IOLog("%s: _sendPacket: IOUpdateDescriptorFromNetBuf failed\n", [self name]);
-        nb_grow_bot(_debugNetBuf, originalBufferSize - length);
-        return NO;
+        nb_grow_bot(KDB_txBuf, originalBufferSize - length);
+        return;
     }
 
     /* Set first packet bit (bit 5 of control byte 3) */
@@ -1168,16 +1166,16 @@ IOUpdateDescriptorFromNetBuf(netbuf_t netBuf,
     *descByte |= 0x80;
 
     /* Advance TX head pointer */
-    _txHead++;
-    if (_txHead == DECCHIP21140_TX_RING_SIZE) {
-        _txHead = 0;
+    txPutIndex++;
+    if (txPutIndex == DECCHIP21140_TX_RING_SIZE) {
+        txPutIndex = 0;
     }
 
     /* Decrement available descriptor count */
-    _txTail--;
+    txNumFree--;
 
     /* Write to CSR1 (TX poll demand) to trigger transmission */
-    outl(_portBase + 8, 1);
+    outl(ioBase + 8, 1);
 
     /* Poll for completion (up to 10000 iterations = 5 seconds) */
     pollCount = 0;
@@ -1186,17 +1184,16 @@ IOUpdateDescriptorFromNetBuf(netbuf_t netBuf,
         /* Still owned by DMA */
         if (pollCount >= 10000) {
             IOLog("%s: _sendPacket: polling timed out\n", [self name]);
-            nb_grow_bot(_debugNetBuf, originalBufferSize - length);
-            return NO;
+            nb_grow_bot(KDB_txBuf, originalBufferSize - length);
+            return;
         }
         IODelay(500);
         pollCount++;
     }
 
     /* Restore original buffer size */
-    nb_grow_bot(_debugNetBuf, originalBufferSize - length);
+    nb_grow_bot(KDB_txBuf, originalBufferSize - length);
 
-    return YES;
 }
 
 @end

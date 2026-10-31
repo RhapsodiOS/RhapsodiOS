@@ -1,0 +1,13 @@
+/* Localizations for titles of items in the Show: popup */
+
+/* List all processes running on the system */
+"All Processes" = "All Processes";
+
+/* List only processes owned by the logged-in user */
+"User Processes" = "User Processes";
+
+/* List only processes owned by the Administrator (root) user */
+"Administrator Processes" = "Administrator Processes";
+
+/* List only NetBoot server-related processes */ 
+"NetBoot Processes" = "NetBoot Processes";

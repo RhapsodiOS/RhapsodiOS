@@ -372,7 +372,9 @@ nfssvc(p, uap)
 		}
 		if ((uap->flag & NFSSVC_AUTHINFAIL) && (nfsd = nsd->nsd_nfsd))
 			nfsd->nfsd_flag |= NFSD_AUTHFAIL;
+		p->p_flag |= P_NFSD;	/* see getnewvnode */
 		error = nfssvc_nfsd(nsd, uap->argp, p);
+		p->p_flag &= ~P_NFSD;
 	}
 #endif /* NFS_NOSERVER */
 	if (error == EINTR || error == ERESTART)

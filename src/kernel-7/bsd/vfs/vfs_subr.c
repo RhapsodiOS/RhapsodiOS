@@ -387,6 +387,28 @@ long numvnodes, freevnodes;
 extern struct vattr va_null;
 
 /*
+ * Would vclean of this vnode wait on NFS I/O: a dirty or uncommitted
+ * buffer to write, a write in flight, or a busy buffer (a read in flight)?
+ */
+static int
+vnode_nfs_pending(vp)
+	struct vnode *vp;
+{
+	struct buf *bp;
+	int s, pending;
+
+	if (vp->v_tag != VT_NFS)
+		return (0);
+	s = splbio();
+	pending = (vp->v_dirtyblkhd.lh_first != NULL || vp->v_numoutput > 0);
+	for (bp = vp->v_cleanblkhd.lh_first; bp && !pending;
+	    bp = bp->b_vnbufs.le_next)
+		pending = ((bp->b_flags & B_BUSY) != 0);
+	splx(s);
+	return (pending);
+}
+
+/*
  * Return the next vnode from the free list.
  */
 int
@@ -410,6 +432,7 @@ retry:
 	 * the name cache entry.
 	 */
 	if (numvnodes < desiredvnodes) {
+newvnode:
 		numvnodes++;
 		simple_unlock(&vnode_free_list_slock);
 		MALLOC_ZONE(vp, struct vnode *, sizeof *vp, M_VNODE, M_WAITOK);
@@ -430,11 +453,28 @@ retry:
 			simple_lock(&vnode_free_list_slock);
 		}
 			
+		/*
+		 * Recycling an NFS client vnode with I/O pending waits for an
+		 * nfsd, which over loopback may be this thread or one waiting
+		 * on it.  Prefer a vnode that cannot wait on NFS.  An nfsd
+		 * never takes one that can; it gets a new vnode instead.  A
+		 * skipped vnode keeps its buffers for sync or a later recycle.
+		 */
 		for (cnt = 0, vp = vnode_free_list.tqh_first;
 				vp != NULLVP; cnt++, vp = vp->v_freelist.tqe_next) {
+			if (vnode_nfs_pending(vp))
+				continue;
 			if (simple_lock_try(&vp->v_interlock))
 				break;
 		}
+		if (vp == NULLVP && (p->p_flag & P_NFSD))
+			goto newvnode;
+		if (vp == NULLVP)
+			for (cnt = 0, vp = vnode_free_list.tqh_first;
+					vp != NULLVP; cnt++, vp = vp->v_freelist.tqe_next) {
+				if (simple_lock_try(&vp->v_interlock))
+					break;
+			}
 		/*
 		 * Unless this is a bad time of the month, at most
 		 * the first NCPUS items on the free list are

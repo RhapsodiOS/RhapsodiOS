@@ -3,16 +3,53 @@
 Scope: `src/kernel-7/machdep/ppc`, `src/kernel-7/driverkit/ppc`,
 `src/kernel-7/kernserv/ppc`, `src/kernel-7/mach/ppc`, the ppc paths in
 `kern/`, `vm/` and `bsd/dev/ev.c` that the machdep code calls, and every
-file under `src/drivers-ppc/bus/drvPExpert/powermac`. Read-only review;
-nothing here has been changed yet. Every finding below was checked against
-the cited lines. Items that came from a second reviewer and were not
-re-traced end-to-end are marked *(not independently re-traced)*.
+file under `src/drivers-ppc/bus/drvPExpert/powermac`. Every finding below
+was checked against the cited lines. Items that came from a second
+reviewer and were not re-traced end-to-end are marked *(not independently
+re-traced)*.
+
+The first pass was written against master at 267d9fbc. This revision
+re-checks every item against master at 8e195a55, after the ppc-qemu merge
+that boots on QEMU mac99 and g3beige. Line numbers are master's.
+Items that master fixed or partly fixed say so in their heading; every
+other item is still open. Section H covers code that is new since the
+first pass.
 
 The kernel is the MkLinux DR2 lineage: single processor, no kernel
 preemption, kernel in segments 0-3 (0x0000_0000-0x3FFF_FFFF) with segment
 registers 0-3 swapped to kernel VSIDs on every exception entry, user
 segments 4-15 loaded at task switch, and copyin/copyout through a borrowed
 segment register 14.
+
+## What changed on master since the first pass
+
+| Item | Status | Commit | Notes |
+|------|--------|--------|-------|
+| C1 Sawtooth OpenPIC base and Fat Man accesses | Fixed | eb4b43dd, 86f2501c | open-pic `reg` made absolute on Sawtooth; Fat Man and the 0xF204_1080 read guarded by `IsPEx()` |
+| D1 hash table capped at 4 MB | Fixed | 8e195a55 | `32*1024*1024` now |
+| B6 MPIC spurious vector aliasing source 49 | Fixed | 86f2501c | spurious vector is now 0xFF and dispatch stops on it |
+| B7 Heathrow LEVELS never read; `INTT_` typo | Partly fixed | 2f4326b9 | Heathrow bank 1 PCI slots now sampled from LEVELS; Grand Central and O'Hare unchanged |
+| C3 clock calibration divides by measured counts | Partly fixed | fa78ceaf, 036a053c | Gossamer, Yosemite and Sawtooth take clocks from OF; PowerSurge, PowerStar and PowerExpress still run the unguarded VIA test |
+| C4 header drift between the two `interrupts.h` copies | Fixed | c14acd57 | copies now agree except the pexpert-only `PMAC_DEV_MPIC_DIRECT_BASE` |
+
+Every other item is unchanged. In particular `unix_signal.c`, `pcb.c`,
+`alignment.c`, `systemcalls.c`, `PseudoKernel.c`, `hw_exception.s`,
+`lowmem_vectors.s`, `movc.s`, `misc_asm.s`, `trap.c`, `fault_copy.c`,
+`interrupt.c` and `backsideL2.c` are byte-identical to the first pass, so
+none of the security items in section A has been addressed.
+
+Two open items matter more after the ppc-qemu merge:
+
+- **B6, MPIC EOI before the handler.** The Sawtooth source table now
+  follows 5.6 and programs most sources level-triggered, so more sources
+  can be re-presented while their handler is still pending. B6 traces
+  which drivers are exposed; none are today.
+- **C4, no G4 PVR recognised.** QEMU mac99 presents a G4, so the L2 is
+  never reported and the CPU subtype is `CPU_SUBTYPE_POWERPC_ALL` there.
+
+One new Low finding is in section H: `pmap_set_cache_spec`, added for the
+Screamer driver, can leave a cached BAT0 alias of a cache-inhibited page.
+C3 also gains a latent overflow in the new OF clock path.
 
 ## Summary: what to fix first
 
@@ -25,9 +62,11 @@ segment register 14.
 | 5 | `hw_exception.s:1140-1142` | "Switch on interrupts" in the syscall handler is `rlwimi r0,r0,...`, a no-op | Every `sc` runs its prologue, argument copyin and the syscall body with MSR[EE]=0 until the first `splx(SPLLO)` |
 | 6 | `interrupt.c:141-163` | Every spl level above SPLLO clears MSR[EE] | splbio/splnet/spltty/splsoftclock all mask the decrementer and every device |
 | 7 | `grand_central.c:292-310` and the other three chips | VIA cascade dispatches `via1_interrupts[7]` on every VIA interrupt | Bit 7 of IFR/IER is always set; all six tables have 7 entries, so this reads the next table's entry 0 |
-| 8 | `identify_machine.c:279-283`, `mpic.c:189-196` | OpenPIC base not offset by mac-io base; Fat Man register accessed at physical 0x160 | On Sawtooth-class trees the MPIC registers land in kernel RAM |
-| 9 | `movc.s:240-246,281-287` | `pmap_copy_page` does `dcbst; sync; icbi; sync; isync` per 32-byte line | 256 syncs per page copy on the copy-on-write and fork path |
-| 10 | `pmap.c:533` | `32*1024*104` caps the hash table at 4 MB | 768 MB and 1 GB machines get half the architected table size |
+| 8 | `movc.s:240-246,281-287` | `pmap_copy_page` does `dcbst; sync; icbi; sync; isync` per 32-byte line | 256 syncs per page copy on the copy-on-write and fork path |
+| 9 | `mpic.c:427-450` | MPIC writes EOI before the handler and re-acks in a loop with EE off | A mac-io level source on the default DriverKit handler would re-present forever on real OpenPIC hardware |
+
+All nine are open. The first pass's items 8 (Sawtooth OpenPIC base) and
+10 (hash-table cap) are fixed.
 
 ## A. Security and privilege boundaries
 
@@ -124,7 +163,7 @@ if (lvl == SPLLO) { current_priority = lvl; interrupt_enable(); }
 else              { interrupt_disable(); current_priority = lvl; }
 ```
 The per-chip `*_set_priority_level` hooks are empty or unhooked
-(`heathrow.c:241-244` is an empty function; the assignment at `:133` is
+(`heathrow.c:240-243` is an empty function; the assignment at `:133` is
 commented out). So splbio, splimp, splnet, spltty and splsoftclock all
 mask the decrementer and every device for the length of the critical
 section. `rtclock_intr` (`rtclock.c:116-129`) catches up on missed ticks,
@@ -132,7 +171,7 @@ so time is not lost, but scheduling, timeouts, ADB, serial and network
 latency are bounded by the longest spl>0 section in the BSD layer.
 
 Not a quick fix. The MPIC current-task-priority path exists but is under
-`#if 0` (`mpic.c:401-426`). A cheaper intermediate step is to keep the
+`#if 0` (`mpic.c:348-373`). A cheaper intermediate step is to keep the
 decrementer unmasked at levels below SPLCLOCK.
 
 ### B2. System calls enter C with interrupts masked (High)
@@ -177,8 +216,8 @@ to the current process (`kern_sig.c:945`), so gating the detour on
 `need_ast` is safe.
 
 ### B5. VIA cascade dispatch indexes past every 7-entry table (High)
-`chips/grand_central.c:292-310`, `heathrow.c:336-357`, `ohare.c:367-388`,
-`mpic.c:514-535`:
+`chips/grand_central.c:292-310`, `heathrow.c:344-362`, `ohare.c:367-385`,
+`mpic.c:461-479`:
 ```c
 irq = via_reg(PCI_VIA1_IFR); eieio();
 irq &= via_reg(PCI_VIA1_IER); eieio();
@@ -197,27 +236,59 @@ it is called on every cuda/ADB interrupt with the wrong device id.
 
 Fix: `irq &= 0x7f;` after the IER mask.
 
-### B6. MPIC dispatch has no vector bounds check and EOIs before the handler (Medium)
-`chips/mpic.c:482-503`: the acked vector indexes `mpic_interrupts[irq]`
-and `MPIC_INT_CFG + irq*0x20` unchecked. The spurious vector is 0x31
-(`:236`), which is outside PowerExpress's 38-entry table and aliases
-source 49 on Sawtooth. EOI is written before the handler runs and the
-`while (1)` re-ack loop runs with EE off; a non-shared level source whose
-handler only queues work (the DriverKit default) would be re-presented
-immediately and livelock. The autoconf default `Share IRQ Levels = YES`
-is what hides this today *(livelock path not independently re-traced)*.
+### B6. MPIC EOIs before the handler and has no vector bounds check (Medium; spurious vector fixed)
+**Fixed on master (86f2501c):** the spurious vector is now 0xFF
+(`mpic.c:205`) and dispatch stops on it (`:432`), so it no longer aliases
+source 49 or indexes past PowerExpress's 38-entry table. The init sequence
+now resets the controller (`:196-199`), which masks every source, IPI and
+timer, and the old unmask-and-drain loop is gone.
 
-Fix: `if (irq == MPIC_SPURIOUS_VECTOR || irq >= nmpic_interrupts) break;`
-before touching CFG/EOI; program the spurious vector to an unused value;
-mask level sources before EOI.
+**Still open:** `mpic.c:427-450` writes EOI at `:435`, before the handler,
+then loops back to `INT_ACK` with EE off. `mpic_interrupts[irq]` at `:441`
+is still indexed without `irq < nmpic_interrupts`; with every non-source
+vector masked by the reset that is now defensive only.
 
-### B7. Old World controllers never read the LEVELS register (Medium, hardware-dependent)
-`heathrow.c:286-292`, `grand_central.c:264-265`, `ohare.c:309-310` read
-EVENTS, write CLEAR and dispatch. A level line that stays asserted across
-the CLEAR produces no new edge. Apple's later Heathrow driver and Linux's
-`pmac_pic` both OR in `LEVELS & MASK` and re-kick on unmask. The macros
-can't even compile: `heathrow.h:46-47` spell the constants
-`HEATHROW_INTT_LEVELS*` while `:70-71` reference `HEATHROW_INT_LEVELS*`.
+The EOI order matters more now, because the 5.6 Sawtooth table
+(`families/sawtooth.c:46-110`) programs sources 16-18 and 22-63
+level-triggered. An OpenPIC re-presents a level source that is still
+asserted as soon as it is EOI'd. Traced through DriverKit:
+
+- `PPCKernBusInterruptDispatch` (`driverkit/ppc/PPCKernBus.m:49-62`) masks
+  the line only when the bus interrupt reports it suspended.
+- Only `KernDeviceInterruptDispatchShared` (`driverkit/KernDevice.m:444`)
+  suspends it. The non-shared `KernDeviceInterruptDispatch` and the default
+  handler `IOSendInterrupt` (`:511`) only queue a message.
+- Every PCI device gets `"Share IRQ Levels" = "YES"` from
+  `driverkit-3/libDriver/ppc/IOPCIDevice.m:100`, so gmac (UniNEnet), USB
+  and the PCI slots are masked on dispatch. The first pass attributed this
+  to an autoconf default; that was wrong.
+
+So the exposure is a mac-io device on a level source that uses the
+default handler. Today the mac-io level sources are SCC A/B, audio and
+the VIA cascade: PPCSerialPort and the audio drivers install their own
+handlers, and the cascade handler clears the VIA in place. A future
+mac-io driver on the default handler would spin in this loop with EE off
+on real hardware. This was not reproduced; QEMU mac99 boots.
+
+Fix: mask level sources in their VPR before the EOI and let
+`pmac_enable_irq` unmask them, or EOI after the handler; add the bounds
+check.
+
+### B7. Old World controllers never read the LEVELS register (Partly fixed; Medium, hardware-dependent)
+**Fixed on master (2f4326b9) for Heathrow:** `heathrow_interrupt` now ORs
+`LEVELS1 & MASK1 & HEATHROW_LEVEL1_SLOTS` into the pending set
+(`heathrow.c:280-295`), and the `INTT_` typo in `heathrow.h:46-47` is
+fixed. The mask 0x0000E01F is External Int 1-8 (physical bits 21-28)
+through the n^0x18 byte-swap permutation, which checks out. A held PCI
+slot interrupt is now dispatched on every pass instead of storming with
+nothing dispatched.
+
+**Still open:** Grand Central (`grand_central.c:264-265`) and O'Hare
+(`ohare.c:309-310`, `:337-338`) still read only EVENTS. A level line that
+stays asserted across the CLEAR produces no new edge. These chips are on
+PowerSurge/PowerStar-class machines rather than the QEMU targets. Apple's
+later drivers and Linux's `pmac_pic` also re-kick on unmask, which none of
+the three do.
 
 ### B8. `interrupt()` recovery path leaves `current_priority` at SPLHIGH (Low)
 `interrupt.c:271-275` longjmps out of the DSI recovery case before the
@@ -229,28 +300,29 @@ SPLSCLK (5), below SPLCLOCK. It works only because of B1. Use
 `splclock()`.
 
 ### B10. VIA IER initialisation is a no-op (Low)
-`grand_central.c:146`, `heathrow.c:149`, `ohare.c:146`, `mpic.c:288` write
+`grand_central.c:146`, `heathrow.c:149`, `ohare.c:146`, `mpic.c:235` write
 `0x00` to IER. On a 6522 a write with bit 7 clear *clears* the bits that
 are set in the data, so `0x00` clears nothing. Write `0x7f` to disable,
 `0x80 | bit` to enable.
 
 ## C. Platform expert: machine setup
 
-### C1. Sawtooth OpenPIC and Fat Man addresses (High for New World)
-`identify_machine.c:279-283` returns `reg[0]` of the `open-pic` node
-verbatim. The other offsets at `:183-186` are added to `io_base_phys`;
-this one is not. On Apple OF 3.x and OpenBIOS `mac99` trees the node is
-`mac-io/interrupt-controller@40000` with a mac-io-relative `reg`, so
-`int_cntlr_base_phys = 0x40000` and every MPIC register macro
-(`mpic.h:46-56`) resolves into kernel RAM. `mpic_interrupt_initialize`
-(`mpic.c:189-196`) also does two read-modify-writes through
-`FM_MPIC_CTRL`, which is `mem_cntlr_base_phys + 0x160`; that base is 0 on
-anything that is not `hammerhead`/`fatman` (`identify_machine.c:251-266`),
-so the writes hit physical 0x160, inside the system-reset vector. The
-hard-coded `lwbrx(0xf2041080)` is PowerExpress-only.
+### C1. Sawtooth OpenPIC and Fat Man addresses (Fixed)
+**Fixed on master (eb4b43dd, 86f2501c).** The first pass found that
+`get_int_cntlr_base_addr()` returned the mac-io-relative `reg` of the
+`open-pic` node verbatim, putting every MPIC register in kernel RAM, and
+that the Fat Man enable wrote physical 0x160 on anything but PowerExpress.
 
-Fix: add `io_base_phys` when `reg[0] < io_size`; guard the Fat Man
-accesses with `mem_cntlr_base_phys != 0`.
+Now `identify_machine.c:296-297` adds the mac-io base on Sawtooth, and
+writes the absolute address back into the device-tree property so
+DriverKit sees the same value, as 5.6 does. It has one caller (`:193`), so
+the in-place edit is applied once. `mpic_interrupt_initialize` touches
+`FM_MPIC_CTRL` only under `IsPEx()` (`mpic.c:190`, `:228`), and the stray
+`lwbrx(0xf2041080)` is gone. NVRAM got the same treatment
+(`identify_machine.c:162-167`): an absolute `reg` past mac-io is used as is.
+
+The fix keys on `IsSawtooth()` rather than on the address, so a future
+New World family with a mac-io-relative `open-pic` needs the same line.
 
 ### C2. `RunCacheTests` clobbers DBAT3 and scribbles 1 MB at 0x01F0_0000 (Medium)
 `backsideL2.c:171-187,229-233`: invalidates DBAT3, maps 0xE000_0000 onto
@@ -260,39 +332,74 @@ handed BAT1-3 to `PEMapSegment` (`powermac_init.c:126-131`). Triggered
 whenever PVR is 750 and OF left L2CR = 0 (emulators, G3 upgrade cards).
 The scratch address ignores `PhysicalDRAM[]`.
 
-### C3. Clock calibration divides by measured counts with no guard (Medium)
-`clock_speed.c:115-124`: `cpu_pll = 10000000 / dec_ticks`, then
-`raw_cpu_freq / (via_ticks * ...)` and `raw_cpu_freq * 2 / cpu_pll`.
-`divw` does not trap, so a stalled VIA T1 or decrementer yields garbage
-bus and decrementer rates and a wrong HZ. The OF-derived path exists but
-is disabled by `if (0 && IsYosemite())` at `:73`. Up to 11 passes of
-10 M cycles each run at boot with EE off.
+On Gossamer (QEMU g3beige) the family has no BAT routine of its own and
+`initialize_bats` maps only 0xF000_0000 and the frame buffer, so DBAT3
+is free and only the scratch-address part applies. Yosemite (also a 750)
+and G3-upgraded Sawtooths can lose a mapped I/O segment.
+
+### C3. Clock calibration (Partly fixed; Medium)
+**Fixed on master (fa78ceaf, 036a053c) for Gossamer, Yosemite and
+Sawtooth:** `DetermineClockSpeeds` now calls `derive_from_of()` first on
+those families (`clock_speed.c:75`), and `derive_from_of` rejects a missing
+or zero `clock-frequency` and a `bus-frequency` below 4 before dividing
+(`:180-200`). It also fixes the old `4 * cpu_freq` overflow.
+
+**Still open:**
+
+- PowerSurge, PowerStar and PowerExpress, and any family whose OF lacks
+  the properties, still run the VIA test. `clock_speed.c:114-123` divides
+  by `dec_ticks`, `via_ticks` and `cpu_pll` unguarded. `divw` does not
+  trap, so a stalled VIA T1 or decrementer gives garbage bus and
+  decrementer rates and a wrong HZ. Up to 11 passes of 10 M cycles each
+  run at boot with EE off.
+- New: after `derive_from_of()` succeeds, `clock_speed.c:81` throws away
+  the OF CPU clock and recomputes it as `bus_freq * cpu_pll / 2` in
+  32-bit `long`s. The product wraps above about 1.07 GHz. Computed with
+  the same arithmetic:
+
+  | OF CPU | OF bus | reported `cpu_clock_rate_hz` |
+  |-------:|-------:|-----------------------------:|
+  | 266 MHz | 66 MHz | 264,000,000 |
+  | 900 MHz | 100 MHz | 900,000,000 |
+  | 1000 MHz | 133 MHz | 997,500,000 |
+  | 1100 MHz | 100 MHz | -1,047,483,648 |
+
+  No model in the current Core99 list (`keylargo_model.h`) runs that fast,
+  so this is latent; `display_frequency` already prints GHz. Keep the OF
+  value when `derive_from_of()` succeeded.
 
 ### C4. Smaller platform-expert defects (Low)
-- `identify_machine.c:606`: `strncmp(cpu_model, "AAPL,", 5)` tests the
+- `identify_machine.c:639`: `strncmp(cpu_model, "AAPL,", 5)` tests the
   still-empty global instead of `family`, so the prefix is never stripped;
-  the `compatible` lookup at `:606` is unchecked.
-- `identify_machine.c:937`: NVRAM partition walk does `curOffset += len*16`
+  the `compatible` lookup at `:629` is unchecked.
+- `identify_machine.c:971`: NVRAM partition walk does `curOffset += len*16`
   and never terminates on a zero-length header.
-- `chips/mpic.h:46`, `mpic.c:199`: `MPIC_GLOBAL_CFG` is the one MPIC
-  register accessed big-endian; it works because two mistakes cancel
+- `chips/mpic.h:46-48`: `MPIC_GLOBAL_CFG` is the one MPIC register
+  accessed big-endian. It works because the constants are pre-swapped:
+  `MPIC_CASCADE` 0x20 lands on GCR bit 29 and the new `MPIC_RESET` 0x80 on
+  GCR bit 31, the reset bit. The reset poll at `mpic.c:198` is unbounded.
+- `grand_central.c:169-172` and `heathrow.c:175-178`: a negative index
+  fails the first test and passes the second, indexing before
+  `*_via1_interrupts`. `ohare_int_to_number` checks `index < 0`.
+- `get_dma_offset()` (`identify_machine.c:307`) returns the PCI config
+  `phys.hi`, which equals the 0x8000 DBDMA offset only for device 0x10
   *(not independently re-traced)*.
-- `gc_int_to_number`/`heathrow_int_to_number` accept negative indices
-  *(not independently re-traced)*.
-- `get_dma_offset()` returns the PCI config `phys.hi`, which equals the
-  0x8000 DBDMA offset only for device 0x10 *(not independently re-traced)*.
-- The pexpert and kernel copies of `interrupts.h` disagree
-  (`PMAC_DEV_PDS` 270 vs 280; kernel-only USB/UIDE/CARD12-17 ids)
-  *(not independently re-traced)*.
-- PVR 0x000C (7400) is not recognised in `backsideL2.c:112` or
-  `powermac_init.c:203-223`.
+- No G4 PVR (0x000C for the 7400, or the later 74xx values) is recognised
+  in `backsideL2.c:112` or `powermac_init.c:203-223`, which stop at the
+  750. QEMU mac99 presents a G4, so there the L2 is never reported and the
+  CPU subtype is `CPU_SUBTYPE_POWERPC_ALL`.
+- **Fixed (c14acd57):** the pexpert and kernel copies of `interrupts.h`
+  now agree, including `PMAC_DEV_PDS` 282 and the UIDE, USB and
+  CARD12-25 ids. Only the pexpert-internal `PMAC_DEV_MPIC_DIRECT_BASE`
+  differs.
 
 ## D. VM and pmap
 
-### D1. Hash table size capped by a typo (Medium)
-`pmap.c:533`: `while (hash_table_size < 32*1024*104 && ...)`. The intent
-is `32*1024*1024`; the clamp at `:602` uses the right constant. Computed
-result with the typo versus the intended loop:
+### D1. Hash table size capped by a typo (Fixed)
+**Fixed on master (8e195a55):** `pmap.c:533` now reads `32*1024*1024`,
+matching the clamp at `:602`. The first pass found
+`while (hash_table_size < 32*1024*104 && ...)`. Computed result with the
+typo versus the corrected loop:
 
 | RAM | as written | intended |
 |-----|-----------:|---------:|
@@ -303,7 +410,8 @@ result with the typo versus the intended loop:
 
 An undersized table means more PTEG overflows, each of which evicts a
 live user mapping (`pteg_pte_exchange`, `pmap.c:2398`) and costs a
-later fault.
+later fault. `vm/ppc-guest.py` boots QEMU guests with 512 MB, where both
+loops give 4 MB, so the QEMU targets do not see a difference.
 
 ### D2. Two full TLB invalidate sequences per new mapping (Perf)
 `pmap_enter` on the new-mapping path does `sync; tlbie; eieio; tlbsync;
@@ -347,9 +455,9 @@ context-synchronising instruction after it (the `rfi` is one) and nothing
 before it. Two pipeline flushes per return can go.
 
 ### D6. `pmap_enter` touches the hash table before `splhigh()` (Low)
-`pmap.c:1280` calls `find_or_allocate_pte(..., TRUE)`, which writes
+`pmap.c:1270` calls `find_or_allocate_pte(..., TRUE)`, which writes
 `pte0`/`pte1` and may evict through `pmap_pteg_overflow`, before the
-`splhigh()` at `:1293`. Safe only while nothing at interrupt level calls
+`splhigh()` at `:1278`. The first pass cited the wrong lines here. Safe only while nothing at interrupt level calls
 `pmap_enter`.
 
 ### D7. Per-page kernel mapping for every vnode pager I/O (Perf, design)
@@ -447,9 +555,10 @@ faulting; the subcode is garbage. Use `th->pcb->fs.fpscr`.
 
 ## F. Driver support and console
 
-- `driverkit/ppc/autoconf_ppc.m:912`: `FindStringKey` does an unbounded
-  `strncpy` into 128-byte `IOMalloc` buffers (`:740-743`, `:802-804`) from
-  bundle config tables at boot. (Medium-Low)
+- `driverkit/ppc/autoconf_ppc.m:968`: `FindStringKey` does an unbounded
+  `strncpy` into 128-byte `IOMalloc` buffers (`:783-791`, `:855-860`) from
+  bundle config tables at boot. The new Floppy check at `:822-824` reads
+  `"Driver Name"` through it into the same buffer. (Medium-Low)
 - `kdp_machdep.c:127-133`: `hdr.len` counts `exc_info` twice, so 16 bytes
   of kernel stack go into the packet. The i386 version sets
   `hdr.len = sizeof(*rq)` first. (Low)
@@ -462,7 +571,7 @@ faulting; the subcode is garbage. Use `th->pcb->fs.fpscr`.
 - `DeviceTree.c:113-125`, `swapgeneric.m:366-404`, `machdep.c:158-195`:
   unbounded copies into fixed stack buffers; callers are literal paths,
   the console and NVRAM today. (Low)
-- `autoconf_ppc.m:409-616`: `StartDriver` leaks `nameBuf` and the class
+- `autoconf_ppc.m:440-650`: `StartDriver` leaks `nameBuf` and the class
   list on abort *(not independently re-traced)*. (Low)
 - `driverkit/ppc/PPCKernBus.m:80-84`: `-dealloc` never unregisters the
   IRQ *(not independently re-traced)*. (Low)
@@ -470,6 +579,59 @@ faulting; the subcode is garbage. Use `th->pcb->fs.fpscr`.
   until someone defines `NMFSBUF`. (Low)
 - `machine_clock.c:78`: `read_processor_clock_tval()` (two 64-bit
   divides) runs every tick even with no timer armed. (Perf, negligible)
+
+## H. Code that is new since the first pass
+
+### H1. `pmap_set_cache_spec` ignores the BAT0 alias (Low, hardware-dependent)
+`pmap.c:2707-2746` is new: it switches one wired, exclusively mapped
+kernel page between cached and cache-inhibited, and the PPCScreamer driver
+uses it for its two DMA ring pages (`PPCScreamer.m:258-263`, restored at
+`:297-298` before `kmem_free`). The sequence is right: it drains and
+invalidates the page before flipping WIMG (`:2730`), runs the full
+invalidate-tlbie-revalidate sequence, and records the new default in the
+`phys_entry` (`:2738`) so a later mapping of that page agrees.
+
+The exclusivity check at `:2720-2723` counts PTE mappings only. BAT0 maps
+physical memory V=R and cached from 0 up to a power of two:
+`initialize_bats` sets it up cached (`bat_init.c:152-158`) and
+`vm/vm_init.c:71` rounds its limit up past `virtual_avail`. Free VM pages
+start at the old `virtual_avail` (`vm/vm_mem_region.c:134-137`), so the
+pages between there and the rounded limit are in the free pool and also
+mapped cached through BAT0. A ring page taken from that range gets a
+cache-inhibited PTE and keeps a cached BAT alias; the PowerPC architecture
+treats mixed WIMG for one physical page as a programming error. Nothing
+dereferences the alias deliberately, so the exposure is speculative
+accesses through it.
+
+Fix: refuse a page whose physical address is below the BAT0 limit, or
+allocate the ring pages from above it.
+
+### Reviewed and sound
+- **Heathrow level sampling** (`heathrow.c:280-295`): the 0x0000E01F mask
+  is External Int 1-8 through the byte-swap permutation; see B7.
+- **MPIC reset path** (`mpic.c:190-231`): reset, mask every source,
+  spurious vector 0xFF, cascade enable, task priority 0, then load the
+  table; Fat Man only on PowerExpress. The reset poll is unbounded (C4).
+- **`DTFindChildEntry` / `DTIterateChildren`** (`DeviceTree.c:433-446`):
+  no allocation, so both are usable before `kalloc_init`. The iterator is
+  bounded by `nChildren` and steps siblings with `skipTree`, which skips
+  each child's subtree. `DTFindChildEntry` shares `DTFindEntry`'s static
+  `startingP` (`:417`), so neither is reentrant; both run at boot only.
+- **DAVbus and KeyLargo audio binding** (`chips/davbus_audio.c`,
+  `chips/keylargo.c:271-413`): `ranges` and `reg` are validated with
+  overflow-safe bounds against mac-io, interrupt specifiers are limited to
+  three distinct sources below 64, the binding runs allocation-free from
+  `configure_machine`, and FCR1 access uses `stwbrx`/`lwbrx` with
+  `eieio; sync`.
+- **Sawtooth `PEEditDTEntry`** (`identify_machine.c:745-763`): supplies the
+  three DAVbus MPIC sources as `AAPL,interrupts` for the one DAVbus node it
+  first sees, and refuses any other.
+- **OF clock path** (`clock_speed.c:180-231`): the divide-by-zero and the
+  old `4 * cpu_freq` overflow are both guarded; see C3 for what is left.
+- **`*_register_int` no longer panics** on an unknown device id
+  (97dc15f7). A driver whose interrupt is not in the family table now
+  attaches without interrupts and logs one line. That is a deliberate
+  behaviour change.
 
 ## G. Verified as sound
 
@@ -513,3 +675,11 @@ assembly, the platform expert, the trap/copy/FPU code and the machdep C
 support, each of whose findings was re-read at the cited lines before
 inclusion. The hash-table sizing table was produced by compiling the
 sizing loop from `pmap_bootstrap` on the host with both constants.
+
+The second pass diffed every file the audit cites, plus the new
+platform-expert, device-tree, pmap and autoconf code, between 267d9fbc
+and master at 8e195a55, then re-read each finding at master's lines. The
+C3 clock table was produced by compiling `DetermineClockSpeeds`'
+arithmetic with 32-bit `long`s. The B6 DriverKit path was traced through
+`PPCKernBus.m`, `KernBusInterrupt.m`, `KernDevice.m` and
+`IOPCIDevice.m`. Nothing was booted for this pass.

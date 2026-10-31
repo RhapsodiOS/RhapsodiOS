@@ -143,6 +143,7 @@ check: lib/t_lib $(TMAIN)
 	@echo t_main: ok
 
 # The first run needs 4 PASS lines and wire PASS or UNSUP, and no settime;
+# pressure with -m 400m (three 192 MB references) must time out at 3x -t;
 # the -x run needs each test to FAIL with the corrupted offset. settime steps
 # the system clock as root, so it runs only if STRESS_SETTIME is set.
 check-vm: $(VMBIN)
@@ -153,6 +154,8 @@ check-vm: $(VMBIN)
 	grep '^STRESS vm brk PASS ' vm/t.out
 	grep '^STRESS vm wire \(PASS\|UNSUP\) ' vm/t.out
 	test `grep -c '^STRESS vm settime ' vm/t.out` = 0
+	rc=0; $(VMBIN) -N -t 1 -m 400m pressure >vm/t.out || rc=$$?; test $$rc = 1
+	grep '^STRESS vm pressure FAIL reason=timeout secs=3 ' vm/t.out
 	if test -n "$$STRESS_SETTIME"; then rc=0; $(VMBIN) settime >vm/t.out || rc=$$?; test $$rc = 0; grep '^STRESS vm settime PASS ' vm/t.out; fi
 	rc=0; $(VMBIN) -x -n 1 -m 4m -i 1 pressure cow machvm brk >vm/t.out || rc=$$?; test $$rc = 1
 	test `grep -c '^STRESS vm [a-z]* FAIL .*off=0x' vm/t.out` = 4

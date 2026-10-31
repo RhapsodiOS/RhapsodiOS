@@ -965,7 +965,13 @@ def stall(kernel, label, bootargs="", no_update=False):
 
 # --- stress mode: the system stress suite, run on the guest ----------------
 
-STRESS_RUN_LIMIT_S = 4 * 3600
+def stress_run_limit(mem_mb):
+    """4 h on a 128 MB guest; stress vm pressure's watchdog grows with RAM
+    (one -t per 192 MB of its 1.5x RAM working set), so the limit does too."""
+    return 4 * 3600 * max(1, -(-mem_mb // 128))
+
+
+STRESS_RUN_LIMIT_S = stress_run_limit(MEM_MB)
 STRESS_POLL_S = 60
 STRESS_LOST_POLLS = 5               # unanswered polls in a row = guest lost
 STRESS_REPORT = "/usr/local/stress/Report"

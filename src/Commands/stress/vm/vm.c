@@ -29,6 +29,25 @@ wkey(struct st_ctx *c, unsigned long salt)
 	return st_mix((st_opt.seed ^ salt) + (unsigned long)c->idx) & ST_MASK;
 }
 
+/* pressure's working set: 1.5x RAM, or -m. */
+static unsigned long
+pressure_bytes(void)
+{
+	return st_opt.mem ? st_opt.mem : st_physmem() + st_physmem() / 2;
+}
+
+/* The working set of a 128 MB guest, which pages it in about 140-210 s on
+ * QEMU TCG; a 512 MB guest's 768 MB takes about 820 s. */
+#define PRESSURE_REF (192 * MB)
+
+/* The watchdog grows with the working set: one -t per started PRESSURE_REF.
+ * A 32-bit working set keeps it at most 22. */
+static int
+s_pressure(void)
+{
+	return (int)((pressure_bytes() - 1) / PRESSURE_REF + 1);
+}
+
 /* pressure: every worker holds its share of 1.5x RAM (or -m) and keeps
  * re-checking all of it in a random page order, so pages are evicted and
  * faulted back in under each other. */
@@ -40,10 +59,7 @@ t_pressure(struct st_ctx *c)
 	unsigned char *buf;
 	long pass, bad;
 
-	if (st_opt.mem)
-		bytes = st_opt.mem / c->nprocs;
-	else
-		bytes = (st_physmem() + st_physmem() / 2) / c->nprocs;
+	bytes = pressure_bytes() / c->nprocs;
 	np = bytes / ps;
 	if (np < 1)
 		np = 1;
@@ -533,7 +549,7 @@ t_settime(struct st_ctx *c)
 }
 
 static const struct st_test tests[] = {
-	{ "pressure", 1, 0, NULL, t_pressure },
+	{ "pressure", 1, 0, NULL, t_pressure, 0, s_pressure },
 	{ "cow", 20, 1, NULL, t_cow },
 	{ "machvm", 200, 0, NULL, t_machvm },
 	{ "brk", 20000, 0, NULL, t_brk },

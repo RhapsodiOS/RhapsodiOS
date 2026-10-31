@@ -326,6 +326,12 @@ def test_guest_memory_comes_from_the_environment(monkeypatch):
     assert fb.guest_mem("512") == 512
 
 
+def test_stress_run_limit_grows_with_guest_memory():
+    assert fb.stress_run_limit(128) == 4 * 3600
+    assert fb.stress_run_limit(64) == 4 * 3600
+    assert fb.stress_run_limit(512) == 16 * 3600
+
+
 def test_a_refused_login_counts_as_failed():
     assert fb.login_ok(0, "Building build root:") is True
     assert fb.login_ok(255, "kex_exchange_identification: read: Connection aborted") is False

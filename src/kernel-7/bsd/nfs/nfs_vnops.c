@@ -953,13 +953,18 @@ nfs_lookup(ap)
 		struct vattr vattr;
 		int vpid;
 
+		/*
+		 * Take the capability before VOP_ACCESS can sleep: the vnode
+		 * may be recycled for another file meanwhile, even on another
+		 * file system, and then must not pass for this name.
+		 */
+		newvp = *vpp;
+		vpid = newvp->v_id;
 		if ((error = VOP_ACCESS(dvp, VEXEC, cnp->cn_cred, p))) {
 			*vpp = NULLVP;
 			return (error);
 		}
 
-		newvp = *vpp;
-		vpid = newvp->v_id;
 		/*
 		 * See the comment starting `Step through' in ufs/ufs_lookup.c
 		 * for an explanation of the locking protocol

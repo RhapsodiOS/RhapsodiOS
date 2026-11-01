@@ -204,8 +204,8 @@ packaging fixes to build (`PUBLIC_HEADERS` with no install directory, and
 ## Commands
 
 ```bash
-cd src/CoreOS/bootefi-1 && PATH="/c/Program Files/LLVM/bin:$PATH" make CCTOOLS=../Developer/Commands/cctools-2/include
-cd ../../vm
+cd src/CoreOS/bootefi-1 && PATH="/c/Program Files/LLVM/bin:$PATH" make CCTOOLS=../../Developer/Commands/cctools-2/include
+cd ../../../vm
 python -m instmedia.collect work/p5-repo --image work/rhap-i386-bootstrapped.img --add work/p2-apks --add work/p4-apks --add work/p5-apks
 python -m instmedia.build --repo work/p5-repo --efi ../src/CoreOS/bootefi-1/BUILD/BOOTIA32.EFI --out work/p5-gate/media.img
 python -m instmedia.build --repo work/p5-repo --efi ../src/CoreOS/bootefi-1/BUILD/BOOTIA32.EFI --out work/p5-gate/preinstalled.img --preinstalled

@@ -19,7 +19,7 @@ BOOTEFI_BOOT_STRING ?= "rootdev=hd0a -v"
 BUILD    := BUILD
 BOOT2    := ../boot-2/i386
 KERNEL7  := ../kernel-7
-CCTOOLS  := ../../cctools-2/include
+CCTOOLS  := ../../Developer/Commands/cctools-2/include
 
 # vendor_includes/architecture, vendor_includes/driverkit and
 # vendor_includes/objc/objc.h are symlinks.  A checkout without symlink
@@ -45,7 +45,7 @@ endif
 
 # vendor_includes/architecture is a symlink to ../architecture-1, so
 # <architecture/byte_order.h> resolves without editing anything under
-# src/CoreOS/boot-2 or renaming src/architecture-1.  -I$(KERNEL7) and
+# src/CoreOS/boot-2 or renaming src/CoreOS/architecture-1.  -I$(KERNEL7) and
 # -I$(KERNEL7)/bsd resolve disk.c/sys.c's <bsd/...>, <ufs/...> and
 # <machine/...> includes the same way the assembled Rhapsody SDK once did
 # (this checkout has only the raw project trees, not that installed tree).

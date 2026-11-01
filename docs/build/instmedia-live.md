@@ -97,7 +97,7 @@ links it.
 
 ```bash
 cd src/CoreOS/bootefi-1 && PATH="/c/Program Files/LLVM/bin:$PATH" make
-cd ../../vm
+cd ../../../vm
 python -m instmedia.collect work/p4-repo --image work/rhap-i386-bootstrapped.img --add work/p2-apks --add work/p4-apks
 python -m instmedia.build --repo work/p4-repo --efi ../src/CoreOS/bootefi-1/BUILD/BOOTIA32.EFI --out work/p4-gate/media.img
 python -m instmedia.build --repo work/p4-repo --efi ../src/CoreOS/bootefi-1/BUILD/BOOTIA32.EFI --out work/p4-gate/preinstalled.img --preinstalled

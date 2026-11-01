@@ -4,6 +4,7 @@
 #include <sys/types.h>
 #include <sys/time.h>
 #include <sys/wait.h>
+#include <dirent.h>
 #include <errno.h>
 #include <signal.h>
 #include <stdio.h>
@@ -198,12 +199,43 @@ input(int fd, int secs)
 	return 1;
 }
 
+/* Remove the scratch files ("<dir>/stress.<cat>.<test>.<tag>.<pid>", see
+ * st_path) of workers the leader killed, and its own: their cleanup never ran. */
+static void
+sweep(const char *cat, const char *test, const pid_t *wpids, int n)
+{
+	char pre[256], path[1024], *dot;
+	struct dirent *e;
+	DIR *d;
+	long id;
+	int i, plen;
+
+	if (strlen(cat) + strlen(test) + 9 > sizeof pre)
+		return;
+	plen = sprintf(pre, "stress.%s.%s.", cat, test);
+	if ((d = opendir(st_opt.dir)) == NULL)
+		return;
+	while ((e = readdir(d)) != NULL) {
+		if (strncmp(e->d_name, pre, plen) != 0 || (dot = strrchr(e->d_name, '.')) == NULL)
+			continue;
+		id = atol(dot + 1);
+		for (i = 0; i < n && wpids[i] != id; i++)
+			;
+		if ((i < n || id == (long)getpid()) &&
+		    strlen(st_opt.dir) + strlen(e->d_name) + 2 <= sizeof path) {
+			sprintf(path, "%s/%s", st_opt.dir, e->d_name);
+			unlink(path);
+		}
+	}
+	closedir(d);
+}
+
 /* Runs in its own process group; exits 0 on PASS, 1 on FAIL. */
 static void
 leader(const struct st_test *t, const char *cat)
 {
 	int fds[2], n, i, live, status, e, stopped;
-	pid_t *pids, pid;
+	pid_t *pids, *wpids, pid;
 	struct timeval t0;
 	double secs;
 	long iters;
@@ -218,8 +250,9 @@ leader(const struct st_test *t, const char *cat)
 	catch(SIGCHLD, on_chld);
 	n = t->solo ? 1 : st_opt.procs;
 	pids = malloc(n * sizeof *pids);
-	if (pids == NULL || pipe(fds) < 0) {
-		sprintf(what, "FAIL reason=\"%s: %s\"", pids ? "pipe" : "malloc", st_errname(errno));
+	wpids = malloc(n * sizeof *wpids);	/* pids[] is zeroed as workers are reaped */
+	if (pids == NULL || wpids == NULL || pipe(fds) < 0) {
+		sprintf(what, "FAIL reason=\"%s: %s\"", pids && wpids ? "pipe" : "malloc", st_errname(errno));
 		st_line(cat, t->name, what, 1);
 		exit(1);
 	}
@@ -242,7 +275,7 @@ leader(const struct st_test *t, const char *cat)
 			catch(SIGCHLD, SIG_DFL);
 			worker(t, cat, i, n, fds[1]);
 		}
-		pids[i] = pid;
+		pids[i] = wpids[i] = pid;
 	}
 	close(fds[1]);
 	/* Read while reaping: children a test forked may hold the pipe open,
@@ -286,6 +319,8 @@ leader(const struct st_test *t, const char *cat)
 	secs = since(&t0);
 	while (input(fds[0], 0))
 		;
+	if (stopped)
+		sweep(cat, t->name, wpids, n);
 	lk[0] = '\0';
 	if (!st_opt.noleak) {
 		st_leak_snap(&leak_after);

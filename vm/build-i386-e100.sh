@@ -1,10 +1,10 @@
 #!/bin/sh
 # Test and build drvIntelE100 for i386. Runs on the build guest through
 #   powershell -NoProfile -File vm\guest-remote.ps1 -Run vm\build-i386-e100.sh
-# after vm\sync-src.ps1 -Path drivers-i386/network/drvIntelE100.
+# after vm\sync-src.ps1 -Path CoreOS/drivers/i386/network/drvIntelE100.
 PATH=/build/tools/bin:/usr/bin:/bin:/usr/sbin:/sbin
 export PATH
-SRC=/build/src/drivers-i386/network/drvIntelE100
+SRC=/build/src/CoreOS/drivers/i386/network/drvIntelE100
 DST=/build/out/drvIntelE100-rbuild
 
 echo "======== drvIntelE100 tests `date` ========"

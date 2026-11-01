@@ -31,7 +31,7 @@ from instmedia.space import Space
 
 SBOFF = ug.BBSIZE         # the superblock follows the boot block
 ROOTINO = 2
-DIRBLKSIZ = 1024        # src/kernel-7/bsd/ufs/ufs/dir.h
+DIRBLKSIZ = 1024        # src/CoreOS/kernel-7/bsd/ufs/ufs/dir.h
 MAXNAMLEN = 255
 CG_MAGIC = 0x090255
 

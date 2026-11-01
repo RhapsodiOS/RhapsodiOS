@@ -6,7 +6,7 @@
 # fatal even inside an `if`.
 export PATH=/build/bin:/usr/local/bin:/build/tools/usr/local/bin:/bin:/usr/bin
 OUT=/build/out/i386
-SRC=/build/source/src/drivers-i386/ide/drvEIDE
+SRC=/build/source/src/CoreOS/drivers/i386/ide/drvEIDE
 PROJ=$SRC/EIDE.drvproj
 mkdir -p "$OUT"
 

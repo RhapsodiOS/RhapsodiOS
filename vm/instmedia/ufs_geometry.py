@@ -24,7 +24,7 @@ NIADDR = 3
 FS_MAXCONTIG = 16
 MAXPHYS = 64 * 1024
 FS_MAGIC = 0x011954
-# i386 struct sizes and offsets (src/kernel-7/bsd/ufs/ffs/fs.h): struct fs is
+# i386 struct sizes and offsets (src/CoreOS/kernel-7/bsd/ufs/ffs/fs.h): struct fs is
 # 1377 bytes rounded to 1380; fs_opostbl sits at 860 and fs_space at 1376.
 SIZEOF_FS = 1380
 SIZEOF_CG = 172

@@ -123,7 +123,7 @@ These don't need reverse engineering, but they have to be fixed before
 - `apk/pkginfo` lists only `build-base`. It also needs `libinfo-hdrs` for
   `<netinfo/ni.h>` and `<netinfo/ni_util.h>`.
 - `bootpd.m` imports `<arpa/nameser.h>`. The file is in
-  `src/Libinfo-1/dns.subproj`, but `libinfo-hdrs` does not export it.
+  `src/CoreOS/Libinfo-1/dns.subproj`, but `libinfo-hdrs` does not export it.
 - The ppc `hfsvols.c` and `sharepoints.c` import `<vol.h>`, and `bootpd`
   links `-lVDI-interface`. Both come from `src/hfs-1/hfs_glue`, which installs
   `vol.h` under `System.framework/.../PrivateHeaders/bsd`, off the default

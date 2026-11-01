@@ -61,7 +61,7 @@ class TestTemplates(unittest.TestCase):
 
     def test_i386_instance0_has_default_tables_keys_and_the_overrides(self):
         ours = read(TEMPLATES, "Instance0-i386.table")
-        default = read(SRC, "system_config-1", "i386", "Default.table")
+        default = read(SRC, "CoreOS/system_config-1", "i386", "Default.table")
         self.assertEqual(table_keys(ours), table_keys(default))
         self.assertEqual(table_value(ours, b"Boot Drivers"),
                          b"PS2Keyboard EIDE AHCI NE2K")
@@ -75,9 +75,9 @@ class TestTemplates(unittest.TestCase):
                              table_value(default, key))
 
     def test_i386_boot_sources_use_the_kernel_linked_buses(self):
-        network = read(SRC, "system_config-1", "i386", "Instance0.network")
+        network = read(SRC, "CoreOS/system_config-1", "i386", "Instance0.network")
         self.assertEqual(table_value(network, b"Boot Drivers"), b"PS2Keyboard")
-        detector = read(SRC, "driverkit-3", "driverDetect", "driverDetect.c")
+        detector = read(SRC, "CoreOS/driverkit-3", "driverDetect", "driverDetect.c")
         self.assertRegex(detector, rb'#define BASE_BOOT\s+"PS2Keyboard"')
         packages = read(PROJECT, "sets", "base.set").splitlines()
         self.assertNotIn(b"drveisabus", packages)

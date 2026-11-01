@@ -68,7 +68,7 @@ configured guest; this is source-level verification, not hardware validation.
 The BusLogic class-name mismatch has been resolved. All 37 reference functions
 are now behavior-reviewed: 35 hand-written functions map to source, and the two
 Kernel Server generated accessors are documented in
-`src/drivers-i386/scsi/drvBusLogic/reconstruction/generated-glue.md`. The two
+`src/CoreOS/drivers/i386/scsi/drvBusLogic/reconstruction/generated-glue.md`. The two
 generated methods correctly remain unmapped because no hand-written source site
 exists.
 

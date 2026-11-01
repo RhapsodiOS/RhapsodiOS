@@ -96,11 +96,11 @@ links it.
 ## Commands
 
 ```bash
-cd src/bootefi-1 && PATH="/c/Program Files/LLVM/bin:$PATH" make
+cd src/CoreOS/bootefi-1 && PATH="/c/Program Files/LLVM/bin:$PATH" make
 cd ../../vm
 python -m instmedia.collect work/p4-repo --image work/rhap-i386-bootstrapped.img --add work/p2-apks --add work/p4-apks
-python -m instmedia.build --repo work/p4-repo --efi ../src/bootefi-1/BUILD/BOOTIA32.EFI --out work/p4-gate/media.img
-python -m instmedia.build --repo work/p4-repo --efi ../src/bootefi-1/BUILD/BOOTIA32.EFI --out work/p4-gate/preinstalled.img --preinstalled
+python -m instmedia.build --repo work/p4-repo --efi ../src/CoreOS/bootefi-1/BUILD/BOOTIA32.EFI --out work/p4-gate/media.img
+python -m instmedia.build --repo work/p4-repo --efi ../src/CoreOS/bootefi-1/BUILD/BOOTIA32.EFI --out work/p4-gate/preinstalled.img --preinstalled
 python -c "open('work/p4-gate/blank.img','wb').truncate(2<<30)"
 python qemu_boot.py bios work/p4-gate/blank.img logs/p4-gate/media-bios --hd1 work/p4-gate/media.img --boot-hd1 --type 150:1 --type 200:1 --at 145,240
 python qemu_boot.py bios work/p4-gate/preinstalled.img logs/p4-gate/pre-bios --nic ne2k_pci --ssh-port 2549 --at 120,240,330

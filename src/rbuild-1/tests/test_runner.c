@@ -326,8 +326,8 @@ TEST(test_bootstrap_universal_supersedes_thin) {
 
 TEST(test_kernel_architecture_controls_build_commands) {
     static const char *projects[] = {
-        "driverkit-3", "driverTools-1", "kernload-1",
-        "drivers-i386/bus/drvPExpert", "kernel-7", "drvBPF", 0
+        "CoreOS/driverkit-3", "CoreOS/driverTools-1", "CoreOS/kernload-1",
+        "CoreOS/drivers/i386/bus/drvPExpert", "CoreOS/kernel-7", "CoreOS/drivers/generic/network/drvBPF", 0
     };
     char path[256], command[512], output[65536];
     FILE *f;
@@ -367,7 +367,7 @@ TEST(test_kernel_architecture_controls_build_commands) {
         CHECK(strstr(output, "RC_ppc= ") != 0);
         CHECK(strstr(output, "-arch ppc") == 0);
         sprintf(path, "/tmp/rbuild-kernel-policy/%s/apk/pkginfo",
-                drivers ? "drvBPF" : "driverkit-3");
+                drivers ? "CoreOS/drivers/generic/network/drvBPF" : "CoreOS/driverkit-3");
         f = fopen(path, "a"); CHECK(f != 0);
         if (f) { fputs("arch = ppc\n", f); fclose(f); }
         f = tmpfile(); CHECK(f != 0);
@@ -389,7 +389,7 @@ TEST(test_kernel_architecture_controls_build_commands) {
 
 TEST(test_kernel_skips_missing_core_source) {
     static const char *projects[] = {
-        "driverkit-3", "driverTools-1", "kernload-1", "kernel-7", 0
+        "CoreOS/driverkit-3", "CoreOS/driverTools-1", "CoreOS/kernload-1", "CoreOS/kernel-7", 0
     };
     char path[256], command[512], output[65536];
     FILE *f;
@@ -418,7 +418,7 @@ TEST(test_kernel_skips_missing_core_source) {
     rewind(f); n = fread(output, 1, sizeof(output)-1, f); output[n] = '\0'; fclose(f);
     exec_dry_run = 0;
     CHECK_INT(rc, 0);
-    CHECK(strstr(output, "skip missing kernel source drivers-i386/bus/drvPExpert") != 0);
+    CHECK(strstr(output, "skip missing kernel source CoreOS/drivers/i386/bus/drvPExpert") != 0);
     CHECK(strstr(output, "rbuild: kernel complete") != 0);
     system("rm -rf /tmp/rbuild-kernel-skip");
 }

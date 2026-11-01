@@ -13,7 +13,7 @@ paths known to be host structs (hammer_inode, hammer_io, hammer_node
 members); any other host field still needs a trailing '/* lelint: host */'
 comment on its line.  Exit status 1 when anything is reported.
 
-Run on the host: python lelint.py fields.txt ../../kernel-7/bsd/hammer/*.c
+Run on the host: python lelint.py fields.txt ../../CoreOS/kernel-7/bsd/hammer/*.c
 """
 import re
 import sys

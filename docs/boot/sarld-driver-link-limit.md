@@ -33,7 +33,7 @@ panic: Missing EISA kernel bus class
 ```
 
 This is misleading twice over. It is not a driver panic at all -- it is the
-kernel's own, at `src/kernel-7/driverkit/i386/autoconf_i386.m:191` -- and
+kernel's own, at `src/CoreOS/kernel-7/driverkit/i386/autoconf_i386.m:191` -- and
 `DualEide.m:82` builds a byte-identical string from the same format, so the
 message alone does not say which fired. The serial log settles it: `autoconf`
 panics before `configureDriver()` runs, so no driver's `+probe:` has executed.
@@ -58,7 +58,7 @@ everything after it, and `EISABus` never loads -- so `EISAKernBus` never runs
 
 Not bytes -- allocation count. `sa_rld_internal` in `src/Developer/Commands/cctools-2/ld/rld.c`
 initialized the standalone allocator with a fixed 1000 nodes, and
-`zallocate()` in `src/boot-2/i386/libsa/zalloc.c` appended to `zalloced[]`
+`zallocate()` in `src/CoreOS/boot-2/i386/libsa/zalloc.c` appended to `zalloced[]`
 without checking that limit. `malloc_init()` lays the two node tables out
 adjacently, so allocation 1001 wrote over `zavailable[0]` -- the free list head.
 The heap was then corrupted, the next `malloc` returned 0, and `rld` reported it
@@ -76,7 +76,7 @@ overrun was 16,000 bytes into whatever followed.
 ## Fix
 
 - `src/Developer/Commands/cctools-2/ld/rld.c` -- 1000 nodes to 8000.
-- `src/boot-2/i386/libsa/zalloc.c` -- `malloc()` returns 0 once the node table
+- `src/CoreOS/boot-2/i386/libsa/zalloc.c` -- `malloc()` returns 0 once the node table
   is full instead of corrupting the free list, and `malloc_init()` subtracts the
   node tables from the length it publishes as available.
 
@@ -91,7 +91,7 @@ rbuild buildpackage --state /build/state --dir --target all \
     /build/src/Developer/Commands/cctools-2 /build/repo /build/out/cctools-rbuild
 # copy the cctools apk into /build/repo, then
 rbuild buildpackage --state /build/state --arch i386 --dir --target all \
-    /build/src/boot-2 /build/repo /build/out/booter-rbuild
+    /build/src/CoreOS/boot-2 /build/repo /build/out/booter-rbuild
 ```
 
 `vm/build-i386-booter.sh` runs the second step. `boot-2` also needs `gawk` in
@@ -155,7 +155,7 @@ rename in `boot1.s` cannot quietly disable the check.
 
 ## Also fixed: rcz was built for the wrong architecture
 
-`rbuild buildpackage --arch i386 src/boot-2` built everything and then failed:
+`rbuild buildpackage --arch i386 src/CoreOS/boot-2` built everything and then failed:
 
 ```
 path usr/bin/rcz: code architecture mismatch
@@ -178,7 +178,7 @@ against the 17,428 Apple shipped.
 - The big-endian path is now reachable only on a big-endian disk, and there is
   no such image here to test it against.
 
-`src/boot-2/i386/libsaio/saio_internal.h` used `__attribute__((packed))`, which
+`src/CoreOS/boot-2/i386/libsaio/saio_internal.h` used `__attribute__((packed))`, which
 the compiler that builds the booter rejects outright, so `boot-2` could not be
 built at all before this. The attribute was removed; the struct is 8 + 8 + 4 + 4
 and already lays out with no padding on i386.

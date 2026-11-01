@@ -1,7 +1,7 @@
 # Developer build and checks for the HAMMER tools, run natively on a
-# Rhapsody build guest from a tree holding src/kernel-7 and src/hammer-1.
+# Rhapsody build guest from a tree holding src/CoreOS/kernel-7 and src/hammer-1.
 # The packaged build uses the pb_makefiles projects instead.
-K = ../../kernel-7/bsd/hammer
+K = ../../CoreOS/kernel-7/bsd/hammer
 CC = cc
 CFLAGS = -O -I../common -I$(K)
 COMMON = ../common/ondisk.c ../common/cache.c ../common/blockmap.c \

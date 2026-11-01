@@ -50,7 +50,7 @@ CDIS_NEEDS = [live.RC_CDROM, live.CDIS + "/sysinstall",
               "/usr/sbin/driverDetect", "/usr/sbin/pwd_mkdb",
               "/usr/bin/gzip", "/bin/sync"]
 # The majors /dev must use for each disk family: sd from the kernel's own
-# tables (src/kernel-7/bsd/dev/i386/conf.c: bdevsw 6, cdevsw 14), hd and fd
+# tables (src/CoreOS/kernel-7/bsd/dev/i386/conf.c: bdevsw 6, cdevsw 14), hd and fd
 # from the "Block Major"/"Character Major" the EIDE and Floppy drivers
 # register (drvEIDE and drvPCFloppy Default.table).  A node's family is its
 # name without the raw device's leading "r" (hd0a, rhd0a, and controllers

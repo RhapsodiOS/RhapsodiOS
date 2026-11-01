@@ -42,7 +42,7 @@ transfer.
 
 ```bat
 powershell -File vm\sync-src.ps1 -All
-powershell -File vm\sync-src.ps1 -Path drivers-i386/bus/drvPCMCIABus
+powershell -File vm\sync-src.ps1 -Path CoreOS/drivers/i386/bus/drvPCMCIABus
 ```
 
 | Flag | Effect |
@@ -84,8 +84,8 @@ powershell -NoProfile -File vm\clean-build.ps1
 |------|----------------|
 | `-Rbuild` | `make CC=… clean test all` in `RemoteRoot/src/rbuild-1`, then install `rbuild` and private helpers into `ToolsDir` |
 | `-Bootstrap` | thin `rbuild bootstrap` then `rbuild bootstrap-universal` with the same `--sysroot BootstrapRoot --toolchain … --state StateDir` and full `BootstrapManifest RepoDir RepoDir` |
-| `-Kernel` | `rbuild kernel --state StateDir --arch <profile> SourceRoot RepoDir BuiltDir` for `driverkit-3`, `driverTools-1`, `kernload-1`, `drivers-<arch>/bus/drvPExpert`, `kernel-7`; once per CPU, i386 then ppc, for the universal profile |
-| `-KernelDrivers` | `rbuild kerneldrivers --state StateDir --arch <profile> SourceRoot RepoDir BuiltDir` (i386 then ppc for the universal profile) for remaining packaged `drv*` / `Intel*` projects under `drivers-<arch>` (plus `drvBPF` / `drvPortServer` / `drvSCSIServer` / `drvSCSITape` when they have `dpkg/control`). Paths in `src/rbuild-1/kernel-drivers-blacklist.json` are skipped until they package; rbuild exits non-zero if any non-skipped driver failed. |
+| `-Kernel` | `rbuild kernel --state StateDir --arch <profile> SourceRoot RepoDir BuiltDir` for `CoreOS/driverkit-3`, `CoreOS/driverTools-1`, `CoreOS/kernload-1`, `CoreOS/drivers/<arch>/bus/drvPExpert`, `CoreOS/kernel-7`; once per CPU, i386 then ppc, for the universal profile |
+| `-KernelDrivers` | `rbuild kerneldrivers --state StateDir --arch <profile> SourceRoot RepoDir BuiltDir` (i386 then ppc for the universal profile) for remaining packaged `drv*` / `Intel*` projects under `CoreOS/drivers/<arch>` (plus `drvBPF` / `drvPortServer` / `drvSCSIServer` / `drvSCSITape` when they have `dpkg/control`). Paths in `src/rbuild-1/kernel-drivers-blacklist.json` are skipped until they package; rbuild exits non-zero if any non-skipped driver failed. |
 | `-World` | `rbuild buildall --state StateDir Manifest RepoDir BuiltDir` |
 | `-All` | `-Rbuild`, `-Bootstrap`, `-Kernel`, `-KernelDrivers`, then `-World` |
 | `-Fresh` | With `-All` only: delete `ToolsDir`, `BootstrapRoot`, `RepoDir`, `BuiltDir`, and `StateDir`; keep `SourceRoot` |
@@ -116,9 +116,9 @@ The universal profile avoids that on the ppc guest because it bootstraps with
 `gcc-darwin.conf` without changing its bytes, so existing state stays valid.
 
 `-Kernel` requires every core package source locally except a platform
-expert: `src/drivers-i386/bus/drvPExpert` does not exist yet, so with the
+expert: `src/CoreOS/drivers/i386/bus/drvPExpert` does not exist yet, so with the
 i386 or universal profile `build-src.ps1` prints `no local source for
-drivers-i386/bus/drvPExpert; rbuild will skip it` and rbuild builds the i386
+CoreOS/drivers/i386/bus/drvPExpert; rbuild will skip it` and rbuild builds the i386
 kernel without it. Any other missing core source still stops the phase.
 
 To build one package for one CPU, call `rbuild` on the guest directly:
@@ -127,7 +127,7 @@ To build one package for one CPU, call `rbuild` on the guest directly:
 PATH=/build/tools/bin:/usr/bin:/bin:/usr/sbin:/sbin; export PATH
 rbuild kernel --state /build/state --arch i386 /build/src /build/repo /build/<dst>
 rbuild buildpackage --state /build/state --arch i386 --dir --target all \
-    /build/src/drivers-i386/ide/drvAHCI /build/repo /build/<dst>
+    /build/src/CoreOS/drivers/i386/ide/drvAHCI /build/repo /build/<dst>
 ```
 
 `rbuild` and `relpath` live in `/build/tools/bin`, which is **not** on the

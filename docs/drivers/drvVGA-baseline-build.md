@@ -1,6 +1,6 @@
 # drvVGA baseline build
 
-Records the result of building `src/drivers-i386/video/drvVGA` for the first
+Records the result of building `src/CoreOS/drivers/i386/video/drvVGA` for the first
 time in this tree, immediately after Task 4 restructured it into the
 Aggregate -> Driver -> Kernel Server project shape. This is a measurement,
 not a repair in spirit: the sources inside are unmodified inventions (Task
@@ -27,7 +27,7 @@ and `VGA_psdrvr` could be produced:
    `IOSVGADisplay.m`).
 2. `11637fc1` — `VGA.drvproj`, `VGA.drvproj/VGA.lksproj`, and
    `VGA.drvproj/VGA_psdrvr.tproj` had no `PB.project` file at any of the
-   three levels (every other driver under `src/drivers-i386` has one at
+   three levels (every other driver under `src/CoreOS/drivers/i386` has one at
    each level). `bundle.make` needs `VGA_psdrvr.tproj/PB.project` to
    generate `Info-nextstep.plist`; without it the aggregate build failed in
    the second subproject with "No rule to make target `PB.project`". Added
@@ -49,7 +49,7 @@ produced before that point, so the harness itself reports success
 cd /d/RhapsodiOS
 PW=$(grep -i '^Password=' vm/vm.conf | cut -d= -f2)
 HOST=$(grep -i '^Host=' vm/vm.conf | cut -d= -f2)
-"/c/Program Files/PuTTY/pscp.exe" -batch -r -pw "$PW" src/drivers-i386/video/drvVGA root@$HOST:/build/source/src/drivers-i386/video/
+"/c/Program Files/PuTTY/pscp.exe" -batch -r -pw "$PW" src/CoreOS/drivers/i386/video/drvVGA root@$HOST:/build/source/src/CoreOS/drivers/i386/video/
 "/c/Program Files/PuTTY/pscp.exe" -batch -pw "$PW" vm/build-i386-vga.sh root@$HOST:/build/source/vm/
 ```
 
@@ -79,36 +79,36 @@ Makefile.postamble:2: /NextDeveloper/Makefiles/driverkit/Makefile.bundle_postamb
 == Making all for i386 in VGA.drvproj ==
 == Making VGA for i386 ==
 Pre-build setup...
-/bin/rm -f /build/source/src/drivers-i386/video/drvVGA/VGA.build/derived_src/TrustedPrecomps.txt
+/bin/rm -f /build/source/src/CoreOS/drivers/i386/video/drvVGA/VGA.build/derived_src/TrustedPrecomps.txt
 ......in VGA
 ......in VGA_psdrvr
 Building...
 ......in VGA
-/usr/bin/cc -arch i386 -O  -Wmost -precomp-trustfile /build/source/src/drivers-i386/video/drvVGA/VGA.build/derived_src/TrustedPrecomps.txt -g  -fno-common -I/build/source/src/drivers-i386/video/drvVGA/VGA.build/ProjectHeaders -I/build/source/src/drivers-i386/video/drvVGA/VGA.build/PrivateHeaders/ -I/build/source/src/drivers-i386/video/drvVGA/VGA.build/Headers/ -I/build/source/src/drivers-i386/video/drvVGA/VGA.build/derived_src/VGA.drvproj/VGA.lksproj -I. -pipe   -static -DKERNEL -D_KERNEL -DMACH_USER_API -DKERNEL_SERVER_INSTANCE=VGA_instance       -I/build/source/src/drivers-i386/video/drvVGA/VGA.build/Headers -I/build/source/src/drivers-i386/video/drvVGA/VGA.build/PrivateHeaders -F/build/source/src/drivers-i386/video/drvVGA  -F/System/Library/PrivateFrameworks -F/System/Library/PrivateFrameworks        -ObjC        -c -o /build/source/src/drivers-i386/video/drvVGA/VGA.build/objects-optimized/VGA.drvproj/VGA.lksproj/VGA.i386.o VGA.m
-/usr/bin/cc -arch i386 -O  -Wmost -precomp-trustfile /build/source/src/drivers-i386/video/drvVGA/VGA.build/derived_src/TrustedPrecomps.txt -g  -fno-common -I/build/source/src/drivers-i386/video/drvVGA/VGA.build/ProjectHeaders -I/build/source/src/drivers-i386/video/drvVGA/VGA.build/PrivateHeaders/ -I/build/source/src/drivers-i386/video/drvVGA/VGA.build/Headers/ -I/build/source/src/drivers-i386/video/drvVGA/VGA.build/derived_src/VGA.drvproj/VGA.lksproj -I. -pipe   -static -DKERNEL -D_KERNEL -DMACH_USER_API -DKERNEL_SERVER_INSTANCE=VGA_instance       -I/build/source/src/drivers-i386/video/drvVGA/VGA.build/Headers -I/build/source/src/drivers-i386/video/drvVGA/VGA.build/PrivateHeaders -F/build/source/src/drivers-i386/video/drvVGA  -F/System/Library/PrivateFrameworks -F/System/Library/PrivateFrameworks        -ObjC        -c -o /build/source/src/drivers-i386/video/drvVGA/VGA.build/objects-optimized/VGA.drvproj/VGA.lksproj/VGAConfigTable.i386.o VGAConfigTable.m
+/usr/bin/cc -arch i386 -O  -Wmost -precomp-trustfile /build/source/src/CoreOS/drivers/i386/video/drvVGA/VGA.build/derived_src/TrustedPrecomps.txt -g  -fno-common -I/build/source/src/CoreOS/drivers/i386/video/drvVGA/VGA.build/ProjectHeaders -I/build/source/src/CoreOS/drivers/i386/video/drvVGA/VGA.build/PrivateHeaders/ -I/build/source/src/CoreOS/drivers/i386/video/drvVGA/VGA.build/Headers/ -I/build/source/src/CoreOS/drivers/i386/video/drvVGA/VGA.build/derived_src/VGA.drvproj/VGA.lksproj -I. -pipe   -static -DKERNEL -D_KERNEL -DMACH_USER_API -DKERNEL_SERVER_INSTANCE=VGA_instance       -I/build/source/src/CoreOS/drivers/i386/video/drvVGA/VGA.build/Headers -I/build/source/src/CoreOS/drivers/i386/video/drvVGA/VGA.build/PrivateHeaders -F/build/source/src/CoreOS/drivers/i386/video/drvVGA  -F/System/Library/PrivateFrameworks -F/System/Library/PrivateFrameworks        -ObjC        -c -o /build/source/src/CoreOS/drivers/i386/video/drvVGA/VGA.build/objects-optimized/VGA.drvproj/VGA.lksproj/VGA.i386.o VGA.m
+/usr/bin/cc -arch i386 -O  -Wmost -precomp-trustfile /build/source/src/CoreOS/drivers/i386/video/drvVGA/VGA.build/derived_src/TrustedPrecomps.txt -g  -fno-common -I/build/source/src/CoreOS/drivers/i386/video/drvVGA/VGA.build/ProjectHeaders -I/build/source/src/CoreOS/drivers/i386/video/drvVGA/VGA.build/PrivateHeaders/ -I/build/source/src/CoreOS/drivers/i386/video/drvVGA/VGA.build/Headers/ -I/build/source/src/CoreOS/drivers/i386/video/drvVGA/VGA.build/derived_src/VGA.drvproj/VGA.lksproj -I. -pipe   -static -DKERNEL -D_KERNEL -DMACH_USER_API -DKERNEL_SERVER_INSTANCE=VGA_instance       -I/build/source/src/CoreOS/drivers/i386/video/drvVGA/VGA.build/Headers -I/build/source/src/CoreOS/drivers/i386/video/drvVGA/VGA.build/PrivateHeaders -F/build/source/src/CoreOS/drivers/i386/video/drvVGA  -F/System/Library/PrivateFrameworks -F/System/Library/PrivateFrameworks        -ObjC        -c -o /build/source/src/CoreOS/drivers/i386/video/drvVGA/VGA.build/objects-optimized/VGA.drvproj/VGA.lksproj/VGAConfigTable.i386.o VGAConfigTable.m
 VGAConfigTable.m: In function `-[VGA(ConfigTable) parametersForMode:forStringKey:parameters:count:]':
 VGAConfigTable.m:46: warning: implicit declaration of function `strncpy'
-/usr/bin/cc -arch i386 -O  -Wmost -precomp-trustfile /build/source/src/drivers-i386/video/drvVGA/VGA.build/derived_src/TrustedPrecomps.txt -g  -fno-common -I/build/source/src/drivers-i386/video/drvVGA/VGA.build/ProjectHeaders -I/build/source/src/drivers-i386/video/drvVGA/VGA.build/PrivateHeaders/ -I/build/source/src/drivers-i386/video/drvVGA/VGA.build/Headers/ -I/build/source/src/drivers-i386/video/drvVGA/VGA.build/derived_src/VGA.drvproj/VGA.lksproj -I. -pipe   -static -DKERNEL -D_KERNEL -DMACH_USER_API -DKERNEL_SERVER_INSTANCE=VGA_instance       -I/build/source/src/drivers-i386/video/drvVGA/VGA.build/Headers -I/build/source/src/drivers-i386/video/drvVGA/VGA.build/PrivateHeaders -F/build/source/src/drivers-i386/video/drvVGA  -F/System/Library/PrivateFrameworks -F/System/Library/PrivateFrameworks        -ObjC        -c -o /build/source/src/drivers-i386/video/drvVGA/VGA.build/objects-optimized/VGA.drvproj/VGA.lksproj/VGASetMode.i386.o VGASetMode.m
+/usr/bin/cc -arch i386 -O  -Wmost -precomp-trustfile /build/source/src/CoreOS/drivers/i386/video/drvVGA/VGA.build/derived_src/TrustedPrecomps.txt -g  -fno-common -I/build/source/src/CoreOS/drivers/i386/video/drvVGA/VGA.build/ProjectHeaders -I/build/source/src/CoreOS/drivers/i386/video/drvVGA/VGA.build/PrivateHeaders/ -I/build/source/src/CoreOS/drivers/i386/video/drvVGA/VGA.build/Headers/ -I/build/source/src/CoreOS/drivers/i386/video/drvVGA/VGA.build/derived_src/VGA.drvproj/VGA.lksproj -I. -pipe   -static -DKERNEL -D_KERNEL -DMACH_USER_API -DKERNEL_SERVER_INSTANCE=VGA_instance       -I/build/source/src/CoreOS/drivers/i386/video/drvVGA/VGA.build/Headers -I/build/source/src/CoreOS/drivers/i386/video/drvVGA/VGA.build/PrivateHeaders -F/build/source/src/CoreOS/drivers/i386/video/drvVGA  -F/System/Library/PrivateFrameworks -F/System/Library/PrivateFrameworks        -ObjC        -c -o /build/source/src/CoreOS/drivers/i386/video/drvVGA/VGA.build/objects-optimized/VGA.drvproj/VGA.lksproj/VGASetMode.i386.o VGASetMode.m
 VGASetMode.m: In function `-[VGA(SetMode) selectMode]':
 VGASetMode.m:33: warning: unused variable `i'
-/usr/bin/cc -arch i386 -O  -Wmost -precomp-trustfile /build/source/src/drivers-i386/video/drvVGA/VGA.build/derived_src/TrustedPrecomps.txt -g  -fno-common -I/build/source/src/drivers-i386/video/drvVGA/VGA.build/ProjectHeaders -I/build/source/src/drivers-i386/video/drvVGA/VGA.build/PrivateHeaders/ -I/build/source/src/drivers-i386/video/drvVGA/VGA.build/Headers/ -I/build/source/src/drivers-i386/video/drvVGA/VGA.build/derived_src/VGA.drvproj/VGA.lksproj -I. -pipe   -static -DKERNEL -D_KERNEL -DMACH_USER_API -DKERNEL_SERVER_INSTANCE=VGA_instance       -I/build/source/src/drivers-i386/video/drvVGA/VGA.build/Headers -I/build/source/src/drivers-i386/video/drvVGA/VGA.build/PrivateHeaders -F/build/source/src/drivers-i386/video/drvVGA  -F/System/Library/PrivateFrameworks -F/System/Library/PrivateFrameworks        -c -o /build/source/src/drivers-i386/video/drvVGA/VGA.build/objects-optimized/VGA.drvproj/VGA.lksproj/VGAModes.i386.o VGAModes.c
+/usr/bin/cc -arch i386 -O  -Wmost -precomp-trustfile /build/source/src/CoreOS/drivers/i386/video/drvVGA/VGA.build/derived_src/TrustedPrecomps.txt -g  -fno-common -I/build/source/src/CoreOS/drivers/i386/video/drvVGA/VGA.build/ProjectHeaders -I/build/source/src/CoreOS/drivers/i386/video/drvVGA/VGA.build/PrivateHeaders/ -I/build/source/src/CoreOS/drivers/i386/video/drvVGA/VGA.build/Headers/ -I/build/source/src/CoreOS/drivers/i386/video/drvVGA/VGA.build/derived_src/VGA.drvproj/VGA.lksproj -I. -pipe   -static -DKERNEL -D_KERNEL -DMACH_USER_API -DKERNEL_SERVER_INSTANCE=VGA_instance       -I/build/source/src/CoreOS/drivers/i386/video/drvVGA/VGA.build/Headers -I/build/source/src/CoreOS/drivers/i386/video/drvVGA/VGA.build/PrivateHeaders -F/build/source/src/CoreOS/drivers/i386/video/drvVGA  -F/System/Library/PrivateFrameworks -F/System/Library/PrivateFrameworks        -c -o /build/source/src/CoreOS/drivers/i386/video/drvVGA/VGA.build/objects-optimized/VGA.drvproj/VGA.lksproj/VGAModes.i386.o VGAModes.c
 VGAModes.c:24: warning: missing braces around initializer for `vgaModes[0].displayInfo.pixelEncoding'
-/usr/bin/kl_ld -o /build/source/src/drivers-i386/video/drvVGA/VGA.config/VGA_reloc -n VGA  -i VGA_instance -l Load_Commands.sect   -arch i386  /build/source/src/drivers-i386/video/drvVGA/VGA.build/objects-optimized/VGA.drvproj/VGA.lksproj/VGA.o /build/source/src/drivers-i386/video/drvVGA/VGA.build/objects-optimized/VGA.drvproj/VGA.lksproj/VGAConfigTable.o /build/source/src/drivers-i386/video/drvVGA/VGA.build/objects-optimized/VGA.drvproj/VGA.lksproj/VGASetMode.o  /build/source/src/drivers-i386/video/drvVGA/VGA.build/objects-optimized/VGA.drvproj/VGA.lksproj/VGAModes.o           /build/source/src/drivers-i386/video/drvVGA/VGA.build/objects-optimized/VGA.drvproj/VGA.lksproj/VGA_instance.o         
+/usr/bin/kl_ld -o /build/source/src/CoreOS/drivers/i386/video/drvVGA/VGA.config/VGA_reloc -n VGA  -i VGA_instance -l Load_Commands.sect   -arch i386  /build/source/src/CoreOS/drivers/i386/video/drvVGA/VGA.build/objects-optimized/VGA.drvproj/VGA.lksproj/VGA.o /build/source/src/CoreOS/drivers/i386/video/drvVGA/VGA.build/objects-optimized/VGA.drvproj/VGA.lksproj/VGAConfigTable.o /build/source/src/CoreOS/drivers/i386/video/drvVGA/VGA.build/objects-optimized/VGA.drvproj/VGA.lksproj/VGASetMode.o  /build/source/src/CoreOS/drivers/i386/video/drvVGA/VGA.build/objects-optimized/VGA.drvproj/VGA.lksproj/VGAModes.o           /build/source/src/CoreOS/drivers/i386/video/drvVGA/VGA.build/objects-optimized/VGA.drvproj/VGA.lksproj/VGA_instance.o         
 ld: warning /usr/lib/libcc.a archive's cputype (18, architecture ppc) does not match cputype (7) for specified -arch flag: i386 (can't load from it)
 ......in VGA_psdrvr
-/usr/lib/mergeInfo PB.project /build/source/src/drivers-i386/video/drvVGA/VGA.build/derived_src/VGA.drvproj/VGA_psdrvr.tproj/Java.plist -o /build/source/src/drivers-i386/video/drvVGA/VGA.config/VGA_psdrvr.bundle/Resources/Info-nextstep.plist
-/usr/bin/cc -arch i386 -O  -Wmost -precomp-trustfile /build/source/src/drivers-i386/video/drvVGA/VGA.build/derived_src/TrustedPrecomps.txt -g  -fno-common -I/build/source/src/drivers-i386/video/drvVGA/VGA.build/ProjectHeaders -I/build/source/src/drivers-i386/video/drvVGA/VGA.config/VGA_psdrvr.bundle/PrivateHeaders -I/build/source/src/drivers-i386/video/drvVGA/VGA.config/VGA_psdrvr.bundle/Headers -I/build/source/src/drivers-i386/video/drvVGA/VGA.build/derived_src/VGA.drvproj/VGA_psdrvr.tproj -I. -pipe        -I/build/source/src/drivers-i386/video/drvVGA/VGA.build/Headers -I/build/source/src/drivers-i386/video/drvVGA/VGA.build/PrivateHeaders -F/build/source/src/drivers-i386/video/drvVGA  -F/System/Library/PrivateFrameworks -F/System/Library/PrivateFrameworks        -c -o /build/source/src/drivers-i386/video/drvVGA/VGA.build/objects-optimized/VGA.drvproj/VGA_psdrvr.tproj/VGAPSDriver.i386.o VGAPSDriver.c
-/usr/bin/cc   -L/build/source/src/drivers-i386/video/drvVGA/VGA.build/objects-optimized/VGA.drvproj/VGA_psdrvr.tproj        -F/build/source/src/drivers-i386/video/drvVGA -L/build/source/src/drivers-i386/video/drvVGA -F/System/Library/PrivateFrameworks -F/System/Library/PrivateFrameworks      -arch i386 -o /build/source/src/drivers-i386/video/drvVGA/VGA.config/VGA_psdrvr.bundle/VGA_psdrvr    /build/source/src/drivers-i386/video/drvVGA/VGA.build/objects-optimized/VGA.drvproj/VGA_psdrvr.tproj/VGAPSDriver.o                    
+/usr/lib/mergeInfo PB.project /build/source/src/CoreOS/drivers/i386/video/drvVGA/VGA.build/derived_src/VGA.drvproj/VGA_psdrvr.tproj/Java.plist -o /build/source/src/CoreOS/drivers/i386/video/drvVGA/VGA.config/VGA_psdrvr.bundle/Resources/Info-nextstep.plist
+/usr/bin/cc -arch i386 -O  -Wmost -precomp-trustfile /build/source/src/CoreOS/drivers/i386/video/drvVGA/VGA.build/derived_src/TrustedPrecomps.txt -g  -fno-common -I/build/source/src/CoreOS/drivers/i386/video/drvVGA/VGA.build/ProjectHeaders -I/build/source/src/CoreOS/drivers/i386/video/drvVGA/VGA.config/VGA_psdrvr.bundle/PrivateHeaders -I/build/source/src/CoreOS/drivers/i386/video/drvVGA/VGA.config/VGA_psdrvr.bundle/Headers -I/build/source/src/CoreOS/drivers/i386/video/drvVGA/VGA.build/derived_src/VGA.drvproj/VGA_psdrvr.tproj -I. -pipe        -I/build/source/src/CoreOS/drivers/i386/video/drvVGA/VGA.build/Headers -I/build/source/src/CoreOS/drivers/i386/video/drvVGA/VGA.build/PrivateHeaders -F/build/source/src/CoreOS/drivers/i386/video/drvVGA  -F/System/Library/PrivateFrameworks -F/System/Library/PrivateFrameworks        -c -o /build/source/src/CoreOS/drivers/i386/video/drvVGA/VGA.build/objects-optimized/VGA.drvproj/VGA_psdrvr.tproj/VGAPSDriver.i386.o VGAPSDriver.c
+/usr/bin/cc   -L/build/source/src/CoreOS/drivers/i386/video/drvVGA/VGA.build/objects-optimized/VGA.drvproj/VGA_psdrvr.tproj        -F/build/source/src/CoreOS/drivers/i386/video/drvVGA -L/build/source/src/CoreOS/drivers/i386/video/drvVGA -F/System/Library/PrivateFrameworks -F/System/Library/PrivateFrameworks      -arch i386 -o /build/source/src/CoreOS/drivers/i386/video/drvVGA/VGA.config/VGA_psdrvr.bundle/VGA_psdrvr    /build/source/src/CoreOS/drivers/i386/video/drvVGA/VGA.build/objects-optimized/VGA.drvproj/VGA_psdrvr.tproj/VGAPSDriver.o                    
 /usr/bin/ld: warning /lib/crt1.o cputype (18, architecture ppc) does not match cputype (7) for specified -arch flag: i386 (file not loaded)
 /usr/bin/ld: warning /usr/lib/libcc_dynamic.a archive's cputype (18, architecture ppc) does not match cputype (7) for specified -arch flag: i386 (can't load from it)
 /usr/bin/ld: warning /System/Library/Frameworks/System.framework/System cputype (18, architecture ppc) does not match cputype (7) for specified -arch flag: i386 (file not loaded)
 Copying English resources...
-fastcp: '/build/source/src/drivers-i386/video/drvVGA/VGA.drvproj/English.lproj/SVGABIOS.strings' does not exist.
+fastcp: '/build/source/src/CoreOS/drivers/i386/video/drvVGA/VGA.drvproj/English.lproj/SVGABIOS.strings' does not exist.
 gnumake[1]: *** [English.copy-local-resources] Error 255
 gnumake: *** [all@VGA.drvproj] Error 2
 make exit=2 for VGA
-/build/source/src/drivers-i386/video/drvVGA/VGA.config/VGA_reloc: Mach-O preload executable i386
-/build/source/src/drivers-i386/video/drvVGA/VGA.config/VGA_psdrvr.bundle/VGA_psdrvr: Mach-O executable i386
+/build/source/src/CoreOS/drivers/i386/video/drvVGA/VGA.config/VGA_reloc: Mach-O preload executable i386
+/build/source/src/CoreOS/drivers/i386/video/drvVGA/VGA.config/VGA_psdrvr.bundle/VGA_psdrvr: Mach-O executable i386
 staged /build/out/i386/drvVGA/VGA.config
 total 350
 drwxr-xr-x  3 root  wheel    1024 Nov 28 05:22 .
@@ -132,7 +132,7 @@ packaging rule later in the makefile exits nonzero."
 ### The one remaining (expected) error after both repairs
 
 ```
-fastcp: '/build/source/src/drivers-i386/video/drvVGA/VGA.drvproj/English.lproj/SVGABIOS.strings' does not exist.
+fastcp: '/build/source/src/CoreOS/drivers/i386/video/drvVGA/VGA.drvproj/English.lproj/SVGABIOS.strings' does not exist.
 gnumake[1]: *** [English.copy-local-resources] Error 255
 ```
 
@@ -164,7 +164,7 @@ Once that was fixed, `VGA.lksproj` compiled and linked (`VGA_reloc`
 produced), but the aggregate build then failed in the *second* subproject,
 `VGA_psdrvr.tproj`, because none of `VGA.drvproj`, `VGA.drvproj/VGA.lksproj`,
 or `VGA.drvproj/VGA_psdrvr.tproj` had a `PB.project` file — every other
-driver under `src/drivers-i386` has one at each of these levels.
+driver under `src/CoreOS/drivers/i386` has one at each of these levels.
 `bundle.make` needs `VGA_psdrvr.tproj/PB.project` to generate
 `Info-nextstep.plist`. Fixed in commit `11637fc1` by adding the three
 missing `PB.project` files, modeled on `drvPCIBus`'s (`.drvproj`/`.lksproj`)

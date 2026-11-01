@@ -6,7 +6,7 @@ Assessed 2026-10-18 from reading the code and one probe boot. Nothing is built y
 ## Where it stands
 
 Nothing in the tree supports PReP. The ppc platform driver,
-[identify_machine.c](../../../src/drivers-ppc/bus/drvPExpert/powermac/identify_machine.c),
+[identify_machine.c](../../../src/CoreOS/drivers/ppc/bus/drvPExpert/powermac/identify_machine.c),
 handles a fixed list of Power Mac models (Grand Central, Heathrow, OHare and
 KeyLargo chips) and panics on any other machine.
 
@@ -41,7 +41,7 @@ Each stage gets visibly further than the one before.
 ### 1. Firmware to booter
 
 BootX expects Mac Open Firmware, so it is out. The older pre-BootX loader in
-`src/boot-2/ppc/SecondaryLoader` is the better start: it can be linked as ELF
+`src/CoreOS/boot-2/ppc/SecondaryLoader` is the better start: it can be linked as ELF
 (`ElfSecondaryLoader.ld`), which OpenBIOS can load.
 
 Open questions:
@@ -71,7 +71,7 @@ isn't a classic Mac.
 
 - PCI config access through QEMU's Raven host bridge.
 - The 53C810 should be covered by the existing
-  `src/drivers-ppc/scsi/drvPPCSym8xx`, once its interrupts are routed through
+  `src/CoreOS/drivers/ppc/scsi/drvPPCSym8xx`, once its interrupts are routed through
   the 8259.
 
 ### 4. Console and network, which get multi-user

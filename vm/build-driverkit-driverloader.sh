@@ -1,5 +1,5 @@
 #!/bin/sh
-# Universal rbuild of driverkit-3 (with driverLoader) in the private tree
+# Universal rbuild of CoreOS/driverkit-3 (with driverLoader) in the private tree
 # /build/dlr, then split driverLoader into thin slices for binrecon.
 # Rhapsody's /bin/sh is a 1999 Bourne shell: keep it plain.
 
@@ -13,9 +13,9 @@ if [ -d $B/repo ]; then REPO=$B/repo; fi
 
 rm -rf $B/out $B/x $B/driverLoader.i386 $B/driverLoader.ppc
 mkdir -p $B/out $B/state $B/x
-echo "======== rbuild buildpackage driverkit-3 (universal, repo $REPO) ========"
+echo "======== rbuild buildpackage CoreOS/driverkit-3 (universal, repo $REPO) ========"
 rbuild buildpackage --state $B/state --toolchain $TC \
-	$B/src/driverkit-3 $REPO $B/out > $B/rbuild.log 2>&1
+	$B/src/CoreOS/driverkit-3 $REPO $B/out > $B/rbuild.log 2>&1
 rc=$?
 tail -40 $B/rbuild.log
 echo "RBUILD_RC=$rc"

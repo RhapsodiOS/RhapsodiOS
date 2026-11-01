@@ -3,7 +3,7 @@
 Everything on disk is big-endian.  Layouts follow Inside Macintosh: Files
 (HFS) and Apple Technical Note TN1150 (HFS Plus).  Name ordering uses the
 kernel's own tables, parsed out of UCStringCompareData.h, so these tools and
-kernel-7 cannot disagree about which key sorts first.
+CoreOS/kernel-7 cannot disagree about which key sorts first.
 """
 
 import os
@@ -12,7 +12,7 @@ import struct
 
 REPO = os.environ.get("HFSIMG_REPO") or os.path.abspath(
     os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
-TABLES = os.path.join(REPO, "src", "kernel-7", "bsd", "hfs", "hfscommon",
+TABLES = os.path.join(REPO, "src", "CoreOS", "kernel-7", "bsd", "hfs", "hfscommon",
                       "Unicode", "UCStringCompareData.h")
 
 HFS_SIG = 0x4244            # 'BD'

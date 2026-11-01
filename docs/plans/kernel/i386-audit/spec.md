@@ -7,10 +7,10 @@ Companion plan: [plan.md](plan.md)
 
 ## Scope
 
-`src/kernel-7` machine-dependent i386 code: `machdep/i386`, `mach/i386`,
+`src/CoreOS/kernel-7` machine-dependent i386 code: `machdep/i386`, `mach/i386`,
 `bsd/i386`, `bsd/dev/i386`, `kernserv/i386`, the i386 idle path in
-`kern/sched_prim.c`, the PCI bus driver in `src/drivers-i386/bus/drvPCIBus`,
-and the memory-sizing path in `src/boot-2/i386`.
+`kern/sched_prim.c`, the PCI bus driver in `src/CoreOS/drivers/i386/bus/drvPCIBus`,
+and the memory-sizing path in `src/CoreOS/boot-2/i386`.
 
 The question asked: what in this 1999 Darwin 0.3 kernel breaks, or is
 needlessly slow, on hardware and hypervisors from the last fifteen years
@@ -90,7 +90,7 @@ compiler may delete it entirely.
 
 ### 1.4 CR4 is never written — Confirmed
 
-No `cr4` access exists in `src/kernel-7` or `src/boot-2` (the only hits are
+No `cr4` access exists in `src/CoreOS/kernel-7` or `src/CoreOS/boot-2` (the only hits are
 PPC headers and NASM opcode tables). The kernel runs with whatever CR4 the
 firmware left.
 

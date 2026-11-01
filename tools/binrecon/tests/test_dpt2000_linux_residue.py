@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 
 LKS = Path(
-    "src/drivers-i386/scsi/drvDPT2000/DPT2000.drvproj/DPT2000.lksproj"
+    "src/CoreOS/drivers/i386/scsi/drvDPT2000/DPT2000.drvproj/DPT2000.lksproj"
 )
 
 FORBIDDEN = (

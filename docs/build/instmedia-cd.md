@@ -14,10 +14,10 @@ carries the same 66 apks as the disk-form media
 ## Build it
 
 ```bash
-cd src/bootefi-1 && PATH="/c/Program Files/LLVM/bin:$PATH" make CCTOOLS=../Developer/Commands/cctools-2/include
+cd src/CoreOS/bootefi-1 && PATH="/c/Program Files/LLVM/bin:$PATH" make CCTOOLS=../Developer/Commands/cctools-2/include
 cd ../../vm
 python -m instmedia.collect work/p6-repo --image work/rhap-i386-bootstrapped.img --add work/p2-apks --add work/p4-apks --add work/p5-apks ...
-python -m instmedia.build --repo work/p6-repo --efi ../src/bootefi-1/BUILD/BOOTIA32.EFI --form cd --out work/p6-gate/installer.iso
+python -m instmedia.build --repo work/p6-repo --efi ../src/CoreOS/bootefi-1/BUILD/BOOTIA32.EFI --form cd --out work/p6-gate/installer.iso
 ```
 
 `collect` takes phase 5's `--add` directories, plus the directories holding

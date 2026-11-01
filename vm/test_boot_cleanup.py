@@ -1,9 +1,9 @@
-"""The floppy and DOS boot code is gone from boot-2 and cdis-3 (phase 6)."""
+"""The floppy and DOS boot code is gone from CoreOS/boot-2 and cdis-3 (phase 6)."""
 import os
 import unittest
 
 SRC = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "src")
-I386 = os.path.join(SRC, "boot-2", "i386")
+I386 = os.path.join(SRC, "CoreOS/boot-2", "i386")
 CDIS = os.path.join(SRC, "cdis-3")
 
 REMOVED = [
@@ -47,7 +47,7 @@ class TestBootCleanup(unittest.TestCase):
             self.assertFalse(word in drivers, word)
 
     def test_bootefi_uses_none_of_the_removed_driver_loading(self):
-        efi = os.path.join(SRC, "bootefi-1")
+        efi = os.path.join(SRC, "CoreOS/bootefi-1")
         for root, dirs, files in os.walk(efi):
             for name in files:
                 if not name.endswith((".c", ".h", "Makefile")):

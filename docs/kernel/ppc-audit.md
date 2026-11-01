@@ -1,9 +1,9 @@
 # PowerPC kernel and platform expert audit
 
-Scope: `src/kernel-7/machdep/ppc`, `src/kernel-7/driverkit/ppc`,
-`src/kernel-7/kernserv/ppc`, `src/kernel-7/mach/ppc`, the ppc paths in
+Scope: `src/CoreOS/kernel-7/machdep/ppc`, `src/CoreOS/kernel-7/driverkit/ppc`,
+`src/CoreOS/kernel-7/kernserv/ppc`, `src/CoreOS/kernel-7/mach/ppc`, the ppc paths in
 `kern/`, `vm/` and `bsd/dev/ev.c` that the machdep code calls, and every
-file under `src/drivers-ppc/bus/drvPExpert/powermac`. Every finding below
+file under `src/CoreOS/drivers/ppc/bus/drvPExpert/powermac`. Every finding below
 was checked against the cited lines. Items that came from a second
 reviewer and were not re-traced end-to-end are marked *(not independently
 re-traced)*.

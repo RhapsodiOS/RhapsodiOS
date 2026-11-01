@@ -4,7 +4,7 @@
   Sync local src/ to the Rhapsody guest build tree (RemoteRoot/src) via cpio over SSH.
 .EXAMPLE
   powershell -File vm\sync-src.ps1 -All
-  powershell -File vm\sync-src.ps1 -Path drivers-i386/bus/drvPCMCIABus
+  powershell -File vm\sync-src.ps1 -Path CoreOS/drivers/i386/bus/drvPCMCIABus
 .NOTES
   The PPC Rhapsody sshd only speaks ancient crypto. This script passes the same
   OpenSSH -o options documented in "SSH CONNECTION.md".

@@ -5,7 +5,7 @@
 
 export PATH=/build/bin:/usr/local/bin:/build/tools/usr/local/bin:/bin:/usr/bin
 OUT=/build/out/i386
-INPUT=/build/source/src/drivers-i386/input
+INPUT=/build/source/src/CoreOS/drivers/i386/input
 mkdir -p "$OUT"
 
 # Live System.framework on this guest lacks DriverKit private headers.

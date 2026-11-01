@@ -95,7 +95,7 @@ bounded native guest acceptance evidence.
   rest of the root in sorted order, with member names that carry no `./`,
   which is the layout apk-tools 2.0 reads.
 - `makedepends_i386` / `makedepends_ppc` add build dependencies only when the
-  build includes that CPU (a universal build takes both), e.g. kernel-7's
+  build includes that CPU (a universal build takes both), e.g. CoreOS/kernel-7's
   `makedepends_ppc = drvpexpert`.
 - Depends at runtime on `pax`, `gzip`, `apk`, `make`, `chroot`, `rsync`,
   `mkdir`, `cp`, `rm` on `PATH`, and for vendored projects on `mv`, `rmdir`

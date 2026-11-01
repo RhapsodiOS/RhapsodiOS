@@ -10,13 +10,13 @@ fi
 # Strip comments/blank lines to a three-column stream.
 flat() { awk '$1=="dir" { print $1, $2, $3 }' "$1"; }
 start=`flat "$runtime" | awk 'NR==1 { print $2, $3; exit }'`
-test "$start" = "Csu-1 all" || {
-    echo "bootstrap-runtime-manifest: must start at Csu-1 all" >&2
+test "$start" = "CoreOS/Csu-1 all" || {
+    echo "bootstrap-runtime-manifest: must start at CoreOS/Csu-1 all" >&2
     exit 1
 }
 end=`flat "$runtime" | tail -1 | awk '{ print $2, $3 }'`
-test "$end" = "Libsystem-2 all" || {
-    echo "bootstrap-runtime-manifest: must end at Libsystem-2 all" >&2
+test "$end" = "CoreOS/Libsystem-2 all" || {
+    echo "bootstrap-runtime-manifest: must end at CoreOS/Libsystem-2 all" >&2
     exit 1
 }
 awk -v runtime="$runtime" '
@@ -32,7 +32,7 @@ awk -v runtime="$runtime" '
     $1=="dir" { f[++fc] = $1 " " $2 " " $3 }
     END {
         for (i = 1; i <= fc; i++) if (f[i] == r[1]) { s = i; break }
-        if (!s) { print "bootstrap-runtime-manifest: Csu-1 all missing from BootstrapManifest" > "/dev/stderr"; exit 1 }
+        if (!s) { print "bootstrap-runtime-manifest: CoreOS/Csu-1 all missing from BootstrapManifest" > "/dev/stderr"; exit 1 }
         for (j = 1; j <= rc; j++) {
             if (f[s + j - 1] != r[j]) {
                 print "bootstrap-runtime-manifest: not a contiguous subsequence at " r[j] > "/dev/stderr"

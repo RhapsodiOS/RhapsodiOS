@@ -480,7 +480,7 @@ class TestDriverInstall(unittest.TestCase):
 
 def _expected_frags(size, g):
     """Total fragments fsck expects ckinode to count for a file this size,
-    following FFS's blksize rule (src/kernel-7/bsd/ufs/ffs/fs.h:498): every
+    following FFS's blksize rule (src/CoreOS/kernel-7/bsd/ufs/ffs/fs.h:498): every
     block but the last is a full fs_frag-sized block, and the last is too
     once its logical block number (nblocks - 1) is >= NDADDR; only a last
     block still among the direct pointers may be a shorter run covering
@@ -506,7 +506,7 @@ class TestDiBlocksAccounting(unittest.TestCase):
     """Regression test for bug 1: di_blocks was written as total_frags *
     (fsize // 512), i.e. a count of 512-byte sectors.  fsck instead expects
     di_blocks in units of `fs_fsize / NSPF(fs)` bytes (see
-    src/kernel-7/bsd/ufs/ffs/fs.h and src/Commands/diskdev_cmds/
+    src/CoreOS/kernel-7/bsd/ufs/ffs/fs.h and src/Commands/diskdev_cmds/
     fsck.tproj/setup.c:readsb, which derives dev_bsize from fs_fsize and
     NSPF(fs) identically) -- i.e. `total_frags * g.nspf` units.  On
     golden.img g.nspf is 1 (this UFS variant counts NSPF in 1024-byte units,
@@ -564,7 +564,7 @@ class TestDiBlocksAccounting(unittest.TestCase):
 
 
 class TestLastBlockFollowsBlksize(unittest.TestCase):
-    """FFS's blksize rule (src/kernel-7/bsd/ufs/ffs/fs.h:498): a block is a
+    """FFS's blksize rule (src/CoreOS/kernel-7/bsd/ufs/ffs/fs.h:498): a block is a
     full fs_bsize block once its logical block number is >= NDADDR or the
     file extends past it; only a last block among the direct pointers may
     be a shorter run of fragments.  ufs_alloc used to size every file's
@@ -843,7 +843,7 @@ DIRBLKSIZ = ufs_alloc.DIRBLKSIZ
 
 
 def _dirsiz(namlen):
-    """src/kernel-7/bsd/ufs/ufs/dir.h's DIRSIZ macro: header plus name PLUS
+    """src/CoreOS/kernel-7/bsd/ufs/ufs/dir.h's DIRSIZ macro: header plus name PLUS
     its NUL terminator (namlen + 1), rounded up to 4."""
     return 8 + ((namlen + 1 + 3) & ~3)
 

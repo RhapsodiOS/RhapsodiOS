@@ -8,7 +8,7 @@ licensed (The DragonFly Project); every upstream notice is kept.
 
 Per-file SHA256 hashes of the imported bytes are in `ORIGIN`
 (`sha256sum -c ORIGIN`). Local changes are recorded in later commits and in
-`src/kernel-7/bsd/hammer/PORTING.md`.
+`src/CoreOS/kernel-7/bsd/hammer/PORTING.md`.
 
-The kernel side and its provenance are in `src/kernel-7/bsd/hammer/ORIGIN`.
+The kernel side and its provenance are in `src/CoreOS/kernel-7/bsd/hammer/ORIGIN`.
 Design: `docs/superpowers/specs/2026-10-17-hammer-design.md`.

@@ -11,7 +11,7 @@
 
 #include <limits.h>
 #include <objc/objc-class.h>
-#include "../../Libc-1/threads.subproj/cthread_internals.h"
+#include "../../CoreOS/Libc-1/threads.subproj/cthread_internals.h"
 
 #import "NSProcessInfoPrivate.h"
 

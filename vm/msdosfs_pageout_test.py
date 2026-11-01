@@ -12,7 +12,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--cc", default="cc")
     args = parser.parse_args()
-    source = (ROOT / "src/kernel-7/bsd/msdosfs/msdosfs_vnops.c").read_text()
+    source = (ROOT / "src/CoreOS/kernel-7/bsd/msdosfs/msdosfs_vnops.c").read_text()
     body = re.search(r"static int\nmsdosfs_pageout\(.*?\n\}", source, re.S).group()
     template = Path(__file__).with_suffix(".c").read_text()
     start = source.index("\t\tif (uio->uio_offset + n > dep->de_FileSize) {")

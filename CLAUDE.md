@@ -6,7 +6,7 @@ This file provides guidance to Claude when working with code in this repository.
 
 RhapsodiOS is an open-source reimplementation of Apple's Rhapsody (which became Mac OS X Server 1.0–1.2v3), forked from Apple's Darwin 0.3 release (summer 1999). It targets **ppc** and **i386** and builds best on a case-sensitive filesystem, historically on a Rhapsody DR2 / Mac OS X Server 1.x guest.
 
-All OS project sources live under `src/` — each is a self-contained Apple/NeXT project (kernel, libc, commands, drivers, etc.) with its own `Makefile.preamble` / `pb_makefiles` framework.
+All OS project sources live under `src/` — each is a self-contained Apple/NeXT project (kernel, libc, commands, drivers, etc.) with its own `Makefile.preamble` / `pb_makefiles` framework. The core kernel, boot, DriverKit, machkit, and C/system library projects live under `src/CoreOS/` (see issue 21), and drivers live under `src/CoreOS/drivers/{generic,i386,ppc}`.
 
 ## 1. Think Before Coding
 

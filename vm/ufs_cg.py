@@ -108,7 +108,7 @@ def recompute_cluster_maps(g, blksfree, nclusterblks):
     One bit per block, set when every fragment of the block is free.  The
     histogram counts maximal runs of free blocks by length, with everything at
     or above fs_contigsumsize accumulated in the last bucket; see
-    ffs_clusteracct in src/kernel-7/bsd/ufs/ffs/ffs_alloc.c:1810.
+    ffs_clusteracct in src/CoreOS/kernel-7/bsd/ufs/ffs/ffs_alloc.c:1810.
     """
     clustersfree = bytearray((g.fpg // g.frag + 7) // 8)
     for b in range(nclusterblks):

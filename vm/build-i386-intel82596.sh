@@ -5,7 +5,7 @@ set -u
 PATH=/build/tools/bin:/usr/bin:/bin:/usr/sbin:/sbin
 export PATH
 
-SRC=/build/codex-drvintel82596/src/drivers-i386/network/drvIntel82596
+SRC=/build/codex-drvintel82596/src/CoreOS/drivers/i386/network/drvIntel82596
 DST=/build/out/drvIntel82596-rbuild
 STATE=/build/state
 TOOLCHAIN=/tmp/drvintel82596-gcc-darwin-i386.conf
@@ -28,7 +28,7 @@ sed 's|^path=.*|path=/build/tools/bin:/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/b
 echo "======== drivertools dependency via rbuild (i386) $(date) ========"
 mkdir -p "$DRIVERTOOLS_DST" || exit 1
 rbuild buildpackage --state "$STATE" --toolchain "$TOOLCHAIN" --arch i386 --dir --target all \
-    /build/src/driverTools-1 /build/repo "$DRIVERTOOLS_DST" > "$DRIVERTOOLS_LOG" 2>&1
+    /build/src/CoreOS/driverTools-1 /build/repo "$DRIVERTOOLS_DST" > "$DRIVERTOOLS_LOG" 2>&1
 rc=$?
 echo "DRIVERTOOLS_BUILD_RC=$rc"
 if [ "$rc" -ne 0 ]; then

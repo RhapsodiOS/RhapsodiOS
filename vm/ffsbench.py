@@ -1062,7 +1062,7 @@ def _wsl_path(path):
     return "/mnt/%s%s" % (path[0].lower(), path[2:]) if path[1:2] == ":" else path
 
 
-FS_SRC_DIRS = ("src/ext2fs-1", "src/hfs-1", "src/msdosfs-1", "src/kernel-7/bsd",
+FS_SRC_DIRS = ("src/ext2fs-1", "src/hfs-1", "src/msdosfs-1", "src/CoreOS/kernel-7/bsd",
                "src/Commands/diskdev_cmds/disklib")
 
 

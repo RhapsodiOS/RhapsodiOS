@@ -1,5 +1,5 @@
 #!/bin/sh
-# Stage-1 dependency chain toward kernel-7 (chroot buildpackage).
+# Stage-1 dependency chain toward CoreOS/kernel-7 (chroot buildpackage).
 # Log: /tmp/stage1-kernel.log  Pid: /tmp/stage1-kernel.pid
 set -e
 export PATH=/build/bin:/usr/bin:/bin:/usr/local/bin:/sbin:/usr/sbin
@@ -81,8 +81,8 @@ seed_stub() {
   fi
 
   # Order derived from Build-Depends of kernel + its transitive deps.
-  build_one machkit-1 headers || exit 1
-  build_one machkit-1 all || exit 1
+  build_one CoreOS/machkit-1 headers || exit 1
+  build_one CoreOS/machkit-1 all || exit 1
 
   build_one yacc-1 all || exit 1
   build_one perl-1 all || exit 1
@@ -90,24 +90,24 @@ seed_stub() {
   build_one Commands/adv_cmds all || exit 1
 
   seed_stub driverkit-hdrs 0-stub
-  build_one driverkit-3 headers || exit 1
+  build_one CoreOS/driverkit-3 headers || exit 1
   rm -f "$REPO"/driverkit-hdrs-0-stub.apk
   # Real hdrs apk replaces stub once produced; rebuild binary
-  build_one driverkit-3 all || exit 1
+  build_one CoreOS/driverkit-3 all || exit 1
 
-  build_one driverTools-1 all || exit 1
+  build_one CoreOS/driverTools-1 all || exit 1
 
   seed_stub kernload-hdrs 0-stub
-  build_one kernload-1 headers || exit 1
+  build_one CoreOS/kernload-1 headers || exit 1
   rm -f "$REPO"/kernload-hdrs-0-stub.apk
-  build_one kernload-1 all || exit 1
+  build_one CoreOS/kernload-1 all || exit 1
 
-  build_one drivers-ppc/bus/drvPExpert all || exit 1
+  build_one CoreOS/drivers/ppc/bus/drvPExpert all || exit 1
 
   build_one objc-1 all || exit 1
   build_one gnudiff-1 all || exit 1
 
-  build_one kernel-7 all || exit 1
+  build_one CoreOS/kernel-7 all || exit 1
 
   echo "stage1 COMPLETE $(date)"
 } >> "$LOG" 2>&1

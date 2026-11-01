@@ -39,7 +39,7 @@ The FreeBSD and NetBSD files were fetched one by one from their GitHub mirrors,
 because a Windows checkout fails on reserved names (`com1.c`) and on `:` in paths.
 NetBSD 2.0 has no `vfs_cluster.c` (it uses genfs/UBC) and no dirhash.
 
-**Line numbers.** "Ours" is `src/kernel-7` at `478344e34`. Reference files use
+**Line numbers.** "Ours" is `src/CoreOS/kernel-7` at `478344e34`. Reference files use
 `sys/...` paths. FreeBSD is FB, NetBSD is NB, xnu is X.
 
 **Classes.**

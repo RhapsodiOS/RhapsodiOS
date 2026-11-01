@@ -75,12 +75,12 @@ int kernel_core_packages(const char *arch, strlist *out) {
     char *pexpert;
 
     if (!kernel_arch_safe(arch) || out == 0) return -1;
-    strlist_push(out, "driverkit-3");
-    strlist_push(out, "driverTools-1");
-    strlist_push(out, "kernload-1");
-    pexpert = str_cats("drivers-", arch, "/bus/drvPExpert", (char *)0);
+    strlist_push(out, "CoreOS/driverkit-3");
+    strlist_push(out, "CoreOS/driverTools-1");
+    strlist_push(out, "CoreOS/kernload-1");
+    pexpert = str_cats("CoreOS/drivers/", arch, "/bus/drvPExpert", (char *)0);
     strlist_push_owned(out, pexpert);
-    strlist_push(out, "kernel-7");
+    strlist_push(out, "CoreOS/kernel-7");
     return 0;
 }
 
@@ -93,7 +93,7 @@ int kernel_scan_drivers(const char *srcdir, const char *arch, strlist *out) {
     if (!kernel_arch_safe(arch) || srcdir == 0 || out == 0) return -1;
     if (!is_dir(srcdir)) return -1;
 
-    arch_dir_name = str_cats("drivers-", arch, (char *)0);
+    arch_dir_name = str_cats("CoreOS/drivers/", arch, (char *)0);
     arch_root = path_join(srcdir, arch_dir_name);
     free(arch_dir_name);
 
@@ -107,7 +107,7 @@ int kernel_scan_drivers(const char *srcdir, const char *arch, strlist *out) {
 
             if (strcmp(cat->d_name, ".") == 0 || strcmp(cat->d_name, "..") == 0)
                 continue;
-            cat_rel = str_cats("drivers-", arch, "/", cat->d_name, (char *)0);
+            cat_rel = str_cats("CoreOS/drivers/", arch, "/", cat->d_name, (char *)0);
             cat_full = path_join(srcdir, cat_rel);
             if (!is_dir(cat_full)) {
                 free(cat_rel);
@@ -139,10 +139,10 @@ int kernel_scan_drivers(const char *srcdir, const char *arch, strlist *out) {
     }
     free(arch_root);
 
-    if (has_pkginfo(srcdir, "drvBPF")) strlist_push(out, "drvBPF");
-    if (has_pkginfo(srcdir, "drvPortServer")) strlist_push(out, "drvPortServer");
-    if (has_pkginfo(srcdir, "drvSCSIServer")) strlist_push(out, "drvSCSIServer");
-    if (has_pkginfo(srcdir, "drvSCSITape")) strlist_push(out, "drvSCSITape");
+    if (has_pkginfo(srcdir, "CoreOS/drivers/generic/network/drvBPF")) strlist_push(out, "CoreOS/drivers/generic/network/drvBPF");
+    if (has_pkginfo(srcdir, "CoreOS/drivers/generic/serial/drvPortServer")) strlist_push(out, "CoreOS/drivers/generic/serial/drvPortServer");
+    if (has_pkginfo(srcdir, "CoreOS/drivers/generic/scsi/drvSCSIServer")) strlist_push(out, "CoreOS/drivers/generic/scsi/drvSCSIServer");
+    if (has_pkginfo(srcdir, "CoreOS/drivers/generic/scsi/drvSCSITape")) strlist_push(out, "CoreOS/drivers/generic/scsi/drvSCSITape");
     strlist_sort_unique(out);
     return 0;
 }

@@ -209,7 +209,7 @@ powershell -NoProfile -File vm\build-src.ps1 -All -Fresh
 ```
 
 The persistent log proves the original defect is fixed: rbuild scanned and
-rsynced `/build/src/CoreOSMakefiles-1`, not `/var/root/CoreOSMakefiles-1`.
+rsynced `/build/src/CoreOS/CoreOSMakefiles-1`, not `/var/root/CoreOSMakefiles-1`.
 Both `installhdrs` and `install` completed successfully using the configured
 sysroot flags. The run then stopped before producing the first APK.
 

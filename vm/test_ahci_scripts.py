@@ -54,10 +54,10 @@ class AHCIScriptTests(unittest.TestCase):
             log = td / "make.log"
             fake_make = td / "gnumake"
             for rel in (
-                "src/kernel-7/conf",
-                "src/drivers-i386/ide/drvEIDE",
-                "src/drivers-i386/ide/drvAHCI",
-                "src/drivers-i386/ide/drvAHCI/tests",
+                "src/CoreOS/kernel-7/conf",
+                "src/CoreOS/drivers/i386/ide/drvEIDE",
+                "src/CoreOS/drivers/i386/ide/drvAHCI",
+                "src/CoreOS/drivers/i386/ide/drvAHCI/tests",
                 "vm",
             ):
                 (source / rel).mkdir(parents=True)

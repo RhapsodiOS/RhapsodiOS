@@ -19,7 +19,7 @@ echo.
 
 rem RTC must be strictly after filesystem time (fs_time epoch 894585442 =
 rem 1998-05-07T23:57:22Z) and within 2 days of it, or inittodr() in
-rem src/kernel-7/bsd/kern/kern_time.c prints a clock warning at boot.
+rem src/CoreOS/kernel-7/bsd/kern/kern_time.c prints a clock warning at boot.
 rem 1998-05-08T12:00:00 is 12 hours after fs_time, staying inside that
 rem window while tolerating up to 12 hours of negative timezone skew in
 rem how QEMU interprets the RTC base. Keep this in sync with RTC_BASE in

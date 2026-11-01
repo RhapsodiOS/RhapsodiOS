@@ -473,7 +473,7 @@ def test_fs_src_tar_has_the_tool_sources_and_no_e2fsprogs():
     names = tarfile.open(fileobj=io.BytesIO(fb.fs_src_tar())).getnames()
     assert "src/msdosfs-1/msdos_newfs/newfs_msdos.c" in names
     assert "src/hfs-1/hfs_newfs/newfs_hfs.c" in names
-    assert "src/kernel-7/bsd/dev/disk.h" in names
+    assert "src/CoreOS/kernel-7/bsd/dev/disk.h" in names
     assert not any(n.endswith("e2fsprogs-1.35.tar.gz") for n in names)
 
 

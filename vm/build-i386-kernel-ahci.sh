@@ -55,9 +55,9 @@ install_dir=$install_parent/$install_name
 expected_install=$source_root/vm/install
 [ "$install_dir" = "$expected_install" ] ||
     die "staging directory must be exactly $expected_install"
-kernel_dir=$source_root/src/kernel-7
-eide_dir=$source_root/src/drivers-i386/ide/drvEIDE
-ahci_dir=$source_root/src/drivers-i386/ide/drvAHCI
+kernel_dir=$source_root/src/CoreOS/kernel-7
+eide_dir=$source_root/src/CoreOS/drivers/i386/ide/drvEIDE
+ahci_dir=$source_root/src/CoreOS/drivers/i386/ide/drvAHCI
 tests_dir=$ahci_dir/tests
 
 command -v "$make_cmd" >/dev/null 2>&1 ||

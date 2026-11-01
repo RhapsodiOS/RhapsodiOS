@@ -41,5 +41,5 @@ ledger.json.lock
 vm/firmware/
 
 # bootefi-1 build output: object files and the linked BOOTIA32.EFI, not source
-src/bootefi-1/BUILD/
-src/bootefi-1/tests/BUILD/
+src/CoreOS/bootefi-1/BUILD/
+src/CoreOS/bootefi-1/tests/BUILD/

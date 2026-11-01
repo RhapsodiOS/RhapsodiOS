@@ -6,7 +6,7 @@ mounted on hd0a.
 setconf() prints "rootdev 300, howto ..." once it has chosen hd0a
 (machdep/i386/swapgeneric.m); the failure lines are the kernel's own
 (bsd/kern/init_main.c, subr_prf.c, swapgeneric.m) and check_label's
-(driverkit-3/libDriver/label_subr.c).  A clean log is necessary, not
+(CoreOS/driverkit-3/libDriver/label_subr.c).  A clean log is necessary, not
 sufficient: pair it with a screenshot showing userland.
 """
 import re

@@ -1,9 +1,9 @@
 #!/bin/sh
-# Run after syncing drivers-i386/network/drvIntel82595 to the build guest.
+# Run after syncing CoreOS/drivers/i386/network/drvIntel82595 to the build guest.
 set -eu
 PATH=/build/tools/bin:/usr/bin:/bin:/usr/sbin:/sbin
 export PATH
-SRC=${SRC:-/build/src/drivers-i386/network/drvIntel82595}
+SRC=${SRC:-/build/src/CoreOS/drivers/i386/network/drvIntel82595}
 DST=${DST:-/build/out/drvIntel82595-rbuild}
 sh "$SRC/reconstruction/tests/verify.sh"
 mkdir -p "$DST"

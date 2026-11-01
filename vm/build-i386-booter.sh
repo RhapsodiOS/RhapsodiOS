@@ -1,13 +1,13 @@
 #!/bin/sh
-# Build the i386 booter (boot-2) with rbuild and stage boot2 as /build/out/i386/boot.
+# Build the i386 booter (CoreOS/boot-2) with rbuild and stage boot2 as /build/out/i386/boot.
 PATH=/build/tools/bin:/usr/bin:/bin:/usr/sbin:/sbin
 export PATH
 DST=/build/out/booter-rbuild
 rm -rf "$DST"; mkdir -p "$DST" /build/out/i386
 
-echo "=== boot-2 via rbuild (i386) start `date` ==="
+echo "=== CoreOS/boot-2 via rbuild (i386) start `date` ==="
 rbuild buildpackage --state /build/state --arch i386 --dir --target all \
-    /build/src/boot-2 /build/repo "$DST"
+    /build/src/CoreOS/boot-2 /build/repo "$DST"
 echo "BOOT_RC=$?"
 
 echo "=== apk contents ==="

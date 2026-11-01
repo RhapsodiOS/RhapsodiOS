@@ -16,7 +16,7 @@ with the password chosen during the install.
 
 `sysinstall` lives in `src/cdis-3/sysinstall.tproj` and installs as
 `/System/Installation/CDIS/sysinstall`. `rc.cdrom` is now only a hook that
-runs it. `driverDetect` lives in `src/driverkit-3/driverDetect` and installs
+runs it. `driverDetect` lives in `src/CoreOS/driverkit-3/driverDetect` and installs
 as `/usr/sbin/driverDetect`, beside `driverLoader`.
 
 | Module | Job |
@@ -204,11 +204,11 @@ packaging fixes to build (`PUBLIC_HEADERS` with no install directory, and
 ## Commands
 
 ```bash
-cd src/bootefi-1 && PATH="/c/Program Files/LLVM/bin:$PATH" make CCTOOLS=../Developer/Commands/cctools-2/include
+cd src/CoreOS/bootefi-1 && PATH="/c/Program Files/LLVM/bin:$PATH" make CCTOOLS=../Developer/Commands/cctools-2/include
 cd ../../vm
 python -m instmedia.collect work/p5-repo --image work/rhap-i386-bootstrapped.img --add work/p2-apks --add work/p4-apks --add work/p5-apks
-python -m instmedia.build --repo work/p5-repo --efi ../src/bootefi-1/BUILD/BOOTIA32.EFI --out work/p5-gate/media.img
-python -m instmedia.build --repo work/p5-repo --efi ../src/bootefi-1/BUILD/BOOTIA32.EFI --out work/p5-gate/preinstalled.img --preinstalled
+python -m instmedia.build --repo work/p5-repo --efi ../src/CoreOS/bootefi-1/BUILD/BOOTIA32.EFI --out work/p5-gate/media.img
+python -m instmedia.build --repo work/p5-repo --efi ../src/CoreOS/bootefi-1/BUILD/BOOTIA32.EFI --out work/p5-gate/preinstalled.img --preinstalled
 python -c "open('work/p5-gate/target.img','wb').truncate(2<<30)"
 ```
 

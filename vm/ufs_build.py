@@ -5,7 +5,7 @@ label and every geometry field of the superblock are copied verbatim, and only
 allocation state is regenerated.  The result is the filesystem newfs would have
 produced for this geometry, with our contents in it.
 
-Layout and macros follow src/kernel-7/bsd/ufs/ffs/fs.h.
+Layout and macros follow src/CoreOS/kernel-7/bsd/ufs/ffs/fs.h.
 """
 
 import collections
@@ -19,16 +19,16 @@ from ufs_cg import (CgTables, UfsError, bit_is_set,
 # Existing callers catch BuildError; it is the same class now.
 BuildError = ufs_cg.UfsError
 
-# src/kernel-7/bsd/ufs/ufs/dir.h:102 - Apple's UFS uses 1024, not DEV_BSIZE.
+# src/CoreOS/kernel-7/bsd/ufs/ufs/dir.h:102 - Apple's UFS uses 1024, not DEV_BSIZE.
 DIRBLKSIZ = 1024
 
-# src/kernel-7/bsd/ufs/ufs/dinode.h:89 - direct block pointers per inode.
+# src/CoreOS/kernel-7/bsd/ufs/ufs/dinode.h:89 - direct block pointers per inode.
 NDADDR = 12
 
 # The label copies sit at physical blocks 15, 30 and 45; -readLabel: probes
 # blocks 0, 15, 30 and 45 and takes the first that check_label accepts.
 # IODiskPartition reads them with the *physical* block size, always 512
-# (src/driverkit-3/libDriver/IODiskPartition.m:729-751).
+# (src/CoreOS/driverkit-3/libDriver/IODiskPartition.m:729-751).
 DEV_BSIZE = 512
 LABEL_MAGIC = b"dlV3"
 LABEL_P_SIZE = 194                  # dl_part[0].p_size
@@ -111,7 +111,7 @@ def _dinode(ino_size, db, ib, blocks, mtime, mode, uid, gid, nlink):
 def label_checksum(label):
     """The ones-complement 16-bit sum check_label recomputes for a v3 label.
 
-    checksum16 (src/driverkit-3/libDriver/label_subr.c:71-86) folds the first
+    checksum16 (src/CoreOS/driverkit-3/libDriver/label_subr.c:71-86) folds the first
     560 bytes as big-endian u16s; check_label:123-125 zeroes dl_label_blkno and
     the checksum field itself first, so both read as zero here.  The caller
     keeps the real dl_label_blkno.

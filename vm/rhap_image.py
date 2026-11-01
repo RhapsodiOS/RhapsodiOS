@@ -8,9 +8,9 @@ ppc disks (Mac OS X Server 1.x) keep the label at the start of an
 Apple_Rhapsody_UFS partition in an Apple partition map, and their UFS is
 big-endian; the byte order is taken from the superblock magic.
 
-Label layout follows src/kernel-7/bsd/dev/disk_label.h and
-src/kernel-7/bsd/sys/disktab.h; the partition-start formula is what the boot
-loader computes at src/boot-2/i386/libsaio/disk.c:381.
+Label layout follows src/CoreOS/kernel-7/bsd/dev/disk_label.h and
+src/CoreOS/kernel-7/bsd/sys/disktab.h; the partition-start formula is what the boot
+loader computes at src/CoreOS/boot-2/i386/libsaio/disk.c:381.
 """
 
 import struct
@@ -319,7 +319,7 @@ def _readlink(self, ino):
     Short targets are stored inline in the block-pointer area (a "fast
     symlink"); longer ones occupy data blocks like a regular file.  The
     comparison is strict, as in ufs_readlink
-    (src/kernel-7/bsd/ufs/ufs/ufs_vnops.c:1675, isize < mnt_maxsymlinklen).
+    (src/CoreOS/kernel-7/bsd/ufs/ufs/ufs_vnops.c:1675, isize < mnt_maxsymlinklen).
     """
     inode = self.inode(ino) if isinstance(ino, int) else ino
     if not inode.is_lnk():

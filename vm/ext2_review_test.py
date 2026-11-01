@@ -10,7 +10,7 @@ def body(path,name):
 if __name__=='__main__':
  p=argparse.ArgumentParser();p.add_argument('output',type=Path);a=p.parse_args();a.output.mkdir(exist_ok=False)
  sources={'ext2fs_alloc':'ext2fs_alloc.c','ext2fs_read':'ext2fs_readwrite.c','ext2fs_readlink':'ext2fs_vnops.c','ext2fs_chown':'ext2fs_vnops.c'}
- base='src/kernel-7/bsd/ext2fs/'
+ base='src/CoreOS/kernel-7/bsd/ext2fs/'
  text=Path(__file__).with_suffix('.c').read_text()
  for name,path in sources.items():text=text.replace('/* BODY '+name+' */',body(base+path,name))
  (a.output/'review_kernel.c').write_text(text)
@@ -27,7 +27,7 @@ if __name__=='__main__':
  owner=owner.replace("/* IMPORT CONDITION */",condition)
  (a.output/"review_owner.c").write_text(owner)
 
- mapped=(ROOT/"src/kernel-7/kern/mapfs.c").read_text()
+ mapped=(ROOT/"src/CoreOS/kernel-7/kern/mapfs.c").read_text()
  start=mapped.index("\t\terror = uiomove((caddr_t)va, (int)n, uio);")
  # Include a scoped pre-copy residual capture when present.
  prefix="\t\t{\n#if EXT2FS\n\t\tint resid = uio->uio_resid;\n#endif\n"
@@ -36,6 +36,6 @@ if __name__=='__main__':
  test=Path(__file__).with_name("ext2_mapfs_atime_test.c").read_text().replace("/* COPY BOUNDARY */",mapped[start:end])
  (a.output/"review_mapfs.c").write_text(test)
 
- paths=set(base+path for path in sources.values())|{base+"ext2fs_inode.c",base+"ext2fs_vfsops.c","src/kernel-7/kern/mapfs.c"}
+ paths=set(base+path for path in sources.values())|{base+"ext2fs_inode.c",base+"ext2fs_vfsops.c","src/CoreOS/kernel-7/kern/mapfs.c"}
  proof={"production":{path:hashlib.sha256((ROOT/path).read_bytes()).hexdigest() for path in sorted(paths)},"generated":{path.name:hashlib.sha256(path.read_bytes()).hexdigest() for path in sorted(a.output.glob("*.c"))},"qualification":"Exact extracted bodies/conditions; native ABI headers supplied at compile time. Fixtures provide I/O/mutation boundaries. MapFS extraction is the actual copy boundary, not the entire function."}
  (a.output/"source.json").write_text(json.dumps(proof,indent=2))

@@ -99,7 +99,7 @@ permission notice. Both are installed under /usr/share/licenses/ext2fs.
 Generic library archives and headers remain exclusively in the private objects.
 
 The private exported `ext2_tools/include/dev/disk.h` is an exact copy of
-`src/kernel-7/bsd/dev/disk.h` at reviewed kernel commit
+`src/CoreOS/kernel-7/bsd/dev/disk.h` at reviewed kernel commit
 `aa77c6012a7f13050ec44e426022f58750dda423`, SHA-256
 `f59b3b30e5544b177f3cd9a4a6a7f683ea6346302540fff3e425d206daa70806`.
 It is never installed. Its type layout is two u_int32_t fields at offsets

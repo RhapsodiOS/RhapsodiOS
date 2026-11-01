@@ -7,7 +7,7 @@
 # even when the call sits in `if want ...; then`, which aborts selective builds.
 export PATH=/build/bin:/usr/local/bin:/build/tools/usr/local/bin:/bin:/usr/bin
 OUT=/build/out/i386
-BUS=/build/source/src/drivers-i386/bus
+BUS=/build/source/src/CoreOS/drivers/i386/bus
 mkdir -p "$OUT"
 
 # Ensure framework PrivateHeaders symlink (from prior kernel build session).

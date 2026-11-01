@@ -5,7 +5,7 @@
 set -eu
 
 export PATH=/build/tools/bin:/build/bin:/usr/local/bin:/build/tools/usr/local/bin:/bin:/usr/bin
-SRC=/build/source/src/drivers-i386/video/drvATIMach64
+SRC=/build/source/src/CoreOS/drivers/i386/video/drvATIMach64
 PROJECT=$SRC/ATIMach64DisplayDriver.drvproj
 LKS=$PROJECT/ATIMach64DisplayDriver.lksproj
 REPO=/build/repo

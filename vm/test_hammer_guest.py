@@ -429,7 +429,7 @@ def test_lelint_reports_only_unwrapped_varargs_fields(tmp_path):
 
 
 def test_lelint_clean_over_compiled_kernel_sources():
-    root = LELINT.parent.parent/'kernel-7'
+    root = LELINT.parent.parent/'CoreOS/kernel-7'
     files = [root/l.split()[0] for l in (root/'conf/files').read_text().splitlines()
              if l.startswith('bsd/hammer/') and l.split()[0].endswith('.c')]
     assert files

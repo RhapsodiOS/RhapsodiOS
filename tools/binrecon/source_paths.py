@@ -9,7 +9,7 @@ left to the caller to handle.
 
 File granularity matters because some drivers' sources share a directory with
 other binaries' sources — `IONDRVSupport` is five files out of the seventeen
-`.m`/`.c` files in `src/driverkit-3/libDriver/ppc`.
+`.m`/`.c` files in `src/CoreOS/driverkit-3/libDriver/ppc`.
 """
 
 from pathlib import Path

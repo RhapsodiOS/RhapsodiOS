@@ -11,7 +11,7 @@ if [ -z "$DRV" ]; then
 fi
 
 ROOT="${SRCROOT:-/build/source}"
-SRC="$ROOT/src/drivers-i386/scsi/$DRV"
+SRC="$ROOT/src/CoreOS/drivers/i386/scsi/$DRV"
 STAGE="$ROOT/out/i386/$DRV"
 DST="/tmp/${DRV}-dst"
 

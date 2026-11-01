@@ -7,7 +7,7 @@
 set -e
 here=$(cd "$(dirname "$0")" && pwd)
 root=$(cd "$here/../.." && pwd)
-u=$root/src/kernel-7/bsd/hfs/hfscommon/Unicode
+u=$root/src/CoreOS/kernel-7/bsd/hfs/hfscommon/Unicode
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 

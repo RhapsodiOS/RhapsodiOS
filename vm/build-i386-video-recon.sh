@@ -20,7 +20,7 @@
 
 export PATH=/build/bin:/usr/local/bin:/build/tools/usr/local/bin:/bin:/usr/bin
 OUT=/build/out/i386
-VIDEO=/build/source/src/drivers-i386/video
+VIDEO=/build/source/src/CoreOS/drivers/i386/video
 mkdir -p "$OUT"
 
 FW=/System/Library/Frameworks/System.framework

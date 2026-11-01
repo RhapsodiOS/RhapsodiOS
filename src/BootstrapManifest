@@ -1,16 +1,16 @@
 #       Project[-Version]       Target
 #------ ----------------------- -------
 # Build frameworks and target headers before their first consumers.
-dir     CoreOSMakefiles-1       all
+dir     CoreOS/CoreOSMakefiles-1 all
 dir     Developer/Commands/pb_makefiles-1 headers
 dir     Developer/Commands/project_makefiles-1 headers
-dir     architecture-1          headers
-dir     kernel-7                headers
-dir     Libstreams-1            headers
-dir     Libc-1                  headers
+dir     CoreOS/architecture-1   headers
+dir     CoreOS/kernel-7         headers
+dir     CoreOS/Libstreams-1     headers
+dir     CoreOS/Libc-1           headers
 dir     Developer/Commands/pb_makefiles-1 all
 dir     objc4-1                 headers
-dir     driverkit-3             headers
+dir     CoreOS/driverkit-3      headers
 dir     Developer/Commands/cctools-2 headers
 
 # cc consumes public Mach interfaces exported by Libc as well as headers
@@ -31,7 +31,7 @@ dir     Developer/Commands/gnudiff-1 all
 
 # Complete remaining build frameworks and the bootstrap command set.
 dir     Developer/Commands/project_makefiles-1 all
-dir     architecture-1          all
+dir     CoreOS/architecture-1   all
 dir     Commands/bootstrap_cmds all
 
 # CRT, libc components, language/runtime objects, then System.
@@ -39,28 +39,28 @@ dir     Commands/bootstrap_cmds all
 # objc4/Libstreams objects must exist before Libsystem harvests them.
 # Fat cctools (libmacho/libdyld/librld) and cc (libcc_dynamic) must exist
 # before Libsystem's i386 System.framework link.
-dir     Csu-1                   all
-dir     Libc-1                  all
-dir     Libcompat-1             all
-dir     Libcurses-1             all
-dir     Libedit-1               all
-dir     Librpcsvc-1             headers
-dir     Libinfo-1               headers
-dir     Libinfo-1               all
-dir     Libkvm-1                all
-dir     Libm-1                  all
+dir     CoreOS/Csu-1            all
+dir     CoreOS/Libc-1           all
+dir     CoreOS/Libcompat-1      all
+dir     CoreOS/Libcurses-1      all
+dir     CoreOS/Libedit-1        all
+dir     CoreOS/Librpcsvc-1      headers
+dir     CoreOS/Libinfo-1        headers
+dir     CoreOS/Libinfo-1        all
+dir     CoreOS/Libkvm-1         all
+dir     CoreOS/Libm-1           all
 dir     objc4-1                 all
-dir     Libstreams-1            all
+dir     CoreOS/Libstreams-1     all
 dir     objc-1                  all
-dir     machkit-1               headers
-dir     machkit-1               all
-dir     driverkit-3             all
+dir     CoreOS/machkit-1        headers
+dir     CoreOS/machkit-1        all
+dir     CoreOS/driverkit-3      all
 dir     Developer/Commands/cctools-2 all
 dir     Developer/Commands/cc-1 all
-dir     Libsystem-2             all
+dir     CoreOS/Libsystem-2      all
 
 # kern_loader is a user executable; fat System must exist before its i386 link.
-dir     kernload-1              all
+dir     CoreOS/kernload-1       all
 
 # Files and commands in the build-base package closure.
 dir     Commands/adv_cmds       all

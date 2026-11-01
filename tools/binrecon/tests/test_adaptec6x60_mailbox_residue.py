@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-LKS = Path("src/drivers-i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj")
+LKS = Path("src/CoreOS/drivers/i386/scsi/drvAdaptec6X60/Adaptec6X60.drvproj/Adaptec6X60.lksproj")
 
 FORBIDDEN = (
     "AIC_CMD_INIT",

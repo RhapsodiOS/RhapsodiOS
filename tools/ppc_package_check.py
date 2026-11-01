@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Divergence check for the packaged PowerPC loadable-driver sources.
 
-Compares each driver packaged under src/drivers-ppc against its
-src/kernel-7/bsd/dev/ppc origin, file-for-file, by SHA-256. Prints
+Compares each driver packaged under src/CoreOS/drivers/ppc against its
+src/CoreOS/kernel-7/bsd/dev/ppc origin, file-for-file, by SHA-256. Prints
 "no divergences" and exits 0 when every packaged source matches its
 origin; otherwise reports what differs and exits non-zero.
 """
@@ -11,10 +11,10 @@ import pathlib
 import sys
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
-KERNEL_PPC = REPO_ROOT / "src" / "kernel-7" / "bsd" / "dev" / "ppc"
-DRIVERS_PPC = REPO_ROOT / "src" / "drivers-ppc"
+KERNEL_PPC = REPO_ROOT / "src" / "CoreOS" / "kernel-7" / "bsd" / "dev" / "ppc"
+DRIVERS_PPC = REPO_ROOT / "src" / "CoreOS" / "drivers" / "ppc"
 
-# (project dir under src/drivers-ppc, project name, origin dir under kernel-7 ppc)
+# (project dir under src/CoreOS/drivers/ppc, project name, origin dir under CoreOS/kernel-7 ppc)
 PROJECTS = [
     ("input/drvPPCCuda", "PPCCuda", "drvCuda"),
     ("input/drvPPCPMU", "PPCPMU", "drvPMU"),

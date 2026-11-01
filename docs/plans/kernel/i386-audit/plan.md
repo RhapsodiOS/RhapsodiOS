@@ -12,7 +12,7 @@ disk image before it lands.
 - 1999 toolchain: no C99, no `long long` in kernel code, locals at the top
   of a block. Compile-time checks use `typedef char name[(cond) ? 1 : -1];`.
 - Every task is one commit with the message prefix `kernel: ` (or `boot: `
-  for `src/boot-2`). No metadata in commit bodies.
+  for `src/CoreOS/boot-2`). No metadata in commit bodies.
 - Boot gate for every task: build the i386 kernel, graft it onto a copy of
   the golden image (`vm/graft-kernel.py` on a temporary image, never the
   shared one), boot under QEMU, reach multi-user, run the task's specific

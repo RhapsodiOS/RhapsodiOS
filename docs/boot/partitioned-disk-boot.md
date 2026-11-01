@@ -93,7 +93,7 @@ See "Found along the way" below.
 
 ## Reproducing
 
-    python vm/build_uefi_image.py IMAGE src/bootefi-1/BUILD/BOOTIA32.EFI OUT.img
+    python vm/build_uefi_image.py IMAGE src/CoreOS/bootefi-1/BUILD/BOOTIA32.EFI OUT.img
     python vm/qemu_boot.py {bios,uefi} OUT.img vm/logs/RUN --at 60,120,180,240
     python vm/check_rootmount.py vm/logs/RUN/kernel.log
 
@@ -102,5 +102,5 @@ before or during a screenshot still leaves a diagnostic trail.
 
 For the two-disk layout (an ESP-only loader disk plus IMAGE attached whole):
 
-    python vm/build_uefi_image.py --esp-only src/bootefi-1/BUILD/BOOTIA32.EFI vm/work/esp.img
+    python vm/build_uefi_image.py --esp-only src/CoreOS/bootefi-1/BUILD/BOOTIA32.EFI vm/work/esp.img
     python vm/qemu_boot.py uefi IMAGE vm/logs/RUN --esp vm/work/esp.img --at 60,120,180,240

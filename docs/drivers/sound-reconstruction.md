@@ -1,6 +1,6 @@
 # i386 sound drivers: reconstruction status
 
-Status of the effort to rebuild our `src/drivers-i386/sound` sources against
+Status of the effort to rebuild our `src/CoreOS/drivers/i386/sound` sources against
 Apple's shipped `*_reloc` binaries with `tools/binrecon`. The shape here is
 different from the SCSI and video efforts: **every reference driver already had a
 source counterpart**, and every reference method name but one had a name-level

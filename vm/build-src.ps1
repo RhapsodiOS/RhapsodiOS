@@ -34,7 +34,7 @@ Usage: powershell -File vm\build-src.ps1 <-All|-Rbuild|-Bootstrap|-Kernel|-Kerne
   -All             Run rbuild, bootstrap, kernel, kernel-drivers, then world
   -Rbuild          Build, test, and install private rbuild and relpath tools
   -Bootstrap       Resume BootstrapManifest into the target sysroot and repository
-  -Kernel          Build required kernel packages (driverkit through kernel-7)
+  -Kernel          Build required kernel packages (driverkit through CoreOS/kernel-7)
   -KernelDrivers   Build optional packaged drivers for the profile architecture
   -World           Resume the world Manifest build
   -Fresh           Safely remove configured build outputs after preflight

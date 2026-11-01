@@ -69,7 +69,7 @@ def _opens_a_body(lines, index, start):
 
     This also rejects a K&R-style definition outright, since its parameter
     declarations each end in `;` before the body's `{` is ever reached, e.g.
-    `cpu_sysctl` in `drivers-ppc/bus/drvPExpert/powermac/powermac_init.c`
+    `cpu_sysctl` in `CoreOS/drivers/ppc/bus/drvPExpert/powermac/powermac_init.c`
     (`cpu_sysctl(name, namelen, ...)` followed by a run of `int *name;` /
     `u_int namelen;` declarations). Not a regression — the old scanner recorded
     a mangled name or nothing for every K&R definition in this corpus, and none

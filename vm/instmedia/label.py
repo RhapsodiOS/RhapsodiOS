@@ -1,6 +1,6 @@
 """NeXT dlV3 disk labels, as `disk -i` writes them.
 
-Layout from src/kernel-7/bsd/dev/disk_label.h and sys/disktab.h, big-endian
+Layout from src/CoreOS/kernel-7/bsd/dev/disk_label.h and sys/disktab.h, big-endian
 and packed the way the m68k compiler packed it (no padding before an int).
 Only partition a is used; the other seven entries hold the pattern disk -i
 leaves in them.  Checked byte for byte against golden.img's label and the DR2

@@ -2,7 +2,7 @@
 from pathlib import Path
 import argparse, hashlib, json, re
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE = ROOT / "src/kernel-7/bsd/ext2fs/ext2fs_vfsops.c"
+SOURCE = ROOT / "src/CoreOS/kernel-7/bsd/ext2fs/ext2fs_vfsops.c"
 
 def generate():
     source = SOURCE.read_text()

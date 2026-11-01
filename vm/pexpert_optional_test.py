@@ -6,7 +6,7 @@ import json
 import re
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE = ROOT / "src/drivers-ppc/bus/drvPExpert/powermac/identify_machine.c"
+SOURCE = ROOT / "src/CoreOS/drivers/ppc/bus/drvPExpert/powermac/identify_machine.c"
 HELPERS = ("get_scsi_int_offset", "get_scsi_int_dma_offset", "get_audio_offset")
 
 

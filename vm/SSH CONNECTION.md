@@ -38,7 +38,7 @@ a binary-safe pipe on Windows PowerShell 5.x).
 
 ```bat
 powershell -File vm\sync-src.ps1 -All
-powershell -File vm\sync-src.ps1 -Path drivers-i386/bus/drvPCMCIABus
+powershell -File vm\sync-src.ps1 -Path CoreOS/drivers/i386/bus/drvPCMCIABus
 ```
 
 Lands under `RemoteRoot/src` (see `RemoteRoot=` in `vm.conf`; example default
@@ -60,7 +60,7 @@ powershell -File vm\build-src.ps1 -World
 |------|---------------------------|
 | `-Rbuild` | Build/install `rbuild` from `RemoteRoot/src/rbuild-1` |
 | `-Bootstrap` | `rbuild bootstrap BootstrapManifest` → `RepoDir` |
-| `-Kernel` | `rbuild kernel` (driverkit through kernel-7) |
+| `-Kernel` | `rbuild kernel` (driverkit through CoreOS/kernel-7) |
 | `-KernelDrivers` | `rbuild kerneldrivers` for remaining `drivers-<arch>` packaged drivers, minus the JSON blacklist |
 | `-World` | `rbuild buildall Manifest` |
 

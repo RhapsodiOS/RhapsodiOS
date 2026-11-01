@@ -5,7 +5,7 @@ Validated on 2026-10-15. This extends the existing
 
 ## Build interface
 
-From `src/kernel-7`:
+From `src/CoreOS/kernel-7`:
 
 ```sh
 samu -f build-universal.ninja

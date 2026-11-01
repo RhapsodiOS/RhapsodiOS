@@ -4,7 +4,7 @@ Spec 2 added two functions to the i386 kernel, `VBEModeInfo2IODisplayInfo`
 and `FBAllocateVBEConsole`, and a call to the second from
 `BasicAllocateConsole`.
 The byte checks passed earlier (see
-`src/kernel-7/reconstruction/vbe/divergences.md`). This page records the boot
+`src/CoreOS/kernel-7/reconstruction/vbe/divergences.md`). This page records the boot
 gates that followed.
 
 Spec 3 (the booter enters a VBE mode and the kernel maps the frame buffer)
@@ -59,17 +59,17 @@ The driver `_reloc` hash is exactly the `rebuilt_sha256` in spec 1's ledger.
 The new kernel is the one Task 4 built from `e2d02efe8`. Since then the only
 kernel source change is a comment rewrite in `BasicConsole.c`. With comments
 stripped, that file is identical at `e2d02efe8` and at `HEAD`.
-`git status src/kernel-7` at `f853aae61` was clean. This task synced nothing
+`git status src/CoreOS/kernel-7` at `f853aae61` was clean. This task synced nothing
 and built nothing.
 
 The negative-control kernel has neither `_VBEModeInfo2IODisplayInfo` nor
 `_FBAllocateVBEConsole` in its symbol table. The other two kernels have both
 symbols, defined and external (`n_type 0x0F`).
 
-**The booter that runs is Apple's `boot` v5.0.41.1, not `src/boot-2`.** Its
+**The booter that runs is Apple's `boot` v5.0.41.1, not `src/CoreOS/boot-2`.** Its
 copies in the boot area are byte-identical to `/usr/standalone/i386/boot`. It
 contains no `Graphics Mode` string, so the graphics-mode logic in
-`src/boot-2/i386/boot2/graphics.c` does not describe this boot.
+`src/CoreOS/boot-2/i386/boot2/graphics.c` does not describe this boot.
 
 ## Procedure
 
@@ -283,7 +283,7 @@ new kernel, differ in only two fields:
 `boot_video` (`0x130D8`, 24 bytes) is zero on both. **So this booter does
 not write `video.v_baseAddr`, even in graphics mode.** The plan's Task 5
 Step 3 said graphics mode is "the only path on which the booter writes
-`video.v_baseAddr`". That is true of `src/boot-2`, and there only when the
+`video.v_baseAddr`". That is true of `src/CoreOS/boot-2`, and there only when the
 config sets a `Graphics Mode` key (`graphics.c:189-190`); this image's
 `System.config` sets none. It is not true of the booter these boots run.
 
@@ -415,13 +415,13 @@ It does **not** establish:
 - Anything about the driver's `using VBE mode %d` path, its mode-list export
   with a non-empty list, or its `getCharValues:` parameters. **[UPDATED —
   spec 3 G2 exercised the first two; `getCharValues:` is still untested.]**
-- Anything about `src/boot-2`. Every boot here ran Apple's v5.0.41.1 booter.
-  **[Spec 3's G1 to G3 ran `src/boot-2`.]**
+- Anything about `src/CoreOS/boot-2`. Every boot here ran Apple's v5.0.41.1 booter.
+  **[Spec 3's G1 to G3 ran `src/CoreOS/boot-2`.]**
 - Anything on hardware. These are QEMU `pc` boots with a Cirrus adapter.
 
 ## Spec 3: the VBE booter and the frame-buffer console, run 2026-09-23
 
-Spec 3 gave our booter, `src/boot-2`, OPENSTEP 4.2 User Patch 4's VBE code.
+Spec 3 gave our booter, `src/CoreOS/boot-2`, OPENSTEP 4.2 User Patch 4's VBE code.
 It enumerates the VBE modes on every boot into `vbeModes` (`kbs+0x1870`).
 When a loaded driver's table has a `VBE Mode` key, it sets that mode last,
 from text mode, and records it in `vbeCurrentMode` (`kbs+0x1858`). The
@@ -429,8 +429,8 @@ kernel then maps that mode's frame buffer in `pmap_bootstrap`, reserves the
 range, and publishes the mapped address at `0x12854` (`kbs+0x1854`). So
 `FBAllocateVBEConsole` gets past its guard, and the boot console draws
 through the frame-buffer console. The byte and build evidence is in
-`src/boot-2/reconstruction/vbe/divergences.md` and
-`src/kernel-7/reconstruction/vbe/divergences.md`. This part records the boot
+`src/CoreOS/boot-2/reconstruction/vbe/divergences.md` and
+`src/CoreOS/kernel-7/reconstruction/vbe/divergences.md`. This part records the boot
 gates of spec 3's design, §7, in the form revised after its Task 3.
 
 - **G1 passes. Without a VBE mode, nothing changes for the kernel.** The
@@ -489,7 +489,7 @@ Every input was hashed before the first boot. Every image was rebuilt from
 - The bundle also holds an empty `VBE20DisplayDriver_reloc.err`, which is
   installed and read back with the rest.
 - `git status --short src/` was clean before the first boot. Nothing was
-  synced or built. No `src/boot-2` or `src/kernel-7` commit follows the
+  synced or built. No `src/CoreOS/boot-2` or `src/CoreOS/kernel-7` commit follows the
   commits named above.
   **[UPDATED — after the final review: two source commits now follow, and
   the final artifacts are `vm/work/tfin-boot` (`584f61abb`) and
@@ -1034,13 +1034,13 @@ It does **not** establish:
   *[inference, from the code]*. At the user's request the final booter
   forms `segment * 16 + offset`, a forced divergence from that reference
   defect. The fix is verified by disassembly only
-  (`src/boot-2/reconstruction/vbe/divergences.md`, "Final review fixes");
+  (`src/CoreOS/boot-2/reconstruction/vbe/divergences.md`, "Final review fixes");
   the gates ran before it.
 - **[ADDED — final review I2.] The frame buffer near 1 GB of kernel VA.**
   These boots have 128 MB of RAM, far below the wall. The final kernel's
   bound, which maps nothing and leaves `0x12854` zero when the mapping would
   end past `VM_MAX_KERNEL_ADDRESS`, is verified by code reading and
-  disassembly only (`src/kernel-7/reconstruction/vbe/divergences.md`,
+  disassembly only (`src/CoreOS/kernel-7/reconstruction/vbe/divergences.md`,
   "Final review fix: the 1 GB bound"). Its effect, a VGA console behind a
   VBE screen, was not seen.
 
@@ -1052,10 +1052,10 @@ led to two source changes, both by the user's decision, and to comment
 corrections that ride along with them:
 - **the booter** reads the BIOS mode list at `segment * 16 + offset`,
   where 4.2 uses `(segment << 16) | offset` (review I3; `584f61abb`;
-  `src/boot-2/reconstruction/vbe/divergences.md`, "Final review fixes");
+  `src/CoreOS/boot-2/reconstruction/vbe/divergences.md`, "Final review fixes");
 - **the kernel** maps nothing, and leaves `0x12854` zero, when the frame
   buffer would end past `VM_MAX_KERNEL_ADDRESS` (review I2; `ac27eb145`;
-  `src/kernel-7/reconstruction/vbe/divergences.md`, "Final review fix: the
+  `src/CoreOS/kernel-7/reconstruction/vbe/divergences.md`, "Final review fix: the
   1 GB bound").
 
 | Role | File | Bytes | SHA-256 |

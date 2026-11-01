@@ -26,7 +26,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 # real limit from self.g, so it stays correct for any image's geometry.
 MAX_FILE_BYTES = (rhap_image.NDADDR + 2048) * 8192
 
-# src/kernel-7/bsd/ufs/ufs/dir.h:102 - Apple's UFS packs directory entries
+# src/CoreOS/kernel-7/bsd/ufs/ufs/dir.h:102 - Apple's UFS packs directory entries
 # into 1024-byte chunks (not DEV_BSIZE, and not fs_bsize); no entry may
 # straddle a chunk boundary, and the last entry in a chunk is stretched to
 # reach it.  ufs_build.py's _dir_block does the same packing on the
@@ -40,7 +40,7 @@ CG_OFFSETS_OFF = 84     # cg_btotoff, cg_boff, cg_iusedoff, cg_freeoff
 def _dirent_reclen(namlen):
     """Minimum record length for a directory entry with this name length.
 
-    src/kernel-7/bsd/ufs/ufs/dir.h's DIRSIZ macro: the fixed 8-byte header
+    src/CoreOS/kernel-7/bsd/ufs/ufs/dir.h's DIRSIZ macro: the fixed 8-byte header
     (d_ino/d_reclen/d_type/d_namlen) plus room for the name PLUS ITS
     TERMINATING NUL BYTE (namlen + 1), rounded up to 4.  Leaving out the "+1"
     (i.e. using roundup4(namlen) instead of roundup4(namlen + 1)) undersizes
@@ -52,7 +52,7 @@ def _dirent_reclen(namlen):
     """
     return 8 + ((namlen + 1 + 3) & ~3)
 
-# struct fs in src/kernel-7/bsd/ufs/ffs/fs.h:241 (the "struct csum
+# struct fs in src/CoreOS/kernel-7/bsd/ufs/ffs/fs.h:241 (the "struct csum
 # fs_cstotal" member).  Counting every preceding int32-sized field (each
 # ufs_daddr_t/time_t on this platform is also 4 bytes, confirmed because
 # doing so lines up every later field with ufs_cg.SB_FIELDS' offsets, e.g.
@@ -62,7 +62,7 @@ def _dirent_reclen(namlen):
 SB_CSTOTAL_OFF = 192
 
 # cg_frsum[MAXFRAG] follows cg_rotor/cg_frotor/cg_irotor, which follow
-# cg_cs (CG_CS_OFF + 16 bytes).  MAXFRAG is 8 (src/kernel-7/bsd/sys/param.h).
+# cg_cs (CG_CS_OFF + 16 bytes).  MAXFRAG is 8 (src/CoreOS/kernel-7/bsd/sys/param.h).
 CG_FRSUM_OFF = CG_CS_OFF + 16 + 12
 
 
@@ -402,7 +402,7 @@ class Allocator(object):
         bytes -- NOT a hardcoded 512-byte sector.  The kernel computes it as
         btodb(bytes, devBlockSize), and for a UFS device devBlockSize is
         fs_fsize / fsbtodb(fs, 1) == fs_fsize / NSPF(fs) (see
-        src/kernel-7/bsd/ufs/ffs/fs.h and src/Commands/diskdev_cmds/
+        src/CoreOS/kernel-7/bsd/ufs/ffs/fs.h and src/Commands/diskdev_cmds/
         fsck.tproj/setup.c:readsb, which computes dev_bsize identically).
         So one di_blocks unit is `self.g.fsize // self.g.nspf` bytes, and a
         fragment (self.g.fsize bytes) is worth `self.g.nspf` units.  On this
@@ -578,7 +578,7 @@ class Allocator(object):
 
     def _last_block_frags(self, nblocks, size):
         """Fragments a file's last logical block (nblocks - 1) occupies,
-        per FFS's blksize rule (src/kernel-7/bsd/ufs/ffs/fs.h:498, the
+        per FFS's blksize rule (src/CoreOS/kernel-7/bsd/ufs/ffs/fs.h:498, the
         blksize macro): a block whose logical number is >= NDADDR (i.e.
         indirect-mapped) is always a full fs_frag-fragment block; only a
         last block still among the direct pointers may be a shorter run
@@ -597,7 +597,7 @@ class Allocator(object):
         them, and allocate/fill a single indirect block once the file
         needs more than NDADDR blocks.  The last block may only be a
         short run of fragments while it is still a direct (< NDADDR)
-        pointer; FFS's blksize rule (src/kernel-7/bsd/ufs/ffs/fs.h:498)
+        pointer; FFS's blksize rule (src/CoreOS/kernel-7/bsd/ufs/ffs/fs.h:498)
         requires a whole fs_frag-fragment block once the file has grown
         into the indirect pointers, so that block is allocated the same
         way as every other whole block.  Returns (db, ib, total_frags),
@@ -668,7 +668,7 @@ class Allocator(object):
     def _old_file_frags(self, size, db, ib):
         """Every fragment (content blocks plus the indirect block, if any)
         belonging to a file previously written by this module or by the
-        kernel, per FFS's blksize rule (src/kernel-7/bsd/ufs/ffs/fs.h:498):
+        kernel, per FFS's blksize rule (src/CoreOS/kernel-7/bsd/ufs/ffs/fs.h:498):
         every block but the last is a full fs_frag-sized block, and the
         last is too unless it is still a direct (< NDADDR) pointer, in
         which case it may be sized to just cover the remainder.
@@ -759,7 +759,7 @@ class Allocator(object):
 
     def _block_layout(self, size, db, ib):
         """[(block_start, byte_offset, length)] covering an inode's content,
-        following FFS's blksize rule (src/kernel-7/bsd/ufs/ffs/fs.h:498):
+        following FFS's blksize rule (src/CoreOS/kernel-7/bsd/ufs/ffs/fs.h:498):
         every block but the last is a full fs_frag-sized block, and the
         last is too unless it is still a direct (< NDADDR) pointer, in
         which case it may be sized to just cover the remainder -- the same
@@ -871,7 +871,7 @@ class Allocator(object):
         directory past its NDADDR (12) direct blocks: this method only
         ever grows the tail block one fragment at a time or starts a new
         block with a single fragment, but FFS's blksize rule
-        (src/kernel-7/bsd/ufs/ffs/fs.h:498) requires a block to be a full,
+        (src/CoreOS/kernel-7/bsd/ufs/ffs/fs.h:498) requires a block to be a full,
         block-aligned fs_frag-fragment block once its logical number is
         >= NDADDR, which this fragment-at-a-time growth cannot produce.
         No caller grows a directory that far today.

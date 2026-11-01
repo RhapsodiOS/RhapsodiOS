@@ -33,7 +33,7 @@ The platform-expert public header was installed from the matching source.
 DriverKit and platform expert were built with their existing Makefiles;
 no non-kernel project source or build rule was changed.
 
-DriverKit debug prerequisite, from `src/driverkit-3/libDriver`:
+DriverKit debug prerequisite, from `src/CoreOS/driverkit-3/libDriver`:
 
 ```sh
 gnumake MACHINE=i386 RC_ARCHS=i386 kerndebug OBJROOT=/tmp/kernel-samurai/driver-debug SYMROOT=/tmp/kernel-samurai/driver-debug
@@ -54,7 +54,7 @@ The resulting `syms/libDriveri386_kern_g.o` was staged under the required
 
 ## Baselines and comparisons
 
-From `src/kernel-7/conf`, tools were prepared using the existing `tools`
+From `src/CoreOS/kernel-7/conf`, tools were prepared using the existing `tools`
 target. Both baseline builds completed with the same final kernel sources:
 
 ```sh

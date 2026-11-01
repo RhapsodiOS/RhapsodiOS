@@ -3,7 +3,7 @@
  * installer, and the install-media builder, replace every @DISK@ with the
  * disk's name (hd0, sd0, ...).
  *
- * Default.table's keys (src/system_config-1), except:
+ * Default.table's keys (src/CoreOS/system_config-1), except:
  *   Boot Drivers    the IDE and AHCI controllers and the NE2K network card
  *                   instead of Floppy and ISASerialPort.  NE2K is a boot
  *                   driver because the booter finds the card by its PCI

@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-LKS = Path("src/drivers-i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj")
+LKS = Path("src/CoreOS/drivers/i386/scsi/drvSym53C8xx/SYM53c8.drvproj/SYM53c8.lksproj")
 
 FORBIDDEN = (
     "sym_reset_chip",

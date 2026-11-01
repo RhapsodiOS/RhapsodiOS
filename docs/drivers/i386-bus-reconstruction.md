@@ -11,7 +11,7 @@ Three buses, five drivers, and one kernel-side support layer:
 | PCI | `drvPCIBus` | `Intel824X0PCI` (host-bridge chipset) |
 | PCMCIA | `drvPCMCIABus` | `Intel82365PCMCIA` (PCIC adapter) |
 
-Underneath all three sits `src/driverkit-3/libDriver`, whose PCI and PCMCIA
+Underneath all three sits `src/CoreOS/driverkit-3/libDriver`, whose PCI and PCMCIA
 modules link into the kernel and provide the `IODirectDevice` categories and
 device-description classes the bus drivers talk to.
 
@@ -200,12 +200,12 @@ reference marshals per-call variable-length arguments, permanent GDT installatio
 where the reference borrows and restores per call, and no interrupt disabling
 around the mode transition. Three of those four are disposed `fix`.
 
-`src/drivers-i386/README` records this driver as crashing. Nothing in the static
+`src/CoreOS/drivers/i386/README` records this driver as crashing. Nothing in the static
 comparison contradicts that.
 
 ## The kernel boundary
 
-`src/driverkit-3/libDriver`'s 24 PCI/PCMCIA methods are **24 of 24
+`src/CoreOS/driverkit-3/libDriver`'s 24 PCI/PCMCIA methods are **24 of 24
 `assembly-matched`**, verified two independent ways (binrecon's published IDA
 analyses, and a raw capstone disassembly diff), with the ledger bound to
 `out/i386/mach_kernel` SHA-256 `797b9887…`. That build (07-26 18:37) postdates
@@ -231,8 +231,8 @@ satisfy the wrong prototype. `maxBusNum` / `maxDevNum` differ in signedness only
 which is ABI-identical and needs no follow-up.
 
 `PCMCIA.h` — which declares `PCMCIAStatus` and the four PCMCIA protocols — is
-**duplicated** at `src/kernel-7/driverkit/i386/` and
-`src/driverkit-3/driverkit/i386/`. The two are currently byte-identical (md5
+**duplicated** at `src/CoreOS/kernel-7/driverkit/i386/` and
+`src/CoreOS/driverkit-3/driverkit/i386/`. The two are currently byte-identical (md5
 `56df959e…`) and each carries a note naming the other. Driver builds consume the
 `driverkit-3` copy; editing only the kernel copy silently changes nothing, which
 has caused a wrong diagnosis before.
@@ -240,8 +240,8 @@ has caused a wrong diagnosis before.
 ## Reproducing
 
 Profiles: `tools/binrecon/profiles/{eisabus,pcibus,pcmciabus,intel824x0,intel82365pcmcia,kernel-driverkit}.json`.
-Per-driver records live in `src/drivers-i386/bus/<Name>/reconstruction/` and
-`src/driverkit-3/libDriver/reconstruction/` — `ledger.json`, `source-map.json`,
+Per-driver records live in `src/CoreOS/drivers/i386/bus/<Name>/reconstruction/` and
+`src/CoreOS/driverkit-3/libDriver/reconstruction/` — `ledger.json`, `source-map.json`,
 `divergences.md`, and for the two PCI/PCMCIA bus drivers a `signatures.md`
 covering the `__OBJC` metadata their function-level pass does not.
 
@@ -253,6 +253,6 @@ been compiled since their fixes landed. The immediate next step is a build of
 `drvPCIBus`, `drvEISABus` and `Intel824X0PCI`, which would verify nineteen
 applied findings at once and let four ledgers be bound to real artifacts.
 
-One record is known stale: `src/drivers-i386/README:6` says `drvPCIBus`'s
+One record is known stale: `src/CoreOS/drivers/i386/README:6` says `drvPCIBus`'s
 `testIDs:dev:fun:bus:` prototype is "not yet reconciled". It was reconciled; the
 header now carries Apple's signature.

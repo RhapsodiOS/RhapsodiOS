@@ -30,7 +30,7 @@ BOOT0_PATH = "/usr/standalone/i386/boot0"
 LABEL_MAGIC = b"dlV3"
 LABEL_SCAN_SECTORS = 64         # the copies sit at sectors 15, 30 and 45
 # Offsets into the big-endian, m68k-packed disk_label_t the kernel reads
-# (src/kernel-7/bsd/dev/disk_label.h, bsd/sys/disktab.h).
+# (src/CoreOS/kernel-7/bsd/dev/disk_label.h, bsd/sys/disktab.h).
 DL_LABEL_BLKNO = 4
 DL_SECSIZE = 92
 DL_BOOT0_BLKNO = 124            # int[NBOOTS]

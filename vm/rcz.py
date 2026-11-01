@@ -1,6 +1,6 @@
 """Codec for the rcz executable-compression format.
 
-Ported from src/boot-2/gen/rcz/rcz_compress_mem.c and rcz_decompress_mem.c
+Ported from src/CoreOS/boot-2/gen/rcz/rcz_compress_mem.c and rcz_decompress_mem.c
 (R. E. Crandall, July 1995).  The format is a 16-bit-symbol move-toward-front
 queue: every two input bytes form a word which is either found in a 255-entry
 queue and emitted as a one-byte index, or missed and emitted as the two-byte

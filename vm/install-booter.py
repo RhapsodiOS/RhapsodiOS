@@ -2,7 +2,7 @@
 
 boot1 does not load /usr/standalone/i386/boot. It reads the NeXT disk label
 at sector 15, takes dl_boot0_blkno[0] and loads LOADSZ sectors from there
-(src/boot-2/i386/boot1/boot1.s:185-210). The label names a second copy in
+(src/CoreOS/boot-2/i386/boot1/boot1.s:185-210). The label names a second copy in
 dl_boot0_blkno[1]; both are written so they stay identical, as they are on
 golden.img. Each copy's slot runs from its block to the next copy's block,
 or to the end of the front porch for the last one, and the whole slot is
@@ -25,11 +25,11 @@ import rhap_image
 import rhap_inject
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
-BOOT1_SRC = os.path.join(_HERE, "..", "src", "boot-2", "i386", "boot1", "boot1.s")
+BOOT1_SRC = os.path.join(_HERE, "..", "src", "CoreOS/boot-2", "i386", "boot1", "boot1.s")
 
 # Offsets into the disk label: dl_dt (a disktab_t) starts at 44, and
 # d_secsize, d_front and d_boot0_blkno[2] sit at 48, 68 and 80 within it
-# (src/kernel-7/bsd/sys/disktab.h). All big-endian.
+# (src/CoreOS/kernel-7/bsd/sys/disktab.h). All big-endian.
 SECSIZE_OFF = 92
 FRONT_OFF = 112
 BOOT0_OFF = 124

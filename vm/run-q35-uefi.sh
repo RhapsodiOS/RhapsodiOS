@@ -11,7 +11,7 @@
 # that cost real time to diagnose.
 #
 # Boot the two-disk UEFI layout under QEMU with IA32 OVMF: disk 0 is the
-# Rhapsody filesystem image (attached whole, so boot-2's read_label() sees
+# Rhapsody filesystem image (attached whole, so CoreOS/boot-2's read_label() sees
 # part_offset == 0), disk 1 is an ESP-only disk holding the UEFI loader that
 # OVMF boots from.  The Rhapsody source image is only copied; every writable
 # disk lives in vm/work.  COM1 is recorded in vm/logs/uefi-serial.log (OVMF

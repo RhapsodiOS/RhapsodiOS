@@ -1,7 +1,7 @@
 """Install a driver bundle into a disk image and register it as a boot driver.
 
 The loader opens /private/Drivers/i386/<Name>.config/<Name>_reloc
-(src/boot-2/i386/libsaio/load.c:382) and reads Instance0.table from the same
+(src/CoreOS/boot-2/i386/libsaio/load.c:382) and reads Instance0.table from the same
 directory. When DRIVER_DIR ships no Instance0.table, Default.table's
 contents are also written under that name. A bundle that ships its own
 Instance tables -- drvAHCI does, so a board with two controllers gets a

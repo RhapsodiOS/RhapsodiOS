@@ -4,7 +4,7 @@
 # the end"); a minimal MH_DYLINKER stub with install name /usr/lib/dyld is
 # enough for ld to emit LC_LOAD_DYLINKER on new executables.
 set -e
-SRC="${1:-/build/src/Csu-1}"
+SRC="${1:-/build/src/CoreOS/Csu-1}"
 WORK=/tmp/crt1-repair-$$
 rm -rf "$WORK"
 mkdir -p "$WORK/stub" "$WORK/crt"

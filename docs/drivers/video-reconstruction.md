@@ -1,6 +1,6 @@
 # i386 video drivers: reconstruction status
 
-Status of the effort to rebuild our `src/drivers-i386/video` sources against
+Status of the effort to rebuild our `src/CoreOS/drivers/i386/video` sources against
 Apple's shipped `*_reloc` binaries with `tools/binrecon`. The headline is that
 the eleven drivers fall into four groups that have nothing to do with each
 other: one driver is reconstructed and verified against its reference, one is
@@ -298,7 +298,7 @@ state that an unretained Ghidra agreement **carries no weight**.
   is a scanner limitation, not a defect, and renaming the symbol to satisfy the
   tool would be wrong.
 - `SFILES` is **not** a pb_makefiles variable. Assembly must go in `OTHERLINKED`
-  plus `OTHERLINKEDOFILES`, as `src/drivers-ppc/bus/drvPExpert/powermac/Makefile`
+  plus `OTHERLINKEDOFILES`, as `src/CoreOS/drivers/ppc/bus/drvPExpert/powermac/Makefile`
   does. An `SFILES` line is a silent no-op: the `.o` is never built and the symbol
   becomes an extra undefined at link.
 - `binrecon ledger` used to discard `--reason` for every status except

@@ -177,11 +177,11 @@ function Get-RhapKernelCorePackages {
     $arch = Assert-RhapSafeIdentifier -Value $TargetArch -Name 'TargetArch'
     $archs = if ($arch -eq 'universal') { @('i386', 'ppc') } else { @($arch) }
     return @(
-        'driverkit-3',
-        'driverTools-1',
-        'kernload-1'
+        'CoreOS/driverkit-3',
+        'CoreOS/driverTools-1',
+        'CoreOS/kernload-1'
     ) + @($archs | ForEach-Object { "drivers-$_/bus/drvPExpert" }) + @(
-        'kernel-7'
+        'CoreOS/kernel-7'
     )
 }
 

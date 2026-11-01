@@ -17,7 +17,7 @@ GNIC_REFERENCE_BINARY = Path(
     "C:/Users/raynorpat/Downloads/test/Drivers/ppc/drvPPCGNic.config/drvPPCGNic_reloc"
 )
 GNIC_SOURCE_DIR = (
-    Path(__file__).parents[3] / "src/drivers-ppc/network/drvPPCGNic/GNic.drvproj/GNic.lksproj"
+    Path(__file__).parents[3] / "src/CoreOS/drivers/ppc/network/drvPPCGNic/GNic.drvproj/GNic.lksproj"
 )
 
 

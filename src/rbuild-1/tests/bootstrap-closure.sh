@@ -97,7 +97,7 @@ while read source target; do
     fi
     if test "$target" = headers; then
         echo "$package-hdrs" >>"$tmp/provided"
-    elif test "$source" = Libc-1 && test "$target" = all; then
+    elif test "$source" = CoreOS/Libc-1 && test "$target" = all; then
         # Libc's all recipe is the one intentional exception: it packages
         # the headers consumed by the remaining bootstrap projects.
         echo "$package-hdrs" >>"$tmp/provided"
@@ -139,7 +139,7 @@ elif test -s "$tmp/populated.scan"; then
     cat "$tmp/populated.scan" >&2
     say_fail "target-correct bootstrap artifacts are reported missing"
 fi
-header_artifact=`awk '$1 == "architecture-1" && $2 == "headers" {
+header_artifact=`awk '$1 == "CoreOS/architecture-1" && $2 == "headers" {
     print $3; exit
 }' "$tmp/artifacts"`
 if test -z "$header_artifact"; then
@@ -152,7 +152,7 @@ else
         cat "$tmp/one-missing.err" >&2
         say_fail "cannot rescan bootstrap repository"
     elif test `wc -l <"$tmp/one-missing.scan"` -ne 1 ||
-            ! grep 'using dir architecture-1$' "$tmp/one-missing.scan" \
+            ! grep 'using dir CoreOS/architecture-1$' "$tmp/one-missing.scan" \
                 >/dev/null 2>&1; then
         cat "$tmp/one-missing.scan" >&2
         say_fail "removing one header artifact does not report only its source"
@@ -299,9 +299,9 @@ fi
 
 # The bootstrap profile names GNU make, so the installhdrs graph and its host
 # tool makefiles must parse without NeXT make extensions.
-for make_dir in kernel-7 kernel-7/src kernel-7/src/MAKEDEV \
-        kernel-7/conf/tools kernel-7/conf/tools/doconf \
-        kernel-7/conf/tools/newvers; do
+for make_dir in CoreOS/kernel-7 CoreOS/kernel-7/src CoreOS/kernel-7/src/MAKEDEV \
+        CoreOS/kernel-7/conf/tools CoreOS/kernel-7/conf/tools/doconf \
+        CoreOS/kernel-7/conf/tools/newvers; do
     make_rc=0
     (cd "$src_dir/$make_dir" && "$make_cmd" -q -f Makefile installhdrs) \
         >"$tmp/kernel-make.out" 2>"$tmp/kernel-make.err" || make_rc=$?
@@ -318,13 +318,13 @@ echo 'install: ; @echo DEFAULT=install' >>"$tmp/default-goal.make"
 echo 'installhdrs: ; @echo DEFAULT=installhdrs' >>"$tmp/default-goal.make"
 mkdir -p "$tmp/default.obj" "$tmp/default.sym" "$tmp/default.dst"
 for make_spec in \
-        'kernel-7 Makefile' \
-        'kernel-7/src Makefile' \
-        'kernel-7/src/MAKEDEV Makefile' \
-        'kernel-7/conf/tools Makefile' \
-        'kernel-7/conf/tools/doconf Makefile' \
-        'kernel-7/conf/tools/newvers Makefile' \
-        'kernel-7 MakeInc.simple'; do
+        'CoreOS/kernel-7 Makefile' \
+        'CoreOS/kernel-7/src Makefile' \
+        'CoreOS/kernel-7/src/MAKEDEV Makefile' \
+        'CoreOS/kernel-7/conf/tools Makefile' \
+        'CoreOS/kernel-7/conf/tools/doconf Makefile' \
+        'CoreOS/kernel-7/conf/tools/newvers Makefile' \
+        'CoreOS/kernel-7 MakeInc.simple'; do
     set -- $make_spec
     if ! (cd "$src_dir/$1" && "$make_cmd" -s -f "$2" \
             -f "$tmp/default-goal.make" SUBDIR= \
@@ -358,12 +358,12 @@ assert_before()
 }
 
 assert_before Developer/Commands/bison-1 all Developer/Commands/cc-1 all
-assert_before Developer/Commands/pb_makefiles-1 headers kernel-7 headers
-assert_before Developer/Commands/project_makefiles-1 headers kernel-7 headers
+assert_before Developer/Commands/pb_makefiles-1 headers CoreOS/kernel-7 headers
+assert_before Developer/Commands/project_makefiles-1 headers CoreOS/kernel-7 headers
 
-for provider in architecture-1 kernel-7 Libstreams-1 objc4-1 driverkit-3 \
+for provider in CoreOS/architecture-1 CoreOS/kernel-7 CoreOS/Libstreams-1 objc4-1 CoreOS/driverkit-3 \
         Developer/Commands/cctools-2; do
-    assert_before "$provider" headers Libc-1 all
+    assert_before "$provider" headers CoreOS/Libc-1 all
 done
 
 if test "$fail" -ne 0; then

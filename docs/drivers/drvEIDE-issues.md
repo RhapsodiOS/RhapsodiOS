@@ -1,6 +1,6 @@
 # drvEIDE: known issues, audit and resolutions
 
-Audit of the i386 EIDE/ATAPI driver (`src/drivers-i386/ide/drvEIDE`) as inherited
+Audit of the i386 EIDE/ATAPI driver (`src/CoreOS/drivers/i386/ide/drvEIDE`) as inherited
 from Apple's Darwin 0.3 drop, and the changes made to resolve them.
 
 Two separate problems are covered:

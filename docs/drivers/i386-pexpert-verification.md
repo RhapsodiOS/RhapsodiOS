@@ -32,7 +32,7 @@ and restoring the normal boot graphics settings.
 
 The trampoline fixture tests the actual assembled transition, paging, segment
 bases and stack setup. It does not send startup IPIs or exercise the kernel's
-AP lifecycle. See `src/drivers-i386/bus/drvPExpert/tests/README.md` for test
+AP lifecycle. See `src/CoreOS/drivers/i386/bus/drvPExpert/tests/README.md` for test
 commands and their limits.
 
 ## Fixes made

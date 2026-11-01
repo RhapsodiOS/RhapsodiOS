@@ -56,7 +56,7 @@ VGA_CHOICES = ("cirrus", "std")
 
 # RTC base date/time passed to QEMU's -rtc. Must land strictly after the
 # root filesystem's fs_time (epoch 894585442 = 1998-05-07T23:57:22Z) and
-# within 2 days of it, or src/kernel-7/bsd/kern/kern_time.c's inittodr()
+# within 2 days of it, or src/CoreOS/kernel-7/bsd/kern/kern_time.c's inittodr()
 # prints a clock warning at boot (see kern_time.c ~line 264). Twelve hours
 # after fs_time stays inside that window while tolerating up to 12 hours of
 # negative timezone skew in how QEMU interprets the RTC base.

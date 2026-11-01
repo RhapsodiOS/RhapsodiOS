@@ -31,12 +31,17 @@ enum {	/* Constants returned by -operatingSystem */
 - (NSDictionary *)environment;
 
 - (NSArray *)arguments;
+- (void)setArguments:(NSArray *)newArguments;
 
 - (NSString *)hostName;
 
 - (NSString *)processName;
 
 - (void)setProcessName:(NSString *)newName;
+
+- (NSString *)userFullName;
+- (NSString *)userHomeDirectory;
+- (NSString *)userName;
 
 - (NSString *)globallyUniqueString;
 

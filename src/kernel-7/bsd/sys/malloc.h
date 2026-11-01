@@ -150,7 +150,8 @@
 #define	M_HFSEXT	77	/* HFS extent list */
 #define M_VOLFS		78  /* VOLFS structures */
 #define	M_TEMP		79	/* misc temporary data buffers */
-#define	M_LAST		80	/* Must be last type + 1 */
+#define	M_HAMMER	80	/* HAMMER filesystem structures and buffers */
+#define	M_LAST		81	/* Must be last type + 1 */
 
 /* Strings corresponding to types of memory */
 /* Must be in synch with the #defines above */
@@ -235,6 +236,7 @@
 	"HFS extent",	/* 77 M_HFSEXT */ \
 	"VOLFS structs", /* 78 M_VOLFS */ \
 	"temp",		/* 79 M_TEMP */ \
+	"HAMMER",	/* 80 M_HAMMER */ \
 }
 
 struct kmemstats {

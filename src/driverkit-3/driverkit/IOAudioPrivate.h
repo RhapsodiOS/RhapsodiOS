@@ -93,6 +93,11 @@ typedef struct {
 - (void) _setDataEncoding: (unsigned int) encoding;
 - (void) _interruptOccurred;
 
+/* Hardware PCM corrections at the CPU side of each DMA handoff. */
+- (void) _processDMABuffer: (void *) buffer size: (unsigned int) bytes
+                     read: (BOOL) read dataEncoding: (NXSoundParameterTag) encoding
+             channelCount: (unsigned int) count;
+
 - (void) _dataPendingForChannel: (id) channel;
 - (void) _dataPendingOccurred: (id) channel;
 

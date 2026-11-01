@@ -1,0 +1,6064 @@
+{
+  "schema_version": 1,
+  "reference_sha256": "D01D748C10117FBFCEB25F99D88A63895C3BAC6C09A5110AD358E583316494BD",
+  "native_revision": "deea0fd8ef1b21f13e135349da36e95871fefccd",
+  "native_inputs": {
+    "AdaptecU2CHIMSCB.c": {
+      "working_sha256": "26D5E69D554C2FDE447DBA3CB17F2EF71E533390A97B3913A5E63D388F17AE62",
+      "staged_sha256": "26D5E69D554C2FDE447DBA3CB17F2EF71E533390A97B3913A5E63D388F17AE62",
+      "git_blob_sha256": "26D5E69D554C2FDE447DBA3CB17F2EF71E533390A97B3913A5E63D388F17AE62"
+    },
+    "AdaptecU2CHIMTypes.h": {
+      "working_sha256": "EBCAF8DC111A1B45A63A17C55B35CD5D22AB35BB3AF46901EF7F16E55549772A",
+      "staged_sha256": "EBCAF8DC111A1B45A63A17C55B35CD5D22AB35BB3AF46901EF7F16E55549772A",
+      "git_blob_sha256": "EBCAF8DC111A1B45A63A17C55B35CD5D22AB35BB3AF46901EF7F16E55549772A"
+    },
+    "AdaptecU2CHIM.h": {
+      "working_sha256": "B5210607C79287A4071EB3921A885BBF7011F0E61F1AE7D43708A8AEEBF94106",
+      "staged_sha256": "B5210607C79287A4071EB3921A885BBF7011F0E61F1AE7D43708A8AEEBF94106",
+      "git_blob_sha256": "B5210607C79287A4071EB3921A885BBF7011F0E61F1AE7D43708A8AEEBF94106"
+    },
+    "AdaptecU2CHIMPrivate.h": {
+      "working_sha256": "72F02742B1414FAD4529485B6A9367B4ED29E83F1C6E92442112D2667CF3CAF0",
+      "staged_sha256": "BB3BC6F7DF328DF7772ED2F0E74EFC4CBEED70291DC626490D91F454E19EA4C0",
+      "git_blob_sha256": "BB3BC6F7DF328DF7772ED2F0E74EFC4CBEED70291DC626490D91F454E19EA4C0"
+    },
+    "OSMFunctions.h": {
+      "working_sha256": "F7DBE4235865185DE6B2D2F5BC1BCCB77C5E999D5968B002B00D61CE2F5EBFD3",
+      "staged_sha256": "F7DBE4235865185DE6B2D2F5BC1BCCB77C5E999D5968B002B00D61CE2F5EBFD3",
+      "git_blob_sha256": "F7DBE4235865185DE6B2D2F5BC1BCCB77C5E999D5968B002B00D61CE2F5EBFD3"
+    },
+    "AdaptecU2SCSI.h": {
+      "working_sha256": "3F91074F77D3AD83B41B477859C8B970ADDBBC0CA90145299277EAA8E6F6EE9C",
+      "staged_sha256": "3F91074F77D3AD83B41B477859C8B970ADDBBC0CA90145299277EAA8E6F6EE9C",
+      "git_blob_sha256": "3F91074F77D3AD83B41B477859C8B970ADDBBC0CA90145299277EAA8E6F6EE9C"
+    },
+    "AdaptecU2SCSIPrivate.h": {
+      "working_sha256": "3FC62CD8BAC420FF920A2FAB1F9B50DE464BED138A1E502B108DCBEDAFE9C3CE",
+      "staged_sha256": "3FC62CD8BAC420FF920A2FAB1F9B50DE464BED138A1E502B108DCBEDAFE9C3CE",
+      "git_blob_sha256": "3FC62CD8BAC420FF920A2FAB1F9B50DE464BED138A1E502B108DCBEDAFE9C3CE"
+    }
+  },
+  "native_manifest_sha256": "636160CF0195DEB3021F55C13EB17A65FD1E48AB85954DC49A493D1A9599C911",
+  "native_object_scope": "OneproductionPPCBE MH_OBJECT with67exports, canonicalGit producerdeea0fd8e plus6headers. Nativebodybytes equal all10 bounded reviewedbatches. AllinternalCHIM/OSMcallbacks execute in225referencefixtures; fullbus2649163instructions. No pairedlinkedkernel or physicalhardware/time/DMA/concurrencyacceptanceclaimed. Nativeexternalcalls boundusingMachOrelocations; IDAunlinkedzero labelsarenotcallauthority.",
+  "accepted_dependencies": {
+    "AdaptecU2CHIMFirmware.c": {
+      "group": "firmware",
+      "source_revision": "e3851a12d1bb6f943edbd72cdead4b8f6f0931bc",
+      "source_sha256": "5619B0588FD066B9231C397A5CFF03DFF480033647F5948C314D1BEFE905331A",
+      "git_blob_sha256": "4550C999F03E8087D11668B175B4AAC94BA443BDE25DF5D45F9184DF40B543AC",
+      "object_sha256": "992F737597D6A3CA7B17CF0CA3943058C47411764F160D9013E642E5AFF3541C",
+      "object": "1-AdaptecU2CHIMFirmware.c.o",
+      "manifest_sha256": "D31B574EE25F879B6AC2F991A683220356294833FE883B50A35B4FFEB096896C"
+    },
+    "AdaptecU2CHIMTables.c": {
+      "group": "firmware",
+      "source_revision": "e3851a12d1bb6f943edbd72cdead4b8f6f0931bc",
+      "source_sha256": "91580139F591362D5F52C00BD3F00FD4153D3FE2D2763B7D0D6BDFDED09FABAC",
+      "git_blob_sha256": "C1973A98D22542E486E0B548D8550F9DD6A2E07095DD7A1C08D616C35F6D15A9",
+      "object_sha256": "67AA7E935CBBC44826838BF5D8D6943497E706722FAE93EEBB1716231F0FC062",
+      "object": "2-AdaptecU2CHIMTables.c.o",
+      "manifest_sha256": "D31B574EE25F879B6AC2F991A683220356294833FE883B50A35B4FFEB096896C"
+    },
+    "AdaptecU2OSMServices.m": {
+      "group": "task5",
+      "source_revision": "8e60bd5b71dc6f340b06cf314033ac74d1bc0626",
+      "source_sha256": "3C33BF52077FA7DFD58160D7E82D65FD08EDA864064AFBE6AA49D12FC9572658",
+      "git_blob_sha256": "3C33BF52077FA7DFD58160D7E82D65FD08EDA864064AFBE6AA49D12FC9572658",
+      "object_sha256": "FFE446DDFBFF12FF70304041FD93A2E1F7BDAF2AA15437B6CA5142A425FC7B64",
+      "object": "1-AdaptecU2OSMServices.m.o",
+      "manifest_sha256": "406886779ECE4470CD43ECD4ED4D7C6F75CE6A936FBEA8439EAB0B81138E5D34"
+    },
+    "AdaptecU2CHIMOSD.c": {
+      "group": "task5",
+      "source_revision": "8e60bd5b71dc6f340b06cf314033ac74d1bc0626",
+      "source_sha256": "0305D431CC110CD9CEC66F6118FF58307C59075FA5C3D1783DD70A3586E4C7B3",
+      "git_blob_sha256": "0305D431CC110CD9CEC66F6118FF58307C59075FA5C3D1783DD70A3586E4C7B3",
+      "object_sha256": "9FC46CCE820A749AC5CD7CCF14D70FBCE29A1189063D6932F23DC429C56FE790",
+      "object": "2-AdaptecU2CHIMOSD.c.o",
+      "manifest_sha256": "406886779ECE4470CD43ECD4ED4D7C6F75CE6A936FBEA8439EAB0B81138E5D34"
+    },
+    "AdaptecU2CHIMHardware.c": {
+      "group": "task6",
+      "source_revision": "333ab0a779a625b5455570b7e778f11baa66be64",
+      "source_sha256": "ACAC809555077AB96E605D59E4D077B9383906FF5D78226B3620A0DC75899244",
+      "git_blob_sha256": "ACAC809555077AB96E605D59E4D077B9383906FF5D78226B3620A0DC75899244",
+      "object_sha256": "A4C8085B3DB5951294B55B9D85B6D4F2687F4648297C248B64D1ACBD4E7D5202",
+      "object": "1-AdaptecU2CHIMHardware.c.o",
+      "manifest_sha256": "133832769F0E28CFADD35BBF289715708562BF8ED642C21B09333D5E88F8253A"
+    }
+  },
+  "bodies": [
+    {
+      "address": 1619796,
+      "name": "_SCSIhDeliverScb",
+      "owner": "AdaptecU2CHIMSCB.c",
+      "reference_size": 176,
+      "source_line": 1116,
+      "control_flow": "Capturehandlebeforeactual OSDBuildSCB; nullable firmwarepatchXferOpt slot96; increment8bit qnewHead and write register64selector afterbuilder/patch/cacheownership. Allfour actual modes and255wrap0.",
+      "cases": [
+        "task7-abort-deliver-Standard64",
+        "task7-abort-deliver-Swapping32",
+        "task7-abort-deliver-StandardAdv",
+        "task7-abort-deliver-SwappingAdv"
+      ],
+      "native_address": 21648,
+      "native_size": 176,
+      "native_sha256": "44CEEFF67C962F7906E134D89A3E26392A0D9844423DB3F09CFE567D01893B93",
+      "native_external_relocations": [
+        {
+          "address": 21688,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSDBuildSCB"
+        },
+        {
+          "address": 21792,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        }
+      ],
+      "native_opcode_counts": {
+        "31/339": 2,
+        "36/1018": 1,
+        "36/1020": 1,
+        "36/1022": 1,
+        "36/4": 1,
+        "37/976": 1,
+        "31/444": 5,
+        "32/4": 3,
+        "18/420": 1,
+        "32/120": 2,
+        "32/48": 1,
+        "11/0": 1,
+        "16/12": 1,
+        "31/467": 2,
+        "19/16": 2,
+        "34/108": 2,
+        "12/0": 1,
+        "38/108": 1,
+        "34/32": 1,
+        "36/28": 1,
+        "38/31": 1,
+        "32/0": 1,
+        "32/2": 1,
+        "32/6": 1,
+        "32/8": 1,
+        "32/10": 1,
+        "32/12": 1,
+        "32/14": 1,
+        "18/368": 1,
+        "14/48": 1,
+        "32/1018": 1,
+        "32/1020": 1,
+        "32/1022": 1
+      },
+      "reviewed_native_batch": 9
+    },
+    {
+      "address": 1619972,
+      "name": "_SCSIhSwapping32PatchXferOpt",
+      "owner": "AdaptecU2CHIMSCB.c",
+      "reference_size": 88,
+      "source_line": 112,
+      "control_flow": "Unitdevice option lowbyte -> SCB29; deviceflags2000 setsSCB1bit4 then flush_cache32; noflushwhenflagclear. Preserve allotherbytes.",
+      "cases": [
+        "task7-basic-patch-32-0",
+        "task7-basic-patch-32-8192",
+        "task7-basic-patch-32-8193"
+      ],
+      "native_address": 704,
+      "native_size": 84,
+      "native_sha256": "8918DB9971D115DCFEE68D700330C1B4407BFEA50EDCE0156AFE09C24CBCEDAD",
+      "native_external_relocations": [
+        {
+          "address": 768,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_flush_cache"
+        }
+      ],
+      "native_opcode_counts": {
+        "31/339": 1,
+        "36/4": 1,
+        "37/992": 1,
+        "32/0": 1,
+        "32/12": 1,
+        "32/4": 2,
+        "32/6": 1,
+        "34/1": 1,
+        "38/14": 1,
+        "40/0": 1,
+        "28/0": 1,
+        "16/12": 1,
+        "34/0": 1,
+        "14/16": 1,
+        "24/2": 1,
+        "38/0": 1,
+        "18/640": 1,
+        "14/32": 1,
+        "31/467": 1,
+        "19/16": 1
+      },
+      "reviewed_native_batch": 3
+    },
+    {
+      "address": 1620060,
+      "name": "_SCSIhStandardAdvPatchXferOpt",
+      "owner": "AdaptecU2CHIMSCB.c",
+      "reference_size": 48,
+      "source_line": 123,
+      "control_flow": "Unitdevice option16 -> little-endian SCB3 through native sthbrx; noflush inthisbody.",
+      "cases": [
+        "task7-basic-patch-StandardAdv-0",
+        "task7-basic-patch-StandardAdv-4660",
+        "task7-basic-patch-StandardAdv-65535"
+      ],
+      "native_address": 788,
+      "native_size": 40,
+      "native_sha256": "6BE135C0BF4F1E3ADFFD94F87BF3857E9DFAD653B2218A881DD4B14894E30133",
+      "native_external_relocations": [],
+      "native_opcode_counts": {
+        "37/1008": 1,
+        "32/12": 1,
+        "32/6": 1,
+        "32/0": 1,
+        "32/4": 1,
+        "12/1": 1,
+        "40/1": 1,
+        "31/918": 1,
+        "14/16": 1,
+        "19/16": 1
+      },
+      "reviewed_native_batch": 3
+    },
+    {
+      "address": 1620108,
+      "name": "_SCSIhSwappingAdvPatchXferOpt",
+      "owner": "AdaptecU2CHIMSCB.c",
+      "reference_size": 48,
+      "source_line": 128,
+      "control_flow": "Unitdevice option16 -> little-endian SCB36 through native sthbrx; noflush inthisbody.",
+      "cases": [
+        "task7-basic-patch-SwappingAdv-0",
+        "task7-basic-patch-SwappingAdv-4660",
+        "task7-basic-patch-SwappingAdv-65535"
+      ],
+      "native_address": 828,
+      "native_size": 40,
+      "native_sha256": "E618766DDA3EF5B05AB71E30B792B4F2577AF20287E39EAA953B1949E9907599",
+      "native_external_relocations": [],
+      "native_opcode_counts": {
+        "37/1008": 1,
+        "32/12": 1,
+        "32/6": 1,
+        "32/0": 1,
+        "32/4": 1,
+        "12/18": 1,
+        "40/1": 1,
+        "31/918": 1,
+        "14/16": 1,
+        "19/16": 1
+      },
+      "reviewed_native_batch": 3
+    },
+    {
+      "address": 1620156,
+      "name": "_SCSIhStandard64QHead",
+      "owner": "AdaptecU2CHIMSCB.c",
+      "reference_size": 944,
+      "source_line": 230,
+      "control_flow": "Save144/readcontrol0; control40+targetstatus2 sameHHCB/targetwaitingSCB52 reinsertswaitingcommandathead94, link198, emptytail95; clearcontrol&33/readback. Selectrequest/inserthead/link/emptytail,restore144.",
+      "cases": [
+        "task7-queue-Standard64-none-255",
+        "task7-queue-Standard64-none-4",
+        "task7-queue-Standard64-match-255",
+        "task7-queue-Standard64-match-4",
+        "task7-queue-Standard64-wrong-255",
+        "task7-queue-Standard64-wrong-4"
+      ],
+      "native_address": 2308,
+      "native_size": 964,
+      "native_sha256": "F7666A92B048F8811DCAE03DF642D5DFC14FB92C6AB3D19E73731EC86EB9F3D4",
+      "native_external_relocations": [
+        {
+          "address": 2404,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 2456,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 2532,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 2632,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 2688,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 2740,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 2800,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 2852,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 2896,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 2952,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 3000,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 3056,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 3108,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 3172,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 3220,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        }
+      ],
+      "native_opcode_counts": {
+        "31/339": 1,
+        "36/1008": 1,
+        "36/1010": 1,
+        "36/1012": 1,
+        "36/1014": 1,
+        "36/1016": 1,
+        "36/1018": 1,
+        "36/1020": 1,
+        "36/1022": 1,
+        "36/4": 1,
+        "37/968": 1,
+        "31/444": 4,
+        "32/4": 31,
+        "14/72": 2,
+        "36/28": 15,
+        "32/0": 18,
+        "32/2": 15,
+        "32/6": 15,
+        "32/8": 15,
+        "32/10": 15,
+        "32/12": 15,
+        "32/14": 15,
+        "18/846": 1,
+        "14/0": 1,
+        "21/799": 5,
+        "18/820": 1,
+        "28/32": 1,
+        "16/214": 1,
+        "34/3": 1,
+        "11/1": 1,
+        "16/208": 1,
+        "14/26": 1,
+        "18/782": 1,
+        "32/668": 1,
+        "21/29": 1,
+        "31/23": 1,
+        "31/0": 2,
+        "16/168": 1,
+        "34/2": 2,
+        "16/158": 1,
+        "14/47": 4,
+        "18/732": 1,
+        "38/31": 9,
+        "18/704": 1,
+        "14/99": 2,
+        "18/678": 1,
+        "11/127": 2,
+        "16/28": 1,
+        "18/648": 1,
+        "28/25": 1,
+        "18/622": 1,
+        "18/600": 1,
+        "34/4": 3,
+        "18/572": 1,
+        "18/548": 1,
+        "18/520": 1,
+        "18/494": 1,
+        "16/30": 1,
+        "18/462": 1,
+        "18/438": 1,
+        "14/56": 1,
+        "31/467": 1,
+        "32/1008": 1,
+        "32/1010": 1,
+        "32/1012": 1,
+        "32/1014": 1,
+        "32/1016": 1,
+        "32/1018": 1,
+        "32/1020": 1,
+        "32/1022": 1,
+        "19/16": 1
+      },
+      "reviewed_native_batch": 5
+    },
+    {
+      "address": 1621100,
+      "name": "_SCSIhSwapping32QHead",
+      "owner": "AdaptecU2CHIMSCB.c",
+      "reference_size": 764,
+      "source_line": 286,
+      "control_flow": "Firmwarehead66/control0; control40+targetstatus2sameHHCB/targetwaitingSCB reinsertswaitingcommand viaactualnextcallback, decrementsregister65, clearcontrol&33/readback; normalprependnext/update66/decrement65; equalrequestheadshortpath. No advancedcacheworkaround.",
+      "cases": [
+        "task7-queue-Swapping32-none-7",
+        "task7-queue-Swapping32-none-4",
+        "task7-queue-Swapping32-match-7",
+        "task7-queue-Swapping32-match-4",
+        "task7-queue-Swapping32-wrong-7",
+        "task7-queue-Swapping32-wrong-4"
+      ],
+      "native_address": 4236,
+      "native_size": 784,
+      "native_sha256": "D27913F12081EF9118ED0F1722D4430A6BC3A3CA6A00687C026EEABF83E632E2",
+      "native_external_relocations": [
+        {
+          "address": 4332,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 4384,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 4460,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 4564,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 4624,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 4708,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 4756,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 4860,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 4912,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 4972,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        }
+      ],
+      "native_opcode_counts": {
+        "31/339": 3,
+        "36/1010": 1,
+        "36/1012": 1,
+        "36/1014": 1,
+        "36/1016": 1,
+        "36/1018": 1,
+        "36/1020": 1,
+        "36/1022": 1,
+        "36/4": 1,
+        "37/968": 1,
+        "31/444": 9,
+        "32/120": 9,
+        "32/4": 21,
+        "34/33": 2,
+        "36/28": 10,
+        "32/0": 13,
+        "32/2": 10,
+        "32/6": 10,
+        "32/8": 10,
+        "32/10": 10,
+        "32/12": 10,
+        "32/14": 10,
+        "18/906": 1,
+        "21/799": 3,
+        "14/0": 1,
+        "18/880": 1,
+        "28/32": 1,
+        "16/182": 1,
+        "34/3": 1,
+        "11/1": 1,
+        "16/176": 1,
+        "34/30": 1,
+        "18/842": 1,
+        "32/668": 1,
+        "21/29": 1,
+        "31/23": 1,
+        "31/0": 3,
+        "16/134": 1,
+        "34/2": 2,
+        "16/124": 1,
+        "34/32": 4,
+        "18/790": 1,
+        "14/1023": 2,
+        "38/31": 4,
+        "18/760": 1,
+        "32/110": 2,
+        "31/467": 3,
+        "19/16": 3,
+        "28/25": 1,
+        "18/718": 1,
+        "18/694": 1,
+        "34/4": 2,
+        "16/104": 1,
+        "18/642": 1,
+        "18/616": 1,
+        "18/586": 1,
+        "14/56": 1,
+        "32/1010": 1,
+        "32/1012": 1,
+        "32/1014": 1,
+        "32/1016": 1,
+        "32/1018": 1,
+        "32/1020": 1,
+        "32/1022": 1
+      },
+      "reviewed_native_batch": 5
+    },
+    {
+      "address": 1621864,
+      "name": "_SCSIhSwappingAdvQHead",
+      "owner": "AdaptecU2CHIMSCB.c",
+      "reference_size": 1348,
+      "source_line": 312,
+      "control_flow": "Firmwarehead66/control0; control40+targetstatus2sameHHCB/targetwaitingSCB reinsertswaitingcommand viaactualnextcallback, decrementsregister65, clearcontrol&33/readback; normalprependnext/update66/decrement65; equalrequestheadshortpath. Advanced238bits10+4 starts postdecrement800000bit40poll; differing144/241 cacheslotpatchesactivehostnextandSCB171 with144restore; next=requestshortreturn; otherwiselinkrequest/decrement65.",
+      "cases": [
+        "task7-queue-SwappingAdv-none-7",
+        "task7-queue-SwappingAdv-none-4",
+        "task7-queue-SwappingAdv-match-7",
+        "task7-queue-SwappingAdv-match-4",
+        "task7-queue-SwappingAdv-wrong-7",
+        "task7-queue-SwappingAdv-wrong-4",
+        "task7-queue-adv-cache-False-7",
+        "task7-queue-adv-cache-False-9",
+        "task7-queue-adv-cache-True-7",
+        "task7-queue-adv-cache-True-9"
+      ],
+      "native_address": 5020,
+      "native_size": 1400,
+      "native_sha256": "CE66D92A90EC9A273F2AF236E945985548A4342AA29FB38AE14D42851FD4B935",
+      "native_external_relocations": [
+        {
+          "address": 5120,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 5172,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 5252,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 5356,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 5416,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 5500,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 5548,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 5596,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 5648,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 5700,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 5768,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 5820,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 5952,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 6000,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 6056,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 6104,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 6256,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 6308,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 6368,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        }
+      ],
+      "native_opcode_counts": {
+        "31/339": 6,
+        "36/1008": 1,
+        "36/1010": 1,
+        "36/1012": 1,
+        "36/1014": 1,
+        "36/1016": 1,
+        "36/1018": 1,
+        "36/1020": 1,
+        "36/1022": 1,
+        "36/4": 1,
+        "37/968": 1,
+        "31/444": 16,
+        "32/120": 12,
+        "32/4": 39,
+        "34/33": 2,
+        "36/28": 19,
+        "32/0": 22,
+        "32/2": 19,
+        "32/6": 19,
+        "32/8": 19,
+        "32/10": 19,
+        "32/12": 19,
+        "32/14": 19,
+        "18/512": 1,
+        "21/799": 6,
+        "14/0": 1,
+        "18/486": 1,
+        "28/32": 2,
+        "15/64": 1,
+        "16/182": 1,
+        "34/3": 1,
+        "11/1": 1,
+        "16/176": 1,
+        "34/30": 1,
+        "18/446": 1,
+        "32/668": 2,
+        "21/29": 2,
+        "31/23": 2,
+        "31/0": 5,
+        "16/134": 1,
+        "34/2": 2,
+        "16/124": 1,
+        "34/32": 4,
+        "18/394": 1,
+        "14/1023": 3,
+        "38/31": 7,
+        "18/364": 1,
+        "32/110": 4,
+        "31/467": 6,
+        "19/16": 6,
+        "28/25": 1,
+        "18/322": 1,
+        "18/298": 1,
+        "14/119": 1,
+        "18/274": 1,
+        "28/8": 1,
+        "16/276": 1,
+        "18/248": 1,
+        "28/2": 1,
+        "16/250": 1,
+        "18/222": 1,
+        "16/8": 1,
+        "11/0": 1,
+        "16/994": 1,
+        "14/72": 1,
+        "18/188": 1,
+        "14/120": 1,
+        "18/162": 1,
+        "16/162": 1,
+        "32/108": 1,
+        "34/4": 5,
+        "18/96": 1,
+        "18/72": 1,
+        "14/85": 1,
+        "18/44": 1,
+        "18/20": 1,
+        "16/128": 1,
+        "18/54": 1,
+        "16/104": 1,
+        "18/968": 1,
+        "18/942": 1,
+        "18/912": 1,
+        "14/56": 1,
+        "32/1008": 1,
+        "32/1010": 1,
+        "32/1012": 1,
+        "32/1014": 1,
+        "32/1016": 1,
+        "32/1018": 1,
+        "32/1020": 1,
+        "32/1022": 1
+      },
+      "reviewed_native_batch": 5
+    },
+    {
+      "address": 1623212,
+      "name": "_SCSIhStandardAdvQHead",
+      "owner": "AdaptecU2CHIMSCB.c",
+      "reference_size": 944,
+      "source_line": 258,
+      "control_flow": "Save144/readcontrol0; control40+targetstatus2 sameHHCB/targetwaitingSCB60 reinsertswaitingcommandathead54, link165, emptytail55; clearcontrol&33/readback. Selectrequest/inserthead/link/emptytail,restore144.",
+      "cases": [
+        "task7-queue-StandardAdv-none-255",
+        "task7-queue-StandardAdv-none-4",
+        "task7-queue-StandardAdv-match-255",
+        "task7-queue-StandardAdv-match-4",
+        "task7-queue-StandardAdv-wrong-255",
+        "task7-queue-StandardAdv-wrong-4"
+      ],
+      "native_address": 3272,
+      "native_size": 964,
+      "native_sha256": "B5425868CE30C5E5C6C0E00FEA7ECEBDD23B31BA1F88276BC979E77E66B5A0D4",
+      "native_external_relocations": [
+        {
+          "address": 3368,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 3420,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 3496,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 3596,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 3652,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 3704,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 3764,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 3816,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 3860,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 3916,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 3964,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 4020,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 4072,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 4136,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 4184,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        }
+      ],
+      "native_opcode_counts": {
+        "31/339": 1,
+        "36/1008": 1,
+        "36/1010": 1,
+        "36/1012": 1,
+        "36/1014": 1,
+        "36/1016": 1,
+        "36/1018": 1,
+        "36/1020": 1,
+        "36/1022": 1,
+        "36/4": 1,
+        "37/968": 1,
+        "31/444": 4,
+        "32/4": 31,
+        "14/72": 2,
+        "36/28": 15,
+        "32/0": 18,
+        "32/2": 15,
+        "32/6": 15,
+        "32/8": 15,
+        "32/10": 15,
+        "32/12": 15,
+        "32/14": 15,
+        "18/364": 1,
+        "14/0": 1,
+        "21/799": 5,
+        "18/338": 1,
+        "28/32": 1,
+        "16/214": 1,
+        "34/3": 1,
+        "11/1": 1,
+        "16/208": 1,
+        "14/30": 1,
+        "18/300": 1,
+        "32/668": 1,
+        "21/29": 1,
+        "31/23": 1,
+        "31/0": 2,
+        "16/168": 1,
+        "34/2": 2,
+        "16/158": 1,
+        "14/27": 4,
+        "18/250": 1,
+        "38/31": 9,
+        "18/222": 1,
+        "14/82": 2,
+        "18/196": 1,
+        "11/127": 2,
+        "16/28": 1,
+        "18/166": 1,
+        "28/25": 1,
+        "18/140": 1,
+        "18/118": 1,
+        "34/4": 3,
+        "18/90": 1,
+        "18/66": 1,
+        "18/38": 1,
+        "18/12": 1,
+        "16/30": 1,
+        "18/1004": 1,
+        "18/980": 1,
+        "14/56": 1,
+        "31/467": 1,
+        "32/1008": 1,
+        "32/1010": 1,
+        "32/1012": 1,
+        "32/1014": 1,
+        "32/1016": 1,
+        "32/1018": 1,
+        "32/1020": 1,
+        "32/1022": 1,
+        "19/16": 1
+      },
+      "reviewed_native_batch": 5
+    },
+    {
+      "address": 1624156,
+      "name": "_SCSIhStandardRetrieveScb",
+      "owner": "AdaptecU2CHIMSCB.c",
+      "reference_size": 128,
+      "source_line": 133,
+      "control_flow": "Qout8byteslot tag7 mustmatch qdonePass; mismatch returns255; match byte0number, increment8bit index; at8bit(numberScbs+1) resetindex0/increment8bitpass.",
+      "cases": [
+        "task7-basic-qout-SCSIhStandardRetrieveScb-0-1-0",
+        "task7-basic-qout-SCSIhStandardRetrieveScb-1-1-1",
+        "task7-basic-qout-SCSIhStandardRetrieveScb-2-255-255",
+        "task7-basic-qout-SCSIhStandardRetrieveScb-0-0-1"
+      ],
+      "native_address": 868,
+      "native_size": 112,
+      "native_sha256": "201558C9870EAC62C0FB12C2C473BB852D70C9A6977F3E1ED05D0CD6401E9BA4",
+      "native_external_relocations": [],
+      "native_opcode_counts": {
+        "37/1008": 1,
+        "34/108": 1,
+        "32/98": 1,
+        "34/109": 2,
+        "21/28": 1,
+        "31/266": 1,
+        "34/3": 2,
+        "31/0": 2,
+        "16/6": 1,
+        "14/127": 1,
+        "18/32": 1,
+        "31/87": 1,
+        "14/0": 2,
+        "21/799": 2,
+        "12/0": 2,
+        "38/108": 2,
+        "16/12": 1,
+        "38/109": 1,
+        "31/444": 1,
+        "14/16": 1,
+        "19/16": 1
+      },
+      "reviewed_native_batch": 3
+    },
+    {
+      "address": 1624284,
+      "name": "_SCSIhStandardQoutcnt",
+      "owner": "AdaptecU2CHIMSCB.c",
+      "reference_size": 120,
+      "source_line": 146,
+      "control_flow": "Scan local8bit index/pass/count without consumingHHCBstate; qoutstride8/tag7; wrap at8bit(numberScbs+1), passincrement; stopfirstmismatch.",
+      "cases": [
+        "task7-basic-qout-SCSIhStandardQoutcnt-0-1-0",
+        "task7-basic-qout-SCSIhStandardQoutcnt-1-1-1",
+        "task7-basic-qout-SCSIhStandardQoutcnt-2-255-255",
+        "task7-basic-qout-SCSIhStandardQoutcnt-0-0-1"
+      ],
+      "native_address": 980,
+      "native_size": 124,
+      "native_sha256": "8A919751D282598B7057EF794121558E1D896507F95AB88C0D10616A651414A7",
+      "native_external_relocations": [],
+      "native_opcode_counts": {
+        "37/1008": 1,
+        "31/444": 1,
+        "34/109": 1,
+        "34/108": 1,
+        "32/98": 2,
+        "21/28": 1,
+        "31/266": 1,
+        "34/3": 3,
+        "31/0": 3,
+        "14/0": 5,
+        "16/38": 1,
+        "12/0": 1,
+        "21/799": 4,
+        "16/12": 1,
+        "18/4": 1,
+        "14/4": 1,
+        "16/996": 1,
+        "14/16": 1,
+        "19/16": 1
+      },
+      "reviewed_native_batch": 3
+    },
+    {
+      "address": 1624404,
+      "name": "_SCSIhStandard64QHeadBDR",
+      "owner": "AdaptecU2CHIMSCB.c",
+      "reference_size": 404,
+      "source_line": 365,
+      "control_flow": "Readnextdescriptor number/bus/virtual beforequeue; firmwarehead66=request -> replacenumber andactualtranslatedSCBaddress at60; else traverseactiveuntilffffffff, patchpredecessornumberandnullablefull32busaddress; actual modeQHead last.",
+      "cases": [
+        "task7-bdr-qhead-Standard64-False",
+        "task7-bdr-qhead-Standard64-True"
+      ],
+      "native_address": 6420,
+      "native_size": 396,
+      "native_sha256": "9BAEF6B77A66162D98C507195B90CD34EC42F757D73A0A64CA0865D47B4EF085",
+      "native_external_relocations": [
+        {
+          "address": 6528,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 6600,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 6616,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_SCSIhSetAddressScbBA32"
+        }
+      ],
+      "native_opcode_counts": {
+        "31/339": 4,
+        "36/1014": 1,
+        "36/1016": 1,
+        "36/1018": 1,
+        "36/1020": 1,
+        "36/1022": 1,
+        "36/4": 1,
+        "37/976": 1,
+        "31/444": 14,
+        "32/12": 3,
+        "32/120": 5,
+        "32/8": 3,
+        "34/33": 2,
+        "32/4": 5,
+        "34/0": 1,
+        "32/2": 3,
+        "32/6": 3,
+        "36/28": 2,
+        "32/0": 2,
+        "32/10": 2,
+        "32/14": 2,
+        "18/832": 1,
+        "34/4": 2,
+        "21/799": 2,
+        "31/0": 2,
+        "16/102": 1,
+        "38/31": 1,
+        "18/796": 1,
+        "14/30": 1,
+        "18/788": 1,
+        "18/74": 1,
+        "31/23": 2,
+        "32/108": 1,
+        "31/467": 4,
+        "19/16": 4,
+        "16/40": 1,
+        "32/110": 1,
+        "32/114": 1,
+        "11/0": 1,
+        "16/26": 1,
+        "18/12": 1,
+        "32/668": 1,
+        "21/29": 1,
+        "11/1023": 1,
+        "16/954": 1,
+        "18/838": 1,
+        "14/48": 1,
+        "32/1014": 1,
+        "32/1016": 1,
+        "32/1018": 1,
+        "32/1020": 1,
+        "32/1022": 1
+      },
+      "reviewed_native_batch": 6
+    },
+    {
+      "address": 1624808,
+      "name": "_SCSIhSwapping32QHeadBDR",
+      "owner": "AdaptecU2CHIMSCB.c",
+      "reference_size": 392,
+      "source_line": 417,
+      "control_flow": "ActualhardwaregetQNewTail, nextdescriptornumber, firmwarehead66; requestatheadincrements8bitqnewHead/write64selectorandreturns. Otherwisetraversebounded8bittail..qnewHead, patchpredecessornextwhenfound; actualmodeQHead.",
+      "cases": [
+        "task7-bdr-qhead-Swapping32-False",
+        "task7-bdr-qhead-Swapping32-True"
+      ],
+      "native_address": 7212,
+      "native_size": 388,
+      "native_sha256": "777F31094E6D09E5509405BF66BF8E82DB61471B8D7B0974092F5194D89D50E3",
+      "native_external_relocations": [
+        {
+          "address": 7336,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 7420,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        }
+      ],
+      "native_opcode_counts": {
+        "31/339": 4,
+        "36/1014": 1,
+        "36/1016": 1,
+        "36/1018": 1,
+        "36/1020": 1,
+        "36/1022": 1,
+        "36/4": 1,
+        "37/976": 1,
+        "31/444": 9,
+        "32/122": 1,
+        "32/42": 1,
+        "31/467": 4,
+        "19/16": 4,
+        "32/12": 3,
+        "32/8": 3,
+        "34/0": 1,
+        "32/120": 4,
+        "32/4": 5,
+        "34/33": 1,
+        "21/799": 4,
+        "36/28": 2,
+        "32/0": 2,
+        "32/2": 2,
+        "32/6": 2,
+        "32/10": 2,
+        "32/14": 2,
+        "18/428": 1,
+        "34/4": 2,
+        "31/0": 4,
+        "16/56": 1,
+        "34/32": 1,
+        "34/108": 3,
+        "12/0": 1,
+        "38/108": 1,
+        "38/31": 1,
+        "18/386": 2,
+        "18/70": 1,
+        "32/110": 1,
+        "18/46": 1,
+        "16/40": 1,
+        "32/668": 1,
+        "21/29": 1,
+        "31/23": 1,
+        "32/108": 1,
+        "16/974": 1,
+        "14/0": 1,
+        "16/988": 1,
+        "14/48": 1,
+        "32/1014": 1,
+        "32/1016": 1,
+        "32/1018": 1,
+        "32/1020": 1,
+        "32/1022": 1
+      },
+      "reviewed_native_batch": 6
+    },
+    {
+      "address": 1625200,
+      "name": "_SCSIhStandardAdvQHeadBDR",
+      "owner": "AdaptecU2CHIMSCB.c",
+      "reference_size": 404,
+      "source_line": 391,
+      "control_flow": "Readnextdescriptor number/bus/virtual beforequeue; firmwarehead66=request -> replacenumber andactualtranslatedSCBaddress at32; else traverseactiveuntilffffffff, patchpredecessornumberandnullablefull32busaddress; actual modeQHead last.",
+      "cases": [
+        "task7-bdr-qhead-StandardAdv-False",
+        "task7-bdr-qhead-StandardAdv-True"
+      ],
+      "native_address": 6816,
+      "native_size": 396,
+      "native_sha256": "67A677BB6440CA43808D68452AFA3BD08D484D6688009040270A550A32954E1B",
+      "native_external_relocations": [
+        {
+          "address": 6924,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 6996,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 7012,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_SCSIhSetAddressScbBA32"
+        }
+      ],
+      "native_opcode_counts": {
+        "31/339": 4,
+        "36/1014": 1,
+        "36/1016": 1,
+        "36/1018": 1,
+        "36/1020": 1,
+        "36/1022": 1,
+        "36/4": 1,
+        "37/976": 1,
+        "31/444": 14,
+        "32/12": 3,
+        "32/120": 5,
+        "32/8": 3,
+        "34/33": 2,
+        "32/4": 5,
+        "34/0": 1,
+        "32/2": 3,
+        "32/6": 3,
+        "36/28": 2,
+        "32/0": 2,
+        "32/10": 2,
+        "32/14": 2,
+        "18/634": 1,
+        "34/4": 2,
+        "21/799": 2,
+        "31/0": 2,
+        "16/102": 1,
+        "38/31": 1,
+        "18/598": 1,
+        "14/16": 1,
+        "18/590": 1,
+        "18/74": 1,
+        "31/23": 2,
+        "32/108": 1,
+        "31/467": 4,
+        "19/16": 4,
+        "16/40": 1,
+        "32/110": 1,
+        "32/114": 1,
+        "11/0": 1,
+        "16/26": 1,
+        "18/12": 1,
+        "32/668": 1,
+        "21/29": 1,
+        "11/1023": 1,
+        "16/954": 1,
+        "18/98": 1,
+        "14/48": 1,
+        "32/1014": 1,
+        "32/1016": 1,
+        "32/1018": 1,
+        "32/1020": 1,
+        "32/1022": 1
+      },
+      "reviewed_native_batch": 6
+    },
+    {
+      "address": 1625604,
+      "name": "_SCSIhSwappingAdvQHeadBDR",
+      "owner": "AdaptecU2CHIMSCB.c",
+      "reference_size": 392,
+      "source_line": 442,
+      "control_flow": "ActualhardwaregetQNewTail, nextdescriptornumber, firmwarehead66; requestatheadincrements8bitqnewHead/write64selectorandreturns. Otherwisetraversebounded8bittail..qnewHead, patchpredecessornextwhenfound; actualmodeQHead.",
+      "cases": [
+        "task7-bdr-qhead-SwappingAdv-False",
+        "task7-bdr-qhead-SwappingAdv-True"
+      ],
+      "native_address": 7600,
+      "native_size": 388,
+      "native_sha256": "B11F36617224913B3C59ED5A63A2DB3801615FB907676B4EFABF28A06ED03800",
+      "native_external_relocations": [
+        {
+          "address": 7724,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 7808,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        }
+      ],
+      "native_opcode_counts": {
+        "31/339": 4,
+        "36/1014": 1,
+        "36/1016": 1,
+        "36/1018": 1,
+        "36/1020": 1,
+        "36/1022": 1,
+        "36/4": 1,
+        "37/976": 1,
+        "31/444": 9,
+        "32/122": 1,
+        "32/42": 1,
+        "31/467": 4,
+        "19/16": 4,
+        "32/12": 3,
+        "32/8": 3,
+        "34/0": 1,
+        "32/120": 4,
+        "32/4": 5,
+        "34/33": 1,
+        "21/799": 4,
+        "36/28": 2,
+        "32/0": 2,
+        "32/2": 2,
+        "32/6": 2,
+        "32/10": 2,
+        "32/14": 2,
+        "18/234": 1,
+        "34/4": 2,
+        "31/0": 4,
+        "16/56": 1,
+        "34/32": 1,
+        "34/108": 3,
+        "12/0": 1,
+        "38/108": 1,
+        "38/31": 1,
+        "18/192": 1,
+        "18/70": 1,
+        "32/110": 1,
+        "18/46": 1,
+        "16/40": 1,
+        "32/668": 1,
+        "21/29": 1,
+        "31/23": 1,
+        "32/108": 1,
+        "16/974": 1,
+        "14/0": 1,
+        "16/988": 1,
+        "18/584": 1,
+        "14/48": 1,
+        "32/1014": 1,
+        "32/1016": 1,
+        "32/1018": 1,
+        "32/1020": 1,
+        "32/1022": 1
+      },
+      "reviewed_native_batch": 6
+    },
+    {
+      "address": 1625996,
+      "name": "_SCSIhResetChannelHardware",
+      "owner": "AdaptecU2CHIMSCB.c",
+      "reference_size": 864,
+      "source_line": 1126,
+      "control_flow": "Ordered reset0/11/12/1, actual loadScsiRate0; clear147 then postdecrement800000readbit8loop; resetDFifo;17=a4/3=40 and unbounded12bit2toggleloop; actualenableIOErr, nullableCCCtl/CCHHAddr, actualresetBTA.",
+      "cases": [
+        "task7-reset-channel-Standard64",
+        "task7-reset-channel-Swapping32"
+      ],
+      "native_address": 21824,
+      "native_size": 896,
+      "native_sha256": "FBD435D18C526862A53222103FE5E311C26D35920A3ED8BAF4D8CEA08930782F",
+      "native_external_relocations": [
+        {
+          "address": 21908,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 21964,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 22016,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 22072,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 22160,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 22204,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 22260,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 22352,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 22412,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 22460,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 22520,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        }
+      ],
+      "native_opcode_counts": {
+        "31/339": 7,
+        "36/1016": 1,
+        "36/1018": 1,
+        "36/1020": 1,
+        "36/1022": 1,
+        "36/4": 1,
+        "37/976": 1,
+        "31/444": 7,
+        "14/0": 5,
+        "32/4": 26,
+        "36/28": 12,
+        "38/31": 10,
+        "32/0": 13,
+        "32/2": 13,
+        "32/6": 12,
+        "32/8": 12,
+        "32/10": 12,
+        "32/12": 12,
+        "32/14": 12,
+        "18/310": 1,
+        "14/5": 1,
+        "14/127": 1,
+        "18/282": 1,
+        "14/6": 2,
+        "18/256": 1,
+        "14/9": 1,
+        "18/228": 1,
+        "32/122": 3,
+        "31/467": 7,
+        "15/64": 1,
+        "14/73": 2,
+        "19/16": 7,
+        "18/184": 1,
+        "18/162": 1,
+        "28/4": 1,
+        "16/32": 1,
+        "18/134": 1,
+        "11/0": 3,
+        "14/1023": 1,
+        "16/970": 1,
+        "14/8": 1,
+        "14/82": 1,
+        "18/88": 1,
+        "14/1": 2,
+        "14/32": 2,
+        "18/58": 1,
+        "18/34": 1,
+        "28/1": 1,
+        "16/54": 1,
+        "18/4": 1,
+        "18/944": 1,
+        "32/120": 3,
+        "32/116": 1,
+        "16/10": 2,
+        "32/118": 1,
+        "32/60": 1,
+        "14/48": 1,
+        "32/1016": 1,
+        "32/1018": 1,
+        "32/1020": 1,
+        "32/1022": 1
+      },
+      "reviewed_native_batch": 10
+    },
+    {
+      "address": 1626860,
+      "name": "_SCSIhAbortChannel",
+      "owner": "AdaptecU2CHIMSCB.c",
+      "reference_size": 176,
+      "source_line": 1155,
+      "control_flow": "Unsigned8 iterate activeSCBs; skipffffffff/foreignHHCB; matching status2/hoststatusinput, clearactiveownershipbefore actual ResourceCompleteHIOB, no SetStat call.",
+      "cases": [
+        "task7-reset-abort-channel"
+      ],
+      "native_address": 22720,
+      "native_size": 176,
+      "native_sha256": "E8AA38AAA59BB9FDB18AE468BDF43690D97D6BA21C5AD5DFF7F25A2BC5EBB83A",
+      "native_external_relocations": [
+        {
+          "address": 22836,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_SCSIrCompleteHIOB"
+        }
+      ],
+      "native_opcode_counts": {
+        "31/339": 1,
+        "36/1014": 1,
+        "36/1016": 1,
+        "36/1018": 1,
+        "36/1020": 1,
+        "36/1022": 1,
+        "36/4": 1,
+        "37/984": 1,
+        "31/444": 1,
+        "34/3": 2,
+        "14/0": 2,
+        "31/32": 2,
+        "21/799": 2,
+        "16/44": 1,
+        "14/1023": 1,
+        "14/1": 1,
+        "32/668": 2,
+        "21/29": 1,
+        "31/23": 1,
+        "11/1023": 1,
+        "16/20": 1,
+        "32/0": 2,
+        "31/0": 1,
+        "16/12": 1,
+        "38/2": 1,
+        "38/3": 1,
+        "31/151": 1,
+        "18/870": 1,
+        "16/988": 1,
+        "14/40": 1,
+        "32/4": 1,
+        "31/467": 1,
+        "32/1014": 1,
+        "32/1016": 1,
+        "32/1018": 1,
+        "32/1020": 1,
+        "32/1022": 1,
+        "19/16": 1
+      },
+      "reviewed_native_batch": 10
+    },
+    {
+      "address": 1627036,
+      "name": "_SCSIhStandard64ResetSoftware",
+      "owner": "AdaptecU2CHIMSCB.c",
+      "reference_size": 852,
+      "source_line": 570,
+      "control_flow": "ActualCommonResetSoftware andfreehead; exactmoderegistersequence andactualscratchbus32translation,reset8bitqnewHead/qdoneElement/qdonePass; fill8*(numberScbs+1) qoutbytesff includingcount255. Sixteendeviceflag4000invertedmask -> registers48/49, initialSCBaddress60/number68, qout78, heads112/94/53/52, count120.",
+      "cases": [
+        "task7-reset-software-Standard64-0",
+        "task7-reset-software-Standard64-3",
+        "task7-reset-software-Standard64-255"
+      ],
+      "native_address": 10336,
+      "native_size": 884,
+      "native_sha256": "46467FA025164BA4171B11F7A8AC9AFEB63F4724FBBD8F08F78BB0262BE08B0F",
+      "native_external_relocations": [
+        {
+          "address": 10476,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 10532,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 10540,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_SCSIRGetFreeHead"
+        },
+        {
+          "address": 10616,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 10672,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 10728,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 10800,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 10852,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 10908,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 10964,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 11072,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 11124,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 11184,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        }
+      ],
+      "native_opcode_counts": {
+        "31/339": 1,
+        "36/1016": 1,
+        "36/1018": 1,
+        "36/1020": 1,
+        "36/1022": 1,
+        "36/4": 1,
+        "37/976": 1,
+        "31/444": 7,
+        "18/872": 1,
+        "14/0": 7,
+        "40/16": 1,
+        "28/0": 1,
+        "16/8": 1,
+        "31/24": 1,
+        "21/543": 1,
+        "10/7": 1,
+        "14/5": 1,
+        "16/1006": 1,
+        "32/4": 25,
+        "14/24": 2,
+        "36/28": 12,
+        "38/31": 12,
+        "32/0": 12,
+        "32/2": 12,
+        "32/6": 13,
+        "32/8": 12,
+        "32/10": 12,
+        "32/12": 12,
+        "32/14": 12,
+        "18/906": 1,
+        "21/287": 1,
+        "18/878": 1,
+        "18/874": 1,
+        "14/30": 1,
+        "18/842": 1,
+        "14/34": 1,
+        "34/0": 1,
+        "18/836": 1,
+        "14/29": 2,
+        "18/808": 1,
+        "38/108": 2,
+        "18/780": 1,
+        "32/98": 2,
+        "14/39": 1,
+        "18/750": 1,
+        "14/56": 1,
+        "14/127": 3,
+        "18/744": 1,
+        "14/38": 2,
+        "18/718": 1,
+        "18/690": 1,
+        "14/47": 1,
+        "38/109": 1,
+        "18/662": 1,
+        "34/3": 3,
+        "11/1023": 1,
+        "16/20": 1,
+        "31/215": 1,
+        "12/0": 2,
+        "21/28": 1,
+        "31/32": 1,
+        "16/1010": 1,
+        "14/26": 2,
+        "18/608": 1,
+        "18/582": 1,
+        "14/60": 1,
+        "18/552": 1,
+        "14/48": 1,
+        "31/467": 1,
+        "32/1016": 1,
+        "32/1018": 1,
+        "32/1020": 1,
+        "32/1022": 1,
+        "19/16": 1
+      },
+      "reviewed_native_batch": 7
+    },
+    {
+      "address": 1627888,
+      "name": "_SCSIhSwappingResetSoftware",
+      "owner": "AdaptecU2CHIMSCB.c",
+      "reference_size": 584,
+      "source_line": 601,
+      "control_flow": "ActualCommonResetSoftware andfreehead; exactmoderegistersequence andactualscratchbus32translation,reset8bitqnewHead/qdoneElement/qdonePass; fill8*(numberScbs+1) qoutbytesff includingcount255. Initialnumber64/timers88/89,qout72/buffer80,heads87/86,count92.",
+      "cases": [
+        "task7-reset-software-Swapping32-0",
+        "task7-reset-software-Swapping32-3",
+        "task7-reset-software-Swapping32-255"
+      ],
+      "native_address": 11220,
+      "native_size": 604,
+      "native_sha256": "44BA7D312F71E6CD72DE39E66A168ACE3A625527B3C5F31DDDE4F2D9DAEA2417",
+      "native_external_relocations": [
+        {
+          "address": 11260,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_SCSIRGetFreeHead"
+        },
+        {
+          "address": 11316,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 11372,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 11428,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 11496,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 11556,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 11684,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 11736,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 11792,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        }
+      ],
+      "native_opcode_counts": {
+        "31/339": 1,
+        "36/1018": 1,
+        "36/1020": 1,
+        "36/1022": 1,
+        "36/4": 1,
+        "37/976": 1,
+        "31/444": 5,
+        "34/3": 1,
+        "18/430": 2,
+        "18/514": 1,
+        "32/4": 17,
+        "14/32": 1,
+        "36/28": 8,
+        "34/0": 1,
+        "38/31": 8,
+        "32/0": 8,
+        "32/2": 8,
+        "32/6": 8,
+        "32/8": 8,
+        "32/10": 8,
+        "32/12": 8,
+        "32/14": 8,
+        "18/486": 1,
+        "14/44": 2,
+        "14/0": 5,
+        "18/458": 1,
+        "38/108": 2,
+        "32/98": 2,
+        "14/36": 1,
+        "18/400": 1,
+        "14/45": 2,
+        "18/396": 1,
+        "14/127": 3,
+        "18/366": 1,
+        "32/104": 1,
+        "14/40": 1,
+        "38/109": 1,
+        "18/334": 1,
+        "21/28": 1,
+        "31/0": 2,
+        "16/18": 1,
+        "31/215": 1,
+        "21/543": 1,
+        "16/1014": 1,
+        "14/43": 2,
+        "18/302": 1,
+        "18/276": 1,
+        "14/46": 1,
+        "18/248": 1,
+        "14/48": 1,
+        "31/467": 1,
+        "32/1018": 1,
+        "32/1020": 1,
+        "32/1022": 1,
+        "19/16": 1
+      },
+      "reviewed_native_batch": 7
+    },
+    {
+      "address": 1628472,
+      "name": "_SCSIhStandardAdvResetSoftware",
+      "owner": "AdaptecU2CHIMSCB.c",
+      "reference_size": 916,
+      "source_line": 623,
+      "control_flow": "ActualCommonResetSoftware andfreehead; exactmoderegistersequence andactualscratchbus32translation,reset8bitqnewHead/qdoneElement/qdonePass; fill8*(numberScbs+1) qoutbytesff includingcount255. Advanced244/246/248clears, twoqoutaddresses, receivebufferformode5, log2(count+1) length encoding at250preservesf8 andsubtract3, clearbreakpoint74/73, hardwareFlags8000 ->77.",
+      "cases": [
+        "task7-reset-software-StandardAdv-0",
+        "task7-reset-software-StandardAdv-3",
+        "task7-reset-software-StandardAdv-255"
+      ],
+      "native_address": 11824,
+      "native_size": 924,
+      "native_sha256": "DCA8FFBDC1BA0FC29BA222C8043E0B23D2915929F6413CA9CECF1E9E33F23AAB",
+      "native_external_relocations": [
+        {
+          "address": 11868,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_SCSIRGetFreeHead"
+        },
+        {
+          "address": 11944,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 12000,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 12056,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 12108,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 12196,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 12252,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 12308,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 12416,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 12468,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 12520,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 12596,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 12652,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 12712,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        }
+      ],
+      "native_opcode_counts": {
+        "31/339": 1,
+        "36/1016": 1,
+        "36/1018": 1,
+        "36/1020": 1,
+        "36/1022": 1,
+        "36/4": 1,
+        "37/976": 1,
+        "31/444": 6,
+        "34/3": 3,
+        "18/126": 1,
+        "18/210": 1,
+        "32/6": 14,
+        "14/16": 1,
+        "18/178": 1,
+        "32/4": 27,
+        "14/29": 1,
+        "36/28": 13,
+        "34/0": 1,
+        "38/31": 12,
+        "32/0": 13,
+        "32/2": 13,
+        "32/8": 13,
+        "32/10": 13,
+        "32/12": 13,
+        "32/14": 13,
+        "18/172": 1,
+        "14/122": 1,
+        "14/0": 5,
+        "18/144": 1,
+        "14/123": 1,
+        "38/108": 2,
+        "18/116": 1,
+        "14/124": 1,
+        "18/90": 1,
+        "32/98": 3,
+        "14/20": 1,
+        "18/60": 1,
+        "14/24": 1,
+        "18/52": 1,
+        "14/28": 1,
+        "14/127": 3,
+        "18/46": 1,
+        "14/26": 1,
+        "18/18": 1,
+        "14/27": 1,
+        "38/109": 1,
+        "18/1014": 1,
+        "11/1023": 1,
+        "16/20": 1,
+        "31/215": 1,
+        "12/0": 2,
+        "21/28": 1,
+        "31/32": 1,
+        "16/1010": 1,
+        "14/30": 2,
+        "18/960": 1,
+        "18/934": 1,
+        "14/125": 2,
+        "18/908": 1,
+        "21/796": 1,
+        "21/63": 1,
+        "21/799": 1,
+        "16/1018": 1,
+        "12/1022": 1,
+        "18/870": 1,
+        "14/37": 1,
+        "18/842": 1,
+        "14/38": 1,
+        "32/106": 1,
+        "21/1023": 1,
+        "18/812": 1,
+        "14/48": 1,
+        "31/467": 1,
+        "32/1016": 1,
+        "32/1018": 1,
+        "32/1020": 1,
+        "32/1022": 1,
+        "19/16": 1
+      },
+      "reviewed_native_batch": 7
+    },
+    {
+      "address": 1629388,
+      "name": "_SCSIhSwappingAdvResetSoftware",
+      "owner": "AdaptecU2CHIMSCB.c",
+      "reference_size": 780,
+      "source_line": 660,
+      "control_flow": "ActualCommonResetSoftware andfreehead; exactmoderegistersequence andactualscratchbus32translation,reset8bitqnewHead/qdoneElement/qdonePass; fill8*(numberScbs+1) qoutbytesff includingcount255. Advanced244/246/248clears, twoqoutaddresses, receivebufferformode5, log2(count+1) length encoding at250preservesf8 andsubtract3, clearbreakpoint74/73, hardwareFlags8000 ->77.",
+      "cases": [
+        "task7-reset-software-SwappingAdv-0",
+        "task7-reset-software-SwappingAdv-3",
+        "task7-reset-software-SwappingAdv-255"
+      ],
+      "native_address": 12748,
+      "native_size": 804,
+      "native_sha256": "CA6F5E7C61AA9B06E9B1D0267C6BC48266BC9D72AEB1E60D0D9691AA8C4F8A39",
+      "native_external_relocations": [
+        {
+          "address": 12788,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_SCSIRGetFreeHead"
+        },
+        {
+          "address": 12844,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 12900,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 12956,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 13008,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 13096,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 13224,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 13276,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 13328,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 13404,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 13460,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 13520,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        }
+      ],
+      "native_opcode_counts": {
+        "31/339": 1,
+        "36/1018": 1,
+        "36/1020": 1,
+        "36/1022": 1,
+        "36/4": 1,
+        "37/976": 1,
+        "31/444": 6,
+        "34/3": 1,
+        "18/690": 2,
+        "18/774": 1,
+        "32/4": 23,
+        "14/20": 2,
+        "36/28": 11,
+        "34/0": 1,
+        "38/31": 10,
+        "32/0": 11,
+        "32/2": 11,
+        "32/6": 11,
+        "32/8": 11,
+        "32/10": 11,
+        "32/12": 11,
+        "32/14": 11,
+        "18/746": 1,
+        "14/122": 1,
+        "14/0": 6,
+        "18/718": 1,
+        "14/123": 1,
+        "38/108": 2,
+        "14/124": 1,
+        "18/664": 1,
+        "32/98": 3,
+        "18/634": 1,
+        "14/24": 1,
+        "18/626": 1,
+        "14/26": 1,
+        "18/620": 1,
+        "32/104": 1,
+        "14/16": 1,
+        "38/109": 1,
+        "18/588": 1,
+        "21/28": 1,
+        "31/0": 2,
+        "16/18": 1,
+        "14/127": 2,
+        "31/215": 1,
+        "21/543": 1,
+        "16/1014": 1,
+        "14/29": 1,
+        "18/556": 1,
+        "14/28": 1,
+        "18/530": 1,
+        "14/125": 2,
+        "18/504": 1,
+        "21/796": 1,
+        "21/63": 1,
+        "12/0": 1,
+        "21/799": 1,
+        "16/1018": 1,
+        "12/1022": 1,
+        "18/466": 1,
+        "14/36": 1,
+        "18/438": 1,
+        "14/38": 1,
+        "32/106": 1,
+        "21/1023": 1,
+        "18/408": 1,
+        "14/48": 1,
+        "31/467": 1,
+        "32/1018": 1,
+        "32/1020": 1,
+        "32/1022": 1,
+        "19/16": 1
+      },
+      "reviewed_native_batch": 7
+    },
+    {
+      "address": 1630168,
+      "name": "_SCSIhCommonResetSoftware",
+      "owner": "AdaptecU2CHIMSCB.c",
+      "reference_size": 132,
+      "source_line": 210,
+      "control_flow": "ActiveHIOB unsigned8 index bound numberScbs; set each pointerffffffff; execute CheckSyncNego; nullable firmware setupAssignScbBuffer slot132; no sizeofprefix allocation.",
+      "cases": [
+        "task7-busy-common-0",
+        "task7-busy-common-1",
+        "task7-busy-common-3"
+      ],
+      "native_address": 1872,
+      "native_size": 132,
+      "native_sha256": "5E274DFEB58685FA5BF7E30961B72C7FCAFF7B57E4EC7736EA95E4B7A7A14463",
+      "native_external_relocations": [
+        {
+          "address": 1948,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_SCSIhCheckSyncNego"
+        }
+      ],
+      "native_opcode_counts": {
+        "31/339": 2,
+        "36/1022": 1,
+        "36/4": 1,
+        "37/992": 1,
+        "31/444": 3,
+        "34/3": 2,
+        "14/0": 2,
+        "31/32": 2,
+        "16/20": 1,
+        "14/1023": 1,
+        "32/668": 1,
+        "21/29": 1,
+        "31/151": 1,
+        "21/799": 1,
+        "16/1010": 1,
+        "18/50": 1,
+        "32/120": 1,
+        "32/66": 1,
+        "11/0": 1,
+        "16/10": 1,
+        "31/467": 2,
+        "19/16": 2,
+        "14/32": 1,
+        "32/4": 1,
+        "32/1022": 1
+      },
+      "reviewed_native_batch": 4
+    },
+    {
+      "address": 1630300,
+      "name": "_SCSIhSetAddressScratchBA32",
+      "owner": "AdaptecU2CHIMSCB.c",
+      "reference_size": 276,
+      "source_line": 220,
+      "control_flow": "Inputoffsettruncatedonce8bits; actual OSDGetBusAddress(hhcb,1,virtualAddress) retainsr5; full32bit bus word storedlowbytefirst atoffset+n, additionsnotwrapped.",
+      "cases": [
+        "task7-busy-scratch-32",
+        "task7-busy-scratch-253"
+      ],
+      "native_address": 2004,
+      "native_size": 304,
+      "native_sha256": "3608011BA7EFB53614B584F470563C595648BE6FCE58B96CEB05B5BFD65AA3E0",
+      "native_external_relocations": [
+        {
+          "address": 2048,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSDGetBusAddress"
+        },
+        {
+          "address": 2100,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 2156,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 2212,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 2268,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        }
+      ],
+      "native_opcode_counts": {
+        "31/339": 1,
+        "36/1014": 1,
+        "36/1016": 1,
+        "36/1018": 1,
+        "36/1020": 1,
+        "36/1022": 1,
+        "36/4": 1,
+        "37/976": 1,
+        "31/444": 2,
+        "21/799": 2,
+        "14/0": 2,
+        "18/0": 1,
+        "32/4": 9,
+        "36/28": 4,
+        "38/31": 4,
+        "32/0": 4,
+        "32/2": 4,
+        "32/6": 4,
+        "32/8": 4,
+        "32/10": 4,
+        "32/12": 4,
+        "32/14": 4,
+        "18/998": 1,
+        "21/287": 1,
+        "18/970": 1,
+        "21/543": 1,
+        "14/1": 2,
+        "18/942": 1,
+        "18/914": 1,
+        "14/48": 1,
+        "31/467": 1,
+        "32/1014": 1,
+        "32/1016": 1,
+        "32/1018": 1,
+        "32/1020": 1,
+        "32/1022": 1,
+        "19/16": 1
+      },
+      "reviewed_native_batch": 4
+    },
+    {
+      "address": 1630576,
+      "name": "_SCSIhStandardResetBTA",
+      "owner": "AdaptecU2CHIMSCB.c",
+      "reference_size": 96,
+      "source_line": 179,
+      "control_flow": "Snapshot HHCBbyte31count, unsignedindex from0<count; actual StandardIndexClearBusy for each entry.",
+      "cases": [
+        "task7-busy-reset-Standard-0",
+        "task7-busy-reset-Standard-1",
+        "task7-busy-reset-Standard-3"
+      ],
+      "native_address": 1384,
+      "native_size": 96,
+      "native_sha256": "B034C3E8414CD40BC79C574CB93AF1694CC8C84238873DBA105FCDA99EF9D8A2",
+      "native_external_relocations": [],
+      "native_opcode_counts": {
+        "31/339": 1,
+        "36/1018": 1,
+        "36/1020": 1,
+        "36/1022": 1,
+        "36/4": 1,
+        "37/984": 1,
+        "31/444": 3,
+        "34/15": 1,
+        "14/0": 2,
+        "31/32": 2,
+        "16/14": 1,
+        "18/858": 1,
+        "16/1014": 1,
+        "14/40": 1,
+        "32/4": 1,
+        "31/467": 1,
+        "32/1018": 1,
+        "32/1020": 1,
+        "32/1022": 1,
+        "19/16": 1
+      },
+      "reviewed_native_batch": 4
+    },
+    {
+      "address": 1630672,
+      "name": "_SCSIhSwappingResetBTA",
+      "owner": "AdaptecU2CHIMSCB.c",
+      "reference_size": 76,
+      "source_line": 186,
+      "control_flow": "Exactly16 actual SwappingIndexClearBusy calls, indices0..15.",
+      "cases": [
+        "task7-busy-reset-Swapping-0",
+        "task7-busy-reset-Swapping-1",
+        "task7-busy-reset-Swapping-3"
+      ],
+      "native_address": 1480,
+      "native_size": 76,
+      "native_sha256": "321BBF605E005875651EF12517C66054AD332C95384311EE9BCA4D6B22E55CF1",
+      "native_external_relocations": [],
+      "native_opcode_counts": {
+        "31/339": 1,
+        "36/1020": 1,
+        "36/1022": 1,
+        "36/4": 1,
+        "37/992": 1,
+        "31/444": 3,
+        "14/0": 2,
+        "18/902": 1,
+        "10/7": 1,
+        "16/1014": 1,
+        "14/32": 1,
+        "32/4": 1,
+        "31/467": 1,
+        "32/1020": 1,
+        "32/1022": 1,
+        "19/16": 1
+      },
+      "reviewed_native_batch": 4
+    },
+    {
+      "address": 1630748,
+      "name": "_SCSIhStandardTargetClearBusy",
+      "owner": "AdaptecU2CHIMSCB.c",
+      "reference_size": 264,
+      "source_line": 193,
+      "control_flow": "SaveSCBselect144; selectHIOBnumber; targetindex plus16*lun only flags20000000, truncate8bit; actualindexclear thenrestore144.",
+      "cases": [
+        "task7-busy-target-Standard-0",
+        "task7-busy-target-Standard-536870912"
+      ],
+      "native_address": 1556,
+      "native_size": 276,
+      "native_sha256": "E459085D4E74259636E0535B76D72958360DE4BA34846E2D83BCBE8AF2564095",
+      "native_external_relocations": [
+        {
+          "address": 1644,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 1704,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 1792,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        }
+      ],
+      "native_opcode_counts": {
+        "31/339": 1,
+        "36/1014": 1,
+        "36/1016": 1,
+        "36/1018": 1,
+        "36/1020": 1,
+        "36/1022": 1,
+        "36/4": 1,
+        "37/976": 1,
+        "31/444": 4,
+        "32/0": 4,
+        "32/4": 7,
+        "14/72": 1,
+        "36/28": 3,
+        "32/2": 3,
+        "32/6": 4,
+        "32/8": 3,
+        "32/10": 3,
+        "32/12": 3,
+        "32/14": 3,
+        "18/202": 1,
+        "34/2": 2,
+        "34/4": 1,
+        "21/799": 2,
+        "38/31": 2,
+        "18/172": 1,
+        "29/0": 1,
+        "16/10": 1,
+        "21/27": 1,
+        "31/266": 1,
+        "18/704": 1,
+        "18/128": 1,
+        "14/48": 1,
+        "31/467": 1,
+        "32/1014": 1,
+        "32/1016": 1,
+        "32/1018": 1,
+        "32/1020": 1,
+        "32/1022": 1,
+        "19/16": 1
+      },
+      "reviewed_native_batch": 4
+    },
+    {
+      "address": 1631012,
+      "name": "_SCSIhSwappingTargetClearBusy",
+      "owner": "AdaptecU2CHIMSCB.c",
+      "reference_size": 40,
+      "source_line": 205,
+      "control_flow": "Actual SwappingIndexClearBusy withunit targetbyte; no SCBselect save/restore.",
+      "cases": [
+        "task7-busy-target-Swapping-0",
+        "task7-busy-target-Swapping-536870912"
+      ],
+      "native_address": 1832,
+      "native_size": 40,
+      "native_sha256": "1A7EEA0D7E9891751E7307CDFFA67C6FB47EA5249139E8CFA632CFA7B412FA98",
+      "native_external_relocations": [],
+      "native_opcode_counts": {
+        "31/339": 1,
+        "36/4": 1,
+        "37/992": 1,
+        "32/0": 1,
+        "34/2": 1,
+        "18/734": 1,
+        "14/32": 1,
+        "32/4": 1,
+        "31/467": 1,
+        "19/16": 1
+      },
+      "reviewed_native_batch": 4
+    },
+    {
+      "address": 1631052,
+      "name": "_SCSIhStandardIndexClearBusy",
+      "owner": "AdaptecU2CHIMSCB.c",
+      "reference_size": 164,
+      "source_line": 163,
+      "control_flow": "Select144=indexbyte then write255 tofirmware register56 busyselector; no restoreinthisbody.",
+      "cases": [
+        "task7-basic-index-Standard-0",
+        "task7-basic-index-Standard-3",
+        "task7-basic-index-Standard-255"
+      ],
+      "native_address": 1104,
+      "native_size": 168,
+      "native_sha256": "09A3CCEDEC42B90C08AB59E9E70D7546011816722B70BEA65BBAB397E79919CF",
+      "native_external_relocations": [
+        {
+          "address": 1180,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 1240,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        }
+      ],
+      "native_opcode_counts": {
+        "31/339": 1,
+        "36/1018": 1,
+        "36/1020": 1,
+        "36/1022": 1,
+        "36/4": 1,
+        "37/976": 1,
+        "31/444": 1,
+        "32/4": 5,
+        "14/72": 1,
+        "36/28": 2,
+        "38/31": 2,
+        "32/0": 2,
+        "32/2": 2,
+        "32/6": 2,
+        "32/8": 2,
+        "32/10": 2,
+        "32/12": 2,
+        "32/14": 2,
+        "18/434": 1,
+        "32/120": 1,
+        "34/28": 1,
+        "14/127": 1,
+        "18/404": 1,
+        "14/48": 1,
+        "31/467": 1,
+        "32/1018": 1,
+        "32/1020": 1,
+        "32/1022": 1,
+        "19/16": 1
+      },
+      "reviewed_native_batch": 3
+    },
+    {
+      "address": 1631216,
+      "name": "_SCSIhSwappingIndexClearBusy",
+      "owner": "AdaptecU2CHIMSCB.c",
+      "reference_size": 96,
+      "source_line": 169,
+      "control_flow": "Write255 tofirmware register56+unsigned8index; additionnotwrappedbefore OSMregisteroffset.",
+      "cases": [
+        "task7-basic-index-Swapping-0",
+        "task7-basic-index-Swapping-3",
+        "task7-basic-index-Swapping-255"
+      ],
+      "native_address": 1272,
+      "native_size": 96,
+      "native_sha256": "6810DFD7049843A77D1F4CC1975E5F9EA426ED109FC67C3D7BF28FEF644C2406",
+      "native_external_relocations": [
+        {
+          "address": 1348,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        }
+      ],
+      "native_opcode_counts": {
+        "31/339": 1,
+        "36/4": 1,
+        "37/984": 1,
+        "14/127": 1,
+        "32/120": 1,
+        "32/4": 3,
+        "34/28": 1,
+        "21/799": 1,
+        "38/31": 1,
+        "31/266": 1,
+        "36/28": 1,
+        "32/0": 1,
+        "32/2": 1,
+        "32/6": 1,
+        "32/8": 1,
+        "32/10": 1,
+        "32/12": 1,
+        "32/14": 1,
+        "18/350": 1,
+        "14/40": 1,
+        "31/467": 1,
+        "19/16": 1
+      },
+      "reviewed_native_batch": 3
+    },
+    {
+      "address": 1631312,
+      "name": "_SCSIhResetScsi",
+      "owner": "AdaptecU2CHIMSCB.c",
+      "reference_size": 1496,
+      "source_line": 1170,
+      "control_flow": "Savefirmwaretimerlow/high; ff/0timer and lowbyteword14>>2PC; mask16/17/146, nullablewaitBusStable;0=1/UnPause; postdecrement800000pause+INTSTAT5loop andfallbackPause; stretch;0/12/11/146clear; realDelay2000; restoremasks/timer; flags&bfefffff|40000000 and exactly16deviceflags|4.",
+      "cases": [
+        "task7-reset-scsi"
+      ],
+      "native_address": 22896,
+      "native_size": 1568,
+      "native_sha256": "EC81D4C993FF707EA7777F42D7BFEB702CCCA9C6FC6C1B9D73ABA3C8F54D5FA9",
+      "native_external_relocations": [
+        {
+          "address": 22984,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 23044,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 23108,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 23172,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 23236,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 23288,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 23336,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 23388,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 23440,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 23496,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 23592,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 23600,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_SCSIhUnPause"
+        },
+        {
+          "address": 23644,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 23660,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_SCSIhReadINTSTAT"
+        },
+        {
+          "address": 23724,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 23740,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_SCSIhPauseAndWait"
+        },
+        {
+          "address": 23828,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 23884,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 23928,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 23988,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 24040,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 24096,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 24108,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_SCSIhDelayCount500us"
+        },
+        {
+          "address": 24160,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 24240,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 24296,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 24356,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        }
+      ],
+      "native_opcode_counts": {
+        "31/339": 4,
+        "36/1012": 1,
+        "36/1014": 1,
+        "36/1016": 1,
+        "36/1018": 1,
+        "36/1020": 1,
+        "36/1022": 1,
+        "36/4": 1,
+        "37/976": 1,
+        "31/444": 8,
+        "32/120": 7,
+        "32/4": 48,
+        "34/28": 6,
+        "36/28": 23,
+        "32/0": 23,
+        "32/2": 23,
+        "32/6": 24,
+        "32/8": 23,
+        "32/10": 23,
+        "32/12": 23,
+        "32/14": 23,
+        "18/796": 1,
+        "21/799": 5,
+        "12/0": 3,
+        "18/766": 1,
+        "14/127": 2,
+        "38/31": 17,
+        "18/734": 1,
+        "14/0": 7,
+        "18/702": 1,
+        "14/49": 2,
+        "34/11": 1,
+        "21/95": 1,
+        "18/670": 1,
+        "18/644": 1,
+        "14/8": 4,
+        "18/620": 1,
+        "18/594": 1,
+        "18/568": 1,
+        "14/73": 2,
+        "14/7": 1,
+        "18/540": 1,
+        "32/122": 3,
+        "32/44": 1,
+        "11/0": 3,
+        "15/64": 1,
+        "16/10": 3,
+        "31/467": 4,
+        "19/16": 4,
+        "14/67": 1,
+        "18/492": 1,
+        "18/488": 1,
+        "18/466": 1,
+        "28/2": 3,
+        "18/458": 1,
+        "16/38": 1,
+        "14/1023": 1,
+        "16/986": 1,
+        "18/426": 1,
+        "16/6": 1,
+        "18/418": 1,
+        "32/46": 1,
+        "18/374": 1,
+        "14/6": 1,
+        "14/16": 1,
+        "18/346": 1,
+        "18/324": 1,
+        "14/5": 1,
+        "18/294": 1,
+        "28/118": 1,
+        "18/268": 1,
+        "14/2": 1,
+        "18/240": 1,
+        "14/1000": 1,
+        "18/234": 1,
+        "18/208": 1,
+        "14/82": 1,
+        "18/168": 1,
+        "18/140": 1,
+        "18/110": 1,
+        "21/394": 1,
+        "25/0": 1,
+        "36/6": 1,
+        "21/29": 1,
+        "31/266": 2,
+        "21/30": 1,
+        "40/16": 1,
+        "10/7": 1,
+        "24/2": 1,
+        "44/16": 1,
+        "16/1004": 1,
+        "14/48": 1,
+        "32/1012": 1,
+        "32/1014": 1,
+        "32/1016": 1,
+        "32/1018": 1,
+        "32/1020": 1,
+        "32/1022": 1
+      },
+      "reviewed_native_batch": 10
+    },
+    {
+      "address": 1632808,
+      "name": "_SCSIhScsiBusReset",
+      "owner": "AdaptecU2CHIMSCB.c",
+      "reference_size": 368,
+      "source_line": 1215,
+      "control_flow": "ActualPause; nullableStackBugFix; register59activeSCBnumber -> HIOBauxiliary pointerorsentinel; actualResetScsi/Delay4000/ResetChannelHardware/AbortChannel6/resetSoftware slot88; lowbyteword20>>2PC,99=0,actualUnPause. Required6000delayiterations execute2,649,163instructions.",
+      "cases": [
+        "task7-reset-bus-full"
+      ],
+      "native_address": 24464,
+      "native_size": 368,
+      "native_sha256": "369F3E154F06DEF9AEED3E8E76C49B2CD5394B624DF4AB51CDD7BF7C5907A09B",
+      "native_external_relocations": [
+        {
+          "address": 24492,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_SCSIhPauseAndWait"
+        },
+        {
+          "address": 24576,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 24632,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_SCSIhDelayCount500us"
+        },
+        {
+          "address": 24740,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 24796,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 24804,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_SCSIhUnPause"
+        }
+      ],
+      "native_opcode_counts": {
+        "31/339": 3,
+        "36/1020": 1,
+        "36/1022": 1,
+        "36/4": 1,
+        "37/984": 1,
+        "31/444": 9,
+        "18/42": 1,
+        "32/120": 4,
+        "32/122": 1,
+        "11/0": 1,
+        "16/10": 2,
+        "31/467": 3,
+        "19/16": 3,
+        "32/4": 7,
+        "34/29": 1,
+        "36/28": 3,
+        "32/0": 3,
+        "32/2": 3,
+        "32/6": 3,
+        "32/8": 3,
+        "32/10": 3,
+        "32/12": 3,
+        "32/14": 3,
+        "18/0": 1,
+        "21/799": 1,
+        "11/127": 1,
+        "32/668": 1,
+        "21/29": 1,
+        "31/23": 1,
+        "18/4": 1,
+        "14/1023": 1,
+        "36/6": 1,
+        "18/162": 1,
+        "14/976": 1,
+        "18/996": 1,
+        "18/640": 1,
+        "14/3": 1,
+        "18/58": 1,
+        "32/44": 1,
+        "14/49": 2,
+        "34/17": 1,
+        "21/95": 1,
+        "38/31": 2,
+        "18/942": 1,
+        "14/0": 1,
+        "18/914": 1,
+        "18/910": 1,
+        "14/40": 1,
+        "32/1020": 1,
+        "32/1022": 1
+      },
+      "reviewed_native_batch": 10
+    },
+    {
+      "address": 1633176,
+      "name": "_SCSIhBusDeviceReset",
+      "owner": "AdaptecU2CHIMSCB.c",
+      "reference_size": 188,
+      "source_line": 1233,
+      "control_flow": "Unsigned8activeSCBs; skipffffffff/requestself/foreignHHCB/wrongtarget; matching actual firmwareabortHIOB(hhcb,active,8), retainallotherentries.",
+      "cases": [
+        "task7-reset-device-filters",
+        "task7-reset-device-empty"
+      ],
+      "native_address": 24832,
+      "native_size": 204,
+      "native_sha256": "2A0EA905E89BDB524B7364FC2335B62C416206DA6BF45219B5DEB40A4268029E",
+      "native_external_relocations": [],
+      "native_opcode_counts": {
+        "31/339": 2,
+        "36/1018": 1,
+        "36/1020": 1,
+        "36/1022": 1,
+        "36/4": 1,
+        "37/984": 1,
+        "31/444": 3,
+        "34/3": 2,
+        "14/0": 2,
+        "31/32": 2,
+        "16/66": 1,
+        "32/668": 1,
+        "21/29": 1,
+        "31/23": 1,
+        "31/124": 1,
+        "12/1023": 2,
+        "31/136": 2,
+        "31/316": 1,
+        "31/28": 1,
+        "16/34": 1,
+        "32/0": 3,
+        "31/0": 2,
+        "16/26": 1,
+        "34/2": 2,
+        "16/16": 1,
+        "32/120": 1,
+        "32/96": 1,
+        "14/4": 1,
+        "31/467": 2,
+        "19/16": 2,
+        "21/799": 1,
+        "16/962": 1,
+        "14/40": 1,
+        "32/4": 1,
+        "32/1018": 1,
+        "32/1020": 1,
+        "32/1022": 1
+      },
+      "reviewed_native_batch": 10
+    },
+    {
+      "address": 1633364,
+      "name": "_SCSIhStandard64AbortHIOB",
+      "owner": "AdaptecU2CHIMSCB.c",
+      "reference_size": 852,
+      "source_line": 944,
+      "control_flow": "Postdecrement800000238bit40pollwhenbit10set; cachedtransfer28predicate andmodeSCBidentity, save144/selectSCB/ORmodeabortbit/restore144 thenreturn. ActualSearchDoneQ beforeactualmodeSearchNewQ; status8 checksactualSeqDone/ExeQbefore status2/host8/actualTerminate. Otherstatuspreserveexistinghosterror, setmanager9/flags10000/actualbreakpoint1; no extraownershipclear.",
+      "cases": [
+        "task7-abort-hiob-Standard64-pending",
+        "task7-abort-hiob-Standard64-existing",
+        "task7-abort-hiob-Standard64-terminate",
+        "task7-abort-hiob-Standard64-cached"
+      ],
+      "native_address": 18412,
+      "native_size": 872,
+      "native_sha256": "A8EBF44B0501B0D90303127AB6160B5498B79EC9380122EEE98E8842536ECD89",
+      "native_external_relocations": [
+        {
+          "address": 18500,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 18560,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 18628,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 18688,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 18768,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 18824,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 18872,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 18924,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 18972,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 19168,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_SCSIhTerminateCommand"
+        }
+      ],
+      "native_opcode_counts": {
+        "31/339": 5,
+        "36/1014": 1,
+        "36/1016": 1,
+        "36/1018": 1,
+        "36/1020": 1,
+        "36/1022": 1,
+        "36/4": 1,
+        "37/976": 1,
+        "31/444": 13,
+        "14/119": 3,
+        "32/4": 19,
+        "21/799": 7,
+        "36/28": 9,
+        "32/0": 9,
+        "32/2": 9,
+        "32/6": 9,
+        "32/8": 9,
+        "32/10": 9,
+        "32/12": 9,
+        "32/14": 9,
+        "18/990": 1,
+        "28/8": 1,
+        "15/64": 1,
+        "16/36": 1,
+        "18/960": 1,
+        "28/32": 1,
+        "16/8": 2,
+        "11/0": 6,
+        "14/1023": 1,
+        "16/994": 1,
+        "18/926": 1,
+        "21/893": 1,
+        "11/14": 1,
+        "16/170": 1,
+        "14/120": 1,
+        "18/896": 1,
+        "34/4": 2,
+        "31/0": 1,
+        "16/138": 1,
+        "14/1": 3,
+        "38/2": 3,
+        "38/3": 3,
+        "38/16": 2,
+        "14/72": 1,
+        "18/856": 1,
+        "38/31": 3,
+        "18/828": 1,
+        "14/97": 1,
+        "18/804": 1,
+        "24/4": 1,
+        "18/778": 1,
+        "18/754": 1,
+        "18/136": 1,
+        "18/986": 1,
+        "16/124": 1,
+        "32/120": 4,
+        "32/102": 1,
+        "31/467": 5,
+        "19/16": 5,
+        "16/102": 1,
+        "11/4": 1,
+        "16/62": 1,
+        "32/98": 1,
+        "14/0": 3,
+        "16/76": 1,
+        "14/4": 3,
+        "32/104": 1,
+        "16/52": 1,
+        "18/656": 1,
+        "18/38": 1,
+        "34/3": 1,
+        "32/106": 1,
+        "25/0": 1,
+        "36/106": 1,
+        "32/128": 1,
+        "14/48": 1,
+        "32/1014": 1,
+        "32/1016": 1,
+        "32/1018": 1,
+        "32/1020": 1,
+        "32/1022": 1
+      },
+      "reviewed_native_batch": 9
+    },
+    {
+      "address": 1634216,
+      "name": "_SCSIhStandardAdvAbortHIOB",
+      "owner": "AdaptecU2CHIMSCB.c",
+      "reference_size": 852,
+      "source_line": 989,
+      "control_flow": "Postdecrement800000238bit40pollwhenbit10set; cachedtransfer28predicate andmodeSCBidentity, save144/selectSCB/ORmodeabortbit/restore144 thenreturn. ActualSearchDoneQ beforeactualmodeSearchNewQ; status8 checksactualSeqDone/ExeQbefore status2/host8/actualTerminate. Otherstatuspreserveexistinghosterror, setmanager9/flags10000/actualbreakpoint1; no extraownershipclear.",
+      "cases": [
+        "task7-abort-hiob-StandardAdv-pending",
+        "task7-abort-hiob-StandardAdv-existing",
+        "task7-abort-hiob-StandardAdv-terminate",
+        "task7-abort-hiob-StandardAdv-cached"
+      ],
+      "native_address": 19284,
+      "native_size": 872,
+      "native_sha256": "BC337FDBD5FCCEDFB9416DBEBD0148C0FD076F399C5929EAFC3CD364D40E1841",
+      "native_external_relocations": [
+        {
+          "address": 19372,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 19432,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 19500,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 19560,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 19640,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 19696,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 19744,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 19796,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 19844,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 20040,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_SCSIhTerminateCommand"
+        }
+      ],
+      "native_opcode_counts": {
+        "31/339": 5,
+        "36/1014": 1,
+        "36/1016": 1,
+        "36/1018": 1,
+        "36/1020": 1,
+        "36/1022": 1,
+        "36/4": 1,
+        "37/976": 1,
+        "31/444": 13,
+        "14/119": 3,
+        "32/4": 19,
+        "21/799": 7,
+        "36/28": 9,
+        "32/0": 9,
+        "32/2": 9,
+        "32/6": 9,
+        "32/8": 9,
+        "32/10": 9,
+        "32/12": 9,
+        "32/14": 9,
+        "18/554": 1,
+        "28/8": 1,
+        "15/64": 1,
+        "16/36": 1,
+        "18/524": 1,
+        "28/32": 1,
+        "16/8": 2,
+        "11/0": 6,
+        "14/1023": 1,
+        "16/994": 1,
+        "18/490": 1,
+        "21/893": 1,
+        "11/14": 1,
+        "16/170": 1,
+        "14/120": 1,
+        "18/460": 1,
+        "34/4": 2,
+        "31/0": 1,
+        "16/138": 1,
+        "14/1": 3,
+        "38/2": 3,
+        "38/3": 3,
+        "38/16": 2,
+        "14/72": 1,
+        "18/420": 1,
+        "38/31": 3,
+        "18/392": 1,
+        "14/80": 1,
+        "18/368": 1,
+        "24/8": 1,
+        "18/342": 1,
+        "18/318": 1,
+        "18/136": 1,
+        "18/550": 1,
+        "16/124": 1,
+        "32/120": 4,
+        "32/102": 1,
+        "31/467": 5,
+        "19/16": 5,
+        "16/102": 1,
+        "11/4": 1,
+        "16/62": 1,
+        "32/98": 1,
+        "14/0": 3,
+        "16/76": 1,
+        "14/4": 3,
+        "32/104": 1,
+        "16/52": 1,
+        "18/220": 1,
+        "18/38": 1,
+        "34/3": 1,
+        "32/106": 1,
+        "25/0": 1,
+        "36/106": 1,
+        "32/128": 1,
+        "14/48": 1,
+        "32/1014": 1,
+        "32/1016": 1,
+        "32/1018": 1,
+        "32/1020": 1,
+        "32/1022": 1
+      },
+      "reviewed_native_batch": 9
+    },
+    {
+      "address": 1635068,
+      "name": "_SCSIhSwappingAbortHIOB",
+      "owner": "AdaptecU2CHIMSCB.c",
+      "reference_size": 228,
+      "source_line": 1034,
+      "control_flow": "ActualSearchDoneQ beforeactualmodeSearchNewQ; status8  status2/host8/actualTerminate. Otherstatuspreserveexistinghosterror, setmanager9/flags10000/actualbreakpoint1; no extraownershipclear.",
+      "cases": [
+        "task7-abort-hiob-Swapping32-pending",
+        "task7-abort-hiob-Swapping32-existing",
+        "task7-abort-hiob-Swapping32-terminate"
+      ],
+      "native_address": 20156,
+      "native_size": 228,
+      "native_sha256": "379C3423D408830BEF30C1D2FF4952D7AEF3C2707B38C15DBF629233CC0AB149",
+      "native_external_relocations": [
+        {
+          "address": 20272,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_SCSIhTerminateCommand"
+        }
+      ],
+      "native_opcode_counts": {
+        "31/339": 2,
+        "36/1016": 1,
+        "36/1018": 1,
+        "36/1020": 1,
+        "36/1022": 1,
+        "36/4": 1,
+        "37/984": 1,
+        "31/444": 8,
+        "21/799": 3,
+        "18/382": 1,
+        "11/0": 3,
+        "16/70": 1,
+        "18/110": 1,
+        "16/56": 1,
+        "11/4": 1,
+        "16/16": 1,
+        "14/1": 2,
+        "38/2": 2,
+        "14/4": 2,
+        "38/3": 2,
+        "18/104": 1,
+        "18/38": 1,
+        "34/3": 1,
+        "16/8": 1,
+        "38/16": 1,
+        "32/106": 1,
+        "32/120": 1,
+        "25/0": 1,
+        "36/106": 1,
+        "32/128": 1,
+        "14/0": 1,
+        "31/467": 2,
+        "19/16": 2,
+        "14/40": 1,
+        "32/4": 1,
+        "32/1016": 1,
+        "32/1018": 1,
+        "32/1020": 1,
+        "32/1022": 1
+      },
+      "reviewed_native_batch": 9
+    },
+    {
+      "address": 1635296,
+      "name": "_SCSIhSwappingAdvAbortHIOB",
+      "owner": "AdaptecU2CHIMSCB.c",
+      "reference_size": 848,
+      "source_line": 1055,
+      "control_flow": "Postdecrement800000238bit40pollwhenbit10set; cachedtransfer28predicate andmodeSCBidentity, save144/selectSCB/ORmodeabortbit/restore144 thenreturn. ActualSearchDoneQ beforeactualmodeSearchNewQ; status8  status2/host8/actualTerminate. Otherstatuspreserveexistinghosterror, setmanager9/flags10000/actualbreakpoint1; no extraownershipclear.",
+      "cases": [
+        "task7-abort-hiob-SwappingAdv-pending",
+        "task7-abort-hiob-SwappingAdv-existing",
+        "task7-abort-hiob-SwappingAdv-terminate",
+        "task7-abort-hiob-SwappingAdv-cached"
+      ],
+      "native_address": 20384,
+      "native_size": 876,
+      "native_sha256": "A26466027B428601A447E22CD0F996285D3258116656DCAF39FDA2DD47967C52",
+      "native_external_relocations": [
+        {
+          "address": 20472,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 20532,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 20600,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 20664,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 20728,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 20808,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 20860,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 20908,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 20956,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 21008,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 21056,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 21144,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_SCSIhTerminateCommand"
+        }
+      ],
+      "native_opcode_counts": {
+        "31/339": 2,
+        "36/1014": 1,
+        "36/1016": 1,
+        "36/1018": 1,
+        "36/1020": 1,
+        "36/1022": 1,
+        "36/4": 1,
+        "37/976": 1,
+        "31/444": 9,
+        "14/119": 3,
+        "32/4": 23,
+        "21/799": 6,
+        "36/28": 11,
+        "32/0": 11,
+        "32/2": 11,
+        "32/6": 11,
+        "32/8": 11,
+        "32/10": 11,
+        "32/12": 11,
+        "32/14": 11,
+        "18/4": 1,
+        "28/8": 1,
+        "15/64": 1,
+        "16/36": 1,
+        "18/998": 1,
+        "28/32": 1,
+        "16/8": 2,
+        "11/0": 4,
+        "14/1023": 1,
+        "16/994": 1,
+        "18/964": 1,
+        "21/893": 1,
+        "11/14": 1,
+        "16/226": 1,
+        "32/120": 2,
+        "34/33": 1,
+        "18/932": 1,
+        "34/4": 2,
+        "31/0": 2,
+        "16/34": 1,
+        "14/29": 1,
+        "18/900": 1,
+        "16/160": 1,
+        "14/1": 3,
+        "38/2": 3,
+        "38/3": 3,
+        "38/16": 2,
+        "14/72": 1,
+        "18/860": 1,
+        "14/120": 1,
+        "18/834": 1,
+        "38/31": 3,
+        "18/810": 1,
+        "14/99": 1,
+        "18/786": 1,
+        "24/8": 1,
+        "18/760": 1,
+        "18/736": 1,
+        "18/82": 1,
+        "18/968": 1,
+        "16/70": 1,
+        "18/698": 1,
+        "16/56": 1,
+        "11/4": 1,
+        "16/16": 1,
+        "14/4": 2,
+        "18/692": 1,
+        "18/38": 1,
+        "34/3": 1,
+        "32/106": 1,
+        "25/0": 1,
+        "36/106": 1,
+        "32/128": 1,
+        "14/0": 1,
+        "31/467": 2,
+        "19/16": 2,
+        "14/48": 1,
+        "32/1014": 1,
+        "32/1016": 1,
+        "32/1018": 1,
+        "32/1020": 1,
+        "32/1022": 1
+      },
+      "reviewed_native_batch": 9
+    },
+    {
+      "address": 1636144,
+      "name": "_SCSIhStandardSearchSeqDoneQ",
+      "owner": "AdaptecU2CHIMSCB.c",
+      "reference_size": 596,
+      "source_line": 693,
+      "control_flow": "Save144; traverseSCBlinkedseqdonehead112/link198 with255sentinel;unlinkheadorpredecessor; optionalstatus0/manager1andactualTerminate;restore144;exact0/1return.",
+      "cases": [
+        "task7-search-SeqDone-Standard64-empty-0",
+        "task7-search-SeqDone-Standard64-missing-0",
+        "task7-search-SeqDone-Standard64-head-0",
+        "task7-search-SeqDone-Standard64-head-1",
+        "task7-search-SeqDone-Standard64-tail-0",
+        "task7-search-SeqDone-Standard64-tail-1"
+      ],
+      "native_address": 13552,
+      "native_size": 632,
+      "native_sha256": "741BA8908282CF76C1788ED9841194A7785BDF53E3FEB84EFF5AEEE4A3C85E87",
+      "native_external_relocations": [
+        {
+          "address": 13656,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 13708,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 13784,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 13840,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 13904,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 13972,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 14004,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_SCSIhTerminateCommand"
+        },
+        {
+          "address": 14060,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 14124,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        }
+      ],
+      "native_opcode_counts": {
+        "31/339": 1,
+        "36/1006": 1,
+        "36/1008": 1,
+        "36/1010": 1,
+        "36/1012": 1,
+        "36/1014": 1,
+        "36/1016": 1,
+        "36/1018": 1,
+        "36/1020": 1,
+        "36/1022": 1,
+        "36/4": 1,
+        "37/968": 1,
+        "31/444": 7,
+        "14/72": 3,
+        "32/4": 18,
+        "21/799": 5,
+        "36/28": 9,
+        "32/0": 8,
+        "32/2": 8,
+        "32/6": 8,
+        "32/8": 8,
+        "32/10": 8,
+        "32/12": 8,
+        "32/14": 8,
+        "18/340": 1,
+        "14/56": 3,
+        "18/314": 1,
+        "11/127": 2,
+        "14/0": 4,
+        "16/174": 1,
+        "14/99": 1,
+        "38/31": 5,
+        "18/276": 1,
+        "34/4": 1,
+        "31/0": 2,
+        "16/110": 1,
+        "18/248": 1,
+        "16/34": 1,
+        "18/216": 1,
+        "18/10": 1,
+        "18/182": 1,
+        "11/0": 1,
+        "16/14": 1,
+        "38/2": 1,
+        "38/16": 1,
+        "18/166": 1,
+        "18/32": 1,
+        "18/138": 1,
+        "16/858": 1,
+        "18/106": 1,
+        "31/467": 1,
+        "32/1006": 1,
+        "32/1008": 1,
+        "32/1010": 1,
+        "32/1012": 1,
+        "32/1014": 1,
+        "32/1016": 1,
+        "32/1018": 1,
+        "32/1020": 1,
+        "32/1022": 1,
+        "19/16": 1
+      },
+      "reviewed_native_batch": 8
+    },
+    {
+      "address": 1636740,
+      "name": "_SCSIhStandardAdvSearchSeqDoneQ",
+      "owner": "AdaptecU2CHIMSCB.c",
+      "reference_size": 596,
+      "source_line": 722,
+      "control_flow": "Save144; traverseSCBlinkedseqdonehead56/link165 with255sentinel;unlinkheadorpredecessor; optionalstatus0/manager1andactualTerminate;restore144;exact0/1return.",
+      "cases": [
+        "task7-search-SeqDone-StandardAdv-empty-0",
+        "task7-search-SeqDone-StandardAdv-missing-0",
+        "task7-search-SeqDone-StandardAdv-head-0",
+        "task7-search-SeqDone-StandardAdv-head-1",
+        "task7-search-SeqDone-StandardAdv-tail-0",
+        "task7-search-SeqDone-StandardAdv-tail-1"
+      ],
+      "native_address": 14184,
+      "native_size": 632,
+      "native_sha256": "0F0DB8A3CDA2775BC8B289ADC01C6E98D0A99B38DC172789D9D5EA4734B6C5D4",
+      "native_external_relocations": [
+        {
+          "address": 14288,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 14340,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 14416,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 14472,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 14536,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 14604,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 14636,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_SCSIhTerminateCommand"
+        },
+        {
+          "address": 14692,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 14756,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        }
+      ],
+      "native_opcode_counts": {
+        "31/339": 1,
+        "36/1006": 1,
+        "36/1008": 1,
+        "36/1010": 1,
+        "36/1012": 1,
+        "36/1014": 1,
+        "36/1016": 1,
+        "36/1018": 1,
+        "36/1020": 1,
+        "36/1022": 1,
+        "36/4": 1,
+        "37/968": 1,
+        "31/444": 7,
+        "14/72": 3,
+        "32/4": 18,
+        "21/799": 5,
+        "36/28": 9,
+        "32/0": 8,
+        "32/2": 8,
+        "32/6": 8,
+        "32/8": 8,
+        "32/10": 8,
+        "32/12": 8,
+        "32/14": 8,
+        "18/24": 1,
+        "14/28": 2,
+        "18/1022": 1,
+        "11/127": 2,
+        "14/0": 4,
+        "16/174": 1,
+        "14/82": 1,
+        "38/31": 5,
+        "18/984": 1,
+        "34/4": 1,
+        "31/0": 2,
+        "16/110": 1,
+        "18/956": 1,
+        "16/34": 1,
+        "18/924": 1,
+        "18/10": 1,
+        "18/890": 1,
+        "11/0": 1,
+        "16/14": 1,
+        "38/2": 1,
+        "38/16": 1,
+        "18/874": 1,
+        "18/32": 1,
+        "18/846": 1,
+        "16/858": 1,
+        "18/814": 1,
+        "14/56": 1,
+        "31/467": 1,
+        "32/1006": 1,
+        "32/1008": 1,
+        "32/1010": 1,
+        "32/1012": 1,
+        "32/1014": 1,
+        "32/1016": 1,
+        "32/1018": 1,
+        "32/1020": 1,
+        "32/1022": 1,
+        "19/16": 1
+      },
+      "reviewed_native_batch": 8
+    },
+    {
+      "address": 1637336,
+      "name": "_SCSIhStandardSearchDoneQ",
+      "owner": "AdaptecU2CHIMSCB.c",
+      "reference_size": 392,
+      "source_line": 751,
+      "control_flow": "Hostqoutstride8/tag7 scanlocal8bitindex/pass; matchednumber shifts priornumbers towardmatchedslot preservingpassbytesandwrap; advanceHHCBindex/pass; status0/manager1 then actualTerminate; decrementHHCBbyte222 onlyfound; always flush8*(numberScbs+1).",
+      "cases": [
+        "task7-search-done-False",
+        "task7-search-done-True"
+      ],
+      "native_address": 14816,
+      "native_size": 368,
+      "native_sha256": "7158605473F5F3A7165E3D685127C024340C677C579D4C9F6CCF7897AACC0FE3",
+      "native_external_relocations": [
+        {
+          "address": 15048,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_SCSIhTerminateCommand"
+        },
+        {
+          "address": 15152,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_flush_cache"
+        }
+      ],
+      "native_opcode_counts": {
+        "31/339": 1,
+        "36/1020": 1,
+        "36/1022": 1,
+        "36/4": 1,
+        "37/992": 1,
+        "31/444": 3,
+        "34/108": 3,
+        "34/109": 2,
+        "32/98": 4,
+        "21/28": 5,
+        "31/266": 3,
+        "34/3": 7,
+        "31/0": 7,
+        "14/0": 9,
+        "16/130": 1,
+        "34/0": 1,
+        "34/4": 1,
+        "16/88": 1,
+        "18/36": 1,
+        "14/1023": 2,
+        "21/799": 7,
+        "11/127": 1,
+        "16/4": 1,
+        "31/87": 1,
+        "31/215": 1,
+        "38/3": 1,
+        "16/6": 1,
+        "16/986": 1,
+        "12/0": 3,
+        "38/108": 2,
+        "16/10": 1,
+        "38/109": 1,
+        "38/2": 1,
+        "38/16": 1,
+        "18/668": 1,
+        "34/111": 1,
+        "12/1023": 1,
+        "38/111": 1,
+        "18/34": 1,
+        "16/8": 1,
+        "16/900": 1,
+        "18/616": 1,
+        "14/32": 1,
+        "32/4": 1,
+        "31/467": 1,
+        "32/1020": 1,
+        "32/1022": 1,
+        "19/16": 1
+      },
+      "reviewed_native_batch": 8
+    },
+    {
+      "address": 1637728,
+      "name": "_SCSIhStandard64SearchNewQ",
+      "owner": "AdaptecU2CHIMSCB.c",
+      "reference_size": 588,
+      "source_line": 789,
+      "control_flow": "Firmwarehead66, activeffffffff termination, actualnextcallbacks; matchstatus2/hoststatusinput/manager2; firsttwoqueuepositions sethostabortbit. Deeper decrementshead/writes64selector, obtainsfull32nextbus, updatespredecessornumber/address, actualTerminate.",
+      "cases": [
+        "task7-search-new-Standard64-empty",
+        "task7-search-new-Standard64-missing",
+        "task7-search-new-Standard64-head",
+        "task7-search-new-Standard64-second"
+      ],
+      "native_address": 15184,
+      "native_size": 584,
+      "native_sha256": "5F34AE8A02801ABA7CCC57FDF96EC90BE898C74D2235E745AD73309CF0086029",
+      "native_external_relocations": [
+        {
+          "address": 15284,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 15476,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 15644,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_SCSIhTerminateCommand"
+        }
+      ],
+      "native_opcode_counts": {
+        "31/339": 7,
+        "36/1010": 1,
+        "36/1012": 1,
+        "36/1014": 1,
+        "36/1016": 1,
+        "36/1018": 1,
+        "36/1020": 1,
+        "36/1022": 1,
+        "36/4": 1,
+        "37/968": 1,
+        "31/444": 21,
+        "32/120": 8,
+        "32/4": 5,
+        "34/33": 1,
+        "21/799": 4,
+        "36/28": 2,
+        "32/0": 2,
+        "32/2": 2,
+        "32/6": 2,
+        "32/8": 2,
+        "32/10": 2,
+        "32/12": 2,
+        "32/14": 2,
+        "18/550": 1,
+        "32/668": 5,
+        "21/29": 5,
+        "31/23": 5,
+        "11/1023": 2,
+        "16/202": 1,
+        "14/1": 1,
+        "34/4": 1,
+        "31/0": 1,
+        "16/162": 1,
+        "38/2": 1,
+        "31/316": 2,
+        "8/0": 2,
+        "31/138": 2,
+        "38/3": 1,
+        "38/16": 1,
+        "16/18": 1,
+        "32/106": 1,
+        "31/467": 7,
+        "19/16": 7,
+        "18/120": 1,
+        "34/32": 1,
+        "34/108": 1,
+        "12/1023": 1,
+        "38/108": 1,
+        "38/31": 1,
+        "18/454": 1,
+        "32/108": 2,
+        "32/112": 1,
+        "32/110": 1,
+        "32/114": 1,
+        "11/0": 1,
+        "16/14": 1,
+        "18/370": 1,
+        "14/0": 2,
+        "18/36": 1,
+        "16/828": 1,
+        "14/56": 1,
+        "32/1010": 1,
+        "32/1012": 1,
+        "32/1014": 1,
+        "32/1016": 1,
+        "32/1018": 1,
+        "32/1020": 1,
+        "32/1022": 1
+      },
+      "reviewed_native_batch": 8
+    },
+    {
+      "address": 1638316,
+      "name": "_SCSIhStandardAdvSearchNewQ",
+      "owner": "AdaptecU2CHIMSCB.c",
+      "reference_size": 588,
+      "source_line": 821,
+      "control_flow": "Firmwarehead66, activeffffffff termination, actualnextcallbacks; matchstatus2/hoststatusinput/manager2; firsttwoqueuepositions sethostabortbit. Deeper decrementshead/writes64selector, obtainsfull32nextbus, updatespredecessornumber/address, actualTerminate.",
+      "cases": [
+        "task7-search-new-StandardAdv-empty",
+        "task7-search-new-StandardAdv-missing",
+        "task7-search-new-StandardAdv-head",
+        "task7-search-new-StandardAdv-second"
+      ],
+      "native_address": 15768,
+      "native_size": 584,
+      "native_sha256": "397C946D3A327E06E206F86A7DEE6517EA23EBBB0EC8372BF6A185EAC3BC3130",
+      "native_external_relocations": [
+        {
+          "address": 15868,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 16060,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 16228,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_SCSIhTerminateCommand"
+        }
+      ],
+      "native_opcode_counts": {
+        "31/339": 7,
+        "36/1010": 1,
+        "36/1012": 1,
+        "36/1014": 1,
+        "36/1016": 1,
+        "36/1018": 1,
+        "36/1020": 1,
+        "36/1022": 1,
+        "36/4": 1,
+        "37/968": 1,
+        "31/444": 21,
+        "32/120": 8,
+        "32/4": 5,
+        "34/33": 1,
+        "21/799": 4,
+        "36/28": 2,
+        "32/0": 2,
+        "32/2": 2,
+        "32/6": 2,
+        "32/8": 2,
+        "32/10": 2,
+        "32/12": 2,
+        "32/14": 2,
+        "18/258": 1,
+        "32/668": 5,
+        "21/29": 5,
+        "31/23": 5,
+        "11/1023": 2,
+        "16/202": 1,
+        "14/1": 1,
+        "34/4": 1,
+        "31/0": 1,
+        "16/162": 1,
+        "38/2": 1,
+        "31/316": 2,
+        "8/0": 2,
+        "31/138": 2,
+        "38/3": 1,
+        "38/16": 1,
+        "16/18": 1,
+        "32/106": 1,
+        "31/467": 7,
+        "19/16": 7,
+        "18/120": 1,
+        "34/32": 1,
+        "34/108": 1,
+        "12/1023": 1,
+        "38/108": 1,
+        "38/31": 1,
+        "18/162": 1,
+        "32/108": 2,
+        "32/112": 1,
+        "32/110": 1,
+        "32/114": 1,
+        "11/0": 1,
+        "16/14": 1,
+        "18/78": 1,
+        "14/0": 2,
+        "18/36": 1,
+        "16/828": 1,
+        "14/56": 1,
+        "32/1010": 1,
+        "32/1012": 1,
+        "32/1014": 1,
+        "32/1016": 1,
+        "32/1018": 1,
+        "32/1020": 1,
+        "32/1022": 1
+      },
+      "reviewed_native_batch": 8
+    },
+    {
+      "address": 1638904,
+      "name": "_SCSIhSwappingSearchNewQ",
+      "owner": "AdaptecU2CHIMSCB.c",
+      "reference_size": 528,
+      "source_line": 853,
+      "control_flow": "ActualhardwaregetQNewTail andfirmwareheadselector66;8bit tailbound qnewHead; traverseactualmodeSCBnext; matchstatus2/hoststatus/manager2. Firsttwolocationsretainownershipandsethostabortbit; deeperdecrementhead/write64selector, unlinkthroughactualnextcallbacks, actualTerminate.",
+      "cases": [
+        "task7-search-new-Swapping32-empty",
+        "task7-search-new-Swapping32-missing",
+        "task7-search-new-Swapping32-head",
+        "task7-search-new-Swapping32-second",
+        "task7-search-new-SwappingAdv-empty",
+        "task7-search-new-SwappingAdv-missing",
+        "task7-search-new-SwappingAdv-head",
+        "task7-search-new-SwappingAdv-second"
+      ],
+      "native_address": 16352,
+      "native_size": 524,
+      "native_sha256": "B8F3629F3F59B266C9FC5BA4237FE9FCCC887FE5B20E771A90F56AD7927489CD",
+      "native_external_relocations": [
+        {
+          "address": 16480,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 16664,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 16748,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_SCSIhTerminateCommand"
+        }
+      ],
+      "native_opcode_counts": {
+        "31/339": 6,
+        "36/1008": 1,
+        "36/1010": 1,
+        "36/1012": 1,
+        "36/1014": 1,
+        "36/1016": 1,
+        "36/1018": 1,
+        "36/1020": 1,
+        "36/1022": 1,
+        "36/4": 1,
+        "37/968": 1,
+        "31/444": 12,
+        "32/122": 1,
+        "32/42": 1,
+        "31/467": 6,
+        "21/799": 6,
+        "19/16": 6,
+        "32/120": 6,
+        "32/4": 5,
+        "34/33": 1,
+        "36/28": 2,
+        "32/0": 2,
+        "32/2": 2,
+        "32/6": 2,
+        "32/8": 2,
+        "32/10": 2,
+        "32/12": 2,
+        "32/14": 2,
+        "18/976": 1,
+        "34/108": 3,
+        "31/0": 3,
+        "16/160": 1,
+        "14/1": 1,
+        "34/4": 1,
+        "16/120": 1,
+        "38/2": 1,
+        "31/316": 2,
+        "8/0": 2,
+        "31/138": 2,
+        "38/3": 1,
+        "38/16": 1,
+        "16/18": 1,
+        "32/106": 1,
+        "18/78": 1,
+        "34/32": 1,
+        "12/1023": 1,
+        "38/108": 1,
+        "38/31": 1,
+        "18/884": 1,
+        "21/29": 3,
+        "32/668": 3,
+        "32/108": 2,
+        "31/23": 3,
+        "32/110": 1,
+        "18/842": 1,
+        "14/0": 3,
+        "18/36": 1,
+        "16/870": 1,
+        "14/56": 1,
+        "32/1008": 1,
+        "32/1010": 1,
+        "32/1012": 1,
+        "32/1014": 1,
+        "32/1016": 1,
+        "32/1018": 1,
+        "32/1020": 1,
+        "32/1022": 1
+      },
+      "reviewed_native_batch": 8
+    },
+    {
+      "address": 1639432,
+      "name": "_SCSIhStandard64ObtainNextScbNum",
+      "owner": "AdaptecU2CHIMSCB.c",
+      "reference_size": 28,
+      "source_line": 12,
+      "control_flow": "Readunsigned8 hostSCB byte38 through HIOBdescriptor.virtualAddress; HHCB argument retained butunused.",
+      "cases": [
+        "task7-num-get-Standard64-0",
+        "task7-num-get-Standard64-255",
+        "task7-num-get-Standard64-107"
+      ],
+      "native_address": 0,
+      "native_size": 24,
+      "native_sha256": "1C7C0F0974322C12C106C6852768B4CC6CF0D533F8F36BF3AA3AE42CB9A863F3",
+      "native_external_relocations": [],
+      "native_opcode_counts": {
+        "37/1008": 1,
+        "32/12": 1,
+        "32/6": 1,
+        "34/19": 1,
+        "14/16": 1,
+        "19/16": 1
+      },
+      "reviewed_native_batch": 1
+    },
+    {
+      "address": 1639460,
+      "name": "_SCSIhSwapping32ObtainNextScbNum",
+      "owner": "AdaptecU2CHIMSCB.c",
+      "reference_size": 28,
+      "source_line": 17,
+      "control_flow": "Readunsigned8 hostSCB byte28 through HIOBdescriptor.virtualAddress; HHCB argument retained butunused.",
+      "cases": [
+        "task7-num-get-Swapping32-0",
+        "task7-num-get-Swapping32-255",
+        "task7-num-get-Swapping32-107"
+      ],
+      "native_address": 24,
+      "native_size": 24,
+      "native_sha256": "9236AA3B78FEA91D01CBFCC8D20BEA266D0DB10CA0645B09D198E5F5A4DC7FB8",
+      "native_external_relocations": [],
+      "native_opcode_counts": {
+        "37/1008": 1,
+        "32/12": 1,
+        "32/6": 1,
+        "34/14": 1,
+        "14/16": 1,
+        "19/16": 1
+      },
+      "reviewed_native_batch": 1
+    },
+    {
+      "address": 1639488,
+      "name": "_SCSIhStandardAdvObtainNextScbNum",
+      "owner": "AdaptecU2CHIMSCB.c",
+      "reference_size": 28,
+      "source_line": 22,
+      "control_flow": "Readunsigned8 hostSCB byte5 through HIOBdescriptor.virtualAddress; HHCB argument retained butunused.",
+      "cases": [
+        "task7-num-get-StandardAdv-0",
+        "task7-num-get-StandardAdv-255",
+        "task7-num-get-StandardAdv-107"
+      ],
+      "native_address": 48,
+      "native_size": 24,
+      "native_sha256": "7221184E40CD9FFC43D9CC498470806B4E4B854DDCBF0A098664E90D68573F55",
+      "native_external_relocations": [],
+      "native_opcode_counts": {
+        "37/1008": 1,
+        "32/12": 1,
+        "32/6": 1,
+        "34/2": 1,
+        "14/16": 1,
+        "19/16": 1
+      },
+      "reviewed_native_batch": 1
+    },
+    {
+      "address": 1639516,
+      "name": "_SCSIhSwappingAdvObtainNextScbNum",
+      "owner": "AdaptecU2CHIMSCB.c",
+      "reference_size": 28,
+      "source_line": 27,
+      "control_flow": "Readunsigned8 hostSCB byte11 through HIOBdescriptor.virtualAddress; HHCB argument retained butunused.",
+      "cases": [
+        "task7-num-get-SwappingAdv-0",
+        "task7-num-get-SwappingAdv-255",
+        "task7-num-get-SwappingAdv-107"
+      ],
+      "native_address": 72,
+      "native_size": 24,
+      "native_sha256": "0D57E78007F4B6AC3E5E2E435DED9FCC5D20D83F29B0AC0C04444D48CD188203",
+      "native_external_relocations": [],
+      "native_opcode_counts": {
+        "37/1008": 1,
+        "32/12": 1,
+        "32/6": 1,
+        "34/5": 1,
+        "14/16": 1,
+        "19/16": 1
+      },
+      "reviewed_native_batch": 1
+    },
+    {
+      "address": 1639544,
+      "name": "_SCSIhStandard64UpdateNextScbNum",
+      "owner": "AdaptecU2CHIMSCB.c",
+      "reference_size": 48,
+      "source_line": 32,
+      "control_flow": "Storeunsigned8 number at hostSCB byte38; flush_cache exact64bytes afterstore.",
+      "cases": [
+        "task7-num-set-Standard64-0",
+        "task7-num-set-Standard64-255",
+        "task7-num-set-Standard64-107"
+      ],
+      "native_address": 96,
+      "native_size": 56,
+      "native_sha256": "AA7F47233E3643B3437CEC3F7E85710B9661C71BC0BADAB40B0485AC6DFC3F90",
+      "native_external_relocations": [
+        {
+          "address": 132,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_flush_cache"
+        }
+      ],
+      "native_opcode_counts": {
+        "31/339": 1,
+        "36/4": 1,
+        "37/992": 1,
+        "32/12": 2,
+        "32/6": 2,
+        "38/19": 1,
+        "14/32": 2,
+        "18/958": 1,
+        "32/4": 1,
+        "31/467": 1,
+        "19/16": 1
+      },
+      "reviewed_native_batch": 1
+    },
+    {
+      "address": 1639592,
+      "name": "_SCSIhSwapping32UpdateNextScbNum",
+      "owner": "AdaptecU2CHIMSCB.c",
+      "reference_size": 48,
+      "source_line": 38,
+      "control_flow": "Storeunsigned8 number at hostSCB byte28; flush_cache exact32bytes afterstore.",
+      "cases": [
+        "task7-num-set-Swapping32-0",
+        "task7-num-set-Swapping32-255",
+        "task7-num-set-Swapping32-107"
+      ],
+      "native_address": 152,
+      "native_size": 56,
+      "native_sha256": "0C4ADDE818C3A00B54623B9A02FCD310D86E430062B572E0D8B25CABB0AD904D",
+      "native_external_relocations": [
+        {
+          "address": 188,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_flush_cache"
+        }
+      ],
+      "native_opcode_counts": {
+        "31/339": 1,
+        "36/4": 1,
+        "37/992": 1,
+        "32/12": 2,
+        "32/6": 2,
+        "38/14": 1,
+        "14/16": 1,
+        "18/930": 1,
+        "14/32": 1,
+        "32/4": 1,
+        "31/467": 1,
+        "19/16": 1
+      },
+      "reviewed_native_batch": 1
+    },
+    {
+      "address": 1639640,
+      "name": "_SCSIhStandardAdvUpdateNextScbNum",
+      "owner": "AdaptecU2CHIMSCB.c",
+      "reference_size": 48,
+      "source_line": 44,
+      "control_flow": "Storeunsigned8 number at hostSCB byte5; flush_cache exact64bytes afterstore.",
+      "cases": [
+        "task7-num-set-StandardAdv-0",
+        "task7-num-set-StandardAdv-255",
+        "task7-num-set-StandardAdv-107"
+      ],
+      "native_address": 208,
+      "native_size": 56,
+      "native_sha256": "518DC3379CA89A718D61BB606A9105FB6F67A516499CB122462149F64F41AF62",
+      "native_external_relocations": [
+        {
+          "address": 244,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_flush_cache"
+        }
+      ],
+      "native_opcode_counts": {
+        "31/339": 1,
+        "36/4": 1,
+        "37/992": 1,
+        "32/12": 2,
+        "32/6": 2,
+        "38/2": 1,
+        "14/32": 2,
+        "18/902": 1,
+        "32/4": 1,
+        "31/467": 1,
+        "19/16": 1
+      },
+      "reviewed_native_batch": 1
+    },
+    {
+      "address": 1639688,
+      "name": "_SCSIhSwappingAdvUpdateNextScbNum",
+      "owner": "AdaptecU2CHIMSCB.c",
+      "reference_size": 48,
+      "source_line": 50,
+      "control_flow": "Storeunsigned8 number at hostSCB byte11; flush_cache exact64bytes afterstore.",
+      "cases": [
+        "task7-num-set-SwappingAdv-0",
+        "task7-num-set-SwappingAdv-255",
+        "task7-num-set-SwappingAdv-107"
+      ],
+      "native_address": 264,
+      "native_size": 56,
+      "native_sha256": "2E52D913FB1A8781DFA4A114FB862C69DFFF51F66EE7A3CBFF995EA08DF5C3E5",
+      "native_external_relocations": [
+        {
+          "address": 300,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_flush_cache"
+        }
+      ],
+      "native_opcode_counts": {
+        "31/339": 1,
+        "36/4": 1,
+        "37/992": 1,
+        "32/12": 2,
+        "32/6": 2,
+        "38/5": 1,
+        "14/32": 2,
+        "18/874": 1,
+        "32/4": 1,
+        "31/467": 1,
+        "19/16": 1
+      },
+      "reviewed_native_batch": 1
+    },
+    {
+      "address": 1639736,
+      "name": "_SCSIhStandard64ObtainNextScbAddress",
+      "owner": "AdaptecU2CHIMSCB.c",
+      "reference_size": 44,
+      "source_line": 56,
+      "control_flow": "Full32bit little-endian hostSCB byte40 read usingnative lwbrx; no16bittruncation.",
+      "cases": [
+        "task7-addr-get-Standard64-0",
+        "task7-addr-get-Standard64-305419896",
+        "task7-addr-get-Standard64-4275878552"
+      ],
+      "native_address": 320,
+      "native_size": 28,
+      "native_sha256": "0533A862972E4FAC6DCECCAEE78E9A943432037319394CD779052DFED52451F9",
+      "native_external_relocations": [],
+      "native_opcode_counts": {
+        "37/1008": 1,
+        "32/12": 1,
+        "32/6": 1,
+        "12/20": 1,
+        "31/534": 1,
+        "14/16": 1,
+        "19/16": 1
+      },
+      "reviewed_native_batch": 2
+    },
+    {
+      "address": 1639780,
+      "name": "_SCSIhStandardAdvObtainNextScbAddress",
+      "owner": "AdaptecU2CHIMSCB.c",
+      "reference_size": 44,
+      "source_line": 63,
+      "control_flow": "Full32bit little-endian hostSCB byte32 read usingnative lwbrx; no16bittruncation.",
+      "cases": [
+        "task7-addr-get-StandardAdv-0",
+        "task7-addr-get-StandardAdv-305419896",
+        "task7-addr-get-StandardAdv-4275878552"
+      ],
+      "native_address": 348,
+      "native_size": 28,
+      "native_sha256": "AE476C96074BD9ECC41683BE2EDB74E6E1F6C3C99FC51EED1CCD458ECDFE8E17",
+      "native_external_relocations": [],
+      "native_opcode_counts": {
+        "37/1008": 1,
+        "32/12": 1,
+        "32/6": 1,
+        "12/16": 1,
+        "31/534": 1,
+        "14/16": 1,
+        "19/16": 1
+      },
+      "reviewed_native_batch": 2
+    },
+    {
+      "address": 1639824,
+      "name": "_SCSIhStandard64UpdateNextScbAddress",
+      "owner": "AdaptecU2CHIMSCB.c",
+      "reference_size": 60,
+      "source_line": 70,
+      "control_flow": "Full32bit little-endian hostSCB byte40 storeusingnative stwbrx thenflush_cache64.",
+      "cases": [
+        "task7-addr-set-Standard64-0",
+        "task7-addr-set-Standard64-305419896",
+        "task7-addr-set-Standard64-4275878552"
+      ],
+      "native_address": 376,
+      "native_size": 52,
+      "native_sha256": "59616476B1090270EAA6CE64DAC1C6D04B21A540741958DA9A43D1F4827CAF5A",
+      "native_external_relocations": [
+        {
+          "address": 408,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_flush_cache"
+        }
+      ],
+      "native_opcode_counts": {
+        "31/339": 1,
+        "36/4": 1,
+        "37/992": 1,
+        "32/12": 1,
+        "32/6": 1,
+        "14/20": 1,
+        "31/662": 1,
+        "14/32": 2,
+        "18/820": 1,
+        "32/4": 1,
+        "31/467": 1,
+        "19/16": 1
+      },
+      "reviewed_native_batch": 2
+    },
+    {
+      "address": 1639884,
+      "name": "_SCSIhStandardAdvUpdateNextScbAddress",
+      "owner": "AdaptecU2CHIMSCB.c",
+      "reference_size": 60,
+      "source_line": 77,
+      "control_flow": "Full32bit little-endian hostSCB byte32 storeusingnative stwbrx thenflush_cache64.",
+      "cases": [
+        "task7-addr-set-StandardAdv-0",
+        "task7-addr-set-StandardAdv-305419896",
+        "task7-addr-set-StandardAdv-4275878552"
+      ],
+      "native_address": 428,
+      "native_size": 52,
+      "native_sha256": "D97AE5862449C92AD4B08E6DDA189AB989143958FC784DA1EAE9EC1FB28FC8DE",
+      "native_external_relocations": [
+        {
+          "address": 460,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_flush_cache"
+        }
+      ],
+      "native_opcode_counts": {
+        "31/339": 1,
+        "36/4": 1,
+        "37/992": 1,
+        "32/12": 1,
+        "32/6": 1,
+        "14/16": 1,
+        "31/662": 1,
+        "14/32": 2,
+        "18/794": 1,
+        "32/4": 1,
+        "31/467": 1,
+        "19/16": 1
+      },
+      "reviewed_native_batch": 2
+    },
+    {
+      "address": 1639944,
+      "name": "_SCSIhStandard64SearchExeQ",
+      "owner": "AdaptecU2CHIMSCB.c",
+      "reference_size": 724,
+      "source_line": 880,
+      "control_flow": "Save144/traversehead94 viaSCBlink198,255termination; matchstatus2/hoststatus/manager2; unlinkheadorpredecessor, repairtail95whenremovedtail; optionalactualTerminate; restore144; exact0/1return.",
+      "cases": [
+        "task7-search-Exe-Standard64-empty-0",
+        "task7-search-Exe-Standard64-missing-0",
+        "task7-search-Exe-Standard64-head-0",
+        "task7-search-Exe-Standard64-head-1",
+        "task7-search-Exe-Standard64-tail-0",
+        "task7-search-Exe-Standard64-tail-1"
+      ],
+      "native_address": 16876,
+      "native_size": 768,
+      "native_sha256": "4D21B034D20E1EBE28130D99DD865A4CA3E5EF4CAA0365D625C4E9AB3DCC55DA",
+      "native_external_relocations": [
+        {
+          "address": 16996,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 17048,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 17132,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 17200,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 17284,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 17332,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 17376,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 17436,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 17452,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_SCSIhTerminateCommand"
+        },
+        {
+          "address": 17508,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 17572,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        }
+      ],
+      "native_opcode_counts": {
+        "31/339": 1,
+        "36/1000": 1,
+        "36/1002": 1,
+        "36/1004": 1,
+        "36/1006": 1,
+        "36/1008": 1,
+        "36/1010": 1,
+        "36/1012": 1,
+        "36/1014": 1,
+        "36/1016": 1,
+        "36/1018": 1,
+        "36/1020": 1,
+        "36/1022": 1,
+        "36/4": 1,
+        "37/960": 1,
+        "31/444": 7,
+        "14/72": 3,
+        "21/799": 7,
+        "32/4": 22,
+        "36/28": 11,
+        "32/0": 10,
+        "32/2": 10,
+        "32/6": 10,
+        "32/8": 10,
+        "32/10": 10,
+        "32/12": 10,
+        "32/14": 10,
+        "18/718": 1,
+        "14/47": 3,
+        "18/692": 1,
+        "11/127": 2,
+        "14/0": 2,
+        "16/228": 1,
+        "14/1": 1,
+        "14/99": 1,
+        "38/31": 6,
+        "18/650": 1,
+        "34/4": 1,
+        "31/0": 3,
+        "16/160": 1,
+        "38/2": 1,
+        "38/3": 1,
+        "38/16": 1,
+        "18/616": 1,
+        "16/12": 1,
+        "18/84": 1,
+        "18/574": 1,
+        "18/550": 1,
+        "18/528": 1,
+        "16/26": 1,
+        "18/498": 1,
+        "11/0": 1,
+        "16/6": 1,
+        "18/490": 1,
+        "18/32": 1,
+        "18/462": 1,
+        "16/808": 1,
+        "18/430": 1,
+        "14/64": 1,
+        "31/467": 1,
+        "32/1000": 1,
+        "32/1002": 1,
+        "32/1004": 1,
+        "32/1006": 1,
+        "32/1008": 1,
+        "32/1010": 1,
+        "32/1012": 1,
+        "32/1014": 1,
+        "32/1016": 1,
+        "32/1018": 1,
+        "32/1020": 1,
+        "32/1022": 1,
+        "19/16": 1
+      },
+      "reviewed_native_batch": 8
+    },
+    {
+      "address": 1640668,
+      "name": "_SCSIhSwappingSearchExeQ",
+      "owner": "AdaptecU2CHIMSCB.c",
+      "reference_size": 16,
+      "source_line": 174,
+      "control_flow": "Exact16byte input-erased return0body; no originalformalcount/typeclaim; frozenmachineexceptiononly.",
+      "cases": [
+        "task7-basic-erased"
+      ],
+      "native_address": 1368,
+      "native_size": 16,
+      "native_sha256": "71576AA45E0E93A324BDAB78A96EF6E9E4E8EB8CD19E4B82915F93EECD4D539E",
+      "native_external_relocations": [],
+      "native_opcode_counts": {
+        "37/1008": 1,
+        "14/0": 1,
+        "14/16": 1,
+        "19/16": 1
+      },
+      "reviewed_native_batch": 3
+    },
+    {
+      "address": 1640684,
+      "name": "_SCSIhStandardAdvSearchExeQ",
+      "owner": "AdaptecU2CHIMSCB.c",
+      "reference_size": 724,
+      "source_line": 912,
+      "control_flow": "Save144/traversehead54 viaSCBlink165,255termination; matchstatus2/hoststatus/manager2; unlinkheadorpredecessor, repairtail55whenremovedtail; optionalactualTerminate; restore144; exact0/1return.",
+      "cases": [
+        "task7-search-Exe-StandardAdv-empty-0",
+        "task7-search-Exe-StandardAdv-missing-0",
+        "task7-search-Exe-StandardAdv-head-0",
+        "task7-search-Exe-StandardAdv-head-1",
+        "task7-search-Exe-StandardAdv-tail-0",
+        "task7-search-Exe-StandardAdv-tail-1"
+      ],
+      "native_address": 17644,
+      "native_size": 768,
+      "native_sha256": "A478AE24E24A7DA310F98F4EAA8299B1B3E6FBFC66D862EFB693CCACA1CBF1ED",
+      "native_external_relocations": [
+        {
+          "address": 17764,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 17816,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 17900,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 17968,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 18052,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 18100,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 18144,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 18204,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 18220,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_SCSIhTerminateCommand"
+        },
+        {
+          "address": 18276,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 18340,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        }
+      ],
+      "native_opcode_counts": {
+        "31/339": 1,
+        "36/1000": 1,
+        "36/1002": 1,
+        "36/1004": 1,
+        "36/1006": 1,
+        "36/1008": 1,
+        "36/1010": 1,
+        "36/1012": 1,
+        "36/1014": 1,
+        "36/1016": 1,
+        "36/1018": 1,
+        "36/1020": 1,
+        "36/1022": 1,
+        "36/4": 1,
+        "37/960": 1,
+        "31/444": 7,
+        "14/72": 3,
+        "21/799": 7,
+        "32/4": 22,
+        "36/28": 11,
+        "32/0": 10,
+        "32/2": 10,
+        "32/6": 10,
+        "32/8": 10,
+        "32/10": 10,
+        "32/12": 10,
+        "32/14": 10,
+        "18/334": 1,
+        "14/27": 3,
+        "18/308": 1,
+        "11/127": 2,
+        "14/0": 2,
+        "16/228": 1,
+        "14/1": 1,
+        "14/82": 1,
+        "38/31": 6,
+        "18/266": 1,
+        "34/4": 1,
+        "31/0": 3,
+        "16/160": 1,
+        "38/2": 1,
+        "38/3": 1,
+        "38/16": 1,
+        "18/232": 1,
+        "16/12": 1,
+        "18/84": 1,
+        "18/190": 1,
+        "18/166": 1,
+        "18/144": 1,
+        "16/26": 1,
+        "18/114": 1,
+        "11/0": 1,
+        "16/6": 1,
+        "18/106": 1,
+        "18/32": 1,
+        "18/78": 1,
+        "16/808": 1,
+        "18/46": 1,
+        "14/64": 1,
+        "31/467": 1,
+        "32/1000": 1,
+        "32/1002": 1,
+        "32/1004": 1,
+        "32/1006": 1,
+        "32/1008": 1,
+        "32/1010": 1,
+        "32/1012": 1,
+        "32/1014": 1,
+        "32/1016": 1,
+        "32/1018": 1,
+        "32/1020": 1,
+        "32/1022": 1,
+        "19/16": 1
+      },
+      "reviewed_native_batch": 8
+    },
+    {
+      "address": 1641408,
+      "name": "_SCSIhStandard64UpdateAbortBitHostMem",
+      "owner": "AdaptecU2CHIMSCB.c",
+      "reference_size": 60,
+      "source_line": 84,
+      "control_flow": "HostSCB byte35 OR8, preserveotherbits/bytes; flush_cache exact64bytes.",
+      "cases": [
+        "task7-abortbit-Standard64-0",
+        "task7-abortbit-Standard64-255",
+        "task7-abortbit-Standard64-165"
+      ],
+      "native_address": 480,
+      "native_size": 56,
+      "native_sha256": "BC8A7D4FF4AB8D9F54D7864B741C6EE8B9AE58CA7790B9F73E3C25A48663BA18",
+      "native_external_relocations": [
+        {
+          "address": 516,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_flush_cache"
+        }
+      ],
+      "native_opcode_counts": {
+        "31/339": 1,
+        "36/4": 1,
+        "37/992": 1,
+        "32/12": 1,
+        "32/6": 1,
+        "34/17": 1,
+        "14/32": 2,
+        "24/4": 1,
+        "38/17": 1,
+        "18/766": 1,
+        "32/4": 1,
+        "31/467": 1,
+        "19/16": 1
+      },
+      "reviewed_native_batch": 2
+    },
+    {
+      "address": 1641468,
+      "name": "_SCSIhStandardAdvUpdateAbortBitHostMem",
+      "owner": "AdaptecU2CHIMSCB.c",
+      "reference_size": 60,
+      "source_line": 91,
+      "control_flow": "HostSCB byte0 OR16, preserveotherbits/bytes; flush_cache exact64bytes.",
+      "cases": [
+        "task7-abortbit-StandardAdv-0",
+        "task7-abortbit-StandardAdv-255",
+        "task7-abortbit-StandardAdv-165"
+      ],
+      "native_address": 536,
+      "native_size": 56,
+      "native_sha256": "B6072B2FCBB2C7563B9F01948A4773188844CF666F88EA515A5FD59BCE17122C",
+      "native_external_relocations": [
+        {
+          "address": 572,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_flush_cache"
+        }
+      ],
+      "native_opcode_counts": {
+        "31/339": 1,
+        "36/4": 1,
+        "37/992": 1,
+        "32/12": 1,
+        "32/6": 1,
+        "34/0": 1,
+        "14/32": 2,
+        "24/8": 1,
+        "38/0": 1,
+        "18/738": 1,
+        "32/4": 1,
+        "31/467": 1,
+        "19/16": 1
+      },
+      "reviewed_native_batch": 2
+    },
+    {
+      "address": 1641528,
+      "name": "_SCSIhSwapping32UpdateAbortBitHostMem",
+      "owner": "AdaptecU2CHIMSCB.c",
+      "reference_size": 60,
+      "source_line": 98,
+      "control_flow": "HostSCB byte0 OR8, preserveotherbits/bytes; flush_cache exact32bytes.",
+      "cases": [
+        "task7-abortbit-Swapping32-0",
+        "task7-abortbit-Swapping32-255",
+        "task7-abortbit-Swapping32-165"
+      ],
+      "native_address": 592,
+      "native_size": 56,
+      "native_sha256": "D8D4B913F1FA547498A0B729599E73B8CFD0E0697ADED9E862C4D3F11633350F",
+      "native_external_relocations": [
+        {
+          "address": 628,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_flush_cache"
+        }
+      ],
+      "native_opcode_counts": {
+        "31/339": 1,
+        "36/4": 1,
+        "37/992": 1,
+        "32/12": 1,
+        "32/6": 1,
+        "34/0": 1,
+        "14/16": 1,
+        "24/4": 1,
+        "38/0": 1,
+        "18/710": 1,
+        "14/32": 1,
+        "32/4": 1,
+        "31/467": 1,
+        "19/16": 1
+      },
+      "reviewed_native_batch": 2
+    },
+    {
+      "address": 1641588,
+      "name": "_SCSIhSwappingAdvUpdateAbortBitHostMem",
+      "owner": "AdaptecU2CHIMSCB.c",
+      "reference_size": 60,
+      "source_line": 105,
+      "control_flow": "HostSCB byte38 OR16, preserveotherbits/bytes; flush_cache exact64bytes.",
+      "cases": [
+        "task7-abortbit-SwappingAdv-0",
+        "task7-abortbit-SwappingAdv-255",
+        "task7-abortbit-SwappingAdv-165"
+      ],
+      "native_address": 648,
+      "native_size": 56,
+      "native_sha256": "298315CB2A76B517043880E72C8A170364A8C814C411C9883DF52567E0FF6C7A",
+      "native_external_relocations": [
+        {
+          "address": 684,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_flush_cache"
+        }
+      ],
+      "native_opcode_counts": {
+        "31/339": 1,
+        "36/4": 1,
+        "37/992": 1,
+        "32/12": 1,
+        "32/6": 1,
+        "34/19": 1,
+        "14/32": 2,
+        "24/8": 1,
+        "38/19": 1,
+        "18/682": 1,
+        "32/4": 1,
+        "31/467": 1,
+        "19/16": 1
+      },
+      "reviewed_native_batch": 2
+    },
+    {
+      "address": 1641648,
+      "name": "_SCSIhStandard64SetupBDR",
+      "owner": "AdaptecU2CHIMSCB.c",
+      "reference_size": 780,
+      "source_line": 467,
+      "control_flow": "Save135/pauseifbit4clear/save144/selectrequest; clear40SCBregisterbytes160..199 thenexactmodeBDR fields; restore144; activeownership=request,manager10,hardwareFlags10000,actualbreakpoint1,conditionalHCNTRLrestore. 172=8,173=target,199=lun,174=64,175=0,176=12.",
+      "cases": [
+        "task7-bdr-setup-Standard64-0",
+        "task7-bdr-setup-Standard64-4"
+      ],
+      "native_address": 7988,
+      "native_size": 812,
+      "native_sha256": "53408604F45D3D0404AD8DAA6DD54965816DA9BD3648BC977D954BF44E33FFDA",
+      "native_external_relocations": [
+        {
+          "address": 8084,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 8104,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_SCSIhPauseAndWait"
+        },
+        {
+          "address": 8152,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 8216,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 8272,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 8336,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 8392,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 8448,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 8504,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 8560,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 8616,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 8668,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 8752,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_SCSIhWriteHCNTRL"
+        }
+      ],
+      "native_opcode_counts": {
+        "31/339": 2,
+        "36/1010": 1,
+        "36/1012": 1,
+        "36/1014": 1,
+        "36/1016": 1,
+        "36/1018": 1,
+        "36/1020": 1,
+        "36/1022": 1,
+        "36/4": 1,
+        "37/968": 1,
+        "31/444": 6,
+        "32/0": 12,
+        "32/4": 23,
+        "14/67": 1,
+        "36/28": 11,
+        "32/2": 11,
+        "32/6": 11,
+        "32/8": 11,
+        "32/10": 11,
+        "32/12": 11,
+        "32/14": 11,
+        "18/54": 1,
+        "21/799": 2,
+        "28/2": 2,
+        "16/6": 1,
+        "18/44": 1,
+        "14/72": 2,
+        "18/20": 1,
+        "14/0": 5,
+        "34/4": 2,
+        "38/31": 9,
+        "18/1012": 1,
+        "14/80": 1,
+        "18/984": 1,
+        "10/19": 1,
+        "16/994": 1,
+        "14/86": 2,
+        "14/4": 1,
+        "18/952": 1,
+        "34/2": 2,
+        "18/924": 1,
+        "14/99": 1,
+        "18/896": 1,
+        "14/87": 2,
+        "14/32": 1,
+        "18/868": 1,
+        "18/840": 1,
+        "14/88": 1,
+        "14/6": 1,
+        "18/812": 1,
+        "18/786": 1,
+        "14/5": 1,
+        "32/668": 1,
+        "21/29": 1,
+        "31/151": 1,
+        "38/16": 1,
+        "32/106": 1,
+        "32/120": 1,
+        "25/0": 1,
+        "36/106": 1,
+        "32/128": 1,
+        "31/467": 2,
+        "19/16": 2,
+        "16/8": 1,
+        "18/744": 1,
+        "14/56": 1,
+        "32/1010": 1,
+        "32/1012": 1,
+        "32/1014": 1,
+        "32/1016": 1,
+        "32/1018": 1,
+        "32/1020": 1,
+        "32/1022": 1
+      },
+      "reviewed_native_batch": 6
+    },
+    {
+      "address": 1642428,
+      "name": "_SCSIhSwapping32SetupBDR",
+      "owner": "AdaptecU2CHIMSCB.c",
+      "reference_size": 352,
+      "source_line": 520,
+      "control_flow": "Save135/pauseifneeded; memsetexact32hostSCBbytes, target/lun/control/message/nextnumber atmodeoffsets; activeownershipbeforeflush32;manager10/flags10000/actualbreakpoint1;conditionalHCNTRLrestore.",
+      "cases": [
+        "task7-bdr-setup-Swapping32-0",
+        "task7-bdr-setup-Swapping32-4"
+      ],
+      "native_address": 9632,
+      "native_size": 352,
+      "native_sha256": "CE9898D3C2271382AD57737EA2FE8E727C409B3EB7025828F2147B0650806084",
+      "native_external_relocations": [
+        {
+          "address": 9728,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 9756,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_SCSIhPauseAndWait"
+        },
+        {
+          "address": 9780,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_memset"
+        },
+        {
+          "address": 9872,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_flush_cache"
+        },
+        {
+          "address": 9936,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_SCSIhWriteHCNTRL"
+        }
+      ],
+      "native_opcode_counts": {
+        "31/339": 2,
+        "36/1014": 1,
+        "36/1016": 1,
+        "36/1018": 1,
+        "36/1020": 1,
+        "36/1022": 1,
+        "36/4": 1,
+        "31/19": 1,
+        "36/2": 1,
+        "37/976": 1,
+        "31/444": 9,
+        "32/0": 2,
+        "32/4": 3,
+        "14/67": 1,
+        "36/28": 1,
+        "32/2": 2,
+        "32/6": 2,
+        "32/8": 2,
+        "32/10": 1,
+        "32/12": 3,
+        "32/14": 1,
+        "18/256": 1,
+        "21/799": 1,
+        "28/2": 1,
+        "19/0": 1,
+        "16/6": 1,
+        "18/242": 1,
+        "14/0": 3,
+        "14/16": 2,
+        "18/230": 1,
+        "14/4": 1,
+        "38/0": 1,
+        "34/2": 2,
+        "38/1": 2,
+        "14/32": 1,
+        "38/2": 2,
+        "14/6": 1,
+        "38/15": 1,
+        "34/0": 1,
+        "38/14": 1,
+        "34/4": 1,
+        "32/668": 1,
+        "21/29": 1,
+        "31/151": 1,
+        "18/184": 1,
+        "14/5": 1,
+        "38/16": 1,
+        "32/106": 1,
+        "32/120": 1,
+        "25/0": 1,
+        "36/106": 1,
+        "32/128": 1,
+        "31/467": 2,
+        "19/16": 2,
+        "16/8": 1,
+        "18/152": 1,
+        "14/48": 1,
+        "32/1014": 1,
+        "32/1016": 1,
+        "32/1018": 1,
+        "32/1020": 1,
+        "32/1022": 1,
+        "31/144": 1
+      },
+      "reviewed_native_batch": 6
+    },
+    {
+      "address": 1642780,
+      "name": "_SCSIhStandardAdvSetupBDR",
+      "owner": "AdaptecU2CHIMSCB.c",
+      "reference_size": 800,
+      "source_line": 493,
+      "control_flow": "Save135/pauseifbit4clear/save144/selectrequest; clear40SCBregisterbytes160..199 thenexactmodeBDR fields; restore144; activeownership=request,manager10,hardwareFlags10000,actualbreakpoint1,conditionalHCNTRLrestore. 160=8,161=target|hostID<<4,162=lun,166=1,168=0,169=12.",
+      "cases": [
+        "task7-bdr-setup-StandardAdv-0",
+        "task7-bdr-setup-StandardAdv-4"
+      ],
+      "native_address": 8800,
+      "native_size": 832,
+      "native_sha256": "FAEEADD9AF757D1C19EF289575837875F3FEE38D972E960A8E0A4FD1FDB2CF20",
+      "native_external_relocations": [
+        {
+          "address": 8916,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 8936,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_SCSIhPauseAndWait"
+        },
+        {
+          "address": 8984,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 9048,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 9104,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 9168,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 9220,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 9276,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 9332,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 9388,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 9444,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 9496,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 9580,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_SCSIhWriteHCNTRL"
+        }
+      ],
+      "native_opcode_counts": {
+        "31/339": 2,
+        "36/1008": 1,
+        "36/1010": 1,
+        "36/1012": 1,
+        "36/1014": 1,
+        "36/1016": 1,
+        "36/1018": 1,
+        "36/1020": 1,
+        "36/1022": 1,
+        "36/4": 1,
+        "37/968": 1,
+        "31/444": 7,
+        "14/67": 1,
+        "32/0": 12,
+        "34/15": 1,
+        "32/4": 23,
+        "34/2": 2,
+        "21/795": 1,
+        "36/28": 11,
+        "32/2": 11,
+        "32/6": 11,
+        "32/8": 11,
+        "32/10": 11,
+        "32/12": 11,
+        "32/14": 11,
+        "18/662": 1,
+        "21/799": 2,
+        "28/2": 2,
+        "16/6": 1,
+        "18/652": 1,
+        "14/72": 2,
+        "18/628": 1,
+        "14/0": 6,
+        "34/4": 2,
+        "38/31": 9,
+        "18/596": 1,
+        "14/80": 3,
+        "18/568": 1,
+        "10/19": 1,
+        "16/994": 1,
+        "14/4": 1,
+        "18/536": 1,
+        "18/510": 1,
+        "14/81": 1,
+        "18/482": 1,
+        "14/83": 1,
+        "18/454": 1,
+        "14/84": 2,
+        "18/426": 1,
+        "14/6": 1,
+        "18/398": 1,
+        "18/372": 1,
+        "14/5": 1,
+        "32/668": 1,
+        "21/29": 1,
+        "31/151": 1,
+        "38/16": 1,
+        "32/106": 1,
+        "32/120": 1,
+        "25/0": 1,
+        "36/106": 1,
+        "32/128": 1,
+        "31/467": 2,
+        "19/16": 2,
+        "16/8": 1,
+        "18/330": 1,
+        "14/56": 1,
+        "32/1008": 1,
+        "32/1010": 1,
+        "32/1012": 1,
+        "32/1014": 1,
+        "32/1016": 1,
+        "32/1018": 1,
+        "32/1020": 1,
+        "32/1022": 1
+      },
+      "reviewed_native_batch": 6
+    },
+    {
+      "address": 1643580,
+      "name": "_SCSIhSwappingAdvSetupBDR",
+      "owner": "AdaptecU2CHIMSCB.c",
+      "reference_size": 352,
+      "source_line": 545,
+      "control_flow": "Save135/pauseifneeded; memsetexact64hostSCBbytes, target/lun/control/message/nextnumber atmodeoffsets; activeownershipbeforeflush64;manager10/flags10000/actualbreakpoint1;conditionalHCNTRLrestore.",
+      "cases": [
+        "task7-bdr-setup-SwappingAdv-0",
+        "task7-bdr-setup-SwappingAdv-4"
+      ],
+      "native_address": 9984,
+      "native_size": 352,
+      "native_sha256": "4DCBD52466F49A5F59413E66B43577C161E45B3D14C813411E4279A77E4A4E60",
+      "native_external_relocations": [
+        {
+          "address": 10080,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 10108,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_SCSIhPauseAndWait"
+        },
+        {
+          "address": 10132,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_memset"
+        },
+        {
+          "address": 10224,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_flush_cache"
+        },
+        {
+          "address": 10288,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_SCSIhWriteHCNTRL"
+        }
+      ],
+      "native_opcode_counts": {
+        "31/339": 2,
+        "36/1014": 1,
+        "36/1016": 1,
+        "36/1018": 1,
+        "36/1020": 1,
+        "36/1022": 1,
+        "36/4": 1,
+        "31/19": 1,
+        "36/2": 1,
+        "37/976": 1,
+        "31/444": 9,
+        "32/0": 2,
+        "32/4": 3,
+        "14/67": 1,
+        "36/28": 1,
+        "32/2": 2,
+        "32/6": 2,
+        "32/8": 2,
+        "32/10": 1,
+        "32/12": 3,
+        "32/14": 1,
+        "18/80": 1,
+        "21/799": 1,
+        "28/2": 1,
+        "19/0": 1,
+        "16/6": 1,
+        "18/66": 1,
+        "14/0": 4,
+        "14/32": 2,
+        "18/54": 1,
+        "14/4": 1,
+        "38/19": 1,
+        "34/2": 2,
+        "38/6": 2,
+        "38/7": 1,
+        "38/8": 2,
+        "14/6": 1,
+        "34/0": 1,
+        "38/5": 1,
+        "34/4": 1,
+        "32/668": 1,
+        "21/29": 1,
+        "31/151": 1,
+        "18/8": 1,
+        "14/5": 1,
+        "38/16": 1,
+        "32/106": 1,
+        "32/120": 1,
+        "25/0": 1,
+        "36/106": 1,
+        "32/128": 1,
+        "31/467": 2,
+        "19/16": 2,
+        "16/8": 1,
+        "18/1000": 1,
+        "14/48": 1,
+        "32/1014": 1,
+        "32/1016": 1,
+        "32/1018": 1,
+        "32/1020": 1,
+        "32/1022": 1,
+        "31/144": 1
+      },
+      "reviewed_native_batch": 6
+    },
+    {
+      "address": 1643932,
+      "name": "_SCSIhStandard64StackBugFix",
+      "owner": "AdaptecU2CHIMSCB.c",
+      "reference_size": 540,
+      "source_line": 1098,
+      "control_flow": "OnlyfirmwareMode0; eight reads111 retainedinorderedpairs; anyoddvalue>1 causesoneextraread; identicalfourlow/fourhighvalues write99=0; mismatch/othermode preservehardware.",
+      "cases": [
+        "task7-abort-stack-0-10101010",
+        "task7-abort-stack-0-12121212",
+        "task7-abort-stack-0-10301010",
+        "task7-abort-stack-4-10101010",
+        "task7-abort-stack-4-12121212",
+        "task7-abort-stack-4-10301010"
+      ],
+      "native_address": 21260,
+      "native_size": 388,
+      "native_sha256": "5F5A9447621A6BD8986CDEB996B4003C1D8F993634663FF18BF96BA791990A08",
+      "native_external_relocations": [
+        {
+          "address": 21364,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 21472,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 21608,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        }
+      ],
+      "native_opcode_counts": {
+        "31/339": 1,
+        "36/1014": 1,
+        "36/1016": 1,
+        "36/1018": 1,
+        "36/1020": 1,
+        "36/1022": 1,
+        "36/4": 1,
+        "37/968": 1,
+        "31/444": 2,
+        "34/9": 1,
+        "11/0": 2,
+        "14/0": 4,
+        "16/152": 1,
+        "14/55": 2,
+        "14/36": 1,
+        "32/4": 7,
+        "36/28": 3,
+        "32/0": 3,
+        "32/2": 3,
+        "32/6": 3,
+        "32/8": 3,
+        "32/10": 3,
+        "32/12": 3,
+        "32/14": 3,
+        "18/582": 1,
+        "28/0": 1,
+        "31/215": 1,
+        "16/16": 1,
+        "21/799": 1,
+        "8/0": 1,
+        "31/136": 1,
+        "31/476": 1,
+        "31/28": 1,
+        "12/0": 1,
+        "10/3": 1,
+        "16/978": 1,
+        "16/26": 1,
+        "18/528": 1,
+        "34/36": 2,
+        "34/37": 2,
+        "31/0": 6,
+        "16/62": 1,
+        "34/38": 2,
+        "16/56": 1,
+        "34/39": 2,
+        "16/50": 1,
+        "16/42": 1,
+        "16/36": 1,
+        "16/30": 1,
+        "14/49": 1,
+        "38/31": 1,
+        "18/460": 1,
+        "14/56": 1,
+        "31/467": 1,
+        "32/1014": 1,
+        "32/1016": 1,
+        "32/1018": 1,
+        "32/1020": 1,
+        "32/1022": 1,
+        "19/16": 1
+      },
+      "reviewed_native_batch": 9
+    },
+    {
+      "address": 1644472,
+      "name": "_SCSIhSwapping32FreezeHWQueue",
+      "owner": "AdaptecU2CHIMSCB.c",
+      "reference_size": 876,
+      "source_line": 1246,
+      "control_flow": "ActualResourceAsyncEventCommand1 saves/freezescriteria andhostqueues; control40waitingtargetmatch clearsselection/readback, clearsactiveownership/status5, actualnormalorspecialResourcecompletion. ActualgetQNewTail, head66; traverse8bittail..qnewHead. Matchingtarget decrement/write64, unlinkheadorpredecessorvianextcallbacks, clearownership/status5/complete; othersadvanceprevious/tail. ResourceAsyncEventCommand2restoreordering/activecount.",
+      "cases": [
+        "task7-freeze-Swapping32-empty",
+        "task7-freeze-Swapping32-head",
+        "task7-freeze-Swapping32-waiting",
+        "task7-freeze-Swapping32-wrong"
+      ],
+      "native_address": 25036,
+      "native_size": 892,
+      "native_sha256": "E8A4E3452E7C46FF6403F3B6686FF90F8AD4486F79CC16C292EDE0290CA9D71A",
+      "native_external_relocations": [
+        {
+          "address": 25096,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_SCSIrAsyncEventCommand"
+        },
+        {
+          "address": 25148,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 25208,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 25288,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 25332,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 25380,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_SCSIrCompleteHIOB"
+        },
+        {
+          "address": 25392,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_SCSIrCompleteSpecialHIOB"
+        },
+        {
+          "address": 25472,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 25592,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 25740,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 25788,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_SCSIrCompleteHIOB"
+        },
+        {
+          "address": 25800,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_SCSIrCompleteSpecialHIOB"
+        },
+        {
+          "address": 25876,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_SCSIrAsyncEventCommand"
+        }
+      ],
+      "native_opcode_counts": {
+        "31/339": 5,
+        "36/1008": 1,
+        "36/1010": 1,
+        "36/1012": 1,
+        "36/1014": 1,
+        "36/1016": 1,
+        "36/1018": 1,
+        "36/1020": 1,
+        "36/1022": 1,
+        "36/4": 1,
+        "37/968": 1,
+        "31/444": 20,
+        "14/0": 3,
+        "32/0": 10,
+        "18/764": 1,
+        "32/4": 15,
+        "34/2": 5,
+        "36/28": 7,
+        "32/2": 7,
+        "32/6": 7,
+        "32/8": 7,
+        "32/10": 7,
+        "32/12": 7,
+        "32/14": 7,
+        "18/738": 1,
+        "21/799": 6,
+        "28/32": 1,
+        "16/118": 1,
+        "14/43": 1,
+        "18/708": 1,
+        "32/668": 5,
+        "21/733": 1,
+        "31/23": 3,
+        "31/0": 5,
+        "16/80": 1,
+        "28/25": 1,
+        "38/31": 3,
+        "18/668": 1,
+        "18/646": 1,
+        "14/1023": 2,
+        "34/4": 2,
+        "21/29": 4,
+        "31/151": 2,
+        "11/0": 2,
+        "14/2": 2,
+        "38/2": 2,
+        "16/8": 2,
+        "18/622": 1,
+        "18/6": 1,
+        "18/616": 1,
+        "32/122": 1,
+        "32/42": 1,
+        "31/467": 5,
+        "19/16": 5,
+        "32/120": 6,
+        "34/33": 2,
+        "18/576": 1,
+        "34/108": 3,
+        "16/184": 1,
+        "16/142": 1,
+        "34/32": 1,
+        "12/1023": 1,
+        "38/108": 1,
+        "18/516": 1,
+        "32/108": 2,
+        "16/24": 1,
+        "32/110": 1,
+        "18/34": 1,
+        "18/442": 1,
+        "18/418": 1,
+        "18/30": 1,
+        "18/412": 1,
+        "18/24": 1,
+        "16/844": 1,
+        "14/1": 1,
+        "18/374": 1,
+        "14/56": 1,
+        "32/1008": 1,
+        "32/1010": 1,
+        "32/1012": 1,
+        "32/1014": 1,
+        "32/1016": 1,
+        "32/1018": 1,
+        "32/1020": 1,
+        "32/1022": 1
+      },
+      "reviewed_native_batch": 10
+    },
+    {
+      "address": 1645348,
+      "name": "_SCSIhSwappingAdvFreezeHWQueue",
+      "owner": "AdaptecU2CHIMSCB.c",
+      "reference_size": 1056,
+      "source_line": 1297,
+      "control_flow": "ActualResourceAsyncEventCommand1 saves/freezescriteria andhostqueues; control40waitingtargetmatch clearsselection/readback, clearsactiveownership/status5, actualnormalorspecialResourcecompletion. 238&1c==1c andnewheadtargetmatch clears238. ActualgetQNewTail, head66; traverse8bittail..qnewHead. Matchingtarget decrement/write64, unlinkheadorpredecessorvianextcallbacks, clearownership/status5/complete; othersadvanceprevious/tail. ResourceAsyncEventCommand2restoreordering/activecount.",
+      "cases": [
+        "task7-freeze-SwappingAdv-empty",
+        "task7-freeze-SwappingAdv-head",
+        "task7-freeze-SwappingAdv-waiting",
+        "task7-freeze-SwappingAdv-wrong"
+      ],
+      "native_address": 25928,
+      "native_size": 1084,
+      "native_sha256": "B19EDA207134C41D237A0A01B0F2153B010B1BA839D19CEA5A9EEDF059E7CB44",
+      "native_external_relocations": [
+        {
+          "address": 25988,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_SCSIrAsyncEventCommand"
+        },
+        {
+          "address": 26040,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 26100,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 26180,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 26224,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 26272,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_SCSIrCompleteHIOB"
+        },
+        {
+          "address": 26284,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_SCSIrCompleteSpecialHIOB"
+        },
+        {
+          "address": 26332,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 26396,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 26476,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 26556,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMReadUExact8"
+        },
+        {
+          "address": 26676,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 26824,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_OSMWriteUExact8"
+        },
+        {
+          "address": 26872,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_SCSIrCompleteHIOB"
+        },
+        {
+          "address": 26884,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_SCSIrCompleteSpecialHIOB"
+        },
+        {
+          "address": 26960,
+          "kind": "ppc-br24-24-pc-relative",
+          "target": "_SCSIrAsyncEventCommand"
+        }
+      ],
+      "native_opcode_counts": {
+        "31/339": 5,
+        "36/1008": 1,
+        "36/1010": 1,
+        "36/1012": 1,
+        "36/1014": 1,
+        "36/1016": 1,
+        "36/1018": 1,
+        "36/1020": 1,
+        "36/1022": 1,
+        "36/4": 1,
+        "37/968": 1,
+        "31/444": 20,
+        "14/0": 4,
+        "32/0": 14,
+        "18/318": 1,
+        "32/4": 21,
+        "34/2": 6,
+        "36/28": 10,
+        "32/2": 10,
+        "32/6": 10,
+        "32/8": 10,
+        "32/10": 10,
+        "32/12": 10,
+        "32/14": 10,
+        "18/292": 1,
+        "21/799": 6,
+        "28/32": 1,
+        "16/118": 1,
+        "14/28": 1,
+        "18/262": 1,
+        "32/668": 6,
+        "21/733": 2,
+        "31/23": 4,
+        "31/0": 6,
+        "16/80": 1,
+        "28/25": 1,
+        "38/31": 4,
+        "18/222": 1,
+        "18/200": 1,
+        "14/1023": 2,
+        "34/4": 2,
+        "21/29": 4,
+        "31/151": 2,
+        "11/0": 2,
+        "14/2": 2,
+        "38/2": 2,
+        "16/8": 2,
+        "18/176": 1,
+        "18/6": 1,
+        "18/170": 1,
+        "14/119": 1,
+        "18/146": 1,
+        "21/893": 1,
+        "11/14": 1,
+        "16/68": 1,
+        "32/120": 7,
+        "34/33": 3,
+        "18/114": 1,
+        "16/28": 1,
+        "18/74": 1,
+        "32/122": 1,
+        "32/42": 1,
+        "31/467": 5,
+        "19/16": 5,
+        "18/34": 2,
+        "34/108": 3,
+        "16/184": 1,
+        "16/142": 1,
+        "34/32": 1,
+        "12/1023": 1,
+        "38/108": 1,
+        "18/998": 1,
+        "32/108": 2,
+        "16/24": 1,
+        "32/110": 1,
+        "18/924": 1,
+        "18/900": 1,
+        "18/30": 1,
+        "18/894": 1,
+        "18/24": 1,
+        "16/844": 1,
+        "14/1": 1,
+        "18/856": 1,
+        "14/56": 1,
+        "32/1008": 1,
+        "32/1010": 1,
+        "32/1012": 1,
+        "32/1014": 1,
+        "32/1016": 1,
+        "32/1018": 1,
+        "32/1020": 1,
+        "32/1022": 1
+      },
+      "reviewed_native_batch": 10
+    }
+  ],
+  "switches": {}
+}

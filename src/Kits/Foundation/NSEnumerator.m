@@ -3,17 +3,23 @@
 */
 
 #import <Foundation/NSEnumerator.h>
+#import <Foundation/NSArray.h>
+#import <Foundation/NSObjCRuntime.h>
 
 @implementation NSEnumerator
 
 - (id)nextObject {
-    // TODO: Implement this method
+    NSRequestConcreteImplementation(self, _cmd, [NSEnumerator class]);
     return nil;
 }
 
 - (NSArray *)allObjects {
-    // TODO: Implement this method
-    return nil;
+    NSMutableArray *objects = [NSMutableArray array];
+    id object;
+
+    while ((object = [self nextObject]) != nil)
+        [objects addObject:object];
+    return objects;
 }
 
 @end

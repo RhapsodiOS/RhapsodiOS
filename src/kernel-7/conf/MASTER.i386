@@ -69,9 +69,9 @@
 #  Standard NeXT Research Configurations:
 #  -------- ---- -------- ---------------
 #
-#  RELEASE = [intel pc mach medium event vol pst gdb kernobjc libdriver fixpri simple_clock mdebug kernserv driverkit uxpr kernstack ipc_compat ipc_debug nfsclient nfsserver quota fifo fdesc union portal ffs hfs ext2fs msdos cd9660 compat_43 revfs nbc]
+#  RELEASE = [intel pc mach medium event vol pst gdb kernobjc libdriver fixpri simple_clock mdebug kernserv driverkit uxpr kernstack ipc_compat ipc_debug nfsclient nfsserver quota fifo fdesc union portal ffs hfs ext2fs hammerfs msdos cd9660 compat_43 revfs nbc]
 #  PROFILE = [RELEASE profile]
-#  DEBUG = [intel pc mach medium event vol pst gdb kernobjc libdriver_g fixpri debug simple_clock mdebug kernserv driverkit xpr_debug uxpr kernstack ipc_compat ipc_debug nfsclient nfsserver quota fifo fdesc union portal ffs hfs ext2fs msdos cd9660 compat_43 diagnostic revfs nbc]
+#  DEBUG = [intel pc mach medium event vol pst gdb kernobjc libdriver_g fixpri debug simple_clock mdebug kernserv driverkit xpr_debug uxpr kernstack ipc_compat ipc_debug nfsclient nfsserver quota fifo fdesc union portal ffs hfs ext2fs hammerfs msdos cd9660 compat_43 diagnostic revfs nbc]
 #
 ######################################################################
 #
@@ -83,6 +83,7 @@ makeoptions	CCONFIGFLAGS = "-O3"				# <!gdb>
 makeoptions	RELOC = "00100000"				# <intel>
 makeoptions	SYMADDR = "00780000"				# <intel>
 makeoptions	LIBPEXPERT = "pexperti386.o"			# <intel>
+makeoptions	LIBDRIVER = "libDriver_kern_g.o"			# <libdriver_g>
 
 options		GDB		# GNU kernel debugger		# <gdb>
 options		DEBUG		# general debugging code	# <debug>

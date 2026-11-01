@@ -165,6 +165,7 @@ class TestFragsFirstLevelIndirectHole(unittest.TestCase):
             self.frag = frag
             self.nindir = nindir
             self.bsize = frag * fsize
+            self.endian = "<"
             self._blocks = blocks  # {frag_no: raw indirect-table bytes}
 
         def read_frag(self, frag_no, nbytes):

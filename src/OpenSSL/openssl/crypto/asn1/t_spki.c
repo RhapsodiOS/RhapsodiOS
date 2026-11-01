@@ -1,6 +1,7 @@
 /* t_spki.c */
-/* Written by Dr Stephen N Henson (shenson@bigfoot.com) for the OpenSSL
- * project 1999.
+/*
+ * Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL project
+ * 1999.
  */
 /* ====================================================================
  * Copyright (c) 1999 The OpenSSL Project.  All rights reserved.
@@ -10,7 +11,7 @@
  * are met:
  *
  * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer. 
+ *    notice, this list of conditions and the following disclaimer.
  *
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in
@@ -59,58 +60,69 @@
 #include <stdio.h>
 #include "cryptlib.h"
 #include <openssl/x509.h>
-#include <openssl/asn1_mac.h>
+#include <openssl/asn1.h>
+#ifndef OPENSSL_NO_RSA
+# include <openssl/rsa.h>
+#endif
+#ifndef OPENSSL_NO_DSA
+# include <openssl/dsa.h>
+#endif
+#include <openssl/bn.h>
 
 /* Print out an SPKI */
 
 int NETSCAPE_SPKI_print(BIO *out, NETSCAPE_SPKI *spki)
 {
-	EVP_PKEY *pkey;
-	ASN1_IA5STRING *chal;
-	int i, n;
-	char *s;
-	BIO_printf(out, "Netscape SPKI:\n");
-	i=OBJ_obj2nid(spki->spkac->pubkey->algor->algorithm);
-	BIO_printf(out,"  Public Key Algorithm: %s\n",
-				(i == NID_undef)?"UNKNOWN":OBJ_nid2ln(i));
-	pkey = X509_PUBKEY_get(spki->spkac->pubkey);
-	if(!pkey) BIO_printf(out, "  Unable to load public key\n");
-	else {
-#ifndef NO_RSA
-		if (pkey->type == EVP_PKEY_RSA)
-			{
-			BIO_printf(out,"  RSA Public Key: (%d bit)\n",
-				BN_num_bits(pkey->pkey.rsa->n));
-			RSA_print(out,pkey->pkey.rsa,2);
-			}
-		else 
+    EVP_PKEY *pkey;
+    ASN1_IA5STRING *chal;
+    int i, n;
+    char *s;
+    BIO_printf(out, "Netscape SPKI:\n");
+    i = OBJ_obj2nid(spki->spkac->pubkey->algor->algorithm);
+    BIO_printf(out, "  Public Key Algorithm: %s\n",
+               (i == NID_undef) ? "UNKNOWN" : OBJ_nid2ln(i));
+    pkey = X509_PUBKEY_get(spki->spkac->pubkey);
+    if (!pkey)
+        BIO_printf(out, "  Unable to load public key\n");
+    else {
+#ifndef OPENSSL_NO_RSA
+        if (pkey->type == EVP_PKEY_RSA) {
+            BIO_printf(out, "  RSA Public Key: (%d bit)\n",
+                       BN_num_bits(pkey->pkey.rsa->n));
+            RSA_print(out, pkey->pkey.rsa, 2);
+        } else
 #endif
-#ifndef NO_DSA
-		if (pkey->type == EVP_PKEY_DSA)
-		{
-		BIO_printf(out,"  DSA Public Key:\n");
-		DSA_print(out,pkey->pkey.dsa,2);
-		}
-		else
+#ifndef OPENSSL_NO_DSA
+        if (pkey->type == EVP_PKEY_DSA) {
+            BIO_printf(out, "  DSA Public Key:\n");
+            DSA_print(out, pkey->pkey.dsa, 2);
+        } else
 #endif
-			BIO_printf(out,"  Unknown Public Key:\n");
-		EVP_PKEY_free(pkey);
-	}
-	chal = spki->spkac->challenge;
-	if(chal->length)
-		BIO_printf(out, "  Challenge String: %s\n", chal->data);
-	i=OBJ_obj2nid(spki->sig_algor->algorithm);
-	BIO_printf(out,"  Signature Algorithm: %s",
-				(i == NID_undef)?"UNKNOWN":OBJ_nid2ln(i));
+#ifndef OPENSSL_NO_EC
+        if (pkey->type == EVP_PKEY_EC) {
+            BIO_printf(out, "  EC Public Key:\n");
+            EC_KEY_print(out, pkey->pkey.ec, 2);
+        } else
+#endif
 
-	n=spki->signature->length;
-	s=(char *)spki->signature->data;
-	for (i=0; i<n; i++)
-		{
-		if ((i%18) == 0) BIO_write(out,"\n      ",7);
-		BIO_printf(out,"%02x%s",(unsigned char)s[i],
-						((i+1) == n)?"":":");
-		}
-	BIO_write(out,"\n",1);
-	return 1;
+            BIO_printf(out, "  Unknown Public Key:\n");
+        EVP_PKEY_free(pkey);
+    }
+    chal = spki->spkac->challenge;
+    if (chal->length)
+        BIO_printf(out, "  Challenge String: %s\n", chal->data);
+    i = OBJ_obj2nid(spki->sig_algor->algorithm);
+    BIO_printf(out, "  Signature Algorithm: %s",
+               (i == NID_undef) ? "UNKNOWN" : OBJ_nid2ln(i));
+
+    n = spki->signature->length;
+    s = (char *)spki->signature->data;
+    for (i = 0; i < n; i++) {
+        if ((i % 18) == 0)
+            BIO_write(out, "\n      ", 7);
+        BIO_printf(out, "%02x%s", (unsigned char)s[i],
+                   ((i + 1) == n) ? "" : ":");
+    }
+    BIO_write(out, "\n", 1);
+    return 1;
 }

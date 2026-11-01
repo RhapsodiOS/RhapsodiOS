@@ -1,3 +1,5 @@
+/* $OpenBSD: xmalloc.h,v 1.16 2016/02/15 09:47:49 dtucker Exp $ */
+
 /*
  * Author: Tatu Ylonen <ylo@cs.hut.fi>
  * Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
@@ -14,21 +16,11 @@
  * called by a name other than "ssh" or "Secure Shell".
  */
 
-/* RCSID("$OpenBSD: xmalloc.h,v 1.5 2000/09/07 20:27:56 deraadt Exp $"); */
-
-#ifndef XMALLOC_H
-#define XMALLOC_H
-
-/* Like malloc, but calls fatal() if out of memory. */
-void   *xmalloc(size_t size);
-
-/* Like realloc, but calls fatal() if out of memory. */
-void   *xrealloc(void *ptr, size_t new_size);
-
-/* Frees memory allocated using xmalloc or xrealloc. */
-void    xfree(void *ptr);
-
-/* Allocates memory using xmalloc, and copies the string into that memory. */
-char   *xstrdup(const char *str);
-
-#endif				/* XMALLOC_H */
+void	 ssh_malloc_init(void);
+void	*xmalloc(size_t);
+void	*xcalloc(size_t, size_t);
+void	*xreallocarray(void *, size_t, size_t);
+char	*xstrdup(const char *);
+int	 xasprintf(char **, const char *, ...)
+                __attribute__((__format__ (printf, 2, 3)))
+                __attribute__((__nonnull__ (2)));

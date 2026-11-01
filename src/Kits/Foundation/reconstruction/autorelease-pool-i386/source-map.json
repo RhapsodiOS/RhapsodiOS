@@ -1,0 +1,333 @@
+{
+  "schema_version": "source-map-v1",
+  "reference_sha256": "1165B9063ADD5672514455CA2C9830625BEA2BCE5E46126FB5E8652114C909D6",
+  "mapped": [
+    {
+      "address": 1112554892,
+      "size": 270,
+      "reference_names": [
+        "_NSAutoreleaseObject"
+      ],
+      "source_path": "src/Kits/Foundation/NSAutoreleasePool.m",
+      "source_line": 341
+    },
+    {
+      "address": 1112568808,
+      "size": 1163,
+      "reference_names": [
+        "_NSPopAutoreleasePool"
+      ],
+      "source_path": "src/Kits/Foundation/NSAutoreleasePool.m",
+      "source_line": 389
+    },
+    {
+      "address": 1112577704,
+      "size": 186,
+      "reference_names": [
+        "_NSPushAutoreleasePool"
+      ],
+      "source_path": "src/Kits/Foundation/NSAutoreleasePool.m",
+      "source_line": 319
+    },
+    {
+      "address": 1112593836,
+      "size": 31,
+      "reference_names": [
+        "-[NSAutoreleasePool init]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAutoreleasePool.m",
+      "source_line": 645
+    },
+    {
+      "address": 1112593868,
+      "size": 123,
+      "reference_names": [
+        "-[NSAutoreleasePool initWithCapacity:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAutoreleasePool.m",
+      "source_line": 650
+    },
+    {
+      "address": 1112593992,
+      "size": 19,
+      "reference_names": [
+        "-[NSAutoreleasePool release]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAutoreleasePool.m",
+      "source_line": 666
+    },
+    {
+      "address": 1112615048,
+      "size": 243,
+      "reference_names": [
+        "+[NSAutoreleasePool allocWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAutoreleasePool.m",
+      "source_line": 508
+    },
+    {
+      "address": 1112821804,
+      "size": 92,
+      "reference_names": [
+        "__NSAPAddPage"
+      ],
+      "source_path": "src/Kits/Foundation/NSAutoreleasePool.m",
+      "source_line": 129
+    },
+    {
+      "address": 1112832424,
+      "size": 207,
+      "reference_names": [
+        "__NSAPDataCreate"
+      ],
+      "source_path": "src/Kits/Foundation/NSAutoreleasePool.m",
+      "source_line": 89
+    },
+    {
+      "address": 1112884272,
+      "size": 229,
+      "reference_names": [
+        "+[NSAutoreleasePool releaseAllPools]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAutoreleasePool.m",
+      "source_line": 618
+    },
+    {
+      "address": 1113007352,
+      "size": 16,
+      "reference_names": [
+        "+[NSAutoreleasePool addObject:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAutoreleasePool.m",
+      "source_line": 534
+    },
+    {
+      "address": 1113007368,
+      "size": 30,
+      "reference_names": [
+        "+[NSAutoreleasePool autoreleasePoolExists]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAutoreleasePool.m",
+      "source_line": 539
+    },
+    {
+      "address": 1113007400,
+      "size": 12,
+      "reference_names": [
+        "+[NSAutoreleasePool autoreleasedObjectCount]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAutoreleasePool.m",
+      "source_line": 547
+    },
+    {
+      "address": 1113007412,
+      "size": 53,
+      "reference_names": [
+        "+[NSAutoreleasePool enableFreedObjectCheck:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAutoreleasePool.m",
+      "source_line": 557
+    },
+    {
+      "address": 1113007468,
+      "size": 53,
+      "reference_names": [
+        "+[NSAutoreleasePool enableRelease:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAutoreleasePool.m",
+      "source_line": 565
+    },
+    {
+      "address": 1113007524,
+      "size": 26,
+      "reference_names": [
+        "+[NSAutoreleasePool poolCountHighWaterMark]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAutoreleasePool.m",
+      "source_line": 573
+    },
+    {
+      "address": 1113007552,
+      "size": 26,
+      "reference_names": [
+        "+[NSAutoreleasePool poolCountHighWaterResolution]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAutoreleasePool.m",
+      "source_line": 588
+    },
+    {
+      "address": 1113007580,
+      "size": 23,
+      "reference_names": [
+        "+[NSAutoreleasePool resetTotalAutoreleasedObjects]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAutoreleasePool.m",
+      "source_line": 603
+    },
+    {
+      "address": 1113007604,
+      "size": 39,
+      "reference_names": [
+        "+[NSAutoreleasePool setPoolCountHighWaterMark:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAutoreleasePool.m",
+      "source_line": 581
+    },
+    {
+      "address": 1113007644,
+      "size": 39,
+      "reference_names": [
+        "+[NSAutoreleasePool setPoolCountHighWaterResolution:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAutoreleasePool.m",
+      "source_line": 596
+    },
+    {
+      "address": 1113007684,
+      "size": 12,
+      "reference_names": [
+        "+[NSAutoreleasePool showPools]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAutoreleasePool.m",
+      "source_line": 613
+    },
+    {
+      "address": 1113007696,
+      "size": 12,
+      "reference_names": [
+        "+[NSAutoreleasePool topAutoreleasePoolCount]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAutoreleasePool.m",
+      "source_line": 552
+    },
+    {
+      "address": 1113007708,
+      "size": 19,
+      "reference_names": [
+        "+[NSAutoreleasePool totalAutoreleasedObjects]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAutoreleasePool.m",
+      "source_line": 608
+    },
+    {
+      "address": 1113010904,
+      "size": 245,
+      "reference_names": [
+        "-[NSAutoreleasePool addObject:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAutoreleasePool.m",
+      "source_line": 701
+    },
+    {
+      "address": 1113011152,
+      "size": 73,
+      "reference_names": [
+        "-[NSAutoreleasePool autorelease]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAutoreleasePool.m",
+      "source_line": 692
+    },
+    {
+      "address": 1113011228,
+      "size": 43,
+      "reference_names": [
+        "-[NSAutoreleasePool dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAutoreleasePool.m",
+      "source_line": 671
+    },
+    {
+      "address": 1113011272,
+      "size": 12,
+      "reference_names": [
+        "-[NSAutoreleasePool retainCount]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAutoreleasePool.m",
+      "source_line": 678
+    },
+    {
+      "address": 1113011284,
+      "size": 73,
+      "reference_names": [
+        "-[NSAutoreleasePool retain]"
+      ],
+      "source_path": "src/Kits/Foundation/NSAutoreleasePool.m",
+      "source_line": 683
+    },
+    {
+      "address": 1113018784,
+      "size": 26,
+      "reference_names": [
+        "_NSAutoreleasePoolCount"
+      ],
+      "source_path": "src/Kits/Foundation/NSAutoreleasePool.m",
+      "source_line": 176
+    },
+    {
+      "address": 1113018812,
+      "size": 65,
+      "reference_names": [
+        "_NSAutoreleasePoolCountForObject"
+      ],
+      "source_path": "src/Kits/Foundation/NSAutoreleasePool.m",
+      "source_line": 199
+    },
+    {
+      "address": 1113018900,
+      "size": 416,
+      "reference_names": [
+        "_NSPrintAutoreleasePools"
+      ],
+      "source_path": "src/Kits/Foundation/NSAutoreleasePool.m",
+      "source_line": 288
+    },
+    {
+      "address": 1113019316,
+      "size": 81,
+      "reference_names": [
+        "_NSTopAutoreleasePoolCount"
+      ],
+      "source_path": "src/Kits/Foundation/NSAutoreleasePool.m",
+      "source_line": 185
+    },
+    {
+      "address": 1113019416,
+      "size": 28,
+      "reference_names": [
+        "__NSAutoreleaseFreedObject"
+      ],
+      "source_path": "src/Kits/Foundation/NSAutoreleasePool.m",
+      "source_line": 233
+    },
+    {
+      "address": 1113019444,
+      "size": 28,
+      "reference_names": [
+        "__NSAutoreleaseHighWaterLog"
+      ],
+      "source_path": "src/Kits/Foundation/NSAutoreleasePool.m",
+      "source_line": 251
+    },
+    {
+      "address": 1113019472,
+      "size": 35,
+      "reference_names": [
+        "__NSAutoreleaseNoPool"
+      ],
+      "source_path": "src/Kits/Foundation/NSAutoreleasePool.m",
+      "source_line": 242
+    },
+    {
+      "address": 1113019744,
+      "size": 112,
+      "reference_names": [
+        "__NSHasBeenFreed"
+      ],
+      "source_path": "src/Kits/Foundation/NSAutoreleasePool.m",
+      "source_line": 219
+    }
+  ],
+  "unmapped": [],
+  "duplicate_candidates": [],
+  "boundary_disputed": []
+}

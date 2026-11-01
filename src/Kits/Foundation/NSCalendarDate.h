@@ -22,6 +22,10 @@
 
 + (id)dateWithString:(NSString *)description calendarFormat:(NSString *)format locale:(NSDictionary *)dict;
 
++ (NSCalendarDate *)dateWithNaturalLanguageString:(NSString *)string
+                                             date:(NSCalendarDate *)date
+                                           locale:(NSDictionary *)dict;
+
 + (id)calendarDate;
 
 - (id)initWithYear:(int)year month:(unsigned)month day:(unsigned)day hour:(unsigned)hour minute:(unsigned)minute second:(unsigned)second timeZone:(NSTimeZone *)aTimeZone;
@@ -78,6 +82,9 @@
 
 + dateWithNaturalLanguageString:(NSString *)string;
 + dateWithNaturalLanguageString:(NSString *)string locale:(NSDictionary *)dict;
++ (NSDate *)dateWithNaturalLanguageString:(NSString *)string
+                                     date:(NSDate *)date
+                                   locale:(NSDictionary *)dict;
 
 @end
 

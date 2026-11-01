@@ -17,6 +17,7 @@
 }
 
 - (NSView *)controlView;
+- (void)_setControlView:(NSView *)view;
 - (void)setFont:(NSFont *)fontObj;
 - (void)setAlignment:(NSTextAlignment)mode;
 - (void)setBordered:(BOOL)flag;

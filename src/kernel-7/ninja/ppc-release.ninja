@@ -1,0 +1,8 @@
+config = RELEASE
+manifest = build-ppc.ninja
+ident = -DNEXT -DTIMEZONE="0" -DPST="0" -DINET -DMACH -DNO_DIRECT_RPC -DNETAT -DDEBUG
+driver_library = libDriver_kern.o
+include ninja/ppc.ninja
+
+# A real input keeps the empty release group idle.
+build debug_objects: phony $outdir/prepared

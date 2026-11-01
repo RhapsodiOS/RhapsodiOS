@@ -1,0 +1,377 @@
+{
+  "schema_version": "source-map-v1",
+  "reference_sha256": "332B3C8C0AE0A6E40A4B93110EE16748FCD94AA0119D63F16EDE878598C681B4",
+  "mapped": [
+    {
+      "address": 1112576532,
+      "size": 456,
+      "reference_names": [
+        "__NSDefaultCStringEncoding"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringEncodings.m",
+      "source_line": 131
+    },
+    {
+      "address": 1112590272,
+      "size": 308,
+      "reference_names": [
+        "__NSDefaultFileSystemEncoding"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringEncodings.m",
+      "source_line": 169
+    },
+    {
+      "address": 1112656000,
+      "size": 460,
+      "reference_names": [
+        "__NSReadBytesFromFile"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringEncodings.m",
+      "source_line": 669
+    },
+    {
+      "address": 1112729124,
+      "size": 392,
+      "reference_names": [
+        "_NSConvertToTitle"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringEncodings.m",
+      "source_line": 997
+    },
+    {
+      "address": 1112730516,
+      "size": 436,
+      "reference_names": [
+        "_NSConvertToUpper"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringEncodings.m",
+      "source_line": 884
+    },
+    {
+      "address": 1112886248,
+      "size": 188,
+      "reference_names": [
+        "_NSConvertToLower"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringEncodings.m",
+      "source_line": 958
+    },
+    {
+      "address": 1112888984,
+      "size": 84,
+      "reference_names": [
+        "__NSFoundationResourceCPath"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringEncodings.m",
+      "source_line": 637
+    },
+    {
+      "address": 1112904412,
+      "size": 360,
+      "reference_names": [
+        "_NSUnicodeTo8BitEncoding"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringEncodings.m",
+      "source_line": 1178
+    },
+    {
+      "address": 1112905480,
+      "size": 260,
+      "reference_names": [
+        "_NSUnicodeToNEXTSTEP"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringEncodings.m",
+      "source_line": 1213
+    },
+    {
+      "address": 1113228880,
+      "size": 140,
+      "reference_names": [
+        "_NS16To16BitEncoding"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringEncodings.m",
+      "source_line": 821
+    },
+    {
+      "address": 1113229800,
+      "size": 536,
+      "reference_names": [
+        "_NSEUCToShiftJIS"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringEncodings.m",
+      "source_line": 1447
+    },
+    {
+      "address": 1113230428,
+      "size": 76,
+      "reference_names": [
+        "_NSMacOSRomanToPrecompUnicode"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringEncodings.m",
+      "source_line": 38
+    },
+    {
+      "address": 1113232120,
+      "size": 208,
+      "reference_names": [
+        "_NSPrecompUnicodeToNEXTSTEP"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringEncodings.m",
+      "source_line": 251
+    },
+    {
+      "address": 1113234108,
+      "size": 252,
+      "reference_names": [
+        "_NSUnicodeToASCII"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringEncodings.m",
+      "source_line": 1201
+    },
+    {
+      "address": 1113234360,
+      "size": 408,
+      "reference_names": [
+        "_NSUnicodeToAdobeStandard"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringEncodings.m",
+      "source_line": 1337
+    },
+    {
+      "address": 1113234768,
+      "size": 260,
+      "reference_names": [
+        "_NSUnicodeToAdobeStandardCyrillic"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringEncodings.m",
+      "source_line": 1225
+    },
+    {
+      "address": 1113235028,
+      "size": 68,
+      "reference_names": [
+        "_NSUnicodeToDingbat"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringEncodings.m",
+      "source_line": 1330
+    },
+    {
+      "address": 1113235096,
+      "size": 252,
+      "reference_names": [
+        "_NSUnicodeToISOLatin1"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringEncodings.m",
+      "source_line": 1237
+    },
+    {
+      "address": 1113235348,
+      "size": 260,
+      "reference_names": [
+        "_NSUnicodeToISOLatin2"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringEncodings.m",
+      "source_line": 1249
+    },
+    {
+      "address": 1113235608,
+      "size": 416,
+      "reference_names": [
+        "_NSUnicodeToLossyASCII"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringEncodings.m",
+      "source_line": 1357
+    },
+    {
+      "address": 1113236024,
+      "size": 260,
+      "reference_names": [
+        "_NSUnicodeToMacOSRoman"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringEncodings.m",
+      "source_line": 1311
+    },
+    {
+      "address": 1113236284,
+      "size": 1016,
+      "reference_names": [
+        "_NSUnicodeToNextEUC"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringEncodings.m",
+      "source_line": 1397
+    },
+    {
+      "address": 1113237300,
+      "size": 80,
+      "reference_names": [
+        "_NSUnicodeToShiftJIS"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringEncodings.m",
+      "source_line": 1513
+    },
+    {
+      "address": 1113237380,
+      "size": 68,
+      "reference_names": [
+        "_NSUnicodeToSymbol"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringEncodings.m",
+      "source_line": 1323
+    },
+    {
+      "address": 1113237448,
+      "size": 748,
+      "reference_names": [
+        "_NSUnicodeToUTF8"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringEncodings.m",
+      "source_line": 1524
+    },
+    {
+      "address": 1113238196,
+      "size": 260,
+      "reference_names": [
+        "_NSUnicodeToWinCodePage1250"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringEncodings.m",
+      "source_line": 1261
+    },
+    {
+      "address": 1113238456,
+      "size": 260,
+      "reference_names": [
+        "_NSUnicodeToWinCodePage1253"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringEncodings.m",
+      "source_line": 1273
+    },
+    {
+      "address": 1113238716,
+      "size": 260,
+      "reference_names": [
+        "_NSUnicodeToWinCodePage1254"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringEncodings.m",
+      "source_line": 1285
+    },
+    {
+      "address": 1113238976,
+      "size": 272,
+      "reference_names": [
+        "_NSUnicodeToWinLatin1"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringEncodings.m",
+      "source_line": 1297
+    },
+    {
+      "address": 1113240140,
+      "size": 160,
+      "reference_names": [
+        "__NSConvertToLowerCase"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringEncodings.m",
+      "source_line": 842
+    },
+    {
+      "address": 1113240300,
+      "size": 160,
+      "reference_names": [
+        "__NSConvertToTitleCase"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringEncodings.m",
+      "source_line": 856
+    },
+    {
+      "address": 1113240460,
+      "size": 160,
+      "reference_names": [
+        "__NSConvertToUpperCase"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringEncodings.m",
+      "source_line": 870
+    },
+    {
+      "address": 1113240620,
+      "size": 116,
+      "reference_names": [
+        "__NSInitProprietaryCStringEncoding"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringEncodings.m",
+      "source_line": 77
+    },
+    {
+      "address": 1113240736,
+      "size": 640,
+      "reference_names": [
+        "__NSLoadCaseConversionTables"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringEncodings.m",
+      "source_line": 796
+    },
+    {
+      "address": 1113241376,
+      "size": 104,
+      "reference_names": [
+        "__NSProprietaryEncodingName"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringEncodings.m",
+      "source_line": 90
+    },
+    {
+      "address": 1113241480,
+      "size": 64,
+      "reference_names": [
+        "__NSProprietaryEncodingToUnicode"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringEncodings.m",
+      "source_line": 98
+    },
+    {
+      "address": 1113243932,
+      "size": 248,
+      "reference_names": [
+        "__NSUnicodeToProprietaryEncoding"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringEncodings.m",
+      "source_line": 1162
+    },
+    {
+      "address": 1113244644,
+      "size": 48,
+      "reference_names": [
+        "__appendCString"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringEncodings.m",
+      "source_line": 1812
+    },
+    {
+      "address": 1113244876,
+      "size": 460,
+      "reference_names": [
+        "__loadConvTable"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringEncodings.m",
+      "source_line": 745
+    },
+    {
+      "address": 1113245336,
+      "size": 120,
+      "reference_names": [
+        "__loadPropietaryEncodingFunctions"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringEncodings.m",
+      "source_line": 118
+    }
+  ],
+  "unmapped": [],
+  "duplicate_candidates": [],
+  "boundary_disputed": [],
+  "by_module": {
+    "NSStringEncodings.m": {
+      "mapped": 32,
+      "unmapped": 0,
+      "duplicate_candidates": 0,
+      "boundary_disputed": 0
+    }
+  }
+}

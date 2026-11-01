@@ -1,0 +1,9 @@
+{
+    FILESTABLE = {
+        SUBPROJECTS = (PPCScreamer.drvproj);
+        OTHER_SOURCES = (Makefile, Makefile.preamble, Makefile.postamble, apk/pkginfo);
+    };
+    PROJECTNAME = PPCScreamer;
+    PROJECTTYPE = Aggregate;
+    PROJECTVERSION = 1.0;
+}

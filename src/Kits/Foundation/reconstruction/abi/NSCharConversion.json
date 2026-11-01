@@ -1,0 +1,29 @@
+{
+ "categories": [],
+ "classes": [],
+ "data_symbols": [],
+ "module": "NSCharConversion.m",
+ "schema_version": "abi-v1",
+ "text_symbols": [
+  "_NSAdobeStandardCyrillicToUnicode",
+  "_NSAdobeStandardToPrecompUnicode",
+  "__NSConvertToASCIIorUnicode2",
+  "__NSConvertToASCIIorUnicode",
+  "_NSWinCodePage1250ToUnicode",
+  "_NSWinCodePage1253ToUnicode",
+  "_NSWinCodePage1254ToUnicode",
+  "_NSWinLatin1ToUnicode",
+  "_NSASCIIToPrecompUnicode",
+  "_NSISOLatin1ToPrecompUnicode",
+  "_NSISOLatin2ToPrecompUnicode",
+  "_NSNEXTSTEPToPrecompUnicode",
+  "_NSSymbolToPrecompUnicode",
+  "_NSUTF8ToUnicode",
+  "_NSZapfDingbatToPrecompUnicode",
+  "_NSNextEUCToUnicode",
+  "_NSShiftJISToEUC",
+  "_NSShiftJISToUnicode",
+  "_NSDecomposeCharacter",
+  "_NSSimplyDecomposeCharacter"
+ ]
+}

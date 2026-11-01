@@ -1,5 +1,4 @@
-/*	$OpenBSD: uuencode.c,v 1.7 2000/09/07 20:27:55 deraadt Exp $	*/
-
+/* $OpenBSD: uuencode.c,v 1.28 2015/04/24 01:36:24 deraadt Exp $ */
 /*
  * Copyright (c) 2000 Markus Friedl.  All rights reserved.
  *
@@ -25,19 +24,36 @@
  */
 
 #include "includes.h"
+
+#include <sys/types.h>
+#include <netinet/in.h>
+#include <resolv.h>
+#include <stdio.h>
+#include <stdlib.h>
+
 #include "xmalloc.h"
+#include "uuencode.h"
 
-RCSID("$OpenBSD: uuencode.c,v 1.7 2000/09/07 20:27:55 deraadt Exp $");
-
+/*
+ * Encode binary 'src' of length 'srclength', writing base64-encoded text
+ * to 'target' of size 'targsize'. Will always nul-terminate 'target'.
+ * Returns the number of bytes stored in 'target' or -1 on error (inc.
+ * 'targsize' too small).
+ */
 int
-uuencode(unsigned char *src, unsigned int srclength,
+uuencode(const u_char *src, u_int srclength,
     char *target, size_t targsize)
 {
 	return __b64_ntop(src, srclength, target, targsize);
 }
 
+/*
+ * Decode base64-encoded 'src' into buffer 'target' of 'targsize' bytes.
+ * Will skip leading and trailing whitespace. Returns the number of bytes
+ * stored in 'target' or -1 on error (inc. targsize too small).
+ */
 int
-uudecode(const char *src, unsigned char *target, size_t targsize)
+uudecode(const char *src, u_char *target, size_t targsize)
 {
 	int len;
 	char *encoded, *p;
@@ -49,18 +65,24 @@ uudecode(const char *src, unsigned char *target, size_t targsize)
 		;
 	for (; *p != '\0' && *p != ' ' && *p != '\t'; p++)
 		;
-	/* and remote trailing whitespace because __b64_pton needs this */
+	/* and remove trailing whitespace because __b64_pton needs this */
 	*p = '\0';
 	len = __b64_pton(encoded, target, targsize);
-	xfree(encoded);
+	free(encoded);
 	return len;
 }
 
 void
-dump_base64(FILE *fp, unsigned char *data, int len)
+dump_base64(FILE *fp, const u_char *data, u_int len)
 {
-	unsigned char *buf = xmalloc(2*len);
+	char *buf;
 	int i, n;
+
+	if (len > 65536) {
+		fprintf(fp, "dump_base64: len > 65536\n");
+		return;
+	}
+	buf = xreallocarray(NULL, 2, len);
 	n = uuencode(data, len, buf, 2*len);
 	for (i = 0; i < n; i++) {
 		fprintf(fp, "%c", buf[i]);
@@ -69,5 +91,5 @@ dump_base64(FILE *fp, unsigned char *data, int len)
 	}
 	if (i % 70 != 69)
 		fprintf(fp, "\n");
-	xfree(buf);
+	free(buf);
 }

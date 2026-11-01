@@ -1,0 +1,24 @@
+# Each child owns its dependency graph and build log. Always let it check.
+rule thin_kernel
+  command = "$${SAMU-samu}" -j 1 -f $slice_manifest $slice_dir/mach_kernel $slice_dir/mach_kernel.sys
+  description = CHECK $slice_dir
+  restat = 1
+  # These outputs belong to the child; ordinary universal clean keeps them.
+  generator = 1
+
+rule universal_kernel
+  # lipo can preserve older input timestamps.
+  command = mkdir -p $outdir && rm -f $out.tmp && lipo -create -output $out.tmp $in && chmod 755 $out.tmp && touch $out.tmp && mv -f $out.tmp $out
+  description = LIPO $out
+
+build check_slices: phony
+build $i386_outdir/mach_kernel $i386_outdir/mach_kernel.sys: thin_kernel check_slices
+  slice_manifest = $i386_manifest
+  slice_dir = $i386_outdir
+build $ppc_outdir/mach_kernel $ppc_outdir/mach_kernel.sys: thin_kernel check_slices
+  slice_manifest = $ppc_manifest
+  slice_dir = $ppc_outdir
+
+# Keep PPC first for the DR2 i386 booter.
+build $outdir/mach_kernel: universal_kernel $ppc_outdir/mach_kernel $i386_outdir/mach_kernel | ninja/universal.ninja
+build $outdir/mach_kernel.sys: universal_kernel $ppc_outdir/mach_kernel.sys $i386_outdir/mach_kernel.sys | ninja/universal.ninja

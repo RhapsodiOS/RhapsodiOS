@@ -117,7 +117,9 @@ FOUNDATION_EXPORT NSString * const NSCharacterConversionException;
 
 - (BOOL)canBeConvertedToEncoding:(NSStringEncoding)encoding;
 
+#if defined(__ppc__) || defined(__POWERPC__)
 - (const char *)UTF8String;	// Convenience to return null-terminated UTF8 representation
+#endif
 
 - (const char *)cString;
 - (const char *)lossyCString;
@@ -138,7 +140,9 @@ FOUNDATION_EXPORT NSString * const NSCharacterConversionException;
 + (id)stringWithCharacters:(const unichar *)characters length:(unsigned)length;
 + (id)stringWithCString:(const char *)bytes length:(unsigned)length;
 + (id)stringWithCString:(const char *)bytes;
+#if defined(__ppc__) || defined(__POWERPC__)
 + (id)stringWithUTF8String:(const char *)bytes;
+#endif
 + (id)stringWithFormat:(NSString *)format, ...;
 + (id)stringWithContentsOfFile:(NSString *)path;
 + (id)stringWithContentsOfURL:(NSURL *)url;
@@ -150,7 +154,9 @@ FOUNDATION_EXPORT NSString * const NSCharacterConversionException;
 - (id)initWithCStringNoCopy:(char *)bytes length:(unsigned)length freeWhenDone:(BOOL)freeBuffer;
 - (id)initWithCString:(const char *)bytes length:(unsigned)length;
 - (id)initWithCString:(const char *)bytes;
+#if defined(__ppc__) || defined(__POWERPC__)
 - (id)initWithUTF8String:(const char *)bytes;
+#endif
 - (id)initWithString:(NSString *)aString;
 - (id)initWithFormat:(NSString *)format, ...;
 - (id)initWithFormat:(NSString *)format arguments:(va_list)argList;
@@ -165,6 +171,8 @@ FOUNDATION_EXPORT NSString * const NSCharacterConversionException;
 @interface NSMutableString : NSString
 
 - (void)replaceCharactersInRange:(NSRange)range withString:(NSString *)aString;
+- (void)replaceCharactersInRange:(NSRange)range withCharacters:(const unichar *)characters length:(unsigned)length;
+- (void)replaceCharactersInRange:(NSRange)range withCString:(const char *)bytes length:(unsigned)length;
 
 @end
 

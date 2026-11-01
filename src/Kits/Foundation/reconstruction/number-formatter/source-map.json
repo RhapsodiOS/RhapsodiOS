@@ -1,0 +1,693 @@
+{
+  "schema_version": "source-map-v1",
+  "reference_sha256": "332B3C8C0AE0A6E40A4B93110EE16748FCD94AA0119D63F16EDE878598C681B4",
+  "mapped": [
+    {
+      "address": 1112814792,
+      "size": 104,
+      "reference_names": [
+        "+[NSNumberFormatter _setDefaultRedColor:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNumberFormatter.m",
+      "source_line": 133
+    },
+    {
+      "address": 1112909560,
+      "size": 180,
+      "reference_names": [
+        "-[NSMutableString _deleteAllCharactersFromSet:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSMutableString.m",
+      "source_line": 1305
+    },
+    {
+      "address": 1112910424,
+      "size": 172,
+      "reference_names": [
+        "-[NSString _copyToUnicharBuffer:saveLength:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSString.m",
+      "source_line": 1875
+    },
+    {
+      "address": 1112911464,
+      "size": 80,
+      "reference_names": [
+        "-[NSNumberFormatter _decimalIsNotANumber:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNumberFormatter.m",
+      "source_line": 501
+    },
+    {
+      "address": 1112912540,
+      "size": 128,
+      "reference_names": [
+        "-[NSString _containsString:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSString.m",
+      "source_line": 1953
+    },
+    {
+      "address": 1112912668,
+      "size": 152,
+      "reference_names": [
+        "-[NSMutableString _replaceFirstAppearanceOfString:withString:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSMutableString.m",
+      "source_line": 1261
+    },
+    {
+      "address": 1112912932,
+      "size": 100,
+      "reference_names": [
+        "-[NSNumberFormatter _decimalPoint]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNumberFormatter.m",
+      "source_line": 468
+    },
+    {
+      "address": 1112913996,
+      "size": 276,
+      "reference_names": [
+        "-[NSMutableString _replaceAllAppearancesOfString:withString:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSMutableString.m",
+      "source_line": 1281
+    },
+    {
+      "address": 1112914272,
+      "size": 612,
+      "reference_names": [
+        "-[NSNumberFormatter stringForObjectValue:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNumberFormatter.m",
+      "source_line": 598
+    },
+    {
+      "address": 1112914924,
+      "size": 1408,
+      "reference_names": [
+        "-[NSNumberFormatter _numberStringForValueObject:withBuffer:andNegativeFlag:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNumberFormatter.m",
+      "source_line": 506
+    },
+    {
+      "address": 1112916580,
+      "size": 380,
+      "reference_names": [
+        "-[NSString _stringWithSeparator:atFrequency:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSString.m",
+      "source_line": 1889
+    },
+    {
+      "address": 1112917144,
+      "size": 24,
+      "reference_names": [
+        "-[NSNumberFormatter hasThousandSeparators]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNumberFormatter.m",
+      "source_line": 927
+    },
+    {
+      "address": 1112917168,
+      "size": 124,
+      "reference_names": [
+        "-[NSString _containsCharFromSet:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSString.m",
+      "source_line": 1916
+    },
+    {
+      "address": 1112918604,
+      "size": 720,
+      "reference_names": [
+        "-[NSNumberFormatter _addThousandSeparators:withBuffer:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNumberFormatter.m",
+      "source_line": 449
+    },
+    {
+      "address": 1112919464,
+      "size": 180,
+      "reference_names": [
+        "-[NSNumberFormatter _surroundValueInString:withLength:andBuffer:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNumberFormatter.m",
+      "source_line": 480
+    },
+    {
+      "address": 1112919644,
+      "size": 764,
+      "reference_names": [
+        "-[NSNumberFormatter _addThousandSeparatorsToFormat:withBuffer:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNumberFormatter.m",
+      "source_line": 422
+    },
+    {
+      "address": 1112920408,
+      "size": 16,
+      "reference_names": [
+        "-[NSNumberFormatter textAttributesForPositiveValues]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNumberFormatter.m",
+      "source_line": 852
+    },
+    {
+      "address": 1112920424,
+      "size": 700,
+      "reference_names": [
+        "-[NSNumberFormatter attributedStringForObjectValue:withDefaultAttributes:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNumberFormatter.m",
+      "source_line": 755
+    },
+    {
+      "address": 1112921804,
+      "size": 16,
+      "reference_names": [
+        "-[NSNumberFormatter textAttributesForNegativeValues]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNumberFormatter.m",
+      "source_line": 372
+    },
+    {
+      "address": 1112924836,
+      "size": 80,
+      "reference_names": [
+        "-[NSNumberFormatter _containsColorForTextAttributesOfNegativeValues]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNumberFormatter.m",
+      "source_line": 381
+    },
+    {
+      "address": 1112924916,
+      "size": 300,
+      "reference_names": [
+        "-[NSNumberFormatter negativeFormat]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNumberFormatter.m",
+      "source_line": 342
+    },
+    {
+      "address": 1112925216,
+      "size": 292,
+      "reference_names": [
+        "-[NSNumberFormatter positiveFormat]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNumberFormatter.m",
+      "source_line": 407
+    },
+    {
+      "address": 1112925524,
+      "size": 16,
+      "reference_names": [
+        "-[NSNumberFormatter attributedStringForZero]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNumberFormatter.m",
+      "source_line": 861
+    },
+    {
+      "address": 1112928432,
+      "size": 52,
+      "reference_names": [
+        "-[NSFormatter editingStringForObjectValue:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFormatter.m",
+      "source_line": 33
+    },
+    {
+      "address": 1112928792,
+      "size": 16,
+      "reference_names": [
+        "-[NSNumberFormatter decimalSeparator]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNumberFormatter.m",
+      "source_line": 955
+    },
+    {
+      "address": 1112929060,
+      "size": 112,
+      "reference_names": [
+        "-[NSNumberFormatter setMinimum:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNumberFormatter.m",
+      "source_line": 1004
+    },
+    {
+      "address": 1112929172,
+      "size": 112,
+      "reference_names": [
+        "-[NSNumberFormatter setMaximum:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNumberFormatter.m",
+      "source_line": 1015
+    },
+    {
+      "address": 1112929284,
+      "size": 260,
+      "reference_names": [
+        "-[NSString _componentsSeparatedBySet:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSString.m",
+      "source_line": 1936
+    },
+    {
+      "address": 1112929544,
+      "size": 224,
+      "reference_names": [
+        "-[NSNumberFormatter format]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNumberFormatter.m",
+      "source_line": 888
+    },
+    {
+      "address": 1112929912,
+      "size": 156,
+      "reference_names": [
+        "-[NSNumberFormatter _removeInternalRedFromTextAttributesOfNegativeValues]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNumberFormatter.m",
+      "source_line": 398
+    },
+    {
+      "address": 1112930068,
+      "size": 88,
+      "reference_names": [
+        "-[NSNumberFormatter setAttributedStringForZero:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNumberFormatter.m",
+      "source_line": 865
+    },
+    {
+      "address": 1112930156,
+      "size": 524,
+      "reference_names": [
+        "-[NSNumberFormatter setFormat:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNumberFormatter.m",
+      "source_line": 896
+    },
+    {
+      "address": 1112930680,
+      "size": 236,
+      "reference_names": [
+        "-[NSNumberFormatter setNegativeFormat:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNumberFormatter.m",
+      "source_line": 359
+    },
+    {
+      "address": 1112930916,
+      "size": 168,
+      "reference_names": [
+        "-[NSNumberFormatter setPositiveFormat:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNumberFormatter.m",
+      "source_line": 843
+    },
+    {
+      "address": 1112931452,
+      "size": 16,
+      "reference_names": [
+        "-[NSNumberFormatter attributedStringForNotANumber]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNumberFormatter.m",
+      "source_line": 879
+    },
+    {
+      "address": 1112931468,
+      "size": 1964,
+      "reference_names": [
+        "-[NSNumberFormatter getObjectValue:forString:errorDescription:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNumberFormatter.m",
+      "source_line": 636
+    },
+    {
+      "address": 1112934636,
+      "size": 20,
+      "reference_names": [
+        "-[NSNumberFormatter allowsFloats]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNumberFormatter.m",
+      "source_line": 983
+    },
+    {
+      "address": 1112934656,
+      "size": 16,
+      "reference_names": [
+        "-[NSNumberFormatter attributedStringForNil]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNumberFormatter.m",
+      "source_line": 870
+    },
+    {
+      "address": 1112934672,
+      "size": 88,
+      "reference_names": [
+        "-[NSNumberFormatter setTextAttributesForPositiveValues:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNumberFormatter.m",
+      "source_line": 856
+    },
+    {
+      "address": 1112934760,
+      "size": 88,
+      "reference_names": [
+        "-[NSNumberFormatter setTextAttributesForNegativeValues:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNumberFormatter.m",
+      "source_line": 376
+    },
+    {
+      "address": 1112934848,
+      "size": 112,
+      "reference_names": [
+        "-[NSNumberFormatter _setThousandSeparatorNoConsistencyCheck:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNumberFormatter.m",
+      "source_line": 939
+    },
+    {
+      "address": 1112934960,
+      "size": 112,
+      "reference_names": [
+        "-[NSNumberFormatter _setDecimalSeparatorNoConsistencyCheck:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNumberFormatter.m",
+      "source_line": 959
+    },
+    {
+      "address": 1112935072,
+      "size": 396,
+      "reference_names": [
+        "-[NSNumberFormatter _commonInit]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNumberFormatter.m",
+      "source_line": 140
+    },
+    {
+      "address": 1112935468,
+      "size": 120,
+      "reference_names": [
+        "-[NSNumberFormatter init]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNumberFormatter.m",
+      "source_line": 157
+    },
+    {
+      "address": 1112935588,
+      "size": 28,
+      "reference_names": [
+        "-[NSNumberFormatter setAllowsFloats:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNumberFormatter.m",
+      "source_line": 987
+    },
+    {
+      "address": 1113203484,
+      "size": 16,
+      "reference_names": [
+        "-[NSFormatter attributedStringForObjectValue:withDefaultAttributes:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFormatter.m",
+      "source_line": 29
+    },
+    {
+      "address": 1113203500,
+      "size": 52,
+      "reference_names": [
+        "-[NSFormatter copyWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFormatter.m",
+      "source_line": 15
+    },
+    {
+      "address": 1113203552,
+      "size": 12,
+      "reference_names": [
+        "-[NSFormatter encodeWithCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFormatter.m",
+      "source_line": 20
+    },
+    {
+      "address": 1113203564,
+      "size": 88,
+      "reference_names": [
+        "-[NSFormatter getObjectValue:forString:errorDescription:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFormatter.m",
+      "source_line": 37
+    },
+    {
+      "address": 1113203652,
+      "size": 12,
+      "reference_names": [
+        "-[NSFormatter initWithCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFormatter.m",
+      "source_line": 10
+    },
+    {
+      "address": 1113203664,
+      "size": 16,
+      "reference_names": [
+        "-[NSFormatter isPartialStringValid:newEditingString:errorDescription:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFormatter.m",
+      "source_line": 42
+    },
+    {
+      "address": 1113203680,
+      "size": 88,
+      "reference_names": [
+        "-[NSFormatter stringForObjectValue:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSFormatter.m",
+      "source_line": 24
+    },
+    {
+      "address": 1113209240,
+      "size": 152,
+      "reference_names": [
+        "-[NSMutableString _replaceLastAppearanceOfString:withString:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSMutableString.m",
+      "source_line": 1271
+    },
+    {
+      "address": 1113209896,
+      "size": 224,
+      "reference_names": [
+        "-[NSNumberFormatter _addInternalRedToTextAttributesOfNegativeValues]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNumberFormatter.m",
+      "source_line": 385
+    },
+    {
+      "address": 1113210120,
+      "size": 164,
+      "reference_names": [
+        "-[NSNumberFormatter _exchangeDollarInString:withString:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNumberFormatter.m",
+      "source_line": 267
+    },
+    {
+      "address": 1113210284,
+      "size": 564,
+      "reference_names": [
+        "-[NSNumberFormatter _setFloatingPointFormat:left:right:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNumberFormatter.m",
+      "source_line": 801
+    },
+    {
+      "address": 1113210848,
+      "size": 100,
+      "reference_names": [
+        "-[NSNumberFormatter _thousandChar]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNumberFormatter.m",
+      "source_line": 474
+    },
+    {
+      "address": 1113210948,
+      "size": 528,
+      "reference_names": [
+        "-[NSNumberFormatter copyWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNumberFormatter.m",
+      "source_line": 192
+    },
+    {
+      "address": 1113211476,
+      "size": 448,
+      "reference_names": [
+        "-[NSNumberFormatter dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNumberFormatter.m",
+      "source_line": 166
+    },
+    {
+      "address": 1113211924,
+      "size": 72,
+      "reference_names": [
+        "-[NSNumberFormatter defaultObjectValue]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNumberFormatter.m",
+      "source_line": 632
+    },
+    {
+      "address": 1113211996,
+      "size": 248,
+      "reference_names": [
+        "-[NSNumberFormatter encodeWithCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNumberFormatter.m",
+      "source_line": 209
+    },
+    {
+      "address": 1113212244,
+      "size": 652,
+      "reference_names": [
+        "-[NSNumberFormatter initWithCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNumberFormatter.m",
+      "source_line": 226
+    },
+    {
+      "address": 1113212896,
+      "size": 20,
+      "reference_names": [
+        "-[NSNumberFormatter localizesFormat]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNumberFormatter.m",
+      "source_line": 975
+    },
+    {
+      "address": 1113212916,
+      "size": 16,
+      "reference_names": [
+        "-[NSNumberFormatter maximum]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNumberFormatter.m",
+      "source_line": 1011
+    },
+    {
+      "address": 1113212932,
+      "size": 16,
+      "reference_names": [
+        "-[NSNumberFormatter minimum]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNumberFormatter.m",
+      "source_line": 1000
+    },
+    {
+      "address": 1113212948,
+      "size": 16,
+      "reference_names": [
+        "-[NSNumberFormatter roundingBehavior]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNumberFormatter.m",
+      "source_line": 991
+    },
+    {
+      "address": 1113212964,
+      "size": 88,
+      "reference_names": [
+        "-[NSNumberFormatter setAttributedStringForNil:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNumberFormatter.m",
+      "source_line": 874
+    },
+    {
+      "address": 1113213052,
+      "size": 88,
+      "reference_names": [
+        "-[NSNumberFormatter setAttributedStringForNotANumber:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNumberFormatter.m",
+      "source_line": 883
+    },
+    {
+      "address": 1113213140,
+      "size": 196,
+      "reference_names": [
+        "-[NSNumberFormatter setDecimalSeparator:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNumberFormatter.m",
+      "source_line": 966
+    },
+    {
+      "address": 1113213336,
+      "size": 28,
+      "reference_names": [
+        "-[NSNumberFormatter setHasThousandSeparators:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNumberFormatter.m",
+      "source_line": 931
+    },
+    {
+      "address": 1113213364,
+      "size": 1064,
+      "reference_names": [
+        "-[NSNumberFormatter setLocalizationFromDefaults]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNumberFormatter.m",
+      "source_line": 274
+    },
+    {
+      "address": 1113214428,
+      "size": 28,
+      "reference_names": [
+        "-[NSNumberFormatter setLocalizesFormat:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNumberFormatter.m",
+      "source_line": 979
+    },
+    {
+      "address": 1113214456,
+      "size": 84,
+      "reference_names": [
+        "-[NSNumberFormatter setRoundingBehavior:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNumberFormatter.m",
+      "source_line": 995
+    },
+    {
+      "address": 1113214540,
+      "size": 196,
+      "reference_names": [
+        "-[NSNumberFormatter setThousandSeparator:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNumberFormatter.m",
+      "source_line": 946
+    },
+    {
+      "address": 1113214736,
+      "size": 16,
+      "reference_names": [
+        "-[NSNumberFormatter thousandSeparator]"
+      ],
+      "source_path": "src/Kits/Foundation/NSNumberFormatter.m",
+      "source_line": 935
+    },
+    {
+      "address": 1113225492,
+      "size": 200,
+      "reference_names": [
+        "-[NSString _containsChar:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSString.m",
+      "source_line": 1942
+    }
+  ],
+  "unmapped": [],
+  "duplicate_candidates": [],
+  "boundary_disputed": []
+}

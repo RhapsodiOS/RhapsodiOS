@@ -1,0 +1,72 @@
+{
+  "schema_version": "profile-v1",
+  "name": "Foundation i386 reconstruction",
+  "architecture": "i386",
+  "endianness": "little",
+  "reference": {
+    "path": "${BINRECON_REFERENCE}",
+    "expected_size": 1630488,
+    "expected_sha256": "1165B9063ADD5672514455CA2C9830625BEA2BCE5E46126FB5E8652114C909D6"
+  },
+  "analyzers": {
+    "ida": {
+      "enabled": true,
+      "executable": "C:/Program Files/IDA Professional 9.2/idat.exe",
+      "timeout_seconds": 5400,
+      "version": "9.2"
+    },
+    "ghidra": { "enabled": false },
+    "angr": { "enabled": false }
+  },
+  "comparison": {
+    "acceptance": "normalized-functions",
+    "ignore_metadata": [],
+    "entry_points": []
+  },
+  "output_dir": "../out/foundation-i386",
+  "analysis_scope": [
+   { "start": 1112544296, "end": 1112544352 },
+   { "start": 1112550388, "end": 1112550696 },
+   { "start": 1112559764, "end": 1112559892 },
+   { "start": 1112573064, "end": 1112573152 },
+   { "start": 1112604692, "end": 1112604780 },
+   { "start": 1112605256, "end": 1112605440 },
+   { "start": 1112605632, "end": 1112605700 },
+   { "start": 1112620588, "end": 1112620940 },
+   { "start": 1112624716, "end": 1112624768 },
+   { "start": 1112637900, "end": 1112638108 },
+   { "start": 1112641928, "end": 1112642068 },
+   { "start": 1112649348, "end": 1112649424 },
+   { "start": 1112652136, "end": 1112652324 },
+   { "start": 1112666956, "end": 1112667084 },
+   { "start": 1112667216, "end": 1112667272 },
+   { "start": 1112687840, "end": 1112687892 },
+   { "start": 1112764756, "end": 1112764844 },
+   { "start": 1112764852, "end": 1112764912 },
+   { "start": 1112874768, "end": 1112874868 },
+   { "start": 1112874868, "end": 1112875156 },
+   { "start": 1112883008, "end": 1112883064 },
+   { "start": 1112883064, "end": 1112883124 },
+   { "start": 1113172888, "end": 1113172948 },
+   { "start": 1113172948, "end": 1113173008 },
+   { "start": 1113195920, "end": 1113196848 },
+   { "start": 1113196848, "end": 1113197108 },
+   { "start": 1113197108, "end": 1113197764 },
+   { "start": 1113197764, "end": 1113198392 },
+   { "start": 1113198392, "end": 1113198512 },
+   { "start": 1113198512, "end": 1113198832 },
+   { "start": 1113198832, "end": 1113199004 },
+   { "start": 1113199004, "end": 1113199644 },
+   { "start": 1113199644, "end": 1113199812 },
+   { "start": 1113199812, "end": 1113199888 },
+   { "start": 1113203024, "end": 1113203072 },
+   { "start": 1113203072, "end": 1113203408 },
+   { "start": 1113203408, "end": 1113203744 },
+   { "start": 1113203744, "end": 1113204296 },
+   { "start": 1113204296, "end": 1113204632 },
+   { "start": 1113204632, "end": 1113204696 },
+   { "start": 1113204696, "end": 1113204752 },
+   { "start": 1113204752, "end": 1113204832 },
+   { "start": 1113204832, "end": 1113204896 }
+  ]
+}

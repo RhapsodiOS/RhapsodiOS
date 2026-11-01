@@ -1,0 +1,737 @@
+{
+  "schema_version": "source-map-v1",
+  "reference_sha256": "1165B9063ADD5672514455CA2C9830625BEA2BCE5E46126FB5E8652114C909D6",
+  "mapped": [
+    {
+      "address": 1112803584,
+      "size": 13,
+      "reference_names": [
+        "-[_NSUndoStack count]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 301
+    },
+    {
+      "address": 1112806564,
+      "size": 13,
+      "reference_names": [
+        "-[_NSUndoStack nestingLevel]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 300
+    },
+    {
+      "address": 1112806580,
+      "size": 76,
+      "reference_names": [
+        "-[_NSUndoStack init]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 291
+    },
+    {
+      "address": 1112813872,
+      "size": 9,
+      "reference_names": [
+        "-[_NSUndoObject isEndMark]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 152
+    },
+    {
+      "address": 1112814912,
+      "size": 64,
+      "reference_names": [
+        "-[_NSUndoObject initWithTarget:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 139
+    },
+    {
+      "address": 1112815704,
+      "size": 83,
+      "reference_names": [
+        "-[NSUndoManager _postCheckpointNotification]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 830
+    },
+    {
+      "address": 1112821896,
+      "size": 76,
+      "reference_names": [
+        "-[_NSUndoStack removeAllObjects]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 472
+    },
+    {
+      "address": 1112821972,
+      "size": 42,
+      "reference_names": [
+        "-[NSUndoManager canUndo]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 684
+    },
+    {
+      "address": 1112822016,
+      "size": 70,
+      "reference_names": [
+        "-[NSUndoManager canRedo]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 685
+    },
+    {
+      "address": 1112823720,
+      "size": 9,
+      "reference_names": [
+        "-[_NSUndoObject isBeginMark]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 151
+    },
+    {
+      "address": 1112823748,
+      "size": 249,
+      "reference_names": [
+        "-[NSUndoManager init]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 540
+    },
+    {
+      "address": 1112826552,
+      "size": 91,
+      "reference_names": [
+        "-[_NSUndoLightInvocation initWithTarget:selector:object:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 201
+    },
+    {
+      "address": 1112827060,
+      "size": 236,
+      "reference_names": [
+        "-[NSUndoManager _registerUndoObject:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 860
+    },
+    {
+      "address": 1112827296,
+      "size": 90,
+      "reference_names": [
+        "-[NSUndoManager registerUndoWithTarget:selector:object:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 623
+    },
+    {
+      "address": 1112832836,
+      "size": 327,
+      "reference_names": [
+        "-[_NSUndoStack push:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 311
+    },
+    {
+      "address": 1112833276,
+      "size": 150,
+      "reference_names": [
+        "-[NSUndoManager _prepareEventGrouping]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 839
+    },
+    {
+      "address": 1112839588,
+      "size": 31,
+      "reference_names": [
+        "-[_NSUndoObject init]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 134
+    },
+    {
+      "address": 1112839620,
+      "size": 12,
+      "reference_names": [
+        "-[_NSUndoBeginMark isBeginMark]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 164
+    },
+    {
+      "address": 1112875156,
+      "size": 150,
+      "reference_names": [
+        "-[_NSUndoStack setGroupIdentifier:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 441
+    },
+    {
+      "address": 1112875308,
+      "size": 97,
+      "reference_names": [
+        "-[_NSUndoStack markEnd]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 355
+    },
+    {
+      "address": 1112875408,
+      "size": 97,
+      "reference_names": [
+        "-[_NSUndoStack markBegin]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 350
+    },
+    {
+      "address": 1112875508,
+      "size": 116,
+      "reference_names": [
+        "-[_NSUndoStack _beginMark]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 420
+    },
+    {
+      "address": 1112875624,
+      "size": 12,
+      "reference_names": [
+        "-[_NSUndoEndMark isEndMark]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 190
+    },
+    {
+      "address": 1112875636,
+      "size": 87,
+      "reference_names": [
+        "-[_NSUndoBeginMark setGroupIdentifier:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 168
+    },
+    {
+      "address": 1112875896,
+      "size": 200,
+      "reference_names": [
+        "-[NSUndoManager _setGroupIdentifier:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 880
+    },
+    {
+      "address": 1112876096,
+      "size": 42,
+      "reference_names": [
+        "-[NSUndoManager _processEndOfEventNotification:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 852
+    },
+    {
+      "address": 1112876140,
+      "size": 235,
+      "reference_names": [
+        "-[NSUndoManager endUndoGrouping]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 577
+    },
+    {
+      "address": 1112876376,
+      "size": 192,
+      "reference_names": [
+        "-[NSUndoManager beginUndoGrouping]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 563
+    },
+    {
+      "address": 1112889680,
+      "size": 74,
+      "reference_names": [
+        "-[_NSUndoLightInvocation dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 241
+    },
+    {
+      "address": 1112889756,
+      "size": 74,
+      "reference_names": [
+        "-[_NSUndoBeginMark dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 180
+    },
+    {
+      "address": 1112890740,
+      "size": 106,
+      "reference_names": [
+        "-[NSUndoManager removeAllActions]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 760
+    },
+    {
+      "address": 1112983792,
+      "size": 166,
+      "reference_names": [
+        "-[NSUndoManager dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 553
+    },
+    {
+      "address": 1112983960,
+      "size": 13,
+      "reference_names": [
+        "-[NSUndoManager disableUndoRegistration]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 598
+    },
+    {
+      "address": 1112983976,
+      "size": 111,
+      "reference_names": [
+        "-[NSUndoManager enableUndoRegistration]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 600
+    },
+    {
+      "address": 1112984088,
+      "size": 224,
+      "reference_names": [
+        "-[NSUndoManager forwardInvocation:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 644
+    },
+    {
+      "address": 1112984312,
+      "size": 44,
+      "reference_names": [
+        "-[NSUndoManager groupingLevel]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 593
+    },
+    {
+      "address": 1112984356,
+      "size": 25,
+      "reference_names": [
+        "-[NSUndoManager groupsByEvent]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 609
+    },
+    {
+      "address": 1112984384,
+      "size": 25,
+      "reference_names": [
+        "-[NSUndoManager isRedoing]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 692
+    },
+    {
+      "address": 1112984412,
+      "size": 22,
+      "reference_names": [
+        "-[NSUndoManager isUndoRegistrationEnabled]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 608
+    },
+    {
+      "address": 1112984436,
+      "size": 25,
+      "reference_names": [
+        "-[NSUndoManager isUndoing]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 691
+    },
+    {
+      "address": 1112984464,
+      "size": 32,
+      "reference_names": [
+        "-[NSUndoManager levelsOfUndo]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 612
+    },
+    {
+      "address": 1112984496,
+      "size": 94,
+      "reference_names": [
+        "-[NSUndoManager methodSignatureForSelector:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 636
+    },
+    {
+      "address": 1112984592,
+      "size": 16,
+      "reference_names": [
+        "-[NSUndoManager prepareWithInvocationTarget:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 630
+    },
+    {
+      "address": 1112984608,
+      "size": 48,
+      "reference_names": [
+        "-[NSUndoManager redoActionName]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 678
+    },
+    {
+      "address": 1112984656,
+      "size": 159,
+      "reference_names": [
+        "-[NSUndoManager redoMenuItemTitle]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 809
+    },
+    {
+      "address": 1112984816,
+      "size": 89,
+      "reference_names": [
+        "-[NSUndoManager redoMenuTitleForUndoActionName:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 792
+    },
+    {
+      "address": 1112984908,
+      "size": 399,
+      "reference_names": [
+        "-[NSUndoManager redo]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 735
+    },
+    {
+      "address": 1112985308,
+      "size": 64,
+      "reference_names": [
+        "-[NSUndoManager removeAllActionsWithTarget:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 779
+    },
+    {
+      "address": 1112985372,
+      "size": 13,
+      "reference_names": [
+        "-[NSUndoManager runLoopModes]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 621
+    },
+    {
+      "address": 1112985388,
+      "size": 33,
+      "reference_names": [
+        "-[NSUndoManager setActionName:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 671
+    },
+    {
+      "address": 1112985424,
+      "size": 27,
+      "reference_names": [
+        "-[NSUndoManager setGroupsByEvent:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 610
+    },
+    {
+      "address": 1112985452,
+      "size": 36,
+      "reference_names": [
+        "-[NSUndoManager setLevelsOfUndo:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 611
+    },
+    {
+      "address": 1112985488,
+      "size": 87,
+      "reference_names": [
+        "-[NSUndoManager setRunLoopModes:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 614
+    },
+    {
+      "address": 1112985576,
+      "size": 48,
+      "reference_names": [
+        "-[NSUndoManager undoActionName]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 672
+    },
+    {
+      "address": 1112985624,
+      "size": 159,
+      "reference_names": [
+        "-[NSUndoManager undoMenuItemTitle]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 799
+    },
+    {
+      "address": 1112985784,
+      "size": 89,
+      "reference_names": [
+        "-[NSUndoManager undoMenuTitleForUndoActionName:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 785
+    },
+    {
+      "address": 1112985876,
+      "size": 373,
+      "reference_names": [
+        "-[NSUndoManager undoNestedGroup]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 712
+    },
+    {
+      "address": 1112986252,
+      "size": 217,
+      "reference_names": [
+        "-[NSUndoManager undo]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 694
+    },
+    {
+      "address": 1112990916,
+      "size": 18,
+      "reference_names": [
+        "-[_NSUndoBeginMark description]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 175
+    },
+    {
+      "address": 1112990936,
+      "size": 13,
+      "reference_names": [
+        "-[_NSUndoBeginMark groupIdentifier]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 166
+    },
+    {
+      "address": 1112990952,
+      "size": 18,
+      "reference_names": [
+        "-[_NSUndoEndMark description]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 192
+    },
+    {
+      "address": 1112990972,
+      "size": 74,
+      "reference_names": [
+        "-[_NSUndoInvocation dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 281
+    },
+    {
+      "address": 1112991048,
+      "size": 111,
+      "reference_names": [
+        "-[_NSUndoInvocation description]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 264
+    },
+    {
+      "address": 1112991160,
+      "size": 80,
+      "reference_names": [
+        "-[_NSUndoInvocation initWithTarget:invocation:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 251
+    },
+    {
+      "address": 1112991240,
+      "size": 36,
+      "reference_names": [
+        "-[_NSUndoInvocation invoke]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 259
+    },
+    {
+      "address": 1112991276,
+      "size": 148,
+      "reference_names": [
+        "-[_NSUndoLightInvocation description]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 221
+    },
+    {
+      "address": 1112991424,
+      "size": 27,
+      "reference_names": [
+        "-[_NSUndoLightInvocation invoke]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 209
+    },
+    {
+      "address": 1112991452,
+      "size": 50,
+      "reference_names": [
+        "-[_NSUndoObject invoke]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 154
+    },
+    {
+      "address": 1112991504,
+      "size": 13,
+      "reference_names": [
+        "-[_NSUndoObject target]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 146
+    },
+    {
+      "address": 1112991520,
+      "size": 202,
+      "reference_names": [
+        "-[_NSUndoStack _removeBottom]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 494
+    },
+    {
+      "address": 1112991724,
+      "size": 107,
+      "reference_names": [
+        "-[_NSUndoStack dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 527
+    },
+    {
+      "address": 1112991832,
+      "size": 123,
+      "reference_names": [
+        "-[_NSUndoStack description]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 517
+    },
+    {
+      "address": 1112991956,
+      "size": 61,
+      "reference_names": [
+        "-[_NSUndoStack groupIdentifier]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 436
+    },
+    {
+      "address": 1112992020,
+      "size": 13,
+      "reference_names": [
+        "-[_NSUndoStack max]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 302
+    },
+    {
+      "address": 1112992036,
+      "size": 296,
+      "reference_names": [
+        "-[_NSUndoStack popAndInvoke]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 395
+    },
+    {
+      "address": 1112992332,
+      "size": 312,
+      "reference_names": [
+        "-[_NSUndoStack popUndoObject]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 362
+    },
+    {
+      "address": 1112992644,
+      "size": 94,
+      "reference_names": [
+        "-[_NSUndoStack removeAllObjectsWithTarget:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 483
+    },
+    {
+      "address": 1112992740,
+      "size": 104,
+      "reference_names": [
+        "-[_NSUndoStack removeObject:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 451
+    },
+    {
+      "address": 1112992844,
+      "size": 65,
+      "reference_names": [
+        "-[_NSUndoStack setMax:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 304
+    },
+    {
+      "address": 1112992912,
+      "size": 13,
+      "reference_names": [
+        "-[_NSUndoStack topUndoObject]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUndoManager.m",
+      "source_line": 360
+    }
+  ],
+  "unmapped": [],
+  "duplicate_candidates": [],
+  "boundary_disputed": [],
+  "by_module": {
+    "NSUndoManager.m": {
+      "mapped": 80,
+      "unmapped": 0,
+      "duplicate_candidates": 0,
+      "boundary_disputed": 0
+    }
+  }
+}

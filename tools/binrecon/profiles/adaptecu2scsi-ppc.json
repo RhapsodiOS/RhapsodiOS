@@ -1,0 +1,41 @@
+{
+  "schema_version": "profile-v1",
+  "name": "AdaptecU2SCSI ppc reconstruction",
+  "architecture": "ppc",
+  "endianness": "big",
+  "reference": {
+    "path": "${BINRECON_REFERENCE}",
+    "expected_size": 2983828,
+    "expected_sha256": "D01D748C10117FBFCEB25F99D88A63895C3BAC6C09A5110AD358E583316494BD"
+  },
+  "analyzers": {
+    "ida": {
+      "enabled": true,
+      "executable": "C:/Program Files/IDA Professional 9.4/idat.exe",
+      "timeout_seconds": 900,
+      "version": "9.4"
+    },
+    "ghidra": {
+      "enabled": false,
+      "executable": "D:/ghidra/support/analyzeHeadless.bat",
+      "timeout_seconds": 900,
+      "version": "12.1"
+    },
+    "angr": {
+      "enabled": false,
+      "executable": ".venv-binrecon/Scripts/python.exe",
+      "timeout_seconds": 900,
+      "version": "9.3.0"
+    }
+  },
+  "analysis_scope": [
+    {"start": 1603340, "end": 1619796},
+    {"start": 1619796, "end": 1739484}
+  ],
+  "comparison": {
+    "acceptance": "normalized-functions",
+    "ignore_metadata": [],
+    "entry_points": []
+  },
+  "output_dir": "../out/adaptecu2scsi-ppc/baseline"
+}

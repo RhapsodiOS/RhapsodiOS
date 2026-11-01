@@ -65,7 +65,12 @@ nvprobe()
     nvram_reg *regs;
     int len;
 
-    if ( HasPMU() ) {
+    /*
+     * New World flash NVRAM sits at an absolute address outside mac-io
+     * (/nvram@fff04000), so the PCI_IO_BASE_PHYS-relative mapping below
+     * would wrap; ReadNVRAM/WriteNVRAM already handle Sawtooth.
+     */
+    if ( HasPMU() || IsSawtooth() ) {
 	nvram_kind = NVRAM_PMU;
 	return;
     }

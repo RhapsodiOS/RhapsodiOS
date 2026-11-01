@@ -1,0 +1,114 @@
+{
+ "categories": [],
+ "classes": [
+  {
+   "class_methods": [
+    {
+     "selector": "signatureWithObjCTypes:",
+     "types": "@8@4:8r*12"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "debugDescription",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "description",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "numberOfArguments",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "frameLength",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "_argumentInfoAtIndex:",
+     "types": "{?=ii*^{_arginfo}i}12@8:12I16"
+    },
+    {
+     "selector": "getArgumentTypeAtIndex:",
+     "types": "r*8@4:8I12"
+    },
+    {
+     "selector": "isOneway",
+     "types": "c4@4:8"
+    },
+    {
+     "selector": "methodReturnLength",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "methodReturnType",
+     "types": "r*4@4:8"
+    },
+    {
+     "selector": "retainCount",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "release",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "retain",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "_isReturnStructInRegisters",
+     "types": "c4@4:8"
+    }
+   ],
+   "instance_size": 32,
+   "ivars": [
+    {
+     "name": "_types",
+     "offset": 4,
+     "type": "*"
+    },
+    {
+     "name": "_nargs",
+     "offset": 8,
+     "type": "i"
+    },
+    {
+     "name": "_sizeofParams",
+     "offset": 12,
+     "type": "I"
+    },
+    {
+     "name": "_returnValueLength",
+     "offset": 16,
+     "type": "I"
+    },
+    {
+     "name": "_parmInfoP",
+     "offset": 20,
+     "type": "^v"
+    },
+    {
+     "name": "_fixup",
+     "offset": 24,
+     "type": "^i"
+    },
+    {
+     "name": "_reserved",
+     "offset": 28,
+     "type": "^v"
+    }
+   ],
+   "name": "NSMethodSignature",
+   "superclass": "NSObject"
+  }
+ ],
+ "data_symbols": [
+  "__NSMethodSignatureTableLock"
+ ],
+ "module": "NSMethodSignature.m",
+ "schema_version": "abi-v1",
+ "text_symbols": []
+}

@@ -1,0 +1,5 @@
+# Shared sources live in ../common; HAMMER headers come from kernel-hdrs.
+OTHER_CFLAGS = -Wno-precomp -I../common -I$(NEXT_ROOT)/System/Library/Frameworks/System.framework/Versions/B/Headers/bsd/hammer
+INSTALL_AS_USER = root
+INSTALL_AS_GROUP = wheel
+INSTALL_PERMISSIONS = 0755

@@ -1,0 +1,529 @@
+{
+ "categories": [
+  {
+   "class": "NSUndoManager",
+   "class_methods": [],
+   "instance_methods": [
+    {
+     "selector": "_undoStack",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "_setGroupIdentifier:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "_registerUndoObject:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "_postCheckpointNotification",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "_processEndOfEventNotification:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "_prepareEventGrouping",
+     "types": "v4@4:8"
+    }
+   ],
+   "name": "NSUndoManagerPrivate"
+  }
+ ],
+ "classes": [
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "description",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "removeObject:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "removeAllObjectsWithTarget:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "removeAllObjects",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "nestingLevel",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "popAndInvoke",
+     "types": "c4@4:8"
+    },
+    {
+     "selector": "markEnd",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "markBegin",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "topUndoObject",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "groupIdentifier",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "setGroupIdentifier:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "_beginMark",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "popUndoObject",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "push:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "setMax:",
+     "types": "v8@4:8I12"
+    },
+    {
+     "selector": "count",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "max",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "dealloc",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "init",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "_removeBottom",
+     "types": "v4@4:8"
+    }
+   ],
+   "instance_size": 20,
+   "ivars": [
+    {
+     "name": "_max",
+     "offset": 4,
+     "type": "I"
+    },
+    {
+     "name": "_count",
+     "offset": 8,
+     "type": "I"
+    },
+    {
+     "name": "_nestingLevel",
+     "offset": 12,
+     "type": "I"
+    },
+    {
+     "name": "_head",
+     "offset": 16,
+     "type": "@\"_NSUndoObject\""
+    }
+   ],
+   "name": "_NSUndoStack",
+   "superclass": "NSObject"
+  },
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "description",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "dealloc",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "invoke",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "initWithTarget:invocation:",
+     "types": "@12@4:8@12@16"
+    }
+   ],
+   "instance_size": 20,
+   "ivars": [
+    {
+     "name": "_invocation",
+     "offset": 16,
+     "type": "@\"NSInvocation\""
+    }
+   ],
+   "name": "_NSUndoInvocation",
+   "superclass": "_NSUndoObject"
+  },
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "description",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "_argument",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "dealloc",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "invoke",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "initWithTarget:selector:object:",
+     "types": "@16@4:8@12:16@20"
+    }
+   ],
+   "instance_size": 24,
+   "ivars": [
+    {
+     "name": "_selector",
+     "offset": 16,
+     "type": ":"
+    },
+    {
+     "name": "_arg",
+     "offset": 20,
+     "type": "@"
+    }
+   ],
+   "name": "_NSUndoLightInvocation",
+   "superclass": "_NSUndoObject"
+  },
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "description",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "isEndMark",
+     "types": "c4@4:8"
+    }
+   ],
+   "instance_size": 16,
+   "ivars": [],
+   "name": "_NSUndoEndMark",
+   "superclass": "_NSUndoObject"
+  },
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "description",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "isBeginMark",
+     "types": "c4@4:8"
+    },
+    {
+     "selector": "groupIdentifier",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "setGroupIdentifier:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "dealloc",
+     "types": "v4@4:8"
+    }
+   ],
+   "instance_size": 20,
+   "ivars": [
+    {
+     "name": "_groupIdentifier",
+     "offset": 16,
+     "type": "@"
+    }
+   ],
+   "name": "_NSUndoBeginMark",
+   "superclass": "_NSUndoObject"
+  },
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "target",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "invoke",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "isEndMark",
+     "types": "c4@4:8"
+    },
+    {
+     "selector": "isBeginMark",
+     "types": "c4@4:8"
+    },
+    {
+     "selector": "initWithTarget:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "init",
+     "types": "@4@4:8"
+    }
+   ],
+   "instance_size": 16,
+   "ivars": [
+    {
+     "name": "next",
+     "offset": 4,
+     "type": "@\"_NSUndoObject\""
+    },
+    {
+     "name": "previous",
+     "offset": 8,
+     "type": "@\"_NSUndoObject\""
+    },
+    {
+     "name": "_target",
+     "offset": 12,
+     "type": "@"
+    }
+   ],
+   "name": "_NSUndoObject",
+   "superclass": "NSObject"
+  },
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "redoMenuTitleForUndoActionName:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "undoMenuTitleForUndoActionName:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "redoMenuItemTitle",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "undoMenuItemTitle",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "setActionName:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "redoActionName",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "undoActionName",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "registerUndoWithTarget:selector:object:",
+     "types": "v16@4:8@12:16@20"
+    },
+    {
+     "selector": "forwardInvocation:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "methodSignatureForSelector:",
+     "types": "@8@4:8:12"
+    },
+    {
+     "selector": "prepareWithInvocationTarget:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "removeAllActionsWithTarget:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "removeAllActions",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "isRedoing",
+     "types": "c4@4:8"
+    },
+    {
+     "selector": "isUndoing",
+     "types": "c4@4:8"
+    },
+    {
+     "selector": "canRedo",
+     "types": "c4@4:8"
+    },
+    {
+     "selector": "canUndo",
+     "types": "c4@4:8"
+    },
+    {
+     "selector": "redo",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "undoNestedGroup",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "undo",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "runLoopModes",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "setRunLoopModes:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "levelsOfUndo",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "setLevelsOfUndo:",
+     "types": "v8@4:8I12"
+    },
+    {
+     "selector": "setGroupsByEvent:",
+     "types": "v5@4:8c12"
+    },
+    {
+     "selector": "groupsByEvent",
+     "types": "c4@4:8"
+    },
+    {
+     "selector": "isUndoRegistrationEnabled",
+     "types": "c4@4:8"
+    },
+    {
+     "selector": "enableUndoRegistration",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "disableUndoRegistration",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "endUndoGrouping",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "groupingLevel",
+     "types": "i4@4:8"
+    },
+    {
+     "selector": "beginUndoGrouping",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "dealloc",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "init",
+     "types": "@4@4:8"
+    }
+   ],
+   "instance_size": 40,
+   "ivars": [
+    {
+     "name": "_undoStack",
+     "offset": 4,
+     "type": "@"
+    },
+    {
+     "name": "_redoStack",
+     "offset": 8,
+     "type": "@"
+    },
+    {
+     "name": "_runLoopModes",
+     "offset": 12,
+     "type": "@\"NSArray\""
+    },
+    {
+     "name": "_disabled",
+     "offset": 16,
+     "type": "i"
+    },
+    {
+     "name": "_flags",
+     "offset": 20,
+     "type": "{?=\"undoing\"b1\"redoing\"b1\"registeredForCallback\"b1\"postingCheckpointNotification\"b1\"groupsByEvent\"b1\"reserved\"b27}"
+    },
+    {
+     "name": "_target",
+     "offset": 24,
+     "type": "@"
+    },
+    {
+     "name": "_NSUndoManagerReserved1",
+     "offset": 28,
+     "type": "^v"
+    },
+    {
+     "name": "_NSUndoManagerReserved2",
+     "offset": 32,
+     "type": "^v"
+    },
+    {
+     "name": "_NSUndoManagerReserved3",
+     "offset": 36,
+     "type": "^v"
+    }
+   ],
+   "name": "NSUndoManager",
+   "superclass": "NSObject"
+  }
+ ],
+ "data_symbols": [
+  "_NSUndoManagerCheckpointNotification",
+  "_NSUndoManagerDidOpenUndoGroupNotification",
+  "_NSUndoManagerDidRedoChangeNotification",
+  "_NSUndoManagerDidUndoChangeNotification",
+  "_NSUndoManagerWillCloseUndoGroupNotification",
+  "_NSUndoManagerWillRedoChangeNotification",
+  "_NSUndoManagerWillUndoChangeNotification"
+ ],
+ "module": "NSUndoManager.m",
+ "schema_version": "abi-v1",
+ "text_symbols": []
+}

@@ -1,0 +1,314 @@
+{
+  "schema_version": "source-map-v1",
+  "reference_sha256": "332B3C8C0AE0A6E40A4B93110EE16748FCD94AA0119D63F16EDE878598C681B4",
+  "mapped": [
+    {
+      "address": 1112568456,
+      "size": 164,
+      "reference_names": [
+        "__NSStripTrailingPathSlashes"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 251
+    },
+    {
+      "address": 1112593724,
+      "size": 252,
+      "reference_names": [
+        "__NSAppendPathComponent"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 279
+    },
+    {
+      "address": 1112595244,
+      "size": 500,
+      "reference_names": [
+        "__NSAppendPathExtension"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 286
+    },
+    {
+      "address": 1112595892,
+      "size": 184,
+      "reference_names": [
+        "__NSTransmutePathSlashes"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 293
+    },
+    {
+      "address": 1112610600,
+      "size": 140,
+      "reference_names": [
+        "__NSStartOfPathExtension"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 258
+    },
+    {
+      "address": 1112641092,
+      "size": 56,
+      "reference_names": [
+        "__NSLengthAfterDeletingPathExtension"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 272
+    },
+    {
+      "address": 1112669628,
+      "size": 192,
+      "reference_names": [
+        "__NSLengthAfterDeletingLastPathComponent"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 267
+    },
+    {
+      "address": 1112698248,
+      "size": 328,
+      "reference_names": [
+        "__NSExpandTildeInPath"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 307
+    },
+    {
+      "address": 1112702820,
+      "size": 64,
+      "reference_names": [
+        "__NSIsAbsolutePath"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 301
+    },
+    {
+      "address": 1112704572,
+      "size": 332,
+      "reference_names": [
+        "__pathHasDotDot"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 411
+    },
+    {
+      "address": 1112708780,
+      "size": 1664,
+      "reference_names": [
+        "__NSStandardizePath"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 518
+    },
+    {
+      "address": 1112723332,
+      "size": 128,
+      "reference_names": [
+        "__NSStartOfLastPathComponent"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 262
+    },
+    {
+      "address": 1112726580,
+      "size": 376,
+      "reference_names": [
+        "_NSUserName"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 1986
+    },
+    {
+      "address": 1112727728,
+      "size": 328,
+      "reference_names": [
+        "__NSResolveSymlinksInPath"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 508
+    },
+    {
+      "address": 1112728056,
+      "size": 260,
+      "reference_names": [
+        "__convertToFileSystemRepresentation"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 441
+    },
+    {
+      "address": 1112745300,
+      "size": 120,
+      "reference_names": [
+        "_NSHomeDirectory"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 2064
+    },
+    {
+      "address": 1112748100,
+      "size": 348,
+      "reference_names": [
+        "_NSSearchPathForDirectoriesInDomains"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 2172
+    },
+    {
+      "address": 1112793920,
+      "size": 496,
+      "reference_names": [
+        "_NSHomeDirectoryForUser"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 2022
+    },
+    {
+      "address": 1112795800,
+      "size": 272,
+      "reference_names": [
+        "_NSOpenStepDirectoryForUser"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 2068
+    },
+    {
+      "address": 1112796912,
+      "size": 248,
+      "reference_names": [
+        "__convertToUnichars"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 494
+    },
+    {
+      "address": 1112801368,
+      "size": 208,
+      "reference_names": [
+        "__NSUncacheUserInfo"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 1966
+    },
+    {
+      "address": 1112905068,
+      "size": 412,
+      "reference_names": [
+        "__NSPathComponents"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 313
+    },
+    {
+      "address": 1112906440,
+      "size": 388,
+      "reference_names": [
+        "__NSAbbreviatePathWithTilde"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 317
+    },
+    {
+      "address": 1113170292,
+      "size": 288,
+      "reference_names": [
+        "_NSFullUserName"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 2005
+    },
+    {
+      "address": 1113170968,
+      "size": 32,
+      "reference_names": [
+        "_NSNeXTRootDirectory"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 2146
+    },
+    {
+      "address": 1113171000,
+      "size": 164,
+      "reference_names": [
+        "_NSOpenStepRootDirectory"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 2125
+    },
+    {
+      "address": 1113171408,
+      "size": 108,
+      "reference_names": [
+        "_NSStandardApplicationPaths"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 2150
+    },
+    {
+      "address": 1113171516,
+      "size": 108,
+      "reference_names": [
+        "_NSStandardLibraryPaths"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 2161
+    },
+    {
+      "address": 1113171624,
+      "size": 152,
+      "reference_names": [
+        "_NSTemporaryDirectory"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 2102
+    },
+    {
+      "address": 1113175952,
+      "size": 16,
+      "reference_names": [
+        "__NSConvertPathToLongFileSystemName"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 514
+    },
+    {
+      "address": 1113176940,
+      "size": 564,
+      "reference_names": [
+        "__NSDirectoryContentsMatchingPrefixAndSuffixes"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 740
+    },
+    {
+      "address": 1113177888,
+      "size": 504,
+      "reference_names": [
+        "__NSFindCommonPrefixInStringArray"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 776
+    },
+    {
+      "address": 1113182240,
+      "size": 88,
+      "reference_names": [
+        "__NSTempDirectory"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 2097
+    }
+  ],
+  "unmapped": [],
+  "duplicate_candidates": [],
+  "boundary_disputed": [],
+  "by_module": {
+    "NSPathUtilities.m": {
+      "mapped": 27,
+      "unmapped": 0,
+      "duplicate_candidates": 0,
+      "boundary_disputed": 0
+    }
+  }
+}

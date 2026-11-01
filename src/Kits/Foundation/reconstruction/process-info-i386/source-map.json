@@ -1,0 +1,251 @@
+{
+  "schema_version": "source-map-v1",
+  "reference_sha256": "1165B9063ADD5672514455CA2C9830625BEA2BCE5E46126FB5E8652114C909D6",
+  "mapped": [
+    {
+      "address": 1112570560,
+      "size": 63,
+      "reference_names": [
+        "__NSCurrentTime"
+      ],
+      "source_path": "src/Kits/Foundation/NSProcessInfo.m",
+      "source_line": 47
+    },
+    {
+      "address": 1112668288,
+      "size": 24,
+      "reference_names": [
+        "__NSCurrentUNIXTime"
+      ],
+      "source_path": "src/Kits/Foundation/NSProcessInfo.m",
+      "source_line": 55
+    },
+    {
+      "address": 1112703508,
+      "size": 76,
+      "reference_names": [
+        "__NSGetEnvironmentVariable"
+      ],
+      "source_path": "src/Kits/Foundation/NSProcessInfo.m",
+      "source_line": 66
+    },
+    {
+      "address": 1112751040,
+      "size": 466,
+      "reference_names": [
+        "-[NSProcessInfo environment]"
+      ],
+      "source_path": "src/Kits/Foundation/NSProcessInfo.m",
+      "source_line": 222
+    },
+    {
+      "address": 1112759684,
+      "size": 81,
+      "reference_names": [
+        "+[NSProcessInfo processInfo]"
+      ],
+      "source_path": "src/Kits/Foundation/NSProcessInfo.m",
+      "source_line": 216
+    },
+    {
+      "address": 1112761100,
+      "size": 14,
+      "reference_names": [
+        "__NSEnviron"
+      ],
+      "source_path": "src/Kits/Foundation/NSProcessInfo.m",
+      "source_line": 43
+    },
+    {
+      "address": 1112772064,
+      "size": 12,
+      "reference_names": [
+        "-[NSProcessInfo operatingSystem]"
+      ],
+      "source_path": "src/Kits/Foundation/NSProcessInfo.m",
+      "source_line": 424
+    },
+    {
+      "address": 1112772740,
+      "size": 123,
+      "reference_names": [
+        "-[NSProcessInfo operatingSystemName]"
+      ],
+      "source_path": "src/Kits/Foundation/NSProcessInfo.m",
+      "source_line": 442
+    },
+    {
+      "address": 1112778724,
+      "size": 12,
+      "reference_names": [
+        "__NSProcessID"
+      ],
+      "source_path": "src/Kits/Foundation/NSProcessInfo.m",
+      "source_line": 62
+    },
+    {
+      "address": 1112795288,
+      "size": 149,
+      "reference_names": [
+        "-[NSProcessInfo platformOSDictionary]"
+      ],
+      "source_path": "src/Kits/Foundation/NSProcessInfo.m",
+      "source_line": 428
+    },
+    {
+      "address": 1112801204,
+      "size": 141,
+      "reference_names": [
+        "__NSProcessName"
+      ],
+      "source_path": "src/Kits/Foundation/NSProcessInfo.m",
+      "source_line": 198
+    },
+    {
+      "address": 1112802200,
+      "size": 108,
+      "reference_names": [
+        "-[NSProcessInfo processName]"
+      ],
+      "source_path": "src/Kits/Foundation/NSProcessInfo.m",
+      "source_line": 331
+    },
+    {
+      "address": 1112806236,
+      "size": 30,
+      "reference_names": [
+        "__NSGetDirectory2"
+      ],
+      "source_path": "src/Kits/Foundation/NSProcessInfo.m",
+      "source_line": 85
+    },
+    {
+      "address": 1112819344,
+      "size": 14,
+      "reference_names": [
+        "__NSArgv"
+      ],
+      "source_path": "src/Kits/Foundation/NSProcessInfo.m",
+      "source_line": 39
+    },
+    {
+      "address": 1112830672,
+      "size": 790,
+      "reference_names": [
+        "__NSProcessPath"
+      ],
+      "source_path": "src/Kits/Foundation/NSProcessInfo.m",
+      "source_line": 131
+    },
+    {
+      "address": 1112851884,
+      "size": 14,
+      "reference_names": [
+        "__NSArgc"
+      ],
+      "source_path": "src/Kits/Foundation/NSProcessInfo.m",
+      "source_line": 35
+    },
+    {
+      "address": 1112857588,
+      "size": 71,
+      "reference_names": [
+        "-[NSProcessInfo hostName]"
+      ],
+      "source_path": "src/Kits/Foundation/NSProcessInfo.m",
+      "source_line": 320
+    },
+    {
+      "address": 1112857660,
+      "size": 633,
+      "reference_names": [
+        "-[NSProcessInfo arguments]"
+      ],
+      "source_path": "src/Kits/Foundation/NSProcessInfo.m",
+      "source_line": 258
+    },
+    {
+      "address": 1113068756,
+      "size": 131,
+      "reference_names": [
+        "-[NSProcessInfo dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSProcessInfo.m",
+      "source_line": 453
+    },
+    {
+      "address": 1113068888,
+      "size": 362,
+      "reference_names": [
+        "-[NSProcessInfo globallyUniqueString]"
+      ],
+      "source_path": "src/Kits/Foundation/NSProcessInfo.m",
+      "source_line": 373
+    },
+    {
+      "address": 1113069252,
+      "size": 71,
+      "reference_names": [
+        "-[NSProcessInfo setArguments:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSProcessInfo.m",
+      "source_line": 313
+    },
+    {
+      "address": 1113069324,
+      "size": 64,
+      "reference_names": [
+        "-[NSProcessInfo setProcessName:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSProcessInfo.m",
+      "source_line": 352
+    },
+    {
+      "address": 1113069388,
+      "size": 12,
+      "reference_names": [
+        "-[NSProcessInfo userFullName]"
+      ],
+      "source_path": "src/Kits/Foundation/NSProcessInfo.m",
+      "source_line": 361
+    },
+    {
+      "address": 1113069400,
+      "size": 12,
+      "reference_names": [
+        "-[NSProcessInfo userHomeDirectory]"
+      ],
+      "source_path": "src/Kits/Foundation/NSProcessInfo.m",
+      "source_line": 365
+    },
+    {
+      "address": 1113069412,
+      "size": 12,
+      "reference_names": [
+        "-[NSProcessInfo userName]"
+      ],
+      "source_path": "src/Kits/Foundation/NSProcessInfo.m",
+      "source_line": 369
+    },
+    {
+      "address": 1113084692,
+      "size": 210,
+      "reference_names": [
+        "__NSSearchForNameInPath"
+      ],
+      "source_path": "src/Kits/Foundation/NSProcessInfo.m",
+      "source_line": 89
+    }
+  ],
+  "unmapped": [],
+  "duplicate_candidates": [],
+  "boundary_disputed": [],
+  "by_module": {
+    "NSProcessInfo.m": {
+      "mapped": 26,
+      "unmapped": 0,
+      "duplicate_candidates": 0,
+      "boundary_disputed": 0
+    }
+  }
+}

@@ -7,6 +7,7 @@
 #import <Foundation/NSScanner.h>
 #import <Foundation/NSDecimal.h>
 #import <Foundation/NSDictionary.h>
+#import <Foundation/NSString.h>
 
 /***************	Exceptions		***********/
 
@@ -133,6 +134,12 @@ FOUNDATION_EXPORT NSString * const NSDecimalNumberDivideByZeroException;
 @end
 
 /***********	Extensions to other classes		*******/
+
+@interface NSString (NSDecimalExtension)
+
+- (NSDecimal)decimalValue;
+
+@end
 
 @interface NSNumber (NSDecimalNumberExtensions)
 

@@ -1710,3 +1710,45 @@ this same class of bug. Not a reconstruction fidelity finding — the
 reference binary was not re-examined for this behavior — but recorded here
 because it changes behavior at a site this document otherwise treats as
 already reconciled with the reference.
+
+## Addendum: first functional test (issue #50)
+
+2026-10-14. The rebuilt driver was booted for the first time, on a QEMU
+`-M pc` guest of `rhap-i386-bootstrapped-v2.img` with a 1.44 MB floppy, and
+compared with Apple's binary on the same image. Every defect below was
+present despite the closing state above; each is now fixed to match the
+reference.
+
+- `+[IODiskPartitionNEW deviceStyle]` returned `IO_DirectDevice` (0); the
+  reference returns 1. `configureDriver` reserved the table's resources for
+  it, so `FloppyController` could not reserve IRQ 6.
+- `FloppyController`'s queue head (`_queueHead`) sat after `_lastErrorCode`,
+  shifting every field from 0x12c on by 4 and aliasing the `self + 300`
+  queue. The six `_dataRateChangeCount++` lines were `outb()`'s own
+  `lock incl xxx`, not driver code.
+- `sendCmd:` set result 9 after every command it did not explicitly accept,
+  so SPECIFY and CONFIGURE failed and `init` returned nil. RECALIBRATE and
+  SEEK read result and command bytes 3 too far in.
+- `getDriveStatus:` took write protect from the status word at +0x40
+  instead of ST3 at +0x28, skipped the success-path flag update, and read
+  the drive number from +0x14 instead of +0x5c.
+- `attachBsdDiskInterfaceToDrive:` sent `_hasDevInfo` to the drive (a
+  kernel panic) and returned 0 on success; the reference tests
+  `[self devAndIdInfo]` and returns 1. `fdRwCommon:` sent five-argument
+  `addToBytes...` selectors no class implements.
+- `constructRequest:` treated its first argument, the write flag, as a
+  status pointer: writes ran as reads, and every write stored to address 1.
+- `_probeLabel:` took the label buffer as a `BOOL`, truncating the pointer,
+  so partitions were built from low memory.
+- `fdrToIo` mapped 8 of 24 codes to the wrong `IOReturn`, the
+  `IOFloppyDisk` read/write entry points returned the wrong errors, and
+  `updatePhysicalParametersInt` returned nothing to `pollMedia`.
+- `IOFloppyDrive` kept the attached disk in its own `_nextLogicalDisk`
+  instead of `IODriveNEW`'s `_diskId`, which `ejectMedia` clears, so no
+  disk inserted after an eject was ever probed.
+
+Checks that now match the reference: the boot-time FDC register trace,
+cold-cache read traffic, raw reads and writes at several sizes, `disk -i`,
+`newfs`, `mount`, `fsck`, write-behind commits reaching the medium, media
+change after `disk -e`, and write-protected media. `IOFloppyDrive` and the
+rest of `FloppyController` still carry invented ivars.

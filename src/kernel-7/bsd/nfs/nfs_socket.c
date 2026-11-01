@@ -219,12 +219,22 @@ backtrace(int *where, int size)
 {
 	int register sp, *fp, numsaved;
 
+#if defined(i386)
+	__asm__ volatile("movl %%ebp,%0" : "=r" (sp));
+#else
 	__asm__ volatile("mr %0,r1" : "=r" (sp));
+#endif
 	
 	fp = (int *)*((int *)sp);
 	size /= sizeof(int);
 	for (numsaved = 0; numsaved < size; numsaved++) {
+#if defined(i386)
+		if ((int)fp <= 0)
+			break;
+		*where++ = fp[1];
+#else
 		*where++ = fp[2];
+#endif
 		if ((int)fp <= 0)
 			break;
 		fp = (int *)*fp;

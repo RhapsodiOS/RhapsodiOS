@@ -154,8 +154,22 @@ for example contain data in multiple sections. The correct syntax to
 use is defined by the extension code itself: check out the certificate
 policies extension for an example.
 
-In addition it is also possible to use the word DER to include arbitrary
-data in any extension.
+There are two ways to encode arbitrary extensions.
+
+The first way is to use the word ASN1 followed by the extension content
+using the same syntax as ASN1_generate_nconf(). For example:
+
+1.2.3.4=critical,ASN1:UTF8String:Some random data
+
+1.2.3.4=ASN1:SEQUENCE:seq_sect
+
+[seq_sect]
+
+field1 = UTF8:field1
+field2 = UTF8:field2
+
+It is also possible to use the word DER to include arbitrary data in any
+extension.
 
 1.2.3.4=critical,DER:01:02:03:04
 1.2.3.4=DER:01020304
@@ -336,16 +350,21 @@ Subject Alternative Name.
 The subject alternative name extension allows various literal values to be
 included in the configuration file. These include "email" (an email address)
 "URI" a uniform resource indicator, "DNS" (a DNS domain name), RID (a
-registered ID: OBJECT IDENTIFIER) and IP (and IP address).
+registered ID: OBJECT IDENTIFIER), IP (and IP address) and otherName.
 
 Also the email option include a special 'copy' value. This will automatically
 include and email addresses contained in the certificate subject name in
 the extension.
 
+otherName can include arbitrary data associated with an OID: the value
+should be the OID followed by a semicolon and the content in standard
+ASN1_generate_nconf() format.
+
 Examples:
 
-subjectAltName=email:copy,email:my@other.address,URL:http://my.url.here/
+subjectAltName=email:copy,email:my@other.address,URI:http://my.url.here/
 subjectAltName=email:my@other.address,RID:1.2.3.4
+subjectAltName=otherName:1.2.3.4;UTF8:some other identifier
 
 Issuer Alternative Name.
 
@@ -354,6 +373,24 @@ subject alternative name. It does *not* support the email:copy option because
 that would not make sense. It does support an additional issuer:copy option
 that will copy all the subject alternative name values from the issuer 
 certificate (if possible).
+
+Example:
+
+issuserAltName = issuer:copy
+
+Authority Info Access.
+
+The authority information access extension gives details about how to access
+certain information relating to the CA. Its syntax is accessOID;location
+where 'location' has the same syntax as subject alternative name (except
+that email:copy is not supported). accessOID can be any valid OID but only
+certain values are meaningful for example OCSP and caIssuers. OCSP gives the
+location of an OCSP responder: this is used by Netscape PSM and other software.
+
+Example:
+
+authorityInfoAccess = OCSP;URI:http://ocsp.my.host/
+authorityInfoAccess = caIssuers;URI:http://my.ca/ca.html
 
 CRL distribution points.
 
@@ -488,6 +525,47 @@ BASIC_CONSTRAINTS structure. Check out the source in crypto/x509v3 for more
 details about the structures returned. The returned structure should be freed
 after use using the relevant free function, BASIC_CONSTRAINTS_free() for 
 example.
+
+void	*	X509_get_ext_d2i(X509 *x, int nid, int *crit, int *idx);
+void	*	X509_CRL_get_ext_d2i(X509_CRL *x, int nid, int *crit, int *idx);
+void	*	X509_REVOKED_get_ext_d2i(X509_REVOKED *x, int nid, int *crit, int *idx);
+void 	*	X509V3_get_d2i(STACK_OF(X509_EXTENSION) *x, int nid, int *crit, int *idx);
+
+These functions combine the operations of searching for extensions and
+parsing them. They search a certificate, a CRL a CRL entry or a stack
+of extensions respectively for extension whose NID is 'nid' and return
+the parsed result of NULL if an error occurred. For example:
+
+BASIC_CONSTRAINTS *bs;
+bs = X509_get_ext_d2i(cert, NID_basic_constraints, NULL, NULL);
+
+This will search for the basicConstraints extension and either return
+it value or NULL. NULL can mean either the extension was not found, it
+occurred more than once or it could not be parsed.
+
+If 'idx' is NULL then an extension is only parsed if it occurs precisely
+once. This is standard behaviour because extensions normally cannot occur
+more than once. If however more than one extension of the same type can
+occur it can be used to parse successive extensions for example:
+
+int i;
+void *ext;
+
+i = -1;
+for(;;) {
+	ext = X509_get_ext_d2i(x, nid, crit, &idx);
+	if(ext == NULL) break;
+	 /* Do something with ext */
+}
+
+If 'crit' is not NULL and the extension was found then the int it points to
+is set to 1 for critical extensions and 0 for non critical. Therefore if the
+function returns NULL but 'crit' is set to 0 or 1 then the extension was
+found but it could not be parsed.
+
+The int pointed to by crit will be set to -1 if the extension was not found
+and -2 if the extension occurred more than once (this will only happen if
+idx is NULL). In both cases the function will return NULL.
 
 3. Generating extensions.
 
@@ -700,7 +778,7 @@ called.
 
 The X509V3_EXT_METHOD structure is described below.
 
-strut {
+struct {
 int ext_nid;
 int ext_flags;
 X509V3_EXT_NEW ext_new;

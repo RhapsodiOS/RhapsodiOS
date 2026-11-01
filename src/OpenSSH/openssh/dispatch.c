@@ -1,3 +1,4 @@
+/* $OpenBSD: dispatch.c,v 1.27 2015/05/01 07:10:01 djm Exp $ */
 /*
  * Copyright (c) 2000 Markus Friedl.  All rights reserved.
  *
@@ -21,53 +22,121 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+
 #include "includes.h"
-RCSID("$OpenBSD: dispatch.c,v 1.5 2000/09/21 11:25:34 markus Exp $");
-#include "ssh.h"
+
+#include <sys/types.h>
+
+#include <signal.h>
+#include <stdarg.h>
+
+#include "ssh1.h"
+#include "ssh2.h"
+#include "log.h"
 #include "dispatch.h"
 #include "packet.h"
+#include "compat.h"
+#include "ssherr.h"
 
-#define DISPATCH_MIN	0
-#define DISPATCH_MAX	255
-
-dispatch_fn *dispatch[DISPATCH_MAX];
-
-void
-dispatch_protocol_error(int type, int plen, void *ctxt)
+int
+dispatch_protocol_error(int type, u_int32_t seq, void *ctx)
 {
-	error("Hm, dispatch protocol error: type %d plen %d", type, plen);
+	struct ssh *ssh = active_state; /* XXX */
+	int r;
+
+	logit("dispatch_protocol_error: type %d seq %u", type, seq);
+	if (!compat20)
+		fatal("protocol error");
+	if ((r = sshpkt_start(ssh, SSH2_MSG_UNIMPLEMENTED)) != 0 ||
+	    (r = sshpkt_put_u32(ssh, seq)) != 0 ||
+	    (r = sshpkt_send(ssh)) != 0 ||
+	    (r = ssh_packet_write_wait(ssh)) != 0)
+		sshpkt_fatal(ssh, __func__, r);
+	return 0;
 }
-void
-dispatch_init(dispatch_fn *dflt)
+
+int
+dispatch_protocol_ignore(int type, u_int32_t seq, void *ssh)
 {
-	int i;
+	logit("dispatch_protocol_ignore: type %d seq %u", type, seq);
+	return 0;
+}
+
+void
+ssh_dispatch_init(struct ssh *ssh, dispatch_fn *dflt)
+{
+	u_int i;
 	for (i = 0; i < DISPATCH_MAX; i++)
-		dispatch[i] = dflt;
+		ssh->dispatch[i] = dflt;
 }
-void
-dispatch_set(int type, dispatch_fn *fn)
-{
-	dispatch[type] = fn;
-}
-void
-dispatch_run(int mode, int *done, void *ctxt)
-{
-	for (;;) {
-		int plen;
-		int type;
 
-		if (mode == DISPATCH_BLOCK) {
-			type = packet_read(&plen);
-		} else {
-			type = packet_read_poll(&plen);
-			if (type == SSH_MSG_NONE)
-				return;
-		}
-		if (type > 0 && type < DISPATCH_MAX && dispatch[type] != NULL)
-			(*dispatch[type])(type, plen, ctxt);
-		else
-			packet_disconnect("protocol error: rcvd type %d", type);	
-		if (done != NULL && *done)
-			return;
+void
+ssh_dispatch_range(struct ssh *ssh, u_int from, u_int to, dispatch_fn *fn)
+{
+	u_int i;
+
+	for (i = from; i <= to; i++) {
+		if (i >= DISPATCH_MAX)
+			break;
+		ssh->dispatch[i] = fn;
 	}
+}
+
+void
+ssh_dispatch_set(struct ssh *ssh, int type, dispatch_fn *fn)
+{
+	ssh->dispatch[type] = fn;
+}
+
+int
+ssh_dispatch_run(struct ssh *ssh, int mode, volatile sig_atomic_t *done,
+    void *ctxt)
+{
+	int r;
+	u_char type;
+	u_int32_t seqnr;
+
+	for (;;) {
+		if (mode == DISPATCH_BLOCK) {
+			r = ssh_packet_read_seqnr(ssh, &type, &seqnr);
+			if (r != 0)
+				return r;
+		} else {
+			r = ssh_packet_read_poll_seqnr(ssh, &type, &seqnr);
+			if (r != 0)
+				return r;
+			if (type == SSH_MSG_NONE)
+				return 0;
+		}
+		if (type > 0 && type < DISPATCH_MAX &&
+		    ssh->dispatch[type] != NULL) {
+			if (ssh->dispatch_skip_packets) {
+				debug2("skipped packet (type %u)", type);
+				ssh->dispatch_skip_packets--;
+				continue;
+			}
+			/* XXX 'ssh' will replace 'ctxt' later */
+			r = (*ssh->dispatch[type])(type, seqnr, ctxt);
+			if (r != 0)
+				return r;
+		} else {
+			r = sshpkt_disconnect(ssh,
+			    "protocol error: rcvd type %d", type);
+			if (r != 0)
+				return r;
+			return SSH_ERR_DISCONNECTED;
+		}
+		if (done != NULL && *done)
+			return 0;
+	}
+}
+
+void
+ssh_dispatch_run_fatal(struct ssh *ssh, int mode, volatile sig_atomic_t *done,
+    void *ctxt)
+{
+	int r;
+
+	if ((r = ssh_dispatch_run(ssh, mode, done, ctxt)) != 0)
+		sshpkt_fatal(ssh, __func__, r);
 }

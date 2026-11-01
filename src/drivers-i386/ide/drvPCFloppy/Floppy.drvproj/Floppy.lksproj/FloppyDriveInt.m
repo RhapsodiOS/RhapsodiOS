@@ -137,15 +137,15 @@ void fdTimer(id drive)
  * Error code mappings:
  *   0x00 -> IO_R_SUCCESS (0)
  *   0x01, 0x06-0x0c, 0x0e-0x10, 0x12-0x13, 0x17 -> IO_R_IO_ERROR (0xfffffd36 = -714)
- *   0x02 -> IO_R_NOT_WRITABLE (0xfffffd43 = -701)
- *   0x03 -> IO_R_NOT_READABLE (0xfffffd38 = -712)
+ *   0x02 -> IO_R_NO_MEMORY (0xfffffd43 = -701)
+ *   0x03 -> IO_R_VM_FAILURE (0xfffffd38 = -712)
  *   0x04, 0x11 -> IO_R_NOT_FORMATTED (0xfffffd39 = -711)
- *   0x05 -> IO_R_MEDIA_ERROR (0xfffffd40 = -704)
- *   0x0d -> IO_R_DMA_ERROR (0xfffffd31 = -719)
- *   0x14 -> IO_R_TIMEOUT (0xfffffbb2 = -1102)
- *   0x15 -> IO_R_DEVICE_ERROR (0xfffffd30 = -720)
- *   0x16 -> IO_R_NO_MEDIA (0xfffffd2c = -724)
- *   default -> IO_R_INVALID (0xfffffd37 = -713)
+ *   0x05 -> IO_R_NO_DEVICE (0xfffffd40 = -704)
+ *   0x0d -> IO_R_NOT_WRITABLE (0xfffffd31 = -719)
+ *   0x14 -> IO_R_NO_DISK (0xfffffbb2 = -1102)
+ *   0x15 -> IO_R_ALIGN (0xfffffd30 = -720)
+ *   0x16 -> IO_R_DMA (0xfffffd2c = -724)
+ *   default -> IO_R_INTERNAL (0xfffffd37 = -713)
  */
 IOReturn fdrToIo(unsigned int fdrCode)
 {
@@ -173,11 +173,11 @@ IOReturn fdrToIo(unsigned int fdrCode)
 
 	case 0x02:
 		// Write protected
-		return IO_R_NOT_WRITABLE;  // 0xfffffd43 = -701
+		return IO_R_NO_MEMORY;  // 0xfffffd43 = -701
 
 	case 0x03:
 		// Read error
-		return IO_R_NOT_READABLE;  // 0xfffffd38 = -712
+		return IO_R_VM_FAILURE;  // 0xfffffd38 = -712
 
 	case 0x04:
 	case 0x11:
@@ -186,27 +186,27 @@ IOReturn fdrToIo(unsigned int fdrCode)
 
 	case 0x05:
 		// Media error
-		return IO_R_MEDIA_ERROR;  // 0xfffffd40 = -704
+		return IO_R_NO_DEVICE;  // 0xfffffd40 = -704
 
 	case 0x0d:
 		// DMA error
-		return IO_R_DMA_ERROR;  // 0xfffffd31 = -719
+		return IO_R_NOT_WRITABLE;  // 0xfffffd31 = -719
 
 	case 0x14:
 		// Timeout
-		return IO_R_TIMEOUT;  // 0xfffffbb2 = -1102
+		return (IOReturn)0xfffffbb2;  // IO_R_NO_DISK = -1102
 
 	case 0x15:
 		// Device error
-		return IO_R_DEVICE_ERROR;  // 0xfffffd30 = -720
+		return IO_R_ALIGN;  // 0xfffffd30 = -720
 
 	case 0x16:
 		// No media
-		return IO_R_NO_MEDIA;  // 0xfffffd2c = -724
+		return IO_R_DMA;  // 0xfffffd2c = -724
 
 	default:
 		// Invalid/unknown error
-		return IO_R_INVALID;  // 0xfffffd37 = -713
+		return IO_R_INTERNAL;  // 0xfffffd37 = -713
 	}
 }
 
@@ -274,7 +274,7 @@ IOReturn fdrToIo(unsigned int fdrCode)
 	                                                            :isEjectable];
 
 	// Store disk object at offset 0x108
-	_nextLogicalDisk = diskObject;
+	_diskId = diskObject;
 
 	// Disassembly (0x39a3-0x39a8) returns a plain boolean: 1 if diskObject was
 	// allocated, 0 if not (setnz al). IO_R_SUCCESS is 0, so returning it here

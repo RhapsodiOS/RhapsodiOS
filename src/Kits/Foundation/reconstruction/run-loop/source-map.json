@@ -1,0 +1,594 @@
+{
+  "schema_version": "source-map-v1",
+  "reference_sha256": "332B3C8C0AE0A6E40A4B93110EE16748FCD94AA0119D63F16EDE878598C681B4",
+  "mapped": [
+    {
+      "address": 1112596688,
+      "size": 160,
+      "reference_names": [
+        "_findModeInfo"
+      ],
+      "source_path": "src/Kits/Foundation/NSRunLoop.m",
+      "source_line": 670
+    },
+    {
+      "address": 1112601084,
+      "size": 144,
+      "reference_names": [
+        "+[NSRunLoop currentRunLoop]"
+      ],
+      "source_path": "src/Kits/Foundation/NSRunLoop.m",
+      "source_line": 984
+    },
+    {
+      "address": 1112611600,
+      "size": 500,
+      "reference_names": [
+        "__informMonitors"
+      ],
+      "source_path": "src/Kits/Foundation/NSRunLoop.m",
+      "source_line": 725
+    },
+    {
+      "address": 1112627980,
+      "size": 232,
+      "reference_names": [
+        "__allocateBuffer"
+      ],
+      "source_path": "src/Kits/Foundation/NSRunLoop.m",
+      "source_line": 398
+    },
+    {
+      "address": 1112628212,
+      "size": 228,
+      "reference_names": [
+        "__deallocateBuffer"
+      ],
+      "source_path": "src/Kits/Foundation/NSRunLoop.m",
+      "source_line": 419
+    },
+    {
+      "address": 1112628440,
+      "size": 436,
+      "reference_names": [
+        "_NSCheapPortSetAcceptInput"
+      ],
+      "source_path": "src/Kits/Foundation/NSRunLoop.m",
+      "source_line": 440
+    },
+    {
+      "address": 1112628876,
+      "size": 756,
+      "reference_names": [
+        "-[NSRunLoop acceptInputForModeInfo:beforeTime:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSRunLoop.m",
+      "source_line": 1530
+    },
+    {
+      "address": 1112629632,
+      "size": 1568,
+      "reference_names": [
+        "-[NSRunLoop acceptInputForMode:beforeDate:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSRunLoop.m",
+      "source_line": 1587
+    },
+    {
+      "address": 1112631516,
+      "size": 1428,
+      "reference_names": [
+        "__dequeueMessage"
+      ],
+      "source_path": "src/Kits/Foundation/NSRunLoop.m",
+      "source_line": 511
+    },
+    {
+      "address": 1112633088,
+      "size": 280,
+      "reference_names": [
+        "-[NSRunLoop _doPerformersForMode:reclaim:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSRunLoop.m",
+      "source_line": 878
+    },
+    {
+      "address": 1112633368,
+      "size": 1760,
+      "reference_names": [
+        "-[NSRunLoop limitDateForMode:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSRunLoop.m",
+      "source_line": 1401
+    },
+    {
+      "address": 1112640160,
+      "size": 80,
+      "reference_names": [
+        "-[NSPerformTimer invalidate]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPerformTimer.m",
+      "source_line": 52
+    },
+    {
+      "address": 1112653940,
+      "size": 1504,
+      "reference_names": [
+        "-[NSRunLoop addPort:forMode:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSRunLoop.m",
+      "source_line": 1315
+    },
+    {
+      "address": 1112658920,
+      "size": 204,
+      "reference_names": [
+        "-[NSRunLoop runMode:beforeDate:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSRunLoop.m",
+      "source_line": 1734
+    },
+    {
+      "address": 1112659852,
+      "size": 428,
+      "reference_names": [
+        "+[NSPerformTimer newPerformSelector:target:argument:order:modes:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPerformTimer.m",
+      "source_line": 21
+    },
+    {
+      "address": 1112660384,
+      "size": 188,
+      "reference_names": [
+        "-[NSRunLoop performSelector:target:argument:order:modes:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSRunLoop.m",
+      "source_line": 1783
+    },
+    {
+      "address": 1112665372,
+      "size": 424,
+      "reference_names": [
+        "-[NSPerformTimer dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPerformTimer.m",
+      "source_line": 118
+    },
+    {
+      "address": 1112665796,
+      "size": 80,
+      "reference_names": [
+        "-[NSPerformTimer release]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPerformTimer.m",
+      "source_line": 101
+    },
+    {
+      "address": 1112669392,
+      "size": 236,
+      "reference_names": [
+        "-[NSPerformTimer fire]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPerformTimer.m",
+      "source_line": 58
+    },
+    {
+      "address": 1112678752,
+      "size": 860,
+      "reference_names": [
+        "-[NSRunLoop removePort:forMode:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSRunLoop.m",
+      "source_line": 1346
+    },
+    {
+      "address": 1112681768,
+      "size": 808,
+      "reference_names": [
+        "-[NSRunLoop _nextTimerInterval:forMode:modeInfo:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSRunLoop.m",
+      "source_line": 909
+    },
+    {
+      "address": 1112684000,
+      "size": 240,
+      "reference_names": [
+        "_containsMode"
+      ],
+      "source_path": "src/Kits/Foundation/NSRunLoop.m",
+      "source_line": 789
+    },
+    {
+      "address": 1112736808,
+      "size": 16,
+      "reference_names": [
+        "-[NSRunLoop currentMode]"
+      ],
+      "source_path": "src/Kits/Foundation/NSRunLoop.m",
+      "source_line": 1063
+    },
+    {
+      "address": 1112744684,
+      "size": 216,
+      "reference_names": [
+        "-[NSRunLoop cancelPerformSelector:target:argument:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSRunLoop.m",
+      "source_line": 1800
+    },
+    {
+      "address": 1112760596,
+      "size": 232,
+      "reference_names": [
+        "-[NSRunLoop addRunLoopActivityMonitor:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSRunLoop.m",
+      "source_line": 856
+    },
+    {
+      "address": 1112766128,
+      "size": 264,
+      "reference_names": [
+        "_newModeInfo"
+      ],
+      "source_path": "src/Kits/Foundation/NSRunLoop.m",
+      "source_line": 646
+    },
+    {
+      "address": 1112774376,
+      "size": 48,
+      "reference_names": [
+        "-[NSRunLoop retain]"
+      ],
+      "source_path": "src/Kits/Foundation/NSRunLoop.m",
+      "source_line": 1025
+    },
+    {
+      "address": 1112778852,
+      "size": 304,
+      "reference_names": [
+        "-[NSRunLoop removeTimersWithTarget:selector:withObject:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSRunLoop.m",
+      "source_line": 1220
+    },
+    {
+      "address": 1112790520,
+      "size": 96,
+      "reference_names": [
+        "+[NSObject cancelPreviousPerformRequestsWithTarget:selector:object:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSRunLoop.m",
+      "source_line": 1774
+    },
+    {
+      "address": 1112796072,
+      "size": 88,
+      "reference_names": [
+        "-[NSObject performSelector:withObject:afterDelay:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSRunLoop.m",
+      "source_line": 1765
+    },
+    {
+      "address": 1112800904,
+      "size": 204,
+      "reference_names": [
+        "-[NSRunLoop _invalidateTimers]"
+      ],
+      "source_path": "src/Kits/Foundation/NSRunLoop.m",
+      "source_line": 1245
+    },
+    {
+      "address": 1112811132,
+      "size": 252,
+      "reference_names": [
+        "-[NSRunLoop addTimer:forMode:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSRunLoop.m",
+      "source_line": 1133
+    },
+    {
+      "address": 1112817948,
+      "size": 444,
+      "reference_names": [
+        "_combineModes"
+      ],
+      "source_path": "src/Kits/Foundation/NSRunLoop.m",
+      "source_line": 187
+    },
+    {
+      "address": 1112824444,
+      "size": 944,
+      "reference_names": [
+        "_insertTimer"
+      ],
+      "source_path": "src/Kits/Foundation/NSRunLoop.m",
+      "source_line": 226
+    },
+    {
+      "address": 1112891468,
+      "size": 372,
+      "reference_names": [
+        "-[NSRunLoop release]"
+      ],
+      "source_path": "src/Kits/Foundation/NSRunLoop.m",
+      "source_line": 1034
+    },
+    {
+      "address": 1112893084,
+      "size": 1156,
+      "reference_names": [
+        "-[NSRunLoop init]"
+      ],
+      "source_path": "src/Kits/Foundation/NSRunLoop.m",
+      "source_line": 996
+    },
+    {
+      "address": 1112941984,
+      "size": 36,
+      "reference_names": [
+        "-[NSRunLoop retainCount]"
+      ],
+      "source_path": "src/Kits/Foundation/NSRunLoop.m",
+      "source_line": 1030
+    },
+    {
+      "address": 1113105128,
+      "size": 1036,
+      "reference_names": [
+        "+[NSRunLoop _taskNowMultiThreaded]"
+      ],
+      "source_path": "src/Kits/Foundation/NSRunLoop.m",
+      "source_line": 821
+    },
+    {
+      "address": 1113106164,
+      "size": 216,
+      "reference_names": [
+        "+[NSRunLoop _taskNowSingleThreaded]"
+      ],
+      "source_path": "src/Kits/Foundation/NSRunLoop.m",
+      "source_line": 802
+    },
+    {
+      "address": 1113154924,
+      "size": 68,
+      "reference_names": [
+        "-[NSObject performSelector:object:afterDelay:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSRunLoop.m",
+      "source_line": 1770
+    },
+    {
+      "address": 1113154992,
+      "size": 96,
+      "reference_names": [
+        "-[NSObject performSelector:withObject:afterDelay:inModes:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSRunLoop.m",
+      "source_line": 1760
+    },
+    {
+      "address": 1113155372,
+      "size": 88,
+      "reference_names": [
+        "-[NSPerformTimer description]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPerformTimer.m",
+      "source_line": 112
+    },
+    {
+      "address": 1113155460,
+      "size": 60,
+      "reference_names": [
+        "-[NSPerformTimer fireDate]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPerformTimer.m",
+      "source_line": 80
+    },
+    {
+      "address": 1113155520,
+      "size": 24,
+      "reference_names": [
+        "-[NSPerformTimer isValid]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPerformTimer.m",
+      "source_line": 84
+    },
+    {
+      "address": 1113155544,
+      "size": 20,
+      "reference_names": [
+        "-[NSPerformTimer retainCount]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPerformTimer.m",
+      "source_line": 108
+    },
+    {
+      "address": 1113155564,
+      "size": 24,
+      "reference_names": [
+        "-[NSPerformTimer retain]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPerformTimer.m",
+      "source_line": 96
+    },
+    {
+      "address": 1113155588,
+      "size": 52,
+      "reference_names": [
+        "-[NSPerformTimer timeInterval]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPerformTimer.m",
+      "source_line": 88
+    },
+    {
+      "address": 1113155640,
+      "size": 16,
+      "reference_names": [
+        "-[NSPerformTimer userInfo]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPerformTimer.m",
+      "source_line": 92
+    },
+    {
+      "address": 1113158128,
+      "size": 112,
+      "reference_names": [
+        "-[NSRunLoop _wakeup]"
+      ],
+      "source_path": "src/Kits/Foundation/NSRunLoop.m",
+      "source_line": 870
+    },
+    {
+      "address": 1113158240,
+      "size": 116,
+      "reference_names": [
+        "-[NSRunLoop allModes]"
+      ],
+      "source_path": "src/Kits/Foundation/NSRunLoop.m",
+      "source_line": 846
+    },
+    {
+      "address": 1113158356,
+      "size": 12,
+      "reference_names": [
+        "-[NSRunLoop configureAsServer]"
+      ],
+      "source_path": "src/Kits/Foundation/NSRunLoop.m",
+      "source_line": 1753
+    },
+    {
+      "address": 1113158368,
+      "size": 148,
+      "reference_names": [
+        "-[NSRunLoop containsPort:forMode:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSRunLoop.m",
+      "source_line": 1095
+    },
+    {
+      "address": 1113158516,
+      "size": 360,
+      "reference_names": [
+        "-[NSRunLoop containsTimer:forMode:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSRunLoop.m",
+      "source_line": 1156
+    },
+    {
+      "address": 1113158876,
+      "size": 320,
+      "reference_names": [
+        "-[NSRunLoop dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSRunLoop.m",
+      "source_line": 1392
+    },
+    {
+      "address": 1113159196,
+      "size": 196,
+      "reference_names": [
+        "-[NSRunLoop description]"
+      ],
+      "source_path": "src/Kits/Foundation/NSRunLoop.m",
+      "source_line": 1067
+    },
+    {
+      "address": 1113159392,
+      "size": 200,
+      "reference_names": [
+        "-[NSRunLoop portsForMode:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSRunLoop.m",
+      "source_line": 1112
+    },
+    {
+      "address": 1113159592,
+      "size": 672,
+      "reference_names": [
+        "-[NSRunLoop removeTimer:forMode:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSRunLoop.m",
+      "source_line": 1266
+    },
+    {
+      "address": 1113160264,
+      "size": 68,
+      "reference_names": [
+        "-[NSRunLoop runBeforeDate:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSRunLoop.m",
+      "source_line": 1702
+    },
+    {
+      "address": 1113160332,
+      "size": 172,
+      "reference_names": [
+        "-[NSRunLoop runMode:untilDate:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSRunLoop.m",
+      "source_line": 1721
+    },
+    {
+      "address": 1113160504,
+      "size": 160,
+      "reference_names": [
+        "-[NSRunLoop runUntilDate:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSRunLoop.m",
+      "source_line": 1712
+    },
+    {
+      "address": 1113160664,
+      "size": 92,
+      "reference_names": [
+        "-[NSRunLoop run]"
+      ],
+      "source_path": "src/Kits/Foundation/NSRunLoop.m",
+      "source_line": 1706
+    },
+    {
+      "address": 1113160756,
+      "size": 380,
+      "reference_names": [
+        "-[NSRunLoop timersForMode:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSRunLoop.m",
+      "source_line": 1188
+    },
+    {
+      "address": 1113171884,
+      "size": 804,
+      "reference_names": [
+        "_RunLoopWorker"
+      ],
+      "source_path": "src/Kits/Foundation/NSRunLoop.m",
+      "source_line": 575
+    },
+    {
+      "address": 1113185592,
+      "size": 320,
+      "reference_names": [
+        "_modeInfoDescription"
+      ],
+      "source_path": "src/Kits/Foundation/NSRunLoop.m",
+      "source_line": 765
+    },
+    {
+      "address": 1113185912,
+      "size": 336,
+      "reference_names": [
+        "_releaseModeInfo"
+      ],
+      "source_path": "src/Kits/Foundation/NSRunLoop.m",
+      "source_line": 327
+    }
+  ],
+  "unmapped": [],
+  "duplicate_candidates": [],
+  "boundary_disputed": []
+}

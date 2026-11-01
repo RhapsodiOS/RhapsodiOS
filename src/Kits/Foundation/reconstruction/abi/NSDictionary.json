@@ -1,0 +1,518 @@
+{
+ "categories": [],
+ "classes": [
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "dealloc",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "initWithDictionary:copyItems:",
+     "types": "@13@8:12@16c20"
+    },
+    {
+     "selector": "initWithObjects:forKeys:count:",
+     "types": "@20@8:12^@16^@20I24"
+    },
+    {
+     "selector": "initWithCapacity:",
+     "types": "@12@8:12I16"
+    },
+    {
+     "selector": "init",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "removeAllObjects",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "addEntriesFromDictionary:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "mutableCopyWithZone:",
+     "types": "@12@8:12^{?=}16"
+    },
+    {
+     "selector": "copyWithZone:",
+     "types": "@12@8:12^{?=}16"
+    },
+    {
+     "selector": "getObjects:",
+     "types": "v12@8:12^@16"
+    },
+    {
+     "selector": "getKeys:",
+     "types": "v12@8:12^@16"
+    },
+    {
+     "selector": "getObjects:andKeys:",
+     "types": "v16@8:12^@16^@20"
+    },
+    {
+     "selector": "allKeysForObject:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "allValues",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "allKeys",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "isEqualToDictionary:",
+     "types": "c12@8:12@16"
+    },
+    {
+     "selector": "encodeWithCoder:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "retainCount",
+     "types": "I8@8:12"
+    },
+    {
+     "selector": "release",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "retain",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "removeObjectForKey:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "setObject:forKey:",
+     "types": "v16@8:12@16@20"
+    },
+    {
+     "selector": "keyEnumerator",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "objectForKey:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "count",
+     "types": "I8@8:12"
+    }
+   ],
+   "instance_size": 12,
+   "ivars": [
+    {
+     "name": "_table",
+     "offset": 4,
+     "type": "^{?}"
+    },
+    {
+     "name": "_retainCount",
+     "offset": 8,
+     "type": "I"
+    }
+   ],
+   "name": "NSConcreteMutableDictionary",
+   "superclass": "NSMutableDictionary"
+  },
+  {
+   "class_methods": [
+    {
+     "selector": "dictionaryWithCapacity:",
+     "types": "@12@8:12I16"
+    },
+    {
+     "selector": "allocWithZone:",
+     "types": "@12@8:12^{?=}16"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "initWithContentsOfFile:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "initWithObjects:forKeys:count:",
+     "types": "@20@8:12^@16^@20I24"
+    },
+    {
+     "selector": "initWithCapacity:",
+     "types": "@12@8:12I16"
+    },
+    {
+     "selector": "removeKeysForObject:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "removeObjectsForKeys:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "removeAllObjects",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "invert",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "addEntriesFromDictionary:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "setDictionary:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "classForCoder",
+     "types": "#8@8:12"
+    },
+    {
+     "selector": "removeObjectForKey:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "setObject:forKey:",
+     "types": "v16@8:12@16@20"
+    }
+   ],
+   "instance_size": 4,
+   "ivars": [],
+   "name": "NSMutableDictionary",
+   "superclass": "NSDictionary"
+  },
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "dealloc",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "initWithDictionary:copyItems:",
+     "types": "@13@8:12@16c20"
+    },
+    {
+     "selector": "initWithObjects:forKeys:count:",
+     "types": "@20@8:12^@16^@20I24"
+    },
+    {
+     "selector": "init",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "getObjects:",
+     "types": "v12@8:12^@16"
+    },
+    {
+     "selector": "getKeys:",
+     "types": "v12@8:12^@16"
+    },
+    {
+     "selector": "getObjects:andKeys:",
+     "types": "v16@8:12^@16^@20"
+    },
+    {
+     "selector": "allKeysForObject:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "allValues",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "allKeys",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "isEqualToDictionary:",
+     "types": "c12@8:12@16"
+    },
+    {
+     "selector": "encodeWithCoder:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "mutableCopyWithZone:",
+     "types": "@12@8:12^{?=}16"
+    },
+    {
+     "selector": "copyWithZone:",
+     "types": "@12@8:12^{?=}16"
+    },
+    {
+     "selector": "retainCount",
+     "types": "I8@8:12"
+    },
+    {
+     "selector": "release",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "retain",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "keyEnumerator",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "objectForKey:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "count",
+     "types": "I8@8:12"
+    }
+   ],
+   "instance_size": 12,
+   "ivars": [
+    {
+     "name": "_table",
+     "offset": 4,
+     "type": "^{?}"
+    },
+    {
+     "name": "_retainCount",
+     "offset": 8,
+     "type": "I"
+    }
+   ],
+   "name": "NSConcreteDictionary",
+   "superclass": "NSDictionary"
+  },
+  {
+   "class_methods": [
+    {
+     "selector": "dictionaryWithDictionary:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "dictionaryWithContentsOfURL:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "dictionaryWithContentsOfFile:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "dictionaryWithObjectsAndKeys:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "dictionaryWithObjects:forKeys:",
+     "types": "@16@8:12@16@20"
+    },
+    {
+     "selector": "dictionaryWithObject:forKey:",
+     "types": "@16@8:12@16@20"
+    },
+    {
+     "selector": "dictionaryWithObjects:forKeys:count:",
+     "types": "@20@8:12^@16^@20I24"
+    },
+    {
+     "selector": "dictionary",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "allocWithZone:",
+     "types": "@12@8:12^{?=}16"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "initWithContentsOfURL:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "initWithContentsOfFile:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "_initWithData:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "initWithDictionary:copyItems:",
+     "types": "@13@8:12@16c20"
+    },
+    {
+     "selector": "initWithDictionary:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "initWithObjects:forKeys:",
+     "types": "@16@8:12@16@20"
+    },
+    {
+     "selector": "initWithObjectsAndKeys:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "initWithObjects:forKeys:count:",
+     "types": "@20@8:12^@16^@20I24"
+    },
+    {
+     "selector": "dictionaryByCompositingWithDictionary:operation:",
+     "types": "@16@8:12@16@20"
+    },
+    {
+     "selector": "getObjects:",
+     "types": "v12@8:12^@16"
+    },
+    {
+     "selector": "getKeys:",
+     "types": "v12@8:12^@16"
+    },
+    {
+     "selector": "getObjects:andKeys:",
+     "types": "v16@8:12^@16^@20"
+    },
+    {
+     "selector": "keysSortedByValueUsingSelector:",
+     "types": "@12@8:12:16"
+    },
+    {
+     "selector": "objectsForKeys:notFoundMarker:",
+     "types": "@16@8:12@16@20"
+    },
+    {
+     "selector": "invertedDictionary",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "writeToURL:atomically:",
+     "types": "c13@8:12@16c20"
+    },
+    {
+     "selector": "writeToFile:atomically:",
+     "types": "c13@8:12@16c20"
+    },
+    {
+     "selector": "_stringToWrite",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "descriptionInStringsFileFormat",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "descriptionWithLocale:indent:",
+     "types": "@16@8:12@16I20"
+    },
+    {
+     "selector": "descriptionWithLocale:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "allKeysForObject:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "countForObject:",
+     "types": "I12@8:12@16"
+    },
+    {
+     "selector": "containsObject:",
+     "types": "c12@8:12@16"
+    },
+    {
+     "selector": "containsKey:",
+     "types": "c12@8:12@16"
+    },
+    {
+     "selector": "allValues",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "allKeys",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "objectEnumerator",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "isEqualToDictionary:",
+     "types": "c12@8:12@16"
+    },
+    {
+     "selector": "replacementObjectForPortCoder:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "classForCoder",
+     "types": "#8@8:12"
+    },
+    {
+     "selector": "initWithCoder:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "encodeWithCoder:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "mutableCopyWithZone:",
+     "types": "@12@8:12^{?=}16"
+    },
+    {
+     "selector": "copyWithZone:",
+     "types": "@12@8:12^{?=}16"
+    },
+    {
+     "selector": "isEqual:",
+     "types": "c12@8:12@16"
+    },
+    {
+     "selector": "hash",
+     "types": "I8@8:12"
+    },
+    {
+     "selector": "description",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "keyEnumerator",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "objectForKey:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "count",
+     "types": "I8@8:12"
+    }
+   ],
+   "instance_size": 4,
+   "ivars": [],
+   "name": "NSDictionary",
+   "superclass": "NSObject"
+  }
+ ],
+ "data_symbols": [
+  "___NSEmptyDictionary",
+  "_NSDictionaryAddComponents",
+  "_NSDictionaryRemoveComponents",
+  "_NSDictionaryReplaceComponents",
+  "_NSDictionarySetComponents",
+  "_NSDictionaryToggleComponents"
+ ],
+ "module": "NSDictionary.m",
+ "schema_version": "abi-v1",
+ "text_symbols": [
+  "__NSIndentSpace"
+ ]
+}

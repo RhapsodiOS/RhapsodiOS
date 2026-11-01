@@ -1,0 +1,105 @@
+{
+ "categories": [],
+ "classes": [
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "synchronize",
+     "types": "c8@8:12"
+    },
+    {
+     "selector": "removeObjectForKey:domain:",
+     "types": "v16@8:12@16@20"
+    },
+    {
+     "selector": "setObject:forKey:domain:",
+     "types": "v20@8:12@16@20@24"
+    },
+    {
+     "selector": "objectForKey:domain:",
+     "types": "@16@8:12@16@20"
+    },
+    {
+     "selector": "removeDomain:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "setDictionary:forDomain:",
+     "types": "v16@8:12@16@20"
+    },
+    {
+     "selector": "dictionaryForDomain:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "_removeDomain:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "_setDictionary:forDomain:",
+     "types": "v16@8:12@16@20"
+    },
+    {
+     "selector": "_dictionaryForDomain:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "cacheDictionary:forDomain:",
+     "types": "v16@8:12@16@20"
+    },
+    {
+     "selector": "allDomains",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "domainExists:",
+     "types": "c12@8:12@16"
+    },
+    {
+     "selector": "dealloc",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "initWithPath:",
+     "types": "@12@8:12@16"
+    }
+   ],
+   "instance_size": 24,
+   "ivars": [
+    {
+     "name": "_path",
+     "offset": 4,
+     "type": "@\"NSString\""
+    },
+    {
+     "name": "_zone",
+     "offset": 8,
+     "type": "^{?}"
+    },
+    {
+     "name": "_user",
+     "offset": 12,
+     "type": "@\"NSString\""
+    },
+    {
+     "name": "_frozeThreads",
+     "offset": 16,
+     "type": "c"
+    },
+    {
+     "name": "_cache",
+     "offset": 20,
+     "type": "@\"NSMutableDictionary\""
+    }
+   ],
+   "name": "NSLockedPropertyListFile",
+   "superclass": "NSObject"
+  }
+ ],
+ "data_symbols": [],
+ "module": "NSLockedPropertyListFile.m",
+ "schema_version": "abi-v1",
+ "text_symbols": []
+}

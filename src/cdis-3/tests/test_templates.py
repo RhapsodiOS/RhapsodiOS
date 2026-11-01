@@ -42,14 +42,14 @@ def table_value(text, key):
 
 class TestTemplates(unittest.TestCase):
     def test_fstab_is_fstab_hds_root_line(self):
-        root_line = read(SRC, "files-5", "private", "etc",
+        root_line = read(SRC, "files-1", "private", "etc",
                          "fstab.hd").split(b"\n")[0] + b"\n"
         self.assertEqual(read(TEMPLATES, "fstab").replace(b"@DISK@", b"hd0"),
                          root_line)
 
     def test_hostconfig_is_files_copy_with_three_services_off(self):
         ours = read(TEMPLATES, "hostconfig").split(b"\n")
-        theirs = read(SRC, "files-5", "private", "etc",
+        theirs = read(SRC, "files-1", "private", "etc",
                       "hostconfig").split(b"\n")
         self.assertEqual(len(ours), len(theirs))
         changed = [(a, b) for a, b in zip(theirs, ours) if a != b]

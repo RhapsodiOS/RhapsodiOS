@@ -1,0 +1,432 @@
+{
+  "schema_version": "source-map-v1",
+  "reference_sha256": "332B3C8C0AE0A6E40A4B93110EE16748FCD94AA0119D63F16EDE878598C681B4",
+  "mapped": [
+    {
+      "address": 1112786232,
+      "size": 260,
+      "reference_names": [
+        "+[NSDistributedNotificationCenter notificationCenterForType:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistributedNotificationCenter.m",
+      "source_line": 583
+    },
+    {
+      "address": 1112788196,
+      "size": 60,
+      "reference_names": [
+        "+[NSDistributedNotificationCenter defaultCenter]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistributedNotificationCenter.m",
+      "source_line": 606
+    },
+    {
+      "address": 1112789156,
+      "size": 12,
+      "reference_names": [
+        "_NSFlagsFromNotificationSuspensionBehavior"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistributedNotificationCenter.m",
+      "source_line": 265
+    },
+    {
+      "address": 1112801576,
+      "size": 544,
+      "reference_names": [
+        "__NSBuildMessage"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistributedNotificationCenter.m",
+      "source_line": 98
+    },
+    {
+      "address": 1112802212,
+      "size": 252,
+      "reference_names": [
+        "_UniqueString"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistributedNotificationCenter.m",
+      "source_line": 552
+    },
+    {
+      "address": 1112803324,
+      "size": 80,
+      "reference_names": [
+        "_NSBuildRegisterMessage"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistributedNotificationCenter.m",
+      "source_line": 168
+    },
+    {
+      "address": 1112804220,
+      "size": 112,
+      "reference_names": [
+        "-[_NSLocalNotificationCenter init]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistributedNotificationCenter.m",
+      "source_line": 302
+    },
+    {
+      "address": 1112811536,
+      "size": 168,
+      "reference_names": [
+        "-[NSDistributedNotificationCenter init]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistributedNotificationCenter.m",
+      "source_line": 611
+    },
+    {
+      "address": 1112811828,
+      "size": 68,
+      "reference_names": [
+        "-[NSDistributedNotificationCenter changedSuspensionBehavior:name:object:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistributedNotificationCenter.m",
+      "source_line": 620
+    },
+    {
+      "address": 1112811896,
+      "size": 260,
+      "reference_names": [
+        "-[NSDistributedNotificationCenter addObserver:selector:name:object:suspensionBehavior:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistributedNotificationCenter.m",
+      "source_line": 626
+    },
+    {
+      "address": 1112812768,
+      "size": 48,
+      "reference_names": [
+        "-[NSConcreteMachLocalDNC serverName]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistributedNotificationCenter.m",
+      "source_line": 544
+    },
+    {
+      "address": 1112812816,
+      "size": 480,
+      "reference_names": [
+        "-[NSConcreteMachDNC sendMessageToServer:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistributedNotificationCenter.m",
+      "source_line": 320
+    },
+    {
+      "address": 1112813296,
+      "size": 88,
+      "reference_names": [
+        "-[NSConcreteMachDNC init]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistributedNotificationCenter.m",
+      "source_line": 312
+    },
+    {
+      "address": 1112813384,
+      "size": 276,
+      "reference_names": [
+        "-[NSConcreteMachDNC _registerName:object:suspensionBehavior:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistributedNotificationCenter.m",
+      "source_line": 448
+    },
+    {
+      "address": 1112817220,
+      "size": 20,
+      "reference_names": [
+        "-[NSConcreteMachDNC suspended]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistributedNotificationCenter.m",
+      "source_line": 535
+    },
+    {
+      "address": 1112836060,
+      "size": 64,
+      "reference_names": [
+        "_NSBuildSuspendMessage"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistributedNotificationCenter.m",
+      "source_line": 184
+    },
+    {
+      "address": 1112836124,
+      "size": 12,
+      "reference_names": [
+        "_NSFlagsFromNotificationSuspendAction"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistributedNotificationCenter.m",
+      "source_line": 295
+    },
+    {
+      "address": 1112836136,
+      "size": 76,
+      "reference_names": [
+        "-[NSConcreteMachDNC setSuspended:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistributedNotificationCenter.m",
+      "source_line": 527
+    },
+    {
+      "address": 1112836212,
+      "size": 100,
+      "reference_names": [
+        "-[NSConcreteMachDNC _suspend:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistributedNotificationCenter.m",
+      "source_line": 435
+    },
+    {
+      "address": 1113028336,
+      "size": 52,
+      "reference_names": [
+        "+[NSDistributedNotificationCenter enableLogging:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistributedNotificationCenter.m",
+      "source_line": 578
+    },
+    {
+      "address": 1113030732,
+      "size": 320,
+      "reference_names": [
+        "-[NSConcreteMachDNC _postNotificationToNetwork:name:object:deliverImmediately:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistributedNotificationCenter.m",
+      "source_line": 485
+    },
+    {
+      "address": 1113031052,
+      "size": 496,
+      "reference_names": [
+        "-[NSConcreteMachDNC handleMachMessage:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistributedNotificationCenter.m",
+      "source_line": 374
+    },
+    {
+      "address": 1113031548,
+      "size": 164,
+      "reference_names": [
+        "-[NSConcreteMachDNC lostServerPort:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistributedNotificationCenter.m",
+      "source_line": 412
+    },
+    {
+      "address": 1113031712,
+      "size": 80,
+      "reference_names": [
+        "-[NSConcreteMachDNC serverName]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistributedNotificationCenter.m",
+      "source_line": 368
+    },
+    {
+      "address": 1113031836,
+      "size": 308,
+      "reference_names": [
+        "-[NSDistributedNotificationCenter _handleNotificationFromNetwork:name:object:deliveryStatus:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistributedNotificationCenter.m",
+      "source_line": 726
+    },
+    {
+      "address": 1113032144,
+      "size": 76,
+      "reference_names": [
+        "-[NSDistributedNotificationCenter _postNotificationToNetwork:name:object:deliverImmediately:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistributedNotificationCenter.m",
+      "source_line": 720
+    },
+    {
+      "address": 1113032220,
+      "size": 76,
+      "reference_names": [
+        "-[NSDistributedNotificationCenter _registerName:object:suspensionBehavior:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistributedNotificationCenter.m",
+      "source_line": 714
+    },
+    {
+      "address": 1113032296,
+      "size": 56,
+      "reference_names": [
+        "-[NSDistributedNotificationCenter addObserver:selector:name:object:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistributedNotificationCenter.m",
+      "source_line": 675
+    },
+    {
+      "address": 1113032352,
+      "size": 68,
+      "reference_names": [
+        "-[NSDistributedNotificationCenter checkSuspensionBehavior:deliveryStatus:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistributedNotificationCenter.m",
+      "source_line": 748
+    },
+    {
+      "address": 1113032420,
+      "size": 136,
+      "reference_names": [
+        "-[NSDistributedNotificationCenter postNotification:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistributedNotificationCenter.m",
+      "source_line": 682
+    },
+    {
+      "address": 1113032556,
+      "size": 76,
+      "reference_names": [
+        "-[NSDistributedNotificationCenter postNotificationName:object:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistributedNotificationCenter.m",
+      "source_line": 691
+    },
+    {
+      "address": 1113032632,
+      "size": 56,
+      "reference_names": [
+        "-[NSDistributedNotificationCenter postNotificationName:object:userInfo:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistributedNotificationCenter.m",
+      "source_line": 696
+    },
+    {
+      "address": 1113032688,
+      "size": 380,
+      "reference_names": [
+        "-[NSDistributedNotificationCenter postNotificationName:object:userInfo:deliverImmediately:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistributedNotificationCenter.m",
+      "source_line": 640
+    },
+    {
+      "address": 1113033068,
+      "size": 240,
+      "reference_names": [
+        "-[NSDistributedNotificationCenter removeObserver:name:object:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistributedNotificationCenter.m",
+      "source_line": 702
+    },
+    {
+      "address": 1113033308,
+      "size": 76,
+      "reference_names": [
+        "-[NSDistributedNotificationCenter setSuspended:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistributedNotificationCenter.m",
+      "source_line": 664
+    },
+    {
+      "address": 1113033384,
+      "size": 80,
+      "reference_names": [
+        "-[NSDistributedNotificationCenter suspended]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistributedNotificationCenter.m",
+      "source_line": 669
+    },
+    {
+      "address": 1113044712,
+      "size": 12,
+      "reference_names": [
+        "_GarbageCollectUniquedStrings"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistributedNotificationCenter.m",
+      "source_line": 571
+    },
+    {
+      "address": 1113044920,
+      "size": 96,
+      "reference_names": [
+        "_NSBuildPostMessage"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistributedNotificationCenter.m",
+      "source_line": 175
+    },
+    {
+      "address": 1113045096,
+      "size": 12,
+      "reference_names": [
+        "_NSFlagsFromNotificationDeliveryBehavior"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistributedNotificationCenter.m",
+      "source_line": 270
+    },
+    {
+      "address": 1113045108,
+      "size": 12,
+      "reference_names": [
+        "_NSFlagsFromNotificationDeliveryStatus"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistributedNotificationCenter.m",
+      "source_line": 275
+    },
+    {
+      "address": 1113051296,
+      "size": 16,
+      "reference_names": [
+        "_NSNotificationDeliveryBehaviorFromFlags"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistributedNotificationCenter.m",
+      "source_line": 280
+    },
+    {
+      "address": 1113051312,
+      "size": 16,
+      "reference_names": [
+        "_NSNotificationDeliveryStatusFromFlags"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistributedNotificationCenter.m",
+      "source_line": 285
+    },
+    {
+      "address": 1113051328,
+      "size": 16,
+      "reference_names": [
+        "_NSNotificationSuspendActionFromFlags"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistributedNotificationCenter.m",
+      "source_line": 290
+    },
+    {
+      "address": 1113051620,
+      "size": 104,
+      "reference_names": [
+        "_NSParsePostMessage"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistributedNotificationCenter.m",
+      "source_line": 238
+    },
+    {
+      "address": 1113051724,
+      "size": 100,
+      "reference_names": [
+        "_NSParseRegisterMessage"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistributedNotificationCenter.m",
+      "source_line": 249
+    },
+    {
+      "address": 1113051824,
+      "size": 76,
+      "reference_names": [
+        "_NSParseSuspendMessage"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistributedNotificationCenter.m",
+      "source_line": 258
+    },
+    {
+      "address": 1113058824,
+      "size": 244,
+      "reference_names": [
+        "__NSParseMessage"
+      ],
+      "source_path": "src/Kits/Foundation/NSDistributedNotificationCenter.m",
+      "source_line": 189
+    }
+  ],
+  "unmapped": [],
+  "duplicate_candidates": [],
+  "boundary_disputed": []
+}

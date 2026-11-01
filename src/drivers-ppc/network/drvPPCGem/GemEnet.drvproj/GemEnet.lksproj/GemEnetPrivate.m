@@ -3,67 +3,118 @@
 #import "GemEnet.h"
 #import <kernserv/prototypes.h>
 
-// Gem register offsets (encoded with size in upper 16 bits)
+// Gem registers, named as in the stock driver's register dump table.
 // Format: (size << 16) | offset, where size: 1=byte, 2=word, 4=dword
-#define kGemRegInterruptMask		0x40010		// Interrupt mask register
-#define kGemRegInterruptStatus		0x40000		// Interrupt status register
-#define kGemRegSoftwareReset		0x19050		// Software reset
-#define kGemRegSoftwareResetControl	0x11010		// Software reset control
-#define kGemRegConfigReg		0x1603c		// Configuration register
-#define kGemRegPCSMIIStatus		0x19054		// PCS/MII status
-#define kGemRegMIFFrameControl		0x29008		// MIF frame control
-#define kGemRegMIFConfig		0x29000		// MIF configuration
-#define kGemRegMIFStatus2		0x29004		// MIF status 2 (link)
-#define kGemRegMIFMask			0x19010		// MIF mask
-#define kGemRegPCSConfig		0x46008		// PCS configuration
-#define kGemRegMIFStatus		0x16038		// MIF status
-#define kGemRegPauseThreshold		0x26020		// Pause threshold
-#define kGemRegNonPauseThreshold	0x26024		// Non-pause threshold
-#define kGemRegRXPauseThreshold		0x16028		// RX pause threshold
-#define kGemRegMACTXConfig		0x20004		// MAC TX configuration
-#define kGemRegMACRXConfig		0x16040		// MAC RX configuration
-#define kGemRegMACControlConfig		0x16044		// MAC control configuration
-#define kGemRegMACXIFConfig		0x16048		// MAC XIF configuration
-#define kGemRegInterPacketGap0		0x2604c		// Inter-packet gap 0
-#define kGemRegInterPacketGap1		0x26050		// Inter-packet gap 1
-#define kGemRegSlotTime			0x26054		// Slot time
-#define kGemRegMinFrameSize		0x26058		// Minimum frame size
-#define kGemRegMaxFrameSize		0x1605c		// Maximum frame size
-#define kGemRegPreambleLength		0x16060		// Preamble length
-#define kGemRegJamSize			0x26064		// JAM size
-#define kGemRegMACAddress0		0x26080		// MAC address word 0
-#define kGemRegMACAddress1		0x26084		// MAC address word 1
-#define kGemRegMACAddress2		0x26088		// MAC address word 2
-#define kGemRegMACAddress3		0x2608c		// MAC address word 3 (filter)
-#define kGemRegMACAddress4		0x26090		// MAC address word 4 (filter)
-#define kGemRegMACAddress5		0x26094		// MAC address word 5 (filter)
-#define kGemRegAddressFilter0		0x260a4		// Address filter 0
-#define kGemRegAddressFilter1		0x260a8		// Address filter 1
-#define kGemRegAddressFilter2		0x260ac		// Address filter 2
-#define kGemRegAddressFilterMask00	0x26098		// Address filter mask 0-0
-#define kGemRegAddressFilterMask10	0x2609c		// Address filter mask 1-0
-#define kGemRegAddressFilterMask20	0x260a0		// Address filter mask 2-0
-#define kGemRegNormalCollisions		0x160b0		// Normal collision counter
-#define kGemRegFirstAttemptSuccess	0x260b4		// First attempt success
-#define kGemRegHashTable		0x260c0		// Hash table base
-#define kGemRegRandomSeed		0x26130		// Random seed
-#define kGemRegTXDescriptorBaseLow	0x42008		// TX descriptor base low
-#define kGemRegTXDescriptorBaseHigh	0x4200c		// TX descriptor base high
-#define kGemRegTXConfiguration		0x42004		// TX configuration
-#define kGemRegTXKickWrite		0x22000		// TX kick write
-#define kGemRegTXCompletion		0x22100		// TX completion index
-#define kGemRegTXKick			0x26030		// TX kick
-#define kGemRegRXDescriptorBaseLow	0x44004		// RX descriptor base low
-#define kGemRegRXDescriptorBaseHigh	0x44008		// RX descriptor base high
-#define kGemRegRXConfiguration		0x44000		// RX configuration
-#define kGemRegRXKick			0x26034		// RX kick
-#define kGemRegRXFIFOSize		0x24120		// RX FIFO size
-#define kGemRegRXBlankingTime		0x44020		// RX blanking time
-#define kGemRegRXPauseThresholdReg	0x24100		// RX pause threshold register
-#define kGemRegBIFConfig		0x11008		// BIF configuration
-#define kGemRegTXCompletionTimeout	0x44108		// TX completion timeout
-#define kGemRegMACRXFrameCount		0x2611c		// MAC RX frame count
-#define kGemRegMACRXLengthError		0x26124		// MAC RX length error count
+#define kGemRegSEBState			0x10000
+#define kGemRegConfig			0x20004
+#define kGemRegInterruptStatus		0x4000c
+#define kGemRegInterruptMask		0x40010
+#define kGemRegInterruptAck		0x40014
+#define kGemRegInterruptAltStatus	0x4001c
+#define kGemRegPCIErrorStatus		0x11000
+#define kGemRegPCIErrorMask		0x11004
+#define kGemRegBIFConfig		0x11008
+#define kGemRegBIFDiagnostic		0x4100c
+#define kGemRegSoftwareReset		0x11010
+#define kGemRegTxKick			0x22000
+#define kGemRegTxConfig			0x42004
+#define kGemRegTxDescBaseLo		0x42008
+#define kGemRegTxDescBaseHi		0x4200c
+#define kGemRegTxFIFOWritePtr		0x22014
+#define kGemRegTxFIFOShadowWritePtr	0x22018
+#define kGemRegTxFIFOReadPtr		0x2201c
+#define kGemRegTxFIFOShadowReadPtr	0x22020
+#define kGemRegTxFIFOPktCounter		0x22024
+#define kGemRegTxStateMachine		0x42028
+#define kGemRegTxDataPtrLo		0x42030
+#define kGemRegTxDataPtrHi		0x42034
+#define kGemRegTxCompletion		0x22100
+#define kGemRegTxFIFOAddr		0x22104
+#define kGemRegTxFIFOTag		0x12108
+#define kGemRegTxFIFODataLo		0x4210c
+#define kGemRegTxFIFODataHiTag1		0x42110
+#define kGemRegTxFIFODataHiTag0		0x42114
+#define kGemRegTxFIFOSize		0x22118
+#define kGemRegRxConfig			0x44000
+#define kGemRegRxDescBaseLo		0x44004
+#define kGemRegRxDescBaseHi		0x44008
+#define kGemRegRxFIFOWritePtr		0x2400c
+#define kGemRegRxFIFOShadowWritePtr	0x24010
+#define kGemRegRxFIFOReadPtr		0x24014
+#define kGemRegRxFIFOPktCounter		0x24018
+#define kGemRegRxStateMachine		0x4401c
+#define kGemRegRxPauseThresholds	0x44020
+#define kGemRegRxDataPtrLo		0x44024
+#define kGemRegRxDataPtrHi		0x44028
+#define kGemRegRxKick			0x24100
+#define kGemRegRxCompletion		0x24104
+#define kGemRegRxIntBlanking		0x44108
+#define kGemRegRxFIFOAddr		0x2410c
+#define kGemRegRxFIFOTag		0x14110
+#define kGemRegRxDataLo			0x44114
+#define kGemRegRxDataHiTag0		0x44118
+#define kGemRegRxDataHiTag1		0x4411c
+#define kGemRegRxFIFOSize		0x24120
+#define kGemRegMacTxResetCmd		0x16000
+#define kGemRegMacRxResetCmd		0x16004
+#define kGemRegMacSendPauseCmd		0x46008
+#define kGemRegMacTxStatus		0x26010
+#define kGemRegMacRxStatus		0x26014
+#define kGemRegMacControlStatus		0x46018
+#define kGemRegMacTxMask		0x26020
+#define kGemRegMacRxMask		0x26024
+#define kGemRegMacControlMask		0x16028
+#define kGemRegMacTxMacConfig		0x26030
+#define kGemRegMacRxMacConfig		0x26034
+#define kGemRegMacControlConfig		0x16038
+#define kGemRegMacXIFConfig		0x1603c
+#define kGemRegMacInterPktGap0		0x16040
+#define kGemRegMacInterPktGap1		0x16044
+#define kGemRegMacInterPktGap2		0x16048
+#define kGemRegMacSlotTime		0x2604c
+#define kGemRegMacMinFrameSize		0x26050
+#define kGemRegMacMaxFrameSize		0x26054
+#define kGemRegMacPASize		0x26058
+#define kGemRegMacJamSize		0x1605c
+#define kGemRegMacAttemptLimit		0x16060
+#define kGemRegMacTypeControl		0x26064
+#define kGemRegMacAddr			0x26080
+#define kGemRegMacAddrFilter		0x260a4
+#define kGemRegMacAddrFilterMask1	0x160b0
+#define kGemRegMacAddrFilterMask0	0x260b4
+#define kGemRegMacHashTable		0x260c0
+#define kGemRegMacCollisions		0x26100
+#define kGemRegMacSingleCollision	0x26104
+#define kGemRegMacExcessCollisions	0x26108
+#define kGemRegMacLateCollisions	0x2610c
+#define kGemRegMacDeferTimer		0x26110
+#define kGemRegMacPeakAttempts		0x26114
+#define kGemRegMacRxFrameCounter	0x26118
+#define kGemRegMacRxLengthErrors	0x2611c
+#define kGemRegMacRxAlignErrors		0x26120
+#define kGemRegMacRxFCSErrors		0x26124
+#define kGemRegMacRxCodeErrors		0x26128
+#define kGemRegMacRandomSeed		0x26130
+#define kGemRegMacStateMachine		0x16134
+#define kGemRegMIFCLock			0x16200
+#define kGemRegMIFData			0x16204
+#define kGemRegMIFOutputEnable		0x16208
+#define kGemRegMIFFrame			0x4620c
+#define kGemRegMIFConfig		0x26210
+#define kGemRegMIFMask			0x26214
+#define kGemRegMIFStatus		0x46218
+#define kGemRegMIFStateMachine		0x1621c
+#define kGemRegPCSControl		0x29000
+#define kGemRegPCSStatus		0x29004
+#define kGemRegPCSAdvert		0x29008
+#define kGemRegPCSLPAbility		0x2900c
+#define kGemRegPCSConfig		0x19010
+#define kGemRegPCSStateMachine		0x49014
+#define kGemRegPCSInterruptStatus	0x19018
+#define kGemRegPCSDatapathMode		0x19050
+#define kGemRegPCSSerdesControl		0x19054
+#define kGemRegPCSSerdesOutputSelect	0x19058
+#define kGemRegPCSSerdesState		0x1905c
 
 // External function declarations
 extern unsigned int _ReadGemRegister(int base, unsigned int offset_and_size);
@@ -87,45 +138,116 @@ typedef struct {
 // Table of all Gem registers for debugging
 //
 static GemRegisterDef gemRegisterTable[] = {
+    { kGemRegSEBState, "SEBState" },
+    { kGemRegConfig, "Config" },
     { kGemRegInterruptStatus, "InterruptStatus" },
     { kGemRegInterruptMask, "InterruptMask" },
+    { kGemRegInterruptAck, "InterruptAck" },
+    { kGemRegInterruptAltStatus, "InterruptAltStatus" },
+    { kGemRegPCIErrorStatus, "PCIErrorStatus" },
+    { kGemRegPCIErrorMask, "PCIErrorMask" },
+    { kGemRegBIFConfig, "BIFConfig" },
+    { kGemRegBIFDiagnostic, "BIFDiagnostic" },
     { kGemRegSoftwareReset, "SoftwareReset" },
-    { kGemRegConfigReg, "Config" },
-    { kGemRegPCSMIIStatus, "PCS_MII_Status" },
-    { kGemRegMIFFrameControl, "MIF_FrameCtrl" },
-    { kGemRegMIFConfig, "MIF_Config" },
-    { kGemRegMIFMask, "MIF_Mask" },
-    { kGemRegPCSConfig, "PCS_Config" },
-    { kGemRegMIFStatus, "MIF_Status" },
-    { kGemRegPauseThreshold, "PauseThreshold" },
-    { kGemRegNonPauseThreshold, "NonPauseThreshold" },
-    { kGemRegRXPauseThreshold, "RX_PauseThreshold" },
-    { kGemRegMACTXConfig, "MAC_TX_Config" },
-    { kGemRegMACRXConfig, "MAC_RX_Config" },
-    { kGemRegMACControlConfig, "MAC_CtrlConfig" },
-    { kGemRegMACXIFConfig, "MAC_XIF_Config" },
-    { kGemRegInterPacketGap0, "InterPacketGap0" },
-    { kGemRegInterPacketGap1, "InterPacketGap1" },
-    { kGemRegSlotTime, "SlotTime" },
-    { kGemRegMinFrameSize, "MinFrameSize" },
-    { kGemRegMaxFrameSize, "MaxFrameSize" },
-    { kGemRegPreambleLength, "PreambleLength" },
-    { kGemRegJamSize, "JamSize" },
-    { kGemRegMACAddress0, "MAC_Addr0" },
-    { kGemRegMACAddress1, "MAC_Addr1" },
-    { kGemRegMACAddress2, "MAC_Addr2" },
-    { kGemRegTXDescriptorBaseLow, "TX_DescBaseLow" },
-    { kGemRegTXDescriptorBaseHigh, "TX_DescBaseHigh" },
-    { kGemRegTXConfiguration, "TX_Config" },
-    { kGemRegTXKick, "TX_Kick" },
-    { kGemRegRXDescriptorBaseLow, "RX_DescBaseLow" },
-    { kGemRegRXDescriptorBaseHigh, "RX_DescBaseHigh" },
-    { kGemRegRXConfiguration, "RX_Config" },
-    { kGemRegRXKick, "RX_Kick" },
-    { kGemRegRXFIFOSize, "RX_FIFO_Size" },
-    { kGemRegRXBlankingTime, "RX_BlankingTime" },
-    { kGemRegBIFConfig, "BIF_Config" },
-    { kGemRegTXCompletionTimeout, "TX_CompTimeout" },
+    { kGemRegTxKick, "TxKick" },
+    { kGemRegTxConfig, "TxConfig" },
+    { kGemRegTxDescBaseLo, "TxDescBaseLo" },
+    { kGemRegTxDescBaseHi, "TxDescBaseHi" },
+    { kGemRegTxFIFOWritePtr, "TxFIFOWritePtr" },
+    { kGemRegTxFIFOShadowWritePtr, "TxFIFOShadowWritePtr" },
+    { kGemRegTxFIFOReadPtr, "TxFIFOReadPtr" },
+    { kGemRegTxFIFOShadowReadPtr, "TxFIFOShadowReadPtr" },
+    { kGemRegTxFIFOPktCounter, "TxFIFOPktCounter" },
+    { kGemRegTxStateMachine, "TxStateMachine" },
+    { kGemRegTxDataPtrLo, "TxDataPtrLo" },
+    { kGemRegTxDataPtrHi, "TxDataPtrHi" },
+    { kGemRegTxCompletion, "TxCompletion" },
+    { kGemRegTxFIFOAddr, "TxFIFOAddr" },
+    { kGemRegTxFIFOTag, "TxFIFOTag" },
+    { kGemRegTxFIFODataLo, "TxFIFODataLo" },
+    { kGemRegTxFIFODataHiTag1, "TxFIFODataHiTag1" },
+    { kGemRegTxFIFODataHiTag0, "TxFIFODataHiTag0" },
+    { kGemRegTxFIFOSize, "TxFIFOSize" },
+    { kGemRegRxConfig, "RxConfig" },
+    { kGemRegRxDescBaseLo, "RxDescBaseLo" },
+    { kGemRegRxDescBaseHi, "RxDescBaseHi" },
+    { kGemRegRxFIFOWritePtr, "RxFIFOWritePtr" },
+    { kGemRegRxFIFOShadowWritePtr, "RxFIFOShadowWritePtr" },
+    { kGemRegRxFIFOReadPtr, "RxFIFOReadPtr" },
+    { kGemRegRxFIFOPktCounter, "RxFIFOPktCounter" },
+    { kGemRegRxStateMachine, "RxStateMachine" },
+    { kGemRegRxPauseThresholds, "RxPauseThresholds" },
+    { kGemRegRxDataPtrLo, "RxDataPtrLo" },
+    { kGemRegRxDataPtrHi, "RxDataPtrHi" },
+    { kGemRegRxKick, "RxKick" },
+    { kGemRegRxCompletion, "RxCompletion" },
+    { kGemRegRxIntBlanking, "RxIntBlanking" },
+    { kGemRegRxFIFOAddr, "RxFIFOAddr" },
+    { kGemRegRxFIFOTag, "RxFIFOTag" },
+    { kGemRegRxDataLo, "RxDataLo" },
+    { kGemRegRxDataHiTag0, "RxDataHiTag0" },
+    { kGemRegRxDataHiTag1, "RxDataHiTag1" },
+    { kGemRegRxFIFOSize, "RxFIFOSize" },
+    { kGemRegMacTxResetCmd, "MacTxResetCmd" },
+    { kGemRegMacRxResetCmd, "MacRxResetCmd" },
+    { kGemRegMacSendPauseCmd, "MacSendPauseCmd" },
+    { kGemRegMacTxStatus, "MacTxStatus" },
+    { kGemRegMacRxStatus, "MacRxStatus" },
+    { kGemRegMacControlStatus, "MacControlStatus" },
+    { kGemRegMacTxMask, "MacTxMask" },
+    { kGemRegMacRxMask, "MacRxMask" },
+    { kGemRegMacControlMask, "MacControlMask" },
+    { kGemRegMacTxMacConfig, "MacTxMacConfig" },
+    { kGemRegMacRxMacConfig, "MacRxMacConfig" },
+    { kGemRegMacControlConfig, "MacControlConfig" },
+    { kGemRegMacXIFConfig, "MacXIFConfig" },
+    { kGemRegMacInterPktGap0, "MacInterPktGap0" },
+    { kGemRegMacInterPktGap1, "MacInterPktGap1" },
+    { kGemRegMacInterPktGap2, "MacInterPktGap2" },
+    { kGemRegMacSlotTime, "MacSlotTime" },
+    { kGemRegMacMinFrameSize, "MacMinFrameSize" },
+    { kGemRegMacMaxFrameSize, "MacMaxFrameSize" },
+    { kGemRegMacPASize, "MacPASize" },
+    { kGemRegMacJamSize, "MacJamSize" },
+    { kGemRegMacAttemptLimit, "MacAttemptLimit" },
+    { kGemRegMacTypeControl, "MacTypeControl" },
+    { kGemRegMacAddr, "MacAddr" },
+    { kGemRegMacAddrFilter, "MacAddrFilter" },
+    { kGemRegMacAddrFilterMask1, "MacAddrFilterMask1" },
+    { kGemRegMacAddrFilterMask0, "MacAddrFilterMask0" },
+    { kGemRegMacHashTable, "MacHashTable" },
+    { kGemRegMacCollisions, "MacCollisions" },
+    { kGemRegMacSingleCollision, "MacSingleCollision" },
+    { kGemRegMacExcessCollisions, "MacExcessCollisions" },
+    { kGemRegMacLateCollisions, "MacLateCollisions" },
+    { kGemRegMacDeferTimer, "MacDeferTimer" },
+    { kGemRegMacPeakAttempts, "MacPeakAttempts" },
+    { kGemRegMacRxFrameCounter, "MacRxFrameCounter" },
+    { kGemRegMacRxLengthErrors, "MacRxLengthErrors" },
+    { kGemRegMacRxAlignErrors, "MacRxAlignErrors" },
+    { kGemRegMacRxFCSErrors, "MacRxFCSErrors" },
+    { kGemRegMacRxCodeErrors, "MacRxCodeErrors" },
+    { kGemRegMacRandomSeed, "MacRandomSeed" },
+    { kGemRegMacStateMachine, "MacStateMachine" },
+    { kGemRegMIFCLock, "MIFCLock" },
+    { kGemRegMIFData, "MIFData" },
+    { kGemRegMIFOutputEnable, "MIFOutputEnable" },
+    { kGemRegMIFFrame, "MIFFrame" },
+    { kGemRegMIFConfig, "MIFConfig" },
+    { kGemRegMIFMask, "MIFMask" },
+    { kGemRegMIFStatus, "MIFStatus" },
+    { kGemRegMIFStateMachine, "MIFStateMachine" },
+    { kGemRegPCSControl, "PCSControl" },
+    { kGemRegPCSStatus, "PCSStatus" },
+    { kGemRegPCSAdvert, "PCSAdvert" },
+    { kGemRegPCSLPAbility, "PCSLPAbility" },
+    { kGemRegPCSConfig, "PCSConfig" },
+    { kGemRegPCSStateMachine, "PCSStateMachine" },
+    { kGemRegPCSInterruptStatus, "PCSInterruptStatus" },
+    { kGemRegPCSDatapathMode, "PCSDatapathMode" },
+    { kGemRegPCSSerdesControl, "PCSSerdesControl" },
+    { kGemRegPCSSerdesOutputSelect, "PCSSerdesOutputSelect" },
+    { kGemRegPCSSerdesState, "PCSSerdesState" },
     { 0, NULL }  // End marker
 };
 
@@ -196,110 +318,110 @@ static unsigned int mace_crc(unsigned short *address)
     int timeoutDivisor;
     unsigned short randomSeed;
 
-    // Software reset
-    _WriteGemRegister((int)memBase, kGemRegSoftwareReset, 2);
-
-    // Configuration register
-    _WriteGemRegister((int)memBase, kGemRegConfigReg, 0x49);
-
-    // PCS/MII status
-    _WriteGemRegister((int)memBase, kGemRegPCSMIIStatus, 3);
-
-    // MIF frame control - set to 0xa0
-    _WriteGemRegister((int)memBase, kGemRegMIFFrameControl, 0xa0);
-
-    // MIF configuration
-    _WriteGemRegister((int)memBase, kGemRegMIFConfig, 0x1200);
-
-    // MIF mask
-    _WriteGemRegister((int)memBase, kGemRegMIFMask, 1);
-
-    // PCS configuration
-    _WriteGemRegister((int)memBase, kGemRegPCSConfig, 0x1bf0);
-
-    // MIF status
-    _WriteGemRegister((int)memBase, kGemRegMIFStatus, 3);
-
-    // Disable all interrupts
-    _WriteGemRegister((int)memBase, kGemRegInterruptMask, 0xffffffff);
-
-    // Pause thresholds
-    _WriteGemRegister((int)memBase, kGemRegPauseThreshold, 0xffff);
-    _WriteGemRegister((int)memBase, kGemRegNonPauseThreshold, 0xffff);
-
-    // RX pause threshold
-    _WriteGemRegister((int)memBase, kGemRegRXPauseThreshold, 0xff);
-
-    // MAC TX configuration
-    _WriteGemRegister((int)memBase, kGemRegMACTXConfig, 0x42);
-
-    // MAC RX configuration
-    _WriteGemRegister((int)memBase, kGemRegMACRXConfig, 0);
-
-    // MAC control configuration
-    _WriteGemRegister((int)memBase, kGemRegMACControlConfig, 8);
+    // PCS datapath mode
+    _WriteGemRegister((int)ioBaseEnet, kGemRegPCSDatapathMode, 2);
 
     // MAC XIF configuration
-    _WriteGemRegister((int)memBase, kGemRegMACXIFConfig, 4);
+    _WriteGemRegister((int)ioBaseEnet, kGemRegMacXIFConfig, 0x49);
+
+    // PCS serdes control
+    _WriteGemRegister((int)ioBaseEnet, kGemRegPCSSerdesControl, 3);
+
+    // PCS advertisement
+    _WriteGemRegister((int)ioBaseEnet, kGemRegPCSAdvert, 0xa0);
+
+    // PCS control
+    _WriteGemRegister((int)ioBaseEnet, kGemRegPCSControl, 0x1200);
+
+    // PCS configuration
+    _WriteGemRegister((int)ioBaseEnet, kGemRegPCSConfig, 1);
+
+    // MAC send pause command
+    _WriteGemRegister((int)ioBaseEnet, kGemRegMacSendPauseCmd, 0x1bf0);
+
+    // MAC control configuration
+    _WriteGemRegister((int)ioBaseEnet, kGemRegMacControlConfig, 3);
+
+    // Disable all interrupts
+    _WriteGemRegister((int)ioBaseEnet, kGemRegInterruptMask, 0xffffffff);
+
+    // Mask MAC TX and RX status interrupts
+    _WriteGemRegister((int)ioBaseEnet, kGemRegMacTxMask, 0xffff);
+    _WriteGemRegister((int)ioBaseEnet, kGemRegMacRxMask, 0xffff);
+
+    // Mask MAC control interrupts
+    _WriteGemRegister((int)ioBaseEnet, kGemRegMacControlMask, 0xff);
+
+    // Global configuration
+    _WriteGemRegister((int)ioBaseEnet, kGemRegConfig, 0x42);
 
     // Inter-packet gaps
-    _WriteGemRegister((int)memBase, kGemRegInterPacketGap0, 0x40);
-    _WriteGemRegister((int)memBase, kGemRegInterPacketGap1, 0x40);
+    _WriteGemRegister((int)ioBaseEnet, kGemRegMacInterPktGap0, 0);
+    _WriteGemRegister((int)ioBaseEnet, kGemRegMacInterPktGap1, 8);
+    _WriteGemRegister((int)ioBaseEnet, kGemRegMacInterPktGap2, 4);
 
     // Slot time
-    _WriteGemRegister((int)memBase, kGemRegSlotTime, 0x5ee);
+    _WriteGemRegister((int)ioBaseEnet, kGemRegMacSlotTime, 0x40);
 
     // Minimum frame size
-    _WriteGemRegister((int)memBase, kGemRegMinFrameSize, 7);
+    _WriteGemRegister((int)ioBaseEnet, kGemRegMacMinFrameSize, 0x40);
 
     // Maximum frame size
-    _WriteGemRegister((int)memBase, kGemRegMaxFrameSize, 4);
+    _WriteGemRegister((int)ioBaseEnet, kGemRegMacMaxFrameSize, 0x5ee);
 
     // Preamble length
-    _WriteGemRegister((int)memBase, kGemRegPreambleLength, 0x10);
+    _WriteGemRegister((int)ioBaseEnet, kGemRegMacPASize, 7);
 
     // JAM size
-    _WriteGemRegister((int)memBase, kGemRegJamSize, 0x8808);
+    _WriteGemRegister((int)ioBaseEnet, kGemRegMacJamSize, 4);
+
+    // Attempt limit
+    _WriteGemRegister((int)ioBaseEnet, kGemRegMacAttemptLimit, 0x10);
+
+    // MAC control type (802.3x)
+    _WriteGemRegister((int)ioBaseEnet, kGemRegMacTypeControl, 0x8808);
 
     // Write MAC address (3 words, reversed order)
     for (i = 0; i < 3; i++) {
-        _WriteGemRegister((int)memBase, kGemRegMACAddress0 + (i * 4),
+        _WriteGemRegister((int)ioBaseEnet, kGemRegMacAddr + (i * 4),
                          *(unsigned short *)((int)&myAddress + (2 - i) * 2));
     }
 
-    // Clear MAC address filter words 3-5
+    // Clear alternate MAC address words 3-5 and address filter words 0-2
     for (i = 0; i < 3; i++) {
-        _WriteGemRegister((int)memBase, kGemRegMACAddress3 + (i * 4), 0);
-        _WriteGemRegister((int)memBase, kGemRegAddressFilter0 + (i * 4), 0);
+        _WriteGemRegister((int)ioBaseEnet, kGemRegMacAddr + ((i + 3) * 4), 0);
+        _WriteGemRegister((int)ioBaseEnet, kGemRegMacAddrFilter + (i * 4), 0);
     }
 
-    // Address filter masks
-    _WriteGemRegister((int)memBase, kGemRegAddressFilterMask00, 1);
-    _WriteGemRegister((int)memBase, kGemRegAddressFilterMask10, 0xc200);
-    _WriteGemRegister((int)memBase, kGemRegAddressFilterMask20, 0x180);
+    // MAC address words 6-8: 802.3x flow control address 01:80:C2:00:00:01
+    _WriteGemRegister((int)ioBaseEnet, kGemRegMacAddr + (6 * 4), 1);
+    _WriteGemRegister((int)ioBaseEnet, kGemRegMacAddr + (7 * 4), 0xc200);
+    _WriteGemRegister((int)ioBaseEnet, kGemRegMacAddr + (8 * 4), 0x180);
 
-    // Collision counters
-    _WriteGemRegister((int)memBase, kGemRegNormalCollisions, 0);
-    _WriteGemRegister((int)memBase, kGemRegFirstAttemptSuccess, 0);
+    // Address filter masks
+    _WriteGemRegister((int)ioBaseEnet, kGemRegMacAddrFilterMask1, 0);
+    _WriteGemRegister((int)ioBaseEnet, kGemRegMacAddrFilterMask0, 0);
 
     // Clear hash table (16 entries)
     for (i = 0; i < 16; i++) {
-        _WriteGemRegister((int)memBase, kGemRegHashTable + (i * 4), 0);
+        _WriteGemRegister((int)ioBaseEnet, kGemRegMacHashTable + (i * 4), 0);
     }
 
-    // Clear additional registers (0x26100-0x26128)
-    for (i = 0x26100; i <= 0x26128; i += 4) {
-        _WriteGemRegister((int)memBase, (4 << 16) | i, 0);
+    // Clear the MAC statistics counters. The stock driver's loop body is
+    // empty, so it only writes 0 to the unused offset 0x612c once; we clear
+    // every counter as intended.
+    for (i = kGemRegMacCollisions; i <= kGemRegMacRxCodeErrors; i += 4) {
+        _WriteGemRegister((int)ioBaseEnet, i, 0);
     }
 
     // Get MAC address and write random seed
     [self _getStationAddress:&myAddress];
     randomSeed = *(unsigned short *)((int)&myAddress + 4);
-    _WriteGemRegister((int)memBase, kGemRegRandomSeed, randomSeed);
+    _WriteGemRegister((int)ioBaseEnet, kGemRegMacRandomSeed, randomSeed);
 
     // TX descriptor base addresses (use physical address for hardware)
-    _WriteGemRegister((int)memBase, kGemRegTXDescriptorBaseLow, txDMACommandsPhys);
-    _WriteGemRegister((int)memBase, kGemRegTXDescriptorBaseHigh, 0);
+    _WriteGemRegister((int)ioBaseEnet, kGemRegTxDescBaseLo, txDMACommandsPhys);
+    _WriteGemRegister((int)ioBaseEnet, kGemRegTxDescBaseHi, 0);
 
     // Calculate TX ring size (log2 of ring entries)
     txRingSize = 3;  // Assuming 3 entries for now
@@ -311,17 +433,17 @@ static unsigned int mace_crc(unsigned short *address)
     }
 
     // TX configuration
-    _WriteGemRegister((int)memBase, kGemRegTXConfiguration, (txShift << 1) | 0x1ffc00);
+    _WriteGemRegister((int)ioBaseEnet, kGemRegTxConfig, (txShift << 1) | 0x1ffc00);
 
-    // TX kick
-    _WriteGemRegister((int)memBase, kGemRegTXKick, 6);
+    // MAC TX configuration
+    _WriteGemRegister((int)ioBaseEnet, kGemRegMacTxMacConfig, 6);
 
     // RX descriptor base addresses (use physical address for hardware)
-    _WriteGemRegister((int)memBase, kGemRegRXDescriptorBaseLow, rxDMACommandsPhys);
-    _WriteGemRegister((int)memBase, kGemRegRXDescriptorBaseHigh, 0);
+    _WriteGemRegister((int)ioBaseEnet, kGemRegRxDescBaseLo, rxDMACommandsPhys);
+    _WriteGemRegister((int)ioBaseEnet, kGemRegRxDescBaseHi, 0);
 
-    // RX pause threshold register
-    _WriteGemRegister((int)memBase, kGemRegRXPauseThresholdReg, 0x7c);
+    // RX kick
+    _WriteGemRegister((int)ioBaseEnet, kGemRegRxKick, 0x7c);
 
     // Calculate RX ring size (log2 of ring entries)
     rxRingSize = 3;  // Assuming 3 entries for now
@@ -333,19 +455,19 @@ static unsigned int mace_crc(unsigned short *address)
     }
 
     // RX configuration
-    _WriteGemRegister((int)memBase, kGemRegRXConfiguration, (rxShift << 1) | 0x1000000);
+    _WriteGemRegister((int)ioBaseEnet, kGemRegRxConfig, (rxShift << 1) | 0x1000000);
 
-    // RX kick
-    _WriteGemRegister((int)memBase, kGemRegRXKick, 0);
+    // MAC RX configuration
+    _WriteGemRegister((int)ioBaseEnet, kGemRegMacRxMacConfig, 0);
 
-    // RX blanking time
-    rxFIFOSize = _ReadGemRegister((int)memBase, kGemRegRXFIFOSize);
-    _WriteGemRegister((int)memBase, kGemRegRXBlankingTime, ((rxFIFOSize - 0x60) & 0xffff) | 0x60000);
+    // RX pause thresholds
+    rxFIFOSize = _ReadGemRegister((int)ioBaseEnet, kGemRegRxFIFOSize);
+    _WriteGemRegister((int)ioBaseEnet, kGemRegRxPauseThresholds, ((rxFIFOSize - 0x60) & 0xffff) | 0x60000);
 
-    // TX completion timeout
-    bifConfig = _ReadGemRegister((int)memBase, kGemRegBIFConfig);
+    // RX interrupt blanking
+    bifConfig = _ReadGemRegister((int)ioBaseEnet, kGemRegBIFConfig);
     timeoutDivisor = (bifConfig & 8) ? 0xf : 0x1e;
-    _WriteGemRegister((int)memBase, kGemRegTXCompletionTimeout,
+    _WriteGemRegister((int)ioBaseEnet, kGemRegRxIntBlanking,
                      ((250000 / (timeoutDivisor << 11)) << 12) | 5);
 
     return YES;
@@ -358,12 +480,12 @@ static unsigned int mace_crc(unsigned short *address)
 {
     unsigned int resetStatus;
 
-    // Write 3 to software reset control register
-    _WriteGemRegister((int)memBase, kGemRegSoftwareResetControl, 3);
+    // Write 3 to software reset register
+    _WriteGemRegister((int)ioBaseEnet, kGemRegSoftwareReset, 3);
 
     // Poll until reset completes (bits 0 and 1 clear)
     do {
-        resetStatus = _ReadGemRegister((int)memBase, kGemRegSoftwareResetControl);
+        resetStatus = _ReadGemRegister((int)ioBaseEnet, kGemRegSoftwareReset);
     } while ((resetStatus & 3) != 0);
 }
 
@@ -375,33 +497,33 @@ static unsigned int mace_crc(unsigned short *address)
     unsigned int regValue;
 
     // Enable TX DMA - set bit 0 of TX configuration register
-    regValue = _ReadGemRegister((int)memBase, kGemRegTXConfiguration);
+    regValue = _ReadGemRegister((int)ioBaseEnet, kGemRegTxConfig);
     regValue = regValue | 1;
-    _WriteGemRegister((int)memBase, kGemRegTXConfiguration, regValue);
+    _WriteGemRegister((int)ioBaseEnet, kGemRegTxConfig, regValue);
 
     // Delay 20 microseconds
     IODelay(20);
 
     // Enable RX DMA - set bit 0 of RX configuration register
-    regValue = _ReadGemRegister((int)memBase, kGemRegRXConfiguration);
+    regValue = _ReadGemRegister((int)ioBaseEnet, kGemRegRxConfig);
     regValue = regValue | 1;
-    _WriteGemRegister((int)memBase, kGemRegRXConfiguration, regValue);
+    _WriteGemRegister((int)ioBaseEnet, kGemRegRxConfig, regValue);
 
     // Delay 20 microseconds
     IODelay(20);
 
     // Enable MAC transmitter - set bit 0 of MAC TX config
-    regValue = _ReadGemRegister((int)memBase, kGemRegMACTXConfig);
+    regValue = _ReadGemRegister((int)ioBaseEnet, kGemRegMacTxMacConfig);
     regValue = regValue | 1;
-    _WriteGemRegister((int)memBase, kGemRegMACTXConfig, regValue);
+    _WriteGemRegister((int)ioBaseEnet, kGemRegMacTxMacConfig, regValue);
 
     // Delay 20 microseconds
     IODelay(20);
 
     // Enable MAC receiver - set bit 0 of MAC RX config
-    regValue = _ReadGemRegister((int)memBase, kGemRegMACRXConfig);
+    regValue = _ReadGemRegister((int)ioBaseEnet, kGemRegMacRxMacConfig);
     regValue = regValue | 1;
-    _WriteGemRegister((int)memBase, kGemRegMACRXConfig, regValue);
+    _WriteGemRegister((int)ioBaseEnet, kGemRegMacRxMacConfig, regValue);
 }
 
 //
@@ -446,14 +568,14 @@ static unsigned int mace_crc(unsigned short *address)
         }
 
         // Set up TX and RX DMA command pointers (virtual addresses)
-        txDMACommands = dmaCommands;
-        txDMACommandsSize = 0x80;  // 128 bytes
-        rxDMACommands = (void *)((int)dmaCommands + 0x800);  // Offset by 2048 bytes
-        rxDMACommandsSize = 0x80;  // 128 bytes
+        rxDMACommands = dmaCommands;
+        rxMaxCommand = 0x80;  // 128 bytes
+        txDMACommands = (void *)((int)dmaCommands + 0x800);  // Offset by 2048 bytes
+        txMaxCommand = 0x80;  // 128 bytes
 
         // Calculate physical addresses for hardware
-        IOPhysicalFromVirtual(txDMACommands, (void **)&txDMACommandsPhys);
-        IOPhysicalFromVirtual(rxDMACommands, (void **)&rxDMACommandsPhys);
+        IOPhysicalFromVirtual(rxDMACommands, (void **)&txDMACommandsPhys);
+        IOPhysicalFromVirtual(txDMACommands, (void **)&rxDMACommandsPhys);
     }
 
     return YES;
@@ -468,11 +590,11 @@ static unsigned int mace_crc(unsigned short *address)
     int result;
 
     // Zero the TX ring descriptor memory
-    bzero(rxDMACommands, rxDMACommandsSize << 4);
+    bzero(txDMACommands, txMaxCommand << 4);
 
     // Initialize TX ring pointers
-    txHead = 0;
-    txTail = 0;
+    txCommandHead = 0;
+    txCommandTail = 0;
 
     // Free existing transmit queue if present
     if (transmitQueue != nil) {
@@ -487,9 +609,9 @@ static unsigned int mace_crc(unsigned short *address)
     }
 
     // Get physical address and verify it's valid
-    result = IOPhysicalFromVirtual(rxDMACommands, &physAddr);
+    result = IOPhysicalFromVirtual(txDMACommands, &physAddr);
     if (result == 0) {
-        IOLog("Ethernet(Gem): Bad dma command buf - %08x\n\r", (unsigned int)rxDMACommands);
+        IOLog("Ethernet(Gem): Bad dma command buf - %08x\n\r", (unsigned int)txDMACommands);
         return NO;
     }
 
@@ -508,30 +630,30 @@ static unsigned int mace_crc(unsigned short *address)
     BOOL updateResult;
 
     // Zero the RX ring descriptor memory
-    bzero(txDMACommands, txDMACommandsSize << 4);
+    bzero(rxDMACommands, rxMaxCommand << 4);
 
     // Get physical address and verify it's valid
-    result = IOPhysicalFromVirtual(txDMACommands, &physAddr);
+    result = IOPhysicalFromVirtual(rxDMACommands, &physAddr);
     if (result != 0) {
-        IOLog("Ethernet(Gem): Bad dma command buf - %08x\n\r", (unsigned int)txDMACommands);
+        IOLog("Ethernet(Gem): Bad dma command buf - %08x\n\r", (unsigned int)rxDMACommands);
         return NO;
     }
 
     // Allocate netbufs for each RX ring entry
-    for (i = 0; i < txDMACommandsSize; i++) {
+    for (i = 0; i < rxMaxCommand; i++) {
         // Allocate netbuf if not already allocated
-        if (rxNetbufs[i] == NULL) {
+        if (rxNetbuf[i] == NULL) {
             nb = [self allocateNetbuf];
             if (nb == NULL) {
                 IOLog("Ethernet(Gem): allocateNetbuf returned NULL in _initRxRing\n\r");
                 return NO;
             }
-            rxNetbufs[i] = nb;
+            rxNetbuf[i] = nb;
         }
 
         // Update descriptor from netbuf
-        updateResult = [self _updateDescriptorFromNetBuf:rxNetbufs[i]
-                                                     Desc:(void *)((int)txDMACommands + (i * 0x10))
+        updateResult = [self _updateDescriptorFromNetBuf:rxNetbuf[i]
+                                                     Desc:(void *)((int)rxDMACommands + (i * 0x10))
                                              ReceiveFlag:YES];
         if (!updateResult) {
             IOLog("Ethernet(Gem): cant map Netbuf to physical memory in _initRxRing\n\r");
@@ -540,8 +662,8 @@ static unsigned int mace_crc(unsigned short *address)
     }
 
     // Initialize RX ring pointers
-    rxHead = 0;
-    rxTail = i - 4;  // Tail is size minus 4
+    rxCommandHead = 0;
+    rxCommandTail = i - 4;  // Tail is size minus 4
 
     return YES;
 }
@@ -554,14 +676,14 @@ static unsigned int mace_crc(unsigned short *address)
     unsigned int intMask;
 
     // Read current interrupt mask
-    intMask = _ReadGemRegister((int)memBase, kGemRegInterruptMask);
+    intMask = _ReadGemRegister((int)ioBaseEnet, kGemRegInterruptMask);
 
     // Clear bits to enable interrupts (0x7fee enables specific interrupts)
     // Writing 0 to a bit enables that interrupt
     intMask &= 0xffff7fee;
 
     // Write back the modified mask
-    _WriteGemRegister((int)memBase, kGemRegInterruptMask, intMask);
+    _WriteGemRegister((int)ioBaseEnet, kGemRegInterruptMask, intMask);
 }
 
 //
@@ -570,56 +692,27 @@ static unsigned int mace_crc(unsigned short *address)
 - (void)_disableAdapterInterrupts
 {
     // Write all 1's to the interrupt mask register to disable all interrupts
-    _WriteGemRegister((int)memBase, kGemRegInterruptMask, 0xFFFFFFFF);
+    _WriteGemRegister((int)ioBaseEnet, kGemRegInterruptMask, 0xFFFFFFFF);
 }
 
 //
 // Handle transmit interrupt
 //
-- (void)_transmitInterruptOccurred
+- (BOOL)_transmitInterruptOccurred
 {
-    unsigned int completionIndex;
-    unsigned int descriptorIndex;
-    void *descriptorAddr;
-    unsigned int flags;
-    netbuf_t nb;
+    // Free each netbuf the hardware has finished sending
+    while (_ReadGemRegister((int)ioBaseEnet, kGemRegTxCompletion) != txCommandHead) {
+        [networkInterface incrementOutputPackets];
+        nb_free(txNetbuf[txCommandHead]);
+        txNetbuf[txCommandHead] = NULL;
 
-    // Read TX completion index from hardware
-    completionIndex = _ReadGemRegister((int)memBase, kGemRegTXCompletion);
-
-    // Process all completed transmissions
-    while (txHead != completionIndex) {
-        descriptorIndex = txHead;
-
-        // Get descriptor address (remember: rxDMACommands is used for TX descriptors)
-        descriptorAddr = (void *)((int)rxDMACommands + (descriptorIndex * 0x10));
-
-        // Read flags from descriptor (at offset +4)
-        flags = *(unsigned int *)((int)descriptorAddr + 4);
-
-        // Byte swap flags (big-endian)
-        flags = (flags << 24) | ((flags >> 8) & 0xFF00) |
-                ((flags << 8) & 0xFF0000) | (flags >> 24);
-
-        // Get the netbuf from transmit queue
-        nb = [transmitQueue dequeue];
-        if (nb != NULL) {
-            // Free the transmitted netbuf
-            nb_free(nb);
-
-            // Increment output packet counter
-            [network incrementOutputPackets];
-        }
-
-        // Move to next descriptor
-        txHead++;
-        if (txHead >= txDMACommandsSize) {
-            txHead = 0;
+        txCommandHead++;
+        if (txCommandHead >= txMaxCommand) {
+            txCommandHead = 0;
         }
     }
 
-    // Service the transmit queue if there are pending packets
-    [self serviceTransmitQueue];
+    return YES;
 }
 
 //
@@ -643,21 +736,21 @@ static unsigned int mace_crc(unsigned short *address)
     BOOL updateResult;
 
     // Calculate next tail position
-    nextTail = txTail + 1;
-    if (nextTail >= rxDMACommandsSize) {
+    nextTail = txCommandTail + 1;
+    if (nextTail >= txMaxCommand) {
         nextTail = 0;
     }
 
     // Check if ring is full
-    if (nextTail == txHead) {
+    if (nextTail == txCommandHead) {
         // Ring is full, can't transmit
         IOLog("Ethernet(Gem): TX ring full\n\r");
         nb_free(packet);
         return;
     }
 
-    // Get descriptor address (remember: rxDMACommands is used for TX descriptors)
-    descriptorAddr = (void *)((int)rxDMACommands + (txTail * 0x10));
+    // Get descriptor address
+    descriptorAddr = (void *)((int)txDMACommands + (txCommandTail * 0x10));
 
     // Update descriptor from netbuf
     updateResult = [self _updateDescriptorFromNetBuf:packet
@@ -689,14 +782,14 @@ static unsigned int mace_crc(unsigned short *address)
     // Ensure write completes before updating tail
     enforceInOrderExecutionIO();
 
-    // Add packet to transmit queue for later cleanup
-    [transmitQueue enqueue:packet];
+    // Keep the netbuf until the transmit completes
+    txNetbuf[txCommandTail] = packet;
 
     // Update tail pointer
-    txTail = nextTail;
+    txCommandTail = nextTail;
 
     // Kick the hardware to start transmission
-    _WriteGemRegister((int)memBase, kGemRegTXKickWrite, txTail);
+    _WriteGemRegister((int)ioBaseEnet, kGemRegTxKick, txCommandTail);
 }
 
 //
@@ -711,7 +804,7 @@ static unsigned int mace_crc(unsigned short *address)
     int bufferSize;
 
     // Only proceed if driver is ready
-    if (!ready) {
+    if (!resetAndEnabled) {
         return;
     }
 
@@ -733,7 +826,7 @@ static unsigned int mace_crc(unsigned short *address)
         elapsedMicroseconds = (unsigned int)((currentTime - startTime) / 1000);
 
         // Check if ring has space
-        if (txHead == txTail) {
+        if (txCommandHead == txCommandTail) {
             break;  // Ring is empty, we can transmit
         }
 
@@ -753,7 +846,7 @@ static unsigned int mace_crc(unsigned short *address)
     }
 
     // Store in debugger buffer pointer for tracking
-    debuggerPktBuffer = (void *)nb;
+    debuggerPkt = (void *)nb;
 
     // Get data pointer and copy packet data
     data = nb_map(nb);
@@ -781,7 +874,7 @@ static unsigned int mace_crc(unsigned short *address)
         elapsedMicroseconds = (unsigned int)((currentTime - startTime) / 1000);
 
         // Check if transmission completed (head == tail again)
-        if (txHead == txTail) {
+        if (txCommandHead == txCommandTail) {
             break;  // Transmission complete
         }
 
@@ -854,7 +947,7 @@ static unsigned int mace_crc(unsigned short *address)
     *len = 0;
 
     // Only proceed if driver is ready
-    if (!ready) {
+    if (!resetAndEnabled) {
         return;
     }
 
@@ -862,8 +955,8 @@ static unsigned int mace_crc(unsigned short *address)
     [self disableAllInterrupts];
 
     // Set up debugger packet buffer
-    debuggerPktBuffer = pkt;
-    debuggerPktLength = 0;
+    debuggerPkt = pkt;
+    debuggerPktSize = 0;
 
     // Get start time
     IOGetTimestamp(&startTime);
@@ -880,7 +973,7 @@ static unsigned int mace_crc(unsigned short *address)
         elapsedMicroseconds = (unsigned int)((currentTime - startTime) / 1000);
 
         // Break if we received a packet
-        if (debuggerPktLength != 0) {
+        if (debuggerPktSize != 0) {
             break;
         }
 
@@ -888,7 +981,7 @@ static unsigned int mace_crc(unsigned short *address)
     } while (elapsedMicroseconds < timeout);
 
     // Return the received length
-    *len = debuggerPktLength;
+    *len = debuggerPktSize;
 
     // Re-enable interrupts
     [self enableAllInterrupts];
@@ -915,7 +1008,7 @@ static unsigned int mace_crc(unsigned short *address)
     int lengthErrors;
     id superclass;
 
-    currentIndex = rxHead;
+    currentIndex = rxCommandHead;
     previousIndex = 0xFFFFFFFF;
 
     // Process all received packets in the ring
@@ -925,7 +1018,7 @@ static unsigned int mace_crc(unsigned short *address)
         hasError = NO;
 
         // Get descriptor address
-        descriptorAddr = (void *)((int)txDMACommands + (currentIndex * 0x10));
+        descriptorAddr = (void *)((int)rxDMACommands + (currentIndex * 0x10));
 
         // Read status word at offset +2 (big-endian, need to swap)
         statusWord = *(unsigned short *)((int)descriptorAddr + 2);
@@ -946,16 +1039,16 @@ static unsigned int mace_crc(unsigned short *address)
 
         // Check for errors: bad length or error flag
         if ((packetLength < 0x3C) || (packetLength > 0x5EE) || ((flags & 0x40000000) != 0)) {
-            [network incrementInputErrors];
+            [networkInterface incrementInputErrors];
             hasError = YES;
         }
 
         // Get the netbuf for this slot
-        oldNetbuf = rxNetbufs[currentIndex];
+        oldNetbuf = rxNetbuf[currentIndex];
 
         if (!hasError) {
             // Check if unwanted multicast (only if not promiscuous)
-            if (!promiscuousMode && ((flags & 0x10000000) != 0)) {
+            if (!isPromiscuous && ((flags & 0x10000000) != 0)) {
                 // Multicast packet - check if we want it
                 superclass = [IOEthernet self];
                 if ([superclass isUnwantedMulticastPacket:[oldNetbuf data]]) {
@@ -967,11 +1060,11 @@ static unsigned int mace_crc(unsigned short *address)
                 // Allocate new netbuf for this slot
                 newNetbuf = [self allocateNetbuf];
                 if (newNetbuf == NULL) {
-                    [network incrementInputErrors];
+                    [networkInterface incrementInputErrors];
                     hasError = YES;
                 } else {
                     // Store new netbuf in slot
-                    rxNetbufs[currentIndex] = newNetbuf;
+                    rxNetbuf[currentIndex] = newNetbuf;
                     allocated = YES;
 
                     // Update descriptor with new netbuf
@@ -998,7 +1091,7 @@ static unsigned int mace_crc(unsigned short *address)
         // Advance to next descriptor
         previousIndex = currentIndex;
         currentIndex++;
-        if (currentIndex >= txDMACommandsSize) {
+        if (currentIndex >= rxMaxCommand) {
             currentIndex = 0;
         }
 
@@ -1010,28 +1103,28 @@ static unsigned int mace_crc(unsigned short *address)
                 break;  // Only process one packet in polling mode
             } else {
                 // Normal mode - send to network stack
-                [network handleInputPacket:oldNetbuf extra:0];
+                [networkInterface handleInputPacket:oldNetbuf extra:0];
             }
         }
     }
 
     // Update ring pointers if we processed any packets
     if (previousIndex != 0xFFFFFFFF) {
-        rxTail = previousIndex;
-        rxHead = currentIndex;
+        rxCommandTail = previousIndex;
+        rxCommandHead = currentIndex;
     }
 
     // Update hardware RX kick register (aligned to 4-byte boundary)
-    _WriteGemRegister((int)memBase, kGemRegRXPauseThresholdReg, rxTail & 0xFFFFFFFC);
+    _WriteGemRegister((int)ioBaseEnet, kGemRegRxKick, rxCommandTail & 0xFFFFFFFC);
 
     // Read and clear error counters
-    frameErrors = _ReadGemRegister((int)memBase, kGemRegMACRXFrameCount);
-    lengthErrors = _ReadGemRegister((int)memBase, kGemRegMACRXLengthError);
-    _WriteGemRegister((int)memBase, kGemRegMACRXFrameCount, 0);
-    _WriteGemRegister((int)memBase, kGemRegMACRXLengthError, 0);
+    frameErrors = _ReadGemRegister((int)ioBaseEnet, kGemRegMacRxLengthErrors);
+    lengthErrors = _ReadGemRegister((int)ioBaseEnet, kGemRegMacRxFCSErrors);
+    _WriteGemRegister((int)ioBaseEnet, kGemRegMacRxLengthErrors, 0);
+    _WriteGemRegister((int)ioBaseEnet, kGemRegMacRxFCSErrors, 0);
 
     // Increment error counter
-    [network incrementInputErrorsBy:(frameErrors + lengthErrors)];
+    [networkInterface incrementInputErrorsBy:(frameErrors + lengthErrors)];
 
     return YES;
 }
@@ -1061,27 +1154,27 @@ static unsigned int mace_crc(unsigned short *address)
     unsigned int statusValue;
     unsigned int i;
 
-    // Read current RX kick register value
-    rxKickValue = _ReadGemRegister((int)memBase, kGemRegRXKick);
+    // Read current MAC RX configuration
+    rxKickValue = _ReadGemRegister((int)ioBaseEnet, kGemRegMacRxMacConfig);
 
-    // Disable RX kick by clearing bits (AND with 0xffde)
-    _WriteGemRegister((int)memBase, kGemRegRXKick, rxKickValue & 0xffde);
+    // Disable the receiver and hash filter (AND with 0xffde)
+    _WriteGemRegister((int)ioBaseEnet, kGemRegMacRxMacConfig, rxKickValue & 0xffde);
 
     // Wait for RX to stop (wait until bits 0x21 are clear)
     do {
-        statusValue = _ReadGemRegister((int)memBase, kGemRegRXKick);
+        statusValue = _ReadGemRegister((int)ioBaseEnet, kGemRegMacRxMacConfig);
     } while ((statusValue & 0x21) != 0);
 
     // Write all 16 hash table entries to hardware
     // Note: hashTableMask array is written in reverse order to hardware registers
     for (i = 0; i < 0x10; i++) {
-        _WriteGemRegister((int)memBase,
-                         kGemRegHashTable + (i * 4),
+        _WriteGemRegister((int)ioBaseEnet,
+                         kGemRegMacHashTable + (i * 4),
                          hashTableMask[0xf - i]);
     }
 
-    // Re-enable RX kick with bit 0x20 set
-    _WriteGemRegister((int)memBase, kGemRegRXKick, rxKickValue | 0x20);
+    // Re-enable with the hash filter bit 0x20 set
+    _WriteGemRegister((int)ioBaseEnet, kGemRegMacRxMacConfig, rxKickValue | 0x20);
 }
 
 //
@@ -1307,13 +1400,13 @@ static unsigned int mace_crc(unsigned short *address)
     unsigned short currentStatus;
     unsigned char configReg;
 
-    // Read current MIF status
-    currentStatus = _ReadGemRegister((int)memBase, kGemRegMIFStatus2);
+    // Read current PCS status
+    currentStatus = _ReadGemRegister((int)ioBaseEnet, kGemRegPCSStatus);
 
     // Check if link status bit (bit 2 = 0x04) has changed
-    if (((currentStatus ^ linkStatus) & 0x04) != 0) {
-        // Read current configuration register
-        configReg = _ReadGemRegister((int)memBase, kGemRegConfigReg);
+    if (((currentStatus ^ phyStatusPrev) & 0x04) != 0) {
+        // Read current MAC XIF configuration
+        configReg = _ReadGemRegister((int)ioBaseEnet, kGemRegMacXIFConfig);
 
         if ((currentStatus & 0x04) == 0) {
             // Link is down
@@ -1327,12 +1420,12 @@ static unsigned int mace_crc(unsigned short *address)
             configReg |= 0x20;
         }
 
-        // Write back the modified configuration
-        _WriteGemRegister((int)memBase, kGemRegConfigReg, configReg);
+        // Write back the modified XIF configuration
+        _WriteGemRegister((int)ioBaseEnet, kGemRegMacXIFConfig, configReg);
     }
 
     // Store current status for next comparison
-    linkStatus = currentStatus;
+    phyStatusPrev = currentStatus;
 }
 
 //
@@ -1346,7 +1439,7 @@ static unsigned int mace_crc(unsigned short *address)
     unsigned short regSize;
     char *formatStr;
 
-    IOLog("\nEthernet(Gem): IO Address = %08x\n\r", (unsigned int)memBase);
+    IOLog("\nEthernet(Gem): IO Address = %08x\n\r", (unsigned int)ioBaseEnet);
 
     // Iterate through register table
     for (i = 0; gemRegisterTable[i].regName != NULL; i++) {
@@ -1354,7 +1447,7 @@ static unsigned int mace_crc(unsigned short *address)
         regSize = (unsigned short)(regOffset >> 16);
 
         // Read the register value
-        regValue = _ReadGemRegister((int)memBase, regOffset);
+        regValue = _ReadGemRegister((int)ioBaseEnet, regOffset);
 
         // Select format string based on register size
         switch (regSize) {
@@ -1387,14 +1480,14 @@ static unsigned int mace_crc(unsigned short *address)
 
     // Get the packet length
     length = nb_size(nb);
-    debuggerPktLength = length;
+    debuggerPktSize = length;
 
     // Get the packet data pointer
     data = nb_map(nb);
 
     // Copy packet data to debugger buffer
-    if (debuggerPktBuffer != NULL && data != NULL) {
-        bcopy(data, debuggerPktBuffer, debuggerPktLength);
+    if (debuggerPkt != NULL && data != NULL) {
+        bcopy(data, debuggerPkt, debuggerPktSize);
     }
 
     // Free the netbuf

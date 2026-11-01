@@ -37,6 +37,7 @@ enum {
 
 typedef struct {
     unsigned char speed;
+    unsigned int *audioMuxOwner;
     void *context;
     unsigned char (*read8)(void *context, unsigned int offset);
     void (*write8)(void *context, unsigned int offset,

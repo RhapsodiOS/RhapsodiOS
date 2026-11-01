@@ -507,15 +507,11 @@ transfer_done:
 		if (isRead) {
 			[self addToBytesRead:*actualLength
 				   totalTime:elapsedTime
-				  latentTime:0
-				 extraParam1:0
-				 extraParam2:0];
+				  latentTime:0];
 		} else {
 			[self addToBytesWritten:*actualLength
 				      totalTime:elapsedTime
-				     latentTime:0
-				    extraParam1:0
-				    extraParam2:0];
+				     latentTime:0];
 		}
 	} else {
 		// Error - increment error counters
@@ -745,7 +741,7 @@ transfer_done:
  * Update physical parameters (internal).
  * From decompiled code: probes disk to determine geometry and density.
  */
-- (void)updatePhysicalParametersInt
+- (IOReturn)updatePhysicalParametersInt
 {
 	IOReturn result;
 	unsigned char status;
@@ -778,24 +774,24 @@ transfer_done:
 	} while (retryCount < 3);
 
 	if (result != IO_R_SUCCESS) {
-		return;  // Recalibrate failed
+		return IO_R_IO;  // Recalibrate failed
 	}
 
 	// Get drive status
 	result = [self fdGetStatus:&status];
 	if (result != IO_R_SUCCESS) {
 		IOLog("fd updatePhysicalParametersInt: GET STATUS FAILED\n");
-		return;
+		return IO_R_IO;
 	}
 
 	// Check ready bit (bit 4)
 	if ((status & 0x10) == 0) {
-		return;  // Drive not ready
+		return IO_R_NO_DEVICE;  // Drive not ready
 	}
 
 	// Check unit select (bits 0-1)
 	if ((status & 3) == 0) {
-		return;  // No unit selected
+		return (IOReturn)0xfffffbb2;  // No unit selected (IO_R_NO_DISK)
 	}
 
 	// Check write protect bit (bit 3) and store in flags
@@ -850,7 +846,7 @@ transfer_done:
 	[self setDensityInt:density];
 
 	if (density == 0) {
-		return;  // No valid density found
+		return IO_R_SUCCESS;  // No valid density found; the reference returns 0 here too
 	}
 
 	// Probe for sector size
@@ -887,6 +883,8 @@ transfer_done:
 	if (*sectSizeInfoPtr != 0) {
 		_flags = _flags | 1;
 	}
+
+	return IO_R_SUCCESS;
 }
 
 @end

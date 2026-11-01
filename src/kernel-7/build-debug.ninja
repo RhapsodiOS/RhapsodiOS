@@ -1,0 +1,6 @@
+ninja_required_version = 1.9
+builddir = BUILD.ninja/DEBUG_I386
+outdir = BUILD.ninja/DEBUG_I386
+include ninja/common.ninja
+subninja ninja/debug.ninja
+default BUILD.ninja/DEBUG_I386/mach_kernel

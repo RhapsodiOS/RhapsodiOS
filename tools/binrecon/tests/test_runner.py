@@ -241,7 +241,7 @@ def test_analysis_snapshot_rejects_hardlink_and_oversize_sources(tmp_path):
     except OSError: pytest.skip("hard links unavailable")
     with pytest.raises(RunnerError, match="private file"):
         runner_module._load_analysis(hardlink, subject, "reference", "IDA")
-    hardlink.unlink(); source.write_bytes(b" " * (16 * 1024 * 1024 + 1))
+    hardlink.unlink(); source.write_bytes(b" " * (64 * 1024 * 1024 + 1))
     with pytest.raises(RunnerError, match="bounded private"):
         runner_module._load_analysis(source, subject, "reference", "IDA")
 
@@ -255,9 +255,29 @@ def test_published_consensus_has_a_dedicated_64_mib_read_budget(tmp_path):
     runner_module._verify_published_summary(tmp_path, summary)
 
 
-def test_published_analysis_remains_limited_to_16_mib(tmp_path):
+def test_runner_publishes_analysis_above_16_mib_within_adapter_budget(tmp_path):
+    subject = profile(tmp_path, enabled=("ida",), rebuilt=False)
+    document = analysis("IDA", subject.reference_identity)
+    document["extensions"] = {"measured-evidence": {
+        str(index): "x" * (1024 * 1024) for index in range(17)
+    }}
+    raw = (json.dumps(document, sort_keys=True, separators=(",", ":")) + "\n").encode()
+    assert 16 * 1024 * 1024 < len(raw) < 64 * 1024 * 1024
+
+    def exporting(profile, artifact, destination):
+        Path(destination).write_bytes(raw)
+
+    summary = run_analysis(subject, adapters={"ida": exporting})
+    assert summary["complete"] is True
+    assert summary["acceptance"]["passed"] is False
+    record = summary["analyzers"][0]["reference"]
+    assert (subject.output_dir / record["path"]).read_bytes() == raw
+    assert record["sha256"] == hashlib.sha256(raw).hexdigest().upper()
+
+
+def test_published_analysis_remains_limited_to_64_mib(tmp_path):
     published = tmp_path / "published"; published.mkdir()
-    raw = b" " * (16 * 1024 * 1024 + 1)
+    raw = b" " * (64 * 1024 * 1024 + 1)
     path = published / "analysis-reference-ida.json"; path.write_bytes(raw)
     record = {"path": "published/analysis-reference-ida.json",
               "sha256": hashlib.sha256(raw).hexdigest().upper()}

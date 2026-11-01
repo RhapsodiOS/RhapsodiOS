@@ -1,0 +1,303 @@
+{
+ "categories": [],
+ "classes": [
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "handleMachMessage:",
+     "types": "v8@4:8^v12"
+    },
+    {
+     "selector": "_requestNotification",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "processIdentifier",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "_procid",
+     "types": "i4@4:8"
+    },
+    {
+     "selector": "dealloc",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "init",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "standardError",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "standardOutput",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "standardInput",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "setStandardError:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "setStandardOutput:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "setStandardInput:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "terminateTask",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "terminate",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "interrupt",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "taskExitedNormally",
+     "types": "c4@4:8"
+    },
+    {
+     "selector": "taskDictionary",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "setTaskDictionary:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "currentDirectoryPath",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "arguments",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "environment",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "launchPath",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "setLaunchPath:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "setEnvironment:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "setCurrentDirectoryPath:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "setArguments:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "waitUntilExit",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "launchWithDictionary:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "launch",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "isRunning",
+     "types": "c4@4:8"
+    },
+    {
+     "selector": "terminationStatus",
+     "types": "i4@4:8"
+    }
+   ],
+   "instance_size": 28,
+   "ivars": [
+    {
+     "name": "_dictionary",
+     "offset": 4,
+     "type": "@\"NSMutableDictionary\""
+    },
+    {
+     "name": "_hasExeced",
+     "offset": 8,
+     "type": "c"
+    },
+    {
+     "name": "_isRunning",
+     "offset": 9,
+     "type": "c"
+    },
+    {
+     "name": "_pid",
+     "offset": 12,
+     "type": "i"
+    },
+    {
+     "name": "_terminationStatus",
+     "offset": 16,
+     "type": "i"
+    },
+    {
+     "name": "hiddenTaskData",
+     "offset": 20,
+     "type": "^{?}"
+    },
+    {
+     "name": "port",
+     "offset": 24,
+     "type": "@\"NSPort\""
+    }
+   ],
+   "name": "NSConcreteTask",
+   "superclass": "NSTask"
+  },
+  {
+   "class_methods": [
+    {
+     "selector": "launchedTaskWithPath:arguments:",
+     "types": "@12@4:8@12@16"
+    },
+    {
+     "selector": "launchedTaskWithLaunchPath:arguments:",
+     "types": "@12@4:8@12@16"
+    },
+    {
+     "selector": "launchedTaskWithDictionary:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "currentTaskDictionary",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "allocWithZone:",
+     "types": "@8@4:8^{?=}12"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "init",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "standardError",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "standardOutput",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "standardInput",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "setStandardError:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "setStandardOutput:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "setStandardInput:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "currentDirectoryPath",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "arguments",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "environment",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "launchPath",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "terminate",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "interrupt",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "setLaunchPath:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "setEnvironment:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "setCurrentDirectoryPath:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "setArguments:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "launch",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "isRunning",
+     "types": "c4@4:8"
+    },
+    {
+     "selector": "terminationStatus",
+     "types": "i4@4:8"
+    }
+   ],
+   "instance_size": 4,
+   "ivars": [],
+   "name": "NSTask",
+   "superclass": "NSObject"
+  }
+ ],
+ "data_symbols": [
+  "_NSTaskDidTerminateNotification",
+  "__NSTaskArgumentArray",
+  "__NSTaskCreationFlags",
+  "__NSTaskDiagnosticFileHandle",
+  "__NSTaskDirectoryPath",
+  "__NSTaskEnvironmentDictionary",
+  "__NSTaskExecutablePath",
+  "__NSTaskHasBeenLaunched",
+  "__NSTaskInputFileHandle",
+  "__NSTaskOutputFileHandle",
+  "__NSTaskStartupInfo",
+  "__NSTaskTerminationStatus"
+ ],
+ "module": "NSTask.m",
+ "schema_version": "abi-v1",
+ "text_symbols": []
+}

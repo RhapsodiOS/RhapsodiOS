@@ -97,7 +97,9 @@ FOUNDATION_EXPORT NSString * const NSFileSystemFreeNodes;
 - (NSString *)fileType;
 - (unsigned long)filePosixPermissions;
 - (NSString *)fileOwnerAccountName;
+- (unsigned long)fileOwnerAccountNumber;
 - (NSString *)fileGroupOwnerAccountName;
+- (unsigned long)fileGroupOwnerAccountNumber;
 #if !defined(__WIN32__)
 - (unsigned long)fileSystemNumber;
 - (unsigned long)fileSystemFileNumber;

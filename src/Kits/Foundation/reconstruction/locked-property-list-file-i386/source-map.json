@@ -1,0 +1,152 @@
+{
+  "schema_version": "source-map-v1",
+  "reference_sha256": "1165B9063ADD5672514455CA2C9830625BEA2BCE5E46126FB5E8652114C909D6",
+  "mapped": [
+    {
+      "address": 1112692872,
+      "size": 411,
+      "reference_names": [
+        "-[NSLockedPropertyListFile _dictionaryForDomain:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 750
+    },
+    {
+      "address": 1112709244,
+      "size": 408,
+      "reference_names": [
+        "-[NSLockedPropertyListFile dictionaryForDomain:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 785
+    },
+    {
+      "address": 1112763404,
+      "size": 530,
+      "reference_names": [
+        "-[NSLockedPropertyListFile setObject:forKey:domain:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 831
+    },
+    {
+      "address": 1112769288,
+      "size": 712,
+      "reference_names": [
+        "-[NSLockedPropertyListFile allDomains]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 920
+    },
+    {
+      "address": 1112782460,
+      "size": 877,
+      "reference_names": [
+        "-[NSLockedPropertyListFile synchronize]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 1023
+    },
+    {
+      "address": 1112785348,
+      "size": 651,
+      "reference_names": [
+        "-[NSLockedPropertyListFile _setDictionary:forDomain:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 962
+    },
+    {
+      "address": 1112798872,
+      "size": 253,
+      "reference_names": [
+        "-[NSLockedPropertyListFile domainExists:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 901
+    },
+    {
+      "address": 1112807276,
+      "size": 441,
+      "reference_names": [
+        "-[NSLockedPropertyListFile removeObjectForKey:domain:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 860
+    },
+    {
+      "address": 1112860504,
+      "size": 576,
+      "reference_names": [
+        "-[NSLockedPropertyListFile initWithPath:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 688
+    },
+    {
+      "address": 1112896840,
+      "size": 264,
+      "reference_names": [
+        "-[NSLockedPropertyListFile objectForKey:domain:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 815
+    },
+    {
+      "address": 1112953572,
+      "size": 152,
+      "reference_names": [
+        "-[NSLockedPropertyListFile _removeDomain:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 1005
+    },
+    {
+      "address": 1112953724,
+      "size": 139,
+      "reference_names": [
+        "-[NSLockedPropertyListFile cacheDictionary:forDomain:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 776
+    },
+    {
+      "address": 1112953864,
+      "size": 110,
+      "reference_names": [
+        "-[NSLockedPropertyListFile dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 1081
+    },
+    {
+      "address": 1112953976,
+      "size": 160,
+      "reference_names": [
+        "-[NSLockedPropertyListFile removeDomain:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 896
+    },
+    {
+      "address": 1112954136,
+      "size": 218,
+      "reference_names": [
+        "-[NSLockedPropertyListFile setDictionary:forDomain:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 886
+    }
+  ],
+  "unmapped": [],
+  "duplicate_candidates": [],
+  "boundary_disputed": [],
+  "by_module": {
+    "NSUserDefaults.m": {
+      "mapped": 15,
+      "unmapped": 0,
+      "duplicate_candidates": 0,
+      "boundary_disputed": 0
+    }
+  }
+}

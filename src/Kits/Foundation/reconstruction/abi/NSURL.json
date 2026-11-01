@@ -1,0 +1,157 @@
+{
+ "categories": [],
+ "classes": [
+  {
+   "class_methods": [
+    {
+     "selector": "fileURLWithPath:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "URLWithString:relativeToURL:",
+     "types": "@16@8:12@16@20"
+    },
+    {
+     "selector": "URLWithString:",
+     "types": "@12@8:12@16"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "isFileURL",
+     "types": "c8@8:12"
+    },
+    {
+     "selector": "fragment",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "query",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "parameterString",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "path",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "_absoluteURLPath",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "relativePath",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "_relativeURLPath",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "password",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "user",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "port",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "host",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "resourceSpecifier",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "scheme",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "absoluteURL",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "baseURL",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "relativeString",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "absoluteString",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "copyWithZone:",
+     "types": "@12@8:12^{?=}16"
+    },
+    {
+     "selector": "description",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "dealloc",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "initFileURLWithPath:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "initWithScheme:host:path:",
+     "types": "@20@8:12@16@20@24"
+    },
+    {
+     "selector": "initWithString:relativeToURL:",
+     "types": "@16@8:12@16@20"
+    },
+    {
+     "selector": "initWithString:",
+     "types": "@12@8:12@16"
+    }
+   ],
+   "instance_size": 20,
+   "ivars": [
+    {
+     "name": "_urlString",
+     "offset": 4,
+     "type": "@\"NSString\""
+    },
+    {
+     "name": "_base",
+     "offset": 8,
+     "type": "@\"NSURL\""
+    },
+    {
+     "name": "_reserved1",
+     "offset": 12,
+     "type": "^v"
+    },
+    {
+     "name": "_reserved2",
+     "offset": 16,
+     "type": "^v"
+    }
+   ],
+   "name": "NSURL",
+   "superclass": "NSObject"
+  }
+ ],
+ "data_symbols": [
+  "_NSURLFileScheme"
+ ],
+ "module": "NSURL.m",
+ "schema_version": "abi-v1",
+ "text_symbols": [
+  "__NSParseStringToGenericURLComponents"
+ ]
+}

@@ -12,6 +12,7 @@
 #import <driverkit/generalFuncs.h>
 #import <driverkit/interruptMsg.h>
 #import <driverkit/kernelDriver.h>
+#include "../../../drvPPCScreamer/PPCScreamer.drvproj/PPCScreamer.lksproj/ScreamerTree.h"
 
 /* Global instance for interrupt handlers */
 static PPCAwacs *globalInstance = nil;
@@ -134,7 +135,7 @@ void _writeSoundControlReg(unsigned int baseAddr, unsigned int value)
 void enforceInOrderExecutionIO(void)
 {
     /* PowerPC eieio (Enforce In-order Execution of I/O) instruction */
-    __asm__ volatile("eieio" ::: "memory");
+    __asm__ volatile("eieio");
 }
 
 /*
@@ -236,8 +237,17 @@ void _unscale_volume(unsigned int leftScaled, unsigned int rightScaled, int *lef
     unsigned int *soundPropertyData;
     unsigned int soundPropertyLength;
     int propertyResult;
+    ScreamerTree identityTree;
+    ScreamerIdentity codecIdentity;
 
     IOLog("PPCAwacs: probe called\n");
+
+    if (!screamer_tree_description(&identityTree, deviceDescription))
+        return NO;
+    codecIdentity = screamer_tree_identity(&identityTree);
+    if (codecIdentity == kScreamerIdentityScreamer ||
+        codecIdentity == kScreamerIdentityConflict)
+        return NO;
 
     /* Check if this is a burgundy or DVD device - we don't support those */
     compatible = [deviceDescription propertyStringFor:"compatible"];
@@ -281,9 +291,7 @@ void _unscale_volume(unsigned int leftScaled, unsigned int rightScaled, int *lef
     /* Check if we're on Perch hardware */
     busClass = [deviceDescription deviceClass];
     if (busClass != nil) {
-        perchDevice = [busClass performSelector:@selector(findMatchingDevice:location:)
-                                      withObject:@"perch"
-                                      withObject:nil];
+        perchDevice = [busClass findMatchingDevice:"perch" location:NULL];
         if (perchDevice != nil) {
             IOLog("PPCAwacs: Detected Perch hardware\n");
             instance->isPerchHardware = YES;

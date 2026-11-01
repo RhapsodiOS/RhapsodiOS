@@ -1,4 +1,5 @@
 #include "keylargo_audio.h"
+#include "davbus_audio.h"
 
 static const PEKeyLargoTransport *keylargo_transport;
 
@@ -268,6 +269,14 @@ PEI2SSetCellStateCore(const PEKeyLargoTransport *transport,
 
     transport->lock(transport->context);
     value = transport->readFCR1LE(transport->context);
+    if (cell == 0 && transport->audioMuxOwner != 0) {
+        if (*transport->audioMuxOwner == kPEAudioMuxDAVbus) {
+            transport->unlock(transport->context);
+            return KERN_RESOURCE_SHORTAGE;
+        }
+        if (state != kPEI2SCellDisabledReset)
+            *transport->audioMuxOwner = kPEAudioMuxI2S0;
+    }
     fcr_set_bit(transport, &value, resetBit, TRUE);
     if (state == kPEI2SCellDisabledReset) {
         fcr_set_bit(transport, &value, interfaceBit, FALSE);
@@ -280,6 +289,9 @@ PEI2SSetCellStateCore(const PEKeyLargoTransport *transport,
         if (state == kPEI2SCellRunning)
             fcr_set_bit(transport, &value, resetBit, FALSE);
     }
+    if (cell == 0 && transport->audioMuxOwner != 0 &&
+        state == kPEI2SCellDisabledReset)
+        *transport->audioMuxOwner = kPEAudioMuxNone;
     transport->unlock(transport->context);
     return KERN_SUCCESS;
 }

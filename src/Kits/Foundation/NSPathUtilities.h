@@ -48,10 +48,13 @@ FOUNDATION_EXPORT NSString *NSFullUserName(void);
 
 FOUNDATION_EXPORT NSString *NSHomeDirectory(void);
 FOUNDATION_EXPORT NSString *NSHomeDirectoryForUser(NSString *userName);
+FOUNDATION_EXPORT NSString *NSOpenStepDirectoryForUser(NSString *userName,
+                                                       BOOL createIfNeeded);
 
 FOUNDATION_EXPORT NSString *NSTemporaryDirectory(void);
 
 FOUNDATION_EXPORT NSString *NSOpenStepRootDirectory(void);
+FOUNDATION_EXPORT NSString *NSNeXTRootDirectory(void);
 
 typedef enum {
     NSApplicationDirectory = 1,		// supported applications (Applications)

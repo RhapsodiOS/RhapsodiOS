@@ -1,0 +1,206 @@
+{
+ "categories": [],
+ "classes": [
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "_isEqualTimerWithTarget:selector:withObject:",
+     "types": "c16@4:8@12:16@20"
+    },
+    {
+     "selector": "description",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "retainCount",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "release",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "retain",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "dealloc",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "fireDate",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "fire",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "invalidate",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "userInfo",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "timeInterval",
+     "types": "d4@4:8"
+    },
+    {
+     "selector": "isValid",
+     "types": "c4@4:8"
+    },
+    {
+     "selector": "initWithFireDate:interval:target:selector:userInfo:repeats:userInfoIsArgument:",
+     "types": "@40@4:8@12d12@24:28@32c43c47"
+    }
+   ],
+   "instance_size": 32,
+   "ivars": [
+    {
+     "name": "fireDate",
+     "offset": 4,
+     "type": "@\"NSDate\""
+    },
+    {
+     "name": "target",
+     "offset": 8,
+     "type": "@"
+    },
+    {
+     "name": "selector",
+     "offset": 12,
+     "type": ":"
+    },
+    {
+     "name": "userInfo",
+     "offset": 16,
+     "type": "@"
+    },
+    {
+     "name": "firing",
+     "offset": 20,
+     "type": "b1"
+    },
+    {
+     "name": "repeats",
+     "offset": 20,
+     "type": "b1"
+    },
+    {
+     "name": "invalid",
+     "offset": 20,
+     "type": "b1"
+    },
+    {
+     "name": "argumented",
+     "offset": 20,
+     "type": "b1"
+    },
+    {
+     "name": "filler",
+     "offset": 20,
+     "type": "b4"
+    },
+    {
+     "name": "refCount",
+     "offset": 21,
+     "type": "b24"
+    },
+    {
+     "name": "timeInterval",
+     "offset": 24,
+     "type": "d"
+    }
+   ],
+   "name": "NSConcreteTimer",
+   "superclass": "NSTimer"
+  },
+  {
+   "class_methods": [
+    {
+     "selector": "timerWithFireDate:target:selector:userInfo:",
+     "types": "@20@4:8@12@16:20@24"
+    },
+    {
+     "selector": "scheduleTimerWithTimeInterval:target:selector:withObject:inModes:",
+     "types": "v28@4:8d12@20:24@28@32"
+    },
+    {
+     "selector": "scheduleTimerWithTimeInterval:target:selector:withObject:",
+     "types": "v24@4:8d12@20:24@28"
+    },
+    {
+     "selector": "scheduledTimerWithTimeInterval:target:selector:userInfo:repeats:",
+     "types": "@25@4:8d12@20:24@28c32"
+    },
+    {
+     "selector": "timerWithTimeInterval:target:selector:userInfo:repeats:",
+     "types": "@25@4:8d12@20:24@28c32"
+    },
+    {
+     "selector": "scheduledTimerWithTimeInterval:invocation:repeats:",
+     "types": "@17@4:8d12@20c24"
+    },
+    {
+     "selector": "timerWithTimeInterval:invocation:repeats:",
+     "types": "@17@4:8d12@20c24"
+    },
+    {
+     "selector": "allocWithZone:",
+     "types": "@8@4:8^{?=}12"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "_isEqualTimerWithTarget:selector:withObject:",
+     "types": "c16@4:8@12:16@20"
+    },
+    {
+     "selector": "fireDate",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "userInfo",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "fire",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "timeInterval",
+     "types": "d4@4:8"
+    },
+    {
+     "selector": "isValid",
+     "types": "c4@4:8"
+    },
+    {
+     "selector": "invalidate",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "scheduleInModes:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "schedule",
+     "types": "v4@4:8"
+    }
+   ],
+   "instance_size": 4,
+   "ivars": [],
+   "name": "NSTimer",
+   "superclass": "NSObject"
+  }
+ ],
+ "data_symbols": [],
+ "module": "NSTimer.m",
+ "schema_version": "abi-v1",
+ "text_symbols": []
+}

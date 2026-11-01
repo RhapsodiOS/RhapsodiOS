@@ -270,15 +270,15 @@ extern unsigned int _FloppyGeometry[];
 	id request;
 	IOReturn result;
 
-	// Construct request (status pointer = NULL for async)
-	request = [self constructRequest:NULL
+	// Construct a read request
+	request = [self constructRequest:0
 	                       blockStart:offset
 	                        byteCount:length
 	                           buffer:buffer
 	                        bufferMap:client];
 
 	if (request == nil) {
-		return IO_R_NO_MEMORY;
+		return IO_R_INVALID_ARG;
 	}
 
 	// Execute the request
@@ -307,15 +307,15 @@ extern unsigned int _FloppyGeometry[];
 	id request;
 	IOReturn result;
 
-	// Construct request (status pointer = NULL)
-	request = [self constructRequest:NULL
+	// Construct a read request
+	request = [self constructRequest:0
 	                       blockStart:offset
 	                        byteCount:length
 	                           buffer:buffer
 	                        bufferMap:client];
 
 	if (request == nil) {
-		return IO_R_NO_MEMORY;
+		return IO_R_INVALID_ARG;
 	}
 
 	// Execute the request
@@ -352,23 +352,23 @@ extern unsigned int _FloppyGeometry[];
 	// Check if current capacity is writable
 	if ((_capacity & writeCapacities) == 0) {
 		// Capacity not supported for writing
-		return IO_R_UNSUPPORTED;
+		return IO_R_NOT_WRITABLE;
 	}
 
 	// Check write protection
 	if ([self isWriteProtected]) {
-		return IO_R_NOT_WRITABLE;
+		return IO_R_LOCKED_WRITE;
 	}
 
-	// Construct request (status pointer = (IOReturn *)1 for write flag)
-	request = [self constructRequest:(IOReturn *)1
+	// Construct a write request
+	request = [self constructRequest:1
 	                       blockStart:offset
 	                        byteCount:length
 	                           buffer:buffer
 	                        bufferMap:client];
 
 	if (request == nil) {
-		return IO_R_NO_MEMORY;
+		return IO_R_INVALID_ARG;
 	}
 
 	// Execute the request
@@ -406,23 +406,23 @@ extern unsigned int _FloppyGeometry[];
 	// Check if current capacity is writable
 	if ((_capacity & writeCapacities) == 0) {
 		// Capacity not supported for writing
-		return IO_R_UNSUPPORTED;
+		return IO_R_NOT_WRITABLE;
 	}
 
 	// Check write protection
 	if ([self isWriteProtected]) {
-		return IO_R_NOT_WRITABLE;
+		return IO_R_LOCKED_WRITE;
 	}
 
-	// Construct request (status pointer = (IOReturn *)1 for write flag)
-	request = [self constructRequest:(IOReturn *)1
+	// Construct a write request
+	request = [self constructRequest:1
 	                       blockStart:offset
 	                        byteCount:length
 	                           buffer:buffer
 	                        bufferMap:client];
 
 	if (request == nil) {
-		return IO_R_NO_MEMORY;
+		return IO_R_INVALID_ARG;
 	}
 
 	// Execute the request

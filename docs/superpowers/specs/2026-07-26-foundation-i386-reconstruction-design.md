@@ -11,6 +11,18 @@ spec targets **i386** instead. The reason is in §1.1: the repository cannot
 build PowerPC, so a PowerPC reconstruction has no build-and-compare loop and
 could never be verified. The PowerPC slice is retained as a cross-reference.
 
+### Scope amendment (2026-10-08)
+
+After a PPC ABI coverage audit found 3,190 uncovered Objective-C records, the
+user approved expanding Foundation reconstruction to full PPC Objective-C ABI
+parity. The i386 slice remains the initial build baseline, but PPC is no longer
+cross-reference-only for ABI metadata. PPC acceptance means every class layout
+and method encoding extracted from the pinned PPC image is represented exactly
+by a shared i386 ABI record or an `abi-ppc` overlay. This amendment does not
+claim a PPC build or runtime comparison; the repository still lacks a PPC
+build-and-compare loop. The current audit records the later closure of the PPC
+ABI manifest gaps.
+
 ## Motivation
 
 `src/Kits/Foundation` is 66 headers and 66 `.m` files. The headers are Apple's,
@@ -182,18 +194,52 @@ Each later stage gets its own design and plan.
 | # | Stage | Modules | ~`__text` |
 | --- | --- | --- | --- |
 | **1** | **Tooling, ABI baseline, proof slice** | NSGeometry, NSRange, NSDecimal | **8 KB** |
-| 2 | Core runtime | NSObject, NSProxy, NSAutoreleasePool, NSException, NSInvocation, NSMethodSignature, NSCoder, NSFault, NSObjCRuntime, NSPrivate, NSZone | 22 KB |
-| 3 | Strings | NSString, NSMutableString, NSSimpleCString, NSSimpleString, NSConstantString, NSCharConversion, NSStringEncodings, NSStringLocalizedCompare, NSStringArray | 60 KB |
-| 4 | Collections | NSArray, NSDictionary, NSSet, NSEnumerator, NSHashTable, NSMapTable, NSSimpleHashing | 65 KB |
-| 5 | Values, dates, formatters | NSValue, NSDecimalNumber, NSDate, NSCalendarDate, NSTimeZone, NSFormatter, NSNumberFormatter, NSDateFormatter, NSScanner, NSCharacterSet | 80 KB |
-| 6 | Data, files, archiving | NSData, NSFileManager, NSFileHandle, NSBundle, NSPathUtilities, NSSerialization, NSArchiver, NSObjCTypeSerialization | 65 KB |
-| 7 | Runloop, threads, processes | NSRunLoop, NSThread, NSLock, NSTimer, NSPort, NSTask, NSProcessInfo, NSHost, NSPlatform, NSPerformTimer, NSNotification, NSNotificationQueue, NSDistributedLock | 45 KB |
+| 2a | Object core | NSObject, NSProxy, NSAutoreleasePool, NSPrivate, NSZone | 10.4 KB |
+| 2b | Exceptions and runtime | NSException, NSObjCRuntime | 1.3 KB + C |
+| 2c | Invocation, coding, faults | NSInvocation, NSMethodSignature, NSCoder, NSFault | 17.9 KB |
+| 3 | Strings | NSString, NSMutableString, NSSimpleCString, NSSimpleString, NSConstantString, NSCharConversion, NSStringEncodings, NSStringLocalizedCompare, NSStringArray | 60 KB **+ 26 KB** |
+| 4 | Collections | NSArray, NSDictionary, NSSet, NSEnumerator, NSHashTable, NSMapTable, NSSimpleHashing | 65 KB **+ 7 KB** |
+| 5 | Values, dates, formatters | NSValue, NSDecimalNumber, NSDate, NSCalendarDate, NSTimeZone, NSFormatter, NSNumberFormatter, NSDateFormatter, NSScanner, NSCharacterSet | 80 KB **+ 4 KB** |
+| 6 | Data, files, archiving | NSData, NSFileManager, NSFileHandle, NSBundle, NSPathUtilities, NSSerialization, NSArchiver, NSObjCTypeSerialization | 65 KB **+ 13 KB** |
+| 7 | Runloop, threads, processes | NSRunLoop, NSThread, NSLock, NSTimer, NSPort, NSTask, NSProcessInfo, NSHost, NSPlatform, NSPerformTimer, NSNotification, NSNotificationQueue, NSDistributedLock | 45 KB **+ 5 KB** |
 | 8 | Distributed Objects | NSConnection, NSDistantObject, NSDistantString, NSPortCoder, NSPortNameServer, NSProtocolChecker, NSDistributedNotificationCenter | 45 KB |
-| 9 | Defaults, parsing, misc | NSUserDefaults, NSParser, NSLanguageContext, NSLockedPropertyListFile, NSUndoManager, NSAttributedString, NSCompatibility, NSDebug, NSJavaSetup, NSURL, NSAbsoluteURL, NSURLPathUtilities | 65 KB |
+| 9 | Defaults, parsing, misc | NSUserDefaults, NSParser, NSLanguageContext, NSLockedPropertyListFile, NSUndoManager, NSAttributedString, NSCompatibility, NSDebug, NSJavaSetup, NSURL, NSAbsoluteURL, NSURLPathUtilities | 65 KB **+ 4 KB** |
 | 10 | URL/HTTP handles | NSURLHandle, NSFileURLHandle, NSHTTPURLHandle, NSHTTPConnection, NSHTTPRequest, NSHTTPSocket | MOSXS ppc only |
 
 Stage 10 has no i386 reference and therefore no compare loop, which is why it is
 last.
+
+### 3.1.1 Two scope decisions, settled after stage 2a
+
+**`NSFault` moves from 2b to 2c.** The original grouping read it as runtime
+machinery alongside `NSObjCRuntime`. Reading its actual ABI says otherwise:
+`NSFault` is a **third root class** — `super_class` null, an explicit `isa`
+ivar, exactly like `NSProxy` — and 50 of its 66 methods are the same root-class
+surface stage 2a already reconstructed twice (`retain`, `release`,
+`autorelease`, `retainCount`, `class`, `superclass`, `isKindOfClass:`,
+`respondsToSelector:`, `hash`, `isEqual:`, `zone`, `forward::`, `description`
+…). What distinguishes it — actually firing a fault — runs through
+`-[NSFault forwardInvocation:]`, `-[NSFaultHandler shouldPerformInvocation:]`
+and `-[NSFaultHandler methodSignatureForSelector:forFault:]`, all of which need
+`NSInvocation` and `NSMethodSignature`. Reconstructing it in 2b would repeat
+`NSProxy`'s "forwarding path documented but untestable" gap across 50 more
+methods and then need revisiting in 2c regardless. It is 2,908 bytes of method
+`__text`, so the move leaves 2b small and sharply testable and grows 2c by ~19%.
+
+**The unclaimed-export tail is absorbed stage by stage, not re-baselined
+programme-wide.** `binrecon symbol-audit` reports **345 exported C functions no
+module claims, totalling 85,832 bytes of `__text`** — about 18% on top of the
+~465 KB this table plans for, and invisible to the original sizing because that
+counted only Objective-C methods plus header-declared C functions. Bucketing
+those 345 by name shows the tail is **concentrated, not spread**: stage 3 and
+stage 6 carry most of it, stage 4 the next slice, and stages 2b/2c/8/10
+essentially none (2b's whole share is 20 functions / 4,076 bytes; 2c's is one
+function). A programme-wide re-baseline would therefore be ceremony. Instead the
+per-stage figures above carry the measured correction in bold, and each affected
+stage's own spec sizes from its real number. Re-run `symbol-audit` at the start
+of every stage: the count falls as modules claim their functions, and a stage
+whose share turns out larger than the figure above is a signal to re-check the
+attribution, not to silently overrun.
 
 ### 3.2 Acceptance bar
 
@@ -417,12 +463,23 @@ appears to require a header change, that is a stop-and-report finding.
 
 ### 5.2 IDA on a 1.6 MB dylib is unmeasured
 
-The allowlist limits *output*, which is what tripped the 16 MB guard on the DR2
-kernel, but autoanalysis still loads the whole image and its runtime is unknown.
-This is the most likely place stage 1 stalls. The plan measures and records
-wall-clock and output size on the first run. If the guard trips despite the
-allowlist, the group narrows to one module at a time rather than raising the
-limit — the same call the address-range scoping spec made.
+Scoping limits *output*, which is what tripped the size guard on the DR2 kernel,
+but autoanalysis still loads the whole image and its runtime was unknown.
+
+**Measured in stage 1** (see the plan's run note): the run took **128 seconds**
+and produced a **15.1 MB** published analysis, against a `_MAX_ANALYSIS_BYTES`
+cap of **64 MB** (`tools/binrecon/binrecon/adapters/ida.py:31`). No splitting was
+needed.
+
+The size is dominated by fixed per-image overhead, not by the scoped functions:
+the whole symbol table (10,921 entries) and relocation list are emitted whatever
+the scope, while the 43 in-scope functions hold only 3,019 instructions. So later
+stages grow this file slowly — roughly 660 on-disk bytes per additional
+instruction — leaving about 49 MB of headroom. Stage 3, the largest at ~60 KB of
+code, should land near 17 MB.
+
+If the guard is ever tripped, the group narrows to one module at a time rather
+than raising the limit — the same call the address-range scoping spec made.
 
 ### 5.3 The proof slice may not compile standalone
 

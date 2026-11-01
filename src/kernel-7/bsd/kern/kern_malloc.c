@@ -192,6 +192,7 @@ struct kmzones {
 	0,		KMZ_MALLOC,		/* 77 M_HFSEXT */
 	0,		KMZ_MALLOC,		/* 78 M_VOLFS */
 	0,		KMZ_MALLOC,		/* 79 M_TEMP */
+	0,		KMZ_MALLOC,		/* 80 M_HAMMER */
 #undef	SOS
 #undef	SOX
 };

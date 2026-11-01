@@ -1,3 +1,5 @@
+/* $OpenBSD: sshconnect.h,v 1.29 2015/11/15 22:26:49 jcs Exp $ */
+
 /*
  * Copyright (c) 2000 Markus Friedl.  All rights reserved.
  *
@@ -21,19 +23,55 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef SSHCONNECT_H
-#define SSHCONNECT_H
 
-void
-check_host_key(char *host, struct sockaddr *hostaddr, Key *host_key,
-    const char *user_hostfile, const char *system_hostfile);
+typedef struct Sensitive Sensitive;
+struct Sensitive {
+	Key	**keys;
+	int	nkeys;
+	int	external_keysign;
+};
 
-void	ssh_kex(char *host, struct sockaddr *hostaddr);
-void
-ssh_userauth(const char* local_user, const char* server_user, char *host,
-    int host_key_valid, RSA *own_host_key);
+struct addrinfo;
+int	 ssh_connect(const char *, struct addrinfo *, struct sockaddr_storage *,
+    u_short, int, int, int *, int, int);
+void	 ssh_kill_proxy_command(void);
 
-void	ssh_kex2(char *host, struct sockaddr *hostaddr);
-void	ssh_userauth2(const char *server_user, char *host);
+void	 ssh_login(Sensitive *, const char *, struct sockaddr *, u_short,
+    struct passwd *, int);
 
-#endif
+void	 ssh_exchange_identification(int);
+
+int	 verify_host_key(char *, struct sockaddr *, Key *);
+
+void	 get_hostfile_hostname_ipaddr(char *, struct sockaddr *, u_short,
+    char **, char **);
+
+void	 ssh_kex(char *, struct sockaddr *);
+void	 ssh_kex2(char *, struct sockaddr *, u_short);
+
+void	 ssh_userauth1(const char *, const char *, char *, Sensitive *);
+void	 ssh_userauth2(const char *, const char *, char *, Sensitive *);
+
+void	 ssh_put_password(char *);
+int	 ssh_local_cmd(const char *);
+
+void	 maybe_add_key_to_agent(char *, Key *, char *, char *);
+
+/*
+ * Macros to raise/lower permissions.
+ */
+#define PRIV_START do {					\
+	int save_errno = errno;				\
+	if (seteuid(original_effective_uid) != 0)	\
+		fatal("PRIV_START: seteuid: %s",	\
+		    strerror(errno));			\
+	errno = save_errno;				\
+} while (0)
+
+#define PRIV_END do {					\
+	int save_errno = errno;				\
+	if (seteuid(original_real_uid) != 0)		\
+		fatal("PRIV_END: seteuid: %s",		\
+		    strerror(errno));			\
+	errno = save_errno;				\
+} while (0)

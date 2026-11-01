@@ -1,0 +1,32 @@
+{
+ "categories": [
+  {
+   "class": "NSString",
+   "class_methods": [],
+   "instance_methods": [
+    {
+     "selector": "stringByAddingPercentEscapes",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "stringByRemovingPercentEscapes",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "standardizedNativePath",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "standardizedURLPath",
+     "types": "@8@8:12"
+    }
+   ],
+   "name": "NSURLPathUtilities"
+  }
+ ],
+ "classes": [],
+ "data_symbols": [],
+ "module": "NSURLPathUtilities.m",
+ "schema_version": "abi-v1",
+ "text_symbols": []
+}

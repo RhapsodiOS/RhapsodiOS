@@ -147,6 +147,7 @@ typedef struct __CFlags {
 - (id)initImageCell:(NSImage *)image;
 
 - (NSView *)controlView;
+- (void)_setControlView:(NSView *)view;
 - (NSCellType)type;
 - (void)setType:(NSCellType)aType;
 - (int)state;

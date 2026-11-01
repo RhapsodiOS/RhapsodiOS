@@ -2,7 +2,8 @@
 
 =head1 NAME
 
-OpenSSL_add_all_algorithms() - add algorithms to internal table
+OpenSSL_add_all_algorithms, OpenSSL_add_all_ciphers, OpenSSL_add_all_digests -
+add algorithms to internal table
 
 =head1 SYNOPSIS
 
@@ -35,7 +36,7 @@ None of the functions return a value.
 
 =head1 NOTES
 
-A typical application will will call OpenSSL_add_all_algorithms() initially and
+A typical application will call OpenSSL_add_all_algorithms() initially and
 EVP_cleanup() before exiting.
 
 An application does not need to add algorithms to use them explicitly, for example
@@ -43,7 +44,7 @@ by EVP_sha1(). It just needs to add them if it (or any of the functions it calls
 needs to lookup algorithms.
 
 The cipher and digest lookup functions are used in many parts of the library. If
-the table is not initialised several functions will misbehave and complain they
+the table is not initialized several functions will misbehave and complain they
 cannot find algorithms. This includes the PEM, PKCS#12, SSL and S/MIME libraries.
 This is a common query in the OpenSSL mailing lists.
 

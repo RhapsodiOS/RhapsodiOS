@@ -1,0 +1,214 @@
+{
+ "categories": [],
+ "classes": [
+  {
+   "class_methods": [
+    {
+     "selector": "isProxy",
+     "types": "c8@8:12"
+    },
+    {
+     "selector": "isFault",
+     "types": "c8@8:12"
+    },
+    {
+     "selector": "performSelector:withObject:withObject:",
+     "types": "@20@8:12:16@20@24"
+    },
+    {
+     "selector": "performSelector:withObject:",
+     "types": "@16@8:12:16@20"
+    },
+    {
+     "selector": "performSelector:",
+     "types": "@12@8:12:16"
+    },
+    {
+     "selector": "debugDescription",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "isAncestorOfObject:",
+     "types": "c12@8:12@16"
+    },
+    {
+     "selector": "respondsToSelector:",
+     "types": "c12@8:12:16"
+    },
+    {
+     "selector": "mutableCopyWithZone:",
+     "types": "@12@8:12^{?=}16"
+    },
+    {
+     "selector": "copyWithZone:",
+     "types": "@12@8:12^{?=}16"
+    },
+    {
+     "selector": "retainCount",
+     "types": "I8@8:12"
+    },
+    {
+     "selector": "autorelease",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "release",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "retain",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "self",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "class",
+     "types": "#8@8:12"
+    },
+    {
+     "selector": "alloc",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "allocWithZone:",
+     "types": "@12@8:12^{?=}16"
+    },
+    {
+     "selector": "initialize",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "load",
+     "types": "v8@8:12"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "respondsToSelector:",
+     "types": "c12@8:12:16"
+    },
+    {
+     "selector": "conformsToProtocol:",
+     "types": "c12@8:12@16"
+    },
+    {
+     "selector": "isMemberOfClass:",
+     "types": "c12@8:12#16"
+    },
+    {
+     "selector": "isKindOfClass:",
+     "types": "c12@8:12#16"
+    },
+    {
+     "selector": "isProxy",
+     "types": "c8@8:12"
+    },
+    {
+     "selector": "isFault",
+     "types": "c8@8:12"
+    },
+    {
+     "selector": "performSelector:withObject:withObject:",
+     "types": "@20@8:12:16@20@24"
+    },
+    {
+     "selector": "performSelector:withObject:",
+     "types": "@16@8:12:16@20"
+    },
+    {
+     "selector": "performSelector:",
+     "types": "@12@8:12:16"
+    },
+    {
+     "selector": "hash",
+     "types": "I8@8:12"
+    },
+    {
+     "selector": "isEqual:",
+     "types": "c12@8:12@16"
+    },
+    {
+     "selector": "debugDescription",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "description",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "zone",
+     "types": "^{?=}8@8:12"
+    },
+    {
+     "selector": "self",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "class",
+     "types": "#8@8:12"
+    },
+    {
+     "selector": "superclass",
+     "types": "#8@8:12"
+    },
+    {
+     "selector": "dealloc",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "autorelease",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "release",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "retainCount",
+     "types": "I8@8:12"
+    },
+    {
+     "selector": "retain",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "doesNotRecognizeSelector:",
+     "types": "v12@8:12:16"
+    },
+    {
+     "selector": "methodSignatureForSelector:",
+     "types": "@12@8:12:16"
+    },
+    {
+     "selector": "forwardInvocation:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "forward::",
+     "types": "@16@8:12:16^v20"
+    },
+    {
+     "selector": "willForwardSelector:",
+     "types": "c12@8:12:16"
+    }
+   ],
+   "instance_size": 4,
+   "ivars": [
+    {
+     "name": "isa",
+     "offset": 0,
+     "type": "#"
+    }
+   ],
+   "name": "NSProxy",
+   "superclass": null
+  }
+ ],
+ "data_symbols": [],
+ "module": "NSProxy.m",
+ "schema_version": "abi-v1",
+ "text_symbols": []
+}

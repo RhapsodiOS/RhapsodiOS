@@ -1,0 +1,460 @@
+{
+ "categories": [
+  {
+   "class": "NSMachPort",
+   "class_methods": [],
+   "instance_methods": [
+    {
+     "selector": "sendBeforeTime:streamData:components:from:msgid:",
+     "types": "c32@8:12d16@24@28@32I36"
+    },
+    {
+     "selector": "reservedSpaceLength",
+     "types": "I8@8:12"
+    }
+   ],
+   "name": "NSPortMessageSpeedups"
+  },
+  {
+   "class": "NSObject",
+   "class_methods": [
+    {
+     "selector": "replacementObjectForPortCoder:",
+     "types": "@12@8:12@16"
+    }
+   ],
+   "instance_methods": [
+    {
+     "selector": "replacementObjectForPortCoder:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "classForPortCoder",
+     "types": "#8@8:12"
+    }
+   ],
+   "name": "NSDistributedObjects"
+  }
+ ],
+ "classes": [
+  {
+   "class_methods": [
+    {
+     "selector": "sendBeforeTime:streamData:components:to:from:msgid:reserved:",
+     "types": "c40@8:12d16@24@28@32@36I40I44"
+    },
+    {
+     "selector": "reservedSpaceLength",
+     "types": "I8@8:12"
+    },
+    {
+     "selector": "parseMachMessage:localPort:remotePort:msgid:stream:components:",
+     "types": "v32@8:12^v16^@20^@24^I28^{?=@***^{NSStreamFunctions}@cc}32^@36"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "copyWithZone:",
+     "types": "@12@8:12^{?=}16"
+    },
+    {
+     "selector": "sendBeforeDate:",
+     "types": "c12@8:12@16"
+    },
+    {
+     "selector": "components",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "setMsgid:",
+     "types": "v12@8:12I16"
+    },
+    {
+     "selector": "msgid",
+     "types": "I8@8:12"
+    },
+    {
+     "selector": "receivePort",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "sendPort",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "dealloc",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "retainCount",
+     "types": "I8@8:12"
+    },
+    {
+     "selector": "release",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "retain",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "initWithReceivePort:sendPort:components:",
+     "types": "@20@8:12@16@20@24"
+    },
+    {
+     "selector": "initWithSendPort:receivePort:components:",
+     "types": "@20@8:12@16@20@24"
+    },
+    {
+     "selector": "initWithMachMessage:",
+     "types": "@12@8:12^v16"
+    }
+   ],
+   "instance_size": 28,
+   "ivars": [
+    {
+     "name": "localPort",
+     "offset": 4,
+     "type": "@\"NSPort\""
+    },
+    {
+     "name": "remotePort",
+     "offset": 8,
+     "type": "@\"NSPort\""
+    },
+    {
+     "name": "components",
+     "offset": 12,
+     "type": "@\"NSMutableArray\""
+    },
+    {
+     "name": "msgid",
+     "offset": 16,
+     "type": "I"
+    },
+    {
+     "name": "refCount",
+     "offset": 20,
+     "type": "I"
+    },
+    {
+     "name": "reserved",
+     "offset": 24,
+     "type": "^v"
+    }
+   ],
+   "name": "NSPortMessage",
+   "superclass": "NSObject"
+  },
+  {
+   "class_methods": [
+    {
+     "selector": "allocWithZone:",
+     "types": "@12@8:12^{?=}16"
+    },
+    {
+     "selector": "handleMachMessage:",
+     "types": "v12@8:12^v16"
+    },
+    {
+     "selector": "portCoderWithReceivePort:sendPort:components:",
+     "types": "@20@8:12@16@20@24"
+    },
+    {
+     "selector": "limitDateForMode:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "_enableLogging:",
+     "types": "v9@8:12c16"
+    },
+    {
+     "selector": "debugDescription",
+     "types": "@8@8:12"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "decodeRetainedObject",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "encodeByrefObject:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "encodeBycopyObject:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "encodeObject:isBycopy:isByref:",
+     "types": "v17@8:12@16c20c24"
+    },
+    {
+     "selector": "decodeValueOfObjCType:at:",
+     "types": "v16@8:12r*16^v20"
+    },
+    {
+     "selector": "encodeValueOfObjCType:at:",
+     "types": "v16@8:12r*16r^v20"
+    },
+    {
+     "selector": "decodePortObject",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "encodePortObject:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "decodeBytesWithReturnedLength:",
+     "types": "^v12@8:12^I16"
+    },
+    {
+     "selector": "encodeBytes:length:",
+     "types": "v16@8:12^v16I20"
+    },
+    {
+     "selector": "decodeDataObject",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "encodeDataObject:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "versionForClassName:",
+     "types": "I12@8:12@16"
+    },
+    {
+     "selector": "isByref",
+     "types": "c8@8:12"
+    },
+    {
+     "selector": "isBycopy",
+     "types": "c8@8:12"
+    },
+    {
+     "selector": "connection",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "importObject:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "importedObjects",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "decryptWithDelegate:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "encryptWithDelegate:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "verifyWithDelegate:",
+     "types": "c12@8:12@16"
+    },
+    {
+     "selector": "authenticateWithDelegate:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "sendBeforeDate:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "sendBeforeTime:",
+     "types": "v16@8:12d16"
+    },
+    {
+     "selector": "components",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "dealloc",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "invalidate",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "dispatch",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "initWithReceivePort:sendPort:components:",
+     "types": "@20@8:12@16@20@24"
+    },
+    {
+     "selector": "initWithMachMessage:",
+     "types": "@12@8:12^v16"
+    },
+    {
+     "selector": "initWithConnection:msgid:",
+     "types": "@16@8:12@16I20"
+    },
+    {
+     "selector": "initWithConnection:components:msgid:",
+     "types": "@20@8:12@16@20I24"
+    }
+   ],
+   "instance_size": 64,
+   "ivars": [
+    {
+     "name": "connection",
+     "offset": 4,
+     "type": "@"
+    },
+    {
+     "name": "streamData",
+     "offset": 8,
+     "type": "{?=\"isa\"#\"refObject\"@\"stream\"{?=\"data\"@\"datap\"*\"limitp\"*\"startp\"*\"functions\"^{NSStreamFunctions}\"callback\"@\"newStyle\"c\"datapVM\"c}}"
+    },
+    {
+     "name": "components",
+     "offset": 44,
+     "type": "@\"NSMutableArray\""
+    },
+    {
+     "name": "importedObjects",
+     "offset": 48,
+     "type": "@\"NSMutableArray\""
+    },
+    {
+     "name": "componentIndex",
+     "offset": 52,
+     "type": "I"
+    },
+    {
+     "name": "msgid",
+     "offset": 56,
+     "type": "I"
+    },
+    {
+     "name": "isBycopy",
+     "offset": 60,
+     "type": "c"
+    },
+    {
+     "name": "isByref",
+     "offset": 61,
+     "type": "c"
+    },
+    {
+     "name": "isValid",
+     "offset": 62,
+     "type": "c"
+    },
+    {
+     "name": "unused",
+     "offset": 63,
+     "type": "c"
+    }
+   ],
+   "name": "NSConcretePortCoder",
+   "superclass": "NSPortCoder"
+  },
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "length",
+     "types": "I8@8:12"
+    },
+    {
+     "selector": "mutableBytes",
+     "types": "^v8@8:12"
+    },
+    {
+     "selector": "bytes",
+     "types": "r^v8@8:12"
+    },
+    {
+     "selector": "dealloc",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "release",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "retain",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "retainCount",
+     "types": "I8@8:12"
+    }
+   ],
+   "instance_size": 36,
+   "ivars": [
+    {
+     "name": "refObject",
+     "offset": 4,
+     "type": "@"
+    },
+    {
+     "name": "stream",
+     "offset": 8,
+     "type": "{?=\"data\"@\"datap\"*\"limitp\"*\"startp\"*\"functions\"^{NSStreamFunctions}\"callback\"@\"newStyle\"c\"datapVM\"c}"
+    }
+   ],
+   "name": "NSStreamData",
+   "superclass": "NSMutableData"
+  },
+  {
+   "class_methods": [
+    {
+     "selector": "portCoderWithReceivePort:sendPort:components:",
+     "types": "@20@8:12@16@20@24"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "dispatch",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "decodePortObject",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "encodePortObject:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "connection",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "isByref",
+     "types": "c8@8:12"
+    },
+    {
+     "selector": "isBycopy",
+     "types": "c8@8:12"
+    }
+   ],
+   "instance_size": 4,
+   "ivars": [],
+   "name": "NSPortCoder",
+   "superclass": "NSCoder"
+  }
+ ],
+ "data_symbols": [
+  "__NSPortCoderCacheLock",
+  "_NSFastFuncList"
+ ],
+ "module": "NSPortCoder.m",
+ "schema_version": "abi-v1",
+ "text_symbols": []
+}

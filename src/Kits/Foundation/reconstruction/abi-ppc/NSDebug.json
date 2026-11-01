@@ -1,0 +1,34 @@
+{
+ "categories": [],
+ "classes": [],
+ "data_symbols": [
+  "_NSAllocationStatisticsOutputMask",
+  "_NSDeallocateZombies",
+  "_NSDebugEnabled",
+  "_NSHangOnMallocError",
+  "_NSKeepAllocationStatistics",
+  "_NSNegativeRetainCheckEnabled",
+  "_NSZombieEnabled"
+ ],
+ "module": "NSDebug.m",
+ "schema_version": "abi-v1",
+ "text_symbols": [
+  "_NSCountFrames",
+  "_NSDebugRecordObjectAndStack",
+  "_NSFrameAddress",
+  "_NSGetAllocationStatisticsOutputPort",
+  "_NSIsFreedObject",
+  "_NSParseAllocationEvent",
+  "_NSRecordAllocationEvent",
+  "_NSReturnAddress",
+  "_NSSetAllocationStatisticsOutputPort",
+  "_NSStringFromStack",
+  "_NSWaitForAllocationEvent",
+  "__NSFirstFrameAddress",
+  "__NSInitializePlatform",
+  "__NSNegativeRetain",
+  "__NSNextFrameAddress",
+  "__NSPrintForDebugger",
+  "__NSReturnAddressFromFrameAddress"
+ ]
+}

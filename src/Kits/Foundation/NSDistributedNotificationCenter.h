@@ -25,6 +25,10 @@ typedef enum {
 
 @interface NSDistributedNotificationCenter : NSNotificationCenter
 
+#if defined(__ppc__) || defined(__POWERPC__)
++ (void)enableLogging:(BOOL)enabled;
+#endif
+
 + (NSDistributedNotificationCenter *)notificationCenterForType:(NSString *)notificationCenterType;
 // Currently there is only one type.
 

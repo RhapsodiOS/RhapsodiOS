@@ -1,0 +1,7 @@
+#
+# used by geninfo: DRIVER_NAME appears in the installer window
+#
+# Firmware matching is validated read-only by ScreamerCore before activation.
+#
+DRIVER_NAME="PPCScreamer"
+DEFAULT_DRIVER_VERSION="1.0";

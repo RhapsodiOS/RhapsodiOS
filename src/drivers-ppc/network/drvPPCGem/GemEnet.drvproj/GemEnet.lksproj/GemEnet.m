@@ -15,8 +15,8 @@
 #import <kernserv/prototypes.h>
 
 // Gem register offsets (format: (size << 16) | offset)
-#define kGemRegInterruptAck		0x4000c		// Interrupt acknowledge/status
-#define kGemRegRXKick			0x26034		// RX kick register
+#define kGemRegInterruptStatus		0x4000c
+#define kGemRegMacRxMacConfig		0x26034
 
 //
 // Utility functions for Gem register access
@@ -155,13 +155,13 @@ void _WriteGemRegister(int base, unsigned int offset_and_size, unsigned int valu
     // Set cache line size and latency (offset 0xc, value 0x608)
     [devDesc configWriteLong:0xc value:0x608];
 
-    // Map memory range 0 to memBase
-    [self mapMemoryRange:0 to:&memBase findSpace:YES cache:IO_CacheOff];
+    // Map memory range 0 to ioBaseEnet
+    [self mapMemoryRange:0 to:&ioBaseEnet findSpace:YES cache:IO_CacheOff];
 
     // Initialize configuration values
-    initValue3 = 6;
-    initValue1 = 0x14;
-    initValue2 = 0xff;
+    sromAddressBits = 6;
+    enetAddressOffset = 0x14;
+    phyId = 0xff;
 
     // Reset chip (disable)
     result = [self resetAndEnable:NO];
@@ -188,14 +188,14 @@ void _WriteGemRegister(int base, unsigned int offset_and_size, unsigned int valu
     }
 
     // Initialize mode flags
-    promiscuousMode = NO;
+    isPromiscuous = NO;
     multicastEnabled = NO;
 
     // Attach to network with our MAC address
-    network = [super attachToNetworkWithAddress:myAddress];
+    networkInterface = [super attachToNetworkWithAddress:myAddress];
 
     // Configure network interface flags
-    ifp = [network getIONetworkIfnet];
+    ifp = [networkInterface getIONetworkIfnet];
     ifp->if_flags |= 0x20;  // Set flag (likely IFF_SIMPLEX or similar)
 
     return self;
@@ -215,21 +215,21 @@ void _WriteGemRegister(int base, unsigned int offset_and_size, unsigned int valu
     [self _resetChip];
 
     // Free the network object if allocated
-    if (network != nil) {
-        [network free];
-    }
-
-    // Free all TX netbufs
-    for (i = 0; i < txDMACommandsSize; i++) {
-        if (rxNetbufs[i] != NULL) {
-            nb_free(rxNetbufs[i]);
-        }
+    if (networkInterface != nil) {
+        [networkInterface free];
     }
 
     // Free all RX netbufs
-    for (i = 0; i < rxDMACommandsSize; i++) {
-        if (txNetbufs[i] != NULL) {
-            nb_free(txNetbufs[i]);
+    for (i = 0; i < rxMaxCommand; i++) {
+        if (rxNetbuf[i] != NULL) {
+            nb_free(rxNetbuf[i]);
+        }
+    }
+
+    // Free all TX netbufs
+    for (i = 0; i < txMaxCommand; i++) {
+        if (txNetbuf[i] != NULL) {
+            nb_free(txNetbuf[i]);
         }
     }
 
@@ -245,7 +245,7 @@ void _WriteGemRegister(int base, unsigned int offset_and_size, unsigned int valu
     BOOL result;
 
     // Mark driver as not ready during reset
-    ready = NO;
+    resetAndEnabled = NO;
 
     // Clear any pending timeouts
     [self clearTimeout];
@@ -290,7 +290,7 @@ void _WriteGemRegister(int base, unsigned int offset_and_size, unsigned int valu
     [self setRelativeTimeout:300];
 
     // Mark driver as ready
-    ready = YES;
+    resetAndEnabled = YES;
 
     // Send dummy packet to prime the hardware
     [self _sendDummyPacket];
@@ -318,15 +318,15 @@ void _WriteGemRegister(int base, unsigned int offset_and_size, unsigned int valu
     [self _monitorLinkStatus];
 
     // Check if TX ring is empty or if we've had TX activity
-    if ((txHead == txTail) || (pad_5c0 != 0)) {
+    if ((txCommandHead == txCommandTail) || (txWDInterrupts != 0)) {
         // TX ring empty or activity detected - clear watchdog counters
-        pad_5c0 = 0;
-        pad_5c4 = 0;
+        txWDInterrupts = 0;
+        txWDCount = 0;
     } else {
         // TX ring not empty and no activity - increment watchdog
-        pad_5c4++;
+        txWDCount++;
 
-        if (pad_5c4 > 0) {
+        if (txWDCount > 0) {
             // Watchdog expired - try to recover
             [self _transmitInterruptOccurred];
             [self _restartTransmitter];
@@ -352,13 +352,13 @@ void _WriteGemRegister(int base, unsigned int offset_and_size, unsigned int valu
 
     // Process all pending interrupts
     do {
-        // Read interrupt acknowledge/status register
-        intStatus = _ReadGemRegister((int)memBase, kGemRegInterruptAck);
+        // Read interrupt status register
+        intStatus = _ReadGemRegister((int)ioBaseEnet, kGemRegInterruptStatus);
 
         // Check for transmit completion (bit 0)
         if ((intStatus & 0x01) != 0) {
             // Increment TX interrupt counter
-            pad_5c0++;
+            txWDInterrupts++;
 
             // Process transmit completions
             [self _transmitInterruptOccurred];
@@ -418,7 +418,7 @@ void _WriteGemRegister(int base, unsigned int offset_and_size, unsigned int valu
     // Check if entering sleep state (state 3)
     if (state == 3) {
         // Mark driver as not ready
-        ready = NO;
+        resetAndEnabled = NO;
 
         // Reset the chip
         [self _resetChip];
@@ -477,16 +477,16 @@ void _WriteGemRegister(int base, unsigned int offset_and_size, unsigned int valu
     unsigned short rxKickValue;
 
     // Set promiscuous mode flag
-    promiscuousMode = YES;
+    isPromiscuous = YES;
 
     // Lock debugger access
     [self reserveDebuggerLock];
 
-    // Read current RX kick register value
-    rxKickValue = _ReadGemRegister((int)memBase, kGemRegRXKick);
+    // Read current MAC RX configuration
+    rxKickValue = _ReadGemRegister((int)ioBaseEnet, kGemRegMacRxMacConfig);
 
     // Set bit 0x08 to enable promiscuous mode
-    _WriteGemRegister((int)memBase, kGemRegRXKick, rxKickValue | 0x08);
+    _WriteGemRegister((int)ioBaseEnet, kGemRegMacRxMacConfig, rxKickValue | 0x08);
 
     // Unlock debugger access
     [self releaseDebuggerLock];
@@ -502,16 +502,16 @@ void _WriteGemRegister(int base, unsigned int offset_and_size, unsigned int valu
     unsigned int rxKickValue;
 
     // Clear promiscuous mode flag
-    promiscuousMode = NO;
+    isPromiscuous = NO;
 
     // Lock debugger access
     [self reserveDebuggerLock];
 
-    // Read current RX kick register value
-    rxKickValue = _ReadGemRegister((int)memBase, kGemRegRXKick);
+    // Read current MAC RX configuration
+    rxKickValue = _ReadGemRegister((int)ioBaseEnet, kGemRegMacRxMacConfig);
 
     // Clear bit 0x08 to disable promiscuous mode (AND with 0xfff7)
-    _WriteGemRegister((int)memBase, kGemRegRXKick, rxKickValue & 0xfff7);
+    _WriteGemRegister((int)ioBaseEnet, kGemRegMacRxMacConfig, rxKickValue & 0xfff7);
 
     // Unlock debugger access
     [self releaseDebuggerLock];
@@ -571,13 +571,13 @@ void _WriteGemRegister(int base, unsigned int offset_and_size, unsigned int valu
 
     if (queueCount == 0) {
         // Queue is empty - try direct transmit if ring has space
-        nextTail = txTail + 1;
-        if (nextTail >= rxDMACommandsSize) {
+        nextTail = txCommandTail + 1;
+        if (nextTail >= txMaxCommand) {
             nextTail = 0;
         }
 
         // If ring not full, transmit directly
-        if (nextTail != txHead) {
+        if (nextTail != txCommandHead) {
             [self _transmitPacket:pkt];
             [self releaseDebuggerLock];
             return;
@@ -633,13 +633,13 @@ void _WriteGemRegister(int base, unsigned int offset_and_size, unsigned int valu
         }
 
         // Calculate next tail position
-        nextTail = txTail + 1;
-        if (nextTail >= rxDMACommandsSize) {
+        nextTail = txCommandTail + 1;
+        if (nextTail >= txMaxCommand) {
             nextTail = 0;
         }
 
-        // Check if ring is full (nextTail == txHead)
-        if (nextTail == txHead) {
+        // Check if ring is full (nextTail == txCommandHead)
+        if (nextTail == txCommandHead) {
             // Ring is full, can't transmit more
             return;
         }

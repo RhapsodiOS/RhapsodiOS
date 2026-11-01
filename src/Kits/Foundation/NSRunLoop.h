@@ -7,7 +7,7 @@
 #import <Foundation/NSDate.h>
 #import <Foundation/NSMapTable.h>
 
-@class NSTimer, NSPort;
+@class NSTimer, NSPort, NSArray, NSString;
 
 FOUNDATION_EXPORT NSString * const NSDefaultRunLoopMode;
 
@@ -30,9 +30,14 @@ FOUNDATION_EXPORT NSString * const NSDefaultRunLoopMode;
 - (NSString *)currentMode;
 
 - (void)addTimer:(NSTimer *)timer forMode:(NSString *)mode;
+- (void)removeTimer:(NSTimer *)timer forMode:(NSString *)mode;
+- (BOOL)containsTimer:(NSTimer *)timer forMode:(NSString *)mode;
+- (NSArray *)timersForMode:(NSString *)mode;
 
 - (void)addPort:(NSPort *)aPort forMode:(NSString *)mode;
 - (void)removePort:(NSPort *)aPort forMode:(NSString *)mode;
+- (BOOL)containsPort:(NSPort *)aPort forMode:(NSString *)mode;
+- (NSArray *)portsForMode:(NSString *)mode;
 
 - (NSDate *)limitDateForMode:(NSString *)mode;
 - (void)acceptInputForMode:(NSString *)mode beforeDate:(NSDate *)limitDate;
@@ -44,6 +49,7 @@ FOUNDATION_EXPORT NSString * const NSDefaultRunLoopMode;
 - (void)run; 
 - (void)runUntilDate:(NSDate *)limitDate;
 - (BOOL)runMode:(NSString *)mode beforeDate:(NSDate *)limitDate;
+- (BOOL)runMode:(NSString *)mode untilDate:(NSDate *)limitDate;
 
 - (void)configureAsServer;
 
@@ -55,11 +61,12 @@ FOUNDATION_EXPORT NSString * const NSDefaultRunLoopMode;
 
 - (void)performSelector:(SEL)aSelector withObject:(id)anArgument afterDelay:(NSTimeInterval)delay inModes:(NSArray *)modes;
 - (void)performSelector:(SEL)aSelector withObject:(id)anArgument afterDelay:(NSTimeInterval)delay;
+- (void)performSelector:(SEL)aSelector object:(id)anArgument afterDelay:(NSTimeInterval)delay;
 + (void)cancelPreviousPerformRequestsWithTarget:(id)aTarget selector:(SEL)aSelector object:(id)anArgument;
 
 @end
 
-@interface NSRunLoop (NSOrderedPerform)
+@interface NSRunLoop (NSPerformTimerStuff)
 - (void)performSelector:(SEL)aSelector target:(id)target argument:(id)arg order:(unsigned)order modes:(NSArray *)modes;
 - (void)cancelPerformSelector:(SEL)aSelector target:(id)target argument:(id)arg;
 @end

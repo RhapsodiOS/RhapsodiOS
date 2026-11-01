@@ -131,6 +131,9 @@ FOUNDATION_EXPORT BOOL NSIsFreedObject(id anObject);
 FOUNDATION_EXPORT BOOL NSNegativeRetainCheckEnabled;
 
 FOUNDATION_EXPORT void _NSNegativeRetain(void *object, int virtual_retains);
+FOUNDATION_EXPORT int _NSDoubleToBinaryString(unsigned int first_word,
+                                              unsigned int second_word,
+                                              char *buffer);
 	// Called when an object being autoreleased or released is
 	// about to have less than zero virtual retains. The virtual
 	// retain count is the number of real retains on the object
@@ -452,4 +455,3 @@ FOUNDATION_EXPORT void NSParseAllocationEvent(void *message, void *alloc_event, 
 	// necessary. alloc_event, backtrace, and num_backtrace may each
 	// be NULL if the value returned by reference for that parameter
 	// is not interesting.
-

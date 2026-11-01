@@ -13,9 +13,11 @@ PROJECTVERSION = 2.7
 PROJECT_TYPE = Kernel Server
 LANGUAGE = English
 
-CLASSES = DEC21x4.m DEC21x4Init.m DEC21x4KDB.m DEC21x4SRom.m DEC21x4Private.m
+CLASSES = DEC21x4.m DEC21x4Init.m DEC21x4KDB.m DEC21x4Private.m DEC21x4SRom.m
 
-HFILES = DEC21x4.h
+HFILES = DEC21x4.h DEC21x4Adapter.h
+
+CFILES = DEC21x4Media.c DEC21x4MII.c
 
 OTHERSRCS = Makefile.preamble Makefile Makefile.postamble Load_Commands.sect
 

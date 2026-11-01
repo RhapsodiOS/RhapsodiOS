@@ -4,8 +4,9 @@
 */
 
 #import <Foundation/NSObject.h>
+#import <Foundation/NSDate.h>
 
-@class NSMutableDictionary, NSDate;
+@class NSMutableDictionary;
 
 @interface NSThread : NSObject  {
 @private
@@ -32,6 +33,7 @@
 - (NSMutableDictionary *)threadDictionary;
 
 + (void)sleepUntilDate:(NSDate *)date;
++ (void)sleepForTimeInterval:(NSTimeInterval)seconds;
 
 + (void)exit;
 
@@ -40,4 +42,6 @@
 FOUNDATION_EXPORT NSString * const NSWillBecomeMultiThreadedNotification;
 FOUNDATION_EXPORT NSString * const NSDidBecomeSingleThreadedNotification;
 FOUNDATION_EXPORT NSString * const NSThreadWillExitNotification;
+
+FOUNDATION_EXPORT NSThread *_NSCurrentThread(void);
 

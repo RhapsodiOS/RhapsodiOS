@@ -275,7 +275,8 @@ struct kinfo_proc {
 #define	HW_DISKNAMES	 8		/* strings: disk drive names */
 #define	HW_DISKSTATS	 9		/* struct: diskstats[] */
 #define	HW_NEWWORLD	10		/* int: 0 for Legacy, else NewWorld */
-#define	HW_MAXID	11		/* number of valid hw ids */
+#define	HW_POWERSUPPLY	11		/* int: 0 if a redundant supply failed */
+#define	HW_MAXID	12		/* number of valid hw ids */
 
 #define CTL_HW_NAMES { \
 	{ 0, 0 }, \
@@ -289,6 +290,7 @@ struct kinfo_proc {
 	{ "disknames", CTLTYPE_STRUCT }, \
 	{ "diskstats", CTLTYPE_STRUCT }, \
 	{ "newworld", CTLTYPE_INT }, \
+	{ "powersupply", CTLTYPE_INT }, \
 }
 
 /*

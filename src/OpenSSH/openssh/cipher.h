@@ -1,3 +1,5 @@
+/* $OpenBSD: cipher.h,v 1.49 2016/08/03 05:41:57 djm Exp $ */
+
 /*
  * Author: Tatu Ylonen <ylo@cs.hut.fi>
  * Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
@@ -32,22 +34,20 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-/* RCSID("$OpenBSD: cipher.h,v 1.22 2000/10/13 18:59:14 markus Exp $"); */
-
 #ifndef CIPHER_H
 #define CIPHER_H
 
-#include <openssl/des.h>
-#include <openssl/blowfish.h>
-#include <openssl/rc4.h>
-#include <openssl/cast.h>
-#include "rijndael.h"
+#include <sys/types.h>
+#include <openssl/evp.h>
+#include "cipher-chachapoly.h"
+#include "cipher-aesctr.h"
+
 /*
  * Cipher types for SSH-1.  New types can be added, but old types should not
  * be removed for compatibility.  The maximum allowed value is 31.
  */
 #define SSH_CIPHER_SSH2		-3
-#define SSH_CIPHER_ILLEGAL	-2	/* No valid cipher selected. */
+#define SSH_CIPHER_INVALID	-2	/* No valid cipher selected. */
 #define SSH_CIPHER_NOT_SET	-1	/* None selected (invalid number). */
 #define SSH_CIPHER_NONE		0	/* no encryption */
 #define SSH_CIPHER_IDEA		1	/* IDEA CFB */
@@ -59,59 +59,44 @@
 #define SSH_CIPHER_RESERVED	7
 #define SSH_CIPHER_MAX		31
 
-typedef struct Cipher Cipher;
-typedef struct CipherContext CipherContext;
+#define CIPHER_ENCRYPT		1
+#define CIPHER_DECRYPT		0
 
-struct CipherContext {
-	union {
-		struct {
-			des_key_schedule key;
-			des_cblock iv;
-		}	des;
-		struct {
-			des_key_schedule key1;
-			des_key_schedule key2;
-			des_cblock iv2;
-			des_key_schedule key3;
-			des_cblock iv3;
-		}       des3;
-		struct {
-			struct bf_key_st key;
-			u_char iv[8];
-		}       bf;
-		struct {
-			CAST_KEY key;
-			u_char iv[8];
-		} cast;
-		struct {
-			u4byte iv[4];
-			rijndael_ctx enc;
-			rijndael_ctx dec;
-		} rijndael;
-		RC4_KEY rc4;
-	}       u;
-	Cipher *cipher;
-};
-struct Cipher {
-	char	*name;
-	int	number;		/* for ssh1 only */
-	u_int	block_size;
-	u_int	key_len;
-	void	(*setkey)(CipherContext *, const u_char *, u_int);
-	void	(*setiv)(CipherContext *, const u_char *, u_int);
-	void	(*encrypt)(CipherContext *, u_char *, const u_char *, u_int);
-	void	(*decrypt)(CipherContext *, u_char *, const u_char *, u_int);
-};
+struct sshcipher;
+struct sshcipher_ctx;
 
-unsigned int cipher_mask_ssh1(int client);
-Cipher *cipher_by_name(const char *name);
-Cipher *cipher_by_number(int id);
-int cipher_number(const char *name);
-char *cipher_name(int id);
-int ciphers_valid(const char *names);
-void cipher_init(CipherContext *, Cipher *, const u_char *, u_int, const u_char *, u_int);
-void cipher_encrypt(CipherContext *context, u_char *dest, const u_char *src, u_int len);
-void cipher_decrypt(CipherContext *context, u_char *dest, const u_char *src, u_int len);
-void cipher_set_key_string(CipherContext *context, Cipher *cipher, const char *passphrase);
+u_int	 cipher_mask_ssh1(int);
+const struct sshcipher *cipher_by_name(const char *);
+const struct sshcipher *cipher_by_number(int);
+int	 cipher_number(const char *);
+char	*cipher_name(int);
+const char *cipher_warning_message(const struct sshcipher_ctx *);
+int	 ciphers_valid(const char *);
+char	*cipher_alg_list(char, int);
+int	 cipher_init(struct sshcipher_ctx **, const struct sshcipher *,
+    const u_char *, u_int, const u_char *, u_int, int);
+int	 cipher_crypt(struct sshcipher_ctx *, u_int, u_char *, const u_char *,
+    u_int, u_int, u_int);
+int	 cipher_get_length(struct sshcipher_ctx *, u_int *, u_int,
+    const u_char *, u_int);
+void	 cipher_free(struct sshcipher_ctx *);
+int	 cipher_set_key_string(struct sshcipher_ctx **,
+    const struct sshcipher *, const char *, int);
+u_int	 cipher_blocksize(const struct sshcipher *);
+u_int	 cipher_keylen(const struct sshcipher *);
+u_int	 cipher_seclen(const struct sshcipher *);
+u_int	 cipher_authlen(const struct sshcipher *);
+u_int	 cipher_ivlen(const struct sshcipher *);
+u_int	 cipher_is_cbc(const struct sshcipher *);
+
+u_int	 cipher_ctx_is_plaintext(struct sshcipher_ctx *);
+u_int	 cipher_ctx_get_number(struct sshcipher_ctx *);
+
+u_int	 cipher_get_number(const struct sshcipher *);
+int	 cipher_get_keyiv(struct sshcipher_ctx *, u_char *, u_int);
+int	 cipher_set_keyiv(struct sshcipher_ctx *, const u_char *);
+int	 cipher_get_keyiv_len(const struct sshcipher_ctx *);
+int	 cipher_get_keycontext(const struct sshcipher_ctx *, u_char *);
+void	 cipher_set_keycontext(struct sshcipher_ctx *, const u_char *);
 
 #endif				/* CIPHER_H */

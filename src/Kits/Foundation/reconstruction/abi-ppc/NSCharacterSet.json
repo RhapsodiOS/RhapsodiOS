@@ -1,0 +1,780 @@
+{
+ "categories": [],
+ "classes": [
+  {
+   "class_methods": [
+    {
+     "selector": "illegalCharacterSet",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "punctuationCharacterSet",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "decomposableCharacterSet",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "nonBaseCharacterSet",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "alphanumericCharacterSet",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "uppercaseLetterCharacterSet",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "lowercaseLetterCharacterSet",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "letterCharacterSet",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "decimalDigitCharacterSet",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "whitespaceAndNewlineCharacterSet",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "whitespaceCharacterSet",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "controlCharacterSet",
+     "types": "@4@4:8"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "bitmapRepresentation",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "isEqual:",
+     "types": "c8@4:8@12"
+    },
+    {
+     "selector": "invertedSet",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "characterIsMember:",
+     "types": "c6@4:8S12"
+    }
+   ],
+   "instance_size": 12,
+   "ivars": [],
+   "name": "NSExpandedBuiltinCharacterSet",
+   "superclass": "NSBuiltinCharacterSet"
+  },
+  {
+   "class_methods": [
+    {
+     "selector": "illegalCharacterSet",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "punctuationCharacterSet",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "decomposableCharacterSet",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "alphanumericCharacterSet",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "nonBaseCharacterSet",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "uppercaseLetterCharacterSet",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "lowercaseLetterCharacterSet",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "letterCharacterSet",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "decimalDigitCharacterSet",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "whitespaceAndNewlineCharacterSet",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "whitespaceCharacterSet",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "controlCharacterSet",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "_setWithOffset:",
+     "types": "@8@4:8i12"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "initWithCoder:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "encodeWithCoder:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "dealloc",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "release",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "retainCount",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "retain",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "autorelease",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "isEmpty",
+     "types": "c4@4:8"
+    },
+    {
+     "selector": "bitmapRepresentation",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "isEqual:",
+     "types": "c8@4:8@12"
+    },
+    {
+     "selector": "characterIsMember:",
+     "types": "c6@4:8S12"
+    },
+    {
+     "selector": "mutableCopyWithZone:",
+     "types": "@8@4:8^{?=}12"
+    },
+    {
+     "selector": "expandSetWithOffset:",
+     "types": "@8@4:8i12"
+    },
+    {
+     "selector": "initWithOffset:",
+     "types": "@8@4:8i12"
+    }
+   ],
+   "instance_size": 12,
+   "ivars": [
+    {
+     "name": "offset",
+     "offset": 4,
+     "type": "i"
+    },
+    {
+     "name": "expandedset",
+     "offset": 8,
+     "type": "@"
+    }
+   ],
+   "name": "NSBuiltinCharacterSet",
+   "superclass": "NSCharacterSet"
+  },
+  {
+   "class_methods": [
+    {
+     "selector": "_readAndRetainFileNamed:makeCompact:",
+     "types": "@9@4:8@12c16"
+    },
+    {
+     "selector": "_findDictOrBitmapSetNamed:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "characterSetWithBitmapRepresentation:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "characterSetWithRange:",
+     "types": "@12@4:8{?=II}12"
+    },
+    {
+     "selector": "characterSetWithCharactersInString:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "characterSetWithName:",
+     "types": "@8@4:8@12"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "dump",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "makeCharacterSetFast",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "makeCharacterSetCompact",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "isCompact",
+     "types": "c4@4:8"
+    },
+    {
+     "selector": "freeBitsAndReleaseDataIfNecessary",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "_makeSelfMutable",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "makeImmutable",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "isMutable",
+     "types": "c4@4:8"
+    },
+    {
+     "selector": "count",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "isEmpty",
+     "types": "c4@4:8"
+    },
+    {
+     "selector": "replacementObjectForPortCoder:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "dealloc",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "mutableCopyWithZone:",
+     "types": "@8@4:8^{?=}12"
+    },
+    {
+     "selector": "invertedSet",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "bitmapRepresentation",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "isEqual:",
+     "types": "c8@4:8@12"
+    },
+    {
+     "selector": "formIntersectionWithCharacterSet:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "formUnionWithCharacterSet:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "invert",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "removeCharactersInRange:",
+     "types": "v12@4:8{?=II}12"
+    },
+    {
+     "selector": "addCharactersInRange:",
+     "types": "v12@4:8{?=II}12"
+    },
+    {
+     "selector": "removeCharactersInString:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "addCharactersInString:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "characterIsMember:",
+     "types": "c6@4:8S12"
+    },
+    {
+     "selector": "initWithBitmapRepresentation:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "initWithRange:",
+     "types": "@12@4:8{?=II}12"
+    },
+    {
+     "selector": "initWithCharactersInString:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "_initWithSet:",
+     "types": "@8@4:8^{?=i[4i]iiii[1i]}12"
+    },
+    {
+     "selector": "init",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "initWithContentsOfFile:",
+     "types": "@8@4:8@12"
+    }
+   ],
+   "instance_size": 20,
+   "ivars": [
+    {
+     "name": "set",
+     "offset": 4,
+     "type": "^{?}"
+    },
+    {
+     "name": "bits",
+     "offset": 8,
+     "type": "*"
+    },
+    {
+     "name": "data",
+     "offset": 12,
+     "type": "@\"NSData\""
+    },
+    {
+     "name": "isMutable",
+     "offset": 16,
+     "type": "c"
+    }
+   ],
+   "name": "NSConcreteMutableCharacterSet",
+   "superclass": "NSMutableCharacterSet"
+  },
+  {
+   "class_methods": [
+    {
+     "selector": "_immutableStringCharacterSetWithArray:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "characterSetWithCharactersInString:",
+     "types": "@8@4:8@12"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "initWithCoder:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "encodeWithCoder:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "count",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "isEmpty",
+     "types": "c4@4:8"
+    },
+    {
+     "selector": "bitmapRepresentation",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "isEqual:",
+     "types": "c8@4:8@12"
+    },
+    {
+     "selector": "characterIsMember:",
+     "types": "c6@4:8S12"
+    },
+    {
+     "selector": "mutableCopyWithZone:",
+     "types": "@8@4:8^{?=}12"
+    }
+   ],
+   "instance_size": 136,
+   "ivars": [
+    {
+     "name": "buffer",
+     "offset": 4,
+     "type": "[64S]"
+    },
+    {
+     "name": "numChars",
+     "offset": 132,
+     "type": "S"
+    }
+   ],
+   "name": "NSImmutableStringCharacterSet",
+   "superclass": "NSCharacterSet"
+  },
+  {
+   "class_methods": [
+    {
+     "selector": "characterSetWithRange:",
+     "types": "@12@4:8{?=II}12"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "initWithCoder:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "encodeWithCoder:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "count",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "isEmpty",
+     "types": "c4@4:8"
+    },
+    {
+     "selector": "bitmapRepresentation",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "isEqual:",
+     "types": "c8@4:8@12"
+    },
+    {
+     "selector": "characterIsMember:",
+     "types": "c6@4:8S12"
+    },
+    {
+     "selector": "mutableCopyWithZone:",
+     "types": "@8@4:8^{?=}12"
+    },
+    {
+     "selector": "copyWithZone:",
+     "types": "@8@4:8^{?=}12"
+    }
+   ],
+   "instance_size": 8,
+   "ivars": [
+    {
+     "name": "low",
+     "offset": 4,
+     "type": "S"
+    },
+    {
+     "name": "high",
+     "offset": 6,
+     "type": "S"
+    }
+   ],
+   "name": "NSImmutableRangeCharacterSet",
+   "superclass": "NSCharacterSet"
+  },
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "dealloc",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "count",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "isEmpty",
+     "types": "c4@4:8"
+    },
+    {
+     "selector": "bitmapRepresentation",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "isEqual:",
+     "types": "c8@4:8@12"
+    },
+    {
+     "selector": "mutableCopyWithZone:",
+     "types": "@8@4:8^{?=}12"
+    },
+    {
+     "selector": "invertedSet",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "characterIsMember:",
+     "types": "c6@4:8S12"
+    },
+    {
+     "selector": "initWithCharacterSet:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "init",
+     "types": "@4@4:8"
+    }
+   ],
+   "instance_size": 8,
+   "ivars": [
+    {
+     "name": "realset",
+     "offset": 4,
+     "type": "@\"NSCharacterSet\""
+    }
+   ],
+   "name": "NSInvertedCharacterSet",
+   "superclass": "NSCharacterSet"
+  },
+  {
+   "class_methods": [
+    {
+     "selector": "characterSetWithCharactersInString:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "characterSetWithRange:",
+     "types": "@12@4:8{?=II}12"
+    },
+    {
+     "selector": "allocWithZone:",
+     "types": "@8@4:8^{?=}12"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "isMutable",
+     "types": "c4@4:8"
+    },
+    {
+     "selector": "invert",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "formIntersectionWithCharacterSet:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "formUnionWithCharacterSet:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "removeCharactersInString:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "addCharactersInString:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "removeCharactersInRange:",
+     "types": "v12@4:8{?=II}12"
+    },
+    {
+     "selector": "addCharactersInRange:",
+     "types": "v12@4:8{?=II}12"
+    },
+    {
+     "selector": "mutableCopyWithZone:",
+     "types": "@8@4:8^{?=}12"
+    },
+    {
+     "selector": "copyWithZone:",
+     "types": "@8@4:8^{?=}12"
+    }
+   ],
+   "instance_size": 4,
+   "ivars": [],
+   "name": "NSMutableCharacterSet",
+   "superclass": "NSCharacterSet"
+  },
+  {
+   "class_methods": [
+    {
+     "selector": "_dumpSetRepresentation:",
+     "types": "@8@4:8^v12"
+    },
+    {
+     "selector": "_dumpBitmapRepresentation:",
+     "types": "@8@4:8*12"
+    },
+    {
+     "selector": "characterSetWithBitmapRepresentation:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "characterSetWithCharactersInString:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "characterSetWithRange:",
+     "types": "@12@4:8{?=II}12"
+    },
+    {
+     "selector": "characterSetWithContentsOfFile:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "illegalCharacterSet",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "punctuationCharacterSet",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "decomposableCharacterSet",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "nonBaseCharacterSet",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "alphanumericCharacterSet",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "uppercaseLetterCharacterSet",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "lowercaseLetterCharacterSet",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "letterCharacterSet",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "decimalDigitCharacterSet",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "whitespaceAndNewlineCharacterSet",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "whitespaceCharacterSet",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "controlCharacterSet",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "allocWithZone:",
+     "types": "@8@4:8^{?=}12"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "initWithCoder:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "encodeWithCoder:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "replacementObjectForPortCoder:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "mutableCopyWithZone:",
+     "types": "@8@4:8^{?=}12"
+    },
+    {
+     "selector": "bitmapRepresentation",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "isEqual:",
+     "types": "c8@4:8@12"
+    },
+    {
+     "selector": "characterIsMember:",
+     "types": "c6@4:8S12"
+    },
+    {
+     "selector": "makeImmutable",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "isMutable",
+     "types": "c4@4:8"
+    },
+    {
+     "selector": "count",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "isEmpty",
+     "types": "c4@4:8"
+    },
+    {
+     "selector": "invertedSet",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "copyWithZone:",
+     "types": "@8@4:8^{?=}12"
+    },
+    {
+     "selector": "hash",
+     "types": "I4@4:8"
+    }
+   ],
+   "instance_size": 4,
+   "ivars": [],
+   "name": "NSCharacterSet",
+   "superclass": "NSObject"
+  }
+ ],
+ "data_symbols": [
+  "__NSCharacterSetLock"
+ ],
+ "module": "NSCharacterSet.m",
+ "schema_version": "abi-v1",
+ "text_symbols": [
+  "__NSFoundationResourceDirectory"
+ ]
+}

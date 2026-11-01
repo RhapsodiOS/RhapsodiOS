@@ -1,6 +1,6 @@
 pkgname = drvdec21x4ethernet
 pkgver = 2
-pkgdesc = STUB - DEC 21x4 PCI Ethernet adapter driver (no in-tree source; scaffolded from shipped binary metadata)
+pkgdesc = DEC 21x4 PCI Ethernet adapter driver
 maintainer = Darwin Developers <darwin-development@public.lists.apple.com>
 license = APSL
 makedepends = build-base, drivertools, driverkit, machkit, kernload, libstreams

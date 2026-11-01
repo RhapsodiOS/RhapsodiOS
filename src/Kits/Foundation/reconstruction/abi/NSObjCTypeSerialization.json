@@ -1,0 +1,31 @@
+{
+ "categories": [
+  {
+   "class": "NSData",
+   "class_methods": [],
+   "instance_methods": [
+    {
+     "selector": "deserializeDataAt:ofObjCType:atCursor:context:",
+     "types": "v24@8:12^v16r*20^I24@28"
+    }
+   ],
+   "name": "NSDataObjCTypeDeserialization"
+  },
+  {
+   "class": "NSMutableData",
+   "class_methods": [],
+   "instance_methods": [
+    {
+     "selector": "serializeDataAt:ofObjCType:context:",
+     "types": "v20@8:12r^v16r*20@24"
+    }
+   ],
+   "name": "NSMutableDataObjcTypeSerialization"
+  }
+ ],
+ "classes": [],
+ "data_symbols": [],
+ "module": "NSObjCTypeSerialization.m",
+ "schema_version": "abi-v1",
+ "text_symbols": []
+}

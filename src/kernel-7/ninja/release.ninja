@@ -1,0 +1,5 @@
+config = RELEASE
+manifest = build.ninja
+ident = -DNEXT -DTIMEZONE="0" -DPST="0" -DINET -DMACH -DNO_DIRECT_RPC
+driver_library = libDriver_kern.o
+include ninja/i386.ninja

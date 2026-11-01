@@ -285,7 +285,7 @@ static void docopy(vm_map_t sourceMap,
  * Construct an I/O request.
  * From decompiled code: allocates and initializes a request structure.
  */
-- (id)constructRequest:(IOReturn *)statusPtr
+- (id)constructRequest:(unsigned)isWrite
              blockStart:(unsigned)blockStart
               byteCount:(unsigned)byteCount
                  buffer:(void *)buffer
@@ -317,7 +317,6 @@ static void docopy(vm_map_t sourceMap,
 	
 	// Validate: byte count must be sector-aligned
 	if ((byteCount % sectorSize) != 0) {
-		if (statusPtr != NULL) *statusPtr = IO_R_INVALID_ARG;
 		return nil;
 	}
 	
@@ -327,7 +326,6 @@ static void docopy(vm_map_t sourceMap,
 	
 	// Validate: must not exceed disk size and must have at least 1 block
 	if ((blockEnd >= diskSize) || (numBlocks == 0)) {
-		if (statusPtr != NULL) *statusPtr = IO_R_INVALID_ARG;
 		return nil;
 	}
 	
@@ -342,12 +340,11 @@ static void docopy(vm_map_t sourceMap,
 	// Allocate request
 	request = (void *)IOMalloc(requestSize);
 	if (request == NULL) {
-		if (statusPtr != NULL) *statusPtr = IO_R_NO_MEMORY;
 		return nil;
 	}
 	
 	// Initialize request header
-	*(IOReturn **)request = statusPtr;                     // +0x00: status pointer
+	*(unsigned *)request = isWrite;                        // +0x00: write flag
 	*(unsigned *)((char *)request + 0x04) = requestSize;   // +0x04: size
 	*((unsigned char *)request + 0x0c) = 0;                // +0x0c: abort flag
 	
@@ -365,7 +362,6 @@ static void docopy(vm_map_t sourceMap,
 	// Check if lock allocation succeeded
 	if (lockObject == nil) {
 		IOFree(request, requestSize);
-		if (statusPtr != NULL) *statusPtr = IO_R_NO_MEMORY;
 		return nil;
 	}
 	
@@ -381,8 +377,8 @@ static void docopy(vm_map_t sourceMap,
 		subrequestOffset = subrequestIndex * 0x24;
 		
 		// Initialize subrequest structure:
-		// +0x00: write flag (default to 0 for read - caller may override)
-		*((BOOL *)((char *)request + 0x24 + subrequestOffset)) = 0;
+		// +0x00: write flag
+		*(unsigned *)((char *)request + 0x24 + subrequestOffset) = isWrite;
 		
 		// +0x04: cylinder number
 		*(unsigned *)((char *)request + 0x24 + subrequestOffset + 0x04) = 
@@ -416,7 +412,6 @@ static void docopy(vm_map_t sourceMap,
 		cylinder = startCylinder + subrequestIndex;
 	}
 	
-	if (statusPtr != NULL) *statusPtr = IO_R_SUCCESS;
 	return request;
 }
 

@@ -1,3 +1,5 @@
+/* $OpenBSD: ssh2.h,v 1.18 2016/05/04 14:22:33 markus Exp $ */
+
 /*
  * Copyright (c) 2000 Markus Friedl.  All rights reserved.
  *
@@ -52,7 +54,27 @@
  *
  *     192-255  Local extensions
  */
-/* RCSID("$OpenBSD: ssh2.h,v 1.5 2000/10/11 04:02:17 provos Exp $"); */
+
+/* special marker for no message */
+
+#define SSH_MSG_NONE					0
+
+/* ranges */
+
+#define SSH2_MSG_TRANSPORT_MIN				1
+#define SSH2_MSG_TRANSPORT_MAX				49
+#define SSH2_MSG_USERAUTH_MIN				50
+#define SSH2_MSG_USERAUTH_MAX				79
+#define SSH2_MSG_USERAUTH_PER_METHOD_MIN		60
+#define SSH2_MSG_USERAUTH_PER_METHOD_MAX		SSH2_MSG_USERAUTH_MAX
+#define SSH2_MSG_CONNECTION_MIN				80
+#define SSH2_MSG_CONNECTION_MAX				127
+#define SSH2_MSG_RESERVED_MIN				128
+#define SSH2_MSG_RESERVED_MAX				191
+#define SSH2_MSG_LOCAL_MIN				192
+#define SSH2_MSG_LOCAL_MAX				255
+#define SSH2_MSG_MIN					1
+#define SSH2_MSG_MAX					255
 
 /* transport layer: generic */
 
@@ -62,6 +84,7 @@
 #define SSH2_MSG_DEBUG					4
 #define SSH2_MSG_SERVICE_REQUEST			5
 #define SSH2_MSG_SERVICE_ACCEPT				6
+#define SSH2_MSG_EXT_INFO				7
 
 /* transport layer: alg negotiation */
 
@@ -74,10 +97,15 @@
 #define SSH2_MSG_KEXDH_REPLY				31
 
 /* dh-group-exchange */
-#define SSH2_MSG_KEX_DH_GEX_REQUEST			30
+#define SSH2_MSG_KEX_DH_GEX_REQUEST_OLD			30
 #define SSH2_MSG_KEX_DH_GEX_GROUP			31
 #define SSH2_MSG_KEX_DH_GEX_INIT			32
 #define SSH2_MSG_KEX_DH_GEX_REPLY			33
+#define SSH2_MSG_KEX_DH_GEX_REQUEST			34
+
+/* ecdh */
+#define SSH2_MSG_KEX_ECDH_INIT				30
+#define SSH2_MSG_KEX_ECDH_REPLY				31
 
 /* user authentication: generic */
 
@@ -140,3 +168,7 @@
 #define SSH2_OPEN_RESOURCE_SHORTAGE			4
 
 #define SSH2_EXTENDED_DATA_STDERR			1
+
+/* Certificate types for OpenSSH certificate keys extension */
+#define SSH2_CERT_TYPE_USER				1
+#define SSH2_CERT_TYPE_HOST				2

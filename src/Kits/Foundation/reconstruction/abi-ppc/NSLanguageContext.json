@@ -1,0 +1,133 @@
+{
+ "categories": [],
+ "classes": [
+  {
+   "class_methods": [
+    {
+     "selector": "_langList",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "languageContextWithName:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "allTheLanguageContextNamesInstalledOnTheSystem",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "availableLanguageContextNames",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "systemLanguageContext",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "defaultLanguageContext",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "setSystemLanguageContext:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "setDefaultLanguageContext:",
+     "types": "v8@4:8@12"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "_dictionary",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "languageCode",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "formalName",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "languageName",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "mutableCopyWithZone:",
+     "types": "@8@4:8^{?=}12"
+    },
+    {
+     "selector": "copyWithZone:",
+     "types": "@8@4:8^{?=}12"
+    },
+    {
+     "selector": "initWithCoder:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "encodeWithCoder:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "classForCoder",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "removeObjectForKey:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "setObject:forKey:",
+     "types": "v12@4:8@12@16"
+    },
+    {
+     "selector": "keyEnumerator",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "objectForKey:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "count",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "initWithContentsOfFile:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "init",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "_initWithDictionary:",
+     "types": "@8@4:8@12"
+    }
+   ],
+   "instance_size": 12,
+   "ivars": [
+    {
+     "name": "_dict",
+     "offset": 4,
+     "type": "@\"NSMutableDictionary\""
+    },
+    {
+     "name": "_reserved",
+     "offset": 8,
+     "type": "^v"
+    }
+   ],
+   "name": "NSLanguageContext",
+   "superclass": "NSMutableDictionary"
+  }
+ ],
+ "data_symbols": [
+  "__NSLanguageContextLock"
+ ],
+ "module": "NSLanguageContext.m",
+ "schema_version": "abi-v1",
+ "text_symbols": []
+}

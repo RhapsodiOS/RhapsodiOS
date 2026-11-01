@@ -62,7 +62,8 @@
 	volatile UInt32	*	configAddr;
 	volatile UInt32	*	configData;
 	volatile UInt32	*	ioAperture;
-        int			___reserved[ 4 ];
+	UInt32			dataLaneMask;		// 4 on UniNorth
+        int			___reserved[ 3 ];
 }
 
 - (BOOL) isVCI;

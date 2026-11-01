@@ -146,13 +146,18 @@ sub cbc
 	&mov($count,	&wparam(2));	# length
 	&and($count,	7);
 	&jz(&label("finish"));
+	&call(&label("PIC_point"));
+&set_label("PIC_point");
+	&blindpop("edx");
+	&lea("ecx",&DWP(&label("cbc_enc_jmp_table")."-".&label("PIC_point"),"edx"));
+	&mov($count,&DWP(0,"ecx",$count,4))
+	&add($count,"edx");
 	&xor("ecx","ecx");
 	&xor("edx","edx");
-	&mov($count,&DWP(&label("cbc_enc_jmp_table"),"",$count,4));
+	#&mov($count,&DWP(&label("cbc_enc_jmp_table"),"",$count,4));
 	&jmp_ptr($count);
 
 &set_label("ej7");
-	&xor("edx",		"edx") if $ppro; # ppro friendly
 	&movb(&HB("edx"),	&BP(6,$in,"",0));
 	&shl("edx",8);
 &set_label("ej6");
@@ -164,7 +169,6 @@ sub cbc
 	&jmp(&label("ejend"));
 &set_label("ej3");
 	&movb(&HB("ecx"),	&BP(2,$in,"",0));
-	&xor("ecx",		"ecx") if $ppro; # ppro friendly
 	&shl("ecx",8);
 &set_label("ej2");
 	&movb(&HB("ecx"),	&BP(1,$in,"",0));
@@ -316,24 +320,27 @@ sub cbc
 
 	&function_end_A($name);
 
-	&set_label("cbc_enc_jmp_table",1);
+	&align(64);
+	&set_label("cbc_enc_jmp_table");
 	&data_word("0");
-	&data_word(&label("ej1"));
-	&data_word(&label("ej2"));
-	&data_word(&label("ej3"));
-	&data_word(&label("ej4"));
-	&data_word(&label("ej5"));
-	&data_word(&label("ej6"));
-	&data_word(&label("ej7"));
-	&set_label("cbc_dec_jmp_table",1);
-	&data_word("0");
-	&data_word(&label("dj1"));
-	&data_word(&label("dj2"));
-	&data_word(&label("dj3"));
-	&data_word(&label("dj4"));
-	&data_word(&label("dj5"));
-	&data_word(&label("dj6"));
-	&data_word(&label("dj7"));
+	&data_word(&label("ej1")."-".&label("PIC_point"));
+	&data_word(&label("ej2")."-".&label("PIC_point"));
+	&data_word(&label("ej3")."-".&label("PIC_point"));
+	&data_word(&label("ej4")."-".&label("PIC_point"));
+	&data_word(&label("ej5")."-".&label("PIC_point"));
+	&data_word(&label("ej6")."-".&label("PIC_point"));
+	&data_word(&label("ej7")."-".&label("PIC_point"));
+	# not used
+	#&set_label("cbc_dec_jmp_table",1);
+	#&data_word("0");
+	#&data_word(&label("dj1")."-".&label("PIC_point"));
+	#&data_word(&label("dj2")."-".&label("PIC_point"));
+	#&data_word(&label("dj3")."-".&label("PIC_point"));
+	#&data_word(&label("dj4")."-".&label("PIC_point"));
+	#&data_word(&label("dj5")."-".&label("PIC_point"));
+	#&data_word(&label("dj6")."-".&label("PIC_point"));
+	#&data_word(&label("dj7")."-".&label("PIC_point"));
+	&align(64);
 
 	&function_end_B($name);
 	

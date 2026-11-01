@@ -1,0 +1,7 @@
+"Title" = "PowerPC Screamer Audio";
+"Family" = "Audio";
+"Location" = "";
+"Instance" = "0";
+"Driver Name" = "PPCScreamer";
+"Matching" = "awacs davbus";
+"Class Names" = "PPCScreamer";

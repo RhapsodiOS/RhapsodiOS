@@ -1,0 +1,90 @@
+# i386 libc exceptions from conf/Makefile.i386.
+
+build $outdir/memchr.o: cc machdep/i386/libc/memchr.c || $outdir/prepared $outdir/validated generated
+  source = ../../machdep/i386/libc/memchr.c
+  object = memchr.o
+  flags = $cppflags $machine_cflags -O4
+
+build $outdir/memcmp.o: cc machdep/i386/libc/memcmp.c || $outdir/prepared $outdir/validated generated
+  source = ../../machdep/i386/libc/memcmp.c
+  object = memcmp.o
+  flags = $cppflags $machine_cflags -O4
+
+build $outdir/memcpy.o: cc machdep/i386/libc/memcpy.c || $outdir/prepared $outdir/validated generated
+  source = ../../machdep/i386/libc/memcpy.c
+  object = memcpy.o
+  flags = $cppflags $machine_cflags -O4
+
+build $outdir/memmove.o: cc machdep/i386/libc/memmove.c || $outdir/prepared $outdir/validated generated
+  source = ../../machdep/i386/libc/memmove.c
+  object = memmove.o
+  flags = $cppflags $machine_cflags -O4
+
+build $outdir/memset.o: cc machdep/i386/libc/memset.c || $outdir/prepared $outdir/validated generated
+  source = ../../machdep/i386/libc/memset.c
+  object = memset.o
+  flags = $cppflags $machine_cflags -O4
+
+build $outdir/pagesize.o: cc machdep/i386/libc/pagesize.c || $outdir/prepared $outdir/validated generated
+  source = ../../machdep/i386/libc/pagesize.c
+  object = pagesize.o
+  flags = $cppflags $machine_cflags -O4
+
+build $outdir/strchr.o: cc machdep/i386/libc/strchr.c || $outdir/prepared $outdir/validated generated
+  source = ../../machdep/i386/libc/strchr.c
+  object = strchr.o
+  flags = $cppflags $machine_cflags -O4 -funroll-all-loops
+
+build $outdir/strrchr.o: cc machdep/i386/libc/strrchr.c || $outdir/prepared $outdir/validated generated
+  source = ../../machdep/i386/libc/strrchr.c
+  object = strrchr.o
+  flags = $cppflags $machine_cflags -O4 -funroll-all-loops
+
+build $outdir/strlen.o: cc machdep/i386/libc/strlen.c || $outdir/prepared $outdir/validated generated
+  source = ../../machdep/i386/libc/strlen.c
+  object = strlen.o
+  flags = $cppflags $machine_cflags -O4 -funroll-all-loops
+
+build $outdir/strcpy.o: cc machdep/i386/libc/strcpy.c || $outdir/prepared $outdir/validated generated
+  source = ../../machdep/i386/libc/strcpy.c
+  object = strcpy.o
+  flags = $cppflags $machine_cflags -O4 -funroll-all-loops
+
+build $outdir/strncpy.o: cc machdep/i386/libc/strncpy.c || $outdir/prepared $outdir/validated generated
+  source = ../../machdep/i386/libc/strncpy.c
+  object = strncpy.o
+  flags = $cppflags $machine_cflags -O4 -funroll-all-loops
+
+build $outdir/strcat.o: cc machdep/i386/libc/strcat.c || $outdir/prepared $outdir/validated generated
+  source = ../../machdep/i386/libc/strcat.c
+  object = strcat.o
+  flags = $cppflags $machine_cflags -O4 -funroll-all-loops
+
+build $outdir/strncat.o: cc machdep/i386/libc/strncat.c || $outdir/prepared $outdir/validated generated
+  source = ../../machdep/i386/libc/strncat.c
+  object = strncat.o
+  flags = $cppflags $machine_cflags -O4 -funroll-all-loops
+
+build $outdir/strcmp.o: cc machdep/i386/libc/strcmp.c || $outdir/prepared $outdir/validated generated
+  source = ../../machdep/i386/libc/strcmp.c
+  object = strcmp.o
+  flags = $cppflags $machine_cflags -O4 -funroll-all-loops
+
+build $outdir/strncmp.o: cc machdep/i386/libc/strncmp.c || $outdir/prepared $outdir/validated generated
+  source = ../../machdep/i386/libc/strncmp.c
+  object = strncmp.o
+  flags = $cppflags $machine_cflags -O4 -funroll-all-loops
+
+build $outdir/index.o: cc machdep/i386/libc/index.c || $outdir/prepared $outdir/validated generated
+  source = ../../machdep/i386/libc/index.c
+  object = index.o
+  flags = $cppflags $machine_cflags -O4 -funroll-all-loops
+
+build $outdir/ffs.o: cc machdep/i386/libc/ffs.c || $outdir/prepared $outdir/validated generated
+  source = ../../machdep/i386/libc/ffs.c
+  object = ffs.o
+  flags = $cppflags $machine_cflags -O4 -funroll-all-loops
+
+libc_objects = $outdir/memchr.o $outdir/memcmp.o $outdir/memcpy.o $outdir/memmove.o $outdir/memset.o $outdir/pagesize.o $outdir/strchr.o $outdir/strrchr.o $outdir/strlen.o $outdir/strcpy.o $outdir/strncpy.o $outdir/strcat.o $outdir/strncat.o $outdir/strcmp.o $outdir/strncmp.o $outdir/index.o $outdir/ffs.o
+
+build libc: phony $outdir/memchr.o $outdir/memcmp.o $outdir/memcpy.o $outdir/memmove.o $outdir/memset.o $outdir/pagesize.o $outdir/strchr.o $outdir/strrchr.o $outdir/strlen.o $outdir/strcpy.o $outdir/strncpy.o $outdir/strcat.o $outdir/strncat.o $outdir/strcmp.o $outdir/strncmp.o $outdir/index.o $outdir/ffs.o

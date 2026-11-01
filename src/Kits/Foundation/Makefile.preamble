@@ -1,1 +1,2 @@
 
+CLASSES += NSMutableString.m NSCharConversion.m NSParser.m NSSimpleCString.m NSSimpleString.m NSStringEncodings.m NSSimpleHashing.m NSLanguageContext.m NSStringArray.m NSStringLocalizedCompare.m NSPerformTimer.m NSConstantString.m NSDistantString.m NSHTTPRequest.m NSHTTPSocket.m NSHTTPConnection.m NSFileURLHandle.m NSHTTPURLHandle.m NSBigint.m NSDtoa.m NSPrintf.m NSStrtod.m

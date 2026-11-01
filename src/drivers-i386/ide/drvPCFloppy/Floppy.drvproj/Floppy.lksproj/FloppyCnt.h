@@ -37,6 +37,7 @@ typedef struct {
 {
 @public
 	id                  _fcCmdLock;         // offset 0x128: Lock for controller access (NXConditionLock)
+	id                  _queueHead;         // offset 0x12c: Request queue next (queue_head_t at self + 300)
 	id                  _requestQueue;      // offset 0x130: Request queue head pointer
 	port_t              _fdcInterruptPort;  // offset 0x134: Interrupt port
 	unsigned char       _flags;             // offset 0x138: Controller flags
@@ -45,9 +46,6 @@ typedef struct {
 	unsigned char       _dataRateChangeCount; // offset 0x13b: Data-rate change counter
 	void               *_dmaBuffer;         // offset 0x13c: DMA transfer buffer
 	unsigned int        _lastErrorCode;     // offset 0x140: Last error / status word
-
-	// Request queue (offset 300 / 0x12c)
-	id                  _queueHead;         // Circular queue for I/O requests
 
 	// Drive information
 	id                  _drives[4];         // Array of IOFloppyDrive objects

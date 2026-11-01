@@ -408,10 +408,6 @@ static unsigned int _motorChangeCount = 0;
 		if (result == 1) {  // Timeout
 			timeoutOccurred = YES;
 		}
-		// Don't goto cleanup yet if timeout - still try to read results
-	}
-
-	if (timeoutOccurred) {
 		goto cleanup;
 	}
 
@@ -472,48 +468,12 @@ static unsigned int _motorChangeCount = 0;
 		st1 = ((unsigned char *)((char *)cmdParams + 0x28))[1];
 		st2 = ((unsigned char *)((char *)cmdParams + 0x28))[2];
 
-		// Check ST0 bits 7-6 (error bits)
+		// Check ST0 bits 7-6 (error bits).  A clean ST0 is the whole test:
+		// the reference does not look at ST1/ST2 on this path.
 		if ((st0 & 0xc0) == 0) {
-			// Success - calculate transferred bytes for read/write
 			if (isRead == 1 && dmaByteCount != 0) {
-				if (cmdOpcode == 0x05 || cmdOpcode == 0x09) {
-					// WRITE commands - calculate from end sector
-					unsigned char sectorSize = ((unsigned char *)((char *)cmdParams + 0x0c))[8];
-					unsigned char endSector = ((unsigned char *)((char *)cmdParams + 0x28))[8];
-					unsigned char startSector = ((unsigned char *)((char *)cmdParams + 0x0c))[7];
-
-					*(unsigned int *)((char *)cmdParams + 0x48) =
-						(1 << ((sectorSize + 7) & 0x1f)) * (endSector - startSector);
-				} else {
-					*(unsigned int *)((char *)cmdParams + 0x48) = dmaByteCount;
-				}
+				*(unsigned int *)((char *)cmdParams + 0x48) = dmaByteCount;
 			}
-
-			// Check ST1 for errors
-			if ((st1 & 0x20) != 0) {
-				result = 7;  // CRC error
-				if ((st2 & 0x20) != 0) {
-					result = 6;  // Deleted mark
-				}
-			} else if ((st1 & 0x10) != 0) {
-				result = 0x13;  // Overrun
-			} else if ((st1 & 0x04) != 0) {
-				result = 0x0c;  // No data
-			} else if ((st1 & 0x02) != 0) {
-				result = 0x0d;  // Write protect
-			} else if ((st1 & 0x01) != 0) {
-				result = 0x0e;  // Missing address mark
-			} else {
-				// Check ST2
-				if ((st2 & 0x40) != 0) {
-					result = 0x0f;  // Deleted mark in data field
-				} else if ((st2 & 0x12) != 0) {
-					result = 9;  // Bad cylinder/sector
-				} else if ((st2 & 0x01) != 0) {
-					result = 0x10;  // Bad track
-				}
-			}
-
 			break;
 		}
 
@@ -528,9 +488,10 @@ static unsigned int _motorChangeCount = 0;
 			// Analyze detailed error status
 			if (isRead == 1 && dmaByteCount != 0) {
 				if (cmdOpcode == 0x05 || cmdOpcode == 0x09) {
-					unsigned char sectorSize = ((unsigned char *)((char *)cmdParams + 0x0c))[8];
-					unsigned char endSector = ((unsigned char *)((char *)cmdParams + 0x28))[8];
-					unsigned char startSector = ((unsigned char *)((char *)cmdParams + 0x0c))[7];
+					// WRITE commands - bytes up to the sector that failed
+					unsigned char sectorSize = ((unsigned char *)((char *)cmdParams + 0x0c))[5];
+					unsigned char endSector = ((unsigned char *)((char *)cmdParams + 0x28))[5];
+					unsigned char startSector = ((unsigned char *)((char *)cmdParams + 0x0c))[4];
 
 					*(unsigned int *)((char *)cmdParams + 0x48) =
 						(1 << ((sectorSize + 7) & 0x1f)) * (endSector - startSector);
@@ -539,27 +500,26 @@ static unsigned int _motorChangeCount = 0;
 				}
 			}
 
-			// Detailed error analysis (same as success path above)
 			if ((st1 & 0x20) != 0) {
-				result = 7;
+				result = 7;  // CRC error
 				if ((st2 & 0x20) != 0) {
-					result = 6;
+					result = 6;  // Deleted mark
 				}
 			} else if ((st1 & 0x10) != 0) {
-				result = 0x13;
+				result = 0x13;  // Overrun
 			} else if ((st1 & 0x04) != 0) {
-				result = 0x0c;
+				result = 0x0c;  // No data
 			} else if ((st1 & 0x02) != 0) {
-				result = 0x0d;
+				result = 0x0d;  // Write protect
 			} else if ((st1 & 0x01) != 0) {
-				result = 0x0e;
+				result = 0x0e;  // Missing address mark
 			} else {
 				if ((st2 & 0x40) != 0) {
-					result = 0x0f;
+					result = 0x0f;  // Deleted mark in data field
 				} else if ((st2 & 0x12) != 0) {
-					result = 9;
+					result = 9;  // Bad cylinder/sector
 				} else if ((st2 & 0x01) != 0) {
-					result = 0x10;
+					result = 0x10;  // Bad track
 				}
 			}
 		}
@@ -570,32 +530,34 @@ static unsigned int _motorChangeCount = 0;
 		break;
 
 	case 0x07:  // RECALIBRATE
-		// Check for successful recalibrate (SE=1, PCN=0, IC=0)
-		if ((((unsigned char *)((char *)cmdParams + 0x28))[3] & 0x20) != 0 &&
-		    ((unsigned char *)((char *)cmdParams + 0x28))[4] == 0 &&
-		    (((unsigned char *)((char *)cmdParams + 0x28))[3] & 0x10) == 0) {
+		// Success needs SE=1, PCN=0 and no equipment check in the
+		// sense-interrupt bytes (ST0, PCN).
+		if ((((unsigned char *)((char *)cmdParams + 0x28))[0] & 0x20) != 0 &&
+		    ((unsigned char *)((char *)cmdParams + 0x28))[1] == 0 &&
+		    (((unsigned char *)((char *)cmdParams + 0x28))[0] & 0x10) == 0) {
 			_lastErrorCode = 0;
-			goto cleanup;
+		} else {
+			result = 9;
 		}
 		break;
 
 	case 0x0f:  // SEEK
-		// Check seek status
-		if ((((unsigned char *)((char *)cmdParams + 0x28))[3] & 0x20) != 0) {
-			if (((unsigned char *)((char *)cmdParams + 0x0c))[3] >= 0x80) {
+		// SE must be set; a relative seek (opcode bit 7) leaves the
+		// cylinder unknown, otherwise PCN must equal the requested NCN.
+		if ((((unsigned char *)((char *)cmdParams + 0x28))[0] & 0x20) != 0) {
+			if (((unsigned char *)((char *)cmdParams + 0x0c))[0] >= 0x80) {
 				_lastErrorCode = 0xffff;
-				goto cleanup;
+				break;
 			}
-			if (((unsigned char *)((char *)cmdParams + 0x0c))[5] ==
-			    ((unsigned char *)((char *)cmdParams + 0x28))[4]) {
-				_lastErrorCode = ((unsigned char *)((char *)cmdParams + 0x0c))[5];
-				goto cleanup;
+			if (((unsigned char *)((char *)cmdParams + 0x0c))[2] ==
+			    ((unsigned char *)((char *)cmdParams + 0x28))[1]) {
+				_lastErrorCode = ((unsigned char *)((char *)cmdParams + 0x0c))[2];
+				break;
 			}
 		}
+		result = 9;
 		break;
 	}
-
-	result = 9;  // Generic error
 
 cleanup:
 	// Abort DMA if still active

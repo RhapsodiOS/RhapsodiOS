@@ -1,0 +1,62 @@
+{
+ "categories": [],
+ "classes": [
+  {
+   "class_methods": [
+    {
+     "selector": "lockWithPath:",
+     "types": "@12@8:12@16"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "description",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "lockDate",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "breakLock",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "unlock",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "tryLock",
+     "types": "c8@8:12"
+    },
+    {
+     "selector": "dealloc",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "initWithPath:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "init",
+     "types": "@8@8:12"
+    }
+   ],
+   "instance_size": 8,
+   "ivars": [
+    {
+     "name": "_priv",
+     "offset": 4,
+     "type": "^v"
+    }
+   ],
+   "name": "NSDistributedLock",
+   "superclass": "NSObject"
+  }
+ ],
+ "data_symbols": [],
+ "module": "NSDistributedLock.m",
+ "schema_version": "abi-v1",
+ "text_symbols": []
+}

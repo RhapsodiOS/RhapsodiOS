@@ -1,0 +1,1557 @@
+{
+  "schema_version": "source-map-v1",
+  "reference_sha256": "332B3C8C0AE0A6E40A4B93110EE16748FCD94AA0119D63F16EDE878598C681B4",
+  "mapped": [
+    {
+      "address": 1112547148,
+      "size": 156,
+      "reference_names": [
+        "-[NSArray objectAtIndex:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 450
+    },
+    {
+      "address": 1112552736,
+      "size": 112,
+      "reference_names": [
+        "-[NSArray count]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 443
+    },
+    {
+      "address": 1112554608,
+      "size": 44,
+      "reference_names": [
+        "__NSUseParamAsSortSelector"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 282
+    },
+    {
+      "address": 1112566440,
+      "size": 524,
+      "reference_names": [
+        "__ArrayIndexOfObject"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 308
+    },
+    {
+      "address": 1112568204,
+      "size": 184,
+      "reference_names": [
+        "__allocateOrGrowIfNeeded"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 369
+    },
+    {
+      "address": 1112569720,
+      "size": 188,
+      "reference_names": [
+        "-[NSMutableArray addObject:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 1801
+    },
+    {
+      "address": 1112575968,
+      "size": 388,
+      "reference_names": [
+        "-[NSArray release]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 949
+    },
+    {
+      "address": 1112578476,
+      "size": 260,
+      "reference_names": [
+        "-[NSArray containsObject:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 582
+    },
+    {
+      "address": 1112583068,
+      "size": 200,
+      "reference_names": [
+        "-[NSArray lastObject]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 992
+    },
+    {
+      "address": 1112586944,
+      "size": 356,
+      "reference_names": [
+        "-[NSArray retain]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 927
+    },
+    {
+      "address": 1112587312,
+      "size": 112,
+      "reference_names": [
+        "+[NSArray allocWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 432
+    },
+    {
+      "address": 1112590640,
+      "size": 328,
+      "reference_names": [
+        "-[NSArray indexOfObject:range:identical:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 789
+    },
+    {
+      "address": 1112591596,
+      "size": 180,
+      "reference_names": [
+        "-[NSIdEnumerator nextObject]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 1706
+    },
+    {
+      "address": 1112592448,
+      "size": 168,
+      "reference_names": [
+        "-[NSArray indexOfObjectIdenticalTo:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 776
+    },
+    {
+      "address": 1112596212,
+      "size": 148,
+      "reference_names": [
+        "-[NSConcreteMutableArray initWithCapacity:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 2261
+    },
+    {
+      "address": 1112596848,
+      "size": 176,
+      "reference_names": [
+        "-[NSPathStore2 getCharacters:range:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 1077
+    },
+    {
+      "address": 1112597024,
+      "size": 228,
+      "reference_names": [
+        "-[NSPathStore2 release]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 1145
+    },
+    {
+      "address": 1112597420,
+      "size": 348,
+      "reference_names": [
+        "-[NSArray makeObjectsPerformSelector:withObject:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 1379
+    },
+    {
+      "address": 1112600012,
+      "size": 156,
+      "reference_names": [
+        "+[NSPathStore2 pathStoreWithCharacters:length:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 1008
+    },
+    {
+      "address": 1112605604,
+      "size": 20,
+      "reference_names": [
+        "-[NSPathStore2 length]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 1061
+    },
+    {
+      "address": 1112605684,
+      "size": 56,
+      "reference_names": [
+        "-[NSArray makeObjectsPerformSelector:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 1375
+    },
+    {
+      "address": 1112609212,
+      "size": 284,
+      "reference_names": [
+        "-[NSMutableArray removeAllObjects]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 1950
+    },
+    {
+      "address": 1112609560,
+      "size": 300,
+      "reference_names": [
+        "-[NSConcreteArray initWithObjects:count:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 1612
+    },
+    {
+      "address": 1112619316,
+      "size": 124,
+      "reference_names": [
+        "+[NSArray array]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 1451
+    },
+    {
+      "address": 1112622276,
+      "size": 160,
+      "reference_names": [
+        "-[NSConcreteMutableArray dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 2330
+    },
+    {
+      "address": 1112627936,
+      "size": 44,
+      "reference_names": [
+        "-[NSPathStore2 hash]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 1123
+    },
+    {
+      "address": 1112636828,
+      "size": 160,
+      "reference_names": [
+        "-[NSConcreteArray dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 1680
+    },
+    {
+      "address": 1112637840,
+      "size": 308,
+      "reference_names": [
+        "-[NSPathStore2 isEqualToString:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 1092
+    },
+    {
+      "address": 1112638808,
+      "size": 88,
+      "reference_names": [
+        "+[NSMutableArray arrayWithCapacity:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 2227
+    },
+    {
+      "address": 1112640240,
+      "size": 572,
+      "reference_names": [
+        "-[NSMutableArray addObjectsFromArray:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 1904
+    },
+    {
+      "address": 1112640884,
+      "size": 208,
+      "reference_names": [
+        "-[NSString stringByDeletingPathExtension]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 1466
+    },
+    {
+      "address": 1112643764,
+      "size": 100,
+      "reference_names": [
+        "-[NSString getFileSystemRepresentation:maxLength:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 1667
+    },
+    {
+      "address": 1112646560,
+      "size": 52,
+      "reference_names": [
+        "-[NSConcreteArray copyWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 1675
+    },
+    {
+      "address": 1112646776,
+      "size": 312,
+      "reference_names": [
+        "-[NSArray getObjects:range:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 739
+    },
+    {
+      "address": 1112647832,
+      "size": 96,
+      "reference_names": [
+        "+[NSArray arrayWithObjects:count:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 1598
+    },
+    {
+      "address": 1112649928,
+      "size": 184,
+      "reference_names": [
+        "-[NSPathStore2 retain]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 1133
+    },
+    {
+      "address": 1112651236,
+      "size": 252,
+      "reference_names": [
+        "-[NSString pathExtension]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 1449
+    },
+    {
+      "address": 1112658404,
+      "size": 264,
+      "reference_names": [
+        "-[NSMutableArray insertObject:atIndex:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 1819
+    },
+    {
+      "address": 1112659208,
+      "size": 468,
+      "reference_names": [
+        "-[NSPathStore2 stringByAppendingPathComponent:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 1274
+    },
+    {
+      "address": 1112660760,
+      "size": 180,
+      "reference_names": [
+        "-[NSMutableArray removeLastObject]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 1844
+    },
+    {
+      "address": 1112662348,
+      "size": 224,
+      "reference_names": [
+        "-[NSMutableArray removeObjectAtIndex:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 1858
+    },
+    {
+      "address": 1112662588,
+      "size": 360,
+      "reference_names": [
+        "-[NSConcreteMutableArray initWithCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 2299
+    },
+    {
+      "address": 1112663640,
+      "size": 836,
+      "reference_names": [
+        "-[NSMutableArray removeObject:range:identical:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 1978
+    },
+    {
+      "address": 1112664476,
+      "size": 168,
+      "reference_names": [
+        "-[NSMutableArray removeObject:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 2063
+    },
+    {
+      "address": 1112670520,
+      "size": 168,
+      "reference_names": [
+        "-[NSArray indexOfObject:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 763
+    },
+    {
+      "address": 1112671004,
+      "size": 108,
+      "reference_names": [
+        "-[NSArray hash]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 908
+    },
+    {
+      "address": 1112671916,
+      "size": 56,
+      "reference_names": [
+        "-[NSConcreteMutableArray init]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 2256
+    },
+    {
+      "address": 1112677604,
+      "size": 748,
+      "reference_names": [
+        "-[NSArray arrayByExcludingToObjectsInArray:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 1258
+    },
+    {
+      "address": 1112684416,
+      "size": 260,
+      "reference_names": [
+        "-[NSArray containsObjectIdenticalTo:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 592
+    },
+    {
+      "address": 1112700528,
+      "size": 380,
+      "reference_names": [
+        "-[NSArray initWithArray:copyItems:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 1491
+    },
+    {
+      "address": 1112701832,
+      "size": 84,
+      "reference_names": [
+        "+[NSArray arrayWithObject:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 1466
+    },
+    {
+      "address": 1112704904,
+      "size": 88,
+      "reference_names": [
+        "-[NSPathStore2 stringByDeletingLastPathComponent]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 1203
+    },
+    {
+      "address": 1112705528,
+      "size": 364,
+      "reference_names": [
+        "-[NSString stringByAppendingPathComponent:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 1415
+    },
+    {
+      "address": 1112707952,
+      "size": 132,
+      "reference_names": [
+        "-[NSPathStore2 pathExtension]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 1180
+    },
+    {
+      "address": 1112708536,
+      "size": 208,
+      "reference_names": [
+        "-[NSString stringByDeletingLastPathComponent]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 1399
+    },
+    {
+      "address": 1112710544,
+      "size": 392,
+      "reference_names": [
+        "-[NSString stringByAppendingPathExtension:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 1479
+    },
+    {
+      "address": 1112710936,
+      "size": 96,
+      "reference_names": [
+        "+[NSArray arrayWithArray:copyItems:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 1593
+    },
+    {
+      "address": 1112711032,
+      "size": 112,
+      "reference_names": [
+        "-[NSIdEnumerator invalidate]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 1750
+    },
+    {
+      "address": 1112711144,
+      "size": 288,
+      "reference_names": [
+        "-[NSConcreteMutableArray initWithObjects:count:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 2274
+    },
+    {
+      "address": 1112713420,
+      "size": 52,
+      "reference_names": [
+        "-[NSPathStore2 copyWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 1128
+    },
+    {
+      "address": 1112718724,
+      "size": 264,
+      "reference_names": [
+        "-[NSArray initWithObjects:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 1579
+    },
+    {
+      "address": 1112719732,
+      "size": 352,
+      "reference_names": [
+        "-[NSPathStore2 stringByAppendingPathExtension:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 1320
+    },
+    {
+      "address": 1112728316,
+      "size": 116,
+      "reference_names": [
+        "-[NSPathStore2 lastPathComponent]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 1191
+    },
+    {
+      "address": 1112728432,
+      "size": 476,
+      "reference_names": [
+        "-[NSArray sortedArrayUsingFunction:context:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 1062
+    },
+    {
+      "address": 1112728988,
+      "size": 64,
+      "reference_names": [
+        "-[NSArray sortedArrayUsingSelector:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 1149
+    },
+    {
+      "address": 1112741364,
+      "size": 168,
+      "reference_names": [
+        "-[NSPathStore2 stringByResolvingSymlinksInPath]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 1260
+    },
+    {
+      "address": 1112743072,
+      "size": 92,
+      "reference_names": [
+        "-[NSIdEnumerator dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 1761
+    },
+    {
+      "address": 1112743600,
+      "size": 264,
+      "reference_names": [
+        "+[NSArray arrayWithObjects:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 1477
+    },
+    {
+      "address": 1112744040,
+      "size": 176,
+      "reference_names": [
+        "-[NSIdEnumerator initWithObjects:count:target:reverse:freeWhenDone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 1695
+    },
+    {
+      "address": 1112745908,
+      "size": 640,
+      "reference_names": [
+        "-[NSArray componentsJoinedByString:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 522
+    },
+    {
+      "address": 1112749788,
+      "size": 84,
+      "reference_names": [
+        "-[NSArray copyWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 987
+    },
+    {
+      "address": 1112756316,
+      "size": 192,
+      "reference_names": [
+        "-[NSString stringByExpandingTildeInPath]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 1529
+    },
+    {
+      "address": 1112756892,
+      "size": 56,
+      "reference_names": [
+        "+[NSArray arrayWithArray:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 1589
+    },
+    {
+      "address": 1112759824,
+      "size": 152,
+      "reference_names": [
+        "-[NSPathStore2 stringByStandardizingPath]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 1247
+    },
+    {
+      "address": 1112775248,
+      "size": 176,
+      "reference_names": [
+        "-[NSArray stringsByAppendingPathComponent:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 1927
+    },
+    {
+      "address": 1112778672,
+      "size": 180,
+      "reference_names": [
+        "-[NSString stringByStandardizingPath]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 1545
+    },
+    {
+      "address": 1112788396,
+      "size": 760,
+      "reference_names": [
+        "__NSMergeSort"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 195
+    },
+    {
+      "address": 1112795052,
+      "size": 80,
+      "reference_names": [
+        "-[NSString fileSystemRepresentation]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 1663
+    },
+    {
+      "address": 1112799084,
+      "size": 64,
+      "reference_names": [
+        "-[NSMutableArray sortUsingSelector:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 2223
+    },
+    {
+      "address": 1112813660,
+      "size": 484,
+      "reference_names": [
+        "-[NSArray arrayByAddingObjects:count:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 493
+    },
+    {
+      "address": 1112814260,
+      "size": 84,
+      "reference_names": [
+        "-[NSArray arrayByAddingObject:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 462
+    },
+    {
+      "address": 1112823880,
+      "size": 564,
+      "reference_names": [
+        "-[NSMutableArray sortUsingFunction:context:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 2186
+    },
+    {
+      "address": 1112830008,
+      "size": 132,
+      "reference_names": [
+        "-[NSString isAbsolutePath]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 1372
+    },
+    {
+      "address": 1112830344,
+      "size": 220,
+      "reference_names": [
+        "-[NSString lastPathComponent]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 1383
+    },
+    {
+      "address": 1112835384,
+      "size": 196,
+      "reference_names": [
+        "-[NSString stringByResolvingSymlinksInPath]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 1558
+    },
+    {
+      "address": 1112849400,
+      "size": 400,
+      "reference_names": [
+        "-[NSConcreteArray initWithCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 1640
+    },
+    {
+      "address": 1112849940,
+      "size": 668,
+      "reference_names": [
+        "-[NSArray isEqualToArray:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 847
+    },
+    {
+      "address": 1112851240,
+      "size": 84,
+      "reference_names": [
+        "-[NSArray mutableCopyWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 913
+    },
+    {
+      "address": 1112858740,
+      "size": 60,
+      "reference_names": [
+        "-[NSConcreteArray init]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 1607
+    },
+    {
+      "address": 1112865604,
+      "size": 372,
+      "reference_names": [
+        "-[NSArray objectEnumerator]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 1003
+    },
+    {
+      "address": 1112879560,
+      "size": 52,
+      "reference_names": [
+        "-[NSArray classForCoder]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 904
+    },
+    {
+      "address": 1112879612,
+      "size": 128,
+      "reference_names": [
+        "-[NSArray replacementObjectForPortCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 918
+    },
+    {
+      "address": 1112879888,
+      "size": 1428,
+      "reference_names": [
+        "-[NSArray descriptionWithLocale:indent:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 608
+    },
+    {
+      "address": 1112881696,
+      "size": 444,
+      "reference_names": [
+        "-[NSArray encodeWithCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 1414
+    },
+    {
+      "address": 1112883404,
+      "size": 56,
+      "reference_names": [
+        "-[NSArray initWithArray:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 1487
+    },
+    {
+      "address": 1112883460,
+      "size": 272,
+      "reference_names": [
+        "-[NSString stringsByAppendingPaths:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 1572
+    },
+    {
+      "address": 1112885436,
+      "size": 232,
+      "reference_names": [
+        "__NSArrayIndexOfObject"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 308
+    },
+    {
+      "address": 1112898384,
+      "size": 224,
+      "reference_names": [
+        "-[NSMutableArray replaceObjectAtIndex:withObject:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 1880
+    },
+    {
+      "address": 1112901132,
+      "size": 88,
+      "reference_names": [
+        "-[NSPathStore2 stringByDeletingPathExtension]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 1212
+    },
+    {
+      "address": 1112903008,
+      "size": 136,
+      "reference_names": [
+        "-[NSPathStore2 characterAtIndex:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 1065
+    },
+    {
+      "address": 1112905740,
+      "size": 44,
+      "reference_names": [
+        "-[NSPathStore2 pathComponents]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 1175
+    },
+    {
+      "address": 1112905784,
+      "size": 48,
+      "reference_names": [
+        "-[NSPathStore2 isAbsolutePath]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 1170
+    },
+    {
+      "address": 1112906828,
+      "size": 220,
+      "reference_names": [
+        "-[NSString stringByAbbreviatingWithTildeInPath]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 1515
+    },
+    {
+      "address": 1112926596,
+      "size": 188,
+      "reference_names": [
+        "-[NSArray isEqual:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 893
+    },
+    {
+      "address": 1112942036,
+      "size": 168,
+      "reference_names": [
+        "-[NSMutableArray removeObjectIdenticalTo:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 2074
+    },
+    {
+      "address": 1112942528,
+      "size": 88,
+      "reference_names": [
+        "+[NSArray arrayWithContentsOfFile:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 1458
+    },
+    {
+      "address": 1112942616,
+      "size": 88,
+      "reference_names": [
+        "+[NSArray arrayWithContentsOfURL:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 1462
+    },
+    {
+      "address": 1112943908,
+      "size": 172,
+      "reference_names": [
+        "-[NSArray _initWithData:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 1532
+    },
+    {
+      "address": 1112944080,
+      "size": 248,
+      "reference_names": [
+        "-[NSArray _stringToWrite]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 1358
+    },
+    {
+      "address": 1112944328,
+      "size": 380,
+      "reference_names": [
+        "-[NSArray arrayByAddingObjectsFromArray:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 470
+    },
+    {
+      "address": 1112944708,
+      "size": 420,
+      "reference_names": [
+        "-[NSArray arrayByApplyingSelector:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 1160
+    },
+    {
+      "address": 1112945128,
+      "size": 56,
+      "reference_names": [
+        "-[NSArray arrayByExcludingIdenticalObjectsInArray:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 1254
+    },
+    {
+      "address": 1112945184,
+      "size": 56,
+      "reference_names": [
+        "-[NSArray arrayByExcludingObjectsInArray:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 1250
+    },
+    {
+      "address": 1112945240,
+      "size": 728,
+      "reference_names": [
+        "-[NSArray arrayByExcludingObjectsInArray:identical:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 1189
+    },
+    {
+      "address": 1112945968,
+      "size": 56,
+      "reference_names": [
+        "-[NSArray descriptionWithLocale:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 604
+    },
+    {
+      "address": 1112946024,
+      "size": 60,
+      "reference_names": [
+        "-[NSArray description]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 600
+    },
+    {
+      "address": 1112946084,
+      "size": 348,
+      "reference_names": [
+        "-[NSArray firstObjectCommonWithArray:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 684
+    },
+    {
+      "address": 1112946432,
+      "size": 164,
+      "reference_names": [
+        "-[NSArray getObjects:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 732
+    },
+    {
+      "address": 1112946596,
+      "size": 444,
+      "reference_names": [
+        "-[NSArray indexOf:::]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 829
+    },
+    {
+      "address": 1112947040,
+      "size": 276,
+      "reference_names": [
+        "-[NSArray indexOfAttributeBySelector:equalToObject:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 798
+    },
+    {
+      "address": 1112947316,
+      "size": 56,
+      "reference_names": [
+        "-[NSArray indexOfObject:inRange:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 772
+    },
+    {
+      "address": 1112947372,
+      "size": 56,
+      "reference_names": [
+        "-[NSArray indexOfObjectIdenticalTo:inRange:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 785
+    },
+    {
+      "address": 1112947428,
+      "size": 372,
+      "reference_names": [
+        "-[NSArray initWithCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 1545
+    },
+    {
+      "address": 1112947800,
+      "size": 136,
+      "reference_names": [
+        "-[NSArray initWithContentsOfFile:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 1518
+    },
+    {
+      "address": 1112947936,
+      "size": 136,
+      "reference_names": [
+        "-[NSArray initWithContentsOfURL:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 1525
+    },
+    {
+      "address": 1112948072,
+      "size": 36,
+      "reference_names": [
+        "-[NSArray initWithObjects:count:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 1574
+    },
+    {
+      "address": 1112948108,
+      "size": 52,
+      "reference_names": [
+        "-[NSArray makeObjectsPerform:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 1406
+    },
+    {
+      "address": 1112948160,
+      "size": 52,
+      "reference_names": [
+        "-[NSArray makeObjectsPerform:withObject:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 1410
+    },
+    {
+      "address": 1112948212,
+      "size": 168,
+      "reference_names": [
+        "-[NSArray retainCount]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 976
+    },
+    {
+      "address": 1112948380,
+      "size": 372,
+      "reference_names": [
+        "-[NSArray reverseObjectEnumerator]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 1021
+    },
+    {
+      "address": 1112948752,
+      "size": 272,
+      "reference_names": [
+        "-[NSArray sortedArrayHint]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 1039
+    },
+    {
+      "address": 1112949024,
+      "size": 748,
+      "reference_names": [
+        "-[NSArray sortedArrayUsingFunction:context:hint:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 1090
+    },
+    {
+      "address": 1112949772,
+      "size": 72,
+      "reference_names": [
+        "-[NSArray sortedArrayUsingSelector:hint:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 1154
+    },
+    {
+      "address": 1112949844,
+      "size": 364,
+      "reference_names": [
+        "-[NSArray subarrayWithRange:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 1328
+    },
+    {
+      "address": 1112950208,
+      "size": 84,
+      "reference_names": [
+        "-[NSArray writeToFile:atomically:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 1349
+    },
+    {
+      "address": 1112950292,
+      "size": 84,
+      "reference_names": [
+        "-[NSArray writeToURL:atomically:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 1354
+    },
+    {
+      "address": 1112969128,
+      "size": 116,
+      "reference_names": [
+        "-[NSEnumerator allObjects]"
+      ],
+      "source_path": "src/Kits/Foundation/NSEnumerator.m",
+      "source_line": 16
+    },
+    {
+      "address": 1112969244,
+      "size": 88,
+      "reference_names": [
+        "-[NSEnumerator nextObject]"
+      ],
+      "source_path": "src/Kits/Foundation/NSEnumerator.m",
+      "source_line": 11
+    },
+    {
+      "address": 1112969332,
+      "size": 324,
+      "reference_names": [
+        "-[NSIdEnumerator allObjects]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 1724
+    },
+    {
+      "address": 1112969656,
+      "size": 52,
+      "reference_names": [
+        "-[NSMutableArray classForCoder]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 1771
+    },
+    {
+      "address": 1112969708,
+      "size": 364,
+      "reference_names": [
+        "-[NSMutableArray exchangeObjectAtIndex:withObjectAtIndex:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 1775
+    },
+    {
+      "address": 1112970072,
+      "size": 36,
+      "reference_names": [
+        "-[NSMutableArray initWithCapacity:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 2231
+    },
+    {
+      "address": 1112970108,
+      "size": 240,
+      "reference_names": [
+        "-[NSMutableArray initWithContentsOfFile:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 2236
+    },
+    {
+      "address": 1112970348,
+      "size": 56,
+      "reference_names": [
+        "-[NSMutableArray removeObject:inRange:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 1974
+    },
+    {
+      "address": 1112970404,
+      "size": 56,
+      "reference_names": [
+        "-[NSMutableArray removeObjectIdenticalTo:inRange:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 2070
+    },
+    {
+      "address": 1112970460,
+      "size": 288,
+      "reference_names": [
+        "-[NSMutableArray removeObjectsFromIndices:numIndices:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 2081
+    },
+    {
+      "address": 1112970748,
+      "size": 396,
+      "reference_names": [
+        "-[NSMutableArray removeObjectsInArray:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 2107
+    },
+    {
+      "address": 1112971144,
+      "size": 96,
+      "reference_names": [
+        "-[NSMutableArray removeObjectsInRange:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 2136
+    },
+    {
+      "address": 1112971240,
+      "size": 192,
+      "reference_names": [
+        "-[NSMutableArray replaceObjectsInRange:withObjectsFromArray:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 2168
+    },
+    {
+      "address": 1112971432,
+      "size": 252,
+      "reference_names": [
+        "-[NSMutableArray replaceObjectsInRange:withObjectsFromArray:range:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 2145
+    },
+    {
+      "address": 1112971684,
+      "size": 80,
+      "reference_names": [
+        "-[NSMutableArray setArray:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 2180
+    },
+    {
+      "address": 1112990032,
+      "size": 108,
+      "reference_names": [
+        "__NSArrayRaiseBoundException"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 168
+    },
+    {
+      "address": 1112990140,
+      "size": 92,
+      "reference_names": [
+        "__NSArrayRaiseInsertNilException"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 178
+    },
+    {
+      "address": 1112990232,
+      "size": 108,
+      "reference_names": [
+        "__NSArrayRaiseSizeException"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 186
+    },
+    {
+      "address": 1112993700,
+      "size": 40,
+      "reference_names": [
+        "_int_sort"
+      ],
+      "source_path": "src/Kits/Foundation/NSArray.m",
+      "source_line": 287
+    },
+    {
+      "address": 1113104280,
+      "size": 568,
+      "reference_names": [
+        "+[NSPathStore2 pathWithComponents:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 957
+    },
+    {
+      "address": 1113106380,
+      "size": 60,
+      "reference_names": [
+        "+[NSString pathWithComponents:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 1349
+    },
+    {
+      "address": 1113110100,
+      "size": 248,
+      "reference_names": [
+        "-[NSArray pathsMatchingExtensions:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 1940
+    },
+    {
+      "address": 1113155088,
+      "size": 24,
+      "reference_names": [
+        "-[NSPathStore2 retainCount]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 1166
+    },
+    {
+      "address": 1113155112,
+      "size": 128,
+      "reference_names": [
+        "-[NSPathStore2 stringByAbbreviatingWithTildeInPath]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 1235
+    },
+    {
+      "address": 1113155240,
+      "size": 132,
+      "reference_names": [
+        "-[NSPathStore2 stringByExpandingTildeInPath]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 1223
+    },
+    {
+      "address": 1113161136,
+      "size": 1020,
+      "reference_names": [
+        "-[NSString completePathIntoString:caseSensitive:matchesIntoArray:filterTypes:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 1587
+    },
+    {
+      "address": 1113162156,
+      "size": 148,
+      "reference_names": [
+        "-[NSString pathComponents]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 1353
+    },
+    {
+      "address": 1113162304,
+      "size": 76,
+      "reference_names": [
+        "-[NSString stringByConvertingPathToURL]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 1672
+    },
+    {
+      "address": 1113162380,
+      "size": 352,
+      "reference_names": [
+        "-[NSString stringByConvertingURLToPath]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 1678
+    },
+    {
+      "address": 1113259740,
+      "size": 1068,
+      "reference_names": [
+        "-[NSString standardizedURLPath]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 1844
+    },
+    {
+      "address": 1113260808,
+      "size": 704,
+      "reference_names": [
+        "-[NSString standardizedNativePath]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 1848
+    },
+    {
+      "address": 1113261512,
+      "size": 548,
+      "reference_names": [
+        "-[NSString stringByRemovingPercentEscapes]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 1775
+    },
+    {
+      "address": 1113262060,
+      "size": 604,
+      "reference_names": [
+        "-[NSString stringByAddingPercentEscapes]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 1708
+    },
+    {
+      "address": 1113262664,
+      "size": 540,
+      "reference_names": [
+        "-[NSString urlPathRelativeToPath:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 1885
+    },
+    {
+      "address": 1113263204,
+      "size": 364,
+      "reference_names": [
+        "-[NSString urlPathByAppendingComponent:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 1866
+    },
+    {
+      "address": 1113263568,
+      "size": 192,
+      "reference_names": [
+        "-[NSString urlPathByDeletingLastComponent]"
+      ],
+      "source_path": "src/Kits/Foundation/NSPathUtilities.m",
+      "source_line": 1853
+    }
+  ],
+  "unmapped": [],
+  "duplicate_candidates": [],
+  "boundary_disputed": []
+}

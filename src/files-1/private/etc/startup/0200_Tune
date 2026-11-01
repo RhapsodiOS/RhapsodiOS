@@ -1,0 +1,24 @@
+#!/bin/sh
+
+##
+# Change the tunable parameters
+##
+
+. /etc/rc.common
+
+ConsoleMessage "Tuning system parameters:"
+
+##
+# Scale number of vnodes based on RAM
+# base memory is 32MB and each 32MB gets 512 vnodes
+##
+
+     base=32
+addvnodes=512
+      mem=$(hostinfo | sed -n '/Primary memory available/p' | sed -e 's/Primary memory available: *//' -e 's/\.[0-9][0-9] *megabytes.$//')
+   excess=$((${mem} - ${base}))
+   factor=$((${excess} / ${base}))
+defvnodes=$(sysctl kern.maxvnodes | sed -e 's/^[^0-9]*//')
+newvnodes=$((${addvnodes} \* ${factor} + ${defvnodes}))
+
+sysctl -w kern.maxvnodes=${newvnodes}

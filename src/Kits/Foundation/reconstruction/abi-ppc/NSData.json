@@ -1,0 +1,681 @@
+{
+ "categories": [],
+ "classes": [
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "deserializeIntAtCursor:",
+     "types": "i8@4:8^I12"
+    },
+    {
+     "selector": "deserializeInts:count:atIndex:",
+     "types": "v16@4:8^i12I16I20"
+    },
+    {
+     "selector": "deserializeIntAtIndex:",
+     "types": "i8@4:8I12"
+    },
+    {
+     "selector": "dealloc",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "initWithData:range:",
+     "types": "@16@4:8@12{?=II}16"
+    },
+    {
+     "selector": "init",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "getBytes:range:",
+     "types": "v16@4:8^v12{?=II}16"
+    },
+    {
+     "selector": "getBytes:length:",
+     "types": "v12@4:8^v12I16"
+    },
+    {
+     "selector": "getBytes:",
+     "types": "v8@4:8^v12"
+    },
+    {
+     "selector": "_bytesAreVM",
+     "types": "c4@4:8"
+    },
+    {
+     "selector": "copyWithZone:",
+     "types": "@8@4:8^{?=}12"
+    },
+    {
+     "selector": "retainCount",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "release",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "retain",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "bytes",
+     "types": "r^v4@4:8"
+    },
+    {
+     "selector": "length",
+     "types": "I4@4:8"
+    }
+   ],
+   "instance_size": 20,
+   "ivars": [
+    {
+     "name": "_reserved",
+     "offset": 4,
+     "type": "b3"
+    },
+    {
+     "name": "_retainCount",
+     "offset": 4,
+     "type": "b29"
+    },
+    {
+     "name": "_range",
+     "offset": 8,
+     "type": "{?=\"location\"I\"length\"I}"
+    },
+    {
+     "name": "_data",
+     "offset": 16,
+     "type": "@\"NSData\""
+    }
+   ],
+   "name": "NSSubrangeData",
+   "superclass": "NSData"
+  },
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "serializeAlignedBytes:length:",
+     "types": "v12@4:8^v12I16"
+    },
+    {
+     "selector": "serializeAlignedBytesLength:",
+     "types": "v8@4:8I12"
+    },
+    {
+     "selector": "serializeInts:count:atIndex:",
+     "types": "v16@4:8^i12I16I20"
+    },
+    {
+     "selector": "serializeInt:atIndex:",
+     "types": "v12@4:8i12I16"
+    },
+    {
+     "selector": "serializeInts:count:",
+     "types": "v12@4:8^i12I16"
+    },
+    {
+     "selector": "serializeInt:",
+     "types": "v8@4:8i12"
+    },
+    {
+     "selector": "deserializeIntAtCursor:",
+     "types": "i8@4:8^I12"
+    },
+    {
+     "selector": "deserializeInts:count:atIndex:",
+     "types": "v16@4:8^i12I16I20"
+    },
+    {
+     "selector": "deserializeIntAtIndex:",
+     "types": "i8@4:8I12"
+    },
+    {
+     "selector": "dealloc",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "initWithBytes:length:copy:freeWhenDone:bytesAreVM:",
+     "types": "@21@4:8^v12I16c20c24c28"
+    },
+    {
+     "selector": "initWithCapacity:",
+     "types": "@8@4:8I12"
+    },
+    {
+     "selector": "init",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "resetBytesInRange:",
+     "types": "v12@4:8{?=II}12"
+    },
+    {
+     "selector": "replaceBytesInRange:withBytes:",
+     "types": "v16@4:8{?=II}12r^v20"
+    },
+    {
+     "selector": "increaseLengthBy:",
+     "types": "v8@4:8I12"
+    },
+    {
+     "selector": "appendData:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "appendBytes:length:",
+     "types": "v12@4:8r^v12I16"
+    },
+    {
+     "selector": "_bytesAreVM",
+     "types": "c4@4:8"
+    },
+    {
+     "selector": "retainCount",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "release",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "retain",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "setLength:",
+     "types": "v8@4:8I12"
+    },
+    {
+     "selector": "mutableBytes",
+     "types": "^v4@4:8"
+    },
+    {
+     "selector": "bytes",
+     "types": "r^v4@4:8"
+    },
+    {
+     "selector": "length",
+     "types": "I4@4:8"
+    }
+   ],
+   "instance_size": 20,
+   "ivars": [
+    {
+     "name": "_reserved",
+     "offset": 4,
+     "type": "b2"
+    },
+    {
+     "name": "_hasVM",
+     "offset": 4,
+     "type": "b1"
+    },
+    {
+     "name": "_retainCount",
+     "offset": 4,
+     "type": "b29"
+    },
+    {
+     "name": "_length",
+     "offset": 8,
+     "type": "I"
+    },
+    {
+     "name": "_capacity",
+     "offset": 12,
+     "type": "I"
+    },
+    {
+     "name": "_bytes",
+     "offset": 16,
+     "type": "^v"
+    }
+   ],
+   "name": "NSConcreteMutableData",
+   "superclass": "NSMutableData"
+  },
+  {
+   "class_methods": [
+    {
+     "selector": "dataWithLength:",
+     "types": "@8@4:8I12"
+    },
+    {
+     "selector": "dataWithCapacity:",
+     "types": "@8@4:8I12"
+    },
+    {
+     "selector": "allocWithZone:",
+     "types": "@8@4:8^{?=}12"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "serializeAlignedBytes:length:",
+     "types": "v12@4:8^v12I16"
+    },
+    {
+     "selector": "serializeAlignedBytesLength:",
+     "types": "v8@4:8I12"
+    },
+    {
+     "selector": "serializeInts:count:atIndex:",
+     "types": "v16@4:8^i12I16I20"
+    },
+    {
+     "selector": "serializeInt:atIndex:",
+     "types": "v12@4:8i12I16"
+    },
+    {
+     "selector": "serializeInts:count:",
+     "types": "v12@4:8^i12I16"
+    },
+    {
+     "selector": "serializeInt:",
+     "types": "v8@4:8i12"
+    },
+    {
+     "selector": "_unionBitVectorMaybeCompressed:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "unionBitVector:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "intersectBitVector:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "initWithLength:",
+     "types": "@8@4:8I12"
+    },
+    {
+     "selector": "initWithCapacity:",
+     "types": "@8@4:8I12"
+    },
+    {
+     "selector": "setData:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "resetBytesInRange:",
+     "types": "v12@4:8{?=II}12"
+    },
+    {
+     "selector": "replaceBytesInRange:withBytes:",
+     "types": "v16@4:8{?=II}12r^v20"
+    },
+    {
+     "selector": "increaseLengthBy:",
+     "types": "v8@4:8I12"
+    },
+    {
+     "selector": "appendData:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "appendBytes:length:",
+     "types": "v12@4:8r^v12I16"
+    },
+    {
+     "selector": "classForCoder",
+     "types": "#4@4:8"
+    },
+    {
+     "selector": "setLength:",
+     "types": "v8@4:8I12"
+    },
+    {
+     "selector": "mutableBytes",
+     "types": "^v4@4:8"
+    }
+   ],
+   "instance_size": 4,
+   "ivars": [],
+   "name": "NSMutableData",
+   "superclass": "NSData"
+  },
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "deserializeAlignedBytesLengthAtCursor:",
+     "types": "I8@4:8^I12"
+    },
+    {
+     "selector": "deserializeIntAtCursor:",
+     "types": "i8@4:8^I12"
+    },
+    {
+     "selector": "deserializeInts:count:atIndex:",
+     "types": "v16@4:8^i12I16I20"
+    },
+    {
+     "selector": "deserializeIntAtIndex:",
+     "types": "i8@4:8I12"
+    },
+    {
+     "selector": "dealloc",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "initWithBytes:length:copy:freeWhenDone:bytesAreVM:",
+     "types": "@21@4:8^v12I16c20c24c28"
+    },
+    {
+     "selector": "init",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "getBytes:range:",
+     "types": "v16@4:8^v12{?=II}16"
+    },
+    {
+     "selector": "getBytes:length:",
+     "types": "v12@4:8^v12I16"
+    },
+    {
+     "selector": "getBytes:",
+     "types": "v8@4:8^v12"
+    },
+    {
+     "selector": "_bytesAreVM",
+     "types": "c4@4:8"
+    },
+    {
+     "selector": "copyWithZone:",
+     "types": "@8@4:8^{?=}12"
+    },
+    {
+     "selector": "retainCount",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "release",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "retain",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "bytes",
+     "types": "r^v4@4:8"
+    },
+    {
+     "selector": "length",
+     "types": "I4@4:8"
+    }
+   ],
+   "instance_size": 32,
+   "ivars": [
+    {
+     "name": "_inline",
+     "offset": 4,
+     "type": "b1"
+    },
+    {
+     "name": "_shouldFree",
+     "offset": 4,
+     "type": "b1"
+    },
+    {
+     "name": "_hasVM",
+     "offset": 4,
+     "type": "b1"
+    },
+    {
+     "name": "_retainCount",
+     "offset": 4,
+     "type": "b29"
+    },
+    {
+     "name": "_length",
+     "offset": 8,
+     "type": "I"
+    },
+    {
+     "name": "_capacity",
+     "offset": 12,
+     "type": "I"
+    },
+    {
+     "name": "_bytes",
+     "offset": 16,
+     "type": "^v"
+    },
+    {
+     "name": "_space",
+     "offset": 20,
+     "type": "[12C]"
+    }
+   ],
+   "name": "NSConcreteData",
+   "superclass": "NSData"
+  },
+  {
+   "class_methods": [
+    {
+     "selector": "dataWithData:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "dataWithContentsOfMappedFile:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "dataWithContentsOfURL:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "dataWithContentsOfFile:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "dataWithBytesNoCopy:length:",
+     "types": "@12@4:8^v12I16"
+    },
+    {
+     "selector": "dataWithBytes:length:",
+     "types": "@12@4:8r^v12I16"
+    },
+    {
+     "selector": "data",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "allocWithZone:",
+     "types": "@8@4:8^{?=}12"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "deserializeBytes:length:atCursor:",
+     "types": "v16@4:8^v12I16^I20"
+    },
+    {
+     "selector": "deserializeAlignedBytesLengthAtCursor:",
+     "types": "I8@4:8^I12"
+    },
+    {
+     "selector": "deserializeInts:count:atCursor:",
+     "types": "v16@4:8^i12I16^I20"
+    },
+    {
+     "selector": "deserializeIntAtCursor:",
+     "types": "i8@4:8^I12"
+    },
+    {
+     "selector": "deserializeInts:count:atIndex:",
+     "types": "v16@4:8^i12I16I20"
+    },
+    {
+     "selector": "deserializeIntAtIndex:",
+     "types": "i8@4:8I12"
+    },
+    {
+     "selector": "_intersectsBitVectorMaybeCompressed:",
+     "types": "c8@4:8@12"
+    },
+    {
+     "selector": "_decompressIfNeeded",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "_compressIfNeeded",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "numberOfSetBits",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "intersectsBitVector:",
+     "types": "c8@4:8@12"
+    },
+    {
+     "selector": "unionWithBitVector:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "intersectionWithBitVector:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "isEqualToBitVector:",
+     "types": "c8@4:8@12"
+    },
+    {
+     "selector": "initWithData:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "initWithContentsOfMappedFile:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "initWithContentsOfURL:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "initWithContentsOfFile:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "initWithBytesNoCopy:length:",
+     "types": "@12@4:8^v12I16"
+    },
+    {
+     "selector": "initWithBytes:length:",
+     "types": "@12@4:8r^v12I16"
+    },
+    {
+     "selector": "initWithBytes:length:copy:freeWhenDone:bytesAreVM:",
+     "types": "@21@4:8^v12I16c20c24c28"
+    },
+    {
+     "selector": "writeToURL:atomically:",
+     "types": "c9@4:8@12c16"
+    },
+    {
+     "selector": "writeToFile:atomically:",
+     "types": "c9@4:8@12c16"
+    },
+    {
+     "selector": "subdataWithRange:",
+     "types": "@12@4:8{?=II}12"
+    },
+    {
+     "selector": "isEqualToData:",
+     "types": "c8@4:8@12"
+    },
+    {
+     "selector": "getBytes:range:",
+     "types": "v16@4:8^v12{?=II}16"
+    },
+    {
+     "selector": "getBytes:length:",
+     "types": "v12@4:8^v12I16"
+    },
+    {
+     "selector": "getBytes:",
+     "types": "v8@4:8^v12"
+    },
+    {
+     "selector": "_bytesAreVM",
+     "types": "c4@4:8"
+    },
+    {
+     "selector": "replacementObjectForPortCoder:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "classForCoder",
+     "types": "#4@4:8"
+    },
+    {
+     "selector": "initWithCoder:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "encodeWithCoder:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "mutableCopyWithZone:",
+     "types": "@8@4:8^{?=}12"
+    },
+    {
+     "selector": "copyWithZone:",
+     "types": "@8@4:8^{?=}12"
+    },
+    {
+     "selector": "isEqual:",
+     "types": "c8@4:8@12"
+    },
+    {
+     "selector": "hash",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "description",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "bytes",
+     "types": "r^v4@4:8"
+    },
+    {
+     "selector": "length",
+     "types": "I4@4:8"
+    }
+   ],
+   "instance_size": 4,
+   "ivars": [],
+   "name": "NSData",
+   "superclass": "NSObject"
+  }
+ ],
+ "data_symbols": [
+  "___NSDataRetainLock"
+ ],
+ "module": "NSData.m",
+ "schema_version": "abi-v1",
+ "text_symbols": [
+  "__NSMapBytesFromFile",
+  "__NSNewImmutableData",
+  "__NSNewImmutableDataNoCopy",
+  "__NSWriteBytesToFile"
+ ]
+}

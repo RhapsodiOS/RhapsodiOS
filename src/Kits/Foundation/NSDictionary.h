@@ -22,6 +22,8 @@
 - (NSArray *)allKeys;
 - (NSArray *)allKeysForObject:(id)anObject;    
 - (NSArray *)allValues;
+- (void)getObjects:(id *)objects;
+- (void)getObjects:(id *)objects andKeys:(id *)keys;
 - (NSString *)description;
 - (NSString *)descriptionInStringsFileFormat;
 - (NSString *)descriptionWithLocale:(NSDictionary *)locale;

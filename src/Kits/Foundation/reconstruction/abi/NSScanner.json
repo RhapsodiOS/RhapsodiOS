@@ -1,0 +1,207 @@
+{
+ "categories": [],
+ "classes": [
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "dealloc",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "scanInt:",
+     "types": "c12@8:12^i16"
+    },
+    {
+     "selector": "locale",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "setLocale:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "caseSensitive",
+     "types": "c8@8:12"
+    },
+    {
+     "selector": "setCaseSensitive:",
+     "types": "v9@8:12c16"
+    },
+    {
+     "selector": "charactersToBeSkipped",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "setCharactersToBeSkipped:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "scanLocation",
+     "types": "I8@8:12"
+    },
+    {
+     "selector": "setScanLocation:",
+     "types": "v12@8:12I16"
+    },
+    {
+     "selector": "string",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "initWithString:",
+     "types": "@12@8:12@16"
+    }
+   ],
+   "instance_size": 24,
+   "ivars": [
+    {
+     "name": "scanString",
+     "offset": 4,
+     "type": "@\"NSString\""
+    },
+    {
+     "name": "skipSet",
+     "offset": 8,
+     "type": "@\"NSCharacterSet\""
+    },
+    {
+     "name": "locale",
+     "offset": 12,
+     "type": "@\"NSDictionary\""
+    },
+    {
+     "name": "scanLocation",
+     "offset": 16,
+     "type": "I"
+    },
+    {
+     "name": "flags",
+     "offset": 20,
+     "type": "{?=\"caseSensitive\"b1\"\"b31}"
+    }
+   ],
+   "name": "NSConcreteScanner",
+   "superclass": "NSScanner"
+  },
+  {
+   "class_methods": [
+    {
+     "selector": "localizedScannerWithString:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "scannerWithString:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "allocWithZone:",
+     "types": "@12@8:12^{?=}16"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "setLocale:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "setCaseSensitive:",
+     "types": "v9@8:12c16"
+    },
+    {
+     "selector": "setCharactersToBeSkipped:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "scanLocation",
+     "types": "I8@8:12"
+    },
+    {
+     "selector": "setScanLocation:",
+     "types": "v12@8:12I16"
+    },
+    {
+     "selector": "string",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "locale",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "caseSensitive",
+     "types": "c8@8:12"
+    },
+    {
+     "selector": "charactersToBeSkipped",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "isAtEnd",
+     "types": "c8@8:12"
+    },
+    {
+     "selector": "scanUpToString:intoString:",
+     "types": "c16@8:12@16^@20"
+    },
+    {
+     "selector": "scanString:intoString:",
+     "types": "c16@8:12@16^@20"
+    },
+    {
+     "selector": "scanUpToCharactersFromSet:intoString:",
+     "types": "c16@8:12@16^@20"
+    },
+    {
+     "selector": "scanCharactersFromSet:intoString:",
+     "types": "c16@8:12@16^@20"
+    },
+    {
+     "selector": "scanHexInt:",
+     "types": "c12@8:12^I16"
+    },
+    {
+     "selector": "scanInt:",
+     "types": "c12@8:12^i16"
+    },
+    {
+     "selector": "scanLongLong:",
+     "types": "c12@8:12^q16"
+    },
+    {
+     "selector": "scanFloat:",
+     "types": "c12@8:12^f16"
+    },
+    {
+     "selector": "scanDouble:",
+     "types": "c12@8:12^d16"
+    },
+    {
+     "selector": "copyWithZone:",
+     "types": "@12@8:12^{?=}16"
+    },
+    {
+     "selector": "initWithString:",
+     "types": "@12@8:12@16"
+    }
+   ],
+   "instance_size": 4,
+   "ivars": [],
+   "name": "NSScanner",
+   "superclass": "NSObject"
+  }
+ ],
+ "data_symbols": [
+  "___NSNumberSet"
+ ],
+ "module": "NSScanner.m",
+ "schema_version": "abi-v1",
+ "text_symbols": [
+  "__NSScanDecimalFromString",
+  "__NSScanDoubleFromString",
+  "__NSScanIntFromString",
+  "__NSScanLongLongFromString"
+ ]
+}

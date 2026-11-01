@@ -1,0 +1,659 @@
+{
+ "categories": [],
+ "classes": [
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "dealloc",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "initWithSet:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "initWithArray:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "initWithSet:copyItems:",
+     "types": "@13@8:12@16c20"
+    },
+    {
+     "selector": "initWithObjects:count:",
+     "types": "@16@8:12^@16I20"
+    },
+    {
+     "selector": "initWithCapacity:",
+     "types": "@12@8:12I16"
+    },
+    {
+     "selector": "init",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "countForObject:",
+     "types": "I12@8:12@16"
+    },
+    {
+     "selector": "removeAllObjects",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "intersectSet:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "classForCoder",
+     "types": "#8@8:12"
+    },
+    {
+     "selector": "makeObjectsPerformSelector:withObject:",
+     "types": "v16@8:12:16@20"
+    },
+    {
+     "selector": "makeObjectsPerformSelector:",
+     "types": "v12@8:12:16"
+    },
+    {
+     "selector": "isSubsetOfSet:",
+     "types": "c12@8:12@16"
+    },
+    {
+     "selector": "isEqualToSet:",
+     "types": "c12@8:12@16"
+    },
+    {
+     "selector": "intersectsSet:",
+     "types": "c12@8:12@16"
+    },
+    {
+     "selector": "descriptionWithLocale:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "anyObject",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "allObjects",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "initWithCoder:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "encodeWithCoder:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "mutableCopyWithZone:",
+     "types": "@12@8:12^{?=}16"
+    },
+    {
+     "selector": "copyWithZone:",
+     "types": "@12@8:12^{?=}16"
+    },
+    {
+     "selector": "retainCount",
+     "types": "I8@8:12"
+    },
+    {
+     "selector": "release",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "retain",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "removeObject:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "addObject:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "objectEnumerator",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "member:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "count",
+     "types": "I8@8:12"
+    }
+   ],
+   "instance_size": 12,
+   "ivars": [
+    {
+     "name": "_table",
+     "offset": 4,
+     "type": "^v"
+    },
+    {
+     "name": "_reserved",
+     "offset": 8,
+     "type": "^v"
+    }
+   ],
+   "name": "NSCountedSet",
+   "superclass": "NSMutableSet"
+  },
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "dealloc",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "initWithObjects:count:",
+     "types": "@16@8:12^@16I20"
+    },
+    {
+     "selector": "initWithCapacity:",
+     "types": "@12@8:12I16"
+    },
+    {
+     "selector": "init",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "removeAllObjects",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "intersectSet:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "addObjectsFromArray:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "makeObjectsPerformSelector:withObject:",
+     "types": "v16@8:12:16@20"
+    },
+    {
+     "selector": "makeObjectsPerformSelector:",
+     "types": "v12@8:12:16"
+    },
+    {
+     "selector": "isSubsetOfSet:",
+     "types": "c12@8:12@16"
+    },
+    {
+     "selector": "isEqualToSet:",
+     "types": "c12@8:12@16"
+    },
+    {
+     "selector": "countForObject:",
+     "types": "I12@8:12@16"
+    },
+    {
+     "selector": "intersectsSet:",
+     "types": "c12@8:12@16"
+    },
+    {
+     "selector": "anyObject",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "allObjects",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "initWithCoder:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "encodeWithCoder:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "mutableCopyWithZone:",
+     "types": "@12@8:12^{?=}16"
+    },
+    {
+     "selector": "copyWithZone:",
+     "types": "@12@8:12^{?=}16"
+    },
+    {
+     "selector": "retainCount",
+     "types": "I8@8:12"
+    },
+    {
+     "selector": "release",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "retain",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "removeObject:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "addObject:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "objectEnumerator",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "member:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "count",
+     "types": "I8@8:12"
+    }
+   ],
+   "instance_size": 12,
+   "ivars": [
+    {
+     "name": "_table",
+     "offset": 4,
+     "type": "^{?}"
+    },
+    {
+     "name": "_retainCount",
+     "offset": 8,
+     "type": "I"
+    }
+   ],
+   "name": "NSConcreteMutableSet",
+   "superclass": "NSMutableSet"
+  },
+  {
+   "class_methods": [
+    {
+     "selector": "setWithCapacity:",
+     "types": "@12@8:12I16"
+    },
+    {
+     "selector": "allocWithZone:",
+     "types": "@12@8:12^{?=}16"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "initWithObjects:count:",
+     "types": "@16@8:12^@16I20"
+    },
+    {
+     "selector": "initWithCapacity:",
+     "types": "@12@8:12I16"
+    },
+    {
+     "selector": "unionSet:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "setSet:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "removeAllObjects",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "minusSet:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "intersectSet:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "addObjectsFromArray:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "classForCoder",
+     "types": "#8@8:12"
+    },
+    {
+     "selector": "initWithCoder:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "removeObject:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "addObject:",
+     "types": "v12@8:12@16"
+    }
+   ],
+   "instance_size": 4,
+   "ivars": [],
+   "name": "NSMutableSet",
+   "superclass": "NSSet"
+  },
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "dealloc",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "initWithObjects:count:",
+     "types": "@16@8:12^@16I20"
+    },
+    {
+     "selector": "init",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "makeObjectsPerformSelector:withObject:",
+     "types": "v16@8:12:16@20"
+    },
+    {
+     "selector": "makeObjectsPerformSelector:",
+     "types": "v12@8:12:16"
+    },
+    {
+     "selector": "isSubsetOfSet:",
+     "types": "c12@8:12@16"
+    },
+    {
+     "selector": "isEqualToSet:",
+     "types": "c12@8:12@16"
+    },
+    {
+     "selector": "intersectsSet:",
+     "types": "c12@8:12@16"
+    },
+    {
+     "selector": "countForObject:",
+     "types": "I12@8:12@16"
+    },
+    {
+     "selector": "containsObject:",
+     "types": "c12@8:12@16"
+    },
+    {
+     "selector": "anyObject",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "allObjects",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "encodeWithCoder:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "mutableCopyWithZone:",
+     "types": "@12@8:12^{?=}16"
+    },
+    {
+     "selector": "copyWithZone:",
+     "types": "@12@8:12^{?=}16"
+    },
+    {
+     "selector": "retainCount",
+     "types": "I8@8:12"
+    },
+    {
+     "selector": "release",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "retain",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "objectEnumerator",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "member:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "count",
+     "types": "I8@8:12"
+    }
+   ],
+   "instance_size": 12,
+   "ivars": [
+    {
+     "name": "_table",
+     "offset": 4,
+     "type": "^{?}"
+    },
+    {
+     "name": "_retainCount",
+     "offset": 8,
+     "type": "I"
+    }
+   ],
+   "name": "NSConcreteSet",
+   "superclass": "NSSet"
+  },
+  {
+   "class_methods": [
+    {
+     "selector": "setWithSet:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "setWithArray:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "setWithObjects:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "setWithObjects:count:",
+     "types": "@16@8:12^@16I20"
+    },
+    {
+     "selector": "setWithObject:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "set",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "allocWithZone:",
+     "types": "@12@8:12^{?=}16"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "initWithSet:copyItems:",
+     "types": "@13@8:12@16c20"
+    },
+    {
+     "selector": "initWithSet:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "initWithArray:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "initWithObjects:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "initWithObjects:count:",
+     "types": "@16@8:12^@16I20"
+    },
+    {
+     "selector": "members:notFoundMarker:",
+     "types": "@16@8:12@16@20"
+    },
+    {
+     "selector": "makeObjectsPerformSelector:withObject:",
+     "types": "v16@8:12:16@20"
+    },
+    {
+     "selector": "makeObjectsPerformSelector:",
+     "types": "v12@8:12:16"
+    },
+    {
+     "selector": "makeObjectsPerform:withObject:",
+     "types": "v16@8:12:16@20"
+    },
+    {
+     "selector": "makeObjectsPerform:",
+     "types": "v12@8:12:16"
+    },
+    {
+     "selector": "isSubsetOfSet:",
+     "types": "c12@8:12@16"
+    },
+    {
+     "selector": "isEqualToSet:",
+     "types": "c12@8:12@16"
+    },
+    {
+     "selector": "intersectsSet:",
+     "types": "c12@8:12@16"
+    },
+    {
+     "selector": "descriptionWithLocale:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "countForObject:",
+     "types": "I12@8:12@16"
+    },
+    {
+     "selector": "containsObject:",
+     "types": "c12@8:12@16"
+    },
+    {
+     "selector": "anyObject",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "allObjects",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "replacementObjectForPortCoder:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "classForCoder",
+     "types": "#8@8:12"
+    },
+    {
+     "selector": "initWithCoder:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "encodeWithCoder:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "mutableCopyWithZone:",
+     "types": "@12@8:12^{?=}16"
+    },
+    {
+     "selector": "copyWithZone:",
+     "types": "@12@8:12^{?=}16"
+    },
+    {
+     "selector": "isEqual:",
+     "types": "c12@8:12@16"
+    },
+    {
+     "selector": "hash",
+     "types": "I8@8:12"
+    },
+    {
+     "selector": "description",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "objectEnumerator",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "member:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "count",
+     "types": "I8@8:12"
+    }
+   ],
+   "instance_size": 4,
+   "ivars": [],
+   "name": "NSSet",
+   "superclass": "NSObject"
+  },
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "dealloc",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "nextObject",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "initWithSet:",
+     "types": "@12@8:12@16"
+    }
+   ],
+   "instance_size": 20,
+   "ivars": [
+    {
+     "name": "_target",
+     "offset": 4,
+     "type": "@\"NSSet\""
+    },
+    {
+     "name": "_table",
+     "offset": 8,
+     "type": "(?)"
+    },
+    {
+     "name": "_slot",
+     "offset": 12,
+     "type": "I"
+    },
+    {
+     "name": "_countedSet",
+     "offset": 16,
+     "type": "c"
+    }
+   ],
+   "name": "_NSSetEnumerator",
+   "superclass": "NSEnumerator"
+  }
+ ],
+ "data_symbols": [
+  "___NSEmptySet"
+ ],
+ "module": "NSSet.m",
+ "schema_version": "abi-v1",
+ "text_symbols": []
+}

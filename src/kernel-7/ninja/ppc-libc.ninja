@@ -1,0 +1,79 @@
+# PPC libc exceptions from conf/Makefile.ppc.
+
+build $outdir/memchr.o: cc machdep/ppc/libc/memchr.c || $outdir/prepared $outdir/validated generated
+  source = ../../machdep/ppc/libc/memchr.c
+  object = memchr.o
+  flags = $cppflags $machine_cflags -O2
+
+build $outdir/memcmp.o: cc machdep/ppc/libc/memcmp.c || $outdir/prepared $outdir/validated generated
+  source = ../../machdep/ppc/libc/memcmp.c
+  object = memcmp.o
+  flags = $cppflags $machine_cflags -O2
+
+build $outdir/memcpy.o: cc machdep/ppc/libc/memcpy.c || $outdir/prepared $outdir/validated generated
+  source = ../../machdep/ppc/libc/memcpy.c
+  object = memcpy.o
+  flags = $cppflags $machine_cflags -O2
+
+build $outdir/memmove.o: cc machdep/ppc/libc/memmove.c || $outdir/prepared $outdir/validated generated
+  source = ../../machdep/ppc/libc/memmove.c
+  object = memmove.o
+  flags = $cppflags $machine_cflags -O2
+
+build $outdir/memset.o: cc machdep/ppc/libc/memset.c || $outdir/prepared $outdir/validated generated
+  source = ../../machdep/ppc/libc/memset.c
+  object = memset.o
+  flags = $cppflags $machine_cflags -O2
+
+build $outdir/strchr.o: cc machdep/ppc/libc/strchr.c || $outdir/prepared $outdir/validated generated
+  source = ../../machdep/ppc/libc/strchr.c
+  object = strchr.o
+  flags = $cppflags $machine_cflags -O2 -funroll-all-loops
+
+build $outdir/strrchr.o: cc machdep/ppc/libc/strrchr.c || $outdir/prepared $outdir/validated generated
+  source = ../../machdep/ppc/libc/strrchr.c
+  object = strrchr.o
+  flags = $cppflags $machine_cflags -O2 -funroll-all-loops
+
+build $outdir/strlen.o: cc machdep/ppc/libc/strlen.c || $outdir/prepared $outdir/validated generated
+  source = ../../machdep/ppc/libc/strlen.c
+  object = strlen.o
+  flags = $cppflags $machine_cflags -O2 -funroll-all-loops
+
+build $outdir/strcpy.o: cc machdep/ppc/libc/strcpy.c || $outdir/prepared $outdir/validated generated
+  source = ../../machdep/ppc/libc/strcpy.c
+  object = strcpy.o
+  flags = $cppflags $machine_cflags -O2 -funroll-all-loops
+
+build $outdir/strncpy.o: cc machdep/ppc/libc/strncpy.c || $outdir/prepared $outdir/validated generated
+  source = ../../machdep/ppc/libc/strncpy.c
+  object = strncpy.o
+  flags = $cppflags $machine_cflags -O2 -funroll-all-loops
+
+build $outdir/strcat.o: cc machdep/ppc/libc/strcat.c || $outdir/prepared $outdir/validated generated
+  source = ../../machdep/ppc/libc/strcat.c
+  object = strcat.o
+  flags = $cppflags $machine_cflags -O2 -funroll-all-loops
+
+build $outdir/strncat.o: cc machdep/ppc/libc/strncat.c || $outdir/prepared $outdir/validated generated
+  source = ../../machdep/ppc/libc/strncat.c
+  object = strncat.o
+  flags = $cppflags $machine_cflags -O2 -funroll-all-loops
+
+build $outdir/strcmp.o: cc machdep/ppc/libc/strcmp.c || $outdir/prepared $outdir/validated generated
+  source = ../../machdep/ppc/libc/strcmp.c
+  object = strcmp.o
+  flags = $cppflags $machine_cflags -O2 -funroll-all-loops
+
+build $outdir/strncmp.o: cc machdep/ppc/libc/strncmp.c || $outdir/prepared $outdir/validated generated
+  source = ../../machdep/ppc/libc/strncmp.c
+  object = strncmp.o
+  flags = $cppflags $machine_cflags -O2 -funroll-all-loops
+
+build $outdir/index.o: cc machdep/ppc/libc/index.c || $outdir/prepared $outdir/validated generated
+  source = ../../machdep/ppc/libc/index.c
+  object = index.o
+  flags = $cppflags $machine_cflags -O2 -funroll-all-loops
+
+libc_objects = $outdir/memchr.o $outdir/memcmp.o $outdir/memcpy.o $outdir/memmove.o $outdir/memset.o $outdir/strchr.o $outdir/strrchr.o $outdir/strlen.o $outdir/strcpy.o $outdir/strncpy.o $outdir/strcat.o $outdir/strncat.o $outdir/strcmp.o $outdir/strncmp.o $outdir/index.o
+build libc: phony $outdir/memchr.o $outdir/memcmp.o $outdir/memcpy.o $outdir/memmove.o $outdir/memset.o $outdir/strchr.o $outdir/strrchr.o $outdir/strlen.o $outdir/strcpy.o $outdir/strncpy.o $outdir/strcat.o $outdir/strncat.o $outdir/strcmp.o $outdir/strncmp.o $outdir/index.o

@@ -13,6 +13,13 @@
  *
  */
 
+/* MII registers */
+#define MII_CONTROL             0
+#define MII_STATUS              1
+#define MII_ID0                 2
+#define MII_ID1                 3
+#define MII_ADVERTISEMENT       4
+
 @interface UniNEnet(MII)
 - (BOOL)miiReadWord:(unsigned short *)dataPtr reg:(unsigned short)reg phy:(unsigned char)phy;
 - (BOOL)miiWriteWord:(unsigned short)data reg:(unsigned short)reg phy:(unsigned char)phy;

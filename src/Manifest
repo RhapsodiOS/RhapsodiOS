@@ -31,7 +31,7 @@ dir     driverTools-1         all
 dir     Developer/Commands/enscript-1 all
 dir     ext2fs-1              all
 dir     Commands/file_cmds    all
-dir     files-5               all
+dir     files-1               all
 dir     Developer/Commands/flex-1 all
 dir     Developer/Commands/gawk-1 all
 dir     Developer/Commands/gdb-1 all
@@ -42,6 +42,7 @@ dir     Commands/gnutar-1 all
 dir     Commands/gnuzip-1 all
 dir     Commands/grep-1 all
 dir     Developer/Commands/groff-1 all
+dir     hammer-1              all
 dir     hfs-1                 all
 dir     kernel-7              all
 dir     kernload-1            all
@@ -79,6 +80,7 @@ dir     Developer/Commands/pb_makefiles-1 all
 dir     Developer/Commands/perl-1 all
 dir     Developer/Commands/project_makefiles-1 all
 dir     Developer/Commands/rcs-1 all
+dir     Developer/Commands/samurai-1 all
 dir     relcontrol-10         all
 dir     Commands/rsync-1 all
 dir     sendmail-1            all

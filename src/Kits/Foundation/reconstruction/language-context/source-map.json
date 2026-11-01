@@ -1,0 +1,252 @@
+{
+  "schema_version": "source-map-v1",
+  "reference_sha256": "332B3C8C0AE0A6E40A4B93110EE16748FCD94AA0119D63F16EDE878598C681B4",
+  "mapped": [
+    {
+      "address": 1112799688,
+      "size": 680,
+      "reference_names": [
+        "+[NSLanguageContext languageContextWithName:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSLanguageContext.m",
+      "source_line": 173
+    },
+    {
+      "address": 1112810444,
+      "size": 68,
+      "reference_names": [
+        "-[NSLanguageContext _initWithDictionary:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSLanguageContext.m",
+      "source_line": 274
+    },
+    {
+      "address": 1112810512,
+      "size": 16,
+      "reference_names": [
+        "-[NSLanguageContext _dictionary]"
+      ],
+      "source_path": "src/Kits/Foundation/NSLanguageContext.m",
+      "source_line": 270
+    },
+    {
+      "address": 1112858048,
+      "size": 64,
+      "reference_names": [
+        "-[NSLanguageContext languageName]"
+      ],
+      "source_path": "src/Kits/Foundation/NSLanguageContext.m",
+      "source_line": 331
+    },
+    {
+      "address": 1112867264,
+      "size": 56,
+      "reference_names": [
+        "-[NSLanguageContext objectForKey:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSLanguageContext.m",
+      "source_line": 340
+    },
+    {
+      "address": 1112994816,
+      "size": 180,
+      "reference_names": [
+        "+[NSLanguageContext _langList]"
+      ],
+      "source_path": "src/Kits/Foundation/NSLanguageContext.m",
+      "source_line": 101
+    },
+    {
+      "address": 1112994996,
+      "size": 308,
+      "reference_names": [
+        "+[NSLanguageContext allTheLanguageContextNamesInstalledOnTheSystem]"
+      ],
+      "source_path": "src/Kits/Foundation/NSLanguageContext.m",
+      "source_line": 112
+    },
+    {
+      "address": 1112995304,
+      "size": 96,
+      "reference_names": [
+        "+[NSLanguageContext availableLanguageContextNames]"
+      ],
+      "source_path": "src/Kits/Foundation/NSLanguageContext.m",
+      "source_line": 141
+    },
+    {
+      "address": 1112995400,
+      "size": 332,
+      "reference_names": [
+        "+[NSLanguageContext defaultLanguageContext]"
+      ],
+      "source_path": "src/Kits/Foundation/NSLanguageContext.m",
+      "source_line": 147
+    },
+    {
+      "address": 1112995732,
+      "size": 164,
+      "reference_names": [
+        "+[NSLanguageContext setDefaultLanguageContext:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSLanguageContext.m",
+      "source_line": 248
+    },
+    {
+      "address": 1112995896,
+      "size": 164,
+      "reference_names": [
+        "+[NSLanguageContext setSystemLanguageContext:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSLanguageContext.m",
+      "source_line": 259
+    },
+    {
+      "address": 1112996060,
+      "size": 216,
+      "reference_names": [
+        "+[NSLanguageContext systemLanguageContext]"
+      ],
+      "source_path": "src/Kits/Foundation/NSLanguageContext.m",
+      "source_line": 233
+    },
+    {
+      "address": 1112996620,
+      "size": 60,
+      "reference_names": [
+        "-[NSLanguageContext classForCoder]"
+      ],
+      "source_path": "src/Kits/Foundation/NSLanguageContext.m",
+      "source_line": 279
+    },
+    {
+      "address": 1112996680,
+      "size": 112,
+      "reference_names": [
+        "-[NSLanguageContext copyWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSLanguageContext.m",
+      "source_line": 283
+    },
+    {
+      "address": 1112996792,
+      "size": 56,
+      "reference_names": [
+        "-[NSLanguageContext count]"
+      ],
+      "source_path": "src/Kits/Foundation/NSLanguageContext.m",
+      "source_line": 294
+    },
+    {
+      "address": 1112996848,
+      "size": 76,
+      "reference_names": [
+        "-[NSLanguageContext encodeWithCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSLanguageContext.m",
+      "source_line": 298
+    },
+    {
+      "address": 1112996924,
+      "size": 64,
+      "reference_names": [
+        "-[NSLanguageContext formalName]"
+      ],
+      "source_path": "src/Kits/Foundation/NSLanguageContext.m",
+      "source_line": 302
+    },
+    {
+      "address": 1112996988,
+      "size": 104,
+      "reference_names": [
+        "-[NSLanguageContext initWithCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSLanguageContext.m",
+      "source_line": 306
+    },
+    {
+      "address": 1112997092,
+      "size": 76,
+      "reference_names": [
+        "-[NSLanguageContext initWithContentsOfFile:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSLanguageContext.m",
+      "source_line": 312
+    },
+    {
+      "address": 1112997168,
+      "size": 80,
+      "reference_names": [
+        "-[NSLanguageContext init]"
+      ],
+      "source_path": "src/Kits/Foundation/NSLanguageContext.m",
+      "source_line": 318
+    },
+    {
+      "address": 1112997248,
+      "size": 56,
+      "reference_names": [
+        "-[NSLanguageContext keyEnumerator]"
+      ],
+      "source_path": "src/Kits/Foundation/NSLanguageContext.m",
+      "source_line": 323
+    },
+    {
+      "address": 1112997304,
+      "size": 64,
+      "reference_names": [
+        "-[NSLanguageContext languageCode]"
+      ],
+      "source_path": "src/Kits/Foundation/NSLanguageContext.m",
+      "source_line": 327
+    },
+    {
+      "address": 1112997368,
+      "size": 84,
+      "reference_names": [
+        "-[NSLanguageContext mutableCopyWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSLanguageContext.m",
+      "source_line": 335
+    },
+    {
+      "address": 1112997452,
+      "size": 56,
+      "reference_names": [
+        "-[NSLanguageContext removeObjectForKey:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSLanguageContext.m",
+      "source_line": 344
+    },
+    {
+      "address": 1112997508,
+      "size": 56,
+      "reference_names": [
+        "-[NSLanguageContext setObject:forKey:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSLanguageContext.m",
+      "source_line": 348
+    },
+    {
+      "address": 1113008228,
+      "size": 448,
+      "reference_names": [
+        "__NSTempLangDictFromFile"
+      ],
+      "source_path": "src/Kits/Foundation/NSLanguageContext.m",
+      "source_line": 31
+    },
+    {
+      "address": 1113008676,
+      "size": 184,
+      "reference_names": [
+        "__NSUnionOfDictWithAncestors"
+      ],
+      "source_path": "src/Kits/Foundation/NSLanguageContext.m",
+      "source_line": 74
+    }
+  ],
+  "unmapped": [],
+  "duplicate_candidates": [],
+  "boundary_disputed": []
+}

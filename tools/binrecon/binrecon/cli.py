@@ -1,4 +1,5 @@
 import argparse
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -15,15 +16,23 @@ from binrecon.functions import (
     FunctionQueryError, function_index, load_published, render_function,
     render_worklist, worklist,
 )
-from binrecon.macho import objc_method_index, read_macho
+from binrecon.abi_check import diff_abi, module_from_object
+from binrecon.macho import extract_slice, load_image, objc_method_index, read_macho
+from binrecon.module_scope import function_ranges
 from binrecon.normalize import preflight_json
+from binrecon.objc_abi import (
+    ObjcAbiError, attach_symbols, method_symbol_index, read_modules_from_sections,
+)
 from binrecon.schema import validate_analysis_semantics, validate_document
 from binrecon.ledger import LedgerError, LedgerLock, load_ledger, transition, write_ledger
 from binrecon.runner import RunnerError, run_analysis
 from binrecon.source_map import build_source_map, scope_analysis, source_sites
+from binrecon.symbol_audit import unclaimed_text_symbols
 
 
-COMMANDS = ("validate", "analyze", "consensus", "compare", "ledger", "source-map", "function")
+COMMANDS = ("validate", "analyze", "consensus", "compare", "ledger", "source-map",
+            "extract-slice", "abi", "abi-check", "module-scope", "symbol-audit",
+            "function")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -71,6 +80,30 @@ def build_parser() -> argparse.ArgumentParser:
     source_map.add_argument("--scope-to-objc", action="store_true",
                             help="restrict the analysis to the Objective-C methods "
                                  "found by --objc-methods")
+    source_map.add_argument("--ownership",
+                            help="JSON file mapping a function name to its owning "
+                                 "module; when given, the output gains a by_module "
+                                 "breakdown")
+    extract = subparsers.add_parser("extract-slice")
+    extract.add_argument("--input", required=True)
+    extract.add_argument("--architecture", required=True)
+    extract.add_argument("--output", required=True)
+    abi = subparsers.add_parser("abi")
+    abi.add_argument("--profile", required=True)
+    abi.add_argument("--module", action="append", required=True)
+    abi.add_argument("--symbols", required=True)
+    abi.add_argument("--output", required=True)
+    abi_check = subparsers.add_parser("abi-check")
+    abi_check.add_argument("--abi-dir", required=True)
+    abi_check.add_argument("--built", action="append", required=True,
+                           metavar="MODULE=PATH")
+    module_scope = subparsers.add_parser("module-scope")
+    module_scope.add_argument("--profile", required=True)
+    module_scope.add_argument("--module", action="append", required=True)
+    module_scope.add_argument("--symbols", required=True)
+    symbol_audit = subparsers.add_parser("symbol-audit")
+    symbol_audit.add_argument("--profile", required=True)
+    symbol_audit.add_argument("--symbols", required=True)
 
     function = subparsers.add_parser("function")
     function.add_argument("--profile", required=True)
@@ -181,8 +214,13 @@ def main(argv=None) -> int:
         try:
             profile = load_profile(Path(args.profile), os.environ)
             analysis_paths = [Path(args.reference_analysis), Path(args.rebuilt_analysis)]
-            protected = [profile.source_path, profile.reference.path, profile.rebuilt.path,
-                         *analysis_paths]
+            #  A committed stage profile carries no "rebuilt" artifact -- the
+            #  rebuilt object is a local, uncommitted path -- so the protected
+            #  input list simply omits it when absent.
+            protected = [profile.source_path, profile.reference.path]
+            if profile.rebuilt is not None:
+                protected.append(profile.rebuilt.path)
+            protected.extend(analysis_paths)
             output = None if args.output == "-" else Path(args.output)
             text_output = (None if args.text_output in (None, "-") else Path(args.text_output))
             if args.output == "-" and args.text_output == "-":
@@ -237,6 +275,143 @@ def main(argv=None) -> int:
             print(f"binrecon: {error}", file=sys.stderr)
             return 1
 
+    if args.command == "extract-slice":
+        try:
+            payload = extract_slice(
+                Path(args.input).read_bytes(), args.architecture
+            )
+            Path(args.output).write_bytes(payload)
+            digest = hashlib.sha256(payload).hexdigest().upper()
+            print(f"wrote {args.output} size={len(payload)} sha256={digest}")
+            return 0
+        except (OSError, ValueError, ValidationError) as error:
+            print(f"binrecon: {error}", file=sys.stderr)
+            return 1
+
+    if args.command == "abi":
+        try:
+            profile = load_profile(Path(args.profile), os.environ)
+            payload, document = load_image(profile.reference.path)
+            modules = read_modules_from_sections(
+                payload, document["sections"], document["input"]["endianness"],
+                method_symbol_index(document),
+            )
+            assignment = json.loads(Path(args.symbols).read_text())
+            assignment = _filter_assignment_to_requested_modules(
+                assignment, args.module, modules)
+            attach_symbols(modules, assignment, document["symbols"])
+
+            output = Path(args.output)
+            output.mkdir(parents=True, exist_ok=True)
+            for module in args.module:
+                if module not in modules:
+                    raise ValueError(f"image defines no module {module}")
+                validate_document("abi-v1", modules[module])
+                target = output / (module.removesuffix(".m") + ".json")
+                target.write_text(
+                    json.dumps(modules[module], indent=1, sort_keys=True) + "\n"
+                )
+                print(f"wrote {target}")
+            return 0
+        except (OSError, ValueError, ValidationError, ObjcAbiError) as error:
+            print(f"binrecon: {error}", file=sys.stderr)
+            return 1
+
+    if args.command == "abi-check":
+        try:
+            built = {}
+            for pair in args.built:
+                module, separator, path = pair.partition("=")
+                if not separator or not module or not path:
+                    raise ValueError(
+                        f"--built expects MODULE=PATH, got {pair!r}"
+                    )
+                payload, document = load_image(Path(path))
+                built[module] = module_from_object(payload, document, module)
+
+            findings = []
+            for expected_path in sorted(Path(args.abi_dir).glob("*.json")):
+                expected = json.loads(expected_path.read_text())
+                actual = built.pop(expected["module"], None)
+                if actual is None:
+                    findings.append(
+                        f"{expected['module']}: no --built object was supplied"
+                    )
+                    continue
+                findings.extend(diff_abi(expected, actual))
+            for module in sorted(built):
+                findings.append(f"{module}: no committed ABI document to check")
+
+            for line in findings:
+                print(f"abi-check: {line}")
+            if findings:
+                print(f"abi-check: {len(findings)} divergence(s)")
+                return 1
+            print("abi-check: ABI matches")
+            return 0
+        except (OSError, ValueError, ValidationError, ObjcAbiError) as error:
+            print(f"binrecon: {error}", file=sys.stderr)
+            return 1
+
+    if args.command == "module-scope":
+        try:
+            profile = load_profile(Path(args.profile), os.environ)
+            payload, document = load_image(profile.reference.path)
+            modules = read_modules_from_sections(
+                payload, document["sections"], document["input"]["endianness"],
+                method_symbol_index(document),
+            )
+            assignment = json.loads(Path(args.symbols).read_text())
+            text_names = {
+                symbol["name"] for symbol in document["symbols"]
+                if symbol["section"] == "__TEXT,__text"
+            }
+
+            names = []
+            for module in args.module:
+                if module not in modules:
+                    raise ValueError(f"image defines no module {module}")
+                names.extend(
+                    name for name in assignment.get(module, []) if name in text_names
+                )
+                for item in modules[module]["classes"]:
+                    for method in item["instance_methods"]:
+                        names.append(f"-[{item['name']} {method['selector']}]")
+                    for method in item["class_methods"]:
+                        names.append(f"+[{item['name']} {method['selector']}]")
+                for item in modules[module]["categories"]:
+                    owner = f"{item['class']}({item['name']})"
+                    for method in item["instance_methods"]:
+                        names.append(f"-[{owner} {method['selector']}]")
+                    for method in item["class_methods"]:
+                        names.append(f"+[{owner} {method['selector']}]")
+
+            text = next(
+                s for s in document["sections"] if s["name"] == "__TEXT,__text"
+            )
+            ranges = function_ranges(document["symbols"], text, names)
+            print(json.dumps(ranges, indent=1))
+            print(f"# {len(ranges)} ranges", file=sys.stderr)
+            return 0
+        except (OSError, ValueError, ValidationError, ObjcAbiError) as error:
+            print(f"binrecon: {error}", file=sys.stderr)
+            return 1
+
+    if args.command == "symbol-audit":
+        try:
+            profile = load_profile(Path(args.profile), os.environ)
+            _payload, document = load_image(profile.reference.path)
+            assignment = json.loads(Path(args.symbols).read_text())
+            unclaimed = unclaimed_text_symbols(document, assignment)
+            for name in unclaimed:
+                print(name)
+            print(f"symbol-audit: {len(unclaimed)} unclaimed exported function(s)",
+                  file=sys.stderr)
+            return 0
+        except (OSError, ValueError, ValidationError) as error:
+            print(f"binrecon: {error}", file=sys.stderr)
+            return 1
+
     print(f"binrecon: command not implemented: {args.command}")
     return 2
 
@@ -271,8 +446,13 @@ def _source_map_command(arguments) -> int:
         for key, locations in source_sites(Path(arguments.repo_root), source_dir).items():
             sites.setdefault(key, []).extend(locations)
 
+    ownership = None
+    if arguments.ownership:
+        ownership = load_json(Path(arguments.ownership))
+
     document = build_source_map(
-        analysis, read_macho(Path(arguments.binary)), sites, extra_names=extra_names
+        analysis, read_macho(Path(arguments.binary)), sites, extra_names=extra_names,
+        ownership=ownership,
     )
     output = Path(arguments.output)
     output.write_text(json.dumps(document, indent=2, sort_keys=True) + "\n", encoding="utf-8")
@@ -282,6 +462,31 @@ def _source_map_command(arguments) -> int:
         repo_root=Path(arguments.repo_root),
     )
     return 0
+
+
+def _filter_assignment_to_requested_modules(assignment: dict, requested_modules,
+                                            modules) -> dict:
+    """Drop assignment entries for modules this ``abi`` invocation is not
+    emitting, and report what was dropped.
+
+    Dropping silently is what makes a misspelled key dangerous: the entry goes
+    before ``attach_symbols`` can reject it, the requested module keeps the
+    empty ``text_symbols`` default, and the command still exits zero with a
+    schema-valid document that has quietly lost its C-function claims.
+    ``abi-check`` then reports those symbols as unexpected exports, which
+    reads like a source defect rather than missing evidence.
+
+    A dropped key cannot be told from a typo by data alone -- ``NSZone.m`` is
+    a deliberate C-function home the reference's ``__OBJC,__module_info`` does
+    not name, and a typo looks identical -- so both are printed, the ones the
+    image does define separately from the ones it does not.
+    """
+    dropped = sorted(name for name in assignment if name not in requested_modules)
+    for name in dropped:
+        known = "defined by the image" if name in modules else "not an __OBJC module"
+        print(f"binrecon: abi: not emitting {name} ({known})", file=sys.stderr)
+    return {name: symbols for name, symbols in assignment.items()
+            if name in requested_modules}
 
 
 _MAX_JSON = 16 * 1024 * 1024

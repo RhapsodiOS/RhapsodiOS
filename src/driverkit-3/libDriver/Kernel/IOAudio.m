@@ -276,6 +276,12 @@ static id _deviceInstance = nil;
     _dataEncoding = encoding;
 }
 
+- (void) _processDMABuffer: (void *) buffer size: (unsigned int) bytes
+                     read: (BOOL) read dataEncoding: (NXSoundParameterTag) encoding
+             channelCount: (unsigned int) count
+{
+}
+
 /*
  *
  */

@@ -1,0 +1,289 @@
+{
+ "categories": [],
+ "classes": [
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "dealloc",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "initWithTimeIntervalSinceReferenceDate:",
+     "types": "@12@4:8d12"
+    },
+    {
+     "selector": "init",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "timeIntervalSince1970",
+     "types": "d4@4:8"
+    },
+    {
+     "selector": "timeIntervalSinceNow",
+     "types": "d4@4:8"
+    },
+    {
+     "selector": "timeIntervalSinceDate:",
+     "types": "d8@4:8@12"
+    },
+    {
+     "selector": "laterDate:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "isEqualToDate:",
+     "types": "c8@4:8@12"
+    },
+    {
+     "selector": "earlierDate:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "compare:",
+     "types": "i8@4:8@12"
+    },
+    {
+     "selector": "addTimeInterval:",
+     "types": "@12@4:8d12"
+    },
+    {
+     "selector": "copyWithZone:",
+     "types": "@8@4:8^{?=}12"
+    },
+    {
+     "selector": "retainCount",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "release",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "retain",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "autorelease",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "timeIntervalSinceReferenceDate",
+     "types": "d4@4:8"
+    }
+   ],
+   "instance_size": 12,
+   "ivars": [
+    {
+     "name": "_timeInterval",
+     "offset": 4,
+     "type": "d"
+    }
+   ],
+   "name": "NSDistantDate",
+   "superclass": "NSDate"
+  },
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "dealloc",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "initWithTimeIntervalSinceReferenceDate:",
+     "types": "@12@4:8d12"
+    },
+    {
+     "selector": "init",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "copyWithZone:",
+     "types": "@8@4:8^{?=}12"
+    },
+    {
+     "selector": "retainCount",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "release",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "retain",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "timeIntervalSinceReferenceDate",
+     "types": "d4@4:8"
+    }
+   ],
+   "instance_size": 16,
+   "ivars": [
+    {
+     "name": "_refCount",
+     "offset": 4,
+     "type": "I"
+    },
+    {
+     "name": "_timeSinceInternalReference",
+     "offset": 8,
+     "type": "d"
+    }
+   ],
+   "name": "NSConcreteDate",
+   "superclass": "NSDate"
+  },
+  {
+   "class_methods": [
+    {
+     "selector": "distantPast",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "distantFuture",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "dateWithDate:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "dateWithTimeInterval:sinceDate:",
+     "types": "@16@4:8d12@20"
+    },
+    {
+     "selector": "dateWithTimeIntervalSince1970:",
+     "types": "@12@4:8d12"
+    },
+    {
+     "selector": "dateWithTimeIntervalSinceNow:",
+     "types": "@12@4:8d12"
+    },
+    {
+     "selector": "dateWithTimeIntervalSinceReferenceDate:",
+     "types": "@12@4:8d12"
+    },
+    {
+     "selector": "date",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "allocWithZone:",
+     "types": "@8@4:8^{?=}12"
+    },
+    {
+     "selector": "timeIntervalSinceReferenceDate",
+     "types": "d4@4:8"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "initWithDate:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "initWithTimeInterval:sinceDate:",
+     "types": "@16@4:8d12@20"
+    },
+    {
+     "selector": "initWithTimeIntervalSince1970:",
+     "types": "@12@4:8d12"
+    },
+    {
+     "selector": "initWithTimeIntervalSinceNow:",
+     "types": "@12@4:8d12"
+    },
+    {
+     "selector": "initWithTimeIntervalSinceReferenceDate:",
+     "types": "@12@4:8d12"
+    },
+    {
+     "selector": "timeIntervalSince1970",
+     "types": "d4@4:8"
+    },
+    {
+     "selector": "timeIntervalSinceNow",
+     "types": "d4@4:8"
+    },
+    {
+     "selector": "timeIntervalSinceDate:",
+     "types": "d8@4:8@12"
+    },
+    {
+     "selector": "laterDate:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "isEqualToDate:",
+     "types": "c8@4:8@12"
+    },
+    {
+     "selector": "earlierDate:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "compare:",
+     "types": "i8@4:8@12"
+    },
+    {
+     "selector": "addTimeInterval:",
+     "types": "@12@4:8d12"
+    },
+    {
+     "selector": "replacementObjectForPortCoder:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "classForCoder",
+     "types": "#4@4:8"
+    },
+    {
+     "selector": "initWithCoder:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "encodeWithCoder:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "copyWithZone:",
+     "types": "@8@4:8^{?=}12"
+    },
+    {
+     "selector": "isEqual:",
+     "types": "c8@4:8@12"
+    },
+    {
+     "selector": "hash",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "description",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "timeIntervalSinceReferenceDate",
+     "types": "d4@4:8"
+    }
+   ],
+   "instance_size": 4,
+   "ivars": [],
+   "name": "NSDate",
+   "superclass": "NSObject"
+  }
+ ],
+ "data_symbols": [
+  "___NSDateRetainLock",
+  "___NSDistantFutureDate",
+  "___NSDistantPastDate"
+ ],
+ "module": "NSDate.m",
+ "schema_version": "abi-v1",
+ "text_symbols": []
+}

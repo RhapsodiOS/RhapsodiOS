@@ -1,6 +1,22 @@
 
 Bundle of old SSLeay documentation files [OBSOLETE!]
 
+*** WARNING! WARNING! WARNING! WARNING! WARNING! WARNING! WARNING! ***
+
+OBSOLETE means that nothing in this document should be trusted.  This
+document is provided mostly for historical purposes (it wasn't even up
+to date at the time SSLeay 0.8.1 was released) and as inspiration.  If
+you copy some snippet of code from this document, please _check_ that
+it really is correct from all points of view.  For example, you can
+check with the other documents in this directory tree, or by comparing
+with relevant parts of the include files.
+
+People have done the mistake of trusting what's written here.  Please
+don't do that.
+
+*** WARNING! WARNING! WARNING! WARNING! WARNING! WARNING! WARNING! ***
+
+
 ==== readme ========================================================
 
 This is the old 0.6.6 docuementation.  Most of the cipher stuff is still
@@ -3784,9 +3800,9 @@ made public on sci.crypt in Sep 1994 (RC4) and Feb 1996 (RC2).  I have
 copies of the origional postings if people are interested.  RSA I believe 
 claim that they were 'trade-secrets' and that some-one broke an NDA in 
 revealing them.  Other claim they reverse engineered the algorithms from 
-compiled binaries.  If the algorithms were reverse engineered, I belive 
+compiled binaries.  If the algorithms were reverse engineered, I believe 
 RSA had no legal leg to stand on.  If an NDA was broken, I don't know.
-Regardless, RSA, I belive, is willing to go to court over the issue so 
+Regardless, RSA, I believe, is willing to go to court over the issue so 
 licencing is probably the best idea, or at least talk to them.
 If there are people who actually know more about this, pease let me know, I 
 don't want to vilify or spread miss-information if I can help it.
@@ -4279,7 +4295,7 @@ X-Status:
 Loading client certs into MSIE 3.01
 ===================================
 
-This document conatains all the information necessary to succesfully set up 
+This document contains all the information necessary to successfully set up 
 some scripts to issue client certs to Microsoft Internet Explorer. It 
 includes the required knowledge about the model MSIE uses for client 
 certification and includes complete sample scripts ready to play with. The 
@@ -5743,7 +5759,7 @@ strucutre but also the private key and certificate associated with
 
 EXAMPLES.
 
-So lets play at being a wierd SSL server.
+So lets play at being a weird SSL server.
 
 /* setup a context */
 ctx=SSL_CTX_new();
@@ -6229,7 +6245,7 @@ SSL_get_app_data
 void SSL_CTX_set_default_verify
 
 /* This callback, if set, totaly overrides the normal SSLeay verification
- * functions and should return 1 on sucesss and 0 on failure */
+ * functions and should return 1 on success and 0 on failure */
 void SSL_CTX_set_cert_verify_callback
 
 /* The following are the same as the equivilent SSL_xxx functions.

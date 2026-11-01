@@ -1,0 +1,197 @@
+{
+  "schema_version": "source-map-v1",
+  "reference_sha256": "1165B9063ADD5672514455CA2C9830625BEA2BCE5E46126FB5E8652114C909D6",
+  "mapped": [
+    {
+      "address": 1112544352,
+      "size": 167,
+      "reference_names": [
+        "__NSCurrentThread"
+      ],
+      "source_path": "src/Kits/Foundation/NSThread.m",
+      "source_line": 310
+    },
+    {
+      "address": 1112549832,
+      "size": 12,
+      "reference_names": [
+        "+[NSThread currentThread]"
+      ],
+      "source_path": "src/Kits/Foundation/NSThread.m",
+      "source_line": 376
+    },
+    {
+      "address": 1112573152,
+      "size": 13,
+      "reference_names": [
+        "-[NSThread runLoop]"
+      ],
+      "source_path": "src/Kits/Foundation/NSThread.m",
+      "source_line": 420
+    },
+    {
+      "address": 1112577044,
+      "size": 95,
+      "reference_names": [
+        "-[NSThread threadDictionary]"
+      ],
+      "source_path": "src/Kits/Foundation/NSThread.m",
+      "source_line": 407
+    },
+    {
+      "address": 1112821432,
+      "size": 22,
+      "reference_names": [
+        "+[NSThread isMultiThreaded]"
+      ],
+      "source_path": "src/Kits/Foundation/NSThread.m",
+      "source_line": 403
+    },
+    {
+      "address": 1112855864,
+      "size": 62,
+      "reference_names": [
+        "-[NSThread setRunLoop:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSThread.m",
+      "source_line": 424
+    },
+    {
+      "address": 1112885240,
+      "size": 2243,
+      "reference_names": [
+        "__NSToDoAtFirstThreadStart"
+      ],
+      "source_path": "src/Kits/Foundation/NSThread.m",
+      "source_line": 129
+    },
+    {
+      "address": 1112903572,
+      "size": 195,
+      "reference_names": [
+        "+[NSThread detachNewThreadSelector:toTarget:withObject:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSThread.m",
+      "source_line": 380
+    },
+    {
+      "address": 1113004184,
+      "size": 1624,
+      "reference_names": [
+        "__NSToDoAtLastThreadExit"
+      ],
+      "source_path": "src/Kits/Foundation/NSThread.m",
+      "source_line": 230
+    },
+    {
+      "address": 1113029844,
+      "size": 31,
+      "reference_names": [
+        "+[NSThread exit]"
+      ],
+      "source_path": "src/Kits/Foundation/NSThread.m",
+      "source_line": 488
+    },
+    {
+      "address": 1113029876,
+      "size": 121,
+      "reference_names": [
+        "+[NSThread sleepForTimeInterval:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSThread.m",
+      "source_line": 477
+    },
+    {
+      "address": 1113030000,
+      "size": 141,
+      "reference_names": [
+        "+[NSThread sleepUntilDate:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSThread.m",
+      "source_line": 466
+    },
+    {
+      "address": 1113077644,
+      "size": 108,
+      "reference_names": [
+        "-[NSThread _exit]"
+      ],
+      "source_path": "src/Kits/Foundation/NSThread.m",
+      "source_line": 492
+    },
+    {
+      "address": 1113077752,
+      "size": 172,
+      "reference_names": [
+        "-[NSThread _setThreadName:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSThread.m",
+      "source_line": 502
+    },
+    {
+      "address": 1113077924,
+      "size": 93,
+      "reference_names": [
+        "-[NSThread _threadName]"
+      ],
+      "source_path": "src/Kits/Foundation/NSThread.m",
+      "source_line": 520
+    },
+    {
+      "address": 1113078020,
+      "size": 258,
+      "reference_names": [
+        "-[NSThread dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSThread.m",
+      "source_line": 539
+    },
+    {
+      "address": 1113078280,
+      "size": 54,
+      "reference_names": [
+        "-[NSThread description]"
+      ],
+      "source_path": "src/Kits/Foundation/NSThread.m",
+      "source_line": 535
+    },
+    {
+      "address": 1113078336,
+      "size": 97,
+      "reference_names": [
+        "-[NSThread init]"
+      ],
+      "source_path": "src/Kits/Foundation/NSThread.m",
+      "source_line": 430
+    },
+    {
+      "address": 1113084580,
+      "size": 20,
+      "reference_names": [
+        "__NSMilliSleep"
+      ],
+      "source_path": "src/Kits/Foundation/NSThread.m",
+      "source_line": 100
+    },
+    {
+      "address": 1113087396,
+      "size": 190,
+      "reference_names": [
+        "_forkThreadForFunction"
+      ],
+      "source_path": "src/Kits/Foundation/NSThread.m",
+      "source_line": 343
+    }
+  ],
+  "unmapped": [],
+  "duplicate_candidates": [],
+  "boundary_disputed": [],
+  "by_module": {
+    "NSThread.m": {
+      "mapped": 20,
+      "unmapped": 0,
+      "duplicate_candidates": 0,
+      "boundary_disputed": 0
+    }
+  }
+}

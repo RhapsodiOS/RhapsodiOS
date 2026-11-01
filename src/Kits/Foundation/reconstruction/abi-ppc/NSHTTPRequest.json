@@ -1,0 +1,103 @@
+{
+ "categories": [],
+ "classes": [
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "_setCondition:",
+     "types": "v8@4:8i12"
+    },
+    {
+     "selector": "_condition",
+     "types": "i4@4:8"
+    },
+    {
+     "selector": "fetchesURL:",
+     "types": "c8@4:8@12"
+    },
+    {
+     "selector": "_setClient:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "_client",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "URL",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "requestMethod",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "serializedRequest",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "setData:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "addHeader:value:",
+     "types": "v12@4:8@12@16"
+    },
+    {
+     "selector": "dealloc",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "initWithMethod:URL:",
+     "types": "@12@4:8@12@16"
+    }
+   ],
+   "instance_size": 32,
+   "ivars": [
+    {
+     "name": "_req",
+     "offset": 4,
+     "type": "@\"NSString\""
+    },
+    {
+     "name": "_url",
+     "offset": 8,
+     "type": "@\"NSURL\""
+    },
+    {
+     "name": "_headers",
+     "offset": 12,
+     "type": "@\"NSMutableDictionary\""
+    },
+    {
+     "name": "_headerOrder",
+     "offset": 16,
+     "type": "@\"NSMutableArray\""
+    },
+    {
+     "name": "_data",
+     "offset": 20,
+     "type": "@\"NSData\""
+    },
+    {
+     "name": "_client",
+     "offset": 24,
+     "type": "@"
+    },
+    {
+     "name": "_condition",
+     "offset": 28,
+     "type": "i"
+    }
+   ],
+   "name": "NSHTTPRequest",
+   "superclass": "NSObject"
+  }
+ ],
+ "data_symbols": [],
+ "module": "NSHTTPRequest.m",
+ "schema_version": "abi-v1",
+ "text_symbols": []
+}

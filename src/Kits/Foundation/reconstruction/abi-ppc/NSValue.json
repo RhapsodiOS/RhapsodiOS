@@ -1,0 +1,826 @@
+{
+ "categories": [
+  {
+   "class": "NSunsignedIntNumber",
+   "class_methods": [],
+   "instance_methods": [
+    {
+     "selector": "hash",
+     "types": "I4@4:8"
+    }
+   ],
+   "name": "_NSHash"
+  },
+  {
+   "class": "NSintNumber",
+   "class_methods": [],
+   "instance_methods": [
+    {
+     "selector": "hash",
+     "types": "I4@4:8"
+    }
+   ],
+   "name": "_NSHash"
+  },
+  {
+   "class": "NSunsignedShortNumber",
+   "class_methods": [],
+   "instance_methods": [
+    {
+     "selector": "hash",
+     "types": "I4@4:8"
+    }
+   ],
+   "name": "_NSHash"
+  },
+  {
+   "class": "NSshortNumber",
+   "class_methods": [],
+   "instance_methods": [
+    {
+     "selector": "hash",
+     "types": "I4@4:8"
+    }
+   ],
+   "name": "_NSHash"
+  }
+ ],
+ "classes": [
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "initWithCoder:",
+     "types": "@8@4:8@12"
+    }
+   ],
+   "instance_size": 4,
+   "ivars": [],
+   "name": "NSValueDecoder",
+   "superclass": "NSObject"
+  },
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "initWithCoder:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "initWithBool:",
+     "types": "@5@4:8c12"
+    },
+    {
+     "selector": "initWithDouble:",
+     "types": "@12@4:8d12"
+    },
+    {
+     "selector": "initWithFloat:",
+     "types": "@8@4:8f12"
+    },
+    {
+     "selector": "initWithUnsignedLongLong:",
+     "types": "@12@4:8Q12"
+    },
+    {
+     "selector": "initWithLongLong:",
+     "types": "@12@4:8q12"
+    },
+    {
+     "selector": "initWithUnsignedLong:",
+     "types": "@8@4:8L12"
+    },
+    {
+     "selector": "initWithLong:",
+     "types": "@8@4:8l12"
+    },
+    {
+     "selector": "initWithUnsignedInt:",
+     "types": "@8@4:8I12"
+    },
+    {
+     "selector": "initWithInt:",
+     "types": "@8@4:8i12"
+    },
+    {
+     "selector": "initWithUnsignedShort:",
+     "types": "@6@4:8S12"
+    },
+    {
+     "selector": "initWithShort:",
+     "types": "@6@4:8s12"
+    },
+    {
+     "selector": "initWithUnsignedChar:",
+     "types": "@5@4:8C12"
+    },
+    {
+     "selector": "initWithChar:",
+     "types": "@5@4:8c12"
+    }
+   ],
+   "instance_size": 8,
+   "ivars": [],
+   "name": "NSPlaceholderNumber",
+   "superclass": "NSPlaceholderValue"
+  },
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "getValue:",
+     "types": "v8@4:8^v12"
+    },
+    {
+     "selector": "objCType",
+     "types": "r*4@4:8"
+    },
+    {
+     "selector": "initWithCoder:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "initWithBytes:objCType:",
+     "types": "@12@4:8r^v12r*16"
+    },
+    {
+     "selector": "dealloc",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "release",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "retainCount",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "retain",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "autorelease",
+     "types": "@4@4:8"
+    }
+   ],
+   "instance_size": 8,
+   "ivars": [
+    {
+     "name": "zoneForInstance",
+     "offset": 4,
+     "type": "^{?}"
+    }
+   ],
+   "name": "NSPlaceholderValue",
+   "superclass": "NSNumber"
+  },
+  {
+   "class_methods": [
+    {
+     "selector": "numberWithBool:",
+     "types": "@5@4:8c12"
+    },
+    {
+     "selector": "numberWithDouble:",
+     "types": "@12@4:8d12"
+    },
+    {
+     "selector": "numberWithFloat:",
+     "types": "@8@4:8f12"
+    },
+    {
+     "selector": "numberWithUnsignedLongLong:",
+     "types": "@12@4:8Q12"
+    },
+    {
+     "selector": "numberWithLongLong:",
+     "types": "@12@4:8q12"
+    },
+    {
+     "selector": "numberWithUnsignedLong:",
+     "types": "@8@4:8L12"
+    },
+    {
+     "selector": "numberWithLong:",
+     "types": "@8@4:8l12"
+    },
+    {
+     "selector": "numberWithUnsignedInt:",
+     "types": "@8@4:8I12"
+    },
+    {
+     "selector": "numberWithInt:",
+     "types": "@8@4:8i12"
+    },
+    {
+     "selector": "numberWithUnsignedShort:",
+     "types": "@6@4:8S12"
+    },
+    {
+     "selector": "numberWithShort:",
+     "types": "@6@4:8s12"
+    },
+    {
+     "selector": "numberWithUnsignedChar:",
+     "types": "@5@4:8C12"
+    },
+    {
+     "selector": "numberWithChar:",
+     "types": "@5@4:8c12"
+    },
+    {
+     "selector": "allocWithZone:",
+     "types": "@8@4:8^{?=}12"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "initWithBool:",
+     "types": "@5@4:8c12"
+    },
+    {
+     "selector": "initWithDouble:",
+     "types": "@12@4:8d12"
+    },
+    {
+     "selector": "initWithFloat:",
+     "types": "@8@4:8f12"
+    },
+    {
+     "selector": "initWithUnsignedLongLong:",
+     "types": "@12@4:8Q12"
+    },
+    {
+     "selector": "initWithLongLong:",
+     "types": "@12@4:8q12"
+    },
+    {
+     "selector": "initWithUnsignedLong:",
+     "types": "@8@4:8L12"
+    },
+    {
+     "selector": "initWithLong:",
+     "types": "@8@4:8l12"
+    },
+    {
+     "selector": "initWithUnsignedInt:",
+     "types": "@8@4:8I12"
+    },
+    {
+     "selector": "initWithInt:",
+     "types": "@8@4:8i12"
+    },
+    {
+     "selector": "initWithUnsignedShort:",
+     "types": "@6@4:8S12"
+    },
+    {
+     "selector": "initWithShort:",
+     "types": "@6@4:8s12"
+    },
+    {
+     "selector": "initWithUnsignedChar:",
+     "types": "@5@4:8C12"
+    },
+    {
+     "selector": "initWithChar:",
+     "types": "@5@4:8c12"
+    },
+    {
+     "selector": "copyWithZone:",
+     "types": "@8@4:8^{?=}12"
+    },
+    {
+     "selector": "initWithCoder:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "classForCoder",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "stringValue",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "description",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "descriptionWithLocale:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "hash",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "isEqual:",
+     "types": "c8@4:8@12"
+    },
+    {
+     "selector": "isEqualToNumber:",
+     "types": "c8@4:8@12"
+    },
+    {
+     "selector": "compare:",
+     "types": "i8@4:8@12"
+    },
+    {
+     "selector": "unsignedLongLongValue",
+     "types": "Q4@4:8"
+    },
+    {
+     "selector": "longLongValue",
+     "types": "q4@4:8"
+    },
+    {
+     "selector": "floatValue",
+     "types": "f4@4:8"
+    },
+    {
+     "selector": "doubleValue",
+     "types": "d4@4:8"
+    },
+    {
+     "selector": "unsignedLongValue",
+     "types": "L4@4:8"
+    },
+    {
+     "selector": "longValue",
+     "types": "l4@4:8"
+    },
+    {
+     "selector": "unsignedIntValue",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "intValue",
+     "types": "i4@4:8"
+    },
+    {
+     "selector": "unsignedShortValue",
+     "types": "S4@4:8"
+    },
+    {
+     "selector": "shortValue",
+     "types": "s4@4:8"
+    },
+    {
+     "selector": "unsignedCharValue",
+     "types": "C4@4:8"
+    },
+    {
+     "selector": "charValue",
+     "types": "c4@4:8"
+    },
+    {
+     "selector": "boolValue",
+     "types": "c4@4:8"
+    }
+   ],
+   "instance_size": 4,
+   "ivars": [],
+   "name": "NSNumber",
+   "superclass": "NSValue"
+  },
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "doubleValue",
+     "types": "d4@4:8"
+    },
+    {
+     "selector": "getValue:",
+     "types": "v8@4:8^v12"
+    },
+    {
+     "selector": "objCType",
+     "types": "r*4@4:8"
+    }
+   ],
+   "instance_size": 16,
+   "ivars": [
+    {
+     "name": "value",
+     "offset": 8,
+     "type": "d"
+    }
+   ],
+   "name": "NSdoubleNumber",
+   "superclass": "NSRefCountingNumber"
+  },
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "floatValue",
+     "types": "f4@4:8"
+    },
+    {
+     "selector": "getValue:",
+     "types": "v8@4:8^v12"
+    },
+    {
+     "selector": "objCType",
+     "types": "r*4@4:8"
+    }
+   ],
+   "instance_size": 12,
+   "ivars": [
+    {
+     "name": "value",
+     "offset": 8,
+     "type": "f"
+    }
+   ],
+   "name": "NSfloatNumber",
+   "superclass": "NSRefCountingNumber"
+  },
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "unsignedLongLongValue",
+     "types": "Q4@4:8"
+    },
+    {
+     "selector": "getValue:",
+     "types": "v8@4:8^v12"
+    },
+    {
+     "selector": "objCType",
+     "types": "r*4@4:8"
+    }
+   ],
+   "instance_size": 16,
+   "ivars": [
+    {
+     "name": "value",
+     "offset": 8,
+     "type": "Q"
+    }
+   ],
+   "name": "NSunsignedLongLongNumber",
+   "superclass": "NSRefCountingNumber"
+  },
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "longLongValue",
+     "types": "q4@4:8"
+    },
+    {
+     "selector": "getValue:",
+     "types": "v8@4:8^v12"
+    },
+    {
+     "selector": "objCType",
+     "types": "r*4@4:8"
+    }
+   ],
+   "instance_size": 16,
+   "ivars": [
+    {
+     "name": "value",
+     "offset": 8,
+     "type": "q"
+    }
+   ],
+   "name": "NSlongLongNumber",
+   "superclass": "NSRefCountingNumber"
+  },
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "unsignedIntValue",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "getValue:",
+     "types": "v8@4:8^v12"
+    },
+    {
+     "selector": "objCType",
+     "types": "r*4@4:8"
+    }
+   ],
+   "instance_size": 12,
+   "ivars": [
+    {
+     "name": "value",
+     "offset": 8,
+     "type": "I"
+    }
+   ],
+   "name": "NSunsignedIntNumber",
+   "superclass": "NSRefCountingNumber"
+  },
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "intValue",
+     "types": "i4@4:8"
+    },
+    {
+     "selector": "getValue:",
+     "types": "v8@4:8^v12"
+    },
+    {
+     "selector": "objCType",
+     "types": "r*4@4:8"
+    }
+   ],
+   "instance_size": 12,
+   "ivars": [
+    {
+     "name": "value",
+     "offset": 8,
+     "type": "i"
+    }
+   ],
+   "name": "NSintNumber",
+   "superclass": "NSRefCountingNumber"
+  },
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "unsignedShortValue",
+     "types": "S4@4:8"
+    },
+    {
+     "selector": "getValue:",
+     "types": "v8@4:8^v12"
+    },
+    {
+     "selector": "objCType",
+     "types": "r*4@4:8"
+    }
+   ],
+   "instance_size": 12,
+   "ivars": [
+    {
+     "name": "value",
+     "offset": 8,
+     "type": "S"
+    }
+   ],
+   "name": "NSunsignedShortNumber",
+   "superclass": "NSRefCountingNumber"
+  },
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "shortValue",
+     "types": "s4@4:8"
+    },
+    {
+     "selector": "getValue:",
+     "types": "v8@4:8^v12"
+    },
+    {
+     "selector": "objCType",
+     "types": "r*4@4:8"
+    }
+   ],
+   "instance_size": 12,
+   "ivars": [
+    {
+     "name": "value",
+     "offset": 8,
+     "type": "s"
+    }
+   ],
+   "name": "NSshortNumber",
+   "superclass": "NSRefCountingNumber"
+  },
+  {
+   "class_methods": [
+    {
+     "selector": "valueWithRange:",
+     "types": "@12@4:8{?=II}12"
+    },
+    {
+     "selector": "valueWithRect:",
+     "types": "@20@4:8{?={?=ff}{?=ff}}12"
+    },
+    {
+     "selector": "valueWithSize:",
+     "types": "@12@4:8{?=ff}12"
+    },
+    {
+     "selector": "valueWithPoint:",
+     "types": "@12@4:8{?=ff}12"
+    },
+    {
+     "selector": "valueWithPointer:",
+     "types": "@8@4:8r^v12"
+    },
+    {
+     "selector": "valueWithNonretainedObject:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "valueWithBytes:objCType:",
+     "types": "@12@4:8r^v12r*16"
+    },
+    {
+     "selector": "value:withObjCType:",
+     "types": "@12@4:8r^v12r*16"
+    },
+    {
+     "selector": "allocWithZone:",
+     "types": "@8@4:8^{?=}12"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "initWithBytes:objCType:",
+     "types": "@12@4:8r^v12r*16"
+    },
+    {
+     "selector": "initWithCoder:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "encodeWithCoder:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "replacementObjectForPortCoder:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "classForCoder",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "rangeValue",
+     "types": "{?=II}8@8:12"
+    },
+    {
+     "selector": "rectValue",
+     "types": "{?={?=ff}{?=ff}}8@8:12"
+    },
+    {
+     "selector": "sizeValue",
+     "types": "{?=ff}8@8:12"
+    },
+    {
+     "selector": "pointValue",
+     "types": "{?=ff}8@8:12"
+    },
+    {
+     "selector": "pointerValue",
+     "types": "^v4@4:8"
+    },
+    {
+     "selector": "nonretainedObjectValue",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "description",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "hash",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "isEqual:",
+     "types": "c8@4:8@12"
+    },
+    {
+     "selector": "isEqualToValue:",
+     "types": "c8@4:8@12"
+    },
+    {
+     "selector": "copyWithZone:",
+     "types": "@8@4:8^{?=}12"
+    },
+    {
+     "selector": "objCType",
+     "types": "r*4@4:8"
+    },
+    {
+     "selector": "getValue:",
+     "types": "v8@4:8^v12"
+    },
+    {
+     "selector": "init",
+     "types": "@4@4:8"
+    }
+   ],
+   "instance_size": 4,
+   "ivars": [],
+   "name": "NSValue",
+   "superclass": "NSObject"
+  },
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "copyWithZone:",
+     "types": "@8@4:8^{?=}12"
+    },
+    {
+     "selector": "hash",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "isEqualToValue:",
+     "types": "c8@4:8@12"
+    },
+    {
+     "selector": "_value",
+     "types": "r^v4@4:8"
+    },
+    {
+     "selector": "objCType",
+     "types": "r*4@4:8"
+    },
+    {
+     "selector": "getValue:",
+     "types": "v8@4:8^v12"
+    }
+   ],
+   "instance_size": 12,
+   "ivars": [
+    {
+     "name": "_specialFlags",
+     "offset": 4,
+     "type": "I"
+    },
+    {
+     "name": "typeInfo",
+     "offset": 8,
+     "type": "^{?}"
+    }
+   ],
+   "name": "NSConcreteValue",
+   "superclass": "NSValue"
+  },
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "copyWithZone:",
+     "types": "@8@4:8^{?=}12"
+    },
+    {
+     "selector": "retainCount",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "release",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "retain",
+     "types": "@4@4:8"
+    }
+   ],
+   "instance_size": 8,
+   "ivars": [
+    {
+     "name": "_retainCount",
+     "offset": 4,
+     "type": "I"
+    }
+   ],
+   "name": "NSRefCountingNumber",
+   "superclass": "NSNumber"
+  }
+ ],
+ "data_symbols": [
+  "___NSNumberRetainLock",
+  "___NSValuePlaceholderLock"
+ ],
+ "module": "NSValue.m",
+ "schema_version": "abi-v1",
+ "text_symbols": [
+  "__NSNewValue"
+ ]
+}

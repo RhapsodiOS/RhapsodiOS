@@ -1,0 +1,1341 @@
+{
+  "schema_version": "source-map-v1",
+  "reference_sha256": "332B3C8C0AE0A6E40A4B93110EE16748FCD94AA0119D63F16EDE878598C681B4",
+  "mapped": [
+    {
+      "address": 1112605000,
+      "size": 396,
+      "reference_names": [
+        "-[NSConcreteValue isEqualToValue:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 710
+    },
+    {
+      "address": 1112605396,
+      "size": 20,
+      "reference_names": [
+        "-[NSConcreteValue objCType]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 696
+    },
+    {
+      "address": 1112605416,
+      "size": 164,
+      "reference_names": [
+        "-[NSValue isEqual:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 628
+    },
+    {
+      "address": 1112605580,
+      "size": 24,
+      "reference_names": [
+        "-[NSConcreteValue _value]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 700
+    },
+    {
+      "address": 1112631256,
+      "size": 260,
+      "reference_names": [
+        "-[NSRefCountingNumber release]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 892
+    },
+    {
+      "address": 1112635632,
+      "size": 36,
+      "reference_names": [
+        "_cachedObjCTypeInfoHash"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 165
+    },
+    {
+      "address": 1112635976,
+      "size": 108,
+      "reference_names": [
+        "-[NSValue init]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 462
+    },
+    {
+      "address": 1112636372,
+      "size": 456,
+      "reference_names": [
+        "__NSNewValue"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 217
+    },
+    {
+      "address": 1112637756,
+      "size": 84,
+      "reference_names": [
+        "_cachedObjCTypeInfoIsEqual"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 180
+    },
+    {
+      "address": 1112638724,
+      "size": 68,
+      "reference_names": [
+        "+[NSValue valueWithBytes:objCType:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 482
+    },
+    {
+      "address": 1112646716,
+      "size": 60,
+      "reference_names": [
+        "-[NSConcreteValue getValue:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 692
+    },
+    {
+      "address": 1112650736,
+      "size": 500,
+      "reference_names": [
+        "__NSPlaceholderFromZone"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 237
+    },
+    {
+      "address": 1112653592,
+      "size": 216,
+      "reference_names": [
+        "-[NSRefCountingNumber retain]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 876
+    },
+    {
+      "address": 1112658328,
+      "size": 76,
+      "reference_names": [
+        "+[NSValue valueWithNonretainedObject:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 490
+    },
+    {
+      "address": 1112658668,
+      "size": 148,
+      "reference_names": [
+        "-[NSPlaceholderNumber initWithInt:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 836
+    },
+    {
+      "address": 1112659124,
+      "size": 84,
+      "reference_names": [
+        "+[NSNumber numberWithInt:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 1397
+    },
+    {
+      "address": 1112670944,
+      "size": 60,
+      "reference_names": [
+        "-[NSValue pointerValue]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 505
+    },
+    {
+      "address": 1112671124,
+      "size": 76,
+      "reference_names": [
+        "+[NSValue valueWithPointer:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 501
+    },
+    {
+      "address": 1112679824,
+      "size": 60,
+      "reference_names": [
+        "-[NSValue nonretainedObjectValue]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 494
+    },
+    {
+      "address": 1112753444,
+      "size": 100,
+      "reference_names": [
+        "+[NSNumber numberWithFloat:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 1427
+    },
+    {
+      "address": 1112753544,
+      "size": 92,
+      "reference_names": [
+        "-[NSPlaceholderNumber initWithFloat:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 860
+    },
+    {
+      "address": 1112765196,
+      "size": 16,
+      "reference_names": [
+        "-[NSintNumber(_NSHash) hash]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 1009
+    },
+    {
+      "address": 1112776952,
+      "size": 84,
+      "reference_names": [
+        "+[NSNumber numberWithBool:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 1437
+    },
+    {
+      "address": 1112782096,
+      "size": 48,
+      "reference_names": [
+        "-[NSshortNumber objCType]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 940
+    },
+    {
+      "address": 1112782588,
+      "size": 48,
+      "reference_names": [
+        "-[NSintNumber objCType]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 956
+    },
+    {
+      "address": 1112784316,
+      "size": 76,
+      "reference_names": [
+        "-[NSValue sizeValue]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 670
+    },
+    {
+      "address": 1112785968,
+      "size": 16,
+      "reference_names": [
+        "-[NSintNumber intValue]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 957
+    },
+    {
+      "address": 1112786492,
+      "size": 16,
+      "reference_names": [
+        "-[NSshortNumber shortValue]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 941
+    },
+    {
+      "address": 1112790904,
+      "size": 84,
+      "reference_names": [
+        "-[NSPlaceholderNumber initWithBool:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 868
+    },
+    {
+      "address": 1112793000,
+      "size": 88,
+      "reference_names": [
+        "+[NSValue valueWithPoint:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 648
+    },
+    {
+      "address": 1112801280,
+      "size": 88,
+      "reference_names": [
+        "+[NSValue valueWithSize:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 652
+    },
+    {
+      "address": 1112807956,
+      "size": 12,
+      "reference_names": [
+        "-[NSPlaceholderValue retain]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 794
+    },
+    {
+      "address": 1112807968,
+      "size": 12,
+      "reference_names": [
+        "-[NSPlaceholderValue release]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 798
+    },
+    {
+      "address": 1112807980,
+      "size": 1168,
+      "reference_names": [
+        "-[NSNumber descriptionWithLocale:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 1225
+    },
+    {
+      "address": 1112809376,
+      "size": 48,
+      "reference_names": [
+        "-[NSunsignedShortNumber objCType]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 948
+    },
+    {
+      "address": 1112812156,
+      "size": 16,
+      "reference_names": [
+        "-[NSunsignedShortNumber unsignedShortValue]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 949
+    },
+    {
+      "address": 1112812288,
+      "size": 480,
+      "reference_names": [
+        "-[NSNumber intValue]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 1179
+    },
+    {
+      "address": 1112815556,
+      "size": 140,
+      "reference_names": [
+        "-[NSPlaceholderNumber initWithUnsignedLong:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 848
+    },
+    {
+      "address": 1112817164,
+      "size": 56,
+      "reference_names": [
+        "-[NSNumber stringValue]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 1192
+    },
+    {
+      "address": 1112817644,
+      "size": 140,
+      "reference_names": [
+        "-[NSNumber isEqual:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 1219
+    },
+    {
+      "address": 1112817784,
+      "size": 80,
+      "reference_names": [
+        "-[NSNumber isEqualToNumber:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 1215
+    },
+    {
+      "address": 1112817864,
+      "size": 84,
+      "reference_names": [
+        "+[NSNumber numberWithUnsignedLong:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 1412
+    },
+    {
+      "address": 1112821940,
+      "size": 456,
+      "reference_names": [
+        "-[NSNumber shortValue]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 1177
+    },
+    {
+      "address": 1112826404,
+      "size": 988,
+      "reference_names": [
+        "-[NSNumber compare:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 1200
+    },
+    {
+      "address": 1112829452,
+      "size": 104,
+      "reference_names": [
+        "-[NSRefCountingNumber copyWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 925
+    },
+    {
+      "address": 1112851372,
+      "size": 16,
+      "reference_names": [
+        "-[NSfloatNumber floatValue]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 989
+    },
+    {
+      "address": 1112855808,
+      "size": 84,
+      "reference_names": [
+        "+[NSNumber numberWithUnsignedInt:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 1402
+    },
+    {
+      "address": 1112856028,
+      "size": 88,
+      "reference_names": [
+        "+[NSValue valueWithRange:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 660
+    },
+    {
+      "address": 1112856472,
+      "size": 528,
+      "reference_names": [
+        "-[NSNumber unsignedIntValue]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 1180
+    },
+    {
+      "address": 1112857588,
+      "size": 140,
+      "reference_names": [
+        "-[NSPlaceholderNumber initWithUnsignedInt:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 840
+    },
+    {
+      "address": 1112870984,
+      "size": 276,
+      "reference_names": [
+        "-[NSValue encodeWithCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 584
+    },
+    {
+      "address": 1112872900,
+      "size": 44,
+      "reference_names": [
+        "-[NSshortNumber getValue:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 939
+    },
+    {
+      "address": 1112873196,
+      "size": 52,
+      "reference_names": [
+        "-[NSNumber classForCoder]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 1101
+    },
+    {
+      "address": 1112873248,
+      "size": 44,
+      "reference_names": [
+        "-[NSfloatNumber getValue:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 987
+    },
+    {
+      "address": 1112873428,
+      "size": 48,
+      "reference_names": [
+        "-[NSfloatNumber objCType]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 988
+    },
+    {
+      "address": 1112879760,
+      "size": 52,
+      "reference_names": [
+        "-[NSValue classForCoder]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 458
+    },
+    {
+      "address": 1112907916,
+      "size": 84,
+      "reference_names": [
+        "+[NSNumber allocWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 1095
+    },
+    {
+      "address": 1112924412,
+      "size": 48,
+      "reference_names": [
+        "-[NSdoubleNumber objCType]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 996
+    },
+    {
+      "address": 1112925508,
+      "size": 16,
+      "reference_names": [
+        "-[NSdoubleNumber doubleValue]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 997
+    },
+    {
+      "address": 1112925888,
+      "size": 448,
+      "reference_names": [
+        "-[NSNumber boolValue]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 1187
+    },
+    {
+      "address": 1112928808,
+      "size": 92,
+      "reference_names": [
+        "-[NSPlaceholderNumber initWithDouble:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 864
+    },
+    {
+      "address": 1112929768,
+      "size": 108,
+      "reference_names": [
+        "+[NSNumber numberWithDouble:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 1432
+    },
+    {
+      "address": 1113298412,
+      "size": 84,
+      "reference_names": [
+        "+[NSNumber numberWithChar:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 1377
+    },
+    {
+      "address": 1113298496,
+      "size": 84,
+      "reference_names": [
+        "+[NSNumber numberWithLong:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 1407
+    },
+    {
+      "address": 1113298580,
+      "size": 92,
+      "reference_names": [
+        "+[NSNumber numberWithLongLong:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 1417
+    },
+    {
+      "address": 1113298672,
+      "size": 84,
+      "reference_names": [
+        "+[NSNumber numberWithShort:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 1387
+    },
+    {
+      "address": 1113298756,
+      "size": 84,
+      "reference_names": [
+        "+[NSNumber numberWithUnsignedChar:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 1382
+    },
+    {
+      "address": 1113298840,
+      "size": 92,
+      "reference_names": [
+        "+[NSNumber numberWithUnsignedLongLong:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 1422
+    },
+    {
+      "address": 1113298932,
+      "size": 84,
+      "reference_names": [
+        "+[NSNumber numberWithUnsignedShort:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 1392
+    },
+    {
+      "address": 1113303876,
+      "size": 84,
+      "reference_names": [
+        "+[NSValue allocWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 642
+    },
+    {
+      "address": 1113303960,
+      "size": 52,
+      "reference_names": [
+        "+[NSValue value:withObjCType:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 486
+    },
+    {
+      "address": 1113304012,
+      "size": 96,
+      "reference_names": [
+        "+[NSValue valueWithRect:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 656
+    },
+    {
+      "address": 1113317972,
+      "size": 116,
+      "reference_names": [
+        "-[NSConcreteValue copyWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 735
+    },
+    {
+      "address": 1113318088,
+      "size": 48,
+      "reference_names": [
+        "-[NSConcreteValue hash]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 704
+    },
+    {
+      "address": 1113328904,
+      "size": 448,
+      "reference_names": [
+        "-[NSNumber charValue]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 1175
+    },
+    {
+      "address": 1113329352,
+      "size": 244,
+      "reference_names": [
+        "-[NSNumber copyWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 1105
+    },
+    {
+      "address": 1113329596,
+      "size": 56,
+      "reference_names": [
+        "-[NSNumber description]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 1196
+    },
+    {
+      "address": 1113329652,
+      "size": 612,
+      "reference_names": [
+        "-[NSNumber doubleValue]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 1186
+    },
+    {
+      "address": 1113330264,
+      "size": 624,
+      "reference_names": [
+        "-[NSNumber floatValue]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 1185
+    },
+    {
+      "address": 1113330888,
+      "size": 416,
+      "reference_names": [
+        "-[NSNumber hash]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 1133
+    },
+    {
+      "address": 1113331304,
+      "size": 48,
+      "reference_names": [
+        "-[NSNumber initWithBool:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 1372
+    },
+    {
+      "address": 1113331352,
+      "size": 48,
+      "reference_names": [
+        "-[NSNumber initWithChar:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 1312
+    },
+    {
+      "address": 1113331400,
+      "size": 92,
+      "reference_names": [
+        "-[NSNumber initWithCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 1126
+    },
+    {
+      "address": 1113331492,
+      "size": 48,
+      "reference_names": [
+        "-[NSNumber initWithDouble:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 1367
+    },
+    {
+      "address": 1113331540,
+      "size": 48,
+      "reference_names": [
+        "-[NSNumber initWithFloat:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 1362
+    },
+    {
+      "address": 1113331588,
+      "size": 48,
+      "reference_names": [
+        "-[NSNumber initWithInt:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 1332
+    },
+    {
+      "address": 1113331636,
+      "size": 48,
+      "reference_names": [
+        "-[NSNumber initWithLong:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 1342
+    },
+    {
+      "address": 1113331684,
+      "size": 48,
+      "reference_names": [
+        "-[NSNumber initWithLongLong:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 1352
+    },
+    {
+      "address": 1113331732,
+      "size": 48,
+      "reference_names": [
+        "-[NSNumber initWithShort:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 1322
+    },
+    {
+      "address": 1113331780,
+      "size": 48,
+      "reference_names": [
+        "-[NSNumber initWithUnsignedChar:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 1317
+    },
+    {
+      "address": 1113331828,
+      "size": 48,
+      "reference_names": [
+        "-[NSNumber initWithUnsignedInt:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 1337
+    },
+    {
+      "address": 1113331876,
+      "size": 48,
+      "reference_names": [
+        "-[NSNumber initWithUnsignedLong:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 1347
+    },
+    {
+      "address": 1113331924,
+      "size": 48,
+      "reference_names": [
+        "-[NSNumber initWithUnsignedLongLong:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 1357
+    },
+    {
+      "address": 1113331972,
+      "size": 48,
+      "reference_names": [
+        "-[NSNumber initWithUnsignedShort:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 1327
+    },
+    {
+      "address": 1113332020,
+      "size": 496,
+      "reference_names": [
+        "-[NSNumber longLongValue]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 1183
+    },
+    {
+      "address": 1113332516,
+      "size": 480,
+      "reference_names": [
+        "-[NSNumber longValue]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 1181
+    },
+    {
+      "address": 1113332996,
+      "size": 448,
+      "reference_names": [
+        "-[NSNumber unsignedCharValue]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 1176
+    },
+    {
+      "address": 1113333444,
+      "size": 496,
+      "reference_names": [
+        "-[NSNumber unsignedLongLongValue]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 1184
+    },
+    {
+      "address": 1113333940,
+      "size": 528,
+      "reference_names": [
+        "-[NSNumber unsignedLongValue]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 1182
+    },
+    {
+      "address": 1113334468,
+      "size": 460,
+      "reference_names": [
+        "-[NSNumber unsignedShortValue]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 1178
+    },
+    {
+      "address": 1113334928,
+      "size": 84,
+      "reference_names": [
+        "-[NSPlaceholderNumber initWithChar:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 820
+    },
+    {
+      "address": 1113335012,
+      "size": 44,
+      "reference_names": [
+        "-[NSPlaceholderNumber initWithCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 816
+    },
+    {
+      "address": 1113335056,
+      "size": 148,
+      "reference_names": [
+        "-[NSPlaceholderNumber initWithLong:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 844
+    },
+    {
+      "address": 1113335204,
+      "size": 144,
+      "reference_names": [
+        "-[NSPlaceholderNumber initWithLongLong:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 852
+    },
+    {
+      "address": 1113335348,
+      "size": 84,
+      "reference_names": [
+        "-[NSPlaceholderNumber initWithShort:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 828
+    },
+    {
+      "address": 1113335432,
+      "size": 84,
+      "reference_names": [
+        "-[NSPlaceholderNumber initWithUnsignedChar:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 824
+    },
+    {
+      "address": 1113335516,
+      "size": 120,
+      "reference_names": [
+        "-[NSPlaceholderNumber initWithUnsignedLongLong:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 856
+    },
+    {
+      "address": 1113335636,
+      "size": 84,
+      "reference_names": [
+        "-[NSPlaceholderNumber initWithUnsignedShort:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 832
+    },
+    {
+      "address": 1113335720,
+      "size": 12,
+      "reference_names": [
+        "-[NSPlaceholderValue autorelease]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 801
+    },
+    {
+      "address": 1113335732,
+      "size": 12,
+      "reference_names": [
+        "-[NSPlaceholderValue dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 809
+    },
+    {
+      "address": 1113335744,
+      "size": 128,
+      "reference_names": [
+        "-[NSPlaceholderValue getValue:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 773
+    },
+    {
+      "address": 1113335872,
+      "size": 48,
+      "reference_names": [
+        "-[NSPlaceholderValue initWithBytes:objCType:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 786
+    },
+    {
+      "address": 1113335920,
+      "size": 44,
+      "reference_names": [
+        "-[NSPlaceholderValue initWithCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 790
+    },
+    {
+      "address": 1113335964,
+      "size": 132,
+      "reference_names": [
+        "-[NSPlaceholderValue objCType]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 779
+    },
+    {
+      "address": 1113336096,
+      "size": 16,
+      "reference_names": [
+        "-[NSPlaceholderValue retainCount]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 805
+    },
+    {
+      "address": 1113336112,
+      "size": 20,
+      "reference_names": [
+        "-[NSRefCountingNumber retainCount]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 917
+    },
+    {
+      "address": 1113339692,
+      "size": 176,
+      "reference_names": [
+        "-[NSValue copyWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 545
+    },
+    {
+      "address": 1113339868,
+      "size": 196,
+      "reference_names": [
+        "-[NSValue description]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 562
+    },
+    {
+      "address": 1113340064,
+      "size": 56,
+      "reference_names": [
+        "-[NSValue getValue:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 468
+    },
+    {
+      "address": 1113340120,
+      "size": 164,
+      "reference_names": [
+        "-[NSValue hash]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 603
+    },
+    {
+      "address": 1113340284,
+      "size": 48,
+      "reference_names": [
+        "-[NSValue initWithBytes:objCType:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 477
+    },
+    {
+      "address": 1113340332,
+      "size": 92,
+      "reference_names": [
+        "-[NSValue initWithCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 621
+    },
+    {
+      "address": 1113340424,
+      "size": 356,
+      "reference_names": [
+        "-[NSValue isEqualToValue:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 512
+    },
+    {
+      "address": 1113340780,
+      "size": 60,
+      "reference_names": [
+        "-[NSValue objCType]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 472
+    },
+    {
+      "address": 1113340840,
+      "size": 76,
+      "reference_names": [
+        "-[NSValue pointValue]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 664
+    },
+    {
+      "address": 1113340916,
+      "size": 76,
+      "reference_names": [
+        "-[NSValue rangeValue]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 682
+    },
+    {
+      "address": 1113340992,
+      "size": 100,
+      "reference_names": [
+        "-[NSValue rectValue]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 676
+    },
+    {
+      "address": 1113341092,
+      "size": 12,
+      "reference_names": [
+        "-[NSValue replacementObjectForPortCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 637
+    },
+    {
+      "address": 1113341104,
+      "size": 320,
+      "reference_names": [
+        "-[NSValueDecoder initWithCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 745
+    },
+    {
+      "address": 1113341544,
+      "size": 44,
+      "reference_names": [
+        "-[NSdoubleNumber getValue:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 995
+    },
+    {
+      "address": 1113341588,
+      "size": 44,
+      "reference_names": [
+        "-[NSintNumber getValue:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 955
+    },
+    {
+      "address": 1113341632,
+      "size": 44,
+      "reference_names": [
+        "-[NSlongLongNumber getValue:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 971
+    },
+    {
+      "address": 1113341676,
+      "size": 20,
+      "reference_names": [
+        "-[NSlongLongNumber longLongValue]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 973
+    },
+    {
+      "address": 1113341696,
+      "size": 48,
+      "reference_names": [
+        "-[NSlongLongNumber objCType]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 972
+    },
+    {
+      "address": 1113341744,
+      "size": 16,
+      "reference_names": [
+        "-[NSshortNumber(_NSHash) hash]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 1021
+    },
+    {
+      "address": 1113341760,
+      "size": 44,
+      "reference_names": [
+        "-[NSunsignedIntNumber getValue:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 963
+    },
+    {
+      "address": 1113341804,
+      "size": 48,
+      "reference_names": [
+        "-[NSunsignedIntNumber objCType]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 964
+    },
+    {
+      "address": 1113341852,
+      "size": 16,
+      "reference_names": [
+        "-[NSunsignedIntNumber unsignedIntValue]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 965
+    },
+    {
+      "address": 1113341868,
+      "size": 16,
+      "reference_names": [
+        "-[NSunsignedIntNumber(_NSHash) hash]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 1003
+    },
+    {
+      "address": 1113341884,
+      "size": 44,
+      "reference_names": [
+        "-[NSunsignedLongLongNumber getValue:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 979
+    },
+    {
+      "address": 1113341928,
+      "size": 48,
+      "reference_names": [
+        "-[NSunsignedLongLongNumber objCType]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 980
+    },
+    {
+      "address": 1113341976,
+      "size": 20,
+      "reference_names": [
+        "-[NSunsignedLongLongNumber unsignedLongLongValue]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 981
+    },
+    {
+      "address": 1113341996,
+      "size": 44,
+      "reference_names": [
+        "-[NSunsignedShortNumber getValue:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 947
+    },
+    {
+      "address": 1113342040,
+      "size": 16,
+      "reference_names": [
+        "-[NSunsignedShortNumber(_NSHash) hash]"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 1015
+    },
+    {
+      "address": 1113352120,
+      "size": 308,
+      "reference_names": [
+        "__NSLongLongToCString"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 1247
+    },
+    {
+      "address": 1113355668,
+      "size": 300,
+      "reference_names": [
+        "_newDecodedNumber"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 426
+    },
+    {
+      "address": 1113355968,
+      "size": 212,
+      "reference_names": [
+        "_newDecodedValue"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 374
+    },
+    {
+      "address": 1113356180,
+      "size": 472,
+      "reference_names": [
+        "_newNumber"
+      ],
+      "source_path": "src/Kits/Foundation/NSValue.m",
+      "source_line": 393
+    }
+  ],
+  "unmapped": [],
+  "duplicate_candidates": [],
+  "boundary_disputed": []
+}

@@ -55,7 +55,6 @@
 
 extern char rootdevice[];
 extern int nbuf;
-extern int srv;
 extern int ncl;
 static unsigned int maxmem;
 static int subtype = 0;
@@ -79,7 +78,6 @@ struct kernargs {
 	"rootdev", (int*) rootdevice,
 	"maxmem", &maxmem,
 	"subtype", &subtype,
-	"srv", &srv,
 	"ncl", &ncl,
 	"serial", &serial_dbg_port,
 	"apic", &pexpert_apic,

@@ -1,0 +1,67 @@
+{
+ "categories": [
+  {
+   "class": "NSBundle",
+   "class_methods": [
+    {
+     "selector": "_setUsesFastJavaBundleSetup:",
+     "types": "v5@4:8c12"
+    },
+    {
+     "selector": "_usesFastJavaBundleSetup",
+     "types": "i4@4:8"
+    }
+   ],
+   "instance_methods": [
+    {
+     "selector": "_setJavaClassesLoaded",
+     "types": "v4@4:8"
+    }
+   ],
+   "name": "_NSJavaSetupPrivate"
+  }
+ ],
+ "classes": [],
+ "data_symbols": [
+  "_NSJavaBundleClassLoaderClassName",
+  "_NSJavaClasses",
+  "_NSJavaDidCreateVirtualMachineNotification",
+  "_NSJavaDidSetupVirtualMachineNotification",
+  "_NSJavaLibraryPath",
+  "_NSJavaOwnVirtualMachine",
+  "_NSJavaPath",
+  "_NSJavaPathResourceLocatorClassName",
+  "_NSJavaPathSeparator",
+  "_NSJavaRoot",
+  "_NSJavaStandardClassLoaderClassName",
+  "_NSJavaUserPath",
+  "_NSJavaWillCreateVirtualMachineNotification",
+  "_NSJavaWillSetupVirtualMachineNotification",
+  "__NSJavaCL",
+  "__NSJavaVM"
+ ],
+ "module": "NSJavaSetup.m",
+ "schema_version": "abi-v1",
+ "text_symbols": [
+  "_NSJavaBundleCleanup",
+  "_NSJavaBundleSetup",
+  "_NSJavaClassLoaderForPath",
+  "_NSJavaClassesForBundle",
+  "_NSJavaClassesFromClassLoader",
+  "_NSJavaClassesFromClassLoaderFromPath",
+  "_NSJavaClassesFromPath",
+  "_NSJavaDefinitiveSetupDictionary",
+  "_NSJavaGetSystemProperty",
+  "_NSJavaGetSystemPropertyOrUseDefault",
+  "_NSJavaNeedsToLoadClasses",
+  "_NSJavaNeedsVirtualMachine",
+  "_NSJavaObjectNamedInPath",
+  "_NSJavaProvidesClasses",
+  "_NSJavaResourceLocatorForPath",
+  "_NSJavaSetSystemProperty",
+  "_NSJavaSetup",
+  "_NSJavaSetupVirtualMachine",
+  "__NSFastJavaBundleSetup",
+  "__NSJavaBundleClassPath"
+ ]
+}

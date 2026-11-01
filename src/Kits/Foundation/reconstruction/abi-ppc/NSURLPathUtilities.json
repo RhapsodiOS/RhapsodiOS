@@ -1,0 +1,44 @@
+{
+ "categories": [
+  {
+   "class": "NSString",
+   "class_methods": [],
+   "instance_methods": [
+    {
+     "selector": "urlPathByDeletingLastComponent",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "urlPathByAppendingComponent:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "urlPathRelativeToPath:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "stringByAddingPercentEscapes",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "stringByRemovingPercentEscapes",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "standardizedNativePath",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "standardizedURLPath",
+     "types": "@4@4:8"
+    }
+   ],
+   "name": "NSURLPathUtilities"
+  }
+ ],
+ "classes": [],
+ "data_symbols": [],
+ "module": "NSURLPathUtilities.m",
+ "schema_version": "abi-v1",
+ "text_symbols": []
+}

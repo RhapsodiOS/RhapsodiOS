@@ -1,0 +1,7 @@
+pkgname = samurai
+pkgver = 2026.10.15
+pkgdesc = Ninja-compatible build tool, ported to C89 and Rhapsody
+maintainer = RhapsodiOS Developers
+license = ISC, Apache-2.0, MIT
+url = https://github.com/raynorpat/samurai
+makedepends = build-base

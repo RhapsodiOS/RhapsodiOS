@@ -19,14 +19,15 @@ Copy `vm.conf.example` to `vm.conf` first and set `Host`, `User`, `Password`,
 and `RemoteRoot` (default `/build`). Requires Windows OpenSSH Client
 (`ssh.exe`) and `tar.exe`.
 
-The guest sshd only accepts ancient algorithms. The script always passes the
-same options as a manual login (see `SSH CONNECTION.md`):
+Older guests run an sshd that only accepts ancient algorithms. The script always
+appends the same legacy options to the client's defaults, as a manual login does
+(see `SSH CONNECTION.md`), so the new OpenSSH 7.4p1 guests answer too:
 
 ```
-KexAlgorithms=diffie-hellman-group1-sha1
-HostKeyAlgorithms=ssh-dss
-Ciphers=3des-cbc
-MACs=hmac-sha1
+KexAlgorithms=+diffie-hellman-group1-sha1
+HostKeyAlgorithms=+ssh-dss
+Ciphers=+3des-cbc
+MACs=+hmac-sha1
 ```
 
 Modern PuTTY `pscp`/`plink` will fail against this host with
@@ -34,7 +35,7 @@ Modern PuTTY `pscp`/`plink` will fail against this host with
 saved session re-enables those algorithms — prefer `sync-src.ps1` or the
 OpenSSH one-liner in `SSH CONNECTION.md`.
 
-Host-key verification uses a throwaway file under `%TEMP%` with
+Host-key verification uses `UserKnownHostsFile=NUL` with
 `StrictHostKeyChecking=no` so a failed write to `~/.ssh/known_hosts` (common
 with this guest’s `ssh-dss` host key on Windows OpenSSH) does not abort the
 transfer.

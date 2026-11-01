@@ -1,0 +1,36 @@
+arch = ppc
+architecture_manifest = ninja/ppc.ninja
+release_manifest = ninja/ppc-release.ninja
+debug_manifest = ninja/ppc-debug.ninja
+sources_manifest = ninja/ppc-sources.ninja
+libc_manifest = ninja/ppc-libc.ninja
+pexpert_library = pexpertpowermac.o
+ldflags = -e start -segalign 0x1000 -segaddr __TEXT 0x05000 -segaddr __VECTORS 0x0 -noseglinkedit -force_cpusubtype_ALL
+genassym_flags = -DKERNEL
+configuration_outputs = ninja/ppc-config.ninja
+include ninja/ppc-config.ninja
+include ninja/config.ninja
+
+kcc = cc -static -nostdinc -nostdlib -traditional-cpp -fno-builtin
+next_root =
+includes = -I. -I../.. -I../../bsd -I../../bsd/include -I../../machdep -I../../bsd/netat -I../../bsd/netat/h -I../../bsd/netat/at -I$next_root/System/Library/Frameworks/System.framework/PrivateHeaders -I$next_root/System/Library/Frameworks/System.framework/Headers -I$next_root/System/Library/Frameworks/System.framework/Headers/bsd
+defines = $ident -DARCH_PRIVATE -D_KERNEL -DKERNEL -DKERNEL_PRIVATE -DDRIVER_PRIVATE -DKERNEL_BUILD -D__APPLE__ -DNeXT -D_NEXT_SOURCE
+cppflags = -MD -imacros meta_features.h $includes $defines
+machine_cflags = -arch ppc -I../../bsd/include -finline -fno-keep-inline-functions -force_cpusubtype_ALL -fwritable-strings -fno-common -msoft-float -mcpu=604 -Dppc -DPPC -Wall -Wno-four-char-constants -fpascal-strings
+cflags = -g -O2 $cppflags $machine_cflags
+sflags = $cppflags -D__ASSEMBLER__ -arch ppc -D__ASSEMBLER__ -Dppc -DPPC -force_cpusubtype_ALL
+
+build $outdir/assym.h $outdir/genassym.s | $outdir/assym.stamp: assym machdep/ppc/genassym.c machdep/ppc/genassym.awk || $outdir/prepared $outdir/validated
+build $outdir/subr_prof.o: cc bsd/kern/subr_prof.c || $outdir/prepared $outdir/validated generated
+  source = ../../bsd/kern/subr_prof.c
+  object = subr_prof.o
+  flags = $cflags
+build $outdir/ioconf.o: cc $outdir/ioconf.c || $outdir/prepared $outdir/validated generated
+  source = ioconf.c
+  object = ioconf.o
+  flags = $cflags
+
+include ninja/mig.ninja
+include ninja/ppc-libc.ninja
+include ninja/ppc-sources.ninja
+include ninja/kernel.ninja

@@ -24,6 +24,18 @@
 
 @end
 
+@interface NSCondition : NSObject <NSLocking> {
+@private
+    void *_priv;
+}
+
+- (void)broadcast;
+- (void)signal;
+- (void)wait;
+- (BOOL)waitUntilDate:(NSDate *)limit;
+
+@end
+
 @interface NSConditionLock : NSObject <NSLocking> {
 @private
     void *_priv;

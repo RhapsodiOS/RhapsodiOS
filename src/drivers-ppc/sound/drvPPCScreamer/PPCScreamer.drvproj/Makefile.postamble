@@ -1,0 +1,9 @@
+# The bundle name differs from the kernel server and its generated glue.
+.PHONY: post_copy_tables
+post_copy_tables:
+	@for table in $(GLOBAL_RESOURCE_DIR)/*.table; do \
+	    chmod +w "$$table"; \
+	    sed '/^"Server Name"[ ]*=/d' "$$table" > "$$table.screamer"; \
+	    echo '"Server Name" = "drvPPCScreamer";' >> "$$table.screamer"; \
+	    mv "$$table.screamer" "$$table"; \
+	done

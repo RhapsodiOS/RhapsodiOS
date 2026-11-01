@@ -480,6 +480,7 @@ static vm_offset_t sharedChannelBufferPtr = 0;
     u_int streamCount;
     u_int streamSize;
     dma_desc_t *ddp;
+    NXSoundParameterTag encoding;
 #if	hppa
     dma_desc_t *ddp_d;	// for the dev queue
 #endif	hppa
@@ -509,7 +510,32 @@ static vm_offset_t sharedChannelBufferPtr = 0;
 	return(FALSE);
     }
     
-    ddp->size = bufferSize;	
+    ddp->size = bufferSize;
+    if (!_isRead) {
+        /* The mixed format is available before the device's first DMA start. */
+        switch (*format) {
+          case IOAudioDataFormatLinear16:
+            encoding = NX_SoundStreamDataEncoding_Linear16;
+            break;
+          case IOAudioDataFormatLinear8:
+            encoding = NX_SoundStreamDataEncoding_Linear8;
+            break;
+          case IOAudioDataFormatMulaw8:
+            encoding = NX_SoundStreamDataEncoding_Mulaw8;
+            break;
+          case IOAudioDataFormatAlaw8:
+            encoding = NX_SoundStreamDataEncoding_Alaw8;
+            break;
+          case IOAudioDataFormatAES:
+            encoding = NX_SoundStreamDataEncoding_AES;
+            break;
+          default:
+            encoding = 0;
+            break;
+        }
+        [audioDevice _processDMABuffer:(void *)ddp->mem size:ddp->size
+                                 read:NO dataEncoding:encoding channelCount:*count];
+    }
 #ifdef sparc
 	vac_flush((caddr_t)ddp->mem, ddp->size);
 #endif
@@ -551,6 +577,11 @@ static vm_offset_t sharedChannelBufferPtr = 0;
     xpr_audio_channel("AC: dequeueDescriptor\n",1,2,3,4,5);
     
     queue_remove_first(&dmaQueue, ddp, dma_desc_t *, link);
+
+    if (_isRead)
+        [audioDevice _processDMABuffer:(void *)ddp->mem size:ddp->size
+                                 read:YES dataEncoding:[audioDevice dataEncoding]
+                         channelCount:[audioDevice channelCount]];
 
     [streamListLock lock];
     numStreams = [streamList count];

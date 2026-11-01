@@ -1,0 +1,57 @@
+#!/bin/sh
+
+##
+# Run the Internet super-server.
+##
+
+. /etc/rc.common
+
+ConsoleMessage "Starting TCP/IP services"
+
+inetd
+
+##
+# Start up network boot cofiguration services.
+##
+
+if [ "${CONFIGSERVER:=-NO-}" = "-YES-" ]; then
+    ConsoleMessage "Starting host configuration services"
+
+    if [ "${NETBOOTSERVER:=-NO-}" = "-YES-" ]; then
+	bootpd -m
+    else
+	bootpd
+    fi
+
+    bootparamd
+fi
+
+##
+# Start up network client management services.
+##
+
+if [ "${MANAGEMENTSERVER:=-NO-}" = "-YES-" ]; then
+    ConsoleMessage "Starting netboot client management server"
+
+    MacintoshManagementServer &
+fi
+
+##
+# Start up secure login server
+##
+
+if [ "${SSHSERVER:=-NO-}" = "-YES-" ]; then
+    ConsoleMessage "Starting Secure Login Server"
+
+    # OpenSSH 2.3.0p1's sshd_config names only the protocol 1 RSA1 key, which
+    # this sshd cannot use, so it would find no host key and exit.
+    if grep -q '^HostKey /etc/ssh_host_key$' /etc/sshd_config 2>/dev/null; then
+        sed 's|^HostKey /etc/ssh_host_key$|#HostKey /etc/ssh_host_key (protocol 1 key, unused)|' \
+            /etc/sshd_config > /etc/sshd_config.new && mv /etc/sshd_config.new /etc/sshd_config
+    fi
+
+    # Creates each host key type sshd supports that is not in /etc yet.
+    ssh-keygen -A
+
+    /usr/sbin/sshd &
+fi

@@ -1,0 +1,153 @@
+{
+ "categories": [],
+ "classes": [
+  {
+   "class_methods": [
+    {
+     "selector": "cachedHandleForURL:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "canInitWithURL:",
+     "types": "c8@4:8@12"
+    },
+    {
+     "selector": "canonicalHTTPURLForURL:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "initialize",
+     "types": "v4@4:8"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "didLoadBytes:loadComplete:",
+     "types": "v9@4:8@12c16"
+    },
+    {
+     "selector": "URLHandle:resourceDidFailLoadingWithReason:",
+     "types": "v12@4:8@12@16"
+    },
+    {
+     "selector": "URLHandleResourceDidCancelLoading:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "URLHandleResourceDidFinishLoading:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "URLHandleResourceDidBeginLoading:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "URLHandle:resourceDataDidBecomeAvailable:",
+     "types": "v12@4:8@12@16"
+    },
+    {
+     "selector": "requestWasCancelled:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "connectionFailedDuringRequest:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "receivedHeaders:forRequest:",
+     "types": "v12@4:8@12@16"
+    },
+    {
+     "selector": "receivedDataBlock:forRequest:finished:",
+     "types": "v13@4:8@12@16c20"
+    },
+    {
+     "selector": "redirectedHandleFromHeaders:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "endLoadInBackground",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "beginLoadInBackground",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "loadInForeground",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "flushCachedData",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "writeProperty:forKey:",
+     "types": "c12@4:8@12@16"
+    },
+    {
+     "selector": "propertyForKeyIfAvailable:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "propertyForKey:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "inRedirectionLoop",
+     "types": "c4@4:8"
+    },
+    {
+     "selector": "_redirectedHandle",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "_URL",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "writeData:",
+     "types": "c8@4:8@12"
+    },
+    {
+     "selector": "dealloc",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "initWithURL:cached:",
+     "types": "@9@4:8@12c16"
+    }
+   ],
+   "instance_size": 36,
+   "ivars": [
+    {
+     "name": "_url",
+     "offset": 20,
+     "type": "@\"NSURL\""
+    },
+    {
+     "name": "_headers",
+     "offset": 24,
+     "type": "@\"NSDictionary\""
+    },
+    {
+     "name": "_connection",
+     "offset": 28,
+     "type": "@\"NSHTTPConnection\""
+    },
+    {
+     "name": "_redirectedHandle",
+     "offset": 32,
+     "type": "@\"NSHTTPURLHandle\""
+    }
+   ],
+   "name": "NSHTTPURLHandle",
+   "superclass": "NSURLHandle"
+  }
+ ],
+ "data_symbols": [],
+ "module": "NSHTTPURLHandle.m",
+ "schema_version": "abi-v1",
+ "text_symbols": []
+}

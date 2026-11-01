@@ -1,0 +1,383 @@
+{
+ "categories": [
+  {
+   "class": "NSMutableString",
+   "class_methods": [],
+   "instance_methods": [
+    {
+     "selector": "_replaceLastAppearanceOfString:withString:",
+     "types": "v16@8:12@16@20"
+    },
+    {
+     "selector": "_replaceFirstAppearanceOfString:withString:",
+     "types": "v16@8:12@16@20"
+    },
+    {
+     "selector": "_replaceAllAppearancesOfString:withString:",
+     "types": "v16@8:12@16@20"
+    },
+    {
+     "selector": "_deleteAllCharactersFromSet:",
+     "types": "v12@8:12@16"
+    }
+   ],
+   "name": "NSCharacterSetMethods"
+  },
+  {
+   "class": "NSString",
+   "class_methods": [],
+   "instance_methods": [
+    {
+     "selector": "_componentsSeparatedBySet:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "_containsCharFromSet:",
+     "types": "c12@8:12@16"
+    },
+    {
+     "selector": "_containsChar:",
+     "types": "c9@8:12c16"
+    },
+    {
+     "selector": "_containsString:",
+     "types": "c12@8:12@16"
+    },
+    {
+     "selector": "_stringWithSeparator:atFrequency:",
+     "types": "@16@8:12S16i20"
+    },
+    {
+     "selector": "_copyToUnicharBuffer:saveLength:",
+     "types": "v16@8:12^^S16^i20"
+    }
+   ],
+   "name": "NSSearchMethods"
+  }
+ ],
+ "classes": [
+  {
+   "class_methods": [
+    {
+     "selector": "_setDefaultRedColor:",
+     "types": "v12@8:12@16"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "initWithCoder:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "encodeWithCoder:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "copyWithZone:",
+     "types": "@12@8:12^{?=}16"
+    },
+    {
+     "selector": "getObjectValue:forString:errorDescription:",
+     "types": "c20@8:12^@16@20^@24"
+    },
+    {
+     "selector": "attributedStringForObjectValue:withDefaultAttributes:",
+     "types": "@16@8:12@16@20"
+    },
+    {
+     "selector": "stringForObjectValue:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "_decimalIsNotANumber:",
+     "types": "c12@8:12@16"
+    },
+    {
+     "selector": "_numberStringForValueObject:withBuffer:andNegativeFlag:",
+     "types": "@17@8:12@16^{?=^SI^SI^SI}20c24"
+    },
+    {
+     "selector": "_surroundValueInString:withLength:andBuffer:",
+     "types": "v20@8:12^S16^i20^{?=^SI^SI^SI}24"
+    },
+    {
+     "selector": "maximum",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "setMaximum:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "minimum",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "setMinimum:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "format",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "setFormat:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "setPositiveFormat:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "positiveFormat",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "setAllowsFloats:",
+     "types": "v9@8:12c16"
+    },
+    {
+     "selector": "allowsFloats",
+     "types": "c8@8:12"
+    },
+    {
+     "selector": "setLocalizesFormat:",
+     "types": "v9@8:12c16"
+    },
+    {
+     "selector": "localizesFormat",
+     "types": "c8@8:12"
+    },
+    {
+     "selector": "setHasThousandSeparators:",
+     "types": "v9@8:12c16"
+    },
+    {
+     "selector": "hasThousandSeparators",
+     "types": "c8@8:12"
+    },
+    {
+     "selector": "setNegativeFormat:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "negativeFormat",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "_removeInternalRedFromTextAttributesOfNegativeValues",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "_containsColorForTextAttributesOfNegativeValues",
+     "types": "c8@8:12"
+    },
+    {
+     "selector": "_addInternalRedToTextAttributesOfNegativeValues",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "_addThousandSeparatorsToFormat:withBuffer:",
+     "types": "@16@8:12@16^{?=^SI^SI^SI}20"
+    },
+    {
+     "selector": "_addThousandSeparators:withBuffer:",
+     "types": "v16@8:12@16^{?=^SI^SI^SI}20"
+    },
+    {
+     "selector": "defaultObjectValue",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "setLocalizationFromDefaults",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "_exchangeDollarInString:withString:",
+     "types": "@16@8:12@16@20"
+    },
+    {
+     "selector": "roundingBehavior",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "setRoundingBehavior:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "setDecimalSeparator:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "setThousandSeparator:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "_setDecimalSeparatorNoConsistencyCheck:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "_setThousandSeparatorNoConsistencyCheck:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "_setFloatingPointFormat:left:right:",
+     "types": "v20@8:12c16I20I24"
+    },
+    {
+     "selector": "_thousandChar",
+     "types": "S8@8:12"
+    },
+    {
+     "selector": "_decimalPoint",
+     "types": "S8@8:12"
+    },
+    {
+     "selector": "thousandSeparator",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "decimalSeparator",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "setAttributedStringForNotANumber:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "attributedStringForNotANumber",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "setAttributedStringForNil:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "attributedStringForNil",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "setAttributedStringForZero:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "attributedStringForZero",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "setTextAttributesForPositiveValues:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "textAttributesForPositiveValues",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "setTextAttributesForNegativeValues:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "textAttributesForNegativeValues",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "dealloc",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "init",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "_commonInit",
+     "types": "v8@8:12"
+    }
+   ],
+   "instance_size": 64,
+   "ivars": [
+    {
+     "name": "_negativeFormat",
+     "offset": 4,
+     "type": "@\"NSString\""
+    },
+    {
+     "name": "_positiveFormat",
+     "offset": 8,
+     "type": "@\"NSString\""
+    },
+    {
+     "name": "_negativeAttributes",
+     "offset": 12,
+     "type": "@\"NSDictionary\""
+    },
+    {
+     "name": "_positiveAttributes",
+     "offset": 16,
+     "type": "@\"NSDictionary\""
+    },
+    {
+     "name": "_attributedStringForZero",
+     "offset": 20,
+     "type": "@\"NSAttributedString\""
+    },
+    {
+     "name": "_attributedStringForNil",
+     "offset": 24,
+     "type": "@\"NSAttributedString\""
+    },
+    {
+     "name": "_attributedStringForNotANumber",
+     "offset": 28,
+     "type": "@\"NSAttributedString\""
+    },
+    {
+     "name": "_minimum",
+     "offset": 32,
+     "type": "@\"NSDecimalNumber\""
+    },
+    {
+     "name": "_maximum",
+     "offset": 36,
+     "type": "@\"NSDecimalNumber\""
+    },
+    {
+     "name": "_roundingBehavior",
+     "offset": 40,
+     "type": "@\"NSDecimalNumberHandler\""
+    },
+    {
+     "name": "_decimalSeparator",
+     "offset": 44,
+     "type": "@\"NSString\""
+    },
+    {
+     "name": "_thousandSeparator",
+     "offset": 48,
+     "type": "@\"NSString\""
+    },
+    {
+     "name": "_private",
+     "offset": 52,
+     "type": "^v"
+    },
+    {
+     "name": "_flags",
+     "offset": 56,
+     "type": "{?=\"thousandSeparators\"b1\"localizesFormat\"b1\"allowsFloats\"b1\"RESERVED\"b29}"
+    },
+    {
+     "name": "_reserved",
+     "offset": 60,
+     "type": "^v"
+    }
+   ],
+   "name": "NSNumberFormatter",
+   "superclass": "NSFormatter"
+  }
+ ],
+ "data_symbols": [],
+ "module": "NSNumberFormatter.m",
+ "schema_version": "abi-v1",
+ "text_symbols": []
+}

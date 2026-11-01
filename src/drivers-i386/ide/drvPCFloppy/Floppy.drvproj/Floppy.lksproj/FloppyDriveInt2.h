@@ -55,7 +55,7 @@
 /*
  * Update physical parameters (internal).
  */
-- (void)updatePhysicalParametersInt;
+- (IOReturn)updatePhysicalParametersInt;
 
 @end
 

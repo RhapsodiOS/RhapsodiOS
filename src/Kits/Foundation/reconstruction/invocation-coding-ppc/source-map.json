@@ -1,0 +1,1475 @@
+{
+  "boundary_disputed": [],
+  "by_module": {
+    "NSCoder.m": {
+      "mapped": 23,
+      "unmapped": 0,
+      "duplicate_candidates": 0,
+      "boundary_disputed": 0
+    },
+    "NSFault.m": {
+      "mapped": 66,
+      "unmapped": 0,
+      "duplicate_candidates": 0,
+      "boundary_disputed": 0
+    },
+    "NSInvocation.m": {
+      "mapped": 49,
+      "unmapped": 0,
+      "duplicate_candidates": 0,
+      "boundary_disputed": 0
+    },
+    "NSMethodSignature.m": {
+      "mapped": 21,
+      "unmapped": 0,
+      "duplicate_candidates": 0,
+      "boundary_disputed": 0
+    }
+  },
+  "duplicate_candidates": [],
+  "mapped": [
+    {
+      "address": 1112595744,
+      "size": 132,
+      "reference_names": [
+        "_skipQualifiers"
+      ],
+      "source_path": "src/Kits/Foundation/NSInvocation.m",
+      "source_line": 235
+    },
+    {
+      "address": 1112621088,
+      "reference_names": [
+        "-[NSInvocation getArgument:atIndex:]"
+      ],
+      "size": 624,
+      "source_line": 680,
+      "source_path": "src/Kits/Foundation/NSInvocation.m"
+    },
+    {
+      "address": 1112622092,
+      "reference_names": [
+        "-[NSMethodSignature retain]"
+      ],
+      "size": 12,
+      "source_line": 548,
+      "source_path": "src/Kits/Foundation/NSMethodSignature.m"
+    },
+    {
+      "address": 1112624892,
+      "size": 1376,
+      "reference_names": [
+        "_compute_pip_offset"
+      ],
+      "source_path": "src/Kits/Foundation/NSMethodSignature.m",
+      "source_line": 231
+    },
+    {
+      "address": 1112632944,
+      "size": 144,
+      "reference_names": [
+        "_hashStr"
+      ],
+      "source_path": "src/Kits/Foundation/NSMethodSignature.m",
+      "source_line": 85
+    },
+    {
+      "address": 1112648532,
+      "reference_names": [
+        "-[NSInvocation methodSignature]"
+      ],
+      "size": 16,
+      "source_line": 483,
+      "source_path": "src/Kits/Foundation/NSInvocation.m"
+    },
+    {
+      "address": 1112648548,
+      "reference_names": [
+        "+[NSMethodSignature signatureWithObjCTypes:]"
+      ],
+      "size": 688,
+      "source_line": 381,
+      "source_path": "src/Kits/Foundation/NSMethodSignature.m"
+    },
+    {
+      "address": 1112649252,
+      "size": 176,
+      "reference_names": [
+        "_scrunch"
+      ],
+      "source_path": "src/Kits/Foundation/NSMethodSignature.m",
+      "source_line": 143
+    },
+    {
+      "address": 1112650488,
+      "reference_names": [
+        "-[NSMethodSignature isOneway]"
+      ],
+      "size": 32,
+      "source_line": 467,
+      "source_path": "src/Kits/Foundation/NSMethodSignature.m"
+    },
+    {
+      "address": 1112671112,
+      "reference_names": [
+        "-[NSMethodSignature release]"
+      ],
+      "size": 12,
+      "source_line": 553,
+      "source_path": "src/Kits/Foundation/NSMethodSignature.m"
+    },
+    {
+      "address": 1112671440,
+      "reference_names": [
+        "-[NSInvocation invalidate]"
+      ],
+      "size": 364,
+      "source_line": 573,
+      "source_path": "src/Kits/Foundation/NSInvocation.m"
+    },
+    {
+      "address": 1112672368,
+      "reference_names": [
+        "-[NSInvocation release]"
+      ],
+      "size": 124,
+      "source_line": 646,
+      "source_path": "src/Kits/Foundation/NSInvocation.m"
+    },
+    {
+      "address": 1112675184,
+      "reference_names": [
+        "-[NSInvocation dealloc]"
+      ],
+      "size": 156,
+      "source_line": 437,
+      "source_path": "src/Kits/Foundation/NSInvocation.m"
+    },
+    {
+      "address": 1112678672,
+      "size": 80,
+      "reference_names": [
+        "_equalStr"
+      ],
+      "source_path": "src/Kits/Foundation/NSMethodSignature.m",
+      "source_line": 134
+    },
+    {
+      "address": 1112680884,
+      "size": 212,
+      "reference_names": [
+        "_structurallyEqual"
+      ],
+      "source_path": "src/Kits/Foundation/NSMethodSignature.m",
+      "source_line": 112
+    },
+    {
+      "address": 1112683048,
+      "reference_names": [
+        "-[NSInvocation replacementObjectForPortCoder:]"
+      ],
+      "size": 12,
+      "source_line": 1288,
+      "source_path": "src/Kits/Foundation/NSInvocation.m"
+    },
+    {
+      "address": 1112684240,
+      "reference_names": [
+        "-[NSCoder decodeObject]"
+      ],
+      "size": 80,
+      "source_line": 102,
+      "source_path": "src/Kits/Foundation/NSCoder.m"
+    },
+    {
+      "address": 1112684676,
+      "size": 96,
+      "reference_names": [
+        "+[NSInvocation newInvocationWithMethodSignature:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSInvocation.m",
+      "source_line": 399
+    },
+    {
+      "address": 1112684772,
+      "reference_names": [
+        "-[NSInvocation _returnValue]"
+      ],
+      "size": 36,
+      "source_line": 669,
+      "source_path": "src/Kits/Foundation/NSInvocation.m"
+    },
+    {
+      "address": 1112684808,
+      "reference_names": [
+        "-[NSInvocation _setArgFrame:]"
+      ],
+      "size": 48,
+      "source_line": 534,
+      "source_path": "src/Kits/Foundation/NSInvocation.m"
+    },
+    {
+      "address": 1112689108,
+      "reference_names": [
+        "-[NSInvocation decodeReturnValueWithCoder:]"
+      ],
+      "size": 700,
+      "source_line": 1156,
+      "source_path": "src/Kits/Foundation/NSInvocation.m"
+    },
+    {
+      "address": 1112690948,
+      "reference_names": [
+        "-[NSInvocation encodeWithCoder:]"
+      ],
+      "size": 960,
+      "source_line": 1099,
+      "source_path": "src/Kits/Foundation/NSInvocation.m"
+    },
+    {
+      "address": 1112691908,
+      "reference_names": [
+        "-[NSObject(NSForwardInvocation) forward::]"
+      ],
+      "size": 688,
+      "source_line": 1655,
+      "source_path": "src/Kits/Foundation/NSInvocation.m"
+    },
+    {
+      "address": 1112692596,
+      "reference_names": [
+        "-[NSInvocation initWithMethodSignature:]"
+      ],
+      "size": 444,
+      "source_line": 420,
+      "source_path": "src/Kits/Foundation/NSInvocation.m"
+    },
+    {
+      "address": 1112707828,
+      "size": 124,
+      "reference_names": [
+        "_skipQualifiers2"
+      ],
+      "source_path": "src/Kits/Foundation/NSInvocation.m",
+      "source_line": 235
+    },
+    {
+      "address": 1112742864,
+      "size": 208,
+      "reference_names": [
+        "_release_pointers"
+      ],
+      "source_path": "src/Kits/Foundation/NSInvocation.m",
+      "source_line": 244
+    },
+    {
+      "address": 1112746704,
+      "reference_names": [
+        "-[NSInvocation setArgument:atIndex:]"
+      ],
+      "size": 556,
+      "source_line": 783,
+      "source_path": "src/Kits/Foundation/NSInvocation.m"
+    },
+    {
+      "address": 1112753380,
+      "reference_names": [
+        "-[NSInvocation selector]"
+      ],
+      "size": 64,
+      "source_line": 457,
+      "source_path": "src/Kits/Foundation/NSInvocation.m"
+    },
+    {
+      "address": 1112773876,
+      "reference_names": [
+        "-[NSInvocation encodeReturnValueWithCoder:]"
+      ],
+      "size": 500,
+      "source_line": 1139,
+      "source_path": "src/Kits/Foundation/NSInvocation.m"
+    },
+    {
+      "address": 1112777364,
+      "reference_names": [
+        "-[NSInvocation target]"
+      ],
+      "size": 64,
+      "source_line": 470,
+      "source_path": "src/Kits/Foundation/NSInvocation.m"
+    },
+    {
+      "address": 1112777428,
+      "reference_names": [
+        "-[NSInvocation _signatureValid]"
+      ],
+      "size": 20,
+      "source_line": 527,
+      "source_path": "src/Kits/Foundation/NSInvocation.m"
+    },
+    {
+      "address": 1112782916,
+      "reference_names": [
+        "+[NSInvocation newInvocationWithCoder:]"
+      ],
+      "size": 180,
+      "source_line": 1261,
+      "source_path": "src/Kits/Foundation/NSInvocation.m"
+    },
+    {
+      "address": 1112783932,
+      "reference_names": [
+        "+[NSInvocation _preInitWithCoder:signature:valid:wireSignature:target:selector:argCount:]"
+      ],
+      "size": 384,
+      "source_line": 1188,
+      "source_path": "src/Kits/Foundation/NSInvocation.m"
+    },
+    {
+      "address": 1112785124,
+      "reference_names": [
+        "-[NSCoder encodeObject:]"
+      ],
+      "size": 68,
+      "source_line": 97,
+      "source_path": "src/Kits/Foundation/NSCoder.m"
+    },
+    {
+      "address": 1112786552,
+      "reference_names": [
+        "-[NSInvocation _postInitWithCoder:signature:valid:wireSignature:target:selector:argCount:]"
+      ],
+      "size": 1080,
+      "source_line": 1226,
+      "source_path": "src/Kits/Foundation/NSInvocation.m"
+    },
+    {
+      "address": 1112791104,
+      "reference_names": [
+        "-[NSInvocation invoke]"
+      ],
+      "size": 1424,
+      "source_line": 1448,
+      "source_path": "src/Kits/Foundation/NSInvocation.m"
+    },
+    {
+      "address": 1112804332,
+      "reference_names": [
+        "-[NSInvocation setReturnValue:]"
+      ],
+      "size": 548,
+      "source_line": 853,
+      "source_path": "src/Kits/Foundation/NSInvocation.m"
+    },
+    {
+      "address": 1112825912,
+      "reference_names": [
+        "-[NSCoder decodePropertyList]"
+      ],
+      "size": 80,
+      "source_line": 243,
+      "source_path": "src/Kits/Foundation/NSCoder.m"
+    },
+    {
+      "address": 1112853984,
+      "reference_names": [
+        "-[NSInvocation setTarget:]"
+      ],
+      "size": 64,
+      "source_line": 478,
+      "source_path": "src/Kits/Foundation/NSInvocation.m"
+    },
+    {
+      "address": 1112854144,
+      "size": 260,
+      "reference_names": [
+        "_retain_pointers"
+      ],
+      "source_path": "src/Kits/Foundation/NSInvocation.m",
+      "source_line": 269
+    },
+    {
+      "address": 1112854404,
+      "reference_names": [
+        "-[NSInvocation retainArguments]"
+      ],
+      "size": 212,
+      "source_line": 491,
+      "source_path": "src/Kits/Foundation/NSInvocation.m"
+    },
+    {
+      "address": 1112854712,
+      "reference_names": [
+        "-[NSInvocation retain]"
+      ],
+      "size": 92,
+      "source_line": 636,
+      "source_path": "src/Kits/Foundation/NSInvocation.m"
+    },
+    {
+      "address": 1112869956,
+      "reference_names": [
+        "-[NSCoder encodeBycopyObject:]"
+      ],
+      "size": 52,
+      "source_line": 110,
+      "source_path": "src/Kits/Foundation/NSCoder.m"
+    },
+    {
+      "address": 1113070192,
+      "reference_names": [
+        "+[NSFault autorelease]"
+      ],
+      "size": 12,
+      "source_line": 241,
+      "source_path": "src/Kits/Foundation/NSFault.m"
+    },
+    {
+      "address": 1113070204,
+      "reference_names": [
+        "+[NSFault class]"
+      ],
+      "size": 12,
+      "source_line": 168,
+      "source_path": "src/Kits/Foundation/NSFault.m"
+    },
+    {
+      "address": 1113070216,
+      "reference_names": [
+        "+[NSFault clearFault:]"
+      ],
+      "size": 300,
+      "source_line": 398,
+      "source_path": "src/Kits/Foundation/NSFault.m"
+    },
+    {
+      "address": 1113070516,
+      "reference_names": [
+        "+[NSFault conformsToProtocol:]"
+      ],
+      "size": 40,
+      "source_line": 213,
+      "source_path": "src/Kits/Foundation/NSFault.m"
+    },
+    {
+      "address": 1113070556,
+      "reference_names": [
+        "+[NSFault debugDescription]"
+      ],
+      "size": 52,
+      "source_line": 305,
+      "source_path": "src/Kits/Foundation/NSFault.m"
+    },
+    {
+      "address": 1113070608,
+      "reference_names": [
+        "+[NSFault description]"
+      ],
+      "size": 92,
+      "source_line": 295,
+      "source_path": "src/Kits/Foundation/NSFault.m"
+    },
+    {
+      "address": 1113070700,
+      "reference_names": [
+        "+[NSFault doesNotRecognizeSelector:]"
+      ],
+      "size": 128,
+      "source_line": 283,
+      "source_path": "src/Kits/Foundation/NSFault.m"
+    },
+    {
+      "address": 1113070828,
+      "reference_names": [
+        "+[NSFault handlerForFault:]"
+      ],
+      "size": 88,
+      "source_line": 325,
+      "source_path": "src/Kits/Foundation/NSFault.m"
+    },
+    {
+      "address": 1113070916,
+      "reference_names": [
+        "+[NSFault hash]"
+      ],
+      "size": 16,
+      "source_line": 185,
+      "source_path": "src/Kits/Foundation/NSFault.m"
+    },
+    {
+      "address": 1113070932,
+      "reference_names": [
+        "+[NSFault initialize]"
+      ],
+      "size": 148,
+      "source_line": 140,
+      "source_path": "src/Kits/Foundation/NSFault.m"
+    },
+    {
+      "address": 1113071080,
+      "reference_names": [
+        "+[NSFault isEqual:]"
+      ],
+      "size": 24,
+      "source_line": 180,
+      "source_path": "src/Kits/Foundation/NSFault.m"
+    },
+    {
+      "address": 1113071104,
+      "reference_names": [
+        "+[NSFault isFault:]"
+      ],
+      "size": 80,
+      "source_line": 318,
+      "source_path": "src/Kits/Foundation/NSFault.m"
+    },
+    {
+      "address": 1113071184,
+      "reference_names": [
+        "+[NSFault isFault]"
+      ],
+      "size": 16,
+      "source_line": 310,
+      "source_path": "src/Kits/Foundation/NSFault.m"
+    },
+    {
+      "address": 1113071200,
+      "reference_names": [
+        "+[NSFault isKindOfClass:]"
+      ],
+      "size": 56,
+      "source_line": 192,
+      "source_path": "src/Kits/Foundation/NSFault.m"
+    },
+    {
+      "address": 1113071256,
+      "reference_names": [
+        "+[NSFault isMemberOfClass:]"
+      ],
+      "size": 28,
+      "source_line": 202,
+      "source_path": "src/Kits/Foundation/NSFault.m"
+    },
+    {
+      "address": 1113071284,
+      "reference_names": [
+        "+[NSFault isProxy]"
+      ],
+      "size": 16,
+      "source_line": 218,
+      "source_path": "src/Kits/Foundation/NSFault.m"
+    },
+    {
+      "address": 1113071300,
+      "reference_names": [
+        "+[NSFault load]"
+      ],
+      "size": 32,
+      "source_line": 131,
+      "source_path": "src/Kits/Foundation/NSFault.m"
+    },
+    {
+      "address": 1113071332,
+      "reference_names": [
+        "+[NSFault makeObjectIntoFault:withHandler:]"
+      ],
+      "size": 256,
+      "source_line": 347,
+      "source_path": "src/Kits/Foundation/NSFault.m"
+    },
+    {
+      "address": 1113071588,
+      "reference_names": [
+        "+[NSFault performSelector:]"
+      ],
+      "size": 64,
+      "source_line": 256,
+      "source_path": "src/Kits/Foundation/NSFault.m"
+    },
+    {
+      "address": 1113071652,
+      "reference_names": [
+        "+[NSFault performSelector:withObject:]"
+      ],
+      "size": 72,
+      "source_line": 263,
+      "source_path": "src/Kits/Foundation/NSFault.m"
+    },
+    {
+      "address": 1113071724,
+      "reference_names": [
+        "+[NSFault performSelector:withObject:withObject:]"
+      ],
+      "size": 80,
+      "source_line": 270,
+      "source_path": "src/Kits/Foundation/NSFault.m"
+    },
+    {
+      "address": 1113071804,
+      "reference_names": [
+        "+[NSFault release]"
+      ],
+      "size": 12,
+      "source_line": 232,
+      "source_path": "src/Kits/Foundation/NSFault.m"
+    },
+    {
+      "address": 1113071816,
+      "reference_names": [
+        "+[NSFault respondsToSelector:]"
+      ],
+      "size": 44,
+      "source_line": 208,
+      "source_path": "src/Kits/Foundation/NSFault.m"
+    },
+    {
+      "address": 1113071860,
+      "reference_names": [
+        "+[NSFault retainCount]"
+      ],
+      "size": 16,
+      "source_line": 236,
+      "source_path": "src/Kits/Foundation/NSFault.m"
+    },
+    {
+      "address": 1113071876,
+      "reference_names": [
+        "+[NSFault retain]"
+      ],
+      "size": 12,
+      "source_line": 227,
+      "source_path": "src/Kits/Foundation/NSFault.m"
+    },
+    {
+      "address": 1113071888,
+      "reference_names": [
+        "+[NSFault self]"
+      ],
+      "size": 12,
+      "source_line": 163,
+      "source_path": "src/Kits/Foundation/NSFault.m"
+    },
+    {
+      "address": 1113071900,
+      "reference_names": [
+        "+[NSFault superclass]"
+      ],
+      "size": 16,
+      "source_line": 175,
+      "source_path": "src/Kits/Foundation/NSFault.m"
+    },
+    {
+      "address": 1113071916,
+      "reference_names": [
+        "+[NSFault targetClassForFault:]"
+      ],
+      "size": 100,
+      "source_line": 332,
+      "source_path": "src/Kits/Foundation/NSFault.m"
+    },
+    {
+      "address": 1113072016,
+      "reference_names": [
+        "+[NSFault zone]"
+      ],
+      "size": 32,
+      "source_line": 248,
+      "source_path": "src/Kits/Foundation/NSFault.m"
+    },
+    {
+      "address": 1113072048,
+      "reference_names": [
+        "+[NSInvocation _enableLogging:]"
+      ],
+      "size": 92,
+      "source_line": 371,
+      "source_path": "src/Kits/Foundation/NSInvocation.m"
+    },
+    {
+      "address": 1113072140,
+      "reference_names": [
+        "+[NSInvocation invocationWithMethodSignature:]"
+      ],
+      "size": 64,
+      "source_line": 379,
+      "source_path": "src/Kits/Foundation/NSInvocation.m"
+    },
+    {
+      "address": 1113072204,
+      "reference_names": [
+        "+[NSInvocationBuilder builderForClass:]"
+      ],
+      "size": 80,
+      "source_line": 1574,
+      "source_path": "src/Kits/Foundation/NSInvocation.m"
+    },
+    {
+      "address": 1113072284,
+      "reference_names": [
+        "+[NSInvocationBuilder builderForObject:]"
+      ],
+      "size": 64,
+      "source_line": 1586,
+      "source_path": "src/Kits/Foundation/NSInvocation.m"
+    },
+    {
+      "address": 1113072348,
+      "reference_names": [
+        "+[NSInvocationBuilder initialize]"
+      ],
+      "size": 12,
+      "source_line": 1570,
+      "source_path": "src/Kits/Foundation/NSInvocation.m"
+    },
+    {
+      "address": 1113076248,
+      "reference_names": [
+        "-[NSCoder decodeArrayOfObjCType:count:at:]"
+      ],
+      "size": 156,
+      "source_line": 176,
+      "source_path": "src/Kits/Foundation/NSCoder.m"
+    },
+    {
+      "address": 1113076404,
+      "reference_names": [
+        "-[NSCoder decodeBytesWithReturnedLength:]"
+      ],
+      "size": 148,
+      "source_line": 202,
+      "source_path": "src/Kits/Foundation/NSCoder.m"
+    },
+    {
+      "address": 1113076552,
+      "reference_names": [
+        "-[NSCoder decodeDataObject]"
+      ],
+      "size": 88,
+      "source_line": 55,
+      "source_path": "src/Kits/Foundation/NSCoder.m"
+    },
+    {
+      "address": 1113076776,
+      "reference_names": [
+        "-[NSCoder decodeValueOfObjCType:at:]"
+      ],
+      "size": 84,
+      "source_line": 50,
+      "source_path": "src/Kits/Foundation/NSCoder.m"
+    },
+    {
+      "address": 1113076860,
+      "reference_names": [
+        "-[NSCoder decodeValuesOfObjCTypes:]"
+      ],
+      "size": 128,
+      "source_line": 150,
+      "source_path": "src/Kits/Foundation/NSCoder.m"
+    },
+    {
+      "address": 1113076988,
+      "reference_names": [
+        "-[NSCoder encodeArrayOfObjCType:count:at:]"
+      ],
+      "size": 156,
+      "source_line": 166,
+      "source_path": "src/Kits/Foundation/NSCoder.m"
+    },
+    {
+      "address": 1113077144,
+      "reference_names": [
+        "-[NSCoder encodeByrefObject:]"
+      ],
+      "size": 52,
+      "source_line": 115,
+      "source_path": "src/Kits/Foundation/NSCoder.m"
+    },
+    {
+      "address": 1113077196,
+      "reference_names": [
+        "-[NSCoder encodeBytes:length:]"
+      ],
+      "size": 108,
+      "source_line": 196,
+      "source_path": "src/Kits/Foundation/NSCoder.m"
+    },
+    {
+      "address": 1113077304,
+      "reference_names": [
+        "-[NSCoder encodeConditionalObject:]"
+      ],
+      "size": 52,
+      "source_line": 120,
+      "source_path": "src/Kits/Foundation/NSCoder.m"
+    },
+    {
+      "address": 1113077356,
+      "reference_names": [
+        "-[NSCoder encodeDataObject:]"
+      ],
+      "size": 84,
+      "source_line": 45,
+      "source_path": "src/Kits/Foundation/NSCoder.m"
+    },
+    {
+      "address": 1113077584,
+      "reference_names": [
+        "-[NSCoder encodePropertyList:]"
+      ],
+      "size": 84,
+      "source_line": 236,
+      "source_path": "src/Kits/Foundation/NSCoder.m"
+    },
+    {
+      "address": 1113077668,
+      "reference_names": [
+        "-[NSCoder encodeRootObject:]"
+      ],
+      "size": 52,
+      "source_line": 125,
+      "source_path": "src/Kits/Foundation/NSCoder.m"
+    },
+    {
+      "address": 1113077720,
+      "reference_names": [
+        "-[NSCoder encodeValueOfObjCType:at:]"
+      ],
+      "size": 84,
+      "source_line": 40,
+      "source_path": "src/Kits/Foundation/NSCoder.m"
+    },
+    {
+      "address": 1113077804,
+      "reference_names": [
+        "-[NSCoder encodeValuesOfObjCTypes:]"
+      ],
+      "size": 128,
+      "source_line": 134,
+      "source_path": "src/Kits/Foundation/NSCoder.m"
+    },
+    {
+      "address": 1113077932,
+      "reference_names": [
+        "-[NSCoder objectZone]"
+      ],
+      "size": 32,
+      "source_line": 221,
+      "source_path": "src/Kits/Foundation/NSCoder.m"
+    },
+    {
+      "address": 1113077964,
+      "reference_names": [
+        "-[NSCoder setObjectZone:]"
+      ],
+      "size": 12,
+      "source_line": 217,
+      "source_path": "src/Kits/Foundation/NSCoder.m"
+    },
+    {
+      "address": 1113077976,
+      "reference_names": [
+        "-[NSCoder systemVersion]"
+      ],
+      "size": 16,
+      "source_line": 229,
+      "source_path": "src/Kits/Foundation/NSCoder.m"
+    },
+    {
+      "address": 1113077992,
+      "reference_names": [
+        "-[NSCoder versionForClassName:]"
+      ],
+      "size": 88,
+      "source_line": 61,
+      "source_path": "src/Kits/Foundation/NSCoder.m"
+    },
+    {
+      "address": 1113078936,
+      "reference_names": [
+        "-[NSFault autorelease]"
+      ],
+      "size": 48,
+      "source_line": 530,
+      "source_path": "src/Kits/Foundation/NSFault.m"
+    },
+    {
+      "address": 1113078984,
+      "reference_names": [
+        "-[NSFault class]"
+      ],
+      "size": 60,
+      "source_line": 456,
+      "source_path": "src/Kits/Foundation/NSFault.m"
+    },
+    {
+      "address": 1113079044,
+      "reference_names": [
+        "-[NSFault conformsToProtocol:]"
+      ],
+      "size": 64,
+      "source_line": 489,
+      "source_path": "src/Kits/Foundation/NSFault.m"
+    },
+    {
+      "address": 1113079108,
+      "reference_names": [
+        "-[NSFault dealloc]"
+      ],
+      "size": 84,
+      "source_line": 543,
+      "source_path": "src/Kits/Foundation/NSFault.m"
+    },
+    {
+      "address": 1113079192,
+      "reference_names": [
+        "-[NSFault debugDescription]"
+      ],
+      "size": 52,
+      "source_line": 585,
+      "source_path": "src/Kits/Foundation/NSFault.m"
+    },
+    {
+      "address": 1113079244,
+      "reference_names": [
+        "-[NSFault description]"
+      ],
+      "size": 60,
+      "source_line": 578,
+      "source_path": "src/Kits/Foundation/NSFault.m"
+    },
+    {
+      "address": 1113079304,
+      "reference_names": [
+        "-[NSFault doesNotRecognizeSelector:]"
+      ],
+      "size": 144,
+      "source_line": 565,
+      "source_path": "src/Kits/Foundation/NSFault.m"
+    },
+    {
+      "address": 1113079448,
+      "reference_names": [
+        "-[NSFault forward::]"
+      ],
+      "size": 84,
+      "source_line": 610,
+      "source_path": "src/Kits/Foundation/NSFault.m"
+    },
+    {
+      "address": 1113079532,
+      "reference_names": [
+        "-[NSFault forwardInvocation:]"
+      ],
+      "size": 116,
+      "source_line": 590,
+      "source_path": "src/Kits/Foundation/NSFault.m"
+    },
+    {
+      "address": 1113079648,
+      "reference_names": [
+        "-[NSFault isFault]"
+      ],
+      "size": 16,
+      "source_line": 558,
+      "source_path": "src/Kits/Foundation/NSFault.m"
+    },
+    {
+      "address": 1113079664,
+      "reference_names": [
+        "-[NSFault isKindOfClass:]"
+      ],
+      "size": 64,
+      "source_line": 474,
+      "source_path": "src/Kits/Foundation/NSFault.m"
+    },
+    {
+      "address": 1113079728,
+      "reference_names": [
+        "-[NSFault isMemberOfClass:]"
+      ],
+      "size": 64,
+      "source_line": 479,
+      "source_path": "src/Kits/Foundation/NSFault.m"
+    },
+    {
+      "address": 1113079792,
+      "reference_names": [
+        "-[NSFault isProxy]"
+      ],
+      "size": 16,
+      "source_line": 494,
+      "source_path": "src/Kits/Foundation/NSFault.m"
+    },
+    {
+      "address": 1113079808,
+      "reference_names": [
+        "-[NSFault methodSignatureForSelector:]"
+      ],
+      "size": 60,
+      "source_line": 617,
+      "source_path": "src/Kits/Foundation/NSFault.m"
+    },
+    {
+      "address": 1113079868,
+      "reference_names": [
+        "-[NSFault release]"
+      ],
+      "size": 88,
+      "source_line": 520,
+      "source_path": "src/Kits/Foundation/NSFault.m"
+    },
+    {
+      "address": 1113079956,
+      "reference_names": [
+        "-[NSFault respondsToSelector:]"
+      ],
+      "size": 64,
+      "source_line": 484,
+      "source_path": "src/Kits/Foundation/NSFault.m"
+    },
+    {
+      "address": 1113080020,
+      "reference_names": [
+        "-[NSFault retainCount]"
+      ],
+      "size": 60,
+      "source_line": 503,
+      "source_path": "src/Kits/Foundation/NSFault.m"
+    },
+    {
+      "address": 1113080080,
+      "reference_names": [
+        "-[NSFault retain]"
+      ],
+      "size": 64,
+      "source_line": 511,
+      "source_path": "src/Kits/Foundation/NSFault.m"
+    },
+    {
+      "address": 1113080144,
+      "reference_names": [
+        "-[NSFault self]"
+      ],
+      "size": 68,
+      "source_line": 446,
+      "source_path": "src/Kits/Foundation/NSFault.m"
+    },
+    {
+      "address": 1113080212,
+      "reference_names": [
+        "-[NSFault superclass]"
+      ],
+      "size": 64,
+      "source_line": 461,
+      "source_path": "src/Kits/Foundation/NSFault.m"
+    },
+    {
+      "address": 1113080276,
+      "reference_names": [
+        "-[NSFault zone]"
+      ],
+      "size": 44,
+      "source_line": 551,
+      "source_path": "src/Kits/Foundation/NSFault.m"
+    },
+    {
+      "address": 1113080320,
+      "reference_names": [
+        "-[NSFaultHandler classForFault:]"
+      ],
+      "size": 16,
+      "source_line": 684,
+      "source_path": "src/Kits/Foundation/NSFault.m"
+    },
+    {
+      "address": 1113080336,
+      "reference_names": [
+        "-[NSFaultHandler completeInitializationOfObject:]"
+      ],
+      "size": 84,
+      "source_line": 745,
+      "source_path": "src/Kits/Foundation/NSFault.m"
+    },
+    {
+      "address": 1113080420,
+      "reference_names": [
+        "-[NSFaultHandler conformsToProtocol:forFault:]"
+      ],
+      "size": 60,
+      "source_line": 723,
+      "source_path": "src/Kits/Foundation/NSFault.m"
+    },
+    {
+      "address": 1113080480,
+      "reference_names": [
+        "-[NSFaultHandler decrementExtraRefCountWasZero]"
+      ],
+      "size": 148,
+      "source_line": 668,
+      "source_path": "src/Kits/Foundation/NSFault.m"
+    },
+    {
+      "address": 1113080628,
+      "reference_names": [
+        "-[NSFaultHandler descriptionForObject:]"
+      ],
+      "size": 80,
+      "source_line": 738,
+      "source_path": "src/Kits/Foundation/NSFault.m"
+    },
+    {
+      "address": 1113080708,
+      "reference_names": [
+        "-[NSFaultHandler extraData]"
+      ],
+      "size": 16,
+      "source_line": 640,
+      "source_path": "src/Kits/Foundation/NSFault.m"
+    },
+    {
+      "address": 1113080724,
+      "reference_names": [
+        "-[NSFaultHandler extraRefCount]"
+      ],
+      "size": 16,
+      "source_line": 652,
+      "source_path": "src/Kits/Foundation/NSFault.m"
+    },
+    {
+      "address": 1113080740,
+      "reference_names": [
+        "-[NSFaultHandler faultWillFire:]"
+      ],
+      "size": 12,
+      "source_line": 751,
+      "source_path": "src/Kits/Foundation/NSFault.m"
+    },
+    {
+      "address": 1113080752,
+      "reference_names": [
+        "-[NSFaultHandler incrementExtraRefCount]"
+      ],
+      "size": 120,
+      "source_line": 658,
+      "source_path": "src/Kits/Foundation/NSFault.m"
+    },
+    {
+      "address": 1113080872,
+      "reference_names": [
+        "-[NSFaultHandler isKindOfClass:forFault:]"
+      ],
+      "size": 56,
+      "source_line": 691,
+      "source_path": "src/Kits/Foundation/NSFault.m"
+    },
+    {
+      "address": 1113080928,
+      "reference_names": [
+        "-[NSFaultHandler isMemberOfClass:forFault:]"
+      ],
+      "size": 28,
+      "source_line": 702,
+      "source_path": "src/Kits/Foundation/NSFault.m"
+    },
+    {
+      "address": 1113080956,
+      "reference_names": [
+        "-[NSFaultHandler methodSignatureForSelector:forFault:]"
+      ],
+      "size": 56,
+      "source_line": 764,
+      "source_path": "src/Kits/Foundation/NSFault.m"
+    },
+    {
+      "address": 1113081012,
+      "reference_names": [
+        "-[NSFaultHandler respondsToSelector:forFault:]"
+      ],
+      "size": 60,
+      "source_line": 710,
+      "source_path": "src/Kits/Foundation/NSFault.m"
+    },
+    {
+      "address": 1113081072,
+      "reference_names": [
+        "-[NSFaultHandler setTargetClass:extraData:]"
+      ],
+      "size": 20,
+      "source_line": 646,
+      "source_path": "src/Kits/Foundation/NSFault.m"
+    },
+    {
+      "address": 1113081092,
+      "reference_names": [
+        "-[NSFaultHandler shouldPerformInvocation:]"
+      ],
+      "size": 16,
+      "source_line": 756,
+      "source_path": "src/Kits/Foundation/NSFault.m"
+    },
+    {
+      "address": 1113081108,
+      "reference_names": [
+        "-[NSFaultHandler targetClass]"
+      ],
+      "size": 16,
+      "source_line": 635,
+      "source_path": "src/Kits/Foundation/NSFault.m"
+    },
+    {
+      "address": 1113081124,
+      "reference_names": [
+        "-[NSInvocation argumentsRetained]"
+      ],
+      "size": 24,
+      "source_line": 519,
+      "source_path": "src/Kits/Foundation/NSInvocation.m"
+    },
+    {
+      "address": 1113081148,
+      "reference_names": [
+        "-[NSInvocation description]"
+      ],
+      "size": 96,
+      "source_line": 1518,
+      "source_path": "src/Kits/Foundation/NSInvocation.m"
+    },
+    {
+      "address": 1113081244,
+      "reference_names": [
+        "-[NSInvocation getReturnValue:]"
+      ],
+      "size": 56,
+      "source_line": 846,
+      "source_path": "src/Kits/Foundation/NSInvocation.m"
+    },
+    {
+      "address": 1113081300,
+      "reference_names": [
+        "-[NSInvocation initWithCoder:]"
+      ],
+      "size": 148,
+      "source_line": 1120,
+      "source_path": "src/Kits/Foundation/NSInvocation.m"
+    },
+    {
+      "address": 1113081448,
+      "reference_names": [
+        "-[NSInvocation init]"
+      ],
+      "size": 80,
+      "source_line": 563,
+      "source_path": "src/Kits/Foundation/NSInvocation.m"
+    },
+    {
+      "address": 1113081528,
+      "reference_names": [
+        "-[NSInvocation invokeWithTarget:]"
+      ],
+      "size": 84,
+      "source_line": 1505,
+      "source_path": "src/Kits/Foundation/NSInvocation.m"
+    },
+    {
+      "address": 1113081612,
+      "reference_names": [
+        "-[NSInvocation retainCount]"
+      ],
+      "size": 48,
+      "source_line": 658,
+      "source_path": "src/Kits/Foundation/NSInvocation.m"
+    },
+    {
+      "address": 1113081660,
+      "reference_names": [
+        "-[NSInvocation setSelector:]"
+      ],
+      "size": 64,
+      "source_line": 465,
+      "source_path": "src/Kits/Foundation/NSInvocation.m"
+    },
+    {
+      "address": 1113081724,
+      "reference_names": [
+        "-[NSInvocationBuilder forward::]"
+      ],
+      "size": 388,
+      "source_line": 1599,
+      "source_path": "src/Kits/Foundation/NSInvocation.m"
+    },
+    {
+      "address": 1113082112,
+      "reference_names": [
+        "-[NSMethodSignature _argumentInfoAtIndex:]"
+      ],
+      "size": 172,
+      "source_line": 520,
+      "source_path": "src/Kits/Foundation/NSMethodSignature.m"
+    },
+    {
+      "address": 1113082284,
+      "reference_names": [
+        "-[NSMethodSignature _isReturnStructInRegisters]"
+      ],
+      "size": 16,
+      "source_line": 493,
+      "source_path": "src/Kits/Foundation/NSMethodSignature.m"
+    },
+    {
+      "address": 1113082300,
+      "reference_names": [
+        "-[NSMethodSignature debugDescription]"
+      ],
+      "size": 200,
+      "source_line": 603,
+      "source_path": "src/Kits/Foundation/NSMethodSignature.m"
+    },
+    {
+      "address": 1113082500,
+      "reference_names": [
+        "-[NSMethodSignature description]"
+      ],
+      "size": 88,
+      "source_line": 593,
+      "source_path": "src/Kits/Foundation/NSMethodSignature.m"
+    },
+    {
+      "address": 1113082588,
+      "reference_names": [
+        "-[NSMethodSignature frameLength]"
+      ],
+      "size": 16,
+      "source_line": 458,
+      "source_path": "src/Kits/Foundation/NSMethodSignature.m"
+    },
+    {
+      "address": 1113082604,
+      "reference_names": [
+        "-[NSMethodSignature getArgumentTypeAtIndex:]"
+      ],
+      "size": 232,
+      "source_line": 442,
+      "source_path": "src/Kits/Foundation/NSMethodSignature.m"
+    },
+    {
+      "address": 1113082836,
+      "reference_names": [
+        "-[NSMethodSignature methodReturnLength]"
+      ],
+      "size": 16,
+      "source_line": 484,
+      "source_path": "src/Kits/Foundation/NSMethodSignature.m"
+    },
+    {
+      "address": 1113082852,
+      "reference_names": [
+        "-[NSMethodSignature methodReturnType]"
+      ],
+      "size": 124,
+      "source_line": 477,
+      "source_path": "src/Kits/Foundation/NSMethodSignature.m"
+    },
+    {
+      "address": 1113082976,
+      "reference_names": [
+        "-[NSMethodSignature numberOfArguments]"
+      ],
+      "size": 16,
+      "source_line": 435,
+      "source_path": "src/Kits/Foundation/NSMethodSignature.m"
+    },
+    {
+      "address": 1113082992,
+      "reference_names": [
+        "-[NSMethodSignature retainCount]"
+      ],
+      "size": 16,
+      "source_line": 557,
+      "source_path": "src/Kits/Foundation/NSMethodSignature.m"
+    },
+    {
+      "address": 1113083976,
+      "reference_names": [
+        "-[NSObject isNSIDispatchProxy]"
+      ],
+      "size": 16,
+      "source_line": 1750,
+      "source_path": "src/Kits/Foundation/NSInvocation.m"
+    },
+    {
+      "address": 1113087804,
+      "reference_names": [
+        "_NXReadNSObjectFromCoder"
+      ],
+      "size": 192,
+      "source_line": 266,
+      "source_path": "src/Kits/Foundation/NSCoder.m"
+    },
+    {
+      "address": 1113088548,
+      "size": 92,
+      "reference_names": [
+        "__NSFaultRaiseNullSelectorException"
+      ],
+      "source_path": "src/Kits/Foundation/NSFault.m",
+      "source_line": 82
+    },
+    {
+      "address": 1113090108,
+      "size": 172,
+      "reference_names": [
+        "_autorelease_pointers"
+      ],
+      "source_path": "src/Kits/Foundation/NSInvocation.m",
+      "source_line": 335
+    },
+    {
+      "address": 1113090280,
+      "size": 104,
+      "reference_names": [
+        "_establishArgumentFrame"
+      ],
+      "source_path": "src/Kits/Foundation/NSInvocation.m",
+      "source_line": 105
+    },
+    {
+      "address": 1113090500,
+      "size": 148,
+      "reference_names": [
+        "_gather_struct"
+      ],
+      "source_path": "src/Kits/Foundation/NSInvocation.m",
+      "source_line": 315
+    },
+    {
+      "address": 1113090856,
+      "size": 148,
+      "reference_names": [
+        "_scatter_struct"
+      ],
+      "source_path": "src/Kits/Foundation/NSInvocation.m",
+      "source_line": 299
+    },
+    {
+      "address": 1113091004,
+      "size": 252,
+      "reference_names": [
+        "_stringFromArgInfo"
+      ],
+      "source_path": "src/Kits/Foundation/NSMethodSignature.m",
+      "source_line": 562
+    },
+    {
+      "address": 1113098996,
+      "size": 212,
+      "reference_names": [
+        "_itsReallyOK"
+      ],
+      "source_path": "src/Kits/Foundation/NSMethodSignature.m",
+      "source_line": 112
+    }
+  ],
+  "reference_sha256": "332B3C8C0AE0A6E40A4B93110EE16748FCD94AA0119D63F16EDE878598C681B4",
+  "schema_version": "source-map-v1",
+  "unmapped": []
+}

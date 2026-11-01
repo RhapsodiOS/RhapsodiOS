@@ -1,0 +1,6 @@
+pkgname = hammer
+pkgver = 1.0
+pkgdesc = Rhapsody HAMMER filesystem tools
+license = BSD
+url = https://www.dragonflybsd.org/
+makedepends = build-base

@@ -1,0 +1,539 @@
+{
+  "schema_version": "source-map-v1",
+  "reference_sha256": "1165B9063ADD5672514455CA2C9830625BEA2BCE5E46126FB5E8652114C909D6",
+  "mapped": [
+    {
+      "address": 1112566564,
+      "size": 259,
+      "reference_names": [
+        "-[NSParser parse:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSParser.m",
+      "source_line": 1227
+    },
+    {
+      "address": 1112576652,
+      "size": 259,
+      "reference_names": [
+        "-[NSParser setMonoCharacterSeparatorCharacters:usualPunctuation:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSParser.m",
+      "source_line": 744
+    },
+    {
+      "address": 1112586640,
+      "size": 193,
+      "reference_names": [
+        "-[NSParser parseSeparatorEqualTo:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSParser.m",
+      "source_line": 1176
+    },
+    {
+      "address": 1112588184,
+      "size": 3194,
+      "reference_names": [
+        "-[NSParser nextToken]"
+      ],
+      "source_path": "src/Kits/Foundation/NSParser.m",
+      "source_line": 817
+    },
+    {
+      "address": 1112598896,
+      "size": 1746,
+      "reference_names": [
+        "_parseForSyntaxNode"
+      ],
+      "source_path": "src/Kits/Foundation/NSParser.m",
+      "source_line": 508
+    },
+    {
+      "address": 1112604660,
+      "size": 31,
+      "reference_names": [
+        "-[NSParser parseString]"
+      ],
+      "source_path": "src/Kits/Foundation/NSParser.m",
+      "source_line": 1145
+    },
+    {
+      "address": 1112616032,
+      "size": 65,
+      "reference_names": [
+        "-[NSParser parseTokenWithMask:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSParser.m",
+      "source_line": 1133
+    },
+    {
+      "address": 1112621188,
+      "size": 718,
+      "reference_names": [
+        "_makeNewString"
+      ],
+      "source_path": "src/Kits/Foundation/NSParser.m",
+      "source_line": 304
+    },
+    {
+      "address": 1112631308,
+      "size": 471,
+      "reference_names": [
+        "-[NSParser parseData]"
+      ],
+      "source_path": "src/Kits/Foundation/NSParser.m",
+      "source_line": 1373
+    },
+    {
+      "address": 1112631780,
+      "size": 43,
+      "reference_names": [
+        "-[NSPropertyListParser parseDictionary]"
+      ],
+      "source_path": "src/Kits/Foundation/NSParser.m",
+      "source_line": 1579
+    },
+    {
+      "address": 1112634576,
+      "size": 112,
+      "reference_names": [
+        "-[NSParser expect:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSParser.m",
+      "source_line": 1213
+    },
+    {
+      "address": 1112638992,
+      "size": 72,
+      "reference_names": [
+        "-[NSParser expectSeparatorEqualTo:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSParser.m",
+      "source_line": 1208
+    },
+    {
+      "address": 1112644312,
+      "size": 106,
+      "reference_names": [
+        "_autoreleaseAllStrings"
+      ],
+      "source_path": "src/Kits/Foundation/NSParser.m",
+      "source_line": 384
+    },
+    {
+      "address": 1112646060,
+      "size": 116,
+      "reference_names": [
+        "-[NSPropertyListParser parseArray]"
+      ],
+      "source_path": "src/Kits/Foundation/NSParser.m",
+      "source_line": 1583
+    },
+    {
+      "address": 1112653448,
+      "size": 179,
+      "reference_names": [
+        "-[NSParser parseDictionaryOfKey:value:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSParser.m",
+      "source_line": 1362
+    },
+    {
+      "address": 1112658976,
+      "size": 344,
+      "reference_names": [
+        "-[NSParser parseSuiteOfPairsKey:separator:value:separator:allowOmitLastSeparator:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSParser.m",
+      "source_line": 1325
+    },
+    {
+      "address": 1112669424,
+      "size": 215,
+      "reference_names": [
+        "-[_NSPListParserOldStyle parseDictionaryBracketLess]"
+      ],
+      "source_path": "src/Kits/Foundation/NSParser.m",
+      "source_line": 1606
+    },
+    {
+      "address": 1112679100,
+      "size": 49,
+      "reference_names": [
+        "_growBuffer"
+      ],
+      "source_path": "src/Kits/Foundation/NSParser.m",
+      "source_line": 137
+    },
+    {
+      "address": 1112683544,
+      "size": 155,
+      "reference_names": [
+        "-[_NSPListParserOldStyle parseDictionary]"
+      ],
+      "source_path": "src/Kits/Foundation/NSParser.m",
+      "source_line": 1596
+    },
+    {
+      "address": 1112686128,
+      "size": 453,
+      "reference_names": [
+        "-[NSParser parseSuite:separator:allowOmitLastSeparator:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSParser.m",
+      "source_line": 1288
+    },
+    {
+      "address": 1112726216,
+      "size": 238,
+      "reference_names": [
+        "-[NSParser setUnquotedStringStartCharacters:lowerCaseLetters:upperCaseLetters:digits:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSParser.m",
+      "source_line": 765
+    },
+    {
+      "address": 1112726456,
+      "size": 266,
+      "reference_names": [
+        "-[NSParser setUnquotedStringCharacters:lowerCaseLetters:upperCaseLetters:digits:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSParser.m",
+      "source_line": 791
+    },
+    {
+      "address": 1112740664,
+      "size": 31,
+      "reference_names": [
+        "-[NSParser setQuotingWithSingleQuote:double:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSParser.m",
+      "source_line": 689
+    },
+    {
+      "address": 1112740820,
+      "size": 192,
+      "reference_names": [
+        "-[NSParser initWithGrammar:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSParser.m",
+      "source_line": 606
+    },
+    {
+      "address": 1112741012,
+      "size": 203,
+      "reference_names": [
+        "-[NSParser dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSParser.m",
+      "source_line": 621
+    },
+    {
+      "address": 1112746924,
+      "size": 420,
+      "reference_names": [
+        "-[NSParser setString:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSParser.m",
+      "source_line": 642
+    },
+    {
+      "address": 1112751508,
+      "size": 73,
+      "reference_names": [
+        "-[NSParser expectEndOfInput]"
+      ],
+      "source_path": "src/Kits/Foundation/NSParser.m",
+      "source_line": 1222
+    },
+    {
+      "address": 1112758152,
+      "size": 158,
+      "reference_names": [
+        "-[NSPropertyListParser initWithString:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSParser.m",
+      "source_line": 1571
+    },
+    {
+      "address": 1112758644,
+      "size": 395,
+      "reference_names": [
+        "-[NSString propertyList]"
+      ],
+      "source_path": "src/Kits/Foundation/NSParser.m",
+      "source_line": 1643
+    },
+    {
+      "address": 1112765044,
+      "size": 748,
+      "reference_names": [
+        "__NSParseObjectFromASCIIPropertyListOrSerialization"
+      ],
+      "source_path": "src/Kits/Foundation/NSParser.m",
+      "source_line": 1530
+    },
+    {
+      "address": 1112773584,
+      "size": 897,
+      "reference_names": [
+        "_getSlashedChar"
+      ],
+      "source_path": "src/Kits/Foundation/NSParser.m",
+      "source_line": 207
+    },
+    {
+      "address": 1112780196,
+      "size": 379,
+      "reference_names": [
+        "-[NSString propertyListFromStringsFileFormat]"
+      ],
+      "source_path": "src/Kits/Foundation/NSParser.m",
+      "source_line": 1664
+    },
+    {
+      "address": 1112780884,
+      "size": 248,
+      "reference_names": [
+        "-[NSParser parseMetaSyntaxLeafResultShouldBeSkipped:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSParser.m",
+      "source_line": 1505
+    },
+    {
+      "address": 1112795440,
+      "size": 424,
+      "reference_names": [
+        "-[NSParser parseMetaSyntaxSequence]"
+      ],
+      "source_path": "src/Kits/Foundation/NSParser.m",
+      "source_line": 1461
+    },
+    {
+      "address": 1112796412,
+      "size": 208,
+      "reference_names": [
+        "-[NSParser parseError:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSParser.m",
+      "source_line": 1262
+    },
+    {
+      "address": 1112802308,
+      "size": 31,
+      "reference_names": [
+        "-[NSParser parseUnquotedString]"
+      ],
+      "source_path": "src/Kits/Foundation/NSParser.m",
+      "source_line": 1147
+    },
+    {
+      "address": 1112823272,
+      "size": 105,
+      "reference_names": [
+        "_makeBufferWide"
+      ],
+      "source_path": "src/Kits/Foundation/NSParser.m",
+      "source_line": 147
+    },
+    {
+      "address": 1112824212,
+      "size": 597,
+      "reference_names": [
+        "-[NSParser parseMetaRuleBody]"
+      ],
+      "source_path": "src/Kits/Foundation/NSParser.m",
+      "source_line": 1431
+    },
+    {
+      "address": 1112852628,
+      "size": 49,
+      "reference_names": [
+        "-[_NSParserSyntaxNode initWithType:arg:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSParser.m",
+      "source_line": 398
+    },
+    {
+      "address": 1112858376,
+      "size": 622,
+      "reference_names": [
+        "-[NSParser setMultipleCharacterSeparators:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSParser.m",
+      "source_line": 694
+    },
+    {
+      "address": 1112870592,
+      "size": 439,
+      "reference_names": [
+        "+[NSParser parsedGrammarForString:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSParser.m",
+      "source_line": 1408
+    },
+    {
+      "address": 1112983104,
+      "size": 76,
+      "reference_names": [
+        "-[NSParser expectTokenEqualTo:mask:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSParser.m",
+      "source_line": 1171
+    },
+    {
+      "address": 1112983180,
+      "size": 31,
+      "reference_names": [
+        "-[NSParser parseNumber]"
+      ],
+      "source_path": "src/Kits/Foundation/NSParser.m",
+      "source_line": 1148
+    },
+    {
+      "address": 1112983212,
+      "size": 31,
+      "reference_names": [
+        "-[NSParser parseQuotedString]"
+      ],
+      "source_path": "src/Kits/Foundation/NSParser.m",
+      "source_line": 1146
+    },
+    {
+      "address": 1112983244,
+      "size": 31,
+      "reference_names": [
+        "-[NSParser parseSeparator]"
+      ],
+      "source_path": "src/Kits/Foundation/NSParser.m",
+      "source_line": 1149
+    },
+    {
+      "address": 1112983276,
+      "size": 261,
+      "reference_names": [
+        "-[NSParser parseTokenEqualTo:mask:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSParser.m",
+      "source_line": 1151
+    },
+    {
+      "address": 1112983540,
+      "size": 43,
+      "reference_names": [
+        "-[NSParser peekTokenType]"
+      ],
+      "source_path": "src/Kits/Foundation/NSParser.m",
+      "source_line": 1121
+    },
+    {
+      "address": 1112983584,
+      "size": 61,
+      "reference_names": [
+        "-[NSParser peekTokenWithMask:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSParser.m",
+      "source_line": 1127
+    },
+    {
+      "address": 1112983648,
+      "size": 22,
+      "reference_names": [
+        "-[NSParser setEnableFloatParsing:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSParser.m",
+      "source_line": 681
+    },
+    {
+      "address": 1112983672,
+      "size": 22,
+      "reference_names": [
+        "-[NSParser setEnableIntegerParsing:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSParser.m",
+      "source_line": 685
+    },
+    {
+      "address": 1112990416,
+      "size": 162,
+      "reference_names": [
+        "-[_NSPListParserOldStyle parseOldOrNewStringsFile]"
+      ],
+      "source_path": "src/Kits/Foundation/NSParser.m",
+      "source_line": 1629
+    },
+    {
+      "address": 1112990580,
+      "size": 29,
+      "reference_names": [
+        "-[_NSParserSyntaxNode copyWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSParser.m",
+      "source_line": 404
+    },
+    {
+      "address": 1112990612,
+      "size": 74,
+      "reference_names": [
+        "-[_NSParserSyntaxNode dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSParser.m",
+      "source_line": 430
+    },
+    {
+      "address": 1112990688,
+      "size": 228,
+      "reference_names": [
+        "-[_NSParserSyntaxNode description]"
+      ],
+      "source_path": "src/Kits/Foundation/NSParser.m",
+      "source_line": 409
+    },
+    {
+      "address": 1113005820,
+      "size": 301,
+      "reference_names": [
+        "_describeSubs"
+      ],
+      "source_path": "src/Kits/Foundation/NSParser.m",
+      "source_line": 494
+    },
+    {
+      "address": 1113006224,
+      "size": 162,
+      "reference_names": [
+        "_fromHexDigit"
+      ],
+      "source_path": "src/Kits/Foundation/NSParser.m",
+      "source_line": 292
+    },
+    {
+      "address": 1113006828,
+      "size": 142,
+      "reference_names": [
+        "_popTokenHead"
+      ],
+      "source_path": "src/Kits/Foundation/NSParser.m",
+      "source_line": 471
+    },
+    {
+      "address": 1113006972,
+      "size": 132,
+      "reference_names": [
+        "_pushTokenHead"
+      ],
+      "source_path": "src/Kits/Foundation/NSParser.m",
+      "source_line": 452
+    }
+  ],
+  "unmapped": [],
+  "duplicate_candidates": [],
+  "boundary_disputed": [],
+  "by_module": {
+    "NSParser.m": {
+      "mapped": 58,
+      "unmapped": 0,
+      "duplicate_candidates": 0,
+      "boundary_disputed": 0
+    }
+  }
+}

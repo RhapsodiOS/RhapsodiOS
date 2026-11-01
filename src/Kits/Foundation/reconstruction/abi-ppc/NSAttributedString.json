@@ -1,0 +1,572 @@
+{
+ "categories": [],
+ "classes": [
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "dealloc",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "nextObject",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "initWithAttributeDictionary:",
+     "types": "@8@4:8@12"
+    }
+   ],
+   "instance_size": 12,
+   "ivars": [
+    {
+     "name": "dictionary",
+     "offset": 4,
+     "type": "@\"NSSimpleAttributeDictionary\""
+    },
+    {
+     "name": "nextElement",
+     "offset": 8,
+     "type": "I"
+    }
+   ],
+   "name": "NSSimpleAttributeDictionaryEnumerator",
+   "superclass": "NSEnumerator"
+  },
+  {
+   "class_methods": [
+    {
+     "selector": "newWithDictionary:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "emptyAttributeDictionary",
+     "types": "@4@4:8"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "copyWithZone:",
+     "types": "@8@4:8^{?=}12"
+    },
+    {
+     "selector": "mutableCopyWithZone:",
+     "types": "@8@4:8^{?=}12"
+    },
+    {
+     "selector": "dealloc",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "retainCount",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "release",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "retain",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "keyEnumerator",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "objectForKey:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "slotForKey:",
+     "types": "I8@4:8@12"
+    },
+    {
+     "selector": "count",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "newWithKey:object:",
+     "types": "@12@4:8@12@16"
+    }
+   ],
+   "instance_size": 24,
+   "ivars": [
+    {
+     "name": "numElements",
+     "offset": 4,
+     "type": "I"
+    },
+    {
+     "name": "refCount",
+     "offset": 8,
+     "type": "I"
+    },
+    {
+     "name": "elements",
+     "offset": 12,
+     "type": "[1{?=\"hash\"I\"key\"@\"value\"@}]"
+    }
+   ],
+   "name": "NSSimpleAttributeDictionary",
+   "superclass": "NSDictionary"
+  },
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "deleteObjectsInRange:",
+     "types": "v12@4:8{?=II}12"
+    },
+    {
+     "selector": "replaceObjectsInRange:withObject:length:",
+     "types": "v20@4:8{?=II}12@20I24"
+    },
+    {
+     "selector": "insertObject:range:",
+     "types": "v16@4:8@12{?=II}16"
+    },
+    {
+     "selector": "_setBlockCapacity:",
+     "types": "v8@4:8I12"
+    },
+    {
+     "selector": "copyWithZone:",
+     "types": "@8@4:8^{?=}12"
+    }
+   ],
+   "instance_size": 8,
+   "ivars": [],
+   "name": "NSMutableRLEArray",
+   "superclass": "NSRLEArray"
+  },
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "description",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "count",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "objectAtRunIndex:length:",
+     "types": "@12@4:8I12^I16"
+    },
+    {
+     "selector": "objectAtIndex:effectiveRange:runIndex:",
+     "types": "@16@4:8I12^{?=II}16^I20"
+    },
+    {
+     "selector": "objectAtIndex:effectiveRange:",
+     "types": "@12@4:8I12^{?=II}16"
+    },
+    {
+     "selector": "_makeNewListFrom:",
+     "types": "v8@4:8^{?=IIIIII[0{?=I@}]}12"
+    },
+    {
+     "selector": "dealloc",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "mutableCopyWithZone:",
+     "types": "@8@4:8^{?=}12"
+    },
+    {
+     "selector": "copyWithZone:",
+     "types": "@8@4:8^{?=}12"
+    },
+    {
+     "selector": "initWithRefCountedRunArray:",
+     "types": "@8@4:8^{?=IIIIII[0{?=I@}]}12"
+    },
+    {
+     "selector": "init",
+     "types": "@4@4:8"
+    }
+   ],
+   "instance_size": 8,
+   "ivars": [
+    {
+     "name": "theList",
+     "offset": 4,
+     "type": "^{?}"
+    }
+   ],
+   "name": "NSRLEArray",
+   "superclass": "NSObject"
+  },
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "replaceCharactersInRange:withString:",
+     "types": "v16@4:8{?=II}12@20"
+    },
+    {
+     "selector": "getCharacters:range:",
+     "types": "v16@4:8^S12{?=II}16"
+    },
+    {
+     "selector": "characterAtIndex:",
+     "types": "S8@4:8I12"
+    },
+    {
+     "selector": "length",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "dealloc",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "initWithMutableAttributedString:",
+     "types": "@8@4:8@12"
+    }
+   ],
+   "instance_size": 8,
+   "ivars": [
+    {
+     "name": "mutableAttributedString",
+     "offset": 4,
+     "type": "@\"NSMutableAttributedString\""
+    }
+   ],
+   "name": "NSMutableStringProxyForMutableAttributedString",
+   "superclass": "NSMutableString"
+  },
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "initWithCoder:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "classForCoder",
+     "types": "#4@4:8"
+    },
+    {
+     "selector": "edited:range:changeInLength:",
+     "types": "v20@4:8I12{?=II}16i24"
+    },
+    {
+     "selector": "replaceCharactersInRange:withString:",
+     "types": "v16@4:8{?=II}12@20"
+    },
+    {
+     "selector": "setAttributes:range:",
+     "types": "v16@4:8@12{?=II}16"
+    },
+    {
+     "selector": "attribute:atIndex:longestEffectiveRange:inRange:",
+     "types": "@24@4:8@12I16^{?=II}20{?=II}24"
+    },
+    {
+     "selector": "addAttribute:value:range:",
+     "types": "v20@4:8@12@16{?=II}20"
+    },
+    {
+     "selector": "replaceCharactersInRange:withAttributedString:",
+     "types": "v16@4:8{?=II}12@20"
+    },
+    {
+     "selector": "_runArrayHoldingAttributes",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "string",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "length",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "attribute:atIndex:effectiveRange:",
+     "types": "@16@4:8@12I16^{?=II}20"
+    },
+    {
+     "selector": "attributesAtIndex:effectiveRange:",
+     "types": "@12@4:8I12^{?=II}16"
+    },
+    {
+     "selector": "dealloc",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "init",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "initWithString:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "initWithString:attributes:",
+     "types": "@12@4:8@12@16"
+    },
+    {
+     "selector": "initWithAttributedString:",
+     "types": "@8@4:8@12"
+    }
+   ],
+   "instance_size": 16,
+   "ivars": [
+    {
+     "name": "mutableString",
+     "offset": 4,
+     "type": "@\"NSMutableString\""
+    },
+    {
+     "name": "mutableAttributes",
+     "offset": 8,
+     "type": "@\"NSMutableRLEArray\""
+    },
+    {
+     "name": "fields",
+     "offset": 12,
+     "type": "{?=\"attributeFixingDisabled\"b8\"\"b24}"
+    }
+   ],
+   "name": "NSConcreteMutableAttributedString",
+   "superclass": "NSMutableAttributedString"
+  },
+  {
+   "class_methods": [
+    {
+     "selector": "allocWithZone:",
+     "types": "@8@4:8^{?=}12"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "endEditing",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "beginEditing",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "setAttributedString:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "deleteCharactersInRange:",
+     "types": "v12@4:8{?=II}12"
+    },
+    {
+     "selector": "appendAttributedString:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "insertAttributedString:atIndex:",
+     "types": "v12@4:8@12I16"
+    },
+    {
+     "selector": "replaceCharactersInRange:withAttributedString:",
+     "types": "v16@4:8{?=II}12@20"
+    },
+    {
+     "selector": "removeAttribute:range:",
+     "types": "v16@4:8@12{?=II}16"
+    },
+    {
+     "selector": "addAttributesWeakly:range:",
+     "types": "v16@4:8@12{?=II}16"
+    },
+    {
+     "selector": "addAttributes:range:",
+     "types": "v16@4:8@12{?=II}16"
+    },
+    {
+     "selector": "addAttribute:value:range:",
+     "types": "v20@4:8@12@16{?=II}20"
+    },
+    {
+     "selector": "mutableString",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "setAttributes:range:",
+     "types": "v16@4:8@12{?=II}16"
+    },
+    {
+     "selector": "replaceCharactersInRange:withString:",
+     "types": "v16@4:8{?=II}12@20"
+    }
+   ],
+   "instance_size": 4,
+   "ivars": [],
+   "name": "NSMutableAttributedString",
+   "superclass": "NSAttributedString"
+  },
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "_runArrayHoldingAttributes",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "string",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "length",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "attribute:atIndex:effectiveRange:",
+     "types": "@16@4:8@12I16^{?=II}20"
+    },
+    {
+     "selector": "attributesAtIndex:effectiveRange:",
+     "types": "@12@4:8I12^{?=II}16"
+    },
+    {
+     "selector": "dealloc",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "init",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "initWithAttributedString:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "initWithString:attributes:",
+     "types": "@12@4:8@12@16"
+    },
+    {
+     "selector": "initWithString:",
+     "types": "@8@4:8@12"
+    }
+   ],
+   "instance_size": 12,
+   "ivars": [
+    {
+     "name": "string",
+     "offset": 4,
+     "type": "@\"NSString\""
+    },
+    {
+     "name": "attributes",
+     "offset": 8,
+     "type": "@\"NSRLEArray\""
+    }
+   ],
+   "name": "NSConcreteAttributedString",
+   "superclass": "NSAttributedString"
+  },
+  {
+   "class_methods": [
+    {
+     "selector": "allocWithZone:",
+     "types": "@8@4:8^{?=}12"
+    },
+    {
+     "selector": "_setAttributedDictionaryClass:",
+     "types": "v8@4:8#12"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "initWithCoder:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "encodeWithCoder:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "replacementObjectForPortCoder:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "classForCoder",
+     "types": "#4@4:8"
+    },
+    {
+     "selector": "attribute:atIndex:longestEffectiveRange:inRange:",
+     "types": "@24@4:8@12I16^{?=II}20{?=II}24"
+    },
+    {
+     "selector": "attributesAtIndex:longestEffectiveRange:inRange:",
+     "types": "@20@4:8I12^{?=II}16{?=II}20"
+    },
+    {
+     "selector": "description",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "copyWithZone:",
+     "types": "@8@4:8^{?=}12"
+    },
+    {
+     "selector": "mutableCopyWithZone:",
+     "types": "@8@4:8^{?=}12"
+    },
+    {
+     "selector": "isEqualToAttributedString:",
+     "types": "c8@4:8@12"
+    },
+    {
+     "selector": "isEqual:",
+     "types": "c8@4:8@12"
+    },
+    {
+     "selector": "hash",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "length",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "attributedStringByWeaklyAddingAttributes:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "attributedSubstringFromRange:",
+     "types": "@12@4:8{?=II}12"
+    },
+    {
+     "selector": "attribute:atIndex:effectiveRange:",
+     "types": "@16@4:8@12I16^{?=II}20"
+    },
+    {
+     "selector": "attributesAtIndex:effectiveRange:",
+     "types": "@12@4:8I12^{?=II}16"
+    },
+    {
+     "selector": "string",
+     "types": "@4@4:8"
+    }
+   ],
+   "instance_size": 4,
+   "ivars": [],
+   "name": "NSAttributedString",
+   "superclass": "NSObject"
+  }
+ ],
+ "data_symbols": [],
+ "module": "NSAttributedString.m",
+ "schema_version": "abi-v1",
+ "text_symbols": []
+}

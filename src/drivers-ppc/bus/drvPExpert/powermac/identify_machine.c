@@ -154,6 +154,18 @@ void identify_machine1()
 	powermac_dbdma_channels = powermac_init_p->powermac_dbdma_channels;
 }
 
+/* nvram_phys:
+ *   Old World NVRAM sits in mac-io and its reg is an offset.  New World
+ *   flash NVRAM (/nvram@fff04000) has an absolute reg past mac-io; adding
+ *   the mac-io base to that wraps (to 0x7ff04000 on a Sawtooth).
+ */
+static vm_offset_t nvram_phys(vm_offset_t reg)
+{
+	if (powermac_io_info.io_size != 0 && reg >= powermac_io_info.io_size)
+		return reg;
+	return powermac_io_info.io_base_phys + reg;
+}
+
 /* identify_machine2:
  *
  *   Sets up platform parameters.
@@ -189,8 +201,8 @@ void identify_machine2()
 	powermac_io_info.floppy_base_phys   = powermac_io_info.io_base_phys + get_floppy_offset();
 	powermac_io_info.ethernet_base_phys = powermac_io_info.io_base_phys + get_ethernet_offset();
 	powermac_io_info.via_base_phys      = powermac_io_info.io_base_phys + get_via_offset();
-	powermac_io_info.nvram_addr_reg_phys = powermac_io_info.io_base_phys + get_nvram_addr_offset();
-	powermac_io_info.nvram_data_reg_phys = powermac_io_info.io_base_phys + get_nvram_data_offset();
+	powermac_io_info.nvram_addr_reg_phys = nvram_phys(get_nvram_addr_offset());
+	powermac_io_info.nvram_data_reg_phys = nvram_phys(get_nvram_data_offset());
 	powermac_io_info.ide0_base_phys = powermac_io_info.io_base_phys + get_ide_offset(0);
 	powermac_io_info.ide1_base_phys = powermac_io_info.io_base_phys + get_ide_offset(1);
 
@@ -278,8 +290,13 @@ vm_offset_t get_int_cntlr_base_addr(void)
 
 	if (DTFindEntry("device_type", "open-pic", &entryP) == kSuccess)
 	{
-	    if (DTGetProperty(entryP, "reg", (void **)&address, &size) == kSuccess)
+	    if (DTGetProperty(entryP, "reg", (void **)&address, &size) == kSuccess) {
+		    /* Sawtooth's open-pic sits in mac-io and its reg is an
+		     * offset; make it absolute in the tree too, as 5.6 does. */
+		    if (IsSawtooth())
+			    *address += get_io_base_addr();
 		    return(*address);
+	    }
 	}
 
 	return(0);
@@ -648,13 +665,8 @@ int get_machine_id(void)
 	    else if (strcmp( family, "iMac") == 0)	return(gestaltCHRP_Version1);
 	    else if (strcmp( family, "PowerMac1,1") == 0)	return(gestaltCHRP_Version1);
 	    else if (strcmp( family, "PowerMac1,2") == 0)	return(gestaltCHRP_Version1);
-		else if (strcmp( family, "PowerMac2,1") == 0)	return(gestaltCHRP_Version1);
 	    else if (strcmp( family, "PowerBook1,1") == 0)	return(gestaltCHRP_Version1);
-	    else if (strcmp( family, "PowerMac3,1") == 0)	return(gestaltSawtooth);
-	    else if (strcmp( family, "PowerMac3,2") == 0)	return(gestaltSawtooth);
-	    else if (strcmp( family, "PowerMac3,3") == 0)	return(gestaltSawtooth);
-	    else if (strcmp( family, "PowerMac5,1") == 0)	return(gestaltSawtooth);
-	    else if (strcmp( family, "PowerBook2,1") == 0)	return(gestaltSawtooth);
+	    else if (PEKeyLargoIsCore99Model(family))	return(gestaltSawtooth);
 	    else
 		panic("Unsupported machine\n");
 	}
@@ -730,9 +742,25 @@ int PEEditDTEntry( DTEntry dtEntry, char * nodeName, int index,
     int         *classCode;
     int         size;
     static int  usbDeviceFound = 0;
+    static DTEntry davbusEntry;
+    static unsigned int davbusInterrupts[3];
+    extern int PEDAVBusParseInterrupts(const unsigned char *,unsigned int,unsigned int *);
 
     /* Sawtooth-specific: Handle PCI bridge class code for AGP */
     if( powermac_info.class == POWERMAC_CLASS_SAWTOOTH) {
+        /* DK's generic mapper assumes one cell per interrupt. Supply the
+         * three MPIC source numbers before its historical XOR conversion. */
+        if(index == 0 && (strcmp(nodeName,"davbus") == 0 || strcmp(nodeName,"awacs") == 0)) {
+            void *raw;
+            if((davbusEntry == 0 || davbusEntry == dtEntry) &&
+                DTGetProperty(dtEntry,"interrupts",&raw,&size) == kSuccess &&
+                PEDAVBusParseInterrupts(raw,(unsigned int)size,davbusInterrupts)) {
+                davbusEntry=dtEntry;*propName="AAPL,interrupts";
+                *propData=davbusInterrupts;*propSize=sizeof(davbusInterrupts);
+                return 0;
+            }
+            return -1;
+        }
         if( 0 == strcmp( nodeName, "pci") && index == 0) {
             if( kSuccess == DTGetProperty(dtEntry, "class-code", (void **)&classCode, &size)) {
                 if( *classCode == 0x060400) {  /* PCI-to-PCI bridge */

@@ -1,0 +1,55 @@
+CC ?= cc
+CFLAGS ?= -std=c89 -pedantic -Wall -Wextra -Werror
+RUNNER ?=
+L = ../PPCScreamer.drvproj/PPCScreamer.lksproj
+SHARED = ../../drvPPCTASAudio/PPCTASAudio.drvproj/PPCTASAudio.lksproj
+OBJCFLAGS ?= -Wall
+SDK ?= /build/src/driverkit-3
+
+adapter-test: screamer_adapter_test
+	$(RUNNER) ./screamer_adapter_test
+
+screamer_adapter_test: screamer_adapter_test.m $(L)/PPCScreamer.m $(L)/ScreamerPCM.c screamer_fixtures.c $(L)/ScreamerCore.c $(L)/ScreamerProfiles.c $(L)/ScreamerCodec.c $(L)/ScreamerRuntime.c $(SHARED)/PPCDBDMAAudio.c $(SHARED)/TASTime.c
+	$(CC) $(OBJCFLAGS) -DDRIVER_PRIVATE -DSCREAMER_ADAPTER_TEST -I. -I$(L) -I$(SHARED) -I$(SDK) -I../../../../kernel-7 $^ -o $@
+
+.PHONY: test identity-test core-test codec-test clean
+identity-test: screamer_identity_test
+	$(RUNNER) ./screamer_identity_test
+
+screamer_identity_test: screamer_identity_test.c $(wildcard $(L)/ScreamerIdentity.h)
+	$(CC) $(CFLAGS) -I$(L) $< -o $@
+
+core-test: screamer_core_test
+	$(RUNNER) ./screamer_core_test
+
+screamer_core_test: screamer_core_test.c screamer_fixtures.c $(L)/ScreamerCore.c $(L)/ScreamerProfiles.c
+	$(CC) $(CFLAGS) -I$(L) $^ -o $@
+
+codec-test: screamer_codec_test
+	$(RUNNER) ./screamer_codec_test
+
+screamer_codec_test: screamer_codec_test.c screamer_fixtures.c $(L)/ScreamerCore.c $(L)/ScreamerProfiles.c $(L)/ScreamerCodec.c $(SHARED)/TASTime.c
+	$(CC) $(CFLAGS) -I$(L) -I$(SHARED) $^ -o $@
+
+runtime-test: screamer_runtime_test
+	$(RUNNER) ./screamer_runtime_test
+
+screamer_runtime_test: screamer_runtime_test.c screamer_fixtures.c $(L)/ScreamerCore.c $(L)/ScreamerProfiles.c $(L)/ScreamerCodec.c $(L)/ScreamerRuntime.c $(SHARED)/PPCDBDMAAudio.c $(SHARED)/TASTime.c
+	$(CC) $(CFLAGS) -I$(L) -I$(SHARED) $^ -o $@
+
+profile-test: screamer_profile_test
+	$(RUNNER) ./screamer_profile_test
+
+screamer_profile_test: screamer_profile_test.c screamer_fixtures.c $(L)/ScreamerCore.c $(L)/ScreamerProfiles.c
+	$(CC) $(CFLAGS) -I$(L) $^ -o $@
+
+pcm-test: screamer_pcm_test
+	$(RUNNER) ./screamer_pcm_test
+
+screamer_pcm_test: screamer_pcm_test.c $(L)/ScreamerPCM.c
+	$(CC) $(CFLAGS) -I$(L) $^ -o $@
+
+test: identity-test core-test profile-test codec-test runtime-test pcm-test
+
+clean:
+	rm -f screamer_identity_test screamer_core_test screamer_profile_test screamer_codec_test screamer_runtime_test screamer_pcm_test screamer_adapter_test

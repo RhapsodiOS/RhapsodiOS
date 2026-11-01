@@ -64,4 +64,4 @@ def test_consensus_preflight_retains_generic_depth_and_string_limits():
     with pytest.raises(ConsensusError, match="JSON string length limit exceeded"):
         preflight_json("x" * 1_048_577, ConsensusError, max_nodes=2_500_000)
     with pytest.raises(ConsensusError, match="JSON collection length limit exceeded"):
-        preflight_json([None] * 500_001, ConsensusError, max_nodes=2_500_000)
+        preflight_json([None] * 1_000_001, ConsensusError, max_nodes=2_500_000)

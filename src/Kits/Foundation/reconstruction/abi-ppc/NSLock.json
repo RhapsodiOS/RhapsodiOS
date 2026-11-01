@@ -1,0 +1,290 @@
+{
+ "categories": [],
+ "classes": [
+  {
+   "class_methods": [
+    {
+     "selector": "allocWithZone:",
+     "types": "@8@4:8^{?=}12"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "broadcast",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "signal",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "waitUntilDate:",
+     "types": "c8@4:8@12"
+    },
+    {
+     "selector": "wait",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "unlock",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "lock",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "dealloc",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "init",
+     "types": "@4@4:8"
+    }
+   ],
+   "instance_size": 8,
+   "ivars": [
+    {
+     "name": "_priv",
+     "offset": 4,
+     "type": "^v"
+    }
+   ],
+   "name": "NSCondition",
+   "superclass": "NSObject"
+  },
+  {
+   "class_methods": [
+    {
+     "selector": "allocWithZone:",
+     "types": "@8@4:8^{?=}12"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "description",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "unlock",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "lock",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "tryLockForWriting",
+     "types": "c4@4:8"
+    },
+    {
+     "selector": "lockForWriting",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "tryLockForReading",
+     "types": "c4@4:8"
+    },
+    {
+     "selector": "lockForReading",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "dealloc",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "init",
+     "types": "@4@4:8"
+    }
+   ],
+   "instance_size": 8,
+   "ivars": [
+    {
+     "name": "_priv",
+     "offset": 4,
+     "type": "^v"
+    }
+   ],
+   "name": "NSMultiReadUniWriteLock",
+   "superclass": "NSObject"
+  },
+  {
+   "class_methods": [
+    {
+     "selector": "allocWithZone:",
+     "types": "@8@4:8^{?=}12"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "description",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "tryLock",
+     "types": "c4@4:8"
+    },
+    {
+     "selector": "unlock",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "lockBeforeDate:",
+     "types": "c8@4:8@12"
+    },
+    {
+     "selector": "lock",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "dealloc",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "init",
+     "types": "@4@4:8"
+    }
+   ],
+   "instance_size": 8,
+   "ivars": [
+    {
+     "name": "_priv",
+     "offset": 4,
+     "type": "^v"
+    }
+   ],
+   "name": "NSRecursiveLock",
+   "superclass": "NSObject"
+  },
+  {
+   "class_methods": [
+    {
+     "selector": "allocWithZone:",
+     "types": "@8@4:8^{?=}12"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "description",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "unlockWithCondition:",
+     "types": "v8@4:8i12"
+    },
+    {
+     "selector": "tryLockWhenCondition:",
+     "types": "c8@4:8i12"
+    },
+    {
+     "selector": "tryLock",
+     "types": "c4@4:8"
+    },
+    {
+     "selector": "lockWhenCondition:beforeDate:",
+     "types": "c12@4:8i12@16"
+    },
+    {
+     "selector": "lockWhenCondition:",
+     "types": "v8@4:8i12"
+    },
+    {
+     "selector": "unlock",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "lockBeforeDate:",
+     "types": "c8@4:8@12"
+    },
+    {
+     "selector": "lock",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "dealloc",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "condition",
+     "types": "i4@4:8"
+    },
+    {
+     "selector": "initWithCondition:",
+     "types": "@8@4:8i12"
+    },
+    {
+     "selector": "init",
+     "types": "@4@4:8"
+    }
+   ],
+   "instance_size": 8,
+   "ivars": [
+    {
+     "name": "_priv",
+     "offset": 4,
+     "type": "^v"
+    }
+   ],
+   "name": "NSConditionLock",
+   "superclass": "NSObject"
+  },
+  {
+   "class_methods": [
+    {
+     "selector": "allocWithZone:",
+     "types": "@8@4:8^{?=}12"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "description",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "tryLock",
+     "types": "c4@4:8"
+    },
+    {
+     "selector": "unlock",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "lockBeforeDate:",
+     "types": "c8@4:8@12"
+    },
+    {
+     "selector": "lock",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "dealloc",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "init",
+     "types": "@4@4:8"
+    }
+   ],
+   "instance_size": 8,
+   "ivars": [
+    {
+     "name": "_priv",
+     "offset": 4,
+     "type": "^v"
+    }
+   ],
+   "name": "NSLock",
+   "superclass": "NSObject"
+  }
+ ],
+ "data_symbols": [],
+ "module": "NSLock.m",
+ "schema_version": "abi-v1",
+ "text_symbols": []
+}

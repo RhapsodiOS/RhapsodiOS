@@ -1,5 +1,5 @@
 #!/bin/bash
-
+#
 # Init file for OpenSSH server daemon
 #
 # chkconfig: 2345 55 25
@@ -15,87 +15,92 @@
 # source function library
 . /etc/rc.d/init.d/functions
 
+# pull in sysconfig settings
+[ -f /etc/sysconfig/sshd ] && . /etc/sysconfig/sshd
+
 RETVAL=0
+prog="sshd"
 
 # Some functions to make the below more readable
-KEYGEN=/usr/bin/ssh-keygen
-RSA_KEY=/etc/ssh/ssh_host_key
-DSA_KEY=/etc/ssh/ssh_host_dsa_key
+SSHD=/usr/sbin/sshd
 PID_FILE=/var/run/sshd.pid
-do_rsa_keygen() {
-	if $KEYGEN -R && ! test -f $RSA_KEY ; then
-		echo -n "Generating SSH RSA host key: "
-		if $KEYGEN -q -b 1024 -f $RSA_KEY -C '' -N '' >&/dev/null; then
-			success "RSA key generation"
-			echo
-		else
-			failure "RSA key generation"
-			echo
-			exit 1
-		fi
+
+do_restart_sanity_check()
+{
+	$SSHD -t
+	RETVAL=$?
+	if [ $RETVAL -ne 0 ]; then
+		failure $"Configuration file or keys are invalid"
+		echo
 	fi
 }
-do_dsa_keygen() {
-	if ! test -f $DSA_KEY ; then
-		echo -n "Generating SSH DSA host key: "
-		if $KEYGEN -q -d -b 1024 -f $DSA_KEY -C '' -N '' >&/dev/null; then
-			success "DSA key generation"
-			echo
-		else
-			failure "DSA key generation"
-			echo
-			exit 1
-		fi
+
+start()
+{
+	# Create keys if necessary
+	/usr/bin/ssh-keygen -A
+	if [ -x /sbin/restorecon ]; then
+		/sbin/restorecon /etc/ssh/ssh_host_key.pub
+		/sbin/restorecon /etc/ssh/ssh_host_rsa_key.pub
+		/sbin/restorecon /etc/ssh/ssh_host_dsa_key.pub
+		/sbin/restorecon /etc/ssh/ssh_host_ecdsa_key.pub
 	fi
+
+	echo -n $"Starting $prog:"
+	$SSHD $OPTIONS && success || failure
+	RETVAL=$?
+	[ $RETVAL -eq 0 ] && touch /var/lock/subsys/sshd
+	echo
+}
+
+stop()
+{
+	echo -n $"Stopping $prog:"
+	killproc $SSHD -TERM
+	RETVAL=$?
+	[ $RETVAL -eq 0 ] && rm -f /var/lock/subsys/sshd
+	echo
+}
+
+reload()
+{
+	echo -n $"Reloading $prog:"
+	killproc $SSHD -HUP
+	RETVAL=$?
+	echo
 }
 
 case "$1" in
 	start)
-		# Create keys if necessary
-		do_rsa_keygen;
-		do_dsa_keygen;
-		
-		echo -n "Starting sshd: "
-		if [ ! -f $PID_FILE ] ; then
-			sshd
-			RETVAL=$?
-			if [ "$RETVAL" = "0" ] ; then
-				success "sshd startup"
-				touch /var/lock/subsys/sshd
-			else
-				failure "sshd startup"
-			fi
-		fi
-		echo
+		start
 		;;
 	stop)
-		echo -n "Shutting down sshd: "
-		if [ -f $PID_FILE ] ; then
-			killproc sshd
-			[ $RETVAL -eq 0 ] && rm -f /var/lock/subsys/sshd
-		fi
-		echo
+		stop
 		;;
 	restart)
-		$0 stop
-		$0 start
-		RETVAL=$?
+		stop
+		start
+		;;
+	reload)
+		reload
 		;;
 	condrestart)
 		if [ -f /var/lock/subsys/sshd ] ; then
-			$0 stop
-			$0 start
-			RETVAL=$?
+			do_restart_sanity_check
+			if [ $RETVAL -eq 0 ] ; then
+				stop
+				# avoid race
+				sleep 3
+				start
+			fi
 		fi
 		;;
 	status)
-		status sshd
+		status $SSHD
 		RETVAL=$?
 		;;
 	*)
-		echo "Usage: sshd {start|stop|restart|status|condrestart}"
-		exit 1
-		;;
+		echo $"Usage: $0 {start|stop|restart|reload|condrestart|status}"
+		RETVAL=1
 esac
-
 exit $RETVAL

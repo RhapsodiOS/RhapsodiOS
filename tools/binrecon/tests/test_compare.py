@@ -404,6 +404,25 @@ def test_large_sparse_images_are_compared_in_chunks(tmp_path):
     assert report["acceptance"]["exact-image"] is True
 
 
+def test_artifacts_more_than_one_chunk_apart_in_size_do_not_crash(tmp_path):
+    """A reference over one CHUNK_SIZE and a rebuilt under it (a linked
+    reference dylib against a handful of relocatable objects, as in the
+    Foundation stage) makes the byte-diff walk read a zero-size chunk from
+    the shorter artifact at an offset already past its end -- that must be
+    a normal empty read, not an out-of-range error."""
+    import binrecon.compare as module
+    reference = b"A" * (module.CHUNK_SIZE + 1000)
+    rebuilt = b"A" * 100
+    rp, bp, left, right = _case(tmp_path, reference=reference, rebuilt=rebuilt)
+
+    report = compare_artifacts(rp, bp, left, right, "normalized-functions")
+    validate_comparison_report(report)
+
+    assert report["reference"]["size"] == len(reference)
+    assert report["rebuilt"]["size"] == len(rebuilt)
+    assert report["acceptance"]["exact-image"] is False
+
+
 def test_mutation_during_chunked_snapshot_is_rejected(tmp_path, monkeypatch):
     import binrecon.compare as module
     data = b"A" * (module.CHUNK_SIZE + 8)

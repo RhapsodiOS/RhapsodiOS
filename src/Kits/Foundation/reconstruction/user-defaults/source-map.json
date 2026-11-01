@@ -1,0 +1,549 @@
+{
+  "schema_version": "source-map-v1",
+  "reference_sha256": "332B3C8C0AE0A6E40A4B93110EE16748FCD94AA0119D63F16EDE878598C681B4",
+  "mapped": [
+    {
+      "address": 1112589776,
+      "size": 424,
+      "reference_names": [
+        "+[NSUserDefaults standardUserDefaults]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 1120
+    },
+    {
+      "address": 1112590968,
+      "size": 284,
+      "reference_names": [
+        "-[NSUserDefaults objectForKey:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 1335
+    },
+    {
+      "address": 1112664744,
+      "size": 336,
+      "reference_names": [
+        "-[NSUserDefaults stringForKey:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 1442
+    },
+    {
+      "address": 1112722300,
+      "size": 536,
+      "reference_names": [
+        "-[NSUserDefaults boolForKey:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 1587
+    },
+    {
+      "address": 1112750428,
+      "size": 688,
+      "reference_names": [
+        "__NSGrabLock"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 394
+    },
+    {
+      "address": 1112751284,
+      "size": 320,
+      "reference_names": [
+        "__NSReleaseLock"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 469
+    },
+    {
+      "address": 1112755420,
+      "size": 496,
+      "reference_names": [
+        "__NSIsPList"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 299
+    },
+    {
+      "address": 1112755916,
+      "size": 340,
+      "reference_names": [
+        "-[NSUserDefaults floatForKey:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 1573
+    },
+    {
+      "address": 1112767480,
+      "size": 408,
+      "reference_names": [
+        "_computeDictRep"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 223
+    },
+    {
+      "address": 1112769268,
+      "size": 324,
+      "reference_names": [
+        "-[NSUserDefaults integerForKey:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 1530
+    },
+    {
+      "address": 1112769592,
+      "size": 2972,
+      "reference_names": [
+        "__NSDefaultEnglishLanguageDict"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 91
+    },
+    {
+      "address": 1112793224,
+      "size": 536,
+      "reference_names": [
+        "-[NSUserDefaults registerDefaults:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 1711
+    },
+    {
+      "address": 1112804880,
+      "size": 188,
+      "reference_names": [
+        "-[NSUserDefaults setSearchList:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 1698
+    },
+    {
+      "address": 1112805068,
+      "size": 2676,
+      "reference_names": [
+        "-[NSUserDefaults initWithUser:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 1176
+    },
+    {
+      "address": 1112816056,
+      "size": 352,
+      "reference_names": [
+        "-[NSUserDefaults setObject:forKey:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 1351
+    },
+    {
+      "address": 1112819284,
+      "size": 164,
+      "reference_names": [
+        "-[NSUserDefaults synchronize]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 1922
+    },
+    {
+      "address": 1112831692,
+      "size": 300,
+      "reference_names": [
+        "-[NSUserDefaults removeObjectForKey:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 1373
+    },
+    {
+      "address": 1112864628,
+      "size": 336,
+      "reference_names": [
+        "-[NSUserDefaults arrayForKey:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 1456
+    },
+    {
+      "address": 1112889068,
+      "size": 340,
+      "reference_names": [
+        "-[NSUserDefaults dictionaryRepresentation]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 1755
+    },
+    {
+      "address": 1112908000,
+      "size": 252,
+      "reference_names": [
+        "-[NSUserDefaults objectForKey:inDomain:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 1390
+    },
+    {
+      "address": 1112936744,
+      "size": 472,
+      "reference_names": [
+        "-[NSUserDefaults setPersistentDomain:forName:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 1877
+    },
+    {
+      "address": 1112937216,
+      "size": 168,
+      "reference_names": [
+        "-[NSUserDefaults persistentDomainForName:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 1866
+    },
+    {
+      "address": 1112996276,
+      "size": 48,
+      "reference_names": [
+        "+[NSUserDefaults nonUserDefaultsArguments]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 1168
+    },
+    {
+      "address": 1112996324,
+      "size": 140,
+      "reference_names": [
+        "+[NSUserDefaults resetStandardUserDefaults]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 1149
+    },
+    {
+      "address": 1112996464,
+      "size": 156,
+      "reference_names": [
+        "+[NSUserDefaults setStandardUserDefaults:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 1158
+    },
+    {
+      "address": 1112999268,
+      "size": 56,
+      "reference_names": [
+        "-[NSNonsavingDefaultsManager allDomains]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 1097
+    },
+    {
+      "address": 1112999324,
+      "size": 56,
+      "reference_names": [
+        "-[NSNonsavingDefaultsManager dictionaryForDomain:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 1098
+    },
+    {
+      "address": 1112999380,
+      "size": 64,
+      "reference_names": [
+        "-[NSNonsavingDefaultsManager domainExists:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 1099
+    },
+    {
+      "address": 1112999444,
+      "size": 88,
+      "reference_names": [
+        "-[NSNonsavingDefaultsManager initWithPath:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 1092
+    },
+    {
+      "address": 1112999532,
+      "size": 80,
+      "reference_names": [
+        "-[NSNonsavingDefaultsManager objectForKey:domain:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 1100
+    },
+    {
+      "address": 1112999612,
+      "size": 56,
+      "reference_names": [
+        "-[NSNonsavingDefaultsManager removeDomain:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 1113
+    },
+    {
+      "address": 1112999668,
+      "size": 80,
+      "reference_names": [
+        "-[NSNonsavingDefaultsManager removeObjectForKey:domain:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 1106
+    },
+    {
+      "address": 1112999748,
+      "size": 92,
+      "reference_names": [
+        "-[NSNonsavingDefaultsManager setDictionary:forDomain:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 1109
+    },
+    {
+      "address": 1112999840,
+      "size": 88,
+      "reference_names": [
+        "-[NSNonsavingDefaultsManager setObject:forKey:domain:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 1103
+    },
+    {
+      "address": 1112999928,
+      "size": 16,
+      "reference_names": [
+        "-[NSNonsavingDefaultsManager synchronize]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 1114
+    },
+    {
+      "address": 1112999944,
+      "size": 336,
+      "reference_names": [
+        "-[NSUserDefaults dataForKey:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 1484
+    },
+    {
+      "address": 1113000280,
+      "size": 160,
+      "reference_names": [
+        "-[NSUserDefaults dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 1933
+    },
+    {
+      "address": 1113000440,
+      "size": 336,
+      "reference_names": [
+        "-[NSUserDefaults dictionaryForKey:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 1470
+    },
+    {
+      "address": 1113000776,
+      "size": 340,
+      "reference_names": [
+        "-[NSUserDefaults doubleForKey:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 1544
+    },
+    {
+      "address": 1113001116,
+      "size": 56,
+      "reference_names": [
+        "-[NSUserDefaults init]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 1172
+    },
+    {
+      "address": 1113001172,
+      "size": 360,
+      "reference_names": [
+        "-[NSUserDefaults longForKey:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 1558
+    },
+    {
+      "address": 1113001532,
+      "size": 156,
+      "reference_names": [
+        "-[NSUserDefaults persistentDomainNames]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 1855
+    },
+    {
+      "address": 1113001688,
+      "size": 368,
+      "reference_names": [
+        "-[NSUserDefaults removeObjectForKey:inDomain:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 1424
+    },
+    {
+      "address": 1113002056,
+      "size": 284,
+      "reference_names": [
+        "-[NSUserDefaults removePersistentDomainForName:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 1904
+    },
+    {
+      "address": 1113002340,
+      "size": 280,
+      "reference_names": [
+        "-[NSUserDefaults removeVolatileDomainForName:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 1837
+    },
+    {
+      "address": 1113002620,
+      "size": 176,
+      "reference_names": [
+        "-[NSUserDefaults searchList]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 1687
+    },
+    {
+      "address": 1113002796,
+      "size": 296,
+      "reference_names": [
+        "-[NSUserDefaults setBool:forKey:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 1674
+    },
+    {
+      "address": 1113003092,
+      "size": 360,
+      "reference_names": [
+        "-[NSUserDefaults setDouble:forKey:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 1644
+    },
+    {
+      "address": 1113003452,
+      "size": 360,
+      "reference_names": [
+        "-[NSUserDefaults setFloat:forKey:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 1629
+    },
+    {
+      "address": 1113003812,
+      "size": 336,
+      "reference_names": [
+        "-[NSUserDefaults setInteger:forKey:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 1614
+    },
+    {
+      "address": 1113004148,
+      "size": 320,
+      "reference_names": [
+        "-[NSUserDefaults setLong:forKey:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 1659
+    },
+    {
+      "address": 1113004468,
+      "size": 456,
+      "reference_names": [
+        "-[NSUserDefaults setObject:forKey:inDomain:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 1402
+    },
+    {
+      "address": 1113004924,
+      "size": 540,
+      "reference_names": [
+        "-[NSUserDefaults setVolatileDomain:forName:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 1805
+    },
+    {
+      "address": 1113005464,
+      "size": 540,
+      "reference_names": [
+        "-[NSUserDefaults stringArrayForKey:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 1498
+    },
+    {
+      "address": 1113006004,
+      "size": 168,
+      "reference_names": [
+        "-[NSUserDefaults volatileDomainForName:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 1794
+    },
+    {
+      "address": 1113006172,
+      "size": 156,
+      "reference_names": [
+        "-[NSUserDefaults volatileDomainNames]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 1783
+    },
+    {
+      "address": 1113006328,
+      "size": 896,
+      "reference_names": [
+        "__NSConvertOldDefaultsToNew"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 583
+    },
+    {
+      "address": 1113007224,
+      "size": 676,
+      "reference_names": [
+        "__NSConvertOldDefaultsToNew2"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 508
+    },
+    {
+      "address": 1113007900,
+      "size": 328,
+      "reference_names": [
+        "__NSGrabLock_old"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 547
+    },
+    {
+      "address": 1113176064,
+      "size": 136,
+      "reference_names": [
+        "__NSCurrentFileSystemUNIXTime"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 365
+    }
+  ],
+  "unmapped": [],
+  "duplicate_candidates": [],
+  "boundary_disputed": []
+}

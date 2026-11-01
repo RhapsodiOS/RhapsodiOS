@@ -1,0 +1,287 @@
+{
+  "schema_version": "source-map-v1",
+  "reference_sha256": "1165B9063ADD5672514455CA2C9830625BEA2BCE5E46126FB5E8652114C909D6",
+  "mapped": [
+    {
+      "address": 1112576476,
+      "size": 21,
+      "reference_names": [
+        "-[NSConcreteTimer isValid]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimer.m",
+      "source_line": 332
+    },
+    {
+      "address": 1112613568,
+      "size": 13,
+      "reference_names": [
+        "-[NSConcreteTimer fireDate]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimer.m",
+      "source_line": 320
+    },
+    {
+      "address": 1112633096,
+      "size": 96,
+      "reference_names": [
+        "-[NSConcreteTimer retain]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimer.m",
+      "source_line": 277
+    },
+    {
+      "address": 1112642068,
+      "size": 117,
+      "reference_names": [
+        "-[NSConcreteTimer release]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimer.m",
+      "source_line": 293
+    },
+    {
+      "address": 1112659508,
+      "size": 13,
+      "reference_names": [
+        "-[NSConcreteTimer userInfo]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimer.m",
+      "source_line": 328
+    },
+    {
+      "address": 1112663752,
+      "size": 495,
+      "reference_names": [
+        "-[NSConcreteTimer fire]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimer.m",
+      "source_line": 356
+    },
+    {
+      "address": 1112694008,
+      "size": 81,
+      "reference_names": [
+        "-[NSConcreteTimer invalidate]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimer.m",
+      "source_line": 336
+    },
+    {
+      "address": 1112715808,
+      "size": 93,
+      "reference_names": [
+        "+[NSTimer allocWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimer.m",
+      "source_line": 68
+    },
+    {
+      "address": 1112715940,
+      "size": 89,
+      "reference_names": [
+        "-[NSConcreteTimer dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimer.m",
+      "source_line": 403
+    },
+    {
+      "address": 1112723676,
+      "size": 175,
+      "reference_names": [
+        "-[NSConcreteTimer initWithFireDate:interval:target:selector:userInfo:repeats:userInfoIsArgument:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimer.m",
+      "source_line": 252
+    },
+    {
+      "address": 1112737532,
+      "size": 111,
+      "reference_names": [
+        "-[NSConcreteTimer _isEqualTimerWithTarget:selector:withObject:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimer.m",
+      "source_line": 346
+    },
+    {
+      "address": 1112741216,
+      "size": 65,
+      "reference_names": [
+        "-[NSTimer schedule]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimer.m",
+      "source_line": 76
+    },
+    {
+      "address": 1112741492,
+      "size": 132,
+      "reference_names": [
+        "+[NSTimer timerWithTimeInterval:target:selector:userInfo:repeats:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimer.m",
+      "source_line": 134
+    },
+    {
+      "address": 1112744544,
+      "size": 142,
+      "reference_names": [
+        "+[NSTimer scheduleTimerWithTimeInterval:target:selector:withObject:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimer.m",
+      "source_line": 179
+    },
+    {
+      "address": 1112837080,
+      "size": 151,
+      "reference_names": [
+        "+[NSTimer scheduledTimerWithTimeInterval:target:selector:userInfo:repeats:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimer.m",
+      "source_line": 152
+    },
+    {
+      "address": 1113030144,
+      "size": 148,
+      "reference_names": [
+        "+[NSTimer scheduleTimerWithTimeInterval:target:selector:withObject:inModes:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimer.m",
+      "source_line": 198
+    },
+    {
+      "address": 1113030292,
+      "size": 181,
+      "reference_names": [
+        "+[NSTimer scheduledTimerWithTimeInterval:invocation:repeats:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimer.m",
+      "source_line": 111
+    },
+    {
+      "address": 1113030476,
+      "size": 97,
+      "reference_names": [
+        "+[NSTimer timerWithFireDate:target:selector:userInfo:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimer.m",
+      "source_line": 172
+    },
+    {
+      "address": 1113030576,
+      "size": 155,
+      "reference_names": [
+        "+[NSTimer timerWithTimeInterval:invocation:repeats:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimer.m",
+      "source_line": 90
+    },
+    {
+      "address": 1113047088,
+      "size": 108,
+      "reference_names": [
+        "-[NSConcreteTimer description]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimer.m",
+      "source_line": 393
+    },
+    {
+      "address": 1113047196,
+      "size": 25,
+      "reference_names": [
+        "-[NSConcreteTimer retainCount]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimer.m",
+      "source_line": 312
+    },
+    {
+      "address": 1113047224,
+      "size": 13,
+      "reference_names": [
+        "-[NSConcreteTimer timeInterval]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimer.m",
+      "source_line": 324
+    },
+    {
+      "address": 1113078436,
+      "size": 9,
+      "reference_names": [
+        "-[NSTimer _isEqualTimerWithTarget:selector:withObject:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimer.m",
+      "source_line": 244
+    },
+    {
+      "address": 1113078448,
+      "size": 57,
+      "reference_names": [
+        "-[NSTimer fireDate]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimer.m",
+      "source_line": 222
+    },
+    {
+      "address": 1113078508,
+      "size": 55,
+      "reference_names": [
+        "-[NSTimer fire]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimer.m",
+      "source_line": 218
+    },
+    {
+      "address": 1113078564,
+      "size": 55,
+      "reference_names": [
+        "-[NSTimer invalidate]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimer.m",
+      "source_line": 231
+    },
+    {
+      "address": 1113078620,
+      "size": 57,
+      "reference_names": [
+        "-[NSTimer isValid]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimer.m",
+      "source_line": 235
+    },
+    {
+      "address": 1113078680,
+      "size": 132,
+      "reference_names": [
+        "-[NSTimer scheduleInModes:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimer.m",
+      "source_line": 80
+    },
+    {
+      "address": 1113078812,
+      "size": 61,
+      "reference_names": [
+        "-[NSTimer timeInterval]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimer.m",
+      "source_line": 226
+    },
+    {
+      "address": 1113078876,
+      "size": 9,
+      "reference_names": [
+        "-[NSTimer userInfo]"
+      ],
+      "source_path": "src/Kits/Foundation/NSTimer.m",
+      "source_line": 240
+    }
+  ],
+  "unmapped": [],
+  "duplicate_candidates": [],
+  "boundary_disputed": [],
+  "by_module": {
+    "NSTimer.m": {
+      "mapped": 30,
+      "unmapped": 0,
+      "duplicate_candidates": 0,
+      "boundary_disputed": 0
+    }
+  }
+}

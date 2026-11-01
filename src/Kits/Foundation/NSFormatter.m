@@ -3,32 +3,44 @@
 */
 
 #import <Foundation/NSFormatter.h>
+#import <Foundation/NSObjCRuntime.h>
 
 @implementation NSFormatter
 
+- (id)initWithCoder:(id)coder {
+    (void)coder;
+    return self;
+}
+
+- (id)copyWithZone:(NSZone *)zone {
+    (void)zone;
+    return [self retain];
+}
+
+- (void)encodeWithCoder:(id)coder {
+    (void)coder;
+}
+
 - (NSString *)stringForObjectValue:(id)obj {
-    // TODO: Implement this method
+    NSRequestConcreteImplementation(self, _cmd, [NSFormatter class]);
     return nil;
 }
 
 - (NSAttributedString *)attributedStringForObjectValue:(id)obj withDefaultAttributes:(NSDictionary *)attrs {
-    // TODO: Implement this method
     return nil;
 }
 
 - (NSString *)editingStringForObjectValue:(id)obj {
-    // TODO: Implement this method
-    return nil;
+    return [self stringForObjectValue:obj];
 }
 
 - (BOOL)getObjectValue:(id *)obj forString:(NSString *)string errorDescription:(NSString **)error {
-    // TODO: Implement this method
+    NSRequestConcreteImplementation(self, _cmd, [NSFormatter class]);
     return NO;
 }
 
 - (BOOL)isPartialStringValid:(NSString *)partialString newEditingString:(NSString **)newString errorDescription:(NSString **)error {
-    // TODO: Implement this method
-    return NO;
+    return YES;
 }
 
 @end

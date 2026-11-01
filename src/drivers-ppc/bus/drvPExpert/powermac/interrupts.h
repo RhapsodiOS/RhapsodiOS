@@ -54,6 +54,7 @@ struct ppc_saved_state;
 #define	PMAC_DMA_SCC_B_RX	10
 #define PMAC_DMA_IDE0           11
 #define PMAC_DMA_IDE1           12
+#define PMAC_DMA_UIDE           13
 
 #define	PMAC_DMA_START		0
 #define	PMAC_DMA_END		125
@@ -75,6 +76,9 @@ struct ppc_saved_state;
 #define PMAC_DEV_ADB            141
 #define	PMAC_DEV_VIA2		142
 #define	PMAC_DEV_VIA3		143
+#define	PMAC_DEV_UIDE		144
+#define	PMAC_DEV_USB0		145
+#define	PMAC_DEV_USB1		146
 
 #define	PMAC_DEV_SCC		PMAC_DEV_SCC_A	/* Older SCC chip. */
 
@@ -92,8 +96,22 @@ struct ppc_saved_state;
 #define	PMAC_DEV_CARD9		265
 #define	PMAC_DEV_CARD10		266
 #define PMAC_DEV_CARD11         267
+#define PMAC_DEV_CARD12         268
+#define PMAC_DEV_CARD13         269
+#define PMAC_DEV_CARD14         270
+#define PMAC_DEV_CARD15         271
+#define PMAC_DEV_CARD16         272
+#define PMAC_DEV_CARD17         273
+#define PMAC_DEV_CARD18         274	/* 18-25: KeyLargo sources 38-45 */
+#define PMAC_DEV_CARD19         275
+#define PMAC_DEV_CARD20         276
+#define PMAC_DEV_CARD21         277
+#define PMAC_DEV_CARD22         278
+#define PMAC_DEV_CARD23         279
+#define PMAC_DEV_CARD24         280
+#define PMAC_DEV_CARD25         281
 
-#define	PMAC_DEV_PDS		270	/* Processor Direct Slot - Nubus only */
+#define	PMAC_DEV_PDS		282	/* Processor Direct Slot - Nubus only */
 
 /* Some NuBus aliases.. */
 #define	PMAC_DEV_NUBUS0		PMAC_DEV_CARD0

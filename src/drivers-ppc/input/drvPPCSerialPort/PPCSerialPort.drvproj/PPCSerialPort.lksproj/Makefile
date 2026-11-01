@@ -9,24 +9,36 @@
 
 NAME = PPCSerialPort
 
-PROJECTVERSION = 2.6
+PROJECTVERSION = 2.7
+PROJECT_TYPE = Kernel Server
 LANGUAGE = English
 
 CLASSES = PPCSerialPort.m
 
 HFILES = PPCSerialPort.h
 
-OTHERSRCS = Makefile Makefile.preamble Makefile.postamble\
-            Makefile.driver_preamble Load_Commands.sect
+OTHERSRCS = Makefile.preamble Makefile Makefile.postamble Load_Commands.sect
 
-MAKEFILEDIR = /NextDeveloper/Makefiles/app
-MAKEFILE = tool.make
-SOURCEMODE = 444
 
+MAKEFILEDIR = $(MAKEFILEPATH)/pb_makefiles
+CODE_GEN_STYLE = DYNAMIC
+MAKEFILE = kernelserver.make
 LIBS =
 DEBUG_LIBS = $(LIBS)
 PROF_LIBS = $(LIBS)
 
+
+NEXTSTEP_PB_CFLAGS = -Wno-format
+
+
+NEXTSTEP_OBJCPLUS_COMPILER = /usr/bin/cc
+WINDOWS_OBJCPLUS_COMPILER = $(DEVDIR)/gcc
+PDO_UNIX_OBJCPLUS_COMPILER = $(NEXTDEV_BIN)/gcc
+NEXTSTEP_JAVA_COMPILER = /usr/bin/javac
+WINDOWS_JAVA_COMPILER = $(JDKBINDIR)/javac.exe
+PDO_UNIX_JAVA_COMPILER = $(NEXTDEV_BIN)/javac
+
+include $(MAKEFILEDIR)/platform.make
 
 -include Makefile.preamble
 

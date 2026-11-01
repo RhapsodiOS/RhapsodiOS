@@ -1,0 +1,595 @@
+{
+ "categories": [
+  {
+   "class": "NSDecimalNumber",
+   "class_methods": [
+    {
+     "selector": "numberWithBool:",
+     "types": "@5@4:8c12"
+    },
+    {
+     "selector": "numberWithDouble:",
+     "types": "@12@4:8d12"
+    },
+    {
+     "selector": "numberWithFloat:",
+     "types": "@8@4:8f12"
+    },
+    {
+     "selector": "numberWithUnsignedLongLong:",
+     "types": "@12@4:8Q12"
+    },
+    {
+     "selector": "numberWithLongLong:",
+     "types": "@12@4:8q12"
+    },
+    {
+     "selector": "numberWithUnsignedLong:",
+     "types": "@8@4:8L12"
+    },
+    {
+     "selector": "numberWithLong:",
+     "types": "@8@4:8l12"
+    },
+    {
+     "selector": "numberWithUnsignedInt:",
+     "types": "@8@4:8I12"
+    },
+    {
+     "selector": "numberWithInt:",
+     "types": "@8@4:8i12"
+    },
+    {
+     "selector": "numberWithUnsignedShort:",
+     "types": "@6@4:8S12"
+    },
+    {
+     "selector": "numberWithShort:",
+     "types": "@6@4:8s12"
+    },
+    {
+     "selector": "numberWithUnsignedChar:",
+     "types": "@5@4:8C12"
+    },
+    {
+     "selector": "numberWithChar:",
+     "types": "@5@4:8c12"
+    }
+   ],
+   "instance_methods": [],
+   "name": "NSNumberCompatibility"
+  },
+  {
+   "class": "NSDecimalNumberPlaceholder",
+   "class_methods": [],
+   "instance_methods": [
+    {
+     "selector": "initWithFloat:",
+     "types": "@8@4:8f12"
+    },
+    {
+     "selector": "initWithDouble:",
+     "types": "@12@4:8d12"
+    },
+    {
+     "selector": "initWithUnsignedLong:",
+     "types": "@8@4:8L12"
+    },
+    {
+     "selector": "initWithUnsignedInt:",
+     "types": "@8@4:8I12"
+    },
+    {
+     "selector": "initWithUnsignedShort:",
+     "types": "@6@4:8S12"
+    },
+    {
+     "selector": "initWithUnsignedChar:",
+     "types": "@5@4:8C12"
+    },
+    {
+     "selector": "initWithUnsignedLongLong:",
+     "types": "@12@4:8Q12"
+    },
+    {
+     "selector": "initWithLong:",
+     "types": "@8@4:8l12"
+    },
+    {
+     "selector": "initWithInt:",
+     "types": "@8@4:8i12"
+    },
+    {
+     "selector": "initWithShort:",
+     "types": "@6@4:8s12"
+    },
+    {
+     "selector": "initWithChar:",
+     "types": "@5@4:8c12"
+    },
+    {
+     "selector": "initWithBool:",
+     "types": "@5@4:8c12"
+    },
+    {
+     "selector": "initWithLongLong:",
+     "types": "@12@4:8q12"
+    }
+   ],
+   "name": "NSNumberCompatibility"
+  },
+  {
+   "class": "NSString",
+   "class_methods": [],
+   "instance_methods": [
+    {
+     "selector": "decimalValue",
+     "types": "{?=b8b4b1b1b18[8S]}8@8:12"
+    }
+   ],
+   "name": "NSDecimalExtension"
+  },
+  {
+   "class": "NSScanner",
+   "class_methods": [],
+   "instance_methods": [
+    {
+     "selector": "scanDecimal:",
+     "types": "c8@4:8^{?=b8b4b1b1b18[8S]}12"
+    }
+   ],
+   "name": "NSDecimalNumberScanning"
+  },
+  {
+   "class": "NSNumber",
+   "class_methods": [],
+   "instance_methods": [
+    {
+     "selector": "decimalValue",
+     "types": "{?=b8b4b1b1b18[8S]}8@8:12"
+    }
+   ],
+   "name": "NSDecimalNumberExtensions"
+  }
+ ],
+ "classes": [
+  {
+   "class_methods": [
+    {
+     "selector": "decimalNumberHandlerWithRoundingMode:scale:raiseOnExactness:raiseOnOverflow:raiseOnUnderflow:raiseOnDivideByZero:",
+     "types": "@25@4:8i12s16c20c24c28c32"
+    },
+    {
+     "selector": "defaultDecimalNumberHandler",
+     "types": "@4@4:8"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "exceptionDuringOperation:error:leftOperand:rightOperand:",
+     "types": "@20@4:8:12i16@20@24"
+    },
+    {
+     "selector": "scale",
+     "types": "s4@4:8"
+    },
+    {
+     "selector": "roundingMode",
+     "types": "i4@4:8"
+    },
+    {
+     "selector": "initWithRoundingMode:scale:raiseOnExactness:raiseOnOverflow:raiseOnUnderflow:raiseOnDivideByZero:",
+     "types": "@25@4:8i12s16c20c24c28c32"
+    }
+   ],
+   "instance_size": 16,
+   "ivars": [
+    {
+     "name": "_roundingMode",
+     "offset": 4,
+     "type": "i"
+    },
+    {
+     "name": "_scale",
+     "offset": 8,
+     "type": "s"
+    },
+    {
+     "name": "_raiseOnExactness",
+     "offset": 10,
+     "type": "b1"
+    },
+    {
+     "name": "_raiseOnOverflow",
+     "offset": 10,
+     "type": "b1"
+    },
+    {
+     "name": "_raiseOnUnderflow",
+     "offset": 10,
+     "type": "b1"
+    },
+    {
+     "name": "_raiseOnDivideByZero",
+     "offset": 10,
+     "type": "b1"
+    },
+    {
+     "name": "_reserved",
+     "offset": 12,
+     "type": "^v"
+    }
+   ],
+   "name": "NSDecimalNumberHandler",
+   "superclass": "NSObject"
+  },
+  {
+   "class_methods": [
+    {
+     "selector": "defaultBehavior",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "setDefaultBehavior:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "notANumber",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "one",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "zero",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "maximumDecimalNumber",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "minimumDecimalNumber",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "decimalNumberWithString:locale:",
+     "types": "@12@4:8@12@16"
+    },
+    {
+     "selector": "decimalNumberWithString:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "decimalNumberWithDecimal:",
+     "types": "@24@4:8{?=b8b4b1b1b18[8S]}12"
+    },
+    {
+     "selector": "decimalNumberWithMantissa:exponent:isNegative:",
+     "types": "@17@4:8Q12s20c24"
+    },
+    {
+     "selector": "allocWithZone:",
+     "types": "@8@4:8^{?=}12"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "boolValue",
+     "types": "c4@4:8"
+    },
+    {
+     "selector": "floatValue",
+     "types": "f4@4:8"
+    },
+    {
+     "selector": "unsignedLongLongValue",
+     "types": "Q4@4:8"
+    },
+    {
+     "selector": "longLongValue",
+     "types": "q4@4:8"
+    },
+    {
+     "selector": "unsignedLongValue",
+     "types": "L4@4:8"
+    },
+    {
+     "selector": "longValue",
+     "types": "l4@4:8"
+    },
+    {
+     "selector": "unsignedIntValue",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "intValue",
+     "types": "i4@4:8"
+    },
+    {
+     "selector": "unsignedShortValue",
+     "types": "S4@4:8"
+    },
+    {
+     "selector": "shortValue",
+     "types": "s4@4:8"
+    },
+    {
+     "selector": "unsignedCharValue",
+     "types": "C4@4:8"
+    },
+    {
+     "selector": "charValue",
+     "types": "c4@4:8"
+    },
+    {
+     "selector": "encodeWithCoder:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "classForCoder",
+     "types": "#4@4:8"
+    },
+    {
+     "selector": "replacementObjectForCoder:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "decimalNumberByRoundingAccordingToBehavior:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "decimalNumberByMultiplyingByPowerOf10:withBehavior:",
+     "types": "@12@4:8s12@16"
+    },
+    {
+     "selector": "decimalNumberByMultiplyingByPowerOf10:",
+     "types": "@6@4:8s12"
+    },
+    {
+     "selector": "decimalNumberByRaisingToPower:withBehavior:",
+     "types": "@12@4:8I12@16"
+    },
+    {
+     "selector": "decimalNumberByRaisingToPower:",
+     "types": "@8@4:8I12"
+    },
+    {
+     "selector": "decimalNumberByDividingBy:withBehavior:",
+     "types": "@12@4:8@12@16"
+    },
+    {
+     "selector": "decimalNumberByDividingBy:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "decimalNumberByMultiplyingBy:withBehavior:",
+     "types": "@12@4:8@12@16"
+    },
+    {
+     "selector": "decimalNumberByMultiplyingBy:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "decimalNumberBySubtracting:withBehavior:",
+     "types": "@12@4:8@12@16"
+    },
+    {
+     "selector": "decimalNumberBySubtracting:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "decimalNumberBySubstracting:withBehavior:",
+     "types": "@12@4:8@12@16"
+    },
+    {
+     "selector": "decimalNumberBySubstracting:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "decimalNumberByAdding:withBehavior:",
+     "types": "@12@4:8@12@16"
+    },
+    {
+     "selector": "decimalNumberByAdding:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "getValue:",
+     "types": "v8@4:8^v12"
+    },
+    {
+     "selector": "doubleValue",
+     "types": "d4@4:8"
+    },
+    {
+     "selector": "objCType",
+     "types": "r*4@4:8"
+    },
+    {
+     "selector": "isEqual:",
+     "types": "c8@4:8@12"
+    },
+    {
+     "selector": "compare:",
+     "types": "i8@4:8@12"
+    },
+    {
+     "selector": "decimalValue",
+     "types": "{?=b8b4b1b1b18[8S]}8@8:12"
+    },
+    {
+     "selector": "descriptionWithLocale:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "description",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "initWithCoder:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "initWithString:locale:",
+     "types": "@12@4:8@12@16"
+    },
+    {
+     "selector": "initWithString:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "initWithDecimal:",
+     "types": "@24@4:8{?=b8b4b1b1b18[8S]}12"
+    },
+    {
+     "selector": "initWithMantissa:exponent:isNegative:",
+     "types": "@17@4:8Q12s20c24"
+    },
+    {
+     "selector": "retainCount",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "release",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "retain",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "copyWithZone:",
+     "types": "@8@4:8^{?=}12"
+    },
+    {
+     "selector": "copy",
+     "types": "@4@4:8"
+    }
+   ],
+   "instance_size": 8,
+   "ivars": [
+    {
+     "name": "_exponent",
+     "offset": 4,
+     "type": "b8"
+    },
+    {
+     "name": "_length",
+     "offset": 5,
+     "type": "b4"
+    },
+    {
+     "name": "_isNegative",
+     "offset": 5,
+     "type": "b1"
+    },
+    {
+     "name": "_isCompact",
+     "offset": 5,
+     "type": "b1"
+    },
+    {
+     "name": "_reserved",
+     "offset": 5,
+     "type": "b1"
+    },
+    {
+     "name": "_hasExternalRefCount",
+     "offset": 5,
+     "type": "b1"
+    },
+    {
+     "name": "_refs",
+     "offset": 6,
+     "type": "b16"
+    },
+    {
+     "name": "_mantissa",
+     "offset": 8,
+     "type": "[0S]"
+    }
+   ],
+   "name": "NSDecimalNumber",
+   "superclass": "NSNumber"
+  },
+  {
+   "class_methods": [
+    {
+     "selector": "allocWithZone:",
+     "types": "@8@4:8^{?=}12"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "initWithCoder:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "initWithMantissa:exponent:isNegative:",
+     "types": "@17@4:8Q12s20c24"
+    },
+    {
+     "selector": "initWithString:locale:",
+     "types": "@12@4:8@12@16"
+    },
+    {
+     "selector": "initWithString:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "initWithDecimal:",
+     "types": "@24@4:8{?=b8b4b1b1b18[8S]}12"
+    },
+    {
+     "selector": "init",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "dealloc",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "retainCount",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "autorelease",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "release",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "retain",
+     "types": "@4@4:8"
+    }
+   ],
+   "instance_size": 8,
+   "ivars": [
+    {
+     "name": "zone",
+     "offset": 4,
+     "type": "^{?}"
+    }
+   ],
+   "name": "NSDecimalNumberPlaceholder",
+   "superclass": "NSObject"
+  }
+ ],
+ "data_symbols": [
+  "_NSDecimalNumberDivideByZeroException",
+  "_NSDecimalNumberExactnessException",
+  "_NSDecimalNumberOverflowException",
+  "_NSDecimalNumberUnderflowException",
+  "___NSDecimalNumberPlaceholderLock"
+ ],
+ "module": "NSDecimalNumber.m",
+ "schema_version": "abi-v1",
+ "text_symbols": []
+}

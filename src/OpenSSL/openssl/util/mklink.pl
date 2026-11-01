@@ -15,13 +15,23 @@
 # Apart from this, this script should be able to handle even the most
 # pathological cases.
 
+my $pwd;
+eval 'use Cwd;';
+if ($@)
+	{
+	$pwd = `pwd`;
+	}
+else
+	{
+	$pwd = getcwd();
+	}
+
 my $from = shift;
 my @files = @ARGV;
 
-my @from_path = split(/\//, $from);
-my $pwd = `pwd`;
-chop($pwd);
-my @pwd_path = split(/\//, $pwd);
+my @from_path = split(/[\\\/]/, $from);
+chomp($pwd);
+my @pwd_path = split(/[\\\/]/, $pwd);
 
 my @to_path = ();
 
@@ -48,8 +58,23 @@ foreach $dirname (@from_path) {
 my $to = join('/', @to_path);
 
 my $file;
+$symlink_exists=eval {symlink("",""); 1};
 foreach $file (@files) {
-#    print "ln -s $to/$file $from/$file\n";
-    symlink("$to/$file", "$from/$file");
-    print $file . " => $from/$file\n";
+    my $err = "";
+    if ($symlink_exists) {
+	unlink "$from/$file";
+	symlink("$to/$file", "$from/$file") or $err = " [$!]";
+    } else {
+	unlink "$from/$file"; 
+	open (OLD, "<$file") or die "Can't open $file: $!";
+	open (NEW, ">$from/$file") or die "Can't open $from/$file: $!";
+	binmode(OLD);
+	binmode(NEW);
+	while (<OLD>) {
+	    print NEW $_;
+	}
+	close (OLD) or die "Can't close $file: $!";
+	close (NEW) or die "Can't close $from/$file: $!";
+    }
+    print $file . " => $from/$file$err\n";
 }

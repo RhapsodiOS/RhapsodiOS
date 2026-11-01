@@ -59,6 +59,7 @@
  */
 
 #include <ext2fs.h>
+#include <hammerfs.h>
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/mount.h>
@@ -84,6 +85,9 @@ extern  struct vfsops hfs_vfsops;
 #if EXT2FS
 extern struct vfsops ext2fs_vfsops;
 #endif
+#if HAMMERFS
+extern struct vfsops hammer_vfsops;
+#endif
 extern	struct vfsops cd9660_vfsops;
 extern	int cd9660_mountroot();
 extern	struct vfsops msdos_vfsops;
@@ -105,6 +109,9 @@ extern	struct vfsops kernfs_vfsops;
 static struct vfsconf vfsconflist[] = {
 #if EXT2FS
 	{ &ext2fs_vfsops, "ext2fs", 18, 0, MNT_LOCAL, NULL, NULL },
+#endif
+#if HAMMERFS
+	{ &hammer_vfsops, "hammer", 19, 0, MNT_LOCAL, NULL, NULL },
 #endif
 
 	/* Fast Filesystem */
@@ -236,6 +243,9 @@ extern struct vnodeopv_desc ext2fs_vnodeop_opv_desc;
 extern struct vnodeopv_desc ext2fs_specop_opv_desc;
 extern struct vnodeopv_desc ext2fs_fifoop_opv_desc;
 #endif
+#if HAMMERFS
+extern struct vnodeopv_desc hammer_vnodeop_opv_desc;
+#endif
 extern struct vnodeopv_desc cd9660_vnodeop_opv_desc;
 extern struct vnodeopv_desc cd9660_specop_opv_desc;
 extern struct vnodeopv_desc cd9660_fifoop_opv_desc;
@@ -295,6 +305,9 @@ struct vnodeopv_desc *vfs_opv_descs[] = {
 	&ext2fs_vnodeop_opv_desc,
 	&ext2fs_specop_opv_desc,
 	&ext2fs_fifoop_opv_desc,
+#endif
+#if HAMMERFS
+	&hammer_vnodeop_opv_desc,
 #endif
 #if CD9660
 	&cd9660_vnodeop_opv_desc,

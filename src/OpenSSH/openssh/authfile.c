@@ -1,18 +1,6 @@
+/* $OpenBSD: authfile.c,v 1.122 2016/11/25 23:24:45 djm Exp $ */
 /*
- * Author: Tatu Ylonen <ylo@cs.hut.fi>
- * Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
- *                    All rights reserved
- * This file contains functions for reading and writing identity files, and
- * for reading the passphrase from the user.
- *
- * As far as I am concerned, the code I have written for this software
- * can be used freely for any purpose.  Any derived versions of this
- * software must be clearly marked as such, and if the derived work is
- * incompatible with the protocol description in the RFC file, it must be
- * called by a name other than "ssh" or "Secure Shell".
- *
- *
- * Copyright (c) 2000 Markus Friedl.  All rights reserved.
+ * Copyright (c) 2000, 2013 Markus Friedl.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -36,537 +24,572 @@
  */
 
 #include "includes.h"
-RCSID("$OpenBSD: authfile.c,v 1.20 2000/10/11 20:27:23 markus Exp $");
 
-#include <openssl/bn.h>
-#include <openssl/dsa.h>
-#include <openssl/rsa.h>
-#include <openssl/pem.h>
-#include <openssl/evp.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/uio.h>
 
-#include "xmalloc.h"
-#include "buffer.h"
-#include "bufaux.h"
+#include <errno.h>
+#include <fcntl.h>
+#include <stdio.h>
+#include <stdarg.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <limits.h>
+
+#include "cipher.h"
 #include "ssh.h"
-#include "key.h"
+#include "log.h"
+#include "authfile.h"
+#include "rsa.h"
+#include "misc.h"
+#include "atomicio.h"
+#include "sshkey.h"
+#include "sshbuf.h"
+#include "ssherr.h"
+#include "krl.h"
 
-/* Version identification string for identity files. */
-#define AUTHFILE_ID_STRING "SSH PRIVATE KEY FILE FORMAT 1.1\n"
+#define MAX_KEY_FILE_SIZE	(1024 * 1024)
 
-/*
- * Saves the authentication (private) key in a file, encrypting it with
- * passphrase.  The identification of the file (lowest 64 bits of n) will
- * precede the key to provide identification of the key without needing a
- * passphrase.
- */
-
-int
-save_private_key_rsa(const char *filename, const char *passphrase,
-    RSA *key, const char *comment)
+/* Save a key blob to a file */
+static int
+sshkey_save_private_blob(struct sshbuf *keybuf, const char *filename)
 {
-	Buffer buffer, encrypted;
-	char buf[100], *cp;
-	int fd, i;
-	CipherContext ciphercontext;
-	Cipher *cipher;
-	u_int32_t rand;
+	int fd, oerrno;
 
-	/*
-	 * If the passphrase is empty, use SSH_CIPHER_NONE to ease converting
-	 * to another cipher; otherwise use SSH_AUTHFILE_CIPHER.
-	 */
-	if (strcmp(passphrase, "") == 0)
-		cipher = cipher_by_number(SSH_CIPHER_NONE);
-	else
-		cipher = cipher_by_number(SSH_AUTHFILE_CIPHER);
-	if (cipher == NULL)
-		fatal("save_private_key_rsa: bad cipher");
-
-	/* This buffer is used to built the secret part of the private key. */
-	buffer_init(&buffer);
-
-	/* Put checkbytes for checking passphrase validity. */
-	rand = arc4random();
-	buf[0] = rand & 0xff;
-	buf[1] = (rand >> 8) & 0xff;
-	buf[2] = buf[0];
-	buf[3] = buf[1];
-	buffer_append(&buffer, buf, 4);
-
-	/*
-	 * Store the private key (n and e will not be stored because they
-	 * will be stored in plain text, and storing them also in encrypted
-	 * format would just give known plaintext).
-	 */
-	buffer_put_bignum(&buffer, key->d);
-	buffer_put_bignum(&buffer, key->iqmp);
-	buffer_put_bignum(&buffer, key->q);	/* reverse from SSL p */
-	buffer_put_bignum(&buffer, key->p);	/* reverse from SSL q */
-
-	/* Pad the part to be encrypted until its size is a multiple of 8. */
-	while (buffer_len(&buffer) % 8 != 0)
-		buffer_put_char(&buffer, 0);
-
-	/* This buffer will be used to contain the data in the file. */
-	buffer_init(&encrypted);
-
-	/* First store keyfile id string. */
-	cp = AUTHFILE_ID_STRING;
-	for (i = 0; cp[i]; i++)
-		buffer_put_char(&encrypted, cp[i]);
-	buffer_put_char(&encrypted, 0);
-
-	/* Store cipher type. */
-	buffer_put_char(&encrypted, cipher->number);
-	buffer_put_int(&encrypted, 0);	/* For future extension */
-
-	/* Store public key.  This will be in plain text. */
-	buffer_put_int(&encrypted, BN_num_bits(key->n));
-	buffer_put_bignum(&encrypted, key->n);
-	buffer_put_bignum(&encrypted, key->e);
-	buffer_put_string(&encrypted, comment, strlen(comment));
-
-	/* Allocate space for the private part of the key in the buffer. */
-	buffer_append_space(&encrypted, &cp, buffer_len(&buffer));
-
-	cipher_set_key_string(&ciphercontext, cipher, passphrase);
-	cipher_encrypt(&ciphercontext, (unsigned char *) cp,
-	    (unsigned char *) buffer_ptr(&buffer), buffer_len(&buffer));
-	memset(&ciphercontext, 0, sizeof(ciphercontext));
-
-	/* Destroy temporary data. */
-	memset(buf, 0, sizeof(buf));
-	buffer_free(&buffer);
-
-	fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0600);
-	if (fd < 0)
-		return 0;
-	if (write(fd, buffer_ptr(&encrypted), buffer_len(&encrypted)) !=
-	    buffer_len(&encrypted)) {
-		debug("Write to key file %.200s failed: %.100s", filename,
-		      strerror(errno));
-		buffer_free(&encrypted);
+	if ((fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0600)) < 0)
+		return SSH_ERR_SYSTEM_ERROR;
+	if (atomicio(vwrite, fd, (u_char *)sshbuf_ptr(keybuf),
+	    sshbuf_len(keybuf)) != sshbuf_len(keybuf)) {
+		oerrno = errno;
 		close(fd);
 		unlink(filename);
-		return 0;
+		errno = oerrno;
+		return SSH_ERR_SYSTEM_ERROR;
 	}
 	close(fd);
-	buffer_free(&encrypted);
-	return 1;
-}
-
-/* save DSA key in OpenSSL PEM format */
-
-int
-save_private_key_dsa(const char *filename, const char *passphrase,
-    DSA *dsa, const char *comment)
-{
-	FILE *fp;
-	int fd;
-	int success = 1;
-	int len = strlen(passphrase);
-
-	if (len > 0 && len <= 4) {
-		error("passphrase too short: %d bytes", len);
-		errno = 0;
-		return 0;
-	}
-	fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0600);
-	if (fd < 0) {
-		debug("open %s failed", filename);
-		return 0;
-	}
-	fp = fdopen(fd, "w");
-	if (fp == NULL ) {
-		debug("fdopen %s failed", filename);
-		close(fd);
-		return 0;
-	}
-	if (len > 0) {
-		if (!PEM_write_DSAPrivateKey(fp, dsa, EVP_des_ede3_cbc(),
-		    (char *)passphrase, strlen(passphrase), NULL, NULL))
-			success = 0;
-	} else {
-		if (!PEM_write_DSAPrivateKey(fp, dsa, NULL,
-		    NULL, 0, NULL, NULL))
-			success = 0;
-	}
-	fclose(fp);
-	return success;
-}
-
-int
-save_private_key(const char *filename, const char *passphrase, Key *key,
-    const char *comment)
-{
-	switch (key->type) {
-	case KEY_RSA:
-		return save_private_key_rsa(filename, passphrase, key->rsa, comment);
-		break;
-	case KEY_DSA:
-		return save_private_key_dsa(filename, passphrase, key->dsa, comment);
-		break;
-	default:
-		break;
-	}
 	return 0;
 }
 
+int
+sshkey_save_private(struct sshkey *key, const char *filename,
+    const char *passphrase, const char *comment,
+    int force_new_format, const char *new_format_cipher, int new_format_rounds)
+{
+	struct sshbuf *keyblob = NULL;
+	int r;
+
+	if ((keyblob = sshbuf_new()) == NULL)
+		return SSH_ERR_ALLOC_FAIL;
+	if ((r = sshkey_private_to_fileblob(key, keyblob, passphrase, comment,
+	    force_new_format, new_format_cipher, new_format_rounds)) != 0)
+		goto out;
+	if ((r = sshkey_save_private_blob(keyblob, filename)) != 0)
+		goto out;
+	r = 0;
+ out:
+	sshbuf_free(keyblob);
+	return r;
+}
+
+/* Load a key from a fd into a buffer */
+int
+sshkey_load_file(int fd, struct sshbuf *blob)
+{
+	u_char buf[1024];
+	size_t len;
+	struct stat st;
+	int r, dontmax = 0;
+
+	if (fstat(fd, &st) < 0)
+		return SSH_ERR_SYSTEM_ERROR;
+	if ((st.st_mode & (S_IFSOCK|S_IFCHR|S_IFIFO)) == 0 &&
+	    st.st_size > MAX_KEY_FILE_SIZE)
+		return SSH_ERR_INVALID_FORMAT;
+	/*
+	 * Pre-allocate the buffer used for the key contents and clamp its
+	 * maximum size. This ensures that key contents are never leaked via
+	 * implicit realloc() in the sshbuf code.
+	 */
+	if ((st.st_mode & S_IFREG) == 0 || st.st_size <= 0) {
+		st.st_size = 64*1024; /* 64k should be enough for anyone :) */
+		dontmax = 1;
+	}
+	if ((r = sshbuf_allocate(blob, st.st_size)) != 0 ||
+	    (dontmax && (r = sshbuf_set_max_size(blob, st.st_size)) != 0))
+		return r;
+	for (;;) {
+		if ((len = atomicio(read, fd, buf, sizeof(buf))) == 0) {
+			if (errno == EPIPE)
+				break;
+			r = SSH_ERR_SYSTEM_ERROR;
+			goto out;
+		}
+		if ((r = sshbuf_put(blob, buf, len)) != 0)
+			goto out;
+		if (sshbuf_len(blob) > MAX_KEY_FILE_SIZE) {
+			r = SSH_ERR_INVALID_FORMAT;
+			goto out;
+		}
+	}
+	if ((st.st_mode & (S_IFSOCK|S_IFCHR|S_IFIFO)) == 0 &&
+	    st.st_size != (off_t)sshbuf_len(blob)) {
+		r = SSH_ERR_FILE_CHANGED;
+		goto out;
+	}
+	r = 0;
+
+ out:
+	explicit_bzero(buf, sizeof(buf));
+	if (r != 0)
+		sshbuf_reset(blob);
+	return r;
+}
+
+#ifdef WITH_SSH1
 /*
- * Loads the public part of the key file.  Returns 0 if an error was
- * encountered (the file does not exist or is not readable), and non-zero
+ * Loads the public part of the ssh v1 key file.  Returns NULL if an error was
+ * encountered (the file does not exist or is not readable), and the key
  * otherwise.
  */
-
-int
-load_public_key_rsa(const char *filename, RSA * pub, char **comment_return)
+static int
+sshkey_load_public_rsa1(int fd, struct sshkey **keyp, char **commentp)
 {
-	int fd, i;
-	off_t len;
-	Buffer buffer;
-	char *cp;
+	struct sshbuf *b = NULL;
+	int r;
 
-	fd = open(filename, O_RDONLY);
-	if (fd < 0)
-		return 0;
-	len = lseek(fd, (off_t) 0, SEEK_END);
-	lseek(fd, (off_t) 0, SEEK_SET);
+	if (keyp != NULL)
+		*keyp = NULL;
+	if (commentp != NULL)
+		*commentp = NULL;
 
-	buffer_init(&buffer);
-	buffer_append_space(&buffer, &cp, len);
-
-	if (read(fd, cp, (size_t) len) != (size_t) len) {
-		debug("Read from key file %.200s failed: %.100s", filename,
-		    strerror(errno));
-		buffer_free(&buffer);
-		close(fd);
-		return 0;
-	}
-	close(fd);
-
-	/* Check that it is at least big enought to contain the ID string. */
-	if (len < strlen(AUTHFILE_ID_STRING) + 1) {
-		debug("Bad key file %.200s.", filename);
-		buffer_free(&buffer);
-		return 0;
-	}
-	/*
-	 * Make sure it begins with the id string.  Consume the id string
-	 * from the buffer.
-	 */
-	for (i = 0; i < (unsigned int) strlen(AUTHFILE_ID_STRING) + 1; i++)
-		if (buffer_get_char(&buffer) != (u_char) AUTHFILE_ID_STRING[i]) {
-			debug("Bad key file %.200s.", filename);
-			buffer_free(&buffer);
-			return 0;
-		}
-	/* Skip cipher type and reserved data. */
-	(void) buffer_get_char(&buffer);	/* cipher type */
-	(void) buffer_get_int(&buffer);		/* reserved */
-
-	/* Read the public key from the buffer. */
-	buffer_get_int(&buffer);
-	/* XXX alloc */
-	if (pub->n == NULL)
-		pub->n = BN_new();
-	buffer_get_bignum(&buffer, pub->n);
-	/* XXX alloc */
-	if (pub->e == NULL)
-		pub->e = BN_new();
-	buffer_get_bignum(&buffer, pub->e);
-	if (comment_return)
-		*comment_return = buffer_get_string(&buffer, NULL);
-	/* The encrypted private part is not parsed by this function. */
-
-	buffer_free(&buffer);
-
-	return 1;
+	if ((b = sshbuf_new()) == NULL)
+		return SSH_ERR_ALLOC_FAIL;
+	if ((r = sshkey_load_file(fd, b)) != 0)
+		goto out;
+	if ((r = sshkey_parse_public_rsa1_fileblob(b, keyp, commentp)) != 0)
+		goto out;
+	r = 0;
+ out:
+	sshbuf_free(b);
+	return r;
 }
+#endif /* WITH_SSH1 */
 
-/* load public key from private-key file */
+/* XXX remove error() calls from here? */
 int
-load_public_key(const char *filename, Key * key, char **comment_return)
+sshkey_perm_ok(int fd, const char *filename)
 {
-	switch (key->type) {
-	case KEY_RSA:
-		return load_public_key_rsa(filename, key->rsa, comment_return);
-		break;
-	case KEY_DSA:
-	default:
-		break;
-	}
-	return 0;
-}
-
-/*
- * Loads the private key from the file.  Returns 0 if an error is encountered
- * (file does not exist or is not readable, or passphrase is bad). This
- * initializes the private key.
- * Assumes we are called under uid of the owner of the file.
- */
-
-int
-load_private_key_rsa(int fd, const char *filename,
-    const char *passphrase, RSA * prv, char **comment_return)
-{
-	int i, check1, check2, cipher_type;
-	off_t len;
-	Buffer buffer, decrypted;
-	char *cp;
-	CipherContext ciphercontext;
-	Cipher *cipher;
-	BN_CTX *ctx;
-	BIGNUM *aux;
-
-	len = lseek(fd, (off_t) 0, SEEK_END);
-	lseek(fd, (off_t) 0, SEEK_SET);
-
-	buffer_init(&buffer);
-	buffer_append_space(&buffer, &cp, len);
-
-	if (read(fd, cp, (size_t) len) != (size_t) len) {
-		debug("Read from key file %.200s failed: %.100s", filename,
-		      strerror(errno));
-		buffer_free(&buffer);
-		close(fd);
-		return 0;
-	}
-	close(fd);
-
-	/* Check that it is at least big enought to contain the ID string. */
-	if (len < strlen(AUTHFILE_ID_STRING) + 1) {
-		debug("Bad key file %.200s.", filename);
-		buffer_free(&buffer);
-		return 0;
-	}
-	/*
-	 * Make sure it begins with the id string.  Consume the id string
-	 * from the buffer.
-	 */
-	for (i = 0; i < (unsigned int) strlen(AUTHFILE_ID_STRING) + 1; i++)
-		if (buffer_get_char(&buffer) != (unsigned char) AUTHFILE_ID_STRING[i]) {
-			debug("Bad key file %.200s.", filename);
-			buffer_free(&buffer);
-			return 0;
-		}
-	/* Read cipher type. */
-	cipher_type = buffer_get_char(&buffer);
-	(void) buffer_get_int(&buffer);	/* Reserved data. */
-
-	/* Read the public key from the buffer. */
-	buffer_get_int(&buffer);
-	prv->n = BN_new();
-	buffer_get_bignum(&buffer, prv->n);
-	prv->e = BN_new();
-	buffer_get_bignum(&buffer, prv->e);
-	if (comment_return)
-		*comment_return = buffer_get_string(&buffer, NULL);
-	else
-		xfree(buffer_get_string(&buffer, NULL));
-
-	/* Check that it is a supported cipher. */
-	cipher = cipher_by_number(cipher_type);
-	if (cipher == NULL) {
-		debug("Unsupported cipher %d used in key file %.200s.",
-		    cipher_type, filename);
-		buffer_free(&buffer);
-		goto fail;
-	}
-	/* Initialize space for decrypted data. */
-	buffer_init(&decrypted);
-	buffer_append_space(&decrypted, &cp, buffer_len(&buffer));
-
-	/* Rest of the buffer is encrypted.  Decrypt it using the passphrase. */
-	cipher_set_key_string(&ciphercontext, cipher, passphrase);
-	cipher_decrypt(&ciphercontext, (unsigned char *) cp,
-	    (unsigned char *) buffer_ptr(&buffer), buffer_len(&buffer));
-	memset(&ciphercontext, 0, sizeof(ciphercontext));
-	buffer_free(&buffer);
-
-	check1 = buffer_get_char(&decrypted);
-	check2 = buffer_get_char(&decrypted);
-	if (check1 != buffer_get_char(&decrypted) ||
-	    check2 != buffer_get_char(&decrypted)) {
-		if (strcmp(passphrase, "") != 0)
-			debug("Bad passphrase supplied for key file %.200s.", filename);
-		/* Bad passphrase. */
-		buffer_free(&decrypted);
-fail:
-		BN_clear_free(prv->n);
-		prv->n = NULL;
-		BN_clear_free(prv->e);
-		prv->e = NULL;
-		if (comment_return)
-			xfree(*comment_return);
-		return 0;
-	}
-	/* Read the rest of the private key. */
-	prv->d = BN_new();
-	buffer_get_bignum(&decrypted, prv->d);
-	prv->iqmp = BN_new();
-	buffer_get_bignum(&decrypted, prv->iqmp);	/* u */
-	/* in SSL and SSH p and q are exchanged */
-	prv->q = BN_new();
-	buffer_get_bignum(&decrypted, prv->q);		/* p */
-	prv->p = BN_new();
-	buffer_get_bignum(&decrypted, prv->p);		/* q */
-
-	ctx = BN_CTX_new();
-	aux = BN_new();
-
-	BN_sub(aux, prv->q, BN_value_one());
-	prv->dmq1 = BN_new();
-	BN_mod(prv->dmq1, prv->d, aux, ctx);
-
-	BN_sub(aux, prv->p, BN_value_one());
-	prv->dmp1 = BN_new();
-	BN_mod(prv->dmp1, prv->d, aux, ctx);
-
-	BN_clear_free(aux);
-	BN_CTX_free(ctx);
-
-	buffer_free(&decrypted);
-
-	return 1;
-}
-
-int
-load_private_key_dsa(int fd, const char *passphrase, Key *k, char **comment_return)
-{
-	DSA *dsa;
-	BIO *in;
-	FILE *fp;
-
-	in = BIO_new(BIO_s_file());
-	if (in == NULL) {
-		error("BIO_new failed");
-		return 0;
-	}
-	fp = fdopen(fd, "r");
-	if (fp == NULL) {
-		error("fdopen failed");
-		return 0;
-	}
-	BIO_set_fp(in, fp, BIO_NOCLOSE);
-	dsa = PEM_read_bio_DSAPrivateKey(in, NULL, NULL, (char *)passphrase);
-	if (dsa == NULL) {
-		debug("PEM_read_bio_DSAPrivateKey failed");
-	} else {
-		/* replace k->dsa with loaded key */
-		DSA_free(k->dsa);
-		k->dsa = dsa;
-	}
-	BIO_free(in);
-	fclose(fp);
-	if (comment_return)
-		*comment_return = xstrdup("dsa w/o comment");
-	debug("read DSA private key done");
-#ifdef DEBUG_DSS
-	DSA_print_fp(stderr, dsa, 8);
-#endif
-	return dsa != NULL ? 1 : 0;
-}
-
-int
-load_private_key(const char *filename, const char *passphrase, Key *key,
-    char **comment_return)
-{
-	int fd;
-	int ret = 0;
 	struct stat st;
 
-	fd = open(filename, O_RDONLY);
-	if (fd < 0)
-		return 0;
-
-	/* check owner and modes */
+	if (fstat(fd, &st) < 0)
+		return SSH_ERR_SYSTEM_ERROR;
+	/*
+	 * if a key owned by the user is accessed, then we check the
+	 * permissions of the file. if the key owned by a different user,
+	 * then we don't care.
+	 */
 #ifdef HAVE_CYGWIN
 	if (check_ntsec(filename))
 #endif
-	if (fstat(fd, &st) < 0 ||
-	    (st.st_uid != 0 && st.st_uid != getuid()) ||
-	    (st.st_mode & 077) != 0) {
-		close(fd);
+	if ((st.st_uid == getuid()) && (st.st_mode & 077) != 0) {
 		error("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
 		error("@         WARNING: UNPROTECTED PRIVATE KEY FILE!          @");
 		error("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
-		error("Bad ownership or mode(0%3.3o) for '%s'.",
-		      st.st_mode & 0777, filename);
-		error("It is recommended that your private key files are NOT accessible by others.");
-		return 0;
+		error("Permissions 0%3.3o for '%s' are too open.",
+		    (u_int)st.st_mode & 0777, filename);
+		error("It is required that your private key files are NOT accessible by others.");
+		error("This private key will be ignored.");
+		return SSH_ERR_KEY_BAD_PERMISSIONS;
 	}
-	switch (key->type) {
-	case KEY_RSA:
-		if (key->rsa->e != NULL) {
-			BN_clear_free(key->rsa->e);
-			key->rsa->e = NULL;
-		}
-		if (key->rsa->n != NULL) {
-			BN_clear_free(key->rsa->n);
-			key->rsa->n = NULL;
-		}
-		ret = load_private_key_rsa(fd, filename, passphrase,
-		     key->rsa, comment_return);
-		break;
-	case KEY_DSA:
-		ret = load_private_key_dsa(fd, passphrase, key, comment_return);
-	default:
-		break;
+	return 0;
+}
+
+/* XXX kill perm_ok now that we have SSH_ERR_KEY_BAD_PERMISSIONS? */
+int
+sshkey_load_private_type(int type, const char *filename, const char *passphrase,
+    struct sshkey **keyp, char **commentp, int *perm_ok)
+{
+	int fd, r;
+
+	if (keyp != NULL)
+		*keyp = NULL;
+	if (commentp != NULL)
+		*commentp = NULL;
+
+	if ((fd = open(filename, O_RDONLY)) < 0) {
+		if (perm_ok != NULL)
+			*perm_ok = 0;
+		return SSH_ERR_SYSTEM_ERROR;
 	}
+	if (sshkey_perm_ok(fd, filename) != 0) {
+		if (perm_ok != NULL)
+			*perm_ok = 0;
+		r = SSH_ERR_KEY_BAD_PERMISSIONS;
+		goto out;
+	}
+	if (perm_ok != NULL)
+		*perm_ok = 1;
+
+	r = sshkey_load_private_type_fd(fd, type, passphrase, keyp, commentp);
+ out:
 	close(fd);
-	return ret;
+	return r;
 }
 
 int
-do_load_public_key(const char *filename, Key *k, char **commentp)
+sshkey_load_private_type_fd(int fd, int type, const char *passphrase,
+    struct sshkey **keyp, char **commentp)
+{
+	struct sshbuf *buffer = NULL;
+	int r;
+
+	if (keyp != NULL)
+		*keyp = NULL;
+	if ((buffer = sshbuf_new()) == NULL) {
+		r = SSH_ERR_ALLOC_FAIL;
+		goto out;
+	}
+	if ((r = sshkey_load_file(fd, buffer)) != 0 ||
+	    (r = sshkey_parse_private_fileblob_type(buffer, type,
+	    passphrase, keyp, commentp)) != 0)
+		goto out;
+
+	/* success */
+	r = 0;
+ out:
+	sshbuf_free(buffer);
+	return r;
+}
+
+/* XXX this is almost identical to sshkey_load_private_type() */
+int
+sshkey_load_private(const char *filename, const char *passphrase,
+    struct sshkey **keyp, char **commentp)
+{
+	struct sshbuf *buffer = NULL;
+	int r, fd;
+
+	if (keyp != NULL)
+		*keyp = NULL;
+	if (commentp != NULL)
+		*commentp = NULL;
+
+	if ((fd = open(filename, O_RDONLY)) < 0)
+		return SSH_ERR_SYSTEM_ERROR;
+	if (sshkey_perm_ok(fd, filename) != 0) {
+		r = SSH_ERR_KEY_BAD_PERMISSIONS;
+		goto out;
+	}
+
+	if ((buffer = sshbuf_new()) == NULL) {
+		r = SSH_ERR_ALLOC_FAIL;
+		goto out;
+	}
+	if ((r = sshkey_load_file(fd, buffer)) != 0 ||
+	    (r = sshkey_parse_private_fileblob(buffer, passphrase, keyp,
+	    commentp)) != 0)
+		goto out;
+	r = 0;
+ out:
+	close(fd);
+	sshbuf_free(buffer);
+	return r;
+}
+
+static int
+sshkey_try_load_public(struct sshkey *k, const char *filename, char **commentp)
 {
 	FILE *f;
-	unsigned int bits;
-	char line[1024];
+	char line[SSH_MAX_PUBKEY_BYTES];
 	char *cp;
+	u_long linenum = 0;
+	int r;
 
-	f = fopen(filename, "r");
-	if (f != NULL) {
-		while (fgets(line, sizeof(line), f)) {
-			line[sizeof(line)-1] = '\0';
-			cp = line;
-			switch(*cp){
-			case '#':
-			case '\n':
-			case '\0':
-				continue;
-			}
-			/* Skip leading whitespace. */
-			for (; *cp && (*cp == ' ' || *cp == '\t'); cp++)
-				;
-			if (*cp) {
-				bits = key_read(k, &cp);
-				if (bits != 0) {
-					if (commentp)
-						*commentp=xstrdup(filename);
-					fclose(f);
-					return 1;
+	if (commentp != NULL)
+		*commentp = NULL;
+	if ((f = fopen(filename, "r")) == NULL)
+		return SSH_ERR_SYSTEM_ERROR;
+	while (read_keyfile_line(f, filename, line, sizeof(line),
+		    &linenum) != -1) {
+		cp = line;
+		switch (*cp) {
+		case '#':
+		case '\n':
+		case '\0':
+			continue;
+		}
+		/* Abort loading if this looks like a private key */
+		if (strncmp(cp, "-----BEGIN", 10) == 0 ||
+		    strcmp(cp, "SSH PRIVATE KEY FILE") == 0)
+			break;
+		/* Skip leading whitespace. */
+		for (; *cp && (*cp == ' ' || *cp == '\t'); cp++)
+			;
+		if (*cp) {
+			if ((r = sshkey_read(k, &cp)) == 0) {
+				cp[strcspn(cp, "\r\n")] = '\0';
+				if (commentp) {
+					*commentp = strdup(*cp ?
+					    cp : filename);
+					if (*commentp == NULL)
+						r = SSH_ERR_ALLOC_FAIL;
 				}
+				fclose(f);
+				return r;
 			}
 		}
-		fclose(f);
 	}
-	return 0;
+	fclose(f);
+	return SSH_ERR_INVALID_FORMAT;
 }
 
-/* load public key from pubkey file */
+/* load public key from ssh v1 private or any pubkey file */
 int
-try_load_public_key(const char *filename, Key *k, char **commentp)
+sshkey_load_public(const char *filename, struct sshkey **keyp, char **commentp)
 {
-	char pub[MAXPATHLEN];
+	struct sshkey *pub = NULL;
+	char file[PATH_MAX];
+	int r, fd;
 
-	if (do_load_public_key(filename, k, commentp) == 1)
-		return 1;
-	if (strlcpy(pub, filename, sizeof pub) >= MAXPATHLEN)
+	if (keyp != NULL)
+		*keyp = NULL;
+	if (commentp != NULL)
+		*commentp = NULL;
+
+	/* XXX should load file once and attempt to parse each format */
+
+	if ((fd = open(filename, O_RDONLY)) < 0)
+		goto skip;
+#ifdef WITH_SSH1
+	/* try rsa1 private key */
+	r = sshkey_load_public_rsa1(fd, keyp, commentp);
+	close(fd);
+	switch (r) {
+	case SSH_ERR_INTERNAL_ERROR:
+	case SSH_ERR_ALLOC_FAIL:
+	case SSH_ERR_INVALID_ARGUMENT:
+	case SSH_ERR_SYSTEM_ERROR:
+	case 0:
+		return r;
+	}
+#else /* WITH_SSH1 */
+	close(fd);
+#endif /* WITH_SSH1 */
+
+	/* try ssh2 public key */
+	if ((pub = sshkey_new(KEY_UNSPEC)) == NULL)
+		return SSH_ERR_ALLOC_FAIL;
+	if ((r = sshkey_try_load_public(pub, filename, commentp)) == 0) {
+		if (keyp != NULL)
+			*keyp = pub;
 		return 0;
-	if (strlcat(pub, ".pub", sizeof pub) >= MAXPATHLEN)
+	}
+	sshkey_free(pub);
+
+#ifdef WITH_SSH1
+	/* try rsa1 public key */
+	if ((pub = sshkey_new(KEY_RSA1)) == NULL)
+		return SSH_ERR_ALLOC_FAIL;
+	if ((r = sshkey_try_load_public(pub, filename, commentp)) == 0) {
+		if (keyp != NULL)
+			*keyp = pub;
 		return 0;
-	if (do_load_public_key(pub, k, commentp) == 1)
-		return 1;
-	return 0;
+	}
+	sshkey_free(pub);
+#endif /* WITH_SSH1 */
+
+ skip:
+	/* try .pub suffix */
+	if ((pub = sshkey_new(KEY_UNSPEC)) == NULL)
+		return SSH_ERR_ALLOC_FAIL;
+	r = SSH_ERR_ALLOC_FAIL;	/* in case strlcpy or strlcat fail */
+	if ((strlcpy(file, filename, sizeof file) < sizeof(file)) &&
+	    (strlcat(file, ".pub", sizeof file) < sizeof(file)) &&
+	    (r = sshkey_try_load_public(pub, file, commentp)) == 0) {
+		if (keyp != NULL)
+			*keyp = pub;
+		return 0;
+	}
+	sshkey_free(pub);
+
+	return r;
 }
+
+/* Load the certificate associated with the named private key */
+int
+sshkey_load_cert(const char *filename, struct sshkey **keyp)
+{
+	struct sshkey *pub = NULL;
+	char *file = NULL;
+	int r = SSH_ERR_INTERNAL_ERROR;
+
+	if (keyp != NULL)
+		*keyp = NULL;
+
+	if (asprintf(&file, "%s-cert.pub", filename) == -1)
+		return SSH_ERR_ALLOC_FAIL;
+
+	if ((pub = sshkey_new(KEY_UNSPEC)) == NULL) {
+		goto out;
+	}
+	if ((r = sshkey_try_load_public(pub, file, NULL)) != 0)
+		goto out;
+	/* success */
+	if (keyp != NULL) {
+		*keyp = pub;
+		pub = NULL;
+	}
+	r = 0;
+ out:
+	free(file);
+	sshkey_free(pub);
+	return r;
+}
+
+/* Load private key and certificate */
+int
+sshkey_load_private_cert(int type, const char *filename, const char *passphrase,
+    struct sshkey **keyp, int *perm_ok)
+{
+	struct sshkey *key = NULL, *cert = NULL;
+	int r;
+
+	if (keyp != NULL)
+		*keyp = NULL;
+
+	switch (type) {
+#ifdef WITH_OPENSSL
+	case KEY_RSA:
+	case KEY_DSA:
+	case KEY_ECDSA:
+#endif /* WITH_OPENSSL */
+	case KEY_ED25519:
+	case KEY_UNSPEC:
+		break;
+	default:
+		return SSH_ERR_KEY_TYPE_UNKNOWN;
+	}
+
+	if ((r = sshkey_load_private_type(type, filename,
+	    passphrase, &key, NULL, perm_ok)) != 0 ||
+	    (r = sshkey_load_cert(filename, &cert)) != 0)
+		goto out;
+
+	/* Make sure the private key matches the certificate */
+	if (sshkey_equal_public(key, cert) == 0) {
+		r = SSH_ERR_KEY_CERT_MISMATCH;
+		goto out;
+	}
+
+	if ((r = sshkey_to_certified(key)) != 0 ||
+	    (r = sshkey_cert_copy(cert, key)) != 0)
+		goto out;
+	r = 0;
+	if (keyp != NULL) {
+		*keyp = key;
+		key = NULL;
+	}
+ out:
+	sshkey_free(key);
+	sshkey_free(cert);
+	return r;
+}
+
+/*
+ * Returns success if the specified "key" is listed in the file "filename",
+ * SSH_ERR_KEY_NOT_FOUND: if the key is not listed or another error.
+ * If "strict_type" is set then the key type must match exactly,
+ * otherwise a comparison that ignores certficiate data is performed.
+ * If "check_ca" is set and "key" is a certificate, then its CA key is
+ * also checked and sshkey_in_file() will return success if either is found.
+ */
+int
+sshkey_in_file(struct sshkey *key, const char *filename, int strict_type,
+    int check_ca)
+{
+	FILE *f;
+	char line[SSH_MAX_PUBKEY_BYTES];
+	char *cp;
+	u_long linenum = 0;
+	int r = 0;
+	struct sshkey *pub = NULL;
+	int (*sshkey_compare)(const struct sshkey *, const struct sshkey *) =
+	    strict_type ?  sshkey_equal : sshkey_equal_public;
+
+	if ((f = fopen(filename, "r")) == NULL)
+		return SSH_ERR_SYSTEM_ERROR;
+
+	while (read_keyfile_line(f, filename, line, sizeof(line),
+	    &linenum) != -1) {
+		cp = line;
+
+		/* Skip leading whitespace. */
+		for (; *cp && (*cp == ' ' || *cp == '\t'); cp++)
+			;
+
+		/* Skip comments and empty lines */
+		switch (*cp) {
+		case '#':
+		case '\n':
+		case '\0':
+			continue;
+		}
+
+		if ((pub = sshkey_new(KEY_UNSPEC)) == NULL) {
+			r = SSH_ERR_ALLOC_FAIL;
+			goto out;
+		}
+		if ((r = sshkey_read(pub, &cp)) != 0)
+			goto out;
+		if (sshkey_compare(key, pub) ||
+		    (check_ca && sshkey_is_cert(key) &&
+		    sshkey_compare(key->cert->signature_key, pub))) {
+			r = 0;
+			goto out;
+		}
+		sshkey_free(pub);
+		pub = NULL;
+	}
+	r = SSH_ERR_KEY_NOT_FOUND;
+ out:
+	sshkey_free(pub);
+	fclose(f);
+	return r;
+}
+
+/*
+ * Checks whether the specified key is revoked, returning 0 if not,
+ * SSH_ERR_KEY_REVOKED if it is or another error code if something
+ * unexpected happened.
+ * This will check both the key and, if it is a certificate, its CA key too.
+ * "revoked_keys_file" may be a KRL or a one-per-line list of public keys.
+ */
+int
+sshkey_check_revoked(struct sshkey *key, const char *revoked_keys_file)
+{
+	int r;
+
+	r = ssh_krl_file_contains_key(revoked_keys_file, key);
+	/* If this was not a KRL to begin with then continue below */
+	if (r != SSH_ERR_KRL_BAD_MAGIC)
+		return r;
+
+	/*
+	 * If the file is not a KRL or we can't handle KRLs then attempt to
+	 * parse the file as a flat list of keys.
+	 */
+	switch ((r = sshkey_in_file(key, revoked_keys_file, 0, 1))) {
+	case 0:
+		/* Key found => revoked */
+		return SSH_ERR_KEY_REVOKED;
+	case SSH_ERR_KEY_NOT_FOUND:
+		/* Key not found => not revoked */
+		return 0;
+	default:
+		/* Some other error occurred */
+		return r;
+	}
+}
+

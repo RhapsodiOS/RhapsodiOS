@@ -1,0 +1,1118 @@
+{
+  "schema_version": "source-map-v1",
+  "reference_sha256": "1165B9063ADD5672514455CA2C9830625BEA2BCE5E46126FB5E8652114C909D6",
+  "mapped": [
+    {
+      "address": 1112842184,
+      "size": 150,
+      "reference_names": [
+        "-[NSDecimalNumber retain]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 307
+    },
+    {
+      "address": 1112879228,
+      "size": 115,
+      "reference_names": [
+        "-[NSDecimalNumberPlaceholder initWithDecimal:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 884
+    },
+    {
+      "address": 1112879344,
+      "size": 320,
+      "reference_names": [
+        "-[NSDecimalNumberPlaceholder initWithCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 862
+    },
+    {
+      "address": 1112879664,
+      "size": 221,
+      "reference_names": [
+        "-[NSDecimalNumber release]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 335
+    },
+    {
+      "address": 1112879888,
+      "size": 137,
+      "reference_names": [
+        "-[NSDecimalNumber copyWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 287
+    },
+    {
+      "address": 1112905208,
+      "size": 111,
+      "reference_names": [
+        "+[NSDecimalNumber notANumber]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 484
+    },
+    {
+      "address": 1113161544,
+      "size": 16,
+      "reference_names": [
+        "+[NSDecimalNumber allocWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 206
+    },
+    {
+      "address": 1113161560,
+      "size": 77,
+      "reference_names": [
+        "+[NSDecimalNumber decimalNumberWithDecimal:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 397
+    },
+    {
+      "address": 1113161640,
+      "size": 72,
+      "reference_names": [
+        "+[NSDecimalNumber decimalNumberWithMantissa:exponent:isNegative:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 392
+    },
+    {
+      "address": 1113161712,
+      "size": 58,
+      "reference_names": [
+        "+[NSDecimalNumber decimalNumberWithString:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 402
+    },
+    {
+      "address": 1113161772,
+      "size": 62,
+      "reference_names": [
+        "+[NSDecimalNumber decimalNumberWithString:locale:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 407
+    },
+    {
+      "address": 1113161836,
+      "size": 111,
+      "reference_names": [
+        "+[NSDecimalNumber defaultBehavior]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 661
+    },
+    {
+      "address": 1113161948,
+      "size": 182,
+      "reference_names": [
+        "+[NSDecimalNumber maximumDecimalNumber]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 463
+    },
+    {
+      "address": 1113162132,
+      "size": 182,
+      "reference_names": [
+        "+[NSDecimalNumber minimumDecimalNumber]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 441
+    },
+    {
+      "address": 1113162316,
+      "size": 117,
+      "reference_names": [
+        "+[NSDecimalNumber one]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 425
+    },
+    {
+      "address": 1113162436,
+      "size": 81,
+      "reference_names": [
+        "+[NSDecimalNumber setDefaultBehavior:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 656
+    },
+    {
+      "address": 1113162520,
+      "size": 97,
+      "reference_names": [
+        "+[NSDecimalNumber zero]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 413
+    },
+    {
+      "address": 1113162620,
+      "size": 77,
+      "reference_names": [
+        "+[NSDecimalNumber numberWithBool:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 795
+    },
+    {
+      "address": 1113162700,
+      "size": 77,
+      "reference_names": [
+        "+[NSDecimalNumber numberWithChar:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 799
+    },
+    {
+      "address": 1113162780,
+      "size": 78,
+      "reference_names": [
+        "+[NSDecimalNumber numberWithDouble:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 848
+    },
+    {
+      "address": 1113162860,
+      "size": 75,
+      "reference_names": [
+        "+[NSDecimalNumber numberWithFloat:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 844
+    },
+    {
+      "address": 1113162936,
+      "size": 76,
+      "reference_names": [
+        "+[NSDecimalNumber numberWithInt:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 807
+    },
+    {
+      "address": 1113163012,
+      "size": 76,
+      "reference_names": [
+        "+[NSDecimalNumber numberWithLong:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 811
+    },
+    {
+      "address": 1113163088,
+      "size": 80,
+      "reference_names": [
+        "+[NSDecimalNumber numberWithLongLong:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 815
+    },
+    {
+      "address": 1113163168,
+      "size": 77,
+      "reference_names": [
+        "+[NSDecimalNumber numberWithShort:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 803
+    },
+    {
+      "address": 1113163248,
+      "size": 77,
+      "reference_names": [
+        "+[NSDecimalNumber numberWithUnsignedChar:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 819
+    },
+    {
+      "address": 1113163328,
+      "size": 76,
+      "reference_names": [
+        "+[NSDecimalNumber numberWithUnsignedInt:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 829
+    },
+    {
+      "address": 1113163404,
+      "size": 76,
+      "reference_names": [
+        "+[NSDecimalNumber numberWithUnsignedLong:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 834
+    },
+    {
+      "address": 1113163480,
+      "size": 80,
+      "reference_names": [
+        "+[NSDecimalNumber numberWithUnsignedLongLong:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 839
+    },
+    {
+      "address": 1113163560,
+      "size": 77,
+      "reference_names": [
+        "+[NSDecimalNumber numberWithUnsignedShort:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 824
+    },
+    {
+      "address": 1113163640,
+      "size": 96,
+      "reference_names": [
+        "+[NSDecimalNumberHandler decimalNumberHandlerWithRoundingMode:scale:raiseOnExactness:raiseOnOverflow:raiseOnUnderflow:raiseOnDivideByZero:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 1024
+    },
+    {
+      "address": 1113163736,
+      "size": 91,
+      "reference_names": [
+        "+[NSDecimalNumberHandler defaultDecimalNumberHandler]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 997
+    },
+    {
+      "address": 1113175668,
+      "size": 59,
+      "reference_names": [
+        "-[NSDecimalNumber boolValue]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 716
+    },
+    {
+      "address": 1113175728,
+      "size": 59,
+      "reference_names": [
+        "-[NSDecimalNumber charValue]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 720
+    },
+    {
+      "address": 1113175788,
+      "size": 61,
+      "reference_names": [
+        "-[NSDecimalNumber classForCoder]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 244
+    },
+    {
+      "address": 1113175852,
+      "size": 99,
+      "reference_names": [
+        "-[NSDecimalNumber compare:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 634
+    },
+    {
+      "address": 1113175952,
+      "size": 29,
+      "reference_names": [
+        "-[NSDecimalNumber copy]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 303
+    },
+    {
+      "address": 1113175984,
+      "size": 102,
+      "reference_names": [
+        "-[NSDecimalNumber decimalNumberByAdding:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 499
+    },
+    {
+      "address": 1113176088,
+      "size": 135,
+      "reference_names": [
+        "-[NSDecimalNumber decimalNumberByAdding:withBehavior:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 504
+    },
+    {
+      "address": 1113176224,
+      "size": 102,
+      "reference_names": [
+        "-[NSDecimalNumber decimalNumberByDividingBy:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 567
+    },
+    {
+      "address": 1113176328,
+      "size": 135,
+      "reference_names": [
+        "-[NSDecimalNumber decimalNumberByDividingBy:withBehavior:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 572
+    },
+    {
+      "address": 1113176464,
+      "size": 102,
+      "reference_names": [
+        "-[NSDecimalNumber decimalNumberByMultiplyingBy:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 548
+    },
+    {
+      "address": 1113176568,
+      "size": 135,
+      "reference_names": [
+        "-[NSDecimalNumber decimalNumberByMultiplyingBy:withBehavior:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 553
+    },
+    {
+      "address": 1113176704,
+      "size": 109,
+      "reference_names": [
+        "-[NSDecimalNumber decimalNumberByMultiplyingByPowerOf10:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 603
+    },
+    {
+      "address": 1113176816,
+      "size": 138,
+      "reference_names": [
+        "-[NSDecimalNumber decimalNumberByMultiplyingByPowerOf10:withBehavior:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 608
+    },
+    {
+      "address": 1113176956,
+      "size": 102,
+      "reference_names": [
+        "-[NSDecimalNumber decimalNumberByRaisingToPower:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 586
+    },
+    {
+      "address": 1113177060,
+      "size": 134,
+      "reference_names": [
+        "-[NSDecimalNumber decimalNumberByRaisingToPower:withBehavior:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 591
+    },
+    {
+      "address": 1113177196,
+      "size": 250,
+      "reference_names": [
+        "-[NSDecimalNumber decimalNumberByRoundingAccordingToBehavior:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 620
+    },
+    {
+      "address": 1113177448,
+      "size": 66,
+      "reference_names": [
+        "-[NSDecimalNumber decimalNumberBySubstracting:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 537
+    },
+    {
+      "address": 1113177516,
+      "size": 37,
+      "reference_names": [
+        "-[NSDecimalNumber decimalNumberBySubstracting:withBehavior:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 542
+    },
+    {
+      "address": 1113177556,
+      "size": 102,
+      "reference_names": [
+        "-[NSDecimalNumber decimalNumberBySubtracting:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 518
+    },
+    {
+      "address": 1113177660,
+      "size": 135,
+      "reference_names": [
+        "-[NSDecimalNumber decimalNumberBySubtracting:withBehavior:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 523
+    },
+    {
+      "address": 1113177796,
+      "size": 54,
+      "reference_names": [
+        "-[NSDecimalNumber decimalValue]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 280
+    },
+    {
+      "address": 1113177852,
+      "size": 23,
+      "reference_names": [
+        "-[NSDecimalNumber descriptionWithLocale:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 236
+    },
+    {
+      "address": 1113177876,
+      "size": 31,
+      "reference_names": [
+        "-[NSDecimalNumber description]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 240
+    },
+    {
+      "address": 1113177908,
+      "size": 144,
+      "reference_names": [
+        "-[NSDecimalNumber doubleValue]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 674
+    },
+    {
+      "address": 1113178052,
+      "size": 254,
+      "reference_names": [
+        "-[NSDecimalNumber encodeWithCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 252
+    },
+    {
+      "address": 1113178308,
+      "size": 38,
+      "reference_names": [
+        "-[NSDecimalNumber floatValue]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 782
+    },
+    {
+      "address": 1113178348,
+      "size": 38,
+      "reference_names": [
+        "-[NSDecimalNumber getValue:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 786
+    },
+    {
+      "address": 1113178388,
+      "size": 52,
+      "reference_names": [
+        "-[NSDecimalNumber initWithCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 268
+    },
+    {
+      "address": 1113178440,
+      "size": 52,
+      "reference_names": [
+        "-[NSDecimalNumber initWithDecimal:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 218
+    },
+    {
+      "address": 1113178492,
+      "size": 52,
+      "reference_names": [
+        "-[NSDecimalNumber initWithMantissa:exponent:isNegative:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 212
+    },
+    {
+      "address": 1113178544,
+      "size": 52,
+      "reference_names": [
+        "-[NSDecimalNumber initWithString:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 224
+    },
+    {
+      "address": 1113178596,
+      "size": 52,
+      "reference_names": [
+        "-[NSDecimalNumber initWithString:locale:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 230
+    },
+    {
+      "address": 1113178648,
+      "size": 58,
+      "reference_names": [
+        "-[NSDecimalNumber intValue]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 728
+    },
+    {
+      "address": 1113178708,
+      "size": 102,
+      "reference_names": [
+        "-[NSDecimalNumber isEqual:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 648
+    },
+    {
+      "address": 1113178812,
+      "size": 68,
+      "reference_names": [
+        "-[NSDecimalNumber longLongValue]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 736
+    },
+    {
+      "address": 1113178880,
+      "size": 58,
+      "reference_names": [
+        "-[NSDecimalNumber longValue]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 732
+    },
+    {
+      "address": 1113178940,
+      "size": 18,
+      "reference_names": [
+        "-[NSDecimalNumber objCType]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 670
+    },
+    {
+      "address": 1113178960,
+      "size": 10,
+      "reference_names": [
+        "-[NSDecimalNumber replacementObjectForCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 275
+    },
+    {
+      "address": 1113178972,
+      "size": 45,
+      "reference_names": [
+        "-[NSDecimalNumber retainCount]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 384
+    },
+    {
+      "address": 1113179020,
+      "size": 57,
+      "reference_names": [
+        "-[NSDecimalNumber shortValue]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 724
+    },
+    {
+      "address": 1113179080,
+      "size": 64,
+      "reference_names": [
+        "-[NSDecimalNumber unsignedCharValue]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 740
+    },
+    {
+      "address": 1113179144,
+      "size": 63,
+      "reference_names": [
+        "-[NSDecimalNumber unsignedIntValue]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 756
+    },
+    {
+      "address": 1113179208,
+      "size": 40,
+      "reference_names": [
+        "-[NSDecimalNumber unsignedLongLongValue]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 778
+    },
+    {
+      "address": 1113179248,
+      "size": 63,
+      "reference_names": [
+        "-[NSDecimalNumber unsignedLongValue]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 767
+    },
+    {
+      "address": 1113179312,
+      "size": 64,
+      "reference_names": [
+        "-[NSDecimalNumber unsignedShortValue]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 748
+    },
+    {
+      "address": 1113179376,
+      "size": 267,
+      "reference_names": [
+        "-[NSDecimalNumberHandler exceptionDuringOperation:error:leftOperand:rightOperand:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 1042
+    },
+    {
+      "address": 1113179644,
+      "size": 157,
+      "reference_names": [
+        "-[NSDecimalNumberHandler initWithRoundingMode:scale:raiseOnExactness:raiseOnOverflow:raiseOnUnderflow:raiseOnDivideByZero:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 1012
+    },
+    {
+      "address": 1113179804,
+      "size": 13,
+      "reference_names": [
+        "-[NSDecimalNumberHandler roundingMode]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 1034
+    },
+    {
+      "address": 1113179820,
+      "size": 14,
+      "reference_names": [
+        "-[NSDecimalNumberHandler scale]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 1038
+    },
+    {
+      "address": 1113179836,
+      "size": 10,
+      "reference_names": [
+        "-[NSDecimalNumberPlaceholder autorelease]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 930
+    },
+    {
+      "address": 1113179848,
+      "size": 7,
+      "reference_names": [
+        "-[NSDecimalNumberPlaceholder dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 932
+    },
+    {
+      "address": 1113179856,
+      "size": 153,
+      "reference_names": [
+        "-[NSDecimalNumberPlaceholder initWithMantissa:exponent:isNegative:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 893
+    },
+    {
+      "address": 1113180012,
+      "size": 35,
+      "reference_names": [
+        "-[NSDecimalNumberPlaceholder initWithString:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 905
+    },
+    {
+      "address": 1113180048,
+      "size": 215,
+      "reference_names": [
+        "-[NSDecimalNumberPlaceholder initWithString:locale:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 909
+    },
+    {
+      "address": 1113180264,
+      "size": 59,
+      "reference_names": [
+        "-[NSDecimalNumberPlaceholder init]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 924
+    },
+    {
+      "address": 1113180324,
+      "size": 7,
+      "reference_names": [
+        "-[NSDecimalNumberPlaceholder release]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 929
+    },
+    {
+      "address": 1113180332,
+      "size": 12,
+      "reference_names": [
+        "-[NSDecimalNumberPlaceholder retainCount]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 931
+    },
+    {
+      "address": 1113180344,
+      "size": 10,
+      "reference_names": [
+        "-[NSDecimalNumberPlaceholder retain]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 928
+    },
+    {
+      "address": 1113180356,
+      "size": 44,
+      "reference_names": [
+        "-[NSDecimalNumberPlaceholder initWithBool:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 938
+    },
+    {
+      "address": 1113180400,
+      "size": 44,
+      "reference_names": [
+        "-[NSDecimalNumberPlaceholder initWithChar:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 942
+    },
+    {
+      "address": 1113180444,
+      "size": 140,
+      "reference_names": [
+        "-[NSDecimalNumberPlaceholder initWithDouble:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 988
+    },
+    {
+      "address": 1113180584,
+      "size": 38,
+      "reference_names": [
+        "-[NSDecimalNumberPlaceholder initWithFloat:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 984
+    },
+    {
+      "address": 1113180624,
+      "size": 43,
+      "reference_names": [
+        "-[NSDecimalNumberPlaceholder initWithInt:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 950
+    },
+    {
+      "address": 1113180668,
+      "size": 43,
+      "reference_names": [
+        "-[NSDecimalNumberPlaceholder initWithLong:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 954
+    },
+    {
+      "address": 1113180712,
+      "size": 69,
+      "reference_names": [
+        "-[NSDecimalNumberPlaceholder initWithLongLong:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 958
+    },
+    {
+      "address": 1113180784,
+      "size": 44,
+      "reference_names": [
+        "-[NSDecimalNumberPlaceholder initWithShort:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 946
+    },
+    {
+      "address": 1113180828,
+      "size": 41,
+      "reference_names": [
+        "-[NSDecimalNumberPlaceholder initWithUnsignedChar:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 964
+    },
+    {
+      "address": 1113180872,
+      "size": 40,
+      "reference_names": [
+        "-[NSDecimalNumberPlaceholder initWithUnsignedInt:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 972
+    },
+    {
+      "address": 1113180912,
+      "size": 40,
+      "reference_names": [
+        "-[NSDecimalNumberPlaceholder initWithUnsignedLong:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 976
+    },
+    {
+      "address": 1113180952,
+      "size": 41,
+      "reference_names": [
+        "-[NSDecimalNumberPlaceholder initWithUnsignedLongLong:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 980
+    },
+    {
+      "address": 1113180996,
+      "size": 41,
+      "reference_names": [
+        "-[NSDecimalNumberPlaceholder initWithUnsignedShort:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 968
+    },
+    {
+      "address": 1113189688,
+      "size": 159,
+      "reference_names": [
+        "-[NSNumber decimalValue]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 1106
+    },
+    {
+      "address": 1113190688,
+      "size": 176,
+      "reference_names": [
+        "-[NSScanner scanDecimal:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSScanner.m",
+      "source_line": 969
+    },
+    {
+      "address": 1113191188,
+      "size": 143,
+      "reference_names": [
+        "-[NSString decimalValue]"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 1093
+    },
+    {
+      "address": 1113199888,
+      "size": 318,
+      "reference_names": [
+        "_NSIntegerAdd"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimal.m",
+      "source_line": 303
+    },
+    {
+      "address": 1113200208,
+      "size": 99,
+      "reference_names": [
+        "_NSIntegerAddShort"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimal.m",
+      "source_line": 195
+    },
+    {
+      "address": 1113200308,
+      "size": 87,
+      "reference_names": [
+        "_NSIntegerCompare"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimal.m",
+      "source_line": 157
+    },
+    {
+      "address": 1113200396,
+      "size": 58,
+      "reference_names": [
+        "_NSIntegerCopy"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimal.m",
+      "source_line": 176
+    },
+    {
+      "address": 1113200456,
+      "size": 970,
+      "reference_names": [
+        "_NSIntegerDivide"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimal.m",
+      "source_line": 502
+    },
+    {
+      "address": 1113201428,
+      "size": 156,
+      "reference_names": [
+        "_NSIntegerDivideByShort"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimal.m",
+      "source_line": 275
+    },
+    {
+      "address": 1113201584,
+      "size": 97,
+      "reference_names": [
+        "_NSIntegerMaxPowerOf10Multiplier"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimal.m",
+      "source_line": 413
+    },
+    {
+      "address": 1113201684,
+      "size": 348,
+      "reference_names": [
+        "_NSIntegerMultiply"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimal.m",
+      "source_line": 455
+    },
+    {
+      "address": 1113202032,
+      "size": 411,
+      "reference_names": [
+        "_NSIntegerMultiplyByPowerOf10"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimal.m",
+      "source_line": 741
+    },
+    {
+      "address": 1113202444,
+      "size": 142,
+      "reference_names": [
+        "_NSIntegerMultiplyByShort"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimal.m",
+      "source_line": 245
+    },
+    {
+      "address": 1113202588,
+      "size": 130,
+      "reference_names": [
+        "_NSIntegerSubShort"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimal.m",
+      "source_line": 220
+    },
+    {
+      "address": 1113202720,
+      "size": 303,
+      "reference_names": [
+        "_NSIntegerSubtract"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimal.m",
+      "source_line": 360
+    },
+    {
+      "address": 1113205072,
+      "size": 753,
+      "reference_names": [
+        "__NSCStringToDecimal"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimal.m",
+      "source_line": 1125
+    },
+    {
+      "address": 1113206136,
+      "size": 412,
+      "reference_names": [
+        "__NSDecimalNumberPlaceholderWithZone"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 129
+    },
+    {
+      "address": 1113207972,
+      "size": 247,
+      "reference_names": [
+        "__checkErrorAndRound"
+      ],
+      "source_path": "src/Kits/Foundation/NSDecimalNumber.m",
+      "source_line": 179
+    }
+  ],
+  "unmapped": [],
+  "duplicate_candidates": [],
+  "boundary_disputed": [],
+  "by_module": {
+    "NSDecimalNumber.m": {
+      "mapped": 107,
+      "unmapped": 0,
+      "duplicate_candidates": 0,
+      "boundary_disputed": 0
+    },
+    "NSScanner.m": {
+      "mapped": 1,
+      "unmapped": 0,
+      "duplicate_candidates": 0,
+      "boundary_disputed": 0
+    },
+    "NSDecimal.m": {
+      "mapped": 13,
+      "unmapped": 0,
+      "duplicate_candidates": 0,
+      "boundary_disputed": 0
+    }
+  }
+}

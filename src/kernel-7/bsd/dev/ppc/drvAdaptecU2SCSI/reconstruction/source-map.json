@@ -1,0 +1,4280 @@
+{
+  "schema_version": "source-map-v1",
+  "reference_sha256": "D01D748C10117FBFCEB25F99D88A63895C3BAC6C09A5110AD358E583316494BD",
+  "mapped": [
+    {
+      "address": 1603340,
+      "size": 144,
+      "reference_names": [
+        "_AdptMallocContiguous"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2OSMServices.m",
+      "source_line": 12
+    },
+    {
+      "address": 1603484,
+      "size": 44,
+      "reference_names": [
+        "_AdptFreeContiguous"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2OSMServices.m",
+      "source_line": 28
+    },
+    {
+      "address": 1603528,
+      "size": 48,
+      "reference_names": [
+        "+[AdaptecU2SCSI initialize]"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2SCSI.m",
+      "source_line": 50
+    },
+    {
+      "address": 1603576,
+      "size": 176,
+      "reference_names": [
+        "+[AdaptecU2SCSI probe:]"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2SCSI.m",
+      "source_line": 59
+    },
+    {
+      "address": 1603752,
+      "size": 292,
+      "reference_names": [
+        "-[AdaptecU2SCSI registerHandlerForIRQ:]"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2SCSI.m",
+      "source_line": 70
+    },
+    {
+      "address": 1604044,
+      "size": 876,
+      "reference_names": [
+        "-[AdaptecU2SCSI initFromDeviceDescription:]"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2SCSI.m",
+      "source_line": 88
+    },
+    {
+      "address": 1604920,
+      "size": 84,
+      "reference_names": [
+        "-[AdaptecU2SCSI getWorkingMemoryForCHIM]"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2SCSI.m",
+      "source_line": 146
+    },
+    {
+      "address": 1605004,
+      "size": 200,
+      "reference_names": [
+        "-[AdaptecU2SCSI findAdapter]"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2SCSI.m",
+      "source_line": 153
+    },
+    {
+      "address": 1605204,
+      "size": 736,
+      "reference_names": [
+        "-[AdaptecU2SCSI initAdapter]"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2SCSI.m",
+      "source_line": 174
+    },
+    {
+      "address": 1605940,
+      "size": 352,
+      "reference_names": [
+        "-[AdaptecU2SCSI allocateAdapterMemory]"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2SCSI.m",
+      "source_line": 241
+    },
+    {
+      "address": 1606292,
+      "size": 176,
+      "reference_names": [
+        "-[AdaptecU2SCSI createOSMIOBPool]"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2SCSI.m",
+      "source_line": 275
+    },
+    {
+      "address": 1606468,
+      "size": 220,
+      "reference_names": [
+        "-[AdaptecU2SCSI scanAdapter]"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2SCSI.m",
+      "source_line": 288
+    },
+    {
+      "address": 1606688,
+      "size": 24,
+      "reference_names": [
+        "-[AdaptecU2SCSI resetStats]"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2SCSI.m",
+      "source_line": 308
+    },
+    {
+      "address": 1606712,
+      "size": 16,
+      "reference_names": [
+        "-[AdaptecU2SCSI sumQueueLengths]"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2SCSI.m",
+      "source_line": 314
+    },
+    {
+      "address": 1606728,
+      "size": 16,
+      "reference_names": [
+        "-[AdaptecU2SCSI maxQueueLength]"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2SCSI.m",
+      "source_line": 319
+    },
+    {
+      "address": 1606744,
+      "size": 16,
+      "reference_names": [
+        "-[AdaptecU2SCSI numQueueSamples]"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2SCSI.m",
+      "source_line": 324
+    },
+    {
+      "address": 1606760,
+      "size": 16,
+      "reference_names": [
+        "-[AdaptecU2SCSI numberOfTargets]"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2SCSI.m",
+      "source_line": 329
+    },
+    {
+      "address": 1606776,
+      "size": 32,
+      "reference_names": [
+        "-[AdaptecU2SCSI maxTransfer]"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2SCSI.m",
+      "source_line": 334
+    },
+    {
+      "address": 1606808,
+      "size": 428,
+      "reference_names": [
+        "-[AdaptecU2SCSI executeRequest:]"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2SCSI.m",
+      "source_line": 339
+    },
+    {
+      "address": 1607236,
+      "size": 448,
+      "reference_names": [
+        "-[AdaptecU2SCSI executeRequest:buffer:client:]"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2SCSI.m",
+      "source_line": 362
+    },
+    {
+      "address": 1607684,
+      "size": 44,
+      "reference_names": [
+        "-[AdaptecU2SCSI executeRequest:ioMemoryDescriptor:]"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2SCSI.m",
+      "source_line": 423
+    },
+    {
+      "address": 1607728,
+      "size": 68,
+      "reference_names": [
+        "-[AdaptecU2SCSI resetSCSIBus]"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2SCSI.m",
+      "source_line": 429
+    },
+    {
+      "address": 1607796,
+      "size": 580,
+      "reference_names": [
+        "-[AdaptecU2SCSI free]"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2SCSI.m",
+      "source_line": 440
+    },
+    {
+      "address": 1608376,
+      "size": 384,
+      "reference_names": [
+        "-[AdaptecU2SCSI commandRequestOccurred]"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2SCSIThread.m",
+      "source_line": 139
+    },
+    {
+      "address": 1608760,
+      "size": 1156,
+      "reference_names": [
+        "-[AdaptecU2SCSI threadExecuteRequest:]"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2SCSIThread.m",
+      "source_line": 168
+    },
+    {
+      "address": 1609916,
+      "size": 36,
+      "reference_names": [
+        "-[AdaptecU2SCSI threadResetSCSIBus:]"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2SCSIThread.m",
+      "source_line": 212
+    },
+    {
+      "address": 1609952,
+      "size": 64,
+      "reference_names": [
+        "-[AdaptecU2SCSI timeoutOccurred]"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2SCSIThread.m",
+      "source_line": 217
+    },
+    {
+      "address": 1610172,
+      "size": 196,
+      "reference_names": [
+        "_OSMReadPCIConfigurationDword"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2OSMServices.m",
+      "source_line": 253
+    },
+    {
+      "address": 1610368,
+      "size": 228,
+      "reference_names": [
+        "_OSMReadPCIConfigurationWord"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2OSMServices.m",
+      "source_line": 268
+    },
+    {
+      "address": 1610596,
+      "size": 228,
+      "reference_names": [
+        "_OSMReadPCIConfigurationByte"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2OSMServices.m",
+      "source_line": 283
+    },
+    {
+      "address": 1610824,
+      "size": 212,
+      "reference_names": [
+        "_OSMWritePCIConfigurationDword"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2OSMServices.m",
+      "source_line": 298
+    },
+    {
+      "address": 1611036,
+      "size": 416,
+      "reference_names": [
+        "_OSMWritePCIConfigurationWord"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2OSMServices.m",
+      "source_line": 312
+    },
+    {
+      "address": 1611452,
+      "size": 412,
+      "reference_names": [
+        "_OSMWritePCIConfigurationByte"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2OSMServices.m",
+      "source_line": 335
+    },
+    {
+      "address": 1611864,
+      "size": 588,
+      "reference_names": [
+        "_OSMMapIOHandle"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2OSMServices.m",
+      "source_line": 358
+    },
+    {
+      "address": 1612452,
+      "size": 220,
+      "reference_names": [
+        "_OSMReleaseIOHandle"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2OSMServices.m",
+      "source_line": 409
+    },
+    {
+      "address": 1612672,
+      "size": 400,
+      "reference_names": [
+        "_OSMEvent"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/OSMFunctions.m",
+      "source_line": 43
+    },
+    {
+      "address": 1613072,
+      "size": 92,
+      "reference_names": [
+        "_OSMGetBusAddress"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2OSMServices.m",
+      "source_line": 212
+    },
+    {
+      "address": 1613164,
+      "size": 24,
+      "reference_names": [
+        "_OSMAdjustBusAddress"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2OSMServices.m",
+      "source_line": 223
+    },
+    {
+      "address": 1613188,
+      "size": 16,
+      "reference_names": [
+        "_OSMGetNVSize"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2OSMServices.m",
+      "source_line": 228
+    },
+    {
+      "address": 1613204,
+      "size": 16,
+      "reference_names": [
+        "_OSMPutNVData"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2OSMServices.m",
+      "source_line": 233
+    },
+    {
+      "address": 1613220,
+      "size": 16,
+      "reference_names": [
+        "_OSMGetNVData"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2OSMServices.m",
+      "source_line": 239
+    },
+    {
+      "address": 1613236,
+      "size": 52,
+      "reference_names": [
+        "_OSMReadUExact8"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2OSMServices.m",
+      "source_line": 67
+    },
+    {
+      "address": 1613288,
+      "size": 92,
+      "reference_names": [
+        "_OSMReadUExact16"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2OSMServices.m",
+      "source_line": 72
+    },
+    {
+      "address": 1613380,
+      "size": 92,
+      "reference_names": [
+        "_OSMReadUExact32"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2OSMServices.m",
+      "source_line": 83
+    },
+    {
+      "address": 1613472,
+      "size": 108,
+      "reference_names": [
+        "_OSMReadStringUExact8"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2OSMServices.m",
+      "source_line": 94
+    },
+    {
+      "address": 1613580,
+      "size": 256,
+      "reference_names": [
+        "_OSMReadStringUExact16"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2OSMServices.m",
+      "source_line": 105
+    },
+    {
+      "address": 1613836,
+      "size": 256,
+      "reference_names": [
+        "_OSMReadStringUExact32"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2OSMServices.m",
+      "source_line": 121
+    },
+    {
+      "address": 1614092,
+      "size": 60,
+      "reference_names": [
+        "_OSMWriteUExact8"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2OSMServices.m",
+      "source_line": 137
+    },
+    {
+      "address": 1614152,
+      "size": 108,
+      "reference_names": [
+        "_OSMWriteUExact16"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2OSMServices.m",
+      "source_line": 144
+    },
+    {
+      "address": 1614260,
+      "size": 88,
+      "reference_names": [
+        "_OSMWriteUExact32"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2OSMServices.m",
+      "source_line": 155
+    },
+    {
+      "address": 1614348,
+      "size": 112,
+      "reference_names": [
+        "_OSMWriteStringUExact8"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2OSMServices.m",
+      "source_line": 166
+    },
+    {
+      "address": 1614460,
+      "size": 260,
+      "reference_names": [
+        "_OSMWriteStringUExact16"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2OSMServices.m",
+      "source_line": 178
+    },
+    {
+      "address": 1614720,
+      "size": 260,
+      "reference_names": [
+        "_OSMWriteStringUExact32"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2OSMServices.m",
+      "source_line": 195
+    },
+    {
+      "address": 1614980,
+      "size": 44,
+      "reference_names": [
+        "_OSMSynchronizeRange"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2OSMServices.m",
+      "source_line": 438
+    },
+    {
+      "address": 1615024,
+      "size": 92,
+      "reference_names": [
+        "_OSMWatchdog"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2OSMServices.m",
+      "source_line": 245
+    },
+    {
+      "address": 1615116,
+      "size": 16,
+      "reference_names": [
+        "_OSMSaveInterruptState"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2OSMServices.m",
+      "source_line": 443
+    },
+    {
+      "address": 1615132,
+      "size": 12,
+      "reference_names": [
+        "_OSMSetInterruptState"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2OSMServices.m",
+      "source_line": 448
+    },
+    {
+      "address": 1615144,
+      "size": 324,
+      "reference_names": [
+        "_SendIOBsMaybe"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/OSMFunctions.m",
+      "source_line": 92
+    },
+    {
+      "address": 1615468,
+      "size": 80,
+      "reference_names": [
+        "_EnqueueOsmIOB"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/OSMFunctions.m",
+      "source_line": 110
+    },
+    {
+      "address": 1615548,
+      "size": 144,
+      "reference_names": [
+        "_HandleHIMFrozen"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/OSMFunctions.m",
+      "source_line": 116
+    },
+    {
+      "address": 1615692,
+      "size": 148,
+      "reference_names": [
+        "_PostUnfreezeHIMQueue"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/OSMFunctions.m",
+      "source_line": 129
+    },
+    {
+      "address": 1615840,
+      "size": 152,
+      "reference_names": [
+        "_ResetSCSIBus"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/OSMFunctions.m",
+      "source_line": 144
+    },
+    {
+      "address": 1615992,
+      "size": 660,
+      "reference_names": [
+        "_NormalPostRoutine"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/OSMFunctions.m",
+      "source_line": 160
+    },
+    {
+      "address": 1616652,
+      "size": 252,
+      "reference_names": [
+        "_ProbeTarget"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/OSMFunctions.m",
+      "source_line": 258
+    },
+    {
+      "address": 1616904,
+      "size": 268,
+      "reference_names": [
+        "_PostProtocolAutoConfig"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/OSMFunctions.m",
+      "source_line": 289
+    },
+    {
+      "address": 1617172,
+      "size": 192,
+      "reference_names": [
+        "_ValidateTargets"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/OSMFunctions.m",
+      "source_line": 316
+    },
+    {
+      "address": 1617364,
+      "size": 204,
+      "reference_names": [
+        "_PostRoutineResetHW"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/OSMFunctions.m",
+      "source_line": 334
+    },
+    {
+      "address": 1617568,
+      "size": 208,
+      "reference_names": [
+        "_PostRoutineEventResetHW"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/OSMFunctions.m",
+      "source_line": 355
+    },
+    {
+      "address": 1617776,
+      "size": 100,
+      "reference_names": [
+        "_PostRoutineEventPAC"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/OSMFunctions.m",
+      "source_line": 378
+    },
+    {
+      "address": 1617876,
+      "size": 480,
+      "reference_names": [
+        "_PostProbe"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/OSMFunctions.m",
+      "source_line": 390
+    },
+    {
+      "address": 1618356,
+      "size": 244,
+      "reference_names": [
+        "_CleanupWaitingQ"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/OSMFunctions.m",
+      "source_line": 434
+    },
+    {
+      "address": 1618896,
+      "size": 48,
+      "reference_names": [
+        "_AU2Handler"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/OSMFunctions.m",
+      "source_line": 480
+    },
+    {
+      "address": 1618944,
+      "size": 72,
+      "reference_names": [
+        "_AdaptecU2SCSITimeout"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/OSMFunctions.m",
+      "source_line": 485
+    },
+    {
+      "address": 1619016,
+      "size": 224,
+      "reference_names": [
+        "__allocOSMIOB"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/OSMFunctions.m",
+      "source_line": 491
+    },
+    {
+      "address": 1619240,
+      "size": 116,
+      "reference_names": [
+        "__freeOSMIOB"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/OSMFunctions.m",
+      "source_line": 513
+    },
+    {
+      "address": 1619356,
+      "size": 264,
+      "reference_names": [
+        "_AllocOSMIOB"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/OSMFunctions.m",
+      "source_line": 521
+    },
+    {
+      "address": 1619620,
+      "size": 176,
+      "reference_names": [
+        "_FreeOSMIOB"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/OSMFunctions.m",
+      "source_line": 549
+    },
+    {
+      "address": 1619796,
+      "size": 176,
+      "reference_names": [
+        "_SCSIhDeliverScb"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMSCB.c",
+      "source_line": 1116
+    },
+    {
+      "address": 1619972,
+      "size": 88,
+      "reference_names": [
+        "_SCSIhSwapping32PatchXferOpt"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMSCB.c",
+      "source_line": 112
+    },
+    {
+      "address": 1620060,
+      "size": 48,
+      "reference_names": [
+        "_SCSIhStandardAdvPatchXferOpt"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMSCB.c",
+      "source_line": 123
+    },
+    {
+      "address": 1620108,
+      "size": 48,
+      "reference_names": [
+        "_SCSIhSwappingAdvPatchXferOpt"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMSCB.c",
+      "source_line": 128
+    },
+    {
+      "address": 1620156,
+      "size": 944,
+      "reference_names": [
+        "_SCSIhStandard64QHead"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMSCB.c",
+      "source_line": 230
+    },
+    {
+      "address": 1621100,
+      "size": 764,
+      "reference_names": [
+        "_SCSIhSwapping32QHead"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMSCB.c",
+      "source_line": 286
+    },
+    {
+      "address": 1621864,
+      "size": 1348,
+      "reference_names": [
+        "_SCSIhSwappingAdvQHead"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMSCB.c",
+      "source_line": 312
+    },
+    {
+      "address": 1623212,
+      "size": 944,
+      "reference_names": [
+        "_SCSIhStandardAdvQHead"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMSCB.c",
+      "source_line": 258
+    },
+    {
+      "address": 1624156,
+      "size": 128,
+      "reference_names": [
+        "_SCSIhStandardRetrieveScb"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMSCB.c",
+      "source_line": 133
+    },
+    {
+      "address": 1624284,
+      "size": 120,
+      "reference_names": [
+        "_SCSIhStandardQoutcnt"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMSCB.c",
+      "source_line": 146
+    },
+    {
+      "address": 1624404,
+      "size": 404,
+      "reference_names": [
+        "_SCSIhStandard64QHeadBDR"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMSCB.c",
+      "source_line": 365
+    },
+    {
+      "address": 1624808,
+      "size": 392,
+      "reference_names": [
+        "_SCSIhSwapping32QHeadBDR"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMSCB.c",
+      "source_line": 417
+    },
+    {
+      "address": 1625200,
+      "size": 404,
+      "reference_names": [
+        "_SCSIhStandardAdvQHeadBDR"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMSCB.c",
+      "source_line": 391
+    },
+    {
+      "address": 1625604,
+      "size": 392,
+      "reference_names": [
+        "_SCSIhSwappingAdvQHeadBDR"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMSCB.c",
+      "source_line": 442
+    },
+    {
+      "address": 1625996,
+      "size": 864,
+      "reference_names": [
+        "_SCSIhResetChannelHardware"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMSCB.c",
+      "source_line": 1126
+    },
+    {
+      "address": 1626860,
+      "size": 176,
+      "reference_names": [
+        "_SCSIhAbortChannel"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMSCB.c",
+      "source_line": 1155
+    },
+    {
+      "address": 1627036,
+      "size": 852,
+      "reference_names": [
+        "_SCSIhStandard64ResetSoftware"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMSCB.c",
+      "source_line": 570
+    },
+    {
+      "address": 1627888,
+      "size": 584,
+      "reference_names": [
+        "_SCSIhSwappingResetSoftware"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMSCB.c",
+      "source_line": 601
+    },
+    {
+      "address": 1628472,
+      "size": 916,
+      "reference_names": [
+        "_SCSIhStandardAdvResetSoftware"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMSCB.c",
+      "source_line": 623
+    },
+    {
+      "address": 1629388,
+      "size": 780,
+      "reference_names": [
+        "_SCSIhSwappingAdvResetSoftware"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMSCB.c",
+      "source_line": 660
+    },
+    {
+      "address": 1630168,
+      "size": 132,
+      "reference_names": [
+        "_SCSIhCommonResetSoftware"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMSCB.c",
+      "source_line": 210
+    },
+    {
+      "address": 1630300,
+      "size": 276,
+      "reference_names": [
+        "_SCSIhSetAddressScratchBA32"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMSCB.c",
+      "source_line": 220
+    },
+    {
+      "address": 1630576,
+      "size": 96,
+      "reference_names": [
+        "_SCSIhStandardResetBTA"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMSCB.c",
+      "source_line": 179
+    },
+    {
+      "address": 1630672,
+      "size": 76,
+      "reference_names": [
+        "_SCSIhSwappingResetBTA"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMSCB.c",
+      "source_line": 186
+    },
+    {
+      "address": 1630748,
+      "size": 264,
+      "reference_names": [
+        "_SCSIhStandardTargetClearBusy"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMSCB.c",
+      "source_line": 193
+    },
+    {
+      "address": 1631012,
+      "size": 40,
+      "reference_names": [
+        "_SCSIhSwappingTargetClearBusy"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMSCB.c",
+      "source_line": 205
+    },
+    {
+      "address": 1631052,
+      "size": 164,
+      "reference_names": [
+        "_SCSIhStandardIndexClearBusy"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMSCB.c",
+      "source_line": 163
+    },
+    {
+      "address": 1631216,
+      "size": 96,
+      "reference_names": [
+        "_SCSIhSwappingIndexClearBusy"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMSCB.c",
+      "source_line": 169
+    },
+    {
+      "address": 1631312,
+      "size": 1496,
+      "reference_names": [
+        "_SCSIhResetScsi"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMSCB.c",
+      "source_line": 1170
+    },
+    {
+      "address": 1632808,
+      "size": 368,
+      "reference_names": [
+        "_SCSIhScsiBusReset"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMSCB.c",
+      "source_line": 1215
+    },
+    {
+      "address": 1633176,
+      "size": 188,
+      "reference_names": [
+        "_SCSIhBusDeviceReset"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMSCB.c",
+      "source_line": 1233
+    },
+    {
+      "address": 1633364,
+      "size": 852,
+      "reference_names": [
+        "_SCSIhStandard64AbortHIOB"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMSCB.c",
+      "source_line": 944
+    },
+    {
+      "address": 1634216,
+      "size": 852,
+      "reference_names": [
+        "_SCSIhStandardAdvAbortHIOB"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMSCB.c",
+      "source_line": 989
+    },
+    {
+      "address": 1635068,
+      "size": 228,
+      "reference_names": [
+        "_SCSIhSwappingAbortHIOB"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMSCB.c",
+      "source_line": 1034
+    },
+    {
+      "address": 1635296,
+      "size": 848,
+      "reference_names": [
+        "_SCSIhSwappingAdvAbortHIOB"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMSCB.c",
+      "source_line": 1055
+    },
+    {
+      "address": 1636144,
+      "size": 596,
+      "reference_names": [
+        "_SCSIhStandardSearchSeqDoneQ"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMSCB.c",
+      "source_line": 693
+    },
+    {
+      "address": 1636740,
+      "size": 596,
+      "reference_names": [
+        "_SCSIhStandardAdvSearchSeqDoneQ"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMSCB.c",
+      "source_line": 722
+    },
+    {
+      "address": 1637336,
+      "size": 392,
+      "reference_names": [
+        "_SCSIhStandardSearchDoneQ"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMSCB.c",
+      "source_line": 751
+    },
+    {
+      "address": 1637728,
+      "size": 588,
+      "reference_names": [
+        "_SCSIhStandard64SearchNewQ"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMSCB.c",
+      "source_line": 789
+    },
+    {
+      "address": 1638316,
+      "size": 588,
+      "reference_names": [
+        "_SCSIhStandardAdvSearchNewQ"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMSCB.c",
+      "source_line": 821
+    },
+    {
+      "address": 1638904,
+      "size": 528,
+      "reference_names": [
+        "_SCSIhSwappingSearchNewQ"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMSCB.c",
+      "source_line": 853
+    },
+    {
+      "address": 1639432,
+      "size": 28,
+      "reference_names": [
+        "_SCSIhStandard64ObtainNextScbNum"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMSCB.c",
+      "source_line": 12
+    },
+    {
+      "address": 1639460,
+      "size": 28,
+      "reference_names": [
+        "_SCSIhSwapping32ObtainNextScbNum"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMSCB.c",
+      "source_line": 17
+    },
+    {
+      "address": 1639488,
+      "size": 28,
+      "reference_names": [
+        "_SCSIhStandardAdvObtainNextScbNum"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMSCB.c",
+      "source_line": 22
+    },
+    {
+      "address": 1639516,
+      "size": 28,
+      "reference_names": [
+        "_SCSIhSwappingAdvObtainNextScbNum"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMSCB.c",
+      "source_line": 27
+    },
+    {
+      "address": 1639544,
+      "size": 48,
+      "reference_names": [
+        "_SCSIhStandard64UpdateNextScbNum"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMSCB.c",
+      "source_line": 32
+    },
+    {
+      "address": 1639592,
+      "size": 48,
+      "reference_names": [
+        "_SCSIhSwapping32UpdateNextScbNum"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMSCB.c",
+      "source_line": 38
+    },
+    {
+      "address": 1639640,
+      "size": 48,
+      "reference_names": [
+        "_SCSIhStandardAdvUpdateNextScbNum"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMSCB.c",
+      "source_line": 44
+    },
+    {
+      "address": 1639688,
+      "size": 48,
+      "reference_names": [
+        "_SCSIhSwappingAdvUpdateNextScbNum"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMSCB.c",
+      "source_line": 50
+    },
+    {
+      "address": 1639736,
+      "size": 44,
+      "reference_names": [
+        "_SCSIhStandard64ObtainNextScbAddress"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMSCB.c",
+      "source_line": 56
+    },
+    {
+      "address": 1639780,
+      "size": 44,
+      "reference_names": [
+        "_SCSIhStandardAdvObtainNextScbAddress"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMSCB.c",
+      "source_line": 63
+    },
+    {
+      "address": 1639824,
+      "size": 60,
+      "reference_names": [
+        "_SCSIhStandard64UpdateNextScbAddress"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMSCB.c",
+      "source_line": 70
+    },
+    {
+      "address": 1639884,
+      "size": 60,
+      "reference_names": [
+        "_SCSIhStandardAdvUpdateNextScbAddress"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMSCB.c",
+      "source_line": 77
+    },
+    {
+      "address": 1639944,
+      "size": 724,
+      "reference_names": [
+        "_SCSIhStandard64SearchExeQ"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMSCB.c",
+      "source_line": 880
+    },
+    {
+      "address": 1640668,
+      "size": 16,
+      "reference_names": [
+        "_SCSIhSwappingSearchExeQ"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMSCB.c",
+      "source_line": 174
+    },
+    {
+      "address": 1640684,
+      "size": 724,
+      "reference_names": [
+        "_SCSIhStandardAdvSearchExeQ"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMSCB.c",
+      "source_line": 912
+    },
+    {
+      "address": 1641408,
+      "size": 60,
+      "reference_names": [
+        "_SCSIhStandard64UpdateAbortBitHostMem"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMSCB.c",
+      "source_line": 84
+    },
+    {
+      "address": 1641468,
+      "size": 60,
+      "reference_names": [
+        "_SCSIhStandardAdvUpdateAbortBitHostMem"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMSCB.c",
+      "source_line": 91
+    },
+    {
+      "address": 1641528,
+      "size": 60,
+      "reference_names": [
+        "_SCSIhSwapping32UpdateAbortBitHostMem"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMSCB.c",
+      "source_line": 98
+    },
+    {
+      "address": 1641588,
+      "size": 60,
+      "reference_names": [
+        "_SCSIhSwappingAdvUpdateAbortBitHostMem"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMSCB.c",
+      "source_line": 105
+    },
+    {
+      "address": 1641648,
+      "size": 780,
+      "reference_names": [
+        "_SCSIhStandard64SetupBDR"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMSCB.c",
+      "source_line": 467
+    },
+    {
+      "address": 1642428,
+      "size": 352,
+      "reference_names": [
+        "_SCSIhSwapping32SetupBDR"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMSCB.c",
+      "source_line": 520
+    },
+    {
+      "address": 1642780,
+      "size": 800,
+      "reference_names": [
+        "_SCSIhStandardAdvSetupBDR"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMSCB.c",
+      "source_line": 493
+    },
+    {
+      "address": 1643580,
+      "size": 352,
+      "reference_names": [
+        "_SCSIhSwappingAdvSetupBDR"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMSCB.c",
+      "source_line": 545
+    },
+    {
+      "address": 1643932,
+      "size": 540,
+      "reference_names": [
+        "_SCSIhStandard64StackBugFix"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMSCB.c",
+      "source_line": 1098
+    },
+    {
+      "address": 1644472,
+      "size": 876,
+      "reference_names": [
+        "_SCSIhSwapping32FreezeHWQueue"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMSCB.c",
+      "source_line": 1246
+    },
+    {
+      "address": 1645348,
+      "size": 1056,
+      "reference_names": [
+        "_SCSIhSwappingAdvFreezeHWQueue"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMSCB.c",
+      "source_line": 1297
+    },
+    {
+      "address": 1646404,
+      "size": 288,
+      "reference_names": [
+        "_SCSIHGetConfiguration"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHIM.c",
+      "source_line": 3
+    },
+    {
+      "address": 1646692,
+      "size": 216,
+      "reference_names": [
+        "_SCSIHGetMemoryTable"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHIM.c",
+      "source_line": 21
+    },
+    {
+      "address": 1646908,
+      "size": 124,
+      "reference_names": [
+        "_SCSIHApplyMemoryTable"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHIM.c",
+      "source_line": 45
+    },
+    {
+      "address": 1647032,
+      "size": 240,
+      "reference_names": [
+        "_SCSIHInitialize"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHIM.c",
+      "source_line": 60
+    },
+    {
+      "address": 1647272,
+      "size": 32,
+      "reference_names": [
+        "_SCSIhStandardConfigureScbRam"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMConfig.c",
+      "source_line": 3
+    },
+    {
+      "address": 1647304,
+      "size": 60,
+      "reference_names": [
+        "_SCSIhSetupEnvironment"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMConfig.c",
+      "source_line": 8
+    },
+    {
+      "address": 1647364,
+      "size": 36,
+      "reference_names": [
+        "_SCSIHSetupHardware"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHIM.c",
+      "source_line": 80
+    },
+    {
+      "address": 1647400,
+      "size": 468,
+      "reference_names": [
+        "_SCSIhPrepareConfig"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMConfig.c",
+      "source_line": 14
+    },
+    {
+      "address": 1647868,
+      "size": 524,
+      "reference_names": [
+        "_SCSIhGetCapability"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMConfig.c",
+      "source_line": 47
+    },
+    {
+      "address": 1648392,
+      "size": 84,
+      "reference_names": [
+        "_SCSIhStandardGetConfig"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMConfig.c",
+      "source_line": 99
+    },
+    {
+      "address": 1648476,
+      "size": 1040,
+      "reference_names": [
+        "_SCSIhGetMaxHardwareScbs"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMConfig.c",
+      "source_line": 108
+    },
+    {
+      "address": 1649516,
+      "size": 40,
+      "reference_names": [
+        "_SCSIhNonStandardGetConfig"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMConfig.c",
+      "source_line": 144
+    },
+    {
+      "address": 1649556,
+      "size": 12,
+      "reference_names": [
+        "_SCSIhGetCommonConfig"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMConfig.c",
+      "source_line": 150
+    },
+    {
+      "address": 1649568,
+      "size": 668,
+      "reference_names": [
+        "_SCSIhGetHardwareConfiguration"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMConfig.c",
+      "source_line": 154
+    },
+    {
+      "address": 1650236,
+      "size": 744,
+      "reference_names": [
+        "_SCSIhGetIDBasedConfiguration"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMConfig.c",
+      "source_line": 184
+    },
+    {
+      "address": 1650980,
+      "size": 48,
+      "reference_names": [
+        "_SCSIhStandard64SetupSequencer"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMConfig.c",
+      "source_line": 236
+    },
+    {
+      "address": 1651028,
+      "size": 48,
+      "reference_names": [
+        "_SCSIhSwapping32SetupSequencer"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMConfig.c",
+      "source_line": 241
+    },
+    {
+      "address": 1651076,
+      "size": 48,
+      "reference_names": [
+        "_SCSIhStandardAdvSetupSequencer"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMConfig.c",
+      "source_line": 246
+    },
+    {
+      "address": 1651124,
+      "size": 48,
+      "reference_names": [
+        "_SCSIhSwappingAdvSetupSequencer"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMConfig.c",
+      "source_line": 251
+    },
+    {
+      "address": 1651172,
+      "size": 880,
+      "reference_names": [
+        "_SCSIhInitializeHardware"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMConfig.c",
+      "source_line": 266
+    },
+    {
+      "address": 1652052,
+      "size": 344,
+      "reference_names": [
+        "_SCSIhStartToRunSequencer"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMConfig.c",
+      "source_line": 256
+    },
+    {
+      "address": 1652396,
+      "size": 84,
+      "reference_names": [
+        "_SCSIhAIC78XXProcessAutoTerm"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMConfig.c",
+      "source_line": 318
+    },
+    {
+      "address": 1652480,
+      "size": 148,
+      "reference_names": [
+        "_SCSIhAICBayonetProcessAutoTerm"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMConfig.c",
+      "source_line": 328
+    },
+    {
+      "address": 1652628,
+      "size": 584,
+      "reference_names": [
+        "_SCSIhAIC78XXUpdateExtTerm"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMConfig.c",
+      "source_line": 346
+    },
+    {
+      "address": 1653212,
+      "size": 476,
+      "reference_names": [
+        "_SCSIhAICBayonetUpdateExtTerm"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMConfig.c",
+      "source_line": 368
+    },
+    {
+      "address": 1653688,
+      "size": 744,
+      "reference_names": [
+        "_SCSIhIntSrst"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMRecovery.c",
+      "source_line": 850
+    },
+    {
+      "address": 1654432,
+      "size": 468,
+      "reference_names": [
+        "_SCSIhIntIOError"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMRecovery.c",
+      "source_line": 888
+    },
+    {
+      "address": 1654900,
+      "size": 680,
+      "reference_names": [
+        "_SCSIhCheckLength"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMRecovery.c",
+      "source_line": 96
+    },
+    {
+      "address": 1655580,
+      "size": 784,
+      "reference_names": [
+        "_SCSIhCdbAbort"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMRecovery.c",
+      "source_line": 793
+    },
+    {
+      "address": 1656364,
+      "size": 932,
+      "reference_names": [
+        "_SCSIhCheckCondition"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMRecovery.c",
+      "source_line": 751
+    },
+    {
+      "address": 1657296,
+      "size": 516,
+      "reference_names": [
+        "_SCSIhBadSeq"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMRecovery.c",
+      "source_line": 827
+    },
+    {
+      "address": 1657812,
+      "size": 364,
+      "reference_names": [
+        "_SCSIhAbortTarget"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMRecovery.c",
+      "source_line": 68
+    },
+    {
+      "address": 1658176,
+      "size": 376,
+      "reference_names": [
+        "_SCSIhIntSelto"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMRecovery.c",
+      "source_line": 678
+    },
+    {
+      "address": 1658552,
+      "size": 652,
+      "reference_names": [
+        "_SCSIhIntFree"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMRecovery.c",
+      "source_line": 699
+    },
+    {
+      "address": 1659204,
+      "size": 656,
+      "reference_names": [
+        "_SCSIhParityError"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMRecovery.c",
+      "source_line": 723
+    },
+    {
+      "address": 1659860,
+      "size": 872,
+      "reference_names": [
+        "_SCSIhStandard64RequestSense"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMRecovery.c",
+      "source_line": 220
+    },
+    {
+      "address": 1660732,
+      "size": 268,
+      "reference_names": [
+        "_SCSIhSwapping32RequestSense"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMRecovery.c",
+      "source_line": 274
+    },
+    {
+      "address": 1661000,
+      "size": 944,
+      "reference_names": [
+        "_SCSIhStandardAdvRequestSense"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMRecovery.c",
+      "source_line": 246
+    },
+    {
+      "address": 1661944,
+      "size": 304,
+      "reference_names": [
+        "_SCSIhSwappingAdvRequestSense"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMRecovery.c",
+      "source_line": 300
+    },
+    {
+      "address": 1662248,
+      "size": 288,
+      "reference_names": [
+        "_SCSIhTerminateCommand"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMRecovery.c",
+      "source_line": 44
+    },
+    {
+      "address": 1662536,
+      "size": 216,
+      "reference_names": [
+        "_SCSIhSetStat"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMRecovery.c",
+      "source_line": 11
+    },
+    {
+      "address": 1662752,
+      "size": 432,
+      "reference_names": [
+        "_SCSIhBreakInterrupt"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMRecovery.c",
+      "source_line": 135
+    },
+    {
+      "address": 1663184,
+      "size": 1232,
+      "reference_names": [
+        "_SCSIhStandard64ActiveAbort"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMRecovery.c",
+      "source_line": 522
+    },
+    {
+      "address": 1664416,
+      "size": 568,
+      "reference_names": [
+        "_SCSIhSwapping32ActiveAbort"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMRecovery.c",
+      "source_line": 651
+    },
+    {
+      "address": 1664984,
+      "size": 1228,
+      "reference_names": [
+        "_SCSIhStandardAdvActiveAbort"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMRecovery.c",
+      "source_line": 562
+    },
+    {
+      "address": 1666212,
+      "size": 1196,
+      "reference_names": [
+        "_SCSIhSwappingAdvActiveAbort"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMRecovery.c",
+      "source_line": 602
+    },
+    {
+      "address": 1667408,
+      "size": 396,
+      "reference_names": [
+        "_SCSIhSwappingRemoveActiveAbort"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMRecovery.c",
+      "source_line": 167
+    },
+    {
+      "address": 1667804,
+      "size": 416,
+      "reference_names": [
+        "_SCSIhStandardRemoveActiveAbort"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMRecovery.c",
+      "source_line": 181
+    },
+    {
+      "address": 1668220,
+      "size": 728,
+      "reference_names": [
+        "_SCSIhStandard64ResidueCalc"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMRecovery.c",
+      "source_line": 331
+    },
+    {
+      "address": 1668948,
+      "size": 620,
+      "reference_names": [
+        "_SCSIhSwapping32ResidueCalc"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMRecovery.c",
+      "source_line": 381
+    },
+    {
+      "address": 1669568,
+      "size": 664,
+      "reference_names": [
+        "_SCSIhStandardAdvResidueCalc"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMRecovery.c",
+      "source_line": 428
+    },
+    {
+      "address": 1670232,
+      "size": 664,
+      "reference_names": [
+        "_SCSIhSwappingAdvResidueCalc"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMRecovery.c",
+      "source_line": 475
+    },
+    {
+      "address": 1670896,
+      "size": 528,
+      "reference_names": [
+        "_SCSIhSwappingRemoveAbortHIOBFromNewQ"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMRecovery.c",
+      "source_line": 195
+    },
+    {
+      "address": 1671424,
+      "size": 868,
+      "reference_names": [
+        "_SCSIhNegotiate"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMNegotiation.c",
+      "source_line": 756
+    },
+    {
+      "address": 1672292,
+      "size": 320,
+      "reference_names": [
+        "_SCSIhExtMsgi"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMNegotiation.c",
+      "source_line": 795
+    },
+    {
+      "address": 1672612,
+      "size": 112,
+      "reference_names": [
+        "_SCSIhInitiateWide"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMNegotiation.c",
+      "source_line": 813
+    },
+    {
+      "address": 1672724,
+      "size": 624,
+      "reference_names": [
+        "_SCSIhVerifyWideResponse"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMNegotiation.c",
+      "source_line": 828
+    },
+    {
+      "address": 1673348,
+      "size": 472,
+      "reference_names": [
+        "_SCSIhInitiateSync"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMNegotiation.c",
+      "source_line": 857
+    },
+    {
+      "address": 1673820,
+      "size": 684,
+      "reference_names": [
+        "_SCSIhVerifySyncResponse"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMNegotiation.c",
+      "source_line": 883
+    },
+    {
+      "address": 1674504,
+      "size": 384,
+      "reference_names": [
+        "_SCSIhRespondToWide"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMNegotiation.c",
+      "source_line": 913
+    },
+    {
+      "address": 1674888,
+      "size": 604,
+      "reference_names": [
+        "_SCSIhRespondToSync"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMNegotiation.c",
+      "source_line": 936
+    },
+    {
+      "address": 1675492,
+      "size": 756,
+      "reference_names": [
+        "_SCSIhSendMessage"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMNegotiation.c",
+      "source_line": 631
+    },
+    {
+      "address": 1676248,
+      "size": 816,
+      "reference_names": [
+        "_SCSIhReceiveMessage"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMNegotiation.c",
+      "source_line": 658
+    },
+    {
+      "address": 1677064,
+      "size": 736,
+      "reference_names": [
+        "_SCSIhHandleMsgOut"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMNegotiation.c",
+      "source_line": 685
+    },
+    {
+      "address": 1677800,
+      "size": 1064,
+      "reference_names": [
+        "_SCSIhHandleMsgIn"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMNegotiation.c",
+      "source_line": 711
+    },
+    {
+      "address": 1678864,
+      "size": 168,
+      "reference_names": [
+        "_SCSIhAIC78XXCalcScsiRate"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMNegotiation.c",
+      "source_line": 4
+    },
+    {
+      "address": 1679032,
+      "size": 188,
+      "reference_names": [
+        "_SCSIhAICBayonetCalcScsiRate"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMNegotiation.c",
+      "source_line": 22
+    },
+    {
+      "address": 1679220,
+      "size": 160,
+      "reference_names": [
+        "_SCSIhAIC78XXGetXferPeriod"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMNegotiation.c",
+      "source_line": 42
+    },
+    {
+      "address": 1679380,
+      "size": 328,
+      "reference_names": [
+        "_SCSIhAICBayonetGetXferPeriod"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMNegotiation.c",
+      "source_line": 58
+    },
+    {
+      "address": 1679708,
+      "size": 148,
+      "reference_names": [
+        "_SCSIhStandardGetFast20Reg"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMNegotiation.c",
+      "source_line": 80
+    },
+    {
+      "address": 1679856,
+      "size": 16,
+      "reference_names": [
+        "_SCSIhStandardAdvGetFast20Reg"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMNegotiation.c",
+      "source_line": 91
+    },
+    {
+      "address": 1679872,
+      "size": 40,
+      "reference_names": [
+        "_SCSIhSwappingGetFast20Reg"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMNegotiation.c",
+      "source_line": 97
+    },
+    {
+      "address": 1679912,
+      "size": 16,
+      "reference_names": [
+        "_SCSIhSwappingAdvGetFast20Reg"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMNegotiation.c",
+      "source_line": 103
+    },
+    {
+      "address": 1679928,
+      "size": 360,
+      "reference_names": [
+        "_SCSIhStandardClearFast20Reg"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMNegotiation.c",
+      "source_line": 275
+    },
+    {
+      "address": 1680288,
+      "size": 332,
+      "reference_names": [
+        "_SCSIhSwappingClearFast20Reg"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMNegotiation.c",
+      "source_line": 292
+    },
+    {
+      "address": 1680620,
+      "size": 472,
+      "reference_names": [
+        "_SCSIhStandardLogFast20Map"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMNegotiation.c",
+      "source_line": 312
+    },
+    {
+      "address": 1681092,
+      "size": 544,
+      "reference_names": [
+        "_SCSIhSwappingLogFast20Map"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMNegotiation.c",
+      "source_line": 336
+    },
+    {
+      "address": 1681636,
+      "size": 88,
+      "reference_names": [
+        "_SCSIhSwapping32UpdateFast20HostMem"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMNegotiation.c",
+      "source_line": 229
+    },
+    {
+      "address": 1681724,
+      "size": 176,
+      "reference_names": [
+        "_SCSIhSwapping32UpdateFast20HW"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMNegotiation.c",
+      "source_line": 238
+    },
+    {
+      "address": 1681900,
+      "size": 168,
+      "reference_names": [
+        "_SCSIhCheckSyncNego"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMNegotiation.c",
+      "source_line": 403
+    },
+    {
+      "address": 1682068,
+      "size": 196,
+      "reference_names": [
+        "_SCSIhStandardXferOptAssign"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMNegotiation.c",
+      "source_line": 364
+    },
+    {
+      "address": 1682264,
+      "size": 216,
+      "reference_names": [
+        "_SCSIhHostXferOptAssign"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMNegotiation.c",
+      "source_line": 375
+    },
+    {
+      "address": 1682480,
+      "size": 320,
+      "reference_names": [
+        "_SCSIhChkCondXferAssign"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMNegotiation.c",
+      "source_line": 411
+    },
+    {
+      "address": 1682800,
+      "size": 524,
+      "reference_names": [
+        "_SCSIhSwapping32CommonXferAssign"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMNegotiation.c",
+      "source_line": 431
+    },
+    {
+      "address": 1683324,
+      "size": 300,
+      "reference_names": [
+        "_SCSIhStandardAdvCommonXferAssign"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMNegotiation.c",
+      "source_line": 451
+    },
+    {
+      "address": 1683624,
+      "size": 300,
+      "reference_names": [
+        "_SCSIhSwappingAdvCommonXferAssign"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMNegotiation.c",
+      "source_line": 466
+    },
+    {
+      "address": 1683924,
+      "size": 56,
+      "reference_names": [
+        "_SCSIhSwapping32UpdateXferOptionHostMem"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMNegotiation.c",
+      "source_line": 248
+    },
+    {
+      "address": 1683980,
+      "size": 64,
+      "reference_names": [
+        "_SCSIhStandardAdvUpdateXferOptionHostMem"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMNegotiation.c",
+      "source_line": 257
+    },
+    {
+      "address": 1684044,
+      "size": 64,
+      "reference_names": [
+        "_SCSIhSwappingAdvUpdateXferOptionHostMem"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMNegotiation.c",
+      "source_line": 266
+    },
+    {
+      "address": 1684108,
+      "size": 92,
+      "reference_names": [
+        "_SCSIhStandardGetOption"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMNegotiation.c",
+      "source_line": 392
+    },
+    {
+      "address": 1684200,
+      "size": 36,
+      "reference_names": [
+        "_SCSIhHostGetOption"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMNegotiation.c",
+      "source_line": 398
+    },
+    {
+      "address": 1684236,
+      "size": 836,
+      "reference_names": [
+        "_SCSIhStandard64ModifyDataPtr"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMNegotiation.c",
+      "source_line": 481
+    },
+    {
+      "address": 1685072,
+      "size": 836,
+      "reference_names": [
+        "_SCSIhSwapping32ModifyDataPtr"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMNegotiation.c",
+      "source_line": 508
+    },
+    {
+      "address": 1685908,
+      "size": 472,
+      "reference_names": [
+        "_SCSIhStandardAdvModifyDataPtr"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMNegotiation.c",
+      "source_line": 535
+    },
+    {
+      "address": 1686380,
+      "size": 472,
+      "reference_names": [
+        "_SCSIhSwappingAdvModifyDataPtr"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMNegotiation.c",
+      "source_line": 555
+    },
+    {
+      "address": 1686852,
+      "size": 16,
+      "reference_names": [
+        "_SCSIhAIC78XXGetWideScsiOffset"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMNegotiation.c",
+      "source_line": 109
+    },
+    {
+      "address": 1686868,
+      "size": 16,
+      "reference_names": [
+        "_SCSIhAIC78XXGetNarrowScsiOffset"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMNegotiation.c",
+      "source_line": 114
+    },
+    {
+      "address": 1686884,
+      "size": 24,
+      "reference_names": [
+        "_SCSIhAICBayonetGetScsiOffset"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMNegotiation.c",
+      "source_line": 119
+    },
+    {
+      "address": 1686908,
+      "size": 32,
+      "reference_names": [
+        "_SCSIhAIC78XXClearScsiOffset"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMNegotiation.c",
+      "source_line": 124
+    },
+    {
+      "address": 1686940,
+      "size": 44,
+      "reference_names": [
+        "_SCSIhAICBayonetClearScsiOffset"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMNegotiation.c",
+      "source_line": 129
+    },
+    {
+      "address": 1686984,
+      "size": 24,
+      "reference_names": [
+        "_SCSIhAIC78XXWasSyncXfer"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMNegotiation.c",
+      "source_line": 137
+    },
+    {
+      "address": 1687008,
+      "size": 24,
+      "reference_names": [
+        "_SCSIhAICBayonetWasSyncXfer"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMNegotiation.c",
+      "source_line": 142
+    },
+    {
+      "address": 1687032,
+      "size": 16,
+      "reference_names": [
+        "_SCSIhAIC78XXSetDataFifoThrshDefault"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMNegotiation.c",
+      "source_line": 147
+    },
+    {
+      "address": 1687048,
+      "size": 80,
+      "reference_names": [
+        "_SCSIhAIC78XXReadDataFifoThrsh"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMNegotiation.c",
+      "source_line": 152
+    },
+    {
+      "address": 1687128,
+      "size": 88,
+      "reference_names": [
+        "_SCSIhAIC78XXUpdateDataFifoThrsh"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMNegotiation.c",
+      "source_line": 157
+    },
+    {
+      "address": 1687216,
+      "size": 16,
+      "reference_names": [
+        "_SCSIhAICBayonetSetDataFifoThrshDefault"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMNegotiation.c",
+      "source_line": 162
+    },
+    {
+      "address": 1687232,
+      "size": 80,
+      "reference_names": [
+        "_SCSIhAICBayonetReadDataFifoThrsh"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMNegotiation.c",
+      "source_line": 167
+    },
+    {
+      "address": 1687312,
+      "size": 84,
+      "reference_names": [
+        "_SCSIhAICBayonetUpdateDataFifoThrsh"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMNegotiation.c",
+      "source_line": 172
+    },
+    {
+      "address": 1687396,
+      "size": 60,
+      "reference_names": [
+        "_SCSIhSwappingClearAllFast20Reg"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMNegotiation.c",
+      "source_line": 177
+    },
+    {
+      "address": 1687456,
+      "size": 176,
+      "reference_names": [
+        "_SCSIhStandard64ClearAllFast20Reg"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMNegotiation.c",
+      "source_line": 186
+    },
+    {
+      "address": 1687632,
+      "size": 1080,
+      "reference_names": [
+        "_SCSIhAIC78XXIgnoreWideResCalc"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMNegotiation.c",
+      "source_line": 575
+    },
+    {
+      "address": 1688712,
+      "size": 812,
+      "reference_names": [
+        "_SCSIhAICBayonetIgnoreWideResCalc"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMNegotiation.c",
+      "source_line": 606
+    },
+    {
+      "address": 1689524,
+      "size": 200,
+      "reference_names": [
+        "_SCSIhStandardAdvUpdateSGLength"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMNegotiation.c",
+      "source_line": 193
+    },
+    {
+      "address": 1689724,
+      "size": 200,
+      "reference_names": [
+        "_SCSIhSwappingAdvUpdateSGLength"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMNegotiation.c",
+      "source_line": 201
+    },
+    {
+      "address": 1689924,
+      "size": 252,
+      "reference_names": [
+        "_SCSIhStandardAdvUpdateSGAddress"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMNegotiation.c",
+      "source_line": 209
+    },
+    {
+      "address": 1690176,
+      "size": 252,
+      "reference_names": [
+        "_SCSIhSwappingAdvUpdateSGAddress"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMNegotiation.c",
+      "source_line": 219
+    },
+    {
+      "address": 1690428,
+      "size": 16,
+      "reference_names": [
+        "_SCSIhScamSupportCheck"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHardware.c",
+      "source_line": 739
+    },
+    {
+      "address": 1690444,
+      "size": 328,
+      "reference_names": [
+        "_SCSIHSizeSEEPROM"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHIM.c",
+      "source_line": 289
+    },
+    {
+      "address": 1690772,
+      "size": 528,
+      "reference_names": [
+        "_SCSIHReadSEEPROM"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHIM.c",
+      "source_line": 306
+    },
+    {
+      "address": 1691300,
+      "size": 892,
+      "reference_names": [
+        "_SCSIHWriteSEEPROM"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHIM.c",
+      "source_line": 327
+    },
+    {
+      "address": 1692192,
+      "size": 368,
+      "reference_names": [
+        "_SCSIhReadE2Register"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHardware.c",
+      "source_line": 778
+    },
+    {
+      "address": 1692560,
+      "size": 576,
+      "reference_names": [
+        "_SCSIhWriteE2Register"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHardware.c",
+      "source_line": 800
+    },
+    {
+      "address": 1693136,
+      "size": 536,
+      "reference_names": [
+        "_SCSIhSendE2Address"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHardware.c",
+      "source_line": 754
+    },
+    {
+      "address": 1693672,
+      "size": 180,
+      "reference_names": [
+        "_SCSIhWait2usec"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHardware.c",
+      "source_line": 744
+    },
+    {
+      "address": 1693852,
+      "size": 52,
+      "reference_names": [
+        "_SCSIHSetUnitHandle"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHIM.c",
+      "source_line": 85
+    },
+    {
+      "address": 1693904,
+      "size": 12,
+      "reference_names": [
+        "_SCSIHFreeUnitHandle"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHIM.c",
+      "source_line": 94
+    },
+    {
+      "address": 1693916,
+      "size": 104,
+      "reference_names": [
+        "_SCSIHDisableIRQ"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHIM.c",
+      "source_line": 103
+    },
+    {
+      "address": 1694020,
+      "size": 104,
+      "reference_names": [
+        "_SCSIHEnableIRQ"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHIM.c",
+      "source_line": 109
+    },
+    {
+      "address": 1694124,
+      "size": 104,
+      "reference_names": [
+        "_SCSIHPollIRQ"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHIM.c",
+      "source_line": 115
+    },
+    {
+      "address": 1694228,
+      "size": 80,
+      "reference_names": [
+        "_SCSIHQueueHIOB"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHIM.c",
+      "source_line": 124
+    },
+    {
+      "address": 1694308,
+      "size": 232,
+      "reference_names": [
+        "_SCSIHQueueSpecialHIOB"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHIM.c",
+      "source_line": 132
+    },
+    {
+      "address": 1694540,
+      "size": 48,
+      "reference_names": [
+        "_SCSIHPowerManagement"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHIM.c",
+      "source_line": 161
+    },
+    {
+      "address": 1694588,
+      "size": 16,
+      "reference_names": [
+        "_SCSIHApplyDeviceTable"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHIM.c",
+      "source_line": 98
+    },
+    {
+      "address": 1694604,
+      "size": 80,
+      "reference_names": [
+        "_SCSIHCheckHostIdle"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHIM.c",
+      "source_line": 167
+    },
+    {
+      "address": 1694684,
+      "size": 100,
+      "reference_names": [
+        "_SCSIHCheckDeviceIdle"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHIM.c",
+      "source_line": 175
+    },
+    {
+      "address": 1694784,
+      "size": 384,
+      "reference_names": [
+        "_SCSIhAbortTask"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHardware.c",
+      "source_line": 3
+    },
+    {
+      "address": 1695168,
+      "size": 300,
+      "reference_names": [
+        "_SCSIhAbortTaskSet"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHardware.c",
+      "source_line": 32
+    },
+    {
+      "address": 1695468,
+      "size": 304,
+      "reference_names": [
+        "_SCSIHSuppressNegotiation"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHIM.c",
+      "source_line": 204
+    },
+    {
+      "address": 1695772,
+      "size": 296,
+      "reference_names": [
+        "_SCSIHForceNegotiation"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHIM.c",
+      "source_line": 219
+    },
+    {
+      "address": 1696068,
+      "size": 1048,
+      "reference_names": [
+        "_SCSIHGetHWInformation"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHIM.c",
+      "source_line": 395
+    },
+    {
+      "address": 1697116,
+      "size": 588,
+      "reference_names": [
+        "_SCSIHPutHWInformation"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHIM.c",
+      "source_line": 448
+    },
+    {
+      "address": 1697704,
+      "size": 104,
+      "reference_names": [
+        "_SCSIHEnableExpStatus"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHIM.c",
+      "source_line": 184
+    },
+    {
+      "address": 1697808,
+      "size": 104,
+      "reference_names": [
+        "_SCSIHDisableExpStatus"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHIM.c",
+      "source_line": 194
+    },
+    {
+      "address": 1697912,
+      "size": 224,
+      "reference_names": [
+        "_SCSIhPauseAndWait"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHardware.c",
+      "source_line": 720
+    },
+    {
+      "address": 1698136,
+      "size": 100,
+      "reference_names": [
+        "_SCSIhUnPause"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHardware.c",
+      "source_line": 733
+    },
+    {
+      "address": 1698236,
+      "size": 308,
+      "reference_names": [
+        "_SCSIHEnableExtScbRam"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHIM.c",
+      "source_line": 235
+    },
+    {
+      "address": 1698544,
+      "size": 240,
+      "reference_names": [
+        "_SCSIHDisableExtScbRam"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHIM.c",
+      "source_line": 252
+    },
+    {
+      "address": 1698784,
+      "size": 752,
+      "reference_names": [
+        "_SCSIhLoadSequencer"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHardware.c",
+      "source_line": 575
+    },
+    {
+      "address": 1699536,
+      "size": 480,
+      "reference_names": [
+        "_SCSIhWait4Req"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHardware.c",
+      "source_line": 598
+    },
+    {
+      "address": 1700016,
+      "size": 892,
+      "reference_names": [
+        "_SCSIhDelayCount500us"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHardware.c",
+      "source_line": 627
+    },
+    {
+      "address": 1700908,
+      "size": 104,
+      "reference_names": [
+        "_SCSIhSetupAssignScbBuffer"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHardware.c",
+      "source_line": 663
+    },
+    {
+      "address": 1701012,
+      "size": 192,
+      "reference_names": [
+        "_SCSIHExtScbRAMAvail"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHIM.c",
+      "source_line": 267
+    },
+    {
+      "address": 1701204,
+      "size": 284,
+      "reference_names": [
+        "_SCSIHReadScratchRam"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHIM.c",
+      "source_line": 369
+    },
+    {
+      "address": 1701488,
+      "size": 288,
+      "reference_names": [
+        "_SCSIHWriteScratchRam"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHIM.c",
+      "source_line": 382
+    },
+    {
+      "address": 1701776,
+      "size": 220,
+      "reference_names": [
+        "_SCSIhAIC78XXAutoTermCable"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHardware.c",
+      "source_line": 111
+    },
+    {
+      "address": 1701996,
+      "size": 1800,
+      "reference_names": [
+        "_SCSIhCableSense"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHardware.c",
+      "source_line": 52
+    },
+    {
+      "address": 1703796,
+      "size": 112,
+      "reference_names": [
+        "_SCSIhWriteHCNTRL"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHardware.c",
+      "source_line": 690
+    },
+    {
+      "address": 1703908,
+      "size": 324,
+      "reference_names": [
+        "_SCSIhWWWriteHCNTRL"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHardware.c",
+      "source_line": 674
+    },
+    {
+      "address": 1704232,
+      "size": 104,
+      "reference_names": [
+        "_SCSIhReadINTSTAT"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHardware.c",
+      "source_line": 713
+    },
+    {
+      "address": 1704336,
+      "size": 372,
+      "reference_names": [
+        "_SCSIhWWReadINTSTAT"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHardware.c",
+      "source_line": 698
+    },
+    {
+      "address": 1704708,
+      "size": 368,
+      "reference_names": [
+        "_SCSIHReadHADDR"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHIM.c",
+      "source_line": 277
+    },
+    {
+      "address": 1705076,
+      "size": 276,
+      "reference_names": [
+        "_SCSIhSetAddressScbBA32"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHardware.c",
+      "source_line": 524
+    },
+    {
+      "address": 1705352,
+      "size": 32,
+      "reference_names": [
+        "_SCSIhGetAddressScbBA32"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHardware.c",
+      "source_line": 543
+    },
+    {
+      "address": 1705384,
+      "size": 252,
+      "reference_names": [
+        "_SCSIhGetEntity32FromScb"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHardware.c",
+      "source_line": 534
+    },
+    {
+      "address": 1705636,
+      "size": 64,
+      "reference_names": [
+        "_SCSIhCompareBusAddress"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHardware.c",
+      "source_line": 548
+    },
+    {
+      "address": 1705700,
+      "size": 80,
+      "reference_names": [
+        "_SCSIhAIC78XXLoadScsiRate"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHardware.c",
+      "source_line": 553
+    },
+    {
+      "address": 1705780,
+      "size": 160,
+      "reference_names": [
+        "_SCSIhAICBayonetLoadScsiRate"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHardware.c",
+      "source_line": 558
+    },
+    {
+      "address": 1705940,
+      "size": 84,
+      "reference_names": [
+        "_SCSIhAIC78XXResetDFifo"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHardware.c",
+      "source_line": 564
+    },
+    {
+      "address": 1706024,
+      "size": 148,
+      "reference_names": [
+        "_SCSIhAICBayonetResetDFifo"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHardware.c",
+      "source_line": 569
+    },
+    {
+      "address": 1706172,
+      "size": 12,
+      "reference_names": [
+        "_SCSIhAIC78XXEnableIOErr"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHardware.c",
+      "source_line": 477
+    },
+    {
+      "address": 1706184,
+      "size": 148,
+      "reference_names": [
+        "_SCSIhAICBayonetEnableIOErr"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHardware.c",
+      "source_line": 481
+    },
+    {
+      "address": 1706332,
+      "size": 80,
+      "reference_names": [
+        "_SCSIhAICBayonetGetScbRamCtrls"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHardware.c",
+      "source_line": 487
+    },
+    {
+      "address": 1706412,
+      "size": 36,
+      "reference_names": [
+        "_SCSIhAIC78XXGetScbRamCtrls"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHardware.c",
+      "source_line": 492
+    },
+    {
+      "address": 1706448,
+      "size": 80,
+      "reference_names": [
+        "_SCSIhAICBayonetPutScbRamCtrls"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHardware.c",
+      "source_line": 497
+    },
+    {
+      "address": 1706528,
+      "size": 40,
+      "reference_names": [
+        "_SCSIhAIC78XXPutScbRamCtrls"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHardware.c",
+      "source_line": 502
+    },
+    {
+      "address": 1706568,
+      "size": 80,
+      "reference_names": [
+        "_SCSIhAIC78XXGetCacheThEn"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHardware.c",
+      "source_line": 507
+    },
+    {
+      "address": 1706648,
+      "size": 196,
+      "reference_names": [
+        "_SCSIhAICBayonetGetCacheThEn"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHardware.c",
+      "source_line": 512
+    },
+    {
+      "address": 1706844,
+      "size": 244,
+      "reference_names": [
+        "_SCSIhAIC78XXUpdateCacheThEn"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHardware.c",
+      "source_line": 376
+    },
+    {
+      "address": 1707088,
+      "size": 316,
+      "reference_names": [
+        "_SCSIhAICBayonetUpdateCacheThEn"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHardware.c",
+      "source_line": 389
+    },
+    {
+      "address": 1707404,
+      "size": 156,
+      "reference_names": [
+        "_SCSIhStandardResetCCCtl"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHardware.c",
+      "source_line": 404
+    },
+    {
+      "address": 1707560,
+      "size": 252,
+      "reference_names": [
+        "_SCSIhStandardInitCCHHAddr"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHardware.c",
+      "source_line": 410
+    },
+    {
+      "address": 1707812,
+      "size": 128,
+      "reference_names": [
+        "_SCSIhAIC78XXCheckExtArbAckEnBit"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHardware.c",
+      "source_line": 418
+    },
+    {
+      "address": 1707940,
+      "size": 128,
+      "reference_names": [
+        "_SCSIhAICBayonetCheckExtArbAckEnBit"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHardware.c",
+      "source_line": 427
+    },
+    {
+      "address": 1708068,
+      "size": 244,
+      "reference_names": [
+        "_SCSIhAIC78XXGetSpeed"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHardware.c",
+      "source_line": 436
+    },
+    {
+      "address": 1708312,
+      "size": 144,
+      "reference_names": [
+        "_SCSIhAICBayonetGetSpeed"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHardware.c",
+      "source_line": 458
+    },
+    {
+      "address": 1708456,
+      "size": 248,
+      "reference_names": [
+        "_SCSIhAIC78XXCalcScsiOption"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHardware.c",
+      "source_line": 228
+    },
+    {
+      "address": 1708704,
+      "size": 252,
+      "reference_names": [
+        "_SCSIhAICBayonetCalcScsiOption"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHardware.c",
+      "source_line": 249
+    },
+    {
+      "address": 1708956,
+      "size": 680,
+      "reference_names": [
+        "_SCSIhAIC78XXGetProfileParameters"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHardware.c",
+      "source_line": 270
+    },
+    {
+      "address": 1709636,
+      "size": 572,
+      "reference_names": [
+        "_SCSIhAICBayonetGetProfileParameters"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHardware.c",
+      "source_line": 295
+    },
+    {
+      "address": 1710208,
+      "size": 276,
+      "reference_names": [
+        "_SCSIhAIC78XXPutProfileParameters"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHardware.c",
+      "source_line": 319
+    },
+    {
+      "address": 1710484,
+      "size": 436,
+      "reference_names": [
+        "_SCSIhAICBayonetPutProfileParameters"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHardware.c",
+      "source_line": 336
+    },
+    {
+      "address": 1710920,
+      "size": 84,
+      "reference_names": [
+        "_SCSIhAIC78XXGetQNewTail"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHardware.c",
+      "source_line": 364
+    },
+    {
+      "address": 1711004,
+      "size": 168,
+      "reference_names": [
+        "_SCSIhAICBayonetGetQNewTail"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHardware.c",
+      "source_line": 369
+    },
+    {
+      "address": 1711172,
+      "size": 268,
+      "reference_names": [
+        "_SCSIhAICBayonetWaitForBusStable"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHardware.c",
+      "source_line": 126
+    },
+    {
+      "address": 1711440,
+      "size": 356,
+      "reference_names": [
+        "_SCSIhSwapping32SetBreakPoint"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHardware.c",
+      "source_line": 142
+    },
+    {
+      "address": 1711796,
+      "size": 212,
+      "reference_names": [
+        "_SCSIhSwappingAdvSetBreakPoint"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHardware.c",
+      "source_line": 170
+    },
+    {
+      "address": 1712008,
+      "size": 356,
+      "reference_names": [
+        "_SCSIhStandard64SetBreakPoint"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHardware.c",
+      "source_line": 156
+    },
+    {
+      "address": 1712364,
+      "size": 212,
+      "reference_names": [
+        "_SCSIhStandardAdvSetBreakPoint"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHardware.c",
+      "source_line": 182
+    },
+    {
+      "address": 1712576,
+      "size": 84,
+      "reference_names": [
+        "_SCSIhSwapping32ClearBreakPoint"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHardware.c",
+      "source_line": 194
+    },
+    {
+      "address": 1712660,
+      "size": 212,
+      "reference_names": [
+        "_SCSIhSwappingAdvClearBreakPoint"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHardware.c",
+      "source_line": 204
+    },
+    {
+      "address": 1712872,
+      "size": 84,
+      "reference_names": [
+        "_SCSIhStandard64ClearBreakPoint"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHardware.c",
+      "source_line": 199
+    },
+    {
+      "address": 1712956,
+      "size": 212,
+      "reference_names": [
+        "_SCSIhStandardAdvClearBreakPoint"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHardware.c",
+      "source_line": 216
+    },
+    {
+      "address": 1713168,
+      "size": 76,
+      "reference_names": [
+        "_SCSIhAICBayonetSeqStretchWorkaround"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMHardware.c",
+      "source_line": 669
+    },
+    {
+      "address": 1713244,
+      "size": 68,
+      "reference_names": [
+        "_SCSIRGetConfiguration"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMResource.c",
+      "source_line": 391
+    },
+    {
+      "address": 1713312,
+      "size": 136,
+      "reference_names": [
+        "_SCSIRGetMemoryTable"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMResource.c",
+      "source_line": 372
+    },
+    {
+      "address": 1713448,
+      "size": 48,
+      "reference_names": [
+        "_SCSIRApplyMemoryTable"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMResource.c",
+      "source_line": 401
+    },
+    {
+      "address": 1713496,
+      "size": 64,
+      "reference_names": [
+        "_SCSIRInitialize"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMResource.c",
+      "source_line": 452
+    },
+    {
+      "address": 1713560,
+      "size": 552,
+      "reference_names": [
+        "_SCSIrReset"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMResource.c",
+      "source_line": 408
+    },
+    {
+      "address": 1714112,
+      "size": 36,
+      "reference_names": [
+        "_SCSIrStandardRemoveScbs"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMResource.c",
+      "source_line": 323
+    },
+    {
+      "address": 1714148,
+      "size": 104,
+      "reference_names": [
+        "_SCSIRSetUnitHandle"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMResource.c",
+      "source_line": 334
+    },
+    {
+      "address": 1714252,
+      "size": 32,
+      "reference_names": [
+        "_SCSIRFreeUnitHandle"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMResource.c",
+      "source_line": 341
+    },
+    {
+      "address": 1714284,
+      "size": 216,
+      "reference_names": [
+        "_SCSIRQueueSpecialHIOB"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMResource.c",
+      "source_line": 669
+    },
+    {
+      "address": 1714500,
+      "size": 88,
+      "reference_names": [
+        "_SCSIRCheckHostIdle"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMResource.c",
+      "source_line": 346
+    },
+    {
+      "address": 1714588,
+      "size": 112,
+      "reference_names": [
+        "_SCSIRCheckDeviceIdle"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMResource.c",
+      "source_line": 355
+    },
+    {
+      "address": 1714700,
+      "size": 192,
+      "reference_names": [
+        "_SCSIrCompleteHIOB"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMResource.c",
+      "source_line": 458
+    },
+    {
+      "address": 1714892,
+      "size": 260,
+      "reference_names": [
+        "_SCSIrCompleteSpecialHIOB"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMResource.c",
+      "source_line": 476
+    },
+    {
+      "address": 1715152,
+      "size": 276,
+      "reference_names": [
+        "_SCSIrAsyncEvent"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMResource.c",
+      "source_line": 557
+    },
+    {
+      "address": 1715428,
+      "size": 100,
+      "reference_names": [
+        "_SCSIrScsiBusReset"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMResource.c",
+      "source_line": 513
+    },
+    {
+      "address": 1715528,
+      "size": 220,
+      "reference_names": [
+        "_SCSIrBusDeviceReset"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMResource.c",
+      "source_line": 522
+    },
+    {
+      "address": 1715748,
+      "size": 84,
+      "reference_names": [
+        "_SCSIRPowerManagement"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMResource.c",
+      "source_line": 366
+    },
+    {
+      "address": 1715832,
+      "size": 128,
+      "reference_names": [
+        "_SCSIrAbortTask"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMResource.c",
+      "source_line": 646
+    },
+    {
+      "address": 1715960,
+      "size": 148,
+      "reference_names": [
+        "_SCSIrAbortTaskSet"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMResource.c",
+      "source_line": 657
+    },
+    {
+      "address": 1716108,
+      "size": 92,
+      "reference_names": [
+        "_SCSIRGetHWInformation"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMResource.c",
+      "source_line": 537
+    },
+    {
+      "address": 1716200,
+      "size": 96,
+      "reference_names": [
+        "_SCSIRPutHWInformation"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMResource.c",
+      "source_line": 546
+    },
+    {
+      "address": 1716296,
+      "size": 16,
+      "reference_names": [
+        "_SCSIRGetFreeHead"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMResource.c",
+      "source_line": 329
+    },
+    {
+      "address": 1716312,
+      "size": 388,
+      "reference_names": [
+        "_SCSIrAsyncEventCommand"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMResource.c",
+      "source_line": 590
+    },
+    {
+      "address": 1716700,
+      "size": 112,
+      "reference_names": [
+        "_SCSIrAllocateScb"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMResource.c",
+      "source_line": 226
+    },
+    {
+      "address": 1716812,
+      "size": 68,
+      "reference_names": [
+        "_SCSIrGetScb"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMResource.c",
+      "source_line": 5
+    },
+    {
+      "address": 1716880,
+      "size": 44,
+      "reference_names": [
+        "_SCSIrReturnScb"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMResource.c",
+      "source_line": 14
+    },
+    {
+      "address": 1716924,
+      "size": 68,
+      "reference_names": [
+        "_SCSIrDeviceQueueAppend"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMResource.c",
+      "source_line": 21
+    },
+    {
+      "address": 1716992,
+      "size": 128,
+      "reference_names": [
+        "_SCSIrDeviceQueueRemove"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMResource.c",
+      "source_line": 36
+    },
+    {
+      "address": 1717120,
+      "size": 148,
+      "reference_names": [
+        "_SCSIrAbortHIOBInDevQ"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMResource.c",
+      "source_line": 136
+    },
+    {
+      "address": 1717268,
+      "size": 152,
+      "reference_names": [
+        "_SCSIrClearDeviceQueue"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMResource.c",
+      "source_line": 168
+    },
+    {
+      "address": 1717420,
+      "size": 92,
+      "reference_names": [
+        "_SCSIrClearAllDeviceQueues"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMResource.c",
+      "source_line": 198
+    },
+    {
+      "address": 1717512,
+      "size": 56,
+      "reference_names": [
+        "_SCSIrHostQueueAppend"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMResource.c",
+      "source_line": 54
+    },
+    {
+      "address": 1717568,
+      "size": 64,
+      "reference_names": [
+        "_SCSIrHostQueueRemove"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMResource.c",
+      "source_line": 68
+    },
+    {
+      "address": 1717632,
+      "size": 148,
+      "reference_names": [
+        "_SCSIrAbortHIOBInHostQ"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMResource.c",
+      "source_line": 152
+    },
+    {
+      "address": 1717780,
+      "size": 248,
+      "reference_names": [
+        "_SCSIrFindAndAbortHIOB"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMResource.c",
+      "source_line": 205
+    },
+    {
+      "address": 1718028,
+      "size": 152,
+      "reference_names": [
+        "_SCSIrClearHostQueue"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMResource.c",
+      "source_line": 183
+    },
+    {
+      "address": 1718180,
+      "size": 228,
+      "reference_names": [
+        "_SCSIrFreeScb"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMResource.c",
+      "source_line": 284
+    },
+    {
+      "address": 1718408,
+      "size": 272,
+      "reference_names": [
+        "_SCSIrFreeCriteria"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMResource.c",
+      "source_line": 260
+    },
+    {
+      "address": 1718680,
+      "size": 64,
+      "reference_names": [
+        "_SCSIrPostAbortedHIOB"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMResource.c",
+      "source_line": 128
+    },
+    {
+      "address": 1718744,
+      "size": 132,
+      "reference_names": [
+        "_SCSIrPostDoneQueue"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMResource.c",
+      "source_line": 312
+    },
+    {
+      "address": 1718876,
+      "size": 96,
+      "reference_names": [
+        "_SCSIrAdjustQueue"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMResource.c",
+      "source_line": 114
+    },
+    {
+      "address": 1718972,
+      "size": 84,
+      "reference_names": [
+        "_SCSIrFinishQueueFull"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMResource.c",
+      "source_line": 252
+    },
+    {
+      "address": 1719056,
+      "size": 80,
+      "reference_names": [
+        "_SCSIrFreezeAllDeviceQueues"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMResource.c",
+      "source_line": 296
+    },
+    {
+      "address": 1719136,
+      "size": 96,
+      "reference_names": [
+        "_SCSIrUnFreezeAllDeviceQueues"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMResource.c",
+      "source_line": 302
+    },
+    {
+      "address": 1719232,
+      "size": 76,
+      "reference_names": [
+        "_SCSIrFreezeDeviceQueue"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMResource.c",
+      "source_line": 82
+    },
+    {
+      "address": 1719308,
+      "size": 68,
+      "reference_names": [
+        "_SCSIrUnFreezeDeviceQueue"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMResource.c",
+      "source_line": 98
+    },
+    {
+      "address": 1719376,
+      "size": 180,
+      "reference_names": [
+        "_SCSIrDispatchQueuedHIOB"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMResource.c",
+      "source_line": 233
+    },
+    {
+      "address": 1719556,
+      "size": 52,
+      "reference_names": [
+        "_SCSIGetFunctionPointers"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMAPI.c",
+      "source_line": 6
+    },
+    {
+      "address": 1719608,
+      "size": 72,
+      "reference_names": [
+        "_SCSIGetNextHostDeviceType"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMAPI.c",
+      "source_line": 12
+    },
+    {
+      "address": 1719680,
+      "size": 232,
+      "reference_names": [
+        "_SCSICreateInitializationTSCB"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMAPI.c",
+      "source_line": 24
+    },
+    {
+      "address": 1719912,
+      "size": 76,
+      "reference_names": [
+        "_SCSIxMaximizeMemory"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMTransport.c",
+      "source_line": 6
+    },
+    {
+      "address": 1719988,
+      "size": 40,
+      "reference_names": [
+        "_SCSIGetConfiguration"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMAPI.c",
+      "source_line": 40
+    },
+    {
+      "address": 1720028,
+      "size": 344,
+      "reference_names": [
+        "_SCSISetConfiguration"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMAPI.c",
+      "source_line": 47
+    },
+    {
+      "address": 1720372,
+      "size": 16,
+      "reference_names": [
+        "_SCSISizeAdapterTSCB"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMAPI.c",
+      "source_line": 83
+    },
+    {
+      "address": 1720388,
+      "size": 244,
+      "reference_names": [
+        "_SCSICreateAdapterTSCB"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMAPI.c",
+      "source_line": 89
+    },
+    {
+      "address": 1720632,
+      "size": 48,
+      "reference_names": [
+        "_SCSISetupAdapterTSCB"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMAPI.c",
+      "source_line": 117
+    },
+    {
+      "address": 1720680,
+      "size": 468,
+      "reference_names": [
+        "_SCSICheckMemoryNeeded"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMAPI.c",
+      "source_line": 217
+    },
+    {
+      "address": 1721148,
+      "size": 96,
+      "reference_names": [
+        "_SCSISetMemoryPointer"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMAPI.c",
+      "source_line": 260
+    },
+    {
+      "address": 1721244,
+      "size": 680,
+      "reference_names": [
+        "_SCSIVerifyAdapter"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMAPI.c",
+      "source_line": 273
+    },
+    {
+      "address": 1721924,
+      "size": 764,
+      "reference_names": [
+        "_SCSIInitialize"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMAPI.c",
+      "source_line": 334
+    },
+    {
+      "address": 1722688,
+      "size": 16,
+      "reference_names": [
+        "_SCSISizeTargetTSCB"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMAPI.c",
+      "source_line": 169
+    },
+    {
+      "address": 1722704,
+      "size": 276,
+      "reference_names": [
+        "_SCSICheckTargetTSCBNeeded"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMAPI.c",
+      "source_line": 387
+    },
+    {
+      "address": 1722980,
+      "size": 416,
+      "reference_names": [
+        "_SCSICreateTargetTSCB"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMAPI.c",
+      "source_line": 403
+    },
+    {
+      "address": 1723396,
+      "size": 36,
+      "reference_names": [
+        "_SCSIDisableIRQ"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMAPI.c",
+      "source_line": 174
+    },
+    {
+      "address": 1723432,
+      "size": 36,
+      "reference_names": [
+        "_SCSIEnableIRQ"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMAPI.c",
+      "source_line": 179
+    },
+    {
+      "address": 1723468,
+      "size": 44,
+      "reference_names": [
+        "_SCSIPollIRQ"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMAPI.c",
+      "source_line": 184
+    },
+    {
+      "address": 1723512,
+      "size": 36,
+      "reference_names": [
+        "_SCSIPowerEvent"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMAPI.c",
+      "source_line": 189
+    },
+    {
+      "address": 1723548,
+      "size": 32,
+      "reference_names": [
+        "_SCSIValidateTargetTSH"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMAPI.c",
+      "source_line": 194
+    },
+    {
+      "address": 1723580,
+      "size": 64,
+      "reference_names": [
+        "_SCSIxNonScamValidateLun"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMTransport.c",
+      "source_line": 18
+    },
+    {
+      "address": 1723644,
+      "size": 124,
+      "reference_names": [
+        "_SCSIClearTargetTSH"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMAPI.c",
+      "source_line": 199
+    },
+    {
+      "address": 1723768,
+      "size": 12,
+      "reference_names": [
+        "_SCSISaveState"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMAPI.c",
+      "source_line": 125
+    },
+    {
+      "address": 1723780,
+      "size": 12,
+      "reference_names": [
+        "_SCSIRestoreState"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMAPI.c",
+      "source_line": 132
+    },
+    {
+      "address": 1723792,
+      "size": 992,
+      "reference_names": [
+        "_SCSIProfileAdapter"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMAPI.c",
+      "source_line": 496
+    },
+    {
+      "address": 1724784,
+      "size": 96,
+      "reference_names": [
+        "_SCSIReportAdjustableAdapterProfile"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMAPI.c",
+      "source_line": 568
+    },
+    {
+      "address": 1724880,
+      "size": 848,
+      "reference_names": [
+        "_SCSIAdjustAdapterProfile"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMAPI.c",
+      "source_line": 580
+    },
+    {
+      "address": 1725728,
+      "size": 420,
+      "reference_names": [
+        "_SCSIProfileTarget"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMAPI.c",
+      "source_line": 619
+    },
+    {
+      "address": 1726148,
+      "size": 48,
+      "reference_names": [
+        "_SCSIReportAdjustableTargetProfile"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMAPI.c",
+      "source_line": 210
+    },
+    {
+      "address": 1726196,
+      "size": 780,
+      "reference_names": [
+        "_SCSIAdjustTargetProfile"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMAPI.c",
+      "source_line": 655
+    },
+    {
+      "address": 1726976,
+      "size": 212,
+      "reference_names": [
+        "_SCSIGetNVSize"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMAPI.c",
+      "source_line": 434
+    },
+    {
+      "address": 1727188,
+      "size": 532,
+      "reference_names": [
+        "_SCSIGetNVOSMSegment"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMAPI.c",
+      "source_line": 448
+    },
+    {
+      "address": 1727720,
+      "size": 136,
+      "reference_names": [
+        "_SCSIPutNVData"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMAPI.c",
+      "source_line": 476
+    },
+    {
+      "address": 1727856,
+      "size": 144,
+      "reference_names": [
+        "_SCSIGetNVData"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMAPI.c",
+      "source_line": 488
+    },
+    {
+      "address": 1728000,
+      "size": 16,
+      "reference_names": [
+        "_SCSIProfileNexus"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMAPI.c",
+      "source_line": 139
+    },
+    {
+      "address": 1728016,
+      "size": 16,
+      "reference_names": [
+        "_SCSIClearNexusTSH"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMAPI.c",
+      "source_line": 144
+    },
+    {
+      "address": 1728032,
+      "size": 16,
+      "reference_names": [
+        "_SCSIProfileNode"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMAPI.c",
+      "source_line": 149
+    },
+    {
+      "address": 1728048,
+      "size": 16,
+      "reference_names": [
+        "_SCSIReportAdjustableNodeProfile"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMAPI.c",
+      "source_line": 154
+    },
+    {
+      "address": 1728064,
+      "size": 16,
+      "reference_names": [
+        "_SCSIAdjustNodeProfile"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMAPI.c",
+      "source_line": 159
+    },
+    {
+      "address": 1728080,
+      "size": 16,
+      "reference_names": [
+        "_SCSISetOSMNodeContext"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMAPI.c",
+      "source_line": 164
+    },
+    {
+      "address": 1728096,
+      "size": 1132,
+      "reference_names": [
+        "_SCSIQueueIOB"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMAPI.c",
+      "source_line": 717
+    },
+    {
+      "address": 1729228,
+      "size": 544,
+      "reference_names": [
+        "_SCSIFrontEndISR"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMAPI.c",
+      "source_line": 810
+    },
+    {
+      "address": 1729772,
+      "size": 2680,
+      "reference_names": [
+        "_SCSIBackEndISR"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMAPI.c",
+      "source_line": 862
+    },
+    {
+      "address": 1732452,
+      "size": 56,
+      "reference_names": [
+        "_OSDBuildSCB"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMOSD.c",
+      "source_line": 12
+    },
+    {
+      "address": 1732508,
+      "size": 504,
+      "reference_names": [
+        "_OSDStandard64BuildSCB"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMOSD.c",
+      "source_line": 91
+    },
+    {
+      "address": 1733012,
+      "size": 564,
+      "reference_names": [
+        "_OSDSwapping32BuildSCB"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMOSD.c",
+      "source_line": 136
+    },
+    {
+      "address": 1733576,
+      "size": 504,
+      "reference_names": [
+        "_OSDStandardAdvBuildSCB"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMOSD.c",
+      "source_line": 183
+    },
+    {
+      "address": 1734080,
+      "size": 500,
+      "reference_names": [
+        "_OSDSwappingAdvBuildSCB"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMOSD.c",
+      "source_line": 228
+    },
+    {
+      "address": 1734580,
+      "size": 20,
+      "reference_names": [
+        "_OSDGetSGList"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMOSD.c",
+      "source_line": 20
+    },
+    {
+      "address": 1734600,
+      "size": 92,
+      "reference_names": [
+        "_OSDCompleteHIOB"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMOSD.c",
+      "source_line": 25
+    },
+    {
+      "address": 1734692,
+      "size": 256,
+      "reference_names": [
+        "_OSDCompleteSpecialHIOB"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMOSD.c",
+      "source_line": 35
+    },
+    {
+      "address": 1734948,
+      "size": 480,
+      "reference_names": [
+        "_SCSIxTranslateError"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMTransport.c",
+      "source_line": 158
+    },
+    {
+      "address": 1735428,
+      "size": 56,
+      "reference_names": [
+        "_OSDGetBusAddress"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMOSD.c",
+      "source_line": 66
+    },
+    {
+      "address": 1735484,
+      "size": 52,
+      "reference_names": [
+        "_OSDAdjustBusAddress"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMOSD.c",
+      "source_line": 73
+    },
+    {
+      "address": 1735536,
+      "size": 56,
+      "reference_names": [
+        "_OSDReadPciConfiguration"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMOSD.c",
+      "source_line": 79
+    },
+    {
+      "address": 1735592,
+      "size": 52,
+      "reference_names": [
+        "_OSDWritePciConfiguration"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMOSD.c",
+      "source_line": 85
+    },
+    {
+      "address": 1735644,
+      "size": 200,
+      "reference_names": [
+        "_OSDAsyncEvent"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMOSD.c",
+      "source_line": 274
+    },
+    {
+      "address": 1735844,
+      "size": 16,
+      "reference_names": [
+        "_OSDGetHostAddress"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMOSD.c",
+      "source_line": 296
+    },
+    {
+      "address": 1735860,
+      "size": 28,
+      "reference_names": [
+        "_SCSIxApplyNVData"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMTransport.c",
+      "source_line": 24
+    },
+    {
+      "address": 1735888,
+      "size": 16,
+      "reference_names": [
+        "_SCSIxBiosExist"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMTransport.c",
+      "source_line": 30
+    },
+    {
+      "address": 1735904,
+      "size": 16,
+      "reference_names": [
+        "_SCSIxOptimaExist"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMTransport.c",
+      "source_line": 35
+    },
+    {
+      "address": 1735920,
+      "size": 40,
+      "reference_names": [
+        "_SCSIxChkLunExist"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMTransport.c",
+      "source_line": 40
+    },
+    {
+      "address": 1735960,
+      "size": 48,
+      "reference_names": [
+        "_SCSIxSetLunExist"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMTransport.c",
+      "source_line": 47
+    },
+    {
+      "address": 1736008,
+      "size": 48,
+      "reference_names": [
+        "_SCSIxClearLunExist"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMTransport.c",
+      "source_line": 54
+    },
+    {
+      "address": 1736056,
+      "size": 192,
+      "reference_names": [
+        "_SCSIxSetupBusScan"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMTransport.c",
+      "source_line": 123
+    },
+    {
+      "address": 1736248,
+      "size": 176,
+      "reference_names": [
+        "_SCSIxSetupLunProbe"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMTransport.c",
+      "source_line": 141
+    },
+    {
+      "address": 1736424,
+      "size": 664,
+      "reference_names": [
+        "_SCSIxQueueBusScan"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMTransport.c",
+      "source_line": 212
+    },
+    {
+      "address": 1737088,
+      "size": 1404,
+      "reference_names": [
+        "_SCSIxPostBusScan"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMTransport.c",
+      "source_line": 280
+    },
+    {
+      "address": 1738492,
+      "size": 208,
+      "reference_names": [
+        "_SCSIxQueueSpecialIOB"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMTransport.c",
+      "source_line": 263
+    },
+    {
+      "address": 1738700,
+      "size": 28,
+      "reference_names": [
+        "_SCSIxPostQueueSpecialIOB"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMTransport.c",
+      "source_line": 61
+    },
+    {
+      "address": 1738728,
+      "size": 244,
+      "reference_names": [
+        "_SCSIxGetSpeed"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMTransport.c",
+      "source_line": 66
+    },
+    {
+      "address": 1738972,
+      "size": 224,
+      "reference_names": [
+        "_SCSIxCalcScsiOption"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMTransport.c",
+      "source_line": 85
+    },
+    {
+      "address": 1739196,
+      "size": 232,
+      "reference_names": [
+        "_SCSIxDetermineFirmwareMode"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMTransport.c",
+      "source_line": 103
+    },
+    {
+      "address": 1739428,
+      "size": 56,
+      "reference_names": [
+        "_SCSIxGetNextSubSystemSubVendorID"
+      ],
+      "source_path": "src/kernel-7/bsd/dev/ppc/drvAdaptecU2SCSI/AdaptecU2CHIMTransport.c",
+      "source_line": 113
+    }
+  ],
+  "unmapped": [
+    {
+      "address": 1610016,
+      "size": 44,
+      "reference_names": [
+        "sub_189120"
+      ]
+    },
+    {
+      "address": 1610060,
+      "size": 40,
+      "reference_names": [
+        "sub_18914C"
+      ]
+    },
+    {
+      "address": 1610100,
+      "size": 24,
+      "reference_names": [
+        "sub_189174"
+      ]
+    },
+    {
+      "address": 1610124,
+      "size": 20,
+      "reference_names": [
+        "sub_18918C"
+      ]
+    },
+    {
+      "address": 1610144,
+      "size": 16,
+      "reference_names": [
+        "sub_1891A0"
+      ]
+    },
+    {
+      "address": 1610160,
+      "size": 12,
+      "reference_names": [
+        "sub_1891B0"
+      ]
+    },
+    {
+      "address": 1618600,
+      "size": 296,
+      "reference_names": [
+        "sub_18B2A8"
+      ]
+    }
+  ],
+  "duplicate_candidates": [],
+  "boundary_disputed": []
+}

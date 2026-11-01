@@ -1,0 +1,260 @@
+{
+  "schema_version": "source-map-v1",
+  "reference_sha256": "1165B9063ADD5672514455CA2C9830625BEA2BCE5E46126FB5E8652114C909D6",
+  "mapped": [
+    {
+      "address": 1112552552,
+      "size": 85,
+      "reference_names": [
+        "_NSMapGet"
+      ],
+      "source_path": "src/Kits/Foundation/NSMapTable.m",
+      "source_line": 305
+    },
+    {
+      "address": 1112552640,
+      "size": 80,
+      "reference_names": [
+        "_NSNextMapEnumeratorPair"
+      ],
+      "source_path": "src/Kits/Foundation/NSMapTable.m",
+      "source_line": 375
+    },
+    {
+      "address": 1112552752,
+      "size": 29,
+      "reference_names": [
+        "_hashObjectMT"
+      ],
+      "source_path": "src/Kits/Foundation/NSMapTable.m",
+      "source_line": 71
+    },
+    {
+      "address": 1112557724,
+      "size": 182,
+      "reference_names": [
+        "_NSMapInsert"
+      ],
+      "source_path": "src/Kits/Foundation/NSMapTable.m",
+      "source_line": 312
+    },
+    {
+      "address": 1112559276,
+      "size": 108,
+      "reference_names": [
+        "_NSMapMember"
+      ],
+      "source_path": "src/Kits/Foundation/NSMapTable.m",
+      "source_line": 289
+    },
+    {
+      "address": 1112572260,
+      "size": 54,
+      "reference_names": [
+        "_isEqualObjectMT"
+      ],
+      "source_path": "src/Kits/Foundation/NSMapTable.m",
+      "source_line": 77
+    },
+    {
+      "address": 1112587148,
+      "size": 29,
+      "reference_names": [
+        "_retainObjectMT"
+      ],
+      "source_path": "src/Kits/Foundation/NSMapTable.m",
+      "source_line": 84
+    },
+    {
+      "address": 1112595848,
+      "size": 173,
+      "reference_names": [
+        "_NSMapRemove"
+      ],
+      "source_path": "src/Kits/Foundation/NSMapTable.m",
+      "source_line": 351
+    },
+    {
+      "address": 1112605600,
+      "size": 29,
+      "reference_names": [
+        "_releaseObjectMT"
+      ],
+      "source_path": "src/Kits/Foundation/NSMapTable.m",
+      "source_line": 90
+    },
+    {
+      "address": 1112616988,
+      "size": 266,
+      "reference_names": [
+        "_NSMapInsertKnownAbsent"
+      ],
+      "source_path": "src/Kits/Foundation/NSMapTable.m",
+      "source_line": 322
+    },
+    {
+      "address": 1112625020,
+      "size": 49,
+      "reference_names": [
+        "_releaseKeyValue"
+      ],
+      "source_path": "src/Kits/Foundation/NSMapTable.m",
+      "source_line": 60
+    },
+    {
+      "address": 1112631084,
+      "size": 78,
+      "reference_names": [
+        "__NSMapTableHashCString"
+      ],
+      "source_path": "src/Kits/Foundation/NSMapTable.m",
+      "source_line": 103
+    },
+    {
+      "address": 1112663708,
+      "size": 41,
+      "reference_names": [
+        "__NSMapTableIsEqualCString"
+      ],
+      "source_path": "src/Kits/Foundation/NSMapTable.m",
+      "source_line": 124
+    },
+    {
+      "address": 1112668312,
+      "size": 95,
+      "reference_names": [
+        "_NSCreateMapTableWithZone"
+      ],
+      "source_path": "src/Kits/Foundation/NSMapTable.m",
+      "source_line": 196
+    },
+    {
+      "address": 1112689024,
+      "size": 93,
+      "reference_names": [
+        "_NSFreeMapTable"
+      ],
+      "source_path": "src/Kits/Foundation/NSMapTable.m",
+      "source_line": 216
+    },
+    {
+      "address": 1112691184,
+      "size": 18,
+      "reference_names": [
+        "_NSCountMapTable"
+      ],
+      "source_path": "src/Kits/Foundation/NSMapTable.m",
+      "source_line": 391
+    },
+    {
+      "address": 1112694344,
+      "size": 61,
+      "reference_names": [
+        "_NSEnumerateMapTable"
+      ],
+      "source_path": "src/Kits/Foundation/NSMapTable.m",
+      "source_line": 366
+    },
+    {
+      "address": 1112708044,
+      "size": 169,
+      "reference_names": [
+        "_NSMapInsertIfAbsent"
+      ],
+      "source_path": "src/Kits/Foundation/NSMapTable.m",
+      "source_line": 340
+    },
+    {
+      "address": 1112736532,
+      "size": 343,
+      "reference_names": [
+        "_NSAllMapTableKeys"
+      ],
+      "source_path": "src/Kits/Foundation/NSMapTable.m",
+      "source_line": 454
+    },
+    {
+      "address": 1112805172,
+      "size": 94,
+      "reference_names": [
+        "_NSCreateMapTable"
+      ],
+      "source_path": "src/Kits/Foundation/NSMapTable.m",
+      "source_line": 206
+    },
+    {
+      "address": 1112826264,
+      "size": 31,
+      "reference_names": [
+        "_NSResetMapTable"
+      ],
+      "source_path": "src/Kits/Foundation/NSMapTable.m",
+      "source_line": 229
+    },
+    {
+      "address": 1112943820,
+      "size": 343,
+      "reference_names": [
+        "_NSAllMapTableValues"
+      ],
+      "source_path": "src/Kits/Foundation/NSMapTable.m",
+      "source_line": 480
+    },
+    {
+      "address": 1112944348,
+      "size": 181,
+      "reference_names": [
+        "_NSCompareMapTables"
+      ],
+      "source_path": "src/Kits/Foundation/NSMapTable.m",
+      "source_line": 233
+    },
+    {
+      "address": 1112944724,
+      "size": 258,
+      "reference_names": [
+        "_NSCopyMapTableWithZone"
+      ],
+      "source_path": "src/Kits/Foundation/NSMapTable.m",
+      "source_line": 257
+    },
+    {
+      "address": 1112946620,
+      "size": 646,
+      "reference_names": [
+        "_NSStringFromMapTable"
+      ],
+      "source_path": "src/Kits/Foundation/NSMapTable.m",
+      "source_line": 395
+    },
+    {
+      "address": 1112948496,
+      "size": 29,
+      "reference_names": [
+        "_describeObjectMT"
+      ],
+      "source_path": "src/Kits/Foundation/NSMapTable.m",
+      "source_line": 96
+    },
+    {
+      "address": 1113000380,
+      "size": 65,
+      "reference_names": [
+        "__NSMapTableDescribeCString"
+      ],
+      "source_path": "src/Kits/Foundation/NSMapTable.m",
+      "source_line": 131
+    }
+  ],
+  "unmapped": [],
+  "duplicate_candidates": [],
+  "boundary_disputed": [],
+  "by_module": {
+    "NSMapTable.m": {
+      "mapped": 27,
+      "unmapped": 0,
+      "duplicate_candidates": 0,
+      "boundary_disputed": 0
+    }
+  }
+}

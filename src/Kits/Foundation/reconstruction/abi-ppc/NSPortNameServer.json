@@ -1,0 +1,179 @@
+{
+ "categories": [],
+ "classes": [
+  {
+   "class_methods": [
+    {
+     "selector": "default",
+     "types": "@4@4:8"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "mutableCopyWithZone:",
+     "types": "@8@4:8^{?=}12"
+    },
+    {
+     "selector": "copyWithZone:",
+     "types": "@8@4:8^{?=}12"
+    },
+    {
+     "selector": "removePortForName:signature:",
+     "types": "v12@4:8@12@16"
+    },
+    {
+     "selector": "removePortForName:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "registerPort:forName:",
+     "types": "c12@4:8@12@16"
+    },
+    {
+     "selector": "registerPort:forName:signature:",
+     "types": "c16@4:8@12@16@20"
+    },
+    {
+     "selector": "portForName:onHost:",
+     "types": "@12@4:8@12@16"
+    },
+    {
+     "selector": "portForName:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "count",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "dealloc",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "init",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "initWithPort:",
+     "types": "@8@4:8@12"
+    }
+   ],
+   "instance_size": 12,
+   "ivars": [
+    {
+     "name": "_nameServerPort",
+     "offset": 4,
+     "type": "@\"NSPort\""
+    },
+    {
+     "name": "_reserved",
+     "offset": 8,
+     "type": "^v"
+    }
+   ],
+   "name": "NSMachNMServer",
+   "superclass": "NSPortNameServer"
+  },
+  {
+   "class_methods": [
+    {
+     "selector": "defaultPortNameServer",
+     "types": "@4@4:8"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "portForName:host:",
+     "types": "@12@4:8@12@16"
+    },
+    {
+     "selector": "registerPort:name:",
+     "types": "c12@4:8@12@16"
+    },
+    {
+     "selector": "removePortForName:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "portForName:onHost:",
+     "types": "@12@4:8@12@16"
+    },
+    {
+     "selector": "registerPort:forName:",
+     "types": "c12@4:8@12@16"
+    },
+    {
+     "selector": "portForName:",
+     "types": "@8@4:8@12"
+    }
+   ],
+   "instance_size": 4,
+   "ivars": [],
+   "name": "NSPortNameServer",
+   "superclass": "NSObject"
+  }
+ ],
+ "data_symbols": [
+  "___NSArrayClass",
+  "___NSCStringClass",
+  "___NSCStringWithGapClass",
+  "___NSConcreteArrayClass",
+  "___NSConcreteDataClass",
+  "___NSConcreteDateClass",
+  "___NSConcreteDictionaryClass",
+  "___NSConcreteMutableArrayClass",
+  "___NSConcreteMutableDataClass",
+  "___NSConcreteMutableDictionaryClass",
+  "___NSConcreteMutableSetClass",
+  "___NSConcreteMutableStringClass",
+  "___NSConcreteNotificationClass",
+  "___NSConcreteProtocolCheckerClass",
+  "___NSConcreteSetClass",
+  "___NSConcreteTimeZoneClass",
+  "___NSConcreteValueClass",
+  "___NSConstantStringClass",
+  "___NSCountedSetClass",
+  "___NSDataClass",
+  "___NSDateClass",
+  "___NSDecimalNumberClass",
+  "___NSDictionaryClass",
+  "___NSDistantDateClass",
+  "___NSDistantObjectClass",
+  "___NSInlineCStringClass",
+  "___NSInlineUnicodeStringClass",
+  "___NSInvocationClass",
+  "___NSMachNMServerPort",
+  "___NSMachPortClass",
+  "___NSMutableArrayClass",
+  "___NSMutableDataClass",
+  "___NSMutableDictionaryClass",
+  "___NSMutableSetClass",
+  "___NSMutableStringClass",
+  "___NSNotificationCenterClass",
+  "___NSNotificationClass",
+  "___NSNumberClass",
+  "___NSObjectClass",
+  "___NSPathStore2Class",
+  "___NSPlaceholderStringClass",
+  "___NSPortClass",
+  "___NSProtocolCheckerClass",
+  "___NSSetClass",
+  "___NSSimpleCStringClass",
+  "___NSSimpleStringClass",
+  "___NSStreamDataClass",
+  "___NSStringArrayClass",
+  "___NSStringClass",
+  "___NSTimeZoneClass",
+  "___NSURLFormatterClass",
+  "___NSUnicodeStringClass",
+  "___NSUnicodeStringWithGapClass",
+  "___NSValueClass"
+ ],
+ "module": "NSPortNameServer.m",
+ "schema_version": "abi-v1",
+ "text_symbols": [
+  "__NSToDoAtProcessStart"
+ ]
+}

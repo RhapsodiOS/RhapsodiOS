@@ -39,15 +39,19 @@ typedef double NSTimeInterval;
 @interface NSDate (NSDateCreation)
 
 + (id)date;
+
++ (id)dateWithDate:(NSDate *)date;
     
 + (id)dateWithTimeIntervalSinceNow:(NSTimeInterval)secs;    
 + (id)dateWithTimeIntervalSinceReferenceDate:(NSTimeInterval)secs;
 + (id)dateWithTimeIntervalSince1970:(NSTimeInterval)secs;
++ (id)dateWithTimeInterval:(NSTimeInterval)secs sinceDate:(NSDate *)anotherDate;
 
 + (id)distantFuture;
 + (id)distantPast;
 
 - (id)init;
+- (id)initWithDate:(NSDate *)date;
 - (id)initWithTimeIntervalSinceReferenceDate:(NSTimeInterval)secsToBeAdded;
 - (id)initWithTimeInterval:(NSTimeInterval)secsToBeAdded sinceDate:(NSDate *)anotherDate;
 - (id)initWithTimeIntervalSinceNow:(NSTimeInterval)secsToBeAddedToNow;

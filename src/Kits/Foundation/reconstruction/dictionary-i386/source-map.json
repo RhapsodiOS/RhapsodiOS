@@ -1,0 +1,1070 @@
+{
+  "boundary_disputed": [],
+  "by_module": {
+    "NSDictionary.m": {
+      "boundary_disputed": 0,
+      "duplicate_candidates": 0,
+      "mapped": 117,
+      "unmapped": 0
+    }
+  },
+  "duplicate_candidates": [],
+  "mapped": [
+    {
+      "address": 1112551404,
+      "reference_names": [
+        "__NSDictionaryDictRelease"
+      ],
+      "size": 54,
+      "source_line": 199,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112553288,
+      "reference_names": [
+        "-[NSConcreteMutableDictionary objectForKey:]"
+      ],
+      "size": 77,
+      "source_line": 1883,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112556892,
+      "reference_names": [
+        "-[NSConcreteDictionary objectForKey:]"
+      ],
+      "size": 81,
+      "source_line": 1542,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112559924,
+      "reference_names": [
+        "-[NSConcreteMutableDictionary setObject:forKey:]"
+      ],
+      "size": 196,
+      "source_line": 1985,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112567320,
+      "reference_names": [
+        "-[NSConcreteMutableDictionary addEntriesFromDictionary:]"
+      ],
+      "size": 376,
+      "source_line": 1951,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112573600,
+      "reference_names": [
+        "__NSDictionaryAreObjectsEqual"
+      ],
+      "size": 36,
+      "source_line": 243,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112573636,
+      "reference_names": [
+        "-[NSConcreteDictionary initWithObjects:forKeys:count:]"
+      ],
+      "size": 385,
+      "source_line": 1603,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112576912,
+      "size": 86,
+      "reference_names": [
+        "__NSDictionaryCheckSize"
+      ],
+      "source_path": "src/Kits/Foundation/NSDictionary.m",
+      "source_line": 116
+    },
+    {
+      "address": 1112577684,
+      "reference_names": [
+        "-[NSConcreteMutableDictionary count]"
+      ],
+      "size": 19,
+      "source_line": 1878,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112582808,
+      "reference_names": [
+        "-[NSMutableDictionary addEntriesFromDictionary:]"
+      ],
+      "size": 114,
+      "source_line": 1688,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112582924,
+      "reference_names": [
+        "-[NSConcreteDictionary getKeys:]"
+      ],
+      "size": 97,
+      "source_line": 1552,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112591460,
+      "reference_names": [
+        "-[NSConcreteMutableDictionary getObjects:]"
+      ],
+      "size": 97,
+      "source_line": 1921,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112592384,
+      "reference_names": [
+        "-[NSConcreteMutableDictionary release]"
+      ],
+      "size": 64,
+      "source_line": 1799,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112601480,
+      "reference_names": [
+        "-[NSConcreteMutableDictionary dealloc]"
+      ],
+      "size": 111,
+      "source_line": 2044,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112601876,
+      "reference_names": [
+        "-[NSConcreteMutableDictionary initWithCapacity:]"
+      ],
+      "size": 71,
+      "source_line": 1838,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112602208,
+      "reference_names": [
+        "+[NSMutableDictionary allocWithZone:]"
+      ],
+      "size": 50,
+      "source_line": 1651,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112604956,
+      "reference_names": [
+        "-[NSConcreteMutableDictionary initWithObjects:forKeys:count:]"
+      ],
+      "size": 297,
+      "source_line": 1846,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112605764,
+      "reference_names": [
+        "-[NSConcreteDictionary release]"
+      ],
+      "size": 64,
+      "source_line": 1486,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112606100,
+      "reference_names": [
+        "-[NSConcreteMutableDictionary copyWithZone:]"
+      ],
+      "size": 226,
+      "source_line": 2014,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112615676,
+      "reference_names": [
+        "-[NSConcreteMutableDictionary getObjects:andKeys:]"
+      ],
+      "size": 116,
+      "source_line": 1916,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112623468,
+      "reference_names": [
+        "-[NSConcreteMutableDictionary mutableCopyWithZone:]"
+      ],
+      "size": 166,
+      "source_line": 2039,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112624620,
+      "reference_names": [
+        "+[NSDictionary allocWithZone:]"
+      ],
+      "size": 50,
+      "source_line": 794,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112624768,
+      "reference_names": [
+        "-[NSConcreteDictionary mutableCopyWithZone:]"
+      ],
+      "size": 221,
+      "source_line": 1525,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112625204,
+      "reference_names": [
+        "-[NSConcreteDictionary initWithDictionary:copyItems:]"
+      ],
+      "size": 331,
+      "source_line": 1631,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112625536,
+      "reference_names": [
+        "-[NSConcreteDictionary dealloc]"
+      ],
+      "size": 111,
+      "source_line": 1641,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112639404,
+      "reference_names": [
+        "-[NSConcreteDictionary retain]"
+      ],
+      "size": 43,
+      "source_line": 1469,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112640564,
+      "reference_names": [
+        "-[NSConcreteMutableDictionary retain]"
+      ],
+      "size": 43,
+      "source_line": 1782,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112646440,
+      "reference_names": [
+        "-[NSConcreteDictionary retainCount]"
+      ],
+      "size": 22,
+      "source_line": 1511,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112647684,
+      "reference_names": [
+        "+[NSDictionary dictionary]"
+      ],
+      "size": 134,
+      "source_line": 1271,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112648356,
+      "reference_names": [
+        "-[NSConcreteMutableDictionary removeObjectForKey:]"
+      ],
+      "size": 143,
+      "source_line": 1998,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112649424,
+      "reference_names": [
+        "+[NSMutableDictionary dictionaryWithCapacity:]"
+      ],
+      "size": 71,
+      "source_line": 1757,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112658448,
+      "reference_names": [
+        "+[NSDictionary dictionaryWithObjectsAndKeys:]"
+      ],
+      "size": 474,
+      "source_line": 1299,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112659712,
+      "reference_names": [
+        "-[NSConcreteMutableDictionary getKeys:]"
+      ],
+      "size": 97,
+      "source_line": 1900,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112671288,
+      "reference_names": [
+        "-[NSConcreteDictionary count]"
+      ],
+      "size": 33,
+      "source_line": 1537,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112683700,
+      "reference_names": [
+        "-[NSConcreteDictionary keyEnumerator]"
+      ],
+      "size": 170,
+      "source_line": 1547,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112688544,
+      "reference_names": [
+        "-[NSDictionary objectEnumerator]"
+      ],
+      "size": 170,
+      "source_line": 1186,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112711100,
+      "reference_names": [
+        "-[NSConcreteDictionary copyWithZone:]"
+      ],
+      "size": 29,
+      "source_line": 1520,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112715904,
+      "reference_names": [
+        "-[NSDictionary initWithDictionary:]"
+      ],
+      "size": 35,
+      "source_line": 1404,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112716124,
+      "reference_names": [
+        "-[NSConcreteMutableDictionary init]"
+      ],
+      "size": 31,
+      "source_line": 1833,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112717992,
+      "reference_names": [
+        "-[NSConcreteDictionary getObjects:andKeys:]"
+      ],
+      "size": 116,
+      "source_line": 1568,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112719156,
+      "reference_names": [
+        "-[NSConcreteMutableDictionary allKeys]"
+      ],
+      "size": 368,
+      "source_line": 1931,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112741284,
+      "reference_names": [
+        "-[NSConcreteDictionary isEqualToDictionary:]"
+      ],
+      "size": 207,
+      "source_line": 1593,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112752760,
+      "reference_names": [
+        "-[NSConcreteMutableDictionary keyEnumerator]"
+      ],
+      "size": 170,
+      "source_line": 1895,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112752988,
+      "reference_names": [
+        "-[NSMutableDictionary initWithContentsOfFile:]"
+      ],
+      "size": 199,
+      "source_line": 1664,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112759204,
+      "reference_names": [
+        "-[NSDictionary initWithObjectsAndKeys:]"
+      ],
+      "size": 418,
+      "source_line": 1393,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112767696,
+      "reference_names": [
+        "-[NSDictionary initWithCoder:]"
+      ],
+      "size": 611,
+      "source_line": 959,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112772920,
+      "reference_names": [
+        "+[NSDictionary dictionaryWithObjects:forKeys:count:]"
+      ],
+      "size": 79,
+      "source_line": 1294,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112775448,
+      "reference_names": [
+        "-[NSDictionary initWithContentsOfFile:]"
+      ],
+      "size": 107,
+      "source_line": 1310,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112781132,
+      "reference_names": [
+        "-[NSDictionary isEqual:]"
+      ],
+      "size": 99,
+      "source_line": 1172,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112781720,
+      "reference_names": [
+        "+[NSDictionary dictionaryWithObject:forKey:]"
+      ],
+      "size": 77,
+      "source_line": 1412,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112791024,
+      "reference_names": [
+        "+[NSDictionary dictionaryWithContentsOfFile:]"
+      ],
+      "size": 71,
+      "source_line": 1281,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112794380,
+      "reference_names": [
+        "-[NSConcreteMutableDictionary initWithDictionary:copyItems:]"
+      ],
+      "size": 331,
+      "source_line": 1868,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112801348,
+      "size": 223,
+      "reference_names": [
+        "__NSIndentSpace"
+      ],
+      "source_path": "src/Kits/Foundation/NSDictionary.m",
+      "source_line": 147
+    },
+    {
+      "address": 1112816700,
+      "reference_names": [
+        "-[NSDictionary initWithObjects:forKeys:]"
+      ],
+      "size": 640,
+      "source_line": 1336,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112819268,
+      "reference_names": [
+        "+[NSDictionary dictionaryWithObjects:forKeys:]"
+      ],
+      "size": 75,
+      "source_line": 1289,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112825136,
+      "reference_names": [
+        "-[NSConcreteMutableDictionary encodeWithCoder:]"
+      ],
+      "size": 173,
+      "source_line": 1946,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112825312,
+      "reference_names": [
+        "-[NSConcreteMutableDictionary allValues]"
+      ],
+      "size": 368,
+      "source_line": 1936,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112835644,
+      "reference_names": [
+        "-[NSConcreteDictionary init]"
+      ],
+      "size": 35,
+      "source_line": 1532,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112860480,
+      "reference_names": [
+        "-[NSMutableDictionary classForCoder]"
+      ],
+      "size": 21,
+      "source_line": 1660,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112900076,
+      "reference_names": [
+        "-[NSConcreteMutableDictionary removeAllObjects]"
+      ],
+      "size": 57,
+      "source_line": 2007,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112905992,
+      "reference_names": [
+        "+[NSDictionary dictionaryWithContentsOfURL:]"
+      ],
+      "size": 71,
+      "source_line": 1285,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112906064,
+      "reference_names": [
+        "+[NSDictionary dictionaryWithDictionary:]"
+      ],
+      "size": 71,
+      "source_line": 1408,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112911704,
+      "reference_names": [
+        "-[NSConcreteDictionary allKeysForObject:]"
+      ],
+      "size": 410,
+      "source_line": 1578,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112912116,
+      "reference_names": [
+        "-[NSConcreteDictionary allKeys]"
+      ],
+      "size": 368,
+      "source_line": 1583,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112912484,
+      "reference_names": [
+        "-[NSConcreteDictionary allValues]"
+      ],
+      "size": 368,
+      "source_line": 1588,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112912852,
+      "reference_names": [
+        "-[NSConcreteDictionary encodeWithCoder:]"
+      ],
+      "size": 193,
+      "source_line": 1598,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112913048,
+      "reference_names": [
+        "-[NSConcreteDictionary getObjects:]"
+      ],
+      "size": 97,
+      "source_line": 1573,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112913148,
+      "reference_names": [
+        "-[NSConcreteMutableDictionary allKeysForObject:]"
+      ],
+      "size": 410,
+      "source_line": 1926,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112913560,
+      "reference_names": [
+        "-[NSConcreteMutableDictionary isEqualToDictionary:]"
+      ],
+      "size": 195,
+      "source_line": 1941,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112913756,
+      "reference_names": [
+        "-[NSConcreteMutableDictionary retainCount]"
+      ],
+      "size": 22,
+      "source_line": 1824,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112920552,
+      "reference_names": [
+        "-[NSDictionary _initWithData:]"
+      ],
+      "size": 139,
+      "source_line": 1324,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112920692,
+      "reference_names": [
+        "-[NSDictionary _stringToWrite]"
+      ],
+      "size": 217,
+      "source_line": 1246,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112920912,
+      "reference_names": [
+        "-[NSDictionary allKeysForObject:]"
+      ],
+      "size": 355,
+      "source_line": 907,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112921268,
+      "reference_names": [
+        "-[NSDictionary allKeys]"
+      ],
+      "size": 297,
+      "source_line": 902,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112921568,
+      "reference_names": [
+        "-[NSDictionary allValues]"
+      ],
+      "size": 317,
+      "source_line": 932,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112921888,
+      "reference_names": [
+        "-[NSDictionary classForCoder]"
+      ],
+      "size": 21,
+      "source_line": 803,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112921912,
+      "reference_names": [
+        "-[NSDictionary containsKey:]"
+      ],
+      "size": 43,
+      "source_line": 832,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112921956,
+      "reference_names": [
+        "-[NSDictionary containsObject:]"
+      ],
+      "size": 160,
+      "source_line": 836,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112922116,
+      "reference_names": [
+        "-[NSDictionary copyWithZone:]"
+      ],
+      "size": 57,
+      "source_line": 822,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112922176,
+      "reference_names": [
+        "-[NSDictionary countForObject:]"
+      ],
+      "size": 172,
+      "source_line": 850,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112922348,
+      "reference_names": [
+        "-[NSDictionary count]"
+      ],
+      "size": 37,
+      "source_line": 807,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112922388,
+      "reference_names": [
+        "-[NSDictionary descriptionInStringsFileFormat]"
+      ],
+      "size": 496,
+      "source_line": 1066,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112922884,
+      "reference_names": [
+        "-[NSDictionary descriptionWithLocale:]"
+      ],
+      "size": 35,
+      "source_line": 1089,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112922920,
+      "reference_names": [
+        "-[NSDictionary descriptionWithLocale:indent:]"
+      ],
+      "size": 2034,
+      "source_line": 1093,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112924956,
+      "reference_names": [
+        "-[NSDictionary description]"
+      ],
+      "size": 33,
+      "source_line": 1062,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112924992,
+      "reference_names": [
+        "-[NSDictionary dictionaryByCompositingWithDictionary:operation:]"
+      ],
+      "size": 665,
+      "source_line": 998,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112925660,
+      "reference_names": [
+        "-[NSDictionary encodeWithCoder:]"
+      ],
+      "size": 194,
+      "source_line": 944,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112925856,
+      "reference_names": [
+        "-[NSDictionary getKeys:]"
+      ],
+      "size": 102,
+      "source_line": 891,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112925960,
+      "reference_names": [
+        "-[NSDictionary getObjects:]"
+      ],
+      "size": 126,
+      "source_line": 865,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112926088,
+      "reference_names": [
+        "-[NSDictionary getObjects:andKeys:]"
+      ],
+      "size": 142,
+      "source_line": 877,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112926232,
+      "reference_names": [
+        "-[NSDictionary hash]"
+      ],
+      "size": 29,
+      "source_line": 1181,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112926264,
+      "reference_names": [
+        "-[NSDictionary initWithContentsOfURL:]"
+      ],
+      "size": 107,
+      "source_line": 1317,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112926372,
+      "reference_names": [
+        "-[NSDictionary initWithDictionary:copyItems:]"
+      ],
+      "size": 609,
+      "source_line": 1421,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112926984,
+      "reference_names": [
+        "-[NSDictionary initWithObjects:forKeys:count:]"
+      ],
+      "size": 26,
+      "source_line": 1385,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112927012,
+      "reference_names": [
+        "-[NSDictionary invertedDictionary]"
+      ],
+      "size": 79,
+      "source_line": 937,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112927092,
+      "reference_names": [
+        "-[NSDictionary isEqualToDictionary:]"
+      ],
+      "size": 235,
+      "source_line": 1153,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112927328,
+      "reference_names": [
+        "-[NSDictionary keyEnumerator]"
+      ],
+      "size": 37,
+      "source_line": 812,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112927368,
+      "reference_names": [
+        "-[NSDictionary keysSortedByValueUsingSelector:]"
+      ],
+      "size": 74,
+      "source_line": 1262,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112927444,
+      "reference_names": [
+        "-[NSDictionary mutableCopyWithZone:]"
+      ],
+      "size": 57,
+      "source_line": 827,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112927504,
+      "reference_names": [
+        "-[NSDictionary objectForKey:]"
+      ],
+      "size": 37,
+      "source_line": 817,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112927544,
+      "reference_names": [
+        "-[NSDictionary objectsForKeys:notFoundMarker:]"
+      ],
+      "size": 536,
+      "source_line": 1197,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112928080,
+      "reference_names": [
+        "-[NSDictionary replacementObjectForPortCoder:]"
+      ],
+      "size": 92,
+      "source_line": 992,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112928172,
+      "reference_names": [
+        "-[NSDictionary writeToFile:atomically:]"
+      ],
+      "size": 59,
+      "source_line": 1233,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112928232,
+      "reference_names": [
+        "-[NSDictionary writeToURL:atomically:]"
+      ],
+      "size": 103,
+      "source_line": 1238,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112930548,
+      "reference_names": [
+        "-[NSMutableDictionary initWithCapacity:]"
+      ],
+      "size": 22,
+      "source_line": 1761,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112930572,
+      "reference_names": [
+        "-[NSMutableDictionary initWithObjects:forKeys:count:]"
+      ],
+      "size": 136,
+      "source_line": 1767,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112930708,
+      "reference_names": [
+        "-[NSMutableDictionary invert]"
+      ],
+      "size": 187,
+      "source_line": 1739,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112930896,
+      "reference_names": [
+        "-[NSMutableDictionary removeAllObjects]"
+      ],
+      "size": 52,
+      "source_line": 1696,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112930948,
+      "reference_names": [
+        "-[NSMutableDictionary removeKeysForObject:]"
+      ],
+      "size": 167,
+      "source_line": 1701,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112931116,
+      "reference_names": [
+        "-[NSMutableDictionary removeObjectForKey:]"
+      ],
+      "size": 35,
+      "source_line": 1680,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112931152,
+      "reference_names": [
+        "-[NSMutableDictionary removeObjectsForKeys:]"
+      ],
+      "size": 360,
+      "source_line": 1713,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112931512,
+      "reference_names": [
+        "-[NSMutableDictionary setDictionary:]"
+      ],
+      "size": 57,
+      "source_line": 1752,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112931572,
+      "reference_names": [
+        "-[NSMutableDictionary setObject:forKey:]"
+      ],
+      "size": 35,
+      "source_line": 1684,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    },
+    {
+      "address": 1112947496,
+      "size": 68,
+      "reference_names": [
+        "__NSDictionaryRaiseInsertNilKeyException"
+      ],
+      "source_path": "src/Kits/Foundation/NSDictionary.m",
+      "source_line": 47
+    },
+    {
+      "address": 1112947564,
+      "size": 68,
+      "reference_names": [
+        "__NSDictionaryRaiseInsertNilValueException"
+      ],
+      "source_path": "src/Kits/Foundation/NSDictionary.m",
+      "source_line": 56
+    },
+    {
+      "address": 1112947632,
+      "size": 68,
+      "reference_names": [
+        "__NSDictionaryRaiseRemoveNilKeyException"
+      ],
+      "source_path": "src/Kits/Foundation/NSDictionary.m",
+      "source_line": 65
+    },
+    {
+      "address": 1112947868,
+      "reference_names": [
+        "__NSSortDictKeys"
+      ],
+      "size": 80,
+      "source_line": 136,
+      "source_path": "src/Kits/Foundation/NSDictionary.m"
+    }
+  ],
+  "reference_sha256": "1165B9063ADD5672514455CA2C9830625BEA2BCE5E46126FB5E8652114C909D6",
+  "schema_version": "source-map-v1",
+  "unmapped": []
+}

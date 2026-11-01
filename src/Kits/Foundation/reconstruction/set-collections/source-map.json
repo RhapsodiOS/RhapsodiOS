@@ -1,0 +1,1530 @@
+{
+  "schema_version": "source-map-v1",
+  "reference_sha256": "332B3C8C0AE0A6E40A4B93110EE16748FCD94AA0119D63F16EDE878598C681B4",
+  "mapped": [
+    {
+      "address": 1112568060,
+      "size": 144,
+      "reference_names": [
+        "_NSHashGet"
+      ],
+      "source_path": "src/Kits/Foundation/NSHashTable.m",
+      "source_line": 290
+    },
+    {
+      "address": 1112569908,
+      "size": 60,
+      "reference_names": [
+        "_hashObjectHT"
+      ],
+      "source_path": "src/Kits/Foundation/NSHashTable.m",
+      "source_line": 116
+    },
+    {
+      "address": 1112594176,
+      "size": 92,
+      "reference_names": [
+        "_isEqualObjectHT"
+      ],
+      "source_path": "src/Kits/Foundation/NSHashTable.m",
+      "source_line": 122
+    },
+    {
+      "address": 1112596360,
+      "size": 328,
+      "reference_names": [
+        "_NSHashInsertKnownAbsent"
+      ],
+      "source_path": "src/Kits/Foundation/NSHashTable.m",
+      "source_line": 318
+    },
+    {
+      "address": 1112599508,
+      "size": 128,
+      "reference_names": [
+        "_NSNextHashEnumeratorItem"
+      ],
+      "source_path": "src/Kits/Foundation/NSHashTable.m",
+      "source_line": 379
+    },
+    {
+      "address": 1112624444,
+      "size": 120,
+      "reference_names": [
+        "__NSHashTableHashCString"
+      ],
+      "source_path": "src/Kits/Foundation/NSHashTable.m",
+      "source_line": 144
+    },
+    {
+      "address": 1112642296,
+      "size": 128,
+      "reference_names": [
+        "-[NSConcreteMutableSet addObject:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 1549
+    },
+    {
+      "address": 1112645012,
+      "size": 60,
+      "reference_names": [
+        "__NSSetSetRelease"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 139
+    },
+    {
+      "address": 1112651592,
+      "size": 36,
+      "reference_names": [
+        "_NSCountHashTable"
+      ],
+      "source_path": "src/Kits/Foundation/NSHashTable.m",
+      "source_line": 391
+    },
+    {
+      "address": 1112655692,
+      "size": 232,
+      "reference_names": [
+        "-[_NSSetEnumerator nextObject]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 1018
+    },
+    {
+      "address": 1112660280,
+      "size": 104,
+      "reference_names": [
+        "-[NSConcreteMutableSet countForObject:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 1311
+    },
+    {
+      "address": 1112702884,
+      "size": 260,
+      "reference_names": [
+        "-[NSConcreteMutableSet release]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 1512
+    },
+    {
+      "address": 1112703696,
+      "size": 108,
+      "reference_names": [
+        "_NSFreeHashTable"
+      ],
+      "source_path": "src/Kits/Foundation/NSHashTable.m",
+      "source_line": 227
+    },
+    {
+      "address": 1112704324,
+      "size": 248,
+      "reference_names": [
+        "_NSHashInsert"
+      ],
+      "source_path": "src/Kits/Foundation/NSHashTable.m",
+      "source_line": 302
+    },
+    {
+      "address": 1112704992,
+      "size": 144,
+      "reference_names": [
+        "_NSCreateHashTableWithZone"
+      ],
+      "source_path": "src/Kits/Foundation/NSHashTable.m",
+      "source_line": 206
+    },
+    {
+      "address": 1112706196,
+      "size": 196,
+      "reference_names": [
+        "-[NSMutableSet unionSet:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 1177
+    },
+    {
+      "address": 1112711884,
+      "size": 224,
+      "reference_names": [
+        "_NSHashRemove"
+      ],
+      "source_path": "src/Kits/Foundation/NSHashTable.m",
+      "source_line": 352
+    },
+    {
+      "address": 1112719456,
+      "size": 124,
+      "reference_names": [
+        "__NSSetCheckSize"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 262
+    },
+    {
+      "address": 1112720956,
+      "size": 216,
+      "reference_names": [
+        "-[NSConcreteMutableSet retain]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 1507
+    },
+    {
+      "address": 1112723460,
+      "size": 224,
+      "reference_names": [
+        "_NSHashInsertIfAbsent"
+      ],
+      "source_path": "src/Kits/Foundation/NSHashTable.m",
+      "source_line": 338
+    },
+    {
+      "address": 1112734852,
+      "size": 76,
+      "reference_names": [
+        "-[NSSet containsObject:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 329
+    },
+    {
+      "address": 1112734928,
+      "size": 112,
+      "reference_names": [
+        "-[NSConcreteMutableSet member:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 1277
+    },
+    {
+      "address": 1112736940,
+      "size": 88,
+      "reference_names": [
+        "_NSEnumerateHashTable"
+      ],
+      "source_path": "src/Kits/Foundation/NSHashTable.m",
+      "source_line": 370
+    },
+    {
+      "address": 1112738224,
+      "size": 80,
+      "reference_names": [
+        "+[NSMutableSet allocWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 1214
+    },
+    {
+      "address": 1112738304,
+      "size": 96,
+      "reference_names": [
+        "-[NSConcreteMutableSet initWithCapacity:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 1525
+    },
+    {
+      "address": 1112740904,
+      "size": 140,
+      "reference_names": [
+        "_NSCreateHashTable"
+      ],
+      "source_path": "src/Kits/Foundation/NSHashTable.m",
+      "source_line": 216
+    },
+    {
+      "address": 1112745024,
+      "size": 132,
+      "reference_names": [
+        "-[NSConcreteMutableSet dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 1574
+    },
+    {
+      "address": 1112754352,
+      "size": 192,
+      "reference_names": [
+        "-[_NSSetEnumerator initWithSet:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 1000
+    },
+    {
+      "address": 1112754544,
+      "size": 120,
+      "reference_names": [
+        "-[NSConcreteMutableSet objectEnumerator]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 1287
+    },
+    {
+      "address": 1112754892,
+      "size": 104,
+      "reference_names": [
+        "-[_NSSetEnumerator dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 1041
+    },
+    {
+      "address": 1112759760,
+      "size": 64,
+      "reference_names": [
+        "__NSSetAreObjectsEqual"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 127
+    },
+    {
+      "address": 1112761848,
+      "size": 280,
+      "reference_names": [
+        "-[NSConcreteMutableSet initWithCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 1362
+    },
+    {
+      "address": 1112774560,
+      "size": 36,
+      "reference_names": [
+        "-[NSConcreteMutableSet count]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 1273
+    },
+    {
+      "address": 1112798808,
+      "size": 276,
+      "reference_names": [
+        "-[NSConcreteMutableSet allObjects]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 1292
+    },
+    {
+      "address": 1112802120,
+      "size": 56,
+      "reference_names": [
+        "-[NSConcreteMutableSet init]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 1269
+    },
+    {
+      "address": 1112829120,
+      "size": 124,
+      "reference_names": [
+        "-[NSConcreteMutableSet makeObjectsPerformSelector:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 1460
+    },
+    {
+      "address": 1112832744,
+      "size": 76,
+      "reference_names": [
+        "__NSHashTableIsEqualCString"
+      ],
+      "source_path": "src/Kits/Foundation/NSHashTable.m",
+      "source_line": 157
+    },
+    {
+      "address": 1112833148,
+      "size": 348,
+      "reference_names": [
+        "-[NSConcreteMutableSet addObjectsFromArray:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 1318
+    },
+    {
+      "address": 1112834880,
+      "size": 160,
+      "reference_names": [
+        "-[NSConcreteMutableSet mutableCopyWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 1499
+    },
+    {
+      "address": 1112855612,
+      "size": 196,
+      "reference_names": [
+        "-[NSConcreteMutableSet isEqualToSet:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 1400
+    },
+    {
+      "address": 1112856116,
+      "size": 144,
+      "reference_names": [
+        "-[NSSet isEqual:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 417
+    },
+    {
+      "address": 1112870832,
+      "size": 36,
+      "reference_names": [
+        "_freePointerMT"
+      ],
+      "source_path": "src/Kits/Foundation/NSMapTable.m",
+      "source_line": 138
+    },
+    {
+      "address": 1112902096,
+      "size": 220,
+      "reference_names": [
+        "-[NSConcreteMutableSet initWithObjects:count:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 1532
+    },
+    {
+      "address": 1112902548,
+      "size": 140,
+      "reference_names": [
+        "-[NSConcreteMutableSet removeObject:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 1559
+    },
+    {
+      "address": 1112902688,
+      "size": 180,
+      "reference_names": [
+        "+[NSSet set]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 607
+    },
+    {
+      "address": 1112938824,
+      "size": 280,
+      "reference_names": [
+        "_NSAllHashTableObjects"
+      ],
+      "source_path": "src/Kits/Foundation/NSHashTable.m",
+      "source_line": 441
+    },
+    {
+      "address": 1112942792,
+      "size": 88,
+      "reference_names": [
+        "+[NSMutableSet setWithCapacity:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 1222
+    },
+    {
+      "address": 1112942880,
+      "size": 80,
+      "reference_names": [
+        "+[NSSet allocWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 599
+    },
+    {
+      "address": 1112942960,
+      "size": 88,
+      "reference_names": [
+        "+[NSSet setWithArray:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 616
+    },
+    {
+      "address": 1112943048,
+      "size": 92,
+      "reference_names": [
+        "+[NSSet setWithObject:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 620
+    },
+    {
+      "address": 1112943140,
+      "size": 292,
+      "reference_names": [
+        "+[NSSet setWithObjects:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 625
+    },
+    {
+      "address": 1112943432,
+      "size": 96,
+      "reference_names": [
+        "+[NSSet setWithObjects:count:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 757
+    },
+    {
+      "address": 1112943528,
+      "size": 88,
+      "reference_names": [
+        "+[NSSet setWithSet:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 753
+    },
+    {
+      "address": 1112953100,
+      "size": 124,
+      "reference_names": [
+        "-[NSConcreteMutableSet anyObject]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 1296
+    },
+    {
+      "address": 1112953224,
+      "size": 220,
+      "reference_names": [
+        "-[NSConcreteMutableSet copyWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 1488
+    },
+    {
+      "address": 1112953444,
+      "size": 172,
+      "reference_names": [
+        "-[NSConcreteMutableSet encodeWithCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 1346
+    },
+    {
+      "address": 1112953616,
+      "size": 284,
+      "reference_names": [
+        "-[NSConcreteMutableSet intersectSet:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 1436
+    },
+    {
+      "address": 1112953900,
+      "size": 188,
+      "reference_names": [
+        "-[NSConcreteMutableSet intersectsSet:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 1384
+    },
+    {
+      "address": 1112954088,
+      "size": 196,
+      "reference_names": [
+        "-[NSConcreteMutableSet isSubsetOfSet:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 1418
+    },
+    {
+      "address": 1112954284,
+      "size": 132,
+      "reference_names": [
+        "-[NSConcreteMutableSet makeObjectsPerformSelector:withObject:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 1474
+    },
+    {
+      "address": 1112954416,
+      "size": 60,
+      "reference_names": [
+        "-[NSConcreteMutableSet removeAllObjects]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 1570
+    },
+    {
+      "address": 1112954476,
+      "size": 20,
+      "reference_names": [
+        "-[NSConcreteMutableSet retainCount]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 1517
+    },
+    {
+      "address": 1112954496,
+      "size": 284,
+      "reference_names": [
+        "-[NSConcreteSet allObjects]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 846
+    },
+    {
+      "address": 1112954780,
+      "size": 120,
+      "reference_names": [
+        "-[NSConcreteSet anyObject]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 851
+    },
+    {
+      "address": 1112954900,
+      "size": 116,
+      "reference_names": [
+        "-[NSConcreteSet containsObject:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 824
+    },
+    {
+      "address": 1112955016,
+      "size": 52,
+      "reference_names": [
+        "-[NSConcreteSet copyWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 952
+    },
+    {
+      "address": 1112955068,
+      "size": 120,
+      "reference_names": [
+        "-[NSConcreteSet countForObject:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 866
+    },
+    {
+      "address": 1112955188,
+      "size": 56,
+      "reference_names": [
+        "-[NSConcreteSet count]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 810
+    },
+    {
+      "address": 1112955244,
+      "size": 132,
+      "reference_names": [
+        "-[NSConcreteSet dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 986
+    },
+    {
+      "address": 1112955376,
+      "size": 192,
+      "reference_names": [
+        "-[NSConcreteSet encodeWithCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 794
+    },
+    {
+      "address": 1112955568,
+      "size": 332,
+      "reference_names": [
+        "-[NSConcreteSet initWithObjects:count:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 770
+    },
+    {
+      "address": 1112955900,
+      "size": 60,
+      "reference_names": [
+        "-[NSConcreteSet init]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 766
+    },
+    {
+      "address": 1112955960,
+      "size": 184,
+      "reference_names": [
+        "-[NSConcreteSet intersectsSet:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 873
+    },
+    {
+      "address": 1112956144,
+      "size": 212,
+      "reference_names": [
+        "-[NSConcreteSet isEqualToSet:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 888
+    },
+    {
+      "address": 1112956356,
+      "size": 212,
+      "reference_names": [
+        "-[NSConcreteSet isSubsetOfSet:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 906
+    },
+    {
+      "address": 1112956568,
+      "size": 116,
+      "reference_names": [
+        "-[NSConcreteSet makeObjectsPerformSelector:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 924
+    },
+    {
+      "address": 1112956684,
+      "size": 124,
+      "reference_names": [
+        "-[NSConcreteSet makeObjectsPerformSelector:withObject:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 938
+    },
+    {
+      "address": 1112956808,
+      "size": 124,
+      "reference_names": [
+        "-[NSConcreteSet member:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 814
+    },
+    {
+      "address": 1112956932,
+      "size": 216,
+      "reference_names": [
+        "-[NSConcreteSet mutableCopyWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 976
+    },
+    {
+      "address": 1112957148,
+      "size": 120,
+      "reference_names": [
+        "-[NSConcreteSet objectEnumerator]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 831
+    },
+    {
+      "address": 1112957268,
+      "size": 260,
+      "reference_names": [
+        "-[NSConcreteSet release]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 961
+    },
+    {
+      "address": 1112957528,
+      "size": 20,
+      "reference_names": [
+        "-[NSConcreteSet retainCount]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 967
+    },
+    {
+      "address": 1112957548,
+      "size": 216,
+      "reference_names": [
+        "-[NSConcreteSet retain]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 956
+    },
+    {
+      "address": 1112957764,
+      "size": 128,
+      "reference_names": [
+        "-[NSCountedSet addObject:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 2024
+    },
+    {
+      "address": 1112957892,
+      "size": 276,
+      "reference_names": [
+        "-[NSCountedSet allObjects]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 1762
+    },
+    {
+      "address": 1112958168,
+      "size": 124,
+      "reference_names": [
+        "-[NSCountedSet anyObject]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 1789
+    },
+    {
+      "address": 1112958292,
+      "size": 52,
+      "reference_names": [
+        "-[NSCountedSet classForCoder]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 1965
+    },
+    {
+      "address": 1112958344,
+      "size": 84,
+      "reference_names": [
+        "-[NSCountedSet copyWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 2048
+    },
+    {
+      "address": 1112958428,
+      "size": 112,
+      "reference_names": [
+        "-[NSCountedSet countForObject:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 1737
+    },
+    {
+      "address": 1112958540,
+      "size": 36,
+      "reference_names": [
+        "-[NSCountedSet count]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 1733
+    },
+    {
+      "address": 1112958576,
+      "size": 132,
+      "reference_names": [
+        "-[NSCountedSet dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 2060
+    },
+    {
+      "address": 1112958708,
+      "size": 608,
+      "reference_names": [
+        "-[NSCountedSet descriptionWithLocale:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 1805
+    },
+    {
+      "address": 1112959316,
+      "size": 208,
+      "reference_names": [
+        "-[NSCountedSet encodeWithCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 1969
+    },
+    {
+      "address": 1112959524,
+      "size": 76,
+      "reference_names": [
+        "-[NSCountedSet initWithArray:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 1684
+    },
+    {
+      "address": 1112959600,
+      "size": 96,
+      "reference_names": [
+        "-[NSCountedSet initWithCapacity:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 1677
+    },
+    {
+      "address": 1112959696,
+      "size": 396,
+      "reference_names": [
+        "-[NSCountedSet initWithCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 1991
+    },
+    {
+      "address": 1112960092,
+      "size": 216,
+      "reference_names": [
+        "-[NSCountedSet initWithObjects:count:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 1715
+    },
+    {
+      "address": 1112960308,
+      "size": 76,
+      "reference_names": [
+        "-[NSCountedSet initWithSet:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 1688
+    },
+    {
+      "address": 1112960384,
+      "size": 348,
+      "reference_names": [
+        "-[NSCountedSet initWithSet:copyItems:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 1692
+    },
+    {
+      "address": 1112960732,
+      "size": 56,
+      "reference_names": [
+        "-[NSCountedSet init]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 1673
+    },
+    {
+      "address": 1112960788,
+      "size": 268,
+      "reference_names": [
+        "-[NSCountedSet intersectSet:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 1921
+    },
+    {
+      "address": 1112961056,
+      "size": 188,
+      "reference_names": [
+        "-[NSCountedSet intersectsSet:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 1863
+    },
+    {
+      "address": 1112961244,
+      "size": 200,
+      "reference_names": [
+        "-[NSCountedSet isEqualToSet:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 1880
+    },
+    {
+      "address": 1112961444,
+      "size": 200,
+      "reference_names": [
+        "-[NSCountedSet isSubsetOfSet:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 1900
+    },
+    {
+      "address": 1112961644,
+      "size": 124,
+      "reference_names": [
+        "-[NSCountedSet makeObjectsPerformSelector:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 1642
+    },
+    {
+      "address": 1112961768,
+      "size": 132,
+      "reference_names": [
+        "-[NSCountedSet makeObjectsPerformSelector:withObject:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 1657
+    },
+    {
+      "address": 1112961900,
+      "size": 112,
+      "reference_names": [
+        "-[NSCountedSet member:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 1747
+    },
+    {
+      "address": 1112962012,
+      "size": 84,
+      "reference_names": [
+        "-[NSCountedSet mutableCopyWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 2054
+    },
+    {
+      "address": 1112962096,
+      "size": 120,
+      "reference_names": [
+        "-[NSCountedSet objectEnumerator]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 1757
+    },
+    {
+      "address": 1112962216,
+      "size": 260,
+      "reference_names": [
+        "-[NSCountedSet release]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 1606
+    },
+    {
+      "address": 1112962476,
+      "size": 60,
+      "reference_names": [
+        "-[NSCountedSet removeAllObjects]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 1960
+    },
+    {
+      "address": 1112962536,
+      "size": 140,
+      "reference_names": [
+        "-[NSCountedSet removeObject:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 2035
+    },
+    {
+      "address": 1112962676,
+      "size": 20,
+      "reference_names": [
+        "-[NSCountedSet retainCount]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 1633
+    },
+    {
+      "address": 1112962696,
+      "size": 216,
+      "reference_names": [
+        "-[NSCountedSet retain]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 1588
+    },
+    {
+      "address": 1112972928,
+      "size": 56,
+      "reference_names": [
+        "-[NSMutableSet addObject:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 1050
+    },
+    {
+      "address": 1112972984,
+      "size": 296,
+      "reference_names": [
+        "-[NSMutableSet addObjectsFromArray:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 1058
+    },
+    {
+      "address": 1112973280,
+      "size": 52,
+      "reference_names": [
+        "-[NSMutableSet classForCoder]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 1232
+    },
+    {
+      "address": 1112973332,
+      "size": 36,
+      "reference_names": [
+        "-[NSMutableSet initWithCapacity:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 1226
+    },
+    {
+      "address": 1112973368,
+      "size": 244,
+      "reference_names": [
+        "-[NSMutableSet initWithCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 1246
+    },
+    {
+      "address": 1112973612,
+      "size": 144,
+      "reference_names": [
+        "-[NSMutableSet initWithObjects:count:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 1236
+    },
+    {
+      "address": 1112973756,
+      "size": 404,
+      "reference_names": [
+        "-[NSMutableSet intersectSet:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 1081
+    },
+    {
+      "address": 1112974160,
+      "size": 216,
+      "reference_names": [
+        "-[NSMutableSet minusSet:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 1131
+    },
+    {
+      "address": 1112974376,
+      "size": 304,
+      "reference_names": [
+        "-[NSMutableSet removeAllObjects]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 1152
+    },
+    {
+      "address": 1112974680,
+      "size": 56,
+      "reference_names": [
+        "-[NSMutableSet removeObject:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 1054
+    },
+    {
+      "address": 1112974736,
+      "size": 208,
+      "reference_names": [
+        "-[NSMutableSet setSet:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 1194
+    },
+    {
+      "address": 1112974944,
+      "size": 272,
+      "reference_names": [
+        "-[NSSet allObjects]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 300
+    },
+    {
+      "address": 1112975216,
+      "size": 100,
+      "reference_names": [
+        "-[NSSet anyObject]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 323
+    },
+    {
+      "address": 1112975316,
+      "size": 52,
+      "reference_names": [
+        "-[NSSet classForCoder]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 425
+    },
+    {
+      "address": 1112975368,
+      "size": 84,
+      "reference_names": [
+        "-[NSSet copyWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 429
+    },
+    {
+      "address": 1112975452,
+      "size": 60,
+      "reference_names": [
+        "-[NSSet countForObject:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 333
+    },
+    {
+      "address": 1112975512,
+      "size": 60,
+      "reference_names": [
+        "-[NSSet count]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 285
+    },
+    {
+      "address": 1112975572,
+      "size": 564,
+      "reference_names": [
+        "-[NSSet descriptionWithLocale:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 541
+    },
+    {
+      "address": 1112976136,
+      "size": 56,
+      "reference_names": [
+        "-[NSSet description]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 537
+    },
+    {
+      "address": 1112976192,
+      "size": 168,
+      "reference_names": [
+        "-[NSSet encodeWithCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 439
+    },
+    {
+      "address": 1112976360,
+      "size": 52,
+      "reference_names": [
+        "-[NSSet hash]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 475
+    },
+    {
+      "address": 1112976412,
+      "size": 316,
+      "reference_names": [
+        "-[NSSet initWithArray:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 659
+    },
+    {
+      "address": 1112976728,
+      "size": 340,
+      "reference_names": [
+        "-[NSSet initWithCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 452
+    },
+    {
+      "address": 1112977068,
+      "size": 264,
+      "reference_names": [
+        "-[NSSet initWithObjects:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 690
+    },
+    {
+      "address": 1112977332,
+      "size": 48,
+      "reference_names": [
+        "-[NSSet initWithObjects:count:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 683
+    },
+    {
+      "address": 1112977380,
+      "size": 56,
+      "reference_names": [
+        "-[NSSet initWithSet:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 722
+    },
+    {
+      "address": 1112977436,
+      "size": 388,
+      "reference_names": [
+        "-[NSSet initWithSet:copyItems:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 726
+    },
+    {
+      "address": 1112977824,
+      "size": 180,
+      "reference_names": [
+        "-[NSSet intersectsSet:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 337
+    },
+    {
+      "address": 1112978004,
+      "size": 212,
+      "reference_names": [
+        "-[NSSet isEqualToSet:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 351
+    },
+    {
+      "address": 1112978216,
+      "size": 212,
+      "reference_names": [
+        "-[NSSet isSubsetOfSet:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 395
+    },
+    {
+      "address": 1112978428,
+      "size": 52,
+      "reference_names": [
+        "-[NSSet makeObjectsPerform:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 507
+    },
+    {
+      "address": 1112978480,
+      "size": 52,
+      "reference_names": [
+        "-[NSSet makeObjectsPerform:withObject:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 511
+    },
+    {
+      "address": 1112978532,
+      "size": 124,
+      "reference_names": [
+        "-[NSSet makeObjectsPerformSelector:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 485
+    },
+    {
+      "address": 1112978656,
+      "size": 132,
+      "reference_names": [
+        "-[NSSet makeObjectsPerformSelector:withObject:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 496
+    },
+    {
+      "address": 1112978788,
+      "size": 60,
+      "reference_names": [
+        "-[NSSet member:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 290
+    },
+    {
+      "address": 1112978848,
+      "size": 304,
+      "reference_names": [
+        "-[NSSet members:notFoundMarker:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 515
+    },
+    {
+      "address": 1112979152,
+      "size": 84,
+      "reference_names": [
+        "-[NSSet mutableCopyWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 434
+    },
+    {
+      "address": 1112979236,
+      "size": 60,
+      "reference_names": [
+        "-[NSSet objectEnumerator]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 295
+    },
+    {
+      "address": 1112979296,
+      "size": 128,
+      "reference_names": [
+        "-[NSSet replacementObjectForPortCoder:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 479
+    },
+    {
+      "address": 1112986008,
+      "size": 232,
+      "reference_names": [
+        "_NSCompareHashTables"
+      ],
+      "source_path": "src/Kits/Foundation/NSHashTable.m",
+      "source_line": 237
+    },
+    {
+      "address": 1112986472,
+      "size": 268,
+      "reference_names": [
+        "_NSCopyHashTableWithZone"
+      ],
+      "source_path": "src/Kits/Foundation/NSHashTable.m",
+      "source_line": 266
+    },
+    {
+      "address": 1112987488,
+      "size": 44,
+      "reference_names": [
+        "_NSResetHashTable"
+      ],
+      "source_path": "src/Kits/Foundation/NSHashTable.m",
+      "source_line": 221
+    },
+    {
+      "address": 1112988808,
+      "size": 524,
+      "reference_names": [
+        "_NSStringFromHashTable"
+      ],
+      "source_path": "src/Kits/Foundation/NSHashTable.m",
+      "source_line": 395
+    },
+    {
+      "address": 1112990616,
+      "size": 60,
+      "reference_names": [
+        "__NSSetDictRelease"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 133
+    },
+    {
+      "address": 1112990676,
+      "size": 92,
+      "reference_names": [
+        "__NSSetRaiseInsertNilException"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 271
+    },
+    {
+      "address": 1112990768,
+      "size": 92,
+      "reference_names": [
+        "__NSSetRaiseRemoveNilException"
+      ],
+      "source_path": "src/Kits/Foundation/NSSet.m",
+      "source_line": 277
+    },
+    {
+      "address": 1112991696,
+      "size": 60,
+      "reference_names": [
+        "_describeObjectHT"
+      ],
+      "source_path": "src/Kits/Foundation/NSHashTable.m",
+      "source_line": 138
+    },
+    {
+      "address": 1112993456,
+      "size": 36,
+      "reference_names": [
+        "_freePointerHT"
+      ],
+      "source_path": "src/Kits/Foundation/NSHashTable.m",
+      "source_line": 170
+    },
+    {
+      "address": 1112993492,
+      "size": 16,
+      "reference_names": [
+        "_hashPointerStructHT"
+      ],
+      "source_path": "src/Kits/Foundation/NSHashTable.m",
+      "source_line": 175
+    },
+    {
+      "address": 1112993740,
+      "size": 32,
+      "reference_names": [
+        "_isEqualPointerStructHT"
+      ],
+      "source_path": "src/Kits/Foundation/NSHashTable.m",
+      "source_line": 181
+    },
+    {
+      "address": 1112994504,
+      "size": 60,
+      "reference_names": [
+        "_releaseObjectHT"
+      ],
+      "source_path": "src/Kits/Foundation/NSHashTable.m",
+      "source_line": 133
+    },
+    {
+      "address": 1112994564,
+      "size": 60,
+      "reference_names": [
+        "_retainObjectHT"
+      ],
+      "source_path": "src/Kits/Foundation/NSHashTable.m",
+      "source_line": 128
+    },
+    {
+      "address": 1113050732,
+      "size": 564,
+      "reference_names": [
+        "_NSLog2"
+      ],
+      "source_path": "src/Kits/Foundation/NSHashTable.m",
+      "source_line": 47
+    },
+    {
+      "address": 1113053456,
+      "size": 1128,
+      "reference_names": [
+        "__NSFastBSearchInt"
+      ],
+      "source_path": "src/Kits/Foundation/NSHashTable.m",
+      "source_line": 58
+    },
+    {
+      "address": 1113056700,
+      "size": 96,
+      "reference_names": [
+        "__NSHashTableDescribeCString"
+      ],
+      "source_path": "src/Kits/Foundation/NSHashTable.m",
+      "source_line": 163
+    }
+  ],
+  "unmapped": [],
+  "duplicate_candidates": [],
+  "boundary_disputed": []
+}

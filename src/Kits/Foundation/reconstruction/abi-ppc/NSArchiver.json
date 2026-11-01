@@ -1,0 +1,365 @@
+{
+ "categories": [
+  {
+   "class": "NSObject",
+   "class_methods": [],
+   "instance_methods": [
+    {
+     "selector": "replacementObjectForArchiver:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "classForArchiver",
+     "types": "#4@4:8"
+    }
+   ],
+   "name": "NSArchiverCallBack"
+  }
+ ],
+ "classes": [
+  {
+   "class_methods": [
+    {
+     "selector": "classNameDecodedForArchiveClassName:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "decodeClassName:asClassName:",
+     "types": "v12@4:8@12@16"
+    },
+    {
+     "selector": "unarchiveObjectWithFile:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "unarchiveObjectWithData:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "initialize",
+     "types": "v4@4:8"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "classNameDecodedForArchiveClassName:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "decodeClassName:asClassName:",
+     "types": "v12@4:8@12@16"
+    },
+    {
+     "selector": "decodeDataObject",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "decodeObject",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "decodeBytesWithReturnedLength:",
+     "types": "^v8@4:8^I12"
+    },
+    {
+     "selector": "decodeArrayOfObjCType:count:at:",
+     "types": "v16@4:8r*12I16^v20"
+    },
+    {
+     "selector": "decodeValuesOfObjCTypes:",
+     "types": "v12@4:8r*16"
+    },
+    {
+     "selector": "decodeValueOfObjCType:at:",
+     "types": "v12@4:8r*12^v16"
+    },
+    {
+     "selector": "data",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "versionForClassName:",
+     "types": "I8@4:8@12"
+    },
+    {
+     "selector": "systemVersion",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "isAtEnd",
+     "types": "c4@4:8"
+    },
+    {
+     "selector": "objectZone",
+     "types": "^{?=}4@4:8"
+    },
+    {
+     "selector": "setObjectZone:",
+     "types": "v8@4:8^{?=}12"
+    },
+    {
+     "selector": "replaceObject:withObject:",
+     "types": "v12@4:8@12@16"
+    },
+    {
+     "selector": "dealloc",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "initForReadingWithData:",
+     "types": "@8@4:8@12"
+    }
+   ],
+   "instance_size": 52,
+   "ivars": [
+    {
+     "name": "data",
+     "offset": 4,
+     "type": "@"
+    },
+    {
+     "name": "cursor",
+     "offset": 8,
+     "type": "I"
+    },
+    {
+     "name": "objectZone",
+     "offset": 12,
+     "type": "^{?}"
+    },
+    {
+     "name": "systemVersion",
+     "offset": 16,
+     "type": "I"
+    },
+    {
+     "name": "streamerVersion",
+     "offset": 20,
+     "type": "c"
+    },
+    {
+     "name": "pointerTable",
+     "offset": 24,
+     "type": "^{?}"
+    },
+    {
+     "name": "stringTable",
+     "offset": 28,
+     "type": "^{?}"
+    },
+    {
+     "name": "classVersions",
+     "offset": 32,
+     "type": "^{?}"
+    },
+    {
+     "name": "lastLabel",
+     "offset": 36,
+     "type": "i"
+    },
+    {
+     "name": "map",
+     "offset": 40,
+     "type": "@\"NSMutableDictionary\""
+    },
+    {
+     "name": "allUnarchivedObjects",
+     "offset": 44,
+     "type": "^v"
+    },
+    {
+     "name": "reserved",
+     "offset": 48,
+     "type": "^v"
+    }
+   ],
+   "name": "NSUnarchiver",
+   "superclass": "NSCoder"
+  },
+  {
+   "class_methods": [
+    {
+     "selector": "archiveRootObject:toFile:",
+     "types": "c12@4:8@12@16"
+    },
+    {
+     "selector": "archivedDataWithRootObject:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "classNameEncodedForTrueClassName:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "encodeClassName:intoClassName:",
+     "types": "v12@4:8@12@16"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "classNameEncodedForTrueClassName:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "encodeClassName:intoClassName:",
+     "types": "v12@4:8@12@16"
+    },
+    {
+     "selector": "encodeConditionalObject:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "encodeRootObject:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "encodeDataObject:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "encodeObject:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "encodeBytes:length:",
+     "types": "v12@4:8r^v12I16"
+    },
+    {
+     "selector": "encodeArrayOfObjCType:count:at:",
+     "types": "v16@4:8r*12I16r^v20"
+    },
+    {
+     "selector": "encodeValuesOfObjCTypes:",
+     "types": "v12@4:8r*16"
+    },
+    {
+     "selector": "encodeValueOfObjCType:at:",
+     "types": "v12@4:8r*12r^v16"
+    },
+    {
+     "selector": "replaceObject:withObject:",
+     "types": "v12@4:8@12@16"
+    },
+    {
+     "selector": "_replaceObject:withObject:",
+     "types": "v12@4:8@12@16"
+    },
+    {
+     "selector": "dealloc",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "data",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "archiverData",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "initForWritingWithMutableData:",
+     "types": "@8@4:8@12"
+    }
+   ],
+   "instance_size": 32,
+   "ivars": [
+    {
+     "name": "mdata",
+     "offset": 4,
+     "type": "@\"NSMutableData\""
+    },
+    {
+     "name": "pointerTable",
+     "offset": 8,
+     "type": "^{?}"
+    },
+    {
+     "name": "stringTable",
+     "offset": 12,
+     "type": "^v"
+    },
+    {
+     "name": "ids",
+     "offset": 16,
+     "type": "^{?}"
+    },
+    {
+     "name": "map",
+     "offset": 20,
+     "type": "@\"NSMutableDictionary\""
+    },
+    {
+     "name": "replacementTable",
+     "offset": 24,
+     "type": "^{?}"
+    },
+    {
+     "name": "reserved",
+     "offset": 28,
+     "type": "^v"
+    }
+   ],
+   "name": "NSArchiver",
+   "superclass": "NSCoder"
+  },
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "_decodeNewPtr:label:usingTable:lastLabel:atCursor:",
+     "types": "c24@4:8^^v12^i16^{?=}20^i24^I28"
+    },
+    {
+     "selector": "length",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "bytes",
+     "types": "r^v4@4:8"
+    },
+    {
+     "selector": "_setSwap:",
+     "types": "v5@4:8c12"
+    },
+    {
+     "selector": "dealloc",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "initWithData:",
+     "types": "@8@4:8@12"
+    }
+   ],
+   "instance_size": 16,
+   "ivars": [
+    {
+     "name": "bytes",
+     "offset": 4,
+     "type": "*"
+    },
+    {
+     "name": "length",
+     "offset": 8,
+     "type": "I"
+    },
+    {
+     "name": "swap",
+     "offset": 12,
+     "type": "c"
+    }
+   ],
+   "name": "_NSArchiverData",
+   "superclass": "NSData"
+  }
+ ],
+ "data_symbols": [
+  "_NSInconsistentArchiveException",
+  "__NSJavaArchiverCallout"
+ ],
+ "module": "NSArchiver.m",
+ "schema_version": "abi-v1",
+ "text_symbols": []
+}

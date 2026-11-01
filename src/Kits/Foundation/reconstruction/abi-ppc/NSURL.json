@@ -1,0 +1,225 @@
+{
+ "categories": [],
+ "classes": [
+  {
+   "class_methods": [
+    {
+     "selector": "fileURLWithPath:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "URLWithString:relativeToURL:",
+     "types": "@12@4:8@12@16"
+    },
+    {
+     "selector": "URLWithString:",
+     "types": "@8@4:8@12"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "URLHandle:resourceDidFailLoadingWithReason:",
+     "types": "v12@4:8@12@16"
+    },
+    {
+     "selector": "URLHandleResourceDidCancelLoading:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "URLHandleResourceDidFinishLoading:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "URLHandleResourceDidBeginLoading:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "URLHandle:resourceDataDidBecomeAvailable:",
+     "types": "v12@4:8@12@16"
+    },
+    {
+     "selector": "URLHandleUsingCache:",
+     "types": "@5@4:8c12"
+    },
+    {
+     "selector": "setProperty:forKey:",
+     "types": "c12@4:8@12@16"
+    },
+    {
+     "selector": "setResourceData:",
+     "types": "c8@4:8@12"
+    },
+    {
+     "selector": "propertyForKey:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "loadResourceDataNotifyingClient:usingCache:",
+     "types": "v9@4:8@12c16"
+    },
+    {
+     "selector": "resourceDataUsingCache:",
+     "types": "@5@4:8c12"
+    },
+    {
+     "selector": "URLRelativeToBaseURL:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "isFileURL",
+     "types": "c4@4:8"
+    },
+    {
+     "selector": "fragment",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "query",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "parameterString",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "path",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "_absoluteURLPath",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "relativePath",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "_relativeURLPath",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "password",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "user",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "port",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "host",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "resourceSpecifier",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "scheme",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "standardizedURL",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "absoluteURL",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "baseURL",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "relativeString",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "absoluteString",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "copyWithZone:",
+     "types": "@8@4:8^{?=}12"
+    },
+    {
+     "selector": "description",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "initWithCoder:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "encodeWithCoder:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "hash",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "isEqual:",
+     "types": "c8@4:8@12"
+    },
+    {
+     "selector": "dealloc",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "initFileURLWithPath:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "initWithScheme:host:path:",
+     "types": "@16@4:8@12@16@20"
+    },
+    {
+     "selector": "initWithString:relativeToURL:",
+     "types": "@12@4:8@12@16"
+    },
+    {
+     "selector": "initWithString:",
+     "types": "@8@4:8@12"
+    }
+   ],
+   "instance_size": 20,
+   "ivars": [
+    {
+     "name": "_urlString",
+     "offset": 4,
+     "type": "@\"NSString\""
+    },
+    {
+     "name": "_baseURL",
+     "offset": 8,
+     "type": "@\"NSURL\""
+    },
+    {
+     "name": "_clients",
+     "offset": 12,
+     "type": "^v"
+    },
+    {
+     "name": "_reserved",
+     "offset": 16,
+     "type": "^v"
+    }
+   ],
+   "name": "NSURL",
+   "superclass": "NSObject"
+  }
+ ],
+ "data_symbols": [
+  "_NSURLFileScheme"
+ ],
+ "module": "NSURL.m",
+ "schema_version": "abi-v1",
+ "text_symbols": [
+  "__NSParseStringToGenericURLComponents"
+ ]
+}

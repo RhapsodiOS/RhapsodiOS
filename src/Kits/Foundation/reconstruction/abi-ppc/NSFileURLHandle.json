@@ -1,0 +1,92 @@
+{
+ "categories": [],
+ "classes": [
+  {
+   "class_methods": [
+    {
+     "selector": "cachedHandleForURL:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "canInitWithURL:",
+     "types": "c8@4:8@12"
+    },
+    {
+     "selector": "initialize",
+     "types": "v4@4:8"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "_backgroundFileLoadCompleted:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "flushCachedData",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "endLoadInBackground",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "beginLoadInBackground",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "writeProperty:forKey:",
+     "types": "c12@4:8@12@16"
+    },
+    {
+     "selector": "propertyForKeyIfAvailable:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "propertyForKey:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "writeData:",
+     "types": "c8@4:8@12"
+    },
+    {
+     "selector": "loadInForeground",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "dealloc",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "initWithURL:cached:",
+     "types": "@9@4:8@12c16"
+    }
+   ],
+   "instance_size": 32,
+   "ivars": [
+    {
+     "name": "_path",
+     "offset": 20,
+     "type": "@\"NSString\""
+    },
+    {
+     "name": "_fh",
+     "offset": 24,
+     "type": "@\"NSFileHandle\""
+    },
+    {
+     "name": "_properties",
+     "offset": 28,
+     "type": "@\"NSDictionary\""
+    }
+   ],
+   "name": "NSFileURLHandle",
+   "superclass": "NSURLHandle"
+  }
+ ],
+ "data_symbols": [],
+ "module": "NSFileURLHandle.m",
+ "schema_version": "abi-v1",
+ "text_symbols": []
+}

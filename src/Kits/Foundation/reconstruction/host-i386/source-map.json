@@ -1,0 +1,170 @@
+{
+  "schema_version": "source-map-v1",
+  "reference_sha256": "1165B9063ADD5672514455CA2C9830625BEA2BCE5E46126FB5E8652114C909D6",
+  "mapped": [
+    {
+      "address": 1112828180,
+      "size": 34,
+      "reference_names": [
+        "-[NSHost name]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHost.m",
+      "source_line": 115
+    },
+    {
+      "address": 1112830184,
+      "size": 186,
+      "reference_names": [
+        "+[NSHost currentHost]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHost.m",
+      "source_line": 45
+    },
+    {
+      "address": 1112861296,
+      "size": 605,
+      "reference_names": [
+        "-[NSHost _initWithHostEntry:name:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHost.m",
+      "source_line": 202
+    },
+    {
+      "address": 1112871880,
+      "size": 507,
+      "reference_names": [
+        "+[NSHost _hostWithHostEntry:name:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHost.m",
+      "source_line": 149
+    },
+    {
+      "address": 1113027284,
+      "size": 95,
+      "reference_names": [
+        "+[NSHost _hostWithHostEntry:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHost.m",
+      "source_line": 192
+    },
+    {
+      "address": 1113027380,
+      "size": 110,
+      "reference_names": [
+        "+[NSHost flushHostCache]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHost.m",
+      "source_line": 88
+    },
+    {
+      "address": 1113027492,
+      "size": 89,
+      "reference_names": [
+        "+[NSHost hostWithAddress:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHost.m",
+      "source_line": 70
+    },
+    {
+      "address": 1113027584,
+      "size": 61,
+      "reference_names": [
+        "+[NSHost hostWithName:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHost.m",
+      "source_line": 64
+    },
+    {
+      "address": 1113027648,
+      "size": 20,
+      "reference_names": [
+        "+[NSHost isHostCacheEnabled]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHost.m",
+      "source_line": 84
+    },
+    {
+      "address": 1113027668,
+      "size": 22,
+      "reference_names": [
+        "+[NSHost setHostCacheEnabled:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHost.m",
+      "source_line": 80
+    },
+    {
+      "address": 1113062524,
+      "size": 34,
+      "reference_names": [
+        "-[NSHost address]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHost.m",
+      "source_line": 123
+    },
+    {
+      "address": 1113062560,
+      "size": 13,
+      "reference_names": [
+        "-[NSHost addresses]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHost.m",
+      "source_line": 127
+    },
+    {
+      "address": 1113062576,
+      "size": 92,
+      "reference_names": [
+        "-[NSHost dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHost.m",
+      "source_line": 246
+    },
+    {
+      "address": 1113062668,
+      "size": 105,
+      "reference_names": [
+        "-[NSHost description]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHost.m",
+      "source_line": 131
+    },
+    {
+      "address": 1113062776,
+      "size": 153,
+      "reference_names": [
+        "-[NSHost isEqualToHost:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHost.m",
+      "source_line": 97
+    },
+    {
+      "address": 1113062932,
+      "size": 13,
+      "reference_names": [
+        "-[NSHost names]"
+      ],
+      "source_path": "src/Kits/Foundation/NSHost.m",
+      "source_line": 119
+    },
+    {
+      "address": 1113080484,
+      "size": 18,
+      "reference_names": [
+        "_NSHostName"
+      ],
+      "source_path": "src/Kits/Foundation/NSHost.m",
+      "source_line": 23
+    }
+  ],
+  "unmapped": [],
+  "duplicate_candidates": [],
+  "boundary_disputed": [],
+  "by_module": {
+    "NSHost.m": {
+      "mapped": 17,
+      "unmapped": 0,
+      "duplicate_candidates": 0,
+      "boundary_disputed": 0
+    }
+  }
+}

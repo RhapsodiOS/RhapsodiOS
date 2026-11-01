@@ -1580,12 +1580,10 @@ static int HandleBsdWrite(dev_t dev, struct uio *uio)
  * Attach BSD disk interface to a drive.
  * From decompiled code: creates BSD device nodes (block and character devices).
  */
-- (IOReturn)attachBsdDiskInterfaceToDrive:(id)drive
+- (BOOL)attachBsdDiskInterfaceToDrive:(id)drive
 {
 	int driveNumber;
-	BOOL hasDevInfo;
 	char *devInfoPtr;
-	void *sourceDevInfo;
 	int blockDevMajor;
 	int charDevMajor;
 	int blockDevMinor;
@@ -1597,16 +1595,14 @@ static int HandleBsdWrite(dev_t dev, struct uio *uio)
 	
 	// If invalid drive number, fail
 	if (driveNumber == -1) {
-		return IO_R_INVALID_ARG;
+		return NO;
 	}
 	
 	// Get pointer to device info structure (Drives[driveNumber].devInfo)
 	devInfoPtr = (char *)&Drives[driveNumber].devInfo;
 
-	// Check if device info already exists
-	hasDevInfo = [drive _hasDevInfo];
-
-	if (!hasDevInfo) {
+	// Device info already exists if this disk has been given one
+	if ([self devAndIdInfo] == NULL) {
 		// Clear device info area
 		bzero(devInfoPtr, sizeof(struct DriveDevInfo));
 
@@ -1623,15 +1619,9 @@ static int HandleBsdWrite(dev_t dev, struct uio *uio)
 		// Calculate and store char device major/minor
 		charDevMinor = driveNumber * 8;
 		Drives[driveNumber].devInfo.charDev = (charDevMajor << 8) | charDevMinor;
-	} else {
-		// Device info already exists, get existing info
-		sourceDevInfo = [self devAndIdInfo];
-
-		// Check if it's not already the same pointer
-		if (sourceDevInfo != devInfoPtr) {
-			// Copy existing device info
-			bcopy(sourceDevInfo, devInfoPtr, sizeof(struct DriveDevInfo));
-		}
+	} else if ([self devAndIdInfo] != devInfoPtr) {
+		// Copy existing device info
+		bcopy([self devAndIdInfo], devInfoPtr, sizeof(struct DriveDevInfo));
 	}
 
 	// Set device and ID info on the drive
@@ -1641,7 +1631,7 @@ static int HandleBsdWrite(dev_t dev, struct uio *uio)
 	flagsPtr = &Drives[driveNumber].flags;
 	*flagsPtr |= 2;
 	
-	return IO_R_SUCCESS;
+	return YES;
 }
 
 /*

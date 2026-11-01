@@ -41,7 +41,7 @@
 #import <driverkit/return.h>
 #import <driverkit/driverTypes.h>
 #import "ATADisk.h"
-#import "IdeCntPublic.h"
+#import "../drvPPCATA/IdeCntPublic.h"
 
 /*
  * Condition variable states for ioQueueLock.

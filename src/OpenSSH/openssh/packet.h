@@ -1,3 +1,5 @@
+/* $OpenBSD: packet.h,v 1.74 2016/10/11 21:47:45 djm Exp $ */
+
 /*
  * Author: Tatu Ylonen <ylo@cs.hut.fi>
  * Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
@@ -11,207 +13,199 @@
  * called by a name other than "ssh" or "Secure Shell".
  */
 
-/* RCSID("$OpenBSD: packet.h,v 1.17 2000/09/07 20:27:52 deraadt Exp $"); */
-
 #ifndef PACKET_H
 #define PACKET_H
 
-#include <openssl/bn.h>
+#include <termios.h>
 
-/*
- * Sets the socket used for communication.  Disables encryption until
- * packet_set_encryption_key is called.  It is permissible that fd_in and
- * fd_out are the same descriptor; in that case it is assumed to be a socket.
- */
-void    packet_set_connection(int fd_in, int fd_out);
+#ifdef WITH_OPENSSL
+# include <openssl/bn.h>
+# ifdef OPENSSL_HAS_ECC
+#  include <openssl/ec.h>
+# else /* OPENSSL_HAS_ECC */
+#  define EC_KEY	void
+#  define EC_GROUP	void
+#  define EC_POINT	void
+# endif /* OPENSSL_HAS_ECC */
+#else /* WITH_OPENSSL */
+# define BIGNUM		void
+# define EC_KEY		void
+# define EC_GROUP	void
+# define EC_POINT	void
+#endif /* WITH_OPENSSL */
 
-/* Puts the connection file descriptors into non-blocking mode. */
-void    packet_set_nonblocking(void);
+#include <signal.h>
+#include "openbsd-compat/sys-queue.h"
 
-/* Returns the file descriptor used for input. */
-int     packet_get_connection_in(void);
+struct kex;
+struct sshkey;
+struct sshbuf;
+struct session_state;	/* private session data */
 
-/* Returns the file descriptor used for output. */
-int     packet_get_connection_out(void);
+#include "dispatch.h"	/* typedef, DISPATCH_MAX */
 
-/*
- * Closes the connection (both descriptors) and clears and frees internal
- * data structures.
- */
-void    packet_close(void);
+struct key_entry {
+	TAILQ_ENTRY(key_entry) next;
+	struct sshkey *key;
+};
 
-/*
- * Causes any further packets to be encrypted using the given key.  The same
- * key is used for both sending and reception.  However, both directions are
- * encrypted independently of each other.  Cipher types are defined in ssh.h.
- */
-void
-packet_set_encryption_key(const unsigned char *key, unsigned int keylen,
-    int cipher_type);
+struct ssh {
+	/* Session state */
+	struct session_state *state;
 
-/*
- * Sets remote side protocol flags for the current connection.  This can be
- * called at any time.
- */
-void    packet_set_protocol_flags(unsigned int flags);
+	/* Key exchange */
+	struct kex *kex;
 
-/* Returns the remote protocol flags set earlier by the above function. */
-unsigned int packet_get_protocol_flags(void);
+	/* cached local and remote ip addresses and ports */
+	char *remote_ipaddr;
+	int remote_port;
+	char *local_ipaddr;
+	int local_port;
 
-/* Enables compression in both directions starting from the next packet. */
-void    packet_start_compression(int level);
+	/* Dispatcher table */
+	dispatch_fn *dispatch[DISPATCH_MAX];
+	/* number of packets to ignore in the dispatcher */
+	int dispatch_skip_packets;
 
-/*
- * Informs that the current session is interactive.  Sets IP flags for
- * optimal performance in interactive use.
- */
-void    packet_set_interactive(int interactive, int keepalives);
+	/* datafellows */
+	int compat;
 
-/* Returns true if the current connection is interactive. */
-int     packet_is_interactive(void);
+	/* Lists for private and public keys */
+	TAILQ_HEAD(, key_entry) private_keys;
+	TAILQ_HEAD(, key_entry) public_keys;
 
-/* Starts constructing a packet to send. */
-void    packet_start(int type);
+	/* APP data */
+	void *app_data;
+};
 
-/* Appends a character to the packet data. */
-void    packet_put_char(int ch);
+typedef int (ssh_packet_hook_fn)(struct ssh *, struct sshbuf *,
+    u_char *, void *);
 
-/* Appends an integer to the packet data. */
-void    packet_put_int(unsigned int value);
+struct ssh *ssh_alloc_session_state(void);
+struct ssh *ssh_packet_set_connection(struct ssh *, int, int);
+void     ssh_packet_set_timeout(struct ssh *, int, int);
+int	 ssh_packet_stop_discard(struct ssh *);
+int	 ssh_packet_connection_af(struct ssh *);
+void     ssh_packet_set_nonblocking(struct ssh *);
+int      ssh_packet_get_connection_in(struct ssh *);
+int      ssh_packet_get_connection_out(struct ssh *);
+void     ssh_packet_close(struct ssh *);
+void	 ssh_packet_set_encryption_key(struct ssh *, const u_char *, u_int, int);
+void	 ssh_packet_set_input_hook(struct ssh *, ssh_packet_hook_fn *, void *);
 
-/* Appends an arbitrary precision integer to packet data. */
-void    packet_put_bignum(BIGNUM * value);
-void    packet_put_bignum2(BIGNUM * value);
+int	 ssh_packet_is_rekeying(struct ssh *);
+void     ssh_packet_set_protocol_flags(struct ssh *, u_int);
+u_int	 ssh_packet_get_protocol_flags(struct ssh *);
+int      ssh_packet_start_compression(struct ssh *, int);
+void	 ssh_packet_set_tos(struct ssh *, int);
+void     ssh_packet_set_interactive(struct ssh *, int, int, int);
+int      ssh_packet_is_interactive(struct ssh *);
+void     ssh_packet_set_server(struct ssh *);
+void     ssh_packet_set_authenticated(struct ssh *);
+void     ssh_packet_set_mux(struct ssh *);
+int	 ssh_packet_get_mux(struct ssh *);
 
-/* Appends a string to packet data. */
-void    packet_put_string(const char *buf, unsigned int len);
-void    packet_put_cstring(const char *str);
-void    packet_put_raw(const char *buf, unsigned int len);
+int	 ssh_packet_log_type(u_char);
 
-/*
- * Finalizes and sends the packet.  If the encryption key has been set,
- * encrypts the packet before sending.
- */
-void    packet_send(void);
+int	 ssh_packet_send1(struct ssh *);
+int	 ssh_packet_send2_wrapped(struct ssh *);
+int	 ssh_packet_send2(struct ssh *);
 
-/* Waits until a packet has been received, and returns its type. */
-int     packet_read(int *payload_len_ptr);
+int      ssh_packet_read(struct ssh *);
+int	 ssh_packet_read_expect(struct ssh *, u_int type);
+int      ssh_packet_read_poll(struct ssh *);
+int ssh_packet_read_poll1(struct ssh *, u_char *);
+int ssh_packet_read_poll2(struct ssh *, u_char *, u_int32_t *seqnr_p);
+int	 ssh_packet_process_incoming(struct ssh *, const char *buf, u_int len);
+int      ssh_packet_read_seqnr(struct ssh *, u_char *, u_int32_t *seqnr_p);
+int      ssh_packet_read_poll_seqnr(struct ssh *, u_char *, u_int32_t *seqnr_p);
 
-/*
- * Waits until a packet has been received, verifies that its type matches
- * that given, and gives a fatal error and exits if there is a mismatch.
- */
-void    packet_read_expect(int *payload_len_ptr, int type);
+const void *ssh_packet_get_string_ptr(struct ssh *, u_int *length_ptr);
+void     ssh_packet_disconnect(struct ssh *, const char *fmt, ...)
+	__attribute__((format(printf, 2, 3)))
+	__attribute__((noreturn));
+void     ssh_packet_send_debug(struct ssh *, const char *fmt, ...) __attribute__((format(printf, 2, 3)));
 
-/*
- * Checks if a full packet is available in the data received so far via
- * packet_process_incoming.  If so, reads the packet; otherwise returns
- * SSH_MSG_NONE.  This does not wait for data from the connection.
- * SSH_MSG_DISCONNECT is handled specially here.  Also, SSH_MSG_IGNORE
- * messages are skipped by this function and are never returned to higher
- * levels.
- */
-int     packet_read_poll(int *packet_len_ptr);
+int	 ssh_set_newkeys(struct ssh *, int mode);
+void	 ssh_packet_get_bytes(struct ssh *, u_int64_t *, u_int64_t *);
 
-/*
- * Buffers the given amount of input characters.  This is intended to be used
- * together with packet_read_poll.
- */
-void    packet_process_incoming(const char *buf, unsigned int len);
+int	 ssh_packet_write_poll(struct ssh *);
+int	 ssh_packet_write_wait(struct ssh *);
+int      ssh_packet_have_data_to_write(struct ssh *);
+int      ssh_packet_not_very_much_data_to_write(struct ssh *);
 
-/* Returns a character (0-255) from the packet data. */
-unsigned int packet_get_char(void);
+int	 ssh_packet_connection_is_on_socket(struct ssh *);
+int	 ssh_packet_remaining(struct ssh *);
+void	 ssh_packet_send_ignore(struct ssh *, int);
 
-/* Returns an integer from the packet data. */
-unsigned int packet_get_int(void);
+void	 tty_make_modes(int, struct termios *);
+void	 tty_parse_modes(int, int *);
 
-/*
- * Returns an arbitrary precision integer from the packet data.  The integer
- * must have been initialized before this call.
- */
-void    packet_get_bignum(BIGNUM * value, int *length_ptr);
-void    packet_get_bignum2(BIGNUM * value, int *length_ptr);
-char	*packet_get_raw(int *length_ptr);
+void	 ssh_packet_set_alive_timeouts(struct ssh *, int);
+int	 ssh_packet_inc_alive_timeouts(struct ssh *);
+int	 ssh_packet_set_maxsize(struct ssh *, u_int);
+u_int	 ssh_packet_get_maxsize(struct ssh *);
 
-/*
- * Returns a string from the packet data.  The string is allocated using
- * xmalloc; it is the responsibility of the calling program to free it when
- * no longer needed.  The length_ptr argument may be NULL, or point to an
- * integer into which the length of the string is stored.
- */
-char   *packet_get_string(unsigned int *length_ptr);
+int	 ssh_packet_get_state(struct ssh *, struct sshbuf *);
+int	 ssh_packet_set_state(struct ssh *, struct sshbuf *);
 
-/*
- * Logs the error in syslog using LOG_INFO, constructs and sends a disconnect
- * packet, closes the connection, and exits.  This function never returns.
- * The error message should not contain a newline.  The total length of the
- * message must not exceed 1024 bytes.
- */
-void    packet_disconnect(const char *fmt,...) __attribute__((format(printf, 1, 2)));
+const char *ssh_remote_ipaddr(struct ssh *);
+int	 ssh_remote_port(struct ssh *);
+const char *ssh_local_ipaddr(struct ssh *);
+int	 ssh_local_port(struct ssh *);
 
-/*
- * Sends a diagnostic message to the other side.  This message can be sent at
- * any time (but not while constructing another message). The message is
- * printed immediately, but only if the client is being executed in verbose
- * mode.  These messages are primarily intended to ease debugging
- * authentication problems.  The total length of the message must not exceed
- * 1024 bytes.  This will automatically call packet_write_wait.  If the
- * remote side protocol flags do not indicate that it supports SSH_MSG_DEBUG,
- * this will do nothing.
- */
-void    packet_send_debug(const char *fmt,...) __attribute__((format(printf, 1, 2)));
+void	 ssh_packet_set_rekey_limits(struct ssh *, u_int64_t, time_t);
+time_t	 ssh_packet_get_rekey_timeout(struct ssh *);
 
-/* Checks if there is any buffered output, and tries to write some of the output. */
-void    packet_write_poll(void);
+void	*ssh_packet_get_input(struct ssh *);
+void	*ssh_packet_get_output(struct ssh *);
 
-/* Waits until all pending output data has been written. */
-void    packet_write_wait(void);
+/* new API */
+int	sshpkt_start(struct ssh *ssh, u_char type);
+int	sshpkt_send(struct ssh *ssh);
+int     sshpkt_disconnect(struct ssh *, const char *fmt, ...)
+	    __attribute__((format(printf, 2, 3)));
+int	sshpkt_add_padding(struct ssh *, u_char);
+void	sshpkt_fatal(struct ssh *ssh, const char *tag, int r);
 
-/* Returns true if there is buffered data to write to the connection. */
-int     packet_have_data_to_write(void);
+int	sshpkt_put(struct ssh *ssh, const void *v, size_t len);
+int	sshpkt_putb(struct ssh *ssh, const struct sshbuf *b);
+int	sshpkt_put_u8(struct ssh *ssh, u_char val);
+int	sshpkt_put_u32(struct ssh *ssh, u_int32_t val);
+int	sshpkt_put_u64(struct ssh *ssh, u_int64_t val);
+int	sshpkt_put_string(struct ssh *ssh, const void *v, size_t len);
+int	sshpkt_put_cstring(struct ssh *ssh, const void *v);
+int	sshpkt_put_stringb(struct ssh *ssh, const struct sshbuf *v);
+int	sshpkt_put_ec(struct ssh *ssh, const EC_POINT *v, const EC_GROUP *g);
+int	sshpkt_put_bignum1(struct ssh *ssh, const BIGNUM *v);
+int	sshpkt_put_bignum2(struct ssh *ssh, const BIGNUM *v);
 
-/* Returns true if there is not too much data to write to the connection. */
-int     packet_not_very_much_data_to_write(void);
+int	sshpkt_get(struct ssh *ssh, void *valp, size_t len);
+int	sshpkt_get_u8(struct ssh *ssh, u_char *valp);
+int	sshpkt_get_u32(struct ssh *ssh, u_int32_t *valp);
+int	sshpkt_get_u64(struct ssh *ssh, u_int64_t *valp);
+int	sshpkt_get_string(struct ssh *ssh, u_char **valp, size_t *lenp);
+int	sshpkt_get_string_direct(struct ssh *ssh, const u_char **valp, size_t *lenp);
+int	sshpkt_get_cstring(struct ssh *ssh, char **valp, size_t *lenp);
+int	sshpkt_get_ec(struct ssh *ssh, EC_POINT *v, const EC_GROUP *g);
+int	sshpkt_get_bignum1(struct ssh *ssh, BIGNUM *v);
+int	sshpkt_get_bignum2(struct ssh *ssh, BIGNUM *v);
+int	sshpkt_get_end(struct ssh *ssh);
+const u_char	*sshpkt_ptr(struct ssh *, size_t *lenp);
 
-/* maximum packet size, requested by client with SSH_CMSG_MAX_PACKET_SIZE */
-extern int max_packet_size;
-int     packet_set_maxsize(int s);
-#define packet_get_maxsize() max_packet_size
+/* OLD API */
+extern struct ssh *active_state;
+#include "opacket.h"
 
-/* Stores tty modes from the fd into current packet. */
-void    tty_make_modes(int fd);
-
-/* Parses tty modes for the fd from the current packet. */
-void    tty_parse_modes(int fd, int *n_bytes_ptr);
-
-#define packet_integrity_check(payload_len, expected_len, type) \
-do { \
-  int _p = (payload_len), _e = (expected_len); \
-  if (_p != _e) { \
-    log("Packet integrity error (%d != %d) at %s:%d", \
-	_p, _e, __FILE__, __LINE__); \
-    packet_disconnect("Packet integrity error. (%d)", (type)); \
-  } \
-} while (0)
-
-#define packet_done() \
-do { \
-	int _len = packet_remaining(); \
-	if (_len > 0) { \
-		log("Packet integrity error (%d bytes remaining) at %s:%d", \
-		    _len ,__FILE__, __LINE__); \
-		packet_disconnect("Packet integrity error."); \
-	} \
-} while (0)
-
-/* remote host is connected via a socket/ipv4 */
-int	packet_connection_is_on_socket(void);
-int	packet_connection_is_ipv4(void);
-
-/* enable SSH2 packet format */
-void	packet_set_ssh2_format(void);
-
-/* returns remaining payload bytes */
-int	packet_remaining(void);
+#if !defined(WITH_OPENSSL)
+# undef BIGNUM
+# undef EC_KEY
+# undef EC_GROUP
+# undef EC_POINT
+#elif !defined(OPENSSL_HAS_ECC)
+# undef EC_KEY
+# undef EC_GROUP
+# undef EC_POINT
+#endif
 
 #endif				/* PACKET_H */

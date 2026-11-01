@@ -1,0 +1,58 @@
+{
+ "categories": [],
+ "classes": [
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "lossyCString",
+     "types": "r*8@8:12"
+    },
+    {
+     "selector": "cString",
+     "types": "r*8@8:12"
+    },
+    {
+     "selector": "dealloc",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "release",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "retainCount",
+     "types": "I8@8:12"
+    },
+    {
+     "selector": "retain",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "autorelease",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "copyWithZone:",
+     "types": "@12@8:12^{?=}16"
+    },
+    {
+     "selector": "initWithCharactersNoCopy:length:",
+     "types": "@16@8:12^S16I20"
+    }
+   ],
+   "instance_size": 12,
+   "ivars": [],
+   "name": "NSConstantString",
+   "superclass": "NSSimpleCString"
+  }
+ ],
+ "data_symbols": [
+  "__NSConstantStringClassReference",
+  "___NSEmptyString"
+ ],
+ "module": "NSConstantString.m",
+ "schema_version": "abi-v1",
+ "text_symbols": []
+}

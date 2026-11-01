@@ -1,0 +1,234 @@
+{
+  "schema_version": "source-map-v1",
+  "reference_sha256": "332B3C8C0AE0A6E40A4B93110EE16748FCD94AA0119D63F16EDE878598C681B4",
+  "mapped": [
+    {
+      "address": 1112888784,
+      "size": 88,
+      "reference_names": [
+        "__KeyOfClass"
+      ],
+      "source_path": "src/Kits/Foundation/NSJavaSetup.m",
+      "source_line": 85
+    },
+    {
+      "address": 1112891032,
+      "size": 216,
+      "reference_names": [
+        "_NSJavaNeedsVirtualMachine"
+      ],
+      "source_path": "src/Kits/Foundation/NSJavaSetup.m",
+      "source_line": 79
+    },
+    {
+      "address": 1112892704,
+      "size": 112,
+      "reference_names": [
+        "_NSJavaNeedsToLoadClasses"
+      ],
+      "source_path": "src/Kits/Foundation/NSJavaSetup.m",
+      "source_line": 108
+    },
+    {
+      "address": 1113045532,
+      "size": 248,
+      "reference_names": [
+        "_NSJavaBundleCleanup"
+      ],
+      "source_path": "src/Kits/Foundation/NSJavaSetup.m",
+      "source_line": 827
+    },
+    {
+      "address": 1113045780,
+      "size": 1680,
+      "reference_names": [
+        "_NSJavaBundleSetup"
+      ],
+      "source_path": "src/Kits/Foundation/NSJavaSetup.m",
+      "source_line": 666
+    },
+    {
+      "address": 1113047460,
+      "size": 592,
+      "reference_names": [
+        "_NSJavaClassLoaderForPath"
+      ],
+      "source_path": "src/Kits/Foundation/NSJavaSetup.m",
+      "source_line": 251
+    },
+    {
+      "address": 1113048052,
+      "size": 48,
+      "reference_names": [
+        "_NSJavaClassesForBundle"
+      ],
+      "source_path": "src/Kits/Foundation/NSJavaSetup.m",
+      "source_line": 534
+    },
+    {
+      "address": 1113048100,
+      "size": 112,
+      "reference_names": [
+        "_NSJavaClassesFromClassLoader"
+      ],
+      "source_path": "src/Kits/Foundation/NSJavaSetup.m",
+      "source_line": 340
+    },
+    {
+      "address": 1113048212,
+      "size": 132,
+      "reference_names": [
+        "_NSJavaClassesFromClassLoaderFromPath"
+      ],
+      "source_path": "src/Kits/Foundation/NSJavaSetup.m",
+      "source_line": 349
+    },
+    {
+      "address": 1113048344,
+      "size": 132,
+      "reference_names": [
+        "_NSJavaClassesFromPath"
+      ],
+      "source_path": "src/Kits/Foundation/NSJavaSetup.m",
+      "source_line": 516
+    },
+    {
+      "address": 1113048476,
+      "size": 644,
+      "reference_names": [
+        "_NSJavaDefinitiveSetupDictionary"
+      ],
+      "source_path": "src/Kits/Foundation/NSJavaSetup.m",
+      "source_line": 113
+    },
+    {
+      "address": 1113049120,
+      "size": 36,
+      "reference_names": [
+        "_NSJavaGetSystemProperty"
+      ],
+      "source_path": "src/Kits/Foundation/NSJavaSetup.m",
+      "source_line": 481
+    },
+    {
+      "address": 1113049156,
+      "size": 88,
+      "reference_names": [
+        "_NSJavaGetSystemPropertyOrUseDefault"
+      ],
+      "source_path": "src/Kits/Foundation/NSJavaSetup.m",
+      "source_line": 485
+    },
+    {
+      "address": 1113049244,
+      "size": 96,
+      "reference_names": [
+        "_NSJavaObjectNamedInPath"
+      ],
+      "source_path": "src/Kits/Foundation/NSJavaSetup.m",
+      "source_line": 508
+    },
+    {
+      "address": 1113049340,
+      "size": 108,
+      "reference_names": [
+        "_NSJavaProvidesClasses"
+      ],
+      "source_path": "src/Kits/Foundation/NSJavaSetup.m",
+      "source_line": 97
+    },
+    {
+      "address": 1113049448,
+      "size": 204,
+      "reference_names": [
+        "_NSJavaResourceLocatorForPath"
+      ],
+      "source_path": "src/Kits/Foundation/NSJavaSetup.m",
+      "source_line": 232
+    },
+    {
+      "address": 1113049652,
+      "size": 132,
+      "reference_names": [
+        "_NSJavaSetSystemProperty"
+      ],
+      "source_path": "src/Kits/Foundation/NSJavaSetup.m",
+      "source_line": 494
+    },
+    {
+      "address": 1113049784,
+      "size": 40,
+      "reference_names": [
+        "_NSJavaSetup"
+      ],
+      "source_path": "src/Kits/Foundation/NSJavaSetup.m",
+      "source_line": 463
+    },
+    {
+      "address": 1113049824,
+      "size": 152,
+      "reference_names": [
+        "_NSJavaSetupVirtualMachine"
+      ],
+      "source_path": "src/Kits/Foundation/NSJavaSetup.m",
+      "source_line": 468
+    },
+    {
+      "address": 1113049976,
+      "size": 756,
+      "reference_names": [
+        "_NSJavaSpecifiedClassesForBundle"
+      ],
+      "source_path": "src/Kits/Foundation/NSJavaSetup.m",
+      "source_line": 364
+    },
+    {
+      "address": 1113054584,
+      "size": 1692,
+      "reference_names": [
+        "__NSFastJavaBundleSetup"
+      ],
+      "source_path": "src/Kits/Foundation/NSJavaSetup.m",
+      "source_line": 543
+    },
+    {
+      "address": 1113056900,
+      "size": 700,
+      "reference_names": [
+        "__NSJavaAbsolutePath"
+      ],
+      "source_path": "src/Kits/Foundation/NSJavaSetup.m",
+      "source_line": 155
+    },
+    {
+      "address": 1113057600,
+      "size": 172,
+      "reference_names": [
+        "__NSJavaBundleClassPath"
+      ],
+      "source_path": "src/Kits/Foundation/NSJavaSetup.m",
+      "source_line": 222
+    },
+    {
+      "address": 1113057772,
+      "size": 168,
+      "reference_names": [
+        "__NSJavaClassesFromVector"
+      ],
+      "source_path": "src/Kits/Foundation/NSJavaSetup.m",
+      "source_line": 326
+    },
+    {
+      "address": 1113057940,
+      "size": 180,
+      "reference_names": [
+        "__NSJavaPathCompsForBundle"
+      ],
+      "source_path": "src/Kits/Foundation/NSJavaSetup.m",
+      "source_line": 207
+    }
+  ],
+  "unmapped": [],
+  "duplicate_candidates": [],
+  "boundary_disputed": []
+}

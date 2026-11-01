@@ -1,0 +1,592 @@
+/*  Behavioural tests for NSInvocation, stage 2c, Task 5:
+    construction and bookkeeping.  Marshaling is Task 6, coding is
+    Task 7, invocation itself is Task 8.  */
+
+#import <Foundation/NSInvocation.h>
+#import <Foundation/NSMethodSignature.h>
+#import <Foundation/NSObject.h>
+#import <Foundation/NSException.h>
+#import <Foundation/NSString.h>
+#import "TestCoder.h"
+#include <stdio.h>
+#include <string.h>
+
+static int failures = 0;
+
+#define CHECK(condition) \
+    do { \
+        if (!(condition)) { \
+            printf("FAIL %s:%d %s\n", __FILE__, __LINE__, #condition); \
+            failures++; \
+        } \
+    } while (0)
+
+static void test_invocationWithMethodSignature_has_the_given_signature(void)
+{
+    id sig = [NSMethodSignature signatureWithObjCTypes:"v12@8:12@16"];
+    id invocation = [NSInvocation invocationWithMethodSignature:sig];
+
+    CHECK(invocation != nil);
+    CHECK([invocation methodSignature] == sig);
+}
+
+static void test_selector_and_target_round_trip(void)
+{
+    id sig = [NSMethodSignature signatureWithObjCTypes:"v8@8:12"];
+    id invocation = [NSInvocation invocationWithMethodSignature:sig];
+    id target = [[NSObject alloc] init];
+
+    [invocation setSelector:@selector(description)];
+    CHECK([invocation selector] == @selector(description));
+
+    [invocation setTarget:target];
+    CHECK([invocation target] == target);
+
+    [target release];
+}
+
+static void test_arguments_are_not_retained_until_asked(void)
+{
+    id sig = [NSMethodSignature signatureWithObjCTypes:"v8@8:12"];
+    id invocation = [NSInvocation invocationWithMethodSignature:sig];
+
+    CHECK(![invocation argumentsRetained]);
+    [invocation retainArguments];
+    CHECK([invocation argumentsRetained]);
+}
+
+static void test_retain_release_use_the_invocations_own_count(void)
+{
+    id sig = [NSMethodSignature signatureWithObjCTypes:"v8@8:12"];
+    id invocation = [NSInvocation invocationWithMethodSignature:sig];
+
+    CHECK([invocation retainCount] == 1);
+    [invocation retain];
+    CHECK([invocation retainCount] == 2);
+    [invocation release];
+    CHECK([invocation retainCount] == 1);
+}
+
+static void test_setArgument_and_getArgument_round_trip_an_int(void)
+{
+    id sig = [NSMethodSignature signatureWithObjCTypes:"v12@8:12i16"];
+    id invocation = [NSInvocation invocationWithMethodSignature:sig];
+    int sent = 99;
+    int received = 0;
+
+    [invocation setArgument:&sent atIndex:2];
+    [invocation getArgument:&received atIndex:2];
+    CHECK(received == 99);
+}
+
+static void test_setArgument_and_getArgument_round_trip_an_object(void)
+{
+    id sig = [NSMethodSignature signatureWithObjCTypes:"v12@8:12@16"];
+    id invocation = [NSInvocation invocationWithMethodSignature:sig];
+    id sent = [[NSObject alloc] init];
+    id received = nil;
+
+    [invocation setArgument:&sent atIndex:2];
+    [invocation getArgument:&received atIndex:2];
+    CHECK(received == sent);
+    [sent release];
+}
+
+static void test_setReturnValue_and_getReturnValue_round_trip(void)
+{
+    id sig = [NSMethodSignature signatureWithObjCTypes:"i8@8:12"];
+    id invocation = [NSInvocation invocationWithMethodSignature:sig];
+    int sent = 123;
+    int received = 0;
+
+    [invocation setReturnValue:&sent];
+    [invocation getReturnValue:&received];
+    CHECK(received == 123);
+}
+
+static void test_getArgument_at_index_zero_and_one_reads_self_and_cmd(void)
+{
+    id sig = [NSMethodSignature signatureWithObjCTypes:"v12@8:12@16"];
+    id invocation = [NSInvocation invocationWithMethodSignature:sig];
+    id target = [[NSObject alloc] init];
+    id readSelf;
+    SEL readCmd;
+
+    [invocation setTarget:target];
+    [invocation setSelector:@selector(description)];
+    [invocation getArgument:&readSelf atIndex:0];
+    [invocation getArgument:&readCmd atIndex:1];
+    /*  Index 0/1 read self/_cmd from the argument FRAME -- the slots
+        setTarget:/setSelector: write (see Task 5).  This test proves
+        the frame's slots are distinctly addressable and carry what
+        was written, not that -invoke has run.  */
+    CHECK(readSelf == target);
+    CHECK(readCmd == @selector(description));
+    [target release];
+}
+
+static void test_getArgument_out_of_range_raises(void)
+{
+    id sig = [NSMethodSignature signatureWithObjCTypes:"v8@8:12"];
+    id invocation = [NSInvocation invocationWithMethodSignature:sig];
+    int caught = 0;
+    int dummy;
+
+    NS_DURING
+        [invocation getArgument:&dummy atIndex:9];
+    NS_HANDLER
+        caught = 1;
+    NS_ENDHANDLER
+
+    CHECK(caught == 1);
+}
+
+/*  Review Focus item 2: setArgument:atIndex: shares
+    getArgument:atIndex:'s bounds check, but is a separate entry point
+    and gets its own test rather than resting on symmetry.  */
+static void test_setArgument_out_of_range_raises(void)
+{
+    id sig = [NSMethodSignature signatureWithObjCTypes:"v8@8:12"];
+    id invocation = [NSInvocation invocationWithMethodSignature:sig];
+    int caught = 0;
+    int dummy = 1;
+
+    NS_DURING
+        [invocation setArgument:&dummy atIndex:9];
+    NS_HANDLER
+        caught = 1;
+    NS_ENDHANDLER
+
+    CHECK(caught == 1);
+}
+
+/*  Review Focus item 1: a NULL argument/return pointer.  Neither
+    header documents a nullability contract; an unchecked memcpy on a
+    NULL pointer is undefined behaviour, not a defined failure a
+    caller can catch -- these four raise instead.  */
+static void test_getArgument_with_a_null_location_raises(void)
+{
+    id sig = [NSMethodSignature signatureWithObjCTypes:"v12@8:12i16"];
+    id invocation = [NSInvocation invocationWithMethodSignature:sig];
+    int caught = 0;
+
+    NS_DURING
+        [invocation getArgument:NULL atIndex:2];
+    NS_HANDLER
+        caught = 1;
+    NS_ENDHANDLER
+
+    CHECK(caught == 1);
+}
+
+static void test_setArgument_with_a_null_location_raises(void)
+{
+    id sig = [NSMethodSignature signatureWithObjCTypes:"v12@8:12i16"];
+    id invocation = [NSInvocation invocationWithMethodSignature:sig];
+    int caught = 0;
+
+    NS_DURING
+        [invocation setArgument:NULL atIndex:2];
+    NS_HANDLER
+        caught = 1;
+    NS_ENDHANDLER
+
+    CHECK(caught == 1);
+}
+
+static void test_getReturnValue_with_a_null_location_raises(void)
+{
+    id sig = [NSMethodSignature signatureWithObjCTypes:"i8@8:12"];
+    id invocation = [NSInvocation invocationWithMethodSignature:sig];
+    int caught = 0;
+
+    NS_DURING
+        [invocation getReturnValue:NULL];
+    NS_HANDLER
+        caught = 1;
+    NS_ENDHANDLER
+
+    CHECK(caught == 1);
+}
+
+static void test_setReturnValue_with_a_null_location_raises(void)
+{
+    id sig = [NSMethodSignature signatureWithObjCTypes:"i8@8:12"];
+    id invocation = [NSInvocation invocationWithMethodSignature:sig];
+    int caught = 0;
+
+    NS_DURING
+        [invocation setReturnValue:NULL];
+    NS_HANDLER
+        caught = 1;
+    NS_ENDHANDLER
+
+    CHECK(caught == 1);
+}
+
+static void test_encodeWithCoder_and_initWithCoder_round_trip(void)
+{
+    id sig = [NSMethodSignature signatureWithObjCTypes:"i12@8:12i16"];
+    id original = [NSInvocation invocationWithMethodSignature:sig];
+    id target = [[NSObject alloc] init];
+    int argument = 55;
+    id coder = [[TestCoder alloc] init];
+    id decoded;
+
+    [original setTarget:target];
+    [original setSelector:@selector(description)];
+    [original setArgument:&argument atIndex:2];
+
+    [original encodeWithCoder:coder];
+    decoded = [[NSInvocation alloc] initWithCoder:coder];
+
+    CHECK([decoded target] == target);
+    CHECK([decoded selector] == @selector(description));
+    {
+        int readBack = 0;
+
+        [decoded getArgument:&readBack atIndex:2];
+        CHECK(readBack == 55);
+    }
+
+    [decoded release];
+    [coder release];
+    [target release];
+}
+
+static void test_encodeReturnValueWithCoder_and_decode_round_trip(void)
+{
+    id sig = [NSMethodSignature signatureWithObjCTypes:"i8@8:12"];
+    id invocation = [NSInvocation invocationWithMethodSignature:sig];
+    id coder = [[TestCoder alloc] init];
+    int sent = 321;
+    int received = 0;
+
+    [invocation setReturnValue:&sent];
+    [invocation encodeReturnValueWithCoder:coder];
+    [invocation decodeReturnValueWithCoder:coder];
+    [invocation getReturnValue:&received];
+    CHECK(received == 321);
+
+    [coder release];
+}
+
+static void test_newInvocationWithCoder_produces_a_usable_invocation(void)
+{
+    id sig = [NSMethodSignature signatureWithObjCTypes:"v8@8:12"];
+    id original = [NSInvocation invocationWithMethodSignature:sig];
+    id target = [[NSObject alloc] init];
+    id coder = [[TestCoder alloc] init];
+    id decoded;
+
+    [original setTarget:target];
+    [original encodeWithCoder:coder];
+    decoded = [NSInvocation newInvocationWithCoder:coder];
+
+    CHECK(decoded != nil);
+    CHECK([decoded target] == target);
+
+    [decoded release];
+    [coder release];
+    [target release];
+}
+
+static void test_replacementObjectForPortCoder_returns_self(void)
+{
+    id sig = [NSMethodSignature signatureWithObjCTypes:"v8@8:12"];
+    id invocation = [NSInvocation invocationWithMethodSignature:sig];
+    id coder = [[TestCoder alloc] init];
+
+    CHECK([invocation replacementObjectForPortCoder:coder] == invocation);
+    [coder release];
+}
+
+@interface InvocationTestTarget : NSObject
+- (int)addOne:(int)value;
+- (void)recordCall;
+- (double)pi;
+@end
+
+static int invocationTestTargetCallCount = 0;
+
+@implementation InvocationTestTarget
+- (int)addOne:(int)value
+{
+    return value + 1;
+}
+- (void)recordCall
+{
+    invocationTestTargetCallCount++;
+}
+- (double)pi
+{
+    return 3.5;
+}
+@end
+
+static void test_invoke_dispatches_to_the_target_and_captures_an_int_return(void)
+{
+    id sig = [NSMethodSignature signatureWithObjCTypes:"i12@8:12i16"];
+    id invocation = [NSInvocation invocationWithMethodSignature:sig];
+    id target = [[InvocationTestTarget alloc] init];
+    int argument = 41;
+    int result = 0;
+
+    [invocation setTarget:target];
+    [invocation setSelector:@selector(addOne:)];
+    [invocation setArgument:&argument atIndex:2];
+    [invocation invoke];
+    [invocation getReturnValue:&result];
+
+    CHECK(result == 42);
+    [target release];
+}
+
+static void test_invoke_dispatches_a_void_returning_method(void)
+{
+    id sig = [NSMethodSignature signatureWithObjCTypes:"v8@8:12"];
+    id invocation = [NSInvocation invocationWithMethodSignature:sig];
+    id target = [[InvocationTestTarget alloc] init];
+    int before = invocationTestTargetCallCount;
+
+    [invocation setTarget:target];
+    [invocation setSelector:@selector(recordCall)];
+    [invocation invoke];
+
+    CHECK(invocationTestTargetCallCount == before + 1);
+    [target release];
+}
+
+static void test_invoke_dispatches_a_double_returning_method(void)
+{
+    /*  The f/d register class: the FPU returns via ST(0), so -invoke
+        must call objc_msgSendv through a double-returning cast and
+        store the 8 bytes by the return type's own size.  */
+    id sig = [NSMethodSignature signatureWithObjCTypes:"d8@8:12"];
+    id invocation = [NSInvocation invocationWithMethodSignature:sig];
+    id target = [[InvocationTestTarget alloc] init];
+    double result = 0.0;
+
+    [invocation setTarget:target];
+    [invocation setSelector:@selector(pi)];
+    [invocation invoke];
+    [invocation getReturnValue:&result];
+
+    CHECK(result == 3.5);
+    [target release];
+}
+
+static void test_invokeWithTarget_uses_the_given_target_not_the_stored_one(void)
+{
+    id sig = [NSMethodSignature signatureWithObjCTypes:"v8@8:12"];
+    id invocation = [NSInvocation invocationWithMethodSignature:sig];
+    id storedTarget = [[InvocationTestTarget alloc] init];
+    id actualTarget = [[InvocationTestTarget alloc] init];
+    int before = invocationTestTargetCallCount;
+
+    [invocation setTarget:storedTarget];
+    [invocation setSelector:@selector(recordCall)];
+    [invocation invokeWithTarget:actualTarget];
+
+    CHECK(invocationTestTargetCallCount == before + 1);
+    /*  The reference's -invokeWithTarget: is setArgument:&aTarget
+        atIndex:0 followed by -invoke with no restore: the substitute
+        target REMAINS -- frame slot 0 IS the target storage.  */
+    CHECK([invocation target] == actualTarget);
+    [storedTarget release];
+    [actualTarget release];
+}
+
+static void test_invoke_on_a_nil_target_raises(void)
+{
+    id sig = [NSMethodSignature signatureWithObjCTypes:"v8@8:12"];
+    id invocation = [NSInvocation invocationWithMethodSignature:sig];
+    int caught = 0;
+
+    [invocation setSelector:@selector(recordCall)];
+
+    NS_DURING
+        [invocation invoke];
+    NS_HANDLER
+        caught = 1;
+    NS_ENDHANDLER
+
+    CHECK(caught == 1);
+}
+
+/*  Review Focus item 4, second half: a target that does not implement
+    the selector.  -invoke does not special-case this itself -- it
+    dispatches exactly as any ordinary message send would, and the
+    runtime's own dispatch falls through to -[NSObject forward::]
+    (stage 2a), which raises NSInternalInconsistencyException rather
+    than crash.  This test pins that composition.  */
+static void test_invoke_of_an_unimplemented_selector_raises_not_crashes(void)
+{
+    id sig = [NSMethodSignature signatureWithObjCTypes:"v8@8:12"];
+    id invocation = [NSInvocation invocationWithMethodSignature:sig];
+    id target = [[InvocationTestTarget alloc] init];
+    int caught = 0;
+
+    [invocation setTarget:target];
+    [invocation setSelector:@selector(aSelectorNoOneImplementsHere)];
+
+    NS_DURING
+        [invocation invoke];
+    NS_HANDLER
+        caught = 1;
+    NS_ENDHANDLER
+
+    CHECK(caught == 1);
+    [target release];
+}
+
+@interface ForwardingOverrideTarget : NSObject
+{
+@public
+    int forwardInvocationWasCalled;
+    SEL capturedSelector;
+}
+- (int)aMethodThisClassDoesNotImplement;
+@end
+
+@implementation ForwardingOverrideTarget
+
+/*  A class that intends to forward must be able to describe the
+    messages it will forward -- that is the documented NeXT contract
+    for -methodSignatureForSelector: (the reference's own -forward::
+    raises through -doesNotRecognizeSelector: when it answers nil,
+    since a bare @interface declaration produces no method-list entry
+    to find).  This override answers a real signature for the
+    declared-but-unimplemented selector and lets the base -forward::
+    do the rest.  */
+- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+{
+    id signature = [super methodSignatureForSelector:aSelector];
+
+    if (signature == nil && aSelector == @selector(aMethodThisClassDoesNotImplement))
+        return [NSMethodSignature signatureWithObjCTypes:"i8@8:12"];
+    return signature;
+}
+
+- (void)forwardInvocation:(NSInvocation *)anInvocation
+{
+    forwardInvocationWasCalled = 1;
+    capturedSelector = [anInvocation selector];
+}
+
+@end
+
+static void test_an_unimplemented_selector_reaches_a_forwardInvocation_override(void)
+{
+    /*  ForwardingOverrideTarget declares
+        -aMethodThisClassDoesNotImplement but never implements it, and
+        supplies its signature through the documented
+        -methodSignatureForSelector: override.  Sending it exercises
+        the runtime's actual forwarding trampoline.  Before this
+        stage, NSObject.m's own -forward:: (stage 2a) always raised
+        NSInternalInconsistencyException before any override could
+        run, because nothing built the NSInvocation the trampoline
+        needs.  This is the first test in the whole programme proving
+        that an override is actually reached.  */
+    id target = [[ForwardingOverrideTarget alloc] init];
+    int caught = 0;
+
+    target->forwardInvocationWasCalled = 0;
+    target->capturedSelector = NULL;
+
+    NS_DURING
+        [target performSelector:@selector(aMethodThisClassDoesNotImplement)];
+    NS_HANDLER
+        caught = 1;
+    NS_ENDHANDLER
+
+    CHECK(target->forwardInvocationWasCalled == 1);
+    CHECK(target->capturedSelector == @selector(aMethodThisClassDoesNotImplement));
+    CHECK(caught == 0);
+
+    [target release];
+}
+
+@interface InertForwardingTarget : NSObject
+- (int)anotherUnimplementedMethod;
+@end
+
+@implementation InertForwardingTarget
+
+/*  Review Focus item 5: an override that exists but does nothing --
+    never calls -invokeWithTarget: or -doesNotRecognizeSelector:.  A
+    silently swallowed message is worse than a raised exception; this
+    must not be mistaken for success.  The signature override answers
+    a void method so the trampoline reaches the inert override at all
+    (a nil signature would raise before it could).  */
+- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+{
+    id signature = [super methodSignatureForSelector:aSelector];
+
+    if (signature == nil && aSelector == @selector(anotherUnimplementedMethod))
+        return [NSMethodSignature signatureWithObjCTypes:"v8@8:12"];
+    return signature;
+}
+
+- (void)forwardInvocation:(NSInvocation *)anInvocation
+{
+}
+
+@end
+
+static void test_an_inert_forwardInvocation_override_does_not_crash_and_is_observed(void)
+{
+    id target = [[InertForwardingTarget alloc] init];
+    int caught = 0;
+
+    NS_DURING
+        [target performSelector:@selector(anotherUnimplementedMethod)];
+    NS_HANDLER
+        caught = 1;
+    NS_ENDHANDLER
+
+    /*  An inert override is a silently-dropped message by design (the
+        override chose to do nothing); the call returns normally rather
+        than raising, and this test's job is only to prove that does
+        not crash the process -- reaching this line at all is the pass
+        condition.  */
+    CHECK(caught == 0);
+    [target release];
+}
+
+int main(void)
+{
+    /*  The guest's stdio block-buffers pipes; a crash mid-suite would
+        otherwise swallow every FAIL line printed before it.  */
+    setvbuf(stdout, NULL, _IONBF, 0);
+
+    test_invocationWithMethodSignature_has_the_given_signature();
+    test_selector_and_target_round_trip();
+    test_arguments_are_not_retained_until_asked();
+    test_retain_release_use_the_invocations_own_count();
+    test_setArgument_and_getArgument_round_trip_an_int();
+    test_setArgument_and_getArgument_round_trip_an_object();
+    test_setReturnValue_and_getReturnValue_round_trip();
+    test_getArgument_at_index_zero_and_one_reads_self_and_cmd();
+    test_getArgument_out_of_range_raises();
+    test_setArgument_out_of_range_raises();
+    test_getArgument_with_a_null_location_raises();
+    test_setArgument_with_a_null_location_raises();
+    test_getReturnValue_with_a_null_location_raises();
+    test_setReturnValue_with_a_null_location_raises();
+    test_encodeWithCoder_and_initWithCoder_round_trip();
+    test_encodeReturnValueWithCoder_and_decode_round_trip();
+    test_newInvocationWithCoder_produces_a_usable_invocation();
+    test_replacementObjectForPortCoder_returns_self();
+    test_invoke_dispatches_to_the_target_and_captures_an_int_return();
+    test_invoke_dispatches_a_void_returning_method();
+    test_invoke_dispatches_a_double_returning_method();
+    test_invokeWithTarget_uses_the_given_target_not_the_stored_one();
+    test_invoke_on_a_nil_target_raises();
+    test_invoke_of_an_unimplemented_selector_raises_not_crashes();
+    test_an_unimplemented_selector_reaches_a_forwardInvocation_override();
+    test_an_inert_forwardInvocation_override_does_not_crash_and_is_observed();
+
+    printf("%s: %d failure(s)\n", failures ? "FAILED" : "PASSED", failures);
+    return failures != 0;
+}

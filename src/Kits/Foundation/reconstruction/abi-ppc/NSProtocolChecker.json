@@ -1,0 +1,109 @@
+{
+ "categories": [],
+ "classes": [
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "dealloc",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "initWithTarget:protocol:",
+     "types": "@12@4:8@12@16"
+    },
+    {
+     "selector": "target",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "protocol",
+     "types": "@4@4:8"
+    }
+   ],
+   "instance_size": 12,
+   "ivars": [
+    {
+     "name": "_target",
+     "offset": 4,
+     "type": "@\"NSObject\""
+    },
+    {
+     "name": "_protocol",
+     "offset": 8,
+     "type": "@\"Protocol\""
+    }
+   ],
+   "name": "NSConcreteProtocolChecker",
+   "superclass": "NSProtocolChecker"
+  },
+  {
+   "class_methods": [
+    {
+     "selector": "protocolCheckerWithTarget:protocol:",
+     "types": "@12@4:8@12@16"
+    },
+    {
+     "selector": "allocWithZone:",
+     "types": "@8@4:8^{?=}12"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "initWithTarget:protocol:",
+     "types": "@12@4:8@12@16"
+    },
+    {
+     "selector": "replacementObjectForPortCoder:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "awakeAfterUsingCoder:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "_conformsToProtocolNamed:",
+     "types": "c8@4:8r*12"
+    },
+    {
+     "selector": "methodDescriptionForSelector:",
+     "types": "^{objc_method_description=:*}8@4:8:12"
+    },
+    {
+     "selector": "doesNotRecognizeSelector:",
+     "types": "v8@4:8:12"
+    },
+    {
+     "selector": "respondsToSelector:",
+     "types": "c8@4:8:12"
+    },
+    {
+     "selector": "methodSignatureForSelector:",
+     "types": "@8@4:8:12"
+    },
+    {
+     "selector": "forwardInvocation:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "target",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "protocol",
+     "types": "@4@4:8"
+    }
+   ],
+   "instance_size": 4,
+   "ivars": [],
+   "name": "NSProtocolChecker",
+   "superclass": "NSProxy"
+  }
+ ],
+ "data_symbols": [],
+ "module": "NSProtocolChecker.m",
+ "schema_version": "abi-v1",
+ "text_symbols": []
+}

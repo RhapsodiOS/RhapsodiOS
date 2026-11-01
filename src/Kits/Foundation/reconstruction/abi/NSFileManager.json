@@ -1,0 +1,608 @@
+{
+ "categories": [
+  {
+   "class": "NSDictionary",
+   "class_methods": [],
+   "instance_methods": [
+    {
+     "selector": "fileSystemFileNumber",
+     "types": "L8@8:12"
+    },
+    {
+     "selector": "fileSystemNumber",
+     "types": "L8@8:12"
+    },
+    {
+     "selector": "fileGroupOwnerAccountNumber",
+     "types": "L8@8:12"
+    },
+    {
+     "selector": "fileGroupOwnerAccountName",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "fileOwnerAccountNumber",
+     "types": "L8@8:12"
+    },
+    {
+     "selector": "fileOwnerAccountName",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "filePosixPermissions",
+     "types": "L8@8:12"
+    },
+    {
+     "selector": "fileType",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "fileModificationDate",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "fileSize",
+     "types": "Q8@8:12"
+    }
+   ],
+   "name": "NSFileAttributes"
+  }
+ ],
+ "classes": [
+  {
+   "class_methods": [
+    {
+     "selector": "defaultManager",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "initialize",
+     "types": "v8@8:12"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "directoryCanBeCreatedAtPath:",
+     "types": "c12@8:12@16"
+    },
+    {
+     "selector": "dealloc",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "stringWithFileSystemRepresentation:length:",
+     "types": "@16@8:12r*16I20"
+    },
+    {
+     "selector": "fileSystemRepresentationWithPath:",
+     "types": "r*12@8:12@16"
+    },
+    {
+     "selector": "getFileSystemRepresentation:maxLength:withPath:",
+     "types": "c20@8:12*16I20@24"
+    },
+    {
+     "selector": "fileSystemAttributesAtPath:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "contentsEqualAtPath:andPath:",
+     "types": "c16@8:12@16@20"
+    },
+    {
+     "selector": "contentsAtPath:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "createFileAtPath:contents:attributes:",
+     "types": "c20@8:12@16@20@24"
+    },
+    {
+     "selector": "createSymbolicLinkAtPath:pathContent:",
+     "types": "c16@8:12@16@20"
+    },
+    {
+     "selector": "pathContentOfSymbolicLinkAtPath:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "createDirectoryAtPath:attributes:",
+     "types": "c16@8:12@16@20"
+    },
+    {
+     "selector": "subpathsAtPath:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "enumeratorAtPath:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "directoryContentsAtPath:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "directoryContentsAtPath:matchingExtension:options:keepExtension:",
+     "types": "@21@8:12@16@20i24c28"
+    },
+    {
+     "selector": "removeFileAtPath:handler:",
+     "types": "c16@8:12@16@20"
+    },
+    {
+     "selector": "movePath:toPath:handler:",
+     "types": "c20@8:12@16@20@24"
+    },
+    {
+     "selector": "copyPath:toPath:handler:",
+     "types": "c20@8:12@16@20@24"
+    },
+    {
+     "selector": "linkPath:toPath:handler:",
+     "types": "c20@8:12@16@20@24"
+    },
+    {
+     "selector": "_replicatePath:atPath:operation:fileMap:handler:",
+     "types": "c28@8:12@16@20i24^{?=}28@32"
+    },
+    {
+     "selector": "_posixPathComponentsWithPath:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "isDeletableFileAtPath:",
+     "types": "c12@8:12@16"
+    },
+    {
+     "selector": "isExecutableFileAtPath:",
+     "types": "c12@8:12@16"
+    },
+    {
+     "selector": "isWritableFileAtPath:",
+     "types": "c12@8:12@16"
+    },
+    {
+     "selector": "isReadableFileAtPath:",
+     "types": "c12@8:12@16"
+    },
+    {
+     "selector": "fileExistsAtPath:isDirectory:",
+     "types": "c16@8:12@16^c20"
+    },
+    {
+     "selector": "fileExistsAtPath:",
+     "types": "c12@8:12@16"
+    },
+    {
+     "selector": "changeFileAttributes:atPath:",
+     "types": "c16@8:12@16@20"
+    },
+    {
+     "selector": "fileAttributesAtPath:traverseLink:",
+     "types": "@13@8:12@16c20"
+    },
+    {
+     "selector": "changeCurrentDirectoryPath:",
+     "types": "c12@8:12@16"
+    },
+    {
+     "selector": "currentDirectoryPath",
+     "types": "@8@8:12"
+    }
+   ],
+   "instance_size": 4,
+   "ivars": [],
+   "name": "NSFileManager",
+   "superclass": "NSObject"
+  },
+  {
+   "class_methods": [
+    {
+     "selector": "newWithPath:prepend:attributes:cross:",
+     "types": "@21@8:12@16@20@24c28"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "dealloc",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "skipDescendents",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "_under",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "directoryAttributes",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "fileAttributes",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "nextObject",
+     "types": "@8@8:12"
+    }
+   ],
+   "instance_size": 36,
+   "ivars": [
+    {
+     "name": "path",
+     "offset": 4,
+     "type": "@\"NSString\""
+    },
+    {
+     "name": "contents",
+     "offset": 8,
+     "type": "@\"NSArray\""
+    },
+    {
+     "name": "index",
+     "offset": 12,
+     "type": "I"
+    },
+    {
+     "name": "prepend",
+     "offset": 16,
+     "type": "@\"NSString\""
+    },
+    {
+     "name": "under",
+     "offset": 20,
+     "type": "@\"NSAllDescendantPathsEnumerator\""
+    },
+    {
+     "name": "directoryAttributes",
+     "offset": 24,
+     "type": "@\"NSFileAttributes\""
+    },
+    {
+     "name": "fileAttributes",
+     "offset": 28,
+     "type": "@\"NSFileAttributes\""
+    },
+    {
+     "name": "cross",
+     "offset": 32,
+     "type": "c"
+    }
+   ],
+   "name": "NSAllDescendantPathsEnumerator",
+   "superclass": "NSDirectoryEnumerator"
+  },
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "skipDescendents",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "directoryAttributes",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "fileAttributes",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "nextObject",
+     "types": "@8@8:12"
+    }
+   ],
+   "instance_size": 4,
+   "ivars": [],
+   "name": "NSDirectoryEnumerator",
+   "superclass": "NSEnumerator"
+  },
+  {
+   "class_methods": [
+    {
+     "selector": "attributesWithStat:",
+     "types": "@12@8:12^{stat=iISSIIi{timespec=ii}{timespec=ii}{timespec=ii}qqIIIi[2q]}16"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "fileSystemFileNumber",
+     "types": "L8@8:12"
+    },
+    {
+     "selector": "fileSystemNumber",
+     "types": "L8@8:12"
+    },
+    {
+     "selector": "fileGroupOwnerAccountNumber",
+     "types": "L8@8:12"
+    },
+    {
+     "selector": "fileGroupOwnerAccountName",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "fileOwnerAccountNumber",
+     "types": "L8@8:12"
+    },
+    {
+     "selector": "fileOwnerAccountName",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "filePosixPermissions",
+     "types": "L8@8:12"
+    },
+    {
+     "selector": "fileType",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "fileModificationDate",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "fileSize",
+     "types": "Q8@8:12"
+    },
+    {
+     "selector": "keyEnumerator",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "count",
+     "types": "I8@8:12"
+    },
+    {
+     "selector": "objectForKey:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "isEqual:",
+     "types": "c12@8:12@16"
+    },
+    {
+     "selector": "hash",
+     "types": "I8@8:12"
+    },
+    {
+     "selector": "dealloc",
+     "types": "v8@8:12"
+    }
+   ],
+   "instance_size": 104,
+   "ivars": [
+    {
+     "name": "dict",
+     "offset": 4,
+     "type": "@\"NSMutableDictionary\""
+    },
+    {
+     "name": "statInfo",
+     "offset": 8,
+     "type": "{stat=\"st_dev\"i\"st_ino\"I\"st_mode\"S\"st_nlink\"S\"st_uid\"I\"st_gid\"I\"st_rdev\"i\"st_atimespec\"{timespec=\"ts_sec\"i\"ts_nsec\"i}\"st_mtimespec\"{timespec=\"ts_sec\"i\"ts_nsec\"i}\"st_ctimespec\"{timespec=\"ts_sec\"i\"ts_nsec\"i}\"st_size\"q\"st_blocks\"q\"st_blksize\"I\"st_flags\"I\"st_gen\"I\"st_lspare\"i\"st_qspare\"[2q]}"
+    }
+   ],
+   "name": "NSFileAttributes",
+   "superclass": "NSDictionary"
+  },
+  {
+   "class_methods": [
+    {
+     "selector": "accountWithName:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "accountWithNumber:",
+     "types": "@12@8:12I16"
+    },
+    {
+     "selector": "currentAccount",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "initialize",
+     "types": "v8@8:12"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "hash",
+     "types": "I8@8:12"
+    },
+    {
+     "selector": "isEqual:",
+     "types": "c12@8:12@16"
+    },
+    {
+     "selector": "description",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "groupDictionary",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "members",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "accountNumber",
+     "types": "I8@8:12"
+    },
+    {
+     "selector": "accountName",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "initWithGroupEntry:",
+     "types": "@12@8:12^{group=**i^*}16"
+    }
+   ],
+   "instance_size": 20,
+   "ivars": [
+    {
+     "name": "_groupName",
+     "offset": 4,
+     "type": "@\"NSString\""
+    },
+    {
+     "name": "_accountNumber",
+     "offset": 8,
+     "type": "I"
+    },
+    {
+     "name": "_users",
+     "offset": 12,
+     "type": "@\"NSMutableArray\""
+    },
+    {
+     "name": "_reserved",
+     "offset": 16,
+     "type": "^v"
+    }
+   ],
+   "name": "_NSGroupAccount",
+   "superclass": "NSObject"
+  },
+  {
+   "class_methods": [
+    {
+     "selector": "accountWithName:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "accountWithNumber:",
+     "types": "@12@8:12I16"
+    },
+    {
+     "selector": "currentAccount",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "initialize",
+     "types": "v8@8:12"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "hash",
+     "types": "I8@8:12"
+    },
+    {
+     "selector": "isEqual:",
+     "types": "c12@8:12@16"
+    },
+    {
+     "selector": "description",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "userDictionary",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "homeDirectory",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "fullName",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "accountNumber",
+     "types": "I8@8:12"
+    },
+    {
+     "selector": "accountName",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "initWithPasswordEntry:",
+     "types": "@12@8:12^{passwd=**iii****i}16"
+    }
+   ],
+   "instance_size": 24,
+   "ivars": [
+    {
+     "name": "_loginName",
+     "offset": 4,
+     "type": "@\"NSString\""
+    },
+    {
+     "name": "_fullName",
+     "offset": 8,
+     "type": "@\"NSString\""
+    },
+    {
+     "name": "_accountNumber",
+     "offset": 12,
+     "type": "I"
+    },
+    {
+     "name": "_homeDirectory",
+     "offset": 16,
+     "type": "@\"NSString\""
+    },
+    {
+     "name": "_reserved",
+     "offset": 20,
+     "type": "^v"
+    }
+   ],
+   "name": "_NSUserAccount",
+   "superclass": "NSObject"
+  }
+ ],
+ "data_symbols": [
+  "_NSFileDeviceIdentifier",
+  "_NSFileGroupOwnerAccountName",
+  "_NSFileIdentifier",
+  "_NSFileModificationDate",
+  "_NSFileOwnerAccountName",
+  "_NSFilePosixPermissions",
+  "_NSFileReferenceCount",
+  "_NSFileSize",
+  "_NSFileSystemFileNumber",
+  "_NSFileSystemFreeNodes",
+  "_NSFileSystemFreeSize",
+  "_NSFileSystemNodes",
+  "_NSFileSystemNumber",
+  "_NSFileSystemSize",
+  "_NSFileType",
+  "_NSFileTypeBlockSpecial",
+  "_NSFileTypeCharacterSpecial",
+  "_NSFileTypeDirectory",
+  "_NSFileTypeRegular",
+  "_NSFileTypeSocket",
+  "_NSFileTypeSymbolicLink",
+  "_NSFileTypeUnknown"
+ ],
+ "module": "NSFileManager.m",
+ "schema_version": "abi-v1",
+ "text_symbols": [
+  "__NSFileExistsAtPath",
+  "__NSCreateDirectory",
+  "__NSCreateDirectory2",
+  "__NSDeleteFile2",
+  "__NSCloseFileDescriptor",
+  "__NSFileAccessibleForMode",
+  "__NSFileModificationUNIXTime",
+  "__NSMoveFile",
+  "__NSOpenFileDescriptor",
+  "__NSReadFromFileDescriptor",
+  "__NSRemoveDirectory2",
+  "__NSSetDirectory2",
+  "__NSSetFileModificationUNIXTime",
+  "__NSmkstemp83",
+  "__NSFileAccessModes"
+ ]
+}

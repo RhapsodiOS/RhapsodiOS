@@ -453,7 +453,7 @@ fi
 mkdir "`$stage" || die `$?
 stage_created=1
 cd "`$stage" || die `$?
-$cpioCommand -idum || die `$?
+$cpioCommand -idu || die `$?
 if test -f "`$stage/`$leaf" || test -d "`$stage/`$leaf"; then
     :
 else

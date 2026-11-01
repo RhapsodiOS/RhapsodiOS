@@ -1,70 +1,64 @@
-[ A Japanese translation of this document is available at
-[ http://www.unixuser.org/%7Eharuyama/security/openssh/index.html
-[ Thanks to HARUYAMA Seigo <haruyama@nt.phys.s.u-tokyo.ac.jp>
+See https://www.openssh.com/releasenotes.html#7.4p1 for the release notes.
 
-******* IMPORTANT
-* On systmes which lack a /dev/random driver, version of this port
-* prior to 1.2.2 were not correctly seeding OpenSSL's random number
-* pool. This resulted in lower quality RSA keys being generated. If
-* you generated host or user keys with v1.2.2 or previous versions, 
-* please generate new ones using a more recent version.
+Please read https://www.openssh.com/report.html for bug reporting
+instructions and note that we do not use Github for bug reporting or
+patch/pull-request management.
+
+- A Japanese translation of this document and of the release notes is
+- available at http://www.unixuser.org/~haruyama/security/openssh/index.html
+- Thanks to HARUYAMA Seigo <haruyama@unixuser.org>
 
 This is the port of OpenBSD's excellent OpenSSH[0] to Linux and other
 Unices.
 
-OpenSSH is based on the last free version of Tatu Ylonen's SSH with
-all patent-encumbered algorithms removed (to external libraries), all
-known security bugs fixed, new features reintroduced and many other
-clean-ups. More information about SSH itself can be found in the file
-README.Ylonen. OpenSSH has been created by Aaron Campbell, Bob Beck,
-Markus Friedl, Niels Provos, Theo de Raadt, and Dug Song. It has a
-homepage at http://www.openssh.com/
+OpenSSH is based on the last free version of Tatu Ylonen's sample
+implementation with all patent-encumbered algorithms removed (to
+external libraries), all known security bugs fixed, new features
+reintroduced and many other clean-ups.  OpenSSH has been created by
+Aaron Campbell, Bob Beck, Markus Friedl, Niels Provos, Theo de Raadt,
+and Dug Song. It has a homepage at https://www.openssh.com/
 
 This port consists of the re-introduction of autoconf support, PAM
-support (for Linux and Solaris), EGD[1] support and replacements for 
-OpenBSD library functions that are (regrettably) absent from other 
-unices. This port has been best tested on Linux, Solaris, HPUX, NetBSD 
-and Irix. Support for AIX, SCO, NeXT and other Unices is underway. 
+support, EGD[1]/PRNGD[2] support and replacements for OpenBSD library
+functions that are (regrettably) absent from other unices. This port
+has been best tested on AIX, Cygwin, HP-UX, Linux, MacOS/X,
+NetBSD, OpenBSD, OpenServer, Solaris, Unicos, and UnixWare.
+
 This version actively tracks changes in the OpenBSD CVS repository.
 
 The PAM support is now more functional than the popular packages of
 commercial ssh-1.2.x. It checks "account" and "session" modules for
 all logins, not just when using password authentication.
 
-OpenSSH depends on Zlib[2], OpenSSL[3] and optionally PAM[4].
+OpenSSH depends on Zlib[3], OpenSSL[4] and optionally PAM[5].
 
 There is now several mailing lists for this port of OpenSSH. Please
-refer to http://www.openssh.com/list.html for details on how to join.
+refer to https://www.openssh.com/list.html for details on how to join.
 
 Please send bug reports and patches to the mailing list
-openssh-unix-dev@mindrot.org. The list is open to posting by
-unsubscribed users.
-
-If you are a citizen of the USA or another country which restricts 
-export of cryptographic products, then please refrain from sending 
-crypto-related code or patches to the list. We cannot accept them.
-Other code contribution are accepted, but please follow the OpenBSD
-style guidelines[5].
+openssh-unix-dev@mindrot.org. The list is open to posting by unsubscribed
+users.  Code contribution are welcomed, but please follow the OpenBSD
+style guidelines[6].
 
 Please refer to the INSTALL document for information on how to install
-OpenSSH on your system. There are a number of differences between this 
-port of OpenSSH and F-Secure SSH 1.x, please refer to the OpenSSH FAQ[6]
-for details and general tips.
+OpenSSH on your system.
 
 Damien Miller <djm@mindrot.org>
 
-Miscellania - 
+Miscellania -
 
-This version of SSH is based upon code retrieved from the OpenBSD CVS
-repository which in turn was based on the last free 
-version of SSH released by Tatu Ylonen.
+This version of OpenSSH is based upon code retrieved from the OpenBSD
+CVS repository which in turn was based on the last free sample
+implementation released by Tatu Ylonen.
 
 References -
 
-[0] http://www.openssh.com/faq.html
+[0] https://www.openssh.com/
 [1] http://www.lothar.com/tech/crypto/
-[2] ftp://ftp.freesoftware.com/pub/infozip/zlib/
-[3] http://www.openssl.org/
-[4] http://www.kernel.org/pub/linux/libs/pam/ (PAM is standard on Solaris)
-[5] http://www.openbsd.org/cgi-bin/man.cgi?query=style&sektion=9&apropos=0&manpath=OpenBSD+Current
-[6] http://www.openssh.com/faq.html
+[2] http://www.aet.tu-cottbus.de/personen/jaenicke/postfix_tls/prngd.html
+[3] http://www.gzip.org/zlib/
+[4] http://www.openssl.org/
+[5] http://www.openpam.org
+    http://www.kernel.org/pub/linux/libs/pam/
+    (PAM also is standard on Solaris and HP-UX 11)
+[6] http://man.openbsd.org/style.9

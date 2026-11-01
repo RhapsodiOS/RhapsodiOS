@@ -4,10 +4,14 @@ Rhapsody DR2 / Mac OS X Server 1.x `sshd` only negotiates weak SSH-2 algorithms.
 A modern client that offers only current defaults will see the server close the
 socket (`Remote side unexpectedly closed network connection`).
 
+The options below append those legacy algorithms to the client's defaults
+(`=+`), so the same command also reaches a guest running the packaged, newer
+OpenSSH, which negotiates a modern algorithm instead.
+
 ## Interactive login (OpenSSH)
 
 ```bat
-ssh -o KexAlgorithms=diffie-hellman-group1-sha1 -o HostKeyAlgorithms=ssh-dss -o Ciphers=3des-cbc -o MACs=hmac-sha1 root@10.10.0.241
+ssh -o KexAlgorithms=+diffie-hellman-group1-sha1 -o HostKeyAlgorithms=+ssh-dss -o Ciphers=+3des-cbc -o MACs=+hmac-sha1 root@10.10.0.241
 ```
 
 Password / host / user come from `vm/vm.conf` (`Password=`, `Host=`, `User=`).
@@ -19,9 +23,10 @@ Prefer those values when they differ from the example above.
 
 - Passes the same legacy `-o` options as the interactive login line
 - Supplies the password non-interactively via `SSH_ASKPASS` (OpenSSH has no `-pw`)
-- Uses `StrictHostKeyChecking=no` and a throwaway known_hosts under `%TEMP%`
-  (Windows OpenSSH often fails to update `~/.ssh/known_hosts` for this guest’s
-  `ssh-dss` host key, which aborts sessions under `accept-new`)
+- Uses `StrictHostKeyChecking=no` and `UserKnownHostsFile=NUL`, so no host key
+  is remembered: guests are all `127.0.0.1:<port>`, ports are reused across
+  images, and a remembered key that has changed (the packaged OpenSSH 7.4p1
+  replaces the 3.2.3p1 `ssh-dss` key) makes ssh refuse password logins
 - Returns only a numeric SSH exit code to callers — build logs go through
   `Write-Host` so PowerShell does not treat `make` stdout as the exit status
 

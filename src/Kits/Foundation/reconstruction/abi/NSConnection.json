@@ -1,0 +1,679 @@
+{
+ "categories": [
+  {
+   "class": "NSThread",
+   "class_methods": [
+    {
+     "selector": "mapConversationToThread:",
+     "types": "@12@8:12@16"
+    }
+   ],
+   "instance_methods": [
+    {
+     "selector": "clearConversationRequest",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "setConversationRequest:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "conversationRequest",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "addConversation:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "removeConversation",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "lastConversation",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "workQueue",
+     "types": "@8@8:12"
+    }
+   ],
+   "name": "NSConnectionWorkQueue"
+  }
+ ],
+ "classes": [
+  {
+   "class_methods": [
+    {
+     "selector": "_enableLogging:",
+     "types": "v9@8:12c16"
+    },
+    {
+     "selector": "_toggleLogging",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "doQueuedWork",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "currentConversation",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "allConnections",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "connectionsCount",
+     "types": "I8@8:12"
+    },
+    {
+     "selector": "statistics",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "defaultConnection",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "rootProxyForConnectionWithRegisteredName:host:",
+     "types": "@16@8:12@16@20"
+    },
+    {
+     "selector": "connectionWithRegisteredName:host:",
+     "types": "@16@8:12@16@20"
+    },
+    {
+     "selector": "connectionWithReceivePort:sendPort:",
+     "types": "@16@8:12@16@20"
+    },
+    {
+     "selector": "initialize",
+     "types": "v8@8:12"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "runInNewThread",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "run",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "removeRunLoop:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "addRunLoop:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "multipleThreadsEnabled",
+     "types": "c8@8:12"
+    },
+    {
+     "selector": "enableMultipleThreads",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "hasRunLoop:",
+     "types": "c12@8:12@16"
+    },
+    {
+     "selector": "removePortsFromAllRunLoops",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "removePortsFromRunLoop:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "addPortsToAllRunLoops",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "addPortsToRunLoop:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "description",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "sendInvocation:target:",
+     "types": "v16@8:12@16I20"
+    },
+    {
+     "selector": "getReplyWithSequence:withRunLoop:inThread:",
+     "types": "@20@8:12I16@20@24"
+    },
+    {
+     "selector": "returnResult:exception:sequence:imports:",
+     "types": "v24@8:12@16@20I24@28"
+    },
+    {
+     "selector": "dispatchInvocation:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "handleRequest:sequence:",
+     "types": "v16@8:12@16I20"
+    },
+    {
+     "selector": "_shouldDispatch:invocation:sequence:coder:",
+     "types": "c24@8:12^@16@20I24@28"
+    },
+    {
+     "selector": "newConversation",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "_queueRequestForThread:invocation:conversation:sequence:coder:",
+     "types": "v28@8:12@16@20@24I28@32"
+    },
+    {
+     "selector": "_cleanupAndAuthenticate:sequence:conversation:invocation:raise:",
+     "types": "c25@8:12@16I20^@24@28c32"
+    },
+    {
+     "selector": "sendWireCountForTarget:port:",
+     "types": "v16@8:12@16@20"
+    },
+    {
+     "selector": "releaseName:count:",
+     "types": "v16@8:12@16I20"
+    },
+    {
+     "selector": "finishEncoding:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "getReleasedProxies:length:",
+     "types": "*16@8:12@16^I20"
+    },
+    {
+     "selector": "handleReleasedProxies:length:",
+     "types": "v16@8:12*16I20"
+    },
+    {
+     "selector": "decodeReleasedProxies:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "handlePortCoder:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "removeLocal:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "removeProxy:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "localProxies",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "localObjects",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "remoteObjects",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "_objectWithName:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "proxyWithLocal:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "getLocal:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "getRemote:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "proxyForObject:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "insertProxy:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "versionForClassNamed:",
+     "types": "I12@8:12@16"
+    },
+    {
+     "selector": "addClassNamed:version:",
+     "types": "v16@8:12*16I20"
+    },
+    {
+     "selector": "setRootObject:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "rootObject",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "rootProxy",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "sendPort",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "receivePort",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "requestModes",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "removeAllRequestModes",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "removeRequestMode:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "addRequestMode:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "delegate",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "setDelegate:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "setIndependentConversationQueueing:",
+     "types": "v9@8:12c16"
+    },
+    {
+     "selector": "independentConversationQueueing",
+     "types": "c8@8:12"
+    },
+    {
+     "selector": "replyTimeout",
+     "types": "d8@8:12"
+    },
+    {
+     "selector": "setReplyTimeout:",
+     "types": "v16@8:12d16"
+    },
+    {
+     "selector": "requestLimit",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "requestTimeout",
+     "types": "d8@8:12"
+    },
+    {
+     "selector": "setRequestTimeout:",
+     "types": "v16@8:12d16"
+    },
+    {
+     "selector": "statistics",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "portalDied:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "invalidate",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "isValid",
+     "types": "c8@8:12"
+    },
+    {
+     "selector": "dealloc",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "release",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "retainCount",
+     "types": "I8@8:12"
+    },
+    {
+     "selector": "retain",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "sendReleasedProxies",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "registerName:",
+     "types": "c12@8:12@16"
+    },
+    {
+     "selector": "initWithReceivePort:sendPort:",
+     "types": "@16@8:12@16@20"
+    },
+    {
+     "selector": "init",
+     "types": "@8@8:12"
+    }
+   ],
+   "instance_size": 80,
+   "ivars": [
+    {
+     "name": "receivePort",
+     "offset": 4,
+     "type": "@"
+    },
+    {
+     "name": "sendPort",
+     "offset": 8,
+     "type": "@"
+    },
+    {
+     "name": "delegate",
+     "offset": 12,
+     "type": "@"
+    },
+    {
+     "name": "isValid",
+     "offset": 16,
+     "type": "b1"
+    },
+    {
+     "name": "isDead",
+     "offset": 16,
+     "type": "b1"
+    },
+    {
+     "name": "isQueueing",
+     "offset": 16,
+     "type": "b1"
+    },
+    {
+     "name": "authGen",
+     "offset": 16,
+     "type": "b1"
+    },
+    {
+     "name": "authCheck",
+     "offset": 16,
+     "type": "b1"
+    },
+    {
+     "name": "encryptFlag",
+     "offset": 16,
+     "type": "b1"
+    },
+    {
+     "name": "decryptFlag",
+     "offset": 16,
+     "type": "b1"
+    },
+    {
+     "name": "doRequest",
+     "offset": 16,
+     "type": "b1"
+    },
+    {
+     "name": "isMulti",
+     "offset": 17,
+     "type": "b1"
+    },
+    {
+     "name": "filler",
+     "offset": 17,
+     "type": "b7"
+    },
+    {
+     "name": "refCount",
+     "offset": 18,
+     "type": "b16"
+    },
+    {
+     "name": "localProxies",
+     "offset": 20,
+     "type": "^v"
+    },
+    {
+     "name": "remoteProxies",
+     "offset": 24,
+     "type": "^v"
+    },
+    {
+     "name": "runLoops",
+     "offset": 28,
+     "type": "@"
+    },
+    {
+     "name": "requestLimit",
+     "offset": 32,
+     "type": "d"
+    },
+    {
+     "name": "replyLimit",
+     "offset": 40,
+     "type": "d"
+    },
+    {
+     "name": "requestModes",
+     "offset": 48,
+     "type": "@"
+    },
+    {
+     "name": "rootObject",
+     "offset": 52,
+     "type": "@"
+    },
+    {
+     "name": "registerName",
+     "offset": 56,
+     "type": "@"
+    },
+    {
+     "name": "statistics",
+     "offset": 60,
+     "type": "@"
+    },
+    {
+     "name": "classInfoExported",
+     "offset": 64,
+     "type": "^{?}"
+    },
+    {
+     "name": "classInfoImported",
+     "offset": 68,
+     "type": "^{?}"
+    },
+    {
+     "name": "releasedProxies",
+     "offset": 72,
+     "type": "@\"NSMutableData\""
+    },
+    {
+     "name": "reserved",
+     "offset": 76,
+     "type": "^v"
+    }
+   ],
+   "name": "NSConnection",
+   "superclass": "NSObject"
+  },
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "dealloc",
+     "types": "v8@8:12"
+    },
+    {
+     "selector": "replyWithException:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "conversation",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "connection",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "invocation",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "initWithInvocation:conversation:sequence:importedObjects:connection:",
+     "types": "@28@8:12@16@20I24@28@32"
+    }
+   ],
+   "instance_size": 24,
+   "ivars": [
+    {
+     "name": "invocation",
+     "offset": 4,
+     "type": "@\"NSInvocation\""
+    },
+    {
+     "name": "importedObjects",
+     "offset": 8,
+     "type": "@\"NSMutableArray\""
+    },
+    {
+     "name": "conversation",
+     "offset": 12,
+     "type": "@"
+    },
+    {
+     "name": "sequence",
+     "offset": 16,
+     "type": "I"
+    },
+    {
+     "name": "connection",
+     "offset": 20,
+     "type": "@\"NSConnection\""
+    }
+   ],
+   "name": "NSConcreteDistantObjectRequest",
+   "superclass": "NSDistantObjectRequest"
+  },
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "replyWithException:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "conversation",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "connection",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "invocation",
+     "types": "@8@8:12"
+    }
+   ],
+   "instance_size": 4,
+   "ivars": [],
+   "name": "NSDistantObjectRequest",
+   "superclass": "NSObject"
+  },
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "objectForKey:",
+     "types": "@12@8:12@16"
+    },
+    {
+     "selector": "addStatistics:",
+     "types": "v12@8:12@16"
+    },
+    {
+     "selector": "keyEnumerator",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "allKeys",
+     "types": "@8@8:12"
+    },
+    {
+     "selector": "count",
+     "types": "I8@8:12"
+    },
+    {
+     "selector": "copyWithZone:",
+     "types": "@12@8:12^{?=}16"
+    }
+   ],
+   "instance_size": 20,
+   "ivars": [
+    {
+     "name": "requestsReceived",
+     "offset": 4,
+     "type": "I"
+    },
+    {
+     "name": "repliesSent",
+     "offset": 8,
+     "type": "I"
+    },
+    {
+     "name": "requestsSent",
+     "offset": 12,
+     "type": "I"
+    },
+    {
+     "name": "repliesReceived",
+     "offset": 16,
+     "type": "I"
+    }
+   ],
+   "name": "NSDistributedObjectsStatistics",
+   "superclass": "NSDictionary"
+  }
+ ],
+ "data_symbols": [
+  "_NSFailedAuthenticationException",
+  "__NSConnectionConversationTableLock",
+  "__NSConnectionLock",
+  "__NSConnectionReplyTableLock",
+  "__NSConnectionWorkQueueLock",
+  "_NSConnectionDidDieNotification",
+  "_NSConnectionDidInitializeNotification",
+  "_NSConnectionReplyMode"
+ ],
+ "module": "NSConnection.m",
+ "schema_version": "abi-v1",
+ "text_symbols": []
+}

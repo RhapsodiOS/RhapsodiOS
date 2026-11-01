@@ -17,6 +17,20 @@ from binrecon.schema import (
 FIXTURE = Path(__file__).parent / "fixtures" / "minimal-analysis.json"
 
 
+def test_preflight_accepts_measured_ultra2_string_collection():
+    preflight_json([None] * 533_525)
+
+
+def test_preflight_rejects_collection_above_one_million():
+    with pytest.raises(ValueError, match="JSON collection length limit exceeded"):
+        preflight_json([None] * 1_000_001)
+
+
+def test_preflight_keeps_four_million_analysis_node_limit():
+    with pytest.raises(ValueError, match="JSON node limit exceeded"):
+        preflight_json([[None] * 800_000] * 5)
+
+
 def test_minimal_analysis_passes_schema_and_semantic_validation():
     document = load_json(FIXTURE)
 

@@ -1,0 +1,304 @@
+{
+ "categories": [],
+ "classes": [
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "synchronize",
+     "types": "c4@4:8"
+    },
+    {
+     "selector": "removeDomain:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "setDictionary:forDomain:",
+     "types": "v12@4:8@12@16"
+    },
+    {
+     "selector": "dictionaryForDomain:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "domainExists:",
+     "types": "c8@4:8@12"
+    },
+    {
+     "selector": "allDomains",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "removeObjectForKey:domain:",
+     "types": "v12@4:8@12@16"
+    },
+    {
+     "selector": "setObject:forKey:domain:",
+     "types": "v16@4:8@12@16@20"
+    },
+    {
+     "selector": "objectForKey:domain:",
+     "types": "@12@4:8@12@16"
+    },
+    {
+     "selector": "initWithPath:",
+     "types": "@8@4:8@12"
+    }
+   ],
+   "instance_size": 8,
+   "ivars": [
+    {
+     "name": "_domains",
+     "offset": 4,
+     "type": "@\"NSMutableDictionary\""
+    }
+   ],
+   "name": "NSNonsavingDefaultsManager",
+   "superclass": "NSObject"
+  },
+  {
+   "class_methods": [
+    {
+     "selector": "standardUserDefaults",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "resetStandardUserDefaults",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "setStandardUserDefaults:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "nonUserDefaultsArguments",
+     "types": "@4@4:8"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "synchronize",
+     "types": "c4@4:8"
+    },
+    {
+     "selector": "removePersistentDomainForName:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "setPersistentDomain:forName:",
+     "types": "v12@4:8@12@16"
+    },
+    {
+     "selector": "persistentDomainForName:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "persistentDomainNames",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "removeVolatileDomainForName:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "setVolatileDomain:forName:",
+     "types": "v12@4:8@12@16"
+    },
+    {
+     "selector": "volatileDomainForName:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "volatileDomainNames",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "dealloc",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "init",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "initWithUser:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "registerDefaults:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "setSearchList:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "searchList",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "dictionaryRepresentation",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "setBool:forKey:",
+     "types": "v12@4:8c12@16"
+    },
+    {
+     "selector": "setDouble:forKey:",
+     "types": "v16@4:8d12@20"
+    },
+    {
+     "selector": "setFloat:forKey:",
+     "types": "v12@4:8f12@16"
+    },
+    {
+     "selector": "setLong:forKey:",
+     "types": "v16@4:8q12@20"
+    },
+    {
+     "selector": "setInteger:forKey:",
+     "types": "v12@4:8i12@16"
+    },
+    {
+     "selector": "boolForKey:",
+     "types": "c8@4:8@12"
+    },
+    {
+     "selector": "doubleForKey:",
+     "types": "d8@4:8@12"
+    },
+    {
+     "selector": "floatForKey:",
+     "types": "f8@4:8@12"
+    },
+    {
+     "selector": "longForKey:",
+     "types": "q8@4:8@12"
+    },
+    {
+     "selector": "integerForKey:",
+     "types": "i8@4:8@12"
+    },
+    {
+     "selector": "stringArrayForKey:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "dataForKey:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "dictionaryForKey:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "arrayForKey:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "stringForKey:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "removeObjectForKey:inDomain:",
+     "types": "v12@4:8@12@16"
+    },
+    {
+     "selector": "setObject:forKey:inDomain:",
+     "types": "v16@4:8@12@16@20"
+    },
+    {
+     "selector": "objectForKey:inDomain:",
+     "types": "@12@4:8@12@16"
+    },
+    {
+     "selector": "removeObjectForKey:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "setObject:forKey:",
+     "types": "v12@4:8@12@16"
+    },
+    {
+     "selector": "objectForKey:",
+     "types": "@8@4:8@12"
+    }
+   ],
+   "instance_size": 24,
+   "ivars": [
+    {
+     "name": "_dlplf",
+     "offset": 4,
+     "type": "@"
+    },
+    {
+     "name": "_search",
+     "offset": 8,
+     "type": "@\"NSArray\""
+    },
+    {
+     "name": "_temp",
+     "offset": 12,
+     "type": "@\"NSDictionary\""
+    },
+    {
+     "name": "_dictRep",
+     "offset": 16,
+     "type": "@\"NSDictionary\""
+    },
+    {
+     "name": "_reserved",
+     "offset": 20,
+     "type": "^v"
+    }
+   ],
+   "name": "NSUserDefaults",
+   "superclass": "NSObject"
+  }
+ ],
+ "data_symbols": [
+  "_NSAMPMDesignation",
+  "_NSArgumentDomain",
+  "_NSCurrencySymbol",
+  "_NSDateFormatString",
+  "_NSDateTimeOrdering",
+  "_NSDecimalDigits",
+  "_NSDecimalSeparator",
+  "_NSEarlierTimeDesignations",
+  "_NSGlobalDomain",
+  "_NSHourNameDesignations",
+  "_NSInternationalCurrencyString",
+  "_NSLaterTimeDesignations",
+  "_NSMonthNameArray",
+  "_NSNegativeCurrencyFormatString",
+  "_NSNextDayDesignations",
+  "_NSNextNextDayDesignations",
+  "_NSPositiveCurrencyFormatString",
+  "_NSPriorDayDesignations",
+  "_NSRegistrationDomain",
+  "_NSShortDateFormatString",
+  "_NSShortMonthNameArray",
+  "_NSShortTimeDateFormatString",
+  "_NSShortWeekDayNameArray",
+  "_NSThisDayDesignations",
+  "_NSThousandsSeparator",
+  "_NSTimeDateFormatString",
+  "_NSTimeFormatString",
+  "_NSUserDefaultsDidChangeNotification",
+  "_NSWeekDayNameArray",
+  "_NSYearMonthWeekDesignations",
+  "__NSUserDefaultsLock",
+  "___NSConvertOldDefaults"
+ ],
+ "module": "NSUserDefaults.m",
+ "schema_version": "abi-v1",
+ "text_symbols": [
+  "__NSCurrentFileSystemUNIXTime",
+  "__NSDefaultEnglishLanguageDict",
+  "__NSIsPList",
+  "__NSReleaseLock"
+ ]
+}

@@ -1,0 +1,266 @@
+{
+ "categories": [],
+ "classes": [
+  {
+   "class_methods": [
+    {
+     "selector": "debugDescription",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "mainBundle",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "allFrameworks",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "allBundles",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "loadedBundles",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "bundleForClass:",
+     "types": "@8@4:8#12"
+    },
+    {
+     "selector": "bundleWithPath:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "setSystemLanguages:",
+     "types": "v8@4:8@12"
+    },
+    {
+     "selector": "pathsForResourcesOfType:inDirectory:",
+     "types": "@12@4:8@12@16"
+    },
+    {
+     "selector": "pathForResource:ofType:inDirectory:",
+     "types": "@16@4:8@12@16@20"
+    },
+    {
+     "selector": "findBundleResources:callingMethod:directory:languages:name:types:limit:",
+     "types": "@36@4:8@12:16@20@24@28@32I40"
+    }
+   ],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "description",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "infoDictionary",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "principalClass",
+     "types": "#4@4:8"
+    },
+    {
+     "selector": "classNamed:",
+     "types": "#8@4:8@12"
+    },
+    {
+     "selector": "defaultsDictionary",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "invalidateResourceCache",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "bundleLanguages",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "resourcePath",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "bundlePath",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "_initInfoDictionary",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "initWithPath:",
+     "types": "@8@4:8@12"
+    },
+    {
+     "selector": "dealloc",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "retainCount",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "release",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "retain",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "unload",
+     "types": "c4@4:8"
+    },
+    {
+     "selector": "load",
+     "types": "c4@4:8"
+    },
+    {
+     "selector": "_computeExecutablePath",
+     "types": "@4@4:8"
+    },
+    {
+     "selector": "localizedStringForKey:value:table:",
+     "types": "@16@4:8@12@16@20"
+    },
+    {
+     "selector": "pathsForResourcesOfType:inDirectory:",
+     "types": "@12@4:8@12@16"
+    },
+    {
+     "selector": "pathsForResourcesOfType:inDirectory:forLanguage:",
+     "types": "@16@4:8@12@16@20"
+    },
+    {
+     "selector": "pathForResource:ofType:",
+     "types": "@12@4:8@12@16"
+    },
+    {
+     "selector": "pathForResource:ofType:inDirectory:",
+     "types": "@16@4:8@12@16@20"
+    },
+    {
+     "selector": "pathForResource:ofType:inDirectory:forLanguage:",
+     "types": "@20@4:8@12@16@20@24"
+    }
+   ],
+   "instance_size": 36,
+   "ivars": [
+    {
+     "name": "_flags",
+     "offset": 4,
+     "type": "I"
+    },
+    {
+     "name": "_infoDictionary",
+     "offset": 8,
+     "type": "@"
+    },
+    {
+     "name": "_reserved5",
+     "offset": 12,
+     "type": "^v"
+    },
+    {
+     "name": "_principalClass",
+     "offset": 16,
+     "type": "#"
+    },
+    {
+     "name": "_tmp1",
+     "offset": 20,
+     "type": "^v"
+    },
+    {
+     "name": "_tmp2",
+     "offset": 24,
+     "type": "^v"
+    },
+    {
+     "name": "_reserved1",
+     "offset": 28,
+     "type": "^v"
+    },
+    {
+     "name": "_reserved0",
+     "offset": 32,
+     "type": "^v"
+    }
+   ],
+   "name": "NSBundle",
+   "superclass": "NSObject"
+  },
+  {
+   "class_methods": [],
+   "info": 1,
+   "instance_methods": [
+    {
+     "selector": "dealloc",
+     "types": "v4@4:8"
+    },
+    {
+     "selector": "copyWithZone:",
+     "types": "@8@4:8^{?=}12"
+    },
+    {
+     "selector": "getCharacters:range:",
+     "types": "v16@4:8^S12{?=II}16"
+    },
+    {
+     "selector": "characterAtIndex:",
+     "types": "S8@4:8I12"
+    },
+    {
+     "selector": "length",
+     "types": "I4@4:8"
+    },
+    {
+     "selector": "initWithString:",
+     "types": "@8@4:8@12"
+    }
+   ],
+   "instance_size": 8,
+   "ivars": [
+    {
+     "name": "string",
+     "offset": 4,
+     "type": "@\"NSString\""
+    }
+   ],
+   "name": "NSDebugString",
+   "superclass": "NSString"
+  }
+ ],
+ "data_symbols": [
+  "_NSBundleDefaultsDictionary",
+  "_NSBundleDidLoadNotification",
+  "_NSBundleExecutablePath",
+  "_NSBundleInitialPath",
+  "_NSBundleLanguagesList",
+  "_NSBundleResolvedPath",
+  "_NSBundleResourcePath",
+  "_NSBundleResources",
+  "_NSBundleStringTableTable",
+  "_NSExecutable",
+  "_NSLoadedClasses",
+  "_NSPrincipalClass",
+  "_NSPrintDynamicClassLoads",
+  "_NSPrintDynamicClassLoadsRead",
+  "_NSSafeBundleLoading",
+  "_NSSafeBundleLoadingRead",
+  "__NSBundleDataLock"
+ ],
+ "module": "NSBundle.m",
+ "schema_version": "abi-v1",
+ "text_symbols": [
+  "_NSBundleDisableCodeLoading",
+  "__NSFoundationBundle",
+  "__NSIsLocalizedString",
+  "__NSLocalizedString",
+  "__NSParseStringsFile",
+  "__NSSetMainBundle"
+ ]
+}

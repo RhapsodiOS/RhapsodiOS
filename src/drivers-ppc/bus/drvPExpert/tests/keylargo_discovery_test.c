@@ -173,6 +173,16 @@ test_mac_io_size_properties(void)
 static void
 test_legacy_mac_io_fallback_model(void)
 {
+    CHECK(PEKeyLargoIsCore99Model("PowerMac2,1"));
+    CHECK(PEKeyLargoIsCore99Model("PowerMac2,2"));
+    CHECK(PEKeyLargoIsCore99Model("PowerMac4,1"));
+    CHECK(PEKeyLargoIsCore99Model("PowerBook3,1"));
+    CHECK(PEKeyLargoIsCore99Model("PowerMac3,1"));
+    CHECK(PEKeyLargoIsCore99Model("PowerMac3,2"));
+    CHECK(PEKeyLargoIsCore99Model("PowerMac3,3"));
+    CHECK(!PEKeyLargoIsCore99Model("PowerBook1,1"));
+    CHECK(!PEKeyLargoIsCore99Model("PowerMac4,10"));
+    CHECK(!PEKeyLargoIsCore99Model(0));
     CHECK(PEKeyLargoUsesLegacyMacIOSpan("PowerMac3,1"));
     CHECK(!PEKeyLargoUsesLegacyMacIOSpan("PowerMac3,2"));
     CHECK(!PEKeyLargoUsesLegacyMacIOSpan("PowerMac3,3"));

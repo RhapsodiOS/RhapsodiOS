@@ -126,7 +126,7 @@
 /*
  * Probe for disk label.
  */
-- (IOReturn)_probeLabel : (BOOL)needsLabel;
+- (IOReturn)_probeLabel : (void *)label;
 
 /*
  * Check if configuration is safe for destructive operations.

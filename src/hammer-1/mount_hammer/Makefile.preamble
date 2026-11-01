@@ -1,0 +1,5 @@
+# hammer_mount.h comes from kernel-hdrs.
+OTHER_CFLAGS = -Wno-precomp -I$(NEXT_ROOT)/System/Library/Frameworks/System.framework/Versions/B/Headers/bsd/hammer
+INSTALL_AS_USER = root
+INSTALL_AS_GROUP = wheel
+INSTALL_PERMISSIONS = 0755

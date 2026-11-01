@@ -23,3269 +23,1688 @@
  */
 
 /*
- * PPCSerialPort.m - Implementation for PowerPC Serial Port driver.
+ * PPCSerialPort.m - Zilog 85C30 SCC serial port driver for PowerPC Macs.
  *
- * This driver supports the Zilog 85C30 SCC (Serial Communications Controller)
- * commonly found in PowerPC-based Macintosh systems.
+ * Reconstructed from the 1.2v3 PPCSerialPort_reloc (drvPPCSerialPort-5).
+ * Functions appear in the binary's order.  Apple shipped it with MyIOLog
+ * compiled to nothing; the calls are kept so it can be switched back on.
+ * Places where this source deliberately differs from the binary are marked
+ * "Divergence from 5.6".
  */
 
 #import "PPCSerialPort.h"
 #import <driverkit/generalFuncs.h>
 #import <driverkit/kernelDriver.h>
-#import <mach/clock_types.h>	/* tvalspec_t, for the heartbeat deadline */
+#import <driverkit/IODeviceDescription.h>
+#import <driverkit/IOConfigTable.h>
+#import <kernserv/prototypes.h>
+#import <kernserv/ppc/spl.h>
 #import <string.h>
 #import <stdio.h>
 #import <stdlib.h>
-#import <stdarg.h>
 
-//==============================================================================
-// PowerPC memory barrier instruction
-//==============================================================================
+#define eieio()     __asm__ volatile("eieio")
 
-// eieio - Enforce In-order Execution of I/O
-// This PowerPC instruction ensures that all I/O operations before it
-// complete before any I/O operations after it begin.
-#ifdef __ppc__
-#define eieio() __asm__ volatile("eieio" ::: "memory")
-#else
-#define eieio() /* no-op on non-PowerPC */
-#endif
+extern boolean_t test_and_set(int bit, int *addr);
 
-//==============================================================================
-// SCC Initialization Table
-//==============================================================================
+/* The layout must match the binary's ivar encoding byte for byte. */
+typedef char PortSizeCheck[(sizeof(Port) == 364) ? 1 : -1];
 
-// SCC initialization register pairs (register, value)
-// This table is 0x22 (34) bytes = 17 pairs
-// Used by OpenScc to initialize the SCC channel
+static void         SetStructureDefaults(Port *port, BOOL full);
+static IOReturn     activatePort(Port *port);
+static void         deactivatePort(Port *port);
+static void         dataLatTOHandler(Port *port);
+static void         frameTOHandler(Port *port);
+static void         delayTOHandler(Port *port);
+static void         heartBeatTOHandler(Port *port);
+static IOReturn     executeEvent(Port *port, unsigned int event, unsigned int data,
+                        unsigned int *state, unsigned int *delta);
+static void         freeRingBuffer(CirQueue *q);
+static BOOL         allocateRingBuffer(CirQueue *q, unsigned int size);
+static void         CheckQueues(Port *port);
+static void         changeState(Port *port, unsigned int state, unsigned int mask);
+static IOReturn     watchState(Port *port, unsigned long *state, unsigned long mask);
+static void         MyIOLog(const char *format, ...);
+static void         initChip(Port *port);
+static void         programChip(Port *port);
+static int          ProbeSccDevice(Port *port);
+static int          OpenScc(Port *port);
+static void         SccCloseChannel(Port *port);
+static int          SccSetStopBits(Port *port, unsigned int bits);
+static int          SccSetParity(Port *port, unsigned char parity);
+static int          SccSetDataBits(Port *port, unsigned int bits);
+static int          SccSetBaud(Port *port, unsigned int baud);
+static unsigned char SccReadData(Port *port);
+static unsigned char SccReadReg(Port *port, unsigned char reg);
+static int          SccWriteReg(Port *port, unsigned char reg, unsigned char value);
+static void         SccWriteIntSafe(Port *port, unsigned char reg, unsigned char value);
+static void         PPCSerialRxDMAISR(void *identity, void *state, Port *port);
+static void         PPCSerialTxDMAISR(void *identity, void *state, Port *port);
+static void         PPCSerialISR(void *identity, void *state, Port *port);
+static int          SccHandleExtInterrupt(Port *port);
+static int          SccHandleRxInterrupt(Port *port);
+static int          SccHandleTxInterrupt(Port *port);
+static int          SetUpTransmit(Port *port);
+static int          SuspendTX(Port *port);
+static int          SccWriteByte(Port *port, unsigned char c);
+static unsigned char SccDisableInterrupts(Port *port, unsigned int which);
+static void         SccEnableInterrupts(Port *port, unsigned int which, unsigned char saved);
+static void         InitQueue(CirQueue *q, char *buffer, unsigned int size);
+static void         CloseQueue(CirQueue *q);
+static unsigned int AddtoQueue(CirQueue *q, unsigned char *buffer, unsigned int size);
+static unsigned int RemovefromQueue(CirQueue *q, unsigned char *buffer, unsigned int size);
+static unsigned int FreeSpaceinQueue(CirQueue *q);
+static unsigned int UsedSpaceinQueue(CirQueue *q);
+static unsigned int GetQueueSize(CirQueue *q);
+static int          AddBytetoQueue(CirQueue *q, unsigned char c);
+static int          GetBytetoQueue(CirQueue *q, unsigned char *c);
+
+/* SccEnableInterrupts / SccDisableInterrupts selectors */
+#define kSccTxInt       4       /* WR5 transmit enable */
+#define kSccRxInt       5       /* WR3 receiver enable */
+#define kSccMasterInt   6       /* WR9 master interrupt enable */
+
+/* OpenScc's register program: (register, value) pairs.  WR9's first value is
+   the channel A reset, replaced by the channel B reset for ch-b. */
 static const unsigned char sccInitTable[34] = {
-    9,  0x80,   // WR9: Force hardware reset
-    4,  0x44,   // WR4: x16 clock, 1 stop bit, no parity
-    3,  0xC0,   // WR3: RX 8 bits/char
-    5,  0x60,   // WR5: TX 8 bits/char, TX disabled
-    11, 0x50,   // WR11: RCLK = BAUD, TCLK = BAUD
-    12, 0x0E,   // WR12: Time constant low byte (9600 baud)
-    13, 0x00,   // WR13: Time constant high byte
-    14, 0x01,   // WR14: BAUD generator source = PCLK
-    14, 0x03,   // WR14: Enable BAUD generator
-    3,  0xC1,   // WR3: RX 8 bits/char, RX enable
-    5,  0x68,   // WR5: TX 8 bits/char, TX enable, RTS
-    15, 0x00,   // WR15: Disable all external/status interrupts
-    0,  0x10,   // WR0: Reset external/status interrupts
-    0,  0x10,   // WR0: Reset external/status interrupts (twice)
-    1,  0x00,   // WR1: Disable all interrupts initially
-    9,  0x08,   // WR9: Master interrupt enable
-    2,  0x00    // WR2: Interrupt vector (will be set elsewhere)
+     9, 0x80,   4, 0x44,   3, 0xc0,   5, 0xe2,   2, 0x00,  10, 0x00,
+    11, 0x50,  12, 0x00,  13, 0x00,   3, 0xc1,   5, 0xea,  14, 0x01,
+    15, 0x00,   0, 0x10,   0, 0x10,   1, 0x12,   9, 0x0a
 };
 
-//==============================================================================
-// Forward declarations for utility functions
-//==============================================================================
-
-static IOReturn activatePort(PPCSerialPort *self);
-static IOReturn AddBytetoQueue(void *queueBase, unsigned char byte);
-static unsigned int AddtoQueue(void *queueBase, unsigned char *buffer, unsigned int size);
-static BOOL allocateRingBuffer(void *queueBase, unsigned int bufferSize);
-static void changeState(PPCSerialPort *self, unsigned int newState, unsigned int mask);
-static void dataLatTOHandler(void *spec, void *call);
-static void deactivatePort(PPCSerialPort *self);
-static void delayTOHandler(void *spec, void *call);
-static IOReturn executeEvent(PPCSerialPort *self, unsigned int event, unsigned int data, unsigned int *currentState, unsigned int *stateMask);
-static void CheckQueues(PPCSerialPort *self);
-static IOReturn CloseQueue(void *queueBase);
-static void frameTOHandler(void *spec, void *call);
-static void freeRingBuffer(void *queueBase);
-static unsigned int FreeSpaceinQueue(void *queueBase);
-static IOReturn GetBytetoQueue(void *queueBase, unsigned char *byteOut);
-static unsigned int GetQueueSize(void *queueBase);
-static void heartBeatTOHandler(void *spec, void *call);
-static void initChip(PPCSerialPort *self);
-static IOReturn InitQueue(int *queueBase, int bufferStart, int bufferSize);
-static void MyIOLog(const char *format, ...);
-static IOReturn OpenScc(PPCSerialPort *self);
-static void PPCSerialISR(void *identity, void *state, PPCSerialPort *self);
-static void PPCSerialRxDMAISR(void *identity, void *state, PPCSerialPort *self);
-static void PPCSerialTxDMAISR(void *identity, void *state, PPCSerialPort *self);
-static BOOL ProbeSccDevice(PPCSerialPort *self);
-static void programChip(PPCSerialPort *self);
-static IOReturn RemovefromQueue(void *queueBase, unsigned char *buffer, unsigned int size, unsigned int *count);
-static void SccChannelReset(PPCSerialPort *self);
-static void SccCloseChannel(PPCSerialPort *self);
-static unsigned char SccDisableInterrupts(PPCSerialPort *self, unsigned int intType);
-static void SccEnableInterrupts(PPCSerialPort *self, unsigned int intType, unsigned int param);
-static void SccGetCTS(PPCSerialPort *self);
-static void SccGetDCD(PPCSerialPort *self);
-static void SccHandleExtInterrupt(PPCSerialPort *self);
-static void SccHandleRxInterrupt(PPCSerialPort *self);
-static void SccHandleTxInterrupt(PPCSerialPort *self);
-static unsigned char SccReadByte(PPCSerialPort *self);
-static unsigned char SccReadData(PPCSerialPort *self);
-static unsigned char SccReadReg(PPCSerialPort *self, unsigned int regNum);
-static void SccSetBaud(PPCSerialPort *self, unsigned int baudRate);
-static void SccSetDataBits(PPCSerialPort *self, unsigned int dataBits);
-static void SccSetDTR(PPCSerialPort *self, BOOL state);
-static void SccSetParity(PPCSerialPort *self, unsigned int parity);
-static void SccSetRTS(PPCSerialPort *self, BOOL state);
-static void SccSetStopBits(PPCSerialPort *self, unsigned int stopBits);
-static void SccWriteByte(PPCSerialPort *self, unsigned char byte);
-static IOReturn SccWriteData(PPCSerialPort *self, unsigned char data);
-static void SccWriteIntSafe(PPCSerialPort *self, unsigned int regNum, unsigned char value);
-static void SccWriteReg(PPCSerialPort *self, unsigned int regNum, unsigned char value);
-static void SendNextChar(PPCSerialPort *self);
-static void SetStructureDefaults(PPCSerialPort *self, BOOL fullInit);
-static void SetUpTransmit(PPCSerialPort *self);
-static void SuspendTX(PPCSerialPort *self);
-static unsigned int UsedSpaceinQueue(void *queueBase);
-static void watchState(PPCSerialPort *self, unsigned int *statePtr, unsigned int mask);
-
-//==============================================================================
-// PPCSerialPort Implementation
-//==============================================================================
+/* WR3 receive and WR5 transmit bits-per-character, for 5..8 data bits. */
+static unsigned char LocalDataBits[4] = { 0x00, 0x80, 0x40, 0xc0 };
+static unsigned char LocalTxDataBits[4] = { 0x00, 0x40, 0x20, 0x60 };
 
 @implementation PPCSerialPort
 
-/*
- * Probe for device presence.
- */
-/*
- * Probe for device.
- *
- * This is the entry point for driver loading. Attempts to allocate
- * an instance of PPCSerialPort and initialize it with the device
- * description. Returns YES if successful, NO otherwise.
- */
 + (BOOL)probe:(IODeviceDescription *)deviceDescription
 {
-    id classObj;
-    id instance;
-
     MyIOLog("************* In Probe ********************\n\r");
-
-    // Get the PPCSerialPort class and send it "alloc"
-    classObj = [PPCSerialPort alloc];
-
-    // Send "initFromDeviceDescription:" to the allocated instance
-    instance = [classObj initFromDeviceDescription:deviceDescription];
-
-    // Return YES if initialization succeeded, NO otherwise
-    return (instance != nil);
+    return [[PPCSerialPort alloc]
+        initFromDeviceDescription:deviceDescription] != nil;
 }
 
-/*
- * Initialize from device description.
- */
-- (id)initFromDeviceDescription:(IODeviceDescription *)devDesc
+- initFromDeviceDescription:(IODeviceDescription *)deviceDescription
 {
-    char *basePtr = (char *)self;
-    id configTable;
-    const char *nodeName;
-    const char *txBufferSizeStr;
-    const char *rxBufferSizeStr;
-    unsigned int txBufferSize;
-    unsigned int rxBufferSize;
-    IOMemoryRange *memoryRanges;
-    unsigned int numRanges;
-    unsigned int numInterrupts;
-    int i;
-    IOReturn result;
-    extern IOReturn IOCreatePort(void **port);
+    id              configTable;
+    const char     *nodeName;
+    const char     *value;
+    char            name[32];
+    IORange        *range;
+    unsigned int    i;
+    unsigned int    numInterrupts;
+    id              result;
 
     MyIOLog("[initFromDeviceDescription:\n\r");
+    port = &self->Port;
+    port->Self = self;
+    SetStructureDefaults(port, YES);
+    port->WatchLock.lock_data[0] = 0;
+    port->WatchLock.lock_data[1] = 0;
+    port->WatchLock.lock_data[2] = 0;
+    port->WatchLock.lock_data[3] = 0;
 
-    /* Setup self-reference pointers at offsets 0x294 and 0x128 */
-    *(id *)(basePtr + 0x294) = (id)(basePtr + 0x128);
-    *(id *)(basePtr + 0x128) = (id)self;
-
-    /* Initialize structure with defaults (full initialization = 1) */
-    SetStructureDefaults(*(id *)(basePtr + 0x294), 1);
-
-    /* Get configuration table from device description */
-    configTable = [devDesc configTable];
+    configTable = [deviceDescription configTable];
     if (configTable == nil) {
-        MyIOLog("initFromDeviceDescription: nil configTable]\n\r");
-        objc_msgSend(self, @selector(free));
-        return nil;
+        MyIOLog(" Invalid config table]");
+        MyIOLog("PPCSerialPort: Invalid Config Table\n");
+        return [self free];
     }
 
-    /* Get node name and determine channel (A or B) */
-    nodeName = [devDesc nodeName];
-    if (nodeName != NULL) {
-        if (strcmp(nodeName, "ch-a") == 0) {
-            *(unsigned char *)(basePtr + 0x148) = 0;  /* Channel A */
-        } else if (strcmp(nodeName, "ch-b") == 0) {
-            *(unsigned char *)(basePtr + 0x148) = 1;  /* Channel B */
-        }
+    nodeName = [(id)deviceDescription nodeName];
+    if (strncmp(nodeName, "ch-a", 4) == 0)
+        port->whichPort = 0;
+    else if (strncmp(nodeName, "ch-b", 4) == 0)
+        port->whichPort = 1;
+    else
+        MyIOLog("Invalid Channel Name %s\n\r", nodeName);
+    port->Instance = port->whichPort;
+    MyIOLog("Node Name %s %d\n\r", nodeName, port->whichPort);
+
+    [configTable valueForStringKey:"Instance"];
+    sprintf(name, "PPCSerialPort%d", port->Instance);
+    [self setName:name];
+    [self setDeviceKind:"Serial"];
+    port->PortName = (char *)[self name];
+    MyIOLog("ejk After Port Name %s [%d].\n\r", port->PortName, port->Instance);
+
+    range = [deviceDescription memoryRangeList];
+    for (i = 0; i < [deviceDescription numMemoryRanges]; i++)
+        MyIOLog("%08x-%08x \n\r", range[i].start,
+            range[i].start + range[i].size - 1);
+    port->TxDMABase = (char *)range[1].start;
+    port->TxDMALength = range[1].size;
+    port->RxDMABase = (char *)range[2].start;
+    port->RxDMALength = range[2].size;
+    port->Base = range[0].start;
+    port->ChipBaseAddress = range[0].start;
+
+    numInterrupts = [deviceDescription numInterrupts];
+    MyIOLog("Interrupt info %d %d\n\r", numInterrupts, 3);
+    /* Divergence from 5.6: also accept a channel with only the SCC interrupt,
+       as QEMU's g3beige OpenBIOS lists it; the DMA handlers only count. */
+    if (numInterrupts != 3 && numInterrupts != 1) {
+        MyIOLog(" Invalid config ");
+        MyIOLog("%s: Invalid configuration\n", [self name]);
+        return [self free];
     }
-
-    /* Get memory ranges for SCC registers */
-    memoryRanges = [devDesc memoryRangeList];
-    if (memoryRanges != NULL) {
-        numRanges = [devDesc numMemoryRanges];
-        if (numRanges != 0) {
-            /* Store base address from first memory range */
-            *(unsigned int *)(basePtr + 0x140) = (unsigned int)memoryRanges[0].start;
-        }
+    MyIOLog("} Interrupts={ Num %d\n\r ", numInterrupts);
+    for (i = 0; i < numInterrupts; i++) {
+        MyIOLog("%d ", [deviceDescription interruptList][i]);
+        port->InterruptNumbers[i] = [deviceDescription interruptList][i];
     }
+    MyIOLog("}\n\r ");
 
-    /* Validate we have exactly 3 interrupts */
-    numInterrupts = [devDesc numInterrupts];
-    if (numInterrupts != 3) {
-        MyIOLog("initFromDeviceDescription: wrong number of interrupts (%d)]\n\r", numInterrupts);
-        objc_msgSend(self, @selector(free));
-        return nil;
+    initChip(port);
+    MyIOLog("initFromDeviceDescription: after InitChip \n\r");
+    port->FrameTOEntry = thread_call_allocate(
+        (thread_call_func_t)frameTOHandler, (thread_call_spec_t)port);
+    port->DataLatTOEntry = thread_call_allocate(
+        (thread_call_func_t)dataLatTOHandler, (thread_call_spec_t)port);
+    port->DelayTOEntry = thread_call_allocate(
+        (thread_call_func_t)delayTOHandler, (thread_call_spec_t)port);
+    port->HeartBeatTOEntry = thread_call_allocate(
+        (thread_call_func_t)heartBeatTOHandler, (thread_call_spec_t)port);
+    MyIOLog("initFromDeviceDescription: after Thread Allocation\n\r");
+    if (port->FrameTOEntry == NULL || port->DataLatTOEntry == NULL
+     || port->DelayTOEntry == NULL || port->HeartBeatTOEntry == NULL) {
+        MyIOLog("%s: Unable to allocate callout entries\n", [self name]);
+        return [self free];
     }
+    MyIOLog("initFromDeviceDescription: after Thread Check\n\r");
 
-    /* Initialize the SCC chip hardware */
-    initChip((id)(basePtr + 0x128));
+    value = [configTable valueForStringKey:"TX Buffer Size"];
+    port->TXStats.BufferSize = 1200;
+    if (value != NULL)
+        port->TXStats.BufferSize = strtol(value, NULL, 10);
+    value = [configTable valueForStringKey:"RX Buffer Size"];
+    port->RXStats.BufferSize = 1200;
+    if (value != NULL)
+        port->RXStats.BufferSize = strtol(value, NULL, 10);
 
-    /* Allocate 4 ports/threads for interrupt handling */
-    for (i = 0; i < 4; i++) {
-        result = IOCreatePort((void **)(basePtr + 0x114 + i * 4));
-        if (result != 0) {
-            MyIOLog("initFromDeviceDescription: IOCreatePort failed]\n\r");
-            objc_msgSend(self, @selector(free));
-            return nil;
-        }
+    result = [super initFromDeviceDescription:deviceDescription];
+    if (result == nil)
+        return [self free];
+    MyIOLog("After Super Init\n\r");
+    if ([self enableAllInterrupts] != IO_R_SUCCESS) {
+        MyIOLog(" Unable to enable interrupts]");
+        MyIOLog("%s: Unable to enable interrupts\n", [self name]);
+        return [self free];
     }
-
-    /* Read TX buffer size from config (default 0x1000 if not specified) */
-    txBufferSizeStr = [configTable valueForStringKey:"TX Buffer Size"];
-    if (txBufferSizeStr != NULL) {
-        txBufferSize = strtoul(txBufferSizeStr, NULL, 0);
-        [configTable freeString:txBufferSizeStr];
-    } else {
-        txBufferSize = 0x1000;
-    }
-    *(unsigned int *)(basePtr + 0x1a4) = txBufferSize;
-
-    /* Read RX buffer size from config (default 0x1000 if not specified) */
-    rxBufferSizeStr = [configTable valueForStringKey:"RX Buffer Size"];
-    if (rxBufferSizeStr != NULL) {
-        rxBufferSize = strtoul(rxBufferSizeStr, NULL, 0);
-        [configTable freeString:rxBufferSizeStr];
-    } else {
-        rxBufferSize = 0x1000;
-    }
-    *(unsigned int *)(basePtr + 0x1a8) = rxBufferSize;
-
-    /* Store device description pointer */
-    *(id *)(basePtr + 0x13c) = devDesc;
-
-    /* Call superclass initialization */
-    objc_msgSend_super(self, @selector(initFromDeviceDescription:), devDesc);
-
-    /* Enable all 3 interrupts */
-    for (i = 0; i < 3; i++) {
-        objc_msgSend(self, @selector(enableAllInterrupts));
-    }
-
-    /* Register the device */
-    objc_msgSend(self, @selector(registerDevice));
-
-    MyIOLog("]\n\r");
-
-    return self;
+    [self registerDevice];
+    MyIOLog("After register Self\n\r");
+    return result;
 }
 
-/*
- * Free the instance.
- */
-/*
- * Free the instance.
- *
- * Deactivates the port, disables interrupts, closes the SCC channel,
- * and frees all allocated resources before calling superclass free.
- */
-- (void)free
+static void
+SetStructureDefaults(Port *port, BOOL full)
 {
-    char *basePtr = (char *)self;
+    unsigned int i;
+
+    if (full) {
+        port->Instance = 0;
+        port->PortName = NULL;
+        port->MasterClock = 1843200;
+        port->DLRimage = 0;
+        port->LCRimage = 0;
+        port->FCRimage = 0;
+        port->IERmask = 0;
+        port->RBRmask = 0;
+        port->Base = 0;
+        port->DataLatInterval.tv_sec = 0;
+        port->DataLatInterval.tv_nsec = 0;
+        port->CharLatInterval.tv_sec = 0;
+        port->CharLatInterval.tv_nsec = 0;
+        port->HeartBeatInterval.tv_sec = 0;
+        port->HeartBeatInterval.tv_nsec = 0;
+        port->State = PD_S_TXQ_EMPTY | PD_S_TXQ_LOW_WATER
+                    | PD_S_RXQ_EMPTY | PD_S_RXQ_LOW_WATER;
+        port->WatchStateMask = 0;
+        port->ourMachineType = 7;
+    }
+    port->BreakLength = 0;
+    port->BaudRate = 0;
+    port->CharLength = 0;
+    port->BreakLength = 0;
+    port->StopBits = 0;
+    port->TX_Parity = 0;
+    port->RX_Parity = 0;
+    port->WaitingForTXIdle = 0;
+    port->MinLatency = 0;
+    port->XONchar = 0x11;
+    port->XOFFchar = 0x13;
+    port->FlowControl = 0;
+    port->RXOstate = 0;
+    port->TXOstate = 0;
+    port->FrameTOEntry = NULL;
+    port->DataLatTOEntry = NULL;
+    port->FrameInterval.tv_sec = 0;
+    port->FrameInterval.tv_nsec = 0;
+    port->RXStats.BufferSize = 1200;
+    port->RXStats.HighWater = 800;
+    port->RXStats.LowWater = 400;
+    port->TXStats.BufferSize = 1200;
+    /* The binary derives the TX marks from the RX ones. */
+    port->TXStats.HighWater = 2 * port->RXStats.BufferSize / 3;
+    port->TXStats.LowWater = port->RXStats.HighWater >> 1;
+    port->FlowControl = 0x126;
+    port->AreTransmitting = 0;
+    for (i = 0; i < 8; i++)
+        port->SWspecial[i] = 0;
+    port->Stats.ints = 0;
+    port->Stats.txInts = 0;
+    port->Stats.rxInts = 0;
+    port->Stats.mdmInts = 0;
+    port->Stats.txChars = 0;
+    port->Stats.rxChars = 0;
+}
+
+- free
+{
+    unsigned int s;
 
     MyIOLog(" [free:");
-
-    // Lock
-
-    // Deactivate the port
-    deactivatePort(self);
-
-    // Disable all interrupts
+    s = splpower();
+    deactivatePort(port);
     [self disableAllInterrupts];
-
-    // Close SCC channel if it was initialized (offset 0x260)
-    if (*(int *)(basePtr + 0x260) != 0) {
-        SccCloseChannel(self);
+    if (port->ControlRegister != NULL)
+        SccCloseChannel(port);
+    if (port->FrameTOEntry != NULL) {
+        thread_call_cancel(port->FrameTOEntry);
+        thread_call_free(port->FrameTOEntry);
     }
-
-    // Free interrupt port if allocated (offset 0x200)
-    if (*(int *)(basePtr + 0x200) != 0) {
-        // IOFreePort or similar
-        // FUN_00000904() and FUN_000008f4() are likely port cleanup functions
+    if (port->DataLatTOEntry != NULL) {
+        thread_call_cancel(port->DataLatTOEntry);
+        thread_call_free(port->DataLatTOEntry);
     }
-
-    // Free additional ports at offsets 0x204, 0x208, 0x20c
-    if (*(int *)(basePtr + 0x204) != 0) {
-        // Free port
+    if (port->DelayTOEntry != NULL) {
+        thread_call_cancel(port->DelayTOEntry);
+        thread_call_free(port->DelayTOEntry);
     }
-
-    if (*(int *)(basePtr + 0x208) != 0) {
-        // Free port
+    if (port->HeartBeatTOEntry != NULL) {
+        thread_call_cancel(port->HeartBeatTOEntry);
+        thread_call_free(port->HeartBeatTOEntry);
     }
-
-    if (*(int *)(basePtr + 0x20c) != 0) {
-        // Free port
-    }
-
     MyIOLog("]\n\r");
-
-    // Unlock
-
-    // Call superclass free
-    [super free];
+    splx(s);
+    return [super free];
 }
 
-/*
- * Acquire the serial port.
- *
- * Attempts to acquire exclusive access to the serial port.
- * If the port is already acquired and refCon is 0 (no sleep), returns IO_R_BUSY.
- * If refCon is non-zero, waits for the port to become available.
- *
- * Parameters:
- *   refCon: If 0, returns immediately if busy. If non-zero, sleeps until available.
- *
- * Returns: IO_R_SUCCESS on success, IO_R_BUSY if already acquired and no sleep
- */
-- (IOReturn)acquire:(void *)refCon
+- (BOOL)getHandler:(IOInterruptHandler *)handler
+             level:(unsigned int *)ipl
+          argument:(unsigned int *)arg
+      forInterrupt:(unsigned int)localInterrupt
 {
-    char *basePtr = (char *)self;
-    short loopCount;
-    void *lockState;
-    IOReturn result;
-    unsigned int stateCheck;
-    char sleepFlag;
+    MyIOLog("getHandler %d\n\r", localInterrupt);
+    if (localInterrupt == 1) {
+        MyIOLog("getHandler PPCSerialTxDMAISR\n\r");
+        *handler = (IOInterruptHandler)PPCSerialTxDMAISR;
+    } else if (localInterrupt == 0) {
+        MyIOLog("getHandler PPCSerialISR\n\r");
+        *handler = (IOInterruptHandler)PPCSerialISR;
+    } else if (localInterrupt == 2) {
+        MyIOLog("getHandler PPCSerialRxDMAISR\n\r");
+        *handler = (IOInterruptHandler)PPCSerialRxDMAISR;
+    }
+    *ipl = 24;
+    *arg = (unsigned int)port;
+    return YES;
+}
 
-    sleepFlag = (char)(int)refCon;  // Cast refCon to char for sleep flag
-    stateCheck = 0;
+- (IOReturn)getCharValues:(unsigned char *)parameterArray
+             forParameter:(IOParameterName)parameterName
+                    count:(unsigned int *)count
+{
+    const char *value;
+
+    MyIOLog("getCharValue\n\r");
+    if (parameterArray != NULL && count != NULL && *count != 0) {
+        value = [[[self deviceDescription] configTable]
+            valueForStringKey:parameterName];
+        if (value != NULL) {
+            strncpy((char *)parameterArray, value, *count - 1);
+            parameterArray[*count - 1] = 0;
+            *count = strlen((char *)parameterArray) + 1;
+            return IO_R_SUCCESS;
+        }
+    }
+    return [super getCharValues:parameterArray forParameter:parameterName
+        count:count];
+}
+
+static IOReturn
+activatePort(Port *port)
+{
+    MyIOLog(" activatePort\n\r");
+    if (port->State & PD_S_ACTIVE)
+        return IO_R_SUCCESS;
+    if (allocateRingBuffer(&port->TX, port->TXStats.BufferSize)) {
+        if (allocateRingBuffer(&port->RX, port->RXStats.BufferSize)) {
+            SetStructureDefaults(port, NO);
+            changeState(port, PD_S_ACTIVE, PD_S_ACTIVE);
+            MyIOLog("End Act State %x\n\r", port->State);
+            return IO_R_SUCCESS;
+        }
+    }
+    freeRingBuffer(&port->TX);
+    return IO_R_RESOURCE;
+}
+
+static void
+deactivatePort(Port *port)
+{
+    MyIOLog("deactivatePort");
+    if (port->State & PD_S_ACTIVE) {
+        MyIOLog("deactivateport ChangeState");
+        changeState(port, 0, PD_S_ACTIVE);
+        freeRingBuffer(&port->TX);
+        freeRingBuffer(&port->RX);
+        SccCloseChannel(port);
+    }
+}
+
+- (IOReturn)acquire:(BOOL)sleep
+{
+    unsigned long   state = 0;
+    unsigned int    s;
+    short           waits = 0;
+    IOReturn        rc;
 
     MyIOLog("[acquire ");
-
-    loopCount = 0;
-
-    do {
-        // Acquire lock (FUN_00000f08 is likely IOTakeLock or similar)
-        // Using a simple approach since we don't have the exact lock implementation
-        lockState = NULL;  // Placeholder
-
-        // Check if port is already acquired (offset 0x134 & 0x80000000)
-        // Offset 0x134 appears to be some state flags
-        stateCheck = *(unsigned int *)(basePtr + 0x134) & 0x80000000;
-
-        if (stateCheck == 0) {
-            // Port is not acquired - acquire it now
-            // Change state to 0xa0400018 with mask 0xffffffff
-            // Offset 0x294 appears to be self pointer for state change
-            changeState(self, 0xa0400018, 0xffffffff);
+    for (;;) {
+        s = splpower();
+        state = port->State & PD_S_ACQUIRED;
+        if (state == 0) {
+            /* Acquired, enabled and the modem lines up, as shipped. */
+            changeState(port, 0xa0400018, 0xffffffff);
             break;
         }
-
-        // Port is already acquired
-        if (sleepFlag == 0) {
-            // Don't sleep - return busy
+        if (!sleep) {
             MyIOLog("Busy!]");
-            // Release lock (FUN_00000ee8)
-            return 0xfffffd3b;  // IO_R_BUSY
+            splx(s);
+            return IO_R_EXCLUSIVE_ACCESS;
         }
-
-        // Wait for state change
-        stateCheck = 0;
-        result = [self watchState:&stateCheck mask:0x80000000];
-
-        if ((result != 0xfffffd36) && (result != 0)) {
-            // Interrupted or error
+        state = 0;
+        rc = [self watchState:&state mask:PD_S_ACQUIRED];
+        if (rc != IO_R_IO && rc != IO_R_SUCCESS) {
             MyIOLog("Interrupted!]");
-            // Release lock
-            return result;
+            splx(s);
+            return rc;
         }
-
-        // Release lock before next iteration
-        loopCount = loopCount + 1;
-    } while (loopCount < 2);
-
-    // Open the SCC (param_1 + 0x128 is self offset)
-    OpenScc(self);
-
+        splx(s);
+        /* As shipped: after a second wait it opens the channel without
+           taking the port. */
+        if (++waits > 1)
+            break;
+    }
+    OpenScc(port);
     MyIOLog("Early]\n\r");
+    splx(s);
+    return IO_R_SUCCESS;
+}
 
-    // Release lock
+- (IOReturn)release
+{
+    unsigned int s;
+    unsigned int i;
+
+    MyIOLog("[release ");
+    s = splpower();
+    if ((port->State & PD_S_ACQUIRED) == 0) {
+        MyIOLog("NOT OPEN]");
+        splx(s);
+        return IO_R_NOT_OPEN;
+    }
+    thread_call_cancel(port->HeartBeatTOEntry);
+    thread_call_cancel(port->DelayTOEntry);
+    thread_call_cancel(port->DataLatTOEntry);
+    thread_call_cancel(port->FrameTOEntry);
+    for (i = 0; i < 8; i++)
+        port->SWspecial[i] = 0;
+    port->CharLength = 8;
+    port->BreakLength = 1;
+    port->XONchar = 0x11;
+    port->XOFFchar = 0x13;
+    port->StopBits = 2;
+    port->TX_Parity = 1;
+    port->RX_Parity = 0;
+    port->RXOstate = 0;
+    port->BaudRate = 9600;
+    port->FlowControl = 0x126;
+    deactivatePort(port);
+    changeState(port, 0, 0xffffffff);
+    MyIOLog("OK]\n\r");
+    splx(s);
+    return IO_R_SUCCESS;
+}
+
+- (IOReturn)setState:(unsigned long)state mask:(unsigned long)mask
+{
+    unsigned int s;
+
+    MyIOLog("++>setState %d %x\n\r", state, mask);
+    if (mask & (PD_S_ACQUIRED | PD_S_ACTIVE | PD_RS232_S_DELAY))
+        return IO_R_INVALID_ARG;
+    s = splpower();
+    if ((port->State & PD_S_ACQUIRED) == 0) {
+        splx(s);
+        return IO_R_NOT_OPEN;
+    }
+    /* Lines under automatic flow control cannot be set by hand. */
+    mask &= ~(port->FlowControl >> 16) | 0xffff0000;
+    if (mask != 0)
+        changeState(port, state, mask);
+    MyIOLog("-->setState\n\r");
+    splx(s);
+    return IO_R_SUCCESS;
+}
+
+- (unsigned long)getState
+{
+    CheckQueues(port);
+    return port->State & ~PD_RS232_S_DELAY;
+}
+
+- (IOReturn)watchState:(unsigned long *)state mask:(unsigned long)mask
+{
+    unsigned int    s;
+    IOReturn        rc;
+
+    MyIOLog("watchState\n\r");
+    s = splpower();
+    if ((port->State & PD_S_ACQUIRED) == 0) {
+        splx(s);
+        return IO_R_NOT_OPEN;
+    }
+    rc = watchState(port, state, mask & ~PD_RS232_S_DELAY);
+    *state &= ~PD_RS232_S_DELAY;
+    splx(s);
+    return rc;
+}
+
+- (unsigned long)nextEvent
+{
+    unsigned int s;
+
+    MyIOLog("nextEvent\n\r");
+    s = splpower();
+    splx(s);
     return 0;
 }
 
-/*
- * Release the serial port.
- */
-/*
- * Release the serial port.
- *
- * Releases exclusive access to the serial port, restores defaults,
- * and deactivates the port.
- *
- * Returns: IO_R_SUCCESS on success, IO_R_NOT_OPEN if not acquired
- */
-- (IOReturn)release
+- (IOReturn)executeEvent:(unsigned long)event data:(unsigned long)data
 {
-    char *basePtr = (char *)self;
-    int iVar1;
-    unsigned int uVar2;
-    int iVar3;
-    extern unsigned int FUN_0000108c(void);
-    extern void FUN_0000106c(unsigned int);
-    extern void FUN_0000107c(unsigned int);
+    IOReturn        rc = IO_R_SUCCESS;
+    unsigned int    s;
+    unsigned int    state;
+    unsigned int    delta;
+    unsigned int    usec;
 
-    MyIOLog("[release ");
-    uVar2 = FUN_0000108c();
-
-    if (*(int *)(basePtr + 0x134) < 0) {
-        /* Free interrupt ports */
-        FUN_0000106c(*(unsigned int *)(basePtr + 0x20c));
-        FUN_0000106c(*(unsigned int *)(basePtr + 0x208));
-        FUN_0000106c(*(unsigned int *)(basePtr + 0x204));
-        FUN_0000106c(*(unsigned int *)(basePtr + 0x200));
-
-        /* Clear character filter bitmap (8 DWORDs) */
-        iVar1 = 0;
-        do {
-            *(unsigned int *)(iVar1 * 4 + basePtr + 0x1c8) = 0;
-            iVar1 = iVar1 + 1;
-        } while (iVar1 < 8);
-
-        /* Reset to defaults */
-        *(unsigned int *)(basePtr + 0x1a0) = 8;
-        *(unsigned int *)(basePtr + 0x1b0) = 1;
-        *(unsigned char *)(basePtr + 0x1c6) = 0x11;
-        *(unsigned char *)(basePtr + 0x1c7) = 0x13;
-        *(unsigned int *)(basePtr + 0x1a4) = 2;
-        *(unsigned int *)(basePtr + 0x1a8) = 1;
-        *(unsigned int *)(basePtr + 0x1ac) = 0;
-        *(unsigned int *)(basePtr + 0x1ec) = 0;
-        *(unsigned int *)(basePtr + 0x1b4) = 0x2580;
-        *(unsigned int *)(basePtr + 0x1e8) = 0x126;
-
-        deactivatePort(*(unsigned int *)(basePtr + 0x294));
-        changeState(*(unsigned int *)(basePtr + 0x294), 0, 0xffffffff);
-        MyIOLog("OK]\n\r");
-        FUN_0000107c(uVar2);
-        iVar3 = 0;
-    } else {
-        MyIOLog("NOT OPEN]");
-        FUN_0000107c(uVar2);
-        iVar3 = 0xfffffd33;
+    s = splpower();
+    MyIOLog("executeEvent\n\r");
+    if ((port->State & PD_S_ACQUIRED) == 0) {
+        splx(s);
+        return IO_R_NOT_OPEN;
     }
-
-    return iVar3;
+    switch (event) {
+    case PD_E_TXQ_SIZE:
+    case PD_E_RXQ_SIZE:
+    case PD_E_FLOW_CONTROL:     /* as shipped: accepted and ignored here */
+        break;
+    case PD_E_DELAY:
+        /* 1000 * data wraps at 32 bits, as in the binary, so 32-bit
+           division gives its result without the 64-bit helpers. */
+        usec = 1000 * data;
+        port->CharLatInterval.tv_sec = usec / 1000000000;
+        port->CharLatInterval.tv_nsec = usec % 1000000000;
+        break;
+    default:
+        delta = 0;
+        state = port->State;
+        rc = executeEvent(port, event, data, &state, &delta);
+        changeState(port, state, delta);
+        break;
+    }
+    splx(s);
+    return rc;
 }
 
-/*
- * Dequeue data from the serial port.
- */
-/*
- * Dequeue data from the serial port.
- *
- * Removes data from the RX queue into the provided buffer.
- * If minCount is specified and not enough data is available,
- * waits for more data to arrive.
- *
- * Parameters:
- *   buffer: Output buffer to receive data
- *   size: Maximum number of bytes to read
- *   count: Pointer to receive actual bytes read
- *   minCount: Minimum bytes required (0 = read whatever is available)
- *
- * Returns: IO_R_SUCCESS on success, error code otherwise
- */
-- (IOReturn)dequeueData:(unsigned char *)buffer
-             bufferSize:(unsigned int)size
-          transferCount:(unsigned int *)count
-               minCount:(unsigned int)minCount
+- (IOReturn)requestEvent:(unsigned long)event data:(unsigned long *)data
 {
-    char *basePtr = (char *)self;
-    IOReturn result;
-    unsigned int bytesRead;
-    unsigned int totalRead;
-    unsigned int watchState;
-    const char *logMsg;
+    tvalspec_t interval;
 
-    result = 0;
-    watchState = 0;
-
-    MyIOLog("++>In Dequeue %x %d %d %d\n\r", buffer, size, *count, minCount);
-
-    // Check if port is active (offset 0x134 & 0x40000000)
-    if ((*(unsigned int *)(basePtr + 0x134) & 0x40000000) == 0) {
-        result = 0xfffffd33;  // IO_R_NOT_OPEN
-    } else if ((count == NULL) || (buffer == NULL) || (size < minCount)) {
-        result = 0xfffffd3e;  // IO_R_INVALID_ARG
-    } else {
-        // Lock (placeholder for actual lock)
-
-        // Remove initial data from RX queue at offset 0x14c
-        bytesRead = RemovefromQueue(basePtr + 0x14c, buffer, size);
-        *count = bytesRead;
-
-        // Update state - clear bit 0x80000
-        changeState(self, 0x80000, 0x80000);
-
-        totalRead = *count;
-
-        // If minCount is specified and we haven't read enough, wait for more
-        while ((minCount != 0) && (totalRead < minCount)) {
-            watchState = 0;
-            MyIOLog("dequeueData: Entering WatchState %d\n\r", totalRead);
-
-            result = [self watchState:&watchState mask:0x80000];
-
-            if (result != 0) {
-                logMsg = "Interrupted!]";
-                goto cleanup;
-            }
-
-            // Unlock temporarily
-            // Lock again
-
-            // Remove more data
-            bytesRead = RemovefromQueue(basePtr + 0x14c, buffer + totalRead, size - totalRead);
-            *count = bytesRead;
-
-            // Update state
-            changeState(self, 0x80000, 0x80000);
-
-            totalRead = totalRead + bytesRead;
-        }
-
-        MyIOLog("dequeueData: Exit from WatchState\n\r");
-
-        // Check flow control state at offset 0x1ec
-        if (*(int *)(basePtr + 0x1ec) == -1) {
-            // Check if RX queue usage is below threshold (offset 0x184)
-            unsigned int rxUsed = UsedSpaceinQueue(basePtr + 0x14c);
-            if (rxUsed < *(unsigned int *)(basePtr + 0x184)) {
-                // Reset flow control state
-                *(unsigned int *)(basePtr + 0x1ec) = 0;
-
-                // Send XON character from offset 0x1c7 to TX queue at offset 0x164
-                AddBytetoQueue(basePtr + 0x164, *(unsigned char *)(basePtr + 0x1c7));
-                SetUpTransmit(self);
-            }
-        }
-
-        logMsg = "-->Out Dequeue\n\r";
-
-cleanup:
-        MyIOLog(logMsg);
-        // Unlock
+    MyIOLog("requestEvent2\n\r");
+    if (data == NULL)
+        return IO_R_INVALID_ARG;
+    switch (event) {
+    case PD_E_ACTIVE:
+        *data = (port->State & PD_S_ACTIVE) != 0;
+        break;
+    case PD_E_TXQ_SIZE:
+        *data = GetQueueSize(&port->TX);
+        break;
+    case PD_E_RXQ_SIZE:
+        *data = GetQueueSize(&port->RX);
+        break;
+    case PD_E_TXQ_AVAILABLE:
+        *data = FreeSpaceinQueue(&port->TX);
+        break;
+    case PD_E_RXQ_AVAILABLE:
+        *data = UsedSpaceinQueue(&port->RX);
+        break;
+    case PD_E_DATA_RATE:
+        *data = 2 * port->BaudRate;
+        break;
+    case PD_E_DATA_SIZE:
+        *data = 2 * port->CharLength;
+        break;
+    case PD_RS232_E_STOP_BITS:
+        *data = 2 * port->StopBits;
+        break;
+    case PD_E_RX_DATA_RATE:
+    case PD_E_RX_DATA_SIZE:
+    case PD_RS232_E_RX_STOP_BITS:
+        *data = 0;
+        break;
+    case PD_E_DATA_INTEGRITY:
+        *data = port->TX_Parity;
+        break;
+    case PD_E_RX_DATA_INTEGRITY:
+        *data = port->RX_Parity;
+        break;
+    case PD_E_DELAY:
+    case PD_E_DATA_LATENCY:
+        interval = (event == PD_E_DELAY) ? port->CharLatInterval
+                                         : port->DataLatInterval;
+        /* Microseconds, truncated to 32 bits as the binary's 64-bit
+           (tv_sec * 10^9 + tv_nsec) / 1000 is. */
+        *data = interval.tv_sec * 1000000 + interval.tv_nsec / 1000;
+        break;
+    case PD_E_FLOW_CONTROL:
+        *data = port->FlowControl;
+        break;
+    case PD_RS232_E_MIN_LATENCY:
+        *data = port->MinLatency != 0;
+        break;
+    case PD_RS232_E_XOFF_BYTE:
+        *data = port->XOFFchar;
+        break;
+    case PD_RS232_E_XON_BYTE:
+        *data = port->XONchar;
+        break;
+    case PD_RS232_E_LINE_BREAK:
+        *data = (port->State & PD_RS232_S_BRK) != 0;
+        break;
+    default:
+        return IO_R_INVALID_ARG;
     }
-
-    return result;
+    return IO_R_SUCCESS;
 }
 
-/*
- * Dequeue an event from the serial port.
- *
- * Placeholder implementation that validates parameters and checks
- * if the port is active. Currently does not implement actual event
- * queue functionality.
- *
- * Parameters:
- *   event: Pointer to receive event type
- *   data: Pointer to receive event data
- *   sleep: Whether to sleep waiting for event
- *
- * Returns: IO_R_SUCCESS if port is active, error code otherwise
- */
-- (IOReturn)dequeueEvent:(unsigned int *)event
-                    data:(unsigned int *)data
+- (IOReturn)enqueueEvent:(unsigned long)event
+                    data:(unsigned long)data
                    sleep:(BOOL)sleep
 {
-    char *basePtr = (char *)self;
-    IOReturn result;
+    unsigned int s;
 
-    MyIOLog("dequeueEvent\n\r");
-
-    if ((event == NULL) || (data == NULL)) {
-        result = 0xfffffd3e;  // IO_R_INVALID_ARG
-    } else {
-        // Lock
-
-        // Check if port is active (offset 0x134 & 0x40000000)
-        if ((*(unsigned int *)(basePtr + 0x134) & 0x40000000) == 0) {
-            // Unlock
-            result = 0xfffffd33;  // IO_R_NOT_OPEN
-        } else {
-            // Unlock
-            result = 0;
-        }
+    MyIOLog("enqueueEvent\n\r", event, data, sleep);
+    s = splpower();
+    if ((port->State & PD_S_ACTIVE) == 0) {
+        splx(s);
+        return IO_R_NOT_OPEN;
     }
-
-    return result;
+    splx(s);
+    return IO_R_SUCCESS;
 }
 
-/*
- * Enqueue data to the serial port.
- *
- * Adds data to the TX queue for transmission. If the queue doesn't
- * have enough space and sleep is true, waits for space to become available.
- *
- * Parameters:
- *   buffer: Input buffer containing data to transmit
- *   size: Number of bytes to transmit
- *   count: Pointer to receive actual bytes queued
- *   sleep: Whether to sleep waiting for queue space
- *
- * Returns: IO_R_SUCCESS on success, error code otherwise
- */
+- (IOReturn)dequeueEvent:(unsigned long *)event
+                    data:(unsigned long *)data
+                   sleep:(BOOL)sleep
+{
+    unsigned int s;
+
+    MyIOLog("dequeueEvent\n\r", event, data, sleep);
+    if (event == NULL || data == NULL)
+        return IO_R_INVALID_ARG;
+    s = splpower();
+    if ((port->State & PD_S_ACTIVE) == 0) {
+        splx(s);
+        return IO_R_NOT_OPEN;
+    }
+    splx(s);
+    return IO_R_SUCCESS;
+}
+
 - (IOReturn)enqueueData:(unsigned char *)buffer
              bufferSize:(unsigned int)size
           transferCount:(unsigned int *)count
                   sleep:(BOOL)sleep
 {
-    char *basePtr = (char *)self;
-    IOReturn result;
-    unsigned int bytesAdded;
-    unsigned int bytesQueued;
-    unsigned int remainingBytes;
-    unsigned int totalQueued;
-    unsigned int watchState;
-    unsigned char noSleepFlag;
+    unsigned long   state = PD_S_TXQ_LOW_WATER;
+    unsigned int    remaining = size;
+    unsigned int    done;
+    unsigned int    s;
+    IOReturn        rc;
 
-    watchState = 0x2000000;
-
-    MyIOLog("++>In Enqueue %d %d %d\n\r", size, *count, (int)sleep);
-
+    if (count == NULL || buffer == NULL)
+        return IO_R_INVALID_ARG;
+    MyIOLog("++>In Enqueue %d %d %d\n\r", size, *count, sleep);
     *count = 0;
-
-    if ((count == NULL) || (buffer == NULL)) {
-        result = 0xfffffd3e;  // IO_R_INVALID_ARG
-    } else {
-        // Lock
-
-        // Check if port is active (offset 0x134 & 0x40000000)
-        if ((*(unsigned int *)(basePtr + 0x134) & 0x40000000) == 0) {
-            // Unlock
-            result = 0xfffffd33;  // IO_R_NOT_OPEN
-        } else {
-            // Add data to TX queue at offset 0x164
-            bytesAdded = AddtoQueue(basePtr + 0x164, buffer, size);
-            *count = bytesAdded;
-
-            // Update state - clear bit 0x4000000
-            changeState(self, 0, 0x4000000);
-
-            totalQueued = *count;
-
-            // Start transmission
-            SetUpTransmit(self);
-
-            // If not all data was queued
-            if (totalQueued < size) {
-                // Check sleep flag: (sleep == 0) << 1 gives 0 or 2
-                noSleepFlag = (sleep == 0) << 1;
-                remainingBytes = size;
-
-                do {
-                    // If no sleep flag is set (bit 1), break
-                    if ((BOOL)(noSleepFlag >> 1 & 1)) {
-                        break;
-                    }
-
-                    // Calculate remaining bytes
-                    remainingBytes = remainingBytes - *count;
-
-                    watchState = 0x2000000;
-                    MyIOLog("TX Enqueue Entereing WatchState\n\r");
-
-                    result = [self watchState:&watchState mask:0x2000000];
-
-                    if (result != 0) {
-                        MyIOLog("Interrupted!]");
-                        // Unlock
-                        return result;
-                    }
-
-                    // Unlock and relock
-
-                    // Try to add more data
-                    bytesQueued = AddtoQueue(basePtr + 0x164,
-                                             buffer + totalQueued,
-                                             remainingBytes);
-                    *count = bytesQueued;
-
-                    // Update state
-                    changeState(self, 0, 0x4000000);
-
-                    totalQueued = totalQueued + *count;
-
-                    // Start transmission
-                    SetUpTransmit(self);
-
-                } while (totalQueued < size);
-            }
-
-            // Log queue usage
-            unsigned int queueUsed = UsedSpaceinQueue(basePtr + 0x164);
-            MyIOLog("Enqueue Check %x\n\r", queueUsed);
-
-            // Enable all interrupts
-            [self enableAllInterrupts];
-
-            MyIOLog("-->Out Enqueue\n\r");
-
-            // Unlock
-            result = 0;
-        }
+    s = splpower();
+    if ((port->State & PD_S_ACTIVE) == 0) {
+        splx(s);
+        return IO_R_NOT_OPEN;
     }
-
-    return result;
+    *count = AddtoQueue(&port->TX, buffer, size);
+    changeState(port, 0, PD_S_TXQ_EMPTY);
+    done = *count;
+    SetUpTransmit(port);
+    while (done < size && sleep) {
+        remaining -= *count;
+        state = PD_S_TXQ_LOW_WATER;
+        MyIOLog("TX Enqueue Entereing WatchState\n\r");
+        rc = [self watchState:&state mask:PD_S_TXQ_LOW_WATER];
+        if (rc != IO_R_SUCCESS) {
+            MyIOLog("Interrupted!]");
+            splx(s);
+            return rc;
+        }
+        splx(s);
+        *count = AddtoQueue(&port->TX, buffer + done, remaining);
+        changeState(port, 0, PD_S_TXQ_EMPTY);
+        done += *count;
+        SetUpTransmit(port);
+    }
+    /* Divergence from 5.6: report the whole transfer; the binary leaves the
+       last chunk's count, so a caller would resend what was already queued. */
+    *count = done;
+    MyIOLog("Enqueue Check %x\n\r", UsedSpaceinQueue(&port->TX));
+    [self enableAllInterrupts];
+    MyIOLog("-->Out Enqueue\n\r");
+    splx(s);
+    return IO_R_SUCCESS;
 }
 
-/*
- * Enqueue an event to the serial port.
- *
- * Placeholder implementation that just validates the port is active.
- *
- * Parameters:
- *   event: Event type to enqueue
- *   data: Event data
- *   sleep: Whether to sleep if queue is full
- *
- * Returns: IO_R_SUCCESS if port is active, IO_R_NOT_OPEN otherwise
- */
-- (IOReturn)enqueueEvent:(unsigned int)event
-                    data:(unsigned int)data
-                   sleep:(BOOL)sleep
+- (IOReturn)dequeueData:(unsigned char *)buffer
+             bufferSize:(unsigned int)size
+          transferCount:(unsigned int *)count
+               minCount:(unsigned int)minCount
 {
-    char *basePtr = (char *)self;
-    IOReturn result;
+    unsigned long   state = 0;
+    unsigned int    done;
+    unsigned int    s;
+    IOReturn        rc = IO_R_SUCCESS;
 
-    MyIOLog("enqueueEvent\n\r");
-
-    // Lock
-
-    // Check if port is active (offset 0x134 & 0x40000000)
-    if ((*(unsigned int *)(basePtr + 0x134) & 0x40000000) == 0) {
-        // Unlock
-        result = 0xfffffd33;  // IO_R_NOT_OPEN
-    } else {
-        // Unlock
-        result = 0;
+    if ((port->State & PD_S_ACTIVE) == 0)
+        return IO_R_NOT_OPEN;
+    if (count == NULL || buffer == NULL || minCount > size)
+        return IO_R_INVALID_ARG;
+    MyIOLog("++>In Dequeue %x %d %d %d\n\r", buffer, size, *count, minCount);
+    s = splpower();
+    *count = RemovefromQueue(&port->RX, buffer, size);
+    changeState(port, PD_S_RXQ_EMPTY, PD_S_RXQ_EMPTY);
+    done = *count;
+    while (done < minCount) {
+        state = 0;
+        MyIOLog("dequeueData: Entering WatchState %d\n\r", done);
+        rc = [self watchState:&state mask:PD_S_RXQ_EMPTY];
+        if (rc != IO_R_SUCCESS) {
+            MyIOLog("Interrupted!]");
+            break;
+        }
+        splx(s);
+        done += RemovefromQueue(&port->RX, buffer + done, size - done);
+        changeState(port, PD_S_RXQ_EMPTY, PD_S_RXQ_EMPTY);
     }
-
-    return result;
-}
-
-/*
- * Execute an event.
- *
- * Handles special event codes and dispatches to executeEvent for others.
- * Some events (0xb, 0xf, 0x4b, 0x53) are handled specially or are no-ops.
- *
- * Parameters:
- *   event: Event code to execute
- *   data: Event data parameter
- *
- * Returns: IO_R_SUCCESS on success, IO_R_NOT_OPEN if port is not active
- */
-- (IOReturn)executeEvent:(unsigned int)event
-                    data:(unsigned int)data
-{
-    char *basePtr = (char *)self;
-    IOReturn result;
-    int dataMilliseconds;
-    int dataSeconds;
-    unsigned int newState;
-    unsigned int stateMask;
-
-    result = 0;
-
-    // Lock
-
-    MyIOLog("executeEvent\n\r");
-
-    // Check if port is active (offset 0x294 + 0xc, which is self + 0xc)
-    // If bit 31 is set (negative), port is not active
-    if (*(int *)(basePtr + 0xc) < 0) {
-        // Unlock
-        return 0xfffffd33;  // IO_R_NOT_OPEN
+    /* Divergence from 5.6: report the whole transfer, not the last chunk. */
+    *count = done;
+    if (rc == IO_R_SUCCESS) {
+        MyIOLog("dequeueData: Exit from WatchState\n\r");
+        if (port->RXOstate == -1
+         && UsedSpaceinQueue(&port->RX) < port->RXStats.LowWater) {
+            port->RXOstate = 0;
+            /* Divergence from 5.6: resume the sender with XON; the binary
+               queues XOFF here, which keeps it stopped. */
+            AddBytetoQueue(&port->TX, port->XONchar);
+            SetUpTransmit(port);
+        }
+        MyIOLog("-->Out Dequeue\n\r");
     }
-
-    // Handle special event codes
-    if (event == 0xf) {
-        // Event 0xf - no-op
-        goto cleanup;
-    }
-
-    if (event < 0x10) {
-        if (event == 0xb) {
-            // Event 0xb - no-op
-            goto cleanup;
-        }
-    } else {
-        if (event == 0x4b) {
-            // Event 0x4b - Set timeout value
-            // Convert data from milliseconds to nanoseconds
-            dataMilliseconds = data * 1000;
-            dataSeconds = dataMilliseconds;
-
-            // Perform 64-bit division and modulo by 1000000000
-            // These are likely __udivdi3 and __umoddi3 compiler intrinsics
-            // For now, simplified calculation
-            // Store at offset 0x220 and 0x224
-            *(int *)(basePtr + 0x220) = dataSeconds;
-            *(int *)(basePtr + 0x224) = dataMilliseconds;
-
-            goto cleanup;
-        }
-
-        if (event == 0x53) {
-            // Event 0x53 - no-op
-            goto cleanup;
-        }
-    }
-
-    // For other events, call executeEvent
-    stateMask = 0;
-    newState = *(unsigned int *)(basePtr + 0x134);
-
-    result = executeEvent(self, event, data, &newState, &stateMask);
-
-    // Update state with changes
-    changeState(self, newState, stateMask);
-
-cleanup:
-    // Unlock
-    return result;
-}
-
-/*
- * Request an event.
- */
-- (IOReturn)requestEvent:(unsigned int)event
-                    data:(unsigned int *)data
-{
-    char *basePtr = (char *)self;
-    unsigned int uVar1;
-    int iVar2;
-    unsigned int uVar3;
-    unsigned int uVar4;
-
-    MyIOLog("requestEvent2\n\r");
-
-    if (data == NULL) {
-        return 0xfffffd3e;  /* IO_R_INVALID_ARG */
-    }
-
-    if (event == 0x43) {
-        uVar1 = *(unsigned int *)(basePtr + 0x1a8);
-        goto LAB_00001774;
-    }
-
-    if (event < 0x44) {
-        if (event == 0x27) {
-            uVar1 = UsedSpaceinQueue((unsigned int)(basePtr + 0x14c));
-            *data = uVar1;
-            return 0;
-        }
-
-        if (event < 0x28) {
-            if (event == 0xb) {
-                iVar2 = (int)(basePtr + 0x164);
-            } else {
-                if (event < 0xc) {
-                    if (event != 5) {
-                        return 0xfffffd3e;
-                    }
-                    uVar1 = *(unsigned int *)(basePtr + 0x134) >> 0x1e & 1;
-                    goto LAB_00001774;
-                }
-                if (event != 0xf) {
-                    if (event != 0x23) {
-                        return 0xfffffd3e;
-                    }
-                    uVar1 = FreeSpaceinQueue((unsigned int)(basePtr + 0x164));
-                    *data = uVar1;
-                    return 0;
-                }
-                iVar2 = (int)(basePtr + 0x14c);
-            }
-            uVar1 = GetQueueSize(iVar2);
-            *data = uVar1;
-            return 0;
-        }
-
-        if (event != 0x37) {
-            if (event < 0x38) {
-                if (event != 0x33) {
-                    return 0xfffffd3e;
-                }
-                iVar2 = *(int *)(basePtr + 0x1b4);
-            } else {
-                if (event != 0x3b) {
-                    if (event != 0x3f) {
-                        return 0xfffffd3e;
-                    }
-                    goto LAB_00001744;
-                }
-                iVar2 = *(int *)(basePtr + 0x1a0);
-            }
-LAB_0000173c:
-            uVar1 = iVar2 << 1;
-            goto LAB_00001774;
-        }
-    } else {
-        if (event == 0xe5) {
-            uVar1 = -(unsigned int)*(unsigned char *)(basePtr + 0x1c4) >> 0x1f;
-            goto LAB_00001774;
-        }
-
-        if (event < 0xe6) {
-            if (event == 0x4b) {
-                uVar1 = *(unsigned int *)(basePtr + 0x220);
-                uVar4 = *(unsigned int *)(basePtr + 0x224);
-LAB_00001694:
-                uVar3 = uVar1 * 1000000000 + uVar4;
-                /* Division by 1000 for nanoseconds conversion */
-                uVar3 = uVar3 / 1000;
-                *data = uVar3;
-                return 0;
-            }
-
-            if (event < 0x4c) {
-                if (event != 0x47) {
-                    return 0xfffffd3e;
-                }
-                uVar1 = *(unsigned int *)(basePtr + 0x1ac);
-            } else {
-                if (event == 0x4f) {
-                    uVar1 = *(unsigned int *)(basePtr + 0x218);
-                    uVar4 = *(unsigned int *)(basePtr + 0x21c);
-                    goto LAB_00001694;
-                }
-                if (event != 0x53) {
-                    return 0xfffffd3e;
-                }
-                uVar1 = *(unsigned int *)(basePtr + 0x1e8);
-            }
-            goto LAB_00001774;
-        }
-
-        if (event == 0xf3) {
-            iVar2 = *(int *)(basePtr + 0x1a4);
-            goto LAB_0000173c;
-        }
-
-        if (event < 0xf4) {
-            if (event == 0xe9) {
-                uVar1 = (unsigned int)*(unsigned char *)(basePtr + 0x1c7);
-            } else {
-                if (event != 0xed) {
-                    return 0xfffffd3e;
-                }
-                uVar1 = (unsigned int)*(unsigned char *)(basePtr + 0x1c6);
-            }
-            goto LAB_00001774;
-        }
-
-        if (event != 0xf7) {
-            if (event != 0xf9) {
-                return 0xfffffd3e;
-            }
-            uVar1 = *(unsigned int *)(basePtr + 0x134) >> 0xb & 1;
-            goto LAB_00001774;
-        }
-    }
-
-LAB_00001744:
-    uVar1 = 0;
-
-LAB_00001774:
-    *data = uVar1;
-    return 0;
-}
-
-/*
- * Get the next event.
- */
-/*
- * Get the next event.
- *
- * Placeholder implementation that just returns 0 (no events).
- *
- * Returns: 0 (no event)
- */
-- (unsigned int)nextEvent
-{
-    MyIOLog("nextEvent\n\r");
-
-    // Lock
-    // Unlock
-
-    return 0;
-}
-
-/*
- * Get the current state.
- *
- * Checks queue levels and returns the current state with bit 0x1000 masked off.
- *
- * Returns: Current state value (with bit 0x1000 cleared)
- */
-- (unsigned int)getState
-{
-    char *basePtr = (char *)self;
-
-    // Check queue levels and update state
-    CheckQueues(self);
-
-    // Return state from offset 0x134 with bit 0x1000 masked off (0xffffefff)
-    return *(unsigned int *)(basePtr + 0x134) & 0xffffefff;
-}
-
-/*
- * Set the state with mask.
- */
-- (IOReturn)setState:(unsigned int)state
-                mask:(unsigned int)mask
-{
-    char *basePtr = (char *)self;
-    int iVar1;
-    unsigned int uVar2;
-    unsigned int uVar3;
-    extern unsigned int FUN_000011a0(void);
-    extern void FUN_00001190(unsigned int);
-
-    MyIOLog("++>setState %d %x\n\r", state, mask);
-
-    if ((mask & 0xc0001000) == 0) {
-        uVar2 = FUN_000011a0();
-
-        if (*(int *)(*(unsigned int *)(basePtr + 0x294) + 0xc) < 0) {
-            uVar3 = mask & (~*(unsigned int *)(basePtr + 0x1e8) | 0xffff0000);
-            if (uVar3 != 0) {
-                changeState(*(unsigned int *)(basePtr + 0x294), state, uVar3);
-            }
-            MyIOLog("-->setState\n\r");
-            FUN_00001190(uVar2);
-            iVar1 = 0;
-        } else {
-            FUN_00001190(uVar2);
-            iVar1 = 0xfffffd33;
-        }
-    } else {
-        iVar1 = 0xfffffd3e;
-    }
-
-    return iVar1;
-}
-
-/*
- * Watch state with mask.
- */
-- (IOReturn)watchState:(unsigned int *)state
-                  mask:(unsigned int)mask
-{
-    char *basePtr = (char *)self;
-    unsigned int uVar1;
-    int iVar2;
-    extern unsigned int FUN_000012cc(void);
-    extern void FUN_000012ac(unsigned int);
-
-    MyIOLog("watchState\n\r");
-
-    uVar1 = FUN_000012cc();
-
-    if (*(int *)(*(unsigned int *)(basePtr + 0x294) + 0xc) < 0) {
-        iVar2 = watchState(*(int *)(basePtr + 0x294), state, mask & 0xffffefff);
-        *state = *state & 0xffffefff;
-        FUN_000012ac(uVar1);
-    } else {
-        FUN_000012ac(uVar1);
-        iVar2 = 0xfffffd33;
-    }
-
-    return iVar2;
-}
-
-/*
- * Get character values for a parameter.
- *
- * Attempts to get a configuration value from the device description's
- * config table. If found, copies it to the values buffer. Otherwise,
- * delegates to the superclass implementation.
- *
- * Parameters:
- *   values: Buffer to receive parameter value
- *   parameter: Parameter name to look up
- *   count: Pointer to buffer size on input, actual size on output
- *
- * Returns: IO_R_SUCCESS if found, or result from superclass
- */
-- (IOReturn)getCharValues:(unsigned char *)values
-             forParameter:(IOParameterName)parameter
-                    count:(unsigned int *)count
-{
-    id deviceDesc;
-    id configTable;
-    const char *stringValue;
-    int stringLength;
-
-    MyIOLog("getCharValue\n\r");
-
-    // Validate parameters
-    if ((values != NULL) && (count != NULL) && (*count != 0)) {
-        // Get device description
-        deviceDesc = [self deviceDescription];
-
-        // Get config table from device description
-        configTable = [deviceDesc configTable];
-
-        // Look up the value for the parameter key
-        stringValue = [configTable valueForStringKey:parameter];
-
-        if (stringValue != NULL) {
-            // Copy string to buffer, leaving room for null terminator
-            strncpy((char *)values, stringValue, *count - 1);
-
-            // Ensure null termination
-            values[*count - 1] = '\0';
-
-            // Get actual string length
-            stringLength = strlen((char *)values);
-
-            // Return length including null terminator
-            *count = stringLength + 1;
-
-            return 0;
-        }
-    }
-
-    // Not found in config table - delegate to superclass
-    return [super getCharValues:values forParameter:parameter count:count];
-}
-
-/*
- * Get interrupt handler information.
- *
- * Returns the appropriate interrupt handler function pointer based on
- * the interrupt type (0=main ISR, 1=TX DMA, 2=RX DMA).
- *
- * Parameters:
- *   handler: Pointer to receive handler function pointer
- *   level: Pointer to receive interrupt level (always 0x18)
- *   argument: Pointer to receive handler argument (self)
- *   interruptType: Type of interrupt (0, 1, or 2)
- *
- * Returns: YES (always succeeds)
- */
-- (IOReturn)getHandler:(IOInterruptHandler *)handler
-                 level:(unsigned int *)level
-              argument:(void **)argument
-          forInterrupt:(unsigned int)interruptType
-{
-    char *basePtr = (char *)self;
-    void (*handlerFunc)(void *, void *, PPCSerialPort *);
-
-    MyIOLog("getHandler %d\n\r", interruptType);
-
-    if (interruptType == 1) {
-        // TX DMA interrupt
-        MyIOLog("getHandler PPCSerialTxDMAISR\n\r");
-        handlerFunc = PPCSerialTxDMAISR;
-    } else if (interruptType == 0) {
-        // Main SCC interrupt
-        MyIOLog("getHandler PPCSerialISR\n\r");
-        handlerFunc = PPCSerialISR;
-    } else {
-        if (interruptType != 2) {
-            // Unknown interrupt type - skip setting handler
-            goto set_level_and_argument;
-        }
-        // RX DMA interrupt
-        MyIOLog("getHandler PPCSerialRxDMAISR\n\r");
-        handlerFunc = PPCSerialRxDMAISR;
-    }
-
-    // Set handler function pointer
-    *handler = (IOInterruptHandler)handlerFunc;
-
-set_level_and_argument:
-    // Set interrupt level to 0x18
-    *level = 0x18;
-
-    // Set argument to self (from offset 0x294, which is self)
-    *argument = (void *)self;
-
-    return YES;
+    splx(s);
+    return rc;
 }
 
 @end
 
-//==============================================================================
-// Utility Functions
-//==============================================================================
-
-/*
- * Activate the port.
- *
- * Allocates the two ring buffers, resets the per-open fields and marks the
- * port active.  Called with the port info block (self + 0x128), the same
- * pointer that is kept at offset 0x294 of the instance.
- *
- * If the port is already active there is nothing to do.  Otherwise both ring
- * buffers are allocated; the allocations are chained with && so a failure of
- * either one lands on the same cleanup, which frees only the buffer at
- * offset 0x3c.  That is what the shipped code does, and the second-buffer
- * failure path is correct: the buffer at 0x24 was never allocated, so freeing
- * only 0x3c leaks nothing.  The odd path is the *first*-buffer failure, which
- * still calls freeRingBuffer(0x3c) even though that allocation just failed;
- * allocateRingBuffer has already run InitQueue with a NULL buffer and a
- * capacity of 0x1000, so freeRingBuffer reaches IOFree(NULL, 0x1000) and thus
- * kfree(NULL, 0x1000).  The hazard belongs to freeRingBuffer, which does not
- * guard its IOFree; it is pre-existing and out of this work's scope.  Apple's
- * form is reproduced here rather than repaired.
- *
- * Returns: IO_R_SUCCESS, or IO_R_RESOURCE if a ring buffer could not be had.
- */
-static IOReturn activatePort(PPCSerialPort *self)
-{
-    char *basePtr = (char *)self;
-
-    MyIOLog(" activatePort\n\r");
-
-    // Already active - nothing to do
-    if ((*(unsigned int *)(basePtr + 0xc) & STATE_ACTIVE) != 0) {
-        return IO_R_SUCCESS;
-    }
-
-    // TX ring buffer at offset 0x3c, requested size at offset 0x64;
-    // RX ring buffer at offset 0x24, requested size at offset 0x54.
-    if (allocateRingBuffer(basePtr + 0x3c, *(unsigned int *)(basePtr + 0x64)) &&
-        allocateRingBuffer(basePtr + 0x24, *(unsigned int *)(basePtr + 0x54))) {
-        SetStructureDefaults(self, NO);
-        changeState(self, STATE_ACTIVE, STATE_ACTIVE);
-        MyIOLog("End Act State %x\n\r", *(unsigned int *)(basePtr + 0xc));
-        return IO_R_SUCCESS;
-    }
-
-    freeRingBuffer(basePtr + 0x3c);
-    return IO_R_RESOURCE;
-}
-
-/*
- * Add a single byte to a queue.
- */
-/*
- * Add a byte to the queue.
- *
- * Adds one byte to the queue at the write pointer position.
- * Queue structure (as int array):
- *   [0] = start pointer
- *   [1] = end pointer
- *   [2] = write pointer
- *   [3] = read pointer
- *   [4] = capacity
- *   [5] = used count
- *
- * Returns 0 on success, 1 if queue is full.
- */
-static IOReturn AddBytetoQueue(void *queueBase, unsigned char byte)
-{
-    unsigned int *queue = (unsigned int *)queueBase;
-    IOReturn result;
-    unsigned char *writePtr;
-
-    // Check if queue is full (write == read AND used != 0)
-    if ((queue[2] == queue[3]) && (queue[5] != 0)) {
-        result = 1;
-    } else {
-        // Get current write pointer
-        writePtr = (unsigned char *)queue[2];
-
-        // Increment write pointer first
-        queue[2] = (unsigned int)(writePtr + 1);
-
-        // Write byte to old position
-        *writePtr = byte;
-
-        // Increment used count
-        queue[5] = queue[5] + 1;
-
-        // Check for wrap-around (if new write pointer >= end pointer)
-        if (queue[1] <= queue[2]) {
-            queue[2] = queue[0];  // Wrap to start
-        }
-
-        result = 0;
-    }
-
-    return result;
-}
-
-/*
- * Add data to a queue.
- *
- * Adds multiple bytes to the queue from a buffer.
- * Continues until the queue is full or all bytes are added.
- *
- * Parameters:
- *   queueBase: Pointer to queue control structure
- *   buffer: Input buffer containing data to add
- *   size: Number of bytes to add
- *
- * Returns: Number of bytes actually added
- */
-static unsigned int AddtoQueue(void *queueBase, unsigned char *buffer, unsigned int size)
-{
-    unsigned char byte;
-    int freeSpace;
-    unsigned int bytesAdded;
-
-    bytesAdded = 0;
-
-    // Loop adding bytes until queue is full or size reached
-    while (1) {
-        freeSpace = FreeSpaceinQueue(queueBase);
-
-        // Break if queue is full or we've added all requested bytes
-        if ((freeSpace == 0) || (size <= bytesAdded)) {
-            break;
-        }
-
-        // Get next byte from buffer
-        byte = *buffer;
-        buffer++;
-
-        // Add byte to queue
-        AddBytetoQueue(queueBase, byte);
-
-        bytesAdded++;
-    }
-
-    return bytesAdded;
-}
-
-/*
- * Allocate ring buffer.
- *
- * Allocates a 4KB (0x1000) ring buffer using IOMalloc.
- * Initializes the queue structure with the allocated buffer.
- *
- * Parameters:
- *   queueBase: Pointer to queue control structure
- *   bufferSize: Size requested by the caller.  The shipped driver ignores it
- *               and always allocates 0x1000; both call sites in activatePort
- *               pass it all the same.
- *
- * Returns: YES if allocation succeeded, NO if it failed
- */
-static BOOL allocateRingBuffer(void *queueBase, unsigned int bufferSize)
-{
-    int bufferPtr;
-
-    MyIOLog("In allocateRingBuffer\n\r");
-
-    // Allocate 4KB buffer (FUN_0000279c is likely IOMalloc)
-    bufferPtr = (int)IOMalloc(0x1000);
-
-    // Initialize queue with the allocated buffer
-    InitQueue((int *)queueBase, bufferPtr, 0x1000);
-
-    // Return whether allocation succeeded (buffer != 0)
-    return (bufferPtr != 0);
-}
-
-/*
- * Change port state.
- *
- * Updates the port state using a mask to determine which bits to change.
- * If any watched state bits change, wakes up threads waiting on the state.
- *
- * Parameters:
- *   self: Pointer to PPCSerialPort instance
- *   newState: New state value
- *   mask: Mask indicating which bits to update
- */
-static void changeState(PPCSerialPort *self, unsigned int newState, unsigned int mask)
-{
-    char *basePtr = (char *)self;
-    unsigned int oldState;
-    unsigned int updatedState;
-
-    MyIOLog("++>changeState(%x, %x, %x) %x\n\r",
-             newState,
-             mask,
-             *(unsigned int *)(basePtr + 0xc),
-             *(unsigned int *)(basePtr + 0x10));
-
-    // Get current state from offset 0xc
-    oldState = *(unsigned int *)(basePtr + 0xc);
-
-    // Update state: clear bits specified by mask, then set new bits
-    updatedState = (oldState & ~mask) | (newState & mask);
-
-    // Write updated state back to offset 0xc
-    *(unsigned int *)(basePtr + 0xc) = updatedState;
-
-    // Check if any watched state bits changed
-    // Compare changed bits (updatedState XOR oldState) with watch mask (offset 0x10)
-    if (((updatedState ^ oldState) & *(unsigned int *)(basePtr + 0x10)) != 0) {
-        MyIOLog("changeState Calling thread_wakeup\n\r");
-
-        // Wake up threads waiting on state change
-        // FUN_000029d0 is likely thread_wakeup or assert_wait_result
-        // Parameters appear to be: (event address, result code, flags)
-        // Using IOSleep(0) as a placeholder to yield - actual implementation
-        // would use thread_wakeup(&self->watchStateMask, THREAD_AWAKENED, 4)
-        extern void thread_wakeup(void *event);
-        thread_wakeup((void *)(basePtr + 0x10));
-    }
-
-    MyIOLog("-->changeState %x \n\r", *(unsigned int *)(basePtr + 0xc));
-}
-
-/*
- * Data latency timeout handler.
- *
- * Registered in initFromDeviceDescription: with
- *   thread_call_allocate(dataLatTOHandler, &self->portInfo)
- * so the kernel calls it as a thread_call_func_t, i.e. (spec, call), where
- * spec is the port info block.  Both arguments are unused here.
- *
- * The shipped body only logs and cycles the priority level; the data latency
- * work it was presumably meant to do is not present.
- */
-static void dataLatTOHandler(void *spec, void *call)
+static void
+dataLatTOHandler(Port *port)
 {
     unsigned int s;
-    extern unsigned int splpower(void);
-    extern void splx(unsigned int level);
 
     MyIOLog("dataLatTOHandler\n\r");
-
     s = splpower();
     splx(s);
 }
 
-/*
- * Deactivate port.
- *
- * Stub implementation - deactivates the serial port.
- */
-static void deactivatePort(PPCSerialPort *self)
+static void
+frameTOHandler(Port *port)
 {
-    // Stub: Implementation needed
-    // This likely clears the active state and stops any operations
-}
-
-/*
- * Delay timeout handler.
- *
- * Registered with thread_call_allocate(delayTOHandler, &self->portInfo);
- * spec is the port info block, call is unused.
- *
- * Clears the internal state bit 0x1000 - the same bit getState and
- * watchState mask out of the state they hand back to clients - and then
- * runs the interrupt service routine to drain whatever is pending.
- */
-static void delayTOHandler(void *spec, void *call)
-{
-    char *basePtr = (char *)spec;
     unsigned int s;
-    extern unsigned int splpower(void);
-    extern void splx(unsigned int level);
-
-    MyIOLog("delayTOHandler\n\r");
-
-    s = splpower();
-
-    *(unsigned int *)(basePtr + 0xc) = *(unsigned int *)(basePtr + 0xc) & 0xffffefff;
-
-    PPCSerialISR(0, 0, (PPCSerialPort *)spec);
-
-    splx(s);
-}
-
-/*
- * Execute event helper function.
- *
- * Stub implementation - executes a serial port event.
- *
- * Parameters:
- *   self: PPCSerialPort instance
- *   event: Event code
- *   data: Event data
- *   currentState: Pointer to current state (updated by event)
- *   stateMask: Pointer to state mask (indicates changed bits)
- *
- * Returns: IOReturn status code
- */
-static IOReturn executeEvent(PPCSerialPort *self, unsigned int event, unsigned int data,
-                              unsigned int *currentState, unsigned int *stateMask)
-{
-    // Stub: Implementation needed
-    // This would handle various event types and update the state accordingly
-    return 0;
-}
-
-/*
- * Check queue levels and update state.
- */
-/*
- * Check queue states and update state bits.
- *
- * This function checks both RX and TX queue levels and sets/clears
- * appropriate state bits based on watermarks.
- *
- * RX Queue (at offset 0x3c):
- *   - bit 0x800000: Set if queue has data (not empty)
- *   - bit 0x2000000: Set if used < low watermark
- *   - bit 0x1000000: Set if used > high watermark
- *
- * TX Queue (at offset 0x24):
- *   - bit 0x10000: Set if queue is full (free == 0)
- *   - bit 0x80000: Set if queue is empty (size == free)
- *   - bit 0x40000: Set if used < med watermark
- *   - bit 0x20000: Set if used < low watermark
- */
-static void CheckQueues(PPCSerialPort *self)
-{
-    char *basePtr = (char *)self;
-    int rxSize, rxFree, rxUsed;
-    int txSize, txFree, txUsed;
-    unsigned int newState;
-
-    // Get current state from offset 0xc
-    newState = *(unsigned int *)(basePtr + 0xc);
-
-    // Check RX queue (at offset 0x3c)
-    rxSize = GetQueueSize(basePtr + 0x3c);
-    rxFree = FreeSpaceinQueue(basePtr + 0x3c);
-
-    // Check if RX queue is full (free == 0)
-    if (rxFree == 0) {
-        newState = newState | 0x800000;
-    } else {
-        newState = newState & 0xff7fffff;
-    }
-
-    // Check if RX queue is empty (size == free)
-    if (rxSize == rxFree) {
-        newState = newState & 0xff7fffff;
-    } else {
-        newState = newState | 0x800000;
-    }
-
-    // Calculate RX used count
-    rxUsed = rxSize - rxFree;
-
-    // Check RX low watermark (offset 0x6c)
-    if ((unsigned int)rxUsed < *(unsigned int *)(basePtr + 0x6c)) {
-        newState = newState | 0x2000000;
-    } else {
-        newState = newState & 0xfdffffff;
-    }
-
-    // Check RX high watermark (offset 0x68)
-    if (*(unsigned int *)(basePtr + 0x68) < (unsigned int)rxUsed) {
-        newState = newState | 0x1000000;
-    } else {
-        newState = newState & 0xfeffffff;
-    }
-
-    // Check TX queue (at offset 0x24)
-    txSize = GetQueueSize(basePtr + 0x24);
-    txFree = FreeSpaceinQueue(basePtr + 0x24);
-
-    // Check if TX queue is full (free == 0)
-    if (txFree == 0) {
-        newState = newState | 0x10000;
-    } else {
-        newState = newState & 0xfffeffff;
-    }
-
-    // Check if TX queue is empty (size == free)
-    if (txSize == txFree) {
-        newState = newState | 0x80000;
-    } else {
-        newState = newState & 0xfff7ffff;
-    }
-
-    // Calculate TX used count
-    txUsed = txSize - txFree;
-
-    // Check TX med watermark (offset 0x5c)
-    if ((unsigned int)txUsed < *(unsigned int *)(basePtr + 0x5c)) {
-        newState = newState | 0x40000;
-    } else {
-        newState = newState & 0xfffbffff;
-    }
-
-    // Check TX low watermark (offset 0x58)
-    if (*(unsigned int *)(basePtr + 0x58) < (unsigned int)txUsed) {
-        newState = newState | 0x20000;
-    } else {
-        newState = newState & 0xfffdffff;
-    }
-
-    // Update state with changes (mask = newState XOR currentState)
-    changeState(self, newState, newState ^ *(unsigned int *)(basePtr + 0xc));
-}
-
-/*
- * Close a queue.
- */
-/*
- * Close a queue.
- *
- * Zeros out all queue control structure fields.
- * Returns 0 (always succeeds).
- */
-static IOReturn CloseQueue(void *queueBase)
-{
-    unsigned int *queue = (unsigned int *)queueBase;
-
-    queue[0] = 0;  // Start pointer
-    queue[1] = 0;  // End pointer
-    queue[2] = 0;  // Write pointer
-    queue[3] = 0;  // Read pointer
-    queue[4] = 0;  // Capacity
-
-    return 0;
-}
-
-/*
- * Frame timeout handler.
- *
- * Registered with thread_call_allocate(frameTOHandler, &self->portInfo);
- * spec is the port info block, call is unused.
- *
- * Zeroes the byte at offset 0x9d - the byte SetStructureDefaults also zeroes -
- * and then runs the interrupt service routine.  What that byte means is not
- * established: `__TEXT,__text` contains exactly two accesses to 0x9d, the
- * `stb` in SetStructureDefaults (0x06fc) and the `stb` here (0x1ed0), and no
- * read at all.
- *
- * The log string says "frameToHandler", with a lower case o.  That is the
- * spelling in the shipped binary and is kept verbatim.
- */
-static void frameTOHandler(void *spec, void *call)
-{
-    char *basePtr = (char *)spec;
-    unsigned int s;
-    extern unsigned int splpower(void);
-    extern void splx(unsigned int level);
 
     MyIOLog("frameToHandler\n\r");
-
     s = splpower();
-
-    *(unsigned char *)(basePtr + 0x9d) = 0;
-
-    PPCSerialISR(0, 0, (PPCSerialPort *)spec);
-
+    port->WaitingForTXIdle = 0;
+    PPCSerialISR(NULL, NULL, port);
     splx(s);
 }
 
-/*
- * Free ring buffer.
- *
- * Frees the buffer memory and closes the queue.
- * This calls IOFree with the buffer start pointer and capacity.
- */
-static void freeRingBuffer(void *queueBase)
+static void
+delayTOHandler(Port *port)
 {
-    unsigned int *queue = (unsigned int *)queueBase;
-
-    MyIOLog("In freeRingBuffer\n\r");
-
-    // Free the buffer memory (FUN_00002704 is likely IOFree)
-    // IOFree(pointer, size)
-    IOFree((void *)queue[0], queue[4]);
-
-    // Close the queue
-    CloseQueue(queueBase);
-}
-
-/*
- * Get free space in queue.
- */
-/*
- * Get free space in queue.
- *
- * Returns the difference between capacity (offset 0x10) and used count (offset 0x14).
- * This is the number of free bytes available in the queue.
- */
-static unsigned int FreeSpaceinQueue(void *queueBase)
-{
-    int *queue = (int *)queueBase;
-    return *(int *)(((char *)queue) + 0x10) - *(int *)(((char *)queue) + 0x14);
-}
-
-/*
- * Get a byte from a queue.
- */
-/*
- * Get a byte from the queue.
- *
- * Removes one byte from the queue and stores it in byteOut.
- * Queue structure (as int array):
- *   [0] = start pointer
- *   [1] = end pointer
- *   [2] = write pointer
- *   [3] = read pointer
- *   [4] = capacity
- *   [5] = used count
- *
- * Returns 0 on success, 2 if queue is empty.
- */
-static IOReturn GetBytetoQueue(void *queueBase, unsigned char *byteOut)
-{
-    unsigned int *queue = (unsigned int *)queueBase;
-    IOReturn result;
-    unsigned char *readPtr;
-
-    // Check if queue is empty (write == read AND used == 0)
-    if ((queue[2] == queue[3]) && (queue[5] == 0)) {
-        result = 2;
-    } else {
-        // Get current read pointer
-        readPtr = (unsigned char *)queue[3];
-
-        // Increment read pointer first
-        queue[3] = (unsigned int)(readPtr + 1);
-
-        // Read byte from old position
-        *byteOut = *readPtr;
-
-        // Decrement used count
-        queue[5] = queue[5] - 1;
-
-        // Check for wrap-around (if new read pointer >= end pointer)
-        if (queue[1] <= queue[3]) {
-            queue[3] = queue[0];  // Wrap to start
-        }
-
-        result = 0;
-    }
-
-    return result;
-}
-
-/*
- * Get queue size.
- *
- * Returns the capacity of the queue from offset 0x10 (element [4]).
- */
-static unsigned int GetQueueSize(void *queueBase)
-{
-    int *queue = (int *)queueBase;
-    return *(unsigned int *)(((char *)queue) + 0x10);
-}
-
-/*
- * Heartbeat timeout handler.
- *
- * Registered with thread_call_allocate(heartBeatTOHandler, &self->portInfo);
- * spec is the port info block, call is unused - the handler re-arms itself
- * through its own thread_call_t, which is kept at offset 0xe4 of the port
- * info block (0x20c of the instance).
- *
- * Runs the interrupt service routine, then reschedules itself one interval
- * further on.  The interval is the tvalspec_t at offset 0x100, which
- * SetStructureDefaults zeroes on a full init.
- */
-static void heartBeatTOHandler(void *spec, void *call)
-{
-    char *basePtr = (char *)spec;
     unsigned int s;
-    tvalspec_t deadline;
-    extern unsigned int splpower(void);
-    extern void splx(unsigned int level);
-    extern tvalspec_t deadline_from_interval(tvalspec_t interval);
-    extern void thread_call_enter_delayed(void *entry, tvalspec_t when);
+
+    MyIOLog("delayTOHandler\n\r");
+    s = splpower();
+    port->State &= ~PD_RS232_S_DELAY;
+    PPCSerialISR(NULL, NULL, port);
+    splx(s);
+}
+
+static void
+heartBeatTOHandler(Port *port)
+{
+    unsigned int s;
 
     MyIOLog("heartBeatTOHandler\n\r");
-
     s = splpower();
-
-    PPCSerialISR(0, 0, (PPCSerialPort *)spec);
-
-    // Re-arm: deadline = now + heartbeat interval (offset 0x100)
-    deadline = deadline_from_interval(*(tvalspec_t *)(basePtr + 0x100));
-    thread_call_enter_delayed(*(void **)(basePtr + 0xe4), deadline);
-
+    PPCSerialISR(NULL, NULL, port);
+    thread_call_enter_delayed(port->HeartBeatTOEntry,
+        deadline_from_interval(port->HeartBeatInterval));
     splx(s);
 }
 
-/*
- * Initialize SCC chip.
- *
- * Sets up initial chip parameters and probes the SCC device.
- * Sets various state flags before calling the probe function.
- */
-static void initChip(PPCSerialPort *self)
+static IOReturn
+executeEvent(Port *port, unsigned int event, unsigned int data,
+    unsigned int *state, unsigned int *delta)
 {
-    char *basePtr = (char *)self;
+    IOReturn        rc = IO_R_SUCCESS;
+    unsigned int    usec;
+    unsigned int    changed;
+    tvalspec_t      interval;
 
-    MyIOLog("ejk In initChip()\n\r");
+    MyIOLog("ExecuteEvent5 %d %d\n\r", event, data);
+    if ((port->State & PD_S_ACQUIRED) == 0)
+        return IO_R_NOT_OPEN;
 
-    // Set initial state flags
-    *(unsigned int *)(basePtr + 0x80) = 1;
-    *(unsigned int *)(basePtr + 0x84) = 0;
-    *(unsigned short *)(basePtr + 0x90) = 0;
-    *(unsigned char *)(basePtr + 0x93) = 0;
-
-    // Probe the SCC device
-    ProbeSccDevice(self);
-}
-
-/*
- * Initialize a queue.
- *
- * Sets up a queue control structure with the given buffer and size.
- * Queue structure (as int array):
- *   [0] = start pointer (bufferStart)
- *   [1] = end pointer (bufferStart + bufferSize)
- *   [2] = write pointer (bufferStart)
- *   [3] = read pointer (bufferStart)
- *   [4] = capacity (bufferSize)
- *   [5] = used count (0)
- *
- * Parameters:
- *   queueBase: Pointer to queue control structure (int array)
- *   bufferStart: Starting address of buffer
- *   bufferSize: Size of buffer in bytes
- *
- * Returns: 0 (always succeeds)
- */
-static IOReturn InitQueue(int *queueBase, int bufferStart, int bufferSize)
-{
-    queueBase[0] = bufferStart;                 // Start pointer
-    queueBase[1] = bufferStart + bufferSize;    // End pointer
-    queueBase[4] = bufferSize;                  // Capacity
-    queueBase[2] = bufferStart;                 // Write pointer
-    queueBase[3] = bufferStart;                 // Read pointer
-    queueBase[5] = 0;                           // Used count
-
-    return 0;
-}
-
-/*
- * Debug logging wrapper.
- * Provides formatted logging for debug output.
- */
-static void MyIOLog(const char *format, ...)
-{
-    va_list args;
-
-    va_start(args, format);
-
-    // Use IOLog for kernel logging
-    // Note: IOLog doesn't have a va_list version in DriverKit,
-    // so we'll use IOLogv if available, or format to a buffer
-    char buffer[256];
-    vsnprintf(buffer, sizeof(buffer), format, args);
-    IOLog("%s", buffer);
-
-    va_end(args);
-}
-
-/*
- * Open SCC device.
- *
- * Initializes the SCC channel by writing a series of register pairs
- * from the initialization table. Modifies the table for channel B
- * if needed, then programs all registers and enables interrupts.
- *
- * Returns: 0 on success
- */
-static IOReturn OpenScc(PPCSerialPort *self)
-{
-    char *basePtr = (char *)self;
-    unsigned char localTable[34];
-    unsigned int index;
-
-    // Copy initialization table to local buffer
-    // This is FUN_00002e24(local_38, &DAT_00005a08, 0x22) from decompiled code
-    bcopy(sccInitTable, localTable, 0x22);
-
-    MyIOLog("In OpenSCC %d\n\r", *(unsigned char *)(basePtr + 0x148));
-
-    // If this is channel B (channel 1), modify WR9 value
-    if (*(char *)(basePtr + 0x148) == 1) {
-        localTable[1] = 0x40;  // Change WR9 from 0x80 to 0x40 (channel B reset)
-    }
-
-    // Write all register pairs from the table
-    index = 0;
-    do {
-        SccWriteReg(self, localTable[index], localTable[index + 1]);
-        index = index + 2;
-    } while (index < 0x22);
-
-    // Enable master and RX interrupts
-    SccEnableInterrupts(self, 6, 0);  // Master interrupts
-    SccEnableInterrupts(self, 5, 0);  // RX interrupts
-
-    // Write to WR0 (enable high IRQ priority)
-    SccWriteReg(self, 0, 0x20);
-
-    MyIOLog("PPCSerOpen End \n\r");
-
-    return 0;
-}
-
-/*
- * Main interrupt service routine.
- *
- * Handles SCC interrupts by reading the interrupt vector and dispatching
- * to the appropriate handler. Loops up to 100 times to handle multiple
- * interrupt conditions. Uses direct hardware access to read the interrupt
- * vector from the SCC.
- *
- * Interrupt types (from RR2 shifted right 1, masked with 3):
- *   0: TX buffer empty
- *   1: External/Status change
- *   2: RX character available
- *   3: RX error/special condition
- */
-static void PPCSerialISR(void *identity, void *state, PPCSerialPort *self)
-{
-    char *basePtr = (char *)self;
-    unsigned char intVector;
-    BOOL continueLoop;
-    short loopCount;
-    unsigned int intType;
-    unsigned char statusReg;
-
-    // Increment interrupt count at offset 0x108
-    *(int *)(basePtr + 0x108) = *(int *)(basePtr + 0x108) + 1;
-
-    continueLoop = YES;
-    loopCount = 100;
-
-    do {
-        // Check for timeout
-        if (loopCount == 0) {
-            MyIOLog("***** In PPCSerialISR TimeOut Failure %x\n\r", intType);
-            SccCloseChannel(self);
-            return;
-        }
-
-        // Write 2 to SCC to select RR2 (interrupt vector)
-        *(volatile unsigned char *)(*(unsigned int *)(basePtr + 0x144)) = 2;
-        eieio();
-
-        // Small delay (FUN_00003748(0x32) is likely IODelay(50))
-        IODelay(50);
-
-        // Read interrupt vector
-        intVector = *(volatile unsigned char *)(*(unsigned int *)(basePtr + 0x144));
-        eieio();
-
-        // Another delay
-        IODelay(50);
-
-        // Extract interrupt type: shift right 1, mask with 3
-        intVector = intVector >> 1;
-        intType = intVector & 3;
-
-        if (intType == 1) {
-            // External/Status interrupt
-            SccHandleExtInterrupt(self);
-            continueLoop = NO;
-            statusReg = SccReadReg(self, 0);
-            MyIOLog("ExtStatusInterrupt Int %x\n\r", statusReg);
-        } else if (intType < 2) {
-            if ((intVector & 3) == 0) {
-                // TX interrupt
-                SccHandleTxInterrupt(self);
-            } else {
-                // Unknown interrupt type
-                MyIOLog("Made it to Default interrupt routine. \n\r");
-                continueLoop = NO;
-            }
-        } else {
-            if (intType != 2) {
-                if (intType != 3) {
-                    // Unknown interrupt type
-                    MyIOLog("Made it to Default interrupt routine. \n\r");
-                    continueLoop = NO;
-                } else {
-                    // RX error/special condition interrupt
-                    statusReg = SccReadReg(self, 0);
-                    MyIOLog("RecErrorStatus Int %x\n\r", statusReg);
-                    // Reset error (WR0 command 0x30)
-                    SccWriteReg(self, 0, 0x30);
-                    continueLoop = NO;
-                }
-            } else {
-                // RX character available interrupt
-                SccHandleRxInterrupt(self);
-            }
-        }
-
-        loopCount = loopCount - 1;
-
-        if (!continueLoop) {
-            // FUN_000036e8(param_1) is likely IOUnlock or similar cleanup
-            // For now, just return
-            return;
-        }
-    } while (1);
-}
-
-/*
- * RX DMA interrupt service routine.
- *
- * Handles RX DMA completion interrupts. Currently just increments
- * the interrupt counter and returns.
- */
-static void PPCSerialRxDMAISR(void *identity, void *state, PPCSerialPort *self)
-{
-    char *basePtr = (char *)self;
-
-    // Increment interrupt count at offset 0x108
-    *(int *)(basePtr + 0x108) = *(int *)(basePtr + 0x108) + 1;
-
-    // FUN_00003518() which calls entry() - likely just returns
-    return;
-}
-
-/*
- * TX DMA interrupt service routine.
- *
- * Handles TX DMA completion interrupts. Currently just increments
- * the interrupt counter and returns.
- */
-static void PPCSerialTxDMAISR(void *identity, void *state, PPCSerialPort *self)
-{
-    char *basePtr = (char *)self;
-
-    // Increment interrupt count at offset 0x108
-    *(int *)(basePtr + 0x108) = *(int *)(basePtr + 0x108) + 1;
-
-    // FUN_00003554() which calls entry() - likely just returns
-    return;
-}
-
-/*
- * Probe for SCC device.
- *
- * Determines the SCC control register address based on machine type.
- * The machine type (at offset 0x168) determines the register offset:
- * - Types 0, 5, 6, 7, 8: control register is base + 0x10
- * - Types 1, 2, 3, 4: control register is base + 4
- *
- * Also sets up other register addresses and initialization values.
- */
-static BOOL ProbeSccDevice(PPCSerialPort *self)
-{
-    char *basePtr = (char *)self;
-    int controlRegAddr;
-    unsigned short machineType;
-
-    MyIOLog("In ProbeSccDevice\n\r");
-
-    // Get machine type from offset 0x168
-    machineType = *(unsigned short *)(basePtr + 0x168);
-
-    // Determine control register address based on machine type
-    switch (machineType) {
-    case 0:
-    case 5:
-    case 6:
-    case 7:
-    case 8:
-        // Control register is at base + 0x10
-        controlRegAddr = *(int *)(basePtr + 0x140) + 0x10;
+    switch (event) {
+    case PD_E_ACTIVE:
+        MyIOLog("-ExecuteEvent PD_E_ACTIVE\n\r");
+        if ((unsigned char)data)
+            rc = activatePort(port);
+        else
+            deactivatePort(port);
         break;
 
-    case 1:
-    case 2:
-    case 3:
-    case 4:
-        // Control register is at base + 4
-        controlRegAddr = *(int *)(basePtr + 0x140) + 4;
+    case PD_E_TXQ_LOW_WATER:
+    case PD_E_RXQ_LOW_WATER:
+    case PD_E_TXQ_HIGH_WATER:
+    case PD_E_RXQ_HIGH_WATER:
+    case PD_E_TXQ_FLUSH:
+    case PD_E_RXQ_FLUSH:
+        break;
+
+    case PD_E_DATA_RATE:
+        data >>= 1;             /* half-bits per second */
+        MyIOLog("-ExecuteEvent PD_E_DATA_RATE %d\n\r", data);
+        if (data - 100 > 57500)
+            rc = IO_R_INVALID_ARG;
+        else {
+            port->BaudRate = data;
+            if (!SccSetBaud(port, data))
+                rc = IO_R_INVALID_ARG;
+        }
+        break;
+
+    case PD_E_RX_DATA_RATE:
+    case PD_E_RX_DATA_SIZE:
+    case PD_RS232_E_RX_STOP_BITS:
+        if (data != 0)
+            rc = IO_R_INVALID_ARG;
+        break;
+
+    case PD_E_DATA_SIZE:
+        data >>= 1;             /* half-bits */
+        MyIOLog("-ExecuteEvent PD_E_DATA_SIZE\n\r");
+        if (data - 5 > 3)
+            rc = IO_R_INVALID_ARG;
+        else {
+            port->CharLength = data;
+            if (!SccSetDataBits(port, data))
+                rc = IO_R_INVALID_ARG;
+        }
+        break;
+
+    case PD_E_DATA_INTEGRITY:
+        MyIOLog("-ExecuteEvent PD_E_DATA_INTEGRITY\n\r");
+        if (data == 0 || data > 5)
+            rc = IO_R_INVALID_ARG;
+        else {
+            port->TX_Parity = data;
+            port->RX_Parity = 0;
+            if (!SccSetParity(port, data))
+                rc = IO_R_INVALID_ARG;
+        }
+        break;
+
+    case PD_E_RX_DATA_INTEGRITY:
+        if (data == 0 || data == 6)
+            port->RX_Parity = data;
+        else
+            rc = IO_R_INVALID_ARG;
+        break;
+
+    case PD_E_DELAY:
+        if (data != 0) {
+            if (data > 4294967)
+                data = 4294967;
+            *state |= PD_RS232_S_DELAY;
+            usec = 1000 * data;
+            interval.tv_sec = usec / 1000000000;
+            interval.tv_nsec = usec % 1000000000;
+            thread_call_enter_delayed(port->DelayTOEntry,
+                deadline_from_interval(interval));
+        }
+        break;
+
+    case PD_E_DATA_LATENCY:
+        usec = 1000 * data;     /* wraps at 32 bits, as in the binary */
+        port->DataLatInterval.tv_sec = usec / 1000000000;
+        port->DataLatInterval.tv_nsec = usec % 1000000000;
+        break;
+
+    case PD_E_FLOW_CONTROL:
+        MyIOLog("-ExecuteEvent PD_E_FLOW_CONTROL\n\r");
+        changed = ((data & 0x160000) >> 16) & ~port->FlowControl;
+        *delta |= changed;
+        *state = (changed & data) | (*state & ~changed);
+        if (changed & PD_RS232_A_RXO)
+            port->RXOstate = (data & PD_RS232_A_RXO) ? 2 : 1;
+        break;
+
+    case PD_E_VALID_DATA_BYTE:
+        port->SWspecial[data >> 5] &= ~(1 << (data & 31));
+        break;
+
+    case PD_E_SPECIAL_BYTE:
+        port->SWspecial[data >> 5] |= 1 << (data & 31);
+        break;
+
+    case PD_RS232_E_MIN_LATENCY:
+        port->MinLatency = (data != 0);
+        port->DLRimage = 0;
+        programChip(port);
+        break;
+
+    case PD_RS232_E_XOFF_BYTE:
+        port->XOFFchar = data;
+        break;
+
+    case PD_RS232_E_XON_BYTE:
+        port->XONchar = data;
+        break;
+
+    case PD_RS232_E_STOP_BITS:
+        MyIOLog("-ExecuteEvent PD_RS232_E_STOP_BITS\n\r");
+        if (data > 20)
+            rc = IO_R_INVALID_ARG;
+        else {
+            port->StopBits = data;
+            if (!SccSetStopBits(port, data))
+                rc = IO_R_INVALID_ARG;
+        }
+        break;
+
+    case PD_RS232_E_LINE_BREAK:
+        *state &= ~PD_RS232_S_BRK;
+        *delta |= PD_RS232_S_BRK;
         break;
 
     default:
-        MyIOLog("** Undefined Machine Type\n\r");
-        goto LAB_set_base;
+        rc = IO_R_INVALID_ARG;
+        break;
     }
+    return rc;
+}
 
-    // Set control register address at offset 0x13c
-    *(int *)(basePtr + 0x13c) = controlRegAddr;
+static void
+freeRingBuffer(CirQueue *q)
+{
+    MyIOLog("In freeRingBuffer\n\r");
+    IOFree(q->Start, q->Size);
+    CloseQueue(q);
+}
 
-    // Set data register address at offset 0x138 (same as base address)
-    *(int *)(basePtr + 0x138) = *(int *)(basePtr + 0x140);
+static BOOL
+allocateRingBuffer(CirQueue *q, unsigned int size)
+{
+    char *buffer;
 
-LAB_set_base:
-    // Set aligned base address (mask off lower 8 bits)
-    *(unsigned int *)(basePtr + 0x144) = *(unsigned int *)(basePtr + 0x140) & 0xffffff00;
+    MyIOLog("In allocateRingBuffer\n\r");
+    /* As shipped: the buffer is always one page, whatever size asks for. */
+    buffer = IOMalloc(4096);
+    InitQueue(q, buffer, 4096);
+    return buffer != NULL;
+}
 
-    // Set initialization flags
-    *(unsigned char *)(basePtr + 0x121) = 1;
-    *(unsigned int *)(basePtr + 0x124) = 0x384000;  // 3686400 - another clock rate?
+static void
+CheckQueues(Port *port)
+{
+    unsigned long   state = port->State;
+    unsigned int    size, free, used;
 
-    // Initialize WR1 to 0
-    SccWriteReg(self, 1, 0);
+    size = GetQueueSize(&port->TX);
+    free = FreeSpaceinQueue(&port->TX);
+    used = size - free;
+    if (free != 0)
+        state &= ~PD_S_TXQ_FULL;
+    else
+        state |= PD_S_TXQ_FULL;
+    /* As shipped: the binary updates PD_S_TXQ_FULL again here where the
+       empty bit would be expected; kept, since PortServer works with it. */
+    if (used != 0)
+        state |= PD_S_TXQ_FULL;
+    else
+        state &= ~PD_S_TXQ_FULL;
+    if (used < port->TXStats.LowWater)
+        state |= PD_S_TXQ_LOW_WATER;
+    else
+        state &= ~PD_S_TXQ_LOW_WATER;
+    if (used > port->TXStats.HighWater)
+        state |= PD_S_TXQ_HIGH_WATER;
+    else
+        state &= ~PD_S_TXQ_HIGH_WATER;
 
-    MyIOLog("SccProbe %x %x\n\r",
-             *(unsigned int *)(basePtr + 0x13c),
-             *(unsigned int *)(basePtr + 0x138));
+    size = GetQueueSize(&port->RX);
+    free = FreeSpaceinQueue(&port->RX);
+    used = size - free;
+    if (free != 0)
+        state &= ~PD_S_RXQ_FULL;
+    else
+        state |= PD_S_RXQ_FULL;
+    if (used != 0)
+        state &= ~PD_S_RXQ_EMPTY;
+    else
+        state |= PD_S_RXQ_EMPTY;
+    if (used < port->RXStats.LowWater)
+        state |= PD_S_RXQ_LOW_WATER;
+    else
+        state &= ~PD_S_RXQ_LOW_WATER;
+    if (used > port->RXStats.HighWater)
+        state |= PD_S_RXQ_HIGH_WATER;
+    else
+        state &= ~PD_S_RXQ_HIGH_WATER;
 
-    return YES;
+    changeState(port, state, state ^ port->State);
+}
+
+static void
+changeState(Port *port, unsigned int state, unsigned int mask)
+{
+    unsigned long old = port->State;
+
+    MyIOLog("++>changeState(%x, %x, %x) %x\n\r", state, mask, port->State,
+        port->WatchStateMask);
+    port->State = (old & ~mask) | (state & mask);
+    if ((port->State ^ old) & port->WatchStateMask) {
+        MyIOLog("changeState Calling thread_wakeup\n\r");
+        thread_wakeup_prim(&port->WatchStateMask, 0, 4);
+    }
+    MyIOLog("-->changeState %x \n\r", port->State);
 }
 
 /*
- * Program SCC chip registers.
- *
- * Empty function - actual chip programming is done elsewhere.
- * This matches the decompiled code which just returns.
+ * Sleep until one of the bits in mask matches *state.  Unless the caller is
+ * watching PD_S_ACQUIRED or PD_S_ACTIVE itself, the port going inactive
+ * also ends the wait, with IO_R_IO.
  */
-static void programChip(PPCSerialPort *self)
+static IOReturn
+watchState(Port *port, unsigned long *state, unsigned long mask)
 {
-    return;
-}
+    unsigned long   ref = *state;
+    unsigned long   matched;
+    BOOL            watchingActive = NO;
+    IOReturn        rc;
 
-/*
- * Remove data from queue.
- *
- * Removes up to 'size' bytes from the queue into the buffer.
- * Continues until the queue is empty or the requested size is reached.
- *
- * Parameters:
- *   queueBase: Pointer to queue control structure
- *   buffer: Output buffer to receive data
- *   size: Maximum number of bytes to remove
- *
- * Returns: Number of bytes actually removed
- */
-static IOReturn RemovefromQueue(void *queueBase, unsigned char *buffer, unsigned int size, unsigned int *count)
-{
-    IOReturn result;
-    unsigned int bytesRemoved;
-    unsigned char localByte;
-
-    bytesRemoved = 0;
-
-    // Loop removing bytes until queue is empty or size reached
-    while (1) {
-        result = GetBytetoQueue(queueBase, &localByte);
-
-        // Break if queue is empty or we've reached the requested size
-        if ((result != 0) || (size < bytesRemoved)) {
+    if ((mask & (PD_S_ACQUIRED | PD_S_ACTIVE)) == 0) {
+        ref &= ~PD_S_ACTIVE;
+        mask |= PD_S_ACTIVE;
+        watchingActive = YES;
+    }
+    for (;;) {
+        matched = ~(port->State ^ ref) & mask;
+        MyIOLog("WatchState %x\n\r", matched);
+        if (matched != 0)
             break;
+        while (test_and_set(0, (int *)&port->WatchLock))
+            continue;
+        port->WatchStateMask |= mask;
+        thread_sleep(&port->WatchStateMask, (simple_lock_t)&port->WatchLock,
+            TRUE);
+        if (thread_wait_result() != 4) {        /* THREAD_RESTART */
+            rc = IO_R_IPC_FAILURE;
+            goto out;
         }
-
-        // Store byte in output buffer
-        *buffer = localByte;
-        buffer++;
-        bytesRemoved++;
     }
-
-    return bytesRemoved;
+    *state = port->State;
+    rc = IO_R_SUCCESS;
+    if (watchingActive && (matched & PD_S_ACTIVE))
+        rc = IO_R_IO;
+out:
+    port->WatchStateMask = 0;
+    thread_wakeup_prim(&port->WatchStateMask, 0, 4);
+    return rc;
 }
 
-/*
- * Disable SCC interrupts.
- *
- * Disables specific interrupt types:
- * - intType 4: TX interrupts (clear WR5 bit 3)
- * - intType 5: RX interrupts (clear WR3 bit 0)
- * - intType 6: Master interrupts (clear WR9 bits 1 and 3)
- *
- * Returns the previous register value before modification.
- */
-static unsigned char SccDisableInterrupts(PPCSerialPort *self, unsigned int intType)
+static void
+MyIOLog(const char *format, ...)
 {
-    char *basePtr = (char *)self;
-    unsigned int regNum;
-    unsigned char previousValue;
-    unsigned char newValue;
-
-    if (intType == 5) {
-        // Disable RX interrupts - clear WR3 bit 0
-        previousValue = *(unsigned char *)(basePtr + 299);
-        regNum = 3;
-        newValue = previousValue & 0xfe;
-    } else if (intType < 6) {
-        if (intType != 4) {
-            return 0;
-        }
-        // Disable TX interrupts - clear WR5 bit 3
-        previousValue = *(unsigned char *)(basePtr + 0x12d);
-        regNum = 5;
-        newValue = previousValue & 0xf7;
-    } else {
-        if (intType != 6) {
-            return 0;
-        }
-        // Disable master interrupts - clear WR9 bits 1 and 3 (mask 0xf5)
-        previousValue = *(unsigned char *)(basePtr + 0x131);
-        regNum = 9;
-        newValue = previousValue & 0xf5;
-    }
-
-    SccWriteReg(self, regNum, newValue);
-    return previousValue;
 }
 
-/*
- * Enable SCC interrupts.
- *
- * Enables specific interrupt types:
- * - intType 4: TX interrupts (WR5 bit 3)
- * - intType 5: RX interrupts (WR3 bit 0, WR0 = 0x20)
- * - intType 6: Master interrupts (WR9 bits 1 and 3)
- */
-static void SccEnableInterrupts(PPCSerialPort *self, unsigned int intType, unsigned int param)
+static void
+initChip(Port *port)
 {
-    char *basePtr = (char *)self;
-    unsigned int regNum;
-    unsigned char value;
-
-    if (intType == 5) {
-        // Enable RX interrupts - set WR3 bit 0
-        SccWriteReg(self, 3, *(unsigned char *)(basePtr + 299) | 0x01);
-        regNum = 0;
-        value = 0x20;
-    } else if (intType < 6) {
-        if (intType != 4) {
-            return;
-        }
-        // Enable TX interrupts - set WR5 bit 3
-        regNum = 5;
-        value = *(unsigned char *)(basePtr + 0x12d) | 0x08;
-    } else {
-        if (intType != 6) {
-            return;
-        }
-        // Enable master interrupts - set WR9 bits 1 and 3 (0x0a)
-        regNum = 9;
-        value = *(unsigned char *)(basePtr + 0x131) | 0x0a;
-    }
-
-    SccWriteReg(self, regNum, value);
+    MyIOLog("ejk In initChip()\n\r");
+    port->TX_Parity = 1;
+    port->RX_Parity = 0;
+    port->DLRimage = 0;
+    port->FCRimage = 0;
+    ProbeSccDevice(port);
 }
 
-/*
- * Close SCC channel.
- *
- * Performs a complete shutdown of the SCC channel:
- * 1. Disables all interrupts (master, RX, TX)
- * 2. Resets various control registers
- * 3. Issues reset commands to the SCC
- *
- * This is typically called when closing the serial port.
- */
-static void SccCloseChannel(PPCSerialPort *self)
+static void
+programChip(Port *port)
 {
-    char *basePtr = (char *)self;
-
-    // Disable all interrupts
-    SccDisableInterrupts(self, 6);  // Master interrupts
-    SccDisableInterrupts(self, 5);  // RX interrupts
-    SccDisableInterrupts(self, 4);  // TX interrupts
-
-    // Reset interrupt and clock mode registers
-    SccWriteReg(self, 1, 0);        // WR1 - interrupt control
-    SccWriteReg(self, 0xb, 0);      // WR11 - clock mode control
-    SccWriteReg(self, 0xe, 0);      // WR14 - misc control bits
-    SccWriteReg(self, 0xf, 8);      // WR15 - external/status interrupt control
-
-    // Issue reset commands (WR0 command 0x10 = reset ext/status interrupts)
-    SccWriteReg(self, 0, 0x10);
-    SccWriteReg(self, 0, 0x10);
-
-    // Re-enable status interrupts
-    SccWriteReg(self, 1, 1);
-
-    // Issue hardware reset commands via WR9
-    SccWriteReg(self, 9, 0x80);     // Force hardware reset
-    SccWriteReg(self, 9, 0x40);     // Channel reset
-
-    MyIOLog("In SccCloseChannel %d\n\r", *(unsigned char *)(basePtr + 0x148));
 }
 
-/*
- * Reset SCC channel.
- *
- * Issues a channel-specific reset command based on the channel number:
- * - Channel 0 (A): WR9 = 0x82 (Channel A reset)
- * - Channel 1 (B): WR9 = 0x42 (Channel B reset)
- *
- * The channel number is stored at offset 0x148 in the object structure.
- */
-static void SccChannelReset(PPCSerialPort *self)
+static int
+ProbeSccDevice(Port *port)
 {
-    char *basePtr = (char *)self;
-    unsigned char resetCommand;
-    unsigned char channel;
-
-    // Get channel number from offset 0x148
-    channel = *(unsigned char *)(basePtr + 0x148);
-
-    if (channel == 0) {
-        // Channel A reset command
-        resetCommand = 0x82;
-    } else if (channel == 1) {
-        // Channel B reset command
-        resetCommand = 0x42;
-    } else {
-        // Invalid channel - do nothing
-        return;
+    MyIOLog("In ProbeSccDevice\n\r");
+    switch (port->ourMachineType) {
+    case 0: case 5: case 6: case 7: case 8:
+        port->DataRegister = (char *)(port->ChipBaseAddress + 0x10);
+        port->ControlRegister = (char *)port->ChipBaseAddress;
+        break;
+    case 1: case 2: case 3: case 4:
+        port->DataRegister = (char *)(port->ChipBaseAddress + 4);
+        port->ControlRegister = (char *)port->ChipBaseAddress;
+        break;
+    default:
+        MyIOLog("** Undefined Machine Type\n\r");
+        break;
     }
-
-    // Issue the reset command to WR9
-    SccWriteReg(self, 9, resetCommand);
+    /* RR2 is read through channel B, whose control register opens the chip. */
+    port->ConfigWriteRegister = port->ChipBaseAddress & 0xffffff00;
+    port->baudRateGeneratorEnable = 1;
+    port->rtxcFrequency = 3686400;
+    SccWriteReg(port, 1, 0);
+    MyIOLog("SccProbe %x %x\n\r", port->DataRegister, port->ControlRegister);
+    return 1;
 }
 
-/*
- * Get CTS signal state.
- *
- * Reads CTS (Clear To Send) from RR0 bit 5 and updates
- * the state at offset 0xc (currentState) bit 5.
- */
-static void SccGetCTS(PPCSerialPort *self)
+static int
+OpenScc(Port *port)
 {
-    unsigned int statusReg;
-    unsigned int newState;
-    char *basePtr = (char *)self;
+    unsigned char   program[34];
+    unsigned int    i;
 
-    // Read RR0 status register
-    statusReg = SccReadReg(self, 0);
-
-    // Check bit 5 (CTS)
-    if ((statusReg & 0x20) == 0) {
-        // CTS not asserted - clear bit 5 in state (0x20)
-        newState = *(unsigned int *)(basePtr + 0xc) & 0xffffffdf;
-    } else {
-        // CTS asserted - set bit 5 in state (0x20)
-        newState = *(unsigned int *)(basePtr + 0xc) | 0x20;
-    }
-
-    // Update state
-    *(unsigned int *)(basePtr + 0xc) = newState;
+    memcpy(program, sccInitTable, sizeof(program));
+    MyIOLog("In OpenSCC %d\n\r", port->whichPort);
+    if (port->whichPort == 1)
+        program[1] = 0x40;          /* WR9 channel B reset */
+    for (i = 0; i < sizeof(program); i += 2)
+        SccWriteReg(port, program[i], program[i + 1]);
+    SccEnableInterrupts(port, kSccMasterInt, 0);
+    SccEnableInterrupts(port, kSccRxInt, 0);
+    SccWriteReg(port, 0, 0x20);
+    MyIOLog("PPCSerOpen End \n\r");
+    return 0;
 }
 
-/*
- * Get DCD signal state.
- *
- * Reads DCD (Data Carrier Detect) from RR0 bit 3 and updates
- * the state at offset 0xc (currentState) bit 6.
- */
-static void SccGetDCD(PPCSerialPort *self)
+static void
+SccCloseChannel(Port *port)
 {
-    unsigned int statusReg;
-    unsigned int newState;
-    char *basePtr = (char *)self;
-
-    // Read RR0 status register
-    statusReg = SccReadReg(self, 0);
-
-    // Check bit 3 (DCD)
-    if ((statusReg & 0x08) == 0) {
-        // DCD not asserted - clear bit 6 in state (0x40)
-        newState = *(unsigned int *)(basePtr + 0xc) & 0xffffffbf;
-    } else {
-        // DCD asserted - set bit 6 in state (0x40)
-        newState = *(unsigned int *)(basePtr + 0xc) | 0x40;
-    }
-
-    // Update state
-    *(unsigned int *)(basePtr + 0xc) = newState;
+    SccDisableInterrupts(port, kSccMasterInt);
+    SccDisableInterrupts(port, kSccRxInt);
+    SccDisableInterrupts(port, kSccTxInt);
+    SccWriteReg(port, 1, 0);
+    SccWriteReg(port, 11, 0);
+    SccWriteReg(port, 14, 0);
+    SccWriteReg(port, 15, 0x08);
+    SccWriteReg(port, 0, 0x10);
+    SccWriteReg(port, 0, 0x10);
+    SccWriteReg(port, 1, 1);
+    SccWriteReg(port, 9, 0x80);
+    SccWriteReg(port, 9, 0x40);
+    MyIOLog("In SccCloseChannel %d\n\r", port->whichPort);
 }
 
-/*
- * Handle external/status interrupt.
- *
- * Called when modem control signals change or other external events occur.
- * Provides debug logging for various status conditions.
- */
-static IOReturn SccHandleExtInterrupt(PPCSerialPort *self)
+static unsigned char
+SccReadByte(Port *port)
 {
-    unsigned int statusReg;
-
-    // Read RR0 (status register)
-    statusReg = SccReadReg(self, 0);
-
-    // Check and log various status bits
-    if ((statusReg & 0x01) != 0) {
-        MyIOLog("Ext-> kRxCharAvailable\n\r");
-    }
-
-    if ((statusReg & 0x02) != 0) {
-        MyIOLog("Ext-> kZeroCount\n\r");
-    }
-
-    if ((statusReg & 0x04) != 0) {
-        MyIOLog("Ext-> kTxBufferEmpty\n\r");
-    }
-
-    if ((statusReg & 0x08) != 0) {
-        MyIOLog("Ext-> kDCDAsserted\n\r");
-    }
-
-    if ((statusReg & 0x10) != 0) {
-        MyIOLog("Ext-> kSyncHunt\n\r");
-    }
-
-    if ((statusReg & 0x20) != 0) {
-        MyIOLog("Ext-> kCTSAsserted\n\r");
-    }
-
-    if ((statusReg & 0x40) != 0) {
-        // TX underrun - clear transmitting state
-        changeState(self, 0, 0x10000000);
-        MyIOLog("Ext-> kTXUnderRun\n\r");
-    }
-
-    if ((statusReg & 0x80) != 0) {
-        MyIOLog("Ext-> kBreakReceived\n\r");
-    }
-
-    // Reset external/status interrupts
-    SccWriteReg(self, 0, 0x10);
-
-    return IO_R_SUCCESS;
+    if ((SccReadReg(port, 0) & 0x01) == 0)
+        return 0;
+    eieio();
+    return *port->DataRegister;
 }
 
-/*
- * Handle receive interrupt.
- *
- * Called when RX data is available. Handles:
- * - Reading received bytes (up to 100 per interrupt)
- * - Hardware flow control (XON/XOFF)
- * - Overrun error detection
- */
-static IOReturn SccHandleRxInterrupt(PPCSerialPort *self)
+static int
+SccWriteByte(Port *port, unsigned char c)
 {
-    unsigned int statusReg;
-    unsigned char data;
-    short bytesRead;
-    short maxBytes;
-    unsigned int queueUsed;
-    unsigned int statusReg1;
-    char *basePtr = (char *)self;
-
-    // Increment statistics
-    *(int *)(basePtr + 0x11c) = *(int *)(basePtr + 0x11c) + 1;  // Total RX interrupts
-    *(int *)(basePtr + 0x110) = *(int *)(basePtr + 0x110) + 1;  // Offset 0x110 counter
-
-    // Read up to 100 bytes per interrupt
-    maxBytes = 100;
-
-    while (1) {
-        // Check if RX data is available (bit 0 of RR0)
-        statusReg = SccReadReg(self, 0);
-        if ((statusReg & 0x01) == 0) {
-            break;  // No more data
-        }
-
-        maxBytes--;
-        if (maxBytes == 0) {
-            break;  // Processed maximum bytes
-        }
-
-        // Read the data byte
-        data = SccReadData(self);
-
-        // Check if hardware flow control is enabled (bit 4 of offset 0xc0)
-        if ((*(unsigned int *)(basePtr + 0xc0) & 0x10) == 0) {
-            // No flow control, add byte to queue
-            AddBytetoQueue(basePtr + 0x24, data);
-        } else {
-            // Flow control enabled, check for XON/XOFF
-            if (data == *(unsigned char *)(basePtr + 0x9f)) {
-                // XOFF received - suspend TX
-                SuspendTX(self);
-            }
-            if (data == *(unsigned char *)(basePtr + 0x9e)) {
-                // XON received - resume TX
-                SetUpTransmit(self);
-            }
-        }
-
-        // Update state (clear bit 19 - RX data available)
-        changeState(self, 0, 0x80000);
-
-        // Check RX queue level for flow control
-        queueUsed = UsedSpaceinQueue(basePtr + 0x24);
-        if (queueUsed > *(unsigned int *)(basePtr + 0x58)) {
-            // Queue above high watermark, send XOFF
-            *(int *)(basePtr + 0xc4) = 1;
-            SetUpTransmit(self);
-        }
-
-        // Check for overrun error (bit 5 of RR1)
-        statusReg1 = SccReadReg(self, 1);
-        if ((statusReg1 & 0x20) != 0) {
-            // Overrun error detected
-            *(int *)(basePtr + 0xd4) = *(int *)(basePtr + 0xd4) + 1;
-
-            // Reset error condition (write 0x30 to WR0 twice)
-            SccWriteReg(self, 0, 0x30);
-            SccWriteReg(self, 0, 0x30);
-        }
-    }
-
-    // Re-enable RX interrupts
-    SccEnableInterrupts(self);
-
-    return IO_R_SUCCESS;
+    if ((SccReadReg(port, 0) & 0x04) == 0)
+        return 0;
+    *port->DataRegister = c;
+    eieio();
+    return 1;
 }
 
-/*
- * Handle transmit interrupt.
- *
- * Called when TX buffer becomes empty. Handles:
- * - Flow control (XON/XOFF)
- * - Transmitting next byte from queue
- * - Disabling TX when queue is empty
- */
-static IOReturn SccHandleTxInterrupt(PPCSerialPort *self)
+static int
+SccSetStopBits(Port *port, unsigned int bits)
 {
-    unsigned char savedIntState;
-    IOReturn result;
-    unsigned char nextByte;
-    char *basePtr = (char *)self;
+    unsigned char wr4;
 
-    // Disable interrupts and save state
-    savedIntState = SccDisableInterrupts(self);
-
-    // Increment statistics
-    *(int *)(basePtr + 0x118) = *(int *)(basePtr + 0x118) + 1;  // Total TX interrupts
-    *(int *)(basePtr + 0x10c) = *(int *)(basePtr + 0x10c) + 1;  // Offset 0x10c counter
-
-    // Reset TX interrupt pending in SCC
-    SccWriteReg(self, 0, 0x28);  // WR0: Reset TX interrupt pending
-    SccWriteReg(self, 0, 0x10);  // WR0: Reset external/status interrupts
-
-    // Set TX pending flag
-    *(unsigned char *)(basePtr + 0x120) = 1;
-
-    // Update state to show transmitting
-    changeState(self, 0x10000000, 0x10000000);
-
-    // Handle flow control state
-    if (*(int *)(basePtr + 0xc4) == 1) {
-        // Send XOFF character
-        SccWriteByte(self, *(unsigned char *)(basePtr + 0x9f));
-        *(int *)(basePtr + 0xc4) = -1;
-    } else if (*(int *)(basePtr + 0xc4) == 2) {
-        // Send XON character
-        SccWriteByte(self, *(unsigned char *)(basePtr + 0x9e));
-        *(int *)(basePtr + 0xc4) = 0;
-    } else {
-        // Get next byte from TX queue
-        result = GetBytetoQueue(basePtr + 0x3c, &nextByte);
-
-        if (result == 2) {
-            // Queue is empty, terminate transmission
-            *(unsigned char *)(basePtr + 0x120) = 0;
-            changeState(self, 0x4000000, 0x4000000);   // Set bit 26
-            changeState(self, 0, 0x10000000);           // Clear bit 28
-
-            // Disable TX via WR5 bit 3
-            SccWriteReg(self, 5, *(unsigned char *)(basePtr + 0x12d) & 0xf7);
-
-            MyIOLog("In Tx Interrupt Terminating\n\r");
-        } else {
-            // Transmit the byte
-            SccWriteByte(self, nextByte);
-
-            // Check queue levels
-            CheckQueues(self);
-        }
+    MyIOLog("SccSetStopBits %d\n\r", bits);
+    switch (bits) {
+    case 0: wr4 = 0x00; break;
+    case 2: wr4 = 0x04; break;      /* 1 stop bit, in half bits */
+    case 3: wr4 = 0x08; break;      /* 1.5 */
+    case 4: wr4 = 0x0c; break;      /* 2 */
+    default: return 0;
     }
-
-    // Re-enable interrupts
-    SccEnableInterrupts(self);
-
-    return IO_R_SUCCESS;
+    SccWriteReg(port, 4, wr4 | (port->lastWR[4] & 0xf3));
+    return 1;
 }
 
-/*
- * Read a byte from SCC.
- *
- * Checks if RX data is available (bit 0 of RR0) before reading.
- * Returns the byte if available, or 0 if no data.
- */
-static unsigned char SccReadByte(PPCSerialPort *self)
+static int
+SccSetParity(Port *port, unsigned char parity)
 {
-    unsigned int statusReg;
-    unsigned char data;
-
-    // Read RR0 (status register)
-    statusReg = SccReadReg(self, 0);
-
-    // Check bit 0 (RX character available)
-    if ((statusReg & 0x01) == 0) {
-        // No data available
+    MyIOLog("SccSetParity %d\n\r", parity);
+    switch (parity) {
+    case 1:     /* none */
+        SccWriteReg(port, 4, port->lastWR[4] & 0xfe);
+        return 1;
+    case 2:     /* odd */
+        SccWriteReg(port, 4, (port->lastWR[4] & 0xfd) | 0x01);
+        return 1;
+    case 3:     /* even */
+        SccWriteReg(port, 4, port->lastWR[4] | 0x03);
+        return 1;
+    default:
         return 0;
     }
-
-    // Data is available, read it
-    eieio();
-    data = SccReadData(self);
-
-    return data;
 }
 
-/*
- * Read data from SCC data register.
- *
- * Directly reads from the SCC data register (offset 0x13c).
- */
-static unsigned char SccReadData(PPCSerialPort *self)
-{
-    // Read from SCC data register (offset 0x13c)
-    volatile unsigned char *sccData = *(volatile unsigned char **)((char *)self + 0x13c);
-
-    return *sccData;
-}
-
-/*
- * Read SCC register.
- *
- * To read a register:
- * 1. If regNum != 0, write register number to control register
- * 2. Read from control register to get the value
- */
-static unsigned char SccReadReg(PPCSerialPort *self, unsigned int regNum)
-{
-    volatile unsigned char *sccControl = (volatile unsigned char *)self->sccControlReg;
-    unsigned char value;
-
-    // If reading a register other than RR0, write the register number first
-    if (regNum != 0) {
-        *sccControl = (unsigned char)regNum;
-        eieio();
-    }
-
-    // Enforce ordering before read
-    eieio();
-
-    // Read the register value
-    value = *sccControl;
-
-    return value;
-}
-
-/*
- * Set baud rate.
- *
- * Calculates the time constant for the baud rate generator and
- * programs WR12 (low byte) and WR13 (high byte).
- *
- * Formula: timeConstant = (clockRate / (baudRate * 16) + 1) / 2 - 2
- *
- * The time constant is stored at offsets 0x122 (low) and 0x123 (high).
- */
-static IOReturn SccSetBaud(PPCSerialPort *self, unsigned int baudRate)
-{
-    unsigned int timeConstant;
-    char *basePtr = (char *)self;
-    unsigned int clockRate;
-
-    if (baudRate != 0) {
-        // Read clock rate from offset 0x124
-        clockRate = *(unsigned int *)(basePtr + 0x124);
-
-        // Calculate time constant
-        // Formula: (clockRate / (baudRate << 4) + 1) >> 1 - 2
-        timeConstant = ((clockRate / (baudRate << 4)) + 1) >> 1;
-        timeConstant = timeConstant - 2;
-
-        // Check if time constant is valid (must fit in 16 bits)
-        if (timeConstant >= 0x10000) {
-            timeConstant = 0xffff;
-        }
-    } else {
-        // Invalid baud rate, use maximum time constant
-        timeConstant = 0xffff;
-    }
-
-    // Store time constant at offsets 0x122 (low) and 0x123 (high)
-    *(unsigned char *)(basePtr + 0x122) = (unsigned char)(timeConstant & 0xff);
-    *(unsigned char *)(basePtr + 0x123) = (unsigned char)((timeConstant >> 8) & 0xff);
-
-    // Write to SCC registers using interrupt-safe writes
-    SccWriteIntSafe(self, 0x0c, *(unsigned char *)(basePtr + 0x122));  // WR12 - low byte
-    SccWriteIntSafe(self, 0x0d, *(unsigned char *)(basePtr + 0x123));  // WR13 - high byte
-    SccWriteIntSafe(self, 0x0e, 0x01);  // WR14 - enable baud rate generator
-
-    // Store baud rate at offset 0x8c
-    *(unsigned int *)(basePtr + 0x8c) = baudRate;
-
-    MyIOLog("SetBaud %d %d %d\n\r",
-             baudRate,
-             *(unsigned char *)(basePtr + 0x122),
-             *(unsigned char *)(basePtr + 0x123));
-
-    return IO_R_SUCCESS;
-}
-
-/*
- * Set data bits.
- *
- * Configures WR3 (RX) bits 6-7 and WR5 (TX) bits 5-6:
- * 5 bits: WR3=0x00, WR5=0x00
- * 6 bits: WR3=0x80, WR5=0x40
- * 7 bits: WR3=0x40, WR5=0x20
- * 8 bits: WR3=0xc0, WR5=0x60
- */
-static BOOL SccSetDataBits(PPCSerialPort *self, unsigned int dataBits)
-{
-    char *basePtr = (char *)self;
-
-    // Lookup tables for WR3 and WR5 values
-    // Indexed by dataBits value (5-8)
-    static const unsigned char txBitsTable[] = {
-        0x00, 0x00, 0x00, 0x00, 0x00,  // 0-4 (invalid, but needed for indexing)
-        0x00,  // 5 bits
-        0x40,  // 6 bits
-        0x20,  // 7 bits
-        0x60   // 8 bits
-    };
-
-    static const unsigned char rxBitsTable[] = {
-        0x00, 0x00, 0x00, 0x00, 0x00,  // 0-4 (invalid, but needed for indexing)
-        0x00,  // 5 bits
-        0x80,  // 6 bits
-        0x40,  // 7 bits
-        0xc0   // 8 bits
-    };
-
-    // Validate dataBits is in range 5-8
-    if (dataBits < 5 || dataBits > 8) {
-        return NO;
-    }
-
-    MyIOLog("In Set Data Bits %d Tx %x Rx %x\n\r",
-             dataBits - 5,
-             txBitsTable[dataBits],
-             rxBitsTable[dataBits]);
-
-    // Set TX data bits in WR5 (preserve bits 0-4 and 7, set bits 5-6)
-    SccWriteReg(self, 5, txBitsTable[dataBits] | (*(unsigned char *)(basePtr + 0x12d) & 0x9f));
-
-    // Set RX data bits in WR3 (preserve bits 0-5, set bits 6-7)
-    SccWriteReg(self, 3, rxBitsTable[dataBits] | (*(unsigned char *)(basePtr + 299) & 0x3f));
-
-    self->dataBits = dataBits;
-    return YES;
-}
-
-/*
- * Set DTR signal.
- *
- * Controls DTR (Data Terminal Ready) via WR5 bit 7.
- */
-static void SccSetDTR(PPCSerialPort *self, BOOL state)
-{
-    unsigned char wr5Value;
-    char *basePtr = (char *)self;
-
-    // Read cached WR5 value (offset 0x12d)
-    if (state) {
-        // Set DTR (bit 7)
-        wr5Value = *(unsigned char *)(basePtr + 0x12d) | 0x80;
-    } else {
-        // Clear DTR (bit 7)
-        wr5Value = *(unsigned char *)(basePtr + 0x12d) & 0x7f;
-    }
-
-    SccWriteReg(self, 5, wr5Value);
-}
-
-/*
- * Set parity.
- *
- * Configures WR4 bits 0-1:
- * 1 = PARITY_NONE (disable parity, clear bit 0)
- * 2 = PARITY_ODD  (enable parity, odd, set bit 0, clear bit 1)
- * 3 = PARITY_EVEN (enable parity, even, set bits 0 and 1)
- */
-static IOReturn SccSetParity(PPCSerialPort *self, unsigned int parity)
-{
-    char *basePtr = (char *)self;
-    unsigned char wr4Value;
-
-    MyIOLog("SccSetParity %d\n\r", parity);
-
-    // Read cached WR4 value (offset 300 = 0x12c)
-    wr4Value = *(unsigned char *)(basePtr + 300);
-
-    switch (parity) {
-        case 1:  // PARITY_NONE
-            // Clear bit 0 (disable parity)
-            SccWriteReg(self, 4, wr4Value & 0xfe);
-            break;
-
-        case 2:  // PARITY_ODD
-            // Clear bit 1, set bit 0 (odd parity)
-            SccWriteReg(self, 4, (wr4Value & 0xfd) | 0x01);
-            break;
-
-        case 3:  // PARITY_EVEN
-            // Set bits 0 and 1 (even parity)
-            SccWriteReg(self, 4, wr4Value | 0x03);
-            break;
-
-        default:
-            return IO_R_INVALID_ARG;
-    }
-
-    self->parity = parity;
-    return IO_R_SUCCESS;
-}
-
-/*
- * Set RTS signal.
- *
- * Controls RTS (Request To Send) via WR5 bit 1.
- */
-static void SccSetRTS(PPCSerialPort *self, BOOL state)
-{
-    unsigned char wr5Value;
-    char *basePtr = (char *)self;
-
-    // Read cached WR5 value (offset 0x12d)
-    if (state) {
-        // Set RTS (bit 1)
-        wr5Value = *(unsigned char *)(basePtr + 0x12d) | 0x02;
-    } else {
-        // Clear RTS (bit 1)
-        wr5Value = *(unsigned char *)(basePtr + 0x12d) & 0xfd;
-    }
-
-    SccWriteReg(self, 5, wr5Value);
-}
-
-/*
- * Set stop bits.
- *
- * Configures WR4 bits 2-3:
- * 0 = sync mode
- * 1 = 1 stop bit   (0x00)
- * 2 = 1.5 stop bits (0x04)
- * 3 = 2 stop bits   (0x08)
- * 4 = reserved      (0x0c)
- */
-static IOReturn SccSetStopBits(PPCSerialPort *self, unsigned int stopBits)
-{
-    unsigned char wr4Bits;
-    char *basePtr = (char *)self;
-
-    MyIOLog("SccSetStopBits %d\n\r", stopBits);
-
-    // Map stopBits value to WR4 bits
-    switch (stopBits) {
-        case 0:
-            wr4Bits = 0x00;  // Sync mode
-            break;
-        case 2:
-            wr4Bits = 0x04;  // 1.5 stop bits
-            break;
-        case 3:
-            wr4Bits = 0x08;  // 2 stop bits
-            break;
-        case 4:
-            wr4Bits = 0x0c;  // Reserved
-            break;
-        default:
-            return IO_R_INVALID_ARG;
-    }
-
-    // Read cached WR4 value (offset 300 = 0x12c), preserve all bits except 2-3
-    // Then OR in the new stop bit setting
-    SccWriteReg(self, 4, wr4Bits | (*(unsigned char *)(basePtr + 300) & 0xf3));
-
-    self->stopBits = stopBits;
-    return IO_R_SUCCESS;
-}
-
-/*
- * Write a byte to SCC.
- *
- * Checks if TX buffer is empty (bit 2 of RR0) before writing.
- * Returns true if byte was written, false if TX buffer was full.
- */
-static BOOL SccWriteByte(PPCSerialPort *self, unsigned char byte)
-{
-    unsigned int statusReg;
-    BOOL txReady;
-
-    // Read RR0 (status register)
-    statusReg = SccReadReg(self, 0);
-
-    // Check bit 2 (TX buffer empty)
-    txReady = (statusReg & 0x04) != 0;
-
-    if (txReady) {
-        // TX buffer is empty, write the byte
-        volatile unsigned char *sccData = *(volatile unsigned char **)((char *)self + 0x13c);
-        *sccData = byte;
-
-        // Enforce in-order execution
-        eieio();
-    }
-
-    return txReady;
-}
-
-/*
- * Write data to SCC data register.
- *
- * Writes a single byte directly to the SCC data register (offset 0x13c).
- */
-static IOReturn SccWriteData(PPCSerialPort *self, unsigned char data)
-{
-    // Write to SCC data register (offset 0x13c)
-    volatile unsigned char *sccData = *(volatile unsigned char **)((char *)self + 0x13c);
-
-    *sccData = data;
-
-    // Enforce in-order execution
-    eieio();
-
-    return IO_R_SUCCESS;
-}
-
-/*
- * Write SCC register (interrupt-safe).
- *
- * This function is identical to SccWriteReg in the decompiled code.
- * The "interrupt-safe" aspect may be handled by the caller or by the
- * memory barriers (eieio) that ensure atomic operation.
- */
-static void SccWriteIntSafe(PPCSerialPort *self, unsigned int regNum, unsigned char value)
-{
-    char *basePtr = (char *)self;
-
-    // Only allow valid register numbers (0-15)
-    if (regNum < 0x10) {
-        volatile unsigned char *sccControl = (volatile unsigned char *)self->sccControlReg;
-
-        // Write register number to control register
-        *sccControl = (unsigned char)regNum;
-
-        // Enforce in-order execution (memory barrier)
-        eieio();
-
-        // Write value to control register
-        *sccControl = value;
-
-        // Enforce in-order execution again
-        eieio();
-
-        // Cache the register value at offset 0x128 + regNum
-        *(unsigned char *)(basePtr + 0x128 + regNum) = value;
-    }
-}
-
-/*
- * Write SCC register.
- *
- * The SCC requires two write cycles:
- * 1. Write register number to control register
- * 2. Write value to control register
- *
- * The value is also cached at offset 0x128 + regNum
- */
-static void SccWriteReg(PPCSerialPort *self, unsigned int regNum, unsigned char value)
-{
-    char *basePtr = (char *)self;
-
-    // Only allow valid register numbers (0-15)
-    if (regNum < 0x10) {
-        volatile unsigned char *sccControl = (volatile unsigned char *)self->sccControlReg;
-
-        // Write register number to control register
-        *sccControl = (unsigned char)regNum;
-
-        // Enforce in-order execution (memory barrier)
-        // This ensures the register select completes before the value write
-        eieio();  // Or use sync() on some PowerPC systems
-
-        // Write value to control register
-        *sccControl = value;
-
-        // Enforce in-order execution again
-        eieio();
-
-        // Cache the register value at offset 0x128 + regNum
-        *(unsigned char *)(basePtr + 0x128 + regNum) = value;
-    }
-}
-
-/*
- * Send next character from TX queue.
- * This is called from the TX interrupt handler.
- */
-static void SendNextChar(PPCSerialPort *self)
-{
-    // Write 0x12 to SCC WR1 (TX interrupt control)
-    // This is the interrupt enable register value
-    SccWriteReg(self, 1, 0x12);
-}
-
-/*
- * Set structure defaults.
- *
- * Parameters:
- *   self: Pointer to PPCSerialPort instance
- *   fullInit: If true, perform full initialization; if false, partial init
- */
-static void SetStructureDefaults(PPCSerialPort *self, BOOL fullInit)
+static int
+SccSetDataBits(Port *port, unsigned int bits)
 {
     unsigned int i;
-    char *basePtr = (char *)self;
 
-    IOLog("PPCSerialPort: _SetStructureDefaults: called (fullInit=%d)\n", fullInit);
+    if (bits - 5 > 3)
+        return 0;
+    i = bits - 5;
+    MyIOLog("In Set Data Bits %d Tx %x Rx %x\n\r", i, LocalTxDataBits[i],
+        LocalDataBits[i]);
+    SccWriteReg(port, 5, LocalTxDataBits[i] | (port->lastWR[5] & 0x9f));
+    SccWriteReg(port, 3, LocalDataBits[i] | (port->lastWR[3] & 0x3f));
+    return 1;
+}
 
-    if (fullInit) {
-        // Full initialization path
-        *(unsigned int *)(basePtr + 0x4) = 0;
-        *(unsigned int *)(basePtr + 0x8) = 0;
-        *(unsigned int *)(basePtr + 0x98) = 0x1c2000;  // 1843200 - clock rate
-        *(unsigned short *)(basePtr + 0x90) = 0;
-        *(unsigned char *)(basePtr + 0x92) = 0;
-        *(unsigned char *)(basePtr + 0x93) = 0;
-        *(unsigned char *)(basePtr + 0x94) = 0;
-        *(unsigned char *)(basePtr + 0x95) = 0;
-        *(unsigned int *)(basePtr + 0x74) = 0;
-        *(unsigned int *)(basePtr + 0xf0) = 0;
-        *(unsigned int *)(basePtr + 0xf4) = 0;
-        *(unsigned int *)(basePtr + 0xf8) = 0;
-        *(unsigned int *)(basePtr + 0xfc) = 0;
-        *(unsigned int *)(basePtr + 0x100) = 0;
-        *(unsigned int *)(basePtr + 0x104) = 0;
-        *(unsigned int *)(basePtr + 0xc) = 0x60c0000;  // Initial state
-        *(unsigned int *)(basePtr + 0x10) = 0;
-        *(unsigned short *)(basePtr + 0x168) = 7;
+static void
+SccChannelReset(Port *port)
+{
+    if (port->whichPort == 0)
+        SccWriteReg(port, 9, 0x82);
+    else if (port->whichPort == 1)
+        SccWriteReg(port, 9, 0x42);
+}
+
+static int
+SccSetBaud(Port *port, unsigned int baud)
+{
+    unsigned int tc;
+
+    /* Time constant = rtxc / (2 * 16 * baud) - 2, rounded. */
+    if (baud == 0
+     || (tc = ((port->rtxcFrequency / (16 * baud) + 1) >> 1) - 2) > 0xffff)
+        tc = 0xffff;
+    port->baudRateGeneratorLo = tc;
+    port->baudRateGeneratorHi = tc >> 8;
+    SccWriteIntSafe(port, 12, port->baudRateGeneratorLo);
+    SccWriteIntSafe(port, 13, port->baudRateGeneratorHi);
+    SccWriteIntSafe(port, 14, 0x01);
+    port->BaudRate = baud;
+    MyIOLog("SetBaud %d %d %d\n\r", baud, port->baudRateGeneratorLo,
+        port->baudRateGeneratorHi);
+    return 1;
+}
+
+static unsigned char
+SccReadData(Port *port)
+{
+    return *port->DataRegister;
+}
+
+static int
+SccWriteData(Port *port, unsigned char c)
+{
+    *port->DataRegister = c;
+    eieio();
+    return 1;
+}
+
+static unsigned char
+SccReadReg(Port *port, unsigned char reg)
+{
+    if (reg != 0) {
+        *port->ControlRegister = reg;
+        eieio();
     }
+    eieio();
+    return *port->ControlRegister;
+}
 
-    // Common initialization (always executed)
-    *(unsigned int *)(basePtr + 0x88) = 0;
-    *(unsigned int *)(basePtr + 0x8c) = 0;
-    *(unsigned int *)(basePtr + 0x78) = 0;
-    *(unsigned int *)(basePtr + 0x88) = 0;  // Written twice in original code
-    *(unsigned int *)(basePtr + 0x7c) = 0;
-    *(unsigned int *)(basePtr + 0x80) = 0;
-    *(unsigned int *)(basePtr + 0x84) = 0;
-    *(unsigned char *)(basePtr + 0x9d) = 0;
-    *(unsigned char *)(basePtr + 0x9c) = 0;
-    *(unsigned char *)(basePtr + 0x9e) = 0x11;  // XON character
-    *(unsigned char *)(basePtr + 0x9f) = 0x13;  // XOFF character
-    *(unsigned int *)(basePtr + 0xc0) = 0;
-    *(unsigned int *)(basePtr + 0xc4) = 0;      // Flow control state
-    *(unsigned int *)(basePtr + 200) = 0;       // 0xc8
-    *(unsigned int *)(basePtr + 0xd8) = 0;
-    *(unsigned int *)(basePtr + 0xdc) = 0;
-    *(unsigned int *)(basePtr + 0xe8) = 0;
-    *(unsigned int *)(basePtr + 0xec) = 0;
-
-    // TX queue watermarks
-    *(unsigned int *)(basePtr + 0x54) = 0x4b0;  // 1200 - TX capacity
-    *(unsigned int *)(basePtr + 0x58) = 800;    // TX low water
-    *(unsigned int *)(basePtr + 0x5c) = 400;    // TX med water
-    *(unsigned int *)(basePtr + 100) = 0x4b0;   // 1200 - offset 0x64 (TX high water)
-
-    // Calculate derived watermarks
-    *(unsigned int *)(basePtr + 0x68) = (unsigned int)(*(int *)(basePtr + 0x54) << 1) / 3;
-    *(unsigned int *)(basePtr + 0x6c) = *(unsigned int *)(basePtr + 0x58) >> 1;
-
-    *(unsigned int *)(basePtr + 0xc0) = 0x126;  // 294 decimal
-    *(unsigned char *)(basePtr + 0x120) = 0;    // TX pending flag
-
-    // Clear character filter bitmap (8 DWORDs = 32 bytes = 256 bits)
-    for (i = 0; i < 8; i++) {
-        *(unsigned int *)(basePtr + 0xa0 + (i * 4)) = 0;
+static int
+SccWriteReg(Port *port, unsigned char reg, unsigned char value)
+{
+    if (reg <= 15) {
+        *port->ControlRegister = reg;
+        eieio();
+        *port->ControlRegister = value;
+        eieio();
+        port->lastWR[reg] = value;
     }
+    return 1;
+}
 
-    // Clear statistics counters
-    *(unsigned int *)(basePtr + 0x108) = 0;
-    *(unsigned int *)(basePtr + 0x10c) = 0;
-    *(unsigned int *)(basePtr + 0x110) = 0;
-    *(unsigned int *)(basePtr + 0x114) = 0;
-    *(unsigned int *)(basePtr + 0x118) = 0;
-    *(unsigned int *)(basePtr + 0x11c) = 0;
+static void
+SccWriteIntSafe(Port *port, unsigned char reg, unsigned char value)
+{
+    if (reg <= 15) {
+        *port->ControlRegister = reg;
+        eieio();
+        *port->ControlRegister = value;
+        eieio();
+        port->lastWR[reg] = value;
+    }
+}
+
+static void
+PPCSerialRxDMAISR(void *identity, void *state, Port *port)
+{
+    port->Stats.ints++;
+    IOEnableInterrupt(identity);
+}
+
+static void
+PPCSerialTxDMAISR(void *identity, void *state, Port *port)
+{
+    port->Stats.ints++;
+    IOEnableInterrupt(identity);
 }
 
 /*
- * Set up transmission.
+ * Poll the interrupt vector in RR2 (read through channel B, status low) and
+ * dispatch until it reports no transmit or receive work.
  */
-static void SetUpTransmit(PPCSerialPort *self)
+static void
+PPCSerialISR(void *identity, void *state, Port *port)
 {
-    unsigned char firstByte;
-    IOReturn result;
+    unsigned short  tries = 100;
+    unsigned char   vector = 0;
+    BOOL            more = YES;
+
+    port->Stats.ints++;
+    do {
+        if (tries-- == 0) {
+            /* Divergence from 5.6: the binary closes the channel here.  A
+               transmitter that empties as fast as it is fed (QEMU's ESCC)
+               keeps the vector at "Tx" for 100 polls, so the port died
+               after 101 bytes; stop polling and take the next interrupt. */
+            MyIOLog("***** In PPCSerialISR TimeOut Failure %x\n\r", vector);
+            break;
+        }
+        *(volatile unsigned char *)port->ConfigWriteRegister = 2;
+        eieio();
+        IODelay(50);
+        vector = *(volatile unsigned char *)port->ConfigWriteRegister;
+        eieio();
+        IODelay(50);
+        vector = (vector >> 1) & 3;
+        switch (vector) {
+        case 0:
+            SccHandleTxInterrupt(port);
+            break;
+        case 1:
+            SccHandleExtInterrupt(port);
+            more = NO;
+            MyIOLog("ExtStatusInterrupt Int %x\n\r", SccReadReg(port, 0));
+            break;
+        case 2:
+            SccHandleRxInterrupt(port);
+            break;
+        case 3:
+            MyIOLog("RecErrorStatus Int %x\n\r", SccReadReg(port, 0));
+            SccWriteReg(port, 0, 0x30);     /* error reset */
+            more = NO;
+            break;
+        }
+    } while (more);
+    IOEnableInterrupt(identity);
+}
+
+static int
+SccHandleExtInterrupt(Port *port)
+{
+    unsigned char rr0 = SccReadReg(port, 0);
+
+    if (rr0 & 0x01)
+        MyIOLog("Ext-> kRxCharAvailable\n\r");
+    if (rr0 & 0x02)
+        MyIOLog("Ext-> kZeroCount\n\r");
+    if (rr0 & 0x04)
+        MyIOLog("Ext-> kTxBufferEmpty\n\r");
+    if (rr0 & 0x08)
+        MyIOLog("Ext-> kDCDAsserted\n\r");
+    if (rr0 & 0x10)
+        MyIOLog("Ext-> kSyncHunt\n\r");
+    if (rr0 & 0x20)
+        MyIOLog("Ext-> kCTSAsserted\n\r");
+    if (rr0 & 0x40) {
+        changeState(port, 0, PD_S_TX_BUSY);
+        MyIOLog("Ext-> kTXUnderRun\n\r");
+    }
+    if (rr0 & 0x80)
+        MyIOLog("Ext-> kBreakReceived\n\r");
+    SccWriteReg(port, 0, 0x10);     /* reset external/status interrupts */
+    return 0;
+}
+
+static int
+SccHandleRxInterrupt(Port *port)
+{
+    unsigned short  tries = 100;
+    unsigned char   c;
+
+    port->Stats.rxChars++;
+    port->Stats.rxInts++;
+    while (SccReadReg(port, 0) & 0x01) {
+        if (tries-- == 0)
+            break;
+        c = SccReadData(port);
+        if (port->FlowControl & PD_RS232_A_RXO) {
+            /* As shipped: under software flow control the XON and XOFF
+               characters are consumed and nothing else is queued. */
+            if (c == port->XOFFchar)
+                SuspendTX(port);
+            if (c == port->XONchar)
+                SetUpTransmit(port);
+        } else
+            AddBytetoQueue(&port->RX, c);
+        changeState(port, 0, PD_S_RXQ_EMPTY);
+        if (UsedSpaceinQueue(&port->RX) > port->RXStats.HighWater) {
+            port->RXOstate = 1;
+            SetUpTransmit(port);
+        }
+        if (SccReadReg(port, 1) & 0x20) {
+            port->OverRunChars++;
+            SccWriteReg(port, 0, 0x30);
+            SccWriteReg(port, 0, 0x30);
+        }
+    }
+    SccEnableInterrupts(port, kSccRxInt, 0);
+    return 0;
+}
+
+static int
+SccHandleTxInterrupt(Port *port)
+{
+    unsigned char   saved;
+    unsigned char   c;
+
+    saved = SccDisableInterrupts(port, 0);
+    port->Stats.txChars++;
+    port->Stats.txInts++;
+    SccWriteReg(port, 0, 0x28);     /* reset Tx interrupt pending */
+    SccWriteReg(port, 0, 0x10);
+    port->AreTransmitting = 1;
+    changeState(port, PD_S_TX_BUSY, PD_S_TX_BUSY);
+    if (port->RXOstate == 1) {
+        SccWriteByte(port, port->XOFFchar);
+        port->RXOstate = -1;
+    } else if (port->RXOstate == 2) {
+        SccWriteByte(port, port->XONchar);
+        port->RXOstate = 0;
+    } else if (GetBytetoQueue(&port->TX, &c) == 2) {
+        port->AreTransmitting = 0;
+        changeState(port, PD_S_TXQ_EMPTY, PD_S_TXQ_EMPTY);
+        changeState(port, 0, PD_S_TX_BUSY);
+        SccWriteReg(port, 5, port->lastWR[5] & 0xf7);
+        MyIOLog("In Tx Interrupt Terminating\n\r");
+    } else {
+        SccWriteByte(port, c);
+        CheckQueues(port);
+    }
+    SccEnableInterrupts(port, 0, saved);
+    return 0;
+}
+
+static int
+SetUpTransmit(Port *port)
+{
+    unsigned char c;
 
     MyIOLog("++> SetUpTransmit\n\r");
-
-    // Check if transmission is already set up
-    if (self->txPendingFlag == 0x01) {
+    if (port->AreTransmitting == 1) {
         MyIOLog("--> SetUpTransmit Already Set\n\r");
-        return;
+        return 0;
     }
-
-    // Handle flow control state
-    // flowControlState == 1: send XOFF
-    // flowControlState == 2: send XON
-    if (self->flowControlState == 1) {
-        SccWriteByte(self, self->xoffChar);
-        self->flowControlState = -1;
+    if (port->RXOstate == 1) {
+        SccWriteByte(port, port->XOFFchar);
+        port->RXOstate = -1;
     }
-
-    if (self->flowControlState == 2) {
-        SccWriteByte(self, self->xonChar);
-        self->flowControlState = 0;
+    if (port->RXOstate == 2) {
+        SccWriteByte(port, port->XONchar);
+        port->RXOstate = 0;
     }
-
-    // Try to get first byte from TX queue
-    result = GetBytetoQueue(&self->txQueueCapacity, &firstByte);
-
-    if (result != 2) { // 2 means queue empty or error
-        // Enable TX buffer empty interrupts (bit 1 of WR1)
-        SccWriteReg(self, SCC_WR1, self->ierValue | 0x02);
-
-        // Update cached IER value
-        self->ierValue = self->ierValue | 0x02;
-
-        // Enable interrupts
-        SccEnableInterrupts(self);
-
-        // Set TX pending flag
-        self->txPendingFlag = 1;
-
-        // Update state to show transmitting (bit 28)
-        changeState(self, 0x10000000, 0x10000000);
-
-        // Write first byte to start transmission
-        SccWriteByte(self, firstByte);
-
-        MyIOLog("Write First byte. (%x)\n\r", (unsigned int)firstByte);
+    if (GetBytetoQueue(&port->TX, &c) != 2) {
+        SccWriteReg(port, 1, port->lastWR[1] | 0x02);   /* Tx interrupt enable */
+        SccEnableInterrupts(port, kSccMasterInt, 0);
+        SccEnableInterrupts(port, kSccTxInt, 0);
+        port->AreTransmitting = 1;
+        changeState(port, PD_S_TX_BUSY, PD_S_TX_BUSY);
+        SccWriteByte(port, c);
+        MyIOLog("Write First byte. (%x)\n\r", c);
     }
-
     MyIOLog("--> SetUpTransmit\n\r");
+    return 1;
 }
 
-/*
- * Suspend transmission.
- */
-static void SuspendTX(PPCSerialPort *self)
+static int
+SuspendTX(Port *port)
 {
-    // Disable TX buffer empty interrupts (bit 2 of WR1)
-    SccDisableInterrupts(self);
+    SccDisableInterrupts(port, kSccTxInt);
+    return 1;
 }
 
-/*
- * Get used space in queue.
- */
-static unsigned int UsedSpaceinQueue(void *queueBase)
+static int
+SendNextChar(Port *port)
 {
-    // Queue structure: offset 0x14 is the "used" field
-    unsigned int *used = (unsigned int *)((char *)queueBase + 0x14);
-    return *used;
+    return SccWriteReg(port, 1, 0x12);
 }
 
-/*
- * Watch state for changes.
- * Waits until the current state matches the desired state for the given mask.
- *
- * Based on decompiled code:
- * - If mask doesn't include STATE_ACTIVE bit, it's automatically added to mask
- *   and cleared from the desired state
- * - Returns IO_R_SUCCESS (0) when state matches
- * - Returns IO_R_INTERRUPTED (0xfffffd41) if interrupted
- * - Returns IO_R_INVALID_ARG (0xfffffd36) if STATE_ACTIVE requested but port not active
- */
-static IOReturn watchState(PPCSerialPort *self, unsigned int *statePtr, unsigned int mask)
+/* Clear one enable and return the register's previous value. */
+static unsigned char
+SccDisableInterrupts(Port *port, unsigned int which)
 {
-    unsigned int desiredState;
-    unsigned int matchingBits;
-    BOOL checkActiveFlag;
-    IOReturn result;
-    int lockResult;
+    unsigned char saved = 0;
 
-    desiredState = *statePtr;
-
-    // Check if mask includes upper bits (0xc0000000, which includes STATE_ACTIVE)
-    checkActiveFlag = ((mask & 0xc0000000) == 0);
-
-    if (checkActiveFlag) {
-        // If STATE_ACTIVE not in mask, clear it from desired state
-        // and add it to the mask
-        desiredState = desiredState & 0xbfffffff; // Clear bit 30
-        mask = mask | 0x40000000; // Add STATE_ACTIVE to mask
+    switch (which) {
+    case kSccTxInt:
+        saved = port->lastWR[5];
+        SccWriteReg(port, 5, saved & 0xf7);
+        break;
+    case kSccRxInt:
+        saved = port->lastWR[3];
+        SccWriteReg(port, 3, saved & 0xfe);
+        break;
+    case kSccMasterInt:
+        saved = port->lastWR[9];
+        SccWriteReg(port, 9, saved & 0xf5);
+        break;
     }
+    return saved;
+}
 
-    // Wait loop
-    do {
-        // Calculate matching bits: ~(currentState XOR desiredState) & mask
-        // This gives us the bits that match between current and desired state
-        matchingBits = ~(self->currentState ^ desiredState) & mask;
+static void
+SccEnableInterrupts(Port *port, unsigned int which, unsigned char saved)
+{
+    switch (which) {
+    case kSccTxInt:
+        SccWriteReg(port, 5, port->lastWR[5] | 0x08);
+        break;
+    case kSccRxInt:
+        SccWriteReg(port, 3, port->lastWR[3] | 0x01);
+        SccWriteReg(port, 0, 0x20);     /* enable interrupt on next Rx char */
+        break;
+    case kSccMasterInt:
+        SccWriteReg(port, 9, port->lastWR[9] | 0x0a);
+        break;
+    }
+}
 
-        MyIOLog("WatchState %x\n\r", matchingBits);
+static void
+SccSetDTR(Port *port, BOOL on)
+{
+    SccWriteReg(port, 5, on ? (port->lastWR[5] | 0x80)
+                            : (port->lastWR[5] & 0x7f));
+}
 
-        // If any bits match, we're done
-        if (matchingBits != 0) {
-            // Return current state
-            *statePtr = self->currentState;
+static void
+SccSetRTS(Port *port, BOOL on)
+{
+    SccWriteReg(port, 5, on ? (port->lastWR[5] | 0x02)
+                            : (port->lastWR[5] & 0xfd));
+}
 
-            // Check return value based on checkActiveFlag
-            if (checkActiveFlag) {
-                // If we added STATE_ACTIVE and it's not set, return error
-                if ((matchingBits & 0x40000000) == 0) {
-                    result = IO_R_INVALID_ARG; // 0xfffffd36
-                } else {
-                    result = IO_R_SUCCESS;
-                }
-            } else {
-                result = IO_R_SUCCESS;
-            }
+static unsigned char
+SccGetDCD(Port *port)
+{
+    unsigned char dcd = SccReadReg(port, 0) & 0x08;
 
-            goto cleanup;
-        }
+    if (dcd)
+        port->State |= PD_RS232_S_DCD;
+    else
+        port->State &= ~PD_RS232_S_DCD;
+    return dcd;
+}
 
-        // Try to acquire lock (spin until acquired)
-        // FUN_00002b4c(0, &watchStateLock) - returns 0 on success
-        do {
-            lockResult = *(int *)((char *)self + 0x14); // Simple lock check
-        } while (lockResult != 0);
+static unsigned char
+SccGetCTS(Port *port)
+{
+    unsigned char cts = SccReadReg(port, 0) & 0x20;
 
-        // Set watchStateMask to the mask we're waiting for
-        self->watchStateMask = self->watchStateMask | mask;
+    if (cts)
+        port->State |= PD_RS232_S_CTS;
+    else
+        port->State &= ~PD_RS232_S_CTS;
+    return cts;
+}
 
-        // Wait for state change
-        // FUN_00002b3c(watchStateMask, watchStateLock, 1) = assert_wait/thread_block
-        // This would be a proper sleep/wait in real implementation
-        // For now, we'll simulate it
+static void
+InitQueue(CirQueue *q, char *buffer, unsigned int size)
+{
+    q->Start = buffer;
+    q->End = buffer + size;
+    q->Size = size;
+    q->NextChar = buffer;
+    q->LastChar = buffer;
+    q->InQueue = 0;
+}
 
-        // FUN_00002b2c() gets the wait result
-        // If result is 4, continue loop; otherwise return interrupted
-        lockResult = 4; // Simulate successful wait
+static void
+CloseQueue(CirQueue *q)
+{
+    q->Start = NULL;
+    q->End = NULL;
+    q->NextChar = NULL;
+    q->LastChar = NULL;
+    q->Size = 0;
+}
 
-    } while (lockResult == 4);
+static unsigned int
+AddtoQueue(CirQueue *q, unsigned char *buffer, unsigned int size)
+{
+    unsigned int i;
 
-    // If we get here, we were interrupted
-    result = IO_R_INTERRUPTED; // 0xfffffd41
+    for (i = 0; FreeSpaceinQueue(q) != 0 && i < size; i++)
+        AddBytetoQueue(q, *buffer++);
+    return i;
+}
 
-cleanup:
-    // Clear watchStateMask
-    self->watchStateMask = 0;
+static unsigned int
+RemovefromQueue(CirQueue *q, unsigned char *buffer, unsigned int size)
+{
+    unsigned int i;
 
-    // Unlock (FUN_00002b1c)
-    // Clear lock
+    /* Divergence from 5.6: test the bound before taking a byte.  The binary
+       takes one first and compares size >= i, so with more queued than asked
+       for it writes one byte past the buffer and drops the next. */
+    for (i = 0; i < size && GetBytetoQueue(q, buffer) == 0; i++)
+        buffer++;
+    return i;
+}
 
-    return result;
+static unsigned int
+FreeSpaceinQueue(CirQueue *q)
+{
+    return q->Size - q->InQueue;
+}
+
+static unsigned int
+UsedSpaceinQueue(CirQueue *q)
+{
+    return q->InQueue;
+}
+
+static unsigned int
+GetQueueSize(CirQueue *q)
+{
+    return q->Size;
+}
+
+/* Returns 1 when the queue is full. */
+static int
+AddBytetoQueue(CirQueue *q, unsigned char c)
+{
+    if (q->NextChar == q->LastChar && q->InQueue != 0)
+        return 1;
+    *q->NextChar++ = c;
+    q->InQueue++;
+    if (q->NextChar >= q->End)
+        q->NextChar = q->Start;
+    return 0;
+}
+
+/* Returns 2 when the queue is empty. */
+static int
+GetBytetoQueue(CirQueue *q, unsigned char *c)
+{
+    if (q->NextChar == q->LastChar && q->InQueue == 0)
+        return 2;
+    *c = *q->LastChar++;
+    q->InQueue--;
+    if (q->LastChar >= q->End)
+        q->LastChar = q->Start;
+    return 0;
 }

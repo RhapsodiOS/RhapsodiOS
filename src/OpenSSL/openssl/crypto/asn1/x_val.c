@@ -5,21 +5,21 @@
  * This package is an SSL implementation written
  * by Eric Young (eay@cryptsoft.com).
  * The implementation was written so as to conform with Netscapes SSL.
- * 
+ *
  * This library is free for commercial and non-commercial use as long as
  * the following conditions are aheared to.  The following conditions
  * apply to all code found in this distribution, be it the RC4, RSA,
  * lhash, DES, etc., code; not just the SSL code.  The SSL documentation
  * included with this distribution is covered by the same copyright terms
  * except that the holder is Tim Hudson (tjh@cryptsoft.com).
- * 
+ *
  * Copyright remains Eric Young's, and as such any Copyright notices in
  * the code are not to be removed.
  * If this package is used in a product, Eric Young should be given attribution
  * as the author of the parts of the library used.
  * This can be in the form of a textual message at program startup or
  * in documentation (online or textual) provided with the package.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -34,10 +34,10 @@
  *     Eric Young (eay@cryptsoft.com)"
  *    The word 'cryptographic' can be left out if the rouines from the library
  *    being used are not cryptographic related :-).
- * 4. If you include any Windows specific code (or a derivative thereof) from 
+ * 4. If you include any Windows specific code (or a derivative thereof) from
  *    the apps directory (application code) you must include an acknowledgement:
  *    "This product includes software written by Tim Hudson (tjh@cryptsoft.com)"
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY ERIC YOUNG ``AS IS'' AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -49,7 +49,7 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
+ *
  * The licence and distribution terms for any publically available version or
  * derivative of this code cannot be changed.  i.e. this code cannot simply be
  * copied and put under another distribution licence
@@ -58,52 +58,12 @@
 
 #include <stdio.h>
 #include "cryptlib.h"
-#include <openssl/asn1_mac.h>
+#include <openssl/asn1t.h>
 #include <openssl/x509.h>
 
-int i2d_X509_VAL(X509_VAL *a, unsigned char **pp)
-	{
-	M_ASN1_I2D_vars(a);
+ASN1_SEQUENCE(X509_VAL) = {
+        ASN1_SIMPLE(X509_VAL, notBefore, ASN1_TIME),
+        ASN1_SIMPLE(X509_VAL, notAfter, ASN1_TIME)
+} ASN1_SEQUENCE_END(X509_VAL)
 
-	M_ASN1_I2D_len(a->notBefore,i2d_ASN1_TIME);
-	M_ASN1_I2D_len(a->notAfter,i2d_ASN1_TIME);
-
-	M_ASN1_I2D_seq_total();
-
-	M_ASN1_I2D_put(a->notBefore,i2d_ASN1_TIME);
-	M_ASN1_I2D_put(a->notAfter,i2d_ASN1_TIME);
-
-	M_ASN1_I2D_finish();
-	}
-
-X509_VAL *d2i_X509_VAL(X509_VAL **a, unsigned char **pp, long length)
-	{
-	M_ASN1_D2I_vars(a,X509_VAL *,X509_VAL_new);
-
-	M_ASN1_D2I_Init();
-	M_ASN1_D2I_start_sequence();
-	M_ASN1_D2I_get(ret->notBefore,d2i_ASN1_TIME);
-	M_ASN1_D2I_get(ret->notAfter,d2i_ASN1_TIME);
-	M_ASN1_D2I_Finish(a,X509_VAL_free,ASN1_F_D2I_X509_VAL);
-	}
-
-X509_VAL *X509_VAL_new(void)
-	{
-	X509_VAL *ret=NULL;
-	ASN1_CTX c;
-
-	M_ASN1_New_Malloc(ret,X509_VAL);
-	M_ASN1_New(ret->notBefore,M_ASN1_TIME_new);
-	M_ASN1_New(ret->notAfter,M_ASN1_TIME_new);
-	return(ret);
-	M_ASN1_New_Error(ASN1_F_X509_VAL_NEW);
-	}
-
-void X509_VAL_free(X509_VAL *a)
-	{
-	if (a == NULL) return;
-	M_ASN1_TIME_free(a->notBefore);
-	M_ASN1_TIME_free(a->notAfter);
-	Free(a);
-	}
-
+IMPLEMENT_ASN1_FUNCTIONS(X509_VAL)

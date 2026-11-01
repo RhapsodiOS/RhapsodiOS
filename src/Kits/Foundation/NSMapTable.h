@@ -44,6 +44,8 @@ FOUNDATION_EXPORT void NSMapInsert(NSMapTable *table, const void *key, const voi
 FOUNDATION_EXPORT void NSMapInsertKnownAbsent(NSMapTable *table, const void *key, const void *value);
 FOUNDATION_EXPORT void *NSMapInsertIfAbsent(NSMapTable *table, const void *key, const void *value);
 FOUNDATION_EXPORT void NSMapRemove(NSMapTable *table, const void *key);
+FOUNDATION_EXPORT unsigned _NSMapTableHashCString(NSMapTable *table, const void *key);
+FOUNDATION_EXPORT BOOL _NSMapTableIsEqualCString(NSMapTable *table, const void *first, const void *second);
 FOUNDATION_EXPORT NSMapEnumerator NSEnumerateMapTable(NSMapTable *table);
 FOUNDATION_EXPORT BOOL NSNextMapEnumeratorPair(NSMapEnumerator *enumerator, void **key, void **value);
 FOUNDATION_EXPORT unsigned NSCountMapTable(NSMapTable *table);

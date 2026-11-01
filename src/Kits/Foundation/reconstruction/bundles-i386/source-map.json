@@ -1,0 +1,581 @@
+{
+  "schema_version": "source-map-v1",
+  "reference_sha256": "1165B9063ADD5672514455CA2C9830625BEA2BCE5E46126FB5E8652114C909D6",
+  "mapped": [
+    {
+      "address": 1112585160,
+      "size": 1368,
+      "reference_names": [
+        "__NSBundleLoadCode"
+      ],
+      "source_path": "src/Kits/Foundation/NSBundle.m",
+      "source_line": 395
+    },
+    {
+      "address": 1112646716,
+      "size": 106,
+      "reference_names": [
+        "__NSIsResourceAtPath"
+      ],
+      "source_path": "src/Kits/Foundation/NSBundle.m",
+      "source_line": 675
+    },
+    {
+      "address": 1112647820,
+      "size": 535,
+      "reference_names": [
+        "__NSLibraryPathForClass"
+      ],
+      "source_path": "src/Kits/Foundation/NSBundle.m",
+      "source_line": 175
+    },
+    {
+      "address": 1112660024,
+      "size": 608,
+      "reference_names": [
+        "___NSSearchBundleDirectory"
+      ],
+      "source_path": "src/Kits/Foundation/NSBundle.m",
+      "source_line": 686
+    },
+    {
+      "address": 1112667172,
+      "size": 42,
+      "reference_names": [
+        "-[NSBundle infoDictionary]"
+      ],
+      "source_path": "src/Kits/Foundation/NSBundle.m",
+      "source_line": 1887
+    },
+    {
+      "address": 1112684540,
+      "size": 1514,
+      "reference_names": [
+        "__NSInitializeStaticFrameworks"
+      ],
+      "source_path": "src/Kits/Foundation/NSBundle.m",
+      "source_line": 519
+    },
+    {
+      "address": 1112700960,
+      "size": 2546,
+      "reference_names": [
+        "+[NSBundle findBundleResources:callingMethod:directory:languages:name:types:limit:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSBundle.m",
+      "source_line": 1449
+    },
+    {
+      "address": 1112705316,
+      "size": 77,
+      "reference_names": [
+        "-[NSBundle resourcePath]"
+      ],
+      "source_path": "src/Kits/Foundation/NSBundle.m",
+      "source_line": 1438
+    },
+    {
+      "address": 1112705396,
+      "size": 56,
+      "reference_names": [
+        "-[NSBundle bundleLanguages]"
+      ],
+      "source_path": "src/Kits/Foundation/NSBundle.m",
+      "source_line": 1445
+    },
+    {
+      "address": 1112707444,
+      "size": 597,
+      "reference_names": [
+        "+[NSBundle mainBundle]"
+      ],
+      "source_path": "src/Kits/Foundation/NSBundle.m",
+      "source_line": 999
+    },
+    {
+      "address": 1112738280,
+      "size": 434,
+      "reference_names": [
+        "-[NSBundle pathForResource:ofType:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSBundle.m",
+      "source_line": 1614
+    },
+    {
+      "address": 1112746356,
+      "size": 158,
+      "reference_names": [
+        "-[NSBundle retain]"
+      ],
+      "source_path": "src/Kits/Foundation/NSBundle.m",
+      "source_line": 1169
+    },
+    {
+      "address": 1112747676,
+      "size": 762,
+      "reference_names": [
+        "-[NSBundle localizedStringForKey:value:table:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSBundle.m",
+      "source_line": 1824
+    },
+    {
+      "address": 1112757208,
+      "size": 58,
+      "reference_names": [
+        "__NSCouldBeBundle"
+      ],
+      "source_path": "src/Kits/Foundation/NSBundle.m",
+      "source_line": 810
+    },
+    {
+      "address": 1112757368,
+      "size": 56,
+      "reference_names": [
+        "-[NSBundle bundlePath]"
+      ],
+      "source_path": "src/Kits/Foundation/NSBundle.m",
+      "source_line": 1415
+    },
+    {
+      "address": 1112757548,
+      "size": 216,
+      "reference_names": [
+        "-[NSBundle release]"
+      ],
+      "source_path": "src/Kits/Foundation/NSBundle.m",
+      "source_line": 1189
+    },
+    {
+      "address": 1112768308,
+      "size": 381,
+      "reference_names": [
+        "+[NSBundle bundleForClass:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSBundle.m",
+      "source_line": 1072
+    },
+    {
+      "address": 1112775572,
+      "size": 2456,
+      "reference_names": [
+        "-[NSBundle _initInfoDictionary]"
+      ],
+      "source_path": "src/Kits/Foundation/NSBundle.m",
+      "source_line": 1915
+    },
+    {
+      "address": 1112778028,
+      "size": 409,
+      "reference_names": [
+        "__NSLookupOrCreateBundle"
+      ],
+      "source_path": "src/Kits/Foundation/NSBundle.m",
+      "source_line": 820
+    },
+    {
+      "address": 1112783444,
+      "size": 512,
+      "reference_names": [
+        "_initWithPathRecordNoLock"
+      ],
+      "source_path": "src/Kits/Foundation/NSBundle.m",
+      "source_line": 877
+    },
+    {
+      "address": 1112794904,
+      "size": 384,
+      "reference_names": [
+        "__NSFrameworkPathFromLibraryPath"
+      ],
+      "source_path": "src/Kits/Foundation/NSBundle.m",
+      "source_line": 254
+    },
+    {
+      "address": 1112795864,
+      "size": 46,
+      "reference_names": [
+        "-[NSBundle retainCount]"
+      ],
+      "source_path": "src/Kits/Foundation/NSBundle.m",
+      "source_line": 1217
+    },
+    {
+      "address": 1112795912,
+      "size": 106,
+      "reference_names": [
+        "-[NSBundle initWithPath:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSBundle.m",
+      "source_line": 1063
+    },
+    {
+      "address": 1112798668,
+      "size": 203,
+      "reference_names": [
+        "__NSBundleLoadCallback"
+      ],
+      "source_path": "src/Kits/Foundation/NSBundle.m",
+      "source_line": 277
+    },
+    {
+      "address": 1112802708,
+      "size": 71,
+      "reference_names": [
+        "+[NSBundle bundleWithPath:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSBundle.m",
+      "source_line": 1059
+    },
+    {
+      "address": 1112803712,
+      "size": 427,
+      "reference_names": [
+        "+[NSBundle pathForResource:ofType:inDirectory:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSBundle.m",
+      "source_line": 1579
+    },
+    {
+      "address": 1112804140,
+      "size": 772,
+      "reference_names": [
+        "__NSBundleAddClassesAndNotify"
+      ],
+      "source_path": "src/Kits/Foundation/NSBundle.m",
+      "source_line": 305
+    },
+    {
+      "address": 1112817816,
+      "size": 668,
+      "reference_names": [
+        "-[NSBundle load]"
+      ],
+      "source_path": "src/Kits/Foundation/NSBundle.m",
+      "source_line": 1304
+    },
+    {
+      "address": 1112818484,
+      "size": 648,
+      "reference_names": [
+        "-[NSBundle _computeExecutablePath]"
+      ],
+      "source_path": "src/Kits/Foundation/NSBundle.m",
+      "source_line": 1251
+    },
+    {
+      "address": 1112825680,
+      "size": 88,
+      "reference_names": [
+        "-[NSBundle classNamed:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSBundle.m",
+      "source_line": 1565
+    },
+    {
+      "address": 1112826092,
+      "size": 169,
+      "reference_names": [
+        "__NSFoundationBundle"
+      ],
+      "source_path": "src/Kits/Foundation/NSBundle.m",
+      "source_line": 924
+    },
+    {
+      "address": 1112839356,
+      "size": 170,
+      "reference_names": [
+        "__NSBundleLoadJavaCode"
+      ],
+      "source_path": "src/Kits/Foundation/NSBundle.m",
+      "source_line": 935
+    },
+    {
+      "address": 1112868088,
+      "size": 42,
+      "reference_names": [
+        "-[NSBundle principalClass]"
+      ],
+      "source_path": "src/Kits/Foundation/NSBundle.m",
+      "source_line": 1573
+    },
+    {
+      "address": 1112905320,
+      "size": 117,
+      "reference_names": [
+        "+[NSBundle loadedBundles]"
+      ],
+      "source_path": "src/Kits/Foundation/NSBundle.m",
+      "source_line": 1153
+    },
+    {
+      "address": 1112905440,
+      "size": 195,
+      "reference_names": [
+        "+[NSBundle allFrameworks]"
+      ],
+      "source_path": "src/Kits/Foundation/NSBundle.m",
+      "source_line": 1139
+    },
+    {
+      "address": 1112905636,
+      "size": 195,
+      "reference_names": [
+        "+[NSBundle allBundles]"
+      ],
+      "source_path": "src/Kits/Foundation/NSBundle.m",
+      "source_line": 1126
+    },
+    {
+      "address": 1113001060,
+      "size": 755,
+      "reference_names": [
+        "__NSParseStringsFile"
+      ],
+      "source_path": "src/Kits/Foundation/NSBundle.m",
+      "source_line": 744
+    },
+    {
+      "address": 1113025824,
+      "size": 47,
+      "reference_names": [
+        "+[NSBundle debugDescription]"
+      ],
+      "source_path": "src/Kits/Foundation/NSBundle.m",
+      "source_line": 1161
+    },
+    {
+      "address": 1113025872,
+      "size": 322,
+      "reference_names": [
+        "+[NSBundle pathsForResourcesOfType:inDirectory:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSBundle.m",
+      "source_line": 1726
+    },
+    {
+      "address": 1113026196,
+      "size": 7,
+      "reference_names": [
+        "+[NSBundle setSystemLanguages:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSBundle.m",
+      "source_line": 1165
+    },
+    {
+      "address": 1113032064,
+      "size": 303,
+      "reference_names": [
+        "-[NSBundle dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSBundle.m",
+      "source_line": 1225
+    },
+    {
+      "address": 1113032368,
+      "size": 217,
+      "reference_names": [
+        "-[NSBundle defaultsDictionary]"
+      ],
+      "source_path": "src/Kits/Foundation/NSBundle.m",
+      "source_line": 1893
+    },
+    {
+      "address": 1113032588,
+      "size": 110,
+      "reference_names": [
+        "-[NSBundle description]"
+      ],
+      "source_path": "src/Kits/Foundation/NSBundle.m",
+      "source_line": 1419
+    },
+    {
+      "address": 1113032700,
+      "size": 105,
+      "reference_names": [
+        "-[NSBundle invalidateResourceCache]"
+      ],
+      "source_path": "src/Kits/Foundation/NSBundle.m",
+      "source_line": 1908
+    },
+    {
+      "address": 1113032808,
+      "size": 438,
+      "reference_names": [
+        "-[NSBundle pathForResource:ofType:inDirectory:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSBundle.m",
+      "source_line": 1650
+    },
+    {
+      "address": 1113033248,
+      "size": 438,
+      "reference_names": [
+        "-[NSBundle pathForResource:ofType:inDirectory:forLanguage:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSBundle.m",
+      "source_line": 1683
+    },
+    {
+      "address": 1113033688,
+      "size": 332,
+      "reference_names": [
+        "-[NSBundle pathsForResourcesOfType:inDirectory:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSBundle.m",
+      "source_line": 1758
+    },
+    {
+      "address": 1113034020,
+      "size": 332,
+      "reference_names": [
+        "-[NSBundle pathsForResourcesOfType:inDirectory:forLanguage:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSBundle.m",
+      "source_line": 1791
+    },
+    {
+      "address": 1113034352,
+      "size": 26,
+      "reference_names": [
+        "-[NSBundle unload]"
+      ],
+      "source_path": "src/Kits/Foundation/NSBundle.m",
+      "source_line": 1409
+    },
+    {
+      "address": 1113053696,
+      "size": 41,
+      "reference_names": [
+        "-[NSDebugString characterAtIndex:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSBundle.m",
+      "source_line": 105
+    },
+    {
+      "address": 1113053740,
+      "size": 29,
+      "reference_names": [
+        "-[NSDebugString copyWithZone:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSBundle.m",
+      "source_line": 113
+    },
+    {
+      "address": 1113053772,
+      "size": 74,
+      "reference_names": [
+        "-[NSDebugString dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSBundle.m",
+      "source_line": 117
+    },
+    {
+      "address": 1113053848,
+      "size": 48,
+      "reference_names": [
+        "-[NSDebugString getCharacters:range:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSBundle.m",
+      "source_line": 109
+    },
+    {
+      "address": 1113053896,
+      "size": 97,
+      "reference_names": [
+        "-[NSDebugString initWithString:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSBundle.m",
+      "source_line": 95
+    },
+    {
+      "address": 1113053996,
+      "size": 32,
+      "reference_names": [
+        "-[NSDebugString length]"
+      ],
+      "source_path": "src/Kits/Foundation/NSBundle.m",
+      "source_line": 101
+    },
+    {
+      "address": 1113080252,
+      "size": 20,
+      "reference_names": [
+        "_NSBundleDisableCodeLoading"
+      ],
+      "source_path": "src/Kits/Foundation/NSBundle.m",
+      "source_line": 65
+    },
+    {
+      "address": 1113081884,
+      "size": 272,
+      "reference_names": [
+        "__NSBundleAddJavaClasses"
+      ],
+      "source_path": "src/Kits/Foundation/NSBundle.m",
+      "source_line": 963
+    },
+    {
+      "address": 1113082156,
+      "size": 41,
+      "reference_names": [
+        "__NSBundleAddMoreClassesAndNotify"
+      ],
+      "source_path": "src/Kits/Foundation/NSBundle.m",
+      "source_line": 995
+    },
+    {
+      "address": 1113084404,
+      "size": 63,
+      "reference_names": [
+        "__NSIsLocalizedString"
+      ],
+      "source_path": "src/Kits/Foundation/NSBundle.m",
+      "source_line": 124
+    },
+    {
+      "address": 1113084476,
+      "size": 103,
+      "reference_names": [
+        "__NSLocalizedString"
+      ],
+      "source_path": "src/Kits/Foundation/NSBundle.m",
+      "source_line": 129
+    },
+    {
+      "address": 1113085072,
+      "size": 384,
+      "reference_names": [
+        "__NSSetMainBundle"
+      ],
+      "source_path": "src/Kits/Foundation/NSBundle.m",
+      "source_line": 641
+    },
+    {
+      "address": 1113142188,
+      "size": 22,
+      "reference_names": [
+        "__NSBundleLoadCallback_0"
+      ],
+      "source_path": "src/Kits/Foundation/NSStringEncodings.m",
+      "source_line": 111
+    }
+  ],
+  "unmapped": [],
+  "duplicate_candidates": [],
+  "boundary_disputed": [],
+  "by_module": {
+    "NSBundle.m": {
+      "mapped": 61,
+      "unmapped": 0,
+      "duplicate_candidates": 0,
+      "boundary_disputed": 0
+    },
+    "NSStringEncodings.m": {
+      "mapped": 1,
+      "unmapped": 0,
+      "duplicate_candidates": 0,
+      "boundary_disputed": 0
+    }
+  }
+}

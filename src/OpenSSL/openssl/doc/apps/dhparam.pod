@@ -12,12 +12,14 @@ B<openssl dhparam>
 [B<-in> I<filename>]
 [B<-out> I<filename>]
 [B<-dsaparam>]
+[B<-check>]
 [B<-noout>]
 [B<-text>]
 [B<-C>]
 [B<-2>]
 [B<-5>]
 [B<-rand> I<file(s)>]
+[B<-engine id>]
 [I<numbits>]
 
 =head1 DESCRIPTION
@@ -63,6 +65,10 @@ exchange more efficient.  Beware that with such DSA-style DH
 parameters, a fresh DH key should be created for each use to
 avoid small-subgroup attacks that may be possible otherwise.
 
+=item B<-check>
+
+check if the parameters are valid primes and generator.
+
 =item B<-2>, B<-5>
 
 The generator to use, either 2 or 5. 2 is the default. If present then the
@@ -73,7 +79,7 @@ input file is ignored and parameters are generated instead.
 a file or files containing random data used to seed the random number
 generator, or an EGD socket (see L<RAND_egd(3)|RAND_egd(3)>).
 Multiple files can be specified separated by a OS-dependent character.
-The separator is B<;> for MS-Windows, B<,> for OpenVSM, and B<:> for
+The separator is B<;> for MS-Windows, B<,> for OpenVMS, and B<:> for
 all others.
 
 =item I<numbits>
@@ -95,6 +101,13 @@ this option prints out the DH parameters in human readable form.
 
 this option converts the parameters into C code. The parameters can then
 be loaded by calling the B<get_dh>I<numbits>B<()> function.
+
+=item B<-engine id>
+
+specifying an engine (by it's unique B<id> string) will cause B<req>
+to attempt to obtain a functional reference to the specified engine,
+thus initialising it if needed. The engine will then be set as the default
+for all available algorithms.
 
 =back
 

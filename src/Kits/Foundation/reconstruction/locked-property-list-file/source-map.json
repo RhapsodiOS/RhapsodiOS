@@ -1,0 +1,144 @@
+{
+  "schema_version": "source-map-v1",
+  "reference_sha256": "332B3C8C0AE0A6E40A4B93110EE16748FCD94AA0119D63F16EDE878598C681B4",
+  "mapped": [
+    {
+      "address": 1112721172,
+      "size": 472,
+      "reference_names": [
+        "-[NSLockedPropertyListFile dictionaryForDomain:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 785
+    },
+    {
+      "address": 1112749872,
+      "size": 164,
+      "reference_names": [
+        "-[NSLockedPropertyListFile cacheDictionary:forDomain:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 776
+    },
+    {
+      "address": 1112750036,
+      "size": 392,
+      "reference_names": [
+        "-[NSLockedPropertyListFile _dictionaryForDomain:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 750
+    },
+    {
+      "address": 1112765428,
+      "size": 296,
+      "reference_names": [
+        "-[NSLockedPropertyListFile domainExists:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 901
+    },
+    {
+      "address": 1112809812,
+      "size": 632,
+      "reference_names": [
+        "-[NSLockedPropertyListFile initWithPath:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 688
+    },
+    {
+      "address": 1112816584,
+      "size": 580,
+      "reference_names": [
+        "-[NSLockedPropertyListFile setObject:forKey:domain:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 831
+    },
+    {
+      "address": 1112819952,
+      "size": 808,
+      "reference_names": [
+        "-[NSLockedPropertyListFile synchronize]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 1023
+    },
+    {
+      "address": 1112822396,
+      "size": 632,
+      "reference_names": [
+        "-[NSLockedPropertyListFile _setDictionary:forDomain:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 962
+    },
+    {
+      "address": 1112892020,
+      "size": 268,
+      "reference_names": [
+        "-[NSLockedPropertyListFile setDictionary:forDomain:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 886
+    },
+    {
+      "address": 1112908252,
+      "size": 312,
+      "reference_names": [
+        "-[NSLockedPropertyListFile objectForKey:domain:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 815
+    },
+    {
+      "address": 1112997564,
+      "size": 176,
+      "reference_names": [
+        "-[NSLockedPropertyListFile _removeDomain:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 1005
+    },
+    {
+      "address": 1112997740,
+      "size": 716,
+      "reference_names": [
+        "-[NSLockedPropertyListFile allDomains]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 920
+    },
+    {
+      "address": 1112998456,
+      "size": 128,
+      "reference_names": [
+        "-[NSLockedPropertyListFile dealloc]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 1081
+    },
+    {
+      "address": 1112998584,
+      "size": 196,
+      "reference_names": [
+        "-[NSLockedPropertyListFile removeDomain:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 896
+    },
+    {
+      "address": 1112998780,
+      "size": 488,
+      "reference_names": [
+        "-[NSLockedPropertyListFile removeObjectForKey:domain:]"
+      ],
+      "source_path": "src/Kits/Foundation/NSUserDefaults.m",
+      "source_line": 860
+    }
+  ],
+  "unmapped": [],
+  "duplicate_candidates": [],
+  "boundary_disputed": []
+}

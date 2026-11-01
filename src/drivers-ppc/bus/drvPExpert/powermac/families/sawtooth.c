@@ -22,7 +22,7 @@
  * @APPLE_LICENSE_HEADER_END@
  */
 
-#include <machdep/ppc/interrupts.h>
+#include <interrupts.h>		/* our own: names 5.6's table (CARD18-25) */
 #include <families/sawtooth.h>
 #include <chips/keylargo.h>
 #include <chips/mpic.h>
@@ -44,70 +44,70 @@ powermac_init_t sawtooth_init = {
  * Format: INT_TBL(vector, priority, sense, polarity, mask, destination)
  */
 static u_long sawtooth_int_mapping_tbl[] = {
-    INT_TBL(  0,     4,   EDGE, ACT_HI,   MASKED, 1), /* IRQ0  - SCSI DMA        */
-    INT_TBL(  1,     4,   EDGE, ACT_HI,   MASKED, 1), /* IRQ1  - Reserved        */
-    INT_TBL(  2,     4,   EDGE, ACT_HI,   MASKED, 1), /* IRQ2  - IDE 0 DMA       */
-    INT_TBL(  3,     4,   EDGE, ACT_HI,   MASKED, 1), /* IRQ3  - IDE 1 DMA       */
-    INT_TBL(  4,     4,   EDGE, ACT_HI,   MASKED, 1), /* IRQ4  - SCC Tx A DMA    */
-    INT_TBL(  5,     4,   EDGE, ACT_HI,   MASKED, 1), /* IRQ5  - SCC Rx A DMA    */
-    INT_TBL(  6,     4,   EDGE, ACT_HI,   MASKED, 1), /* IRQ6  - SCC Tx B DMA    */
-    INT_TBL(  7,     4,   EDGE, ACT_HI,   MASKED, 1), /* IRQ7  - SCC Rx B DMA    */
-    INT_TBL(  8,     4,   EDGE, ACT_HI,   MASKED, 1), /* IRQ8  - Audio Out DMA   */
-    INT_TBL(  9,     4,   EDGE, ACT_HI,   MASKED, 1), /* IRQ9  - Audio In  DMA   */
-    INT_TBL( 10,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ10 - Reserved        */
-    INT_TBL( 11,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ11 - Reserved        */
-    INT_TBL( 12,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ12 - SCSI Dev        */
-    INT_TBL( 13,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ13 - IDE 0 Dev       */
-    INT_TBL( 14,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ14 - IDE 1 Dev       */
-    INT_TBL( 15,     4,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ15 - SCC A Dev       */
-    INT_TBL( 16,     4,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ16 - SCC B Dev       */
-    INT_TBL( 17,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ17 - Audio Dev       */
-    INT_TBL( 18,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ18 - Reserved        */
-    INT_TBL( 19,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ19 - Reserved        */
-    INT_TBL( 20,     7,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ20 - NMI             */
-    INT_TBL( 21,     2,    LVL, ACT_LOW,  MASKED, 1), /* IRQ21 - PCI Slot 1      */
-    INT_TBL( 22,     2,    LVL, ACT_LOW,  MASKED, 1), /* IRQ22 - PCI Slot 2      */
-    INT_TBL( 23,     2,    LVL, ACT_LOW,  MASKED, 1), /* IRQ23 - PCI Slot 3      */
-    INT_TBL( 24,     2,    LVL, ACT_LOW,  MASKED, 1), /* IRQ24 - PCI Slot 4      */
-    INT_TBL( 25,     1,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ25 - VIA Cascade     */
-    INT_TBL( 26,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ26 - Reserved        */
-    INT_TBL( 27,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ27 - Reserved        */
-    INT_TBL( 28,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ28 - Reserved        */
-    INT_TBL( 29,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ29 - Reserved        */
-    INT_TBL( 30,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ30 - Reserved        */
-    INT_TBL( 31,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ31 - Reserved        */
-    INT_TBL( 32,     4,   EDGE, ACT_HI,   MASKED, 1), /* IRQ32 - Eth Tx DMA      */
-    INT_TBL( 33,     4,   EDGE, ACT_HI,   MASKED, 1), /* IRQ33 - Eth Rx DMA      */
-    INT_TBL( 34,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ34 - Reserved        */
-    INT_TBL( 35,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ35 - Reserved        */
-    INT_TBL( 36,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ36 - Reserved        */
-    INT_TBL( 37,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ37 - Reserved        */
-    INT_TBL( 38,     3,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ38 - Ethernet Dev    */
-    INT_TBL( 39,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ39 - Reserved        */
-    INT_TBL( 40,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ40 - Reserved        */
-    INT_TBL( 41,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ41 - Reserved        */
-    INT_TBL( 42,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ42 - Reserved        */
-    INT_TBL( 43,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ43 - Reserved        */
-    INT_TBL( 44,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ44 - Reserved        */
-    INT_TBL( 45,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ45 - Reserved        */
-    INT_TBL( 46,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ46 - Reserved        */
-    INT_TBL( 47,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ47 - Reserved        */
-    INT_TBL( 48,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ48 - Reserved        */
-    INT_TBL( 49,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ49 - Reserved        */
-    INT_TBL( 50,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ50 - Reserved        */
-    INT_TBL( 51,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ51 - Reserved        */
-    INT_TBL( 52,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ52 - Reserved        */
-    INT_TBL( 53,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ53 - Reserved        */
-    INT_TBL( 54,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ54 - Reserved        */
-    INT_TBL( 55,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ55 - Reserved        */
-    INT_TBL( 56,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ56 - Reserved        */
-    INT_TBL( 57,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ57 - Reserved        */
-    INT_TBL( 58,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ58 - Reserved        */
-    INT_TBL( 59,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ59 - Reserved        */
-    INT_TBL( 60,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ60 - Reserved        */
-    INT_TBL( 61,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ61 - Reserved        */
-    INT_TBL( 62,     2,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ62 - Reserved        */
-    INT_TBL( 63,     2,   EDGE, ACT_LOW,  MASKED, 1)  /* IRQ63 - Reserved        */
+    INT_TBL(  0,     8,   EDGE, ACT_LOW,  MASKED, 1), /* IRQ0  - SCSI DMA        */
+    INT_TBL(  1,     8,   EDGE, ACT_HI,   MASKED, 1), /* IRQ1  - Reserved        */
+    INT_TBL(  2,     8,   EDGE, ACT_HI,   MASKED, 1), /* IRQ2  - IDE 0 DMA       */
+    INT_TBL(  3,     8,   EDGE, ACT_HI,   MASKED, 1), /* IRQ3  - IDE 1 DMA       */
+    INT_TBL(  4,     8,   EDGE, ACT_HI,   MASKED, 1), /* IRQ4  - SCC Tx A DMA    */
+    INT_TBL(  5,     8,   EDGE, ACT_HI,   MASKED, 1), /* IRQ5  - SCC Rx A DMA    */
+    INT_TBL(  6,     8,   EDGE, ACT_HI,   MASKED, 1), /* IRQ6  - SCC Tx B DMA    */
+    INT_TBL(  7,     8,   EDGE, ACT_HI,   MASKED, 1), /* IRQ7  - SCC Rx B DMA    */
+    INT_TBL(  8,     8,   EDGE, ACT_HI,   MASKED, 1), /* IRQ8  - Audio Out DMA   */
+    INT_TBL(  9,     8,   EDGE, ACT_HI,   MASKED, 1), /* IRQ9  - Audio In  DMA   */
+    INT_TBL( 10,     8,   EDGE, ACT_HI,   MASKED, 1), /* IRQ10 - Reserved        */
+    INT_TBL( 11,     8,   EDGE, ACT_HI,   MASKED, 1), /* IRQ11 - Reserved        */
+    INT_TBL( 12,     8,   EDGE, ACT_HI,   MASKED, 1), /* IRQ12 - SCSI Dev        */
+    INT_TBL( 13,     8,   EDGE, ACT_HI,   MASKED, 1), /* IRQ13 - IDE 0 Dev       */
+    INT_TBL( 14,     8,   EDGE, ACT_HI,   MASKED, 1), /* IRQ14 - IDE 1 Dev       */
+    INT_TBL( 15,     8,   EDGE, ACT_HI,   MASKED, 1), /* IRQ15 - SCC A Dev       */
+    INT_TBL( 16,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ16 - SCC B Dev       */
+    INT_TBL( 17,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ17 - Audio Dev       */
+    INT_TBL( 18,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ18 - Reserved        */
+    INT_TBL( 19,     8,   EDGE, ACT_HI,   MASKED, 1), /* IRQ19 - Reserved        */
+    INT_TBL( 20,     8,   EDGE, ACT_HI,   MASKED, 1), /* IRQ20 - NMI             */
+    INT_TBL( 21,     8,   EDGE, ACT_HI,   MASKED, 1), /* IRQ21 - PCI Slot 1      */
+    INT_TBL( 22,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ22 - PCI Slot 2      */
+    INT_TBL( 23,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ23 - PCI Slot 3      */
+    INT_TBL( 24,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ24 - PCI Slot 4      */
+    INT_TBL( 25,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ25 - VIA Cascade     */
+    INT_TBL( 26,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ26 - Reserved        */
+    INT_TBL( 27,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ27 - Reserved        */
+    INT_TBL( 28,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ28 - Reserved        */
+    INT_TBL( 29,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ29 - Reserved        */
+    INT_TBL( 30,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ30 - Reserved        */
+    INT_TBL( 31,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ31 - Reserved        */
+    INT_TBL( 32,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ32 - Eth Tx DMA      */
+    INT_TBL( 33,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ33 - Eth Rx DMA      */
+    INT_TBL( 34,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ34 - Reserved        */
+    INT_TBL( 35,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ35 - Reserved        */
+    INT_TBL( 36,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ36 - Reserved        */
+    INT_TBL( 37,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ37 - Reserved        */
+    INT_TBL( 38,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ38 - Ethernet Dev    */
+    INT_TBL( 39,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ39 - Reserved        */
+    INT_TBL( 40,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ40 - Reserved        */
+    INT_TBL( 41,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ41 - Reserved        */
+    INT_TBL( 42,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ42 - Reserved        */
+    INT_TBL( 43,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ43 - Reserved        */
+    INT_TBL( 44,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ44 - Reserved        */
+    INT_TBL( 45,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ45 - Reserved        */
+    INT_TBL( 46,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ46 - Reserved        */
+    INT_TBL( 47,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ47 - Reserved        */
+    INT_TBL( 48,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ48 - Reserved        */
+    INT_TBL( 49,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ49 - Reserved        */
+    INT_TBL( 50,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ50 - Reserved        */
+    INT_TBL( 51,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ51 - Reserved        */
+    INT_TBL( 52,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ52 - Reserved        */
+    INT_TBL( 53,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ53 - Reserved        */
+    INT_TBL( 54,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ54 - Reserved        */
+    INT_TBL( 55,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ55 - Reserved        */
+    INT_TBL( 56,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ56 - Reserved        */
+    INT_TBL( 57,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ57 - Reserved        */
+    INT_TBL( 58,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ58 - Reserved        */
+    INT_TBL( 59,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ59 - Reserved        */
+    INT_TBL( 60,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ60 - Reserved        */
+    INT_TBL( 61,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ61 - Reserved        */
+    INT_TBL( 62,     8,    LVL, ACT_LOW,  MASKED, 1), /* IRQ62 - Reserved        */
+    INT_TBL( 63,     8,    LVL, ACT_LOW,  MASKED, 1)  /* IRQ63 - Reserved        */
 };
 
 /* VIA1 cascaded interrupts */
@@ -122,87 +122,74 @@ struct powermac_interrupt sawtooth_via1_interrupts[NSAWTOOTH_VIA1_INTERRUPTS] = 
 };
 
 /* KeyLargo MPIC interrupt mapping for Sawtooth (Power Mac G4 AGP Graphics)
- * This is organized by interrupt source number (0-63)
+ * This is organized by interrupt source number (0-63); the device for each
+ * source matches the Mac OS X Server 1.2v3 (kernel 5.6) table.
  */
 struct powermac_interrupt  sawtooth_interrupts[NSAWTOOTH_INTERRUPTS] = {
-	/* 0-7: DMA interrupts */
-	{ 0,	0, 0, PMAC_DMA_SCSI0},	      /* 0 - DMA SCSI */
-	{ 0,	0, 0, -1},                    /* 1 - Reserved */
-	{ 0,	0, 0, PMAC_DMA_IDE0},         /* 2 - DMA IDE0 */
-	{ 0,	0, 0, PMAC_DMA_IDE1},         /* 3 - DMA IDE1 */
-	{ 0,	0, 0, PMAC_DMA_SCC_A_TX},     /* 4 - DMA SCC Channel A TX */
-	{ 0,	0, 0, PMAC_DMA_SCC_A_RX},     /* 5 - DMA SCC Channel A RX */
-	{ 0,	0, 0, PMAC_DMA_SCC_B_TX},     /* 6 - DMA SCC Channel B TX */
-	{ 0,	0, 0, PMAC_DMA_SCC_B_RX},     /* 7 - DMA SCC Channel B RX */
-
-	/* 8-15: Audio and device interrupts */
-	{ 0,	0, 0, PMAC_DMA_AUDIO_OUT},    /* 8 - DMA Audio Out */
-	{ 0,	0, 0, PMAC_DMA_AUDIO_IN},     /* 9 - DMA Audio In */
-	{ 0,	0, 0, -1},                    /* 10 - Reserved */
-	{ 0,	0, 0, -1},                    /* 11 - Reserved */
-	{ 0,	0, 0, PMAC_DEV_SCSI0},        /* 12 - SCSI */
-	{ 0,	0, 0, PMAC_DEV_IDE0},         /* 13 - IDE 0 */
-	{ 0,	0, 0, PMAC_DEV_IDE1},         /* 14 - IDE 1 */
-	{ 0,	0, 0, PMAC_DEV_SCC_A},        /* 15 - SCC Channel A */
-
-	/* 16-23: SCC, Audio, VIA and PCI slots */
-	{ 0,	0, 0, PMAC_DEV_SCC_B},        /* 16 - SCC Channel B */
-	{ 0,	0, 0, PMAC_DEV_AUDIO},        /* 17 - Audio */
-	{ 0,    0, 0, -1},                    /* 18 - Reserved */
-	{ 0,	0, 0, -1},                    /* 19 - Reserved */
-	{ 0, 	0, 0, PMAC_DEV_NMI},          /* 20 - NMI */
-	{ 0, 	0, 0, PMAC_DEV_CARD1},        /* 21 - PCI Slot 1 */
-	{ 0, 	0, 0, PMAC_DEV_CARD2},        /* 22 - PCI Slot 2 */
-	{ 0, 	0, 0, PMAC_DEV_CARD3},        /* 23 - PCI Slot 3 */
-
-	/* 24-31: More PCI slots and VIA cascade */
-	{ 0, 	0, 0, PMAC_DEV_CARD4},        /* 24 - PCI Slot 4 */
-	{ mpic_via1_interrupt, 0, 0, -1},     /* 25 - VIA Cascade (0x19) */
-	{ 0, 	0, 0, -1},                    /* 26 - Reserved */
-	{ 0, 	0, 0, -1},                    /* 27 - Reserved */
-	{ 0, 	0, 0, -1},                    /* 28 - Reserved */
-	{ 0, 	0, 0, -1},                    /* 29 - Reserved */
-	{ 0, 	0, 0, -1},                    /* 30 - Reserved */
-	{ 0, 	0, 0, -1},                    /* 31 - Reserved */
-	/* 32-39: USB, FireWire, Ethernet */
-	{ 0,	0, 0, PMAC_DMA_ETHERNET_TX},  /* 32 - DMA Ethernet Tx */
-	{ 0,	0, 0, PMAC_DMA_ETHERNET_RX},  /* 33 - DMA Ethernet Rx */
-	{ 0,	0, 0, -1},                    /* 34 - Reserved */
-	{ 0,	0, 0, -1},                    /* 35 - Reserved */
-	{ 0,	0, 0, -1},                    /* 36 - Reserved */
-	{ 0,	0, 0, -1},                    /* 37 - Reserved */
-	{ 0,	0, 0, PMAC_DEV_ETHERNET},     /* 38 - Ethernet */
-	{ 0,	0, 0, -1},                    /* 39 - Reserved */
-
-	/* 40-47: I2S, USB */
-	{ 0,	0, 0, -1},                    /* 40 - Reserved */
-	{ 0,	0, 0, -1},                    /* 41 - Reserved */
-	{ 0,	0, 0, -1},                    /* 42 - Reserved */
-	{ 0,	0, 0, -1},                    /* 43 - Reserved */
-	{ 0,	0, 0, -1},                    /* 44 - Reserved */
-	{ 0,	0, 0, -1},                    /* 45 - Reserved */
-	{ 0,	0, 0, -1},                    /* 46 - Reserved */
-	{ 0,	0, 0, -1},                    /* 47 - Reserved */
-
-	/* 48-55: More peripherals */
-	{ 0,	0, 0, -1},                    /* 48 - Reserved */
-	{ 0,	0, 0, -1},                    /* 49 - Reserved */
-	{ 0,	0, 0, -1},                    /* 50 - Reserved */
-	{ 0,	0, 0, -1},                    /* 51 - Reserved */
-	{ 0,	0, 0, -1},                    /* 52 - Reserved */
-	{ 0,	0, 0, -1},                    /* 53 - Reserved */
-	{ 0,	0, 0, -1},                    /* 54 - Reserved */
-	{ 0,	0, 0, -1},                    /* 55 - Reserved */
-
-	/* 56-63: Reserved */
-	{ 0,	0, 0, -1},                    /* 56 - Reserved */
-	{ 0,	0, 0, -1},                    /* 57 - Reserved */
-	{ 0,	0, 0, -1},                    /* 58 - Reserved */
-	{ 0,	0, 0, -1},                    /* 59 - Reserved */
-	{ 0,	0, 0, -1},                    /* 60 - Reserved */
-	{ 0,	0, 0, -1},                    /* 61 - Reserved */
-	{ 0,	0, 0, -1},                    /* 62 - Reserved */
-	{ 0,	0, 0, -1}                     /* 63 - Reserved */
+	{ 0,	0, 0, -1},            /* 0 - Unused */
+	{ 0,	0, 0, -1},            /* 1 - Unused */
+	{ 0,	0, 0, -1},            /* 2 - Unused */
+	{ 0,	0, 0, -1},            /* 3 - Unused */
+	{ 0,	0, 0, -1},            /* 4 - Unused */
+	{ 0,	0, 0, PMAC_DMA_SCC_A_TX}, /* 5 - DMA SCC Channel A TX */
+	{ 0,	0, 0, PMAC_DMA_SCC_A_RX}, /* 6 - DMA SCC Channel A RX */
+	{ 0,	0, 0, PMAC_DMA_SCC_B_TX}, /* 7 - DMA SCC Channel B TX */
+	{ 0,	0, 0, PMAC_DMA_SCC_B_RX}, /* 8 - DMA SCC Channel B RX */
+	{ 0,	0, 0, PMAC_DMA_AUDIO_OUT}, /* 9 - DMA Audio Out */
+	{ 0,	0, 0, PMAC_DMA_AUDIO_IN}, /* 10 - DMA Audio In */
+	{ 0,	0, 0, PMAC_DMA_UIDE}, /* 11 - DMA Ultra IDE */
+	{ 0,	0, 0, PMAC_DMA_IDE0}, /* 12 - DMA IDE 0 */
+	{ 0,	0, 0, PMAC_DMA_IDE1}, /* 13 - DMA IDE 1 */
+	{ 0,	0, 0, -1},            /* 14 - Unused */
+	{ 0,	0, 0, -1},            /* 15 - Unused */
+	{ 0,	0, 0, -1},            /* 16 - Unused */
+	{ 0,	0, 0, -1},            /* 17 - Unused */
+	{ 0,	0, 0, -1},            /* 18 - Unused */
+	{ 0,	0, 0, PMAC_DEV_UIDE}, /* 19 - Ultra IDE */
+	{ 0,	0, 0, PMAC_DEV_IDE0}, /* 20 - IDE 0 */
+	{ 0,	0, 0, PMAC_DEV_IDE1}, /* 21 - IDE 1 */
+	{ 0,	0, 0, PMAC_DEV_SCC_A}, /* 22 - SCC Channel A */
+	{ 0,	0, 0, PMAC_DEV_SCC_B}, /* 23 - SCC Channel B */
+	{ 0,	0, 0, PMAC_DEV_AUDIO}, /* 24 - Audio */
+	{ mpic_via1_interrupt, 0, 0, -1}, /* 25 - VIA Cascade (0x19) */
+	{ 0,	0, 0, -1},            /* 26 - Unused */
+	{ 0,	0, 0, PMAC_DEV_USB0}, /* 27 - USB 0 */
+	{ 0,	0, 0, PMAC_DEV_USB1}, /* 28 - USB 1 */
+	{ 0,	0, 0, -1},            /* 29 - Unused */
+	{ 0,	0, 0, -1},            /* 30 - Unused */
+	{ 0,	0, 0, -1},            /* 31 - Unused */
+	{ 0,	0, 0, -1},            /* 32 - Unused */
+	{ 0,	0, 0, -1},            /* 33 - Unused */
+	{ 0,	0, 0, -1},            /* 34 - Unused */
+	{ 0,	0, 0, -1},            /* 35 - Unused */
+	{ 0,	0, 0, -1},            /* 36 - Unused */
+	{ 0,	0, 0, -1},            /* 37 - Unused */
+	{ 0,	0, 0, PMAC_DEV_CARD18}, /* 38 - Card 18 */
+	{ 0,	0, 0, PMAC_DEV_CARD19}, /* 39 - Card 19 */
+	{ 0,	0, 0, PMAC_DEV_CARD20}, /* 40 - Card 20 */
+	{ 0,	0, 0, PMAC_DEV_CARD21}, /* 41 - Card 21 */
+	{ 0,	0, 0, PMAC_DEV_CARD22}, /* 42 - Card 22 */
+	{ 0,	0, 0, PMAC_DEV_CARD23}, /* 43 - Card 23 */
+	{ 0,	0, 0, PMAC_DEV_CARD24}, /* 44 - Card 24 */
+	{ 0,	0, 0, PMAC_DEV_CARD25}, /* 45 - Card 25 */
+	{ 0,	0, 0, PMAC_DEV_CARD0}, /* 46 - Card 0 */
+	{ 0,	0, 0, PMAC_DEV_CARD1}, /* 47 - Card 1 */
+	{ 0,	0, 0, PMAC_DEV_CARD2}, /* 48 - Card 2 */
+	{ 0,	0, 0, PMAC_DEV_CARD3}, /* 49 - Card 3 */
+	{ 0,	0, 0, PMAC_DEV_CARD4}, /* 50 - Card 4 */
+	{ 0,	0, 0, PMAC_DEV_CARD5}, /* 51 - Card 5 */
+	{ 0,	0, 0, PMAC_DEV_CARD6}, /* 52 - Card 6 */
+	{ 0,	0, 0, PMAC_DEV_CARD7}, /* 53 - Card 7 */
+	{ 0,	0, 0, PMAC_DEV_CARD8}, /* 54 - Card 8 */
+	{ 0,	0, 0, PMAC_DEV_CARD9}, /* 55 - Card 9 */
+	{ 0,	0, 0, PMAC_DEV_CARD10}, /* 56 - Card 10 */
+	{ 0,	0, 0, PMAC_DEV_CARD11}, /* 57 - Card 11 */
+	{ 0,	0, 0, PMAC_DEV_CARD12}, /* 58 - Card 12 */
+	{ 0,	0, 0, PMAC_DEV_CARD13}, /* 59 - Card 13 */
+	{ 0,	0, 0, PMAC_DEV_CARD14}, /* 60 - Card 14 */
+	{ 0,	0, 0, PMAC_DEV_CARD15}, /* 61 - Card 15 */
+	{ 0,	0, 0, PMAC_DEV_CARD16}, /* 62 - Card 16 */
+	{ 0,	0, 0, PMAC_DEV_CARD17}  /* 63 - Card 17 */
 };
 
 void configure_sawtooth(void)

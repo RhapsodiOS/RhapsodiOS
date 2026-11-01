@@ -19,6 +19,7 @@ my $ok=0;
 my $cc="cc";
 my $cversion="??";
 my $sep="-----------------------------------------------------------------------------\n";
+my $not_our_fault="\nPlease ask your system administrator/vendor for more information.\n[Problems with your operating system setup should not be reported\nto the OpenSSL project.]\n";
 
 open(OUT,">$report") or die;
 
@@ -33,9 +34,9 @@ foreach $_ (split("\n",$c)) {
     $platform0=$1 if (/Configuring for (.*)$/);
 }
 
-system "sh config" if (! -f "Makefile.ssl");
+system "sh config" if (! -f "Makefile");
 
-if (open(IN,"<Makefile.ssl")) {
+if (open(IN,"<Makefile")) {
     while (<IN>) {
 	$version=$1 if (/^VERSION=(.*)$/);
 	$platform=$1 if (/^PLATFORM=(.*)$/);
@@ -48,7 +49,8 @@ if (open(IN,"<Makefile.ssl")) {
 }
 
 $cversion=`$cc -v 2>&1`;
-$cversion=`$cc -V 2>&1` if $cversion =~ "usage";
+$cversion=`$cc -V 2>&1` if $cversion =~ "[Uu]sage";
+$cversion=`$cc -V |head -1` if $cversion =~ "Error";
 $cversion=`$cc --version` if $cversion eq "";
 $cversion =~ s/Reading specs.*\n//;
 $cversion =~ s/usage.*\n//;
@@ -56,7 +58,7 @@ chomp $cversion;
 
 if (open(IN,"<CHANGES")) {
     while(<IN>) {
-	if (/\*\) (.{0,55})/) {
+	if (/\*\) (.{0,55})/ && !/applies to/) {
 	    $last=$1;
 	    last;
 	}
@@ -76,16 +78,18 @@ print OUT "\n";
 
 print "Checking compiler...\n";
 if (open(TEST,">cctest.c")) {
-    print TEST "#include <stdio.h>\nmain(){printf(\"Hello world\\n\");}\n";
+    print TEST "#include <stdio.h>\n#include <errno.h>\nmain(){printf(\"Hello world\\n\");}\n";
     close(TEST);
     system("$cc -o cctest cctest.c");
     if (`./cctest` !~ /Hello world/) {
 	print OUT "Compiler doesn't work.\n";
+	print OUT $not_our_fault;
 	goto err;
     }
     system("ar r cctest.a /dev/null");
     if (not -f "cctest.a") {
 	print OUT "Check your archive tool (ar).\n";
+	print OUT $not_our_fault;
 	goto err;
     }
 } else {
@@ -102,6 +106,7 @@ if (open(TEST,">cctest.c")) {
 	} else {
 	    print OUT "Can't compile test program!\n";
 	}
+	print OUT $not_our_fault;
 	goto err;
     }
 } else {
@@ -125,13 +130,21 @@ if (system("make 2>&1 | tee make.log") > 255) {
     goto err;
 }
 
-$_=$options;
-s/no-asm//;
-if (/no-/)
-{
-    print OUT "Test skipped.\n";
-    goto err;
-}
+# Not sure why this is here.  The tests themselves can detect if their
+# particular feature isn't included, and should therefore skip themselves.
+# To skip *all* tests just because one algorithm isn't included is like
+# shooting mosquito with an elephant gun...
+#                   -- Richard Levitte, inspired by problem report 1089
+#
+#$_=$options;
+#s/no-asm//;
+#s/no-shared//;
+#s/no-krb5//;
+#if (/no-/)
+#{
+#    print OUT "Test skipped.\n";
+#    goto err;
+#}
 
 print "Running make test...\n";
 if (system("make test 2>&1 | tee maketest.log") > 255)

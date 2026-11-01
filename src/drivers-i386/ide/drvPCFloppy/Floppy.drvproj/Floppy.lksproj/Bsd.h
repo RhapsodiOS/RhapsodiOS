@@ -77,9 +77,9 @@
 @interface IOFloppyDisk(BsdLocal)
 
 /*
- * Attach BSD disk interface to a drive.
+ * Attach BSD disk interface to a drive.  Returns YES on success.
  */
-- (IOReturn)attachBsdDiskInterfaceToDrive:(id)drive;
+- (BOOL)attachBsdDiskInterfaceToDrive:(id)drive;
 
 /*
  * Detach BSD disk interface from a drive.
